@@ -28,7 +28,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `executors [--probe]` | Registered executors, capabilities, CLI versions, probe facts | no | no |
 | `batch <workflow> <targets…> [-k N]` | Many child runs, as a one-node orchestration ([ADR-0038](../adr/0038-batch-is-a-one-node-orchestration.adr.md)) | yes | yes |
 | `orchestrate validate\|plan\|start\|status\|wait\|answer\|edit\|stop\|resume\|list\|report …` | A graph of runs ([ORC §2.6](45-orchestration.spec.md)) | start, answer, edit, stop, resume | start, answer, resume |
-| `stop <selector> [--now]` | Drain a running run (no new attempt; ends `unfinished`, exit 4) or, with `--now`, end its open session at once; resumable either way ([ORC §2.8](45-orchestration.spec.md) N3) | yes | no |
+| `stop <selector> [--drain\|--now] [--as-agent]` | Drain a running run (no new attempt or unit; ends `unfinished`, exit 4) or, with `--now`, end its open session at once; resumable either way. Owned by spec 32 (RCT §2) of the run-control design; needed by [ORC §2.8](45-orchestration.spec.md) N3 | yes | no |
 | `worktree list|prune` | Engine worktrees | prune only | no |
 | `update [--dry-run]` | Install or upgrade the engine; reconcile the manifest | yes | no |
 | `upgrade-check <workflow> [--stamp]` | Compatibility against the changelog | stamp only | no |

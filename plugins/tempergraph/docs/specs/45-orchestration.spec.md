@@ -137,18 +137,18 @@ Readers follow [CON §2.10](01-contracts.spec.md): unknown keys are ignored, a m
 
 ### 2.8 Needs from the engine
 
-What the supervisor needs from the rest of the engine. Rows marked **requested** are requirements on the observability and run-data design being written in parallel; the supervisor works without them through the fallback named.
+What the supervisor needs from the rest of the engine. Rows marked **requested** are requirements on the observability and run-data design written in parallel, which has taken them as stated; its specs are named by number and prefix until both sets are merged. The supervisor works without them through the fallback named.
 
 | # | Need | Owner | Fallback until it exists |
 |---|---|---|---|
-| N1 | Run option `--parent <orchestration_id>/<node>[/<item>]`, stored with the run options and shown as `parent` in the status document, the run log's first line, the ledger and the `stats` row; `origin` value `orchestration` | [DUR §2.2](09-durability-and-resume.spec.md) (added), run log and stats: **requested** | Thread id prefix `o-<id>-` |
-| N2 | A per-run lifecycle event stream (append-only, ordered, versioned): started, attempt started, gate verdict, paused, resumed, finished, failed, cost so far | Observability: **requested** | One `wait` per running child ([DUR-B5](09-durability-and-resume.spec.md)) |
-| N3 | `stop <selector> [--now]` for one run: drain (no new attempt, thread ends `unfinished`, exit 4) or now (tree-kill the open session; resume treats it as a cut-off attempt, [DUR-B2](09-durability-and-resume.spec.md)) | [CLI §2](17-engine-cli.spec.md) (added) | None: `orchestrate stop` only stops starting nodes |
+| N1 | Run option `--parent <orchestration_id>/<node>[/<item>]`, stored with the run options and shown as `parent` in the status document, the run log's first line, the ledger and the `stats` row; `origin` value `orchestration` | [DUR §2.2](09-durability-and-resume.spec.md) (added); the `run_started` run-log record and the stats `run` row: **requested**, taken by spec 30 (EVT) and spec 34 (CST); the ledger row ([SIL](16-self-improvement.spec.md)): open | Thread id prefix `o-<id>-` |
+| N2 | A per-run lifecycle event stream (append-only, ordered, versioned): started, attempt started, gate verdict, paused, resumed, finished, failed, cost so far | **Requested**, taken by spec 30 (EVT): every run-log record carries `seq` and `segment`; `gate`, `pause` and `run_exit` carry `cost_so_far`; `events <selector> --since <seq> --follow --json` tails them read-only | One `wait` per running child ([DUR-B5](09-durability-and-resume.spec.md)) |
+| N3 | `stop <selector> [--drain\|--now]` for one run: drain (no new attempt or unit, thread ends `unfinished`, exit 4) or now (tree-kill the open session; resume treats it as a cut-off attempt, [DUR-B2](09-durability-and-resume.spec.md)) | Spec 32 (RCT §2) owns it; [CLI §2](17-engine-cli.spec.md) lists the verb | None: `orchestrate stop` only stops starting nodes |
 | N4 | `facts --json` lists each pending gate's payload: kind, decisions, artifacts, the resume argv; and artifacts by key with resolved paths | [CLI-B5](17-engine-cli.spec.md) | — (already designed) |
 | N5 | A run started by the supervisor runs in its own process group; the supervisor's exit or kill never ends it | This spec | — |
 | N6 | Orchestration hook events `orchestration_attention` and `orchestration_finished`, so a notifier can reach a person when no conversation is open | [CLI §2.2](17-engine-cli.spec.md) (added) | The skill's `wait` |
-| N7 | Projected cost per workflow from past runs: median and 90th percentile of estimated cost per run, with the sample size | [OBS §2.4](15-observability-and-cost.spec.md) `stats`: **requested** | `projected` not recorded |
-| N8 | The monitor's drill-down from an orchestration node into the run, its steps, attempts and the live session (open tool, shell command) | Monitor and observability: **requested** | Node row only |
+| N7 | Projected cost per workflow from past runs: median and 90th percentile of estimated cost per run, with the sample size | **Requested**, taken by spec 34 (CST §2.5): `stats --projection`, marked `thin` under 5 finished runs; `plan` shows a thin projection as such | `projected` not recorded |
+| N8 | The monitor's drill-down from an orchestration node into the run, its steps, attempts and the live session (open tool, shell command) | **Requested**, taken by the monitor design: an orchestration view built from §2.7 | Node row only |
 
 ## 3. Behaviours
 
