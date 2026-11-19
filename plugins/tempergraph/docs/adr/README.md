@@ -37,3 +37,8 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0039](0039-pauses-stay-with-the-person-failures-follow-node-policy.adr.md) | In an orchestration, pauses stay with the person; failures follow a declared node policy | proposed |
 | [0040](0040-take-script-steps-attention-and-composition-from-archon.adr.md) | Take script and hybrid steps, an attention verb and composable workflow packs; keep step outputs free-form | accepted |
 | [0041](0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md) | A workflow graduates from local runs to a pipeline by measured, model-free criteria | proposed |
+| [0045](0045-judges-accepted-on-labelled-error-rates.adr.md) | Accept a judge on its two error rates over a labelled gold set, bounded from below | proposed |
+| [0046](0046-calibration-cases-split-tune-and-holdout.adr.md) | Split calibration cases into tune and holdout, and score only on holdout | proposed |
+| [0047](0047-judge-robustness-by-metamorphic-variants.adr.md) | Test judge robustness with templated variants of gold cases | proposed |
+| [0048](0048-judge-graded-rates-carry-the-judges-error.adr.md) | Report judge-graded rates with the judge's state and a corrected estimate | proposed |
+| [0049](0049-eval-graders-in-a-fixed-order-of-trust.adr.md) | Grade step and workflow evals by code, then an accepted judge, then a person | proposed |
