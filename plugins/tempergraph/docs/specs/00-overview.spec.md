@@ -27,7 +27,7 @@ This spec is the index of the set. It holds no component requirement; each requi
 | G5 | The same workflow on the Claude Code CLI, the Antigravity CLI, the Claude Agent SDK or the Messages API, with refusal before spend when an executor cannot enforce what is asked. | [EXI](10-executor-interface.spec.md), [ECC](11-executor-claude-code.spec.md), [EAG](12-executor-antigravity.spec.md), [EAS](21-executor-agent-sdk.spec.md), [EMA](20-executor-messages-api.spec.md) |
 | G6 | Every model call costed; unmeasured is never zero. | [OBS](15-observability-and-cost.spec.md) |
 | G7 | A closed improvement loop that files scrubbed, de-duplicated issues, drafts measured changes and hands them to a person. | [SIL](16-self-improvement.spec.md), [PRP](40-improvement-proposals.spec.md), [FBK](41-feedback-and-judge-reliability.spec.md), [LSN](42-workflow-lessons.spec.md), [IMD](43-improvement-data.spec.md) |
-| G8 | Non-experts author good workflows through a guided skill and enforced validation. | [SHL](19-plugin-shell.spec.md), [WFM](02-workflow-model.spec.md) |
+| G8 | Non-experts author good workflows through a guided skill and enforced validation. | [SHL](19-plugin-shell.spec.md), [WFM](02-workflow-model.spec.md), [AUD](55-workflow-audit.spec.md) |
 | G9 | Many runs planned as a graph of runs, validated before spend and supervised without a model, with every pause left to a person. | [ORC](45-orchestration.spec.md), [OSK](46-orchestrator-skill.spec.md) |
 
 ### Non-goals
@@ -119,6 +119,10 @@ flowchart LR
 | OSK | [46 Orchestrator skill](46-orchestrator-skill.spec.md) | The skill that plans, starts and walks a person through an orchestration |
 | JCL | [50 Judge calibration and acceptance](50-judge-calibration.spec.md) | Gold case sets, judge scores and figures, the acceptance bar and state |
 | EVS | [51 Eval suites for checks, steps and workflows](51-eval-suites.spec.md) | Suite kinds and roles, grader order, live-suite caps, corrected judge-graded rates |
+| AUD | [55 Workflow audit](55-workflow-audit.spec.md) | The `audit` verb, its layers, report, views and ignores |
+| ARC | [56 Audit rule catalog](56-audit-rule-catalog.spec.md) | The audit's rules outside tools, keyed to ranked causes |
+| TSA | [57 Tool surface audit](57-tool-surface-audit.spec.md) | Grant, need and use of each step and judge session; the tool rules |
+| PRA | [58 Prompt audit](58-prompt-audit.spec.md) | Model-facing text: names resolved and current, agreement with declarations, size |
 
 ### 2.3 Engine-wide contracts
 

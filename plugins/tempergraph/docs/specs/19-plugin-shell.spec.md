@@ -28,7 +28,7 @@ The shell is a Claude Code plugin. Running steps on another executor does not re
 
 ### 2.1 Authoring phases
 
-Intake → outcome → steps → criteria and judges → policies, **executors** and models → start and routing → blueprint approval → scaffold → verify, register, stamp, calibrate. Nothing is written before the person approves the engine-drawn blueprint and the tables. The executor phase asks, per step, which executor runs it and where its judge runs, stating each consequence from the capability matrix.
+Intake → outcome → steps → criteria and judges → policies, **executors** and models → start and routing → blueprint approval → scaffold → verify (including `audit --layer definition --layer host`, each finding shown with its remedy for the person to accept, fix or ignore with a reason, [AUD](55-workflow-audit.spec.md)), register, stamp, calibrate. Nothing is written before the person approves the engine-drawn blueprint and the tables. The executor phase asks, per step, which executor runs it and where its judge runs, stating each consequence from the capability matrix.
 
 ## 3. Behaviours
 

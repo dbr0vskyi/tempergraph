@@ -27,6 +27,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `graph <workflow> [--format mermaid|svg|md] [--overlay <thread>]` | Diagram from the model | no | no |
 | `report [window] [--by unit|executor|version]` | Cost and friction reports | no | no |
 | `validate <workflow>` | Validation, view deferrals, prompt-tool check | no | no |
+| `audit <workflow> [--layer …] [--target <path>] [--window <days>] [--all] [--format text\|json\|sarif] [--fail-on …]`, `audit tools <workflow>`, `audit prompts <workflow>` | Advisory audit of a workflow's definition, host and run history; exit 6 only with `--fail-on` ([AUD](55-workflow-audit.spec.md)) | no | no |
 | `executors [--probe]` | Registered executors, capabilities, CLI versions, probe facts | no | no |
 | `batch <workflow> <targets…> [-k N]` | Many child runs, as a one-node orchestration ([ADR-0038](../adr/0038-batch-is-a-one-node-orchestration.adr.md)) | yes | yes |
 | `orchestrate validate\|plan\|start\|status\|wait\|answer\|edit\|stop\|resume\|list\|report …` | A graph of runs ([ORC §2.6](45-orchestration.spec.md)) | start, answer, edit, stop, resume | start, answer, resume |
