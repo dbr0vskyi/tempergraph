@@ -35,6 +35,9 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `facts <selector> [--json]` | Read-only facts about a run for other tools (state, branch, artifacts by key, pending gates, cost figures, alias, label, origin) | no | no |
 | `stats [--month YYYY-MM] [--json]` | Per-user monthly run rows ([OBS §2.4](15-observability-and-cost.spec.md)) | no | no |
 | `hooks add|list|remove|test` | Run lifecycle hooks (§2.2) | add and remove only | no |
+| `improve backlog|propose|trial|aa|open|show` | Proposals and trials ([PRP §2.7](40-improvement-proposals.spec.md)) | per [PRP](40-improvement-proposals.spec.md) | `propose`, `trial`, `aa` |
+| `label <thread> <gate> [--criterion id] --value agree|disagree`, `labels queue [workflow]` | Enter a label; list judgements to label ([FBK](41-feedback-and-judge-reliability.spec.md)) | `label` only | no |
+| `report --loop [window]` | The loop's own metrics ([IMD §2.4](43-improvement-data.spec.md)) | no | no |
 
 ### 2.1 Run options that touch executors
 
