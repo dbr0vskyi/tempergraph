@@ -104,6 +104,8 @@ flowchart LR
 | CLI | [17 Engine CLI](17-engine-cli.spec.md) | Verbs, options, catalog |
 | LIF | [18 Lifecycle and evals](18-lifecycle-and-evals.spec.md) | Install, update, compatibility, diagrams, evals |
 | SHL | [19 Plugin shell](19-plugin-shell.spec.md) | The skills the engine plugin ships |
+| JCL | [50 Judge calibration and acceptance](50-judge-calibration.spec.md) | Gold case sets, judge scores and figures, the acceptance bar and state |
+| EVS | [51 Eval suites for checks, steps and workflows](51-eval-suites.spec.md) | Suite kinds and roles, grader order, live-suite caps, corrected judge-graded rates |
 
 ### 2.3 Engine-wide contracts
 

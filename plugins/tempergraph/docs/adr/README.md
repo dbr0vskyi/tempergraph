@@ -25,3 +25,8 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0019](0019-in-process-executors-run-in-a-worker-process.adr.md) | Library-based executors run in an engine worker process behind the same launcher | proposed |
 | [0020](0020-engine-owned-tool-loop-for-the-messages-api.adr.md) | The Messages API executor runs an engine-owned loop over a minimal engine tool host | proposed |
 | [0021](0021-scope-of-planned-work.adr.md) | Fold planned work into the design by fixed rules | proposed |
+| [0045](0045-judges-accepted-on-labelled-error-rates.adr.md) | Accept a judge on its two error rates over a labelled gold set, bounded from below | proposed |
+| [0046](0046-calibration-cases-split-tune-and-holdout.adr.md) | Split calibration cases into tune and holdout, and score only on holdout | proposed |
+| [0047](0047-judge-robustness-by-metamorphic-variants.adr.md) | Test judge robustness with templated variants of gold cases | proposed |
+| [0048](0048-judge-graded-rates-carry-the-judges-error.adr.md) | Report judge-graded rates with the judge's state and a corrected estimate | proposed |
+| [0049](0049-eval-graders-in-a-fixed-order-of-trust.adr.md) | Grade step and workflow evals by code, then an accepted judge, then a person | proposed |
