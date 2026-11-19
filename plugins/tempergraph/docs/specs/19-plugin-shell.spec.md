@@ -19,6 +19,7 @@ The shell is a Claude Code plugin. Running steps on another executor does not re
 | Skill | Purpose | Never |
 |---|---|---|
 | Run driver | Turn a request into CLI calls, start in the background, report outcomes by exit code, walk the person through each pause | Answer a pause, default a value the workflow asks for, edit run state |
+| Orchestrator | Plan a graph of runs with the person, start it after approval, sleep until a person is needed, walk them through each pause, report ([OSK](46-orchestrator-skill.spec.md)) | Answer a pause, start an orchestration's runs itself, poll |
 | Project bootstrap | Add the state-root ignore rule to a repository; nothing workflow-shaped | Stage, commit or delete |
 | Installer | Put the CLI on PATH and create the managed environment; hand over to `update`; check that the chosen executors are installed and have credentials (`executors --probe`); install the optional `agent-sdk` and `messages-api` extras into the managed environment when asked | Install a CLI or store a credential |
 | Authoring | Lead a person from a process they run to a registered, tested, stamped workflow | Edit the engine; draw a diagram by model |
