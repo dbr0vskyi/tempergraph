@@ -101,6 +101,10 @@ Nothing is removed automatically. The rule `store usage` checks and `store prune
 
 `status` adds one warning line when the state root passes 2 GB (operator config `observe.warn_size_gb`).
 
+### 2.6 Capture level
+
+The default is full local capture ([ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md)): every item of §2.1 is written for every session on every executor, including `raw.jsonl`, the activity journal with tool input summaries and resource samples, check and hook output and the engine code log at `INFO`. An operator may lower it per item in config (`observe.raw = off`, `observe.tool_inputs = off`, `observe.check_output = off`); lowering is recorded once per run in the run log, so a reader knows what is missing and why.
+
 ## 3. Behaviours
 
 **LOS-B1 One folder per session.** Given a unit whose step was retried once and whose judge re-asked once, when the run ends, then `sessions/` holds five folders, `code.1.step`, `code.1.judge`, `code.2.retry`, `code.2.judge` and `code.2.judge_reask.1` for the re-ask, each with `meta.json` and `raw.jsonl`.

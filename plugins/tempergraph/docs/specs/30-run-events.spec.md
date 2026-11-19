@@ -54,6 +54,8 @@ One JSON-lines file per session at `sessions/<session_key>/activity.jsonl` in th
 | `ev` | Normalized event name |
 | event fields | As in CON §2.7, plus `input_summary` on `tool_started` (§2.5) and `duration_s` on `tool_finished` |
 
+A `resources` line is added every 10 s while the session runs (POSIX): CPU seconds and peak resident memory summed over the session's process group, and the number of processes in it, from a read-only process listing with constant argv; numbers only. The time profile and the detail document read it ([OBS](15-observability-and-cost.spec.md), [RDD](31-run-detail-document.spec.md)).
+
 Rules: append-only, flushed at most once a second and at session end; local only; capped at 20 000 lines or 8 MB per session, after which `model_delta` lines are dropped first, then `text` lines, and a final `truncated` line counts what was dropped. The journal is not a run-log record and is never read by the analyzer for cost.
 
 ### 2.4 Transcript locator

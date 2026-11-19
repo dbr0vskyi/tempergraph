@@ -110,7 +110,7 @@ flowchart LR
 | RCT | [32 Run control](32-run-control.spec.md) | The `stop` verb |
 | LOS | [33 Local observability store](33-local-observability-store.spec.md) | State-root and home layouts, session and engine logs, retention |
 | CST | [34 Central run stats](34-central-run-stats.spec.md) | Machine index, sinks, cross-machine stats |
-| TEL | [35 Telemetry export](35-telemetry-export.spec.md) | OTLP export with the GenAI conventions |
+| TEL | [35 Telemetry export](35-telemetry-export.spec.md) | OTLP export with the GenAI conventions; deferred, not in the first release ([ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md)) |
 | PRP | [40 Improvement proposals and trials](40-improvement-proposals.spec.md) | Clusters, proposals, change classes, case sets, trials |
 | FBK | [41 Feedback labels and judge reliability](41-feedback-and-judge-reliability.spec.md) | Labels, reliability grades, labelling queue, binding-shift watch |
 | LSN | [42 Workflow lessons](42-workflow-lessons.spec.md) | Per-step lessons files and how they render and change |

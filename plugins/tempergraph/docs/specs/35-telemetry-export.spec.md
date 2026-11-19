@@ -1,14 +1,16 @@
 ---
 title: Telemetry export
 type: component
-status: review
+status: draft
 prefix: TEL
-adrs: [0025, 0026, 0027]
+adrs: [0025, 0026, 0027, 0029]
 ---
 
 # Telemetry export
 
 ## 1. Overview
+
+**Deferred.** The owner chose tempergraph's own observability first; this exporter is not in the first release and is kept as a design for later ([ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md)). Until it is built, nothing is sent to any third-party tool.
 
 The `otlp` sink ([CST §2.3](34-central-run-stats.spec.md)): runs exported as OpenTelemetry traces and metrics to any OTLP receiver, using the GenAI semantic conventions where they fit and `tempergraph.*` names where they do not ([R-020](../research/R-020-opentelemetry-genai-conventions.rsrch.md)). It is an in-process observer ([EVT §2.6](30-run-events.spec.md)) shipped in the optional `tempergraph[otel]` extra, off unless a sink of kind `otlp` is configured. Content capture is never turned on: no prompt, output, tool input or evidence is exported.
 

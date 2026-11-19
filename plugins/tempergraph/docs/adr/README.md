@@ -32,6 +32,7 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0026](0026-telemetry-export-as-otel-genai-without-content.adr.md) | Export telemetry as OpenTelemetry with the GenAI conventions, pinned, never with content | proposed |
 | [0027](0027-in-process-observers-and-wider-hook-events.adr.md) | Add an in-process observer interface for exporters, and widen lifecycle hook events | proposed |
 | [0028](0028-stop-verb-as-the-only-observer-control.adr.md) | A stop verb with drain is the only run control an observer may ask for | proposed |
+| [0029](0029-own-observability-first-export-deferred.adr.md) | Ship tempergraph's own observability first, capture everything locally, defer third-party export | accepted |
 | [0030](0030-improvement-closes-through-measured-proposals.adr.md) | Improvement closes through measured proposals that a person merges | proposed |
 | [0031](0031-steps-and-their-graders-change-apart.adr.md) | Steps and the gates that grade them change apart; weakening a gate is a person's act | proposed |
 | [0032](0032-lessons-are-versioned-workflow-content.adr.md) | Lessons learned are versioned workflow content, not run-time memory | proposed |

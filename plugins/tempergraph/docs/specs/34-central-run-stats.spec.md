@@ -35,9 +35,9 @@ Configured in user or state-root config as a list; none by default.
 | Field | Meaning |
 |---|---|
 | `name` | Operator's name for it |
-| `kind` | `directory` or `otlp` ([TEL](35-telemetry-export.spec.md)) |
+| `kind` | `directory`; `otlp` is designed but deferred ([TEL](35-telemetry-export.spec.md), [ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md)) |
 | `path` (directory) | A folder every machine can write: a synced folder, a network share, a mounted bucket |
-| `include` | Subset of `run`, `heartbeat`, `session`; default `[run, heartbeat]` |
+| `include` | Subset of `run`, `heartbeat`, `session`; default all three ([ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md)) |
 | `user` | `name`, `hash` (default) or `none` |
 | `repo` | `name`, `hash` (default) |
 
