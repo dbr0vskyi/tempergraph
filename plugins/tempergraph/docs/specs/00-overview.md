@@ -1,0 +1,166 @@
+---
+title: tempergraph system overview
+type: overview
+status: review
+prefix: OVR
+adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007]
+---
+
+# tempergraph system overview
+
+## 1. Overview
+
+tempergraph ("tempered rails for AI workflows") is an opinionated Python framework on LangGraph. A team's repeated process is written as a **workflow**: declarative data of steps, gates and flow. The engine validates it, compiles it into a durable state graph and runs it. Every step is a fresh headless agent session; after every step a **gate** runs a deterministic check and then an **independent judge** in a fresh read-only session; the **engine**, never the judge, derives the verdict and routes: proceed, retry, go back, ask a person, or stop. Every model call is costed, every run is recorded, and a built-in self-improvement workflow reads finished runs and files issues where the fault lives.
+
+The engine starts sessions through **executors**. Two are first-class: the **Claude Code CLI** and the **Antigravity CLI** ([ADR-0007](../adr/0007-two-first-class-executors.md)). A workflow names engine-neutral model aliases and tool capabilities, so the same workflow can run its steps on either executor, and its judges on whichever executor can enforce a read-only view.
+
+This spec is the index of the set. It holds no component requirement; each requirement lives in exactly one component spec.
+
+### Goals
+
+| # | Goal | Where |
+|---|---|---|
+| G1 | Start from a stated good outcome: every step declares criteria a judge grades and checks the engine runs. | [WFM](02-workflow-model.md), [JDG](05-judge-and-verdict.md) |
+| G2 | Deterministic checks first, an independent judge second, a verdict by rule. | [JDG](05-judge-and-verdict.md), [GRD](06-independence-guard.md) |
+| G3 | Retries, trips back and pauses are graph edges driven by verdicts, each bounded by a budget. | [CMP](03-compiler-and-flow.md), [BUD](08-budgets-and-failures.md), [HUM](07-gate-and-human.md) |
+| G4 | Durable, resumable runs that survive days at a pause. | [DUR](09-durability-and-resume.md) |
+| G5 | The same workflow on the Claude Code CLI or the Antigravity CLI, with refusal before spend when an executor cannot enforce what is asked. | [EXI](10-executor-interface.md), [ECC](11-executor-claude-code.md), [EAG](12-executor-antigravity.md) |
+| G6 | Every model call costed; unmeasured is never zero. | [OBS](15-observability-and-cost.md) |
+| G7 | A closed improvement loop that files scrubbed, de-duplicated issues. | [SIL](16-self-improvement.md) |
+| G8 | Non-experts author good workflows through a guided skill and enforced validation. | [SHL](19-plugin-shell.md), [WFM](02-workflow-model.md) |
+
+### Non-goals
+
+- Not a replacement for pull-request review; a finalizer opens a draft at most.
+- Not deterministic output: the graph, budgets and escalation paths are fixed, model output is not.
+- Not a production-workload orchestrator: non-production work on synthetic or test data.
+- Not a general chat agent: a good candidate is repeated, has known inputs and ends in something a check or a judge can grade.
+- No other executor in the first release. The interface admits more (an agent SDK, a hosted service) without an engine edit.
+
+## 2. Contract
+
+### 2.1 Layers and dependency direction
+
+| Layer | Name | Holds | Depends on |
+|---|---|---|---|
+| 1 | Engine | Registry, compiler, graph runtime, gate funnel, executors, checkpoint, run log, analyzer, workspace, the built-in self-improvement workflow | LangGraph, SQLite, the two CLIs as child processes |
+| 2 | Workflows as data | One package per workflow: spec, checks, prompts, start facts, eval scenarios | The engine's public interface only |
+| 3 | Authoring surface | Agents, skills and rules a workflow's prompts invoke inside a step session, per executor | The workflow |
+| 4 | Shell | Skills that drive the engine CLI from a conversation; the read-only monitor (separate plugin) | The engine CLI and the status document |
+
+```mermaid
+flowchart LR
+  subgraph Shell
+    S[Shell skills]
+    M[tempergraph-monitor<br/>read-only]
+  end
+  subgraph Engine["Engine: names no workflow"]
+    CLI[Engine CLI] --> REG[Registry]
+    CLI --> WS[Workspace]
+    CLI --> CMP[Compiler]
+    CMP --> RT[Graph runtime + checkpoint]
+    RT --> GF[Gate funnel]
+    RT --> LOG[Run log, analyzer]
+    GF --> EX[Executor layer]
+    RT --> EX
+    LOG --> SI[Self-improvement child]
+  end
+  WP[Workflow package] -. read as data .-> REG
+  S --> CLI
+  M -. status only .-> CLI
+  EX --> CC[claude -p]
+  EX --> AG[agy stream-json]
+  SI -. detached run .-> CLI
+```
+
+### 2.2 Spec index
+
+| Prefix | Spec | Owns |
+|---|---|---|
+| OVR | [00 Overview](00-overview.md) | This index, goals, layers, engine-wide contracts |
+| CON | [01 Contracts](01-contracts.md) | Every shared type |
+| WFM | [02 Workflow model and validation](02-workflow-model.md) | What a workflow declares; what is refused before a run |
+| CMP | [03 Compiler and flow](03-compiler-and-flow.md) | Four nodes per unit, edges, flow primitives |
+| PRM | [04 Prompt rendering and output contract](04-prompt-rendering.md) | What a step is told and must emit |
+| JDG | [05 Judge and verdict](05-judge-and-verdict.md) | Judge session, judgement block, verdict derivation |
+| GRD | [06 Independence guard and judge views](06-independence-guard.md) | View sets, the catalog, the after-the-fact guard |
+| HUM | [07 Gate and human nodes](07-gate-and-human.md) | Routing, pauses, approvals, event waits, decisions |
+| BUD | [08 Budgets, failures and timeouts](08-budgets-and-failures.md) | Counters, failure causes, loop-backs, limits |
+| DUR | [09 Durability and resume](09-durability-and-resume.md) | Checkpoints, thread states, resume, status, wait |
+| EXI | [10 Executor interface](10-executor-interface.md) | Protocol, capabilities, preflight, binding, lifetime, conformance |
+| ECC | [11 Claude Code executor](11-executor-claude-code.md) | `claude -p` mapping |
+| EAG | [12 Antigravity executor](12-executor-antigravity.md) | `agy` mapping |
+| WSP | [13 Workspace and concurrency](13-workspace-and-concurrency.md) | State root, worktrees, writers, batches |
+| SEC | [14 Security posture](14-security.md) | Launch rules, scrubbing, publish boundary |
+| OBS | [15 Observability and cost](15-observability-and-cost.md) | Run log, live progress, cost, reports |
+| SIL | [16 Self-improvement loop](16-self-improvement.md) | Lenses, filing, calibration feedback |
+| CLI | [17 Engine CLI](17-engine-cli.md) | Verbs, options, catalog |
+| LIF | [18 Lifecycle and evals](18-lifecycle-and-evals.md) | Install, update, compatibility, diagrams, evals |
+| SHL | [19 Plugin shell](19-plugin-shell.md) | The skills the engine plugin ships |
+
+### 2.3 Engine-wide contracts
+
+
+| # | Contract | Owner |
+|---|---|---|
+| C1 | Every model call is an executor run, logged with its usage. Finalizers and routes call no model. | [OBS](15-observability-and-cost.md) |
+| C2 | Logging, reports and self-improvement are best effort and never change a run or its exit code. | [OBS](15-observability-and-cost.md) |
+| C3 | Executors behave the same everywhere: one renderer, prompt off argv, constants-only argv, no raise, children tied to the engine. | [EXI](10-executor-interface.md) |
+| C4 | A step never grades itself; an independent judge assesses; the engine derives the verdict. | [JDG](05-judge-and-verdict.md) |
+| C5 | Gates, routes and joins are pure and safe to re-run; the judge and the gate run once. | [CMP](03-compiler-and-flow.md) |
+| C6 | One interrupt per gate; only a person decides a pause. | [HUM](07-gate-and-human.md) |
+| C7 | State is JSON merged by reducers under a stable thread id; a fresh run never merges into a thread. | [DUR](09-durability-and-resume.md) |
+| C8 | The engine core never names a workflow. | [WFM](02-workflow-model.md) |
+| C9 | Secrets are scrubbed; published artefacts carry metadata only. | [SEC](14-security.md) |
+| C10 | Paths resolve inside the workspace; the state root is the main checkout. | [WSP](13-workspace-and-concurrency.md) |
+| C11 | One graph per process. | [WSP](13-workspace-and-concurrency.md) |
+| C12 | Versioned schemas, tolerant readers. | [CON](01-contracts.md) |
+| C13 | Input resolution and the read-only verbs call no model and create nothing. | [CLI](17-engine-cli.md) |
+| C14 | A measurement call never writes code. | [SIL](16-self-improvement.md) |
+| C15 | A capability an executor does not declare is a refusal before spend, never a silent downgrade. | [EXI](10-executor-interface.md) |
+
+
+## 3. Behaviours
+
+**OVR-B1 A run end to end.** Given a registered workflow and a request, when an operator starts a run, then the engine resolves the input (read-only), preflights every executor, alias and tool, classifies the thread, takes the lock, prepares the workspace, compiles the graph and drives its units; each unit runs its step session, its check, its judge session and its gate; a pause exits 3; the last gate is followed by the finalizer and the recording, and the run exits with a code from [CON §2.9](01-contracts.md).
+
+| Stage | Owner spec | Spends model calls |
+|---|---|---|
+| Resolve input | [CLI](17-engine-cli.md) | no |
+| Preflight | [EXI](10-executor-interface.md) | no |
+| Thread check, lock, workspace | [DUR](09-durability-and-resume.md), [WSP](13-workspace-and-concurrency.md) | no |
+| Compile | [CMP](03-compiler-and-flow.md) | no |
+| Step, check, judge, gate | [PRM](04-prompt-rendering.md), [JDG](05-judge-and-verdict.md), [HUM](07-gate-and-human.md) | yes (step, judge) |
+| Finalizer, recording | [OBS](15-observability-and-cost.md) | no |
+| Self-improvement child | [SIL](16-self-improvement.md) | yes, detached |
+
+**OVR-B2 Mixed executors.** Given a workflow whose steps run on Antigravity and whose executor cannot restrict judge tools, when the run is preflighted, then each such step's judge is bound to an executor that declares `restricts_judge_tools`, or the start is refused with exit 2 ([ADR-0013](../adr/0013-cross-executor-judging.md)).
+
+## 4. Error conditions
+
+| Condition | Result |
+|---|---|
+| A spec names a requirement another spec owns | Review finding; the duplicate row is removed |
+| A component needs a type not in [CON](01-contracts.md) | The type is added to CON first |
+
+## 5. Design notes
+
+- **Ecosystem for mechanism, bespoke for policy.** The graph, checkpointer and interrupt come from LangGraph ([ADR-0002](../adr/0002-langgraph-graph-runtime.md)); the gate funnel, executors, registry and input resolution are tempergraph's own.
+- **Assumptions** made because the owner was unavailable are recorded in [ADR-0001](../adr/0001-standalone-design-assumptions.md).
+- The `tempergraph-monitor` plugin is a separate design set; this set fixes only the status document it reads ([DUR](09-durability-and-resume.md)).
+
+## 6. Acceptance criteria
+
+- [ ] OVR-AC-1 Every goal G1–G8 is owned by at least one component spec, and every contract C1–C15 by exactly one.
+- [ ] OVR-AC-2 Every spec in the index exists, follows the six-section layout and stays within 400 lines and 30 KB.
+- [ ] OVR-AC-3 Every link between specs, decision records and research notes resolves.
+- [ ] OVR-AC-4 No component spec defines a type that [CON](01-contracts.md) also defines.
+
+## Open questions
+
+| Question | Owner |
+|---|---|
+| Is account-based (consumer) Antigravity use permitted as a child process for the operator's account type? | Owner ([R-002](../research/R-002-antigravity-cli-headless.md)) |
+
+## References
+
