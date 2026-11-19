@@ -37,8 +37,8 @@ Point 4 of the owner's request asks for run stats and numbers from every machine
 2. The conventions are not stable, so the engine pins one semconv version, keeps every name in one mapping table ([TEL §2.2](../specs/35-telemetry-export.spec.md)) and records the pinned version on every exported resource.
 3. Cost has no convention: estimated and reported cost go out as tempergraph-namespaced attributes and metrics, kept apart as [ADR-0012](../adr/0012-cost-when-executor-reports-tokens-only.adr.md) requires.
 4. Content capture is a convention option the engine never turns on; tool spans carry the tool name only. This matches the publish boundary ([SEC §2.3](../specs/14-security.spec.md)).
-6. A fully local backend is possible today without LangSmith: Phoenix (one Python process, no account) or a self-hosted Langfuse both receive the engine's OTLP export on localhost. LangSmith itself runs locally only under an Enterprise license, so it is not the default. [TEL §2.4](../specs/35-telemetry-export.spec.md) adds a loopback-only mode so nothing can leave the machine by mistake.
 5. Only the Messages API executor sees each model request; for the three agent executors the engine sees a session, not its requests, so a session is an `invoke_agent` span and per-request `chat` spans exist only for `messages-api`.
+6. A fully local backend is possible today without LangSmith: Phoenix (one Python process, no account) or a self-hosted Langfuse both receive the engine's OTLP export on localhost. LangSmith itself runs locally only under an Enterprise license, so it is not the default. [TEL §2.4](../specs/35-telemetry-export.spec.md) adds a loopback-only mode so nothing can leave the machine by mistake.
 
 ## Open questions
 
