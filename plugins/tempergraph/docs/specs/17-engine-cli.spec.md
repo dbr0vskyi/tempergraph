@@ -3,7 +3,7 @@ title: Engine CLI
 type: component
 status: review
 prefix: CLI
-adrs: [0015, 0021]
+adrs: [0015, 0021, 0022, 0027, 0028]
 ---
 
 # Engine CLI
@@ -19,7 +19,9 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `run <workflow> <request…> [options]` | Resolve, preflight, start | yes | yes |
 | `run --check …` | Resolve and preflight only; prints one status | no | no |
 | `resume <workflow> <thread> [--decision …] [--feedback …] [--input k=v]` | Resume per thread state | yes | yes |
-| `status [selector] [--detail]` | Status document | no | no |
+| `status [selector] [--detail] [--all-roots]` | Status document; `--detail` gives one thread's detail document ([RDD](31-run-detail-document.spec.md)); `--all-roots` reads every state root in the machine index ([CST §2.1](34-central-run-stats.spec.md)) | no | no |
+| `events <selector> [--since <seq>] [--follow] [--activity <session_key>]` | Run-log records and activity lines in order ([EVT §2.6](30-run-events.spec.md)) | no | no |
+| `logs <selector> [--session <key>] [--kind …] [--follow]` | One log of a run from the local store ([LOS §2.4](33-local-observability-store.spec.md)) | no | no |
 | `wait <selector> [--timeout s]` | Block until an outcome | no | no |
 | `list` | The catalog (versioned JSON or a table) | no | no |
 | `graph <workflow> [--format mermaid|svg|md] [--overlay <thread>]` | Diagram from the model | no | no |
@@ -31,7 +33,10 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `update [--dry-run]` | Install or upgrade the engine; reconcile the manifest | yes | no |
 | `upgrade-check <workflow> [--stamp]` | Compatibility against the changelog | stamp only | no |
 | `facts <selector> [--json]` | Read-only facts about a run for other tools (state, branch, artifacts by key, pending gates, cost figures, alias, label, origin) | no | no |
-| `stats [--month YYYY-MM] [--json]` | Per-user monthly run rows ([OBS §2.4](15-observability-and-cost.spec.md)) | no | no |
+| `stats [--month YYYY-MM] [--source <sink>] [--by …] [--projection] [--live] [--json]` | Per-user monthly run rows ([OBS §2.4](15-observability-and-cost.spec.md)); across machines from a sink ([CST §2.5](34-central-run-stats.spec.md)) | no | no |
+| `stats flush` | Delivers outbox rows to the configured sinks ([CST §2.3](34-central-run-stats.spec.md)) | sink and outbox only | no |
+| `stop <selector> [--drain\|--now] [--as-agent]` | Requests a stop of a live run; resumable ([RCT](32-run-control.spec.md)) | one request file | no |
+| `store usage\|prune\|export` | Size, retention and export of the local store ([LOS §2.4](33-local-observability-store.spec.md)) | prune and export only | no |
 | `hooks add|list|remove|test` | Run lifecycle hooks (§2.2) | add and remove only | no |
 
 ### 2.1 Run options that touch executors
@@ -58,7 +63,7 @@ Option values select constants or are checked numbers; typed text never reaches 
 
 ### 2.2 Lifecycle hooks
 
-A hook is an operator-registered command run on a run event (`started`, `paused`, `finished`, `failed`). `hooks add <event> -- <argv…>` stores the argv list in the operator's config under the state root; the engine runs it as a detached child with a hand-off ticket naming a facts file, never with run text on argv ([SEC §2.1](14-security.spec.md)). A hook's failure is recorded and never changes the run or its exit code (contract C2). `hooks test <event>` runs it once against a fixture facts file. The engine ships no hook; a tracker integration is a separate plugin that registers one.
+A hook is an operator-registered command run on a run event (`started`, `unit_entered`, `gate_verdict`, `paused`, `resumed`, `stop_requested`, `stalled`, `finished`, `failed`; [EVT §2.6](30-run-events.spec.md)). `hooks add <event> -- <argv…>` stores the argv list in the operator's config under the state root; the engine runs it as a detached child with a hand-off ticket naming a facts file, never with run text on argv ([SEC §2.1](14-security.spec.md)). A hook's failure is recorded and never changes the run or its exit code (contract C2). `hooks test <event>` runs it once against a fixture facts file. The engine ships no hook; a tracker integration is a separate plugin that registers one.
 
 ## 3. Behaviours
 

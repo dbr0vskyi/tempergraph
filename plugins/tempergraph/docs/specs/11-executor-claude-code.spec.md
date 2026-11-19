@@ -113,6 +113,7 @@ Each probe is run by the owner against the pinned CLI version with an isolated c
 | P-CC-4 | Precedence of `CLAUDE_CODE_SUBAGENT_MODEL` against an agent call's own model | subagent alias | not run |
 | P-CC-5 | A prompt on stdin with `-p` and no positional prompt is accepted on the pinned version | `prompt_off_argv` | not run |
 | P-CC-6 | `dontAsk` refuses an unlisted call without a prompt and emits `permission_denied` | judge launch | not run |
+| P-CC-7 | Whether an engine-launched session keeps a native transcript under its isolation flags, and at which path | transcript locator ([EVT §2.4](30-run-events.spec.md)) | not run |
 
 ## 3. Behaviours
 

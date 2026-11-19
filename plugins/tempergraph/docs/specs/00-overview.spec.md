@@ -104,6 +104,12 @@ flowchart LR
 | CLI | [17 Engine CLI](17-engine-cli.spec.md) | Verbs, options, catalog |
 | LIF | [18 Lifecycle and evals](18-lifecycle-and-evals.spec.md) | Install, update, compatibility, diagrams, evals |
 | SHL | [19 Plugin shell](19-plugin-shell.spec.md) | The skills the engine plugin ships |
+| EVT | [30 Run events for observers](30-run-events.spec.md) | Record envelope, observer record kinds, activity journal, `events`, observer interface, hook events |
+| RDD | [31 Run detail document](31-run-detail-document.spec.md) | One thread in full, for the monitor and people |
+| RCT | [32 Run control](32-run-control.spec.md) | The `stop` verb |
+| LOS | [33 Local observability store](33-local-observability-store.spec.md) | State-root and home layouts, session and engine logs, retention |
+| CST | [34 Central run stats](34-central-run-stats.spec.md) | Machine index, sinks, cross-machine stats |
+| TEL | [35 Telemetry export](35-telemetry-export.spec.md) | OTLP export with the GenAI conventions |
 
 ### 2.3 Engine-wide contracts
 
@@ -154,7 +160,7 @@ flowchart LR
 
 - **Ecosystem for mechanism, bespoke for policy.** The graph, checkpointer and interrupt come from LangGraph ([ADR-0002](../adr/0002-langgraph-graph-runtime.adr.md)); the gate funnel, executors, registry and input resolution are tempergraph's own.
 - **Assumptions** made because the owner was unavailable are recorded in [ADR-0001](../adr/0001-standalone-design-assumptions.adr.md).
-- The `tempergraph-monitor` plugin is a separate design set; this set fixes only the status document it reads ([DUR](09-durability-and-resume.spec.md)).
+- The `tempergraph-monitor` plugin is a separate design set ([plugins/tempergraph-monitor/docs](../../../tempergraph-monitor/docs/specs/00-overview.spec.md)); this set fixes the documents it reads: the status document ([DUR](09-durability-and-resume.spec.md)), the detail document ([RDD](31-run-detail-document.spec.md)) and the observer events ([EVT](30-run-events.spec.md)). Specs 30 to 35 hold the observability design asked for on 2026-11-19 ([R-021](../research/R-021-observer-needs-against-engine-documents.rsrch.md)).
 
 ## 6. Acceptance criteria
 

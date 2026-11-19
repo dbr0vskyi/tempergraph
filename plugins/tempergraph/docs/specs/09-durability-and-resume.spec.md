@@ -10,7 +10,7 @@ adrs: [0014, 0015]
 
 ## 1. Overview
 
-A run is a LangGraph thread in a per-workflow SQLite checkpoint under the state root. Resume is defined for every thread state, and the engine reads that state before it spends anything. Status and wait are read-only, model-free observers. This spec owns contract C7 and the status document the `tempergraph-monitor` plugin reads.
+A run is a LangGraph thread in a per-workflow SQLite checkpoint under the state root. Resume is defined for every thread state, and the engine reads that state before it spends anything. Status and wait are read-only, model-free observers. This spec owns contract C7 and the status document the `tempergraph-monitor` plugin reads; its per-thread detail form is [RDD](31-run-detail-document.spec.md).
 
 ## 2. Contract
 
