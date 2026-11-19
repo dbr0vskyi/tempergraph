@@ -28,7 +28,7 @@ The model-free tooling around the runtime: how the engine and its workflows are 
 | Harvest | `evals harvest <gate>` turns a recorded judge miss (a gate escape, a person's pushback, an audit disagreement) into a calibration case: subject paths, the criterion and the expected status; local only, scrubbed, reviewed by a person before it is committed |
 | Live judge scoring | `evals score <gate> --executor <name>` runs the gate's judge on its calibration cases against a fixed subject and records the score per executor and alias, so a judge moved to another executor is scored before a gate relies on it |
 | Replay batch | `evals replay <workflow>` reruns the judges of past cases (kept subjects, no step session) and reports agreement with the recorded verdicts; spends judge calls only |
-| Prompt lint | A model-free check over templates, judge briefs and skills: vague words, self-grading requests, rule-like branching, tool names that are not the step's mapped names; part of `validate` |
+| Prompt lint | A model-free check over templates, judge briefs and skills: vague words, self-grading requests, rule-like branching, tool names that are not the step's mapped names, instructions to ask or wait for a person in an unattended step, briefs that tell the judge to accept the step's word about a system it cannot read, references to skills, agents, files or tools that do not exist, and model-facing files or table cells over a size limit; part of `validate`, and shown by `audit` ([AUD](55-workflow-audit.spec.md)) |
 | Update output | `update --json` prints one JSON object per line, one thing per line (step, result, path), so a skill reads it without parsing prose |
 
 ## 3. Behaviours

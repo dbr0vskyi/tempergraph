@@ -27,3 +27,8 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0021](0021-scope-of-planned-work.adr.md) | Fold planned work into the design by fixed rules | proposed |
 | [0040](0040-take-script-steps-attention-and-composition-from-archon.adr.md) | Take script and hybrid steps, an attention verb and composable workflow packs; keep step outputs free-form | accepted |
 | [0041](0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md) | A workflow graduates from local runs to a pipeline by measured, model-free criteria | proposed |
+| [0050](0050-advisory-read-only-audit-verb-in-three-layers.adr.md) | Audit a workflow with an advisory, read-only, model-free verb over three layers | proposed |
+| [0051](0051-audit-rules-are-a-fixed-catalog-keyed-to-causes.adr.md) | Audit rules are a fixed engine catalog, each keyed to a measured cause and a shared cause code | proposed |
+| [0052](0052-tool-audit-compares-grant-need-and-use.adr.md) | The tool audit compares each session's grant, need and use, judges first | proposed |
+| [0053](0053-history-findings-need-a-minimum-sample.adr.md) | History findings need a minimum sample, report their n, and size limits from passing attempts | proposed |
+| [0054](0054-audit-joins-existing-checks-and-files-nothing.adr.md) | The audit joins the checks other components own and files nothing | proposed |

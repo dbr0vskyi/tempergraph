@@ -202,7 +202,7 @@ The judgement block is the last fenced JSON block of the judge's answer.
 |---|---|
 | `ThreadState` | `none`, `running` (lock held), `paused`, `unfinished`, `stopped`, `finished` |
 | `Decision` | `proceed`, `retry`, `back:<unit>`, `stop`, `event:<name>=<value>` |
-| `ExitCode` | `0` finished · `1` internal error · `2` usage or preflight refusal, nothing spent or created · `3` paused for a person · `4` stopped · `5` budget spent or infra failure · `127` engine not installed (shim) |
+| `ExitCode` | `0` finished · `1` internal error · `2` usage or preflight refusal, nothing spent or created · `3` paused for a person · `4` stopped · `5` budget spent or infra failure · `6` an advisory verb found issues at the level asked for (`audit --fail-on`, [AUD](55-workflow-audit.spec.md)) · `127` engine not installed (shim) |
 
 `thread_id = <workflow>/<task_id>`. A fresh start on a thread whose state is not `none` is refused with exit 2 ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)).
 
@@ -216,8 +216,29 @@ The judgement block is the last fenced JSON block of the judge's answer.
 | Ledger | [SIL](16-self-improvement.spec.md) | JSON lines, names, counts, hashes |
 | Catalog | [CLI](17-engine-cli.spec.md) | JSON, `schema_version`, one row per workflow |
 | Diagram model | [LIF](18-lifecycle-and-evals.spec.md) | JSON with digest |
+| Audit report | [AUD](55-workflow-audit.spec.md) | JSON, `schema_version`, printed only, never stored |
 
 Every reader ignores unknown keys and reads a missing key as "not recorded", never as zero. Renaming, removing or reinterpreting a key bumps the schema version.
+
+### 2.11 Audit findings
+
+Shared by [AUD](55-workflow-audit.spec.md), [ARC](56-audit-rule-catalog.spec.md) and [TSA](57-tool-surface-audit.spec.md).
+
+| Type | Field | Meaning |
+|---|---|---|
+| `AuditFinding` | `rule` | Catalog rule id, or `validate:<code>` and `<owner>:<code>` for owned rules |
+| | `layer` | `definition` \| `host` \| `history` |
+| | `severity`, `confidence` | `error` \| `warning` \| `info`; `high` \| `medium` \| `low` |
+| | `cause` | Cause code from the self-improvement list ([SIL §2.3](16-self-improvement.spec.md)) |
+| | `unit`, `item`, `session` | Where; `session` is `step` or `judge` |
+| | `statement` | One line, no run text |
+| | `evidence` | Numbers with their `n`, field paths, tool and rule names; never request or output text |
+| | `remedy`, `widening` | The rule's fixed remedy; `widening` true when it adds a grant |
+| | `location` | Package file and field path, line where known |
+| | `ignored` | null, or `{reason, until?}` |
+| `AuditReport` | `schema_version`, `workflow`, `version`, `engine_version` | |
+| | `layers_run`, `layers_skipped`, `rules_skipped` | Skipped entries carry a reason and, for samples, `n` and `min_n` |
+| | `findings[]`, `hot_spots[]`, `owned[]`, `summary` | Per [AUD §2.2](55-workflow-audit.spec.md) |
 
 ## 3. Behaviours
 

@@ -25,6 +25,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `graph <workflow> [--format mermaid|svg|md] [--overlay <thread>]` | Diagram from the model | no | no |
 | `report [window] [--by unit|executor|version]` | Cost and friction reports | no | no |
 | `validate <workflow>` | Validation, view deferrals, prompt-tool check | no | no |
+| `audit <workflow> [--layer …] [--target <path>] [--window <days>] [--all] [--format text\|json\|sarif] [--fail-on …]`, `audit tools <workflow>` | Advisory audit of a workflow's definition, host and run history; exit 6 only with `--fail-on` ([AUD](55-workflow-audit.spec.md)) | no | no |
 | `executors [--probe]` | Registered executors, capabilities, CLI versions, probe facts | no | no |
 | `batch <workflow> <targets…> [-k N]` | Many child runs | yes | yes |
 | `worktree list|prune` | Engine worktrees | prune only | no |
