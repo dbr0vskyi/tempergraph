@@ -58,9 +58,11 @@ Computed per gate and binding over a 90-day window, from labels with `source` `p
 
 | Grade | Rule |
 |---|---|
-| `unmeasured` | `n` < 20, or no label in the last 30 days |
+| `unmeasured` | `n` < 20; or no label in the last 30 days; or fewer than 5 labelled judgements where the work was known bad (a `disagree` label on a PROCEED, or an `agree` label on a block); or no current live score of the binding on calibration cases that include known-bad cases ([LIF](18-lifecycle-and-evals.spec.md) live judge scoring) |
 | `unreliable` | `false_pass_rate` > 0.15, or `audit_agreement` < 0.8 with at least 30 audited criteria |
-| `reliable` | otherwise |
+| `reliable` | otherwise: enough labels, known-bad evidence, a passing live score, and neither `unreliable` rule |
+
+A `false_pass_rate` of 0 with no known-bad evidence says only that people accepted everything; judges are known to be agreeable, so it never grades `reliable` on its own ([R-030 F5](../research/R-030-self-improving-agent-systems.rsrch.md)).
 
 A binding change (any field of `binding`) starts a new binding with no labels; the previous binding's grade is shown beside it, never inherited.
 
@@ -87,7 +89,8 @@ The finding is recorded and enters the friction lens like any finding; it is nev
 | n | false_pass_rate | audit_agreement (criteria) | Grade |
 |---|---|---|---|
 | 12 | 0.0 | — | `unmeasured` |
-| 40 | 0.10 | 0.85 (60) | `reliable` |
+| 40 | 0.10 | 0.85 (60) | `reliable` (7 known-bad labels, live score passing) |
+| 40 | 0.0 | 0.95 (60) | `unmeasured` (every result accepted: no known-bad evidence) |
 | 40 | 0.20 | 0.90 (60) | `unreliable` |
 | 40 | 0.05 | 0.70 (45) | `unreliable` |
 
@@ -125,6 +128,7 @@ The finding is recorded and enters the friction lens like any finding; it is nev
 
 | Question | Owner |
 |---|---|
+| Should the grade also read the offline gold-set calibration state per binding being designed in the eval and judge work (spec 50), so that `reliable` needs that state to be `accepted`? Assumed yes once that spec lands; until then the live score above stands in. | Owner, with the eval and judge design |
 
 ## References
 
