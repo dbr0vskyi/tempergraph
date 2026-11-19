@@ -3,14 +3,14 @@ title: Self-improvement loop
 type: component
 status: review
 prefix: SIL
-adrs: [0003, 0005, 0021]
+adrs: [0003, 0005, 0021, 0030, 0031, 0033]
 ---
 
 # Self-improvement loop
 
 ## 1. Overview
 
-A built-in workflow that reads every finished run's record, judges it with an independent judge, and files, comments on or only records a finding in the repository that owns the fault: the engine's or the workflow's. It runs as a detached child, is gated and judged like any workflow, and never pauses. The loop closes through people: an issue is evidence, not an order. This spec owns contract C14 (a measurement call never writes code).
+A built-in workflow that reads every finished run's record, judges it with an independent judge, and files, comments on or only records a finding in the repository that owns the fault: the engine's or the workflow's. It runs as a detached child, is gated and judged like any workflow, and never pauses. The loop closes through people: an issue is evidence, not an order. This spec owns contract C14 (a measurement call never writes code). It is the first half of the loop: clusters of its findings become measured proposals in [PRP](40-improvement-proposals.spec.md), human ground truth becomes labels and judge grades in [FBK](41-feedback-and-judge-reliability.spec.md), and its data needs are stated in [IMD](43-improvement-data.spec.md).
 
 ## 2. Contract
 
@@ -29,7 +29,7 @@ A built-in workflow that reads every finished run's record, judges it with an in
 | Friction | Where did the process hurt, and whose fault? | Every flagged final exit | Spent retries or a stop; an uncleared failed step; a gap escalation; repeated blockers; a retry burst; cost above the version's p90; a new version's first five runs; a person pushing back |
 | Outcome | Did the result meet the request? | Every final exit | A person pushing back; a pass at judge confidence ≤ 0.5; every 20th clean run |
 | Cost | Where does money repeat? | Every 10th final exit of a version | Same |
-| Quality (deferred) | Does each version score better on a fixed scorecard? | — | Deferred until judge reliability is measured ([ADR-0021](../adr/0021-scope-of-planned-work.adr.md)) |
+| Quality (per gate) | Does each version score better on a fixed scorecard? | Scorecard reported for every gate | A gate's rows may file only while its judge binding is graded `reliable` ([FBK-B5](41-feedback-and-judge-reliability.spec.md)); other gates are reported only ([ADR-0021](../adr/0021-scope-of-planned-work.adr.md)) |
 
 ### 2.3 Fault sides
 
@@ -41,7 +41,7 @@ Cause codes come from run-log names and numbers only, each classed `fault`, `inf
 |---|---|
 | Drafted remedy | A friction issue body carries a drafted remedy: the cause code's fixed remedy text and, where the fault is in a prompt or check, the file and the kind of change. A person decides; the loop never opens a pull request in the first release |
 | Git facts | Outcome evidence includes the run branch's commits, changed paths and diff stat, so the outcome judge grades what landed, not what the step said |
-| Retry burst | Three or more retries of one unit in one visit is cause `retry_burst`, with the blockers' criterion ids |
+| Retry burst | Three or more retries of one unit in one visit is cause `retry_burst`, with the blockers' criterion ids; a judge-sent-back retry also carries cause `judge_blocked:<criterion id>`, so repeats cluster by criterion ([PRP §2.2](40-improvement-proposals.spec.md)) |
 | Blocked pause with an empty check | A pause on `BLOCKED:` whose check ran no command and read no file is a workflow fault (`blocked_without_check`), not a designed pause |
 | Uncalibrated judge | An outcome finding whose judge has no calibration score for this gate ([LIF](18-lifecycle-and-evals.spec.md)) is recorded with state `uncalibrated` and not filed |
 
@@ -73,7 +73,9 @@ Cause codes come from run-log names and numbers only, each classed `fault`, `inf
 
 - The loop is a workflow inside the engine so every run is analyzed without an optional install ([ADR-0003](../adr/0003-workflows-as-data.adr.md)).
 - Its friction and outcome judges follow the same executor selection as any gate ([JDG](05-judge-and-verdict.spec.md)); by default they run on a mid-tier alias for 1800 s.
-- Thresholds (audit 1 in 20, 30-day pattern window, confidence floor) are defaults with no data behind them; they are recorded as such and revisited with real runs.
+- Thresholds (audit 1 in 20, 30-day pattern window, confidence floor) are defaults with no data behind them; they are parameter records with provenance `default_no_data` ([IMD §2.5](43-improvement-data.spec.md)) and revisited with real runs.
+- The pattern rule and the cost windows count runs from the shared store when one is reachable, so a pattern spread over several machines fires; otherwise they read the local ledger and say so ([IMD-B1](43-improvement-data.spec.md)).
+- The SIL-B5 comparison also runs, unasked, on the first 10 final exits after a merged proposal ([PRP-B9](40-improvement-proposals.spec.md)).
 
 ## 6. Acceptance criteria
 

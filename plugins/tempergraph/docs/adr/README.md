@@ -25,3 +25,8 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0019](0019-in-process-executors-run-in-a-worker-process.adr.md) | Library-based executors run in an engine worker process behind the same launcher | proposed |
 | [0020](0020-engine-owned-tool-loop-for-the-messages-api.adr.md) | The Messages API executor runs an engine-owned loop over a minimal engine tool host | proposed |
 | [0021](0021-scope-of-planned-work.adr.md) | Fold planned work into the design by fixed rules | proposed |
+| [0030](0030-improvement-closes-through-measured-proposals.adr.md) | Improvement closes through measured proposals that a person merges | proposed |
+| [0031](0031-steps-and-their-graders-change-apart.adr.md) | Steps and the gates that grade them change apart; weakening a gate is a person's act | proposed |
+| [0032](0032-lessons-are-versioned-workflow-content.adr.md) | Lessons learned are versioned workflow content, not run-time memory | proposed |
+| [0033](0033-improvement-data-is-a-requirement-on-the-run-store.adr.md) | The loop states its data needs as requirements on the shared run store | proposed |
+| [0034](0034-paired-trial-on-a-fixed-case-set.adr.md) | Compare workflow versions by a paired trial on a fixed case set, decided by a sign test | proposed |
