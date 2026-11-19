@@ -12,7 +12,7 @@ adrs: [0003, 0016]
 
 The `tempergraph` plugin wraps the engine CLI in skills a person uses from a conversation. **A skill drives the engine; it never decides a gate.** The skills ship in the engine plugin and know no workflow: they read the catalog. Workflow-specific agents, skills and rules ship with each workflow ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The live monitor is the separate `tempergraph-monitor` plugin and reads the status document only.
 
-The shell is a Claude Code plugin. Running steps on Antigravity does not require the shell to run in Antigravity; an operator may also drive the CLI directly or from CI.
+The shell is a Claude Code plugin. Running steps on another executor does not require the shell to run there; an operator may also drive the CLI directly or from CI, where the `agent-sdk` and `messages-api` executors need no interactive sign-in.
 
 ## 2. Contract
 
@@ -20,7 +20,7 @@ The shell is a Claude Code plugin. Running steps on Antigravity does not require
 |---|---|---|
 | Run driver | Turn a request into CLI calls, start in the background, report outcomes by exit code, walk the person through each pause | Answer a pause, default a value the workflow asks for, edit run state |
 | Project bootstrap | Add the state-root ignore rule to a repository; nothing workflow-shaped | Stage, commit or delete |
-| Installer | Put the CLI on PATH and create the managed environment; hand over to `update`; check that the chosen executors' CLIs are installed and signed in (`executors --probe`) | Install either CLI or store credentials for it |
+| Installer | Put the CLI on PATH and create the managed environment; hand over to `update`; check that the chosen executors are installed and have credentials (`executors --probe`); install the optional `agent-sdk` and `messages-api` extras into the managed environment when asked | Install a CLI or store a credential |
 | Authoring | Lead a person from a process they run to a registered, tested, stamped workflow | Edit the engine; draw a diagram by model |
 | Troubleshooter | Read-only diagnosis with ranked hypotheses and next actions | Write, commit, install, or run a mutating command |
 | Eval | Run scenarios, record and compare scores, calibrate judges | Call a model from the runner |
@@ -40,6 +40,8 @@ Intake → outcome → steps → criteria and judges → policies, **executors**
 | Choice for a step | Stated consequence |
 |---|---|
 | claude | reported cost; cost cap, turn cap, fallback available; judge on claude |
+| agent-sdk | as claude; API or cloud credentials only; judge on agent-sdk |
+| messages-api | estimated cost only; cost and turn caps enforced by the engine; no skills, agents or subagents, so the template must carry what the step needs; web tools only where the provider offers them; judge on messages-api |
 | antigravity | estimated cost only; effort only; judge on claude until P-AG-1..3 confirmed |
 
 **SHL-B4 Prefer a check.** Given a requirement that is a file, a git fact or a test result, when the authoring skill drafts criteria, then it proposes a deterministic check, not a judged criterion.
@@ -54,7 +56,9 @@ Intake → outcome → steps → criteria and judges → policies, **executors**
 
 ## 5. Design notes
 
-- The authoring surface of a workflow (agents, skills, rules) may need two forms, one per executor; that is a workflow decision ([ADR-0016](../adr/0016-portable-authoring-surface.adr.md)).
+- The authoring surface of a workflow (agents, skills, rules) may need two forms, one per executor; that is a workflow decision ([ADR-0016](../adr/0016-portable-authoring-surface.adr.md)). `claude` and `agent-sdk` share one form.
+- Skills and agents are always named by plugin path (`<plugin>:<skill>`), never by bare name, so a same-named user skill cannot shadow a workflow's.
+- A tracker integration (issue states, autonomy levels, rollout) is a separate plugin that reads `facts` and registers lifecycle hooks ([CLI §2.2](17-engine-cli.spec.md)); the engine ships none.
 
 ## 6. Acceptance criteria
 

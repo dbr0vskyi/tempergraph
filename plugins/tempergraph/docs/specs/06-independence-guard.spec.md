@@ -3,14 +3,14 @@ title: Independence guard and judge views
 type: component
 status: review
 prefix: GRD
-adrs: [0010, 0011, 0013]
+adrs: [0010, 0011, 0013, 0020]
 ---
 
 # Independence guard and judge views
 
 ## 1. Overview
 
-A judge can read every system its step can change and can change nothing. The engine derives each judge attempt's **view set** from the step's declared and actually called tools, using an engine-owned catalog keyed per executor. The judge executor enforces the set as far as it declares it can; after the session the **guard** compares what the judge called and changed with what it was allowed, and discards the judgement on any difference. The guard does not depend on either CLI's permission layer.
+A judge can read every system its step can change and can change nothing. The engine derives each judge attempt's **view set** from the step's declared and actually called tools, using an engine-owned catalog keyed per executor. The judge executor enforces the set as far as it declares it can; after the session the **guard** compares what the judge called and changed with what it was allowed, and discards the judgement on any difference. The guard does not depend on any executor's permission layer.
 
 ## 2. Contract
 
@@ -26,23 +26,25 @@ class GuardResult: status: Literal["clean", "discarded", "warned", "unavailable"
 
 A constant table, one per executor, keyed by full tool name. Each write tool maps to the read tools that show what it changed. No entry is inferred from a name pattern or an MCP hint.
 
-| Write capability | claude views | antigravity views |
-|---|---|---|
-| `edit`, `write`, `shell` (workspace) | `Read`, `Grep`, `Glob` | `view_file`, `grep_search`, `list_dir`, `find_by_name` |
-| `mcp:<tracker>/<create or update issue>` | `mcp__<tracker>__get_issue` | `mcp(<tracker>/get_issue)` name per P-AG-6 |
-| `mcp:<wiki>/<update page>` | `mcp__<wiki>__get_page` | same, per P-AG-6 |
-| `pull_request` artifact | read-only GitHub commands (opt-in) | read-only GitHub commands (opt-in) |
+| Write capability | claude and agent-sdk views | messages-api views | antigravity views |
+|---|---|---|---|
+| `edit`, `write`, `shell` (workspace) | `Read`, `Grep`, `Glob` | `read_file`, `search_files`, `list_files` | `view_file`, `grep_search`, `list_dir`, `find_by_name` |
+| `mcp:<tracker>/<create or update issue>` | `mcp__<tracker>__get_issue` | `mcp__<tracker>__get_issue` (tool host) | `mcp(<tracker>/get_issue)` name per P-AG-6 |
+| `mcp:<wiki>/<update page>` | `mcp__<wiki>__get_page` | `mcp__<wiki>__get_page` (tool host) | same, per P-AG-6 |
+| `pull_request` artifact | read-only GitHub commands (opt-in) | read-only GitHub commands through `run_command` (opt-in) | read-only GitHub commands (opt-in) |
+
+`agent-sdk` shares Claude Code's rows because it runs the same tools. Newer tracker and wiki tool names are **added** beside the old ones, never renamed, so a workflow pinned to an older server keeps its views. A generic write tool that can write to several systems (for example one tool that updates any tracker field) maps to the union of their read views and is marked `partial`: its criterion can be MET only if every system it may have changed is in the view set.
 
 The always-present base is the read, search and list capabilities. Workflow data may narrow a view set and never widen it.
 
 ### 2.2 Enforcement layers, strongest first
 
-| Layer | claude | antigravity |
-|---|---|---|
-| 1 Judge-only credentials laid over the judge's environment | yes | yes (credentials profile into the session home) |
-| 2 Write tools absent from the session | `--tools`, strict MCP config, `--bare` | not by flag; isolated home + deny rules (probe-gated) |
-| 3 Calls refused by rule | `dontAsk` + allow rules | gatekeeper hook `deny` (probe-gated) |
-| 4 Guard after the session | always | always |
+| Layer | claude | agent-sdk | messages-api | antigravity |
+|---|---|---|---|---|
+| 1 Judge-only credentials laid over the judge's environment | yes | yes | yes | yes (credentials profile into the session home) |
+| 2 Write tools absent from the session | `--tools`, strict MCP config, `--bare` | `tools`, `strict_mcp_config`, `setting_sources=[]` | only views are offered (by construction) | not by flag; isolated home + deny rules (probe-gated) |
+| 3 Calls refused by rule | `dontAsk` + allow rules | in-process gatekeeper hook + `dontAsk` | tool host refuses any other name | gatekeeper hook `deny` (probe-gated) |
+| 4 Guard after the session | always | always | always | always |
 
 ## 3. Behaviours
 
@@ -75,16 +77,16 @@ The always-present base is the read, search and list capabilities. Workflow data
 
 ## 5. Design notes
 
-- Absent beats denied: where an executor can, a write tool is not in the session at all. Antigravity cannot remove tools by flag, so it sits on layers 3 and 4 until probes confirm layer 2 ([ADR-0010](../adr/0010-judge-isolation-per-executor.adr.md), [ADR-0011](../adr/0011-isolated-config-home-for-antigravity.adr.md)).
+- Absent beats denied: where an executor can, a write tool is not in the session at all. On `messages-api` the engine offers the tools, so absence is a fact of the request, tested by contract. Antigravity cannot remove tools by flag, so it sits on layers 3 and 4 until probes confirm layer 2 ([ADR-0010](../adr/0010-judge-isolation-per-executor.adr.md), [ADR-0011](../adr/0011-isolated-config-home-for-antigravity.adr.md)).
 - The read-only GitHub commands need four conditions: operator opt-in, an executor that can restrict the shell and report actions, a judge-only token, and an engine worktree.
 
 ## 6. Acceptance criteria
 
 - [ ] GRD-AC-1 Every catalog entry is keyed by full executor tool name; a source test forbids pattern matching in the catalog.
-- [ ] GRD-AC-2 Each row of the GRD-B2 table is covered for both executors' tool names.
+- [ ] GRD-AC-2 Each row of the GRD-B2 table is covered for every executor's tool names.
 - [ ] GRD-AC-3 A discarded judgement never routes PROCEED.
 - [ ] GRD-AC-4 The run log records, per judgement, the view set used and the guard status.
-- [ ] GRD-AC-5 A planted subagent call in a judge stream is detected on both executors' stream fixtures.
+- [ ] GRD-AC-5 A planted subagent call in a judge stream is detected on the stream fixtures of every executor that maps `subagent`.
 
 ## Open questions
 

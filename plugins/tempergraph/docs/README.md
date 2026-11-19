@@ -73,3 +73,5 @@ Taken from the temperspec reference (artifact 3.3):
 
 ## Readiness flags
 
+
+A flag moves to `LIVE-PROVEN` only with a written result: the date, the machine, the executor and its version, and what was run, recorded in the spec's probe table or acceptance criterion. A passing test against a stand-in moves a capability no further than `BUILT, AWAITING LIVE CHECK`.

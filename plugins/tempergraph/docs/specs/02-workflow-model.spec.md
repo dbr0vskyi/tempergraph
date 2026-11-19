@@ -30,7 +30,7 @@ The registry reads the register-once manifest (name → package folder) and load
 | Flow | A target outside `order`; a backward target the gate does not list; an unreachable unit or finalizer; a parallel block with fewer than two branches or a join before a branch; a sub-workflow that is unregistered, recursive or nested deeper than three; a writer branch or writing map item in a workflow without worktrees |
 | Executors | An executor name not registered; an alias no binding resolves for that executor; a tool capability missing from the executor's `tool_map` |
 | Judge view | A judge tool outside the read-only catalog; an artifact kind whose read view the judge executor cannot give, unless the criterion is marked as an unverified system |
-| Tools, commands | A command no workflow allow-list entry covers; a command with a shell metacharacter; a command on a step that does not declare `shell` |
+| Tools, commands | A command no workflow allow-list entry covers; a command with a shell metacharacter; a command on a step that does not declare `shell`; a `command_resolver` that is not importable, or whose argv for a declared prefix contains a shell metacharacter |
 | Prompts | Anything outside the template grammar ([CON §2.2](01-contracts.spec.md)); a field that is neither an engine key nor an input name; an unreadable template |
 | Settings | A non-positive or non-integer timeout; a malformed or missing `issue_repository`; a ladder longer than eight |
 | Routing | A missing description, or a start example that does not resolve |
@@ -43,6 +43,8 @@ The registry reads the register-once manifest (name → package folder) and load
 | `effort` on an executor that cannot apply it | It changes cost, not safety |
 | A criterion with no `check_method` | Judge quality, graded by the readiness report ([LIF](18-lifecycle-and-evals.spec.md)) |
 | An executor-qualified alias where a tier would do | Portability across executors |
+| A prompt names a skill, agent or instruction file and its step's executor does not host an authoring surface | The step may still work if the template carries the content |
+| A judge brief branches on facts a check could compute | Rule-like branching belongs in the check or a route ([JDG-B6](05-judge-and-verdict.spec.md)) |
 
 ## 3. Behaviours
 
@@ -50,17 +52,21 @@ The registry reads the register-once manifest (name → package folder) and load
 
 **WFM-B2 Missing input refuses.** Given a prompt that names `{ticket}` and a request that does not supply `ticket`, when the pre-start check and the start run, then both refuse the request in the same way.
 
-**WFM-B3 Portable declaration.** Given a step declaring tools `read`, `search`, `shell` and model `medium`, when it is validated against both executors, then it is valid for each whose `tool_map` and bindings cover them; a later executor switch needs no edit of the workflow.
+**WFM-B3 Portable declaration.** Given a step declaring tools `read`, `search`, `shell` and model `medium`, when it is validated against all four executors, then it is valid for each whose `tool_map` and bindings cover them; a later executor switch needs no edit of the workflow.
 
 | Step executor | `medium` bound | `shell` mapped | Valid |
 |---|---|---|---|
 | claude | yes | `Bash` | yes |
+| agent-sdk | yes | `Bash` | yes |
+| messages-api | yes | `run_command` (tool host) | yes |
 | antigravity | yes | `run_command` | yes |
 | antigravity | no binding | — | no (exit 2) |
 
 **WFM-B4 Wait unit has no person's pass.** Given a `wait` unit, when it is validated, then it must declare a deterministic check; no judge is allowed and a person's proceed cannot pass it ([HUM](07-gate-and-human.spec.md)).
 
 **WFM-B5 Defaults keep old workflows working.** Given a workflow written before a field existed, when it loads, then the field takes its default and the workflow validates unchanged.
+
+**WFM-B6 Command resolver.** Given a workflow for a Go repository whose check runs the declared prefix `test` and whose `command_resolver` maps `test` to `["go", "test", "./..."]`, when the check and a step's tools block use the prefix, then both run that argv, and validation confirms the resolver is pure (same input, same argv) and calls no model. Without a resolver a prefix is its own argv split on spaces.
 
 ## 4. Error conditions
 
@@ -84,7 +90,7 @@ The registry reads the register-once manifest (name → package folder) and load
 - [ ] WFM-AC-2 The catalog, start, resume, pre-start check and upgrade check call the same `validate`.
 - [ ] WFM-AC-3 A refused start leaves the state root byte-for-byte unchanged.
 - [ ] WFM-AC-4 No engine source file names a shipped workflow (source-scan test).
-- [ ] WFM-AC-5 A workflow using only tiers and capability names validates against both shipped executors.
+- [ ] WFM-AC-5 A workflow using only tiers and capability names validates against all four shipped executors.
 
 ## Open questions
 

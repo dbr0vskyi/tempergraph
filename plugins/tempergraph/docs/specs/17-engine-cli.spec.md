@@ -3,7 +3,7 @@ title: Engine CLI
 type: component
 status: review
 prefix: CLI
-adrs: [0015]
+adrs: [0015, 0021]
 ---
 
 # Engine CLI
@@ -30,6 +30,9 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `worktree list|prune` | Engine worktrees | prune only | no |
 | `update [--dry-run]` | Install or upgrade the engine; reconcile the manifest | yes | no |
 | `upgrade-check <workflow> [--stamp]` | Compatibility against the changelog | stamp only | no |
+| `facts <selector> [--json]` | Read-only facts about a run for other tools (state, branch, artifacts by key, pending gates, cost figures, alias, label, origin) | no | no |
+| `stats [--month YYYY-MM] [--json]` | Per-user monthly run rows ([OBS §2.4](15-observability-and-cost.spec.md)) | no | no |
+| `hooks add|list|remove|test` | Run lifecycle hooks (§2.2) | add and remove only | no |
 
 ### 2.1 Run options that touch executors
 
@@ -40,6 +43,11 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `--model <alias>` / `--step-model <step>=<alias>` / `--judge-model <alias>` | Alias overrides on their layers |
 | `--timeout`, `--judge-timeout`, `--idle` | Limit overrides |
 | `--enforce-tools` | Opt in to hard tool enforcement on executors that declare it |
+| `--strict-permissions` | Enforce declared tools on every step and refuse a step whose executor cannot ([EXI-B12](10-executor-interface.spec.md)) |
+| `--alias <name>`, `--label <text>` | Run alias and label ([DUR §2.2](09-durability-and-resume.spec.md)) |
+| `--arm <switch>=<arm>` | Operator pick of a switch arm ([CMP](03-compiler-and-flow.spec.md)) |
+| `--run-cost-cap <usd>` | Overrides `run_cost_cap_usd` for this run ([BUD](08-budgets-and-failures.spec.md)) |
+| `--audit-rate <0..1>`, `--audit-executor <name>` | Sampled audit judge ([JDG-B7](05-judge-and-verdict.spec.md)) |
 | `--worktree` / `--in-place` | Workspace mode |
 | `--approve <step>` | Approval pause after that step passes |
 | `--auto-reopen N` | Automatic re-open, 1–10 |
@@ -47,6 +55,10 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `--dry-run` | Self-improvement files nothing; every step still runs |
 
 Option values select constants or are checked numbers; typed text never reaches a launch ([SEC](14-security.spec.md)).
+
+### 2.2 Lifecycle hooks
+
+A hook is an operator-registered command run on a run event (`started`, `paused`, `finished`, `failed`). `hooks add <event> -- <argv…>` stores the argv list in the operator's config under the state root; the engine runs it as a detached child with a hand-off ticket naming a facts file, never with run text on argv ([SEC §2.1](14-security.spec.md)). A hook's failure is recorded and never changes the run or its exit code (contract C2). `hooks test <event>` runs it once against a fixture facts file. The engine ships no hook; a tracker integration is a separate plugin that registers one.
 
 ## 3. Behaviours
 
@@ -59,9 +71,13 @@ Option values select constants or are checked numbers; typed text never reaches 
 | Executor | `restricts_judge_tools` | Version | Facts not run |
 |---|---|---|---|
 | claude | true | from `claude --version` | P-CC-1 … P-CC-6 |
+| agent-sdk | true | SDK package version plus its CLI's | P-AS-1 … P-AS-3 |
+| messages-api | true (by construction) | client library version and API version header | none (contract tests) |
 | antigravity | false | from `agy --version` | P-AG-1 … P-AG-8 |
 
 **CLI-B4 Background-friendly.** Given a caller that starts `run` in the background, when the run pauses, then the process exits 3 so the caller learns of the pause by its exit, with no polling.
+
+**CLI-B5 Facts are read-only.** Given a live run, when `facts` runs, then it reads the status document and the run log only, creates nothing and calls no model (contract C13), and its JSON carries `schema_version`.
 
 ## 4. Error conditions
 
