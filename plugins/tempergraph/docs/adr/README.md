@@ -25,3 +25,8 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0019](0019-in-process-executors-run-in-a-worker-process.adr.md) | Library-based executors run in an engine worker process behind the same launcher | proposed |
 | [0020](0020-engine-owned-tool-loop-for-the-messages-api.adr.md) | The Messages API executor runs an engine-owned loop over a minimal engine tool host | proposed |
 | [0021](0021-scope-of-planned-work.adr.md) | Fold planned work into the design by fixed rules | proposed |
+| [0035](0035-orchestration-is-data-run-by-a-model-free-supervisor.adr.md) | An orchestration of runs is data executed by a model-free engine supervisor | proposed |
+| [0036](0036-orchestration-state-is-a-file-and-an-event-log.adr.md) | Orchestration state is the file plus an append-only event log; runs hold the truth; nodes are known by id | proposed |
+| [0037](0037-attention-batched-waking-of-the-orchestrating-session.adr.md) | The orchestrating session is woken only when a person is needed, in batches | proposed |
+| [0038](0038-batch-is-a-one-node-orchestration.adr.md) | A batch is a one-node map orchestration | proposed |
+| [0039](0039-pauses-stay-with-the-person-failures-follow-node-policy.adr.md) | In an orchestration, pauses stay with the person; failures follow a declared node policy | proposed |

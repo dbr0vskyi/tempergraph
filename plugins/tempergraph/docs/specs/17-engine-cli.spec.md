@@ -26,7 +26,9 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `report [window] [--by unit|executor|version]` | Cost and friction reports | no | no |
 | `validate <workflow>` | Validation, view deferrals, prompt-tool check | no | no |
 | `executors [--probe]` | Registered executors, capabilities, CLI versions, probe facts | no | no |
-| `batch <workflow> <targets…> [-k N]` | Many child runs | yes | yes |
+| `batch <workflow> <targets…> [-k N]` | Many child runs, as a one-node orchestration ([ADR-0038](../adr/0038-batch-is-a-one-node-orchestration.adr.md)) | yes | yes |
+| `orchestrate validate\|plan\|start\|status\|wait\|answer\|edit\|stop\|resume\|list\|report …` | A graph of runs ([ORC §2.6](45-orchestration.spec.md)) | start, answer, edit, stop, resume | start, answer, resume |
+| `stop <selector> [--now]` | Drain a running run (no new attempt; ends `unfinished`, exit 4) or, with `--now`, end its open session at once; resumable either way ([ORC §2.8](45-orchestration.spec.md) N3) | yes | no |
 | `worktree list|prune` | Engine worktrees | prune only | no |
 | `update [--dry-run]` | Install or upgrade the engine; reconcile the manifest | yes | no |
 | `upgrade-check <workflow> [--stamp]` | Compatibility against the changelog | stamp only | no |
@@ -52,13 +54,14 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `--approve <step>` | Approval pause after that step passes |
 | `--auto-reopen N` | Automatic re-open, 1–10 |
 | `--as-agent` | Marks resumes made by an automated caller ([HUM](07-gate-and-human.spec.md)) |
+| `--parent <orchestration>/<node>[/<item>]` | Set by the orchestration supervisor only; recorded with the run options and shown as `parent` ([ORC §2.8](45-orchestration.spec.md) N1) |
 | `--dry-run` | Self-improvement files nothing; every step still runs |
 
 Option values select constants or are checked numbers; typed text never reaches a launch ([SEC](14-security.spec.md)).
 
 ### 2.2 Lifecycle hooks
 
-A hook is an operator-registered command run on a run event (`started`, `paused`, `finished`, `failed`). `hooks add <event> -- <argv…>` stores the argv list in the operator's config under the state root; the engine runs it as a detached child with a hand-off ticket naming a facts file, never with run text on argv ([SEC §2.1](14-security.spec.md)). A hook's failure is recorded and never changes the run or its exit code (contract C2). `hooks test <event>` runs it once against a fixture facts file. The engine ships no hook; a tracker integration is a separate plugin that registers one.
+A hook is an operator-registered command run on a run event (`started`, `paused`, `finished`, `failed`) or an orchestration event (`orchestration_attention`, `orchestration_finished`; [ORC](45-orchestration.spec.md)). `hooks add <event> -- <argv…>` stores the argv list in the operator's config under the state root; the engine runs it as a detached child with a hand-off ticket naming a facts file, never with run text on argv ([SEC §2.1](14-security.spec.md)). A hook's failure is recorded and never changes the run or its exit code (contract C2). `hooks test <event>` runs it once against a fixture facts file. The engine ships no hook; a tracker integration is a separate plugin that registers one.
 
 ## 3. Behaviours
 
