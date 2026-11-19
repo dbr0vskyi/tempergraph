@@ -46,7 +46,7 @@ Rules are ranked by family in R-050 order (C1 highest) and, within a family, by 
 | `no-change-retried` | history | warning / high | `no_change_retry` *new* | A RETRY whose unmet blockers are all `no_change` (only possible with policy `retry`) | As `no-change-blocker-retries` |
 | `repeated-check-evidence` | history | warning / medium | `retry_cannot_fix` *new* | Within one visit, two or more check FAILs with the same evidence digest followed by a new attempt | Mark the failure environmental in the check, or fix the environment; a rerun will fail the same way (R-050 F2.1) |
 | `missing-field-rendered` | history | error / high | `missing_input` *new* | A step record shows a `⟨missing:name⟩` marker | Supply the input or make the template field optional; the model saw a marker, not the value (F1.5, F7.1) |
-| `judge-not-ready` | definition | per owner | — | The readiness report grades a gate `needs cases` or `needs work`, or judge calibration has not accepted its judge on the bound executor and alias | owner: [LIF](18-lifecycle-and-evals.spec.md) readiness; judge acceptance in spec 50 JCL (PR 6) |
+| `judge-not-ready` | definition | per owner | — | The readiness report grades a gate `needs cases` or `needs work`, or judge calibration has not accepted its judge on the bound executor and alias | owner: [LIF](18-lifecycle-and-evals.spec.md) readiness; judge acceptance in [JCL](50-judge-calibration.spec.md) |
 | `brief-rule-branching` | definition | per owner | — | A brief branches on facts a check could compute | owner: [WFM §2.2](02-workflow-model.spec.md) |
 | `criterion-without-method` | definition | per owner | — | A criterion has no `check_method` | owner: [WFM §2.2](02-workflow-model.spec.md) |
 
@@ -129,7 +129,7 @@ C4 rules are in [TSA §2.4](57-tool-surface-audit.spec.md).
 | Condition | Result |
 |---|---|
 | A rule's input is missing (no probe, no runs) | Rule skipped with reason; never counted as passed |
-| An owner component is not available in this engine (for example judge calibration before PR 6 merges) | The owned rule is skipped with reason `owner not present` |
+| An owner component is not available in this engine (for example the activity journal of spec 30 before it merges) | The owned rule is skipped with reason `owner not present` |
 | Two rules fire on the same field for the same cause | Both shown; the lower-ranked one cites the higher |
 
 ## 5. Design notes

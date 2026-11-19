@@ -38,7 +38,7 @@ The zizmor pages were read in part verbatim and in part through a summary of the
 3. **Every finding has a stable rule id, a severity and a confidence** (P2), so CI and people can filter, and a later change of wording does not break an ignore.
 4. **Accepting a finding needs a reason and stays visible** (P4): a listed ignore with a reason, counted in the summary, and a switch that shows ignored findings again.
 5. **Offer machine output CI already reads** (P3): JSON with a schema version and SARIF. The exit code is opt-in (`--fail-on`), since an advisory tool that fails every pipeline is turned off.
-6. **No automatic fixes** in the first release (P5). The improvement loop already owns changing a workflow under measurement ([SIL](../specs/16-self-improvement.spec.md), and the proposals spec 40 PRP of PR 4), and a fix that widens a tool grant needs a person.
+6. **No automatic fixes** in the first release (P5). The improvement loop already owns changing a workflow under measurement ([SIL](../specs/16-self-improvement.spec.md), [PRP](../specs/40-improvement-proposals.spec.md)), and a fix that widens a tool grant needs a person.
 7. **Tool sets drift.** MCP-Scan's pinning (P6) suggests recording the set of tool names an executor exposes when a workflow is stamped, and reporting a change. tempergraph sees tool names, not descriptions, and sends nothing to a remote service, so it pins names only.
 8. **Keep the troubleshooter's discipline** (P8): read-only, evidence with each finding, and name what could not be read.
 

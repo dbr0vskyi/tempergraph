@@ -9,6 +9,7 @@
 
 ## Context
 
+Several components already analyze a workflow or its runs without a model: validation and its warnings ([WFM](../specs/02-workflow-model.spec.md)), prompt lint and the judge readiness report ([LIF](../specs/18-lifecycle-and-evals.spec.md)), the cost lens's eight rules and the friction causes ([SIL](../specs/16-self-improvement.spec.md)), judge calibration ([JCL](../specs/50-judge-calibration.spec.md)), eval suites ([EVS](../specs/51-eval-suites.spec.md)) and the improvement backlog and proposals ([PRP](../specs/40-improvement-proposals.spec.md)). The coordinator asked that the audit relate to prompt checks, evals and the self-improvement loop rather than duplicate them. A tool that files on its own has a cost: duplicate issues, and a flag raised on nearly every run that ranks nothing ([R-050 N1, N2](../research/R-050-why-runs-fail-stall-repeat-or-overspend.rsrch.md)).
 
 ## Decision
 
@@ -48,7 +49,7 @@ The audit owns only rules no one else owns: host checks, timeout fit and hold-ti
 | # | Assumption | Where it matters |
 |---|---|---|
 | J1 | The cost lens's rules are functions that can run over any window without a model. | ARC-B13 |
-| J2 | Judge calibration and the proposals backlog land as designed in PRs 6 and 4; until then the rules that show them are skipped with `owner not present`. | ARC §4 |
+| J2 | Judge calibration and the proposals backlog are merged; any owner not yet built makes the rules that show it skip with `owner not present`. | ARC §4 |
 | J3 | Prompt lint (LIF) may grow the four text rules named above; its owner accepts them. | LIF §2 |
 
 ## Consequences
@@ -59,4 +60,4 @@ The audit owns only rules no one else owns: host checks, timeout fit and hold-ti
 
 ## Revisit when
 
-The proposer workflow of PR 4 wants audit findings as input context, or `promote-check` makes an audit criterion part of graduation.
+The proposer workflow ([PRP](../specs/40-improvement-proposals.spec.md)) wants audit findings as input context, or `promote-check` makes an audit criterion part of graduation.

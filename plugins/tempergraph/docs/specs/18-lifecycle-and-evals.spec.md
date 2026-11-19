@@ -24,9 +24,10 @@ The model-free tooling around the runtime: how the engine and its workflows are 
 | Executor compatibility | A table per executor: the version range its probe facts or contract tests were recorded for (the CLI for `claude` and `antigravity`; the SDK package and its bundled CLI for `agent-sdk`; the client library and API version header for `messages-api`); outside it, a warning and projected capabilities ([EAG-B7](12-executor-antigravity.spec.md)) |
 | Diagram model | Versioned JSON with a digest, generated from the spec and verified against the compiled graph; renderers are pure |
 | Evals | Deterministic scenarios (shell assert, no model) and rubric scenarios (input and rubric; pass only from a recorded score whose digests match) |
-| Judge readiness report | Per gate: criteria without method, vague words, severity balance, calibration cases, last score per judge executor; grades `ready`, `needs cases`, `needs work` |
+| Judge readiness report | Per gate: criteria without method, vague words, severity balance, calibration cases, last score per judge executor and its acceptance state ([JCL §2.5](50-judge-calibration.spec.md)); grades `ready` (structure clean and the judge `accepted`), `needs cases`, `needs work` |
 | Harvest | `evals harvest <gate>` turns a recorded judge miss (a gate escape, a person's pushback, an audit disagreement) into a calibration case: subject paths, the criterion and the expected status; local only, scrubbed, reviewed by a person before it is committed |
-| Live judge scoring | `evals score <gate> --executor <name>` runs the gate's judge on its calibration cases against a fixed subject and records the score per executor and alias, so a judge moved to another executor is scored before a gate relies on it |
+| Live judge scoring | `evals score <gate> --executor <name>` runs the gate's judge on its calibration cases against a fixed subject and records the score per judge binding (executor, version, alias, model slug, digests), so a judge moved to another executor or model is scored before a gate relies on it; repeats, variants, figures and the bar are in [JCL](50-judge-calibration.spec.md) |
+| Check, step and workflow suites | Must-pass and must-fail check fixtures, step trials and whole-workflow cases with regression and capability roles; live suites opt-in and capped ([EVS](51-eval-suites.spec.md)) |
 | Replay batch | `evals replay <workflow>` reruns the judges of past cases (kept subjects, no step session) and reports agreement with the recorded verdicts; spends judge calls only |
 | Prompt lint | A model-free check over templates, judge briefs and skills: vague words, self-grading requests, rule-like branching, tool names that are not the step's mapped names, instructions to ask or wait for a person in an unattended step, briefs that tell the judge to accept the step's word about a system it cannot read, references to skills, agents, files or tools that do not exist, and model-facing files or table cells over a size limit; part of `validate`, and shown by `audit` ([AUD](55-workflow-audit.spec.md)) |
 | Update output | `update --json` prints one JSON object per line, one thing per line (step, result, path), so a skill reads it without parsing prose |
@@ -41,9 +42,9 @@ The model-free tooling around the runtime: how the engine and its workflows are 
 
 **LIF-B4 Executor conformance in the eval set.** Given a workflow package, when its evals run, then its scenarios run against scripted stand-ins of every executor the workflow names, plus `claude` as the reference, so a workflow that only works on one is visible before a live run.
 
-**LIF-B5 Rubric score goes stale.** Given a rubric scenario scored last week, when its judge brief changes, then the scenario reads `stale` and is manual until re-scored.
+**LIF-B5 Rubric score goes stale.** Given a rubric scenario scored last week, when its judge brief changes or its judge alias is bound to another model, then the scenario reads `stale` and is manual until re-scored.
 
-**LIF-B6 Stable mode needs ready gates.** Given a workflow declaring `stable`, when validated, then every gate must grade `ready` in the readiness report for the judge executor it will run on; otherwise validation refuses it.
+**LIF-B6 Stable mode needs ready gates.** Given a workflow declaring `stable`, when validated, then every gate must grade `ready` in the readiness report for the judge binding it will run on, which needs that binding `accepted` under [JCL](50-judge-calibration.spec.md); otherwise validation refuses it.
 
 ## 4. Error conditions
 
