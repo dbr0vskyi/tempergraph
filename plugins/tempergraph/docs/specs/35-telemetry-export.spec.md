@@ -22,6 +22,7 @@ The `otlp` sink ([CST §2.3](34-central-run-stats.spec.md)): runs exported as Op
 | `headers_profile` | Name of an operator file of header lines (for an API key); values never logged |
 | `signals` | Subset of `traces`, `metrics`; default both |
 | `semconv` | Pinned semantic-convention version; default the engine release's pin |
+| `local_only` | `true` (default): the endpoint must resolve to a loopback address (`localhost`, `127.0.0.0/8`, `::1`), else the sink is refused at preflight; `false` only when the operator sends to a remote backend on purpose |
 
 ### 2.2 Mapping
 
@@ -56,6 +57,19 @@ Resource attributes: `service.name = tempergraph`, `service.version`, `tempergra
 
 Spans and metrics are batched by the observer thread and sent by the OTel SDK's exporter with a bounded queue (2 048 spans) and a 10 s export timeout. A full queue drops and counts the drop on the segment span. Spans of a segment that the process could not export before exit are written to the sink's outbox as OTLP JSON and sent by the next flush.
 
+### 2.4 Local backends
+
+The first supported use is a backend on the operator's own machine, so traces can be browsed in a LangSmith-like interface while no data leaves it ([R-020](../research/R-020-opentelemetry-genai-conventions.rsrch.md) F9 to F11).
+
+| Backend | Start | Sink `endpoint` | Notes |
+|---|---|---|---|
+| Phoenix (default suggestion) | `pip install arize-phoenix`, `phoenix serve` | `http://localhost:6006/v1/traces` | No account; one process |
+| Langfuse, self-hosted | its own local deployment | `http://localhost:3000/api/public/otel` | HTTP only, no gRPC; project key pair via `headers_profile` |
+| LangSmith, self-hosted | Enterprise licence only | its local OTLP endpoint | Not the default: needs a licence |
+| Any OTLP collector (Jaeger, Grafana stack) | as documented by it | its OTLP/HTTP endpoint | Generic traces, no LLM-specific views |
+
+A backend's own telemetry to its vendor, if any, is that backend's setting; the operator checks it before use. The engine never sends content to any of them (§1).
+
 ## 3. Behaviours
 
 **TEL-B1 One trace per segment.** Given a run that pauses once and is resumed, when both segments are exported, then the receiver holds two traces sharing `tempergraph.thread_hash`, the second's root linked to the first's last gate span.
@@ -65,6 +79,8 @@ Spans and metrics are batched by the observer thread and sent by the OTel SDK's 
 **TEL-B3 No content.** Given the canary test, when every span and metric of a run is captured by an in-memory exporter, then no attribute value, event or resource holds the canary.
 
 **TEL-B4 Receiver down.** Given an endpoint that refuses connections, when a run ends, then the run's exit code is unchanged, and the segment's spans are in the outbox as OTLP JSON.
+
+**TEL-B6 Local only.** Given `local_only` left at its default and an endpoint `https://otel.example.com`, when a run is preflighted, then the sink is refused with a warning naming the endpoint, the run starts, and nothing is exported.
 
 **TEL-B5 Semconv pin.** Given an engine release pinned to semconv version V, when a sink sets a different version, then the observer refuses to start, records it, and the run proceeds unexported.
 
