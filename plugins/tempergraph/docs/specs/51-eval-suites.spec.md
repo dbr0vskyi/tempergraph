@@ -12,7 +12,7 @@ adrs: [0048, 0049, 0045]
 
 Judges are graded by [JCL](50-judge-calibration.spec.md). This spec covers everything else a workflow is evaluated on: its **deterministic checks** (do they fail what they should, and only that), its **steps** (does a step's prompt produce work that passes its gate, and how consistently), and the **whole workflow** (does a fixed set of real cases keep ending well). It fixes the order in which graders are trusted, how live suites are run and capped, the split between regression and capability suites, and the rule that a rate graded by a judge is shown with that judge's measured error. The gaps it closes are E10, E12–E14 and E17 of [R-046](../research/R-046-eval-and-judge-gap-analysis.rsrch.md).
 
-It extends the eval tooling of [LIF](18-lifecycle-and-evals.spec.md) (deterministic and rubric scenarios, replay of judges) and reuses the case-set format of the self-improvement design's proposals spec (PRP, [pull request 4](https://github.com/dbr0vskyi/tempergraph/pull/4)) for workflow cases, so one reviewed case serves both a release check and a paired trial.
+It extends the eval tooling of [LIF](18-lifecycle-and-evals.spec.md) (deterministic and rubric scenarios, replay of judges) and reuses the case-set format of [PRP](40-improvement-proposals.spec.md) for workflow cases, so one reviewed case serves both a release check and a paired trial.
 
 ## 2. Contract
 
