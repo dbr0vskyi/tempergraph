@@ -8,11 +8,30 @@ This set is docs only. No plan and no code exists yet. The next link in the chai
 
 | Folder | Document type | Holds | Rule |
 |---|---|---|---|
-| [specs/](specs/00-overview.md) | Behaviour specs | **What** the engine does: contracts, Given/When/Then behaviours, error conditions, acceptance criteria. Never implementation code. | [Spec rules](#spec-rules) |
+| [specs/](specs/00-overview.spec.md) | Behaviour specs | **What** the engine does: contracts, Given/When/Then behaviours, error conditions, acceptance criteria. Never implementation code. | [Spec rules](#spec-rules) |
 | [adr/](adr/README.md) | Architecture decision records | **Why**: one decision each, its options, trade-offs and consequences. Links specs, restates none. | [Decision rules](#decision-rules) |
 | [research/](research/README.md) | Research notes | Background findings that answer an unknown, with sources and confidence marks. | [Research rules](#research-rules) |
 
-Read in this order before planning or coding a component: the [overview spec](specs/00-overview.md), the [contracts spec](specs/01-contracts.md), the component spec, then the decision records and research notes it links.
+Read in this order before planning or coding a component: the [overview spec](specs/00-overview.spec.md), the [contracts spec](specs/01-contracts.spec.md), the component spec, then the decision records and research notes it links.
+
+## File naming
+
+Every SDD artifact carries its type in a double suffix, `<name>.<type>.md`, so a tool or a rule can tell an artifact's type from its path alone, without reading it. temperspec's rule files will enforce this later; until then, this table is the rule ([ADR-0017](adr/0017-artifact-type-suffixes.adr.md)).
+
+| Artifact type | Suffix | Name pattern | Folder |
+|---|---|---|---|
+| Behaviour spec (overview, contracts, component) | `.spec.md` | `NN-short-title.spec.md` | `specs/` |
+| Architecture decision record | `.adr.md` | `NNNN-short-title.adr.md` | `adr/` |
+| Research note | `.rsrch.md` | `R-NNN-short-title.rsrch.md` | `research/` |
+| Implementation plan (skeleton or expanded) | `.plan.md` | `<component>.plan.md` | `plans/` |
+| Task, story or request | `.task.md` | `<work-item>.task.md` | `tasks/` |
+| Triage note (gap list and route) | `.triage.md` | `<work-item>.triage.md` | `tasks/` |
+| Rule file | `.rule.md` | `<artifact-type>.rule.md` | the repo's rule folder |
+
+- Only the first three types exist in this set today; the others are reserved so the next links in the chain need no new decision.
+- A folder index is `README.md` and carries no suffix: it lists artifacts, it is not one.
+- Short titles are lower-case words joined by `-`. Numbers are never reused, and a rename keeps the number.
+- A check for this rule fails on any Markdown file in `specs/`, `adr/` or `research/` other than `README.md` whose name lacks its folder's suffix.
 
 ## Truth ranking
 
@@ -38,7 +57,7 @@ Taken from the temperspec reference (artifact 3.5), applied here:
 
 Taken from the temperspec reference (artifact 3.4):
 
-- One decision per record, in `adr/NNNN-short-title.md`, numbered above the folder's highest.
+- One decision per record, in `adr/NNNN-short-title.adr.md`, numbered above the folder's highest.
 - Header: status (`proposed`, `accepted`, `rejected`, `deprecated`, `superseded`), date, authors, supersedes.
 - Sections: **Context**, **Decision** ("We will …"), **Options considered** (pros and cons each), **Decision rationale** (a comparison table), **Consequences** (positive, negative, risks with mitigations), and optionally **Revisit when**.
 - A record holds the decision and links the specs; it restates none of their requirements.
