@@ -3,7 +3,7 @@ title: Judge and verdict
 type: component
 status: review
 prefix: JDG
-adrs: [0005, 0013]
+adrs: [0005, 0013, 0021]
 ---
 
 # Judge and verdict
@@ -46,6 +46,7 @@ Rendered by an engine-owned brief that names no workflow, then the workflow's st
 | Not reported; N/A without a reason | UNMET |
 | Blocker UNVERIFIABLE, or `gap` true | Unresolved gap → ESCALATE |
 | Blocker PARTIAL or UNMET, every one with `defect_in` naming an allowed back target | BACK to the earliest such target |
+| Blocker PARTIAL or UNMET, every one marked `no_change` and the criterion's `no_change_policy` is `escalate` | ESCALATE: a new attempt would meet the same wall, so no retry is spent |
 | Blocker PARTIAL or UNMET otherwise | RETRY (budget permitting, [BUD](08-budgets-and-failures.spec.md)) |
 | No failing blocker | PROCEED; unmet warnings pass once to the next step as notes |
 
@@ -64,12 +65,18 @@ A verdict the judge writes itself is ignored; a mismatch is only logged. Confide
 | claude / `medium` | claude | step model | Claude |
 | antigravity / `medium` | claude (cross-executor) | step model → tier `medium` | Claude |
 | antigravity / `large`, gate judge `antigravity:gemini-pro` | antigravity (once restriction is confirmed) | gate | Gemini |
+| agent-sdk / `medium` | agent-sdk | step model | Claude |
+| messages-api / `small` | messages-api | step model's ladder last rung | Claude |
 
 **JDG-B4 Own timeout.** Given a judge timeout of 600 s and a step timeout of 1800 s, when the judge runs, then it gets 600 s; a judge timeout is an unparsed judgement that escalates, with a timeout row in its record.
 
 **JDG-B5 Judge infra failure.** Given a judge session that fails with an `infra_cause`, when the judge node handles it, then it reruns the judge inside the node with backoff (10, 20, 40 s) up to the infra cap; it never pauses and never passes; when the cap is spent the run ends as an infra failure.
 
-**JDG-B6 Mechanical criteria.** Given a criterion whose requirement is a file, heading, git fact or test result, when the workflow is authored, then it belongs in the deterministic check, and the judge reads the check's evidence rather than the step's claim.
+**JDG-B6 Mechanical criteria.** Given a criterion whose requirement is a file, heading, git fact or test result, when the workflow is authored, then it belongs in the deterministic check, and the judge reads the check's evidence rather than the step's claim. The same holds for rule-like branching written into a judge brief ("if the diff touches X, require Y"): validation warns, and the rule moves into the check or a route.
+
+**JDG-B7 Sampled audit judge.** Given an operator audit rate of 0.1 and, optionally, an audit executor, when a gate's judge has produced a judgement, then with that probability a second judge runs on the same subject (on the audit executor if set, so a Claude judge can be audited by another model family and back), and its per-criterion agreement is recorded as an `audit_judge` record. The audit never changes the verdict, the route or a budget; its cost is logged like any judge.
+
+**JDG-B8 No-change blocker escalates.** Given a judge RETRY whose only blocker is UNMET with `no_change = true` ("the ticket names no acceptance test"), when the verdict is derived, then it is ESCALATE, the retry budget is unchanged, and the pause payload shows the blocker.
 
 ## 4. Error conditions
 
@@ -82,7 +89,8 @@ A verdict the judge writes itself is ignored; a mismatch is only logged. Confide
 ## 5. Design notes
 
 - A judge on a different model family than its producer is a feature, not a fallback: a model tends to rate its own kind of output well. Cross-executor judging makes that cheap ([ADR-0013](../adr/0013-cross-executor-judging.adr.md)).
-- A panel of voting judges is deferred; sampled double-judging is a later measurement, recorded only, never routing.
+- A panel of voting judges is deferred. Sampled audit judging (JDG-B7) is a measurement, recorded only, never routing; its agreement rates feed calibration ([LIF](18-lifecycle-and-evals.spec.md)) and the confidence-against-outcome study ([SIL](16-self-improvement.spec.md)).
+- The `no_change` flag is the judge's claim; a workflow that finds it misused sets `no_change_policy: retry` on that criterion.
 
 ## 6. Acceptance criteria
 
@@ -92,6 +100,7 @@ A verdict the judge writes itself is ignored; a mismatch is only logged. Confide
 - [ ] JDG-AC-4 No judging failure (timeout, parse failure, discard, infra) ever yields PROCEED.
 - [ ] JDG-AC-5 Every judge record names its executor, alias, alias source and confidence source.
 - [ ] JDG-AC-6 No shipped judge brief contains a sentence telling the judge to accept a step's claim (scan test).
+- [ ] JDG-AC-7 An audit judge at any rate leaves every verdict, route and counter of a fixture run unchanged.
 
 ## Open questions
 

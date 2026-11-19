@@ -43,6 +43,12 @@ def wait(selector: Selector, timeout_s: int) -> WaitOutcome: ...
 | `last_verdict`, `cost` | cost carries `reported`, `estimated`, `incomplete` |
 | `executors` | executors used so far, with CLI versions |
 | `log_path` | run log location (local only) |
+| `alias` | optional short run name given at start (`--alias`), unique among live threads; status, resume and wait accept it in place of the thread id |
+| `label` | optional free text given at start, scrubbed, at most 80 chars |
+| `origin` | how the run started: `cli`, `skill`, `batch`, `self_improvement`, `hook` or `ci` |
+| `resume_count` | number of resumes so far (the resume chain length) |
+
+Adding these fields keeps schema version 1: readers ignore unknown keys and read a missing key as not recorded ([CON §2.10](01-contracts.spec.md)).
 
 ## 3. Behaviours
 
@@ -59,6 +65,8 @@ def wait(selector: Selector, timeout_s: int) -> WaitOutcome: ...
 WHEN `wait` names a thread THE engine SHALL exit when the run pauses, completes, fails or records a new gate verdict, or when the timeout passes, with the run's own exit code when it is recorded in the run folder's `exit.json` ([LOS §2.1](33-local-observability-store.spec.md)), else 3 paused, 0 finished, 4 stopped or unfinished, 0 with the row for a new verdict on a running thread, and 5 with state `running` at the timeout, rebuilding a row only when a file's size or time moved.
 
 **DUR-B7 Executor change across resume.** Given a run paused after a step ran on `antigravity`, when the operator resumes with a per-step executor override to `claude`, then the next attempt uses `claude`; the override is recorded with the run options and reapplied on later resumes.
+
+**DUR-B7 Run alias.** Given a start with `--alias auth-fix`, when another live thread already holds that alias, then the start is refused with exit 2 naming the holder; once the first thread is finished its alias is free, and a status by alias of a finished thread shows the latest one.
 
 ## 4. Error conditions
 

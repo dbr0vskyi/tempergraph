@@ -21,3 +21,7 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0015](0015-exit-codes-as-caller-contract.adr.md) | Exit codes, not prose, are the contract with every caller | proposed |
 | [0016](0016-portable-authoring-surface.adr.md) | The engine adds nothing to instruction files; workflows carry per-executor authoring surfaces | proposed |
 | [0017](0017-artifact-type-suffixes.adr.md) | Every SDD artifact names its type in a double file suffix | proposed |
+| [0018](0018-add-messages-api-and-agent-sdk-executors.adr.md) | Add two Anthropic executors: the Messages API and the Claude Agent SDK | proposed |
+| [0019](0019-in-process-executors-run-in-a-worker-process.adr.md) | Library-based executors run in an engine worker process behind the same launcher | proposed |
+| [0020](0020-engine-owned-tool-loop-for-the-messages-api.adr.md) | The Messages API executor runs an engine-owned loop over a minimal engine tool host | proposed |
+| [0021](0021-scope-of-planned-work.adr.md) | Fold planned work into the design by fixed rules | proposed |

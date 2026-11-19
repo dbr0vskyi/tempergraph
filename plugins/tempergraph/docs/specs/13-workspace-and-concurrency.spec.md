@@ -36,6 +36,14 @@ def merge_writers(run_branch: str, writers: list[str]) -> MergeResult: ...   # -
 | Sequential map | Run worktree, one item at a time | Nothing to merge; item k sees what earlier items left |
 | Batch child | Own process and worktree | No join; one report from the children's logs |
 
+### 2.2 Batch files
+
+A batch is started from a **batch file**: JSON with `schema_version`, the workflow, K, and one entry per target (request, optional alias and label). The parent writes an append-only **batch event file** beside it, one JSON line per child event (`started`, `paused`, `finished`, `failed`, `throttled`), so a crashed parent can be re-run with the same file and skips targets whose thread already exists, and a monitor can follow the batch without reading checkpoints.
+
+### 2.3 Import roots
+
+A workflow may declare `import_roots`: paths, relative to the workspace, that a check or a declared Python command puts first on its module path. In a worktree they resolve inside that worktree, so a test run there imports the branch's code and not the main checkout's or the engine's.
+
 ## 3. Behaviours
 
 **WSP-B1 Resume after worktree deletion.** Given a paused run whose worktree was deleted, when it resumes, then the engine re-attaches a worktree to the run's branch and continues; the state was never in the worktree.
@@ -46,9 +54,11 @@ def merge_writers(run_branch: str, writers: list[str]) -> MergeResult: ...   # -
 
 **WSP-B4 Batch.** Given a batch of 10 targets with K = 3, when it runs, then at most 3 child processes run at once (K ≤ 16, at most 50 runs), each in its own worktree; every paused child is listed with its exact resume command; the batch parent runs no graph.
 
-**WSP-B5 Executor scratch stays in the state root.** Given a judge on either executor that needs a private config (an MCP config, an Antigravity session home), when it is created, then it lives under the state root's scratch folder with owner-only permissions and is removed after the session, never in the operating system's temp folder, which a sandboxed child may not read.
+**WSP-B5 Executor scratch stays in the state root.** Given a judge on any executor that needs a private config (an MCP config, an Antigravity session home, a worker request document), when it is created, then it lives under the state root's scratch folder with owner-only permissions and is removed after the session, never in the operating system's temp folder, which a sandboxed child may not read.
 
 **WSP-B6 Writes in place.** Given a workflow with writing branches, when it is started `in_place`, then the start is refused with exit 2.
+
+**WSP-B7 Batch re-run skips done targets.** Given a batch file of 10 targets whose parent crashed after 6 children started, when the same file is run again, then the 6 existing threads are not started afresh (each is listed with its state and resume command) and the 4 others start.
 
 ## 4. Error conditions
 
@@ -61,7 +71,7 @@ def merge_writers(run_branch: str, writers: list[str]) -> MergeResult: ...   # -
 ## 5. Design notes
 
 - One graph per process: branches of a fork are threads of one graph, so run-log and console writes hold locks; N runs are N processes sharing one checkpoint database per workflow ([ADR-0014](../adr/0014-sqlite-checkpointer.adr.md)).
-- The default concurrency of three is a guess for both executors: neither model gateway's concurrent-session limit was measured. It is marked projected.
+- The default concurrency of three is a guess for every executor: no gateway's or API organization's concurrent-session or rate limit was measured. It is marked projected. On `messages-api` and `agent-sdk` a 429 with `retry-after` is `throttled` (infra), and a batch whose children report `throttled` twice lowers its concurrency by one for the rest of the batch, recorded.
 - A merge is textual; two branches that merge cleanly but contradict each other are caught only by the join's judge or a check.
 - Cleanup is never automatic: a list verb and a prune verb; branches are never deleted.
 

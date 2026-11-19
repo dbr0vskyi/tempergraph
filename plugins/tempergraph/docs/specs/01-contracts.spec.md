@@ -3,7 +3,7 @@ title: Shared contracts
 type: contracts
 status: review
 prefix: CON
-adrs: [0003, 0005, 0006, 0008, 0009, 0012, 0015]
+adrs: [0003, 0005, 0006, 0008, 0009, 0012, 0015, 0018]
 ---
 
 # Shared contracts
@@ -33,6 +33,8 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `routing` | `RoutingMetadata` | Description, when to use, task kind. |
 | | `improvement_mode` | `dev` \| `stable` | Self-improvement mode. |
 | | `verified_engine` | version string, optional | The engine release the workflow was last stamped against. |
+| | `command_resolver` | callable ref, optional | Maps a declared command prefix to the argv a check or the tool host runs, so gates work for a non-Python repository ([WFM](02-workflow-model.spec.md)). |
+| | `run_cost_cap_usd` | float, optional | Spend cap for one run, children included ([BUD](08-budgets-and-failures.spec.md)). |
 | `UnitSpec` | `kind` | `step` \| `route` \| `switch` \| `parallel` \| `map` \| `subworkflow` \| `wait` | |
 | | `step` | `StepSpec`, for kind `step` and `map` | |
 | | `gate` | `GateSpec` | Required for every kind but `wait`, whose gate holds only a check. |
@@ -64,6 +66,7 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `severity` | `blocker` \| `warning` | |
 | | `id` | slug, optional | Echoed by the judge. |
 | | `unverified_system` | text, optional | A system the author knowingly leaves unread. |
+| | `no_change_policy` | `escalate` \| `retry`, default `escalate` | What a blocker the judge marks `no_change` does (§2.8, [JDG](05-judge-and-verdict.spec.md)). |
 
 ### 2.2 Template grammar
 
@@ -87,7 +90,7 @@ A template contains literal text, doubled braces `{{` `}}` for literal braces, a
 
 ### 2.4 Models
 
-- **Alias grammar.** `inherit`, an engine-neutral tier `small` \| `medium` \| `large`, or an executor-qualified alias `<executor>:<name>` (for example `claude:opus`, `antigravity:gemini-pro`). Never a deployment id. Binding is per executor ([ADR-0008](../adr/0008-portable-model-aliases.adr.md)).
+- **Alias grammar.** `inherit`, an engine-neutral tier `small` \| `medium` \| `large`, or an executor-qualified alias `<executor>:<name>` (for example `claude:opus`, `antigravity:gemini-pro`, `agent-sdk:sonnet`, `messages-api:opus`). Never a deployment id. Binding is per executor ([ADR-0008](../adr/0008-portable-model-aliases.adr.md)).
 - **`ModelProfile`**: map from step name and from `judge:<step name>` to an alias or a ladder.
 - **Resolution order for a step attempt:** operator per step, operator per run, the step's model (ladder rung n for attempt n, last rung repeats), workflow default, `inherit`.
 - **Resolution order for a judge:** operator per judge, operator for all judges, the gate's judge model, the step's model (its ladder's last rung), workflow default, `inherit`.
@@ -114,7 +117,7 @@ Workflow data declares tools by engine-neutral capability name. Each executor ma
 
 ```python
 class Executor(Protocol):
-    name: str                              # constant, e.g. "claude", "antigravity"
+    name: str                              # constant: "claude", "agent-sdk", "messages-api", "antigravity"
     def capabilities(self) -> Capabilities: ...
     def probe(self) -> ProbeReport: ...    # read-only, model-free; version and facts
     def run_step(self, req: SessionRequest, sink: EventSink) -> SessionResult: ...
@@ -141,9 +144,10 @@ Neither run method raises for a session failure; failure is a field of the resul
 | `Capabilities` | `binds_aliases` | set of aliases this executor can bind |
 | | `prompt_off_argv`, `streams_events`, `reports_actions`, `reports_tokens`, `reports_cost` | bool |
 | | `enforces_step_tools`, `restricts_judge_tools`, `step_allow_rules`, `judge_mcp`, `isolates_user_config`, `fresh_session` | bool |
+| | `hosts_authoring_surface` | bool; the session loads instruction files, skills and agents ([ADR-0016](../adr/0016-portable-authoring-surface.adr.md)) |
 | | `session_options` | set of supported option names |
 | | `tool_map` | map `ToolCapability` → executor tool names |
-| | `version` | CLI version string seen by `probe` |
+| | `version` | version string seen by `probe`: the CLI's, or for a library executor the library's plus any bundled CLI's |
 | `SessionResult` | `ok` | bool |
 | | `text` | final answer text |
 | | `session_id` | executor's id |
@@ -151,9 +155,9 @@ Neither run method raises for a session failure; failure is a field of the resul
 | | `tool_calls` | list of `{name, ok, subagent: bool}` in call order |
 | | `timed_out`, `stalled`, `partial` | bool |
 | | `infra_cause` | `InfraCause` \| null |
-| | `error_kind` | `model` \| `cap_reached` \| `turn_cap` \| `denied` \| `auth` \| `unknown` \| null |
+| | `error_kind` | `model` \| `refused` \| `cap_reached` \| `turn_cap` \| `denied` \| `auth` \| `unknown` \| null; `refused` is a typed model refusal (a stop reason, never text) |
 | | `applied_options` | names of options actually applied |
-| | `cli_version` | string |
+| | `cli_version` | string; same meaning as `Capabilities.version` |
 | `Usage` | `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, `thinking_tokens` | int \| null |
 | | `reported_cost_usd` | float \| null; never 0 when unknown |
 | | `estimated_cost_usd` | float \| null; engine price table, kept apart |
@@ -182,7 +186,7 @@ The judgement block is the last fenced JSON block of the judge's answer.
 
 | Field | Kind | Meaning |
 |---|---|---|
-| `criteria[]` | `{n, id?, status, evidence, place, fix, defect_in?}` | `status` ∈ `MET`, `PARTIAL`, `UNMET`, `N/A`, `UNVERIFIABLE`. `defect_in` names an earlier artifact key. |
+| `criteria[]` | `{n, id?, status, evidence, place, fix, defect_in?, no_change?}` | `status` ∈ `MET`, `PARTIAL`, `UNMET`, `N/A`, `UNVERIFIABLE`. `defect_in` names an earlier artifact key. `no_change` (bool) says the step's own output cannot fix it: a missing source, a person's decision, or an outside system. |
 | `coverage` | `{requirements, traced, orphans}` | ints |
 | `gap` | bool | A source is missing or the task is unclear. |
 | `confidence` | float in [0,1] | Anchors: 0.95 verified, 0.85 checked, 0.7 partly inferred, 0.5 contested. |
@@ -224,6 +228,8 @@ Every reader ignores unknown keys and reads a missing key as "not recorded", nev
 | Executor | Tokens reported | Cost reported | `reported_cost_usd` | `estimated_cost_usd` |
 |---|---|---|---|---|
 | claude | yes | 0.42 | 0.42 | from table |
+| agent-sdk | yes | 0.40 | 0.40 | from table |
+| messages-api | yes | — | null | from table |
 | antigravity | yes | — | null | from table |
 | any | — | — | null | null |
 
@@ -241,7 +247,7 @@ Every reader ignores unknown keys and reads a missing key as "not recorded", nev
 
 ## 5. Design notes
 
-- Neutral tool and model names keep a workflow portable across the two executors; the cost is a mapping table per executor ([ADR-0006](../adr/0006-executors-as-capability-adapters.adr.md), [ADR-0008](../adr/0008-portable-model-aliases.adr.md)).
+- Neutral tool and model names keep a workflow portable across the four executors; the cost is a mapping table per executor ([ADR-0006](../adr/0006-executors-as-capability-adapters.adr.md), [ADR-0008](../adr/0008-portable-model-aliases.adr.md)).
 - `reported_cost_usd` and `estimated_cost_usd` are never summed into one figure ([ADR-0012](../adr/0012-cost-when-executor-reports-tokens-only.adr.md)).
 - The exit-code table is the contract for every caller and skill ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)).
 
@@ -251,14 +257,14 @@ Every reader ignores unknown keys and reads a missing key as "not recorded", nev
 - [ ] CON-AC-2 A rendered template contains no unrendered field; a missing value renders as the marker and is recorded.
 - [ ] CON-AC-3 No persisted document records unknown usage as 0.
 - [ ] CON-AC-4 Every persisted document carries a schema version and its readers pass a test with an unknown key and an unknown event kind.
-- [ ] CON-AC-5 A workflow that names only neutral aliases and capability names validates against both executors' binding and tool tables.
+- [ ] CON-AC-5 A workflow that names only neutral aliases and the capabilities `read`, `search`, `list`, `edit`, `write` and `shell` validates against all four executors' binding and tool tables.
 - [ ] CON-AC-6 The exit-code table here equals the engine's constants, checked by a generated-table drift test.
 
 ## Open questions
 
 | Question | Owner |
 |---|---|
-| Should `effort` values be normalized further when one CLI accepts `xhigh` and the other does not? Today the executor maps and records what it applied. | Executor implementer |
+| Should `effort` values be normalized further when one executor accepts `xhigh` and another does not? Today the executor maps and records what it applied. | Executor implementer |
 
 ## References
 

@@ -3,7 +3,7 @@ title: tempergraph system overview
 type: overview
 status: review
 prefix: OVR
-adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007]
+adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021]
 ---
 
 # tempergraph system overview
@@ -12,7 +12,7 @@ adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007]
 
 tempergraph ("tempered rails for AI workflows") is an opinionated Python framework on LangGraph. A team's repeated process is written as a **workflow**: declarative data of steps, gates and flow. The engine validates it, compiles it into a durable state graph and runs it. Every step is a fresh headless agent session; after every step a **gate** runs a deterministic check and then an **independent judge** in a fresh read-only session; the **engine**, never the judge, derives the verdict and routes: proceed, retry, go back, ask a person, or stop. Every model call is costed, every run is recorded, and a built-in self-improvement workflow reads finished runs and files issues where the fault lives.
 
-The engine starts sessions through **executors**. Two are first-class: the **Claude Code CLI** and the **Antigravity CLI** ([ADR-0007](../adr/0007-two-first-class-executors.adr.md)). A workflow names engine-neutral model aliases and tool capabilities, so the same workflow can run its steps on either executor, and its judges on whichever executor can enforce a read-only view.
+The engine starts sessions through **executors**. Four ship: the **Claude Code CLI** and the **Antigravity CLI** ([ADR-0007](../adr/0007-two-first-class-executors.adr.md)), the **Claude Agent SDK** and Anthropic's **Messages API** ([ADR-0018](../adr/0018-add-messages-api-and-agent-sdk-executors.adr.md)). A workflow names engine-neutral model aliases and tool capabilities, so the same workflow can run its steps on any executor that declares what the step needs, and its judges on whichever executor can enforce a read-only view.
 
 This spec is the index of the set. It holds no component requirement; each requirement lives in exactly one component spec.
 
@@ -24,7 +24,7 @@ This spec is the index of the set. It holds no component requirement; each requi
 | G2 | Deterministic checks first, an independent judge second, a verdict by rule. | [JDG](05-judge-and-verdict.spec.md), [GRD](06-independence-guard.spec.md) |
 | G3 | Retries, trips back and pauses are graph edges driven by verdicts, each bounded by a budget. | [CMP](03-compiler-and-flow.spec.md), [BUD](08-budgets-and-failures.spec.md), [HUM](07-gate-and-human.spec.md) |
 | G4 | Durable, resumable runs that survive days at a pause. | [DUR](09-durability-and-resume.spec.md) |
-| G5 | The same workflow on the Claude Code CLI or the Antigravity CLI, with refusal before spend when an executor cannot enforce what is asked. | [EXI](10-executor-interface.spec.md), [ECC](11-executor-claude-code.spec.md), [EAG](12-executor-antigravity.spec.md) |
+| G5 | The same workflow on the Claude Code CLI, the Antigravity CLI, the Claude Agent SDK or the Messages API, with refusal before spend when an executor cannot enforce what is asked. | [EXI](10-executor-interface.spec.md), [ECC](11-executor-claude-code.spec.md), [EAG](12-executor-antigravity.spec.md), [EAS](21-executor-agent-sdk.spec.md), [EMA](20-executor-messages-api.spec.md) |
 | G6 | Every model call costed; unmeasured is never zero. | [OBS](15-observability-and-cost.spec.md) |
 | G7 | A closed improvement loop that files scrubbed, de-duplicated issues. | [SIL](16-self-improvement.spec.md) |
 | G8 | Non-experts author good workflows through a guided skill and enforced validation. | [SHL](19-plugin-shell.spec.md), [WFM](02-workflow-model.spec.md) |
@@ -35,7 +35,8 @@ This spec is the index of the set. It holds no component requirement; each requi
 - Not deterministic output: the graph, budgets and escalation paths are fixed, model output is not.
 - Not a production-workload orchestrator: non-production work on synthetic or test data.
 - Not a general chat agent: a good candidate is repeated, has known inputs and ends in something a check or a judge can grade.
-- No other executor in the first release. The interface admits more (an agent SDK, a hosted service) without an engine edit.
+- No executor beyond the four in the first release. The interface admits more (a hosted service, another model family's SDK) without an engine edit.
+- Not a general tool harness: the engine's own tool host serves only the Messages API executor and only the ten capability names ([THS](22-tool-host.spec.md)).
 
 ## 2. Contract
 
@@ -43,7 +44,7 @@ This spec is the index of the set. It holds no component requirement; each requi
 
 | Layer | Name | Holds | Depends on |
 |---|---|---|---|
-| 1 | Engine | Registry, compiler, graph runtime, gate funnel, executors, checkpoint, run log, analyzer, workspace, the built-in self-improvement workflow | LangGraph, SQLite, the two CLIs as child processes |
+| 1 | Engine | Registry, compiler, graph runtime, gate funnel, executors, tool host, checkpoint, run log, analyzer, workspace, the built-in self-improvement workflow | LangGraph, SQLite, the two CLIs as child processes, the Agent SDK and the Anthropic client library inside engine worker processes |
 | 2 | Workflows as data | One package per workflow: spec, checks, prompts, start facts, eval scenarios | The engine's public interface only |
 | 3 | Authoring surface | Agents, skills and rules a workflow's prompts invoke inside a step session, per executor | The workflow |
 | 4 | Shell | Skills that drive the engine CLI from a conversation; the read-only monitor (separate plugin) | The engine CLI and the status document |
@@ -70,6 +71,9 @@ flowchart LR
   M -. status only .-> CLI
   EX --> CC[claude -p]
   EX --> AG[agy stream-json]
+  EX --> SW[SDK worker<br/>claude-agent-sdk]
+  EX --> AW[API worker<br/>loop + tool host]
+  AW --> API[Messages API]
   SI -. detached run .-> CLI
 ```
 
@@ -90,6 +94,9 @@ flowchart LR
 | EXI | [10 Executor interface](10-executor-interface.spec.md) | Protocol, capabilities, preflight, binding, lifetime, conformance |
 | ECC | [11 Claude Code executor](11-executor-claude-code.spec.md) | `claude -p` mapping |
 | EAG | [12 Antigravity executor](12-executor-antigravity.spec.md) | `agy` mapping |
+| EMA | [20 Messages API executor](20-executor-messages-api.spec.md) | Engine-owned loop on the Messages API |
+| EAS | [21 Claude Agent SDK executor](21-executor-agent-sdk.spec.md) | `claude-agent-sdk` mapping |
+| THS | [22 Tool host](22-tool-host.spec.md) | The engine's client tools for the Messages API |
 | WSP | [13 Workspace and concurrency](13-workspace-and-concurrency.spec.md) | State root, worktrees, writers, batches |
 | SEC | [14 Security posture](14-security.spec.md) | Launch rules, scrubbing, publish boundary |
 | OBS | [15 Observability and cost](15-observability-and-cost.spec.md) | Run log, live progress, cost, reports |
@@ -161,6 +168,7 @@ flowchart LR
 | Question | Owner |
 |---|---|
 | Is account-based (consumer) Antigravity use permitted as a child process for the operator's account type? | Owner ([R-002](../research/R-002-antigravity-cli-headless.rsrch.md)) |
+| May the Agent SDK executor run on an operator's subscription sign-in, or only on API and cloud credentials? The design assumes the latter. | Owner ([R-005](../research/R-005-claude-agent-sdk-executor.rsrch.md)) |
 
 ## References
 

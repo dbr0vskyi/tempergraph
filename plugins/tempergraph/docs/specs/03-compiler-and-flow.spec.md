@@ -37,7 +37,7 @@ def node_names(unit: str) -> tuple[str, str, str, str]: ...           # shared b
 |---|---|
 | Order | A pass goes to the next unit in `order`. |
 | Route | A pure function of state picks one static forward target or the finalizer, in the gate node, before any approval pause. A raise or a non-target stops the run; it never falls back to `order`. |
-| Switch | A named route with arms (unit, finalizer, map or parallel block) and a default arm taken on any predicate fault. The arm is sticky per visit or per run. |
+| Switch | A named route with arms (unit, finalizer, map or parallel block) and a default arm taken on any predicate fault. The arm is sticky per visit or per run. An operator may pick the arm at start (`--arm <switch>=<arm>`), validated against the declared arms; every pick, by predicate, default or operator, is written as a `route` record ([OBS](15-observability-and-cost.spec.md)). |
 | Back-edge | Starts a new visit of the target and of each unit after it on the path, clears their judgements and artifacts, and hands the target the reason. |
 | Parallel | Two or more read-only branches and an engine-owned AND-join that fires only when every branch has passed. A branch declared as a writer runs in its own worktree and is merged at the join ([WSP](13-workspace-and-concurrency.spec.md)). |
 | Map | One subgraph per item of a list artifact (at most 50), results collected by item id; default three items at once. The sequential form runs items in turn in the run's own worktree, each in a fresh session. |
@@ -67,6 +67,8 @@ State is JSON, one level deep, merged by reducers ([DUR](09-durability-and-resum
 | Order of 2 steps | 8 + finalizer | PROCEED, RETRY, ESCALATE, STOP per unit |
 | + `back_targets: [a]` on b | same | + BACK b→a |
 | + route on a to {b, finalizer} | same | PROCEED a→b, a→finalizer |
+
+**CMP-B7 Operator arm override.** Given a switch `mode` with arms `light` and `full` whose predicate would pick `full`, when the run starts with `--arm mode=light`, then `light` runs, the route record says `chosen_by = operator`, and an arm name not declared is refused with exit 2 before spend.
 
 ## 4. Error conditions
 

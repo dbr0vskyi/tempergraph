@@ -22,12 +22,16 @@ How the engine keeps operator input, model output and secrets away from process 
 | The prompt and any person-typed value travel on stdin or through a hand-off ticket, never argv or environment | Every launch |
 | Every launch site is listed and pinned by a source-scan test (the call and the keywords it must not pass) | Every module |
 | A detached child receives a random ticket naming a hand-off file; it re-validates every value | Self-improvement, batch judge, schedule, lifecycle hooks |
+| A worker receives its request document on stdin and re-validates every value against the same rules | SDK and API workers ([ADR-0019](../adr/0019-in-process-executors-run-in-a-worker-process.adr.md)) |
 
 ### 2.2 Sanctioned launch sites
 
 | Site | Launches |
 |---|---|
-| Session launcher | `claude`, `agy` ([EXI](10-executor-interface.spec.md)) |
+| Session launcher | `claude`, `agy`, and the engine interpreter with the constant worker modules `tempergraph.executors.sdk_worker` and `tempergraph.executors.api_worker` ([EXI](10-executor-interface.spec.md)) |
+| Agent SDK | The SDK's bundled or pinned Claude Code CLI, started by the SDK inside the SDK worker; options built from constants |
+| Tool host command runner | A declared command prefix as list argv, inside the API worker ([THS §2.5](22-tool-host.spec.md)) |
+| Tool host MCP client | Local MCP servers from the engine's MCP file, inside the API worker |
 | Antigravity gatekeeper | Started by `agy` itself from an engine-written hooks file; constant path |
 | Filtering MCP proxy | Started by the judge's CLI from an engine-written config; constant entry point |
 | Git reader | `git` with constant arguments and refs on stdin |
@@ -49,6 +53,7 @@ How the engine keeps operator input, model output and secrets away from process 
 | Private MCP configs and Antigravity session homes | Owner-only folder under the state root, one per session, removed in a `finally` block; never in argv, a log or an error text |
 | Antigravity API key | Placed into the session home's settings or environment from the credentials profile; never argv |
 | Copied sign-in files (if P-AG-1 needs them) | Copied into the session home only, owner-only, removed after the session |
+| Anthropic API keys and cloud credentials for the library executors | Read by the client library from the worker's environment; never in the request document, a log, an error text or the checkpoint. The tool host removes them from the environment of every command it runs |
 
 ## 3. Behaviours
 
@@ -56,7 +61,7 @@ How the engine keeps operator input, model output and secrets away from process 
 
 **SEC-B2 Canary.** Given a distinctive string planted in every free-text field (request, feedback, step output, environment, a remote URL), when a run completes and files, then the string appears in no argv, issue body, ledger row, finding, hand-off, report or overlay.
 
-**SEC-B3 Project files cannot widen reach.** Given a repository that commits `.agents/hooks.json`, `.agents/mcp_config.json`, `.claude/settings.json` or `.mcp.json`, when a judge session runs, then none of those files grants the judge a tool: the Claude judge loads no project setting source, and the Antigravity judge (once allowed) is checked by the guard, with project-scope hooks treated as untrusted input.
+**SEC-B3 Project files cannot widen reach.** Given a repository that commits `.agents/hooks.json`, `.agents/mcp_config.json`, `.claude/settings.json` or `.mcp.json`, when a judge session runs, then none of those files grants the judge a tool: the Claude Code and Agent SDK judges load no setting source, the Messages API judge reads no configuration file at all, and the Antigravity judge (once allowed) is checked by the guard, with project-scope hooks treated as untrusted input.
 
 **SEC-B4 Paths stay inside.** Given a check that resolves a relative path, when it runs, then it resolves against the workspace in the state it was given, and a git ref must match a strict pattern and travels on stdin.
 
@@ -75,8 +80,9 @@ How the engine keeps operator input, model output and secrets away from process 
 ## 6. Acceptance criteria
 
 - [ ] SEC-AC-1 Every launch site is enumerated and pinned by a source-scan test.
-- [ ] SEC-AC-2 The canary test of SEC-B2 passes for runs on both executors.
+- [ ] SEC-AC-2 The canary test of SEC-B2 passes for runs on every executor.
 - [ ] SEC-AC-3 No filing module imports or opens the evidence file (source test).
+- [ ] SEC-AC-4 A command run by the tool host sees none of the executor's credential variables (planted-key test).
 - [ ] SEC-AC-4 Private configs and session homes are owner-only and removed on every exit path, including a raised error.
 
 ## Open questions

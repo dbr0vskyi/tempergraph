@@ -55,11 +55,13 @@ A claim to a target not listed, or that did not run, is read as blocked.
 
 ## 3. Behaviours
 
-**PRM-B1 Same prompt on both executors.** Given a step declaring `read` and `shell`, when it is rendered for `claude` and for `antigravity`, then the two prompts differ only in the tool names inside the tools block.
+**PRM-B1 Same prompt on every executor.** Given a step declaring `read` and `shell`, when it is rendered for each executor, then the prompts differ only in the tool names inside the tools block.
 
 | Executor | Tools block names |
 |---|---|
 | claude | `Read`, `Bash` |
+| agent-sdk | `Read`, `Bash` |
+| messages-api | `read_file`, `run_command` |
 | antigravity | `view_file`, `run_command` |
 
 **PRM-B2 No self-assessment.** Given a gate with three criteria, when the step prompt is rendered, then it lists the three texts as the target and asks for no status, verdict, confidence or report on them; check methods and severities are not shown.
@@ -76,17 +78,17 @@ A claim to a target not listed, or that did not run, is read as blocked.
 |---|---|
 | A field without a value at run time | Visible marker, recorded on the step record |
 | A template file unreadable at run time | The attempt fails with infra cause `prompt_not_delivered`, outside the retry budget |
-| A rendered prompt above the executor's stdin cap | Step fails before launch with a finding; the author must split the step |
+| A rendered prompt above the executor's stdin cap (for `messages-api`, the bound model's context window less the tool definitions) | Step fails before launch with a finding; the author must split the step |
 
 ## 5. Design notes
 
-- The engine pastes no earlier artifact into a step prompt: judges, checks and routes read artifacts; a step reads what its template names. This keeps context small on both executors.
-- Instruction files differ per executor (`CLAUDE.md` against `AGENTS.md` or `GEMINI.md`); the engine adds nothing to them. A workflow that needs the same rules on both executors ships them through its authoring surface ([ADR-0016](../adr/0016-portable-authoring-surface.adr.md)).
+- The engine pastes no earlier artifact into a step prompt: judges, checks and routes read artifacts; a step reads what its template names. This keeps context small on every executor.
+- Instruction files differ per executor (`CLAUDE.md` against `AGENTS.md` or `GEMINI.md`); the engine adds nothing to them. A workflow that needs the same rules on several executors ships them through its authoring surface ([ADR-0016](../adr/0016-portable-authoring-surface.adr.md)); the `messages-api` executor hosts none (`hosts_authoring_surface = false`), so rules a step needs there go into its template.
 - The engine's text names no workflow, step or path, and every sentence is true when tools are not enforced.
 
 ## 6. Acceptance criteria
 
-- [ ] PRM-AC-1 Golden tests render every section combination of §2.1 for both executors.
+- [ ] PRM-AC-1 Golden tests render every section combination of §2.1 for all four executors.
 - [ ] PRM-AC-2 Two renders for different executors differ only inside the tools block.
 - [ ] PRM-AC-3 No rendered step prompt contains a check method, a severity or a request for self-grading.
 - [ ] PRM-AC-4 Every appended section respects its stated size bound.

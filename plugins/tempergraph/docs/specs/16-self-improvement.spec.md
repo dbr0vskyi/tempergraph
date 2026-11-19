@@ -3,7 +3,7 @@ title: Self-improvement loop
 type: component
 status: review
 prefix: SIL
-adrs: [0003, 0005]
+adrs: [0003, 0005, 0021]
 ---
 
 # Self-improvement loop
@@ -26,13 +26,24 @@ A built-in workflow that reads every finished run's record, judges it with an in
 
 | Lens | Question | Dev mode trigger | Stable mode trigger |
 |---|---|---|---|
-| Friction | Where did the process hurt, and whose fault? | Every flagged final exit | Spent retries or a stop; an uncleared failed step; a gap escalation; repeated blockers; cost well above median; a new version's first five runs; a person pushing back |
+| Friction | Where did the process hurt, and whose fault? | Every flagged final exit | Spent retries or a stop; an uncleared failed step; a gap escalation; repeated blockers; a retry burst; cost above the version's p90; a new version's first five runs; a person pushing back |
 | Outcome | Did the result meet the request? | Every final exit | A person pushing back; a pass at judge confidence ≤ 0.5; every 20th clean run |
 | Cost | Where does money repeat? | Every 10th final exit of a version | Same |
+| Quality (deferred) | Does each version score better on a fixed scorecard? | — | Deferred until judge reliability is measured ([ADR-0021](../adr/0021-scope-of-planned-work.adr.md)) |
 
 ### 2.3 Fault sides
 
-Cause codes come from run-log names and numbers only, each classed `fault`, `infra` or `designed`. A fault is attributed to `engine`, `workflow`, or, new in tempergraph, `executor:<name>` when the cause is a CLI behaviour (an unknown event shape, a tool name outside the catalog, a refused flag). Executor-side issues go to the engine's repository with an executor label.
+Cause codes come from run-log names and numbers only, each classed `fault`, `infra` or `designed`. A fault is attributed to `engine`, `workflow`, `executor:<name>` (new in tempergraph) when the cause is an executor behaviour (an unknown event or message shape, a tool name outside the catalog, a refused flag or option, an API error type the classifier does not list), or `host` when the host-speed preflight warned or timeouts are sorted `slow_host` ([OBS](15-observability-and-cost.spec.md)). Executor-side issues go to the engine's repository with an executor label; host findings are recorded only, never filed.
+
+### 2.4 What a finding carries
+
+| Item | Rule |
+|---|---|
+| Drafted remedy | A friction issue body carries a drafted remedy: the cause code's fixed remedy text and, where the fault is in a prompt or check, the file and the kind of change. A person decides; the loop never opens a pull request in the first release |
+| Git facts | Outcome evidence includes the run branch's commits, changed paths and diff stat, so the outcome judge grades what landed, not what the step said |
+| Retry burst | Three or more retries of one unit in one visit is cause `retry_burst`, with the blockers' criterion ids |
+| Blocked pause with an empty check | A pause on `BLOCKED:` whose check ran no command and read no file is a workflow fault (`blocked_without_check`), not a designed pause |
+| Uncalibrated judge | An outcome finding whose judge has no calibration score for this gate ([LIF](18-lifecycle-and-evals.spec.md)) is recorded with state `uncalibrated` and not filed |
 
 ## 3. Behaviours
 
@@ -42,11 +53,13 @@ Cause codes come from run-log names and numbers only, each classed `fault`, `inf
 
 **SIL-B3 Pattern rule.** Given an outcome gap on the workflow side, when deciding to file, then at least three runs with three distinct requests in 30 days are required; one clear engine fault is enough.
 
-**SIL-B4 Executor drift is visible.** Given runs on `antigravity` whose sessions show a tool name absent from the view catalog after a CLI update, when friction is judged, then the cause `unknown_tool_name` is attributed to `executor:antigravity` with the CLI version, and the workflow is not blamed.
+**SIL-B4 Executor drift is visible.** Given runs on `antigravity` (or on a library executor after an SDK update) whose sessions show a tool name absent from the view catalog after a CLI update, when friction is judged, then the cause `unknown_tool_name` is attributed to `executor:antigravity` with the CLI version, and the workflow is not blamed.
 
 **SIL-B5 Measurement writes nothing.** Given a cost-fix comparison between two workflow versions, when it runs, then it makes no model call, writes no file, ledger row or code, and its only writes are one issue comment and, after a regression, one reopen.
 
 **SIL-B6 Dry run files nothing.** Given the operator's dry-run switch, when the child runs, then it shows what it would file and files nothing; every step of the parent still ran and spent.
+
+**SIL-B7 Uncalibrated stays local.** Given an outcome gap from a judge that has no calibration score, when the filing rule runs, then the finding is recorded `uncalibrated` and no issue or comment is made; once a score exists, the next matching finding files normally.
 
 ## 4. Error conditions
 
