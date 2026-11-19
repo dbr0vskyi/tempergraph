@@ -1,0 +1,21 @@
+{
+  "name": "tempergraph",
+  "owner": {
+    "name": "Yevhenii Dubrovskyi"
+  },
+  "metadata": {
+    "description": "Tempered rails for AI workflows: plugins around the tempergraph framework"
+  },
+  "plugins": [
+    {
+      "name": "tempergraph",
+      "source": "./plugins/tempergraph",
+      "description": "The tempergraph engine: opinionated, LangGraph-based workflows with deterministic and LLM-as-judge checks"
+    },
+    {
+      "name": "tempergraph-monitor",
+      "source": "./plugins/tempergraph-monitor",
+      "description": "Claude Mod showing progress of tempergraph runs"
+    }
+  ]
+}

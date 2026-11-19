@@ -1,0 +1,6 @@
+{
+  "name": "tempergraph-monitor",
+  "version": "0.0.1",
+  "description": "Claude Mod showing progress of tempergraph runs",
+  "author": { "name": "Yevhenii Dubrovskyi" }
+}
