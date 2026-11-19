@@ -38,7 +38,7 @@ def merge_writers(run_branch: str, writers: list[str]) -> MergeResult: ...   # -
 
 ### 2.2 Batch files
 
-A batch is started from a **batch file**: JSON with `schema_version`, the workflow, K, and one entry per target (request, optional alias and label). The parent writes an append-only **batch event file** beside it, one JSON line per child event (`started`, `paused`, `finished`, `failed`, `throttled`), so a crashed parent can be re-run with the same file and skips targets whose thread already exists, and a monitor can follow the batch without reading checkpoints.
+A batch is started from a **batch file**: JSON with `schema_version`, the workflow, K, and one entry per target (request, optional alias and label). The parent writes an append-only **batch event file** beside it, one JSON line per child event (`started`, `paused`, `finished`, `failed`, `throttled`), so a crashed parent can be re-run with the same file and skips targets whose thread already exists, and a monitor can follow the batch without reading checkpoints. A batch is a one-node map orchestration: its file and event file are the orchestration file and event log of [ORC](45-orchestration.spec.md) ([ADR-0038](../adr/0038-batch-is-a-one-node-orchestration.adr.md)).
 
 ### 2.3 Import roots
 

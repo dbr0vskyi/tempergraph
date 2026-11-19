@@ -3,7 +3,7 @@ title: tempergraph system overview
 type: overview
 status: review
 prefix: OVR
-adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021]
+adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035]
 ---
 
 # tempergraph system overview
@@ -28,6 +28,7 @@ This spec is the index of the set. It holds no component requirement; each requi
 | G6 | Every model call costed; unmeasured is never zero. | [OBS](15-observability-and-cost.spec.md) |
 | G7 | A closed improvement loop that files scrubbed, de-duplicated issues, drafts measured changes and hands them to a person. | [SIL](16-self-improvement.spec.md), [PRP](40-improvement-proposals.spec.md), [FBK](41-feedback-and-judge-reliability.spec.md), [LSN](42-workflow-lessons.spec.md), [IMD](43-improvement-data.spec.md) |
 | G8 | Non-experts author good workflows through a guided skill and enforced validation. | [SHL](19-plugin-shell.spec.md), [WFM](02-workflow-model.spec.md) |
+| G9 | Many runs planned as a graph of runs, validated before spend and supervised without a model, with every pause left to a person. | [ORC](45-orchestration.spec.md), [OSK](46-orchestrator-skill.spec.md) |
 
 ### Non-goals
 
@@ -47,7 +48,7 @@ This spec is the index of the set. It holds no component requirement; each requi
 | 1 | Engine | Registry, compiler, graph runtime, gate funnel, executors, tool host, checkpoint, run log, analyzer, workspace, the built-in self-improvement workflow | LangGraph, SQLite, the two CLIs as child processes, the Agent SDK and the Anthropic client library inside engine worker processes |
 | 2 | Workflows as data | One package per workflow: spec, checks, prompts, start facts, eval scenarios | The engine's public interface only |
 | 3 | Authoring surface | Agents, skills and rules a workflow's prompts invoke inside a step session, per executor | The workflow |
-| 4 | Shell | Skills that drive the engine CLI from a conversation; the read-only monitor (separate plugin) | The engine CLI and the status document |
+| 4 | Shell | Skills that drive the engine CLI from a conversation, the orchestrator skill among them; the read-only monitor (separate plugin) | The engine CLI, the status document and the orchestration status document |
 
 ```mermaid
 flowchart LR
@@ -108,6 +109,8 @@ flowchart LR
 | FBK | [41 Feedback labels and judge reliability](41-feedback-and-judge-reliability.spec.md) | Labels, reliability grades, labelling queue, binding-shift watch |
 | LSN | [42 Workflow lessons](42-workflow-lessons.spec.md) | Per-step lessons files and how they render and change |
 | IMD | [43 Improvement data requirements](43-improvement-data.spec.md) | The loop's requirements on the shared run store |
+| ORC | [45 Orchestration of runs](45-orchestration.spec.md) | Orchestration file, supervisor, node states, `orchestrate` verbs, orchestration status document |
+| OSK | [46 Orchestrator skill](46-orchestrator-skill.spec.md) | The skill that plans, starts and walks a person through an orchestration |
 | JCL | [50 Judge calibration and acceptance](50-judge-calibration.spec.md) | Gold case sets, judge scores and figures, the acceptance bar and state |
 | EVS | [51 Eval suites for checks, steps and workflows](51-eval-suites.spec.md) | Suite kinds and roles, grader order, live-suite caps, corrected judge-graded rates |
 
@@ -131,6 +134,7 @@ flowchart LR
 | C13 | Input resolution and the read-only verbs call no model and create nothing. | [CLI](17-engine-cli.spec.md) |
 | C14 | A measurement call never writes code. | [SIL](16-self-improvement.spec.md) |
 | C15 | A capability an executor does not declare is a refusal before spend, never a silent downgrade. | [EXI](10-executor-interface.spec.md) |
+| C16 | The orchestration supervisor calls no model and answers no gate; it starts, resumes and stops runs only through the engine's own verbs. | [ORC](45-orchestration.spec.md) |
 
 
 ## 3. Behaviours
@@ -164,7 +168,7 @@ flowchart LR
 
 ## 6. Acceptance criteria
 
-- [ ] OVR-AC-1 Every goal G1–G8 is owned by at least one component spec, and every contract C1–C15 by exactly one.
+- [ ] OVR-AC-1 Every goal G1–G9 is owned by at least one component spec, and every contract C1–C16 by exactly one.
 - [ ] OVR-AC-2 Every spec in the index exists, follows the six-section layout and stays within 400 lines and 30 KB.
 - [ ] OVR-AC-3 Every link between specs, decision records and research notes resolves.
 - [ ] OVR-AC-4 No component spec defines a type that [CON](01-contracts.spec.md) also defines.

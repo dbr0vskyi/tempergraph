@@ -30,6 +30,11 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0032](0032-lessons-are-versioned-workflow-content.adr.md) | Lessons learned are versioned workflow content, not run-time memory | proposed |
 | [0033](0033-improvement-data-is-a-requirement-on-the-run-store.adr.md) | The loop states its data needs as requirements on the shared run store | proposed |
 | [0034](0034-paired-trial-on-a-fixed-case-set.adr.md) | Compare workflow versions by a paired trial on a fixed case set, decided by a sign test | proposed |
+| [0035](0035-orchestration-is-data-run-by-a-model-free-supervisor.adr.md) | An orchestration of runs is data executed by a model-free engine supervisor | proposed |
+| [0036](0036-orchestration-state-is-a-file-and-an-event-log.adr.md) | Orchestration state is the file plus an append-only event log; runs hold the truth; nodes are known by id | proposed |
+| [0037](0037-attention-batched-waking-of-the-orchestrating-session.adr.md) | The orchestrating session is woken only when a person is needed, in batches | proposed |
+| [0038](0038-batch-is-a-one-node-orchestration.adr.md) | A batch is a one-node map orchestration | proposed |
+| [0039](0039-pauses-stay-with-the-person-failures-follow-node-policy.adr.md) | In an orchestration, pauses stay with the person; failures follow a declared node policy | proposed |
 | [0040](0040-take-script-steps-attention-and-composition-from-archon.adr.md) | Take script and hybrid steps, an attention verb and composable workflow packs; keep step outputs free-form | accepted |
 | [0041](0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md) | A workflow graduates from local runs to a pipeline by measured, model-free criteria | proposed |
 | [0045](0045-judges-accepted-on-labelled-error-rates.adr.md) | Accept a judge on its two error rates over a labelled gold set, bounded from below | proposed |
