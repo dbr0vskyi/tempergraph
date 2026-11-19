@@ -76,6 +76,10 @@ The owner's scope is any delivery-pipeline workflow, trusted because the authori
 3. The largest gap between the two is not in the runtime. It is the **interview-led authoring** the owner describes, which Archon does not attempt. It depends on [R-011 G1](R-011-design-gap-review.rsrch.md) (an outcome object), G2 (a declaration format) and G3 (a concrete path for non-experts), and adds a verification ladder and calibration from the interview itself. That is where tempergraph can be distinct from Archon and from Claude Code's dynamic workflows.
 4. Of the adopt items, L1 (script units), L3 (output schemas) and L5 (attention verb) are small and change contracts, so by [ADR-0021](../adr/0021-scope-of-planned-work.adr.md)'s rule they belong in the specs before a plan is written. L6 to L9 belong to the monitor, adapter and workflow-pack work.
 
+## Owner decisions
+
+On 2026-11-19 the owner took L1 (script steps, extended to hybrid script-and-model steps), L5 (the attention verb) and L8 (composition), and asked for a detailed run log. The owner declined L3 for step outputs, because outputs are Markdown files, wiki pages and the like. These choices are recorded in [ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md). The owner also stated that a workflow, once improved locally to a level of autonomy and quality, moves to the pipeline; that path is proposed in [ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md).
+
 ## Open questions
 
 | Question | Owner |
