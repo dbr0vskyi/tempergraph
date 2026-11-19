@@ -29,7 +29,7 @@ Every figure carries `est` when estimated, `rep` when reported, and `≥` when a
 
 ### 2.2 Fleet tab
 
-Built from `stats --source <fleet_sink> --live` and the month's run rows ([CST](../../../tempergraph/docs/specs/34-central-run-stats.spec.md)).
+Built from the fleet copy in the home folder, `~/.tempergraph/fleet/<fleet_sink>/`, through `stats --live` and the month's rollup ([CST](../../../tempergraph/docs/specs/34-central-run-stats.spec.md)); the header shows when it was last synced.
 
 | Part | Content |
 |---|---|

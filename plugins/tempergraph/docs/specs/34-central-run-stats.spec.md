@@ -10,7 +10,7 @@ adrs: [0012, 0025]
 
 ## 1. Overview
 
-How run numbers from every repository and every machine end up in one place a person can read, without a tempergraph server. Three layers: a **machine index** of state roots, so one machine's runs are listed together; **sinks**, opt-in destinations to which each machine pushes metadata-only rows; and an **aggregate reader**, `stats --source`, that totals rows from a sink. A sink carries numbers, names from fixed lists and hashes, never request text, outputs, commands or paths (contract C9). Pushing is best effort and never changes a run (contract C2). With no sink configured, nothing leaves the machine, as before ([OBS §2.4](15-observability-and-cost.spec.md)).
+How run numbers from every repository and every machine end up in one place a person can read, without a tempergraph server. Three layers: a **machine index** of state roots, so one machine's runs are listed together; **sinks**, opt-in destinations to which each machine pushes metadata-only rows; a **fleet copy** in each machine's home folder, `~/.tempergraph/fleet/`, into which every machine pulls the rows of all the others, so global stats and metrics sit in the same `.tempergraph` folder on every machine; and an **aggregate reader**, `stats`, that totals them. A sink carries numbers, names from fixed lists and hashes, never request text, outputs, commands or paths (contract C9). Pushing is best effort and never changes a run (contract C2). With no sink configured, nothing leaves the machine, as before ([OBS §2.4](15-observability-and-cost.spec.md)).
 
 ## 2. Contract
 
@@ -43,6 +43,8 @@ Configured in user or state-root config as a list; none by default.
 
 **Delivery.** A row is first appended to `~/.tempergraph/outbox/<sink>.jsonl`, then flushed by a detached flusher started at `run_exit` and by `stats flush`. Flushing appends to the sink and removes the row from the outbox only after the sink write returns; a row may be delivered twice and readers de-duplicate by `row_id`. A sink that fails keeps its outbox; after 7 days of failures `status` shows one warning line.
 
+**Sync to the home folder.** Every flush, and `stats sync`, also pulls: for a directory sink it copies new bytes of every other machine's files into `~/.tempergraph/fleet/<sink>/machines/` (append-only files by offset, `heartbeat.json` whole), adds this machine's own rows, de-duplicates by `row_id` and rebuilds `rollup/<YYYY-MM>.json` ([LOS §2.2](33-local-observability-store.spec.md)). A machine that is offline keeps its last copy and says when it was synced. An `otlp` sink is push-only: its fleet copy holds this machine's rows alone, and global numbers come from the backend. The fleet copy is a cache: deleting it loses nothing the sink does not hold.
+
 **Directory sink layout.** Each machine writes only inside its own folder, so a synced folder never sees two writers on one file:
 
 ```text
@@ -69,12 +71,14 @@ Configured in user or state-root config as a list; none by default.
 ### 2.5 Aggregate reader
 
 ```text
-stats [--source <sink> | --local] [--month YYYY-MM | --since <date>] [--by machine|user|repo|workflow|version|executor|model|ticket|exit|month|parent] [--projection] [--live] [--json]
+stats [--source <sink> | --local] [--sync] [--month YYYY-MM | --since <date>] [--by machine|user|repo|workflow|version|executor|model|ticket|exit|month|parent] [--projection] [--live] [--json]
 ```
 
 `--projection` adds, per workflow (and version with `--by version`), the median and 90th percentile of estimated cost per finished run and the sample size; the orchestration supervisor reads it for its projected cost ([ORC §2.8](45-orchestration.spec.md) N7). A projection over fewer than 5 runs is shown with its count and marked `thin`.
 
-Read-only, model-free (contract C13). `--live` reads the heartbeats and lists live runs on every machine, marking a heartbeat older than 5 minutes `stale`. Totals keep reported and estimated cost apart and show the completeness flag ([ADR-0012](../adr/0012-cost-when-executor-reports-tokens-only.adr.md)); a total with any incomplete row is a lower bound and says so.
+With no `--source`, `stats` reads the home folder: this machine's rows plus the fleet copy of every configured directory sink, so global numbers need no access to the shared folder at read time. `--local` reads this machine's rows only; `--source` reads the sink folder directly; `--sync` pulls first.
+
+Read-only, model-free (contract C13); `stats sync` writes the fleet copy only. `--live` reads the heartbeats and lists live runs on every machine, marking a heartbeat older than 5 minutes `stale`. Totals keep reported and estimated cost apart and show the completeness flag ([ADR-0012](../adr/0012-cost-when-executor-reports-tokens-only.adr.md)); a total with any incomplete row is a lower bound and says so.
 
 ## 3. Behaviours
 
@@ -94,6 +98,8 @@ Read-only, model-free (contract C13). `--live` reads the heartbeats and lists li
 | alias `fix canary now` | dropped (not a slug) |
 | task id `PROJ-1-canary` | `thread_hash` only; `ticket` only with `sink.tickets` |
 | tool input `echo canary` | — |
+
+**CST-B7 Global numbers at home.** Given machines A and B sharing a directory sink and A offline since its last sync an hour ago, when `stats --by machine` runs on A, then it reads `~/.tempergraph/fleet/team/`, shows both machines up to that sync, and marks B's figures `synced 1 h ago`; after A reconnects and syncs, B's newer runs appear with no sink read at query time.
 
 **CST-B6 Sink failure is safe.** Given a sink whose write raises, when a run ends, then the exit code is the one it would have had and the row stays in the outbox.
 

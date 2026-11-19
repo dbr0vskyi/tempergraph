@@ -13,7 +13,7 @@ The owner wants "runs stats and numbers from all the machines in single place". 
 
 ## Decision
 
-We will let each machine push metadata-only rows (`run`, `heartbeat`, optionally `session`) to sinks the operator configures, none by default, through a local outbox ([CST](../specs/34-central-run-stats.spec.md)). Two sink kinds ship: `directory`, a folder every machine can write in which each machine writes only its own subfolder, and `otlp`, an OpenTelemetry receiver ([TEL](../specs/35-telemetry-export.spec.md)). `stats --source` aggregates a sink. User and repository names are hashed by default. There is no tempergraph server.
+We will let each machine push metadata-only rows (`run`, `heartbeat`, optionally `session`) to sinks the operator configures, none by default, through a local outbox ([CST](../specs/34-central-run-stats.spec.md)). Two sink kinds ship: `directory`, a folder every machine can write in which each machine writes only its own subfolder, and `otlp`, an OpenTelemetry receiver ([TEL](../specs/35-telemetry-export.spec.md)). Each machine pulls every other machine's rows from a directory sink into its home folder, `~/.tempergraph/fleet/`, so the global stats live in the same `.tempergraph` folder shape as each repository's runs (owner's suggestion, 2026-11-20); `stats` reads that copy by default. User and repository names are hashed by default. There is no tempergraph server.
 
 ## Options considered
 

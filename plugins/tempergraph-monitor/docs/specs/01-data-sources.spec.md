@@ -28,7 +28,7 @@ What the monitor reads, from where, how often, and the rule that it never writes
 | Log tails | `$.fs.read` of the last 64 KB of `raw.jsonl`, `stderr.log`, a check's `stdout.log` | On request in a session or check view | [LOS](../../../tempergraph/docs/specs/33-local-observability-store.spec.md) |
 | Orchestrations | `tempergraph orchestrate list --json`, then `orchestrate status <id> --json` | Every 5 s while one is live or open | [ORC §2.7](../../../tempergraph/docs/specs/45-orchestration.spec.md) |
 | Projection | `tempergraph stats --projection --by workflow --json` | Every 10 min, and when a run of a new workflow appears | [CST §2.5](../../../tempergraph/docs/specs/34-central-run-stats.spec.md) |
-| Fleet | `tempergraph stats --source <sink> --live --json` | Every 60 s while the fleet tab is open or `alerts.fleet = on` | [CST §2.5](../../../tempergraph/docs/specs/34-central-run-stats.spec.md) |
+| Fleet | `tempergraph stats --live --json`, which reads the home folder's fleet copy (`~/.tempergraph/fleet/`); the mod stats `synced.json` to know when it changed | Every 60 s while the fleet tab is open or `alerts.fleet = on` | [CST §2.5](../../../tempergraph/docs/specs/34-central-run-stats.spec.md) |
 
 Every verb is run by `$.process.run` with list argv built from constants and values the engine itself printed (thread ids, session keys, sink names from config), never from text a person typed into the pane ([MAC](05-actions-and-safety.spec.md)). A call has a 20 s timeout; at most two verb calls run at once.
 

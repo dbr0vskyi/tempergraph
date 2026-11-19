@@ -58,7 +58,13 @@ The folder and everything under it is created owner-only (0700 for folders, 0600
   stats/<YYYY-MM>.jsonl             per-user stats rows [OBS §2.4], one per thread exit
   config/                           user-level sinks and defaults; a state root's config overrides it
   outbox/                           rows waiting for a sink [CST §2.3]
+  fleet/<sink>/                     merged copy of every machine's rows from that sink [CST §2.3]
+    machines/<machine_id>/          same shape as the sink's machine folder, this machine's included
+    rollup/<YYYY-MM>.json           totals by machine, user, repo, workflow, executor, model; rebuilt by each sync
+    synced.json                     last sync time and row counts per machine
 ```
+
+Both folders carry the same name, `.tempergraph`, and the same `manifest.json` shape with `kind: state_root` or `kind: home`, so one reader and one person's habit serve both: the per-repository folder holds everything about that repository's runs, the home folder holds what spans repositories and machines.
 
 ### 2.3 Engine code log
 
@@ -90,7 +96,7 @@ Nothing is removed automatically. The rule `store usage` checks and `store prune
 | `raw.jsonl`, `activity.jsonl`, `stderr.log`, `output/`, `checks/*/*.log`, `hooks/` | 30 days after the thread finished; a thread that ended stopped or failed is kept until `--keep-failed` is dropped |
 | Evidence | 90 days after the thread finished, operator-configurable ([IMD-R10](43-improvement-data.spec.md)); its records stay readable |
 | `run.jsonl`, `meta.json`, `result.json`, findings | Until the thread is pruned whole by the operator, and at least 400 days ([IMD-R10](43-improvement-data.spec.md)) |
-| Checkpoints, ledger, stats | Never pruned by `store` |
+| Checkpoints, ledger, stats, `fleet/` | Never pruned by `store`; `fleet/` is a copy and can be deleted and rebuilt by `stats sync` |
 | `engine/` | 14 days |
 
 `status` adds one warning line when the state root passes 2 GB (operator config `observe.warn_size_gb`).
