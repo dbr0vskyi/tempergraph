@@ -226,7 +226,7 @@ Every reader ignores unknown keys and reads a missing key as "not recorded", nev
 
 ### 2.11 Audit findings
 
-Shared by [AUD](55-workflow-audit.spec.md), [ARC](56-audit-rule-catalog.spec.md) and [TSA](57-tool-surface-audit.spec.md).
+Shared by [AUD](55-workflow-audit.spec.md), [ARC](56-audit-rule-catalog.spec.md), [TSA](57-tool-surface-audit.spec.md) and [PRA](58-prompt-audit.spec.md).
 
 | Type | Field | Meaning |
 |---|---|---|

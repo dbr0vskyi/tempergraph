@@ -104,7 +104,7 @@ Rules are ranked by family in R-050 order (C1 highest) and, within a family, by 
 | `template-grammar` | definition | per owner | — | Validation's prompt rows | owner: [WFM §2.1](02-workflow-model.spec.md) |
 | `engine-fault-open` | history | info / high | — | Open engine-side or executor-side findings of the loop name this workflow's units | owner: [SIL](16-self-improvement.spec.md); shown so the author does not chase them in the workflow |
 
-C4 rules are in [TSA §2.4](57-tool-surface-audit.spec.md).
+C4 rules are in [TSA §2.4](57-tool-surface-audit.spec.md). The prompt rules that resolve names against the host, check staleness, compare text with declarations and measure size are in [PRA §2.3](58-prompt-audit.spec.md).
 
 ## 3. Behaviours
 

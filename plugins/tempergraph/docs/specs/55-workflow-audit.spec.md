@@ -20,7 +20,7 @@ The audit looks in three **layers**, because the causes found in [R-050](../rese
 | `host` | This machine and the target repository: executor probe facts, programs on `PATH`, the declared interpreter, documented repository commands, MCP servers and plugin tools a headless session would see, host speed | Environment causes (C2), tool exposure (C4), engine and executor versions (C8) |
 | `history` | Recorded runs of this workflow in a window: run logs, judgements, ledger rows, activity journals where present, the cost lens's output | What actually drove repeats, timeouts, refusals, pauses and cost (C1 to C6) |
 
-What it checks is a fixed catalog of rules ([ARC](56-audit-rule-catalog.spec.md)); the tool surface comparison for steps and judges has its own spec ([TSA](57-tool-surface-audit.spec.md)). Rules that another component already owns (validation, prompt lint, the judge readiness report, judge calibration, the cost lens) are run through that component and shown, never reimplemented ([ADR-0054](../adr/0054-audit-joins-existing-checks-and-files-nothing.adr.md)).
+What it checks is a fixed catalog of rules ([ARC](56-audit-rule-catalog.spec.md)); the tool surface comparison for steps and judges has its own spec ([TSA](57-tool-surface-audit.spec.md)), and so does the audit of prompts and the other model-facing text ([PRA](58-prompt-audit.spec.md)). Rules that another component already owns (validation, prompt lint, the judge readiness report, judge calibration, the cost lens) are run through that component and shown, never reimplemented ([ADR-0054](../adr/0054-audit-joins-existing-checks-and-files-nothing.adr.md)).
 
 ## 2. Contract
 
@@ -36,6 +36,7 @@ tempergraph audit <workflow>
     [--format text|json|sarif]               # default text
     [--fail-on error|warning|never]          # default never
 audit tools <workflow> [same options]        # the tool surface matrix of TSA §2.3 instead of findings
+audit prompts <workflow> [same options]      # one row per model-facing file, PRA §2.4
 ```
 
 ```python
@@ -126,7 +127,7 @@ A workflow package may carry `audit.ignore`, a list of `{rule, unit?, reason, un
 
 ## 6. Acceptance criteria
 
-- [ ] AUD-AC-1 Every rule in [ARC](56-audit-rule-catalog.spec.md) and [TSA](57-tool-surface-audit.spec.md) has a fixture workflow or fixture run set that raises it, and a clean fixture that does not.
+- [ ] AUD-AC-1 Every rule in [ARC](56-audit-rule-catalog.spec.md), [TSA](57-tool-surface-audit.spec.md) and [PRA](58-prompt-audit.spec.md) has a fixture workflow or fixture run set that raises it, and a clean fixture that does not.
 - [ ] AUD-AC-2 `audit` leaves the state root, the package and the target unchanged (hash test) and starts no model session (process audit in tests).
 - [ ] AUD-AC-3 A history rule below its minimum sample yields no finding and is listed as skipped with its `n`.
 - [ ] AUD-AC-4 A finding owned by another component appears once, under that component's code, on a fixture that would raise both.

@@ -116,6 +116,7 @@ flowchart LR
 | AUD | [55 Workflow audit](55-workflow-audit.spec.md) | The `audit` verb, its layers, report, views and ignores |
 | ARC | [56 Audit rule catalog](56-audit-rule-catalog.spec.md) | The audit's rules outside tools, keyed to ranked causes |
 | TSA | [57 Tool surface audit](57-tool-surface-audit.spec.md) | Grant, need and use of each step and judge session; the tool rules |
+| PRA | [58 Prompt audit](58-prompt-audit.spec.md) | Model-facing text: names resolved and current, agreement with declarations, size |
 
 ### 2.3 Engine-wide contracts
 
