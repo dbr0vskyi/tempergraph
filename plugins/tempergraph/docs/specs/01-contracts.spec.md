@@ -220,6 +220,10 @@ The judgement block is the last fenced JSON block of the judge's answer.
 | Activity journal | [EVT](30-run-events.spec.md) | JSON lines per session |
 | Store manifest, machine index | [LOS](33-local-observability-store.spec.md), [CST](34-central-run-stats.spec.md) | JSON, `schema_version` |
 | Sink rows (`run`, `heartbeat`, `session`) | [CST](34-central-run-stats.spec.md) | JSON lines and one JSON file, `schema_version` per row |
+| Labels | [FBK](41-feedback-and-judge-reliability.spec.md) | JSON lines, metadata only |
+| Proposals, trials, case sets | [PRP](40-improvement-proposals.spec.md) | JSON, `schema_version`, metadata only (the patch lives on its branch) |
+| Lessons file | [LSN](42-workflow-lessons.spec.md) | JSON in the workflow package, `schema_version` |
+| Loop parameters | [IMD](43-improvement-data.spec.md) | JSON, one record per named threshold with provenance |
 
 Every reader ignores unknown keys and reads a missing key as "not recorded", never as zero. Renaming, removing or reinterpreting a key bumps the schema version.
 

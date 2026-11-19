@@ -38,6 +38,9 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `stop <selector> [--drain\|--now] [--as-agent]` | Requests a stop of a live run; resumable ([RCT](32-run-control.spec.md)) | one request file | no |
 | `store usage\|prune\|export` | Size, retention and export of the local store ([LOS §2.4](33-local-observability-store.spec.md)) | prune and export only | no |
 | `hooks add|list|remove|test` | Run lifecycle hooks (§2.2) | add and remove only | no |
+| `improve backlog|propose|trial|aa|open|show` | Proposals and trials ([PRP §2.7](40-improvement-proposals.spec.md)) | per [PRP](40-improvement-proposals.spec.md) | `propose`, `trial`, `aa` |
+| `label <thread> <gate> [--criterion id] --value agree|disagree`, `labels queue [workflow]` | Enter a label; list judgements to label ([FBK](41-feedback-and-judge-reliability.spec.md)) | `label` only | no |
+| `report --loop [window]` | The loop's own metrics ([IMD §2.4](43-improvement-data.spec.md)) | no | no |
 
 ### 2.1 Run options that touch executors
 

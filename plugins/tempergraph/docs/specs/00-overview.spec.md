@@ -26,7 +26,7 @@ This spec is the index of the set. It holds no component requirement; each requi
 | G4 | Durable, resumable runs that survive days at a pause. | [DUR](09-durability-and-resume.spec.md) |
 | G5 | The same workflow on the Claude Code CLI, the Antigravity CLI, the Claude Agent SDK or the Messages API, with refusal before spend when an executor cannot enforce what is asked. | [EXI](10-executor-interface.spec.md), [ECC](11-executor-claude-code.spec.md), [EAG](12-executor-antigravity.spec.md), [EAS](21-executor-agent-sdk.spec.md), [EMA](20-executor-messages-api.spec.md) |
 | G6 | Every model call costed; unmeasured is never zero. | [OBS](15-observability-and-cost.spec.md) |
-| G7 | A closed improvement loop that files scrubbed, de-duplicated issues. | [SIL](16-self-improvement.spec.md) |
+| G7 | A closed improvement loop that files scrubbed, de-duplicated issues, drafts measured changes and hands them to a person. | [SIL](16-self-improvement.spec.md), [PRP](40-improvement-proposals.spec.md), [FBK](41-feedback-and-judge-reliability.spec.md), [LSN](42-workflow-lessons.spec.md), [IMD](43-improvement-data.spec.md) |
 | G8 | Non-experts author good workflows through a guided skill and enforced validation. | [SHL](19-plugin-shell.spec.md), [WFM](02-workflow-model.spec.md) |
 
 ### Non-goals
@@ -110,6 +110,10 @@ flowchart LR
 | LOS | [33 Local observability store](33-local-observability-store.spec.md) | State-root and home layouts, session and engine logs, retention |
 | CST | [34 Central run stats](34-central-run-stats.spec.md) | Machine index, sinks, cross-machine stats |
 | TEL | [35 Telemetry export](35-telemetry-export.spec.md) | OTLP export with the GenAI conventions |
+| PRP | [40 Improvement proposals and trials](40-improvement-proposals.spec.md) | Clusters, proposals, change classes, case sets, trials |
+| FBK | [41 Feedback labels and judge reliability](41-feedback-and-judge-reliability.spec.md) | Labels, reliability grades, labelling queue, binding-shift watch |
+| LSN | [42 Workflow lessons](42-workflow-lessons.spec.md) | Per-step lessons files and how they render and change |
+| IMD | [43 Improvement data requirements](43-improvement-data.spec.md) | The loop's requirements on the shared run store |
 
 ### 2.3 Engine-wide contracts
 

@@ -59,8 +59,9 @@ Configured in user or state-root config as a list; none by default.
 | Item | Rule |
 |---|---|
 | `machine_id` | Random UUID from `machine.json`; never a host name, MAC or serial |
-| `user` | `hash` = HMAC-SHA256 of the operator's git `user.email` with a per-sink salt stored beside the sink config; `name` = the git user name, only when the operator sets it |
-| `repo_id` | `hash` = HMAC of the normalized origin URL with the same salt; `name` = the repository's folder name |
+| Sink key | One secret key per sink, shared by every machine that writes to it, so a hash matches across machines: a directory sink keeps it in `<path>/sink.json`, created by the first machine that writes (owner-only where the share allows); an `otlp` sink reads it from the operator's config. The same key serves the request digests of [IMD-R12](43-improvement-data.spec.md) |
+| `user` | `hash` = HMAC-SHA256 of the operator's git `user.email` with the sink key; `name` = the git user name, only when the operator sets it |
+| `repo_id` | `hash` = HMAC of the normalized origin URL with the sink key; `name` = the repository's folder name |
 | `thread_hash` | HMAC of the thread id; a task id can hold a ticket or a branch name |
 | `ticket` | Kept only when the operator sets `sink.tickets = true` |
 | Free text | None: `alias` is kept only if it matches `[a-z0-9-]{1,40}`, else dropped |
@@ -110,6 +111,7 @@ Read-only, model-free (contract C13). `--live` reads the heartbeats and lists li
 - No tempergraph server: a folder every machine can write is enough for a small team and needs no service to run or secure; an OTLP sink covers teams that already run a telemetry backend ([ADR-0025](../adr/0025-cross-machine-stats-through-opt-in-sinks.adr.md)).
 - One writer per file is what makes a synced folder safe; appends from two machines to one file are what break it.
 - Hashing by default means a shared sink shows "repo 3f2a…" until the operator opts into names; that is the price of being able to share it widely.
+- A sink is the aggregate the self-improvement loop's data requirements name ([IMD](43-improvement-data.spec.md)): the `run` and `session` rows carry the identifiers of IMD-R1, and the loop's own record kinds may be written to a sink beside them by the same outbox; what crosses follows IMD §2.2 and this spec's §2.4, whichever is stricter.
 - The heartbeat makes the sink a monitoring surface, not only a ledger: a person sees what is running and waiting across machines.
 
 ## 6. Acceptance criteria

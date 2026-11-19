@@ -88,7 +88,8 @@ Nothing is removed automatically. The rule `store usage` checks and `store prune
 | Item | Kept for |
 |---|---|
 | `raw.jsonl`, `activity.jsonl`, `stderr.log`, `output/`, `checks/*/*.log`, `hooks/` | 30 days after the thread finished; a thread that ended stopped or failed is kept until `--keep-failed` is dropped |
-| `run.jsonl`, `meta.json`, `result.json`, findings, evidence | Until the thread is pruned whole by the operator |
+| Evidence | 90 days after the thread finished, operator-configurable ([IMD-R10](43-improvement-data.spec.md)); its records stay readable |
+| `run.jsonl`, `meta.json`, `result.json`, findings | Until the thread is pruned whole by the operator, and at least 400 days ([IMD-R10](43-improvement-data.spec.md)) |
 | Checkpoints, ledger, stats | Never pruned by `store` |
 | `engine/` | 14 days |
 

@@ -131,6 +131,7 @@ def register_observers(entry_point_group: str = "tempergraph.observers") -> list
 - The live progress file stays the cheap "now" view; the activity journal is the "so far" view. Both come from one writer thread, so the stream pump never waits on disk ([ADR-0009](../adr/0009-normalized-session-event-stream.adr.md)).
 - Shell commands are the most useful and the most sensitive field; they stay local and scrubbed, and can be switched off ([ADR-0023](../adr/0023-local-activity-journal-with-tool-input-summaries.adr.md)).
 - Observer and hook widening follow [ADR-0027](../adr/0027-in-process-observers-and-wider-hook-events.adr.md); the engine still ships no hook and no exporter enabled by default.
+- The `judgement` record and the `gate` record linked to it by `judgement_seq` together hold what [IMD-R3](43-improvement-data.spec.md) asks of a gate; the loop's events of IMD-R11 reach observers through the same `on_record` path and hook events.
 - The `judgement` record carries statuses and ids, never evidence text; evidence is in the local evidence file and is shown by the detail document from there ([RDD](31-run-detail-document.spec.md)).
 
 ## 6. Acceptance criteria
