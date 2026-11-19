@@ -30,3 +30,5 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0037](0037-attention-batched-waking-of-the-orchestrating-session.adr.md) | The orchestrating session is woken only when a person is needed, in batches | proposed |
 | [0038](0038-batch-is-a-one-node-orchestration.adr.md) | A batch is a one-node map orchestration | proposed |
 | [0039](0039-pauses-stay-with-the-person-failures-follow-node-policy.adr.md) | In an orchestration, pauses stay with the person; failures follow a declared node policy | proposed |
+| [0040](0040-take-script-steps-attention-and-composition-from-archon.adr.md) | Take script and hybrid steps, an attention verb and composable workflow packs; keep step outputs free-form | accepted |
+| [0041](0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md) | A workflow graduates from local runs to a pipeline by measured, model-free criteria | proposed |
