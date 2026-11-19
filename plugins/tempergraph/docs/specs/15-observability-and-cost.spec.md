@@ -3,7 +3,7 @@ title: Observability and cost
 type: component
 status: review
 prefix: OBS
-adrs: [0009, 0012, 0018, 0021]
+adrs: [0009, 0012, 0018, 0021, 0023, 0025]
 ---
 
 # Observability and cost
@@ -42,7 +42,7 @@ What a run leaves behind so a person or a later analysis can see what it did, wh
 
 ### 2.3 Live progress file
 
-Per running session, beside the run log: open tool, last ten tool names, last text line (scrubbed, clipped), replaced atomically at most once a second by a writer thread fed from the normalized event stream. It is not a run-log record.
+Per running session, at `sessions/<session_key>/live.json` ([LOS §2.1](33-local-observability-store.spec.md)): open tool with its input summary, last ten tool names with summaries, last text line (scrubbed, clipped), replaced atomically at most once a second by a writer thread fed from the normalized event stream. It is not a run-log record. The same writer appends the session's activity journal ([EVT §2.3](30-run-events.spec.md)).
 
 ### 2.4 Reports
 
@@ -55,7 +55,7 @@ Per running session, beside the run log: open tool, last ten tool names, last te
 | Prompt digests | The digest of each rendered template beside its rates, so a prompt change is visible |
 | Stalls and timeouts | `stalled` sessions as their own class; each timeout sorted into `hung` (no line for the idle limit), `slow_host` (host-speed preflight warned) or `model_silent` (lines arrived, no `result`) |
 | Loop signal | Record-only: the same tool and input repeated five times in a row in one session; it never stops a session |
-| Stats | `stats` ([CLI](17-engine-cli.spec.md)): one row per run with user, workflow, ticket, executor, cost figures and outcome, kept per month on the operator's machine; nothing is sent anywhere |
+| Stats | `stats` ([CLI](17-engine-cli.spec.md)): one row per run with user, workflow, ticket, executor, cost figures and outcome, kept per month on the operator's machine; nothing is sent anywhere unless the operator configures a sink ([CST](34-central-run-stats.spec.md)) |
 
 ## 3. Behaviours
 
@@ -96,7 +96,8 @@ Per running session, beside the run log: open tool, last ten tool names, last te
 - Antigravity and the Messages API report no cost; Claude Code and the Agent SDK report a client-side estimate. One engine price table gives every executor a comparable estimate without trusting any as billing truth ([ADR-0012](../adr/0012-cost-when-executor-reports-tokens-only.adr.md)).
 - The live file and metrics come from normalized events, so they work the same on every executor ([ADR-0009](../adr/0009-normalized-session-event-stream.adr.md)).
 - Self-improvement children log to their own run logs; a daily cap sums them, and reports join them to the parent's line as a separate figure.
-- Tracing to an external service is off and not designed; any destination is a governance decision.
+- Export is off by default. An operator may configure sinks of metadata-only rows and OTLP telemetry ([CST](34-central-run-stats.spec.md), [TEL](35-telemetry-export.spec.md)); content never leaves the machine.
+- Observer record kinds added for live followers (`run_started`, `unit_entered`, `session_opened`, `check`, `judgement`, `budget`, `pause`, `stop_requested`, `run_exit`) and the record envelope are owned by [EVT](30-run-events.spec.md); where the session logs live is owned by [LOS](33-local-observability-store.spec.md).
 
 ## 6. Acceptance criteria
 

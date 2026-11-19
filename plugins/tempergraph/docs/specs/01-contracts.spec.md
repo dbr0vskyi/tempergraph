@@ -173,7 +173,7 @@ Every executor translates its CLI's stream into these events and pushes them to 
 |---|---|
 | `session_started` | `session_id`, `model`, `cli_version`, `tools` (as listed by the CLI) |
 | `model_delta` | `chars` (count only) |
-| `tool_started` | `name`, `subagent: bool`, `call_id` |
+| `tool_started` | `name`, `subagent: bool`, `call_id`, `input_summary?` (scrubbed, clipped one-line summary of the input; local records only, [EVT §2.5](30-run-events.spec.md)) |
 | `tool_finished` | `call_id`, `ok`, `error_kind?` |
 | `text` | `last_line` (scrubbed, clipped to 200 chars) |
 | `retrying` | `category` (from the CLI's retry event, if any) |
@@ -216,6 +216,10 @@ The judgement block is the last fenced JSON block of the judge's answer.
 | Ledger | [SIL](16-self-improvement.spec.md) | JSON lines, names, counts, hashes |
 | Catalog | [CLI](17-engine-cli.spec.md) | JSON, `schema_version`, one row per workflow |
 | Diagram model | [LIF](18-lifecycle-and-evals.spec.md) | JSON with digest |
+| Detail document | [RDD](31-run-detail-document.spec.md) | JSON, `schema_version`, one thread; built on demand, never stored |
+| Activity journal | [EVT](30-run-events.spec.md) | JSON lines per session |
+| Store manifest, machine index | [LOS](33-local-observability-store.spec.md), [CST](34-central-run-stats.spec.md) | JSON, `schema_version` |
+| Sink rows (`run`, `heartbeat`, `session`) | [CST](34-central-run-stats.spec.md) | JSON lines and one JSON file, `schema_version` per row |
 | Labels | [FBK](41-feedback-and-judge-reliability.spec.md) | JSON lines, metadata only |
 | Proposals, trials, case sets | [PRP](40-improvement-proposals.spec.md) | JSON, `schema_version`, metadata only (the patch lives on its branch) |
 | Lessons file | [LSN](42-workflow-lessons.spec.md) | JSON in the workflow package, `schema_version` |

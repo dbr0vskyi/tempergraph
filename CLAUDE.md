@@ -29,6 +29,7 @@ Layout (scaffolded, plugins are empty for now):
 - `.claude-plugin/marketplace.json`: marketplace catalog (named `tempergraph`); add every new plugin here.
 - `plugins/<name>/.claude-plugin/plugin.json`: per-plugin manifest.
 - `plugins/<name>/docs/`: every plugin has a docs folder, reserved for specs.
+- `plugins/tempergraph-monitor/docs/{specs,adr,research}/`: the monitor mod's own design set, same rules as the engine's (start at its `README.md`); it reads only engine documents defined in the engine specs 09 and 30 to 35.
 - `plugins/tempergraph/docs/{specs,adr,research,plans}/`: the engine's design (overview and component specs, decision records, research notes), written per the temperspec method. Start at `plugins/tempergraph/docs/README.md`. New artifacts use a type suffix (`*.spec.md`, `*.adr.md`, `*.rsrch.md`, `*.plan.md`, …); the rule is under File naming in that README. Engine features found useful and not built yet are GitHub issues labelled `area: engine` (their text names no workflow).
 
 Use the `plugin-authoring` skill when making mods or hooks.

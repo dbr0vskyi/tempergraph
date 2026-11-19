@@ -10,7 +10,7 @@ adrs: [0003, 0016]
 
 ## 1. Overview
 
-The `tempergraph` plugin wraps the engine CLI in skills a person uses from a conversation. **A skill drives the engine; it never decides a gate.** The skills ship in the engine plugin and know no workflow: they read the catalog. Workflow-specific agents, skills and rules ship with each workflow ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The live monitor is the separate `tempergraph-monitor` plugin and reads the status document only.
+The `tempergraph` plugin wraps the engine CLI in skills a person uses from a conversation. **A skill drives the engine; it never decides a gate.** The skills ship in the engine plugin and know no workflow: they read the catalog. Workflow-specific agents, skills and rules ship with each workflow ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The live monitor is the separate `tempergraph-monitor` plugin, a Claude Code mod that reads the observer documents and read-only verbs only ([EVT](30-run-events.spec.md), [RDD](31-run-detail-document.spec.md); its own design set is [plugins/tempergraph-monitor/docs](../../../tempergraph-monitor/docs/specs/00-overview.spec.md)).
 
 The shell is a Claude Code plugin. Running steps on another executor does not require the shell to run there; an operator may also drive the CLI directly or from CI, where the `agent-sdk` and `messages-api` executors need no interactive sign-in.
 

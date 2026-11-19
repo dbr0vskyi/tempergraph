@@ -102,6 +102,7 @@ An in-process `PreToolUse` callback built by the worker from the declaration. It
 | P-AS-1 | `setting_sources=[]` keeps user-level plugin tools, hooks and MCP servers out of the session (seen in the init message) | `isolates_user_config` | not run |
 | P-AS-2 | The session's `PreToolUse` hook sees and can deny a subagent's tool calls | gatekeeper on steps that declare `subagent` | not run |
 | P-AS-3 | The SDK hands the prompt to its CLI off argv on the pinned version | `prompt_off_argv` | not run |
+| P-AS-4 | Whether the SDK's session keeps a native transcript with `setting_sources=[]`, and at which path | transcript locator ([EVT §2.4](30-run-events.spec.md)) | not run |
 
 Until P-AS-2 passes, a step that declares `subagent` with enforcement on is refused at preflight on this executor.
 

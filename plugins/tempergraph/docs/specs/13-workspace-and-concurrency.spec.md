@@ -16,7 +16,7 @@ Where a run's files live, how runs and writing units stay apart, and how many ru
 
 | Concept | Definition |
 |---|---|
-| State root | `<main checkout>/.tempergraph/`, found from git's common directory, whatever directory the engine starts in. Holds checkpoints, run logs, locks, the ledger, batch folders and executor scratch (session homes, private MCP configs). Gitignored. |
+| State root | `<main checkout>/.tempergraph/`, found from git's common directory, whatever directory the engine starts in. Holds checkpoints, run logs, locks, the ledger, batch folders, every session's logs, the engine's code log and executor scratch (session homes, private MCP configs), in the layout of [LOS §2.1](33-local-observability-store.spec.md). Gitignored. |
 | Workspace | The main checkout (`in_place`) or an engine-owned git worktree beside the repository on branch `tg/<workflow>/<task_id>`, fixed for the run and stored in state. |
 | Writer worktree | A sibling worktree for a writer branch or writing map item, cut from the run's branch after a checkpoint commit. |
 | Run lock | Per-thread OS file lock under the state root. |

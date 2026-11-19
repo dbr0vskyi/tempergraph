@@ -25,6 +25,14 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0019](0019-in-process-executors-run-in-a-worker-process.adr.md) | Library-based executors run in an engine worker process behind the same launcher | proposed |
 | [0020](0020-engine-owned-tool-loop-for-the-messages-api.adr.md) | The Messages API executor runs an engine-owned loop over a minimal engine tool host | proposed |
 | [0021](0021-scope-of-planned-work.adr.md) | Fold planned work into the design by fixed rules | proposed |
+| [0022](0022-observers-read-files-not-sockets.adr.md) | Observers follow a run through append-only files and read-only verbs, not a socket or a daemon | proposed |
+| [0023](0023-local-activity-journal-with-tool-input-summaries.adr.md) | Keep a local activity journal per session, with scrubbed and clipped tool input summaries | proposed |
+| [0024](0024-one-local-store-layout-with-a-manifest.adr.md) | One versioned layout for everything a repository's runs leave, with manual retention | proposed |
+| [0025](0025-cross-machine-stats-through-opt-in-sinks.adr.md) | Gather numbers across machines through opt-in, metadata-only sinks; no tempergraph server | proposed |
+| [0026](0026-telemetry-export-as-otel-genai-without-content.adr.md) | Export telemetry as OpenTelemetry with the GenAI conventions, pinned, never with content | proposed |
+| [0027](0027-in-process-observers-and-wider-hook-events.adr.md) | Add an in-process observer interface for exporters, and widen lifecycle hook events | proposed |
+| [0028](0028-stop-verb-as-the-only-observer-control.adr.md) | A stop verb with drain is the only run control an observer may ask for | proposed |
+| [0029](0029-own-observability-first-export-deferred.adr.md) | Ship tempergraph's own observability first, capture everything locally, defer third-party export | accepted |
 | [0030](0030-improvement-closes-through-measured-proposals.adr.md) | Improvement closes through measured proposals that a person merges | proposed |
 | [0031](0031-steps-and-their-graders-change-apart.adr.md) | Steps and the gates that grade them change apart; weakening a gate is a person's act | proposed |
 | [0032](0032-lessons-are-versioned-workflow-content.adr.md) | Lessons learned are versioned workflow content, not run-time memory | proposed |
