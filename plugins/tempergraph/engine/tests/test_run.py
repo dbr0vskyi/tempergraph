@@ -346,3 +346,68 @@ def test_failed_before_script_spends_a_retry_without_a_session(repo: Path) -> No
     assert out.exit_code is ExitCode.PAUSED and out.payload["kind"] == "budget"
     assert ex.calls == []  # no session ran; three failed attempts spent the budget of 2
     assert "script_failed:fetch" in json.dumps(out.payload["blockers"])
+
+
+def test_auto_reopen_retries_a_stopped_run(repo: Path) -> None:  # BUD-B6
+    broken = SessionResult(ok=False, infra_cause=InfraCause.BROKEN_PIPE, usage=Usage())
+    ex = standin("claude", steps=[broken] * 3 + [DRAFT, REVIEW], judges=[judge(), judge()])
+    out = go(repo, ex, flags={"run.auto_reopen": 2})
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    assert "auto_reopen: infra" in out.warnings
+    ledger = [json.loads(x) for x in (state_root_path(repo) / "ledger.jsonl").read_text().splitlines()]
+    row = [r for r in ledger if r["kind"] == "intervention"]
+    assert len(row) == 1 and row[0]["cause"] == "auto_reopen" and row[0]["wait_s"] is None
+    assert row[0]["caller"]["kind"] == "engine" and row[0]["touches"] == [{"class": "engine", "action": "reopen"}]
+    sup = [r for r in records(repo) if r["kind"] == "supervision"][-1]
+    assert sup["level"] == "observer" and sup["touches"]["engine"]["engine"] == 1  # never supervision
+
+
+def test_auto_reopen_stops_at_its_count(repo: Path) -> None:  # BUD-B6
+    broken = SessionResult(ok=False, infra_cause=InfraCause.BROKEN_PIPE, usage=Usage())
+    ex = standin("claude", steps=[broken] * 9)
+    out = go(repo, ex, flags={"run.auto_reopen": 2}, task="T-2")
+    assert out.exit_code is ExitCode.BUDGET_OR_INFRA and out.reason == "infra"
+    assert out.warnings.count("auto_reopen: infra") == 2 and len(ex.calls) == 9
+
+
+def test_auto_reopen_never_answers_a_pause(repo: Path) -> None:  # BUD-B6
+    ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("UNVERIFIABLE"))])
+    out = go(repo, ex, flags={"run.auto_reopen": 3}, task="T-3")
+    assert out.exit_code is ExitCode.PAUSED and not any("auto_reopen" in w for w in out.warnings)
+
+
+def test_model_ladder_climbs_and_a_person_retry_resets_it(repo: Path) -> None:  # BUD-B7
+    fail = verdict_block("UNMET")
+    broken = SessionResult(ok=False, infra_cause=InfraCause.BROKEN_PIPE, usage=Usage())
+    ex = standin("claude", steps=[DRAFT, broken, DRAFT, DRAFT, DRAFT], judges=[judge(fail)] * 4)
+    spec = two_step()
+    units = dict(spec.units)  # a declared ladder: a `--set` ladder stays on the step side (RST, Judges apart)
+    units["draft"] = dataclasses.replace(units["draft"], step=dataclasses.replace(
+        units["draft"].step, model=("small", "medium", "large")))
+    spec = dataclasses.replace(spec, units=units)
+    out = go(repo, ex, spec, flags={"draft.retry_budget": 3}, task="L-1")
+    assert out.exit_code is ExitCode.PAUSED and out.payload["kind"] == "budget"
+
+    def aliases() -> list[tuple[str, str]]:
+        return [(r["session_key"], r["alias"]) for r in records(repo, "L-1") if r["kind"] == "attempt_start"]
+
+    steps = [a for k, a in aliases() if "judge" not in k]
+    assert steps == ["small", "medium", "medium", "large", "large"]  # the infra rerun repeats its rung
+    assert {a for k, a in aliases() if "judge" in k} == {"large"}
+    ex.steps, ex.judges = [DRAFT, REVIEW], [judge(), judge()]
+    back = resume(spec, "L-1", repo, registry(ex), decision="retry", settings=NO_SLEEP)
+    assert back.exit_code is ExitCode.FINISHED, back.message
+    assert [a for k, a in aliases() if "judge" not in k and k.startswith("draft")][5] == "small"
+
+
+def test_workspace_records(repo: Path) -> None:  # EVT §2.2 `workspace`, WTR §2.6
+    ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("UNVERIFIABLE"))])
+    assert go(repo, ex, task="W-1").exit_code is ExitCode.PAUSED
+    ex.steps, ex.judges = [REVIEW], [judge()]
+    assert resume(two_step(), "W-1", repo, registry(ex), decision="proceed",
+                  settings=NO_SLEEP).exit_code is ExitCode.FINISHED
+    ws = [r for r in records(repo, "W-1") if r["kind"] == "workspace"]
+    assert [r["action"] for r in ws] == ["prepared", "reused", "kept"]
+    assert ws[0]["mode"] == "worktree" and ws[0]["branch"] == "tg/demo/W-1" and ws[0]["path"]
+    ledger = (state_root_path(repo) / "ledger.jsonl").read_text()
+    assert ws[0]["path"] not in ledger  # the path stays in the local run log

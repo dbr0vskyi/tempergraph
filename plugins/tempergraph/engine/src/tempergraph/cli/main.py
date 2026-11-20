@@ -135,6 +135,9 @@ def _parser() -> _Parser:
     cv = csub.add_parser("validate")
     cv.add_argument("--file")
     csub.add_parser("paths")
+    from tempergraph.cli import outcome as outcome_cli
+
+    outcome_cli.add_parser(sub, _Parser)
     return p
 
 
@@ -151,7 +154,8 @@ def _settings_options(p: argparse.ArgumentParser, resume: bool = False) -> None:
 SPELLINGS = {"executor": "steps.executor", "judge_executor": "judges.executor", "model": "steps.model",
              "judge_model": "judges.model", "timeout": "steps.timeout_s", "judge_timeout": "judges.timeout_s",
              "idle": "steps.idle_s", "run_cost_cap": "run.run_cost_cap_usd", "worktree_root": "run.worktree.root",
-             "worktree_base": "run.worktree.base", "worktree_cleanup": "run.worktree.cleanup"}
+             "worktree_base": "run.worktree.base", "worktree_cleanup": "run.worktree.cleanup",
+             "auto_reopen": "run.auto_reopen"}
 PER_UNIT = {"step_executor": "executor", "step_model": "model"}
 
 
@@ -165,7 +169,7 @@ def _caller_options(p: argparse.ArgumentParser) -> None:
 
 def _spellings(p: argparse.ArgumentParser) -> None:
     for opt in ("executor", "judge-executor", "model", "judge-model", "timeout", "judge-timeout", "idle",
-                "run-cost-cap"):
+                "run-cost-cap", "auto-reopen"):
         p.add_argument(f"--{opt}")
     p.add_argument("--step-executor", action="append", default=[], metavar="STEP=NAME")
     p.add_argument("--step-model", action="append", default=[], metavar="STEP=ALIAS")
@@ -181,7 +185,9 @@ def _run_options(p: argparse.ArgumentParser, start: bool = True) -> None:
     _caller_options(p)
     p.add_argument("--json", action="store_true")
     _settings_options(p, resume=not start)
+    p.add_argument("--pause-before", action="append", default=[], metavar="UNIT")
     if start:
+        p.add_argument("--dry-run", action="store_true", help="self-improvement files nothing; every step runs")
         p.add_argument("--alias")
         p.add_argument("--label")
         for opt in ("worktree-root", "worktree-base", "worktree-cleanup"):
@@ -291,11 +297,13 @@ def _flags(env: Env, a: argparse.Namespace) -> dict[str, Any]:
 def _settings(env: Env, a: argparse.Namespace, mutating: bool = True) -> Any:
     from tempergraph.run.runner import RunSettings
 
+    if getattr(a, "pause_before", None):  # FLX §2.5 breakpoints are release 2 (X2-13)
+        raise UsageError("not_in_release: --pause-before is a release 2 option (FLX §2.5)")
     fields: dict[str, Any] = {"flags": _flags(env, a), "caller": env.caller(a) if mutating else {},
                               "relayed": bool(getattr(a, "relayed", False)),
                               "profiles": tuple(a.profile) if getattr(a, "profile", None) is not None else None}
     if hasattr(a, "alias"):
-        fields.update(alias=a.alias, label=a.label)
+        fields.update(alias=a.alias, label=a.label, dry_run=bool(getattr(a, "dry_run", False)))
     if hasattr(a, "unset"):
         fields.update(unset=tuple(a.unset), reload_settings=a.reload_settings)
     if hasattr(a, "ruling"):
@@ -708,10 +716,17 @@ def _config_validate(env: Env, a: argparse.Namespace, root: Path | None) -> int:
     return int(ExitCode.USAGE) if errs else 0
 
 
+def cmd_outcome(env: Env, a: argparse.Namespace) -> int:
+    from tempergraph.cli.outcome import cmd_outcome as run_outcome
+
+    return run_outcome(env, a)
+
+
 COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "run": cmd_run, "resume": cmd_resume, "status": cmd_status, "list": cmd_list, "validate": cmd_validate,
-    "executors": cmd_executors, "events": cmd_events, "facts": cmd_facts, "graph": cmd_graph, "wait": cmd_wait, "stop": cmd_stop,
-    "worktree": cmd_worktree, "config": cmd_config, "rerun": cmd_rerun, **observe_cli.COMMANDS,
+    "executors": cmd_executors, "events": cmd_events, "facts": cmd_facts, "graph": cmd_graph, "wait": cmd_wait,
+    "stop": cmd_stop, "worktree": cmd_worktree, "config": cmd_config, "rerun": cmd_rerun, "outcome": cmd_outcome,
+    **observe_cli.COMMANDS,
 }
 
 

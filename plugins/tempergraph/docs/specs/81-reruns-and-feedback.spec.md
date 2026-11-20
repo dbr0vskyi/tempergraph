@@ -97,11 +97,11 @@ Given with `--feedback <text>` or `--feedback-file <path>` (at most 8 000 charac
 | Kept | The resolved input (never resolved again, so no question is asked twice); the verdicts, judgements, artifacts, answers and event values of every unit before the fork point; the source's settings snapshot ([RST §2.6](80-run-settings-and-overrides.spec.md)), then the rerun's own `--set`, `--unset`, `--profile`; rulings unless `--drop-rulings` |
 | Cleared | `<unit>` and everything after it on the path, as a trip back |
 | Workflow version | The current content, checked against the source's by the tests of [MIG §2.5](62-state-and-run-migration.spec.md) with `<unit>` as the pending unit; a failed test refuses with exit 2 |
-| Workspace, worktree workflow | A new worktree on a new branch `<branch>-r<n>` (named by [WTR §2.4](82-worktree-mode.spec.md); `~` is not allowed in a ref) from the source branch's tip (default, `--workspace current`), or from the commit recorded when the source entered `<unit>` (`--workspace at-unit`; refused if none is recorded). `--same-branch` reuses the source's branch, only when the source is `finished`; the source is then marked `superseded_by` |
+| Workspace, worktree workflow | A new worktree on a new branch `<branch>-r<n>` (named by [WTR §2.4](82-worktree-mode.spec.md); `~` is not allowed in a ref) from the source branch's tip (default, `--workspace current`), or from the commit recorded when the source entered `<unit>` (`--workspace at-unit`; refused if none is recorded). `--same-branch` reuses the source's branch, only when the source is `finished`; the source is then marked `superseded_by` (in its `lineage.json`), and the rerun takes over the source's kept worktree, re-attached when it is gone |
 | Workspace, in place | Files as they are now; the start prints one warning saying so |
 | External effects | As for rewind: units after the fork point with external effects in the source need `--accept-external` |
 | Budgets | Fresh: retry, loop, human cap, attempt allowance; the run cost cap counts the new thread only |
-| Records | `run_started` with `origin: rerun` and `rerun_of {thread, unit, checkpoint_id, workflow_version}`; the source's run folder gains `lineage.json` listing its reruns ([LOS §2.1](33-local-observability-store.spec.md)); status rows show `rerun_of` and `reruns` |
+| Records | `run_started` with `origin: rerun` and `rerun_of {thread, unit, checkpoint_id, workflow_version}`; the source's run folder gains `lineage.json` listing its reruns ([LOS §2.1](33-local-observability-store.spec.md)); status rows show `rerun_of`, `reruns` and `superseded_by` |
 
 `rerun --check` resolves the fork point, the workspace plan, the settings and the external-effects list, prints them and creates nothing (contract C13).
 
@@ -159,7 +159,7 @@ Given with `--feedback <text>` or `--feedback-file <path>` (at most 8 000 charac
 | `rewind` or `rerun` across external effects without `--accept-external` | Exit 2, listing unit and artifact kind |
 | `rerun` from a `running` or `none` thread | Exit 2 |
 | `rerun --workspace at-unit` with no recorded commit for the unit | Exit 2, suggesting `--workspace current` |
-| `--same-branch` on a source that is not `finished` | Exit 2 |
+| `--same-branch` on a source that is not `finished` | Exit 2 `same_branch_not_finished`, nothing created |
 | Feedback over 8 000 characters; rulings over their limits | Exit 2 |
 | `--revoke-ruling` with an unknown id | Exit 2 |
 | Feedback with `event:` or `answer:` | Exit 2 |

@@ -97,12 +97,16 @@ def _lineage(state_root: Path, workflow: str, tid: str, run: Mapping[str, Any]) 
         out["rerun_of"] = {k: src.get(k) for k in ("thread", "unit", "checkpoint_id", "workflow_version")}
     try:
         doc = json.loads((run_dir(state_root, workflow, split_thread(tid)[1]) / "lineage.json").read_text("utf-8"))
-        made = [{"thread": x.get("thread"), "from": x.get("from"), "at": x.get("at")}
+        made = [{"thread": x.get("thread"), "from": x.get("from"), "at": x.get("at"),
+                 **({"same_branch": True} if x.get("same_branch") else {})}
                 for x in doc.get("reruns") or [] if isinstance(x, dict)]
+        superseded = doc.get("superseded_by") if isinstance(doc, dict) else None
     except (OSError, ValueError, AttributeError):
-        made = []
+        made, superseded = [], None
     if made:
         out["reruns"] = made
+    if isinstance(superseded, str):
+        out["superseded_by"] = superseded  # RRN §2.4: a `--same-branch` rerun took this finished thread's branch
     return out
 
 

@@ -181,3 +181,16 @@ def test_registered_package_loads_and_runs(repo: Path, tmp_path: Path, monkeypat
     assert code == 0, err  # the check ran in the worker, importing the package's own module
     code, _, err = cli(repo, None, "run", "gone", "x", catalog=cat)
     assert code == ExitCode.INTERNAL and "not_loaded" in err
+
+
+def test_pause_before_is_release_2_and_dry_run_is_recorded(repo: Path) -> None:  # CLI §2.1, FLX §2.5
+    for argv in (["--check"], []):
+        code, _, err = cli(repo, happy(), "run", "demo", "notes", "--task-id", "D-1", "--pause-before", "draft",
+                           *argv)
+        assert code == 2 and "not_in_release" in err
+    assert not (repo / ".tempergraph" / "runs" / "demo" / "D-1").exists()
+    code, _, err = cli(repo, happy(), "run", "demo", "notes", "--task-id", "D-2", "--dry-run", "--auto-reopen", "1")
+    assert code == 0, err
+    log = (repo / ".tempergraph" / "runs" / "demo" / "D-2" / "run.jsonl").read_text().splitlines()
+    started = [json.loads(x) for x in log if '"run_started"' in x][0]
+    assert started["dry_run"] is True and "run.auto_reopen" in started["overridden_keys"]

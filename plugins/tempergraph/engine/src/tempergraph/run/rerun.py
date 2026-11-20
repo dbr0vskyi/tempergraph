@@ -37,12 +37,17 @@ from tempergraph.run.runner import (
     _Inert,
     _refuse,
     _refuse_settings,
+    _reopening,
     _root,
+    join_keys,
     settle_resume,
 )
 from tempergraph.store.layout import NotInRepository, checkpoint_path, ensure_state_root, lock_path, run_dir
 from tempergraph.workspace import (
+    LOCK_REASON,
+    WorkspaceRecord,
     WorkspaceRefused,
+    attach_workspace,
     flat_name,
     prepare_workspace,
     resolve_workspace,
@@ -123,6 +128,18 @@ def rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registry
           accept_external: bool = False, check: bool = False) -> RunOutcome | dict[str, Any]:
     """RRN §2.4. With `check`, returns the plan document and creates nothing (contract C13)."""
     settings = dataclasses.replace(settings or RunSettings(), origin="rerun")
+    out = _rerun(spec, source_task, target, registry, start_at=start_at, feedback=feedback, settings=settings,
+                 task_id=task_id, workspace_from=workspace_from, same_branch=same_branch, drop_rulings=drop_rulings,
+                 accept_external=accept_external, check=check)
+    if isinstance(out, RunOutcome) and out.thread_id:  # BUD-B6 holds for the new thread too
+        return _reopening(out, spec, out.thread_id.partition("/")[2], target, registry, settings)
+    return out
+
+
+def _rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registry, *, start_at: str,
+           feedback: str | None, settings: RunSettings, task_id: str | None, workspace_from: str,
+           same_branch: bool, drop_rulings: bool, accept_external: bool, check: bool
+           ) -> RunOutcome | dict[str, Any]:
     src = thread_id(spec.name, source_task)
     try:
         root = _root(target)
@@ -131,8 +148,8 @@ def rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registry
     state = classify(root, spec, source_task)
     if state in (ThreadState.NONE, ThreadState.RUNNING):
         return _refuse(str(state), f"{src}: a rerun needs a source that exists and is not running", tid=src)
-    if same_branch:
-        return _refuse("same_branch_not_built", "--same-branch is not built yet (T6.4.4)", tid=src)
+    if same_branch and state is not ThreadState.FINISHED:
+        return _refuse("same_branch_not_finished", f"{src}: --same-branch needs a finished source", tid=src)
     if feedback and len(feedback) > gatemod.FEEDBACK_LIMIT:
         return _refuse("feedback_too_long", f"feedback is over {gatemod.FEEDBACK_LIMIT} characters", tid=src)
     if start_at != "start" and start_at not in spec.units:
@@ -142,7 +159,7 @@ def rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registry
         return _refuse("fork_not_found", f"{src} never reached {start_at}", tid=src)
     latest = _latest(spec, root, src)
     path = list(((latest.get("run") or {}).get("path") or {}).get("units") or [])
-    behind = [u for u in path if u not in spec.units]
+    behind = [u for u in path if u not in with_outcome(spec).units]  # the compiled outcome unit is ours
     if behind:  # MIG §2.5 with `start_at` as the pending unit
         return _refuse("units_behind", f"units behind: {', '.join(behind)} are no longer in the workflow", tid=src)
     first = flow.effective_order(spec)[0]
@@ -176,6 +193,10 @@ def rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registry
     src_ws = latest.get("workspace") or {}
     try:
         plan = _workspace_plan(run_spec, target, src_ws, new_task, n, workspace_from, root, src, start_at, rv)
+        if same_branch and plan.mode == "worktree":  # the source's branch and worktree (RRN §2.4)
+            plan = dataclasses.replace(plan, branch=str(src_ws.get("branch") or plan.branch),
+                                       path=Path(str(src_ws.get("path") or plan.path)),
+                                       base_commit=str(src_ws.get("last_head") or plan.base_commit))
     except WorkspaceRefused as exc:
         return _refuse(exc.word, str(exc), tid=new)
     started = last_record(run_dir(root, spec.name, source_task) / "run.jsonl", "run_started") or {}
@@ -194,8 +215,14 @@ def rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registry
         return _refuse("running", f"{new} is running", tid=new)
     try:
         try:
-            rec = prepare_workspace(new, plan, run_spec.worktree, root,
-                                    read_include=bool(rv["worktree.read_worktreeinclude"]))
+            if same_branch and plan.mode == "worktree":
+                rec = attach_workspace(WorkspaceRecord.from_json(dict(src_ws)), new, run_spec.worktree, root)
+                gitmod.git(["worktree", "lock", "--reason", LOCK_REASON + new, "--end-of-options", rec.path],
+                           Path(rec.path), check=False)
+                rec.state = "active"
+            else:
+                rec = prepare_workspace(new, plan, run_spec.worktree, root,
+                                        read_include=bool(rv["worktree.read_worktreeinclude"]))
         except WorkspaceRefused as exc:
             return _refuse(exc.word, str(exc), tid=new)
         meta = {**(((fork.values.get("run") or {}).get("meta")) or {}), "origin": "rerun", "rerun_of": rerun_of}
@@ -217,15 +244,16 @@ def rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registry
                 saver.put(cfg, tup.checkpoint, {**(tup.metadata or {}), "source": "fork"},
                           dict(tup.checkpoint.get("channel_versions") or {}))
                 cw.graph.update_state(cw.config(new), writes, as_node=fork.writer)
-        _lineage(root, spec, source_task, new, start_at)
+        _lineage(root, spec, source_task, new, start_at, superseded=same_branch)
         Ledger(path=root / "ledger.jsonl").append({  # the rerun is a steer touch on its source (SUP §2.2)
             "kind": "intervention", "id": uuid.uuid4().hex, "thread_id": src, "workflow": spec.name,
+            "workflow_version": spec.version, **join_keys(root, settings),
             "unit": start_at, "caller": dict(settings.caller), "touches": [{"class": "steer", "action": "rerun"}],
             "pause_kind": "finished" if state is ThreadState.FINISHED else str(state), "decision": f"rerun:{start_at}",
             "wait_s": None, "feedback": bool(feedback), "ruling": settings.ruling,
             "settings_changed": list(settled.changed), "grants": [], "cause": "rerun", "rerun": new})
         out = _drive(run_spec, new_task, root, registry, settings, rep.judges, first_input, settled, before=before,
-                     executors=rep.step_executors, rerun_of=rerun_of)
+                     executors=rep.step_executors, rerun_of=rerun_of, workspace=rec.to_json())
         out.warnings = list(plan.warnings) + out.warnings
         return out
     finally:
@@ -299,7 +327,8 @@ def _workspace_plan(spec: WorkflowSpec, target: Path, src_ws: Mapping[str, Any],
     return dataclasses.replace(plan, branch=new_branch, base_commit=base, path=path)
 
 
-def _lineage(root: Path, spec: WorkflowSpec, source_task: str, new: str, start_at: str) -> None:
+def _lineage(root: Path, spec: WorkflowSpec, source_task: str, new: str, start_at: str, *,
+             superseded: bool = False) -> None:
     p = run_dir(root, spec.name, source_task) / "lineage.json"
     try:
         doc = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
@@ -308,6 +337,9 @@ def _lineage(root: Path, spec: WorkflowSpec, source_task: str, new: str, start_a
     doc = doc if isinstance(doc, dict) else {}
     doc.setdefault("schema_version", 1)
     doc.setdefault("reruns", []).append({"thread": new, "from": start_at,
-                                         "at": datetime.now(UTC).isoformat(timespec="seconds")})
+                                         "at": datetime.now(UTC).isoformat(timespec="seconds"),
+                                         **({"same_branch": True} if superseded else {})})
+    if superseded:
+        doc["superseded_by"] = new  # the source's branch now carries the rerun's work
     write_json(p, doc)
 

@@ -76,7 +76,7 @@ def test_rerun_check_creates_nothing_and_refuses_alike(repo: Path) -> None:  # R
     code, doc, _ = cli(repo, happy(), "rerun", "demo", "R-3", "--from", "review", "--check")
     assert code == 0 and doc["thread_id"] == "demo/R-3~r1" and doc["cleared"] == ["review"]
     assert hash_tree(root) == before
-    for argv in (["R-3", "--from", "nope"], ["R-9", "--from", "review"], ["R-3", "--from", "review", "--same-branch"]):
+    for argv in (["R-3", "--from", "nope"], ["R-9", "--from", "review"]):
         code, doc, _ = cli(repo, happy(), "rerun", "demo", *argv, "--check")
         code2, _, err = cli(repo, happy(), "rerun", "demo", *argv)
         assert code == code2 == 2 and doc["status"] == "error" and err, argv
@@ -104,3 +104,23 @@ def test_external_effects_need_consent(repo: Path) -> None:  # RRN-B6, AC-5
     ex = standin("claude", steps=[DRAFT, pr], judges=[judge(), judge()])
     code, _, err = cli(repo, ex, "rerun", "demo", "R-4", "--from", "draft", "--accept-external", catalog=cat)
     assert code == 0, err
+
+
+def test_same_branch_supersedes_a_finished_source(repo: Path) -> None:  # RRN §2.4 Workspace
+    finished(repo, "R-5")
+    ex = standin("claude", steps=[REVIEW], judges=[judge()])
+    code, doc, _ = cli(repo, ex, "rerun", "demo", "R-5", "--from", "review", "--same-branch", "--check")
+    assert code == 0 and doc["workspace"]["branch"] == "tg/demo/R-5"
+    code, _, err = cli(repo, ex, "rerun", "demo", "R-5", "--from", "review", "--same-branch")
+    assert code == 0, err
+    ws = [r for r in records(repo, "R-5~r1", "workspace")]
+    assert ws[0]["action"] == "reused" and ws[0]["branch"] == "tg/demo/R-5"
+    lineage = json.loads((repo / ".tempergraph" / "runs" / "demo" / "R-5" / "lineage.json").read_text())
+    assert lineage["superseded_by"] == "demo/R-5~r1" and lineage["reruns"][0]["same_branch"] is True
+    from .test_feedback import paused
+
+    paused(repo, "R-6", Seen())
+    for extra in (["--check"], []):
+        code, _, err = cli(repo, happy(), "rerun", "demo", "R-6", "--from", "review", "--same-branch", *extra)
+        assert code == 2
+    assert not (repo / ".tempergraph" / "runs" / "demo" / "R-6~r1").exists()

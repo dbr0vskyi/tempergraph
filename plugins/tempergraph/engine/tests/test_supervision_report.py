@@ -114,7 +114,7 @@ def test_label_is_metadata_only(repo: Path) -> None:  # FBK §2.1, FBK-AC-3, IMD
     assert code == 0, err
     assert doc["label_kind"] == "explicit" and doc["value"] == "disagree" and doc["source"] == "person"
     assert doc["attempt"] == 1 and doc["gate_verdict"] == "ESCALATE" and doc["binding"]["executor"] == "claude"
-    assert len(doc["repo"]) == 32 and doc["workflow"] == "demo" and doc["machine"]
+    assert doc["repo"] is None and doc["workflow"] == "demo" and doc["machine"]  # no origin: null, as on run_segment
     code, agent, _ = cli(repo, None, "label", "demo/L-1", "draft", "--value", "agree", "--json", signals=(CC, False))
     assert code == 0 and agent["source"] == "agent"  # an agent's own label never grades a judge (FBK-B2)
     ledger = (state_root_path(repo) / "ledger.jsonl").read_text().splitlines()

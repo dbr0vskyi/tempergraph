@@ -8,8 +8,6 @@ text, so no request, output or feedback text can reach a label (FBK-AC-3, IMD-AC
 
 from __future__ import annotations
 
-import hashlib
-import json
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -30,14 +28,6 @@ def _ts(text: Any) -> float | None:
         return datetime.fromisoformat(str(text).replace("Z", "+00:00")).timestamp()
     except ValueError:
         return None
-
-
-def _repo_digest(root: Path) -> str | None:
-    """IMD-R1 `repo`: a digest of the normalized remote URL (or the folder name without a remote)."""
-    from tempergraph.observe.sinks import _who
-
-    who = _who(str(root))
-    return hashlib.sha256((who.origin or f"folder:{who.folder}").encode()).hexdigest()[:32]
 
 
 def binding(recs: list[dict[str, Any]], unit: str, attempt: Any) -> dict[str, Any]:
@@ -85,13 +75,14 @@ def label(root: Path, thread: str, gate: str, value: str, caller: dict[str, Any]
     source = "person" if by == "person" else "agent"  # unknown callers and unproven relays never grade (FBK-B2)
     now = now_iso()
     t0, t1 = _ts(g.get("ts")), _ts(now)
-    try:
-        machine = json.loads((home_path() / "machine.json").read_text(encoding="utf-8")).get("machine_id")
-    except (OSError, ValueError):
-        machine = None
+    from tempergraph import identity
+    from tempergraph.git import main_checkout
+
+    machine = identity.machine_id(home_path())
+    repo = identity.repo_id(main_checkout(root.parent))  # the ledger's join keys (IMD-R1), as the runner writes them
     return {"kind": "label", "schema_version": 1, "label_id": uuid.uuid4().hex, "thread": thread,
             "run_id": f"{thread}#{g.get('segment')}", "workflow": workflow,
-            "workflow_version": started.get("workflow_version"), "machine": machine, "repo": _repo_digest(root),
+            "workflow_version": started.get("workflow_version"), "machine": machine, "repo": repo,
             "unit": gate, "attempt": g.get("attempt"), "gate_record": g.get("seq"), "gate_verdict": g.get("verdict"),
             "criterion_id": criterion, "label_kind": "explicit", "value": value, "source": source,
             "origin": "run", "at": now,

@@ -424,7 +424,8 @@ class EngineNodes:
             criteria=tuple({"id": c.id, "mechanical": c.mechanical} for c in u.gate.criteria),
             allow=tuple(self.ctx.spec.allow_commands),
             out_dir=self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "checks" / unit
-            / str(att.get("attempt", 1)), settings=self._check_settings(u))
+            / str(att.get("attempt", 1)), settings=self._check_settings(u),
+            reuse_store=self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "command_runs.jsonl")
         return run_in_worker(u.gate, ctx)
 
     def _check_settings(self, u: UnitSpec) -> dict[str, Any]:

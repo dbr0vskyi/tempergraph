@@ -47,7 +47,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `stats [--month YYYY-MM\|--since <date>] [--source <sink>\|--local] [--sync] [--by …] [--projection] [--live] [--json]` | Per-user monthly run rows ([OBS §2.4](15-observability-and-cost.spec.md)); across machines from a sink ([CST §2.5](34-central-run-stats.spec.md)) | no | no |
 | `stats flush` | Delivers outbox rows to the configured sinks ([CST §2.3](34-central-run-stats.spec.md)) | sink and outbox only | no |
 | `stats sync` | Pulls every directory sink into the fleet copy under the home folder ([CST §2.3](34-central-run-stats.spec.md)) | fleet copy only | no |
-| `store usage\|prune\|export` | Size, retention and export of the local store ([LOS §2.4](33-local-observability-store.spec.md)) | prune and export only | no |
+| `store usage\|prune\|export` (`prune [--older-than <days>] [--keep-failed\|--no-keep-failed] [--dry-run]`) | Size, retention and export of the local store ([LOS §2.4](33-local-observability-store.spec.md)) | prune and export only | no |
 | `hooks add|list|remove|test` | Run lifecycle hooks (§2.2) | add and remove only | no |
 | `improve backlog|propose|trial|aa|open|show` | Proposals and trials ([PRP §2.7](40-improvement-proposals.spec.md)) | per [PRP](40-improvement-proposals.spec.md) | `propose`, `trial`, `aa` |
 | `label <thread> <gate> [--criterion id] [--attempt n] --value agree|disagree`, `labels queue [workflow]` | Enter a label; list judgements to label ([FBK](41-feedback-and-judge-reliability.spec.md)) | `label` only | no |
@@ -85,10 +85,10 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `--caller person\|agent\|pipeline`, `--caller-app <name>` | Declares the caller on any mutating verb; a declaration only lowers trust, and `--caller person` from a marked agent is refused ([PRV §2.3](85-caller-provenance.spec.md)) |
 | `--as-agent` | The same as `--caller agent` |
 | `--relayed` | The decision is a person's, carried by an agent; counted as the person's only with a person turn in the host ([PRV §2.4](85-caller-provenance.spec.md)) |
-| `--pause-before <unit>[.<item>]` | Run and resume: an operator breakpoint before that unit ([FLX §2.5](74-flow-extensions.spec.md)) |
+| `--pause-before <unit>[.<item>]` | Run and resume: an operator breakpoint before that unit ([FLX §2.5](74-flow-extensions.spec.md)); release 2, so release 1 refuses it with exit 2 `not_in_release` |
 | `--schedule <fire_id>` | Set by the schedule tick only, with its fire token; recorded as `schedule` ([TCK §2.3](84-schedule-ticks-and-unattended-fires.spec.md)) |
 | `--parent <orchestration>/<node>[/<item>]` | Set by the orchestration supervisor only; recorded with the run options and shown as `parent` ([ORC §2.8](45-orchestration.spec.md) N1) |
-| `--dry-run` | Self-improvement files nothing; every step still runs |
+| `--dry-run` | Self-improvement files nothing; every step still runs; recorded as `dry_run` on `run_started` and in the run's meta |
 
 `run` also takes `--task-id <id>` (1 to 64 letters, digits, `.`, `_` or `-`) and `--input <k>=<v>` (repeatable). Without a resolver the request resolves by the declared input kind, read-only: `text` and `any` give `t-<first 10 hex of the SHA-256 of the whitespace-normalised request>`, so the same request finds the same thread; `tracker_key` takes the key as the id; `file` gives `f-<stem>-<6 hex of the path>`. An empty request is `needs` with the question `request`. `run --check` prints one JSON document and exits 0 on `ok`, 2 on `needs` or `error`, 1 on `broken` (the workflow or its resolver does not load). Machine output of every verb is JSON with `schema_version`; a run's one-line outcome and its resume command go to standard error.
 
@@ -131,7 +131,7 @@ A hook is an operator-registered command run on a run event (`started`, `unit_en
 
 - Exit codes rather than prose are the stable contract, so a skill or CI job can tell waiting from stopped from budget spent ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)).
 - The `executors` verb makes the honest-maturity rule visible: a capability resting on an unrun probe is shown as projected.
-- Tables of verbs, options and exit codes in the docs are generated from the argument definitions and constants, with a drift test.
+- Tables of verbs, options and exit codes in the docs stay written by hand and are checked against the argument definitions and constants by drift tests: the verb words equal `VERBS`, every built long option is named here, in RST or in PRV, and the exit codes equal [CON §2.9](01-contracts.spec.md).
 
 ## 6. Acceptance criteria
 

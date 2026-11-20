@@ -202,3 +202,10 @@ def test_status_row_rerun_lineage(repo: Path) -> None:  # RRN §2.4, DUR §2.2
     assert [x["thread"] for x in rows_["demo/R-1"]["reruns"]] == ["demo/R-1~r1"] and "rerun_of" not in rows_["demo/R-1"]
     src = rows_["demo/R-1~r1"]["rerun_of"]
     assert src["thread"] == "demo/R-1" and src["unit"] == "review" and src["checkpoint_id"]
+    assert "superseded_by" not in rows_["demo/R-1"]
+    code, _, err = cli(repo, standin("claude", steps=[REVIEW], judges=[judge()]), "rerun", "demo", "R-1",
+                       "--from", "review", "--same-branch")
+    assert code == 0, err
+    rows_ = {r["thread_id"]: r for r in cli(repo, happy(), "status")[1]["threads"]}
+    assert rows_["demo/R-1"]["superseded_by"] == "demo/R-1~r2"
+    assert rows_["demo/R-1"]["reruns"][-1] == {**rows_["demo/R-1"]["reruns"][-1], "same_branch": True}
