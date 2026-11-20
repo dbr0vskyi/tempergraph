@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-20T10:06:34.458Z",
+  "generated_at": "2026-11-20T10:07:49.798Z",
   "threads": [
     {
       "thread_id": "demo/T-1",
@@ -33,6 +33,9 @@
       "executors": {
         "claude": "standin"
       },
+      "settings_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "overridden_keys": [],
+      "settings_stale": false,
       "workspace": {
         "mode": "worktree",
         "path": "/work/repo.worktrees/demo--T-1",

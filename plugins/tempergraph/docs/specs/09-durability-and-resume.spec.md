@@ -48,7 +48,7 @@ def wait(selector: Selector, timeout_s: int) -> WaitOutcome: ...
 | `label` | optional free text given at start, scrubbed, at most 80 chars |
 | `origin` | how the run started: `cli`, `skill`, `batch`, `orchestration`, `self_improvement`, `upgrade` ([UWF](64-upgrade-workflow.spec.md)), `hook`, `ci`, `schedule` ([SCH](83-schedules.spec.md)) or `rerun` |
 | `rerun_of`, `reruns` | the source thread of a rerun, and the reruns made from this thread ([RRN §2.4](81-reruns-and-feedback.spec.md)) |
-| `settings_digest`, `overridden_keys`, `settings_stale` | the thread's resolved settings ([RST §2.7](80-run-settings-and-overrides.spec.md)); `settings_stale` is true when the files now resolve differently from the thread's snapshot |
+| `settings_digest`, `overridden_keys`, `settings_stale` | the thread's resolved settings ([RST §2.7](80-run-settings-and-overrides.spec.md)); `settings_stale` is true when the files now resolve differently from the thread's snapshot, and null while a settings file cannot be read |
 | `parent` | for a run an orchestration started: orchestration id, node id and item ([ORC](45-orchestration.spec.md)) |
 | `schedule` | for a run a schedule started: `schedule_id`, `fire_id`, `slot`, and `declared: true` for a pipeline export ([TCK §2.7](84-schedule-ticks-and-unattended-fires.spec.md)) |
 | `resume_count` | number of resumes so far (the resume chain length) |

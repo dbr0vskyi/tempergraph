@@ -68,6 +68,27 @@ def _pending(workflow: str, tid: str, snap: Snapshot) -> list[dict[str, Any]]:
     return out
 
 
+def _settings(state_root: Path, spec: WorkflowSpec, options: Any) -> dict[str, Any]:
+    """RST §2.7: the thread's digest and overridden keys from its snapshot, and `settings_stale` when the
+    settings files now resolve differently. Read-only; a snapshot it cannot read adds nothing."""
+    if not isinstance(options, dict) or not options.get("settings"):
+        return {}
+    from tempergraph import settings as rst
+    from tempergraph.contracts import RunOptions
+    from tempergraph.store.layout import home_path
+
+    try:
+        opts = RunOptions(settings={k: dict(v) for k, v in options["settings"].items()},
+                          profiles=tuple(options.get("profiles") or ()))
+        then = rst.resolve(spec, opts)
+        out: dict[str, Any] = {"settings_digest": then.digest, "overridden_keys": rst.overridden_keys(then)}
+        files = rst.load_files(state_root, home_path())
+        out["settings_stale"] = None if files.errors else rst.resolve(spec, opts, files).digest != then.digest
+        return out
+    except Exception:  # noqa: BLE001 - a status row never fails on its settings (DUR §4)
+        return {}
+
+
 def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     snap, held = _read(state_root, spec, tid)
     state = classify_snapshot(snap, held)
@@ -78,6 +99,7 @@ def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     for key in RUN_FIELDS:
         if key in run:
             r[key] = run[key]
+    r.update(_settings(state_root, spec, run.get("options")))
     ws = (snap.values.get("workspace") or {})
     if ws:
         r["workspace"] = {k: ws.get(k) for k in ("mode", "path", "branch", "state") if k in ws}

@@ -175,3 +175,16 @@ def test_attention_lists_each_pause_once_oldest_first(repo: Path) -> None:  # CL
     assert first["age_s"] is not None and first["decisions"] == ["proceed", "retry", "back:draft", "stop"]
     code, text, _ = cli(repo, None, "attention")
     assert code == 0 and "tempergraph resume demo T-2" in str(text)
+
+
+def test_status_row_settings_and_stale(repo: Path) -> None:  # RST §2.7
+    paused_run(repo)
+    code, doc, _ = cli(repo, None, "status", "demo/T-1")
+    [row] = doc["threads"]
+    assert code == 0 and len(row["settings_digest"]) == 64 and row["overridden_keys"] == []
+    assert row["settings_stale"] is False
+    (state_root_path(repo) / "config").mkdir(exist_ok=True)
+    (state_root_path(repo) / "config" / "settings.json").write_text(
+        json.dumps({"schema_version": 1, "defaults": {"run.attempt_cap": 9}}))
+    [row] = cli(repo, None, "status", "demo/T-1")[1]["threads"]
+    assert row["settings_stale"] is True
