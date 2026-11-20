@@ -39,6 +39,7 @@ from tempergraph.run.runner import (
     _refuse_settings,
     _reopening,
     _root,
+    join_keys,
     settle_resume,
 )
 from tempergraph.store.layout import NotInRepository, checkpoint_path, ensure_state_root, lock_path, run_dir
@@ -233,6 +234,7 @@ def _rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registr
         _lineage(root, spec, source_task, new, start_at)
         Ledger(path=root / "ledger.jsonl").append({  # the rerun is a steer touch on its source (SUP §2.2)
             "kind": "intervention", "id": uuid.uuid4().hex, "thread_id": src, "workflow": spec.name,
+            "workflow_version": spec.version, **join_keys(root, settings),
             "unit": start_at, "caller": dict(settings.caller), "touches": [{"class": "steer", "action": "rerun"}],
             "pause_kind": "finished" if state is ThreadState.FINISHED else str(state), "decision": f"rerun:{start_at}",
             "wait_s": None, "feedback": bool(feedback), "ruling": settings.ruling,

@@ -58,6 +58,7 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 | 5.1.3 | `run/log.py`, `run/nodes.py`, `run/runner.py` | `cost_so_far` (reported, estimated, completeness) on `gate`, `pause` and `run_exit` ✓; `settings_resolved` ✓ (T6.2); the `supervision` record before `run_exit` ✓ (T6.5) | EVT §2.2, SUP §2.2, RST §2.7 | yes | P2 | ✓ | 2026-11-20 |
 | 5.1.7 | `run/runner.py`, `workspace.py` | The `workspace` record (action, mode, resolved_by, branch, base_commit, reason, counts; the path in the local log only) where a worktree is prepared, reused, attached or kept; `removed` and `foreign` wait for `cleanup: on_finish` (release 2) and the foreign worktree scan | EVT §2.2, WTR §2.6, §2.10 | yes | P2 | ✓ | 2026-11-20 |
 | 5.1.4 | `tests/test_run_log.py` | OBS-B3: a full disk while writing the ledger or the exit file keeps the exit code, and one `engine_error` record of the failure is attempted | OBS-B3 | yes | P1 | ✓ | 2026-11-20 |
+| 5.1.8 | `identity.py`, `run/runner.py`, `run/rerun.py`, `tests/test_identity.py` | IMD-R1 join keys on every `run_segment` and intervention ledger row: `workflow_version`, `machine` (the random id of `machine.json`), `repo` (16 hex of the SHA-256 of the normalized `origin` URL, null without one) | IMD-R1 | yes | P1 | ✓ | 2026-11-20 |
 
 ### T5.2 Checks and command runs
 
@@ -66,7 +67,7 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 | 5.2.1 | `run/commands.py` | Allow-list resolution, the command environment, `run_command` with timeout, tree stop and output file | CHK §2.3–2.4, SEC §2.4 | yes | P1 | ✓ | 2026-11-20 |
 | 5.2.2 | `run/checks.py` | `CheckContext`, git facts, `normalise`, `run_check`; a raising check is an environmental FAIL; a failed check starts no judge (JDG-AC-2) | CHK §2.1–2.2, CON §2.8 | yes | P1 | ✓ | 2026-11-20 |
 | 5.2.3 | `run/check_worker.py`, `tests/test_checks.py` | The check worker: a child engine process that gets the context on stdin, bounded by `check_timeout_s` plus 30 s with a tree stop through the session launcher; a check's prints go to stderr. A raising check is FAIL with `environmental: false` (CHK §4); a worker past its limit is environmental | CHK §2.6, §4, ADR-0019 | yes | P1 | ✓ | 2026-11-20 |
-| 5.2.4 | `run/checks.py` | Mechanical criteria and their findings in the judge prompt ✓; command run reuse across a gate's check and the judge's facts ○ | CHK §2.2, §2.4 | yes | P2 | ○ | |
+| 5.2.4 | `run/checks.py`, `run/check_worker.py`, `run/nodes.py` | Mechanical criteria and their findings in the judge prompt; `ctx.run(..., reuse=True)` reuses a finished run of the thread with the same key (argv, resolved program, `head`, the status listing and the content of changed files, the state root left out), stored in `runs/<workflow>/<task>/command_runs.jsonl`, marked `reused`. Per-prefix `no_reuse_exit_codes` are honoured once allow-list entries carry fields (they are plain prefixes in release 1); a preview's runs join the store with `self-check` | CHK §2.2, §2.3, §2.4 | yes | P2 | ✓ | 2026-11-20 |
 
 ### T5.3 Judge and verdict
 

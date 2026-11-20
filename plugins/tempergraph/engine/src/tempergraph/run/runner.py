@@ -346,6 +346,7 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
             log.write("engine_error", scope="exit_file", error=type(exc).__name__)
         ledger = Ledger(path=root / "ledger.jsonl")
         ledger.append({"kind": "run_segment", "thread_id": tid, "workflow": spec.name,
+                       "workflow_version": spec.version, **join_keys(root, settings),
                        "exit_code": int(outcome.exit_code), "reason": outcome.reason,
                        "cost": cost.to_json(), "origin": settings.origin,
                        "settings_digest": settled.resolved.digest,
@@ -359,6 +360,13 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         return outcome
     finally:
         saver.conn.close()
+
+
+def join_keys(root: Path, settings: RunSettings) -> dict[str, Any]:
+    """IMD-R1: the pseudonymous machine id and repository digest every ledger row carries."""
+    from tempergraph import identity
+
+    return {"machine": identity.machine_id(settings.home), "repo": identity.repo_id(main_checkout(root.parent))}
 
 
 def workspace_record(log: RunLog, ws: Mapping[str, Any]) -> None:
@@ -698,7 +706,7 @@ def intervention(root: Path, spec: WorkflowSpec, task_id: str, touch: tuple[str,
             wait_s = round((datetime.now(datetime.fromisoformat(pause["ts"]).tzinfo)
                             - datetime.fromisoformat(pause["ts"])).total_seconds(), 1)
     row = {"kind": "intervention", "id": uuid.uuid4().hex, "thread_id": thread_id(spec.name, task_id),
-           "workflow": spec.name, "unit": unit, "caller": dict(settings.caller),
+           "workflow": spec.name, "workflow_version": spec.version, **join_keys(root, settings), "unit": unit, "caller": dict(settings.caller),
            "touches": [{"class": "engine", "action": "reopen"}] if engine
            else touches(kind, reason if kind == "stopped" else "", d), "pause_kind": kind,
            "decision": d.word + (f":{d.unit}" if d.unit else ""), "wait_s": wait_s, "feedback": bool(feedback) and not settings.ruling,
