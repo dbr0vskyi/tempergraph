@@ -21,7 +21,6 @@ from tempergraph import executor_compat
 from tempergraph.catalog import Catalog, PackageNotLoaded, from_registry, resolve_request
 from tempergraph.cli import audit as audit_cli
 from tempergraph.cli import author as author_cli
-from tempergraph.cli import improve_review as improve_review_cli
 from tempergraph.cli import install as install_cli
 from tempergraph.cli import observe_cli
 from tempergraph.cli import upgrade as upgrade_cli
@@ -148,12 +147,12 @@ def _parser() -> _Parser:
     author_cli.add_parsers(sub)
     install_cli.add_parsers(sub)
     upgrade_cli.add_parsers(sub)
-    im = sub.add_parser("improve", help="self-improvement: the session review (SRV §2.9)")
-    isub = im.add_subparsers(dest="action", parser_class=_Parser)
-    improve_review_cli.add_review_parser(isub)
     from tempergraph.cli import outcome as outcome_cli
 
     outcome_cli.add_parser(sub, _Parser)
+    from tempergraph.cli import improve as improve_cli
+
+    improve_cli.add_parsers(sub, _Parser)
     return p
 
 
@@ -757,7 +756,6 @@ COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     **observe_cli.COMMANDS,
     "workflows": workflows_cli.cmd_workflows,
     "audit": audit_cli.cmd_audit,
-    "improve": improve_review_cli.cmd_improve,
     "blueprint": author_cli.cmd_blueprint,
     "literals": author_cli.cmd_literals,
     "scaffold": author_cli.cmd_scaffold,
@@ -765,7 +763,16 @@ COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "install": install_cli.cmd_install,
     "upgrade": upgrade_cli.cmd_upgrade,
     "upgrade-check": upgrade_cli.cmd_upgrade,
+    "evals": lambda env, a: _improve().cmd_evals(env, a),
+    "labels": lambda env, a: _improve().cmd_labels(env, a),
+    "improve": lambda env, a: _improve().cmd_improve(env, a),
 }
+
+
+def _improve() -> Any:
+    from tempergraph.cli import improve
+
+    return improve
 
 
 def main(argv: Sequence[str] | None = None, *, catalog: Catalog | None = None, registry: Registry | None = None,

@@ -2,7 +2,7 @@
 
 Model-free and metadata only: statuses and ids, never criterion text from a session. Each criterion's trust is
 computed by `run/outcome_trust.py` (OUT §2.3): a check is `deterministic` only with its must-pass and must-fail
-fixtures, and a judge is `uncalibrated` until calibration accepts it (plan T12).
+fixtures, and a judge is `uncalibrated` until calibration accepts it (JCL §2.5).
 """
 
 from __future__ import annotations
@@ -53,6 +53,9 @@ def build(spec: WorkflowSpec, values: Mapping[str, Any], log_path: Path) -> dict
     check_failed = ((att.get("check") or {}).get("result")) == "FAIL"
     humans = [r for r in _jsonl(log_path) if r.get("kind") == "human" and r.get("unit") == unit]
     reached = bool(att) or judged is not None
+    from tempergraph.improve.calibration import accepted_for
+
+    accepted = accepted_for(spec)  # JCL §2.5: `calibrated` only for an `accepted` outcome judge
     criteria: list[dict[str, Any]] = []
     for c in o.final:
         grader: Any = None
@@ -69,7 +72,7 @@ def build(spec: WorkflowSpec, values: Mapping[str, Any], log_path: Path) -> dict
             status = statuses.get(c.id) or ("UNMET" if check_failed else "not_judged")
             grader = (c.verifier or {}).get("check") if c.verified_by == "check" else {
                 "executor": (judged or {}).get("judge_executor"), "alias": (judged or {}).get("alias")}
-        criteria.append({"id": c.id, "class": c.verified_by or "none", "severity": c.severity, "trust": trust(c, "outcome", spec.package_root),
+        criteria.append({"id": c.id, "class": c.verified_by or "none", "severity": c.severity, "trust": trust(c, "outcome", spec.package_root, accepted),
                          "status": status, "grader": grader})
     intermediate = []
     for name, io in o.intermediate.items():

@@ -6,9 +6,10 @@ claims each ticket, runs the friction judge over the findings' metadata, decides
 rules and files. Its failure never reaches the parent: the parent has exited and its exit code is written.
 
 Release 1 shape: a fixed engine program of one judged session per ticket, not a compiled workflow; the judge
-follows the run's judge executor on the mid-tier alias for 1800 s. The outcome lens is judged only once a
-calibration score exists for the outcome gate (SIL-B7); until then its candidates are recorded `uncalibrated`
-without spending. Like all filing code, this module never opens the evidence file.
+follows the run's judge executor on the mid-tier alias for 1800 s. The outcome lens spends no session: its
+candidates are the final criteria the outcome gate's own judge graded unmet, and they file only while that judge
+is `accepted` by calibration (SIL-B7, JCL); until then they are recorded `uncalibrated`. Like all filing code,
+this module never opens the evidence file.
 """
 
 from __future__ import annotations
@@ -65,27 +66,30 @@ def mode() -> str:
 def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary: Mapping[str, Any], *,
              dry_run: bool, judge_executor: str, home: Path | None = None, operator_review: str | None = None,
              run_cost_usd: float = 0.0, trial: bool = False) -> Path | None:
-    """Writes the ticket when a judged lens fired at this final exit and there is a fault to judge, or when the
-    session review (SRV §2.3) has a depth other than none for this exit."""
+    """Writes the ticket when a judged lens fired at this final exit and there is a fault to judge, when the
+    outcome lens has candidates, or when the session review (SRV §2.3) has a depth other than none."""
     from tempergraph.improve import review
+    from tempergraph.improve.calibration import has_score
     from tempergraph.improve.record import unit_decls
 
     lenses = summary.get("lenses") or {}
     friction = bool(lenses.get("friction")) and bool(summary.get("fault_fingerprints"))
+    outcome = bool(summary.get("outcome_fingerprints"))  # graded by the outcome gate's own judge: no new session
     final = "lenses" in summary  # a final exit (SIL §2.1)
     prob = review.probation(root, spec.name, spec.version)
     depth = review.effective(spec.session_review, operator_review, spec.improvement_mode, prob, trial) \
         if final else "off"
     reason = "trial" if trial else "probation" if prob and spec.improvement_mode != "dev" else \
         "dev" if spec.improvement_mode == "dev" else "signal"
-    if not friction and depth == "off":  # an outcome judge alone spends for nothing until calibrated (SIL-B7)
+    if not (friction or outcome) and depth == "off":
         return None
     tid = uuid.uuid4().hex[:16]
     ticket = {"schema_version": 1, "ticket_id": tid, "thread": thread, "workflow": spec.name,
               "workflow_version": spec.version, "task_id": task_id, "state_root": str(root),
               "issue_repository": spec.issue_repository, "mode": spec.improvement_mode, "dry_run": dry_run,
               "executor": judge_executor, "fingerprints": list(summary.get("fingerprints") or []),
-              "lenses": {"friction": friction, "outcome": False}, "at": now_iso(),
+              "lenses": {"friction": friction, "outcome": outcome},
+              "outcome_calibrated": outcome and has_score(spec, "outcome", root), "at": now_iso(),
               "review": depth, "review_reason": reason, "run_cost_usd": round(float(run_cost_usd or 0.0), 6),
               "units": unit_decls(spec) if depth != "off" else {}}
     path = tickets_dir(home or home_path()) / f"{tid}.json"
@@ -189,7 +193,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     wf, task, thread = str(t["workflow"]), str(t["task_id"]), str(t["thread"])
     log = loop_log(root, wf, task)
     mine = _latest(read_findings(root, wf, task), set(t.get("fingerprints") or ()))
-    faults = [f for f in mine if f.get("class") == "fault"]
+    faults = [f for f in mine if f.get("class") == "fault" and f.get("lens") != "outcome"]
     append_jsonl(log, {"ts": now_iso(), "kind": "loop_started", "ticket": t.get("ticket_id"),
                        "lenses": t.get("lenses"), "findings": len(mine)})
     judged: dict[str, dict[str, Any]] = {}
@@ -210,7 +214,13 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
                            "alias": ALIAS, "ok": res.ok, "parsed": bool(judged), "usage": dataclasses.asdict(res.usage),
                            "session_id": res.session_id})
     cands: list[filing.Candidate] = []
-    for f in mine if (t.get("lenses") or {}).get("friction") else ():
+    for f in mine:
+        if f.get("lens") == "outcome":  # SIL-B7: files only once the outcome gate's judge is `accepted` (JCL)
+            cands.append(filing.Candidate(finding=f, lens="outcome", calibrated=bool(t.get("outcome_calibrated")),
+                                          request_digest=f.get("request_digest")))
+            continue
+        if not (t.get("lenses") or {}).get("friction"):  # a review-only ticket files no friction finding
+            continue
         j = judged.get(str(f.get("fingerprint")))
         cands.append(filing.Candidate(finding=f, lens="friction", confidence=j["confidence"] if j else None,
                                       attributed=bool(j and j["attributed"]), request_digest=f.get("request_digest")))

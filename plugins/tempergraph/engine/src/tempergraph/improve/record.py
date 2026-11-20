@@ -21,10 +21,12 @@ from tempergraph.contracts import WorkflowSpec
 from tempergraph.improve import causes as causemod
 from tempergraph.improve import digest as digestmod
 from tempergraph.improve import lenses
+from tempergraph.model import flow
 from tempergraph.security.scrub import clip, scrub
 from tempergraph.store.layout import run_dir
 
 FINAL_EXITS = frozenset({0, 4, 5})  # not a pause (exit 3)
+OUTCOME_FAILED = frozenset({"UNMET", "PARTIAL"})  # a judge's grade; a person's `declined` is pushback
 EVIDENCE_CHARS = 32_000
 
 
@@ -69,6 +71,13 @@ def unit_decls(spec: WorkflowSpec) -> dict[str, dict[str, Any]]:
                      "criteria": [{"id": c.id, "text": c.text} for c in u.gate.criteria],
                      "brief": clip(brief, 4000)}
     return out
+def read_evidence(root: Path, workflow: str, task_id: str) -> dict[str, Any]:
+    """A run's local evidence record, or {} when absent or unreadable (the proposer's reading set, PRP §5)."""
+    try:
+        doc = json.loads(evidence_path(root, workflow, task_id).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return doc if isinstance(doc, dict) else {}
 
 
 def read_findings(root: Path, workflow: str, task_id: str) -> list[dict[str, Any]]:
@@ -152,6 +161,11 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
                                   units=decls, judged=passed)
     except Exception:  # noqa: BLE001
         digests = []
+    if int(row.get("exit_code") or 0) in FINAL_EXITS:  # the outcome lens's candidates (SIL §2.2, B3, B7)
+        for c in (row.get("outcome") or {}).get("criteria") or ():
+            if c.get("class") == "judge" and c.get("status") in OUTCOME_FAILED:
+                found.append({"unit": flow.OUTCOME_UNIT, "cause": f"outcome_unmet:{c.get('id')}", "count": 1,
+                              "lens": "outcome"})
     keys = {k: row.get(k) for k in ("workflow", "workflow_version", "machine", "repo", "settings_digest",
                                     "overridden_keys")}
     req = str(((values.get("request") or {}).get("inputs") or {}).get("request") or "")
@@ -167,6 +181,7 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
                       "remedy": c.remedy, "fingerprint": fingerprint(side, spec.name, f["cause"], f["unit"]),
                       "at": at, "request_digest": digest,
                       **({"executor_version": f["executor_version"]} if f.get("executor_version") else {}),
+                      **({"lens": f["lens"]} if f.get("lens") else {}),
                       **({"rerun_of": rerun_of} if rerun_of else {})})
     if lines:  # one document per thread; each segment appends its findings (SIL §2.1)
         doc = {"schema_version": 1, "thread": thread,
@@ -177,7 +192,11 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
                                "sides": sorted({x["side"] for x in lines if x["class"] == "fault"}),
                                "count": len(lines),
                                "fingerprints": sorted({x["fingerprint"] for x in lines}),
-                               "fault_fingerprints": sorted({x["fingerprint"] for x in lines if x["class"] == "fault"})}
+                               "fault_fingerprints": sorted({x["fingerprint"] for x in lines
+                                                             if x["class"] == "fault" and x.get("lens") != "outcome"}),
+                               "outcome_fingerprints": sorted({x["fingerprint"] for x in lines
+                                                               if x.get("lens") == "outcome"})}
     if int(row.get("exit_code") or 0) in FINAL_EXITS:
-        summary["lenses"] = lenses.decide(spec, root, thread, lines, row, seg)
+        summary["lenses"] = lenses.decide(spec, root, thread, [x for x in lines if x.get("lens") != "outcome"],
+                                          row, seg)
     return summary

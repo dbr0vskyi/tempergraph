@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -117,3 +118,49 @@ def test_a_failing_ticket_never_stops_the_next(repo: Path, monkeypatch: pytest.M
     (folder / "bad.json").write_text("{nope")
     out = child.drain(registry=registry(standin("claude")), host=MemoryCodeHost)
     assert out == [{"ticket": "bad", "error": "JSONDecodeError"}] and not list(folder.iterdir())
+
+
+def outcome_ticket(root: Path, n: int, calibrated: bool) -> dict[str, Any]:
+    from tempergraph.improve import record
+
+    fp = record.fingerprint("workflow", "demo", "outcome_unmet:c-1", "outcome")
+    f = {"kind": "finding", "thread": f"demo/O-{n}", "workflow": "demo", "unit": "outcome", "lens": "outcome",
+         "cause": "outcome_unmet:c-1", "class": "fault", "side": "workflow", "count": 1, "remedy": "r",
+         "fingerprint": fp, "at": datetime.now(UTC).isoformat(timespec="seconds"), "request_digest": f"r{n}", "machine": "m"}
+    path = record.findings_path(root, "demo", f"O-{n}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"schema_version": 1, "thread": f"demo/O-{n}", "findings": [f]}))
+    return {"ticket_id": f"t{n}", "thread": f"demo/O-{n}", "workflow": "demo", "task_id": f"O-{n}",
+            "state_root": str(root), "issue_repository": "team/notes", "dry_run": False, "executor": "claude",
+            "fingerprints": [fp], "lenses": {"friction": False, "outcome": True}, "outcome_calibrated": calibrated}
+
+
+def test_outcome_lens_files_only_when_calibrated_and_patterned(tmp_path: Path) -> None:  # SIL-B3, B7
+    root = tmp_path / ".tempergraph"
+    host = MemoryCodeHost()
+    reg = registry(standin("claude"))  # no session is scripted: the outcome gate's judge already graded it
+    out = child.process(outcome_ticket(root, 1, calibrated=False), reg, host)
+    assert [r["reason"] for r in out["results"]] == ["uncalibrated"] and not host.issues
+    out = child.process(outcome_ticket(root, 2, calibrated=True), reg, host)
+    assert [r["reason"] for r in out["results"]] == ["pattern_not_met"] and not host.issues  # two runs so far
+    out = child.process(outcome_ticket(root, 3, calibrated=True), reg, host)
+    assert [r["op"] for r in out["results"]] == ["filed"] and host.issues[0]["repo"] == "team/notes"
+    out = child.process(outcome_ticket(root, 4, calibrated=True), reg, host)
+    assert [r["op"] for r in out["results"]] == ["commented"] and len(host.issues) == 1
+
+
+def test_hand_off_carries_calibration(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from tempergraph.improve import calibration
+
+    from .fixtures.workflows import two_step
+
+    monkeypatch.setattr(calibration, "has_score", lambda spec, gate, root=None: gate == "outcome")
+    summary = {"lenses": {"friction": False}, "fault_fingerprints": [], "outcome_fingerprints": ["abc"],
+               "fingerprints": ["abc"]}
+    p = child.hand_off(tmp_path, two_step(), "T-1", "demo/T-1", summary, dry_run=False, judge_executor="claude",
+                       home=tmp_path / "home")
+    assert p is not None and json.loads(p.read_text())["outcome_calibrated"] is True
+    none = {"lenses": {"friction": True}, "fault_fingerprints": [], "outcome_fingerprints": [], "fingerprints": []}
+    quiet = dataclasses.replace(two_step(), session_review="off")  # else a dev run's review writes a ticket
+    assert child.hand_off(tmp_path, quiet, "T-2", "demo/T-2", none, dry_run=False, judge_executor="claude",
+                          home=tmp_path / "home") is None

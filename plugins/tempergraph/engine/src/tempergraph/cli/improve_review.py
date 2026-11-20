@@ -86,10 +86,3 @@ def cmd_review(env: Any, a: argparse.Namespace) -> int:
            "cost": got["cost"], **({} if a.dry_run else {"sessions": review.show(root, spec.name, task)["sessions"]})}
     return out(doc)
 
-
-def cmd_improve(env: Any, a: argparse.Namespace) -> int:
-    """Release 1's `improve` verbs built here: `review` (the proposal verbs join from PRP)."""
-    if getattr(a, "action", None) == "review":
-        return cmd_review(env, a)
-    env.err.write("tempergraph: improve takes review (SRV §2.9)\n")
-    return int(ExitCode.USAGE)

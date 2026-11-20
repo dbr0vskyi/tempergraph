@@ -128,7 +128,7 @@ def writes_files(spec: WorkflowSpec) -> bool:
 
 
 def resolve_workspace(spec: WorkflowSpec, target: Path, requested: str | None = None, *, task_id: str = "",
-                      prefix: str = BRANCH_PREFIX) -> WorkspacePlan:
+                      prefix: str = BRANCH_PREFIX, base: str = "head") -> WorkspacePlan:
     """WTR §2.2 and §2.5 for the release-1 values; pure and model-free (it reads git, writes nothing)."""
     req = requested or spec.workspace or "auto"
     if req not in ("auto", "worktree", "in_place"):
@@ -155,6 +155,20 @@ def resolve_workspace(spec: WorkflowSpec, target: Path, requested: str | None = 
         raise WorkspaceRefused("base_unresolved", "the main checkout has no commit to start a worktree from")
     cur = branch(main)
     base_branch = cur if cur and cur != "HEAD" else _default_branch(main)
+    base_ref = "head"
+    if base.startswith("ref:"):  # WTR §2.5: a trial or eval case starts at its own commit (release 1 for trials)
+        name = base[4:]
+        if not name or not is_safe_ref(name) or name.startswith("-"):
+            raise WorkspaceRefused("base_unresolved", f"run.worktree.base {base!r} is not a valid ref")
+        commit = git(["rev-parse", "--verify", "--quiet", "--end-of-options", f"{name}^{{commit}}"], main,
+                     check=False).strip()
+        if not commit:
+            raise WorkspaceRefused("base_unresolved", f"run.worktree.base {base!r} does not resolve to a commit")
+        local = git(["rev-parse", "--verify", "--quiet", f"refs/heads/{name}"], main, check=False).strip()
+        head, base_ref = commit, base
+        base_branch = name if local else _default_branch(main)
+    elif base != "head":
+        raise WorkspaceRefused("base_unresolved", f"run.worktree.base {base!r}: release 1 takes head or ref:<name>")
     dirty = [ln for ln in git(["status", "--porcelain=v1"], main, check=False).splitlines()
              if ".tempergraph/" not in ln]
     if dirty:
@@ -164,7 +178,7 @@ def resolve_workspace(spec: WorkflowSpec, target: Path, requested: str | None = 
         raise WorkspaceRefused("branch_invalid", f"derived branch {br!r} is not a valid ref")
     path = sibling_root(main) / flat_name(spec.name, task_id)
     return WorkspacePlan(mode="worktree", requested=req, resolved_by=by, main=main, path=path, root_kind="sibling",
-                         branch=br, base_ref="head", base_commit=head, base_branch=base_branch,
+                         branch=br, base_ref=base_ref, base_commit=head, base_branch=base_branch,
                          warnings=tuple(warnings))
 
 

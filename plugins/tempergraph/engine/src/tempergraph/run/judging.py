@@ -61,6 +61,21 @@ class JudgeInputs:
     visit_reason: str = ""
 
 
+def brief_digest(stance: str, brief: str) -> str:
+    """FBK §2.1, JCL §2.3 binding field: the judge's stance and brief as the judge reads them."""
+    import hashlib
+
+    return hashlib.sha256(json.dumps([stance.strip(), brief.strip()]).encode()).hexdigest()[:16]
+
+
+def criteria_digest(criteria: Sequence[Criterion]) -> str:
+    """FBK §2.1, JCL §2.1 binding field: the criterion texts, check methods and severities a judge grades."""
+    import hashlib
+
+    rows = [[c.id, c.text, c.check_method, c.severity] for c in criteria]
+    return hashlib.sha256(json.dumps(rows).encode()).hexdigest()[:16]
+
+
 def _criterion_line(i: int, c: Criterion, check: CheckResult | None) -> str:
     line = f"{i}. [{c.id or '-'}] ({c.severity}) {c.text}"
     if c.check_method:
