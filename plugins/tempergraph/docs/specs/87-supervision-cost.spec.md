@@ -41,7 +41,7 @@ Writers, by host:
 |---|---|---|
 | The tempergraph plugin's Claude Code hooks ([SHL §2.2](19-plugin-shell.spec.md)) | all | `SessionStart` → `session`; `UserPromptSubmit` → `person_turn`; `PostToolUse` on `Bash` whose command starts with the shim name → `engine_call`; `Stop` and `SubagentStop` → `usage` lines read from the transcript since the last offset, numbers only; `SessionEnd` → `end` |
 | `supervision log` (§2.6) | all but `person_turn` | An application on the Agent SDK or the Messages API, or a wrapper around another host, pipes its own entries; an SDK application may also run the same hook logic through the SDK's hooks |
-| Nobody | — | The orchestration supervisor and a scripted pipeline call no model: their supervision cost is `measured_zero` by construction (contract C16), with no journal |
+| Nobody | — | The orchestration supervisor, the schedule tick and a scripted pipeline call no model: their supervision cost is `measured_zero` by construction (contracts C16 and C18), with no journal |
 
 A hook's failure, a full disk or a malformed transcript line costs that entry only; the host call it observed is never changed, delayed past 2 s or refused (contract C2). `observe.supervision = off` in the user config turns every write off; the next run records once that supervision is not measured.
 
@@ -55,7 +55,7 @@ The supervising host is not the step executor: a run whose steps execute on Anti
 | Agent SDK application | SDK hooks or `supervision log` | per-message usage; `total_cost_usd` on the result message | the application's own, if any | tokens and session cost reported |
 | Messages API application | `supervision log` | `usage` on each response | the application's own, if any | tokens reported, cost estimated |
 | Antigravity session | not available until P-SUP-5 | tokens, if its hooks expose them (P-SUP-5) | not available | `unmeasured` until probed |
-| Orchestration supervisor, scripted pipeline | — | — | — | `measured_zero` |
+| Orchestration supervisor, schedule tick, scripted pipeline | — | — | — | `measured_zero` |
 | `unknown` caller ([PRV §2.3](85-caller-provenance.spec.md)) | — | — | — | `unmeasured` |
 
 ### 2.4 Attribution

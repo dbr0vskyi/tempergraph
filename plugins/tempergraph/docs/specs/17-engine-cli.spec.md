@@ -3,7 +3,7 @@ title: Engine CLI
 type: component
 status: review
 prefix: CLI
-adrs: [0015, 0021, 0022, 0027, 0028, 0070, 0073, 0085, 0087]
+adrs: [0015, 0021, 0022, 0027, 0028, 0070, 0073, 0085, 0087, 0095, 0096]
 ---
 
 # Engine CLI
@@ -33,6 +33,8 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `executors [--probe]` | Registered executors, capabilities, CLI versions, probe facts | no | no |
 | `batch <workflow> <targets…> [-k N]` | Many child runs, as a one-node orchestration ([ADR-0038](../adr/0038-batch-is-a-one-node-orchestration.adr.md)) | yes | yes |
 | `orchestrate validate\|plan\|start\|status\|wait\|answer\|edit\|stop\|resume\|list\|report …` | A graph of runs ([ORC §2.6](45-orchestration.spec.md)) | start, answer, edit, stop, resume | start, answer, resume |
+| `schedule parse\|add\|list\|show\|history\|runs\|edit\|pause\|resume\|skip\|fire\|remove\|tick …`, `schedule loop [--detach\|--stop]`, `schedule trigger install\|status\|remove`, `schedule export <id> --for <system>` | Run a workflow or a saved orchestration once or on a recurrence, given in an exact format (ISO 8601, RFC 5545, cron) or optionally in words, echoed back in exact form before it is saved ([SCH §2.7](83-schedules.spec.md)); the OS-agnostic tick, its portable loop and optional trigger adapters, pipeline export ([TCK](84-schedule-ticks-and-unattended-fires.spec.md)) | all but `parse`, `list`, `show`, `history`, `runs`, `trigger status`, `export` | `tick` and `fire` only |
+| `attention [--json]` | Every item waiting on a person under the state roots of the machine index, oldest first, with its answering command; schedule items included ([ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md), [TCK §2.7](84-schedule-ticks-and-unattended-fires.spec.md)) | no | no |
 | `stop <selector> [--drain\|--now] [--caller …] [--relayed]` | Drain a running run (no new attempt or unit; ends `unfinished`, exit 4) or, with `--now`, end its open session at once; resumable either way. Owned by spec 32 (RCT §2) of the run-control design; needed by [ORC §2.8](45-orchestration.spec.md) N3 | yes | no |
 | `worktree list [--all] [--json]`, `worktree path <thread>`, `worktree prune [--thread <t>] [--finished] [--older-than <days>] [--apply]` | Engine worktrees: list, a thread's path, removal of clean ones ([WTR §2.11](82-worktree-mode.spec.md)) | `prune --apply` only | no |
 | `update [--check] [--dry-run] [--json] [--with …] [--rollback] [--prune-engines]` | Install a release beside the current engine and switch to it; extras, shim, home layout, manifest reconcile; `--check` is read-only ([UPD](60-engine-update.spec.md)) | yes, except `--check` | no |
@@ -77,6 +79,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `--as-agent` | The same as `--caller agent` |
 | `--relayed` | The decision is a person's, carried by an agent; counted as the person's only with a person turn in the host ([PRV §2.4](85-caller-provenance.spec.md)) |
 | `--pause-before <unit>[.<item>]` | Run and resume: an operator breakpoint before that unit ([FLX §2.5](74-flow-extensions.spec.md)) |
+| `--schedule <fire_id>` | Set by the schedule tick only, with its fire token; recorded as `schedule` ([TCK §2.3](84-schedule-ticks-and-unattended-fires.spec.md)) |
 | `--parent <orchestration>/<node>[/<item>]` | Set by the orchestration supervisor only; recorded with the run options and shown as `parent` ([ORC §2.8](45-orchestration.spec.md) N1) |
 | `--dry-run` | Self-improvement files nothing; every step still runs |
 
@@ -84,7 +87,7 @@ Option values select constants or are checked numbers; typed text never reaches 
 
 ### 2.2 Lifecycle hooks
 
-A hook is an operator-registered command run on a run event (`started`, `unit_entered`, `gate_verdict`, `paused`, `resumed`, `stop_requested`, `stalled`, `finished`, `failed`; [EVT §2.6](30-run-events.spec.md)) or an orchestration event (`orchestration_attention`, `orchestration_finished`; [ORC](45-orchestration.spec.md)). `hooks add <event> -- <argv…>` stores the argv list in the operator's config under the state root; the engine runs it as a detached child with a hand-off ticket naming a facts file, never with run text on argv ([SEC §2.1](14-security.spec.md)). A hook's failure is recorded and never changes the run or its exit code (contract C2). `hooks test <event>` runs it once against a fixture facts file. The engine ships no hook; a tracker integration is a separate plugin that registers one.
+A hook is an operator-registered command run on a run event (`started`, `unit_entered`, `gate_verdict`, `paused`, `resumed`, `stop_requested`, `stalled`, `finished`, `failed`; [EVT §2.6](30-run-events.spec.md)) or an orchestration event (`orchestration_attention`, `orchestration_finished`; [ORC](45-orchestration.spec.md)), or a schedule event (`schedule_fired`, `schedule_missed`, `schedule_refused`, `schedule_paused`; [SCH §2.8](83-schedules.spec.md)), so a notifier can reach a person about an unattended run. `hooks add <event> -- <argv…>` stores the argv list in the operator's config under the state root; the engine runs it as a detached child with a hand-off ticket naming a facts file, never with run text on argv ([SEC §2.1](14-security.spec.md)). A hook's failure is recorded and never changes the run or its exit code (contract C2). `hooks test <event>` runs it once against a fixture facts file. The engine ships no hook; a tracker integration is a separate plugin that registers one.
 
 ## 3. Behaviours
 
