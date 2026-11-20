@@ -38,7 +38,10 @@ class LinkBuilder:
     def create(self, python: str, env: Path) -> None:
         self.calls.append("create")
         (env / "bin").mkdir(parents=True)
-        (env / "bin" / "python").symlink_to(sys.executable)
+        # A wrapper, not a symlink: a symlinked venv interpreter in another folder loses the venv's site-packages.
+        py = env / "bin" / "python"
+        py.write_text(f'#!/bin/sh\nexec "{sys.executable}" "$@"\n', encoding="utf-8")
+        py.chmod(0o755)
         if self.fail == "create":
             raise envmod.InstallFailed("venv failed (1)")
 
