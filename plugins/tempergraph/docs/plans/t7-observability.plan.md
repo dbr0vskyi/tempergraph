@@ -109,6 +109,7 @@ Split with the T5 and T6 owner: the run-path side of T7.5 (touch classes, the `s
 
 ## 3. Hand-off notes
 
+- **Status row fields handed over by T6:** `settings_digest`, `overridden_keys` and `settings_stale` (RST §2.7; T6 row 6.2.5) and `rerun_of` and `reruns` (RRN §2.4, from `run.meta.rerun_of` and the source's `lineage.json`) are filled in `durability/status.py`; `tests/test_reports.py` holds their tests.
 - **Seen while testing, fixed by T5:** after a trip back from `review` to `draft`, the next `review` attempt used to write no `unit_entered` record and keep visit 1, and a trip back wrote `entered_from` as the bare unit name. T5 now opens a new visit entered by `proceed` and writes `back:<unit>`; `tests/test_detail.py` holds the corrected document (RDD-B3 for both units). The reader still maps a bare unit name to `back:<unit>` for logs written before the fix.
 - The monitor mod's fixtures (`plugins/tempergraph-monitor/tests/fixtures/`) are written from this track's documents by `make_fixtures.py`; `test_monitor_fixtures_match_the_engine` fails when the engine's document shape moves away from them. The monitor's own build is the [T10 plan](t10-monitor.plan.md).
 - `status --detail` reads the run's evidence lines from the checkpoint, so they are local only and never in a published document ([SEC §2.3](../specs/14-security.spec.md)).

@@ -89,6 +89,23 @@ def _settings(state_root: Path, spec: WorkflowSpec, options: Any) -> dict[str, A
         return {}
 
 
+def _lineage(state_root: Path, workflow: str, tid: str, run: Mapping[str, Any]) -> dict[str, Any]:
+    """RRN §2.4: the source of a rerun (from the thread's state) and the reruns made from it (`lineage.json`)."""
+    out: dict[str, Any] = {}
+    src = run.get("rerun_of") or (run.get("meta") or {}).get("rerun_of")
+    if isinstance(src, dict):
+        out["rerun_of"] = {k: src.get(k) for k in ("thread", "unit", "checkpoint_id", "workflow_version")}
+    try:
+        doc = json.loads((run_dir(state_root, workflow, split_thread(tid)[1]) / "lineage.json").read_text("utf-8"))
+        made = [{"thread": x.get("thread"), "from": x.get("from"), "at": x.get("at")}
+                for x in doc.get("reruns") or [] if isinstance(x, dict)]
+    except (OSError, ValueError, AttributeError):
+        made = []
+    if made:
+        out["reruns"] = made
+    return out
+
+
 def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     snap, held = _read(state_root, spec, tid)
     state = classify_snapshot(snap, held)
@@ -100,6 +117,7 @@ def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
         if key in run:
             r[key] = run[key]
     r.update(_settings(state_root, spec, run.get("options")))
+    r.update(_lineage(state_root, spec.name, tid, run))
     ws = (snap.values.get("workspace") or {})
     if ws:
         r["workspace"] = {k: ws.get(k) for k in ("mode", "path", "branch", "state") if k in ws}

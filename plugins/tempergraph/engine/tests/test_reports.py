@@ -188,3 +188,17 @@ def test_status_row_settings_and_stale(repo: Path) -> None:  # RST §2.7
         json.dumps({"schema_version": 1, "defaults": {"run.attempt_cap": 9}}))
     [row] = cli(repo, None, "status", "demo/T-1")[1]["threads"]
     assert row["settings_stale"] is True
+
+
+def test_status_row_rerun_lineage(repo: Path) -> None:  # RRN §2.4, DUR §2.2
+    from .test_cli import happy
+    from .test_rerun import finished
+
+    finished(repo, "R-1")
+    code, _, err = cli(repo, standin("claude", steps=[REVIEW], judges=[judge()]), "rerun", "demo", "R-1",
+                       "--from", "review")
+    assert code == 0, err
+    rows_ = {r["thread_id"]: r for r in cli(repo, happy(), "status")[1]["threads"]}
+    assert [x["thread"] for x in rows_["demo/R-1"]["reruns"]] == ["demo/R-1~r1"] and "rerun_of" not in rows_["demo/R-1"]
+    src = rows_["demo/R-1~r1"]["rerun_of"]
+    assert src["thread"] == "demo/R-1" and src["unit"] == "review" and src["checkpoint_id"]
