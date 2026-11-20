@@ -312,7 +312,7 @@ Shared by [PRV](85-caller-provenance.spec.md), [SUP](86-supervision-metrics.spec
 
 ### 2.14 Workflow packages and outcomes
 
-Shared by PKG, OUT, AUT, SCF, WFM, CMP, HUM, SIL and PRP.
+Shared by PKG, OUT, AUT, SCF and their readers.
 
 | Type | Fields | Owner of the rules |
 |---|---|---|
