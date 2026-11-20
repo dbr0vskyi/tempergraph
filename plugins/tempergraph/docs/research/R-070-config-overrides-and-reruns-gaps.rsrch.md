@@ -58,6 +58,7 @@ The owner asked on 2026-11-20 whether the engine design lets a person override a
 | F24 | The orchestration supervisor re-opens infra failures and re-runs by node identity (ORC-B9, ORC-B13); `orchestrate answer` passes a decision and feedback. It has no form for rerunning a finished node from a unit. | confirmed (S4) |
 | F25 | Every retry starts a fresh session; a self-check that resumes the session would continue an agent's conversation instead. Session continuation is not declared by every executor (the Messages API executor owns its loop; Antigravity's resume is unprobed). | supported (S4; R-002, R-003) |
 | F26 | Thread ids are `<workflow>/<task_id>` and a fresh start on a used id is refused (C7). A rerun therefore needs a new id with a stated link to its source, or it collides with the source thread. | confirmed (S4) |
+| F27 | Declared tools cannot be widened for a run, and a failed attempt that met a refused tool spends a retry that meets the same refusal. Tool access is a leading cause of friction (R-050 C4), and without a run-level grant an operator can only widen permissions by hand. | confirmed (S4) |
 
 ## Conclusions
 
@@ -98,6 +99,7 @@ The owner asked on 2026-11-20 whether the engine design lets a person override a
 | Back to an unlisted earlier unit | no | `rewind:<unit>`, a person's decision |
 | Rerun a finished run from a unit | no | `rerun --from <unit>`: a new linked thread |
 | Rerun with other settings | executor only | any setting, at resume or rerun |
+| Allow a tool, skill, MCP tool or command a step lacked | edit the package and start again | `--grant`, `--allow-command` on run, resume or rerun; a `tool_access` pause offers them (RST §2.8, ADR-0080) |
 
 ## Open questions
 

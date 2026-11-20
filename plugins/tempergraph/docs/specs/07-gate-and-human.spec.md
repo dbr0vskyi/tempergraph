@@ -30,6 +30,7 @@ class PausePayload: kind: Literal["escalation", "budget", "approval", "event_wai
 | A workflow escalation rule | escalation |
 | Retry or loop budget spent on a gate set to `ask` | budget |
 | A check FAIL marked environmental (no retry can fix it) | escalation |
+| A failed or blocked attempt that could not reach a tool, skill, MCP server or command (cause `tool_access`); the payload lists the refused names and the `--grant` or `--allow-command` that fixes each ([RST §2.8](80-run-settings-and-overrides.spec.md)) | escalation |
 | An upstream claim the judge could not confirm; a defect attributed outside the allowed targets | escalation |
 | A pass on a gate with `approval`, or a step named by the operator's approval option | approval |
 | A `wait` unit | event_wait |

@@ -13,7 +13,7 @@
 
 ## Decision
 
-We will make only these settable: executor and model choices, session options, limits, budgets and caps, approvals and breakpoints added, enforcement tightened, workspace mode, the audit rate, a switch's arm, and workflow-declared settings ([RST §2.2](../specs/80-run-settings-and-overrides.spec.md)). Criteria, checks, the presence of a judge, judge tools and views, independence, flow and back targets, prompts and declared step tools are not settings; an override that names them is refused with `not_a_setting`. `approve`, `enforce_tools` and `strict_permissions` are tighten-only. Changing the verification surface is a workflow change, made in the package and reviewed.
+We will make only these settable: executor and model choices, session options, limits, budgets and caps, approvals and breakpoints added, enforcement tightened, workspace mode, the audit rate, a switch's arm, workflow-declared settings, and a person's recorded tool grants that widen a step's tools or a judge's read-only views ([RST §2.2, §2.8](../specs/80-run-settings-and-overrides.spec.md), [ADR-0080](0080-a-person-may-grant-a-step-tools-for-a-run.adr.md)). Criteria, checks, the presence of a judge, the judge's independence and write-free view, flow and back targets and prompts are not settings; an override that names them is refused with `not_a_setting`. `approve`, `enforce_tools` and `strict_permissions` are tighten-only. Changing the verification surface is a workflow change, made in the package and reviewed.
 
 ## Options considered
 

@@ -3,7 +3,7 @@ title: Run settings and overrides
 type: component
 status: review
 prefix: RST
-adrs: [0070, 0071, 0072, 0008]
+adrs: [0070, 0071, 0072, 0080, 0008]
 ---
 
 # Run settings and overrides
@@ -12,7 +12,7 @@ adrs: [0070, 0071, 0072, 0008]
 
 Every value that decides how much a run may spend, how long it may take, how often it may repeat, which executor and model do the work, and which workflow-declared switch is taken is a **run setting**: a key in one engine catalog (§2.2), set at a **scope** (the run, all steps, all judges, one unit, one judge, one council member, chair or contest slot, one script) on one of a fixed list of **layers** (§2.3), from a flag to a machine-wide default. The engine resolves every key the same way, validates every override before spend, snapshots the result on the thread, reapplies it on resume, and records each value with its source ([ADR-0070](../adr/0070-one-catalog-of-run-settings-over-fixed-layers.adr.md), [R-070](../research/R-070-config-overrides-and-reruns-gaps.rsrch.md)).
 
-What verifies the work is not a setting: criteria, checks, the presence of a judge, judge tools and views, flow targets, back targets, prompts and declared tools cannot be overridden ([ADR-0071](../adr/0071-overrides-never-change-what-verifies-the-work.adr.md)). The model and timeout orders of [CON §2.4](01-contracts.spec.md) and [BUD §2.1](08-budgets-and-failures.spec.md) are instances of this spec's order.
+What verifies the work is not a setting: criteria, checks, the presence of a judge, the judge's independence, flow targets, back targets and prompts cannot be overridden ([ADR-0071](../adr/0071-overrides-never-change-what-verifies-the-work.adr.md)). Declared tools are the one part of a step a person may widen for a run, by a recorded **tool grant** (§2.9): a step that failed or paused because it could not reach a tool, a skill, an MCP server or a command is resumed with the grant instead of an edit of the package ([ADR-0080](../adr/0080-a-person-may-grant-a-step-tools-for-a-run.adr.md)). The model and timeout orders of [CON §2.4](01-contracts.spec.md) and [BUD §2.1](08-budgets-and-failures.spec.md) are instances of this spec's order.
 
 ## 2. Contract
 
@@ -73,6 +73,9 @@ A map item has no scope of its own: items share their unit's settings, and a per
 | `audit_rate` | run | float 0–1 | 0 | [JDG-B7](05-judge-and-verdict.spec.md) |
 | `audit_executor` | run | registered executor | the gate judge's | |
 | `<name>` | settings | the declared kind (§2.5) | the declared default | |
+| `tools.add` | steps, unit, slot, chair | list of `ToolCapability` ([CON §2.5](01-contracts.spec.md)), including `mcp:<server>/<tool>` and `skill:<plugin>:<name>` | none | Widening; §2.8. Members and the chair take read-only capabilities only |
+| `commands.add` | steps, unit, slot, `before:<n>`, `after:<n>` | list of command prefixes | none | Widening; adds the prefix to the step and to the run's allow-list; §2.9 |
+| `views.add` | judge | list of read-only `ToolCapability` from the view catalog | none | Widening a judge's read view; §2.8 |
 
 Run options that are not settings stay flags only: `--alias`, `--label`, `--parent`, `--as-agent`, `--pause-before`, `--dry-run` ([CLI §2.1](17-engine-cli.spec.md)).
 
@@ -163,7 +166,30 @@ A changed value meets the counters already spent as follows:
 | `attempt_start`, `agent_run` | As today | each value already recorded carries its layer and `ref` |
 | Status row, stats row, ledger row | As today | add `settings_digest` and `overridden_keys` (names only, [CON §2.10](01-contracts.spec.md)); the status row adds `settings_stale` when the files now resolve differently from the thread's snapshot ([DUR §2.2](09-durability-and-resume.spec.md)) |
 
-### 2.8 The `config` verb
+### 2.8 Tool grants
+
+The three widening keys above, `tools.add`, `commands.add` and `views.add`, follow every rule of this spec and five more:
+
+| Rule | Detail |
+|---|---|
+| Who | Only the `flag` layer, given by a person, and a workflow's own profiles. A settings file entry or a user-file profile that widens is refused (`widening_in_file`): a machine file would widen every run unseen. A caller marked `--as-agent` cannot widen (`widening_by_agent`) |
+| What | A grant passes the same checks as a declaration ([WFM §2.1](02-workflow-model.spec.md)): the executor's `tool_map` maps it, a command prefix holds no shell metacharacter and its resolver argv is safe, an MCP server is configured on this machine, a skill's plugin is installed and the executor hosts an authoring surface. A grant that fails one is refused with the declaration's own finding code |
+| Never | A path outside the workspace (C10); a write, edit, shell or writing MCP tool for a judge, a council member or the chair; a judge view outside the read-only catalog; any grant that removes `strict_permissions` or enforcement. The judge stays on an executor that declares `restricts_judge_tools`, and the guard of [GRD](06-independence-guard.spec.md) runs on the widened view |
+| Shown | The step's tools block lists granted tools as declared ones ([PRM §2.2](04-prompt-rendering.spec.md)); `settings_resolved` marks each grant `widening: true`; the pause payload and `config show` list grants apart |
+| Kept | In the thread's snapshot like any flag (§2.6): reapplied on later resumes and copied into a rerun; `--unset <unit>.tools.add` removes it |
+
+When an attempt failed, or ended blocked, and the session recorded a `denied` event or a declared tool missing from its start tool list, the gate escalates with cause `tool_access` and spends no retry ([BUD §2.2](08-budgets-and-failures.spec.md)). The pause payload ([HUM §2.1](07-gate-and-human.spec.md)) lists each refused or missing name with its refusal class ([TSA §2.2](57-tool-surface-audit.spec.md)) and what fixes it:
+
+| Class | Payload offers |
+|---|---|
+| `undeclared_tool`, a missing MCP tool or skill | `resume … --decision retry --grant <unit>=<capability>`; for a server not configured or a plugin not installed, the host step first |
+| `needed_command` | `resume … --decision retry --allow-command <unit>=<prefix>` |
+| `shell_for_read`, `dir_change_then_command` | No grant: these calls had a permitted form. `retry` with feedback naming the form |
+| `outside_workspace` | No grant is possible; `retry` with feedback, or `stop` |
+
+A grant that a later attempt used is a fact for the workflow's owner: the audit's history layer reports it (`granted-at-run`, [TSA §2.4](57-tool-surface-audit.spec.md)) and the improvement loop may propose the declaration ([PRP](40-improvement-proposals.spec.md)), so a grant needed on every run ends up in the package once.
+
+### 2.9 The `config` verb
 
 | Verb | Does | Writes | Spends |
 |---|---|---|---|
@@ -205,6 +231,19 @@ Files are edited by hand or by a skill; the engine has no write verb for them.
 
 **RST-B11 Shadowed values are shown.** Given the user file sets `steps.model=medium` and the run passes `--set steps.model=large`, when `config show` runs, then the row shows `large` from `flag` with `user:overrides` shadowed; nothing warns at the start.
 
+**RST-B13 Resume a run blocked on a tool.** Given a `triage` step whose session called `mcp:tracker/get_issue`, which it does not declare, and ended `BLOCKED`, when the gate decides, then it escalates with cause `tool_access`, no retry is spent, and the payload offers `--grant triage=mcp:tracker/get_issue`; `resume --decision retry --grant triage=mcp:tracker/get_issue` runs the next attempt with the tool, and a later resume keeps the grant.
+
+| Grant | Result |
+|---|---|
+| `--grant triage=mcp:tracker/get_issue`, server configured | applied, recorded `widening: true` |
+| the same, server not configured on this machine | exit 2, `mcp-server-not-configured`, nothing written |
+| `--grant judge:triage=edit` | exit 2: a judge takes views only |
+| `--set judge:triage.views.add=mcp:tracker/get_issue` | applied when the catalog classifies the tool read-only |
+| `--allow-command code="npm run build; rm"` | exit 2: shell metacharacter |
+| a user file `overrides` entry with `code.tools.add` | exit 2, `widening_in_file` |
+
+**RST-B14 A missing skill fails before spend.** Given a step declaring `skill:review-kit:security` whose plugin is not installed, when a run or resume preflights, then it exits 2 naming the plugin and the install command; no grant can replace an install.
+
 **RST-B12 Overrides reach the improvement loop.** Given a run whose `code` step used `small` from a `flag` override and failed its gate three times, when self-improvement reads it, then the finding carries `overridden_keys: [code.model]` and the friction lens does not file it as a workflow fault unless the same cluster also holds runs without that override ([SIL](16-self-improvement.spec.md)).
 
 ## 4. Error conditions
@@ -215,6 +254,8 @@ Files are edited by hand or by a skill; the engine has no write verb for them.
 | Key not valid for the scope's unit kind | Exit 2, `setting_not_for_kind` |
 | Value outside type or range; a choice not declared | Exit 2, `setting_value` |
 | A key of the verification surface (§1) | Exit 2, `not_a_setting` |
+| A widening key from a file, a user-file profile or an agent caller | Exit 2, `widening_in_file` or `widening_by_agent` |
+| A grant that fails a declaration check or a never rule of §2.8 | Exit 2 with the declaration's finding code |
 | `false` for a tighten-only key | Exit 2, `tighten_only` |
 | `on_budget_spent=fallback` where the gate has no `fallback` | Exit 2, `no_fallback_target` |
 | Unknown profile name | Exit 2, `unknown_profile` |
@@ -237,6 +278,7 @@ Files are edited by hand or by a skill; the engine has no write verb for them.
 - [ ] RST-AC-4 `config show` output equals the run's `settings_resolved` rows on a corpus of workflows and options (RST-B9).
 - [ ] RST-AC-5 A thread started, paused, its files edited, and resumed without `--reload-settings` resolves the same `settings_digest`; with it, the digest and `changed_keys` reflect the edit.
 - [ ] RST-AC-6 Every row of the §2.6 counters table is tested on resume.
+- [ ] RST-AC-8 Every row of the RST-B13 table holds, and a property test finds no grant that gives a judge, member or chair a non-read-only tool.
 - [ ] RST-AC-7 No `text` setting value appears in argv, a ledger row, a stats row or a finding (canary test, [SEC-B2](14-security.spec.md)).
 
 ## Open questions

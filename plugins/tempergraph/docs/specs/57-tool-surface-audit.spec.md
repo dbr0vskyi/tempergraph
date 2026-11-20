@@ -88,6 +88,7 @@ Classified from the refused call's tool name and, where recorded, its scrubbed i
 | `declared-tool-stale` | host | warning / high | `unknown_tool_name` | A declared `mcp:` tool or mapped executor tool is one the view catalog or the executor's compatibility table marks renamed or retired | Declare the new name the finding gives; under the old one the judge gets no view (F4.6). Text that still uses the old name is [PRA](58-prompt-audit.spec.md)'s `tool-name-stale` |
 | `tool-set-drift` | host | warning / medium | `unknown_tool_name` | The tool names an executor or MCP server exposes now differ from those recorded when the workflow was last stamped | Re-run validation and the stamp; a renamed tool loses its judge view (SIL-B4) |
 | `not-enforced` | definition | info / high | `not_enforced` *new* | A step's executor cannot enforce its grant and the workflow does not ask for strict permissions | Expect undeclared calls to run and be recorded; consider `--strict-permissions` ([CLI §2.1](17-engine-cli.spec.md)) |
+| `granted-at-run` | history | warning / high | `grant_missing` *new* | A person's tool grant ([RST §2.8](80-run-settings-and-overrides.spec.md)) was given and then used on this step in ≥ 2 runs; `min_n` 2 | Declare the capability or command in the package; the grant then stops being needed |
 
 ## 3. Behaviours
 

@@ -78,3 +78,4 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0077](0077-a-step-previews-its-own-check-in-the-attempt.adr.md) | A step previews its own gate's check inside its attempt through one engine command | proposed |
 | [0078](0078-skills-are-a-declared-tool-capability.adr.md) | Skills are a declared tool capability, named by plugin path | proposed |
 | [0079](0079-switches-are-measured-before-they-route.adr.md) | Switches can be measured in shadow, carry per-arm overrides, and re-arm on a spent budget | proposed |
+| [0080](0080-a-person-may-grant-a-step-tools-for-a-run.adr.md) | A person may grant a step tools, commands or judge read views for a run, by a recorded flag | proposed |

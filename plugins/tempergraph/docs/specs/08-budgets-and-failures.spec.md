@@ -39,6 +39,7 @@ Step: the operator layers of [RST §2.3](80-run-settings-and-overrides.spec.md) 
 | `error_kind` `refused` | none: escalate with the refusal recorded; the same prompt would be refused again |
 | Judge RETRY whose every unmet blocker is `no_change` | none: escalate ([JDG](05-judge-and-verdict.spec.md)) |
 | Check FAIL marked environmental | none: escalate with no judge and no new attempt |
+| A failed or blocked attempt whose session recorded a `denied` event or lacked a declared tool at start | none: escalate with cause `tool_access`; the payload offers the grants that fix it ([RST §2.8](80-run-settings-and-overrides.spec.md)) |
 
 ## 3. Behaviours
 
