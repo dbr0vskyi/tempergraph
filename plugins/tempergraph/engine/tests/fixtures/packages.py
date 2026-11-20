@@ -86,6 +86,18 @@ Writes the notes. See the [overview](00-overview.spec.md).
 """
 
 
+def blueprint(name: str = "release-notes", outcome: dict[str, Any] | None = None) -> dict[str, Any]:
+    """The approved blueprint of the minimal package (SCF §2.1)."""
+    from tempergraph.author.blueprint import digest
+
+    o = outcome or OUTCOME
+    return {"schema_version": 1, "name": name,
+            "units": [{"name": "draft", "kind": "step", "summary": "Write the release notes", "produces": ["notes"],
+                       "reads": [], "gate": {"check": True, "judge": True, "signoff": False}}],
+            "outcome_ref": {"revision": o["revision"], "digest": digest(o)},
+            "input": {"kind": "text", "parameters": []}}
+
+
 def write(root: Path, rel: str, content: str | dict[str, Any] | list[Any]) -> Path:
     path = root / rel
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -122,7 +134,7 @@ def minimal_package(parent: Path, name: str = "release-notes", version: str = "0
     write(root, "evals/cases.json", {"schema_version": 1, "cases": [{"id": "case-1", "request": "v1.2"}]})
     write(root, "evals/checks/draft/must-pass/notes.md", "# Added\n# Changed\n# Fixed\n# Removed\n")
     write(root, "evals/checks/draft/must-fail/notes.md", "# Added\n")
-    write(root, "blueprint.json", {"schema_version": 1, "units": ["draft"]})
+    write(root, "blueprint.json", blueprint(name))
     write(root, "authoring.json", {"schema_version": 1, "entry_path": "scratch"})
     write(root, "diagram/workflow.md", "draft -> outcome -> finalizer\n")
     write(root, "tests/test_release_notes.py", "def test_placeholder():\n    assert True\n")

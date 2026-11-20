@@ -19,6 +19,7 @@ from typing import IO, Any
 from tempergraph import executor_compat
 from tempergraph.catalog import Catalog, PackageNotLoaded, from_registry, resolve_request
 from tempergraph.cli import audit as audit_cli
+from tempergraph.cli import author as author_cli
 from tempergraph.cli import install as install_cli
 from tempergraph.cli import upgrade as upgrade_cli
 from tempergraph.cli import workflows as workflows_cli
@@ -104,6 +105,7 @@ def _parser() -> _Parser:
     csub.add_parser("paths")
     workflows_cli.add_parsers(sub)
     audit_cli.add_parsers(sub)
+    author_cli.add_parsers(sub)
     install_cli.add_parsers(sub)
     upgrade_cli.add_parsers(sub)
     return p
@@ -547,6 +549,8 @@ COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "worktree": cmd_worktree, "config": cmd_config,
     "workflows": workflows_cli.cmd_workflows,
     "audit": audit_cli.cmd_audit,
+    "blueprint": author_cli.cmd_blueprint,
+    "literals": author_cli.cmd_literals,
     "install": install_cli.cmd_install,
     "upgrade": upgrade_cli.cmd_upgrade,
     "upgrade-check": upgrade_cli.cmd_upgrade,

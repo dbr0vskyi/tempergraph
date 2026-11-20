@@ -1,7 +1,7 @@
 ---
 title: Blueprint, scaffold and authoring checks
 type: component
-status: review
+status: ready-for-implementation
 prefix: SCF
 adrs: [0059, 0106, 0110, 0113, 0114]
 ---
@@ -109,6 +109,12 @@ The person approves the drawing as a whole; the skill records the approval with 
 | Part | Release 1 |
 |---|---|
 | Trust and coverage | Computed by `tempergraph.run.outcome_trust`. Coverage reads OUT §2.3 so that a final criterion is covered when the outcome gate verifies it at `deterministic`, `calibrated` or `human` trust, **or** when every gated unit in `order` has a serving intermediate criterion at such trust, whatever the outcome gate's own verifier. Release 1 flows are routes and switches over `order`, so every gated unit stands in for "every unit on every path". Without the second reading no workflow with a judged final criterion could be covered before its judge is calibrated (plan T12), and SCF-B3 could not hold |
+| Throwaway spec | `tempergraph.author.blueprint`: each unit's stub prompt names its `reads` as template fields, so WFM's template rules find a read nobody produces (`template-unknown-field`); the warning `template-key-not-on-every-path` is raised to an error here (SCF-B2). Each `produces` key is a `file` artifact; a `judge: true` gate gets one stub criterion; `signoff` sets approval |
+| Codes | `unknown_key`, `blueprint-invalid`, `summary-too-long`, `not_in_release` (a kind or flow shape of a later release), `blueprint_outcome_mismatch`, `blueprint-check-without-criterion`, `blueprint-criterion-without-check`, `blueprint-signoff-mismatch`, plus WFM's and OUT §4's own codes |
+| `outcome_ref.digest` | SHA-256 of the outcome document as canonical JSON (sorted keys, no spaces) |
+| Exits | `blueprint check`, `draw` on a bad blueprint, and `compare` with a difference exit 2; `literals` with a hit exits 6 (advisory, like `audit --fail-on`) |
+| Drawing | Markdown holds the Mermaid diagram of the throwaway spec with the outcome unit, the unit, outcome, verification, unverified and defaults tables. `svg` stacks the units with dashed back edges; it is a plain renderer, not a layout engine |
+| Literals | Packaged workflows are scanned against `evals/cases.json` requests and the input's examples; an authoring session's source files stay in the session folder and are scanned there by `author check` (AUT, plan T9.2). A recorded hit is a decision with `literal_digest`, the SHA-256 of file, kind and text |
 
 ## 3. Behaviours
 
