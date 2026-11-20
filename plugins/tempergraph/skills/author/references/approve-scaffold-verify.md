@@ -25,8 +25,12 @@ On the yes, run `tempergraph author approve <id> 7`.
 | 5 Coverage and trust | A final criterion uncovered, or a blocker nobody verifies, with no decision. Add a check with fixtures, a sign-off, or record the decision |
 | 6 Audit | Fix each error. Show each warning with its remedy, for the person to fix or ignore with a reason |
 | 7 Register | Show the refusal and follow it |
+| 8 Judge seeds | Each judged criterion's two seeds, graded twice. A flip or a wrong grade names the criterion: go back to the guidance ladder for its text or scale. A missing seed: ask for one example of each |
+| 9 First trial | One run of a case from `evals/cases.json`. A pause goes back to the person through the run driver |
 | 10 Stamp | Written when every rung passed |
 
-Rungs 8 and 9 (judge seeds and a first trial run) need judge calibration, which arrives in a later release. `--judge-seeds` and `--trial` are refused for now: say so, and stop at the stamp.
+Rungs 8 and 9 spend. Before `--judge-seeds`, say how many judge sessions the seeds need (two per seed). Before `--trial --case <id>`, say that each step attempt is two sessions plus the outcome judge, and give the cap (`--cap`, $5 by default). Pass the flag only after the person's yes.
+
+After the trial, run `tempergraph author trial <workflow>` and show each criterion's status. Ask the person to grade the same output criterion by criterion, without showing them the verifier's status first. Record each grade with `tempergraph author grade <workflow> --unit <unit> --criterion <id> --status <status> --reason "<one sentence>"`, using unit `outcome` for a final criterion. Show the disagreements first: each one is the likeliest place where the outcome or its verification is wrong. If the trial paused, help the person answer it through the run driver, then run `author verify` again without `--trial` to stamp.
 
 Passing means "ready to run and be measured", never "trusted". The workflow stays in `dev` mode.

@@ -65,6 +65,21 @@ def add_parsers(sub: Any) -> None:
     v.add_argument("--case", default=None)
     v.add_argument("--cap", type=float, default=5.0)
     v.add_argument("--json", action="store_true")
+    from tempergraph.cli.main import _caller_options
+
+    _caller_options(v)
+    tr = asub.add_parser("trial", help="the first trial's report: each criterion's status and the person's grade")
+    tr.add_argument("workflow")
+    tr.add_argument("--json", action="store_true")
+    gr = asub.add_parser("grade", help="the person's grade on one criterion of the trial's output")
+    gr.add_argument("workflow")
+    gr.add_argument("--unit", default="outcome", help="the criterion's unit; `outcome` for a final criterion")
+    gr.add_argument("--criterion", required=True)
+    gr.add_argument("--status", required=True, choices=("MET", "PARTIAL", "UNMET", "N/A", "UNVERIFIABLE"))
+    gr.add_argument("--reason", required=True)
+    gr.add_argument("--reviewer", default=None)
+    gr.add_argument("--json", action="store_true")
+    _caller_options(gr)
     lit = sub.add_parser("literals", help="scan a workflow for case literals (no model)")
     lit.add_argument("workflow")
     lit.add_argument("--cases", action="store_true", help="also match runs of six words from case requests")
@@ -186,28 +201,46 @@ def cmd_scaffold(env: Any, a: argparse.Namespace) -> int:
     return 0
 
 
+def _package(env: Any, workflow: str) -> Path | None:
+    spec = _spec(env, workflow)
+    if spec is not None and spec.package_root is not None:
+        return Path(spec.package_root)
+    p = _path(env, workflow)
+    return p if (p / "tempergraph.json").is_file() else None
+
+
 def cmd_author(env: Any, a: argparse.Namespace) -> int:
-    """`author verify <workflow>` (SCF §2.5); rungs 8 and 9 are refused `not_in_release` (SCF §2.7)."""
+    """`author verify|trial|grade <workflow>` (SCF §2.5) and the session verbs (AUT §2.1)."""
     from tempergraph.author.verify import verify
     from tempergraph.cli.audit import _probe
 
     if a.action in ("start", "intake", "check", "show", "list", "drop", "approve"):
         return _session_verb(env, a)
+    if a.action in ("trial", "grade"):
+        return _trial_verb(env, a)
     if a.action != "verify":
-        env.err.write("tempergraph: author needs start, intake, check, show, list, drop, approve or verify\n")
+        env.err.write("tempergraph: author needs start, intake, check, show, list, drop, approve, verify, trial "
+                      "or grade\n")
         return int(ExitCode.USAGE)
-    spec = _spec(env, a.workflow)
-    if spec is None or spec.package_root is None:
-        p = _path(env, a.workflow)
-        if not (p / "tempergraph.json").is_file():
-            env.err.write(f"tempergraph: unknown workflow {a.workflow!r}\n")
-            return int(ExitCode.USAGE)
-        root = p
-    else:
-        root = Path(spec.package_root)
+    root = _package(env, a.workflow)
+    if root is None:
+        env.err.write(f"tempergraph: unknown workflow {a.workflow!r}\n")
+        return int(ExitCode.USAGE)
     caps = {n: env.registry.get(n).capabilities() for n in env.registry.available()}
+    spending = a.judge_seeds or a.trial
+    caller = env.caller(a) if spending else None  # a deciding call: the person's yes on the stated cost
+
+    def executor_for(gate: str) -> Any:
+        from tempergraph.improve import calibration as cal
+        from tempergraph.package.loader import load_package
+
+        spec = load_package(root).spec
+        g, _, step_ex = cal.gate_spec(spec, gate)
+        return env.registry.get((g.judge.executor if g.judge else None)
+                                or env.registry.judge_executor(step_ex, None, None))
+
     rep = verify(root, caps, target=env.cwd, probe=_probe(env), judge_seeds=a.judge_seeds, trial=a.trial,
-                 case=a.case)
+                 case=a.case, cap=a.cap, executor_for=executor_for, registry=env.registry, caller=caller)
     if a.json:
         _emit(env, rep.to_json())
     else:
@@ -217,8 +250,62 @@ def cmd_author(env: Any, a: argparse.Namespace) -> int:
                 env.out.write(f"     {f['code']}: {f['message']}" + (f" ({f['remedy']})" if f["remedy"] else "") + "\n")
         for w in rep.warnings:
             env.out.write(f"   warning {w['code']}: {w['message']}\n")
-        env.out.write(("verify passed" if rep.ok else "verify failed") + "\n")
+        env.out.write(("verify passed" if rep.ok else "verify waiting on the trial" if rep.exit_code == 3
+                       else "verify failed") + "\n")
     return rep.exit_code
+
+
+def _trial_verb(env: Any, a: argparse.Namespace) -> int:
+    """`author trial` (read-only) and `author grade` (one grade: a label and a calibration case candidate)."""
+    import os
+
+    from tempergraph.author import trial as tr
+    from tempergraph.package.loader import load_package
+
+    root = _package(env, a.workflow)
+    if root is None:
+        env.err.write(f"tempergraph: unknown workflow {a.workflow!r}\n")
+        return int(ExitCode.USAGE)
+    record = root / "authoring.json"
+    try:
+        authoring = json.loads(record.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        authoring = {}
+    trial = authoring.get("trial") if isinstance(authoring, dict) else None
+    if not isinstance(trial, dict) or not trial.get("task"):
+        env.err.write(f"tempergraph: {a.workflow} has no trial; run `tempergraph author verify {a.workflow} "
+                      "--trial --case <id>`\n")
+        return int(ExitCode.USAGE)
+    spec = load_package(root).spec
+    if a.action == "grade":
+        caller = env.caller(a)
+        try:
+            got = tr.grade(spec, root, env.cwd, trial, a.unit, a.criterion, a.status, a.reason, caller,
+                           relayed=bool(a.relayed), reviewer=a.reviewer or os.environ.get("USER") or "unknown")
+        except tr.TrialRefused as exc:
+            env.err.write(f"tempergraph: {exc}\n")
+            return int(ExitCode.USAGE)
+        authoring["trial"] = trial
+        write_json(record, authoring, mode=0o644)
+        if a.json:
+            _emit(env, got)
+        else:
+            env.out.write(f"grade {a.status} on {a.unit}/{a.criterion} recorded (verifier said {got['verifier']})"
+                          + (f"; label {got['label']['value']}" if got["label"] else "")
+                          + (f"; calibration candidate {got['case']}" if got["case"] else "") + "\n")
+        return 0
+    doc = tr.report(spec, trial, env.cwd)
+    if a.json:
+        _emit(env, doc)
+    else:
+        env.out.write(f"trial {doc['thread']} ({doc['state']}, outcome {doc['verdict']})\n")
+        for r in doc["criteria"]:
+            mark = "DISAGREES " if r["disagrees"] else ""
+            env.out.write(f"  {mark}{r['unit']}/{r['criterion']}: {r['class']} said {r['status']}, person "
+                          f"{r['grade'] or 'not graded yet'}\n")
+            if r["disagrees"]:
+                env.out.write(f"    {r['text']} (method: {r['check_method'] or r['class']})\n")
+    return 0
 
 
 def _session_verb(env: Any, a: argparse.Namespace) -> int:

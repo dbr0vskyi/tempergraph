@@ -59,6 +59,6 @@ Each time the person chooses against your draft, record a decision in the sessio
 ## Never
 
 - Answer a pause of a run, or start a run the person did not ask for.
-- Spend money without a yes: `author verify --judge-seeds` and `--trial` are the only calls that spend. In this release both are refused, and you say so.
+- Spend money without a yes: `author verify --judge-seeds` and `--trial` are the only calls that spend. State the cost and the cap, and pass the flag only after the person's yes.
 - Move a workflow to `stable` mode. That is the owner's decision, after calibration.
 - Name or copy another workflow's private content into this one.
