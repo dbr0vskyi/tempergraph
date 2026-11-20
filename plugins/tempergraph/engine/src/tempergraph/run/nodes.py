@@ -38,7 +38,16 @@ from tempergraph.run import tool_access
 from tempergraph.run.check_worker import run_in_worker
 from tempergraph.run.commands import ResolvedCommand, run_command
 from tempergraph.run.guard import guard, view_set
-from tempergraph.run.judging import JudgeInputs, Unparsed, derive, parse_judgement, reask_prompt, render_judge
+from tempergraph.run.judging import (
+    JudgeInputs,
+    Unparsed,
+    brief_digest,
+    criteria_digest,
+    derive,
+    parse_judgement,
+    reask_prompt,
+    render_judge,
+)
 from tempergraph.run.log import CostTotals, RunLog, cost_so_far, estimate, session_sink
 from tempergraph.security.scrub import clip, scrub
 from tempergraph.store.layout import session_dir, session_key
@@ -529,7 +538,8 @@ class EngineNodes:
         self.ctx.log.write("judgement", unit=unit, statuses=outcome.statuses, blockers=[
             b["criterion"] for b in outcome.blockers], confidence=outcome.confidence,
             confidence_source=outcome.confidence_source, gap=outcome.gap, guard=gr.status, views=list(views.tools),
-            judge_executor=judge_name)
+            judge_executor=judge_name, brief_digest=brief_digest(stance, brief),
+            criteria_digest=criteria_digest(g.criteria))
         out.update(outcome.to_json())
         out["guard"] = gr.status
         out["_cost"] = self._cost(state, all_results)

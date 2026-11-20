@@ -3,7 +3,7 @@
 One `label` record appended to the state root's ledger: what it is about, its value, its source from the
 caller's decider (PRV §2.4) and the judge binding that made the judgement. Metadata only: the verb takes no
 text, so no request, output or feedback text can reach a label (FBK-AC-3, IMD-AC-1). The derived kinds of
-§2.2 (approval, pushback, rerun, override, audit, pr_state) and `labels queue` are T12.3.
+§2.2 and `labels queue` are `improve/reliability.py` (T12.3).
 """
 
 from __future__ import annotations
@@ -30,14 +30,17 @@ def _ts(text: Any) -> float | None:
         return None
 
 
-def binding(recs: list[dict[str, Any]], unit: str, attempt: Any) -> dict[str, Any]:
-    """FBK §2.1 `binding` from the judge session that made the judgement; a field not recorded is null."""
+def binding(recs: list[dict[str, Any]], unit: str, attempt: Any, before_seq: int | None = None) -> dict[str, Any]:
+    """FBK §2.1 `binding` from the judge session that made the judgement and its `judgement` record (which
+    carries the brief and criteria digests, EVT §2.2); a field not recorded is null."""
     judge = next((r for r in reversed(recs) if r.get("kind") == "agent_run" and r.get("unit") == unit
                   and r.get("attempt") == attempt and r.get("session_kind") == "judge"), None) or {}
+    judged = next((r for r in reversed(recs) if r.get("kind") == "judgement" and r.get("unit") == unit
+                   and (before_seq is None or r.get("seq", 0) < before_seq)), None) or {}
     models = sorted(((judge.get("usage") or {}).get("by_model") or {}).keys())
     return {"executor": judge.get("executor"), "executor_version": judge.get("cli_version"),
-            "alias": judge.get("alias"), "model_slug": models[0] if len(models) == 1 else None,
-            "brief_digest": None, "criteria_digest": None}
+            "alias": judge.get("alias"), "model_slug": models[0] if len(models) == 1 else judge.get("model"),
+            "brief_digest": judged.get("brief_digest"), "criteria_digest": judged.get("criteria_digest")}
 
 
 def label(root: Path, thread: str, gate: str, value: str, caller: dict[str, Any], *,
@@ -87,5 +90,6 @@ def label(root: Path, thread: str, gate: str, value: str, caller: dict[str, Any]
             "criterion_id": criterion, "label_kind": "explicit", "value": value, "source": source,
             "origin": "run", "at": now,
             "observed_after_s": round(t1 - t0, 1) if t0 is not None and t1 is not None else None,
-            "binding": binding(recs, gate, g.get("attempt")),
+            "binding": binding(recs, gate, g.get("attempt"), g.get("seq")),
+            "confidence": (judged or {}).get("confidence"), "confidence_source": (judged or {}).get("confidence_source"),
             "caller": {k: decided.get(k) for k in ("kind", "confidence", "decided_by", "relay", "host", "call_id")}}
