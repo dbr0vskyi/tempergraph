@@ -102,7 +102,7 @@ flowchart LR
 | EMA | [20 Messages API executor](20-executor-messages-api.spec.md) | Engine-owned loop on the Messages API |
 | EAS | [21 Claude Agent SDK executor](21-executor-agent-sdk.spec.md) | `claude-agent-sdk` mapping |
 | THS | [22 Tool host](22-tool-host.spec.md) | The engine's client tools for the Messages API |
-| WSP | [13 Workspace and concurrency](13-workspace-and-concurrency.spec.md) | State root, worktrees, writers, batches |
+| WSP | [13 Workspace and concurrency](13-workspace-and-concurrency.spec.md) | State root, shapes of parallel work, writers, batches; the worktree itself is [WTR](82-worktree-mode.spec.md) |
 | SEC | [14 Security posture](14-security.spec.md) | Launch rules, scrubbing, publish boundary |
 | OBS | [15 Observability and cost](15-observability-and-cost.spec.md) | Run log, live progress, cost, reports |
 | SIL | [16 Self-improvement loop](16-self-improvement.spec.md) | Lenses, filing, calibration feedback |
@@ -145,6 +145,7 @@ flowchart LR
 | SWM | [79 Measured switches](79-measured-switches.spec.md) | Shadow mode, per-arm overrides, re-arming |
 | RST | [80 Run settings and overrides](80-run-settings-and-overrides.spec.md) | The settings catalog, scopes, layers and their order, settings files, workflow settings and profiles, snapshot on resume, the effective-settings record, the `config` verb |
 | RRN | [81 Reruns, rewinds and feedback](81-reruns-and-feedback.spec.md) | Every way to run again, feedback at every resume, rulings, `rewind`, the `rerun` verb |
+| WTR | [82 Worktree mode](82-worktree-mode.spec.md) | The `run.workspace` parameter and its `auto` rule, worktree roots, bases and names, lifecycle on pause, resume, rerun and finish, cleanup, executor pointing, foreign worktrees, the `worktree` verb |
 | PRV | [85 Caller provenance](85-caller-provenance.spec.md) | Caller kinds, signals and their order, deciders and relay evidence, the `caller` block, host profiles |
 | SUP | [86 Supervision metrics](86-supervision-metrics.spec.md) | Touches and their classes, the per-run supervision record and level, workflow aggregates, where they land, supervision criteria for promotion |
 | SCO | [87 Supervision cost](87-supervision-cost.spec.md) | The supervision journal, usage sources per host, attribution of a supervising session's spend, closing, the `supervision` verbs |
