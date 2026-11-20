@@ -85,7 +85,7 @@ Resolution is layer-major: the highest layer that sets a key at any scope matchi
 
 | Rank | Layer | Source |
 |---|---|---|
-| 1 | `flag` | `--set <key>=<value>` and the named flags of CLI §2.1 on `run`, `resume` or `rerun`; an orchestration node's `options` and a batch's shared options arrive here, recorded with `via` = `cli`, `orchestration`, `batch` or `rerun` |
+| 1 | `flag` | `--set <key>=<value>` and the named flags of CLI §2.1 on `run`, `resume` or `rerun`; an orchestration node's `options`, a batch's shared options and a schedule's `options` arrive here, recorded with `via` = `cli`, `orchestration`, `batch`, `schedule` ([SCH §2.5.5](83-schedules.spec.md)) or `rerun` |
 | 2 | `profile` | The named profiles chosen with `--profile <name>` (repeatable; a later profile wins per key) |
 | 3 | `project:overrides` | `<state root>/config/settings.json`, `overrides` entries matching the workflow |
 | 4 | `user:overrides` | `~/.tempergraph/config/settings.json`, `overrides` entries matching the workflow |
@@ -172,7 +172,7 @@ The three widening keys above, `tools.add`, `commands.add` and `views.add`, foll
 
 | Rule | Detail |
 |---|---|
-| Who | Only the `flag` layer, given by a person, and a workflow's own profiles. A settings file entry or a user-file profile that widens is refused (`widening_in_file`): a machine file would widen every run unseen. A caller whose decider is not a person cannot widen (`widening_by_agent`); an agent relaying a person's grant needs a named person turn ([PRV §2.8](85-caller-provenance.spec.md)) |
+| Who | Only the `flag` layer, given by a person, and a workflow's own profiles. A settings file entry or a user-file profile that widens is refused (`widening_in_file`): a machine file would widen every run unseen. A schedule's options are refused the same way (`widening_in_schedule`, [SCH §2.5.5](83-schedules.spec.md)). A caller whose decider is not a person cannot widen (`widening_by_agent`); an agent relaying a person's grant needs a named person turn ([PRV §2.8](85-caller-provenance.spec.md)) |
 | What | A grant passes the same checks as a declaration ([WFM §2.1](02-workflow-model.spec.md)): the executor's `tool_map` maps it, a command prefix holds no shell metacharacter and its resolver argv is safe, an MCP server is configured on this machine, a skill's plugin is installed and the executor hosts an authoring surface. A grant that fails one is refused with the declaration's own finding code |
 | Never | A path outside the workspace (C10); a write, edit, shell or writing MCP tool for a judge, a council member or the chair; a judge view outside the read-only catalog; any grant that removes `strict_permissions` or enforcement. The judge stays on an executor that declares `restricts_judge_tools`, and the guard of [GRD](06-independence-guard.spec.md) runs on the widened view |
 | Shown | The step's tools block lists granted tools as declared ones ([PRM §2.2](04-prompt-rendering.spec.md)); `settings_resolved` marks each grant `widening: true`; the pause payload and `config show` list grants apart |

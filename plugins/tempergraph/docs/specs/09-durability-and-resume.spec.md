@@ -46,10 +46,11 @@ def wait(selector: Selector, timeout_s: int) -> WaitOutcome: ...
 | `log_path` | run log location (local only) |
 | `alias` | optional short run name given at start (`--alias`), unique among live threads; status, resume and wait accept it in place of the thread id |
 | `label` | optional free text given at start, scrubbed, at most 80 chars |
-| `origin` | how the run started: `cli`, `skill`, `batch`, `orchestration`, `self_improvement`, `upgrade` ([UWF](64-upgrade-workflow.spec.md)), `hook`, `ci` or `rerun` |
+| `origin` | how the run started: `cli`, `skill`, `batch`, `orchestration`, `self_improvement`, `upgrade` ([UWF](64-upgrade-workflow.spec.md)), `hook`, `ci`, `schedule` ([SCH](83-schedules.spec.md)) or `rerun` |
 | `rerun_of`, `reruns` | the source thread of a rerun, and the reruns made from this thread ([RRN §2.4](81-reruns-and-feedback.spec.md)) |
 | `settings_digest`, `overridden_keys`, `settings_stale` | the thread's resolved settings ([RST §2.7](80-run-settings-and-overrides.spec.md)); `settings_stale` is true when the files now resolve differently from the thread's snapshot |
 | `parent` | for a run an orchestration started: orchestration id, node id and item ([ORC](45-orchestration.spec.md)) |
+| `schedule` | for a run a schedule started: `schedule_id`, `fire_id`, `slot`, and `declared: true` for a pipeline export ([SCH §2.8](83-schedules.spec.md)) |
 | `resume_count` | number of resumes so far (the resume chain length) |
 | `engine`, `engine_pin` | the engine version of the last process, and the engine the thread is pinned to, if any ([MIG §2.4](62-state-and-run-migration.spec.md)) |
 

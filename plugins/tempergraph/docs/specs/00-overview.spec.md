@@ -3,7 +3,7 @@ title: tempergraph system overview
 type: overview
 status: review
 prefix: OVR
-adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035, 0062, 0070, 0073, 0075, 0085, 0089]
+adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035, 0062, 0070, 0073, 0075, 0085, 0089, 0095, 0099]
 ---
 
 # tempergraph system overview
@@ -33,6 +33,7 @@ This spec is the index of the set. It holds no component requirement; each requi
 | G11 | Every graph shape LangGraph can build, except the self-routing forms [R-060](../research/R-060-node-types-against-langgraph.rsrch.md) excludes, is declarable as workflow data, and higher-level units (scripts, councils, contests, asks) keep every outcome engine-derived and judged. | [SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md), [FLX](74-flow-extensions.spec.md) |
 | G12 | A delivery workflow such as temperspec is expressible through the public interface alone: checks that run commands and record facts, step values, per-item maps, measured switches and a finalizer that can never fail a passed run. | [CHK](75-check-contract-and-command-runs.spec.md), [VAL](76-step-values-and-template-keys.spec.md), [MAP](77-map-unit.spec.md), [FIN](78-finalizer-contract.spec.md), [SWM](79-measured-switches.spec.md) |
 | G13 | Every call and intervention on a run is attributed to a person, an agent (relaying a person or on its own), the orchestrator, a pipeline or the engine, and every run reports how much supervision it needed and what supervising it cost, so a workflow is promoted on needing less of both. | [PRV](85-caller-provenance.spec.md), [SUP](86-supervision-metrics.spec.md), [SCO](87-supervision-cost.spec.md) |
+| G14 | A person schedules a workflow or an orchestration once or on a recurrence in plain words, confirms the exact form the engine echoes back, and the run fires with no terminal open, capped, attested as scheduled and still answered by a person at every pause. | [SCH](83-schedules.spec.md), [TCK](84-schedule-ticks-and-unattended-fires.spec.md) |
 
 ### Non-goals
 
@@ -145,6 +146,8 @@ flowchart LR
 | SWM | [79 Measured switches](79-measured-switches.spec.md) | Shadow mode, per-arm overrides, re-arming |
 | RST | [80 Run settings and overrides](80-run-settings-and-overrides.spec.md) | The settings catalog, scopes, layers and their order, settings files, workflow settings and profiles, snapshot on resume, the effective-settings record, the `config` verb |
 | RRN | [81 Reruns, rewinds and feedback](81-reruns-and-feedback.spec.md) | Every way to run again, feedback at every resume, rulings, `rewind`, the `rerun` verb |
+| SCH | [83 Schedules](83-schedules.spec.md) | The When grammar and its echo, zones and daylight saving, the schedule entry and fire log, catch-up, overlap, failure and spend policies, the `schedule` verbs |
+| TCK | [84 Schedule ticks and unattended fires](84-schedule-ticks-and-unattended-fires.spec.md) | The per-user OS trigger, the tick, the fire token, unattended credentials per executor, pipeline export, the schedule skill |
 | PRV | [85 Caller provenance](85-caller-provenance.spec.md) | Caller kinds, signals and their order, deciders and relay evidence, the `caller` block, host profiles |
 | SUP | [86 Supervision metrics](86-supervision-metrics.spec.md) | Touches and their classes, the per-run supervision record and level, workflow aggregates, where they land, supervision criteria for promotion |
 | SCO | [87 Supervision cost](87-supervision-cost.spec.md) | The supervision journal, usage sources per host, attribution of a supervising session's spend, closing, the `supervision` verbs |
@@ -171,6 +174,7 @@ flowchart LR
 | C15 | A capability an executor does not declare is a refusal before spend, never a silent downgrade. | [EXI](10-executor-interface.spec.md) |
 | C16 | The orchestration supervisor calls no model and answers no gate; it starts, resumes and stops runs only through the engine's own verbs. | [ORC](45-orchestration.spec.md) |
 | C17 | Every intervention on a run carries its caller and decider with the evidence for them; a person is never inferred from a caller's word alone. | [PRV](85-caller-provenance.spec.md) |
+| C18 | The schedule tick calls no model and answers no gate; it starts runs and orchestrations only through the engine's own verbs, and a slot starts at most once. | [TCK](84-schedule-ticks-and-unattended-fires.spec.md) |
 
 
 ## 3. Behaviours
@@ -204,7 +208,7 @@ flowchart LR
 
 ## 6. Acceptance criteria
 
-- [ ] OVR-AC-1 Every goal G1–G13 is owned by at least one component spec, and every contract C1–C17 by exactly one.
+- [ ] OVR-AC-1 Every goal G1–G14 is owned by at least one component spec, and every contract C1–C18 by exactly one.
 - [ ] OVR-AC-2 Every spec in the index exists, follows the six-section layout and stays within 400 lines and 30 KB.
 - [ ] OVR-AC-3 Every link between specs, decision records and research notes resolves.
 - [ ] OVR-AC-4 No component spec defines a type that [CON](01-contracts.spec.md) also defines.

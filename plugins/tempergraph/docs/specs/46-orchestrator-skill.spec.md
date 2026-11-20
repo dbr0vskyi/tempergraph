@@ -133,7 +133,7 @@ A fix needed inside one run's worktree (for example a failing test a pause point
 
 | Question | Owner |
 |---|---|
-| Should the skill offer a recurring schedule for a saved orchestration template, as the run driver does for one workflow? Deferred with schedules ([ADR-0021](../adr/0021-scope-of-planned-work.adr.md)). | Owner |
+| Should the skill offer a recurring schedule for a saved orchestration template? Schedules now accept an orchestration target ([SCH §2.2](83-schedules.spec.md)) and the schedule skill drives them ([TCK §2.6](84-schedule-ticks-and-unattended-fires.spec.md)); whether this skill hands over to it after a template is saved is open. | Owner |
 
 ## References
 

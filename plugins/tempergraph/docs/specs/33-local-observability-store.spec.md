@@ -66,6 +66,8 @@ The folder and everything under it is created owner-only (0700 for folders, 0600
   config/                           user-level sinks and defaults; a state root's config overrides it
   outbox/                           rows waiting for a sink [CST §2.3]
   supervision/<host>/<session>.jsonl  supervision journal of one host session [SCO §2.2]
+  schedules/<schedule_id>/          entry.json (owner-only) and fires.jsonl of one schedule [SCH §2.2]
+  schedules/tick.json, tick.lock    the tick's heartbeat and lock [TCK §2.2]
   fleet/<sink>/                     merged copy of every machine's rows from that sink [CST §2.3]
     machines/<machine_id>/          same shape as the sink's machine folder, this machine's included
     rollup/<YYYY-MM>.json           totals by machine, user, repo, workflow, executor, model; rebuilt by each sync

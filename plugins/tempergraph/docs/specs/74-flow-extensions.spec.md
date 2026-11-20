@@ -88,7 +88,7 @@ The failed unit's artifacts are kept and marked `failed`, not cleared, so the fa
 ## 5. Design notes
 
 - Every target stays a declared name, so validation checks reachability and the diagram draws every edge ([ADR-0062](../adr/0062-new-node-kinds-keep-the-gated-unit.adr.md)).
-- Deadlines need no resident process: the engine still exits at a pause, and an owner who wants deadlines to act on time schedules `resume --apply-deadline` from their own scheduler.
+- Deadlines need no resident process: the engine still exits at a pause, and an owner who wants deadlines to act on time schedules `resume --apply-deadline` from their own scheduler; the schedule tick is the engine's candidate for that job in a later slice ([TCK §5](84-schedule-ticks-and-unattended-fires.spec.md)).
 - Breakpoints fit the local stage of a workflow's life, when a person still reviews each step before it spends ([ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)).
 
 ## 6. Acceptance criteria
