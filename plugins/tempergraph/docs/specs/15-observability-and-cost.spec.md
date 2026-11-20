@@ -20,7 +20,7 @@ What a run leaves behind so a person or a later analysis can see what it did, wh
 |---|---|---|
 | `task` | Start, and resume with inputs | scrubbed, clipped request |
 | `attempt_start` | Before every step or judge session | unit, item, attempt, kind, executor, alias and source, timeout and source |
-| `agent_run` | After every session | kind (`step`, `retry`, `judge`, `judge_reask`, `grouping`), `Usage`, tool call names, `cli_version`, `session_id`, isolation mode, outcome fields of `SessionResult` |
+| `agent_run` | After every session | kind (`step`, `retry`, `judge`, `judge_reask`, `grouping`), `Usage`, tool call names, `cli_version`, `session_id`, isolation mode, outcome fields of `SessionResult`; `unknown_tools` (names the executor's view catalog does not map, [SIL-B4](16-self-improvement.spec.md)); `lessons_digest` on a step or retry whose unit has lessons ([LSN §2.2](42-workflow-lessons.spec.md)) |
 | `attempt_interrupted` | On resume, for an unclosed start | |
 | `route` | A route or switch picks a target | unit, arm, `chosen_by` (`predicate`, `default`, `operator`, `rearm`), and for a switch `shadow`, `would_choose` and `signals` ([CMP](03-compiler-and-flow.spec.md), [SWM](79-measured-switches.spec.md)) |
 | `audit_judge` | A sampled audit judge ran ([JDG](05-judge-and-verdict.spec.md)) | executor, alias, per-criterion agreement with the gate's judge, `Usage` |

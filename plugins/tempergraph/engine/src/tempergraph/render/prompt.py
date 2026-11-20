@@ -45,6 +45,7 @@ class AttemptContext:
     rulings: tuple[str, ...] = ()
     upstream_targets: tuple[str, ...] = ()
     grants: tuple[str, ...] = ()  # capabilities granted for this run (RST §2.8)
+    lessons: str = ""  # the rendered lessons block (LSN §2.2); the step only, never a judge
 
 
 @dataclass
@@ -70,6 +71,8 @@ def render_step(unit: str, spec: UnitSpec, ctx: AttemptContext, caps: Capabiliti
     tools = list(dict.fromkeys(tuple(step.tools) + ctx.grants))
     if tools:
         add("tools", _tools_block(tools, caps))
+    if ctx.lessons:
+        add("lessons", ctx.lessons)
     if step.produces:
         add("artifacts", _artifact_block(step.produces))
     if spec.gate.criteria:

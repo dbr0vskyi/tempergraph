@@ -22,6 +22,7 @@ from tempergraph.contracts import (
     WorkflowSpec,
     is_capability,
 )
+from tempergraph.improve import lessons
 from tempergraph.model import flow
 from tempergraph.model.text import ENGINE_KEYS, RESERVED_KEYS, TextUnreadable, input_names, load_text
 from tempergraph.render.template import TemplateError, fields
@@ -87,6 +88,8 @@ class _Validator:
             self._unit(name, s.units[name])
         self._flow()
         self._finalizer()
+        for code, unit, msg in lessons.validate(s):  # LSN §2.1, §4
+            self.err(code, unit, msg)
 
     # -- release --------------------------------------------------------------------------------
     def _release(self) -> None:
