@@ -1,0 +1,58 @@
+# ADR-0091 The first release ships the Claude Code executor only; the other three follow by release
+
+| | |
+|---|---|
+| Status | proposed |
+| Date | 2026-11-20 |
+| Authors | Claude (design session for the owner) |
+| Supersedes | — (orders the delivery of [ADR-0018](0018-add-messages-api-and-agent-sdk-executors.adr.md); the four-executor design stands) |
+
+## Context
+
+The design must support four executors: the Claude Code CLI, the Claude Agent SDK, the Messages API and the Antigravity CLI ([ADR-0018](0018-add-messages-api-and-agent-sdk-executors.adr.md)). The owner's requirement is on the design; the first build need not ship all four. Two owner questions are open: whether Antigravity may be scripted on a consumer sign-in, and whether the Agent SDK may run on a subscription sign-in ([overview](../specs/00-overview.spec.md)). Each executor brings its own probes ([R-090 §E](../research/R-090-implementation-readiness.rsrch.md)) and, for the Messages API, a whole tool host ([THS](../specs/22-tool-host.spec.md)). The first release's scope is [ADR-0090](0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md).
+
+## Decision
+
+We will ship **`claude`** as the only registered executor in release 1, then **`agent-sdk`** in release 2 with promotion to the pipeline, then **`messages-api`** with its tool host and **`antigravity`** in release 3.
+
+In release 1:
+
+1. The executor interface is built in full: registry, capability declarations, preflight refusals (contract C15), the shared launcher, judge executor selection, the normalized stream and the conformance suite ([EXI](../specs/10-executor-interface.spec.md)).
+2. The conformance suite runs against a recorded stand-in of `claude` and against **scripted stand-ins that carry the declared capability sets of all four executors**, so cross-executor judging, estimate-only cost, missing caps and every refusal path are tested before the second adapter exists. The four tool maps and capability tables ship as test data, so CON-AC-5 and WFM-AC-5 pass against them and are re-run when each adapter ships.
+3. `claude` declares `judge_mcp = false` until the judge's filtering MCP proxy ships in release 2; a judge view of an MCP server is then deferred and its criterion renders out of reach, the path [GRD-B5](../specs/06-independence-guard.spec.md) already specifies.
+4. A workflow naming another executor is refused at preflight with exit 2, `unknown executor`, as today ([EXI §4](../specs/10-executor-interface.spec.md)).
+
+## Options considered
+
+| Option | Pros | Cons |
+|---|---|---|
+| **`claude` only (chosen)** | The owner's own host; strongest judge restriction; reported cost, cost and turn caps, so every release 1 guarantee holds without cross-executor judging; fewest probes; no open licence question | Portability proven by stand-ins, not by a second live adapter |
+| `claude` and `agent-sdk` | Same tool names; CI-ready | Open sign-in question; its probes (P-AS-1 to P-AS-4) and worker process before any workflow is proven; the pipeline it serves is a release 2 feature |
+| `claude` and `messages-api` | Judge restriction by construction; a second live adapter | The tool host is a large extra surface; estimated cost only; no skills or subagents |
+| All four | Meets the requirement at once | Four probe sets, two open owner questions, cross-executor judging live from day one |
+
+## Decision rationale
+
+| Criterion | `claude` only | + `agent-sdk` | + `messages-api` | All four |
+|---|---|---|---|---|
+| Release 1 guarantees hold on the shipped executor | yes | yes | partly (estimated cost) | partly |
+| Waits on an owner answer | no | yes | no | yes |
+| Executor probe facts to record (P-CC, P-AS, P-AG) | 8 | 12 | 8 | 21 |
+| Interface kept honest for all four | stand-ins | stand-ins + 1 | stand-ins + 1 | live |
+
+## Consequences
+
+- Positive: release 1 needs only P-CC-2, P-CC-5 and P-CC-6 as hard probes; the shell, supervision hooks and the monitor share the executor's host.
+- Negative: the four-executor requirement is met in release 3; a team without Claude Code cannot use release 1.
+- Risk: the interface drifts toward Claude Code's shape. Mitigation: the stand-ins with the other three capability sets are in the conformance suite from the first phase, and the source-scan rule EXI-AC-1 keeps concrete executors out of the core.
+
+## Assumptions
+
+| # | Assumption | Where it matters |
+|---|---|---|
+| E1 | The owner runs Claude Code on the machines that run release 1. | Shell, PRV host profile, SCO hooks |
+| E2 | Pipeline use is a release 2 need, so the CI executor can wait. | ADR-0041, EAS |
+
+## Revisit when
+
+A user without Claude Code needs release 1, or the owner answers the Agent SDK sign-in question and wants CI runs sooner.

@@ -3,7 +3,7 @@ title: tempergraph system overview
 type: overview
 status: review
 prefix: OVR
-adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035, 0062, 0070, 0073, 0075, 0085, 0089]
+adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035, 0062, 0070, 0073, 0075, 0085, 0089, 0090, 0091]
 ---
 
 # tempergraph system overview
@@ -12,7 +12,7 @@ adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035, 0062, 0070, 0
 
 tempergraph ("tempered rails for AI workflows") is an opinionated Python framework on LangGraph. A team's repeated process is written as a **workflow**: declarative data of steps, gates and flow. The engine validates it, compiles it into a durable state graph and runs it. Every step is a fresh headless agent session; after every step a **gate** runs a deterministic check and then an **independent judge** in a fresh read-only session; the **engine**, never the judge, derives the verdict and routes: proceed, retry, go back, ask a person, or stop. Every model call is costed, every run is recorded, and a built-in self-improvement workflow reads finished runs and files issues where the fault lives.
 
-The engine starts sessions through **executors**. Four ship: the **Claude Code CLI** and the **Antigravity CLI** ([ADR-0007](../adr/0007-two-first-class-executors.adr.md)), the **Claude Agent SDK** and Anthropic's **Messages API** ([ADR-0018](../adr/0018-add-messages-api-and-agent-sdk-executors.adr.md)). A workflow names engine-neutral model aliases and tool capabilities, so the same workflow can run its steps on any executor that declares what the step needs, and its judges on whichever executor can enforce a read-only view.
+The engine starts sessions through **executors**. Four are designed, and release 1 ships the first of them, `claude` ([ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md)): the **Claude Code CLI** and the **Antigravity CLI** ([ADR-0007](../adr/0007-two-first-class-executors.adr.md)), the **Claude Agent SDK** and Anthropic's **Messages API** ([ADR-0018](../adr/0018-add-messages-api-and-agent-sdk-executors.adr.md)). A workflow names engine-neutral model aliases and tool capabilities, so the same workflow can run its steps on any executor that declares what the step needs, and its judges on whichever executor can enforce a read-only view.
 
 This spec is the index of the set. It holds no component requirement; each requirement lives in exactly one component spec.
 
@@ -40,7 +40,7 @@ This spec is the index of the set. It holds no component requirement; each requi
 - Not deterministic output: the graph, budgets and escalation paths are fixed, model output is not.
 - Not a production-workload orchestrator: non-production work on synthetic or test data.
 - Not a general chat agent: a good candidate is repeated, has known inputs and ends in something a check or a judge can grade.
-- No executor beyond the four in the first release. The interface admits more (a hosted service, another model family's SDK) without an engine edit.
+- No executor beyond the four. Release 1 ships `claude` only; what each release holds is [ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md). The interface admits more (a hosted service, another model family's SDK) without an engine edit.
 - Not a general tool harness: the engine's own tool host serves only the Messages API executor and only the ten capability names ([THS](22-tool-host.spec.md)).
 
 ## 2. Contract

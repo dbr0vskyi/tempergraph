@@ -116,6 +116,8 @@ Order: operator override, the gate's judge executor, the step's executor if it d
 
 **EXI-B10 Cross-executor judge.** Given step S on `antigravity` whose capabilities say `restricts_judge_tools = false` and a registered `claude` executor that says `true`, when the judge executor is selected, then S's judge runs on `claude` with the judge model resolved on the judge's own layer, and the step record and judge record name their executors.
 
+**EXI-B11 Conformance.** Given a new executor, when it is registered in a release, then it has passed the conformance suite against a recorded stand-in of its CLI: prompt on stdin, list argv, tree kill on timeout and signal, no raise on every infra cause, usage never 0 when unknown, tool names reported in order, and every declared capability exercised.
+
 **EXI-B12 Strict permissions.** Given `--strict-permissions` on a start, when preflight runs, then every step runs with `enforces_step_tools` applied and a step on an executor that does not declare it is refused. Once a workflow's validation reports no undeclared-tool finding, enforcement is its default without the flag. No executor is ever run in an automatic-approval mode (Claude Code's or the SDK's `auto`, `bypassPermissions`); an undeclared tool is refused, not approved by a classifier.
 
 **EXI-B13 Prompt write measured.** Given any launch, when the prompt write ends, then the gap from spawn is recorded, and a gap above 1 s is a warning on the attempt record, because a slow write can miss a CLI's stdin window.
@@ -128,8 +130,6 @@ Order: operator override, the gate's judge executor, the step's executor if it d
 |---|---|
 | Ended by itself | nothing; result read normally |
 | Still running | tree killed; result `partial` |
-
-**EXI-B11 Conformance.** Given a new executor, when it is registered in a release, then it has passed the conformance suite against a recorded stand-in of its CLI: prompt on stdin, list argv, tree kill on timeout and signal, no raise on every infra cause, usage never 0 when unknown, tool names reported in order, and every declared capability exercised.
 
 ## 4. Error conditions
 

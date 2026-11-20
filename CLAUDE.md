@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-tempergraph is at the early-concept stage: there is no source code, build system, test suite or commits yet. Only `README.md` and `CONTEXT.md` exist. Do not invent build/lint/test commands; update this file once tooling is added (more project info is expected to be provided later).
+tempergraph is at the design stage: the repository holds design documents only, with no source code, build system or test suite yet. Release 1 is planned in `plugins/tempergraph/docs/plans/first-release.plan.md`; its track T1.1 chooses the tooling. Do not invent build/lint/test commands; update this file once tooling is added.
 
 ## What the project is
 

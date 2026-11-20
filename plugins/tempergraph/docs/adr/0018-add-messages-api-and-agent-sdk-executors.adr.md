@@ -5,7 +5,7 @@
 | Status | proposed |
 | Date | 2026-11-19 |
 | Authors | Claude (design session for the owner) |
-| Supersedes | — |
+| Supersedes | [ADR-0007](0007-two-first-class-executors.adr.md) |
 
 ## Context
 

@@ -3,7 +3,7 @@ title: Workflow model and validation
 type: component
 status: review
 prefix: WFM
-adrs: [0003, 0008, 0062, 0070]
+adrs: [0003, 0008, 0062, 0070, 0090]
 ---
 
 # Workflow model and validation
@@ -35,6 +35,7 @@ The registry reads the workflow registry in the home folder (name → package fo
 | Settings | A non-positive or non-integer timeout; a malformed or missing `issue_repository`; a ladder longer than eight; a declared setting whose default is outside its kind, choices or range; a profile naming a key outside the settings catalog or a value outside its range ([RST §4](80-run-settings-and-overrides.spec.md)) |
 | Routing | A missing description, or a start example that does not resolve |
 | Unit kinds | The refusals of each kind's owning spec: [SCR §2.4](70-script-units-and-hybrid-steps.spec.md), [CNL §2.6](71-council-unit.spec.md), [CTS §2.4](72-contest-unit.spec.md), [ASK §2.2](73-ask-unit.spec.md), [FLX §2.6](74-flow-extensions.spec.md), [MAP §2.3](77-map-unit.spec.md), [SWM §4](79-measured-switches.spec.md) |
+| Release | A unit kind, flow primitive or field that the running engine release does not build, finding `not_in_release` naming it and the release that adds it ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md)) |
 | Checks, values, finalizer | `mechanical` on a gate with no check, `self_check` on a step whose gate has no check ([CHK §4](75-check-contract-and-command-runs.spec.md)); a reserved or misplaced template key, a bad `choices` or `pattern` ([VAL §4](76-step-values-and-template-keys.spec.md)); a finalizer without `finalizer_outcomes` or importing an executor ([FIN §4](78-finalizer-contract.spec.md)); a `skill:` capability naming a plugin path that is not installed with the workflow |
 
 ### 2.2 What only warns (`warning`)
@@ -93,6 +94,7 @@ The registry reads the workflow registry in the home folder (name → package fo
 - [ ] WFM-AC-3 A refused start leaves the state root byte-for-byte unchanged.
 - [ ] WFM-AC-4 No engine source file names a shipped workflow (source-scan test).
 - [ ] WFM-AC-5 A workflow using only tiers and capability names validates against all four shipped executors.
+- [ ] WFM-AC-6 A fixture workflow using each kind, primitive and field outside the running release fails validation with `not_in_release`, on the catalog, a start and the pre-start check alike.
 
 ## Open questions
 

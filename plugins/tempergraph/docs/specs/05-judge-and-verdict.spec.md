@@ -10,7 +10,7 @@ adrs: [0005, 0013, 0021, 0074, 0076]
 
 ## 1. Overview
 
-Every model step is graded by a fresh, read-only judge session that reports a finding per criterion. The engine, never the judge, derives the verdict by rule. A deterministic check runs first and can end the attempt with no model call. A judging failure never passes. This spec owns contract C4 together with [PRM](04-prompt-rendering.spec.md) and [GRD](06-independence-guard.spec.md).
+Every model step is graded by a fresh, read-only judge session that reports a finding per criterion. The engine, never the judge, derives the verdict by rule. A deterministic check runs first and can end the attempt with no model call. A judging failure never passes. This spec owns contract C4; [PRM](04-prompt-rendering.spec.md) and [GRD](06-independence-guard.spec.md) uphold it.
 
 ## 2. Contract
 
