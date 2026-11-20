@@ -3,8 +3,8 @@
 Read from each thread's last `supervision` record (SUP §2.2, written before every `run_exit` for the thread so
 far) and, for `--by unit`, from the ledger's intervention rows. A run is a thread. Runs whose origin or caller
 app is `evals` are left out of every figure (SUP-AC-4). A figure over fewer than 5 runs is marked `thin`.
-Supervision cost, its share and observations come from SCO's journal (T7.6): until a run has them, it counts
-as not measured, never as zero (SUP-AC-5). `promote-check` will read :func:`aggregate` too (SUP-AC-3).
+Supervision cost, its share and observations come from SCO's closed ledger lines (T7.6): until a thread's
+supervision closes, it counts as not measured, never as zero (SUP-AC-5). `promote-check` will read :func:`aggregate` too (SUP-AC-3).
 """
 
 from __future__ import annotations
@@ -45,16 +45,23 @@ def _ts(text: Any) -> datetime | None:
 
 def runs(root: Path, since: datetime | None = None) -> list[Run]:
     """Each thread's last supervision record, eval runs left out."""
+    from tempergraph.observe.supervision_cost import closed_for
+
     out: list[Run] = []
     base = root / "runs"
+    closed = closed_for(root)
     for log in sorted(base.glob("*/*/run.jsonl")) if base.is_dir() else []:
         rec: dict[str, Any] | None = None
         version = None
         ended = None
         evals = False
+        est: float | None = None
         for r in records(log):
             k = r.get("kind")
-            if k == "run_started":
+            if k == "agent_run":
+                ec = (r.get("usage") or {}).get("estimated_cost_usd")
+                est = (est or 0.0) + float(ec) if isinstance(ec, int | float) else est
+            elif k == "run_started":
                 version = r.get("workflow_version") or version
                 caller = r.get("caller") or {}
                 evals = evals or r.get("origin") == "evals" or caller.get("caller_app") == "evals"
@@ -68,10 +75,23 @@ def runs(root: Path, since: datetime | None = None) -> list[Run]:
         if since is not None and (t is None or t < since):
             continue
         wf, task = log.parent.parent.name, log.parent.name
+        _join(rec, closed.get(f"{wf}/{task}"), est)
         hosts = list((rec.get("supervisors") or {}).get("hosts") or [])
         out.append(Run(thread_id=f"{wf}/{task}", workflow=wf, version=version, record=rec, ended_at=ended,
                        hosts=hosts))
     return out
+
+
+def _join(rec: dict[str, Any], line: dict[str, Any] | None, run_usd: float | None) -> None:
+    """SCO's closed figures on the thread's record (SUP §2.2): cost, share and observations; absent stays null."""
+    if line is None:
+        return
+    rec["supervision_cost"] = {k: line.get(k) for k in ("marginal", "turn", "completeness")}
+    marginal = ((line.get("marginal") or {}).get("total") or {}).get("estimated_usd")
+    if isinstance(marginal, int | float) and run_usd is not None and run_usd + marginal > 0:
+        rec["supervision_share"] = round(marginal / (run_usd + marginal), 4)
+    if line.get("observations") is not None:
+        rec["observations"] = line["observations"]
 
 
 def wilson(k: int, n: int, z: float = 1.96) -> list[float] | None:
@@ -107,7 +127,8 @@ def _cost(rec: dict[str, Any]) -> float | None:
     if isinstance(c, int | float):
         return float(c)
     if isinstance(c, dict):
-        v = (c.get("marginal") or {}).get("estimated_usd") if isinstance(c.get("marginal"), dict) else c.get("marginal_usd")
+        m = c.get("marginal")
+        v = ((m.get("total") or m).get("estimated_usd")) if isinstance(m, dict) else c.get("marginal_usd")
         return float(v) if isinstance(v, int | float) else None
     return None
 

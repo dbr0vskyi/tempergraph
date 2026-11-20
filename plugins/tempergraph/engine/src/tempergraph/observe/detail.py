@@ -471,8 +471,8 @@ def detail(root: Path, spec: WorkflowSpec, tid: str, *, unit: str | None = None,
                         "level": (fold.supervision or {}).get("level"),
                         "level_by": (fold.supervision or {}).get("level_by"),
                         "designed_by": (fold.supervision or {}).get("designed_by"),
-                        "cost": (fold.supervision or {}).get("supervision_cost",
-                                                             (fold.supervision or {}).get("cost"))},
+                        "cost": _closed_cost(root, f"{spec.name}/{task}")
+                        or (fold.supervision or {}).get("supervision_cost", (fold.supervision or {}).get("cost"))},
         "events_tail": tail(recs),
         "truncated": truncated,
     }
@@ -612,3 +612,11 @@ def cut(doc: dict[str, Any], limit: int = MAX_BYTES) -> dict[str, Any]:
                 v["attempts"] = []
     doc["truncated"].append("passed_attempts")
     return doc
+
+
+def _closed_cost(root: Path, tid: str) -> dict[str, Any] | None:
+    """SCO §2.5's closed figures for the thread, when its supervision has closed; else the record's null."""
+    from tempergraph.observe.supervision_cost import closed_for
+
+    line = closed_for(root).get(tid)
+    return {k: line.get(k) for k in ("marginal", "turn", "completeness", "observations")} if line else None

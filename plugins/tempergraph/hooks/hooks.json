@@ -1,0 +1,72 @@
+{
+  "description": "Supervision journal (SHL \u00a72.2, SCO \u00a72.2): numbers, verb words and ids only; never blocks or changes a call.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tempergraph supervision hook SessionStart >/dev/null 2>&1 || true",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tempergraph supervision hook UserPromptSubmit >/dev/null 2>&1 || true",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tempergraph supervision hook PostToolUse >/dev/null 2>&1 || true",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tempergraph supervision hook Stop >/dev/null 2>&1 || true",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tempergraph supervision hook SubagentStop >/dev/null 2>&1 || true",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tempergraph supervision hook SessionEnd >/dev/null 2>&1 || true",
+            "timeout": 2
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -64,6 +64,20 @@ def add_parsers(sub: Any) -> None:
     sa.add_argument("--projection", action="store_true")
     sa.add_argument("--live", action="store_true")
     sa.add_argument("--json", action="store_true")
+    sv = sub.add_parser("supervision", help="the supervision journal and the cost of supervising runs (SCO §2.6)")
+    svs = sv.add_subparsers(dest="action")
+    hk = svs.add_parser("hook", help="one host hook event read from standard input; always exit 0 (SHL §2.2)")
+    hk.add_argument("event")
+    lo = svs.add_parser("log", help="journal entries read as JSON lines from standard input")
+    lo.add_argument("--host", required=True)
+    lo.add_argument("--session", required=True)
+    lo.add_argument("--caller-app")
+    cl = svs.add_parser("close", help="close the threads whose supervising sessions have ended (SCO §2.5)")
+    cl.add_argument("--session")
+    sh = svs.add_parser("show", help="a thread's or a session's supervision (read-only)")
+    sh.add_argument("selector", nargs="?")
+    sh.add_argument("--session")
+    sh.add_argument("--json", action="store_true")
     at = sub.add_parser("attention", help="everything waiting on a person, oldest first (CLI-B6)")
     at.add_argument("--all-roots", action="store_true")
     at.add_argument("--json", action="store_true")
@@ -234,13 +248,16 @@ def report_text(doc: dict[str, Any]) -> str:
 def cmd_stats(env: Any, a: argparse.Namespace) -> int:
     from tempergraph.cli.main import UsageError, _emit
     from tempergraph.observe import rows, sinks
-    from tempergraph.store.layout import home_path
+    from tempergraph.store.layout import ensure_home, home_path
 
     home = home_path()
     root = _here(env)
     try:
         if a.action == "flush":
-            _emit(env, sinks.flush(home, root))
+            from tempergraph.observe import supervision_cost
+
+            closed = supervision_cost.close(ensure_home())["closed"]
+            _emit(env, {**sinks.flush(home, root), "supervision_closed": closed})
             return 0
         if a.action == "sync" or a.sync:
             synced = sinks.sync(home, root)
@@ -320,6 +337,72 @@ def cmd_attention(env: Any, a: argparse.Namespace) -> int:
     return 0
 
 
-COMMANDS = {"logs": cmd_logs, "store": cmd_store, "report": cmd_report, "stats": cmd_stats, "label": cmd_label,
+def _signals_env(env: Any) -> Any:
+    import os
+
+    return env.signals[0] if env.signals else os.environ
+
+
+def cmd_supervision(env: Any, a: argparse.Namespace) -> int:
+    import json
+    import sys
+
+    from tempergraph.cli.main import UsageError, _emit, _one
+    from tempergraph.observe import supervision_cost as sco
+    from tempergraph.store.layout import ensure_home, home_path
+
+    if a.action == "hook":  # never changes, delays or refuses the host call (C2): exit 0 whatever happens
+        try:
+            raw = sys.stdin.read(4 * 1024 * 1024)
+            payload = json.loads(raw) if raw.strip() else {}
+            if isinstance(payload, dict):
+                sco.hook(a.event, payload, _signals_env(env))
+        except Exception:  # noqa: BLE001
+            pass
+        return 0
+    if a.action == "log":
+        if sco.disabled(_signals_env(env)):
+            return 0
+        if a.caller_app is not None and not sco.ID.match(a.caller_app):
+            raise UsageError("--caller-app must be an id")
+        entries = []
+        for n, ln in enumerate(sys.stdin.read().splitlines(), 1):
+            if not ln.strip():
+                continue
+            try:
+                e = json.loads(ln)
+            except ValueError as exc:
+                raise UsageError(f"line {n}: not JSON") from exc
+            if not isinstance(e, dict):
+                raise UsageError(f"line {n}: not an object")
+            if e.get("entry") == "session" and a.caller_app and "caller_app" not in e:
+                e["caller_app"] = a.caller_app
+            entries.append(e)
+        try:
+            count = sco.append(ensure_home(), a.host, a.session, entries)
+        except sco.EntryRefused as exc:
+            raise UsageError(f"nothing appended: {exc}") from exc
+        _emit(env, {"schema_version": 1, "appended": count})
+        return 0
+    if a.action == "close":
+        _emit(env, sco.close(ensure_home(), session=a.session))
+        return 0
+    if a.action == "show":
+        if bool(a.selector) == bool(a.session):
+            raise UsageError("supervision show takes a selector or --session")
+        if a.selector:
+            tid = a.selector if "/" in a.selector else _one(env, a.selector)[1]
+            doc = sco.show(home_path(), thread=tid)
+        else:
+            doc = sco.show(home_path(), session=a.session)
+        if a.json:
+            _emit(env, doc)
+        else:
+            env.out.write(sco.text(doc))
+        return 0
+    raise UsageError("supervision takes hook, log, close or show")
+
+
+COMMANDS = {"supervision": cmd_supervision, "logs": cmd_logs, "store": cmd_store, "report": cmd_report, "stats": cmd_stats, "label": cmd_label,
             "attention": cmd_attention}
 

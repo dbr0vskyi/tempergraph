@@ -248,8 +248,10 @@ def on_run_exit(log: Path, segment: int | None) -> None:
         home = ensure_home()
         month = str(row["ended_at"] or now_iso())[:7]
         append_jsonl(stats_path(home, month), row)
-        from tempergraph.observe import sinks
+        from tempergraph.observe import sinks, supervision_cost
 
+        with contextlib.suppress(Exception):  # SCO §2.5: the next writing process closes what has ended
+            supervision_cost.close(home)
         if sinks.enqueue(home, row, log):
             sinks.start_flusher(home)
     except Exception:  # noqa: BLE001

@@ -118,7 +118,18 @@ Split with the T5 and T6 owner: the run-path side (touch classes, the `supervisi
 
 ### T7.6 Supervision cost
 
-Not started: the host hooks, the supervision journal, attribution and the `supervision` verbs (SCO).
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 7.6.1 | `observe/supervision_cost.py` | The journal: fixed entry schemas (`session`, `engine_call`, `person_turn`, `usage`, `reported`, `end`), checked before an all-or-nothing append; nothing inside `TEMPERGRAPH_SESSION_KEY` or with `observe.supervision = off` | SCO §2.2, §2.7, §4, B6, AC-5 | yes | P1 | ✓ | 2026-11-20 |
+| 7.6.2 | `observe/supervision_cost.py`, `hooks/hooks.json` | The Claude Code hooks through `supervision hook <event>`: person turns with matched decision words, engine calls from the shim's commands (verb, resolved targets, output size), transcript usage by offset, `SessionEnd` then close; never raises, exit 0, 2 s timeout | SHL §2.2, SCO §2.3, PRV §2.4.1, AC-3, AC-4 | yes | P1 | ✓ | 2026-11-20 |
+| 7.6.3 | `observe/supervision_cost.py` | One attribution function: categories, marginal and turn figures, `rewake`, `relay`, helpers' whole usage, `other` per session | SCO §2.4, B1, B2, B7, B8, AC-1 | yes | P1 | ✓ | 2026-11-20 |
+| 7.6.4 | `observe/supervision_cost.py`, `observe/sinks.py`, `observe/rows.py` | Closing: a `supervision` ledger line per thread (a later one `replaces` it), the local row and an outbox reference; the sink row hashes thread and session ids; run from `stats flush`, after each `run_exit` and from `SessionEnd` | SCO §2.5, CST §2.2, §2.4 | yes | P1 | ✓ | 2026-11-20 |
+| 7.6.5 | `cli/observe_cli.py` | `supervision hook\|log\|close\|show`; `show` is read-only | SCO §2.6, AC-2, CLI-AC-1 | yes | P1 | ✓ | 2026-11-20 |
+| 7.6.6 | `observe/supervision_report.py`, `observe/detail.py` | `report --supervision` and the detail block read the closed figures: cost, share, observations | SUP §2.2, §2.4, AC-5 | yes | P1 | ✓ | 2026-11-20 |
+| 7.6.7 | — | P-SUP-3 live probe of the Claude Code payloads on the owner's machine | SCO §5, AC-6 | no | P1 | ○ | |
+| 7.6.8 | `observe/supervision_cost.py` | `measured_zero` and orchestration splits, once orchestrations exist (release 3); the status line's `reported` cross-check | SCO §2.3, B3 | yes | P3 | ○ | |
+
+Deviations, recorded in SCO §5: the hook reads `tool_response.stdout` and `stderr` only for their size and a printed `thread_id` or `call_id`; `relay` counts messages; `duration_s` of an engine call is null (the hook payload has no duration); journals are not pruned at 90 days yet (LOS prune does not know them).
 
 ## 3. Hand-off notes
 
@@ -129,4 +140,4 @@ Not started: the host hooks, the supervision journal, attribution and the `super
 
 ## 4. Verification
 
-From `plugins/tempergraph/engine/`: `python -m pytest`, `ruff check src tests` and `mypy` are clean. No test calls a model. `tests/test_events.py`, `tests/test_detail.py`, `tests/test_store.py` and `tests/test_reports.py` hold this track's tests.
+From `plugins/tempergraph/engine/`: `python -m pytest`, `ruff check src tests` and `mypy` are clean. No test calls a model. `tests/test_events.py`, `tests/test_detail.py`, `tests/test_store.py` and `tests/test_reports.py`, `tests/test_sinks.py`, `tests/test_supervision_report.py` and `tests/test_supervision_cost.py` hold this track's tests.

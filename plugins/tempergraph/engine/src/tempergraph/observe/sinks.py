@@ -303,6 +303,24 @@ def _local_rows(home: Path, month: str, cache: dict[str, dict[str, dict[str, Any
     return cache[month]
 
 
+def _supervision_rows(home: Path, month: str, cache: dict[str, dict[str, dict[str, Any]]]) -> dict[str, dict[str, Any]]:
+    k = f"supervision:{month}"
+    if k not in cache:
+        cache[k] = {str(r.get("row_id")): r for r in _read_jsonl(home / "supervision" / "rows" / f"{month}.jsonl")}
+    return cache[k]
+
+
+def supervision_row(row: dict[str, Any], key: bytes) -> dict[str, Any]:
+    """The `supervision` row a sink receives (CST §2.2, SCO §2.7): figures and hashed ids only."""
+    out = {k: row.get(k) for k in ("row_id", "kind", "schema_version", "workflow", "closed_at", "marginal", "turn",
+                                   "completeness")}
+    out["machine_id"] = row.get("machine_id")
+    out["thread_hash"] = digest(key, str(row.get("thread_id")))
+    out["sessions"] = [{"host": s.get("host"), "session_hash": digest(key, str(s.get("session_hash"))),
+                        "reported_cost_usd": s.get("reported_cost_usd")} for s in row.get("sessions") or []]
+    return out
+
+
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
@@ -337,7 +355,10 @@ def _flush_one(home: Path, name: str, box: Path) -> dict[str, Any]:
             if sink is None:
                 result["error"] = "no longer configured"
                 break
-            local = _local_rows(home, str(e.get("month")), cache).get(str(e.get("row_id")))
+            kind = "supervision" if e.get("kind") == "supervision" else "run"
+            rows = _local_rows(home, str(e.get("month")), cache) if kind == "run" else \
+                _supervision_rows(home, str(e.get("month")), cache)
+            local = rows.get(str(e.get("row_id")))
             if local is None:  # the local row is gone; nothing to send
                 done += 1
                 continue
@@ -347,7 +368,10 @@ def _flush_one(home: Path, name: str, box: Path) -> dict[str, Any]:
                 break
             try:
                 folder = _machine_dir(sink, home)
-                _append(folder / "runs" / f"{e.get('month')}.jsonl", sink_row(local, sink, key))
+                if kind == "run":
+                    _append(folder / "runs" / f"{e.get('month')}.jsonl", sink_row(local, sink, key))
+                else:
+                    _append(folder / "supervision" / f"{e.get('month')}.jsonl", supervision_row(local, key))
             except OSError as exc:
                 result["error"] = f"write failed ({type(exc).__name__})"
                 break

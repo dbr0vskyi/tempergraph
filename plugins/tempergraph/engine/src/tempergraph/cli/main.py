@@ -726,7 +726,8 @@ def main(argv: Sequence[str] | None = None, *, catalog: Catalog | None = None, r
             raise UsageError("a verb is needed; `tempergraph --help` lists them")
         if a.verb not in COMMANDS:
             raise UsageError(f"{a.verb}: not in this release")
-        env = Env(catalog=catalog if catalog is not None else from_registry(),
+        light = a.verb == "supervision" and getattr(a, "action", None) in ("hook", "log", "close")
+        env = Env(catalog=catalog if catalog is not None else Catalog() if light else from_registry(),
                   registry=registry if registry is not None else default_registry(),
                   cwd=(cwd or Path.cwd()).resolve(), out=out, err=err, run_settings=run_settings,
                   signals=signals)
