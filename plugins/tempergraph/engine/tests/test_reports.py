@@ -263,3 +263,21 @@ def test_duplicate_row_ids_with_other_content_are_shown(repo: Path) -> None:  # 
     assert len(found) == 2 and conflicts == ["r1"]
     code, doc, err = cli(repo, None, "stats", "--local")
     assert code == 0 and doc["duplicate_row_ids"] == ["r1"] and "appear twice" in err
+
+
+def test_graph_overlay_counts_only(repo: Path) -> None:  # OBS §2.4 run overlay, SEC-B2, CLI `graph --overlay`
+    canary = "canary-0v3r"
+    retry = judge(verdict_block("UNMET"))
+    go(repo, standin("claude", steps=[DRAFT, DRAFT, REVIEW], judges=[retry, judge(), judge()]), task="O-1")
+    root = state_root_path(repo)
+    before = hash_tree(root)
+    code, doc, err = cli(repo, None, "graph", "demo", "--overlay", "demo/O-1", "--format", "json")
+    assert code == 0, err
+    ov = doc["overlay"]
+    assert ov["units"]["draft"]["sessions"] >= 2 and ov["units"]["draft"]["repeats"] >= 1
+    assert ov["units"]["draft"]["verdicts"].get("RETRY") == 1 and ov["units"]["review"]["verdicts"] == {"PROCEED": 1}
+    assert ["draft", "draft", "RETRY", 1] in ov["edges"] and ["draft", "review", "PROCEED", 1] in ov["edges"]
+    code, text, _ = cli(repo, None, "graph", "demo", "--overlay", "demo/O-1")
+    assert code == 0 and "visits" in str(text) and "retry ×1" in str(text) and canary not in str(text)
+    assert hash_tree(root) == before
+    assert cli(repo, None, "graph", "demo", "--overlay", "demo/none")[0] == 2

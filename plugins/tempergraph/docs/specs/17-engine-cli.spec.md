@@ -27,7 +27,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `wait <selector> [--timeout s]` | Block until an outcome | no | no |
 | `attention [--all-roots] [--json]` | Every item waiting on a person under the state root, oldest first: pauses of every thread and, when present, orchestration attention items (CLI-B6, [ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md)) | no | no |
 | `list` | The catalog (versioned JSON or a table) | no | no |
-| `graph <workflow> [--format mermaid|svg|md] [--overlay <thread>]` | Diagram from the model | no | no |
+| `graph <workflow> [--format mermaid|svg|md] [--overlay <thread>]` | Diagram from the model; `--overlay` adds a thread's counts and verdicts ([OBS §2.4](15-observability-and-cost.spec.md)); release 1 draws `mermaid`, `md` and `json`, not `svg` | no | no |
 | `report [window] [--by unit|executor|version] [--json]` | Cost and friction reports | no | no |
 | `validate <workflow>` | Validation, view deferrals, prompt-tool check | no | no |
 | `audit <workflow> [--layer …] [--target <path>] [--window <days>] [--all] [--format text\|json\|sarif] [--fail-on …]`, `audit tools <workflow>`, `audit prompts <workflow>` | Advisory audit of a workflow's definition, host and run history; exit 6 only with `--fail-on` ([AUD](55-workflow-audit.spec.md)) | no | no |
