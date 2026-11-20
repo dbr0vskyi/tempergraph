@@ -51,6 +51,10 @@ Model-free, over each step template, judge stance and brief, and each skill and 
 
 The structural part runs over each judged gate and the outcome gate. It finds a judged criterion with no `check_method`, a judge criterion whose scale lacks `met`, `unmet` or `evidence` (or `partial`, for a blocker), vague words from §2.1's list in a criterion, and a gate with no judged blocker. Each gate also reports its count of calibration cases (`evals/calibration/<gate>/`). Criteria lint ([AUT §2.4.1](89-workflow-authoring.spec.md)) joins with plan T9.2. Judge scores arrive with [JCL](50-judge-calibration.spec.md) (plan T12), so until then no binding is `accepted` and no gate grades `ready`. A `stable` workflow is therefore refused with `gate-not-ready` (LIF-B6) until its judges are accepted.
 
+### 2.3 Scenarios and diagram currency, release 1
+
+The deterministic scenario of a package is the stand-in run of its generated tests ([SCF §2.7](91-blueprint-and-scaffold.spec.md), `tempergraph.package.selftest`): a scripted `claude`, the reference executor, plays every step and judge, and the run must finish. Release 1 has no other executor, so a step that names one is reported by name ("executors […] are not in release 1") rather than passed (LIF-B4); stand-ins for each named executor join with those executors. Shell-assert scenarios and rubric scenarios are the eval suites of [EVS](51-eval-suites.spec.md), release 2. Diagram currency (`diagram_current`) compares the digest in `diagram/model.json` with the spec's, over nodes and edges only, so a CRLF checkout passes and a unit added or an edge moved fails (LIF-B3).
+
 ## 3. Behaviours
 
 **LIF-B1 Same version, different code.** Given an installed engine with the same version string as the plugin but different source, when `update` runs, then it reinstalls, because the hash differs.

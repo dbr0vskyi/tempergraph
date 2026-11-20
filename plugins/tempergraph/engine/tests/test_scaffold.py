@@ -271,3 +271,28 @@ def test_verify_coverage_rung_and_decisions(pkg: Path) -> None:
     rung = Rung(n=5, name="coverage")
     _coverage(spec, {str(i) for i in ids}, rung)
     assert rung.findings == []
+
+
+def test_diagram_currency_by_digest(pkg: Path, tmp_path: Path) -> None:
+    """LIF-B3 / LIF-AC-2: a CRLF checkout of the committed diagram still passes; a shape change fails."""
+    for rel in ("diagram/model.json", "diagram/workflow.md"):
+        p = pkg / rel
+        p.write_bytes(p.read_bytes().replace(b"\n", b"\r\n"))
+    assert selftest.run("diagram_current", pkg, tmp_path) == []
+    decl = pkg / "workflow/release_notes/__init__.py"
+    text = decl.read_text().replace("order=['draft']", "order=['draft', 'polish']")
+    decl.write_text(text.replace("        },\n    )", "        \"polish\": Step(prompt='Polish the notes for {request}.', "
+                                 "summary='Polish', tools=['read', 'write'], gate=Gate()),\n        },\n    )"))
+    assert "does not match the spec" in selftest.run("diagram_current", pkg, tmp_path)[0]
+
+
+def test_standin_scenario_names_every_executor(pkg: Path, tmp_path: Path) -> None:
+    """LIF-B4, release 1: the stand-in run plays `claude`, the reference; a step on an executor of a later
+    release is reported by name instead of passing silently (SCF §2.7)."""
+    assert selftest.run("standin_run", pkg, tmp_path / "a") == []
+    decl = pkg / "workflow/release_notes/__init__.py"
+    text = decl.read_text()
+    assert "Step(" in text
+    decl.write_text(text.replace("Step(", "Step(executor='antigravity', ", 1))
+    got = selftest.run("standin_run", pkg, tmp_path / "b")
+    assert got and "antigravity" in got[0], got
