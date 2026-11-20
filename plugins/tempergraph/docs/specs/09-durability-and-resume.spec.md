@@ -45,9 +45,10 @@ def wait(selector: Selector, timeout_s: int) -> WaitOutcome: ...
 | `log_path` | run log location (local only) |
 | `alias` | optional short run name given at start (`--alias`), unique among live threads; status, resume and wait accept it in place of the thread id |
 | `label` | optional free text given at start, scrubbed, at most 80 chars |
-| `origin` | how the run started: `cli`, `skill`, `batch`, `orchestration`, `self_improvement`, `hook` or `ci` |
+| `origin` | how the run started: `cli`, `skill`, `batch`, `orchestration`, `self_improvement`, `upgrade` ([UWF](64-upgrade-workflow.spec.md)), `hook` or `ci` |
 | `parent` | for a run an orchestration started: orchestration id, node id and item ([ORC](45-orchestration.spec.md)) |
 | `resume_count` | number of resumes so far (the resume chain length) |
+| `engine`, `engine_pin` | the engine version of the last process, and the engine the thread is pinned to, if any ([MIG §2.4](62-state-and-run-migration.spec.md)) |
 
 Adding these fields keeps schema version 1: readers ignore unknown keys and read a missing key as not recorded ([CON §2.10](01-contracts.spec.md)).
 

@@ -27,6 +27,7 @@ Everything a repository's runs leave on the machine lives in one folder, the sta
     run.jsonl                       run log [OBS], with the envelope of [EVT §2.1]
     evidence/                       request, outputs, feedback; local only [SEC §2.3]
     findings.json                   [SIL]
+    engine.json                     engines and workflow versions each process ran on; a pin [MIG §2.1]
     control/stop.json               only while a stop is pending [RCT]
     sessions/<session_key>/
       meta.json                     executor, cli_version, session_id, transcript locator, pgid, started_at, ended_at
@@ -42,6 +43,8 @@ Everything a repository's runs leave on the machine lives in one folder, the sta
     hooks/<event>-<seq>.log         a lifecycle hook's output and exit code
   batches/<batch_id>/               batch file and batch event file [WSP §2.2]
   ledger.jsonl                      [SIL]
+  backups/layout-<N>-<ts>/          files a breaking layout step moved or rewrote [MIG §2.2]
+  upgrades/<upgrade_id>/            plan, baseline and report of a workflow upgrade [WUP §2.2]
   engine/<YYYY-MM-DD>-<pid>.jsonl   engine code log (§2.3)
   scratch/                          executor scratch, owner-only, removed per session [WSP-B5]
 ```
@@ -53,6 +56,9 @@ The folder and everything under it is created owner-only (0700 for folders, 0600
 ```text
 ~/.tempergraph/
   manifest.json
+  bin/                              the CLI shim and Windows wrapper [UPD §2.2]
+  engines/                          one environment per installed release, current.json, previous.json [UPD §2.2]
+  registry.json                     registered workflows, their dependencies and pins [UPD §2.8]
   machine.json                      machine_id (random UUID made once), label (operator-set, default the host name), created_at
   index.json                        known state roots: path, repository name, first_seen, last_run_at [CST §2.1]
   stats/<YYYY-MM>.jsonl             per-user stats rows [OBS §2.4], one per thread exit

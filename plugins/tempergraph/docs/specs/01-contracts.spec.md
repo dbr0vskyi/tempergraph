@@ -35,6 +35,9 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `verified_engine` | version string, optional | The engine release the workflow was last stamped against. |
 | | `command_resolver` | callable ref, optional | Maps a declared command prefix to the argv a check or the tool host runs, so gates work for a non-Python repository ([WFM](02-workflow-model.spec.md)). |
 | | `run_cost_cap_usd` | float, optional | Spend cap for one run, children included ([BUD](08-budgets-and-failures.spec.md)). |
+| | `version` | semver, default `0.0.0` | The owner's release of the workflow; with the content digest it forms `workflow_version` ([VER §2.4](61-version-metadata.spec.md)). |
+| | `requires_engine` | version range, optional | Engine releases the owner states it works with; warns only ([VER §2.7](61-version-metadata.spec.md)). |
+| | `upgrade` | `UpgradePolicy`, optional | What a workflow upgrade may touch ([VER §2.4](61-version-metadata.spec.md)). |
 | `UnitSpec` | `kind` | `step` \| `route` \| `switch` \| `parallel` \| `map` \| `subworkflow` \| `wait` | |
 | | `step` | `StepSpec`, for kind `step` and `map` | |
 | | `gate` | `GateSpec` | Required for every kind but `wait`, whose gate holds only a check. |
@@ -225,6 +228,11 @@ The judgement block is the last fenced JSON block of the judge's answer.
 | Lessons file | [LSN](42-workflow-lessons.spec.md) | JSON in the workflow package, `schema_version` |
 | Loop parameters | [IMD](43-improvement-data.spec.md) | JSON, one record per named threshold with provenance |
 | Audit report | [AUD](55-workflow-audit.spec.md) | JSON, `schema_version`, printed only, never stored |
+| Engine release record, compatibility changelog | [VER](61-version-metadata.spec.md) | JSON in the engine package, `schema_version` |
+| Stamp record, workflow change notes | [VER](61-version-metadata.spec.md) | JSON in the workflow package, `schema_version` |
+| Engine pointers (`current.json`, `previous.json`), workflow registry (`registry.json`) | [UPD](60-engine-update.spec.md) | JSON in the home folder, `schema_version` |
+| Thread engine file | [MIG](62-state-and-run-migration.spec.md) | JSON per thread, `schema_version` |
+| Upgrade plan, baseline, report | [WUP](63-workflow-upgrade.spec.md) | JSON per upgrade, `schema_version` |
 
 Every reader ignores unknown keys and reads a missing key as "not recorded", never as zero. Renaming, removing or reinterpreting a key bumps the schema version.
 

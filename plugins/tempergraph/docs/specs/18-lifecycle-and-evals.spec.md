@@ -17,10 +17,10 @@ The model-free tooling around the runtime: how the engine and its workflows are 
 | Capability | Rule |
 |---|---|
 | Install | One managed Python 3.11+ virtual environment per machine, outside the plugin cache; the CLI on PATH through a shim |
-| Update | The `update` verb installs from the invoked package's staged copy with constants-only argv; currency is a hash of the engine's source files; it refuses a downgrade |
+| Update | The `update` verb installs from the invoked package's staged copy with constants-only argv, into a new environment beside the current one, and switches atomically; currency is a hash of the engine's source files; it refuses a downgrade ([UPD](60-engine-update.spec.md)); runs and stores in flight follow [MIG](62-state-and-run-migration.spec.md) |
 | Manifest reconcile | Repoints stale entries, registers installed workflow packages, never deletes an entry |
-| Compatibility changelog | Plain data per engine release: breaking flag, migrate steps, detect rules (patterns over code and prompts) |
-| Workflow stamp | The engine release a workflow was last verified against; written only by `upgrade-check --stamp` after every check passes |
+| Compatibility changelog | Typed data per engine release: audience, kind, surface, typed detect rules, one migrate action, proof ([VER §2.3](61-version-metadata.spec.md)) |
+| Workflow stamp | The engine release a workflow was last verified against, with its stamp record; written only by `upgrade --stamp` (or `upgrade-check --stamp`) after every check of [WUP §2.6](63-workflow-upgrade.spec.md) passes |
 | Executor compatibility | A table per executor: the version range its probe facts or contract tests were recorded for (the CLI for `claude` and `antigravity`; the SDK package and its bundled CLI for `agent-sdk`; the client library and API version header for `messages-api`); outside it, a warning and projected capabilities ([EAG-B7](12-executor-antigravity.spec.md)) |
 | Diagram model | Versioned JSON with a digest, generated from the spec and verified against the compiled graph; renderers are pure |
 | Evals | Deterministic scenarios (shell assert, no model) and rubric scenarios (input and rubric; pass only from a recorded score whose digests match) |

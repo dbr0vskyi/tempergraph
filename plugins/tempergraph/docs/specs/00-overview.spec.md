@@ -29,6 +29,7 @@ This spec is the index of the set. It holds no component requirement; each requi
 | G7 | A closed improvement loop that files scrubbed, de-duplicated issues, drafts measured changes and hands them to a person. | [SIL](16-self-improvement.spec.md), [PRP](40-improvement-proposals.spec.md), [FBK](41-feedback-and-judge-reliability.spec.md), [LSN](42-workflow-lessons.spec.md), [IMD](43-improvement-data.spec.md) |
 | G8 | Non-experts author good workflows through a guided skill and enforced validation. | [SHL](19-plugin-shell.spec.md), [WFM](02-workflow-model.spec.md), [AUD](55-workflow-audit.spec.md) |
 | G9 | Many runs planned as a graph of runs, validated before spend and supervised without a model, with every pause left to a person. | [ORC](45-orchestration.spec.md), [OSK](46-orchestrator-skill.spec.md) |
+| G10 | The engine and each workflow move between releases without losing a run: an update that never breaks work in flight, and a workflow upgrade planned by data, edited by rule or a gated model, and verified before it is stamped. | [UPD](60-engine-update.spec.md), [VER](61-version-metadata.spec.md), [MIG](62-state-and-run-migration.spec.md), [WUP](63-workflow-upgrade.spec.md), [UWF](64-upgrade-workflow.spec.md), [LSK](65-lifecycle-skills.spec.md) |
 
 ### Non-goals
 
@@ -123,6 +124,12 @@ flowchart LR
 | ARC | [56 Audit rule catalog](56-audit-rule-catalog.spec.md) | The audit's rules outside tools, keyed to ranked causes |
 | TSA | [57 Tool surface audit](57-tool-surface-audit.spec.md) | Grant, need and use of each step and judge session; the tool rules |
 | PRA | [58 Prompt audit](58-prompt-audit.spec.md) | Model-facing text: names resolved and current, agreement with declarations, size |
+| UPD | [60 Engine install and update](60-engine-update.spec.md) | The `install` and `update` verbs: side-by-side engine environments, shim, extras, rollback, plugin and engine in step, the workflow registry and its reinstall and pins |
+| VER | [61 Version metadata](61-version-metadata.spec.md) | Engine release record, typed changelog, transforms, workflow version fields, stamp record, change notes, compatibility states |
+| MIG | [62 State and run migration](62-state-and-run-migration.spec.md) | Store layout migration, running and paused threads across releases, pins, workflow change under a thread |
+| WUP | [63 Workflow upgrade](63-workflow-upgrade.spec.md) | The `upgrade` verb: baseline, plan, transforms, assist, verification, stamp, report |
+| UWF | [64 Built-in upgrade workflow](64-upgrade-workflow.spec.md) | The gated workflow that makes the model-assisted edits and drafts the owner's answers |
+| LSK | [65 Lifecycle skills](65-lifecycle-skills.spec.md) | The install, update and upgrade skills: one plan, one yes, then the plugin commands and the verbs |
 
 ### 2.3 Engine-wide contracts
 
@@ -178,7 +185,7 @@ flowchart LR
 
 ## 6. Acceptance criteria
 
-- [ ] OVR-AC-1 Every goal G1–G9 is owned by at least one component spec, and every contract C1–C16 by exactly one.
+- [ ] OVR-AC-1 Every goal G1–G10 is owned by at least one component spec, and every contract C1–C16 by exactly one.
 - [ ] OVR-AC-2 Every spec in the index exists, follows the six-section layout and stays within 400 lines and 30 KB.
 - [ ] OVR-AC-3 Every link between specs, decision records and research notes resolves.
 - [ ] OVR-AC-4 No component spec defines a type that [CON](01-contracts.spec.md) also defines.
