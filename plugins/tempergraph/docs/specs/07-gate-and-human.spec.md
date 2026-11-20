@@ -33,6 +33,7 @@ class PausePayload: kind: Literal["escalation", "budget", "approval", "event_wai
 | A failed or blocked attempt that could not reach a tool, skill, MCP server or command (cause `tool_access`); the payload lists the refused names and the `--grant` or `--allow-command` that fixes each ([RST §2.8](80-run-settings-and-overrides.spec.md)) | escalation |
 | An upstream claim the judge could not confirm; a defect attributed outside the allowed targets | escalation |
 | A pass on a gate with `approval`, or a step named by the operator's approval option | approval |
+| A pass on a gate with criteria verified by `person` (a sign-off); the payload's `rubric` lists them with each `role` and `question`, and `resume --criterion <id>=signed\|declined` records a status per criterion ([OUT §2.2](90-run-outcome.spec.md)) | approval |
 | A `wait` unit | event_wait |
 | An `ask` unit ([ASK](73-ask-unit.spec.md)) | input |
 | A council with no decision and `on_no_decision: escalate` ([CNL §2.4](71-council-unit.spec.md)) | escalation |

@@ -3,7 +3,7 @@ title: tempergraph system overview
 type: overview
 status: review
 prefix: OVR
-adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035, 0062, 0070, 0073, 0075, 0085, 0089, 0090, 0091, 0095, 0099]
+adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035, 0062, 0070, 0073, 0075, 0085, 0089, 0090, 0091, 0095, 0099, 0105, 0107, 0108, 0109]
 ---
 
 # tempergraph system overview
@@ -20,14 +20,14 @@ This spec is the index of the set. It holds no component requirement; each requi
 
 | # | Goal | Where |
 |---|---|---|
-| G1 | Start from a stated good outcome: every step declares criteria a judge grades and checks the engine runs. | [WFM](02-workflow-model.spec.md), [JDG](05-judge-and-verdict.spec.md) |
+| G1 | Start from a stated good outcome: a run-level outcome with final and intermediate criteria, each verified by a check, a judge or a person or shown as unverified, graded at every step gate and at a final outcome gate. | [OUT](90-run-outcome.spec.md), [WFM](02-workflow-model.spec.md), [JDG](05-judge-and-verdict.spec.md) |
 | G2 | Deterministic checks first, an independent judge second, a verdict by rule. | [JDG](05-judge-and-verdict.spec.md), [GRD](06-independence-guard.spec.md) |
 | G3 | Retries, trips back and pauses are graph edges driven by verdicts, each bounded by a budget. | [CMP](03-compiler-and-flow.spec.md), [BUD](08-budgets-and-failures.spec.md), [HUM](07-gate-and-human.spec.md), [RST](80-run-settings-and-overrides.spec.md) |
 | G4 | Durable, resumable runs that survive days at a pause, and reruns from any unit with a person's feedback. | [DUR](09-durability-and-resume.spec.md), [RRN](81-reruns-and-feedback.spec.md) |
 | G5 | The same workflow on the Claude Code CLI, the Antigravity CLI, the Claude Agent SDK or the Messages API, with refusal before spend when an executor cannot enforce what is asked. | [EXI](10-executor-interface.spec.md), [ECC](11-executor-claude-code.spec.md), [EAG](12-executor-antigravity.spec.md), [EAS](21-executor-agent-sdk.spec.md), [EMA](20-executor-messages-api.spec.md) |
 | G6 | Every model call costed; unmeasured is never zero. | [OBS](15-observability-and-cost.spec.md) |
 | G7 | A closed improvement loop that files scrubbed, de-duplicated issues, drafts measured changes and hands them to a person. | [SIL](16-self-improvement.spec.md), [PRP](40-improvement-proposals.spec.md), [FBK](41-feedback-and-judge-reliability.spec.md), [LSN](42-workflow-lessons.spec.md), [IMD](43-improvement-data.spec.md) |
-| G8 | Non-experts author good workflows through a guided skill and enforced validation. | [SHL](19-plugin-shell.spec.md), [WFM](02-workflow-model.spec.md), [AUD](55-workflow-audit.spec.md) |
+| G8 | Non-experts author good workflows from an existing solution, references or a conversation, through a guided skill that works backwards from the good outcome, a scaffold that writes a Claude plugin with a Python part and its own docs, and checks up to a first trial. | [AUT](89-workflow-authoring.spec.md), [SCF](91-blueprint-and-scaffold.spec.md), [PKG](88-workflow-package.spec.md), [SHL](19-plugin-shell.spec.md), [WFM](02-workflow-model.spec.md), [AUD](55-workflow-audit.spec.md) |
 | G9 | Many runs planned as a graph of runs, validated before spend and supervised without a model, with every pause left to a person. | [ORC](45-orchestration.spec.md), [OSK](46-orchestrator-skill.spec.md) |
 | G10 | The engine and each workflow move between releases without losing a run: an update that never breaks work in flight, and a workflow upgrade planned by data, edited by rule or a gated model, and verified before it is stamped. | [UPD](60-engine-update.spec.md), [VER](61-version-metadata.spec.md), [MIG](62-state-and-run-migration.spec.md), [WUP](63-workflow-upgrade.spec.md), [UWF](64-upgrade-workflow.spec.md), [LSK](65-lifecycle-skills.spec.md) |
 | G11 | Every graph shape LangGraph can build, except the self-routing forms [R-060](../research/R-060-node-types-against-langgraph.rsrch.md) excludes, is declarable as workflow data, and higher-level units (scripts, councils, contests, asks) keep every outcome engine-derived and judged. | [SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md), [FLX](74-flow-extensions.spec.md) |
@@ -152,6 +152,10 @@ flowchart LR
 | PRV | [85 Caller provenance](85-caller-provenance.spec.md) | Caller kinds, signals and their order, deciders and relay evidence, the `caller` block, host profiles |
 | SUP | [86 Supervision metrics](86-supervision-metrics.spec.md) | Touches and their classes, the per-run supervision record and level, workflow aggregates, where they land, supervision criteria for promotion |
 | SCO | [87 Supervision cost](87-supervision-cost.spec.md) | The supervision journal, usage sources per host, attribution of a supervising session's spend, closing, the `supervision` verbs |
+| PKG | [88 Workflow package](88-workflow-package.spec.md) | Layout of the plugin, Python and docs halves, the engine manifest, declaration builders and callable signatures, loading, what reaches each executor, the minimal package |
+| AUT | [89 Workflow authoring](89-workflow-authoring.spec.md) | Entry paths, intake inventory, the backwards interview, verification search and classification, authoring record, revise mode |
+| OUT | [90 Run-level good outcome](90-run-outcome.spec.md) | The outcome file, verifier classes, trust and coverage, the outcome gate, the outcome record and measures, revisions |
+| SCF | [91 Blueprint, scaffold and authoring checks](91-blueprint-and-scaffold.spec.md) | The blueprint and its drawing, the literal check, the scaffold and its generated tests, `author verify` up to a first trial |
 
 ### 2.3 Engine-wide contracts
 

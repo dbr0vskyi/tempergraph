@@ -42,6 +42,7 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `upgrade` | `UpgradePolicy`, optional | What a workflow upgrade may touch ([VER §2.4](61-version-metadata.spec.md)). |
 | | `settings` | map name → `SettingDecl`, optional | Typed workflow switches an operator may override ([RST §2.5](80-run-settings-and-overrides.spec.md)). |
 | | `profiles` | map name → map `SettingKey` → value, optional | Named bundles of settings ([RST §2.5](80-run-settings-and-overrides.spec.md)). |
+| | `outcome` | `OutcomeSpec` (§2.14) | Read from `outcome.json` at load; gates take their criteria from it ([OUT](90-run-outcome.spec.md), [PKG §2.3](88-workflow-package.spec.md)). |
 | `UnitSpec` | `kind` | `step` \| `route` \| `switch` \| `parallel` \| `map` \| `subworkflow` \| `wait` \| `script` \| `council` \| `contest` \| `ask` | Kinds and their owning specs: [CMP §2.2](03-compiler-and-flow.spec.md) and [FLX](74-flow-extensions.spec.md) for flow kinds; [SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md) for the others. |
 | | `step` | `StepSpec`, for kind `step`, `map` and `contest` | |
 | | `script`, `council`, `contest`, `ask`, `map` | `ScriptSpec`, `CouncilSpec`, `ContestSpec`, `AskSpec`, `MapSpec`, for their kind | Defined in the owning spec ([MAP](77-map-unit.spec.md) for `MapSpec`); used by it and by WFM only. A `switch` unit's fields are in [CMP §2.2](03-compiler-and-flow.spec.md) and [SWM §2.1](79-measured-switches.spec.md). |
@@ -61,7 +62,7 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | `GateSpec` | `check` | callable ref, optional | Model-free, writes no state; `(ctx: CheckContext) -> CheckResult` ([CHK](75-check-contract-and-command-runs.spec.md)). |
 | | `check_timeout_s` | positive int, default 1800 | Wall limit of the whole check ([CHK §2.6](75-check-contract-and-command-runs.spec.md)). |
 | | `judge` | `JudgeSpec` | Required on model steps. |
-| | `criteria` | list of `Criterion` | At least one when a judge is present. |
+| | `criteria` | list of `Criterion` | At least one when a judge is present; filled from the unit's intermediate outcome ([OUT §2.3](90-run-outcome.spec.md)). |
 | | `on_fail` | `retry` \| `stop` \| `fallback` | Hard-failure policy. |
 | | `on_budget_spent` | `stop` \| `ask` \| `fallback` | |
 | | `fallback` | forward unit name or `finalizer`, optional | Where `fallback` goes; the run is marked degraded ([FLX §2.4](74-flow-extensions.spec.md)). |
@@ -248,6 +249,7 @@ The judgement block is the last fenced JSON block of the judge's answer.
 | Upgrade plan, baseline, report | [WUP](63-workflow-upgrade.spec.md) | JSON per upgrade, `schema_version` |
 | Settings files (`settings.json`, project and user) | [RST](80-run-settings-and-overrides.spec.md) | JSON, `schema_version` |
 | Rerun lineage (`lineage.json` per source run) | [RRN](81-reruns-and-feedback.spec.md) | JSON, `schema_version` |
+| `tempergraph.json`, `outcome.json`, `authoring.json`, `blueprint.json` | [PKG §2.1](88-workflow-package.spec.md) | JSON in the workflow package, `schema_version` |
 
 Every reader ignores unknown keys and reads a missing key as "not recorded", never as zero. Renaming, removing or reinterpreting a key bumps the schema version.
 
@@ -307,6 +309,21 @@ Shared by [PRV](85-caller-provenance.spec.md), [SUP](86-supervision-metrics.spec
 | `SupervisionLevel` | enum | `observer`, `approver`, `consultant`, `collaborator`, `operator` ([SUP §2.3](86-supervision-metrics.spec.md)) |
 | `SupervisionRecord` | per [SUP §2.2](86-supervision-metrics.spec.md) | One per thread; the ledger row's `supervision{}` |
 | `SupervisionCost` | `marginal`, `turn`, `sessions[]`, `completeness` | [SCO §2.5](87-supervision-cost.spec.md); completeness adds `measured_zero` and `none_known` to the run cost flags |
+
+### 2.14 Workflow packages and outcomes
+
+Shared by PKG, OUT, AUT and SCF.
+
+| Type | Fields | Owner of the rules |
+|---|---|---|
+| `PackageManifest` | `schema_version`, `name`, `entry`, `workflow_api`, `docs`, `surfaces?` | [PKG §2.2](88-workflow-package.spec.md) |
+| `RouteView` | `unit`, `visit`, `values`, `facts`, `artifact_keys` (present keys only), `settings`; read-only | [PKG §2.4](88-workflow-package.spec.md) |
+| `RawRequest` | `args` (list of str), `inputs` (map), `main_checkout` (read-only path) | [PKG §2.4](88-workflow-package.spec.md) |
+| `OutcomeSpec` | `schema_version`, `revision`, `statement`, `deliverables[]`, `final[]`, `intermediate` (unit → `{statement, criteria[]}`), `judge?`, `check?`, `assumptions[]`, `revisions[]` | [OUT §2.1](90-run-outcome.spec.md) |
+| `OutcomeCriterion` | A `Criterion` (§2.1, `id` required) plus `verified_by` (`check` \| `judge` \| `person` \| `none`), `verifier` (with a judge's `scale`), `source`, `serves[]` | [OUT §2.1, §2.2](90-run-outcome.spec.md) |
+| `Trust` | `deterministic`, `calibrated`, `uncalibrated`, `human`, `unverified`; computed, never stored | [OUT §2.3](90-run-outcome.spec.md) |
+| `OutcomeRecord` | `revision`, `verdict` (`met`, `met_with_open`, `unmet`, `needs_person`, `not_reached`), `criteria[]`, `intermediate[]`, `later[]`; the ledger row's `outcome{}` | [OUT §2.5](90-run-outcome.spec.md) |
+| `OutcomeRevision` | `revision`, `at`, `by` (`Caller`), `origin`, `changes[]` (each `strengthening` \| `weakening` \| `neutral`), `evidence[]` | [OUT §2.6](90-run-outcome.spec.md) |
 
 ## 3. Behaviours
 

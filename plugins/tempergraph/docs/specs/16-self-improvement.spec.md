@@ -27,7 +27,7 @@ A built-in workflow that reads every finished run's record, judges it with an in
 | Lens | Question | Dev mode trigger | Stable mode trigger |
 |---|---|---|---|
 | Friction | Where did the process hurt, and whose fault? | Every flagged final exit | A `tool_access` pause or a tool grant; spent retries or a stop; an uncleared failed step; a gap escalation; repeated blockers; a retry burst; cost above the version's p90; a new version's first five runs; a person pushing back |
-| Outcome | Did the result meet the request? | Every final exit | A person pushing back; a pass at judge confidence ≤ 0.5; every 20th clean run |
+| Outcome | Did the result meet the workflow's good outcome? Read from the run's outcome record ([OUT §2.5](90-run-outcome.spec.md)); a second judge starts only when the outcome gate's judge did not run | Every final exit | A person pushing back; a pass at judge confidence ≤ 0.5; every 20th clean run |
 | Cost | Where does money repeat? | Every 10th final exit of a version | Same |
 | Quality (per gate) | Does each version score better on a fixed scorecard? | Scorecard reported for every gate | A gate's rows may file only while its judge binding is graded `reliable` ([FBK-B5](41-feedback-and-judge-reliability.spec.md)); other gates are reported only ([ADR-0021](../adr/0021-scope-of-planned-work.adr.md)) |
 

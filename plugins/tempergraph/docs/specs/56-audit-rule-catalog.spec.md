@@ -105,6 +105,9 @@ Rules are ranked by family in R-050 order (C1 highest) and, within a family, by 
 |---|---|---|---|---|---|
 | `prompt-lint` | definition | per owner | per rule | Prompt lint's findings over templates, briefs and the skills a step names | owner: [LIF](18-lifecycle-and-evals.spec.md) prompt lint |
 | `template-grammar` | definition | per owner | — | Validation's prompt rows | owner: [WFM §2.1](02-workflow-model.spec.md) |
+| `outcome-unverified-blocker` | definition | warning / high | `outcome_unverified` *new* | A blocker of the good outcome has trust `unverified` or `uncalibrated` ([OUT §2.3](90-run-outcome.spec.md)) | Find a verifier by the search order of [AUT §2.4](89-workflow-authoring.spec.md), or make it a sign-off |
+| `outcome-uncovered` | definition | warning / high | `outcome_uncovered` *new* | A final criterion is not covered (OUT §2.3) | Add a serving criterion on the units before the outcome gate, or verify it at the outcome gate |
+| `outcome-escapes` | history | warning / medium | `outcome_escape` *new* | Escape rate ≥ 10% of graded runs; `min_n` 10 ([OUT §2.5](90-run-outcome.spec.md)) | Revise the outcome: `outcome candidates`, then revise mode |
 | `engine-fault-open` | history | info / high | — | Open engine-side or executor-side findings of the loop name this workflow's units | owner: [SIL](16-self-improvement.spec.md); shown so the author does not chase them in the workflow |
 
 ### 2.9 Rules for the newer unit kinds

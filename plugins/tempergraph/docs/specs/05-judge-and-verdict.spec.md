@@ -32,7 +32,7 @@ Rendered by an engine-owned brief that names no workflow, then the workflow's st
 | Subject | The artifacts graded, the check's evidence and its findings ([CHK §2.4](75-check-contract-and-command-runs.spec.md)) |
 | Step account | The step's final text, labelled "claims to verify, not facts", ≤ 8,000 chars |
 | Feedback | A person's one-time feedback and every active ruling that applies to the unit, as direction that wins over a reference; each ruling adds one engine blocker, the output follows it ([RRN §2.2](81-reruns-and-feedback.spec.md)) |
-| Criteria | Numbered, with id, text, check method and severity; a `mechanical` criterion with the check's finding and a fixed sentence that its evidence is given; a criterion the check found `n_a` with the check's reason |
+| Criteria | Numbered, with id, text, check method, severity and, for an outcome criterion, its scale: what met, partial and unmet look like and the evidence met needs ([OUT §2.2.1](90-run-outcome.spec.md)); a `mechanical` criterion with the check's finding and a fixed sentence that its evidence is given; a criterion the check found `n_a` with the check's reason |
 | Previous blockers | Re-checked first; the full rubric is still graded |
 | Visit reason | When sent back: one engine blocker "every point of the reason is addressed" |
 | Out of reach | For each artifact whose read view is absent: a fixed sentence telling the judge to report UNVERIFIABLE and not to accept the step's word |

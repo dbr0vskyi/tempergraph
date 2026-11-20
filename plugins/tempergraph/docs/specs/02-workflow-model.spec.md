@@ -15,12 +15,12 @@ A workflow is data: a `WorkflowSpec` ([CON §2.1](01-contracts.spec.md)) in its 
 ## 2. Contract
 
 ```python
-def load(package_path: Path) -> WorkflowSpec: ...           # imports the package's declaration module
+def load(package_path: Path) -> WorkflowSpec: ...           # reads the manifests, imports the declaration, attaches the outcome (PKG §2.3)
 def validate(spec: WorkflowSpec, executors: Registry) -> list[Finding]: ...
 class Finding: code: str; unit: str | None; message: str; severity: Literal["error", "warning"]
 ```
 
-The registry reads the workflow registry in the home folder (name → package folder, kept across engine updates, [UPD §2.8](60-engine-update.spec.md)) and loads each package lazily. The built-in self-improvement workflow is found by a flag on its spec, not by its name, and is registered last so no package can shadow it.
+What a package holds and how `load` reads it is [PKG](88-workflow-package.spec.md). The registry reads the workflow registry in the home folder (name → package folder, kept across engine updates, [UPD §2.8](60-engine-update.spec.md)) and loads each package lazily. The built-in self-improvement workflow is found by a flag on its spec, not by its name, and is registered last so no package can shadow it.
 
 ### 2.1 What is refused
 
@@ -34,6 +34,7 @@ The registry reads the workflow registry in the home folder (name → package fo
 | Prompts | Anything outside the template grammar ([CON §2.2](01-contracts.spec.md)); a field that is neither an engine key nor an input name; an unreadable template |
 | Settings | A non-positive or non-integer timeout; a malformed or missing `issue_repository`; a ladder longer than eight; a declared setting whose default is outside its kind, choices or range; a profile naming a key outside the settings catalog or a value outside its range ([RST §4](80-run-settings-and-overrides.spec.md)) |
 | Routing | A missing description, or a start example that does not resolve |
+| Package, outcome | The refusals of [PKG §2.1, §2.3, §4](88-workflow-package.spec.md) (manifests, interface level, private imports, hooks, MCP servers, `bin/`, non-importable callables) and of [OUT §4](90-run-outcome.spec.md) (no outcome file or final criterion, unknown or missing units, unknown `serves`, duplicate ids, `none` without a reason); a unit named `outcome` |
 | Unit kinds | The refusals of each kind's owning spec: [SCR §2.4](70-script-units-and-hybrid-steps.spec.md), [CNL §2.6](71-council-unit.spec.md), [CTS §2.4](72-contest-unit.spec.md), [ASK §2.2](73-ask-unit.spec.md), [FLX §2.6](74-flow-extensions.spec.md), [MAP §2.3](77-map-unit.spec.md), [SWM §4](79-measured-switches.spec.md) |
 | Release | A unit kind, flow primitive or field that the running engine release does not build, finding `not_in_release` naming it and the release that adds it ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md)) |
 | Checks, values, finalizer | `mechanical` on a gate with no check, `self_check` on a step whose gate has no check ([CHK §4](75-check-contract-and-command-runs.spec.md)); a reserved or misplaced template key, a bad `choices` or `pattern` ([VAL §4](76-step-values-and-template-keys.spec.md)); a finalizer without `finalizer_outcomes` or importing an executor ([FIN §4](78-finalizer-contract.spec.md)); a `skill:` capability naming a plugin path that is not installed with the workflow |
@@ -48,6 +49,7 @@ The registry reads the workflow registry in the home folder (name → package fo
 | An executor-qualified alias where a tier would do | Portability across executors |
 | A prompt names a skill, agent or instruction file and its step's executor does not host an authoring surface | The step may still work if the template carries the content |
 | A judge brief branches on facts a check could compute | Rule-like branching belongs in the check or a route ([JDG-B6](05-judge-and-verdict.spec.md)) |
+| A blocker verified by `none`; `docs-drift` | Promoted to `error` when `improvement_mode` is `stable` ([OUT §2.2](90-run-outcome.spec.md), [PKG §2.5](88-workflow-package.spec.md)) |
 
 ## 3. Behaviours
 
