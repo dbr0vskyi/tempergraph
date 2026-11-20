@@ -111,3 +111,4 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0117](0117-review-depth-follows-the-improvement-mode-and-named-signals.adr.md) | Review depth follows the improvement mode and named signals | proposed |
 | [0118](0118-the-reviewer-is-tool-less-and-reads-a-condensed-datamarked-view.adr.md) | The reviewer is tool-less and reads a condensed, scrubbed, datamarked view | proposed |
 | [0119](0119-review-observations-are-candidates-corroborated-before-they-file.adr.md) | Review observations are candidates, corroborated before they file | proposed |
+| [0120](0120-a-workflow-plugin-name-is-the-workflow-name-plus-tgraph.adr.md) | A workflow plugin's name is the workflow name plus `-tgraph` | accepted |

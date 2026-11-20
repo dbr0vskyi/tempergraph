@@ -242,6 +242,10 @@ def _emit(env: Env, doc: Any) -> None:
 def _spec(env: Env, name: str) -> WorkflowSpec:
     if name in VERBS:
         raise UsageError(f"{name!r} is a reserved verb, not a workflow (CLI-B2)")
+    if name not in env.catalog.specs and name not in env.catalog.broken:
+        from tempergraph.package.manifest import workflow_name
+
+        name = workflow_name(name)  # the plugin name `<workflow>-tgraph` names the same workflow (ADR-0120)
     if name in env.catalog.broken:
         raise PackageNotLoaded(env.catalog.broken[name])
     if name not in env.catalog.specs:

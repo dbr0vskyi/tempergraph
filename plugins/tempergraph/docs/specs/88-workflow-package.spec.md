@@ -3,7 +3,7 @@ title: Workflow package
 type: component
 status: ready-for-implementation
 prefix: PKG
-adrs: [0003, 0016, 0078, 0105, 0106, 0112, 0113]
+adrs: [0003, 0016, 0078, 0105, 0106, 0112, 0113, 0120]
 ---
 
 # Workflow package
@@ -32,7 +32,7 @@ Paths are relative to the package root, which is the plugin root. Every name bel
 
 | Path | Half | Holds | Required |
 |---|---|---|---|
-| `.claude-plugin/plugin.json` | plugin | Claude Code's manifest: `name`, `version`, `description`, `author`, `license`, `dependencies` (naming `tempergraph`, [R-105 A11](../research/R-105-workflow-packages-authoring-and-good-outcomes.rsrch.md)). Only fields Claude Code reads ([R-105 A1](../research/R-105-workflow-packages-authoring-and-good-outcomes.rsrch.md)) | yes |
+| `.claude-plugin/plugin.json` | plugin | Claude Code's manifest: `name` (the workflow name plus `-tgraph`, §2.2.1), `version`, `description`, `author`, `license`, `dependencies` (naming `tempergraph`, [R-105 A11](../research/R-105-workflow-packages-authoring-and-good-outcomes.rsrch.md)). Only fields Claude Code reads ([R-105 A1](../research/R-105-workflow-packages-authoring-and-good-outcomes.rsrch.md)) | yes |
 | `tempergraph.json` | engine | The engine manifest (§2.2) | yes |
 | `outcome.json` | engine | The good outcome: final and intermediate outcomes and every criterion ([OUT §2.1](90-run-outcome.spec.md)) | yes |
 | `workflow/pyproject.toml` | Python | `[project]` with `name = "tgwf-<name>"`, `requires-python`, `dependencies`; nothing else is read | yes |
@@ -58,7 +58,7 @@ Refused in a workflow package (validation `error`, code in parentheses): `hooks/
 | Field | Kind | Meaning |
 |---|---|---|
 | `schema_version` | int | `1` |
-| `name` | slug | Equals `plugin.json` `name` and the built `WorkflowSpec.name` |
+| `name` | slug | The **workflow name** (§2.2.1): the built `WorkflowSpec.name`; `plugin.json` `name` is this plus `-tgraph` |
 | `entry` | `<module>:<function>` | The builder function; `<module>` is a folder under `workflow/` |
 | `workflow_api` | int | The level of the declaration interface the package was written for ([VER §2.2](61-version-metadata.spec.md)) |
 | `docs` | `provisional` \| `<rule set id>` | Which rules the docs half follows (§2.5); `provisional` until temperspec ships rule files |
@@ -67,11 +67,27 @@ Refused in a workflow package (validation `error`, code in parentheses): `hooks/
 
 The version is **not** repeated: the builder reads `version` from `plugin.json` and sets `WorkflowSpec.version` from it ([VER §2.4](61-version-metadata.spec.md)), so the two can never disagree. `requires_engine` and `upgrade` stay on the spec (VER).
 
+#### 2.2.1 Names
+
+A workflow package has two names, one derived from the other ([ADR-0120](../adr/0120-a-workflow-plugin-name-is-the-workflow-name-plus-tgraph.adr.md)):
+
+| Name | Where | Example | Used for |
+|---|---|---|---|
+| Workflow name | `tempergraph.json` `name` | `release-notes` | `tempergraph run`, the registry key, run folders and thread ids, `tgwf-<name>`, the private module `tgwf_<name>` |
+| Plugin name | `plugin.json` `name`, the marketplace entry, the plugin folder | `release-notes-tgraph` | Claude Code: plugin lists, `--plugin-dir`, the skill namespace (`skill:release-notes-tgraph:<skill>`) |
+
+| Rule | Detail |
+|---|---|
+| Suffix | The plugin name is the workflow name plus `-tgraph`, always, so any plugin ending in `-tgraph` is a tempergraph workflow. Any other plugin name is refused (`plugin-name-suffix`) |
+| Workflow name | Kebab-case (`[a-z0-9][a-z0-9-]*`); does not itself end in `-tgraph`; does not start with a prefix Claude Code reserves (`claude-`, `anthropic-`, `anthropics-`, `cc-plugin-`); at most 57 characters, so the plugin name stays within 64 |
+| Either name is accepted | A CLI argument naming a workflow may be given as the plugin name: `run release-notes-tgraph …` runs `release-notes` |
+| Not workflows | The engine plugin `tempergraph` and the monitor `tempergraph-monitor` are not workflow packages and keep their names |
+
 ### 2.3 Loading
 
 | Step | Rule | Failure |
 |---|---|---|
-| 1 Manifests | Read `plugin.json` and `tempergraph.json`; names equal; `schema_version` known | `not_loaded: manifest` |
+| 1 Manifests | Read `plugin.json` and `tempergraph.json`; the workflow name follows §2.2.1 and the plugin name is it plus `-tgraph`; `schema_version` known | `not_loaded: manifest`; a plugin name without the suffix carries the finding `plugin-name-suffix` naming the expected name |
 | 2 Interface level | `workflow_api` ≤ the engine's, and ≥ the oldest level the engine still loads (`release.json` gains `loads_workflow_api_from`) | newer: `not_loaded: workflow_api_newer` (remedy: update the engine); older: `not_loaded: workflow_api_retired` (remedy: `upgrade`); loadable but below the engine's: the warning `workflow_api_behind` naming the breaking `workflow` entries of the releases that raised the level past it (none, no warning) |
 | 3 Import | The dependency gate (§2.3.1) and the source scan run first. The entry module is imported from `workflow/` under a private name `tgwf_<name>` (`-` as `_`) so two packages' `checks` modules never collide; its own modules import each other relatively (`from . import checks`). Imports are limited to the standard library, the requirements in `pyproject.toml`, the package's own modules and `tempergraph.api` | Scan, before import: any other `tempergraph` module is `private-engine-import`, an absolute import of the entry folder's name is `own-module-absolute-import` (both `not_loaded` with that code, file and line), any other import is `undeclared-import` (warning: a distribution's import name may differ from its project name). An exception is `not_loaded: import` with its type only ([WFM §4](02-workflow-model.spec.md)) |
 | 4 Build | Call the entry with no argument; it returns a `WorkflowSpec` built by the builders of §2.4; the engine sets `name`, `version` and `package_root` | Not a `WorkflowSpec`, or a raise: `not_loaded: build` (a builder's own `TypeError` shows its text, which names the field) |
@@ -147,8 +163,8 @@ The engine renders every prompt, brief and stance itself ([PRM](04-prompt-render
 The smallest valid package, which the scaffold writes for a one-step blueprint and which runs with defaults only ([R-011 G3](../research/R-011-design-gap-review.rsrch.md)):
 
 ```text
-release-notes/
-  .claude-plugin/plugin.json        {"name": "release-notes", "version": "0.1.0", "description": …, "author": {…}, "license": …, "dependencies": ["tempergraph"]}
+release-notes-tgraph/
+  .claude-plugin/plugin.json        {"name": "release-notes-tgraph", "version": "0.1.0", "description": …, "author": {…}, "license": …, "dependencies": ["tempergraph"]}
   tempergraph.json                  {"schema_version": 1, "name": "release-notes", "entry": "release_notes:workflow", "workflow_api": 1, "docs": "provisional"}
   outcome.json                      one final outcome, one intermediate outcome for "draft", three criteria (OUT §3)
   workflow/pyproject.toml           name = "tgwf-release-notes", dependencies = []
@@ -182,24 +198,27 @@ Defaults it relies on: executor `claude`, model `medium` for the step and the ju
 | 1 | `not_loaded: workflow_api_retired`; a registered entry is pinned to an engine that loads it, as UPD §2.8 pins | `upgrade` |
 | 4 | `not_loaded: workflow_api_newer` | `update` |
 
-**PKG-B7 A skill on each executor.** Given a step declaring `skill:temperspec:spec-authoring`:
+**PKG-B7 A skill on each executor.** Given a step declaring `skill:temperspec-tgraph:spec-authoring`:
 
 | Step executor | Result |
 |---|---|
 | claude | `--plugin-dir` on the step launch, allow rule for that skill only |
-| agent-sdk | `plugins` option; the init message lists `temperspec` |
+| agent-sdk | `plugins` option; the init message lists `temperspec-tgraph` |
 | messages-api | refused before spend, exit 2, `capability_unmapped: skill` |
 | antigravity | refused before spend until P-AG-10 is recorded |
 
 
 **PKG-B9 Docs drift.** Given a criterion whose text changed in `outcome.json` and not in its unit's spec, when `validate` runs in `dev` mode, then `docs-drift` warns with the criterion id and both files; `stable` mode refuses the workflow.
 
+**PKG-B10 Recognisable by name.** Given the minimal package, when it loads, then its `WorkflowSpec.name` is `release-notes` and its plugin is `release-notes-tgraph`; given the same package with `plugin.json` `name` `release-notes` (or `release-notes.tgflow`), when it loads, then it is `not_loaded: manifest` with `plugin-name-suffix` naming `release-notes-tgraph`; given a blueprint named `release-notes-tgraph`, when `blueprint check` runs, then it is refused with the remedy "name the workflow `release-notes`".
+
 ## 4. Error conditions
 
 | Condition | Result |
 |---|---|
 | No `tempergraph.json` | Not a workflow package: `register` refuses, reconcile skips the plugin silently |
-| `name` differs between the manifests | `not_loaded: manifest`, both names shown |
+| `plugin.json` `name` is not the workflow name plus `-tgraph` | `not_loaded: manifest` with `plugin-name-suffix`, both names and the expected one shown |
+| A workflow name that is not kebab-case, ends in `-tgraph`, starts with a reserved prefix or is over 57 characters | `not_loaded: manifest`, the rule broken shown |
 | Entry module or function missing | `not_loaded: build` |
 | A text reference outside the package or missing | Validation error `text-ref` with the path |
 | A refused plugin part (§2.1) | Validation error with its code |
@@ -227,6 +246,7 @@ Defaults it relies on: executor `claude`, model `medium` for the step and the ju
 - [ ] PKG-AC-4 A builder given an unknown keyword, or `name` or `version`, fails at build; the built spec's name and version equal the manifests'.
 - [ ] PKG-AC-5 No judge session of any executor loads a workflow plugin (checked on the session-started record of each conformance fixture).
 - [ ] PKG-AC-6 The docs check passes on the scaffold's output, and fails with `docs-drift` on each of: a unit without a spec, a missing criterion id, an unknown id, a changed text.
+- [ ] PKG-AC-8 A package whose plugin name lacks the `-tgraph` suffix (or carries `.tgflow`, `-tg-graph`) fails to load with `plugin-name-suffix`; each workflow name rule of §2.2.1 has a fixture; `run <workflow>-tgraph` starts the same workflow as `run <workflow>`; the scaffold writes `<name>-tgraph` (PKG-B10).
 - [ ] PKG-AC-7 The content digest changes when any of `outcome.json`, a prompt, a brief, a skill, an agent, a Python source or `pyproject.toml` dependencies changes, and not when only `docs/`, `diagram/`, `evals/`, `authoring.json` or `README.md` changes.
 
 ## Open questions

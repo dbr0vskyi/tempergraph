@@ -70,6 +70,8 @@ def test_minimal_workflow_scaffolds_and_its_generated_tests_pass(pkg: Path, tmp_
                 "tests/test_release_notes_generated.py"):
         assert (pkg / rel).is_file(), rel
     assert json.loads((pkg / "outcome.json").read_text())["revisions"][0]["origin"] == "authored"
+    assert json.loads((pkg / ".claude-plugin/plugin.json").read_text())["name"] == "release-notes-tgraph"
+    assert json.loads((pkg / "tempergraph.json").read_text())["name"] == "release-notes"  # ADR-0120
     lp = load_package(pkg)
     assert lp.spec.units["draft"].gate.check is not None
     for name in selftest.NAMES:

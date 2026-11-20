@@ -146,7 +146,7 @@ def package(root: Path, name: str = "notes-flow") -> Path:
     pkg = root / name
     mod = name.replace("-", "_")
     (pkg / ".claude-plugin").mkdir(parents=True)
-    (pkg / ".claude-plugin" / "plugin.json").write_text(json.dumps({"name": name, "version": "0.2.0"}))
+    (pkg / ".claude-plugin" / "plugin.json").write_text(json.dumps({"name": f"{name}-tgraph", "version": "0.2.0"}))
     (pkg / "tempergraph.json").write_text(json.dumps({"schema_version": 1, "name": name,
                                                       "entry": f"{mod}:workflow", "workflow_api": 1}))
     (pkg / "workflow" / mod).mkdir(parents=True)
@@ -180,6 +180,9 @@ def test_registered_package_loads_and_runs(repo: Path, tmp_path: Path, monkeypat
     ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("MET")), judge(verdict_block("MET"))])
     code, _, err = cli(repo, ex, "run", "notes-flow", "Release 1.2", "--task-id", "N-1", catalog=cat)
     assert code == 0, err  # the check ran in the worker, importing the package's own module
+    code, _, err = cli(repo, ex, "run", "notes-flow-tgraph", "Release 1.2", "--task-id", "N-2", "--check",
+                       catalog=cat)
+    assert "unknown workflow" not in err  # the plugin name names the same workflow (ADR-0120)
     code, _, err = cli(repo, None, "run", "gone", "x", catalog=cat)
     assert code == ExitCode.INTERNAL and "not_loaded" in err
 

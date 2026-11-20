@@ -3,7 +3,7 @@ title: Blueprint, scaffold and authoring checks
 type: component
 status: ready-for-implementation
 prefix: SCF
-adrs: [0059, 0106, 0110, 0113, 0114]
+adrs: [0059, 0106, 0110, 0113, 0114, 0120]
 ---
 
 # Blueprint, scaffold and authoring checks
@@ -21,7 +21,7 @@ States only what was decided; an omitted field takes its default. An unknown key
 | Field | Kind | Meaning |
 |---|---|---|
 | `schema_version` | int | `1` |
-| `name` | slug | The workflow |
+| `name` | slug | The workflow name ([PKG §2.2.1](88-workflow-package.spec.md)); the scaffold writes the plugin name as `<name>-tgraph`. A name ending in `-tgraph`, starting with a reserved prefix or over 57 characters is `blueprint-invalid` |
 | `units` | list, 1 to 20, of `{name, kind, summary, produces[], reads[], gate: {check: bool, judge: bool, signoff: bool}, on_fail?, on_budget_spent?, approval?, back_targets[]?, executor?}` | `kind` is a release kind ([PKG §2.4](88-workflow-package.spec.md)); `summary` ≤ 60 characters; `reads` names earlier `produces` keys |
 | `flow` | map unit → `{route: [targets]}` \| `{switch: {arms, default}}` \| `{parallel: [branches]}` \| `{map: {over, item_unit}}` \| `{wait: {}}` | Shape only; no predicate |
 | `outcome_ref` | `{revision, digest}` | The draft `outcome.json` approved with it |
@@ -54,7 +54,7 @@ The person approves the drawing as a whole; the skill records the approval with 
 
 | Writes | From |
 |---|---|
-| The layout of [PKG §2.1](88-workflow-package.spec.md) with both manifests | Blueprint, session |
+| The layout of [PKG §2.1](88-workflow-package.spec.md) with both manifests: `tempergraph.json` `name` is the blueprint's name, `plugin.json` `name` is it plus `-tgraph` ([ADR-0120](../adr/0120-a-workflow-plugin-name-is-the-workflow-name-plus-tgraph.adr.md)) | Blueprint, session |
 | `outcome.json` | The approved draft, revision 1, `origin: authored` |
 | `workflow/<module>/__init__.py` | One builder call per unit, from the blueprint and the tables ([ADR-0106](../adr/0106-declare-workflows-with-typed-python-builders-and-text-in-files.adr.md)) |
 | `checks.py` | One check per unit with `check` criteria: for an `existing:` or `created` command, a call of `ctx.run` on the declared prefix with the criterion id in its finding; for a primitive, the engine's check helpers (`tempergraph.api.checks`: file present, headings in order, pattern present or absent, value in choices, git clean, git pushed); the person reviews each before verify |

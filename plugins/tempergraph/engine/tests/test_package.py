@@ -157,6 +157,47 @@ def test_load_failures(pkg: Path, mutate: Any, reason: str) -> None:
     assert not_loaded(pkg).reason == reason
 
 
+# -- PKG-B10 the plugin name carries the -tgraph suffix (ADR-0120) ----------------------------------
+
+
+def test_plugin_name_is_workflow_name_plus_suffix(pkg: Path) -> None:
+    lp = load_package(pkg)
+    assert lp.spec.name == "release-notes"
+    assert lp.manifests.plugin["name"] == "release-notes-tgraph"
+
+
+@pytest.mark.parametrize("plugin", ["release-notes", "release-notes-tg-graph", "release-notes.tgflow", "tgraph"])
+def test_plugin_name_without_suffix_is_refused(pkg: Path, plugin: str) -> None:
+    doc = json.loads((pkg / ".claude-plugin/plugin.json").read_text())
+    write(pkg, ".claude-plugin/plugin.json", {**doc, "name": plugin})
+    exc = not_loaded(pkg)
+    assert exc.reason == "manifest"
+    found = next(f for f in exc.findings if f.code == "plugin-name-suffix")
+    assert "'release-notes-tgraph'" in found.message
+
+
+@pytest.mark.parametrize(("name", "why"), [
+    ("notes-tgraph", "suffix belongs to the plugin name"),
+    ("claude-notes", "reserves"),
+    ("x" * 58, "at most 64"),
+    ("Notes", "kebab-case"),
+])
+def test_workflow_name_rules(pkg: Path, name: str, why: str) -> None:
+    write(pkg, ".claude-plugin/plugin.json", {"name": f"{name}-tgraph", "version": "0.1.0"})
+    write(pkg, "tempergraph.json", {"schema_version": 1, "name": name, "entry": "release_notes:workflow",
+                                    "workflow_api": 1})
+    found = read_manifest(pkg)
+    assert isinstance(found, list) and any(why in f.message for f in found if f.code == "manifest")
+
+
+def test_longest_workflow_name_is_accepted() -> None:
+    from tempergraph.package.manifest import name_problem, plugin_name, workflow_name
+
+    assert name_problem("x" * 57) is None and len(plugin_name("x" * 57)) == 64
+    assert workflow_name("release-notes-tgraph") == "release-notes"
+    assert workflow_name("release-notes") == "release-notes" and workflow_name("-tgraph") == "-tgraph"
+
+
 def test_private_engine_import_is_refused_before_import(pkg: Path, tmp_path: Path) -> None:
     """PKG-B4: the scan names file and line, and the module never ran."""
     marker = tmp_path / "ran"

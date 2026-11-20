@@ -12,7 +12,13 @@ from typing import Any
 from tempergraph.contracts import PackageManifest
 from tempergraph.model.validate import Finding
 
-NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")  # a Claude Code plugin name, kebab-case
+# A workflow package's plugin name is its workflow name plus PLUGIN_SUFFIX (PKG §2.2, ADR-0120), so a
+# tempergraph workflow is recognisable by name wherever Claude Code lists plugins. The workflow name stays short:
+# it is what `run` takes, the registry key, the run folder and the `tgwf-<name>` distribution.
+PLUGIN_SUFFIX = "-tgraph"
+PLUGIN_NAME_MAX = 64  # the plugin name is part of namespaced tool and skill names; kept well inside their caps
+NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")  # a workflow name, kebab-case
+RESERVED_PREFIXES = ("claude-", "anthropic-", "anthropics-", "cc-plugin-")  # Claude Code reserves these
 ENTRY_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*):([A-Za-z_][A-Za-z0-9_]*)$")
 DOCS_RE = re.compile(r"^(provisional|[a-z0-9][a-z0-9._-]{0,63})$")
 PLUGIN_JSON = Path(".claude-plugin") / "plugin.json"
@@ -56,6 +62,31 @@ class Pyproject:
     dependencies: tuple[str, ...]
 
 
+def plugin_name(workflow: str) -> str:
+    """The plugin name of the workflow package for `workflow` (ADR-0120)."""
+    return workflow + PLUGIN_SUFFIX
+
+
+def workflow_name(name: str) -> str:
+    """The workflow name a person may also type as its plugin name: `release-notes-tgraph` -> `release-notes`."""
+    return name[: -len(PLUGIN_SUFFIX)] if name.endswith(PLUGIN_SUFFIX) and len(name) > len(PLUGIN_SUFFIX) else name
+
+
+def name_problem(name: str) -> str | None:
+    """Why `name` cannot be a workflow name, or None (PKG §2.2)."""
+    if not NAME_RE.match(name):
+        return f"workflow name {name!r} is not kebab-case (lower-case letters, digits and hyphens)"
+    if name.endswith(PLUGIN_SUFFIX):
+        return (f"workflow name {name!r} ends in {PLUGIN_SUFFIX!r}; the suffix belongs to the plugin name only, "
+                f"so name the workflow {workflow_name(name)!r}")
+    if len(plugin_name(name)) > PLUGIN_NAME_MAX:
+        return (f"workflow name {name!r} is too long: its plugin name {plugin_name(name)!r} must be at most "
+                f"{PLUGIN_NAME_MAX} characters")
+    if name.startswith(RESERVED_PREFIXES):
+        return f"workflow name {name!r} starts with a prefix Claude Code reserves ({', '.join(RESERVED_PREFIXES)})"
+    return None
+
+
 def _err(code: str, message: str, severity: str = "error") -> Finding:
     return Finding(code, None, message, severity)  # type: ignore[arg-type]
 
@@ -73,7 +104,8 @@ def _object(path: Path) -> dict[str, Any] | Finding:
 
 
 def read_manifests(package_path: Path) -> Manifests | list[Finding]:
-    """Step 1 of PKG §2.3: both manifests, names equal, `schema_version` known; no import, no model."""
+    """Step 1 of PKG §2.3: both manifests, the plugin name is the workflow name plus `-tgraph`,
+    `schema_version` known; no import, no model."""
     plugin = _object(package_path / PLUGIN_JSON)
     engine = _object(package_path / ENGINE_JSON)
     found = [f for f in (plugin, engine) if isinstance(f, Finding)]
@@ -84,10 +116,13 @@ def read_manifests(package_path: Path) -> Manifests | list[Finding]:
     if engine.get("schema_version") != 1:
         out.append(_err("manifest", f"tempergraph.json schema_version {engine.get('schema_version')!r} is unknown"))
     name = engine.get("name")
-    if not isinstance(name, str) or not NAME_RE.match(name):
-        out.append(_err("manifest", f"tempergraph.json name {name!r} is not a kebab-case plugin name"))
-    elif plugin.get("name") != name:
-        out.append(_err("manifest", f"names differ: plugin.json {plugin.get('name')!r}, tempergraph.json {name!r}"))
+    problem = name_problem(name) if isinstance(name, str) else f"tempergraph.json name {name!r} is not a string"
+    if problem:
+        out.append(_err("manifest", f"tempergraph.json: {problem}"))
+    elif plugin.get("name") != plugin_name(str(name)):
+        out.append(_err("plugin-name-suffix", f"plugin.json name is {plugin.get('name')!r}; a workflow package's "
+                        f"plugin name is its workflow name plus {PLUGIN_SUFFIX!r}: {plugin_name(str(name))!r} "
+                        f"(tempergraph.json name {name!r})"))
     entry = engine.get("entry")
     if not isinstance(entry, str) or not ENTRY_RE.match(entry):
         out.append(_err("manifest", f"entry {entry!r} must be <module>:<function>"))
