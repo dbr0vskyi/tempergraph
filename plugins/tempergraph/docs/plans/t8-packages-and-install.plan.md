@@ -21,7 +21,7 @@ task_id: first-release-t8
 | Origin | [Release 1 plan](first-release.plan.md) track T8 |
 | Specs | [PKG](../specs/88-workflow-package.spec.md), [UPD](../specs/60-engine-update.spec.md), [VER](../specs/61-version-metadata.spec.md), [LIF](../specs/18-lifecycle-and-evals.spec.md), [AUD](../specs/55-workflow-audit.spec.md), [ARC](../specs/56-audit-rule-catalog.spec.md), [PRA](../specs/58-prompt-audit.spec.md), [SCF](../specs/91-blueprint-and-scaffold.spec.md) |
 
-**Status: In progress.** T8.1 is built: a package on disk loads by every step of PKG §2.3 but step 5, validates with the package rules, and registers, lists, unregisters and reinstalls through `tempergraph workflows`. The other phases are not started.
+**Status: In progress.** T8.1 is built: a package on disk loads by every step of PKG §2.3 but step 5, validates with the package rules, and registers, lists, unregisters and reinstalls through `tempergraph workflows`. T8.2 is built against a stand-in environment builder; a real `pip install` of the engine into a fresh environment waits on the owner's machine (it needs the package index). T8.3 to T8.6 are not started.
 
 Status pass: PKG, UPD and VER are `ready-for-implementation`, with release 1 defaults for their open questions. LIF, AUD, ARC, PRA and SCF get theirs in the first row of T8.4, T8.5 and T8.6.
 
@@ -32,10 +32,13 @@ Doc changes this track made:
 - PKG §2.7 lists `issue_repository` (WFM requires it) and `author` and `license` (`claude plugin validate --strict` asks for `author`).
 - UPD §2.8 gives the `register` refusal codes, the scope of the live-thread check of `unregister`, and the release 1 `dependencies: pending` state.
 - CHK §2.6 says the check worker's context document carries the private-name map.
+- UPD §2.7 gains a release 1 note: POSIX shim, the bootstrap import rule, the self-check module in place of `tempergraph --version --json` (the CLI has no `--version` flag yet), reconcile inside the new environment, no legacy manifest, `update` refused, the `PATH` files, and which cache folder reconcile takes.
+- VER §2.2 lists `loads_workflow_api_from` and says where `release.json` lives. SEC §2.2 widens the Updater row.
 
 Assumptions:
 - A1. Missing required non-code files (README, docs, tests, diagram, the case set) warn rather than refuse, so a hand-written package can load while it is being finished. The scaffold writes them all.
 - A2. `unregister` sees live threads in the current repository only, because the home keeps no index of repositories.
+- A3. `release.json` `extras` is empty in release 1, since no extra executor ships (ADR-0091). `--with` is accepted and passed to pip, but nothing optional exists to install yet.
 
 ## 1. Requirements
 
@@ -61,14 +64,20 @@ Assumptions:
 | 8.1.6 | `engine/src/tempergraph/package/rules.py`, `docs_check.py` | Refused plugin parts, layout, `text-ref`, the docs check | PKG §2.1, §2.5 | | P1 | ✓ | 2026-11-20 |
 | 8.1.7 | `engine/src/tempergraph/package/inventory.py` | `package_files`, `content_digest`, `docs_digest`, `workflow_version` | VER §2.4, PKG-AC-7 | | P1 | ✓ | 2026-11-20 |
 | 8.1.8 | `engine/src/tempergraph/package/registry.py`, `cli/workflows.py`, `engine/tests/test_registry.py` | `registry.json`; `workflows list\|register\|unregister\|reinstall`; `missing` and pin clearing; `version-not-bumped` | UPD §2.8 | yes | P1 | ✓ | 2026-11-20 |
-| 8.1.9 | `engine/src/tempergraph/package/registry.py` | Reconcile of `plugin` entries from Claude Code's plugin cache, run by `install` and `update` | UPD §2.8, PKG-B1 | yes | P1 | ○ | |
+| 8.1.9 | `engine/src/tempergraph/package/registry.py` | Reconcile of `plugin` entries from Claude Code's plugin cache, run by `install` and `update` | UPD §2.8, PKG-B1 | yes | P1 | ✓ | 2026-11-20 |
 | 8.1.10 | `engine/src/tempergraph/package/loader.py` | The compatibility warning for a package one level behind when the changelog has breaking `workflow` entries (PKG-B6 row 2) | PKG-B6, VER §2.3 | yes | P2 | ○ | |
 
-Rows 8.1.5 waits on plan T5.8.1 (OUT's reader, built by the T5 track); 8.1.9 is built with T8.2; 8.1.10 needs the changelog of T8.3.
+Row 8.1.5 waits on plan T5.8.1 (OUT's reader, built by the T5 track). Row 8.1.10 needs the changelog of T8.3.
 
 ### T8.2 First install
 
-Not started: the plugin launcher, the home folder, the first engine environment, the shim and the `PATH` block, the release record, reconcile.
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 8.2.1 | `engine/tests/test_install.py` | Release record drift and version parity; the bootstrap import rule; first install, already current, a failed install changes nothing, `--check` read-only, no Python, `--add-to-path` once, `--repair`; the shim runs the current engine or exits 127; the launcher's verbs; reconcile registers, repoints, keeps `missing` | UPD §2.2, §2.7, §2.8; VER §2.2 | yes | P1 | ✓ | 2026-11-20 |
+| 8.2.2 | `engine/src/tempergraph/data/release.json`, `release.py` | The release record | VER §2.2 | | P1 | ✓ | 2026-11-20 |
+| 8.2.3 | `engine/src/tempergraph/install/` | `bootstrap`, `python` lookup, `environment` (folders, `.complete`, switch), `shim` and the `PATH` block, `selfcheck`, `reconcile`, the `launch` site | UPD §2.2, §2.7 | | P1 | ✓ | 2026-11-20 |
+| 8.2.4 | `plugins/tempergraph/bin/tempergraph`, `engine/src/tempergraph/cli/install.py`, `__main__.py` | The plugin's launcher; `install` through the shim; `python -m tempergraph` | UPD §2.7 | | P1 | ✓ | 2026-11-20 |
+| 8.2.5 | live, owner's machine | A real install from the plugin: venv, `pip install` of the staged engine, self-check, shim on `PATH`, `tempergraph executors --probe` | UPD §2.7 | | P1 | ○ | |
 
 ### T8.3 Stamp and compatibility
 

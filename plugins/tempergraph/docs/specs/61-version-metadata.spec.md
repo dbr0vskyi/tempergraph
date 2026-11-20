@@ -34,6 +34,7 @@ adrs: [0057, 0058]
 |---|---|---|
 | `schema_version` | int | `1` |
 | `engine_version` | semver | This release |
+| `loads_workflow_api_from` | int | The oldest `workflow_api` level this release still loads ([PKG §2.3](88-workflow-package.spec.md)) |
 | `workflow_api` | int | The level of the workflow-facing interface: `WorkflowSpec` fields, the declaration format, callable signatures, template grammar and engine keys, capability names and aliases. It grows by one with every release that has a breaking `workflow`-audience entry (§2.3). |
 | `store_layout` | int | The state-root and home layout this release writes ([LOS](33-local-observability-store.spec.md)) |
 | `reads_store_layouts` | list of int | Layouts it can migrate forward ([MIG §2.2](62-state-and-run-migration.spec.md)) |
@@ -45,7 +46,7 @@ adrs: [0057, 0058]
 | `executor_compat` | ref | The executor compatibility table of [LIF](18-lifecycle-and-evals.spec.md) |
 | `released_at` | date | |
 
-The record is plain data in the package, generated at release and checked by a drift test against the constants it names.
+The record is plain data in the package (`tempergraph/data/release.json`), generated at release and checked by a drift test against the constants it names, and against the plugin's `plugin.json` version.
 
 ### 2.3 Compatibility changelog
 

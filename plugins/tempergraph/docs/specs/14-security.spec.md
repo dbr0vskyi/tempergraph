@@ -37,7 +37,7 @@ How the engine keeps operator input, model output and secrets away from process 
 | Git reader | `git` with constant arguments and refs on stdin |
 | Detached child launcher | The engine CLI with a ticket; the schedule tick's `run` and `orchestrate start` among them ([TCK §2.2](84-schedule-ticks-and-unattended-fires.spec.md)) |
 | Schedule trigger writer | The optional `os` adapter's one per-user entry (LaunchAgent, systemd user unit, crontab line, Task Scheduler task) and the plugin hook's loop start, holding the shim's absolute path and `schedule loop` or `schedule tick` only ([TCK §2.1](84-schedule-ticks-and-unattended-fires.spec.md)) |
-| Updater | `pip` with constants only |
+| Updater | `python -m venv`, `pip` on the staged engine's path, the interpreter probe, and the constant modules `tempergraph.install.selfcheck` and `tempergraph.install.reconcile`; argv from constants and engine-computed paths only (`tempergraph.install.launch`, [UPD §2.7](60-engine-update.spec.md)) |
 | Wait notification | The operator's own command, a named, bounded exception with its own test |
 | Check worker | The engine interpreter with the constant module `tempergraph.checks.worker`; the context document on stdin ([CHK §2.6](75-check-contract-and-command-runs.spec.md)) |
 | Workflow command runner | A command a check or finalizer resolved through the workflow's allow-list, as list argv, stdin closed, output to a file, process tree ended at its limit ([CHK §2.3](75-check-contract-and-command-runs.spec.md), [FIN §2.2](78-finalizer-contract.spec.md)) |

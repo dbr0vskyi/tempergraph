@@ -203,3 +203,57 @@ def listing(home: Path | None = None) -> dict[str, Any]:
                                            "reason", "engine_pin", "dependencies", "registered_at",
                                            "last_checked_at") if k in e or k in ("state", "engine_pin")})
     return {"schema_version": SCHEMA_VERSION, "workflows": rows}
+
+
+def _version_key(v: str) -> tuple[Any, ...]:
+    parts = []
+    for p in v.split("+", 1)[0].split("."):
+        parts.append((0, int(p), "") if p.isdigit() else (1, 0, p))
+    return tuple(parts)
+
+
+def cached_plugins(cache: Path | None = None) -> dict[str, Path]:
+    """`<plugin>@<marketplace>` -> its newest non-orphaned version folder holding a workflow package
+    (`<cache>/<marketplace>/<plugin>/<version>/`, R-055 U4)."""
+    root = cache or plugin_cache()
+    out: dict[str, Path] = {}
+    for market in sorted(p for p in root.iterdir() if p.is_dir()) if root.is_dir() else []:
+        for plugin in sorted(p for p in market.iterdir() if p.is_dir()):
+            versions = [v for v in plugin.iterdir() if v.is_dir() and (v / ENGINE_JSON).is_file()
+                        and not (v / ".orphaned_at").exists()]
+            if versions:
+                out[f"{plugin.name}@{market.name}"] = max(versions, key=lambda v: _version_key(v.name))
+    return out
+
+
+def reconcile(caps: Mapping[str, Capabilities], *, cache: Path | None = None,
+              home: Path | None = None) -> list[Checked]:
+    """Repoint `plugin` entries to their current cache folder, register newly installed workflow plugins,
+    mark a vanished one `missing`, never delete one (UPD §2.8, PKG-B1)."""
+    entries = read_entries(home)
+    found = cached_plugins(cache)
+    by_plugin = {str(e.get("plugin")): e for e in entries if e.get("kind") == "plugin"}
+    out: list[Checked] = []
+    kept: list[dict[str, Any]] = [e for e in entries if e.get("kind") != "plugin"]
+    taken = {str(e["name"]) for e in kept}
+    for pid, path in sorted(found.items()):
+        prior = by_plugin.pop(pid, None)
+        base = dict(prior) if prior else {"kind": "plugin", "plugin": pid, "registered_at": now_iso(),
+                                          "engine_pin": None, "installed_into": []}
+        base["path"] = str(path)
+        got = check_package(path, caps, base)
+        name = got.loaded.spec.name if got.loaded else str(base.get("name") or pid.split("@", 1)[0])
+        if name in taken:
+            got.findings.append(Finding("name-taken", None, f"{pid}: workflow {name!r} is already registered"))
+            out.append(got)
+            continue
+        got.entry["name"] = name
+        taken.add(name)
+        kept.append(got.entry)
+        out.append(got)
+    for e in by_plugin.values():  # uninstalled: keep the entry and its threads
+        e = {**e, "state": "missing", "last_checked_at": now_iso()}
+        kept.append(e)
+        out.append(Checked(entry=e, findings=[Finding("missing", None, f"{e.get('plugin')} is not in the cache")]))
+    write_entries(kept, home)
+    return out

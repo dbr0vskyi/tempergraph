@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import IO, Any
 
 from tempergraph.catalog import Catalog, PackageNotLoaded, from_registry, resolve_request
+from tempergraph.cli import install as install_cli
 from tempergraph.cli import workflows as workflows_cli
 from tempergraph.constants import SCHEMA, ExitCode
 from tempergraph.contracts import WorkflowSpec, thread_id
@@ -87,6 +88,7 @@ def _parser() -> _Parser:
     wp = wsub.add_parser("path")
     wp.add_argument("thread")
     workflows_cli.add_parsers(sub)
+    install_cli.add_parsers(sub)
     return p
 
 
@@ -356,6 +358,7 @@ COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "executors": cmd_executors, "facts": cmd_facts, "graph": cmd_graph, "wait": cmd_wait, "stop": cmd_stop,
     "worktree": cmd_worktree,
     "workflows": workflows_cli.cmd_workflows,
+    "install": install_cli.cmd_install,
 }
 
 

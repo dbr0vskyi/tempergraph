@@ -123,6 +123,8 @@ tempergraph update [--check] [--dry-run] [--json]
 
 Once the shim is on `PATH`, `tempergraph install` and `tempergraph update` run the same code through the shim.
 
+**Release 1.** macOS and Linux only, so the shim is a POSIX `sh` script that execs `<environment>/bin/python -m tempergraph`, and no Windows wrapper is written. The launcher puts the staged engine (`<plugin>/engine/src`) on the import path and runs `tempergraph.install.bootstrap`, which imports only the standard library and the stdlib-only engine modules (a test pins this). The self-check of step 4 runs the constant module `tempergraph.install.selfcheck` in the new environment: it reports the engine version and the workflow interface level, imports the shipped executors through the registry, and imports the CLI. Step 5 reconciles inside the new environment (`tempergraph.install.reconcile`), because loading a workflow needs the engine's libraries. No earlier release wrote a legacy manifest, so nothing is merged. `update` belongs to release 2 ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md)): the launcher refuses it with exit 2. The `PATH` block goes to `~/.zshrc`, `~/.bashrc`, fish's `config.fish`, or `~/.profile` for any other shell, between `# >>> tempergraph >>>` markers. Reconcile takes each plugin's newest version folder that holds a `tempergraph.json` and has no `.orphaned_at` marker. A cached plugin whose workflow name is already registered from a local path is reported as `name-taken` and not registered.
+
 ### 2.8 Workflow registry and reinstall
 
 
