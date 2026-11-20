@@ -4,7 +4,7 @@
 
 import type { On } from 'claude-code'
 import { expect, test } from 'claude-code/testing'
-import { detailPaused, status } from './fixtures/documents'
+import { detailPaused, status, statsProjection } from './fixtures/documents'
 
 const BAND = {
   plugin: 'tempergraph-monitor',
@@ -45,7 +45,7 @@ function engine(on: On, onRegister = () => {}) {
   on('fs.stat', () => ({ value: { kind: 'file', size: 0, mtimeMs: 0, isLink: false } }))
   on('process.run', (_, e) => {
     ran.push([...e.argv])
-    const doc = e.argv.includes('--detail') ? detailPaused : status
+    const doc = e.argv.includes('--detail') ? detailPaused : e.argv.includes('--projection') ? statsProjection : status
     return { value: { exitCode: 0, stdout: JSON.stringify(doc), stderr: '', isStdoutTruncated: false,
       isStderrTruncated: false } }
   })
@@ -61,7 +61,10 @@ test('the band names the paused run and the monitor only runs read-only verbs', 
     await ui.unmount()
   }
   expect(ran.length).toBeGreaterThan(0)
-  for (const argv of ran) expect(['status', 'events']).toContain(argv[1])
+  for (const argv of ran) {
+    expect(['status', 'events', 'stats']).toContain(argv[1])
+    expect(argv.some(a => ['flush', 'sync', '--sync'].includes(a))).toBe(false)
+  }
 })
 
 test('/tg opens the run list and a run opens its unit rows', async ($, on) => {
@@ -106,7 +109,10 @@ test('a decision fills the prompt and nothing runs (MAC-B1)', async ($, on) => {
     await ui.unmount()
   }
   expect(filled).toEqual(['!tempergraph resume demo T-1 --decision retry', '!tempergraph resume demo T-1 --decision retry'])
-  for (const argv of ran) expect(['status', 'events']).toContain(argv[1])
+  for (const argv of ran) {
+    expect(['status', 'events', 'stats']).toContain(argv[1])
+    expect(argv.some(a => ['flush', 'sync', '--sync'].includes(a))).toBe(false)
+  }
 })
 
 test('the cost tab reads reported money as rep (MCF §2.1, M4)', async ($, on) => {
@@ -119,5 +125,30 @@ test('the cost tab reads reported money as rep (MCF §2.1, M4)', async ($, on) =
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
   await ui.press({ key: 'cost' })
   expect((await ui.find({ type: 'Text', text: /^total/ }))?.text).toBe('total $0.10 rep · complete')
+  await ui.unmount()
+})
+
+test('the cost tab shows the workflow\'s projection (MCF §2.1)', async ($, on) => {
+  engine(on)
+  await $.session.start({ cwd: '/work/repo', surface: 'desktop', isInteractive: true })
+  await settle()
+  await $.command.run({ command: 'tg', args: 'demo/T-1', origin: { kind: 'composer' },
+    presentation: { isFullscreen: false, columns: 100 } })
+  await settle()
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await ui.press({ key: 'cost' })
+  expect((await ui.find({ type: 'Text', text: /^projection/ }))?.text).toBe('projection median $0.04 · p90 $0.04 est · 1 run (thin)')
+  await ui.unmount()
+})
+
+test('with no fleet sink the fleet tab says how to set one up (MCF-B5)', async ($, on) => {
+  engine(on)
+  await $.session.start({ cwd: '/work/repo', surface: 'terminal', isInteractive: true })
+  await settle()
+  await $.command.run({ command: 'tg', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  await ui.press({ key: 'fleet' })
+  expect((await ui.find({ type: 'Text', text: /^No fleet sink/ })) ?? null).not.toBeNull()
+  expect((await ui.find({ type: 'Text', text: 'This month by machine' })) ?? null).not.toBeNull()
   await ui.unmount()
 })

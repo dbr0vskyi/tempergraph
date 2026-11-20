@@ -23,7 +23,7 @@ task_id: first-release-t10
 | Decisions | [MADR-0001](../../../tempergraph-monitor/docs/adr/0001-a-claude-code-mod-that-observes.adr.md), [MADR-0002](../../../tempergraph-monitor/docs/adr/0002-poll-files-and-read-only-verbs.adr.md), [MADR-0004](../../../tempergraph-monitor/docs/adr/0004-borrow-the-workflows-view-and-add-gates.adr.md), [MADR-0006](../../../tempergraph-monitor/docs/adr/0006-one-pane-many-levels.adr.md) |
 | Mod API | The types of Claude Code 2.1.329, the build this pass was written against ([R-001](../../../tempergraph-monitor/docs/research/R-001-claude-code-mods.rsrch.md)) |
 
-**Status: In progress.** Built: the mod reads `status --json`, stats and tails each live run log, reads `status --detail` for the open run, and reads an open session's journal, process group and log tails. It draws the band (with its stale and narrow rows), the status line, toasts and notifications, the run list with filter and pins, the run view, the pause view, the cost tab, the unit view, the attempt view's tabs and the session view's tabs. Every action fills the prompt: resume with a decision, stop, ask the run driver, ask Claude about a session; paths copy. Settings come from the manifest's `userConfig`. Status pass: every monitor spec is `ready-for-implementation`, each with a "Release 1 build" design note on what is built and where the code differs; the open questions have release 1 defaults.
+**Status: In progress.** Built: the mod reads `status --json`, stats and tails each live run log, reads `status --detail` for the open run, and reads an open session's journal, process group and log tails. It draws the band (with its stale and narrow rows), the status line, toasts and notifications, the run list with filter and pins, the run view, the pause view, the cost tab with its projection line, the unit view, the attempt view's tabs and the session view's tabs, other repositories of the machine (`scope = machine`) and the fleet tab. Every action fills the prompt: resume with a decision, stop, ask the run driver, ask Claude about a session; paths copy. Settings come from the manifest's `userConfig`. Status pass: every monitor spec is `ready-for-implementation`, each with a "Release 1 build" design note on what is built and where the code differs; the open questions have release 1 defaults.
 
 **Waiting on the engine:** the supervision line needs SCO's journal (T7.6) and the main thread's `supervision` record; the check tab's output tail and the guard's voided call need fields the detail document does not carry yet (RDD, T5); `observe.tool_inputs` as a setting needs T6.2.
 
@@ -54,8 +54,8 @@ The monitor defines no engine type. `hooks/lib/engine.ts` types the documents as
 | 10.2.3 | `hooks/lib/model.ts` | Run label, mark, money (contract M4), band row, status line, alerts from records and from health, once per `(thread, seq)` | MBA §2, B1–B4 | yes | P1 | ✓ | 2026-11-20 |
 | 10.2.4 | `hooks/register.tsx`, `types/index.d.ts` | One 1 s clock: stat and tail live logs, `status --json` at the live or idle rate, `status --detail` for the open run; band `AbovePrompt` row; `$.ui.status`; toasts and notifications with the last alerted `seq` in `$.store`; `/tg`; nothing when `isInteractive` is false | MDS §2.1, MBA §2.2–§2.4, MAC §2.2 | yes | P1 | ✓ | 2026-11-20 |
 | 10.2.5 | `tests/monitor.test.tsx` | Session tests: the band names the paused fixture run on terminal and desktop; only `status` and `events` are run; a headless session registers nothing | MBA-AC-1, MDS-AC-2 | yes | P1 | ✓ | 2026-11-20 |
-| 10.2.6 | `hooks/register.tsx` | `scope = machine` from `~/.tempergraph/index.json` (needs T10.1 and P-MOD-2), missing roots | MDS §2.1, B4 | yes | P2 | ○ | |
-| 10.2.7 | `hooks/lib/model.ts`, `.claude-plugin/plugin.json` | `· stale` after 60 s, the under-20-columns row, `alerts_finished` as a setting (`alerts_fleet` waits for T10.1) | MBA §4, §2.4 | yes | P2 | ✓ | 2026-11-20 |
+| 10.2.6 | `hooks/register.tsx`, `hooks/lib/fleet.ts` | `scope = machine` through `status --all-roots` (the engine reads the index), other repositories as cards, missing roots | MDS §2.1, B4 | yes | P2 | ✓ | 2026-11-20 |
+| 10.2.7 | `hooks/lib/model.ts`, `.claude-plugin/plugin.json` | `· stale` after 60 s, the under-20-columns row, `alerts_finished` as a setting (`alerts_fleet` built with the fleet tab, 10.4.7) | MBA §4, §2.4 | yes | P2 | ✓ | 2026-11-20 |
 | 10.2.8 | `tests/` | MBA-B2 with two sessions sharing one store; MDS-B5 hash test in a live session; MDS-B1 counts under a replaced clock in a session test | MBA-AC-2, MDS-AC-1, AC-4 | yes | P2 | ○ | |
 
 ### T10.3 Monitor run view and drill-down
@@ -79,8 +79,8 @@ The monitor defines no engine type. `hooks/lib/engine.ts` types the documents as
 | 10.4.3 | `.claude-plugin/plugin.json`, `hooks/register.tsx` | `userConfig` settings of MAC §2.3; `engine_path` | MAC §2.3 | yes | P1 | ✓ | 2026-11-20 |
 | 10.4.4 | `tests/` | Source scan for no send, no tool; a decision press fills the prompt and runs nothing | MAC-AC-1, MAC-B1, B2 | yes | P1 | ✓ | 2026-11-20 |
 | 10.4.5 | `hooks/lib/cost.ts`, `hooks/register.tsx` | The cost tab: total, by unit with repeats, by kind, by executor and model with tokens, budget | MCF §2.1, B1–B3, AC-2 | yes | P1 | ✓ | 2026-11-20 |
-| 10.4.6 | `hooks/register.tsx` | Supervision and projection lines from SCO (T7.6) and `stats --projection` (T7.4) | MCF §2.1 | yes | P2 | ○ | |
-| 10.4.7 | `hooks/register.tsx` | The fleet tab from `stats --live` and the fleet copy (T10.1) | MCF §2.2, B4, B5 | yes | P2 | ○ | |
+| 10.4.6 | `hooks/register.tsx`, `hooks/lib/fleet.ts` | The projection line from `stats --projection` (built); the supervision line from SCO (T7.6, open) | MCF §2.1 | yes | P2 | ○ | |
+| 10.4.7 | `hooks/register.tsx`, `hooks/lib/fleet.ts` | The fleet tab from `stats --live` and the month by machine and workflow, cards for other machines, `alerts_fleet` toasts | MCF §2.2, B4, B5, MBA §2.4 | yes | P2 | ✓ | 2026-11-20 |
 | 10.4.8 | `hooks/register.tsx` | `model_tool = interactive`: the read-only `runs` tool, refused to subagent loops | MAC §2.2, B3, AC-2 | yes | P3 | ○ | |
 
 ### T10.1 Stats across machines (engine)

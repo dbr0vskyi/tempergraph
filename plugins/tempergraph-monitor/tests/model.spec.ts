@@ -13,7 +13,7 @@ import {
 } from '../hooks/lib/model'
 import type { RunSummary } from '../hooks/lib/model'
 import {
-  detailArgv, isReadOnly, keepTail, nextRead, parseChunk, READ_ONLY_VERBS, statusArgv, statusEvery, WRITING_VERBS,
+  detailArgv, fleetArgv, isReadOnly, keepTail, nextRead, parseChunk, READ_ONLY_VERBS, statusArgv, statusEvery, WRITING_VERBS,
 } from '../hooks/lib/sources'
 
 const dir = new URL('./fixtures/', import.meta.url).pathname
@@ -180,6 +180,9 @@ describe('sources (MDS §2, contract M1)', () => {
       expect(isReadOnly(argv)).toBe(true)
     }
     for (const v of WRITING_VERBS) expect((READ_ONLY_VERBS as readonly string[]).includes(v)).toBe(false)
+    for (const w of [['tempergraph', 'stats', 'flush'], ['tempergraph', 'stats', 'sync'], ['tempergraph', 'stats', '--sync', '--json']])
+      expect(isReadOnly(w)).toBe(false) // stats writes only as flush and sync (engine CST §2.5)
+    expect(() => fleetArgv('live', 'team; rm')).toThrow()
     expect(() => detailArgv('demo/T-1; rm -rf /')).toThrow()
     expect(() => detailArgv('demo/T-1', '--now')).toThrow()
   })
@@ -191,7 +194,7 @@ describe('sources (MDS §2, contract M1)', () => {
     expect(guard).toBeLessThan(src.indexOf('$.process.run('))
     const built = [...src.matchAll(/verb<\w+>\(\$, (\w+)\(/g)].map(m => m[1])
     expect(built.length).toBeGreaterThan(0)
-    for (const b of built) expect(['statusArgv', 'detailArgv']).toContain(b)
+    for (const b of built) expect(['statusArgv', 'detailArgv', 'projectionArgv', 'fleetArgv']).toContain(b)
     expect([...src.matchAll(/[^.]run\(\$, (\w+)\)/g)].map(m => m[1]).sort()).toEqual(['PS_ARGV', 'argv'])
     expect(src).not.toMatch(/\$\.fs\.(write|mkdir|remove|rename|append)/)
   })

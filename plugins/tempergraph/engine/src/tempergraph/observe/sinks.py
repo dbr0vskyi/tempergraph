@@ -437,10 +437,11 @@ def _live_threads(home: Path, now: float) -> list[dict[str, Any]]:
             est = 0.0
             pause_ts = None
             exit_code: Any = None
+            measured = False
             for r in records(folder / "run.jsonl"):
                 k = r.get("kind")
                 if k == "run_started":
-                    alias, est, pause_ts, exit_code = r.get("alias"), 0.0, None, None
+                    alias, est, pause_ts, exit_code, measured = r.get("alias"), 0.0, None, None, False
                 elif k == "run_exit":  # written while the lock is still held
                     exit_code = r.get("exit_code")
                 elif k == "unit_entered":
@@ -449,7 +450,8 @@ def _live_threads(home: Path, now: float) -> list[dict[str, Any]]:
                     attempt = r.get("attempt")
                 elif k == "agent_run":
                     v = (r.get("usage") or {}).get("estimated_cost_usd")
-                    est += float(v) if isinstance(v, int | float) else 0.0
+                    if isinstance(v, int | float):
+                        est, measured = est + float(v), True
                 elif k == "pause":
                     pause_ts = _ts(r.get("ts"))
             running = held and exit_code is None
@@ -458,7 +460,7 @@ def _live_threads(home: Path, now: float) -> list[dict[str, Any]]:
                 continue
             out.append({"thread_id": f"{wf}/{task}", "state_root": str(root), "workflow": wf, "alias": alias,
                         "state": "running" if running else "paused", "unit": unit, "attempt": attempt,
-                        "estimated_cost_usd": round(est, 6),
+                        "estimated_cost_usd": round(est, 6) if measured else None,  # never 0 when unmeasured
                         "waiting_for_person_s": round(now - pause_ts, 1) if paused and pause_ts else None,
                         "waiting_on": "person" if paused else None})
     return out

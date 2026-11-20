@@ -1,17 +1,22 @@
 // tempergraph-monitor: the band, status line and alerts (MBA), the run list and run view (MRV), the drill-down
-// (MDD), the cost tab (MCF §2.1) and the prompt-fill actions (MAC). It reads engine documents through read-only
+// (MDD), the cost tab and the fleet tab (MCF), other repositories on this machine (`scope = machine`, MDS §2.1)
+// and the prompt-fill actions (MAC). It reads engine documents through read-only
 // verbs and file reads on its own timers, never inside a drawing (MDS §1), and it sends nothing: every action
 // fills the prompt for the person to send (contract M2).
 
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, PluginOptions, Register } from 'claude-code'
 
-import type { MonitorEngine, MonitorExtra, MonitorPrefs, MonitorRun, MonitorView } from '../types'
+import type { MonitorEngine, MonitorExtra, MonitorFleet, MonitorOther, MonitorPrefs, MonitorRun, MonitorView } from '../types'
 import { askFill, driverFill, resumeFills, stopFills } from './lib/actions'
 import type { Fill } from './lib/actions'
 import { costTab } from './lib/cost'
 import type { DetailDoc, RunRecord, Session, StatusDoc } from './lib/engine'
 import { isReadable } from './lib/engine'
+import {
+  fleetAlerts, fleetRows, missingRoots, monthRows, projectionText, repoName, syncedText,
+} from './lib/fleet'
+import type { LiveDoc, ProjectionDoc, StatsDoc } from './lib/fleet'
 import {
   alertsFrom, attemptRows, bandRow, duration, findAttempt, healthAlerts, inFlight, listRow, nextFilter, nodeStrip,
   narrator, runList, sessionInfo, sessionNow, shownRuns, statusLine, summarise, touchStrip, unitRows, unitRowText,
@@ -19,13 +24,16 @@ import {
 import type { Filter, RunSummary } from './lib/model'
 import { callsFrom, callText, LOG_TAIL_BYTES, processTree, procText, PS_ARGV, tailLines } from './lib/session'
 import {
-  detailArgv, isReadOnly, keepTail, nextRead, parseChunk, RATES, statusArgv, statusEvery, useEngine,
+  detailArgv, fleetArgv, isReadOnly, keepTail, nextRead, parseChunk, projectionArgv, RATES, statusArgv, statusEvery,
+  useEngine,
 } from './lib/sources'
 import type { TailState } from './lib/sources'
 
 const PANE = 'tempergraph'
 const SHAPE = 'm1'
 const STALE_AFTER_MS = 60_000
+const PROJECTION_EVERY_MS = 10 * 60_000
+const FLEET_EVERY_MS = 60_000
 
 const runs = atom({ plugin: 'tempergraph-monitor', key: 'runs' } as const, [] as MonitorRun[], { shape: SHAPE })
 const view = atom({ plugin: 'tempergraph-monitor', key: 'view' } as const, { level: 'runs' } as MonitorView, { shape: SHAPE })
@@ -37,13 +45,18 @@ const prefs = atom({ plugin: 'tempergraph-monitor', key: 'prefs' } as const,
   { filter: 'all', pinned: [] } as MonitorPrefs, { shape: SHAPE })
 const extra = atom({ plugin: 'tempergraph-monitor', key: 'extra' } as const,
   { key: '', tab: '', lines: [], note: null } as MonitorExtra, { shape: SHAPE })
+const fleet = atom({ plugin: 'tempergraph-monitor', key: 'fleet' } as const,
+  { live: null, month: null, byWorkflow: null, projection: null, missing: [], others: [], readAt: null, error: null } as MonitorFleet,
+  { shape: SHAPE })
 
 type $ = EngineInterface
 
 /** The mod's settings (MAC §2.3), from the manifest's `userConfig`; a reload brings new values. */
-type Settings = { alertsFinished: boolean; showInputs: boolean; showLogTails: boolean }
+type Settings = { alertsFinished: boolean; showInputs: boolean; showLogTails: boolean; machine: boolean;
+  fleetSink: string; alertsFleet: boolean }
 
-let settings: Settings = { alertsFinished: false, showInputs: true, showLogTails: true }
+let settings: Settings = { alertsFinished: false, showInputs: true, showLogTails: true, machine: false, fleetSink: '',
+  alertsFleet: false }
 
 function readSettings(options: PluginOptions): Settings {
   useEngine(typeof options.engine_path === 'string' ? options.engine_path : '')
@@ -51,6 +64,9 @@ function readSettings(options: PluginOptions): Settings {
     alertsFinished: options.alerts_finished === true,
     showInputs: options.show_tool_inputs !== false,
     showLogTails: options.show_log_tails !== false,
+    machine: options.scope === 'machine',
+    fleetSink: typeof options.fleet_sink === 'string' && /^[a-z0-9-]{1,40}$/.test(options.fleet_sink) ? options.fleet_sink : '',
+    alertsFleet: options.alerts_fleet === true,
   }
 }
 
@@ -63,6 +79,8 @@ const logPaths = new Map<string, string>()
 let lastStatus = 0
 let lastDetail = 0
 let lastExtra = 0
+let lastProjection = 0
+let lastFleet = 0
 let busy = false
 
 /** Runs a read-only engine verb or the constant `ps` listing; refuses any other argv (contract M1). */
@@ -194,7 +212,7 @@ async function readExtra($: $, v: MonitorView, d: DetailDoc | undefined): Promis
 }
 
 async function refreshStatus($: $, now: number): Promise<void> {
-  const doc = await verb<StatusDoc>($, statusArgv())
+  const doc = await verb<StatusDoc>($, statusArgv(settings.machine))
   if (!doc) return
   if (!isReadable(doc, 'status')) {
     await update($, engine, e => ({ ...e, error: 'update the monitor: newer status document' }))
@@ -202,8 +220,20 @@ async function refreshStatus($: $, now: number): Promise<void> {
   }
   await update($, engine, e => ({ ...e, staleSince: null, error: null }))
   const out: RunSummary[] = []
+  const others: MonitorOther[] = []
   const ended: Record<string, number> = {}
+  const here = doc.roots?.[0]?.path
   for (const row of doc.threads) {
+    if (here && row.state_root && row.state_root !== here) {
+      // another repository on this machine: listed with a card, never drilled into or acted on from here
+      const s = summarise(row, undefined, now)
+      const repo = repoName(row.state_root)
+      others.push({ key: `other:${row.state_root}|${row.thread_id}`, repo, text: listRow(s), card: [
+        `${row.thread_id} in ${repo}`, `state ${row.state}${s.unit ? ` at ${s.unit}` : ''}`,
+        ...(row.pending_gates ?? []).map(g => `waits at ${g.unit}: ${g.resume}`),
+        `Open Claude Code in ${row.state_root.replace(/[\\/]\.tempergraph$/, '')} to follow or answer this run.`] })
+      continue
+    }
     if (row.log_path) logPaths.set(row.thread_id, row.log_path)
     const live = row.alive || row.state === 'paused'
     let d = details.get(row.thread_id)
@@ -225,6 +255,7 @@ async function refreshStatus($: $, now: number): Promise<void> {
     if (exit && !row.alive) ended[row.thread_id] = (now - Date.parse(exit.ts)) / 1000
   }
   await update($, runs, () => out)
+  await update($, fleet, f => ({ ...f, others, missing: missingRoots(doc.roots) }))
   await update($, endedAgo, () => ended)
   $.ui.status(statusLine(out))
 }
@@ -261,12 +292,41 @@ async function tick($: $): Promise<void> {
         health.set(open, { stall: !!d.health?.suspect_stall, cap: (d.health?.cap_eta_min ?? 99) < 10 })
       }
     }
+    if (now - lastProjection >= PROJECTION_EVERY_MS) {
+      lastProjection = now
+      const proj = await verb<ProjectionDoc>($, projectionArgv())
+      await update($, fleet, f => ({ ...f, projection: proj as unknown }))
+    }
+    const fleetOpen = shown.level === 'fleet' || (shown.level === 'card' && !shown.card?.startsWith('other:'))
+    if ((fleetOpen || settings.alertsFleet) && now - lastFleet >= FLEET_EVERY_MS) {
+      lastFleet = now
+      await refreshFleet($, now)
+    }
     if (shown.level === 'session' && now - lastExtra >= RATES.detail) {
       lastExtra = now
       await readExtra($, shown, open ? details.get(open) : undefined)
     }
   } finally {
     busy = false
+  }
+}
+
+/** The fleet tab's documents (MCF §2.2): live heartbeats, and the month by machine and by workflow. */
+async function refreshFleet($: $, now: number): Promise<void> {
+  const live = settings.fleetSink ? await verb<LiveDoc>($, fleetArgv('live', settings.fleetSink)) : null
+  const month = await verb<StatsDoc>($, fleetArgv('machine', settings.fleetSink))
+  const byWorkflow = await verb<StatsDoc>($, fleetArgv('workflow', settings.fleetSink))
+  await update($, fleet, f => ({ ...f, live: (live ?? f.live) as unknown, month: (month ?? f.month) as unknown,
+    byWorkflow: (byWorkflow ?? f.byWorkflow) as unknown, readAt: now,
+    error: settings.fleetSink && !live ? 'the fleet copy could not be read; showing the last copy' : null }))
+  if (settings.alertsFleet && live) {
+    const seen = new Set(((await $.store.get('fleetAlerted').catch(() => null)) as string[] | null) ?? [])
+    const fresh = fleetAlerts(live, seen)
+    for (const a of fresh) {
+      $.ui.toast(a.toast)
+      seen.add(a.key)
+    }
+    if (fresh.length) await $.store.set('fleetAlerted', [...seen].slice(-200))
   }
 }
 
@@ -289,7 +349,7 @@ function todaySeconds(now: number): number {
 export const register: Register = (on, options) => {
   settings = readSettings(options)
   for (const m of [tails, records, details, health, logPaths]) m.clear()
-  lastStatus = lastDetail = lastExtra = 0
+  lastStatus = lastDetail = lastExtra = lastProjection = lastFleet = 0
   busy = false
 
   on('session.start', async ($, e, next) => {
@@ -343,10 +403,12 @@ export const register: Register = (on, options) => {
       if (v.level === 'session') return { ...v, level: 'attempt', session: undefined, tab: undefined }
       if (v.level === 'attempt') return { level: 'unit', thread: v.thread, unit: v.unit }
       if (v.level === 'unit' || v.level === 'pause' || v.level === 'cost') return { level: 'run', thread: v.thread }
+      if (v.level === 'card' && !v.card?.startsWith('other:')) return { level: 'fleet' }
       return { level: 'runs' }
     }
     const label = list.find(r => r.threadId === v.thread)?.label
-    const place = v.level === 'pause' ? 'pause' : v.level === 'cost' ? 'cost' : undefined
+    const place = v.level === 'pause' ? 'pause' : v.level === 'cost' ? 'cost' : v.level === 'fleet' ? 'fleet'
+      : v.level === 'card' ? (v.card?.startsWith('other:') ? 'other repository' : 'fleet › card') : undefined
     const crumbs = ['Runs', label, place, v.unit, v.attempt != null && v.level !== 'unit' ? `attempt ${v.attempt}` : undefined,
       v.session].filter(Boolean).join(' › ')
     const header = (
@@ -367,6 +429,50 @@ export const register: Register = (on, options) => {
         <Text dimColor>The tempergraph plugin's install skill sets it up.</Text></Box>
     }
 
+    const fl = await read($, fleet)
+
+    if (v.level === 'fleet') {
+      const now = await $.clock.now()
+      const month = fl.month as StatsDoc | null
+      const rows = fleetRows(fl.live as LiveDoc | null)
+      return (
+        <Box flexDirection="column">
+          {header}
+          {settings.fleetSink
+            ? <Text dimColor>{`sink ${settings.fleetSink} · ${syncedText(month, now)}${fl.error ? ` · ${fl.error}` : ''}`}</Text>
+            : <Box flexDirection="column">
+                <Text>No fleet sink is set for the monitor.</Text>
+                <Text dimColor>List a directory sink in ~/.tempergraph/config/sinks.json for the engine, then set the monitor's fleet_sink to its name. Below: this machine's month from local stats.</Text>
+              </Box>}
+          {fl.readAt === null && <Text dimColor>Reading…</Text>}
+          {settings.fleetSink && <Text bold>Live now</Text>}
+          {settings.fleetSink && rows.length === 0 && fl.readAt !== null && <Text dimColor>Nothing is running or waiting on any machine.</Text>}
+          {rows.map(r => (
+            <Button key={`fleet:${r.key}`} plain label={r.text}
+              onPress={go(r.mine && r.threadId && list.some(x => x.threadId === r.threadId)
+                ? { level: 'run', thread: r.threadId } : { level: 'card', card: r.key })} />
+          ))}
+          <Text bold>This month by machine</Text>
+          {monthRows(month).map(line => <Text>{`  ${line}`}</Text>)}
+          <Text bold>This month by workflow</Text>
+          {monthRows(fl.byWorkflow as StatsDoc | null).map(line => <Text>{`  ${line}`}</Text>)}
+          {footer}
+        </Box>
+      )
+    }
+
+    if (v.level === 'card') {
+      const lines = v.card?.startsWith('other:') ? fl.others.find(o => o.key === v.card)?.card
+        : fleetRows(fl.live as LiveDoc | null).find(r => r.key === v.card)?.card
+      return (
+        <Box flexDirection="column">
+          {header}
+          {(lines ?? ['That run is no longer listed.']).map(line => <Text>{line}</Text>)}
+          {footer}
+        </Box>
+      )
+    }
+
     if (v.level === 'runs' || !v.thread) {
       const now = await $.clock.now()
       const sorted = shownRuns(list, pr.filter as Filter, pr.pinned, await read($, endedAgo), todaySeconds(now))
@@ -376,6 +482,10 @@ export const register: Register = (on, options) => {
           <Box>
             <Button key="filter" label={`filter: ${pr.filter}`} hotkey="f"
               onPress={() => update($, prefs, p => ({ ...p, filter: nextFilter(p.filter as Filter) }))} />
+            <Button key="fleet" label="fleet" hotkey="m" onPress={async () => {
+              lastFleet = 0
+              await update($, view, () => ({ level: 'fleet' }))
+            }} />
           </Box>
           {sorted.length === 0 && <Text dimColor>{list.length ? `No run is ${pr.filter}.` : 'No tempergraph runs in this repository.'}</Text>}
           {sorted.map(r => (
@@ -386,6 +496,11 @@ export const register: Register = (on, options) => {
                 onPress={() => togglePin($, r.threadId)} />
             </Box>
           ))}
+          {fl.others.length > 0 && <Text bold>Other repositories on this machine</Text>}
+          {fl.others.map(o => (
+            <Button key={o.key} plain label={`${o.repo}  ${o.text}`} onPress={go({ level: 'card', card: o.key })} />
+          ))}
+          {fl.missing.map(line => <Text dimColor>{line}</Text>)}
         </Box>
       )
     }
@@ -457,7 +572,8 @@ export const register: Register = (on, options) => {
           <Text dimColor>by executor and model</Text>
           {c.executors.map(x => <Text>{`  ${x.key}  ${x.cost}  ${x.tokens}`}</Text>)}
           <Text>{`budget ${c.budget}`}</Text>
-          <Text dimColor>{`supervision ${c.supervision} · projection ${c.projection}`}</Text>
+          <Text dimColor>{`supervision ${c.supervision}`}</Text>
+          <Text dimColor>{`projection ${projectionText(fl.projection as ProjectionDoc | null, d.run.workflow)}`}</Text>
           {footer}
         </Box>
       )

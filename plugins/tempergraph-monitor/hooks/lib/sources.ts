@@ -17,7 +17,7 @@ export function useEngine(path: string | undefined): string {
 }
 
 /** Every verb the monitor may run. A verb that writes is never built (MDS-AC-2). */
-export const READ_ONLY_VERBS = ['status', 'events'] as const
+export const READ_ONLY_VERBS = ['status', 'events', 'stats'] as const
 export type ReadOnlyVerb = (typeof READ_ONLY_VERBS)[number]
 
 export const WRITING_VERBS = ['run', 'resume', 'stop', 'batch', 'rerun', 'store', 'hooks', 'update', 'upgrade',
@@ -27,8 +27,29 @@ export const WRITING_VERBS = ['run', 'resume', 'stop', 'batch', 'rerun', 'store'
 const THREAD = /^[A-Za-z0-9_][A-Za-z0-9_.-]*\/[A-Za-z0-9_][A-Za-z0-9_.:-]*$/
 const UNIT = /^[A-Za-z_][A-Za-z0-9_-]*$/
 
-export function statusArgv(): readonly string[] {
-  return [engine, 'status', '--json']
+/** `stats` writes only as `stats flush`, `stats sync` and `--sync` (engine CST §2.5); the monitor never asks for those. */
+const STATS_WRITES = ['flush', 'sync', '--sync']
+const SINK = /^[a-z0-9-]{1,40}$/
+
+/** The run rows: this repository, or with `scope = machine` every root of the machine index (MDS §2.1). */
+export function statusArgv(machine = false): readonly string[] {
+  return machine ? [engine, 'status', '--all-roots', '--json'] : [engine, 'status', '--json']
+}
+
+/** `stats --projection` for the cost tab (MCF §2.1). */
+export function projectionArgv(): readonly string[] {
+  return [engine, 'stats', '--projection', '--by', 'workflow', '--json']
+}
+
+/** `stats --live` over the fleet copy, or this machine's month by `key` (MCF §2.2); `--local` without a sink (MCF-B5). */
+export function fleetArgv(what: 'live' | 'machine' | 'workflow', sink: string): readonly string[] {
+  if (sink && !SINK.test(sink)) throw new Error(`not a sink name: ${sink}`)
+  if (what === 'live') return [engine, 'stats', '--live', '--json']
+  return [engine, 'stats', ...(sink ? [] : ['--local']), '--month', monthOf(Date.now()), '--by', what, '--json']
+}
+
+export function monthOf(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 7)
 }
 
 export function detailArgv(threadId: string, unit?: string): readonly string[] {
@@ -40,7 +61,8 @@ export function detailArgv(threadId: string, unit?: string): readonly string[] {
 /** An engine verb that only reads, or the constant `ps` listing of MDS §2.1; nothing else is run. */
 export function isReadOnly(argv: readonly string[]): boolean {
   if (argv.length === PS_ARGV.length && argv.every((a, i) => a === PS_ARGV[i])) return true
-  return argv[0] === engine && (READ_ONLY_VERBS as readonly string[]).includes(argv[1] ?? '')
+  if (argv[0] !== engine || !(READ_ONLY_VERBS as readonly string[]).includes(argv[1] ?? '')) return false
+  return argv[1] !== 'stats' || !argv.some(a => STATS_WRITES.includes(a))
 }
 
 // -- run-log tail (MDS §2.2) -------------------------------------------------------------------------------

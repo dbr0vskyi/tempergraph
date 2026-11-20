@@ -30,9 +30,11 @@ export type StatusRow = {
   workspace?: { mode?: string; path?: string; branch?: string; state?: string }
   executors?: Record<string, string>
   log_path?: string
+  state_root?: string // with `--all-roots` (engine CST §2.1)
 }
 
-export type StatusDoc = { schema_version: number; generated_at?: string; threads: StatusRow[] }
+export type StatusDoc = { schema_version: number; generated_at?: string; threads: StatusRow[];
+  roots?: { path: string; missing: boolean }[] }
 
 export type RunRecord = {
   seq: number
