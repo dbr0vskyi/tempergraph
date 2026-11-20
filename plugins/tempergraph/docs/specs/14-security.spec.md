@@ -28,7 +28,7 @@ How the engine keeps operator input, model output and secrets away from process 
 
 | Site | Launches |
 |---|---|
-| Session launcher | `claude`, `agy`, and the engine interpreter with the constant worker modules `tempergraph.executors.sdk_worker` and `tempergraph.executors.api_worker` ([EXI](10-executor-interface.spec.md)) |
+| Session launcher | `claude`, `agy`, and the engine interpreter with the constant worker modules `tempergraph.executors.sdk_worker` and `tempergraph.executors.api_worker` ([EXI](10-executor-interface.spec.md)); also the executors' model-free probes and the host-speed timing |
 | Agent SDK | The SDK's bundled or pinned Claude Code CLI, started by the SDK inside the SDK worker; options built from constants |
 | Tool host command runner | A declared command prefix as list argv, inside the API worker ([THS §2.5](22-tool-host.spec.md)) |
 | Tool host MCP client | Local MCP servers from the engine's MCP file, inside the API worker |
@@ -52,7 +52,7 @@ How the engine keeps operator input, model output and secrets away from process 
 
 | Item | Rule |
 |---|---|
-| Judge-only credentials | An operator file of name-value lines laid over a judge's environment only; records show names, never values |
+| Judge-only credentials | An operator file of name-value lines, `<home>/config/credentials/<profile>`, laid over a judge's environment only; records show names, never values |
 | Private MCP configs and Antigravity session homes | Owner-only folder under the state root, one per session, removed in a `finally` block; never in argv, a log or an error text |
 | Antigravity API key | Placed into the session home's settings or environment from the credentials profile; never argv |
 | Copied sign-in files (if P-AG-1 needs them) | Copied into the session home only, owner-only, removed after the session |

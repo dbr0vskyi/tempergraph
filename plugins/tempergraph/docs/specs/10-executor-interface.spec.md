@@ -1,7 +1,7 @@
 ---
 title: Executor interface
 type: component
-status: review
+status: ready-for-implementation
 prefix: EXI
 adrs: [0006, 0007, 0008, 0009, 0010, 0012, 0013, 0018, 0019, 0021]
 ---
@@ -24,11 +24,13 @@ def get(name: str) -> Executor: ...                 # raises UnknownExecutor at 
 def available() -> list[str]: ...
 ```
 
+`probe()` returns a `ProbeReport`: `ok`, a reason word (`missing`, `signed_out`, `version_unreadable`, `probe_failed`), the version, the resolved path and the facts it read (for example the flags the CLI's help lists). Release 1 registers `claude` only ([ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md)).
+
 Only modules of the executor package import a concrete executor. The names `claude`, `agent-sdk`, `messages-api` and `antigravity` are constants, registered in that order; workflow data selects one by name and never supplies a path or a command. No environment variable selects or substitutes an executor: a step names one, or the workflow default applies.
 
 ### 2.2 Binding table
 
-A per-machine operator file maps aliases to model identifiers for each executor. It is read by the executor, never copied into argv as typed text: a typed alias only selects an entry.
+A per-machine operator file, `<home>/config/bindings.json` (`schema_version`, `bindings[]`, one row per executor), maps aliases to model identifiers for each executor. With no file or no row, `claude` binds `small`, `medium` and `large` to `haiku`, `sonnet` and `opus`, and `inherit` passes no model. A bound value that is not a plain model name is refused. It is read by the executor, never copied into argv as typed text: a typed alias only selects an entry.
 
 | Field | Meaning |
 |---|---|
@@ -60,6 +62,10 @@ def launch(spec: LaunchSpec, parse_line: Callable[[bytes], list[Event]], sink: E
 For a library executor, `argv` is `[<engine interpreter>, "-m", <constant worker module>]` and `stdin_payload` is the worker's request document, which holds the prompt ([EMA §2.3](20-executor-messages-api.spec.md)). The worker re-validates every field before use.
 
 **Caller variables.** Every launch sets `TEMPERGRAPH_SESSION_KEY` to the session's key ([EVT §2.1](30-run-events.spec.md)) and removes `TEMPERGRAPH_SUPERVISOR_TOKEN`, `TEMPERGRAPH_CALLER` and `TEMPERGRAPH_CALLER_APP` from the session's environment, so a step can neither pose as the orchestration supervisor nor be counted as a supervising session ([PRV §4](85-caller-provenance.spec.md), [SCO §2.1](87-supervision-cost.spec.md)).
+
+**Prompt window.** The prompt must be taken within 30 s of spawn; otherwise the session is stopped and the cause is `prompt_not_delivered`. A write that fails because the CLI closed its stdin is `broken_pipe`.
+
+**Probes and host speed.** The executors' model-free probes (`--version`, `--help`, `auth status`) and the host-speed timing of EXI-B14 also run at the launcher, so every executor process starts at this one site ([SEC §2.2](14-security.spec.md)).
 
 **Stop contract.** A stop (timeout, idle, signal or a drain request) sends a graceful stop to the session's process group, waits a grace period (default 10 s), then kills the tree. Whatever the session wrote before the kill is kept as partial output and partial usage.
 
@@ -123,7 +129,7 @@ Order: operator override, the gate's judge executor, the step's executor if it d
 
 **EXI-B13 Prompt write measured.** Given any launch, when the prompt write ends, then the gap from spawn is recorded, and a gap above 1 s is a warning on the attempt record, because a slow write can miss a CLI's stdin window.
 
-**EXI-B14 Host speed.** Given a start, when preflight runs, then a model-free timing of process spawn and a small file walk on the workspace is taken; a result slower than the configured floor is a warning naming it, recorded so timeouts on that run can be sorted as `slow_host` ([OBS](15-observability-and-cost.spec.md)).
+**EXI-B14 Host speed.** Given a start, when preflight runs, then a model-free timing of one interpreter spawn and a walk of at most 2000 workspace entries is taken; a total above the floor (default 3 s) is a warning naming it, recorded so timeouts on that run can be sorted as `slow_host` ([OBS](15-observability-and-cost.spec.md)).
 
 **EXI-B15 Graceful stop.** Given a running session and a drain request, when the stop contract runs, then the group gets a graceful stop, the grace period passes, and only then is the tree killed.
 
@@ -158,7 +164,7 @@ Order: operator override, the gate's judge executor, the step's executor if it d
 - [ ] EXI-AC-3 The prompt never appears in argv or the environment of any launch (planted-canary test against every executor, including the worker request documents).
 - [ ] EXI-AC-4 A timeout and each signal kill the whole tree, including a grandchild process (stand-in test on POSIX and Windows).
 - [ ] EXI-AC-5 The idle watchdog follows the table of EXI-B4 with a replaced clock.
-- [ ] EXI-AC-6 Every `InfraCause` value can be produced by the stand-in and is classified without reading prose.
+- [ ] EXI-AC-6 Every `InfraCause` value an executor reports can be produced by the stand-in and is classified without reading prose; `slow_host` is assigned by the gate from the host-speed record ([BUD](08-budgets-and-failures.spec.md)), never by an executor.
 - [ ] EXI-AC-7 A judge whose reported session id equals its step's is discarded.
 - [ ] EXI-AC-8 A step on an executor without `restricts_judge_tools` gets its judge on a capable executor, or the start is refused.
 - [ ] EXI-AC-9 All four shipped executors pass the conformance suite.
@@ -166,9 +172,9 @@ Order: operator override, the gate's judge executor, the step's executor if it d
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| May a step's filtered tool set include remote MCP servers? Deferred: it rests on probe facts not yet run on any executor ([ADR-0021](../adr/0021-scope-of-planned-work.adr.md)). | Engine owner |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| May a step's filtered tool set include remote MCP servers? Deferred: it rests on probe facts not yet run on any executor ([ADR-0021](../adr/0021-scope-of-planned-work.adr.md)). | Engine owner | No: `judge_mcp` is false on `claude` (ADR-0091), so MCP judge views are deferred and recorded |
 
 ## References
 

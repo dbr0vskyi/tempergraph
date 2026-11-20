@@ -9,6 +9,7 @@ def test_every_spec_within_budget() -> None:
     over = []
     for p in sorted((DOCS / "specs").glob("*.spec.md")):
         data = p.read_bytes()
-        if len(data) > 30 * 1024 or data.count(b"\n") > 400:
-            over.append(f"{p.name}: {len(data)} bytes, {data.count(b'\n')} lines")
+        lines = data.count(b"\n")
+        if len(data) > 30 * 1024 or lines > 400:
+            over.append(f"{p.name}: {len(data)} bytes, {lines} lines")
     assert over == [], over

@@ -11,7 +11,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 # ---------------------------------------------------------------------------------------------
 # Callable references (PKG §2.4): callables are recorded as `<module>:<qualname>`.
@@ -419,6 +419,47 @@ class SessionResult:
     prompt_gap_s: float | None = None
     duration_s: float | None = None
     argv: tuple[str, ...] = ()  # the launch argv, for records and canary tests
+
+
+ProbeWord = Literal["ok", "missing", "signed_out", "version_unreadable", "probe_failed"]
+
+
+@dataclass(frozen=True, kw_only=True)
+class ProbeReport:
+    """What `Executor.probe()` saw, read-only and model-free (EXI §2.1, ECC §4)."""
+
+    ok: bool
+    reason: ProbeWord = "ok"
+    version: str = ""
+    path: str = ""
+    facts: Mapping[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, kw_only=True)
+class Deferred:
+    """A judge view the executor cannot hold to read-only; its criterion renders as out of reach (GRD)."""
+
+    capability: str
+    reason: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class ViewSet:
+    """A judge's view set, in the judge executor's own tool names (GRD §2)."""
+
+    tools: tuple[str, ...] = ()
+    deferred: tuple[Deferred, ...] = ()
+
+
+class Executor(Protocol):
+    """CON §2.6. Neither run method raises for a session failure; failure is a field of the result."""
+
+    name: str
+
+    def capabilities(self) -> Capabilities: ...
+    def probe(self) -> ProbeReport: ...
+    def run_step(self, req: SessionRequest, sink: EventSink) -> SessionResult: ...
+    def run_judge(self, req: SessionRequest, views: ViewSet, sink: EventSink) -> SessionResult: ...
 
 
 # ---------------------------------------------------------------------------------------------

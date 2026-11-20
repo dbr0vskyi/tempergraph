@@ -1,7 +1,7 @@
 ---
 title: Claude Code executor
 type: component
-status: review
+status: ready-for-implementation
 prefix: ECC
 adrs: [0006, 0007, 0008, 0010, 0012]
 ---
@@ -99,7 +99,9 @@ Never sent to a judge: `--fallback-model`, `--resume`, `--continue`, a write too
 | `result.subtype` is not `success` and `result.result == "Request timed out"` exactly | `request_timed_out` |
 | Last `retrying` category is `rate_limit` or `overloaded` and no `result` | `throttled` |
 | `result.subtype == "error_max_turns"` | `error_kind = turn_cap` |
-| Session ended by `--max-budget-usd` (shape set by P-CC-3) | `error_kind = cap_reached` |
+| Session ended by `--max-budget-usd`: `result.subtype == "error_max_budget_usd"` until P-CC-3 sets the shape | `error_kind = cap_reached` |
+| Last `retrying` category is `connection_error` or `network_error` and no `result` | `connection` |
+| Process killed by `SIGKILL` the launcher did not send, and no `result` | `out_of_memory` |
 | `retrying` category `authentication_failed` | `error_kind = auth` |
 | `result.is_error` otherwise | `error_kind = model` |
 
@@ -118,6 +120,8 @@ Each probe is run by the owner against the pinned CLI version with an isolated c
 | P-CC-7 | Whether an engine-launched session keeps a native transcript under its isolation flags, and at which path | transcript locator ([EVT §2.4](30-run-events.spec.md)) | not run |
 | P-CC-8 | A `Skill(<plugin>:<name>)` allow rule admits only that skill in a headless session, and the tool record names the skill called | `skill:` capability | not run |
 | P-CC-9 | `claude -p --plugin-dir <package root>` loads the workflow plugin's skills and agents in a headless step session (listed in `system/init`), together with the isolation flags of a step launch | workflow skills and agents on step sessions ([PKG §2.6](88-workflow-package.spec.md)) | not run |
+
+**Model-free checks on 2.1.329** (2026-11-20, argument parsing only, in the engine's cloud build container, not the owner's machine). `--help` lists the permission modes `acceptEdits`, `auto`, `bypassPermissions`, `manual`, `dontAsk` and `plan`; `default` is no longer listed but is still accepted. `--max-turns` is accepted though not listed. `--permission-prompts` takes `host` or `none`. `-p` with an empty stdin and no positional prompt fails with "Input must be provided either through stdin or as a prompt argument", which shows stdin is read as the prompt but does not confirm P-CC-5. `auth status` prints JSON with `loggedIn`. The probe reads the flags from `--help`, so `--permission-prompts none` is sent only when listed. No live probe was run: a nested session in that container inherits the host session's environment, so its result would not stand for the owner's machine.
 
 ## 3. Behaviours
 
@@ -161,9 +165,9 @@ Each probe is run by the owner against the pinned CLI version with an isolated c
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Use `--input-format stream-json` for the prompt instead of plain stdin, to share framing with the Antigravity executor? Decide after P-CC-5. | Executor implementer |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Use `--input-format stream-json` for the prompt instead of plain stdin, to share framing with the Antigravity executor? Decide after P-CC-5. | Executor implementer | Plain UTF-8 on stdin, then stdin closes |
 
 ## References
 
