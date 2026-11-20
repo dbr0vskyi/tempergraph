@@ -173,7 +173,7 @@ def test_update_docs_only(pkg: Path, tmp_path: Path) -> None:
     (pkg / "evals" / "cases.json").unlink()
     rep = scaffold(read_session(session(tmp_path / "d")), pkg, update=True, docs_only=True)
     assert not (pkg / "evals" / "cases.json").exists()
-    assert all(r.startswith("docs/") or r == "outcome.json" for r in rep.written)
+    assert all(r.startswith("docs/") or r in ("outcome.json", "blueprint.json") for r in rep.written)
 
 
 def test_custom_check_is_left_to_write(tmp_path: Path) -> None:

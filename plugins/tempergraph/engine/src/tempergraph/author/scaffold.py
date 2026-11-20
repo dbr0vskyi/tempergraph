@@ -324,9 +324,10 @@ def _fixtures(s: Session) -> dict[str, bytes]:
         if not isinstance(src, dict) or src.get("kind") not in ("example_good", "example_bad"):
             continue
         loc = str(src.get("locator") or "")
-        if not loc.startswith("saved:"):
+        copy = src.get("file") or (loc[len("saved:"):] if loc.startswith("saved:") else None)
+        if not copy:
             continue
-        path = s.folder / "sources" / loc[len("saved:"):]
+        path = s.folder / "sources" / str(copy)  # intake copies every source in (AUT §2.8)
         if not path.is_file():
             continue
         key = str(src.get("artifact") or path.stem)
@@ -375,8 +376,11 @@ def files(s: Session) -> dict[str, bytes]:
                                   "workflow_api": WORKFLOW_API, "docs": "provisional"})
     authored = dict(o)
     authored["revision"] = int(o.get("revision") or 1)
-    if not authored.get("revisions"):
-        authored["revisions"] = [{"revision": authored["revision"], "origin": "authored", "at": now_iso()}]
+    revs = [r for r in authored.get("revisions") or [] if isinstance(r, dict)]
+    if not any(r.get("revision") == authored["revision"] for r in revs):  # OUT §2.6: one entry per revision
+        origin = "revise_session" if s.authoring.get("mode") == "revise" else "authored"
+        revs.append({"revision": authored["revision"], "origin": origin, "at": now_iso()})
+    authored["revisions"] = revs
     put_json("outcome.json", authored)
     put_json("blueprint.json", s.blueprint_doc)
     put("workflow/pyproject.toml", f'[project]\nname = "tgwf-{bp.name}"\nrequires-python = ">=3.11"\n'
@@ -464,7 +468,7 @@ def scaffold(session: Session, out: Path, *, update: bool = False, docs_only: bo
     rep.to_write = todo
     recorded: dict[str, str] = {}
     for rel, data in sorted(files(session).items()):
-        if docs_only and not rel.startswith("docs/") and rel != "outcome.json":
+        if docs_only and not rel.startswith("docs/") and rel not in ("outcome.json", "blueprint.json"):
             if rel in previous:
                 recorded[rel] = previous[rel]
             continue
