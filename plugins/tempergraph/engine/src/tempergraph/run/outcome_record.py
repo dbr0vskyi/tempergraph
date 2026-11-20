@@ -1,8 +1,8 @@
 """The outcome record of a thread and the workflow's uncorrected outcome measures (OUT §2.5, CON §2.14).
 
-Model-free and metadata only: statuses and ids, never criterion text from a session. Trust here is the release 1
-default with no calibrated judge (a judge grade is `uncalibrated`); the trust profile and coverage of OUT §2.3
-come from `run/outcome_trust.py` (T8) where it is present.
+Model-free and metadata only: statuses and ids, never criterion text from a session. Each criterion's trust is
+computed by `run/outcome_trust.py` (OUT §2.3): a check is `deterministic` only with its must-pass and must-fail
+fixtures, and a judge is `uncalibrated` until calibration accepts it (plan T12).
 """
 
 from __future__ import annotations
@@ -14,8 +14,8 @@ from typing import Any
 
 from tempergraph.contracts import WorkflowSpec
 from tempergraph.model import flow
+from tempergraph.run.outcome_trust import trust
 
-TRUST = {"check": "deterministic", "person": "human", "none": "unverified", "judge": "uncalibrated"}
 PASSED = frozenset({"MET", "n_a", "signed"})
 FAILED = frozenset({"UNMET", "PARTIAL", "declined"})
 
@@ -69,7 +69,7 @@ def build(spec: WorkflowSpec, values: Mapping[str, Any], log_path: Path) -> dict
             status = statuses.get(c.id) or ("UNMET" if check_failed else "not_judged")
             grader = (c.verifier or {}).get("check") if c.verified_by == "check" else {
                 "executor": (judged or {}).get("judge_executor"), "alias": (judged or {}).get("alias")}
-        criteria.append({"id": c.id, "class": c.verified_by or "none", "severity": c.severity, "trust": TRUST[c.verified_by or "none"],
+        criteria.append({"id": c.id, "class": c.verified_by or "none", "severity": c.severity, "trust": trust(c, "outcome", spec.package_root),
                          "status": status, "grader": grader})
     intermediate = []
     for name, io in o.intermediate.items():

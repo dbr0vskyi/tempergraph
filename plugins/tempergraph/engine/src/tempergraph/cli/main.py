@@ -17,8 +17,14 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import IO, Any
 
+from tempergraph import executor_compat
 from tempergraph.catalog import Catalog, PackageNotLoaded, from_registry, resolve_request
+from tempergraph.cli import audit as audit_cli
+from tempergraph.cli import author as author_cli
+from tempergraph.cli import install as install_cli
 from tempergraph.cli import observe_cli
+from tempergraph.cli import upgrade as upgrade_cli
+from tempergraph.cli import workflows as workflows_cli
 from tempergraph.constants import SCHEMA, ExitCode
 from tempergraph.contracts import WorkflowSpec, thread_id
 from tempergraph.executors.registry import Registry, default_registry
@@ -135,6 +141,11 @@ def _parser() -> _Parser:
     cv = csub.add_parser("validate")
     cv.add_argument("--file")
     csub.add_parser("paths")
+    workflows_cli.add_parsers(sub)
+    audit_cli.add_parsers(sub)
+    author_cli.add_parsers(sub)
+    install_cli.add_parsers(sub)
+    upgrade_cli.add_parsers(sub)
     from tempergraph.cli import outcome as outcome_cli
 
     outcome_cli.add_parser(sub, _Parser)
@@ -565,6 +576,7 @@ def cmd_executors(env: Env, a: argparse.Namespace) -> int:
             pr = ex.probe()
             row["probe"] = {"ok": pr.ok, "reason": pr.reason, "version": pr.version, "path": pr.path,
                             "facts": dict(pr.facts)}
+        row["compat"] = executor_compat.row(name, row["probe"]["version"] if a.probe else caps.version)  # LIF-AC-4
         rows.append(row)
     _emit(env, {"schema_version": 1, "executors": rows})
     return 0
@@ -727,6 +739,15 @@ COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "executors": cmd_executors, "events": cmd_events, "facts": cmd_facts, "graph": cmd_graph, "wait": cmd_wait,
     "stop": cmd_stop, "worktree": cmd_worktree, "config": cmd_config, "rerun": cmd_rerun, "outcome": cmd_outcome,
     **observe_cli.COMMANDS,
+    "workflows": workflows_cli.cmd_workflows,
+    "audit": audit_cli.cmd_audit,
+    "blueprint": author_cli.cmd_blueprint,
+    "literals": author_cli.cmd_literals,
+    "scaffold": author_cli.cmd_scaffold,
+    "author": author_cli.cmd_author,
+    "install": install_cli.cmd_install,
+    "upgrade": upgrade_cli.cmd_upgrade,
+    "upgrade-check": upgrade_cli.cmd_upgrade,
 }
 
 

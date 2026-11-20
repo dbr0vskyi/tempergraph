@@ -307,3 +307,30 @@ def host_speed(workdir: Path, *, floor_s: float = HOST_SPEED_FLOOR_S, clock: Clo
             break
     walk = clock() - t1
     return HostSpeed(spawn_s=spawn, walk_s=walk, entries=entries, slow=spawn + walk > floor_s)
+
+
+@dataclass(frozen=True, kw_only=True)
+class ShellTiming:
+    login_s: float
+    plain_s: float
+
+
+def shell_timing(budget_s: float) -> ShellTiming | None:
+    """The audit's host-speed probe (ARC `slow-host`): `$SHELL -lc true` against `$SHELL -c true`, each under
+    the budget; None when the shell cannot start."""
+    shell = os.environ.get("SHELL") or "/bin/sh"
+
+    def timed(argv: list[str]) -> float | None:
+        t0 = time.monotonic()
+        try:
+            subprocess.run(argv, stdin=subprocess.DEVNULL, capture_output=True, timeout=budget_s,  # noqa: S603
+                           check=False)
+        except subprocess.TimeoutExpired:
+            return budget_s
+        except OSError:
+            return None
+        return time.monotonic() - t0
+
+    plain = timed([shell, "-c", "true"])
+    login = timed([shell, "-lc", "true"])
+    return None if plain is None or login is None else ShellTiming(login_s=login, plain_s=plain)

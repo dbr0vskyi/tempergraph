@@ -104,7 +104,10 @@ def test_outcome_show_and_candidates(repo: Path) -> None:  # OUT §2.5, §2.6, C
     assert code == 0, err
     before = hash_tree(repo / ".tempergraph")
     code, doc, _ = cli(repo, None, "outcome", "show", "demo", "--runs", catalog=cat)
-    assert code == 0 and doc["outcome"]["trust_profile"] == {"uncalibrated": 1}
+    # OUT §2.3 via run/outcome_trust: counts per trust over every criterion, final and intermediate; no
+    # check has fixtures and no judge is calibrated, so all four are uncalibrated and nothing is covered
+    assert code == 0 and doc["outcome"]["trust_profile"] == {"uncalibrated": 4}
+    assert [c["covered"] for c in doc["outcome"]["coverage"]] == [False]
     rev = doc["runs"][0]
     assert rev["revision"] == 1 and rev["n"] == 3 and rev["met_rate"] == 1.0
     assert rev["escapes"] == 1 and rev["weak_blockers"] == ["rn-complete"] and rev["corrected"] is None

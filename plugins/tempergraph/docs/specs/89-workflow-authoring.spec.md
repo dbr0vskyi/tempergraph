@@ -1,7 +1,7 @@
 ---
 title: Workflow authoring
 type: component
-status: review
+status: ready-for-implementation
 prefix: AUT
 adrs: [0016, 0031, 0109, 0110, 0111, 0113, 0114]
 ---
@@ -21,11 +21,12 @@ This spec replaces the phase list of [SHL §2.1](19-plugin-shell.spec.md). It ow
 
 | Verb | Does | Writes | Spends |
 |---|---|---|---|
-| `author start <name> --from solution\|sources\|chat [<path>…]` | Opens an authoring session: a folder `<state root>/authoring/<id>/` holding `authoring.json`, the draft `outcome.json` and `blueprint.json` | the session folder | no |
+| `author start <name> --from solution\|sources\|chat [<path>…]`, `author start <workflow> --revise` | Opens an authoring session: a folder `<state root>/authoring/<id>/` holding `authoring.json`, the draft `outcome.json` and `blueprint.json` | the session folder | no |
 | `author intake <id> <path>…` | Adds sources and runs the inventory (§2.3) on them | the session folder | no |
 | `author check <id>` | Checks the drafts: OUT §4 on the outcome, SCF §2.1 on the blueprint, coverage and trust (OUT §2.3) | no | no |
 | `author show <id> [--json]` | The session: phase, sources, outcome and verification tables, open decisions, assumptions | no | no |
 | `author list`, `author drop <id>` | Sessions on this root; drop removes a session folder only | `drop` only | no |
+| `author approve <id> <phase>` | Records the person's yes on a phase's drafts (§2.8) | `authoring.json` | no |
 | `blueprint`, `scaffold`, `author verify`, `literals` | [SCF §2.6](91-blueprint-and-scaffold.spec.md) | per SCF | `author verify --judge-seeds` and `--trial` only |
 
 The skill calls these verbs and reads their JSON; it keeps its own state in the session folder, so an interrupted session resumes in a new conversation (`author show`). Paths given to `intake` must be inside the workspace or named explicitly by the person; connector content (a wiki page, a ticket) is read by the skill with the person's connectors and saved into the session folder as a source file first, so the inventory reads files only.
@@ -143,6 +144,19 @@ The record is copied into the package at scaffold and kept there; it is outside 
 | 3 Approve | The outcome and verification tables before and after, with the weakening rows marked; one yes |
 | 4 Write and check | A new `outcome.json` revision with an `OutcomeRevision` (`origin: revise_session`), the docs specs updated by `scaffold --update-docs`, then `author verify` without trial; a new check needs its fixtures, a moved verifier needs the evidence OUT §2.6 asks |
 | 5 Producer changes | A prompt or step change the revision suggests is a separate change after this one, grader first ([ADR-0031](../adr/0031-steps-and-their-graders-change-apart.adr.md)) |
+
+### 2.8 Release 1
+
+| Part | Release 1 |
+|---|---|
+| Session id | `<name>-<yyyymmdd>-<4 hex>`; one open session per name per state root (§4), mode `revise` included |
+| Approvals | `author approve <id> <phase>` records `{phase, approved_at, by, digest}`, `by` the caller of [PRV §2.3](85-caller-provenance.spec.md) and `digest` the SHA-256 of the drafts that phase owns (phases 1 to 4 and 6: `outcome.json` and the sources list; phase 5: `blueprint.json`; phase 7: both, and it sets `blueprint_digest` and `outcome_revision`). A phase is approvable only when every earlier phase is approved and its drafts pass `author check`; phase 2 also needs the sufficiency check, phase 4 a class for every criterion. An approval whose digest no longer matches counts as cleared, with every later one (§4); `author show` lists them under `cleared`, and `approve` drops them. Digests cover each phase's own part: 1 the sources list; 2 the statement, deliverables and final criteria without their verifier fields; 3 the intermediate outcomes likewise; 4 every criterion's `verified_by`, `verifier` and `source`; 5 the blueprint without `input`; 6 `input` and the record's `routing`; 7 both drafts |
+| Lint severities | Criteria lint findings are errors in `author check` and rung 1, except `criterion-overlap` (warning) and `criterion-no-seed`, a warning until rung 8 grades seeds (plan T12, SCF §2.7); in validation and the readiness report all are warnings. A measure that clears `criterion-vague` is a number, `every`, `each`, `all`, `no`, `none`, `at least`, `at most`, a backticked name or a path. Overlap: two texts whose content-word sets share at least 60 % of the smaller set |
+| Paths | `intake` takes paths inside the workspace (the repository root of the state root); a path outside it needs `--outside`, which the skill passes only for a path the person named |
+| Files | A source over 5 MB, or with a NUL byte in its first 8 KB, is `kind: other` with no candidates. Sources are copied into `sources/` of the session (`file`); the record keeps id, kind, locator, digest, size, private, candidate ids and the optional `artifact` and `unit` an example fixture is for. A directory is walked, at most 500 files. `kind` defaults to `solution` on a solution session, else `reference`. Trust in `author check` is as it will be once scaffolded: a check is `deterministic` when a good example exists for its unit |
+| Finished | `scaffold` marks the session `scaffolded`, which frees the name |
+| Revise | `author start <workflow> --revise` opens a `mode: revise` session holding copies of the package's `outcome.json`, `blueprint.json` and `authoring.json`, approvals included, so only phases whose part moved are asked again. A changed outcome needs a higher `revision` (`revision-not-bumped`). `author check` lists each criterion's change class against the package: removed, a blocker made a warning, or a verifier of lower trust is `weakening`; added, or the reverse, `strengthening`; a text or scale change `neutral`. Phase 7 approval covers that table. `scaffold <session> --out <package> --update-docs` then writes the revision with `origin: revise_session` |
+| Not built | The rubric scenarios (AUT-AC-1, AUT-AC-8) run the skill with a model: live, on the owner's machine |
 
 ## 3. Behaviours
 

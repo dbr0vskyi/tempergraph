@@ -687,6 +687,7 @@ class PackageManifest:
     workflow_api: int
     docs: str = "provisional"
     surfaces: Mapping[str, Any] = field(default_factory=dict)
+    audit: Mapping[str, Any] = field(default_factory=dict)  # `{ignore: [...]}`, AUD §2.4
 
 
 @dataclass(frozen=True, kw_only=True)

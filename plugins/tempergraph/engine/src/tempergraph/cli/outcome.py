@@ -38,18 +38,18 @@ def _since(window: str | int | None) -> str | None:
 
 
 def _definition(spec: Any) -> dict[str, Any]:
-    from tempergraph.run.outcome_record import TRUST
+    from tempergraph.run.outcome_trust import coverage, profile, trust
 
     o = spec.outcome
+    root = spec.package_root
     final = [{"id": c.id, "severity": c.severity, "verified_by": c.verified_by or "none",
-              "trust": TRUST[c.verified_by or "none"]} for c in o.final]
-    inter = [{"unit": u, "id": c.id, "verified_by": c.verified_by or "none", "serves": list(c.serves)}
-             for u, io in o.intermediate.items() for c in io.criteria]
-    profile: dict[str, int] = {}
-    for c in final:
-        profile[c["trust"]] = profile.get(c["trust"], 0) + 1
+              "trust": trust(c, "outcome", root)} for c in o.final]
+    inter = [{"unit": u, "id": c.id, "verified_by": c.verified_by or "none", "serves": list(c.serves),
+              "trust": trust(c, u, root)} for u, io in o.intermediate.items() for c in io.criteria]
+    cov = [{"criterion": c.criterion, "trust": c.trust, "covered": c.covered, "serving": c.serving,
+            "missing_units": c.missing_units} for c in coverage(o, spec)]
     return {"revision": o.revision, "statement": o.statement, "deliverables": [dict(d) for d in o.deliverables],
-            "final": final, "intermediate": inter, "trust_profile": profile}
+            "final": final, "intermediate": inter, "trust_profile": profile(o, spec), "coverage": cov}
 
 
 def cmd_outcome(env: Any, a: argparse.Namespace) -> int:

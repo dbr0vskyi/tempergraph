@@ -1,0 +1,104 @@
+"""The structural judge readiness report (LIF §2, LIF-B6): per judged gate, model-free.
+
+Grades: `ready` (structure clean and the judge binding `accepted` under JCL), `needs cases` (structure clean,
+not accepted), `needs work` (a structural finding). Release 1 records no judge scores before plan T12 (JCL),
+so no gate is `ready` yet, and a workflow in `stable` mode is refused with `gate-not-ready` (LIF-B6).
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+from tempergraph.contracts import Criterion, WorkflowSpec
+from tempergraph.model import flow
+from tempergraph.model.prompt_lint import VAGUE
+from tempergraph.model.validate import Finding
+
+SCALE_FIELDS = ("met", "unmet", "evidence")
+
+
+@dataclass(kw_only=True)
+class GateReadiness:
+    gate: str
+    grade: str
+    findings: list[str] = field(default_factory=list)
+    criteria: int = 0
+    blockers: int = 0
+    calibration_cases: int = 0
+    acceptance: str = "unscored"
+
+    def to_json(self) -> dict[str, Any]:
+        return {"gate": self.gate, "grade": self.grade, "findings": self.findings, "criteria": self.criteria,
+                "blockers": self.blockers, "calibration_cases": self.calibration_cases, "acceptance": self.acceptance}
+
+
+def _structural(c: Criterion) -> list[str]:
+    out: list[str] = []
+    if c.mechanical or c.verified_by in ("check", "person", "none"):
+        return out
+    if not c.check_method.strip():
+        out.append(f"{c.id or c.text[:30]}: no check method")
+    if c.verified_by == "judge":
+        scale = dict((c.verifier or {}).get("scale") or {})
+        missing = [f for f in SCALE_FIELDS if not str(scale.get(f) or "").strip()]
+        if c.severity == "blocker" and not str(scale.get("partial") or "").strip():
+            missing.append("partial")
+        if missing:
+            out.append(f"{c.id}: scale lacks {', '.join(missing)} (OUT §2.2.1)")
+    low = c.text.lower()
+    vague = [w for w in VAGUE if w in low]
+    if vague:
+        out.append(f"{c.id or c.text[:30]}: vague wording {', '.join(repr(w) for w in vague)}")
+    return out
+
+
+def _cases(root: Path | None, gate: str) -> int:
+    folder = root / "evals" / "calibration" / gate if root is not None else None
+    return sum(1 for p in folder.iterdir() if not p.name.startswith(".")) if folder and folder.is_dir() else 0
+
+
+def _gates(spec: WorkflowSpec) -> Iterable[tuple[str, list[Criterion]]]:
+    for name in spec.order:
+        u = spec.units.get(name)
+        if u is not None and u.gate.judge is not None:
+            yield name, list(u.gate.criteria)
+    if spec.outcome is not None and spec.outcome.final:
+        yield flow.OUTCOME_UNIT, list(spec.outcome.final)
+
+
+def readiness(spec: WorkflowSpec, accepted: Callable[[str], bool] = lambda gate: False) -> list[GateReadiness]:
+    """`accepted(gate)` answers whether the gate's judge binding is `accepted` (JCL §2.5; none before T12)."""
+    from tempergraph.author.criteria_lint import lint, package_doc
+
+    doc = package_doc(spec.package_root)
+    linted = lint(doc) if doc is not None else []
+    out = []
+    for gate, criteria in _gates(spec):
+        notes = [n for c in criteria for n in _structural(c)]
+        mine = [f for f in linted if (f.unit or flow.OUTCOME_UNIT) == gate and f.criterion is not None]
+        notes += [f"{f.code}: {f.message}" for f in mine if f.code != "criterion-no-seed"]
+        seedless = [f.criterion for f in mine if f.code == "criterion-no-seed"]
+        judged = [c for c in criteria if not c.mechanical and c.verified_by not in ("check", "person", "none")]
+        blockers = sum(1 for c in judged if c.severity == "blocker")
+        if judged and not blockers:
+            notes.append("no judged criterion is a blocker, so the judge can never send the work back")
+        ok = accepted(gate)
+        grade = "needs work" if notes else ("ready" if ok else "needs cases")
+        # AUT §2.8: a missing seed is a calibration gap, shown but not graded as structural
+        notes += [f"criterion-no-seed: {c} has no met and unmet seed" for c in seedless]
+        out.append(GateReadiness(gate=gate, grade=grade, findings=notes, criteria=len(criteria), blockers=blockers,
+                                 calibration_cases=_cases(spec.package_root, gate),
+                                 acceptance="accepted" if ok else "unscored"))
+    return out
+
+
+def stable_findings(spec: WorkflowSpec) -> list[Finding]:
+    """LIF-B6: a `stable` workflow needs every judged gate `ready`."""
+    if spec.improvement_mode != "stable":
+        return []
+    return [Finding("gate-not-ready", g.gate, f"`stable` needs the gate `ready`; it is {g.grade!r}"
+                    + (f": {'; '.join(g.findings)}" if g.findings else " (no accepted judge binding)"))
+            for g in readiness(spec) if g.grade != "ready"]

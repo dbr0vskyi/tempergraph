@@ -262,7 +262,7 @@ Shared by [AUD](55-workflow-audit.spec.md), [ARC](56-audit-rule-catalog.spec.md)
 
 | Type | Field | Meaning |
 |---|---|---|
-| `AuditFinding` | `rule` | Catalog rule id, or `validate:<code>` and `<owner>:<code>` for owned rules |
+| `AuditFinding` | `rule`, `owner` | Catalog id and `audit`, or `<owner>:<code>` and its owner |
 | | `layer` | `definition` \| `host` \| `history` |
 | | `severity`, `confidence` | `error` \| `warning` \| `info`; `high` \| `medium` \| `low` |
 | | `cause` | Cause code from the self-improvement list ([SIL §2.3](16-self-improvement.spec.md)) |

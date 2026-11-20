@@ -90,6 +90,13 @@ class _Validator:
         self._finalizer()
         for code, unit, msg in lessons.validate(s):  # LSN §2.1, §4
             self.err(code, unit, msg)
+        from tempergraph.model.prompt_lint import lint  # LIF: prompt lint is part of validate, as warnings
+
+        self.findings += [Finding(f.code, f.unit, f"{f.where}: {f.message}", "warning") for f in lint(s)]
+        if s.package_root is not None and (s.package_root / "tempergraph.json").is_file():  # PKG §2.3 step 6
+            from tempergraph.package.loader import package_findings
+
+            self.findings += package_findings(s)
 
     # -- release --------------------------------------------------------------------------------
     def _release(self) -> None:

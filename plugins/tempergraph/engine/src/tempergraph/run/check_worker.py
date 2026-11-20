@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from tempergraph.contracts import CheckFinding, CheckResult, EventSink, GateSpec
+from tempergraph.package import importer
 from tempergraph.run import checks as checkmod
 
 WORKER_GRACE_S = 30
@@ -27,6 +28,7 @@ def context_doc(gate: GateSpec, ctx: checkmod.CheckContext) -> dict[str, Any]:
         "check": {"module": gate.check.module, "qualname": gate.check.qualname},
         "check_timeout_s": gate.check_timeout_s,
         "sys_path": [p for p in sys.path if p],
+        "packages": importer.mapping(),  # private package names (PKG §2.3 step 3)
         "context": {
             "unit": ctx.unit, "workdir": str(ctx.workdir), "request": ctx.request, "item": ctx.item,
             "visit": ctx.visit, "attempt": ctx.attempt, "preview": ctx.preview,
@@ -80,6 +82,7 @@ def main() -> int:
         for p in reversed(doc.get("sys_path") or []):
             if p not in sys.path:
                 sys.path.insert(0, p)
+        importer.install(doc.get("packages"))
         from tempergraph.contracts import CallableRef, Criterion
 
         ref = CallableRef(module=doc["check"]["module"], qualname=doc["check"]["qualname"])

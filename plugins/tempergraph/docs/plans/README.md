@@ -13,4 +13,6 @@ Plans say **in what order** the specs are built. A release plan fixes a release'
 | [t6-run-operations.plan.md](t6-run-operations.plan.md) | T6: CLI core verbs and exit codes (M1), settings, tool grants, feedback and reruns, caller provenance | Completed (offline; live probes pending) |
 | [t7-observability.plan.md](t7-observability.plan.md) | T7: run events, detail document, session logs and the store, reports and attention, supervision record, supervision cost | Completed (offline; P-SUP-3 pending) |
 | [t10-monitor.plan.md](t10-monitor.plan.md) | T10.1 to T10.4: team sinks, the monitor mod's sources, band, alerts, run view, drill-down, cost tab and prompt-fill actions | In progress (mod API check and live probes pending) |
+| [t8-packages-and-install.plan.md](t8-packages-and-install.plan.md) | T8: workflow packages and the registry, first install, stamp, scenarios and lint, audit, blueprint and scaffold | In progress |
+| [t9-shell-skills.plan.md](t9-shell-skills.plan.md) | T9: run driver and bootstrap, authoring verbs and the author skill, troubleshooter and install skills | In progress |
 | [t12-self-improvement.plan.md](t12-self-improvement.plan.md) | T12: loop records, cause codes and lenses, filing and measurement, lessons; labels, calibration, proposals and trials after T7 and T8 | In progress |

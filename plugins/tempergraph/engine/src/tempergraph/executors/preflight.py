@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from tempergraph import executor_compat
 from tempergraph.contracts import Deferred, ProbeReport, WorkflowSpec
 from tempergraph.executors.registry import NoJudgeExecutor, Registry, UnknownExecutor
 from tempergraph.model.validate import Finding, validate
@@ -55,6 +56,9 @@ def preflight(spec: WorkflowSpec, registry: Registry, *, judge_override: str | N
                 return False
             caps[name] = registry.get(name).capabilities()  # now carries the probed version
         p = rep.probes[name]
+        untested = executor_compat.finding(name, p.version) if p.ok else None  # LIF-AC-4
+        if untested is not None and untested not in rep.warnings:
+            rep.warnings.append(untested)
         if not p.ok:
             rep.refusals.append(Finding("executor-probe-failed", unit, f"executor {name!r}: {p.reason}"))
         return p.ok

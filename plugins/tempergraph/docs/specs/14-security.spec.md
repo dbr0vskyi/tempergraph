@@ -28,7 +28,7 @@ How the engine keeps operator input, model output and secrets away from process 
 
 | Site | Launches |
 |---|---|
-| Session launcher | `claude`, `agy`, and the engine interpreter with the constant worker modules `tempergraph.executors.sdk_worker` and `tempergraph.executors.api_worker` ([EXI](10-executor-interface.spec.md)); also the executors' model-free probes and the host-speed timing |
+| Session launcher | `claude`, `agy`, and the engine interpreter with the constant worker modules `tempergraph.executors.sdk_worker` and `tempergraph.executors.api_worker` ([EXI](10-executor-interface.spec.md)); also the executors' model-free probes, the host-speed timing and the audit's login-shell timing ([ARC](56-audit-rule-catalog.spec.md) `slow-host`) |
 | Agent SDK | The SDK's bundled or pinned Claude Code CLI, started by the SDK inside the SDK worker; options built from constants |
 | Tool host command runner | A declared command prefix as list argv, inside the API worker ([THS §2.5](22-tool-host.spec.md)) |
 | Tool host MCP client | Local MCP servers from the engine's MCP file, inside the API worker |
@@ -37,7 +37,7 @@ How the engine keeps operator input, model output and secrets away from process 
 | Git reader | `git` with constant arguments and refs on stdin |
 | Detached child launcher | The engine CLI with a ticket; the schedule tick's `run` and `orchestrate start` among them ([TCK §2.2](84-schedule-ticks-and-unattended-fires.spec.md)); and the engine interpreter with a constant module and words: in release 1 only the stats flusher, `tempergraph.observe.sinks flush` ([CST §2.3](34-central-run-stats.spec.md)), in `tempergraph.detach` |
 | Schedule trigger writer | The optional `os` adapter's one per-user entry (LaunchAgent, systemd user unit, crontab line, Task Scheduler task) and the plugin hook's loop start, holding the shim's absolute path and `schedule loop` or `schedule tick` only ([TCK §2.1](84-schedule-ticks-and-unattended-fires.spec.md)) |
-| Updater | `pip` with constants only |
+| Updater | `python -m venv`, `pip` on the staged engine's path, the interpreter probe, and the constant modules `tempergraph.install.selfcheck` and `tempergraph.install.reconcile`; argv from constants and engine-computed paths only (`tempergraph.install.launch`, [UPD §2.7](60-engine-update.spec.md)) |
 | Wait notification | The operator's own command, a named, bounded exception with its own test |
 | Check worker | The engine interpreter with the constant module `tempergraph.checks.worker`; the context document on stdin ([CHK §2.6](75-check-contract-and-command-runs.spec.md)) |
 | Code host client | `gh` with list argv for the loop's issue search, create, comment and reopen; the repository checked against `owner/name`, title and body on stdin, never argv ([SIL §5](16-self-improvement.spec.md)) |
