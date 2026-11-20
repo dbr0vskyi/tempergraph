@@ -20,7 +20,7 @@ task_id: first-release-t12
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T12 |
 | Specs | [SIL](../specs/16-self-improvement.spec.md), [IMD](../specs/43-improvement-data.spec.md), [LSN](../specs/42-workflow-lessons.spec.md); later [FBK](../specs/41-feedback-and-judge-reliability.spec.md), [JCL](../specs/50-judge-calibration.spec.md), [PRP](../specs/40-improvement-proposals.spec.md) |
-| Split | This thread: T12.1, T12.2, T12.7 (and T9.1). T7 keeps FBK's `label` verb and the reports; T8 keeps T9.2 and T9.3. T12.3 to T12.6 wait on T7's label rows and T8's readiness hooks (`package/readiness.py`, `run/outcome_trust.trust(accepted=…)`, `author verify` rungs 8 and 9) |
+| Split | This thread: T12.1, T12.2, T12.7 (and T9.1). T7 keeps FBK's `label` verb and the reports; T8 keeps T9.2 and T9.3. T12.3 to T12.6 are built by the judge calibration thread on T7's label rows and T8's readiness hooks (`package/readiness.py`, `run/outcome_trust.trust(accepted=…)`); `author verify` rungs 8 and 9 are built by the T8 thread on that interface |
 
 **Status: In progress.** T12.1 records, causes and lenses, T12.2 filing and measurement and T12.7 lessons are built model-free; the loop child (12.1.5) runs the friction judge and files after a final exit.
 
