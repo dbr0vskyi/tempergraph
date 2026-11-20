@@ -551,6 +551,7 @@ COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "audit": audit_cli.cmd_audit,
     "blueprint": author_cli.cmd_blueprint,
     "literals": author_cli.cmd_literals,
+    "scaffold": author_cli.cmd_scaffold,
     "install": install_cli.cmd_install,
     "upgrade": upgrade_cli.cmd_upgrade,
     "upgrade-check": upgrade_cli.cmd_upgrade,

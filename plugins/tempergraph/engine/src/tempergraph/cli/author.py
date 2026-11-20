@@ -4,6 +4,7 @@ output is JSON (draw prints its format). A failed check exits 2 (CON §2.9)."""
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,11 @@ def add_parsers(sub: Any) -> None:
             p.add_argument("--format", choices=("md", "svg", "mermaid"), default="md")
     p = bsub.add_parser("compare")
     p.add_argument("workflow")
+    sc = sub.add_parser("scaffold", help="write a workflow package from an approved authoring session (no model)")
+    sc.add_argument("session", help="a session id under <state root>/authoring/, or its folder")
+    sc.add_argument("--out", required=True)
+    sc.add_argument("--update", action="store_true")
+    sc.add_argument("--update-docs", action="store_true")
     lit = sub.add_parser("literals", help="scan a workflow for case literals (no model)")
     lit.add_argument("workflow")
     lit.add_argument("--cases", action="store_true", help="also match runs of six words from case requests")
@@ -115,3 +121,26 @@ def cmd_literals(env: Any, a: argparse.Namespace) -> int:
     hits = scan(spec, cases=a.cases)
     _emit(env, {"schema_version": 1, "workflow": spec.name, "ok": not hits, "hits": [h.to_json() for h in hits]})
     return 0 if not hits else int(ExitCode.ADVISORY)
+
+
+def cmd_scaffold(env: Any, a: argparse.Namespace) -> int:
+    from tempergraph.author.scaffold import ScaffoldRefused, read_session, scaffold
+
+    folder = _path(env, a.session)
+    if not folder.is_dir():
+        from tempergraph.store.layout import NotInRepository, state_root_path
+
+        with contextlib.suppress(NotInRepository):
+            folder = state_root_path(env.cwd) / "authoring" / a.session
+    if not folder.is_dir():
+        env.err.write(f"tempergraph: no authoring session {a.session!r}\n")
+        return int(ExitCode.USAGE)
+    try:
+        rep = scaffold(read_session(folder), _path(env, a.out), update=a.update or a.update_docs,
+                       docs_only=a.update_docs)
+    except ScaffoldRefused as exc:
+        env.err.write(f"tempergraph: {exc}\n")
+        _emit(env, {"schema_version": 1, "ok": False, "refused": exc.code, "message": str(exc)})
+        return int(ExitCode.USAGE)
+    _emit(env, {"ok": True, **rep.to_json()})
+    return 0

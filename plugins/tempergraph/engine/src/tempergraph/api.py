@@ -12,6 +12,7 @@ import inspect
 from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 
+from tempergraph import check_helpers as checks  # `tempergraph.api.checks` (SCF §2.4)
 from tempergraph.contracts import (
     CallableRef,
     CheckFinding,
@@ -41,7 +42,7 @@ from tempergraph.run.finalize import FinalizerContext, FinalizerResult
 __all__ = [
     "CheckFinding", "CheckResult", "Criterion", "FinalizerContext", "FinalizerResult", "Gate", "Input", "Judge", "Param", "ResolveResult", "Route",
     "RouteView", "Routing", "Script", "SessionOptions", "Setting", "Step", "Switch", "Value", "Workflow",
-    "WorktreeDecl", "text", "Parallel", "Map", "Ask", "Wait", "Council", "Contest", "Subworkflow",
+    "WorktreeDecl", "checks", "text", "Parallel", "Map", "Ask", "Wait", "Council", "Contest", "Subworkflow",
 ]
 
 
