@@ -1,0 +1,20 @@
+"""The release-notes workflow: one judged step and the outcome gate (the engine's minimal package, PKG §2.7)."""
+
+from tempergraph.api import Gate, Judge, Routing, Step, Workflow, text
+
+from .checks import draft_check
+
+
+def workflow():
+    return Workflow(
+        order=["draft"],
+        routing=Routing(description="Write release notes for the changes since the last tag"),
+        issue_repository="acme/release-notes",
+        units={
+            "draft": Step(
+                prompt=text("prompts/draft.md"), tools=["read", "write"], produces={"notes": "file"},
+                summary="Write the release notes", timeout_s=900,
+                gate=Gate(check=draft_check, judge=Judge(file="judges/draft.md", references=["notes"])),
+            ),
+        },
+    )

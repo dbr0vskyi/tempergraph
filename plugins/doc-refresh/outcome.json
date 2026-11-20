@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "revision": 1,
+  "statement": "The doc's requested sections say what is true now, and nothing else in it changed.",
+  "deliverables": [
+    {
+      "key": "outline",
+      "kind": "file",
+      "where": "outline.md in the run's branch"
+    },
+    {
+      "key": "doc",
+      "kind": "file",
+      "where": "the document the request names, in the run's branch"
+    }
+  ],
+  "final": [
+    {
+      "id": "dr-request",
+      "severity": "blocker",
+      "verified_by": "judge",
+      "text": "Every section the request names is rewritten and no other section changed",
+      "check_method": "Compare the document before and after with the request",
+      "verifier": {
+        "references": [
+          "doc",
+          "outline"
+        ],
+        "scale": {
+          "met": "each named section is rewritten and every other section is byte-for-byte the same",
+          "partial": "no partial: any gap is UNMET",
+          "unmet": "a named section is unchanged, or a section the request did not name changed",
+          "evidence": "each named section and the diff of the others",
+          "seeds": [
+            "met-request",
+            "unmet-request"
+          ]
+        }
+      }
+    }
+  ],
+  "intermediate": {
+    "outline": {
+      "statement": "outline.md lists every heading of the document, in order",
+      "criteria": [
+        {
+          "id": "dr-outline",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "outline.md exists and lists at least one heading",
+          "check_method": "Read outline.md and count its lines that start with `#`",
+          "verifier": {
+            "primitive": "pattern_present",
+            "artifact": "outline",
+            "pattern": "^#"
+          },
+          "serves": [
+            "dr-request"
+          ]
+        }
+      ]
+    },
+    "draft": {
+      "statement": "The rewrite keeps every heading of the outline and says what is true now",
+      "criteria": [
+        {
+          "id": "dr-headings",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every heading in outline.md is still in the document, in the same order",
+          "check_method": "Read outline.md and the document and compare their headings",
+          "serves": [
+            "dr-request"
+          ]
+        },
+        {
+          "id": "dr-current",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "Every statement in each rewritten section matches the repository as it is now",
+          "check_method": "Read each rewritten statement and the file or command it is about",
+          "verifier": {
+            "references": [
+              "doc"
+            ],
+            "scale": {
+              "met": "every statement holds against the repository",
+              "partial": "no partial: one false statement is UNMET",
+              "unmet": "a statement contradicts the repository",
+              "evidence": "each statement and the file that confirms or refutes it",
+              "seeds": [
+                "met-current",
+                "unmet-current"
+              ]
+            }
+          },
+          "serves": [
+            "dr-request"
+          ]
+        }
+      ]
+    },
+    "review": {
+      "statement": "A review that names each rewritten section and says whether it is ready",
+      "criteria": [
+        {
+          "id": "dr-reviewed",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "The review names each rewritten section and gives `approve` or `redo` with a reason",
+          "check_method": "Read the review's value and its reasons",
+          "verifier": {
+            "references": [
+              "doc"
+            ],
+            "scale": {
+              "met": "each rewritten section is named with a reason",
+              "partial": "no partial: a missing section is UNMET",
+              "unmet": "a rewritten section is not named, or a verdict has no reason",
+              "evidence": "the sections named and the reasons",
+              "seeds": [
+                "met-reviewed",
+                "unmet-reviewed"
+              ]
+            }
+          },
+          "serves": [
+            "dr-request"
+          ]
+        },
+        {
+          "id": "dr-approved",
+          "severity": "blocker",
+          "verified_by": "person",
+          "serves": [
+            "dr-request"
+          ],
+          "text": "A person approves the rewrite of each named section before the run ends",
+          "check_method": "The review gate's approval",
+          "verifier": {
+            "role": "the document's owner",
+            "question": "Is each rewritten section ready to keep?"
+          }
+        }
+      ]
+    }
+  },
+  "revisions": [
+    {
+      "revision": 1,
+      "origin": "authored",
+      "at": "2026-11-20T17:30:06.839Z"
+    }
+  ]
+}

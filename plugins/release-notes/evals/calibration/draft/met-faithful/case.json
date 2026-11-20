@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-faithful",
+  "gate": "draft",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "rn-faithful",
+    "expected": "MET",
+    "reason": "Each entry says what its change did."
+  }
+}

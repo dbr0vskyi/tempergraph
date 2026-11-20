@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "workflow": "release-notes",
+  "units": [
+    {
+      "name": "draft",
+      "kind": "step",
+      "summary": "Write the release notes",
+      "approval": false
+    },
+    {
+      "name": "outcome",
+      "kind": "outcome",
+      "summary": "outcome gate",
+      "approval": false
+    }
+  ],
+  "nodes": [
+    "draft.step",
+    "draft.judge",
+    "draft.gate",
+    "draft.human",
+    "outcome.step",
+    "outcome.judge",
+    "outcome.gate",
+    "outcome.human",
+    "finalizer"
+  ],
+  "edges": [
+    [
+      "draft.step",
+      "draft.judge",
+      "next"
+    ],
+    [
+      "draft.judge",
+      "draft.gate",
+      "next"
+    ],
+    [
+      "draft.gate",
+      "outcome.step",
+      "PROCEED"
+    ],
+    [
+      "draft.gate",
+      "draft.step",
+      "RETRY"
+    ],
+    [
+      "draft.gate",
+      "draft.human",
+      "ESCALATE"
+    ],
+    [
+      "draft.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "draft.human",
+      "outcome.step",
+      "decision"
+    ],
+    [
+      "draft.human",
+      "draft.step",
+      "decision"
+    ],
+    [
+      "draft.human",
+      "__end__",
+      "decision"
+    ],
+    [
+      "outcome.step",
+      "outcome.judge",
+      "next"
+    ],
+    [
+      "outcome.judge",
+      "outcome.gate",
+      "next"
+    ],
+    [
+      "outcome.gate",
+      "finalizer",
+      "PROCEED"
+    ],
+    [
+      "outcome.gate",
+      "outcome.step",
+      "RETRY"
+    ],
+    [
+      "outcome.gate",
+      "draft.step",
+      "BACK"
+    ],
+    [
+      "outcome.gate",
+      "outcome.human",
+      "ESCALATE"
+    ],
+    [
+      "outcome.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "outcome.human",
+      "finalizer",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "outcome.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "draft.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "__end__",
+      "decision"
+    ],
+    [
+      "finalizer",
+      "__end__",
+      "next"
+    ],
+    [
+      "__start__",
+      "draft.step",
+      "next"
+    ]
+  ],
+  "digest": "10ebe7b340b9a76158ada4c12436484c5f01dbb51f94160e7142fff0fcb6eac4"
+}

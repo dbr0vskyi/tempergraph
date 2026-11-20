@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "name": "doc-refresh",
+  "entry": "doc_refresh:workflow",
+  "workflow_api": 1,
+  "docs": "provisional"
+}

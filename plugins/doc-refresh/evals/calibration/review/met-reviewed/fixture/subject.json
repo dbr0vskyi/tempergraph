@@ -1,0 +1,4 @@
+{
+  "doc": "docs/guide.md",
+  "verdict": "approve: Install now matches pyproject.toml's requires-python."
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-current",
+  "gate": "draft",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "dr-current",
+    "expected": "MET",
+    "reason": "The install section matches pyproject.toml."
+  }
+}

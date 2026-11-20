@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-reviewed",
+  "gate": "review",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "dr-reviewed",
+    "expected": "MET",
+    "reason": "The review names Install with a reason."
+  }
+}

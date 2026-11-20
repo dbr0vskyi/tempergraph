@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "case-1",
+      "request": "v1.2"
+    }
+  ]
+}

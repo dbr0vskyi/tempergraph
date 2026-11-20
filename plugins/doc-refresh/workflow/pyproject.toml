@@ -1,0 +1,4 @@
+[project]
+name = "tgwf-doc-refresh"
+requires-python = ">=3.11"
+dependencies = []

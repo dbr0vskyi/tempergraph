@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-request",
+  "gate": "outcome",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "dr-request",
+    "expected": "UNMET",
+    "reason": "The Use section changed though the request named only Install."
+  }
+}

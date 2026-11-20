@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "case-1",
+      "request": "docs/guide.md: the install section, for Python 3.12"
+    }
+  ]
+}
