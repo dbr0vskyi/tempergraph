@@ -21,7 +21,7 @@ task_id: first-release-t6
 | Origin | [Release 1 plan](first-release.plan.md) track T6 |
 | Specs | [CLI](../specs/17-engine-cli.spec.md), [RST](../specs/80-run-settings-and-overrides.spec.md), [RRN](../specs/81-reruns-and-feedback.spec.md), [PRV](../specs/85-caller-provenance.spec.md) |
 
-**Status: In progress.** T6.1 is built, so milestone M1 holds on stand-ins: a two-step workflow defined in Python test code runs end to end through `tempergraph run`, pauses with exit 3, and finishes through `tempergraph resume`. M1 on a signed-in `claude` waits for the owner's machine (T0.1). T6.2 and T6.3 are built. T6.4 and T6.5 are not started.
+**Status: In progress.** T6.1 is built, so milestone M1 holds on stand-ins: a two-step workflow defined in Python test code runs end to end through `tempergraph run`, pauses with exit 3, and finishes through `tempergraph resume`. M1 on a signed-in `claude` waits for the owner's machine (T0.1). T6.2 to T6.5 are built but for the rows marked ○ below. The live probes P-SUP-1, P-SUP-2 and P-SUP-4 wait on the owner's machine.
 
 Status pass: CLI, RST, RRN and PRV are `ready-for-implementation`. RST, RRN and PRV have release 1 defaults for their open questions.
 
@@ -90,7 +90,13 @@ Release 1 notes: keys whose feature is release 2 (the audit judge, switch arms, 
 
 ### T6.5 Caller provenance
 
-The CLI records `{kind: person, via: cli}` on every mutating call. Not started: the classification of PRV §2.3, deciders and relay evidence.
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 6.5.1 | `engine/tests/test_provenance.py` | PRV-AC-1 classification rows, AC-4 property (a marker never gives a person), the §4 refusals, PRV-B4 relay table, B5 `caller_conflict`, B9 and AC-5 (a relayed grant needs a named person turn) | PRV §2.3, §2.4, §3 | yes | P1 | ✓ | 2026-11-20 |
+| 6.5.2 | `engine/src/tempergraph/provenance.py` | `classify` (S2 to S6; S1 and S1s refused in release 1), `decide` with the person turns of the host session's journal, `may_widen` | PRV §2.3, §2.4, §2.8 | | P1 | ✓ | 2026-11-20 |
+| 6.5.3 | `engine/src/tempergraph/cli/main.py`, `run/runner.py`, `run/rerun.py` | `--caller`, `--as-agent`, `--caller-app`, `--relayed` on `run`, `resume`, `rerun` and `stop`; the caller block on `run_started`, the human record and the intervention row; `relay_not_applicable`; widening needs `may_widen`; read-only verbs and `--check` never classify | PRV §2.2, §2.5, CLI §2.1 | | P1 | ✓ | 2026-11-20 |
+| 6.5.4 | `engine/src/tempergraph/run/supervision.py`, `engine/tests/test_supervision.py` | The `supervision` record before every `run_exit` and on the `run_segment` ledger row: touches by class and decider, waits, latency, sessions, level and `level_by`; a rerun counts as a steer on its source; cost fields and `observations` null until T7.6 | SUP §2.2, §2.3, SUP-B1 to B3 | yes | P1 | ✓ | 2026-11-20 |
+| 6.5.5 | — | P-SUP-1, P-SUP-2, P-SUP-4 on a signed-in Claude Code (PRV-AC-6); the journal itself is written by the SCO hooks (T7.6) | PRV-AC-6 | | P2 | ○ | |
 
 ## 3. Verification
 

@@ -26,13 +26,17 @@ def settings(**kw: Any) -> RunSettings:
     return RunSettings(sleep=lambda s: None, **kw)
 
 
-def cli(repo: Path, ex: ScriptedExecutor | None, *argv: str, catalog: Catalog | None = None) -> tuple[int, Any, str]:
+PERSON = ({}, True)  # a person at a plain terminal (PRV-B1)
+
+
+def cli(repo: Path, ex: ScriptedExecutor | None, *argv: str, catalog: Catalog | None = None,
+        signals: tuple[dict[str, str], bool] = PERSON) -> tuple[int, Any, str]:
     reg = Registry()
     if ex is not None:
         reg.register(ex)
     out, err = io.StringIO(), io.StringIO()
     code = main(list(argv), catalog=catalog or Catalog(specs={"demo": two_step()}), registry=reg, cwd=repo,
-                out=out, err=err, run_settings=settings)
+                out=out, err=err, run_settings=settings, signals=signals)
     text = out.getvalue()
     try:
         doc = json.loads(text) if text.strip() else None
