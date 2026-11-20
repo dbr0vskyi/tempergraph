@@ -1,7 +1,7 @@
 ---
 title: Durability and resume
 type: component
-status: review
+status: ready-for-implementation
 prefix: DUR
 adrs: [0014, 0015, 0072, 0073]
 ---
@@ -64,15 +64,15 @@ Adding these fields keeps schema version 1: readers ignore unknown keys and read
 
 **DUR-B3 Concurrency.** Given sixteen processes writing to one workflow's checkpoint, when they commit, then none loses a write: the saver waits up to 60 s for the lock, and creating an empty store is retried for 30 s.
 
-**DUR-B4 Observer creates nothing.** Given a live run, when status or wait runs, then it opens the checkpoint read-only, probes the lock without creating it and for an instant only, and writes no file.
+**DUR-B4 Observer creates nothing.** Given a live run, when status or wait runs, then it opens the checkpoint read-only, probes the lock without creating it and for an instant only, and writes no file. With no write-ahead log beside the store (no writer has it open) the store opens `immutable`; with one, `mode=ro`, which touches only the live writer's shared-memory index.
 
-**DUR-B5 Wait.** Given `wait` on a thread, when the run pauses, completes, fails or records a new gate verdict, or the timeout passes, then wait exits with the outcome's code; it polls file sizes and times and rebuilds a row only when one moved.
+**DUR-B5 Wait.** Given `wait` on a thread, when the run pauses, completes, fails or records a new gate verdict, or the timeout passes, then wait exits with the outcome's code (the run's own exit code when recorded, else 3 paused, 0 finished, 4 stopped or unfinished; a new verdict on a still running thread exits 0 with its row; the timeout exits 5 with state `running`); it polls file sizes and times and rebuilds a row only when one moved.
 
 WHEN `wait` names a thread THE engine SHALL exit when the run pauses, completes, fails or records a new gate verdict, or when the timeout passes, with the run's own exit code when it is recorded in the run folder's `exit.json` ([LOS §2.1](33-local-observability-store.spec.md)), else 3 paused, 0 finished, 4 stopped or unfinished, 0 with the row for a new verdict on a running thread, and 5 with state `running` at the timeout, rebuilding a row only when a file's size or time moved.
 
 **DUR-B7 Settings change across resume.** Given a run paused after a step ran on `antigravity`, when the operator resumes with `--set code.executor=claude` (or `--step-executor code=claude`), then the next attempt uses `claude`; the override is stored in the thread's settings snapshot and reapplied on later resumes. Any catalog key changes the same way ([RST §2.6](80-run-settings-and-overrides.spec.md)).
 
-**DUR-B8 Run alias.** Given a start with `--alias auth-fix`, when another live thread already holds that alias, then the start is refused with exit 2 naming the holder; once the first thread is finished its alias is free, and a status by alias of a finished thread shows the latest one.
+**DUR-B8 Run alias.** Given a start with `--alias auth-fix`, when another live thread already holds that alias, then the start is refused with exit 2 naming the holder; once the first thread is finished its alias is free, and a status by alias of a finished thread shows the latest one. Aliases are kept in `runs/aliases.json` under the state root: 1 to 40 letters, digits, `.`, `_` or `-`.
 
 ## 4. Error conditions
 

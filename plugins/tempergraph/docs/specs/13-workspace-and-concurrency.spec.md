@@ -1,7 +1,7 @@
 ---
 title: Workspace and concurrency
 type: component
-status: review
+status: ready-for-implementation
 prefix: WSP
 adrs: [0014, 0100]
 ---

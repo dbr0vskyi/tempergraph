@@ -240,9 +240,14 @@ class SettingDecl:
 
 @dataclass(frozen=True, kw_only=True)
 class WorktreeDecl:
-    include: tuple[str, ...] = ()
-    setup: tuple[tuple[str, ...], ...] = ()
-    submodules: bool = False
+    """WTR §2.3."""
+
+    include: tuple[str, ...] = ()  # gitignore-style patterns, at most 50
+    setup: tuple[tuple[str, ...], ...] = ()  # argv lists, at most 10, each on the allow-list
+    submodules: Literal["auto", "skip"] = "auto"
+    setup_timeout_s: int = 600
+    base: str | None = None
+    cleanup: Literal["never", "on_finish"] | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
