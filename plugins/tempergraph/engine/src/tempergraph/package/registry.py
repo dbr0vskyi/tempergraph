@@ -24,7 +24,7 @@ from tempergraph.docs import write_json
 from tempergraph.model.validate import Finding, validate
 from tempergraph.package.importer import private_name
 from tempergraph.package.loader import LoadedPackage, PackageNotLoaded, load_package
-from tempergraph.package.manifest import ENGINE_JSON
+from tempergraph.package.manifest import ENGINE_JSON, workflow_name
 from tempergraph.store.layout import ensure_home, home_path, lock_path, now_iso
 
 SCHEMA_VERSION = 1
@@ -242,7 +242,7 @@ def reconcile(caps: Mapping[str, Capabilities], *, cache: Path | None = None,
                                           "engine_pin": None, "installed_into": []}
         base["path"] = str(path)
         got = check_package(path, caps, base)
-        name = got.loaded.spec.name if got.loaded else str(base.get("name") or pid.split("@", 1)[0])
+        name = got.loaded.spec.name if got.loaded else str(base.get("name") or workflow_name(pid.split("@", 1)[0]))
         if name in taken:
             got.findings.append(Finding("name-taken", None, f"{pid}: workflow {name!r} is already registered"))
             out.append(got)

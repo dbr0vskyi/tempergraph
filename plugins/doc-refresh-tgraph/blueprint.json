@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "name": "doc-refresh",
+  "units": [
+    {
+      "name": "outline",
+      "kind": "script",
+      "summary": "List the document's headings",
+      "produces": [
+        "outline"
+      ],
+      "gate": {
+        "check": true
+      }
+    },
+    {
+      "name": "draft",
+      "kind": "step",
+      "summary": "Rewrite the requested sections",
+      "produces": [
+        "doc",
+        "size"
+      ],
+      "reads": [
+        "outline"
+      ],
+      "gate": {
+        "check": true,
+        "judge": true
+      }
+    },
+    {
+      "name": "review",
+      "kind": "step",
+      "summary": "Review the rewrite against the request",
+      "produces": [
+        "verdict"
+      ],
+      "reads": [
+        "doc"
+      ],
+      "gate": {
+        "judge": true,
+        "signoff": true
+      },
+      "approval": true,
+      "back_targets": [
+        "draft"
+      ]
+    }
+  ],
+  "flow": {
+    "draft": {
+      "route": [
+        "review",
+        "finalizer"
+      ]
+    }
+  },
+  "input": {
+    "kind": "text",
+    "parameters": []
+  },
+  "outcome_ref": {
+    "revision": 1,
+    "digest": "1bc021097bd9530757f30d8b40d5d2a6207abcea10ce85493dba75cfafd93e65"
+  }
+}

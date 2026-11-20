@@ -1,0 +1,5 @@
+{
+  "doc": "docs/guide.md",
+  "outline": "outline.md",
+  "before": "guide.before.md"
+}

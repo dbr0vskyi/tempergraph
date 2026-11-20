@@ -10,7 +10,7 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
-from tempergraph.contracts import Decision, UnitSpec, Verdict, WorkflowSpec
+from tempergraph.contracts import Decision, RouteView, UnitSpec, Verdict, WorkflowSpec
 from tempergraph.model import flow
 
 ESCALATE_CAUSES = frozenset({"auth", "refused", "tool_access", "environmental", "blocked", "upstream"})
@@ -30,6 +30,52 @@ def clear_from(spec: WorkflowSpec, unit: str, state: Mapping[str, Any] | None = 
     out["visits"] = {u: {"visit": int((visits.get(u) or {}).get("visit", 1)) + 1, "entered_from": "proceed"}
                      for u in later[1:] if attempts.get(u)}
     return out
+
+
+class RouteFault(Exception):
+    """A route function raised or returned a name that is not one of its targets (CMP-B3)."""
+
+
+def route_view(unit: str, state: Mapping[str, Any]) -> RouteView:
+    """What a route or switch function sees: step values, check facts and artifact keys, never prose."""
+    values: dict[str, str] = {}
+    for vals in (state.get("values") or {}).values():
+        if isinstance(vals, dict):
+            values.update({str(k): str(v) for k, v in vals.items()})
+    facts = {u: {str(k): str(v) for k, v in f.items()} for u, f in (state.get("facts") or {}).items()
+             if isinstance(f, dict)}
+    keys = sorted({str(k) for arts in (state.get("artifacts") or {}).values() if isinstance(arts, dict) for k in arts})
+    visit = int(((state.get("visits") or {}).get(unit) or {}).get("visit", 1))
+    return RouteView(unit=unit, visit=visit, values=values, facts=facts, artifact_keys=tuple(keys), settings={})
+
+
+def pick(spec: WorkflowSpec, unit: str, state: Mapping[str, Any]) -> dict[str, Any] | None:
+    """CMP §2.2: the forward target a step's route, a route unit or a switch picks, as the `route` record's
+    fields; None when the unit routes by `order`. A route fault raises `RouteFault`; a switch fault takes the
+    default arm. A switch's pick is reused within a visit (`sticky: visit`) or for the run (`sticky: run`)."""
+    u = spec.units[unit]
+    view = route_view(unit, state)
+    if u.switch is not None:
+        sw = u.switch
+        prior = ((state.get("route") or {}).get(unit) or {}).get("pick")
+        if prior and (sw.sticky == "run" or prior.get("visit") == view.visit):
+            return dict(prior)
+        try:
+            arm, by = str(sw.predicate.resolve()(view)), "predicate"
+        except Exception:  # noqa: BLE001 - a predicate fault takes the default arm
+            arm, by = "", "default"
+        if arm not in sw.arms:
+            arm, by = sw.default, "default"
+        return {"arm": arm, "target": flow.through_outcome(spec, sw.arms[arm]), "chosen_by": by, "visit": view.visit}
+    if u.route is None:
+        return None
+    try:
+        got = u.route.resolve()(view)
+    except Exception as exc:  # noqa: BLE001 - a raise stops the run, never falls back to `order`
+        raise RouteFault(f"route {u.route.ref} raised {type(exc).__name__}") from None
+    if not isinstance(got, str) or got not in u.route_targets:
+        raise RouteFault(f"route {u.route.ref} returned {got!r}, not one of {list(u.route_targets)}")
+    return {"arm": got, "target": flow.through_outcome(spec, got), "chosen_by": "predicate", "visit": view.visit}
 
 
 def _merge(*writes: Mapping[str, Any]) -> dict[str, Any]:
@@ -81,9 +127,9 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
     def route(token: str, node: str, **extra: Any) -> dict[str, Any]:
         return {"route": {unit: {"token": token, "node": node, **extra}}}
 
-    def to_human(kind: str, reason: str) -> dict[str, Any]:
+    def to_human(kind: str, reason: str, **extra: Any) -> dict[str, Any]:
         payload = pause_payload(spec, unit, kind, reason, state, task_id, judged.get("blockers"))
-        return _merge(route("ESCALATE", s.escalate[0], kind=kind), {"pause": {unit: payload}})
+        return _merge(route("ESCALATE", s.escalate[0], kind=kind, **extra), {"pause": {unit: payload}})
 
     def spent(reason: str) -> dict[str, Any]:
         if g.on_budget_spent == "stop":
@@ -118,9 +164,15 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
                        "visits": {target: {"visit": int(visits.get("visit", 1)) + 1, "reason": reason, "from": unit,
                                            "entered_from": f"back:{unit}"}}})
     if verdict == Verdict.PROCEED:
+        try:  # the route is picked before any approval pause (CMP §2.2)
+            p = pick(spec, unit, state)
+        except RouteFault as exc:
+            return _merge(route("STOP", s.stop[0]), {"run": {"stopped": {"reason": "route", "unit": unit,
+                                                                         "detail": str(exc)}}})
+        extra = {"pick": p} if p else {}
         if g.approval:
-            return to_human("approval", "approval")
-        return route("PROCEED", s.proceed[0])
+            return to_human("approval", "approval", **extra)
+        return route("PROCEED", flow.target_node(p["target"]) if p else s.proceed[0], **extra)
     return to_human("escalation", judged.get("reason") or "escalate")
 
 
@@ -232,8 +284,11 @@ def _apply(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payload: Map
         return {"route": {unit: {"token": token, "node": node, "by": "person"}}, "pause": {unit: None}}
 
     if d.word == "proceed":
-        nxt = s.proceed[0]
+        picked = ((state.get("route") or {}).get(unit) or {}).get("pick")  # made before the approval pause
+        nxt = flow.target_node(picked["target"]) if picked else s.proceed[0]
         w = route("PROCEED", nxt)
+        if picked:
+            w["route"][unit]["pick"] = picked
         nxt_unit = nxt.rsplit(".", 1)[0] if nxt.endswith(".step") else None
         if one_time and nxt_unit:
             w["feedback"] = {nxt_unit: {"text": one_time, "as": "notes"}}

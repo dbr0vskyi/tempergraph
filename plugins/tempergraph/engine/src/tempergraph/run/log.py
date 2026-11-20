@@ -308,6 +308,8 @@ class LiveSink(EventSink):
         self.tokens_so_far: int | None = None
         self.turns_so_far: int | None = None
         self.pgid: int | None = None
+        self.sampler: Any = None
+        self.samples: list[dict[str, Any]] = []  # `resources` lines from the sampler thread, journaled on push
         self.n = 0
         self.lines = 0
         self.bytes = 0
@@ -370,8 +372,9 @@ class LiveSink(EventSink):
         self.n += 1
         d = {k: v for k, v in dict(event.data).items() if k != "usage"}
         self.last_event_at = now_iso()
+        self._drain_samples()
         if event.kind == "session_started":
-            self._opened(dict(event.data))
+            self._opened({**({"pgid": self.pgid} if self.pgid is not None else {}), **dict(event.data)})
         elif event.kind == "tool_started":
             if not self.tool_inputs:
                 d["input_summary"] = None
@@ -405,6 +408,21 @@ class LiveSink(EventSink):
         if now - self.last_write >= 1.0 or event.kind == "result":
             self.last_write = now
             self._live()
+
+    def process_started(self, pgid: int, *, listing: Any = None, every_s: float | None = None) -> None:
+        """The launcher's group id (EVT §2.3): kept for `session_opened` and sampled for `resources` lines."""
+        from tempergraph.run.resources import EVERY_S, Sampler
+
+        self.pgid = pgid
+        if self.dir is not None and self.sampler is None:
+            self.sampler = Sampler(pgid, self.samples.append, every_s=every_s or EVERY_S, listing=listing,
+                                   clock=self.clock).start()
+
+    def _drain_samples(self) -> None:
+        while self.samples:
+            row = self.samples.pop(0)
+            self.n += 1
+            self._journal({"n": self.n, **row})
 
     def write_meta(self, **fields: Any) -> None:
         """`meta.json` of the session (LOS §2.1), merged field by field; best effort (contract C2)."""
@@ -447,6 +465,9 @@ class LiveSink(EventSink):
         if self.closed:
             return
         self.closed = True
+        if self.sampler is not None:
+            self.sampler.stop()
+        self._drain_samples()
         if self.dropped and self.dir is not None and not self.disabled:
             self.n += 1
             self.buffer.append({"t": None, "n": self.n, "ev": "truncated", "dropped": dict(self.dropped)})

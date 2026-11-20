@@ -153,8 +153,9 @@ def _compare(env: Any, name: str) -> int:
 
 def _spec(env: Any, name: str) -> Any:
     from tempergraph.package.loader import load_package
+    from tempergraph.package.manifest import workflow_name
 
-    spec = env.catalog.specs.get(name)
+    spec = env.catalog.specs.get(name) or env.catalog.specs.get(workflow_name(name))
     if spec is not None:
         return spec
     p = _path(env, name)

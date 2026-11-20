@@ -622,7 +622,13 @@ Goal: the model-free session digest and its causes on every exit; `full` reviews
 #### T11.1 Example workflows
 Goal: the minimal one-step workflow, and a three-step document workflow using a script, a route on a value, a trip back, an approval and a finalizer, both authored through T9.2.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
-<!-- expand: T11.1 -->
+|---|---|---|---|---|---|---|---|
+| 11.1.1 | `plugins/release-notes-tgraph/` | The minimal package of PKG §2.7 as a real plugin: one judged step with a model-free headings check, the outcome gate, a seed pair per judged criterion under `evals/calibration/`, its own tests; `author verify` passes rungs 1 to 7 and 10 | PKG §2.7, OUT §2.2.1, SCF §2.5 | yes | P1 | ✓ | 2026-11-20 |
+| 11.1.2 | `plugins/doc-refresh-tgraph/` | The three-step document workflow, scaffolded from an approved blueprint and outcome (T9.2) then completed by hand: `outline` script unit (`call=`), `draft` with a check, a judge and a route on its `size` value (`minor` to the finalizer, `major` to `review`), `review` with a judge, a person's approval and a trip back to `draft`, and a finalizer (`written`); `author verify` passes rungs 1 to 7 and 10 | PKG, SCF, SCR, CMP §2.2, FIN | yes | P1 | ✓ | 2026-11-20 |
+| 11.1.3 | `engine/tests/test_examples.py` | Both examples load, pass their generated tests and cover their outcome; doc-refresh runs on stand-ins through the trip back, the approval and the finalizer, the minor route past the review, a dropped heading caught by the check, and a request with no document stopping at the script | T11.1 goal | yes | P1 | ✓ | 2026-11-20 |
+| 11.1.4 | `engine/src/tempergraph/package/selftest.py` | The stand-in run stands in for script units (their must-pass fixtures, no real script), gives a value its first choice and answers an approval `proceed`; a check fixture may be a folder of files named by artifact key, for a check that reads more than one artifact | SCF §2.4, EVS §2.2 | yes | P1 | ✓ | 2026-11-20 |
+| 11.1.5 | `.claude-plugin/marketplace.json` | Both examples listed in the marketplace | CLAUDE.md layout | yes | P1 | ✓ | 2026-11-20 |
+| 11.1.6 | live, owner's machine | One real run of each example: `tempergraph run release-notes <tag>` in a repository with tags, `tempergraph run doc-refresh "<path>: <section>"` ([live-checks](live-checks.plan.md) L-25) | T11.1 goal | | P2 | ○ | |
 
 #### T11.2 Live acceptance
 Goal: the end-to-end story of §3 A6 on the owner's machine under a spend cap, with readiness flags moved per the [docs README](../README.md#readiness-flags). Every live check, its command and its pass line: [live-checks.plan.md](live-checks.plan.md); the automated rows are `tests/live/`, skipped unless `TEMPERGRAPH_LIVE=1`.
@@ -632,7 +638,12 @@ Goal: the end-to-end story of §3 A6 on the owner's machine under a spend cap, w
 #### T11.3 Release
 Goal: plugin manifests and marketplace entries, `release.json`, the empty changelog, docs and CLAUDE.md current.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
-<!-- expand: T11.3 -->
+|---|---|---|---|---|---|---|---|
+| 11.3.1 | `.claude-plugin/marketplace.json`, `plugins/*/.claude-plugin/plugin.json` | Four plugins listed: the engine, the monitor mod and the two examples; each example's manifest depends on `tempergraph` | CLAUDE.md layout, PKG §2.1 | yes | P1 | ✓ | 2026-11-20 |
+| 11.3.2 | `engine/src/tempergraph/data/release.json`, `constants.py` | The release record names every persisted document release 1 writes with a schema version (labels, stamp, registry and engine pointers added); its drift test holds | VER §2.2, VER-AC-1 | yes | P1 | ✓ | 2026-11-20 |
+| 11.3.3 | `engine/src/tempergraph/data/changelog/0.0.1.json` | The changelog of the first release is empty: there is no earlier release to be compatible with | VER §2.3 | yes | P1 | ✓ | 2026-11-20 |
+| 11.3.4 | `README.md`, `CONTEXT.md`, `CLAUDE.md` | The repository's status, plugins and examples current | — | | P1 | ✓ | 2026-11-20 |
+| 11.3.5 | owner | The version and `released_at`: set when the live checks pass (M5); the engine stays `0.0.1` until then | VER §2.2 | | P1 | ○ | |
 
 ## 3. Architecture decisions
 

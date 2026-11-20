@@ -132,6 +132,17 @@ def _open_raw(session_dir: Path | None) -> tuple[IO[bytes] | None, IO[bytes] | i
     return raw, err
 
 
+PS_ARGV = ("ps", "-A", "-o", "pgid=,rss=,time=")  # constant argv: no field of the session reaches it
+
+
+def process_listing() -> str:
+    """The read-only process listing behind a session's `resources` line (EVT §2.3); empty on failure."""
+    try:
+        return subprocess.run(list(PS_ARGV), capture_output=True, text=True, timeout=5, check=False).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
 def launch(spec: LaunchSpec, parse_line: Callable[[bytes], list[Event]], sink: EventSink, *,
            stop: StopRequest | None = None, clock: Clock = time.monotonic, poll_s: float = 0.05) -> RawOutcome:
     """Run one session to its end and return what was observed. Never raises for a session failure."""
@@ -148,6 +159,10 @@ def launch(spec: LaunchSpec, parse_line: Callable[[bytes], list[Event]], sink: E
             return out
         assert proc.stdin is not None and proc.stdout is not None
         stdin, stdout = proc.stdin, proc.stdout
+        started = getattr(sink, "process_started", None)  # the group id, for `resources` lines (EVT §2.3)
+        if os.name == "posix" and callable(started):
+            with contextlib.suppress(Exception):
+                started(proc.pid)
 
         def write_prompt() -> None:  # started before the reader (EXI-B2)
             try:

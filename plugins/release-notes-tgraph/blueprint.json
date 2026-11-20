@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "release-notes",
+  "units": [
+    {
+      "name": "draft",
+      "kind": "step",
+      "summary": "Write the release notes",
+      "produces": [
+        "notes"
+      ],
+      "reads": [],
+      "gate": {
+        "check": true,
+        "judge": true,
+        "signoff": false
+      }
+    }
+  ],
+  "outcome_ref": {
+    "revision": 1,
+    "digest": "b22565457b7ebf58daed7f04113d7318203b9318de78fd9de92bd5acfa123560"
+  },
+  "input": {
+    "kind": "text",
+    "parameters": []
+  }
+}

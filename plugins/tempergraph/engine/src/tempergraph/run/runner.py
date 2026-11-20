@@ -278,6 +278,16 @@ def _context(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, s
     return ctx
 
 
+def _observers(cap: rst.Capture) -> tuple[Any, list[str]]:
+    """The observers the operator config names (EVT §2.6); none is enabled by default."""
+    if not cap.observers:
+        return None, []
+    from tempergraph.run.events import ObserverHub, register_observers
+
+    found, missing = register_observers(names=cap.observers)
+    return (ObserverHub(found) if found else None), missing
+
+
 def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, settings: RunSettings,
            judges: Mapping[str, str], first_input: Any, settled: Settled, *,
            before: Callable[[Any], None] | None = None, executors: Mapping[str, str] | None = None,
@@ -285,11 +295,14 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
            workspace: Mapping[str, Any] | None = None) -> RunOutcome:
     """Run the graph from `first_input` while holding the lock, then turn the thread state into an exit."""
     tid = thread_id(spec.name, task_id)
-    log = RunLog(run_dir(root, spec.name, task_id) / "run.jsonl")
+    cap = rst.capture(rst.load_files(root, settings.home or home_path()))  # operator config, per segment
+    hub, missing = _observers(cap)
+    log = RunLog(run_dir(root, spec.name, task_id) / "run.jsonl", observers=hub)
     stop = StopRequest()
     box: dict[str, Any] = {}
     main = main_checkout(root.parent)
     ctx = _context(spec, task_id, root, registry, settings, judges, log, stop, box, main, settled)
+    ctx.capture = cap
     saver = open_saver(checkpoint_path(root, spec.name))
     try:
         cw = compile_workflow(spec, EngineNodes(ctx), saver)
@@ -304,7 +317,9 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                   settings_digest=settled.resolved.digest, profiles=list(settled.options.profiles),
                   **({"rerun_of": dict(rerun_of)} if rerun_of else {}),
                   **({"dry_run": True} if settings.dry_run or meta.get("dry_run") else {}),
-                  overridden_keys=rst.overridden_keys(settled.resolved))
+                  overridden_keys=rst.overridden_keys(settled.resolved),
+                  **({"capture_lowered": cap.lowered()} if cap.lowered() else {}),
+                  **({"observers": list(cap.observers), "observers_missing": missing} if cap.observers else {}))
         rec: dict[str, Any] = {"settings_digest": settled.resolved.digest, "rows": rst.rows_json(settled.resolved),
                                "changed_keys": settled.changed}
         if settled.changed:
@@ -376,6 +391,8 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         return outcome
     finally:
         saver.conn.close()
+        if hub is not None:
+            hub.close()
 
 
 def _loop(root: Path, spec: WorkflowSpec, task_id: str, tid: str, summary: Mapping[str, Any],

@@ -71,10 +71,10 @@ def proceed_targets(spec: WorkflowSpec, unit: str) -> list[str]:
         targets = list(dict.fromkeys(u.route_targets))
     else:
         targets = [next_unit(spec, unit)]
-    return [_through_outcome(spec, t) for t in targets]
+    return [through_outcome(spec, t) for t in targets]
 
 
-def _through_outcome(spec: WorkflowSpec, target: str) -> str:
+def through_outcome(spec: WorkflowSpec, target: str) -> str:
     """Every path to the finalizer passes the outcome gate (OUT §2.4)."""
     if target == FINALIZER and OUTCOME_UNIT in effective_order(spec):
         return OUTCOME_UNIT
