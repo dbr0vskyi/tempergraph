@@ -27,6 +27,7 @@ from tempergraph.contracts import (
 )
 from tempergraph.executors.launcher import StopRequest
 from tempergraph.executors.registry import Registry
+from tempergraph.improve import lessons as lessonsmod
 from tempergraph.model import flow
 from tempergraph.model.text import load_text, split_judge_file
 from tempergraph.render.output import parse_output
@@ -109,7 +110,8 @@ class EngineNodes:
         if cap is not None and CostTotals.from_json((state.get("run") or {}).get("cost")).figure() >= cap:
             raise Drain("cost_cap")
 
-    def _session(self, ex: Executor, req: SessionRequest, judge_views: Any = None) -> tuple[SessionResult, list]:
+    def _session(self, ex: Executor, req: SessionRequest, judge_views: Any = None,
+                 lessons_digest: str | None = None) -> tuple[SessionResult, list]:
         """One session with infra tries and backoff outside the retry budget (BUD-B1, JDG-B5)."""
         results: list[SessionResult] = []
         for n in range(self.ctx.infra_tries):
@@ -126,8 +128,11 @@ class EngineNodes:
             self.ctx.log.write("agent_run", session_key=req.session_key, kind=req.kind, executor=ex.name,
                                alias=req.alias, usage=res.usage, ok=res.ok, tools=[c.name for c in res.tool_calls],
                                cli_version=res.cli_version, session_id=res.session_id,
+                               unknown_tools=sorted({c.name for c in res.tool_calls
+                                                     if not ex.capabilities().knows_tool(c.name)}),
                                infra_cause=str(res.infra_cause) if res.infra_cause else None,
-                               error_kind=res.error_kind, timed_out=res.timed_out, stalled=res.stalled)
+                               error_kind=res.error_kind, timed_out=res.timed_out, stalled=res.stalled,
+                               **({"lessons_digest": lessons_digest} if lessons_digest else {}))
             if res.infra_cause is None or n + 1 >= self.ctx.infra_tries:
                 break
             self.ctx.sleep(min(BACKOFF_S[min(n, len(BACKOFF_S) - 1)], self.ctx.backoff_max_s))
@@ -179,8 +184,9 @@ class EngineNodes:
         prev_unit = self._previous_unit(unit, path_units)
         prev_judged = ((state.get("judgements") or {}).get(prev_unit) or {}) if prev_unit else {}
         notes = tuple(prev_judged.get("notes") or ()) if first else ()
+        lessons_text = lessonsmod.block(lessonsmod.load(spec, unit))
         ctx = AttemptContext(
-            template=load_text(spec, st.prompt), fields=fields, attempt=attempt, retry=retry,
+            template=load_text(spec, st.prompt), fields=fields, attempt=attempt, retry=retry, lessons=lessons_text,
             blockers=tuple(Blocker(criterion=str(b.get("criterion", "")), place=str(b.get("place", "")),
                                    problem=str(b.get("problem", "")), fix=str(b.get("fix", "")))
                            for b in (judged.get("blockers") or [])) if retry else (),
@@ -203,7 +209,7 @@ class EngineNodes:
             enforce_tools=self.ctx.enforce_tools, in_engine_worktree=self._in_worktree(state),
             plugin_dir=spec.package_root)
         before = gitmod.fingerprint(workdir)
-        res, results = self._session(ex, req)
+        res, results = self._session(ex, req, lessons_digest=lessonsmod.digest(lessons_text))
         after = gitmod.fingerprint(workdir)
         parsed = parse_output(res.text, st.produces, tuple(u.gate.back_targets))
         after_failed, after_env = None, False

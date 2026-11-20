@@ -30,6 +30,7 @@ class RenderedPrompt: text: str; missing_fields: list[str]; sections: list[str]
 | Commands you may run | The step declares command prefixes, or `self_check` |
 | Check your work before you end: the `self-check` command and what it reports ([CHK §2.5](75-check-contract-and-command-runs.spec.md)) | The step declares `self_check` |
 | Tools for this step | The step declares tools |
+| Lessons from earlier runs: active entries in id order, each with its id ([LSN §2.2](42-workflow-lessons.spec.md)); never in a judge prompt | The package has active lessons for this unit |
 | Artifact contract (one line per declared key and its kind) | The step produces keys |
 | How this output will be judged (criterion texts only) | The gate has criteria |
 | Blocked line, and the upstream line | Blocked always; upstream only when a listed back target has run or a route skipped it on this path ([ADR-0076](../adr/0076-claims-may-target-a-route-skipped-back-target.adr.md)) |

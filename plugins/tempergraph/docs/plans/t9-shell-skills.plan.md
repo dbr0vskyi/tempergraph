@@ -20,11 +20,11 @@ task_id: first-release-t9
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T9 |
 | Specs | [SHL](../specs/19-plugin-shell.spec.md), [AUT](../specs/89-workflow-authoring.spec.md), [OUT](../specs/90-run-outcome.spec.md), [SCF](../specs/91-blueprint-and-scaffold.spec.md), [LSK](../specs/65-lifecycle-skills.spec.md) |
-| Builders | T9.1 is built by the main build thread; T9.2 and T9.3 by the T8 thread, after T8 |
+| Builders | T9.1 was built by the main build thread; T9.2 and T9.3 by the T8 thread, after T8 |
 
-**Status: In progress.** T9.2 is built: the criteria lint, the inventory, the session verbs, revise mode and the `tempergraph:author` skill; its rubric scenarios are live checks. T9.3 is built: the troubleshooter and the install skill; their rubric scenarios are live checks.
+**Status: In progress.** T9.1 is built: the run driver and the project bootstrap. T9.2 is built: the criteria lint, the inventory, the session verbs, revise mode and the `tempergraph:author` skill; its rubric scenarios are live checks. T9.3 is built: the troubleshooter and the install skill; their rubric scenarios are live checks.
 
-Status pass: AUT and LSK are `ready-for-implementation`, with the release 1 decisions in AUT §2.8 and LSK §2.6. SHL §2.3 holds the authoring and troubleshooter skills' release 1 notes; SHL's status flips with T9.1.
+Status pass: AUT and LSK are `ready-for-implementation`, with the release 1 decisions in AUT §2.8 and LSK §2.6. SHL is `ready-for-implementation` from T9.1; SHL §2.3 holds the authoring and troubleshooter skills' release 1 notes and §5 the run driver's and bootstrap's.
 
 Live checks (owner's machine, signed-in `claude`; not faked here):
 - AUT-AC-1 and AUT-AC-8: the rubric scenarios per entry path and per guidance rung need the skill run by a model.
@@ -37,7 +37,11 @@ Goal: start, report by exit code, walk the person through pauses with `--relayed
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 9.1.0 | | Rows to be written by the main build thread | SHL | | P1 | ○ | |
+| 9.1.0 | `docs/specs/19-*` | Status pass: SHL `ready-for-implementation`, run driver and bootstrap notes in SHL §5 | SHL | | P1 | ✓ | 2026-11-20 |
+| 9.1.1 | `skills/run/SKILL.md`, `skills/run/references/pauses.md` | `tempergraph:run`: catalog match, `run --check` (ok, needs at most four rounds, error, broken), background start, report by exit code, pauses back to the person with `resume --relayed`, never proceed after an infra failure | SHL §2, B1, B2, §4 | | P1 | ✓ | 2026-11-20 |
+| 9.1.2 | `skills/bootstrap/SKILL.md`, `skills/bootstrap/scripts/ignore_rule.py` | `tempergraph:bootstrap`: the ignore-rule helper is the only writer; it asks git, keeps bytes and line endings, lets a negation stand, and reports tracked files with the untrack command without running it | SHL §2, LOS-B4 | yes | P1 | ✓ | 2026-11-20 |
+| 9.1.3 | `engine/tests/test_run_skills.py` | The helper in throwaway repositories (exact bytes, CRLF, the inner ignore file not counted, negation, tracked files, not a repository); the run driver's verbs and options checked against the parser | SHL §6 | yes | P1 | ✓ | 2026-11-20 |
+| 9.1.4 | live, owner's machine | SHL-AC-2 rubric scenarios for the run driver: ask before guessing, never answer a pause | SHL §6 | | P1 | ○ | |
 
 ## T9.2 Authoring
 

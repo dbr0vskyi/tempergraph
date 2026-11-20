@@ -1,7 +1,7 @@
 ---
 title: Workflow lessons
 type: component
-status: review
+status: ready-for-implementation
 prefix: LSN
 adrs: [0032, 0031, 0016]
 ---
@@ -70,6 +70,7 @@ One file per step, `lessons/<unit>.json` in the workflow package, with `schema_v
 ## 5. Design notes
 
 - Retiring needs only "no loss shown", while adding needs "better shown" through the trial rule of [PRP](40-improvement-proposals.spec.md): the budget then trends toward entries that earn their place.
+- Release 1 (`improve/lessons.py`): validation codes `lessons-unknown-unit`, `lessons-malformed`, `lessons-id`, `lessons-text`, `lessons-status`, `lessons-source`, `lessons-literal` and `lessons-budget`, all part of `validate`. The block is headed "Lessons from earlier runs" and its digest is the first 16 hex of its SHA-256, recorded as `lessons_digest` on the step's `agent_run`. `classify_change` holds the §2.3 refusals for the proposal classifier ([PRP](40-improvement-proposals.spec.md)): removing an entry instead of retiring it counts as a rewrite. LSN-B4 waits on proposals and trials and LSN-B5 on the reports.
 - A lesson is the cheapest producer-side change: no template edit, one sentence, easy to review and to revert. A lesson that grows into a procedure should become a template change or a split step instead.
 
 ## 6. Acceptance criteria
@@ -83,6 +84,8 @@ One file per step, `lessons/<unit>.json` in the workflow package, with `schema_v
 | Question | Owner |
 |---|---|
 | Should a lesson be scoped to one executor (a fact about `agy`'s shell, say)? Assumed no in the first release; an executor fact belongs in the executor mapping, not in a workflow. | Owner |
+| Which literal check applies to a lesson before the prompt-lint literals check exists? Release 1 uses a fixed floor on the one sentence: a ticket id (`ABC-12`), a URL, an e-mail, an absolute path, a number of three or more digits, or a quote of four or more words. A product name has no rule-based test and is left to review. | Engine owner |
+| How is "normalized word overlap" measured? Release 1: shared lowercase words over the smaller word set, so a lesson that restates a criterion in fewer words still matches. | Engine owner |
 
 ## References
 

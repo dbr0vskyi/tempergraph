@@ -355,11 +355,34 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                        "supervision": sup, **({"outcome": orec} if orec is not None else {})})
         if ledger.failures:
             log.write("engine_error", scope="ledger", error="write_failed")
+        try:  # SIL §2.1: every exit is recorded, no model call; never changes the exit (C2)
+            from tempergraph.improve.record import record_exit
+
+            seg_row = next((r for r in reversed(ledger_rows(root)) if r.get("kind") == "run_segment"
+                            and r.get("thread_id") == tid), None)
+            if seg_row is not None:
+                log.write("finding_recorded", **record_exit(root, spec, task_id, log.path, final, seg_row))
+        except Exception as exc:  # noqa: BLE001
+            log.write("engine_error", scope="improve", error=type(exc).__name__)
         outcome.thread_id = tid
         outcome.auto_reopen = int(settled.run.get("auto_reopen") or 0)
         return outcome
     finally:
         saver.conn.close()
+
+
+def ledger_rows(root: Path) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    try:
+        lines = (root / "ledger.jsonl").read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return out
+    for ln in lines:
+        with contextlib.suppress(ValueError):
+            r = json.loads(ln)
+            if isinstance(r, dict):
+                out.append(r)
+    return out
 
 
 def join_keys(root: Path, settings: RunSettings) -> dict[str, Any]:

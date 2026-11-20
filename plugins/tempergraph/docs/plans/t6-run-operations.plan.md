@@ -4,7 +4,7 @@ version: 1
 date_created: 2026-11-20
 last_updated: 2026-11-20
 owner: dbr0vskyi
-status: In progress
+status: Completed
 tags: [track-plan, tempergraph, T6]
 tracker: none
 spec: plugins/tempergraph/docs/specs/17-engine-cli.spec.md
@@ -21,7 +21,7 @@ task_id: first-release-t6
 | Origin | [Release 1 plan](first-release.plan.md) track T6 |
 | Specs | [CLI](../specs/17-engine-cli.spec.md), [RST](../specs/80-run-settings-and-overrides.spec.md), [RRN](../specs/81-reruns-and-feedback.spec.md), [PRV](../specs/85-caller-provenance.spec.md) |
 
-**Status: In progress.** T6.1 is built, so milestone M1 holds on stand-ins: a two-step workflow defined in Python test code runs end to end through `tempergraph run`, pauses with exit 3, and finishes through `tempergraph resume`. M1 on a signed-in `claude` waits for the owner's machine (T0.1). T6.2 to T6.5 are built but for the rows marked ○ below. The live probes P-SUP-1, P-SUP-2 and P-SUP-4 wait on the owner's machine.
+**Status: Completed** for the offline build. Milestone M1 holds on stand-ins: a two-step workflow defined in Python test code runs end to end through `tempergraph run`, pauses with exit 3, and finishes through `tempergraph resume`. What is left needs a signed-in Claude Code on the owner's machine: M1 on a live `claude` (T0.1), the MCP and plugin listing check (6.3.5), and the probes P-SUP-1, P-SUP-2 and P-SUP-4 (6.5.5).
 
 Status pass: CLI, RST, RRN and PRV are `ready-for-implementation`. RST, RRN and PRV have release 1 defaults for their open questions.
 
@@ -85,7 +85,7 @@ Release 1 notes: keys whose feature is release 2 (the audit judge, switch arms, 
 | 6.4.1 | `engine/tests/test_feedback.py` | RRN-B1, B2, B4, B11; AC-2 on the two-step fixture; AC-6 canary; §4 refusals write nothing | RRN §2.2, §3 | yes | P1 | ✓ | 2026-11-20 |
 | 6.4.2 | `engine/src/tempergraph/run/gate.py`, `run/nodes.py`, `run/runner.py`, `cli/main.py` | `--ruling`, `--ruling-for`, `--revoke-ruling`; rulings in state, shown to every later attempt and judge with the `ruling` blocker; the limits; feedback without a decision on an unfinished thread; the `ruling` record; one-time feedback now reaches the judge and is cleared at the gate | RRN §2.2, EVT §2.2 | | P1 | ✓ | 2026-11-20 |
 | 6.4.3 | `engine/src/tempergraph/run/rerun.py`, `engine/tests/test_rerun.py` | `rerun` as a linked fork (RRN §2.4): the fork point from the checkpoint history, the copy to `<task>~r<n>`, the trip back from the unit, fresh budgets and cost, the source's settings snapshot plus the rerun's flags, `--feedback` as the visit reason or `--ruling`, `--drop-rulings`, `--workspace current\|at-unit` on a new branch `<branch>-r<n>`, `rerun --check`, `lineage.json`, `run_started.rerun_of`; RRN-B6, B7, B8, AC-3, AC-4 | RRN §2.3, §2.4 | yes | P1 | ✓ | 2026-11-20 |
-| 6.4.4 | `engine/src/tempergraph/run/rerun.py` | `--same-branch` and `superseded_by` (refused `same_branch_not_built` until then); the MIG §2.5 tests beyond "units behind"; rerun of one map item (release 2 with maps) | RRN §2.4 | yes | P2 | ○ | |
+| 6.4.4 | `engine/src/tempergraph/run/rerun.py` | `--same-branch` on a finished source (its branch and kept worktree, `superseded_by` in `lineage.json`) ✓; the MIG §2.5 tests beyond "units behind" and rerun of one map item are release 2 (MIG is X2-6; maps) | RRN §2.4 | yes | P2 | ✓ | 2026-11-20 |
 | 6.4.5 | `engine/src/tempergraph/run/runner.py` | `rewind:<unit>` past external effects needs `--accept-external` | RRN §2.3 | yes | P1 | ✓ | 2026-11-20 |
 
 ### T6.5 Caller provenance

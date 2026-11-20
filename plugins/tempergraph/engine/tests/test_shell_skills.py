@@ -70,7 +70,7 @@ def test_every_engine_call_exists(skill: Path) -> None:
             for opt in re.findall(r"(?<![\w-])(--[a-z][a-z-]*)", call):
                 assert opt in valid, f"{f.name}: `tempergraph {call}` passes {opt}, which is not built"
             calls += 1
-    assert calls > 0
+    assert calls > 0 or skill.parent.name == "bootstrap"  # the bootstrap skill runs its helper, not the engine
 
 
 READ_ONLY = re.compile(r"^(Read|Grep|Glob|Bash\((git (status|log|diff)|ls|cat|grep|ps|tempergraph (status|facts|list|graph|"
