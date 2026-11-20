@@ -91,6 +91,22 @@ def entries_between(stamp: str | None, engine: str = ENGINE_VERSION,
     return out
 
 
+def breaking_since_level(level: int, folder: Path | None = None) -> list[str]:
+    """PKG-B6 row 2: ids of the breaking `workflow` entries a package at interface `level` has not met. The
+    level starts at 1 and grows by one with each release holding such an entry (VER §2.2), so the entries of
+    every release that raised it above `level` are the ones listed, oldest first."""
+    at, out = 1, []
+    for _, path in releases(folder):
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        ids = [str(e.get("id")) for e in doc.get("entries") or [] if isinstance(e, Mapping)
+               and e.get("audience") == "workflow" and e.get("breaking")]
+        if ids:
+            at += 1
+            if at > level:
+                out += ids
+    return out
+
+
 @dataclass(frozen=True)
 class Hit:
     entry: str

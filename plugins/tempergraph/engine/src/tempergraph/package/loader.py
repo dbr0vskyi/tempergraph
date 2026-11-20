@@ -96,6 +96,20 @@ def _interface(api: int, engine_api: int, loads_from: int) -> None:
                                remedy="upgrade the workflow (`tempergraph upgrade`)")
 
 
+def _behind(api: int, engine_api: int) -> list[Finding]:
+    """PKG-B6 row 2: a package below the engine's level loads, with a warning when the changelog has breaking
+    `workflow` entries it has not met."""
+    if api >= engine_api:
+        return []
+    from tempergraph.package.changelog import breaking_since_level
+
+    ids = breaking_since_level(api)
+    if not ids:
+        return []
+    return [Finding("workflow_api_behind", None, f"package level {api}, engine {engine_api}: breaking workflow "
+                    f"entries {', '.join(ids)} since; run `tempergraph upgrade-check <workflow>`", "warning")]
+
+
 def _attach_outcome(spec: WorkflowSpec, root: Path) -> tuple[WorkflowSpec, list[Finding], bool]:
     """Step 5: read `outcome.json` and fill each gate's criteria (OUT §2.3). Pending until OUT's reader exists."""
     try:
@@ -126,7 +140,7 @@ def load_package(package_path: Path, *, engine_api: int = WORKFLOW_API,
         raise PackageNotLoaded("manifest", "; ".join(f.message for f in got if f.severity == "error"), got)
     m = got
     _interface(m.engine.workflow_api, engine_api, loads_from)
-    findings: list[Finding] = []
+    findings: list[Finding] = _behind(m.engine.workflow_api, engine_api)
     py = read_pyproject(root)
     pyproject = py if isinstance(py, Pyproject) else None
     if not isinstance(py, Pyproject):

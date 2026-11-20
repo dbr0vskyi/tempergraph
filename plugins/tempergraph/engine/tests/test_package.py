@@ -235,6 +235,29 @@ def test_interface_levels(pkg: Path, level: int, reason: str | None) -> None:
         assert ("update" if level == 4 else "upgrade") in exc.remedy
 
 
+def test_level_behind_warns_with_breaking_entries(pkg: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """PKG-B6 row 2: level 2 under an engine at 3 loads; it warns only when a breaking `workflow` entry
+    raised the level above 2."""
+    from tempergraph.package import changelog
+
+    folder = tmp_path / "changelog"
+    folder.mkdir()
+    entry = {"id": "E-1", "audience": "workflow", "kind": "removed", "breaking": True}
+    for v, entries in (("0.1.0", [entry]), ("0.2.0", []), ("0.3.0", [{**entry, "id": "E-2"}])):
+        (folder / f"{v}.json").write_text(json.dumps({"schema_version": 1, "engine_version": v, "entries": entries}))
+    assert changelog.breaking_since_level(1, folder) == ["E-1", "E-2"]
+    assert changelog.breaking_since_level(2, folder) == ["E-2"]
+    assert changelog.breaking_since_level(3, folder) == []
+    m = json.loads((pkg / "tempergraph.json").read_text())
+    write(pkg, "tempergraph.json", {**m, "workflow_api": 2})
+    monkeypatch.setattr(changelog, "CHANGELOG_DIR", folder)
+    got = load_package(pkg, engine_api=3, loads_from=2)
+    warn = [f for f in got.findings if f.code == "workflow_api_behind"]
+    assert len(warn) == 1 and warn[0].severity == "warning" and "E-2" in warn[0].message
+    monkeypatch.setattr(changelog, "CHANGELOG_DIR", tmp_path / "none")
+    assert not [f for f in load_package(pkg, engine_api=3, loads_from=2).findings if f.code == "workflow_api_behind"]
+
+
 # -- PKG-AC-3 / PKG-B3 two packages with the same module names ----------------------------------------
 
 

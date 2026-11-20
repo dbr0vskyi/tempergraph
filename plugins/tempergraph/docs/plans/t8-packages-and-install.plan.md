@@ -66,7 +66,7 @@ Assumptions:
 | 8.1.7 | `engine/src/tempergraph/package/inventory.py` | `package_files`, `content_digest`, `docs_digest`, `workflow_version` | VER §2.4, PKG-AC-7 | | P1 | ✓ | 2026-11-20 |
 | 8.1.8 | `engine/src/tempergraph/package/registry.py`, `cli/workflows.py`, `engine/tests/test_registry.py` | `registry.json`; `workflows list\|register\|unregister\|reinstall`; `missing` and pin clearing; `version-not-bumped` | UPD §2.8 | yes | P1 | ✓ | 2026-11-20 |
 | 8.1.9 | `engine/src/tempergraph/package/registry.py` | Reconcile of `plugin` entries from Claude Code's plugin cache, run by `install` and `update` | UPD §2.8, PKG-B1 | yes | P1 | ✓ | 2026-11-20 |
-| 8.1.10 | `engine/src/tempergraph/package/loader.py` | The compatibility warning for a package one level behind when the changelog has breaking `workflow` entries (PKG-B6 row 2) | PKG-B6, VER §2.3 | yes | P2 | ○ | |
+| 8.1.10 | `engine/src/tempergraph/package/loader.py`, `package/changelog.py` (`breaking_since_level`) | The compatibility warning `workflow_api_behind` for a package below the engine's level when the changelog has breaking `workflow` entries it has not met (PKG-B6 row 2) | PKG-B6, VER §2.2, §2.3 | yes | P2 | ✓ | 2026-11-20 |
 
 Row 8.1.10 needs the changelog of T8.3.
 
