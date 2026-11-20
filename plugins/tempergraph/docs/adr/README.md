@@ -94,3 +94,13 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0102](0102-worktrees-beside-the-repository-with-derived-ref-safe-names.adr.md) | Worktrees live beside the repository by default, with names derived ref-safe from the thread id | proposed |
 | [0103](0103-worktree-removal-is-opt-in-clean-only-and-keeps-the-branch.adr.md) | Worktree removal is opt-in, only of clean worktrees, and never deletes the branch | proposed |
 | [0104](0104-a-new-worktree-starts-from-the-main-checkouts-head.adr.md) | A new run worktree starts from the main checkout's HEAD unless the run names another base | proposed |
+| [0105](0105-a-workflow-package-is-one-claude-plugin-with-a-python-part-and-a-docs-set.adr.md) | A workflow package is one Claude plugin with a Python part and a docs set | proposed |
+| [0106](0106-declare-workflows-with-typed-python-builders-and-text-in-files.adr.md) | Declare workflows with typed Python builders; keep text in files | proposed |
+| [0107](0107-the-good-outcome-is-one-data-file-of-final-and-intermediate-outcomes.adr.md) | The good outcome is one data file of final and intermediate outcomes, each criterion classed by its verifier | proposed |
+| [0108](0108-a-run-is-measured-at-a-final-outcome-gate.adr.md) | A run is measured at a mandatory final outcome gate; unverified criteria are shown, never passed | proposed |
+| [0109](0109-author-backwards-from-the-outcome-preferring-existing-verifications.adr.md) | Author backwards from the good outcome, from any of three entry paths, preferring verifications the person already has | proposed |
+| [0110](0110-check-an-authored-workflow-model-free-then-by-one-consented-trial.adr.md) | Check an authored workflow model-free first, then by one consented, capped trial graded by the person | proposed |
+| [0111](0111-outcome-revisions-are-grader-changes-and-verifiers-climb-a-ladder.adr.md) | Outcome revisions are grader-side changes; weakening is a person's act and verifiers climb a measured ladder | proposed |
+| [0112](0112-plugin-content-reaches-each-executor-by-a-declared-route-or-is-refused.adr.md) | Plugin content reaches each executor by a declared route or the step is refused; workflow plugins ship no hooks, MCP servers or binaries | proposed |
+| [0113](0113-the-workflow-docs-set-is-provisional-until-temperspec-owns-it.adr.md) | Every workflow package carries its own docs set, with provisional rules until temperspec owns them | proposed |
+| [0114](0114-judged-criteria-carry-a-scale-and-authoring-guides-until-criteria-are-clear.adr.md) | Judged criteria carry a scoring scale with seeds; authoring guides the person until every criterion is clear | proposed |

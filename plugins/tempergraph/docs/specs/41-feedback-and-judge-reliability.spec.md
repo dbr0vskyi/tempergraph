@@ -25,6 +25,7 @@ Every signal of the self-improvement loop rests on judges, and a judge is only a
 | `kind` | §2.2 | |
 | `value` | `agree` \| `disagree` \| `neutral` | Relative to the judgement: `disagree` means the judge's PROCEED or MET was wrong, or its block was wrong |
 | `source` | `person` \| `agent` \| `fact` | From the answer's decider ([PRV §2.4](85-caller-provenance.spec.md)): `person` only when `decided_by` is `person`; `agent` for an agent's own answer, `unknown` callers and relays without host evidence ([HUM](07-gate-and-human.spec.md)) |
+| `origin` | `run` (default), `authoring_trial`, `sign_off` | Where the label was given: a production run, the first trial of an authored workflow ([SCF §2.5](91-blueprint-and-scaffold.spec.md)), or a person's per-criterion sign-off ([OUT §2.2](90-run-outcome.spec.md)) |
 | `at`, `observed_after_s` | | When, and how long after the gate |
 | `binding` | `{executor, executor_version, alias, model_slug, brief_digest, criteria_digest}` | The judge binding that produced the judgement |
 

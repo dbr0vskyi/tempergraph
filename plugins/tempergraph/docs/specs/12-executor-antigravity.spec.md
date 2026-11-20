@@ -117,6 +117,7 @@ Run by the owner on the pinned version with a throwaway workspace; results are w
 | P-AG-7 | The values of `result.error.type` for auth, quota and model errors | classification | not run |
 | P-AG-8 | `permissions.allow` `command(<prefix>)` entries are honoured in stream mode on the pinned version | `step_allow_rules` | not run |
 | P-AG-9 | The tool that loads a skill from `.agents/skills/`, and whether a permission rule can scope it to one skill | `skill:` capability | not run |
+| P-AG-10 | Whether `agy` loads a plugin folder placed under the isolated config home (`~/.gemini/config/plugins/<plugin>/skills/`) | workflow skills on `antigravity` ([PKG §2.6](88-workflow-package.spec.md)) | not run |
 
 ## 3. Behaviours
 

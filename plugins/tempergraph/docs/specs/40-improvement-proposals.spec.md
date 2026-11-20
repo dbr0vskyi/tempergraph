@@ -85,7 +85,8 @@ The engine classifies a patch by comparing the parsed workflow before and after,
 | `criterion` | grader | Criterion text, a new criterion, a criterion's method |
 | `check` | grader | A deterministic check's code or its declared commands |
 | `judge_model` | grader | A judge's alias or executor |
-| `weakening` | grader | A criterion removed; a severity lowered from blocker; a check that passes on a fixture where it failed before; a judge view set widened; a budget raised above 2× |
+| `outcome` | grader | The outcome file: statement, final or intermediate criteria, `serves`, a verifier moved up the ladder with its evidence ([OUT §2.6](90-run-outcome.spec.md)); from release 3 |
+| `weakening` | grader | A criterion removed; a severity lowered from blocker; a verifier moved down the ladder of [OUT §2.6](90-run-outcome.spec.md); a check that passes on a fixture where it failed before; a judge view set widened; a budget raised above 2× |
 
 ### 2.5 Case set
 
