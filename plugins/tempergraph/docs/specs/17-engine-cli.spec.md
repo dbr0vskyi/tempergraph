@@ -129,7 +129,7 @@ A hook is an operator-registered command run on a run event (`started`, `unit_en
 
 - Exit codes rather than prose are the stable contract, so a skill or CI job can tell waiting from stopped from budget spent ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)).
 - The `executors` verb makes the honest-maturity rule visible: a capability resting on an unrun probe is shown as projected.
-- Tables of verbs, options and exit codes in the docs are generated from the argument definitions and constants, with a drift test.
+- Tables of verbs, options and exit codes in the docs stay written by hand and are checked against the argument definitions and constants by drift tests: the verb words equal `VERBS`, every built long option is named here, in RST or in PRV, and the exit codes equal [CON §2.9](01-contracts.spec.md).
 
 ## 6. Acceptance criteria
 
