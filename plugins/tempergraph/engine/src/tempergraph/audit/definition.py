@@ -258,8 +258,11 @@ class Definition:
         if o is None:
             return
         rows = [("outcome", c) for c in o.final] + [(u, c) for u, io in o.intermediate.items() for c in io.criteria]
+        from tempergraph.improve.calibration import accepted_for
+
+        accepted = accepted_for(self.spec)
         for unit, c in rows:
-            t = trust(c, unit, self.spec.package_root)
+            t = trust(c, unit, self.spec.package_root, accepted)
             if c.severity == "blocker" and t in ("unverified", "uncalibrated"):
                 self.add("outcome-unverified-blocker", unit, f"blocker {self.cid(c)!r} is at {t} trust",
                          item=self.cid(c), file="outcome.json", evidence={"trust": t, "verified_by": c.verified_by})

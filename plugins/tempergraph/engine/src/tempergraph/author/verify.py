@@ -141,10 +141,13 @@ def _coverage(spec: WorkflowSpec, decided: set[str], rung: Rung) -> None:
                                       f"{cov.missing_units} serve it at no trusted level",
                                       "add a check with fixtures on each unit, a person sign-off, or record "
                                       "a decision"))
+    from tempergraph.improve.calibration import accepted_for
+
+    accepted = accepted_for(spec)
     pairs = [("outcome", c) for c in spec.outcome.final] + [
         (u, c) for u, io in spec.outcome.intermediate.items() for c in io.criteria]
     for unit, c in pairs:
-        if c.severity == "blocker" and trust(c, unit, spec.package_root) == "unverified" and c.id not in decided:
+        if c.severity == "blocker" and trust(c, unit, spec.package_root, accepted) == "unverified" and c.id not in decided:
             rung.findings.append(_row("blocker-unverified", None if unit == "outcome" else unit,
                                       f"blocker {c.id} is verified by nobody",
                                       "verify it, or record the `none` as a decision (AUT §2.4)"))

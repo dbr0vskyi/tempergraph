@@ -149,6 +149,9 @@ def _parser() -> _Parser:
     from tempergraph.cli import outcome as outcome_cli
 
     outcome_cli.add_parser(sub, _Parser)
+    from tempergraph.cli import improve as improve_cli
+
+    improve_cli.add_parsers(sub, _Parser)
     return p
 
 
@@ -748,7 +751,15 @@ COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "install": install_cli.cmd_install,
     "upgrade": upgrade_cli.cmd_upgrade,
     "upgrade-check": upgrade_cli.cmd_upgrade,
+    "evals": lambda env, a: _improve().cmd_evals(env, a),
+    "labels": lambda env, a: _improve().cmd_labels(env, a),
 }
+
+
+def _improve() -> Any:
+    from tempergraph.cli import improve
+
+    return improve
 
 
 def main(argv: Sequence[str] | None = None, *, catalog: Catalog | None = None, registry: Registry | None = None,
