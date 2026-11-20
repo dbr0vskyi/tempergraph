@@ -41,7 +41,7 @@ This spec is the index of the set. It holds no component requirement; each requi
 - Not deterministic output: the graph, budgets and escalation paths are fixed, model output is not.
 - Not a production-workload orchestrator: non-production work on synthetic or test data.
 - Not a general chat agent: a good candidate is repeated, has known inputs and ends in something a check or a judge can grade.
-- No executor beyond the four. Release 1 ships `claude` only; what each release holds is [ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md). The interface admits more (a hosted service, another model family's SDK) without an engine edit.
+- No executor beyond the four. Releases 1 and 2 ship `claude` only; what each release holds is [ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md). The interface admits more (a hosted service, another model family's SDK) without an engine edit.
 - Not a general tool harness: the engine's own tool host serves only the Messages API executor and only the ten capability names ([THS](22-tool-host.spec.md)).
 
 ## 2. Contract

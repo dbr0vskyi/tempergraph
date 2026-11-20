@@ -13,7 +13,7 @@ The design must support four executors: the Claude Code CLI, the Claude Agent SD
 
 ## Decision
 
-We will ship **`claude`** as the only registered executor in release 1, then **`agent-sdk`** in release 2 with promotion to the pipeline, then **`messages-api`** with its tool host and **`antigravity`** in release 3.
+We will ship **`claude`** as the only registered executor in release 1 and release 2, and **`agent-sdk`**, **`messages-api`** with its tool host and **`antigravity`** in release 3. The owner postponed every executor but the Claude Code CLI on 2026-11-20; promotion to the pipeline in release 2 runs `claude` headless there.
 
 In release 1:
 
@@ -51,8 +51,8 @@ In release 1:
 | # | Assumption | Where it matters |
 |---|---|---|
 | E1 | The owner runs Claude Code on the machines that run release 1. | Shell, PRV host profile, SCO hooks |
-| E2 | Pipeline use is a release 2 need, so the CI executor can wait. | ADR-0041, EAS |
+| E2 | `claude -p` runs in a pipeline with an API key, so promotion in release 2 does not need `agent-sdk`. | ADR-0041, EAS |
 
 ## Revisit when
 
-A user without Claude Code needs release 1, or the owner answers the Agent SDK sign-in question and wants CI runs sooner.
+A user without Claude Code needs release 1 or 2, or the owner answers the Agent SDK sign-in question and wants it sooner.

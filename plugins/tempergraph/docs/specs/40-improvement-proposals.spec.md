@@ -85,7 +85,7 @@ The engine classifies a patch by comparing the parsed workflow before and after,
 | `criterion` | grader | Criterion text, a new criterion, a criterion's method |
 | `check` | grader | A deterministic check's code or its declared commands |
 | `judge_model` | grader | A judge's alias or executor |
-| `outcome` | grader | The outcome file: statement, final or intermediate criteria, `serves`, a verifier moved up the ladder with its evidence ([OUT §2.6](90-run-outcome.spec.md)); from release 3 |
+| `outcome` | grader | The outcome file: statement, final or intermediate criteria, `serves`, a verifier moved up the ladder with its evidence ([OUT §2.6](90-run-outcome.spec.md)) |
 | `weakening` | grader | A criterion removed; a severity lowered from blocker; a verifier moved down the ladder of [OUT §2.6](90-run-outcome.spec.md); a check that passes on a fixture where it failed before; a judge view set widened; a budget raised above 2× |
 
 ### 2.5 Case set
@@ -108,7 +108,7 @@ A case harvested from a run that is a member of the proposal's cluster is **in-s
 | Field | Meaning |
 |---|---|
 | `trial_id`, `proposal_id`, `case_set_digest` | |
-| `arms` | `A` (base version) and `B` (patched version), each run as a dry-run batch child per case, in its own worktree at the case's base ([WSP](13-workspace-and-concurrency.spec.md)) |
+| `arms` | `A` (base version) and `B` (patched version), each run as a dry-run batch child per case, in its own worktree at the case's base ([WSP](13-workspace-and-concurrency.spec.md)); in release 1, before `batch` exists, cases run one at a time as engine child runs ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md) S4) |
 | `target_metric` | One of `first_pass_yield(unit)`, `gate_pass(unit)`, `criterion_met(unit, id)`, `run_cost`, `outcome_met`, `label_agreement(gate)` |
 | `guards[]` | Metrics that must not worsen beyond a margin: by default run cost +15%, outcome met −1 case, any deterministic check pass rate −1 case, gate escapes +1 |
 | `pairs[]` | Per case: A value, B value, `win` \| `loss` \| `tie`, in-sample flag |
