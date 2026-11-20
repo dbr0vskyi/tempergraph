@@ -39,8 +39,11 @@ def test_there_are_skills() -> None:
 @pytest.mark.parametrize("skill", SKILLS, ids=[p.parent.name for p in SKILLS])
 def test_frontmatter_links_and_size(skill: Path) -> None:
     text = skill.read_text(encoding="utf-8")
-    m = re.match(r"^---\nname: ([a-z0-9-]+)\ndescription: (.+)\n---\n", text)
-    assert m and m.group(1) == skill.parent.name and 20 < len(m.group(2)) <= 1024
+    front = re.match(r"^---\n(.*?)\n---\n", text, re.S)
+    assert front
+    fields = dict(line.split(": ", 1) for line in front.group(1).splitlines())
+    assert set(fields) <= {"name", "description", "allowed-tools"}
+    assert fields["name"] == skill.parent.name and 20 < len(fields["description"]) <= 1024
     assert len(text.splitlines()) < 500  # a core under 500 lines, references read on demand (SHL §5)
     for f in _files(skill):
         for target in re.findall(r"\]\(([^)#:]+)\)", f.read_text(encoding="utf-8")):
@@ -68,3 +71,34 @@ def test_every_engine_call_exists(skill: Path) -> None:
                 assert opt in valid, f"{f.name}: `tempergraph {call}` passes {opt}, which is not built"
             calls += 1
     assert calls > 0
+
+
+READ_ONLY = re.compile(r"^(Read|Grep|Glob|Bash\((git (status|log|diff)|ls|cat|grep|ps|tempergraph (status|facts|list|graph|"
+                       r"validate|audit|workflows list|executors|worktree list|outcome show|upgrade-check|"
+                       r"install --check|author show)):\*\))$")
+
+
+def test_troubleshooter_grant_is_read_only() -> None:
+    """SHL §2.3: the troubleshooter's `allowed-tools` holds read rules only, and its text forbids the one flag a
+    prefix cannot exclude."""
+    text = (PLUGIN / "skills" / "troubleshoot" / "SKILL.md").read_text(encoding="utf-8")
+    grant = re.search(r"^allowed-tools: (.+)$", text, re.M)
+    assert grant
+    rules = [r.strip() for r in grant.group(1).split(", ")]
+    assert rules and all(READ_ONLY.match(r) for r in rules), [r for r in rules if not READ_ONLY.match(r)]
+    assert "--stamp" in text
+
+
+def test_install_skill_runs_only_its_fixed_commands() -> None:
+    """LSK-AC-3, structurally: every command the install skill names is the launcher's or the shim's."""
+    text = (PLUGIN / "skills" / "install" / "SKILL.md").read_text(encoding="utf-8")
+    commands = re.findall(r"`(<plugin>/bin/tempergraph [^`]+|<shim> [^`]+|tempergraph [^`]+)`", text)
+    allowed = ("<plugin>/bin/tempergraph install", "<shim> workflows list", "<shim> executors --probe",
+               "<shim> workflows register", "tempergraph executors")
+    assert commands and all(c.startswith(allowed) for c in commands), commands
+    for c in commands:
+        if c.startswith("<plugin>/bin/tempergraph install"):
+            from tempergraph.install.bootstrap import parser
+
+            known = {o for a in parser()._actions for o in a.option_strings}
+            assert set(re.findall(r"--[a-z-]+", c)) <= known, c

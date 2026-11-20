@@ -22,7 +22,7 @@ task_id: first-release-t9
 | Specs | [SHL](../specs/19-plugin-shell.spec.md), [AUT](../specs/89-workflow-authoring.spec.md), [OUT](../specs/90-run-outcome.spec.md), [SCF](../specs/91-blueprint-and-scaffold.spec.md), [LSK](../specs/65-lifecycle-skills.spec.md) |
 | Builders | T9.1 is built by the main build thread; T9.2 and T9.3 by the T8 thread, after T8 |
 
-**Status: In progress.** T9.2 is built: the criteria lint, the inventory, the session verbs, revise mode and the `tempergraph:author` skill; its rubric scenarios are live checks. T9.3 is next.
+**Status: In progress.** T9.2 is built: the criteria lint, the inventory, the session verbs, revise mode and the `tempergraph:author` skill; its rubric scenarios are live checks. T9.3 is built: the troubleshooter and the install skill; their rubric scenarios are live checks.
 
 Status pass: AUT and LSK are `ready-for-implementation`, with the release 1 decisions in AUT §2.8 and LSK §2.6. SHL §2.3 holds the authoring and troubleshooter skills' release 1 notes; SHL's status flips with T9.1.
 
@@ -61,5 +61,6 @@ Goal: read-only diagnosis from logs, detail and audit; the install skill.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
 | 9.3.0 | `docs/specs/19-*`, `docs/specs/65-*` | Status pass: LSK `ready-for-implementation` with LSK §2.6; SHL §2.3 for the authoring and troubleshooter skills (SHL's status flips with T9.1) | SHL, LSK | | P1 | ✓ | 2026-11-20 |
-| 9.3.1 | `skills/troubleshoot/SKILL.md`, `skills/troubleshoot/references/*.md` | Read-only diagnosis with ranked hypotheses and next actions from `status`, `logs`, `report`, `audit` | SHL §2 | | P1 | ○ | |
-| 9.3.2 | `skills/install/SKILL.md` | The install procedure of LSK §2.3 | LSK §2.3 | | P1 | ○ | |
+| 9.3.1 | `skills/troubleshoot/SKILL.md`, `skills/troubleshoot/references/*.md` | Read-only diagnosis with ranked hypotheses and next actions from `status`, `facts`, the run log, `validate`, `audit`; the read-only grant as `allowed-tools`, checked by the structure test; five references by symptom | SHL §2, §2.3 | yes | P1 | ✓ | 2026-11-20 |
+| 9.3.2 | `skills/install/SKILL.md` | The install procedure of LSK §2.3 at LSK §2.6; its commands checked against the launcher's options (LSK-AC-3, structurally) | LSK §2.3, §2.6 | yes | P1 | ✓ | 2026-11-20 |
+| 9.3.3 | live, owner's machine | SHL-AC-2 and LSK-AC-1 rubric scenarios for the troubleshooter and the install skill | SHL §6, LSK §6 | | P1 | ○ | |
