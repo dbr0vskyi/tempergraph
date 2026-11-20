@@ -39,6 +39,7 @@ The `claude` executor runs each step attempt and each judge run as one headless 
 | `web_search` | `WebSearch` | `WebSearch` |
 | `subagent` | `Agent` (reported as `Task` by older releases) | `Agent` |
 | `mcp:<s>/<t>` | `mcp__<s>__<t>` | `mcp__<s>__<t>` |
+| `skill:<p>:<n>` | `Skill` | `Skill(<p>:<n>)` once P-CC-8 confirms it, else `Skill`, with the called name checked in the tool record ([ADR-0078](../adr/0078-skills-are-a-declared-tool-capability.adr.md)) |
 
 ### 2.3 Step launch
 
@@ -114,6 +115,7 @@ Each probe is run by the owner against the pinned CLI version with an isolated c
 | P-CC-5 | A prompt on stdin with `-p` and no positional prompt is accepted on the pinned version | `prompt_off_argv` | not run |
 | P-CC-6 | `dontAsk` refuses an unlisted call without a prompt and emits `permission_denied` | judge launch | not run |
 | P-CC-7 | Whether an engine-launched session keeps a native transcript under its isolation flags, and at which path | transcript locator ([EVT §2.4](30-run-events.spec.md)) | not run |
+| P-CC-8 | A `Skill(<plugin>:<name>)` allow rule admits only that skill in a headless session, and the tool record names the skill called | `skill:` capability | not run |
 
 ## 3. Behaviours
 

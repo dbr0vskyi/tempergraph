@@ -3,7 +3,7 @@ title: Prompt rendering and output contract
 type: component
 status: review
 prefix: PRM
-adrs: [0005, 0016]
+adrs: [0005, 0016, 0076, 0077]
 ---
 
 # Prompt rendering and output contract
@@ -27,14 +27,15 @@ class RenderedPrompt: text: str; missing_fields: list[str]; sections: list[str]
 |---|---|
 | The step's template, rendered by the grammar of [CON §2.2](01-contracts.spec.md) | Always |
 | Item and event sections (item id, index, count; event value cut at 4000 chars) | A mapped item; a delivered event |
-| Commands you may run | The step declares command prefixes |
+| Commands you may run | The step declares command prefixes, or `self_check` |
+| Check your work before you end: the `self-check` command and what it reports ([CHK §2.5](75-check-contract-and-command-runs.spec.md)) | The step declares `self_check` |
 | Tools for this step | The step declares tools |
 | Artifact contract (one line per declared key and its kind) | The step produces keys |
 | How this output will be judged (criterion texts only) | The gate has criteria |
-| Blocked line, and the upstream line | Blocked always; upstream only when a listed back target has run |
+| Blocked line, and the upstream line | Blocked always; upstream only when a listed back target has run or a route skipped it on this path ([ADR-0076](../adr/0076-claims-may-target-a-route-skipped-back-target.adr.md)) |
 | Notes from the previous judgement | Unmet warnings of the last pass |
 | Reason for this visit, and who sent it | The run was sent back to this unit |
-| Rejection reason; what the previous attempt reported (≤ 3000 chars, head and tail); paths changed since it began (≤ 20) | A retry; after a timeout, infra failure or cut-off only the paths |
+| Rejection reason (for a check FAIL, each failing finding's criterion, place and fix, then the evidence); what the previous attempt reported (≤ 3000 chars, head and tail); paths changed since it began (≤ 20) | A retry; after a timeout, infra failure or cut-off only the paths |
 | Human feedback | A person gave feedback at the last gate; shown once |
 
 Everything after the template is appended verbatim, never format-processed.
@@ -49,9 +50,9 @@ Built from the declaration alone: the declared tools by their executor names; st
 |---|---|
 | `ARTIFACT <key>: <value>` one per declared key | Normal end; a key with no line falls back to the raw output |
 | `BLOCKED: <what a person must decide or provide>` | Only a person can unblock; the judge is skipped |
-| `UPSTREAM <unit>: <defect>` | A defect in an earlier unit's output this step cannot work around; offered only when that unit is a listed target that has run |
+| `UPSTREAM <unit>: <defect>` | A defect in an earlier unit's output this step cannot work around; offered only when that unit is a listed target that has run or that a route skipped on this path |
 
-A claim to a target not listed, or that did not run, is read as blocked.
+A claim to a target not listed, or not on this path, is read as blocked. A line `ARTIFACT <key>: <text>` for a `value` key sets that value ([VAL §2.1](76-step-values-and-template-keys.spec.md)).
 
 ## 3. Behaviours
 
