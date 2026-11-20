@@ -209,6 +209,29 @@ def run_row(log: Path, recs: Iterable[dict[str, Any]], segment: int | None = Non
     }
 
 
+def session_rows(log: Path, recs: Iterable[dict[str, Any]], run: dict[str, Any]) -> list[dict[str, Any]]:
+    """The `session` rows of one segment, one per `agent_run` (CST §2.2): numbers and engine words only."""
+    out = []
+    for r in recs:
+        if r.get("kind") != "agent_run" or r.get("segment") != run.get("segment"):
+            continue
+        u = r.get("usage") or {}
+        models = sorted((u.get("by_model") or {}).keys())
+        outcome = "ok" if r.get("ok") else "timed_out" if r.get("timed_out") else "stalled" if r.get("stalled") \
+            else "infra" if r.get("infra_cause") else "failed"
+        out.append({"row_id": str(uuid.uuid4()), "kind": "session", "schema_version": 1,
+                    "machine_id": run.get("machine_id"), "thread_id": run.get("thread_id"),
+                    "state_root": run.get("state_root"), "workflow": run.get("workflow"),
+                    "workflow_version": run.get("workflow_version"), "segment": run.get("segment"),
+                    "unit": r.get("unit"), "session_kind": r.get("session_kind") or "step",
+                    "executor": r.get("executor"), "model": models[0] if len(models) == 1 else None,
+                    "tokens": {t: u.get(t) for t in TOKENS}, "reported_cost_usd": u.get("reported_cost_usd"),
+                    "estimated_cost_usd": u.get("estimated_cost_usd"), "duration_s": r.get("duration_s"),
+                    "slow_host": bool(r.get("slow_host")), "outcome": outcome, "tool_calls": len(r.get("tools") or []),
+                    "ended_at": r.get("ts")})
+    return out
+
+
 def _supervision_fields(sup: dict[str, Any] | None) -> dict[str, Any]:
     if sup is None:
         return dict.fromkeys(("touches_undesigned", "touches_by_decider", "agent_own_rescues", "level", "level_by",
@@ -248,11 +271,14 @@ def on_run_exit(log: Path, segment: int | None) -> None:
         home = ensure_home()
         month = str(row["ended_at"] or now_iso())[:7]
         append_jsonl(stats_path(home, month), row)
+        sessions = session_rows(log, records(log), row)
+        for srow in sessions:
+            append_jsonl(home / "stats" / "sessions" / f"{month}.jsonl", srow)
         from tempergraph.observe import sinks, supervision_cost
 
         with contextlib.suppress(Exception):  # SCO §2.5: the next writing process closes what has ended
             supervision_cost.close(home)
-        if sinks.enqueue(home, row, log):
+        if sinks.enqueue(home, row, log) + sinks.enqueue_sessions(home, sessions, log, month):
             sinks.start_flusher(home)
     except Exception:  # noqa: BLE001
         import logging
@@ -263,9 +289,14 @@ def on_run_exit(log: Path, segment: int | None) -> None:
 # -- readers ---------------------------------------------------------------------------------------------------
 
 
-def read_rows(paths: Iterable[Path]) -> tuple[list[dict[str, Any]], int]:
-    """Rows from JSON-lines files, de-duplicated by `row_id` (CST-AC-3); a newer major schema is skipped."""
-    seen: set[str] = set()
+SAME = ("kind", "machine_id", "workflow", "segment", "exit_code", "ended_at")  # equal in a row's local and sink form
+
+
+def read_rows(paths: Iterable[Path], conflicts: list[str] | None = None) -> tuple[list[dict[str, Any]], int]:
+    """Rows from JSON-lines files, de-duplicated by `row_id` (CST-AC-3); a newer major schema is skipped. A
+    repeated `row_id` whose content differs (a copied `machine.json` or stats file) is kept twice and its id
+    added to `conflicts` (CST §4)."""
+    seen: dict[str, tuple[Any, ...]] = {}
     out: list[dict[str, Any]] = []
     unknown = 0
     for p in paths:
@@ -284,9 +315,13 @@ def read_rows(paths: Iterable[Path]) -> tuple[list[dict[str, Any]], int]:
                 unknown += 1
                 continue
             rid = str(r.get("row_id") or "")
+            same = tuple(r.get(k) for k in SAME)
             if rid and rid in seen:
-                continue
-            seen.add(rid)
+                if seen[rid] == same:
+                    continue
+                if conflicts is not None and rid not in conflicts:
+                    conflicts.append(rid)
+            seen.setdefault(rid, same)
             out.append(r)
     return out, unknown
 

@@ -102,6 +102,10 @@ Not built in release 1 (recorded in PRP §5): PRP-B9 (needs the merge to be seen
 
 Planned: stable mode's daily cap and `report --loop`.
 
+### T12.9 Session digest and dev-mode review
+
+Planned, not started: [SRV](../specs/44-session-review.spec.md) as scoped in the [release plan](first-release.plan.md) T12.9 (I-92 to I-94). Code it needs: `improve/digest.py` (SRV §2.1, §2.2, called by `improve/record.py` before findings), new rows in `improve/causes.py`, `improve/review.py` (plan, condensed view, reviewer launch, citation check, records), `improve/child.py` (run the plan after the friction judge), the `improve review` verbs in `cli/`, the tool-less reviewer launch in the session launcher's pinned list, and a second publish-boundary source test for `evidence/review/`. Stable-mode plans are release 2 (X2-26).
+
 ## 3. Verification
 
 From `plugins/tempergraph/engine/`: `python -m pytest`, `ruff check src tests` and `mypy` are clean. No test calls a model.

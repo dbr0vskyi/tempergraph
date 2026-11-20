@@ -3,14 +3,14 @@ title: Self-improvement loop
 type: component
 status: ready-for-implementation
 prefix: SIL
-adrs: [0003, 0005, 0021, 0030, 0031, 0033, 0080]
+adrs: [0003, 0005, 0021, 0030, 0031, 0033, 0080, 0116, 0119]
 ---
 
 # Self-improvement loop
 
 ## 1. Overview
 
-A built-in workflow that reads every finished run's record, judges it with an independent judge, and files, comments on or only records a finding in the repository that owns the fault: the engine's or the workflow's. It runs as a detached child, is gated and judged like any workflow, and never pauses. The loop closes through people: an issue is evidence, not an order. This spec owns contract C14 (a measurement call never writes code). It is the first half of the loop: clusters of its findings become measured proposals in [PRP](40-improvement-proposals.spec.md), human ground truth becomes labels and judge grades in [FBK](41-feedback-and-judge-reliability.spec.md), and its data needs are stated in [IMD](43-improvement-data.spec.md).
+A built-in workflow that reads every finished run's record, judges it with an independent judge, and files, comments on or only records a finding in the repository that owns the fault: the engine's or the workflow's. It runs as a detached child, is gated and judged like any workflow, and never pauses. The loop closes through people: an issue is evidence, not an order. This spec owns contract C14 (a measurement call never writes code). It is the first half of the loop: clusters of its findings become measured proposals in [PRP](40-improvement-proposals.spec.md), human ground truth becomes labels and judge grades in [FBK](41-feedback-and-judge-reliability.spec.md), its data needs are stated in [IMD](43-improvement-data.spec.md), and what it reads from the step and judge sessions themselves is [SRV](44-session-review.spec.md).
 
 ## 2. Contract
 
@@ -21,6 +21,7 @@ A built-in workflow that reads every finished run's record, judges it with an in
 | Findings | Signal and step names, cause codes, counts, executor names | Yes, as metadata |
 | Evidence | Request, outputs, scrubbed feedback | Never; local only |
 | Ledger row | Names, counts, hashes, executor and CLI versions; no text | Never as text |
+| Session digest | Per session: names, enums, counts and keyed digests from its activity journal and stream ([SRV §2.1](44-session-review.spec.md)) | Its causes, as findings metadata |
 
 ### 2.2 Lenses
 
@@ -29,11 +30,12 @@ A built-in workflow that reads every finished run's record, judges it with an in
 | Friction | Where did the process hurt, and whose fault? | Every flagged final exit | A `tool_access` pause or a tool grant; spent retries or a stop; an uncleared failed step; a gap escalation; repeated blockers; a retry burst; cost above the version's p90; a new version's first five runs; a person pushing back |
 | Outcome | Did the result meet the workflow's good outcome? Read from the run's outcome record ([OUT §2.5](90-run-outcome.spec.md)); a second judge starts only when the outcome gate's judge did not run | Every final exit | A person pushing back; a pass at judge confidence ≤ 0.5; every 20th clean run |
 | Cost | Where does money repeat? | Every 10th final exit of a version | Same |
+| Session (process) | Did the sessions work as their prompts, lessons, skills and subagents intend? Digest causes on every exit; a model review only on a plan ([SRV §2.3](44-session-review.spec.md)) | `full` review of every final exit, within a per-run cap | Review only of the sessions and slices a signal names ([SRV §2.4](44-session-review.spec.md)); saturated causes read nothing |
 | Quality (per gate) | Does each version score better on a fixed scorecard? | Scorecard reported for every gate | A gate's rows may file only while its judge binding is graded `reliable` ([FBK-B5](41-feedback-and-judge-reliability.spec.md)); other gates are reported only ([ADR-0021](../adr/0021-scope-of-planned-work.adr.md)) |
 
 ### 2.3 Fault sides
 
-Cause codes come from run-log names and numbers only, each classed `fault`, `infra` or `designed`. A fault is attributed to `engine`, `workflow`, `executor:<name>` (new in tempergraph) when the cause is an executor behaviour (an unknown event or message shape, a tool name outside the catalog, a refused flag or option, an API error type the classifier does not list), or `host` when the host-speed preflight warned or timeouts are sorted `slow_host` ([OBS](15-observability-and-cost.spec.md)). Executor-side issues go to the engine's repository with an executor label; host findings are recorded only, never filed.
+Cause codes come from run-log and session-digest names and numbers only ([SRV §2.2](44-session-review.spec.md)), each classed `fault`, `infra` or `designed`. A fault is attributed to `engine`, `workflow`, `executor:<name>` (new in tempergraph) when the cause is an executor behaviour (an unknown event or message shape, a tool name outside the catalog, a refused flag or option, an API error type the classifier does not list), or `host` when the host-speed preflight warned or timeouts are sorted `slow_host` ([OBS](15-observability-and-cost.spec.md)). Executor-side issues go to the engine's repository with an executor label; host findings are recorded only, never filed.
 
 ### 2.4 What a finding carries
 
@@ -45,6 +47,7 @@ Cause codes come from run-log names and numbers only, each classed `fault`, `inf
 | Blocked pause with an empty check | A pause on `BLOCKED:` whose check ran no command and read no file is a workflow fault (`blocked_without_check`), not a designed pause |
 | Tool access and grants | A `tool_access` pause is a friction finding with cause `tool_access:<refusal class>` ([TSA §2.2](57-tool-surface-audit.spec.md)). Every tool grant and allowed command of the run ([RST §2.8](80-run-settings-and-overrides.spec.md)) is one entry of the ledger row's `grants[]`: unit, capability or prefix, the refusal class it answered, `via` (`cli`, `orchestration`, `profile`), whether a later attempt called it, and the unit's outcome after it. A grant that a passing attempt used is a workflow-side finding with cause `grant_missing`, its fixed remedy the declaration; a grant never called is recorded as `grant_unused` and not filed. Both cluster by (workflow, unit, capability), so the pattern rule files one issue for a grant given on many runs and machines ([PRP §2.2](40-improvement-proposals.spec.md)) |
 | Agent rescues and supervision | Each `rescue` touch decided by an agent on its own ([SUP §2.1](86-supervision-metrics.spec.md), [PRV §2.4](85-caller-provenance.spec.md)) is a friction finding with cause `agent_decided:<pause cause>`, clustered by (workflow, unit, pause cause) across runs and machines; a cluster whose decisions were mostly `proceed` with no workspace change files a workflow issue whose remedy is a check or an environmental cause. The ledger row carries `supervision{}`, and the cost lens shows supervision cost as its own figure, never in run cost ([SCO](87-supervision-cost.spec.md)) |
+| Session review | A kept review observation never files on its own: it is local, and adds `review:<category>` and `review_weight` to a model-free finding on the same unit and run that it corroborates ([SRV §2.8](44-session-review.spec.md), [ADR-0119](../adr/0119-review-observations-are-candidates-corroborated-before-they-file.adr.md)); release 1 does not file from reviews |
 | Uncalibrated judge | An outcome finding whose judge has no calibration score for this gate ([LIF](18-lifecycle-and-evals.spec.md)) is recorded with state `uncalibrated` and not filed |
 
 ## 3. Behaviours
@@ -69,7 +72,7 @@ Cause codes come from run-log names and numbers only, each classed `fault`, `inf
 |---|---|
 | Code host unreachable | Payload kept and redelivered by the next filing |
 | Daily cap reached (stable mode, default $50) | Judges skipped; records still written |
-| Evidence file opened by filing code | Source test fails |
+| Evidence file or review evidence opened by filing code | Source test fails |
 
 ## 5. Design notes
 

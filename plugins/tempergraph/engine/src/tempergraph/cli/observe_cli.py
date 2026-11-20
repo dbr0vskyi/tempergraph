@@ -271,12 +271,16 @@ def cmd_stats(env: Any, a: argparse.Namespace) -> int:
             raise UsageError("--month takes YYYY-MM")
         if a.source and a.local:
             raise UsageError("--source and --local exclude each other")
-        found, unknown, synced_at = sinks.rows_for(home, a.source, a.local, a.month, a.since, root)
+        conflicts: list[str] = []
+        found, unknown, synced_at = sinks.rows_for(home, a.source, a.local, a.month, a.since, root, conflicts)
     except sinks.SinkConfigError as exc:
         raise UsageError(str(exc)) from exc
     doc: dict[str, Any] = {"schema_version": 1, "source": a.source or ("local" if a.local else "home"),
                            "month": a.month, "since": a.since, "totals": rows.totals(found), "unknown_schema": unknown,
-                           "synced": synced_at}
+                           "synced": synced_at, "duplicate_row_ids": conflicts}
+    if conflicts:
+        env.err.write(f"tempergraph: {len(conflicts)} row ids appear twice with different content; both are shown "
+                      "(a copied machine.json or stats file?)\n")
     if a.by:
         groups: dict[str, list[dict[str, Any]]] = {}
         for r in found:

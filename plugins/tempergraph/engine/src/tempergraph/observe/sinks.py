@@ -34,6 +34,7 @@ from tempergraph.store.layout import now_iso
 
 SINKS_FILE = "sinks.json"
 ROW_KINDS = ("run", "heartbeat", "supervision", "session")
+DEFAULT_KINDS = ("run", "heartbeat", "supervision")  # `session` rows are opt-in (CST §2.2)
 SLUG = re.compile(r"^[a-z0-9-]{1,40}$")
 WORD = re.compile(r"^[a-z0-9_:-]{1,40}$")
 STALE_S = 300
@@ -57,7 +58,7 @@ class Sink:
     name: str
     kind: str
     path: Path
-    include: tuple[str, ...] = ROW_KINDS
+    include: tuple[str, ...] = DEFAULT_KINDS
     user: str = "hash"
     repo: str = "hash"
     tickets: bool = False
@@ -96,7 +97,7 @@ def _sink(e: dict[str, Any]) -> Sink:
         raise SinkConfigError(f"{where}: sink {name!r}: the otlp kind is designed but not in this release (TEL)")
     if kind != "directory" or not e.get("path"):
         raise SinkConfigError(f"{where}: sink {name!r} needs kind `directory` and a `path`")
-    include = tuple(e.get("include") or ROW_KINDS)
+    include = tuple(e.get("include") or DEFAULT_KINDS)
     bad = [k for k in include if k not in ROW_KINDS]
     user, repo = str(e.get("user") or "hash"), str(e.get("repo") or "hash")
     if bad or user not in ("name", "hash", "none") or repo not in ("name", "hash"):
@@ -284,6 +285,34 @@ def enqueue(home: Path, row: dict[str, Any], log: Path) -> int:
     return len(sinks)
 
 
+def enqueue_sessions(home: Path, sessions: list[dict[str, Any]], log: Path, month: str) -> int:
+    """References to the segment's `session` rows for each sink that opted into them."""
+    from tempergraph.docs import append_jsonl
+
+    if not sessions:
+        return 0
+    root = log.parents[3]
+    try:
+        takers = [s for s in load(home, root) if s.takes("session")]
+    except SinkConfigError:
+        return 0
+    for s in takers:
+        for r in sessions:
+            append_jsonl(outbox(home, s.name), {"row_id": r["row_id"], "kind": "session", "month": month,
+                                                "state_root": str(root)})
+    return len(takers)
+
+
+def session_row(row: dict[str, Any], key: bytes) -> dict[str, Any]:
+    """The `session` row a sink receives: the thread hashed, no text (CST §2.2, §2.4)."""
+    out = {k: row.get(k) for k in ("row_id", "kind", "schema_version", "machine_id", "workflow", "workflow_version",
+                                   "segment", "unit", "session_kind", "executor", "model", "tokens",
+                                   "reported_cost_usd", "estimated_cost_usd", "duration_s", "slow_host", "outcome",
+                                   "tool_calls", "ended_at")}
+    out["thread_hash"] = digest(key, str(row.get("thread_id")))
+    return out
+
+
 def start_flusher(home: Path) -> None:
     mode = os.environ.get("TEMPERGRAPH_FLUSHER", "detached")
     if mode == "off":
@@ -303,10 +332,12 @@ def _local_rows(home: Path, month: str, cache: dict[str, dict[str, dict[str, Any
     return cache[month]
 
 
-def _supervision_rows(home: Path, month: str, cache: dict[str, dict[str, dict[str, Any]]]) -> dict[str, dict[str, Any]]:
-    k = f"supervision:{month}"
+def _kept_rows(home: Path, kind: str, month: str, cache: dict[str, dict[str, dict[str, Any]]]
+               ) -> dict[str, dict[str, Any]]:
+    k = f"{kind}:{month}"
     if k not in cache:
-        cache[k] = {str(r.get("row_id")): r for r in _read_jsonl(home / "supervision" / "rows" / f"{month}.jsonl")}
+        path = home / "supervision" / "rows" if kind == "supervision" else home / "stats" / "sessions"
+        cache[k] = {str(r.get("row_id")): r for r in _read_jsonl(path / f"{month}.jsonl")}
     return cache[k]
 
 
@@ -355,9 +386,9 @@ def _flush_one(home: Path, name: str, box: Path) -> dict[str, Any]:
             if sink is None:
                 result["error"] = "no longer configured"
                 break
-            kind = "supervision" if e.get("kind") == "supervision" else "run"
+            kind = str(e.get("kind")) if e.get("kind") in ("supervision", "session") else "run"
             rows = _local_rows(home, str(e.get("month")), cache) if kind == "run" else \
-                _supervision_rows(home, str(e.get("month")), cache)
+                _kept_rows(home, kind, str(e.get("month")), cache)
             local = rows.get(str(e.get("row_id")))
             if local is None:  # the local row is gone; nothing to send
                 done += 1
@@ -370,8 +401,10 @@ def _flush_one(home: Path, name: str, box: Path) -> dict[str, Any]:
                 folder = _machine_dir(sink, home)
                 if kind == "run":
                     _append(folder / "runs" / f"{e.get('month')}.jsonl", sink_row(local, sink, key))
-                else:
+                elif kind == "supervision":
                     _append(folder / "supervision" / f"{e.get('month')}.jsonl", supervision_row(local, key))
+                else:
+                    _append(folder / "sessions" / f"{e.get('month')}.jsonl", session_row(local, key))
             except OSError as exc:
                 result["error"] = f"write failed ({type(exc).__name__})"
                 break
@@ -669,7 +702,8 @@ def _ago(at: Any, now: float) -> float | None:
 
 
 def rows_for(home: Path, source: str | None, local: bool, month: str | None, since: str | None,
-             state_root: Path | None = None) -> tuple[list[dict[str, Any]], int, dict[str, Any] | None]:
+             state_root: Path | None = None, conflicts: list[str] | None = None
+             ) -> tuple[list[dict[str, Any]], int, dict[str, Any] | None]:
     """Rows for `stats`: the home folder (this machine plus each sink's fleet copy), `--local`, or `--source`."""
     now = time.time()
     local_paths = sorted((home / "stats").glob("*.jsonl")) if (home / "stats").is_dir() else []
@@ -698,7 +732,7 @@ def rows_for(home: Path, source: str | None, local: bool, month: str | None, sin
         synced = synced or None
     if month:
         paths = [p for p in paths if p.stem in (month, "pending")]
-    found, unknown = read_rows(paths)
+    found, unknown = read_rows(paths, conflicts)
     found = [r for r in found if _month_ok(r, month, since)]
     _labels(found, labels)
     return found, unknown, synced

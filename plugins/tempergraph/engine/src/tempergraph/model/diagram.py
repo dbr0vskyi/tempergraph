@@ -58,14 +58,23 @@ def to_mermaid(model: dict[str, Any]) -> str:
     """Draw one box per unit, with its routing edges between units (counts and words only)."""
     lines = ["flowchart TD", "  start((start))"]
     ids = {u["name"]: f"u{i}" for i, u in enumerate(model["units"])}
+    ov = model.get("overlay") or {}
     for u in model["units"]:
         label = u["name"] + (f"<br/>{u['summary']}" if u["summary"] else "") + (" ✋" if u["approval"] else "")
+        o = (ov.get("units") or {}).get(u["name"])
+        if o:  # the run overlay (OBS §2.4): counts and engine words only
+            verdicts = ", ".join(f"{k} {v}" for k, v in o["verdicts"].items())
+            label += f"<br/>visits {o['visits']} · sessions {o['sessions']}" + (f" · {verdicts}" if verdicts else "")
         lines.append(f'  {ids[u["name"]]}["{label}"]')
     lines.append("  fin([finalizer])")
     lines.append("  stop((end))")
     first = model["units"][0]["name"]
     lines.append(f"  start --> {ids[first]}")
     seen: set[tuple[str, str, str]] = set()
+    taken: dict[tuple[str, str, str], int] = {}
+    for a, b, token, n in ov.get("edges") or []:
+        dst_unit = "fin" if b == flow.FINALIZER.split(".")[0] else b
+        taken[(a, dst_unit, token)] = taken.get((a, dst_unit, token), 0) + n
     for a, b, token in model["edges"]:
         src = a.split(".")[0]
         if a.endswith(".gate") and token in ("PROCEED", "BACK"):
@@ -76,7 +85,13 @@ def to_mermaid(model: dict[str, Any]) -> str:
             if key in seen:
                 continue
             seen.add(key)
-            arrow = "-->" if token == "PROCEED" else "-.->|back|"
+            n = taken.pop((src, "fin" if b == flow.FINALIZER else b.split(".")[0], token), 0)
+            mark = f" ×{n}" if n else ""
+            arrow = (f"-->|{mark.strip()}|" if n else "-->") if token == "PROCEED" else f"-.->|back{mark}|"
             lines.append(f"  {ids[src]} {arrow} {dst}")
+    for (src, dst_unit, token), n in sorted(taken.items()):  # taken routes the unit boxes do not draw
+        dst = "fin" if dst_unit in ("fin", "end") else ids.get(dst_unit)
+        if src in ids and dst is not None:
+            lines.append(f"  {ids[src]} -.->|{token.lower()} ×{n}| {dst}")
     lines.append("  fin --> stop")
     return "\n".join(lines) + "\n"

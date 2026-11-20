@@ -27,7 +27,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `wait <selector> [--timeout s]` | Block until an outcome | no | no |
 | `attention [--all-roots] [--json]` | Every item waiting on a person under the state root, oldest first: pauses of every thread and, when present, orchestration attention items (CLI-B6, [ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md)) | no | no |
 | `list` | The catalog (versioned JSON or a table) | no | no |
-| `graph <workflow> [--format mermaid|svg|md] [--overlay <thread>]` | Diagram from the model | no | no |
+| `graph <workflow> [--format mermaid|svg|md] [--overlay <thread>]` | Diagram from the model; `--overlay` adds a thread's counts and verdicts ([OBS §2.4](15-observability-and-cost.spec.md)); release 1 draws `mermaid`, `md` and `json`, not `svg` | no | no |
 | `report [window] [--by unit|executor|version] [--json]` | Cost and friction reports | no | no |
 | `validate <workflow>` | Validation, view deferrals, prompt-tool check | no | no |
 | `audit <workflow> [--layer …] [--target <path>] [--window <days>] [--all] [--format text\|json\|sarif] [--fail-on …]`, `audit tools <workflow>`, `audit prompts <workflow>` | Advisory audit of a workflow's definition, host and run history; exit 6 only with `--fail-on` ([AUD](55-workflow-audit.spec.md)) | no | no |
@@ -50,6 +50,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `store usage\|prune\|export` | Size, retention and export of the local store; `prune` takes `--older-than <days>`, `--keep-failed` or `--no-keep-failed` and `--dry-run` ([LOS §2.4](33-local-observability-store.spec.md)) | prune and export only | no |
 | `hooks add|list|remove|test` | Run lifecycle hooks (§2.2) | add and remove only | no |
 | `improve backlog|propose|trial|aa|open|show` | Proposals and trials ([PRP §2.7](40-improvement-proposals.spec.md)) | per [PRP](40-improvement-proposals.spec.md) | `propose`, `trial`, `aa` |
+| `improve review [show|summary]` | Session review of a run, its result, and observations over a window ([SRV §2.9](44-session-review.spec.md)) | `review` only | `review` without `--dry-run` |
 | `label <thread> <gate> [--criterion id] [--attempt n] --value agree|disagree`, `labels queue\|grades <workflow>` | Enter a label; list judgements to label ([FBK](41-feedback-and-judge-reliability.spec.md)) | `label` only | no |
 | `evals run\|report\|grade …`, `evals score\|bar\|label …`, `evals harvest\|replay …` | Eval suites ([EVS](51-eval-suites.spec.md)), judge calibration ([JCL §2.6](50-judge-calibration.spec.md)), harvest and replay ([LIF §2](18-lifecycle-and-evals.spec.md)); owned there | per owner spec | live kinds and `score`, `replay` only |
 | `report --loop [window]` | The loop's own metrics ([IMD §2.4](43-improvement-data.spec.md)) | no | no |

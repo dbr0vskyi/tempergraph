@@ -18,27 +18,28 @@
   "unknown_schema": 0,
   "synced": {
     "team": {
-      "synced_at": "2026-11-20T11:05:17.631Z",
+      "synced_at": "2026-11-20T11:37:22.046Z",
       "machines": {
-        "372f898b-8135-4efd-90d8-8a653ea66e16": {
-          "label": "desk-b",
-          "synced_at": "2026-11-20T11:05:17.631Z",
-          "rows": 1,
-          "ago_s": 0.0
-        },
-        "d4cf5171-493f-4961-85bd-92e6d3abbc73": {
+        "62d8bfdd-d94f-465c-a962-7fd560009f73": {
           "label": "laptop-a",
-          "synced_at": "2026-11-20T11:05:17.631Z",
+          "synced_at": "2026-11-20T11:37:22.046Z",
           "rows": 1,
-          "ago_s": 0.0
+          "ago_s": 0.1
+        },
+        "fbf52bf2-71ad-415e-87e4-4b80f8e04fcb": {
+          "label": "desk-b",
+          "synced_at": "2026-11-20T11:37:22.046Z",
+          "rows": 1,
+          "ago_s": 0.1
         }
       }
     }
   },
+  "duplicate_row_ids": [],
   "by": {
     "key": "machine",
     "groups": {
-      "desk-b (372f898b)": {
+      "desk-b (fbf52bf2)": {
         "runs": 1,
         "threads": 1,
         "reported_usd": 0.02,
@@ -49,7 +50,7 @@
           "3": 1
         }
       },
-      "laptop-a (d4cf5171)": {
+      "laptop-a (62d8bfdd)": {
         "runs": 1,
         "threads": 1,
         "reported_usd": 0.04,

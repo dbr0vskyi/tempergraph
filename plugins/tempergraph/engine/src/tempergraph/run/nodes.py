@@ -6,6 +6,7 @@ the human node's interrupt is the compiler's. Budgets follow BUD §2.2: the caus
 
 from __future__ import annotations
 
+import hashlib
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -126,7 +127,8 @@ class EngineNodes:
         for n in range(self.ctx.infra_tries):
             sink = session_sink(self.ctx.log, req, ex.name)
             self.ctx.log.write("attempt_start", session_key=req.session_key, kind=req.kind, executor=ex.name,
-                               alias=req.alias, timeout_s=req.timeout_s)
+                               alias=req.alias, timeout_s=req.timeout_s,
+                               prompt_digest=hashlib.sha256((req.prompt or "").encode()).hexdigest()[:16])
             try:
                 if judge_views is None:
                     res = ex.run_step(req, sink)
@@ -144,6 +146,8 @@ class EngineNodes:
                                                      if not ex.capabilities().knows_tool(c.name)}),
                                infra_cause=str(res.infra_cause) if res.infra_cause else None,
                                error_kind=res.error_kind, timed_out=res.timed_out, stalled=res.stalled,
+                               duration_s=res.duration_s, tool_wall_share=res.tool_wall_share,
+                               slow_host=bool(res.timed_out and res.tool_wall_share >= 0.6),
                                **({"lessons_digest": lessons_digest} if lessons_digest else {}))
             if res.infra_cause is None or n + 1 >= self.ctx.infra_tries:
                 break
