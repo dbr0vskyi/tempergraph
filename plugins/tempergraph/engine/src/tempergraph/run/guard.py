@@ -23,7 +23,7 @@ class GuardResult:
 
 
 def view_set(step: StepSpec, step_calls: Sequence[ToolCall], judge_caps: Capabilities,
-             judge_tools: Sequence[str] | None = None) -> ViewSet:
+             judge_tools: Sequence[str] | None = None, granted: Sequence[str] = ()) -> ViewSet:
     """GRD-B1: the base read views, plus a read view per MCP write; an author may narrow, never widen."""
     caps = list(BASE_VIEWS)
     deferred: list[Deferred] = []
@@ -36,6 +36,7 @@ def view_set(step: StepSpec, step_calls: Sequence[ToolCall], judge_caps: Capabil
     if judge_tools is not None:
         caps = [c for c in caps if c in judge_tools]
         caps = caps or list(BASE_VIEWS)
+    caps += [g for g in granted if g not in caps]  # a person's read-only view grant (RST §2.8)
     names: list[str] = []
     for c in caps:
         names.extend(tool_names(judge_caps, c))

@@ -60,6 +60,8 @@ def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: 
     out = {"kind": kind, "unit": unit, "item": None, "reason": reason, "artifacts": arts, "rubric": rubric,
            "blockers": blockers or [], "decisions": words, "workspace": ws.get("path"),
            "resume": resume_command(spec, task_id, words)}
+    if reason == "tool_access":  # each refused or missing name and what fixes it (RST §2.8)
+        out["tool_access"] = list((((state.get("attempts") or {}).get(unit) or {}).get("tool_access")) or [])
     if kind == "approval" and u.extra.get("sign_off"):
         out["sign_off"] = list(u.extra["sign_off"])  # person criteria to sign (OUT §2.4, OUT-B4)
     return out
@@ -129,7 +131,8 @@ class DecisionRefused(ValueError):
     pass
 
 
-def check_decision(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], d: Decision) -> None:
+def check_decision(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], d: Decision, *,
+                   human_cap: int = HUMAN_CAP) -> None:
     """HUM §4: refuse before anything is written."""
     g = spec.units[unit].gate
     path = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
@@ -140,8 +143,8 @@ def check_decision(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], d: D
     if d.word == "rewind" and d.unit not in path:
         raise DecisionRefused(f"rewind:{d.unit}: {d.unit} was not completed on this path")
     human = int(((state.get("counters") or {}).get(unit) or {}).get("human", 0))
-    if d.word in ("retry", "rewind") and human >= HUMAN_CAP:
-        raise DecisionRefused(f"the human cap of {HUMAN_CAP} is spent on {unit}")
+    if d.word in ("retry", "rewind") and human >= human_cap:
+        raise DecisionRefused(f"the human cap of {human_cap} is spent on {unit}")
 
 
 def apply_decision(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payload: Mapping[str, Any]

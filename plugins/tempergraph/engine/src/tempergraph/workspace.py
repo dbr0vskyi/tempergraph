@@ -216,7 +216,7 @@ def _repo_lock(state_root: Path, wait_s: float = 30.0) -> RunLock:
 
 
 def prepare_workspace(thread: str, plan: WorkspacePlan, decl: WorktreeDecl | None, state_root: Path,
-                      run_command: RunCommand | None = None) -> WorkspaceRecord:
+                      run_command: RunCommand | None = None, *, read_include: bool = True) -> WorkspaceRecord:
     if plan.mode == "in_place":
         return WorkspaceRecord(mode="in_place", requested=plan.requested, resolved_by=plan.resolved_by,
                                path=str(plan.path), action="prepared")
@@ -237,7 +237,7 @@ def prepare_workspace(thread: str, plan: WorkspacePlan, decl: WorktreeDecl | Non
                           base_commit=plan.base_commit, base_branch=plan.base_branch, last_head=plan.base_commit,
                           action="prepared")
     try:
-        rec.bootstrap = bootstrap(main, plan.path, decl, run_command)
+        rec.bootstrap = bootstrap(main, plan.path, decl, run_command, read_include=read_include)
     except WorkspaceRefused:
         _remove_new(main, plan.path, plan.branch)
         raise
@@ -250,12 +250,13 @@ def _remove_new(main: Path, path: Path, br: str) -> None:
     git(["branch", "-D", "--end-of-options", br], main, check=False)
 
 
-def bootstrap(main: Path, path: Path, decl: WorktreeDecl | None, run_command: RunCommand | None) -> dict[str, Any]:
+def bootstrap(main: Path, path: Path, decl: WorktreeDecl | None, run_command: RunCommand | None, *,
+              read_include: bool = True) -> dict[str, Any]:
     """WSP-B2: copy the declared untracked or ignored files, init submodules, run the setup commands."""
     decl = decl or WorktreeDecl()
     patterns = list(decl.include)
     wti = main / ".worktreeinclude"
-    if wti.is_file() and not wti.is_symlink():
+    if read_include and wti.is_file() and not wti.is_symlink():
         patterns += [ln.strip() for ln in wti.read_text(encoding="utf-8").splitlines()
                      if ln.strip() and not ln.startswith("#")]
     copied = 0
