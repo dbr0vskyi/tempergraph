@@ -83,10 +83,13 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
            grants: Iterable[Mapping[str, Any]] = ()) -> list[dict[str, Any]]:
     """Causes of one segment: `{unit, cause, count, executor?}` with no text."""
     out: dict[tuple[str, str, str], int] = {}
+    versions: dict[tuple[str, str, str], str] = {}  # executor causes carry the CLI version (SIL-AC-4)
 
-    def add(unit: str, code: str, executor: str = "") -> None:
+    def add(unit: str, code: str, executor: str = "", version: str = "") -> None:
         key = (unit, code, executor)
         out[key] = out.get(key, 0) + 1
+        if version:
+            versions[key] = version
 
     retries: dict[str, int] = {}
     checks: dict[str, Mapping[str, Any]] = {}
@@ -106,9 +109,10 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
             if r.get("timed_out") and not r.get("infra_cause") and r.get("session_kind") in ("step", "retry"):
                 add(unit, "step_timeout")
             if r.get("error_kind") == "unknown":
-                add(unit, "executor_error:unknown", str(r.get("executor") or ""))
+                add(unit, "executor_error:unknown", str(r.get("executor") or ""), str(r.get("cli_version") or ""))
             for name in r.get("unknown_tools") or ():
-                add(unit, f"unknown_tool_name:{name}", str(r.get("executor") or ""))
+                add(unit, f"unknown_tool_name:{name}", str(r.get("executor") or ""),
+                    str(r.get("cli_version") or ""))
         elif kind == "check":
             checks[unit] = r
             if r.get("result") == "FAIL" and not r.get("environmental"):
@@ -165,5 +169,6 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
     for g in grants:
         add(str(g.get("unit") or ""), f"grant_missing:{g.get('capability') or g.get('prefix')}" if g.get("used")
             else f"grant_unused:{g.get('capability') or g.get('prefix')}")
-    return [{"unit": u, "cause": code, "count": n, **({"executor": ex} if ex else {})}
+    return [{"unit": u, "cause": code, "count": n, **({"executor": ex} if ex else {}),
+             **({"executor_version": versions[(u, code, ex)]} if (u, code, ex) in versions else {})}
             for (u, code, ex), n in out.items()]

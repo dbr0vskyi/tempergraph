@@ -22,7 +22,7 @@ task_id: first-release-t12
 | Specs | [SIL](../specs/16-self-improvement.spec.md), [IMD](../specs/43-improvement-data.spec.md), [LSN](../specs/42-workflow-lessons.spec.md); later [FBK](../specs/41-feedback-and-judge-reliability.spec.md), [JCL](../specs/50-judge-calibration.spec.md), [PRP](../specs/40-improvement-proposals.spec.md) |
 | Split | This thread: T12.1, T12.2, T12.7 (and T9.1). T7 keeps FBK's `label` verb and the reports; T8 keeps T9.2 and T9.3. T12.3 to T12.6 wait on T7's label rows and T8's readiness hooks (`package/readiness.py`, `run/outcome_trust.trust(accepted=…)`, `author verify` rungs 8 and 9) |
 
-**Status: In progress.** T12.1 records, causes and lenses are built model-free; the loop child workflow and its judges (12.1.5) come with T7's detached launch site.
+**Status: In progress.** T12.1 records, causes and lenses and T12.2 filing and measurement are built model-free; filing runs once the loop child supplies judged candidates; the loop child workflow and its judges (12.1.5) come with T7's detached launch site.
 
 Status pass: SIL and IMD move to `ready-for-implementation` with release 1 defaults recorded in their Open questions.
 
@@ -55,8 +55,8 @@ Release 1 defaults and assumptions (recorded in SIL §5 and Open questions, EVT 
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 12.2.1 | `engine/src/tempergraph/improve/filing.py` | De-duplication by fingerprint (search retried once, then file anyway), the pattern rule (3 runs, 3 requests, 30 days; one engine fault is enough), `uncalibrated` stays local, host findings never filed, dry run, an outbox for an unreachable code host | SIL-B2, B3, B6, B7, §4 | yes | P1 | ○ | |
-| 12.2.2 | `engine/src/tempergraph/improve/measure.py` | The model-free comparison of two versions (cost per run and unit, repeat share, gate pass rate, outcome mix); one comment, or a reopen after a regression | SIL-B5, C14 | yes | P1 | ○ | |
+| 12.2.1 | `engine/src/tempergraph/improve/filing.py` | De-duplication by fingerprint (search retried once, then file anyway), the pattern rule (3 runs, 3 requests, 30 days; one engine fault is enough), `uncalibrated` stays local, host findings never filed, dry run, an outbox for an unreachable code host; `improve/codehost.py` (`gh` client, a sanctioned launch site, SEC §2.2); executor causes carry the CLI version and `unknown_tool_name` comes from the view catalog | SIL-B2, B3, B4, B6, B7, §4 | yes | P1 | ✓ | 2026-11-20 |
+| 12.2.2 | `engine/src/tempergraph/improve/measure.py` | The model-free comparison of two versions (cost per run and unit, repeat share, gate pass rate, outcome mix); one comment, or a reopen after a regression (`measure.quality_drop`) | SIL-B5, C14 | yes | P1 | ✓ | 2026-11-20 |
 
 ### T12.7 Lessons
 

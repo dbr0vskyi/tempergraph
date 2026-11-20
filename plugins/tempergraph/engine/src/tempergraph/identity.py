@@ -1,4 +1,4 @@
-"""Pseudonymous join keys for the ledger (IMD-R1): the machine id and the repository digest.
+"""Pseudonymous join keys for the ledger (IMD-R1, R12): the machine id, the repository and request digests.
 
 The machine id is the random id of `<home>/machine.json`, never a host name. The repository digest is the
 SHA-256 of the normalized `origin` remote URL (no scheme, no credentials, no `.git`, lower case), cut to 16 hex;
@@ -43,3 +43,23 @@ def repo_id(main: Path | None) -> str | None:
     if not url:
         return None
     return hashlib.sha256(normalize_remote(url).encode()).hexdigest()[:16]
+
+
+def request_digest(text: str, home: Path | None = None) -> str | None:
+    """IMD-R12: a keyed hash with a per-installation key, so equal requests match without the text."""
+    import hmac
+    import os
+    import secrets
+
+    try:
+        h = ensure_home(home or home_path())
+        key_file = h / "request_key"
+        if not key_file.exists():
+            key_file.write_text(secrets.token_hex(32), encoding="utf-8")
+            if os.name == "posix":
+                os.chmod(key_file, 0o600)
+        key = key_file.read_text(encoding="utf-8").strip().encode()
+    except OSError:
+        return None
+    norm = " ".join(text.split()).lower().encode()
+    return hmac.new(key, norm, hashlib.sha256).hexdigest()[:16]

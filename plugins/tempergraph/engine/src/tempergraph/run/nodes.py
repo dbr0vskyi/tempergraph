@@ -129,6 +129,8 @@ class EngineNodes:
             self.ctx.log.write("agent_run", session_key=req.session_key, kind=req.kind, executor=ex.name,
                                alias=req.alias, usage=res.usage, ok=res.ok, tools=[c.name for c in res.tool_calls],
                                cli_version=res.cli_version, session_id=res.session_id,
+                               unknown_tools=sorted({c.name for c in res.tool_calls
+                                                     if not ex.capabilities().knows_tool(c.name)}),
                                infra_cause=str(res.infra_cause) if res.infra_cause else None,
                                error_kind=res.error_kind, timed_out=res.timed_out, stalled=res.stalled)
             if res.infra_cause is None or n + 1 >= self.ctx.infra_tries:

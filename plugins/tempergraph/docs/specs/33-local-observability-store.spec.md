@@ -44,6 +44,7 @@ Everything a repository's runs leave on the machine lives in one folder, the sta
     hooks/<event>-<seq>.log         a lifecycle hook's output and exit code
   batches/<batch_id>/               batch file and batch event file [WSP §2.2]
   ledger.jsonl                      [SIL]
+  filing-outbox.jsonl               issue payloads a code host refused, redelivered by the next filing [SIL §4]
   backups/layout-<N>-<ts>/          files a breaking layout step moved or rewrote [MIG §2.2]
   upgrades/<upgrade_id>/            plan, baseline and report of a workflow upgrade [WUP §2.2]
   authoring/<session_id>/          authoring.json, draft outcome.json and blueprint.json, saved sources; local only [AUT §2.1]
