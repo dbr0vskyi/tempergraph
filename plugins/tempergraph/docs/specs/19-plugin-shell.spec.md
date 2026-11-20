@@ -35,6 +35,15 @@ The authoring skill's entry paths, interview phases, verification search and rev
 
 The plugin ships Claude Code hooks that write the supervision journal ([SCO §2.2](87-supervision-cost.spec.md)): `SessionStart`, `UserPromptSubmit` (person turns with matched decision words, never the text, [PRV §2.4.1](85-caller-provenance.spec.md)), `PostToolUse` on engine commands, `Stop` and `SubagentStop` (usage numbers read from the transcript), `SessionEnd` (then `supervision close`). They do nothing inside the engine's own sessions (`TEMPERGRAPH_SESSION_KEY`) or when `observe.supervision = off`, never block or change a tool call, and are not the engine's run lifecycle hooks ([CLI §2.2](17-engine-cli.spec.md)).
 
+### 2.3 Release 1: authoring and troubleshooter
+
+| Part | Release 1 |
+|---|---|
+| Authoring | `tempergraph:author`, a core and one reference per phase group, as [AUT §2.8](89-workflow-authoring.spec.md) |
+| Troubleshooter | `tempergraph:troubleshoot`. Its read-only grant is the skill's `allowed-tools`: file read, search and glob, plus one `Bash(<prefix>:*)` rule per read it runs (git status, log and diff; `ls`, `cat`, `grep`; `ps`; the engine's `status`, `facts`, `list`, `graph`, `validate`, `audit`, `workflows list`, `executors`, `worktree list`, `outcome show`, `upgrade-check`, `install --check`, `author show`). A prefix cannot exclude a flag, so the text forbids `upgrade-check --stamp`. Five references, one per symptom group: steps, timeouts and infra; judge and gate; self-improvement; install and workflow checks; run state and refused starts. A verb this engine refuses as unknown (`logs`, `report` before plan T7) is listed in the report as a read not available |
+| Structure test | Every skill under `skills/`: frontmatter, links, no shipped workflow named (SHL-AC-1), and each backticked `tempergraph …` call a verb of the CLI with options the parser builds |
+| Live | SHL-AC-2's rubric scenarios run the skills with a model, on the owner's machine |
+
 ## 3. Behaviours
 
 **SHL-B1 Ask, never guess.** Given a workflow that needs `ticket` and a request without it, when the run driver prepares the start, then it asks the person (at most four rounds via `run --check`) and never fills the value from an example.

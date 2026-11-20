@@ -24,7 +24,7 @@ task_id: first-release-t9
 
 **Status: In progress.** T9.2 is built: the criteria lint, the inventory, the session verbs, revise mode and the `tempergraph:author` skill; its rubric scenarios are live checks. T9.3 is next.
 
-Status pass: AUT is `ready-for-implementation`, with the release 1 decisions in AUT §2.8. SHL and LSK get theirs in the first row of T9.1 and T9.3.
+Status pass: AUT and LSK are `ready-for-implementation`, with the release 1 decisions in AUT §2.8 and LSK §2.6. SHL §2.3 holds the authoring and troubleshooter skills' release 1 notes; SHL's status flips with T9.1.
 
 Live checks (owner's machine, signed-in `claude`; not faked here):
 - AUT-AC-1 and AUT-AC-8: the rubric scenarios per entry path and per guidance rung need the skill run by a model.
@@ -60,6 +60,6 @@ Goal: read-only diagnosis from logs, detail and audit; the install skill.
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 9.3.0 | `docs/specs/19-*`, `docs/specs/65-*` | Status pass for the troubleshooter rows of SHL and the install procedure of LSK §2.3 | SHL, LSK | | P1 | ○ | |
-| 9.3.1 | `skills/troubleshoot/SKILL.md` | Read-only diagnosis with ranked hypotheses and next actions from `status`, `logs`, `report`, `audit` | SHL §2 | | P1 | ○ | |
+| 9.3.0 | `docs/specs/19-*`, `docs/specs/65-*` | Status pass: LSK `ready-for-implementation` with LSK §2.6; SHL §2.3 for the authoring and troubleshooter skills (SHL's status flips with T9.1) | SHL, LSK | | P1 | ✓ | 2026-11-20 |
+| 9.3.1 | `skills/troubleshoot/SKILL.md`, `skills/troubleshoot/references/*.md` | Read-only diagnosis with ranked hypotheses and next actions from `status`, `logs`, `report`, `audit` | SHL §2 | | P1 | ○ | |
 | 9.3.2 | `skills/install/SKILL.md` | The install procedure of LSK §2.3 | LSK §2.3 | | P1 | ○ | |
