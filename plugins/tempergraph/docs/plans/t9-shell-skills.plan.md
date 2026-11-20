@@ -22,7 +22,7 @@ task_id: first-release-t9
 | Specs | [SHL](../specs/19-plugin-shell.spec.md), [AUT](../specs/89-workflow-authoring.spec.md), [OUT](../specs/90-run-outcome.spec.md), [SCF](../specs/91-blueprint-and-scaffold.spec.md), [LSK](../specs/65-lifecycle-skills.spec.md) |
 | Builders | T9.1 is built by the main build thread; T9.2 and T9.3 by the T8 thread, after T8 |
 
-**Status: In progress.** T9.2 has its status pass, the criteria lint, the inventory, the session verbs and revise mode; the skill is next.
+**Status: In progress.** T9.2 is built: the criteria lint, the inventory, the session verbs, revise mode and the `tempergraph:author` skill; its rubric scenarios are live checks. T9.3 is next.
 
 Status pass: AUT is `ready-for-implementation`, with the release 1 decisions in AUT §2.8. SHL and LSK get theirs in the first row of T9.1 and T9.3.
 
@@ -50,8 +50,8 @@ Goal: the `author` verbs and the `tempergraph:author` skill per AUT: entry paths
 | 9.2.2 | `engine/src/tempergraph/author/inventory.py`, `engine/tests/test_inventory.py` | The intake inventory of AUT §2.3 on a fixture repository: every row detected, no source text in the record (AUT-AC-2); a self-check in a solution recorded as a claim (AUT-B1) | AUT §2.3, §2.8 | yes | P1 | ✓ | 2026-11-20 |
 | 9.2.3 | `engine/src/tempergraph/author/session.py`, `engine/src/tempergraph/cli/author.py`, `engine/tests/test_author_session.py` | `author start\|intake\|check\|show\|list\|drop\|approve`; phase approvals by digest, cleared on a later edit; one session per name; nothing under the package folder before phase 7 (AUT-AC-4); phase 2 not approvable while the sufficiency check fails (AUT-AC-7, second half); resume from `author show` alone (AUT-AC-5); scaffold reads intake's copies and marks the session finished | AUT §2.1, §2.4, §2.6, §4, §2.8 | yes | P1 | ✓ | 2026-11-20 |
 | 9.2.4 | `engine/src/tempergraph/author/session.py`, `engine/src/tempergraph/author/scaffold.py` | Revise mode: `author start <workflow> --revise`, the change classes against the package's outcome, the weakening rows marked, the new revision written with `origin: revise_session` by `scaffold --update-docs`, which also writes `blueprint.json`; a changed outcome must bump its revision; nothing is written before the phase 7 yes (AUT-AC-6) | AUT §2.7, §2.8, OUT §2.6, SCF §2.7 | yes | P1 | ✓ | 2026-11-20 |
-| 9.2.5 | `skills/author/SKILL.md`, `skills/author/references/*.md` | The `tempergraph:author` skill: modes, entry paths, phases, search order, guidance ladder, executor consequences read from `executors` (SHL-AC-3), criteria examples per task kind | AUT, SHL, SCF | | P1 | ○ | |
-| 9.2.6 | `engine/tests/test_shell_skills.py` | Skill structure: frontmatter, references resolve, no shipped workflow named (SHL-AC-1), every verb a skill names exists and every option it passes is built | SHL §6 | yes | P1 | ○ | |
+| 9.2.5 | `skills/author/SKILL.md`, `skills/author/references/*.md` | The `tempergraph:author` skill: modes, entry paths, phases, search order, guidance ladder, executor consequences read from `executors` (SHL-AC-3), criteria examples per task kind; a core of 64 lines and six references read per phase | AUT, SHL, SCF | | P1 | ✓ | 2026-11-20 |
+| 9.2.6 | `engine/tests/test_shell_skills.py` | Skill structure: frontmatter, references resolve, no shipped workflow named (SHL-AC-1), every verb a skill names exists and every option it passes is built; applies to every skill under `skills/` | SHL §6 | yes | P1 | ✓ | 2026-11-20 |
 | 9.2.7 | live, owner's machine | AUT-AC-1, AUT-AC-8 rubric scenarios | AUT §6 | | P1 | ○ | |
 
 ## T9.3 Troubleshooter and install
