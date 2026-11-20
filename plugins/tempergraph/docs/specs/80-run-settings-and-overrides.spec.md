@@ -123,6 +123,7 @@ An environment variable is never a layer: settings come from flags and files tha
 | `defaults` | map key → value | Layer 8 or 9: replaces the engine default for every workflow |
 | `overrides` | list of `{workflow, set}` | Layer 3 or 4; `workflow` is a name or `*`; inside a layer a named entry beats `*` per key |
 | `profiles` | map name → map key → value | Profiles available to every workflow |
+| `observe` | map | Operator capture and observers, read from the files only, never a run layer ([LOS §2.6](33-local-observability-store.spec.md)) |
 
 A key in `defaults` may not name a unit (units belong to one workflow); `overrides` and profiles may. A profile name is looked up in the project file, then the user file, then the workflow's `profiles`; the first found is used whole, never merged.
 

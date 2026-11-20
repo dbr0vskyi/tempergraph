@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-request",
+  "gate": "outcome",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "dr-request",
+    "expected": "MET",
+    "reason": "Install is rewritten; Use is unchanged."
+  }
+}

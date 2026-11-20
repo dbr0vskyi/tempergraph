@@ -426,7 +426,7 @@ def detail(root: Path, spec: WorkflowSpec, tid: str, *, unit: str | None = None,
     for p in model["units"]:
         name = p["name"]
         u = fold.units.get(name, {"visits": []})
-        _add_evidence(u, judgements.get(name) or {})
+        _add_evidence(u, judgements.get(name) or {}, run_dir(root, spec.name, task) / "evidence" / "judgements" / name)
         sessions = _sessions_of(u)
         cost = _unit_cost(sessions)
         total_figure += cost["figure"]
@@ -483,17 +483,28 @@ def detail(root: Path, spec: WorkflowSpec, tid: str, *, unit: str | None = None,
     return cut(doc)
 
 
-def _add_evidence(unit: dict[str, Any], judged: Mapping[str, Any]) -> None:
-    """Evidence and fix lines for the unit's last judged attempt, from the checkpoint's local judgement."""
-    blockers = {str(b.get("criterion")): b for b in judged.get("blockers") or [] if isinstance(b, Mapping)}
-    if not blockers:
-        return
+def _add_evidence(unit: dict[str, Any], judged: Mapping[str, Any], folder: Path | None = None) -> None:
+    """Evidence and fix lines per judged attempt from `evidence/judgements/<unit>/<visit>.<attempt>.json`;
+    the unit's last judged attempt falls back to the checkpoint's local judgement (RDD §2.1)."""
     last = next((a for v in reversed(unit["visits"]) for a in reversed(v["attempts"]) if a.get("judge")), None)
-    for b in ((last or {}).get("judge") or {}).get("blockers") or []:
-        src = blockers.get(str(b["id"]))
-        if src is not None:
-            b["evidence"] = _text(src.get("evidence") or src.get("problem"), EVIDENCE_CLIP)
-            b["fix"] = _text(src.get("fix"), EVIDENCE_CLIP)
+    for v in unit["visits"]:
+        for a in v["attempts"]:
+            if not (a.get("judge") or {}).get("blockers"):
+                continue
+            kept: dict[str, Any] = {}
+            if folder is not None:
+                try:
+                    doc = json.loads((folder / f"{v['visit']}.{a['attempt']}.json").read_text(encoding="utf-8"))
+                    kept = {str(b.get("criterion")): b for b in doc.get("blockers") or [] if isinstance(b, Mapping)}
+                except (OSError, ValueError, AttributeError, KeyError):
+                    kept = {}
+            if not kept and a is last:
+                kept = {str(b.get("criterion")): b for b in judged.get("blockers") or [] if isinstance(b, Mapping)}
+            for b in a["judge"]["blockers"]:
+                src = kept.get(str(b["id"]))
+                if src is not None:
+                    b["evidence"] = _text(src.get("evidence") or src.get("problem"), EVIDENCE_CLIP)
+                    b["fix"] = _text(src.get("fix"), EVIDENCE_CLIP)
 
 
 def _artifact_path(spec: WorkflowSpec, values: Mapping[str, Any], unit: Any, key: str) -> str | None:

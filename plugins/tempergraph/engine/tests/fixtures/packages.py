@@ -111,7 +111,7 @@ def minimal_package(parent: Path, name: str = "release-notes", version: str = "0
     (the older form, WFM-B5), which with `outcome.json` is `criterion-declared-twice`."""
     root = parent / name
     mod = name.replace("-", "_")
-    write(root, ".claude-plugin/plugin.json", {"name": name, "version": version, "description": "Release notes", "author": {"name": "Example Owner"}, "license": "MIT",
+    write(root, ".claude-plugin/plugin.json", {"name": f"{name}-tgraph", "version": version, "description": "Release notes", "author": {"name": "Example Owner"}, "license": "MIT",
                                                "dependencies": ["tempergraph"]})
     write(root, "tempergraph.json", {"schema_version": 1, "name": name, "entry": f"{mod}:workflow",
                                      "workflow_api": 1, "docs": "provisional"})

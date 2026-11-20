@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-current",
+  "gate": "draft",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "dr-current",
+    "expected": "UNMET",
+    "reason": "pyproject.toml requires 3.12, the section says 3.10."
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-faithful",
+  "gate": "draft",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "rn-faithful",
+    "expected": "UNMET",
+    "reason": "#41 added CSV export, the entry says PDF."
+  }
+}

@@ -48,6 +48,10 @@ SCHEMA = {
     "audit_report": 1,
     "proposal": 1,
     "trial": 1,
+    "labels": 1,
+    "stamp": 1,
+    "registry": 1,
+    "engine_pointers": 1,
 }
 
 # Verb words are reserved and refused as run input (CLI-B2, CLI-AC-3).

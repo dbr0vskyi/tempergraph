@@ -296,12 +296,12 @@ class Recorder:
             raise ValueError("activity broke")
 
 
-def _with_observers(monkeypatch: pytest.MonkeyPatch, observers: list[Any]) -> list[ObserverHub]:
+def _with_observers(monkeypatch: pytest.MonkeyPatch, observers_: list[Any]) -> list[ObserverHub]:
     hubs: list[ObserverHub] = []
 
     class Observed(RunLog):
-        def __init__(self, path: Path) -> None:
-            hub = ObserverHub(observers)
+        def __init__(self, path: Path, observers: Any = None) -> None:
+            hub = ObserverHub(observers_)
             hubs.append(hub)
             super().__init__(path, observers=hub)
 

@@ -410,6 +410,36 @@ class ConfigFiles:
     errors: tuple[Finding, ...] = ()
 
 
+@dataclasses.dataclass(frozen=True, kw_only=True)
+class Capture:
+    """The operator's capture level and observers (LOS §2.6, EVT §2.5): full capture unless lowered."""
+
+    raw: bool = True
+    tool_inputs: bool = True
+    check_output: bool = True
+    observers: tuple[str, ...] = ()
+
+    def lowered(self) -> list[str]:
+        return [k for k in ("raw", "tool_inputs", "check_output") if not getattr(self, k)]
+
+
+def capture(files: ConfigFiles) -> Capture:
+    """The `observe` map of the settings files: `raw`, `tool_inputs`, `check_output` (`on` or `off`) and
+    `observers` (names to enable). The project file wins per key over the user file; never a run layer."""
+    got: dict[str, Any] = {}
+    for doc in (files.user, files.project):
+        o = (doc or {}).get("observe")
+        if isinstance(o, Mapping):
+            got.update(o)
+
+    def on(key: str) -> bool:
+        return got.get(key, "on") not in ("off", False)
+
+    names = got.get("observers")
+    obs = tuple(str(n) for n in names if isinstance(n, str)) if isinstance(names, list) else ()
+    return Capture(raw=on("raw"), tool_inputs=on("tool_inputs"), check_output=on("check_output"), observers=obs)
+
+
 def config_paths(state_root: Path | None, home: Path) -> tuple[Path | None, Path]:
     return (state_root / "config" / SETTINGS_FILE if state_root else None), home / "config" / SETTINGS_FILE
 

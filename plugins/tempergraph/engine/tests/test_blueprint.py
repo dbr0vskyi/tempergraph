@@ -84,6 +84,7 @@ def test_reference_nobody_produces() -> None:
 @pytest.mark.parametrize(("mutate", "code"), [
     (lambda d: d["units"].extend(copy.deepcopy(d["units"][0]) | {"name": f"u{i}"} for i in range(20)),
      "blueprint-invalid"),
+    (lambda d: d.update(name="release-notes-tgraph"), "blueprint-invalid"),  # ADR-0120: suffix is the plugin's
     (lambda d: d["units"][0].update(summary="x" * 61), "summary-too-long"),
     (lambda d: d.update(colour="blue"), "unknown_key"),
     (lambda d: d["units"][0].update(kind="council"), "not_in_release"),

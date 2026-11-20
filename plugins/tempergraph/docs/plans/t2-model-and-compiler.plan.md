@@ -58,6 +58,7 @@ task_id: first-release-t2
 |---|---|---|---|---|---|---|---|
 | 2.3.1 | `engine/tests/test_compiler.py` | Test four nodes per unit, diagram equals graph both ways, the CMP-B6 edge table, retry as an edge, pause and resume of only the human node, `interrupt` first, the deleting reducer | CMP §2, CMP-B1, B2, B6, HUM-AC-1 | yes | P1 | ✓ | 2026-11-20 |
 | 2.3.2 | `engine/src/tempergraph/compiler/graph.py`, `compiler/state.py` | Create `compile_workflow`, `UnitNodes`, `RunState` and `merge_units` | CMP §2, §2.3 | | P1 | ✓ | 2026-11-20 |
+| 2.3.3 | `engine/src/tempergraph/run/gate.py`, `run/nodes.py`, `engine/tests/test_routing.py` | The gate evaluates a step's route, a route unit and a switch: the pick is made before an approval pause and kept for the person's `proceed`; a route that raises or returns a non-target stops with exit 4 (`route`); a switch fault takes the default arm; a switch is sticky per visit or run; every pick writes a `route` record with `chosen_by`. Route and switch units run no session. Found missing while building T11.1: the gate had always taken the first target. `--arm` stays refused with the `arm` setting (SWM, release 2) | CMP §2.2, CMP-B3, OBS `route` | yes | P1 | ✓ | 2026-11-20 |
 
 ### T2.4 Diagram model
 

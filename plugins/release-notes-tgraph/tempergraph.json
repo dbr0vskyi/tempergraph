@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "name": "release-notes",
+  "entry": "release_notes:workflow",
+  "workflow_api": 1,
+  "docs": "provisional"
+}

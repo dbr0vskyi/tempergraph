@@ -21,6 +21,7 @@ from tempergraph.contracts import (
     WorkflowSpec,
 )
 from tempergraph.model.validate import LATER_KINDS, SLUG_RE, Finding, validate
+from tempergraph.package.manifest import name_problem
 
 BLUEPRINT_FILE = "blueprint.json"
 TOP_KEYS = frozenset({"schema_version", "name", "units", "flow", "outcome_ref", "input"})
@@ -106,6 +107,8 @@ def parse(data: Any) -> Blueprint | list[Finding]:
     name = data.get("name")
     if not isinstance(name, str) or not SLUG_RE.match(name):
         out.append(_f("blueprint-invalid", None, f"$.name {name!r} is not a slug"))
+    elif (problem := name_problem(name)) is not None:
+        out.append(_f("blueprint-invalid", None, f"$.name: {problem}"))
     raw_units = data.get("units")
     units: list[BlueprintUnit] = []
     if not isinstance(raw_units, list) or not (1 <= len(raw_units) <= MAX_UNITS):

@@ -510,7 +510,7 @@ def test_stamp_v4_fails_on_a_new_finding(tmp_path: Path, repo: Path) -> None:
 def test_package_parts_fixture_still_audits(tmp_path: Path) -> None:
     """A package written by `package_parts` (no docs tree) audits without a rule error."""
     root = package_parts(tmp_path / "p", "p", units=("draft",))
-    write(root, ".claude-plugin/plugin.json", {"name": "p", "version": "0.1.0"})
+    write(root, ".claude-plugin/plugin.json", {"name": "p-tgraph", "version": "0.1.0"})
     write(root, "tempergraph.json", {"schema_version": 1, "name": "p", "entry": "p:workflow", "workflow_api": 1})
     write(root, "workflow/p/__init__.py", "from tempergraph.api import Gate, Step, Workflow\n\n\ndef workflow():\n"
           "    return Workflow(order=['draft'], units={'draft': Step(prompt='Write {request}.', gate=Gate())})\n")

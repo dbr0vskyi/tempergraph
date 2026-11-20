@@ -171,3 +171,33 @@ def test_host_speed_with_replaced_clock(tmp_path: Path) -> None:
     slow = host_speed(tmp_path, clock=lambda: float(next(ticks)))
     assert slow.slow  # EXI-B14
     assert not host_speed(tmp_path).slow
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX process groups")
+def test_launcher_gives_the_group_and_resources_are_sampled(tmp_path: Path) -> None:  # EVT §2.3
+    from tempergraph.run.log import LiveSink
+
+    sd = tmp_path / "sess"
+    opened: list[dict[str, Any]] = []
+    sink = LiveSink(sd, opened=opened.append)
+    started = sink.process_started
+
+    def fast(pgid: int) -> None:
+        started(pgid, every_s=0.05)
+
+    sink.process_started = fast  # type: ignore[method-assign]
+    launch(spec_for(tmp_path, {"lines": [S.init(), {"sleep": 0.4}, S.result()]}, session_dir=sd),
+           parse_line, sink)
+    sink.close()
+    assert opened and isinstance(opened[0].get("pgid"), int)
+    rows = [json.loads(ln) for ln in (sd / "activity.jsonl").read_text().splitlines()]
+    res = [r for r in rows if r["ev"] == "resources"]
+    assert res and all(r["processes"] >= 1 and r["rss_peak_kb"] > 0 and r["cpu_s"] >= 0 for r in res)
+
+
+def test_resource_sample_reads_only_the_group() -> None:
+    from tempergraph.run.resources import cpu_seconds, sample
+
+    listing = " 41  1000  00:00:02\n 41   500  01:00:01.50\n 7  9999  00:00:09\n"
+    assert sample(41, lambda: listing) == {"cpu_s": 3603.5, "rss_kb": 1500, "processes": 2}
+    assert sample(5, lambda: listing) is None and cpu_seconds("1-00:00:00") == 86400

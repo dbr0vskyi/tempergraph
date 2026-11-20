@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-complete",
+  "gate": "outcome",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "rn-complete",
+    "expected": "MET",
+    "reason": "All three changes are listed."
+  }
+}

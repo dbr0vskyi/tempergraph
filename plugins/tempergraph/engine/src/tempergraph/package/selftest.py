@@ -61,8 +61,31 @@ def examples_resolve(root: Path, tmp: Path) -> list[str]:
 
 
 def _fixture_dirs(root: Path, unit: str) -> dict[str, list[Path]]:
+    """A fixture is one file, or a folder of files when the check reads more than one artifact."""
     base = root / "evals" / "checks" / unit
-    return {w: sorted(p for p in (base / w).glob("*") if p.is_file()) for w in ("must-pass", "must-fail")}
+    return {w: sorted(p for p in (base / w).glob("*") if p.is_file() or p.is_dir()) for w in ("must-pass", "must-fail")}
+
+
+def _files(fixture: Path) -> list[Path]:
+    return sorted(p for p in fixture.rglob("*") if p.is_file()) if fixture.is_dir() else [fixture]
+
+
+def _produces(spec: WorkflowSpec, unit: str) -> dict[str, Any]:
+    u = spec.units[unit]
+    return dict(u.step.produces if u.step else u.script.produces if u.script else {})
+
+
+def _artifacts(spec: WorkflowSpec, unit: str, files: list[Path], base: Path) -> dict[str, dict[str, str]]:
+    """Each file whose stem is an artifact key, as the artifact of the unit producing it; the unit's own keys
+    take the fixture's files when no stem matches (a one-file fixture)."""
+    owner = {k: n for n in spec.order for k in _produces(spec, n)}
+    out: dict[str, dict[str, str]] = {}
+    for f in files:
+        if f.stem in owner:
+            out.setdefault(owner[f.stem], {})[f.stem] = f.relative_to(base).as_posix()
+    if not out.get(unit) and files:
+        out[unit] = {k: files[0].relative_to(base).as_posix() for k in _produces(spec, unit)}
+    return out
 
 
 def check_fixtures(root: Path, tmp: Path) -> list[str]:
@@ -83,16 +106,20 @@ def check_fixtures(root: Path, tmp: Path) -> list[str]:
             continue
         for which, paths in dirs.items():
             for p in paths:
+                base = p if p.is_dir() else p.parent
                 for crlf in (False, True):
                     work = tmp / f"{name}-{which}-{p.name}-{int(crlf)}"
-                    work.mkdir(parents=True, exist_ok=True)
-                    data = p.read_bytes()
-                    if crlf:
-                        data = data.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
-                    (work / p.name).write_bytes(data)
-                    arts = {k: p.name for k in (u.step.produces if u.step else {}) if p.stem == k} or {
-                        k: p.name for k in (u.step.produces if u.step else {})}
-                    ctx = CheckContext(unit=name, workdir=work, request={}, artifacts={name: arts},
+                    copied = []
+                    for f in _files(p):
+                        data = f.read_bytes()
+                        if crlf:
+                            data = data.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+                        target = work / f.relative_to(base)
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        target.write_bytes(data)
+                        copied.append(target)
+                    ctx = CheckContext(unit=name, workdir=work, request={},
+                                       artifacts=_artifacts(spec, name, copied, work),
                                        allow=spec.allow_commands, out_dir=work / ".out")
                     res, _ = run_check(u.gate, ctx)
                     named = {f.criterion for f in res.findings} & ids
@@ -106,13 +133,46 @@ def check_fixtures(root: Path, tmp: Path) -> list[str]:
     return out
 
 
+def _standin_files(root: Path, unit: str, produces: dict[str, Any], workdir: Path) -> dict[str, str]:
+    """Write the unit's must-pass fixture files into the workspace; each produced key and its path or value."""
+    fixtures = _fixture_dirs(root, unit)["must-pass"]
+    first = fixtures[0] if fixtures else None
+    files = _files(first) if first is not None else []
+    base = first if first is not None and first.is_dir() else (first.parent if first is not None else workdir)
+    by_stem = {f.stem: f for f in files}
+    out: dict[str, str] = {}
+    for key, kind in produces.items():
+        if kind == "file":
+            src = by_stem.get(key) or (files[0] if files else None)
+            rel = src.relative_to(base).as_posix() if src is not None else f"{key}.md"
+            target = workdir / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if src is not None:
+                shutil.copyfile(src, target)
+            else:
+                target.write_text(f"# {key}\n\nStand-in output.\n", encoding="utf-8")
+            out[key] = rel
+        else:
+            choices = getattr(kind, "choices", None)
+            out[key] = str(choices[0]) if choices else "stand-in"
+    return out
+
+
+def standin_script(ctx: Any) -> dict[str, str]:  # pragma: no cover - replaced per unit by `standin_run`
+    raise RuntimeError("stand-in script called outside a stand-in run")
+
+
 def standin_run(root: Path, tmp: Path) -> list[str]:
-    """A scripted executor stands in for each step and judge and for the outcome judge; the run reaches the
-    finalizer (SCF §2.4). The step stand-in writes the unit's must-pass fixtures as its files."""
+    """A scripted executor stands in for each step and judge and for the outcome judge, and a stand-in for each
+    script unit; the run reaches the finalizer (SCF §2.4). Step and script stand-ins write the unit's must-pass
+    fixtures as its files and give a value its first choice; an approval is answered `proceed`."""
+    import dataclasses
+
     from tempergraph import git
     from tempergraph.constants import ExitCode
+    from tempergraph.contracts import CallableRef
     from tempergraph.executors.scripted import answer, scripted_registry
-    from tempergraph.run.runner import RunSettings, start
+    from tempergraph.run.runner import RunSettings, resume, start
 
     spec = _spec(root)
     repo = tmp / "standin-repo"
@@ -121,27 +181,27 @@ def standin_run(root: Path, tmp: Path) -> list[str]:
     git.git(["-c", "user.email=standin@example.invalid", "-c", "user.name=standin", "commit", "-q",
              "--allow-empty", "-m", "start"], repo)
     executors = {(st.executor if (st := spec.units[n].step) is not None else None) or spec.default_executor
-                 for n in spec.order}
+                 for n in spec.order if spec.units[n].kind == "step"}
     if executors - {"claude"}:
         return [f"stand-in run: executors {sorted(executors - {'claude'})} are not in release 1"]
 
+    def script_standin(unit: str, produces: dict[str, Any]) -> CallableRef:
+        def call(ctx: Any) -> dict[str, str]:
+            return _standin_files(root, unit, produces, Path(ctx.workdir))
+        return CallableRef(module=__name__, qualname="standin_script", func=call)
+
+    units = dict(spec.units)
+    for name in spec.order:
+        u = units[name]
+        if u.kind == "script" and u.script is not None:
+            sc = dataclasses.replace(u.script, run=None, call=script_standin(name, dict(u.script.produces)))
+            units[name] = dataclasses.replace(u, script=sc)
+    spec = dataclasses.replace(spec, units=units)
+
     def step_reply(unit: str) -> Callable[[Any], Any]:
         def reply(req: Any) -> Any:
-            u = spec.units[unit]
-            lines = []
-            fixtures = {p.stem: p for p in _fixture_dirs(root, unit)["must-pass"]}
-            for key, kind in (u.step.produces if u.step else {}).items():
-                if kind == "file":
-                    src = fixtures.get(key) or next(iter(fixtures.values()), None)
-                    name = src.name if src else f"{key}.md"
-                    target = Path(req.workdir) / name
-                    if src is not None:
-                        shutil.copyfile(src, target)
-                    else:
-                        target.write_text(f"# {key}\n\nStand-in output.\n", encoding="utf-8")
-                    lines.append(f"ARTIFACT {key}: {name}")
-                else:
-                    lines.append(f"ARTIFACT {key}: stand-in")
+            got = _standin_files(root, unit, _produces(spec, unit), Path(req.workdir))
+            lines = [f"ARTIFACT {k}: {v}" for k, v in got.items()]
             return answer("Stand-in.\n" + "\n".join(lines), session_id=f"s-{unit}")
         return reply
 
@@ -161,8 +221,13 @@ def standin_run(root: Path, tmp: Path) -> list[str]:
     if spec.outcome is not None and any(c.verified_by == "judge" for c in spec.outcome.final):
         judges.append(verdict(sum(1 for c in spec.outcome.final if c.verified_by == "judge"), "j-outcome"))
     r = scripted_registry("claude", steps, judges)
+    quiet = RunSettings(sleep=lambda s: None)
     try:
-        got = start(spec, "STANDIN-1", {"request": "stand-in"}, repo, r, RunSettings(sleep=lambda s: None))
+        got = start(spec, "STANDIN-1", {"request": "stand-in"}, repo, r, quiet)
+        for _ in range(len(spec.order) + 1):  # each approval once, then the outcome's sign-off
+            if got.exit_code is not ExitCode.PAUSED or (got.payload or {}).get("kind") != "approval":
+                break
+            got = resume(spec, "STANDIN-1", repo, r, decision="proceed", settings=quiet)
     except AssertionError as exc:  # a stand-in queue ran dry: the run asked for more sessions than scripted
         return [f"stand-in run: {exc}"]
     if got.exit_code is not ExitCode.FINISHED:

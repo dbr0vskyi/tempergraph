@@ -1,0 +1,11 @@
+{
+  "name": "doc-refresh-tgraph",
+  "version": "0.1.0",
+  "description": "Example tempergraph workflow: refresh named sections of a document (a script, a route, a trip back, an approval and a finalizer)",
+  "author": {
+    "name": "Yevhenii Dubrovskyi"
+  },
+  "dependencies": [
+    "tempergraph"
+  ]
+}

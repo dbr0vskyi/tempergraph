@@ -6,6 +6,7 @@ the human node's interrupt is the compiler's. Budgets follow BUD §2.2: the caus
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import time
 from collections.abc import Callable, Mapping
@@ -51,6 +52,7 @@ from tempergraph.run.judging import (
 )
 from tempergraph.run.log import CostTotals, RunLog, cost_so_far, estimate, session_sink
 from tempergraph.security.scrub import clip, scrub
+from tempergraph.settings import Capture
 from tempergraph.store.layout import session_dir, session_key
 
 ATTEMPT_CAP = 15
@@ -84,6 +86,7 @@ class RunContext:
     infra_tries: int = INFRA_TRIES
     backoff_max_s: int = 300
     settings: Mapping[str, Any] = field(default_factory=dict)  # workflow-declared settings (RST §2.5)
+    capture: Capture = field(default_factory=Capture)  # the operator's capture level (LOS §2.6)
     main_checkout: Path | None = None
     attempts_started: int = 0
 
@@ -130,7 +133,7 @@ class EngineNodes:
 
             write_prompt(self.ctx.state_root, self.ctx.spec.name, self.ctx.task_id, req.session_key, req.prompt)
         for n in range(self.ctx.infra_tries):
-            sink = session_sink(self.ctx.log, req, ex.name)
+            sink = session_sink(self.ctx.log, req, ex.name, tool_inputs=self.ctx.capture.tool_inputs)
             self.ctx.log.write("attempt_start", session_key=req.session_key, kind=req.kind, executor=ex.name,
                                alias=req.alias, timeout_s=req.timeout_s,
                                prompt_digest=hashlib.sha256((req.prompt or "").encode()).hexdigest()[:16])
@@ -141,6 +144,9 @@ class EngineNodes:
                     res = ex.run_judge(req, judge_views, sink)
             finally:
                 sink.close()
+                if not self.ctx.capture.raw and req.session_dir is not None:  # `observe.raw = off` (LOS §2.6)
+                    with contextlib.suppress(OSError):
+                        (req.session_dir / "raw.jsonl").unlink(missing_ok=True)
             if res.usage.estimated_cost_usd is None:
                 res.usage.estimated_cost_usd = estimate(res.usage, res.model)
             results.append(res)
@@ -174,6 +180,8 @@ class EngineNodes:
         self._boundary(state)
         if u.kind == "script":
             return self._script_unit(unit, state)
+        if u.kind in ("route", "switch"):
+            return self._flow_unit(unit, state)
         if u.extra.get("outcome"):
             return self._outcome_step(unit, state)
         st = u.step
@@ -353,6 +361,15 @@ class EngineNodes:
         run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
         return {"attempts": {unit: record}, "artifacts": {unit: artifacts or None}, "run": run}
 
+    def _flow_unit(self, unit: str, state: RunState) -> dict[str, Any]:
+        """A route or switch unit runs no session: its pick is made in the gate node (CMP §2.2)."""
+        visit = int(((state.get("visits") or {}).get(unit) or {}).get("visit", 1))
+        record = {"attempt": 1, "visit": visit, "ok": True, "text": "", "escalate": None, "infra_spent": False,
+                  "check": None, "flow": True}
+        path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
+        run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
+        return {"attempts": {unit: record}, "run": run}
+
     # -- judge -----------------------------------------------------------------------------------
 
     def _outcome_step(self, unit: str, state: RunState) -> dict[str, Any]:
@@ -451,7 +468,12 @@ class EngineNodes:
             out_dir=self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "checks" / unit
             / str(att.get("attempt", 1)), settings=self._check_settings(u),
             reuse_store=self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "command_runs.jsonl")
-        return run_in_worker(u.gate, ctx)
+        got = run_in_worker(u.gate, ctx)
+        if not self.ctx.capture.check_output and ctx.out_dir is not None:  # `observe.check_output = off`
+            for f in ctx.out_dir.glob("*.out"):
+                with contextlib.suppress(OSError):
+                    f.unlink()
+        return got
 
     def _check_settings(self, u: UnitSpec) -> dict[str, Any]:
         o = self.ctx.spec.outcome
@@ -551,10 +573,29 @@ class EngineNodes:
             confidence_source=outcome.confidence_source, gap=outcome.gap, guard=gr.status, views=list(views.tools),
             judge_executor=judge_name, brief_digest=brief_digest(stance, brief),
             criteria_digest=criteria_digest(g.criteria))
+        self._keep_evidence(unit, att, outcome.blockers)
         out.update(outcome.to_json())
         out["guard"] = gr.status
         out["_cost"] = self._cost(state, all_results)
         return out
+
+    def _keep_evidence(self, unit: str, att: Mapping[str, Any], blockers: list[dict[str, Any]]) -> None:
+        """One judgement's evidence and fix lines per attempt, scrubbed and local only (LOS §2.1, RDD §2.1)."""
+        if not blockers:
+            return
+        from tempergraph.docs import write_json
+        from tempergraph.store.layout import run_dir
+
+        visit, attempt = int(att.get("visit", 1)), int(att.get("attempt", 1))
+        path = (run_dir(self.ctx.state_root, self.ctx.spec.name, self.ctx.task_id) / "evidence" / "judgements"
+                / unit / f"{visit}.{attempt}.json")
+        rows = [{"criterion": b.get("criterion"),
+                 "evidence": clip(scrub(str(b.get("evidence") or b.get("problem") or "")), 400),
+                 "fix": clip(scrub(str(b.get("fix") or "")), 400)} for b in blockers]
+        with contextlib.suppress(OSError):
+            path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            write_json(path, {"schema_version": 1, "unit": unit, "visit": visit, "attempt": attempt,
+                              "blockers": rows}, mode=0o600)
 
     # -- gate, human, finalizer --------------------------------------------------------------------
 
@@ -566,6 +607,10 @@ class EngineNodes:
         so_far = cost_so_far((state.get("run") or {}).get("cost"))
         self.ctx.log.write("gate", unit=unit, verdict=((state.get("judgements") or {}).get(unit) or {}).get("verdict"),
                            token=r["token"], route_target=r["node"], cost_so_far=so_far)
+        self._budget_records(unit, state, w)
+        if r.get("pick"):  # every pick, by the function or the default arm (OBS `route`)
+            p = r["pick"]
+            self.ctx.log.write("route", unit=unit, arm=p["arm"], target=p["target"], chosen_by=p["chosen_by"])
         if unit in (w.get("pause") or {}) and w["pause"][unit]:
             p = w["pause"][unit]
             self.ctx.log.write("pause", unit=unit, pause_kind=p["kind"], decisions=p["decisions"], resume=p["resume"],
@@ -573,6 +618,21 @@ class EngineNodes:
                                tool_access=[{k: t.get(k) for k in ("name", "capability", "class")}
                                             for t in p.get("tool_access") or []] or None)
         return w
+
+    def _budget_records(self, unit: str, state: RunState, w: Mapping[str, Any]) -> None:
+        """EVT §2.2 `budget`: one record per counter this gate charged, with its limit and cause."""
+        g = self.ctx.spec.units[unit].gate
+        before = (state.get("counters") or {}).get(unit) or {}
+        after = (w.get("counters") or {}).get(unit) or {}
+        cause = ((state.get("judgements") or {}).get(unit) or {}).get("reason") or "verdict"
+        if int(after.get("retries", 0)) > int(before.get("retries", 0)):
+            self.ctx.log.write("budget", unit=unit, counter="retries", used=int(after["retries"]),
+                               limit=g.retry_budget, cause=cause)
+        old_loops = before.get("loops") or {}
+        for target, n in (after.get("loops") or {}).items():
+            if int(n) > int(old_loops.get(target, 0)):
+                self.ctx.log.write("budget", unit=unit, counter=f"loops:{target}", used=int(n), limit=g.loop_budget,
+                                   cause=cause)
 
     def human(self, unit: str, state: RunState, decision: Any) -> dict[str, Any]:
         payload = decision if isinstance(decision, dict) else {"decision": str(decision)}

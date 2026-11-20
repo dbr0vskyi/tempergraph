@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "revision": 1,
+  "statement": "Release notes that cover every merged change since the last tag, faithfully.",
+  "deliverables": [
+    {
+      "key": "notes",
+      "kind": "file",
+      "where": "the run's branch"
+    }
+  ],
+  "final": [
+    {
+      "id": "rn-complete",
+      "severity": "blocker",
+      "verified_by": "judge",
+      "text": "Every merged change since the last tag is in the notes or listed as excluded with a reason",
+      "check_method": "Compare the notes with the merged changes",
+      "verifier": {
+        "references": [
+          "notes"
+        ],
+        "scale": {
+          "met": "every change is listed or excluded with a reason",
+          "partial": "no partial: any gap is UNMET",
+          "unmet": "a merged change is missing",
+          "evidence": "the list of changes and where each is",
+          "seeds": [
+            "met-complete",
+            "unmet-complete"
+          ]
+        }
+      }
+    }
+  ],
+  "intermediate": {
+    "draft": {
+      "statement": "A draft with the template's headings whose entries match the changes",
+      "criteria": [
+        {
+          "id": "rn-sections",
+          "severity": "blocker",
+          "verified_by": "check",
+          "serves": [
+            "rn-complete"
+          ],
+          "text": "The notes have the template's four headings in order",
+          "verifier": {
+            "check": "draft_check"
+          },
+          "check_method": "Read notes.md and find the four headings, in order"
+        },
+        {
+          "id": "rn-faithful",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "serves": [
+            "rn-complete"
+          ],
+          "text": "Every entry matches what its merged change did",
+          "check_method": "Read each entry and its change",
+          "verifier": {
+            "references": [
+              "notes"
+            ],
+            "scale": {
+              "met": "each entry matches its change",
+              "partial": "no partial: any gap is UNMET",
+              "unmet": "an entry misstates its change",
+              "evidence": "entry and change pairs",
+              "seeds": [
+                "met-faithful",
+                "unmet-faithful"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "assumptions": [],
+  "revisions": []
+}
