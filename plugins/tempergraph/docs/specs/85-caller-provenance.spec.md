@@ -3,7 +3,7 @@ title: Caller provenance
 type: component
 status: review
 prefix: PRV
-adrs: [0085, 0086]
+adrs: [0085, 0086, 0099]
 ---
 
 # Caller provenance
@@ -23,6 +23,7 @@ Provenance is accounting, not a security boundary: every signal here can be forg
 | `person` | A person, directly, at a terminal | A shell outside any agent host; an IDE terminal |
 | `agent` | A model session, for a person or on its own | Claude Code (CLI, IDE, desktop, cloud), an Agent SDK application, a Messages API application, an Antigravity session |
 | `orchestrator` | The model-free orchestration supervisor (contract C16) | The engine itself, detached |
+| `scheduler` | The model-free schedule tick firing a person's schedule (contract C18, [SCH](83-schedules.spec.md)) | The engine itself, started by the per-user OS trigger |
 | `pipeline` | A scripted job with no model deciding | A CI runner, a cron job, a lifecycle hook command |
 | `engine` | The engine on its own account: an infra re-open, an applied deadline, a self-improvement child | The running engine |
 | `unknown` | No signal says which | Anything that leaves no mark |
@@ -36,6 +37,7 @@ Read once per process, before any write, by one function shared by every mutatin
 | # | Signal | Says | How it is read | Missing when | Forged by |
 |---|---|---|---|---|---|
 | S1 | Supervisor token | `orchestrator`, and which orchestration and node | `TEMPERGRAPH_SUPERVISOR_TOKEN` in the environment; its SHA-256 must equal the digest the supervisor wrote in the orchestration's state file, and `--parent` must name that orchestration ([ORC §2.8](45-orchestration.spec.md)) | Never, for a run the supervisor starts | A same-user process that reads the owner-only state file |
+| S1s | Schedule fire token | `scheduler`, and which schedule, fire and slot | `TEMPERGRAPH_SCHEDULE_TOKEN`; its SHA-256 must equal the `token_digest` of the schedule entry that `--schedule <fire_id>` names ([TCK §2.3](84-schedule-ticks-and-unattended-fires.spec.md)) | Never, for a run or orchestration the tick starts | A same-user process that reads the owner-only entry |
 | S2 | Host marker | `agent`, and the host and its session | Claude Code: `CLAUDE_CODE_CHILD_SESSION=1` (set for tool, hook and status-line children, not for IDE terminals), `CLAUDE_CODE_SESSION_ID`, `CLAUDE_CODE_REMOTE`; other hosts per §2.7 | A host that marks nothing (Antigravity until P-SUP-5; a plain application) | Any process that sets the variable; an agent that unsets it |
 | S3 | IDE terminal marker | Not an agent tool call | `CLAUDECODE=1` without `CLAUDE_CODE_CHILD_SESSION` | Outside an IDE | As S2 |
 | S4 | CI marker | `pipeline`, and the system | `CI=true` or one of `GITHUB_ACTIONS`, `GITLAB_CI`, `BUILDKITE`, `CIRCLECI`, `JENKINS_URL`, `TF_BUILD`, `TEAMCITY_VERSION` | A runner that sets none | Setting the variable |
@@ -52,6 +54,7 @@ The first row that matches decides the kind; the `evidence` list keeps every sig
 | Order | Condition | Kind | `confidence` |
 |---|---|---|---|
 | 1 | S1 valid | `orchestrator` | `attested` |
+| 1s | S1s valid | `scheduler` | `attested` |
 | 2 | The engine itself acts (no process call) | `engine` | `attested` |
 | 3 | S2 present | `agent` | `marked` |
 | 4 | S4 present and no S5 | `pipeline` | `marked` |
@@ -96,10 +99,11 @@ Every mutating call on a thread writes one `caller` block, the same shape everyw
 |---|---|
 | `kind`, `confidence` | §2.3 |
 | `decided_by`, `relay` | §2.4, for deciding calls; null otherwise |
-| `host` | `terminal`, `claude-code`, `agent-sdk`, `messages-api-app`, `antigravity`, `ci:<system>`, `orchestration`, `engine`, `unknown` |
+| `host` | `terminal`, `claude-code`, `agent-sdk`, `messages-api-app`, `antigravity`, `ci:<system>`, `orchestration`, `schedule`, `engine`, `unknown` |
 | `host_session` | The host's session id (local records); an HMAC with the sink key in anything that leaves the machine ([CST §2.4](34-central-run-stats.spec.md)) |
 | `caller_app` | From `--caller-app`, or null |
 | `parent` | The orchestration, node and item, for `orchestrator` |
+| `schedule` | `{schedule_id, fire_id, slot, created_by}` for `scheduler`; `{schedule_id, declared: true}` for a pipeline export ([TCK §2.7](84-schedule-ticks-and-unattended-fires.spec.md)) |
 | `trace_id` | From S7, or null |
 | `evidence[]` | The signals seen: S-number and the value class (`set`, `unset`, `valid`, `invalid`), never a value other than the host and CI system names |
 | `call_id` | A random id, so a host's journal entry for the same call can be joined ([SCO §2.4](87-supervision-cost.spec.md)) |
@@ -122,12 +126,13 @@ The `caller` block holds no request, prompt, feedback or command text ([SEC](14-
 
 | Option or variable | Effect |
 |---|---|
-| `--caller person\|agent\|pipeline` | S6. `orchestrator` and `engine` cannot be declared |
+| `--caller person\|agent\|pipeline` | S6. `orchestrator`, `scheduler` and `engine` cannot be declared |
 | `--as-agent` | Kept: the same as `--caller agent` |
 | `--caller-app <name>` | Names the application that called, for `agent` and `pipeline` |
 | `--relayed` | The call carries a person's decision; checked per §2.4 |
 | `TEMPERGRAPH_CALLER`, `TEMPERGRAPH_CALLER_APP` | The same as the flags, for callers that cannot change argv; a flag wins |
 | `TEMPERGRAPH_SUPERVISOR_TOKEN` | Set by the supervisor for its children only; never documented for people |
+| `TEMPERGRAPH_SCHEDULE_TOKEN`, `--schedule <fire_id>` | Set by the schedule tick for the runs it starts only; `--schedule` without a valid token is refused |
 
 These are run options, not settings: they are not in the settings catalog and are not snapshot on the thread ([RST §2.2](80-run-settings-and-overrides.spec.md)); each call is classified on its own.
 
@@ -154,6 +159,7 @@ A profile whose probe has not run is used only to read markers it lists; its row
 | Judge labels | Only `decided_by = person` makes a `person` label; everything else is `agent` or `unknown` and is kept out of judge figures ([FBK-B2](41-feedback-and-judge-reliability.spec.md)) |
 | Rulings | Recorded with the block; the owner question of [RRN](81-reruns-and-feedback.spec.md) on agent rulings stays open |
 | Supervision measures | Every touch counts, split by `kind` and `decided_by` ([SUP §2.2](86-supervision-metrics.spec.md)) |
+| Creating or widening a schedule | `schedule add`, `edit`, `resume` and `fire` are refused (`schedule_not_by_person`) unless `decided_by` is `person`; a relay needs a person turn within 10 minutes ([TCK §2.6](84-schedule-ticks-and-unattended-fires.spec.md)) |
 
 ## 3. Behaviours
 
@@ -189,7 +195,8 @@ A profile whose probe has not run is used only to read markers it lists; its row
 | Condition | Result |
 |---|---|
 | `--caller person` (or `TEMPERGRAPH_CALLER=person`) from a caller with a host marker | Exit 2 `caller_conflict`, nothing written |
-| `--caller orchestrator` or `--caller engine` | Exit 2 `caller_reserved` |
+| `--caller orchestrator`, `--caller scheduler` or `--caller engine` | Exit 2 `caller_reserved` |
+| A schedule token whose digest does not match the entry `--schedule` names | Exit 2 `schedule_token_invalid`, nothing written |
 | A supervisor token whose digest matches no orchestration, or not the one `--parent` names | Exit 2 `supervisor_token_invalid`, nothing written |
 | `--relayed` on a call that decides nothing (`run` without feedback, `status`) | Exit 2 `relay_not_applicable` |
 | `--caller-app` outside `[a-z0-9-]{1,40}` | Exit 2 |

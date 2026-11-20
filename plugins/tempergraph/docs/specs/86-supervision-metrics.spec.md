@@ -27,7 +27,7 @@ A **touch** is one accepted call that changes a thread's course or answers it, m
 | `steer` | `rewind`, `rerun` (on the source thread), `stop`, `grant`, `override` (settings changed on a resume), `ruling`, `breakpoint` (the resume of a `--pause-before`), `edit` (an orchestration edit naming the node) | Someone changed the course unasked |
 | `engine` | infra re-open, the orchestrator's `reopen_infra`, the self-improvement child | No supervisor; counted apart and never as supervision |
 
-The start of a run is not a touch; it is counted as `starts`. One resume can be several touches (a `decide` that also grants and overrides is one `rescue` and two `steer`). An undesigned touch is a `rescue` or a `steer`.
+The start of a run is not a touch; it is counted as `starts`. A scheduled start is a `starts` entry of caller `scheduler`; the person's `schedule add` and `edit` are setup counted once per schedule, never per run ([TCK §2.7](84-schedule-ticks-and-unattended-fires.spec.md)). One resume can be several touches (a `decide` that also grants and overrides is one `rescue` and two `steer`). An undesigned touch is a `rescue` or a `steer`.
 
 ### 2.2 Supervision record of a run
 
@@ -35,7 +35,7 @@ Built at every `run_exit` for the thread so far, written as the `supervision{}` 
 
 | Field | Meaning |
 |---|---|
-| `touches` | Counts by class × `decided_by` (`person`, `agent`, `unknown`, `pipeline`, `orchestrator`), and by pause kind for `rescue` |
+| `touches` | Counts by class × `decided_by` (`person`, `agent`, `unknown`, `pipeline`, `orchestrator`, `scheduler`), and by pause kind for `rescue` |
 | `undesigned` | `rescue` + `steer`, every decider |
 | `relayed` | Counts by `relay` (`turn_named`, `turn_only`, `claimed`) |
 | `agent_own_rescues` | `rescue` touches with `decided_by: agent` |

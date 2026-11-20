@@ -39,7 +39,7 @@ Status words: **covered** (in the design before this check), **added** (written 
 | Record who answered a pause | DESIGNED | covered; added (callers classified from host markers, relayed decisions backed by a person turn, supervision measures and cost) | [HUM-B6](../specs/07-gate-and-human.spec.md), [PRV](../specs/85-caller-provenance.spec.md), [SUP](../specs/86-supervision-metrics.spec.md), [SCO](../specs/87-supervision-cost.spec.md) |
 | Delegation policy for agent answers | DESIGNED | deferred: needs calibrated judges and a C6 amendment | [HUM](../specs/07-gate-and-human.spec.md) |
 | Auto mode | DESIGNED (draft) | added (never used: undeclared tools refuse) | [EXI](../specs/10-executor-interface.spec.md), [EAS](../specs/21-executor-agent-sdk.spec.md) |
-| Token-free schedule for declared programs | PLANNED | deferred: no scheduler in the first release | this note |
+| Token-free schedule for declared programs | PLANNED | added as a reserved target kind of schedules; declaring programs in a package is deferred | [SCH §5](../specs/83-schedules.spec.md) |
 | Self-improvement delivery batch | PLANNED | deferred: waits for batch integration | this note |
 | Idle watchdog with its own stalled class | PARTLY BUILT | covered (watchdog); added (stalled class in reports) | [EXI-B4](../specs/10-executor-interface.spec.md), [OBS](../specs/15-observability-and-cost.spec.md) |
 | Sort each timeout into hung, slow host or model-silent | PLANNED | added | [OBS](../specs/15-observability-and-cost.spec.md) |

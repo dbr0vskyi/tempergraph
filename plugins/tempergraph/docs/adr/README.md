@@ -86,6 +86,11 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0089](0089-supervision-is-a-promotion-and-improvement-measure.adr.md) | Supervision by every decider is a promotion criterion and an improvement signal | proposed |
 | [0090](0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md) | The first release is simple, trusted workflows on one machine, with their creation and full observability | proposed |
 | [0091](0091-first-release-ships-the-claude-executor-only.adr.md) | The first release ships the Claude Code executor only; the other three follow by release | proposed |
+| [0095](0095-a-model-free-tick-behind-os-agnostic-triggers.adr.md) | A model-free, OS-agnostic tick holds every schedule rule; a portable engine loop calls it, OS and other schedulers are optional adapters | proposed |
+| [0096](0096-exact-formats-first-and-an-optional-word-grammar-echoed-back.adr.md) | Exact date formats are the deterministic path; an optional word grammar sits on top; both are model-free and echoed back | proposed |
+| [0097](0097-schedules-keep-an-iana-zone-and-rfc-5545-daylight-saving-rules.adr.md) | Schedules keep an IANA zone; calendar rules follow wall time, intervals elapsed time, by RFC 5545 | proposed |
+| [0098](0098-missed-slots-catch-up-latest-and-a-live-run-skips-the-next.adr.md) | Missed slots catch up the latest one; a live or paused run skips the next slot; a slot runs at most once | proposed |
+| [0099](0099-a-scheduled-fire-is-an-attested-caller-with-a-capped-unattended-spend.adr.md) | A scheduled fire is an attested `scheduler` caller; unattended spend needs a cap; pauses stay with a person | proposed |
 | [0100](0100-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md) | The engine owns the run's worktree; executor-native worktrees are not used | proposed |
 | [0101](0101-one-workspace-setting-with-an-auto-default.adr.md) | One workspace setting, `run.workspace`, with an `auto` default resolved from the target and the workflow | proposed |
 | [0102](0102-worktrees-beside-the-repository-with-derived-ref-safe-names.adr.md) | Worktrees live beside the repository by default, with names derived ref-safe from the thread id | proposed |

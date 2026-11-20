@@ -90,6 +90,7 @@ Order: operator override, the gate's judge executor, the step's executor if it d
 | `subagent`, `web_fetch` or `web_search` on `messages-api` | in its `tool_map` for the bound provider | exit 2 |
 | A step whose template names a skill, agent or instruction file | `hosts_authoring_surface` | warning, recorded |
 | `--strict-permissions` | no step has an undeclared-tool finding | exit 2 naming each step |
+| A scheduled start or a schedule's check | every step and judge binding's executor accepts the credential kind the profile provides unattended ([TCK §2.4](84-schedule-ticks-and-unattended-fires.spec.md)) | exit 2 `credential_unattended` or `judge_credential` |
 
 **EXI-B2 Prompt delivery.** Given a rendered prompt, when the launcher starts the session, then the prompt reaches the CLI on stdin, never on argv or in the environment, and the writer starts immediately after the process starts, before the stream parser and progress writer are attached.
 
