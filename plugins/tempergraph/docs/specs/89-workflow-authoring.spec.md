@@ -3,7 +3,7 @@ title: Workflow authoring
 type: component
 status: review
 prefix: AUT
-adrs: [0016, 0031, 0109, 0110, 0111, 0113]
+adrs: [0016, 0031, 0109, 0110, 0111, 0113, 0114]
 ---
 
 # Workflow authoring
@@ -26,7 +26,7 @@ This spec replaces the phase list of [SHL §2.1](19-plugin-shell.spec.md). It ow
 | `author check <id>` | Checks the drafts: OUT §4 on the outcome, SCF §2.1 on the blueprint, coverage and trust (OUT §2.3) | no | no |
 | `author show <id> [--json]` | The session: phase, sources, outcome and verification tables, open decisions, assumptions | no | no |
 | `author list`, `author drop <id>` | Sessions on this root; drop removes a session folder only | `drop` only | no |
-| `blueprint`, `scaffold`, `author verify`, `literals` | [SCF §2.6](91-blueprint-and-scaffold.spec.md) | per SCF | `author verify --trial` only |
+| `blueprint`, `scaffold`, `author verify`, `literals` | [SCF §2.6](91-blueprint-and-scaffold.spec.md) | per SCF | `author verify --judge-seeds` and `--trial` only |
 
 The skill calls these verbs and reads their JSON; it keeps its own state in the session folder, so an interrupted session resumes in a new conversation (`author show`). Paths given to `intake` must be inside the workspace or named explicitly by the person; connector content (a wiki page, a ticket) is read by the skill with the person's connectors and saved into the session folder as a source file first, so the inventory reads files only.
 
@@ -89,6 +89,33 @@ Candidates are proposals; the skill binds them to criteria in phase 4. The inven
 
 The skill prefers an earlier row and says why when it takes a later one. A blocker it cannot place above row 6 is put to the person as a decision: make it a `person` sign-off, accept it as `none` (recorded as a decision record in the workflow's docs, [PKG §2.5](88-workflow-package.spec.md)), lower it to a warning, or drop it.
 
+#### 2.4.1 When the definition is not enough
+
+The person's first description of a good outcome is often too thin to grade by: a vague word, a goal with no observable sign, one criterion that hides three. Authoring does not guess past it; it detects the thinness model-free and guides the person until each criterion is clear ([ADR-0114](../adr/0114-judged-criteria-carry-a-scale-and-authoring-guides-until-criteria-are-clear.adr.md)).
+
+**Criteria lint** (`author check`, model-free, also in validation and the readiness report):
+
+| Code | Fires when | Guidance the skill gives |
+|---|---|---|
+| `criterion-vague` | A word from the vague list (complete, good, clear, appropriate, high quality, user-friendly, robust, as needed, etc.) with no measure in the same sentence | "What would you look at to tell it is {word}?" and two observable rewrites to choose from |
+| `criterion-compound` | More than one claim joined by "and", "or", a list or a semicolon | Split proposal, one criterion per claim, each with its own verifier |
+| `criterion-unobservable` | No artifact, place or property the verifier could look at (no deliverable key, no reference, no file, no field) | "Where would a reviewer see this?" with the deliverables listed |
+| `criterion-unanchored` | A judged criterion without a complete scale ([OUT §2.2.1](90-run-outcome.spec.md)) | Draft `met`, `partial`, `unmet` and `evidence` from the examples; the person edits |
+| `criterion-overlap` | Two criteria of one unit whose texts share most content words, or a final criterion restated as an intermediate one with no narrowing | Merge, or narrow the intermediate one to what that step decides |
+| `criterion-no-seed` | A judged criterion with no `met` seed and no `unmet` or `partial` seed | Ask for one example of each, or offer to write a contrast pair (below) |
+
+**Sufficiency check of the outcome** (before phase 2 ends): the statement is observable (no `criterion-vague` or `criterion-unobservable` finding on it), there is at least one deliverable, at least one blocker final criterion, and every final criterion passes the lint. Until it holds, phase 2 does not end.
+
+**The guidance ladder**, taken in order for each criterion that fails the lint or each gap in the sufficiency check, at most three questions per turn:
+
+| Rung | The skill does | Ends when |
+|---|---|---|
+| 2 Examples of criteria | Shows two or three well-formed criteria of the same task kind from the engine's example library (`skills/author/references/criteria-examples/<task kind>.md`: document, code change, analysis, ticket, data, message), each with its verifier class and scale, and asks which is closest | The person adapts one |
+| 3 Contrast pair | Writes two short outputs that differ in exactly the property in doubt (or uses the person's good and bad examples) and asks which one passes and why | The person's reason names the property; it becomes the criterion and the pair becomes its seeds |
+| 4 Grade a draft | Writes one full sample output and asks the person to mark what they would send back | Each mark becomes a criterion candidate (criteria drift, [R-105 B2](../research/R-105-workflow-packages-authoring-and-good-outcomes.rsrch.md)) |
+| 5 Decide | After two rounds on one criterion with no observable form: offer `person` sign-off with the person's own question, `none` with a reason, or drop it; record the decision (§2.5) | A recorded decision |
+
+
 ### 2.5 Decisions and assumptions
 
 Each choice the person makes against the skill's draft, each criterion dropped as not observable, each `none` accepted, each executor choice with a stated consequence, and each step boundary the person moved becomes a **decision** in `authoring.json` and, at scaffold, a decision record in the workflow's `docs/adr/` ([ADR-0113](../adr/0113-the-workflow-docs-set-is-provisional-until-temperspec-owns-it.adr.md)). Each assumption the person did not settle goes to `outcome.json` `assumptions` and to the overview spec's open questions.
@@ -134,6 +161,10 @@ The record is copied into the package at scaffold and kept there; it is outside 
 **AUT-B7 Resume a session.** Given an authoring session stopped after phase 4, when a new conversation calls `author show <id>`, then the skill continues at phase 5 with the approved drafts, and phases 1 to 4 are not asked again.
 
 
+**AUT-B9 A vague outcome.** Given the statement "good, complete release notes", when `author check` runs, then it reports `criterion-vague` twice; the skill asks what the person would look at to tell the notes are complete, offers "every merged change since the last tag is listed or excluded with a reason" and "every entry links its change", and phase 2 does not end until one is chosen.
+
+**AUT-B10 A contrast pair settles a judged criterion.** Given the criterion "entries are understandable to customers" that survives two clarifying rounds still vague, when rung 3 runs, then the skill shows two entries, one naming the user-visible effect and one quoting the commit subject; the person's choice and reason ("say what changes for the user") become the criterion text and its `met` anchor, and the pair becomes its two seeds.
+
 ## 4. Error conditions
 
 | Condition | Result |
@@ -160,6 +191,8 @@ The record is copied into the package at scaffold and kept there; it is outside 
 - [ ] AUT-AC-4 Nothing under the package folder exists before phase 7's approval (scenario test with a file watch).
 - [ ] AUT-AC-5 A session interrupted after any phase resumes at the next phase from `author show` alone.
 - [ ] AUT-AC-6 Revise mode never writes a weakening without the person's yes on a table that marks it.
+- [ ] AUT-AC-7 Every lint code of §2.4.1 has a must-fire and a must-not-fire fixture; phase 2 cannot be approved while the sufficiency check fails (scenario test).
+- [ ] AUT-AC-8 A rubric scenario per guidance rung (AUT-B9, AUT-B10 and one each for rungs 2, 4, 5) reaches an observable criterion or a recorded decision.
 
 ## Open questions
 

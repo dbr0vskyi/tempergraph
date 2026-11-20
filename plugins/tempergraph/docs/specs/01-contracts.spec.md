@@ -320,7 +320,7 @@ Shared by PKG, OUT, AUT, SCF, WFM, CMP, HUM, SIL and PRP.
 | `RouteView` | `unit`, `visit`, `values`, `facts`, `artifact_keys` (present keys only), `settings`; read-only | [PKG §2.4](88-workflow-package.spec.md) |
 | `RawRequest` | `args` (list of str), `inputs` (map), `main_checkout` (read-only path) | [PKG §2.4](88-workflow-package.spec.md) |
 | `OutcomeSpec` | `schema_version`, `revision`, `statement`, `deliverables[]`, `final[]`, `intermediate` (unit → `{statement, criteria[]}`), `judge?`, `check?`, `assumptions[]`, `revisions[]` | [OUT §2.1](90-run-outcome.spec.md) |
-| `OutcomeCriterion` | A `Criterion` (§2.1, `id` required) plus `verified_by` (`check` \| `judge` \| `person` \| `none`), `verifier`, `source`, `serves[]` | [OUT §2.1, §2.2](90-run-outcome.spec.md) |
+| `OutcomeCriterion` | A `Criterion` (§2.1, `id` required) plus `verified_by` (`check` \| `judge` \| `person` \| `none`), `verifier` (with a judge's `scale`), `source`, `serves[]` | [OUT §2.1, §2.2](90-run-outcome.spec.md) |
 | `Trust` | `deterministic`, `calibrated`, `uncalibrated`, `human`, `unverified`; computed, never stored | [OUT §2.3](90-run-outcome.spec.md) |
 | `OutcomeRecord` | `revision`, `verdict` (`met`, `met_with_open`, `unmet`, `needs_person`, `not_reached`), `criteria[]`, `intermediate[]`, `later[]`; the ledger row's `outcome{}` | [OUT §2.5](90-run-outcome.spec.md) |
 | `OutcomeRevision` | `revision`, `at`, `by` (`Caller`), `origin`, `changes[]` (each `strengthening` \| `weakening` \| `neutral`), `evidence[]` | [OUT §2.6](90-run-outcome.spec.md) |

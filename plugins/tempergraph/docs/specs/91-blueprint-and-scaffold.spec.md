@@ -3,7 +3,7 @@ title: Blueprint, scaffold and authoring checks
 type: component
 status: review
 prefix: SCF
-adrs: [0059, 0106, 0110, 0113]
+adrs: [0059, 0106, 0110, 0113, 0114]
 ---
 
 # Blueprint, scaffold and authoring checks
@@ -77,19 +77,20 @@ The person approves the drawing as a whole; the skill records the approval with 
 
 ### 2.5 Checking the authored workflow (`author verify`)
 
-`author verify <workflow> [--trial --case <id> --cap <usd>]` runs the ladder in order and stops at the first failing rung, reporting every finding with its remedy. Rungs 1 to 7 are model-free.
+`author verify <workflow> [--judge-seeds] [--trial --case <id>] [--cap <usd>]` runs the ladder in order and stops at the first failing rung, reporting every finding with its remedy. Rungs 1 to 7 are model-free; rung 8 spends judge calls only.
 
 | Rung | Check | Passes when |
 |---|---|---|
-| 1 Load and validate | [PKG §2.3](88-workflow-package.spec.md), [WFM](02-workflow-model.spec.md), OUT §4 | No error |
+| 1 Load and validate | [PKG §2.3](88-workflow-package.spec.md), [WFM](02-workflow-model.spec.md), OUT §4, and the criteria lint of [AUT §2.4.1](89-workflow-authoring.spec.md), whose findings are errors here except `criterion-overlap` | No error |
 | 2 Blueprint comparison | The built spec against the approved blueprint: names, order, artifacts and reads, checks, judge references, sign-offs, failure and approval policy, back and route targets, map and wait parameters, and the outcome digest. Summaries, models, criteria texts and prompts are not compared. Each difference in words: fix the workflow, or change the blueprint with the person's yes; an accepted difference is a decision | No unaccepted difference |
 | 3 Literal check | §2.3 | No unrecorded hit |
 | 4 Generated tests | §2.4, run by the engine's test runner on stand-ins | All pass |
 | 5 Coverage and trust | OUT §2.3: every final criterion covered or recorded as a decision; no blocker at `unverified` trust without a decision | As stated |
 | 6 Audit | `audit --layer definition --layer host` ([AUD](55-workflow-audit.spec.md)); each finding shown with its remedy for the person to fix or ignore with a reason | No `error`; warnings shown |
 | 7 Register | `workflows register <path> --check`, then `register` ([UPD §2.8](60-engine-update.spec.md)) | Entry `ok` |
-| 8 First trial | With `--trial`, only after the person's yes on the stated cost (each step attempt is two sessions, plus the outcome judge): one live run of the case in a fresh worktree, dry run, capped by `--cap` (default $5), caller recorded ([PRV](85-caller-provenance.spec.md)) | The run reaches the outcome gate; the report is produced whatever the verdict |
-| 9 Stamp | `upgrade --stamp` ([VER §2.5](61-version-metadata.spec.md)); the stamp records `docs_digest` | Stamp written |
+| 8 Judge seeds | With `--judge-seeds` (or `--trial`, which implies it), after the person's yes on the stated cost: each judge runs on its criteria's seed fixtures ([OUT §2.2.1](90-run-outcome.spec.md)) twice, with no step session, capped by `--cap` | Every seed graded as expected both times. A seed graded wrong or a status that flips between the two runs names the criterion: its text or scale is not clear enough, and the skill returns to the guidance ladder of AUT §2.4.1 for it |
+| 9 First trial | With `--trial`, only after the person's yes on the stated cost (each step attempt is two sessions, plus the outcome judge): one live run of the case in a fresh worktree, dry run, capped by `--cap` (default $5), caller recorded ([PRV](85-caller-provenance.spec.md)) | The run reaches the outcome gate; the report is produced whatever the verdict |
+| 10 Stamp | `upgrade --stamp` ([VER §2.5](61-version-metadata.spec.md)); the stamp records `docs_digest` | Stamp written |
 
 
 ### 2.6 Verbs
@@ -101,7 +102,7 @@ The person approves the drawing as a whole; the skill records the approval with 
 | `blueprint compare <workflow>` | no | no |
 | `literals <workflow> [--cases]` | no | no |
 | `scaffold <session> --out <dir> [--update] [--update-docs]` | the package folder | no |
-| `author verify <workflow> [--trial --case <id> --cap <usd>] [--json]` | registry entry, stamp, trial run and labels | `--trial` only |
+| `author verify <workflow> [--judge-seeds] [--trial --case <id>] [--cap <usd>] [--json]` | registry entry, stamp, seed scores, trial run and labels | `--judge-seeds` and `--trial` only |
 
 ## 3. Behaviours
 
@@ -117,6 +118,8 @@ The person approves the drawing as a whole; the skill records the approval with 
 
 **SCF-B6 Trial disagreement first.** Given a trial where the judge marked `rn-faithful` MET and the person grades it UNMET, when the trial report is shown, then that criterion is listed first, the label is written with `source: person` and `origin: authoring_trial`, and a calibration case candidate is saved for the `draft` judge.
 
+**SCF-B8 An unclear scale.** Given a judged criterion `rn-faithful` whose `partial` anchor reads "mostly right", when rung 8 runs, then its `unmet` seed is graded PARTIAL once and UNMET once; the rung fails naming `rn-faithful`, and the skill asks the person where the line between partial and unmet is.
+
 **SCF-B7 Update keeps edits.** Given a package whose `prompts/draft.md` the person rewrote, when revise mode calls `scaffold --update`, then the prompt is not touched and is listed as person-edited; `outcome.json`-derived docs sections and the diagram are regenerated.
 
 ## 4. Error conditions
@@ -126,9 +129,9 @@ The person approves the drawing as a whole; the skill records the approval with 
 | A blueprint with more than 20 units, a summary over 60 characters, or an unknown key | `blueprint check` error with the path |
 | `outcome_ref` that does not match the outcome draft | `blueprint_outcome_mismatch`; the approval is cleared |
 | `scaffold` into a non-empty folder without `--update` | Refused, exit 2 |
-| `author verify --trial` without the person's yes, or with no case | Refused, exit 2; rungs 1 to 7 still run |
+| `author verify --trial` or `--judge-seeds` without the person's yes, or `--trial` with no case | Refused, exit 2; rungs 1 to 7 still run |
 | The trial reaches the cap | No new session; the report is `partial` and the stamp is not written |
-| Rung 9 under an engine with pending breaking changelog entries | As [WUP §2.6](63-workflow-upgrade.spec.md): no stamp |
+| Rung 10 under an engine with pending breaking changelog entries | As [WUP §2.6](63-workflow-upgrade.spec.md): no stamp |
 
 ## 5. Design notes
 
@@ -141,7 +144,8 @@ The person approves the drawing as a whole; the skill records the approval with 
 - [ ] SCF-AC-2 The scaffold's output for the minimal blueprint passes its own generated tests and rungs 1 to 7 with no edit (SCF-B3).
 - [ ] SCF-AC-3 The comparison reports each compared field when it differs, and none of the fields listed as not compared.
 - [ ] SCF-AC-4 `scaffold --update` never changes a file whose digest differs from the one it last wrote (property test).
-- [ ] SCF-AC-5 No verb of §2.6 but `author verify --trial` starts an executor session (stand-in counter test).
+- [ ] SCF-AC-5 No verb of §2.6 but `author verify --judge-seeds` or `--trial` starts an executor session, and `--judge-seeds` starts judge sessions only (stand-in counter test).
+- [ ] SCF-AC-7 A seed fixture graded against its expected status, or flipping between the two runs, fails rung 8 naming the criterion.
 - [ ] SCF-AC-6 A trial writes one label per criterion the person grades and never changes `improvement_mode`.
 
 ## Open questions

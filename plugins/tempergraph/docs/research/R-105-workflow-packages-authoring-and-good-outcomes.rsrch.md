@@ -82,6 +82,7 @@ and, a minute later:
 | D8 | No contract for checking an authoring result before it is used: model-free checks, then a first trial | [SCF §2.5](../specs/91-blueprint-and-scaffold.spec.md), [ADR-0110](../adr/0110-check-an-authored-workflow-model-free-then-by-one-consented-trial.adr.md) | confirmed |
 | D9 | A workflow package has no design docs of its own (owner's second message) | [PKG §2.5](../specs/88-workflow-package.spec.md), [ADR-0113](../adr/0113-the-workflow-docs-set-is-provisional-until-temperspec-owns-it.adr.md) | confirmed |
 | D10 | Criteria drift (B2) has no path back into the workflow except the full improvement loop of release 3 | [OUT §2.6](../specs/90-run-outcome.spec.md), [AUT §2.7](../specs/89-workflow-authoring.spec.md) revise mode | inferred |
+| D11 | No check that a judged criterion states its scoring line (what met, partial and unmet look like) and no guidance when the person's definition is too thin to extract criteria (owner, 2026-11-20) | [OUT §2.2.1](../specs/90-run-outcome.spec.md), [AUT §2.4.1](../specs/89-workflow-authoring.spec.md), [SCF §2.5](../specs/91-blueprint-and-scaffold.spec.md) rung 8, [ADR-0114](../adr/0114-judged-criteria-carry-a-scale-and-authoring-guides-until-criteria-are-clear.adr.md) | confirmed |
 
 ## Conclusions
 

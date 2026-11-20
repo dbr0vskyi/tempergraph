@@ -3,7 +3,7 @@ title: Run-level good outcome
 type: component
 status: review
 prefix: OUT
-adrs: [0031, 0045, 0089, 0107, 0108, 0111]
+adrs: [0031, 0045, 0089, 0107, 0108, 0111, 0114]
 ---
 
 # Run-level good outcome
@@ -58,9 +58,24 @@ def outcome_record(state: RunState, outcome: OutcomeSpec) -> OutcomeRecord: ...
 | `verified_by` | `verifier` holds | Graded by | Rule |
 |---|---|---|---|
 | `check` | `{check: ref}` or `{command: prefix}` with the finding it expects | The gate's check ([CHK](75-check-contract-and-command-runs.spec.md)); sets `mechanical: true` on the criterion | The check must name the criterion id in its findings; a check that never names it is `check-criterion-unnamed` (validation, from the check's fixtures) |
-| `judge` | `{references: [keys], read_systems?: [names]}` | The unit's judge, or the outcome judge for a final criterion | `check_method` required |
+| `judge` | `{references: [keys], read_systems?: [names], scale}` | The unit's judge, or the outcome judge for a final criterion | `check_method` and a complete `scale` required (§2.2.1) |
 | `person` | `{role, question}`: who signs it off ("release manager") and the yes/no question shown | A sign-off: the approval pause of the unit (or of the outcome gate) lists these criteria and records a status per criterion ([HUM](07-gate-and-human.spec.md)) | The pause is designed supervision ([SUP §2.1](86-supervision-metrics.spec.md)); a criterion never answered is `not_verified` |
 | `none` | `{reason, risk}` | Nobody | Allowed only as a recorded decision ([AUT §2.4](89-workflow-authoring.spec.md)); listed on every report (§2.5). A `blocker` with `none` is a validation warning in `dev` and an error in `stable` |
+
+#### 2.2.1 The scoring scale of a judged criterion
+
+The judge's statuses and the verdict rule are fixed engine-wide ([CON §2.8](01-contracts.spec.md), [JDG §2.2](05-judge-and-verdict.spec.md)); what each status **means for this criterion** is written by the author, so two judges, or one judge twice, grade the same output the same way ([ADR-0114](../adr/0114-judged-criteria-carry-a-scale-and-authoring-guides-until-criteria-are-clear.adr.md)).
+
+| `scale` field | Holds | Rule |
+|---|---|---|
+| `met` | What a result that fully meets the criterion shows, in observable terms | Required |
+| `partial` | What counts as partly met, and where the line to `met` is | Required for a blocker; for a criterion with no middle ground, the fixed text "no partial: any gap is UNMET" |
+| `unmet` | The typical failure, phrased so a reviewer would recognise it | Required |
+| `evidence` | What the judge must cite for `met`: a quote, a path and line, a count, a command result | Required; `MET` without it is `PARTIAL` already (JDG §2.2) |
+| `n_a` | When the criterion does not apply, if ever | Optional; absent means N/A is never valid and is read as UNMET |
+| `seeds` | Ids of fixtures in `evals/calibration/<gate>/`: at least one expected `met` and one expected `unmet` or `partial` | Required before `author verify` rung 8, which grades them ([SCF §2.5](91-blueprint-and-scaffold.spec.md)) |
+
+The judge prompt renders each criterion's `met`, `partial`, `unmet` and `evidence` beside its check method ([JDG §2.1](05-judge-and-verdict.spec.md)); the step sees only the criterion text and `met` as its target, never the check method or the failure descriptions. A reworded scale stales the judge's score for that criterion, as a reworded text does (§2.6).
 
 
 ### 2.3 Trust and coverage

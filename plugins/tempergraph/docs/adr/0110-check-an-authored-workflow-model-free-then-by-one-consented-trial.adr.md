@@ -13,7 +13,7 @@ Blueprint comparison, a literal check, generated tests and a stamp verify an aut
 
 ## Decision
 
-We will check an authored workflow by a ladder that stops at the first failing rung: load and validate, blueprint comparison, literal check, generated tests on stand-ins, coverage and trust, audit, register; then, with the person's yes on the stated cost, one capped dry-run trial on a real case whose output the person grades per criterion; then the stamp. The person's grades become labels and calibration cases. The workflow stays in `dev`. Details: [SCF §2.5](../specs/91-blueprint-and-scaffold.spec.md).
+We will check an authored workflow by a ladder that stops at the first failing rung: load and validate, blueprint comparison, literal check, generated tests on stand-ins, coverage and trust, audit, register; then, with the person's yes on the stated cost, each judge graded twice on its criteria's seed examples (a wrong or flipping grade sends the criterion back to the person as unclear, [ADR-0114](0114-judged-criteria-carry-a-scale-and-authoring-guides-until-criteria-are-clear.adr.md)), then one capped dry-run trial on a real case whose output the person grades per criterion; then the stamp. The person's grades become labels and calibration cases. The workflow stays in `dev`. Details: [SCF §2.5](../specs/91-blueprint-and-scaffold.spec.md).
 
 ## Options considered
 
