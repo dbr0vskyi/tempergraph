@@ -2,8 +2,19 @@
 // Contract M1: only read-only engine verbs are ever built here, from constants and values the engine printed.
 
 import type { RunRecord } from './engine'
+import { PS_ARGV } from './session'
 
 export const ENGINE = 'tempergraph'
+
+/** The program run for engine verbs: `tempergraph` on PATH, or the `engine_path` setting (MAC §2.3). */
+let engine: string = ENGINE
+
+/** Takes an absolute path to the shim, or empty for PATH; anything else is refused and PATH is kept. */
+export function useEngine(path: string | undefined): string {
+  const p = (path ?? '').trim()
+  engine = p && /^(\/|[A-Za-z]:[\\/])[^\0\n]*$/.test(p) && /(^|[\\/])tempergraph(\.exe|\.cmd)?$/.test(p) ? p : ENGINE
+  return engine
+}
 
 /** Every verb the monitor may run. A verb that writes is never built (MDS-AC-2). */
 export const READ_ONLY_VERBS = ['status', 'events'] as const
@@ -17,17 +28,19 @@ const THREAD = /^[A-Za-z0-9_][A-Za-z0-9_.-]*\/[A-Za-z0-9_][A-Za-z0-9_.:-]*$/
 const UNIT = /^[A-Za-z_][A-Za-z0-9_-]*$/
 
 export function statusArgv(): readonly string[] {
-  return [ENGINE, 'status', '--json']
+  return [engine, 'status', '--json']
 }
 
 export function detailArgv(threadId: string, unit?: string): readonly string[] {
   if (!THREAD.test(threadId)) throw new Error(`not an engine thread id: ${threadId}`)
   if (unit !== undefined && !UNIT.test(unit)) throw new Error(`not a unit name: ${unit}`)
-  return [ENGINE, 'status', threadId, '--detail', '--json', ...(unit ? ['--unit', unit] : [])]
+  return [engine, 'status', threadId, '--detail', '--json', ...(unit ? ['--unit', unit] : [])]
 }
 
+/** An engine verb that only reads, or the constant `ps` listing of MDS §2.1; nothing else is run. */
 export function isReadOnly(argv: readonly string[]): boolean {
-  return argv[0] === ENGINE && (READ_ONLY_VERBS as readonly string[]).includes(argv[1] ?? '')
+  if (argv.length === PS_ARGV.length && argv.every((a, i) => a === PS_ARGV[i])) return true
+  return argv[0] === engine && (READ_ONLY_VERBS as readonly string[]).includes(argv[1] ?? '')
 }
 
 // -- run-log tail (MDS §2.2) -------------------------------------------------------------------------------

@@ -1,7 +1,18 @@
 {
   "name": "tempergraph-monitor",
-  "version": "0.1.0",
-  "description": "Claude Mod showing progress of tempergraph runs: band, alerts, run view and drill-down, read-only",
+  "version": "0.2.0",
+  "description": "Claude Mod showing progress of tempergraph runs: band, alerts, run view, drill-down and cost; actions fill the prompt",
   "author": { "name": "Yevhenii Dubrovskyi" },
-  "types": "./types/index.d.ts"
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "scope": { "type": "string", "title": "Scope", "description": "Runs of this repository, or of every state root on this machine", "options": ["repo", "machine"], "default": "repo" },
+    "fleet_sink": { "type": "string", "title": "Fleet sink", "description": "A sink name from the engine config for the fleet tab; empty for none", "default": "" },
+    "open_pane": { "type": "string", "title": "Open the pane", "description": "auto opens it where the layout has a sidebar; never leaves it to /tg", "options": ["auto", "never"], "default": "auto" },
+    "alerts_finished": { "type": "boolean", "title": "Notify when a run finishes", "description": "A native notification for exit 0, besides the toast", "default": false },
+    "alerts_fleet": { "type": "boolean", "title": "Notify for runs on other machines", "description": "A run waiting over 30 min on another machine", "default": false },
+    "show_tool_inputs": { "type": "boolean", "title": "Show tool inputs", "description": "Off hides every tool input summary in the pane", "default": true },
+    "show_log_tails": { "type": "boolean", "title": "Show log tails", "description": "Off hides the Log tab and check output tails", "default": true },
+    "model_tool": { "type": "string", "title": "Model tool", "description": "off registers no tool; interactive is not built yet", "options": ["off", "interactive"], "default": "off" },
+    "engine_path": { "type": "string", "title": "Engine path", "description": "Path to the tempergraph shim; empty to find it on PATH", "default": "" }
+  }
 }

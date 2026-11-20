@@ -69,7 +69,7 @@ Each alert is raised once per `(thread, seq)`: the last alerted `seq` per thread
 
 - Labels first: without them, several live runs of one workflow draw near-identical band lines ([MADR-0004](../adr/0004-borrow-the-workflows-view-and-add-gates.adr.md)).
 - Alert de-duplication lives in the plugin store because a person often has several Claude Code sessions open on one repository.
-- Release 1 build ([T10 plan](../../../tempergraph/docs/plans/t10-monitor.plan.md)): the rows of §2.2, the status line and the alerts of §2.4 but the fleet row are built; the alert settings (`alerts.finished`, `alerts.fleet`) are fixed at off until the mod has settings; the two error rows of §4 are not built (a narrow band truncates the row with `…`).
+- Release 1 build ([T10 plan](../../../tempergraph/docs/plans/t10-monitor.plan.md)): the rows of §2.2, the status line, the alerts of §2.4 but the fleet row, and both error rows of §4 are built. `alerts.finished` is the setting `alerts_finished`; `alerts.fleet` is accepted and does nothing until the fleet exists (T10.1).
 - A notification is the one way the monitor reaches a person who is not looking; it carries the question so the person can decide whether to come back now.
 
 ## 6. Acceptance criteria

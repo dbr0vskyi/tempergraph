@@ -1,7 +1,7 @@
 ---
 title: Cost and fleet
 type: component
-status: review
+status: ready-for-implementation
 prefix: MCF
 adrs: [0005]
 ---
@@ -61,6 +61,7 @@ Built from the fleet copy in the home folder, `~/.tempergraph/fleet/<fleet_sink>
 
 - Cost honesty is copied, not reinvented: the engine already keeps reported and estimated apart; the monitor only refuses to blur them on screen ([engine ADR-0012](../../../tempergraph/docs/adr/0012-cost-when-executor-reports-tokens-only.adr.md)).
 - The fleet tab is the "single place" for numbers from all machines inside Claude Code; the same rows can be read by `stats --source` in a shell or sent to an OTLP backend ([MADR-0005](../adr/0005-three-scopes-repo-machine-fleet.adr.md)).
+- Release 1 build ([T10 plan](../../../tempergraph/docs/plans/t10-monitor.plan.md)): the cost tab is drawn from the detail document: the total and the completeness flag, by unit (first visit, then each repeat with the engine's `repeat_cause`, else `retry` or `visit n (<entered_from>)`), by kind (`step`, `judge`, and `re-ask` for a judge's re-ask sessions), by executor and model with the five token counts (`—` where the executor gave none), and the budget line. Deviations: reported and estimated money are summed per session (a session's reported figure wins over its estimate), never across the two; child spend has no field in the detail document yet and is not shown; supervision reads `not recorded` until SCO's journal (T7.6), and projection reads `unavailable` until `stats --projection` (T7.4). The fleet tab is not built: it needs the fleet copy and `stats --live` of T10.1.
 - A workflows view shows tokens per agent; tempergraph shows money per unit, because money per repeat cause is what is worth ranking.
 
 ## 6. Acceptance criteria

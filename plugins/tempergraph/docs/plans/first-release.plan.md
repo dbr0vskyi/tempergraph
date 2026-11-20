@@ -557,6 +557,7 @@ Expanded in [t10-monitor.plan.md](t10-monitor.plan.md) §2 T10.3.
 #### T10.4 Monitor actions, cost and fleet
 Goal: MAC and MCF.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+Expanded in [t10-monitor.plan.md](t10-monitor.plan.md) §2 T10.4.
 <!-- expand: T10.4 -->
 
 ### T12 Self-improvement

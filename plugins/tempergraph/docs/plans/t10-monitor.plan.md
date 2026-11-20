@@ -1,5 +1,5 @@
 ---
-goal: Build the monitor mod's read-only parts — sources, band, status line and alerts, the run view and the drill-down — from the engine's status, detail and run-log documents
+goal: Build the monitor mod — sources, band, status line and alerts, the run view, the drill-down, the cost tab and prompt-fill actions — from the engine's status, detail and run-log documents
 version: 1
 date_created: 2026-11-20
 last_updated: 2026-11-20
@@ -12,18 +12,20 @@ spec_commit: 47c5b7d
 task_id: first-release-t10
 ---
 
-# T10 Monitor (phases T10.2 and T10.3)
+# T10 Monitor (phases T10.2 to T10.4)
 
 ## 0. Hand-off
 
 | Field | Value |
 |---|---|
-| Origin | [Release 1 plan](first-release.plan.md) track T10, phases T10.2 and T10.3, built after T7.1 and T7.2 in the same pass (thread "Build run events and detail view") |
+| Origin | [Release 1 plan](first-release.plan.md) track T10, phases T10.2 to T10.4, built after T7.1 and T7.2 in the same pass (thread "Build run events and detail view") |
 | Specs | [MOV](../../../tempergraph-monitor/docs/specs/00-overview.spec.md), [MDS](../../../tempergraph-monitor/docs/specs/01-data-sources.spec.md), [MBA](../../../tempergraph-monitor/docs/specs/02-band-status-and-alerts.spec.md), [MRV](../../../tempergraph-monitor/docs/specs/03-run-view.spec.md), [MDD](../../../tempergraph-monitor/docs/specs/04-drill-down.spec.md); engine documents from [EVT](../specs/30-run-events.spec.md), [RDD](../specs/31-run-detail-document.spec.md) and [DUR §2.2](../specs/09-durability-and-resume.spec.md) |
 | Decisions | [MADR-0001](../../../tempergraph-monitor/docs/adr/0001-a-claude-code-mod-that-observes.adr.md), [MADR-0002](../../../tempergraph-monitor/docs/adr/0002-poll-files-and-read-only-verbs.adr.md), [MADR-0004](../../../tempergraph-monitor/docs/adr/0004-borrow-the-workflows-view-and-add-gates.adr.md), [MADR-0006](../../../tempergraph-monitor/docs/adr/0006-one-pane-many-levels.adr.md) |
 | Mod API | The types of Claude Code 2.1.329, the build this pass was written against ([R-001](../../../tempergraph-monitor/docs/research/R-001-claude-code-mods.rsrch.md)) |
 
-**Status: In progress.** The read-only core is built: the mod reads `status --json`, stats and tails each live run log, reads `status --detail` for the open run, and draws the band, the status line, toasts and notifications, the run list, the run view, the unit view, the attempt view and the session view's Now and Info parts. Status pass: MDS, MBA, MRV and MDD are `ready-for-implementation`, each with a "Release 1 build" design note saying what is built; MOV, MAC and MCF stay `review` (T10.4 is not started).
+**Status: In progress.** Built: the mod reads `status --json`, stats and tails each live run log, reads `status --detail` for the open run, and reads an open session's journal, process group and log tails. It draws the band (with its stale and narrow rows), the status line, toasts and notifications, the run list with filter and pins, the run view, the pause view, the cost tab, the unit view, the attempt view's tabs and the session view's tabs. Every action fills the prompt: resume with a decision, stop, ask the run driver, ask Claude about a session; paths copy. Settings come from the manifest's `userConfig`. Status pass: every monitor spec is `ready-for-implementation`, each with a "Release 1 build" design note on what is built and where the code differs; the open questions have release 1 defaults.
+
+**Waiting on the engine:** the fleet tab, `scope = machine` and the projection line need T10.1 (machine index, fleet copy, `stats --live`) and T7.4 (`stats --projection`); the supervision line needs SCO's journal (T7.6) and the main thread's `supervision` record; the check tab's output tail and the guard's voided call need fields the detail document does not carry yet (RDD, T5); `observe.tool_inputs` as a setting needs T6.2.
 
 **Pending on the owner's machine (not faked):** the probes P-MOD-2 (reads outside the working directory), P-MOD-3 (PATH under desktop and VS Code) and P-MOD-4 (the mod loads, draws and polls in a live session against a real engine run). P-MOD-1 is answered from the 2.1.329 types (`session.start`'s `isInteractive`) and still wants the same live check. The mod was not turned on in the cloud session that wrote it; its session tests run under `claude plugin test` with the engine answered from fixtures.
 
@@ -36,7 +38,8 @@ The monitor defines no engine type. `hooks/lib/engine.ts` types the documents as
 | REQ-32 | MDS | §2.1 run rows, change signal, run-log tail, detail document; §2.2; §2.3; AC-2, AC-3, AC-4 (rates as functions) | T10.2 |
 | REQ-32 | MBA | §2.1 to §2.4 but the fleet row; AC-1 (paused row), AC-3 | T10.2 |
 | REQ-32 | MRV | §2.3, §2.4; B1, B3 | T10.3 |
-| REQ-32 | MDD | §2.1, §2.2 as one page, §2.4 Now and Info; B5 at the engine's switch | T10.3 |
+| REQ-32 | MDD | §2.1 to §2.5; B1, B5, B6, AC-3 | T10.3 |
+| REQ-32 | MAC, MCF | MAC §2.1, §2.3, B1, B2, B4, AC-1; MCF §2.1, B1–B3 | T10.4 |
 
 ## 2. Phases
 
@@ -52,7 +55,7 @@ The monitor defines no engine type. `hooks/lib/engine.ts` types the documents as
 | 10.2.4 | `hooks/register.tsx`, `types/index.d.ts` | One 1 s clock: stat and tail live logs, `status --json` at the live or idle rate, `status --detail` for the open run; band `AbovePrompt` row; `$.ui.status`; toasts and notifications with the last alerted `seq` in `$.store`; `/tg`; nothing when `isInteractive` is false | MDS §2.1, MBA §2.2–§2.4, MAC §2.2 | yes | P1 | ✓ | 2026-11-20 |
 | 10.2.5 | `tests/monitor.test.tsx` | Session tests: the band names the paused fixture run on terminal and desktop; only `status` and `events` are run; a headless session registers nothing | MBA-AC-1, MDS-AC-2 | yes | P1 | ✓ | 2026-11-20 |
 | 10.2.6 | `hooks/register.tsx` | `scope = machine` from `~/.tempergraph/index.json` (needs T10.1 and P-MOD-2), missing roots | MDS §2.1, B4 | yes | P2 | ○ | |
-| 10.2.7 | `hooks/register.tsx` | `· stale` after 60 s, the under-20-columns row, `alerts.finished` and `alerts.fleet` as mod settings | MBA §4, §2.4 | yes | P2 | ○ | |
+| 10.2.7 | `hooks/lib/model.ts`, `.claude-plugin/plugin.json` | `· stale` after 60 s, the under-20-columns row, `alerts_finished` as a setting (`alerts_fleet` waits for T10.1) | MBA §4, §2.4 | yes | P2 | ✓ | 2026-11-20 |
 | 10.2.8 | `tests/` | MBA-B2 with two sessions sharing one store; MDS-B5 hash test in a live session; MDS-B1 counts under a replaced clock in a session test | MBA-AC-2, MDS-AC-1, AC-4 | yes | P2 | ○ | |
 
 ### T10.3 Monitor run view and drill-down
@@ -62,13 +65,27 @@ The monitor defines no engine type. `hooks/lib/engine.ts` types the documents as
 | 10.3.1 | `hooks/lib/model.ts` | Run list order, list rows, unit rows with the node strip and trip-back lines, narrator, touch strip, attempt rows, the session Now block | MRV §2.3, §2.4, B1, B3; MDD §2.1, §2.4 | yes | P1 | ✓ | 2026-11-20 |
 | 10.3.2 | `hooks/register.tsx` | One pane with the levels runs, run, unit, attempt and session, breadcrumbs, the stale mark, and Back as a footer `Button` with hotkey `b` | MRV §2.1, §2.2; MDD §2.1, §2.2, §2.4 | yes | P1 | ✓ | 2026-11-20 |
 | 10.3.3 | `tests/monitor.test.tsx` | `/tg` opens the run list; pressing the fixture run shows its unit rows | MRV-AC-1 (in part) | yes | P1 | ✓ | 2026-11-20 |
-| 10.3.4 | `hooks/register.tsx` | Keys of MRV §2.2 bound, filter, pin, map item rows, the mobile reduction | MRV §2.2, §2.3, §2.6, B2, AC-2 | yes | P2 | ○ | |
-| 10.3.5 | `hooks/register.tsx` | Attempt tabs, the pause view, Calls from `activity.jsonl`, Processes from `ps`, Log tails, `show.tool_inputs` and `show.log_tails` as settings | MDD §2.2–§2.5, B1–B6, AC-1–AC-3 | yes | P2 | ○ | |
+| 10.3.4 | `hooks/register.tsx`, `hooks/lib/model.ts` | Hotkeys `f`, `g`, `c`, `x`, `b` and `1`–`5` on their buttons, filter, pins in `$.store` | MRV §2.2, §2.3, AC-2 | yes | P2 | ✓ | 2026-11-20 |
+| 10.3.5 | `hooks/register.tsx`, `hooks/lib/session.ts` | Attempt tabs, Calls from `activity.jsonl`, Processes from `ps` (constant argv, the session's group only), Log tails, `show_tool_inputs` and `show_log_tails` as settings | MDD §2.2, §2.4, §2.5, B5, AC-3 | yes | P2 | ✓ | 2026-11-20 |
+| 10.3.7 | `hooks/register.tsx` | Map item rows and the mobile reduction (maps are release 2) | MRV §2.3, §2.6, B2 | yes | P3 | ○ | |
 | 10.3.6 | `hooks/register.tsx` | The orchestration view (release 2, with ORC) | MRV §2.5, B4 | yes | P3 | ○ | |
 
-### T10.1 and T10.4
+### T10.4 Monitor actions, cost and fleet
 
-Not started in this pass. T10.1 (machine index, directory sink, fleet copy) is engine work in CST; T10.4 (actions, cost and fleet) needs MAC and MCF to leave `review`.
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 10.4.1 | `hooks/lib/actions.ts` | Resume fills per decision from the engine's resume line, stop and stop `--now`, the run driver fill, "ask Claude about a session"; each token checked against what the engine printed | MAC §2.1, B1, B4, AC-3 | yes | P1 | ✓ | 2026-11-20 |
+| 10.4.2 | `hooks/register.tsx` | The pause view; `$.prompt.fill` keeping a draft, copy when there is no composer; copy of paths | MAC §2.1, §4; MDD §2.3 | yes | P1 | ✓ | 2026-11-20 |
+| 10.4.3 | `.claude-plugin/plugin.json`, `hooks/register.tsx` | `userConfig` settings of MAC §2.3; `engine_path` | MAC §2.3 | yes | P1 | ✓ | 2026-11-20 |
+| 10.4.4 | `tests/` | Source scan for no send, no tool; a decision press fills the prompt and runs nothing | MAC-AC-1, MAC-B1, B2 | yes | P1 | ✓ | 2026-11-20 |
+| 10.4.5 | `hooks/lib/cost.ts`, `hooks/register.tsx` | The cost tab: total, by unit with repeats, by kind, by executor and model with tokens, budget | MCF §2.1, B1–B3, AC-2 | yes | P1 | ✓ | 2026-11-20 |
+| 10.4.6 | `hooks/register.tsx` | Supervision and projection lines from SCO (T7.6) and `stats --projection` (T7.4) | MCF §2.1 | yes | P2 | ○ | |
+| 10.4.7 | `hooks/register.tsx` | The fleet tab from `stats --live` and the fleet copy (T10.1) | MCF §2.2, B4, B5 | yes | P2 | ○ | |
+| 10.4.8 | `hooks/register.tsx` | `model_tool = interactive`: the read-only `runs` tool, refused to subagent loops | MAC §2.2, B3, AC-2 | yes | P3 | ○ | |
+
+### T10.1
+
+Not started in this pass: machine index, directory sink and fleet copy are engine work in CST.
 
 ## 3. Hand-off notes
 
@@ -78,4 +95,4 @@ Not started in this pass. T10.1 (machine index, directory sink, fleet copy) is e
 
 ## 4. Verification
 
-From `plugins/tempergraph-monitor/`: `bun test ./tests/model.spec.ts` (pure rules against the fixtures), `claude plugin test .` (session tests), `claude plugin validate .`, and a type check with the 2.1.329 types. From `plugins/tempergraph/engine/`: `python -m pytest` includes `test_monitor_fixtures_match_the_engine`. No test calls a model or a live Claude Code session.
+From `plugins/tempergraph-monitor/`: `bun test ./tests/*.spec.ts` (pure rules against the fixtures), `claude plugin test .` (session tests), `claude plugin validate .`, and a type check with the 2.1.329 types. From `plugins/tempergraph/engine/`: `python -m pytest` includes `test_monitor_fixtures_match_the_engine`. No test calls a model or a live Claude Code session.

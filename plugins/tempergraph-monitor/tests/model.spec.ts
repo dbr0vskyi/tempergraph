@@ -1,5 +1,5 @@
 // @ts-nocheck: run by bun, whose types the plugin validator does not load.
-// Pure model rules against engine fixtures (run `bun test ./tests/model.spec.ts` from the plugin folder;
+// Pure model rules against engine fixtures (run `bun test ./tests/*.spec.ts` from the plugin folder;
 // `claude plugin test .` runs the session tests in monitor.test.tsx).
 // The fixtures are written by tests/fixtures/make_fixtures.py from a scripted-executor engine run.
 
@@ -192,6 +192,7 @@ describe('sources (MDS §2, contract M1)', () => {
     const built = [...src.matchAll(/verb<\w+>\(\$, (\w+)\(/g)].map(m => m[1])
     expect(built.length).toBeGreaterThan(0)
     for (const b of built) expect(['statusArgv', 'detailArgv']).toContain(b)
+    expect([...src.matchAll(/[^.]run\(\$, (\w+)\)/g)].map(m => m[1]).sort()).toEqual(['PS_ARGV', 'argv'])
     expect(src).not.toMatch(/\$\.fs\.(write|mkdir|remove|rename|append)/)
   })
   test('a record written in two pieces is yielded once (MDS-AC-3)', () => {

@@ -203,8 +203,21 @@ function isLive(r: RunSummary): boolean {
  * The band row, or null for none. Waiting runs come first (MBA-B1). `endedAgo` gives, per thread, seconds
  * since its last segment ended, for the 10-minute "finished" row.
  */
-export function bandRow(runs: readonly RunSummary[], columns: number, endedAgo: Record<string, number> = {}): string | null {
+export function bandRow(runs: readonly RunSummary[], columns: number, endedAgo: Record<string, number> = {},
+                        stale = false): string | null {
+  const row = bandText(runs, columns - (stale ? STALE.length : 0), endedAgo)
+  return row === null ? null : stale && columns >= 20 ? row + STALE : row
+}
+
+const STALE = ' · stale'
+
+function bandText(runs: readonly RunSummary[], columns: number, endedAgo: Record<string, number>): string | null {
   const live = runs.filter(isLive).sort((a, b) => Number(b.mark === '⏸') - Number(a.mark === '⏸'))
+  if (columns < 20 && live.length) {
+    // MBA §4: under 20 columns, `tg ⏸1` when anything waits, else `tg ▶n`
+    const waiting = live.filter(r => r.mark === '⏸').length
+    return waiting ? `tg ⏸${waiting}` : `tg ▶${live.length}`
+  }
   if (live.length === 0) {
     const recent = runs.filter(r => (endedAgo[r.threadId] ?? Infinity) <= ENDED_RECENTLY_S && r.mark !== '·')
       .sort((a, b) => (endedAgo[a.threadId] ?? 0) - (endedAgo[b.threadId] ?? 0))[0]
@@ -481,4 +494,30 @@ export function sessionInfo(s: Session): string[] {
     `activity ${s.activity_path ?? '–'}`,
     `cost ${cost}`,
   ]
+}
+
+// -- filter and pin (MRV §2.2 `f`, `p`) ---------------------------------------------------------------------------------
+
+export const FILTERS = ['all', 'live', 'waiting', 'failed', 'finished today'] as const
+export type Filter = (typeof FILTERS)[number]
+
+export function nextFilter(f: Filter): Filter {
+  return FILTERS[(FILTERS.indexOf(f) + 1) % FILTERS.length]!
+}
+
+/**
+ * The run list under a filter, pinned runs first (MRV §2.3). `endedAgo` holds seconds since each ended run's
+ * `run_exit`; `todayS` is the seconds since local midnight, so "finished today" needs no clock of its own.
+ */
+export function shownRuns(runs: readonly RunSummary[], filter: Filter, pinned: readonly string[],
+                          endedAgo: Record<string, number>, todayS: number): RunSummary[] {
+  const keep = (r: RunSummary): boolean => {
+    if (filter === 'live') return isLive(r)
+    if (filter === 'waiting') return r.mark === '⏸'
+    if (filter === 'failed') return r.mark === '✗'
+    if (filter === 'finished today') return r.mark === '✓' && (endedAgo[r.threadId] ?? Infinity) <= todayS
+    return true
+  }
+  const sorted = runList(runs.filter(keep))
+  return [...sorted.filter(r => pinned.includes(r.threadId)), ...sorted.filter(r => !pinned.includes(r.threadId))]
 }

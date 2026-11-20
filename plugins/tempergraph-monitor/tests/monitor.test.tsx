@@ -23,6 +23,13 @@ const PANE = {
 
 const ran: string[][] = []
 
+declare const setTimeout: (run: (value?: unknown) => void, ms: number) => unknown
+
+/** The first read runs unawaited from `session.start`; a test lets it finish before it looks. */
+async function settle(): Promise<void> {
+  for (let i = 0; i < 20; i++) await new Promise(r => setTimeout(r, 5))
+}
+
 function engine(on: On, onRegister = () => {}) {
   on('command.register', () => {
     onRegister()
@@ -62,6 +69,7 @@ test('/tg opens the run list and a run opens its unit rows', async ($, on) => {
   await $.session.start({ cwd: '/work/repo', surface: 'desktop', isInteractive: true })
   const out = await $.command.run({ command: 'tg', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 100 } })
   expect(out.text).toBe('Monitor opened.')
+  await settle()
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
   await ui.press({ key: 'run:demo/T-1' })
   expect((await ui.find({ key: 'unit:review' })) ?? null).not.toBeNull()
@@ -75,4 +83,41 @@ test('a headless session starts no timers and registers no command', async ($, o
   })
   await $.session.start({ cwd: '/work/repo', surface: 'terminal', isInteractive: false })
   expect(registered).toBe(false)
+})
+
+test('a decision fills the prompt and nothing runs (MAC-B1)', async ($, on) => {
+  const filled: string[] = []
+  engine(on)
+  on('prompt.read', () => ({ value: { text: '', cursor: 0 } }))
+  on('prompt.fill', (_, e) => {
+    filled.push(e.text)
+    return { isFilled: true }
+  })
+  await $.session.start({ cwd: '/work/repo', surface: 'terminal', isInteractive: true })
+  await settle()
+  await $.command.run({ command: 'tg', args: 'demo/T-1', origin: { kind: 'composer' },
+    presentation: { isFullscreen: false, columns: 100 } })
+  await settle()
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    await ui.press({ key: 'gate' })
+    await ui.press({ key: 'decide:1' })
+    await ui.press({ key: 'back' })
+    await ui.unmount()
+  }
+  expect(filled).toEqual(['!tempergraph resume demo T-1 --decision retry', '!tempergraph resume demo T-1 --decision retry'])
+  for (const argv of ran) expect(['status', 'events']).toContain(argv[1])
+})
+
+test('the cost tab reads reported money as rep (MCF §2.1, M4)', async ($, on) => {
+  engine(on)
+  await $.session.start({ cwd: '/work/repo', surface: 'desktop', isInteractive: true })
+  await settle()
+  await $.command.run({ command: 'tg', args: 'demo/T-1', origin: { kind: 'composer' },
+    presentation: { isFullscreen: false, columns: 100 } })
+  await settle()
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await ui.press({ key: 'cost' })
+  expect((await ui.find({ type: 'Text', text: /^total/ }))?.text).toBe('total $0.10 rep · complete')
+  await ui.unmount()
 })
