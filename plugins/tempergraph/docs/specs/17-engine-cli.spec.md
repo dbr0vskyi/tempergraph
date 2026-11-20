@@ -83,10 +83,10 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `--caller person\|agent\|pipeline`, `--caller-app <name>` | Declares the caller on any mutating verb; a declaration only lowers trust, and `--caller person` from a marked agent is refused ([PRV §2.3](85-caller-provenance.spec.md)) |
 | `--as-agent` | The same as `--caller agent` |
 | `--relayed` | The decision is a person's, carried by an agent; counted as the person's only with a person turn in the host ([PRV §2.4](85-caller-provenance.spec.md)) |
-| `--pause-before <unit>[.<item>]` | Run and resume: an operator breakpoint before that unit ([FLX §2.5](74-flow-extensions.spec.md)) |
+| `--pause-before <unit>[.<item>]` | Run and resume: an operator breakpoint before that unit ([FLX §2.5](74-flow-extensions.spec.md)); release 2, so release 1 refuses it with exit 2 `not_in_release` |
 | `--schedule <fire_id>` | Set by the schedule tick only, with its fire token; recorded as `schedule` ([TCK §2.3](84-schedule-ticks-and-unattended-fires.spec.md)) |
 | `--parent <orchestration>/<node>[/<item>]` | Set by the orchestration supervisor only; recorded with the run options and shown as `parent` ([ORC §2.8](45-orchestration.spec.md) N1) |
-| `--dry-run` | Self-improvement files nothing; every step still runs |
+| `--dry-run` | Self-improvement files nothing; every step still runs; recorded as `dry_run` on `run_started` and in the run's meta |
 
 `run` also takes `--task-id <id>` (1 to 64 letters, digits, `.`, `_` or `-`) and `--input <k>=<v>` (repeatable). Without a resolver the request resolves by the declared input kind, read-only: `text` and `any` give `t-<first 10 hex of the SHA-256 of the whitespace-normalised request>`, so the same request finds the same thread; `tracker_key` takes the key as the id; `file` gives `f-<stem>-<6 hex of the path>`. An empty request is `needs` with the question `request`. `run --check` prints one JSON document and exits 0 on `ok`, 2 on `needs` or `error`, 1 on `broken` (the workflow or its resolver does not load). Machine output of every verb is JSON with `schema_version`; a run's one-line outcome and its resume command go to standard error.
 

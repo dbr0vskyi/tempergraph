@@ -52,7 +52,7 @@ The catalog reads the home registry and loads each package by the first steps of
 | 6.1.3 | `engine/src/tempergraph/cli/main.py` | `run`, `run --check`, `resume`, `status`, `list`, `validate`, `executors [--probe]`, `facts`, `graph`, `wait`, `stop`, `worktree list` and `path`; reserved words; exit codes; `entry` for the `tempergraph` script | CLI §2, §4 | | P1 | ✓ | 2026-11-20 |
 | 6.1.4 | `engine/src/tempergraph/cli/main.py` | Generated verb, option and exit code tables in the docs with a drift test (CLI §5) | CLI §5 | yes | P2 | ○ | |
 | 6.1.5 | — | `attention` (CLI-B6, AC-5): moved to T7.4, which builds it with the reports | CLI-B6 | | | moved | |
-| 6.1.6 | `engine/src/tempergraph/cli/main.py` | The other run options of CLI §2.1: executor and model overrides, timeouts, `--approve` ✓ (spellings of `--set`, T6.2); `--auto-reopen` (refused `setting_not_built` until built), `--pause-before`, `--dry-run` ○ | CLI §2.1, RST | yes | P1 | ○ | |
+| 6.1.6 | `engine/src/tempergraph/cli/main.py`, `run/runner.py` | The other run options of CLI §2.1: executor and model overrides, timeouts, `--approve` (spellings of `--set`, T6.2); `--auto-reopen` (BUD-B6: a retry by the `engine` caller after a `budget` or `infra` stop, at most N per thread, also after a resume or rerun); `--pause-before` refused `not_in_release` (FLX is X2-13); `--dry-run` recorded on `run_started` and in the run's meta for the loop (T12) | CLI §2.1, RST, BUD-B6 | yes | P1 | ✓ | 2026-11-20 |
 
 ### T6.2 Settings
 
@@ -64,7 +64,7 @@ The catalog reads the home registry and loads each package by the first steps of
 | 6.2.4 | `engine/src/tempergraph/cli/main.py` | `--set`, `--settings`, `--profile` on `run`, `resume` and `config show`; `--unset`, `--reload-settings` on `resume`; the named spellings of CLI §2.1; `config show`, `config validate`, `config paths` | RST §2.9, CLI §2.1 | | P1 | ✓ | 2026-11-20 |
 | 6.2.5 | `engine/src/tempergraph/durability/status.py` | The status row's `settings_digest`, `overridden_keys` and `settings_stale` (T7 owns the status row; handed over) | RST §2.7 | yes | P2 | ○ | |
 
-Release 1 notes: keys whose feature is release 2 (the audit judge, switch arms, council, contest, wait and ask keys, the `in_repo` and `path:` roots, the `default_branch` and `ref:` bases, `cleanup: on_finish`) are refused with `setting_not_in_release` (RST §4). `run.auto_reopen` and the widening keys are refused with `setting_not_built` until 6.1.6 and T6.3 build them.
+Release 1 notes: keys whose feature is release 2 (the audit judge, switch arms, council, contest, wait and ask keys, the `in_repo` and `path:` roots, the `default_branch` and `ref:` bases, `cleanup: on_finish`) are refused with `setting_not_in_release` (RST §4). No key is refused with `setting_not_built` any more: `run.auto_reopen` (6.1.6) and the widening keys (T6.3) are built.
 
 ### T6.3 Tool grants
 

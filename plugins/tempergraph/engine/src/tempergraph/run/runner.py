@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import contextlib
 import dataclasses
+import json
 import uuid
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -69,6 +70,7 @@ class RunOutcome:
     thread_id: str = ""
     warnings: list[str] = field(default_factory=list)
     refusals: list[str] = field(default_factory=list)
+    auto_reopen: int = 0  # `run.auto_reopen` of the segment that ended (BUD-B6)
 
 
 @dataclass(kw_only=True)
@@ -92,6 +94,7 @@ class RunSettings:
     revoke_rulings: tuple[str, ...] = ()
     accept_external: bool = False  # consent to rewind or rerun past external effects (RRN §2.3)
     relayed: bool = False  # `--relayed`: the call carries a person's decision (PRV §2.4)
+    dry_run: bool = False  # `--dry-run`: self-improvement files nothing for this run (CLI §2.1)
     home: Path | None = None  # the user config folder's parent; default `home_path()`
 
     def all_flags(self) -> dict[str, Any]:
@@ -300,6 +303,7 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                   executors={"steps": dict(executors or {}), "judges": dict(judges)},
                   settings_digest=settled.resolved.digest, profiles=list(settled.options.profiles),
                   **({"rerun_of": dict(rerun_of)} if rerun_of else {}),
+                  **({"dry_run": True} if settings.dry_run or meta.get("dry_run") else {}),
                   overridden_keys=rst.overridden_keys(settled.resolved))
         rec: dict[str, Any] = {"settings_digest": settled.resolved.digest, "rows": rst.rows_json(settled.resolved),
                                "changed_keys": settled.changed}
@@ -337,6 +341,7 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                                                    "grants": _grants_used(spec, registry, settled, final),
                                                    "supervision": sup})
         outcome.thread_id = tid
+        outcome.auto_reopen = int(settled.run.get("auto_reopen") or 0)
         return outcome
     finally:
         saver.conn.close()
@@ -367,6 +372,12 @@ def _settle(cw: Any, cfg: Mapping[str, Any], spec: WorkflowSpec, task_id: str, r
 def start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: Path, registry: Registry,
           settings: RunSettings | None = None) -> RunOutcome:
     settings = settings or RunSettings()
+    return _reopening(_start(spec, task_id, inputs, target, registry, settings), spec, task_id, target, registry,
+                      settings)
+
+
+def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: Path, registry: Registry,
+           settings: RunSettings) -> RunOutcome:
     tid = thread_id(spec.name, task_id)
     try:
         root = _root(target)
@@ -415,7 +426,8 @@ def start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: P
         RunLog(run_dir(root, spec.name, task_id) / "run.jsonl").write(
             "task", chars=sum(len(v) for v in inputs.values()), request=clip(scrub(inputs.get("request", "")), 200))
         initial = {"request": {"task_id": task_id, "inputs": dict(inputs)}, "workspace": rec.to_json(),
-                   "run": {"meta": {"origin": settings.origin, "label": clip(scrub(settings.label or ""), 80) or None},
+                   "run": {"meta": {"origin": settings.origin, "label": clip(scrub(settings.label or ""), 80) or None,
+                                    **({"dry_run": True} if settings.dry_run else {})},
                            "options": settled.snapshot_json()}}
         out = _drive(spec, task_id, root, registry, settings, rep.judges, initial, settled,
                      executors=rep.step_executors)
@@ -435,6 +447,62 @@ def _live(root: Path, spec: WorkflowSpec, tid: str) -> bool:
 def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *, decision: str | None = None,
            feedback: str | None = None, settings: RunSettings | None = None) -> RunOutcome:
     settings = settings or RunSettings()
+    out = _resume(spec, task_id, target, registry, decision=decision, feedback=feedback, settings=settings)
+    return _reopening(out, spec, task_id, target, registry, settings)
+
+
+# BUD-B6: the stop reasons an automatic re-open answers (spent retries, a step timeout or an infra failure).
+REOPEN_REASONS = frozenset({"budget", "infra"})
+ENGINE_CALLER: Mapping[str, Any] = {"kind": "engine", "confidence": "attested", "decided_by": "engine",
+                                    "relay": "none", "host": "engine", "host_session": None, "caller_app": None,
+                                    "parent": None, "schedule": None, "trace_id": None, "evidence": []}
+
+
+def _reopens(root: Path, tid: str) -> int:
+    path = root / "ledger.jsonl"
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return 0
+    n = 0
+    for ln in lines:
+        with contextlib.suppress(ValueError):
+            r = json.loads(ln)
+            n += isinstance(r, dict) and r.get("kind") == "intervention" and r.get("thread_id") == tid \
+                and r.get("cause") == "auto_reopen"
+    return n
+
+
+def _reopening(out: RunOutcome, spec: WorkflowSpec, task_id: str, target: Path, registry: Registry,
+               settings: RunSettings) -> RunOutcome:
+    """BUD-B6: re-open a stopped run at most `run.auto_reopen` times on the thread, as a retry given in advance.
+
+    Never answers a pause, never undoes a person's stop or a cost cap drain.
+    """
+    warnings = list(out.warnings)
+    while (out.exit_code is ExitCode.BUDGET_OR_INFRA and out.reason in REOPEN_REASONS and out.auto_reopen > 0):
+        try:
+            root = _root(target)
+        except NotInRepository:
+            break
+        if _reopens(root, thread_id(spec.name, task_id)) >= out.auto_reopen:
+            break
+        engine = dataclasses.replace(settings, caller=dict(ENGINE_CALLER, call_id=uuid.uuid4().hex), relayed=False,
+                                     flags={}, profiles=None, unset=(), reload_settings=False, ruling=False,
+                                     ruling_for=(), revoke_rulings=(), accept_external=False)
+        nxt = _resume(spec, task_id, target, registry, decision="retry", feedback=None, settings=engine)
+        if nxt.exit_code is ExitCode.USAGE:
+            warnings.append(f"auto_reopen_refused: {nxt.reason}")
+            break
+        warnings.append(f"auto_reopen: {out.reason}")
+        out = nxt
+        warnings.extend(out.warnings)
+    out.warnings = warnings
+    return out
+
+
+def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *, decision: str | None,
+            feedback: str | None, settings: RunSettings) -> RunOutcome:
     tid = thread_id(spec.name, task_id)
     try:
         root = _root(target)
@@ -597,17 +665,19 @@ def intervention(root: Path, spec: WorkflowSpec, task_id: str, touch: tuple[str,
     unit, kind, reason = touch
     pause = last_record(run_dir(root, spec.name, task_id) / "run.jsonl", "pause", unit=unit)
     wait_s = None
-    if pause and pause.get("ts"):
+    engine = settings.caller.get("kind") == "engine"  # an automatic re-open waits on no one (SUP §2.1)
+    if pause and pause.get("ts") and not engine:
         with contextlib.suppress(ValueError, TypeError):
             wait_s = round((datetime.now(datetime.fromisoformat(pause["ts"]).tzinfo)
                             - datetime.fromisoformat(pause["ts"])).total_seconds(), 1)
     row = {"kind": "intervention", "id": uuid.uuid4().hex, "thread_id": thread_id(spec.name, task_id),
            "workflow": spec.name, "unit": unit, "caller": dict(settings.caller),
-           "touches": touches(kind, reason if kind == "stopped" else "", d), "pause_kind": kind,
+           "touches": [{"class": "engine", "action": "reopen"}] if engine
+           else touches(kind, reason if kind == "stopped" else "", d), "pause_kind": kind,
            "decision": d.word + (f":{d.unit}" if d.unit else ""), "wait_s": wait_s, "feedback": bool(feedback) and not settings.ruling,
            "ruling": settings.ruling, "settings_changed": list(settled.changed) if settled else [],
            "grants": [{k: v for k, v in g.items() if k != "key"} for g in (settled.grant_changes() if settled else [])],
-           "cause": reason or kind}
+           "cause": "auto_reopen" if engine else reason or kind}
     Ledger(path=root / "ledger.jsonl").append(row)
     return row
 

@@ -37,6 +37,7 @@ from tempergraph.run.runner import (
     _Inert,
     _refuse,
     _refuse_settings,
+    _reopening,
     _root,
     settle_resume,
 )
@@ -123,6 +124,18 @@ def rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registry
           accept_external: bool = False, check: bool = False) -> RunOutcome | dict[str, Any]:
     """RRN §2.4. With `check`, returns the plan document and creates nothing (contract C13)."""
     settings = dataclasses.replace(settings or RunSettings(), origin="rerun")
+    out = _rerun(spec, source_task, target, registry, start_at=start_at, feedback=feedback, settings=settings,
+                 task_id=task_id, workspace_from=workspace_from, same_branch=same_branch, drop_rulings=drop_rulings,
+                 accept_external=accept_external, check=check)
+    if isinstance(out, RunOutcome) and out.thread_id:  # BUD-B6 holds for the new thread too
+        return _reopening(out, spec, out.thread_id.partition("/")[2], target, registry, settings)
+    return out
+
+
+def _rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registry, *, start_at: str,
+           feedback: str | None, settings: RunSettings, task_id: str | None, workspace_from: str,
+           same_branch: bool, drop_rulings: bool, accept_external: bool, check: bool
+           ) -> RunOutcome | dict[str, Any]:
     src = thread_id(spec.name, source_task)
     try:
         root = _root(target)
