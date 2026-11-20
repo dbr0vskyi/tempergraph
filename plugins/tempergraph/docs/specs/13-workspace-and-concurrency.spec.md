@@ -3,7 +3,7 @@ title: Workspace and concurrency
 type: component
 status: review
 prefix: WSP
-adrs: [0014, 0090]
+adrs: [0014, 0100]
 ---
 
 # Workspace and concurrency

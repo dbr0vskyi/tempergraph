@@ -1,4 +1,4 @@
-# ADR-0092 Worktrees live beside the repository by default, with names derived ref-safe from the thread id
+# ADR-0102 Worktrees live beside the repository by default, with names derived ref-safe from the thread id
 
 | | |
 |---|---|
@@ -9,7 +9,7 @@
 
 ## Context
 
-The design said a run worktree sits "beside the repository" on branch `tg/<workflow>/<task_id>` but gave no path, no flattening rule and no names for writer worktrees. It also named rerun branches `<branch>~r<n>`, and `~` is not allowed in a git ref; and a writer branch nested under the run branch cannot coexist with it ([R-090](../research/R-090-native-worktrees-and-executor-worktree-features.rsrch.md) F1.6, F2.1). Some hosts allow writes only inside the project folder; Claude Code uses `.claude/worktrees/` there.
+The design said a run worktree sits "beside the repository" on branch `tg/<workflow>/<task_id>` but gave no path, no flattening rule and no names for writer worktrees. It also named rerun branches `<branch>~r<n>`, and `~` is not allowed in a git ref; and a writer branch nested under the run branch cannot coexist with it ([R-100](../research/R-100-native-worktrees-and-executor-worktree-features.rsrch.md) F1.6, F2.1). Some hosts allow writes only inside the project folder; Claude Code uses `.claude/worktrees/` there.
 
 ## Decision
 

@@ -3,7 +3,7 @@ title: Worktree mode
 type: component
 status: review
 prefix: WTR
-adrs: [0090, 0091, 0092, 0093, 0094, 0070]
+adrs: [0100, 0101, 0102, 0103, 0104, 0070]
 ---
 
 # Worktree mode
@@ -12,9 +12,9 @@ adrs: [0090, 0091, 0092, 0093, 0094, 0070]
 
 A run works either **in place**, in the person's checkout, or in its own **git worktree** on its own branch, which the engine creates, records, re-attaches and, only when asked, removes, using git directly on every executor. One setting chooses it, `run.workspace`, with the values `auto`, `worktree` and `in_place`, spelled `--workspace`, `--worktree` and `--in-place`; a few `run.worktree.*` keys say where the worktree lives, which commit it starts from, how its branch is named and whether it is removed after a finished run. All are keys of the settings catalog ([RST §2.2](80-run-settings-and-overrides.spec.md)), so a flag, a profile, a project or user file and the workflow set them in the usual order, and the thread snapshots them.
 
-This spec owns the person-facing parameter, the worktree's lifecycle, its names, how each executor is pointed at it, and how an executor's own worktree feature is kept from creating a second tree. [WSP](13-workspace-and-concurrency.spec.md) keeps the state root, the shapes of parallel work, batches and import roots. Findings and sources: [R-090](../research/R-090-native-worktrees-and-executor-worktree-features.rsrch.md).
+This spec owns the person-facing parameter, the worktree's lifecycle, its names, how each executor is pointed at it, and how an executor's own worktree feature is kept from creating a second tree. [WSP](13-workspace-and-concurrency.spec.md) keeps the state root, the shapes of parallel work, batches and import roots. Findings and sources: [R-100](../research/R-100-native-worktrees-and-executor-worktree-features.rsrch.md).
 
-The engine owns the run's worktree; an executor's native worktree is never used for a run ([ADR-0090](../adr/0090-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md)). Worktrees are optional: a workflow that only reads files or writes outside the repository (a wiki page, a tracker issue) runs in place under `auto` ([ADR-0091](../adr/0091-one-workspace-setting-with-an-auto-default.adr.md)).
+The engine owns the run's worktree; an executor's native worktree is never used for a run ([ADR-0100](../adr/0100-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md)). Worktrees are optional: a workflow that only reads files or writes outside the repository (a wiki page, a tracker issue) runs in place under `auto` ([ADR-0101](../adr/0101-one-workspace-setting-with-an-auto-default.adr.md)).
 
 ## 2. Contract
 
@@ -69,7 +69,7 @@ An explicit `worktree` on a target that is not a git checkout, or with a bare re
 | `submodules` | `auto` \| `skip` | `auto`: when `.gitmodules` exists, `git submodule update --init --recursive` runs before `setup` |
 | `setup_timeout_s` | int 10–3600, default 600 | Limit for the whole bootstrap |
 
-With `run.worktree.read_worktreeinclude`, the patterns of the main checkout's `.worktreeinclude` file (the Claude Code convention, [R-090](../research/R-090-native-worktrees-and-executor-worktree-features.rsrch.md) F3.2) are added to `include`. From either source only files that git reports as untracked or ignored are copied, never a tracked file, never a path outside the main checkout, never a link, and never anything under the state root or `.git`.
+With `run.worktree.read_worktreeinclude`, the patterns of the main checkout's `.worktreeinclude` file (the Claude Code convention, [R-100](../research/R-100-native-worktrees-and-executor-worktree-features.rsrch.md) F3.2) are added to `include`. From either source only files that git reports as untracked or ignored are copied, never a tracked file, never a path outside the main checkout, never a link, and never anything under the state root or `.git`.
 
 ### 2.4 Locations and names
 
@@ -81,7 +81,7 @@ With `run.worktree.read_worktreeinclude`, the patterns of the main checkout's `.
 | `path:` root | An absolute path that is not inside the main checkout's tracked tree, the state root or `.git`; created with owner-only permissions if missing |
 | Run worktree | `<root>/<flat name>` |
 | Run branch | `<branch_prefix>/<workflow>/<task part>`, where the task part is the flat form of `task_id` (so `/` becomes `-`); checked with `git check-ref-format --branch` before use |
-| Writer, slot, item | Worktree `<run worktree>--w-<branch>`, `--s-<slot>`, `--i-<item>`; branch `<run branch>--w-<branch>` and so on. A suffix, never a child path: a ref cannot also be a folder of refs ([R-090](../research/R-090-native-worktrees-and-executor-worktree-features.rsrch.md) F1.6) |
+| Writer, slot, item | Worktree `<run worktree>--w-<branch>`, `--s-<slot>`, `--i-<item>`; branch `<run branch>--w-<branch>` and so on. A suffix, never a child path: a ref cannot also be a folder of refs ([R-100](../research/R-100-native-worktrees-and-executor-worktree-features.rsrch.md) F1.6) |
 | Rerun | Thread `<workflow>/<task_id>~r<n>` keeps its spelling; its flat name and branch carry `-r<n>`, since `~` is not allowed in a ref ([RRN §2.4](81-reruns-and-feedback.spec.md)) |
 
 Names are derived, never typed: no option sets a path or branch name directly, so no text reaches git's argv unchecked ([SEC](14-security.spec.md)). Every git call puts `--end-of-options` before a ref or path.
@@ -117,7 +117,7 @@ A main checkout with uncommitted changes under `head` gives one warning with the
 | `cleanup: on_finish` | After a finished run's finalizer returns (any outcome but `error`), each of the run's worktrees (run, writer, slot, item) that is clean (`git status --porcelain` empty), has no submodules and is not locked by anyone else, by `git worktree remove` without `--force` | A dirty worktree, one with submodules, a branch, anything of a run that did not finish |
 | `worktree prune` | What the list marks `removable`, with `--apply`; without it, only lists | Ditto, plus any worktree of a thread that is `running` |
 
-Engine branches are never deleted by the engine ([ADR-0093](../adr/0093-worktree-removal-is-opt-in-clean-only-and-keeps-the-branch.adr.md)): unpushed commits stay reachable, and `git branch -d` is the person's act.
+Engine branches are never deleted by the engine ([ADR-0103](../adr/0103-worktree-removal-is-opt-in-clean-only-and-keeps-the-branch.adr.md)): unpushed commits stay reachable, and `git branch -d` is the person's act.
 
 ### 2.8 Records
 
@@ -218,9 +218,9 @@ Before and after every step session the engine reads `git worktree list --porcel
 
 ## 5. Design notes
 
-- Why the engine and not the executor: gates, checks, judges and the finalizer run in the engine and need one tree for the whole run, at a base the engine picks; Claude Code's `--worktree` is per session, starts from the default branch, is never removed under `-p` and is left locked; Antigravity's is an App feature; the Messages API has none ([ADR-0090](../adr/0090-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md)).
-- `auto` keeps worktrees optional for non-coding workflows while making the safe choice the default for workflows that change files ([ADR-0091](../adr/0091-one-workspace-setting-with-an-auto-default.adr.md)). A workflow author who wants a fixed mode declares `workspace: worktree` or `in_place`.
-- `head` as the default base keeps a run offline-safe and starts it from what the person sees; `default_branch` matches Claude Code's `fresh` ([ADR-0094](../adr/0094-a-new-worktree-starts-from-the-main-checkouts-head.adr.md)).
+- Why the engine and not the executor: gates, checks, judges and the finalizer run in the engine and need one tree for the whole run, at a base the engine picks; Claude Code's `--worktree` is per session, starts from the default branch, is never removed under `-p` and is left locked; Antigravity's is an App feature; the Messages API has none ([ADR-0100](../adr/0100-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md)).
+- `auto` keeps worktrees optional for non-coding workflows while making the safe choice the default for workflows that change files ([ADR-0101](../adr/0101-one-workspace-setting-with-an-auto-default.adr.md)). A workflow author who wants a fixed mode declares `workspace: worktree` or `in_place`.
+- `head` as the default base keeps a run offline-safe and starts it from what the person sees; `default_branch` matches Claude Code's `fresh` ([ADR-0104](../adr/0104-a-new-worktree-starts-from-the-main-checkouts-head.adr.md)).
 - The engine's lock with a reason keeps `git worktree prune` and other tools' sweeps from dropping the admin data of a paused run's worktree.
 - Release split, for the first-release thread: `auto`/`worktree`/`in_place`, the `sibling` root, `head` base, names, start, resume and re-attach, executor pointing and the two disallowed tools, `worktree list` and `path` are first-release; `in_repo` and `path:` roots, `default_branch` and `ref:` bases, `cleanup: on_finish`, `prune --apply`, foreign-worktree scans and `.worktreeinclude` follow. Writer, slot and item worktrees arrive with the units that need them.
 

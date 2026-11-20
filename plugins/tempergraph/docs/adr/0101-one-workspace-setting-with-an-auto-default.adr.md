@@ -1,4 +1,4 @@
-# ADR-0091 One workspace setting, `run.workspace`, with an `auto` default resolved from the target and the workflow
+# ADR-0101 One workspace setting, `run.workspace`, with an `auto` default resolved from the target and the workflow
 
 | | |
 |---|---|

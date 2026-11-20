@@ -1,4 +1,4 @@
-# ADR-0094 A new run worktree starts from the main checkout's HEAD unless the run names another base
+# ADR-0104 A new run worktree starts from the main checkout's HEAD unless the run names another base
 
 | | |
 |---|---|
@@ -9,7 +9,7 @@
 
 ## Context
 
-No document said which commit a new run worktree starts from. Claude Code's `--worktree` defaults to the remote default branch (`fresh`), with `head` as the alternative ([R-090](../research/R-090-native-worktrees-and-executor-worktree-features.rsrch.md) F3.1). temperspec opens the draft pull request against the default branch or an operator's override, and an orchestration may chain runs where a later run builds on an earlier run's branch ([ORC](../specs/45-orchestration.spec.md)).
+No document said which commit a new run worktree starts from. Claude Code's `--worktree` defaults to the remote default branch (`fresh`), with `head` as the alternative ([R-100](../research/R-100-native-worktrees-and-executor-worktree-features.rsrch.md) F3.1). temperspec opens the draft pull request against the default branch or an operator's override, and an orchestration may chain runs where a later run builds on an earlier run's branch ([ORC](../specs/45-orchestration.spec.md)).
 
 ## Decision
 

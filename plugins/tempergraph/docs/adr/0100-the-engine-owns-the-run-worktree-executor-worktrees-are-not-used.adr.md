@@ -1,4 +1,4 @@
-# ADR-0090 The engine owns the run's worktree; executor-native worktrees are not used
+# ADR-0100 The engine owns the run's worktree; executor-native worktrees are not used
 
 | | |
 |---|---|
@@ -9,7 +9,7 @@
 
 ## Context
 
-The owner asked for "a parameter which allows native worktree support". The design already ran a run in an engine worktree ([WSP](../specs/13-workspace-and-concurrency.spec.md)), but did not say how this relates to worktree features the executors now ship. Claude Code has `--worktree` / `-w`, `.worktreeinclude`, `EnterWorktree` / `ExitWorktree` tools and subagent `isolation: worktree`; the Agent SDK runs the same runtime; Antigravity has worktrees in its App, not its CLI; the Messages API has no workspace ([R-090](../research/R-090-native-worktrees-and-executor-worktree-features.rsrch.md) F3). "Native" could mean either "built into the engine" or "the executor's own feature".
+The owner asked for "a parameter which allows native worktree support". The design already ran a run in an engine worktree ([WSP](../specs/13-workspace-and-concurrency.spec.md)), but did not say how this relates to worktree features the executors now ship. Claude Code has `--worktree` / `-w`, `.worktreeinclude`, `EnterWorktree` / `ExitWorktree` tools and subagent `isolation: worktree`; the Agent SDK runs the same runtime; Antigravity has worktrees in its App, not its CLI; the Messages API has no workspace ([R-100](../research/R-100-native-worktrees-and-executor-worktree-features.rsrch.md) F3). "Native" could mean either "built into the engine" or "the executor's own feature".
 
 ## Decision
 
@@ -44,7 +44,7 @@ We will read "native" as built into the engine: the engine creates, records, re-
 ## Consequences
 
 - Positive: a run's workspace means the same thing on every executor, and no step works in a Claude Code worktree of its own.
-- Negative: projects that already rely on `.claude/worktrees` see a second convention; `in_repo` places engine worktrees there to soften it ([ADR-0092](0092-worktrees-beside-the-repository-with-derived-ref-safe-names.adr.md)).
+- Negative: projects that already rely on `.claude/worktrees` see a second convention; `in_repo` places engine worktrees there to soften it ([ADR-0102](0102-worktrees-beside-the-repository-with-derived-ref-safe-names.adr.md)).
 - Risk: an executor adds a new way to create a worktree. Mitigation: the foreign-worktree scan reports it on the first run.
 
 ## Revisit when

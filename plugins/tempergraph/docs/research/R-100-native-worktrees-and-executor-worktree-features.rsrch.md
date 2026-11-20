@@ -1,4 +1,4 @@
-# R-090 Native worktrees: what the design has, what git and the executors offer
+# R-100 Native worktrees: what the design has, what git and the executors offer
 
 ## Problem statement
 
@@ -7,7 +7,7 @@ The owner asked on 2026-11-20: "Design a parameter which allows native worktree 
 1. What the design already says about workspaces, worktrees and isolation, and what is missing for a person-facing parameter.
 2. Which git behaviours a worktree lifecycle must respect (branch names, removal, locking, submodules).
 3. What each of the four executors offers natively for worktrees in its current public documentation.
-4. Which choices follow, for the spec [WTR](../specs/82-worktree-mode.spec.md) and ADRs [0090](../adr/0090-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md) to [0094](../adr/0094-a-new-worktree-starts-from-the-main-checkouts-head.adr.md).
+4. Which choices follow, for the spec [WTR](../specs/82-worktree-mode.spec.md) and ADRs [0100](../adr/0100-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md) to [0104](../adr/0104-a-new-worktree-starts-from-the-main-checkouts-head.adr.md).
 
 The work was done standalone, without questions to the owner; assumptions are recorded in those ADRs.
 

@@ -84,8 +84,8 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0087](0087-a-supervision-journal-written-by-the-host-not-by-read-only-verbs.adr.md) | Supervision cost is measured by a journal the host writes, not by the engine's read-only verbs | proposed |
 | [0088](0088-attribute-supervision-spend-by-marginal-tokens-beside-turn-totals.adr.md) | Attribute a supervising session's spend to runs by marginal tokens, shown beside turn totals | proposed |
 | [0089](0089-supervision-is-a-promotion-and-improvement-measure.adr.md) | Supervision by every decider is a promotion criterion and an improvement signal | proposed |
-| [0090](0090-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md) | The engine owns the run's worktree; executor-native worktrees are not used | proposed |
-| [0091](0091-one-workspace-setting-with-an-auto-default.adr.md) | One workspace setting, `run.workspace`, with an `auto` default resolved from the target and the workflow | proposed |
-| [0092](0092-worktrees-beside-the-repository-with-derived-ref-safe-names.adr.md) | Worktrees live beside the repository by default, with names derived ref-safe from the thread id | proposed |
-| [0093](0093-worktree-removal-is-opt-in-clean-only-and-keeps-the-branch.adr.md) | Worktree removal is opt-in, only of clean worktrees, and never deletes the branch | proposed |
-| [0094](0094-a-new-worktree-starts-from-the-main-checkouts-head.adr.md) | A new run worktree starts from the main checkout's HEAD unless the run names another base | proposed |
+| [0100](0100-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md) | The engine owns the run's worktree; executor-native worktrees are not used | proposed |
+| [0101](0101-one-workspace-setting-with-an-auto-default.adr.md) | One workspace setting, `run.workspace`, with an `auto` default resolved from the target and the workflow | proposed |
+| [0102](0102-worktrees-beside-the-repository-with-derived-ref-safe-names.adr.md) | Worktrees live beside the repository by default, with names derived ref-safe from the thread id | proposed |
+| [0103](0103-worktree-removal-is-opt-in-clean-only-and-keeps-the-branch.adr.md) | Worktree removal is opt-in, only of clean worktrees, and never deletes the branch | proposed |
+| [0104](0104-a-new-worktree-starts-from-the-main-checkouts-head.adr.md) | A new run worktree starts from the main checkout's HEAD unless the run names another base | proposed |

@@ -1,4 +1,4 @@
-# ADR-0093 Worktree removal is opt-in, only of clean worktrees, and never deletes the branch
+# ADR-0103 Worktree removal is opt-in, only of clean worktrees, and never deletes the branch
 
 | | |
 |---|---|
