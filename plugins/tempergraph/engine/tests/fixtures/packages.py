@@ -95,8 +95,8 @@ def write(root: Path, rel: str, content: str | dict[str, Any] | list[Any]) -> Pa
 
 def minimal_package(parent: Path, name: str = "release-notes", version: str = "0.1.0", *,
                     declaration: str = DECLARATION, checks: str = CHECKS, inline_criteria: bool = False) -> Path:
-    """The minimal package of PKG §2.7. `inline_criteria` adds the draft gate's criteria in the declaration
-    (the older form, WFM-B5) for tests that run before OUT's reader fills gates from `outcome.json`."""
+    """The minimal package of PKG §2.7. `inline_criteria` also declares the draft gate's criteria inline
+    (the older form, WFM-B5), which with `outcome.json` is `criterion-declared-twice`."""
     root = parent / name
     mod = name.replace("-", "_")
     write(root, ".claude-plugin/plugin.json", {"name": name, "version": version, "description": "Release notes", "author": {"name": "Example Owner"}, "license": "MIT",
@@ -133,11 +133,15 @@ def minimal_package(parent: Path, name: str = "release-notes", version: str = "0
     return root
 
 
-def package_parts(root: Path, name: str, outcome: dict[str, Any] | None = None) -> Path:
+def package_parts(root: Path, name: str, outcome: dict[str, Any] | None = None, units: tuple[str, ...] = ()) -> Path:
     """The non-declaration parts every package carries (PKG §2.1), for a test that writes its own declaration."""
     write(root, "workflow/pyproject.toml", f'[project]\nname = "tgwf-{name}"\ndependencies = []\n')
     write(root, "outcome.json", outcome or {"schema_version": 1, "revision": 1, "statement": "Done well.",
-                                            "deliverables": [], "final": [], "intermediate": {}})
+                                            "deliverables": [], "intermediate": {
+                                                u: {"statement": f"{u} done", "criteria": []} for u in units},
+                                            "final": [
+                                                {"id": "done", "text": "The work is done", "verified_by": "judge",
+                                                 "check_method": "Read the result"}]})
     write(root, "evals/cases.json", {"schema_version": 1, "cases": [{"id": "case-1", "request": "x"}]})
     write(root, "diagram/workflow.md", "generated\n")
     write(root, "tests/test_placeholder.py", "def test_placeholder():\n    assert True\n")

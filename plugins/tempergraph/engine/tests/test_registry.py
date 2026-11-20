@@ -35,7 +35,7 @@ def cli(cwd: Path, *argv: str) -> tuple[int, Any, str]:
 
 @pytest.fixture
 def pkg(tmp_path: Path) -> Path:
-    return minimal_package(tmp_path / "src", inline_criteria=True)
+    return minimal_package(tmp_path / "src")
 
 
 def test_register_list_and_catalog(pkg: Path, repo: Path) -> None:
@@ -78,7 +78,7 @@ def test_register_refusals(pkg: Path, repo: Path, tmp_path: Path, monkeypatch: p
 
 def test_name_taken_by_another_path(pkg: Path, repo: Path, tmp_path: Path) -> None:
     assert cli(repo, "workflows", "register", str(pkg))[0] == 0
-    other = minimal_package(tmp_path / "other", inline_criteria=True)
+    other = minimal_package(tmp_path / "other")
     code, _, err = cli(repo, "workflows", "register", str(other))
     assert code == ExitCode.USAGE and "name-taken" in err
     assert cli(repo, "workflows", "register", str(pkg))[0] == 0  # same path again: refreshed in place

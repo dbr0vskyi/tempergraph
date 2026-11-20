@@ -21,7 +21,7 @@ task_id: first-release-t8
 | Origin | [Release 1 plan](first-release.plan.md) track T8 |
 | Specs | [PKG](../specs/88-workflow-package.spec.md), [UPD](../specs/60-engine-update.spec.md), [VER](../specs/61-version-metadata.spec.md), [LIF](../specs/18-lifecycle-and-evals.spec.md), [AUD](../specs/55-workflow-audit.spec.md), [ARC](../specs/56-audit-rule-catalog.spec.md), [PRA](../specs/58-prompt-audit.spec.md), [SCF](../specs/91-blueprint-and-scaffold.spec.md) |
 
-**Status: In progress.** T8.1 is built: a package on disk loads by every step of PKG §2.3 but step 5, validates with the package rules, and registers, lists, unregisters and reinstalls through `tempergraph workflows`. T8.2 is built against a stand-in environment builder; a real `pip install` of the engine into a fresh environment waits on the owner's machine (it needs the package index). T8.3 to T8.6 are not started.
+**Status: In progress.** T8.1 is built: a package on disk loads by every step of PKG §2.3, step 5 through OUT's `read_outcome`, `gate_criteria` and `check_against` (plan T5.8.1), validates with the package rules, and registers, lists, unregisters and reinstalls through `tempergraph workflows`. T8.2 is built against a stand-in environment builder; a real `pip install` of the engine into a fresh environment waits on the owner's machine (it needs the package index). T8.4 has prompt lint (LIF §2.1). T8.3, the rest of T8.4, T8.5 and T8.6 are not started.
 
 Status pass: PKG, UPD and VER are `ready-for-implementation`, with release 1 defaults for their open questions. LIF, AUD, ARC, PRA and SCF get theirs in the first row of T8.4, T8.5 and T8.6.
 
@@ -60,14 +60,14 @@ Assumptions:
 | 8.1.2 | `engine/src/tempergraph/package/manifest.py` | `read_manifest`, both manifests, `pyproject.toml`, the dependency gate | PKG §2.2, §2.3.1 | | P1 | ✓ | 2026-11-20 |
 | 8.1.3 | `engine/src/tempergraph/package/scan.py`, `importer.py` | The source scan before import; private import names with a meta-path finder; the map for the check worker | PKG §2.3 step 3, CHK §2.6 | | P1 | ✓ | 2026-11-20 |
 | 8.1.4 | `engine/src/tempergraph/package/loader.py` | `load`, `load_package` (steps 1 to 4 and 6), interface levels, `package_findings` as the last step of WFM `validate` | PKG §2.3 | | P1 | ✓ | 2026-11-20 |
-| 8.1.5 | `engine/src/tempergraph/package/loader.py` | Step 5: attach `outcome.json` through OUT's `read_outcome` and `gate_criteria`; drop the `inline_criteria` fixtures; `criterion-declared-twice` | PKG §2.3 step 5, OUT §2.3 | yes | P1 | ○ | |
+| 8.1.5 | `engine/src/tempergraph/package/loader.py` | Step 5: attach `outcome.json` through OUT's `read_outcome` and `gate_criteria`, OUT §4 unit rows by `check_against`; `criterion-declared-twice`; the package runs end to end through the outcome gate on stand-ins | PKG §2.3 step 5, OUT §2.3 | yes | P1 | ✓ | 2026-11-20 |
 | 8.1.6 | `engine/src/tempergraph/package/rules.py`, `docs_check.py` | Refused plugin parts, layout, `text-ref`, the docs check | PKG §2.1, §2.5 | | P1 | ✓ | 2026-11-20 |
 | 8.1.7 | `engine/src/tempergraph/package/inventory.py` | `package_files`, `content_digest`, `docs_digest`, `workflow_version` | VER §2.4, PKG-AC-7 | | P1 | ✓ | 2026-11-20 |
 | 8.1.8 | `engine/src/tempergraph/package/registry.py`, `cli/workflows.py`, `engine/tests/test_registry.py` | `registry.json`; `workflows list\|register\|unregister\|reinstall`; `missing` and pin clearing; `version-not-bumped` | UPD §2.8 | yes | P1 | ✓ | 2026-11-20 |
 | 8.1.9 | `engine/src/tempergraph/package/registry.py` | Reconcile of `plugin` entries from Claude Code's plugin cache, run by `install` and `update` | UPD §2.8, PKG-B1 | yes | P1 | ✓ | 2026-11-20 |
 | 8.1.10 | `engine/src/tempergraph/package/loader.py` | The compatibility warning for a package one level behind when the changelog has breaking `workflow` entries (PKG-B6 row 2) | PKG-B6, VER §2.3 | yes | P2 | ○ | |
 
-Row 8.1.5 waits on plan T5.8.1 (OUT's reader, built by the T5 track). Row 8.1.10 needs the changelog of T8.3.
+Row 8.1.10 needs the changelog of T8.3.
 
 ### T8.2 First install
 
@@ -85,7 +85,13 @@ Not started: `upgrade --check --stamp` over an empty changelog, the stamp record
 
 ### T8.4 Scenarios, lint and readiness
 
-Not started.
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 8.4.1 | `engine/tests/test_prompt_lint.py` | Each planted defect found once; clean fixtures raise nothing; skills and agents linted and resolved; the shared name reader | LIF-AC-6, PRA-AC-3 | yes | P1 | ✓ | 2026-11-20 |
+| 8.4.2 | `engine/src/tempergraph/model/prompt_lint.py` | The rules of LIF §2.1 as `validate` warnings | LIF §2.1 | | P1 | ✓ | 2026-11-20 |
+| 8.4.3 | | The structural judge readiness report; `gate-not-ready` in `stable` mode (LIF-B6) | LIF §2, OUT §2.2.1, AUT §2.4.1 | yes | P1 | ○ | |
+| 8.4.4 | | Deterministic scenarios on the scripted stand-ins (LIF-B4) | LIF §2, EVS | yes | P1 | ○ | |
+| 8.4.5 | | Package diagram currency: `diagram/model.json` digest against the spec (LIF-AC-2) | LIF-AC-2 | yes | P2 | ○ | |
 
 ### T8.5 Audit
 

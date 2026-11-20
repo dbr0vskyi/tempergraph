@@ -105,7 +105,7 @@ def _attach_outcome(spec: WorkflowSpec, root: Path) -> tuple[WorkflowSpec, list[
             c for c in extra if c.id not in inline[name])))
         units[name] = dataclasses.replace(unit, gate=gate)
     spec = dataclasses.replace(spec, outcome=got, units=units)
-    return spec, rules.criteria_twice(spec, inline), False
+    return spec, rules.criteria_twice(spec, inline) + list(outcome_mod.check_against(got, spec)), False
 
 
 def load_package(package_path: Path, *, engine_api: int = WORKFLOW_API,
@@ -176,9 +176,6 @@ def package_findings(spec: WorkflowSpec, mode: Literal["dev", "stable"] | None =
     inventory = package_files(root)
     if isinstance(py, Pyproject):
         out += rules.layout(root, got, py, inventory)
-    if not (root / "outcome.json").is_file():
-        out.append(Finding("outcome-missing", None, "outcome.json is missing: every package states its good "
-                           "outcome (OUT §2.1)"))
     out += rules.text_refs(spec, root)
     out += docs_check.docs_check(spec, root, mode)
     seen: set[tuple[str, str | None, str]] = set()

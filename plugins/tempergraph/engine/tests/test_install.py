@@ -218,13 +218,13 @@ def test_reconcile_registers_repoints_and_keeps_missing(tmp_path: Path, monkeypa
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "claude"))
     plugin_dir = tmp_path / "claude" / "plugins" / "cache" / "acme" / "release-notes"
     plugin_dir.mkdir(parents=True)
-    minimal_package(tmp_path / "v1", "release-notes", "0.1.0", inline_criteria=True).rename(plugin_dir / "0.1.0")
+    minimal_package(tmp_path / "v1", "release-notes", "0.1.0").rename(plugin_dir / "0.1.0")
     write(plugin_dir / "other", "README.md", "not a package\n")
     done = reg.reconcile(caps())
     [e] = reg.read_entries()
     assert (e["name"], e["kind"], e["plugin"], e["state"]) == ("release-notes", "plugin", "release-notes@acme", "ok")
     assert e["path"] == str(plugin_dir / "0.1.0") and done[0].ok
-    tmp_v2 = minimal_package(tmp_path / "v2", "release-notes", "0.2.0", inline_criteria=True)
+    tmp_v2 = minimal_package(tmp_path / "v2", "release-notes", "0.2.0")
     tmp_v2.rename(plugin_dir / "0.2.0")
     (plugin_dir / "0.1.0" / ".orphaned_at").write_text("1\n")
     reg.reconcile(caps())
@@ -241,11 +241,11 @@ def test_reconcile_registers_repoints_and_keeps_missing(tmp_path: Path, monkeypa
 
 def test_reconcile_skips_a_name_already_registered_locally(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "claude"))
-    local = minimal_package(tmp_path / "src", inline_criteria=True)
+    local = minimal_package(tmp_path / "src")
     reg.register(local, caps())
     cached = tmp_path / "claude" / "plugins" / "cache" / "acme" / "release-notes"
     cached.mkdir(parents=True)
-    minimal_package(tmp_path / "c", inline_criteria=True).rename(cached / "0.1.0")
+    minimal_package(tmp_path / "c").rename(cached / "0.1.0")
     done = reg.reconcile(caps())
     assert [e["kind"] for e in reg.read_entries()] == ["local"]
     assert any("name-taken" in {f.code for f in c.findings} for c in done)

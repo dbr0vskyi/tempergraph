@@ -24,12 +24,13 @@ from tempergraph.run.check_worker import run_in_worker
 
 from .fixtures.packages import CHECKS, DECLARATION, minimal_package, write
 
-try:
-    import tempergraph.run.outcome as _outcome  # noqa: F401  # plan T5.8.1
 
-    OUTCOME_READER = hasattr(_outcome, "read_outcome")
-except ImportError:
-    OUTCOME_READER = False
+def writes_notes(req: Any) -> Any:
+    """The draft step's stand-in reply, writing the `notes` deliverable the outcome check looks for."""
+    from .test_run import DRAFT
+
+    (req.workdir / "notes.md").write_text("# Added\n# Changed\n# Fixed\n# Removed\n")
+    return DRAFT
 
 
 def caps() -> dict[str, Any]:
@@ -49,7 +50,7 @@ def not_loaded(path: Path, **kw: Any) -> PackageNotLoaded:
 
 @pytest.fixture
 def pkg(tmp_path: Path) -> Path:
-    return minimal_package(tmp_path / "p", inline_criteria=True)
+    return minimal_package(tmp_path / "p")
 
 
 # -- PKG-AC-1 the minimal package --------------------------------------------------------------------
@@ -58,7 +59,7 @@ def pkg(tmp_path: Path) -> Path:
 def test_minimal_package_loads_validates_compiles_and_runs(pkg: Path, repo: Path) -> None:
     from tempergraph.executors.standins import standin
 
-    from .test_run import DRAFT, NO_SLEEP, judge, registry, verdict_block
+    from .test_run import NO_SLEEP, judge, registry, verdict_block
 
     lp = load_package(pkg)
     spec = lp.spec
@@ -68,7 +69,8 @@ def test_minimal_package_loads_validates_compiles_and_runs(pkg: Path, repo: Path
     assert codes(validate(spec, caps()), "error") == set()
     from tempergraph.run.runner import start
 
-    ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("MET", "MET"))])
+    ex = standin("claude", steps=[writes_notes], judges=[judge(verdict_block("MET", "MET")),
+                                                         judge(verdict_block("MET"), sid="j-outcome")])
     out = start(spec, "R-1", {"request": "v1.2"}, repo, registry(ex), NO_SLEEP)
     assert out.exit_code is ExitCode.FINISHED, out.message
     step = next(c for c in ex.calls if c.kind == "step")
@@ -76,16 +78,24 @@ def test_minimal_package_loads_validates_compiles_and_runs(pkg: Path, repo: Path
     assert "Write release notes for v1.2" in step.request.prompt  # text("prompts/draft.md")
 
 
-@pytest.mark.xfail(not OUTCOME_READER, strict=True, reason="PKG §2.3 step 5 waits on OUT's reader (plan T5.8.1)")
 def test_minimal_package_gates_take_criteria_from_outcome(tmp_path: Path) -> None:
-    spec = load(minimal_package(tmp_path))
-    assert {c.id for c in spec.units["draft"].gate.criteria} == {"rn-sections", "rn-faithful"}
-    assert codes(validate(spec, caps()), "error") == set()
-
-
-def test_minimal_package_without_outcome_reader_is_pending(tmp_path: Path) -> None:
+    """PKG §2.3 step 5, OUT-B1: the draft gate's criteria come from outcome.json."""
     lp = load_package(minimal_package(tmp_path))
-    assert lp.outcome_pending is not OUTCOME_READER
+    gate = lp.spec.units["draft"].gate
+    assert [(c.id, c.mechanical) for c in gate.criteria] == [("rn-sections", True), ("rn-faithful", False)]
+    assert lp.spec.outcome is not None and [c.id for c in lp.spec.outcome.final] == ["rn-complete"]
+    assert not lp.outcome_pending and codes(validate(lp.spec, caps()), "error") == set()
+
+
+def test_criterion_declared_twice_and_outcome_rows(tmp_path: Path) -> None:
+    pkg = minimal_package(tmp_path, inline_criteria=True)
+    assert "criterion-declared-twice" in codes(validate(load(pkg), caps()), "error")
+    outcome = json.loads((pkg / "outcome.json").read_text())
+    outcome["intermediate"]["ghost"] = {"statement": "x", "criteria": []}
+    write(pkg, "outcome.json", outcome)
+    assert "outcome-unit-unknown" in codes(validate(load(pkg), caps()), "error")
+    write(pkg, "outcome.json", {**outcome, "final": []})
+    assert "outcome-missing" in codes(validate(load(pkg), caps()), "error")
 
 
 @pytest.mark.skipif(shutil.which("claude") is None, reason="needs the claude CLI (model-free validate)")
@@ -187,7 +197,7 @@ def test_pyproject_name_and_missing_files(pkg: Path) -> None:
     (pkg / "README.md").unlink()
     (pkg / "outcome.json").unlink()
     found = validate(load(pkg), caps())
-    assert {"pyproject-name", "outcome-missing"} <= codes(found, "error")
+    assert {"pyproject-name", "outcome-missing"} <= codes(found, "error")  # the latter from OUT's reader
     assert "package-file-missing" in codes(found, "warning")
     (pkg / "workflow/pyproject.toml").unlink()
     assert "pyproject-missing" in codes(validate(load(pkg), caps()), "error")
@@ -241,8 +251,8 @@ def _other_checks(word: str) -> str:
 
 
 def test_two_packages_same_module_names(tmp_path: Path, repo: Path) -> None:
-    a = load_package(minimal_package(tmp_path / "a", "notes-a", checks=_other_checks("from-a"), inline_criteria=True))
-    b = load_package(minimal_package(tmp_path / "b", "notes-b", checks=_other_checks("from-b"), inline_criteria=True))
+    a = load_package(minimal_package(tmp_path / "a", "notes-a", checks=_other_checks("from-a")))
+    b = load_package(minimal_package(tmp_path / "b", "notes-b", checks=_other_checks("from-b")))
     ga, gb = a.spec.units["draft"].gate, b.spec.units["draft"].gate
     assert ga.check is not None and gb.check is not None
     assert (ga.check.module, gb.check.module) == ("tgwf_notes_a.checks", "tgwf_notes_b.checks")
@@ -254,8 +264,8 @@ def test_two_packages_same_module_names(tmp_path: Path, repo: Path) -> None:
 
 
 def test_reload_after_new_version_drops_old_modules(tmp_path: Path) -> None:
-    a = load_package(minimal_package(tmp_path / "v1", checks=_other_checks("v1"), inline_criteria=True))
-    b = load_package(minimal_package(tmp_path / "v2", checks=_other_checks("v2"), inline_criteria=True))
+    a = load_package(minimal_package(tmp_path / "v1", checks=_other_checks("v1")))
+    b = load_package(minimal_package(tmp_path / "v2", checks=_other_checks("v2")))
     assert importer.mapping()["tgwf_release_notes"].startswith(str((tmp_path / "v2").resolve()))
     ctx = checkmod.CheckContext(unit="draft", workdir=tmp_path, request={})
     for lp, want in ((b, "v2"),):
@@ -279,7 +289,7 @@ def test_builder_refuses_unknown_name_and_version(pkg: Path, arg: str, word: str
 
 
 def test_name_and_version_come_from_manifests(tmp_path: Path) -> None:
-    spec = load(minimal_package(tmp_path, "notes-x", "2.4.1", inline_criteria=True))
+    spec = load(minimal_package(tmp_path, "notes-x", "2.4.1"))
     assert (spec.name, spec.version) == ("notes-x", "2.4.1")
     m = read_manifest(tmp_path / "notes-x")
     assert not isinstance(m, list) and m.name == "notes-x" and m.entry == "notes_x:workflow"
@@ -293,9 +303,10 @@ def test_judge_sessions_never_get_the_plugin(pkg: Path, repo: Path) -> None:
     from tempergraph.executors.standins import standin
     from tempergraph.run.runner import start
 
-    from .test_run import DRAFT, NO_SLEEP, judge, registry, verdict_block
+    from .test_run import NO_SLEEP, judge, registry, verdict_block
 
-    ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("MET", "MET"))])
+    ex = standin("claude", steps=[writes_notes], judges=[judge(verdict_block("MET", "MET")),
+                                                         judge(verdict_block("MET"), sid="j-outcome")])
     start(load(pkg), "R-2", {"request": "v1.2"}, repo, registry(ex), NO_SLEEP)
     judges = [c for c in ex.calls if c.kind != "step"]
     assert judges and all(c.request.plugin_dir is None for c in judges)

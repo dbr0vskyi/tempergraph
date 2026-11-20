@@ -159,7 +159,7 @@ def package(root: Path, name: str = "notes-flow") -> Path:
                               gate=Gate(check=draft_check, judge=Judge(stance="Verify."),
                                         criteria=[Criterion(id="c-file", text="notes.md exists")]))})
     '''))
-    return package_parts(pkg, name)
+    return package_parts(pkg, name, units=("draft",))
 
 
 def test_registered_package_loads_and_runs(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -173,7 +173,7 @@ def test_registered_package_loads_and_runs(repo: Path, tmp_path: Path, monkeypat
     assert cat.specs["notes-flow"].version == "0.2.0" and cat.broken == {"gone": "manifest"}
     code, doc, _ = cli(repo, None, "list", catalog=cat)
     assert {r["name"]: r["state"] for r in doc["workflows"]} == {"notes-flow": "ok", "gone": "not_loaded"}
-    ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("MET"))])
+    ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("MET")), judge(verdict_block("MET"))])
     code, _, err = cli(repo, ex, "run", "notes-flow", "Release 1.2", "--task-id", "N-1", catalog=cat)
     assert code == 0, err  # the check ran in the worker, importing the package's own module
     code, _, err = cli(repo, None, "run", "gone", "x", catalog=cat)

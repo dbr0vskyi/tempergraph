@@ -29,7 +29,7 @@ PLANTED = {
 
 @pytest.mark.parametrize("code", sorted(PLANTED))
 def test_each_planted_defect_is_found_once(tmp_path: Path, code: str) -> None:
-    pkg = minimal_package(tmp_path, inline_criteria=True)
+    pkg = minimal_package(tmp_path)
     where, text = PLANTED[code]
     write(pkg, "prompts/draft.md" if where == "prompt" else "judges/draft.md", text)
     found = [f.code for f in lint(load(pkg))]
@@ -38,12 +38,12 @@ def test_each_planted_defect_is_found_once(tmp_path: Path, code: str) -> None:
 
 
 def test_clean_fixtures_raise_nothing(tmp_path: Path) -> None:
-    assert lint(load(minimal_package(tmp_path, inline_criteria=True))) == []
+    assert lint(load(minimal_package(tmp_path))) == []
     assert lint(two_step()) == []
 
 
 def test_skill_and_agent_files_are_linted_and_resolved(tmp_path: Path) -> None:
-    pkg = minimal_package(tmp_path, inline_criteria=True)
+    pkg = minimal_package(tmp_path)
     write(pkg, "skills/style/SKILL.md", "---\nname: style\ndescription: d\n---\nSee agent `checker`.\n")
     assert [f.code for f in lint(load(pkg))] == ["lint-ref-missing"]
     write(pkg, "agents/checker.md", "---\nname: checker\ndescription: c\n---\nCheck.\n")
