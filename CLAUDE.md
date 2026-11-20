@@ -31,7 +31,7 @@ Besides the framework, this repo is a Claude plugin marketplace with several plu
 
 - `tempergraph`: the engine itself.
 - `tempergraph-monitor`: a Claude Mod showing progress of runs, etc.
-- Possibly others, to be defined.
+- `release-notes` and `doc-refresh`: example workflow packages (first-release plan T11.1); the engine's `tests/test_examples.py` loads and runs them on stand-ins, so a change that breaks them fails the engine's suite.
 
 Layout:
 
