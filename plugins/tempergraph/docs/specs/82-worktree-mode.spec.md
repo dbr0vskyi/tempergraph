@@ -1,7 +1,7 @@
 ---
 title: Worktree mode
 type: component
-status: review
+status: ready-for-implementation
 prefix: WTR
 adrs: [0100, 0101, 0102, 0103, 0104, 0070]
 ---
@@ -53,7 +53,7 @@ Every key is fixed at the start: `resume` refuses `--set` of `run.workspace`, `r
 |---|---|---|---|
 | Not a git checkout | any | `in_place` | `not_git` |
 | git checkout | has a writer branch, a writing map item or a writing contest ([WSP §2.1](13-workspace-and-concurrency.spec.md)) | `worktree` | `writers` |
-| git checkout | a step, script or hybrid script declares `edit`, `write` or `shell`, or a script declares `side_effects: local` ([SCR](70-script-units-and-hybrid-steps.spec.md)) | `worktree` | `writes_files` |
+| git checkout | a step, script or hybrid script declares `edit`, `write` or `shell`, or a script has `side_effects: workspace`, the default ([SCR](70-script-units-and-hybrid-steps.spec.md)) | `worktree` | `writes_files` |
 | git checkout | none of the above | `in_place` | `read_only` |
 
 An explicit `worktree` on a target that is not a git checkout, or with a bare repository, is refused with exit 2 before spend. An explicit `in_place` on a workflow with writers is refused with exit 2 ([WSP-B6](13-workspace-and-concurrency.spec.md)). An explicit `in_place` on a workflow that writes files is allowed, with one warning, and the executors keep their in-place permission modes ([ECC §2.3](11-executor-claude-code.spec.md), [EAS §2.4](21-executor-agent-sdk.spec.md)).
@@ -249,9 +249,9 @@ Before and after every step session the engine reads `git worktree list --porcel
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should a merged writer branch be deleted at the join? The design keeps every branch. | Owner |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Should a merged writer branch be deleted at the join? The design keeps every branch. | Owner | Keep (no writer branches in release 1) |
 
 ## References
 

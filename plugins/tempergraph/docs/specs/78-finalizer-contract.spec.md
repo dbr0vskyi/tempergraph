@@ -1,7 +1,7 @@
 ---
 title: Finalizer contract
 type: component
-status: review
+status: ready-for-implementation
 prefix: FIN
 adrs: [0015, 0075]
 ---

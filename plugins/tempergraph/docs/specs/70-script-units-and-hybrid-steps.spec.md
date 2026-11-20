@@ -1,7 +1,7 @@
 ---
 title: Script units and hybrid steps
 type: component
-status: review
+status: ready-for-implementation
 prefix: SCR
 adrs: [0040, 0062, 0067]
 ---

@@ -1,7 +1,7 @@
 ---
 title: Gate and human nodes
 type: component
-status: review
+status: ready-for-implementation
 prefix: HUM
 adrs: [0004, 0015, 0065, 0066, 0073, 0074, 0085, 0086]
 ---

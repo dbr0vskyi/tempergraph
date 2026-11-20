@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "source": "home",
+  "month": "2026-11",
+  "since": null,
+  "totals": {
+    "runs": 2,
+    "threads": 2,
+    "reported_usd": 0.06,
+    "estimated_usd": null,
+    "completeness": "complete",
+    "lower_bound": false,
+    "exits": {
+      "0": 1,
+      "3": 1
+    }
+  },
+  "unknown_schema": 0,
+  "synced": {
+    "team": {
+      "synced_at": "2026-11-20T11:05:17.631Z",
+      "machines": {
+        "372f898b-8135-4efd-90d8-8a653ea66e16": {
+          "label": "desk-b",
+          "synced_at": "2026-11-20T11:05:17.631Z",
+          "rows": 1,
+          "ago_s": 0.0
+        },
+        "d4cf5171-493f-4961-85bd-92e6d3abbc73": {
+          "label": "laptop-a",
+          "synced_at": "2026-11-20T11:05:17.631Z",
+          "rows": 1,
+          "ago_s": 0.0
+        }
+      }
+    }
+  },
+  "by": {
+    "key": "machine",
+    "groups": {
+      "desk-b (372f898b)": {
+        "runs": 1,
+        "threads": 1,
+        "reported_usd": 0.02,
+        "estimated_usd": null,
+        "completeness": "complete",
+        "lower_bound": false,
+        "exits": {
+          "3": 1
+        }
+      },
+      "laptop-a (d4cf5171)": {
+        "runs": 1,
+        "threads": 1,
+        "reported_usd": 0.04,
+        "estimated_usd": null,
+        "completeness": "complete",
+        "lower_bound": false,
+        "exits": {
+          "0": 1
+        }
+      }
+    }
+  }
+}

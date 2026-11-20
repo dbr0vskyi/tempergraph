@@ -1,7 +1,7 @@
 ---
 title: Run detail document
 type: component
-status: review
+status: ready-for-implementation
 prefix: RDD
 adrs: [0022, 0023]
 ---
@@ -23,18 +23,20 @@ def detail(selector: Selector, unit: str | None = None, with_live: bool = True) 
 |---|---|
 | `schema_version`, `generated_at` | |
 | `run` | Every field of the status document row for the thread, plus `segment`, `last_seq`, `run_dir` (local path), `plan_digest` |
-| `plan` | Units in graph order: `name`, `kind` (`step`, `map`, `fork`, `join`, `switch`, `human`, `sub_workflow`, `finalizer`), `gated`, declared executor and judge executor, alias, `edges` (targets with the verdict or arm that takes them), `items` count for map and fork |
-| `units[]` | Per unit: `state` (`not_reached`, `running`, `passed`, `failed`, `paused`, `skipped`), `visits[]`, `cost` (reported, estimated, flag), `duration_s`, `share` (fraction of the run's estimated cost) |
-| `visits[]` | `visit`, `entered_from`, `attempts[]` |
-| `attempts[]` | `attempt`, `item`, `started_at`, `ended_at`, `step` (session), `check` (result, duration, `output_path`, clipped evidence), `judge` (session, verdict inputs: per-criterion `{n, id, status}`, `met`, `total`, `blockers` with clipped evidence and fix from the local evidence file, `confidence` and source), `gate` (verdict, route target, guard status), `repeat_cause` |
+| `plan` | Units in graph order, then the finalizer: `name`, `kind` (`step`, `map`, `fork`, `join`, `switch`, `human`, `sub_workflow`, `finalizer`), `gated`, declared executor and judge executor, alias, `edges` (`{target, on}`: the unit a verdict or arm takes, `human` for a pause, `end` for a stop; a person's decision words are on `pause`), `items` count for map and fork |
+| `units[]` | Per unit: `state` (`not_reached`, `running`, `passed`, `failed`, `paused`, `skipped`), `visits[]`, `cost` (`reported`, `estimated`, `figure` as the run line counts it, `completeness`), `duration_s`, `share` (fraction of the run's cost figure) |
+| `visits[]` | `visit`, `entered_from` (EVT §2.2's words; a bare unit name in the run log reads as `back:<unit>`), `attempts[]` |
+| `attempts[]` | `attempt`, `item`, `started_at`, `ended_at`, `step` (session), `check` (result, duration, `output_path`, clipped evidence), `judge` (session, verdict inputs: per-criterion `{n, id, status}`, `met`, `total`, `blockers` with clipped evidence and fix from the local evidence file, `confidence` and source), `gate` (verdict, route target, guard status), `repeat_cause` (on an attempt its gate sent round again: `blocker:<id>`, `check:FAIL` or `retry`), `scripts` for a script unit or a hybrid step's scripts |
 | `sessions[]` (inside step and judge) | `session_key`, `kind`, executor, alias, model, `session_id`, `transcript`, `activity_path`, `live_path`, `usage`, `tool_calls` count, `outcome` (`ok`, `timed_out`, `stalled`, `partial`, `infra_cause`, `error_kind`), and when live, `live` (§2.2) |
-| `pause` | When paused: kind, `question`, artifact keys with local paths, decision words, exact resume commands, `waiting_since` |
+| `pause` | When paused: unit, kind, `question`, artifact keys with local paths (null for a value), decision words, exact resume commands, `waiting_since`, `waiting_s` |
 | `budgets` | Each counter: used, limit; run cost cap and what is left of it |
 | `health` | §2.3 |
 | `supervision` | Touches in time order (class, action, caller kind, decider, relay, wait seconds), the supervising host sessions seen so far, the level so far, and supervision cost so far with its completeness ([SUP §2.5](86-supervision-metrics.spec.md), [SCO](87-supervision-cost.spec.md)) |
 | `events_tail` | The last 20 run-log records of kinds `unit_entered`, `check`, `gate`, `route`, `pause`, `human`, `budget`, `stop_requested`, rendered as one line each (the "narrator" lines of a monitor) |
 
-Text fields are scrubbed and clipped to 200 characters; evidence and fix lines are clipped to 400. Paths are local. A document larger than 1 MB is cut by dropping `events_tail`, then attempt detail of passed units, and says so in `truncated`; `--unit <name>` returns one unit in full.
+A run-log record is placed by its envelope: `attempt_start` opens the attempt its `session_key` names, and a `check`, `judgement` or `gate` record of a unit belongs to that unit's open attempt. Release 1 keeps a unit's last judgement, with its evidence and fix lines, in the checkpoint, so those lines are shown for the last judged attempt of each unit; earlier attempts show blocker ids only until the `evidence/` folder holds one judgement per attempt ([LOS §2.1](33-local-observability-store.spec.md)).
+
+Text fields are scrubbed and clipped to 200 characters; evidence and fix lines are clipped to 400. Paths are local. A document larger than 1 MB is cut by dropping `events_tail`, then attempt detail of passed units, and says so in `truncated`; `--unit <name>` returns one unit in full, and `--no-live` builds it without the live blocks.
 
 ### 2.2 Live block of a running session
 

@@ -1,7 +1,7 @@
 ---
 title: Drill-down
 type: component
-status: review
+status: ready-for-implementation
 prefix: MDD
 adrs: [0004, 0005]
 ---
@@ -87,6 +87,7 @@ When the run waits for a person, the run view opens here with `g`: the pause kin
 ## 5. Design notes
 
 - Judge first: much of repeat cost is a judge sending work back, so the reason a judge gave is the most useful line in an attempt ([MADR-0004](../adr/0004-borrow-the-workflows-view-and-add-gates.adr.md)).
+- Release 1 build ([T10 plan](../../../tempergraph/docs/plans/t10-monitor.plan.md)): the unit view (header with gate budget left, visits and attempt rows), the attempt view's four tabs (hotkeys `1` to `4`; it opens on the node in flight, else on the judge when it named blockers, else on the gate), the pause view of §2.3 with one prompt fill per decision ([MAC](05-actions-and-safety.spec.md)), and the session view's five tabs are drawn. Settings are `show_tool_inputs` and `show_log_tails`. Deviations: the check tab shows the clipped evidence only, as the check's stdout and stderr tails are not in the detail document yet; the guard's discarded judgement (MDD-B4) shows as the gate's `guard` value until the detail document carries the voided call; the Log tab reads `raw.jsonl` and `stderr.log` beside the engine transcript and says "not found (pruned, or never written)" when they are gone (MDD-B6); a Calls tab with no journal says so rather than rebuilding from the live file.
 - Program names only in the process tree: arguments of child processes are what the engine's scrubber never saw.
 - Raw log lines are shown as text, never interpreted; the meaning comes from normalized records only ([engine ADR-0009](../../../tempergraph/docs/adr/0009-normalized-session-event-stream.adr.md)).
 
@@ -100,7 +101,7 @@ When the run waits for a person, the run view opens here with `g`: the pause kin
 
 | Question | Owner |
 |---|---|
-| Should the Calls tab offer "open in Claude": filling the prompt with a request to explain the selected session from its `raw.jsonl`? It costs the person's model usage; it is offered as an action, not automatic ([MAC](05-actions-and-safety.spec.md)). | Owner |
+| Should the Calls tab offer "open in Claude": filling the prompt with a request to explain the selected session from its `raw.jsonl`? It costs the person's model usage; it is offered as an action, not automatic ([MAC](05-actions-and-safety.spec.md)). Default for release 1: yes, as the session view's "ask Claude about this session" fill, which names the session's transcript and the attempt's gate verdict. | Owner |
 
 ## References
 

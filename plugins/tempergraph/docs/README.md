@@ -2,7 +2,7 @@
 
 The design of the tempergraph engine, written the spec-driven way temperspec follows: **research → decision record → spec → plan → code**. Each link is a document the next link reads, so a fresh session can implement a component from its spec without a conversation.
 
-This set is docs only; no code exists yet. Release 1 is scoped by [ADR-0090](adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md) and planned in [plans/first-release.plan.md](plans/first-release.plan.md); its readiness review is [R-090](research/R-090-implementation-readiness.rsrch.md). The next link in the chain is the expanded plan of each track.
+Code for release 1 lives in [`../engine/`](../engine/pyproject.toml) and is built track by track. Release 1 is scoped by [ADR-0090](adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md) and planned in [plans/first-release.plan.md](plans/first-release.plan.md); its readiness review is [R-090](research/R-090-implementation-readiness.rsrch.md). Each track has its expanded plan in [plans/](plans/README.md).
 
 ## Where things live
 

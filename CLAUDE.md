@@ -4,7 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-tempergraph is at the design stage: the repository holds design documents only, with no source code, build system or test suite yet. Release 1 is planned in `plugins/tempergraph/docs/plans/first-release.plan.md`; its track T1.1 chooses the tooling. Do not invent build/lint/test commands; update this file once tooling is added.
+Release 1 is being built from `plugins/tempergraph/docs/plans/first-release.plan.md`, one track plan per track (`plugins/tempergraph/docs/plans/t<N>-*.plan.md`). The engine's Python source is the plugin's staged engine at `plugins/tempergraph/engine/` (src layout, ADR-0115). Truth ranking: acceptance criteria, then specs and decision records, then plans, then code; a code change that makes a doc false updates the doc in the same pull request.
+
+## Commands
+
+Run from `plugins/tempergraph/engine/`:
+
+- Install: `python -m pip install -e '.[dev]'` (Python 3.11+)
+- Test: `python -m pytest` (offline; stand-in executors only). Live checks against a signed-in `claude` are marked `live` and run only with `TEMPERGRAPH_LIVE=1`.
+- Lint: `ruff check src tests`
+- Types: `mypy`
 
 ## What the project is
 
@@ -24,7 +33,7 @@ Besides the framework, this repo is a Claude plugin marketplace with several plu
 - `tempergraph-monitor`: a Claude Mod showing progress of runs, etc.
 - Possibly others, to be defined.
 
-Layout (scaffolded, plugins are empty for now):
+Layout:
 
 - `.claude-plugin/marketplace.json`: marketplace catalog (named `tempergraph`); add every new plugin here.
 - `plugins/<name>/.claude-plugin/plugin.json`: per-plugin manifest.

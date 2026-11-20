@@ -1,7 +1,7 @@
 ---
 title: Run events for observers
 type: component
-status: review
+status: ready-for-implementation
 prefix: EVT
 adrs: [0009, 0022, 0023, 0027]
 ---
@@ -27,20 +27,24 @@ Every run-log record, old kinds and new, carries these keys. Adding them keeps t
 | `unit`, `item`, `attempt` | string?, string?, int? | Where in the graph, when the record belongs to a unit |
 | `session_key` | string? | `<unit>[.<item>].<attempt>.<kind>[.<n>]`, e.g. `plan.2.judge` or `code.p3.1.judge_reask.2`; stable name of one session's folder ([LOS](33-local-observability-store.spec.md)) |
 
+The optional keys are present on every record, null when the record has no unit. A record that names a `session_key` and leaves `unit` or `attempt` out gets them from the key. The writer finds its `segment` from the log itself: one more than the last `run_started`'s, or 0 for a new thread, so every writer in one process agrees. A last line cut off by a dead process is ended before the next record, and `seq` continues from the last whole record. A field named `kind` in §2.2 is written as `session_kind` (on `session_opened`) or `pause_kind` (on `pause`), because `kind` is the record kind.
+
 ### 2.2 Observer record kinds (additive)
 
 | Kind | Written when | Key fields |
 |---|---|---|
-| `run_started` | After the lock and before the first unit, on start and each resume | `origin`, `parent` (orchestration id, node and item, when an orchestration started the run, [ORC](45-orchestration.spec.md)), `schedule` (schedule id, fire id and slot, when a schedule started it, [TCK §2.7](84-schedule-ticks-and-unattended-fires.spec.md)), `alias`, `label`, `workflow_version` ([VER §2.4](61-version-metadata.spec.md)), `plan_digest` (the diagram model's), `executors` planned per unit; `engine_version`, `shape_digest` and `moved_from` when the engine or the workflow changed since the last process ([MIG §2.1](62-state-and-run-migration.spec.md)); `settings_digest`, `profiles`, `overridden_keys` ([RST §2.7](80-run-settings-and-overrides.spec.md)); `rerun_of` for a rerun ([RRN §2.4](81-reruns-and-feedback.spec.md)); `caller`, the `Caller` of the call that started or resumed the segment ([PRV §2.5](85-caller-provenance.spec.md)) |
+| `run_started` | After the lock and before the first unit, on start and each resume | `origin`, `parent` (orchestration id, node and item, when an orchestration started the run, [ORC](45-orchestration.spec.md)), `schedule` (schedule id, fire id and slot, when a schedule started it, [TCK §2.7](84-schedule-ticks-and-unattended-fires.spec.md)), `alias`, `label`, `workflow_version` ([VER §2.4](61-version-metadata.spec.md)), `plan_digest` (the diagram model's), `executors` planned per unit; `engine_version`, `shape_digest` and `moved_from` when the engine or the workflow changed since the last process ([MIG §2.1](62-state-and-run-migration.spec.md)); `settings_digest`, `profiles`, `overridden_keys` ([RST §2.7](80-run-settings-and-overrides.spec.md)); `rerun_of` for a rerun ([RRN §2.4](81-reruns-and-feedback.spec.md)); `dry_run` when the run was started with `--dry-run` ([CLI §2.1](17-engine-cli.spec.md)); `caller`, the `Caller` of the call that started or resumed the segment ([PRV §2.5](85-caller-provenance.spec.md)) |
 | `settings_resolved` | Right after `run_started`, on start, each resume and a rerun | `settings_digest`, `rows[]` of `{key, value, layer, ref, shadowed[]}`, `changed_keys` ([RST §2.7](80-run-settings-and-overrides.spec.md)); `caller` when `changed_keys` is not empty |
 | `unit_entered` | A unit's step node is entered (also each visit after a trip back) | `visit`, `entered_from` (`start`, `proceed`, `retry`, `back:<unit>`, `rewind:<unit>`, `rerun`, `resume`); `head_commit` and `dirty` of the workspace when it is a git checkout, so a rerun can start from it ([RRN §2.4](81-reruns-and-feedback.spec.md)) |
 | `session_opened` | The executor's `session_started` event arrives | `kind` (step, retry, judge, judge_reask, grouping, member, member_reask, chair), executor, alias, bound model, `session_id`, `transcript` (§2.4), `pgid` (process group id on POSIX, null elsewhere) |
 | `check` | A deterministic check finishes | `result` (`PASS`, `MAYBE`, `FAIL`), `environmental`, `untracked_only`, `duration_s`, `output_path` (local), `evidence` clipped to 200 chars, scrubbed |
 | `judgement` | A judgement block is parsed, before the gate derives the verdict | per criterion `{n, id?, status}` (no evidence text), `met`, `total`, `blockers` (criterion ids), `confidence` and its source, `gap` |
 | `budget` | A budget counter is charged ([BUD](08-budgets-and-failures.spec.md)) | counter name, used, limit, cause |
-| `pause` | A gate interrupts for a person | pause kind, `question` (clipped, scrubbed), artifact keys to review, decision words, resume command |
-| `script` | A script of a script unit or a hybrid step ends ([SCR](70-script-units-and-hybrid-steps.spec.md)) | name, phase (`unit`, `before`, `after`), command prefix, exit code, `duration_s`, `cached`, `environmental` |
+| `pause` | A gate interrupts for a person | pause kind, `reason`, `question` (clipped, scrubbed), artifact keys to review, decision words, resume command, `tool_access[]` of `{name, capability, class}` for cause `tool_access` |
+| `script` | A script of a script unit or a hybrid step ends ([SCR](70-script-units-and-hybrid-steps.spec.md)) | unit, name, phase (`unit`, `before`, `after`), command prefix (null for a callable), exit code, `duration_s`, `cached`, `environmental` |
 | `council_round` | A council round's barrier closes ([CNL](71-council-unit.spec.md)) | round, members answered, spoiled, missing, `changed` count, label order |
+| `finding_recorded` | After every `run_exit`, best effort | Cause codes and fault sides of the segment's findings, their count, and at a final exit the lenses that fire (`mode`, `friction`, `outcome.fire`, `outcome.needs_judge`, `cost`, the per-gate `quality` scorecard) ([SIL §2.1, §2.2](16-self-improvement.spec.md), IMD §2.3) |
+| `outcome` | At a `run_exit` whose segment reached the outcome gate | The thread's `OutcomeRecord` so far: `revision`, `verdict`, `criteria[]` (id, class, severity, trust, status, grader), `intermediate[]`, `later[]`; the latest one is the thread's record, and the `run_segment` ledger row carries it as `outcome{}` (`not_reached` before the gate) ([OUT §2.5](90-run-outcome.spec.md)) |
 | `council_tally` | A council's outcome is derived | mode, rule, counts per option or Borda points, outcome (`<option>`, `no_decision`), `chosen_by` |
 | `contest_pick` | A contest's pick runs ([CTS](72-contest-unit.spec.md)) | per slot: check result, derived verdict, rank keys, cost; winner |
 | `workspace` | The run's workspace is prepared, reused, attached, changed by a person between segments, released, removed or kept, or a foreign worktree appears during a session ([WTR §2.6, §2.10](82-worktree-mode.spec.md)) | `action` (`prepared`, `reused`, `attached`, `external_change`, `released`, `removed`, `kept`, `foreign`), `mode`, `resolved_by`, `branch`, `base_commit`, `reason`, counts; a path only in the local run log |
@@ -54,18 +58,20 @@ The existing `gate` record gains the optional keys `route_target` and `judgement
 
 ### 2.3 Activity journal
 
-One JSON-lines file per session at `sessions/<session_key>/activity.jsonl` in the run's folder ([LOS §2.1](33-local-observability-store.spec.md)), written by the same writer thread that feeds the live progress file, from the normalized events ([CON §2.7](01-contracts.spec.md)).
+One JSON-lines file per session at `sessions/<session_key>/activity.jsonl` in the run's folder ([LOS §2.1](33-local-observability-store.spec.md)), written by the same writer that feeds the live progress file, from the normalized events ([CON §2.7](01-contracts.spec.md)). The writer buffers lines and appends them at most once a second, on the `result` event and at session end; in-process observers get each line after it is appended (§2.6).
 
 | Field | Meaning |
 |---|---|
 | `t` | Receive time from the launcher, seconds since session spawn (float) |
 | `n` | Per-session line number |
 | `ev` | Normalized event name |
-| event fields | As in CON §2.7, plus `input_summary` on `tool_started` (§2.5) and `duration_s` on `tool_finished` |
+| event fields | As in CON §2.7, plus `capability` and `input_summary` on `tool_started` (§2.5) and `duration_s` on `tool_finished` |
 
 A `resources` line is added every 10 s while the session runs (POSIX): CPU seconds and peak resident memory summed over the session's process group, and the number of processes in it, from a read-only process listing with constant argv; numbers only. The time profile and the detail document read it ([OBS](15-observability-and-cost.spec.md), [RDD](31-run-detail-document.spec.md)).
 
-Rules: append-only, flushed at most once a second and at session end; local only; capped at 20 000 lines or 8 MB per session, after which `model_delta` lines are dropped first, then `text` lines, and a final `truncated` line counts what was dropped. The journal is not a run-log record and is never read by the analyzer for cost.
+Rules: append-only, flushed at most once a second and at session end; local only; capped at 20 000 lines or 8 MB per session, after which `model_delta` lines are dropped first, then `text` lines, and a final `truncated` line counts what was dropped. The cap is applied as the journal grows, so tool lines are never the ones dropped: past half the cap `model_delta` lines are dropped, past three quarters `text` lines too, past 95 % every line but `tool_started` and `tool_finished`, and the last line is kept for `truncated`. The journal is not a run-log record and is never read by the analyzer for cost.
+
+The live progress file of the same session holds `open_tool` (name, capability, input summary, `started_at`), `recent` (the last ten finished calls with name, input summary, `ok` and `duration_s`), `last_text`, `tokens_so_far`, `turns_so_far`, `pgid` and `last_event_at`; it is removed at session end ([LOS §2.1](33-local-observability-store.spec.md)). The detail document turns its times into the ages of [RDD §2.2](31-run-detail-document.spec.md).
 
 ### 2.4 Transcript locator
 
@@ -77,7 +83,7 @@ Rules: append-only, flushed at most once a second and at session end; local only
 
 | Capability ([CON §2.5](01-contracts.spec.md)) | Summary |
 |---|---|
-| `shell` | The command line as given to the shell; the working directory relative to the workspace if not the workspace itself |
+| `shell` | The command line as given to the shell; the working directory relative to the workspace if not the workspace itself, when the tool's input names one (Claude Code's `Bash` input has no working directory, so its summary is the command alone) |
 | `read`, `edit`, `write`, `list` | The path relative to the workspace; a path outside it reads `<outside workspace>` |
 | `search` | The pattern, clipped |
 | `web_fetch` | The URL's host only |
@@ -102,8 +108,10 @@ def register_observers(entry_point_group: str = "tempergraph.observers") -> list
 | Way | For | Rule |
 |---|---|---|
 | `events <selector> [--since <seq>] [--follow] [--activity <session_key>] [--json]` | Any reader: the monitor, a script | Read-only, model-free (contract C13); prints records in `seq` order; `--follow` ends when the segment's `run_exit` is read and no lock is held |
-| In-process observer | Exporters ([TEL](35-telemetry-export.spec.md)) and sinks ([CST](34-central-run-stats.spec.md)) | Enabled by name in the operator config only; each runs on its own thread behind a bounded queue (1 000 items); a full queue drops and counts; an exception disables that observer for the segment and is recorded once |
+| In-process observer | Exporters ([TEL](35-telemetry-export.spec.md)) and sinks ([CST](34-central-run-stats.spec.md)) | Enabled by name in the operator config only; each runs on its own thread behind a bounded queue (1 000 items); a full queue drops and counts; an exception disables that observer for the segment and is recorded once, as an `engine_error` record of scope `observer` written by the run's own writer at its next record |
 | Lifecycle hook ([CLI §2.2](17-engine-cli.spec.md)) | Commands such as a tracker plugin | Run events widened to `started`, `unit_entered`, `gate_verdict`, `paused`, `resumed`, `stop_requested`, `stalled`, `finished`, `failed`; orchestration events are [ORC](45-orchestration.spec.md)'s and schedule events [SCH](83-schedules.spec.md)'s; detached, ticketed, with a facts file only |
+
+Release 1 ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md)): the `events` verb and the observer interface ship; no observer is enabled until the operator config's `observers` key exists ([RST](80-run-settings-and-overrides.spec.md)), and lifecycle hooks are release 2.
 
 ## 3. Behaviours
 
@@ -117,7 +125,7 @@ def register_observers(entry_point_group: str = "tempergraph.observers") -> list
 
 | Raw input | `input_summary` |
 |---|---|
-| `export TOKEN=sk-ant-abc… && make test` | `export TOKEN=[scrubbed] && make test` |
+| `export TOKEN=sk-ant-abc… && make test` | `export TOKEN=[redacted] && make test` (the scrubber's marker, [SEC §2.3](14-security.spec.md)) |
 | `cat /etc/passwd` (read tool) | `<outside workspace>` |
 | 600-character heredoc | first 199 characters and `…` |
 
@@ -132,6 +140,8 @@ def register_observers(entry_point_group: str = "tempergraph.observers") -> list
 | Condition | Result |
 |---|---|
 | Activity journal write fails | Journal disabled for that session, one `engine_error` record; the session and the live file go on |
+| The ledger row or the exit file cannot be written (a full disk) | The exit code is unchanged; one `engine_error` record of scope `ledger` or `exit_file` is attempted ([OBS-B3](15-observability-and-cost.spec.md)) |
+| Recording the loop's findings fails | The exit code is unchanged; one `engine_error` record of scope `improve` ([SIL-B1](16-self-improvement.spec.md)) |
 | A reader meets an unknown kind or field | Skipped (contract C12) |
 | `events` on a selector with no run log | Exit 2, nothing created |
 | An observer named in config is not installed | Warning at preflight, recorded; the run starts |
@@ -159,7 +169,7 @@ def register_observers(entry_point_group: str = "tempergraph.observers") -> list
 | Question | Owner |
 |---|---|
 | Probe P-CC-7 / P-AS-4: does a `claude -p` session started by the engine keep a native transcript, and at which path, when the engine passes its isolation flags? Until run, `native` is null. | Executor implementer |
-| Should `input_summary` for `edit` carry a changed-line count? Deferred until the monitor shows a need. | Monitor owner |
+| Should `input_summary` for `edit` carry a changed-line count? Release 1 default: no; deferred until the monitor shows a need. | Monitor owner |
 
 ## References
 

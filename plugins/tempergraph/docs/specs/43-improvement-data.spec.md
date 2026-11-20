@@ -1,7 +1,7 @@
 ---
 title: Improvement data requirements
 type: component
-status: review
+status: ready-for-implementation
 prefix: IMD
 adrs: [0033, 0030, 0034]
 ---
@@ -107,6 +107,7 @@ Reports print a parameter's provenance beside any figure it decides. Changing a 
 
 - These requirements are additive to what the observability design already records ([OBS](15-observability-and-cost.spec.md)); where it names a field differently, its name wins and this table is updated.
 - Pseudonymous machine ids and keyed request digests are the smallest identity that makes cross-machine pattern counting work without sending text; anything more is a governance decision the owner makes with the aggregate's design.
+- Release 1 build ([T7 plan](../plans/t7-observability.plan.md) T7.5, [T10 plan](../plans/t10-monitor.plan.md) T10.1): the aggregate is the directory sink of [CST](34-central-run-stats.spec.md). Sink `run` rows carry `machine_id`, `repo_id` (keyed with the sink key), `thread_hash`, `workflow` and `workflow_version`; `label` rows (IMD-R4) carry `run_id` (`<thread>#<segment>`), `thread`, `workflow`, `workflow_version`, `machine` and `repo`, the same join keys as the ledger's `run_segment` and `intervention` rows (`tempergraph/identity.py`: the machine id, and the first 16 hex of the SHA-256 of the normalized origin URL, null without an origin; unkeyed, since the ledger stays local in release 1). IMD-AC-1 is tested over the sink, the fleet copy, the outbox and label rows. Labels do not cross to a sink in release 1.
 
 ## 6. Acceptance criteria
 
@@ -117,9 +118,9 @@ Reports print a parameter's provenance beside any figure it decides. Changing a 
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Who reads pull-request and issue state for IMD-R5 on a team: each machine, or the aggregate's collector once? Assumed the collector, to avoid N reads of the code host. | Owner, with the run-monitor design |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Who reads pull-request and issue state for IMD-R5 on a team: each machine, or the aggregate's collector once? Assumed the collector, to avoid N reads of the code host. | Owner, with the run-monitor design | The collector |
 
 ## References
 

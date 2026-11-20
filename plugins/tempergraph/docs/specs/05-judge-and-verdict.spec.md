@@ -1,7 +1,7 @@
 ---
 title: Judge and verdict
 type: component
-status: review
+status: ready-for-implementation
 prefix: JDG
 adrs: [0005, 0013, 0021, 0074, 0076]
 ---

@@ -1,7 +1,7 @@
 ---
 title: Version metadata of the engine and of workflows
 type: component
-status: review
+status: ready-for-implementation
 prefix: VER
 adrs: [0057, 0058]
 ---
@@ -34,6 +34,7 @@ adrs: [0057, 0058]
 |---|---|---|
 | `schema_version` | int | `1` |
 | `engine_version` | semver | This release |
+| `loads_workflow_api_from` | int | The oldest `workflow_api` level this release still loads ([PKG §2.3](88-workflow-package.spec.md)) |
 | `workflow_api` | int | The level of the workflow-facing interface: `WorkflowSpec` fields, the declaration format, callable signatures, template grammar and engine keys, capability names and aliases. It grows by one with every release that has a breaking `workflow`-audience entry (§2.3). |
 | `store_layout` | int | The state-root and home layout this release writes ([LOS](33-local-observability-store.spec.md)) |
 | `reads_store_layouts` | list of int | Layouts it can migrate forward ([MIG §2.2](62-state-and-run-migration.spec.md)) |
@@ -45,7 +46,7 @@ adrs: [0057, 0058]
 | `executor_compat` | ref | The executor compatibility table of [LIF](18-lifecycle-and-evals.spec.md) |
 | `released_at` | date | |
 
-The record is plain data in the package, generated at release and checked by a drift test against the constants it names.
+The record is plain data in the package (`tempergraph/data/release.json`), generated at release and checked by a drift test against the constants it names, and against the plugin's `plugin.json` version.
 
 ### 2.3 Compatibility changelog
 
@@ -138,6 +139,8 @@ The engine computes, at load:
 | `shape_digest` | The diagram model ([LIF](18-lifecycle-and-evals.spec.md)) | Whether the graph changed |
 | `workflow_version` | `<version>+<first 12 hex of content_digest>` | The id reports, proposals (`base_version`), lessons (`added_in`) and runs record |
 
+`content_digest` leaves out `verified_engine`, which mirrors `stamp.json`, so a stamp never changes the id it records.
+
 A changed `content_digest` under an unchanged `version` in a package installed from a marketplace is a validation **warning** (`version-not-bumped`), because the plugin cache is keyed by the version string ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U3).
 
 ### 2.5 Stamp record (`stamp.json`)
@@ -150,6 +153,7 @@ Written in the package only by `upgrade --stamp` after every check of [WUP §2.6
 | `engine_version`, `workflow_api` | The engine stamped against |
 | `workflow_version` | The workflow's version and content digest at the stamp |
 | `entries_applied[]` | Changelog entry ids handled, each with `by` ∈ `transform`, `model`, `person`, `none` |
+| `docs_digest`, `shape_digest` | The docs half's digest ([PKG §2.5](88-workflow-package.spec.md)) and the diagram's, at the stamp |
 | `baseline` | Counts of validation and audit findings by severity at the stamp |
 | `stamped_at` | |
 
@@ -169,7 +173,7 @@ Computed by the catalog, `run --check`, `update` and `upgrade --check`; model-fr
 | `out_of_range` | The engine lies outside `requires_engine` |
 | `unstamped` | No stamp; every entry since `workflow_api` 1 is considered |
 
-Only `needs_upgrade` with a hit whose entry is `tightened` makes the workflow fail validation, and that is validation's own finding. Every other state is a warning line in the catalog, at run start and in `update`, naming `tempergraph upgrade <workflow>`.
+The changelog files are `tempergraph/data/changelog/<engine_version>.json`; the catalog shows the state in `list` as `compatibility`. Only `needs_upgrade` with a hit whose entry is `tightened` makes the workflow fail validation, and that is validation's own finding. Every other state is a warning line in the catalog, at run start and in `update`, naming `tempergraph upgrade <workflow>`.
 
 ## 3. Behaviours
 
@@ -221,9 +225,9 @@ Only `needs_upgrade` with a hit whose entry is `tightened` makes the workflow fa
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should `requires_engine` also be written into the workflow plugin's `plugin.json` as a dependency on the `tempergraph` plugin with a version range, so Claude Code refuses a mismatched install ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U6)? The design proposes it but does not rely on it. | Owner |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Should `requires_engine` also be written into the workflow plugin's `plugin.json` as a dependency on the `tempergraph` plugin with a version range, so Claude Code refuses a mismatched install ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U6)? The design proposes it but does not rely on it. | Owner | No: `plugin.json` names `tempergraph` without a range |
 
 ## References
 

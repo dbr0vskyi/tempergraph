@@ -1,7 +1,7 @@
 ---
 title: Lifecycle skills for install, update and upgrade
 type: component
-status: review
+status: ready-for-implementation
 prefix: LSK
 adrs: [0061, 0060, 0055, 0058]
 ---
@@ -82,6 +82,18 @@ The order of steps 2, 3 and 6 comes from where the update code lives. Claude Cod
 | 3 Owner pauses | On exit 3, for each pause: shows the owner's question, the draft and what each choice changes; resumes the upgrade run with the person's own decision only ([SHL-B2](19-plugin-shell.spec.md)); then `upgrade --continue <id>` | the person's decision |
 | 4 Result | On exit 4: shows each failing check with its evidence and that the branch is kept, and offers the authoring skill for the manual items. On exit 0: shows the report, the share of items done by transform, model and person, and the proposed version. | — |
 | 5 Finish | Offers `--stamp`, `--bump` and `--open-pr` together, and names a `weakens-gate` label when there is one | one yes |
+
+### 2.6 Release 1
+
+| Part | Release 1 |
+|---|---|
+| Skills | Only `tempergraph:install` ships (I-72). The update skill is release 2 with `update` (X2-8), and the upgrade skill release 3 with `upgrade` beyond `--check` (X3-13); the authoring skill's upgrade mode runs `upgrade-check` and reports |
+| `<plugin>` | The skill's base directory's grandparent (`<plugin>/skills/install/`), which Claude Code shows when the skill loads |
+| Step 1 | An engine already current is reported as current; there is no update skill to hand over to |
+| Step 2 | Only `claude` runs steps, so no `--with` extra is asked; the skill reads `claude`'s row of `executors` for the consequences and says the other executors come later |
+| Step 5 | The shim is called by the absolute path its `shim` line names: `workflows list`, then `executors --probe`. The CLI has no `--version` flag; the `engine` line of the install output is quoted instead |
+| JSON | `install` takes `--json`; `workflows list` and `executors` print JSON always |
+| Not built | The rubric scenarios of LSK-AC-1 and AC-4 run the skill with a model: live, on the owner's machine. LSK-AC-2 and AC-3's fixed command list are checked by the shell-skills structure test |
 
 ## 3. Behaviours
 

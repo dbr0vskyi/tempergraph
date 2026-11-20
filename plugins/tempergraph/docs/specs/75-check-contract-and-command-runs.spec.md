@@ -1,7 +1,7 @@
 ---
 title: Check contract and command runs
 type: component
-status: review
+status: ready-for-implementation
 prefix: CHK
 adrs: [0075, 0077, 0067]
 ---
@@ -120,7 +120,7 @@ A step declares `self_check: true` ([CON §2.1](01-contracts.spec.md) `StepSpec`
 
 ### 2.6 The check worker and its limit
 
-A check runs in a child engine process (the check worker) that receives the context as a document on standard input, like the library executors' workers ([ADR-0019](../adr/0019-in-process-executors-run-in-a-worker-process.adr.md)). `GateSpec.check_timeout_s` (default 1800 s) bounds the whole check; at the limit plus 30 s the engine ends the worker and its process tree.
+A check runs in a child engine process (the check worker) that receives the context as a document on standard input, like the library executors' workers ([ADR-0019](../adr/0019-in-process-executors-run-in-a-worker-process.adr.md)). `GateSpec.check_timeout_s` (default 1800 s) bounds the whole check; at the limit plus 30 s the engine ends the worker and its process tree. The document carries the engine's import path and the map of workflow packages' private import names to their folders ([PKG §2.3](88-workflow-package.spec.md)), so the worker imports the check by its reference alone.
 
 ## 3. Behaviours
 
@@ -188,9 +188,9 @@ A check runs in a child engine process (the check worker) that receives the cont
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should the check worker be kept warm across gates of one run to save the interpreter start? Measure first. | Engine implementer |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Should the check worker be kept warm across gates of one run to save the interpreter start? Measure first. | Engine implementer | No: one worker per check |
 
 ## References
 

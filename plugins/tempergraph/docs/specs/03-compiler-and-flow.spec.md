@@ -1,7 +1,7 @@
 ---
 title: Compiler and flow
 type: component
-status: review
+status: ready-for-implementation
 prefix: CMP
 adrs: [0002, 0004, 0062, 0079]
 ---
@@ -20,7 +20,7 @@ def successors(spec: WorkflowSpec, unit: str) -> SuccessorSet: ...   # one answe
 def node_names(unit: str) -> tuple[str, str, str, str]: ...           # shared by compiler and diagram model
 ```
 
-`SuccessorSet` lists, per routing token, the target nodes: `PROCEED` → next unit, route target, switch arm or finalizer; `RETRY` → the unit's step node; `BACK` → each listed earlier unit; `ESCALATE` → the unit's human node; `STOP` → end.
+`SuccessorSet` lists, per routing token, the target nodes: `PROCEED` → next unit, route target, switch arm or finalizer; `RETRY` → the unit's step node; `BACK` → each listed earlier unit; `ESCALATE` → the unit's human node; `STOP` → end. The human node's edges are the same without `ESCALATE`, plus `rewind:<unit>` → the step node of every earlier unit in `order` ([RRN §2.3](81-reruns-and-feedback.spec.md)). Node names are `<unit>.step`, `<unit>.judge`, `<unit>.gate`, `<unit>.human` and `finalizer`.
 
 ### 2.1 Nodes of one unit
 

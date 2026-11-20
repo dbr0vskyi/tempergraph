@@ -1,7 +1,7 @@
 ---
 title: Workflow audit
 type: component
-status: review
+status: ready-for-implementation
 prefix: AUD
 adrs: [0050, 0051, 0053, 0054, 0015]
 ---
@@ -78,6 +78,23 @@ One finding per (rule, unit, item); a rule that matches several fields of one un
 
 A workflow package may carry `audit.ignore`, a list of `{rule, unit?, reason, until?}`. `reason` is required (one sentence); `until` is an optional date after which the ignore lapses. An ignored finding is counted in the summary and shown under `--all`. An ignore for a rule id the catalog does not know is itself an `info` finding. Ignores cannot hide a validation error.
 
+### 2.5 Release 1
+
+Release 1 builds the `definition` and `host` layers, the prompt audit and `audit prompts`, ignores, the three formats and `--fail-on` (plan T8.5, [ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md) item I-62). The engine code is `tempergraph.audit` and `tempergraph.cli.audit`.
+
+| Part | Release 1 |
+|---|---|
+| `history` layer | Release 2 (X2-9). With no `--layer` it is listed under skipped with reason `not in release 1 (release 2)` and every history rule is listed as skipped with its `min_n` (AUD-B1); `--layer history` is refused with `not_in_release`, exit 2 |
+| `audit tools` | The tool-surface audit of [TSA](57-tool-surface-audit.spec.md) is release 2 (X2-10); refused with `not_in_release`, exit 2 |
+| `--window`, `--version` | Accepted and recorded in the header; they narrow nothing until history exists |
+| `audit.ignore` | A field of `tempergraph.json` (`{"audit": {"ignore": [...]}}`, [PKG §2.2](88-workflow-package.spec.md)). An entry without a reason, or with an `until` that is not a date, is the validation error `audit-ignore-invalid` (AUD-AC-7). An entry may name a catalog id or an owned code (`validate:<code>`, `prompt-lint:<code>`, `readiness:<grade>`, `executor-compat:<code>`); any other id raises the `info` finding `ignore-rule-unknown` |
+| Owned checks | Validation's findings render as `validate:<code>`, prompt lint's as `prompt-lint:<code>`, the readiness report's as `readiness:needs-work` (warning) and `readiness:needs-cases` (info), the executor compatibility table's as `executor-compat:executor-version-untested`. A gate with validation's `gate-not-ready` (stable mode) gets no readiness finding too (AUD-B8) |
+| Not loaded | `validate:not_loaded`, one finding with the manifest row only; exit 0, or 6 with `--fail-on error` |
+| `AuditFinding.owner` | Added: `audit` or the owning component, so a reader can tell rendered findings from the audit's own |
+| Probes | The executors' `probe()` through the registry and the login-shell timing of ARC `slow-host`, under the 30 s budget; tests inject both |
+| Prompts view | `audit prompts` prints JSON rows; `changed` reads `not recorded (history is release 2)`, never zero |
+| Stamp | `upgrade-check --stamp` runs the `definition` layer as V4 ([WUP §2.6](63-workflow-upgrade.spec.md)) |
+
 ## 3. Behaviours
 
 **AUD-B1 Definition only, before the first run.** Given a new workflow with no recorded runs, when `audit` runs, then it runs `definition` and `host`, skips `history` with reason `no runs in window`, and every history rule is listed as skipped, never as passed.
@@ -126,6 +143,8 @@ A workflow package may carry `audit.ignore`, a list of `{rule, unit?, reason, un
 - **Exit 6** is new: an advisory verb must not reuse a code that means a run ended, so CI can tell "the audit found something" from "the audit could not run" (2).
 
 ## 6. Acceptance criteria
+
+Release 1 (2026-11-20, `tests/test_audit.py`): AC-2, AC-4 to AC-7 hold for the `definition` and `host` layers, and AC-1 for their rules; AC-3 waits on the history layer (release 2).
 
 - [ ] AUD-AC-1 Every rule in [ARC](56-audit-rule-catalog.spec.md), [TSA](57-tool-surface-audit.spec.md) and [PRA](58-prompt-audit.spec.md) has a fixture workflow or fixture run set that raises it, and a clean fixture that does not.
 - [ ] AUD-AC-2 `audit` leaves the state root, the package and the target unchanged (hash test) and starts no model session (process audit in tests).

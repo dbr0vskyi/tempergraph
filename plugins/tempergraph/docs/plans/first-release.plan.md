@@ -4,7 +4,7 @@ version: 1
 date_created: 2026-11-20
 last_updated: 2026-11-20
 owner: dbr0vskyi
-status: Planned
+status: In Progress
 tags: [release-plan, tempergraph, tempergraph-monitor]
 tracker: none
 spec: plugins/tempergraph/docs/specs/00-overview.spec.md
@@ -39,7 +39,7 @@ task_id: first-release
 
 **Context for the implementer.** Read the [docs README](../README.md), the overview, the contracts, then the component spec. Truth ranking: acceptance criteria, then specs and decision records, then this plan, then code.
 
-**Status: Planned.** No track has started.
+**Status: In Progress.** Started 2026-11-20 on the owner's instruction to start release 1, which this plan takes as EC-1 met for the scope of ADR-0090 and ADR-0091 (both stay `proposed` until their pull request merges). Each track's expanded plan is listed in the [plans index](README.md).
 
 ## 1. Requirements analysis
 
@@ -151,12 +151,12 @@ Every item release 1 ships, then every item it leaves out with its release. The 
 | I-38 | Executor interface: registry, preflight, launcher, normalized events, conformance suite with four stand-ins | EXI | T3.1–T3.3 |
 | I-39 | Claude Code executor | ECC | T3.4 |
 | I-40 | Run log with usage; reported vs estimated cost; unmeasured never shown as zero | OBS | T5.1 |
-| I-41 | Live progress file, session metrics, time profile, timeout classes | OBS | T7.1 |
-| I-42 | `report` and monthly `stats` | OBS | T7.2 |
-| I-43 | Observer events, activity journal, `events --follow` (file observers only) | EVT | T7.3 |
-| I-44 | `status --detail` | RDD | T7.4 |
-| I-45 | Local store: raw session logs, check output, engine code log, `logs`, `store usage\|prune\|export`, retention, capture level | LOS | T1.4, T7.4 |
-| I-46 | `attention` (everything waiting on a person) | CLI | T7.2 |
+| I-41 | Live progress file, session metrics, time profile, timeout classes | OBS | T5.1, T7.1 |
+| I-42 | `report` and monthly `stats` | OBS | T7.4 |
+| I-43 | Observer events, activity journal, `events --follow` (file observers only) | EVT | T7.1 |
+| I-44 | `status --detail` | RDD | T7.2 |
+| I-45 | Local store: raw session logs, check output, engine code log, `logs`, `store usage\|prune\|export`, retention, capture level | LOS | T1.4, T7.3 |
+| I-46 | `attention` (everything waiting on a person) | CLI | T6.1, T7.4 |
 | I-47 | Machine index and `--all-roots` | LOS | T7.4 |
 | I-48 | Directory sink, outbox, `stats flush`, fleet copy, `stats --source\|--live\|--projection` | CST | T10.1 |
 | I-49 | Monitor plugin: band, alerts, run view, drill-down, prompt-fill actions, cost and fleet views | Monitor set | T10.2–T10.4 |
@@ -459,21 +459,25 @@ Goal: one `caller` block per mutating call, deciders and relay evidence.
 #### T7.1 Run events
 Goal: record envelope, observer kinds, activity journal with input summaries, `events`.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+Expanded in [t7-observability.plan.md](t7-observability.plan.md) §2 T7.1.
 <!-- expand: T7.1 -->
 
 #### T7.2 Detail document
 Goal: `status --detail`, built on demand, read-only.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+Expanded in [t7-observability.plan.md](t7-observability.plan.md) §2 T7.2.
 <!-- expand: T7.2 -->
 
 #### T7.3 Session logs and the store
 Goal: `raw.jsonl` per session, `logs`, `store usage|prune|export`, retention, capture level.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+Expanded in [t7-observability.plan.md](t7-observability.plan.md) §2 T7.3.
 <!-- expand: T7.3 -->
 
 #### T7.4 Reports and attention
 Goal: `report`, monthly `stats`, and `attention`.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+Expanded in [t7-observability.plan.md](t7-observability.plan.md) §2 T7.4.
 <!-- expand: T7.4 -->
 
 #### T7.5 Supervision record and improvement data
@@ -540,21 +544,25 @@ Goal: read-only diagnosis from logs, detail and audit; the install skill.
 #### T10.1 Machine index, directory sink, fleet copy
 Goal: rows, outbox, `stats flush`, the fleet copy, `stats --source|--live|--projection`, `--all-roots`.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+Expanded in [t10-monitor.plan.md](t10-monitor.plan.md) §2 T10.1.
 <!-- expand: T10.1 -->
 
 #### T10.2 Monitor sources, band and alerts
 Goal: MDS and MBA.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+Expanded in [t10-monitor.plan.md](t10-monitor.plan.md) §2 T10.2.
 <!-- expand: T10.2 -->
 
 #### T10.3 Monitor run view and drill-down
 Goal: MRV and MDD.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+Expanded in [t10-monitor.plan.md](t10-monitor.plan.md) §2 T10.3.
 <!-- expand: T10.3 -->
 
 #### T10.4 Monitor actions, cost and fleet
 Goal: MAC and MCF.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+Expanded in [t10-monitor.plan.md](t10-monitor.plan.md) §2 T10.4.
 <!-- expand: T10.4 -->
 
 ### T12 Self-improvement

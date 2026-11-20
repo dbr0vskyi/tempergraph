@@ -1,7 +1,7 @@
 ---
 title: Data sources
 type: component
-status: review
+status: ready-for-implementation
 prefix: MDS
 adrs: [0002, 0005]
 ---
@@ -30,7 +30,7 @@ What the monitor reads, from where, how often, and the rule that it never writes
 | Projection | `tempergraph stats --projection --by workflow --json` | Every 10 min, and when a run of a new workflow appears | [CST §2.5](../../../tempergraph/docs/specs/34-central-run-stats.spec.md) |
 | Fleet | `tempergraph stats --live --json`, which reads the home folder's fleet copy (`~/.tempergraph/fleet/`); the mod stats `synced.json` to know when it changed | Every 60 s while the fleet tab is open or `alerts.fleet = on` | [CST §2.5](../../../tempergraph/docs/specs/34-central-run-stats.spec.md) |
 
-Every verb is run by `$.process.run` with list argv built from constants and values the engine itself printed (thread ids, session keys, sink names from config), never from text a person typed into the pane ([MAC](05-actions-and-safety.spec.md)). A call has a 20 s timeout; at most two verb calls run at once.
+Every verb is run by `$.process.run` with list argv built from constants and values the engine itself printed (thread ids, session keys, sink names from config), never from text a person typed into the pane ([MAC](05-actions-and-safety.spec.md)). A call has a 20 s timeout; at most two verb calls run at once (release 1 runs one at a time: one timer tick reads, and a tick that finds the last one still running is skipped).
 
 ### 2.2 Cache and freshness
 
@@ -38,7 +38,7 @@ Every verb is run by `$.process.run` with list argv built from constants and val
 |---|---|
 | One copy per document | The last good copy of each document is kept in session state with its read time; a failed read keeps it and marks it `stale since` |
 | Partial lines | A tail read drops a last line without a newline and re-reads it next time |
-| Rotation | A file whose size shrank, or whose inode changed, is read again from 0 |
+| Rotation | A file whose size shrank, or whose inode changed, is read again from 0 (release 1 checks size only: `$.fs.stat` gives no inode, and the engine never replaces a run log in place) |
 | Schema | A document with a newer major schema is not drawn; its row says so (contract C12 of the engine) |
 | Bounds | At most 4 MiB per read; tails keep the last 2 000 activity lines and 500 run-log records per thread in memory |
 
@@ -78,6 +78,7 @@ The mod's own memory across sessions (pinned runs, last alerted `seq` per thread
 
 - Stat first, read second: the same rule `wait` follows in the engine; it keeps a monitor with ten live runs cheap ([MADR-0002](../adr/0002-poll-files-and-read-only-verbs.adr.md)).
 - Status and detail come from verbs because only the engine can probe the lock without creating it and open the checkpoint read-only.
+- Release 1 build ([T10 plan](../../../tempergraph/docs/plans/t10-monitor.plan.md)): run rows, the change signal, the run-log tail, the detail document, the processes of an open session, its activity journal and its log tails are read as above, all from one 1 s clock in `hooks/register.tsx`. Deviations: the live session is read from the detail document's `live` block, refreshed with the document every 2 s, not from `live.json` every 1 s; the journal (its last 1 MiB), `ps` and log tails are read every 2 s while their tab is open. Projection (`stats --projection --by workflow --json`, every 10 min) and the fleet (`stats --live --json` and the month by machine and by workflow, every 60 s while the fleet tab or a fleet card is open or `alerts_fleet` is on) are read as above; the fleet's freshness comes from the `synced` block of the `stats` document rather than a `stat` of `synced.json`. `scope = machine` runs `status --all-roots --json` once, which reads the machine index itself and marks a gone root `missing` (MDS-B4), instead of one `status` per root; rows of other repositories open a read-only card, not a run view, because the run view's verbs and fills act on the session's own repository. Orchestrations are not built (release 2). `status --json` runs in the session's working directory and the engine finds the state root itself; `engine_path` replaces `tempergraph` only with an absolute path that ends in the shim's name.
 - `scope` (`repo` default, or `machine`) is a mod setting; the fleet needs a sink the engine is configured with ([MADR-0005](../adr/0005-three-scopes-repo-machine-fleet.adr.md)).
 
 ## 6. Acceptance criteria

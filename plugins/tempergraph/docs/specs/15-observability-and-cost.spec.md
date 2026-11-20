@@ -1,7 +1,7 @@
 ---
 title: Observability and cost
 type: component
-status: review
+status: ready-for-implementation
 prefix: OBS
 adrs: [0009, 0012, 0018, 0021, 0023, 0025]
 ---
@@ -20,7 +20,7 @@ What a run leaves behind so a person or a later analysis can see what it did, wh
 |---|---|---|
 | `task` | Start, and resume with inputs | scrubbed, clipped request |
 | `attempt_start` | Before every step or judge session | unit, item, attempt, kind, executor, alias and source, timeout and source |
-| `agent_run` | After every session | kind (`step`, `retry`, `judge`, `judge_reask`, `grouping`), `Usage`, tool call names, `cli_version`, `session_id`, isolation mode, outcome fields of `SessionResult` |
+| `agent_run` | After every session | kind (`step`, `retry`, `judge`, `judge_reask`, `grouping`), `Usage`, tool call names, `cli_version`, `session_id`, isolation mode, outcome fields of `SessionResult`; `unknown_tools` (names the executor's view catalog does not map, [SIL-B4](16-self-improvement.spec.md)); `lessons_digest` on a step or retry whose unit has lessons ([LSN §2.2](42-workflow-lessons.spec.md)) |
 | `attempt_interrupted` | On resume, for an unclosed start | |
 | `route` | A route or switch picks a target | unit, arm, `chosen_by` (`predicate`, `default`, `operator`, `rearm`), and for a switch `shadow`, `would_choose` and `signals` ([CMP](03-compiler-and-flow.spec.md), [SWM](79-measured-switches.spec.md)) |
 | `audit_judge` | A sampled audit judge ran ([JDG](05-judge-and-verdict.spec.md)) | executor, alias, per-criterion agreement with the gate's judge, `Usage` |
@@ -37,7 +37,7 @@ What a run leaves behind so a person or a later analysis can see what it did, wh
 |---|---|
 | Unmeasured is never zero | Unknown fields are null |
 | Reported and estimated stay apart | `reported_cost_usd` from the executor; `estimated_cost_usd` from the engine's price table for every session with tokens; never summed into one figure |
-| Price table | Defaults per model family shipped with the engine; the operator's binding table overrides per model |
+| Price table | Defaults per model family shipped with the engine; the operator's binding table overrides per model. Release 1 ships the first-party list prices of the generation the tier aliases resolve to, USD per million tokens as of 2026-11: haiku 0.10 in, 0.50 out; sonnet 2 in, 10 out, 0.10 cache read; opus 4 in, 20 out, 0.20 cache read. A family without a cache read price uses 0.1× input; cache writes are 1.25× input |
 | Completeness flag | A run's usage line ends `complete`, `estimated` (some sessions only estimated) or `incomplete` (some unmeasured) |
 | Executor comparison | Reports compare executors on estimated cost, the one figure all have, and show reported cost where present |
 | Per executor | `claude` and `agent-sdk` report a client-side estimate; `messages-api` and `antigravity` report tokens only, so their `reported_cost_usd` is null and the estimate is the figure. Cache read and write tokens are priced at their own rates |
@@ -101,6 +101,7 @@ Per running session, at `sessions/<session_key>/live.json` ([LOS §2.1](33-local
 - The live file and metrics come from normalized events, so they work the same on every executor ([ADR-0009](../adr/0009-normalized-session-event-stream.adr.md)).
 - Self-improvement children log to their own run logs; a daily cap sums them, and reports join them to the parent's line as a separate figure.
 - Export is off by default. An operator may configure sinks of metadata-only rows and OTLP telemetry ([CST](34-central-run-stats.spec.md), [TEL](35-telemetry-export.spec.md)); content never leaves the machine.
+- Release 1 build ([T7 plan](../plans/t7-observability.plan.md) T7.4): `report [30d|7d|24h|all] [--by unit|executor|version] [--json]` and `stats` read the run logs and the home stats rows. Deviations: `agent_run` carries no `duration_s` or host-speed warning yet, so a timeout is sorted into `hung` or `model_silent` from the `stalled` flag and `slow_host` is never emitted; the time profile counts the activity journal's `duration_s` per tool name and program word. A repeat's cause is the `entered_from` of its visit (`back:<unit>`, `proceed`) or `retry: judge` / `retry: check` from the gate that sent it back. Prompt digests and the diagram overlay wait for the rendered-template digest on `attempt_start` (T5). The per-user stats row is written at each `run_exit` from the run log by `observe.rows.run_row`, the one function the sink copy will also use (T10.1); its supervision fields are copied from the segment's `supervision` record (T7.5), and `user` is the repository's git `user.name`, kept on this machine only.
 - Observer record kinds added for live followers (`run_started`, `unit_entered`, `session_opened`, `check`, `judgement`, `budget`, `pause`, `stop_requested`, `run_exit`) and the record envelope are owned by [EVT](30-run-events.spec.md); where the session logs live is owned by [LOS](33-local-observability-store.spec.md).
 
 ## 6. Acceptance criteria

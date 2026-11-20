@@ -1,7 +1,7 @@
 ---
 title: Run settings and overrides
 type: component
-status: review
+status: ready-for-implementation
 prefix: RST
 adrs: [0070, 0071, 0072, 0080, 0008]
 ---
@@ -148,7 +148,7 @@ Code reads a setting from the resolved table passed in its context (`ScriptConte
 | Moment | Engine does |
 |---|---|
 | Start | Reads both files once, resolves, stores the flag, profile and file layers' values in `RunOptions.settings`; the workflow layers come from the content the thread runs |
-| Resume | Reapplies the snapshot. `--set` adds or replaces a flag value; `--unset <key>` removes one; `--profile` replaces the profile list; `--reload-settings` reads both files again. The workflow layers follow the content the thread resumes on ([MIG §2.5](62-state-and-run-migration.spec.md)) |
+| Resume | Reapplies the snapshot. `--set` adds or replaces a flag value; `--unset <key>` removes one; `--profile` replaces the profile list, looked up in the files as they are now while the file layers stay; `--reload-settings` reads both files again. The workflow layers follow the content the thread resumes on ([MIG §2.5](62-state-and-run-migration.spec.md)) |
 | Rerun | Copies the source's snapshot, then applies the rerun's own flags ([RRN §2.4](81-reruns-and-feedback.spec.md)) |
 
 A changed value meets the counters already spent as follows:
@@ -191,6 +191,9 @@ When an attempt failed, or ended blocked, and the session recorded a `denied` ev
 | `needed_command` | `resume … --decision retry --allow-command <unit>=<prefix>` |
 | `shell_for_read`, `dir_change_then_command` | No grant: these calls had a permitted form. `retry` with feedback naming the form |
 | `outside_workspace` | No grant is possible; `retry` with feedback, or `stop` |
+| `missing_at_start`, a declared tool the session started without | The host step (configure the server, install the plugin), then `retry` |
+
+Release 1 classifies by tool name only, so a refused shell call is `unclassified`; a judge takes no `mcp:` view grant (`judge-view-unclassified`), since no read-only MCP catalog exists yet.
 
 Every grant is tracked: a `grant` run-log record when it takes effect ([EVT §2.2](30-run-events.spec.md)), the intervention row of the resume that gave it ([HUM-B6](07-gate-and-human.spec.md)), and an entry of the ledger row's `grants[]` saying whether a later attempt used it ([SIL §2.4](16-self-improvement.spec.md), [IMD-R14](43-improvement-data.spec.md)). A grant used on a passing attempt is a `grant_missing` finding against the workflow; the audit's history layer reports it (`granted-at-run`, [TSA §2.4](57-tool-surface-audit.spec.md)), and the improvement loop drafts a `tools` proposal that declares it ([PRP §2.4](40-improvement-proposals.spec.md)), so a grant needed on every run ends up in the package once.
 
@@ -269,6 +272,7 @@ Files are edited by hand or by a skill; the engine has no write verb for them.
 | A configuration file that does not parse, or a newer major `schema_version` | Exit 2 naming the file; `config validate` shows the line |
 | A file `defaults` entry that names a unit | Exit 2, `unit_in_defaults` |
 | A setting the executor cannot apply (`effort`) | Warning, recorded (CON §4) |
+| A key whose feature is not in this release: the audit judge, switch arms, council, contest, wait and ask keys, the release 2 worktree values (ADR-0090) | Exit 2, `setting_not_in_release` |
 
 ## 5. Design notes
 
@@ -290,10 +294,10 @@ Files are edited by hand or by a skill; the engine has no write verb for them.
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should a team be able to commit a shared settings file in the repository (a third file layer), with cost caps limited to lowering? | Owner |
-| Should an organisation be able to impose a managed layer above `flag` (hard ceilings), as Claude Code's managed settings do? | Owner |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Should a team be able to commit a shared settings file in the repository (a third file layer), with cost caps limited to lowering? | Owner | No |
+| Should an organisation be able to impose a managed layer above `flag` (hard ceilings), as Claude Code's managed settings do? | Owner | No |
 
 ## References
 

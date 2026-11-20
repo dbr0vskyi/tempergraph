@@ -1,3 +1,15 @@
 # Editor config (workspace-local)
 .vscode/
 .DS_Store
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+build/
+dist/
+# tempergraph state roots (each also carries its own .gitignore)
+.tempergraph/

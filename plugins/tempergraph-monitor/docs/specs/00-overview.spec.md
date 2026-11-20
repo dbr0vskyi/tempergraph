@@ -1,7 +1,7 @@
 ---
 title: tempergraph-monitor overview
 type: overview
-status: review
+status: ready-for-implementation
 prefix: MOV
 adrs: [0001, 0002, 0003, 0004, 0005, 0006]
 ---
@@ -126,7 +126,7 @@ flowchart LR
 
 | Question | Owner |
 |---|---|
-| Should the monitor also show plain Claude Code dynamic workflows in the same pane? Out of scope today; Claude Code has its own view. | Owner |
+| Should the monitor also show plain Claude Code dynamic workflows in the same pane? Out of scope today; Claude Code has its own view. Default for release 1: no. | Owner |
 
 ## References
 

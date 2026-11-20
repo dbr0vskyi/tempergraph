@@ -106,3 +106,4 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0112](0112-plugin-content-reaches-each-executor-by-a-declared-route-or-is-refused.adr.md) | Plugin content reaches each executor by a declared route or the step is refused; workflow plugins ship no hooks, MCP servers or binaries | proposed |
 | [0113](0113-the-workflow-docs-set-is-provisional-until-temperspec-owns-it.adr.md) | Every workflow package carries its own docs set, with provisional rules until temperspec owns them | proposed |
 | [0114](0114-judged-criteria-carry-a-scale-and-authoring-guides-until-criteria-are-clear.adr.md) | Judged criteria carry a scoring scale with seeds; authoring guides the person until every criterion is clear | proposed |
+| [0115](0115-the-engine-is-a-src-layout-python-package-inside-its-plugin.adr.md) | The engine is a src-layout Python package inside its plugin, with pytest, ruff and mypy | proposed |

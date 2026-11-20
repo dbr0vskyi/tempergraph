@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tempergraph"
+version = "0.0.1"
+description = "Tempered rails for AI workflows: an opinionated LangGraph-based workflow engine"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+dependencies = [
+    "langgraph>=1.2,<2",
+    "langgraph-checkpoint-sqlite>=3.1,<4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+tempergraph = "tempergraph.cli.main:entry"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+tempergraph = ["py.typed", "data/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "live: needs a signed-in claude CLI and spends money; skipped unless TEMPERGRAPH_LIVE=1",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+ignore = ["E501", "SIM108", "B905"]
+
+[tool.mypy]
+python_version = "3.11"
+packages = ["tempergraph"]
+mypy_path = "src"
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = true

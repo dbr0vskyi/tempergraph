@@ -1,7 +1,7 @@
 ---
 title: Run control
 type: component
-status: review
+status: ready-for-implementation
 prefix: RCT
 adrs: [0028]
 ---
@@ -60,9 +60,9 @@ The request file is `runs/<workflow>/<task_id>/control/stop.json` under the stat
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Windows: process groups differ; the `--now` path uses the launcher's job object. Untested. | Engine implementer |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Windows: process groups differ; the `--now` path uses the launcher's job object. Untested. | Engine implementer | `taskkill /F /T` on the session's process tree; untested on Windows |
 
 ## References
 

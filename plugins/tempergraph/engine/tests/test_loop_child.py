@@ -1,0 +1,116 @@
+"""The loop child: hand-off ticket, detached start, friction judge, filing (SIL-B1, B2, B6; T12.1.5)."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from tempergraph import detach
+from tempergraph.constants import ExitCode
+from tempergraph.executors.standins import answer, standin
+from tempergraph.improve import child, filing
+from tempergraph.improve.codehost import MemoryCodeHost
+from tempergraph.store.layout import home_path
+
+from .test_run import DRAFT, REVIEW, go, judge, registry, verdict_block
+
+
+def blocked_run(repo: Path, task: str, monkeypatch: pytest.MonkeyPatch, **kw: Any) -> None:
+    """A run that finishes after one blocked attempt: a `judge_blocked` workflow fault at a final exit."""
+    monkeypatch.setenv("TEMPERGRAPH_LOOP", "detached")
+    monkeypatch.setattr(detach, "start", lambda *a, **k: True)  # the child is started by drain() below
+    fail = verdict_block("UNMET")
+    ex = standin("claude", steps=[DRAFT, DRAFT, REVIEW], judges=[judge(fail), judge(), judge()])
+    assert go(repo, ex, task=task, **kw).exit_code is ExitCode.FINISHED
+
+
+def judge_says(fp_conf: float, attributed: bool = True) -> Any:
+    def reply(req: Any) -> Any:
+        fps = [ln.split("`")[1] for ln in req.prompt.splitlines() if ln.startswith("- `") and "cause" in ln]
+        rows = [{"fingerprint": fp, "attributed": attributed, "confidence": fp_conf} for fp in fps]
+        assert "Release 1.2 notes" not in req.prompt  # metadata only: no request text reaches the judge
+        assert req.alias == child.ALIAS and req.timeout_s == child.TIMEOUT_S
+        return answer("```json\n" + json.dumps({"findings": rows}) + "\n```", session_id="loop")
+    return reply
+
+
+def tickets() -> list[Path]:
+    return sorted(child.tickets_dir(home_path()).glob("*.json"))
+
+
+def test_ticket_then_judged_filing(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-B1, B2
+    blocked_run(repo, "L-1", monkeypatch)
+    (t,) = tickets()
+    doc = json.loads(t.read_text())
+    assert doc["thread"] == "demo/L-1" and doc["fingerprints"] and doc["lenses"]["friction"]
+    assert "Release 1.2 notes" not in t.read_text()
+    host = MemoryCodeHost()
+    ex = standin("claude", judges=[judge_says(0.9)])
+    root = repo / ".tempergraph"
+    spec_repo = "team/notes"
+    doc["issue_repository"] = spec_repo
+    t.write_text(json.dumps(doc))
+    (out,) = child.drain(registry=registry(ex), host=lambda: host)
+    assert [r["op"] for r in out["results"] if r["op"] != "recorded"] == ["filed"]
+    assert host.issues[0]["repo"] == spec_repo and filing.marker(doc["fingerprints"][0]) in host.issues[0]["body"]
+    assert not tickets()  # claimed and removed
+    log = [json.loads(ln) for ln in child.loop_log(root, "demo", "L-1").read_text().splitlines()]
+    assert [r["kind"] for r in log][:2] == ["loop_started", "loop_judged"] and "issue_filed" in [r["kind"] for r in log]
+    assert any(r.get("kind") == "loop" for r in map(json.loads, (root / "ledger.jsonl").read_text().splitlines()))
+    blocked_run(repo, "L-2", monkeypatch)  # the same cause again: a comment, never a second issue
+    d2 = json.loads(tickets()[0].read_text())
+    d2["issue_repository"] = spec_repo
+    tickets()[0].write_text(json.dumps(d2))
+    (out2,) = child.drain(registry=registry(standin("claude", judges=[judge_says(0.9)])), host=lambda: host)
+    assert len(host.issues) == 1 and [r["op"] for r in out2["results"] if r["op"] != "recorded"] == ["commented"]
+
+
+def test_low_confidence_or_unparsed_is_recorded(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    blocked_run(repo, "L-3", monkeypatch)
+    host = MemoryCodeHost()
+    (out,) = child.drain(registry=registry(standin("claude", judges=[judge_says(0.4)])), host=lambda: host)
+    assert {r["reason"] for r in out["results"]} <= {"below_floor", "no_repository", "designed"} and not host.issues
+    blocked_run(repo, "L-4", monkeypatch)
+    (out,) = child.drain(registry=registry(standin("claude", judges=[answer("no block")])), host=lambda: host)
+    assert all(r["op"] == "recorded" for r in out["results"]) and not host.issues
+
+
+def test_dry_run_files_nothing(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-B6
+    blocked_run(repo, "L-5", monkeypatch, dry_run=True)
+    d = json.loads(tickets()[0].read_text())
+    assert d["dry_run"] is True
+    d["issue_repository"] = "team/notes"
+    tickets()[0].write_text(json.dumps(d))
+    host = MemoryCodeHost(down=True)  # any call would raise
+    (out,) = child.drain(registry=registry(standin("claude", judges=[judge_says(0.9)])), host=lambda: host)
+    assert "would_file" in {r["op"] for r in out["results"]} and not host.issues
+
+
+def test_no_ticket_without_a_fault_and_off_switch(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TEMPERGRAPH_LOOP", "detached")
+    started: list[tuple[str, ...]] = []
+    monkeypatch.setattr(detach, "start", lambda m, w, h: started.append((m, *w)) or True)
+    ex = standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge()])
+    assert go(repo, ex, task="L-6").exit_code is ExitCode.FINISHED
+    assert not tickets() and not started
+    blocked_run(repo, "L-7", monkeypatch)
+    monkeypatch.setenv("TEMPERGRAPH_LOOP", "off")
+    ex = standin("claude", steps=[DRAFT, DRAFT, REVIEW], judges=[judge(verdict_block("UNMET")), judge(), judge()])
+    n = len(tickets())
+    assert go(repo, ex, task="L-8").exit_code is ExitCode.FINISHED and len(tickets()) == n
+
+
+def test_detached_site_is_constant() -> None:  # SEC §2.2
+    assert detach.DETACHED["tempergraph.improve.child"] == (("drain",),)
+    assert child.main(["other"]) == 2
+
+
+def test_a_failing_ticket_never_stops_the_next(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    folder = child.tickets_dir(home_path())
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "bad.json").write_text("{nope")
+    out = child.drain(registry=registry(standin("claude")), host=MemoryCodeHost)
+    assert out == [{"ticket": "bad", "error": "JSONDecodeError"}] and not list(folder.iterdir())
