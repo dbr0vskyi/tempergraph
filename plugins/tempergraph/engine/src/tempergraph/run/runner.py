@@ -86,6 +86,7 @@ class RunSettings:
     ruling: bool = False  # `--ruling`: the feedback is a lasting ruling (RRN §2.2)
     ruling_for: tuple[str, ...] = ()
     revoke_rulings: tuple[str, ...] = ()
+    accept_external: bool = False  # consent to rewind or rerun past external effects (RRN §2.3)
     home: Path | None = None  # the user config folder's parent; default `home_path()`
 
     def all_flags(self) -> dict[str, Any]:
@@ -250,7 +251,8 @@ def _context(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, s
 def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, settings: RunSettings,
            judges: Mapping[str, str], first_input: Any, settled: Settled, *,
            before: Callable[[Any], None] | None = None, executors: Mapping[str, str] | None = None,
-           ruling_records: Sequence[Mapping[str, Any]] = ()) -> RunOutcome:
+           ruling_records: Sequence[Mapping[str, Any]] = (), rerun_of: Mapping[str, Any] | None = None
+           ) -> RunOutcome:
     """Run the graph from `first_input` while holding the lock, then turn the thread state into an exit."""
     tid = thread_id(spec.name, task_id)
     log = RunLog(run_dir(root, spec.name, task_id) / "run.jsonl")
@@ -270,6 +272,7 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                   workflow_version=spec.version, plan_digest=diagram_model(spec)["digest"],
                   executors={"steps": dict(executors or {}), "judges": dict(judges)},
                   settings_digest=settled.resolved.digest, profiles=list(settled.options.profiles),
+                  **({"rerun_of": dict(rerun_of)} if rerun_of else {}),
                   overridden_keys=rst.overridden_keys(settled.resolved))
         rec: dict[str, Any] = {"settings_digest": settled.resolved.digest, "rows": rst.rows_json(settled.resolved),
                                "changed_keys": settled.changed}
@@ -452,6 +455,13 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
             return _refuse(first.code, f"{first.unit or spec.name}: {first.message}", tid=tid)
         spec = with_outcome(settled.spec)
         human_cap = int(rv["human_cap"])
+        if d is not None and d.word == "rewind" and d.unit and not settings.accept_external:
+            from tempergraph.run.rerun import cleared_units, external_effects
+
+            effects = external_effects(spec, cleared_units(spec, d.unit, values), values)
+            if effects:
+                return _refuse("external_effects", f"rewind:{d.unit} clears units with external effects: "
+                                                   f"{'; '.join(effects)}; pass --accept-external", effects, tid=tid)
         try:
             gatemod.check_rulings(values, feedback if settings.ruling else None, settings.revoke_rulings)
         except gatemod.DecisionRefused as exc:

@@ -63,8 +63,26 @@ def _parser() -> _Parser:
     res.add_argument("--ruling", action="store_true", help="the feedback is a lasting ruling (RRN §2.2)")
     res.add_argument("--ruling-for", metavar="UNITS", help="comma-separated units the ruling applies to")
     res.add_argument("--revoke-ruling", action="append", default=[], metavar="ID")
+    res.add_argument("--accept-external", action="store_true")
     _run_options(res, start=False)
 
+    rr = sub.add_parser("rerun", help="a new thread forked from an earlier one, linked to it (RRN §2.4)")
+    rr.add_argument("workflow")
+    rr.add_argument("thread")
+    rr.add_argument("--from", dest="start_at", required=True, metavar="UNIT|start")
+    rr.add_argument("--check", action="store_true")
+    rfb = rr.add_mutually_exclusive_group()
+    rfb.add_argument("--feedback")
+    rfb.add_argument("--feedback-file")
+    rr.add_argument("--task-id")
+    rr.add_argument("--workspace", dest="rerun_workspace", choices=("current", "at-unit"), default="current")
+    rr.add_argument("--same-branch", action="store_true")
+    rr.add_argument("--drop-rulings", action="store_true")
+    rr.add_argument("--ruling", action="store_true")
+    rr.add_argument("--accept-external", action="store_true")
+    _spellings(rr)
+    rr.add_argument("--json", action="store_true")
+    _settings_options(rr, resume=True)
     st = sub.add_parser("status", help="the status document")
     st.add_argument("selector", nargs="?")
     sub.add_parser("list", help="the workflow catalog")
@@ -242,10 +260,12 @@ def _settings(env: Env, a: argparse.Namespace) -> Any:
     if hasattr(a, "unset"):
         fields.update(unset=tuple(a.unset), reload_settings=a.reload_settings)
     if hasattr(a, "ruling"):
-        if a.ruling_for and not a.ruling:
+        if getattr(a, "ruling_for", None) and not a.ruling:
             raise UsageError("--ruling-for needs --ruling")
-        fields.update(ruling=a.ruling, revoke_rulings=tuple(a.revoke_ruling),
-                      ruling_for=tuple(u.strip() for u in (a.ruling_for or "").split(",") if u.strip()))
+        fields.update(ruling=a.ruling, revoke_rulings=tuple(getattr(a, "revoke_ruling", None) or ()),
+                      accept_external=bool(getattr(a, "accept_external", False)),
+                      ruling_for=tuple(u.strip() for u in (getattr(a, "ruling_for", None) or "").split(",")
+                                       if u.strip()))
     if env.run_settings is not None:
         return env.run_settings(**fields)
     return RunSettings(**fields)
@@ -326,6 +346,34 @@ def cmd_resume(env: Env, a: argparse.Namespace) -> int:
             raise UsageError(f"--feedback-file {a.feedback_file}: {type(exc).__name__}") from exc
     out = resume(spec, task, env.cwd, env.registry, decision=a.decision, feedback=feedback,
                  settings=_settings(env, a))
+    return _report(env, out, a.json)
+
+
+def _feedback_text(env: Env, a: argparse.Namespace) -> str | None:
+    if getattr(a, "feedback_file", None):
+        try:
+            return (env.cwd / a.feedback_file).read_text(encoding="utf-8")
+        except OSError as exc:
+            raise UsageError(f"--feedback-file {a.feedback_file}: {type(exc).__name__}") from exc
+    return getattr(a, "feedback", None)
+
+
+def cmd_rerun(env: Env, a: argparse.Namespace) -> int:
+    from tempergraph.run.rerun import rerun
+
+    spec = _spec(env, a.workflow)
+    task = a.thread.split("/", 1)[1] if a.thread.startswith(spec.name + "/") else a.thread
+    out = rerun(spec, task, env.cwd, env.registry, start_at=a.start_at, feedback=_feedback_text(env, a),
+                settings=_settings(env, a), task_id=a.task_id, workspace_from=a.rerun_workspace,
+                same_branch=a.same_branch, drop_rulings=a.drop_rulings, accept_external=a.accept_external,
+                check=a.check)
+    if isinstance(out, dict):
+        _emit(env, out)
+        return 0
+    if a.check:  # `rerun --check` refuses as `rerun` does, and prints one document (RRN-AC-4)
+        _emit(env, {"schema_version": 1, "status": "error", "reason": out.reason, "message": out.message,
+                    "refusals": out.refusals or [out.message]})
+        return int(out.exit_code)
     return _report(env, out, a.json)
 
 
@@ -542,7 +590,7 @@ def _config_validate(env: Env, a: argparse.Namespace, root: Path | None) -> int:
 COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "run": cmd_run, "resume": cmd_resume, "status": cmd_status, "list": cmd_list, "validate": cmd_validate,
     "executors": cmd_executors, "facts": cmd_facts, "graph": cmd_graph, "wait": cmd_wait, "stop": cmd_stop,
-    "worktree": cmd_worktree, "config": cmd_config,
+    "worktree": cmd_worktree, "config": cmd_config, "rerun": cmd_rerun,
 }
 
 
