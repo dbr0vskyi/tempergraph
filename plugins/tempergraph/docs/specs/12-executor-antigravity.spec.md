@@ -44,6 +44,7 @@ Three properties of `agy` shape this spec. It reports **tokens but no cost**. It
 | `web_search` | `search_web` | none (ask) |
 | `subagent` | `invoke_subagent` | inherits; `define_subagent` is never granted |
 | `mcp:<s>/<t>` | name shape set by P-AG-6 | `mcp(<s>/<t>)` |
+| `skill:<p>:<n>` | none until P-AG-9 names the skill tool | preflight refuses a step that declares it |
 
 Tools never granted by the map, to any session: `define_subagent`, `manage_subagents`, `send_message`, `schedule`, `ask_permission`, `ask_question`. `ask_question` is removed because nobody answers during a run.
 
@@ -115,6 +116,7 @@ Run by the owner on the pinned version with a throwaway workspace; results are w
 | P-AG-6 | The tool name `agy` reports for an MCP tool, in `init.tools` and `step_update.tool_name` | MCP view catalog | not run |
 | P-AG-7 | The values of `result.error.type` for auth, quota and model errors | classification | not run |
 | P-AG-8 | `permissions.allow` `command(<prefix>)` entries are honoured in stream mode on the pinned version | `step_allow_rules` | not run |
+| P-AG-9 | The tool that loads a skill from `.agents/skills/`, and whether a permission rule can scope it to one skill | `skill:` capability | not run |
 
 ## 3. Behaviours
 

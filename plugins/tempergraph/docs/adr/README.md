@@ -73,3 +73,8 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0072](0072-threads-snapshot-settings-and-reapply-them-on-resume.adr.md) | A thread snapshots its operator settings at start and reapplies them on every resume | proposed |
 | [0073](0073-rewind-on-the-thread-rerun-as-a-linked-fork.adr.md) | A person rewinds a live thread in place, and reruns any thread as a new linked thread forked from a checkpoint | proposed |
 | [0074](0074-feedback-can-be-a-lasting-ruling.adr.md) | A person's feedback can be a lasting ruling that later steps and their judges are shown | proposed |
+| [0075](0075-checks-get-a-context-and-an-engine-command-runner.adr.md) | Checks get a defined context and an engine command runner | proposed |
+| [0076](0076-claims-may-target-a-route-skipped-back-target.adr.md) | Upstream claims and attributions may target a listed back target that a route skipped | proposed |
+| [0077](0077-a-step-previews-its-own-check-in-the-attempt.adr.md) | A step previews its own gate's check inside its attempt through one engine command | proposed |
+| [0078](0078-skills-are-a-declared-tool-capability.adr.md) | Skills are a declared tool capability, named by plugin path | proposed |
+| [0079](0079-switches-are-measured-before-they-route.adr.md) | Switches can be measured in shadow, carry per-arm overrides, and re-arm on a spent budget | proposed |

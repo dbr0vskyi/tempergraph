@@ -48,6 +48,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `improve backlog|propose|trial|aa|open|show` | Proposals and trials ([PRP §2.7](40-improvement-proposals.spec.md)) | per [PRP](40-improvement-proposals.spec.md) | `propose`, `trial`, `aa` |
 | `label <thread> <gate> [--criterion id] --value agree|disagree`, `labels queue [workflow]` | Enter a label; list judgements to label ([FBK](41-feedback-and-judge-reliability.spec.md)) | `label` only | no |
 | `report --loop [window]` | The loop's own metrics ([IMD §2.4](43-improvement-data.spec.md)) | no | no |
+| `self-check <ticket>` | Run one unit's check on the current workspace for the step session that holds the ticket; prints findings; granted to a step by `self_check` only ([CHK §2.5](75-check-contract-and-command-runs.spec.md)) | command-run records only | no |
 
 ### 2.1 Run options
 

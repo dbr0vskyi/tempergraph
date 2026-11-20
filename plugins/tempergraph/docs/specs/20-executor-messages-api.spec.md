@@ -39,6 +39,7 @@ The `messages-api` executor runs each step attempt and each judge run as one con
 | `web_fetch` | server tool `web_fetch` (current version for the bound model) | Anthropic, where the model and platform offer it |
 | `web_search` | server tool `web_search` | Anthropic, where offered |
 | `subagent` | none | not in `tool_map`; preflight refuses a step that declares it |
+| `skill:<p>:<n>` | none | no authoring surface; preflight refuses a step that declares it |
 | `mcp:<s>/<t>` | `mcp__<s>__<t>`, schema copied from the server | Tool host MCP client |
 
 Server tool versions per model and platform live in the binding table, never in code: a platform without web fetch (for example Vertex AI, M4) simply has no `web_fetch` row and the preflight refuses the step.

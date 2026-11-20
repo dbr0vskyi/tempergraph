@@ -86,7 +86,7 @@ Resolution is layer-major: the highest layer that sets a key at any scope matchi
 | 2 | `profile` | The named profiles chosen with `--profile <name>` (repeatable; a later profile wins per key) |
 | 3 | `project:overrides` | `<state root>/config/settings.json`, `overrides` entries matching the workflow |
 | 4 | `user:overrides` | `~/.tempergraph/config/settings.json`, `overrides` entries matching the workflow |
-| 5 | `arm:<switch>.<arm>` | While a switch arm is in force, the workflow-declared per-arm values of `model`, `timeout_s`, `idle_s` and `effort` for the units the arm names (spec 79, measured switches) |
+| 5 | `arm:<switch>.<arm>` | While a switch arm is in force, the workflow-declared per-arm values of `model`, `timeout_s`, `idle_s` and `effort` for the units the arm names ([SWM](79-measured-switches.spec.md)) |
 | 6 | `workflow:unit` | The unit's own field: a step's `model` (its ladder rung for the attempt), `timeout_s`, a gate's budgets, a member's `executor` |
 | 7 | `workflow:default` | Workflow-wide values: `default_executor`, `model_profile`, `run_cost_cap_usd`, a declared setting's default |
 | 8 | `project:defaults` | `<state root>/config/settings.json`, `defaults` |

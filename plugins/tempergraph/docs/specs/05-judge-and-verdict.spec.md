@@ -3,7 +3,7 @@ title: Judge and verdict
 type: component
 status: review
 prefix: JDG
-adrs: [0005, 0013, 0021, 0074]
+adrs: [0005, 0013, 0021, 0074, 0076]
 ---
 
 # Judge and verdict
@@ -29,10 +29,10 @@ Rendered by an engine-owned brief that names no workflow, then the workflow's st
 |---|---|
 | Workspace facts | Branch, base, changed files, diff stat, computed by the engine |
 | References | The request (whole up to 32,000 chars, else head and tail around a marker with the omitted count) and earlier artifacts |
-| Subject | The artifacts graded, and the check's evidence |
+| Subject | The artifacts graded, the check's evidence and its findings ([CHK §2.4](75-check-contract-and-command-runs.spec.md)) |
 | Step account | The step's final text, labelled "claims to verify, not facts", ≤ 8,000 chars |
 | Feedback | A person's one-time feedback and every active ruling that applies to the unit, as direction that wins over a reference; each ruling adds one engine blocker, the output follows it ([RRN §2.2](81-reruns-and-feedback.spec.md)) |
-| Criteria | Numbered, with id, text, check method and severity |
+| Criteria | Numbered, with id, text, check method and severity; a `mechanical` criterion with the check's finding and a fixed sentence that its evidence is given; a criterion the check found `n_a` with the check's reason |
 | Previous blockers | Re-checked first; the full rubric is still graded |
 | Visit reason | When sent back: one engine blocker "every point of the reason is addressed" |
 | Out of reach | For each artifact whose read view is absent: a fixed sentence telling the judge to report UNVERIFIABLE and not to accept the step's word |
@@ -43,9 +43,9 @@ Rendered by an engine-owned brief that names no workflow, then the workflow's st
 | Finding | Treated as |
 |---|---|
 | MET without evidence | PARTIAL |
-| Not reported; N/A without a reason | UNMET |
+| Not reported; N/A without a reason (a check's `n_a` message counts as the reason) | UNMET |
 | Blocker UNVERIFIABLE, or `gap` true | Unresolved gap → ESCALATE |
-| Blocker PARTIAL or UNMET, every one with `defect_in` naming an allowed back target | BACK to the earliest such target |
+| Blocker PARTIAL or UNMET, every one with `defect_in` naming an allowed back target (listed, and run or skipped by a route on this path) | BACK to the earliest such target |
 | Blocker PARTIAL or UNMET, every one marked `no_change` and the criterion's `no_change_policy` is `escalate` | ESCALATE: a new attempt would meet the same wall, so no retry is spent |
 | Blocker PARTIAL or UNMET otherwise | RETRY (budget permitting, [BUD](08-budgets-and-failures.spec.md)) |
 | No failing blocker | PROCEED; unmet warnings pass once to the next step as notes |

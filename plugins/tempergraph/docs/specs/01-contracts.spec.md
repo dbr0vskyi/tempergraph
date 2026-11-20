@@ -3,7 +3,7 @@ title: Shared contracts
 type: contracts
 status: review
 prefix: CON
-adrs: [0003, 0005, 0006, 0008, 0009, 0012, 0015, 0018, 0062, 0070, 0073, 0074]
+adrs: [0003, 0005, 0006, 0008, 0009, 0012, 0015, 0018, 0062, 0070, 0073, 0074, 0075, 0078]
 ---
 
 # Shared contracts
@@ -26,7 +26,8 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `flow` | map unit → `FlowSpec` | Where a pass goes when it is not the next in `order`. |
 | | `input` | `InputDeclaration` | How a run starts (§2.3). |
 | | `workspace` | `in_place` \| `worktree` | Default workspace mode. |
-| | `finalizer` | callable ref, optional | Runs once after the last pass; calls no model. |
+| | `finalizer` | callable ref, optional | Runs once after the last pass; calls no model; never changes the run's exit code ([FIN](78-finalizer-contract.spec.md)). |
+| | `finalizer_outcomes` | list of slugs, required with `finalizer` | The outcomes the finalizer may report ([FIN §2.3](78-finalizer-contract.spec.md)). |
 | | `default_executor` | executor name | Used when a step names none. |
 | | `model_profile` | `ModelProfile` | Default aliases per step and judge (§2.4). |
 | | `issue_repository` | `owner/name` | Required. Receives the workflow's improvement issues. |
@@ -42,20 +43,22 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `profiles` | map name → map `SettingKey` → value, optional | Named bundles of settings ([RST §2.5](80-run-settings-and-overrides.spec.md)). |
 | `UnitSpec` | `kind` | `step` \| `route` \| `switch` \| `parallel` \| `map` \| `subworkflow` \| `wait` \| `script` \| `council` \| `contest` \| `ask` | Kinds and their owning specs: [CMP §2.2](03-compiler-and-flow.spec.md) and [FLX](74-flow-extensions.spec.md) for flow kinds; [SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md) for the others. |
 | | `step` | `StepSpec`, for kind `step`, `map` and `contest` | |
-| | `script`, `council`, `contest`, `ask` | `ScriptSpec`, `CouncilSpec`, `ContestSpec`, `AskSpec`, for their kind | Defined in the owning spec; used by it and by WFM only. |
+| | `script`, `council`, `contest`, `ask`, `map` | `ScriptSpec`, `CouncilSpec`, `ContestSpec`, `AskSpec`, `MapSpec`, for their kind | Defined in the owning spec ([MAP](77-map-unit.spec.md) for `MapSpec`); used by it and by WFM only. A `switch` unit's fields are in [CMP §2.2](03-compiler-and-flow.spec.md) and [SWM §2.1](79-measured-switches.spec.md). |
 | | `gate` | `GateSpec` | Required for every kind. A `wait` or `ask` gate holds only checks; a `script` gate holds the built-in check and an optional judge. |
 | `StepSpec` | `executor` | executor name, optional | Falls back to `default_executor`. |
 | | `prompt` | inline text \| file ref \| `default` | Template; grammar in §2.2. |
 | | `tools` | list of `ToolCapability` (§2.5) | Declared tools. |
 | | `commands` | list of command prefixes | Within the workflow-wide allow-list. |
-| | `produces` | map key → `ArtifactKind` | `file`, `url`, `wiki_page`, `tracker_issue`, `pull_request`. |
+| | `produces` | map key → `ArtifactKind` | `file`, `url`, `wiki_page`, `tracker_issue`, `pull_request`, `value` (one line, with optional `choices` and `pattern`, [VAL §2.1](76-step-values-and-template-keys.spec.md)). |
 | | `model` | alias \| list of up to 8 aliases (ladder) \| item function ref | |
 | | `timeout_s`, `idle_s` | positive int, optional | |
 | | `session_options` | `SessionOptions` (§2.6), optional | |
 | | `before`, `after` | list of `ScriptSpec`, optional | Hybrid step: model-free scripts in the same attempt, around the session ([SCR](70-script-units-and-hybrid-steps.spec.md)). |
+| | `self_check` | bool, default false | The step may run its gate's check from inside its attempt ([CHK §2.5](75-check-contract-and-command-runs.spec.md)). |
 | | `summary` | text ≤ 60 chars | For diagrams. |
 | | `subagent_model` | alias, optional | The model of the subagents the step starts, where its executor hosts them ([RST §2.2](80-run-settings-and-overrides.spec.md)). |
-| `GateSpec` | `check` | callable ref, optional | Pure; returns `CheckResult`. |
+| `GateSpec` | `check` | callable ref, optional | Model-free, writes no state; `(ctx: CheckContext) -> CheckResult` ([CHK](75-check-contract-and-command-runs.spec.md)). |
+| | `check_timeout_s` | positive int, default 1800 | Wall limit of the whole check ([CHK §2.6](75-check-contract-and-command-runs.spec.md)). |
 | | `judge` | `JudgeSpec` | Required on model steps. |
 | | `criteria` | list of `Criterion` | At least one when a judge is present. |
 | | `on_fail` | `retry` \| `stop` \| `fallback` | Hard-failure policy. |
@@ -76,10 +79,11 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `id` | slug, optional | Echoed by the judge. |
 | | `unverified_system` | text, optional | A system the author knowingly leaves unread. |
 | | `no_change_policy` | `escalate` \| `retry`, default `escalate` | What a blocker the judge marks `no_change` does (§2.8, [JDG](05-judge-and-verdict.spec.md)). |
+| | `mechanical` | bool, default false | The gate's check verifies this criterion; a check FAIL on it costs no judge, and the judge takes the check's finding as given ([CHK-B1, B2](75-check-contract-and-command-runs.spec.md)). |
 
 ### 2.2 Template grammar
 
-A template contains literal text, doubled braces `{{` `}}` for literal braces, and plain fields `{name}` where `name` is an engine key, a declared input name, or `settings.<name>` for a declared workflow setting ([RST §2.5](80-run-settings-and-overrides.spec.md)). Nothing else between braces is valid. At run time a field without a value renders as the visible marker `⟨missing:name⟩` and is recorded on the step record.
+A template contains literal text, doubled braces `{{` `}}` for literal braces, and plain fields `{name}` where `name` is an engine key, a declared input name, or `settings.<name>` for a declared workflow setting ([RST §2.5](80-run-settings-and-overrides.spec.md)). Nothing else between braces is valid. At run time a field without a value renders as the visible marker `⟨missing:name⟩` and is recorded on the step record. The engine keys, item keys and earlier-artifact pointers a field may name are listed in [VAL §2.3](76-step-values-and-template-keys.spec.md).
 
 ### 2.3 Input and routing declarations
 
@@ -121,6 +125,7 @@ Workflow data declares tools by engine-neutral capability name. Each executor ma
 | `web_search` | yes | Search the web. |
 | `subagent` | inherits | Start a sub-session; inherits the caller's restriction. |
 | `mcp:<server>/<tool>` | per catalog | One MCP tool; classified by the engine catalog, never by name pattern. |
+| `skill:<plugin>:<name>` | no | One skill of an installed plugin, named by plugin path; adds no tool of its own ([ADR-0078](../adr/0078-skills-are-a-declared-tool-capability.adr.md)). |
 
 ### 2.6 Executor protocol
 
@@ -204,7 +209,7 @@ The judgement block is the last fenced JSON block of the judge's answer.
 
 `Verdict` ∈ `PROCEED`, `RETRY`, `BACK`, `ESCALATE`, `STOP`. Only the engine derives it ([JDG](05-judge-and-verdict.spec.md)). A confidence value carries `source` ∈ `judge`, `engine_placeholder`.
 
-`CheckResult` ∈ `PASS`, `MAYBE`, `FAIL`, with `evidence` (bounded text), `environmental: bool` and `untracked_only: bool`.
+`CheckResult` is `result` ∈ `PASS`, `MAYBE`, `FAIL`, with `evidence` (bounded text), `environmental: bool`, `untracked_only: bool`, `findings` (list of `CheckFinding`), `facts` (map of at most 20 slugs to strings ≤ 200 chars) and `runs` (the check's command runs, added by the engine). A `CheckFinding` is `{criterion?, status, place, fix, message}` with `status` ∈ `pass`, `maybe`, `fail`, `n_a`. Rules: [CHK §2.4](75-check-contract-and-command-runs.spec.md).
 
 ### 2.9 Runs, threads and exit codes
 

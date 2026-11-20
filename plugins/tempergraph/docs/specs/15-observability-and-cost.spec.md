@@ -22,11 +22,14 @@ What a run leaves behind so a person or a later analysis can see what it did, wh
 | `attempt_start` | Before every step or judge session | unit, item, attempt, kind, executor, alias and source, timeout and source |
 | `agent_run` | After every session | kind (`step`, `retry`, `judge`, `judge_reask`, `grouping`), `Usage`, tool call names, `cli_version`, `session_id`, isolation mode, outcome fields of `SessionResult` |
 | `attempt_interrupted` | On resume, for an unclosed start | |
-| `route` | A route or switch picks a target | unit, arm, whether an operator override chose it ([CMP](03-compiler-and-flow.spec.md)) |
+| `route` | A route or switch picks a target | unit, arm, `chosen_by` (`predicate`, `default`, `operator`, `rearm`), and for a switch `shadow`, `would_choose` and `signals` ([CMP](03-compiler-and-flow.spec.md), [SWM](79-measured-switches.spec.md)) |
 | `audit_judge` | A sampled audit judge ran ([JDG](05-judge-and-verdict.spec.md)) | executor, alias, per-criterion agreement with the gate's judge, `Usage` |
 | `gate` | Gate routes | verdict, judgement view, confidence and source, guard status, view set |
 | `human` | Resume applied | decision, who, feedback id |
-| `wait`, `auto_resume`, `finalize`, `engine_error` | As named | |
+| `map_items` | A map fans out | unit, item ids, count ([MAP](77-map-unit.spec.md)) |
+| `self_check` | A step ran its check preview | unit, item, attempt, result, finding counts, duration ([CHK §2.5](75-check-contract-and-command-runs.spec.md)) |
+| `finalize` | The finalizer returned, raised or timed out | outcome, reason, url, duration, manual step count ([FIN §2.3](78-finalizer-contract.spec.md)) |
+| `wait`, `auto_resume`, `engine_error` | As named | |
 
 ### 2.2 Cost rules
 
