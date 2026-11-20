@@ -1,7 +1,7 @@
 ---
 title: Shared contracts
 type: contracts
-status: review
+status: ready-for-implementation
 prefix: CON
 adrs: [0003, 0005, 0006, 0008, 0009, 0012, 0015, 0018, 0062, 0070, 0073, 0074, 0075, 0078]
 ---
@@ -368,9 +368,9 @@ Shared by PKG, OUT, AUT and SCF.
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should `effort` values be normalized further when one executor accepts `xhigh` and another does not? Today the executor maps and records what it applied. | Executor implementer |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Should `effort` values be normalized further when one executor accepts `xhigh` and another does not? | Executor implementer | No further normalization: the executor maps the four values and records what it applied in `applied_options` |
 
 ## References
 

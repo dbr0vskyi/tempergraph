@@ -4,7 +4,7 @@ version: 1
 date_created: 2026-11-20
 last_updated: 2026-11-20
 owner: dbr0vskyi
-status: Planned
+status: In Progress
 tags: [release-plan, tempergraph, tempergraph-monitor]
 tracker: none
 spec: plugins/tempergraph/docs/specs/00-overview.spec.md
@@ -39,7 +39,7 @@ task_id: first-release
 
 **Context for the implementer.** Read the [docs README](../README.md), the overview, the contracts, then the component spec. Truth ranking: acceptance criteria, then specs and decision records, then this plan, then code.
 
-**Status: Planned.** No track has started.
+**Status: In Progress.** Started 2026-11-20 on the owner's instruction to start release 1, which this plan takes as EC-1 met for the scope of ADR-0090 and ADR-0091 (both stay `proposed` until their pull request merges). Each track's expanded plan is listed in the [plans index](README.md).
 
 ## 1. Requirements analysis
 

@@ -1,7 +1,7 @@
 ---
 title: Security posture
 type: component
-status: review
+status: ready-for-implementation
 prefix: SEC
 adrs: [0006, 0010, 0011]
 ---
@@ -90,9 +90,9 @@ How the engine keeps operator input, model output and secrets away from process 
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Do workspace `.agents/hooks.json` files of the repository run inside an Antigravity session whose home is isolated? Their effect on a judge must be known before Antigravity hosts judges. | Executor implementer (P-AG-1) |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Do workspace `.agents/hooks.json` files of the repository run inside an Antigravity session whose home is isolated? Their effect on a judge must be known before Antigravity hosts judges. | Executor implementer (P-AG-1) | Not reached: `antigravity` ships in release 3 ([ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md)) and hosts no judge until P-AG-1 passes |
 
 ## References
 

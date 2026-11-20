@@ -1,7 +1,7 @@
 ---
 title: Local observability store
 type: component
-status: review
+status: ready-for-implementation
 prefix: LOS
 adrs: [0009, 0014, 0024]
 ---
@@ -157,9 +157,9 @@ The default is full local capture ([ADR-0029](../adr/0029-own-observability-firs
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should the state root move out of the main checkout for repositories on network drives? The design keeps [WSP](13-workspace-and-concurrency.spec.md)'s rule. | Owner |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Should the state root move out of the main checkout for repositories on network drives? | Owner | The state root stays `<main checkout>/.tempergraph/` per [WSP](13-workspace-and-concurrency.spec.md); a state root outside git is release 2 (plan X2-24) |
 
 ## References
 
