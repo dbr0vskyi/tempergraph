@@ -486,7 +486,7 @@ def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: 
     spec = with_outcome(spec)
     try:
         plan = resolve_workspace(spec, target, rv["workspace"], task_id=task_id,
-                                 prefix=str(rv["worktree.branch_prefix"]))
+                                 prefix=str(rv["worktree.branch_prefix"]), base=str(rv.get("worktree.base") or "head"))
     except WorkspaceRefused as exc:
         return _refuse(exc.word, str(exc), tid=tid)
     ensure_state_root(root)

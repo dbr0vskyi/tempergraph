@@ -56,6 +56,8 @@ CAUSES: dict[str, Cause] = {
                       remedy="A person rewound, ruled or declined: the gate let this through"),
     "binding_shift": Cause(klass="fault", side="workflow",
                            remedy="Re-score the judge on its calibration cases and review the gate for the new binding"),
+    "outcome_unmet": Cause(klass="fault", side="workflow",
+                           remedy="The outcome judge found this final criterion unmet: a gate let the gap through"),
     "judge_unparsed": Cause(klass="fault", side="engine", remedy="The judge's answer could not be parsed twice"),
     "guard": Cause(klass="fault", side="engine", remedy="The independence guard discarded a judgement"),
     "engine_error": Cause(klass="fault", side="engine", remedy="The engine recorded an internal error"),

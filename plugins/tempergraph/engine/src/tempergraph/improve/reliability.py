@@ -122,7 +122,7 @@ def derive(recs: Sequence[Mapping[str, Any]], thread: str, *, keys: Mapping[str,
         before = [g for g in gates if int(g.rec.get("seq") or 0) < hseq]
         if not before:
             continue
-        pause = next((r for r in reversed(recs) if r.get("kind") == "pause" and int(r.get("seq") or 0) < hseq), {})
+        pause: Mapping[str, Any] = next((r for r in reversed(recs) if r.get("kind") == "pause" and int(r.get("seq") or 0) < hseq), {})
         g = next((x for x in reversed(before) if x.rec.get("unit") == h.get("unit")), before[-1])
         word = str(h.get("decision") or "")
         src = _source(h.get("caller"))
@@ -130,7 +130,7 @@ def derive(recs: Sequence[Mapping[str, Any]], thread: str, *, keys: Mapping[str,
             out.append(_row(thread, recs, g, "approval", "agree" if word == "proceed" else "disagree", src,
                             h.get("ts"), keys))
         if pause.get("pause_kind") == "escalation" and g.rec.get("verdict") == "ESCALATE" and word == "proceed":
-            check = next((r for r in reversed(recs) if r.get("kind") == "check" and r.get("unit") == g.rec["unit"]
+            check: Mapping[str, Any] = next((r for r in reversed(recs) if r.get("kind") == "check" and r.get("unit") == g.rec["unit"]
                           and int(r.get("seq") or 0) < int(g.rec.get("seq") or 0)), {})
             if check.get("result") == "PASS":
                 out.append(_row(thread, recs, g, "override", "disagree", src, h.get("ts"), keys))
@@ -298,7 +298,8 @@ def judgements(root: Path, workflow: str) -> list[dict[str, Any]]:
     for task in sorted(p.name for p in base.iterdir() if p.is_dir()):
         recs = records(run_dir(root, workflow, task) / "run.jsonl")
         for g in _gates(recs):
-            judge = next((r for r in reversed(recs) if r.get("kind") == "agent_run" and r.get("unit") == g.rec["unit"]
+            judge: Mapping[str, Any] = next((r for r in reversed(recs) if r.get("kind") == "agent_run"
+                                             and r.get("unit") == g.rec["unit"]
                           and r.get("session_kind") == "judge" and int(r.get("seq") or 0) < int(g.rec.get("seq") or 0)),
                          {})
             out.append({"thread": f"{workflow}/{task}", "unit": g.rec["unit"], "seq": g.rec.get("seq"),

@@ -107,3 +107,7 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0113](0113-the-workflow-docs-set-is-provisional-until-temperspec-owns-it.adr.md) | Every workflow package carries its own docs set, with provisional rules until temperspec owns them | proposed |
 | [0114](0114-judged-criteria-carry-a-scale-and-authoring-guides-until-criteria-are-clear.adr.md) | Judged criteria carry a scoring scale with seeds; authoring guides the person until every criterion is clear | proposed |
 | [0115](0115-the-engine-is-a-src-layout-python-package-inside-its-plugin.adr.md) | The engine is a src-layout Python package inside its plugin, with pytest, ruff and mypy | proposed |
+| [0116](0116-session-logs-are-read-model-free-first-and-by-a-model-only-on-a-plan.adr.md) | Session logs are read model-free first, and by a model only on a plan | proposed |
+| [0117](0117-review-depth-follows-the-improvement-mode-and-named-signals.adr.md) | Review depth follows the improvement mode and named signals | proposed |
+| [0118](0118-the-reviewer-is-tool-less-and-reads-a-condensed-datamarked-view.adr.md) | The reviewer is tool-less and reads a condensed, scrubbed, datamarked view | proposed |
+| [0119](0119-review-observations-are-candidates-corroborated-before-they-file.adr.md) | Review observations are candidates, corroborated before they file | proposed |

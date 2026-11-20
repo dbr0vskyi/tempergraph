@@ -7,6 +7,7 @@ through `gh api --input -`. Never imports or opens the evidence file.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 import shutil
@@ -26,6 +27,22 @@ class CodeHost(Protocol):
     def create(self, repo: str, title: str, body: str, labels: list[str]) -> str: ...
     def comment(self, repo: str, number: int, body: str) -> str: ...
     def reopen(self, repo: str, number: int) -> None: ...
+
+
+class PullRequestHost(Protocol):
+    """Draft pull requests for proposals (PRP-B8). There is no merge method, by design (PRP-AC-2)."""
+
+    def default_branch(self, repo: str) -> str: ...
+    def create_draft_pr(self, repo: str, head: str, base: str, title: str, body: str, labels: list[str]) -> str: ...
+
+
+BRANCH = re.compile(r"^improve/[A-Za-z0-9_.-]{1,80}$")
+
+
+def _check_branch(head: str) -> str:
+    if not BRANCH.match(head):
+        raise CodeHostError(f"branch {head!r} is not an improve/<proposal> branch")
+    return head
 
 
 def _check(repo: str) -> str:
@@ -73,6 +90,21 @@ class GhCodeHost:
         self._gh(["api", f"repos/{_check(repo)}/issues/{int(number)}", "--method", "PATCH", "--input", "-"],
                  {"state": "open"})
 
+    def default_branch(self, repo: str) -> str:
+        got = self._gh(["api", f"repos/{_check(repo)}"])
+        return str((got or {}).get("default_branch") or "main")
+
+    def create_draft_pr(self, repo: str, head: str, base: str, title: str, body: str, labels: list[str]) -> str:
+        """Always a draft; labels go on through the issues endpoint, best effort."""
+        got = self._gh(["api", f"repos/{_check(repo)}/pulls", "--method", "POST", "--input", "-"],
+                       {"title": title, "body": body, "head": _check_branch(head), "base": base, "draft": True})
+        number = (got or {}).get("number")
+        if labels and isinstance(number, int):
+            with contextlib.suppress(CodeHostError):
+                self._gh(["api", f"repos/{_check(repo)}/issues/{number}/labels", "--method", "POST", "--input", "-"],
+                         {"labels": labels})
+        return str((got or {}).get("html_url") or "")
+
 
 @dataclass(kw_only=True)
 class MemoryCodeHost:
@@ -80,6 +112,7 @@ class MemoryCodeHost:
 
     issues: list[dict[str, Any]] = field(default_factory=list)
     comments: list[dict[str, Any]] = field(default_factory=list)
+    pulls: list[dict[str, Any]] = field(default_factory=list)
     fail_search: int = 0
     down: bool = False
 
@@ -109,3 +142,16 @@ class MemoryCodeHost:
         for i in self.issues:
             if i["repo"] == repo and i["number"] == number:
                 i["state"] = "open"
+
+    def default_branch(self, repo: str) -> str:
+        if self.down:
+            raise CodeHostError("unreachable")
+        return "main"
+
+    def create_draft_pr(self, repo: str, head: str, base: str, title: str, body: str, labels: list[str]) -> str:
+        if self.down:
+            raise CodeHostError("unreachable")
+        n = len(self.pulls) + 1
+        self.pulls.append({"repo": _check(repo), "number": n, "head": _check_branch(head), "base": base,
+                           "title": title, "body": body, "labels": labels, "draft": True, "state": "open"})
+        return f"https://example.test/{repo}/pull/{n}"

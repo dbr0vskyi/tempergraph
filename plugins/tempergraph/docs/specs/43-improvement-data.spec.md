@@ -57,6 +57,8 @@ What the self-improvement loop ([SIL](16-self-improvement.spec.md), [PRP](40-imp
 | `trial_progress` | A trial case pair finishes, and at the end | trial, pairs done, spend, decision when final |
 | `binding_shift` | FBK records a shift | gate, old and new binding |
 
+Release 1 emits `finding_recorded`, `issue_filed` and `issue_commented`; the labels and binding shifts an exit adds ride on it (`labels`), and the other loop events are read from their records (ledger rows, `findings.json`, proposal and trial records) until a release adds them.
+
 ### 2.4 Loop metrics
 
 Read-only figures over a window, per workflow and for the engine side, printed by `report --loop` and readable by the monitor.

@@ -226,7 +226,7 @@ Before and after every step session the engine reads `git worktree list --porcel
 - `auto` keeps worktrees optional for non-coding workflows while making the safe choice the default for workflows that change files ([ADR-0101](../adr/0101-one-workspace-setting-with-an-auto-default.adr.md)). A workflow author who wants a fixed mode declares `workspace: worktree` or `in_place`.
 - `head` as the default base keeps a run offline-safe and starts it from what the person sees; `default_branch` matches Claude Code's `fresh` ([ADR-0104](../adr/0104-a-new-worktree-starts-from-the-main-checkouts-head.adr.md)).
 - The engine's lock with a reason keeps `git worktree prune` and other tools' sweeps from dropping the admin data of a paused run's worktree.
-- Release split, for the first-release thread: `auto`/`worktree`/`in_place`, the `sibling` root, `head` base, names, start, resume and re-attach, executor pointing and the two disallowed tools, `worktree list` and `path` are first-release; `in_repo` and `path:` roots, `default_branch` and `ref:` bases, `cleanup: on_finish`, `prune --apply`, foreign-worktree scans and `.worktreeinclude` follow. Writer, slot and item worktrees arrive with the units that need them.
+- Release split, for the first-release thread: `auto`/`worktree`/`in_place`, the `sibling` root, `head` base, names, start, resume and re-attach, executor pointing and the two disallowed tools, `worktree list`, `path` and the `ref:` base (for trial and eval cases, PRP and plan T12.6) are first-release; `in_repo` and `path:` roots, the `default_branch` base, `cleanup: on_finish`, `prune --apply`, foreign-worktree scans and `.worktreeinclude` follow. Writer, slot and item worktrees arrive with the units that need them.
 
 ## 6. Acceptance criteria
 
