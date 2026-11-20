@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import os
 import time
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -102,26 +102,92 @@ class CostTotals:
         return t
 
 
-class RunLog:
-    """`runs/<workflow>/<task_id>/run.jsonl`; the first line carries the schema."""
+ENVELOPE_OPTIONAL = ("unit", "item", "attempt", "session_key")
 
-    def __init__(self, path: Path) -> None:
+
+class RunLog:
+    """`runs/<workflow>/<task_id>/run.jsonl`; the first line carries the schema.
+
+    Every record carries the envelope of EVT §2.1: `seq` continues across instances and segments,
+    `segment` counts process lifetimes (0 at the start, +1 per resume), `thread_id` comes from the path,
+    and `unit`, `item`, `attempt` and `session_key` are present, null when the record has no unit.
+    """
+
+    def __init__(self, path: Path, observers: Any = None) -> None:
         self.path = path
         self.failures = 0
         self.seq = last_seq(path)  # seq continues across segments (EVT-B2)
+        self.thread_id = f"{path.parent.parent.name}/{path.parent.name}"
+        self.segment: int | None = None
+        self.checked_tail = False
+        self.observers = observers  # an ObserverHub (run/events.py) or None; enabled in operator config only
+
+    def _segment(self) -> int:
+        """This process's segment: the one after the log's last `run_started`, or 0 for a new thread."""
+        if self.segment is None:
+            prev = last_record(self.path, "run_started")
+            last = (prev or {}).get("segment")
+            self.segment = 0 if prev is None else (last + 1 if isinstance(last, int) else 1)
+        return self.segment
 
     def write(self, record: str, /, **fields: Any) -> int:
         self.seq += 1
-        rec = {**fields, "kind": record, "ts": now_iso(), "seq": self.seq}
+        try:
+            segment = self._segment()
+        except Exception:  # noqa: BLE001 - C2
+            segment = 0
+        rec = {**fields, "kind": record, "ts": now_iso(), "seq": self.seq, "thread_id": self.thread_id,
+               "segment": segment}
         if "kind" in fields:
             rec["session_kind"] = fields["kind"]
+        for key in ENVELOPE_OPTIONAL:
+            rec.setdefault(key, None)
+        if rec["session_key"] and (rec["unit"] is None or rec["attempt"] is None):
+            unit, item, attempt = split_session_key(str(rec["session_key"]))
+            for k, v in (("unit", unit), ("item", item), ("attempt", attempt)):
+                if rec[k] is None:
+                    rec[k] = v
+        out = _jsonable(rec)
         try:
             if not self.path.exists():
                 append_jsonl(self.path, {"kind": "schema", "schema": SCHEMA["run_log"]})
-            append_jsonl(self.path, _jsonable(rec))
+            elif not self.checked_tail:
+                _end_cut_line(self.path)
+            self.checked_tail = True
+            append_jsonl(self.path, out)
         except Exception:  # noqa: BLE001 - observability never changes the run (C2)
             self.failures += 1
+            return self.seq
+        if self.observers is not None:
+            self.observers.on_record(out)
+            for name, error in self.observers.take_errors():  # EVT-B5: recorded once, the run goes on
+                self.write("engine_error", scope="observer", observer=name, error=error)
         return self.seq
+
+
+def _end_cut_line(path: Path) -> None:
+    """A process that died mid-line leaves a partial last line; end it so the next record is whole."""
+    with open(path, "rb") as fh:
+        fh.seek(0, os.SEEK_END)
+        if fh.tell() == 0:
+            return
+        fh.seek(-1, os.SEEK_END)
+        last = fh.read(1)
+    if last != b"\n":
+        with open(path, "ab") as fh:
+            fh.write(b"\n")
+
+
+def split_session_key(key: str) -> tuple[str | None, str | None, int | None]:
+    """`<unit>[.<item>].<attempt>.<kind>[.<n>]` back into unit, item and attempt (EVT §2.1)."""
+    parts = key.split(".")
+    for i in range(len(parts) - 2, 0, -1):
+        if parts[i].isdigit() and not parts[i + 1].isdigit():
+            head = parts[:i]
+            unit = head[0] if head else None
+            item = ".".join(head[1:]) or None
+            return unit, item, int(parts[i])
+    return None, None, None
 
 
 def last_seq(path: Path) -> int:
@@ -172,45 +238,196 @@ def _jsonable(v: Any) -> Any:
     return str(v)
 
 
-class LiveSink(EventSink):
-    """The live progress file (OBS §2.3) and the activity journal (EVT §2.3), written at most once a second."""
+JOURNAL_MAX_LINES = 20_000
+JOURNAL_MAX_BYTES = 8 * 1024 * 1024
+# The journal cap's drop order (EVT §2.3): past half the cap `model_delta` lines are dropped, past three
+# quarters `text` lines too, and past 95 % everything but tool lines; the last slot is the `truncated` line.
+_DROP_STAGES: tuple[tuple[float, frozenset[str] | None], ...] = (
+    (0.95, None), (0.75, frozenset({"model_delta", "text"})), (0.5, frozenset({"model_delta"})))
+_TOOL_EVENTS = frozenset({"tool_started", "tool_finished"})
 
-    def __init__(self, session_dir: Path | None, clock: Any = time.monotonic) -> None:
+
+class LiveSink(EventSink):
+    """The live progress file (OBS §2.3, RDD §2.2) and the activity journal (EVT §2.3).
+
+    The journal is buffered and flushed at most once a second and at session end; the live file is replaced
+    at most once a second. `opened` is called once with the `session_started` data, so the caller writes
+    `session_opened`; `observers` get every journal line after it is written. Every write is best effort.
+    """
+
+    def __init__(self, session_dir: Path | None, clock: Any = time.monotonic, *,
+                 opened: Callable[[dict[str, Any]], None] | None = None, observers: Any = None,
+                 session_key: str = "", tool_inputs: bool = True,
+                 max_lines: int = JOURNAL_MAX_LINES, max_bytes: int = JOURNAL_MAX_BYTES) -> None:
         super().__init__()
         self.dir = session_dir
         self.clock = clock
-        self.last_write = 0.0
+        self.opened = opened
+        self.observers = observers
+        self.session_key = session_key or (session_dir.name if session_dir else "")
+        self.tool_inputs = tool_inputs
+        self.max_lines, self.max_bytes = max_lines, max_bytes
+        self.last_write = float("-inf")
+        self.last_flush = float("-inf")
         self.recent: list[dict[str, Any]] = []
         self.open_tool: dict[str, Any] | None = None
+        self.open_calls: dict[str, dict[str, Any]] = {}
         self.last_text = ""
+        self.last_event_at: str | None = None
+        self.tokens_so_far: int | None = None
+        self.turns_so_far: int | None = None
+        self.pgid: int | None = None
         self.n = 0
+        self.lines = 0
+        self.bytes = 0
+        self.dropped: dict[str, int] = {}
+        self.buffer: list[dict[str, Any]] = []
         self.failures = 0
+        self.disabled = False
+        self.closed = False
+
+    # -- the journal -------------------------------------------------------------------------------
+
+    def _keep(self, ev: str) -> bool:
+        used = max(self.lines / self.max_lines, self.bytes / self.max_bytes)
+        if self.lines >= self.max_lines - 1 or self.bytes >= self.max_bytes:
+            return False
+        for threshold, drop in _DROP_STAGES:
+            if used >= threshold:
+                return ev in _TOOL_EVENTS if drop is None else ev not in drop
+        return True
+
+    def _journal(self, row: dict[str, Any]) -> None:
+        if self.dir is None or self.disabled:
+            return
+        ev = str(row.get("ev"))
+        if not self._keep(ev):
+            self.dropped[ev] = self.dropped.get(ev, 0) + 1
+            return
+        row = _jsonable(row)
+        self.lines += 1
+        self.bytes += len(json.dumps(row, ensure_ascii=False)) + 1
+        self.buffer.append(row)
+
+    def flush(self) -> None:
+        if self.dir is None or not self.buffer or self.disabled:
+            self.buffer.clear()
+            return
+        rows, self.buffer = self.buffer, []
+        try:
+            path = self.dir / "activity.jsonl"
+            path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            with open(path, "a", encoding="utf-8") as fh:
+                for row in rows:
+                    fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+            os.chmod(path, 0o600)
+        except Exception:  # noqa: BLE001 - EVT §4: journal off for this session, the session goes on
+            self.failures += 1
+            self.disabled = True
+            return
+        self.last_flush = self.clock()
+        if self.observers is not None:
+            for row in rows:
+                self.observers.on_activity(self.session_key, row)
+
+    # -- events --------------------------------------------------------------------------------------
 
     def push(self, event: Event) -> None:
         super().push(event)
         if self.dir is None:
             return
         self.n += 1
-        d = dict(event.data)
-        if event.kind == "tool_started":
-            self.open_tool = {"name": d.get("name"), "input_summary": d.get("input_summary", "")}
-            self.recent = (self.recent + [self.open_tool])[-10:]
+        d = {k: v for k, v in dict(event.data).items() if k != "usage"}
+        self.last_event_at = now_iso()
+        if event.kind == "session_started":
+            self._opened(dict(event.data))
+        elif event.kind == "tool_started":
+            if not self.tool_inputs:
+                d["input_summary"] = None
+            call: dict[str, Any] = {"name": d.get("name"), "capability": d.get("capability"),
+                    "input_summary": d.get("input_summary"), "started_at": self.last_event_at, "t": event.ts}
+            self.open_calls[str(d.get("call_id", ""))] = call
+            self.open_tool = call
         elif event.kind == "tool_finished":
-            self.open_tool = None
+            done_call = self.open_calls.pop(str(d.get("call_id", "")), None)
+            if done_call is not None:
+                call = done_call
+                d["duration_s"] = round(max(0.0, event.ts - float(call.get("t") or 0.0)), 3)
+                done = {"name": call["name"], "input_summary": call["input_summary"], "ok": d.get("ok"),
+                        "duration_s": d["duration_s"]}
+                self.recent = (self.recent + [done])[-10:]
+            self.open_tool = next(reversed(self.open_calls.values()), None)
         elif event.kind == "text":
             self.last_text = clip(scrub(str(d.get("last_line", ""))), 200)
+        elif event.kind == "result":
+            usage = event.data.get("usage")
+            if isinstance(usage, Usage):
+                tokens = [x for x in (usage.input_tokens, usage.output_tokens) if x is not None]
+                self.tokens_so_far = sum(tokens) if tokens else None
+                self.turns_so_far = usage.turns
+        if "pgid" in d and isinstance(d.get("pgid"), int):
+            self.pgid = d["pgid"]
+        self._journal({"t": round(event.ts, 3), "n": self.n, "ev": event.kind, **d})
+        now = self.clock()
+        if now - self.last_flush >= 1.0 or event.kind == "result":
+            self.flush()
+        if now - self.last_write >= 1.0 or event.kind == "result":
+            self.last_write = now
+            self._live()
+
+    def _opened(self, data: dict[str, Any]) -> None:
+        if self.opened is None:
+            return
         try:
-            row = {"t": round(event.ts, 3), "n": self.n, "ev": event.kind,
-                   **{k: v for k, v in d.items() if k != "usage"}}
-            append_jsonl(self.dir / "activity.jsonl", _jsonable(row))
-            now = self.clock()
-            if now - self.last_write >= 1.0 or event.kind == "result":
-                self.last_write = now
-                write_json(self.dir / "live.json", {"open_tool": self.open_tool, "recent": self.recent,
-                                                    "last_text": self.last_text, "updated_at": now_iso(),
-                                                    "pid": os.getpid()})
+            self.opened(data)
+        except Exception:  # noqa: BLE001 - C2
+            self.failures += 1
+        self.opened = None
+
+    def _live(self) -> None:
+        if self.dir is None:
+            return
+        open_tool = None
+        if self.open_tool is not None:
+            open_tool = {k: v for k, v in self.open_tool.items() if k != "t"}
+        try:
+            write_json(self.dir / "live.json", {
+                "schema_version": SCHEMA["activity"], "session_key": self.session_key, "open_tool": open_tool,
+                "recent": self.recent, "last_text": self.last_text, "tokens_so_far": self.tokens_so_far,
+                "turns_so_far": self.turns_so_far, "pgid": self.pgid, "last_event_at": self.last_event_at,
+                "updated_at": now_iso(), "pid": os.getpid(), "ended": self.closed})
         except Exception:  # noqa: BLE001
             self.failures += 1
+
+    def close(self) -> None:
+        """Session end: the `truncated` line when lines were dropped, the last flush and live file."""
+        if self.closed:
+            return
+        self.closed = True
+        if self.dropped and self.dir is not None and not self.disabled:
+            self.n += 1
+            self.buffer.append({"t": None, "n": self.n, "ev": "truncated", "dropped": dict(self.dropped)})
+        self.flush()
+        self.open_tool = None
+        if self.dir is not None:  # LOS §2.1: the live file is removed at session end
+            try:
+                (self.dir / "live.json").unlink(missing_ok=True)
+            except OSError:
+                self.failures += 1
+
+
+def session_sink(log: RunLog, req: Any, executor: str, *, tool_inputs: bool = True) -> LiveSink:
+    """The sink for one session: journal and live file in its folder, `session_opened` into the run log."""
+    raw = (req.session_dir / "raw.jsonl") if req.session_dir is not None else None
+
+    def opened(data: dict[str, Any]) -> None:
+        log.write("session_opened", session_key=req.session_key, kind=req.kind, executor=executor,
+                  alias=req.alias, model=data.get("model"), session_id=data.get("session_id"),
+                  transcript={"engine": str(raw) if raw else None, "native": None, "native_kind": None},
+                  pgid=data.get("pgid"))
+
+    return LiveSink(req.session_dir, opened=opened, observers=log.observers, session_key=req.session_key,
+                    tool_inputs=tool_inputs)
 
 
 @dataclass(kw_only=True)

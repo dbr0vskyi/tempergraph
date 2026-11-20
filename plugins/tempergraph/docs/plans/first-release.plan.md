@@ -151,12 +151,12 @@ Every item release 1 ships, then every item it leaves out with its release. The 
 | I-38 | Executor interface: registry, preflight, launcher, normalized events, conformance suite with four stand-ins | EXI | T3.1–T3.3 |
 | I-39 | Claude Code executor | ECC | T3.4 |
 | I-40 | Run log with usage; reported vs estimated cost; unmeasured never shown as zero | OBS | T5.1 |
-| I-41 | Live progress file, session metrics, time profile, timeout classes | OBS | T7.1 |
-| I-42 | `report` and monthly `stats` | OBS | T7.2 |
-| I-43 | Observer events, activity journal, `events --follow` (file observers only) | EVT | T7.3 |
-| I-44 | `status --detail` | RDD | T7.4 |
-| I-45 | Local store: raw session logs, check output, engine code log, `logs`, `store usage\|prune\|export`, retention, capture level | LOS | T1.4, T7.4 |
-| I-46 | `attention` (everything waiting on a person) | CLI | T7.2 |
+| I-41 | Live progress file, session metrics, time profile, timeout classes | OBS | T5.1, T7.1 |
+| I-42 | `report` and monthly `stats` | OBS | T7.4 |
+| I-43 | Observer events, activity journal, `events --follow` (file observers only) | EVT | T7.1 |
+| I-44 | `status --detail` | RDD | T7.2 |
+| I-45 | Local store: raw session logs, check output, engine code log, `logs`, `store usage\|prune\|export`, retention, capture level | LOS | T1.4, T7.3 |
+| I-46 | `attention` (everything waiting on a person) | CLI | T6.1, T7.4 |
 | I-47 | Machine index and `--all-roots` | LOS | T7.4 |
 | I-48 | Directory sink, outbox, `stats flush`, fleet copy, `stats --source\|--live\|--projection` | CST | T10.1 |
 | I-49 | Monitor plugin: band, alerts, run view, drill-down, prompt-fill actions, cost and fleet views | Monitor set | T10.2–T10.4 |

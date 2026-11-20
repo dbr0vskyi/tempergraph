@@ -1,0 +1,91 @@
+---
+goal: Build observability and supervision — run events, the detail document, session logs and the store, reports and attention, the supervision record and improvement data, and supervision cost
+version: 1
+date_created: 2026-11-20
+last_updated: 2026-11-20
+owner: dbr0vskyi
+status: In progress
+tags: [track-plan, tempergraph, T7]
+tracker: none
+spec: plugins/tempergraph/docs/specs/30-run-events.spec.md
+spec_commit: 0a4f06b
+task_id: first-release-t7
+---
+
+# T7 Observability and supervision
+
+## 0. Hand-off
+
+| Field | Value |
+|---|---|
+| Origin | [Release 1 plan](first-release.plan.md) track T7, built in parallel with T5 and T6 (thread "Build run events and detail view") |
+| Specs | [EVT](../specs/30-run-events.spec.md), [RDD](../specs/31-run-detail-document.spec.md), [LOS](../specs/33-local-observability-store.spec.md), [OBS](../specs/15-observability-and-cost.spec.md), [SUP](../specs/86-supervision-metrics.spec.md), [IMD](../specs/43-improvement-data.spec.md), [FBK](../specs/41-feedback-and-judge-reliability.spec.md), [SCO](../specs/87-supervision-cost.spec.md) |
+| Decisions | [ADR-0009](../adr/0009-normalized-session-event-stream.adr.md), [ADR-0022](../adr/0022-observers-read-files-not-sockets.adr.md), [ADR-0023](../adr/0023-local-activity-journal-with-tool-input-summaries.adr.md), [ADR-0027](../adr/0027-in-process-observers-and-wider-hook-events.adr.md), [ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md) |
+
+**Status: In progress.** T7.1 and T7.2 are built: every run-log record carries the EVT §2.1 envelope, sessions are announced by `session_opened`, the activity journal and live file follow EVT §2.3 with tool input summaries per §2.5, `events` reads and follows a thread, in-process observers are contained, and `status --detail` builds the RDD document read-only. Status pass: EVT and RDD are `ready-for-implementation`; EVT's two open questions have release 1 defaults (native transcript null until P-CC-7; no changed-line count on `edit`).
+
+This track runs beside T5 and T6, which own the run log's writers in `run/nodes.py` and `run/runner.py`. T7 owns the `RunLog` envelope and the `LiveSink` in `run/log.py`, the readers, and the `status --detail` and `events` verbs. Records T5 and T6 still have to write are read when present and listed under each phase.
+
+Doc changes this track made:
+- EVT §2.1 says how the writer finds `segment`, that the optional keys are present and null, that a cut-off last line is ended, and that a `kind` field of §2.2 is written as `session_kind` or `pause_kind`.
+- EVT §2.3 gives the journal's buffering, the cap's drop thresholds, and the live file's fields and removal at session end.
+- EVT §2.5: a shell summary names a working directory only when the tool's input gives one, and the B4 table shows the scrubber's real marker, `[redacted]`.
+- EVT §2.6 says where an observer's failure is recorded and what ships in release 1.
+- RDD §2.1 gives the plan's edge form, the cost block, `repeat_cause` values, `scripts`, `waiting_s`, how records are placed in attempts, where evidence lines come from in release 1, and `--no-live`.
+- CLI §2 lists `--unit`, `--no-live` and `events --json`.
+- The release plan's feature list (§1.3, I-41 to I-46) now names the same T7 phases as its requirement table and phase headings; it had them shifted by one or two.
+
+## 1. Requirements
+
+| Req | Spec | Criteria | Phase |
+|---|---|---|---|
+| REQ-24 | EVT | all; AC-5 for file observers and in-process observers | T7.1 |
+| REQ-25 | RDD | all; AC-1's fixture without a map | T7.2 |
+| REQ-3 | LOS | the rest of §2 after T1.4 | T7.3 |
+| REQ-13 | OBS | the analysis verbs | T7.4 |
+| REQ-26 | SUP, IMD, FBK | per the release plan | T7.5 |
+| REQ-27 | SCO, SHL §2.2 | per the release plan | T7.6 |
+
+## 2. Phases
+
+✓ means built and tested; ○ means open.
+
+### T7.1 Run events
+
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 7.1.1 | `run/log.py` | `RunLog` envelope: `thread_id` from the path, `segment` after the last `run_started`, null optional keys, unit and attempt from the session key, a cut-off line ended; `seq` continues (T5's `last_seq`) | EVT §2.1, B2 | yes | P1 | ✓ | 2026-11-20 |
+| 7.1.2 | `run/log.py`, `run/nodes.py` (one line) | `session_sink`: `session_opened` with session id, model and transcript locator (`native` null until P-CC-7); the sink is closed after every session | EVT §2.2, §2.4, B1 | yes | P1 | ✓ | 2026-11-20 |
+| 7.1.3 | `run/log.py` | `LiveSink`: buffered journal flushed at most once a second, `duration_s`, the cap with its drop order and `truncated` line, `tool_inputs` off, live file fields, live file removed at session end; a failing write turns the journal off for the session | EVT §2.3, B6, B7, §4 | yes | P1 | ✓ | 2026-11-20 |
+| 7.1.4 | `executors/summary.py`, `executors/claude.py` | `capability_of` and `input_summary` per capability; the Claude Code translator fills `capability` and `input_summary` with paths relative to the session's workdir | EVT §2.5, B4, AC-3 | yes | P1 | ✓ | 2026-11-20 |
+| 7.1.5 | `run/events.py` | `records`, `follow` (ends at the segment's `run_exit` with no lock, or on an orphan), `activity`, `follow_activity`, narrator lines | EVT §2.6, B3, AC-6 | yes | P1 | ✓ | 2026-11-20 |
+| 7.1.6 | `run/events.py` | `RunObserver`, `register_observers` (entry points, named only, missing names reported), `ObserverHub` (thread and 1 000-item queue per observer, drop count, disable and one `engine_error`) | EVT §2.6, B5, AC-5 | yes | P1 | ✓ | 2026-11-20 |
+| 7.1.7 | `cli/main.py` | `events <selector> [--since] [--follow] [--activity] [--json]`; exit 2 without a run log | EVT §2.6, §4, CLI §2 | yes | P1 | ✓ | 2026-11-20 |
+| 7.1.8 | `run/log.py` | The `resources` line every 10 s from a read-only process listing of the session's process group; needs the launcher to pass `pgid` on `session_started` | EVT §2.3 | yes | P2 | ○ | |
+| 7.1.9 | `run/runner.py` (T5, T6 owner) | `run_started` fields `alias`, `label`, `workflow_version`, `plan_digest`, `executors`; `cost_so_far` on `gate`, `pause`, `run_exit`; `budget`, `settings_resolved`, `grant`, `ruling`, `workspace`, `supervision` records. The readers here use each one when present | EVT §2.2 | yes | P1 | ○ | |
+| 7.1.10 | `run/log.py` | Wire `observe.tool_inputs` and the `observers` list from the operator config once the settings catalog exists (T6.2) | EVT §2.5, §2.6, RST | yes | P2 | ○ | |
+
+### T7.2 Detail document
+
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 7.2.1 | `observe/detail.py` | `detail`: status row, plan from the diagram model, the run log folded into visits, attempts and sessions, `repeat_cause`, cost and share, pause from the checkpoint's interrupt, budgets, health, supervision touches, `events_tail` | RDD §2.1, §2.3, B1–B3, B5, AC-1 | yes | P1 | ✓ | 2026-11-20 |
+| 7.2.2 | `observe/detail.py` | Live blocks from each open session's live file when the thread holds its lock | RDD §2.2, B4 | yes | P1 | ✓ | 2026-11-20 |
+| 7.2.3 | `observe/detail.py` | Scrub and clip; the 1 MB cut; `--unit`; unreadable log; stale plan | RDD §2.1, §4, AC-3, AC-4 | yes | P1 | ✓ | 2026-11-20 |
+| 7.2.4 | `cli/main.py` | `status --detail [--unit] [--no-live]`; exit 2 for an unknown thread or unit | RDD §4, CLI §2 | yes | P1 | ✓ | 2026-11-20 |
+| 7.2.5 | `tests/test_detail.py` | Read-only hash test and under 300 ms for a 5 000-record log | RDD-B6, AC-2 | yes | P1 | ✓ | 2026-11-20 |
+| 7.2.6 | `observe/detail.py` | Per-attempt evidence and fix lines once T5 writes one judgement per attempt under `evidence/` | RDD §2.1, LOS §2.1 | yes | P2 | ○ | |
+| 7.2.7 | `observe/detail.py` | Supervision level, hosts and cost from the `supervision` record (T5.1.3) and SCO's journal (T7.6) | RDD §2.1, SUP §2.5 | yes | P2 | ○ | |
+
+### T7.3 to T7.6
+
+Not started in this pass; see §3 for what each waits on.
+
+## 3. Hand-off notes
+
+- **Seen while testing, owned by T5:** after a trip back from `review` to `draft`, the next `review` attempt writes no `unit_entered` record and keeps visit 1, so the detail document shows it as a third attempt of the first visit rather than a second visit entered by `proceed`. RDD-B3 holds for the unit sent back to. The `unit_entered` of a trip back also writes `entered_from` as the bare unit name; the reader maps it to `back:<unit>`.
+- `status --detail` reads the run's evidence lines from the checkpoint, so they are local only and never in a published document ([SEC §2.3](../specs/14-security.spec.md)).
+
+## 4. Verification
+
+From `plugins/tempergraph/engine/`: `python -m pytest`, `ruff check src tests` and `mypy` are clean. No test calls a model. `tests/test_events.py` and `tests/test_detail.py` hold this track's tests.
