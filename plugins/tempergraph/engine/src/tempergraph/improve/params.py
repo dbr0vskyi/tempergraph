@@ -35,6 +35,33 @@ PARAMS = {p.name: p for p in (
     Param(name="stable.cost_percentile", value=0.9, source="SIL §2.2"),
     Param(name="stable.daily_cap_usd", value=50, source="SIL §4"),
     Param(name="measure.quality_drop", value=0.05, source="earlier runs"),
+    # FBK §2.2 to §2.5 (T12.3)
+    Param(name="labels.rerun_days", value=14, source="FBK §2.2"),
+    Param(name="reliability.window_days", value=90, source="FBK §2.3"),
+    Param(name="reliability.recent_days", value=30, source="FBK §2.3"),
+    Param(name="reliability.min_labels", value=20, source="FBK §2.3"),
+    Param(name="reliability.min_known_bad", value=5, source="FBK §2.3"),
+    Param(name="reliability.max_false_pass", value=0.15, source="FBK §2.3"),
+    Param(name="reliability.min_audit_agreement", value=0.8, source="FBK §2.3"),
+    Param(name="reliability.min_audited", value=30, source="FBK §2.3"),
+    Param(name="reliability.queue_confidence", value=0.5, source="FBK §2.4"),
+    Param(name="reliability.queue_sample", value=0.05, source="FBK §2.4"),
+    Param(name="shift.first_n", value=10, source="FBK §2.5"),
+    Param(name="shift.last_n", value=30, source="FBK §2.5"),
+    Param(name="shift.pass_points", value=20, source="FBK §2.5"),
+    Param(name="shift.unverifiable_points", value=15, source="FBK §2.5"),
+    # PRP §2.2, §2.6 (T12.5, T12.6)
+    Param(name="proposals.label_value", value=5, source="PRP §2.2"),
+    Param(name="trial.alpha", value=0.05, source="PRP §2.6, R-031 F3"),
+    Param(name="trial.min_pairs", value=8, source="PRP §2.6"),
+    Param(name="trial.noisy_floor", value=0.5, source="PRP §2.6"),
+    Param(name="trial.guard_cost", value=0.15, source="PRP §2.6"),
+    Param(name="trial.guard_outcome_cases", value=1, source="PRP §2.6"),
+    Param(name="trial.guard_check_cases", value=1, source="PRP §2.6"),
+    Param(name="trial.guard_escapes", value=1, source="PRP §2.6"),
+    Param(name="trial.cap_usd", value=200, source="PRP-B7"),
+    Param(name="trial.monthly_cap_usd", value=500, source="PRP §2.1, release 1 default"),
+    Param(name="trial.after_release_runs", value=10, source="PRP-B9"),
 )}
 
 

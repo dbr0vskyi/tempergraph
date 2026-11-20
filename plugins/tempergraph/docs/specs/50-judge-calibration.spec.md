@@ -1,7 +1,7 @@
 ---
 title: Judge calibration and acceptance
 type: component
-status: review
+status: ready-for-implementation
 prefix: JCL
 adrs: [0045, 0046, 0047, 0005, 0013]
 ---
@@ -188,6 +188,7 @@ Per gate and binding, read by other specs. The latest score for the current bind
 - **Per-criterion findings are not independent**: two findings of one case share a fixture. The distinct-case minimums temper this; a case-clustered bound is a later refinement once sets are larger.
 - **Self-preference is reported, not barred.** `self_family` shows the split; the authoring rule (a judge of another family where stakes are high) and cross-executor judging ([ADR-0013](../adr/0013-cross-executor-judging.adr.md)) remain the control. A gap above 0.15 between the two catch rates is a report line.
 - **Variants are templated, not model-written**, so a score repeats exactly and costs only judge sessions. Templated text is easy to spot; a model-written persuasive variant is a later option.
+- **Release 1 build** (plan T12.4, `improve/calibration.py`). Cases, fixtures and scores live in the package's `evals/calibration/<gate>/` (`<case_id>/case.json`, `<case_id>/fixture/`, `scores.jsonl`), outside the content digest (PKG-AC-7), so the state travels with the package and a score never changes the workflow version. A fixture is `workspace/`, `account.md`, `request.md`, `references.json`, `subject.json` and an optional recorded `check.json`; each judge session reads a scratch copy. A label records the criterion text's digest, so a reworded criterion makes its labels stale one by one. Only judged blocker criteria count toward the bar; a discarded or unparsed judgement is a fail status, counted as caught on a known-bad finding and as not clean on a known-good one (JCL-AC-2). `evals label` takes `<workflow>/<gate>/<case>` and writes the case's label with the caller block; a label by a non-person caller is a `candidate`, not gold. A package may raise the bar per gate in `evals/calibration/bar.json`, never lower it. The state is read by `calibration.state`, `has_score(spec, gate)` and `accepted_for(spec)`, which readiness ([LIF §2.2](18-lifecycle-and-evals.spec.md)), stable mode, outcome trust ([OUT](90-run-outcome.spec.md)) and `author verify` call by default. Corrected outcome rates (§2.5) use the outcome gate's figures when its state allows.
 - **Panels stay deferred.** A gate that cannot meet the bar on one judge may try a stronger model or another family first; a panel is revisited with data ([R-045 F9](../research/R-045-evaluating-llm-judges-public-practice.rsrch.md)). A council or contest unit does not change this: both feed the gate's one judge, which is calibrated as usual ([CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md)).
 
 ## 6. Acceptance criteria

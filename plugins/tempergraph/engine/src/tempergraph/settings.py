@@ -166,6 +166,14 @@ def _only(name: str, *ok: str) -> Callable[[Any], None]:
     return check
 
 
+def _base(v: Any) -> None:
+    """WTR §2.5 release 1: `head` and `ref:<name>` (trial cases); `default_branch` is release 2."""
+    if v == "head" or (isinstance(v, str) and v.startswith("ref:") and len(v) > 4):
+        return
+    raise SettingError("setting_not_in_release", f"worktree.base {v!r} is release 2 (X2-23); release 1 takes head "
+                                                 "or ref:<name>")
+
+
 RUN = frozenset({"run"})
 CATALOG: dict[str, Entry] = {
     "executor": Entry(SESSION, _slug),
@@ -189,7 +197,7 @@ CATALOG: dict[str, Entry] = {
     "auto_reopen": Entry(RUN, _int(0, 10), 0),
     "workspace": Entry(RUN, _choice("auto", "in_place", "worktree"), "auto"),
     "worktree.root": Entry(RUN, str, "sibling", _only("worktree.root", "sibling")),
-    "worktree.base": Entry(RUN, str, "head", _only("worktree.base", "head")),
+    "worktree.base": Entry(RUN, str, "head", _base),
     "worktree.branch_prefix": Entry(RUN, _prefix, "tg"),
     "worktree.cleanup": Entry(RUN, _choice("never", "on_finish"), "never", _only("worktree.cleanup", "never")),
     "worktree.read_worktreeinclude": Entry(RUN, _bool, True),

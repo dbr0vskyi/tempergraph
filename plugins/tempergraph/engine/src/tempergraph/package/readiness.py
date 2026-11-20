@@ -1,8 +1,9 @@
 """The structural judge readiness report (LIF §2, LIF-B6): per judged gate, model-free.
 
 Grades: `ready` (structure clean and the judge binding `accepted` under JCL), `needs cases` (structure clean,
-not accepted), `needs work` (a structural finding). Release 1 records no judge scores before plan T12 (JCL),
-so no gate is `ready` yet, and a workflow in `stable` mode is refused with `gate-not-ready` (LIF-B6).
+not accepted), `needs work` (a structural finding). Acceptance is read from the package's calibration scores
+(JCL §2.5, `improve/calibration.py`), so a workflow in `stable` mode is refused with `gate-not-ready` until
+every judged gate is `accepted` (LIF-B6).
 """
 
 from __future__ import annotations
@@ -57,7 +58,8 @@ def _structural(c: Criterion) -> list[str]:
 
 def _cases(root: Path | None, gate: str) -> int:
     folder = root / "evals" / "calibration" / gate if root is not None else None
-    return sum(1 for p in folder.iterdir() if not p.name.startswith(".")) if folder and folder.is_dir() else 0
+    return sum(1 for p in folder.iterdir() if not p.name.startswith(".") and p.name != "scores.jsonl"
+               ) if folder and folder.is_dir() else 0
 
 
 def _gates(spec: WorkflowSpec) -> Iterable[tuple[str, list[Criterion]]]:
@@ -69,9 +71,17 @@ def _gates(spec: WorkflowSpec) -> Iterable[tuple[str, list[Criterion]]]:
         yield flow.OUTCOME_UNIT, list(spec.outcome.final)
 
 
-def readiness(spec: WorkflowSpec, accepted: Callable[[str], bool] = lambda gate: False) -> list[GateReadiness]:
-    """`accepted(gate)` answers whether the gate's judge binding is `accepted` (JCL §2.5; none before T12)."""
+def readiness(spec: WorkflowSpec, accepted: Callable[[str], bool] | None = None,
+              state_of: Callable[[str], str] | None = None) -> list[GateReadiness]:
+    """`accepted(gate)` answers whether the gate's judge binding is `accepted` (JCL §2.5); by default it is
+    read from the package's calibration scores (`improve/calibration.py`), as is `state_of(gate)`."""
     from tempergraph.author.criteria_lint import lint, package_doc
+
+    if accepted is None:
+        from tempergraph.improve import calibration
+
+        accepted = calibration.accepted_for(spec)
+        state_of = state_of or calibration.state_name_for(spec)
 
     doc = package_doc(spec.package_root)
     linted = lint(doc) if doc is not None else []
@@ -91,7 +101,7 @@ def readiness(spec: WorkflowSpec, accepted: Callable[[str], bool] = lambda gate:
         notes += [f"criterion-no-seed: {c} has no met and unmet seed" for c in seedless]
         out.append(GateReadiness(gate=gate, grade=grade, findings=notes, criteria=len(criteria), blockers=blockers,
                                  calibration_cases=_cases(spec.package_root, gate),
-                                 acceptance="accepted" if ok else "unscored"))
+                                 acceptance=state_of(gate) if state_of else ("accepted" if ok else "unscored")))
     return out
 
 
