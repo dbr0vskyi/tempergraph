@@ -87,6 +87,10 @@ class _Validator:
             self._unit(name, s.units[name])
         self._flow()
         self._finalizer()
+        if s.package_root is not None:  # PKG §2.3 step 6: then the package rules
+            from tempergraph.package.loader import package_findings
+
+            self.findings += package_findings(s)
 
     # -- release --------------------------------------------------------------------------------
     def _release(self) -> None:

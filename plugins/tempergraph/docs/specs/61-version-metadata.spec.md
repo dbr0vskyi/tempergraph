@@ -1,7 +1,7 @@
 ---
 title: Version metadata of the engine and of workflows
 type: component
-status: review
+status: ready-for-implementation
 prefix: VER
 adrs: [0057, 0058]
 ---
@@ -221,9 +221,9 @@ Only `needs_upgrade` with a hit whose entry is `tightened` makes the workflow fa
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should `requires_engine` also be written into the workflow plugin's `plugin.json` as a dependency on the `tempergraph` plugin with a version range, so Claude Code refuses a mismatched install ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U6)? The design proposes it but does not rely on it. | Owner |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Should `requires_engine` also be written into the workflow plugin's `plugin.json` as a dependency on the `tempergraph` plugin with a version range, so Claude Code refuses a mismatched install ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U6)? The design proposes it but does not rely on it. | Owner | No: `plugin.json` names `tempergraph` without a range |
 
 ## References
 

@@ -1,7 +1,7 @@
 ---
 title: Engine install and update
 type: component
-status: review
+status: ready-for-implementation
 prefix: UPD
 adrs: [0055, 0056, 0057, 0060, 0015]
 ---
@@ -153,7 +153,9 @@ tempergraph workflows unregister <name>             # removes the entry only, ne
 tempergraph workflows reinstall [<name>|--all]      # dependencies into the current environment, then load and validate; clears a pin that no longer applies
 ```
 
-`register` resolves the path, refuses one under Claude Code's plugin cache (that is a `plugin` entry, found by reconcile), and runs validation before it writes the entry.
+`register` resolves the path, refuses one under Claude Code's plugin cache (that is a `plugin` entry, found by reconcile), and runs validation before it writes the entry. Refusals exit 2 and write nothing: `not-a-package` (no `tempergraph.json`), `plugin-cache-path`, `not-valid` (with the findings), `name-taken` (the name, or its private import name [PKG §2.3](88-workflow-package.spec.md), is registered from another path). Registering the same path again refreshes the entry. `unregister` checks the run locks of the current repository's state root; the home keeps no index of repositories, so a live thread elsewhere is not seen.
+
+**Release 1.** No managed engine environment exists before plan T8.2, so `reinstall` checks each declared requirement against the dependency gate and records `requirements_digest`, but installs nothing: an entry that declares requirements shows `dependencies: pending`.
 
 ## 3. Behaviours
 
@@ -221,9 +223,9 @@ tempergraph workflows reinstall [<name>|--all]      # dependencies into the curr
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| How many unpinned old engines should `update` keep before it suggests `--prune-engines`? The design keeps two and reports the size of the rest. | Owner |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| How many unpinned old engines should `update` keep before it suggests `--prune-engines`? The design keeps two and reports the size of the rest. | Owner | Two |
 
 ## References
 

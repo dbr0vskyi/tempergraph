@@ -18,6 +18,7 @@ from tempergraph.executors.standins import ScriptedExecutor, standin
 from tempergraph.run.runner import RunSettings
 
 from .conftest import hash_tree
+from .fixtures.packages import package_parts
 from .fixtures.workflows import two_step
 from .test_run import DRAFT, REVIEW, judge, verdict_block
 
@@ -158,7 +159,7 @@ def package(root: Path, name: str = "notes-flow") -> Path:
                               gate=Gate(check=draft_check, judge=Judge(stance="Verify."),
                                         criteria=[Criterion(id="c-file", text="notes.md exists")]))})
     '''))
-    return pkg
+    return package_parts(pkg, name)
 
 
 def test_registered_package_loads_and_runs(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

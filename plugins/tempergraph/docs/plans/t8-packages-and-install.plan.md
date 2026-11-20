@@ -1,0 +1,91 @@
+---
+goal: Build workflow packages and their registry, then first install, the stamp, scenarios and lint, audit, and the blueprint and scaffold
+version: 1
+date_created: 2026-11-20
+last_updated: 2026-11-20
+owner: dbr0vskyi
+status: In progress
+tags: [track-plan, tempergraph, T8]
+tracker: none
+spec: plugins/tempergraph/docs/specs/88-workflow-package.spec.md
+spec_commit: 0a4f06b
+task_id: first-release-t8
+---
+
+# T8 Packages, install, audit, scaffold
+
+## 0. Hand-off
+
+| Field | Value |
+|---|---|
+| Origin | [Release 1 plan](first-release.plan.md) track T8 |
+| Specs | [PKG](../specs/88-workflow-package.spec.md), [UPD](../specs/60-engine-update.spec.md), [VER](../specs/61-version-metadata.spec.md), [LIF](../specs/18-lifecycle-and-evals.spec.md), [AUD](../specs/55-workflow-audit.spec.md), [ARC](../specs/56-audit-rule-catalog.spec.md), [PRA](../specs/58-prompt-audit.spec.md), [SCF](../specs/91-blueprint-and-scaffold.spec.md) |
+
+**Status: In progress.** T8.1 is built: a package on disk loads by every step of PKG §2.3 but step 5, validates with the package rules, and registers, lists, unregisters and reinstalls through `tempergraph workflows`. The other phases are not started.
+
+Status pass: PKG, UPD and VER are `ready-for-implementation`, with release 1 defaults for their open questions. LIF, AUD, ARC, PRA and SCF get theirs in the first row of T8.4, T8.5 and T8.6.
+
+Doc changes this track made:
+- PKG §2.3 step 3 says how the private import name works: relative imports inside the package, `own-module-absolute-import`, `undeclared-import` as a warning, a fresh import on every load, callables recorded under the private name.
+- PKG §2.3.1 defines the dependency gate, which SEC did not.
+- PKG §4 adds the codes `pyproject-missing`, `pyproject-invalid`, `pyproject-name`, `outcome-missing`, `package-file-missing` (warning) and `manifest-field-unknown` (warning).
+- PKG §2.7 lists `issue_repository` (WFM requires it) and `author` and `license` (`claude plugin validate --strict` asks for `author`).
+- UPD §2.8 gives the `register` refusal codes, the scope of the live-thread check of `unregister`, and the release 1 `dependencies: pending` state.
+- CHK §2.6 says the check worker's context document carries the private-name map.
+
+Assumptions:
+- A1. Missing required non-code files (README, docs, tests, diagram, the case set) warn rather than refuse, so a hand-written package can load while it is being finished. The scaffold writes them all.
+- A2. `unregister` sees live threads in the current repository only, because the home keeps no index of repositories.
+
+## 1. Requirements
+
+| Req | Spec | Criteria | Phase |
+|---|---|---|---|
+| REQ-33 | PKG | all | T8.1 |
+| REQ-28 | UPD, VER | UPD AC-7, AC-8; VER AC-1, 2, 5, 6 | T8.1–T8.3 |
+| REQ-7 | LIF | AC-2, 4, 6 | T8.4 |
+| REQ-29 | AUD, ARC, PRA | AUD AC-2, 4–7 and AC-1 for definition and host rules; ARC same; PRA all | T8.5 |
+| REQ-36 | SCF | all | T8.6 |
+
+## 2. Phases
+
+### T8.1 Packages and registry
+
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 8.1.1 | `engine/tests/test_package.py` | PKG-AC-1 to AC-7, PKG-B2 to B7 and B9 on fixture packages; `claude plugin validate --strict` when `claude` is on `PATH` (model-free) | PKG §3, §6 | yes | P1 | ✓ | 2026-11-20 |
+| 8.1.2 | `engine/src/tempergraph/package/manifest.py` | `read_manifest`, both manifests, `pyproject.toml`, the dependency gate | PKG §2.2, §2.3.1 | | P1 | ✓ | 2026-11-20 |
+| 8.1.3 | `engine/src/tempergraph/package/scan.py`, `importer.py` | The source scan before import; private import names with a meta-path finder; the map for the check worker | PKG §2.3 step 3, CHK §2.6 | | P1 | ✓ | 2026-11-20 |
+| 8.1.4 | `engine/src/tempergraph/package/loader.py` | `load`, `load_package` (steps 1 to 4 and 6), interface levels, `package_findings` as the last step of WFM `validate` | PKG §2.3 | | P1 | ✓ | 2026-11-20 |
+| 8.1.5 | `engine/src/tempergraph/package/loader.py` | Step 5: attach `outcome.json` through OUT's `read_outcome` and `gate_criteria`; drop the `inline_criteria` fixtures; `criterion-declared-twice` | PKG §2.3 step 5, OUT §2.3 | yes | P1 | ○ | |
+| 8.1.6 | `engine/src/tempergraph/package/rules.py`, `docs_check.py` | Refused plugin parts, layout, `text-ref`, the docs check | PKG §2.1, §2.5 | | P1 | ✓ | 2026-11-20 |
+| 8.1.7 | `engine/src/tempergraph/package/inventory.py` | `package_files`, `content_digest`, `docs_digest`, `workflow_version` | VER §2.4, PKG-AC-7 | | P1 | ✓ | 2026-11-20 |
+| 8.1.8 | `engine/src/tempergraph/package/registry.py`, `cli/workflows.py`, `engine/tests/test_registry.py` | `registry.json`; `workflows list\|register\|unregister\|reinstall`; `missing` and pin clearing; `version-not-bumped` | UPD §2.8 | yes | P1 | ✓ | 2026-11-20 |
+| 8.1.9 | `engine/src/tempergraph/package/registry.py` | Reconcile of `plugin` entries from Claude Code's plugin cache, run by `install` and `update` | UPD §2.8, PKG-B1 | yes | P1 | ○ | |
+| 8.1.10 | `engine/src/tempergraph/package/loader.py` | The compatibility warning for a package one level behind when the changelog has breaking `workflow` entries (PKG-B6 row 2) | PKG-B6, VER §2.3 | yes | P2 | ○ | |
+
+Rows 8.1.5 waits on plan T5.8.1 (OUT's reader, built by the T5 track); 8.1.9 is built with T8.2; 8.1.10 needs the changelog of T8.3.
+
+### T8.2 First install
+
+Not started: the plugin launcher, the home folder, the first engine environment, the shim and the `PATH` block, the release record, reconcile.
+
+### T8.3 Stamp and compatibility
+
+Not started: `upgrade --check --stamp` over an empty changelog, the stamp record, the executor compatibility table.
+
+### T8.4 Scenarios, lint and readiness
+
+Not started.
+
+### T8.5 Audit
+
+Not started.
+
+### T8.6 Blueprint and scaffold
+
+Not started.
+
+## 3. Verification
+
+From `plugins/tempergraph/engine/`: `python -m pytest`, `ruff check src tests` and `mypy` are clean. No test calls a model; the one test that runs `claude plugin validate` is model-free and skipped where `claude` is absent.

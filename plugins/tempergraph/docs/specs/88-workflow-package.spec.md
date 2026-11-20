@@ -1,7 +1,7 @@
 ---
 title: Workflow package
 type: component
-status: review
+status: ready-for-implementation
 prefix: PKG
 adrs: [0003, 0016, 0078, 0105, 0106, 0112, 0113]
 ---
@@ -72,12 +72,16 @@ The version is **not** repeated: the builder reads `version` from `plugin.json` 
 |---|---|---|
 | 1 Manifests | Read `plugin.json` and `tempergraph.json`; names equal; `schema_version` known | `not_loaded: manifest` |
 | 2 Interface level | `workflow_api` ≤ the engine's, and ≥ the oldest level the engine still loads (`release.json` gains `loads_workflow_api_from`) | newer: `not_loaded: workflow_api_newer` (remedy: update the engine); older: `not_loaded: workflow_api_retired` (remedy: `upgrade`) |
-| 3 Import | The entry module is imported from `workflow/` under a private name `tgwf_<name>` so two packages' `checks` modules never collide; imports are limited to the standard library, the requirements in `pyproject.toml`, the package's own modules and `tempergraph.api` | An import of any other `tempergraph` module is `private-engine-import` (source scan, before import); an exception is `not_loaded: import` with its type only ([WFM §4](02-workflow-model.spec.md)) |
-| 4 Build | Call the entry with no argument; it returns a `WorkflowSpec` built by the builders of §2.4 | Not a `WorkflowSpec`, or a raise: `not_loaded: build` |
+| 3 Import | The dependency gate (§2.3.1) and the source scan run first. The entry module is imported from `workflow/` under a private name `tgwf_<name>` (`-` as `_`) so two packages' `checks` modules never collide; its own modules import each other relatively (`from . import checks`). Imports are limited to the standard library, the requirements in `pyproject.toml`, the package's own modules and `tempergraph.api` | Scan, before import: any other `tempergraph` module is `private-engine-import`, an absolute import of the entry folder's name is `own-module-absolute-import` (both `not_loaded` with that code, file and line), any other import is `undeclared-import` (warning: a distribution's import name may differ from its project name). An exception is `not_loaded: import` with its type only ([WFM §4](02-workflow-model.spec.md)) |
+| 4 Build | Call the entry with no argument; it returns a `WorkflowSpec` built by the builders of §2.4; the engine sets `name`, `version` and `package_root` | Not a `WorkflowSpec`, or a raise: `not_loaded: build` (a builder's own `TypeError` shows its text, which names the field) |
 | 5 Outcome | Read `outcome.json` and attach it (`WorkflowSpec.outcome`); fill each gate's criteria from the unit's intermediate outcomes ([OUT §2.3](90-run-outcome.spec.md)) | Per OUT §4 |
 | 6 Validate | [WFM](02-workflow-model.spec.md) `validate`, then the package rules of this spec | Findings; a start exits 2 |
 
-Loading is read-only and calls no model (C13). The Python half is **imported from the package folder, never installed** as a distribution: a cache repoint after a plugin update ([UPD §2.8](60-engine-update.spec.md)) is enough to run the new code. Only `[project].dependencies` is installed, by UPD's rules. Loading happens in the engine process and again in the check worker ([CHK §2.6](75-check-contract-and-command-runs.spec.md)), so a callable must be importable by its reference alone.
+Loading is read-only and calls no model (C13). Every load imports the package afresh, so a changed source is what runs. A callable is recorded as `tgwf_<name>.<module>:<qualname>`; a child process gets the map of private names to folders in its context document ([CHK §2.6](75-check-contract-and-command-runs.spec.md)). The Python half is **imported from the package folder, never installed** as a distribution: a cache repoint after a plugin update ([UPD §2.8](60-engine-update.spec.md)) is enough to run the new code. Only `[project].dependencies` is installed, by UPD's rules. Loading happens in the engine process and again in the check worker ([CHK §2.6](75-check-contract-and-command-runs.spec.md)), so a callable must be importable by its reference alone.
+
+#### 2.3.1 The dependency gate
+
+Each `[project].dependencies` line must be a plain requirement: a name, optional extras, optional version specifiers and an optional environment marker. A direct reference (`name @ url`), a path, an installer option, or the engine itself (`tempergraph`) is refused: `not_loaded: dependency_refused`. No package text reaches an installer's argv ([UPD §2.8](60-engine-update.spec.md)).
 
 ### 2.4 Declaration format
 
@@ -143,11 +147,11 @@ The smallest valid package, which the scaffold writes for a one-step blueprint a
 
 ```text
 release-notes/
-  .claude-plugin/plugin.json        {"name": "release-notes", "version": "0.1.0", "dependencies": ["tempergraph"]}
+  .claude-plugin/plugin.json        {"name": "release-notes", "version": "0.1.0", "description": …, "author": {…}, "license": …, "dependencies": ["tempergraph"]}
   tempergraph.json                  {"schema_version": 1, "name": "release-notes", "entry": "release_notes:workflow", "workflow_api": 1, "docs": "provisional"}
   outcome.json                      one final outcome, one intermediate outcome for "draft", three criteria (OUT §3)
   workflow/pyproject.toml           name = "tgwf-release-notes", dependencies = []
-  workflow/release_notes/__init__.py  def workflow() -> WorkflowSpec   (one Step, one Gate with a check and a Judge)
+  workflow/release_notes/__init__.py  def workflow() -> WorkflowSpec   (routing, issue_repository, one Step, one Gate with a check and a Judge)
   workflow/release_notes/checks.py    def draft_check(ctx: CheckContext) -> CheckResult
   prompts/draft.md, judges/draft.md
   evals/cases.json (1 case), evals/checks/draft/ (1 must-pass, 1 must-fail)
@@ -198,7 +202,11 @@ Defaults it relies on: executor `claude`, model `medium` for the step and the ju
 | Entry module or function missing | `not_loaded: build` |
 | A text reference outside the package or missing | Validation error `text-ref` with the path |
 | A refused plugin part (§2.1) | Validation error with its code |
-| `pyproject.toml` with a dependency the dependency gate refuses | `not_loaded: dependency_refused` ([UPD §2.8](60-engine-update.spec.md)) |
+| `pyproject.toml` with a dependency the dependency gate refuses | `not_loaded: dependency_refused` (§2.3.1) |
+| `workflow/pyproject.toml` missing or unreadable; its `name` not `tgwf-<name>` | Validation error `pyproject-missing`, `pyproject-invalid`, `pyproject-name` |
+| `outcome.json` missing | Validation error `outcome-missing` |
+| `README.md`, `docs/`, `tests/`, `diagram/` or `evals/cases.json` missing | Validation warning `package-file-missing` |
+| An unknown `tempergraph.json` field | Warning `manifest-field-unknown` |
 | A callable that is not module-level | `callable-not-importable` at build |
 | A skill capability whose `skills/<name>/SKILL.md` is missing from this package or an installed dependency | Validation error (the `skill:` row of [WFM §2.1](02-workflow-model.spec.md)) |
 
@@ -208,7 +216,7 @@ Defaults it relies on: executor `claude`, model `medium` for the step and the ju
 - **Why a second manifest.** Claude Code strips unknown keys from `plugin.json` ([R-105 A1](../research/R-105-workflow-packages-authoring-and-good-outcomes.rsrch.md)), so engine fields cannot live there.
 - **Why builders.** Typed builders give an error at the misspelt field, keep callables as real functions the check worker can import, and let the later `tempergraph` Python package expose the same surface ([ADR-0106](../adr/0106-declare-workflows-with-typed-python-builders-and-text-in-files.adr.md)). Long text lives in files so prompt audit, lessons and the improvement loop edit text, not code.
 - **Isolation is by rule.** A package is imported into the engine process ([WFM §5](02-workflow-model.spec.md)); the import scan and the dependency gate are the controls, not a sandbox.
-- **Release 1.** `claude` only ([ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md)): §2.6's other columns are designed and refused with `not_in_release` until their release. The docs half and its check ship in release 1, the check as a warning.
+- **Release 1.** The minimal package passes `claude plugin validate --strict` on Claude Code 2.1.329 (model-free, 2026-11-20); `--strict` asks for `author`, so the scaffold writes it. `claude` only ([ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md)): §2.6's other columns are designed and refused with `not_in_release` until their release. The docs half and its check ship in release 1, the check as a warning.
 
 ## 6. Acceptance criteria
 
@@ -222,10 +230,10 @@ Defaults it relies on: executor `claude`, model `medium` for the step and the ju
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should a workflow plugin's `dependencies` pin a `tempergraph` plugin range? Left to [UPD](60-engine-update.spec.md)'s open question on the plugin dependency range; the scaffold writes the bare name. | Owner |
-| May a workflow ship a skill meant for the **person** (for example "start a release-notes run"), invoked in the person's own session rather than a step? Assumed yes: a skill no step declares is never loaded into a step, and the run driver stays the engine's. | Owner |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Should a workflow plugin's `dependencies` pin a `tempergraph` plugin range? Left to [VER](61-version-metadata.spec.md)'s open question on the plugin dependency range. | Owner | No: the scaffold writes the bare name |
+| May a workflow ship a skill meant for the **person** (for example "start a release-notes run"), invoked in the person's own session rather than a step? A skill no step declares is never loaded into a step, and the run driver stays the engine's. | Owner | Yes |
 
 ## References
 
