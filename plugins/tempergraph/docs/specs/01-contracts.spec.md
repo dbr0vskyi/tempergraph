@@ -25,7 +25,8 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `units` | map name → `UnitSpec` | Steps and flow units. |
 | | `flow` | map unit → `FlowSpec` | Where a pass goes when it is not the next in `order`. |
 | | `input` | `InputDeclaration` | How a run starts (§2.3). |
-| | `workspace` | `in_place` \| `worktree` | Default workspace mode. |
+| | `workspace` | `auto` \| `in_place` \| `worktree`, default `auto` | Default workspace mode ([WTR §2.2](82-worktree-mode.spec.md)). |
+| | `worktree` | `WorktreeDecl`, optional | Include patterns, setup commands and submodule handling for a new worktree ([WTR §2.3](82-worktree-mode.spec.md)). |
 | | `finalizer` | callable ref, optional | Runs once after the last pass; calls no model; never changes the run's exit code ([FIN](78-finalizer-contract.spec.md)). |
 | | `finalizer_outcomes` | list of slugs, required with `finalizer` | The outcomes the finalizer may report ([FIN §2.3](78-finalizer-contract.spec.md)). |
 | | `default_executor` | executor name | Used when a step names none. |

@@ -69,7 +69,7 @@ A spec listed is in scope with all its acceptance criteria except those named; e
 | REQ-8 | EXI | all | T3.1–T3.3 |
 | REQ-9 | ECC | all; judge MCP views later (`judge_mcp = false`) | T3.4 |
 | REQ-10 | DUR | all | T4.1, T4.2 |
-| REQ-11 | WSP | AC-1, 2, 4; AC-3 for `in_place` and one engine worktree | T4.3 |
+| REQ-11 | WSP, WTR | WSP AC-1, 2, 4; AC-3 for `in_place` and one engine worktree; WTR for its §5 release-1 slice | T4.3 |
 | REQ-12 | RCT | all (POSIX) | T4.4 |
 | REQ-13 | OBS | all | T5.1, T7.4 |
 | REQ-14 | CHK | all but AC-6 (`self-check`); AC-2 on Linux and macOS | T5.2 |
@@ -220,7 +220,7 @@ Goal: the status document, `status` and `wait`, read-only.
 <!-- expand: T4.2 -->
 
 #### T4.3 Workspace
-Goal: state root from any worktree, `in_place`, one engine worktree with bootstrap and interpreter, plus the release-1 part of spec 82 WTR once PR 15 merges (`run.workspace`, sibling root, head base, re-attach, `worktree list|path`; ADR-0090).
+Goal: state root from any worktree, `in_place`, one engine worktree with bootstrap and interpreter, plus the release-1 part of [WTR](../specs/82-worktree-mode.spec.md) (`run.workspace`, sibling root, head base, re-attach, `worktree list|path`; ADR-0090).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T4.3 -->
 
