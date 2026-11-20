@@ -1,0 +1,82 @@
+"""The diagram model (LIF §2): versioned JSON with a digest, generated from the spec, verified against the
+compiled graph (CMP-B6, CMP-AC-4). Renderers are pure; digests, not bytes, are compared (LIF-B3).
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from typing import Any
+
+from tempergraph.constants import SCHEMA
+from tempergraph.contracts import WorkflowSpec
+from tempergraph.model import flow
+
+
+def diagram_model(spec: WorkflowSpec) -> dict[str, Any]:
+    order = flow.effective_order(spec)
+    nodes: list[str] = []
+    edges: list[list[str]] = []
+    units: list[dict[str, Any]] = []
+    for unit in order:
+        step, judge, gate, human = flow.node_names(unit)
+        nodes += [step, judge, gate, human]
+        edges += [[step, judge, "next"], [judge, gate, "next"]]
+        s = flow.successors(spec, unit)
+        for token, targets in s.by_token().items():
+            for t in targets:
+                edges.append([gate, t, token])
+        for t in flow.human_targets(spec, unit):
+            edges.append([human, t, "decision"])
+        u = spec.units.get(unit)
+        units.append({
+            "name": unit,
+            "kind": u.kind if u is not None else "outcome",
+            "summary": (u.step.summary if u is not None and u.step is not None else "") if u else "outcome gate",
+            "approval": bool(u.gate.approval) if u is not None else False,
+        })
+    nodes.append(flow.FINALIZER)
+    edges.append([flow.FINALIZER, flow.END, "next"])
+    edges.append(["__start__", flow.step_node(order[0]), "next"])
+    shape = {"nodes": sorted(nodes), "edges": sorted({(a, b) for a, b, _ in edges})}
+    digest = hashlib.sha256(json.dumps(shape, sort_keys=True).encode()).hexdigest()
+    return {
+        "schema_version": SCHEMA["diagram_model"],
+        "workflow": spec.name,
+        "units": units,
+        "nodes": nodes,
+        "edges": edges,
+        "digest": digest,
+    }
+
+
+def edge_set(model: dict[str, Any]) -> set[tuple[str, str]]:
+    return {(a, b) for a, b, _ in model["edges"]}
+
+
+def to_mermaid(model: dict[str, Any]) -> str:
+    """Draw one box per unit, with its routing edges between units (counts and words only)."""
+    lines = ["flowchart TD", "  start((start))"]
+    ids = {u["name"]: f"u{i}" for i, u in enumerate(model["units"])}
+    for u in model["units"]:
+        label = u["name"] + (f"<br/>{u['summary']}" if u["summary"] else "") + (" ✋" if u["approval"] else "")
+        lines.append(f'  {ids[u["name"]]}["{label}"]')
+    lines.append("  fin([finalizer])")
+    lines.append("  stop((end))")
+    first = model["units"][0]["name"]
+    lines.append(f"  start --> {ids[first]}")
+    seen: set[tuple[str, str, str]] = set()
+    for a, b, token in model["edges"]:
+        src = a.split(".")[0]
+        if a.endswith(".gate") and token in ("PROCEED", "BACK"):
+            dst = "fin" if b == flow.FINALIZER else ids.get(b.split(".")[0])
+            if dst is None:
+                continue
+            key = (ids[src], dst, token)
+            if key in seen:
+                continue
+            seen.add(key)
+            arrow = "-->" if token == "PROCEED" else "-.->|back|"
+            lines.append(f"  {ids[src]} {arrow} {dst}")
+    lines.append("  fin --> stop")
+    return "\n".join(lines) + "\n"

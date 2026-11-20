@@ -1,7 +1,7 @@
 ---
 title: Step values and template keys
 type: component
-status: review
+status: ready-for-implementation
 prefix: VAL
 adrs: [0003, 0004]
 ---
@@ -56,7 +56,7 @@ A template field `{name}` ([CON §2.2](01-contracts.spec.md)) names one of these
 |---|---|---|
 | Engine key | `task_id`, `thread_id`, `workflow`, `unit`, `attempt`, `visit`, `branch`, `base`, `workdir`, `run_label` | The run's value; `workdir` is the absolute workspace path |
 | Item key (map items only) | `item_id`, `item_index`, `item_count`, `item` | The item's id, 1-based index, the count, and the item's text (≤ 4,000 chars) |
-| Input | A declared input name | The resolved value, as today |
+| Input | A declared input name; a workflow that declares no parameters has the one input `request` | The resolved value, as today; `request` is the whole start request |
 | Setting | `settings.<name>`, as the run settings design defines it | The resolved setting |
 | Earlier artifact | A key a unit before this one produces | A `file` key: its path relative to `workdir`; `url`, `wiki_page`, `tracker_issue`, `pull_request`: its URL or id; `value`: the value |
 

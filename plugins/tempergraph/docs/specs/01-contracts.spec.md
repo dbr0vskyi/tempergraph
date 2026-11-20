@@ -10,7 +10,7 @@ adrs: [0003, 0005, 0006, 0008, 0009, 0012, 0015, 0018, 0062, 0070, 0073, 0074, 0
 
 ## 1. Overview
 
-This spec is the only definition of a type that two or more component specs share. Component specs name a section here and restate nothing. Types are given as field tables and Python-flavoured signatures without bodies. Every persisted or published document listed here is versioned and read by tolerant readers (§2.10).
+The only definition of a type two or more component specs share; they name a section here and restate nothing. Types are field tables and signatures without bodies. Every persisted document listed is versioned and read by tolerant readers (§2.10).
 
 ## 2. Contract
 
@@ -43,12 +43,15 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `settings` | map name → `SettingDecl`, optional | Typed workflow switches an operator may override ([RST §2.5](80-run-settings-and-overrides.spec.md)). |
 | | `profiles` | map name → map `SettingKey` → value, optional | Named bundles of settings ([RST §2.5](80-run-settings-and-overrides.spec.md)). |
 | | `outcome` | `OutcomeSpec` (§2.14) | Read from `outcome.json` at load; gates take their criteria from it ([OUT](90-run-outcome.spec.md), [PKG §2.3](88-workflow-package.spec.md)). |
-| `UnitSpec` | `kind` | `step` \| `route` \| `switch` \| `parallel` \| `map` \| `subworkflow` \| `wait` \| `script` \| `council` \| `contest` \| `ask` | Kinds and their owning specs: [CMP §2.2](03-compiler-and-flow.spec.md) and [FLX](74-flow-extensions.spec.md) for flow kinds; [SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md) for the others. |
+| | `allow_commands` | list of command prefixes | The workflow-wide allow-list ([WFM §2.1](02-workflow-model.spec.md)). |
+| | `builtin`, `package_root` | bool; path | Engine-set: the self-improvement flag ([WFM §2](02-workflow-model.spec.md)); the package folder text refs resolve in. |
+| `UnitSpec` | `kind` | `step` \| `route` \| `switch` \| `parallel` \| `map` \| `subworkflow` \| `wait` \| `script` \| `council` \| `contest` \| `ask` | Owners: [CMP §2.2](03-compiler-and-flow.spec.md), [FLX](74-flow-extensions.spec.md) (flow); [SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md). |
 | | `step` | `StepSpec`, for kind `step`, `map` and `contest` | |
-| | `script`, `council`, `contest`, `ask`, `map` | `ScriptSpec`, `CouncilSpec`, `ContestSpec`, `AskSpec`, `MapSpec`, for their kind | Defined in the owning spec ([MAP](77-map-unit.spec.md) for `MapSpec`); used by it and by WFM only. A `switch` unit's fields are in [CMP §2.2](03-compiler-and-flow.spec.md) and [SWM §2.1](79-measured-switches.spec.md). |
-| | `gate` | `GateSpec` | Required for every kind. A `wait` or `ask` gate holds only checks; a `script` gate holds the built-in check and an optional judge. |
+| | `script`, `council`, `contest`, `ask`, `map` | `ScriptSpec`, `CouncilSpec`, `ContestSpec`, `AskSpec`, `MapSpec`, for their kind | Defined in the owning spec ([MAP](77-map-unit.spec.md) for `MapSpec`); used by it and by WFM only. |
+| | `gate` | `GateSpec` | Required for every kind. A `wait` or `ask` gate holds only checks; a `script` gate the built-in check and an optional judge; a `route` or `switch` gate may be empty. |
+| | `route`, `route_targets`, `switch` | callable ref, targets; `SwitchSpec` | A route unit's select function, or a step's route after a pass; a switch's `predicate`, `arms`, `default`, `sticky` ([CMP §2.2](03-compiler-and-flow.spec.md)). |
 | `StepSpec` | `executor` | executor name, optional | Falls back to `default_executor`. |
-| | `prompt` | inline text \| file ref \| `default` | Template; grammar in §2.2. |
+| | `prompt` | inline text \| file ref \| `default` | Template; grammar in §2.2; `default` per [PRM §2.1](04-prompt-rendering.spec.md). |
 | | `tools` | list of `ToolCapability` (§2.5) | Declared tools. |
 | | `commands` | list of command prefixes | Within the workflow-wide allow-list. |
 | | `produces` | map key → `ArtifactKind` | `file`, `url`, `wiki_page`, `tracker_issue`, `pull_request`, `value` (one line, with optional `choices` and `pattern`, [VAL §2.1](76-step-values-and-template-keys.spec.md)). |
@@ -85,7 +88,7 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 
 ### 2.2 Template grammar
 
-A template contains literal text, doubled braces `{{` `}}` for literal braces, and plain fields `{name}` where `name` is an engine key, a declared input name, or `settings.<name>` for a declared workflow setting ([RST §2.5](80-run-settings-and-overrides.spec.md)). Nothing else between braces is valid. At run time a field without a value renders as the visible marker `⟨missing:name⟩` and is recorded on the step record. The engine keys, item keys and earlier-artifact pointers a field may name are listed in [VAL §2.3](76-step-values-and-template-keys.spec.md).
+A template holds literal text, `{{` `}}` for literal braces, and plain fields `{name}`: a key of [VAL §2.3](76-step-values-and-template-keys.spec.md) (engine, item, input, earlier artifact) or `settings.<name>` for a declared setting ([RST §2.5](80-run-settings-and-overrides.spec.md)). Nothing else between braces is valid. At run time a field without a value renders as the marker `⟨missing:name⟩`, recorded on the step record.
 
 ### 2.3 Input and routing declarations
 
@@ -105,9 +108,9 @@ A template contains literal text, doubled braces `{{` `}}` for literal braces, a
 
 ### 2.4 Models
 
-- **Alias grammar.** `inherit`, an engine-neutral tier `small` \| `medium` \| `large`, or an executor-qualified alias `<executor>:<name>` (for example `claude:opus`, `antigravity:gemini-pro`, `agent-sdk:sonnet`, `messages-api:opus`). Never a deployment id. Binding is per executor ([ADR-0008](../adr/0008-portable-model-aliases.adr.md)).
+- **Alias grammar.** `inherit`, an engine-neutral tier `small` \| `medium` \| `large`, or an executor-qualified alias `<executor>:<name>` (for example `claude:opus`, `antigravity:gemini-pro`). Never a deployment id. Binding is per executor ([ADR-0008](../adr/0008-portable-model-aliases.adr.md)).
 - **`ModelProfile`**: map from step name and from `judge:<step name>` to an alias or a ladder.
-- **Resolution order for a step attempt:** the operator layers of [RST §2.3](80-run-settings-and-overrides.spec.md) (flags per unit then per run, profiles, project and user overrides), an arm in force that names the step, the step's model (ladder rung n for attempt n, last rung repeats), workflow default, project and user defaults, `inherit`.
+- **Resolution order for a step attempt:** the operator layers of [RST §2.3](80-run-settings-and-overrides.spec.md), an arm in force that names the step, the step's model (ladder rung n for attempt n, last rung repeats), workflow default, project and user defaults, `inherit`.
 - **Resolution order for a judge:** the same operator layers on the judge scopes only (`judge:<unit>`, then `judges`), the gate's judge model, the step's model (its ladder's last rung), workflow default, project and user defaults, `inherit`.
 - Every record carries the alias, its source layer and the executor that bound it.
 
@@ -203,7 +206,7 @@ The judgement block is the last fenced JSON block of the judge's answer.
 
 | Field | Kind | Meaning |
 |---|---|---|
-| `criteria[]` | `{n, id?, status, evidence, place, fix, defect_in?, no_change?}` | `status` ∈ `MET`, `PARTIAL`, `UNMET`, `N/A`, `UNVERIFIABLE`. `defect_in` names an earlier artifact key. `no_change` (bool) says the step's own output cannot fix it: a missing source, a person's decision, or an outside system. |
+| `criteria[]` | `{n, id?, status, evidence, place, fix, defect_in?, no_change?}` | `status` ∈ `MET`, `PARTIAL`, `UNMET`, `N/A`, `UNVERIFIABLE`. `defect_in` names an earlier artifact key. `no_change` (bool): the step's own output cannot fix it (a missing source, a person's decision, an outside system). |
 | `coverage` | `{requirements, traced, orphans}` | ints |
 | `gap` | bool | A source is missing or the task is unclear. |
 | `confidence` | float in [0,1] | Anchors: 0.95 verified, 0.85 checked, 0.7 partly inferred, 0.5 contested. |
@@ -219,7 +222,7 @@ The judgement block is the last fenced JSON block of the judge's answer.
 |---|---|
 | `ThreadState` | `none`, `running` (lock held), `paused`, `unfinished`, `stopped`, `finished` |
 | `Decision` | `proceed`, `retry`, `back:<unit>`, `rewind:<unit>` (a person's return to any completed unit, [RRN §2.3](81-reruns-and-feedback.spec.md)), `stop`, `event:<name>=<value>`, `answer:<name>=<value>` (an ask, or a council's no-decision pause, [ASK §2.3](73-ask-unit.spec.md)) |
-| `ExitCode` | `0` finished · `1` internal error · `2` usage or preflight refusal, nothing spent or created · `3` paused for a person · `4` stopped · `5` budget spent or infra failure · `6` an advisory verb found issues at the level asked for (`audit --fail-on`, [AUD](55-workflow-audit.spec.md)) · `127` engine not installed (shim) |
+| `ExitCode` | `0` finished · `1` internal error · `2` usage or preflight refusal, nothing spent or created · `3` paused for a person · `4` stopped · `5` budget spent or infra failure · `6` an advisory verb found issues (`audit --fail-on`, [AUD](55-workflow-audit.spec.md)) · `127` engine not installed (shim) |
 
 `thread_id = <workflow>/<task_id>`. A fresh start on a thread whose state is not `none` is refused with exit 2 ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)).
 
@@ -297,7 +300,7 @@ Shared by [RST](80-run-settings-and-overrides.spec.md), [RRN](81-reruns-and-feed
 
 ### 2.13 Callers and supervision
 
-Shared by [PRV](85-caller-provenance.spec.md), [SUP](86-supervision-metrics.spec.md), [SCO](87-supervision-cost.spec.md), [HUM](07-gate-and-human.spec.md), [EVT](30-run-events.spec.md), [CST](34-central-run-stats.spec.md), [FBK](41-feedback-and-judge-reliability.spec.md) and [ORC](45-orchestration.spec.md).
+Shared by PRV, SUP, SCO, HUM, EVT, CST, FBK and ORC ([PRV](85-caller-provenance.spec.md) owns the classification).
 
 | Type | Field | Meaning |
 |---|---|---|

@@ -1,7 +1,7 @@
 ---
 title: Prompt rendering and output contract
 type: component
-status: review
+status: ready-for-implementation
 prefix: PRM
 adrs: [0005, 0016, 0074, 0076, 0077]
 ---
@@ -40,6 +40,8 @@ class RenderedPrompt: text: str; missing_fields: list[str]; sections: list[str]
 | Rulings from a person | Active rulings that apply to this unit; shown on every attempt and visit until revoked |
 
 Everything after the template is appended verbatim, never format-processed.
+
+A step whose `prompt` is `default` renders the engine template `{request}`: a workflow that declares no input parameters has exactly one input, `request`, the whole start request ([VAL §2.3](76-step-values-and-template-keys.spec.md)).
 
 ### 2.2 The tools block
 

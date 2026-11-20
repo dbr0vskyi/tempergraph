@@ -63,6 +63,8 @@ class ValueKind:
 
     choices: tuple[str, ...] | None = None
     pattern: str | None = None
+    max_chars: int = 500
+    optional: bool = False
 
 
 ProducesKind = ArtifactKind | ValueKind

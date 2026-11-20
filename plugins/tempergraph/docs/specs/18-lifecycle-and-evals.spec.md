@@ -1,7 +1,7 @@
 ---
 title: Lifecycle and evals
 type: component
-status: review
+status: ready-for-implementation
 prefix: LIF
 adrs: [0003, 0007, 0018, 0021]
 ---

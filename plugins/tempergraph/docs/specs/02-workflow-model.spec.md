@@ -1,7 +1,7 @@
 ---
 title: Workflow model and validation
 type: component
-status: review
+status: ready-for-implementation
 prefix: WFM
 adrs: [0003, 0008, 0062, 0070, 0090]
 ---
