@@ -194,6 +194,7 @@ CATALOG: dict[str, Entry] = {
     "attempt_cap": Entry(RUN, _int(1, 100), 15),
     "human_cap": Entry(RUN, _int(1, 100), 100),
     "run_cost_cap_usd": Entry(RUN, _float(0)),
+    "daily_cap_usd": Entry(RUN, _float(0)),  # stable mode's self-improvement budget per day (SIL §4)
     "auto_reopen": Entry(RUN, _int(0, 10), 0),
     "workspace": Entry(RUN, _choice("auto", "in_place", "worktree"), "auto"),
     "session_review": Entry(RUN, _choice("auto", "full", "signals", "off"), "auto"),  # lowers only (SRV §2.3)
@@ -613,6 +614,7 @@ def _workflow_values(spec: WorkflowSpec) -> dict[str, dict[str, dict[str, Any]]]
             put(dflt, f"judge:{name}.model", prof if isinstance(prof, str) or prof is None else list(prof)[0],
                 f"model_profile.judge:{name}")
     put(dflt, "run.run_cost_cap_usd", spec.run_cost_cap_usd, "run_cost_cap_usd")
+    put(dflt, "run.daily_cap_usd", spec.daily_cap_usd, "daily_cap_usd")
     if spec.workspace != "auto":
         put(dflt, "run.workspace", spec.workspace, "workspace")
     if spec.worktree is not None:

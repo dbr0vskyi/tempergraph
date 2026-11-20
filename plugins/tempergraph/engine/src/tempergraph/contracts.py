@@ -272,6 +272,7 @@ class WorkflowSpec:
     verified_engine: str | None = None
     command_resolver: CallableRef | None = None
     run_cost_cap_usd: float | None = None
+    daily_cap_usd: float | None = None  # stable mode's loop budget per UTC day; dev mode has none (SIL §4)
     version: str = "0.0.0"
     requires_engine: str | None = None
     upgrade: Mapping[str, Any] | None = None

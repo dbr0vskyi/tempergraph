@@ -34,6 +34,7 @@ PARAMS = {p.name: p for p in (
     Param(name="stable.new_version_runs", value=5, source="SIL §2.2"),
     Param(name="stable.cost_percentile", value=0.9, source="SIL §2.2"),
     Param(name="stable.daily_cap_usd", value=50, source="SIL §4"),
+    Param(name="autonomy.min_room_usd", value=5, source="PRP §2.1, release 1 default"),
     Param(name="measure.quality_drop", value=0.05, source="earlier runs"),
     Param(name="digest.repeat_min", value=3, source="SRV §2.1"),
     Param(name="digest.idle_minutes", value=10, source="SRV §2.1"),

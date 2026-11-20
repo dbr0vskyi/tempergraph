@@ -39,6 +39,7 @@ def add_parsers(sub: Any) -> None:
     rp.add_argument("window", nargs="?", default="30d", help="7d, 24h, 30d (the default) or all")
     rp.add_argument("--by", choices=("unit", "executor", "version", "workflow", "host", "level"), default=None)
     rp.add_argument("--supervision", action="store_true", help="touches, levels, waits and supervision cost (SUP §2.4)")
+    rp.add_argument("--loop", action="store_true", help="the self-improvement loop's own figures (IMD §2.4)")
     rp.add_argument("--json", action="store_true")
     lb = sub.add_parser("label", help="a person's label on a gate judgement (FBK §2.2 explicit)")
     lb.add_argument("selector")
@@ -182,6 +183,35 @@ def roots(env: Any, all_roots: bool) -> list[Path]:
     return found
 
 
+def _loop_report(env: Any, a: argparse.Namespace, since: Any) -> int:
+    from tempergraph.cli.main import _emit, _root
+    from tempergraph.improve import calibration as cal
+    from tempergraph.improve import loop_report as lr
+    from tempergraph.improve import reliability as rel
+
+    root = _root(env)
+    specs = env.catalog.specs
+    names = sorted(set(specs) | {p.name for p in (root / "runs").iterdir() if p.is_dir()}
+                   if (root / "runs").is_dir() else set(specs))
+
+    def coverage(w: str) -> list[str]:
+        spec = specs.get(w)
+        if spec is None:
+            return []
+        try:
+            return [g["grade"] for g in rel.report(root, w, cal.judged_gates(spec),
+                                                   lambda gate, binding: cal.passing(spec, gate))]
+        except Exception:  # noqa: BLE001 - a gate that cannot be graded is left out of coverage
+            return []
+
+    doc = lr.report(root, names, since, coverage)
+    if a.json:
+        _emit(env, doc)
+    else:
+        env.out.write(lr.text(doc))
+    return 0
+
+
 def cmd_report(env: Any, a: argparse.Namespace) -> int:
     from tempergraph.cli.main import UsageError, _emit, _root
     from tempergraph.observe import report as rep
@@ -190,6 +220,8 @@ def cmd_report(env: Any, a: argparse.Namespace) -> int:
         since = rep.window(a.window)
     except ValueError as exc:
         raise UsageError(str(exc)) from exc
+    if a.loop:
+        return _loop_report(env, a, since)
     if a.supervision:
         from tempergraph.observe import supervision_report as sup
 

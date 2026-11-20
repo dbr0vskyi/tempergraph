@@ -98,9 +98,14 @@ Built in the thread "Build judge calibration and proposals".
 
 Not built in release 1 (recorded in PRP §5): PRP-B9 (needs the merge to be seen; `pr_state` is not derived), the loop starting the proposer or a trial on its own at autonomy `propose` or `trial` (waits on T12.8's daily cap), the `label_recorded`, `proposal_state`, `trial_progress` and `binding_shift` events (IMD §2.3).
 
-### T12.8
+### T12.8 Stable mode, loop report, outcome proposals
 
-Planned: stable mode's daily cap and `report --loop`.
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 12.8.1 | `engine/src/tempergraph/improve/autonomy.py`, `improve/child.py`, `improve/params.py` | Stable mode's daily cap over the loop's own spend (judges and the review skipped, records kept); autonomy `record` files nothing; at `propose` and `trial` the loop proposes, trials and opens a draft pull request on its own within the cap | SIL §4, PRP §2.1, PRP-B8 | yes | P1 | ✓ | 2026-11-20 |
+| 12.8.2 | `engine/src/tempergraph/improve/loop_report.py`, `cli/observe_cli.py` | `report --loop`: funnel, loop spend, label coverage, parameters with provenance; code-host figures not derived in release 1 | IMD §2.4, §2.5 | yes | P2 | ✓ | 2026-11-20 |
+| 12.8.3 | — | Outcome proposals: `outcome_unmet:<criterion>` clusters take the 12.8.1 path; OUT-AC-6 holds since the outcome lens starts no judge of its own | OUT-AC-6, PRP §5 | yes | P2 | ✓ | 2026-11-20 |
+| 12.8.4 | live, owner's machine | A stable workflow at autonomy `trial` end to end, [live-checks](live-checks.plan.md) L-17 to L-19 | PRP §6 | | P2 | ○ | |
 
 ### T12.9 Session digest and dev-mode review
 

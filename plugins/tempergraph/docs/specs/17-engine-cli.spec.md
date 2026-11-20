@@ -78,6 +78,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `--grant <unit>=<capability>[,…]`, `--allow-command <unit>=<prefix>` | `<unit>.tools.add`, `<unit>.commands.add` (or `judge:<unit>.views.add` for read-only views): a person's tool grant for this run, on `run`, `resume` and `rerun` ([RST §2.8](80-run-settings-and-overrides.spec.md)) |
 | `--arm <switch>=<arm>` | `<switch>.arm`: operator pick of a switch arm ([CMP](03-compiler-and-flow.spec.md)) |
 | `--run-cost-cap <usd>` | `run.run_cost_cap_usd` ([BUD](08-budgets-and-failures.spec.md)) |
+| `--daily-cap <usd>` | `run.daily_cap_usd`: stable mode's self-improvement budget per day ([SIL §4](16-self-improvement.spec.md)) |
 | `--audit-rate <0..1>`, `--audit-executor <name>` | `run.audit_rate`, `run.audit_executor`: sampled audit judge ([JDG-B7](05-judge-and-verdict.spec.md)) |
 | `--workspace auto\|worktree\|in_place`, `--worktree` / `--in-place` | `run.workspace` ([WTR §2.1](82-worktree-mode.spec.md)) |
 | `--worktree-root`, `--worktree-base`, `--worktree-cleanup` | `run.worktree.root`, `run.worktree.base`, `run.worktree.cleanup` |

@@ -170,7 +170,7 @@ SPELLINGS = {"executor": "steps.executor", "judge_executor": "judges.executor", 
              "judge_model": "judges.model", "timeout": "steps.timeout_s", "judge_timeout": "judges.timeout_s",
              "idle": "steps.idle_s", "run_cost_cap": "run.run_cost_cap_usd", "worktree_root": "run.worktree.root",
              "worktree_base": "run.worktree.base", "worktree_cleanup": "run.worktree.cleanup",
-             "auto_reopen": "run.auto_reopen"}
+             "auto_reopen": "run.auto_reopen", "daily_cap": "run.daily_cap_usd"}
 PER_UNIT = {"step_executor": "executor", "step_model": "model"}
 
 
@@ -184,7 +184,7 @@ def _caller_options(p: argparse.ArgumentParser) -> None:
 
 def _spellings(p: argparse.ArgumentParser) -> None:
     for opt in ("executor", "judge-executor", "model", "judge-model", "timeout", "judge-timeout", "idle",
-                "run-cost-cap", "auto-reopen"):
+                "run-cost-cap", "daily-cap", "auto-reopen"):
         p.add_argument(f"--{opt}")
     p.add_argument("--step-executor", action="append", default=[], metavar="STEP=NAME")
     p.add_argument("--step-model", action="append", default=[], metavar="STEP=ALIAS")
