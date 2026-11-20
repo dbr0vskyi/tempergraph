@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-20T11:05:17.059Z",
+  "threads": [
+    {
+      "thread_id": "demo/T-1",
+      "workflow": "demo",
+      "state": "paused",
+      "alive": false,
+      "pending_gates": [
+        {
+          "unit": "review",
+          "item": null,
+          "kind": "escalation",
+          "resume": "tempergraph resume demo T-1 --decision <proceed|retry|back:draft|stop>"
+        }
+      ],
+      "log_path": "/work/repo/.tempergraph/runs/demo/T-1/run.jsonl",
+      "cost": {
+        "reported": 0.1,
+        "incomplete": false,
+        "completeness": "complete",
+        "counters": {
+          "reported": 0.09999999999999999,
+          "estimated": 0.0,
+          "estimated_only": 0.0,
+          "sessions": 10,
+          "reported_sessions": 10,
+          "estimated_sessions": 0,
+          "unmeasured": 0
+        }
+      },
+      "executors": {
+        "claude": "standin"
+      },
+      "settings_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "overridden_keys": [],
+      "settings_stale": false,
+      "workspace": {
+        "mode": "worktree",
+        "path": "/work/repo.worktrees/demo--T-1",
+        "branch": "tg/demo/T-1",
+        "state": "active"
+      },
+      "exit_code": 3,
+      "exit_reason": "escalation"
+    }
+  ]
+}

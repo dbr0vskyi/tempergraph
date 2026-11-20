@@ -11,4 +11,6 @@ Plans say **in what order** the specs are built. A release plan fixes a release'
 | [t4-durability-and-workspace.plan.md](t4-durability-and-workspace.plan.md) | T4: checkpoints, thread states, lock, aliases, status, wait, worktree, stop | Completed |
 | [t5-gate-funnel.plan.md](t5-gate-funnel.plan.md) | T5: run log and cost, checks, judge, guard, gate and human nodes, budgets, scripts, finalizer, runner, outcome gate and record | Completed (offline; live fixtures pending) |
 | [t6-run-operations.plan.md](t6-run-operations.plan.md) | T6: CLI core verbs and exit codes (M1), settings, tool grants, feedback and reruns, caller provenance | Completed (offline; live probes pending) |
+| [t7-observability.plan.md](t7-observability.plan.md) | T7: run events, detail document, session logs and the store, reports and attention, supervision record, supervision cost | Completed (offline; P-SUP-3 pending) |
+| [t10-monitor.plan.md](t10-monitor.plan.md) | T10.1 to T10.4: team sinks, the monitor mod's sources, band, alerts, run view, drill-down, cost tab and prompt-fill actions | In progress (mod API check and live probes pending) |
 | [t12-self-improvement.plan.md](t12-self-improvement.plan.md) | T12: loop records, cause codes and lenses, filing and measurement, lessons; labels, calibration, proposals and trials after T7 and T8 | In progress |

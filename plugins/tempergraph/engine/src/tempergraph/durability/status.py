@@ -68,6 +68,48 @@ def _pending(workflow: str, tid: str, snap: Snapshot) -> list[dict[str, Any]]:
     return out
 
 
+def _settings(state_root: Path, spec: WorkflowSpec, options: Any) -> dict[str, Any]:
+    """RST §2.7: the thread's digest and overridden keys from its snapshot, and `settings_stale` when the
+    settings files now resolve differently. Read-only; a snapshot it cannot read adds nothing."""
+    if not isinstance(options, dict) or not options.get("settings"):
+        return {}
+    from tempergraph import settings as rst
+    from tempergraph.contracts import RunOptions
+    from tempergraph.store.layout import home_path
+
+    try:
+        opts = RunOptions(settings={k: dict(v) for k, v in options["settings"].items()},
+                          profiles=tuple(options.get("profiles") or ()))
+        then = rst.resolve(spec, opts)
+        out: dict[str, Any] = {"settings_digest": then.digest, "overridden_keys": rst.overridden_keys(then)}
+        files = rst.load_files(state_root, home_path())
+        out["settings_stale"] = None if files.errors else rst.resolve(spec, opts, files).digest != then.digest
+        return out
+    except Exception:  # noqa: BLE001 - a status row never fails on its settings (DUR §4)
+        return {}
+
+
+def _lineage(state_root: Path, workflow: str, tid: str, run: Mapping[str, Any]) -> dict[str, Any]:
+    """RRN §2.4: the source of a rerun (from the thread's state) and the reruns made from it (`lineage.json`)."""
+    out: dict[str, Any] = {}
+    src = run.get("rerun_of") or (run.get("meta") or {}).get("rerun_of")
+    if isinstance(src, dict):
+        out["rerun_of"] = {k: src.get(k) for k in ("thread", "unit", "checkpoint_id", "workflow_version")}
+    try:
+        doc = json.loads((run_dir(state_root, workflow, split_thread(tid)[1]) / "lineage.json").read_text("utf-8"))
+        made = [{"thread": x.get("thread"), "from": x.get("from"), "at": x.get("at"),
+                 **({"same_branch": True} if x.get("same_branch") else {})}
+                for x in doc.get("reruns") or [] if isinstance(x, dict)]
+        superseded = doc.get("superseded_by") if isinstance(doc, dict) else None
+    except (OSError, ValueError, AttributeError):
+        made, superseded = [], None
+    if made:
+        out["reruns"] = made
+    if isinstance(superseded, str):
+        out["superseded_by"] = superseded  # RRN §2.4: a `--same-branch` rerun took this finished thread's branch
+    return out
+
+
 def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     snap, held = _read(state_root, spec, tid)
     state = classify_snapshot(snap, held)
@@ -78,6 +120,8 @@ def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     for key in RUN_FIELDS:
         if key in run:
             r[key] = run[key]
+    r.update(_settings(state_root, spec, run.get("options")))
+    r.update(_lineage(state_root, spec.name, tid, run))
     ws = (snap.values.get("workspace") or {})
     if ws:
         r["workspace"] = {k: ws.get(k) for k in ("mode", "path", "branch", "state") if k in ws}

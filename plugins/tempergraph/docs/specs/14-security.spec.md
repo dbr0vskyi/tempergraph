@@ -35,7 +35,7 @@ How the engine keeps operator input, model output and secrets away from process 
 | Antigravity gatekeeper | Started by `agy` itself from an engine-written hooks file; constant path |
 | Filtering MCP proxy | Started by the judge's CLI from an engine-written config; constant entry point |
 | Git reader | `git` with constant arguments and refs on stdin |
-| Detached child launcher | The engine CLI with a ticket; the schedule tick's `run` and `orchestrate start` among them ([TCK §2.2](84-schedule-ticks-and-unattended-fires.spec.md)) |
+| Detached child launcher | The engine CLI with a ticket; the schedule tick's `run` and `orchestrate start` among them ([TCK §2.2](84-schedule-ticks-and-unattended-fires.spec.md)); and the engine interpreter with a constant module and words: in release 1 only the stats flusher, `tempergraph.observe.sinks flush` ([CST §2.3](34-central-run-stats.spec.md)), in `tempergraph.detach` |
 | Schedule trigger writer | The optional `os` adapter's one per-user entry (LaunchAgent, systemd user unit, crontab line, Task Scheduler task) and the plugin hook's loop start, holding the shim's absolute path and `schedule loop` or `schedule tick` only ([TCK §2.1](84-schedule-ticks-and-unattended-fires.spec.md)) |
 | Updater | `pip` with constants only |
 | Wait notification | The operator's own command, a named, bounded exception with its own test |

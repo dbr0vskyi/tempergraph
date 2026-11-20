@@ -40,9 +40,10 @@ The monitor is to be a "Claude Mod". This note records what a Claude Code mod is
 
 | Id | Question | Blocks |
 |---|---|---|
-| P-MOD-1 | How does a mod tell at `session.start` that the session is headless (`-p`, SDK), so it registers no tool there? | [MAC §2.2](../specs/05-actions-and-safety.spec.md) |
+| P-MOD-1 | How does a mod tell at `session.start` that the session is headless (`-p`, SDK), so it registers no tool there? Answered from the API types of Claude Code 2.1.329 (2026-11-20): `session.start`'s input carries `isInteractive`, false under `-p` and the SDK. The monitor starts no timer and registers no command when it is false; a live check on a person's machine is still pending. | [MAC §2.2](../specs/05-actions-and-safety.spec.md) |
 | P-MOD-2 | Does `$.fs` read paths outside the session's working directory (other state roots, `~/.tempergraph/`) on every surface without a permission prompt? | [MDS](../specs/01-data-sources.spec.md) |
 | P-MOD-3 | Does `$.process.run` inherit the person's PATH, so the `tempergraph` shim is found, on desktop and VS Code? | [MDS](../specs/01-data-sources.spec.md) |
+| P-MOD-4 | Does the release 1 mod load, draw and poll as its session tests say on a person's machine (terminal and desktop), against a real engine run? The session tests run under `claude plugin test` with the engine answered by fixtures; nothing has been run against a live Claude Code session yet. | [T10 plan](../../../tempergraph/docs/plans/t10-monitor.plan.md) |
 
 ## Open questions
 

@@ -39,7 +39,7 @@ from tempergraph.run.check_worker import run_in_worker
 from tempergraph.run.commands import ResolvedCommand, run_command
 from tempergraph.run.guard import guard, view_set
 from tempergraph.run.judging import JudgeInputs, Unparsed, derive, parse_judgement, reask_prompt, render_judge
-from tempergraph.run.log import CostTotals, LiveSink, RunLog, cost_so_far, estimate
+from tempergraph.run.log import CostTotals, RunLog, cost_so_far, estimate, session_sink
 from tempergraph.security.scrub import clip, scrub
 from tempergraph.store.layout import session_dir, session_key
 
@@ -115,13 +115,16 @@ class EngineNodes:
         """One session with infra tries and backoff outside the retry budget (BUD-B1, JDG-B5)."""
         results: list[SessionResult] = []
         for n in range(self.ctx.infra_tries):
-            sink = LiveSink(req.session_dir)
+            sink = session_sink(self.ctx.log, req, ex.name)
             self.ctx.log.write("attempt_start", session_key=req.session_key, kind=req.kind, executor=ex.name,
                                alias=req.alias, timeout_s=req.timeout_s)
-            if judge_views is None:
-                res = ex.run_step(req, sink)
-            else:
-                res = ex.run_judge(req, judge_views, sink)
+            try:
+                if judge_views is None:
+                    res = ex.run_step(req, sink)
+                else:
+                    res = ex.run_judge(req, judge_views, sink)
+            finally:
+                sink.close()
             if res.usage.estimated_cost_usd is None:
                 res.usage.estimated_cost_usd = estimate(res.usage, res.model)
             results.append(res)

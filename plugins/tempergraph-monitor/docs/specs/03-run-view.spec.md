@@ -1,7 +1,7 @@
 ---
 title: Run list and run view
 type: component
-status: review
+status: ready-for-implementation
 prefix: MRV
 adrs: [0001, 0004, 0006]
 ---
@@ -113,6 +113,7 @@ Opened from an orchestration row; drawn from the orchestration status document (
 
 - The key map keeps the workflows view's muscle memory; where tempergraph has no matching verb (pause, restart, skip) the key is reused or absent rather than faked ([MADR-0004](../adr/0004-borrow-the-workflows-view-and-add-gates.adr.md)).
 - The node strip is the one new visual idea: it makes "which of step, check, judge, gate is running" readable at a glance, which a workflow's agent rows cannot say because a workflow has no gates.
+- Release 1 build ([T10 plan](../../../tempergraph/docs/plans/t10-monitor.plan.md)): the run list (filter on `f`, a pin button per run, pins kept in `$.store` across sessions) and the run view (unit rows with the node strip, trip-back lines, narrator, touch strip, the cut note, pause question; `g` opens the pause view, `c` the cost tab, `x` fills stop) are drawn from the status and detail documents. Every row is a `Button`, so arrows and Enter are the surface's own focus keys. Deviations: back out is a footer `Button` with hotkey `b`, since a mod's `Button` hotkey is one letter or digit and `Esc` is the surface's own; `j` and `k` are not bound because the pane's scroll is the surface's; `l` and `a` are not bound, as the log tail is a session tab and every action is its own button. With `scope = machine` the run list adds "Other repositories on this machine" (each row opens a card) and one `missing` line per gone root; `m` opens the fleet tab. The run view's touch line starts with the run's supervision level from the engine's record (`level consultant by agent`). Map item rows, the orchestration view and the mobile reduction are not built (maps and orchestration are release 2).
 - One pane with levels, rather than one pane per run, keeps the band and the pane in step and matches the workflows view's single entry point ([MADR-0006](../adr/0006-one-pane-many-levels.adr.md)).
 
 ## 6. Acceptance criteria
@@ -125,7 +126,7 @@ Opened from an orchestration row; drawn from the orchestration status document (
 
 | Question | Owner |
 |---|---|
-| Should a closed pane reopen itself on a pause? Today a pause raises a notification and a toast, and does not move the person's layout. | Owner |
+| Should a closed pane reopen itself on a pause? Today a pause raises a notification and a toast, and does not move the person's layout. Default for release 1: no. | Owner |
 
 ## References
 

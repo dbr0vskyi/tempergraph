@@ -35,6 +35,8 @@ The authoring skill's entry paths, interview phases, verification search and rev
 
 The plugin ships Claude Code hooks that write the supervision journal ([SCO §2.2](87-supervision-cost.spec.md)): `SessionStart`, `UserPromptSubmit` (person turns with matched decision words, never the text, [PRV §2.4.1](85-caller-provenance.spec.md)), `PostToolUse` on engine commands, `Stop` and `SubagentStop` (usage numbers read from the transcript), `SessionEnd` (then `supervision close`). They do nothing inside the engine's own sessions (`TEMPERGRAPH_SESSION_KEY`) or when `observe.supervision = off`, never block or change a tool call, and are not the engine's run lifecycle hooks ([CLI §2.2](17-engine-cli.spec.md)).
 
+Release 1 ships them in `plugins/tempergraph/hooks/hooks.json`: each event runs `tempergraph supervision hook <Event> >/dev/null 2>&1 || true` with a 2 s timeout (`PostToolUse` matched on `Bash`), so a missing engine or a failure never reaches the host call.
+
 ## 3. Behaviours
 
 **SHL-B1 Ask, never guess.** Given a workflow that needs `ticket` and a request without it, when the run driver prepares the start, then it asks the person (at most four rounds via `run --check`) and never fills the value from an example.

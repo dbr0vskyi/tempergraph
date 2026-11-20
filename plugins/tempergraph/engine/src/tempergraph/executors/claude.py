@@ -7,6 +7,7 @@ failures are classified by ECC §2.6 from structured facts and one exact text ma
 
 from __future__ import annotations
 
+import functools
 import json
 import os
 import re
@@ -32,6 +33,7 @@ from tempergraph.executors import binding as binding_mod
 from tempergraph.executors.capabilities import CLAUDE, tool_names
 from tempergraph.executors.launcher import LaunchSpec, RawOutcome, StopRequest, launch, run_probe
 from tempergraph.executors.session import Summary, build_result, killed_by_os, process_cause, summarize
+from tempergraph.executors.summary import capability_of, input_summary
 from tempergraph.security.scrub import clip, scrub
 
 NAME = "claude"
@@ -161,8 +163,12 @@ def _usage(result: Mapping[str, Any]) -> Usage:
                  by_model=by_model, turns=result.get("num_turns"))
 
 
-def parse_line(line: bytes) -> list[Event]:
-    """Map one stream-json line to normalized events; unknown types map to nothing (ECC §4)."""
+def parse_line(line: bytes, workdir: Path | None = None) -> list[Event]:
+    """Map one stream-json line to normalized events; unknown types map to nothing (ECC §4).
+
+    `tool_started` carries the tool's capability and its one-line `input_summary` (EVT §2.5), with paths
+    relative to `workdir`.
+    """
     msg = json.loads(line)
     if not isinstance(msg, dict):
         return []
@@ -184,10 +190,12 @@ def parse_line(line: bytes) -> list[Event]:
             if not isinstance(block, dict):
                 continue
             if block.get("type") == "tool_use":
+                name = str(block.get("name", ""))
+                cap = capability_of(CLAUDE, name)
                 out.append(Event(kind="tool_started", data={
-                    "name": block.get("name", ""), "call_id": block.get("id", ""),
+                    "name": name, "call_id": block.get("id", ""), "capability": cap,
                     "subagent": msg.get("parent_tool_use_id") is not None,
-                    "input_summary": clip(scrub(json.dumps(block.get("input", {}), ensure_ascii=False)), 120)}))
+                    "input_summary": input_summary(cap, name, block.get("input"), workdir)}))
             elif block.get("type") == "text":
                 last = (str(block.get("text") or "").strip().splitlines() or [""])[-1]
                 out.append(Event(kind="text", data={"last_line": clip(scrub(last), 200)}))
@@ -355,7 +363,7 @@ class ClaudeExecutor:
         spec = LaunchSpec(argv=argv, stdin_payload=req.prompt.encode("utf-8"), workdir=req.workdir,
                           timeout_s=req.timeout_s, idle_s=idle_s, session_key=req.session_key,
                           env_overlay=env, session_dir=req.session_dir, grace_s=self.grace_s)
-        raw = launch(spec, parse_line, sink, stop=self.stop)
+        raw = launch(spec, functools.partial(parse_line, workdir=req.workdir), sink, stop=self.stop)
         s = summarize(raw.events, raw.duration_s)
         infra, kind = classify(raw, s)
         version = self._probe.version if self._probe else ""

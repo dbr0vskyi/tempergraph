@@ -116,6 +116,7 @@ The finding is recorded and enters the friction lens like any finding; it is nev
 - Labels are cheap facts the engine already sees; the only new human effort is the optional queue, ordered so the most informative judgements come first ([R-030 F6](../research/R-030-self-improving-agent-systems.rsrch.md)).
 - The thresholds (20 labels, 0.15, 0.8, 90 days, the shift margins) have no data behind them and are recorded as parameters with that provenance ([IMD](43-improvement-data.spec.md)).
 - Confidence is studied here, against labels, rather than used as a filing floor; the open question on the 0.75 floor in SIL is answered from `confidence_bands` once labels exist.
+- Release 1 build ([T7 plan](../plans/t7-observability.plan.md) T7.5): only the `explicit` kind, through `label <thread> <unit> --value agree|disagree [--criterion id] [--attempt n]`. The row goes to the state root's `ledger.jsonl` as `kind: label` (the label's own kind is the field `label_kind`, since `kind` names the ledger row's kind) with `gate_record` (the gate record's `seq`), `gate_verdict`, the IMD-R1 fields and the caller block; `source` is `person` only when the caller's decider is a person. `brief_digest` and `criteria_digest` of the binding are null until `agent_run` carries them (IMD-R2). The derived kinds, `labels queue`, grading and the `label_recorded` event are T12.3.
 
 ## 6. Acceptance criteria
 

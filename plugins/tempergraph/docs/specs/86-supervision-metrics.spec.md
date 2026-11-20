@@ -158,6 +158,8 @@ A criterion whose data is missing on more runs than its row allows is reported `
 - **Levels describe a run, not a workflow.** A workflow's autonomy is the distribution of its runs' levels, which is what public measurement found: autonomy is a property of a deployment ([R-085](../research/R-085-callers-supervision-and-babysitting-cost.rsrch.md) P1).
 - **No active time.** How long a person spent reading a pause cannot be measured from records; only waiting time and turn counts are. The design does not estimate it.
 
+- Release 1 build ([T7 plan](../plans/t7-observability.plan.md) T7.5): the record is built by `run/supervision.py` (T5 and T6) and read by the stats row, the sink row, the detail document and `report --supervision` (`observe/supervision_report.py`). Deviations: a run is a thread and its figures are the thread's last record; `--by unit` counts touches from the ledger's intervention rows; waits per pause kind are not shown (`null`), since the record keeps waits per decider; supervision cost, share and observations are joined from SCO's closed ledger lines (T7.6), so a thread counts as not measured until its supervision closes; the share is null while the run has no estimated cost. `promote-check` is not built (AC-3's other half).
+
 ## 6. Acceptance criteria
 
 - [ ] SUP-AC-1 Every row of the SUP-B2 table is reproduced from a fixture run log by the record builder.

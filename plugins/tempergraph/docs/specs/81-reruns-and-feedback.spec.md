@@ -101,7 +101,7 @@ Given with `--feedback <text>` or `--feedback-file <path>` (at most 8 000 charac
 | Workspace, in place | Files as they are now; the start prints one warning saying so |
 | External effects | As for rewind: units after the fork point with external effects in the source need `--accept-external` |
 | Budgets | Fresh: retry, loop, human cap, attempt allowance; the run cost cap counts the new thread only |
-| Records | `run_started` with `origin: rerun` and `rerun_of {thread, unit, checkpoint_id, workflow_version}`; the source's run folder gains `lineage.json` listing its reruns ([LOS §2.1](33-local-observability-store.spec.md)); status rows show `rerun_of` and `reruns` |
+| Records | `run_started` with `origin: rerun` and `rerun_of {thread, unit, checkpoint_id, workflow_version}`; the source's run folder gains `lineage.json` listing its reruns ([LOS §2.1](33-local-observability-store.spec.md)); status rows show `rerun_of`, `reruns` and `superseded_by` |
 
 `rerun --check` resolves the fork point, the workspace plan, the settings and the external-effects list, prints them and creates nothing (contract C13).
 

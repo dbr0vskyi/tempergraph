@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import IO, Any
 
 from tempergraph.catalog import Catalog, PackageNotLoaded, from_registry, resolve_request
+from tempergraph.cli import observe_cli
 from tempergraph.constants import SCHEMA, ExitCode
 from tempergraph.contracts import WorkflowSpec, thread_id
 from tempergraph.executors.registry import Registry, default_registry
@@ -85,8 +86,20 @@ def _parser() -> _Parser:
     _caller_options(rr)
     rr.add_argument("--json", action="store_true")
     _settings_options(rr, resume=True)
-    st = sub.add_parser("status", help="the status document")
+    st = sub.add_parser("status", help="the status document, or one thread's detail document")
     st.add_argument("selector", nargs="?")
+    st.add_argument("--detail", action="store_true", help="the run detail document of one thread (RDD)")
+    st.add_argument("--unit", help="with --detail: one unit in full")
+    st.add_argument("--no-live", action="store_true", help="with --detail: leave out the live session blocks")
+    st.add_argument("--json", action="store_true", help="machine output (the default for status)")
+    st.add_argument("--all-roots", action="store_true", help="every state root of the machine index (CST §2.1)")
+    ev = sub.add_parser("events", help="a thread's run-log records in seq order (EVT)")
+    ev.add_argument("selector")
+    ev.add_argument("--since", type=int, metavar="SEQ")
+    ev.add_argument("--follow", action="store_true")
+    ev.add_argument("--activity", metavar="SESSION_KEY", help="one session's activity journal instead")
+    ev.add_argument("--json", action="store_true", help="one JSON object per line")
+    ev.add_argument("--timeout", type=float, help=argparse.SUPPRESS)
     sub.add_parser("list", help="the workflow catalog")
     va = sub.add_parser("validate", help="validate a workflow")
     va.add_argument("workflow")
@@ -109,6 +122,7 @@ def _parser() -> _Parser:
     wsub.add_parser("list")
     wp = wsub.add_parser("path")
     wp.add_argument("thread")
+    observe_cli.add_parsers(sub)
     co = sub.add_parser("config", help="resolved run settings and the settings files (RST §2.9)")
     csub = co.add_subparsers(dest="action", parser_class=_Parser)
     cs = csub.add_parser("show")
@@ -440,7 +454,82 @@ def _one(env: Env, selector: str) -> tuple[WorkflowSpec, str]:
 def cmd_status(env: Env, a: argparse.Namespace) -> int:
     from tempergraph.durability.status import Selector, status
 
-    _emit(env, status(_root(env), env.catalog.specs, Selector(value=a.selector)))
+    if a.detail:
+        from tempergraph.observe.detail import detail
+
+        if not a.selector:
+            raise UsageError("status --detail needs one thread")
+        spec, tid = _one(env, a.selector)
+        doc = detail(_root(env), spec, tid, unit=a.unit, with_live=not a.no_live)
+        if doc is None:
+            raise UsageError(f"{a.unit!r} is not a unit of {spec.name}")
+        if doc["run"].get("state") == "none":
+            raise UsageError(f"{tid}: no such thread")
+        _emit(env, doc)
+        return 0
+    if a.unit:
+        raise UsageError("--unit needs --detail")
+    if a.all_roots:
+        from tempergraph.observe.rows import index_roots
+
+        doc = status(_root(env), env.catalog.specs, Selector(value=a.selector))
+        here = str(_root(env).resolve())
+        for r in doc["threads"]:
+            r["state_root"] = here
+        doc["roots"] = [{"path": here, "missing": False}]
+        for entry in index_roots():
+            if entry["path"] == here:
+                continue
+            doc["roots"].append({"path": entry["path"], "missing": entry["missing"]})
+            if entry["missing"]:
+                continue
+            for r in status(Path(entry["path"]), env.catalog.specs, Selector(value=a.selector))["threads"]:
+                doc["threads"].append({**r, "state_root": entry["path"]})
+        _emit(env, doc)
+        return 0
+    doc = status(_root(env), env.catalog.specs, Selector(value=a.selector))
+    from tempergraph.observe.sinks import warnings
+    from tempergraph.store.layout import home_path
+
+    lines = warnings(home_path())
+    if lines:
+        doc["warnings"] = lines  # CST §2.3: a sink failing for 7 days
+    _emit(env, doc)
+    return 0
+
+
+def cmd_events(env: Env, a: argparse.Namespace) -> int:
+    from tempergraph.durability.lock import is_held
+    from tempergraph.run import events as evmod
+    from tempergraph.store.layout import lock_path, run_dir, session_dir
+
+    spec, tid = _one(env, a.selector)
+    root, task = _root(env), tid.split("/", 1)[1]
+    log = run_dir(root, spec.name, task) / "run.jsonl"
+    if not log.exists():
+        raise UsageError(f"{tid} has no run log")
+    lock = lock_path(root, spec.name, task)
+
+    def held() -> bool:
+        return is_held(lock)
+
+    def show(rec: dict[str, Any]) -> None:
+        env.out.write((json.dumps(rec, ensure_ascii=False) if a.json else evmod.narrate(rec)) + "\n")
+        env.out.flush()
+
+    if a.activity:
+        sdir = session_dir(root, spec.name, task, a.activity)
+        journal = sdir / "activity.jsonl"
+        if not sdir.is_dir():
+            raise UsageError(f"{tid} has no session {a.activity!r}")
+        lines = (evmod.follow_activity(journal, sdir / "live.json", held, a.since, timeout_s=a.timeout)
+                 if a.follow else evmod.activity(journal, a.since))
+        for ln in lines:
+            env.out.write(json.dumps(ln, ensure_ascii=False) + "\n")
+        return 0
+    recs = evmod.follow(log, held, a.since, timeout_s=a.timeout) if a.follow else evmod.records(log, a.since)
+    for rec in recs:
+        show(rec)
     return 0
 
 
@@ -635,8 +724,9 @@ def cmd_outcome(env: Env, a: argparse.Namespace) -> int:
 
 COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "run": cmd_run, "resume": cmd_resume, "status": cmd_status, "list": cmd_list, "validate": cmd_validate,
-    "executors": cmd_executors, "facts": cmd_facts, "graph": cmd_graph, "wait": cmd_wait, "stop": cmd_stop,
-    "worktree": cmd_worktree, "config": cmd_config, "rerun": cmd_rerun, "outcome": cmd_outcome,
+    "executors": cmd_executors, "events": cmd_events, "facts": cmd_facts, "graph": cmd_graph, "wait": cmd_wait,
+    "stop": cmd_stop, "worktree": cmd_worktree, "config": cmd_config, "rerun": cmd_rerun, "outcome": cmd_outcome,
+    **observe_cli.COMMANDS,
 }
 
 
@@ -651,7 +741,8 @@ def main(argv: Sequence[str] | None = None, *, catalog: Catalog | None = None, r
             raise UsageError("a verb is needed; `tempergraph --help` lists them")
         if a.verb not in COMMANDS:
             raise UsageError(f"{a.verb}: not in this release")
-        env = Env(catalog=catalog if catalog is not None else from_registry(),
+        light = a.verb == "supervision" and getattr(a, "action", None) in ("hook", "log", "close")
+        env = Env(catalog=catalog if catalog is not None else Catalog() if light else from_registry(),
                   registry=registry if registry is not None else default_registry(),
                   cwd=(cwd or Path.cwd()).resolve(), out=out, err=err, run_settings=run_settings,
                   signals=signals)

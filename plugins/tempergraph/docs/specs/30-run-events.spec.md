@@ -1,7 +1,7 @@
 ---
 title: Run events for observers
 type: component
-status: review
+status: ready-for-implementation
 prefix: EVT
 adrs: [0009, 0022, 0023, 0027]
 ---
@@ -26,6 +26,8 @@ Every run-log record, old kinds and new, carries these keys. Adding them keeps t
 | `thread_id`, `segment` | string, int | `segment` counts process lifetimes of the thread: 0 for the start, +1 per resume |
 | `unit`, `item`, `attempt` | string?, string?, int? | Where in the graph, when the record belongs to a unit |
 | `session_key` | string? | `<unit>[.<item>].<attempt>.<kind>[.<n>]`, e.g. `plan.2.judge` or `code.p3.1.judge_reask.2`; stable name of one session's folder ([LOS](33-local-observability-store.spec.md)) |
+
+The optional keys are present on every record, null when the record has no unit. A record that names a `session_key` and leaves `unit` or `attempt` out gets them from the key. The writer finds its `segment` from the log itself: one more than the last `run_started`'s, or 0 for a new thread, so every writer in one process agrees. A last line cut off by a dead process is ended before the next record, and `seq` continues from the last whole record. A field named `kind` in §2.2 is written as `session_kind` (on `session_opened`) or `pause_kind` (on `pause`), because `kind` is the record kind.
 
 ### 2.2 Observer record kinds (additive)
 
@@ -56,18 +58,20 @@ The existing `gate` record gains the optional keys `route_target` and `judgement
 
 ### 2.3 Activity journal
 
-One JSON-lines file per session at `sessions/<session_key>/activity.jsonl` in the run's folder ([LOS §2.1](33-local-observability-store.spec.md)), written by the same writer thread that feeds the live progress file, from the normalized events ([CON §2.7](01-contracts.spec.md)).
+One JSON-lines file per session at `sessions/<session_key>/activity.jsonl` in the run's folder ([LOS §2.1](33-local-observability-store.spec.md)), written by the same writer that feeds the live progress file, from the normalized events ([CON §2.7](01-contracts.spec.md)). The writer buffers lines and appends them at most once a second, on the `result` event and at session end; in-process observers get each line after it is appended (§2.6).
 
 | Field | Meaning |
 |---|---|
 | `t` | Receive time from the launcher, seconds since session spawn (float) |
 | `n` | Per-session line number |
 | `ev` | Normalized event name |
-| event fields | As in CON §2.7, plus `input_summary` on `tool_started` (§2.5) and `duration_s` on `tool_finished` |
+| event fields | As in CON §2.7, plus `capability` and `input_summary` on `tool_started` (§2.5) and `duration_s` on `tool_finished` |
 
 A `resources` line is added every 10 s while the session runs (POSIX): CPU seconds and peak resident memory summed over the session's process group, and the number of processes in it, from a read-only process listing with constant argv; numbers only. The time profile and the detail document read it ([OBS](15-observability-and-cost.spec.md), [RDD](31-run-detail-document.spec.md)).
 
-Rules: append-only, flushed at most once a second and at session end; local only; capped at 20 000 lines or 8 MB per session, after which `model_delta` lines are dropped first, then `text` lines, and a final `truncated` line counts what was dropped. The journal is not a run-log record and is never read by the analyzer for cost.
+Rules: append-only, flushed at most once a second and at session end; local only; capped at 20 000 lines or 8 MB per session, after which `model_delta` lines are dropped first, then `text` lines, and a final `truncated` line counts what was dropped. The cap is applied as the journal grows, so tool lines are never the ones dropped: past half the cap `model_delta` lines are dropped, past three quarters `text` lines too, past 95 % every line but `tool_started` and `tool_finished`, and the last line is kept for `truncated`. The journal is not a run-log record and is never read by the analyzer for cost.
+
+The live progress file of the same session holds `open_tool` (name, capability, input summary, `started_at`), `recent` (the last ten finished calls with name, input summary, `ok` and `duration_s`), `last_text`, `tokens_so_far`, `turns_so_far`, `pgid` and `last_event_at`; it is removed at session end ([LOS §2.1](33-local-observability-store.spec.md)). The detail document turns its times into the ages of [RDD §2.2](31-run-detail-document.spec.md).
 
 ### 2.4 Transcript locator
 
@@ -79,7 +83,7 @@ Rules: append-only, flushed at most once a second and at session end; local only
 
 | Capability ([CON §2.5](01-contracts.spec.md)) | Summary |
 |---|---|
-| `shell` | The command line as given to the shell; the working directory relative to the workspace if not the workspace itself |
+| `shell` | The command line as given to the shell; the working directory relative to the workspace if not the workspace itself, when the tool's input names one (Claude Code's `Bash` input has no working directory, so its summary is the command alone) |
 | `read`, `edit`, `write`, `list` | The path relative to the workspace; a path outside it reads `<outside workspace>` |
 | `search` | The pattern, clipped |
 | `web_fetch` | The URL's host only |
@@ -104,8 +108,10 @@ def register_observers(entry_point_group: str = "tempergraph.observers") -> list
 | Way | For | Rule |
 |---|---|---|
 | `events <selector> [--since <seq>] [--follow] [--activity <session_key>] [--json]` | Any reader: the monitor, a script | Read-only, model-free (contract C13); prints records in `seq` order; `--follow` ends when the segment's `run_exit` is read and no lock is held |
-| In-process observer | Exporters ([TEL](35-telemetry-export.spec.md)) and sinks ([CST](34-central-run-stats.spec.md)) | Enabled by name in the operator config only; each runs on its own thread behind a bounded queue (1 000 items); a full queue drops and counts; an exception disables that observer for the segment and is recorded once |
+| In-process observer | Exporters ([TEL](35-telemetry-export.spec.md)) and sinks ([CST](34-central-run-stats.spec.md)) | Enabled by name in the operator config only; each runs on its own thread behind a bounded queue (1 000 items); a full queue drops and counts; an exception disables that observer for the segment and is recorded once, as an `engine_error` record of scope `observer` written by the run's own writer at its next record |
 | Lifecycle hook ([CLI §2.2](17-engine-cli.spec.md)) | Commands such as a tracker plugin | Run events widened to `started`, `unit_entered`, `gate_verdict`, `paused`, `resumed`, `stop_requested`, `stalled`, `finished`, `failed`; orchestration events are [ORC](45-orchestration.spec.md)'s and schedule events [SCH](83-schedules.spec.md)'s; detached, ticketed, with a facts file only |
+
+Release 1 ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md)): the `events` verb and the observer interface ship; no observer is enabled until the operator config's `observers` key exists ([RST](80-run-settings-and-overrides.spec.md)), and lifecycle hooks are release 2.
 
 ## 3. Behaviours
 
@@ -119,7 +125,7 @@ def register_observers(entry_point_group: str = "tempergraph.observers") -> list
 
 | Raw input | `input_summary` |
 |---|---|
-| `export TOKEN=sk-ant-abc… && make test` | `export TOKEN=[scrubbed] && make test` |
+| `export TOKEN=sk-ant-abc… && make test` | `export TOKEN=[redacted] && make test` (the scrubber's marker, [SEC §2.3](14-security.spec.md)) |
 | `cat /etc/passwd` (read tool) | `<outside workspace>` |
 | 600-character heredoc | first 199 characters and `…` |
 
@@ -163,7 +169,7 @@ def register_observers(entry_point_group: str = "tempergraph.observers") -> list
 | Question | Owner |
 |---|---|
 | Probe P-CC-7 / P-AS-4: does a `claude -p` session started by the engine keep a native transcript, and at which path, when the engine passes its isolation flags? Until run, `native` is null. | Executor implementer |
-| Should `input_summary` for `edit` carry a changed-line count? Deferred until the monitor shows a need. | Monitor owner |
+| Should `input_summary` for `edit` carry a changed-line count? Release 1 default: no; deferred until the monitor shows a need. | Monitor owner |
 
 ## References
 

@@ -39,9 +39,8 @@ Everything a repository's runs leave on the machine lives in one folder, the sta
       stderr.log                    the child's standard error
       tools.jsonl                   messages-api only: each tool the engine's tool host ran, exit code, duration [THS]
       output/                       messages-api only: clipped command output per tool call, local
-    checks/<unit>[.<item>].<attempt>/
-      result.json                   CheckResult and duration
-      stdout.log, stderr.log        the check command's output
+    checks/<unit>/<attempt>/
+      <n>.out                       the n-th command the check ran: standard output and error together (release 1; see §5)
     hooks/<event>-<seq>.log         a lifecycle hook's output and exit code
   batches/<batch_id>/               batch file and batch event file [WSP §2.2]
   ledger.jsonl                      [SIL]
@@ -66,8 +65,8 @@ The folder and everything under it is created owner-only (0700 for folders, 0600
   machine.json                      machine_id (random UUID made once), label (operator-set, default the host name), created_at
   index.json                        known state roots: path, repository name, first_seen, last_run_at [CST §2.1]
   stats/<YYYY-MM>.jsonl             per-user stats rows [OBS §2.4], one per thread exit
-  config/                           user-level sinks and defaults; a state root's config overrides it
-  outbox/                           rows waiting for a sink [CST §2.3]
+  config/                           user-level sinks (`sinks.json`) and defaults (`settings.json`); a state root's config overrides it
+  outbox/<sink>.jsonl, .state.json  rows waiting for a sink and the sink's failure state [CST §2.3]
   supervision/<host>/<session>.jsonl  supervision journal of one host session [SCO §2.2]
   schedules/<schedule_id>/          entry.json (owner-only) and fires.jsonl of one schedule [SCH §2.2]
   schedules/tick.json, tick.lock    the tick's heartbeat and lock [TCK §2.2]
@@ -96,10 +95,10 @@ Default level `INFO`; `--log-level` or `TEMPERGRAPH_LOG_LEVEL` changes it. Worke
 
 | Verb | Does | Writes | Spends |
 |---|---|---|---|
-| `logs <selector> [--session <key>] [--kind run\|raw\|activity\|stderr\|check\|hook\|engine] [--follow] [--json]` | Prints one log of a run; with no `--kind`, lists the run's files with sizes | no | no |
-| `store usage [--json]` | Size per thread, per kind and in total; threads past the retention rule | no | no |
-| `store prune [--older-than <days>] [--keep-failed] [--dry-run]` | Removes session logs, check output and hook logs of finished threads | yes | no |
-| `store export <selector> <path.tar.gz>` | Packs one run's folder for a person to share by hand, after a scrub pass over every text file | the archive only | no |
+| `logs <selector> [--session <key>] [--kind run\|raw\|activity\|stderr\|check\|hook\|engine] [--follow] [--json]` | Prints one log of a run; with no `--kind`, lists the run's files with kinds and sizes. `raw`, `activity` and `stderr` need `--session <session_key>`; `check` takes `--session <unit>[.<attempt>]`; `engine` prints the code-log lines of this thread; `--follow` takes one file and ends when the thread's lock is free | no | no |
+| `store usage [--json]` | Size per thread, per kind and in total; threads past the retention rule; the 2 GB warning | no | no |
+| `store prune [--older-than <days>] [--keep-failed\|--no-keep-failed] [--dry-run] [--json]` | Removes session logs, check output and hook logs of finished threads, evidence past 90 days and engine-log files past 14; stopped and failed threads are kept unless `--no-keep-failed`; a paused or running thread is never touched; `--dry-run` prints what would go | yes | no |
+| `store export <selector> <path.tar.gz>` | Packs one run's folder for a person to share by hand, after a scrub pass over every text file; binary files are left out, and the archive must be written outside the state root | the archive only | no |
 
 ### 2.5 Retention
 
@@ -114,7 +113,7 @@ Nothing is removed automatically. The rule `store usage` checks and `store prune
 | Checkpoints, ledger, stats, `fleet/` | Never pruned by `store`; `fleet/` is a copy and can be deleted and rebuilt by `stats sync` |
 | `engine/` | 14 days |
 
-`status` adds one warning line when the state root passes 2 GB (operator config `observe.warn_size_gb`).
+`store usage` adds one warning line when the state root passes 2 GB. Release 1 gives the warning there rather than in `status`, which the monitor calls every few seconds and which must stay cheap; `observe.warn_size_gb` waits for the settings catalog (RST, T6.2).
 
 ### 2.6 Capture level
 
@@ -148,6 +147,7 @@ The default is full local capture ([ADR-0029](../adr/0029-own-observability-firs
 - One known layout means the monitor, the troubleshooter skill and a person with a shell all find a session's full log by its `session_key`, without knowing which executor ran it ([ADR-0024](../adr/0024-one-local-store-layout-with-a-manifest.adr.md)).
 - `raw.jsonl` is the engine's own copy; an executor's native transcript, when there is one, is only linked ([EVT §2.4](30-run-events.spec.md)). This matters because the judge sessions run with isolation flags that may turn the native store off.
 - Command output is the bulkiest data; it gets the shortest life and its own cap.
+- Release 1 build ([T7 plan](../plans/t7-observability.plan.md) T7.3): `meta.json` is written when a session opens and completed when it closes. Deviations: `raw.jsonl` holds the executor's stream lines verbatim, without a receive time on each line, so a stream-json reader can parse it as it is; receive times are in the activity journal's `t`. A check's commands write `checks/<unit>/<attempt>/<n>.out`, standard output and error together, and its result lives in the `check` record and the checkpoint rather than a `result.json`; `logs --kind check` reads that layout. The capture level of §2.6 is read once the settings catalog lands (T6.2); until then every item is captured. Supervision journals are pruned with SCO (T7.6).
 - Retention is never automatic, as worktree cleanup is not ([WSP](13-workspace-and-concurrency.spec.md)): a person decides what history to drop.
 
 ## 6. Acceptance criteria
