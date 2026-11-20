@@ -67,7 +67,7 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 | 5.2.1 | `run/commands.py` | Allow-list resolution, the command environment, `run_command` with timeout, tree stop and output file | CHK §2.3–2.4, SEC §2.4 | yes | P1 | ✓ | 2026-11-20 |
 | 5.2.2 | `run/checks.py` | `CheckContext`, git facts, `normalise`, `run_check`; a raising check is an environmental FAIL; a failed check starts no judge (JDG-AC-2) | CHK §2.1–2.2, CON §2.8 | yes | P1 | ✓ | 2026-11-20 |
 | 5.2.3 | `run/check_worker.py`, `tests/test_checks.py` | The check worker: a child engine process that gets the context on stdin, bounded by `check_timeout_s` plus 30 s with a tree stop through the session launcher; a check's prints go to stderr. A raising check is FAIL with `environmental: false` (CHK §4); a worker past its limit is environmental | CHK §2.6, §4, ADR-0019 | yes | P1 | ✓ | 2026-11-20 |
-| 5.2.4 | `run/checks.py` | Mechanical criteria and their findings in the judge prompt ✓; command run reuse across a gate's check and the judge's facts ○ | CHK §2.2, §2.4 | yes | P2 | ○ | |
+| 5.2.4 | `run/checks.py`, `run/check_worker.py`, `run/nodes.py` | Mechanical criteria and their findings in the judge prompt; `ctx.run(..., reuse=True)` reuses a finished run of the thread with the same key (argv, resolved program, `head`, the status listing and the content of changed files, the state root left out), stored in `runs/<workflow>/<task>/command_runs.jsonl`, marked `reused`. Per-prefix `no_reuse_exit_codes` are honoured once allow-list entries carry fields (they are plain prefixes in release 1); a preview's runs join the store with `self-check` | CHK §2.2, §2.3, §2.4 | yes | P2 | ✓ | 2026-11-20 |
 
 ### T5.3 Judge and verdict
 

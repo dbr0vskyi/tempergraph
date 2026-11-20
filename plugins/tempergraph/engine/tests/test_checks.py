@@ -82,3 +82,25 @@ def test_read_outside_the_workspace_is_refused(tmp_path: Path) -> None:
     assert c is not None
     with pytest.raises(PermissionError):
         c.read_text("../outside.txt")
+
+
+def counting(ctx: Any) -> CheckResult:
+    r = ctx.run("git --version", reuse=True)
+    return CheckResult(result="PASS" if r.finished else "FAIL", evidence=f"reused={r.reused}")
+
+
+def test_command_runs_are_reused_while_the_tree_is_unchanged(repo: Path) -> None:  # CHK §2.3 Reuse
+    (repo / "notes.md").write_text("one")
+    store = repo / ".tempergraph" / "command_runs.jsonl"
+
+    def context() -> CheckContext:
+        return CheckContext(unit="draft", workdir=repo, request={}, out_dir=repo / ".tempergraph" / "out",
+                            allow=("git --version",), reuse_store=store)
+
+    first, _ = run_in_worker(gate(counting), context())
+    again, _ = run_in_worker(gate(counting), context())
+    assert (first.evidence, again.evidence) == ("reused=False", "reused=True")
+    assert again.runs[0]["reused"] is True and again.runs[0]["exit_code"] == 0
+    (repo / "notes.md").write_text("two")  # a changed file changes the key
+    third, _ = run_in_worker(gate(counting), context())
+    assert third.evidence == "reused=False"

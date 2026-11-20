@@ -6,7 +6,10 @@ and the deadline is also enforced on every command the check runs.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
+import shutil
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -62,6 +65,8 @@ class CheckContext:
     out_dir: Path | None = None
     deadline_at: float = 0.0
     runs: list[CommandRun] = field(default_factory=list)
+    reuse_store: Path | None = None  # the thread's stored command runs (CHK §2.3 Reuse)
+    no_reuse_exit_codes: Mapping[str, tuple[int, ...]] = field(default_factory=dict)  # per allow-list prefix
 
     @property
     def deadline_s(self) -> float:
@@ -89,11 +94,68 @@ class CheckContext:
             r = CommandRun(argv=cmd.argv, not_started=True)
             self.runs.append(r)
             return r
+        key = reuse_key(cmd, self.workdir) if reuse and self.reuse_store is not None else None
+        if key is not None:
+            hit = _stored(self.reuse_store, key)
+            if hit is not None:
+                self.runs.append(hit)
+                return hit
         out_dir = self.out_dir or (self.workdir / ".tempergraph-check")
         limit = min(timeout_s, left) if timeout_s else left
         r = run_command(cmd, self.workdir, out_dir / f"{len(self.runs) + 1}.out", limit, main=self.main_checkout)
         self.runs.append(r)
+        if key is not None and r.finished and r.exit_code not in self.no_reuse_exit_codes.get(cmd.prefix, ()):
+            _store(self.reuse_store, key, r)
         return r
+
+
+def reuse_key(cmd: ResolvedCommand, workdir: Path) -> str:
+    """CHK §2.3: argv, resolved program, `head`, the status listing and the content of changed files."""
+    raw = gitmod.git(["status", "--porcelain=v1", "-uall", "-z"], workdir, check=False)
+    entries = [e for e in raw.split("\0") if e[3:] and not e[3:].startswith(".tempergraph")]  # not the state root
+    h = hashlib.sha256()
+    prog = shutil.which(cmd.argv[0]) if cmd.argv else None
+    head = gitmod.git(["rev-parse", "HEAD"], workdir, check=False).strip()
+    h.update(json.dumps([list(cmd.argv), cmd.cwd, prog, head, entries]).encode())
+    for entry in entries:
+        path = entry[3:]
+        f = workdir / path
+        h.update(path.encode() + b"\0")
+        if f.is_file():
+            h.update(hashlib.sha256(f.read_bytes()).digest())
+    return h.hexdigest()
+
+
+def _stored(store: Path | None, key: str) -> CommandRun | None:
+    if store is None:
+        return None
+    try:
+        lines = store.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+    for ln in reversed(lines):
+        try:
+            row = json.loads(ln)
+        except ValueError:
+            continue
+        if row.get("key") == key:
+            r = row["run"]
+            return CommandRun(argv=tuple(r.get("argv") or ()), program_path=str(r.get("program_path") or ""),
+                              exit_code=r.get("exit_code"), finished=True, reused=True,
+                              duration_s=float(r.get("duration_s") or 0), output_path=str(r.get("output_path") or ""),
+                              tail=str(r.get("tail") or ""))
+    return None
+
+
+def _store(store: Path | None, key: str, run: CommandRun) -> None:
+    if store is None:
+        return
+    try:
+        store.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        with open(store, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps({"key": key, "run": run.to_json()}) + "\n")
+    except OSError:
+        pass  # a lost store entry only costs a rerun of the command
 
 
 def normalise(res: CheckResult) -> tuple[CheckResult, list[str]]:
