@@ -47,6 +47,10 @@ Model-free, over each step template, judge stance and brief, and each skill and 
 | `lint-ref-missing` | all | A named skill, agent or package file (`prompts/`, `judges/`, `skills/`, `agents/`, `lessons/`) the package lacks; without a package, nothing is resolved |
 | `lint-oversized` | all | A template or brief over 32,000 characters, a skill or agent over 40,000, a table cell over 2,000 |
 
+### 2.2 Judge readiness, release 1
+
+The structural part runs over each judged gate and the outcome gate. It finds a judged criterion with no `check_method`, a judge criterion whose scale lacks `met`, `unmet` or `evidence` (or `partial`, for a blocker), vague words from §2.1's list in a criterion, and a gate with no judged blocker. Each gate also reports its count of calibration cases (`evals/calibration/<gate>/`). Criteria lint ([AUT §2.4.1](89-workflow-authoring.spec.md)) joins with plan T9.2. Judge scores arrive with [JCL](50-judge-calibration.spec.md) (plan T12), so until then no binding is `accepted` and no gate grades `ready`. A `stable` workflow is therefore refused with `gate-not-ready` (LIF-B6) until its judges are accepted.
+
 ## 3. Behaviours
 
 **LIF-B1 Same version, different code.** Given an installed engine with the same version string as the plugin but different source, when `update` runs, then it reinstalls, because the hash differs.

@@ -178,6 +178,9 @@ def package_findings(spec: WorkflowSpec, mode: Literal["dev", "stable"] | None =
         out += rules.layout(root, got, py, inventory)
     out += rules.text_refs(spec, root)
     out += docs_check.docs_check(spec, root, mode)
+    from tempergraph.package.readiness import stable_findings
+
+    out += stable_findings(spec)
     seen: set[tuple[str, str | None, str]] = set()
     unique = []
     for f in out:
