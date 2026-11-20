@@ -58,6 +58,7 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 | 5.1.3 | `run/log.py`, `run/nodes.py`, `run/runner.py` | `cost_so_far` (reported, estimated, completeness) on `gate`, `pause` and `run_exit` ✓; `settings_resolved` ✓ (T6.2); the `supervision` record before `run_exit` ✓ (T6.5) | EVT §2.2, SUP §2.2, RST §2.7 | yes | P2 | ✓ | 2026-11-20 |
 | 5.1.7 | `run/runner.py`, `workspace.py` | The `workspace` record (action, mode, resolved_by, branch, base_commit, reason, counts; the path in the local log only) where a worktree is prepared, reused, attached or kept; `removed` and `foreign` wait for `cleanup: on_finish` (release 2) and the foreign worktree scan | EVT §2.2, WTR §2.6, §2.10 | yes | P2 | ✓ | 2026-11-20 |
 | 5.1.4 | `tests/test_run_log.py` | OBS-B3: a full disk while writing the ledger or the exit file keeps the exit code, and one `engine_error` record of the failure is attempted | OBS-B3 | yes | P1 | ✓ | 2026-11-20 |
+| 5.1.8 | `identity.py`, `run/runner.py`, `run/rerun.py`, `tests/test_identity.py` | IMD-R1 join keys on every `run_segment` and intervention ledger row: `workflow_version`, `machine` (the random id of `machine.json`), `repo` (16 hex of the SHA-256 of the normalized `origin` URL, null without one) | IMD-R1 | yes | P1 | ✓ | 2026-11-20 |
 
 ### T5.2 Checks and command runs
 
