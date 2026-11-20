@@ -1,7 +1,7 @@
 ---
 title: Reruns, rewinds and feedback
 type: component
-status: review
+status: ready-for-implementation
 prefix: RRN
 adrs: [0073, 0074, 0072]
 ---
@@ -182,10 +182,10 @@ Given with `--feedback <text>` or `--feedback-file <path>` (at most 8 000 charac
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should a retry continue the previous session, with the feedback as the next turn, where the executor declares session resume? Cheaper and keeps context, but breaks the fresh-session rule and differs across executors. Needs a paired measurement. | Owner |
-| Should an agent caller (`--as-agent`) be allowed to give rulings, or only one-time feedback? First release allows both and records the caller. | Owner |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Should a retry continue the previous session, with the feedback as the next turn, where the executor declares session resume? Cheaper and keeps context, but breaks the fresh-session rule and differs across executors. Needs a paired measurement. | Owner | No: a fresh session |
+| Should an agent caller (`--as-agent`) be allowed to give rulings, or only one-time feedback? First release allows both and records the caller. | Owner | Both, recorded |
 
 ## References
 

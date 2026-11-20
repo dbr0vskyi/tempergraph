@@ -364,3 +364,8 @@ class ClaudeExecutor:
                 version = str(ev.data["cli_version"])
         return build_result(raw, s, cli_version=version, argv=argv, applied=applied, infra=infra,
                             error_kind=kind, ok=s.result is not None and bool(s.result.get("ok")))
+
+
+# Live probe facts of ECC §2.7 and their recorded state; none has run on a signed-in host yet (T0.1).
+LIVE_FACTS: dict[str, str] = {f"P-CC-{i}": "not run" for i in range(1, 10)}
+ClaudeExecutor.live_facts = LIVE_FACTS  # type: ignore[attr-defined]  # read by `executors` (CLI-B3)

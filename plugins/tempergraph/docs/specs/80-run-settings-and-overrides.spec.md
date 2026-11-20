@@ -1,7 +1,7 @@
 ---
 title: Run settings and overrides
 type: component
-status: review
+status: ready-for-implementation
 prefix: RST
 adrs: [0070, 0071, 0072, 0080, 0008]
 ---
@@ -290,10 +290,10 @@ Files are edited by hand or by a skill; the engine has no write verb for them.
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should a team be able to commit a shared settings file in the repository (a third file layer), with cost caps limited to lowering? | Owner |
-| Should an organisation be able to impose a managed layer above `flag` (hard ceilings), as Claude Code's managed settings do? | Owner |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Should a team be able to commit a shared settings file in the repository (a third file layer), with cost caps limited to lowering? | Owner | No |
+| Should an organisation be able to impose a managed layer above `flag` (hard ceilings), as Claude Code's managed settings do? | Owner | No |
 
 ## References
 

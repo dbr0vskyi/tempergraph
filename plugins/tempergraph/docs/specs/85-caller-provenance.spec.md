@@ -1,7 +1,7 @@
 ---
 title: Caller provenance
 type: component
-status: review
+status: ready-for-implementation
 prefix: PRV
 adrs: [0085, 0086, 0099]
 ---
@@ -228,10 +228,10 @@ A profile whose probe has not run is used only to read markers it lists; its row
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should an agent's own decision at an undesigned pause be refused once a delegation policy exists? Kept allowed and recorded. | Owner |
-| Should `turn_only` relays be enough for widening? Assumed no. | Owner |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Should an agent's own decision at an undesigned pause be refused once a delegation policy exists? Kept allowed and recorded. | Owner | Allowed, recorded |
+| Should `turn_only` relays be enough for widening? Assumed no. | Owner | No |
 
 ## References
 
