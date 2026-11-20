@@ -519,3 +519,26 @@ def test_package_parts_fixture_still_audits(tmp_path: Path) -> None:
     lp = load_package(root)
     rep = audit(lp.spec, {"definition", "host"}, ctx(tmp_path), manifest=lp.manifests.engine)
     assert not [s for s in rep.rules_skipped if s["reason"].startswith("rule error")]
+
+
+def test_outcome_trust_and_coverage(tmp_path: Path) -> None:
+    """OUT §2.3 as read in release 1, and ARC `outcome-unverified-blocker`, `outcome-uncovered`."""
+    import shutil
+
+    from tempergraph.package.loader import load_package
+    from tempergraph.run.outcome_trust import coverage, profile
+
+    root = minimal_package(tmp_path)
+    lp = load_package(root)
+    assert lp.spec.outcome is not None
+    cov = {c.criterion: c for c in coverage(lp.spec.outcome, lp.spec)}
+    assert cov["rn-complete"].covered and cov["rn-complete"].trust == "uncalibrated"
+    assert profile(lp.spec.outcome, lp.spec) == {"uncalibrated": 2, "deterministic": 1}
+    rep = audit(lp.spec, {"definition"}, ctx(tmp_path), manifest=lp.manifests.engine)
+    blockers = {f.item for f in rep.findings if f.rule == "outcome-unverified-blocker"}
+    assert blockers == {"rn-complete", "rn-faithful"} and "outcome-uncovered" not in rules(rep)
+    shutil.rmtree(root / "evals" / "checks" / "draft" / "must-fail")
+    lp = load_package(root)
+    rep = audit(lp.spec, {"definition"}, ctx(tmp_path), manifest=lp.manifests.engine)
+    f = next(f for f in rep.findings if f.rule == "outcome-uncovered")
+    assert f.item == "rn-complete" and f.evidence["missing_units"] == ["draft"]

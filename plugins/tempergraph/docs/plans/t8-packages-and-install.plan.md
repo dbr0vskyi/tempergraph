@@ -118,7 +118,7 @@ Status pass: WUP is `ready-for-implementation` (its open question has a release 
 | 8.5.8 | `package/importer.py` | A package import writes no bytecode into the package (AUD-B6) | AUD-B6 | yes | P1 | ✓ | 2026-11-20 |
 | 8.5.9 | | The history layer and its rules (X2-9), hot spots, ARC-B3 | AUD, ARC | yes | P2 | ○ | release 2 |
 | 8.5.10 | | `audit tools` and TSA's rules (X2-10) | TSA | yes | P2 | ○ | release 2 |
-| 8.5.11 | | `outcome-unverified-blocker`, `outcome-uncovered` once OUT trust and coverage exist | ARC §2.8, OUT §2.3 | yes | P1 | ○ | after plan T5.8.1 |
+| 8.5.11 | `run/outcome_trust.py`, `audit/definition.py` | OUT trust and coverage (computed, never stored) and the two outcome rules on them | ARC §2.8, OUT §2.3 | yes | P1 | ✓ | 2026-11-20 |
 
 ### T8.6 Blueprint and scaffold
 

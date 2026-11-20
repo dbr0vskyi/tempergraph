@@ -250,8 +250,28 @@ class Definition:
                          f"Agent Skills standard: {', '.join(extra)}", item=p.parent.name,
                          file=p.relative_to(root).as_posix(), evidence={"fields": extra})
 
+    # -- outcome (ARC §2.8) --------------------------------------------------------------------------------
+    def outcome(self) -> None:
+        from tempergraph.run.outcome_trust import coverage, trust
+
+        o = self.spec.outcome
+        if o is None:
+            return
+        rows = [("outcome", c) for c in o.final] + [(u, c) for u, io in o.intermediate.items() for c in io.criteria]
+        for unit, c in rows:
+            t = trust(c, unit, self.spec.package_root)
+            if c.severity == "blocker" and t in ("unverified", "uncalibrated"):
+                self.add("outcome-unverified-blocker", unit, f"blocker {self.cid(c)!r} is at {t} trust",
+                         item=self.cid(c), file="outcome.json", evidence={"trust": t, "verified_by": c.verified_by})
+        for cov in coverage(o, self.spec):
+            if not cov.covered:
+                self.add("outcome-uncovered", "outcome", f"final criterion {cov.criterion!r} is not covered: "
+                         f"{cov.trust} at the outcome gate, no trusted serving criterion on "
+                         f"{', '.join(cov.missing_units) or 'any unit'}", item=cov.criterion, file="outcome.json",
+                         evidence={"trust": cov.trust, "missing_units": cov.missing_units})
+
     def run(self) -> list[AuditFinding]:
-        for part in (self.c1, self.c3, self.c5, self.c6, self.prompts):
+        for part in (self.c1, self.c3, self.c5, self.c6, self.prompts, self.outcome):
             part()
         return self.found
 

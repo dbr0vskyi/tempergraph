@@ -143,7 +143,7 @@ The catalog is `tempergraph.audit.catalog`: every row above, with `built` naming
 | `small-judge-cross-file`, `large-everywhere` | The tier is the alias's last part (`small`, `haiku`; `large`, `opus`); a step's model falls back to its `model_profile` entry |
 | `judge-not-ready` | Rendered from the readiness report as `readiness:needs-work` (warning, high) and `readiness:needs-cases` (info, high: before JCL no judge is `accepted`, so every gate is `needs cases`) |
 | `external-after-without-approval` | Owned by validation, which already warns on it (`validate:external-after-without-approval`) |
-| `outcome-unverified-blocker`, `outcome-uncovered` | Skipped with reason `owner not present`: OUT's trust and coverage are open in plan T5.8.1 |
+| `outcome-unverified-blocker`, `outcome-uncovered` | Read OUT's trust and coverage from `tempergraph.run.outcome_trust` (OUT §2.3 as read in [SCF §2.7](91-blueprint-and-scaffold.spec.md)). Before calibration (JCL, plan T12) every judged blocker is `uncalibrated`, so the first rule fires on each; that is the true state, and the remedy names calibration |
 | §2.9 kinds | Not built; validation refuses their kinds in release 1 (`unbounded-wait` waits on `wait` and `ask`, release 2) |
 | `ignore-rule-unknown` | New, `info / high`, AUD §2.4's finding for an ignore naming no known rule |
 

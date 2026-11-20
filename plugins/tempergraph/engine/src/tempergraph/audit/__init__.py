@@ -143,8 +143,6 @@ def audit(spec: WorkflowSpec, layers: set[Layer], ctx: AuditContext, *, manifest
 
 
 _NOT_BUILT = {
-    "outcome-unverified-blocker": "owner not present: OUT trust and coverage (plan T5.8.1)",
-    "outcome-uncovered": "owner not present: OUT trust and coverage (plan T5.8.1)",
     "unbounded-wait": "kind not in release 1 (wait and ask are release 2)",
 }
 

@@ -104,6 +104,12 @@ The person approves the drawing as a whole; the skill records the approval with 
 | `scaffold <session> --out <dir> [--update] [--update-docs]` | the package folder | no |
 | `author verify <workflow> [--judge-seeds] [--trial --case <id>] [--cap <usd>] [--json]` | registry entry, stamp, seed scores, trial run and labels | `--judge-seeds` and `--trial` only |
 
+### 2.7 Release 1
+
+| Part | Release 1 |
+|---|---|
+| Trust and coverage | Computed by `tempergraph.run.outcome_trust`. Coverage reads OUT §2.3 so that a final criterion is covered when the outcome gate verifies it at `deterministic`, `calibrated` or `human` trust, **or** when every gated unit in `order` has a serving intermediate criterion at such trust, whatever the outcome gate's own verifier. Release 1 flows are routes and switches over `order`, so every gated unit stands in for "every unit on every path". Without the second reading no workflow with a judged final criterion could be covered before its judge is calibrated (plan T12), and SCF-B3 could not hold |
+
 ## 3. Behaviours
 
 **SCF-B1 A misspelt field.** Given a blueprint unit with `prodcues: ["notes"]`, when `blueprint check` runs, then it fails with `unknown_key` at that unit and draws nothing.
