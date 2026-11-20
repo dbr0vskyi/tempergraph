@@ -42,7 +42,7 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `upgrade` | `UpgradePolicy`, optional | What a workflow upgrade may touch ([VER §2.4](61-version-metadata.spec.md)). |
 | | `settings` | map name → `SettingDecl`, optional | Typed workflow switches an operator may override ([RST §2.5](80-run-settings-and-overrides.spec.md)). |
 | | `profiles` | map name → map `SettingKey` → value, optional | Named bundles of settings ([RST §2.5](80-run-settings-and-overrides.spec.md)). |
-| | `outcome` | `OutcomeSpec` (§2.14) | Read from the package's `outcome.json` at load; gates take their criteria from it ([OUT](90-run-outcome.spec.md), [PKG §2.3](88-workflow-package.spec.md)). |
+| | `outcome` | `OutcomeSpec` (§2.14) | Read from `outcome.json` at load; gates take their criteria from it ([OUT](90-run-outcome.spec.md), [PKG §2.3](88-workflow-package.spec.md)). |
 | `UnitSpec` | `kind` | `step` \| `route` \| `switch` \| `parallel` \| `map` \| `subworkflow` \| `wait` \| `script` \| `council` \| `contest` \| `ask` | Kinds and their owning specs: [CMP §2.2](03-compiler-and-flow.spec.md) and [FLX](74-flow-extensions.spec.md) for flow kinds; [SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md) for the others. |
 | | `step` | `StepSpec`, for kind `step`, `map` and `contest` | |
 | | `script`, `council`, `contest`, `ask`, `map` | `ScriptSpec`, `CouncilSpec`, `ContestSpec`, `AskSpec`, `MapSpec`, for their kind | Defined in the owning spec ([MAP](77-map-unit.spec.md) for `MapSpec`); used by it and by WFM only. A `switch` unit's fields are in [CMP §2.2](03-compiler-and-flow.spec.md) and [SWM §2.1](79-measured-switches.spec.md). |
@@ -312,7 +312,7 @@ Shared by [PRV](85-caller-provenance.spec.md), [SUP](86-supervision-metrics.spec
 
 ### 2.14 Workflow packages and outcomes
 
-Shared by PKG, OUT, AUT, SCF and their readers.
+Shared by PKG, OUT, AUT and SCF.
 
 | Type | Fields | Owner of the rules |
 |---|---|---|
