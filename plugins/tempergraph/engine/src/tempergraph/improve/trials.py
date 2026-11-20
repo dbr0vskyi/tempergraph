@@ -157,7 +157,7 @@ def _records(root: Path, workflow: str, task: str) -> list[dict[str, Any]]:
 
 
 def run_cost(recs: Sequence[Mapping[str, Any]]) -> float:
-    ex = next((r for r in reversed(recs) if r.get("kind") == "run_exit"), {})
+    ex: Mapping[str, Any] = next((r for r in reversed(recs) if r.get("kind") == "run_exit"), {})
     c = ex.get("cost") or {}
     reported = float(c.get("reported") or 0)
     return reported + float(c.get("estimated_only") or 0) if reported else float(c.get("estimated") or 0)
@@ -165,7 +165,7 @@ def run_cost(recs: Sequence[Mapping[str, Any]]) -> float:
 
 def measures(recs: Sequence[Mapping[str, Any]], metric: str, unit: str | None, crit: str | None) -> dict[str, Any]:
     """The target value of one child run and the guard inputs; higher is better except `run_cost`."""
-    ex = next((r for r in reversed(recs) if r.get("kind") == "run_exit"), {})
+    ex: Mapping[str, Any] = next((r for r in reversed(recs) if r.get("kind") == "run_exit"), {})
     paused = ex.get("exit_code") == 3
     gates = [r for r in recs if r.get("kind") == "gate" and (unit is None or r.get("unit") == unit)]
     value: float | None
@@ -174,16 +174,16 @@ def measures(recs: Sequence[Mapping[str, Any]], metric: str, unit: str | None, c
     elif metric == "gate_pass":
         value = sum(g.get("verdict") == "PROCEED" for g in gates) / len(gates) if gates else 0.0
     elif metric == "criterion_met":
-        j = next((r for r in reversed(recs) if r.get("kind") == "judgement" and r.get("unit") == unit), {})
+        j: Mapping[str, Any] = next((r for r in reversed(recs) if r.get("kind") == "judgement" and r.get("unit") == unit), {})
         value = 1.0 if any(s.get("id") == crit and s.get("status") == "MET" for s in j.get("statuses") or []) else 0.0
     elif metric == "run_cost":
         value = run_cost(recs)
     elif metric == "outcome_met":
-        o = next((r for r in reversed(recs) if r.get("kind") == "outcome"), {})
-        value = 1.0 if o.get("verdict") in ("met", "met_with_open") else 0.0
+        oc: Mapping[str, Any] = next((r for r in reversed(recs) if r.get("kind") == "outcome"), {})
+        value = 1.0 if oc.get("verdict") in ("met", "met_with_open") else 0.0
     else:
         value = None
-    o = next((r for r in reversed(recs) if r.get("kind") == "outcome"), {})
+    o: Mapping[str, Any] = next((r for r in reversed(recs) if r.get("kind") == "outcome"), {})
     checks = [r for r in recs if r.get("kind") == "check"]
     proceeded: set[str] = set()
     escapes = 0

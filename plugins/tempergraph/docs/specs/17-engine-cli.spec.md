@@ -50,7 +50,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `store usage\|prune\|export` | Size, retention and export of the local store; `prune` takes `--older-than <days>`, `--keep-failed` or `--no-keep-failed` and `--dry-run` ([LOS §2.4](33-local-observability-store.spec.md)) | prune and export only | no |
 | `hooks add|list|remove|test` | Run lifecycle hooks (§2.2) | add and remove only | no |
 | `improve backlog|propose|trial|aa|open|show` | Proposals and trials ([PRP §2.7](40-improvement-proposals.spec.md)) | per [PRP](40-improvement-proposals.spec.md) | `propose`, `trial`, `aa` |
-| `improve review [show|summary]` | Session review of a run, its result, and observations over a window ([SRV §2.9](44-session-review.spec.md)) | `review` only | `review` without `--dry-run` |
+| `improve review <selector> [--session <key>…] [--full] [--dry-run] [--json]`, `improve review show <selector>`, `improve review summary [workflow] [--version <v>]` | Session review of a run, its result, and observations over a window ([SRV §2.9](44-session-review.spec.md)) | `review` only | `review` without `--dry-run` |
 | `label <thread> <gate> [--criterion id] [--attempt n] --value agree|disagree`, `labels queue\|grades <workflow>` | Enter a label; list judgements to label ([FBK](41-feedback-and-judge-reliability.spec.md)) | `label` only | no |
 | `evals run\|report\|grade …`, `evals score\|bar\|label …`, `evals harvest\|replay …` | Eval suites ([EVS](51-eval-suites.spec.md)), judge calibration ([JCL §2.6](50-judge-calibration.spec.md)), harvest and replay ([LIF §2](18-lifecycle-and-evals.spec.md)); owned there | per owner spec | live kinds and `score`, `replay` only |
 | `report --loop [window]` | The loop's own metrics ([IMD §2.4](43-improvement-data.spec.md)) | no | no |
@@ -78,6 +78,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `--grant <unit>=<capability>[,…]`, `--allow-command <unit>=<prefix>` | `<unit>.tools.add`, `<unit>.commands.add` (or `judge:<unit>.views.add` for read-only views): a person's tool grant for this run, on `run`, `resume` and `rerun` ([RST §2.8](80-run-settings-and-overrides.spec.md)) |
 | `--arm <switch>=<arm>` | `<switch>.arm`: operator pick of a switch arm ([CMP](03-compiler-and-flow.spec.md)) |
 | `--run-cost-cap <usd>` | `run.run_cost_cap_usd` ([BUD](08-budgets-and-failures.spec.md)) |
+| `--daily-cap <usd>` | `run.daily_cap_usd`: stable mode's self-improvement budget per day ([SIL §4](16-self-improvement.spec.md)) |
 | `--audit-rate <0..1>`, `--audit-executor <name>` | `run.audit_rate`, `run.audit_executor`: sampled audit judge ([JDG-B7](05-judge-and-verdict.spec.md)) |
 | `--workspace auto\|worktree\|in_place`, `--worktree` / `--in-place` | `run.workspace` ([WTR §2.1](82-worktree-mode.spec.md)) |
 | `--worktree-root`, `--worktree-base`, `--worktree-cleanup` | `run.worktree.root`, `run.worktree.base`, `run.worktree.cleanup` |

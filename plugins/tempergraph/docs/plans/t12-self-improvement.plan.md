@@ -98,13 +98,25 @@ Built in the thread "Build judge calibration and proposals".
 
 Not built in release 1 (recorded in PRP §5): PRP-B9 (needs the merge to be seen; `pr_state` is not derived), the loop starting the proposer or a trial on its own at autonomy `propose` or `trial` (waits on T12.8's daily cap), the `label_recorded`, `proposal_state`, `trial_progress` and `binding_shift` events (IMD §2.3).
 
-### T12.8
+### T12.8 Stable mode, loop report, outcome proposals
 
-Planned: stable mode's daily cap and `report --loop`.
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 12.8.1 | `engine/src/tempergraph/improve/autonomy.py`, `improve/child.py`, `improve/params.py` | Stable mode's daily cap over the loop's own spend (judges and the review skipped, records kept); autonomy `record` files nothing; at `propose` and `trial` the loop proposes, trials and opens a draft pull request on its own within the cap | SIL §4, PRP §2.1, PRP-B8 | yes | P1 | ✓ | 2026-11-20 |
+| 12.8.2 | `engine/src/tempergraph/improve/loop_report.py`, `cli/observe_cli.py` | `report --loop`: funnel, loop spend, label coverage, parameters with provenance; code-host figures not derived in release 1 | IMD §2.4, §2.5 | yes | P2 | ✓ | 2026-11-20 |
+| 12.8.3 | — | Outcome proposals: `outcome_unmet:<criterion>` clusters take the 12.8.1 path; OUT-AC-6 holds since the outcome lens starts no judge of its own | OUT-AC-6, PRP §5 | yes | P2 | ✓ | 2026-11-20 |
+| 12.8.4 | live, owner's machine | A stable workflow at autonomy `trial` end to end, [live-checks](live-checks.plan.md) L-17 to L-19 | PRP §6 | | P2 | ○ | |
 
 ### T12.9 Session digest and dev-mode review
 
-Planned, not started: [SRV](../specs/44-session-review.spec.md) as scoped in the [release plan](first-release.plan.md) T12.9 (I-92 to I-94). Code it needs: `improve/digest.py` (SRV §2.1, §2.2, called by `improve/record.py` before findings), new rows in `improve/causes.py`, `improve/review.py` (plan, condensed view, reviewer launch, citation check, records), `improve/child.py` (run the plan after the friction judge), the `improve review` verbs in `cli/`, the tool-less reviewer launch in the session launcher's pinned list, and a second publish-boundary source test for `evidence/review/`. Stable-mode plans are release 2 (X2-26).
+[SRV](../specs/44-session-review.spec.md) as scoped in the [release plan](first-release.plan.md) T12.9 (I-92 to I-94); release 1 assumptions are in SRV §5. Stable-mode plans are release 2 (X2-26).
+
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 12.9.1 | `engine/src/tempergraph/improve/digest.py`, `improve/record.py`, `improve/causes.py`, `improve/params.py`, `run/nodes.py` | The model-free digest of every session at every exit (`sessions/<key>/digest.json`) and its §2.2 cause codes joined to the findings; the step's scrubbed prompt kept in `evidence/prompts/`; the judge's changed paths on its `agent_run` | SRV §2.1, §2.2, LOS §2.1 | yes | P1 | ✓ | 2026-11-20 |
+| 12.9.2 | `engine/src/tempergraph/improve/review.py`, `contracts.py`, `executors/claude.py` | The plan (`full` in dev, probation and trials; `signals` deferred), the condensed datamarked view, the tool-less reviewer launch, the citation check, `loop.jsonl` records and the local evidence | SRV §2.3, §2.5 to §2.8, SEC §2.2 | yes | P1 | ✓ | 2026-11-20 |
+| 12.9.3 | `engine/src/tempergraph/improve/child.py`, `run/runner.py`, `settings.py` | `session_review` on the workflow and as a run setting that only lowers; the hand-off ticket carries the review depth, unit declarations and run cost; the child reviews after filing | SRV §2.3, RST §2.2, SIL §5 | yes | P1 | ✓ | 2026-11-20 |
+| 12.9.4 | `engine/src/tempergraph/cli/improve_review.py`, `cli/main.py` | `improve review <selector>`, `improve review show`, `improve review summary` | SRV §2.9, CLI §2 | yes | P2 | ✓ | 2026-11-20 |
 
 ## 3. Verification
 

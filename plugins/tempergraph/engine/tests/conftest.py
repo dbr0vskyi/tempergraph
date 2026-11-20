@@ -63,3 +63,13 @@ def hash_tree(root: Path) -> dict[str, str]:
 
 
 os.environ.setdefault("TEMPERGRAPH_LOG_LEVEL", "WARNING")
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """`live` tests spend money on a signed-in `claude`: skipped unless TEMPERGRAPH_LIVE=1 (live-checks plan)."""
+    if os.environ.get("TEMPERGRAPH_LIVE") == "1":
+        return
+    skip = pytest.mark.skip(reason="live: set TEMPERGRAPH_LIVE=1 on a machine with a signed-in claude")
+    for item in items:
+        if "live" in item.keywords:
+            item.add_marker(skip)

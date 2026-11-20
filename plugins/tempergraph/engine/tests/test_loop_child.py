@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -16,6 +17,7 @@ from tempergraph.improve import child, filing
 from tempergraph.improve.codehost import MemoryCodeHost
 from tempergraph.store.layout import home_path
 
+from .fixtures.workflows import two_step
 from .test_run import DRAFT, REVIEW, go, judge, registry, verdict_block
 
 
@@ -95,7 +97,8 @@ def test_no_ticket_without_a_fault_and_off_switch(repo: Path, monkeypatch: pytes
     started: list[tuple[str, ...]] = []
     monkeypatch.setattr(detach, "start", lambda m, w, h: started.append((m, *w)) or True)
     ex = standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge()])
-    assert go(repo, ex, task="L-6").exit_code is ExitCode.FINISHED
+    quiet = dataclasses.replace(two_step(), session_review="off")  # a dev run's session review is a ticket too
+    assert go(repo, ex, spec=quiet, task="L-6").exit_code is ExitCode.FINISHED
     assert not tickets() and not started
     blocked_run(repo, "L-7", monkeypatch)
     monkeypatch.setenv("TEMPERGRAPH_LOOP", "off")
@@ -158,5 +161,6 @@ def test_hand_off_carries_calibration(tmp_path: Path, monkeypatch: pytest.Monkey
                        home=tmp_path / "home")
     assert p is not None and json.loads(p.read_text())["outcome_calibrated"] is True
     none = {"lenses": {"friction": True}, "fault_fingerprints": [], "outcome_fingerprints": [], "fingerprints": []}
-    assert child.hand_off(tmp_path, two_step(), "T-2", "demo/T-2", none, dry_run=False, judge_executor="claude",
+    quiet = dataclasses.replace(two_step(), session_review="off")  # else a dev run's review writes a ticket
+    assert child.hand_off(tmp_path, quiet, "T-2", "demo/T-2", none, dry_run=False, judge_executor="claude",
                           home=tmp_path / "home") is None

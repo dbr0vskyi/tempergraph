@@ -54,6 +54,23 @@ CAUSES: dict[str, Cause] = {
                            remedy="An agent answered this pause on its own: add a check or an environmental cause"),
     "pushback": Cause(klass="fault", side="workflow",
                       remedy="A person rewound, ruled or declined: the gate let this through"),
+    "tool_repeat": Cause(klass="fault", side="workflow",
+                         remedy="The step repeated the same failing call: say in the prompt how to recover"),
+    "idle_burn": Cause(klass="fault", side="workflow",
+                       remedy="Tokens were spent for minutes with no workspace write: narrow the step or its context"),
+    "shell_for_files": Cause(klass="fault", side="workflow",
+                             remedy="The step used the shell for file reads: prefer the declared file tools"),
+    "context_bloat": Cause(klass="fault", side="workflow",
+                           remedy="The session's context grew past its usual size: split the step or trim inputs"),
+    "declared_unused": Cause(klass="designed", side="workflow",
+                             remedy="Recorded only: a declared skill or subagent type is never called"),
+    "subagent_heavy": Cause(klass="designed", side="workflow",
+                            remedy="Recorded only: subagents carry most of the session's tokens"),
+    "timeout": Cause(klass="fault", side="workflow", remedy="The session timed out: see its shape and split the step"),
+    "judge_unread_pass": Cause(klass="fault", side="workflow",
+                               remedy="The judge passed without opening a changed path: tell it what to read"),
+    "retry_same_path": Cause(klass="fault", side="workflow",
+                             remedy="The retry repeated the previous attempt: give the step what it needs to change"),
     "binding_shift": Cause(klass="fault", side="workflow",
                            remedy="Re-score the judge on its calibration cases and review the gate for the new binding"),
     "outcome_unmet": Cause(klass="fault", side="workflow",
@@ -76,6 +93,8 @@ CAUSES: dict[str, Cause] = {
 
 
 def cause_of(code: str) -> Cause:
+    if code == "timeout:slow_host":  # SRV §2.2: the slow-host shape joins SIL's host side
+        return Cause(klass="infra", side="host", remedy="Recorded only: the session timed out on a slow host")
     return CAUSES.get(code.split(":", 1)[0], Cause(klass="fault", side="engine", remedy="Unclassified cause"))
 
 

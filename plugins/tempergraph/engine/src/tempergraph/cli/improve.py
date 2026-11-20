@@ -76,6 +76,9 @@ def add_parsers(sub: Any, parser_class: type[argparse.ArgumentParser]) -> None:
     op.add_argument("--json", action="store_true")
     sh = isub.add_parser("show")
     sh.add_argument("record", metavar="PROPOSAL|TRIAL")
+    from tempergraph.cli.improve_review import add_review_parser
+
+    add_review_parser(isub)  # SRV §2.9
 
 
 def _usage(msg: str) -> Exception:
@@ -198,6 +201,10 @@ def _arm_runner(env: Any) -> Any:
 
 
 def cmd_improve(env: Any, a: argparse.Namespace) -> int:
+    if a.action == "review":
+        from tempergraph.cli.improve_review import cmd_review
+
+        return cmd_review(env, a)
     from tempergraph.cli.main import _emit, _root, _spec
     from tempergraph.improve import proposals as prp
     from tempergraph.improve import trials as trl
