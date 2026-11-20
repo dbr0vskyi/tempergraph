@@ -13,7 +13,7 @@ The owner asked whether a person can override a workflow's configuration in ever
 
 ## Decision
 
-We will define every overridable value as a key in one engine catalog, `<scope>.<name>`, with a type, a range, the scopes it applies to and an engine default, and resolve every key over the same nine layers, highest first: flags (including orchestration and batch options), chosen profiles, the project file's overrides, the user file's overrides, the unit's own workflow field, the workflow default, the project file's defaults, the user file's defaults, the engine default ([RST §2.3](../specs/80-run-settings-and-overrides.spec.md)). Resolution is layer-major, and inside a layer the narrowest scope wins. Workflows may declare typed settings and named profiles. One `settings_resolved` record per run segment and a read-only `config show` verb carry every value with its source.
+We will define every overridable value as a key in one engine catalog, `<scope>.<name>`, with a type, a range, the scopes it applies to and an engine default, and resolve every key over the same ten layers, highest first: flags (including orchestration and batch options), chosen profiles, the project file's overrides, the user file's overrides, a workflow-declared switch arm's per-unit values while the arm is in force, the unit's own workflow field, the workflow default, the project file's defaults, the user file's defaults, the engine default ([RST §2.3](../specs/80-run-settings-and-overrides.spec.md)). Resolution is layer-major, and inside a layer the narrowest scope wins. Workflows may declare typed settings and named profiles. One `settings_resolved` record per run segment and a read-only `config show` verb carry every value with its source.
 
 ## Options considered
 
