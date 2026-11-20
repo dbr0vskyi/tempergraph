@@ -35,6 +35,21 @@ PARAMS = {p.name: p for p in (
     Param(name="stable.cost_percentile", value=0.9, source="SIL §2.2"),
     Param(name="stable.daily_cap_usd", value=50, source="SIL §4"),
     Param(name="measure.quality_drop", value=0.05, source="earlier runs"),
+    # FBK §2.2 to §2.5 (T12.3)
+    Param(name="labels.rerun_days", value=14, source="FBK §2.2"),
+    Param(name="reliability.window_days", value=90, source="FBK §2.3"),
+    Param(name="reliability.recent_days", value=30, source="FBK §2.3"),
+    Param(name="reliability.min_labels", value=20, source="FBK §2.3"),
+    Param(name="reliability.min_known_bad", value=5, source="FBK §2.3"),
+    Param(name="reliability.max_false_pass", value=0.15, source="FBK §2.3"),
+    Param(name="reliability.min_audit_agreement", value=0.8, source="FBK §2.3"),
+    Param(name="reliability.min_audited", value=30, source="FBK §2.3"),
+    Param(name="reliability.queue_confidence", value=0.5, source="FBK §2.4"),
+    Param(name="reliability.queue_sample", value=0.05, source="FBK §2.4"),
+    Param(name="shift.first_n", value=10, source="FBK §2.5"),
+    Param(name="shift.last_n", value=30, source="FBK §2.5"),
+    Param(name="shift.pass_points", value=20, source="FBK §2.5"),
+    Param(name="shift.unverifiable_points", value=15, source="FBK §2.5"),
 )}
 
 

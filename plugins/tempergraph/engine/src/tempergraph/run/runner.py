@@ -362,6 +362,9 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                             and r.get("thread_id") == tid), None)
             if seg_row is not None:
                 summary = record_exit(root, spec, task_id, log.path, final, seg_row)
+                from tempergraph.improve.reliability import after_exit
+
+                summary["labels"] = after_exit(root, spec.name, task_id, seg_row)  # FBK §2.2, §2.5
                 log.write("finding_recorded", **summary)
                 _loop(root, spec, task_id, tid, summary, settings, registry, judges)
         except Exception as exc:  # noqa: BLE001

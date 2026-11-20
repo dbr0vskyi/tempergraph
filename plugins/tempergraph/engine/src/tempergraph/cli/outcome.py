@@ -38,18 +38,20 @@ def _since(window: str | int | None) -> str | None:
 
 
 def _definition(spec: Any) -> dict[str, Any]:
+    from tempergraph.improve.calibration import accepted_for
     from tempergraph.run.outcome_trust import coverage, profile, trust
 
     o = spec.outcome
     root = spec.package_root
+    accepted = accepted_for(spec)  # JCL §2.5
     final = [{"id": c.id, "severity": c.severity, "verified_by": c.verified_by or "none",
-              "trust": trust(c, "outcome", root)} for c in o.final]
+              "trust": trust(c, "outcome", root, accepted)} for c in o.final]
     inter = [{"unit": u, "id": c.id, "verified_by": c.verified_by or "none", "serves": list(c.serves),
-              "trust": trust(c, u, root)} for u, io in o.intermediate.items() for c in io.criteria]
+              "trust": trust(c, u, root, accepted)} for u, io in o.intermediate.items() for c in io.criteria]
     cov = [{"criterion": c.criterion, "trust": c.trust, "covered": c.covered, "serving": c.serving,
-            "missing_units": c.missing_units} for c in coverage(o, spec)]
+            "missing_units": c.missing_units} for c in coverage(o, spec, accepted)]
     return {"revision": o.revision, "statement": o.statement, "deliverables": [dict(d) for d in o.deliverables],
-            "final": final, "intermediate": inter, "trust_profile": profile(o, spec), "coverage": cov}
+            "final": final, "intermediate": inter, "trust_profile": profile(o, spec, accepted), "coverage": cov}
 
 
 def cmd_outcome(env: Any, a: argparse.Namespace) -> int:

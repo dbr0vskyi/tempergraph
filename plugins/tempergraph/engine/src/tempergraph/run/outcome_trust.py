@@ -3,7 +3,7 @@
 | Trust | When |
 |---|---|
 | deterministic | `check`, with a must-pass and a must-fail fixture under `evals/checks/<unit>/` |
-| calibrated | `judge` whose binding is `accepted` (JCL §2.5; none before plan T12) |
+| calibrated | `judge` whose binding is `accepted` (JCL §2.5, read from the package's scores) |
 | uncalibrated | `judge` in any other state, or `check` without both fixtures |
 | human | `person` |
 | unverified | `none` |
@@ -55,9 +55,16 @@ class Coverage:
     missing_units: list[str] = field(default_factory=list)
 
 
+def _accepted(spec: WorkflowSpec) -> Callable[[str], bool]:
+    from tempergraph.improve.calibration import accepted_for
+
+    return accepted_for(spec)
+
+
 def coverage(outcome: OutcomeSpec, spec: WorkflowSpec,
-             accepted: Callable[[str], bool] = lambda gate: False) -> list[Coverage]:
+             accepted: Callable[[str], bool] | None = None) -> list[Coverage]:
     root = spec.package_root
+    accepted = accepted or _accepted(spec)
     gated = [n for n in spec.order if (u := spec.units.get(n)) is not None
              and (u.kind == "step" or u.gate.check is not None or u.gate.judge is not None)]
     out = []
@@ -76,15 +83,17 @@ def coverage(outcome: OutcomeSpec, spec: WorkflowSpec,
     return out
 
 
-def profile(outcome: OutcomeSpec, spec: WorkflowSpec) -> dict[str, int]:
+def profile(outcome: OutcomeSpec, spec: WorkflowSpec, accepted: Callable[[str], bool] | None = None
+            ) -> dict[str, int]:
     """Counts per trust over every criterion, final and intermediate (`outcome show`)."""
     counts: dict[str, int] = {}
     root = spec.package_root
+    accepted = accepted or _accepted(spec)
     for c in outcome.final:
-        t = trust(c, "outcome", root)
+        t = trust(c, "outcome", root, accepted)
         counts[t] = counts.get(t, 0) + 1
     for unit, io in outcome.intermediate.items():
         for c in io.criteria:
-            t = trust(c, unit, root)
+            t = trust(c, unit, root, accepted)
             counts[t] = counts.get(t, 0) + 1
     return counts
