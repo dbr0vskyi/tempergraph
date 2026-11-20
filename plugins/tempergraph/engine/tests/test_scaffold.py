@@ -242,13 +242,14 @@ def test_author_verify_stops_at_the_comparison(pkg: Path, tmp_path: Path) -> Non
     assert any("draft now pauses for approval after a pass; the blueprint does not" in m for m in msgs)
 
 
-def test_author_verify_refuses_seeds_and_trial(pkg: Path, tmp_path: Path) -> None:
-    """SCF §2.7: rungs 8 and 9 are not_in_release; rungs 1 to 7 still run, nothing is stamped, no session."""
+def test_author_verify_seeds_need_seeds_and_trial_a_case(pkg: Path, tmp_path: Path) -> None:
+    """Rung 8 on a package with no seeds fails `criterion-no-seed` before any session; rungs 1 to 7 still ran
+    and nothing is stamped. `--trial` without a case is refused (SCF §2.7; more in test_author_trial.py)."""
     code, doc, reg = _verify(pkg, tmp_path, "--judge-seeds")
     assert code == 2
     states = _states(doc)
-    assert states["register"] == "passed" and states["judge_seeds"] == "refused" and states["stamp"] == "skipped"
-    assert "not_in_release" in doc["rungs"][7]["note"]
+    assert states["register"] == "passed" and states["judge_seeds"] == "failed" and states["stamp"] == "skipped"
+    assert {f["code"] for f in doc["rungs"][7]["findings"]} == {"criterion-no-seed"}
     assert reg.get("claude").calls == []  # type: ignore[attr-defined]
     code, doc, _ = _verify(pkg, tmp_path, "--trial")
     assert code == 2 and doc["refused"] == "trial-needs-case"

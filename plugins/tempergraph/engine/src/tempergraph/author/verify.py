@@ -1,7 +1,7 @@
 """`author verify <workflow>` (SCF §2.5): the ladder that checks an authored workflow, in order, stopping at the
-first failing rung. Rungs 1 to 7 and 10 are model-free and built in release 1; rungs 8 (judge seeds) and 9
-(the first trial) need judge calibration and feedback labels (JCL, FBK; plan T12), so a request for them is
-refused with `not_in_release` after rungs 1 to 7 have run, and nothing is stamped (SCF §2.7)."""
+first failing rung. Rungs 1 to 7 and 10 are model-free. Rung 8 grades the judged criteria's seeds with judge
+sessions only, and rung 9 starts one consented, capped trial run (`author/trial.py`); both run only when asked,
+and the person's yes on the stated cost is what the flag carries (SCF §2.7)."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ RUNGS = ("load", "compare", "literals", "generated_tests", "coverage", "audit", 
 class Rung:
     n: int
     name: str
-    state: str = "skipped"  # passed, failed, skipped, refused
+    state: str = "skipped"  # passed, failed, skipped, refused, waiting (a trial paused for the person)
     findings: list[dict[str, Any]] = field(default_factory=list)  # {code, unit, message, remedy}
     note: str = ""
 
@@ -38,6 +38,11 @@ class VerifyReport:
     rungs: list[Rung] = field(default_factory=list)
     warnings: list[dict[str, Any]] = field(default_factory=list)  # audit warnings, shown, not failing
     refused: str = ""
+    seeds: list[dict[str, Any]] = field(default_factory=list)  # rung 8: {gate, criterion, seed, expected, got}
+    trial: dict[str, Any] | None = None  # rung 9: the trial record kept in `authoring.json`
+    usage: dict[str, Any] = field(default_factory=lambda: {"judge_sessions": 0, "cost_usd": 0.0})
+    seeds_shown: dict[str, dict[str, str]] | None = None  # rung 8: seeds the author saw, by gate (JCL §2.1.1)
+    tuned: list[str] = field(default_factory=list)  # rung 8: seeds moved to `tune` after an edit
 
     @property
     def ok(self) -> bool:
@@ -45,11 +50,15 @@ class VerifyReport:
 
     @property
     def exit_code(self) -> int:
-        return 0 if self.ok else 2
+        if self.ok:
+            return 0
+        waiting = not self.refused and all(r.state in ("passed", "skipped", "waiting") for r in self.rungs)
+        return 3 if waiting else 2  # 3: the trial paused for the person (CON §2.9)
 
     def to_json(self) -> dict[str, Any]:
         return {"schema_version": 1, "workflow": self.workflow, "ok": self.ok, "refused": self.refused,
-                "rungs": [r.to_json() for r in self.rungs], "warnings": self.warnings}
+                "rungs": [r.to_json() for r in self.rungs], "warnings": self.warnings, "seeds": self.seeds,
+                "trial": self.trial, "usage": self.usage, "tuned": self.tuned}
 
 
 def _row(code: str, unit: str | None, message: str, remedy: str = "") -> dict[str, Any]:
@@ -198,29 +207,85 @@ def _stamp(root: Path, caps: Mapping[str, Capabilities], rung: Rung) -> None:
     rung.note = f"docs_digest {got.stamp.get('docs_digest')}"
 
 
+def _seed_rung(spec: WorkflowSpec, executor_for: Callable[[str], Any], cap: float | None, rung: Rung,
+               rep: VerifyReport, authoring: Any) -> None:
+    from tempergraph.author.trial import seeds
+
+    shown = authoring.get("seeds_shown") if isinstance(authoring, dict) else None
+    got = seeds(spec, executor_for, cap, shown if isinstance(shown, dict) else None)
+    rep.seeds_shown = got.shown
+    rep.tuned = got.tuned
+    rung.findings += got.findings
+    rep.seeds = got.graded
+    rep.usage = {"judge_sessions": got.sessions, "cost_usd": round(got.spent, 6)}
+    rung.note = f"{len(got.graded)} seed gradings, {got.sessions} judge sessions, ${got.spent:.2f}"
+
+
+def _trial_rung(spec: WorkflowSpec, case: str, target: Path, registry: Any, caller: Mapping[str, Any],
+                cap: float, rung: Rung, rep: VerifyReport) -> None:
+    from tempergraph.author.trial import TrialRefused, start_trial
+
+    left = max(cap - float(rep.usage.get("cost_usd") or 0.0), 0.0)
+    try:
+        rec = start_trial(spec, case, target, registry, caller, left)
+    except TrialRefused as exc:
+        rung.findings.append(_row(exc.code, None, str(exc), "name a case of evals/cases.json with --case"))
+        return
+    rep.trial = rec
+    report = f"`tempergraph author trial {spec.name}` shows the report; grade each criterion with `author grade`"
+    if rec["state"] == "paused":
+        rung.state = "waiting"
+        rung.note = (f"{rec['thread']} paused: answer it through the run driver (`tempergraph resume {spec.name} "
+                     f"{rec['task']} …`), then {report}")
+    elif rec["state"] == "partial":
+        rung.findings.append(_row("trial-cap-reached", None, f"{rec['thread']} reached the cap of ${left:.2f}; the "
+                                  "report is partial", "raise --cap and run the trial again"))
+    elif rec["state"] == "refused":
+        rung.findings.append(_row(rec.get("reason") or "trial-refused", None, str(rec.get("message") or ""),
+                                  "fix the refusal and run the trial again"))
+    else:
+        from tempergraph.author.trial import rows
+
+        _, outcome = rows(spec, target, rec["task"])
+        if outcome is None or outcome.get("verdict") == "not_reached":
+            why = rec["reason"] or f"exit {rec['exit_code']}"
+            rung.findings.append(_row("trial-not-at-outcome", None, f"{rec['thread']} ended ({why}) before the "
+                                      "outcome gate", f"see `tempergraph status {rec['thread']} --detail`"))
+        else:
+            rec["verdict"] = outcome.get("verdict")
+            rung.note = f"{rec['thread']} reached the outcome gate ({rec['verdict']}); {report}"
+
+
 def verify(root: Path, caps: Mapping[str, Capabilities], *, target: Path,
            probe: Callable[[str], str | None] = lambda name: None, judge_seeds: bool = False,
-           trial: bool = False, case: str | None = None) -> VerifyReport:
-    """Run the ladder on the package at `root`; record the outcome in its `authoring.json` (`verify`)."""
+           trial: bool = False, case: str | None = None, cap: float = 5.0,
+           executor_for: Callable[[str], Any] | None = None, registry: Any = None,
+           caller: Mapping[str, Any] | None = None) -> VerifyReport:
+    """Run the ladder on the package at `root`; record the outcome in its `authoring.json` (`verify`, and the
+    trial as `trial`). `executor_for(gate)` gives the judge executor for rung 8; `registry` runs rung 9."""
     rep = VerifyReport(workflow=root.name)
     rungs = [Rung(n=i + 1, name=name) for i, name in enumerate(RUNGS)]
     rep.rungs = rungs
     if trial and not case:
         rep.refused = "trial-needs-case"
+    elif (judge_seeds or trial) and (executor_for is None or (trial and registry is None)):
+        rep.refused = "no-executor"
     authoring = _json(root / "authoring.json")
     lp = None
 
     def run(i: int, fn: Callable[[Rung], None]) -> bool:
         r = rungs[i]
         fn(r)
-        r.state = "failed" if r.findings else "passed"
-        return not r.findings
+        if r.state != "waiting":
+            r.state = "failed" if r.findings else "passed"
+        return not r.findings and r.state == "passed"
 
     def load(r: Rung) -> None:
         nonlocal lp
         lp = _load(root, caps, r)
 
     ok = run(0, load)
+    spec: WorkflowSpec | None = None
     if ok and lp is not None:
         spec = lp.spec
         rep.workflow = spec.name
@@ -230,22 +295,36 @@ def verify(root: Path, caps: Mapping[str, Capabilities], *, target: Path,
               and run(4, lambda r: _coverage(spec, _decided(authoring), r))
               and run(5, lambda r: _audit(spec, lp, caps, target, probe, r, rep))
               and run(6, lambda r: _register(root, caps, r)))
-    if ok:
-        asked = judge_seeds or trial
+    if ok and spec is not None and rep.refused:
         for i in (7, 8):
-            wanted = asked if i == 7 else trial
-            rungs[i].state = "refused" if wanted else "skipped"
-            rungs[i].note = ("not_in_release: judge seeds and the first trial need judge calibration and "
-                             "feedback labels (JCL, FBK; plan T12)") if wanted else "not asked"
-        if asked or rep.refused:
-            rungs[9].note = "not stamped: the ladder did not reach rung 10"
+            rungs[i].state = "refused"
+            rungs[i].note = rep.refused
+        rungs[9].note = "not stamped: the ladder did not reach rung 10"
+    elif ok and spec is not None:
+        if judge_seeds or trial:
+            assert executor_for is not None
+            ok = run(7, lambda r: _seed_rung(spec, executor_for, cap, r, rep, authoring))
         else:
+            rungs[7].note = "not asked"
+        if ok and trial:
+            assert case is not None
+            ok = run(8, lambda r: _trial_rung(spec, case, target, registry, caller or {}, cap, r, rep))
+        elif ok:
+            rungs[8].note = "not asked"
+        if ok:
             run(9, lambda r: _stamp(root, caps, r))
+        else:
+            rungs[9].note = "not stamped: the ladder did not reach rung 10"
     for r in rungs:
         if r.state == "skipped" and not r.note:
             r.note = "an earlier rung failed"
     if isinstance(authoring, dict) and (root / "authoring.json").is_file():
+        authoring = _json(root / "authoring.json") or authoring  # register and stamp do not touch it; re-read
         authoring["verify"] = {"at": now_iso(), "ok": rep.ok,
                                "rungs": {r.name: r.state for r in rungs}}
+        if rep.trial is not None:
+            authoring["trial"] = rep.trial
+        if rep.seeds_shown is not None:
+            authoring["seeds_shown"] = rep.seeds_shown
         write_json(root / "authoring.json", authoring, mode=0o644)
     return rep
