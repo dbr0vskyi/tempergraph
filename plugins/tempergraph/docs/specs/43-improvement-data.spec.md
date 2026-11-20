@@ -29,6 +29,7 @@ What the self-improvement loop ([SIL](16-self-improvement.spec.md), [PRP](40-imp
 | IMD-R9 | Records are append-only; a correction is a new record that names the one it replaces | Trials and grades are reproducible from history |
 | IMD-R10 | Retention: metadata records at least 400 days; evidence files 90 days by default, operator-configurable; a deleted evidence file leaves its records readable | Windows of 30 and 90 days, year-on-year comparison |
 | IMD-R11 | The store emits the loop events of §2.3 to the engine's event surface (lifecycle hooks of [CLI §2.2](17-engine-cli.spec.md), and whatever event interface the monitor design adds) | The monitor shows the loop; integrations react |
+| IMD-R13 | Every run line, `agent_run`, ledger and finding record carries `settings_digest` and `overridden_keys`, and a rerun's records carry `rerun_of` ([RST §2.7](80-run-settings-and-overrides.spec.md), [RRN §2.4](81-reruns-and-feedback.spec.md)) | Lenses compare runs with like settings and do not file an operator's override as a workflow fault; a rerun is joined to its source as an outcome signal |
 | IMD-R12 | A request digest is a keyed hash with a per-installation key, so equal requests match across one team's machines and cannot be looked up from outside | Distinct-request counts without request text |
 
 ### 2.2 What may leave the machine

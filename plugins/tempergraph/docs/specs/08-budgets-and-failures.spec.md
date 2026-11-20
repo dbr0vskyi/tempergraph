@@ -3,14 +3,14 @@ title: Budgets, failures and timeouts
 type: component
 status: review
 prefix: BUD
-adrs: [0004, 0006, 0021]
+adrs: [0004, 0006, 0021, 0070]
 ---
 
 # Budgets, failures and timeouts
 
 ## 1. Overview
 
-Every way a run can repeat has a counter with a default, and the **cause** of a failure decides which counter it spends: the model's failure costs a retry, the machine's an infra try, a person's direction the human cap. Budgets are decided in the gate node, which stays pure. Timeouts are engine-owned and resolved per step and per judge, so they behave the same on every executor.
+Every way a run can repeat has a counter with a default, and the **cause** of a failure decides which counter it spends: the model's failure costs a retry, the machine's an infra try, a person's direction the human cap. Budgets are decided in the gate node, which stays pure. Timeouts are engine-owned and resolved per step and per judge, so they behave the same on every executor. Every default below is a run setting an operator may override per run, per unit or per machine within the catalog's ranges ([RST §2.2](80-run-settings-and-overrides.spec.md)).
 
 ## 2. Contract
 
@@ -21,11 +21,11 @@ Every way a run can repeat has a counter with a default, and the **cause** of a 
 | Human cap | A person's retry | 100 | Resume refused (exit 2) |
 | Infra tries (in a row) | `infra_cause` set on a step or judge session | 3 (max 10), backoff 10, 20, 40 s up to 300 s | Run ends with an infra exit (5); never a pause |
 | Attempt cap (per invocation) | Any step attempt | 15 | Clean stop; a resume gets a fresh allowance |
-| Run cost cap (`run_cost_cap_usd`) | Every session's cost, reported where present else estimated, children included | none | Checked before each attempt starts: a run at or over the cap drains cleanly with exit 5 reason `cost_cap`; re-openable after the operator raises it |
+| Run cost cap (`run_cost_cap_usd`) | Every session's cost, reported where present else estimated, children included | none | Checked before each attempt starts: a run at or over the cap drains cleanly with exit 5 reason `cost_cap`; re-openable after the operator raises it with `resume --set run.run_cost_cap_usd=…` ([RST §2.6](80-run-settings-and-overrides.spec.md)) |
 
 ### 2.1 Timeout resolution
 
-Step: operator per step, operator per run, the step's `timeout_s`, workflow default, engine default (600 s). Judge: operator per judge, operator for judges, the gate's judge `timeout_s`, workflow default, engine default (600 s); a judge never reads a step's value. Every record carries the number and its source layer.
+Step: the operator layers of [RST §2.3](80-run-settings-and-overrides.spec.md) (flags per unit then per run, profiles, project and user overrides), the step's `timeout_s`, workflow default, project and user defaults, engine default (600 s). Judge: the same operator layers on the judge scopes only, the gate's judge `timeout_s`, workflow default, project and user defaults, engine default (600 s); a judge never reads a step's value. Council members, the chair, contest slots and scripts resolve on their own scopes the same way. `idle_s` follows the same order. Every record carries the number and its source layer.
 
 ### 2.2 Cause to counter
 

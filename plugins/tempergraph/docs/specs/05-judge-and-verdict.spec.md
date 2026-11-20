@@ -3,7 +3,7 @@ title: Judge and verdict
 type: component
 status: review
 prefix: JDG
-adrs: [0005, 0013, 0021]
+adrs: [0005, 0013, 0021, 0074]
 ---
 
 # Judge and verdict
@@ -31,7 +31,7 @@ Rendered by an engine-owned brief that names no workflow, then the workflow's st
 | References | The request (whole up to 32,000 chars, else head and tail around a marker with the omitted count) and earlier artifacts |
 | Subject | The artifacts graded, and the check's evidence |
 | Step account | The step's final text, labelled "claims to verify, not facts", ≤ 8,000 chars |
-| Feedback | A person's feedback, as direction that wins over a reference |
+| Feedback | A person's one-time feedback and every active ruling that applies to the unit, as direction that wins over a reference; each ruling adds one engine blocker, the output follows it ([RRN §2.2](81-reruns-and-feedback.spec.md)) |
 | Criteria | Numbered, with id, text, check method and severity |
 | Previous blockers | Re-checked first; the full rubric is still graded |
 | Visit reason | When sent back: one engine blocker "every point of the reason is addressed" |

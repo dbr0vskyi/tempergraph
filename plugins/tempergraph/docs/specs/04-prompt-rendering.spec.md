@@ -3,7 +3,7 @@ title: Prompt rendering and output contract
 type: component
 status: review
 prefix: PRM
-adrs: [0005, 0016]
+adrs: [0005, 0016, 0074]
 ---
 
 # Prompt rendering and output contract
@@ -35,7 +35,8 @@ class RenderedPrompt: text: str; missing_fields: list[str]; sections: list[str]
 | Notes from the previous judgement | Unmet warnings of the last pass |
 | Reason for this visit, and who sent it | The run was sent back to this unit |
 | Rejection reason; what the previous attempt reported (≤ 3000 chars, head and tail); paths changed since it began (≤ 20) | A retry; after a timeout, infra failure or cut-off only the paths |
-| Human feedback | A person gave feedback at the last gate; shown once |
+| Human feedback | A person gave one-time feedback at the last resume (a retry, a proceed for the next unit, a breakpoint, an unfinished thread); shown once ([RRN §2.2](81-reruns-and-feedback.spec.md)) |
+| Rulings from a person | Active rulings that apply to this unit; shown on every attempt and visit until revoked |
 
 Everything after the template is appended verbatim, never format-processed.
 

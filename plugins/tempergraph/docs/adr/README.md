@@ -68,3 +68,8 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0065](0065-ask-unit-takes-a-persons-input-as-an-artifact.adr.md) | An ask unit takes a person's mid-run input as a validated artifact, in the human node | proposed |
 | [0066](0066-flow-extensions-for-langgraph-parity.adr.md) | Five flow extensions for LangGraph parity: selective parallel, mapped sub-workflows, deadlines, fallback, breakpoints | proposed |
 | [0067](0067-cache-only-model-free-script-results-per-thread.adr.md) | Cache only model-free script results, per thread, keyed by declared inputs | proposed |
+| [0070](0070-one-catalog-of-run-settings-over-fixed-layers.adr.md) | One catalog of run settings, resolved over fixed layers from flags to engine defaults | proposed |
+| [0071](0071-overrides-never-change-what-verifies-the-work.adr.md) | Overrides change cost, time, repetition and model choice, never what verifies the work | proposed |
+| [0072](0072-threads-snapshot-settings-and-reapply-them-on-resume.adr.md) | A thread snapshots its operator settings at start and reapplies them on every resume | proposed |
+| [0073](0073-rewind-on-the-thread-rerun-as-a-linked-fork.adr.md) | A person rewinds a live thread in place, and reruns any thread as a new linked thread forked from a checkpoint | proposed |
+| [0074](0074-feedback-can-be-a-lasting-ruling.adr.md) | A person's feedback can be a lasting ruling that later steps and their judges are shown | proposed |

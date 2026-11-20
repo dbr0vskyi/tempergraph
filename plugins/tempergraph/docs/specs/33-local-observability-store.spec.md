@@ -20,7 +20,7 @@ Everything a repository's runs leave on the machine lives in one folder, the sta
 .tempergraph/
   manifest.json                     layout version, engine version that created it, created_at
   .gitignore                        "*" so the folder never enters a commit, whatever the repository's own ignore file says
-  config/                           operator config: hooks, observers, sinks, price overrides, observe.* settings
+  config/                           operator config: hooks, observers, sinks, price overrides, observe.* settings, settings.json [RST §2.4]
   checkpoints/<workflow>.sqlite     [DUR]
   locks/<workflow>/<task_id>.lock   [DUR]
   runs/<workflow>/<task_id>/
@@ -29,6 +29,7 @@ Everything a repository's runs leave on the machine lives in one folder, the sta
     findings.json                   [SIL]
     engine.json                     engines and workflow versions each process ran on; a pin [MIG §2.1]
     control/stop.json               only while a stop is pending [RCT]
+    lineage.json                    reruns made from this thread [RRN §2.4]
     sessions/<session_key>/
       meta.json                     executor, cli_version, session_id, transcript locator, pgid, started_at, ended_at
       raw.jsonl                     every line the executor's stream produced, with receive time; the session's full log
