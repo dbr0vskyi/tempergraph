@@ -207,11 +207,11 @@ Every item release 1 ships, then every item it leaves out with its release. The 
 | I-93 | Session review in dev mode, probation and authoring trials: plan, condensed datamarked view, tool-less reviewer, citation check, local report; never files | SRV §2.3, §2.5 to §2.8 | T12.9 |
 | I-94 | `improve review`, `improve review show`, `improve review summary` | SRV §2.9 | T12.9 |
 
-**Excluded, release 2**
+**Excluded, release 2** (planned in the [second-release plan](second-release.plan.md), scope [ADR-0125](../adr/0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md))
 
 | # | Feature | Spec |
 |---|---|---|
-| X2-1 | Promotion to the pipeline on `claude`: `promote-check`, SUP §2.7 (needs a spec) | ADR-0041, SUP |
+| X2-1 | Promotion to the pipeline on `claude`: `promote-check`, SUP §2.7 | PRO, ADR-0041, SUP |
 | X2-2 | Eval suites and `evals run\|report\|grade` | EVS |
 | X2-3 | Live scoring, harvest and replay | EVS |
 | X2-4 | Eval skill | SHL |
@@ -237,6 +237,10 @@ Every item release 1 ships, then every item it leaves out with its release. The 
 | X2-24 | State root outside git | WSP (R-011 G9) |
 | X2-25 | Windows | R-011 U3 |
 | X2-26 | Session review in stable mode: `signals` plans, saturation, corroborated filing, the proposer reading observations | SRV §2.4, §5 |
+| X2-27 | `upgrade` beyond `--check`, the built-in upgrade workflow and its skill (was X3-13; moved by the owner on 2026-11-20) | WUP, UWF, LSK |
+| X2-28 | Effort ladder and one-step model escalation on evidence only; retirement of the retry-count model list | LAD |
+| X2-29 | Judge model by risk | JRK |
+| X2-30 | Complexity switches between a simple and a detailed decomposition | CXR |
 
 **Excluded, release 3**
 
@@ -254,7 +258,6 @@ Every item release 1 ships, then every item it leaves out with its release. The 
 | X3-10 | `messages-api` executor and its tool host | EMA, THS |
 | X3-11 | `antigravity` executor | EAG |
 | X3-12 | Live cross-executor judging | EXI |
-| X3-13 | `upgrade` beyond `--check`, the built-in upgrade workflow and its skill | WUP, UWF, LSK |
 | X3-14 | Schedules, the rest: OS adapter, orchestration and program targets, `catch_up all`, queue and parallel overlap, cron, pipeline export | SCH, TCK |
 
 **Unscheduled**

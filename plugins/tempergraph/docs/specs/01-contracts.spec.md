@@ -112,7 +112,7 @@ A template holds literal text, `{{` `}}` for literal braces, and plain fields `{
 
 - **Alias grammar.** `inherit`, an engine-neutral tier `small` \| `medium` \| `large`, or an executor-qualified alias `<executor>:<name>` (for example `claude:opus`, `antigravity:gemini-pro`). Never a deployment id. Binding is per executor ([ADR-0008](../adr/0008-portable-model-aliases.adr.md)).
 - **`ModelProfile`**: map from step name and from `judge:<step name>` to an alias or a ladder.
-- **Resolution order for a step attempt:** the operator layers of [RST §2.3](80-run-settings-and-overrides.spec.md), an arm in force that names the step, the step's model (ladder rung n for attempt n, last rung repeats), workflow default, project and user defaults, `inherit`.
+- **Resolution order for a step attempt:** the operator layers of [RST §2.3](80-run-settings-and-overrides.spec.md), an arm in force that names the step, the step's model (ladder rung n for attempt n, last rung repeats; release 2: [LAD](92-effort-ladder-and-model-escalation.spec.md)), workflow default, project and user defaults, `inherit`.
 - **Resolution order for a judge:** the same operator layers on the judge scopes only (`judge:<unit>`, then `judges`), the gate's judge model, the step's model (its ladder's last rung), workflow default, project and user defaults, `inherit`.
 - Every record carries the alias, its source layer and the executor that bound it.
 
@@ -158,7 +158,7 @@ Neither run method raises for a session failure; failure is a field of the resul
 | | `timeout_s`, `idle_s` | resolved limits and their sources |
 | | `options` | `SessionOptions` |
 | | `credentials_profile` | judge-only profile name, optional |
-| `SessionOptions` | `effort` | `low` \| `medium` \| `high` \| `max`, optional |
+| `SessionOptions` | `effort` | `low` \| `medium` \| `high` \| `xhigh` (release 2) \| `max`, optional |
 | | `cost_cap_usd` | float, optional |
 | | `fallback_alias` | alias, optional; never for a judge |
 | | `turn_cap` | int, optional |
@@ -216,7 +216,7 @@ The judgement block is the last fenced JSON block of the judge's answer.
 
 `Verdict` ∈ `PROCEED`, `RETRY`, `BACK`, `ESCALATE`, `STOP`. Only the engine derives it ([JDG](05-judge-and-verdict.spec.md)). A confidence value carries `source` ∈ `judge`, `engine_placeholder`.
 
-`CheckResult` is `result` ∈ `PASS`, `MAYBE`, `FAIL`, with `evidence` (bounded text), `environmental: bool`, `untracked_only: bool`, `findings` (list of `CheckFinding`), `facts` (map of at most 20 slugs to strings ≤ 200 chars) and `runs` (the check's command runs, added by the engine). A `CheckFinding` is `{criterion?, status, place, fix, message}` with `status` ∈ `pass`, `maybe`, `fail`, `n_a`. Rules: [CHK §2.4](75-check-contract-and-command-runs.spec.md).
+`CheckResult` is `result` ∈ `PASS`, `MAYBE`, `FAIL`, with `evidence` (bounded text), `environmental: bool`, `untracked_only: bool`, `findings` (list of `CheckFinding`), `facts` (map of at most 20 slugs to strings ≤ 200 chars) and `runs` (the check's command runs, added by the engine). A `CheckFinding` is `{criterion?, status, place, fix, message, kind}` with `status` ∈ `pass`, `maybe`, `fail`, `n_a` and `kind` ∈ `substance`, `output_contract`, `other` (default; release 2, LAD §2.2). Rules: [CHK §2.4](75-check-contract-and-command-runs.spec.md).
 
 ### 2.9 Runs, threads and exit codes
 
@@ -375,7 +375,6 @@ Shared by PKG, OUT, AUT and SCF.
 
 | Question | Owner | Release 1 default |
 |---|---|---|
-| Should `effort` values be normalized further when one executor accepts `xhigh` and another does not? | Executor implementer | No further normalization: the executor maps the four values and records what it applied in `applied_options` |
 
 ## References
 

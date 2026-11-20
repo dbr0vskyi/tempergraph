@@ -87,7 +87,7 @@ The order of steps 2, 3 and 6 comes from where the update code lives. Claude Cod
 
 | Part | Release 1 |
 |---|---|
-| Skills | Only `tempergraph:install` ships (I-72). The update skill is release 2 with `update` (X2-8), and the upgrade skill release 3 with `upgrade` beyond `--check` (X3-13); the authoring skill's upgrade mode runs `upgrade-check` and reports |
+| Skills | Only `tempergraph:install` ships (I-72). The update skill is release 2 with `update` (X2-8), and the upgrade skill release 2 with `upgrade` beyond `--check` (moved from release 3 by [ADR-0125](../adr/0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md)); the authoring skill's upgrade mode runs `upgrade-check` and reports |
 | `<plugin>` | The skill's base directory's grandparent (`<plugin>/skills/install/`), which Claude Code shows when the skill loads |
 | Step 1 | An engine already current is reported as current; there is no update skill to hand over to |
 | Step 2 | Only `claude` runs steps, so no `--with` extra is asked; the skill reads `claude`'s row of `executors` for the consequences and says the other executors come later |

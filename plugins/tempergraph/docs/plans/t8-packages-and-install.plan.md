@@ -91,7 +91,7 @@ Status pass: WUP is `ready-for-implementation` (its open question has a release 
 | 8.3.3 | `engine/src/tempergraph/package/stamp.py`, `cli/upgrade.py` | `upgrade --check [--stamp]`, `upgrade-check [--stamp]`; V1 to V7 with V4 and V6 skipped; `stamp.json`; `verified_engine` at load | WUP §2.1, §2.6, VER §2.5 | | P1 | ✓ | 2026-11-20 |
 | 8.3.4 | `engine/src/tempergraph/executor_compat.py`, `data/executor_compat.json` | The executor compatibility table, `row` and `finding` | LIF §2 | | P1 | ✓ | 2026-11-20 |
 | 8.3.5 | `executors/preflight.py`, `cli/main.py` (T6 owner) | Preflight warns `executor-version-untested`; `executors` shows the row (LIF-AC-4); added on this branch at the main build thread's request | LIF-AC-4 | yes | P1 | ✓ | 2026-11-20 |
-| 8.3.6 | | The transforms of VER §2.3.4 (VER-AC-3) | VER §2.3.4 | yes | P3 | ○ | release 3, with phase 4 of WUP |
+| 8.3.6 | | The transforms of VER §2.3.4 (VER-AC-3) | VER §2.3.4 | yes | P3 | ○ | release 2, with phase 4 of WUP ([ADR-0125](../adr/0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md)) |
 
 ### T8.4 Scenarios, lint and readiness
 

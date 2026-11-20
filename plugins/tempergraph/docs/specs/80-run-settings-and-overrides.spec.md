@@ -10,7 +10,7 @@ adrs: [0070, 0071, 0072, 0080, 0008]
 
 ## 1. Overview
 
-Every value that decides how much a run may spend, how long it may take, how often it may repeat, which executor and model do the work, and which workflow-declared switch is taken is a **run setting**: a key in one engine catalog (§2.2), set at a **scope** (the run, all steps, all judges, one unit, one judge, one council member, chair or contest slot, one script) on one of a fixed list of **layers** (§2.3), from a flag to a machine-wide default. The engine resolves every key the same way, validates every override before spend, snapshots the result on the thread, reapplies it on resume, and records each value with its source ([ADR-0070](../adr/0070-one-catalog-of-run-settings-over-fixed-layers.adr.md), [R-070](../research/R-070-config-overrides-and-reruns-gaps.rsrch.md)).
+Every value that decides how much a run may spend, how long it may take, how often it may repeat, which executor and model do the work, and which workflow-declared switch is taken is a **run setting**: a key in one engine catalog (§2.2), set at a **scope** (the run, all steps, all judges, one unit, one judge, one council member, chair or contest slot, one script) on one of fixed **layers** (§2.3), from a flag to a machine default. The engine resolves every key alike, validates every override before spend, snapshots the result on the thread, reapplies it on resume, and records each value with its source ([ADR-0070](../adr/0070-one-catalog-of-run-settings-over-fixed-layers.adr.md), [R-070](../research/R-070-config-overrides-and-reruns-gaps.rsrch.md)).
 
 What verifies the work is not a setting: criteria, checks, the presence of a judge, the judge's independence, flow targets, back targets and prompts cannot be overridden ([ADR-0071](../adr/0071-overrides-never-change-what-verifies-the-work.adr.md)). Declared tools are the one part of a step a person may widen for a run, by a recorded **tool grant** (§2.9): a step that failed or paused because it could not reach a tool, a skill, an MCP server or a command is resumed with the grant instead of an edit of the package ([ADR-0080](../adr/0080-a-person-may-grant-a-step-tools-for-a-run.adr.md)). The model and timeout orders of [CON §2.4](01-contracts.spec.md) and [BUD §2.1](08-budgets-and-failures.spec.md) are instances of this spec's order.
 
@@ -45,10 +45,10 @@ A map item has no scope of its own: items share their unit's settings, and a per
 | Name | Scopes | Value | Engine default | Notes |
 |---|---|---|---|---|
 | `executor` | steps, judges, unit, judge, member, chair, slot | registered executor | workflow `default_executor` | A judge's still must declare `restricts_judge_tools` ([EXI](10-executor-interface.spec.md)) |
-| `model` | steps, unit, member, chair, slot | alias, or a ladder of 1–8 aliases on steps and unit | `inherit` | Judges, members, chair and slots take one alias |
+| `model` | steps, unit, member, chair, slot | alias, or a ladder of 1–8 aliases on steps and unit | `inherit` | Judges, members, chair and slots take one alias.; release 2 retires the ladder (LAD) |
 | `model` | judges, judge | alias | per CON §2.4 | Never a ladder |
 | `subagent_model` | steps, unit | alias | the session's own alias | Only on executors that host subagents; elsewhere a warning |
-| `effort` | every session scope | `low` \| `medium` \| `high` \| `max` | none | Unapplied is a warning (CON §4) |
+| `effort` | every session scope | `low` \| `medium` \| `high` \| `xhigh` \| `max` | none | Unapplied warns (CON §4); pins an effort ladder |
 | `session_cost_cap_usd` | every session scope | float > 0 | none | `SessionOptions.cost_cap_usd` |
 | `turn_cap` | every session scope | int 1–500 | none | |
 | `fallback_alias` | steps, unit, member, chair, slot | alias | none | Never on a judge |
@@ -282,7 +282,7 @@ Files are edited by hand or by a skill; the engine has no write verb for them.
 - **Files above and below the workflow.** `overrides` serve an operator who must change a workflow's value on this machine (a slow host's longer limit, a team's model choice); `defaults` serve every workflow that states nothing. Both are per machine: a committed repository file is not a layer in the first release, so a pull request cannot raise anyone's cost cap.
 - **Snapshot, not live files.** A paused thread resumes days later with the settings it started with unless the operator says otherwise, so a run's record explains its behaviour ([ADR-0072](../adr/0072-threads-snapshot-settings-and-reapply-them-on-resume.adr.md)).
 - **Provenance is data for the loop.** Settings digests let reports compare like with like and stop the loop blaming a workflow for an operator's cheaper model ([IMD](43-improvement-data.spec.md)).
-- The legacy flags of [CLI §2.1](17-engine-cli.spec.md) stay as spellings of `--set`; the mapping is in that table.
+- The legacy flags of [CLI §2.1](17-engine-cli.spec.md) are spellings of `--set`, mapped there.
 
 ## 6. Acceptance criteria
 

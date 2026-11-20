@@ -116,6 +116,7 @@ An entry whose detect rules all have a deterministic match **must** carry `trans
 | `rename_template_key(from, to)` | Rewrites a field in templates and briefs |
 | `rename_tool(executor, from, to)` | Rewrites a tool name in declarations and in model-facing text where the name stands alone |
 | `map_capability(from, to)` | Rewrites a capability name or alias tier in declarations |
+| `model_list_to_escalation()` | Release 2: rewrites a step's `model` list as its first alias plus an `escalation` to the second when it is one tier up; any other list becomes an owner item ([LAD §2.8](92-effort-ladder-and-model-escalation.spec.md)) |
 
 Transforms are pure functions over the package files, each idempotent and each tested on a before and after fixture.
 

@@ -65,7 +65,7 @@ Step: the operator layers of [RST §2.3](80-run-settings-and-overrides.spec.md) 
 
 **BUD-B6 Automatic re-open.** Given the operator enabled automatic re-open with N = 2, when a run ends with spent retries, a step timeout or an infra failure and exactly one top-level unit stopped, then the engine re-opens it at most twice as that person's retry given in advance; it never answers a pause or undoes a stop.
 
-**BUD-B7 Ladder.** Given a ladder `[small, medium, large]`, when attempts 1, 2, 3 and 4 run, then they use `small`, `medium`, `large`, `large`; a person's retry, a re-open or a trip back starts at `small`; an infra rerun repeats its rung; the judge uses `large` on every attempt.
+**BUD-B7 Ladder.** Given a ladder `[small, medium, large]`, when attempts 1, 2, 3 and 4 run, then they use `small`, `medium`, `large`, `large`; a person's retry, a re-open or a trip back starts at `small`; an infra rerun repeats its rung; the judge uses `large` on every attempt. This retry-count ladder is release 1's; release 2 retires it for the evidence-gated effort ladder and one-step model escalation of [LAD](92-effort-ladder-and-model-escalation.spec.md) ([ADR-0121](../adr/0121-ladders-climb-only-on-trusted-substantive-evidence.adr.md)), and its `model` lists are rewritten by an upgrade transform (LAD §2.8).
 
 ## 4. Error conditions
 

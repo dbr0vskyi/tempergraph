@@ -13,7 +13,7 @@ This note is read as four questions:
 
 "Environment" is read as the workflow's stage of [ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md): `local-dev`, `local-stable` and `pipeline`. It could also mean the binding environment that maps an alias to a deployment ([ADR-0008](../adr/0008-portable-model-aliases.adr.md)). Where that reading changes a finding, the finding says so.
 
-This is research only. No spec, decision record or code changes with this note. Only the Claude Code executor is in scope through release 2 ([ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md)).
+This is research only. No spec, decision record or code changes with this note. On 2026-11-20 the owner put ladders into release 2 with the condition that they never climb on just any failure; the follow-up is [R-121](R-121-judge-model-by-risk-and-evidence-for-escalation.rsrch.md) and spec [LAD](../specs/92-effort-ladder-and-model-escalation.spec.md). Only the Claude Code executor is in scope through release 2 ([ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md)).
 
 ## Sources consulted
 

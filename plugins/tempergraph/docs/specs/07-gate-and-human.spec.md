@@ -29,6 +29,7 @@ class PausePayload: kind: Literal["escalation", "budget", "approval", "event_wai
 | Unresolved gap (blocker UNVERIFIABLE, gap flag, unparsed or discarded judgement) | escalation |
 | A workflow escalation rule | escalation |
 | Retry or loop budget spent on a gate set to `ask` | budget |
+| A model escalation whose conditions hold at a stage that offers it; the payload carries the evidence and `resume --escalate` ([LAD §2.4](92-effort-ladder-and-model-escalation.spec.md)) | budget |
 | A check FAIL marked environmental (no retry can fix it) | escalation |
 | A failed or blocked attempt that could not reach a tool, skill, MCP server or command (cause `tool_access`); the payload lists the refused names and the `--grant` or `--allow-command` that fixes each ([RST §2.8](80-run-settings-and-overrides.spec.md)) | escalation |
 | An upstream claim the judge could not confirm; a defect attributed outside the allowed targets | escalation |

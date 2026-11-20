@@ -85,7 +85,7 @@ Artifacts, values and facts of an item are keyed `<key>[<item id>]`. A later uni
 ## 5. Design notes
 
 - The list is read once per visit so a step cannot change the plan under the map mid-visit; changing it takes a trip back.
-- Whether per-item work pays is the workflow's measurement: temperspec measured it dearer on small plans and routes between a map arm and a single-session arm ([SWM](79-measured-switches.spec.md)).
+- Whether per-item work pays is the workflow's measurement: temperspec measured it dearer on small plans and routes between a map arm and a single-session arm ([SWM](79-measured-switches.spec.md), [CXR](94-complexity-routing.spec.md)).
 
 ## 6. Acceptance criteria
 

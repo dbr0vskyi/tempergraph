@@ -32,9 +32,9 @@ from tempergraph.executors.registry import Registry, default_registry
 # Every verb word of CLI §2, reserved so it is never read as a workflow or a request (CLI-B2, AC-3).
 VERBS = ("attention", "audit", "author", "batch", "blueprint", "config", "evals", "events", "executors", "facts",
          "graph", "hooks", "improve", "install", "label", "labels", "list", "literals", "logs", "orchestrate",
-         "outcome", "report", "rerun", "resume", "run", "scaffold", "schedule", "self-check", "stats", "status",
-         "stop", "store", "supervision", "update", "upgrade", "upgrade-check", "validate", "wait", "workflows",
-         "worktree", "help")
+         "outcome", "promote-check", "report", "rerun", "resume", "run", "scaffold", "schedule", "self-check",
+         "stats", "status", "stop", "store", "supervision", "update", "upgrade", "upgrade-check", "validate", "wait",
+         "workflows", "worktree", "help")
 WORKSPACES = ("auto", "worktree", "in_place")
 CHECK_EXIT = {"ok": ExitCode.FINISHED, "needs": ExitCode.USAGE, "error": ExitCode.USAGE,
               "broken": ExitCode.INTERNAL}
