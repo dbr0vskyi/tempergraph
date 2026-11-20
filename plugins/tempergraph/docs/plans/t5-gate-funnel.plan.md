@@ -55,7 +55,7 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 | 5.1.2 | `run/nodes.py`, `run/runner.py` | `attempt_start`, `agent_run`, `check`, `judgement`, `gate`, `pause`, `human`, `script`, `finalize`, `unit_entered`, `run_started`, `stop_requested`, `run_exit` records; `exit.json`; one ledger row per segment | OBS §2.1, EVT §2.2 | yes | P1 | ✓ | 2026-11-20 |
 | 5.1.5 | `run/log.py` | `seq` continues across segments, read from the log's tail (EVT-B2); the `pause` record carries `pause_kind` | EVT §2.1, B2 | yes | P1 | ✓ | 2026-11-20 |
 | 5.1.6 | `run/gate.py`, `run/nodes.py`, `run/runner.py` | A trip back gives every later unit that already ran a new visit, so it writes `unit_entered` again; `entered_from` is `start`, `proceed`, `back:<unit>` or `rewind:<unit>`; `run_started` carries `alias`, `label`, `workflow_version`, `plan_digest` and the planned executors | EVT §2.2 | yes | P1 | ✓ | 2026-11-20 |
-| 5.1.3 | `run/log.py` | `cost_so_far` on `gate`, `pause` and `run_exit`; the `supervision` record before `run_exit`; `settings_resolved` | EVT §2.2, SUP §2.2, RST §2.7 | | P2 | ○ | |
+| 5.1.3 | `run/log.py`, `run/nodes.py`, `run/runner.py` | `cost_so_far` (reported, estimated, completeness) on `gate`, `pause` and `run_exit` ✓; the `supervision` record before `run_exit` and `settings_resolved` ○ | EVT §2.2, SUP §2.2, RST §2.7 | yes | P2 | ○ | |
 | 5.1.4 | `tests/test_run_log.py` | OBS-B3: a full disk while writing the ledger keeps the exit code | OBS-B3 | yes | P1 | ○ | |
 
 ### T5.2 Checks and command runs

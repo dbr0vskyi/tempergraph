@@ -306,3 +306,12 @@ def test_person_criterion_pauses_for_sign_off(repo: Path) -> None:
     out = go(repo, ex, spec)
     assert out.exit_code is ExitCode.PAUSED and out.payload["kind"] == "approval"
     assert out.payload["sign_off"][0]["question"] == "Safe to publish?"  # OUT-B4
+
+
+def test_cost_so_far_on_gate_pause_and_exit(repo: Path) -> None:
+    ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("UNVERIFIABLE"))])
+    go(repo, ex)
+    recs = {r["kind"]: r for r in records(repo)}
+    for kind in ("gate", "pause", "run_exit"):
+        c = recs[kind]["cost_so_far"]
+        assert c["reported"] == pytest.approx(0.02) and c["completeness"] in ("complete", "estimated")  # EVT §2.2
