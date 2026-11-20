@@ -12,3 +12,4 @@ Plans say **in what order** the specs are built. A release plan fixes a release'
 | [t5-gate-funnel.plan.md](t5-gate-funnel.plan.md) | T5: run log and cost, checks, judge, guard, gate and human nodes, budgets, scripts, finalizer, runner | In progress |
 | [t6-run-operations.plan.md](t6-run-operations.plan.md) | T6: CLI core verbs and exit codes (M1), settings, tool grants, feedback and reruns, caller provenance | In progress |
 | [t8-packages-and-install.plan.md](t8-packages-and-install.plan.md) | T8: workflow packages and the registry, first install, stamp, scenarios and lint, audit, blueprint and scaffold | In progress |
+| [t9-shell-skills.plan.md](t9-shell-skills.plan.md) | T9: run driver and bootstrap, authoring verbs and the author skill, troubleshooter and install skills | In progress |
