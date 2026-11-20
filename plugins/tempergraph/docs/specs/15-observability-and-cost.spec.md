@@ -25,7 +25,7 @@ What a run leaves behind so a person or a later analysis can see what it did, wh
 | `route` | A route or switch picks a target | unit, arm, `chosen_by` (`predicate`, `default`, `operator`, `rearm`), and for a switch `shadow`, `would_choose` and `signals` ([CMP](03-compiler-and-flow.spec.md), [SWM](79-measured-switches.spec.md)) |
 | `audit_judge` | A sampled audit judge ran ([JDG](05-judge-and-verdict.spec.md)) | executor, alias, per-criterion agreement with the gate's judge, `Usage` |
 | `gate` | Gate routes | verdict, judgement view, confidence and source, guard status, view set |
-| `human` | Resume applied | decision, who, feedback id |
+| `human` | Resume applied | decision, `caller` (kind, decider, relay; [PRV §2.5](85-caller-provenance.spec.md)), touch classes ([SUP §2.1](86-supervision-metrics.spec.md)), wait seconds, feedback id |
 | `map_items` | A map fans out | unit, item ids, count ([MAP](77-map-unit.spec.md)) |
 | `self_check` | A step ran its check preview | unit, item, attempt, result, finding counts, duration ([CHK §2.5](75-check-contract-and-command-runs.spec.md)) |
 | `finalize` | The finalizer returned, raised or timed out | outcome, reason, url, duration, manual step count ([FIN §2.3](78-finalizer-contract.spec.md)) |
@@ -42,6 +42,7 @@ What a run leaves behind so a person or a later analysis can see what it did, wh
 | Executor comparison | Reports compare executors on estimated cost, the one figure all have, and show reported cost where present |
 | Per executor | `claude` and `agent-sdk` report a client-side estimate; `messages-api` and `antigravity` report tokens only, so their `reported_cost_usd` is null and the estimate is the figure. Cache read and write tokens are priced at their own rates |
 | Child spend | A self-improvement child's or sub-workflow's usage is joined to its parent's run line in reports, shown as a separate figure, never summed into the parent's own |
+| Supervision spend | What supervising sessions spent on a run outside the engine is a third figure, marginal and turn apart, with its own completeness ([SCO](87-supervision-cost.spec.md)); never summed into the run's cost |
 
 ### 2.3 Live progress file
 

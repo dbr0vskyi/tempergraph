@@ -55,7 +55,8 @@ A workflow case is a PRP case-set entry (case id, base commit, request, expected
 |---|---|
 | `role` | `regression` or `capability` |
 | `end_state[]` | Deterministic assertions on the finished branch: paths changed inside the expected scope only, tests passing, artifacts present |
-| `answers[]`, optional | Recorded answers per pause, applied in order; a pause with no recorded answer ends the trial as `paused` |
+| `answers[]`, optional | Recorded answers per pause, applied in order with caller `pipeline` and `caller_app: evals` ([PRV](85-caller-provenance.spec.md)); a pause with no recorded answer ends the trial as `paused` |
+| `max_level`, optional | The highest supervision level a trial may need ([SUP §2.3](86-supervision-metrics.spec.md)); a trial above it fails. Eval runs never enter production supervision figures |
 | `trials` | `k`, default 1; 3 for regression cases of a workflow that declares `stable` |
 
 A trial runs as a dry-run batch item ([WSP](13-workspace-and-concurrency.spec.md)): nothing is pushed, filed or commented. It **passes** when the run ends with exit 0 and every `end_state` assertion holds, or, where the workflow declares an outcome gate, when that gate passes too.

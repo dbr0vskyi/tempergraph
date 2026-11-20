@@ -79,3 +79,8 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0078](0078-skills-are-a-declared-tool-capability.adr.md) | Skills are a declared tool capability, named by plugin path | proposed |
 | [0079](0079-switches-are-measured-before-they-route.adr.md) | Switches can be measured in shadow, carry per-arm overrides, and re-arm on a spent budget | proposed |
 | [0080](0080-a-person-may-grant-a-step-tools-for-a-run.adr.md) | A person may grant a step tools, commands or judge read views for a run, by a recorded flag | proposed |
+| [0085](0085-classify-callers-by-the-strongest-signal.adr.md) | Classify every caller by the strongest signal it leaves; a declaration may only lower trust | proposed |
+| [0086](0086-a-relayed-decision-counts-as-a-persons-only-with-host-turn-evidence.adr.md) | A relayed decision counts as a person's only with turn evidence from the host | proposed |
+| [0087](0087-a-supervision-journal-written-by-the-host-not-by-read-only-verbs.adr.md) | Supervision cost is measured by a journal the host writes, not by the engine's read-only verbs | proposed |
+| [0088](0088-attribute-supervision-spend-by-marginal-tokens-beside-turn-totals.adr.md) | Attribute a supervising session's spend to runs by marginal tokens, shown beside turn totals | proposed |
+| [0089](0089-supervision-is-a-promotion-and-improvement-measure.adr.md) | Supervision by every decider is a promotion criterion and an improvement signal | proposed |

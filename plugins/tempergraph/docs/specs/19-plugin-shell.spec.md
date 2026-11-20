@@ -30,11 +30,15 @@ The shell is a Claude Code plugin. Running steps on another executor does not re
 
 Intake → outcome → steps → criteria and judges → policies, **executors** and models → start and routing → blueprint approval → scaffold → verify (including `audit --layer definition --layer host`, each finding shown with its remedy for the person to accept, fix or ignore with a reason, [AUD](55-workflow-audit.spec.md)), register, stamp, calibrate. Nothing is written before the person approves the engine-drawn blueprint and the tables. The executor phase asks, per step, which executor runs it and where its judge runs, stating each consequence from the capability matrix.
 
+### 2.2 Host hooks
+
+The plugin ships Claude Code hooks that write the supervision journal ([SCO §2.2](87-supervision-cost.spec.md)): `SessionStart`, `UserPromptSubmit` (person turns with matched decision words, never the text, [PRV §2.4.1](85-caller-provenance.spec.md)), `PostToolUse` on engine commands, `Stop` and `SubagentStop` (usage numbers read from the transcript), `SessionEnd` (then `supervision close`). They do nothing inside the engine's own sessions (`TEMPERGRAPH_SESSION_KEY`) or when `observe.supervision = off`, never block or change a tool call, and are not the engine's run lifecycle hooks ([CLI §2.2](17-engine-cli.spec.md)).
+
 ## 3. Behaviours
 
 **SHL-B1 Ask, never guess.** Given a workflow that needs `ticket` and a request without it, when the run driver prepares the start, then it asks the person (at most four rounds via `run --check`) and never fills the value from an example.
 
-**SHL-B2 Pauses go to the person.** Given a run that exits 3, when the run driver reports it, then it shows the payload and the decisions, and resumes only with the person's explicit decision; with `--as-agent` it never resumes on its own.
+**SHL-B2 Pauses go to the person.** Given a run that exits 3, when the run driver reports it, then it shows the payload and the decisions, and resumes only with the person's explicit decision, passing `--relayed` so the person turn backs it ([PRV §2.4](85-caller-provenance.spec.md)); it never resumes on its own.
 
 **SHL-B3 Executor choice with consequences.** Given an author choosing `antigravity` for a step, when the authoring skill records it, then it states that the step's judge will run on `claude` until Antigravity's judge restriction is confirmed, that cost is estimated, not reported, and that a cost cap and turn cap are unavailable for that step.
 

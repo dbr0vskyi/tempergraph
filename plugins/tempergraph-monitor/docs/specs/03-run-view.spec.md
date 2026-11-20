@@ -56,10 +56,11 @@ Rows grouped by origin: this repository first, then other repositories on this m
 | Elapsed, or waiting time | status, health |
 | Cost | estimated (and reported where every session reported), flag |
 | Executors | first letters of executors used (`c` claude, `s` agent-sdk, `m` messages-api, `a` antigravity) |
+| Supervision | the run's supervision level so far and who acted (`obs`, `appr`, `cons·agent`, `collab·person`, …) and, for a waiting run, whom it waits on (`person` or the supervising host), from the detail document's `supervision` block ([RDD §2.1](../../../tempergraph/docs/specs/31-run-detail-document.spec.md), [SUP §2.3](../../../tempergraph/docs/specs/86-supervision-metrics.spec.md)) |
 
 ### 2.4 Run view (level 1)
 
-Above the tree, up to five **narrator lines** from `events_tail` of the detail document, newest last (`12:04 gate plan PROCEED (6/6, 0.85)`, `12:19 code attempt 1 RETRY: c3 tests fail`), like a workflow's `log()` lines.
+Above the tree, a **touch strip**: each touch so far in time order as one mark (class, decider, relay: `R·agent`, `A·person`, `S·person⇢relayed`), so a person sees at a glance whether a run went on alone or was babysat. Then up to five **narrator lines** from `events_tail` of the detail document, newest last (`12:04 gate plan PROCEED (6/6, 0.85)`, `12:19 code attempt 1 RETRY: c3 tests fail`), like a workflow's `log()` lines.
 
 The tree is the declared plan in graph order ([RDD §2.1](../../../tempergraph/docs/specs/31-run-detail-document.spec.md)): one row per unit, unreached units dim.
 

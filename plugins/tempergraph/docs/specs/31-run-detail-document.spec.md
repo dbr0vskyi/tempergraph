@@ -31,6 +31,7 @@ def detail(selector: Selector, unit: str | None = None, with_live: bool = True) 
 | `pause` | When paused: kind, `question`, artifact keys with local paths, decision words, exact resume commands, `waiting_since` |
 | `budgets` | Each counter: used, limit; run cost cap and what is left of it |
 | `health` | §2.3 |
+| `supervision` | Touches in time order (class, action, caller kind, decider, relay, wait seconds), the supervising host sessions seen so far, the level so far, and supervision cost so far with its completeness ([SUP §2.5](86-supervision-metrics.spec.md), [SCO](87-supervision-cost.spec.md)) |
 | `events_tail` | The last 20 run-log records of kinds `unit_entered`, `check`, `gate`, `route`, `pause`, `human`, `budget`, `stop_requested`, rendered as one line each (the "narrator" lines of a monitor) |
 
 Text fields are scrubbed and clipped to 200 characters; evidence and fix lines are clipped to 400. Paths are local. A document larger than 1 MB is cut by dropping `events_tail`, then attempt detail of passed units, and says so in `truncated`; `--unit <name>` returns one unit in full.

@@ -280,7 +280,8 @@ Shared by [RST](80-run-settings-and-overrides.spec.md), [RRN](81-reruns-and-feed
 | `SettingDecl` | `kind`, `default`, `choices?`, `min?`, `max?`, `meaning` | A workflow-declared setting ([RST §2.5](80-run-settings-and-overrides.spec.md)) |
 | `RunOptions` | `settings` | Snapshot: map `SettingKey` → `{value, layer, ref, via?}` for the flag, profile and file layers ([RST §2.6](80-run-settings-and-overrides.spec.md)) |
 | | `profiles` | Profile names in the order given |
-| | `alias`, `label`, `parent`, `origin`, `as_agent`, `pause_before`, `dry_run` | The run options that are not settings ([CLI §2.1](17-engine-cli.spec.md)) |
+| | `alias`, `label`, `parent`, `origin`, `pause_before`, `dry_run` | The run options that are not settings ([CLI §2.1](17-engine-cli.spec.md)) |
+| | `caller` | The `Caller` of the call that started or resumed the thread (§2.13); classified per call, never snapshot |
 | | `rerun_of` | `{thread, unit, checkpoint_id, workflow_version}` for a rerun, else null |
 | `ResolvedSettings` | `rows` | Per session scope and key: value, winning layer, `ref`, shadowed layers |
 | | `digest` | SHA-256 of the canonical table; `text` values enter as their digests |
@@ -289,7 +290,22 @@ Shared by [RST](80-run-settings-and-overrides.spec.md), [RRN](81-reruns-and-feed
 | | `chars` | Length |
 | | `ruling` | bool |
 | | `applies_to` | list of `UnitRef`, for a ruling; empty means the unit given at and every later unit |
-| `Ruling` | `id`, `feedback`, `given_at` (unit), `by` (`person` \| `agent`), `at`, `revoked_at?`, `revoked_by?` | Kept in state under its own reducer; never cleared by the trip-back reducer |
+| `Ruling` | `id`, `feedback`, `given_at` (unit), `by` (`Caller`), `at`, `revoked_at?`, `revoked_by?` (`Caller`) | Kept in state under its own reducer; never cleared by the trip-back reducer |
+
+### 2.13 Callers and supervision
+
+Shared by [PRV](85-caller-provenance.spec.md), [SUP](86-supervision-metrics.spec.md), [SCO](87-supervision-cost.spec.md), [HUM](07-gate-and-human.spec.md), [EVT](30-run-events.spec.md), [CST](34-central-run-stats.spec.md), [FBK](41-feedback-and-judge-reliability.spec.md) and [ORC](45-orchestration.spec.md).
+
+| Type | Field | Meaning |
+|---|---|---|
+| `CallerKind` | enum | `person`, `agent`, `orchestrator`, `pipeline`, `engine`, `unknown` ([PRV §2.1](85-caller-provenance.spec.md)) |
+| `Caller` | `kind`, `confidence` (`attested`, `marked`, `observed`, `declared`, `none`) | Classified by [PRV §2.3](85-caller-provenance.spec.md) |
+| | `decided_by` (`CallerKind`), `relay` (`direct`, `turn_named`, `turn_only`, `claimed`, `none`) | For deciding calls ([PRV §2.4](85-caller-provenance.spec.md)); null otherwise |
+| | `host`, `host_session`, `caller_app`, `parent`, `trace_id`, `evidence[]`, `call_id` | [PRV §2.5](85-caller-provenance.spec.md); `host_session` is hashed in anything that leaves the machine |
+| `TouchClass` | enum | `designed`, `rescue`, `steer`, `engine` ([SUP §2.1](86-supervision-metrics.spec.md)) |
+| `SupervisionLevel` | enum | `observer`, `approver`, `consultant`, `collaborator`, `operator` ([SUP §2.3](86-supervision-metrics.spec.md)) |
+| `SupervisionRecord` | per [SUP §2.2](86-supervision-metrics.spec.md) | One per thread; the ledger row's `supervision{}` |
+| `SupervisionCost` | `marginal`, `turn`, `sessions[]`, `completeness` | [SCO §2.5](87-supervision-cost.spec.md); completeness adds `measured_zero` and `none_known` to the run cost flags |
 
 ## 3. Behaviours
 
