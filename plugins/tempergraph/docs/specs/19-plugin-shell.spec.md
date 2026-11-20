@@ -59,6 +59,7 @@ Intake → outcome → steps → criteria and judges → policies, **executors**
 
 - The authoring surface of a workflow (agents, skills, rules) may need two forms, one per executor; that is a workflow decision ([ADR-0016](../adr/0016-portable-authoring-surface.adr.md)). `claude` and `agent-sdk` share one form.
 - Skills and agents are always named by plugin path (`<plugin>:<skill>`), never by bare name, so a same-named user skill cannot shadow a workflow's.
+- In the steps phase the authoring skill offers the newer unit kinds where the interview points to them: a script for model-free work, a council for a question that needs several perspectives or a vote, a contest for best-of-n, an ask for input only a person has. A request phrased in LangGraph terms (`Command`, `Send`, `interrupt`) is answered with its declared form from [R-060](../research/R-060-node-types-against-langgraph.rsrch.md) ([ADR-0062](../adr/0062-new-node-kinds-keep-the-gated-unit.adr.md)).
 - A tracker integration (issue states, autonomy levels, rollout) is a separate plugin that reads `facts` and registers lifecycle hooks ([CLI §2.2](17-engine-cli.spec.md)); the engine ships none.
 
 ## 6. Acceptance criteria

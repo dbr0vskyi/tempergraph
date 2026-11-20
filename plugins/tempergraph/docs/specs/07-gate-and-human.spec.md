@@ -3,21 +3,21 @@ title: Gate and human nodes
 type: component
 status: review
 prefix: HUM
-adrs: [0004, 0015]
+adrs: [0004, 0015, 0065, 0066]
 ---
 
 # Gate and human nodes
 
 ## 1. Overview
 
-The gate only routes. The human node is the single place a run pauses, and only a person answers it (contract C6). Escalations, spent budgets that ask, approval pauses after a pass and event waits all pause in the same node, so a resume replays only that node.
+The gate only routes. The human node is the single place a run pauses, and only a person answers it (contract C6). Escalations, spent budgets that ask, approval pauses after a pass, event waits and asks for a person's input all pause in the same node, so a resume replays only that node. The one other pause is an operator's breakpoint before a step node, which runs nothing of the unit before it ([FLX §2.5](74-flow-extensions.spec.md)).
 
 ## 2. Contract
 
 ```python
 def gate_node(unit: UnitSpec, state: RunState) -> GateWrite: ...      # pure; never pauses
 def human_node(unit: UnitSpec, state: RunState) -> HumanWrite: ...    # first statement: interrupt(payload)
-class PausePayload: kind: Literal["escalation", "budget", "approval", "event_wait"]
+class PausePayload: kind: Literal["escalation", "budget", "approval", "event_wait", "input", "breakpoint"]
                     unit: str; item: str | None; reason: str; artifacts: list[str]
                     rubric: list[CriterionView]; decisions: list[str]; resume_command: str
 ```
@@ -33,6 +33,10 @@ class PausePayload: kind: Literal["escalation", "budget", "approval", "event_wai
 | An upstream claim the judge could not confirm; a defect attributed outside the allowed targets | escalation |
 | A pass on a gate with `approval`, or a step named by the operator's approval option | approval |
 | A `wait` unit | event_wait |
+| An `ask` unit ([ASK](73-ask-unit.spec.md)) | input |
+| A council with no decision and `on_no_decision: escalate` ([CNL §2.4](71-council-unit.spec.md)) | escalation |
+| An operator's `--pause-before` ([FLX §2.5](74-flow-extensions.spec.md)) | breakpoint |
+| A wait or ask past its deadline, applied with `escalate` ([FLX §2.3](74-flow-extensions.spec.md)) | escalation |
 
 An infra failure never pauses ([BUD](08-budgets-and-failures.spec.md)). The self-improvement workflow never pauses.
 
@@ -45,6 +49,7 @@ An infra failure never pauses ([BUD](08-budgets-and-failures.spec.md)). The self
 | back:<unit> [feedback] | To a listed earlier unit; feedback becomes that visit's reason; the pair's loop budget resets |
 | stop | Ends the run (exit 4) |
 | event:<name>=<value> | Only at a wait; accepted only if the unit's pure check passes the value |
+| answer:<name>=<value> | Only at an ask, or at a council's no-decision pause (`decision`); validated by the question's kind ([ASK §2.3](73-ask-unit.spec.md)) |
 
 ## 3. Behaviours
 

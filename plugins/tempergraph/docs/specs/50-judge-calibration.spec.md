@@ -188,7 +188,7 @@ Per gate and binding, read by other specs. The latest score for the current bind
 - **Per-criterion findings are not independent**: two findings of one case share a fixture. The distinct-case minimums temper this; a case-clustered bound is a later refinement once sets are larger.
 - **Self-preference is reported, not barred.** `self_family` shows the split; the authoring rule (a judge of another family where stakes are high) and cross-executor judging ([ADR-0013](../adr/0013-cross-executor-judging.adr.md)) remain the control. A gap above 0.15 between the two catch rates is a report line.
 - **Variants are templated, not model-written**, so a score repeats exactly and costs only judge sessions. Templated text is easy to spot; a model-written persuasive variant is a later option.
-- **Panels stay deferred.** A gate that cannot meet the bar on one judge may try a stronger model or another family first; a panel is revisited with data ([R-045 F9](../research/R-045-evaluating-llm-judges-public-practice.rsrch.md)).
+- **Panels stay deferred.** A gate that cannot meet the bar on one judge may try a stronger model or another family first; a panel is revisited with data ([R-045 F9](../research/R-045-evaluating-llm-judges-public-practice.rsrch.md)). A council or contest unit does not change this: both feed the gate's one judge, which is calibrated as usual ([CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md)).
 
 ## 6. Acceptance criteria
 

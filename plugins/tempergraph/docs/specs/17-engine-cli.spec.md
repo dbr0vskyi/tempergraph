@@ -18,7 +18,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 |---|---|---|---|
 | `run <workflow> <request…> [options]` | Resolve, preflight, start | yes | yes |
 | `run --check …` | Resolve and preflight only; prints one status | no | no |
-| `resume <workflow> <thread> [--decision …] [--feedback …] [--input k=v]` | Resume per thread state | yes | yes |
+| `resume <workflow> <thread> [--decision …] [--feedback …] [--input k=v] [--answers <file>] [--apply-deadline]` | Resume per thread state; `--answers` and `answer:` decisions for an ask ([ASK](73-ask-unit.spec.md)); `--apply-deadline` for an overdue wait or ask ([FLX §2.3](74-flow-extensions.spec.md)) | yes | yes |
 | `status [selector] [--detail] [--all-roots]` | Status document; `--detail` gives one thread's detail document ([RDD](31-run-detail-document.spec.md)); `--all-roots` reads every state root in the machine index ([CST §2.1](34-central-run-stats.spec.md)) | no | no |
 | `events <selector> [--since <seq>] [--follow] [--activity <session_key>]` | Run-log records and activity lines in order ([EVT §2.6](30-run-events.spec.md)) | no | no |
 | `logs <selector> [--session <key>] [--kind …] [--follow]` | One log of a run from the local store ([LOS §2.4](33-local-observability-store.spec.md)) | no | no |
@@ -65,6 +65,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `--approve <step>` | Approval pause after that step passes |
 | `--auto-reopen N` | Automatic re-open, 1–10 |
 | `--as-agent` | Marks resumes made by an automated caller ([HUM](07-gate-and-human.spec.md)) |
+| `--pause-before <unit>[.<item>]` | Run and resume: an operator breakpoint before that unit ([FLX §2.5](74-flow-extensions.spec.md)) |
 | `--parent <orchestration>/<node>[/<item>]` | Set by the orchestration supervisor only; recorded with the run options and shown as `parent` ([ORC §2.8](45-orchestration.spec.md) N1) |
 | `--dry-run` | Self-improvement files nothing; every step still runs |
 

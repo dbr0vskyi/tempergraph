@@ -3,7 +3,7 @@ title: Audit rule catalog
 type: component
 status: review
 prefix: ARC
-adrs: [0051, 0053, 0054]
+adrs: [0051, 0053, 0054, 0063, 0064, 0066]
 ---
 
 # Audit rule catalog
@@ -103,6 +103,22 @@ Rules are ranked by family in R-050 order (C1 highest) and, within a family, by 
 | `prompt-lint` | definition | per owner | per rule | Prompt lint's findings over templates, briefs and the skills a step names | owner: [LIF](18-lifecycle-and-evals.spec.md) prompt lint |
 | `template-grammar` | definition | per owner | — | Validation's prompt rows | owner: [WFM §2.1](02-workflow-model.spec.md) |
 | `engine-fault-open` | history | info / high | — | Open engine-side or executor-side findings of the loop name this workflow's units | owner: [SIL](16-self-improvement.spec.md); shown so the author does not chase them in the workflow |
+
+### 2.9 Rules for the newer unit kinds
+
+Each rule keeps its R-050 family; they are listed together because they read fields of the kinds in [SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md) and [FLX](74-flow-extensions.spec.md). Their thresholds rest on [R-061](../research/R-061-councils-debate-and-voting.rsrch.md), not on a baseline measurement, and are revisited with the first 10 visits.
+
+| id | family | layer | sev / conf | cause | Fires when | Remedy |
+|---|---|---|---|---|---|---|
+| `council-one-family` | C1 | definition | warning / medium | `council_monoculture` *new* | Every member of a council binds to one model family (`Capabilities.families`) | Put at least one member on another family or give members distinct stances; same-family members share errors (R-061 K3, K6) |
+| `council-even-majority` | C5 | definition | info / high | `tie_prone` *new* | A `vote` council with `rule: majority` has an even member count | Use an odd count, or `plurality`; ties pause for a person |
+| `council-rounds-no-gain` | C6 | history | warning / medium | `rounds_no_gain` *new* | A council with `rounds > 0` changed its outcome in a later round in < 5% of visits; `min_n` 10 visits | Set `rounds: 0`; independent answers and a vote carry most of the gain (R-061 K2) |
+| `council-conformity` | C1 | history | info / low | `council_conformity` *new* | In ≥ 80% of rounds after round 0, every member that changed moved to the round-0 majority; `min_n` 10 rounds | Check stances and anonymity; a majority may be pulling members, not evidence (R-061 K4) |
+| `contest-identical-slots` | C6 | definition | warning / high | `contest_no_diversity` *new* | Every slot of a contest shares executor, model and prompt | Vary model, executor or `prompt_variant`, or use a single step with retries |
+| `contest-no-gain` | C6 | history | warning / medium | `contest_no_gain` *new* | The slot with the lowest number won ≥ 90% of picks; `min_n` 10 visits | The other slots add cost but rarely win: reduce `slots` |
+| `fallback-rate` | C1 | history | warning / high | `fallback_heavy` *new* | A gate took its `fallback` in ≥ 30% of visits; `min_n` 5 visits | The unit fails more than it passes; read its `loop-driver-criterion` and `low-first-pass` findings |
+| `unbounded-wait` | C5 | definition | info / medium | `wait_unbounded` *new* | A `wait` or `ask` has no `deadline_s` and the workflow's `improvement_mode` is `stable` | Add a deadline and an `on_deadline` so overdue pauses show in `attention` |
+| `external-after-without-approval` | C7 | definition | warning / high | `publish_before_review` *new* | An `after` script with `side_effects: external` runs on a step whose gate has no approval | Move publishing to the finalizer or a script unit after an approval ([ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md)) |
 
 C4 rules are in [TSA §2.4](57-tool-surface-audit.spec.md). The prompt rules that resolve names against the host, check staleness, compare text with declarations and measure size are in [PRA §2.3](58-prompt-audit.spec.md).
 

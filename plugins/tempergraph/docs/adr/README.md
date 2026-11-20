@@ -62,3 +62,9 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0059](0059-an-upgrade-is-done-when-model-free-checks-pass-against-the-old-baseline.adr.md) | An upgrade is done when model-free checks pass against the workflow's own pre-upgrade baseline | proposed |
 | [0060](0060-registered-workflows-are-reinstalled-and-pinned-never-lost.adr.md) | Registered workflows live in a home registry, are reinstalled into every new engine, and are pinned to the old engine when they break | proposed |
 | [0061](0061-lifecycle-skills-drive-plugin-commands-then-engine-verbs.adr.md) | Lifecycle skills drive Claude Code's plugin commands and then the engine verbs, from one plan and one yes | proposed |
+| [0062](0062-new-node-kinds-keep-the-gated-unit.adr.md) | New node kinds keep the gated unit; LangGraph's self-routing stays out | proposed |
+| [0063](0063-council-is-a-gated-step-with-engine-tallied-outcomes.adr.md) | A council is a gated step: blind members, opt-in anonymized rounds, an engine tally or a chair, one independent judge | proposed |
+| [0064](0064-contest-picks-a-candidate-by-the-gates-own-judge.adr.md) | A contest runs several candidates and keeps the best by the gate's own judge and a fixed rule | proposed |
+| [0065](0065-ask-unit-takes-a-persons-input-as-an-artifact.adr.md) | An ask unit takes a person's mid-run input as a validated artifact, in the human node | proposed |
+| [0066](0066-flow-extensions-for-langgraph-parity.adr.md) | Five flow extensions for LangGraph parity: selective parallel, mapped sub-workflows, deadlines, fallback, breakpoints | proposed |
+| [0067](0067-cache-only-model-free-script-results-per-thread.adr.md) | Cache only model-free script results, per thread, keyed by declared inputs | proposed |

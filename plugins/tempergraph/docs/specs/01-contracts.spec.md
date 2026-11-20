@@ -3,7 +3,7 @@ title: Shared contracts
 type: contracts
 status: review
 prefix: CON
-adrs: [0003, 0005, 0006, 0008, 0009, 0012, 0015, 0018]
+adrs: [0003, 0005, 0006, 0008, 0009, 0012, 0015, 0018, 0062]
 ---
 
 # Shared contracts
@@ -38,9 +38,10 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `version` | semver, default `0.0.0` | The owner's release of the workflow; with the content digest it forms `workflow_version` ([VER §2.4](61-version-metadata.spec.md)). |
 | | `requires_engine` | version range, optional | Engine releases the owner states it works with; warns only ([VER §2.7](61-version-metadata.spec.md)). |
 | | `upgrade` | `UpgradePolicy`, optional | What a workflow upgrade may touch ([VER §2.4](61-version-metadata.spec.md)). |
-| `UnitSpec` | `kind` | `step` \| `route` \| `switch` \| `parallel` \| `map` \| `subworkflow` \| `wait` | |
-| | `step` | `StepSpec`, for kind `step` and `map` | |
-| | `gate` | `GateSpec` | Required for every kind but `wait`, whose gate holds only a check. |
+| `UnitSpec` | `kind` | `step` \| `route` \| `switch` \| `parallel` \| `map` \| `subworkflow` \| `wait` \| `script` \| `council` \| `contest` \| `ask` | Kinds and their owning specs: [CMP §2.2](03-compiler-and-flow.spec.md) and [FLX](74-flow-extensions.spec.md) for flow kinds; [SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md) for the others. |
+| | `step` | `StepSpec`, for kind `step`, `map` and `contest` | |
+| | `script`, `council`, `contest`, `ask` | `ScriptSpec`, `CouncilSpec`, `ContestSpec`, `AskSpec`, for their kind | Defined in the owning spec; used by it and by WFM only. |
+| | `gate` | `GateSpec` | Required for every kind. A `wait` or `ask` gate holds only checks; a `script` gate holds the built-in check and an optional judge. |
 | `StepSpec` | `executor` | executor name, optional | Falls back to `default_executor`. |
 | | `prompt` | inline text \| file ref \| `default` | Template; grammar in §2.2. |
 | | `tools` | list of `ToolCapability` (§2.5) | Declared tools. |
@@ -49,12 +50,14 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `model` | alias \| list of up to 8 aliases (ladder) \| item function ref | |
 | | `timeout_s`, `idle_s` | positive int, optional | |
 | | `session_options` | `SessionOptions` (§2.6), optional | |
+| | `before`, `after` | list of `ScriptSpec`, optional | Hybrid step: model-free scripts in the same attempt, around the session ([SCR](70-script-units-and-hybrid-steps.spec.md)). |
 | | `summary` | text ≤ 60 chars | For diagrams. |
 | `GateSpec` | `check` | callable ref, optional | Pure; returns `CheckResult`. |
 | | `judge` | `JudgeSpec` | Required on model steps. |
 | | `criteria` | list of `Criterion` | At least one when a judge is present. |
-| | `on_fail` | `retry` \| `stop` | Hard-failure policy. |
-| | `on_budget_spent` | `stop` \| `ask` | |
+| | `on_fail` | `retry` \| `stop` \| `fallback` | Hard-failure policy. |
+| | `on_budget_spent` | `stop` \| `ask` \| `fallback` | |
+| | `fallback` | forward unit name or `finalizer`, optional | Where `fallback` goes; the run is marked degraded ([FLX §2.4](74-flow-extensions.spec.md)). |
 | | `approval` | bool | Pause for sign-off after a pass. |
 | | `back_targets` | list of unit names | Earlier units a failure may send the run to. |
 | | `loop_budget` | int ≥ 0, default 1 | Trips per (unit, target). |
@@ -131,7 +134,7 @@ Neither run method raises for a session failure; failure is a field of the resul
 
 | Type | Field | Meaning |
 |---|---|---|
-| `SessionRequest` | `kind` | `step` \| `retry` \| `judge` \| `judge_reask` \| `grouping` |
+| `SessionRequest` | `kind` | `step` \| `retry` \| `judge` \| `judge_reask` \| `grouping` \| `member` \| `member_reask` \| `chair` (council sessions, [CNL](71-council-unit.spec.md)); executors treat the last three as step sessions with read-only tools |
 | | `prompt` | rendered text; delivered off argv |
 | | `workdir` | absolute workspace path from state |
 | | `alias` | resolved alias (§2.4) |
@@ -145,6 +148,7 @@ Neither run method raises for a session failure; failure is a field of the resul
 | | `fallback_alias` | alias, optional; never for a judge |
 | | `turn_cap` | int, optional |
 | `Capabilities` | `binds_aliases` | set of aliases this executor can bind |
+| | `families` | map alias → model family label (for example `anthropic`, `google`); read by council diversity checks |
 | | `prompt_off_argv`, `streams_events`, `reports_actions`, `reports_tokens`, `reports_cost` | bool |
 | | `enforces_step_tools`, `restricts_judge_tools`, `step_allow_rules`, `judge_mcp`, `isolates_user_config`, `fresh_session` | bool |
 | | `hosts_authoring_surface` | bool; the session loads instruction files, skills and agents ([ADR-0016](../adr/0016-portable-authoring-surface.adr.md)) |
@@ -204,7 +208,7 @@ The judgement block is the last fenced JSON block of the judge's answer.
 | Type | Values |
 |---|---|
 | `ThreadState` | `none`, `running` (lock held), `paused`, `unfinished`, `stopped`, `finished` |
-| `Decision` | `proceed`, `retry`, `back:<unit>`, `stop`, `event:<name>=<value>` |
+| `Decision` | `proceed`, `retry`, `back:<unit>`, `stop`, `event:<name>=<value>`, `answer:<name>=<value>` (an ask, or a council's no-decision pause, [ASK §2.3](73-ask-unit.spec.md)) |
 | `ExitCode` | `0` finished · `1` internal error · `2` usage or preflight refusal, nothing spent or created · `3` paused for a person · `4` stopped · `5` budget spent or infra failure · `6` an advisory verb found issues at the level asked for (`audit --fail-on`, [AUD](55-workflow-audit.spec.md)) · `127` engine not installed (shim) |
 
 `thread_id = <workflow>/<task_id>`. A fresh start on a thread whose state is not `none` is refused with exit 2 ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)).

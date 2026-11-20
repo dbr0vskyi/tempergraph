@@ -3,7 +3,7 @@ title: tempergraph system overview
 type: overview
 status: review
 prefix: OVR
-adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035]
+adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035, 0062]
 ---
 
 # tempergraph system overview
@@ -30,6 +30,7 @@ This spec is the index of the set. It holds no component requirement; each requi
 | G8 | Non-experts author good workflows through a guided skill and enforced validation. | [SHL](19-plugin-shell.spec.md), [WFM](02-workflow-model.spec.md), [AUD](55-workflow-audit.spec.md) |
 | G9 | Many runs planned as a graph of runs, validated before spend and supervised without a model, with every pause left to a person. | [ORC](45-orchestration.spec.md), [OSK](46-orchestrator-skill.spec.md) |
 | G10 | The engine and each workflow move between releases without losing a run: an update that never breaks work in flight, and a workflow upgrade planned by data, edited by rule or a gated model, and verified before it is stamped. | [UPD](60-engine-update.spec.md), [VER](61-version-metadata.spec.md), [MIG](62-state-and-run-migration.spec.md), [WUP](63-workflow-upgrade.spec.md), [UWF](64-upgrade-workflow.spec.md), [LSK](65-lifecycle-skills.spec.md) |
+| G11 | Every graph shape LangGraph can build, except the self-routing forms [R-060](../research/R-060-node-types-against-langgraph.rsrch.md) excludes, is declarable as workflow data, and higher-level units (scripts, councils, contests, asks) keep every outcome engine-derived and judged. | [SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md), [FLX](74-flow-extensions.spec.md) |
 
 ### Non-goals
 
@@ -130,6 +131,11 @@ flowchart LR
 | WUP | [63 Workflow upgrade](63-workflow-upgrade.spec.md) | The `upgrade` verb: baseline, plan, transforms, assist, verification, stamp, report |
 | UWF | [64 Built-in upgrade workflow](64-upgrade-workflow.spec.md) | The gated workflow that makes the model-assisted edits and drafts the owner's answers |
 | LSK | [65 Lifecycle skills](65-lifecycle-skills.spec.md) | The install, update and upgrade skills: one plan, one yes, then the plugin commands and the verbs |
+| SCR | [70 Script units and hybrid steps](70-script-units-and-hybrid-steps.spec.md) | Model-free script units, `before` and `after` scripts on a step, the script result cache |
+| CNL | [71 Council unit](71-council-unit.spec.md) | Members, modes, rounds, anonymity, the engine tally, no-decision pauses |
+| CTS | [72 Contest unit](72-contest-unit.spec.md) | Candidate slots, per-candidate judging, the pick rule, retry scope |
+| ASK | [73 Ask unit](73-ask-unit.spec.md) | Questions, typed answers, the `input` pause, the answers artifact |
+| FLX | [74 Flow extensions](74-flow-extensions.spec.md) | Selective parallel, mapped sub-workflows, deadlines, fallback target, operator breakpoints |
 
 ### 2.3 Engine-wide contracts
 
@@ -185,7 +191,7 @@ flowchart LR
 
 ## 6. Acceptance criteria
 
-- [ ] OVR-AC-1 Every goal G1–G10 is owned by at least one component spec, and every contract C1–C16 by exactly one.
+- [ ] OVR-AC-1 Every goal G1–G11 is owned by at least one component spec, and every contract C1–C16 by exactly one.
 - [ ] OVR-AC-2 Every spec in the index exists, follows the six-section layout and stays within 400 lines and 30 KB.
 - [ ] OVR-AC-3 Every link between specs, decision records and research notes resolves.
 - [ ] OVR-AC-4 No component spec defines a type that [CON](01-contracts.spec.md) also defines.
