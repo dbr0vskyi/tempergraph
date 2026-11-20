@@ -361,7 +361,9 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
             seg_row = next((r for r in reversed(ledger_rows(root)) if r.get("kind") == "run_segment"
                             and r.get("thread_id") == tid), None)
             if seg_row is not None:
-                log.write("finding_recorded", **record_exit(root, spec, task_id, log.path, final, seg_row))
+                summary = record_exit(root, spec, task_id, log.path, final, seg_row)
+                log.write("finding_recorded", **summary)
+                _loop(root, spec, task_id, tid, summary, settings, registry, judges)
         except Exception as exc:  # noqa: BLE001
             log.write("engine_error", scope="improve", error=type(exc).__name__)
         outcome.thread_id = tid
@@ -369,6 +371,26 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         return outcome
     finally:
         saver.conn.close()
+
+
+def _loop(root: Path, spec: WorkflowSpec, task_id: str, tid: str, summary: Mapping[str, Any],
+          settings: RunSettings, registry: Registry, judges: Mapping[str, str]) -> None:
+    """SIL-B1: hand the judged lenses to the detached loop child; `TEMPERGRAPH_LOOP=inline|off` for tests."""
+    from tempergraph.improve import child
+
+    if child.mode() == "off" or spec.builtin:
+        return
+    names = list(judges.values())
+    executor = max(set(names), key=names.count) if names else spec.default_executor
+    # `--dry-run` holds for the thread: any segment that started with it
+    dry = settings.dry_run or last_record(run_dir(root, spec.name, task_id) / "run.jsonl", "run_started",
+                                          dry_run=True) is not None
+    if child.hand_off(root, spec, task_id, tid, summary, dry_run=dry, judge_executor=executor) is None:
+        return
+    if child.mode() == "inline":
+        child.drain(registry=registry)
+    else:
+        child.launch()
 
 
 def ledger_rows(root: Path) -> list[dict[str, Any]]:

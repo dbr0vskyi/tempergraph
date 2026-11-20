@@ -27,6 +27,7 @@ Everything a repository's runs leave on the machine lives in one folder, the sta
     run.jsonl                       run log [OBS], with the envelope of [EVT §2.1]
     evidence/                       request, outputs, feedback; local only [SEC §2.3]
     findings.json                   [SIL]
+    loop.jsonl                      the loop child's records for this thread: judged sessions, filing results [SIL §5]
     engine.json                     engines and workflow versions each process ran on; a pin [MIG §2.1]
     control/stop.json               only while a stop is pending [RCT]
     exit.json                       the last segment's exit code and reason word, rewritten at each segment's end [DUR-B5]
@@ -67,6 +68,7 @@ The folder and everything under it is created owner-only (0700 for folders, 0600
   stats/<YYYY-MM>.jsonl             per-user stats rows [OBS §2.4], one per thread exit
   config/                           user-level sinks (`sinks.json`) and defaults (`settings.json`); a state root's config overrides it
   outbox/<sink>.jsonl, .state.json  rows waiting for a sink and the sink's failure state [CST §2.3]
+  improve/tickets/                  loop hand-off tickets waiting for the detached loop child [SIL §5]
   supervision/<host>/<session>.jsonl  supervision journal of one host session [SCO §2.2]
   schedules/<schedule_id>/          entry.json (owner-only) and fires.jsonl of one schedule [SCH §2.2]
   schedules/tick.json, tick.lock    the tick's heartbeat and lock [TCK §2.2]

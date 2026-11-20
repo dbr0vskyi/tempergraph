@@ -22,7 +22,7 @@ task_id: first-release-t12
 | Specs | [SIL](../specs/16-self-improvement.spec.md), [IMD](../specs/43-improvement-data.spec.md), [LSN](../specs/42-workflow-lessons.spec.md); later [FBK](../specs/41-feedback-and-judge-reliability.spec.md), [JCL](../specs/50-judge-calibration.spec.md), [PRP](../specs/40-improvement-proposals.spec.md) |
 | Split | This thread: T12.1, T12.2, T12.7 (and T9.1). T7 keeps FBK's `label` verb and the reports; T8 keeps T9.2 and T9.3. T12.3 to T12.6 wait on T7's label rows and T8's readiness hooks (`package/readiness.py`, `run/outcome_trust.trust(accepted=…)`, `author verify` rungs 8 and 9) |
 
-**Status: In progress.** T12.1 records, causes and lenses, T12.2 filing and measurement and T12.7 lessons are built model-free; filing runs once the loop child supplies judged candidates; the loop child workflow and its judges (12.1.5) come with T7's detached launch site.
+**Status: In progress.** T12.1 records, causes and lenses, T12.2 filing and measurement and T12.7 lessons are built model-free; the loop child (12.1.5) runs the friction judge and files after a final exit.
 
 Status pass: SIL and IMD move to `ready-for-implementation` with release 1 defaults recorded in their Open questions.
 
@@ -49,7 +49,7 @@ Release 1 defaults and assumptions (recorded in SIL §5 and Open questions, EVT 
 | 12.1.2 | `engine/src/tempergraph/improve/causes.py` | The cause table (code, class `fault`/`infra`/`designed`, side, fixed remedy), `derive(run_log, ledger_rows, thread)` with no model call | SIL §2.3, §2.4 | | P1 | ✓ | 2026-11-20 |
 | 12.1.3 | `engine/src/tempergraph/improve/record.py`, `run/runner.py` | `record_exit`: findings (metadata only, IMD-R1 keys, fingerprint by side, workflow, leading cause and step), the evidence file, the `finding_recorded` event as a run-log record; called best-effort after every `run_exit` | SIL §2.1, IMD §2.2, §2.3 | | P1 | ✓ | 2026-11-20 |
 | 12.1.4 | `engine/src/tempergraph/improve/lenses.py`, `improve/params.py` | Which lenses fire at a final exit (dev and stable triggers), the outcome lens read from the outcome record, the model-free cost rules over a 30-day window of one version, the per-gate quality scorecard; parameters with provenance | SIL §2.2, IMD §2.5 | | P1 | ✓ | 2026-11-20 |
-| 12.1.5 | `engine/src/tempergraph/improve/child.py` | The loop as a built-in workflow started detached through a hand-off ticket after a final exit (friction and outcome steps and judges on a mid-tier alias, 1800 s); needs T7's `tempergraph.detach` launch site | SIL-B1, §5 | yes | P1 | ○ | |
+| 12.1.5 | `engine/src/tempergraph/improve/child.py` | The loop as a built-in workflow started detached through a hand-off ticket after a final exit (friction and outcome steps and judges on a mid-tier alias, 1800 s); uses T7's `tempergraph.detach` launch site; release 1 shape recorded in SIL Open questions | SIL-B1, B2, B6, §5 | yes | P1 | ✓ | 2026-11-20 |
 
 ### T12.2 Filing and measurement
 

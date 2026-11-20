@@ -17,6 +17,7 @@ def _isolated_home(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest
     """No test touches the real home folder or a real state root (WSP-AC-2)."""
     home = tmp_path_factory.mktemp("home")
     monkeypatch.setenv("TEMPERGRAPH_HOME", str(home / ".tempergraph"))
+    monkeypatch.setenv("TEMPERGRAPH_LOOP", "off")  # no detached loop child from a test run (SIL-B1)
     for var in ("TEMPERGRAPH_CALLER", "TEMPERGRAPH_CALLER_APP", "TEMPERGRAPH_SUPERVISOR_TOKEN"):
         monkeypatch.delenv(var, raising=False)
 

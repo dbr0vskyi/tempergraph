@@ -1,8 +1,9 @@
 """The detached child launcher (SEC §2.2): the engine interpreter with a constant module and constant words.
 
 A child started here outlives its parent in its own session, with stdin, stdout and stderr closed, so a slow
-share or a hung network never delays the process that started it. Release 1 starts one child: the stats
-flusher at `run_exit` (CST §2.3). The schedule tick's `run` and `orchestrate start` join this site later.
+share or a hung network never delays the process that started it. Release 1 starts two children: the stats
+flusher at `run_exit` (CST §2.3) and the self-improvement loop after a final exit (SIL-B1). The schedule
+tick's `run` and `orchestrate start` join this site later.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ import sys
 from pathlib import Path
 
 # module -> the argv words it may be started with; nothing else is ever passed (SEC §2.1)
-DETACHED = {"tempergraph.observe.sinks": (("flush",),)}
+DETACHED = {"tempergraph.observe.sinks": (("flush",),), "tempergraph.improve.child": (("drain",),)}
 
 
 def start(module: str, words: tuple[str, ...], home: Path) -> bool:

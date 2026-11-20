@@ -129,7 +129,9 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
     _write_private(evidence_path(root, spec.name, task_id), json.dumps(evidence(values), default=str))
     summary: dict[str, Any] = {"causes": sorted({x["cause"] for x in lines}),
                                "sides": sorted({x["side"] for x in lines if x["class"] == "fault"}),
-                               "count": len(lines)}
+                               "count": len(lines),
+                               "fingerprints": sorted({x["fingerprint"] for x in lines}),
+                               "fault_fingerprints": sorted({x["fingerprint"] for x in lines if x["class"] == "fault"})}
     if int(row.get("exit_code") or 0) in FINAL_EXITS:
         summary["lenses"] = lenses.decide(spec, root, thread, lines, row, seg)
     return summary
