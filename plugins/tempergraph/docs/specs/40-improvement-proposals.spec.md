@@ -49,6 +49,7 @@ There is no level that merges. A person can start the proposer or a trial on any
 | `runs`, `distinct_requests`, `machines` | Counts, from the shared store when present, else the local ledger ([IMD](43-improvement-data.spec.md)) |
 | `repeat_cost_usd` | Estimated cost of repeats whose recorded cause is in the cluster, 30-day window |
 | `label_weight` | Count of negative human labels joined to the cluster's gates ([FBK](41-feedback-and-judge-reliability.spec.md)) |
+| `review_weight` | Count of kept, corroborated session-review observations joined to the cluster's findings ([SRV §2.8](44-session-review.spec.md)); shown, not in `score` until it has data |
 | `score` | `repeat_cost_usd + label_value × label_weight`, then ordered; `label_value` defaults to $5 |
 | `twin_of` | A cluster on the other side (engine or workflow) with the same unit and cause |
 
@@ -181,7 +182,7 @@ A trial whose target metric is a judge grade (`gate_pass`, `criterion_met`, `out
 
 ## 5. Design notes
 
-- The proposer is reflective in the sense of [R-030 F3](../research/R-030-self-improving-agent-systems.rsrch.md): it reads the cluster's cause codes, per-criterion statuses and fixes, and the local evidence of its member runs, and proposes one small delta. A search over many candidates is not in the first release; a later one may keep several drafts per cluster and trial the best two.
+- The proposer is reflective in the sense of [R-030 F3](../research/R-030-self-improving-agent-systems.rsrch.md): it reads the cluster's cause codes, per-criterion statuses and fixes, the local evidence of its member runs and the kept session-review observations and notes of those runs, datamarked as untrusted ([SRV §5](44-session-review.spec.md)), and proposes one small delta. A search over many candidates is not in the first release; a later one may keep several drafts per cluster and trial the best two.
 - The engine classifies from the parsed workflow, so a proposer cannot hide a weakening in a reformatted file.
 - C14 still holds: trials and the post-release comparison write no code; only the proposer writes, and only workflow data on its own branch.
 - Defaults (label value $5, guard margins, the monthly cap, 10 runs after release) have no data behind them and are recorded as parameters with that provenance ([IMD](43-improvement-data.spec.md)).

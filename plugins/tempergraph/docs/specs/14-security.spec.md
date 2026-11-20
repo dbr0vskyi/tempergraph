@@ -47,6 +47,8 @@ How the engine keeps operator input, model output and secrets away from process 
 
 - Persisted and published text passes a pattern scrubber first; patterns are a floor, not the control.
 - **The publish boundary is a file boundary.** The request, a person's feedback and step outputs go to a local evidence file. No filing or publishing code may import or open it.
+- **Session logs and review evidence are evidence-class.** `raw.jsonl`, `activity.jsonl` and the session reviewer's evidence (`evidence/review/`) are read for improvement only by the recorder (to build the model-free digest), the session reviewer, its local report and the proposer ([SRV §2.8](44-session-review.spec.md)); a source test pins that list. What crosses the boundary from them is digest causes, category codes and counts.
+- **Session content is untrusted input to a model.** A model that reads session content gets no tools, no setting sources and no MCP servers, reads a scrubbed view with the untrusted parts datamarked and fenced by a random per-read boundary, answers in a fixed schema whose free text stays local, and runs on an executor of the same provider as the session unless the operator allows another ([SRV §2.5, §2.6](44-session-review.spec.md), [ADR-0118](../adr/0118-the-reviewer-is-tool-less-and-reads-a-condensed-datamarked-view.adr.md)).
 - Findings, ledger rows, issue bodies and pull-request text carry names, counts, hashes and words from fixed lists only.
 
 ### 2.4 Executor configuration secrets

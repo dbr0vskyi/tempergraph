@@ -68,6 +68,10 @@ Release 1 defaults and assumptions (recorded in SIL §5 and Open questions, EVT 
 
 Planned after T7 and T8 are merged into this branch: labels and judge reliability (T7 builds the `label` verb and its ledger rows), calibration (feeds T8's readiness and trust hooks), proposals and trials, stable mode's daily cap and `report --loop`.
 
+### T12.9 Session digest and dev-mode review
+
+Planned, not started: [SRV](../specs/44-session-review.spec.md) as scoped in the [release plan](first-release.plan.md) T12.9 (I-92 to I-94). Code it needs: `improve/digest.py` (SRV §2.1, §2.2, called by `improve/record.py` before findings), new rows in `improve/causes.py`, `improve/review.py` (plan, condensed view, reviewer launch, citation check, records), `improve/child.py` (run the plan after the friction judge), the `improve review` verbs in `cli/`, the tool-less reviewer launch in the session launcher's pinned list, and a second publish-boundary source test for `evidence/review/`. Stable-mode plans are release 2 (X2-26).
+
 ## 3. Verification
 
 From `plugins/tempergraph/engine/`: `python -m pytest`, `ruff check src tests` and `mypy` are clean. No test calls a model.
