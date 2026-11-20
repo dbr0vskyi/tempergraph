@@ -1,7 +1,7 @@
 ---
 title: Run list and run view
 type: component
-status: review
+status: ready-for-implementation
 prefix: MRV
 adrs: [0001, 0004, 0006]
 ---
@@ -113,6 +113,7 @@ Opened from an orchestration row; drawn from the orchestration status document (
 
 - The key map keeps the workflows view's muscle memory; where tempergraph has no matching verb (pause, restart, skip) the key is reused or absent rather than faked ([MADR-0004](../adr/0004-borrow-the-workflows-view-and-add-gates.adr.md)).
 - The node strip is the one new visual idea: it makes "which of step, check, judge, gate is running" readable at a glance, which a workflow's agent rows cannot say because a workflow has no gates.
+- Release 1 build ([T10 plan](../../../tempergraph/docs/plans/t10-monitor.plan.md)): the run list and the run view (unit rows with the node strip, trip-back lines, narrator, touch strip, pause question and resume commands) are drawn from the status and detail documents. Every row is a `Button`; the keys of §2.2 are not bound yet, and back out is a footer `Button` with hotkey `b`, since a mod's `Button` hotkey is one letter or digit and `Esc` is the surface's own. Filter, pin, map item rows, the orchestration view and the mobile reduction are not built.
 - One pane with levels, rather than one pane per run, keeps the band and the pane in step and matches the workflows view's single entry point ([MADR-0006](../adr/0006-one-pane-many-levels.adr.md)).
 
 ## 6. Acceptance criteria

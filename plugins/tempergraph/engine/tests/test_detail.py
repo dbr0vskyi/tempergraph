@@ -72,17 +72,17 @@ EXPECTED = {
             [2, "back:review", [
                 [3, ["draft.3.step"], "PASS", "1/1", [], "PROCEED", "review", None]]]]],
         "review": ["paused", [
-            [1, "start", [
-                [1, ["review.1.step"], "PASS", "0/1", ["c-review"], "BACK", "draft", None],
-                [2, ["review.2.retry"], "PASS", "0/1", ["c-review"], "ESCALATE", "human", None]]]]],
+            [1, "proceed", [[1, ["review.1.step"], "PASS", "0/1", ["c-review"], "BACK", "draft", None]]],
+            [2, "proceed", [[2, ["review.2.step"], "PASS", "0/1", ["c-review"], "ESCALATE", "human", None]]]]],
     },
     "pause": {"unit": "review", "kind": "escalation", "decisions": ["proceed", "retry", "back:draft", "stop"]},
     "health": {"alive": False, "orphaned": False, "suspect_stall": False},
     "tail": [
         "entered draft (visit 1, from start)", "check draft: PASS", "gate draft: RETRY -> draft",
-        "check draft: PASS", "gate draft: PROCEED -> review", "entered review (visit 1, from start)",
-        "check review: PASS", "gate review: BACK -> draft", "entered draft (visit 2, from review)",
-        "check draft: PASS", "gate draft: PROCEED -> review", "check review: PASS",
+        "check draft: PASS", "gate draft: PROCEED -> review", "entered review (visit 1, from proceed)",
+        "check review: PASS", "gate review: BACK -> draft", "entered draft (visit 2, from back:review)",
+        "check draft: PASS", "gate draft: PROCEED -> review", "entered review (visit 2, from proceed)",
+        "check review: PASS",
         "gate review: ESCALATE -> human", "paused at review (escalation): "
         "tempergraph resume demo T-1 --decision <proceed|retry|back:draft|stop>"],
 }
@@ -288,3 +288,36 @@ def test_status_detail_verb(repo: Path) -> None:
     assert cli(repo, None, "status", "--detail")[0] == ExitCode.USAGE
     assert cli(repo, None, "status", "demo/T-404", "--detail")[0] == ExitCode.USAGE  # unknown thread
     assert hash_tree(root) == before
+
+
+def _shape(value: object) -> object:
+    """Keys and value types, not values: what a reader of the document relies on."""
+    if isinstance(value, dict):
+        return {k: _shape(v) for k, v in sorted(value.items())}
+    if isinstance(value, list):
+        return [_shape(v) for v in value[:1]]
+    if isinstance(value, bool) or value is None:
+        return type(value).__name__
+    return "number" if isinstance(value, (int, float)) else type(value).__name__
+
+
+def test_monitor_fixtures_match_the_engine(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The monitor mod is tested on fixtures of this engine's documents (MOV §5); they must not drift."""
+    import importlib.util
+
+    script = Path(__file__).resolve().parents[3] / "tempergraph-monitor" / "tests" / "fixtures" / "make_fixtures.py"
+    if not script.exists():
+        pytest.skip("the monitor plugin is not beside the engine")
+    spec = importlib.util.spec_from_file_location("make_fixtures", script)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    monkeypatch.setattr(mod, "OUT", tmp_path)
+    mod.main()
+    for name in ("status.json", "detail-paused.json"):
+        fresh = json.loads((tmp_path / name).read_text())
+        held = json.loads((script.parent / name).read_text())
+        assert _shape(fresh) == _shape(held), f"{name}: run make_fixtures.py and commit the result"
+    fresh_kinds = [json.loads(line)["kind"] for line in (tmp_path / "run-paused.jsonl").read_text().splitlines()[1:]]
+    held_kinds = [json.loads(line)["kind"] for line in (script.parent / "run-paused.jsonl").read_text().splitlines()[1:]]
+    assert fresh_kinds == held_kinds

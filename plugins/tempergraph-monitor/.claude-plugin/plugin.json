@@ -1,6 +1,7 @@
 {
   "name": "tempergraph-monitor",
-  "version": "0.0.1",
-  "description": "Claude Mod showing progress of tempergraph runs",
-  "author": { "name": "Yevhenii Dubrovskyi" }
+  "version": "0.1.0",
+  "description": "Claude Mod showing progress of tempergraph runs: band, alerts, run view and drill-down, read-only",
+  "author": { "name": "Yevhenii Dubrovskyi" },
+  "types": "./types/index.d.ts"
 }

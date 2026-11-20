@@ -545,11 +545,13 @@ Goal: rows, outbox, `stats flush`, the fleet copy, `stats --source|--live|--proj
 #### T10.2 Monitor sources, band and alerts
 Goal: MDS and MBA.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+Expanded in [t10-monitor.plan.md](t10-monitor.plan.md) §2 T10.2.
 <!-- expand: T10.2 -->
 
 #### T10.3 Monitor run view and drill-down
 Goal: MRV and MDD.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+Expanded in [t10-monitor.plan.md](t10-monitor.plan.md) §2 T10.3.
 <!-- expand: T10.3 -->
 
 #### T10.4 Monitor actions, cost and fleet

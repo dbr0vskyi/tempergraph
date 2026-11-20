@@ -25,4 +25,4 @@ The monitor defines no engine type. Every document it reads is defined by the en
 
 ## Status
 
-Docs only, written standalone without the owner, status `review`. Every capability is `DESIGNED`. The Claude Code mods API is versioned by Claude Code build and moves between releases ([R-001](research/R-001-claude-code-mods.rsrch.md)); each API fact this set relies on is listed with its confidence there.
+Written standalone without the owner. MDS, MBA, MRV and MDD are `ready-for-implementation` and partly built in release 1 (code in `hooks/`, tests in `tests/`; what is built is listed in each spec's design notes and in the [T10 plan](../../tempergraph/docs/plans/t10-monitor.plan.md)); MOV, MAC and MCF stay `review`. The mod's own state shapes are in its type contract, `types/index.d.ts`. The Claude Code mods API is versioned by Claude Code build and moves between releases ([R-001](research/R-001-claude-code-mods.rsrch.md)); each API fact this set relies on is listed with its confidence there.

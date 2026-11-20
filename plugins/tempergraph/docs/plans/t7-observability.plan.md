@@ -62,7 +62,7 @@ Doc changes this track made:
 | 7.1.6 | `run/events.py` | `RunObserver`, `register_observers` (entry points, named only, missing names reported), `ObserverHub` (thread and 1 000-item queue per observer, drop count, disable and one `engine_error`) | EVT §2.6, B5, AC-5 | yes | P1 | ✓ | 2026-11-20 |
 | 7.1.7 | `cli/main.py` | `events <selector> [--since] [--follow] [--activity] [--json]`; exit 2 without a run log | EVT §2.6, §4, CLI §2 | yes | P1 | ✓ | 2026-11-20 |
 | 7.1.8 | `run/log.py` | The `resources` line every 10 s from a read-only process listing of the session's process group; needs the launcher to pass `pgid` on `session_started` | EVT §2.3 | yes | P2 | ○ | |
-| 7.1.9 | `run/runner.py` (T5, T6 owner) | `run_started` fields `alias`, `label`, `workflow_version`, `plan_digest`, `executors`; `cost_so_far` on `gate`, `pause`, `run_exit`; `budget`, `settings_resolved`, `grant`, `ruling`, `workspace`, `supervision` records. The readers here use each one when present | EVT §2.2 | yes | P1 | ○ | |
+| 7.1.9 | `run/runner.py` (T5, T6 owner) | `run_started` fields `alias`, `label`, `workflow_version`, `plan_digest`, `executors` (written by T5); still open: `cost_so_far` on `gate`, `pause`, `run_exit`; `budget`, `settings_resolved`, `grant`, `ruling`, `workspace`, `supervision` records. The readers here use each one when present | EVT §2.2 | yes | P1 | ○ | |
 | 7.1.10 | `run/log.py` | Wire `observe.tool_inputs` and the `observers` list from the operator config once the settings catalog exists (T6.2) | EVT §2.5, §2.6, RST | yes | P2 | ○ | |
 
 ### T7.2 Detail document
@@ -83,7 +83,8 @@ Not started in this pass; see §3 for what each waits on.
 
 ## 3. Hand-off notes
 
-- **Seen while testing, owned by T5:** after a trip back from `review` to `draft`, the next `review` attempt writes no `unit_entered` record and keeps visit 1, so the detail document shows it as a third attempt of the first visit rather than a second visit entered by `proceed`. RDD-B3 holds for the unit sent back to. The `unit_entered` of a trip back also writes `entered_from` as the bare unit name; the reader maps it to `back:<unit>`.
+- **Seen while testing, fixed by T5:** after a trip back from `review` to `draft`, the next `review` attempt used to write no `unit_entered` record and keep visit 1, and a trip back wrote `entered_from` as the bare unit name. T5 now opens a new visit entered by `proceed` and writes `back:<unit>`; `tests/test_detail.py` holds the corrected document (RDD-B3 for both units). The reader still maps a bare unit name to `back:<unit>` for logs written before the fix.
+- The monitor mod's fixtures (`plugins/tempergraph-monitor/tests/fixtures/`) are written from this track's documents by `make_fixtures.py`; `test_monitor_fixtures_match_the_engine` fails when the engine's document shape moves away from them. The monitor's own build is the [T10 plan](t10-monitor.plan.md).
 - `status --detail` reads the run's evidence lines from the checkpoint, so they are local only and never in a published document ([SEC §2.3](../specs/14-security.spec.md)).
 
 ## 4. Verification

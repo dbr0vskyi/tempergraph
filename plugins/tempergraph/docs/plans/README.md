@@ -12,3 +12,4 @@ Plans say **in what order** the specs are built. A release plan fixes a release'
 | [t5-gate-funnel.plan.md](t5-gate-funnel.plan.md) | T5: run log and cost, checks, judge, guard, gate and human nodes, budgets, scripts, finalizer, runner | In progress |
 | [t6-run-operations.plan.md](t6-run-operations.plan.md) | T6: CLI core verbs and exit codes (M1), settings, tool grants, feedback and reruns, caller provenance | In progress |
 | [t7-observability.plan.md](t7-observability.plan.md) | T7: run events, detail document, session logs and the store, reports and attention, supervision record, supervision cost | In progress |
+| [t10-monitor.plan.md](t10-monitor.plan.md) | T10.2 and T10.3: the monitor mod's sources, band, alerts, run view and drill-down | In progress |

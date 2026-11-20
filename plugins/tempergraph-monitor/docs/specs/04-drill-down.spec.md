@@ -1,7 +1,7 @@
 ---
 title: Drill-down
 type: component
-status: review
+status: ready-for-implementation
 prefix: MDD
 adrs: [0004, 0005]
 ---
@@ -87,6 +87,7 @@ When the run waits for a person, the run view opens here with `g`: the pause kin
 ## 5. Design notes
 
 - Judge first: much of repeat cost is a judge sending work back, so the reason a judge gave is the most useful line in an attempt ([MADR-0004](../adr/0004-borrow-the-workflows-view-and-add-gates.adr.md)).
+- Release 1 build ([T10 plan](../../../tempergraph/docs/plans/t10-monitor.plan.md)): the unit view (visits and attempt rows), the attempt view as one page (check, judge criteria and blockers, gate and guard) and the session view's Now and Info parts are drawn from the detail document. Tabs, the pause view's prompt fills (MAC), the Calls, Processes and Log tabs, and the settings of §2.5 are not built; `show.tool_inputs` is fixed at `on`, so only the engine's `observe.tool_inputs` hides inputs.
 - Program names only in the process tree: arguments of child processes are what the engine's scrubber never saw.
 - Raw log lines are shown as text, never interpreted; the meaning comes from normalized records only ([engine ADR-0009](../../../tempergraph/docs/adr/0009-normalized-session-event-stream.adr.md)).
 
