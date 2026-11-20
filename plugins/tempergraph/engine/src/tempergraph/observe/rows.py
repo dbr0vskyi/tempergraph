@@ -140,6 +140,7 @@ def run_row(log: Path, recs: Iterable[dict[str, Any]], segment: int | None = Non
     agent_s = 0.0
     wait_s = 0.0
     attempts: dict[str, int] = defaultdict(int)
+    sup: dict[str, Any] | None = None
     for r in recs:
         if segment is not None and r.get("segment") != segment:
             continue
@@ -178,6 +179,8 @@ def run_row(log: Path, recs: Iterable[dict[str, Any]], segment: int | None = Non
                 agent_s += float(r["duration_s"])
         elif kind == "gate" and r.get("verdict"):
             verdicts[str(r["verdict"])] += 1
+        elif kind == "supervision":
+            sup = r
         elif kind == "human" and isinstance(r.get("wait_s"), int | float):
             wait_s += float(r["wait_s"])
     if exit_ is None:
@@ -200,11 +203,24 @@ def run_row(log: Path, recs: Iterable[dict[str, Any]], segment: int | None = Non
         "reported_cost_usd": round(rep, 6) if n_rep else None, "estimated_cost_usd": round(est, 6) if n_est else None,
         "completeness": completeness, "wall_s": round(t1 - t0, 3) if t0 is not None and t1 is not None else None,
         "agent_s": round(agent_s, 3) if agent_s else None, "person_wait_s": round(wait_s, 3) if wait_s else None,
-        # supervision fields arrive with the supervision record (SUP §2.2, T7.5)
-        "touches_undesigned": None, "touches_by_decider": None, "agent_own_rescues": None, "level": None,
-        "level_by": None, "callers_unknown": None,
+        # copied from the segment's supervision record, the builder the ledger row uses too (SUP-AC-2)
+        **_supervision_fields(sup),
         "ended_at": exit_.get("ts"),
     }
+
+
+def _supervision_fields(sup: dict[str, Any] | None) -> dict[str, Any]:
+    if sup is None:
+        return dict.fromkeys(("touches_undesigned", "touches_by_decider", "agent_own_rescues", "level", "level_by",
+                              "callers_unknown"))
+    by: dict[str, int] = defaultdict(int)
+    for cls in ("rescue", "steer"):
+        for d, n in ((sup.get("touches") or {}).get(cls) or {}).items():
+            if isinstance(n, int) and n:
+                by[d] += n
+    return {"touches_undesigned": sup.get("undesigned"), "touches_by_decider": dict(sorted(by.items())),
+            "agent_own_rescues": sup.get("agent_own_rescues"), "level": sup.get("level"),
+            "level_by": sup.get("level_by"), "callers_unknown": sup.get("callers_unknown")}
 
 
 def stats_path(home: Path, month: str) -> Path:

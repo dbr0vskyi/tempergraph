@@ -152,7 +152,7 @@ export type DetailDoc = {
   budgets?: { counters?: Record<string, { used?: number | null; limit?: number | null }>;
     run_cost_cap?: { limit?: number | null; left?: number | null } }
   health?: Health
-  supervision?: { touches?: Touch[]; level?: string | null }
+  supervision?: { touches?: Touch[]; level?: string | null; level_by?: string | null; designed_by?: string | null }
   events_tail?: string[]
   truncated?: string[]
 }

@@ -399,6 +399,14 @@ export function unitRowText(r: UnitRow): string {
 }
 
 /** MRV §2.4 touch strip: one mark per touch, `<class letter>·<decider>`. */
+/** The run's supervision level (SUP §2.3) as the run view shows it: `consultant by agent`, `approver (agent)`. */
+export function levelText(d: DetailDoc): string | null {
+  const s = d.supervision
+  if (!s?.level) return null
+  const by = s.level_by && s.level_by !== 'none' ? ` by ${s.level_by}` : ''
+  return `${s.level}${by}${s.designed_by ? ` (${s.designed_by} answered)` : ''}`
+}
+
 export function touchStrip(d: DetailDoc): string {
   const touches = d.supervision?.touches ?? []
   return touches.map(t => `${(t.class ?? t.action ?? '?').slice(0, 1).toUpperCase()}·${t.decider ?? t.caller_kind ?? '?'}`)

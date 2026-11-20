@@ -19,7 +19,7 @@ import {
 import type { LiveDoc, ProjectionDoc, StatsDoc } from './lib/fleet'
 import {
   alertsFrom, attemptRows, bandRow, duration, findAttempt, healthAlerts, inFlight, listRow, nextFilter, nodeStrip,
-  narrator, runList, sessionInfo, sessionNow, shownRuns, statusLine, summarise, touchStrip, unitRows, unitRowText,
+  levelText, narrator, runList, sessionInfo, sessionNow, shownRuns, statusLine, summarise, touchStrip, unitRows, unitRowText,
 } from './lib/model'
 import type { Filter, RunSummary } from './lib/model'
 import { callsFrom, callText, LOG_TAIL_BYTES, processTree, procText, PS_ARGV, tailLines } from './lib/session'
@@ -517,7 +517,7 @@ export const register: Register = (on, options) => {
         <Box flexDirection="column">
           {header}
           {d.plan_stale && <Text color="yellow">plan changed since this run started</Text>}
-          {touches && <Text dimColor>touches {touches}</Text>}
+          {(touches || levelText(d)) && <Text dimColor>{[levelText(d) ? `level ${levelText(d)}` : '', touches ? `touches ${touches}` : ''].filter(Boolean).join(' · ')}</Text>}
           {narrator(d).map(line => <Text dimColor>{line}</Text>)}
           {rows.map(r => (
             <Box flexDirection="column">

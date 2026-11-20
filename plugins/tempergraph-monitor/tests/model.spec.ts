@@ -8,7 +8,7 @@ import { describe, expect, test } from 'bun:test'
 import type { DetailDoc, RunRecord, StatusDoc, StatusRow } from '../hooks/lib/engine'
 import { isReadable } from '../hooks/lib/engine'
 import {
-  alertsFrom, attemptRows, bandRow, healthAlerts, listRow, money, narrator, runLabel, runList, sessionNow,
+  alertsFrom, attemptRows, bandRow, healthAlerts, levelText, listRow, money, narrator, runLabel, runList, sessionNow,
   statusLine, summarise, touchStrip, unitRowText, unitRows,
 } from '../hooks/lib/model'
 import type { RunSummary } from '../hooks/lib/model'
@@ -222,3 +222,15 @@ describe('sources (MDS §2, contract M1)', () => {
     expect(records.length).toBe(logText.trim().split('\n').length - 1) // the schema line has no seq
   })
 })
+
+describe('supervision level (SUP §2.3, MRV §2.4)', () => {
+  test('the paused fixture has a level from the engine\'s record, and a missing record shows none', () => {
+    expect(levelText(paused)).toMatch(/^(observer|approver|consultant|collaborator|operator)/)
+    const d = clone(paused)
+    d.supervision = { touches: [] }
+    expect(levelText(d)).toBeNull()
+    d.supervision = { level: 'consultant', level_by: 'agent' }
+    expect(levelText(d)).toBe('consultant by agent')
+  })
+})
+

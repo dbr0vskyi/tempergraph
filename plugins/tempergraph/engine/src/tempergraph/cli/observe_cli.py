@@ -37,8 +37,20 @@ def add_parsers(sub: Any) -> None:
     ex.add_argument("path")
     rp = sub.add_parser("report", help="cost and friction reports over this state root's runs (OBS §2.4)")
     rp.add_argument("window", nargs="?", default="30d", help="7d, 24h, 30d (the default) or all")
-    rp.add_argument("--by", choices=("unit", "executor", "version"), default="unit")
+    rp.add_argument("--by", choices=("unit", "executor", "version", "workflow", "host", "level"), default=None)
+    rp.add_argument("--supervision", action="store_true", help="touches, levels, waits and supervision cost (SUP §2.4)")
     rp.add_argument("--json", action="store_true")
+    lb = sub.add_parser("label", help="a person's label on a gate judgement (FBK §2.2 explicit)")
+    lb.add_argument("selector")
+    lb.add_argument("gate", metavar="UNIT")
+    lb.add_argument("--value", required=True, choices=("agree", "disagree"))
+    lb.add_argument("--criterion")
+    lb.add_argument("--attempt", type=int)
+    lb.add_argument("--caller", choices=("person", "agent", "pipeline", "orchestrator", "scheduler", "engine"))
+    lb.add_argument("--as-agent", action="store_true")
+    lb.add_argument("--caller-app")
+    lb.add_argument("--relayed", action="store_true")
+    lb.add_argument("--json", action="store_true")
     sa = sub.add_parser("stats", help="per-user monthly run rows, and across machines from a sink (CST §2.5)")
     sa.add_argument("action", nargs="?", choices=("flush", "sync"))
     src = sa.add_mutually_exclusive_group()
@@ -164,7 +176,22 @@ def cmd_report(env: Any, a: argparse.Namespace) -> int:
         since = rep.window(a.window)
     except ValueError as exc:
         raise UsageError(str(exc)) from exc
-    doc = rep.report(_root(env), since, a.by)
+    if a.supervision:
+        from tempergraph.observe import supervision_report as sup
+
+        by = a.by or "workflow"
+        if by not in sup.BY:
+            raise UsageError(f"report --supervision --by takes {', '.join(sup.BY)}")
+        sdoc = sup.report(_root(env), since, by)
+        if a.json:
+            _emit(env, sdoc)
+        else:
+            env.out.write(sup.text(sdoc))
+        return 0
+    by = a.by or "unit"
+    if by not in ("unit", "executor", "version"):
+        raise UsageError("report --by takes unit, executor or version (workflow, host, level with --supervision)")
+    doc = rep.report(_root(env), since, by)
     if a.json:
         _emit(env, doc)
         return 0
@@ -255,6 +282,29 @@ def _here(env: Any) -> Path | None:
     return root if root.is_dir() else None
 
 
+def cmd_label(env: Any, a: argparse.Namespace) -> int:
+    """The one writing verb of this module: one metadata-only `label` row in the ledger (FBK §2.1)."""
+    from tempergraph.cli.main import UsageError, _emit, _one, _root
+    from tempergraph.docs import append_jsonl
+    from tempergraph.observe.labels import LabelRefused, label
+
+    root = _root(env)
+    _, tid = _one(env, a.selector)
+    caller = env.caller(a)
+    try:
+        row = label(root, tid, a.gate, a.value, caller, criterion=a.criterion, attempt=a.attempt,
+                    relayed=bool(a.relayed))
+    except LabelRefused as exc:
+        raise UsageError(str(exc)) from exc
+    append_jsonl(root / "ledger.jsonl", row)
+    if a.json:
+        _emit(env, row)
+    else:
+        env.out.write(f"label {row['value']} on {tid} {a.gate} (attempt {row['attempt']}, "
+                      f"{row['gate_verdict']}) recorded, source {row['source']}\n")
+    return 0
+
+
 def cmd_attention(env: Any, a: argparse.Namespace) -> int:
     from tempergraph.cli.main import _emit
     from tempergraph.observe.attention import attention, line
@@ -270,6 +320,6 @@ def cmd_attention(env: Any, a: argparse.Namespace) -> int:
     return 0
 
 
-COMMANDS = {"logs": cmd_logs, "store": cmd_store, "report": cmd_report, "stats": cmd_stats,
+COMMANDS = {"logs": cmd_logs, "store": cmd_store, "report": cmd_report, "stats": cmd_stats, "label": cmd_label,
             "attention": cmd_attention}
 

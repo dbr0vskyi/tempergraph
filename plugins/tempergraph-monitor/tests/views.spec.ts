@@ -68,7 +68,7 @@ describe('cost tab (MCF §2.1, contract M4)', () => {
     expect(c.units[1].repeats).toEqual([{ cause: 'visit 2 (proceed)', cost: '$0.02 rep' }])
     expect(c.executors[0].tokens).toContain('cache read —')
     expect(c.budget).toBe('no run cost cap')
-    expect(c.supervision).toBe('not recorded')
+    expect(c.supervision).toBe('level observer · cost not recorded') // the record has no cost until SCO (T7.6)
   })
   test('never zero, never summed (MCF-B1, MCF-B2)', () => {
     expect(figure({ rep: 0, est: 4.1, reported: 0, estimated: 2, unmeasured: 1, sessions: 3 })).toBe('≥ $4.10 est')

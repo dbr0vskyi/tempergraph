@@ -103,9 +103,22 @@ Doc changes this track made:
 
 Sinks, `stats flush|sync`, `--source`, `--live` and the heartbeat are T10.1 (`observe/sinks.py` is a stub until then).
 
-### T7.5 and T7.6
+### T7.5 Supervision record and improvement data
 
-Split with the T5 and T6 owner: the run-path side of T7.5 (touch classes, the `supervision` record, the ledger's `supervision{}`) is theirs; the read side (level, `report --supervision`, IMD fields, `label`) and T7.6 start here once that record lands.
+Split with the T5 and T6 owner: the run-path side (touch classes, the `supervision` record before every `run_exit`, the ledger's `supervision{}`; `run/supervision.py`) is theirs; the read side is here.
+
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 7.5.1 | `observe/rows.py`, `observe/sinks.py` | The stats and sink rows copy `touches_undesigned`, `touches_by_decider`, `agent_own_rescues`, `level`, `level_by`, `callers_unknown` from the segment's `supervision` record, the builder the ledger row uses | SUP §2.5, AC-2, CST §2.2 | yes | P1 | ✓ | 2026-11-20 |
+| 7.5.2 | `observe/supervision_report.py`, `cli/observe_cli.py` | `report --supervision [window] [--by workflow\|version\|unit\|host\|level] [--json]`: runs by level and `level_by`, unattended rate with its Wilson interval, undesigned touches per run by class and decider, agent's own rescue share, relay quality, waits, cost and share with `measured k of n`, observations, data quality; eval runs left out; `thin` under 5 | SUP §2.4, B5, AC-3 (report half), AC-4, AC-5 | yes | P1 | ✓ | 2026-11-20 |
+| 7.5.3 | `observe/detail.py` | The detail document's supervision block gains `level_by`, `designed_by`, the record's hosts and its cost | RDD §2.1, SUP §2.5 | yes | P1 | ✓ | 2026-11-20 |
+| 7.5.4 | `observe/labels.py`, `cli/observe_cli.py` | `label <thread> <unit> --value agree\|disagree [--criterion] [--attempt]`: one `label` ledger row with IMD-R1 fields, the gate record, the judge binding and `source` from the caller's decider; no text option | FBK §2.1, §2.2 explicit, FBK-B2, FBK-AC-3, IMD-R1, IMD-R4 | yes | P1 | ✓ | 2026-11-20 |
+| 7.5.5 | `tests/test_supervision_report.py` | IMD-AC-1 canary: a planted task id and feedback text reach no sink, fleet, outbox or label row | IMD-AC-1, §2.2 | yes | P1 | ✓ | 2026-11-20 |
+| 7.5.6 | `observe/supervision_report.py` | Waits per pause kind, once intervention rows carry the pause kind with the wait | SUP §2.4 | yes | P3 | ○ | |
+
+### T7.6 Supervision cost
+
+Not started: the host hooks, the supervision journal, attribution and the `supervision` verbs (SCO).
 
 ## 3. Hand-off notes
 

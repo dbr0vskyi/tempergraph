@@ -18,17 +18,17 @@
   "unknown_schema": 0,
   "synced": {
     "team": {
-      "synced_at": "2026-11-20T10:34:06.510Z",
+      "synced_at": "2026-11-20T10:40:23.770Z",
       "machines": {
-        "1218ed0f-17d4-4615-a0c4-7bdb46cdbcf4": {
-          "label": "desk-b",
-          "synced_at": "2026-11-20T10:34:06.510Z",
+        "10bb793e-f65b-4c37-a80d-4a4264f43f03": {
+          "label": "laptop-a",
+          "synced_at": "2026-11-20T10:40:23.770Z",
           "rows": 1,
           "ago_s": 0.0
         },
-        "ec311672-1fa5-4f5d-bf26-9098af8b2070": {
-          "label": "laptop-a",
-          "synced_at": "2026-11-20T10:34:06.510Z",
+        "7907d54a-5e04-4773-bbaa-12d7db6926b8": {
+          "label": "desk-b",
+          "synced_at": "2026-11-20T10:40:23.770Z",
           "rows": 1,
           "ago_s": 0.0
         }
@@ -38,7 +38,7 @@
   "by": {
     "key": "machine",
     "groups": {
-      "desk-b (1218ed0f)": {
+      "desk-b (7907d54a)": {
         "runs": 1,
         "threads": 1,
         "reported_usd": 0.02,
@@ -49,7 +49,7 @@
           "3": 1
         }
       },
-      "laptop-a (ec311672)": {
+      "laptop-a (10bb793e)": {
         "runs": 1,
         "threads": 1,
         "reported_usd": 0.04,
