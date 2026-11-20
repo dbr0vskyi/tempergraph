@@ -346,3 +346,31 @@ def test_failed_before_script_spends_a_retry_without_a_session(repo: Path) -> No
     assert out.exit_code is ExitCode.PAUSED and out.payload["kind"] == "budget"
     assert ex.calls == []  # no session ran; three failed attempts spent the budget of 2
     assert "script_failed:fetch" in json.dumps(out.payload["blockers"])
+
+
+def test_auto_reopen_retries_a_stopped_run(repo: Path) -> None:  # BUD-B6
+    broken = SessionResult(ok=False, infra_cause=InfraCause.BROKEN_PIPE, usage=Usage())
+    ex = standin("claude", steps=[broken] * 3 + [DRAFT, REVIEW], judges=[judge(), judge()])
+    out = go(repo, ex, flags={"run.auto_reopen": 2})
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    assert "auto_reopen: infra" in out.warnings
+    ledger = [json.loads(x) for x in (state_root_path(repo) / "ledger.jsonl").read_text().splitlines()]
+    row = [r for r in ledger if r["kind"] == "intervention"]
+    assert len(row) == 1 and row[0]["cause"] == "auto_reopen" and row[0]["wait_s"] is None
+    assert row[0]["caller"]["kind"] == "engine" and row[0]["touches"] == [{"class": "engine", "action": "reopen"}]
+    sup = [r for r in records(repo) if r["kind"] == "supervision"][-1]
+    assert sup["level"] == "observer" and sup["touches"]["engine"]["engine"] == 1  # never supervision
+
+
+def test_auto_reopen_stops_at_its_count(repo: Path) -> None:  # BUD-B6
+    broken = SessionResult(ok=False, infra_cause=InfraCause.BROKEN_PIPE, usage=Usage())
+    ex = standin("claude", steps=[broken] * 9)
+    out = go(repo, ex, flags={"run.auto_reopen": 2}, task="T-2")
+    assert out.exit_code is ExitCode.BUDGET_OR_INFRA and out.reason == "infra"
+    assert out.warnings.count("auto_reopen: infra") == 2 and len(ex.calls) == 9
+
+
+def test_auto_reopen_never_answers_a_pause(repo: Path) -> None:  # BUD-B6
+    ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("UNVERIFIABLE"))])
+    out = go(repo, ex, flags={"run.auto_reopen": 3}, task="T-3")
+    assert out.exit_code is ExitCode.PAUSED and not any("auto_reopen" in w for w in out.warnings)

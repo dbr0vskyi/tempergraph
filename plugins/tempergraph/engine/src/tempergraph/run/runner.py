@@ -7,13 +7,16 @@ state (DUR-B1), the workspace plan and the lock. A refusal is exit 2 with nothin
 from __future__ import annotations
 
 import contextlib
+import dataclasses
+import json
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from tempergraph import provenance
 from tempergraph import settings as rst
 from tempergraph.compiler import compile_workflow
 from tempergraph.constants import ExitCode
@@ -30,7 +33,9 @@ from tempergraph.executors.registry import Registry
 from tempergraph.git import main_checkout
 from tempergraph.model import flow
 from tempergraph.model.diagram import diagram_model
+from tempergraph.model.validate import Finding
 from tempergraph.run import gate as gatemod
+from tempergraph.run import supervision
 from tempergraph.run.log import CostTotals, Ledger, RunLog, cost_so_far, last_record
 from tempergraph.run.nodes import Drain, EngineNodes, RunContext
 from tempergraph.run.outcome import with_outcome
@@ -65,6 +70,7 @@ class RunOutcome:
     thread_id: str = ""
     warnings: list[str] = field(default_factory=list)
     refusals: list[str] = field(default_factory=list)
+    auto_reopen: int = 0  # `run.auto_reopen` of the segment that ended (BUD-B6)
 
 
 @dataclass(kw_only=True)
@@ -83,6 +89,12 @@ class RunSettings:
     profiles: tuple[str, ...] | None = None  # None keeps the thread's profiles on resume
     unset: tuple[str, ...] = ()
     reload_settings: bool = False
+    ruling: bool = False  # `--ruling`: the feedback is a lasting ruling (RRN §2.2)
+    ruling_for: tuple[str, ...] = ()
+    revoke_rulings: tuple[str, ...] = ()
+    accept_external: bool = False  # consent to rewind or rerun past external effects (RRN §2.3)
+    relayed: bool = False  # `--relayed`: the call carries a person's decision (PRV §2.4)
+    dry_run: bool = False  # `--dry-run`: self-improvement files nothing for this run (CLI §2.1)
     home: Path | None = None  # the user config folder's parent; default `home_path()`
 
     def all_flags(self) -> dict[str, Any]:
@@ -123,6 +135,27 @@ class Settled:
         return {"settings": self.options.settings, "profiles": list(self.options.profiles)}
 
 
+def decided(settings: RunSettings, *, deciding: bool, words: Sequence[str] = (), since: str | None = None
+            ) -> RunSettings:
+    """PRV §2.4: fill the decider of a deciding call; `--relayed` on a call that decides nothing is refused."""
+    if not deciding:
+        if settings.relayed:
+            raise SettingsRefused([Finding(code="relay_not_applicable", unit=None,
+                                           message="--relayed on a call that decides nothing")])
+        return settings
+    block = provenance.decide(settings.caller, relayed=settings.relayed, words=words, since=since,
+                              home=settings.home or home_path())
+    return dataclasses.replace(settings, caller=block)
+
+
+def _widen_kind(settings: RunSettings) -> str:
+    """The caller kind the widening rule sees: `person` only for a person or a `turn_named` relay (PRV §2.8)."""
+    if not settings.caller:  # `run --check` and `config show` read no signals (C13); the call itself checks
+        return "person"
+    return "person" if provenance.may_widen(settings.caller) else str(settings.caller.get("decided_by")
+                                                                       or settings.caller.get("kind") or "unknown")
+
+
 class SettingsRefused(Exception):
     def __init__(self, findings: list[Any]) -> None:
         super().__init__(findings[0].message)
@@ -133,7 +166,7 @@ def settle_start(spec: WorkflowSpec, settings: RunSettings, root: Path | None) -
     """Read both files once, resolve, validate before spend (RST §2.6 Start)."""
     files = rst.load_files(root, settings.home or home_path())
     opts, findings = rst.options_snapshot(spec, settings.all_flags(), tuple(settings.profiles or ()), files,
-                                          via=settings.origin, caller_kind=str(settings.caller.get("kind") or "unknown"))
+                                          via=settings.origin, caller_kind=_widen_kind(settings))
     if findings:
         raise SettingsRefused(findings)
     res = rst.resolve(spec, opts)
@@ -156,7 +189,7 @@ def settle_resume(spec: WorkflowSpec, settings: RunSettings, root: Path, values:
     if settings.reload_settings or settings.profiles is not None:
         files = rst.load_files(root, settings.home or home_path())
         new, findings = rst.options_snapshot(spec, flags, profiles, files, via=settings.origin,
-                                             caller_kind=str(settings.caller.get("kind") or "unknown"))
+                                             caller_kind=_widen_kind(settings))
         if not settings.reload_settings:  # a new profile list reads profiles only; the file layers stay
             new = RunOptions(settings={**{k: v for k, v in old.settings.items()}, "profile": new.settings["profile"],
                                        "flag": new.settings["flag"]}, profiles=profiles)
@@ -167,7 +200,7 @@ def settle_resume(spec: WorkflowSpec, settings: RunSettings, root: Path, values:
                          profiles=profiles)
         findings = []
     if not (settings.reload_settings or settings.profiles is not None):
-        findings += rst.validate_layers(spec, new.settings, str(settings.caller.get("kind") or "unknown"))
+        findings += rst.validate_layers(spec, new.settings, _widen_kind(settings))
     if findings:
         raise SettingsRefused(findings)
     res = rst.resolve(spec, new)
@@ -209,7 +242,8 @@ def _grants_used(spec: WorkflowSpec, registry: Registry, settled: Settled, value
 
 def _refuse_settings(exc: SettingsRefused, tid: str) -> RunOutcome:
     first = exc.findings[0]
-    return _refuse(first.code, first.message, [f"{f.code}: {f.message}" for f in exc.findings], tid)
+    return _refuse(first.code, f"{first.code}: {first.message}", [f"{f.code}: {f.message}" for f in exc.findings],
+                   tid)
 
 
 def _root(target: Path) -> Path:
@@ -246,7 +280,9 @@ def _context(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, s
 
 def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, settings: RunSettings,
            judges: Mapping[str, str], first_input: Any, settled: Settled, *,
-           before: Callable[[Any], None] | None = None, executors: Mapping[str, str] | None = None) -> RunOutcome:
+           before: Callable[[Any], None] | None = None, executors: Mapping[str, str] | None = None,
+           ruling_records: Sequence[Mapping[str, Any]] = (), rerun_of: Mapping[str, Any] | None = None
+           ) -> RunOutcome:
     """Run the graph from `first_input` while holding the lock, then turn the thread state into an exit."""
     tid = thread_id(spec.name, task_id)
     log = RunLog(run_dir(root, spec.name, task_id) / "run.jsonl")
@@ -266,12 +302,16 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                   workflow_version=spec.version, plan_digest=diagram_model(spec)["digest"],
                   executors={"steps": dict(executors or {}), "judges": dict(judges)},
                   settings_digest=settled.resolved.digest, profiles=list(settled.options.profiles),
+                  **({"rerun_of": dict(rerun_of)} if rerun_of else {}),
+                  **({"dry_run": True} if settings.dry_run or meta.get("dry_run") else {}),
                   overridden_keys=rst.overridden_keys(settled.resolved))
         rec: dict[str, Any] = {"settings_digest": settled.resolved.digest, "rows": rst.rows_json(settled.resolved),
                                "changed_keys": settled.changed}
         if settled.changed:
             rec["caller"] = dict(settings.caller)
         log.write("settings_resolved", **rec)
+        for r in ruling_records:
+            log.write("ruling", **r)
         for g in settled.grant_changes():
             log.write("grant", unit=g["unit"], capability=g.get("capability"), prefix=g.get("prefix"),
                       action=g["action"], answers=_answers(log.path, g), by=dict(settings.caller), via=settings.origin)
@@ -287,6 +327,8 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                                      message=f"{tid} stopped at a boundary ({d.reason}); resume continues it")
         final = cw.graph.get_state(cfg).values or {}
         cost = CostTotals.from_json((final.get("run") or {}).get("cost"))
+        sup = supervision.build(root / "ledger.jsonl", log.path, tid, supervision.path_units(final))
+        log.write("supervision", **sup)  # SUP §2.2, before run_exit
         log.write("run_exit", exit_code=int(outcome.exit_code), reason=outcome.reason, cost=cost.to_json(),
                   cost_so_far=cost_so_far(cost.to_json()))
         write_json(exit_file(root, spec.name, task_id), {"schema_version": 1, "exit_code": int(outcome.exit_code),
@@ -296,8 +338,10 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                                                    "cost": cost.to_json(), "origin": settings.origin,
                                                    "settings_digest": settled.resolved.digest,
                                                    "overridden_keys": rst.overridden_keys(settled.resolved),
-                                                   "grants": _grants_used(spec, registry, settled, final)})
+                                                   "grants": _grants_used(spec, registry, settled, final),
+                                                   "supervision": sup})
         outcome.thread_id = tid
+        outcome.auto_reopen = int(settled.run.get("auto_reopen") or 0)
         return outcome
     finally:
         saver.conn.close()
@@ -328,6 +372,12 @@ def _settle(cw: Any, cfg: Mapping[str, Any], spec: WorkflowSpec, task_id: str, r
 def start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: Path, registry: Registry,
           settings: RunSettings | None = None) -> RunOutcome:
     settings = settings or RunSettings()
+    return _reopening(_start(spec, task_id, inputs, target, registry, settings), spec, task_id, target, registry,
+                      settings)
+
+
+def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: Path, registry: Registry,
+           settings: RunSettings) -> RunOutcome:
     tid = thread_id(spec.name, task_id)
     try:
         root = _root(target)
@@ -337,6 +387,8 @@ def start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: P
         return _refuse("thread_exists", f"{tid} already exists; resume it with `tempergraph resume {spec.name} "
                                         f"{task_id}` or start a new thread with another task id", tid=tid)
     try:
+        settings = decided(settings, deciding=any(rst.is_widening(k) for k in settings.all_flags()),
+                           words=("grant",))
         settled = settle_start(spec, settings, root)
     except SettingsRefused as exc:
         return _refuse_settings(exc, tid)
@@ -374,7 +426,8 @@ def start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: P
         RunLog(run_dir(root, spec.name, task_id) / "run.jsonl").write(
             "task", chars=sum(len(v) for v in inputs.values()), request=clip(scrub(inputs.get("request", "")), 200))
         initial = {"request": {"task_id": task_id, "inputs": dict(inputs)}, "workspace": rec.to_json(),
-                   "run": {"meta": {"origin": settings.origin, "label": clip(scrub(settings.label or ""), 80) or None},
+                   "run": {"meta": {"origin": settings.origin, "label": clip(scrub(settings.label or ""), 80) or None,
+                                    **({"dry_run": True} if settings.dry_run else {})},
                            "options": settled.snapshot_json()}}
         out = _drive(spec, task_id, root, registry, settings, rep.judges, initial, settled,
                      executors=rep.step_executors)
@@ -394,6 +447,62 @@ def _live(root: Path, spec: WorkflowSpec, tid: str) -> bool:
 def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *, decision: str | None = None,
            feedback: str | None = None, settings: RunSettings | None = None) -> RunOutcome:
     settings = settings or RunSettings()
+    out = _resume(spec, task_id, target, registry, decision=decision, feedback=feedback, settings=settings)
+    return _reopening(out, spec, task_id, target, registry, settings)
+
+
+# BUD-B6: the stop reasons an automatic re-open answers (spent retries, a step timeout or an infra failure).
+REOPEN_REASONS = frozenset({"budget", "infra"})
+ENGINE_CALLER: Mapping[str, Any] = {"kind": "engine", "confidence": "attested", "decided_by": "engine",
+                                    "relay": "none", "host": "engine", "host_session": None, "caller_app": None,
+                                    "parent": None, "schedule": None, "trace_id": None, "evidence": []}
+
+
+def _reopens(root: Path, tid: str) -> int:
+    path = root / "ledger.jsonl"
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return 0
+    n = 0
+    for ln in lines:
+        with contextlib.suppress(ValueError):
+            r = json.loads(ln)
+            n += isinstance(r, dict) and r.get("kind") == "intervention" and r.get("thread_id") == tid \
+                and r.get("cause") == "auto_reopen"
+    return n
+
+
+def _reopening(out: RunOutcome, spec: WorkflowSpec, task_id: str, target: Path, registry: Registry,
+               settings: RunSettings) -> RunOutcome:
+    """BUD-B6: re-open a stopped run at most `run.auto_reopen` times on the thread, as a retry given in advance.
+
+    Never answers a pause, never undoes a person's stop or a cost cap drain.
+    """
+    warnings = list(out.warnings)
+    while (out.exit_code is ExitCode.BUDGET_OR_INFRA and out.reason in REOPEN_REASONS and out.auto_reopen > 0):
+        try:
+            root = _root(target)
+        except NotInRepository:
+            break
+        if _reopens(root, thread_id(spec.name, task_id)) >= out.auto_reopen:
+            break
+        engine = dataclasses.replace(settings, caller=dict(ENGINE_CALLER, call_id=uuid.uuid4().hex), relayed=False,
+                                     flags={}, profiles=None, unset=(), reload_settings=False, ruling=False,
+                                     ruling_for=(), revoke_rulings=(), accept_external=False)
+        nxt = _resume(spec, task_id, target, registry, decision="retry", feedback=None, settings=engine)
+        if nxt.exit_code is ExitCode.USAGE:
+            warnings.append(f"auto_reopen_refused: {nxt.reason}")
+            break
+        warnings.append(f"auto_reopen: {out.reason}")
+        out = nxt
+        warnings.extend(out.warnings)
+    out.warnings = warnings
+    return out
+
+
+def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *, decision: str | None,
+            feedback: str | None, settings: RunSettings) -> RunOutcome:
     tid = thread_id(spec.name, task_id)
     try:
         root = _root(target)
@@ -408,6 +517,17 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
         d = Decision.parse(decision) if decision else None
     except ValueError as exc:
         return _refuse("decision_invalid", str(exc), tid=tid)
+    if feedback and len(feedback) > gatemod.FEEDBACK_LIMIT:
+        return _refuse("feedback_too_long", f"feedback is {len(feedback)} characters; at most "
+                                            f"{gatemod.FEEDBACK_LIMIT}", tid=tid)
+    if settings.ruling and not feedback:
+        return _refuse("ruling_without_text", "--ruling needs --feedback or --feedback-file", tid=tid)
+    unknown = [u for u in settings.ruling_for if u not in spec.units]
+    if unknown:
+        return _refuse("ruling_for_unknown", f"--ruling-for names no unit {', '.join(unknown)}", tid=tid)
+    human_payload: dict[str, Any] = {"feedback": feedback, "caller": dict(settings.caller),
+                                     "ruling": {"applies_to": list(settings.ruling_for)} if settings.ruling else None,
+                                     "revoke": list(settings.revoke_rulings)}
     declared = spec
     lock = RunLock(lock_path(root, spec.name, task_id))
     try:
@@ -424,6 +544,12 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
         finally:
             saver.conn.close()
         try:
+            pause = last_record(run_dir(root, spec.name, task_id) / "run.jsonl", "pause")
+            deciding = bool(d is not None or feedback or settings.ruling or settings.revoke_rulings
+                            or any(rst.is_widening(k) for k in settings.all_flags()))
+            settings = decided(settings, deciding=deciding, words=(d.word,) if d else ("grant",),
+                               since=(pause or {}).get("ts"))
+            human_payload["caller"] = dict(settings.caller)
             settled = settle_resume(declared, settings, root, values)
         except SettingsRefused as exc:
             return _refuse_settings(exc, tid)
@@ -435,6 +561,17 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
             return _refuse(first.code, f"{first.unit or spec.name}: {first.message}", tid=tid)
         spec = with_outcome(settled.spec)
         human_cap = int(rv["human_cap"])
+        if d is not None and d.word == "rewind" and d.unit and not settings.accept_external:
+            from tempergraph.run.rerun import cleared_units, external_effects
+
+            effects = external_effects(spec, cleared_units(spec, d.unit, values), values)
+            if effects:
+                return _refuse("external_effects", f"rewind:{d.unit} clears units with external effects: "
+                                                   f"{'; '.join(effects)}; pass --accept-external", effects, tid=tid)
+        try:
+            gatemod.check_rulings(values, feedback if settings.ruling else None, settings.revoke_rulings)
+        except gatemod.DecisionRefused as exc:
+            return _refuse("ruling_refused", str(exc), tid=tid)
         if state is ThreadState.PAUSED:
             if d is None:
                 units = [n.rsplit(".", 1)[0] for n, _ in snap.interrupts]
@@ -444,7 +581,7 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
                 gatemod.check_decision(spec, unit, values, d, human_cap=human_cap)
             except gatemod.DecisionRefused as exc:
                 return _refuse("decision_refused", str(exc), tid=tid)
-            first_input: Any = resume_input({"decision": str(d), "feedback": feedback, "caller": dict(settings.caller)})
+            first_input: Any = resume_input({"decision": str(d), **human_payload})
             before = None
             pause = snap.interrupts[0][1] if isinstance(snap.interrupts[0][1], dict) else {}
             touch = (unit, str(pause.get("kind") or "escalation"), str(pause.get("reason") or ""))
@@ -455,8 +592,11 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
             touch = None
             if d is not None:
                 unit = _last_unit(values)
-                before = _human_update(spec, unit, values, d, feedback)
+                before = _human_update(spec, unit, values, d, human_payload)
                 touch = (unit, "unfinished", "rewind")
+            elif feedback or settings.revoke_rulings:  # RRN-B4: the pending unit's next attempt and its judge
+                pending = next((n.rsplit(".", 1)[0] for n in snap.next if n.endswith(".step")), _last_unit(values))
+                before = _pending_update(spec, pending, values, human_payload)
         else:  # stopped
             if d is None or d.word not in ("retry", "back", "rewind"):
                 return _refuse("decision_refused", "a stopped thread re-opens with retry, back:<unit> or rewind:<unit>",
@@ -466,7 +606,7 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
                 gatemod.check_decision(spec, unit, values, d, human_cap=human_cap)
             except gatemod.DecisionRefused as exc:
                 return _refuse("decision_refused", str(exc), tid=tid)
-            first_input, before = None, _human_update(spec, unit, values, d, feedback)
+            first_input, before = None, _human_update(spec, unit, values, d, human_payload)
             reason = str(((values.get("run") or {}).get("stopped") or {}).get("reason") or "")
             touch = (unit, "stopped", reason)
         ws = values.get("workspace") or {}
@@ -491,7 +631,8 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
                 prior(cw2)
 
         out = _drive(spec, task_id, root, registry, settings, rep.judges, first_input, settled, before=before_all,
-                     executors=rep.step_executors)
+                     executors=rep.step_executors, ruling_records=_ruling_records(spec, values, d, touch, settings,
+                                                                                  feedback, snap.next))
         if stale is not None:
             out.warnings.append("stale_stop_request_removed")
         return out
@@ -524,17 +665,19 @@ def intervention(root: Path, spec: WorkflowSpec, task_id: str, touch: tuple[str,
     unit, kind, reason = touch
     pause = last_record(run_dir(root, spec.name, task_id) / "run.jsonl", "pause", unit=unit)
     wait_s = None
-    if pause and pause.get("ts"):
+    engine = settings.caller.get("kind") == "engine"  # an automatic re-open waits on no one (SUP §2.1)
+    if pause and pause.get("ts") and not engine:
         with contextlib.suppress(ValueError, TypeError):
             wait_s = round((datetime.now(datetime.fromisoformat(pause["ts"]).tzinfo)
                             - datetime.fromisoformat(pause["ts"])).total_seconds(), 1)
     row = {"kind": "intervention", "id": uuid.uuid4().hex, "thread_id": thread_id(spec.name, task_id),
            "workflow": spec.name, "unit": unit, "caller": dict(settings.caller),
-           "touches": touches(kind, reason if kind == "stopped" else "", d), "pause_kind": kind,
-           "decision": d.word + (f":{d.unit}" if d.unit else ""), "wait_s": wait_s, "feedback": bool(feedback),
-           "ruling": False, "settings_changed": list(settled.changed) if settled else [],
+           "touches": [{"class": "engine", "action": "reopen"}] if engine
+           else touches(kind, reason if kind == "stopped" else "", d), "pause_kind": kind,
+           "decision": d.word + (f":{d.unit}" if d.unit else ""), "wait_s": wait_s, "feedback": bool(feedback) and not settings.ruling,
+           "ruling": settings.ruling, "settings_changed": list(settled.changed) if settled else [],
            "grants": [{k: v for k, v in g.items() if k != "key"} for g in (settled.grant_changes() if settled else [])],
-           "cause": reason or kind}
+           "cause": "auto_reopen" if engine else reason or kind}
     Ledger(path=root / "ledger.jsonl").append(row)
     return row
 
@@ -544,12 +687,46 @@ def _last_unit(values: Mapping[str, Any]) -> str:
     return str(units[-1]) if units else ""
 
 
-def _human_update(spec: WorkflowSpec, unit: str, values: Mapping[str, Any], d: Decision, feedback: str | None
-                  ) -> Callable[[Any], None]:
+def _ruling_records(spec: WorkflowSpec, values: Mapping[str, Any], d: Decision | None,
+                    touch: tuple[str, str, str] | None, settings: RunSettings, feedback: str | None,
+                    pending: Sequence[str]) -> list[dict[str, Any]]:
+    """EVT `ruling`: given and revoked rulings of this resume, ids and lengths only, never the text."""
+    out: list[dict[str, Any]] = [{"id": rid, "action": "revoked", "by": dict(settings.caller)}
+                                 for rid in settings.revoke_rulings]
+    if settings.ruling and feedback:
+        if d is not None and touch is not None:
+            at = gatemod.decision_target(spec, touch[0], d)
+        else:
+            at = next((n.rsplit(".", 1)[0] for n in pending if n.endswith(".step")), _last_unit(values))
+        out.append({"id": f"r{len(values.get('rulings') or {}) + 1}", "action": "given", "given_at": at,
+                    "applies_to": list(settings.ruling_for), "by": dict(settings.caller), "chars": len(feedback)})
+    return out
+
+
+def _pending_update(spec: WorkflowSpec, unit: str, values: Mapping[str, Any], payload: Mapping[str, Any]
+                    ) -> Callable[[Any], None]:
+    """Feedback, a ruling or a revocation on an unfinished thread, with no decision (RRN §2.2, RRN-B4)."""
+
+    def apply(cw: Any) -> None:
+        w: dict[str, Any] = {}
+        rulings = gatemod.ruling_writes(values, payload, unit)
+        if rulings:
+            w["rulings"] = rulings
+        if payload.get("feedback") and not payload.get("ruling"):
+            w["feedback"] = {unit: {"text": payload["feedback"], "as": "feedback"}}
+        if w:
+            cw.graph.update_state(cw.config(thread_id(spec.name, str((values.get("request") or {}).get("task_id")))),
+                                  w)
+
+    return apply
+
+
+def _human_update(spec: WorkflowSpec, unit: str, values: Mapping[str, Any], d: Decision,
+                  payload: Mapping[str, Any]) -> Callable[[Any], None]:
     """Re-open a stopped thread, or rewind an unfinished one, through the human node's own update."""
 
     def apply(cw: Any) -> None:
-        w = gatemod.apply_decision(spec, unit, values, {"decision": str(d), "feedback": feedback})
+        w = gatemod.apply_decision(spec, unit, values, {"decision": str(d), **payload})
         w.setdefault("run", {})["stopped"] = None
         cw.graph.update_state(cw.config(f"{spec.name}/{values.get('request', {}).get('task_id', '')}"), w,
                               as_node=flow.node_names(unit)[3])

@@ -57,9 +57,7 @@ NOT_IN_RELEASE = {
     "deadline_s": "wait and ask units are release 2",
 }
 # Keys whose effect is not built yet on this branch, with the plan row that builds it.
-NOT_BUILT = {
-    "auto_reopen": "T6.1.6",
-}
+NOT_BUILT: dict[str, str] = {}
 WIDENING = frozenset({"tools.add", "commands.add", "views.add"})  # RST §2.8, T6.3
 
 

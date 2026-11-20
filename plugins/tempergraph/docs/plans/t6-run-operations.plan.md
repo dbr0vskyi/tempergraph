@@ -21,7 +21,7 @@ task_id: first-release-t6
 | Origin | [Release 1 plan](first-release.plan.md) track T6 |
 | Specs | [CLI](../specs/17-engine-cli.spec.md), [RST](../specs/80-run-settings-and-overrides.spec.md), [RRN](../specs/81-reruns-and-feedback.spec.md), [PRV](../specs/85-caller-provenance.spec.md) |
 
-**Status: In progress.** T6.1 is built, so milestone M1 holds on stand-ins: a two-step workflow defined in Python test code runs end to end through `tempergraph run`, pauses with exit 3, and finishes through `tempergraph resume`. M1 on a signed-in `claude` waits for the owner's machine (T0.1). T6.2 and T6.3 are built. T6.4 and T6.5 are not started.
+**Status: In progress.** T6.1 is built, so milestone M1 holds on stand-ins: a two-step workflow defined in Python test code runs end to end through `tempergraph run`, pauses with exit 3, and finishes through `tempergraph resume`. M1 on a signed-in `claude` waits for the owner's machine (T0.1). T6.2 to T6.5 are built but for the rows marked ○ below. The live probes P-SUP-1, P-SUP-2 and P-SUP-4 wait on the owner's machine.
 
 Status pass: CLI, RST, RRN and PRV are `ready-for-implementation`. RST, RRN and PRV have release 1 defaults for their open questions.
 
@@ -52,7 +52,7 @@ The catalog reads the home registry and loads each package by the first steps of
 | 6.1.3 | `engine/src/tempergraph/cli/main.py` | `run`, `run --check`, `resume`, `status`, `list`, `validate`, `executors [--probe]`, `facts`, `graph`, `wait`, `stop`, `worktree list` and `path`; reserved words; exit codes; `entry` for the `tempergraph` script | CLI §2, §4 | | P1 | ✓ | 2026-11-20 |
 | 6.1.4 | `engine/src/tempergraph/cli/main.py` | Generated verb, option and exit code tables in the docs with a drift test (CLI §5) | CLI §5 | yes | P2 | ○ | |
 | 6.1.5 | — | `attention` (CLI-B6, AC-5): moved to T7.4, which builds it with the reports | CLI-B6 | | | moved | |
-| 6.1.6 | `engine/src/tempergraph/cli/main.py` | The other run options of CLI §2.1: executor and model overrides, timeouts, `--approve` ✓ (spellings of `--set`, T6.2); `--auto-reopen` (refused `setting_not_built` until built), `--pause-before`, `--dry-run` ○ | CLI §2.1, RST | yes | P1 | ○ | |
+| 6.1.6 | `engine/src/tempergraph/cli/main.py`, `run/runner.py` | The other run options of CLI §2.1: executor and model overrides, timeouts, `--approve` (spellings of `--set`, T6.2); `--auto-reopen` (BUD-B6: a retry by the `engine` caller after a `budget` or `infra` stop, at most N per thread, also after a resume or rerun); `--pause-before` refused `not_in_release` (FLX is X2-13); `--dry-run` recorded on `run_started` and in the run's meta for the loop (T12) | CLI §2.1, RST, BUD-B6 | yes | P1 | ✓ | 2026-11-20 |
 
 ### T6.2 Settings
 
@@ -64,7 +64,7 @@ The catalog reads the home registry and loads each package by the first steps of
 | 6.2.4 | `engine/src/tempergraph/cli/main.py` | `--set`, `--settings`, `--profile` on `run`, `resume` and `config show`; `--unset`, `--reload-settings` on `resume`; the named spellings of CLI §2.1; `config show`, `config validate`, `config paths` | RST §2.9, CLI §2.1 | | P1 | ✓ | 2026-11-20 |
 | 6.2.5 | `engine/src/tempergraph/durability/status.py` | The status row's `settings_digest`, `overridden_keys` and `settings_stale` (T7 owns the status row; handed over) | RST §2.7 | yes | P2 | ○ | |
 
-Release 1 notes: keys whose feature is release 2 (the audit judge, switch arms, council, contest, wait and ask keys, the `in_repo` and `path:` roots, the `default_branch` and `ref:` bases, `cleanup: on_finish`) are refused with `setting_not_in_release` (RST §4). `run.auto_reopen` and the widening keys are refused with `setting_not_built` until 6.1.6 and T6.3 build them.
+Release 1 notes: keys whose feature is release 2 (the audit judge, switch arms, council, contest, wait and ask keys, the `in_repo` and `path:` roots, the `default_branch` and `ref:` bases, `cleanup: on_finish`) are refused with `setting_not_in_release` (RST §4). No key is refused with `setting_not_built` any more: `run.auto_reopen` (6.1.6) and the widening keys (T6.3) are built.
 
 ### T6.3 Tool grants
 
@@ -78,11 +78,25 @@ Release 1 notes: keys whose feature is release 2 (the audit judge, switch arms, 
 
 ### T6.4 Feedback, rulings, rewind, rerun
 
-`--feedback` and `--feedback-file` on `resume`, and `rewind:<unit>` decisions, work through the T5 human node. Not started: lasting rulings, `rerun` as a linked fork.
+`--feedback` and `--feedback-file` on `resume`, and `rewind:<unit>` decisions, work through the T5 human node.
+
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 6.4.1 | `engine/tests/test_feedback.py` | RRN-B1, B2, B4, B11; AC-2 on the two-step fixture; AC-6 canary; §4 refusals write nothing | RRN §2.2, §3 | yes | P1 | ✓ | 2026-11-20 |
+| 6.4.2 | `engine/src/tempergraph/run/gate.py`, `run/nodes.py`, `run/runner.py`, `cli/main.py` | `--ruling`, `--ruling-for`, `--revoke-ruling`; rulings in state, shown to every later attempt and judge with the `ruling` blocker; the limits; feedback without a decision on an unfinished thread; the `ruling` record; one-time feedback now reaches the judge and is cleared at the gate | RRN §2.2, EVT §2.2 | | P1 | ✓ | 2026-11-20 |
+| 6.4.3 | `engine/src/tempergraph/run/rerun.py`, `engine/tests/test_rerun.py` | `rerun` as a linked fork (RRN §2.4): the fork point from the checkpoint history, the copy to `<task>~r<n>`, the trip back from the unit, fresh budgets and cost, the source's settings snapshot plus the rerun's flags, `--feedback` as the visit reason or `--ruling`, `--drop-rulings`, `--workspace current\|at-unit` on a new branch `<branch>-r<n>`, `rerun --check`, `lineage.json`, `run_started.rerun_of`; RRN-B6, B7, B8, AC-3, AC-4 | RRN §2.3, §2.4 | yes | P1 | ✓ | 2026-11-20 |
+| 6.4.4 | `engine/src/tempergraph/run/rerun.py` | `--same-branch` and `superseded_by` (refused `same_branch_not_built` until then); the MIG §2.5 tests beyond "units behind"; rerun of one map item (release 2 with maps) | RRN §2.4 | yes | P2 | ○ | |
+| 6.4.5 | `engine/src/tempergraph/run/runner.py` | `rewind:<unit>` past external effects needs `--accept-external` | RRN §2.3 | yes | P1 | ✓ | 2026-11-20 |
 
 ### T6.5 Caller provenance
 
-The CLI records `{kind: person, via: cli}` on every mutating call. Not started: the classification of PRV §2.3, deciders and relay evidence.
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 6.5.1 | `engine/tests/test_provenance.py` | PRV-AC-1 classification rows, AC-4 property (a marker never gives a person), the §4 refusals, PRV-B4 relay table, B5 `caller_conflict`, B9 and AC-5 (a relayed grant needs a named person turn) | PRV §2.3, §2.4, §3 | yes | P1 | ✓ | 2026-11-20 |
+| 6.5.2 | `engine/src/tempergraph/provenance.py` | `classify` (S2 to S6; S1 and S1s refused in release 1), `decide` with the person turns of the host session's journal, `may_widen` | PRV §2.3, §2.4, §2.8 | | P1 | ✓ | 2026-11-20 |
+| 6.5.3 | `engine/src/tempergraph/cli/main.py`, `run/runner.py`, `run/rerun.py` | `--caller`, `--as-agent`, `--caller-app`, `--relayed` on `run`, `resume`, `rerun` and `stop`; the caller block on `run_started`, the human record and the intervention row; `relay_not_applicable`; widening needs `may_widen`; read-only verbs and `--check` never classify | PRV §2.2, §2.5, CLI §2.1 | | P1 | ✓ | 2026-11-20 |
+| 6.5.4 | `engine/src/tempergraph/run/supervision.py`, `engine/tests/test_supervision.py` | The `supervision` record before every `run_exit` and on the `run_segment` ledger row: touches by class and decider, waits, latency, sessions, level and `level_by`; a rerun counts as a steer on its source; cost fields and `observations` null until T7.6 | SUP §2.2, §2.3, SUP-B1 to B3 | yes | P1 | ✓ | 2026-11-20 |
+| 6.5.5 | — | P-SUP-1, P-SUP-2, P-SUP-4 on a signed-in Claude Code (PRV-AC-6); the journal itself is written by the SCO hooks (T7.6) | PRV-AC-6 | | P2 | ○ | |
 
 ## 3. Verification
 

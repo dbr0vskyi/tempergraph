@@ -27,13 +27,17 @@ def settings(**kw: Any) -> RunSettings:
     return RunSettings(sleep=lambda s: None, **kw)
 
 
-def cli(repo: Path, ex: ScriptedExecutor | None, *argv: str, catalog: Catalog | None = None) -> tuple[int, Any, str]:
+PERSON = ({}, True)  # a person at a plain terminal (PRV-B1)
+
+
+def cli(repo: Path, ex: ScriptedExecutor | None, *argv: str, catalog: Catalog | None = None,
+        signals: tuple[dict[str, str], bool] = PERSON) -> tuple[int, Any, str]:
     reg = Registry()
     if ex is not None:
         reg.register(ex)
     out, err = io.StringIO(), io.StringIO()
     code = main(list(argv), catalog=catalog or Catalog(specs={"demo": two_step()}), registry=reg, cwd=repo,
-                out=out, err=err, run_settings=settings)
+                out=out, err=err, run_settings=settings, signals=signals)
     text = out.getvalue()
     try:
         doc = json.loads(text) if text.strip() else None
@@ -178,3 +182,16 @@ def test_registered_package_loads_and_runs(repo: Path, tmp_path: Path, monkeypat
     assert code == 0, err  # the check ran in the worker, importing the package's own module
     code, _, err = cli(repo, None, "run", "gone", "x", catalog=cat)
     assert code == ExitCode.INTERNAL and "not_loaded" in err
+
+
+def test_pause_before_is_release_2_and_dry_run_is_recorded(repo: Path) -> None:  # CLI §2.1, FLX §2.5
+    for argv in (["--check"], []):
+        code, _, err = cli(repo, happy(), "run", "demo", "notes", "--task-id", "D-1", "--pause-before", "draft",
+                           *argv)
+        assert code == 2 and "not_in_release" in err
+    assert not (repo / ".tempergraph" / "runs" / "demo" / "D-1").exists()
+    code, _, err = cli(repo, happy(), "run", "demo", "notes", "--task-id", "D-2", "--dry-run", "--auto-reopen", "1")
+    assert code == 0, err
+    log = (repo / ".tempergraph" / "runs" / "demo" / "D-2" / "run.jsonl").read_text().splitlines()
+    started = [json.loads(x) for x in log if '"run_started"' in x][0]
+    assert started["dry_run"] is True and "run.auto_reopen" in started["overridden_keys"]

@@ -55,7 +55,7 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 | 5.1.2 | `run/nodes.py`, `run/runner.py` | `attempt_start`, `agent_run`, `check`, `judgement`, `gate`, `pause`, `human`, `script`, `finalize`, `unit_entered`, `run_started`, `stop_requested`, `run_exit` records; `exit.json`; one ledger row per segment | OBS §2.1, EVT §2.2 | yes | P1 | ✓ | 2026-11-20 |
 | 5.1.5 | `run/log.py` | `seq` continues across segments, read from the log's tail (EVT-B2); the `pause` record carries `pause_kind` | EVT §2.1, B2 | yes | P1 | ✓ | 2026-11-20 |
 | 5.1.6 | `run/gate.py`, `run/nodes.py`, `run/runner.py` | A trip back gives every later unit that already ran a new visit, so it writes `unit_entered` again; `entered_from` is `start`, `proceed`, `back:<unit>` or `rewind:<unit>`; `run_started` carries `alias`, `label`, `workflow_version`, `plan_digest` and the planned executors | EVT §2.2 | yes | P1 | ✓ | 2026-11-20 |
-| 5.1.3 | `run/log.py`, `run/nodes.py`, `run/runner.py` | `cost_so_far` (reported, estimated, completeness) on `gate`, `pause` and `run_exit` ✓; `settings_resolved` ✓ (T6.2); the `supervision` record before `run_exit` ○ | EVT §2.2, SUP §2.2, RST §2.7 | yes | P2 | ○ | |
+| 5.1.3 | `run/log.py`, `run/nodes.py`, `run/runner.py` | `cost_so_far` (reported, estimated, completeness) on `gate`, `pause` and `run_exit` ✓; `settings_resolved` ✓ (T6.2); the `supervision` record before `run_exit` ✓ (T6.5) | EVT §2.2, SUP §2.2, RST §2.7 | yes | P2 | ✓ | 2026-11-20 |
 | 5.1.7 | `run/runner.py`, `workspace.py` | The `workspace` record (action, mode, resolved_by, branch, base_commit, reason, counts; the path in the local log only) where a worktree is prepared, reused, attached or released | EVT §2.2, WTR §2.6, §2.10 | yes | P2 | ○ | |
 | 5.1.4 | `tests/test_run_log.py` | OBS-B3: a full disk while writing the ledger keeps the exit code | OBS-B3 | yes | P1 | ○ | |
 
@@ -113,7 +113,7 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 5.8.1 | `run/outcome.py`, `tests/test_outcome.py` | `read_outcome`, `parse_outcome` and the file rows of OUT §4; `gate_criteria` with `mechanical` for `check` criteria; `check_against` for the unit rows ✓. Scales in the judge prompt, trust and coverage ○ | OUT §2.1–2.3, ADR-0114 | yes | P1 | ○ | |
+| 5.8.1 | `run/outcome.py`, `tests/test_outcome.py` | `read_outcome`, `parse_outcome` and the file rows of OUT §4; `gate_criteria` with `mechanical` for `check` criteria; `check_against` for the unit rows ✓. Scales in the judge prompt ○; trust and coverage moved to T8 (`run/outcome_trust.py`, SCF §2.7) | OUT §2.1–2.3, ADR-0114 | yes | P1 | ○ | |
 | 5.8.2 | `run/outcome.py`, `run/nodes.py`, `run/gate.py` | The outcome unit compiled from `outcome.json` (no session, deliverables check plus the workflow's own outcome check, a fresh judge with the default stance and the strongest step-judge model, back target derived from `serves`, else escalate); `sign_off` in the approval pause; scales rendered in the judge prompt. The `on_trigger` mode for `stable` and per-criterion sign-off statuses (`--criterion id=signed`) are open | OUT §2.4, §2.2.1 | yes | P1 | ✓ | 2026-11-20 |
 | 5.8.3 | `run/outcome.py` | The outcome record and its uncorrected measures; `outcome show` and `outcome candidates` data | OUT §2.5 | yes | P1 | ○ | |
 
