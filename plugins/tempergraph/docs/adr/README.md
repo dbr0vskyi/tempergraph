@@ -115,5 +115,8 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0121](0121-ladders-climb-only-on-trusted-substantive-evidence.adr.md) | Ladders climb only on trusted, substantive evidence: effort first, one model step last | proposed |
 | [0122](0122-a-judge-is-raised-by-a-model-free-risk-rule-and-every-level-is-calibrated.adr.md) | A judge is raised by a model-free risk rule, and every level is calibrated | proposed |
 | [0123](0123-complexity-chooses-a-decomposition-through-a-measured-switch.adr.md) | Complexity chooses a decomposition through a measured switch, failing safe and re-arming one way | proposed |
-| [0124](0124-promotion-is-a-model-free-stamp-and-release-2-pipelines-run-claude.adr.md) | Promotion is a model-free stamp per workflow version, and release 2 pipelines run on `claude` | proposed |
+| [0124](0124-promotion-is-a-model-free-stamp-per-workflow-version.adr.md) | Promotion is a model-free stamp per workflow version; pipelines come in a later release | proposed |
 | [0125](0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md) | Release 2 adds upgrade, strict ladders, judge by risk and complexity routing to ADR-0090's forecast | proposed |
+| [0126](0126-a-run-carries-a-scrubbed-thread-state-on-its-own-branch-and-deletes-it-when-done.adr.md) | A run carries a scrubbed thread state on its own branch and deletes it when done | proposed |
+| [0127](0127-outside-git-the-state-root-is-found-by-walk-up-and-the-guard-hashes-files.adr.md) | Outside git, the state root is found by walk-up and the guard hashes files | proposed |
+| [0128](0128-windows-is-supported-natively-with-job-objects-and-probes-before-judges.adr.md) | Windows is supported natively, with job objects, and probes before judges | proposed |

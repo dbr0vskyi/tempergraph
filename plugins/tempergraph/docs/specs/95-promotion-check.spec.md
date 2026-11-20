@@ -10,7 +10,7 @@ adrs: [0041, 0089, 0124]
 
 ## 1. Overview
 
-A workflow is improved locally until it needs little supervision, then moved to a pipeline ([ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)). This spec owns the three **stages** (`local-dev`, `local-stable`, `pipeline`), the model-free verb `promote-check` that measures a workflow version against each stage's criteria and writes a **promotion stamp**, the stage every run carries, and the **regressed** watch after a move. In release 2 the pipeline runs the `claude` executor with unattended credentials ([ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md), [ADR-0124](../adr/0124-promotion-is-a-model-free-stamp-and-release-2-pipelines-run-claude.adr.md)).
+A workflow is improved locally until it needs little supervision, then moved to a pipeline ([ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)). This spec owns the three **stages** (`local-dev`, `local-stable`, `pipeline`), the model-free verb `promote-check` that measures a workflow version against each stage's criteria and writes a **promotion stamp**, the stage every run carries, and the **regressed** watch after a move. Release 2 builds the stages, the check and the stamp for `local-stable`; `--to pipeline`, the `pipeline` stage, the regressed watch and pipeline runs (§2.5, §2.6, the `pipeline` column) are designed here and built with CI pipelines in a later release, refused meanwhile with `not_in_release` (owner, 2026-11-20; [ADR-0124](../adr/0124-promotion-is-a-model-free-stamp-per-workflow-version.adr.md)). Until then a paused run moves between machines by [CAR](96-run-state-on-a-branch.spec.md).
 
 The engine never promotes or demotes a workflow by itself, and a pipeline run never answers its own pause.
 
@@ -26,7 +26,7 @@ Read-only without `--stamp`; exit 0 when every criterion is met, 6 when any is n
 
 | Stage | When |
 |---|---|
-| `pipeline` | The caller is `pipeline` or `scheduler` ([PRV §2.1](85-caller-provenance.spec.md)), and the workflow version holds a `pipeline` stamp |
+| `pipeline` (later release) | The caller is `pipeline` or `scheduler` ([PRV §2.1](85-caller-provenance.spec.md)), and the workflow version holds a `pipeline` stamp; in release 2 no run has this stage |
 | `local-stable` | Otherwise, the workflow declares `improvement_mode: stable` |
 | `local-dev` | Otherwise |
 
@@ -100,8 +100,8 @@ A pipeline run that pauses exits 3, and the job ends. The question reaches a per
 ## 5. Design notes
 
 - The check reads the same functions as `report --supervision`, `report --loop` and `evals bar`, so a number never differs between two verbs (SUP-AC-3).
-- The pipeline's executor in release 2 is `claude` with an API key, an `apiKeyHelper` or cloud credentials; the `agent-sdk` executor of ADR-0041's assumption C1 arrives in release 3 and its stamp is a separate entry.
-- P9 to P11 exist because a ladder, an escalation or a router is a path the pipeline must not take unmeasured ([R-120](../research/R-120-effort-ladders-and-one-step-model-escalation.rsrch.md), [R-125](../research/R-125-routing-by-complexity-between-decompositions.rsrch.md)).
+- When pipelines arrive, the pipeline's executor is `claude` with an API key, an `apiKeyHelper` or cloud credentials, or `agent-sdk` (ADR-0041 C1); each executor's stamp is a separate entry.
+- P9 to P11 exist because a ladder, an escalation or a router is a path the pipeline must not take unmeasured ([R-120](../research/R-120-effort-ladders-and-one-step-model-escalation.rsrch.md), [R-126](../research/R-126-routing-by-complexity-between-decompositions.rsrch.md)).
 
 ## 6. Acceptance criteria
 
@@ -109,13 +109,14 @@ A pipeline run that pauses exits 3, and the job ends. The question reaches a per
 - [ ] PRO-AC-2 Without `--stamp` the verb creates and changes nothing (contract C13).
 - [ ] PRO-AC-3 Every criterion of §2.3 has a fixture where it alone fails, and its row names the number and the bar.
 - [ ] PRO-AC-4 A change to any file inside the content digest voids every stamp of the package.
-- [ ] PRO-AC-5 Live: one pipeline run on `claude` with an API key reaches the outcome gate on a scratch repository, and its pause exits 3 (probe P-PRO-1).
+- [ ] PRO-AC-5 Later release, live: one pipeline run on `claude` with an API key reaches the outcome gate on a scratch repository, and its pause exits 3 (probe P-PRO-1).
+- [ ] PRO-AC-6 Release 2: `--to pipeline` and a `pipeline` caller's stamp are refused with `not_in_release`.
 
 ## Open questions
 
 | Question | Owner | Default |
 |---|---|---|
-| Where does a pipeline run's state root live between jobs? (ADR-0041 C2) | Owner | A runner with a persistent workspace (self-hosted, or a cache keyed by thread id); a hosted store waits for later |
+| Where does a pipeline run's state root live between jobs? (ADR-0041 C2) | Owner | CAR's state branch, as the owner proposed on 2026-11-20; a hosted store later |
 | Are 20 runs and the other bars right? | Owner, after the first 20 runs of one workflow | As stated |
 
 ## References

@@ -10,7 +10,7 @@ adrs: [0123, 0079, 0121]
 
 ## 1. Overview
 
-A workflow may do the same job in a simple shape (one step does the whole task) or a detailed shape (a plan step, a map over its items, a join), and choose per run by how complex the task is or by another parameter. temperspec measured why: per-phase code cost 130% of one session on small plans, while long single sessions timed out on large ones ([R-125](../research/R-125-routing-by-complexity-between-decompositions.rsrch.md) F1).
+A workflow may do the same job in a simple shape (one step does the whole task) or a detailed shape (a plan step, a map over its items, a join), and choose per run by how complex the task is or by another parameter. temperspec measured why: per-phase code cost 130% of one session on small plans, while long single sessions timed out on large ones ([R-126](../research/R-126-routing-by-complexity-between-decompositions.rsrch.md) F1).
 
 A **complexity switch** is a measured switch ([SWM](79-measured-switches.spec.md)) whose predicate the engine builds from declared **measures** and a **rules file**. It adds five rules: measures are model-free, the most detailed arm is the failsafe and wins the margin, re-arming runs one way and once, every arm honours one **arm contract** for the units after it, and the choice is reported by arm and zone ([ADR-0123](../adr/0123-complexity-chooses-a-decomposition-through-a-measured-switch.adr.md)). No new unit kind is added ([ADR-0062](../adr/0062-new-node-kinds-keep-the-gated-unit.adr.md)).
 
@@ -53,7 +53,7 @@ flowchart LR
 
 ### 2.3 Measures
 
-`MeasureContext` holds `request`, `facts` (check facts of earlier units on the path), `artifacts` (pointers only), `settings`, `stage` ([PRO §2.1](95-promotion-check.spec.md)), `git` (of the run's workspace at the switch) and `read_text(path)` for files under the workspace. It holds no step `value`: a step's assessment of complexity counts only once a check verified it and recorded it as a fact ([R-125](../research/R-125-routing-by-complexity-between-decompositions.rsrch.md) F2).
+`MeasureContext` holds `request`, `facts` (check facts of earlier units on the path), `artifacts` (pointers only), `settings`, `stage` ([PRO §2.1](95-promotion-check.spec.md)), `git` (of the run's workspace at the switch) and `read_text(path)` for files under the workspace. It holds no step `value`: a step's assessment of complexity counts only once a check verified it and recorded it as a fact ([R-126](../research/R-126-routing-by-complexity-between-decompositions.rsrch.md) F2).
 
 | Stock measure | Returns |
 |---|---|
@@ -103,7 +103,7 @@ With `explore`, a run in the margin takes a simpler eligible arm when `hash(thre
 
 ### 2.7 Records and report
 
-The `route` record ([SWM §2.2](79-measured-switches.spec.md)) gains `zone`, `measures` (name → value or fault), `rules_digest` and `rules_source` (`package` or `repository`). `report --switch <workflow>/<switch>` shows, per arm and zone, for finished runs of one workflow version: runs, first-pass yield of the gates from the switch to `joins_at`, cost per completed run, cost per unit of `size`, wall time, re-arm rate and the outcome verdict mix. Re-armed runs are shown apart and are excluded from the per-arm figures. A cell with fewer than 5 runs is marked `too few to compare` ([R-125](../research/R-125-routing-by-complexity-between-decompositions.rsrch.md) F8).
+The `route` record ([SWM §2.2](79-measured-switches.spec.md)) gains `zone`, `measures` (name → value or fault), `rules_digest` and `rules_source` (`package` or `repository`). `report --switch <workflow>/<switch>` shows, per arm and zone, for finished runs of one workflow version: runs, first-pass yield of the gates from the switch to `joins_at`, cost per completed run, cost per unit of `size`, wall time, re-arm rate and the outcome verdict mix. Re-armed runs are shown apart and are excluded from the per-arm figures. A cell with fewer than 5 runs is marked `too few to compare` ([R-126](../research/R-126-routing-by-complexity-between-decompositions.rsrch.md) F8).
 
 ## 3. Behaviours
 
@@ -146,7 +146,7 @@ The `route` record ([SWM §2.2](79-measured-switches.spec.md)) gains `zone`, `me
 
 ## 5. Design notes
 
-- Predict, then fall back once: neither alone suits a mix where most tasks are complex but some are trivial ([R-125](../research/R-125-routing-by-complexity-between-decompositions.rsrch.md) F5).
+- Predict, then fall back once: neither alone suits a mix where most tasks are complex but some are trivial ([R-126](../research/R-126-routing-by-complexity-between-decompositions.rsrch.md) F5).
 - Thresholds are data so the improvement loop can move them: a change to a rules file is a producer proposal of kind `flow` ([PRP §2.3](40-improvement-proposals.spec.md)), measured by a trial on the case set; a repository override is the person's own, recorded on every route record.
 - A complexity switch inside a map item is refused, as a map in a map is ([MAP §2.3](77-map-unit.spec.md)); per-item choice stays `item_model`.
 - Remedy order across specs for one unit: the effort ladder, a re-arm, one model step, a person ([LAD §5](92-effort-ladder-and-model-escalation.spec.md)).

@@ -81,7 +81,7 @@ The stage of a run is read from [PRO §2.1](95-promotion-check.spec.md): `local-
 |---|---|---|---|
 | `local-dev` | as declared | never: `auto` is read as `offer` | pause with the choice |
 | `local-stable` | as declared | the escalation record (§2.7) for this step and workflow version has ≥ 5 escalated attempts graded by an `accepted` judge with a pass rate whose Wilson lower bound is ≥ 0.5 | pause with the choice |
-| `pipeline` | only if the promotion stamp saw the ladder (PRO §2.4) | the promotion stamp covered escalated attempts of this step (PRO §2.4) and the run has a run cost cap | refused at validation: a pipeline never waits on an offer it could not make; `offer` is read as `off` |
+| `pipeline` (later release) | only if the promotion stamp saw the ladder (PRO §2.4) | the promotion stamp covered escalated attempts of this step (PRO §2.4) and the run has a run cost cap | refused at validation: a pipeline never waits on an offer it could not make; `offer` is read as `off` |
 
 ### 2.6 Preflight and validation
 

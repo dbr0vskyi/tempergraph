@@ -157,10 +157,12 @@ flowchart LR
 | AUT | [89 Workflow authoring](89-workflow-authoring.spec.md) | Entry paths, intake inventory, the backwards interview, verification search and classification, authoring record, revise mode |
 | OUT | [90 Run-level good outcome](90-run-outcome.spec.md) | The outcome file, verifier classes, trust and coverage, the outcome gate, the outcome record and measures, revisions |
 | SCF | [91 Blueprint, scaffold and authoring checks](91-blueprint-and-scaffold.spec.md) | The blueprint and its drawing, the literal check, the scaffold and its generated tests, `author verify` up to a first trial |
-| LAD | [92 Effort ladder and one-step model escalation](92-effort-ladder-and-model-escalation.spec.md) | Climbing evidence, held causes, escalation conditions, ladder records |
+| LAD | [92 Effort ladder and one-step model escalation](92-effort-ladder-and-model-escalation.spec.md) | Climbing evidence, held causes, escalation |
 | JRK | [93 Judge model by risk](93-judge-model-by-risk.spec.md) | Risk rule, judge levels, floor, calibration per level |
-| CXR | [94 Complexity routing between decompositions](94-complexity-routing.spec.md) | Measures, rules file and zones, arm contract, one-way re-arm, switch report |
-| PRO | [95 Promotion check and workflow stages](95-promotion-check.spec.md) | Stages, `promote-check`, its criteria, the stamp, the regressed watch |
+| CXR | [94 Complexity routing between decompositions](94-complexity-routing.spec.md) | Measures, zones, arm contract, one-way re-arm |
+| PRO | [95 Promotion check and workflow stages](95-promotion-check.spec.md) | Stages, `promote-check`, the stamp |
+| CAR | [96 Run state carried on a branch](96-run-state-on-a-branch.spec.md) | State branch, subset, lease, deletion |
+| WIN | [97 Windows support](97-windows-support.spec.md) | Platform rules, probes |
 
 ### 2.3 Engine-wide contracts
 
@@ -176,7 +178,7 @@ flowchart LR
 | C7 | State is JSON merged by reducers under a stable thread id; a fresh run never merges into a thread. | [DUR](09-durability-and-resume.spec.md) |
 | C8 | The engine core never names a workflow. | [WFM](02-workflow-model.spec.md) |
 | C9 | Secrets are scrubbed; published artefacts carry metadata only. | [SEC](14-security.spec.md) |
-| C10 | Paths resolve inside the workspace; the state root is the main checkout. | [WSP](13-workspace-and-concurrency.spec.md) |
+| C10 | Paths resolve inside the workspace; the state root is the main checkout (outside git, WSP §2.4). | [WSP](13-workspace-and-concurrency.spec.md) |
 | C11 | One graph per process. | [WSP](13-workspace-and-concurrency.spec.md) |
 | C12 | Versioned schemas, tolerant readers. | [CON](01-contracts.spec.md) |
 | C13 | Input resolution and the read-only verbs call no model and create nothing. | [CLI](17-engine-cli.spec.md) |

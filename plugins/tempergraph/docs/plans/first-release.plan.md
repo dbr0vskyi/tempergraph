@@ -211,7 +211,7 @@ Every item release 1 ships, then every item it leaves out with its release. The 
 
 | # | Feature | Spec |
 |---|---|---|
-| X2-1 | Promotion to the pipeline on `claude`: `promote-check`, SUP §2.7 | PRO, ADR-0041, SUP |
+| X2-1 | Promotion to `local-stable`: `promote-check`, SUP §2.7; the pipeline stage moves to a later release, with carried state as the stopgap | PRO, CAR, ADR-0041, SUP |
 | X2-2 | Eval suites and `evals run\|report\|grade` | EVS |
 | X2-3 | Live scoring, harvest and replay | EVS |
 | X2-4 | Eval skill | SHL |
@@ -234,8 +234,8 @@ Every item release 1 ships, then every item it leaves out with its release. The 
 | X2-21 | Lifecycle hooks, in-process observers, wider hook events | EVT |
 | X2-22 | Schedules, release-2 slice: once and calendar recur for workflow targets, `catch_up latest\|none`, overlap skip, both caps, all verbs but `export`, portable loop with the host adapter | SCH §5, TCK |
 | X2-23 | Worktree extras: `in_repo` and `path:` roots, `default_branch` base, `cleanup on_finish`, `prune --apply`, foreign-worktree scan, `.worktreeinclude` | WTR |
-| X2-24 | State root outside git | WSP (R-011 G9) |
-| X2-25 | Windows | R-011 U3 |
+| X2-24 | State root outside git | WSP §2.4, ADR-0127, R-131 |
+| X2-25 | Windows | WIN, ADR-0128, R-132 |
 | X2-26 | Session review in stable mode: `signals` plans, saturation, corroborated filing, the proposer reading observations | SRV §2.4, §5 |
 | X2-27 | `upgrade` beyond `--check`, the built-in upgrade workflow and its skill (was X3-13; moved by the owner on 2026-11-20) | WUP, UWF, LSK |
 | X2-28 | Effort ladder and one-step model escalation on evidence only; retirement of the retry-count model list | LAD |

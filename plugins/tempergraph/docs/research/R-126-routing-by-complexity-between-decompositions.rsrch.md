@@ -1,4 +1,4 @@
-# R-125 Routing by task complexity between a simple and a detailed decomposition
+# R-126 Routing by task complexity between a simple and a detailed decomposition
 
 ## Problem statement
 

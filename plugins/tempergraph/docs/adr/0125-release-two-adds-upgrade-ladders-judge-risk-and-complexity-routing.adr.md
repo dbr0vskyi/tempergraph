@@ -15,16 +15,20 @@ Release 1 code is complete on `main` ([first-release plan](../plans/first-releas
 2. include "judges and ladders", with ladders that never raise model or effort on just any failure;
 3. include switching between workflow branches by task complexity or other parameters, at least a simple against a detailed decomposition with a map.
 
+Later the same day the owner asked for research on running on Windows and outside a git repository, moved CI pipelines to a later release, and proposed carrying a run's `.tempergraph` state on a branch meanwhile, removed when the run is done.
+
 Readiness of the release 2 list is in [R-130](../research/R-130-release-two-readiness-and-gaps.rsrch.md).
 
 ## Decision
 
-We will commit release 2 to the scope below, planned in the [second-release plan](../plans/second-release.plan.md). Release 2 is done when a workflow from release 1 can be **measured** by eval suites and its judges, **routed** by complexity and **escalated** only on trusted evidence, **promoted** to a pipeline on `claude` by a stamp, and **carried** across engine releases by `update` and `upgrade` without losing a run.
+We will commit release 2 to the scope below, planned in the [second-release plan](../plans/second-release.plan.md). Release 2 is done when a workflow from release 1 can be **measured** by eval suites and its judges, **routed** by complexity and **escalated** only on trusted evidence, **promoted** to stable mode by a stamp, **moved** between machines with its state on a branch, and **carried** across engine releases by `update` and `upgrade` without losing a run.
 
 | Capability | Release | Change from ADR-0090 |
 |---|---|---|
 | Eval suites, live scoring, harvest and replay, the eval skill ([EVS](../specs/51-eval-suites.spec.md)) | 2 | — |
-| Promotion check, stages, stamp, regressed watch; pipeline on `claude` ([PRO](../specs/95-promotion-check.spec.md), [ADR-0124](0124-promotion-is-a-model-free-stamp-and-release-2-pipelines-run-claude.adr.md)) | 2 | Now specified |
+| Promotion check, stages and stamp to `local-stable` ([PRO](../specs/95-promotion-check.spec.md), [ADR-0124](0124-promotion-is-a-model-free-stamp-per-workflow-version.adr.md)) | 2 | Now specified |
+| **Run state carried on its own branch**, deleted when the run finishes ([CAR](../specs/96-run-state-on-a-branch.spec.md), [ADR-0126](0126-a-run-carries-a-scrubbed-thread-state-on-its-own-branch-and-deletes-it-when-done.adr.md)) | 2 | New, owner 2026-11-20: the stopgap until pipelines |
+| **CI pipelines**: `promote-check --to pipeline`, the `pipeline` stage, the regressed watch, pipeline runs | later (3) | Moved out of release 2 by the owner on 2026-11-20 |
 | `update`, rollback, migration, changelog and transforms, the update skill ([UPD](../specs/60-engine-update.spec.md), [MIG](../specs/62-state-and-run-migration.spec.md), [VER](../specs/61-version-metadata.spec.md), [LSK](../specs/65-lifecycle-skills.spec.md)) | 2 | — |
 | **Workflow upgrade beyond `--check`, the built-in upgrade workflow, the upgrade skill** ([WUP](../specs/63-workflow-upgrade.spec.md), [UWF](../specs/64-upgrade-workflow.spec.md), [LSK](../specs/65-lifecycle-skills.spec.md)) | 2 | Moved from 3 by the owner |
 | **Effort ladder and one-step model escalation**, `xhigh` effort, retirement of the retry-count model ladder ([LAD](../specs/92-effort-ladder-and-model-escalation.spec.md), [ADR-0121](0121-ladders-climb-only-on-trusted-substantive-evidence.adr.md)) | 2 | New |
@@ -34,7 +38,7 @@ We will commit release 2 to the scope below, planned in the [second-release plan
 | Ask unit, event waits, breakpoints, deadlines, fallback target, parallel read-only branches, script cache, `self-check`, sampled audit judge, judge MCP views ([ASK](../specs/73-ask-unit.spec.md), [HUM](../specs/07-gate-and-human.spec.md), [FLX](../specs/74-flow-extensions.spec.md), [SCR](../specs/70-script-units-and-hybrid-steps.spec.md), [CHK](../specs/75-check-contract-and-command-runs.spec.md), [JDG](../specs/05-judge-and-verdict.spec.md), [GRD](../specs/06-independence-guard.spec.md)) | 2 | — |
 | Lifecycle hooks, in-process observers, wider hook events | 2 | — |
 | Schedules, release 2 slice ([SCH §5](../specs/83-schedules.spec.md), [TCK](../specs/84-schedule-ticks-and-unattended-fires.spec.md)); worktree extras ([WTR](../specs/82-worktree-mode.spec.md)); session review in stable mode ([SRV](../specs/44-session-review.spec.md)) | 2 | — |
-| State root outside git; Windows | 2, **at risk** | No spec or research yet ([R-130](../research/R-130-release-two-readiness-and-gaps.rsrch.md)); first to move to release 3 if release 2 must shrink |
+| State root outside git ([WSP §2.4](../specs/13-workspace-and-concurrency.spec.md), [ADR-0127](0127-outside-git-the-state-root-is-found-by-walk-up-and-the-guard-hashes-files.adr.md)); native Windows ([WIN](../specs/97-windows-support.spec.md), [ADR-0128](0128-windows-is-supported-natively-with-job-objects-and-probes-before-judges.adr.md)) | 2 | Researched in [R-131](../research/R-131-running-outside-a-git-repository.rsrch.md) and [R-132](../research/R-132-running-on-windows.rsrch.md); Windows judges wait for live probes |
 | Orchestration, council, contest, writer branches, parallel map, sub-workflows, other executors, the rest of schedules | 3 | — |
 
 Claude CLI stays the only executor through release 2 ([ADR-0091](0091-first-release-ships-the-claude-executor-only.adr.md)). Kinds and fields not built are still refused with `not_in_release`.
@@ -53,7 +57,7 @@ Claude CLI stays the only executor through release 2 ([ADR-0091](0091-first-rele
 |---|---|---|---|
 | Owner's asks of 2026-11-20 | no | yes | yes |
 | A release 1 workflow survives the update | partly (pins only) | yes (transforms and upgrade) | yes |
-| Ladders and routers measured before a pipeline uses them | no | yes (PRO P9 to P11) | yes |
+| Ladders and routers measured before unattended use | no | yes (PRO P9 to P11, built with pipelines) | yes |
 | Size | smallest | medium | largest |
 
 ## Consequences
