@@ -3,7 +3,7 @@ title: Workflow model and validation
 type: component
 status: review
 prefix: WFM
-adrs: [0003, 0008]
+adrs: [0003, 0008, 0062]
 ---
 
 # Workflow model and validation
@@ -26,7 +26,7 @@ The registry reads the workflow registry in the home folder (name → package fo
 
 | Area | Refused before a run (`error`) |
 |---|---|
-| Structure | Empty `order`; a unit `order` does not know; a step with no gate; a model step whose gate has no judge or no criterion (a `wait` unit is the one exception); a judge reference not produced on every path into the step, unless declared optional |
+| Structure | Empty `order`; a unit `order` does not know; a step with no gate; a model step whose gate has no judge or no criterion (`wait`, `ask` and `script` units are the exceptions); a judge reference not produced on every path into the step, unless declared optional |
 | Flow | A target outside `order`; a backward target the gate does not list; an unreachable unit or finalizer; a parallel block with fewer than two branches or a join before a branch; a sub-workflow that is unregistered, recursive or nested deeper than three; a writer branch or writing map item in a workflow without worktrees |
 | Executors | An executor name not registered; an alias no binding resolves for that executor; a tool capability missing from the executor's `tool_map` |
 | Judge view | A judge tool outside the read-only catalog; an artifact kind whose read view the judge executor cannot give, unless the criterion is marked as an unverified system |
@@ -34,6 +34,7 @@ The registry reads the workflow registry in the home folder (name → package fo
 | Prompts | Anything outside the template grammar ([CON §2.2](01-contracts.spec.md)); a field that is neither an engine key nor an input name; an unreadable template |
 | Settings | A non-positive or non-integer timeout; a malformed or missing `issue_repository`; a ladder longer than eight |
 | Routing | A missing description, or a start example that does not resolve |
+| Unit kinds | The refusals of each kind's owning spec: [SCR §2.4](70-script-units-and-hybrid-steps.spec.md), [CNL §2.6](71-council-unit.spec.md), [CTS §2.4](72-contest-unit.spec.md), [ASK §2.2](73-ask-unit.spec.md), [FLX §2.6](74-flow-extensions.spec.md) |
 
 ### 2.2 What only warns (`warning`)
 

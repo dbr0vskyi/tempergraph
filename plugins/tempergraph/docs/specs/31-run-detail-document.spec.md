@@ -93,6 +93,7 @@ Read from the live progress file and the activity journal ([EVT §2.3](30-run-ev
 - Built on demand rather than stored, so it never disagrees with the run log and the reader needs no write ([ADR-0022](../adr/0022-observers-read-files-not-sockets.adr.md)).
 - Evidence and fix texts come from the local evidence file and appear only in this local document, never in a published one ([SEC §2.3](14-security.spec.md)).
 - `health` fields are hints for a person, not decisions: nothing in the engine acts on them.
+- The newer unit kinds add no new section: scripts are attempts with no session, council members and chairs are sessions of the step with their round, contest slots are items, and an ask's questions are the pause's payload ([SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md)).
 
 ## 6. Acceptance criteria
 

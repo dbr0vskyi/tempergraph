@@ -3,14 +3,14 @@ title: Compiler and flow
 type: component
 status: review
 prefix: CMP
-adrs: [0002, 0004]
+adrs: [0002, 0004, 0062]
 ---
 
 # Compiler and flow
 
 ## 1. Overview
 
-The compiler turns a validated workflow into a LangGraph `StateGraph` with **four nodes per unit** (step, judge, gate, human), one finalizer node and static edges for every target the workflow names. The whole topology exists before the run, so validation can check reachability and the diagram can be drawn from the same model. Contract C5 is owned here: gates, routes and joins are pure and safe to re-run; the judge and the gate run once.
+The compiler turns a validated workflow into a LangGraph `StateGraph` with **four nodes per unit** (step, judge, gate, human), one finalizer node and static edges for every target the workflow names. Every unit kind keeps those four nodes; for a council or a contest the step node is a compiled subgraph of sessions with an engine-owned barrier ([ADR-0062](../adr/0062-new-node-kinds-keep-the-gated-unit.adr.md)). The whole topology exists before the run, so validation can check reachability and the diagram can be drawn from the same model. Contract C5 is owned here: gates, routes and joins are pure and safe to re-run; the judge and the gate run once.
 
 ## 2. Contract
 
@@ -42,7 +42,18 @@ def node_names(unit: str) -> tuple[str, str, str, str]: ...           # shared b
 | Parallel | Two or more read-only branches and an engine-owned AND-join that fires only when every branch has passed. A branch declared as a writer runs in its own worktree and is merged at the join ([WSP](13-workspace-and-concurrency.spec.md)). |
 | Map | One subgraph per item of a list artifact (at most 50), results collected by item id; default three items at once. The sequential form runs items in turn in the run's own worktree, each in a fresh session. |
 | Sub-workflow | A registered workflow compiled as a subgraph under the parent's checkpointer; its artifacts go to the unit's own gate; depth at most three; no recursion; no meta child. |
-| Event wait | No model and no judge; arms once, then pauses until a delivered event passes its pure check. Main chain only. |
+| Event wait | No model and no judge; arms once, then pauses until a delivered event passes its pure check. Main chain only. An optional deadline marks it overdue ([FLX §2.3](74-flow-extensions.spec.md)). |
+| Selective parallel, mapped sub-workflow, fallback, breakpoint | [FLX](74-flow-extensions.spec.md). |
+
+#### Step-node forms per kind
+
+| Kind | Step node runs | Owner |
+|---|---|---|
+| `step`, `map`, `subworkflow` | One step session (per item for a map; the child graph for a sub-workflow) | this spec |
+| `script` | A command or callable, no session; hybrid steps run scripts around the session | [SCR](70-script-units-and-hybrid-steps.spec.md) |
+| `council` | Subgraph: member sessions per round, a round barrier, a pure tally, a chair | [CNL](71-council-unit.spec.md) |
+| `contest` | Subgraph: candidate slots as items, each checked and judged, then a pure pick | [CTS](72-contest-unit.spec.md) |
+| `ask`, `wait` | Nothing; the human node pauses | [ASK](73-ask-unit.spec.md), [HUM](07-gate-and-human.spec.md) |
 
 ### 2.3 State
 
@@ -83,6 +94,7 @@ State is JSON, one level deep, merged by reducers ([DUR](09-durability-and-resum
 - Four nodes, not one, because LangGraph restarts a paused node from its top on resume ([ADR-0004](../adr/0004-four-nodes-per-unit.adr.md)).
 - Edges are static so the engine never pays for work the author did not choose; position in `order` is never a fallback.
 - An engine-owned join replaces LangGraph's deferred node, which cannot tell a stopped branch from a finished one.
+- LangGraph features left out on purpose: a node routing itself or its parent with `Command`, `RetryPolicy` on model and judge nodes, `defer`, and the functional API; each conflicts with C4, C5, C6 or workflows as data. The capability-by-capability comparison is [R-060](../research/R-060-node-types-against-langgraph.rsrch.md).
 - Per-call values (alias, timeout, session options) go to the executor for that call only, never into graph state or the checkpoint.
 
 ## 6. Acceptance criteria
@@ -91,7 +103,8 @@ State is JSON, one level deep, merged by reducers ([DUR](09-durability-and-resum
 - [ ] CMP-AC-2 A resume of a paused run starts no judge session and writes no duplicate log record.
 - [ ] CMP-AC-3 Each primitive of §2.2 has an offline test with scripted executors and a scratch git repository.
 - [ ] CMP-AC-4 The diagram-currency test fails when the committed diagram differs from the compiled graph.
-- [ ] CMP-AC-5 No routing decision calls a model or an executor (source-scan of route, gate and join code).
+- [ ] CMP-AC-5 No routing decision calls a model or an executor (source-scan of route, gate, join, `select`, tally and pick code).
+- [ ] CMP-AC-6 Every unit kind of CON §2.1 compiles to exactly four nodes, and the diagram draws a council or contest as one unit with its member or slot count.
 
 ## Open questions
 

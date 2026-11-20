@@ -89,7 +89,7 @@ A verdict the judge writes itself is ignored; a mismatch is only logged. Confide
 ## 5. Design notes
 
 - A judge on a different model family than its producer is a feature, not a fallback: a model tends to rate its own kind of output well. Cross-executor judging makes that cheap ([ADR-0013](../adr/0013-cross-executor-judging.adr.md)).
-- A panel of voting judges is deferred. Sampled audit judging (JDG-B7) is a measurement, recorded only, never routing; its agreement rates feed calibration ([LIF](18-lifecycle-and-evals.spec.md)) and the confidence-against-outcome study ([SIL](16-self-improvement.spec.md)).
+- A panel of voting judges is deferred. A council ([CNL](71-council-unit.spec.md)) is a step whose combined output this spec's one judge grades; it is not a panel. Sampled audit judging (JDG-B7) is a measurement, recorded only, never routing; its agreement rates feed calibration ([LIF](18-lifecycle-and-evals.spec.md)) and the confidence-against-outcome study ([SIL](16-self-improvement.spec.md)).
 - Whether a judge's grades can be trusted is measured outside this spec: a gold set per gate, the catch and clean rates, repeats and robustness variants, and the acceptance state other specs read are in [JCL](50-judge-calibration.spec.md). Acceptance never changes a verdict here. An audit judge's agreement measures consistency, not correctness, so it never counts as a gold label ([ADR-0045](../adr/0045-judges-accepted-on-labelled-error-rates.adr.md)).
 - The `no_change` flag is the judge's claim; a workflow that finds it misused sets `no_change_policy: retry` on that criterion.
 
