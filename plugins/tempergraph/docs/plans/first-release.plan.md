@@ -625,7 +625,7 @@ Goal: the minimal one-step workflow, and a three-step document workflow using a 
 <!-- expand: T11.1 -->
 
 #### T11.2 Live acceptance
-Goal: the end-to-end story of §3 A6 on the owner's machine under a spend cap, with readiness flags moved per the [docs README](../README.md#readiness-flags).
+Goal: the end-to-end story of §3 A6 on the owner's machine under a spend cap, with readiness flags moved per the [docs README](../README.md#readiness-flags). Every live check, its command and its pass line: [live-checks.plan.md](live-checks.plan.md); the automated rows are `tests/live/`, skipped unless `TEMPERGRAPH_LIVE=1`.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T11.2 -->
 

@@ -16,3 +16,4 @@ Plans say **in what order** the specs are built. A release plan fixes a release'
 | [t8-packages-and-install.plan.md](t8-packages-and-install.plan.md) | T8: workflow packages and the registry, first install, stamp, scenarios and lint, audit, blueprint and scaffold | In progress |
 | [t9-shell-skills.plan.md](t9-shell-skills.plan.md) | T9: run driver and bootstrap, authoring verbs and the author skill, troubleshooter and install skills | In progress |
 | [t12-self-improvement.plan.md](t12-self-improvement.plan.md) | T12: loop records, cause codes and lenses, filing and measurement, lessons; labels, calibration, proposals and trials after T7 and T8 | In progress |
+| [live-checks.plan.md](live-checks.plan.md) | T11.2: every live check release 1 still needs on the owner's machine, the command for each, what a pass looks like, and the results table | Not run |
