@@ -68,7 +68,12 @@ A map item has no scope of its own: items share their unit's settings, and a per
 | `human_cap` | run | int 1–100 | 100 | |
 | `run_cost_cap_usd` | run | float > 0 | workflow's, else none | |
 | `auto_reopen` | run | int 0–10 | 0 | |
-| `workspace` | run | `in_place` \| `worktree` | workflow's | `in_place` refused for a workflow with writer branches or writing items |
+| `workspace` | run | `auto` \| `in_place` \| `worktree` | workflow's, else `auto` | `in_place` refused for a workflow with writer branches or writing items; fixed at start ([WTR §2.1](82-worktree-mode.spec.md)) |
+| `worktree.root` | run | `sibling` \| `in_repo` \| `path:<absolute>` | `sibling` | Fixed at start ([WTR §2.4](82-worktree-mode.spec.md)) |
+| `worktree.base` | run | `head` \| `default_branch` \| `ref:<name>` | workflow's `worktree.base`, else `head` | Fixed at start ([WTR §2.5](82-worktree-mode.spec.md)) |
+| `worktree.branch_prefix` | run | 1–3 ref-safe components | `tg` | Fixed at start |
+| `worktree.cleanup` | run | `never` \| `on_finish` | workflow's `worktree.cleanup`, else `never` | May change at resume ([WTR §2.7](82-worktree-mode.spec.md)) |
+| `worktree.read_worktreeinclude` | run | bool | `true` | [WTR §2.3](82-worktree-mode.spec.md) |
 | `enforce_tools`, `strict_permissions` | run | `true` | `false` | Tighten-only |
 | `audit_rate` | run | float 0–1 | 0 | [JDG-B7](05-judge-and-verdict.spec.md) |
 | `audit_executor` | run | registered executor | the gate judge's | |
@@ -91,7 +96,7 @@ Resolution is layer-major: the highest layer that sets a key at any scope matchi
 | 4 | `user:overrides` | `~/.tempergraph/config/settings.json`, `overrides` entries matching the workflow |
 | 5 | `arm:<switch>.<arm>` | While a switch arm is in force, the workflow-declared per-arm values of `model`, `timeout_s`, `idle_s` and `effort` for the units the arm names ([SWM](79-measured-switches.spec.md)) |
 | 6 | `workflow:unit` | The unit's own field: a step's `model` (its ladder rung for the attempt), `timeout_s`, a gate's budgets, a member's `executor` |
-| 7 | `workflow:default` | Workflow-wide values: `default_executor`, `model_profile`, `run_cost_cap_usd`, a declared setting's default |
+| 7 | `workflow:default` | Workflow-wide values: `default_executor`, `model_profile`, `run_cost_cap_usd`, `workspace`, `worktree.base` and `worktree.cleanup` ([WTR §2.3](82-worktree-mode.spec.md)), a declared setting's default |
 | 8 | `project:defaults` | `<state root>/config/settings.json`, `defaults` |
 | 9 | `user:defaults` | `~/.tempergraph/config/settings.json`, `defaults` |
 | 10 | `engine` | The engine default of §2.2 |

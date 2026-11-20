@@ -89,3 +89,8 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0097](0097-schedules-keep-an-iana-zone-and-rfc-5545-daylight-saving-rules.adr.md) | Schedules keep an IANA zone; calendar rules follow wall time, intervals elapsed time, by RFC 5545 | proposed |
 | [0098](0098-missed-slots-catch-up-latest-and-a-live-run-skips-the-next.adr.md) | Missed slots catch up the latest one; a live or paused run skips the next slot; a slot runs at most once | proposed |
 | [0099](0099-a-scheduled-fire-is-an-attested-caller-with-a-capped-unattended-spend.adr.md) | A scheduled fire is an attested `scheduler` caller; unattended spend needs a cap; pauses stay with a person | proposed |
+| [0100](0100-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md) | The engine owns the run's worktree; executor-native worktrees are not used | proposed |
+| [0101](0101-one-workspace-setting-with-an-auto-default.adr.md) | One workspace setting, `run.workspace`, with an `auto` default resolved from the target and the workflow | proposed |
+| [0102](0102-worktrees-beside-the-repository-with-derived-ref-safe-names.adr.md) | Worktrees live beside the repository by default, with names derived ref-safe from the thread id | proposed |
+| [0103](0103-worktree-removal-is-opt-in-clean-only-and-keeps-the-branch.adr.md) | Worktree removal is opt-in, only of clean worktrees, and never deletes the branch | proposed |
+| [0104](0104-a-new-worktree-starts-from-the-main-checkouts-head.adr.md) | A new run worktree starts from the main checkout's HEAD unless the run names another base | proposed |
