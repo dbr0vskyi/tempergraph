@@ -169,7 +169,21 @@ class RunLog:
             self.observers.on_record(out)
             for name, error in self.observers.take_errors():  # EVT-B5: recorded once, the run goes on
                 self.write("engine_error", scope="observer", observer=name, error=error)
+        if record in ("run_started", "run_exit"):
+            self._rows(record, segment)
         return self.seq
+
+    def _rows(self, record: str, segment: int) -> None:
+        """The machine index at `run_started` and the stats row at `run_exit` (CST §2.1, §2.2); best effort (C2)."""
+        try:
+            from tempergraph.observe import rows
+
+            if record == "run_started":
+                rows.on_run_started(self.path)
+            else:
+                rows.on_run_exit(self.path, segment)
+        except Exception:  # noqa: BLE001
+            self.failures += 1
 
 
 def _end_cut_line(path: Path) -> None:

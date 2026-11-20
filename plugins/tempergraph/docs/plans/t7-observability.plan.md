@@ -89,9 +89,23 @@ Doc changes this track made:
 | 7.3.4 | `store/logs.py`, `cli/observe_cli.py` | `store export`: tar.gz, every text file scrubbed, binary files left out, never inside the state root | LOS §2.4, AC-3 | yes | P1 | ✓ | 2026-11-20 |
 | 7.3.5 | `executors/launcher.py`, `run/log.py` | Capture level `observe.raw`, `observe.tool_inputs`, `observe.check_output`, recorded once per run (needs T6.2) | LOS §2.6 | yes | P2 | ○ | |
 
-### T7.4 to T7.6
+### T7.4 Reports and attention
 
-Not started yet; see §3 for what each waits on.
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 7.4.1 | `observe/report.py`, `cli/observe_cli.py` | `report [window] [--by] [--json]`: cost per unit, first visit against repeats with one cause each, judges against steps, per executor and version with reported and estimated money never summed, per arm, per criterion with gate escapes, stalls and timeouts, time profile, loop signal | OBS §2.4, B2, B5, B6, AC-3, AC-5 | yes | P1 | ✓ | 2026-11-20 |
+| 7.4.2 | `observe/rows.py`, `run/log.py` | The local `run` row at every `run_exit`, appended to the home `stats/<YYYY-MM>.jsonl`; the machine index at `run_started` under a lock | CST §2.1, §2.2, OBS §2.4 | yes | P1 | ✓ | 2026-11-20 |
+| 7.4.3 | `observe/rows.py`, `cli/observe_cli.py` | `stats [--month\|--since] [--by] [--projection] [--json]` over the home rows: dedup by `row_id`, unknown schema counted, totals with the completeness flag, projection marked `thin` under 5 runs | CST §2.5, AC-3 | yes | P1 | ✓ | 2026-11-20 |
+| 7.4.4 | `cli/main.py` | `status --all-roots`: rows of every indexed root, a gone root shown `missing` and never removed | CST §2.1 | yes | P1 | ✓ | 2026-11-20 |
+| 7.4.5 | `observe/attention.py`, `cli/observe_cli.py` | `attention [--all-roots] [--json]`: every pending gate of every paused thread once, oldest first, with age, reason, decisions and the `resume` command; read-only | CLI-B6, AC-5 | yes | P1 | ✓ | 2026-11-20 |
+| 7.4.6 | `observe/report.py` | Prompt digests and the diagram overlay, once `attempt_start` carries the rendered-template digest (T5) | OBS §2.4 | yes | P2 | ○ | |
+| 7.4.7 | `observe/report.py` | `slow_host` timeouts and `agent_s`, once `agent_run` carries `duration_s` and the host-speed warning | OBS §2.4 | yes | P2 | ○ | |
+
+Sinks, `stats flush|sync`, `--source`, `--live` and the heartbeat are T10.1 (`observe/sinks.py` is a stub until then).
+
+### T7.5 and T7.6
+
+Split with the T5 and T6 owner: the run-path side of T7.5 (touch classes, the `supervision` record, the ledger's `supervision{}`) is theirs; the read side (level, `report --supervision`, IMD fields, `label`) and T7.6 start here once that record lands.
 
 ## 3. Hand-off notes
 
@@ -101,4 +115,4 @@ Not started yet; see §3 for what each waits on.
 
 ## 4. Verification
 
-From `plugins/tempergraph/engine/`: `python -m pytest`, `ruff check src tests` and `mypy` are clean. No test calls a model. `tests/test_events.py` and `tests/test_detail.py` hold this track's tests.
+From `plugins/tempergraph/engine/`: `python -m pytest`, `ruff check src tests` and `mypy` are clean. No test calls a model. `tests/test_events.py`, `tests/test_detail.py`, `tests/test_store.py` and `tests/test_reports.py` hold this track's tests.

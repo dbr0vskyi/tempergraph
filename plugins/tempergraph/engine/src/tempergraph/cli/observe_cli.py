@@ -8,7 +8,10 @@ from __future__ import annotations
 
 import argparse
 import time
+from pathlib import Path
 from typing import Any
+
+from tempergraph.observe.rows import BY
 
 
 def add_parsers(sub: Any) -> None:
@@ -32,6 +35,26 @@ def add_parsers(sub: Any) -> None:
     ex = ssub.add_parser("export")
     ex.add_argument("selector")
     ex.add_argument("path")
+    rp = sub.add_parser("report", help="cost and friction reports over this state root's runs (OBS §2.4)")
+    rp.add_argument("window", nargs="?", default="30d", help="7d, 24h, 30d (the default) or all")
+    rp.add_argument("--by", choices=("unit", "executor", "version"), default="unit")
+    rp.add_argument("--json", action="store_true")
+    sa = sub.add_parser("stats", help="per-user monthly run rows, and across machines from a sink (CST §2.5)")
+    sa.add_argument("action", nargs="?", choices=("flush", "sync"))
+    src = sa.add_mutually_exclusive_group()
+    src.add_argument("--source", metavar="SINK")
+    src.add_argument("--local", action="store_true")
+    sa.add_argument("--sync", action="store_true")
+    when = sa.add_mutually_exclusive_group()
+    when.add_argument("--month", metavar="YYYY-MM")
+    when.add_argument("--since", metavar="YYYY-MM-DD")
+    sa.add_argument("--by", choices=BY)
+    sa.add_argument("--projection", action="store_true")
+    sa.add_argument("--live", action="store_true")
+    sa.add_argument("--json", action="store_true")
+    at = sub.add_parser("attention", help="everything waiting on a person, oldest first (CLI-B6)")
+    at.add_argument("--all-roots", action="store_true")
+    at.add_argument("--json", action="store_true")
 
 
 def cmd_logs(env: Any, a: argparse.Namespace) -> int:
@@ -116,5 +139,120 @@ def cmd_store(env: Any, a: argparse.Namespace) -> int:
     raise UsageError("store needs usage, prune or export")
 
 
-COMMANDS = {"logs": cmd_logs, "store": cmd_store}
+def roots(env: Any, all_roots: bool) -> list[Path]:
+    """This repository's state root, or every root of the machine index (`--all-roots`, CST §2.1)."""
+    from tempergraph.cli.main import _root
+    from tempergraph.observe.rows import index_roots
+
+    if not all_roots:
+        return [_root(env)]
+    found = [Path(r["path"]) for r in index_roots()]
+    try:
+        here = _root(env)
+        if here not in found:
+            found.insert(0, here)
+    except Exception:  # noqa: BLE001 - outside a repository, the index alone
+        pass
+    return found
+
+
+def cmd_report(env: Any, a: argparse.Namespace) -> int:
+    from tempergraph.cli.main import UsageError, _emit, _root
+    from tempergraph.observe import report as rep
+
+    try:
+        since = rep.window(a.window)
+    except ValueError as exc:
+        raise UsageError(str(exc)) from exc
+    doc = rep.report(_root(env), since, a.by)
+    if a.json:
+        _emit(env, doc)
+        return 0
+    env.out.write(report_text(doc))
+    return 0
+
+
+def _money(m: dict[str, Any]) -> str:
+    parts = []
+    if m.get("reported_usd") is not None:
+        partial = "" if m["reported_sessions"] == m["sessions"] else f" ({m['reported_sessions']} of {m['sessions']})"
+        parts.append(f"${m['reported_usd']:.2f} rep{partial}")
+    if m.get("estimated_usd") is not None:
+        parts.append(f"${m['estimated_usd']:.2f} est")
+    if not parts:
+        return "unmeasured"
+    return ("≥ " if m.get("unmeasured") else "") + " · ".join(parts) + f" · {m['completeness']}"
+
+
+def report_text(doc: dict[str, Any]) -> str:
+    out = [f"{doc['threads']} threads since {doc['since'] or 'the start'} · {_money(doc['total'])}",
+           f"steps {_money(doc['steps_and_judges']['steps'])} · judges {_money(doc['steps_and_judges']['judges'])}"]
+    if doc["by"] == "executor":
+        out += [f"  {k}: {_money(v)}" for k, v in doc["by_executor"].items()]
+    elif doc["by"] == "version":
+        out += [f"  {k}: {_money(v)}" for k, v in doc["by_version"].items()]
+    else:
+        for u in doc["units"]:
+            out.append(f"  {u['workflow']}.{u['unit']}: first {_money(u['first_visit'])}")
+            out += [f"      repeat {cause}: {_money(m)}" for cause, m in u["repeats"].items()]
+    for c in doc["criteria"]:
+        esc = f" · {c['escapes']} escapes" if c["escapes"] else ""
+        out.append(f"  criterion {c['workflow']}.{c['criterion']}: "
+                   + ", ".join(f"{k} {v}" for k, v in sorted(c["statuses"].items())) + esc)
+    out += [f"  {t['class']}: {t['thread_id']} {t['unit']} attempt {t['attempt']}" for t in doc["timeouts"]]
+    out += [f"  loop: {lp['thread_id']} {lp['session_key']} {lp['tool']} ×{lp['repeats']}" for lp in doc["loops"]]
+    return "\n".join(out) + "\n"
+
+
+def cmd_stats(env: Any, a: argparse.Namespace) -> int:
+    from tempergraph.cli.main import UsageError, _emit
+    from tempergraph.observe import rows, sinks
+    from tempergraph.store.layout import home_path
+
+    home = home_path()
+    if a.action == "flush":
+        _emit(env, sinks.flush(home))
+        return 0
+    if a.action == "sync" or a.sync:
+        synced = sinks.sync(home)
+        if a.action == "sync":
+            _emit(env, synced)
+            return 0
+    if a.live:
+        _emit(env, sinks.live(home, a.source))
+        return 0
+    if a.month and (len(a.month) != 7 or a.month[4] != "-"):
+        raise UsageError("--month takes YYYY-MM")
+    found, unknown, synced_at = sinks.rows_for(home, a.source, a.local, a.month, a.since)
+    doc: dict[str, Any] = {"schema_version": 1, "source": a.source or ("local" if a.local else "home"),
+                           "month": a.month, "since": a.since, "totals": rows.totals(found), "unknown_schema": unknown,
+                           "synced": synced_at}
+    if a.by:
+        groups: dict[str, list[dict[str, Any]]] = {}
+        for r in found:
+            groups.setdefault(rows._key(r, a.by), []).append(r)
+        doc["by"] = {"key": a.by, "groups": {k: rows.totals(v) for k, v in sorted(groups.items())}}
+    if a.projection:
+        doc["projection"] = rows.projection(found, by_version=a.by == "version")
+    _emit(env, doc)
+    return 0
+
+
+def cmd_attention(env: Any, a: argparse.Namespace) -> int:
+    from tempergraph.cli.main import _emit
+    from tempergraph.observe.attention import attention, line
+
+    doc = attention(roots(env, a.all_roots), env.catalog.specs)
+    if a.json:
+        _emit(env, doc)
+    elif not doc["items"]:
+        env.out.write("Nothing is waiting on a person.\n")
+    else:
+        for i in doc["items"]:
+            env.out.write(line(i) + "\n")
+    return 0
+
+
+COMMANDS = {"logs": cmd_logs, "store": cmd_store, "report": cmd_report, "stats": cmd_stats,
+            "attention": cmd_attention}
 

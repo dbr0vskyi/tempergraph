@@ -69,6 +69,7 @@ def _parser() -> _Parser:
     st.add_argument("--unit", help="with --detail: one unit in full")
     st.add_argument("--no-live", action="store_true", help="with --detail: leave out the live session blocks")
     st.add_argument("--json", action="store_true", help="machine output (the default for status)")
+    st.add_argument("--all-roots", action="store_true", help="every state root of the machine index (CST §2.1)")
     ev = sub.add_parser("events", help="a thread's run-log records in seq order (EVT)")
     ev.add_argument("selector")
     ev.add_argument("--since", type=int, metavar="SEQ")
@@ -273,6 +274,24 @@ def cmd_status(env: Env, a: argparse.Namespace) -> int:
         return 0
     if a.unit:
         raise UsageError("--unit needs --detail")
+    if a.all_roots:
+        from tempergraph.observe.rows import index_roots
+
+        doc = status(_root(env), env.catalog.specs, Selector(value=a.selector))
+        here = str(_root(env).resolve())
+        for r in doc["threads"]:
+            r["state_root"] = here
+        doc["roots"] = [{"path": here, "missing": False}]
+        for entry in index_roots():
+            if entry["path"] == here:
+                continue
+            doc["roots"].append({"path": entry["path"], "missing": entry["missing"]})
+            if entry["missing"]:
+                continue
+            for r in status(Path(entry["path"]), env.catalog.specs, Selector(value=a.selector))["threads"]:
+                doc["threads"].append({**r, "state_root": entry["path"]})
+        _emit(env, doc)
+        return 0
     _emit(env, status(_root(env), env.catalog.specs, Selector(value=a.selector)))
     return 0
 
