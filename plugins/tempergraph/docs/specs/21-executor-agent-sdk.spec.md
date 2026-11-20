@@ -28,7 +28,7 @@ adrs: [0006, 0008, 0010, 0012, 0018, 0019]
 
 ### 2.2 Tool map
 
-The same as [ECC §2.2](11-executor-claude-code.spec.md): `Read`, `Grep`, `Glob`, `Edit`, `Write`, `Bash`, `WebFetch`, `WebSearch`, `Agent`, `mcp__<s>__<t>`, with the same allow rules. The view catalog shares Claude Code's rows ([GRD](06-independence-guard.spec.md)).
+The same as [ECC §2.2](11-executor-claude-code.spec.md): `Read`, `Grep`, `Glob`, `Edit`, `Write`, `Bash`, `WebFetch`, `WebSearch`, `Agent`, `mcp__<s>__<t>`, `Skill`, with the same allow rules; a `skill:` capability needs the workflow's plugin among the step's setting sources. The view catalog shares Claude Code's rows ([GRD](06-independence-guard.spec.md)).
 
 ### 2.3 Worker request document
 

@@ -3,7 +3,7 @@ title: Compiler and flow
 type: component
 status: review
 prefix: CMP
-adrs: [0002, 0004, 0062]
+adrs: [0002, 0004, 0062, 0079]
 ---
 
 # Compiler and flow
@@ -37,10 +37,10 @@ def node_names(unit: str) -> tuple[str, str, str, str]: ...           # shared b
 |---|---|
 | Order | A pass goes to the next unit in `order`. |
 | Route | A pure function of state picks one static forward target or the finalizer, in the gate node, before any approval pause. A raise or a non-target stops the run; it never falls back to `order`. |
-| Switch | A named route with arms (unit, finalizer, map or parallel block) and a default arm taken on any predicate fault. The arm is sticky per visit or per run. An operator may pick the arm at start (`--arm <switch>=<arm>`), validated against the declared arms; every pick, by predicate, default or operator, is written as a `route` record ([OBS](15-observability-and-cost.spec.md)). |
+| Switch | A named route with arms (unit, finalizer, map or parallel block) and a default arm taken on any predicate fault. The arm is sticky per visit or per run. An operator may pick the arm at start (`--arm <switch>=<arm>`), validated against the declared arms; every pick, by predicate, default or operator, is written as a `route` record ([OBS](15-observability-and-cost.spec.md)). Shadow mode, per-arm overrides and re-arming: [SWM](79-measured-switches.spec.md). |
 | Back-edge | Starts a new visit of the target and of each unit after it on the path, clears their judgements and artifacts, and hands the target the reason. |
 | Parallel | Two or more read-only branches and an engine-owned AND-join that fires only when every branch has passed. A branch declared as a writer runs in its own worktree and is merged at the join ([WSP](13-workspace-and-concurrency.spec.md)). |
-| Map | One subgraph per item of a list artifact (at most 50), results collected by item id; default three items at once. The sequential form runs items in turn in the run's own worktree, each in a fresh session. |
+| Map | One subgraph per item of a list artifact (default at most 20, at most 50), each item gated on its own, results collected by item id; no back-edge from an item. The sequential form runs items in turn in the run's own worktree, each in a fresh session. Declaration and per-item rules: [MAP](77-map-unit.spec.md). |
 | Sub-workflow | A registered workflow compiled as a subgraph under the parent's checkpointer; its artifacts go to the unit's own gate; depth at most three; no recursion; no meta child. |
 | Event wait | No model and no judge; arms once, then pauses until a delivered event passes its pure check. Main chain only. An optional deadline marks it overdue ([FLX §2.3](74-flow-extensions.spec.md)). |
 | Selective parallel, mapped sub-workflow, fallback, breakpoint | [FLX](74-flow-extensions.spec.md). |

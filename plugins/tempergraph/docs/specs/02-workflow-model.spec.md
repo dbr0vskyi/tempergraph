@@ -34,7 +34,8 @@ The registry reads the workflow registry in the home folder (name → package fo
 | Prompts | Anything outside the template grammar ([CON §2.2](01-contracts.spec.md)); a field that is neither an engine key nor an input name; an unreadable template |
 | Settings | A non-positive or non-integer timeout; a malformed or missing `issue_repository`; a ladder longer than eight |
 | Routing | A missing description, or a start example that does not resolve |
-| Unit kinds | The refusals of each kind's owning spec: [SCR §2.4](70-script-units-and-hybrid-steps.spec.md), [CNL §2.6](71-council-unit.spec.md), [CTS §2.4](72-contest-unit.spec.md), [ASK §2.2](73-ask-unit.spec.md), [FLX §2.6](74-flow-extensions.spec.md) |
+| Unit kinds | The refusals of each kind's owning spec: [SCR §2.4](70-script-units-and-hybrid-steps.spec.md), [CNL §2.6](71-council-unit.spec.md), [CTS §2.4](72-contest-unit.spec.md), [ASK §2.2](73-ask-unit.spec.md), [FLX §2.6](74-flow-extensions.spec.md), [MAP §2.3](77-map-unit.spec.md), [SWM §4](79-measured-switches.spec.md) |
+| Checks, values, finalizer | `mechanical` on a gate with no check, `self_check` on a step whose gate has no check ([CHK §4](75-check-contract-and-command-runs.spec.md)); a reserved or misplaced template key, a bad `choices` or `pattern` ([VAL §4](76-step-values-and-template-keys.spec.md)); a finalizer without `finalizer_outcomes` or importing an executor ([FIN §4](78-finalizer-contract.spec.md)); a `skill:` capability naming a plugin path that is not installed with the workflow |
 
 ### 2.2 What only warns (`warning`)
 

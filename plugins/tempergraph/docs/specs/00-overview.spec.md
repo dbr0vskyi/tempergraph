@@ -3,7 +3,7 @@ title: tempergraph system overview
 type: overview
 status: review
 prefix: OVR
-adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035, 0062]
+adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035, 0062, 0075]
 ---
 
 # tempergraph system overview
@@ -31,6 +31,7 @@ This spec is the index of the set. It holds no component requirement; each requi
 | G9 | Many runs planned as a graph of runs, validated before spend and supervised without a model, with every pause left to a person. | [ORC](45-orchestration.spec.md), [OSK](46-orchestrator-skill.spec.md) |
 | G10 | The engine and each workflow move between releases without losing a run: an update that never breaks work in flight, and a workflow upgrade planned by data, edited by rule or a gated model, and verified before it is stamped. | [UPD](60-engine-update.spec.md), [VER](61-version-metadata.spec.md), [MIG](62-state-and-run-migration.spec.md), [WUP](63-workflow-upgrade.spec.md), [UWF](64-upgrade-workflow.spec.md), [LSK](65-lifecycle-skills.spec.md) |
 | G11 | Every graph shape LangGraph can build, except the self-routing forms [R-060](../research/R-060-node-types-against-langgraph.rsrch.md) excludes, is declarable as workflow data, and higher-level units (scripts, councils, contests, asks) keep every outcome engine-derived and judged. | [SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md), [FLX](74-flow-extensions.spec.md) |
+| G12 | A delivery workflow such as temperspec is expressible through the public interface alone: checks that run commands and record facts, step values, per-item maps, measured switches and a finalizer that can never fail a passed run. | [CHK](75-check-contract-and-command-runs.spec.md), [VAL](76-step-values-and-template-keys.spec.md), [MAP](77-map-unit.spec.md), [FIN](78-finalizer-contract.spec.md), [SWM](79-measured-switches.spec.md) |
 
 ### Non-goals
 
@@ -136,6 +137,11 @@ flowchart LR
 | CTS | [72 Contest unit](72-contest-unit.spec.md) | Candidate slots, per-candidate judging, the pick rule, retry scope |
 | ASK | [73 Ask unit](73-ask-unit.spec.md) | Questions, typed answers, the `input` pause, the answers artifact |
 | FLX | [74 Flow extensions](74-flow-extensions.spec.md) | Selective parallel, mapped sub-workflows, deadlines, fallback target, operator breakpoints |
+| CHK | [75 Check contract and command runs](75-check-contract-and-command-runs.spec.md) | What a check receives and returns, findings, facts, the command runner, the check worker, the check preview |
+| VAL | [76 Step values and template keys](76-step-values-and-template-keys.spec.md) | The `value` artifact kind; engine, item and artifact keys a template may name |
+| MAP | [77 Map unit](77-map-unit.spec.md) | Map declaration, fan-out, per-item gates and budgets, the join |
+| FIN | [78 Finalizer contract](78-finalizer-contract.spec.md) | Finalizer context, commands, outcomes, once-only and exit-code rule |
+| SWM | [79 Measured switches](79-measured-switches.spec.md) | Shadow mode, per-arm overrides, re-arming |
 
 ### 2.3 Engine-wide contracts
 
@@ -191,7 +197,7 @@ flowchart LR
 
 ## 6. Acceptance criteria
 
-- [ ] OVR-AC-1 Every goal G1–G11 is owned by at least one component spec, and every contract C1–C16 by exactly one.
+- [ ] OVR-AC-1 Every goal G1–G12 is owned by at least one component spec, and every contract C1–C16 by exactly one.
 - [ ] OVR-AC-2 Every spec in the index exists, follows the six-section layout and stays within 400 lines and 30 KB.
 - [ ] OVR-AC-3 Every link between specs, decision records and research notes resolves.
 - [ ] OVR-AC-4 No component spec defines a type that [CON](01-contracts.spec.md) also defines.
