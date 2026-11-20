@@ -1,5 +1,5 @@
 {
-  "name": "release-notes",
+  "name": "release-notes-tgraph",
   "version": "0.1.0",
   "description": "Example tempergraph workflow: release notes for the changes since the last tag (the minimal package)",
   "author": {

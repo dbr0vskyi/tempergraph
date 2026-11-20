@@ -10,7 +10,7 @@ An example tempergraph workflow: three units that refresh named sections of a do
 | finalizer | function | reports where the document was written (`written`) |
 
 ```
-tempergraph workflows register plugins/doc-refresh
+tempergraph workflows register plugins/doc-refresh-tgraph
 tempergraph run doc-refresh "docs/guide.md: the install section, for Python 3.12"
 ```
 

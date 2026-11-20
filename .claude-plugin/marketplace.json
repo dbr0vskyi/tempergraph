@@ -18,13 +18,13 @@
       "description": "Claude Mod showing progress of tempergraph runs"
     },
     {
-      "name": "release-notes",
-      "source": "./plugins/release-notes",
+      "name": "release-notes-tgraph",
+      "source": "./plugins/release-notes-tgraph",
       "description": "Example tempergraph workflow: release notes for the changes since the last tag (the minimal package)"
     },
     {
-      "name": "doc-refresh",
-      "source": "./plugins/doc-refresh",
+      "name": "doc-refresh-tgraph",
+      "source": "./plugins/doc-refresh-tgraph",
       "description": "Example tempergraph workflow: refresh named sections of a document (a script, a route, a trip back, an approval and a finalizer)"
     }
   ]

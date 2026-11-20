@@ -68,7 +68,7 @@ def plugin_name(workflow: str) -> str:
 
 
 def workflow_name(name: str) -> str:
-    """The workflow name a person may also type as its plugin name: `release-notes-tgraph` -> `release-notes`."""
+    """The workflow name a person may also type as its plugin name: `notes-tgraph` -> `notes`."""
     return name[: -len(PLUGIN_SUFFIX)] if name.endswith(PLUGIN_SUFFIX) and len(name) > len(PLUGIN_SUFFIX) else name
 
 

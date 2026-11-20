@@ -28,7 +28,7 @@ NO_SLEEP = RunSettings(sleep=lambda s: None)
 
 
 def plugin(name: str) -> Path:
-    return REPO_ROOT / "plugins" / name
+    return REPO_ROOT / "plugins" / f"{name}-tgraph"  # the plugin folder carries the suffix (ADR-0120)
 
 
 @pytest.mark.parametrize("name", EXAMPLES)
@@ -45,9 +45,9 @@ def test_example_loads_and_passes_its_generated_tests(name: str, tmp_path: Path)
 @pytest.mark.parametrize("name", EXAMPLES)
 def test_example_is_in_the_marketplace(name: str) -> None:
     market = json.loads((REPO_ROOT / ".claude-plugin" / "marketplace.json").read_text())
-    entry = next(p for p in market["plugins"] if p["name"] == name)
+    entry = next(p for p in market["plugins"] if p["name"] == f"{name}-tgraph")  # ADR-0120
     manifest = json.loads((plugin(name) / ".claude-plugin" / "plugin.json").read_text())
-    assert entry["source"] == f"./plugins/{name}" and manifest["name"] == name
+    assert entry["source"] == f"./plugins/{name}-tgraph" and manifest["name"] == f"{name}-tgraph"
     assert "tempergraph" in manifest["dependencies"]
 
 

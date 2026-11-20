@@ -78,10 +78,9 @@ A workflow package has two names, one derived from the other ([ADR-0120](../adr/
 
 | Rule | Detail |
 |---|---|
-| Suffix | The plugin name is the workflow name plus `-tgraph`, always, so any plugin ending in `-tgraph` is a tempergraph workflow. Any other plugin name is refused (`plugin-name-suffix`) |
+| Suffix | The plugin name is the workflow name plus `-tgraph`, always, so any plugin ending in `-tgraph` is a tempergraph workflow. Any other plugin name is refused (`plugin-name-suffix`). The engine and monitor plugins are not workflows |
 | Workflow name | Kebab-case (`[a-z0-9][a-z0-9-]*`); does not itself end in `-tgraph`; does not start with a prefix Claude Code reserves (`claude-`, `anthropic-`, `anthropics-`, `cc-plugin-`); at most 57 characters, so the plugin name stays within 64 |
 | Either name is accepted | A CLI argument naming a workflow may be given as the plugin name: `run release-notes-tgraph …` runs `release-notes` |
-| Not workflows | The engine plugin `tempergraph` and the monitor `tempergraph-monitor` are not workflow packages and keep their names |
 
 ### 2.3 Loading
 

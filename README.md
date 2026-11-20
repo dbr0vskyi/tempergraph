@@ -12,8 +12,8 @@ This repository is a Claude Code plugin marketplace (`.claude-plugin/marketplace
 |---|---|
 | `tempergraph` | The engine: the `tempergraph` CLI, its skills and hooks, and the Python engine under `engine/` |
 | `tempergraph-monitor` | A Claude Mod that shows runs as they happen |
-| `release-notes` | Example workflow: one judged step (release notes since the last tag) |
-| `doc-refresh` | Example workflow: a script, a route on a value, a trip back, an approval and a finalizer |
+| `release-notes-tgraph` | Example workflow: one judged step (release notes since the last tag) |
+| `doc-refresh-tgraph` | Example workflow: a script, a route on a value, a trip back, an approval and a finalizer |
 
 Start at [plugins/tempergraph/docs/README.md](plugins/tempergraph/docs/README.md) for the design, and at the release plan for what release 1 holds.
 
