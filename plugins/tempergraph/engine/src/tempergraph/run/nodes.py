@@ -156,7 +156,7 @@ class EngineNodes:
         if first:
             fp = gitmod.fingerprint(workdir)
             self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=bool(fp.status),
-                               entered_from=((state.get("visits") or {}).get(unit) or {}).get("from") or "start")
+                               entered_from=_entered_from(state, unit))
         ladder = _aliases(st.model) or _aliases(spec.model_profile.get(unit)) or ["inherit"]
         alias = ladder[min(retries, len(ladder) - 1)]
         ex = self.ctx.registry.get(st.executor or spec.default_executor)
@@ -455,4 +455,15 @@ class EngineNodes:
         result = run_finalizer(self.ctx, state)
         self.ctx.log.write("finalize", **result)
         return {"finalized": {"done": True, **result}}
+
+
+def _entered_from(state: Mapping[str, Any], unit: str) -> str:
+    """EVT §2.2 `entered_from`: `start`, `proceed`, `back:<unit>`, `rewind:<unit>` or `resume`."""
+    v = (state.get("visits") or {}).get(unit) or {}
+    if v.get("entered_from"):
+        return str(v["entered_from"])
+    if int(v.get("visit", 1)) > 1 and v.get("from"):
+        return f"back:{v['from']}"
+    path = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
+    return "proceed" if path else "start"
 

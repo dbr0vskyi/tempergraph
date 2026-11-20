@@ -16,12 +16,18 @@ ESCALATE_CAUSES = frozenset({"auth", "refused", "tool_access", "environmental", 
 HUMAN_CAP = 100
 
 
-def clear_from(spec: WorkflowSpec, unit: str) -> dict[str, Any]:
-    """BUD-B4: delete verdicts, judgements, artifacts, values and facts of ``unit`` and every later unit."""
+def clear_from(spec: WorkflowSpec, unit: str, state: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """BUD-B4: delete verdicts, judgements, artifacts, values and facts of ``unit`` and every later unit.
+
+    Every later unit that already ran gets a new visit, so its next entry is recorded as one (EVT §2.2)."""
     order = flow.effective_order(spec)
     later = order[order.index(unit):] if unit in order else [unit]
     out: dict[str, Any] = {k: {u: None for u in later} for k in ("artifacts", "values", "facts", "judgements")}
     out["counters"] = {u: {"retries": 0, "infra": 0} for u in later}
+    attempts = (state or {}).get("attempts") or {}
+    visits = (state or {}).get("visits") or {}
+    out["visits"] = {u: {"visit": int((visits.get(u) or {}).get("visit", 1)) + 1, "entered_from": "proceed"}
+                     for u in later[1:] if attempts.get(u)}
     return out
 
 
@@ -100,10 +106,11 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
         loops[target] = int(loops.get(target, 0)) + 1
         visits = (state.get("visits") or {}).get(target) or {}
         reason = "; ".join(b.get("problem", "") for b in judged.get("blockers") or []) or "sent back"
-        return _merge(clear_from(spec, target),
+        return _merge(clear_from(spec, target, state),
                       route("BACK", flow.step_node(target)),
                       {"counters": {unit: {**counters, "retries": 0, "infra": 0, "loops": loops}},
-                       "visits": {target: {"visit": int(visits.get("visit", 1)) + 1, "reason": reason, "from": unit}}})
+                       "visits": {target: {"visit": int(visits.get("visit", 1)) + 1, "reason": reason, "from": unit,
+                                           "entered_from": f"back:{unit}"}}})
     if verdict == Verdict.PROCEED:
         if g.approval:
             return to_human("approval", "approval")
@@ -160,9 +167,10 @@ def apply_decision(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payl
     if d.word in ("back", "rewind") and d.unit:
         visits = (state.get("visits") or {}).get(d.unit) or {}
         human = int(counters.get("human", 0)) + (1 if d.word == "rewind" else 0)
-        w = _merge(clear_from(spec, d.unit), route(d.word.upper(), flow.step_node(d.unit)),
+        w = _merge(clear_from(spec, d.unit, state), route(d.word.upper(), flow.step_node(d.unit)),
                    {"visits": {d.unit: {"visit": int(visits.get("visit", 1)) + 1,
-                                        "reason": feedback or f"{d.word} by a person", "from": unit}}})
+                                        "reason": feedback or f"{d.word} by a person", "from": unit,
+                                        "entered_from": f"{d.word}:{unit}"}}})
         w["counters"] = {**w.get("counters", {}), unit: {**counters, "human": human, "loops": {}}}
         return w
     return _merge(route("STOP", s.stop[0]), {"run": {"stopped": {"reason": "person", "unit": unit,

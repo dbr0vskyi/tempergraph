@@ -28,6 +28,7 @@ from tempergraph.executors.preflight import preflight
 from tempergraph.executors.registry import Registry
 from tempergraph.git import main_checkout
 from tempergraph.model import flow
+from tempergraph.model.diagram import diagram_model
 from tempergraph.run import gate as gatemod
 from tempergraph.run.log import CostTotals, Ledger, RunLog, last_record
 from tempergraph.run.nodes import Drain, EngineNodes, RunContext
@@ -113,7 +114,8 @@ def _context(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, s
 
 
 def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, settings: RunSettings,
-           judges: Mapping[str, str], first_input: Any, *, before: Callable[[Any], None] | None = None) -> RunOutcome:
+           judges: Mapping[str, str], first_input: Any, *, before: Callable[[Any], None] | None = None,
+           executors: Mapping[str, str] | None = None) -> RunOutcome:
     """Run the graph from `first_input` while holding the lock, then turn the thread state into an exit."""
     tid = thread_id(spec.name, task_id)
     log = RunLog(run_dir(root, spec.name, task_id) / "run.jsonl")
@@ -127,7 +129,11 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         cfg = cw.config(tid)
         if before is not None:
             before(cw)
-        log.write("run_started", origin=settings.origin, caller=dict(settings.caller))
+        meta = (((cw.graph.get_state(cfg).values or {}).get("run") or {}).get("meta") or {})
+        log.write("run_started", origin=settings.origin, caller=dict(settings.caller),
+                  alias=aliases.alias_of(root, tid), label=settings.label or meta.get("label"),
+                  workflow_version=spec.version, plan_digest=diagram_model(spec)["digest"],
+                  executors={"steps": dict(executors or {}), "judges": dict(judges)})
         outcome: RunOutcome
         with StopWatcher(root, spec.name, task_id, stop, poll_s=1.0) as watcher:
             box["w"] = watcher
@@ -214,7 +220,7 @@ def start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: P
             "task", chars=sum(len(v) for v in inputs.values()), request=clip(scrub(inputs.get("request", "")), 200))
         initial = {"request": {"task_id": task_id, "inputs": dict(inputs)}, "workspace": rec.to_json(),
                    "run": {"meta": {"origin": settings.origin, "label": clip(scrub(settings.label or ""), 80) or None}}}
-        out = _drive(spec, task_id, root, registry, settings, rep.judges, initial)
+        out = _drive(spec, task_id, root, registry, settings, rep.judges, initial, executors=rep.step_executors)
         out.warnings = list(plan.warnings) + [f"{w.code}: {w.message}" for w in rep.warnings]
         return out
     finally:
@@ -318,7 +324,8 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
             if prior is not None:
                 prior(cw2)
 
-        out = _drive(spec, task_id, root, registry, settings, rep.judges, first_input, before=before_all)
+        out = _drive(spec, task_id, root, registry, settings, rep.judges, first_input, before=before_all,
+                     executors=rep.step_executors)
         if stale is not None:
             out.warnings.append("stale_stop_request_removed")
         return out

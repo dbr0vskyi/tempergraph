@@ -233,3 +233,14 @@ def test_touch_classes() -> None:
     assert touches("approval", "", Decision.parse("proceed")) == [{"class": "designed", "action": "approve"}]
     assert touches("budget", "", Decision.parse("rewind:draft"))[1] == {"class": "steer", "action": "rewind"}
     assert touches("stopped", "person", Decision.parse("retry")) == [{"class": "steer", "action": "decide"}]
+
+
+def test_trip_back_records_new_visits(repo: Path) -> None:
+    ex = standin("claude", steps=[DRAFT, REVIEW, DRAFT, REVIEW],
+                 judges=[judge(), judge(verdict_block("UNMET", defect_in="notes")), judge(), judge()])
+    assert go(repo, ex).exit_code is ExitCode.FINISHED
+    entered = [(r["unit"], r["visit"], r["entered_from"]) for r in records(repo) if r["kind"] == "unit_entered"]
+    assert entered == [("draft", 1, "start"), ("review", 1, "proceed"), ("draft", 2, "back:review"),
+                       ("review", 2, "proceed")]  # EVT §2.2
+    started = next(r for r in records(repo) if r["kind"] == "run_started")
+    assert started["plan_digest"] and started["executors"]["steps"]["draft"] == "claude"
