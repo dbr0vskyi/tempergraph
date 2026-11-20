@@ -52,6 +52,7 @@ claude -p --output-format stream-json --verbose
        --model <bound model>                           [alias is not inherit]
        --allowedTools <rules from §2.2>                [step declares tools]
        --tools <mapped built-ins>                      [operator enabled enforcement]
+       --disallowedTools EnterWorktree,ExitWorktree    [always; the run's worktree is the engine's, WTR §2.9]
        --strict-mcp-config --mcp-config <engine file>  [enforcement and an MCP tool declared]
        --effort <level> | --max-budget-usd <n> | --fallback-model <bound> | --max-turns <n>   [option set]
 ```

@@ -68,7 +68,12 @@ A map item has no scope of its own: items share their unit's settings, and a per
 | `human_cap` | run | int 1–100 | 100 | |
 | `run_cost_cap_usd` | run | float > 0 | workflow's, else none | |
 | `auto_reopen` | run | int 0–10 | 0 | |
-| `workspace` | run | `in_place` \| `worktree` | workflow's | `in_place` refused for a workflow with writer branches or writing items |
+| `workspace` | run | `auto` \| `in_place` \| `worktree` | workflow's, else `auto` | `in_place` refused for a workflow with writer branches or writing items; fixed at start ([WTR §2.1](82-worktree-mode.spec.md)) |
+| `worktree.root` | run | `sibling` \| `in_repo` \| `path:<absolute>` | `sibling` | Fixed at start ([WTR §2.4](82-worktree-mode.spec.md)) |
+| `worktree.base` | run | `head` \| `default_branch` \| `ref:<name>` | workflow's `worktree.base`, else `head` | Fixed at start ([WTR §2.5](82-worktree-mode.spec.md)) |
+| `worktree.branch_prefix` | run | 1–3 ref-safe components | `tg` | Fixed at start |
+| `worktree.cleanup` | run | `never` \| `on_finish` | workflow's `worktree.cleanup`, else `never` | May change at resume ([WTR §2.7](82-worktree-mode.spec.md)) |
+| `worktree.read_worktreeinclude` | run | bool | `true` | [WTR §2.3](82-worktree-mode.spec.md) |
 | `enforce_tools`, `strict_permissions` | run | `true` | `false` | Tighten-only |
 | `audit_rate` | run | float 0–1 | 0 | [JDG-B7](05-judge-and-verdict.spec.md) |
 | `audit_executor` | run | registered executor | the gate judge's | |
@@ -85,13 +90,13 @@ Resolution is layer-major: the highest layer that sets a key at any scope matchi
 
 | Rank | Layer | Source |
 |---|---|---|
-| 1 | `flag` | `--set <key>=<value>` and the named flags of CLI §2.1 on `run`, `resume` or `rerun`; an orchestration node's `options` and a batch's shared options arrive here, recorded with `via` = `cli`, `orchestration`, `batch` or `rerun` |
+| 1 | `flag` | `--set <key>=<value>` and the named flags of CLI §2.1 on `run`, `resume` or `rerun`; an orchestration node's `options`, a batch's shared options and a schedule's `options` arrive here, recorded with `via` = `cli`, `orchestration`, `batch`, `schedule` ([SCH §2.5.5](83-schedules.spec.md)) or `rerun` |
 | 2 | `profile` | The named profiles chosen with `--profile <name>` (repeatable; a later profile wins per key) |
 | 3 | `project:overrides` | `<state root>/config/settings.json`, `overrides` entries matching the workflow |
 | 4 | `user:overrides` | `~/.tempergraph/config/settings.json`, `overrides` entries matching the workflow |
 | 5 | `arm:<switch>.<arm>` | While a switch arm is in force, the workflow-declared per-arm values of `model`, `timeout_s`, `idle_s` and `effort` for the units the arm names ([SWM](79-measured-switches.spec.md)) |
 | 6 | `workflow:unit` | The unit's own field: a step's `model` (its ladder rung for the attempt), `timeout_s`, a gate's budgets, a member's `executor` |
-| 7 | `workflow:default` | Workflow-wide values: `default_executor`, `model_profile`, `run_cost_cap_usd`, a declared setting's default |
+| 7 | `workflow:default` | Workflow-wide values: `default_executor`, `model_profile`, `run_cost_cap_usd`, `workspace`, `worktree.base` and `worktree.cleanup` ([WTR §2.3](82-worktree-mode.spec.md)), a declared setting's default |
 | 8 | `project:defaults` | `<state root>/config/settings.json`, `defaults` |
 | 9 | `user:defaults` | `~/.tempergraph/config/settings.json`, `defaults` |
 | 10 | `engine` | The engine default of §2.2 |
@@ -172,7 +177,7 @@ The three widening keys above, `tools.add`, `commands.add` and `views.add`, foll
 
 | Rule | Detail |
 |---|---|
-| Who | Only the `flag` layer, given by a person, and a workflow's own profiles. A settings file entry or a user-file profile that widens is refused (`widening_in_file`): a machine file would widen every run unseen. A caller whose decider is not a person cannot widen (`widening_by_agent`); an agent relaying a person's grant needs a named person turn ([PRV §2.8](85-caller-provenance.spec.md)) |
+| Who | Only the `flag` layer, given by a person, and a workflow's own profiles. A settings file entry or a user-file profile that widens is refused (`widening_in_file`): a machine file would widen every run unseen. A schedule's options are refused the same way (`widening_in_schedule`, [SCH §2.5.5](83-schedules.spec.md)). A caller whose decider is not a person cannot widen (`widening_by_agent`); an agent relaying a person's grant needs a named person turn ([PRV §2.8](85-caller-provenance.spec.md)) |
 | What | A grant passes the same checks as a declaration ([WFM §2.1](02-workflow-model.spec.md)): the executor's `tool_map` maps it, a command prefix holds no shell metacharacter and its resolver argv is safe, an MCP server is configured on this machine, a skill's plugin is installed and the executor hosts an authoring surface. A grant that fails one is refused with the declaration's own finding code |
 | Never | A path outside the workspace (C10); a write, edit, shell or writing MCP tool for a judge, a council member or the chair; a judge view outside the read-only catalog; any grant that removes `strict_permissions` or enforcement. The judge stays on an executor that declares `restricts_judge_tools`, and the guard of [GRD](06-independence-guard.spec.md) runs on the widened view |
 | Shown | The step's tools block lists granted tools as declared ones ([PRM §2.2](04-prompt-rendering.spec.md)); `settings_resolved` marks each grant `widening: true`; the pause payload and `config show` list grants apart |

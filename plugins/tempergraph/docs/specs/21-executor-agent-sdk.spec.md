@@ -45,7 +45,8 @@ The launcher starts `<engine python> -m tempergraph.executors.sdk_worker` and wr
 | `permission_mode` | `acceptEdits` in the engine's own worktree, `default` in place; never `bypassPermissions` or `auto` |
 | `setting_sources` | `["project"]`, so the repository's CLAUDE.md and skills load and user settings do not |
 | `mcp_servers`, `strict_mcp_config` | the engine's file and `True`, when enforcement is on and an MCP tool is declared |
-| `hooks` | the gatekeeper `PreToolUse` hook (§2.6) |
+| `disallowed_tools` | `EnterWorktree`, `ExitWorktree`: the run's worktree is the engine's ([WTR §2.9](82-worktree-mode.spec.md)) |
+| `hooks` | the gatekeeper `PreToolUse` hook (§2.6); it also denies an `Agent` call that asks for worktree isolation |
 | `max_turns`, `max_budget_usd`, `fallback_model`, `effort` | from options, when set |
 | `env` | the overlay of [ECC §2.3](11-executor-claude-code.spec.md) |
 | `can_use_tool` | none: an unlisted call in `default` mode is denied by the gatekeeper, never prompted |

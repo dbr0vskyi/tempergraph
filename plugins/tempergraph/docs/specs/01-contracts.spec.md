@@ -25,7 +25,8 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `units` | map name → `UnitSpec` | Steps and flow units. |
 | | `flow` | map unit → `FlowSpec` | Where a pass goes when it is not the next in `order`. |
 | | `input` | `InputDeclaration` | How a run starts (§2.3). |
-| | `workspace` | `in_place` \| `worktree` | Default workspace mode. |
+| | `workspace` | `auto` \| `in_place` \| `worktree`, default `auto` | Default workspace mode ([WTR §2.2](82-worktree-mode.spec.md)). |
+| | `worktree` | `WorktreeDecl`, optional | Include patterns, setup commands and submodule handling for a new worktree ([WTR §2.3](82-worktree-mode.spec.md)). |
 | | `finalizer` | callable ref, optional | Runs once after the last pass; calls no model; never changes the run's exit code ([FIN](78-finalizer-contract.spec.md)). |
 | | `finalizer_outcomes` | list of slugs, required with `finalizer` | The outcomes the finalizer may report ([FIN §2.3](78-finalizer-contract.spec.md)). |
 | | `default_executor` | executor name | Used when a step names none. |
@@ -282,7 +283,7 @@ Shared by [RST](80-run-settings-and-overrides.spec.md), [RRN](81-reruns-and-feed
 | `SettingDecl` | `kind`, `default`, `choices?`, `min?`, `max?`, `meaning` | A workflow-declared setting ([RST §2.5](80-run-settings-and-overrides.spec.md)) |
 | `RunOptions` | `settings` | Snapshot: map `SettingKey` → `{value, layer, ref, via?}` for the flag, profile and file layers ([RST §2.6](80-run-settings-and-overrides.spec.md)) |
 | | `profiles` | Profile names in the order given |
-| | `alias`, `label`, `parent`, `origin`, `pause_before`, `dry_run` | The run options that are not settings ([CLI §2.1](17-engine-cli.spec.md)) |
+| | `alias`, `label`, `parent`, `schedule`, `origin`, `pause_before`, `dry_run` | The run options that are not settings ([CLI §2.1](17-engine-cli.spec.md)) |
 | | `caller` | The `Caller` of the call that started or resumed the thread (§2.13); classified per call, never snapshot |
 | | `rerun_of` | `{thread, unit, checkpoint_id, workflow_version}` for a rerun, else null |
 | `ResolvedSettings` | `rows` | Per session scope and key: value, winning layer, `ref`, shadowed layers |
@@ -300,10 +301,10 @@ Shared by [PRV](85-caller-provenance.spec.md), [SUP](86-supervision-metrics.spec
 
 | Type | Field | Meaning |
 |---|---|---|
-| `CallerKind` | enum | `person`, `agent`, `orchestrator`, `pipeline`, `engine`, `unknown` ([PRV §2.1](85-caller-provenance.spec.md)) |
+| `CallerKind` | enum | `person`, `agent`, `orchestrator`, `scheduler`, `pipeline`, `engine`, `unknown` ([PRV §2.1](85-caller-provenance.spec.md)) |
 | `Caller` | `kind`, `confidence` (`attested`, `marked`, `observed`, `declared`, `none`) | Classified by [PRV §2.3](85-caller-provenance.spec.md) |
 | | `decided_by` (`CallerKind`), `relay` (`direct`, `turn_named`, `turn_only`, `claimed`, `none`) | For deciding calls ([PRV §2.4](85-caller-provenance.spec.md)); null otherwise |
-| | `host`, `host_session`, `caller_app`, `parent`, `trace_id`, `evidence[]`, `call_id` | [PRV §2.5](85-caller-provenance.spec.md); `host_session` is hashed in anything that leaves the machine |
+| | `host`, `host_session`, `caller_app`, `parent`, `schedule`, `trace_id`, `evidence[]`, `call_id` | [PRV §2.5](85-caller-provenance.spec.md); `host_session` is hashed in anything that leaves the machine |
 | `TouchClass` | enum | `designed`, `rescue`, `steer`, `engine` ([SUP §2.1](86-supervision-metrics.spec.md)) |
 | `SupervisionLevel` | enum | `observer`, `approver`, `consultant`, `collaborator`, `operator` ([SUP §2.3](86-supervision-metrics.spec.md)) |
 | `SupervisionRecord` | per [SUP §2.2](86-supervision-metrics.spec.md) | One per thread; the ledger row's `supervision{}` |
