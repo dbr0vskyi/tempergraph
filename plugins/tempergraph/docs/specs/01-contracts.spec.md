@@ -38,7 +38,7 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `session_review` | `auto` \| `full` \| `signals` \| `off` | [SRV §2.3](44-session-review.spec.md). |
 | | `verified_engine` | version string, optional | The engine release last stamped against. |
 | | `command_resolver` | callable ref, optional | Maps a declared command prefix to the argv a check or the tool host runs ([WFM](02-workflow-model.spec.md)). |
-| | `run_cost_cap_usd` | float, optional | Spend cap per run, children included ([BUD](08-budgets-and-failures.spec.md)). |
+| | `run_cost_cap_usd` | float, optional | Spend cap per run, children too ([BUD](08-budgets-and-failures.spec.md)). |
 | | `version` | semver, default `0.0.0` | The owner's release of the workflow; with the content digest it forms `workflow_version` ([VER §2.4](61-version-metadata.spec.md)). |
 | | `requires_engine` | version range, optional | Engine releases it works with; warns only ([VER §2.7](61-version-metadata.spec.md)). |
 | | `upgrade` | `UpgradePolicy`, optional | What a workflow upgrade may touch ([VER §2.4](61-version-metadata.spec.md)). |
