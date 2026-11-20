@@ -220,7 +220,7 @@ Goal: the status document, `status` and `wait`, read-only.
 <!-- expand: T4.2 -->
 
 #### T4.3 Workspace
-Goal: state root from any worktree, `in_place`, one engine worktree with bootstrap and interpreter.
+Goal: state root from any worktree, `in_place`, one engine worktree with bootstrap and interpreter, plus the release-1 part of spec 82 WTR once PR 15 merges (`run.workspace`, sibling root, head base, re-attach, `worktree list|path`; ADR-0090).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T4.3 -->
 
