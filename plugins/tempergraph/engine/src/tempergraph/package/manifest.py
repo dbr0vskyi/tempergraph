@@ -100,7 +100,10 @@ def read_manifests(package_path: Path) -> Manifests | list[Finding]:
     surfaces = engine.get("surfaces", {})
     if not isinstance(surfaces, dict):
         out.append(_err("manifest", "surfaces must map an executor to a surface form"))
-    unknown = set(engine) - {"schema_version", "name", "entry", "workflow_api", "docs", "surfaces"}
+    audit = engine.get("audit", {})
+    if not isinstance(audit, dict):
+        out.append(_err("manifest", "audit must be an object, such as {\"ignore\": [...]} (AUD §2.4)"))
+    unknown = set(engine) - {"schema_version", "name", "entry", "workflow_api", "docs", "surfaces", "audit"}
     if unknown:
         out.append(_err("manifest-field-unknown", f"tempergraph.json fields {sorted(unknown)} are unknown "
                         "(the version comes from plugin.json)", "warning"))
@@ -108,7 +111,7 @@ def read_manifests(package_path: Path) -> Manifests | list[Finding]:
         return out
     return Manifests(plugin=plugin, engine=PackageManifest(
         schema_version=1, name=str(name), entry=str(entry), workflow_api=int(api or 0), docs=str(docs),
-        surfaces=dict(surfaces)))
+        surfaces=dict(surfaces), audit=dict(audit)))
 
 
 def read_manifest(package_path: Path) -> PackageManifest | list[Finding]:

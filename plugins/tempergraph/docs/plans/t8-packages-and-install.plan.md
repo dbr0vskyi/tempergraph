@@ -21,7 +21,7 @@ task_id: first-release-t8
 | Origin | [Release 1 plan](first-release.plan.md) track T8 |
 | Specs | [PKG](../specs/88-workflow-package.spec.md), [UPD](../specs/60-engine-update.spec.md), [VER](../specs/61-version-metadata.spec.md), [LIF](../specs/18-lifecycle-and-evals.spec.md), [AUD](../specs/55-workflow-audit.spec.md), [ARC](../specs/56-audit-rule-catalog.spec.md), [PRA](../specs/58-prompt-audit.spec.md), [SCF](../specs/91-blueprint-and-scaffold.spec.md) |
 
-**Status: In progress.** T8.1 is built: a package on disk loads by every step of PKG §2.3, step 5 through OUT's `read_outcome`, `gate_criteria` and `check_against` (plan T5.8.1), validates with the package rules, and registers, lists, unregisters and reinstalls through `tempergraph workflows`. T8.2 is built against a stand-in environment builder; a real `pip install` of the engine into a fresh environment waits on the owner's machine (it needs the package index). T8.3 is built, with the two calls in preflight and `executors` (8.3.5) added at the main build thread's request. T8.4 has prompt lint (LIF §2.1) and the structural readiness report (LIF §2.2). The rest of T8.4, T8.5 and T8.6 are not started.
+**Status: In progress.** T8.1 is built: a package on disk loads by every step of PKG §2.3, step 5 through OUT's `read_outcome`, `gate_criteria` and `check_against` (plan T5.8.1), validates with the package rules, and registers, lists, unregisters and reinstalls through `tempergraph workflows`. T8.2 is built against a stand-in environment builder; a real `pip install` of the engine into a fresh environment waits on the owner's machine (it needs the package index). T8.3 is built, with the two calls in preflight and `executors` (8.3.5) added at the main build thread's request. T8.4 has prompt lint (LIF §2.1) and the structural readiness report (LIF §2.2). T8.5 is built for the `definition` and `host` layers (AUD §2.5); the history layer and TSA are release 2. The rest of T8.4 and T8.6 are not started.
 
 Status pass: PKG, UPD, VER and WUP are `ready-for-implementation`, with release 1 defaults for their open questions. LIF, AUD, ARC, PRA and SCF get theirs in the first row of T8.4, T8.5 and T8.6.
 
@@ -105,7 +105,20 @@ Status pass: WUP is `ready-for-implementation` (its open question has a release 
 
 ### T8.5 Audit
 
-Not started.
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 8.5.0 | `docs/specs/55-*`, `56-*`, `58-*` | Status pass: AUD, ARC and PRA `ready-for-implementation`, with the release 1 decisions in AUD §2.5, ARC §2.10 and PRA §2.5 | AUD, ARC, PRA | | P1 | ✓ | 2026-11-20 |
+| 8.5.1 | `engine/tests/test_audit.py` | The catalog schema and owner source tests; each built rule raised by a fixture and quiet on a clean one; ARC-B2 table; PRA-B1, B2, B3; AUD-B1, B2, B4, B6 to B9; ignores; JSON, SARIF; refusals; V4 | AUD §6, ARC §6, PRA §6 | yes | P1 | ✓ | 2026-11-20 |
+| 8.5.2 | `engine/src/tempergraph/audit/catalog.py` | The rule records and named parameters (ARC §2.1, ARC-AC-1 to AC-3) | ARC §2 | | P1 | ✓ | 2026-11-20 |
+| 8.5.3 | `audit/definition.py`, `audit/host.py`, `executors/launcher.py` (`shell_timing`) | The definition and host rules of ARC and PRA built in release 1 | ARC §2.3 to §2.8, PRA §2.3 | | P1 | ✓ | 2026-11-20 |
+| 8.5.4 | `audit/report.py`, `audit/__init__.py`, `audit/prompts.py` | `AuditFinding`, `AuditReport`, order, the quiet view, ignores, summary, `--fail-on`, text, JSON and SARIF; owned checks rendered once; `audit prompts` rows | AUD §2.2 to §2.4, CON §2.11, PRA §2.4 | | P1 | ✓ | 2026-11-20 |
+| 8.5.5 | `cli/audit.py`, `cli/main.py` (T6 owner) | `tempergraph audit` and `audit prompts`; `audit tools` and `--layer history` refused `not_in_release` | AUD §2.1, §4 | | P1 | ✓ | 2026-11-20 |
+| 8.5.6 | `package/manifest.py`, `package/loader.py` | `audit.ignore` in `tempergraph.json`; `audit-ignore-invalid` | PKG §2.2, AUD-AC-7 | yes | P1 | ✓ | 2026-11-20 |
+| 8.5.7 | `package/stamp.py` | V4 runs the definition layer against the last stamp's list | WUP §2.6 | yes | P1 | ✓ | 2026-11-20 |
+| 8.5.8 | `package/importer.py` | A package import writes no bytecode into the package (AUD-B6) | AUD-B6 | yes | P1 | ✓ | 2026-11-20 |
+| 8.5.9 | | The history layer and its rules (X2-9), hot spots, ARC-B3 | AUD, ARC | yes | P2 | ○ | release 2 |
+| 8.5.10 | | `audit tools` and TSA's rules (X2-10) | TSA | yes | P2 | ○ | release 2 |
+| 8.5.11 | | `outcome-unverified-blocker`, `outcome-uncovered` once OUT trust and coverage exist | ARC §2.8, OUT §2.3 | yes | P1 | ○ | after plan T5.8.1 |
 
 ### T8.6 Blueprint and scaffold
 

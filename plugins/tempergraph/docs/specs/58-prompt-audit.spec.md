@@ -1,7 +1,7 @@
 ---
 title: Prompt audit
 type: component
-status: review
+status: ready-for-implementation
 prefix: PRA
 adrs: [0054, 0051, 0016]
 ---
@@ -73,6 +73,20 @@ Missing tools that a prompt asks for are reported once, by `needed-not-granted` 
 | Findings | Count by severity, prompt lint included |
 | Changed | Version of the last digest change, and the gate's first-pass yield before and after (history) |
 
+### 2.5 Release 1
+
+| Rule | Release 1 |
+|---|---|
+| `ref-missing` | Owned by prompt lint's `lint-ref-missing`, whose reader names package paths only (`prompts/`, `judges/`, `skills/`, `agents/`, `lessons/`), so resolving against the target adds nothing yet; rendered as `prompt-lint:lint-ref-missing` |
+| `prompt-oversized` | Owned by prompt lint's `lint-oversized` (the same limits), measured without start examples (§4) |
+| `tool-name-unknown` | Owned by prompt lint's `lint-tool-name-foreign` for executor tool names (PRA-B3 row 4); MCP names need the view catalog of TSA, release 2, so the rule is listed as skipped |
+| `ref-resolves-elsewhere` | Reads `skills/*/SKILL.md` of the newest non-orphaned version of each plugin in Claude Code's plugin cache; a name given as `plugin:skill` that matches is resolved |
+| `prompt-tool-conflict` | The half "the text forbids a declared tool" (shell, edit, write, web fetch, web search); the half "tells the step to use a tool it does not declare" is TSA's `needed-not-granted` (release 2), as PRA-B3's table already says for commands |
+| `artifact-not-asked` | The half "a `produces` key is never named in the template"; a default template is not read |
+| `criterion-not-in-reach` | A backticked artifact key in a criterion that another unit produces and the judge neither references nor has as subject |
+| `skill-frontmatter-nonstandard` | Runs when `surfaces` is set or a step binds an executor other than `claude` or `agent-sdk` |
+| `audit prompts` | JSON rows; `changed` is `not recorded` until history (release 2) |
+
 ## 3. Behaviours
 
 **PRA-B1 A renamed tool.** Given a step on `claude` whose template says "use `mcp__wiki__get_page`" and a view catalog that lists that name as renamed to `mcp__wiki__getConfluencePage`, when the host layer runs, then `tool-name-stale` fires with both names, and `mcp-tool-not-in-catalog` in TSA fires only if the declaration also uses the old name.
@@ -105,6 +119,8 @@ Missing tools that a prompt asks for are reported once, by `needed-not-granted` 
 - **Executor-specific names in a portable workflow.** Templates should name capabilities through the engine's tools block; a hard-coded executor tool name makes the prompt wrong on the other executors, which `tool-name-unknown` shows when audited with `--executor`.
 
 ## 6. Acceptance criteria
+
+Release 1 (2026-11-20, `tests/test_audit.py`): AC-1 holds for the rules built here, AC-2 for the owned foreign-name row across the four tool maps, AC-3 and AC-4 hold.
 
 - [ ] PRA-AC-1 Every rule in §2.3 has a fixture that raises it and a clean fixture that does not.
 - [ ] PRA-AC-2 PRA-B3's table holds as a table test across the four executors' `tool_map`s.

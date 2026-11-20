@@ -3,8 +3,9 @@
 Release 1 builds the check and the stamp only; the transforms, the upgrade workflow, the branch and the pull
 request are release 3 (ADR-0090). `--check` runs WUP phases 1 to 3 (locate, baseline, plan) read-only.
 `--stamp` on a clean check runs the model-free verification V1 to V7 and writes `stamp.json` in the
-package. V4 (audit) and V6 (model-free suites) report `skipped` with their reason until audit (plan T8.5)
-and eval suites (release 2) exist. V7 regenerates `diagram/` with the stamp, because the diagram is generated
+package. V4 runs the audit's definition layer and fails on a finding at warning or above that the last
+stamp's `audit` list lacks (a first stamp records the list). V6 (model-free suites) reports `skipped` until
+eval suites (release 2) exist. V7 regenerates `diagram/` with the stamp, because the diagram is generated
 and never typed (PKG §2.1).
 """
 
@@ -36,6 +37,16 @@ def read_stamp(root: Path) -> dict[str, Any] | None:
     except (OSError, ValueError):
         return None
     return doc if isinstance(doc, dict) and doc.get("engine_version") else None
+
+
+def _audit_keys(lp: Any, caps: Mapping[str, Capabilities]) -> list[str]:
+    """V4 (WUP §2.6): the definition layer's findings at warning or above, by rule and location. The host
+    layer is left out: it describes this machine, not the package."""
+    from tempergraph.audit import AuditContext, audit
+
+    rep = audit(lp.spec, {"definition"}, AuditContext(target=lp.root, caps=caps), manifest=lp.manifests.engine)
+    return sorted({f"{f.rule}|{f.unit or ''}|{f.item or ''}|{f.location.get('file', '')}" for f in rep.findings
+                   if f.ignored is None and f.severity in ("error", "warning")})
 
 
 def tool_set(spec: WorkflowSpec) -> dict[str, list[str]]:
@@ -120,7 +131,16 @@ def check(path: Path, caps: Mapping[str, Capabilities], *, stamp: bool = False,
                                    evidence=f"{len(errors)} errors, {len(found) - len(errors)} warnings"))
     rep.checks.append(Verification(check="V3 proof", state="failed" if rep.pending else "passed",
                                    evidence=f"{len(rep.pending)} changelog items pending"))
-    rep.checks.append(Verification(check="V4 audit", state="skipped", evidence="audit is plan T8.5"))
+    audit_keys = _audit_keys(lp, caps)
+    before = (prior or {}).get("audit")
+    if isinstance(before, list):
+        new = sorted(set(audit_keys) - set(before))
+        rep.checks.append(Verification(check="V4 audit", state="failed" if new else "passed",
+                                       evidence=(f"new findings: {', '.join(new)}" if new else
+                                                 f"no new finding at warning or above ({len(audit_keys)} known)")))
+    else:
+        rep.checks.append(Verification(check="V4 audit", state="passed",
+                                       evidence=f"no audit baseline yet; {len(audit_keys)} findings recorded"))
     rep.checks.append(Verification(check="V5 change classes", state="passed", evidence="no change was made"))
     rep.checks.append(Verification(check="V6 suites", state="skipped",
                                    evidence="model-free eval suites are release 2 (ADR-0090)"))
@@ -139,6 +159,7 @@ def check(path: Path, caps: Mapping[str, Capabilities], *, stamp: bool = False,
         "workflow_version": lp.workflow_version, "docs_digest": lp.docs_digest, "shape_digest": model["digest"],
         "entries_applied": [{"id": e, "by": "none"} for e in rep.compat["entries"]],
         "tool_set": tool_set(lp.spec),
+        "audit": audit_keys,
         "baseline": {"error": 0, "warning": sum(1 for f in found if f.severity == "warning")},
         "stamped_at": now_iso(),
     }

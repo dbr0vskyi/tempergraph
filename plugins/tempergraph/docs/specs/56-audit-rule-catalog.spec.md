@@ -1,7 +1,7 @@
 ---
 title: Audit rule catalog
 type: component
-status: review
+status: ready-for-implementation
 prefix: ARC
 adrs: [0051, 0053, 0054, 0063, 0064, 0066]
 ---
@@ -128,6 +128,25 @@ Each rule keeps its R-050 family; they are listed together because they read fie
 
 C4 rules are in [TSA §2.4](57-tool-surface-audit.spec.md). The prompt rules that resolve names against the host, check staleness, compare text with declarations and measure size are in [PRA §2.3](58-prompt-audit.spec.md).
 
+### 2.10 Release 1
+
+The catalog is `tempergraph.audit.catalog`: every row above, with `built` naming its release. Release 1 runs the `definition` and `host` rules; history rules are listed as skipped (AUD §2.5). Decisions made while building, recorded here as the spec:
+
+| Rule or part | Release 1 |
+|---|---|
+| `min_n` | A history rule with no minimum named above has `min_n` 1 ("any run in the window") |
+| `slow-host` | The host-speed probe times `$SHELL -lc true` against `$SHELL -c true`. Besides the 15 s rule, the five-times ratio counts only above a floor of 1 s (`slow_login_shell_floor_s`), because a login shell is always several times a plain one in milliseconds |
+| `check-program-missing`, `toolchain-not-covered` | Read the workflow's `allow_commands` and each step's `commands`; the program is the prefix's first word. With a `command_resolver` both are skipped with reason `command_resolver output is not read in release 1` (the run's command runner uses no custom resolver yet). `toolchain-not-covered` reads `package.json` scripts, `Makefile` targets and the presence of `pyproject.toml`, `go.mod` and `Cargo.toml`, each covered by its own programs (npm, yarn, pnpm, node, bun; make; python, pytest, uv and the like; go; cargo), and fires only when the workflow declares commands or a gate has a check |
+| `interpreter-cannot-import`, `worktree-env-outside-worktree` | Skipped: WFM declares no interpreter in release 1 |
+| `hold-time-exposure` | Steps use `timeout_s` or the engine's 600 s, script units their `timeout_s`; a unit with no check and no judge has one attempt |
+| `single-criterion-gate-judge-only` | A fixed pattern over the criterion text (a file or folder that exists, a command or tests that pass, a git fact) on a gate with no check |
+| `small-judge-cross-file`, `large-everywhere` | The tier is the alias's last part (`small`, `haiku`; `large`, `opus`); a step's model falls back to its `model_profile` entry |
+| `judge-not-ready` | Rendered from the readiness report as `readiness:needs-work` (warning, high) and `readiness:needs-cases` (info, high: before JCL no judge is `accepted`, so every gate is `needs cases`) |
+| `external-after-without-approval` | Owned by validation, which already warns on it (`validate:external-after-without-approval`) |
+| `outcome-unverified-blocker`, `outcome-uncovered` | Skipped with reason `owner not present`: OUT's trust and coverage are open in plan T5.8.1 |
+| §2.9 kinds | Not built; validation refuses their kinds in release 1 (`unbounded-wait` waits on `wait` and `ask`, release 2) |
+| `ignore-rule-unknown` | New, `info / high`, AUD §2.4's finding for an ignore naming no known rule |
+
 ## 3. Behaviours
 
 **ARC-B1 Owned rules are rendered.** Given the cost lens reports "judge against step cost" for gate `verify` over the window, when the audit runs history, then the finding carries the cost lens's code and numbers, owner `SIL`, and the audit computes nothing of its own for it.
@@ -161,6 +180,8 @@ C4 rules are in [TSA §2.4](57-tool-surface-audit.spec.md). The prompt rules tha
 - Several R-050 findings stay engine work and get no rule: concurrent writer limits, orphaned sessions, how a retry resumes. A workflow cannot change them.
 
 ## 6. Acceptance criteria
+
+Release 1 (2026-11-20, `tests/test_audit.py`): AC-1 to AC-4 hold; AC-5 holds for ARC-B2, and ARC-B3 waits on the history layer.
 
 - [ ] ARC-AC-1 Every rule has an `id`, `layer`, `family`, `severity`, `confidence`, `owner` and `remedy`, and every history rule a `min_n`, checked by a catalog schema test.
 - [ ] ARC-AC-2 Every R-050 family C1 to C7 has at least one rule here or in TSA; C8 is listed as engine-side.

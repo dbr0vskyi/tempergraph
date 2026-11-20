@@ -271,6 +271,7 @@ Shared by [AUD](55-workflow-audit.spec.md), [ARC](56-audit-rule-catalog.spec.md)
 | | `evidence` | Numbers with their `n`, field paths, tool and rule names; never request or output text |
 | | `remedy`, `widening` | The rule's fixed remedy; `widening` true when it adds a grant |
 | | `location` | Package file and field path, line where known |
+| | `owner` | `audit`, or the owning component of a rendered finding (`validate`, `prompt-lint`, `readiness`, `executor-compat`) |
 | | `ignored` | null, or `{reason, until?}` |
 | `AuditReport` | `schema_version`, `workflow`, `version`, `engine_version` | |
 | | `layers_run`, `layers_skipped`, `rules_skipped` | Skipped entries carry a reason and, for samples, `n` and `min_n` |

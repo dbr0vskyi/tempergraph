@@ -124,10 +124,11 @@ def test_upgrade_check_then_stamp(tmp_path: Path, repo: Path) -> None:
     assert code == 0, (err, doc)
     states = {v["check"]: v["state"] for v in doc["verification"]}
     assert states["V1 load"] == states["V2 validation"] == states["V7 diagram"] == "passed"
-    assert states["V4 audit"] == states["V6 suites"] == "skipped"
+    assert states["V4 audit"] == "passed" and states["V6 suites"] == "skipped"
     stamp = json.loads((pkg / "stamp.json").read_text())
     assert stamp["engine_version"] == ENGINE_VERSION and stamp["workflow_version"].startswith("0.1.0+")
     assert stamp["tool_set"]["claude"] == ["Glob", "Grep", "Read", "Write"]
+    assert "default-step-timeout|draft||workflow/release_notes/__init__.py" in stamp["audit"]
     assert json.loads((pkg / "diagram" / "model.json").read_text())["digest"] == stamp["shape_digest"]
     assert load(pkg).verified_engine == ENGINE_VERSION
     cat = from_registry()

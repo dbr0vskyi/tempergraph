@@ -63,6 +63,7 @@ Refused in a workflow package (validation `error`, code in parentheses): `hooks/
 | `workflow_api` | int | The level of the declaration interface the package was written for ([VER §2.2](61-version-metadata.spec.md)) |
 | `docs` | `provisional` \| `<rule set id>` | Which rules the docs half follows (§2.5); `provisional` until temperspec ships rule files |
 | `surfaces` | map executor → `SurfaceForm`, optional | Per-executor forms of the plugin content (§2.6); absent means the defaults of §2.6 |
+| `audit` | `{ignore: [{rule, unit?, reason, until?}]}`, optional | Accepted audit findings ([AUD §2.4](55-workflow-audit.spec.md)); an entry without a reason is the validation error `audit-ignore-invalid` |
 
 The version is **not** repeated: the builder reads `version` from `plugin.json` and sets `WorkflowSpec.version` from it ([VER §2.4](61-version-metadata.spec.md)), so the two can never disagree. `requires_engine` and `upgrade` stay on the spec (VER).
 

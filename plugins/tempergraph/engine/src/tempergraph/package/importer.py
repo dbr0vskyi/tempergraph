@@ -66,12 +66,17 @@ def register(name: str, folder: Path) -> None:
 
 
 def import_entry(workflow: str, folder: Path) -> ModuleType:
-    """Import afresh: a load always reads the package's current source (PKG §2.3)."""
+    """Import afresh: a load always reads the package's current source (PKG §2.3). No bytecode is written
+    into the package, so loading (and `audit`, AUD-B6) leaves it byte-for-byte unchanged."""
     name = private_name(workflow)
     register(name, folder)
     _purge(name)
     importlib.invalidate_caches()
-    return importlib.import_module(name)
+    was, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+    try:
+        return importlib.import_module(name)
+    finally:
+        sys.dont_write_bytecode = was
 
 
 def mapping() -> dict[str, str]:

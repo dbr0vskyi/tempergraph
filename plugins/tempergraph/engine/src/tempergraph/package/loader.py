@@ -193,6 +193,10 @@ def package_findings(spec: WorkflowSpec, mode: Literal["dev", "stable"] | None =
     from tempergraph.package.readiness import stable_findings
 
     out += stable_findings(spec)
+    from tempergraph.audit.report import parse_ignores
+
+    out += [Finding("audit-ignore-invalid", None, f"tempergraph.json: {p}")  # AUD-AC-7
+            for p in parse_ignores(got.engine.audit.get("ignore"))[1]]
     seen: set[tuple[str, str | None, str]] = set()
     unique = []
     for f in out:

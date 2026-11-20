@@ -45,6 +45,7 @@ SCHEMA = {
     "outcome": 1,
     "facts": 1,
     "bindings": 1,
+    "audit_report": 1,
 }
 
 # Verb words are reserved and refused as run input (CLI-B2, CLI-AC-3).
