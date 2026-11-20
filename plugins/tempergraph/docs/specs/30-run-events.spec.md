@@ -41,6 +41,7 @@ Every run-log record, old kinds and new, carries these keys. Adding them keeps t
 | `pause` | A gate interrupts for a person | pause kind, `reason`, `question` (clipped, scrubbed), artifact keys to review, decision words, resume command, `tool_access[]` of `{name, capability, class}` for cause `tool_access` |
 | `script` | A script of a script unit or a hybrid step ends ([SCR](70-script-units-and-hybrid-steps.spec.md)) | unit, name, phase (`unit`, `before`, `after`), command prefix (null for a callable), exit code, `duration_s`, `cached`, `environmental` |
 | `council_round` | A council round's barrier closes ([CNL](71-council-unit.spec.md)) | round, members answered, spoiled, missing, `changed` count, label order |
+| `finding_recorded` | After every `run_exit`, best effort | Cause codes and fault sides of the segment's findings, their count, and at a final exit the lenses that fire (`mode`, `friction`, `outcome.fire`, `outcome.needs_judge`, `cost`, the per-gate `quality` scorecard) ([SIL §2.1, §2.2](16-self-improvement.spec.md), IMD §2.3) |
 | `outcome` | At a `run_exit` whose segment reached the outcome gate | The thread's `OutcomeRecord` so far: `revision`, `verdict`, `criteria[]` (id, class, severity, trust, status, grader), `intermediate[]`, `later[]`; the latest one is the thread's record, and the `run_segment` ledger row carries it as `outcome{}` (`not_reached` before the gate) ([OUT §2.5](90-run-outcome.spec.md)) |
 | `council_tally` | A council's outcome is derived | mode, rule, counts per option or Borda points, outcome (`<option>`, `no_decision`), `chosen_by` |
 | `contest_pick` | A contest's pick runs ([CTS](72-contest-unit.spec.md)) | per slot: check result, derived verdict, rank keys, cost; winner |
@@ -134,6 +135,7 @@ def register_observers(entry_point_group: str = "tempergraph.observers") -> list
 |---|---|
 | Activity journal write fails | Journal disabled for that session, one `engine_error` record; the session and the live file go on |
 | The ledger row or the exit file cannot be written (a full disk) | The exit code is unchanged; one `engine_error` record of scope `ledger` or `exit_file` is attempted ([OBS-B3](15-observability-and-cost.spec.md)) |
+| Recording the loop's findings fails | The exit code is unchanged; one `engine_error` record of scope `improve` ([SIL-B1](16-self-improvement.spec.md)) |
 | A reader meets an unknown kind or field | Skipped (contract C12) |
 | `events` on a selector with no run log | Exit 2, nothing created |
 | An observer named in config is not installed | Warning at preflight, recorded; the run starts |

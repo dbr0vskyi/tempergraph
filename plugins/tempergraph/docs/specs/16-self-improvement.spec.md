@@ -1,7 +1,7 @@
 ---
 title: Self-improvement loop
 type: component
-status: review
+status: ready-for-implementation
 prefix: SIL
 adrs: [0003, 0005, 0021, 0030, 0031, 0033, 0080]
 ---
@@ -77,6 +77,7 @@ Cause codes come from run-log names and numbers only, each classed `fault`, `inf
 - Its friction and outcome judges follow the same executor selection as any gate ([JDG](05-judge-and-verdict.spec.md)); by default they run on a mid-tier alias for 1800 s.
 - Thresholds (audit 1 in 20, 30-day pattern window, confidence floor) are defaults with no data behind them; they are parameter records with provenance `default_no_data` ([IMD §2.5](43-improvement-data.spec.md)) and revisited with real runs.
 - The pattern rule and the cost windows count runs from the shared store when one is reachable, so a pattern spread over several machines fires; otherwise they read the local ledger and say so ([IMD-B1](43-improvement-data.spec.md)).
+- Release 1 layout: findings are `runs/<workflow>/<task>/findings.json` (one document per thread, each segment appends), the evidence file is `runs/<workflow>/<task>/evidence/record.json`, both owner-only ([LOS §2.1](33-local-observability-store.spec.md)); each exit writes a `finding_recorded` run-log record (causes, sides, and the lenses at a final exit). Cause codes, classes, sides and remedies are one table in `improve/causes.py`; thresholds are parameter records in `improve/params.py` ([IMD §2.5](43-improvement-data.spec.md)).
 - The SIL-B5 comparison also runs, unasked, on the first 10 final exits after a merged proposal ([PRP-B9](40-improvement-proposals.spec.md)).
 
 ## 6. Acceptance criteria
@@ -88,8 +89,10 @@ Cause codes come from run-log names and numbers only, each classed `fault`, `inf
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Which exits are final? Assumed every exit that is not a pause (exit 0, 4 or 5); a re-opened thread has several, and filing still happens once per fingerprint (SIL-B2). | Engine owner | Not a pause |
+| Which fixed cost rules? Release 1 has six, each a finding per unit over 30 days of one version with at least 5 runs: `repeat_share` (retries ≥ 30% of the unit's cost), `retry_after_check` (retries after a failed deterministic check), `judge_over_step`, `expensive_unblocked` (a `large` step whose judge never blocked in the window), `recurring_blocker` (one criterion blocking on 3 or more runs), `unpriced_gate`. The saving assumes a lever removes at most half; under $10 a month is recorded, not filed. | Engine owner | These six |
 
 ## References
 
