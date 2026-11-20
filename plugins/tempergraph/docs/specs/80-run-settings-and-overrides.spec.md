@@ -148,7 +148,7 @@ Code reads a setting from the resolved table passed in its context (`ScriptConte
 | Moment | Engine does |
 |---|---|
 | Start | Reads both files once, resolves, stores the flag, profile and file layers' values in `RunOptions.settings`; the workflow layers come from the content the thread runs |
-| Resume | Reapplies the snapshot. `--set` adds or replaces a flag value; `--unset <key>` removes one; `--profile` replaces the profile list; `--reload-settings` reads both files again. The workflow layers follow the content the thread resumes on ([MIG §2.5](62-state-and-run-migration.spec.md)) |
+| Resume | Reapplies the snapshot. `--set` adds or replaces a flag value; `--unset <key>` removes one; `--profile` replaces the profile list, looked up in the files as they are now while the file layers stay; `--reload-settings` reads both files again. The workflow layers follow the content the thread resumes on ([MIG §2.5](62-state-and-run-migration.spec.md)) |
 | Rerun | Copies the source's snapshot, then applies the rerun's own flags ([RRN §2.4](81-reruns-and-feedback.spec.md)) |
 
 A changed value meets the counters already spent as follows:
@@ -269,6 +269,7 @@ Files are edited by hand or by a skill; the engine has no write verb for them.
 | A configuration file that does not parse, or a newer major `schema_version` | Exit 2 naming the file; `config validate` shows the line |
 | A file `defaults` entry that names a unit | Exit 2, `unit_in_defaults` |
 | A setting the executor cannot apply (`effort`) | Warning, recorded (CON §4) |
+| A key whose feature is not in this release: the audit judge, switch arms, council, contest, wait and ask keys, the release 2 worktree values (ADR-0090) | Exit 2, `setting_not_in_release` |
 
 ## 5. Design notes
 

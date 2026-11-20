@@ -17,6 +17,7 @@ from tempergraph.compiler.state import RunState
 from tempergraph.contracts import (
     CheckResult,
     Executor,
+    ScriptSpec,
     SessionOptions,
     SessionRequest,
     SessionResult,
@@ -69,6 +70,8 @@ class RunContext:
     sleep: Callable[[float], None] = time.sleep
     attempt_cap: int = ATTEMPT_CAP
     infra_tries: int = INFRA_TRIES
+    backoff_max_s: int = 300
+    settings: Mapping[str, Any] = field(default_factory=dict)  # workflow-declared settings (RST §2.5)
     main_checkout: Path | None = None
     attempts_started: int = 0
 
@@ -129,7 +132,7 @@ class EngineNodes:
                                error_kind=res.error_kind, timed_out=res.timed_out, stalled=res.stalled)
             if res.infra_cause is None or n + 1 >= self.ctx.infra_tries:
                 break
-            self.ctx.sleep(BACKOFF_S[min(n, len(BACKOFF_S) - 1)])
+            self.ctx.sleep(min(BACKOFF_S[min(n, len(BACKOFF_S) - 1)], self.ctx.backoff_max_s))
         return results[-1], results
 
     def _cost(self, state: Mapping[str, Any], results: list[SessionResult]) -> dict[str, Any]:
@@ -168,6 +171,10 @@ class EngineNodes:
         ex = self.ctx.registry.get(st.executor or spec.default_executor)
         caps = ex.capabilities()
         fields = self._fields(unit, state, attempt, visit, workdir)
+        failed, env, hybrid = self._scripts(st.before, unit, attempt, "before", state, workdir)
+        fields.update(hybrid)  # a `before` script's keys are the session's to read (SCR §2.1)
+        if failed is not None:
+            return self._script_failed(unit, state, attempt, visit, failed, env, path_units, first, hybrid)
         judged = (state.get("judgements") or {}).get(unit) or {}
         fb = (state.get("feedback") or {}).get(unit) or {}
         retry = not first and bool(prev)
@@ -202,6 +209,10 @@ class EngineNodes:
         res, results = self._session(ex, req)
         after = gitmod.fingerprint(workdir)
         parsed = parse_output(res.text, st.produces, tuple(u.gate.back_targets))
+        after_failed, after_env = None, False
+        if res.ok and st.after:
+            after_failed, after_env, after_arts = self._scripts(st.after, unit, attempt, "after", state, workdir)
+            hybrid.update(after_arts)
         escalate: str | None = None
         if res.error_kind in ("auth", "refused"):
             escalate = res.error_kind
@@ -223,13 +234,25 @@ class EngineNodes:
         }
         if record["slow_host"]:
             record.update(infra_cause="slow_host", infra_spent=False)
+        if after_failed is not None:
+            record.update(ok=False, error_kind=f"script_failed:{after_failed}",
+                          escalate="environmental" if after_env else record["escalate"])
         run: dict[str, Any] = {"cost": self._cost(state, results),
                                "executors": {**((state.get("run") or {}).get("executors") or {}),
                                              ex.name: res.cli_version}}
         if first and unit not in path_units:
             run["path"] = {"units": path_units + [unit]}
-        return {"attempts": {unit: record}, "artifacts": {unit: parsed.artifacts or None},
+        return {"attempts": {unit: record}, "artifacts": {unit: {**hybrid, **parsed.artifacts} or None},
                 "values": {unit: parsed.values or None}, "feedback": {unit: None}, "run": run}
+
+    def _script_failed(self, unit: str, state: Mapping[str, Any], attempt: int, visit: int, name: str, env: bool,
+                       path_units: list[str], first: bool, arts: dict[str, str]) -> dict[str, Any]:
+        """A failed `before` script fails the attempt with no session (SCR §2.2)."""
+        record = {"attempt": attempt, "visit": visit, "ok": False, "text": "", "issues": [], "tools": [],
+                  "session_id": None, "error_kind": f"script_failed:{name}", "infra_spent": False, "check": None,
+                  "escalate": "environmental" if env else None, "timed_out": False}
+        run = {"path": {"units": path_units + [unit]}} if first and unit not in path_units else {}
+        return {"attempts": {unit: record}, "artifacts": {unit: arts or None}, "run": run}
 
     def _previous_unit(self, unit: str, path_units: list[str]) -> str | None:
         before = [p for p in path_units if p != unit]
@@ -251,17 +274,16 @@ class EngineNodes:
 
     # -- script units (SCR) ------------------------------------------------------------------------
 
-    def _script_unit(self, unit: str, state: RunState) -> dict[str, Any]:
-        sc = self.ctx.spec.units[unit].script
-        assert sc is not None
-        prev = (state.get("attempts") or {}).get(unit) or {}
-        attempt = int(prev.get("attempt", 0)) + 1
-        workdir = self._workdir(state)
+    def _run_script(self, sc: ScriptSpec, unit: str, attempt: int, phase: str, state: Mapping[str, Any],
+                    workdir: Path) -> tuple[bool, bool, dict[str, str]]:
+        """One script through the command runner or its callable (SCR §2.1); returns ok, environmental, artifacts."""
         t0 = time.monotonic()
         artifacts: dict[str, str] = {}
         ok, env, exit_code = True, False, None
+        name = sc.name or (sc.run[0] if sc.run else unit)
         if sc.run:
-            out = self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "scripts" / unit / f"{attempt}.out"
+            tag = unit if phase == "unit" else f"{unit}.{phase}.{name}"
+            out = self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "scripts" / tag / f"{attempt}.out"
             r = run_command(ResolvedCommand(argv=sc.run, prefix=sc.run[0]), workdir, out, sc.timeout_s,
                             main=self.ctx.main_checkout)
             exit_code = r.exit_code
@@ -276,10 +298,28 @@ class EngineNodes:
                 artifacts = {str(k): str(v) for k, v in (got or {}).items()} if isinstance(got, dict) else {}
             except Exception as exc:  # noqa: BLE001
                 ok, env = False, True
-                artifacts = {}
                 self.ctx.log.write("engine_error", unit=unit, error=type(exc).__name__)
-        self.ctx.log.write("script", name=sc.name or unit, phase="unit", exit_code=exit_code,
-                           duration_s=round(time.monotonic() - t0, 3), environmental=env)
+        self.ctx.log.write("script", unit=unit, name=name, phase=phase, exit_code=exit_code,
+                           command_prefix=sc.run[0] if sc.run else None, duration_s=round(time.monotonic() - t0, 3), environmental=env, cached=False)
+        return ok, env, artifacts
+
+    def _scripts(self, scripts: tuple[ScriptSpec, ...], unit: str, attempt: int, phase: str,
+                 state: Mapping[str, Any], workdir: Path) -> tuple[str | None, bool, dict[str, str]]:
+        """Hybrid `before` or `after` scripts in declaration order; the first failure ends the phase."""
+        arts: dict[str, str] = {}
+        for sc in scripts:
+            ok, env, got = self._run_script(sc, unit, attempt, phase, state, workdir)
+            arts.update(got)
+            if not ok:
+                return sc.name or (sc.run[0] if sc.run else phase), env, arts
+        return None, False, arts
+
+    def _script_unit(self, unit: str, state: RunState) -> dict[str, Any]:
+        sc = self.ctx.spec.units[unit].script
+        assert sc is not None
+        prev = (state.get("attempts") or {}).get(unit) or {}
+        attempt = int(prev.get("attempt", 0)) + 1
+        ok, env, artifacts = self._run_script(sc, unit, attempt, "unit", state, self._workdir(state))
         record = {"attempt": attempt, "visit": 1, "ok": ok, "text": "", "escalate": "environmental" if env else None,
                   "infra_spent": False, "check": None, "script": True}
         path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
@@ -388,8 +428,9 @@ class EngineNodes:
     def _check_settings(self, u: UnitSpec) -> dict[str, Any]:
         o = self.ctx.spec.outcome
         if not u.extra.get("outcome") or o is None:
-            return {}
-        return {"deliverables": [dict(d) for d in o.deliverables], "outcome_check": o.check.ref if o.check else None}
+            return dict(self.ctx.settings)  # the workflow-declared settings a check reads (RST §2.5)
+        return {**self.ctx.settings, "deliverables": [dict(d) for d in o.deliverables],
+                "outcome_check": o.check.ref if o.check else None}
 
     def _judge_session(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], cres: CheckResult,
                        workdir: Path) -> dict[str, Any]:
@@ -428,13 +469,12 @@ class EngineNodes:
             workspace_facts={"branch": gitmod.branch(workdir), "changed": len(gitmod.changed_paths(workdir))},
             feedback=str(((state.get("feedback") or {}).get(unit) or {}).get("text") or ""),
             visit_reason=str(((state.get("visits") or {}).get(unit) or {}).get("reason") or "")))
-        ladder = _aliases(st.model)
-        profile = _aliases(spec.model_profile.get(f"judge:{unit}"))
-        alias = j.model or (profile[0] if profile else None) or (ladder[-1] if ladder else "inherit")
+        alias = j.model or "inherit"  # resolved on the judge chain alone (RST §2.3, CON §2.4)
         attempt = int(att.get("attempt", 1))
         key = session_key(unit, attempt, "judge")
         req = SessionRequest(kind="judge", prompt=prompt, workdir=workdir, alias=alias, session_key=key,
-                             timeout_s=j.timeout_s or DEFAULT_TIMEOUT_S,
+                             timeout_s=j.timeout_s or DEFAULT_TIMEOUT_S, idle_s=j.idle_s,
+                             options=j.session_options or SessionOptions(),
                              session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, key))
         before = gitmod.fingerprint(workdir)
         res, results = self._session(ex, req, views)
@@ -451,7 +491,8 @@ class EngineNodes:
             except Unparsed:
                 rkey = session_key(unit, attempt, "judge_reask")
                 rreq = SessionRequest(kind="judge_reask", prompt=reask_prompt(res.text, g), workdir=workdir,
-                                      alias=alias, session_key=rkey, timeout_s=req.timeout_s,
+                                      alias=alias, session_key=rkey, timeout_s=req.timeout_s, idle_s=req.idle_s,
+                                      options=req.options,
                                       session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, rkey))
                 res2, r2 = self._session(ex, rreq, views)
                 all_results += r2

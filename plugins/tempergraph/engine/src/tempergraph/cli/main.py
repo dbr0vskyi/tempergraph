@@ -99,18 +99,58 @@ def _parser() -> _Parser:
     wp = wsub.add_parser("path")
     wp.add_argument("thread")
     observe_cli.add_parsers(sub)
+    co = sub.add_parser("config", help="resolved run settings and the settings files (RST §2.9)")
+    csub = co.add_subparsers(dest="action", parser_class=_Parser)
+    cs = csub.add_parser("show")
+    cs.add_argument("workflow")
+    cs.add_argument("--thread")
+    cs.add_argument("--key", help="a glob over the keys shown")
+    _spellings(cs)
+    _settings_options(cs)
+    cs.add_argument("--json", action="store_true")
+    cv = csub.add_parser("validate")
+    cv.add_argument("--file")
+    csub.add_parser("paths")
     return p
 
 
-def _run_options(p: argparse.ArgumentParser, start: bool = True) -> None:
-    p.add_argument("--judge-executor")
+def _settings_options(p: argparse.ArgumentParser, resume: bool = False) -> None:
+    p.add_argument("--set", action="append", default=[], metavar="KEY=VALUE", dest="set_")
+    p.add_argument("--settings", metavar="FILE", help="a JSON map of keys to values, recorded as flags")
+    p.add_argument("--profile", action="append", default=None)
+    if resume:
+        p.add_argument("--unset", action="append", default=[], metavar="KEY")
+        p.add_argument("--reload-settings", action="store_true")
+
+
+# Named run options that are spellings of `--set` (CLI §2.1): option dest -> key, or a `<unit>=<value>` pair.
+SPELLINGS = {"executor": "steps.executor", "judge_executor": "judges.executor", "model": "steps.model",
+             "judge_model": "judges.model", "timeout": "steps.timeout_s", "judge_timeout": "judges.timeout_s",
+             "idle": "steps.idle_s", "run_cost_cap": "run.run_cost_cap_usd", "worktree_root": "run.worktree.root",
+             "worktree_base": "run.worktree.base", "worktree_cleanup": "run.worktree.cleanup"}
+PER_UNIT = {"step_executor": "executor", "step_model": "model"}
+
+
+def _spellings(p: argparse.ArgumentParser) -> None:
+    for opt in ("executor", "judge-executor", "model", "judge-model", "timeout", "judge-timeout", "idle",
+                "run-cost-cap"):
+        p.add_argument(f"--{opt}")
+    p.add_argument("--step-executor", action="append", default=[], metavar="STEP=NAME")
+    p.add_argument("--step-model", action="append", default=[], metavar="STEP=ALIAS")
+    p.add_argument("--approve", action="append", default=[], metavar="STEP")
     p.add_argument("--enforce-tools", action="store_true")
     p.add_argument("--strict-permissions", action="store_true")
+
+
+def _run_options(p: argparse.ArgumentParser, start: bool = True) -> None:
+    _spellings(p)
     p.add_argument("--json", action="store_true")
+    _settings_options(p, resume=not start)
     if start:
         p.add_argument("--alias")
         p.add_argument("--label")
-        p.add_argument("--run-cost-cap", type=float)
+        for opt in ("worktree-root", "worktree-base", "worktree-cleanup"):
+            p.add_argument(f"--{opt}")
         ws = p.add_mutually_exclusive_group()
         ws.add_argument("--workspace", choices=WORKSPACES)
         ws.add_argument("--worktree", dest="workspace", action="store_const", const="worktree")
@@ -151,13 +191,54 @@ def _inputs(pairs: Sequence[str]) -> dict[str, str]:
     return out
 
 
+def _flags(env: Env, a: argparse.Namespace) -> dict[str, Any]:
+    """`--settings`, then `--set`, then the named spellings: every one lands on the flag layer (RST §2.3)."""
+    from tempergraph.settings import parse_value
+
+    flags: dict[str, Any] = {}
+    if getattr(a, "settings", None):
+        try:
+            doc = json.loads((env.cwd / a.settings).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise UsageError(f"--settings {a.settings}: {type(exc).__name__}") from exc
+        if not isinstance(doc, dict):
+            raise UsageError(f"--settings {a.settings}: not a JSON object of keys to values")
+        flags.update(doc)
+    for pair in getattr(a, "set_", None) or []:
+        k, sep, v = pair.partition("=")
+        if not sep or not k:
+            raise UsageError(f"--set {pair!r}: expected key=value")
+        flags[k] = parse_value(v)
+    for dest, key in SPELLINGS.items():
+        v = getattr(a, dest, None)
+        if v is not None:
+            flags[key] = parse_value(v)
+    for dest, name in PER_UNIT.items():
+        for pair in getattr(a, dest, None) or []:
+            unit, sep, v = pair.partition("=")
+            if not sep or not unit:
+                raise UsageError(f"--{dest.replace('_', '-')} {pair!r}: expected <step>=<value>")
+            flags[f"{unit}.{name}"] = parse_value(v)
+    for unit in getattr(a, "approve", None) or []:
+        flags[f"{unit}.approve"] = True
+    if getattr(a, "workspace", None):
+        flags["run.workspace"] = a.workspace
+    if getattr(a, "enforce_tools", False):
+        flags["run.enforce_tools"] = True
+    if getattr(a, "strict_permissions", False):
+        flags["run.strict_permissions"] = True
+    return flags
+
+
 def _settings(env: Env, a: argparse.Namespace) -> Any:
     from tempergraph.run.runner import RunSettings
 
-    fields = {"judge_override": a.judge_executor, "enforce_tools": a.enforce_tools,
-              "strict_permissions": a.strict_permissions, "caller": {"kind": "person", "via": "cli"}}
+    fields: dict[str, Any] = {"flags": _flags(env, a), "caller": {"kind": "person", "via": "cli"},
+                              "profiles": tuple(a.profile) if getattr(a, "profile", None) is not None else None}
     if hasattr(a, "alias"):
-        fields.update(workspace=a.workspace, alias=a.alias, label=a.label)
+        fields.update(alias=a.alias, label=a.label)
+    if hasattr(a, "unset"):
+        fields.update(unset=tuple(a.unset), reload_settings=a.reload_settings)
     if env.run_settings is not None:
         return env.run_settings(**fields)
     return RunSettings(**fields)
@@ -177,7 +258,7 @@ def _report(env: Env, out: Any, as_json: bool) -> int:
 
 def cmd_run(env: Env, a: argparse.Namespace) -> int:
     from tempergraph.executors.preflight import preflight
-    from tempergraph.run.runner import start
+    from tempergraph.run.runner import SettingsRefused, settle_start, start
 
     try:
         spec = _spec(env, a.workflow)
@@ -187,10 +268,6 @@ def cmd_run(env: Env, a: argparse.Namespace) -> int:
         else:
             env.err.write(f"{a.workflow}: {exc}\n")
         return int(CHECK_EXIT["broken"])
-    if a.run_cost_cap is not None:
-        if a.run_cost_cap <= 0:
-            raise UsageError("--run-cost-cap must be a positive number of USD")
-        spec = dataclasses.replace(spec, run_cost_cap_usd=a.run_cost_cap)
     if a.request and a.request[0] in VERBS:
         raise UsageError(f"{a.request[0]!r} is a reserved verb and cannot start a request (CLI-B2)")
     try:
@@ -201,13 +278,20 @@ def cmd_run(env: Env, a: argparse.Namespace) -> int:
     if a.check or res.status != "ok":
         doc: dict[str, Any] = {"schema_version": 1, "status": res.status, "workflow": spec.name}
         if res.status == "ok":
-            settings = _settings(env, a)
-            rep = preflight(spec, env.registry, judge_override=settings.judge_override,
-                            enforce_tools=settings.enforce_tools, strict_permissions=settings.strict_permissions)
-            doc.update(task_id=res.task_id, thread_id=thread_id(spec.name, res.task_id),
-                       refusals=[{"code": f.code, "unit": f.unit, "message": f.message} for f in rep.refusals],
+            doc.update(task_id=res.task_id, thread_id=thread_id(spec.name, res.task_id))
+            try:
+                settled = settle_start(spec, _settings(env, a), _root_or_none(env))
+            except SettingsRefused as exc:  # the same refusals `run` gives (CLI-AC-2, RST-B9)
+                doc.update(status="error", refusals=[{"code": f.code, "unit": f.unit, "message": f.message}
+                                                     for f in exc.findings], warnings=[])
+                _emit(env, doc)
+                return int(CHECK_EXIT["error"])
+            rv = settled.run
+            rep = preflight(settled.spec, env.registry, enforce_tools=bool(rv["enforce_tools"]),
+                            strict_permissions=bool(rv["strict_permissions"]))
+            doc.update(refusals=[{"code": f.code, "unit": f.unit, "message": f.message} for f in rep.refusals],
                        warnings=[{"code": f.code, "unit": f.unit, "message": f.message} for f in rep.warnings],
-                       judges=rep.judges)
+                       judges=rep.judges, settings_digest=settled.resolved.digest)
             if rep.refusals:
                 doc["status"] = "error"
         elif res.status == "needs":
@@ -245,6 +329,15 @@ def _root(env: Env) -> Path:
         return state_root_path(env.cwd)
     except NotInRepository as exc:
         raise UsageError("not inside a git repository") from exc
+
+
+def _root_or_none(env: Env) -> Path | None:
+    from tempergraph.store.layout import NotInRepository, state_root_path
+
+    try:
+        return state_root_path(env.cwd)
+    except NotInRepository:
+        return None
 
 
 def _one(env: Env, selector: str) -> tuple[WorkflowSpec, str]:
@@ -431,10 +524,86 @@ def cmd_worktree(env: Env, a: argparse.Namespace) -> int:
     raise UsageError("worktree needs list or path")
 
 
+def cmd_config(env: Env, a: argparse.Namespace) -> int:
+    """RST §2.9: read-only, model-free; `show` calls the same resolver a start or resume does (RST-B9)."""
+    import fnmatch
+
+    from tempergraph import settings as rst
+    from tempergraph.store.layout import home_path
+
+    root = _root_or_none(env)
+    if a.action == "paths":
+        pp, up = rst.config_paths(root, home_path())
+        _emit(env, {"schema_version": 1, "files": [{"layer": "project", "path": str(pp) if pp else None,
+                                                    "exists": bool(pp and pp.exists())},
+                                                   {"layer": "user", "path": str(up), "exists": up.exists()}]})
+        return 0
+    if a.action == "validate":
+        return _config_validate(env, a, root)
+    if a.action != "show":
+        raise UsageError("config needs show, validate or paths")
+    from tempergraph.run.runner import SettingsRefused, settle_resume, settle_start
+
+    spec = _spec(env, a.workflow)
+    settings = _settings(env, a)
+    findings: list[Any] = []
+    try:
+        if a.thread:
+            from tempergraph.durability.checkpoint import thread_values
+            from tempergraph.store.layout import checkpoint_path
+
+            if root is None:
+                raise UsageError("--thread needs a git repository")
+            task = a.thread.split("/", 1)[1] if "/" in a.thread else a.thread
+            values = thread_values(checkpoint_path(root, spec.name), spec, thread_id(spec.name, task))
+            if not values:
+                raise UsageError(f"no thread {thread_id(spec.name, task)}")
+            settled = settle_resume(spec, settings, root, values)
+        else:
+            settled = settle_start(spec, settings, root)
+        rows = rst.rows_json(settled.resolved)
+        digest = settled.resolved.digest
+    except SettingsRefused as exc:
+        findings, rows, digest = exc.findings, [], None
+    if a.key:
+        rows = [r for r in rows if fnmatch.fnmatch(r["key"], a.key)]
+    _emit(env, {"schema_version": 1, "workflow": spec.name, "settings_digest": digest, "rows": rows,
+                "findings": [{"code": f.code, "message": f.message} for f in findings]})
+    return int(ExitCode.USAGE) if findings else 0
+
+
+def _config_validate(env: Env, a: argparse.Namespace, root: Path | None) -> int:
+    from tempergraph import settings as rst
+    from tempergraph.store.layout import home_path
+
+    if a.file:
+        p = (env.cwd / a.file).resolve()
+        files = rst.ConfigFiles()
+        try:
+            doc = json.loads(p.read_text(encoding="utf-8"))
+            files = dataclasses.replace(files, user=doc if isinstance(doc, dict) and doc.get("schema_version") == 1
+                                        else None, user_path=p)
+            errs = [] if files.user is not None else [{"code": "config_file", "message": f"{p}: not schema 1"}]
+        except (OSError, ValueError) as exc:
+            errs = [{"code": "config_file", "message": f"{p}: {exc}"}]
+    else:
+        files = rst.load_files(root, home_path())
+        errs = [{"code": f.code, "message": f.message} for f in files.errors]
+    named = {str(e.get("workflow")) for doc in (files.project, files.user) if doc
+             for e in (doc.get("overrides") or []) if isinstance(e, dict)}
+    for name, spec in env.catalog.specs.items():  # defaults reach every workflow, so every one is checked
+        _, found = rst.options_snapshot(spec, {}, (), dataclasses.replace(files, errors=()))
+        errs += [{"code": f.code, "workflow": name, "message": f.message} for f in found]
+    for wf in sorted(named - set(env.catalog.specs) - {"*"}):
+        errs.append({"code": "unknown_workflow", "workflow": wf, "message": f"no registered workflow {wf!r}"})
+    _emit(env, {"schema_version": 1, "ok": not errs, "findings": errs})
+    return int(ExitCode.USAGE) if errs else 0
+
+
 COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "run": cmd_run, "resume": cmd_resume, "status": cmd_status, "list": cmd_list, "validate": cmd_validate,
     "executors": cmd_executors, "events": cmd_events, "facts": cmd_facts, "graph": cmd_graph, "wait": cmd_wait, "stop": cmd_stop,
-    "worktree": cmd_worktree, **observe_cli.COMMANDS,
+    "worktree": cmd_worktree, "config": cmd_config, **observe_cli.COMMANDS,
 }
 
 
