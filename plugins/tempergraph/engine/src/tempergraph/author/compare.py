@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from tempergraph.author.blueprint import Blueprint, digest
+from tempergraph.author.blueprint import Blueprint, outcome_digest
 from tempergraph.contracts import TextRef, UnitSpec, WorkflowSpec
 from tempergraph.model.text import TextUnreadable, load_text
 from tempergraph.render.template import TemplateError, fields
@@ -102,6 +102,6 @@ def compare(bp: Blueprint, spec: WorkflowSpec, outcome_doc: Any = None) -> list[
             diff(b.name, "signoff", b.signoff, signs, f"{b.name} {'has' if signs else 'has no'} sign-off criteria; "
                  f"the blueprint says {'it has' if b.signoff else 'none'}")
     if bp.outcome_ref is not None and outcome_doc is not None:
-        diff(None, "outcome_ref.digest", bp.outcome_ref.get("digest"), digest(outcome_doc),
+        diff(None, "outcome_ref.digest", bp.outcome_ref.get("digest"), outcome_digest(outcome_doc),
              "outcome.json changed since the blueprint was approved")
     return out

@@ -88,13 +88,13 @@ Writes the notes. See the [overview](00-overview.spec.md).
 
 def blueprint(name: str = "release-notes", outcome: dict[str, Any] | None = None) -> dict[str, Any]:
     """The approved blueprint of the minimal package (SCF §2.1)."""
-    from tempergraph.author.blueprint import digest
+    from tempergraph.author.blueprint import outcome_digest
 
     o = outcome or OUTCOME
     return {"schema_version": 1, "name": name,
             "units": [{"name": "draft", "kind": "step", "summary": "Write the release notes", "produces": ["notes"],
                        "reads": [], "gate": {"check": True, "judge": True, "signoff": False}}],
-            "outcome_ref": {"revision": o["revision"], "digest": digest(o)},
+            "outcome_ref": {"revision": o["revision"], "digest": outcome_digest(o)},
             "input": {"kind": "text", "parameters": []}}
 
 

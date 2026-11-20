@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from tempergraph.author.blueprint import digest
+from tempergraph.author.blueprint import digest, outcome_digest
 from tempergraph.author.scaffold import ScaffoldRefused, read_session, scaffold
 from tempergraph.cli.main import main
 from tempergraph.executors.registry import Registry
@@ -137,7 +137,7 @@ def test_update_keeps_person_edits(pkg: Path, tmp_path: Path) -> None:
     rec = json.loads((s / "authoring.json").read_text())
     rec["outcome_revision"] = 2
     bp = json.loads((s / "blueprint.json").read_text())
-    bp["outcome_ref"] = {"revision": 2, "digest": digest(o)}
+    bp["outcome_ref"] = {"revision": 2, "digest": outcome_digest(o)}
     write(s, "blueprint.json", bp)
     rec["blueprint_digest"] = digest(bp)
     write(s, "authoring.json", rec)
@@ -196,3 +196,78 @@ def test_selftest_reports_drift(pkg: Path, tmp_path: Path) -> None:
     assert "regenerate" in selftest.run("diagram_current", pkg, tmp_path)[0]
     (pkg / "docs" / "specs" / "01-draft.spec.md").unlink()
     assert selftest.run("docs", pkg, tmp_path)
+
+
+def _verify(pkg: Path, tmp_path: Path, *extra: str) -> tuple[int, dict[str, Any], Registry]:
+    reg = Registry()
+    reg.register(standin("claude"))
+    out = io.StringIO()
+    code = main(["author", "verify", str(pkg), "--json", *extra], registry=reg, cwd=tmp_path, out=out,
+                err=io.StringIO())
+    return code, json.loads(out.getvalue()), reg
+
+
+def _states(doc: dict[str, Any]) -> dict[str, str]:
+    return {r["name"]: r["state"] for r in doc["rungs"]}
+
+
+def test_author_verify_passes_the_minimal_workflow(pkg: Path, tmp_path: Path) -> None:
+    """SCF-B3 / SCF-AC-2: rungs 1 to 7 pass with no edit; rung 10 stamps; 8 and 9 were not asked."""
+    from tempergraph.package import registry as reg_mod
+
+    code, doc, reg = _verify(pkg, tmp_path)
+    assert code == 0, json.dumps([r for r in doc["rungs"] if r["state"] != "passed"], indent=1)
+    states = _states(doc)
+    assert [states[n] for n in ("load", "compare", "literals", "generated_tests", "coverage", "audit",
+                                "register", "stamp")] == ["passed"] * 8
+    assert states["judge_seeds"] == states["trial"] == "skipped"
+    assert (pkg / "stamp.json").is_file()
+    assert any(e["name"] == "release-notes" for e in reg_mod.read_entries())
+    rec = json.loads((pkg / "authoring.json").read_text())
+    assert rec["verify"]["ok"] is True and rec["verify"]["rungs"]["stamp"] == "passed"
+    assert reg.get("claude").calls == []  # type: ignore[attr-defined]  # SCF-AC-5: no executor session
+
+
+def test_author_verify_stops_at_the_comparison(pkg: Path, tmp_path: Path) -> None:
+    """SCF-B4: a person added approval to draft; rung 2 names it and the ladder stops."""
+    decl = pkg / "workflow/release_notes/__init__.py"
+    text = decl.read_text()
+    assert "gate=Gate(check=draft_check," in text
+    decl.write_text(text.replace("gate=Gate(check=draft_check,", "gate=Gate(check=draft_check, approval=True,", 1))
+    code, doc, _ = _verify(pkg, tmp_path)
+    assert code == 2
+    states = _states(doc)
+    assert states["load"] == "passed" and states["compare"] == "failed" and states["stamp"] == "skipped"
+    msgs = [f["message"] for r in doc["rungs"] for f in r["findings"]]
+    assert any("draft now pauses for approval after a pass; the blueprint does not" in m for m in msgs)
+
+
+def test_author_verify_refuses_seeds_and_trial(pkg: Path, tmp_path: Path) -> None:
+    """SCF §2.7: rungs 8 and 9 are not_in_release; rungs 1 to 7 still run, nothing is stamped, no session."""
+    code, doc, reg = _verify(pkg, tmp_path, "--judge-seeds")
+    assert code == 2
+    states = _states(doc)
+    assert states["register"] == "passed" and states["judge_seeds"] == "refused" and states["stamp"] == "skipped"
+    assert "not_in_release" in doc["rungs"][7]["note"]
+    assert reg.get("claude").calls == []  # type: ignore[attr-defined]
+    code, doc, _ = _verify(pkg, tmp_path, "--trial")
+    assert code == 2 and doc["refused"] == "trial-needs-case"
+
+
+def test_verify_coverage_rung_and_decisions(pkg: Path) -> None:
+    """Rung 5: without check fixtures nothing is trusted, so the final criteria are uncovered; a recorded
+    decision on a criterion clears it (SCF §2.5, AUT §2.5)."""
+    import shutil
+
+    from tempergraph.author.verify import Rung, _coverage
+
+    shutil.rmtree(pkg / "evals" / "checks")
+    spec = load_package(pkg).spec
+    assert spec.outcome is not None
+    rung = Rung(n=5, name="coverage")
+    _coverage(spec, set(), rung)
+    ids = {c.id for c in spec.outcome.final}
+    assert {f["code"] for f in rung.findings} == {"outcome-uncovered"} and len(rung.findings) == len(ids)
+    rung = Rung(n=5, name="coverage")
+    _coverage(spec, {str(i) for i in ids}, rung)
+    assert rung.findings == []

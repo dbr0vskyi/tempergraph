@@ -32,6 +32,16 @@ def add_parsers(sub: Any) -> None:
     sc.add_argument("--out", required=True)
     sc.add_argument("--update", action="store_true")
     sc.add_argument("--update-docs", action="store_true")
+    au = sub.add_parser("author", help="check an authored workflow (`author verify`); the other author verbs "
+                        "come with the authoring skill (plan T9)")
+    asub = au.add_subparsers(dest="action")
+    v = asub.add_parser("verify")
+    v.add_argument("workflow")
+    v.add_argument("--judge-seeds", action="store_true")
+    v.add_argument("--trial", action="store_true")
+    v.add_argument("--case", default=None)
+    v.add_argument("--cap", type=float, default=5.0)
+    v.add_argument("--json", action="store_true")
     lit = sub.add_parser("literals", help="scan a workflow for case literals (no model)")
     lit.add_argument("workflow")
     lit.add_argument("--cases", action="store_true", help="also match runs of six words from case requests")
@@ -144,3 +154,37 @@ def cmd_scaffold(env: Any, a: argparse.Namespace) -> int:
         return int(ExitCode.USAGE)
     _emit(env, {"ok": True, **rep.to_json()})
     return 0
+
+
+def cmd_author(env: Any, a: argparse.Namespace) -> int:
+    """`author verify <workflow>` (SCF §2.5); rungs 8 and 9 are refused `not_in_release` (SCF §2.7)."""
+    from tempergraph.author.verify import verify
+    from tempergraph.cli.audit import _probe
+
+    if a.action != "verify":
+        env.err.write("tempergraph: author takes verify in release 1; the other author verbs come with the "
+                      "authoring skill (plan T9)\n")
+        return int(ExitCode.USAGE)
+    spec = _spec(env, a.workflow)
+    if spec is None or spec.package_root is None:
+        p = _path(env, a.workflow)
+        if not (p / "tempergraph.json").is_file():
+            env.err.write(f"tempergraph: unknown workflow {a.workflow!r}\n")
+            return int(ExitCode.USAGE)
+        root = p
+    else:
+        root = Path(spec.package_root)
+    caps = {n: env.registry.get(n).capabilities() for n in env.registry.available()}
+    rep = verify(root, caps, target=env.cwd, probe=_probe(env), judge_seeds=a.judge_seeds, trial=a.trial,
+                 case=a.case)
+    if a.json:
+        _emit(env, rep.to_json())
+    else:
+        for r in rep.rungs:
+            env.out.write(f"{r.n:>2} {r.name:<16} {r.state:<8} {r.note}\n")
+            for f in r.findings:
+                env.out.write(f"     {f['code']}: {f['message']}" + (f" ({f['remedy']})" if f["remedy"] else "") + "\n")
+        for w in rep.warnings:
+            env.out.write(f"   warning {w['code']}: {w['message']}\n")
+        env.out.write(("verify passed" if rep.ok else "verify failed") + "\n")
+    return rep.exit_code

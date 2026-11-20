@@ -78,6 +78,14 @@ def digest(doc: Any) -> str:
                           .encode("utf-8")).hexdigest()
 
 
+def outcome_digest(doc: Any) -> str:
+    """`outcome_ref.digest`: the outcome as canonical JSON without its `revisions` history, which records how
+    the outcome changed rather than what it says (scaffold adds the `authored` entry; SCF §2.7)."""
+    if isinstance(doc, dict):
+        doc = {k: v for k, v in doc.items() if k != "revisions"}
+    return digest(doc)
+
+
 def _f(code: str, unit: str | None, message: str) -> Finding:
     return Finding(code, unit, message, "error")
 
@@ -222,7 +230,7 @@ def check(bp: Blueprint, caps: Mapping[str, Capabilities], outcome: OutcomeSpec 
     out += [f for f in check_against(outcome, spec) if f.severity == "error"]
     if bp.outcome_ref is not None and outcome_doc is not None:
         ref = bp.outcome_ref
-        if ref.get("digest") != digest(outcome_doc) or ref.get("revision") != outcome.revision:
+        if ref.get("digest") != outcome_digest(outcome_doc) or ref.get("revision") != outcome.revision:
             out.append(_f("blueprint_outcome_mismatch", None, "outcome_ref does not match the outcome draft "
                           f"(revision {outcome.revision}); the approval is cleared"))
     for u in bp.units:
