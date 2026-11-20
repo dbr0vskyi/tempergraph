@@ -9,5 +9,5 @@ What it should do:
 - Support graph-based loopbacks and returns driven by those checks.
 - Include self-improvement and other batteries-included features.
 
-Repo: private, github.com/dbr0vskyi/tempergraph (origin), main branch; design documents only, no code yet.
+Repo: private, github.com/dbr0vskyi/tempergraph (origin), main branch; design docs under plugins/*/docs, release 1 engine code under plugins/tempergraph/engine.
 Tagline idea: "Tempered rails for AI workflows".
