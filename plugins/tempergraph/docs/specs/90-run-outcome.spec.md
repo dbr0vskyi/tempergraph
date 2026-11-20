@@ -217,6 +217,9 @@ A revision is made by a person through the authoring skill's revise mode ([AUT �
 | Question | Owner | Release 1 default |
 |---|---|---|
 | Should `stable` workflows default to `outcome.judge = on_trigger` to save one judge per run? Assumed `always` until cost data exists. | Owner | `always` |
+| What counts as a later signal that contradicts a `met` grade before labels exist? Assumed a rerun of the thread (an intervention row with cause `rerun`); person labels and closed pull requests join with FBK and the finalizer facts. | Owner | A rerun |
+| When is upstream agreement "low"? A final criterion that failed after all its serving criteria passed on 20% or more of at least 5 runs. | Owner | 20% of ≥ 5 runs |
+| Which trust does the record give a judge grade before calibration? `uncalibrated`; `calibrated` once the judge binding is accepted ([OUT §2.3](#23-trust-and-coverage)). | Owner | `uncalibrated` |
 | Is ten replayed runs enough agreement to move a criterion from judge to check? A default with no data behind it, like the thresholds of [SUP §2.7](86-supervision-metrics.spec.md). | Owner | Ten |
 
 ## References

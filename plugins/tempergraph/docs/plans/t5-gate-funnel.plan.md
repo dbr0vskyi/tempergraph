@@ -56,8 +56,8 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 | 5.1.5 | `run/log.py` | `seq` continues across segments, read from the log's tail (EVT-B2); the `pause` record carries `pause_kind` | EVT §2.1, B2 | yes | P1 | ✓ | 2026-11-20 |
 | 5.1.6 | `run/gate.py`, `run/nodes.py`, `run/runner.py` | A trip back gives every later unit that already ran a new visit, so it writes `unit_entered` again; `entered_from` is `start`, `proceed`, `back:<unit>` or `rewind:<unit>`; `run_started` carries `alias`, `label`, `workflow_version`, `plan_digest` and the planned executors | EVT §2.2 | yes | P1 | ✓ | 2026-11-20 |
 | 5.1.3 | `run/log.py`, `run/nodes.py`, `run/runner.py` | `cost_so_far` (reported, estimated, completeness) on `gate`, `pause` and `run_exit` ✓; `settings_resolved` ✓ (T6.2); the `supervision` record before `run_exit` ✓ (T6.5) | EVT §2.2, SUP §2.2, RST §2.7 | yes | P2 | ✓ | 2026-11-20 |
-| 5.1.7 | `run/runner.py`, `workspace.py` | The `workspace` record (action, mode, resolved_by, branch, base_commit, reason, counts; the path in the local log only) where a worktree is prepared, reused, attached or released | EVT §2.2, WTR §2.6, §2.10 | yes | P2 | ○ | |
-| 5.1.4 | `tests/test_run_log.py` | OBS-B3: a full disk while writing the ledger keeps the exit code | OBS-B3 | yes | P1 | ○ | |
+| 5.1.7 | `run/runner.py`, `workspace.py` | The `workspace` record (action, mode, resolved_by, branch, base_commit, reason, counts; the path in the local log only) where a worktree is prepared, reused, attached or kept; `removed` and `foreign` wait for `cleanup: on_finish` (release 2) and the foreign worktree scan | EVT §2.2, WTR §2.6, §2.10 | yes | P2 | ✓ | 2026-11-20 |
+| 5.1.4 | `tests/test_run_log.py` | OBS-B3: a full disk while writing the ledger or the exit file keeps the exit code, and one `engine_error` record of the failure is attempted | OBS-B3 | yes | P1 | ✓ | 2026-11-20 |
 
 ### T5.2 Checks and command runs
 
@@ -90,8 +90,8 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 | 5.5.1 | `run/gate.py` | `decide` (pure); `pause_payload` with the resume command (HUM-AC-2); `check_decision` refuses before anything is written; `apply_decision` for proceed, retry, back, rewind, stop with feedback | HUM §2, §4 | yes | P1 | ✓ | 2026-11-20 |
 | 5.5.2 | `run/nodes.py` | Escalation, budget, approval and tool-access pauses | HUM §2.1 | yes | P1 | ✓ | 2026-11-20 |
 | 5.5.3 | `run/runner.py` | The intervention ledger row (HUM-B6), appended before the graph runs: id, `caller`, SUP §2.1 touch classes, pause kind, decision, wait seconds from the `pause` record, whether feedback was given, cause word. `ruling`, setting keys and grants stay empty until T6.2 to T6.4 give them values; the caller's kind, decider and relay evidence come with T6.5 | HUM-B6, SUP §2.1, PRV §2.5 | yes | P1 | ✓ | 2026-11-20 |
-| 5.5.4 | `run/runner.py` | Rulings carried into later judge prompts | RRN §2.3 | yes | P2 | ○ | |
-| 5.5.5 | `run/runner.py` | `--pause-before <unit>` | HUM §2.1 | yes | P2 | ○ | |
+| 5.5.4 | `run/runner.py` | Rulings carried into later judge prompts (built in T6.4, 6.4.2) | RRN §2.3 | yes | P2 | ✓ | 2026-11-20 |
+| 5.5.5 | `run/runner.py` | `--pause-before <unit>`: release 2 (X2-13); refused `not_in_release` by 6.1.6 | HUM §2.1 | yes | P2 | moved | |
 
 ### T5.6 Budgets and failures
 
@@ -99,7 +99,7 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 |---|---|---|---|---|---|---|---|
 | 5.6.1 | `run/nodes.py`, `run/gate.py` | Retry, loop and infra budgets by cause; 10, 20, 40 s backoff; infra never pauses (BUD-AC-3); auth and refusal escalate with no retry; attempt cap of 15 per invocation; run cost cap drains with exit 5; `slow_host` from the tool wall share | BUD §2.1–2.4 | yes | P1 | ✓ | 2026-11-20 |
 | 5.6.2 | `run/runner.py` | A stopped thread re-opens through the human node | BUD-B4 | yes | P1 | ✓ | 2026-11-20 |
-| 5.6.3 | `run/nodes.py` | Model ladder reset after a person's retry, and a ladder step per retry in the judge's alias | BUD §2.3 | yes | P2 | ○ | |
+| 5.6.3 | `run/nodes.py` | Model ladder: a rung per retry, an infra rerun repeats its rung, a person's retry, a re-open or a trip back starts at the first rung, the judge on the last rung of a declared ladder (BUD-B7) | BUD §2.3 | yes | P2 | ✓ | 2026-11-20 |
 
 ### T5.7 Scripts and finalizer
 
@@ -113,9 +113,9 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 5.8.1 | `run/outcome.py`, `tests/test_outcome.py` | `read_outcome`, `parse_outcome` and the file rows of OUT §4; `gate_criteria` with `mechanical` for `check` criteria; `check_against` for the unit rows ✓. Scales in the judge prompt ○; trust and coverage moved to T8 (`run/outcome_trust.py`, SCF §2.7) | OUT §2.1–2.3, ADR-0114 | yes | P1 | ○ | |
+| 5.8.1 | `run/outcome.py`, `tests/test_outcome.py` | `read_outcome`, `parse_outcome` and the file rows of OUT §4; `gate_criteria` with `mechanical` for `check` criteria; `check_against` for the unit rows; scales in the judge prompt (with 5.8.2). Trust and coverage moved to T8 (`run/outcome_trust.py`, SCF §2.7) | OUT §2.1–2.3, ADR-0114 | yes | P1 | ✓ | 2026-11-20 |
 | 5.8.2 | `run/outcome.py`, `run/nodes.py`, `run/gate.py` | The outcome unit compiled from `outcome.json` (no session, deliverables check plus the workflow's own outcome check, a fresh judge with the default stance and the strongest step-judge model, back target derived from `serves`, else escalate); `sign_off` in the approval pause; scales rendered in the judge prompt. The `on_trigger` mode for `stable` and per-criterion sign-off statuses (`--criterion id=signed`) are open | OUT §2.4, §2.2.1 | yes | P1 | ✓ | 2026-11-20 |
-| 5.8.3 | `run/outcome.py` | The outcome record and its uncorrected measures; `outcome show` and `outcome candidates` data | OUT §2.5 | yes | P1 | ○ | |
+| 5.8.3 | `run/outcome_record.py`, `cli/outcome.py`, `tests/test_outcome_record.py` | The outcome record (`outcome` run-log record, the ledger row's `outcome{}`, `not_reached` before the gate; sign-off graded by its caller); the uncorrected measures per revision (met rate, escape rate, unverified share, upstream agreement, sign-off load); `outcome show [--runs]` and `outcome candidates` (read-only). Release 1 defaults in OUT Open questions. `outcome show` prints the trust profile and coverage table of `run/outcome_trust.py` (T8) | OUT §2.5 | yes | P1 | ✓ | 2026-11-20 |
 
 ## 3. Verification
 
