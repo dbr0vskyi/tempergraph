@@ -54,7 +54,7 @@ The optional keys are present on every record, null when the record has no unit.
 | `supervision` | At every `run_exit`, just before it | The thread's supervision record so far: touches by class and decider, waits, level and `level_by` ([SUP §2.2](86-supervision-metrics.spec.md)); cost fields null until closed ([SCO §2.5](87-supervision-cost.spec.md)) |
 | `run_exit` | The process ends the segment | exit code, reason word, cost figures and completeness flag |
 
-The existing `gate` record gains the optional keys `route_target` and `judgement_seq` (the `seq` of its `judgement`). The existing `attempt_start` gains `session_key`. The `gate`, `pause` and `run_exit` records carry `cost_so_far` (`reported`, `estimated`, completeness flag for the thread so far), so a follower such as the orchestration supervisor reads spend without building the detail document.
+The existing `gate` record gains the optional keys `route_target` and `judgement_seq` (the `seq` of its `judgement`). The existing `attempt_start` gains `session_key` and `prompt_digest` (the first 16 hex of the SHA-256 of the rendered prompt, [OBS §2.4](15-observability-and-cost.spec.md)); `agent_run` gains `duration_s`, `tool_wall_share` and `slow_host`. The `gate`, `pause` and `run_exit` records carry `cost_so_far` (`reported`, `estimated`, completeness flag for the thread so far), so a follower such as the orchestration supervisor reads spend without building the detail document.
 
 ### 2.3 Activity journal
 

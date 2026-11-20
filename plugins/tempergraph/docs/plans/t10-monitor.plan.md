@@ -79,7 +79,7 @@ The monitor defines no engine type. `hooks/lib/engine.ts` types the documents as
 | 10.4.3 | `.claude-plugin/plugin.json`, `hooks/register.tsx` | `userConfig` settings of MAC §2.3; `engine_path` | MAC §2.3 | yes | P1 | ✓ | 2026-11-20 |
 | 10.4.4 | `tests/` | Source scan for no send, no tool; a decision press fills the prompt and runs nothing | MAC-AC-1, MAC-B1, B2 | yes | P1 | ✓ | 2026-11-20 |
 | 10.4.5 | `hooks/lib/cost.ts`, `hooks/register.tsx` | The cost tab: total, by unit with repeats, by kind, by executor and model with tokens, budget | MCF §2.1, B1–B3, AC-2 | yes | P1 | ✓ | 2026-11-20 |
-| 10.4.6 | `hooks/register.tsx`, `hooks/lib/fleet.ts` | The projection line from `stats --projection` (built); the supervision line from SCO (T7.6, open) | MCF §2.1 | yes | P2 | ○ | |
+| 10.4.6 | `hooks/register.tsx`, `hooks/lib/fleet.ts` | The projection line from `stats --projection`, and the supervision line from SCO's closed figures in the detail document: marginal and turn apart, completeness, each category; `cost not measured` when SCO saw no usage | MCF §2.1 | yes | P2 | ✓ | 2026-11-20 |
 | 10.4.7 | `hooks/register.tsx`, `hooks/lib/fleet.ts` | The fleet tab from `stats --live` and the month by machine and workflow, cards for other machines, `alerts_fleet` toasts | MCF §2.2, B4, B5, MBA §2.4 | yes | P2 | ✓ | 2026-11-20 |
 | 10.4.8 | `hooks/register.tsx` | `model_tool = interactive`: the read-only `runs` tool, refused to subagent loops | MAC §2.2, B3, AC-2 | yes | P3 | ○ | |
 
@@ -93,8 +93,8 @@ The monitor defines no engine type. `hooks/lib/engine.ts` types the documents as
 | 10.1.4 | `observe/sinks.py`, `observe/rows.py`, `detach.py` | The outbox at `run_exit` (a reference to the local row), the detached flusher, in-order delivery that keeps the outbox on failure, the 7-day `status` warning | CST §2.3, B3, B6 | yes | P1 | ✓ | 2026-11-20 |
 | 10.1.5 | `observe/sinks.py`, `run/log.py` | The heartbeat: at `run_started`, `pause`, `run_exit` and at most every 60 s, running and paused threads of the indexed roots | CST §2.2, B4 | yes | P1 | ✓ | 2026-11-20 |
 | 10.1.6 | `observe/sinks.py`, `cli/observe_cli.py` | `stats sync` and the fleet copy (bytes by offset, whole heartbeat and machine files, this machine's pending rows, `rollup/<YYYY-MM>.json`, `synced.json`); `stats` reads it by default, `--local`, `--source`, `--sync`, `--live` with `stale` | CST §2.3, §2.5, B2, B7, AC-1–AC-4 | yes | P1 | ✓ | 2026-11-20 |
-| 10.1.7 | `observe/sinks.py` | `session` and `supervision` rows, once `agent_run` carries `duration_s` and SCO's close lands (T7.6) | CST §2.2 | yes | P2 | ○ | |
-| 10.1.8 | `observe/sinks.py` | A duplicate `row_id` with different content warned and both shown (a copied `machine.json`) | CST §4 | yes | P3 | ○ | |
+| 10.1.7 | `observe/sinks.py` | `supervision` rows (T7.6) and opt-in `session` rows, one per `agent_run`, with the thread hashed | CST §2.2 | yes | P2 | ✓ | 2026-11-20 |
+| 10.1.8 | `observe/sinks.py` | A duplicate `row_id` with different content is kept twice, listed in `duplicate_row_ids` and warned on standard error | CST §4 | yes | P3 | ✓ | 2026-11-20 |
 
 `tests/test_sinks.py` simulates two machines as two home folders writing to one temporary folder.
 

@@ -116,6 +116,7 @@ def _parser() -> _Parser:
     gr = sub.add_parser("graph", help="the workflow diagram")
     gr.add_argument("workflow")
     gr.add_argument("--format", choices=("mermaid", "md", "json"), default="mermaid")
+    gr.add_argument("--overlay", metavar="THREAD", help="a thread's counts on the diagram (OBS §2.4); read-only")
     wa = sub.add_parser("wait", help="block until a thread's outcome")
     wa.add_argument("selector")
     wa.add_argument("--timeout", type=float, default=3600.0)
@@ -597,6 +598,17 @@ def cmd_graph(env: Env, a: argparse.Namespace) -> int:
     from tempergraph.model.diagram import diagram_model, to_mermaid
 
     model = diagram_model(_spec(env, a.workflow))
+    if a.overlay:
+        from tempergraph.durability.status import split_thread
+        from tempergraph.observe.overlay import overlay
+        from tempergraph.store.layout import run_dir
+
+        spec, tid = _one(env, a.overlay)
+        if spec.name != a.workflow:
+            raise UsageError(f"{tid} is a run of {spec.name!r}, not of {a.workflow!r}")
+        if not (run_dir(_root(env), spec.name, split_thread(tid)[1]) / "run.jsonl").exists():
+            raise UsageError(f"{tid} has no run log to overlay")
+        model["overlay"] = overlay(_root(env), spec.name, split_thread(tid)[1])
     if a.format == "json":
         _emit(env, model)
     else:

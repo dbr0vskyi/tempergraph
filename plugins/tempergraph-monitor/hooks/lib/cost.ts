@@ -99,8 +99,23 @@ export function costTab(d: DetailDoc): CostTab {
     executors: [...execs].map(([key, e]) => ({ key, cost: figure(e.m),
       tokens: TOKENS.map(t => `${SHORT[t]} ${e.tokens[t] ?? '—'}`).join(' · ') })),
     budget,
-    // SCO's supervision journal and `stats --projection` are not in the detail document yet (T7.6, T7.4)
-    supervision: d.supervision?.level ? `level ${d.supervision.level} · cost not recorded` : 'not recorded',
+    supervision: supervisionText(d),
     projection: 'unavailable',
   }
+}
+
+function usd(f: { estimated_usd?: number | null } | undefined): string {
+  return typeof f?.estimated_usd === 'number' ? `$${f.estimated_usd.toFixed(2)} est` : 'unpriced'
+}
+
+/** The supervision line (MCF §2.1): marginal and turn apart, each category named, never `0` when unmeasured. */
+export function supervisionText(d: DetailDoc): string {
+  const s = d.supervision
+  const level = s?.level ? `level ${s.level} · ` : ''
+  const c = s?.cost
+  if (!c || !c.completeness) return s?.level ? `${level}cost not recorded` : 'not recorded'
+  if (!c.marginal || !c.turn) return `${level}cost not measured (${c.completeness})`
+  const cats = Object.entries(c.marginal.by_category ?? {}).map(([k, f]) => `${k} ${usd(f)}`).join(', ')
+  return `${level}marginal ${usd(c.marginal.total)} · turn ${usd(c.turn.total)} · ${c.completeness}` +
+    (cats ? ` (${cats})` : '')
 }

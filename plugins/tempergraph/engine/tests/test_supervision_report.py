@@ -144,3 +144,20 @@ def test_no_planted_text_crosses_to_the_aggregate(repo: Path, tmp_path: Path, mo
     assert crossed == []
     labels = [x for x in (state_root_path(repo) / "ledger.jsonl").read_text().splitlines() if '"kind": "label"' in x]
     assert labels and all(CANARY not in x.replace(f"demo/PROJ-{CANARY}", "") for x in labels)
+
+
+def test_person_waits_per_pause_kind(repo: Path) -> None:  # SUP §2.4 "Wait on people ... per pause kind"
+    root = state_root_path(repo)
+    thread(root, "T-1", record("collaborator"))
+    rows = [{"kind": "intervention", "thread_id": "demo/T-1", "pause_kind": "escalation", "wait_s": 60.0,
+             "caller": {"decided_by": "person"}},
+            {"kind": "intervention", "thread_id": "demo/T-1", "pause_kind": "approval", "wait_s": 600.0,
+             "caller": {"decided_by": "person"}},
+            {"kind": "intervention", "thread_id": "demo/T-1", "pause_kind": "approval", "wait_s": 5.0,
+             "caller": {"decided_by": "agent"}},  # an agent's wait is not a person's
+            {"kind": "intervention", "thread_id": "demo/T-9", "pause_kind": "approval", "wait_s": 9.0,
+             "caller": {"decided_by": "person"}}]  # not a run in the window
+    (root / "ledger.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    got = sup.report(root, None)["total"]["person_wait_by_pause_kind"]
+    assert got == {"approval": {"p50": 600.0, "p90": 600.0, "pauses": 1},
+                   "escalation": {"p50": 60.0, "p90": 60.0, "pauses": 1}}
