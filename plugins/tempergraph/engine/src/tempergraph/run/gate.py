@@ -6,7 +6,8 @@ state write that routes the run. It never pauses; a pause is the human node's.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
 from typing import Any
 
 from tempergraph.contracts import Decision, UnitSpec, Verdict, WorkflowSpec
@@ -147,11 +148,84 @@ def check_decision(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], d: D
         raise DecisionRefused(f"the human cap of {human_cap} is spent on {unit}")
 
 
+FEEDBACK_LIMIT = 8_000
+RULINGS_ACTIVE = 10
+RULINGS_CHARS = 16_000
+
+
+def active_rulings(spec: WorkflowSpec, state: Mapping[str, Any], unit: str) -> list[str]:
+    """RRN §2.2: rulings in force for `unit`: named by `applies_to`, else given at it or an earlier unit."""
+    order = flow.effective_order(spec)
+    out = []
+    for r in (state.get("rulings") or {}).values():
+        if not isinstance(r, dict) or r.get("revoked_at"):
+            continue
+        applies = list(r.get("applies_to") or [])
+        if applies:
+            hit = unit in applies
+        else:
+            at = str(r.get("given_at") or "")
+            hit = unit == at or (at in order and unit in order and order.index(unit) >= order.index(at))
+        if hit:
+            out.append(str(r.get("text") or ""))
+    return out
+
+
+def decision_target(spec: WorkflowSpec, unit: str, d: Decision) -> str:
+    """The unit a decision's feedback reaches (RRN §2.2)."""
+    if d.word == "proceed":
+        nxt = flow.successors(spec, unit).proceed[0]
+        return nxt.rsplit(".", 1)[0] if nxt.endswith(".step") else unit
+    if d.word in ("back", "rewind") and d.unit:
+        return d.unit
+    return unit
+
+
+def check_rulings(state: Mapping[str, Any], new_text: str | None, revoke: Sequence[str]) -> None:
+    """RRN §4: unknown revoke ids, and the limits of 10 active rulings and 16 000 characters."""
+    rulings = {k: v for k, v in (state.get("rulings") or {}).items() if isinstance(v, dict)}
+    for rid in revoke:
+        if rid not in rulings or rulings[rid].get("revoked_at"):
+            raise DecisionRefused(f"--revoke-ruling {rid}: no active ruling with that id")
+    active = [(k, v) for k, v in rulings.items() if not v.get("revoked_at") and k not in revoke]
+    if new_text is None:
+        return
+    chars = sum(len(str(v.get("text") or "")) for _, v in active) + len(new_text)
+    if len(active) + 1 > RULINGS_ACTIVE or chars > RULINGS_CHARS:
+        oldest = min(active, key=lambda kv: str(kv[1].get("at") or ""))[0] if active else "-"
+        raise DecisionRefused(f"rulings over their limit ({RULINGS_ACTIVE} active, {RULINGS_CHARS} characters); "
+                              f"revoke one first, the oldest is {oldest}")
+
+
+def ruling_writes(state: Mapping[str, Any], payload: Mapping[str, Any], given_at: str) -> dict[str, Any]:
+    """The `rulings` channel write of one resume: a new ruling and any revocations (CON §2.12 `Ruling`)."""
+    now = datetime.now(UTC).isoformat(timespec="seconds")
+    w: dict[str, Any] = {rid: {"revoked_at": now, "revoked_by": payload.get("caller")}
+                         for rid in payload.get("revoke") or []}
+    r = payload.get("ruling")
+    if r and payload.get("feedback"):
+        rid = f"r{len(state.get('rulings') or {}) + 1}"
+        w[rid] = {"id": rid, "text": str(payload["feedback"]), "given_at": given_at,
+                  "applies_to": list(r.get("applies_to") or []), "by": payload.get("caller"), "at": now}
+    return w
+
+
 def apply_decision(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payload: Mapping[str, Any]
                    ) -> dict[str, Any]:
+    w = _apply(spec, unit, state, payload)
+    d = Decision.parse(str(payload.get("decision", "")))
+    rulings = ruling_writes(state, payload, decision_target(spec, unit, d))
+    if rulings:
+        w["rulings"] = rulings
+    return w
+
+
+def _apply(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payload: Mapping[str, Any]) -> dict[str, Any]:
     d = Decision.parse(str(payload.get("decision", "")))
     s = flow.successors(spec, unit)
+    # `--ruling` makes the text a ruling instead of one-time feedback; a rewind's text is still its visit reason
     feedback = payload.get("feedback") or None
+    one_time = None if payload.get("ruling") else feedback
     counters = dict((state.get("counters") or {}).get(unit) or {})
 
     def route(token: str, node: str) -> dict[str, Any]:
@@ -161,14 +235,14 @@ def apply_decision(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payl
         nxt = s.proceed[0]
         w = route("PROCEED", nxt)
         nxt_unit = nxt.rsplit(".", 1)[0] if nxt.endswith(".step") else None
-        if feedback and nxt_unit:
-            w["feedback"] = {nxt_unit: {"text": feedback, "as": "notes"}}
+        if one_time and nxt_unit:
+            w["feedback"] = {nxt_unit: {"text": one_time, "as": "notes"}}
         return w
     if d.word == "retry":
         counters.update(retries=0, human=int(counters.get("human", 0)) + 1, infra=0)
         w = _merge(route("RETRY", s.retry[0]), {"counters": {unit: counters}})
-        if feedback:
-            w["feedback"] = {unit: {"text": feedback, "as": "feedback"}}
+        if one_time:
+            w["feedback"] = {unit: {"text": one_time, "as": "feedback"}}
         return w
     if d.word in ("back", "rewind") and d.unit:
         visits = (state.get("visits") or {}).get(d.unit) or {}

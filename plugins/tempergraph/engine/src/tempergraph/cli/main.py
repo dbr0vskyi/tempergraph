@@ -60,6 +60,9 @@ def _parser() -> _Parser:
     fb = res.add_mutually_exclusive_group()
     fb.add_argument("--feedback")
     fb.add_argument("--feedback-file")
+    res.add_argument("--ruling", action="store_true", help="the feedback is a lasting ruling (RRN §2.2)")
+    res.add_argument("--ruling-for", metavar="UNITS", help="comma-separated units the ruling applies to")
+    res.add_argument("--revoke-ruling", action="append", default=[], metavar="ID")
     _run_options(res, start=False)
 
     st = sub.add_parser("status", help="the status document")
@@ -238,6 +241,11 @@ def _settings(env: Env, a: argparse.Namespace) -> Any:
         fields.update(alias=a.alias, label=a.label)
     if hasattr(a, "unset"):
         fields.update(unset=tuple(a.unset), reload_settings=a.reload_settings)
+    if hasattr(a, "ruling"):
+        if a.ruling_for and not a.ruling:
+            raise UsageError("--ruling-for needs --ruling")
+        fields.update(ruling=a.ruling, revoke_rulings=tuple(a.revoke_ruling),
+                      ruling_for=tuple(u.strip() for u in (a.ruling_for or "").split(",") if u.strip()))
     if env.run_settings is not None:
         return env.run_settings(**fields)
     return RunSettings(**fields)

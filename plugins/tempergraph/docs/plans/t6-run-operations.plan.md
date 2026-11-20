@@ -78,7 +78,13 @@ Release 1 notes: keys whose feature is release 2 (the audit judge, switch arms, 
 
 ### T6.4 Feedback, rulings, rewind, rerun
 
-`--feedback` and `--feedback-file` on `resume`, and `rewind:<unit>` decisions, work through the T5 human node. Not started: lasting rulings, `rerun` as a linked fork.
+`--feedback` and `--feedback-file` on `resume`, and `rewind:<unit>` decisions, work through the T5 human node.
+
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 6.4.1 | `engine/tests/test_feedback.py` | RRN-B1, B2, B4, B11; AC-2 on the two-step fixture; AC-6 canary; §4 refusals write nothing | RRN §2.2, §3 | yes | P1 | ✓ | 2026-11-20 |
+| 6.4.2 | `engine/src/tempergraph/run/gate.py`, `run/nodes.py`, `run/runner.py`, `cli/main.py` | `--ruling`, `--ruling-for`, `--revoke-ruling`; rulings in state, shown to every later attempt and judge with the `ruling` blocker; the limits; feedback without a decision on an unfinished thread; the `ruling` record; one-time feedback now reaches the judge and is cleared at the gate | RRN §2.2, EVT §2.2 | | P1 | ✓ | 2026-11-20 |
+| 6.4.3 | `engine/src/tempergraph/run/rerun.py` | `rerun` as a linked fork (RRN §2.4), `rerun --check`, `lineage.json`; external-effect consent for rewind and rerun | RRN §2.3, §2.4 | yes | P1 | ○ | |
 
 ### T6.5 Caller provenance
 
