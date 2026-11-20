@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import uuid
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
@@ -26,7 +27,7 @@ from tempergraph.executors.registry import Registry
 from tempergraph.git import is_safe_ref
 from tempergraph.model import flow
 from tempergraph.run import gate as gatemod
-from tempergraph.run.log import last_record
+from tempergraph.run.log import Ledger, last_record
 from tempergraph.run.outcome import with_outcome
 from tempergraph.run.runner import (
     RunOutcome,
@@ -155,6 +156,13 @@ def rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registry
     if classify(root, spec, new_task) is not ThreadState.NONE:
         return _refuse("thread_exists", f"{new} already exists", tid=new)
     try:
+        if settings.caller:
+            from tempergraph import settings as rst
+            from tempergraph.run.runner import decided
+
+            settings = decided(settings, deciding=bool(feedback or any(rst.is_widening(k)
+                                                                       for k in settings.all_flags())),
+                               words=("rerun",))
         settled = settle_resume(spec, settings, root, fork.values if start_at != "start" else latest)
     except SettingsRefused as exc:
         return _refuse_settings(exc, new)
@@ -210,6 +218,12 @@ def rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registry
                           dict(tup.checkpoint.get("channel_versions") or {}))
                 cw.graph.update_state(cw.config(new), writes, as_node=fork.writer)
         _lineage(root, spec, source_task, new, start_at)
+        Ledger(path=root / "ledger.jsonl").append({  # the rerun is a steer touch on its source (SUP §2.2)
+            "kind": "intervention", "id": uuid.uuid4().hex, "thread_id": src, "workflow": spec.name,
+            "unit": start_at, "caller": dict(settings.caller), "touches": [{"class": "steer", "action": "rerun"}],
+            "pause_kind": "finished" if state is ThreadState.FINISHED else str(state), "decision": f"rerun:{start_at}",
+            "wait_s": None, "feedback": bool(feedback), "ruling": settings.ruling,
+            "settings_changed": list(settled.changed), "grants": [], "cause": "rerun", "rerun": new})
         out = _drive(run_spec, new_task, root, registry, settings, rep.judges, first_input, settled, before=before,
                      executors=rep.step_executors, rerun_of=rerun_of)
         out.warnings = list(plan.warnings) + out.warnings

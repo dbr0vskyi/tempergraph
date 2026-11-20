@@ -67,6 +67,7 @@ Rules:
 
 - **A declaration only lowers trust.** S6 can turn a would-be `person` into `agent` or `pipeline`; it can never make an S2 caller a `person` (§4 `caller_conflict`). An agent that carries a person's word uses `--relayed` (§2.4), not `--caller person`.
 - An invalid S1 (a token whose digest does not match) is refused before anything is written (§4), never downgraded silently.
+- Release 1 has no orchestrations (ORC) and no schedules (SCH), so rows 1 and 1s never match: any S1 or S1s token is refused with its §4 code. Until the SCO hooks write a journal, a relayed call finds no person turns and records `relay: claimed`.
 - A call inside a Claude Code subagent is classified like its parent session; the subagent's id reaches the record only through the host hooks ([SCO §2.2](87-supervision-cost.spec.md)).
 - The `caller_app` name from `--caller-app` is free text checked against `[a-z0-9-]{1,40}`, like an alias.
 

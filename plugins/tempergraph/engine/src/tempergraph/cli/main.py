@@ -10,9 +10,10 @@ import argparse
 import dataclasses
 import json
 import logging
+import os
 import sys
 import traceback
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import IO, Any
 
@@ -81,6 +82,7 @@ def _parser() -> _Parser:
     rr.add_argument("--ruling", action="store_true")
     rr.add_argument("--accept-external", action="store_true")
     _spellings(rr)
+    _caller_options(rr)
     rr.add_argument("--json", action="store_true")
     _settings_options(rr, resume=True)
     st = sub.add_parser("status", help="the status document")
@@ -101,6 +103,7 @@ def _parser() -> _Parser:
     so = sub.add_parser("stop", help="ask a live run to stop")
     so.add_argument("selector")
     so.add_argument("--now", action="store_true", help="stop the open session now instead of draining")
+    _caller_options(so)
     wt = sub.add_parser("worktree", help="run worktrees")
     wsub = wt.add_subparsers(dest="action", parser_class=_Parser)
     wsub.add_parser("list")
@@ -138,6 +141,14 @@ SPELLINGS = {"executor": "steps.executor", "judge_executor": "judges.executor", 
 PER_UNIT = {"step_executor": "executor", "step_model": "model"}
 
 
+def _caller_options(p: argparse.ArgumentParser) -> None:
+    """PRV §2.6: run options, never settings; each call is classified on its own."""
+    p.add_argument("--caller", choices=("person", "agent", "pipeline", "orchestrator", "scheduler", "engine"))
+    p.add_argument("--as-agent", action="store_true")
+    p.add_argument("--caller-app")
+    p.add_argument("--relayed", action="store_true")
+
+
 def _spellings(p: argparse.ArgumentParser) -> None:
     for opt in ("executor", "judge-executor", "model", "judge-model", "timeout", "judge-timeout", "idle",
                 "run-cost-cap"):
@@ -153,6 +164,7 @@ def _spellings(p: argparse.ArgumentParser) -> None:
 
 def _run_options(p: argparse.ArgumentParser, start: bool = True) -> None:
     _spellings(p)
+    _caller_options(p)
     p.add_argument("--json", action="store_true")
     _settings_options(p, resume=not start)
     if start:
@@ -174,6 +186,18 @@ class Env:
     out: IO[str]
     err: IO[str]
     run_settings: Callable[..., Any] | None = None  # tests pass a factory to replace the backoff sleep
+    signals: tuple[Mapping[str, str], bool] | None = None  # (environment, terminal); tests stub them (PRV-AC-1)
+
+    def caller(self, a: argparse.Namespace) -> dict[str, Any]:
+        """PRV §2.3, once per mutating call, before any write; read-only verbs never call this."""
+        from tempergraph.provenance import CallerRefused, classify
+
+        env, tty = self.signals or (os.environ, sys.stdin.isatty() and sys.stdout.isatty())
+        declared = getattr(a, "caller", None) or ("agent" if getattr(a, "as_agent", False) else None)
+        try:
+            return classify(env, tty, declared=declared, caller_app=getattr(a, "caller_app", None))
+        except CallerRefused as exc:
+            raise UsageError(f"{exc.code}: {exc}") from exc
 
 
 def _emit(env: Env, doc: Any) -> None:
@@ -250,10 +274,11 @@ def _flags(env: Env, a: argparse.Namespace) -> dict[str, Any]:
     return flags
 
 
-def _settings(env: Env, a: argparse.Namespace) -> Any:
+def _settings(env: Env, a: argparse.Namespace, mutating: bool = True) -> Any:
     from tempergraph.run.runner import RunSettings
 
-    fields: dict[str, Any] = {"flags": _flags(env, a), "caller": {"kind": "person", "via": "cli"},
+    fields: dict[str, Any] = {"flags": _flags(env, a), "caller": env.caller(a) if mutating else {},
+                              "relayed": bool(getattr(a, "relayed", False)),
                               "profiles": tuple(a.profile) if getattr(a, "profile", None) is not None else None}
     if hasattr(a, "alias"):
         fields.update(alias=a.alias, label=a.label)
@@ -307,7 +332,7 @@ def cmd_run(env: Env, a: argparse.Namespace) -> int:
         if res.status == "ok":
             doc.update(task_id=res.task_id, thread_id=thread_id(spec.name, res.task_id))
             try:
-                settled = settle_start(spec, _settings(env, a), _root_or_none(env))
+                settled = settle_start(spec, _settings(env, a, mutating=False), _root_or_none(env))
             except SettingsRefused as exc:  # the same refusals `run` gives (CLI-AC-2, RST-B9)
                 doc.update(status="error", refusals=[{"code": f.code, "unit": f.unit, "message": f.message}
                                                      for f in exc.findings], warnings=[])
@@ -364,7 +389,7 @@ def cmd_rerun(env: Env, a: argparse.Namespace) -> int:
     spec = _spec(env, a.workflow)
     task = a.thread.split("/", 1)[1] if a.thread.startswith(spec.name + "/") else a.thread
     out = rerun(spec, task, env.cwd, env.registry, start_at=a.start_at, feedback=_feedback_text(env, a),
-                settings=_settings(env, a), task_id=a.task_id, workspace_from=a.rerun_workspace,
+                settings=_settings(env, a, mutating=not a.check), task_id=a.task_id, workspace_from=a.rerun_workspace,
                 same_branch=a.same_branch, drop_rulings=a.drop_rulings, accept_external=a.accept_external,
                 check=a.check)
     if isinstance(out, dict):
@@ -489,11 +514,18 @@ def cmd_stop(env: Env, a: argparse.Namespace) -> int:
     spec, tid = _one(env, a.selector)
     try:
         mode = request_stop(_root(env), spec.name, tid.split("/", 1)[1], "now" if a.now else "drain",
-                            caller={"kind": "person", "via": "cli"})
+                            caller=_stop_caller(env, a))
     except NotLive as exc:
         raise UsageError(str(exc)) from exc
     _emit(env, {"schema_version": 1, "thread_id": tid, "mode": mode})
     return 0
+
+
+def _stop_caller(env: Env, a: argparse.Namespace) -> dict[str, Any]:
+    from tempergraph.provenance import decide
+    from tempergraph.store.layout import home_path
+
+    return decide(env.caller(a), relayed=bool(getattr(a, "relayed", False)), words=("stop",), home=home_path())
 
 
 def cmd_worktree(env: Env, a: argparse.Namespace) -> int:
@@ -532,7 +564,7 @@ def cmd_config(env: Env, a: argparse.Namespace) -> int:
     from tempergraph.run.runner import SettingsRefused, settle_resume, settle_start
 
     spec = _spec(env, a.workflow)
-    settings = _settings(env, a)
+    settings = _settings(env, a, mutating=False)
     findings: list[Any] = []
     try:
         if a.thread:
@@ -596,7 +628,8 @@ COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
 
 def main(argv: Sequence[str] | None = None, *, catalog: Catalog | None = None, registry: Registry | None = None,
          cwd: Path | None = None, out: IO[str] | None = None, err: IO[str] | None = None,
-         run_settings: Callable[..., Any] | None = None) -> int:
+         run_settings: Callable[..., Any] | None = None, signals: tuple[Mapping[str, str], bool] | None = None
+         ) -> int:
     out, err = out or sys.stdout, err or sys.stderr
     try:
         a = _parser().parse_args(list(argv if argv is not None else sys.argv[1:]))
@@ -606,7 +639,8 @@ def main(argv: Sequence[str] | None = None, *, catalog: Catalog | None = None, r
             raise UsageError(f"{a.verb}: not in this release")
         env = Env(catalog=catalog if catalog is not None else from_registry(),
                   registry=registry if registry is not None else default_registry(),
-                  cwd=(cwd or Path.cwd()).resolve(), out=out, err=err, run_settings=run_settings)
+                  cwd=(cwd or Path.cwd()).resolve(), out=out, err=err, run_settings=run_settings,
+                  signals=signals)
         return COMMANDS[a.verb](env, a)
     except UsageError as exc:
         err.write(f"tempergraph: {exc}\n")

@@ -7,6 +7,7 @@ state (DUR-B1), the workspace plan and the lock. A refusal is exit 2 with nothin
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import uuid
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -14,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from tempergraph import provenance
 from tempergraph import settings as rst
 from tempergraph.compiler import compile_workflow
 from tempergraph.constants import ExitCode
@@ -30,7 +32,9 @@ from tempergraph.executors.registry import Registry
 from tempergraph.git import main_checkout
 from tempergraph.model import flow
 from tempergraph.model.diagram import diagram_model
+from tempergraph.model.validate import Finding
 from tempergraph.run import gate as gatemod
+from tempergraph.run import supervision
 from tempergraph.run.log import CostTotals, Ledger, RunLog, cost_so_far, last_record
 from tempergraph.run.nodes import Drain, EngineNodes, RunContext
 from tempergraph.run.outcome import with_outcome
@@ -87,6 +91,7 @@ class RunSettings:
     ruling_for: tuple[str, ...] = ()
     revoke_rulings: tuple[str, ...] = ()
     accept_external: bool = False  # consent to rewind or rerun past external effects (RRN §2.3)
+    relayed: bool = False  # `--relayed`: the call carries a person's decision (PRV §2.4)
     home: Path | None = None  # the user config folder's parent; default `home_path()`
 
     def all_flags(self) -> dict[str, Any]:
@@ -127,6 +132,27 @@ class Settled:
         return {"settings": self.options.settings, "profiles": list(self.options.profiles)}
 
 
+def decided(settings: RunSettings, *, deciding: bool, words: Sequence[str] = (), since: str | None = None
+            ) -> RunSettings:
+    """PRV §2.4: fill the decider of a deciding call; `--relayed` on a call that decides nothing is refused."""
+    if not deciding:
+        if settings.relayed:
+            raise SettingsRefused([Finding(code="relay_not_applicable", unit=None,
+                                           message="--relayed on a call that decides nothing")])
+        return settings
+    block = provenance.decide(settings.caller, relayed=settings.relayed, words=words, since=since,
+                              home=settings.home or home_path())
+    return dataclasses.replace(settings, caller=block)
+
+
+def _widen_kind(settings: RunSettings) -> str:
+    """The caller kind the widening rule sees: `person` only for a person or a `turn_named` relay (PRV §2.8)."""
+    if not settings.caller:  # `run --check` and `config show` read no signals (C13); the call itself checks
+        return "person"
+    return "person" if provenance.may_widen(settings.caller) else str(settings.caller.get("decided_by")
+                                                                       or settings.caller.get("kind") or "unknown")
+
+
 class SettingsRefused(Exception):
     def __init__(self, findings: list[Any]) -> None:
         super().__init__(findings[0].message)
@@ -137,7 +163,7 @@ def settle_start(spec: WorkflowSpec, settings: RunSettings, root: Path | None) -
     """Read both files once, resolve, validate before spend (RST §2.6 Start)."""
     files = rst.load_files(root, settings.home or home_path())
     opts, findings = rst.options_snapshot(spec, settings.all_flags(), tuple(settings.profiles or ()), files,
-                                          via=settings.origin, caller_kind=str(settings.caller.get("kind") or "unknown"))
+                                          via=settings.origin, caller_kind=_widen_kind(settings))
     if findings:
         raise SettingsRefused(findings)
     res = rst.resolve(spec, opts)
@@ -160,7 +186,7 @@ def settle_resume(spec: WorkflowSpec, settings: RunSettings, root: Path, values:
     if settings.reload_settings or settings.profiles is not None:
         files = rst.load_files(root, settings.home or home_path())
         new, findings = rst.options_snapshot(spec, flags, profiles, files, via=settings.origin,
-                                             caller_kind=str(settings.caller.get("kind") or "unknown"))
+                                             caller_kind=_widen_kind(settings))
         if not settings.reload_settings:  # a new profile list reads profiles only; the file layers stay
             new = RunOptions(settings={**{k: v for k, v in old.settings.items()}, "profile": new.settings["profile"],
                                        "flag": new.settings["flag"]}, profiles=profiles)
@@ -171,7 +197,7 @@ def settle_resume(spec: WorkflowSpec, settings: RunSettings, root: Path, values:
                          profiles=profiles)
         findings = []
     if not (settings.reload_settings or settings.profiles is not None):
-        findings += rst.validate_layers(spec, new.settings, str(settings.caller.get("kind") or "unknown"))
+        findings += rst.validate_layers(spec, new.settings, _widen_kind(settings))
     if findings:
         raise SettingsRefused(findings)
     res = rst.resolve(spec, new)
@@ -213,7 +239,8 @@ def _grants_used(spec: WorkflowSpec, registry: Registry, settled: Settled, value
 
 def _refuse_settings(exc: SettingsRefused, tid: str) -> RunOutcome:
     first = exc.findings[0]
-    return _refuse(first.code, first.message, [f"{f.code}: {f.message}" for f in exc.findings], tid)
+    return _refuse(first.code, f"{first.code}: {first.message}", [f"{f.code}: {f.message}" for f in exc.findings],
+                   tid)
 
 
 def _root(target: Path) -> Path:
@@ -296,6 +323,8 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                                      message=f"{tid} stopped at a boundary ({d.reason}); resume continues it")
         final = cw.graph.get_state(cfg).values or {}
         cost = CostTotals.from_json((final.get("run") or {}).get("cost"))
+        sup = supervision.build(root / "ledger.jsonl", log.path, tid, supervision.path_units(final))
+        log.write("supervision", **sup)  # SUP §2.2, before run_exit
         log.write("run_exit", exit_code=int(outcome.exit_code), reason=outcome.reason, cost=cost.to_json(),
                   cost_so_far=cost_so_far(cost.to_json()))
         write_json(exit_file(root, spec.name, task_id), {"schema_version": 1, "exit_code": int(outcome.exit_code),
@@ -305,7 +334,8 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                                                    "cost": cost.to_json(), "origin": settings.origin,
                                                    "settings_digest": settled.resolved.digest,
                                                    "overridden_keys": rst.overridden_keys(settled.resolved),
-                                                   "grants": _grants_used(spec, registry, settled, final)})
+                                                   "grants": _grants_used(spec, registry, settled, final),
+                                                   "supervision": sup})
         outcome.thread_id = tid
         return outcome
     finally:
@@ -346,6 +376,8 @@ def start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: P
         return _refuse("thread_exists", f"{tid} already exists; resume it with `tempergraph resume {spec.name} "
                                         f"{task_id}` or start a new thread with another task id", tid=tid)
     try:
+        settings = decided(settings, deciding=any(rst.is_widening(k) for k in settings.all_flags()),
+                           words=("grant",))
         settled = settle_start(spec, settings, root)
     except SettingsRefused as exc:
         return _refuse_settings(exc, tid)
@@ -444,6 +476,12 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
         finally:
             saver.conn.close()
         try:
+            pause = last_record(run_dir(root, spec.name, task_id) / "run.jsonl", "pause")
+            deciding = bool(d is not None or feedback or settings.ruling or settings.revoke_rulings
+                            or any(rst.is_widening(k) for k in settings.all_flags()))
+            settings = decided(settings, deciding=deciding, words=(d.word,) if d else ("grant",),
+                               since=(pause or {}).get("ts"))
+            human_payload["caller"] = dict(settings.caller)
             settled = settle_resume(declared, settings, root, values)
         except SettingsRefused as exc:
             return _refuse_settings(exc, tid)
