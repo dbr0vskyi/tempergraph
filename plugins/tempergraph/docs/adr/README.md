@@ -55,3 +55,8 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0052](0052-tool-audit-compares-grant-need-and-use.adr.md) | The tool audit compares each session's grant, need and use, judges first | proposed |
 | [0053](0053-history-findings-need-a-minimum-sample.adr.md) | History findings need a minimum sample, report their n, and size limits from passing attempts | proposed |
 | [0054](0054-audit-joins-existing-checks-and-files-nothing.adr.md) | The audit joins the checks other components own and files nothing | proposed |
+| [0055](0055-side-by-side-engine-environments-switched-atomically.adr.md) | Install each engine release beside the current one and switch by one atomic pointer | proposed |
+| [0056](0056-threads-move-to-the-new-engine-at-resume-unless-a-release-pins-them.adr.md) | Threads move to the current engine at their next resume; only a checkpoint-format break pins them | proposed |
+| [0057](0057-typed-version-metadata-on-both-sides.adr.md) | Both sides carry typed version metadata: a release record and a typed changelog, a workflow version, range and stamp record | proposed |
+| [0058](0058-upgrade-by-transforms-first-and-a-gated-model-workflow-for-the-rest.adr.md) | Upgrade a workflow by deterministic transforms first, and a built-in gated workflow for what needs judgement | proposed |
+| [0059](0059-an-upgrade-is-done-when-model-free-checks-pass-against-the-old-baseline.adr.md) | An upgrade is done when model-free checks pass against the workflow's own pre-upgrade baseline | proposed |

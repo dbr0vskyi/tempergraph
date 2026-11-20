@@ -31,7 +31,7 @@ Every run-log record, old kinds and new, carries these keys. Adding them keeps t
 
 | Kind | Written when | Key fields |
 |---|---|---|
-| `run_started` | After the lock and before the first unit, on start and each resume | `origin`, `parent` (orchestration id, node and item, when an orchestration started the run, [ORC](45-orchestration.spec.md)), `alias`, `label`, `workflow_version`, `plan_digest` (the diagram model's), `executors` planned per unit |
+| `run_started` | After the lock and before the first unit, on start and each resume | `origin`, `parent` (orchestration id, node and item, when an orchestration started the run, [ORC](45-orchestration.spec.md)), `alias`, `label`, `workflow_version` ([VER §2.4](61-version-metadata.spec.md)), `plan_digest` (the diagram model's), `executors` planned per unit; `engine_version`, `shape_digest` and `moved_from` when the engine or the workflow changed since the last process ([MIG §2.1](62-state-and-run-migration.spec.md)) |
 | `unit_entered` | A unit's step node is entered (also each visit after a trip back) | `visit`, `entered_from` (`start`, `proceed`, `retry`, `back:<unit>`, `resume`) |
 | `session_opened` | The executor's `session_started` event arrives | `kind` (step, retry, judge, judge_reask, grouping), executor, alias, bound model, `session_id`, `transcript` (§2.4), `pgid` (process group id on POSIX, null elsewhere) |
 | `check` | A deterministic check finishes | `result` (`PASS`, `MAYBE`, `FAIL`), `environmental`, `untracked_only`, `duration_s`, `output_path` (local), `evidence` clipped to 200 chars, scrubbed |
