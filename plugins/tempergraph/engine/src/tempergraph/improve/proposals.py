@@ -342,14 +342,11 @@ def classify(before: WorkflowSpec, after: WorkflowSpec) -> Classified:
 def _request_shingles(root: Path, workflow: str, threads: Iterable[str]) -> set[str]:
     """Four-word spans of the member runs' requests, from their local evidence (the proposer's reading set,
     PRP §5), so a patch that copies a run's words is refused `literal`."""
-    from tempergraph.improve.record import evidence_path
+    from tempergraph.improve.record import read_evidence
 
     out: set[str] = set()
     for t in threads:
-        try:
-            ev = json.loads(evidence_path(root, workflow, t.partition("/")[2]).read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
+        ev = read_evidence(root, workflow, t.partition("/")[2])
         req = " ".join(str(v) for v in dict(ev.get("request") or {}).values())
         words = re.findall(r"[a-z0-9]+", req.lower())
         out |= {" ".join(words[i:i + 4]) for i in range(max(0, len(words) - 3))}
@@ -398,9 +395,15 @@ def apply_patch(package: Path, patch: str, dest: Path) -> Path:
 
 
 def package_digest(package: Path) -> str:
-    from tempergraph.improve.calibration import tree_digest
-
-    return tree_digest(package)
+    """The package files a proposal reads, minus `evals/` (case sets and calibration move on their own,
+    outside the content digest as in PKG-AC-7), caches and git metadata."""
+    h = hashlib.sha256()
+    for p in sorted(package.rglob("*")):
+        rel = p.relative_to(package)
+        if not p.is_file() or rel.parts[0] in ("evals", ".git") or "__pycache__" in rel.parts:
+            continue
+        h.update(str(rel).encode() + b"\0" + p.read_bytes() + b"\0")
+    return h.hexdigest()[:16]
 
 
 # -- proposal records (PRP §2.3) -----------------------------------------------------------------------------

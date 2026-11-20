@@ -36,6 +36,15 @@ def evidence_path(root: Path, workflow: str, task_id: str) -> Path:
     return run_dir(root, workflow, task_id) / "evidence" / "record.json"
 
 
+def read_evidence(root: Path, workflow: str, task_id: str) -> dict[str, Any]:
+    """A run's local evidence record, or {} when absent or unreadable (the proposer's reading set, PRP §5)."""
+    try:
+        doc = json.loads(evidence_path(root, workflow, task_id).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return doc if isinstance(doc, dict) else {}
+
+
 def read_findings(root: Path, workflow: str, task_id: str) -> list[dict[str, Any]]:
     try:
         doc = json.loads(findings_path(root, workflow, task_id).read_text(encoding="utf-8"))
