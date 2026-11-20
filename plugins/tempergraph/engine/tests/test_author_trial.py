@@ -216,3 +216,20 @@ def test_trial_report_and_grades(pkg: Path, repo: Path) -> None:
 def test_trial_verbs_need_a_trial(pkg: Path, repo: Path) -> None:
     code, _, err = cli(repo, registry([], []), "author", "trial", str(pkg))
     assert code == 2 and "has no trial" in err
+
+
+def test_seeds_move_to_tune_only_after_an_edit(pkg: Path, repo: Path) -> None:
+    """JCL §2.1.1: a seed a failing rung 8 showed stays `holdout` until the gate's criteria or brief change;
+    the next rung 8 then moves it to `tune` for good."""
+    case = pkg / "evals" / "calibration" / "draft" / "draft-bad" / "case.json"
+    cli(repo, registry([], seed_answers(("PARTIAL", "UNMET"))), "author", "verify", str(pkg), "--judge-seeds")
+    rec = json.loads((pkg / "authoring.json").read_text())
+    assert list(rec["seeds_shown"]["draft"]) == ["draft-bad"]
+    assert json.loads(case.read_text()).get("split", "holdout") == "holdout"
+    code, doc, _ = cli(repo, registry([], seed_answers()), "author", "verify", str(pkg), "--judge-seeds", "--json")
+    assert doc["tuned"] == [] and json.loads(case.read_text()).get("split", "holdout") == "holdout"  # no edit
+    judge = pkg / "judges" / "draft.md"
+    judge.write_text(judge.read_text() + "\nAn entry that names the wrong change is UNMET.\n")
+    code, doc, _ = cli(repo, registry([], seed_answers()), "author", "verify", str(pkg), "--judge-seeds", "--json")
+    assert doc["tuned"] == ["draft/draft-bad"]
+    assert json.loads(case.read_text())["split"] == "tune"

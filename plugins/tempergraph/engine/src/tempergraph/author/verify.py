@@ -41,6 +41,8 @@ class VerifyReport:
     seeds: list[dict[str, Any]] = field(default_factory=list)  # rung 8: {gate, criterion, seed, expected, got}
     trial: dict[str, Any] | None = None  # rung 9: the trial record kept in `authoring.json`
     usage: dict[str, Any] = field(default_factory=lambda: {"judge_sessions": 0, "cost_usd": 0.0})
+    seeds_shown: dict[str, dict[str, str]] | None = None  # rung 8: seeds the author saw, by gate (JCL §2.1.1)
+    tuned: list[str] = field(default_factory=list)  # rung 8: seeds moved to `tune` after an edit
 
     @property
     def ok(self) -> bool:
@@ -56,7 +58,7 @@ class VerifyReport:
     def to_json(self) -> dict[str, Any]:
         return {"schema_version": 1, "workflow": self.workflow, "ok": self.ok, "refused": self.refused,
                 "rungs": [r.to_json() for r in self.rungs], "warnings": self.warnings, "seeds": self.seeds,
-                "trial": self.trial, "usage": self.usage}
+                "trial": self.trial, "usage": self.usage, "tuned": self.tuned}
 
 
 def _row(code: str, unit: str | None, message: str, remedy: str = "") -> dict[str, Any]:
@@ -206,10 +208,13 @@ def _stamp(root: Path, caps: Mapping[str, Capabilities], rung: Rung) -> None:
 
 
 def _seed_rung(spec: WorkflowSpec, executor_for: Callable[[str], Any], cap: float | None, rung: Rung,
-               rep: VerifyReport) -> None:
+               rep: VerifyReport, authoring: Any) -> None:
     from tempergraph.author.trial import seeds
 
-    got = seeds(spec, executor_for, cap)
+    shown = authoring.get("seeds_shown") if isinstance(authoring, dict) else None
+    got = seeds(spec, executor_for, cap, shown if isinstance(shown, dict) else None)
+    rep.seeds_shown = got.shown
+    rep.tuned = got.tuned
     rung.findings += got.findings
     rep.seeds = got.graded
     rep.usage = {"judge_sessions": got.sessions, "cost_usd": round(got.spent, 6)}
@@ -298,7 +303,7 @@ def verify(root: Path, caps: Mapping[str, Capabilities], *, target: Path,
     elif ok and spec is not None:
         if judge_seeds or trial:
             assert executor_for is not None
-            ok = run(7, lambda r: _seed_rung(spec, executor_for, cap, r, rep))
+            ok = run(7, lambda r: _seed_rung(spec, executor_for, cap, r, rep, authoring))
         else:
             rungs[7].note = "not asked"
         if ok and trial:
@@ -319,5 +324,7 @@ def verify(root: Path, caps: Mapping[str, Capabilities], *, target: Path,
                                "rungs": {r.name: r.state for r in rungs}}
         if rep.trial is not None:
             authoring["trial"] = rep.trial
+        if rep.seeds_shown is not None:
+            authoring["seeds_shown"] = rep.seeds_shown
         write_json(root / "authoring.json", authoring, mode=0o644)
     return rep

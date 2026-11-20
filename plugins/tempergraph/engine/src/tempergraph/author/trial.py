@@ -47,14 +47,51 @@ class SeedResult:
     graded: list[dict[str, Any]] = field(default_factory=list)  # {gate, criterion, seed, expected, got[]}
     sessions: int = 0
     spent: float = 0.0
+    shown: dict[str, dict[str, str]] = field(default_factory=dict)  # gate -> seed id -> gate digest when shown
+    tuned: list[str] = field(default_factory=list)  # gate/seed ids moved to `tune`
 
 
-def seeds(spec: WorkflowSpec, executor_for: Callable[[str], Any], cap: float | None) -> SeedResult:
+def gate_digest(spec: WorkflowSpec, gate: str) -> str:
+    """The criteria and the judge brief of a gate: what an author edits after seeing a seed."""
+    import hashlib
+
+    from tempergraph.improve import calibration as cal
+
+    g, _, _ = cal.gate_spec(spec, gate)
+    brief = ""
+    if g.judge is not None and g.judge.file and spec.package_root is not None:
+        try:
+            brief = (Path(spec.package_root) / g.judge.file).read_text(encoding="utf-8")
+        except OSError:
+            brief = ""
+    parts = [[c.id, c.text, c.check_method, json.dumps(c.verifier or {}, sort_keys=True)] for c in g.criteria]
+    body = json.dumps([parts, brief, (g.judge.stance, g.judge.brief) if g.judge else None], sort_keys=True)
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def seeds(spec: WorkflowSpec, executor_for: Callable[[str], Any], cap: float | None,
+          shown: Mapping[str, Mapping[str, str]] | None = None) -> SeedResult:
     """Each judged criterion's seeds, graded twice by its gate's judge; one judge session grades every
-    criterion of the gate for a seed, so a seed shared by two criteria is judged twice, not four times."""
+    criterion of the gate for a seed, so a seed shared by two criteria is judged twice, not four times.
+
+    `shown` holds the seeds a failing rung 8 showed the author, with the gate's digest then. A seed whose gate
+    changed since was in front of someone editing that gate, so it moves to `tune` for good (JCL §2.1.1); a
+    seed only graded and never edited against stays `holdout`."""
     from tempergraph.improve import calibration as cal
 
     out = SeedResult()
+    root0 = spec.package_root
+    for gate, by_seed in dict(shown or {}).items():
+        try:
+            now = gate_digest(spec, gate)
+        except cal.CalibrationError:
+            continue
+        edited = [sid for sid, d in by_seed.items() if d != now]
+        if edited and root0 is not None:
+            out.tuned += [f"{gate}/{x}" for x in cal.mark_tune(Path(root0), gate, edited, by="author")]
+        keep = {sid: d for sid, d in by_seed.items() if d == now}
+        if keep:
+            out.shown[gate] = keep
     root = spec.package_root
     if root is None:
         out.findings.append(_row("seeds-no-package", None, "the workflow has no package folder"))
@@ -105,6 +142,8 @@ def seeds(spec: WorkflowSpec, executor_for: Callable[[str], Any], cap: float | N
                 got.append(jd.statuses)
             for cid, exp in pairs:
                 a, b = got[0].get(cid, "missing"), got[1].get(cid, "missing")
+                if a != b or a != exp:  # shown to the author, who now goes back to the guidance ladder
+                    out.shown.setdefault(gate, {})[sid] = gate_digest(spec, gate)
                 out.graded.append({"gate": gate, "criterion": cid, "seed": sid, "expected": exp, "got": [a, b]})
                 if a != b:
                     out.findings.append(_row("seed-unstable", gate, f"{cid}: seed {sid} was graded {a} once and "
