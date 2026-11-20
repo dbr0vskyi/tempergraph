@@ -28,7 +28,7 @@ How the engine keeps operator input, model output and secrets away from process 
 
 | Site | Launches |
 |---|---|
-| Session launcher | `claude`, `agy`, and the engine interpreter with the constant worker modules `tempergraph.executors.sdk_worker` and `tempergraph.executors.api_worker` ([EXI](10-executor-interface.spec.md)); also the executors' model-free probes, the host-speed timing and the audit's login-shell timing ([ARC](56-audit-rule-catalog.spec.md) `slow-host`) |
+| Session launcher | `claude`, `agy`, and the engine interpreter with the constant worker modules `tempergraph.executors.sdk_worker` and `tempergraph.executors.api_worker` ([EXI](10-executor-interface.spec.md)); also the executors' model-free probes, the host-speed timing, the audit's login-shell timing ([ARC](56-audit-rule-catalog.spec.md) `slow-host`) and the constant `ps` listing of a session's `resources` line ([EVT §2.3](30-run-events.spec.md)) |
 | Agent SDK | The SDK's bundled or pinned Claude Code CLI, started by the SDK inside the SDK worker; options built from constants |
 | Tool host command runner | A declared command prefix as list argv, inside the API worker ([THS §2.5](22-tool-host.spec.md)) |
 | Tool host MCP client | Local MCP servers from the engine's MCP file, inside the API worker |

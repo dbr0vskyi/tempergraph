@@ -63,9 +63,9 @@ Doc changes this track made:
 | 7.1.5 | `run/events.py` | `records`, `follow` (ends at the segment's `run_exit` with no lock, or on an orphan), `activity`, `follow_activity`, narrator lines | EVT §2.6, B3, AC-6 | yes | P1 | ✓ | 2026-11-20 |
 | 7.1.6 | `run/events.py` | `RunObserver`, `register_observers` (entry points, named only, missing names reported), `ObserverHub` (thread and 1 000-item queue per observer, drop count, disable and one `engine_error`) | EVT §2.6, B5, AC-5 | yes | P1 | ✓ | 2026-11-20 |
 | 7.1.7 | `cli/main.py` | `events <selector> [--since] [--follow] [--activity] [--json]`; exit 2 without a run log | EVT §2.6, §4, CLI §2 | yes | P1 | ✓ | 2026-11-20 |
-| 7.1.8 | `run/log.py` | The `resources` line every 10 s from a read-only process listing of the session's process group; needs the launcher to pass `pgid` on `session_started` | EVT §2.3 | yes | P2 | ○ | |
-| 7.1.9 | `run/runner.py` (T5, T6 owner) | `run_started` fields `alias`, `label`, `workflow_version`, `plan_digest`, `executors` (written by T5); still open: `cost_so_far` on `gate`, `pause`, `run_exit`; `budget`, `settings_resolved`, `grant`, `ruling`, `workspace`, `supervision` records. The readers here use each one when present | EVT §2.2 | yes | P1 | ○ | |
-| 7.1.10 | `run/log.py` | Wire `observe.tool_inputs` and the `observers` list from the operator config once the settings catalog exists (T6.2) | EVT §2.5, §2.6, RST | yes | P2 | ○ | |
+| 7.1.8 | `run/log.py` | The `resources` line every 10 s (CPU seconds, peak resident memory, process count) from `ps -A -o pgid=,rss=,time=` filtered to the session's group (`run/resources.py`); the launcher hands the group id to the sink, which also puts `pgid` on `session_opened`. The time profile and the detail document do not read the line yet | EVT §2.3 | yes | P2 | ✓ | 2026-11-20 |
+| 7.1.9 | `run/runner.py` (T5, T6 owner) | `run_started` fields, `cost_so_far` on `gate`, `pause`, `run_exit`, and the `settings_resolved`, `grant`, `ruling`, `workspace`, `supervision` records are written; `budget` records added: one per counter a gate charges (`retries`, `loops:<target>`) with its limit and cause | EVT §2.2 | yes | P1 | ✓ | 2026-11-20 |
+| 7.1.10 | `run/log.py` | The `observe` map of the operator's `settings.json`: `tool_inputs` off nulls every input summary, `observers` names the observers to load (`ObserverHub`); a named observer not installed is listed as `observers_missing` on `run_started` | EVT §2.5, §2.6, RST | yes | P2 | ✓ | 2026-11-20 |
 
 ### T7.2 Detail document
 
@@ -76,8 +76,8 @@ Doc changes this track made:
 | 7.2.3 | `observe/detail.py` | Scrub and clip; the 1 MB cut; `--unit`; unreadable log; stale plan | RDD §2.1, §4, AC-3, AC-4 | yes | P1 | ✓ | 2026-11-20 |
 | 7.2.4 | `cli/main.py` | `status --detail [--unit] [--no-live]`; exit 2 for an unknown thread or unit | RDD §4, CLI §2 | yes | P1 | ✓ | 2026-11-20 |
 | 7.2.5 | `tests/test_detail.py` | Read-only hash test and under 300 ms for a 5 000-record log | RDD-B6, AC-2 | yes | P1 | ✓ | 2026-11-20 |
-| 7.2.6 | `observe/detail.py` | Per-attempt evidence and fix lines once T5 writes one judgement per attempt under `evidence/` | RDD §2.1, LOS §2.1 | yes | P2 | ○ | |
-| 7.2.7 | `observe/detail.py` | Supervision level, hosts and cost from the `supervision` record (T5.1.3) and SCO's journal (T7.6) | RDD §2.1, SUP §2.5 | yes | P2 | ○ | |
+| 7.2.6 | `observe/detail.py` | The judge node keeps each judged attempt's blockers with evidence and fix lines at `evidence/judgements/<unit>/<visit>.<attempt>.json` (owner-only, scrubbed, clipped to 400); the detail document shows them on every attempt, the checkpoint's judgement still backing the last one | RDD §2.1, LOS §2.1 | yes | P2 | ✓ | 2026-11-20 |
+| 7.2.7 | `observe/detail.py` | Supervision level, hosts and cost from the `supervision` record and SCO's closed figures were already folded by T7.6; checked here, nothing left | RDD §2.1, SUP §2.5 | yes | P2 | ✓ | 2026-11-20 |
 
 ### T7.3 Session logs and the store
 
@@ -87,7 +87,7 @@ Doc changes this track made:
 | 7.3.2 | `store/logs.py`, `cli/observe_cli.py` | `logs`: the file list, each kind, the engine log filtered by thread, `--follow` | LOS §2.4, AC-2 | yes | P1 | ✓ | 2026-11-20 |
 | 7.3.3 | `store/logs.py`, `cli/observe_cli.py` | `store usage` with the retention flag and the 2 GB warning; `store prune` with `--older-than`, `--keep-failed`, `--dry-run`, refusing running threads | LOS §2.5, B5, §4, AC-2 | yes | P1 | ✓ | 2026-11-20 |
 | 7.3.4 | `store/logs.py`, `cli/observe_cli.py` | `store export`: tar.gz, every text file scrubbed, binary files left out, never inside the state root | LOS §2.4, AC-3 | yes | P1 | ✓ | 2026-11-20 |
-| 7.3.5 | `executors/launcher.py`, `run/log.py` | Capture level `observe.raw`, `observe.tool_inputs`, `observe.check_output`, recorded once per run (needs T6.2) | LOS §2.6 | yes | P2 | ○ | |
+| 7.3.5 | `executors/launcher.py`, `run/log.py` | `observe.raw` off removes `raw.jsonl` at session end, `observe.check_output` off removes a check's `.out` files; the lowered items are recorded once per segment as `capture_lowered` on `run_started` | LOS §2.6 | yes | P2 | ✓ | 2026-11-20 |
 
 ### T7.4 Reports and attention
 

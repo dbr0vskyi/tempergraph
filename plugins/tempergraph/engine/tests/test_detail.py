@@ -79,8 +79,9 @@ EXPECTED = {
     "health": {"alive": False, "orphaned": False, "suspect_stall": False},
     "tail": [
         "entered draft (visit 1, from start)", "check draft: PASS", "gate draft: RETRY -> draft",
-        "check draft: PASS", "gate draft: PROCEED -> review", "entered review (visit 1, from proceed)",
-        "check review: PASS", "gate review: BACK -> draft", "entered draft (visit 2, from back:review)",
+        "budget retries: 1/2 (blockers)", "check draft: PASS", "gate draft: PROCEED -> review", "entered review (visit 1, from proceed)",
+        "check review: PASS", "gate review: BACK -> draft", "budget loops:draft: 1/1 (defect_in)",
+        "entered draft (visit 2, from back:review)",
         "check draft: PASS", "gate draft: PROCEED -> review", "entered review (visit 2, from proceed)",
         "check review: PASS",
         "gate review: ESCALATE -> human", "paused at review (escalation): "
@@ -106,6 +107,10 @@ def test_fixture_reproduces_the_expected_document(repo: Path) -> None:  # RDD-AC
     review = next(u for u in doc["units"] if u["name"] == "review")
     last = review["visits"][-1]["attempts"][-1]
     assert last["judge"]["blockers"][0]["evidence"]  # evidence from the checkpoint's local judgement
+    first = draft["visits"][0]["attempts"][0]["judge"]["blockers"][0]  # an earlier attempt: its evidence file
+    assert first["id"] == "c-file" and "missing" in first["evidence"]
+    kept = run_dir(state_root_path(repo), "demo", "T-1") / "evidence" / "judgements" / "draft" / "1.1.json"
+    assert kept.stat().st_mode & 0o777 == 0o600
     assert doc["pause"]["resume"] == ["tempergraph resume demo T-1 --decision <proceed|retry|back:draft|stop>"]
     assert doc["pause"]["artifacts"] == [{"key": "verdict", "path": None}]  # a value, not a file
     assert doc["budgets"]["counters"]["draft.retries"]["limit"] == 2

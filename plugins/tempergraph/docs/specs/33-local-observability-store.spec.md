@@ -121,7 +121,7 @@ Nothing is removed automatically. The rule `store usage` checks and `store prune
 
 ### 2.6 Capture level
 
-The default is full local capture ([ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md)): every item of §2.1 is written for every session on every executor, including `raw.jsonl`, the activity journal with tool input summaries and resource samples, check and hook output and the engine code log at `INFO`. An operator may lower it per item in config (`observe.raw = off`, `observe.tool_inputs = off`, `observe.check_output = off`); lowering is recorded once per run in the run log, so a reader knows what is missing and why.
+The default is full local capture ([ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md)): every item of §2.1 is written for every session on every executor, including `raw.jsonl`, the activity journal with tool input summaries and resource samples, check and hook output and the engine code log at `INFO`. An operator may lower it per item in config (`observe.raw = off`, `observe.tool_inputs = off`, `observe.check_output = off`); lowering is recorded once per run in the run log, so a reader knows what is missing and why. These keys sit in the `observe` map of the operator's `settings.json` ([RST §2.4](80-run-settings-and-overrides.spec.md)), with `observers`, the observer names to enable ([EVT §2.6](30-run-events.spec.md)); the project file wins per key. Release 1: `raw` off removes the session's `raw.jsonl` when the session ends, and `check_output` off removes a check's command output files after the check; `run_started` carries `capture_lowered`.
 
 ## 3. Behaviours
 
