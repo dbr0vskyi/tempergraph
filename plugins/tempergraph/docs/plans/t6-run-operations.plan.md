@@ -21,7 +21,7 @@ task_id: first-release-t6
 | Origin | [Release 1 plan](first-release.plan.md) track T6 |
 | Specs | [CLI](../specs/17-engine-cli.spec.md), [RST](../specs/80-run-settings-and-overrides.spec.md), [RRN](../specs/81-reruns-and-feedback.spec.md), [PRV](../specs/85-caller-provenance.spec.md) |
 
-**Status: In progress.** T6.1 is built, so milestone M1 holds on stand-ins: a two-step workflow defined in Python test code runs end to end through `tempergraph run`, pauses with exit 3, and finishes through `tempergraph resume`. M1 on a signed-in `claude` waits for the owner's machine (T0.1). T6.2 to T6.5 are built but for the rows marked ○ below. The live probes P-SUP-1, P-SUP-2 and P-SUP-4 wait on the owner's machine.
+**Status: Completed** for the offline build. Milestone M1 holds on stand-ins: a two-step workflow defined in Python test code runs end to end through `tempergraph run`, pauses with exit 3, and finishes through `tempergraph resume`. The two open rows need a signed-in Claude Code on the owner's machine: M1 on a live `claude` (T0.1), the MCP and plugin listing check (6.3.5), and the probes P-SUP-1, P-SUP-2 and P-SUP-4 (6.5.5).
 
 Status pass: CLI, RST, RRN and PRV are `ready-for-implementation`. RST, RRN and PRV have release 1 defaults for their open questions.
 
