@@ -32,9 +32,9 @@ def scan_foreign_worktrees(record: WorkspaceRecord, before: list[str]) -> list[F
 |---|---|---|---|
 | `run.workspace` | `auto` \| `worktree` \| `in_place` | the workflow's `workspace`, else `auto` | §2.2 |
 | `run.worktree.root` | `sibling` \| `in_repo` \| `path:<absolute path>` | `sibling` | Where run worktrees are created (§2.4) |
-| `run.worktree.base` | `head` \| `default_branch` \| `ref:<ref name>` | `head` | The commit a new run worktree starts from (§2.5) |
+| `run.worktree.base` | `head` \| `default_branch` \| `ref:<ref name>` | the workflow's `worktree.base`, else `head` | The commit a new run worktree starts from (§2.5) |
 | `run.worktree.branch_prefix` | 1–3 ref-safe components joined by `/` | `tg` | First part of every engine branch (§2.4) |
-| `run.worktree.cleanup` | `never` \| `on_finish` | `never` | Whether a finished run's clean worktree is removed (§2.7) |
+| `run.worktree.cleanup` | `never` \| `on_finish` | the workflow's `worktree.cleanup`, else `never` | Whether a finished run's clean worktree is removed (§2.7) |
 | `run.worktree.read_worktreeinclude` | bool | `true` | Also copy what the repository's `.worktreeinclude` names (§2.3) |
 
 | Flag on `run`, `rerun`, `batch`, `run --check` | Key |
@@ -68,6 +68,10 @@ An explicit `worktree` on a target that is not a git checkout, or with a bare re
 | `setup` | list of argv lists, ≤ 10 | Commands run in the new worktree, in order, with the command runner of [CHK §2.3](75-check-contract-and-command-runs.spec.md), each covered by the workflow's allow-list |
 | `submodules` | `auto` \| `skip` | `auto`: when `.gitmodules` exists, `git submodule update --init --recursive` runs before `setup` |
 | `setup_timeout_s` | int 10–3600, default 600 | Limit for the whole bootstrap |
+| `base` | as `run.worktree.base`, optional | The workflow's default base, on the `workflow:default` layer ([RST §2.3](80-run-settings-and-overrides.spec.md)) |
+| `cleanup` | as `run.worktree.cleanup`, optional | The workflow's default cleanup, on the same layer |
+
+The workflow's `workspace` field and these two fields are defaults: a flag, a profile or a settings file overrides them in the order of RST §2.3. A workflow sets no root or branch prefix, which belong to the machine and the repository.
 
 With `run.worktree.read_worktreeinclude`, the patterns of the main checkout's `.worktreeinclude` file (the Claude Code convention, [R-100](../research/R-100-native-worktrees-and-executor-worktree-features.rsrch.md) F3.2) are added to `include`. From either source only files that git reports as untracked or ignored are copied, never a tracked file, never a path outside the main checkout, never a link, and never anything under the state root or `.git`.
 
