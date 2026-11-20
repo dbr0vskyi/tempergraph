@@ -62,7 +62,7 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 |---|---|---|---|---|---|---|---|
 | 5.2.1 | `run/commands.py` | Allow-list resolution, the command environment, `run_command` with timeout, tree stop and output file | CHK §2.3–2.4, SEC §2.4 | yes | P1 | ✓ | 2026-11-20 |
 | 5.2.2 | `run/checks.py` | `CheckContext`, git facts, `normalise`, `run_check`; a raising check is an environmental FAIL; a failed check starts no judge (JDG-AC-2) | CHK §2.1–2.2, CON §2.8 | yes | P1 | ✓ | 2026-11-20 |
-| 5.2.3 | `run/check_worker.py` | The check worker: a child engine process that gets the context on stdin, bounded by `check_timeout_s` plus 30 s with a tree stop. Today the check runs in the engine process with no time bound, which CHK §2.6 does not allow | CHK §2.6, ADR-0019 | yes | P1 | ○ | |
+| 5.2.3 | `run/check_worker.py`, `tests/test_checks.py` | The check worker: a child engine process that gets the context on stdin, bounded by `check_timeout_s` plus 30 s with a tree stop through the session launcher; a check's prints go to stderr. A raising check is FAIL with `environmental: false` (CHK §4); a worker past its limit is environmental | CHK §2.6, §4, ADR-0019 | yes | P1 | ✓ | 2026-11-20 |
 | 5.2.4 | `run/checks.py` | Mechanical criteria and their findings in the judge prompt ✓; command run reuse across a gate's check and the judge's facts ○ | CHK §2.2, §2.4 | yes | P2 | ○ | |
 
 ### T5.3 Judge and verdict
@@ -71,7 +71,7 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 |---|---|---|---|---|---|---|---|
 | 5.3.1 | `run/judging.py` | `render_judge`, `reask_prompt`, `parse_judgement` (last fenced block, id must match its number), `derive` by rule: MET without evidence is PARTIAL, gap or UNVERIFIABLE escalates, all `defect_in` gives BACK to the earliest, all `no_change` escalates, else RETRY | JDG §2.1, §2.2 | yes | P1 | ✓ | 2026-11-20 |
 | 5.3.2 | `run/nodes.py` | One re-ask, then escalate (JDG-AC-3); the judge sees the request and never a verdict it writes | JDG-AC-1, AC-3 | yes | P1 | ✓ | 2026-11-20 |
-| 5.3.3 | `tests/test_judging.py` | Table tests for every `derive` row and every `Unparsed` reason | JDG §2.2, B2 | yes | P1 | ○ | |
+| 5.3.3 | `tests/test_judging.py` | Table tests for every `derive` row and every `Unparsed` reason | JDG §2.2, B2 | yes | P1 | ✓ | 2026-11-20 |
 
 ### T5.4 Independence guard
 

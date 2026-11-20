@@ -1,7 +1,7 @@
 """The check context and running a gate's check (CHK §2.1, §2.4; contract C5).
 
-Release 1 calls the check in the engine process with its deadline enforced on every command it runs;
-the separate check worker of CHK §2.6 is open in the T5 plan.
+`run_check` is the call itself; the engine makes it inside the check worker (`run.check_worker`, CHK §2.6),
+and the deadline is also enforced on every command the check runs.
 """
 
 from __future__ import annotations
@@ -128,11 +128,11 @@ def run_check(gate: GateSpec, ctx: CheckContext) -> tuple[CheckResult, list[str]
     try:
         res = fn(ctx)
     except Exception as exc:  # noqa: BLE001 - a check's own failure is a result
-        return CheckResult(result="FAIL", evidence=f"check raised {type(exc).__name__}", environmental=True), [
+        # CHK §4: a raising check is a workflow fault, not an environmental one; a retry is spent
+        return CheckResult(result="FAIL", evidence=f"check raised {type(exc).__name__}"), [
             f"check_raised: {type(exc).__name__}"]
     if not isinstance(res, CheckResult):
-        return CheckResult(result="FAIL", evidence="check returned no CheckResult", environmental=True), [
-            "check_result_invalid"]
+        return CheckResult(result="FAIL", evidence="check returned no CheckResult"), ["check_result_invalid"]
     res.runs = [r.to_json() for r in ctx.runs]
     return normalise(res)
 

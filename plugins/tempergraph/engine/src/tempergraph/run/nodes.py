@@ -31,6 +31,7 @@ from tempergraph.render.output import parse_output
 from tempergraph.render.prompt import AttemptContext, Blocker, render_step
 from tempergraph.run import checks as checkmod
 from tempergraph.run import gate as gatemod
+from tempergraph.run.check_worker import run_in_worker
 from tempergraph.run.commands import ResolvedCommand, run_command
 from tempergraph.run.guard import guard, view_set
 from tempergraph.run.judging import JudgeInputs, Unparsed, derive, parse_judgement, reask_prompt, render_judge
@@ -335,7 +336,7 @@ class EngineNodes:
             allow=tuple(self.ctx.spec.allow_commands),
             out_dir=self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "checks" / unit
             / str(att.get("attempt", 1)))
-        return checkmod.run_check(u.gate, ctx)
+        return run_in_worker(u.gate, ctx)
 
     def _judge_session(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], cres: CheckResult,
                        workdir: Path) -> dict[str, Any]:
