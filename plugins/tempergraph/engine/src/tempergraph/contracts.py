@@ -97,6 +97,8 @@ class JudgeSpec:
     model: str | None = None
     timeout_s: int | None = None
     tools: tuple[str, ...] | None = None
+    idle_s: int | None = None
+    session_options: SessionOptions | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -230,7 +232,7 @@ class RoutingMetadata:
 
 @dataclass(frozen=True, kw_only=True)
 class SettingDecl:
-    kind: Literal["bool", "int", "float", "str", "choice", "text"]
+    kind: Literal["bool", "int", "float", "duration_s", "choice", "text"]
     default: Any
     meaning: str = ""
     choices: tuple[str, ...] | None = None
@@ -638,7 +640,7 @@ class Feedback:
 
 @dataclass(kw_only=True)
 class RunOptions:
-    settings: dict[str, dict[str, Any]] = field(default_factory=dict)
+    settings: dict[str, dict[str, Any]] = field(default_factory=dict)  # layer -> key -> {value, ref, via?}
     profiles: tuple[str, ...] = ()
     alias: str | None = None
     label: str | None = None
@@ -646,6 +648,25 @@ class RunOptions:
     dry_run: bool = False
     caller: Caller | None = None
     rerun_of: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class SettingRow:
+    key: str
+    value: Any
+    layer: str
+    ref: str
+    shadowed: tuple[Mapping[str, str], ...] = ()
+
+
+@dataclass(frozen=True, kw_only=True)
+class ResolvedSettings:
+    """RST §2.7: rows for every key set above the engine layer; `values` holds every key the run reads."""
+
+    rows: tuple[SettingRow, ...] = ()
+    values: Mapping[str, Any] = field(default_factory=dict)
+    digest: str = ""
+    profiles: tuple[str, ...] = ()
 
 
 # ---------------------------------------------------------------------------------------------

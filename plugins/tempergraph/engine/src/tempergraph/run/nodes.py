@@ -70,6 +70,8 @@ class RunContext:
     sleep: Callable[[float], None] = time.sleep
     attempt_cap: int = ATTEMPT_CAP
     infra_tries: int = INFRA_TRIES
+    backoff_max_s: int = 300
+    settings: Mapping[str, Any] = field(default_factory=dict)  # workflow-declared settings (RST §2.5)
     main_checkout: Path | None = None
     attempts_started: int = 0
 
@@ -127,7 +129,7 @@ class EngineNodes:
                                error_kind=res.error_kind, timed_out=res.timed_out, stalled=res.stalled)
             if res.infra_cause is None or n + 1 >= self.ctx.infra_tries:
                 break
-            self.ctx.sleep(BACKOFF_S[min(n, len(BACKOFF_S) - 1)])
+            self.ctx.sleep(min(BACKOFF_S[min(n, len(BACKOFF_S) - 1)], self.ctx.backoff_max_s))
         return results[-1], results
 
     def _cost(self, state: Mapping[str, Any], results: list[SessionResult]) -> dict[str, Any]:
@@ -423,8 +425,9 @@ class EngineNodes:
     def _check_settings(self, u: UnitSpec) -> dict[str, Any]:
         o = self.ctx.spec.outcome
         if not u.extra.get("outcome") or o is None:
-            return {}
-        return {"deliverables": [dict(d) for d in o.deliverables], "outcome_check": o.check.ref if o.check else None}
+            return dict(self.ctx.settings)  # the workflow-declared settings a check reads (RST §2.5)
+        return {**self.ctx.settings, "deliverables": [dict(d) for d in o.deliverables],
+                "outcome_check": o.check.ref if o.check else None}
 
     def _judge_session(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], cres: CheckResult,
                        workdir: Path) -> dict[str, Any]:
@@ -463,13 +466,12 @@ class EngineNodes:
             workspace_facts={"branch": gitmod.branch(workdir), "changed": len(gitmod.changed_paths(workdir))},
             feedback=str(((state.get("feedback") or {}).get(unit) or {}).get("text") or ""),
             visit_reason=str(((state.get("visits") or {}).get(unit) or {}).get("reason") or "")))
-        ladder = _aliases(st.model)
-        profile = _aliases(spec.model_profile.get(f"judge:{unit}"))
-        alias = j.model or (profile[0] if profile else None) or (ladder[-1] if ladder else "inherit")
+        alias = j.model or "inherit"  # resolved on the judge chain alone (RST §2.3, CON §2.4)
         attempt = int(att.get("attempt", 1))
         key = session_key(unit, attempt, "judge")
         req = SessionRequest(kind="judge", prompt=prompt, workdir=workdir, alias=alias, session_key=key,
-                             timeout_s=j.timeout_s or DEFAULT_TIMEOUT_S,
+                             timeout_s=j.timeout_s or DEFAULT_TIMEOUT_S, idle_s=j.idle_s,
+                             options=j.session_options or SessionOptions(),
                              session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, key))
         before = gitmod.fingerprint(workdir)
         res, results = self._session(ex, req, views)
@@ -486,7 +488,8 @@ class EngineNodes:
             except Unparsed:
                 rkey = session_key(unit, attempt, "judge_reask")
                 rreq = SessionRequest(kind="judge_reask", prompt=reask_prompt(res.text, g), workdir=workdir,
-                                      alias=alias, session_key=rkey, timeout_s=req.timeout_s,
+                                      alias=alias, session_key=rkey, timeout_s=req.timeout_s, idle_s=req.idle_s,
+                                      options=req.options,
                                       session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, rkey))
                 res2, r2 = self._session(ex, rreq, views)
                 all_results += r2

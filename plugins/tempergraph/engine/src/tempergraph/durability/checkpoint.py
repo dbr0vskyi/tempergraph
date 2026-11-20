@@ -124,3 +124,11 @@ def resume_input(value: Any) -> Any:
     from langgraph.types import Command
 
     return Command(resume=value)
+
+
+def thread_values(checkpoint: Path, spec: WorkflowSpec, thread_id: str) -> dict[str, Any]:
+    """One thread's state values, read-only; empty when there is no store or no such thread."""
+    with open_readonly(checkpoint) as saver:
+        if saver is None:
+            return {}
+        return dict(snapshot(observer_graph(spec, saver), thread_id).values or {})

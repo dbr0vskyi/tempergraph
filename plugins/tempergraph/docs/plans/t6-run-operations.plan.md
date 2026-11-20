@@ -21,7 +21,7 @@ task_id: first-release-t6
 | Origin | [Release 1 plan](first-release.plan.md) track T6 |
 | Specs | [CLI](../specs/17-engine-cli.spec.md), [RST](../specs/80-run-settings-and-overrides.spec.md), [RRN](../specs/81-reruns-and-feedback.spec.md), [PRV](../specs/85-caller-provenance.spec.md) |
 
-**Status: In progress.** T6.1 is built, so milestone M1 holds on stand-ins: a two-step workflow defined in Python test code runs end to end through `tempergraph run`, pauses with exit 3, and finishes through `tempergraph resume`. M1 on a signed-in `claude` waits for the owner's machine (T0.1). T6.2 to T6.5 are not started.
+**Status: In progress.** T6.1 is built, so milestone M1 holds on stand-ins: a two-step workflow defined in Python test code runs end to end through `tempergraph run`, pauses with exit 3, and finishes through `tempergraph resume`. M1 on a signed-in `claude` waits for the owner's machine (T0.1). T6.2 is built. T6.3 to T6.5 are not started.
 
 Status pass: CLI, RST, RRN and PRV are `ready-for-implementation`. RST, RRN and PRV have release 1 defaults for their open questions.
 
@@ -51,12 +51,20 @@ The catalog reads the home registry and loads each package by the first steps of
 | 6.1.2 | `engine/src/tempergraph/catalog.py` | `Catalog`, `load_package` (PKG §2.3 steps 1, 3, 4), `from_registry`, `resolve_request` | CLI §2.1, CON §2.3, UPD §2.8 | | P1 | ✓ | 2026-11-20 |
 | 6.1.3 | `engine/src/tempergraph/cli/main.py` | `run`, `run --check`, `resume`, `status`, `list`, `validate`, `executors [--probe]`, `facts`, `graph`, `wait`, `stop`, `worktree list` and `path`; reserved words; exit codes; `entry` for the `tempergraph` script | CLI §2, §4 | | P1 | ✓ | 2026-11-20 |
 | 6.1.4 | `engine/src/tempergraph/cli/main.py` | Generated verb, option and exit code tables in the docs with a drift test (CLI §5) | CLI §5 | yes | P2 | ○ | |
-| 6.1.5 | `engine/src/tempergraph/cli/main.py` | `attention` (CLI-B6, AC-5) | CLI-B6 | yes | P1 | ○ | |
-| 6.1.6 | `engine/src/tempergraph/cli/main.py` | The other run options of CLI §2.1: executor and model overrides, timeouts, `--approve`, `--auto-reopen`, `--arm`, `--pause-before`, `--dry-run` | CLI §2.1, RST | yes | P1 | ○ | |
+| 6.1.5 | — | `attention` (CLI-B6, AC-5): moved to T7.4, which builds it with the reports | CLI-B6 | | | moved | |
+| 6.1.6 | `engine/src/tempergraph/cli/main.py` | The other run options of CLI §2.1: executor and model overrides, timeouts, `--approve` ✓ (spellings of `--set`, T6.2); `--auto-reopen` (refused `setting_not_built` until built), `--pause-before`, `--dry-run` ○ | CLI §2.1, RST | yes | P1 | ○ | |
 
 ### T6.2 Settings
 
-Not started: the settings catalog, layers and files, workflow settings and profiles, the snapshot on resume, `settings_resolved`, `config`.
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 6.2.1 | `engine/tests/test_settings.py` | RST-B1, B2, B5 to B11 on the resolver; AC-2 (refusals create nothing), AC-3 (property: no step key reaches a judge, tighten-only stays true), AC-5 (snapshot on resume), AC-7 (text canary); `config show` equals `settings_resolved` | RST §3, §6 | yes | P1 | ✓ | 2026-11-20 |
+| 6.2.2 | `engine/src/tempergraph/settings.py` | The catalog of RST §2.2, key parsing with the nearest name, the layers of §2.3 (no `arm:` layer: measured switches are release 2), both files, profiles first found whole, the snapshot, `resolve`, `validate_overrides`, the digest, and `effective_spec`: resolved values written into the spec the run executes, judges' models resolved on the judge chain | RST §2.1–2.6 | | P1 | ✓ | 2026-11-20 |
+| 6.2.3 | `engine/src/tempergraph/run/runner.py` | `settle_start` and `settle_resume` (`--set`, `--unset`, `--profile`, `--reload-settings`); the snapshot in `run.options`; `settings_resolved` after `run_started`; `run_started` and the ledger row carry `settings_digest` and `overridden_keys`; run values reach the context (attempt cap, infra tries and backoff, human cap, enforcement, workspace, branch prefix, `.worktreeinclude`); workflow settings reach checks | RST §2.6, §2.7 | | P1 | ✓ | 2026-11-20 |
+| 6.2.4 | `engine/src/tempergraph/cli/main.py` | `--set`, `--settings`, `--profile` on `run`, `resume` and `config show`; `--unset`, `--reload-settings` on `resume`; the named spellings of CLI §2.1; `config show`, `config validate`, `config paths` | RST §2.9, CLI §2.1 | | P1 | ✓ | 2026-11-20 |
+| 6.2.5 | `engine/src/tempergraph/durability/status.py` | The status row's `settings_digest`, `overridden_keys` and `settings_stale` (T7 owns the status row; handed over) | RST §2.7 | yes | P2 | ○ | |
+
+Release 1 notes: keys whose feature is release 2 (the audit judge, switch arms, council, contest, wait and ask keys, the `in_repo` and `path:` roots, the `default_branch` and `ref:` bases, `cleanup: on_finish`) are refused with `setting_not_in_release` (RST §4). `run.auto_reopen` and the widening keys are refused with `setting_not_built` until 6.1.6 and T6.3 build them.
 
 ### T6.3 Tool grants
 

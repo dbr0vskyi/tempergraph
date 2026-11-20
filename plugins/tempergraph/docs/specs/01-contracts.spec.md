@@ -76,7 +76,7 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | `JudgeSpec` | `stance`, `brief` | text | Stance first; brief holds repository specifics only. |
 | | `references` | list of artifact keys, each `required` or `optional` | The bar. |
 | | `subject` | artifact keys | What is graded. |
-| | `executor`, `model`, `timeout_s` | optional | Resolved on the judge's own layer. |
+| | `executor`, `model`, `timeout_s`, `idle_s`, `session_options` | optional | Resolved on the judge's own layer. |
 | | `tools` | list of `ToolCapability` | May only narrow the derived view set. |
 | `Criterion` | `text` | text | Shown to the step and the judge. |
 | | `check_method` | text | Shown to the judge only. |
@@ -284,7 +284,7 @@ Shared by [RST](80-run-settings-and-overrides.spec.md), [RRN](81-reruns-and-feed
 |---|---|---|
 | `SettingKey` | string | `<scope>.<name>` from the catalog of [RST §2.2](80-run-settings-and-overrides.spec.md) |
 | `SettingDecl` | `kind`, `default`, `choices?`, `min?`, `max?`, `meaning` | A workflow-declared setting ([RST §2.5](80-run-settings-and-overrides.spec.md)) |
-| `RunOptions` | `settings` | Snapshot: map `SettingKey` → `{value, layer, ref, via?}` for the flag, profile and file layers ([RST §2.6](80-run-settings-and-overrides.spec.md)) |
+| `RunOptions` | `settings` | Snapshot: layer → `SettingKey` → `{value, ref, via?}` for the flag, profile and file layers ([RST §2.6](80-run-settings-and-overrides.spec.md)) |
 | | `profiles` | Profile names in the order given |
 | | `alias`, `label`, `parent`, `schedule`, `origin`, `pause_before`, `dry_run` | The run options that are not settings ([CLI §2.1](17-engine-cli.spec.md)) |
 | | `caller` | The `Caller` of the call that started or resumed the thread (§2.13); classified per call, never snapshot |
@@ -292,11 +292,11 @@ Shared by [RST](80-run-settings-and-overrides.spec.md), [RRN](81-reruns-and-feed
 | `ResolvedSettings` | `rows` | Per session scope and key: value, winning layer, `ref`, shadowed layers |
 | | `digest` | SHA-256 of the canonical table; `text` values enter as their digests |
 | `UnitRef` | string | `<unit>`, `<unit>.<item>` or `<unit>/<child unit>` |
-| `Feedback` | `text_ref` | Pointer into the local evidence file; never the text in a record |
+| `Feedback` | `text_ref` | Pointer into the local evidence file, never the text |
 | | `chars` | Length |
 | | `ruling` | bool |
 | | `applies_to` | list of `UnitRef`, for a ruling; empty means the unit given at and every later unit |
-| `Ruling` | `id`, `feedback`, `given_at` (unit), `by` (`Caller`), `at`, `revoked_at?`, `revoked_by?` (`Caller`) | Kept in state under its own reducer; never cleared by the trip-back reducer |
+| `Ruling` | `id`, `feedback`, `given_at` (unit), `by` (`Caller`), `at`, `revoked_at?`, `revoked_by?` (`Caller`) | Kept in state under its own reducer; never cleared by a trip back |
 
 ### 2.13 Callers and supervision
 
