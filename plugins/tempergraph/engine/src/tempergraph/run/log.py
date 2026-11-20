@@ -108,7 +108,7 @@ class RunLog:
     def __init__(self, path: Path) -> None:
         self.path = path
         self.failures = 0
-        self.seq = 0
+        self.seq = last_seq(path)  # seq continues across segments (EVT-B2)
 
     def write(self, record: str, /, **fields: Any) -> int:
         self.seq += 1
@@ -122,6 +122,42 @@ class RunLog:
         except Exception:  # noqa: BLE001 - observability never changes the run (C2)
             self.failures += 1
         return self.seq
+
+
+def last_seq(path: Path) -> int:
+    """The `seq` of the last record of a run log, 0 when there is none; reads only the file's tail."""
+    try:
+        with open(path, "rb") as fh:
+            fh.seek(0, os.SEEK_END)
+            fh.seek(max(0, fh.tell() - 65536))
+            lines = fh.read().splitlines()
+    except OSError:
+        return 0
+    for line in reversed(lines):
+        try:
+            seq = json.loads(line).get("seq")
+        except (ValueError, AttributeError):
+            continue
+        if isinstance(seq, int):
+            return seq
+    return 0
+
+
+def last_record(path: Path, kind: str, **match: Any) -> dict[str, Any] | None:
+    """The last run-log record of `kind` whose fields match; None when there is none."""
+    found = None
+    try:
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    continue
+                if rec.get("kind") == kind and all(rec.get(k) == v for k, v in match.items()):
+                    found = rec
+    except OSError:
+        return None
+    return found
 
 
 def _jsonable(v: Any) -> Any:

@@ -53,6 +53,7 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 |---|---|---|---|---|---|---|---|
 | 5.1.1 | `run/log.py` | `RunLog` (schema line, envelope), `LiveSink` (`live.json`, `activity.jsonl`), `Ledger`, `CostTotals` with reported and estimated apart, `estimate` with the default price table | OBS §2.1–2.3, EVT §2.1 | yes | P1 | ✓ | 2026-11-20 |
 | 5.1.2 | `run/nodes.py`, `run/runner.py` | `attempt_start`, `agent_run`, `check`, `judgement`, `gate`, `pause`, `human`, `script`, `finalize`, `unit_entered`, `run_started`, `stop_requested`, `run_exit` records; `exit.json`; one ledger row per segment | OBS §2.1, EVT §2.2 | yes | P1 | ✓ | 2026-11-20 |
+| 5.1.5 | `run/log.py` | `seq` continues across segments, read from the log's tail (EVT-B2); the `pause` record carries `pause_kind` | EVT §2.1, B2 | yes | P1 | ✓ | 2026-11-20 |
 | 5.1.3 | `run/log.py` | `cost_so_far` on `gate`, `pause` and `run_exit`; the `supervision` record before `run_exit`; `settings_resolved` | EVT §2.2, SUP §2.2, RST §2.7 | | P2 | ○ | |
 | 5.1.4 | `tests/test_run_log.py` | OBS-B3: a full disk while writing the ledger keeps the exit code | OBS-B3 | yes | P1 | ○ | |
 
@@ -86,7 +87,7 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 |---|---|---|---|---|---|---|---|
 | 5.5.1 | `run/gate.py` | `decide` (pure); `pause_payload` with the resume command (HUM-AC-2); `check_decision` refuses before anything is written; `apply_decision` for proceed, retry, back, rewind, stop with feedback | HUM §2, §4 | yes | P1 | ✓ | 2026-11-20 |
 | 5.5.2 | `run/nodes.py` | Escalation, budget, approval and tool-access pauses | HUM §2.1 | yes | P1 | ✓ | 2026-11-20 |
-| 5.5.3 | `run/nodes.py` | The full intervention row (HUM-B6): touch classes, wait seconds, feedback id, `caller` | HUM-B6, SUP §2.1, PRV §2.5 | yes | P1 | ○ | |
+| 5.5.3 | `run/runner.py` | The intervention ledger row (HUM-B6), appended before the graph runs: id, `caller`, SUP §2.1 touch classes, pause kind, decision, wait seconds from the `pause` record, whether feedback was given, cause word. `ruling`, setting keys and grants stay empty until T6.2 to T6.4 give them values; the caller's kind, decider and relay evidence come with T6.5 | HUM-B6, SUP §2.1, PRV §2.5 | yes | P1 | ✓ | 2026-11-20 |
 | 5.5.4 | `run/runner.py` | Rulings carried into later judge prompts | RRN §2.3 | yes | P2 | ○ | |
 | 5.5.5 | `run/runner.py` | `--pause-before <unit>` | HUM §2.1 | yes | P2 | ○ | |
 

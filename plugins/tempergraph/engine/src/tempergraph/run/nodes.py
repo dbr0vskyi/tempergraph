@@ -439,7 +439,7 @@ class EngineNodes:
                            token=r["token"], route_target=r["node"])
         if unit in (w.get("pause") or {}) and w["pause"][unit]:
             p = w["pause"][unit]
-            self.ctx.log.write("pause", unit=unit, kind=p["kind"], decisions=p["decisions"], resume=p["resume"])
+            self.ctx.log.write("pause", unit=unit, pause_kind=p["kind"], decisions=p["decisions"], resume=p["resume"])
         return w
 
     def human(self, unit: str, state: RunState, decision: Any) -> dict[str, Any]:

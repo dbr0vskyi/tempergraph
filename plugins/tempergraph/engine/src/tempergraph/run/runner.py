@@ -7,8 +7,10 @@ state (DUR-B1), the workspace plan and the lock. A refusal is exit 2 with nothin
 from __future__ import annotations
 
 import contextlib
+import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +29,7 @@ from tempergraph.executors.registry import Registry
 from tempergraph.git import main_checkout
 from tempergraph.model import flow
 from tempergraph.run import gate as gatemod
-from tempergraph.run.log import CostTotals, Ledger, RunLog
+from tempergraph.run.log import CostTotals, Ledger, RunLog, last_record
 from tempergraph.run.nodes import Drain, EngineNodes, RunContext
 from tempergraph.security.scrub import clip, scrub
 from tempergraph.store.layout import (
@@ -273,13 +275,17 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
                 return _refuse("decision_refused", str(exc), tid=tid)
             first_input: Any = resume_input({"decision": str(d), "feedback": feedback, "caller": dict(settings.caller)})
             before = None
+            pause = snap.interrupts[0][1] if isinstance(snap.interrupts[0][1], dict) else {}
+            touch = (unit, str(pause.get("kind") or "escalation"), str(pause.get("reason") or ""))
         elif state is ThreadState.UNFINISHED:
             if d is not None and d.word != "rewind":
                 return _refuse("decision_refused", "an unfinished thread accepts only `rewind:<unit>`", tid=tid)
             first_input, before = None, None
+            touch = None
             if d is not None:
                 unit = _last_unit(values)
                 before = _human_update(spec, unit, values, d, feedback)
+                touch = (unit, "unfinished", "rewind")
         else:  # stopped
             if d is None or d.word not in ("retry", "back", "rewind"):
                 return _refuse("decision_refused", "a stopped thread re-opens with retry, back:<unit> or rewind:<unit>",
@@ -290,6 +296,8 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
             except gatemod.DecisionRefused as exc:
                 return _refuse("decision_refused", str(exc), tid=tid)
             first_input, before = None, _human_update(spec, unit, values, d, feedback)
+            reason = str(((values.get("run") or {}).get("stopped") or {}).get("reason") or "")
+            touch = (unit, "stopped", reason)
         ws = values.get("workspace") or {}
         if ws:
             try:
@@ -300,6 +308,8 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
         else:
             ws_update = None
         prior = before
+        if touch is not None and d is not None:
+            intervention(root, spec, task_id, touch, d, feedback, settings)
 
         def before_all(cw2: Any) -> None:
             cfg = cw2.config(tid)
@@ -314,6 +324,44 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
         return out
     finally:
         lock.release()
+
+
+RESCUE_PAUSES = frozenset({"escalation", "budget", "tool_access"})
+
+
+def touches(pause_kind: str, stop_reason: str, d: Decision) -> list[dict[str, str]]:
+    """SUP §2.1 touch classes of one accepted resume."""
+    out: list[dict[str, str]] = []
+    if pause_kind == "approval":
+        out.append({"class": "designed", "action": "approve"})
+    elif pause_kind in RESCUE_PAUSES or pause_kind == "stopped" and stop_reason in ("budget", "infra"):
+        out.append({"class": "rescue", "action": "decide"})
+    if d.word == "rewind":
+        out.append({"class": "steer", "action": "rewind"})
+    elif d.word == "stop":
+        out.append({"class": "steer", "action": "stop"})
+    elif pause_kind == "stopped" and stop_reason not in ("budget", "infra") and not out:
+        out.append({"class": "steer", "action": "decide"})
+    return out
+
+
+def intervention(root: Path, spec: WorkflowSpec, task_id: str, touch: tuple[str, str, str], d: Decision,
+                 feedback: str | None, settings: RunSettings) -> dict[str, Any]:
+    """HUM-B6: one metadata-only ledger row per accepted resume, appended before the graph runs."""
+    unit, kind, reason = touch
+    pause = last_record(run_dir(root, spec.name, task_id) / "run.jsonl", "pause", unit=unit)
+    wait_s = None
+    if pause and pause.get("ts"):
+        with contextlib.suppress(ValueError, TypeError):
+            wait_s = round((datetime.now(datetime.fromisoformat(pause["ts"]).tzinfo)
+                            - datetime.fromisoformat(pause["ts"])).total_seconds(), 1)
+    row = {"kind": "intervention", "id": uuid.uuid4().hex, "thread_id": thread_id(spec.name, task_id),
+           "workflow": spec.name, "unit": unit, "caller": dict(settings.caller),
+           "touches": touches(kind, reason if kind == "stopped" else "", d), "pause_kind": kind,
+           "decision": d.word + (f":{d.unit}" if d.unit else ""), "wait_s": wait_s, "feedback": bool(feedback),
+           "ruling": False, "settings_changed": [], "grants": [], "cause": reason or kind}
+    Ledger(path=root / "ledger.jsonl").append(row)
+    return row
 
 
 def _last_unit(values: Mapping[str, Any]) -> str:

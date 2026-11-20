@@ -207,3 +207,29 @@ def test_auth_escalates_without_retry(repo: Path, cause: str) -> None:
     out = go(repo, ex)
     assert out.exit_code is ExitCode.PAUSED and out.payload["reason"] == cause
     assert len(ex.calls) == 1
+
+
+def test_resume_writes_one_intervention_row(repo: Path) -> None:
+    ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("UNVERIFIABLE"))])
+    go(repo, ex)
+    ex.steps, ex.judges = [REVIEW], [judge()]
+    resume(two_step(), "T-1", repo, registry(ex), decision="proceed", feedback="fine as is",
+           settings=dataclasses.replace(NO_SLEEP, caller={"kind": "person", "via": "test"}))
+    ledger = [json.loads(ln) for ln in (state_root_path(repo) / "ledger.jsonl").read_text().splitlines()]
+    rows = [r for r in ledger if r["kind"] == "intervention"]
+    assert len(rows) == 1  # HUM-B6
+    r = rows[0]
+    assert r["touches"] == [{"class": "rescue", "action": "decide"}] and r["pause_kind"] == "escalation"
+    assert r["decision"] == "proceed" and r["feedback"] is True and r["caller"]["kind"] == "person"
+    assert isinstance(r["wait_s"], float) and len(r["id"]) == 32 and "fine as is" not in json.dumps(r)
+    seqs = [rec["seq"] for rec in records(repo) if "seq" in rec]
+    assert seqs == sorted(seqs) and len(seqs) == len(set(seqs))  # seq continues across segments (EVT-B2)
+
+
+def test_touch_classes() -> None:
+    from tempergraph.contracts import Decision
+    from tempergraph.run.runner import touches
+
+    assert touches("approval", "", Decision.parse("proceed")) == [{"class": "designed", "action": "approve"}]
+    assert touches("budget", "", Decision.parse("rewind:draft"))[1] == {"class": "steer", "action": "rewind"}
+    assert touches("stopped", "person", Decision.parse("retry")) == [{"class": "steer", "action": "decide"}]
