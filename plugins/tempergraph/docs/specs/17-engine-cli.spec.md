@@ -23,7 +23,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `config show <workflow> [--thread <t>] [--set …] [--profile …] [--key <glob>] [--json]`, `config validate [--file <path>]`, `config paths` | The resolved settings with their sources; validation of the settings files ([RST §2.9](80-run-settings-and-overrides.spec.md)) | no | no |
 | `status [selector] [--detail [--unit <name>] [--no-live]] [--all-roots]` | Status document; `--detail` gives one thread's detail document ([RDD](31-run-detail-document.spec.md)); `--all-roots` reads every state root in the machine index ([CST §2.1](34-central-run-stats.spec.md)) | no | no |
 | `events <selector> [--since <seq>] [--follow] [--activity <session_key>] [--json]` | Run-log records and activity lines in order ([EVT §2.6](30-run-events.spec.md)) | no | no |
-| `logs <selector> [--session <key>] [--kind …] [--follow]` | One log of a run from the local store ([LOS §2.4](33-local-observability-store.spec.md)) | no | no |
+| `logs <selector> [--session <key>] [--kind …] [--follow] [--json]` | One log of a run from the local store ([LOS §2.4](33-local-observability-store.spec.md)) | no | no |
 | `wait <selector> [--timeout s]` | Block until an outcome | no | no |
 | `attention [--all-roots] [--json]` | Every item waiting on a person under the state root, oldest first: pauses of every thread and, when present, orchestration attention items (CLI-B6, [ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md)) | no | no |
 | `list` | The catalog (versioned JSON or a table) | no | no |

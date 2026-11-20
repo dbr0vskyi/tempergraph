@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import IO, Any
 
 from tempergraph.catalog import Catalog, PackageNotLoaded, from_registry, resolve_request
+from tempergraph.cli import observe_cli
 from tempergraph.constants import SCHEMA, ExitCode
 from tempergraph.contracts import WorkflowSpec, thread_id
 from tempergraph.executors.registry import Registry, default_registry
@@ -96,6 +97,7 @@ def _parser() -> _Parser:
     wsub.add_parser("list")
     wp = wsub.add_parser("path")
     wp.add_argument("thread")
+    observe_cli.add_parsers(sub)
     return p
 
 
@@ -413,7 +415,7 @@ def cmd_worktree(env: Env, a: argparse.Namespace) -> int:
 COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "run": cmd_run, "resume": cmd_resume, "status": cmd_status, "list": cmd_list, "validate": cmd_validate,
     "executors": cmd_executors, "events": cmd_events, "facts": cmd_facts, "graph": cmd_graph, "wait": cmd_wait, "stop": cmd_stop,
-    "worktree": cmd_worktree,
+    "worktree": cmd_worktree, **observe_cli.COMMANDS,
 }
 
 

@@ -382,6 +382,18 @@ class LiveSink(EventSink):
             self.last_write = now
             self._live()
 
+    def write_meta(self, **fields: Any) -> None:
+        """`meta.json` of the session (LOS §2.1), merged field by field; best effort (contract C2)."""
+        if self.dir is None or self.disabled:
+            return
+        path = self.dir / "meta.json"
+        try:
+            held = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"schema_version": 1}
+            held.update(_jsonable(fields))
+            write_json(path, held)
+        except Exception:  # noqa: BLE001
+            self.failures += 1
+
     def _opened(self, data: dict[str, Any]) -> None:
         if self.opened is None:
             return
@@ -416,6 +428,7 @@ class LiveSink(EventSink):
             self.buffer.append({"t": None, "n": self.n, "ev": "truncated", "dropped": dict(self.dropped)})
         self.flush()
         self.open_tool = None
+        self.write_meta(ended_at=now_iso())
         if self.dir is not None:  # LOS §2.1: the live file is removed at session end
             try:
                 (self.dir / "live.json").unlink(missing_ok=True)
@@ -427,14 +440,20 @@ def session_sink(log: RunLog, req: Any, executor: str, *, tool_inputs: bool = Tr
     """The sink for one session: journal and live file in its folder, `session_opened` into the run log."""
     raw = (req.session_dir / "raw.jsonl") if req.session_dir is not None else None
 
+    transcript = {"engine": str(raw) if raw else None, "native": None, "native_kind": None}
+
     def opened(data: dict[str, Any]) -> None:
         log.write("session_opened", session_key=req.session_key, kind=req.kind, executor=executor,
                   alias=req.alias, model=data.get("model"), session_id=data.get("session_id"),
-                  transcript={"engine": str(raw) if raw else None, "native": None, "native_kind": None},
-                  pgid=data.get("pgid"))
+                  transcript=transcript, pgid=data.get("pgid"))
+        sink.write_meta(session_id=data.get("session_id"), model=data.get("model"), pgid=data.get("pgid"),
+                        cli_version=data.get("cli_version"))
 
-    return LiveSink(req.session_dir, opened=opened, observers=log.observers, session_key=req.session_key,
+    sink = LiveSink(req.session_dir, opened=opened, observers=log.observers, session_key=req.session_key,
                     tool_inputs=tool_inputs)
+    sink.write_meta(session_key=req.session_key, kind=req.kind, executor=executor, alias=req.alias,
+                    transcript=transcript, started_at=now_iso(), ended_at=None)
+    return sink
 
 
 @dataclass(kw_only=True)

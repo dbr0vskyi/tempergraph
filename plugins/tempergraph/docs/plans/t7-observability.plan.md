@@ -24,6 +24,8 @@ task_id: first-release-t7
 
 **Status: In progress.** T7.1 and T7.2 are built: every run-log record carries the EVT §2.1 envelope, sessions are announced by `session_opened`, the activity journal and live file follow EVT §2.3 with tool input summaries per §2.5, `events` reads and follows a thread, in-process observers are contained, and `status --detail` builds the RDD document read-only. Status pass: EVT and RDD are `ready-for-implementation`; EVT's two open questions have release 1 defaults (native transcript null until P-CC-7; no changed-line count on `edit`).
 
+T7.3 is built: `logs`, `store usage|prune|export` and the session's `meta.json`; LOS records where release 1 differs (verbatim `raw.jsonl`, the check output layout, the 2 GB warning in `store usage`).
+
 This track runs beside T5 and T6, which own the run log's writers in `run/nodes.py` and `run/runner.py`. T7 owns the `RunLog` envelope and the `LiveSink` in `run/log.py`, the readers, and the `status --detail` and `events` verbs. Records T5 and T6 still have to write are read when present and listed under each phase.
 
 Doc changes this track made:
@@ -77,9 +79,19 @@ Doc changes this track made:
 | 7.2.6 | `observe/detail.py` | Per-attempt evidence and fix lines once T5 writes one judgement per attempt under `evidence/` | RDD §2.1, LOS §2.1 | yes | P2 | ○ | |
 | 7.2.7 | `observe/detail.py` | Supervision level, hosts and cost from the `supervision` record (T5.1.3) and SCO's journal (T7.6) | RDD §2.1, SUP §2.5 | yes | P2 | ○ | |
 
-### T7.3 to T7.6
+### T7.3 Session logs and the store
 
-Not started in this pass; see §3 for what each waits on.
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 7.3.1 | `run/log.py` | `meta.json` per session: written at open, completed with the session id, model and `ended_at` | LOS §2.1 | yes | P1 | ✓ | 2026-11-20 |
+| 7.3.2 | `store/logs.py`, `cli/observe_cli.py` | `logs`: the file list, each kind, the engine log filtered by thread, `--follow` | LOS §2.4, AC-2 | yes | P1 | ✓ | 2026-11-20 |
+| 7.3.3 | `store/logs.py`, `cli/observe_cli.py` | `store usage` with the retention flag and the 2 GB warning; `store prune` with `--older-than`, `--keep-failed`, `--dry-run`, refusing running threads | LOS §2.5, B5, §4, AC-2 | yes | P1 | ✓ | 2026-11-20 |
+| 7.3.4 | `store/logs.py`, `cli/observe_cli.py` | `store export`: tar.gz, every text file scrubbed, binary files left out, never inside the state root | LOS §2.4, AC-3 | yes | P1 | ✓ | 2026-11-20 |
+| 7.3.5 | `executors/launcher.py`, `run/log.py` | Capture level `observe.raw`, `observe.tool_inputs`, `observe.check_output`, recorded once per run (needs T6.2) | LOS §2.6 | yes | P2 | ○ | |
+
+### T7.4 to T7.6
+
+Not started yet; see §3 for what each waits on.
 
 ## 3. Hand-off notes
 
