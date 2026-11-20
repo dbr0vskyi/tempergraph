@@ -30,6 +30,7 @@ from tempergraph.contracts import (
     WorkflowSpec,
 )
 from tempergraph.model.validate import Finding
+from tempergraph.security.launch import has_shell_metacharacter
 
 SETTINGS_FILE = "settings.json"
 
@@ -202,7 +203,46 @@ CATALOG: dict[str, Entry] = {
     "attempt_cost_cap_usd": Entry(frozenset({"unit"}), _float(0)),
     "concurrency": Entry(frozenset({"unit"}), _int(1, 5), 3),
     "deadline_s": Entry(frozenset({"unit"}), _int(1)),
+    "tools.add": Entry(STEP_SIDE, lambda v: _caps(v, read_only=False)),
+    "commands.add": Entry(STEP_SIDE | SCRIPT, lambda v: _prefixes(v)),
+    "views.add": Entry(frozenset({"judge"}), lambda v: _caps(v, read_only=True)),
 }
+CAPABILITIES = frozenset({"read", "search", "list", "edit", "write", "shell", "web_fetch", "web_search", "subagent"})
+READ_ONLY = frozenset({"read", "search", "list", "web_fetch", "web_search"})
+MCP_CAP = re.compile(r"^mcp:[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+SKILL_CAP = re.compile(r"^skill:[a-z0-9][a-z0-9_-]*:[a-z0-9][a-z0-9_-]*$")
+
+
+def _list(v: Any) -> list[str]:
+    if isinstance(v, str):
+        return [p.strip() for p in v.split(",") if p.strip()]
+    if isinstance(v, (list, tuple)) and all(isinstance(x, str) for x in v):
+        return [str(x) for x in v]
+    raise SettingError("setting_value", f"{v!r} is not a list")
+
+
+def _caps(v: Any, *, read_only: bool) -> tuple[str, ...]:
+    """RST §2.8 What and Never: a capability name; a judge view is read-only (RST-B13)."""
+    out = _list(v)
+    for c in out:
+        if not (c in CAPABILITIES or MCP_CAP.match(c) or SKILL_CAP.match(c)):
+            raise SettingError("unknown-capability", f"{c!r} is not a tool capability (CON §2.5)")
+        if read_only and c.startswith("mcp:"):
+            raise SettingError("judge-view-unclassified", f"{c!r}: release 1 has no read-only MCP catalog; a judge "
+                                                          "sees an MCP tool only as the derived view of its step's")
+        if read_only and c not in READ_ONLY:
+            raise SettingError("judge-view-not-read-only", f"{c!r}: a judge takes read-only views only")
+    return tuple(out)
+
+
+def _prefixes(v: Any) -> tuple[str, ...]:
+    out = _list(v) if not isinstance(v, str) else [v.strip()]
+    for c in out:
+        if not c or has_shell_metacharacter(c):
+            raise SettingError("command-metacharacter", f"command {c!r} holds a shell metacharacter")
+    return tuple(out)
+
+
 # Fields of a unit that verify the work: never a setting (ADR-0071).
 VERIFICATION = frozenset({"criteria", "check", "judge", "stance", "brief", "tools", "prompt", "back_targets",
                           "flow", "references", "subject", "views", "fallback", "independence", "approval"})
@@ -273,9 +313,7 @@ def parse_key(spec: WorkflowSpec, raw: str) -> Key:
         else:
             key = Key("unit", rest, unit=unit)
     name = key.name
-    if name in WIDENING:
-        raise SettingError("setting_not_built", f"{raw}: tool grants are built in T6.3")
-    if name in VERIFICATION or name.split(".")[0] in VERIFICATION:
+    if name not in WIDENING and (name in VERIFICATION or name.split(".")[0] in VERIFICATION):
         raise SettingError("not_a_setting", f"{raw}: what verifies the work is not a setting (ADR-0071)")
     if name not in CATALOG:
         raise SettingError("unknown_setting", f"{raw}: no setting {name!r}" + _nearest(name, CATALOG))
@@ -434,6 +472,13 @@ def _widening(k: str) -> bool:
     return any(k.endswith("." + w) for w in WIDENING)
 
 
+is_widening = _widening
+
+
+def as_list(v: Any) -> list[str]:
+    return [str(x) for x in v] if isinstance(v, (list, tuple)) else _list(v) if isinstance(v, str) else [str(v)]
+
+
 def find_profile(spec: WorkflowSpec, name: str, files: ConfigFiles) -> tuple[Mapping[str, Any], str] | None:
     """Project file, then user file, then the workflow's own; the first found is used whole (RST §2.4)."""
     for doc, path in ((files.project, files.project_path), (files.user, files.user_path)):
@@ -474,8 +519,14 @@ def snapshot(spec: WorkflowSpec, flags: Mapping[str, Any], profiles: Sequence[st
     return {k: layers.get(k, {}) for k in OPERATOR_LAYERS}, out
 
 
-def validate_layers(spec: WorkflowSpec, layers: Mapping[str, Mapping[str, Mapping[str, Any]]]) -> list[Finding]:
+def validate_layers(spec: WorkflowSpec, layers: Mapping[str, Mapping[str, Mapping[str, Any]]],
+                    caller_kind: str = "person") -> list[Finding]:
     out: list[Finding] = []
+    if caller_kind != "person":
+        for raw in (layers.get("flag") or {}):
+            if _widening(raw):
+                out.append(Finding(code="widening_by_agent", unit=None,
+                                   message=f"{raw}: only a person may widen a step's tools (RST §2.8, PRV §2.8)"))
     for layer in OPERATOR_LAYERS:
         for raw, cell in (layers.get(layer) or {}).items():
             try:
@@ -487,9 +538,9 @@ def validate_layers(spec: WorkflowSpec, layers: Mapping[str, Mapping[str, Mappin
 
 
 def options_snapshot(spec: WorkflowSpec, flags: Mapping[str, Any], profiles: Sequence[str], files: ConfigFiles,
-                     via: str = "cli") -> tuple[RunOptions, list[Finding]]:
+                     via: str = "cli", caller_kind: str = "person") -> tuple[RunOptions, list[Finding]]:
     layers, out = snapshot(spec, flags, profiles, files, via)
-    out += validate_layers(spec, layers)
+    out += validate_layers(spec, layers, caller_kind)
     return RunOptions(settings={k: dict(v) for k, v in layers.items()}, profiles=tuple(profiles)), out
 
 
@@ -587,8 +638,9 @@ def targets(spec: WorkflowSpec) -> list[tuple[str, str, list[str]]]:
         if u.step is not None:
             for phase in ("before", "after"):
                 for i, _ in enumerate(getattr(u.step, phase), start=1):
-                    k = f"{unit}.{phase}:{i}.timeout_s"
-                    out.append((k, "timeout_s", [k]))
+                    for name in ("timeout_s", "commands.add"):
+                        k = f"{unit}.{phase}:{i}.{name}"
+                        out.append((k, name, [k]))
     for name in spec.settings:
         out.append((f"settings.{name}", "", [f"settings.{name}"]))
     return out
@@ -666,8 +718,11 @@ def effective_spec(spec: WorkflowSpec, res: ResolvedSettings) -> WorkflowSpec:
         if u.kind == "step" and u.step is not None:
             st: StepSpec = u.step
             opts = SessionOptions(**{f: v.get(f"{name}.{k}") for k, f in SESSION_OPTIONS.items()})
+            added = tuple(v.get(f"{name}.tools.add") or ())
+            cmds = tuple(v.get(f"{name}.commands.add") or ())
             st = dataclasses.replace(
-                st, executor=v.get(f"{name}.executor") or st.executor,
+                st, tools=tuple(dict.fromkeys(st.tools + added)), commands=tuple(dict.fromkeys(st.commands + cmds)),
+                executor=v.get(f"{name}.executor") or st.executor,
                 model=_model(v.get(f"{name}.model")), timeout_s=v.get(f"{name}.timeout_s"),
                 idle_s=v.get(f"{name}.idle_s"), subagent_model=v.get(f"{name}.subagent_model"),
                 session_options=opts if opts.set_names() else None,
@@ -693,11 +748,17 @@ def effective_spec(spec: WorkflowSpec, res: ResolvedSettings) -> WorkflowSpec:
                                     timeout_s=v.get(f"judge:{name}.timeout_s"), idle_s=v.get(f"judge:{name}.idle_s"),
                                     session_options=jopts if jopts.set_names() else None)
             g = dataclasses.replace(g, judge=j)
+            views = tuple(v.get(f"judge:{name}.views.add") or ())
+            if views:
+                u = dataclasses.replace(u, extra={**u.extra, "views_add": views})
         units[name] = dataclasses.replace(u, gate=g)
     wt = spec.worktree
     if wt is not None:
         wt = dataclasses.replace(wt, base=v.get("run.worktree.base"), cleanup=v.get("run.worktree.cleanup"))
+    allowed = tuple(dict.fromkeys(spec.allow_commands + tuple(
+        p for k, val in v.items() if k.endswith("commands.add") for p in (val or ()))))
     return dataclasses.replace(spec, units=units, run_cost_cap_usd=v.get("run.run_cost_cap_usd"),
+                               allow_commands=allowed,
                                workspace=v.get("run.workspace") or "auto", worktree=wt)
 
 
@@ -718,6 +779,18 @@ def workflow_settings(res: ResolvedSettings) -> dict[str, Any]:
 
 
 def rows_json(res: ResolvedSettings) -> list[dict[str, Any]]:
-    return [{"key": r.key, "value": r.value, "layer": r.layer, "ref": r.ref, "shadowed": list(r.shadowed)}
-            for r in res.rows]
+    return [{"key": r.key, "value": r.value, "layer": r.layer, "ref": r.ref, "shadowed": list(r.shadowed),
+             **({"widening": True} if _widening(r.key) else {})} for r in res.rows]
+
+
+def grants(res: ResolvedSettings) -> list[dict[str, Any]]:
+    """Every resolved widening value as one grant: `{unit, key, capability | prefix}` (RST §2.8 Shown)."""
+    out: list[dict[str, Any]] = []
+    for k, v in sorted(res.values.items()):
+        if not _widening(k) or not v:
+            continue
+        unit = k.split(".", 1)[0].removeprefix("judge:")
+        field_ = "prefix" if k.endswith("commands.add") else "capability"
+        out += [{"unit": unit, "key": k, field_: item} for item in v]
+    return out
 

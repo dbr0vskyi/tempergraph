@@ -124,6 +124,8 @@ def _spellings(p: argparse.ArgumentParser) -> None:
     p.add_argument("--step-executor", action="append", default=[], metavar="STEP=NAME")
     p.add_argument("--step-model", action="append", default=[], metavar="STEP=ALIAS")
     p.add_argument("--approve", action="append", default=[], metavar="STEP")
+    p.add_argument("--grant", action="append", default=[], metavar="UNIT=CAPABILITY[,…]")
+    p.add_argument("--allow-command", action="append", default=[], metavar="UNIT=PREFIX")
     p.add_argument("--enforce-tools", action="store_true")
     p.add_argument("--strict-permissions", action="store_true")
 
@@ -207,6 +209,17 @@ def _flags(env: Env, a: argparse.Namespace) -> dict[str, Any]:
             flags[f"{unit}.{name}"] = parse_value(v)
     for unit in getattr(a, "approve", None) or []:
         flags[f"{unit}.approve"] = True
+    for opt, pairs in (("grant", getattr(a, "grant", None)), ("allow-command", getattr(a, "allow_command", None))):
+        for pair in pairs or []:  # a person's tool grant for this run (RST §2.8)
+            unit, sep, v = pair.partition("=")
+            if not sep or not unit or not v:
+                raise UsageError(f"--{opt} {pair!r}: expected <unit>=<value>")
+            if opt == "allow-command":
+                key, items = f"{unit}.commands.add", [v]
+            else:
+                key = f"{unit}.views.add" if unit.startswith("judge:") else f"{unit}.tools.add"
+                items = [c.strip() for c in v.split(",") if c.strip()]
+            flags[key] = list(dict.fromkeys(list(flags.get(key) or []) + items))
     if getattr(a, "workspace", None):
         flags["run.workspace"] = a.workspace
     if getattr(a, "enforce_tools", False):
