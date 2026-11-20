@@ -398,7 +398,14 @@ def cmd_status(env: Env, a: argparse.Namespace) -> int:
                 doc["threads"].append({**r, "state_root": entry["path"]})
         _emit(env, doc)
         return 0
-    _emit(env, status(_root(env), env.catalog.specs, Selector(value=a.selector)))
+    doc = status(_root(env), env.catalog.specs, Selector(value=a.selector))
+    from tempergraph.observe.sinks import warnings
+    from tempergraph.store.layout import home_path
+
+    lines = warnings(home_path())
+    if lines:
+        doc["warnings"] = lines  # CST §2.3: a sink failing for 7 days
+    _emit(env, doc)
     return 0
 
 

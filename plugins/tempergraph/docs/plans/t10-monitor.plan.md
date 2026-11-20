@@ -12,7 +12,7 @@ spec_commit: 47c5b7d
 task_id: first-release-t10
 ---
 
-# T10 Monitor (phases T10.2 to T10.4)
+# T10 Stats across machines and monitor (phases T10.1 to T10.4)
 
 ## 0. Hand-off
 
@@ -25,7 +25,7 @@ task_id: first-release-t10
 
 **Status: In progress.** Built: the mod reads `status --json`, stats and tails each live run log, reads `status --detail` for the open run, and reads an open session's journal, process group and log tails. It draws the band (with its stale and narrow rows), the status line, toasts and notifications, the run list with filter and pins, the run view, the pause view, the cost tab, the unit view, the attempt view's tabs and the session view's tabs. Every action fills the prompt: resume with a decision, stop, ask the run driver, ask Claude about a session; paths copy. Settings come from the manifest's `userConfig`. Status pass: every monitor spec is `ready-for-implementation`, each with a "Release 1 build" design note on what is built and where the code differs; the open questions have release 1 defaults.
 
-**Waiting on the engine:** the fleet tab, `scope = machine` and the projection line need T10.1 (machine index, fleet copy, `stats --live`) and T7.4 (`stats --projection`); the supervision line needs SCO's journal (T7.6) and the main thread's `supervision` record; the check tab's output tail and the guard's voided call need fields the detail document does not carry yet (RDD, T5); `observe.tool_inputs` as a setting needs T6.2.
+**Waiting on the engine:** the supervision line needs SCO's journal (T7.6) and the main thread's `supervision` record; the check tab's output tail and the guard's voided call need fields the detail document does not carry yet (RDD, T5); `observe.tool_inputs` as a setting needs T6.2.
 
 **Pending on the owner's machine (not faked):** the probes P-MOD-2 (reads outside the working directory), P-MOD-3 (PATH under desktop and VS Code) and P-MOD-4 (the mod loads, draws and polls in a live session against a real engine run). P-MOD-1 is answered from the 2.1.329 types (`session.start`'s `isInteractive`) and still wants the same live check. The mod was not turned on in the cloud session that wrote it; its session tests run under `claude plugin test` with the engine answered from fixtures.
 
@@ -83,9 +83,20 @@ The monitor defines no engine type. `hooks/lib/engine.ts` types the documents as
 | 10.4.7 | `hooks/register.tsx` | The fleet tab from `stats --live` and the fleet copy (T10.1) | MCF §2.2, B4, B5 | yes | P2 | ○ | |
 | 10.4.8 | `hooks/register.tsx` | `model_tool = interactive`: the read-only `runs` tool, refused to subagent loops | MAC §2.2, B3, AC-2 | yes | P3 | ○ | |
 
-### T10.1
+### T10.1 Stats across machines (engine)
 
-Not started in this pass: machine index, directory sink and fleet copy are engine work in CST.
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+|---|---|---|---|---|---|---|---|
+| 10.1.1 | `observe/rows.py` | The machine index at `run_started` (built in T7.4) | CST §2.1 | yes | P1 | ✓ | 2026-11-20 |
+| 10.1.2 | `observe/sinks.py` | `config/sinks.json` in the home folder and the state root (a state root's entry replaces the home one of the same name); two sinks with one name, an unknown field value or the `otlp` kind refused with exit 2 | CST §2.3, §4 | yes | P1 | ✓ | 2026-11-20 |
+| 10.1.3 | `observe/sinks.py` | The sink key in `<path>/sink.json`, made by the first writer; HMAC of thread id, origin URL, git `user.email`, parent and schedule; `ticket`, names and alias only as configured | CST §2.4, B5 | yes | P1 | ✓ | 2026-11-20 |
+| 10.1.4 | `observe/sinks.py`, `observe/rows.py`, `detach.py` | The outbox at `run_exit` (a reference to the local row), the detached flusher, in-order delivery that keeps the outbox on failure, the 7-day `status` warning | CST §2.3, B3, B6 | yes | P1 | ✓ | 2026-11-20 |
+| 10.1.5 | `observe/sinks.py`, `run/log.py` | The heartbeat: at `run_started`, `pause`, `run_exit` and at most every 60 s, running and paused threads of the indexed roots | CST §2.2, B4 | yes | P1 | ✓ | 2026-11-20 |
+| 10.1.6 | `observe/sinks.py`, `cli/observe_cli.py` | `stats sync` and the fleet copy (bytes by offset, whole heartbeat and machine files, this machine's pending rows, `rollup/<YYYY-MM>.json`, `synced.json`); `stats` reads it by default, `--local`, `--source`, `--sync`, `--live` with `stale` | CST §2.3, §2.5, B2, B7, AC-1–AC-4 | yes | P1 | ✓ | 2026-11-20 |
+| 10.1.7 | `observe/sinks.py` | `session` and `supervision` rows, once `agent_run` carries `duration_s` and SCO's close lands (T7.6) | CST §2.2 | yes | P2 | ○ | |
+| 10.1.8 | `observe/sinks.py` | A duplicate `row_id` with different content warned and both shown (a copied `machine.json`) | CST §4 | yes | P3 | ○ | |
+
+`tests/test_sinks.py` simulates two machines as two home folders writing to one temporary folder.
 
 ## 3. Hand-off notes
 

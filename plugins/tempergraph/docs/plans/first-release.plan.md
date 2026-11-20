@@ -459,21 +459,25 @@ Goal: one `caller` block per mutating call, deciders and relay evidence.
 #### T7.1 Run events
 Goal: record envelope, observer kinds, activity journal with input summaries, `events`.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+Expanded in [t7-observability.plan.md](t7-observability.plan.md) §2 T7.1.
 <!-- expand: T7.1 -->
 
 #### T7.2 Detail document
 Goal: `status --detail`, built on demand, read-only.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+Expanded in [t7-observability.plan.md](t7-observability.plan.md) §2 T7.2.
 <!-- expand: T7.2 -->
 
 #### T7.3 Session logs and the store
 Goal: `raw.jsonl` per session, `logs`, `store usage|prune|export`, retention, capture level.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+Expanded in [t7-observability.plan.md](t7-observability.plan.md) §2 T7.3.
 <!-- expand: T7.3 -->
 
 #### T7.4 Reports and attention
 Goal: `report`, monthly `stats`, and `attention`.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+Expanded in [t7-observability.plan.md](t7-observability.plan.md) §2 T7.4.
 <!-- expand: T7.4 -->
 
 #### T7.5 Supervision record and improvement data
@@ -540,6 +544,7 @@ Goal: read-only diagnosis from logs, detail and audit; the install skill.
 #### T10.1 Machine index, directory sink, fleet copy
 Goal: rows, outbox, `stats flush`, the fleet copy, `stats --source|--live|--projection`, `--all-roots`.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+Expanded in [t10-monitor.plan.md](t10-monitor.plan.md) §2 T10.1.
 <!-- expand: T10.1 -->
 
 #### T10.2 Monitor sources, band and alerts

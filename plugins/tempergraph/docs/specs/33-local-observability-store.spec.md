@@ -64,8 +64,8 @@ The folder and everything under it is created owner-only (0700 for folders, 0600
   machine.json                      machine_id (random UUID made once), label (operator-set, default the host name), created_at
   index.json                        known state roots: path, repository name, first_seen, last_run_at [CST §2.1]
   stats/<YYYY-MM>.jsonl             per-user stats rows [OBS §2.4], one per thread exit
-  config/                           user-level sinks and defaults; a state root's config overrides it
-  outbox/                           rows waiting for a sink [CST §2.3]
+  config/                           user-level sinks (`sinks.json`) and defaults (`settings.json`); a state root's config overrides it
+  outbox/<sink>.jsonl, .state.json  rows waiting for a sink and the sink's failure state [CST §2.3]
   supervision/<host>/<session>.jsonl  supervision journal of one host session [SCO §2.2]
   schedules/<schedule_id>/          entry.json (owner-only) and fires.jsonl of one schedule [SCH §2.2]
   schedules/tick.json, tick.lock    the tick's heartbeat and lock [TCK §2.2]

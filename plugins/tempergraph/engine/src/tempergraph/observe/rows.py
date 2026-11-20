@@ -234,7 +234,8 @@ def on_run_exit(log: Path, segment: int | None) -> None:
         append_jsonl(stats_path(home, month), row)
         from tempergraph.observe import sinks
 
-        sinks.enqueue(home, row, log)
+        if sinks.enqueue(home, row, log):
+            sinks.start_flusher(home)
     except Exception:  # noqa: BLE001
         import logging
 
@@ -284,12 +285,15 @@ def _key(r: dict[str, Any], by: str) -> str:
     if by == "model":
         return ",".join(r.get("models") or []) or "not recorded"
     if by == "machine":
-        return str(r.get("machine_label") or r.get("machine_id") or "?")
+        mid = str(r.get("machine_id") or "?")  # two machines may share a label (a host name); never one key
+        return f"{r['machine_label']} ({mid[:8]})" if r.get("machine_label") else mid
     if by == "schedule":
         return str(r.get("schedule_id") or "none")
     if by == "decider":
         return ",".join(sorted((r.get("touches_by_decider") or {}).keys())) or "none"
-    field = {"repo": "repo", "user": "user", "workflow": "workflow", "ticket": "ticket", "parent": "parent",
+    if by == "repo":
+        return str(r.get("repo_id") or r.get("repo") or "none")
+    field = {"user": "user", "workflow": "workflow", "ticket": "ticket", "parent": "parent",
              "level": "level", "host": "host"}[by]
     return str(r.get(field) or "none")
 

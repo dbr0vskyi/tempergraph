@@ -171,7 +171,17 @@ class RunLog:
                 self.write("engine_error", scope="observer", observer=name, error=error)
         if record in ("run_started", "run_exit"):
             self._rows(record, segment)
+        self._beat(record)
         return self.seq
+
+    def _beat(self, record: str) -> None:
+        """The heartbeat to configured sinks, at most every 60 s and at the run's ends (CST §2.2); best effort."""
+        try:
+            from tempergraph.observe import sinks
+
+            sinks.on_record(self.path, record)
+        except Exception:  # noqa: BLE001
+            self.failures += 1
 
     def _rows(self, record: str, segment: int) -> None:
         """The machine index at `run_started` and the stats row at `run_exit` (CST §2.1, §2.2); best effort (C2)."""

@@ -210,20 +210,26 @@ def cmd_stats(env: Any, a: argparse.Namespace) -> int:
     from tempergraph.store.layout import home_path
 
     home = home_path()
-    if a.action == "flush":
-        _emit(env, sinks.flush(home))
-        return 0
-    if a.action == "sync" or a.sync:
-        synced = sinks.sync(home)
-        if a.action == "sync":
-            _emit(env, synced)
+    root = _here(env)
+    try:
+        if a.action == "flush":
+            _emit(env, sinks.flush(home, root))
             return 0
-    if a.live:
-        _emit(env, sinks.live(home, a.source))
-        return 0
-    if a.month and (len(a.month) != 7 or a.month[4] != "-"):
-        raise UsageError("--month takes YYYY-MM")
-    found, unknown, synced_at = sinks.rows_for(home, a.source, a.local, a.month, a.since)
+        if a.action == "sync" or a.sync:
+            synced = sinks.sync(home, root)
+            if a.action == "sync":
+                _emit(env, synced)
+                return 0
+        if a.live:
+            _emit(env, sinks.live(home, a.source, root))
+            return 0
+        if a.month and (len(a.month) != 7 or a.month[4] != "-"):
+            raise UsageError("--month takes YYYY-MM")
+        if a.source and a.local:
+            raise UsageError("--source and --local exclude each other")
+        found, unknown, synced_at = sinks.rows_for(home, a.source, a.local, a.month, a.since, root)
+    except sinks.SinkConfigError as exc:
+        raise UsageError(str(exc)) from exc
     doc: dict[str, Any] = {"schema_version": 1, "source": a.source or ("local" if a.local else "home"),
                            "month": a.month, "since": a.since, "totals": rows.totals(found), "unknown_schema": unknown,
                            "synced": synced_at}
@@ -236,6 +242,17 @@ def cmd_stats(env: Any, a: argparse.Namespace) -> int:
         doc["projection"] = rows.projection(found, by_version=a.by == "version")
     _emit(env, doc)
     return 0
+
+
+def _here(env: Any) -> Path | None:
+    """This folder's state root when there is one; `stats` reads its `config/sinks.json` too."""
+    from tempergraph.store.layout import state_root_path
+
+    try:
+        root = state_root_path(env.cwd)
+    except Exception:  # noqa: BLE001 - outside a repository `stats` reads the home folder only
+        return None
+    return root if root.is_dir() else None
 
 
 def cmd_attention(env: Any, a: argparse.Namespace) -> int:

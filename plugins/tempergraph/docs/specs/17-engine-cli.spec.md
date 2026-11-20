@@ -44,8 +44,9 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `upgrade <workflow> [--check] [--no-assist] [--trial] [--stamp] [--bump] [--open-pr] [--continue <id>]` | Bring a workflow's source up to the running engine on a branch: plan, transforms, the gated upgrade workflow, verification, stamp ([WUP](63-workflow-upgrade.spec.md)) | branch, upgrade record, stamp; nothing with `--check` | the upgrade workflow only |
 | `upgrade-check <workflow> [--stamp]` | Kept as `upgrade --check`; `--stamp` on a clean check | stamp only | no |
 | `facts <selector> [--json]` | Read-only facts about a run for other tools (state, branch, artifacts by key, pending gates, cost figures, alias, label, origin) | no | no |
-| `stats [--month YYYY-MM] [--source <sink>] [--by …] [--projection] [--live] [--json]` | Per-user monthly run rows ([OBS §2.4](15-observability-and-cost.spec.md)); across machines from a sink ([CST §2.5](34-central-run-stats.spec.md)) | no | no |
+| `stats [--month YYYY-MM\|--since <date>] [--source <sink>\|--local] [--sync] [--by …] [--projection] [--live] [--json]` | Per-user monthly run rows ([OBS §2.4](15-observability-and-cost.spec.md)); across machines from a sink ([CST §2.5](34-central-run-stats.spec.md)) | no | no |
 | `stats flush` | Delivers outbox rows to the configured sinks ([CST §2.3](34-central-run-stats.spec.md)) | sink and outbox only | no |
+| `stats sync` | Pulls every directory sink into the fleet copy under the home folder ([CST §2.3](34-central-run-stats.spec.md)) | fleet copy only | no |
 | `store usage\|prune\|export` | Size, retention and export of the local store ([LOS §2.4](33-local-observability-store.spec.md)) | prune and export only | no |
 | `hooks add|list|remove|test` | Run lifecycle hooks (§2.2) | add and remove only | no |
 | `improve backlog|propose|trial|aa|open|show` | Proposals and trials ([PRP §2.7](40-improvement-proposals.spec.md)) | per [PRP](40-improvement-proposals.spec.md) | `propose`, `trial`, `aa` |
