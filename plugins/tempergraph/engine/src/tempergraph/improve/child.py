@@ -6,9 +6,10 @@ claims each ticket, runs the friction judge over the findings' metadata, decides
 rules and files. Its failure never reaches the parent: the parent has exited and its exit code is written.
 
 Release 1 shape: a fixed engine program of one judged session per ticket, not a compiled workflow; the judge
-follows the run's judge executor on the mid-tier alias for 1800 s. The outcome lens is judged only once a
-calibration score exists for the outcome gate (SIL-B7); until then its candidates are recorded `uncalibrated`
-without spending. Like all filing code, this module never opens the evidence file.
+follows the run's judge executor on the mid-tier alias for 1800 s. The outcome lens spends no session: its
+candidates are the final criteria the outcome gate's own judge graded unmet, and they file only while that judge
+is `accepted` by calibration (SIL-B7, JCL); until then they are recorded `uncalibrated`. Like all filing code,
+this module never opens the evidence file.
 """
 
 from __future__ import annotations
@@ -65,16 +66,20 @@ def mode() -> str:
 def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary: Mapping[str, Any], *,
              dry_run: bool, judge_executor: str, home: Path | None = None) -> Path | None:
     """Writes the ticket when a judged lens fired at this final exit and there is a fault to judge."""
+    from tempergraph.improve.calibration import has_score
+
     lenses = summary.get("lenses") or {}
     friction = bool(lenses.get("friction")) and bool(summary.get("fault_fingerprints"))
-    if not friction:  # an outcome judge alone spends for nothing until a calibration score exists (SIL-B7)
+    outcome = bool(summary.get("outcome_fingerprints"))  # graded by the outcome gate's own judge: no new session
+    if not (friction or outcome):
         return None
     tid = uuid.uuid4().hex[:16]
     ticket = {"schema_version": 1, "ticket_id": tid, "thread": thread, "workflow": spec.name,
               "workflow_version": spec.version, "task_id": task_id, "state_root": str(root),
               "issue_repository": spec.issue_repository, "mode": spec.improvement_mode, "dry_run": dry_run,
               "executor": judge_executor, "fingerprints": list(summary.get("fingerprints") or []),
-              "lenses": {"friction": friction, "outcome": False}, "at": now_iso()}
+              "lenses": {"friction": friction, "outcome": outcome},
+              "outcome_calibrated": outcome and has_score(spec, "outcome", root), "at": now_iso()}
     path = tickets_dir(home or home_path()) / f"{tid}.json"
     write_json(path, ticket)
     return path
@@ -176,7 +181,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     wf, task, thread = str(t["workflow"]), str(t["task_id"]), str(t["thread"])
     log = loop_log(root, wf, task)
     mine = _latest(read_findings(root, wf, task), set(t.get("fingerprints") or ()))
-    faults = [f for f in mine if f.get("class") == "fault"]
+    faults = [f for f in mine if f.get("class") == "fault" and f.get("lens") != "outcome"]
     append_jsonl(log, {"ts": now_iso(), "kind": "loop_started", "ticket": t.get("ticket_id"),
                        "lenses": t.get("lenses"), "findings": len(mine)})
     judged: dict[str, dict[str, Any]] = {}
@@ -198,6 +203,10 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
                            "session_id": res.session_id})
     cands: list[filing.Candidate] = []
     for f in mine:
+        if f.get("lens") == "outcome":  # SIL-B7: files only once the outcome gate's judge is `accepted` (JCL)
+            cands.append(filing.Candidate(finding=f, lens="outcome", calibrated=bool(t.get("outcome_calibrated")),
+                                          request_digest=f.get("request_digest")))
+            continue
         j = judged.get(str(f.get("fingerprint")))
         cands.append(filing.Candidate(finding=f, lens="friction", confidence=j["confidence"] if j else None,
                                       attributed=bool(j and j["attributed"]), request_digest=f.get("request_digest")))
