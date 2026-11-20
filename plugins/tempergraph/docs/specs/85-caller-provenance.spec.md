@@ -103,7 +103,7 @@ Every mutating call on a thread writes one `caller` block, the same shape everyw
 | `host_session` | The host's session id (local records); an HMAC with the sink key in anything that leaves the machine ([CST §2.4](34-central-run-stats.spec.md)) |
 | `caller_app` | From `--caller-app`, or null |
 | `parent` | The orchestration, node and item, for `orchestrator` |
-| `schedule` | `{schedule_id, fire_id, slot, created_by}` for `scheduler`; `{schedule_id, declared: true}` for a pipeline export ([SCH §2.8](83-schedules.spec.md)) |
+| `schedule` | `{schedule_id, fire_id, slot, created_by}` for `scheduler`; `{schedule_id, declared: true}` for a pipeline export ([TCK §2.7](84-schedule-ticks-and-unattended-fires.spec.md)) |
 | `trace_id` | From S7, or null |
 | `evidence[]` | The signals seen: S-number and the value class (`set`, `unset`, `valid`, `invalid`), never a value other than the host and CI system names |
 | `call_id` | A random id, so a host's journal entry for the same call can be joined ([SCO §2.4](87-supervision-cost.spec.md)) |

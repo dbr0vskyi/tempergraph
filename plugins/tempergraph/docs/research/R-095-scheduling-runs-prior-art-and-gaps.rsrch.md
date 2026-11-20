@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The owner asked on 2026-11-20: "Design schedule command with human readable dates and ability to schedule once or regularly to run a workflow."
+The owner asked on 2026-11-20: "Design schedule command with human readable dates and ability to schedule once or regularly to run a workflow." After the first draft they added: "The scheduler should be OS agnostic, we should utilize as much deterministic approaches as possible and have no model options if possible by using optional dateline format."
 
 The request is read as a `tempergraph schedule` command, with a matching skill, that starts a registered workflow (or a saved orchestration) at a time a person states in words, such as "tomorrow at 9", "in 2 hours", "every weekday at 8:00" or "every Monday", once or on a recurring basis. To design it, this note answers:
 
@@ -11,7 +11,7 @@ The request is read as a `tempergraph schedule` command, with a matching skill, 
 3. What a run that starts with nobody present needs from each of the four executors' sign-ins, from cost caps, from pauses and from the records of who called.
 4. What grammar for dates and recurrences can be parsed without a model and echoed back exactly.
 
-The work was done standalone, without questions to the owner; assumptions are recorded in [ADR-0095](../adr/0095-one-per-user-os-trigger-runs-a-model-free-tick.adr.md) to [ADR-0099](../adr/0099-a-scheduled-fire-is-an-attested-caller-with-a-capped-unattended-spend.adr.md).
+The work was done standalone, without questions to the owner; assumptions are recorded in [ADR-0095](../adr/0095-a-model-free-tick-behind-os-agnostic-triggers.adr.md) to [ADR-0099](../adr/0099-a-scheduled-fire-is-an-attested-caller-with-a-capped-unattended-spend.adr.md).
 
 ## Sources consulted
 
@@ -84,13 +84,13 @@ The work was done standalone, without questions to the owner; assumptions are re
 4. Unattended fires need a credential that works with no person and no keychain prompt; the Claude Code CLI's interactive sign-in is the weakest case and is flagged at creation; a credential failure is a refusal before spend at fire time (F18 to F21).
 5. Every scheduled run carries a cost cap and a schedule carries a period cap (F22). A live or paused previous run skips the next slot by default (F23).
 6. A schedule fire is a caller of its own, attested by a token like the supervisor's, since `pipeline` would hide the person who created the schedule and `engine` would hide the schedule (F8).
-7. The grammar is a fixed, table-tested set of phrases mapped to an instant or an RFC 5545 subset in a named zone, echoed back with the next fire times; an ambiguous phrase is a `needs` with readings, never a guess (F24 to F27).
+7. Exact standard formats (ISO 8601 date-times and durations, RFC 5545 rules, cron) are the deterministic path and never ask; a fixed, table-tested word grammar is an optional layer for people, where an ambiguous phrase is a `needs` with readings, never a guess. Both map to the same canonical form in a named zone, echoed back with the next fire times (F24 to F27).
 
 ## Open questions
 
 | Question | Owner | Next step |
 |---|---|---|
-| Does a systemd user timer fire while the user is logged out on the owner's Linux machines, with or without lingering? | Implementer | Probe P-SCH-1 ([TCK](../specs/84-schedule-ticks-and-unattended-fires.spec.md)) |
-| Can a LaunchAgent tick read a Claude Code `/login` sign-in from the Keychain while the screen is locked? | Implementer | Probe P-SCH-2 |
-| Does Antigravity's cached sign-in work from a session home started by an OS trigger (P-AG-1)? | Implementer | Probe P-SCH-3 |
+| Does a systemd user unit (the optional `os` adapter) run while the user is logged out on the owner's Linux machines, with or without lingering? | Implementer | Probe P-SCH-1 ([TCK](../specs/84-schedule-ticks-and-unattended-fires.spec.md)) |
+| Can a loop started by a LaunchAgent read a Claude Code `/login` sign-in from the Keychain while the screen is locked? | Implementer | Probe P-SCH-2 |
+| Does Antigravity's cached sign-in work from a session home started by the loop or an `os` adapter (P-AG-1)? | Implementer | Probe P-SCH-3 |
 | Is scheduling in the first release? | Owner | This note recommends the slice named in [SCH §5](../specs/83-schedules.spec.md) for the release after the first |

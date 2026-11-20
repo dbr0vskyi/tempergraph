@@ -10,9 +10,9 @@ adrs: [0095, 0096, 0097, 0098, 0099]
 
 ## 1. Overview
 
-A **schedule** starts a registered workflow, or a saved orchestration, at a time a person states in words: once ("tomorrow at 9", "in 2 hours", "on Dec 1 at 08:00") or on a recurrence ("every weekday at 8:00", "every Monday", "every 2 hours", "every month on the last day at 17:00"). This spec owns the `schedule` verbs, the grammar of those words, how each phrase becomes one exact form that is echoed back before anything is saved, time zones and daylight saving, the schedule entry and its fire log, and the policies for missed fires, overlapping runs, failures and spend.
+A **schedule** starts a registered workflow, or a saved orchestration, once or on a recurrence, given in an **exact format** (ISO 8601, an RFC 5545 rule, cron) or, optionally, in **words** ("tomorrow at 9", "every weekday at 8:00", "every month on the last day at 17:00"). Both paths are deterministic and model-free; the words are a convenience on top of the exact formats, never a requirement. This spec owns the `schedule` verbs, the exact formats, the word grammar, how either becomes one canonical form that is echoed back before anything is saved, time zones and daylight saving, the schedule entry and its fire log, and the policies for missed fires, overlapping runs, failures and spend.
 
-What actually fires a schedule when no terminal is open is the **tick**: one per-user OS trigger runs `tempergraph schedule tick`, a model-free engine call that reads the schedules, decides what is due and starts each due run through the engine's own `run` verb ([TCK](84-schedule-ticks-and-unattended-fires.spec.md), [ADR-0095](../adr/0095-one-per-user-os-trigger-runs-a-model-free-tick.adr.md)). No engine process stays resident. The tick, like the orchestration supervisor, calls no model and answers no gate (contract C18).
+What fires a schedule is the **tick**: an OS-agnostic, model-free engine routine that reads the schedules, decides what is due and starts each due run through the engine's own `run` verb. The engine's portable loop calls it on every OS the engine runs on; an OS scheduler, a pipeline or any other scheduler may call it too, as optional adapters ([TCK](84-schedule-ticks-and-unattended-fires.spec.md), [ADR-0095](../adr/0095-a-model-free-tick-behind-os-agnostic-triggers.adr.md)). The tick, like the orchestration supervisor, calls no model and answers no gate (contract C18).
 
 A scheduled run is an ordinary run: it is preflighted, capped, logged and costed like any other, it pauses for a person like any other, and every pause stays with a person ([ADR-0099](../adr/0099-a-scheduled-fire-is-an-attested-caller-with-a-capped-unattended-spend.adr.md)). What a schedule adds is who started it (caller kind `scheduler`, [PRV](85-caller-provenance.spec.md)), which slot it served, and the rules that keep a recurring schedule from piling up paused runs or spend.
 
@@ -41,7 +41,7 @@ JSON, owner-only (mode 0600), written atomically. Values are constants, checked 
 | `schedule_id`, `name`, `description` | id, slug, text ≤ 200 | |
 | `state` | `active` \| `paused` \| `done` \| `removed` | `done` after a `once` fired or a `recur` passed its end |
 | `target` | `{kind, workflow, repo, request, inputs}` or `{kind, orchestration_file, repo, args}` | `repo` is the absolute path of the main checkout whose state root the run uses ([WSP](13-workspace-and-concurrency.spec.md)); `request` and `inputs` may use the fire keys of §2.6 |
-| `when` | `{phrase, kind: once\|recur, at \| rule, zone, starts, ends, count}` | `phrase` is what the person typed; `at` an ISO 8601 local date-time; `rule` an RFC 5545 RECUR string from the subset of §2.3.3; `zone` an IANA name |
+| `when` | `{input, phrase, kind: once\|recur, at \| rule, zone, starts, ends, count}` | `input` names the option used (§2.3); `phrase` is what the person typed with `--when`, else null; `at` an ISO 8601 local date-time; `rule` an RFC 5545 RECUR string from the subset of §2.3.3; `zone` an IANA name |
 | `options` | map `SettingKey` → value, plus `profiles` | Any key of the settings catalog, applied on the `flag` layer with `via: schedule` ([RST §2.3](80-run-settings-and-overrides.spec.md)); no widening key (§2.5.5) |
 | `run_cost_cap_usd` | float > 0 | Required (§2.5.4); written as `run.run_cost_cap_usd` on every fire |
 | `budget` | `{period: day\|week\|month, cap_usd}`, optional | Cap on the summed cost of this schedule's fires in a calendar period of the schedule's zone |
@@ -50,15 +50,26 @@ JSON, owner-only (mode 0600), written atomically. Values are constants, checked 
 | `max_live` | int 1–4, default 1 | Live runs allowed at once under `parallel` |
 | `pause_after_failures` | int 1–10, default 3 | §2.5.3 |
 | `executors_checked` | list of `{executor, credential_kind, checked_at}` | From the creation preflight ([TCK §2.4](84-schedule-ticks-and-unattended-fires.spec.md)) |
-| `created`, `edited` | `{at, caller}` | The `caller` block of whoever added or last edited it ([PRV §2.5](85-caller-provenance.spec.md)) |
+| `created`, `edited` | `{at, caller, from}` | Who added or last edited it ([PRV §2.5](85-caller-provenance.spec.md)); `from` is the folder and repository the verb ran in |
 | `token_digest` | hex | SHA-256 of the schedule's fire token ([TCK §2.3](84-schedule-ticks-and-unattended-fires.spec.md)) |
 | `next_slot`, `last_fire` | UTC instant, fire summary | Derived; readers trust the fire log over them |
 
-### 2.3 The When grammar
+### 2.3 When: exact formats and words
 
-The engine parses a fixed grammar: words in English, case-insensitive, extra spaces and a trailing period ignored. The same parser serves `schedule parse`, `add` and `edit`; it calls no model (contract C13). A phrase that matches no rule is refused with the nearest rules shown; a phrase that matches with more than one reading is a `needs` (§2.3.4). The skill may turn a person's free words into a phrase of this grammar, but the engine's echo is what the person confirms ([TCK §2.6](84-schedule-ticks-and-unattended-fires.spec.md), [ADR-0096](../adr/0096-a-fixed-when-grammar-echoed-back-in-exact-form.adr.md)).
+Timing is given in exactly one of two ways, both parsed by the engine with no model (contract C13) ([ADR-0096](../adr/0096-exact-formats-first-and-an-optional-word-grammar-echoed-back.adr.md)):
 
-#### 2.3.1 Parts
+| Option | Format | Example | Becomes |
+|---|---|---|---|
+| `--at` | ISO 8601 local date-time, or with an offset or `Z` | `2026-12-01T08:00`, `2026-12-01T08:00+01:00` | `once` |
+| `--rrule` | RFC 5545 RECUR of the subset in §2.3.4, with `--starts` (DTSTART) | `FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=8;BYMINUTE=0` | `recur` |
+| `--every` | ISO 8601 duration, ≥ `PT15M`, from `--starts` (default now) | `PT2H`, `P1D`, `P1W` | `recur` (interval) |
+| `--cron` | Five-field cron, read in the schedule's zone | `0 8 * * 1-5` | `recur` |
+| `--tz`, `--starts`, `--until`, `--count` | IANA zone; ISO 8601 date-times; integer | `Europe/Warsaw` | zone and bounds |
+| `--when` | A phrase of the word grammar (§2.3.2, §2.3.3) | `every weekday at 8:00` | either |
+
+The **exact formats are the deterministic path**: they are never interpreted, so they never produce a `needs`; the only refusals are a malformed value, a time in the past, a gap the rule cannot leave, or an unknown zone. Scripts, pipelines, workflow packages and the skill use them; a person may too. The word grammar is an optional layer for people: English, case-insensitive, extra spaces and a trailing period ignored; a phrase that matches no rule is refused with the nearest rules shown, and a phrase with more than one reading is a `needs` (§2.3.5). Every path ends in the same canonical form and the same echo (§2.3.4).
+
+#### 2.3.2 Parts of the word grammar
 
 | Part | Accepted forms |
 |---|---|
@@ -70,38 +81,33 @@ The engine parses a fixed grammar: words in English, case-insensitive, extra spa
 | Zone | `--tz <IANA name>` or a trailing ` in <IANA name>`; `UTC` accepted; abbreviations such as `EST` or `CET` are refused (they name no rules) |
 | Bounds | `from <date>`, `until <date>`, `for <n> times` |
 
-#### 2.3.2 Phrases
+#### 2.3.3 Phrases (optional words)
 
 | Kind | Phrase | Canonical form |
 |---|---|---|
 | once | `in 2 hours` | `at` = now + 2 h, as local time in the zone |
 | once | `tomorrow at 9am` | `at` = tomorrow 09:00 |
-| once | `today 17:30` | refused if 17:30 has passed (`when_in_past`) |
 | once | `at 18:00` | today 18:00 if in the future, else a `needs`: tomorrow 18:00 or refuse |
 | once | `next monday at 10:00` | the Monday of next week (never this week's) |
-| once | `monday at 10:00`, `this monday at 10:00` | the first Monday after today, today excluded |
 | once | `on dec 1 at 08:00`, `2026-12-01 08:00` | that date; a past month-day without a year means next year |
 | recur | `every day at 9am`, `daily at 09:00` | `FREQ=DAILY;BYHOUR=9;BYMINUTE=0` |
 | recur | `every weekday at 8:00` | `FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=8;BYMINUTE=0` |
-| recur | `every weekend at 10am` | `FREQ=WEEKLY;BYDAY=SA,SU;…` |
-| recur | `every monday`, `every monday and thursday at 7pm` | `FREQ=WEEKLY;BYDAY=MO`, time from the default (§2.3.4) when none is given |
-| recur | `every 2 weeks on friday at 16:00` | `FREQ=WEEKLY;INTERVAL=2;BYDAY=FR;…` with `starts` the first such Friday |
+| recur | `every monday`, `every monday and thursday at 7pm` | `FREQ=WEEKLY;BYDAY=MO`, time from the default (§2.3.5) when none is given |
+| recur | `every 2 weeks on friday at 16:00` | `FREQ=WEEKLY;INTERVAL=2;BYDAY=FR;…` |
 | recur | `every month on the 1st at 9am` | `FREQ=MONTHLY;BYMONTHDAY=1;…` |
-| recur | `every month on the 31st` | a `needs`: skip months without a 31st (RFC 5545) or use the last day |
 | recur | `every month on the last day at 17:00` | `FREQ=MONTHLY;BYMONTHDAY=-1;…` |
 | recur | `every first monday of the month at 9am` | `FREQ=MONTHLY;BYDAY=1MO;…`; `last friday` gives `-1FR` |
 | recur | `every 2 hours`, `every 30 minutes`, `hourly` | interval rule, elapsed time from `starts` (§2.4) |
 | recur | `every 2 hours between 9am and 5pm on weekdays` | `FREQ=HOURLY;INTERVAL=2;BYHOUR=9,11,13,15,17;BYDAY=MO,…,FR` |
-| recur | `cron "0 9 * * 1-5"` | five-field cron translated to RECUR; the echo shows both |
 | recur | any of the above with `from …`, `until …` or `for 5 times` | `starts`, `UNTIL`, `COUNT` |
 
-Limits: the shortest interval is 15 minutes (`interval_too_short` below that); a `recur` must produce a slot within 400 days; a `once` must be within 400 days; at most 64 schedules per machine.
+Limits: intervals ≥ 15 minutes (`interval_too_short`); a slot within 400 days; 64 schedules per machine.
 
-#### 2.3.3 Canonical form
+#### 2.3.4 Canonical form and echo
 
 `once`: `{at: "2026-11-21T09:00", zone: "Europe/Warsaw"}`. `recur`: an RFC 5545 RECUR string limited to `FREQ` (`MINUTELY` only with `INTERVAL` ≥ 15, `HOURLY`, `DAILY`, `WEEKLY`, `MONTHLY`), `INTERVAL`, `BYDAY` (with ordinals for `MONTHLY`), `BYMONTHDAY` (1–31, −1), `BYHOUR`, `BYMINUTE`, `COUNT`, `UNTIL`, plus `starts` (DTSTART) and `zone`. Nothing else is stored, so every reader computes the same slots with a standard library.
 
-The **echo** of a phrase is: the canonical form, a sentence the engine renders from it (never from the phrase), the zone with its current UTC offset, the next three slots (or the one slot) in local and UTC time, and each assumption made (§2.3.4). It is the output of `schedule parse` and the confirmation of `add` and `edit`.
+The **echo** of any When, exact or in words, is: the canonical form, a sentence the engine renders from it (never from the phrase), the zone with its current UTC offset, the next three slots (or the one slot) in local and UTC time, and each assumption made (§2.3.5). It is the output of `schedule parse` and the confirmation of `add` and `edit`.
 
 ```text
 "every weekday at 8:00" in Europe/Warsaw (UTC+01:00 now)
@@ -110,7 +116,7 @@ The **echo** of a phrase is: the canonical form, a sentence the engine renders f
   assumed: zone from this machine
 ```
 
-#### 2.3.4 Ambiguity and defaults
+#### 2.3.5 Ambiguity and defaults (words only)
 
 | Input | Rule |
 |---|---|
@@ -183,48 +189,43 @@ A schedule's `options` and `profiles` are validated at `add` and `edit` by `run 
 | Thread id | `<workflow>/s-<schedule_id>-<slot as yyyymmddThhmm>`; a second start of the same slot finds the thread and is refused by DUR-B1, so a slot can never run twice |
 | Orchestration id | `<name>-s<yyyymmddThhmm>-<4 hex>` from the fire id |
 | Fire keys | `{fire.slot}` (local ISO date-time), `{fire.date}` (local ISO date), `{fire.previous_slot}` (the last slot that started a run, or empty), `{fire.schedule}` (the name); usable in `request`, `inputs` and orchestration `args`, rendered by the template grammar of [CON §2.2](01-contracts.spec.md) |
-| Alias and label | `--alias` is not allowed (aliases are unique among live threads); the label is `schedule <name> <fire.date>` unless the options give one |
+| Alias and label | No `--alias` (aliases are unique among live threads); label `schedule <name> <fire.date>` unless set |
 
 ### 2.7 Verbs
 
 | Verb | Does | Writes | Spends |
 |---|---|---|---|
-| `schedule parse "<phrase>" [--tz z] [--count n] [--json]` | The echo of §2.3.3, or the `needs` or refusal | no | no |
-| `schedule add <workflow> <request…> --when "<phrase>" [--tz z] [--name n] [--choose n] [run options] [--run-cost-cap usd] [--budget <period>:<usd>] [--catch-up …] [--overlap …] [--max-live n] [--pause-after-failures n] [--check] [--yes]` | Parse, preflight with `run --check` and the credential check ([TCK §2.4](84-schedule-ticks-and-unattended-fires.spec.md)), print the echo, and save on `--yes` or an interactive yes; `--check` saves nothing | entry, fire log | no |
-| `schedule add --orchestration <file> [--arg k=v…] --when …` | The same for a saved orchestration; validated with `orchestrate validate` | entry, fire log | no |
-| `schedule list [--all] [--json]` | Every schedule: name, target, the rendered sentence, zone, state, next slot, last fire and its outcome, live runs, failures in a row, period spend against budget | no | no |
-| `schedule show <id> [--json]` | One schedule in full: entry, echo, the next ten slots, the last 20 fires | no | no |
+| `schedule parse <when> [--count n] [--json]` | The echo of §2.3.4, or the `needs` or refusal; `<when>` is one of the options of §2.3 | no | no |
+| `schedule add <workflow> <request…> <when> [--name n] [--choose n] [run options] [--run-cost-cap usd] [--budget <period>:<usd>] [--catch-up …] [--overlap …] [--max-live n] [--pause-after-failures n] [--check] [--yes]` | Parse, preflight with `run --check` and the credential check ([TCK §2.4](84-schedule-ticks-and-unattended-fires.spec.md)), print the echo, and save on `--yes` or an interactive yes; `--check` saves nothing | entry, fire log | no |
+| `schedule add --orchestration <file> [--arg k=v…] <when>` | The same for a saved orchestration; validated with `orchestrate validate` | entry, fire log | no |
+| `schedule list [--all] [--json]` | Every schedule on the machine, from any folder: name, target, sentence, zone, state, next slot, last fire, live runs, failures, period spend | no | no |
+| `schedule show <id> [--json]` | Entry, echo, next ten slots, last 20 fires | no | no |
 | `schedule history <id> [--since <date>] [--json]` | The fire log | no | no |
-| `schedule edit <id> [--when …] [options as for add] [--yes]` | Change timing, options or policies; re-parsed, re-checked and echoed like `add`; the target workflow and repo cannot change (remove and add instead) | entry, fire log | no |
-| `schedule pause <id> [--reason text]`, `schedule resume <id>` | Stop or restart firing; `resume` applies `catch_up` to slots passed while paused only if `--catch-up` is given, else they are `missed` | entry, fire log | no |
-| `schedule skip <id> [--next \| --until <date>]` | Skip the next slot, or every slot until a date, recorded `skipped` with reason `person` | entry, fire log | no |
-| `schedule fire <id> [--yes]` | Start one fire now, off-cycle, through the same path as a tick (policies apply except catch-up) | as a tick | yes |
-| `schedule remove <id> [--yes]` | `state: removed`; the folder is kept for history until `store prune`; live runs are not stopped | entry, fire log | no |
-| `schedule tick` | Called by the OS trigger ([TCK §2.2](84-schedule-ticks-and-unattended-fires.spec.md)) | fire log, runs | yes |
-| `schedule trigger install\|status\|remove`, `schedule export <id> --for <system>` | The OS trigger and pipeline export ([TCK §2.1](84-schedule-ticks-and-unattended-fires.spec.md), [TCK §2.5](84-schedule-ticks-and-unattended-fires.spec.md)) | per TCK | no |
+| `schedule edit <id> [<when>] [options as for add] [--yes]` | Change timing, options or policies; re-parsed, re-checked and echoed like `add`; the target workflow and repo cannot change (remove and add instead) | entry, fire log | no |
+| `schedule pause <id> [--reason text]`, `schedule resume <id> [--catch-up]` | Stop or restart firing; slots passed while paused are `missed` unless `--catch-up` | entry, fire log | no |
+| `schedule skip <id> [--next \| --until <date>]` | Skip slots, recorded `skipped` (reason `person`) | entry, fire log | no |
+| `schedule fire <id> [--yes]` | One fire now, off-cycle, through the tick's path (no catch-up) | as a tick | yes |
+| `schedule remove <id> [--yes]` | `state: removed`; history kept until `store prune`; live runs go on | entry, fire log | no |
+| `schedule tick`, `schedule loop [--detach\|--stop]` | One tick, called by any trigger; the portable loop that ticks until stopped ([TCK §2.1](84-schedule-ticks-and-unattended-fires.spec.md)) | fire log, runs | yes |
+| `schedule trigger install\|status\|remove`, `schedule export <id> --for <system>` | Optional trigger adapters and pipeline export ([TCK §2.1](84-schedule-ticks-and-unattended-fires.spec.md), [TCK §2.5](84-schedule-ticks-and-unattended-fires.spec.md)) | per TCK | no |
 
 `add`, `edit`, `pause`, `resume`, `skip`, `fire` and `remove` are mutating verbs: each classifies its caller and records the `caller` block in the fire log ([PRV](85-caller-provenance.spec.md)). Exits per [CON §2.9](01-contracts.spec.md): 0, 2 refused, 3 `needs`. `schedule` is a reserved verb word ([CLI-B2](17-engine-cli.spec.md)).
 
-### 2.8 Fire log and records
+### 2.8 Fire log
 
 The fire log is append-only JSON lines in the schedule's folder, one per event, each with `seq`, `at` (UTC), `kind`, `slot`, `fire_id` and metadata only:
 
 `created`, `edited` (changed fields), `paused` (reason `person`, `failures`), `resumed`, `due`, `started` (thread or orchestration id), `skipped` (reason `overlap`, `budget`, `person`, `paused`), `queued`, `missed`, `refused` (exit 2 reason, `credential` included), `ended` (exit, outcome, `cost` with `reported`, `estimated`, `incomplete`), `removed`. Each person-made event carries its `caller` block.
 
-| Where | What a scheduled run adds |
-|---|---|
-| Status document | `origin: schedule`; `schedule: {schedule_id, fire_id, slot}` beside `parent` ([DUR §2.2](09-durability-and-resume.spec.md)) |
-| `run_started` | `origin`, `schedule`, and the `caller` block of kind `scheduler` ([EVT §2.2](30-run-events.spec.md), [PRV §2.1](85-caller-provenance.spec.md)) |
-| Stats row and `run` sink row | `origin`, `schedule_id` (an HMAC in rows that leave the machine, as `repo_id`, [CST §2.4](34-central-run-stats.spec.md)) |
-| `report` | `--by schedule`: fires, outcomes, cost, skipped and missed counts per schedule |
-| `attention` | Pauses of scheduled runs with their schedule; and the schedule items `schedule_missed`, `schedule_paused`, `schedule_budget`, `schedule_refused` ([ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md)) |
-| Supervision | The fire is not a touch; the person's `add` and `edit` are counted once per schedule as `designed` setup, never per run ([SUP §2.2](86-supervision-metrics.spec.md)); supervision cost of the start is `measured_zero` ([SCO §2.3](87-supervision-cost.spec.md)) |
+Every fire is also a row of the machine-wide scheduled-run ledger, readable from any folder with `schedule runs`; that and what a run leaves elsewhere are [TCK §2.7](84-schedule-ticks-and-unattended-fires.spec.md).
 
 ## 3. Behaviours
 
 **SCH-B1 Echo before save.** Given `schedule add triage "open bugs" --when "every weekday at 8:00"` on a machine in `Europe/Warsaw`, when it runs in a terminal, then it prints the echo of §2.3.3 with the zone marked assumed and asks for a yes; with no terminal and no `--yes` it exits 3 with the echo as the `needs` and saves nothing.
 
-**SCH-B2 Ambiguity is asked, not guessed.**
+**SCH-B1a Exact formats never ask.** Given `schedule add digest "daily digest" --rrule "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=8;BYMINUTE=0" --tz Europe/Warsaw --run-cost-cap 3 --yes` from a script with no terminal, when it runs, then it is saved with exit 0 and the same echo as the phrase `every weekday at 8:00`; `--at 2026-12-01T08:00`, `--every PT2H` and `--cron "0 8 * * 1-5"` likewise never exit 3.
+
+**SCH-B2 Ambiguity in words is asked, not guessed.**
 
 | Phrase | Result |
 |---|---|
@@ -237,13 +238,11 @@ The fire log is append-only JSON lines in the schedule's folder, one per event, 
 
 **SCH-B3 Daylight saving.** Given `every day at 02:30` in `Europe/Warsaw`, when the slots around 2027-03-28 (spring forward) and 2027-10-31 (fall back) are computed, then 2027-03-28's slot is 03:30 local (01:30 UTC), 2027-10-31's fires once at the first 02:30 (00:30 UTC), and the echo of `schedule show` names both.
 
-**SCH-B4 Interval across a change.** Given `every 2 hours from 2027-03-27 20:00` in `Europe/Warsaw`, when the slots across the spring-forward night are listed, then they are 7,200 s apart in UTC and the local times after the change are odd hours.
-
 **SCH-B5 Overlap skips behind a pause.** Given a daily schedule with `overlap: skip` whose Monday run paused at a gate, when the Tuesday, Wednesday and Thursday slots come due with the pause unanswered, then each is `skipped` with reason `overlap`, no run starts, and after Thursday the pause's attention item carries `blocking_schedule: 3`.
 
 **SCH-B6 Missed slots after the machine was off.** Given `every day at 9am` with `catch_up: latest` and a machine off from Friday evening to Monday 10:00, when the first tick runs on Monday at 10:05, then Saturday's and Sunday's slots are `missed` (older than the 24-hour window) and Monday's 09:00 slot fires at that tick; given the machine back on Sunday 10:00 instead, Sunday's slot fires at that tick and Saturday's is `missed`.
 
-**SCH-B7 A slot never runs twice.** Given two ticks that run at the same moment (a manual tick and the OS trigger), when both find the same due slot, then exactly one starts it: the tick lock serializes them ([TCK-B2](84-schedule-ticks-and-unattended-fires.spec.md)), and the slot's thread id makes any second start a DUR-B1 refusal.
+**SCH-B7 A slot never runs twice.** Given two ticks that run at the same moment (the loop and an external cron), when both find the same due slot, then exactly one starts it: the tick lock serializes them ([TCK-B2](84-schedule-ticks-and-unattended-fires.spec.md)), and the slot's thread id makes any second start a DUR-B1 refusal.
 
 **SCH-B8 Spend is capped.** Given `schedule add … --budget month:20 --run-cost-cap 4` and fires that cost 6.10, 5.80 and 4.30 this month, when the next slot comes due, then 16.20 + 4 > 20 so the slot is `skipped` with reason `budget`, one `schedule_budget` attention item is raised, and slots resume next month.
 
@@ -264,32 +263,30 @@ The fire log is append-only JSON lines in the schedule's folder, one per event, 
 
 | Condition | Result |
 |---|---|
-| Phrase matches no rule | Exit 2 `when_unparsed`, with the closest phrases of §2.3.2 |
+| Phrase matches no rule | Exit 2 `when_unparsed`, with the closest phrases of §2.3.3; a malformed exact value exits 2 `when_malformed` naming the format |
 | `once` in the past, or no slot within 400 days | Exit 2 `when_in_past`, `when_too_far` |
-| Unknown zone or an abbreviation | Exit 2 `zone_unknown` |
-| Interval under 15 minutes | Exit 2 `interval_too_short` |
+| Unknown zone or abbreviation | Exit 2 `zone_unknown` |
 | Workflow not registered, `repo` without a state root | Exit 2 at `add`; `refused` at a fire |
 | `run --check` says `needs` or `error` at `add` | Exit 3 or 2 with its questions; nothing saved |
 | No run cost cap | Exit 2 `cost_cap_required` |
 | A widening key in `options` | Exit 2 `widening_in_schedule` |
 | `--overlap parallel` without a worktree workspace | Exit 2 `parallel_needs_worktree` |
-| `--alias` in `options` | Exit 2 `alias_not_allowed` |
-| 64 schedules already on the machine | Exit 2 `too_many_schedules` |
-| A second schedule with the same name | Exit 2, the existing one named |
+| Over 64 schedules | Exit 2 `too_many_schedules` |
 | `edit` changing workflow, repo or target kind | Exit 2 `target_fixed` |
 | Fire log write fails | Recorded on stderr; the fire goes on (C2) |
 
 ## 5. Design notes
 
-- **One mechanism.** A person at a terminal, the schedule skill and a pipeline export produce the same entry; only the tick fires it ([ADR-0095](../adr/0095-one-per-user-os-trigger-runs-a-model-free-tick.adr.md)).
-- **A grammar, not a guesser**: a wrong reading on a recurrence repeats every period ([ADR-0096](../adr/0096-a-fixed-when-grammar-echoed-back-in-exact-form.adr.md)). Zones and daylight saving: [ADR-0097](../adr/0097-schedules-keep-an-iana-zone-and-rfc-5545-daylight-saving-rules.adr.md). Missed and overlapping slots: [ADR-0098](../adr/0098-missed-slots-catch-up-latest-and-a-live-run-skips-the-next.adr.md). Unattended spend and pauses: [ADR-0099](../adr/0099-a-scheduled-fire-is-an-attested-caller-with-a-capped-unattended-spend.adr.md).
-- **Release slice.** Scheduling rests on unattended credentials, cost caps, `attention` and caller provenance, so it is recommended for the release after the first: `once` and calendar `recur` for workflow targets, `catch_up: latest|none`, `overlap: skip`, both caps, every verb but `export`, and the trigger on all three platforms. Later: orchestration and program targets, `catch_up: all`, `overlap: queue|parallel`, `cron` input, pipeline export.
+- **One mechanism.** A person at a terminal, the schedule skill and a pipeline export produce the same entry; only the tick fires it ([ADR-0095](../adr/0095-a-model-free-tick-behind-os-agnostic-triggers.adr.md)).
+- **A grammar, not a guesser**: a wrong reading on a recurrence repeats every period ([ADR-0096](../adr/0096-exact-formats-first-and-an-optional-word-grammar-echoed-back.adr.md)). Zones and daylight saving: [ADR-0097](../adr/0097-schedules-keep-an-iana-zone-and-rfc-5545-daylight-saving-rules.adr.md). Missed and overlapping slots: [ADR-0098](../adr/0098-missed-slots-catch-up-latest-and-a-live-run-skips-the-next.adr.md). Unattended spend and pauses: [ADR-0099](../adr/0099-a-scheduled-fire-is-an-attested-caller-with-a-capped-unattended-spend.adr.md).
+- **Release slice.** Scheduling rests on unattended credentials, cost caps, `attention` and caller provenance, so it is recommended for the release after the first: `once` and calendar `recur` for workflow targets, `catch_up: latest|none`, `overlap: skip`, both caps, every verb but `export`, and the portable loop with the `host` adapter. Later: the `os` adapter, orchestration and program targets, `catch_up: all`, `overlap: queue|parallel`, `cron` input, pipeline export.
 - **Assumptions** (owner unavailable): per-user, per-machine schedules; 15-minute minimum interval; 09:00 offered as the default time; English only; 64 schedules per machine; 3 failures before a pause; a catch-up window of one period capped at 24 hours.
 
 ## 6. Acceptance criteria
 
-- [ ] SCH-AC-1 Every row of §2.3.2 and SCH-B2 has a fixture giving its canonical form, echo sentence and next three slots for a fixed "now" and zone; the echo sentence is generated from the canonical form only (test: re-parse of the sentence's rule equals the stored rule).
-- [ ] SCH-AC-2 For 5,000 random rules of the §2.3.3 subset in 20 zones, the engine's slots over two years equal `dateutil.rrule` with `zoneinfo`, including every gap and overlap of those years.
+- [ ] SCH-AC-1 Every row of §2.3 and §2.3.3 and of SCH-B2 has a fixture giving its canonical form, echo sentence and next three slots for a fixed "now" and zone; the echo sentence is generated from the canonical form only (test: re-parse of the sentence's rule equals the stored rule).
+- [ ] SCH-AC-2 For 5,000 random rules of the §2.3.4 subset in 20 zones, the engine's slots over two years equal `dateutil.rrule` with `zoneinfo`, including every gap and overlap of those years.
+- [ ] SCH-AC-1a No input given through `--at`, `--rrule`, `--every` or `--cron` exits 3 in a corpus of 1,000 valid values, and each equals the canonical form of its word-grammar twin where one exists.
 - [ ] SCH-AC-3 `parse`, `list`, `show` and `history` leave the home store unchanged (hash test) and start no process.
 - [ ] SCH-AC-4 With scripted runs and a fake clock, SCH-B5 to SCH-B9 give the stated fire-log events, and no slot ever has two `started` events across 1,000 runs of two concurrent ticks.
 - [ ] SCH-AC-5 Every refusal in §4 exits with its code and writes nothing.

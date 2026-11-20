@@ -84,8 +84,8 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0087](0087-a-supervision-journal-written-by-the-host-not-by-read-only-verbs.adr.md) | Supervision cost is measured by a journal the host writes, not by the engine's read-only verbs | proposed |
 | [0088](0088-attribute-supervision-spend-by-marginal-tokens-beside-turn-totals.adr.md) | Attribute a supervising session's spend to runs by marginal tokens, shown beside turn totals | proposed |
 | [0089](0089-supervision-is-a-promotion-and-improvement-measure.adr.md) | Supervision by every decider is a promotion criterion and an improvement signal | proposed |
-| [0095](0095-one-per-user-os-trigger-runs-a-model-free-tick.adr.md) | One per-user OS trigger runs a model-free schedule tick; no resident engine process | proposed |
-| [0096](0096-a-fixed-when-grammar-echoed-back-in-exact-form.adr.md) | Parse a fixed When grammar into one exact form, echo it back, and ask on every ambiguity | proposed |
+| [0095](0095-a-model-free-tick-behind-os-agnostic-triggers.adr.md) | A model-free, OS-agnostic tick holds every schedule rule; a portable engine loop calls it, OS and other schedulers are optional adapters | proposed |
+| [0096](0096-exact-formats-first-and-an-optional-word-grammar-echoed-back.adr.md) | Exact date formats are the deterministic path; an optional word grammar sits on top; both are model-free and echoed back | proposed |
 | [0097](0097-schedules-keep-an-iana-zone-and-rfc-5545-daylight-saving-rules.adr.md) | Schedules keep an IANA zone; calendar rules follow wall time, intervals elapsed time, by RFC 5545 | proposed |
 | [0098](0098-missed-slots-catch-up-latest-and-a-live-run-skips-the-next.adr.md) | Missed slots catch up the latest one; a live or paused run skips the next slot; a slot runs at most once | proposed |
 | [0099](0099-a-scheduled-fire-is-an-attested-caller-with-a-capped-unattended-spend.adr.md) | A scheduled fire is an attested `scheduler` caller; unattended spend needs a cap; pauses stay with a person | proposed |

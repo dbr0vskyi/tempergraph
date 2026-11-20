@@ -36,7 +36,7 @@ How the engine keeps operator input, model output and secrets away from process 
 | Filtering MCP proxy | Started by the judge's CLI from an engine-written config; constant entry point |
 | Git reader | `git` with constant arguments and refs on stdin |
 | Detached child launcher | The engine CLI with a ticket; the schedule tick's `run` and `orchestrate start` among them ([TCK §2.2](84-schedule-ticks-and-unattended-fires.spec.md)) |
-| OS trigger writer | One per-user scheduler entry (LaunchAgent, systemd user units, crontab line, Task Scheduler task) holding the shim's absolute path and `schedule tick` only ([TCK §2.1](84-schedule-ticks-and-unattended-fires.spec.md)) |
+| Schedule trigger writer | The optional `os` adapter's one per-user entry (LaunchAgent, systemd user unit, crontab line, Task Scheduler task) and the plugin hook's loop start, holding the shim's absolute path and `schedule loop` or `schedule tick` only ([TCK §2.1](84-schedule-ticks-and-unattended-fires.spec.md)) |
 | Updater | `pip` with constants only |
 | Wait notification | The operator's own command, a named, bounded exception with its own test |
 | Check worker | The engine interpreter with the constant module `tempergraph.checks.worker`; the context document on stdin ([CHK §2.6](75-check-contract-and-command-runs.spec.md)) |
