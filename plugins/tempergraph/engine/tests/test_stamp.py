@@ -164,3 +164,24 @@ def test_executor_compatibility_table() -> None:
     assert f is not None and f.code == "executor-version-untested" and f.severity == "warning"
     assert executor_compat.finding("claude", "2.1.329") is None
     assert executor_compat.row("antigravity", "1.0")["state"] == "no_table"
+
+
+def test_preflight_warns_and_executors_shows_the_row(repo: Path) -> None:
+    """LIF-AC-4: read by preflight and shown by `executors`."""
+    from tempergraph.contracts import ProbeReport
+    from tempergraph.executors.preflight import preflight
+    from tempergraph.executors.registry import Registry
+    from tempergraph.executors.standins import standin
+
+    from .fixtures.workflows import two_step
+
+    ex = standin("claude")
+    ex.probe_report = ProbeReport(ok=True, version="2.3.0")
+    r = Registry()
+    r.register(ex)
+    assert "executor-version-untested" in {f.code for f in preflight(two_step(), r).warnings}
+    ex.probe_report = ProbeReport(ok=True, version="2.1.329 (Claude Code)")
+    assert "executor-version-untested" not in {f.code for f in preflight(two_step(), r).warnings}
+    out = io.StringIO()
+    assert main(["executors", "--probe"], registry=r, cwd=repo, out=out, err=io.StringIO()) == 0
+    assert json.loads(out.getvalue())["executors"][0]["compat"]["state"] == "recorded"

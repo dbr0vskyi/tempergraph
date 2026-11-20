@@ -16,6 +16,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import IO, Any
 
+from tempergraph import executor_compat
 from tempergraph.catalog import Catalog, PackageNotLoaded, from_registry, resolve_request
 from tempergraph.cli import install as install_cli
 from tempergraph.cli import upgrade as upgrade_cli
@@ -287,6 +288,7 @@ def cmd_executors(env: Env, a: argparse.Namespace) -> int:
             pr = ex.probe()
             row["probe"] = {"ok": pr.ok, "reason": pr.reason, "version": pr.version, "path": pr.path,
                             "facts": dict(pr.facts)}
+        row["compat"] = executor_compat.row(name, row["probe"]["version"] if a.probe else caps.version)  # LIF-AC-4
         rows.append(row)
     _emit(env, {"schema_version": 1, "executors": rows})
     return 0

@@ -42,7 +42,7 @@ def row(executor: str, version: str | None) -> dict[str, Any]:
     t = table().get(executor)
     if t is None:
         return {"executor": executor, "state": "no_table"}
-    state = "unknown_version" if not version else ("recorded" if in_range(version, t["range"]) else "outside")
+    state = "unknown_version" if not version or not _v(version) else ("recorded" if in_range(version, t["range"]) else "outside")
     return {"executor": executor, "version": version, "range": t["range"], "recorded": t.get("recorded", []),
             "state": state}
 

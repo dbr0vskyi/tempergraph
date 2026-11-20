@@ -21,7 +21,7 @@ task_id: first-release-t8
 | Origin | [Release 1 plan](first-release.plan.md) track T8 |
 | Specs | [PKG](../specs/88-workflow-package.spec.md), [UPD](../specs/60-engine-update.spec.md), [VER](../specs/61-version-metadata.spec.md), [LIF](../specs/18-lifecycle-and-evals.spec.md), [AUD](../specs/55-workflow-audit.spec.md), [ARC](../specs/56-audit-rule-catalog.spec.md), [PRA](../specs/58-prompt-audit.spec.md), [SCF](../specs/91-blueprint-and-scaffold.spec.md) |
 
-**Status: In progress.** T8.1 is built: a package on disk loads by every step of PKG §2.3, step 5 through OUT's `read_outcome`, `gate_criteria` and `check_against` (plan T5.8.1), validates with the package rules, and registers, lists, unregisters and reinstalls through `tempergraph workflows`. T8.2 is built against a stand-in environment builder; a real `pip install` of the engine into a fresh environment waits on the owner's machine (it needs the package index). T8.3 is built but for two calls in files the T6 track owns (8.3.5). T8.4 has prompt lint (LIF §2.1) and the structural readiness report (LIF §2.2). The rest of T8.4, T8.5 and T8.6 are not started.
+**Status: In progress.** T8.1 is built: a package on disk loads by every step of PKG §2.3, step 5 through OUT's `read_outcome`, `gate_criteria` and `check_against` (plan T5.8.1), validates with the package rules, and registers, lists, unregisters and reinstalls through `tempergraph workflows`. T8.2 is built against a stand-in environment builder; a real `pip install` of the engine into a fresh environment waits on the owner's machine (it needs the package index). T8.3 is built, with the two calls in preflight and `executors` (8.3.5) added at the main build thread's request. T8.4 has prompt lint (LIF §2.1) and the structural readiness report (LIF §2.2). The rest of T8.4, T8.5 and T8.6 are not started.
 
 Status pass: PKG, UPD, VER and WUP are `ready-for-implementation`, with release 1 defaults for their open questions. LIF, AUD, ARC, PRA and SCF get theirs in the first row of T8.4, T8.5 and T8.6.
 
@@ -90,7 +90,7 @@ Status pass: WUP is `ready-for-implementation` (its open question has a release 
 | 8.3.2 | `engine/src/tempergraph/package/changelog.py`, `data/changelog/0.0.1.json` | Entry schema check, range selection, detect rules (`field`, `symbol`, `finding`, `template_key`, `tool_ref`, `text`), the VER §2.7 state; `compatibility` in `list` | VER §2.3, §2.7 | | P1 | ✓ | 2026-11-20 |
 | 8.3.3 | `engine/src/tempergraph/package/stamp.py`, `cli/upgrade.py` | `upgrade --check [--stamp]`, `upgrade-check [--stamp]`; V1 to V7 with V4 and V6 skipped; `stamp.json`; `verified_engine` at load | WUP §2.1, §2.6, VER §2.5 | | P1 | ✓ | 2026-11-20 |
 | 8.3.4 | `engine/src/tempergraph/executor_compat.py`, `data/executor_compat.json` | The executor compatibility table, `row` and `finding` | LIF §2 | | P1 | ✓ | 2026-11-20 |
-| 8.3.5 | `executors/preflight.py`, `cli/main.py` (T6 owner) | Preflight warns `executor-version-untested`; `executors` shows the row (LIF-AC-4); asked of the main build thread | LIF-AC-4 | yes | P1 | ○ | |
+| 8.3.5 | `executors/preflight.py`, `cli/main.py` (T6 owner) | Preflight warns `executor-version-untested`; `executors` shows the row (LIF-AC-4); added on this branch at the main build thread's request | LIF-AC-4 | yes | P1 | ✓ | 2026-11-20 |
 | 8.3.6 | | The transforms of VER §2.3.4 (VER-AC-3) | VER §2.3.4 | yes | P3 | ○ | release 3, with phase 4 of WUP |
 
 ### T8.4 Scenarios, lint and readiness
