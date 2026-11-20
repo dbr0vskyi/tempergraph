@@ -5,12 +5,26 @@ Reading is model-free and read-only. The outcome gate, sign-off and the outcome 
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
-from tempergraph.contracts import CallableRef, Criterion, IntermediateOutcome, OutcomeSpec, WorkflowSpec
+from tempergraph.contracts import (
+    CallableRef,
+    CheckFinding,
+    CheckResult,
+    Criterion,
+    GateSpec,
+    IntermediateOutcome,
+    JudgeSpec,
+    OutcomeSpec,
+    StepSpec,
+    UnitSpec,
+    WorkflowSpec,
+)
+from tempergraph.model import flow
 from tempergraph.model.validate import Finding
 
 OUTCOME_FILE = "outcome.json"
@@ -115,3 +129,90 @@ def check_against(outcome: OutcomeSpec, spec: WorkflowSpec) -> list[Finding]:
             out.append(Finding(code="mechanical-without-check", unit=name,
                                message="a `check` criterion needs the unit's gate to have a check (CHK §4)"))
     return out
+
+
+# ---------------------------------------------------------------------------------------------
+# The outcome gate (OUT §2.4)
+
+OUTCOME_STANCE = "The request and the deliverables are the truth; everything a step said is a claim to verify."
+_TIER = {"small": 1, "haiku": 1, "medium": 2, "sonnet": 2, "large": 3, "opus": 3}
+
+
+def _strongest_judge_model(spec: WorkflowSpec) -> str | None:
+    models = [u.gate.judge.model for u in spec.units.values() if u.gate.judge is not None and u.gate.judge.model]
+    return max(models, key=lambda m: _TIER.get(str(m).lower(), 0)) if models else None
+
+
+def outcome_unit(spec: WorkflowSpec) -> UnitSpec | None:
+    """The reserved `outcome` unit compiled from `outcome.json` with no declaration (PKG §2.7, OUT §2.4)."""
+    o = spec.outcome
+    if o is None or not o.final:
+        return None
+    graded = tuple(c for c in o.final if c.verified_by in ("judge", "check"))
+    sign_off = [{"id": c.id, "text": c.text, "role": (c.verifier or {}).get("role", ""),
+                 "question": (c.verifier or {}).get("question", "")} for c in o.final if c.verified_by == "person"]
+    unverified = [{"id": c.id, "reason": (c.verifier or {}).get("reason", "")} for c in o.final
+                  if c.verified_by == "none"]
+    jcfg = dict(o.judge or {})
+    refs: dict[str, Literal["required", "optional"]] = {str(d.get("key")): "required" for d in o.deliverables
+                                                         if d.get("key")}
+    refs.update({str(r): "required" for r in jcfg.get("references") or ()})
+    judge = None
+    if any(c.verified_by == "judge" for c in graded):
+        judge = JudgeSpec(stance=str(jcfg.get("stance") or OUTCOME_STANCE), references=refs,
+                          executor=jcfg.get("executor"),
+                          model=jcfg.get("model") or _strongest_judge_model(spec))
+    gate = GateSpec(check=CallableRef(module=__name__, qualname="outcome_check"), judge=judge, criteria=graded,
+                    approval=bool(sign_off), back_targets=tuple(flow.outcome_back_targets(spec)), loop_budget=1,
+                    retry_budget=0)
+    return UnitSpec(kind="step", gate=gate, step=StepSpec(tools=("read",)),
+                    extra={"outcome": True, "sign_off": sign_off, "unverified": unverified})
+
+
+def with_outcome(spec: WorkflowSpec) -> WorkflowSpec:
+    """The run-time spec: the declared units plus the compiled outcome unit, if the workflow has one."""
+    u = outcome_unit(spec)
+    if u is None or flow.OUTCOME_UNIT in spec.units:
+        return spec
+    return dataclasses.replace(spec, units={**spec.units, flow.OUTCOME_UNIT: u})
+
+
+def outcome_check(ctx: Any) -> CheckResult:
+    """The built-in check: every deliverable exists; then the workflow's own outcome check, if any."""
+    findings: list[CheckFinding] = []
+    deliverables = (ctx.settings or {}).get("deliverables") or []
+    arts = {k: v for vs in (ctx.artifacts or {}).values() if isinstance(vs, Mapping) for k, v in vs.items()}
+    vals = {k: v for vs in (ctx.values or {}).values() if isinstance(vs, Mapping) for k, v in vs.items()}
+    for d in deliverables:
+        key, kind = str(d.get("key") or ""), str(d.get("kind") or "file")
+        present = key in arts or key in vals
+        if present and kind == "file" and key in arts:
+            present = (ctx.workdir / str(arts[key])).exists()
+        if not present:
+            findings.append(CheckFinding(status="fail", criterion=None, place=str(d.get("where") or key),
+                                         message=f"deliverable {key} is missing", fix=f"produce {key}"))
+    result: CheckResult = CheckResult(result="FAIL" if findings else "PASS", findings=findings,
+                                      evidence=f"{len(deliverables) - len(findings)} of {len(deliverables)} "
+                                               "deliverables present")
+    ref = (ctx.settings or {}).get("outcome_check")
+    if ref and not findings:
+        mod, _, qual = str(ref).partition(":")
+        own = CallableRef(module=mod, qualname=qual).resolve()(ctx)
+        if isinstance(own, CheckResult):
+            own.evidence = (result.evidence + "\n" + own.evidence).strip()
+            return own
+    return result
+
+
+def derived_back(spec: WorkflowSpec, failing: list[str], path: list[str]) -> str | None:
+    """OUT §2.4: the earliest unit on the path whose criterion serves a failing final criterion."""
+    o = spec.outcome
+    if o is None:
+        return None
+    for unit in flow.effective_order(spec):
+        if unit not in path:
+            continue
+        io = o.intermediate.get(unit)
+        if io and any(set(c.serves) & set(failing) for c in io.criteria):
+            return unit
+    return None

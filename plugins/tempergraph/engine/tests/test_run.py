@@ -244,3 +244,65 @@ def test_trip_back_records_new_visits(repo: Path) -> None:
                        ("review", 2, "proceed")]  # EVT §2.2
     started = next(r for r in records(repo) if r["kind"] == "run_started")
     assert started["plan_digest"] and started["executors"]["steps"]["draft"] == "claude"
+
+
+def with_outcome_spec(final_by: str = "judge") -> Any:
+    from tempergraph.run.outcome import gate_criteria, parse_outcome
+
+    from .test_outcome import MINIMAL
+
+    data = json.loads(json.dumps(MINIMAL))
+    data["final"][0]["verified_by"] = final_by
+    data["deliverables"] = [{"key": "verdict", "kind": "value", "where": "review"}]  # stand-ins write no files
+    if final_by == "person":
+        data["final"][0]["verifier"] = {"role": "release manager", "question": "Safe to publish?"}
+    data["intermediate"]["draft"]["criteria"][0]["verified_by"] = "judge"  # the fixture check names c-file only
+    o = parse_outcome(data)
+    spec = dataclasses.replace(two_step(), outcome=o)
+    units = {n: dataclasses.replace(u, gate=dataclasses.replace(u.gate, criteria=tuple(gate_criteria(o, n))))
+             for n, u in spec.units.items()}
+    return dataclasses.replace(spec, units=units)
+
+
+def test_outcome_gate_runs_before_the_finalizer(repo: Path) -> None:
+    spec = with_outcome_spec()
+    met2 = verdict_block("MET", "MET")
+    ex = standin("claude", steps=[DRAFT, REVIEW], judges=[judge(met2), judge(MET), judge(MET, sid="o")])
+    out = go(repo, ex, spec)
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    assert [c.kind for c in ex.calls] == ["step", "judge", "step", "judge", "judge"]  # no outcome session
+    outcome_prompt = ex.calls[4].request.prompt
+    assert "rn-complete" in outcome_prompt and "The request and the deliverables are the truth" in outcome_prompt
+    assert "MET means: all four headings" in outcome_prompt  # the scale is rendered (OUT §2.2.1)
+
+
+def test_missing_deliverable_fails_the_outcome_check(repo: Path) -> None:
+    spec = with_outcome_spec()
+    o = dataclasses.replace(spec.outcome, deliverables=({"key": "notes", "kind": "file", "where": "notes.md"},))
+    spec = dataclasses.replace(spec, outcome=o)
+    met2 = verdict_block("MET", "MET")
+    ex = standin("claude", steps=[DRAFT, REVIEW, DRAFT, REVIEW], judges=[judge(met2), judge(MET)] * 2)
+    out = go(repo, ex, spec)
+    checks = [r for r in records(repo) if r["kind"] == "check" and r["unit"] == "outcome"]
+    assert checks[0]["result"] == "FAIL" and "0 of 1 deliverables" in checks[0]["evidence"]
+    assert out.exit_code is ExitCode.PAUSED and out.payload["kind"] == "budget"  # loop budget 1, then ask
+
+
+def test_failing_outcome_goes_back_to_the_serving_unit(repo: Path) -> None:
+    spec = with_outcome_spec()
+    met2 = verdict_block("MET", "MET")
+    ex = standin("claude", steps=[DRAFT, REVIEW, DRAFT, REVIEW],
+                 judges=[judge(met2), judge(MET), judge(verdict_block("UNMET")), judge(met2), judge(MET),
+                         judge(MET, sid="o2")])
+    assert go(repo, ex, spec).exit_code is ExitCode.FINISHED
+    entered = [(r["unit"], r["entered_from"]) for r in records(repo) if r["kind"] == "unit_entered"]
+    assert ("draft", "back:outcome") in entered  # derived from `serves` (OUT-B3)
+
+
+def test_person_criterion_pauses_for_sign_off(repo: Path) -> None:
+    spec = with_outcome_spec("person")
+    met2 = verdict_block("MET", "MET")
+    ex = standin("claude", steps=[DRAFT, REVIEW], judges=[judge(met2), judge(MET)])
+    out = go(repo, ex, spec)
+    assert out.exit_code is ExitCode.PAUSED and out.payload["kind"] == "approval"
+    assert out.payload["sign_off"][0]["question"] == "Safe to publish?"  # OUT-B4

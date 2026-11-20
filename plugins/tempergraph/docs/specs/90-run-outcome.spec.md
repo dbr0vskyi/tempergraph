@@ -104,6 +104,8 @@ The engine computes, never stores, a **trust** per criterion from its class and 
 | Failure | A blocker UNMET or PARTIAL sends the run back to the earliest unit whose serving criterion of that final criterion is on the path (`serves`), with the judge's reason; loop budget 1 per target, then the gate's `on_budget_spent` (default `ask`). With no serving unit, the run escalates. Back targets are derived, never declared |
 | Mode | In `dev`, the judge runs on every run. In `stable`, setting `outcome.judge` (`always` default, or `on_trigger` with the stable triggers of the outcome lens, [SIL §2.2](16-self-improvement.spec.md)); a run where the judge did not run records its judge criteria as `not_judged` |
 
+Compiled form: the engine adds the `outcome` unit to the run-time spec with no session, `retry_budget` 0 (a retry has nothing to redo) and `loop_budget` 1. Its gate grades the final criteria verified by `check` or `judge`; `person` criteria go into the approval payload as `sign_off` (id, text, role, question); `none` criteria are graded by nobody and reach the outcome record. A failing check, such as a missing deliverable, routes like a failing blocker: when it names no final criterion, every final criterion counts as failing for the `serves` lookup.
+
 The outcome gate is what the self-improvement outcome lens reads: the lens takes the outcome record instead of starting a second judge, so the step gates, the outcome gate and the loop share one bar ([SIL §2.2](16-self-improvement.spec.md)).
 
 ### 2.5 The outcome record and the workflow's measures

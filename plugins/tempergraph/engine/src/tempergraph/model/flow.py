@@ -61,7 +61,7 @@ def next_unit(spec: WorkflowSpec, unit: str) -> str:
 
 def proceed_targets(spec: WorkflowSpec, unit: str) -> list[str]:
     """Unit names (or `finalizer`) a pass may go to."""
-    if unit == OUTCOME_UNIT and unit not in spec.units:
+    if unit == OUTCOME_UNIT and (unit not in spec.units or spec.units[unit].extra.get("outcome")):
         return [FINALIZER]
     u = spec.units[unit]
     targets: list[str]
