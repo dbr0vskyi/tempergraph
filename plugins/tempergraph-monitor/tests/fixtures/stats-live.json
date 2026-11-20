@@ -3,50 +3,50 @@
   "source": "home",
   "machines": [
     {
-      "machine_id": "9ea8f5c1-2bd8-4faf-90cd-baa56a816289",
+      "machine_id": "1218ed0f-17d4-4615-a0c4-7bdb46cdbcf4",
       "label": "desk-b",
-      "at": "2026-11-20T10:29:35.296Z",
-      "age_s": 0.3,
+      "at": "2026-11-20T10:34:06.283Z",
+      "age_s": 0.2,
       "stale": false,
       "this_machine": false
     },
     {
-      "machine_id": "ee3bd6d1-994c-41c5-91b6-11ae7e3c1807",
+      "machine_id": "ec311672-1fa5-4f5d-bf26-9098af8b2070",
       "label": "laptop-a",
-      "at": "2026-11-20T10:29:35.595Z",
-      "age_s": -0.0,
+      "at": "2026-11-20T10:34:06.529Z",
+      "age_s": 0.0,
       "stale": false,
       "this_machine": true
     }
   ],
   "runs": [
     {
-      "thread_hash": "f496ceb1dc730b2b1542eb4210979e6a",
-      "repo_id": "137422dcaea1216e48c64b63f7799280",
+      "thread_hash": "111f4d0dbf955cc29f129e6862f763b3",
+      "repo_id": "0cd1af9aa44b07d3cc17325647ddd3ba",
       "workflow": "demo",
       "alias": null,
       "state": "paused",
       "unit": "review",
       "attempt": 2,
       "estimated_cost_usd": null,
-      "waiting_for_person_s": 0.6,
+      "waiting_for_person_s": 0.5,
       "waiting_on": "person",
-      "machine_id": "9ea8f5c1-2bd8-4faf-90cd-baa56a816289",
+      "machine_id": "1218ed0f-17d4-4615-a0c4-7bdb46cdbcf4",
       "label": "desk-b",
       "stale": false
     },
     {
-      "thread_hash": "d82e7624f069224a07fd01ff73e43810",
-      "repo_id": "137422dcaea1216e48c64b63f7799280",
+      "thread_hash": "1819e03644247fad5e98facf37fb7fe2",
+      "repo_id": "0cd1af9aa44b07d3cc17325647ddd3ba",
       "workflow": "demo",
       "alias": null,
       "state": "paused",
       "unit": "draft",
       "attempt": 1,
       "estimated_cost_usd": null,
-      "waiting_for_person_s": 0.3,
+      "waiting_for_person_s": 0.2,
       "waiting_on": "person",
-      "machine_id": "9ea8f5c1-2bd8-4faf-90cd-baa56a816289",
+      "machine_id": "1218ed0f-17d4-4615-a0c4-7bdb46cdbcf4",
       "label": "desk-b",
       "stale": false
     },
@@ -57,10 +57,10 @@
       "unit": "review",
       "attempt": 2,
       "estimated_cost_usd": null,
-      "waiting_for_person_s": 0.6,
+      "waiting_for_person_s": 0.5,
       "waiting_on": "person",
       "thread_id": "demo/T-1",
-      "machine_id": "ee3bd6d1-994c-41c5-91b6-11ae7e3c1807",
+      "machine_id": "ec311672-1fa5-4f5d-bf26-9098af8b2070",
       "label": "laptop-a",
       "stale": false
     },
@@ -74,7 +74,7 @@
       "waiting_for_person_s": 0.3,
       "waiting_on": "person",
       "thread_id": "demo/T-8",
-      "machine_id": "ee3bd6d1-994c-41c5-91b6-11ae7e3c1807",
+      "machine_id": "ec311672-1fa5-4f5d-bf26-9098af8b2070",
       "label": "laptop-a",
       "stale": false
     }

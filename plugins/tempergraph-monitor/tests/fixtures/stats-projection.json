@@ -18,17 +18,17 @@
   "unknown_schema": 0,
   "synced": {
     "team": {
-      "synced_at": "2026-11-20T10:29:35.567Z",
+      "synced_at": "2026-11-20T10:34:06.510Z",
       "machines": {
-        "9ea8f5c1-2bd8-4faf-90cd-baa56a816289": {
+        "1218ed0f-17d4-4615-a0c4-7bdb46cdbcf4": {
           "label": "desk-b",
-          "synced_at": "2026-11-20T10:29:35.567Z",
+          "synced_at": "2026-11-20T10:34:06.510Z",
           "rows": 1,
           "ago_s": 0.0
         },
-        "ee3bd6d1-994c-41c5-91b6-11ae7e3c1807": {
+        "ec311672-1fa5-4f5d-bf26-9098af8b2070": {
           "label": "laptop-a",
-          "synced_at": "2026-11-20T10:29:35.567Z",
+          "synced_at": "2026-11-20T10:34:06.510Z",
           "rows": 1,
           "ago_s": 0.0
         }

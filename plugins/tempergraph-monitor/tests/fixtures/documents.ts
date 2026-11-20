@@ -2,7 +2,7 @@
 
 export const status = {
   "schema_version": 1,
-  "generated_at": "2026-11-20T10:29:35.054Z",
+  "generated_at": "2026-11-20T10:34:06.046Z",
   "threads": [
     {
       "thread_id": "demo/T-1",
@@ -52,7 +52,7 @@ export const status = {
 
 export const detailPaused = {
   "schema_version": 1,
-  "generated_at": "2026-11-20T10:29:35.064Z",
+  "generated_at": "2026-11-20T10:34:06.054Z",
   "run": {
     "thread_id": "demo/T-1",
     "workflow": "demo",
@@ -96,7 +96,7 @@ export const detailPaused = {
     "exit_code": 3,
     "exit_reason": "escalation",
     "segment": 0,
-    "last_seq": 54,
+    "last_seq": 55,
     "run_dir": "/work/repo/.tempergraph/runs/demo/T-1",
     "plan_digest": "a577bffc8fe5d4dfcfca250fce4ceb2f8220963cb011a2c806d79ac62c64176b"
   },
@@ -175,8 +175,8 @@ export const detailPaused = {
             {
               "attempt": 1,
               "item": null,
-              "started_at": "2026-11-20T10:29:34.501Z",
-              "ended_at": "2026-11-20T10:29:34.627Z",
+              "started_at": "2026-11-20T10:34:05.549Z",
+              "ended_at": "2026-11-20T10:34:05.672Z",
               "step": {
                 "sessions": [
                   {
@@ -212,8 +212,8 @@ export const detailPaused = {
                       "infra_cause": null,
                       "error_kind": null
                     },
-                    "started_at": "2026-11-20T10:29:34.501Z",
-                    "ended_at": "2026-11-20T10:29:34.504Z",
+                    "started_at": "2026-11-20T10:34:05.549Z",
+                    "ended_at": "2026-11-20T10:34:05.550Z",
                     "activity_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/draft.1.step/activity.jsonl",
                     "live_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/draft.1.step/live.json"
                   }
@@ -261,8 +261,8 @@ export const detailPaused = {
                       "infra_cause": null,
                       "error_kind": null
                     },
-                    "started_at": "2026-11-20T10:29:34.618Z",
-                    "ended_at": "2026-11-20T10:29:34.620Z",
+                    "started_at": "2026-11-20T10:34:05.663Z",
+                    "ended_at": "2026-11-20T10:34:05.665Z",
                     "activity_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/draft.1.judge/activity.jsonl",
                     "live_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/draft.1.judge/live.json"
                   }
@@ -299,8 +299,8 @@ export const detailPaused = {
             {
               "attempt": 2,
               "item": null,
-              "started_at": "2026-11-20T10:29:34.634Z",
-              "ended_at": "2026-11-20T10:29:34.812Z",
+              "started_at": "2026-11-20T10:34:05.679Z",
+              "ended_at": "2026-11-20T10:34:05.801Z",
               "step": {
                 "sessions": [
                   {
@@ -336,8 +336,8 @@ export const detailPaused = {
                       "infra_cause": null,
                       "error_kind": null
                     },
-                    "started_at": "2026-11-20T10:29:34.634Z",
-                    "ended_at": "2026-11-20T10:29:34.636Z",
+                    "started_at": "2026-11-20T10:34:05.679Z",
+                    "ended_at": "2026-11-20T10:34:05.681Z",
                     "activity_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/draft.2.retry/activity.jsonl",
                     "live_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/draft.2.retry/live.json"
                   }
@@ -385,8 +385,8 @@ export const detailPaused = {
                       "infra_cause": null,
                       "error_kind": null
                     },
-                    "started_at": "2026-11-20T10:29:34.804Z",
-                    "ended_at": "2026-11-20T10:29:34.805Z",
+                    "started_at": "2026-11-20T10:34:05.792Z",
+                    "ended_at": "2026-11-20T10:34:05.794Z",
                     "activity_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/draft.2.judge/activity.jsonl",
                     "live_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/draft.2.judge/live.json"
                   }
@@ -423,8 +423,8 @@ export const detailPaused = {
             {
               "attempt": 3,
               "item": null,
-              "started_at": "2026-11-20T10:29:34.875Z",
-              "ended_at": "2026-11-20T10:29:34.986Z",
+              "started_at": "2026-11-20T10:34:05.863Z",
+              "ended_at": "2026-11-20T10:34:05.979Z",
               "step": {
                 "sessions": [
                   {
@@ -460,8 +460,8 @@ export const detailPaused = {
                       "infra_cause": null,
                       "error_kind": null
                     },
-                    "started_at": "2026-11-20T10:29:34.875Z",
-                    "ended_at": "2026-11-20T10:29:34.877Z",
+                    "started_at": "2026-11-20T10:34:05.863Z",
+                    "ended_at": "2026-11-20T10:34:05.865Z",
                     "activity_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/draft.3.step/activity.jsonl",
                     "live_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/draft.3.step/live.json"
                   }
@@ -509,8 +509,8 @@ export const detailPaused = {
                       "infra_cause": null,
                       "error_kind": null
                     },
-                    "started_at": "2026-11-20T10:29:34.980Z",
-                    "ended_at": "2026-11-20T10:29:34.981Z",
+                    "started_at": "2026-11-20T10:34:05.970Z",
+                    "ended_at": "2026-11-20T10:34:05.972Z",
                     "activity_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/draft.3.judge/activity.jsonl",
                     "live_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/draft.3.judge/live.json"
                   }
@@ -547,7 +547,7 @@ export const detailPaused = {
         "figure": 0.06,
         "completeness": "complete"
       },
-      "duration_s": 0.415,
+      "duration_s": 0.361,
       "share": 0.6
     },
     {
@@ -561,8 +561,8 @@ export const detailPaused = {
             {
               "attempt": 1,
               "item": null,
-              "started_at": "2026-11-20T10:29:34.823Z",
-              "ended_at": "2026-11-20T10:29:34.863Z",
+              "started_at": "2026-11-20T10:34:05.813Z",
+              "ended_at": "2026-11-20T10:34:05.851Z",
               "step": {
                 "sessions": [
                   {
@@ -598,8 +598,8 @@ export const detailPaused = {
                       "infra_cause": null,
                       "error_kind": null
                     },
-                    "started_at": "2026-11-20T10:29:34.823Z",
-                    "ended_at": "2026-11-20T10:29:34.825Z",
+                    "started_at": "2026-11-20T10:34:05.813Z",
+                    "ended_at": "2026-11-20T10:34:05.815Z",
                     "activity_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/review.1.step/activity.jsonl",
                     "live_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/review.1.step/live.json"
                   }
@@ -647,8 +647,8 @@ export const detailPaused = {
                       "infra_cause": null,
                       "error_kind": null
                     },
-                    "started_at": "2026-11-20T10:29:34.853Z",
-                    "ended_at": "2026-11-20T10:29:34.856Z",
+                    "started_at": "2026-11-20T10:34:05.844Z",
+                    "ended_at": "2026-11-20T10:34:05.845Z",
                     "activity_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/review.1.judge/activity.jsonl",
                     "live_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/review.1.judge/live.json"
                   }
@@ -691,8 +691,8 @@ export const detailPaused = {
             {
               "attempt": 2,
               "item": null,
-              "started_at": "2026-11-20T10:29:34.999Z",
-              "ended_at": "2026-11-20T10:29:35.030Z",
+              "started_at": "2026-11-20T10:34:05.990Z",
+              "ended_at": "2026-11-20T10:34:06.025Z",
               "step": {
                 "sessions": [
                   {
@@ -728,8 +728,8 @@ export const detailPaused = {
                       "infra_cause": null,
                       "error_kind": null
                     },
-                    "started_at": "2026-11-20T10:29:34.999Z",
-                    "ended_at": "2026-11-20T10:29:35.000Z",
+                    "started_at": "2026-11-20T10:34:05.990Z",
+                    "ended_at": "2026-11-20T10:34:05.991Z",
                     "activity_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/review.2.step/activity.jsonl",
                     "live_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/review.2.step/live.json"
                   }
@@ -777,8 +777,8 @@ export const detailPaused = {
                       "infra_cause": null,
                       "error_kind": null
                     },
-                    "started_at": "2026-11-20T10:29:35.024Z",
-                    "ended_at": "2026-11-20T10:29:35.025Z",
+                    "started_at": "2026-11-20T10:34:06.019Z",
+                    "ended_at": "2026-11-20T10:34:06.020Z",
                     "activity_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/review.2.judge/activity.jsonl",
                     "live_path": "/work/repo/.tempergraph/runs/demo/T-1/sessions/review.2.judge/live.json"
                   }
@@ -821,7 +821,7 @@ export const detailPaused = {
         "figure": 0.04,
         "completeness": "complete"
       },
-      "duration_s": 0.071,
+      "duration_s": 0.073,
       "share": 0.4
     }
   ],
@@ -844,7 +844,7 @@ export const detailPaused = {
     "resume": [
       "tempergraph resume demo T-1 --decision <proceed|retry|back:draft|stop>"
     ],
-    "waiting_since": "2026-11-20T10:29:35.031Z",
+    "waiting_since": "2026-11-20T10:34:06.026Z",
     "waiting_s": 0.0
   },
   "budgets": {
@@ -873,32 +873,101 @@ export const detailPaused = {
     "suspect_stall": false,
     "orphaned": false,
     "waiting_for_person_s": 0.0,
-    "burn_usd_per_h": 645.1613,
+    "burn_usd_per_h": 722.8916,
     "cap_eta_min": null
   },
   "supervision": {
     "touches": [],
-    "record": null,
+    "record": {
+      "touches": {
+        "designed": {
+          "person": 0,
+          "agent": 0,
+          "unknown": 0,
+          "pipeline": 0,
+          "orchestrator": 0,
+          "scheduler": 0,
+          "engine": 0
+        },
+        "rescue": {
+          "person": 0,
+          "agent": 0,
+          "unknown": 0,
+          "pipeline": 0,
+          "orchestrator": 0,
+          "scheduler": 0,
+          "engine": 0
+        },
+        "steer": {
+          "person": 0,
+          "agent": 0,
+          "unknown": 0,
+          "pipeline": 0,
+          "orchestrator": 0,
+          "scheduler": 0,
+          "engine": 0
+        },
+        "engine": {
+          "person": 0,
+          "agent": 0,
+          "unknown": 0,
+          "pipeline": 0,
+          "orchestrator": 0,
+          "scheduler": 0,
+          "engine": 0
+        },
+        "rescue_by_pause": {}
+      },
+      "undesigned": 0,
+      "relayed": {
+        "turn_named": 0,
+        "turn_only": 0,
+        "claimed": 0
+      },
+      "agent_own_rescues": 0,
+      "wait_s": {},
+      "person_wait_s": 0.0,
+      "latency_s": null,
+      "observations": null,
+      "supervisors": {
+        "sessions": 0,
+        "hosts": []
+      },
+      "callers_unknown": 0,
+      "supervision_cost": null,
+      "supervision_share": null,
+      "level": "observer",
+      "level_by": "none",
+      "kind": "supervision",
+      "ts": "2026-11-20T10:34:06.033Z",
+      "seq": 54,
+      "thread_id": "demo/T-1",
+      "segment": 0,
+      "unit": null,
+      "item": null,
+      "attempt": null,
+      "session_key": null
+    },
     "hosts": null,
-    "level": null,
+    "level": "observer",
     "cost": null
   },
   "events_tail": [
-    "4 2026-11-20T10:29:34.493Z entered draft (visit 1, from start)",
-    "8 2026-11-20T10:29:34.606Z check draft: PASS",
-    "13 2026-11-20T10:29:34.627Z gate draft: RETRY -> draft",
-    "17 2026-11-20T10:29:34.791Z check draft: PASS",
-    "22 2026-11-20T10:29:34.812Z gate draft: PROCEED -> review",
-    "23 2026-11-20T10:29:34.818Z entered review (visit 1, from proceed)",
-    "27 2026-11-20T10:29:34.843Z check review: PASS",
-    "32 2026-11-20T10:29:34.863Z gate review: BACK -> draft",
-    "33 2026-11-20T10:29:34.870Z entered draft (visit 2, from back:review)",
-    "37 2026-11-20T10:29:34.969Z check draft: PASS",
-    "42 2026-11-20T10:29:34.986Z gate draft: PROCEED -> review",
-    "43 2026-11-20T10:29:34.994Z entered review (visit 2, from proceed)",
-    "47 2026-11-20T10:29:35.016Z check review: PASS",
-    "52 2026-11-20T10:29:35.030Z gate review: ESCALATE -> human",
-    "53 2026-11-20T10:29:35.031Z paused at review (escalation): tempergraph resume demo T-1 --decision <proceed|retry|back:draft|stop>"
+    "4 2026-11-20T10:34:05.544Z entered draft (visit 1, from start)",
+    "8 2026-11-20T10:34:05.651Z check draft: PASS",
+    "13 2026-11-20T10:34:05.672Z gate draft: RETRY -> draft",
+    "17 2026-11-20T10:34:05.780Z check draft: PASS",
+    "22 2026-11-20T10:34:05.801Z gate draft: PROCEED -> review",
+    "23 2026-11-20T10:34:05.808Z entered review (visit 1, from proceed)",
+    "27 2026-11-20T10:34:05.833Z check review: PASS",
+    "32 2026-11-20T10:34:05.851Z gate review: BACK -> draft",
+    "33 2026-11-20T10:34:05.858Z entered draft (visit 2, from back:review)",
+    "37 2026-11-20T10:34:05.957Z check draft: PASS",
+    "42 2026-11-20T10:34:05.979Z gate draft: PROCEED -> review",
+    "43 2026-11-20T10:34:05.985Z entered review (visit 2, from proceed)",
+    "47 2026-11-20T10:34:06.009Z check review: PASS",
+    "52 2026-11-20T10:34:06.025Z gate review: ESCALATE -> human",
+    "53 2026-11-20T10:34:06.026Z paused at review (escalation): tempergraph resume demo T-1 --decision <proceed|retry|back:draft|stop>"
   ],
   "truncated": []
 } as const
@@ -908,50 +977,50 @@ export const statsLive = {
   "source": "home",
   "machines": [
     {
-      "machine_id": "9ea8f5c1-2bd8-4faf-90cd-baa56a816289",
+      "machine_id": "1218ed0f-17d4-4615-a0c4-7bdb46cdbcf4",
       "label": "desk-b",
-      "at": "2026-11-20T10:29:35.296Z",
-      "age_s": 0.3,
+      "at": "2026-11-20T10:34:06.283Z",
+      "age_s": 0.2,
       "stale": false,
       "this_machine": false
     },
     {
-      "machine_id": "ee3bd6d1-994c-41c5-91b6-11ae7e3c1807",
+      "machine_id": "ec311672-1fa5-4f5d-bf26-9098af8b2070",
       "label": "laptop-a",
-      "at": "2026-11-20T10:29:35.595Z",
-      "age_s": -0.0,
+      "at": "2026-11-20T10:34:06.529Z",
+      "age_s": 0.0,
       "stale": false,
       "this_machine": true
     }
   ],
   "runs": [
     {
-      "thread_hash": "f496ceb1dc730b2b1542eb4210979e6a",
-      "repo_id": "137422dcaea1216e48c64b63f7799280",
+      "thread_hash": "111f4d0dbf955cc29f129e6862f763b3",
+      "repo_id": "0cd1af9aa44b07d3cc17325647ddd3ba",
       "workflow": "demo",
       "alias": null,
       "state": "paused",
       "unit": "review",
       "attempt": 2,
       "estimated_cost_usd": null,
-      "waiting_for_person_s": 0.6,
+      "waiting_for_person_s": 0.5,
       "waiting_on": "person",
-      "machine_id": "9ea8f5c1-2bd8-4faf-90cd-baa56a816289",
+      "machine_id": "1218ed0f-17d4-4615-a0c4-7bdb46cdbcf4",
       "label": "desk-b",
       "stale": false
     },
     {
-      "thread_hash": "d82e7624f069224a07fd01ff73e43810",
-      "repo_id": "137422dcaea1216e48c64b63f7799280",
+      "thread_hash": "1819e03644247fad5e98facf37fb7fe2",
+      "repo_id": "0cd1af9aa44b07d3cc17325647ddd3ba",
       "workflow": "demo",
       "alias": null,
       "state": "paused",
       "unit": "draft",
       "attempt": 1,
       "estimated_cost_usd": null,
-      "waiting_for_person_s": 0.3,
+      "waiting_for_person_s": 0.2,
       "waiting_on": "person",
-      "machine_id": "9ea8f5c1-2bd8-4faf-90cd-baa56a816289",
+      "machine_id": "1218ed0f-17d4-4615-a0c4-7bdb46cdbcf4",
       "label": "desk-b",
       "stale": false
     },
@@ -962,10 +1031,10 @@ export const statsLive = {
       "unit": "review",
       "attempt": 2,
       "estimated_cost_usd": null,
-      "waiting_for_person_s": 0.6,
+      "waiting_for_person_s": 0.5,
       "waiting_on": "person",
       "thread_id": "demo/T-1",
-      "machine_id": "ee3bd6d1-994c-41c5-91b6-11ae7e3c1807",
+      "machine_id": "ec311672-1fa5-4f5d-bf26-9098af8b2070",
       "label": "laptop-a",
       "stale": false
     },
@@ -979,7 +1048,7 @@ export const statsLive = {
       "waiting_for_person_s": 0.3,
       "waiting_on": "person",
       "thread_id": "demo/T-8",
-      "machine_id": "ee3bd6d1-994c-41c5-91b6-11ae7e3c1807",
+      "machine_id": "ec311672-1fa5-4f5d-bf26-9098af8b2070",
       "label": "laptop-a",
       "stale": false
     }
@@ -1006,17 +1075,17 @@ export const statsMachine = {
   "unknown_schema": 0,
   "synced": {
     "team": {
-      "synced_at": "2026-11-20T10:29:35.567Z",
+      "synced_at": "2026-11-20T10:34:06.510Z",
       "machines": {
-        "9ea8f5c1-2bd8-4faf-90cd-baa56a816289": {
+        "1218ed0f-17d4-4615-a0c4-7bdb46cdbcf4": {
           "label": "desk-b",
-          "synced_at": "2026-11-20T10:29:35.567Z",
+          "synced_at": "2026-11-20T10:34:06.510Z",
           "rows": 1,
           "ago_s": 0.0
         },
-        "ee3bd6d1-994c-41c5-91b6-11ae7e3c1807": {
+        "ec311672-1fa5-4f5d-bf26-9098af8b2070": {
           "label": "laptop-a",
-          "synced_at": "2026-11-20T10:29:35.567Z",
+          "synced_at": "2026-11-20T10:34:06.510Z",
           "rows": 1,
           "ago_s": 0.0
         }
@@ -1026,7 +1095,7 @@ export const statsMachine = {
   "by": {
     "key": "machine",
     "groups": {
-      "desk-b (9ea8f5c1)": {
+      "desk-b (1218ed0f)": {
         "runs": 1,
         "threads": 1,
         "reported_usd": 0.02,
@@ -1037,7 +1106,7 @@ export const statsMachine = {
           "3": 1
         }
       },
-      "laptop-a (ee3bd6d1)": {
+      "laptop-a (ec311672)": {
         "runs": 1,
         "threads": 1,
         "reported_usd": 0.04,
@@ -1072,17 +1141,17 @@ export const statsProjection = {
   "unknown_schema": 0,
   "synced": {
     "team": {
-      "synced_at": "2026-11-20T10:29:35.567Z",
+      "synced_at": "2026-11-20T10:34:06.510Z",
       "machines": {
-        "9ea8f5c1-2bd8-4faf-90cd-baa56a816289": {
+        "1218ed0f-17d4-4615-a0c4-7bdb46cdbcf4": {
           "label": "desk-b",
-          "synced_at": "2026-11-20T10:29:35.567Z",
+          "synced_at": "2026-11-20T10:34:06.510Z",
           "rows": 1,
           "ago_s": 0.0
         },
-        "ee3bd6d1-994c-41c5-91b6-11ae7e3c1807": {
+        "ec311672-1fa5-4f5d-bf26-9098af8b2070": {
           "label": "laptop-a",
-          "synced_at": "2026-11-20T10:29:35.567Z",
+          "synced_at": "2026-11-20T10:34:06.510Z",
           "rows": 1,
           "ago_s": 0.0
         }
