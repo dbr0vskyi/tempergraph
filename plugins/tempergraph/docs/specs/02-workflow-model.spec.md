@@ -20,7 +20,7 @@ def validate(spec: WorkflowSpec, executors: Registry) -> list[Finding]: ...
 class Finding: code: str; unit: str | None; message: str; severity: Literal["error", "warning"]
 ```
 
-The registry reads the register-once manifest (name → package folder) and loads each package lazily. The built-in self-improvement workflow is found by a flag on its spec, not by its name, and is registered last so no package can shadow it.
+The registry reads the workflow registry in the home folder (name → package folder, kept across engine updates, [UPD §2.8](60-engine-update.spec.md)) and loads each package lazily. The built-in self-improvement workflow is found by a flag on its spec, not by its name, and is registered last so no package can shadow it.
 
 ### 2.1 What is refused
 

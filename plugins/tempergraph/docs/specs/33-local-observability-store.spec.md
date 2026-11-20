@@ -58,6 +58,7 @@ The folder and everything under it is created owner-only (0700 for folders, 0600
   manifest.json
   bin/                              the CLI shim and Windows wrapper [UPD §2.2]
   engines/                          one environment per installed release, current.json, previous.json [UPD §2.2]
+  registry.json                     registered workflows, their dependencies and pins [UPD §2.8]
   machine.json                      machine_id (random UUID made once), label (operator-set, default the host name), created_at
   index.json                        known state roots: path, repository name, first_seen, last_run_at [CST §2.1]
   stats/<YYYY-MM>.jsonl             per-user stats rows [OBS §2.4], one per thread exit

@@ -60,3 +60,5 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0057](0057-typed-version-metadata-on-both-sides.adr.md) | Both sides carry typed version metadata: a release record and a typed changelog, a workflow version, range and stamp record | proposed |
 | [0058](0058-upgrade-by-transforms-first-and-a-gated-model-workflow-for-the-rest.adr.md) | Upgrade a workflow by deterministic transforms first, and a built-in gated workflow for what needs judgement | proposed |
 | [0059](0059-an-upgrade-is-done-when-model-free-checks-pass-against-the-old-baseline.adr.md) | An upgrade is done when model-free checks pass against the workflow's own pre-upgrade baseline | proposed |
+| [0060](0060-registered-workflows-are-reinstalled-and-pinned-never-lost.adr.md) | Registered workflows live in a home registry, are reinstalled into every new engine, and are pinned to the old engine when they break | proposed |
+| [0061](0061-lifecycle-skills-drive-plugin-commands-then-engine-verbs.adr.md) | Lifecycle skills drive Claude Code's plugin commands and then the engine verbs, from one plan and one yes | proposed |

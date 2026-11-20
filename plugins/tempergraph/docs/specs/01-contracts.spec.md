@@ -230,7 +230,7 @@ The judgement block is the last fenced JSON block of the judge's answer.
 | Audit report | [AUD](55-workflow-audit.spec.md) | JSON, `schema_version`, printed only, never stored |
 | Engine release record, compatibility changelog | [VER](61-version-metadata.spec.md) | JSON in the engine package, `schema_version` |
 | Stamp record, workflow change notes | [VER](61-version-metadata.spec.md) | JSON in the workflow package, `schema_version` |
-| Engine pointers (`current.json`, `previous.json`) | [UPD](60-engine-update.spec.md) | JSON in the home folder, `schema_version` |
+| Engine pointers (`current.json`, `previous.json`), workflow registry (`registry.json`) | [UPD](60-engine-update.spec.md) | JSON in the home folder, `schema_version` |
 | Thread engine file | [MIG](62-state-and-run-migration.spec.md) | JSON per thread, `schema_version` |
 | Upgrade plan, baseline, report | [WUP](63-workflow-upgrade.spec.md) | JSON per upgrade, `schema_version` |
 
