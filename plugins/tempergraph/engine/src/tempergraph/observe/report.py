@@ -74,6 +74,9 @@ class Session:
     stalled: bool
     session_key: str | None
     cause: str | None  # why this attempt ran again; None on a unit's first visit's first attempt
+    duration_s: float | None = None
+    slow_host: bool = False
+    prompt_digest: str | None = None
 
 
 @dataclass(kw_only=True)
@@ -100,6 +103,7 @@ def fold(recs: Iterable[dict[str, Any]], folder: Path | None = None) -> Thread |
     last_gate: dict[str, dict[str, Any]] = {}
     last_check: dict[str, str] = {}
     judged: dict[str, dict[str, Any]] = {}
+    digests: dict[str, str] = {}
     for r in recs:
         kind = r.get("kind")
         if t is None:
@@ -110,6 +114,8 @@ def fold(recs: Iterable[dict[str, Any]], folder: Path | None = None) -> Thread |
         if kind == "run_started":
             t.version = r.get("workflow_version") or t.version
             t.started_at = t.started_at or r.get("ts")
+        elif kind == "attempt_start" and r.get("prompt_digest"):
+            digests[str(r.get("session_key"))] = str(r["prompt_digest"])
         elif kind == "unit_entered" and unit:
             visit[unit] = int(r.get("visit") or visit[unit])
             entered[unit] = str(r.get("entered_from") or "")
@@ -133,7 +139,10 @@ def fold(recs: Iterable[dict[str, Any]], folder: Path | None = None) -> Thread |
             t.sessions.append(Session(thread_id=t.thread_id, workflow=t.workflow, version=t.version, unit=unit,
                                       attempt=r.get("attempt"), visit=v, kind=sk, executor=r.get("executor"),
                                       usage=r.get("usage") or {}, timed_out=bool(r.get("timed_out")),
-                                      stalled=bool(r.get("stalled")), session_key=r.get("session_key"), cause=cause))
+                                      stalled=bool(r.get("stalled")), session_key=r.get("session_key"), cause=cause,
+                                      duration_s=float(r["duration_s"]) if isinstance(r.get("duration_s"), int | float)
+                                      else None, slow_host=bool(r.get("slow_host")),
+                                      prompt_digest=digests.get(str(r.get("session_key")))))
         elif kind == "gate" and unit:
             last_gate[unit] = r
             t.gates.append(r)
@@ -217,9 +226,26 @@ def by_unit(ts: list[Thread]) -> list[dict[str, Any]]:
     for (wf, unit), ss in sorted(rows.items()):
         first = [s for s in ss if s.cause is None]
         repeats = [s for s in ss if s.cause is not None]
+        times = [s.duration_s for s in ss if s.duration_s is not None]
         out.append({"workflow": wf, "unit": unit, "threads": len({s.thread_id for s in ss}),
                     "first_visit": _money(first), "repeats": _group(repeats, lambda s: s.cause),
-                    "total": _money(ss)})
+                    "total": _money(ss), "agent_s": round(sum(times), 3) if times else None})
+    return out
+
+
+def prompts(ts: list[Thread]) -> list[dict[str, Any]]:
+    """Each rendered step prompt's digest beside its rates, so a prompt change shows (OBS §2.4)."""
+    rows: dict[tuple[str, str, str], list[Session]] = defaultdict(list)
+    for t in ts:
+        for s in t.sessions:
+            if s.prompt_digest and s.kind in STEP_KINDS:
+                rows[(t.workflow, s.unit, s.prompt_digest)].append(s)
+    out = []
+    for (wf, unit, digest), ss in sorted(rows.items()):
+        repeats = sum(1 for s in ss if s.cause is not None)
+        out.append({"workflow": wf, "unit": unit, "prompt_digest": digest, "sessions": len(ss),
+                    "threads": len({s.thread_id for s in ss}), "repeat_rate": round(repeats / len(ss), 4),
+                    "timeouts": sum(1 for s in ss if s.timed_out), "cost": _money(ss)})
     return out
 
 
@@ -260,7 +286,8 @@ def timeouts(ts: list[Thread]) -> list[dict[str, Any]]:
     for t in ts:
         for s in t.sessions:
             if s.stalled or s.timed_out:
-                cls = "stalled" if s.stalled and not s.timed_out else "hung" if s.stalled else "model_silent"
+                cls = "stalled" if s.stalled and not s.timed_out else "hung" if s.stalled \
+                    else "slow_host" if s.slow_host else "model_silent"
                 out.append({"thread_id": t.thread_id, "unit": s.unit, "attempt": s.attempt, "kind": s.kind,
                             "class": cls})
     return out
@@ -333,7 +360,7 @@ def report(root: Path, since: datetime | None = None, by: str = "unit") -> dict[
                              "judges": _money(s for s in sessions if s.kind in JUDGE_KINDS)},
         "by_executor": _group(sessions, lambda s: s.executor or "unknown"),
         "by_version": _group(sessions, lambda s: f"{s.workflow}@{s.version or '?'}"),
-        "units": by_unit(ts), "criteria": criteria(ts), "arms": arms(ts), "timeouts": timeouts(ts),
+        "units": by_unit(ts), "criteria": criteria(ts), "arms": arms(ts), "timeouts": timeouts(ts), "prompts": prompts(ts),
         "time_profile": profile, "loops": loops,
     }
     doc["by"] = by

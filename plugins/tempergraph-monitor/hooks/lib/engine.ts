@@ -152,7 +152,8 @@ export type DetailDoc = {
   budgets?: { counters?: Record<string, { used?: number | null; limit?: number | null }>;
     run_cost_cap?: { limit?: number | null; left?: number | null } }
   health?: Health
-  supervision?: { touches?: Touch[]; level?: string | null; level_by?: string | null; designed_by?: string | null }
+  supervision?: { touches?: Touch[]; level?: string | null; level_by?: string | null; designed_by?: string | null
+    cost?: SupervisionCost | null }
   events_tail?: string[]
   truncated?: string[]
 }
@@ -161,4 +162,13 @@ export type DetailDoc = {
 export function isReadable(doc: { schema_version?: unknown } | null | undefined, kind: keyof typeof KNOWN_SCHEMA): boolean {
   const v = doc?.schema_version
   return typeof v === 'number' && v <= KNOWN_SCHEMA[kind]
+}
+
+/** SCO §2.5's closed figures for a thread, as the detail document carries them (null until it closes). */
+export type SupervisionFigure = { tokens?: Record<string, number>; estimated_usd?: number | null }
+export type SupervisionCost = {
+  marginal?: { by_category?: Record<string, SupervisionFigure>; total?: SupervisionFigure } | null
+  turn?: { by_category?: Record<string, SupervisionFigure>; total?: SupervisionFigure } | null
+  completeness?: string | null
+  observations?: number | null
 }

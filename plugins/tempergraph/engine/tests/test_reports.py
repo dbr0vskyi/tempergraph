@@ -209,3 +209,57 @@ def test_status_row_rerun_lineage(repo: Path) -> None:  # RRN §2.4, DUR §2.2
     rows_ = {r["thread_id"]: r for r in cli(repo, happy(), "status")[1]["threads"]}
     assert rows_["demo/R-1"]["superseded_by"] == "demo/R-1~r2"
     assert rows_["demo/R-1"]["reruns"][-1] == {**rows_["demo/R-1"]["reruns"][-1], "same_branch": True}
+
+
+def test_slow_host_agent_time_and_prompt_digests(repo: Path) -> None:  # OBS §2.4, OBS-B6
+    root = state_root_path(repo)
+    write_log(root, "P-1", [
+        {"kind": "run_started", "workflow_version": "1"},
+        {"kind": "unit_entered", "unit": "draft", "visit": 1},
+        {"kind": "attempt_start", "unit": "draft", "attempt": 1, "session_key": "draft.1", "prompt_digest": "aaaa"},
+        {"kind": "agent_run", "unit": "draft", "attempt": 1, "session_key": "draft.1", "usage": usage(0.1, None),
+         "timed_out": True, "slow_host": True, "duration_s": 600.0},
+        {"kind": "gate", "unit": "draft", "verdict": "RETRY"},
+        {"kind": "attempt_start", "unit": "draft", "attempt": 2, "session_key": "draft.2", "prompt_digest": "bbbb"},
+        {"kind": "agent_run", "unit": "draft", "attempt": 2, "session_key": "draft.2", "usage": usage(0.1, None),
+         "duration_s": 30.5},
+        {"kind": "run_exit", "exit_code": 0},
+    ])
+    doc = rep.report(root, None, "unit")
+    assert [t["class"] for t in doc["timeouts"]] == ["slow_host"]
+    [unit] = [u for u in doc["units"] if u["unit"] == "draft"]
+    assert unit["agent_s"] == 630.5
+    got = {p["prompt_digest"]: (p["sessions"], p["repeat_rate"], p["timeouts"]) for p in doc["prompts"]}
+    assert got == {"aaaa": (1, 0.0, 1), "bbbb": (1, 1.0, 0)}
+
+
+def test_session_rows_are_opt_in(repo: Path, tmp_path: Path, monkeypatch: Any) -> None:  # CST §2.2, §2.4
+    from .test_sinks import machine
+
+    monkeypatch.setenv("TEMPERGRAPH_FLUSHER", "inline")
+    off, on = tmp_path / "off", tmp_path / "on"
+    off.mkdir()
+    on.mkdir()
+    machine(monkeypatch, tmp_path, "a", off)
+    go(repo, standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge()]), task="S-1")
+    assert not list(off.glob("machines/*/sessions/*.jsonl")) and list(off.glob("machines/*/runs/*.jsonl"))
+    machine(monkeypatch, tmp_path, "b", on, include=["run", "session"])
+    go(repo, standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge()]), task="S-2")
+    [f] = list(on.glob("machines/*/sessions/*.jsonl"))
+    rows_ = [json.loads(x) for x in f.read_text().splitlines()]
+    assert len(rows_) == 4 and {r["session_kind"] for r in rows_} >= {"step"}
+    assert all("thread_id" not in r and len(r["thread_hash"]) == 32 and r["outcome"] == "ok" for r in rows_)
+    assert "S-2" not in f.read_text()
+
+
+def test_duplicate_row_ids_with_other_content_are_shown(repo: Path) -> None:  # CST §4
+    p = home_path() / "stats" / "2026-11.jsonl"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    base = {"row_id": "r1", "kind": "run", "schema_version": 1, "machine_id": "m", "workflow": "demo",
+            "segment": 0, "exit_code": 0, "ended_at": "2026-11-01T00:00:00+00:00"}
+    p.write_text("".join(json.dumps(r) + "\n" for r in (base, base, {**base, "ended_at": "2026-11-02T00:00:00+00:00"})))
+    conflicts: list[str] = []
+    found, _ = rows.read_rows([p], conflicts)
+    assert len(found) == 2 and conflicts == ["r1"]
+    code, doc, err = cli(repo, None, "stats", "--local")
+    assert code == 0 and doc["duplicate_row_ids"] == ["r1"] and "appear twice" in err

@@ -34,6 +34,7 @@ class Run:
     record: dict[str, Any]
     ended_at: str | None
     hosts: list[str] = field(default_factory=list)
+    pause_waits: list[tuple[str, float]] = field(default_factory=list)  # (pause kind, a person's wait)
 
 
 def _ts(text: Any) -> datetime | None:
@@ -50,6 +51,7 @@ def runs(root: Path, since: datetime | None = None) -> list[Run]:
     out: list[Run] = []
     base = root / "runs"
     closed = closed_for(root)
+    waits = _person_waits(root)
     for log in sorted(base.glob("*/*/run.jsonl")) if base.is_dir() else []:
         rec: dict[str, Any] | None = None
         version = None
@@ -78,7 +80,7 @@ def runs(root: Path, since: datetime | None = None) -> list[Run]:
         _join(rec, closed.get(f"{wf}/{task}"), est)
         hosts = list((rec.get("supervisors") or {}).get("hosts") or [])
         out.append(Run(thread_id=f"{wf}/{task}", workflow=wf, version=version, record=rec, ended_at=ended,
-                       hosts=hosts))
+                       hosts=hosts, pause_waits=waits.get(f"{wf}/{task}", [])))
     return out
 
 
@@ -92,6 +94,26 @@ def _join(rec: dict[str, Any], line: dict[str, Any] | None, run_usd: float | Non
         rec["supervision_share"] = round(marginal / (run_usd + marginal), 4)
     if line.get("observations") is not None:
         rec["observations"] = line["observations"]
+
+
+def _person_waits(root: Path) -> dict[str, list[tuple[str, float]]]:
+    """Each thread's person waits by pause kind, from the ledger's intervention rows (SUP §2.4)."""
+    out: dict[str, list[tuple[str, float]]] = defaultdict(list)
+    try:
+        lines = (root / "ledger.jsonl").read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return out
+    for ln in lines:
+        try:
+            row = json.loads(ln)
+        except ValueError:
+            continue
+        if not isinstance(row, dict) or row.get("kind") != "intervention" or not isinstance(row.get("wait_s"), int | float):
+            continue
+        if (row.get("caller") or {}).get("decided_by") != "person":
+            continue
+        out[str(row.get("thread_id"))].append((str(row.get("pause_kind") or "escalation"), float(row["wait_s"])))
+    return out
 
 
 def wilson(k: int, n: int, z: float = 1.96) -> list[float] | None:
@@ -147,7 +169,10 @@ def aggregate(rs: list[Run]) -> dict[str, Any]:
     shares: list[float] = []
     obs: list[float] = []
     known = 0
+    by_kind: dict[str, list[float]] = defaultdict(list)
     for r in rs:
+        for kind, w in r.pause_waits:
+            by_kind[kind].append(w)
         rec = r.record
         by_level[str(rec.get("level"))] += 1
         by_level_by[str(rec.get("level_by"))] += 1
@@ -184,7 +209,8 @@ def aggregate(rs: list[Run]) -> dict[str, Any]:
         "agent_own_rescue_share": round(own / rescues, 4) if rescues else None,
         "relay_quality": {k: round(v / relayed_total, 4) for k, v in sorted(relays.items())} if relayed_total else None,
         "person_wait_s": {"p50": _pct(waits, 0.5), "p90": _pct(waits, 0.9)},
-        "person_wait_by_pause_kind": None,  # the record keeps waits per decider, not per pause kind (release 1)
+        "person_wait_by_pause_kind": {k: {"p50": _pct(v, 0.5), "p90": _pct(v, 0.9), "pauses": len(v)}
+                                      for k, v in sorted(by_kind.items())},
         "supervision_cost_per_run": {"p50": _pct(costs, 0.5), "p90": _pct(costs, 0.9),
                                      "measured": len(costs), "of": n},
         "supervision_share": {"median": round(statistics.median(shares), 4) if shares else None,

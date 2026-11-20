@@ -22,7 +22,7 @@ task_id: first-release-t7
 | Specs | [EVT](../specs/30-run-events.spec.md), [RDD](../specs/31-run-detail-document.spec.md), [LOS](../specs/33-local-observability-store.spec.md), [OBS](../specs/15-observability-and-cost.spec.md), [SUP](../specs/86-supervision-metrics.spec.md), [IMD](../specs/43-improvement-data.spec.md), [FBK](../specs/41-feedback-and-judge-reliability.spec.md), [SCO](../specs/87-supervision-cost.spec.md) |
 | Decisions | [ADR-0009](../adr/0009-normalized-session-event-stream.adr.md), [ADR-0022](../adr/0022-observers-read-files-not-sockets.adr.md), [ADR-0023](../adr/0023-local-activity-journal-with-tool-input-summaries.adr.md), [ADR-0027](../adr/0027-in-process-observers-and-wider-hook-events.adr.md), [ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md) |
 
-**Status: Completed (offline).** T7.1 to T7.6 are built; open rows wait on records not yet written (7.4.6, 7.4.7, 7.5.6), on release 3 (7.6.8) or on the owner's machine (7.6.7, P-SUP-3). T7.1 and T7.2: every run-log record carries the EVT §2.1 envelope, sessions are announced by `session_opened`, the activity journal and live file follow EVT §2.3 with tool input summaries per §2.5, `events` reads and follows a thread, in-process observers are contained, and `status --detail` builds the RDD document read-only. Status pass: EVT and RDD are `ready-for-implementation`; EVT's two open questions have release 1 defaults (native transcript null until P-CC-7; no changed-line count on `edit`).
+**Status: Completed (offline).** T7.1 to T7.6 are built; open rows wait on release 3 (7.6.8) or on the owner's machine (7.6.7, P-SUP-3); the diagram overlay of OBS §2.4 is not built. T7.1 and T7.2: every run-log record carries the EVT §2.1 envelope, sessions are announced by `session_opened`, the activity journal and live file follow EVT §2.3 with tool input summaries per §2.5, `events` reads and follows a thread, in-process observers are contained, and `status --detail` builds the RDD document read-only. Status pass: EVT and RDD are `ready-for-implementation`; EVT's two open questions have release 1 defaults (native transcript null until P-CC-7; no changed-line count on `edit`).
 
 T7.3 is built: `logs`, `store usage|prune|export` and the session's `meta.json`; LOS records where release 1 differs (verbatim `raw.jsonl`, the check output layout, the 2 GB warning in `store usage`).
 
@@ -98,8 +98,8 @@ Doc changes this track made:
 | 7.4.3 | `observe/rows.py`, `cli/observe_cli.py` | `stats [--month\|--since] [--by] [--projection] [--json]` over the home rows: dedup by `row_id`, unknown schema counted, totals with the completeness flag, projection marked `thin` under 5 runs | CST §2.5, AC-3 | yes | P1 | ✓ | 2026-11-20 |
 | 7.4.4 | `cli/main.py` | `status --all-roots`: rows of every indexed root, a gone root shown `missing` and never removed | CST §2.1 | yes | P1 | ✓ | 2026-11-20 |
 | 7.4.5 | `observe/attention.py`, `cli/observe_cli.py` | `attention [--all-roots] [--json]`: every pending gate of every paused thread once, oldest first, with age, reason, decisions and the `resume` command; read-only | CLI-B6, AC-5 | yes | P1 | ✓ | 2026-11-20 |
-| 7.4.6 | `observe/report.py` | Prompt digests and the diagram overlay, once `attempt_start` carries the rendered-template digest (T5) | OBS §2.4 | yes | P2 | ○ | |
-| 7.4.7 | `observe/report.py` | `slow_host` timeouts and `agent_s`, once `agent_run` carries `duration_s` and the host-speed warning | OBS §2.4 | yes | P2 | ○ | |
+| 7.4.6 | `observe/report.py` | Prompt digests: `attempt_start` carries `prompt_digest`; `report` lists each step prompt's digest per unit with its rates. The diagram overlay stays open (OBS §5) | OBS §2.4 | yes | P2 | ✓ | 2026-11-20 |
+| 7.4.7 | `observe/report.py` | `slow_host` timeouts from `agent_run`'s `slow_host`, and `agent_s` per unit from its `duration_s` | OBS §2.4 | yes | P2 | ✓ | 2026-11-20 |
 
 Sinks, `stats flush|sync`, `--source`, `--live` and the heartbeat are T10.1 (`observe/sinks.py` is a stub until then).
 
@@ -114,7 +114,7 @@ Split with the T5 and T6 owner: the run-path side (touch classes, the `supervisi
 | 7.5.3 | `observe/detail.py` | The detail document's supervision block gains `level_by`, `designed_by`, the record's hosts and its cost | RDD §2.1, SUP §2.5 | yes | P1 | ✓ | 2026-11-20 |
 | 7.5.4 | `observe/labels.py`, `cli/observe_cli.py` | `label <thread> <unit> --value agree\|disagree [--criterion] [--attempt]`: one `label` ledger row with IMD-R1 fields, the gate record, the judge binding and `source` from the caller's decider; no text option | FBK §2.1, §2.2 explicit, FBK-B2, FBK-AC-3, IMD-R1, IMD-R4 | yes | P1 | ✓ | 2026-11-20 |
 | 7.5.5 | `tests/test_supervision_report.py` | IMD-AC-1 canary: a planted task id and feedback text reach no sink, fleet, outbox or label row | IMD-AC-1, §2.2 | yes | P1 | ✓ | 2026-11-20 |
-| 7.5.6 | `observe/supervision_report.py` | Waits per pause kind, once intervention rows carry the pause kind with the wait | SUP §2.4 | yes | P3 | ○ | |
+| 7.5.6 | `observe/supervision_report.py` | Person waits per pause kind from the ledger's intervention rows | SUP §2.4 | yes | P3 | ✓ | 2026-11-20 |
 
 ### T7.6 Supervision cost
 

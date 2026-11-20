@@ -202,7 +202,7 @@ def test_state_root_sink_overrides_home(repo: Path, tmp_path: Path, monkeypatch:
     (cfg / "sinks.json").write_text(json.dumps({"schema_version": 1, "sinks": [
         {"name": "team", "kind": "directory", "path": str(tmp_path / "repo-sink")}]}))
     [s] = sinks.load(home, state_root_path(repo))
-    assert s.path == tmp_path / "repo-sink" and s.user == "hash" and s.include == sinks.ROW_KINDS
+    assert s.path == tmp_path / "repo-sink" and s.user == "hash" and s.include == sinks.DEFAULT_KINDS  # `session` is opt-in
 
 
 def test_normalize_origin() -> None:

@@ -68,7 +68,18 @@ describe('cost tab (MCF §2.1, contract M4)', () => {
     expect(c.units[1].repeats).toEqual([{ cause: 'visit 2 (proceed)', cost: '$0.02 rep' }])
     expect(c.executors[0].tokens).toContain('cache read —')
     expect(c.budget).toBe('no run cost cap')
-    expect(c.supervision).toBe('level observer · cost not recorded') // the record has no cost until SCO (T7.6)
+    expect(c.supervision).toBe('level observer · cost not recorded') // not closed yet: no SCO figures
+  })
+  test('the supervision line from SCO closed figures (MCF §2.1)', () => {
+    const fig = (usd: number) => ({ tokens: {}, estimated_usd: usd })
+    const closed = { ...paused, supervision: { ...paused.supervision, cost: {
+      marginal: { by_category: { start: fig(0.01), rewake: fig(0.3) }, total: fig(0.31) },
+      turn: { by_category: {}, total: fig(0.9) }, completeness: 'complete' } } } as DetailDoc
+    expect(costTab(closed).supervision)
+      .toBe('level observer · marginal $0.31 est · turn $0.90 est · complete (start $0.01 est, rewake $0.30 est)')
+    const unmeasured = { ...paused, supervision: { ...paused.supervision, cost: {
+      marginal: null, turn: null, completeness: 'incomplete' } } } as DetailDoc
+    expect(costTab(unmeasured).supervision).toBe('level observer · cost not measured (incomplete)')
   })
   test('never zero, never summed (MCF-B1, MCF-B2)', () => {
     expect(figure({ rep: 0, est: 4.1, reported: 0, estimated: 2, unmeasured: 1, sessions: 3 })).toBe('≥ $4.10 est')
