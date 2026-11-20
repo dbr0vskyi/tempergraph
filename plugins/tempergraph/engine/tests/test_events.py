@@ -79,8 +79,9 @@ def test_seq_continues_across_three_resumes(repo: Path) -> None:
     starts = [r for r in recs if r["kind"] == "run_started"]
     assert [r["segment"] for r in starts] == [0, 1, 2, 3]
     for s in starts[1:]:  # EVT-B2: a resume's first run-started record continues from the last seq
-        prev = recs[s["seq"] - 2]
-        assert prev["kind"] == "run_exit" and prev["segment"] == s["segment"] - 1
+        prev = recs[s["seq"] - 2]  # the segment's last record: its run_exit, or the finding_recorded after it
+        assert prev["kind"] in ("run_exit", "finding_recorded") and prev["segment"] == s["segment"] - 1
+        assert any(r["kind"] == "run_exit" and r["segment"] == s["segment"] - 1 for r in recs)
     assert {r["segment"] for r in recs if r["seq"] > starts[-1]["seq"]} == {3}
 
 

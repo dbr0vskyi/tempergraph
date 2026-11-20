@@ -4,7 +4,7 @@ version: 1
 date_created: 2026-11-20
 last_updated: 2026-11-20
 owner: dbr0vskyi
-status: In progress
+status: Completed
 tags: [track-plan, tempergraph, T6]
 tracker: none
 spec: plugins/tempergraph/docs/specs/17-engine-cli.spec.md

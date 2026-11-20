@@ -1,7 +1,7 @@
 ---
 title: Improvement data requirements
 type: component
-status: review
+status: ready-for-implementation
 prefix: IMD
 adrs: [0033, 0030, 0034]
 ---
@@ -118,9 +118,9 @@ Reports print a parameter's provenance beside any figure it decides. Changing a 
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Who reads pull-request and issue state for IMD-R5 on a team: each machine, or the aggregate's collector once? Assumed the collector, to avoid N reads of the code host. | Owner, with the run-monitor design |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Who reads pull-request and issue state for IMD-R5 on a team: each machine, or the aggregate's collector once? Assumed the collector, to avoid N reads of the code host. | Owner, with the run-monitor design | The collector |
 
 ## References
 
