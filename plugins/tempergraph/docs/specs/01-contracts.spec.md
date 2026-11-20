@@ -3,7 +3,7 @@ title: Shared contracts
 type: contracts
 status: review
 prefix: CON
-adrs: [0003, 0005, 0006, 0008, 0009, 0012, 0015, 0018, 0062, 0075, 0078]
+adrs: [0003, 0005, 0006, 0008, 0009, 0012, 0015, 0018, 0062, 0070, 0073, 0074, 0075, 0078]
 ---
 
 # Shared contracts
@@ -39,6 +39,8 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `version` | semver, default `0.0.0` | The owner's release of the workflow; with the content digest it forms `workflow_version` ([VER §2.4](61-version-metadata.spec.md)). |
 | | `requires_engine` | version range, optional | Engine releases the owner states it works with; warns only ([VER §2.7](61-version-metadata.spec.md)). |
 | | `upgrade` | `UpgradePolicy`, optional | What a workflow upgrade may touch ([VER §2.4](61-version-metadata.spec.md)). |
+| | `settings` | map name → `SettingDecl`, optional | Typed workflow switches an operator may override ([RST §2.5](80-run-settings-and-overrides.spec.md)). |
+| | `profiles` | map name → map `SettingKey` → value, optional | Named bundles of settings ([RST §2.5](80-run-settings-and-overrides.spec.md)). |
 | `UnitSpec` | `kind` | `step` \| `route` \| `switch` \| `parallel` \| `map` \| `subworkflow` \| `wait` \| `script` \| `council` \| `contest` \| `ask` | Kinds and their owning specs: [CMP §2.2](03-compiler-and-flow.spec.md) and [FLX](74-flow-extensions.spec.md) for flow kinds; [SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md) for the others. |
 | | `step` | `StepSpec`, for kind `step`, `map` and `contest` | |
 | | `script`, `council`, `contest`, `ask`, `map` | `ScriptSpec`, `CouncilSpec`, `ContestSpec`, `AskSpec`, `MapSpec`, for their kind | Defined in the owning spec ([MAP](77-map-unit.spec.md) for `MapSpec`); used by it and by WFM only. A `switch` unit's fields are in [CMP §2.2](03-compiler-and-flow.spec.md) and [SWM §2.1](79-measured-switches.spec.md). |
@@ -54,6 +56,7 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `before`, `after` | list of `ScriptSpec`, optional | Hybrid step: model-free scripts in the same attempt, around the session ([SCR](70-script-units-and-hybrid-steps.spec.md)). |
 | | `self_check` | bool, default false | The step may run its gate's check from inside its attempt ([CHK §2.5](75-check-contract-and-command-runs.spec.md)). |
 | | `summary` | text ≤ 60 chars | For diagrams. |
+| | `subagent_model` | alias, optional | The model of the subagents the step starts, where its executor hosts them ([RST §2.2](80-run-settings-and-overrides.spec.md)). |
 | `GateSpec` | `check` | callable ref, optional | Model-free, writes no state; `(ctx: CheckContext) -> CheckResult` ([CHK](75-check-contract-and-command-runs.spec.md)). |
 | | `check_timeout_s` | positive int, default 1800 | Wall limit of the whole check ([CHK §2.6](75-check-contract-and-command-runs.spec.md)). |
 | | `judge` | `JudgeSpec` | Required on model steps. |
@@ -80,7 +83,7 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 
 ### 2.2 Template grammar
 
-A template contains literal text, doubled braces `{{` `}}` for literal braces, and plain fields `{name}` where `name` is an engine key or a declared input name. Nothing else between braces is valid. At run time a field without a value renders as the visible marker `⟨missing:name⟩` and is recorded on the step record. The engine keys, item keys and earlier-artifact pointers a field may name are listed in [VAL §2.3](76-step-values-and-template-keys.spec.md).
+A template contains literal text, doubled braces `{{` `}}` for literal braces, and plain fields `{name}` where `name` is an engine key, a declared input name, or `settings.<name>` for a declared workflow setting ([RST §2.5](80-run-settings-and-overrides.spec.md)). Nothing else between braces is valid. At run time a field without a value renders as the visible marker `⟨missing:name⟩` and is recorded on the step record. The engine keys, item keys and earlier-artifact pointers a field may name are listed in [VAL §2.3](76-step-values-and-template-keys.spec.md).
 
 ### 2.3 Input and routing declarations
 
@@ -102,8 +105,8 @@ A template contains literal text, doubled braces `{{` `}}` for literal braces, a
 
 - **Alias grammar.** `inherit`, an engine-neutral tier `small` \| `medium` \| `large`, or an executor-qualified alias `<executor>:<name>` (for example `claude:opus`, `antigravity:gemini-pro`, `agent-sdk:sonnet`, `messages-api:opus`). Never a deployment id. Binding is per executor ([ADR-0008](../adr/0008-portable-model-aliases.adr.md)).
 - **`ModelProfile`**: map from step name and from `judge:<step name>` to an alias or a ladder.
-- **Resolution order for a step attempt:** operator per step, operator per run, the step's model (ladder rung n for attempt n, last rung repeats), workflow default, `inherit`.
-- **Resolution order for a judge:** operator per judge, operator for all judges, the gate's judge model, the step's model (its ladder's last rung), workflow default, `inherit`.
+- **Resolution order for a step attempt:** the operator layers of [RST §2.3](80-run-settings-and-overrides.spec.md) (flags per unit then per run, profiles, project and user overrides), an arm in force that names the step, the step's model (ladder rung n for attempt n, last rung repeats), workflow default, project and user defaults, `inherit`.
+- **Resolution order for a judge:** the same operator layers on the judge scopes only (`judge:<unit>`, then `judges`), the gate's judge model, the step's model (its ladder's last rung), workflow default, project and user defaults, `inherit`.
 - Every record carries the alias, its source layer and the executor that bound it.
 
 ### 2.5 Tool capabilities
@@ -213,7 +216,7 @@ The judgement block is the last fenced JSON block of the judge's answer.
 | Type | Values |
 |---|---|
 | `ThreadState` | `none`, `running` (lock held), `paused`, `unfinished`, `stopped`, `finished` |
-| `Decision` | `proceed`, `retry`, `back:<unit>`, `stop`, `event:<name>=<value>`, `answer:<name>=<value>` (an ask, or a council's no-decision pause, [ASK §2.3](73-ask-unit.spec.md)) |
+| `Decision` | `proceed`, `retry`, `back:<unit>`, `rewind:<unit>` (a person's return to any completed unit, [RRN §2.3](81-reruns-and-feedback.spec.md)), `stop`, `event:<name>=<value>`, `answer:<name>=<value>` (an ask, or a council's no-decision pause, [ASK §2.3](73-ask-unit.spec.md)) |
 | `ExitCode` | `0` finished · `1` internal error · `2` usage or preflight refusal, nothing spent or created · `3` paused for a person · `4` stopped · `5` budget spent or infra failure · `6` an advisory verb found issues at the level asked for (`audit --fail-on`, [AUD](55-workflow-audit.spec.md)) · `127` engine not installed (shim) |
 
 `thread_id = <workflow>/<task_id>`. A fresh start on a thread whose state is not `none` is refused with exit 2 ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)).
@@ -242,6 +245,8 @@ The judgement block is the last fenced JSON block of the judge's answer.
 | Engine pointers (`current.json`, `previous.json`), workflow registry (`registry.json`) | [UPD](60-engine-update.spec.md) | JSON in the home folder, `schema_version` |
 | Thread engine file | [MIG](62-state-and-run-migration.spec.md) | JSON per thread, `schema_version` |
 | Upgrade plan, baseline, report | [WUP](63-workflow-upgrade.spec.md) | JSON per upgrade, `schema_version` |
+| Settings files (`settings.json`, project and user) | [RST](80-run-settings-and-overrides.spec.md) | JSON, `schema_version` |
+| Rerun lineage (`lineage.json` per source run) | [RRN](81-reruns-and-feedback.spec.md) | JSON, `schema_version` |
 
 Every reader ignores unknown keys and reads a missing key as "not recorded", never as zero. Renaming, removing or reinterpreting a key bumps the schema version.
 
@@ -264,6 +269,27 @@ Shared by [AUD](55-workflow-audit.spec.md), [ARC](56-audit-rule-catalog.spec.md)
 | `AuditReport` | `schema_version`, `workflow`, `version`, `engine_version` | |
 | | `layers_run`, `layers_skipped`, `rules_skipped` | Skipped entries carry a reason and, for samples, `n` and `min_n` |
 | | `findings[]`, `hot_spots[]`, `owned[]`, `summary` | Per [AUD §2.2](55-workflow-audit.spec.md) |
+
+### 2.12 Run settings, run options and feedback
+
+Shared by [RST](80-run-settings-and-overrides.spec.md), [RRN](81-reruns-and-feedback.spec.md), [DUR](09-durability-and-resume.spec.md), [CLI](17-engine-cli.spec.md) and [ORC](45-orchestration.spec.md).
+
+| Type | Field | Meaning |
+|---|---|---|
+| `SettingKey` | string | `<scope>.<name>` from the catalog of [RST §2.2](80-run-settings-and-overrides.spec.md) |
+| `SettingDecl` | `kind`, `default`, `choices?`, `min?`, `max?`, `meaning` | A workflow-declared setting ([RST §2.5](80-run-settings-and-overrides.spec.md)) |
+| `RunOptions` | `settings` | Snapshot: map `SettingKey` → `{value, layer, ref, via?}` for the flag, profile and file layers ([RST §2.6](80-run-settings-and-overrides.spec.md)) |
+| | `profiles` | Profile names in the order given |
+| | `alias`, `label`, `parent`, `origin`, `as_agent`, `pause_before`, `dry_run` | The run options that are not settings ([CLI §2.1](17-engine-cli.spec.md)) |
+| | `rerun_of` | `{thread, unit, checkpoint_id, workflow_version}` for a rerun, else null |
+| `ResolvedSettings` | `rows` | Per session scope and key: value, winning layer, `ref`, shadowed layers |
+| | `digest` | SHA-256 of the canonical table; `text` values enter as their digests |
+| `UnitRef` | string | `<unit>`, `<unit>.<item>` or `<unit>/<child unit>` |
+| `Feedback` | `text_ref` | Pointer into the local evidence file; never the text in a record |
+| | `chars` | Length |
+| | `ruling` | bool |
+| | `applies_to` | list of `UnitRef`, for a ruling; empty means the unit given at and every later unit |
+| `Ruling` | `id`, `feedback`, `given_at` (unit), `by` (`person` \| `agent`), `at`, `revoked_at?`, `revoked_by?` | Kept in state under its own reducer; never cleared by the trip-back reducer |
 
 ## 3. Behaviours
 

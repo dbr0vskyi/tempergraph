@@ -31,8 +31,9 @@ Every run-log record, old kinds and new, carries these keys. Adding them keeps t
 
 | Kind | Written when | Key fields |
 |---|---|---|
-| `run_started` | After the lock and before the first unit, on start and each resume | `origin`, `parent` (orchestration id, node and item, when an orchestration started the run, [ORC](45-orchestration.spec.md)), `alias`, `label`, `workflow_version` ([VER §2.4](61-version-metadata.spec.md)), `plan_digest` (the diagram model's), `executors` planned per unit; `engine_version`, `shape_digest` and `moved_from` when the engine or the workflow changed since the last process ([MIG §2.1](62-state-and-run-migration.spec.md)) |
-| `unit_entered` | A unit's step node is entered (also each visit after a trip back) | `visit`, `entered_from` (`start`, `proceed`, `retry`, `back:<unit>`, `resume`) |
+| `run_started` | After the lock and before the first unit, on start and each resume | `origin`, `parent` (orchestration id, node and item, when an orchestration started the run, [ORC](45-orchestration.spec.md)), `alias`, `label`, `workflow_version` ([VER §2.4](61-version-metadata.spec.md)), `plan_digest` (the diagram model's), `executors` planned per unit; `engine_version`, `shape_digest` and `moved_from` when the engine or the workflow changed since the last process ([MIG §2.1](62-state-and-run-migration.spec.md)); `settings_digest`, `profiles`, `overridden_keys` ([RST §2.7](80-run-settings-and-overrides.spec.md)); `rerun_of` for a rerun ([RRN §2.4](81-reruns-and-feedback.spec.md)) |
+| `settings_resolved` | Right after `run_started`, on start, each resume and a rerun | `settings_digest`, `rows[]` of `{key, value, layer, ref, shadowed[]}`, `changed_keys` ([RST §2.7](80-run-settings-and-overrides.spec.md)) |
+| `unit_entered` | A unit's step node is entered (also each visit after a trip back) | `visit`, `entered_from` (`start`, `proceed`, `retry`, `back:<unit>`, `rewind:<unit>`, `rerun`, `resume`); `head_commit` and `dirty` of the workspace when it is a git checkout, so a rerun can start from it ([RRN §2.4](81-reruns-and-feedback.spec.md)) |
 | `session_opened` | The executor's `session_started` event arrives | `kind` (step, retry, judge, judge_reask, grouping, member, member_reask, chair), executor, alias, bound model, `session_id`, `transcript` (§2.4), `pgid` (process group id on POSIX, null elsewhere) |
 | `check` | A deterministic check finishes | `result` (`PASS`, `MAYBE`, `FAIL`), `environmental`, `untracked_only`, `duration_s`, `output_path` (local), `evidence` clipped to 200 chars, scrubbed |
 | `judgement` | A judgement block is parsed, before the gate derives the verdict | per criterion `{n, id?, status}` (no evidence text), `met`, `total`, `blockers` (criterion ids), `confidence` and its source, `gap` |
@@ -42,6 +43,8 @@ Every run-log record, old kinds and new, carries these keys. Adding them keeps t
 | `council_round` | A council round's barrier closes ([CNL](71-council-unit.spec.md)) | round, members answered, spoiled, missing, `changed` count, label order |
 | `council_tally` | A council's outcome is derived | mode, rule, counts per option or Borda points, outcome (`<option>`, `no_decision`), `chosen_by` |
 | `contest_pick` | A contest's pick runs ([CTS](72-contest-unit.spec.md)) | per slot: check result, derived verdict, rank keys, cost; winner |
+| `grant` | A tool grant or allowed command takes effect, on start, resume or rerun, or is removed ([RST §2.8](80-run-settings-and-overrides.spec.md)) | `unit`, `capability` or `prefix`, `action` (`given`, `removed`), `answers` (the refusal class and `seq` of the pause it fixes, if any), `by`, `via` |
+| `ruling` | A ruling is given or revoked ([RRN §2.2](81-reruns-and-feedback.spec.md)) | `id`, `action` (`given`, `revoked`), `given_at`, `applies_to`, `by`, `chars`; never the text |
 | `stop_requested` | A stop request is picked up ([RCT](32-run-control.spec.md)) | mode (`drain`, `now`), requested by (`operator`, `as_agent`) |
 | `run_exit` | The process ends the segment | exit code, reason word, cost figures and completeness flag |
 

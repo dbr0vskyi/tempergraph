@@ -3,7 +3,7 @@ title: Gate and human nodes
 type: component
 status: review
 prefix: HUM
-adrs: [0004, 0015, 0065, 0066]
+adrs: [0004, 0015, 0065, 0066, 0073, 0074]
 ---
 
 # Gate and human nodes
@@ -30,6 +30,7 @@ class PausePayload: kind: Literal["escalation", "budget", "approval", "event_wai
 | A workflow escalation rule | escalation |
 | Retry or loop budget spent on a gate set to `ask` | budget |
 | A check FAIL marked environmental (no retry can fix it) | escalation |
+| A failed or blocked attempt that could not reach a tool, skill, MCP server or command (cause `tool_access`); the payload lists the refused names and the `--grant` or `--allow-command` that fixes each ([RST §2.8](80-run-settings-and-overrides.spec.md)) | escalation |
 | An upstream claim the judge could not confirm; a defect attributed outside the allowed targets | escalation |
 | A pass on a gate with `approval`, or a step named by the operator's approval option | approval |
 | A `wait` unit | event_wait |
@@ -44,12 +45,15 @@ An infra failure never pauses ([BUD](08-budgets-and-failures.spec.md)). The self
 
 | Decision | Effect |
 |---|---|
-| proceed | Accept the work and go on; the step, judge and gate do not run again |
+| proceed [feedback] | Accept the work and go on; the step, judge and gate do not run again; feedback reaches the next unit once as notes |
 | retry [feedback] | The step runs again with a fresh retry budget; feedback reaches the step and its judge once |
 | back:<unit> [feedback] | To a listed earlier unit; feedback becomes that visit's reason; the pair's loop budget resets |
-| stop | Ends the run (exit 4) |
+| rewind:<unit> [feedback] | To any unit completed on the path; cleared as a trip back; no loop budget charged; counts against the human cap ([RRN §2.3](81-reruns-and-feedback.spec.md)) |
+| stop [feedback] | Ends the run (exit 4); feedback is recorded locally as the cause |
 | event:<name>=<value> | Only at a wait; accepted only if the unit's pure check passes the value |
 | answer:<name>=<value> | Only at an ask, or at a council's no-decision pause (`decision`); validated by the question's kind ([ASK §2.3](73-ask-unit.spec.md)) |
+
+Any feedback may be given as a **ruling** (`--ruling`): it is then shown to every later attempt of the units it applies to and to their judges until a person revokes it ([RRN §2.2](81-reruns-and-feedback.spec.md)). A resume may also change run settings ([RST §2.6](80-run-settings-and-overrides.spec.md)).
 
 ## 3. Behaviours
 
@@ -70,7 +74,7 @@ An infra failure never pauses ([BUD](08-budgets-and-failures.spec.md)). The self
 
 **HUM-B5 Approval is not friction.** Given a passing gate with `approval`, when the run pauses, then the recorded verdict stays PROCEED, the pause is not counted as an escalation, and a rework there is not a retry burst for self-improvement.
 
-**HUM-B6 Intervention row.** Given an accepted resume, when it is applied, then one ledger row is appended before the graph runs: a random id, who resumed (`person`, `auto_reopen`, `event`, or `agent` when the caller declares itself one), the pause kind, the decision, whether feedback was given, and a cause word from metadata only.
+**HUM-B6 Intervention row.** Given an accepted resume, when it is applied, then one ledger row is appended before the graph runs: a random id, who resumed (`person`, `auto_reopen`, `event`, or `agent` when the caller declares itself one), the pause kind, the decision, whether feedback was given and whether as a ruling, the setting keys changed, the grants given (unit and capability names), and a cause word from metadata only.
 
 ## 4. Error conditions
 
@@ -78,7 +82,8 @@ An infra failure never pauses ([BUD](08-budgets-and-failures.spec.md)). The self
 |---|---|
 | Decision not valid for the thread state | Exit 2, nothing written ([DUR](09-durability-and-resume.spec.md)) |
 | `back` to a unit the gate does not list | Exit 2 |
-| Human retries above the human cap (default 100) | Exit 2 |
+| Human retries and rewinds above the human cap (default 100) | Exit 2 |
+| `rewind` to a unit not completed on the path | Exit 2 ([RRN §4](81-reruns-and-feedback.spec.md)) |
 
 ## 5. Design notes
 

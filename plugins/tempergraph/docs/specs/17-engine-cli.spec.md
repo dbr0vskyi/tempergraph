@@ -3,7 +3,7 @@ title: Engine CLI
 type: component
 status: review
 prefix: CLI
-adrs: [0015, 0021, 0022, 0027, 0028]
+adrs: [0015, 0021, 0022, 0027, 0028, 0070, 0073]
 ---
 
 # Engine CLI
@@ -18,7 +18,9 @@ The `tempergraph` command line is the engine's public interface for people, skil
 |---|---|---|---|
 | `run <workflow> <request…> [options]` | Resolve, preflight, start | yes | yes |
 | `run --check …` | Resolve and preflight only; prints one status | no | no |
-| `resume <workflow> <thread> [--decision …] [--feedback …] [--input k=v] [--answers <file>] [--apply-deadline]` | Resume per thread state; `--answers` and `answer:` decisions for an ask ([ASK](73-ask-unit.spec.md)); `--apply-deadline` for an overdue wait or ask ([FLX §2.3](74-flow-extensions.spec.md)) | yes | yes |
+| `resume <workflow> <thread> [--decision …] [--feedback …\|--feedback-file <path>] [--ruling] [--ruling-for <units>] [--revoke-ruling <id>] [--accept-external] [--set k=v] [--unset k] [--profile p] [--reload-settings] [--input k=v] [--answers <file>] [--apply-deadline]` | Resume per thread state; feedback, rulings and `rewind:` per [RRN](81-reruns-and-feedback.spec.md); settings per [RST §2.6](80-run-settings-and-overrides.spec.md); `--answers` and `answer:` decisions for an ask ([ASK](73-ask-unit.spec.md)); `--apply-deadline` for an overdue wait or ask ([FLX §2.3](74-flow-extensions.spec.md)) | yes | yes |
+| `rerun <workflow> <thread> --from <unit>[.<item>]\|start [--check] [--feedback …] [--ruling] [--set k=v] [--profile p] [--task-id <id>] [--workspace current\|at-unit] [--same-branch] [--drop-rulings] [--accept-external]` | A new thread forked from the checkpoint before that unit, linked to its source ([RRN §2.4](81-reruns-and-feedback.spec.md)) | yes, except `--check` | yes, except `--check` |
+| `config show <workflow> [--thread <t>] [--set …] [--profile …] [--key <glob>] [--json]`, `config validate [--file <path>]`, `config paths` | The resolved settings with their sources; validation of the settings files ([RST §2.9](80-run-settings-and-overrides.spec.md)) | no | no |
 | `status [selector] [--detail] [--all-roots]` | Status document; `--detail` gives one thread's detail document ([RDD](31-run-detail-document.spec.md)); `--all-roots` reads every state root in the machine index ([CST §2.1](34-central-run-stats.spec.md)) | no | no |
 | `events <selector> [--since <seq>] [--follow] [--activity <session_key>]` | Run-log records and activity lines in order ([EVT §2.6](30-run-events.spec.md)) | no | no |
 | `logs <selector> [--session <key>] [--kind …] [--follow]` | One log of a run from the local store ([LOS §2.4](33-local-observability-store.spec.md)) | no | no |
@@ -48,29 +50,32 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `report --loop [window]` | The loop's own metrics ([IMD §2.4](43-improvement-data.spec.md)) | no | no |
 | `self-check <ticket>` | Run one unit's check on the current workspace for the step session that holds the ticket; prints findings; granted to a step by `self_check` only ([CHK §2.5](75-check-contract-and-command-runs.spec.md)) | command-run records only | no |
 
-### 2.1 Run options that touch executors
+### 2.1 Run options
+
+`--set <key>=<value>` (repeatable), `--settings <file>` (a JSON map of keys to values, read once, recorded as flags) and `--profile <name>` (repeatable) set any key of the settings catalog on the `flag` and `profile` layers ([RST](80-run-settings-and-overrides.spec.md)). The named flags below are spellings of `--set`; the right column gives the key.
 
 | Option | Effect |
 |---|---|
-| `--executor <name>` / `--step-executor <step>=<name>` | Override the executor for all steps or one |
-| `--judge-executor <name>` | Override the judge executor (still must declare `restricts_judge_tools`) |
-| `--model <alias>` / `--step-model <step>=<alias>` / `--judge-model <alias>` | Alias overrides on their layers |
-| `--timeout`, `--judge-timeout`, `--idle` | Limit overrides |
-| `--enforce-tools` | Opt in to hard tool enforcement on executors that declare it |
-| `--strict-permissions` | Enforce declared tools on every step and refuse a step whose executor cannot ([EXI-B12](10-executor-interface.spec.md)) |
+| `--executor <name>` / `--step-executor <step>=<name>` | `steps.executor` / `<step>.executor` |
+| `--judge-executor <name>` | `judges.executor` (still must declare `restricts_judge_tools`) |
+| `--model <alias>` / `--step-model <step>=<alias>` / `--judge-model <alias>` | `steps.model` / `<step>.model` / `judges.model` |
+| `--timeout`, `--judge-timeout`, `--idle` | `steps.timeout_s`, `judges.timeout_s`, `steps.idle_s` |
+| `--enforce-tools` | `run.enforce_tools=true`: hard tool enforcement on executors that declare it |
+| `--strict-permissions` | `run.strict_permissions=true`: enforce declared tools on every step and refuse a step whose executor cannot ([EXI-B12](10-executor-interface.spec.md)) |
 | `--alias <name>`, `--label <text>` | Run alias and label ([DUR §2.2](09-durability-and-resume.spec.md)) |
-| `--arm <switch>=<arm>` | Operator pick of a switch arm ([CMP](03-compiler-and-flow.spec.md)) |
-| `--run-cost-cap <usd>` | Overrides `run_cost_cap_usd` for this run ([BUD](08-budgets-and-failures.spec.md)) |
-| `--audit-rate <0..1>`, `--audit-executor <name>` | Sampled audit judge ([JDG-B7](05-judge-and-verdict.spec.md)) |
-| `--worktree` / `--in-place` | Workspace mode |
-| `--approve <step>` | Approval pause after that step passes |
-| `--auto-reopen N` | Automatic re-open, 1–10 |
+| `--grant <unit>=<capability>[,…]`, `--allow-command <unit>=<prefix>` | `<unit>.tools.add`, `<unit>.commands.add` (or `judge:<unit>.views.add` for read-only views): a person's tool grant for this run, on `run`, `resume` and `rerun` ([RST §2.8](80-run-settings-and-overrides.spec.md)) |
+| `--arm <switch>=<arm>` | `<switch>.arm`: operator pick of a switch arm ([CMP](03-compiler-and-flow.spec.md)) |
+| `--run-cost-cap <usd>` | `run.run_cost_cap_usd` ([BUD](08-budgets-and-failures.spec.md)) |
+| `--audit-rate <0..1>`, `--audit-executor <name>` | `run.audit_rate`, `run.audit_executor`: sampled audit judge ([JDG-B7](05-judge-and-verdict.spec.md)) |
+| `--worktree` / `--in-place` | `run.workspace` |
+| `--approve <step>` | `<step>.approve=true`: approval pause after that step passes |
+| `--auto-reopen N` | `run.auto_reopen`, 1–10 |
 | `--as-agent` | Marks resumes made by an automated caller ([HUM](07-gate-and-human.spec.md)) |
 | `--pause-before <unit>[.<item>]` | Run and resume: an operator breakpoint before that unit ([FLX §2.5](74-flow-extensions.spec.md)) |
 | `--parent <orchestration>/<node>[/<item>]` | Set by the orchestration supervisor only; recorded with the run options and shown as `parent` ([ORC §2.8](45-orchestration.spec.md) N1) |
 | `--dry-run` | Self-improvement files nothing; every step still runs |
 
-Option values select constants or are checked numbers; typed text never reaches a launch ([SEC](14-security.spec.md)).
+Option values select constants or are checked numbers; typed text never reaches a launch ([SEC](14-security.spec.md)). Every option is validated before spend by the same function on `run --check`, `run`, `resume` and `rerun` ([RST §4](80-run-settings-and-overrides.spec.md)).
 
 ### 2.2 Lifecycle hooks
 

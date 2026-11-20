@@ -3,7 +3,7 @@ title: Prompt rendering and output contract
 type: component
 status: review
 prefix: PRM
-adrs: [0005, 0016, 0076, 0077]
+adrs: [0005, 0016, 0074, 0076, 0077]
 ---
 
 # Prompt rendering and output contract
@@ -36,13 +36,14 @@ class RenderedPrompt: text: str; missing_fields: list[str]; sections: list[str]
 | Notes from the previous judgement | Unmet warnings of the last pass |
 | Reason for this visit, and who sent it | The run was sent back to this unit |
 | Rejection reason (for a check FAIL, each failing finding's criterion, place and fix, then the evidence); what the previous attempt reported (≤ 3000 chars, head and tail); paths changed since it began (≤ 20) | A retry; after a timeout, infra failure or cut-off only the paths |
-| Human feedback | A person gave feedback at the last gate; shown once |
+| Human feedback | A person gave one-time feedback at the last resume (a retry, a proceed for the next unit, a breakpoint, an unfinished thread); shown once ([RRN §2.2](81-reruns-and-feedback.spec.md)) |
+| Rulings from a person | Active rulings that apply to this unit; shown on every attempt and visit until revoked |
 
 Everything after the template is appended verbatim, never format-processed.
 
 ### 2.2 The tools block
 
-Built from the declaration alone: the declared tools by their executor names; stay in the working directory; prefer file tools over the shell when both are declared; run git without a leading change of directory; run only the listed commands; and, when `shell` is not declared, that there is no shell. It never says an undeclared tool is unavailable, because enforcement is opt-in.
+Built from the declaration plus any tool grant in force ([RST §2.8](80-run-settings-and-overrides.spec.md)): the declared tools by their executor names; stay in the working directory; prefer file tools over the shell when both are declared; run git without a leading change of directory; run only the listed commands; and, when `shell` is not declared, that there is no shell. It never says an undeclared tool is unavailable, because enforcement is opt-in.
 
 ### 2.3 Output contract
 

@@ -3,7 +3,7 @@ title: Orchestration of runs
 type: component
 status: review
 prefix: ORC
-adrs: [0035, 0036, 0037, 0038, 0039]
+adrs: [0035, 0036, 0037, 0038, 0039, 0070, 0073]
 ---
 
 # Orchestration of runs
@@ -54,7 +54,7 @@ JSON, named `<name>.orch.json` when saved as a template. Every value is a consta
 | `workflow` | registered workflow name | For `run` and `map`. |
 | `repo` | absolute path, optional | Another local git repository whose state root the run uses; default the orchestration's. |
 | `inputs` | map name → literal \| `{param}` \| `{from: <node>, artifact: <key>}` | The run's declared inputs; a `from` value is read from the finished upstream run's artifacts by key through `facts`. |
-| `options` | subset of run options | Executor, model and timeout overrides, `--approve`, `--run-cost-cap`, workspace mode. Options that hand gates to an agent (`--as-agent`) are refused. |
+| `options` | map `SettingKey` → value, plus `profiles` | Any key of the settings catalog ([RST §2.2](80-run-settings-and-overrides.spec.md)), applied on the `flag` layer with `via: orchestration` and validated by `orchestrate validate`. Options that hand gates to an agent (`--as-agent`) are refused. |
 | `targets` | list of strings, for `map` | One run per target. |
 | `targets_from` | `{node, artifact}`, for `map` | A JSON file artifact of an upstream run holding an array of strings; expanded when that node finishes. |
 | `max_items` | int 1–50, for `map` | Required with `targets_from`; more items fail the expansion. |
@@ -107,7 +107,8 @@ Before a policy applies, a run that ended with exit 5 on an infra cause ([BUD §
 | `orchestrate start <file> [--arg k=v…]` | Validate, write the orchestration folder, start the supervisor detached; prints the id | yes | yes |
 | `orchestrate status [id] [--json]` | Orchestration status document (§2.7) | no | no |
 | `orchestrate wait <id> [--timeout s] [--settle s]` | Block until attention changes or the orchestration ends | no | no |
-| `orchestrate answer <id> <node> [--item i] --decision …` | Resume that node's paused run, sign an approval, or pick the policy of an `ask` failure | yes | yes |
+| `orchestrate answer <id> <node> [--item i] --decision … [--feedback …] [--ruling] [--set k=v]` | Resume that node's paused run, sign an approval, or pick the policy of an `ask` failure; feedback, rulings and settings pass through to `resume` ([RRN §2.6](81-reruns-and-feedback.spec.md)) | yes | yes |
+| `orchestrate rerun <id> <node> [--item i] --from <unit> [rerun options]` | Rerun the node's thread from a unit and point the node at the new thread ([RRN §2.6](81-reruns-and-feedback.spec.md)) | yes | yes |
 | `orchestrate edit <id> <patch file>` | Add nodes, cancel unstarted nodes, change `k` or the cap | yes | no |
 | `orchestrate stop <id> [--node n] [--now]` | Stop starting nodes; drain or stop running runs (ORC-B10) | yes | no |
 | `orchestrate resume <id>` | Start a supervisor for an orchestration whose supervisor is gone | yes | yes |

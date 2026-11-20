@@ -68,8 +68,14 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0065](0065-ask-unit-takes-a-persons-input-as-an-artifact.adr.md) | An ask unit takes a person's mid-run input as a validated artifact, in the human node | proposed |
 | [0066](0066-flow-extensions-for-langgraph-parity.adr.md) | Five flow extensions for LangGraph parity: selective parallel, mapped sub-workflows, deadlines, fallback, breakpoints | proposed |
 | [0067](0067-cache-only-model-free-script-results-per-thread.adr.md) | Cache only model-free script results, per thread, keyed by declared inputs | proposed |
+| [0070](0070-one-catalog-of-run-settings-over-fixed-layers.adr.md) | One catalog of run settings, resolved over fixed layers from flags to engine defaults | proposed |
+| [0071](0071-overrides-never-change-what-verifies-the-work.adr.md) | Overrides change cost, time, repetition and model choice, never what verifies the work | proposed |
+| [0072](0072-threads-snapshot-settings-and-reapply-them-on-resume.adr.md) | A thread snapshots its operator settings at start and reapplies them on every resume | proposed |
+| [0073](0073-rewind-on-the-thread-rerun-as-a-linked-fork.adr.md) | A person rewinds a live thread in place, and reruns any thread as a new linked thread forked from a checkpoint | proposed |
+| [0074](0074-feedback-can-be-a-lasting-ruling.adr.md) | A person's feedback can be a lasting ruling that later steps and their judges are shown | proposed |
 | [0075](0075-checks-get-a-context-and-an-engine-command-runner.adr.md) | Checks get a defined context and an engine command runner | proposed |
 | [0076](0076-claims-may-target-a-route-skipped-back-target.adr.md) | Upstream claims and attributions may target a listed back target that a route skipped | proposed |
 | [0077](0077-a-step-previews-its-own-check-in-the-attempt.adr.md) | A step previews its own gate's check inside its attempt through one engine command | proposed |
 | [0078](0078-skills-are-a-declared-tool-capability.adr.md) | Skills are a declared tool capability, named by plugin path | proposed |
 | [0079](0079-switches-are-measured-before-they-route.adr.md) | Switches can be measured in shadow, carry per-arm overrides, and re-arm on a spent budget | proposed |
+| [0080](0080-a-person-may-grant-a-step-tools-for-a-run.adr.md) | A person may grant a step tools, commands or judge read views for a run, by a recorded flag | proposed |

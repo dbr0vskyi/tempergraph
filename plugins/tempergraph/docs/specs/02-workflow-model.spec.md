@@ -3,7 +3,7 @@ title: Workflow model and validation
 type: component
 status: review
 prefix: WFM
-adrs: [0003, 0008, 0062]
+adrs: [0003, 0008, 0062, 0070]
 ---
 
 # Workflow model and validation
@@ -32,7 +32,7 @@ The registry reads the workflow registry in the home folder (name → package fo
 | Judge view | A judge tool outside the read-only catalog; an artifact kind whose read view the judge executor cannot give, unless the criterion is marked as an unverified system |
 | Tools, commands | A command no workflow allow-list entry covers; a command with a shell metacharacter; a command on a step that does not declare `shell`; a `command_resolver` that is not importable, or whose argv for a declared prefix contains a shell metacharacter |
 | Prompts | Anything outside the template grammar ([CON §2.2](01-contracts.spec.md)); a field that is neither an engine key nor an input name; an unreadable template |
-| Settings | A non-positive or non-integer timeout; a malformed or missing `issue_repository`; a ladder longer than eight |
+| Settings | A non-positive or non-integer timeout; a malformed or missing `issue_repository`; a ladder longer than eight; a declared setting whose default is outside its kind, choices or range; a profile naming a key outside the settings catalog or a value outside its range ([RST §4](80-run-settings-and-overrides.spec.md)) |
 | Routing | A missing description, or a start example that does not resolve |
 | Unit kinds | The refusals of each kind's owning spec: [SCR §2.4](70-script-units-and-hybrid-steps.spec.md), [CNL §2.6](71-council-unit.spec.md), [CTS §2.4](72-contest-unit.spec.md), [ASK §2.2](73-ask-unit.spec.md), [FLX §2.6](74-flow-extensions.spec.md), [MAP §2.3](77-map-unit.spec.md), [SWM §4](79-measured-switches.spec.md) |
 | Checks, values, finalizer | `mechanical` on a gate with no check, `self_check` on a step whose gate has no check ([CHK §4](75-check-contract-and-command-runs.spec.md)); a reserved or misplaced template key, a bad `choices` or `pattern` ([VAL §4](76-step-values-and-template-keys.spec.md)); a finalizer without `finalizer_outcomes` or importing an executor ([FIN §4](78-finalizer-contract.spec.md)); a `skill:` capability naming a plugin path that is not installed with the workflow |

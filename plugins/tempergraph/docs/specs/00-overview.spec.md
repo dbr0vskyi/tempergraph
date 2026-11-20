@@ -3,7 +3,7 @@ title: tempergraph system overview
 type: overview
 status: review
 prefix: OVR
-adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035, 0062, 0075]
+adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035, 0062, 0070, 0073, 0075]
 ---
 
 # tempergraph system overview
@@ -22,8 +22,8 @@ This spec is the index of the set. It holds no component requirement; each requi
 |---|---|---|
 | G1 | Start from a stated good outcome: every step declares criteria a judge grades and checks the engine runs. | [WFM](02-workflow-model.spec.md), [JDG](05-judge-and-verdict.spec.md) |
 | G2 | Deterministic checks first, an independent judge second, a verdict by rule. | [JDG](05-judge-and-verdict.spec.md), [GRD](06-independence-guard.spec.md) |
-| G3 | Retries, trips back and pauses are graph edges driven by verdicts, each bounded by a budget. | [CMP](03-compiler-and-flow.spec.md), [BUD](08-budgets-and-failures.spec.md), [HUM](07-gate-and-human.spec.md) |
-| G4 | Durable, resumable runs that survive days at a pause. | [DUR](09-durability-and-resume.spec.md) |
+| G3 | Retries, trips back and pauses are graph edges driven by verdicts, each bounded by a budget. | [CMP](03-compiler-and-flow.spec.md), [BUD](08-budgets-and-failures.spec.md), [HUM](07-gate-and-human.spec.md), [RST](80-run-settings-and-overrides.spec.md) |
+| G4 | Durable, resumable runs that survive days at a pause, and reruns from any unit with a person's feedback. | [DUR](09-durability-and-resume.spec.md), [RRN](81-reruns-and-feedback.spec.md) |
 | G5 | The same workflow on the Claude Code CLI, the Antigravity CLI, the Claude Agent SDK or the Messages API, with refusal before spend when an executor cannot enforce what is asked. | [EXI](10-executor-interface.spec.md), [ECC](11-executor-claude-code.spec.md), [EAG](12-executor-antigravity.spec.md), [EAS](21-executor-agent-sdk.spec.md), [EMA](20-executor-messages-api.spec.md) |
 | G6 | Every model call costed; unmeasured is never zero. | [OBS](15-observability-and-cost.spec.md) |
 | G7 | A closed improvement loop that files scrubbed, de-duplicated issues, drafts measured changes and hands them to a person. | [SIL](16-self-improvement.spec.md), [PRP](40-improvement-proposals.spec.md), [FBK](41-feedback-and-judge-reliability.spec.md), [LSN](42-workflow-lessons.spec.md), [IMD](43-improvement-data.spec.md) |
@@ -142,6 +142,8 @@ flowchart LR
 | MAP | [77 Map unit](77-map-unit.spec.md) | Map declaration, fan-out, per-item gates and budgets, the join |
 | FIN | [78 Finalizer contract](78-finalizer-contract.spec.md) | Finalizer context, commands, outcomes, once-only and exit-code rule |
 | SWM | [79 Measured switches](79-measured-switches.spec.md) | Shadow mode, per-arm overrides, re-arming |
+| RST | [80 Run settings and overrides](80-run-settings-and-overrides.spec.md) | The settings catalog, scopes, layers and their order, settings files, workflow settings and profiles, snapshot on resume, the effective-settings record, the `config` verb |
+| RRN | [81 Reruns, rewinds and feedback](81-reruns-and-feedback.spec.md) | Every way to run again, feedback at every resume, rulings, `rewind`, the `rerun` verb |
 
 ### 2.3 Engine-wide contracts
 
