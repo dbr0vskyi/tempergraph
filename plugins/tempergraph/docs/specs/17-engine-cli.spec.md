@@ -3,7 +3,7 @@ title: Engine CLI
 type: component
 status: review
 prefix: CLI
-adrs: [0015, 0021, 0022, 0027, 0028, 0070, 0073]
+adrs: [0015, 0021, 0022, 0027, 0028, 0070, 0073, 0085, 0087]
 ---
 
 # Engine CLI
@@ -33,7 +33,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `executors [--probe]` | Registered executors, capabilities, CLI versions, probe facts | no | no |
 | `batch <workflow> <targets…> [-k N]` | Many child runs, as a one-node orchestration ([ADR-0038](../adr/0038-batch-is-a-one-node-orchestration.adr.md)) | yes | yes |
 | `orchestrate validate\|plan\|start\|status\|wait\|answer\|edit\|stop\|resume\|list\|report …` | A graph of runs ([ORC §2.6](45-orchestration.spec.md)) | start, answer, edit, stop, resume | start, answer, resume |
-| `stop <selector> [--drain\|--now] [--as-agent]` | Drain a running run (no new attempt or unit; ends `unfinished`, exit 4) or, with `--now`, end its open session at once; resumable either way. Owned by spec 32 (RCT §2) of the run-control design; needed by [ORC §2.8](45-orchestration.spec.md) N3 | yes | no |
+| `stop <selector> [--drain\|--now] [--caller …] [--relayed]` | Drain a running run (no new attempt or unit; ends `unfinished`, exit 4) or, with `--now`, end its open session at once; resumable either way. Owned by spec 32 (RCT §2) of the run-control design; needed by [ORC §2.8](45-orchestration.spec.md) N3 | yes | no |
 | `worktree list|prune` | Engine worktrees | prune only | no |
 | `update [--check] [--dry-run] [--json] [--with …] [--rollback] [--prune-engines]` | Install a release beside the current engine and switch to it; extras, shim, home layout, manifest reconcile; `--check` is read-only ([UPD](60-engine-update.spec.md)) | yes, except `--check` | no |
 | `install [--check] [--with …] [--add-to-path] [--repair]` | First install from the plugin's launcher: home folder, first environment, shim, `PATH` block, registry ([UPD §2.7](60-engine-update.spec.md)) | yes, except `--check` | no |
@@ -48,6 +48,8 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `improve backlog|propose|trial|aa|open|show` | Proposals and trials ([PRP §2.7](40-improvement-proposals.spec.md)) | per [PRP](40-improvement-proposals.spec.md) | `propose`, `trial`, `aa` |
 | `label <thread> <gate> [--criterion id] --value agree|disagree`, `labels queue [workflow]` | Enter a label; list judgements to label ([FBK](41-feedback-and-judge-reliability.spec.md)) | `label` only | no |
 | `report --loop [window]` | The loop's own metrics ([IMD §2.4](43-improvement-data.spec.md)) | no | no |
+| `supervision log --host <h> --session <id>`, `supervision close [--session <id>]`, `supervision show <selector>\|--session <id> [--json]` | Append a host's or application's supervision entries; close threads' supervision cost; show a thread's or session's supervision ([SCO §2.6](87-supervision-cost.spec.md)) | `log`: the journal; `close`: ledger lines and outbox rows; `show`: no | no |
+| `report --supervision [window] [--by workflow\|version\|unit\|host\|level]` | Touches, levels, waits and supervision cost per workflow ([SUP §2.4](86-supervision-metrics.spec.md)) | no | no |
 | `self-check <ticket>` | Run one unit's check on the current workspace for the step session that holds the ticket; prints findings; granted to a step by `self_check` only ([CHK §2.5](75-check-contract-and-command-runs.spec.md)) | command-run records only | no |
 
 ### 2.1 Run options
@@ -70,12 +72,14 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `--worktree` / `--in-place` | `run.workspace` |
 | `--approve <step>` | `<step>.approve=true`: approval pause after that step passes |
 | `--auto-reopen N` | `run.auto_reopen`, 1–10 |
-| `--as-agent` | Marks resumes made by an automated caller ([HUM](07-gate-and-human.spec.md)) |
+| `--caller person\|agent\|pipeline`, `--caller-app <name>` | Declares the caller on any mutating verb; a declaration only lowers trust, and `--caller person` from a marked agent is refused ([PRV §2.3](85-caller-provenance.spec.md)) |
+| `--as-agent` | The same as `--caller agent` |
+| `--relayed` | The decision is a person's, carried by an agent; counted as the person's only with a person turn in the host ([PRV §2.4](85-caller-provenance.spec.md)) |
 | `--pause-before <unit>[.<item>]` | Run and resume: an operator breakpoint before that unit ([FLX §2.5](74-flow-extensions.spec.md)) |
 | `--parent <orchestration>/<node>[/<item>]` | Set by the orchestration supervisor only; recorded with the run options and shown as `parent` ([ORC §2.8](45-orchestration.spec.md) N1) |
 | `--dry-run` | Self-improvement files nothing; every step still runs |
 
-Option values select constants or are checked numbers; typed text never reaches a launch ([SEC](14-security.spec.md)). Every option is validated before spend by the same function on `run --check`, `run`, `resume` and `rerun` ([RST §4](80-run-settings-and-overrides.spec.md)).
+Option values select constants or are checked numbers; typed text never reaches a launch ([SEC](14-security.spec.md)). Every option is validated before spend by the same function on `run --check`, `run`, `resume` and `rerun` ([RST §4](80-run-settings-and-overrides.spec.md)). Every mutating verb classifies its caller once, before any write, and records the `caller` block ([PRV](85-caller-provenance.spec.md), contract C17); read-only verbs do not.
 
 ### 2.2 Lifecycle hooks
 

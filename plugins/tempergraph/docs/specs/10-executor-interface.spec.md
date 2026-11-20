@@ -59,6 +59,8 @@ def launch(spec: LaunchSpec, parse_line: Callable[[bytes], list[Event]], sink: E
 
 For a library executor, `argv` is `[<engine interpreter>, "-m", <constant worker module>]` and `stdin_payload` is the worker's request document, which holds the prompt ([EMA §2.3](20-executor-messages-api.spec.md)). The worker re-validates every field before use.
 
+**Caller variables.** Every launch sets `TEMPERGRAPH_SESSION_KEY` to the session's key ([EVT §2.1](30-run-events.spec.md)) and removes `TEMPERGRAPH_SUPERVISOR_TOKEN`, `TEMPERGRAPH_CALLER` and `TEMPERGRAPH_CALLER_APP` from the session's environment, so a step can neither pose as the orchestration supervisor nor be counted as a supervising session ([PRV §4](85-caller-provenance.spec.md), [SCO §2.1](87-supervision-cost.spec.md)).
+
 **Stop contract.** A stop (timeout, idle, signal or a drain request) sends a graceful stop to the session's process group, waits a grace period (default 10 s), then kills the tree. Whatever the session wrote before the kill is kept as partial output and partial usage.
 
 ### 2.4 Judge executor selection

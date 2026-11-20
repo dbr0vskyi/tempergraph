@@ -36,7 +36,7 @@ Status words: **covered** (in the design before this check), **added** (written 
 | A flag moves to live-proven only with a written result | PLANNED | added | [docs README](../README.md#readiness-flags) |
 | Batches end to end in any repository | PARTLY BUILT | added (batch file, event file); deferred (integration, pull-request adapter, shared-resource claims) | [WSP](../specs/13-workspace-and-concurrency.spec.md) |
 | Engine from pipelines | DESIGNED | added (the Agent SDK and Messages API executors need no interactive sign-in); deferred (the hosted web service of another team) | [ADR-0018](../adr/0018-add-messages-api-and-agent-sdk-executors.adr.md) |
-| Record who answered a pause | DESIGNED | covered | [HUM-B6](../specs/07-gate-and-human.spec.md), [CLI](../specs/17-engine-cli.spec.md) `--as-agent` |
+| Record who answered a pause | DESIGNED | covered; added (callers classified from host markers, relayed decisions backed by a person turn, supervision measures and cost) | [HUM-B6](../specs/07-gate-and-human.spec.md), [PRV](../specs/85-caller-provenance.spec.md), [SUP](../specs/86-supervision-metrics.spec.md), [SCO](../specs/87-supervision-cost.spec.md) |
 | Delegation policy for agent answers | DESIGNED | deferred: needs calibrated judges and a C6 amendment | [HUM](../specs/07-gate-and-human.spec.md) |
 | Auto mode | DESIGNED (draft) | added (never used: undeclared tools refuse) | [EXI](../specs/10-executor-interface.spec.md), [EAS](../specs/21-executor-agent-sdk.spec.md) |
 | Token-free schedule for declared programs | PLANNED | deferred: no scheduler in the first release | this note |

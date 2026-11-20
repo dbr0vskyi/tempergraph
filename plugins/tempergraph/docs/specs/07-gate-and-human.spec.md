@@ -3,7 +3,7 @@ title: Gate and human nodes
 type: component
 status: review
 prefix: HUM
-adrs: [0004, 0015, 0065, 0066, 0073, 0074]
+adrs: [0004, 0015, 0065, 0066, 0073, 0074, 0085, 0086]
 ---
 
 # Gate and human nodes
@@ -74,7 +74,7 @@ Any feedback may be given as a **ruling** (`--ruling`): it is then shown to ever
 
 **HUM-B5 Approval is not friction.** Given a passing gate with `approval`, when the run pauses, then the recorded verdict stays PROCEED, the pause is not counted as an escalation, and a rework there is not a retry burst for self-improvement.
 
-**HUM-B6 Intervention row.** Given an accepted resume, when it is applied, then one ledger row is appended before the graph runs: a random id, who resumed (`person`, `auto_reopen`, `event`, or `agent` when the caller declares itself one), the pause kind, the decision, whether feedback was given and whether as a ruling, the setting keys changed, the grants given (unit and capability names), and a cause word from metadata only.
+**HUM-B6 Intervention row.** Given an accepted resume, when it is applied, then one ledger row is appended before the graph runs: a random id, the `Caller` of the resume with its kind, decider and relay evidence ([PRV §2.5](85-caller-provenance.spec.md); an infra re-open is `engine`, an event value or an applied deadline carries the caller that delivered it), the touch classes it counts as ([SUP §2.1](86-supervision-metrics.spec.md)), the pause kind, the decision, the seconds the pause waited, whether feedback was given and whether as a ruling, the setting keys changed, the grants given (unit and capability names), and a cause word from metadata only.
 
 ## 4. Error conditions
 
@@ -95,7 +95,7 @@ Any feedback may be given as a **ruling** (`--ruling`): it is then shown to ever
 - [ ] HUM-AC-1 A source test asserts `interrupt` is the first statement of the human node.
 - [ ] HUM-AC-2 Each pause kind of §2.1 exits 3 with a payload holding a working resume command.
 - [ ] HUM-AC-3 Every row of the HUM-B4 table holds.
-- [ ] HUM-AC-4 Agent resumes are counted apart from a person's in every report.
+- [ ] HUM-AC-4 Agent resumes, by caller kind and decider, are counted apart from a person's in every report ([SUP §2.2](86-supervision-metrics.spec.md)).
 
 ## Open questions
 

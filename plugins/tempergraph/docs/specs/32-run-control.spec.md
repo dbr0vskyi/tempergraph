@@ -16,14 +16,14 @@ The one control an observer may ask for: stop a live run. A person asks for it w
 
 | Verb | Does | Writes | Spends |
 |---|---|---|---|
-| `stop <selector> [--drain \| --now] [--as-agent]` | Requests a stop of a live thread | one request file | no |
+| `stop <selector> [--drain \| --now] [--caller …] [--relayed]` | Requests a stop of a live thread | one request file | no |
 
 | Mode | Effect | Thread state after |
 |---|---|---|
 | `--drain` (default) | The session in flight finishes; its check, judge and gate run; no new attempt and no new unit starts | `unfinished` |
 | `--now` | The stop contract runs on the open session at once: graceful stop, 10 s grace, tree kill; the attempt is recorded interrupted with its partial usage | `unfinished` |
 
-The request file is `runs/<workflow>/<task_id>/control/stop.json` under the state root ([LOS §2.1](33-local-observability-store.spec.md)): `{schema_version, mode, requested_at, as_agent}`, created atomically, owner-only. The engine checks for it between records and at least once a second while a session runs, writes `stop_requested` ([EVT §2.2](30-run-events.spec.md)), removes the file, acts, and exits 4 with reason `stopped_by_request`.
+The request file is `runs/<workflow>/<task_id>/control/stop.json` under the state root ([LOS §2.1](33-local-observability-store.spec.md)): `{schema_version, mode, requested_at, caller}`, created atomically, owner-only. The engine checks for it between records and at least once a second while a session runs, writes `stop_requested` ([EVT §2.2](30-run-events.spec.md)), removes the file, acts, and exits 4 with reason `stopped_by_request`.
 
 ## 3. Behaviours
 
@@ -35,7 +35,7 @@ The request file is `runs/<workflow>/<task_id>/control/stop.json` under the stat
 
 **RCT-B4 Batch.** Given `stop` with a batch selector, when it runs, then one request per live child is written and the batch parent starts no new child.
 
-**RCT-B5 Agent caller.** Given `stop --as-agent`, when the request is acted on, then the `stop_requested` record names `as_agent`, so a later reader can tell a person's stop from an automated caller's.
+**RCT-B5 Agent caller.** Given a `stop` from a Claude Code tool child, with or without `--as-agent`, when the request is acted on, then the `stop_requested` record carries the `Caller` with kind `agent` ([PRV §2.3](85-caller-provenance.spec.md)), so a later reader can tell a person's stop from an automated caller's.
 
 ## 4. Error conditions
 

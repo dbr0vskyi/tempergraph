@@ -107,13 +107,13 @@ Before a policy applies, a run that ended with exit 5 on an infra cause ([BUD §
 | `orchestrate start <file> [--arg k=v…]` | Validate, write the orchestration folder, start the supervisor detached; prints the id | yes | yes |
 | `orchestrate status [id] [--json]` | Orchestration status document (§2.7) | no | no |
 | `orchestrate wait <id> [--timeout s] [--settle s]` | Block until attention changes or the orchestration ends | no | no |
-| `orchestrate answer <id> <node> [--item i] --decision … [--feedback …] [--ruling] [--set k=v]` | Resume that node's paused run, sign an approval, or pick the policy of an `ask` failure; feedback, rulings and settings pass through to `resume` ([RRN §2.6](81-reruns-and-feedback.spec.md)) | yes | yes |
+| `orchestrate answer <id> <node> [--item i] --decision … [--feedback …] [--ruling] [--set k=v] [--relayed]` | Resume that node's paused run, sign an approval, or pick the policy of an `ask` failure; feedback, rulings and settings pass through to `resume` ([RRN §2.6](81-reruns-and-feedback.spec.md)) | yes | yes |
 | `orchestrate rerun <id> <node> [--item i] --from <unit> [rerun options]` | Rerun the node's thread from a unit and point the node at the new thread ([RRN §2.6](81-reruns-and-feedback.spec.md)) | yes | yes |
 | `orchestrate edit <id> <patch file>` | Add nodes, cancel unstarted nodes, change `k` or the cap | yes | no |
 | `orchestrate stop <id> [--node n] [--now]` | Stop starting nodes; drain or stop running runs (ORC-B10) | yes | no |
 | `orchestrate resume <id>` | Start a supervisor for an orchestration whose supervisor is gone | yes | yes |
 | `orchestrate list` | Orchestrations under the state root with outcome and cost | no | no |
-| `orchestrate report <id>` | Cost per node and phase, time, pauses and who answered, failures with causes | no | no |
+| `orchestrate report <id>` | Cost per node and phase, time, pauses and who answered (caller kind and decider), failures with causes, and supervision: touches per node, the orchestrating sessions' cost and its share of the runs' cost ([SUP §2.5](86-supervision-metrics.spec.md), [SCO](87-supervision-cost.spec.md)) | no | no |
 
 `orchestrate wait` exits 0 (all nodes finished), 3 (attention: the document lists what), 4 (stopped by a person), 5 (ended `finished_with_failures`, `halted`, `cost_cap` or `supervisor_lost`), 2 (unknown id). `start` exits 0 once the supervisor runs, 2 on any refusal with nothing created. The meanings are those of [CON §2.9](01-contracts.spec.md).
 
@@ -171,7 +171,7 @@ What the supervisor needs from the rest of the engine. Rows marked **requested**
 
 **ORC-B5 Pauses do not stop the graph.** Given three running nodes, when one run pauses, then its node becomes `paused` and attention, its dependants wait, and the other two runs and every node not depending on it go on starting and finishing.
 
-**ORC-B6 Answering a node.** Given a paused node, when `orchestrate answer <id> <node> --decision retry --feedback …` runs, then the engine's `resume` of that node's thread is run with that decision, an `answered` event with `by: person` is appended, and the node becomes `running`. A decision the run's gate does not offer is refused with exit 2, as `resume` refuses it ([HUM §2.2](07-gate-and-human.spec.md)).
+**ORC-B6 Answering a node.** Given a paused node, when `orchestrate answer <id> <node> --decision retry --feedback …` runs, then the engine's `resume` of that node's thread is run with that decision, an `answered` event carrying the answer's `Caller` is appended ([PRV §2.5](85-caller-provenance.spec.md)), and the node becomes `running`. An answer whose decider is not a person (an agent's own answer, a relay without a person turn, an `unknown` caller) is refused with exit 2 `answer_not_by_person`, since every pause stays with a person ([ADR-0039](../adr/0039-pauses-stay-with-the-person-failures-follow-node-policy.adr.md)); a person can always answer at a terminal. A decision the run's gate does not offer is refused with exit 2, as `resume` refuses it ([HUM §2.2](07-gate-and-human.spec.md)).
 
 **ORC-B7 Approval nodes.** Given an approval node after a map, when the map finishes, then the node shows its question and the listed artifacts and waits; `--decision proceed` releases its dependants and `--decision stop` ends the orchestration `stopped`; no other decision is accepted.
 
@@ -193,6 +193,8 @@ What the supervisor needs from the rest of the engine. Rows marked **requested**
 **ORC-B12 Supervisor loss and resume.** Given a supervisor killed while two runs are live, when `orchestrate resume <id>` runs, then the new supervisor takes the lock, reads each node's state from its thread status (live runs are re-attached through the lock probe, finished ones are not restarted), appends `supervisor_started`, and goes on. `orchestrate wait` on an orchestration whose supervisor lock is free and whose outcome is not written exits 5 with `supervisor_lost`.
 
 **ORC-B13 Re-run skips by identity.** Given a file started once, when the same file is started again under the same `orchestration_id` with `orchestrate resume`, then a node whose thread exists is never started afresh; it is taken in its current state. Reordering nodes in the file changes nothing that ran.
+
+**ORC-B17 The supervisor's mark.** Given a supervisor that starts a node's run, when it launches the engine, then it passes `--parent` and a random per-orchestration token in `TEMPERGRAPH_SUPERVISOR_TOKEN` whose SHA-256 it keeps in the orchestration's state file; the run records caller `orchestrator` (`attested`), and its supervision cost is `measured_zero` ([PRV §2.2](85-caller-provenance.spec.md), [SCO §2.3](87-supervision-cost.spec.md)). The token is never on argv, in a record or in a step session's environment ([EXI §2.3](10-executor-interface.spec.md)).
 
 **ORC-B14 Edits while running.** Given a running orchestration, when an edit adds a node after a finished one, cancels a `waiting` node, or lowers `k`, then it applies at the next scheduling pass and an `edited` event records it; an edit that changes a node that has started, removes a started node, or creates a cycle is refused with exit 2 and nothing changes.
 

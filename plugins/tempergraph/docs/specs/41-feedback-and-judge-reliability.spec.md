@@ -24,7 +24,7 @@ Every signal of the self-improvement loop rests on judges, and a judge is only a
 | `criterion_id` | id, optional | When the label names one criterion |
 | `kind` | §2.2 | |
 | `value` | `agree` \| `disagree` \| `neutral` | Relative to the judgement: `disagree` means the judge's PROCEED or MET was wrong, or its block was wrong |
-| `source` | `person` \| `agent` \| `fact` | `agent` when the answer came through `--as-agent` ([HUM](07-gate-and-human.spec.md)) |
+| `source` | `person` \| `agent` \| `fact` | From the answer's decider ([PRV §2.4](85-caller-provenance.spec.md)): `person` only when `decided_by` is `person`; `agent` for an agent's own answer, `unknown` callers and relays without host evidence ([HUM](07-gate-and-human.spec.md)) |
 | `at`, `observed_after_s` | | When, and how long after the gate |
 | `binding` | `{executor, executor_version, alias, model_slug, brief_digest, criteria_digest}` | The judge binding that produced the judgement |
 
@@ -82,7 +82,7 @@ The finding is recorded and enters the friction lens like any finding; it is nev
 
 **FBK-B1 Labels without a model.** Given a run whose final approval was answered "reworked", when the run is recorded, then one `approval` label `disagree` is written against the last gate, with no model call and no text.
 
-**FBK-B2 Agent answers do not grade judges.** Given a pause answered with `--as-agent`, when labels are derived, then the label has `source=agent` and is excluded from every §2.3 figure.
+**FBK-B2 Agent answers do not grade judges.** Given a pause answered by an agent on its own (declared, or seen by its host marker), when labels are derived, then the label has `source=agent` and is excluded from every §2.3 figure.
 
 **FBK-B3 Reliability grades.** Given four bindings, when the report runs, then each gets one grade.
 

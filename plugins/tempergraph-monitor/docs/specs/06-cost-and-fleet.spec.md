@@ -23,6 +23,7 @@ Two tabs that look past one attempt: a run's **cost** as it accrues, and the **f
 | By kind | Steps against judges and re-asks |
 | By executor and model | Estimated cost and tokens (input, output, cache read, cache write, thinking) |
 | Budget | Run cost cap, what is left, burn rate per hour, minutes to the cap at that rate |
+| Supervision | What supervising sessions spent on this run, as its own figure beside the run's: marginal and turn apart, by category (start, watch, diagnose, decide, steer, relay, rewake), with completeness, and the supervision share ([SCO](../../../tempergraph/docs/specs/87-supervision-cost.spec.md)); `open` while a supervising session is still live, never `0` when unmeasured |
 | Projection | For this workflow: median and 90th percentile cost per finished run and the sample size, marked `thin` under 5 runs, from `stats --projection` |
 
 Every figure carries `est` when estimated, `rep` when reported, and `≥` when a part is unmeasured.
@@ -34,7 +35,7 @@ Built from the fleet copy in the home folder, `~/.tempergraph/fleet/<fleet_sink>
 | Part | Content |
 |---|---|
 | Live now | One row per live run on any machine: machine label, repository (name or hash, as the sink stores it), workflow, label, state, unit in flight, waiting time, estimated cost so far; a heartbeat older than 5 min is `stale` |
-| This month | Totals by machine, user, workflow and executor: runs, exit reasons, estimated and reported cost apart, completeness |
+| This month | Totals by machine, user, workflow and executor: runs, exit reasons, estimated and reported cost apart, completeness; per workflow the share of runs by supervision level, undesigned touches per run by decider, and the median supervision share ([SUP §2.4](../../../tempergraph/docs/specs/86-supervision-metrics.spec.md)) |
 | Drill | A row of this machine opens its run view; a row of another machine opens a read-only card of its numbers ("logs are on <machine label>") |
 
 ## 3. Behaviours

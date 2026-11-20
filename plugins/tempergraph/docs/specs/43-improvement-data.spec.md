@@ -31,6 +31,7 @@ What the self-improvement loop ([SIL](16-self-improvement.spec.md), [PRP](40-imp
 | IMD-R11 | The store emits the loop events of §2.3 to the engine's event surface (lifecycle hooks of [CLI §2.2](17-engine-cli.spec.md), and whatever event interface the monitor design adds) | The monitor shows the loop; integrations react |
 | IMD-R14 | Every tool grant and allowed command is a `grant` run-log record and an entry of the ledger row's `grants[]` (names, classes, `via`, used or not, outcome after; never the session's text), and the aggregate counts grants per (workflow, unit, capability) across runs and machines ([SIL §2.4](16-self-improvement.spec.md), [RST §2.8](80-run-settings-and-overrides.spec.md)) | The loop proposes the declaration a grant keeps standing in for |
 | IMD-R13 | Every run line, `agent_run`, ledger and finding record carries `settings_digest` and `overridden_keys`, and a rerun's records carry `rerun_of` ([RST §2.7](80-run-settings-and-overrides.spec.md), [RRN §2.4](81-reruns-and-feedback.spec.md)) | Lenses compare runs with like settings and do not file an operator's override as a workflow fault; a rerun is joined to its source as an outcome signal |
+| IMD-R15 | Every intervention record carries its `Caller` ([PRV §2.5](85-caller-provenance.spec.md)); the ledger row carries `supervision{}` ([SUP §2.2](86-supervision-metrics.spec.md)) and, once closed, a `supervision` line with the supervising sessions' cost ([SCO §2.5](87-supervision-cost.spec.md)); the aggregate counts touches by class, decider and pause cause per (workflow, unit) across runs and machines | Agent rescues cluster into workflow issues; promotion and the loop read supervision, not only a person's touches |
 | IMD-R12 | A request digest is a keyed hash with a per-installation key, so equal requests match across one team's machines and cannot be looked up from outside | Distinct-request counts without request text |
 
 ### 2.2 What may leave the machine
@@ -38,6 +39,7 @@ What the self-improvement loop ([SIL](16-self-improvement.spec.md), [PRP](40-imp
 | Record | Crosses to the aggregate | Never crosses |
 |---|---|---|
 | Run line, `agent_run`, `gate` | Names, enums, counts, costs, durations, digests, criterion ids and statuses | Evidence text, tool inputs, paths outside the workflow package |
+| Caller blocks, supervision records | Kinds, deciders, relay values, touch counts, levels, token counts and costs, hashed host sessions | Host session ids in the clear, prompt text, commands |
 | Findings, clusters | Cause codes, counts, sides | Rationale text of the friction judge |
 | Labels | All fields | The person's typed reason (stays in evidence, referenced by id) |
 | Proposals | Ids, classes, side, state, the rule sentence, patch digest | The patch itself (it lives on its branch in the workflow's repository) |
