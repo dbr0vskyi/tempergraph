@@ -1,7 +1,7 @@
 ---
 title: Budgets, failures and timeouts
 type: component
-status: review
+status: ready-for-implementation
 prefix: BUD
 adrs: [0004, 0006, 0021, 0070]
 ---
@@ -90,10 +90,10 @@ Step: the operator layers of [RST §2.3](80-run-settings-and-overrides.spec.md) 
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should a `throttled` session wait longer than the standard backoff? Needs a live concurrency measurement per executor. | Operator |
-| Do repeated resumes of one thread (a resume chain) each get a fresh attempt allowance without bound, or should a thread carry a lifetime cap? First release keeps the per-invocation cap and records the chain length on the status row. | Engine owner |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Should a `throttled` session wait longer than the standard backoff? Needs a live concurrency measurement per executor. | Operator | No: the standard 10, 20, 40 s backoff |
+| Do repeated resumes of one thread (a resume chain) each get a fresh attempt allowance without bound, or should a thread carry a lifetime cap? First release keeps the per-invocation cap and records the chain length on the status row. | Engine owner | The per-invocation cap of 15 only |
 
 ## References
 

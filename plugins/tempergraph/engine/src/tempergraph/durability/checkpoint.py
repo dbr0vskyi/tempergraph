@@ -117,3 +117,10 @@ def classify_snapshot(snap: Snapshot, lock_held: bool) -> ThreadState:
     if snap.values.get("finalized"):
         return ThreadState.FINISHED
     return ThreadState.STOPPED
+
+
+def resume_input(value: Any) -> Any:
+    """The graph input that answers a pending interrupt; keeps LangGraph inside durability (ADR-0115)."""
+    from langgraph.types import Command
+
+    return Command(resume=value)

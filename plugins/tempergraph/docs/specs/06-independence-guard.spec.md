@@ -1,7 +1,7 @@
 ---
 title: Independence guard and judge views
 type: component
-status: review
+status: ready-for-implementation
 prefix: GRD
 adrs: [0010, 0011, 0013, 0020]
 ---
@@ -90,9 +90,9 @@ The always-present base is the read, search and list capabilities. Workflow data
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should a refused (not executed) outside call void a complete verdict? Today yes, because the engine cannot always tell refused from executed across executors. | Engine owner |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Should a refused (not executed) outside call void a complete verdict? Today yes, because the engine cannot always tell refused from executed across executors. | Engine owner | Yes: any outside call voids the judgement |
 
 ## References
 

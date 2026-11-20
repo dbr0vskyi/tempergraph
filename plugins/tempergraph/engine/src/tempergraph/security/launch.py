@@ -10,6 +10,7 @@ from __future__ import annotations
 # Module path -> what it launches. Keep in step with SEC §2.2.
 SANCTIONED_SITES: dict[str, str] = {
     "tempergraph.git": "git reader: git with constant arguments",
+    "tempergraph.run.commands": "workflow command runner: resolved allow-list argv for checks, scripts, finalizer",
     "tempergraph.executors.launcher": "session launcher: an executor's CLI, its model-free probes, host speed",
 }
 

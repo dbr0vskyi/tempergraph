@@ -1,7 +1,7 @@
 ---
 title: Observability and cost
 type: component
-status: review
+status: ready-for-implementation
 prefix: OBS
 adrs: [0009, 0012, 0018, 0021, 0023, 0025]
 ---
@@ -37,7 +37,7 @@ What a run leaves behind so a person or a later analysis can see what it did, wh
 |---|---|
 | Unmeasured is never zero | Unknown fields are null |
 | Reported and estimated stay apart | `reported_cost_usd` from the executor; `estimated_cost_usd` from the engine's price table for every session with tokens; never summed into one figure |
-| Price table | Defaults per model family shipped with the engine; the operator's binding table overrides per model |
+| Price table | Defaults per model family shipped with the engine; the operator's binding table overrides per model. Release 1 ships the first-party list prices of the generation the tier aliases resolve to, USD per million tokens as of 2026-11: haiku 0.10 in, 0.50 out; sonnet 2 in, 10 out, 0.10 cache read; opus 4 in, 20 out, 0.20 cache read. A family without a cache read price uses 0.1× input; cache writes are 1.25× input |
 | Completeness flag | A run's usage line ends `complete`, `estimated` (some sessions only estimated) or `incomplete` (some unmeasured) |
 | Executor comparison | Reports compare executors on estimated cost, the one figure all have, and show reported cost where present |
 | Per executor | `claude` and `agent-sdk` report a client-side estimate; `messages-api` and `antigravity` report tokens only, so their `reported_cost_usd` is null and the estimate is the figure. Cache read and write tokens are priced at their own rates |

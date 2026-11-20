@@ -1,7 +1,7 @@
 ---
 title: Run-level good outcome
 type: component
-status: review
+status: ready-for-implementation
 prefix: OUT
 adrs: [0031, 0045, 0089, 0107, 0108, 0111, 0114]
 ---
@@ -210,10 +210,10 @@ A revision is made by a person through the authoring skill's revise mode ([AUT �
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should `stable` workflows default to `outcome.judge = on_trigger` to save one judge per run? Assumed `always` until cost data exists. | Owner |
-| Is ten replayed runs enough agreement to move a criterion from judge to check? A default with no data behind it, like the thresholds of [SUP §2.7](86-supervision-metrics.spec.md). | Owner |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Should `stable` workflows default to `outcome.judge = on_trigger` to save one judge per run? Assumed `always` until cost data exists. | Owner | `always` |
+| Is ten replayed runs enough agreement to move a criterion from judge to check? A default with no data behind it, like the thresholds of [SUP §2.7](86-supervision-metrics.spec.md). | Owner | Ten |
 
 ## References
 

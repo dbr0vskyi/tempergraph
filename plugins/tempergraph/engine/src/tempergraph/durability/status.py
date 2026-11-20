@@ -7,6 +7,7 @@ being created, and nothing is written. Fields the run has not recorded yet are l
 
 from __future__ import annotations
 
+import json
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -80,6 +81,14 @@ def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     ws = (snap.values.get("workspace") or {})
     if ws:
         r["workspace"] = {k: ws.get(k) for k in ("mode", "path", "branch", "state") if k in ws}
+    exit_path = run_dir(state_root, spec.name, split_thread(tid)[1]) / "exit.json"
+    if exit_path.exists() and state is not ThreadState.RUNNING:
+        try:
+            ex = json.loads(exit_path.read_text(encoding="utf-8"))
+            r.setdefault("exit_code", ex.get("exit_code"))
+            r["exit_reason"] = ex.get("reason")
+        except (OSError, ValueError):
+            pass
     name = aliases.alias_of(state_root, tid)
     if name:
         r["alias"] = name

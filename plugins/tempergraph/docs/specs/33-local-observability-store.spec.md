@@ -29,6 +29,7 @@ Everything a repository's runs leave on the machine lives in one folder, the sta
     findings.json                   [SIL]
     engine.json                     engines and workflow versions each process ran on; a pin [MIG §2.1]
     control/stop.json               only while a stop is pending [RCT]
+    exit.json                       the last segment's exit code and reason word, rewritten at each segment's end [DUR-B5]
     lineage.json                    reruns made from this thread [RRN §2.4]
     sessions/<session_key>/
       meta.json                     executor, cli_version, session_id, transcript locator, pgid, started_at, ended_at

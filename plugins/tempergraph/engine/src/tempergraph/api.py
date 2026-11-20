@@ -36,9 +36,10 @@ from tempergraph.contracts import (
     WorktreeDecl,
 )
 from tempergraph.contracts import Param as _ParamType
+from tempergraph.run.finalize import FinalizerContext, FinalizerResult
 
 __all__ = [
-    "CheckFinding", "CheckResult", "Criterion", "Gate", "Input", "Judge", "Param", "ResolveResult", "Route",
+    "CheckFinding", "CheckResult", "Criterion", "FinalizerContext", "FinalizerResult", "Gate", "Input", "Judge", "Param", "ResolveResult", "Route",
     "RouteView", "Routing", "Script", "SessionOptions", "Setting", "Step", "Switch", "Value", "Workflow",
     "WorktreeDecl", "text", "Parallel", "Map", "Ask", "Wait", "Council", "Contest", "Subworkflow",
 ]

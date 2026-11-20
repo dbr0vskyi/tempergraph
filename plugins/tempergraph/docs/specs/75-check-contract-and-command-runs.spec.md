@@ -1,7 +1,7 @@
 ---
 title: Check contract and command runs
 type: component
-status: review
+status: ready-for-implementation
 prefix: CHK
 adrs: [0075, 0077, 0067]
 ---
@@ -188,9 +188,9 @@ A check runs in a child engine process (the check worker) that receives the cont
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should the check worker be kept warm across gates of one run to save the interpreter start? Measure first. | Engine implementer |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Should the check worker be kept warm across gates of one run to save the interpreter start? Measure first. | Engine implementer | No: one worker per check |
 
 ## References
 
