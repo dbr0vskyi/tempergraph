@@ -296,3 +296,14 @@ def test_standin_scenario_names_every_executor(pkg: Path, tmp_path: Path) -> Non
     decl.write_text(text.replace("Step(", "Step(executor='antigravity', ", 1))
     got = selftest.run("standin_run", pkg, tmp_path / "b")
     assert got and "antigravity" in got[0], got
+
+
+def test_verify_rung_1_runs_the_criteria_lint(pkg: Path, tmp_path: Path) -> None:
+    """SCF §2.5 rung 1 with AUT §2.4.1: a vague final criterion fails the ladder before the comparison."""
+    o = json.loads((pkg / "outcome.json").read_text())
+    o["final"][0]["text"] = "The notes are good"
+    (pkg / "outcome.json").write_text(json.dumps(o))
+    code, doc, _ = _verify(pkg, tmp_path)
+    assert code == 2
+    assert doc["rungs"][0]["state"] == "failed"
+    assert "criterion-vague" in {f["code"] for f in doc["rungs"][0]["findings"]}

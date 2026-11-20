@@ -49,7 +49,7 @@ Model-free, over each step template, judge stance and brief, and each skill and 
 
 ### 2.2 Judge readiness, release 1
 
-The structural part runs over each judged gate and the outcome gate. It finds a judged criterion with no `check_method`, a judge criterion whose scale lacks `met`, `unmet` or `evidence` (or `partial`, for a blocker), vague words from §2.1's list in a criterion, and a gate with no judged blocker. Each gate also reports its count of calibration cases (`evals/calibration/<gate>/`). Criteria lint ([AUT §2.4.1](89-workflow-authoring.spec.md)) joins with plan T9.2. Judge scores arrive with [JCL](50-judge-calibration.spec.md) (plan T12), so until then no binding is `accepted` and no gate grades `ready`. A `stable` workflow is therefore refused with `gate-not-ready` (LIF-B6) until its judges are accepted.
+The structural part runs over each judged gate and the outcome gate. It finds a judged criterion with no `check_method`, a judge criterion whose scale lacks `met`, `unmet` or `evidence` (or `partial`, for a blocker), vague words from §2.1's list in a criterion, and a gate with no judged blocker. Each gate also reports its count of calibration cases (`evals/calibration/<gate>/`). Criteria lint findings on the package's `outcome.json` ([AUT §2.4.1](89-workflow-authoring.spec.md)) are listed per gate; each grades the gate `needs work`, except `criterion-no-seed`, which is shown but left to calibration. Judge scores arrive with [JCL](50-judge-calibration.spec.md) (plan T12), so until then no binding is `accepted` and no gate grades `ready`. A `stable` workflow is therefore refused with `gate-not-ready` (LIF-B6) until its judges are accepted.
 
 ### 2.3 Scenarios and diagram currency, release 1
 

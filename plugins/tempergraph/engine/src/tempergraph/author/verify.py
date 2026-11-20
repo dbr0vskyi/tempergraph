@@ -84,7 +84,12 @@ def _load(root: Path, caps: Mapping[str, Capabilities], rung: Rung) -> Any:
     for f in validate(lp.spec, caps):
         if f.severity == "error":
             rung.findings.append(_row(f.code, f.unit, f.message, "fix the workflow declaration (WFM, OUT §4)"))
-    rung.note = "criteria lint (AUT §2.4.1) joins this rung with the authoring skill (plan T9.2)"
+    from tempergraph.author.criteria_lint import lint, package_doc
+
+    doc = package_doc(root)
+    for lf in lint(doc) if doc is not None else []:  # AUT §2.4.1 at the severities of AUT §2.8
+        if lf.severity("check") == "error":
+            rung.findings.append(_row(lf.code, lf.unit, lf.message, lf.guidance))
     return lp
 
 

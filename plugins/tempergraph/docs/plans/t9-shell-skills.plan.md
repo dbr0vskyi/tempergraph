@@ -22,7 +22,7 @@ task_id: first-release-t9
 | Specs | [SHL](../specs/19-plugin-shell.spec.md), [AUT](../specs/89-workflow-authoring.spec.md), [OUT](../specs/90-run-outcome.spec.md), [SCF](../specs/91-blueprint-and-scaffold.spec.md), [LSK](../specs/65-lifecycle-skills.spec.md) |
 | Builders | T9.1 is built by the main build thread; T9.2 and T9.3 by the T8 thread, after T8 |
 
-**Status: In progress.** T9.2 has its status pass. Nothing else is built yet.
+**Status: In progress.** T9.2 has its status pass and the criteria lint.
 
 Status pass: AUT is `ready-for-implementation`, with the release 1 decisions in AUT §2.8. SHL and LSK get theirs in the first row of T9.1 and T9.3.
 
@@ -46,7 +46,7 @@ Goal: the `author` verbs and the `tempergraph:author` skill per AUT: entry paths
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
 | 9.2.0 | `docs/specs/89-*` | Status pass: AUT `ready-for-implementation`, release 1 decisions in AUT §2.8 | AUT | | P1 | ✓ | 2026-11-20 |
-| 9.2.1 | `engine/src/tempergraph/author/criteria_lint.py`, `engine/tests/test_criteria_lint.py` | The criteria lint of AUT §2.4.1 and the sufficiency check, over an outcome document; a must-fire and a must-not-fire fixture per code (AUT-AC-7, first half); joined to `author verify` rung 1 and the readiness report | AUT §2.4.1, §2.8 | yes | P1 | ○ | |
+| 9.2.1 | `engine/src/tempergraph/author/criteria_lint.py`, `engine/tests/test_criteria_lint.py` | The criteria lint of AUT §2.4.1 and the sufficiency check, over an outcome document; a must-fire and a must-not-fire fixture per code (AUT-AC-7, first half); joined to validation (warnings), `author verify` rung 1 and the readiness report | AUT §2.4.1, §2.8, LIF §2.2 | yes | P1 | ✓ | 2026-11-20 |
 | 9.2.2 | `engine/src/tempergraph/author/inventory.py`, `engine/tests/test_inventory.py` | The intake inventory of AUT §2.3 on a fixture repository: every row detected, no source text in the record (AUT-AC-2) | AUT §2.3, §2.8 | yes | P1 | ○ | |
 | 9.2.3 | `engine/src/tempergraph/author/session.py`, `engine/src/tempergraph/cli/author.py`, `engine/tests/test_author_session.py` | `author start\|intake\|check\|show\|list\|drop\|approve`; phase approvals by digest, cleared on a later edit; one session per name; nothing under the package folder before phase 7 (AUT-AC-4); phase 2 not approvable while the sufficiency check fails (AUT-AC-7, second half); resume from `author show` alone (AUT-AC-5) | AUT §2.1, §2.4, §2.6, §4, §2.8 | yes | P1 | ○ | |
 | 9.2.4 | `engine/src/tempergraph/author/session.py`, `engine/src/tempergraph/author/scaffold.py` | Revise mode: `author start <workflow> --revise`, the change classes against the package's outcome, the weakening rows marked, the new revision written with `origin: revise_session` by `scaffold --update-docs` (AUT-AC-6) | AUT §2.7, OUT §2.6 | yes | P1 | ○ | |

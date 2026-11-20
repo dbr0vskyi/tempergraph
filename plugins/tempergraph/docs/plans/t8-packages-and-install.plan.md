@@ -99,7 +99,7 @@ Status pass: WUP is `ready-for-implementation` (its open question has a release 
 |---|---|---|---|---|---|---|---|
 | 8.4.1 | `engine/tests/test_prompt_lint.py` | Each planted defect found once; clean fixtures raise nothing; skills and agents linted and resolved; the shared name reader | LIF-AC-6, PRA-AC-3 | yes | P1 | ✓ | 2026-11-20 |
 | 8.4.2 | `engine/src/tempergraph/model/prompt_lint.py` | The rules of LIF §2.1 as `validate` warnings | LIF §2.1 | | P1 | ✓ | 2026-11-20 |
-| 8.4.3 | `engine/src/tempergraph/package/readiness.py`, `engine/tests/test_readiness.py` | The structural judge readiness report; `gate-not-ready` in `stable` mode (LIF-B6); criteria lint joins with T9.2, scores with T12 | LIF §2.2, OUT §2.2.1 | yes | P1 | ✓ | 2026-11-20 |
+| 8.4.3 | `engine/src/tempergraph/package/readiness.py`, `engine/tests/test_readiness.py` | The structural judge readiness report; `gate-not-ready` in `stable` mode (LIF-B6); criteria lint joined in T9.2.1, scores join with T12 | LIF §2.2, OUT §2.2.1 | yes | P1 | ✓ | 2026-11-20 |
 | 8.4.4 | `package/selftest.py` (`standin_run`), `tests/test_scaffold.py` | Deterministic scenarios on the scripted stand-ins (LIF-B4): the stand-in run plays `claude`, the reference; a step on a later release's executor is reported by name (LIF §2.3) | LIF §2, §2.3, EVS | yes | P1 | ✓ | 2026-11-20 |
 | 8.4.5 | `package/selftest.py` (`diagram_current`), `tests/test_scaffold.py` | Package diagram currency: `diagram/model.json` digest against the spec; passes after CRLF, fails on a shape change (LIF-B3, LIF-AC-2) | LIF-AC-2 | yes | P2 | ✓ | 2026-11-20 |
 

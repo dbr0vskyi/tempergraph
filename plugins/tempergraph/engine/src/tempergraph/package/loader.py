@@ -207,6 +207,10 @@ def package_findings(spec: WorkflowSpec, mode: Literal["dev", "stable"] | None =
     from tempergraph.package.readiness import stable_findings
 
     out += stable_findings(spec)
+    from tempergraph.author.criteria_lint import lint, package_doc
+
+    doc = package_doc(root)  # AUT §2.8: in validation every criteria lint code is a warning
+    out += [Finding(f.code, f.unit, f.message, "warning") for f in (lint(doc) if doc is not None else [])]
     from tempergraph.audit.report import parse_ignores
 
     out += [Finding("audit-ignore-invalid", None, f"tempergraph.json: {p}")  # AUD-AC-7

@@ -71,15 +71,24 @@ def _gates(spec: WorkflowSpec) -> Iterable[tuple[str, list[Criterion]]]:
 
 def readiness(spec: WorkflowSpec, accepted: Callable[[str], bool] = lambda gate: False) -> list[GateReadiness]:
     """`accepted(gate)` answers whether the gate's judge binding is `accepted` (JCL §2.5; none before T12)."""
+    from tempergraph.author.criteria_lint import lint, package_doc
+
+    doc = package_doc(spec.package_root)
+    linted = lint(doc) if doc is not None else []
     out = []
     for gate, criteria in _gates(spec):
         notes = [n for c in criteria for n in _structural(c)]
+        mine = [f for f in linted if (f.unit or flow.OUTCOME_UNIT) == gate and f.criterion is not None]
+        notes += [f"{f.code}: {f.message}" for f in mine if f.code != "criterion-no-seed"]
+        seedless = [f.criterion for f in mine if f.code == "criterion-no-seed"]
         judged = [c for c in criteria if not c.mechanical and c.verified_by not in ("check", "person", "none")]
         blockers = sum(1 for c in judged if c.severity == "blocker")
         if judged and not blockers:
             notes.append("no judged criterion is a blocker, so the judge can never send the work back")
         ok = accepted(gate)
         grade = "needs work" if notes else ("ready" if ok else "needs cases")
+        # AUT §2.8: a missing seed is a calibration gap, shown but not graded as structural
+        notes += [f"criterion-no-seed: {c} has no met and unmet seed" for c in seedless]
         out.append(GateReadiness(gate=gate, grade=grade, findings=notes, criteria=len(criteria), blockers=blockers,
                                  calibration_cases=_cases(spec.package_root, gate),
                                  acceptance="accepted" if ok else "unscored"))
