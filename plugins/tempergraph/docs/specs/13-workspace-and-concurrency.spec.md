@@ -3,27 +3,27 @@ title: Workspace and concurrency
 type: component
 status: review
 prefix: WSP
-adrs: [0014]
+adrs: [0014, 0090]
 ---
 
 # Workspace and concurrency
 
 ## 1. Overview
 
-Where a run's files live, how runs and writing units stay apart, and how many runs one machine drives. State lives outside the workspace; the workspace is disposable, the branch is not. This spec owns contracts C10 (paths resolve inside the workspace; the state root is the main checkout) and C11 (one graph per process).
+Where a run's files live, how runs and writing units stay apart, and how many runs one machine drives. State lives outside the workspace; the workspace is disposable, the branch is not. The worktree itself (the `run.workspace` parameter, roots, bases, names, lifecycle, cleanup, executor pointing and the `worktree` verb) is [WTR](82-worktree-mode.spec.md). This spec owns contracts C10 (paths resolve inside the workspace; the state root is the main checkout) and C11 (one graph per process).
 
 ## 2. Contract
 
 | Concept | Definition |
 |---|---|
 | State root | `<main checkout>/.tempergraph/`, found from git's common directory, whatever directory the engine starts in. Holds checkpoints, run logs, locks, the ledger, batch folders, every session's logs, the engine's code log and executor scratch (session homes, private MCP configs), in the layout of [LOS §2.1](33-local-observability-store.spec.md). Gitignored. |
-| Workspace | The main checkout (`in_place`) or an engine-owned git worktree beside the repository on branch `tg/<workflow>/<task_id>`, fixed for the run and stored in state. |
-| Writer worktree | A sibling worktree for a writer branch or writing map item, cut from the run's branch after a checkpoint commit. |
+| Workspace | The main checkout (`in_place`) or an engine-owned git worktree on its own branch, chosen by `run.workspace` (`auto` by default), fixed for the run and stored in state as a `WorkspaceRecord` ([WTR §2.2, §2.4, §2.8](82-worktree-mode.spec.md)). |
+| Writer worktree | A sibling worktree for a writer branch or writing map item, cut from the run's branch after a checkpoint commit, named by the suffix rule of [WTR §2.4](82-worktree-mode.spec.md). |
 | Run lock | Per-thread OS file lock under the state root. |
 
 ```python
 def state_root(start_dir: Path) -> Path: ...
-def prepare_workspace(thread: str, mode: str, include: list[str], setup: list[list[str]]) -> Path: ...
+def prepare_workspace(thread: str, plan: WorkspacePlan, decl: WorktreeDecl) -> WorkspaceRecord: ...   # WTR §2
 def merge_writers(run_branch: str, writers: list[str]) -> MergeResult: ...   # --no-ff, declared order
 ```
 
@@ -48,7 +48,7 @@ A workflow may declare `import_roots`: paths, relative to the workspace, that a 
 
 **WSP-B1 Resume after worktree deletion.** Given a paused run whose worktree was deleted, when it resumes, then the engine re-attaches a worktree to the run's branch and continues; the state was never in the worktree.
 
-**WSP-B2 Bootstrap of a worktree.** Given a workflow include list naming untracked local files and setup commands, when a worktree is created, then those files are copied and the commands run with list argv; a failed bootstrap removes the new worktree and branch.
+**WSP-B2 Bootstrap of a worktree.** Given a workflow `worktree.include` list ([WTR §2.3](82-worktree-mode.spec.md)) naming untracked local files and setup commands, when a worktree is created, then those files are copied and the commands run with list argv; a failed bootstrap removes the new worktree and branch.
 
 **WSP-B3 Interpreter in a worktree.** Given a step whose declared command starts with `python`, when it runs in a worktree, then `python` resolves to the workspace's virtual environment, else the main checkout's, else the engine's, never PATH.
 
@@ -66,14 +66,14 @@ A workflow may declare `import_roots`: paths, relative to the workspace, that a 
 |---|---|
 | Two planned batch runs whose names collide after flattening | Batch refused (exit 2) |
 | Merge conflict at a join | Run branch reset; step blocked; person decides |
-| Not inside a git repository, workflow needs worktrees | Exit 2 |
+| Not inside a git repository, workflow needs worktrees | Exit 2; `auto` resolves to `in_place` when the workflow has no writers ([WTR §2.2](82-worktree-mode.spec.md)) |
 
 ## 5. Design notes
 
 - One graph per process: branches of a fork are threads of one graph, so run-log and console writes hold locks; N runs are N processes sharing one checkpoint database per workflow ([ADR-0014](../adr/0014-sqlite-checkpointer.adr.md)).
 - The default concurrency of three is a guess for every executor: no gateway's or API organization's concurrent-session or rate limit was measured. It is marked projected. On `messages-api` and `agent-sdk` a 429 with `retry-after` is `throttled` (infra), and a batch whose children report `throttled` twice lowers its concurrency by one for the rest of the batch, recorded.
 - A merge is textual; two branches that merge cleanly but contradict each other are caught only by the join's judge or a check.
-- Cleanup is never automatic: a list verb and a prune verb; branches are never deleted.
+- Cleanup is never automatic unless a run sets `run.worktree.cleanup: on_finish`, which removes only clean worktrees; `worktree list` and `worktree prune` cover the rest; branches are never deleted ([WTR §2.7](82-worktree-mode.spec.md)).
 
 ## 6. Acceptance criteria
 

@@ -34,7 +34,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `batch <workflow> <targets…> [-k N]` | Many child runs, as a one-node orchestration ([ADR-0038](../adr/0038-batch-is-a-one-node-orchestration.adr.md)) | yes | yes |
 | `orchestrate validate\|plan\|start\|status\|wait\|answer\|edit\|stop\|resume\|list\|report …` | A graph of runs ([ORC §2.6](45-orchestration.spec.md)) | start, answer, edit, stop, resume | start, answer, resume |
 | `stop <selector> [--drain\|--now] [--caller …] [--relayed]` | Drain a running run (no new attempt or unit; ends `unfinished`, exit 4) or, with `--now`, end its open session at once; resumable either way. Owned by spec 32 (RCT §2) of the run-control design; needed by [ORC §2.8](45-orchestration.spec.md) N3 | yes | no |
-| `worktree list|prune` | Engine worktrees | prune only | no |
+| `worktree list [--all] [--json]`, `worktree path <thread>`, `worktree prune [--thread <t>] [--finished] [--older-than <days>] [--apply]` | Engine worktrees: list, a thread's path, removal of clean ones ([WTR §2.11](82-worktree-mode.spec.md)) | `prune --apply` only | no |
 | `update [--check] [--dry-run] [--json] [--with …] [--rollback] [--prune-engines]` | Install a release beside the current engine and switch to it; extras, shim, home layout, manifest reconcile; `--check` is read-only ([UPD](60-engine-update.spec.md)) | yes, except `--check` | no |
 | `install [--check] [--with …] [--add-to-path] [--repair]` | First install from the plugin's launcher: home folder, first environment, shim, `PATH` block, registry ([UPD §2.7](60-engine-update.spec.md)) | yes, except `--check` | no |
 | `workflows list\|register <path>\|unregister <name>\|reinstall [<name>\|--all]` | The workflow registry: entries, pins, dependencies reinstalled into the current environment ([UPD §2.8](60-engine-update.spec.md)) | all but `list` | no |
@@ -69,7 +69,8 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `--arm <switch>=<arm>` | `<switch>.arm`: operator pick of a switch arm ([CMP](03-compiler-and-flow.spec.md)) |
 | `--run-cost-cap <usd>` | `run.run_cost_cap_usd` ([BUD](08-budgets-and-failures.spec.md)) |
 | `--audit-rate <0..1>`, `--audit-executor <name>` | `run.audit_rate`, `run.audit_executor`: sampled audit judge ([JDG-B7](05-judge-and-verdict.spec.md)) |
-| `--worktree` / `--in-place` | `run.workspace` |
+| `--workspace auto\|worktree\|in_place`, `--worktree` / `--in-place` | `run.workspace` ([WTR §2.1](82-worktree-mode.spec.md)) |
+| `--worktree-root`, `--worktree-base`, `--worktree-cleanup` | `run.worktree.root`, `run.worktree.base`, `run.worktree.cleanup` |
 | `--approve <step>` | `<step>.approve=true`: approval pause after that step passes |
 | `--auto-reopen N` | `run.auto_reopen`, 1–10 |
 | `--caller person\|agent\|pipeline`, `--caller-app <name>` | Declares the caller on any mutating verb; a declaration only lowers trust, and `--caller person` from a marked agent is refused ([PRV §2.3](85-caller-provenance.spec.md)) |

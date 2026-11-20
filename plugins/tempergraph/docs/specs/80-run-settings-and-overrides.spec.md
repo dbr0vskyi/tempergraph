@@ -68,7 +68,12 @@ A map item has no scope of its own: items share their unit's settings, and a per
 | `human_cap` | run | int 1–100 | 100 | |
 | `run_cost_cap_usd` | run | float > 0 | workflow's, else none | |
 | `auto_reopen` | run | int 0–10 | 0 | |
-| `workspace` | run | `in_place` \| `worktree` | workflow's | `in_place` refused for a workflow with writer branches or writing items |
+| `workspace` | run | `auto` \| `in_place` \| `worktree` | workflow's, else `auto` | `in_place` refused for a workflow with writer branches or writing items; fixed at start ([WTR §2.1](82-worktree-mode.spec.md)) |
+| `worktree.root` | run | `sibling` \| `in_repo` \| `path:<absolute>` | `sibling` | Fixed at start ([WTR §2.4](82-worktree-mode.spec.md)) |
+| `worktree.base` | run | `head` \| `default_branch` \| `ref:<name>` | `head` | Fixed at start ([WTR §2.5](82-worktree-mode.spec.md)) |
+| `worktree.branch_prefix` | run | 1–3 ref-safe components | `tg` | Fixed at start |
+| `worktree.cleanup` | run | `never` \| `on_finish` | `never` | May change at resume ([WTR §2.7](82-worktree-mode.spec.md)) |
+| `worktree.read_worktreeinclude` | run | bool | `true` | [WTR §2.3](82-worktree-mode.spec.md) |
 | `enforce_tools`, `strict_permissions` | run | `true` | `false` | Tighten-only |
 | `audit_rate` | run | float 0–1 | 0 | [JDG-B7](05-judge-and-verdict.spec.md) |
 | `audit_executor` | run | registered executor | the gate judge's | |

@@ -22,11 +22,11 @@ def finalizer(ctx: FinalizerContext) -> FinalizerResult: ...   # WorkflowSpec.fi
 
 | Field or method | Meaning |
 |---|---|
-| `task_id`, `thread_id`, `workflow`, `branch`, `base`, `workdir` | As in the run ([VAL §2.3](76-step-values-and-template-keys.spec.md)) |
+| `task_id`, `thread_id`, `workflow`, `branch`, `base`, `workdir` | As in the run ([VAL §2.3](76-step-values-and-template-keys.spec.md)); `base` is the workspace record's `base_branch` and `workdir` the run worktree in worktree mode ([WTR §2.5, §2.6](82-worktree-mode.spec.md)) |
 | `artifacts`, `values`, `facts` | Every artifact pointer, value and check fact in final state, by unit and item |
 | `open_warnings` | The number of warnings left unmet by the final judgement of every unit; a count, never their text |
 | `degraded` | True when a gate's `fallback` was taken ([FLX §2.4](74-flow-extensions.spec.md)) |
-| `run_options` | The options recorded at start that a finalizer may read: `dry_run`, `in_place`, and the workflow's resolved settings |
+| `run_options` | The options recorded at start that a finalizer may read: `dry_run`, the resolved workspace `mode`, and the workflow's resolved settings |
 | `git` | `GitFacts` ([CHK §2.1](75-check-contract-and-command-runs.spec.md)) |
 | `resolve(text)`, `run(cmd, timeout_s)` | As for checks ([CHK §2.2, §2.3](75-check-contract-and-command-runs.spec.md)), through the finalizer's own allow-list entries |
 | `scrub(text)`, `clip(text, n)` | The engine's scrubber ([SEC §2.3](14-security.spec.md)) and a clip that never splits a character |
