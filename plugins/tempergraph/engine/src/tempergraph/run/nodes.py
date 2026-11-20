@@ -112,9 +112,14 @@ class EngineNodes:
             raise Drain("cost_cap")
 
     def _session(self, ex: Executor, req: SessionRequest, judge_views: Any = None,
-                 lessons_digest: str | None = None) -> tuple[SessionResult, list]:
+                 lessons_digest: str | None = None, extra: Mapping[str, Any] | None = None
+                 ) -> tuple[SessionResult, list]:
         """One session with infra tries and backoff outside the retry budget (BUD-B1, JDG-B5)."""
         results: list[SessionResult] = []
+        if req.kind in ("step", "retry"):  # the rendered prompt, kept local for the session review (SRV §2.5)
+            from tempergraph.improve.record import write_prompt
+
+            write_prompt(self.ctx.state_root, self.ctx.spec.name, self.ctx.task_id, req.session_key, req.prompt)
         for n in range(self.ctx.infra_tries):
             sink = session_sink(self.ctx.log, req, ex.name)
             self.ctx.log.write("attempt_start", session_key=req.session_key, kind=req.kind, executor=ex.name,
@@ -139,7 +144,8 @@ class EngineNodes:
                                error_kind=res.error_kind, timed_out=res.timed_out, stalled=res.stalled,
                                duration_s=res.duration_s, tool_wall_share=res.tool_wall_share,
                                slow_host=bool(res.timed_out and res.tool_wall_share >= 0.6),
-                               **({"lessons_digest": lessons_digest} if lessons_digest else {}))
+                               **({"lessons_digest": lessons_digest} if lessons_digest else {}),
+                               **dict(extra or {}))
             if res.infra_cause is None or n + 1 >= self.ctx.infra_tries:
                 break
             self.ctx.sleep(min(BACKOFF_S[min(n, len(BACKOFF_S) - 1)], self.ctx.backoff_max_s))
@@ -492,7 +498,8 @@ class EngineNodes:
                              options=j.session_options or SessionOptions(),
                              session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, key))
         before = gitmod.fingerprint(workdir)
-        res, results = self._session(ex, req, views)
+        changed = list(gitmod.changed_paths(workdir))[:200]  # the digest's `changed_read` (SRV §2.1)
+        res, results = self._session(ex, req, views, extra={"changed_paths": changed})
         all_results = list(results)
         out: dict[str, Any] = {"judge_executor": judge_name, "alias": alias, "views": list(views.tools)}
         if res.infra_cause is not None:

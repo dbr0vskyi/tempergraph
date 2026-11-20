@@ -363,7 +363,8 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
             if seg_row is not None:
                 summary = record_exit(root, spec, task_id, log.path, final, seg_row)
                 log.write("finding_recorded", **summary)
-                _loop(root, spec, task_id, tid, summary, settings, registry, judges)
+                _loop(root, spec, task_id, tid, summary, settings, registry, judges,
+                      operator_review=settled.run.get("session_review"), run_cost_usd=cost.reported + cost.estimated_only)
         except Exception as exc:  # noqa: BLE001
             log.write("engine_error", scope="improve", error=type(exc).__name__)
         outcome.thread_id = tid
@@ -374,7 +375,8 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
 
 
 def _loop(root: Path, spec: WorkflowSpec, task_id: str, tid: str, summary: Mapping[str, Any],
-          settings: RunSettings, registry: Registry, judges: Mapping[str, str]) -> None:
+          settings: RunSettings, registry: Registry, judges: Mapping[str, str], *,
+          operator_review: str | None = None, run_cost_usd: float = 0.0) -> None:
     """SIL-B1: hand the judged lenses to the detached loop child; `TEMPERGRAPH_LOOP=inline|off` for tests."""
     from tempergraph.improve import child
 
@@ -385,7 +387,9 @@ def _loop(root: Path, spec: WorkflowSpec, task_id: str, tid: str, summary: Mappi
     # `--dry-run` holds for the thread: any segment that started with it
     dry = settings.dry_run or last_record(run_dir(root, spec.name, task_id) / "run.jsonl", "run_started",
                                           dry_run=True) is not None
-    if child.hand_off(root, spec, task_id, tid, summary, dry_run=dry, judge_executor=executor) is None:
+    if child.hand_off(root, spec, task_id, tid, summary, dry_run=dry, judge_executor=executor,
+                      operator_review=operator_review, run_cost_usd=run_cost_usd,
+                      trial=settings.origin == "trial") is None:
         return
     if child.mode() == "inline":
         child.drain(registry=registry)

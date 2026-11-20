@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,7 @@ from tempergraph.improve import child, filing
 from tempergraph.improve.codehost import MemoryCodeHost
 from tempergraph.store.layout import home_path
 
+from .fixtures.workflows import two_step
 from .test_run import DRAFT, REVIEW, go, judge, registry, verdict_block
 
 
@@ -94,7 +96,8 @@ def test_no_ticket_without_a_fault_and_off_switch(repo: Path, monkeypatch: pytes
     started: list[tuple[str, ...]] = []
     monkeypatch.setattr(detach, "start", lambda m, w, h: started.append((m, *w)) or True)
     ex = standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge()])
-    assert go(repo, ex, task="L-6").exit_code is ExitCode.FINISHED
+    quiet = dataclasses.replace(two_step(), session_review="off")  # a dev run's session review is a ticket too
+    assert go(repo, ex, spec=quiet, task="L-6").exit_code is ExitCode.FINISHED
     assert not tickets() and not started
     blocked_run(repo, "L-7", monkeypatch)
     monkeypatch.setenv("TEMPERGRAPH_LOOP", "off")

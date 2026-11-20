@@ -7,6 +7,7 @@ machine, and is never opened by filing code.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
@@ -18,6 +19,7 @@ from typing import Any
 from tempergraph import identity
 from tempergraph.contracts import WorkflowSpec
 from tempergraph.improve import causes as causemod
+from tempergraph.improve import digest as digestmod
 from tempergraph.improve import lenses
 from tempergraph.security.scrub import clip, scrub
 from tempergraph.store.layout import run_dir
@@ -32,6 +34,41 @@ def findings_path(root: Path, workflow: str, task_id: str) -> Path:
 
 def evidence_path(root: Path, workflow: str, task_id: str) -> Path:
     return run_dir(root, workflow, task_id) / "evidence" / "record.json"
+
+
+def prompt_path(root: Path, workflow: str, task_id: str, session_key: str) -> Path:
+    return run_dir(root, workflow, task_id) / "evidence" / "prompts" / f"{session_key}.txt"
+
+
+def write_prompt(root: Path, workflow: str, task_id: str, session_key: str, text: str) -> None:
+    """A step session's rendered prompt, scrubbed, local only: the session review's intent (SRV §2.5)."""
+    with contextlib.suppress(OSError):  # contract C2
+        _write_private(prompt_path(root, workflow, task_id, session_key), clip(scrub(text), EVIDENCE_CHARS))
+
+
+def read_prompt(root: Path, workflow: str, task_id: str, session_key: str) -> str:
+    try:
+        return prompt_path(root, workflow, task_id, session_key).read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+
+def unit_decls(spec: WorkflowSpec) -> dict[str, dict[str, Any]]:
+    """What each unit declares, for the digest and the review header: tools, criteria, the judge's brief."""
+    from tempergraph.contracts import TextRef
+    from tempergraph.model.text import TextUnreadable, load_text, split_judge_file
+
+    out: dict[str, dict[str, Any]] = {}
+    for name, u in spec.units.items():
+        j = u.gate.judge
+        brief = (j.brief if j else "") or ""
+        if j is not None and j.file:
+            with contextlib.suppress(TextUnreadable):
+                brief = split_judge_file(load_text(spec, TextRef(path=j.file)))[1] or brief
+        out[name] = {"tools": list(u.step.tools) if u.step else [],
+                     "criteria": [{"id": c.id, "text": c.text} for c in u.gate.criteria],
+                     "brief": clip(brief, 4000)}
+    return out
 
 
 def read_findings(root: Path, workflow: str, task_id: str) -> list[dict[str, Any]]:
@@ -106,6 +143,15 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
     ivs = [r for r in ledger if r.get("kind") == "intervention" and r.get("thread_id") == thread
            and str(r.get("ts") or "") >= since and (not seg_start or str(r.get("ts") or "") <= seg_start)]
     found = causemod.derive(seg, ivs, row.get("grants") or ())
+    decls = unit_decls(spec)
+    try:  # SRV §2.1, §2.2: digests first, their causes join the findings; never changes the exit (C2)
+        digests = digestmod.write_segment(root, spec.name, task_id, seg, decls)
+        passed = {str(r.get("unit")): {"passed": not (r.get("blockers") or [])}  # the unit's last judgement
+                  for r in seg if r.get("kind") == "judgement" and r.get("unit")}
+        found += digestmod.causes(digests, root=root, workflow=spec.name, version=row.get("workflow_version"),
+                                  units=decls, judged=passed)
+    except Exception:  # noqa: BLE001
+        digests = []
     keys = {k: row.get(k) for k in ("workflow", "workflow_version", "machine", "repo", "settings_digest",
                                     "overridden_keys")}
     req = str(((values.get("request") or {}).get("inputs") or {}).get("request") or "")
@@ -127,7 +173,7 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
                "findings": read_findings(root, spec.name, task_id) + lines}
         _write_private(findings_path(root, spec.name, task_id), json.dumps(doc, default=str))
     _write_private(evidence_path(root, spec.name, task_id), json.dumps(evidence(values), default=str))
-    summary: dict[str, Any] = {"causes": sorted({x["cause"] for x in lines}),
+    summary: dict[str, Any] = {"digests": len(digests), "causes": sorted({x["cause"] for x in lines}),
                                "sides": sorted({x["side"] for x in lines if x["class"] == "fault"}),
                                "count": len(lines),
                                "fingerprints": sorted({x["fingerprint"] for x in lines}),

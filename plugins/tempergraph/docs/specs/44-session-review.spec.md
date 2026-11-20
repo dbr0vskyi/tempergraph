@@ -1,7 +1,7 @@
 ---
 title: Session digest and session review
 type: component
-status: draft
+status: ready-for-implementation
 prefix: SRV
 adrs: [0116, 0117, 0118, 0119, 0013, 0031, 0033]
 ---
@@ -174,7 +174,7 @@ All are parameters with provenance `default_no_data`. Review spend is logged in 
 | Record | Where | Holds | Published |
 |---|---|---|---|
 | Digest | `sessions/<key>/digest.json` | §2.1 | Its causes, as findings metadata |
-| Review plan, review results | `loop.jsonl` (`review_planned`, `review_done`, `review_failed`) | Plan fields; per observation: category, remedy class, confidence, check result, `corroborated`; counts | Category codes and counts only |
+| Review plan, review results | `loop.jsonl` (`review_planned`, `review_session`, `review_skipped`, `review_done`, `review_failed`) | Plan fields; per observation: category, remedy class, confidence, check result, `corroborated`; counts | Category codes and counts only |
 | Review evidence | `runs/<wf>/<task>/evidence/review/<session_key>.json` | The condensed view's digest, the reviewer's block with notes and conformance | Never |
 | Findings | `findings.json` | A corroborated observation adds `review:<category>` to the corroborating finding's causes and `review_weight` to it | As metadata |
 
@@ -228,6 +228,7 @@ The review evidence follows the evidence file's rules ([SEC §2.3](14-security.s
 - `conformance[]` is the dev-mode answer to "do the prompts and agents work as intended": it lists every instruction section, lesson, skill and subagent type and whether the session followed it.
 - Graduation ([ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)) may read `improve review summary`: a version whose last dev-mode runs leave no corroborated observation open on any unit is a candidate for stable mode. The rule is not set.
 - Release split ([first-release plan](../plans/first-release.plan.md) T12.9): release 1 builds the digest and its causes, `full` reviews in dev mode, probation and authoring trials, the citation check, the local report and the verbs; review results never file. Stable-mode `signals` plans, saturation, corroborated filing and the proposer's use of observations follow in release 2 (X2-26), since no workflow reaches stable mode before its gates are calibrated ([LIF-B6](18-lifecycle-and-evals.spec.md)).
+- Release 1 as built (assumptions, T12.9): the workflow field is `WorkflowSpec.session_review` and the operator's is the run setting `session_review` ([RST §2.2](80-run-settings-and-overrides.spec.md)), which only lowers. A `signals` plan records `depth: none` with `deferred: signals_release_2`. Probation reads `full` for every unit, as release 1 keeps no per-unit version diff. A step session's intent is its rendered prompt, kept scrubbed at `evidence/prompts/<session_key>.txt` ([LOS §2.1](33-local-observability-store.spec.md)); a judge's is its brief and criteria, carried on the hand-off ticket. `tokens_before_first_write` is the context size at the first write turn. `judge_unread_pass` reads the unit's last judgement of the segment. A person's `improve review` always reads `full`. `review_session` loop records name each reviewer session. The run's own cost for the run share is reported plus estimate-only cost.
 
 ## 6. Acceptance criteria
 

@@ -63,18 +63,31 @@ def mode() -> str:
 
 
 def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary: Mapping[str, Any], *,
-             dry_run: bool, judge_executor: str, home: Path | None = None) -> Path | None:
-    """Writes the ticket when a judged lens fired at this final exit and there is a fault to judge."""
+             dry_run: bool, judge_executor: str, home: Path | None = None, operator_review: str | None = None,
+             run_cost_usd: float = 0.0, trial: bool = False) -> Path | None:
+    """Writes the ticket when a judged lens fired at this final exit and there is a fault to judge, or when the
+    session review (SRV §2.3) has a depth other than none for this exit."""
+    from tempergraph.improve import review
+    from tempergraph.improve.record import unit_decls
+
     lenses = summary.get("lenses") or {}
     friction = bool(lenses.get("friction")) and bool(summary.get("fault_fingerprints"))
-    if not friction:  # an outcome judge alone spends for nothing until a calibration score exists (SIL-B7)
+    final = "lenses" in summary  # a final exit (SIL §2.1)
+    prob = review.probation(root, spec.name, spec.version)
+    depth = review.effective(spec.session_review, operator_review, spec.improvement_mode, prob, trial) \
+        if final else "off"
+    reason = "trial" if trial else "probation" if prob and spec.improvement_mode != "dev" else \
+        "dev" if spec.improvement_mode == "dev" else "signal"
+    if not friction and depth == "off":  # an outcome judge alone spends for nothing until calibrated (SIL-B7)
         return None
     tid = uuid.uuid4().hex[:16]
     ticket = {"schema_version": 1, "ticket_id": tid, "thread": thread, "workflow": spec.name,
               "workflow_version": spec.version, "task_id": task_id, "state_root": str(root),
               "issue_repository": spec.issue_repository, "mode": spec.improvement_mode, "dry_run": dry_run,
               "executor": judge_executor, "fingerprints": list(summary.get("fingerprints") or []),
-              "lenses": {"friction": friction, "outcome": False}, "at": now_iso()}
+              "lenses": {"friction": friction, "outcome": False}, "at": now_iso(),
+              "review": depth, "review_reason": reason, "run_cost_usd": round(float(run_cost_usd or 0.0), 6),
+              "units": unit_decls(spec) if depth != "off" else {}}
     path = tickets_dir(home or home_path()) / f"{tid}.json"
     write_json(path, ticket)
     return path
@@ -197,7 +210,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
                            "alias": ALIAS, "ok": res.ok, "parsed": bool(judged), "usage": dataclasses.asdict(res.usage),
                            "session_id": res.session_id})
     cands: list[filing.Candidate] = []
-    for f in mine:
+    for f in mine if (t.get("lenses") or {}).get("friction") else ():
         j = judged.get(str(f.get("fingerprint")))
         cands.append(filing.Candidate(finding=f, lens="friction", confidence=j["confidence"] if j else None,
                                       attributed=bool(j and j["attributed"]), request_digest=f.get("request_digest")))
@@ -207,6 +220,15 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     for r in results:  # IMD §2.3 loop events, ids and enums only
         kind = {"filed": "issue_filed", "commented": "issue_commented"}.get(str(r.get("op")), "loop_result")
         append_jsonl(log, {"ts": now_iso(), "kind": kind, **r})
+    if str(t.get("review") or "off") != "off":  # SRV §2.3: after filing; its results never file (SRV-B7)
+        try:
+            from tempergraph.improve import review
+
+            rv = review.run(t, registry, reason=str(t.get("review_reason") or "dev"))
+            cost["reported"] += rv["cost"]["reported"]
+            cost["estimated_only"] += rv["cost"]["estimated_only"]
+        except Exception as exc:  # noqa: BLE001 - the review is best effort (SRV §4)
+            append_jsonl(log, {"ts": now_iso(), "kind": "review_failed", "error": type(exc).__name__})
     Ledger(path=root / "ledger.jsonl").append({"kind": "loop", "thread_id": thread, "workflow": wf,
                                                "workflow_version": t.get("workflow_version"), "cost": cost,
                                                "ops": sorted({str(r.get("op")) for r in results})})

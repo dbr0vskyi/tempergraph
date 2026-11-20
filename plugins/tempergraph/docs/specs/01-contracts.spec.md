@@ -26,23 +26,24 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `flow` | map unit → `FlowSpec` | Where a pass goes when it is not the next in `order`. |
 | | `input` | `InputDeclaration` | How a run starts (§2.3). |
 | | `workspace` | `auto` \| `in_place` \| `worktree`, default `auto` | Default workspace mode ([WTR §2.2](82-worktree-mode.spec.md)). |
-| | `worktree` | `WorktreeDecl`, optional | Include patterns, setup commands and submodule handling for a new worktree ([WTR §2.3](82-worktree-mode.spec.md)). |
-| | `finalizer` | callable ref, optional | Runs once after the last pass; calls no model; never changes the run's exit code ([FIN](78-finalizer-contract.spec.md)). |
+| | `worktree` | `WorktreeDecl`, optional | Include patterns, setup commands, submodules for a new worktree ([WTR §2.3](82-worktree-mode.spec.md)). |
+| | `finalizer` | callable ref, optional | Runs once after the last pass; no model; never changes the exit code ([FIN](78-finalizer-contract.spec.md)). |
 | | `finalizer_outcomes` | list of slugs, required with `finalizer` | The outcomes the finalizer may report ([FIN §2.3](78-finalizer-contract.spec.md)). |
 | | `default_executor` | executor name | Used when a step names none. |
 | | `model_profile` | `ModelProfile` | Default aliases per step and judge (§2.4). |
-| | `issue_repository` | `owner/name` | Required. Receives the workflow's improvement issues. |
+| | `issue_repository` | `owner/name` | Required. Receives its improvement issues. |
 | | `routing` | `RoutingMetadata` | Description, when to use, task kind. |
 | | `improvement_mode` | `dev` \| `stable` | Self-improvement mode. |
-| | `verified_engine` | version string, optional | The engine release the workflow was last stamped against. |
-| | `command_resolver` | callable ref, optional | Maps a declared command prefix to the argv a check or the tool host runs, so gates work for a non-Python repository ([WFM](02-workflow-model.spec.md)). |
+| | `session_review` | `auto` \| `full` \| `signals` \| `off` | Default `auto` ([SRV §2.3](44-session-review.spec.md)). |
+| | `verified_engine` | version string, optional | The engine release last stamped against. |
+| | `command_resolver` | callable ref, optional | Maps a declared command prefix to the argv a check or the tool host runs ([WFM](02-workflow-model.spec.md)). |
 | | `run_cost_cap_usd` | float, optional | Spend cap for one run, children included ([BUD](08-budgets-and-failures.spec.md)). |
 | | `version` | semver, default `0.0.0` | The owner's release of the workflow; with the content digest it forms `workflow_version` ([VER §2.4](61-version-metadata.spec.md)). |
-| | `requires_engine` | version range, optional | Engine releases the owner states it works with; warns only ([VER §2.7](61-version-metadata.spec.md)). |
+| | `requires_engine` | version range, optional | Engine releases it works with; warns only ([VER §2.7](61-version-metadata.spec.md)). |
 | | `upgrade` | `UpgradePolicy`, optional | What a workflow upgrade may touch ([VER §2.4](61-version-metadata.spec.md)). |
 | | `settings` | map name → `SettingDecl`, optional | Typed workflow switches an operator may override ([RST §2.5](80-run-settings-and-overrides.spec.md)). |
 | | `profiles` | map name → map `SettingKey` → value, optional | Named bundles of settings ([RST §2.5](80-run-settings-and-overrides.spec.md)). |
-| | `outcome` | `OutcomeSpec` (§2.14) | Read from `outcome.json` at load; gates take their criteria from it ([OUT](90-run-outcome.spec.md), [PKG §2.3](88-workflow-package.spec.md)). |
+| | `outcome` | `OutcomeSpec` (§2.14) | Read from `outcome.json` at load; gates take criteria from it ([OUT](90-run-outcome.spec.md), [PKG §2.3](88-workflow-package.spec.md)). |
 | | `allow_commands` | list of command prefixes | The workflow-wide allow-list ([WFM §2.1](02-workflow-model.spec.md)). |
 | | `builtin`, `package_root` | bool; path | Engine-set: the self-improvement flag ([WFM §2](02-workflow-model.spec.md)); the package folder text refs resolve in. |
 | `UnitSpec` | `kind` | `step` \| `route` \| `switch` \| `parallel` \| `map` \| `subworkflow` \| `wait` \| `script` \| `council` \| `contest` \| `ask` | Owners: [CMP §2.2](03-compiler-and-flow.spec.md), [FLX](74-flow-extensions.spec.md) (flow); [SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md). |

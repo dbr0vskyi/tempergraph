@@ -69,6 +69,7 @@ A map item has no scope of its own: items share their unit's settings, and a per
 | `run_cost_cap_usd` | run | float > 0 | workflow's, else none | |
 | `auto_reopen` | run | int 0–10 | 0 | |
 | `workspace` | run | `auto` \| `in_place` \| `worktree` | workflow's, else `auto` | `in_place` refused for a workflow with writer branches or writing items; fixed at start ([WTR §2.1](82-worktree-mode.spec.md)) |
+| `session_review` | run | `auto` \| `full` \| `signals` \| `off` | workflow's `session_review`, else `auto` | The operator's setting lowers the workflow's, never raises it ([SRV §2.3](44-session-review.spec.md)) |
 | `worktree.root` | run | `sibling` \| `in_repo` \| `path:<absolute>` | `sibling` | Fixed at start ([WTR §2.4](82-worktree-mode.spec.md)) |
 | `worktree.base` | run | `head` \| `default_branch` \| `ref:<name>` | workflow's `worktree.base`, else `head` | Fixed at start ([WTR §2.5](82-worktree-mode.spec.md)) |
 | `worktree.branch_prefix` | run | 1–3 ref-safe components | `tg` | Fixed at start |

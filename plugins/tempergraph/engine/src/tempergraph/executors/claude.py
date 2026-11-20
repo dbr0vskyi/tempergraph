@@ -122,6 +122,9 @@ def judge_argv(views: ViewSet, model: str | None, *, isolated: bool) -> list[str
     argv += ["--bare"] if isolated else ["--setting-sources", ""]
     if model is not None:
         argv += ["--model", model]
+    if views.tool_less:  # SRV §2.6, SRV-AC-6: the session reviewer gets no tool and no MCP server
+        return argv + ["--tools", "", "--strict-mcp-config", "--disallowedTools", "mcp__*",
+                       "--permission-mode", "dontAsk"]
     tools = [t for t in views.tools if not t.startswith("mcp__")] or list(JUDGE_TOOLS)
     argv += ["--tools", ",".join(tools), "--disallowedTools", "mcp__*", "--permission-mode", "dontAsk",
              "--allowedTools", ",".join(tools)]

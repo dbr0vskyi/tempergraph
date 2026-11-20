@@ -25,7 +25,8 @@ Everything a repository's runs leave on the machine lives in one folder, the sta
   locks/<workflow>/<task_id>.lock   [DUR]
   runs/<workflow>/<task_id>/
     run.jsonl                       run log [OBS], with the envelope of [EVT §2.1]
-    evidence/                       request, outputs, feedback; review/<session_key>.json from the session reviewer; local only [SEC §2.3, SRV §2.8]
+    evidence/                       request, outputs, feedback; review/<session_key>.json from the session reviewer;
+                                    prompts/<session_key>.txt, a step's scrubbed prompt for the review; local only [SEC §2.3, SRV §2.8]
     findings.json                   [SIL]
     loop.jsonl                      the loop child's records for this thread: judged sessions, filing results [SIL §5]
     engine.json                     engines and workflow versions each process ran on; a pin [MIG §2.1]

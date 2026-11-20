@@ -188,6 +188,7 @@ CATALOG: dict[str, Entry] = {
     "run_cost_cap_usd": Entry(RUN, _float(0)),
     "auto_reopen": Entry(RUN, _int(0, 10), 0),
     "workspace": Entry(RUN, _choice("auto", "in_place", "worktree"), "auto"),
+    "session_review": Entry(RUN, _choice("auto", "full", "signals", "off"), "auto"),  # lowers only (SRV §2.3)
     "worktree.root": Entry(RUN, str, "sibling", _only("worktree.root", "sibling")),
     "worktree.base": Entry(RUN, str, "head", _only("worktree.base", "head")),
     "worktree.branch_prefix": Entry(RUN, _prefix, "tg"),
