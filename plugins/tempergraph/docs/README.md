@@ -11,6 +11,7 @@ Code for release 1 lives in [`../engine/`](../engine/pyproject.toml) and is buil
 | [specs/](specs/00-overview.spec.md) | Behaviour specs | **What** the engine does: contracts, Given/When/Then behaviours, error conditions, acceptance criteria. Never implementation code. | [Spec rules](#spec-rules) |
 | [adr/](adr/README.md) | Architecture decision records | **Why**: one decision each, its options, trade-offs and consequences. Links specs, restates none. | [Decision rules](#decision-rules) |
 | [research/](research/README.md) | Research notes | Background findings that answer an unknown, with sources and confidence marks. | [Research rules](#research-rules) |
+| [guides/](guides/README.md) | How-to guides | **How to use** tempergraph, for people who run and author workflows: install, run, author, improve. Restate no requirement; link the spec instead. | Same truth ranking: a guide never outranks a spec |
 | [plans/](plans/README.md) | Implementation plans | **In what order**: the release plan's tracks and phases, then one expanded plan per track. | Release 2 tracks follow temperspec's [plan rule](../../temperspec-tgraph/rules/plan.rule.md) |
 
 Read in this order before planning or coding a component: the [overview spec](specs/00-overview.spec.md), the [contracts spec](specs/01-contracts.spec.md), the component spec, then the decision records and research notes it links.
@@ -27,6 +28,7 @@ Every SDD artifact carries its type in a double suffix, `<name>.<type>.md`, so a
 | Implementation plan (skeleton or expanded) | `.plan.md` | `<component>.plan.md` | `plans/` |
 | Task, story or request | `.task.md` | `<work-item>.task.md` | `tasks/` |
 | Triage note (gap list and route) | `.triage.md` | `<work-item>.triage.md` | `tasks/` |
+| How-to guide | `.guide.md` | `<topic>.guide.md` | `guides/` |
 | Rule file | `.rule.md` | `<artifact-type>.rule.md` | the repo's rule folder |
 
 - Specs, decision records, research notes and plans exist in this set today; the other types are reserved so the next links in the chain need no new decision.

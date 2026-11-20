@@ -13,12 +13,49 @@ Build AI workflows you can trust: state the good outcome first, check every step
 ![built on LangGraph](https://img.shields.io/badge/built%20on-LangGraph-8A5CB0)
 ![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-E3B04B)
 
-[How it works](#how-it-works) · [A workflow](#what-a-workflow-looks-like) · [Getting started](#getting-started) · [CLI](#the-cli) · [Design docs](plugins/tempergraph/docs/README.md) · [Roadmap](#roadmap)
+[Quick start](#quick-start) · [How it works](#how-it-works) · [Features](#built-in-not-bolted-on) · [Guides](plugins/tempergraph/docs/guides/README.md) · [CLI](#the-cli) · [Design docs](plugins/tempergraph/docs/README.md) · [Roadmap](#roadmap)
 
 </div>
 
 > [!IMPORTANT]
 > **Release 1 is built and offline-tested; it has not yet been run against a live Claude Code session.** The offline suite runs every component on stand-in executors. The checks that need a signed-in `claude` (install from the plugin, a real two-step run, judge scoring, the monitor mod) are listed with their commands and pass criteria in [live-checks.plan.md](plugins/tempergraph/docs/plans/live-checks.plan.md) and are still pending. Expect rough edges until those pass.
+
+## Quick start
+
+You need macOS or Linux, Python 3.11+, git and a signed-in [Claude Code](https://docs.claude.com/en/docs/claude-code).
+
+**1. Install.** Add this repository as a plugin marketplace, install the plugin, then let Claude install the engine:
+
+```sh
+git clone https://github.com/dbr0vskyi/tempergraph.git
+claude plugin marketplace add ./tempergraph
+claude plugin install tempergraph@tempergraph
+```
+
+> Install tempergraph, and prepare this repository for it.
+
+**2. Run a workflow.** Install an example (`release-notes-tgraph` or `doc-refresh-tgraph`) from the same marketplace, or register its folder, then ask:
+
+> Run the release-notes workflow for v1.2.
+
+Claude checks the run first (no spend), starts it, reports how it ended, and hands every pause back to you. The CLI equivalent:
+
+```sh
+tempergraph workflows register ./tempergraph/plugins/release-notes-tgraph
+tempergraph run release-notes --check v1.2
+tempergraph run release-notes v1.2
+```
+
+**3. Create your own.** Describe what you want automated and what you already have:
+
+> Turn our release checklist into a tempergraph workflow. Here's the script we use today.
+
+Claude interviews you, starting from what a good result is, then scaffolds, verifies and registers the workflow package.
+
+> [!NOTE]
+> The plugin install path is live check L-16 and has not been confirmed yet. To work on the engine itself instead: `cd plugins/tempergraph/engine && python -m pip install -e '.[dev]' && python -m pytest` (offline, stand-in executors only).
+
+Each step has a guide: [getting started](plugins/tempergraph/docs/guides/getting-started.guide.md), [running workflows](plugins/tempergraph/docs/guides/running-workflows.guide.md), [authoring workflows](plugins/tempergraph/docs/guides/authoring-workflows.guide.md) and [improving workflows](plugins/tempergraph/docs/guides/improving-workflows.guide.md).
 
 ## Why tempergraph
 
@@ -30,31 +67,77 @@ tempergraph is an opinionated Python engine on [LangGraph](https://github.com/la
 - **Rules before models.** Deterministic checks run first. An independent judge, which cannot see the step's reasoning or edit its work, covers what rules cannot express. The verdict comes from a rule, not from a model's mood.
 - **Verdicts drive the graph.** Retries, trips back to an earlier step and pauses for a person are graph edges, each with a budget.
 - **People decide pauses.** An agent can relay a person's decision but never makes one, and one command lists everything waiting on a person.
-- **Nothing is free by accident.** Every model call is costed (unmeasured is never counted as zero), every run leaves a detailed log, and each run reports how much supervision it needed.
-- **Tempered over time.** A self-improvement loop files de-duplicated issues from failed gates, drafts changes, measures them in paired trials and hands them to a person to accept.
+- **Tempered over time.** Self-improvement, observability, cost tracking and reports are part of the engine, not add-ons ([below](#built-in-not-bolted-on)).
 
 ## How it works
 
-```mermaid
-flowchart LR
-    O([Good outcome<br/>criteria]) --> S[Step<br/>script or model]
-    S --> C{Checks<br/>deterministic}
-    C -- pass --> J{Judge<br/>independent}
-    C -- fail --> S
-    J -- pass --> N[Next step]
-    J -- revise --> S
-    J -- unsure --> P([Person decides])
-    P --> S
-    P --> N
-    N --> F{Outcome gate}
-    F -- met --> D([Done])
-    F -. failed gates .-> L[Self-improvement<br/>loop]
-    L -. measured change,<br/>accepted by a person .-> S
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/how-it-works-dark.svg">
+    <img src="assets/how-it-works-light.svg" alt="How a run flows: good outcome, step, deterministic checks, independent judge, outcome gate, done. Failed checks and judge revisions send work back to the step; an unsure verdict or an approval pauses for a person; every run's record feeds the self-improvement loop, whose measured changes a person accepts." width="100%">
+  </picture>
+</p>
 
 A **workflow** is declarative data: steps, gates and flow. The engine validates it, compiles it to a durable LangGraph state graph and runs each step as a fresh headless session on an **executor**. Runs survive restarts and can wait days at a pause. A workflow starts in `dev` mode on your machine and moves to a pipeline once its runs show it no longer needs babysitting.
 
 Why "temper": steel is tempered by heating and cooling it in repeated, controlled cycles until it is hard and not brittle. The logo's stripes are the oxide colours steel turns as it is tempered: straw, bronze, purple and blue.
+
+## Built in, not bolted on
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### Self-improvement
+
+- Every run records its findings with no model call: failed gates, retries, interventions, cost.
+- Repeated causes become one de-duplicated issue each, with no request text in it.
+- The loop drafts changes and measures them in paired trials (old against new) before you see them.
+- Judges are calibrated against your labels, and a workflow moves to `stable` only once they clear the bar.
+
+`improve backlog` · `improve propose` · `improve trial` · `evals bar`
+
+</td>
+<td width="50%" valign="top">
+
+### Observability
+
+- A detailed run log of every step, session, check, verdict and decision, in order.
+- Raw session logs, check output and engine logs kept locally, with retention and export.
+- A live view of running and paused runs inside Claude Code, through the monitor mod.
+- A read-only troubleshooter that ranks likely causes when a run goes wrong.
+
+`status --detail` · `events --follow` · `logs` · `store`
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### Tracking
+
+- Every model call is costed. Reported and estimated cost are kept apart, and unmeasured cost is never shown as zero.
+- Every call and decision names who made it: a person, an agent relaying a person, a pipeline or the engine.
+- Every run records how much supervision it needed and what supervising it cost.
+- Every run is tied to the workflow version and its outcome record.
+
+`outcome show` · `supervision show` · `facts`
+
+</td>
+<td width="50%" valign="top">
+
+### Reports
+
+- Cost and friction by step, executor, workflow version, host or supervision level, over any window.
+- Supervision and self-improvement reports, so you can see a workflow needing less of you over time.
+- Monthly per-person usage, also gathered across machines through a shared folder.
+- One list of everything waiting on a person, oldest first.
+
+`report` · `report --supervision` · `report --loop` · `stats` · `attention`
+
+</td>
+</tr>
+</table>
 
 ## What a workflow looks like
 
@@ -97,45 +180,36 @@ def workflow():
     )
 ```
 
-Both are trimmed from the engine's test fixtures. You don't have to write them by hand: the `author` skill interviews you, starting from the good outcome, and the engine scaffolds, checks and registers the package.
+Both are trimmed from the [`release-notes-tgraph`](plugins/release-notes-tgraph) example. You don't have to write them by hand: the `author` skill interviews you, starting from the good outcome, and the engine scaffolds, checks and registers the package.
 
-## Getting started
+## Skills and plugins
 
-tempergraph needs macOS or Linux, Python 3.11 or newer, git, and [Claude Code](https://docs.claude.com/en/docs/claude-code) signed in. Release 1 runs steps on Claude Code only.
-
-### As a Claude Code plugin
-
-> [!NOTE]
-> This is the intended install path. It is live check L-16 and has not been confirmed yet.
-
-```sh
-git clone https://github.com/dbr0vskyi/tempergraph.git
-claude plugin marketplace add ./tempergraph
-claude plugin install tempergraph@tempergraph
-```
-
-Then ask Claude to "install tempergraph". The `install` skill shows one plan (the Python it found, where the engine goes, and an optional `PATH` change), asks once, installs, and probes that `claude` is ready. After that, the plugin's skills take over:
+You mostly work through Claude Code. The plugin's skills turn plain requests into engine commands, read the engine's JSON rather than guessing, and leave every decision to you:
 
 | Skill | Use it to |
 |---|---|
-| `author` | Turn a process, script, template or idea into a workflow, starting from the good outcome |
+| `install` | Install the engine with one plan and one yes, then probe that `claude` is ready |
+| `bootstrap` | Make a repository ignore the engine's run state |
 | `run` | Start, resume and report runs; every pause goes back to you |
-| `bootstrap` | Prepare the current repository for tempergraph runs |
-| `troubleshoot` | Work out why a run failed or stalled |
+| `author` | Turn a process, script, template or idea into a workflow, starting from the good outcome |
+| `troubleshoot` | Find out, read-only, why a run failed, stalled or cost more than expected |
 
-The optional `tempergraph-monitor` plugin is a Claude Code mod that shows live runs, alerts, a drill-down per step and cost, inside Claude Code.
+The marketplace also carries:
 
-### From source
+| Plugin | What it is |
+|---|---|
+| `tempergraph-monitor` | A Claude Code mod that shows live runs, alerts, a per-step drill-down and cost |
+| `release-notes-tgraph` | Example workflow: one judged step that writes release notes since the last tag |
+| `doc-refresh-tgraph` | Example workflow: a script, a route on a value, a trip back, an approval and a finalizer |
 
-```sh
-cd plugins/tempergraph/engine
-python -m pip install -e '.[dev]'
-python -m pytest           # offline, stand-in executors only
-ruff check src tests
-mypy
-```
+## Guides
 
-Live checks against a signed-in `claude` are marked `live` and run only with `TEMPERGRAPH_LIVE=1`; see [live-checks.plan.md](plugins/tempergraph/docs/plans/live-checks.plan.md).
+| Guide | Covers |
+|---|---|
+| [Getting started](plugins/tempergraph/docs/guides/getting-started.guide.md) | Requirements, install, preparing a repository, a first run |
+| [Running workflows](plugins/tempergraph/docs/guides/running-workflows.guide.md) | Checking and starting runs, exit codes, pauses, reruns, logs and cost |
+| [Authoring workflows](plugins/tempergraph/docs/guides/authoring-workflows.guide.md) | The outcome-first interview, verification, the package layout, revisions |
+| [Improving workflows](plugins/tempergraph/docs/guides/improving-workflows.guide.md) | Labels, judge calibration, proposals and trials, dev and stable mode |
 
 ## The CLI
 
@@ -164,10 +238,12 @@ This repository is also a Claude Code plugin marketplace named `tempergraph`.
 | Path | What is there |
 |---|---|
 | [`plugins/tempergraph/`](plugins/tempergraph) | The engine plugin: launcher, skills, hooks and the Python engine in `engine/` |
+| [`plugins/tempergraph/docs/guides/`](plugins/tempergraph/docs/guides/README.md) | How-to guides for people who use tempergraph |
 | [`plugins/tempergraph/docs/`](plugins/tempergraph/docs/README.md) | The engine's design: overview and component specs, decision records, research and plans |
 | [`plugins/tempergraph-monitor/`](plugins/tempergraph-monitor) | The monitor mod and its own design docs |
+| [`plugins/release-notes-tgraph/`](plugins/release-notes-tgraph), [`plugins/doc-refresh-tgraph/`](plugins/doc-refresh-tgraph) | Example workflow packages |
 | [`plugins/temperspec-tgraph/`](plugins/temperspec-tgraph/README.md) | temperspec, the delivery workflow built on tempergraph: a task goes through triage, discovery, a plan and tested code to a draft pull request. |
-| [`assets/`](assets) | The logo and the social preview image |
+| [`assets/`](assets) | The logo, the flow diagram and the social preview image |
 
 The project is designed spec-first: acceptance criteria rank above specs and decision records, which rank above plans, which rank above code. A code change that makes a doc false updates the doc in the same pull request.
 
