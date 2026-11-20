@@ -3,7 +3,7 @@ title: Improvement proposals and trials
 type: component
 status: review
 prefix: PRP
-adrs: [0030, 0031, 0034, 0003, 0005]
+adrs: [0030, 0031, 0034, 0003, 0005, 0080]
 ---
 
 # Improvement proposals and trials
@@ -79,6 +79,7 @@ The engine classifies a patch by comparing the parsed workflow before and after,
 | `lessons` | producer | Entries of a step's lessons ([LSN](42-workflow-lessons.spec.md)) |
 | `limits` | producer | A step's timeout, retry budget or idle limit |
 | `model` | producer | A step's alias or executor |
+| `tools` | producer | A step's declared tools, MCP tools, skills or command prefixes. A widening `tools` patch drafted from `grant_missing` findings declares exactly the grants people gave and used, names the runs they came from, and is always opened for a person's review, never trialled alone ([ADR-0080](../adr/0080-a-person-may-grant-a-step-tools-for-a-run.adr.md)); a judge view widened from `views.add` grants is class `weakening` |
 | `flow` | producer | A route arm, a split of one step into passes, a new unit |
 | `brief` | grader | A judge brief or stance |
 | `criterion` | grader | Criterion text, a new criterion, a criterion's method |

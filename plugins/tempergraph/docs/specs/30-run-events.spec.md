@@ -43,6 +43,7 @@ Every run-log record, old kinds and new, carries these keys. Adding them keeps t
 | `council_round` | A council round's barrier closes ([CNL](71-council-unit.spec.md)) | round, members answered, spoiled, missing, `changed` count, label order |
 | `council_tally` | A council's outcome is derived | mode, rule, counts per option or Borda points, outcome (`<option>`, `no_decision`), `chosen_by` |
 | `contest_pick` | A contest's pick runs ([CTS](72-contest-unit.spec.md)) | per slot: check result, derived verdict, rank keys, cost; winner |
+| `grant` | A tool grant or allowed command takes effect, on start, resume or rerun, or is removed ([RST §2.8](80-run-settings-and-overrides.spec.md)) | `unit`, `capability` or `prefix`, `action` (`given`, `removed`), `answers` (the refusal class and `seq` of the pause it fixes, if any), `by`, `via` |
 | `ruling` | A ruling is given or revoked ([RRN §2.2](81-reruns-and-feedback.spec.md)) | `id`, `action` (`given`, `revoked`), `given_at`, `applies_to`, `by`, `chars`; never the text |
 | `stop_requested` | A stop request is picked up ([RCT](32-run-control.spec.md)) | mode (`drain`, `now`), requested by (`operator`, `as_agent`) |
 | `run_exit` | The process ends the segment | exit code, reason word, cost figures and completeness flag |

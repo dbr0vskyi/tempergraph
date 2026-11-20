@@ -187,7 +187,7 @@ When an attempt failed, or ended blocked, and the session recorded a `denied` ev
 | `shell_for_read`, `dir_change_then_command` | No grant: these calls had a permitted form. `retry` with feedback naming the form |
 | `outside_workspace` | No grant is possible; `retry` with feedback, or `stop` |
 
-A grant that a later attempt used is a fact for the workflow's owner: the audit's history layer reports it (`granted-at-run`, [TSA §2.4](57-tool-surface-audit.spec.md)) and the improvement loop may propose the declaration ([PRP](40-improvement-proposals.spec.md)), so a grant needed on every run ends up in the package once.
+Every grant is tracked: a `grant` run-log record when it takes effect ([EVT §2.2](30-run-events.spec.md)), the intervention row of the resume that gave it ([HUM-B6](07-gate-and-human.spec.md)), and an entry of the ledger row's `grants[]` saying whether a later attempt used it ([SIL §2.4](16-self-improvement.spec.md), [IMD-R14](43-improvement-data.spec.md)). A grant used on a passing attempt is a `grant_missing` finding against the workflow; the audit's history layer reports it (`granted-at-run`, [TSA §2.4](57-tool-surface-audit.spec.md)), and the improvement loop drafts a `tools` proposal that declares it ([PRP §2.4](40-improvement-proposals.spec.md)), so a grant needed on every run ends up in the package once.
 
 ### 2.9 The `config` verb
 
@@ -241,6 +241,8 @@ Files are edited by hand or by a skill; the engine has no write verb for them.
 | `--set judge:triage.views.add=mcp:tracker/get_issue` | applied when the catalog classifies the tool read-only |
 | `--allow-command code="npm run build; rm"` | exit 2: shell metacharacter |
 | a user file `overrides` entry with `code.tools.add` | exit 2, `widening_in_file` |
+
+**RST-B15 Grants feed the loop.** Given five runs on two machines in which a person granted `triage` the tool `mcp:tracker/get_issue` and each next attempt used it and passed, when self-improvement reads them, then each ledger row lists the grant as used, the five `grant_missing` findings form one cluster, one workflow issue is filed with the declaration as its remedy, and at `propose` autonomy a draft pull request adds `mcp:tracker/get_issue` to `triage`'s tools, naming the five runs.
 
 **RST-B14 A missing skill fails before spend.** Given a step declaring `skill:review-kit:security` whose plugin is not installed, when a run or resume preflights, then it exits 2 naming the plugin and the install command; no grant can replace an install.
 

@@ -3,7 +3,7 @@ title: Self-improvement loop
 type: component
 status: review
 prefix: SIL
-adrs: [0003, 0005, 0021, 0030, 0031, 0033]
+adrs: [0003, 0005, 0021, 0030, 0031, 0033, 0080]
 ---
 
 # Self-improvement loop
@@ -26,7 +26,7 @@ A built-in workflow that reads every finished run's record, judges it with an in
 
 | Lens | Question | Dev mode trigger | Stable mode trigger |
 |---|---|---|---|
-| Friction | Where did the process hurt, and whose fault? | Every flagged final exit | Spent retries or a stop; an uncleared failed step; a gap escalation; repeated blockers; a retry burst; cost above the version's p90; a new version's first five runs; a person pushing back |
+| Friction | Where did the process hurt, and whose fault? | Every flagged final exit | A `tool_access` pause or a tool grant; spent retries or a stop; an uncleared failed step; a gap escalation; repeated blockers; a retry burst; cost above the version's p90; a new version's first five runs; a person pushing back |
 | Outcome | Did the result meet the request? | Every final exit | A person pushing back; a pass at judge confidence ≤ 0.5; every 20th clean run |
 | Cost | Where does money repeat? | Every 10th final exit of a version | Same |
 | Quality (per gate) | Does each version score better on a fixed scorecard? | Scorecard reported for every gate | A gate's rows may file only while its judge binding is graded `reliable` ([FBK-B5](41-feedback-and-judge-reliability.spec.md)); other gates are reported only ([ADR-0021](../adr/0021-scope-of-planned-work.adr.md)) |
@@ -43,6 +43,7 @@ Cause codes come from run-log names and numbers only, each classed `fault`, `inf
 | Git facts | Outcome evidence includes the run branch's commits, changed paths and diff stat, so the outcome judge grades what landed, not what the step said |
 | Retry burst | Three or more retries of one unit in one visit is cause `retry_burst`, with the blockers' criterion ids; a judge-sent-back retry also carries cause `judge_blocked:<criterion id>`, so repeats cluster by criterion ([PRP §2.2](40-improvement-proposals.spec.md)) |
 | Blocked pause with an empty check | A pause on `BLOCKED:` whose check ran no command and read no file is a workflow fault (`blocked_without_check`), not a designed pause |
+| Tool access and grants | A `tool_access` pause is a friction finding with cause `tool_access:<refusal class>` ([TSA §2.2](57-tool-surface-audit.spec.md)). Every tool grant and allowed command of the run ([RST §2.8](80-run-settings-and-overrides.spec.md)) is one entry of the ledger row's `grants[]`: unit, capability or prefix, the refusal class it answered, `via` (`cli`, `orchestration`, `profile`), whether a later attempt called it, and the unit's outcome after it. A grant that a passing attempt used is a workflow-side finding with cause `grant_missing`, its fixed remedy the declaration; a grant never called is recorded as `grant_unused` and not filed. Both cluster by (workflow, unit, capability), so the pattern rule files one issue for a grant given on many runs and machines ([PRP §2.2](40-improvement-proposals.spec.md)) |
 | Uncalibrated judge | An outcome finding whose judge has no calibration score for this gate ([LIF](18-lifecycle-and-evals.spec.md)) is recorded with state `uncalibrated` and not filed |
 
 ## 3. Behaviours

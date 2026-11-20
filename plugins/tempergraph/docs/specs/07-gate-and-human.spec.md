@@ -74,7 +74,7 @@ Any feedback may be given as a **ruling** (`--ruling`): it is then shown to ever
 
 **HUM-B5 Approval is not friction.** Given a passing gate with `approval`, when the run pauses, then the recorded verdict stays PROCEED, the pause is not counted as an escalation, and a rework there is not a retry burst for self-improvement.
 
-**HUM-B6 Intervention row.** Given an accepted resume, when it is applied, then one ledger row is appended before the graph runs: a random id, who resumed (`person`, `auto_reopen`, `event`, or `agent` when the caller declares itself one), the pause kind, the decision, whether feedback was given and whether as a ruling, the setting keys changed, and a cause word from metadata only.
+**HUM-B6 Intervention row.** Given an accepted resume, when it is applied, then one ledger row is appended before the graph runs: a random id, who resumed (`person`, `auto_reopen`, `event`, or `agent` when the caller declares itself one), the pause kind, the decision, whether feedback was given and whether as a ruling, the setting keys changed, the grants given (unit and capability names), and a cause word from metadata only.
 
 ## 4. Error conditions
 
