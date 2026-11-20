@@ -44,6 +44,7 @@ def node_names(unit: str) -> tuple[str, str, str, str]: ...           # shared b
 | Sub-workflow | A registered workflow compiled as a subgraph under the parent's checkpointer; its artifacts go to the unit's own gate; depth at most three; no recursion; no meta child. |
 | Event wait | No model and no judge; arms once, then pauses until a delivered event passes its pure check. Main chain only. An optional deadline marks it overdue ([FLX §2.3](74-flow-extensions.spec.md)). |
 | Selective parallel, mapped sub-workflow, fallback, breakpoint | [FLX](74-flow-extensions.spec.md). |
+| Outcome gate | A reserved unit `outcome` compiled after every unit and before the finalizer, so every path to the finalizer passes it; its step node assembles the subject and starts no session; its back targets are derived from the outcome's `serves` links ([OUT §2.4](90-run-outcome.spec.md)). |
 
 #### Step-node forms per kind
 

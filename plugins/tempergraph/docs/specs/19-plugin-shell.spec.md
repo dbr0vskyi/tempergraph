@@ -22,13 +22,13 @@ The shell is a Claude Code plugin. Running steps on another executor does not re
 | Orchestrator | Plan a graph of runs with the person, start it after approval, sleep until a person is needed, walk them through each pause, report ([OSK](46-orchestrator-skill.spec.md)) | Answer a pause, start an orchestration's runs itself, poll |
 | Project bootstrap | Add the state-root ignore rule to a repository; nothing workflow-shaped | Stage, commit or delete |
 | Install, update, upgrade | "Install tempergraph", "update tempergraph", "upgrade my workflow": one plan and one yes, then the plugin commands and the verbs; workflows are reinstalled by the engine and pinned when a release breaks them ([LSK](65-lifecycle-skills.spec.md)) | Install an executor CLI or store a credential; pull or commit in a person's repository; answer a pause; spend without a yes |
-| Authoring | Lead a person from a process they run to a registered, tested, stamped workflow; in upgrade mode, hand over to the upgrade skill ([LSK §2.5](65-lifecycle-skills.spec.md)) and help with the manual items it leaves | Edit the engine; draw a diagram by model |
+| Authoring | Lead a person from an existing solution, references or a conversation to a good outcome with verified criteria and a registered, checked, stamped workflow package ([AUT](89-workflow-authoring.spec.md), [OUT](90-run-outcome.spec.md), [PKG](88-workflow-package.spec.md)); revise the outcome after runs; in upgrade mode, hand over to the upgrade skill ([LSK §2.5](65-lifecycle-skills.spec.md)) and help with the manual items it leaves | Edit the engine; draw a diagram by model |
 | Troubleshooter | Read-only diagnosis with ranked hypotheses and next actions | Write, commit, install, or run a mutating command |
 | Eval | Run scenarios, record and compare scores, calibrate judges | Call a model from the runner |
 
 ### 2.1 Authoring phases
 
-Intake → outcome → steps → criteria and judges → policies, **executors** and models → start and routing → blueprint approval → scaffold → verify (including `audit --layer definition --layer host`, each finding shown with its remedy for the person to accept, fix or ignore with a reason, [AUD](55-workflow-audit.spec.md)), register, stamp, calibrate. Nothing is written before the person approves the engine-drawn blueprint and the tables. The executor phase asks, per step, which executor runs it and where its judge runs, stating each consequence from the capability matrix.
+The authoring skill's entry paths, interview phases, verification search and revise mode are [AUT](89-workflow-authoring.spec.md); the outcome it writes first is [OUT](90-run-outcome.spec.md); the blueprint, scaffold and the checks of its result (including `audit --layer definition --layer host` and a first trial) are [SCF](91-blueprint-and-scaffold.spec.md). Nothing is written before the person approves the engine-drawn blueprint and the tables. The executor phase asks, per step, which executor runs it and where its judge runs, stating each consequence from the capability matrix.
 
 ### 2.2 Host hooks
 

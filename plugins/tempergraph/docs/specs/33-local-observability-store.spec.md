@@ -46,6 +46,7 @@ Everything a repository's runs leave on the machine lives in one folder, the sta
   ledger.jsonl                      [SIL]
   backups/layout-<N>-<ts>/          files a breaking layout step moved or rewrote [MIG §2.2]
   upgrades/<upgrade_id>/            plan, baseline and report of a workflow upgrade [WUP §2.2]
+  authoring/<session_id>/          authoring.json, draft outcome.json and blueprint.json, saved sources; local only [AUT §2.1]
   engine/<YYYY-MM-DD>-<pid>.jsonl   engine code log (§2.3)
   scratch/                          executor scratch, owner-only, removed per session [WSP-B5]
 ```

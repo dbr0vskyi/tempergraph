@@ -84,3 +84,12 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0087](0087-a-supervision-journal-written-by-the-host-not-by-read-only-verbs.adr.md) | Supervision cost is measured by a journal the host writes, not by the engine's read-only verbs | proposed |
 | [0088](0088-attribute-supervision-spend-by-marginal-tokens-beside-turn-totals.adr.md) | Attribute a supervising session's spend to runs by marginal tokens, shown beside turn totals | proposed |
 | [0089](0089-supervision-is-a-promotion-and-improvement-measure.adr.md) | Supervision by every decider is a promotion criterion and an improvement signal | proposed |
+| [0105](0105-a-workflow-package-is-one-claude-plugin-with-a-python-part-and-a-docs-set.adr.md) | A workflow package is one Claude plugin with a Python part and a docs set | proposed |
+| [0106](0106-declare-workflows-with-typed-python-builders-and-text-in-files.adr.md) | Declare workflows with typed Python builders; keep text in files | proposed |
+| [0107](0107-the-good-outcome-is-one-data-file-of-final-and-intermediate-outcomes.adr.md) | The good outcome is one data file of final and intermediate outcomes, each criterion classed by its verifier | proposed |
+| [0108](0108-a-run-is-measured-at-a-final-outcome-gate.adr.md) | A run is measured at a mandatory final outcome gate; unverified criteria are shown, never passed | proposed |
+| [0109](0109-author-backwards-from-the-outcome-preferring-existing-verifications.adr.md) | Author backwards from the good outcome, from any of three entry paths, preferring verifications the person already has | proposed |
+| [0110](0110-check-an-authored-workflow-model-free-then-by-one-consented-trial.adr.md) | Check an authored workflow model-free first, then by one consented, capped trial graded by the person | proposed |
+| [0111](0111-outcome-revisions-are-grader-changes-and-verifiers-climb-a-ladder.adr.md) | Outcome revisions are grader-side changes; weakening is a person's act and verifiers climb a measured ladder | proposed |
+| [0112](0112-plugin-content-reaches-each-executor-by-a-declared-route-or-is-refused.adr.md) | Plugin content reaches each executor by a declared route or the step is refused; workflow plugins ship no hooks, MCP servers or binaries | proposed |
+| [0113](0113-the-workflow-docs-set-is-provisional-until-temperspec-owns-it.adr.md) | Every workflow package carries its own docs set, with provisional rules until temperspec owns them | proposed |

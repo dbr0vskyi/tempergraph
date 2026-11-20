@@ -116,6 +116,7 @@ Each probe is run by the owner against the pinned CLI version with an isolated c
 | P-CC-6 | `dontAsk` refuses an unlisted call without a prompt and emits `permission_denied` | judge launch | not run |
 | P-CC-7 | Whether an engine-launched session keeps a native transcript under its isolation flags, and at which path | transcript locator ([EVT §2.4](30-run-events.spec.md)) | not run |
 | P-CC-8 | A `Skill(<plugin>:<name>)` allow rule admits only that skill in a headless session, and the tool record names the skill called | `skill:` capability | not run |
+| P-CC-9 | `claude -p --plugin-dir <package root>` loads the workflow plugin's skills and agents in a headless step session (listed in `system/init`), together with the isolation flags of a step launch | workflow skills and agents on step sessions ([PKG §2.6](88-workflow-package.spec.md)) | not run |
 
 ## 3. Behaviours
 

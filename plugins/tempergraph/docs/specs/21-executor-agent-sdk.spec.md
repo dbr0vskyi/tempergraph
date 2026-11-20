@@ -103,6 +103,7 @@ An in-process `PreToolUse` callback built by the worker from the declaration. It
 | P-AS-2 | The session's `PreToolUse` hook sees and can deny a subagent's tool calls | gatekeeper on steps that declare `subagent` | not run |
 | P-AS-3 | The SDK hands the prompt to its CLI off argv on the pinned version | `prompt_off_argv` | not run |
 | P-AS-4 | Whether the SDK's session keeps a native transcript with `setting_sources=[]`, and at which path | transcript locator ([EVT §2.4](30-run-events.spec.md)) | not run |
+| P-AS-5 | A step session with `setting_sources=[]` and `plugins=[{"type": "local", "path": <package root>}]` lists the workflow plugin and its skills in the init message, and no user plugin | workflow skills on step sessions ([PKG §2.6](88-workflow-package.spec.md)) | not run |
 
 Until P-AS-2 passes, a step that declares `subagent` with enforcement on is refused at preflight on this executor.
 

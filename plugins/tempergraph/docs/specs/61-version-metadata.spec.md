@@ -134,7 +134,7 @@ The engine computes, at load:
 
 | Value | Over | Use |
 |---|---|---|
-| `content_digest` | The spec's canonical JSON, every template, brief, lessons file, check and resolver source, and the declaration module | What a run actually ran |
+| `content_digest` | The spec's canonical JSON, `outcome.json`, every template, brief, lessons file, skill and agent file, every Python source under `workflow/` and the `dependencies` of its `pyproject.toml`; never `docs/`, `diagram/`, `evals/`, `authoring.json` or `README.md` ([PKG-AC-7](88-workflow-package.spec.md)) | What a run actually ran |
 | `shape_digest` | The diagram model ([LIF](18-lifecycle-and-evals.spec.md)) | Whether the graph changed |
 | `workflow_version` | `<version>+<first 12 hex of content_digest>` | The id reports, proposals (`base_version`), lessons (`added_in`) and runs record |
 
@@ -208,7 +208,7 @@ Only `needs_upgrade` with a hit whose entry is `tightened` makes the workflow fa
 - The changelog becomes typed because an upgrade needs to know, per hit, whether a rule, a model or a person handles it ([ADR-0057](../adr/0057-typed-version-metadata-on-both-sides.adr.md), [R-056](../research/R-056-automated-and-model-assisted-migrations.rsrch.md) conclusion 2).
 - `workflow_api` exists apart from the engine major so a release that breaks only the CLI or a document does not ask every workflow owner to upgrade.
 - `workflow_version` closes gap G5 of [R-011](../research/R-011-design-gap-review.rsrch.md): a declared version for people and a digest for measurement.
-- The package layout and declaration format are still open ([R-011](../research/R-011-design-gap-review.rsrch.md) G2); `stamp.json` and `changes/` are named relative to the package root so that decision does not move them.
+- The package layout and declaration format are [PKG](88-workflow-package.spec.md); `stamp.json` and `changes/` sit at the package root. The stamp also records `docs_digest`, the digest of the package's `docs/` folder ([PKG §2.5](88-workflow-package.spec.md)), and `release.json` records `loads_workflow_api_from`, the oldest declaration level the engine still loads ([PKG §2.3](88-workflow-package.spec.md)).
 
 ## 6. Acceptance criteria
 
