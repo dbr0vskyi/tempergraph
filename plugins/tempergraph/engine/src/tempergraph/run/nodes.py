@@ -33,6 +33,7 @@ from tempergraph.render.output import parse_output
 from tempergraph.render.prompt import AttemptContext, Blocker, render_step
 from tempergraph.run import checks as checkmod
 from tempergraph.run import gate as gatemod
+from tempergraph.run import tool_access
 from tempergraph.run.check_worker import run_in_worker
 from tempergraph.run.commands import ResolvedCommand, run_command
 from tempergraph.run.guard import guard, view_set
@@ -214,10 +215,11 @@ class EngineNodes:
             after_failed, after_env, after_arts = self._scripts(st.after, unit, attempt, "after", state, workdir)
             hybrid.update(after_arts)
         escalate: str | None = None
+        reach = tool_access.refused(unit, st, caps, res.denied, res.tools_at_start)
         if res.error_kind in ("auth", "refused"):
             escalate = res.error_kind
-        elif res.denied and (not res.ok or parsed.blocked):
-            escalate = "tool_access"
+        elif reach and (not res.ok or parsed.blocked):
+            escalate = "tool_access"  # no retry spent; the pause offers the grants (BUD §2.2, RST §2.8)
         elif parsed.blocked:
             escalate = "blocked"
         elif parsed.upstream:
@@ -227,6 +229,7 @@ class EngineNodes:
             "issues": parsed.issues, "infra_cause": str(res.infra_cause) if res.infra_cause else None,
             "infra_spent": res.infra_cause is not None, "timed_out": res.timed_out, "stalled": res.stalled,
             "error_kind": res.error_kind, "denied": list(res.denied), "tools": [c.name for c in res.tool_calls],
+            "tool_access": reach,
             "session_id": res.session_id, "executor": ex.name, "alias": alias, "model": res.model,
             "changed": before != after, "escalate": escalate, "cut_off": res.partial, "check": None,
             "duration_s": res.duration_s, "tool_wall_share": res.tool_wall_share,
@@ -447,7 +450,8 @@ class EngineNodes:
         caps = ex.capabilities()
         from tempergraph.contracts import ToolCall  # local: keeps the module's import list short
 
-        views = view_set(st, [ToolCall(name=t) for t in att.get("tools") or []], caps, j.tools)
+        views = view_set(st, [ToolCall(name=t) for t in att.get("tools") or []], caps, j.tools,
+                         granted=tuple(u.extra.get("views_add") or ()))
         stance, brief = j.stance, j.brief
         if j.file:
             from tempergraph.contracts import TextRef
@@ -535,7 +539,9 @@ class EngineNodes:
         if unit in (w.get("pause") or {}) and w["pause"][unit]:
             p = w["pause"][unit]
             self.ctx.log.write("pause", unit=unit, pause_kind=p["kind"], decisions=p["decisions"], resume=p["resume"],
-                               cost_so_far=so_far)
+                               cost_so_far=so_far, reason=p.get("reason"),
+                               tool_access=[{k: t.get(k) for k in ("name", "capability", "class")}
+                                            for t in p.get("tool_access") or []] or None)
         return w
 
     def human(self, unit: str, state: RunState, decision: Any) -> dict[str, Any]:

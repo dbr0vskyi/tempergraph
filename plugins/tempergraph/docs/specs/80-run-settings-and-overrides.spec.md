@@ -191,6 +191,9 @@ When an attempt failed, or ended blocked, and the session recorded a `denied` ev
 | `needed_command` | `resume … --decision retry --allow-command <unit>=<prefix>` |
 | `shell_for_read`, `dir_change_then_command` | No grant: these calls had a permitted form. `retry` with feedback naming the form |
 | `outside_workspace` | No grant is possible; `retry` with feedback, or `stop` |
+| `missing_at_start`, a declared tool the session started without | The host step (configure the server, install the plugin), then `retry` |
+
+Release 1 classifies by tool name only, so a refused shell call is `unclassified`; a judge takes no `mcp:` view grant (`judge-view-unclassified`), since no read-only MCP catalog exists yet.
 
 Every grant is tracked: a `grant` run-log record when it takes effect ([EVT §2.2](30-run-events.spec.md)), the intervention row of the resume that gave it ([HUM-B6](07-gate-and-human.spec.md)), and an entry of the ledger row's `grants[]` saying whether a later attempt used it ([SIL §2.4](16-self-improvement.spec.md), [IMD-R14](43-improvement-data.spec.md)). A grant used on a passing attempt is a `grant_missing` finding against the workflow; the audit's history layer reports it (`granted-at-run`, [TSA §2.4](57-tool-surface-audit.spec.md)), and the improvement loop drafts a `tools` proposal that declares it ([PRP §2.4](40-improvement-proposals.spec.md)), so a grant needed on every run ends up in the package once.
 

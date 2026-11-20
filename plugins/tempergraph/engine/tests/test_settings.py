@@ -78,10 +78,16 @@ def test_judges_apart() -> None:  # RST-B2
                                            ("draft.retry_budget", "setting_value"),
                                            ("draft.on_budget_spent", "no_fallback_target"),
                                            ("run.worktree.root", "setting_not_in_release"),
-                                           ("draft.tools.add", "setting_not_built")])
+                                           ("draft.tools.add", "unknown-capability"),
+                                           ("judge:draft.views.add", "judge-view-not-read-only"),
+                                           ("judge:draft.views.add", "judge-view-unclassified"),
+                                           ("draft.commands.add", "command-metacharacter")])
 def test_refusals(key: str, code: str) -> None:  # RST-B5, B6, B10, §4
     value = {"draft.approve": False, "judges.model": ["small", "large"], "draft.retry_budget": 99,
-             "draft.on_budget_spent": "fallback", "run.worktree.root": "in_repo"}.get(key, "x")
+             "draft.on_budget_spent": "fallback", "run.worktree.root": "in_repo",
+             "draft.commands.add": "npm run build; rm"}.get(key, "x")
+    if key == "judge:draft.views.add":
+        value = "edit" if code == "judge-view-not-read-only" else "mcp:tracker/get_issue"
     _, findings = go(spec(), {key: value})
     assert [f.code for f in findings] == [code], findings
     if code == "unknown_setting" and key.startswith("drafft"):
@@ -264,3 +270,74 @@ def test_config_paths_and_validate(repo: Path) -> None:
     assert code == 2 and doc["findings"][0]["code"] == "widening_in_file"
     code, doc, _ = cli(repo, None, "config", "validate")
     assert code == 0 and doc["ok"]
+
+
+# ---------------------------------------------------------------------------------------------
+# Tool grants (RST §2.8, RST-B13)
+
+
+def test_grants_widen_the_step_and_the_allow_list() -> None:
+    res, findings = go(spec(), {"draft.tools.add": "mcp:tracker/get_issue", "draft.commands.add": ["npm run build"],
+                                "judge:review.views.add": ["web_fetch"]})
+    assert not findings
+    eff = effective_spec(spec(), res)
+    assert "mcp:tracker/get_issue" in eff.units["draft"].step.tools
+    assert "npm run build" in eff.units["draft"].step.commands and "npm run build" in eff.allow_commands
+    assert eff.units["review"].extra["views_add"] == ("web_fetch",)
+    assert all(r.get("widening") for r in rows_json(res) if r["key"].endswith(".add"))
+
+
+def test_an_agent_cannot_widen() -> None:
+    _, findings = options_snapshot(spec(), {"draft.tools.add": ["edit"]}, (), ConfigFiles(), caller_kind="agent")
+    assert [f.code for f in findings] == ["widening_by_agent"]
+
+
+def test_property_no_grant_gives_a_judge_a_writing_tool() -> None:  # RST-AC-8
+    rnd = random.Random(3)
+    pool = ["read", "search", "list", "edit", "write", "shell", "web_fetch", "web_search", "subagent",
+            "mcp:tracker/create_issue", "skill:kit:review"]
+    for _ in range(200):
+        views = rnd.sample(pool, rnd.randint(1, 4))
+        res, findings = go(spec(), {"judge:draft.views.add": views})
+        if findings:
+            continue
+        eff = effective_spec(spec(), res)
+        assert set(eff.units["draft"].extra.get("views_add") or ()) <= {"read", "search", "list", "web_fetch",
+                                                                         "web_search"}
+
+
+def test_tool_access_pause_offers_the_grant_and_resume_applies_it(repo: Path) -> None:  # RST-B13
+    from tempergraph.executors.standins import answer, standin
+
+    from .test_cli import cli
+    from .test_run import DRAFT, REVIEW, judge
+
+    blocked = answer("Could not read the tracker\nBLOCKED: tracker tool refused", denied=("mcp__tracker__get_issue",))
+    ex = standin("claude", steps=[blocked], judges=[])
+    code, doc, err = cli(repo, ex, "run", "demo", "notes", "--task-id", "G-1", "--json")
+    assert code == 3, err
+    offers = doc["payload"]["tool_access"]
+    assert offers[0]["class"] == "undeclared_tool" and "--grant draft=mcp:tracker/get_issue" in offers[0]["fix"]
+    pause = _records(repo, "G-1", "pause")[-1]
+    assert pause["reason"] == "tool_access" and pause["tool_access"][0]["capability"] == "mcp:tracker/get_issue"
+    seen: list[Any] = []
+
+    def draft(req: Any) -> Any:
+        seen.append(req.tools)
+        return DRAFT
+
+    ex.steps, ex.judges = [draft, REVIEW], [judge(), judge()]
+    code, _, err = cli(repo, ex, "resume", "demo", "G-1", "--decision", "retry", "--grant",
+                       "draft=mcp:tracker/get_issue")
+    assert code == 0, err
+    assert "mcp:tracker/get_issue" in seen[0]
+    grant = _records(repo, "G-1", "grant")[0]
+    assert grant["action"] == "given" and grant["by"]["kind"] == "person"
+    assert grant["answers"] == {"class": "undeclared_tool", "seq": pause["seq"]}
+    ledger = [json.loads(x) for x in (repo / ".tempergraph" / "ledger.jsonl").read_text().splitlines()]
+    row = next(r for r in ledger if r.get("kind") == "intervention")
+    assert row["grants"][0]["capability"] == "mcp:tracker/get_issue"
+    seg = [r for r in ledger if r.get("kind") == "run_segment"][-1]
+    assert seg["grants"][0]["capability"] == "mcp:tracker/get_issue"
+    shown = cli(repo, None, "config", "show", "demo", "--thread", "G-1", "--key", "draft.tools.add")[1]
+    assert shown["rows"][0]["value"] == ["mcp:tracker/get_issue"]  # kept for later resumes

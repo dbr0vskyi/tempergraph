@@ -106,6 +106,14 @@ class Settled:
     resolved: ResolvedSettings
     options: RunOptions
     changed: list[str] = field(default_factory=list)
+    before: ResolvedSettings | None = None
+
+    def grant_changes(self) -> list[dict[str, Any]]:
+        """Grants given or removed by this call, against the thread's previous snapshot (RST §2.8)."""
+        new = rst.grants(self.resolved)
+        old = rst.grants(self.before) if self.before is not None else []
+        return ([{**g, "action": "given"} for g in new if g not in old]
+                + [{**g, "action": "removed"} for g in old if g not in new])
 
     @property
     def run(self) -> dict[str, Any]:
@@ -125,7 +133,7 @@ def settle_start(spec: WorkflowSpec, settings: RunSettings, root: Path | None) -
     """Read both files once, resolve, validate before spend (RST §2.6 Start)."""
     files = rst.load_files(root, settings.home or home_path())
     opts, findings = rst.options_snapshot(spec, settings.all_flags(), tuple(settings.profiles or ()), files,
-                                          via=settings.origin)
+                                          via=settings.origin, caller_kind=str(settings.caller.get("kind") or "unknown"))
     if findings:
         raise SettingsRefused(findings)
     res = rst.resolve(spec, opts)
@@ -138,13 +146,17 @@ def settle_resume(spec: WorkflowSpec, settings: RunSettings, root: Path, values:
     old = RunOptions(settings={k: dict(v) for k, v in (snap.get("settings") or {}).items()},
                      profiles=tuple(snap.get("profiles") or ()))
     flags = {k: c["value"] for k, c in (old.settings.get("flag") or {}).items()}
-    flags.update(settings.all_flags())
+    for k, v in settings.all_flags().items():  # a later grant adds to the thread's grants (RST §2.8 Kept)
+        if rst.is_widening(k) and k in flags:
+            v = list(dict.fromkeys(rst.as_list(flags[k]) + rst.as_list(v)))
+        flags[k] = v
     for k in settings.unset:
         flags.pop(k, None)
     profiles = tuple(settings.profiles) if settings.profiles is not None else old.profiles
     if settings.reload_settings or settings.profiles is not None:
         files = rst.load_files(root, settings.home or home_path())
-        new, findings = rst.options_snapshot(spec, flags, profiles, files, via=settings.origin)
+        new, findings = rst.options_snapshot(spec, flags, profiles, files, via=settings.origin,
+                                             caller_kind=str(settings.caller.get("kind") or "unknown"))
         if not settings.reload_settings:  # a new profile list reads profiles only; the file layers stay
             new = RunOptions(settings={**{k: v for k, v in old.settings.items()}, "profile": new.settings["profile"],
                                        "flag": new.settings["flag"]}, profiles=profiles)
@@ -154,16 +166,45 @@ def settle_resume(spec: WorkflowSpec, settings: RunSettings, root: Path, values:
                                                                         via=settings.origin)[0]["flag"]},
                          profiles=profiles)
         findings = []
-    findings += rst.validate_layers(spec, new.settings)
+    if not (settings.reload_settings or settings.profiles is not None):
+        findings += rst.validate_layers(spec, new.settings, str(settings.caller.get("kind") or "unknown"))
     if findings:
         raise SettingsRefused(findings)
     res = rst.resolve(spec, new)
-    changed = rst.changed_keys(rst.resolve(spec, old), res) if snap else []
-    return Settled(spec=rst.effective_spec(spec, res), resolved=res, options=new, changed=changed)
+    before = rst.resolve(spec, old) if snap else None
+    changed = rst.changed_keys(before, res)
+    return Settled(spec=rst.effective_spec(spec, res), resolved=res, options=new, changed=changed, before=before)
 
 
 def _refuse(reason: str, message: str, refusals: list[str] | None = None, tid: str = "") -> RunOutcome:
     return RunOutcome(exit_code=ExitCode.USAGE, reason=reason, message=message, refusals=refusals or [], thread_id=tid)
+
+
+def _answers(log_path: Path, g: Mapping[str, Any]) -> dict[str, Any] | None:
+    """The pause a grant answers: the refusal class it fixes and that pause's `seq` (EVT §2.2 `grant`)."""
+    pause = last_record(log_path, "pause", unit=g["unit"])
+    for item in (pause or {}).get("tool_access") or []:
+        if item.get("capability") == g.get("capability"):
+            return {"class": item.get("class"), "seq": pause.get("seq") if pause else None}
+    return None
+
+
+def _grants_used(spec: WorkflowSpec, registry: Registry, settled: Settled, values: Mapping[str, Any]
+                 ) -> list[dict[str, Any]]:
+    """The ledger row's `grants[]`: whether the unit's last attempt used each grant (RST §2.8, IMD-R14)."""
+    from tempergraph.executors.capabilities import tool_names
+
+    out = []
+    for g in rst.grants(settled.resolved):
+        u = spec.units.get(g["unit"])
+        att = ((values.get("attempts") or {}).get(g["unit"]) or {})
+        used: bool | None = None
+        if "capability" in g and u is not None and u.step is not None and att:
+            ex = registry.get(u.step.executor or spec.default_executor)
+            used = bool(set(tool_names(ex.capabilities(), g["capability"])) & set(att.get("tools") or []))
+        out.append({**{k: v for k, v in g.items() if k != "key"}, "used": used,
+                    "passed": att.get("ok") if att else None})
+    return out
 
 
 def _refuse_settings(exc: SettingsRefused, tid: str) -> RunOutcome:
@@ -231,6 +272,9 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         if settled.changed:
             rec["caller"] = dict(settings.caller)
         log.write("settings_resolved", **rec)
+        for g in settled.grant_changes():
+            log.write("grant", unit=g["unit"], capability=g.get("capability"), prefix=g.get("prefix"),
+                      action=g["action"], answers=_answers(log.path, g), by=dict(settings.caller), via=settings.origin)
         outcome: RunOutcome
         with StopWatcher(root, spec.name, task_id, stop, poll_s=1.0) as watcher:
             box["w"] = watcher
@@ -241,7 +285,8 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                 code = ExitCode.BUDGET_OR_INFRA if d.reason == "cost_cap" else ExitCode.STOPPED
                 outcome = RunOutcome(exit_code=code, reason=d.reason, thread_id=tid,
                                      message=f"{tid} stopped at a boundary ({d.reason}); resume continues it")
-        cost = CostTotals.from_json(((cw.graph.get_state(cfg).values or {}).get("run") or {}).get("cost"))
+        final = cw.graph.get_state(cfg).values or {}
+        cost = CostTotals.from_json((final.get("run") or {}).get("cost"))
         log.write("run_exit", exit_code=int(outcome.exit_code), reason=outcome.reason, cost=cost.to_json(),
                   cost_so_far=cost_so_far(cost.to_json()))
         write_json(exit_file(root, spec.name, task_id), {"schema_version": 1, "exit_code": int(outcome.exit_code),
@@ -250,7 +295,8 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                                                    "exit_code": int(outcome.exit_code), "reason": outcome.reason,
                                                    "cost": cost.to_json(), "origin": settings.origin,
                                                    "settings_digest": settled.resolved.digest,
-                                                   "overridden_keys": rst.overridden_keys(settled.resolved)})
+                                                   "overridden_keys": rst.overridden_keys(settled.resolved),
+                                                   "grants": _grants_used(spec, registry, settled, final)})
         outcome.thread_id = tid
         return outcome
     finally:
@@ -434,7 +480,7 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
             ws_update = None
         prior = before
         if touch is not None and d is not None:
-            intervention(root, spec, task_id, touch, d, feedback, settings)
+            intervention(root, spec, task_id, touch, d, feedback, settings, settled)
 
         def before_all(cw2: Any) -> None:
             cfg = cw2.config(tid)
@@ -473,7 +519,7 @@ def touches(pause_kind: str, stop_reason: str, d: Decision) -> list[dict[str, st
 
 
 def intervention(root: Path, spec: WorkflowSpec, task_id: str, touch: tuple[str, str, str], d: Decision,
-                 feedback: str | None, settings: RunSettings) -> dict[str, Any]:
+                 feedback: str | None, settings: RunSettings, settled: Settled | None = None) -> dict[str, Any]:
     """HUM-B6: one metadata-only ledger row per accepted resume, appended before the graph runs."""
     unit, kind, reason = touch
     pause = last_record(run_dir(root, spec.name, task_id) / "run.jsonl", "pause", unit=unit)
@@ -486,7 +532,9 @@ def intervention(root: Path, spec: WorkflowSpec, task_id: str, touch: tuple[str,
            "workflow": spec.name, "unit": unit, "caller": dict(settings.caller),
            "touches": touches(kind, reason if kind == "stopped" else "", d), "pause_kind": kind,
            "decision": d.word + (f":{d.unit}" if d.unit else ""), "wait_s": wait_s, "feedback": bool(feedback),
-           "ruling": False, "settings_changed": [], "grants": [], "cause": reason or kind}
+           "ruling": False, "settings_changed": list(settled.changed) if settled else [],
+           "grants": [{k: v for k, v in g.items() if k != "key"} for g in (settled.grant_changes() if settled else [])],
+           "cause": reason or kind}
     Ledger(path=root / "ledger.jsonl").append(row)
     return row
 
