@@ -281,8 +281,8 @@ def _context(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, s
 def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, settings: RunSettings,
            judges: Mapping[str, str], first_input: Any, settled: Settled, *,
            before: Callable[[Any], None] | None = None, executors: Mapping[str, str] | None = None,
-           ruling_records: Sequence[Mapping[str, Any]] = (), rerun_of: Mapping[str, Any] | None = None
-           ) -> RunOutcome:
+           ruling_records: Sequence[Mapping[str, Any]] = (), rerun_of: Mapping[str, Any] | None = None,
+           workspace: Mapping[str, Any] | None = None) -> RunOutcome:
     """Run the graph from `first_input` while holding the lock, then turn the thread state into an exit."""
     tid = thread_id(spec.name, task_id)
     log = RunLog(run_dir(root, spec.name, task_id) / "run.jsonl")
@@ -310,6 +310,8 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         if settled.changed:
             rec["caller"] = dict(settings.caller)
         log.write("settings_resolved", **rec)
+        if workspace:
+            workspace_record(log, workspace)
         for r in ruling_records:
             log.write("ruling", **r)
         for g in settled.grant_changes():
@@ -326,25 +328,47 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                 outcome = RunOutcome(exit_code=code, reason=d.reason, thread_id=tid,
                                      message=f"{tid} stopped at a boundary ({d.reason}); resume continues it")
         final = cw.graph.get_state(cfg).values or {}
+        if outcome.exit_code is ExitCode.FINISHED and (final.get("workspace") or {}).get("state") == "released":
+            workspace_record(log, final["workspace"])
         cost = CostTotals.from_json((final.get("run") or {}).get("cost"))
         sup = supervision.build(root / "ledger.jsonl", log.path, tid, supervision.path_units(final))
         log.write("supervision", **sup)  # SUP §2.2, before run_exit
         log.write("run_exit", exit_code=int(outcome.exit_code), reason=outcome.reason, cost=cost.to_json(),
                   cost_so_far=cost_so_far(cost.to_json()))
-        write_json(exit_file(root, spec.name, task_id), {"schema_version": 1, "exit_code": int(outcome.exit_code),
-                                                          "reason": outcome.reason})
-        Ledger(path=root / "ledger.jsonl").append({"kind": "run_segment", "thread_id": tid, "workflow": spec.name,
-                                                   "exit_code": int(outcome.exit_code), "reason": outcome.reason,
-                                                   "cost": cost.to_json(), "origin": settings.origin,
-                                                   "settings_digest": settled.resolved.digest,
-                                                   "overridden_keys": rst.overridden_keys(settled.resolved),
-                                                   "grants": _grants_used(spec, registry, settled, final),
-                                                   "supervision": sup})
+        try:
+            write_json(exit_file(root, spec.name, task_id), {"schema_version": 1,
+                                                              "exit_code": int(outcome.exit_code),
+                                                              "reason": outcome.reason})
+        except OSError as exc:  # OBS-B3: logging never changes the exit; one record of the failure is attempted
+            log.write("engine_error", scope="exit_file", error=type(exc).__name__)
+        ledger = Ledger(path=root / "ledger.jsonl")
+        ledger.append({"kind": "run_segment", "thread_id": tid, "workflow": spec.name,
+                       "exit_code": int(outcome.exit_code), "reason": outcome.reason,
+                       "cost": cost.to_json(), "origin": settings.origin,
+                       "settings_digest": settled.resolved.digest,
+                       "overridden_keys": rst.overridden_keys(settled.resolved),
+                       "grants": _grants_used(spec, registry, settled, final),
+                       "supervision": sup})
+        if ledger.failures:
+            log.write("engine_error", scope="ledger", error="write_failed")
         outcome.thread_id = tid
         outcome.auto_reopen = int(settled.run.get("auto_reopen") or 0)
         return outcome
     finally:
         saver.conn.close()
+
+
+def workspace_record(log: RunLog, ws: Mapping[str, Any]) -> None:
+    """EVT §2.2 `workspace`: prepared, reused, attached, external_change or kept (WTR §2.6, §2.10).
+
+    The path goes to the local run log only; the ledger and exports never carry it.
+    """
+    boot = ws.get("bootstrap") or {}
+    counts = {k: boot[k] for k in ("external_commits", "external_changed") if k in boot}
+    log.write("workspace", action=ws.get("action") or "prepared", mode=ws.get("mode"),
+              resolved_by=ws.get("resolved_by"), branch=ws.get("branch") or None,
+              base_commit=ws.get("base_commit") or None, reason=ws.get("requested"), counts=counts,
+              path=ws.get("path"))
 
 
 def _settle(cw: Any, cfg: Mapping[str, Any], spec: WorkflowSpec, task_id: str, root: Path) -> RunOutcome:
@@ -430,7 +454,7 @@ def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: 
                                     **({"dry_run": True} if settings.dry_run else {})},
                            "options": settled.snapshot_json()}}
         out = _drive(spec, task_id, root, registry, settings, rep.judges, initial, settled,
-                     executors=rep.step_executors)
+                     executors=rep.step_executors, workspace=rec.to_json())
         out.warnings = list(plan.warnings) + [f"{w.code}: {w.message}" for w in rep.warnings]
         return out
     finally:
@@ -631,7 +655,7 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                 prior(cw2)
 
         out = _drive(spec, task_id, root, registry, settings, rep.judges, first_input, settled, before=before_all,
-                     executors=rep.step_executors, ruling_records=_ruling_records(spec, values, d, touch, settings,
+                     executors=rep.step_executors, workspace=ws_update, ruling_records=_ruling_records(spec, values, d, touch, settings,
                                                                                   feedback, snap.next))
         if stale is not None:
             out.warnings.append("stale_stop_request_removed")

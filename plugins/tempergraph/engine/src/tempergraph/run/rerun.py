@@ -238,7 +238,7 @@ def _rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registr
             "wait_s": None, "feedback": bool(feedback), "ruling": settings.ruling,
             "settings_changed": list(settled.changed), "grants": [], "cause": "rerun", "rerun": new})
         out = _drive(run_spec, new_task, root, registry, settings, rep.judges, first_input, settled, before=before,
-                     executors=rep.step_executors, rerun_of=rerun_of)
+                     executors=rep.step_executors, rerun_of=rerun_of, workspace=rec.to_json())
         out.warnings = list(plan.warnings) + out.warnings
         return out
     finally:
