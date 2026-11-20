@@ -139,6 +139,8 @@ The engine computes, at load:
 | `shape_digest` | The diagram model ([LIF](18-lifecycle-and-evals.spec.md)) | Whether the graph changed |
 | `workflow_version` | `<version>+<first 12 hex of content_digest>` | The id reports, proposals (`base_version`), lessons (`added_in`) and runs record |
 
+`content_digest` leaves out `verified_engine`, which mirrors `stamp.json`, so a stamp never changes the id it records.
+
 A changed `content_digest` under an unchanged `version` in a package installed from a marketplace is a validation **warning** (`version-not-bumped`), because the plugin cache is keyed by the version string ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U3).
 
 ### 2.5 Stamp record (`stamp.json`)
@@ -151,6 +153,7 @@ Written in the package only by `upgrade --stamp` after every check of [WUP §2.6
 | `engine_version`, `workflow_api` | The engine stamped against |
 | `workflow_version` | The workflow's version and content digest at the stamp |
 | `entries_applied[]` | Changelog entry ids handled, each with `by` ∈ `transform`, `model`, `person`, `none` |
+| `docs_digest`, `shape_digest` | The docs half's digest ([PKG §2.5](88-workflow-package.spec.md)) and the diagram's, at the stamp |
 | `baseline` | Counts of validation and audit findings by severity at the stamp |
 | `stamped_at` | |
 
@@ -170,7 +173,7 @@ Computed by the catalog, `run --check`, `update` and `upgrade --check`; model-fr
 | `out_of_range` | The engine lies outside `requires_engine` |
 | `unstamped` | No stamp; every entry since `workflow_api` 1 is considered |
 
-Only `needs_upgrade` with a hit whose entry is `tightened` makes the workflow fail validation, and that is validation's own finding. Every other state is a warning line in the catalog, at run start and in `update`, naming `tempergraph upgrade <workflow>`.
+The changelog files are `tempergraph/data/changelog/<engine_version>.json`; the catalog shows the state in `list` as `compatibility`. Only `needs_upgrade` with a hit whose entry is `tightened` makes the workflow fail validation, and that is validation's own finding. Every other state is a warning line in the catalog, at run start and in `update`, naming `tempergraph upgrade <workflow>`.
 
 ## 3. Behaviours
 

@@ -1,7 +1,7 @@
 ---
 title: Workflow upgrade
 type: component
-status: review
+status: ready-for-implementation
 prefix: WUP
 adrs: [0058, 0059, 0057, 0031]
 ---
@@ -49,6 +49,8 @@ tempergraph upgrade-check <workflow> [--stamp]   # kept: same as upgrade --check
 | 7 Finish | Proposes the version fields, stamps with `--stamp`, opens a draft pull request with `--open-pr` (§2.7) | branch, pull request | no |
 
 `--check` runs phases 1 to 3 without writing (contract C13) and prints the plan; it replaces `upgrade-check`, which stays as an alias so no caller breaks.
+
+**Release 1** builds `upgrade --check [--fail-on pending] [--stamp]` and `upgrade-check [--stamp]` only. Phases 4 to 7 come in release 3, and `upgrade` without `--check` is refused with `not_in_release` ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md)). `--stamp` on a clean plan runs V1 to V7 in place in the package, with no branch, because there is nothing to change. V4 and V6 report `skipped` until audit (plan T8.5) and eval suites (release 2) exist. V5 passes, because nothing was changed. V7 regenerates `diagram/model.json` and `diagram/workflow.md`, since the diagram is generated and never typed. The stamp is written only after every check that runs has passed; otherwise the verb exits 4. Output is JSON.
 
 | Exit | When |
 |---|---|
@@ -177,9 +179,9 @@ The verb never merges and never writes the installed copy. Consumers receive the
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should `upgrade` also run over every registered workflow whose source is local (`upgrade --all`)? The design upgrades one workflow per call; a batch is an orchestration of upgrades if wanted. | Owner |
+| Question | Owner | Release 1 default |
+|---|---|---|
+| Should `upgrade` also run over every registered workflow whose source is local (`upgrade --all`)? The design upgrades one workflow per call; a batch is an orchestration of upgrades if wanted. | Owner | No: one workflow per call |
 
 ## References
 

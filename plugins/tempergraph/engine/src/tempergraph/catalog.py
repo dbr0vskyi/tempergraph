@@ -31,12 +31,14 @@ class Catalog:
     specs: dict[str, WorkflowSpec] = field(default_factory=dict)
     broken: dict[str, str] = field(default_factory=dict)  # name -> not_loaded reason
     packages: dict[str, LoadedPackage] = field(default_factory=dict)  # name -> digests and load findings
+    compat: dict[str, str] = field(default_factory=dict)  # name -> VER §2.7 state
 
     def to_json(self) -> dict[str, Any]:
         rows = [{"name": n, "version": s.version, "state": "ok", "description": s.routing.description,
                  "when_to_use": s.routing.when_to_use, "task_kind": s.routing.task_kind, "input": s.input.kind,
                  "units": list(s.order),
-                 "workflow_version": self.packages[n].workflow_version if n in self.packages else None}
+                 "workflow_version": self.packages[n].workflow_version if n in self.packages else None,
+                 "compatibility": self.compat.get(n)}
                 for n, s in sorted(self.specs.items())]
         rows += [{"name": n, "state": "not_loaded", "reason": r} for n, r in sorted(self.broken.items())]
         return {"schema_version": SCHEMA.get("catalog", 1), "workflows": rows}
@@ -45,6 +47,17 @@ class Catalog:
 def load_package(path: Path) -> WorkflowSpec:
     """PKG §2.3; read-only, calls no model."""
     return _load(path).spec
+
+
+def _compat(loaded: LoadedPackage) -> str:
+    """VER §2.7, read-only and model-free; the state is a catalog column and never refuses on its own."""
+    from tempergraph.package.changelog import compatibility
+    from tempergraph.package.stamp import read_stamp
+
+    try:
+        return str(compatibility(loaded.spec, loaded.root, read_stamp(loaded.root))["state"])
+    except (OSError, ValueError):
+        return "unknown"
 
 
 def from_registry(home: Path | None = None) -> Catalog:
@@ -63,6 +76,7 @@ def from_registry(home: Path | None = None) -> Catalog:
         try:
             loaded = _load(Path(str(e.get("path") or "")))
             cat.specs[name], cat.packages[name] = loaded.spec, loaded
+            cat.compat[name] = _compat(loaded)
         except PackageNotLoaded as exc:
             cat.broken[name] = exc.reason
     return cat

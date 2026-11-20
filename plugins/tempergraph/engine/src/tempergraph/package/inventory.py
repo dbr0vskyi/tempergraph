@@ -70,7 +70,7 @@ def canonical(obj: Any) -> Any:
         return obj.ref
     if dataclasses.is_dataclass(obj) and not isinstance(obj, type):
         return {f.name: canonical(getattr(obj, f.name)) for f in dataclasses.fields(obj)
-                if f.name not in ("package_root", "outcome", "func")}
+                if f.name not in ("package_root", "outcome", "func", "verified_engine")}
     if isinstance(obj, Mapping):
         return {str(k): canonical(v) for k, v in sorted(obj.items(), key=lambda kv: str(kv[0]))}
     if isinstance(obj, (list, tuple, set, frozenset)):

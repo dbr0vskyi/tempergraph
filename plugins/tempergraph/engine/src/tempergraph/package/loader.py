@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import dataclasses
 import importlib
+import json
 import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -75,6 +76,15 @@ def _detail(exc: BaseException) -> str:
     if isinstance(exc, TypeError) and frames and frames[-1].filename.endswith(("tempergraph/api.py",)):
         return f"TypeError: {exc}"
     return type(exc).__name__
+
+
+def _stamp_engine(root: Path) -> str | None:
+    """`verified_engine` mirrors the stamp's `engine_version` (VER §2.5)."""
+    try:
+        doc = json.loads((root / "stamp.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return str(doc["engine_version"]) if isinstance(doc, dict) and doc.get("engine_version") else None
 
 
 def _interface(api: int, engine_api: int, loads_from: int) -> None:
@@ -146,7 +156,9 @@ def load_package(package_path: Path, *, engine_api: int = WORKFLOW_API,
         raise PackageNotLoaded("build", _detail(exc)) from exc
     if not isinstance(spec, WorkflowSpec):
         raise PackageNotLoaded("build", "the entry did not return a WorkflowSpec")
-    spec = dataclasses.replace(spec, name=m.engine.name, version=m.version, package_root=root)
+    stamp = _stamp_engine(root)
+    spec = dataclasses.replace(spec, name=m.engine.name, version=m.version, package_root=root,
+                               verified_engine=stamp or spec.verified_engine)
     spec, outcome_findings, pending = _attach_outcome(spec, root)
     findings += outcome_findings
     inventory = package_files(root)

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "executors": {
+    "claude": {
+      "component": "Claude Code CLI",
+      "recorded": ["2.1.329"],
+      "range": ">=2.1.329,<=2.1.329",
+      "facts": "model-free argument checks only (ECC §2.7); P-CC-1 to P-CC-9 not yet run"
+    }
+  }
+}
