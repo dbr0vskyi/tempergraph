@@ -315,3 +315,34 @@ def test_cost_so_far_on_gate_pause_and_exit(repo: Path) -> None:
     for kind in ("gate", "pause", "run_exit"):
         c = recs[kind]["cost_so_far"]
         assert c["reported"] == pytest.approx(0.02) and c["completeness"] in ("complete", "estimated")  # EVT §2.2
+
+
+def hybrid(before: tuple[Any, ...] = (), after: tuple[Any, ...] = ()) -> Any:
+    spec = two_step()
+    d = spec.units["draft"]
+    assert d.step is not None
+    step = dataclasses.replace(d.step, before=before, after=after)
+    return dataclasses.replace(spec, units={**spec.units, "draft": dataclasses.replace(d, step=step)})
+
+
+def test_hybrid_order_before_session_after(repo: Path) -> None:
+    from tempergraph.contracts import ScriptSpec
+
+    fetch = ScriptSpec(run=("git", "status"), name="fetch")
+    publish = ScriptSpec(run=("git", "status"), name="publish")
+    ex = standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge()])
+    assert go(repo, ex, hybrid((fetch,), (publish,))).exit_code is ExitCode.FINISHED
+    seq = [(r["kind"], r.get("phase"), r.get("name")) for r in records(repo)
+           if r["kind"] in ("script", "agent_run") and r.get("unit", "draft") == "draft"][:3]
+    assert seq == [("script", "before", "fetch"), ("agent_run", None, None), ("script", "after", "publish")]  # SCR-B2
+
+
+def test_failed_before_script_spends_a_retry_without_a_session(repo: Path) -> None:
+    from tempergraph.contracts import ScriptSpec
+
+    bad = ScriptSpec(run=("git", "no-such-subcommand"), name="fetch")
+    ex = standin("claude", steps=[], judges=[])
+    out = go(repo, ex, hybrid((bad,)))
+    assert out.exit_code is ExitCode.PAUSED and out.payload["kind"] == "budget"
+    assert ex.calls == []  # no session ran; three failed attempts spent the budget of 2
+    assert "script_failed:fetch" in json.dumps(out.payload["blockers"])

@@ -39,7 +39,7 @@ Every run-log record, old kinds and new, carries these keys. Adding them keeps t
 | `judgement` | A judgement block is parsed, before the gate derives the verdict | per criterion `{n, id?, status}` (no evidence text), `met`, `total`, `blockers` (criterion ids), `confidence` and its source, `gap` |
 | `budget` | A budget counter is charged ([BUD](08-budgets-and-failures.spec.md)) | counter name, used, limit, cause |
 | `pause` | A gate interrupts for a person | pause kind, `question` (clipped, scrubbed), artifact keys to review, decision words, resume command |
-| `script` | A script of a script unit or a hybrid step ends ([SCR](70-script-units-and-hybrid-steps.spec.md)) | name, phase (`unit`, `before`, `after`), command prefix, exit code, `duration_s`, `cached`, `environmental` |
+| `script` | A script of a script unit or a hybrid step ends ([SCR](70-script-units-and-hybrid-steps.spec.md)) | unit, name, phase (`unit`, `before`, `after`), command prefix (null for a callable), exit code, `duration_s`, `cached`, `environmental` |
 | `council_round` | A council round's barrier closes ([CNL](71-council-unit.spec.md)) | round, members answered, spoiled, missing, `changed` count, label order |
 | `council_tally` | A council's outcome is derived | mode, rule, counts per option or Borda points, outcome (`<option>`, `no_decision`), `chosen_by` |
 | `contest_pick` | A contest's pick runs ([CTS](72-contest-unit.spec.md)) | per slot: check result, derived verdict, rank keys, cost; winner |
