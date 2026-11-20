@@ -108,6 +108,9 @@ def render_judge(inp: JudgeInputs) -> str:
         fb = ["## Direction from a person (wins over a reference)"]
         fb += [inp.feedback] if inp.feedback else []
         fb += [f"- Ruling: {r}" for r in inp.rulings]
+        if inp.rulings:  # one engine blocker per attempt (RRN §2.2, JDG §2.1)
+            fb.append("Grade one more blocker, `ruling`: the output follows every ruling above. A blocker you "
+                      "cannot fix without breaking a ruling is `no_change`.")
         parts.append("\n".join(fb))
     if inp.previous_blockers:
         parts.append("## Re-check these blockers first, then grade the full rubric\n" + "\n".join(

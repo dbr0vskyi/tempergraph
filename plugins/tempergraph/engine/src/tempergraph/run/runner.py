@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import contextlib
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -83,6 +83,10 @@ class RunSettings:
     profiles: tuple[str, ...] | None = None  # None keeps the thread's profiles on resume
     unset: tuple[str, ...] = ()
     reload_settings: bool = False
+    ruling: bool = False  # `--ruling`: the feedback is a lasting ruling (RRN §2.2)
+    ruling_for: tuple[str, ...] = ()
+    revoke_rulings: tuple[str, ...] = ()
+    accept_external: bool = False  # consent to rewind or rerun past external effects (RRN §2.3)
     home: Path | None = None  # the user config folder's parent; default `home_path()`
 
     def all_flags(self) -> dict[str, Any]:
@@ -246,7 +250,9 @@ def _context(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, s
 
 def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, settings: RunSettings,
            judges: Mapping[str, str], first_input: Any, settled: Settled, *,
-           before: Callable[[Any], None] | None = None, executors: Mapping[str, str] | None = None) -> RunOutcome:
+           before: Callable[[Any], None] | None = None, executors: Mapping[str, str] | None = None,
+           ruling_records: Sequence[Mapping[str, Any]] = (), rerun_of: Mapping[str, Any] | None = None
+           ) -> RunOutcome:
     """Run the graph from `first_input` while holding the lock, then turn the thread state into an exit."""
     tid = thread_id(spec.name, task_id)
     log = RunLog(run_dir(root, spec.name, task_id) / "run.jsonl")
@@ -266,12 +272,15 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                   workflow_version=spec.version, plan_digest=diagram_model(spec)["digest"],
                   executors={"steps": dict(executors or {}), "judges": dict(judges)},
                   settings_digest=settled.resolved.digest, profiles=list(settled.options.profiles),
+                  **({"rerun_of": dict(rerun_of)} if rerun_of else {}),
                   overridden_keys=rst.overridden_keys(settled.resolved))
         rec: dict[str, Any] = {"settings_digest": settled.resolved.digest, "rows": rst.rows_json(settled.resolved),
                                "changed_keys": settled.changed}
         if settled.changed:
             rec["caller"] = dict(settings.caller)
         log.write("settings_resolved", **rec)
+        for r in ruling_records:
+            log.write("ruling", **r)
         for g in settled.grant_changes():
             log.write("grant", unit=g["unit"], capability=g.get("capability"), prefix=g.get("prefix"),
                       action=g["action"], answers=_answers(log.path, g), by=dict(settings.caller), via=settings.origin)
@@ -408,6 +417,17 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
         d = Decision.parse(decision) if decision else None
     except ValueError as exc:
         return _refuse("decision_invalid", str(exc), tid=tid)
+    if feedback and len(feedback) > gatemod.FEEDBACK_LIMIT:
+        return _refuse("feedback_too_long", f"feedback is {len(feedback)} characters; at most "
+                                            f"{gatemod.FEEDBACK_LIMIT}", tid=tid)
+    if settings.ruling and not feedback:
+        return _refuse("ruling_without_text", "--ruling needs --feedback or --feedback-file", tid=tid)
+    unknown = [u for u in settings.ruling_for if u not in spec.units]
+    if unknown:
+        return _refuse("ruling_for_unknown", f"--ruling-for names no unit {', '.join(unknown)}", tid=tid)
+    human_payload: dict[str, Any] = {"feedback": feedback, "caller": dict(settings.caller),
+                                     "ruling": {"applies_to": list(settings.ruling_for)} if settings.ruling else None,
+                                     "revoke": list(settings.revoke_rulings)}
     declared = spec
     lock = RunLock(lock_path(root, spec.name, task_id))
     try:
@@ -435,6 +455,17 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
             return _refuse(first.code, f"{first.unit or spec.name}: {first.message}", tid=tid)
         spec = with_outcome(settled.spec)
         human_cap = int(rv["human_cap"])
+        if d is not None and d.word == "rewind" and d.unit and not settings.accept_external:
+            from tempergraph.run.rerun import cleared_units, external_effects
+
+            effects = external_effects(spec, cleared_units(spec, d.unit, values), values)
+            if effects:
+                return _refuse("external_effects", f"rewind:{d.unit} clears units with external effects: "
+                                                   f"{'; '.join(effects)}; pass --accept-external", effects, tid=tid)
+        try:
+            gatemod.check_rulings(values, feedback if settings.ruling else None, settings.revoke_rulings)
+        except gatemod.DecisionRefused as exc:
+            return _refuse("ruling_refused", str(exc), tid=tid)
         if state is ThreadState.PAUSED:
             if d is None:
                 units = [n.rsplit(".", 1)[0] for n, _ in snap.interrupts]
@@ -444,7 +475,7 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
                 gatemod.check_decision(spec, unit, values, d, human_cap=human_cap)
             except gatemod.DecisionRefused as exc:
                 return _refuse("decision_refused", str(exc), tid=tid)
-            first_input: Any = resume_input({"decision": str(d), "feedback": feedback, "caller": dict(settings.caller)})
+            first_input: Any = resume_input({"decision": str(d), **human_payload})
             before = None
             pause = snap.interrupts[0][1] if isinstance(snap.interrupts[0][1], dict) else {}
             touch = (unit, str(pause.get("kind") or "escalation"), str(pause.get("reason") or ""))
@@ -455,8 +486,11 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
             touch = None
             if d is not None:
                 unit = _last_unit(values)
-                before = _human_update(spec, unit, values, d, feedback)
+                before = _human_update(spec, unit, values, d, human_payload)
                 touch = (unit, "unfinished", "rewind")
+            elif feedback or settings.revoke_rulings:  # RRN-B4: the pending unit's next attempt and its judge
+                pending = next((n.rsplit(".", 1)[0] for n in snap.next if n.endswith(".step")), _last_unit(values))
+                before = _pending_update(spec, pending, values, human_payload)
         else:  # stopped
             if d is None or d.word not in ("retry", "back", "rewind"):
                 return _refuse("decision_refused", "a stopped thread re-opens with retry, back:<unit> or rewind:<unit>",
@@ -466,7 +500,7 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
                 gatemod.check_decision(spec, unit, values, d, human_cap=human_cap)
             except gatemod.DecisionRefused as exc:
                 return _refuse("decision_refused", str(exc), tid=tid)
-            first_input, before = None, _human_update(spec, unit, values, d, feedback)
+            first_input, before = None, _human_update(spec, unit, values, d, human_payload)
             reason = str(((values.get("run") or {}).get("stopped") or {}).get("reason") or "")
             touch = (unit, "stopped", reason)
         ws = values.get("workspace") or {}
@@ -491,7 +525,8 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
                 prior(cw2)
 
         out = _drive(spec, task_id, root, registry, settings, rep.judges, first_input, settled, before=before_all,
-                     executors=rep.step_executors)
+                     executors=rep.step_executors, ruling_records=_ruling_records(spec, values, d, touch, settings,
+                                                                                  feedback, snap.next))
         if stale is not None:
             out.warnings.append("stale_stop_request_removed")
         return out
@@ -531,8 +566,8 @@ def intervention(root: Path, spec: WorkflowSpec, task_id: str, touch: tuple[str,
     row = {"kind": "intervention", "id": uuid.uuid4().hex, "thread_id": thread_id(spec.name, task_id),
            "workflow": spec.name, "unit": unit, "caller": dict(settings.caller),
            "touches": touches(kind, reason if kind == "stopped" else "", d), "pause_kind": kind,
-           "decision": d.word + (f":{d.unit}" if d.unit else ""), "wait_s": wait_s, "feedback": bool(feedback),
-           "ruling": False, "settings_changed": list(settled.changed) if settled else [],
+           "decision": d.word + (f":{d.unit}" if d.unit else ""), "wait_s": wait_s, "feedback": bool(feedback) and not settings.ruling,
+           "ruling": settings.ruling, "settings_changed": list(settled.changed) if settled else [],
            "grants": [{k: v for k, v in g.items() if k != "key"} for g in (settled.grant_changes() if settled else [])],
            "cause": reason or kind}
     Ledger(path=root / "ledger.jsonl").append(row)
@@ -544,12 +579,46 @@ def _last_unit(values: Mapping[str, Any]) -> str:
     return str(units[-1]) if units else ""
 
 
-def _human_update(spec: WorkflowSpec, unit: str, values: Mapping[str, Any], d: Decision, feedback: str | None
-                  ) -> Callable[[Any], None]:
+def _ruling_records(spec: WorkflowSpec, values: Mapping[str, Any], d: Decision | None,
+                    touch: tuple[str, str, str] | None, settings: RunSettings, feedback: str | None,
+                    pending: Sequence[str]) -> list[dict[str, Any]]:
+    """EVT `ruling`: given and revoked rulings of this resume, ids and lengths only, never the text."""
+    out: list[dict[str, Any]] = [{"id": rid, "action": "revoked", "by": dict(settings.caller)}
+                                 for rid in settings.revoke_rulings]
+    if settings.ruling and feedback:
+        if d is not None and touch is not None:
+            at = gatemod.decision_target(spec, touch[0], d)
+        else:
+            at = next((n.rsplit(".", 1)[0] for n in pending if n.endswith(".step")), _last_unit(values))
+        out.append({"id": f"r{len(values.get('rulings') or {}) + 1}", "action": "given", "given_at": at,
+                    "applies_to": list(settings.ruling_for), "by": dict(settings.caller), "chars": len(feedback)})
+    return out
+
+
+def _pending_update(spec: WorkflowSpec, unit: str, values: Mapping[str, Any], payload: Mapping[str, Any]
+                    ) -> Callable[[Any], None]:
+    """Feedback, a ruling or a revocation on an unfinished thread, with no decision (RRN §2.2, RRN-B4)."""
+
+    def apply(cw: Any) -> None:
+        w: dict[str, Any] = {}
+        rulings = gatemod.ruling_writes(values, payload, unit)
+        if rulings:
+            w["rulings"] = rulings
+        if payload.get("feedback") and not payload.get("ruling"):
+            w["feedback"] = {unit: {"text": payload["feedback"], "as": "feedback"}}
+        if w:
+            cw.graph.update_state(cw.config(thread_id(spec.name, str((values.get("request") or {}).get("task_id")))),
+                                  w)
+
+    return apply
+
+
+def _human_update(spec: WorkflowSpec, unit: str, values: Mapping[str, Any], d: Decision,
+                  payload: Mapping[str, Any]) -> Callable[[Any], None]:
     """Re-open a stopped thread, or rewind an unfinished one, through the human node's own update."""
 
     def apply(cw: Any) -> None:
-        w = gatemod.apply_decision(spec, unit, values, {"decision": str(d), "feedback": feedback})
+        w = gatemod.apply_decision(spec, unit, values, {"decision": str(d), **payload})
         w.setdefault("run", {})["stopped"] = None
         cw.graph.update_state(cw.config(f"{spec.name}/{values.get('request', {}).get('task_id', '')}"), w,
                               as_node=flow.node_names(unit)[3])

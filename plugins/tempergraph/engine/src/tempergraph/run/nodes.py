@@ -194,8 +194,7 @@ class EngineNodes:
             visit_reason=str(((state.get("visits") or {}).get(unit) or {}).get("reason") or "") if first else "",
             visit_from=str(((state.get("visits") or {}).get(unit) or {}).get("from") or "") if first else "",
             feedback=str(fb.get("text") or "") if fb.get("as") == "feedback" else "",
-            rulings=tuple(str(r.get("text")) for r in (state.get("rulings") or {}).values()
-                          if isinstance(r, dict) and unit in (r.get("applies_to") or [unit])),
+            rulings=tuple(gatemod.active_rulings(spec, state, unit)),
             upstream_targets=tuple(u.gate.back_targets))
         rendered = render_step(unit, u, ctx, caps)
         key = session_key(unit, attempt, "retry" if retry else "step")
@@ -246,7 +245,7 @@ class EngineNodes:
         if first and unit not in path_units:
             run["path"] = {"units": path_units + [unit]}
         return {"attempts": {unit: record}, "artifacts": {unit: {**hybrid, **parsed.artifacts} or None},
-                "values": {unit: parsed.values or None}, "feedback": {unit: None}, "run": run}
+                "values": {unit: parsed.values or None}, "run": run}  # feedback is cleared at the gate
 
     def _script_failed(self, unit: str, state: Mapping[str, Any], attempt: int, visit: int, name: str, env: bool,
                        path_units: list[str], first: bool, arts: dict[str, str]) -> dict[str, Any]:
@@ -472,6 +471,7 @@ class EngineNodes:
             out_of_reach=[d.capability for d in views.deferred], check=cres, step_account=str(att.get("text") or ""),
             workspace_facts={"branch": gitmod.branch(workdir), "changed": len(gitmod.changed_paths(workdir))},
             feedback=str(((state.get("feedback") or {}).get(unit) or {}).get("text") or ""),
+            rulings=tuple(gatemod.active_rulings(spec, state, unit)),
             visit_reason=str(((state.get("visits") or {}).get(unit) or {}).get("reason") or "")))
         alias = j.model or "inherit"  # resolved on the judge chain alone (RST §2.3, CON §2.4)
         attempt = int(att.get("attempt", 1))
@@ -532,6 +532,8 @@ class EngineNodes:
 
     def gate(self, unit: str, state: RunState) -> dict[str, Any]:
         w = gatemod.decide(self.ctx.spec, unit, state, self.ctx.task_id)
+        if (state.get("feedback") or {}).get(unit):
+            w.setdefault("feedback", {})[unit] = None  # one-time: seen by the attempt and its judge (RRN §2.2)
         r = w["route"][unit]
         so_far = cost_so_far((state.get("run") or {}).get("cost"))
         self.ctx.log.write("gate", unit=unit, verdict=((state.get("judgements") or {}).get(unit) or {}).get("verdict"),
@@ -548,7 +550,7 @@ class EngineNodes:
         payload = decision if isinstance(decision, dict) else {"decision": str(decision)}
         w = gatemod.apply_decision(self.ctx.spec, unit, state, payload)
         self.ctx.log.write("human", unit=unit, decision=payload.get("decision"), caller=payload.get("caller"),
-                           feedback=bool(payload.get("feedback")))
+                           feedback=bool(payload.get("feedback")) and not payload.get("ruling"))
         return w
 
     def finalizer(self, state: RunState) -> dict[str, Any]:
