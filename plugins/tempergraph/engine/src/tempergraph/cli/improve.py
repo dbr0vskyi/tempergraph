@@ -206,7 +206,9 @@ def cmd_improve(env: Any, a: argparse.Namespace) -> int:
     try:
         if a.action == "backlog":
             specs = [_spec(env, a.workflow)] if a.workflow else list(env.catalog.specs.values())
+            machine = os.environ.get("TEMPERGRAPH_AUTONOMY")
             doc: dict[str, Any] = {"schema_version": 1,
+                                   "autonomy": {s.name: prp.autonomy(s, machine) for s in specs},
                                    "clusters": [c for s in specs for c in prp.clusters(root, s.name)]}
             if a.json:
                 _emit(env, doc)

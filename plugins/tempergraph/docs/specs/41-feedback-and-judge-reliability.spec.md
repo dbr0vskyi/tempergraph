@@ -1,7 +1,7 @@
 ---
 title: Feedback labels and judge reliability
 type: component
-status: review
+status: ready-for-implementation
 prefix: FBK
 adrs: [0031, 0033, 0005, 0021]
 ---
@@ -116,7 +116,8 @@ The finding is recorded and enters the friction lens like any finding; it is nev
 - Labels are cheap facts the engine already sees; the only new human effort is the optional queue, ordered so the most informative judgements come first ([R-030 F6](../research/R-030-self-improving-agent-systems.rsrch.md)).
 - The thresholds (20 labels, 0.15, 0.8, 90 days, the shift margins) have no data behind them and are recorded as parameters with that provenance ([IMD](43-improvement-data.spec.md)).
 - Confidence is studied here, against labels, rather than used as a filing floor; the open question on the 0.75 floor in SIL is answered from `confidence_bands` once labels exist.
-- Release 1 build ([T7 plan](../plans/t7-observability.plan.md) T7.5): only the `explicit` kind, through `label <thread> <unit> --value agree|disagree [--criterion id] [--attempt n]`. The row goes to the state root's `ledger.jsonl` as `kind: label` (the label's own kind is the field `label_kind`, since `kind` names the ledger row's kind) with `gate_record` (the gate record's `seq`), `gate_verdict`, the IMD-R1 fields and the caller block; `source` is `person` only when the caller's decider is a person. `brief_digest` and `criteria_digest` of the binding are null until `agent_run` carries them (IMD-R2). The derived kinds, `labels queue`, grading and the `label_recorded` event are T12.3.
+- Release 1 build ([T7 plan](../plans/t7-observability.plan.md) T7.5): only the `explicit` kind, through `label <thread> <unit> --value agree|disagree [--criterion id] [--attempt n]`. The row goes to the state root's `ledger.jsonl` as `kind: label` (the label's own kind is the field `label_kind`, since `kind` names the ledger row's kind) with `gate_record` (the gate record's `seq`), `gate_verdict`, the IMD-R1 fields and the caller block; `source` is `person` only when the caller's decider is a person. The binding's `brief_digest` and `criteria_digest` come from the gate's `judgement` record ([EVT](30-run-events.spec.md)), and each label row also carries the judgement's `confidence` and `confidence_source`.
+- Release 1 build (plan T12.3, `improve/reliability.py`): `approval`, `override`, `pushback`, `audit` and `rerun` labels are derived at every exit from the run log and the ledger with a deterministic `label_id`, so a second derivation of one judgement writes nothing. `pr_state` is not derived, because no run records the pull request it led to; harvest (FBK-B6) is release 2. The grade applies its rules in this order: `n` < 20 gives `unmeasured`; then the two `unreliable` rules; then the other `unmeasured` rules (recency, known-bad count, live score); else `reliable`. The live score is JCL's state for the binding: `accepted` or `provisional` on a case set with known-bad cases ([JCL §2.5](50-judge-calibration.spec.md)), which answers this spec's first open question for release 1 without merging the two states. `labels grades <workflow>` prints the figures and grade per gate and binding; `labels queue <workflow>` the §2.4 queue, its 5% sample seeded per day. A binding shift is a `binding_shift` row in the run's `findings.json`. Labels and shifts an exit adds ride on that exit's `finding_recorded` event (`labels`); `label_recorded` and `binding_shift` are not separate events in release 1 ([IMD §2.3](43-improvement-data.spec.md)). All thresholds are `improve/params.py` rows (`labels.*`, `reliability.*`, `shift.*`).
 
 ## 6. Acceptance criteria
 

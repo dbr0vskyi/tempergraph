@@ -64,7 +64,7 @@ The catalog reads the home registry and loads each package by the first steps of
 | 6.2.4 | `engine/src/tempergraph/cli/main.py` | `--set`, `--settings`, `--profile` on `run`, `resume` and `config show`; `--unset`, `--reload-settings` on `resume`; the named spellings of CLI §2.1; `config show`, `config validate`, `config paths` | RST §2.9, CLI §2.1 | | P1 | ✓ | 2026-11-20 |
 | 6.2.5 | `engine/src/tempergraph/durability/status.py` | The status row's `settings_digest`, `overridden_keys` and `settings_stale` (T7 owns the status row; handed over, built in T7) | RST §2.7 | yes | P2 | ✓ | 2026-11-20 |
 
-Release 1 notes: keys whose feature is release 2 (the audit judge, switch arms, council, contest, wait and ask keys, the `in_repo` and `path:` roots, the `default_branch` and `ref:` bases, `cleanup: on_finish`) are refused with `setting_not_in_release` (RST §4). No key is refused with `setting_not_built` any more: `run.auto_reopen` (6.1.6) and the widening keys (T6.3) are built.
+Release 1 notes: keys whose feature is release 2 (the audit judge, switch arms, council, contest, wait and ask keys, the `in_repo` and `path:` roots, the `default_branch` base, `cleanup: on_finish`) are refused with `setting_not_in_release` (RST §4). The `ref:<name>` base is built for trial cases (plan T12.6): it resolves with `git rev-parse --verify` and an unresolvable or malformed name is `base_unresolved`, exit 2 before spend (WTR §2.5). No key is refused with `setting_not_built` any more: `run.auto_reopen` (6.1.6) and the widening keys (T6.3) are built.
 
 ### T6.3 Tool grants
 
