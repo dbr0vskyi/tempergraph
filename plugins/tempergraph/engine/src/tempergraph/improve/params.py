@@ -50,6 +50,18 @@ PARAMS = {p.name: p for p in (
     Param(name="shift.last_n", value=30, source="FBK §2.5"),
     Param(name="shift.pass_points", value=20, source="FBK §2.5"),
     Param(name="shift.unverifiable_points", value=15, source="FBK §2.5"),
+    # PRP §2.2, §2.6 (T12.5, T12.6)
+    Param(name="proposals.label_value", value=5, source="PRP §2.2"),
+    Param(name="trial.alpha", value=0.05, source="PRP §2.6, R-031 F3"),
+    Param(name="trial.min_pairs", value=8, source="PRP §2.6"),
+    Param(name="trial.noisy_floor", value=0.5, source="PRP §2.6"),
+    Param(name="trial.guard_cost", value=0.15, source="PRP §2.6"),
+    Param(name="trial.guard_outcome_cases", value=1, source="PRP §2.6"),
+    Param(name="trial.guard_check_cases", value=1, source="PRP §2.6"),
+    Param(name="trial.guard_escapes", value=1, source="PRP §2.6"),
+    Param(name="trial.cap_usd", value=200, source="PRP-B7"),
+    Param(name="trial.monthly_cap_usd", value=500, source="PRP §2.1, release 1 default"),
+    Param(name="trial.after_release_runs", value=10, source="PRP-B9"),
 )}
 
 
