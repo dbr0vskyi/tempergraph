@@ -112,7 +112,7 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 5.8.1 | `run/outcome.py` | Load `outcome.json`; intermediate criteria per gate; scoring scales; trust and coverage | OUT §2.1–2.3, ADR-0114 | yes | P1 | ○ | |
+| 5.8.1 | `run/outcome.py`, `tests/test_outcome.py` | `read_outcome`, `parse_outcome` and the file rows of OUT §4; `gate_criteria` with `mechanical` for `check` criteria; `check_against` for the unit rows ✓. Scales in the judge prompt, trust and coverage ○ | OUT §2.1–2.3, ADR-0114 | yes | P1 | ○ | |
 | 5.8.2 | `run/nodes.py` | The final outcome gate before the finalizer; sign-off criteria in the approval pause | OUT §2.4 | yes | P1 | ○ | |
 | 5.8.3 | `run/outcome.py` | The outcome record and its uncorrected measures; `outcome show` and `outcome candidates` data | OUT §2.5 | yes | P1 | ○ | |
 

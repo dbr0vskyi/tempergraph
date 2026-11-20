@@ -25,6 +25,7 @@ Types are in [CON §2.14](01-contracts.spec.md).
 ```python
 def read_outcome(package_path: Path) -> OutcomeSpec | list[Finding]: ...       # model-free
 def gate_criteria(outcome: OutcomeSpec, unit: str) -> list[Criterion]: ...      # PKG §2.3 step 5
+def check_against(outcome: OutcomeSpec, spec: WorkflowSpec) -> list[Finding]: ... # the unit rows of §4
 def outcome_record(state: RunState, outcome: OutcomeSpec) -> OutcomeRecord: ...
 ```
 
@@ -187,8 +188,9 @@ A revision is made by a person through the authoring skill's revise mode ([AUT �
 | An intermediate outcome for a unit not in `order`, or a model step with none | `outcome-unit-unknown` / `outcome-unit-missing` (error) |
 | `serves` names an id that is not a final criterion | `outcome-serves-unknown` (error) |
 | Duplicate criterion id anywhere in the file | `criterion-id-duplicate` (error) |
-| `verified_by: check` on a unit whose gate has no check | `mechanical` refusal of [CHK §4](75-check-contract-and-command-runs.spec.md) |
+| `verified_by: check` on a unit whose gate has no check | `mechanical-without-check`, the refusal of [CHK §4](75-check-contract-and-command-runs.spec.md) |
 | `verified_by: none` without a reason | `outcome-none-unexplained` (error) |
+| A criterion without `id` or `text`, or with an unknown `verified_by` or `severity` | `outcome-criterion-invalid` (error) |
 | A report computing a measure with no records | The measure is `unmeasured` with `n = 0`, never 0 |
 | A criterion text or the statement holds a request literal | Literal check finding ([SCF §2.3](91-blueprint-and-scaffold.spec.md)) |
 
