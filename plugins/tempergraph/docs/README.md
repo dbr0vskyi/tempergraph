@@ -2,7 +2,7 @@
 
 The design of the tempergraph engine, written the spec-driven way temperspec follows: **research → decision record → spec → plan → code**. Each link is a document the next link reads, so a fresh session can implement a component from its spec without a conversation.
 
-This set is docs only. No plan and no code exists yet. The next link in the chain is an implementation plan per component spec.
+This set is docs only; no code exists yet. Release 1 is scoped by [ADR-0090](adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md) and planned in [plans/first-release.plan.md](plans/first-release.plan.md); its readiness review is [R-090](research/R-090-implementation-readiness.rsrch.md). The next link in the chain is the expanded plan of each track.
 
 ## Where things live
 
@@ -11,6 +11,7 @@ This set is docs only. No plan and no code exists yet. The next link in the chai
 | [specs/](specs/00-overview.spec.md) | Behaviour specs | **What** the engine does: contracts, Given/When/Then behaviours, error conditions, acceptance criteria. Never implementation code. | [Spec rules](#spec-rules) |
 | [adr/](adr/README.md) | Architecture decision records | **Why**: one decision each, its options, trade-offs and consequences. Links specs, restates none. | [Decision rules](#decision-rules) |
 | [research/](research/README.md) | Research notes | Background findings that answer an unknown, with sources and confidence marks. | [Research rules](#research-rules) |
+| [plans/](plans/README.md) | Implementation plans | **In what order**: the release plan's tracks and phases, then one expanded plan per track. | Release 2 tracks follow temperspec's [plan rule](../../temperspec-tgraph/rules/plan.rule.md) |
 
 Read in this order before planning or coding a component: the [overview spec](specs/00-overview.spec.md), the [contracts spec](specs/01-contracts.spec.md), the component spec, then the decision records and research notes it links.
 
@@ -28,7 +29,7 @@ Every SDD artifact carries its type in a double suffix, `<name>.<type>.md`, so a
 | Triage note (gap list and route) | `.triage.md` | `<work-item>.triage.md` | `tasks/` |
 | Rule file | `.rule.md` | `<artifact-type>.rule.md` | the repo's rule folder |
 
-- Only the first three types exist in this set today; the others are reserved so the next links in the chain need no new decision.
+- Specs, decision records, research notes and plans exist in this set today; the other types are reserved so the next links in the chain need no new decision.
 - A folder index is `README.md` and carries no suffix: it lists artifacts, it is not one.
 - Short titles are lower-case words joined by `-`. Numbers are never reused, and a rename keeps the number.
 - A check for this rule fails on any Markdown file in `specs/`, `adr/` or `research/` other than `README.md` whose name lacks its folder's suffix.

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | proposed |
+| Status | superseded by [ADR-0018](0018-add-messages-api-and-agent-sdk-executors.adr.md) (four executors) |
 | Date | 2026-11-19 |
 | Authors | Claude (design session for the owner) |
 | Supersedes | — |

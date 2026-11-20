@@ -3,7 +3,7 @@ title: Engine CLI
 type: component
 status: review
 prefix: CLI
-adrs: [0015, 0021, 0022, 0027, 0028, 0070, 0073, 0085, 0087, 0095, 0096]
+adrs: [0015, 0021, 0022, 0027, 0028, 0040, 0070, 0073, 0085, 0087, 0095, 0096]
 ---
 
 # Engine CLI
@@ -25,6 +25,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `events <selector> [--since <seq>] [--follow] [--activity <session_key>]` | Run-log records and activity lines in order ([EVT §2.6](30-run-events.spec.md)) | no | no |
 | `logs <selector> [--session <key>] [--kind …] [--follow]` | One log of a run from the local store ([LOS §2.4](33-local-observability-store.spec.md)) | no | no |
 | `wait <selector> [--timeout s]` | Block until an outcome | no | no |
+| `attention [--all-roots] [--json]` | Every item waiting on a person under the state root, oldest first: pauses of every thread and, when present, orchestration attention items (CLI-B6, [ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md)) | no | no |
 | `list` | The catalog (versioned JSON or a table) | no | no |
 | `graph <workflow> [--format mermaid|svg|md] [--overlay <thread>]` | Diagram from the model | no | no |
 | `report [window] [--by unit|executor|version]` | Cost and friction reports | no | no |
@@ -49,6 +50,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `hooks add|list|remove|test` | Run lifecycle hooks (§2.2) | add and remove only | no |
 | `improve backlog|propose|trial|aa|open|show` | Proposals and trials ([PRP §2.7](40-improvement-proposals.spec.md)) | per [PRP](40-improvement-proposals.spec.md) | `propose`, `trial`, `aa` |
 | `label <thread> <gate> [--criterion id] --value agree|disagree`, `labels queue [workflow]` | Enter a label; list judgements to label ([FBK](41-feedback-and-judge-reliability.spec.md)) | `label` only | no |
+| `evals run\|report\|grade …`, `evals score\|bar\|label …`, `evals harvest\|replay …` | Eval suites ([EVS](51-eval-suites.spec.md)), judge calibration ([JCL §2.6](50-judge-calibration.spec.md)), harvest and replay ([LIF §2](18-lifecycle-and-evals.spec.md)); owned there | per owner spec | live kinds and `score`, `replay` only |
 | `report --loop [window]` | The loop's own metrics ([IMD §2.4](43-improvement-data.spec.md)) | no | no |
 | `supervision log --host <h> --session <id>`, `supervision close [--session <id>]`, `supervision show <selector>\|--session <id> [--json]` | Append a host's or application's supervision entries; close threads' supervision cost; show a thread's or session's supervision ([SCO §2.6](87-supervision-cost.spec.md)) | `log`: the journal; `close`: ledger lines and outbox rows; `show`: no | no |
 | `report --supervision [window] [--by workflow\|version\|unit\|host\|level]` | Touches, levels, waits and supervision cost per workflow ([SUP §2.4](86-supervision-metrics.spec.md)) | no | no |
@@ -102,14 +104,16 @@ A hook is an operator-registered command run on a run event (`started`, `unit_en
 
 | Executor | `restricts_judge_tools` | Version | Facts not run |
 |---|---|---|---|
-| claude | true | from `claude --version` | P-CC-1 … P-CC-6 |
-| agent-sdk | true | SDK package version plus its CLI's | P-AS-1 … P-AS-3 |
+| claude | true | from `claude --version` | P-CC-1 … P-CC-8 |
+| agent-sdk | true | SDK package version plus its CLI's | P-AS-1 … P-AS-4 |
 | messages-api | true (by construction) | client library version and API version header | none (contract tests) |
-| antigravity | false | from `agy --version` | P-AG-1 … P-AG-8 |
+| antigravity | false | from `agy --version` | P-AG-1 … P-AG-9 |
 
 **CLI-B4 Background-friendly.** Given a caller that starts `run` in the background, when the run pauses, then the process exits 3 so the caller learns of the pause by its exit, with no polling.
 
 **CLI-B5 Facts are read-only.** Given a live run, when `facts` runs, then it reads the status document and the run log only, creates nothing and calls no model (contract C13), and its JSON carries `schema_version`.
+
+**CLI-B6 One list of what waits on a person.** Given three paused threads under the state root (an approval, an escalation and, with its orchestration, a paused node), when `attention` runs, then it prints one item each, oldest first, with the thread, workflow, unit and item, pause kind, age, a one-line reason and the exact command that answers it; it reads the status documents and orchestration status documents only, calls no model and creates nothing (contract C13); `--all-roots` reads every state root in the machine index ([CST §2.1](34-central-run-stats.spec.md)) and `--json` carries `schema_version`.
 
 ## 4. Error conditions
 
@@ -131,6 +135,7 @@ A hook is an operator-registered command run on a run event (`started`, `unit_en
 - [ ] CLI-AC-2 `run --check` and `run` agree on every refusal in a corpus of requests.
 - [ ] CLI-AC-3 Verb words are reserved and refused as input.
 - [ ] CLI-AC-4 Exit codes match [CON §2.9](01-contracts.spec.md) by a generated-table drift test.
+- [ ] CLI-AC-5 `attention` lists every pause of a fixture state root exactly once, oldest first, each with a resume command that `resume` accepts, and leaves the state root unchanged.
 
 ## Open questions
 

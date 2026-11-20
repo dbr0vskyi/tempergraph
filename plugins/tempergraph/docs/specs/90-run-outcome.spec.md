@@ -155,7 +155,7 @@ Where revision candidates come from, read model-free by `outcome candidates <wor
 | A `person` criterion signed `signed` on every run of the window with ≥ 20 runs | Move it up to `judge`: calibration cases to collect |
 | Low upstream agreement | A stronger serving criterion on the named unit |
 
-In release 1, a revision is made by a person through the authoring skill's revise mode ([AUT §2.7](89-workflow-authoring.spec.md)). The improvement loop proposes outcome changes as class `outcome` from release 3 ([PRP §2.4](40-improvement-proposals.spec.md)); it never makes a weakening.
+A revision is made by a person through the authoring skill's revise mode ([AUT §2.7](89-workflow-authoring.spec.md)), or proposed by the improvement loop as class `outcome` ([PRP §2.4](40-improvement-proposals.spec.md)), which never makes a weakening; both are in release 1 ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md)).
 
 ## 3. Behaviours
 
@@ -197,7 +197,7 @@ In release 1, a revision is made by a person through the authoring skill's revis
 - **One file, one bar.** Step gates, the outcome gate, the outcome lens, eval trials ([EVS §2.3](51-eval-suites.spec.md)) and promotion read the same criteria, so a revision moves all of them together ([ADR-0107](../adr/0107-the-good-outcome-is-one-data-file-of-final-and-intermediate-outcomes.adr.md)).
 - **Why the outcome gate is mandatory.** R-011 recommended it; without it, a run whose every step passed can still miss the request, and the loop has nothing to grade against. Its cost is one judge session per run in `dev`; `stable` may sample ([ADR-0108](../adr/0108-a-run-is-measured-at-a-final-outcome-gate.adr.md)).
 - **Why show, not hide.** An unverifiable requirement left out of the file looks verified to everyone who reads the reports. Keeping it as `none` with a reason makes the gap a number the owner can watch and the promotion rule can refuse.
-- **Release 1** builds §2.1 to §2.5, sign-off, the measures without correction where no judge is calibrated, `outcome show` and `outcome candidates`, and revise mode. Corrected rates come with calibration (release 2); `outcome` proposals with the loop (release 3).
+- **Release 1** builds §2.1 to §2.5, sign-off, the measures without correction where no judge is calibrated, `outcome show` and `outcome candidates`, and revise mode. Calibration, corrected rates and `outcome` proposals from the loop are in release 1 too, built after the core ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md)).
 
 ## 6. Acceptance criteria
 

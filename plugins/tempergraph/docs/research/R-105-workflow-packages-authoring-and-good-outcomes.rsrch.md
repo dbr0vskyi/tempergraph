@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The readiness review found three designs missing before workflow creation can be built (R-090 (PR 14) D1 to D3, from [R-011](R-011-design-gap-review.rsrch.md) G1 to G3): the workflow package and its declaration format, the authoring contract, and a run-level definition of a good outcome. On 2026-11-20 the owner gave the direction for all three:
+The readiness review found three designs missing before workflow creation can be built ([R-090](R-090-implementation-readiness.rsrch.md) D1 to D3, from [R-011](R-011-design-gap-review.rsrch.md) G1 to G3): the workflow package and its declaration format, the authoring contract, and a run-level definition of a good outcome. On 2026-11-20 the owner gave the direction for all three:
 
 > When we're creating a workflow it should create for us a Claude plugin with prompts, agents and skills specific to the workflow and executable Python code for the engine itself. The run-level good outcome should be defined during workflow authoring and further improved. The user provides an existing solution, references, sources, or simply chats about it from scratch. Our workflow authoring should focus on the definition of a good outcome and on finding or creating (including intermediate) verifiable outcomes and criteria.
 

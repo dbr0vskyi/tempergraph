@@ -9,7 +9,7 @@
 
 ## Context
 
-The owner's direction (2026-11-20): creating a workflow produces a Claude plugin with the prompts, agents and skills specific to the workflow, plus executable Python code for the engine; and the workflow plugin has specs the same way the engine does. The design had no package layout (R-090 (PR 14) D1). Claude Code strips unknown keys from `plugin.json` and does not install Python dependencies ([R-105](../research/R-105-workflow-packages-authoring-and-good-outcomes.rsrch.md) A1, A4).
+The owner's direction (2026-11-20): creating a workflow produces a Claude plugin with the prompts, agents and skills specific to the workflow, plus executable Python code for the engine; and the workflow plugin has specs the same way the engine does. The design had no package layout ([R-090](../research/R-090-implementation-readiness.rsrch.md) D1). Claude Code strips unknown keys from `plugin.json` and does not install Python dependencies ([R-105](../research/R-105-workflow-packages-authoring-and-good-outcomes.rsrch.md) A1, A4).
 
 ## Decision
 

@@ -10,7 +10,7 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0004](0004-four-nodes-per-unit.adr.md) | Four nodes per unit; retries are edges; one interrupt per gate | proposed |
 | [0005](0005-independent-judge-engine-verdict.adr.md) | An independent read-only judge reports; the engine derives the verdict | proposed |
 | [0006](0006-executors-as-capability-adapters.adr.md) | Executors are capability-declaring adapters over headless agent CLIs | proposed |
-| [0007](0007-two-first-class-executors.adr.md) | Ship two first-class executors: Claude Code CLI and Antigravity CLI | proposed |
+| [0007](0007-two-first-class-executors.adr.md) | Ship two first-class executors: Claude Code CLI and Antigravity CLI | superseded by 0018 |
 | [0008](0008-portable-model-aliases.adr.md) | Workflows name portable model tiers and tool capabilities; executors bind them | proposed |
 | [0009](0009-normalized-session-event-stream.adr.md) | Executors translate CLI streams into one normalized session event stream | proposed |
 | [0010](0010-judge-isolation-per-executor.adr.md) | Judge isolation is a declared, probe-gated capability per executor | proposed |
@@ -84,6 +84,8 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0087](0087-a-supervision-journal-written-by-the-host-not-by-read-only-verbs.adr.md) | Supervision cost is measured by a journal the host writes, not by the engine's read-only verbs | proposed |
 | [0088](0088-attribute-supervision-spend-by-marginal-tokens-beside-turn-totals.adr.md) | Attribute a supervising session's spend to runs by marginal tokens, shown beside turn totals | proposed |
 | [0089](0089-supervision-is-a-promotion-and-improvement-measure.adr.md) | Supervision by every decider is a promotion criterion and an improvement signal | proposed |
+| [0090](0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md) | The first release is simple, trusted workflows on one machine, with their creation and full observability | proposed |
+| [0091](0091-first-release-ships-the-claude-executor-only.adr.md) | The first release ships the Claude Code executor only; the other three follow by release | proposed |
 | [0095](0095-a-model-free-tick-behind-os-agnostic-triggers.adr.md) | A model-free, OS-agnostic tick holds every schedule rule; a portable engine loop calls it, OS and other schedulers are optional adapters | proposed |
 | [0096](0096-exact-formats-first-and-an-optional-word-grammar-echoed-back.adr.md) | Exact date formats are the deterministic path; an optional word grammar sits on top; both are model-free and echoed back | proposed |
 | [0097](0097-schedules-keep-an-iana-zone-and-rfc-5545-daylight-saving-rules.adr.md) | Schedules keep an IANA zone; calendar rules follow wall time, intervals elapsed time, by RFC 5545 | proposed |

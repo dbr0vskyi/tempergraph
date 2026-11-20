@@ -86,7 +86,7 @@ How the engine keeps operator input, model output and secrets away from process 
 - [ ] SEC-AC-2 The canary test of SEC-B2 passes for runs on every executor.
 - [ ] SEC-AC-3 No filing module imports or opens the evidence file (source test).
 - [ ] SEC-AC-4 A command run by the tool host sees none of the executor's credential variables (planted-key test).
-- [ ] SEC-AC-4 Private configs and session homes are owner-only and removed on every exit path, including a raised error.
+- [ ] SEC-AC-5 Private configs and session homes are owner-only and removed on every exit path, including a raised error.
 
 ## Open questions
 

@@ -136,7 +136,7 @@ The person approves the drawing as a whole; the skill records the approval with 
 ## 5. Design notes
 
 - **Model-free, then one real run.** A model-free ladder catches what is wrong with the package; only a live run on a real case shows whether the outcome and its verifications grade the way the person grades ([ADR-0110](../adr/0110-check-an-authored-workflow-model-free-then-by-one-consented-trial.adr.md)). The person's grades on that run are the first labels and calibration cases, which is where criteria drift shows first ([R-105 B2](../research/R-105-workflow-packages-authoring-and-good-outcomes.rsrch.md)).
-- **Release 1** ships all of §2; check helpers cover the primitives listed, and the engine's test runner is the one set up by plan track T0 of the first-release plan.
+- **Release 1** ships all of §2; check helpers cover the primitives listed, and the engine's test runner is the one set up by track T1.1 of the [first-release plan](../plans/first-release.plan.md).
 
 ## 6. Acceptance criteria
 
