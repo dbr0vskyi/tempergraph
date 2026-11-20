@@ -174,6 +174,8 @@ class EngineNodes:
         self._boundary(state)
         if u.kind == "script":
             return self._script_unit(unit, state)
+        if u.kind in ("route", "switch"):
+            return self._flow_unit(unit, state)
         if u.extra.get("outcome"):
             return self._outcome_step(unit, state)
         st = u.step
@@ -352,6 +354,15 @@ class EngineNodes:
         path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
         run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
         return {"attempts": {unit: record}, "artifacts": {unit: artifacts or None}, "run": run}
+
+    def _flow_unit(self, unit: str, state: RunState) -> dict[str, Any]:
+        """A route or switch unit runs no session: its pick is made in the gate node (CMP §2.2)."""
+        visit = int(((state.get("visits") or {}).get(unit) or {}).get("visit", 1))
+        record = {"attempt": 1, "visit": visit, "ok": True, "text": "", "escalate": None, "infra_spent": False,
+                  "check": None, "flow": True}
+        path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
+        run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
+        return {"attempts": {unit: record}, "run": run}
 
     # -- judge -----------------------------------------------------------------------------------
 
@@ -566,6 +577,9 @@ class EngineNodes:
         so_far = cost_so_far((state.get("run") or {}).get("cost"))
         self.ctx.log.write("gate", unit=unit, verdict=((state.get("judgements") or {}).get(unit) or {}).get("verdict"),
                            token=r["token"], route_target=r["node"], cost_so_far=so_far)
+        if r.get("pick"):  # every pick, by the function or the default arm (OBS `route`)
+            p = r["pick"]
+            self.ctx.log.write("route", unit=unit, arm=p["arm"], target=p["target"], chosen_by=p["chosen_by"])
         if unit in (w.get("pause") or {}) and w["pause"][unit]:
             p = w["pause"][unit]
             self.ctx.log.write("pause", unit=unit, pause_kind=p["kind"], decisions=p["decisions"], resume=p["resume"],
