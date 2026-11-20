@@ -25,7 +25,7 @@ Everything a repository's runs leave on the machine lives in one folder, the sta
   locks/<workflow>/<task_id>.lock   [DUR]
   runs/<workflow>/<task_id>/
     run.jsonl                       run log [OBS], with the envelope of [EVT §2.1]
-    evidence/                       request, outputs, feedback; local only [SEC §2.3]
+    evidence/                       request, outputs, feedback; review/<session_key>.json from the session reviewer; local only [SEC §2.3, SRV §2.8]
     findings.json                   [SIL]
     loop.jsonl                      the loop child's records for this thread: judged sessions, filing results [SIL §5]
     engine.json                     engines and workflow versions each process ran on; a pin [MIG §2.1]
@@ -36,6 +36,7 @@ Everything a repository's runs leave on the machine lives in one folder, the sta
       meta.json                     executor, cli_version, session_id, transcript locator, pgid, started_at, ended_at
       raw.jsonl                     every line the executor's stream produced, with receive time; the session's full log
       activity.jsonl                normalized events [EVT §2.3]
+      digest.json                   model-free session digest: names, counts, keyed digests [SRV §2.1]
       live.json                     live progress file [OBS §2.3]; removed at session end
       stderr.log                    the child's standard error
       tools.jsonl                   messages-api only: each tool the engine's tool host ran, exit code, duration [THS]
@@ -111,7 +112,7 @@ Nothing is removed automatically. The rule `store usage` checks and `store prune
 | `raw.jsonl`, `activity.jsonl`, `stderr.log`, `output/`, `checks/*/*.log`, `hooks/` | 30 days after the thread finished; a thread that ended stopped or failed is kept until `--keep-failed` is dropped |
 | Supervision journals | 90 days after the session ended; closed figures stay in the ledger |
 | Evidence | 90 days after the thread finished, operator-configurable ([IMD-R10](43-improvement-data.spec.md)); its records stay readable |
-| `run.jsonl`, `meta.json`, `result.json`, findings | Until the thread is pruned whole by the operator, and at least 400 days ([IMD-R10](43-improvement-data.spec.md)) |
+| `run.jsonl`, `meta.json`, `result.json`, findings, `digest.json` | Until the thread is pruned whole by the operator, and at least 400 days ([IMD-R10](43-improvement-data.spec.md)) |
 | Checkpoints, ledger, stats, `fleet/` | Never pruned by `store`; `fleet/` is a copy and can be deleted and rebuilt by `stats sync` |
 | `engine/` | 14 days |
 

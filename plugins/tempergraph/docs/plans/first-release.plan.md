@@ -102,6 +102,7 @@ A spec listed is in scope with all its acceptance criteria except those named; e
 | REQ-40 | PRP | all; trials without `batch` | T12.5, T12.6 |
 | REQ-41 | LSN | all | T12.7 |
 | REQ-42 | IMD, LIF-B6, OUT-AC-6 | IMD all; stable mode; outcome proposals | T12.8 |
+| REQ-43 | SRV | AC-1 to AC-6; stable-mode plans in X2-26 | T12.9 |
 
 ### 1.3 Feature list
 
@@ -202,6 +203,9 @@ Every item release 1 ships, then every item it leaves out with its release. The 
 | I-89 | Stable mode with its lens triggers and daily cap | LIF-B6, SIL | T12.8 |
 | I-90 | `report --loop` and the loop's local and aggregate queries | IMD, OBS | T12.8 |
 | I-91 | Outcome proposals from the loop | OUT, PRP | T12.8 |
+| I-92 | Session digest on every exit, model-free, and its cause codes | SRV §2.1, §2.2 | T12.9 |
+| I-93 | Session review in dev mode, probation and authoring trials: plan, condensed datamarked view, tool-less reviewer, citation check, local report; never files | SRV §2.3, §2.5 to §2.8 | T12.9 |
+| I-94 | `improve review`, `improve review show`, `improve review summary` | SRV §2.9 | T12.9 |
 
 **Excluded, release 2**
 
@@ -232,6 +236,7 @@ Every item release 1 ships, then every item it leaves out with its release. The 
 | X2-23 | Worktree extras: `in_repo` and `path:` roots, `default_branch` base, `cleanup on_finish`, `prune --apply`, foreign-worktree scan, `.worktreeinclude` | WTR |
 | X2-24 | State root outside git | WSP (R-011 G9) |
 | X2-25 | Windows | R-011 U3 |
+| X2-26 | Session review in stable mode: `signals` plans, saturation, corroborated filing, the proposer reading observations | SRV §2.4, §5 |
 
 **Excluded, release 3**
 
@@ -280,7 +285,7 @@ Every item release 1 ships, then every item it leaves out with its release. The 
 | T8 Packages, install, audit, scaffold | PKG, UPD, VER, LIF, AUD, ARC, PRA, SCF | T8.1–T8.6 | T6 | code |
 | T9 Shell skills | SHL, LSK, AUT, OUT | T9.1–T9.3 | T7, T8 | code |
 | T10 Stats across machines and monitor | CST, monitor set | T10.1–T10.4 | T7 | code |
-| T12 Self-improvement | SIL, FBK, JCL, PRP, LSN, IMD | T12.1–T12.8 | T7, T8, T9 | code |
+| T12 Self-improvement | SIL, FBK, JCL, PRP, LSN, IMD, SRV | T12.1–T12.9 | T7, T8, T9 | code |
 | T11 Release | all | T11.1–T11.3 | every track | release |
 
 Milestones: **M1** after T6.1, a two-step workflow defined in Python test code runs end to end on stand-ins and on `claude`. **M2** after T7, every observability verb answers for that run. **M3** after T9, a person authors, registers and runs a workflow from a conversation. **M4** after T12, a run's findings are filed, a judge is graded, and a measured proposal opens a draft pull request. **M5** after T11, release 1 is live-proven.
@@ -606,6 +611,11 @@ Goal: per-step lessons files, validation and digests ([LSN](../specs/42-workflow
 Goal: stable mode and its daily cap (LIF-B6), `report --loop` and the loop queries ([IMD](../specs/43-improvement-data.spec.md)), outcome proposals (OUT-AC-6).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T12.8 -->
+
+#### T12.9 Session digest and dev-mode review
+Goal: the model-free session digest and its causes on every exit; `full` reviews in dev mode, probation and authoring trials with the condensed view, the tool-less reviewer and the citation check; the local report and the `improve review` verbs; review results never file ([SRV](../specs/44-session-review.spec.md), [ADR-0116](../adr/0116-session-logs-are-read-model-free-first-and-by-a-model-only-on-a-plan.adr.md) to [ADR-0119](../adr/0119-review-observations-are-candidates-corroborated-before-they-file.adr.md)). Depends on T12.1 (recorder, causes) and the loop child (12.1.5).
+| Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
+<!-- expand: T12.9 -->
 
 ### T11 Release
 

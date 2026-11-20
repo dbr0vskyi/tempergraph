@@ -50,6 +50,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `store usage\|prune\|export` | Size, retention and export of the local store; `prune` takes `--older-than <days>`, `--keep-failed` or `--no-keep-failed` and `--dry-run` ([LOS §2.4](33-local-observability-store.spec.md)) | prune and export only | no |
 | `hooks add|list|remove|test` | Run lifecycle hooks (§2.2) | add and remove only | no |
 | `improve backlog|propose|trial|aa|open|show` | Proposals and trials ([PRP §2.7](40-improvement-proposals.spec.md)) | per [PRP](40-improvement-proposals.spec.md) | `propose`, `trial`, `aa` |
+| `improve review [show|summary]` | Session review of a run, its result, and observations over a window ([SRV §2.9](44-session-review.spec.md)) | `review` only | `review` without `--dry-run` |
 | `label <thread> <gate> [--criterion id] [--attempt n] --value agree|disagree`, `labels queue [workflow]` | Enter a label; list judgements to label ([FBK](41-feedback-and-judge-reliability.spec.md)) | `label` only | no |
 | `evals run\|report\|grade …`, `evals score\|bar\|label …`, `evals harvest\|replay …` | Eval suites ([EVS](51-eval-suites.spec.md)), judge calibration ([JCL §2.6](50-judge-calibration.spec.md)), harvest and replay ([LIF §2](18-lifecycle-and-evals.spec.md)); owned there | per owner spec | live kinds and `score`, `replay` only |
 | `report --loop [window]` | The loop's own metrics ([IMD §2.4](43-improvement-data.spec.md)) | no | no |
