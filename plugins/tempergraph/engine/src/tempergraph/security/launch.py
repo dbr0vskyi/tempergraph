@@ -12,6 +12,7 @@ SANCTIONED_SITES: dict[str, str] = {
     "tempergraph.git": "git reader: git with constant arguments",
     "tempergraph.run.commands": "workflow command runner: resolved allow-list argv for checks, scripts, finalizer",
     "tempergraph.executors.launcher": "session launcher: an executor's CLI, its model-free probes, host speed",
+    "tempergraph.improve.codehost": "code host client: `gh` with constant subcommands, the body on stdin",
 }
 
 SHELL_METACHARACTERS = frozenset(";&|`$<>()\\\n\r*?[]{}!~#'\"")

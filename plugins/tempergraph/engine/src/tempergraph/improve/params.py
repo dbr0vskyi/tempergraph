@@ -34,6 +34,7 @@ PARAMS = {p.name: p for p in (
     Param(name="stable.new_version_runs", value=5, source="SIL §2.2"),
     Param(name="stable.cost_percentile", value=0.9, source="SIL §2.2"),
     Param(name="stable.daily_cap_usd", value=50, source="SIL §4"),
+    Param(name="measure.quality_drop", value=0.05, source="earlier runs"),
 )}
 
 

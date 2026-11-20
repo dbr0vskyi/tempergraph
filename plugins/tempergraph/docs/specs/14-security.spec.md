@@ -40,6 +40,7 @@ How the engine keeps operator input, model output and secrets away from process 
 | Updater | `pip` with constants only |
 | Wait notification | The operator's own command, a named, bounded exception with its own test |
 | Check worker | The engine interpreter with the constant module `tempergraph.checks.worker`; the context document on stdin ([CHK §2.6](75-check-contract-and-command-runs.spec.md)) |
+| Code host client | `gh` with list argv for the loop's issue search, create, comment and reopen; the repository checked against `owner/name`, title and body on stdin, never argv ([SIL §5](16-self-improvement.spec.md)) |
 | Workflow command runner | A command a check or finalizer resolved through the workflow's allow-list, as list argv, stdin closed, output to a file, process tree ended at its limit ([CHK §2.3](75-check-contract-and-command-runs.spec.md), [FIN §2.2](78-finalizer-contract.spec.md)) |
 
 ### 2.3 Scrubbing and the publish boundary

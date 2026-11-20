@@ -11,9 +11,11 @@ import hashlib
 import json
 import os
 from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from tempergraph import identity
 from tempergraph.contracts import WorkflowSpec
 from tempergraph.improve import causes as causemod
 from tempergraph.improve import lenses
@@ -106,6 +108,9 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
     found = causemod.derive(seg, ivs, row.get("grants") or ())
     keys = {k: row.get(k) for k in ("workflow", "workflow_version", "machine", "repo", "settings_digest",
                                     "overridden_keys")}
+    req = str(((values.get("request") or {}).get("inputs") or {}).get("request") or "")
+    digest = identity.request_digest(req) if req else None
+    at = datetime.now(UTC).isoformat(timespec="seconds")
     rerun_of = next((r.get("rerun_of") for r in seg if r.get("kind") == "run_started" and r.get("rerun_of")), None)
     lines = []
     for f in found:
@@ -114,6 +119,8 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
         lines.append({"kind": "finding", "thread": thread, **keys, "segment_exit": row.get("exit_code"),
                       "unit": f["unit"], "cause": f["cause"], "class": c.klass, "side": side, "count": f["count"],
                       "remedy": c.remedy, "fingerprint": fingerprint(side, spec.name, f["cause"], f["unit"]),
+                      "at": at, "request_digest": digest,
+                      **({"executor_version": f["executor_version"]} if f.get("executor_version") else {}),
                       **({"rerun_of": rerun_of} if rerun_of else {})})
     if lines:  # one document per thread; each segment appends its findings (SIL §2.1)
         doc = {"schema_version": 1, "thread": thread,

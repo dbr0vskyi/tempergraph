@@ -377,6 +377,12 @@ class Capabilities:
             return True
         return capability.startswith("skill:") and "skill:*" in self.tool_map
 
+    def knows_tool(self, name: str) -> bool:
+        """A tool name the executor reported is in its view catalog (SIL-B4: else `unknown_tool_name`)."""
+        if name.startswith("mcp__"):
+            return "mcp:*" in self.tool_map
+        return any(name in names for names in self.tool_map.values())
+
 
 @dataclass(frozen=True, kw_only=True)
 class SessionRequest:
