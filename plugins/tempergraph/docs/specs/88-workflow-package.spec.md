@@ -86,7 +86,7 @@ The declaration is Python that calls typed builders from the engine's one public
 | Builder | Produces | Notes |
 |---|---|---|
 | `Workflow(order=…, units=…, input=…, routing=…, …)` | `WorkflowSpec` | `name` and `version` come from the manifests, never from arguments |
-| `Step(…)`, `Script(…)`, `Route(…)`, `Switch(…)`, `Parallel(…)`, `Map(…)`, `Ask(…)`, `Wait(…)`, `Council(…)`, `Contest(…)`, `Subworkflow(…)` | `UnitSpec` of that kind | Each takes its owning spec's fields; kinds outside the current release are refused at validation with `not_in_release` (ADR-0090 (PR 14)) |
+| `Step(…)`, `Script(…)`, `Route(…)`, `Switch(…)`, `Parallel(…)`, `Map(…)`, `Ask(…)`, `Wait(…)`, `Council(…)`, `Contest(…)`, `Subworkflow(…)` | `UnitSpec` of that kind | Each takes its owning spec's fields; kinds outside the current release are refused at validation with `not_in_release` ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md)) |
 | `Gate(check=…, judge=…, …)` | `GateSpec` | `criteria` is normally omitted: it is filled from `outcome.json` (step 5 of §2.3). Inline criteria remain valid for older packages ([WFM-B5](02-workflow-model.spec.md)); an id given both inline and in `outcome.json` is `criterion-declared-twice` |
 | `Judge(file="judges/<unit>.md", references=…, subject=…)` | `JudgeSpec` | Stance and brief are read from the file's two headings |
 | `Input(…)`, `Param(…)`, `Routing(…)`, `Models(…)` | §2.3 and §2.4 of CON | |
@@ -208,7 +208,7 @@ Defaults it relies on: executor `claude`, model `medium` for the step and the ju
 - **Why a second manifest.** Claude Code strips unknown keys from `plugin.json` ([R-105 A1](../research/R-105-workflow-packages-authoring-and-good-outcomes.rsrch.md)), so engine fields cannot live there.
 - **Why builders.** Typed builders give an error at the misspelt field, keep callables as real functions the check worker can import, and let the later `tempergraph` Python package expose the same surface ([ADR-0106](../adr/0106-declare-workflows-with-typed-python-builders-and-text-in-files.adr.md)). Long text lives in files so prompt audit, lessons and the improvement loop edit text, not code.
 - **Isolation is by rule.** A package is imported into the engine process ([WFM §5](02-workflow-model.spec.md)); the import scan and the dependency gate are the controls, not a sandbox.
-- **Release 1.** `claude` only (ADR-0091 (PR 14)): §2.6's other columns are designed and refused with `not_in_release` until their release. The docs half and its check ship in release 1, the check as a warning.
+- **Release 1.** `claude` only ([ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md)): §2.6's other columns are designed and refused with `not_in_release` until their release. The docs half and its check ship in release 1, the check as a warning.
 
 ## 6. Acceptance criteria
 

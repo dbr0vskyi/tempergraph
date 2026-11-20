@@ -32,7 +32,7 @@ The owner asked on 2026-11-20 whether the specs and decision records are ready t
 | B2 | Every relative link in the engine and monitor sets resolves (0 broken). | confirmed |
 | B3 | One duplicate id: `SEC-AC-4` twice. Fixed in this change (`SEC-AC-5`). | confirmed |
 | B4 | `EXI-B11` sat after `EXI-B15`. Moved into order in this change. Behaviour ids out of order in CST, TEL, ORC and RST are append-order only; ids are unique, so nothing is renumbered. | confirmed |
-| B5 | Of the 62 specs, 44 carry open questions. Each one in the specs the first release builds has a stated default in its own row (for example "first release keeps the per-invocation cap", "assumed: the collector"). None blocks planning. | confirmed |
+| B5 | Of the 62 specs, 44 carry open questions (51 of 69 after PR 17). Each one in the specs the first release builds has a stated default in its own row (for example "first release keeps the per-invocation cap", "assumed: the collector"). None blocks planning. | confirmed |
 
 ### C. Contradictions between documents
 
@@ -52,9 +52,9 @@ The owner asked on 2026-11-20 whether the specs and decision records are ready t
 
 | # | Gap | Blocks | Evidence | Confidence |
 |---|---|---|---|---|
-| D1 | **The workflow package and its declaration format are unspecified** (R-011 G2). `load()` "imports the package's declaration module", but no spec says what that module holds, how the plugin half and the Python half of a package relate, or what the authoring skill writes. | Registry and loading, the authoring path, every example workflow | [WFM §2](../specs/02-workflow-model.spec.md), [CON §2.1](../specs/01-contracts.spec.md) | confirmed |
+| D1 | **Resolved by [PKG](../specs/88-workflow-package.spec.md).** **The workflow package and its declaration format are unspecified** (R-011 G2). `load()` "imports the package's declaration module", but no spec says what that module holds, how the plugin half and the Python half of a package relate, or what the authoring skill writes. | Registry and loading, the authoring path, every example workflow | [WFM §2](../specs/02-workflow-model.spec.md), [CON §2.1](../specs/01-contracts.spec.md) | confirmed |
 | D2 | **Resolved by [AUT](../specs/89-workflow-authoring.spec.md) and [SCF](../specs/91-blueprint-and-scaffold.spec.md).** **Authoring has a phase list but no contract** (R-011 G3). A blueprint document, its validation, the scaffold, a blueprint comparison and a literal check have no spec; there is no minimal workflow and no template. | The workflow creation path, which the owner names as half of the first release | [SHL-B9](../specs/19-plugin-shell.spec.md) | confirmed |
-| D3 | **No run-level definition of a good outcome** (R-011 G1). The concept's first line has per-step criteria only; the authoring "outcome" phase produces nothing a gate reads. | The authoring outcome phase and a final judged gate | [CON §2.1](../specs/01-contracts.spec.md) | confirmed |
+| D3 | **Resolved by [OUT](../specs/90-run-outcome.spec.md).** **No run-level definition of a good outcome** (R-011 G1). The concept's first line has per-step criteria only; the authoring "outcome" phase produces nothing a gate reads. | The authoring outcome phase and a final judged gate | [CON §2.1](../specs/01-contracts.spec.md) | confirmed |
 | D4 | **Non-git folders are undefined** (R-011 G9). The state root is found from git's common directory. | Workflows run outside a repository | [WSP §2](../specs/13-workspace-and-concurrency.spec.md) | confirmed |
 
 R-011 G6 (structured judge output), G8 (run cap on uncapped executors), G10 (step sandbox profile), U2 (event delivery) and U4 (confining LangGraph imports) are still unapplied. None blocks a first release on `claude`: it has a session cost cap, judges parse a fenced block with one re-ask, event waits are later, and U4 is a code rule the plan adopts (§3 of the plan). G5 (version identity), G7 (judge bar), G11 to G13 and U1 were applied by later threads (VER, JCL, EVT, PRP, ORC, PRV, CHK). G14 is ADR-0041 without a spec (X7).
@@ -68,6 +68,8 @@ No control may rest on an unrun probe ([research rules](../README.md#research-ru
 | P-CC-5 | Prompt on stdin with `-p` and no positional prompt | Every launch (`prompt_off_argv`) | Switch to `--input-format stream-json` (ECC's open question) |
 | P-CC-2 | `--tools` plus `--disallowedTools "mcp__*"` leaves exactly those tools | Judge restriction | Judges cannot run on `claude`; first release blocked until a fix (X6) |
 | P-CC-6 | `dontAsk` refuses an unlisted call without a prompt and emits `permission_denied` | Judge launch | Guard still discards; judges may hang until timeout |
+| P-CC-9 | `--plugin-dir <package root>` loads the workflow plugin's skills and agents in a headless step session | Workflow skills and agents on step sessions ([PKG §2.6](../specs/88-workflow-package.spec.md)) | Steps declaring `skill:` from the package are refused until fixed |
+| P-WTR-1 | `--disallowedTools EnterWorktree,ExitWorktree` leaves neither tool in `system/init` | A step session cannot leave the engine worktree ([WTR](../specs/82-worktree-mode.spec.md)) | Worktree mode stays `in_place` only on `claude` |
 | P-CC-1 | `--bare` keeps user plugins out and gateway credentials working | `isolates_user_config`, the cleaner judge launch | `--setting-sources ""` path, already specified |
 | P-CC-3 | Stream shape when `--max-budget-usd` ends a session | `cap_reached` classification | Classified as `model` until known |
 | P-CC-4, P-CC-7, P-CC-8 | Subagent model precedence; native transcript path; `Skill(<p>:<n>)` rule | Subagent alias; transcript locator; `skill:` capability | Each has a stated fallback in ECC, EVT and ADR-0078 |
@@ -81,6 +83,19 @@ No control may rest on an unrun probe ([research rules](../README.md#research-ru
 3. **Condition 2, design gaps D1 to D3.** The creation path cannot be built until the package format, the authoring contract and the outcome definition are specified. They block only the packaging and authoring tracks, which come after the core in the plan, so design and core code can proceed side by side.
 4. **Condition 3, probes.** P-CC-2, P-CC-5 and P-CC-6 must be run on the pinned Claude Code release before the `claude` adapter is relied on (X6). They are short, model-free or near-free, and need the owner's machine and sign-in.
 5. **Not blocking.** D4 is a recorded limitation of the first release (git repositories only). X7 moves with promotion to a later release. The mechanical contradictions are fixed in this change.
+
+## Re-evaluation after PRs 15, 16 and 17
+
+Re-run on 2026-11-20 at the owner's request, over `main` with PR 15 (worktree mode, WTR), PR 16 (schedules, SCH) and PR 17 (workflow package PKG, authoring AUT, good outcome OUT, blueprint and scaffold SCF, ADR-0105 to ADR-0114) merged into this branch.
+
+| # | Change since the first reading | Effect on readiness |
+|---|---|---|
+| RE-1 | D1, D2 and D3 are specified by specs 88 to 91, all `review`, with criteria lint and judge scoring scales (ADR-0114). | Condition 2 is closed; the design track TD is dropped from the plan. Packaging and authoring are code tracks now. |
+| RE-2 | P-CC-9 (plugin content on step sessions) and P-WTR-1 (worktree tools disallowed) are new hard probes for release 1. | Condition 3 grows from three probes to five. |
+| RE-3 | WTR and SCH each name a release-1 and a release-2 slice; ADR-0090 places them. | No new blocker. |
+| RE-4 | ID, link and size scans pass on the merged set. | No mechanical contradiction left open. |
+
+**Answer now: ready to start code, with three conditions.** (1) The owner accepts ADR-0090 and ADR-0091 by merging this change. (2) Specs stay `review`; each track's first phase records its open-question defaults and moves its specs to `ready-for-implementation`. (3) P-CC-2, P-CC-5, P-CC-6, P-CC-9 and P-WTR-1 are run on the owner's machine before the `claude` adapter is relied on, with P-SUP-1 to P-SUP-3 and the monitor mod API check before the supervision and monitor tracks. The full included and excluded feature list is §1.3 of the [plan](../plans/first-release.plan.md).
 
 ## Open questions
 

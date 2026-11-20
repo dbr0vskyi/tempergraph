@@ -4,4 +4,4 @@ Plans say **in what order** the specs are built. A release plan fixes a release'
 
 | Plan | Covers | Status |
 |---|---|---|
-| [first-release.plan.md](first-release.plan.md) | Release 1: tracks T0 to T11 and TD, scope from [ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md) | Planned |
+| [first-release.plan.md](first-release.plan.md) | Release 1: tracks T0 to T11 and the item-by-item feature list, scope from [ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md) | Planned |

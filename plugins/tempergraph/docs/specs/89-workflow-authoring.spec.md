@@ -181,7 +181,7 @@ The record is copied into the package at scaffold and kept there; it is outside 
 - **Backwards, as backward design does** ([R-105 B1](../research/R-105-workflow-packages-authoring-and-good-outcomes.rsrch.md)): the evidence is fixed before the activities, so a step exists because an intermediate outcome needs it, not the other way round.
 - **The skill drafts, the engine decides what is well-formed.** Every check of a draft is a model-free verb, so a different authoring host (another agent, a person by hand) gets the same refusals.
 - **Graded drafts for the chat path.** When a person cannot list criteria, comparing two outputs is easier than naming rules, and the criteria found that way are what they will grade by later (R-105 B2, B3).
-- **Release 1** ships `new` and `revise` modes for workflows of model steps, scripts, routes and switches; the skill offers later unit kinds only by name, marked "later" (ADR-0090 (PR 14)).
+- **Release 1** ships `new` and `revise` modes for workflows of model steps, scripts, routes and switches; the skill offers later unit kinds only by name, marked "later" ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md)).
 
 ## 6. Acceptance criteria
 
