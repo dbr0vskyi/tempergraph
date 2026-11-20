@@ -32,6 +32,21 @@ The model-free tooling around the runtime: how the engine and its workflows are 
 | Prompt lint | A model-free check over templates, judge briefs and skills: vague words, self-grading requests, rule-like branching, tool names that are not the step's mapped names, instructions to ask or wait for a person in an unattended step, briefs that tell the judge to accept the step's word about a system it cannot read, references to skills, agents, files or tools that do not exist, and model-facing files or table cells over a size limit; part of `validate`, and shown by `audit` ([AUD](55-workflow-audit.spec.md)) |
 | Update output | `update --json` prints one JSON object per line, one thing per line (step, result, path), so a skill reads it without parsing prose |
 
+### 2.1 Prompt lint rules
+
+Model-free, over each step template, judge stance and brief, and each skill and agent file the package ships; a file shared by several units is reported once. Findings are `validate` warnings with file and line; the name reader (skills, agents, package files, tool names) is the one [PRA](58-prompt-audit.spec.md) and [TSA](57-tool-surface-audit.spec.md) reuse.
+
+| Code | Reads | Fires when |
+|---|---|---|
+| `lint-vague-word` | template, judge | A fixed list of vague words ("properly", "as needed", "etc.", "robust", …) |
+| `lint-self-grading` | template | The step is asked to rate, score or confirm its own work |
+| `lint-rule-branching` | template | Two or more if/otherwise rules: logic for a route or switch |
+| `lint-human-wait` | template | The step is told to ask, wait for or check with a person |
+| `lint-accepting-brief` | judge | The brief tells the judge to trust the step's word, claim or summary |
+| `lint-tool-name-foreign` | template | A backticked tool name of another executor's map, not of the step's |
+| `lint-ref-missing` | all | A named skill, agent or package file (`prompts/`, `judges/`, `skills/`, `agents/`, `lessons/`) the package lacks; without a package, nothing is resolved |
+| `lint-oversized` | all | A template or brief over 32,000 characters, a skill or agent over 40,000, a table cell over 2,000 |
+
 ## 3. Behaviours
 
 **LIF-B1 Same version, different code.** Given an installed engine with the same version string as the plugin but different source, when `update` runs, then it reinstalls, because the hash differs.

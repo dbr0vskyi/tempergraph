@@ -87,6 +87,9 @@ class _Validator:
             self._unit(name, s.units[name])
         self._flow()
         self._finalizer()
+        from tempergraph.model.prompt_lint import lint  # LIF: prompt lint is part of validate, as warnings
+
+        self.findings += [Finding(f.code, f.unit, f"{f.where}: {f.message}", "warning") for f in lint(s)]
         if s.package_root is not None:  # PKG §2.3 step 6: then the package rules
             from tempergraph.package.loader import package_findings
 
