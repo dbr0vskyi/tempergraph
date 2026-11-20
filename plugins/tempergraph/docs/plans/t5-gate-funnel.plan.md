@@ -113,9 +113,9 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 5.8.1 | `run/outcome.py`, `tests/test_outcome.py` | `read_outcome`, `parse_outcome` and the file rows of OUT §4; `gate_criteria` with `mechanical` for `check` criteria; `check_against` for the unit rows ✓. Scales in the judge prompt ○; trust and coverage moved to T8 (`run/outcome_trust.py`, SCF §2.7) | OUT §2.1–2.3, ADR-0114 | yes | P1 | ○ | |
+| 5.8.1 | `run/outcome.py`, `tests/test_outcome.py` | `read_outcome`, `parse_outcome` and the file rows of OUT §4; `gate_criteria` with `mechanical` for `check` criteria; `check_against` for the unit rows; scales in the judge prompt (with 5.8.2). Trust and coverage moved to T8 (`run/outcome_trust.py`, SCF §2.7) | OUT §2.1–2.3, ADR-0114 | yes | P1 | ✓ | 2026-11-20 |
 | 5.8.2 | `run/outcome.py`, `run/nodes.py`, `run/gate.py` | The outcome unit compiled from `outcome.json` (no session, deliverables check plus the workflow's own outcome check, a fresh judge with the default stance and the strongest step-judge model, back target derived from `serves`, else escalate); `sign_off` in the approval pause; scales rendered in the judge prompt. The `on_trigger` mode for `stable` and per-criterion sign-off statuses (`--criterion id=signed`) are open | OUT §2.4, §2.2.1 | yes | P1 | ✓ | 2026-11-20 |
-| 5.8.3 | `run/outcome.py` | The outcome record and its uncorrected measures; `outcome show` and `outcome candidates` data | OUT §2.5 | yes | P1 | ○ | |
+| 5.8.3 | `run/outcome_record.py`, `cli/outcome.py`, `tests/test_outcome_record.py` | The outcome record (`outcome` run-log record, the ledger row's `outcome{}`, `not_reached` before the gate; sign-off graded by its caller); the uncorrected measures per revision (met rate, escape rate, unverified share, upstream agreement, sign-off load); `outcome show [--runs]` and `outcome candidates` (read-only). Release 1 defaults in OUT Open questions. `outcome show` prints the record's own trust until T8's trust and coverage are wired in | OUT §2.5 | yes | P1 | ✓ | 2026-11-20 |
 
 ## 3. Verification
 

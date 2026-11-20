@@ -155,7 +155,7 @@ def _rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registr
         return _refuse("fork_not_found", f"{src} never reached {start_at}", tid=src)
     latest = _latest(spec, root, src)
     path = list(((latest.get("run") or {}).get("path") or {}).get("units") or [])
-    behind = [u for u in path if u not in spec.units]
+    behind = [u for u in path if u not in with_outcome(spec).units]  # the compiled outcome unit is ours
     if behind:  # MIG §2.5 with `start_at` as the pending unit
         return _refuse("units_behind", f"units behind: {', '.join(behind)} are no longer in the workflow", tid=src)
     first = flow.effective_order(spec)[0]

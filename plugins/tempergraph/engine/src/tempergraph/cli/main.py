@@ -121,6 +121,9 @@ def _parser() -> _Parser:
     cv = csub.add_parser("validate")
     cv.add_argument("--file")
     csub.add_parser("paths")
+    from tempergraph.cli import outcome as outcome_cli
+
+    outcome_cli.add_parser(sub, _Parser)
     return p
 
 
@@ -624,10 +627,16 @@ def _config_validate(env: Env, a: argparse.Namespace, root: Path | None) -> int:
     return int(ExitCode.USAGE) if errs else 0
 
 
+def cmd_outcome(env: Env, a: argparse.Namespace) -> int:
+    from tempergraph.cli.outcome import cmd_outcome as run_outcome
+
+    return run_outcome(env, a)
+
+
 COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "run": cmd_run, "resume": cmd_resume, "status": cmd_status, "list": cmd_list, "validate": cmd_validate,
     "executors": cmd_executors, "facts": cmd_facts, "graph": cmd_graph, "wait": cmd_wait, "stop": cmd_stop,
-    "worktree": cmd_worktree, "config": cmd_config, "rerun": cmd_rerun,
+    "worktree": cmd_worktree, "config": cmd_config, "rerun": cmd_rerun, "outcome": cmd_outcome,
 }
 
 

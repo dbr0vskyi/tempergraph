@@ -35,7 +35,7 @@ from tempergraph.model import flow
 from tempergraph.model.diagram import diagram_model
 from tempergraph.model.validate import Finding
 from tempergraph.run import gate as gatemod
-from tempergraph.run import supervision
+from tempergraph.run import outcome_record, supervision
 from tempergraph.run.log import CostTotals, Ledger, RunLog, cost_so_far, last_record
 from tempergraph.run.nodes import Drain, EngineNodes, RunContext
 from tempergraph.run.outcome import with_outcome
@@ -331,6 +331,9 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         if outcome.exit_code is ExitCode.FINISHED and (final.get("workspace") or {}).get("state") == "released":
             workspace_record(log, final["workspace"])
         cost = CostTotals.from_json((final.get("run") or {}).get("cost"))
+        orec = outcome_record.build(spec, final, log.path)
+        if orec is not None and orec["verdict"] != "not_reached":
+            log.write("outcome", **orec)  # OUT §2.5; a thread's latest `outcome` record is its record
         sup = supervision.build(root / "ledger.jsonl", log.path, tid, supervision.path_units(final))
         log.write("supervision", **sup)  # SUP §2.2, before run_exit
         log.write("run_exit", exit_code=int(outcome.exit_code), reason=outcome.reason, cost=cost.to_json(),
@@ -348,7 +351,7 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                        "settings_digest": settled.resolved.digest,
                        "overridden_keys": rst.overridden_keys(settled.resolved),
                        "grants": _grants_used(spec, registry, settled, final),
-                       "supervision": sup})
+                       "supervision": sup, **({"outcome": orec} if orec is not None else {})})
         if ledger.failures:
             log.write("engine_error", scope="ledger", error="write_failed")
         outcome.thread_id = tid
