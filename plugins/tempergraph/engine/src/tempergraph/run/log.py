@@ -105,6 +105,13 @@ class CostTotals:
 ENVELOPE_OPTIONAL = ("unit", "item", "attempt", "session_key")
 
 
+def cost_so_far(cost: Mapping[str, Any] | None) -> dict[str, Any]:
+    """EVT §2.2 `cost_so_far`: reported, estimated and the completeness flag for the thread so far."""
+    t = CostTotals.from_json(cost)
+    j = t.to_json()
+    return {"reported": j["reported"], "estimated": j["estimated"], "completeness": t.completeness}
+
+
 class RunLog:
     """`runs/<workflow>/<task_id>/run.jsonl`; the first line carries the schema.
 

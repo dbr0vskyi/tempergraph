@@ -36,7 +36,7 @@ from tempergraph.run.check_worker import run_in_worker
 from tempergraph.run.commands import ResolvedCommand, run_command
 from tempergraph.run.guard import guard, view_set
 from tempergraph.run.judging import JudgeInputs, Unparsed, derive, parse_judgement, reask_prompt, render_judge
-from tempergraph.run.log import CostTotals, RunLog, estimate, session_sink
+from tempergraph.run.log import CostTotals, RunLog, cost_so_far, estimate, session_sink
 from tempergraph.security.scrub import clip, scrub
 from tempergraph.store.layout import session_dir, session_key
 
@@ -488,11 +488,13 @@ class EngineNodes:
     def gate(self, unit: str, state: RunState) -> dict[str, Any]:
         w = gatemod.decide(self.ctx.spec, unit, state, self.ctx.task_id)
         r = w["route"][unit]
+        so_far = cost_so_far((state.get("run") or {}).get("cost"))
         self.ctx.log.write("gate", unit=unit, verdict=((state.get("judgements") or {}).get(unit) or {}).get("verdict"),
-                           token=r["token"], route_target=r["node"])
+                           token=r["token"], route_target=r["node"], cost_so_far=so_far)
         if unit in (w.get("pause") or {}) and w["pause"][unit]:
             p = w["pause"][unit]
-            self.ctx.log.write("pause", unit=unit, pause_kind=p["kind"], decisions=p["decisions"], resume=p["resume"])
+            self.ctx.log.write("pause", unit=unit, pause_kind=p["kind"], decisions=p["decisions"], resume=p["resume"],
+                               cost_so_far=so_far)
         return w
 
     def human(self, unit: str, state: RunState, decision: Any) -> dict[str, Any]:

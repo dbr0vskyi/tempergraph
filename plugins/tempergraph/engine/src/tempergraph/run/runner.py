@@ -30,7 +30,7 @@ from tempergraph.git import main_checkout
 from tempergraph.model import flow
 from tempergraph.model.diagram import diagram_model
 from tempergraph.run import gate as gatemod
-from tempergraph.run.log import CostTotals, Ledger, RunLog, last_record
+from tempergraph.run.log import CostTotals, Ledger, RunLog, cost_so_far, last_record
 from tempergraph.run.nodes import Drain, EngineNodes, RunContext
 from tempergraph.run.outcome import with_outcome
 from tempergraph.security.scrub import clip, scrub
@@ -146,7 +146,8 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                 outcome = RunOutcome(exit_code=code, reason=d.reason, thread_id=tid,
                                      message=f"{tid} stopped at a boundary ({d.reason}); resume continues it")
         cost = CostTotals.from_json(((cw.graph.get_state(cfg).values or {}).get("run") or {}).get("cost"))
-        log.write("run_exit", exit_code=int(outcome.exit_code), reason=outcome.reason, cost=cost.to_json())
+        log.write("run_exit", exit_code=int(outcome.exit_code), reason=outcome.reason, cost=cost.to_json(),
+                  cost_so_far=cost_so_far(cost.to_json()))
         write_json(exit_file(root, spec.name, task_id), {"schema_version": 1, "exit_code": int(outcome.exit_code),
                                                           "reason": outcome.reason})
         Ledger(path=root / "ledger.jsonl").append({"kind": "run_segment", "thread_id": tid, "workflow": spec.name,
