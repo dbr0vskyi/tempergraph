@@ -32,6 +32,7 @@ from tempergraph.model.diagram import diagram_model
 from tempergraph.run import gate as gatemod
 from tempergraph.run.log import CostTotals, Ledger, RunLog, last_record
 from tempergraph.run.nodes import Drain, EngineNodes, RunContext
+from tempergraph.run.outcome import with_outcome
 from tempergraph.security.scrub import clip, scrub
 from tempergraph.store.layout import (
     NotInRepository,
@@ -196,6 +197,7 @@ def start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: P
         first = rep.refusals[0]
         return _refuse(first.code, f"{first.unit or spec.name}: {first.message}",
                        [f"{f.code}: {f.unit}: {f.message}" for f in rep.refusals], tid)
+    spec = with_outcome(spec)
     try:
         plan = resolve_workspace(spec, target, settings.workspace, task_id=task_id)
     except WorkspaceRefused as exc:
@@ -256,6 +258,7 @@ def resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, *
     if not rep.ok:
         first = rep.refusals[0]
         return _refuse(first.code, f"{first.unit or spec.name}: {first.message}", tid=tid)
+    spec = with_outcome(spec)
     lock = RunLock(lock_path(root, spec.name, task_id))
     try:
         lock.acquire()

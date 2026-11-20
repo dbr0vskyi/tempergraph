@@ -65,6 +65,12 @@ def _criterion_line(i: int, c: Criterion, check: CheckResult | None) -> str:
     line = f"{i}. [{c.id or '-'}] ({c.severity}) {c.text}"
     if c.check_method:
         line += f"\n   How to check: {c.check_method}"
+    scale = (c.verifier or {}).get("scale") if c.verified_by == "judge" else None
+    if isinstance(scale, Mapping):  # OUT §2.2.1: what each status means for this criterion
+        for word, label in (("met", "MET means"), ("partial", "PARTIAL means"), ("unmet", "UNMET means"),
+                            ("evidence", "Cite for MET"), ("n_a", "N/A only when")):
+            if scale.get(word):
+                line += f"\n   {label}: {scale[word]}"
     found = [f for f in (check.findings if check else []) if c.id and f.criterion == c.id]
     if c.mechanical and found:
         f = found[0]

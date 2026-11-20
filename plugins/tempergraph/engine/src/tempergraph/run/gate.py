@@ -57,9 +57,12 @@ def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: 
     rubric = [{"n": i, "id": c.id, "text": c.text, "severity": c.severity} for i, c in enumerate(u.gate.criteria, 1)]
     ws = state.get("workspace") or {}
     del s
-    return {"kind": kind, "unit": unit, "item": None, "reason": reason, "artifacts": arts, "rubric": rubric,
-            "blockers": blockers or [], "decisions": words, "workspace": ws.get("path"),
-            "resume": resume_command(spec, task_id, words)}
+    out = {"kind": kind, "unit": unit, "item": None, "reason": reason, "artifacts": arts, "rubric": rubric,
+           "blockers": blockers or [], "decisions": words, "workspace": ws.get("path"),
+           "resume": resume_command(spec, task_id, words)}
+    if kind == "approval" and u.extra.get("sign_off"):
+        out["sign_off"] = list(u.extra["sign_off"])  # person criteria to sign (OUT §2.4, OUT-B4)
+    return out
 
 
 def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str) -> dict[str, Any]:

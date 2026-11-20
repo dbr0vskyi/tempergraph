@@ -20,6 +20,7 @@ from tempergraph.contracts import (
     SessionOptions,
     SessionRequest,
     SessionResult,
+    UnitSpec,
     Verdict,
     WorkflowSpec,
 )
@@ -145,6 +146,8 @@ class EngineNodes:
         self._boundary(state)
         if u.kind == "script":
             return self._script_unit(unit, state)
+        if u.extra.get("outcome"):
+            return self._outcome_step(unit, state)
         st = u.step
         assert st is not None
         prev = (state.get("attempts") or {}).get(unit) or {}
@@ -285,7 +288,48 @@ class EngineNodes:
 
     # -- judge -----------------------------------------------------------------------------------
 
+    def _outcome_step(self, unit: str, state: RunState) -> dict[str, Any]:
+        """OUT §2.4: no session; the subject is final state, recorded for the judge and the record."""
+        prev = (state.get("attempts") or {}).get(unit) or {}
+        visit = int(((state.get("visits") or {}).get(unit) or {}).get("visit", 1))
+        attempt = int(prev.get("attempt", 0)) + 1
+        path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
+        if prev.get("visit") != visit:
+            fp = gitmod.fingerprint(self._workdir(state))
+            self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=bool(fp.status),
+                               entered_from=_entered_from(state, unit))
+        o = self.ctx.spec.outcome
+        record = {"attempt": attempt, "visit": visit, "ok": True, "text": "", "issues": [], "tools": [],
+                  "session_id": None, "escalate": None, "infra_spent": False, "check": None,
+                  "deliverables": [dict(d) for d in (o.deliverables if o else ())]}
+        run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
+        return {"attempts": {unit: record}, "run": run}
+
     def judge(self, unit: str, state: RunState) -> dict[str, Any]:
+        w = self._judge(unit, state)
+        if self.ctx.spec.units[unit].extra.get("outcome"):
+            w = self._route_outcome(unit, state, w)
+        return w
+
+    def _route_outcome(self, unit: str, state: RunState, w: dict[str, Any]) -> dict[str, Any]:
+        """A failing outcome gate goes back to the earliest serving unit on the path, else escalates (OUT §2.4)."""
+        from tempergraph.run.outcome import derived_back
+
+        j = dict((w.get("judgements") or {}).get(unit) or {})
+        if j.get("verdict") not in (str(Verdict.RETRY), str(Verdict.BACK)):
+            return w
+        o = self.ctx.spec.outcome
+        finals = [str(c.id) for c in (o.final if o else ())]
+        failing = [b.get("criterion") for b in j.get("blockers") or [] if b.get("criterion") in finals] or finals
+        path = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
+        target = derived_back(self.ctx.spec, failing, path)
+        if target:
+            j.update(verdict=str(Verdict.BACK), back_to=target, reason="outcome_serves")
+        else:
+            j.update(verdict=str(Verdict.ESCALATE), reason="outcome_no_serving_unit")
+        return {**w, "judgements": {**(w.get("judgements") or {}), unit: j}}
+
+    def _judge(self, unit: str, state: RunState) -> dict[str, Any]:
         spec = self.ctx.spec
         u = spec.units[unit]
         g = u.gate
@@ -338,8 +382,14 @@ class EngineNodes:
             criteria=tuple({"id": c.id, "mechanical": c.mechanical} for c in u.gate.criteria),
             allow=tuple(self.ctx.spec.allow_commands),
             out_dir=self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "checks" / unit
-            / str(att.get("attempt", 1)))
+            / str(att.get("attempt", 1)), settings=self._check_settings(u))
         return run_in_worker(u.gate, ctx)
+
+    def _check_settings(self, u: UnitSpec) -> dict[str, Any]:
+        o = self.ctx.spec.outcome
+        if not u.extra.get("outcome") or o is None:
+            return {}
+        return {"deliverables": [dict(d) for d in o.deliverables], "outcome_check": o.check.ref if o.check else None}
 
     def _judge_session(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], cres: CheckResult,
                        workdir: Path) -> dict[str, Any]:
