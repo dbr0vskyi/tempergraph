@@ -774,6 +774,7 @@ COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "evals": lambda env, a: _improve().cmd_evals(env, a),
     "labels": lambda env, a: _improve().cmd_labels(env, a),
     "improve": lambda env, a: _improve().cmd_improve(env, a),
+    "promote-check": lambda env, a: _improve().cmd_promote_check(env, a),
 }
 
 

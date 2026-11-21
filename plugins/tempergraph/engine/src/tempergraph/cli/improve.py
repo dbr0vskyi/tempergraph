@@ -19,6 +19,15 @@ def _caller(p: argparse.ArgumentParser) -> None:
 
 
 def add_parsers(sub: Any, parser_class: type[argparse.ArgumentParser]) -> None:
+    pc = sub.add_parser("promote-check", help="measure a workflow version against a stage's criteria (PRO)")
+    pc.add_argument("workflow")
+    pc.add_argument("--to", required=True, choices=("local-stable", "pipeline"))
+    pc.add_argument("--executor")
+    pc.add_argument("--window", type=int, default=None, metavar="N")
+    pc.add_argument("--stamp", action="store_true", help="write the promotion stamp when every criterion is met")
+    pc.add_argument("--caller", choices=("person", "agent", "pipeline", "orchestrator", "scheduler", "engine"))
+    pc.add_argument("--relayed", action="store_true")
+    pc.add_argument("--json", action="store_true")
     ev = sub.add_parser("evals", help="judge calibration: score, bar and gold labels (JCL)")
     esub = ev.add_subparsers(dest="action", parser_class=parser_class)
     sc = esub.add_parser("score", help="score the gate's judge on its reviewed cases (spends)")
@@ -391,3 +400,27 @@ def _out(env: Any, a: argparse.Namespace, doc: Any, line: str) -> None:
 
 
 COMMANDS = {"evals": cmd_evals, "labels": cmd_labels, "improve": cmd_improve}
+
+
+def cmd_promote_check(env: Any, a: argparse.Namespace) -> int:
+    """PRO §2: read-only without `--stamp`; exit 0 when every criterion is met, 6 when any is not."""
+    from tempergraph.cli.main import _emit, _root, _spec
+    from tempergraph.improve import promotion as pro
+    from tempergraph.provenance import decide
+    from tempergraph.store.layout import home_path
+
+    spec = _spec(env, a.workflow)
+    if a.executor and a.executor not in env.registry.available():
+        raise _usage(f"executor {a.executor!r} is not registered in this release (not_in_release)")
+    try:
+        rep = pro.check(spec, _root(env), to=a.to, executor=a.executor, size=a.window)
+        if a.stamp:
+            caller = decide(env.caller(a), relayed=bool(a.relayed), words=("stamp", "promote"), home=home_path())
+            rep = pro.stamp(spec, rep, caller)
+    except pro.PromotionRefused as exc:
+        raise _usage(str(exc)) from exc
+    if a.json:
+        _emit(env, rep.to_json())
+    else:
+        env.out.write(pro.text(rep))
+    return rep.exit_code

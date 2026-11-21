@@ -257,6 +257,18 @@ def exit_file(state_root: Path, workflow: str, task_id: str) -> Path:
     return run_dir(state_root, workflow, task_id) / "exit.json"
 
 
+def _content_version(spec: WorkflowSpec) -> str:
+    from tempergraph.package.loader import full_version
+
+    return full_version(spec)
+
+
+def _stage(spec: WorkflowSpec, settings: RunSettings) -> tuple[str, bool]:
+    from tempergraph.improve.promotion import stage_of
+
+    return stage_of(spec, settings.caller)
+
+
 def _context(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, settings: RunSettings,
              judges: Mapping[str, str], log: RunLog, stop: StopRequest, watcher_box: dict[str, Any],
              main: Path | None, settled: Settled) -> RunContext:
@@ -277,7 +289,7 @@ def _context(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, s
                      infra_tries=max(1, int(rv["infra_tries"])), backoff_max_s=int(rv["infra_backoff_max_s"]),
                      settings=rst.workflow_settings(settled.resolved), origin=settings.origin, judge_state=settings.judge_state,
                      escalation_record=settings.escalation_record,
-                     stage="local-stable" if spec.improvement_mode == "stable" else "local-dev")
+                     stage=_stage(spec, settings)[0])
     if settings.sleep is not None:
         ctx.sleep = settings.sleep
     return ctx
@@ -317,7 +329,7 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         meta = (((cw.graph.get_state(cfg).values or {}).get("run") or {}).get("meta") or {})
         log.write("run_started", origin=settings.origin, caller=dict(settings.caller),
                   alias=aliases.alias_of(root, tid), label=settings.label or meta.get("label"),
-                  workflow_version=spec.version, plan_digest=diagram_model(spec)["digest"],
+                  workflow_version=spec.version, content_version=_content_version(spec), plan_digest=diagram_model(spec)["digest"],
                   executors={"steps": dict(executors or {}), "judges": dict(judges)},
                   settings_digest=settled.resolved.digest, profiles=list(settled.options.profiles),
                   **({"rerun_of": dict(rerun_of)} if rerun_of else {}),
@@ -326,7 +338,9 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                   **({"capture_lowered": cap.lowered()} if cap.lowered() else {}),
                   **({"observers": list(cap.observers), "observers_missing": missing} if cap.observers else {}))
         rec: dict[str, Any] = {"settings_digest": settled.resolved.digest, "rows": rst.rows_json(settled.resolved),
-                               "changed_keys": settled.changed}
+                               "changed_keys": settled.changed, "stage": ctx.stage}
+        if _stage(spec, settings)[1]:
+            rec["unpromoted_pipeline"] = True
         if settled.changed:
             rec["caller"] = dict(settings.caller)
         log.write("settings_resolved", **rec)
@@ -368,7 +382,7 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         ledger.append({"kind": "run_segment", "thread_id": tid, "workflow": spec.name,
                        "workflow_version": spec.version, **join_keys(root, settings),
                        "exit_code": int(outcome.exit_code), "reason": outcome.reason,
-                       "cost": cost.to_json(), "origin": settings.origin,
+                       "cost": cost.to_json(), "origin": settings.origin, "stage": _stage(spec, settings)[0],
                        "settings_digest": settled.resolved.digest,
                        "overridden_keys": rst.overridden_keys(settled.resolved),
                        "grants": _grants_used(spec, registry, settled, final),

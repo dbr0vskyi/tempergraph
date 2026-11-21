@@ -49,9 +49,8 @@ def under_test() -> bool:
 
 
 def is_live(executor: Any) -> bool:
-    from tempergraph.executors.standins import ScriptedExecutor
-
-    return not isinstance(executor, ScriptedExecutor)
+    """A scripted stand-in says so itself; every other executor makes model calls."""
+    return not getattr(executor, "scripted", False)
 
 
 def refuse_live(kind: str, executor: Any) -> None:

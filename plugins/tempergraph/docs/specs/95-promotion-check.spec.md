@@ -101,16 +101,17 @@ A pipeline run that pauses exits 3, and the job ends. The question reaches a per
 
 - The check reads the same functions as `report --supervision`, `report --loop` and `evals bar`, so a number never differs between two verbs (SUP-AC-3).
 - When pipelines arrive, the pipeline's executor is `claude` with an API key, an `apiKeyHelper` or cloud credentials, or `agent-sdk` (ADR-0041 C1); each executor's stamp is a separate entry.
+- **As built (R2-T5.1).** `improve/promotion.py` holds the stage of a run, the window, the criteria and the stamp; the bars are `data/promotion.json`. A run's `run_started` record carries `content_version` (the workflow version with its content digest) beside the owner's version, and the window keeps the runs whose `content_version` is the package's current one, so a change inside the digest empties the window and voids the stamp in one step; a workflow that is not a package is matched on its declared version. Runs with origin `trial`, `scenario` or `evals`, dry runs, reruns of a trial and runs that did not reach a final exit are left out. The window restarts after an escape only for a stage whose escape bar is 0. `--window` never lowers P1's count. SUP rows are `unmeasured` when a run of the window has no supervision record; the supervision share is `unmeasured` when fewer than half of the window's runs have it measured (`share_measured` in the bars file). For `local-stable`, P7 counts the engine and executor fault findings of the window's runs, P8 the states of the latest eval suites, and P9 to P11 are reported with `ladder_unseen` units named. `--stamp` needs a person (at a terminal, or `--relayed` with a person's turn) and a source package. Open: a workflow cannot raise a bar yet, the `attention` listing of `unpromoted_pipeline` runs waits for the `pipeline` stage, and the stage is on the `run_segment` ledger row only.
 - P9 to P11 exist because a ladder, an escalation or a router is a path the pipeline must not take unmeasured ([R-120](../research/R-120-effort-ladders-and-one-step-model-escalation.rsrch.md), [R-126](../research/R-126-routing-by-complexity-between-decompositions.rsrch.md)).
 
 ## 6. Acceptance criteria
 
-- [ ] PRO-AC-1 PRO-B1 to PRO-B5 hold offline on fixture ledgers, run logs, score files and labels.
-- [ ] PRO-AC-2 Without `--stamp` the verb creates and changes nothing (contract C13).
-- [ ] PRO-AC-3 Every criterion of §2.3 has a fixture where it alone fails, and its row names the number and the bar.
-- [ ] PRO-AC-4 A change to any file inside the content digest voids every stamp of the package.
+- [ ] PRO-AC-1 PRO-B1 to PRO-B5 hold offline on fixture ledgers, run logs, score files and labels. (Release 2: PRO-B1, B2 and B4 hold for `local-stable`; B3 and B5 need the `pipeline` stage.)
+- [x] PRO-AC-2 Without `--stamp` the verb creates and changes nothing (contract C13).
+- [x] PRO-AC-3 Every criterion of §2.3 has a fixture where it alone fails, and its row names the number and the bar.
+- [x] PRO-AC-4 A change to any file inside the content digest voids every stamp of the package.
 - [ ] PRO-AC-5 Later release, live: one pipeline run on `claude` with an API key reaches the outcome gate on a scratch repository, and its pause exits 3 (probe P-PRO-1).
-- [ ] PRO-AC-6 Release 2: `--to pipeline` and a `pipeline` caller's stamp are refused with `not_in_release`.
+- [x] PRO-AC-6 Release 2: `--to pipeline` and a `pipeline` caller's stamp are refused with `not_in_release`.
 
 ## Open questions
 

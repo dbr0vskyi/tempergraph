@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field, replace
+from typing import ClassVar
 
 from tempergraph.contracts import (
     Capabilities,
@@ -45,6 +46,7 @@ def answer(text: str, *, tools: Iterable[str] = (), cost: float | None = 0.01, s
 
 @dataclass(kw_only=True)
 class ScriptedExecutor:
+    scripted: ClassVar[bool] = True  # makes no model call; a live suite's guard reads this (EVS §4)
     caps: Capabilities
     steps: list[Reply] = field(default_factory=list)
     judges: list[Reply] = field(default_factory=list)
