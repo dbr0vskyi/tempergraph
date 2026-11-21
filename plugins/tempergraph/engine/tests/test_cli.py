@@ -94,7 +94,7 @@ def test_same_request_same_thread() -> None:
     assert a.task_id == b.task_id and a.inputs["request"] == "Release notes"
 
 
-@pytest.mark.parametrize("argv", [["update"], ["run", "update", "x"], ["run", "demo", "status"], ["nope"],
+@pytest.mark.parametrize("argv", [["schedule"], ["run", "update", "x"], ["run", "demo", "status"], ["nope"],
                                   ["run", "missing", "x"], ["run", "demo", "x", "--bogus"]])
 def test_usage_refusals_exit_2(repo: Path, argv: list[str]) -> None:
     code, _, err = cli(repo, happy(), *argv)

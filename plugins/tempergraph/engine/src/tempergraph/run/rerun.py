@@ -19,6 +19,7 @@ from tempergraph import git as gitmod
 from tempergraph.compiler import compile_workflow
 from tempergraph.contracts import ThreadState, WorkflowSpec, thread_id
 from tempergraph.docs import write_json
+from tempergraph.durability import engine_file
 from tempergraph.durability.checkpoint import open_readonly
 from tempergraph.durability.lock import LockHeld, RunLock
 from tempergraph.durability.status import classify
@@ -42,7 +43,7 @@ from tempergraph.run.runner import (
     join_keys,
     settle_resume,
 )
-from tempergraph.store.layout import NotInRepository, checkpoint_path, ensure_state_root, lock_path, run_dir
+from tempergraph.store.layout import NotInRepository, ensure_state_root, lock_path, run_dir
 from tempergraph.workspace import (
     LOCK_REASON,
     WorkspaceRecord,
@@ -96,7 +97,7 @@ def cleared_units(spec: WorkflowSpec, unit: str, values: Mapping[str, Any]) -> l
 
 def find_fork(spec: WorkflowSpec, root: Path, source: str, start_at: str) -> Fork | None:
     """The checkpoint just before `start_at`'s step node on its last visit, read-only."""
-    with open_readonly(checkpoint_path(root, spec.name)) as saver:
+    with open_readonly(engine_file.checkpoint_of(root, spec.name, source.partition("/")[2])) as saver:
         if saver is None:
             return None
         cw = compile_workflow(with_outcome(spec), _Inert(), saver)
@@ -273,7 +274,7 @@ def _with_ruling(w: dict[str, Any], spec: WorkflowSpec, fork: Fork, start_at: st
 def _latest(spec: WorkflowSpec, root: Path, src: str) -> dict[str, Any]:
     from tempergraph.durability.checkpoint import thread_values
 
-    return thread_values(checkpoint_path(root, spec.name), with_outcome(spec), src)
+    return thread_values(engine_file.checkpoint_of(root, spec.name, src.partition("/")[2]), with_outcome(spec), src)
 
 
 def _writes(spec: WorkflowSpec, fork: Fork, start_at: str, cleared: list[str], feedback: str | None,

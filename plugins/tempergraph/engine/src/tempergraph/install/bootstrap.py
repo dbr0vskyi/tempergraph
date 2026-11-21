@@ -1,7 +1,6 @@
 """`install` (UPD §2.7): run by the plugin's launcher with the first real Python 3.11+, or through the shim.
 
-The launcher accepts `install` and `update`; `update` is built in release 2 (ADR-0090) and is refused with
-exit 2 here. Steps: 1 Python, 2 home, 3 engine (update steps 3 and 4 into the first environment, then
+The launcher accepts `install` and `update` (`install/update.py`). Steps: 1 Python, 2 home, 3 engine (update steps 3 and 4 into the first environment, then
 `current.json`), 4 shim and `PATH` block, 5 registry (created, then reconciled inside the new environment),
 6 report. Exit codes: 0 done or already current, 2 refused (no Python, not in this release), 1 failed.
 """
@@ -123,8 +122,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if verb == "install":
         return install(rest)
     if verb == "update":
-        sys.stderr.write("tempergraph: update is built in release 2; this release installs only\n")
-        return 2
+        from tempergraph.install.update import update
+
+        return update(rest)
     sys.stderr.write("tempergraph: the engine is not installed; run: bin/tempergraph install\n")
     return NOT_INSTALLED
 

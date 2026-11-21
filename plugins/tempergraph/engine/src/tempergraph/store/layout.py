@@ -69,6 +69,10 @@ def ensure_state_root(root: Path) -> Path:
     _check_layout(manifest)
     if not manifest.exists():
         write_json(manifest, _manifest("state_root"))
+    else:  # MIG §2.2: the first writing verb of a newer engine moves the store forward
+        from tempergraph.store import migrate
+
+        migrate.migrate(root, target=STORE_LAYOUT, engine=ENGINE_VERSION, older_live=migrate.older_live)
     ignore = root / ".gitignore"
     if not ignore.exists():
         ignore.write_text("*\n", encoding="utf-8")
@@ -100,8 +104,14 @@ def session_dir(root: Path, workflow: str, task_id: str, session_key: str) -> Pa
     return run_dir(root, workflow, task_id) / "sessions" / session_key
 
 
-def checkpoint_path(root: Path, workflow: str) -> Path:
-    return root / "checkpoints" / f"{workflow}.sqlite"
+def checkpoint_path(root: Path, workflow: str, fmt: int | None = None) -> Path:
+    """The checkpoint database of one checkpoint format (MIG §2.4): this engine's own unless `fmt` names
+    another. Format 1 keeps the plain name, so engines of two formats never share a file."""
+    if fmt is None:
+        from tempergraph.release import release
+
+        fmt = int(release().get("checkpoint_format") or 1)
+    return root / "checkpoints" / (f"{workflow}.sqlite" if fmt == 1 else f"{workflow}.f{fmt}.sqlite")
 
 
 def lock_path(root: Path, workflow: str, task_id: str) -> Path:

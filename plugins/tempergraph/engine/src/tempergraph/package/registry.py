@@ -176,7 +176,8 @@ def unregister(name: str, state_roots: list[Path], *, home: Path | None = None) 
 
 
 def reinstall(names: list[str] | None, caps: Mapping[str, Capabilities], *, home: Path | None = None,
-              path_of: Callable[[dict[str, Any]], Path] | None = None) -> list[Checked]:
+              path_of: Callable[[dict[str, Any]], Path] | None = None, installer: Installer | None = None,
+              engine: str | None = None) -> list[Checked]:
     """Dependencies into the current environment (pending before T8.2), then load and validate; clears a pin
     that no longer applies (UPD §2.8)."""
     entries = read_entries(home)
@@ -188,11 +189,87 @@ def reinstall(names: list[str] | None, caps: Mapping[str, Capabilities], *, home
     for e in chosen:
         path = path_of(e) if path_of else Path(str(e.get("path") or ""))
         got = check_package(path, caps, e)
-        if got.ok and e.get("engine_pin"):
+        dep_error = install_dependencies(got, installer, engine or ENGINE_VERSION) if got.loaded is not None \
+            and installer is not None else None
+        if got.ok and dep_error is None and e.get("engine_pin"):
             got.entry["engine_pin"], got.entry["state"] = None, "ok"  # the pin no longer applies
         out.append(got)
     done = {str(c.entry["name"]): c.entry for c in out}
     write_entries([done.get(str(e["name"]), e) for e in entries], home)
+    return out
+
+
+Installer = Callable[[str, list[str]], str | None]  # (workflow name, requirement lines) -> an error, or None
+
+
+def install_dependencies(got: Checked, installer: Installer | None, engine: str) -> str | None:
+    """UPD §2.8: the package's declared requirements, through the dependency gate, into this environment.
+    Returns the reason they are not installed, or None. Without an installer nothing is installed and an
+    entry that declares requirements stays `dependencies: pending`."""
+    from tempergraph.package.manifest import gate_dependencies
+
+    deps = tuple(got.loaded.pyproject.dependencies) if got.loaded and got.loaded.pyproject else ()
+    e = got.entry
+    if not deps:
+        e.pop("dependencies", None)
+        return None
+    if engine in (e.get("installed_into") or []) and e.get("installed_digest") == e.get("requirements_digest"):
+        e.pop("dependencies", None)
+        return None
+    if installer is None:
+        e["dependencies"] = "pending"
+        return None
+    refused = gate_dependencies(deps)
+    if refused:
+        got.findings += refused
+        e["dependencies"] = "refused"
+        return "dependency_refused"
+    err = installer(str(e.get("name") or "workflow"), list(deps))
+    if err:
+        got.findings.append(Finding("dependency_conflict", None, err[:300]))
+        e["dependencies"] = "failed"
+        return "dependency_conflict"
+    e["installed_into"] = sorted({*(e.get("installed_into") or []), engine})
+    e["installed_digest"] = e.get("requirements_digest")
+    e.pop("dependencies", None)
+    return None
+
+
+def settle(got: Checked, *, was: str | None, previous: str | None, dep_error: str | None) -> Checked:
+    """UPD-B7's table: a workflow that worked on the old engine and fails on this one is pinned to the old
+    one; one that never worked is `not_loaded`; one that works has its pin cleared (UPD-B8)."""
+    e = got.entry
+    works = got.ok and dep_error is None
+    if works:
+        e["engine_pin"], e["state"] = None, "ok"
+        e.pop("reason", None)
+        return got
+    reason = dep_error or next((f.code for f in got.findings if f.severity == "error"), "not_loaded")
+    if isinstance(e.get("engine_pin"), dict):
+        e["state"] = "pinned"
+    elif was == "ok" and previous:
+        e["engine_pin"] = {"engine": previous, "reason": reason, "since": now_iso()}
+        e["state"] = "pinned"
+    else:
+        e["engine_pin"], e["state"], e["reason"] = None, "not_loaded", reason
+    return got
+
+
+def after_update(caps: Mapping[str, Capabilities], *, previous: str | None, engine: str,
+                 installer: Installer | None = None, cache: Path | None = None,
+                 home: Path | None = None) -> list[Checked]:
+    """`update` step 6 inside the new environment: reconcile the registry, install every entry's
+    dependencies, load and validate each, and pin what broke. No entry is ever removed (UPD-AC-7)."""
+    before = {str(e.get("name")): e.get("state") for e in read_entries(home)}
+    reconcile(caps, cache=cache, home=home)
+    out: list[Checked] = []
+    entries = read_entries(home)
+    for e in entries:
+        path = Path(str(e.get("path") or ""))
+        got = check_package(path, caps, e)
+        dep_error = install_dependencies(got, installer, engine) if got.loaded is not None else None
+        out.append(settle(got, was=before.get(str(e.get("name"))), previous=previous, dep_error=dep_error))
+    write_entries([c.entry for c in out], home)
     return out
 
 

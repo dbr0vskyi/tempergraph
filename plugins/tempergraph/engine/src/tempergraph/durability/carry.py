@@ -20,8 +20,9 @@ from typing import Any
 
 from tempergraph import git as gitmod
 from tempergraph.constants import ENGINE_VERSION, STORE_LAYOUT
+from tempergraph.durability import engine_file
 from tempergraph.security.scrub import scrub
-from tempergraph.store.layout import checkpoint_path, now_iso, run_dir
+from tempergraph.store.layout import now_iso, run_dir
 
 PREFIX = ".tempergraph-carry"
 BRANCH_ROOT = "tempergraph/state"
@@ -190,7 +191,7 @@ def collect(root: Path, repo: Path, workflow: str, task_id: str, *, workflow_ver
         if p.is_file() and not p.is_symlink() and _carried_run_file(rel):
             put(f"run/{rel}", p.read_bytes())
     cp = staging / "checkpoint.sqlite"
-    _thread_checkpoint(checkpoint_path(root, workflow), tid, cp)
+    _thread_checkpoint(engine_file.checkpoint_of(root, workflow, task_id), tid, cp)
     files["checkpoint.sqlite"] = cp
     put("ledger.jsonl", "".join(ln + "\n" for ln in _ledger_rows(root, tid)).encode("utf-8"))
     put("workspace.json", json.dumps(_workspace(root, workflow, task_id, repo), indent=2).encode("utf-8"))
@@ -423,7 +424,7 @@ def _backup(root: Path, workflow: str, task_id: str) -> str | None:
     dest.mkdir(parents=True, exist_ok=True, mode=0o700)
     shutil.copytree(base, dest / "run")
     cp = dest / "checkpoint.sqlite"
-    _thread_checkpoint(checkpoint_path(root, workflow), f"{workflow}/{task_id}", cp)
+    _thread_checkpoint(engine_file.checkpoint_of(root, workflow, task_id), f"{workflow}/{task_id}", cp)
     (dest / "ledger.jsonl").write_text("".join(ln + "\n" for ln in _ledger_rows(root, f"{workflow}/{task_id}")),
                                        encoding="utf-8")
     return str(dest)
@@ -468,7 +469,7 @@ def pull(root: Path, repo: Path, workflow: str, task_id: str, *, remote: str | N
                 dest.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
                 shutil.copyfile(src, dest)
                 os.chmod(dest, 0o600)
-        _import_checkpoint(files["checkpoint.sqlite"], checkpoint_path(root, workflow), tid)
+        _import_checkpoint(files["checkpoint.sqlite"], engine_file.checkpoint_of(root, workflow, task_id), tid)
         carried_rows = files["ledger.jsonl"].read_text(encoding="utf-8").splitlines()
         ledger = root / "ledger.jsonl"
         kept = [ln for ln in (ledger.read_text(encoding="utf-8").splitlines() if ledger.exists() else [])

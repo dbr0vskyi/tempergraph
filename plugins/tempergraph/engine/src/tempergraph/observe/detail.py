@@ -16,6 +16,7 @@ from typing import Any
 
 from tempergraph.constants import SCHEMA
 from tempergraph.contracts import WorkflowSpec
+from tempergraph.durability import engine_file
 from tempergraph.durability.checkpoint import Snapshot, observer_graph, open_readonly, snapshot
 from tempergraph.durability.status import row as status_row
 from tempergraph.durability.status import split_thread
@@ -23,7 +24,7 @@ from tempergraph.model import flow
 from tempergraph.model.diagram import diagram_model
 from tempergraph.run.events import records, route_unit, tail
 from tempergraph.security.scrub import clip, scrub
-from tempergraph.store.layout import checkpoint_path, now_iso, run_dir, session_dir
+from tempergraph.store.layout import now_iso, run_dir, session_dir
 
 TEXT_CLIP = 200
 EVIDENCE_CLIP = 400
@@ -386,7 +387,7 @@ def _public_session(s: dict[str, Any], root: Path, workflow: str, task: str, liv
 
 
 def _snapshot(root: Path, spec: WorkflowSpec, tid: str) -> Snapshot:
-    with open_readonly(checkpoint_path(root, spec.name)) as saver:
+    with open_readonly(engine_file.checkpoint_of(root, spec.name, tid.partition("/")[2])) as saver:
         if saver is None:
             return Snapshot(exists=False)
         return snapshot(observer_graph(spec, saver), tid)

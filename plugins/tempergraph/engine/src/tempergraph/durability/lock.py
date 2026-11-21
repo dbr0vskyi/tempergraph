@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 from typing import IO, Any
 
+from tempergraph.constants import ENGINE_VERSION
 from tempergraph.docs import write_json
 
 if sys.platform != "win32":
@@ -49,6 +50,14 @@ class LockHeld(Exception):
         self.path, self.holder = path, holder
 
 
+def holder() -> dict[str, Any]:
+    """MIG §2.1: the process and the engine it runs on, read by `update` and `--prune-engines`."""
+    env = Path(sys.prefix)
+    managed = env.parent.name == "engines"
+    return {"pid": os.getpid(), "engine_version": ENGINE_VERSION, "engine": env.name if managed else None,
+            "engine_digest": env.name.rsplit("-", 1)[-1] if managed else None}
+
+
 class RunLock:
     """Exclusive lock for one thread; use as a context manager."""
 
@@ -64,7 +73,7 @@ class RunLock:
             fh.close()
             raise LockHeld(self.path, read_holder(self.path))
         self._fh = fh
-        write_json(self.path.with_suffix(".holder.json"), {"pid": os.getpid()})
+        write_json(self.path.with_suffix(".holder.json"), holder())
         return self
 
     def release(self) -> None:

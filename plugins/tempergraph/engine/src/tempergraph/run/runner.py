@@ -19,11 +19,12 @@ from typing import Any
 from tempergraph import provenance
 from tempergraph import settings as rst
 from tempergraph.compiler import compile_workflow
-from tempergraph.constants import ExitCode
+from tempergraph.constants import ENGINE_VERSION, ExitCode
 from tempergraph.contracts import Decision, ResolvedSettings, RunOptions, ThreadState, WorkflowSpec, thread_id
 from tempergraph.docs import read_json, write_json
 from tempergraph.durability import alias as aliases
 from tempergraph.durability import carry as carrymod
+from tempergraph.durability import engine_file as enginefile
 from tempergraph.durability.checkpoint import classify_snapshot, open_saver, resume_input, snapshot
 from tempergraph.durability.control import StopWatcher, take_stop
 from tempergraph.durability.lock import LockHeld, RunLock, is_held
@@ -43,7 +44,6 @@ from tempergraph.run.outcome import with_outcome
 from tempergraph.security.scrub import clip, scrub
 from tempergraph.store.layout import (
     NotInRepository,
-    checkpoint_path,
     ensure_state_root,
     home_path,
     lock_path,
@@ -322,16 +322,24 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
     main = main_checkout(root.parent)
     ctx = _context(spec, task_id, root, registry, settings, judges, log, stop, box, main, settled)
     ctx.capture = cap
-    saver = open_saver(checkpoint_path(root, spec.name))
+    saver = open_saver(enginefile.checkpoint_of(root, spec.name, task_id))
     try:
         cw = compile_workflow(spec, EngineNodes(ctx), saver)
         cfg = cw.config(tid)
         if before is not None:
             before(cw)
         meta = (((cw.graph.get_state(cfg).values or {}).get("run") or {}).get("meta") or {})
+        shape = diagram_model(spec)["digest"]
+        was = enginefile.last(enginefile.read(root, spec.name, task_id))
+        try:  # MIG §2.1: the thread's engine record; never changes the run (C2)
+            moved = enginefile.record(root, spec, task_id, content_version=_content_version(spec),
+                                      shape_digest=shape)
+        except OSError:
+            moved = None
         log.write("run_started", origin=settings.origin, caller=dict(settings.caller),
                   alias=aliases.alias_of(root, tid), label=settings.label or meta.get("label"),
-                  workflow_version=spec.version, content_version=_content_version(spec), plan_digest=diagram_model(spec)["digest"],
+                  engine_version=ENGINE_VERSION, shape_digest=shape, **({"moved_from": moved} if moved else {}),
+                  workflow_version=spec.version, content_version=_content_version(spec), plan_digest=shape,
                   executors={"steps": dict(executors or {}), "judges": dict(judges)},
                   settings_digest=settled.resolved.digest, profiles=list(settled.options.profiles),
                   **({"rerun_of": dict(rerun_of)} if rerun_of else {}),
@@ -346,6 +354,9 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         if settled.changed:
             rec["caller"] = dict(settings.caller)
         log.write("settings_resolved", **rec)
+        if moved and moved.get("workflow_version") != _content_version(spec):  # MIG §2.5: one notice
+            log.write("workflow_changed", from_version=moved.get("workflow_version"),
+                      to_version=_content_version(spec), units=enginefile.changed_units(was, spec))
         if workspace:
             workspace_record(log, workspace)
         for r in ruling_records:
@@ -657,6 +668,10 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
         root = _root(target)
     except NotInRepository:
         return _refuse("not_git", "not inside a git repository")
+    action, detail = enginefile.at_resume(root, spec.name, task_id, write=False)  # MIG §2.4; the CLI dispatches
+    if action != "move":
+        return _refuse("engine_pinned", str(detail) if action == "refuse" else
+                       f"{tid} resumes on engine {detail}, not this one", tid=tid)
     state = classify(root, spec, task_id)
     if state in (ThreadState.NONE, ThreadState.RUNNING, ThreadState.FINISHED):
         hint = {"none": "no such thread", "running": "it is running",
@@ -683,6 +698,7 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                                      "ruling": {"applies_to": list(settings.ruling_for)} if settings.ruling else None,
                                      "revoke": list(settings.revoke_rulings)}
     declared = spec
+    ensure_state_root(root)  # MIG §2.2: a resume is a writing verb, so an older layout moves forward here
     lock = RunLock(lock_path(root, spec.name, task_id))
     try:
         lock.acquire()
@@ -690,13 +706,26 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
         return _refuse("running", f"{tid} is running", tid=tid)
     try:
         stale = take_stop(root, spec.name, task_id, stale=True)
-        saver = open_saver(checkpoint_path(root, spec.name))
+        saver = open_saver(enginefile.checkpoint_of(root, spec.name, task_id))
         try:
             cw = compile_workflow(with_outcome(declared), _Inert(), saver)
             snap = snapshot(cw, tid)
             values = snap.values
         finally:
             saver.conn.close()
+        was = enginefile.last(enginefile.read(root, spec.name, task_id))
+        if was.get("units") and was.get("workflow_version") != _content_version(declared):  # MIG §2.5
+            pending = [n.rsplit(".", 1)[0] for n, _ in snap.interrupts] or \
+                [n.rsplit(".", 1)[0] for n in snap.next if n.rsplit(".", 1)[0] in was["units"]]
+            if not pending:  # the unit it waits at is gone from the new graph
+                at = last_record(run_dir(root, spec.name, task_id) / "run.jsonl", "pause")
+                pending = [str(at["unit"])] if at and at.get("unit") else []
+            broken = enginefile.breaks(was, with_outcome(declared), values, list(dict.fromkeys(pending)))
+            if broken:
+                return _refuse("workflow_changed", f"{tid} cannot resume on workflow version "
+                               f"{_content_version(declared)}: {'; '.join(broken)}. Reinstall the version it ran "
+                               f"on ({was.get('workflow_version')}) and resume, or start a new thread", broken,
+                               tid=tid)
         try:
             pause = last_record(run_dir(root, spec.name, task_id) / "run.jsonl", "pause")
             deciding = bool(d is not None or feedback or settings.ruling or settings.revoke_rulings

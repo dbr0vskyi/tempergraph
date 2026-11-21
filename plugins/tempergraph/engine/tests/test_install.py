@@ -192,8 +192,9 @@ def test_shim_runs_the_current_engine_or_exits_127(tmp_path: Path) -> None:
 def test_launcher_accepts_only_install_and_update(tmp_path: Path) -> None:
     got = subprocess.run(["sh", str(LAUNCHER), "run", "x"], capture_output=True, text=True)
     assert got.returncode == 127 and "bin/tempergraph install" in got.stderr
-    got = subprocess.run(["sh", str(LAUNCHER), "update"], capture_output=True, text=True)
-    assert got.returncode == 2 and "release 2" in got.stderr
+    got = subprocess.run(["sh", str(LAUNCHER), "update"], capture_output=True, text=True,
+                         env={**os.environ, "TEMPERGRAPH_PYTHON": sys.executable})
+    assert got.returncode == 2 and "no engine is installed" in got.stdout  # update needs a first install
     got = subprocess.run(["sh", str(LAUNCHER), "install", "--check", "--json"], capture_output=True, text=True,
                          env={**os.environ, "TEMPERGRAPH_PYTHON": sys.executable})
     assert got.returncode == 0, got.stderr

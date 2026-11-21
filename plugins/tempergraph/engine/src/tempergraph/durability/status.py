@@ -17,6 +17,7 @@ from typing import Any
 from tempergraph.constants import SCHEMA, ExitCode
 from tempergraph.contracts import ThreadState, WorkflowSpec, thread_id
 from tempergraph.durability import alias as aliases
+from tempergraph.durability import engine_file
 from tempergraph.durability.checkpoint import (
     Snapshot,
     classify_snapshot,
@@ -41,7 +42,7 @@ def split_thread(tid: str) -> tuple[str, str]:
 def _read(state_root: Path, spec: WorkflowSpec, tid: str) -> tuple[Snapshot, bool]:
     _, task = split_thread(tid)
     held = is_held(lock_path(state_root, spec.name, task))
-    with open_readonly(checkpoint_path(state_root, spec.name)) as saver:
+    with open_readonly(engine_file.checkpoint_of(state_root, spec.name, task)) as saver:
         if saver is None:
             return Snapshot(exists=False), held
         return snapshot(observer_graph(spec, saver), tid), held
@@ -141,6 +142,11 @@ def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     carried = carry.marker(state_root, spec.name, split_thread(tid)[1])
     if carried.get("on") or carried.get("state") in ("unpushed", "delete_failed"):  # CAR §4
         r["carry"] = carried.get("state") or "on"
+    eng = engine_file.read(state_root, spec.name, split_thread(tid)[1])  # MIG §2.1
+    if (eng.get("last_on") or {}).get("engine_version"):
+        r["engine"] = eng["last_on"]["engine_version"]
+    if eng.get("pinned"):
+        r["engine_pin"] = dict(eng["pinned"])
     if snap.next and state is ThreadState.UNFINISHED:
         r["next"] = [n for n in snap.next if n != flow.FINALIZER] or list(snap.next)
     return r
@@ -154,8 +160,12 @@ class Selector:
 
 
 def _threads(state_root: Path, spec: WorkflowSpec) -> list[str]:
-    with open_readonly(checkpoint_path(state_root, spec.name)) as saver:
-        return thread_ids(saver) if saver is not None else []
+    """Every thread in the databases of the checkpoint formats this engine resumes (MIG §2.4)."""
+    out: list[str] = []
+    for fmt in sorted({*engine_file.resumes(), engine_file.checkpoint_format()}):
+        with open_readonly(checkpoint_path(state_root, spec.name, fmt)) as saver:
+            out += [t for t in (thread_ids(saver) if saver is not None else []) if t not in out]
+    return out
 
 
 def select(state_root: Path, specs: Mapping[str, WorkflowSpec], sel: Selector) -> list[tuple[WorkflowSpec, str]]:
@@ -220,7 +230,7 @@ def wait(state_root: Path, spec: WorkflowSpec, tid: str, timeout_s: float, *, po
 
     Polls file sizes and times and rebuilds the row only when one moved."""
     _, task = split_thread(tid)
-    db = checkpoint_path(state_root, spec.name)
+    db = engine_file.checkpoint_of(state_root, spec.name, task)
     watched = [db, db.with_name(db.name + "-wal"), lock_path(state_root, spec.name, task),
                run_dir(state_root, spec.name, task) / "run.jsonl"]
     start = clock()

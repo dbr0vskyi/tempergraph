@@ -65,6 +65,8 @@ def _parser() -> _Parser:
     res.add_argument("workflow")
     res.add_argument("thread")
     res.add_argument("--decision")
+    res.add_argument("--unpin", action="store_true",
+                     help="clear the thread's engine pin when this engine can resume it (MIG §2.4)")
     res.add_argument("--escalate", action="store_true",
                      help="take the offered one-step model escalation for the next attempt (LAD §2.4)")
     fb = res.add_mutually_exclusive_group()
@@ -233,6 +235,8 @@ class Env:
     err: IO[str]
     run_settings: Callable[..., Any] | None = None  # tests pass a factory to replace the backoff sleep
     signals: tuple[Mapping[str, str], bool] | None = None  # (environment, terminal); tests stub them (PRV-AC-1)
+    hand_over: Callable[[Path, list[str]], int] | None = None  # tests replace the pinned engine's launch
+    argv: tuple[str, ...] = ()  # this process's own arguments, handed unchanged to a pinned engine (MIG §2.4)
 
     def caller(self, a: argparse.Namespace) -> dict[str, Any]:
         """PRV §2.3, once per mutating call, before any write; read-only verbs never call this."""
@@ -425,9 +429,41 @@ def cmd_resume(env: Env, a: argparse.Namespace) -> int:
             feedback = path.read_text(encoding="utf-8")
         except OSError as exc:
             raise UsageError(f"--feedback-file {a.feedback_file}: {type(exc).__name__}") from exc
+    code = _pinned_engine(env, spec, task, a)
+    if code is not None:
+        return code
     out = resume(spec, task, env.cwd, env.registry, decision=a.decision, feedback=feedback,
                  settings=_settings(env, a))
+    if out.exit_code == ExitCode.FINISHED:  # MIG §2.4: a pin ends with its thread
+        from tempergraph.durability import engine_file
+
+        root = _root_or_none(env)
+        if root is not None:
+            engine_file.unpin(root, spec.name, task)
     return _report(env, out, a.json)
+
+
+def _pinned_engine(env: Env, spec: WorkflowSpec, task: str, a: argparse.Namespace) -> int | None:
+    """MIG §2.4, before anything else: None when this engine resumes the thread, else the exit code of the
+    pinned engine that did, or 2 with the reason."""
+    from tempergraph.durability import engine_file
+    from tempergraph.install import environment, launch
+    from tempergraph.store.layout import home_path
+
+    root = _root_or_none(env)
+    if root is None or not engine_file.path(root, spec.name, task).is_file():
+        return None
+    if getattr(a, "unpin", False):
+        why = engine_file.try_unpin(root, spec.name, task)
+        if why:
+            raise UsageError(f"--unpin: {why}")
+    action, detail = engine_file.at_resume(root, spec.name, task)
+    if action == "move":
+        return None
+    if action == "refuse":
+        raise UsageError(str(detail))
+    argv = [x for x in env.argv if x != "--unpin"]
+    return (env.hand_over or launch.hand_over)(environment.interpreter(home_path() / "engines" / str(detail)), argv)
 
 
 def _feedback_text(env: Env, a: argparse.Namespace) -> str | None:
@@ -761,12 +797,14 @@ def cmd_config(env: Env, a: argparse.Namespace) -> int:
     try:
         if a.thread:
             from tempergraph.durability.checkpoint import thread_values
-            from tempergraph.store.layout import checkpoint_path
 
             if root is None:
                 raise UsageError("--thread needs a git repository")
             task = a.thread.split("/", 1)[1] if "/" in a.thread else a.thread
-            values = thread_values(checkpoint_path(root, spec.name), spec, thread_id(spec.name, task))
+            from tempergraph.durability import engine_file
+
+            values = thread_values(engine_file.checkpoint_of(root, spec.name, task), spec,
+                                   thread_id(spec.name, task))
             if not values:
                 raise UsageError(f"no thread {thread_id(spec.name, task)}")
             settled = settle_resume(spec, settings, root, values)
@@ -829,6 +867,7 @@ COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "scaffold": author_cli.cmd_scaffold,
     "author": author_cli.cmd_author,
     "install": install_cli.cmd_install,
+    "update": install_cli.cmd_update,
     "upgrade": upgrade_cli.cmd_upgrade,
     "upgrade-check": upgrade_cli.cmd_upgrade,
     "evals": lambda env, a: _improve().cmd_evals(env, a),
@@ -846,11 +885,12 @@ def _improve() -> Any:
 
 def main(argv: Sequence[str] | None = None, *, catalog: Catalog | None = None, registry: Registry | None = None,
          cwd: Path | None = None, out: IO[str] | None = None, err: IO[str] | None = None,
-         run_settings: Callable[..., Any] | None = None, signals: tuple[Mapping[str, str], bool] | None = None
-         ) -> int:
+         run_settings: Callable[..., Any] | None = None, signals: tuple[Mapping[str, str], bool] | None = None,
+         hand_over: Callable[[Path, list[str]], int] | None = None) -> int:
     out, err = out or sys.stdout, err or sys.stderr
     try:
-        a = _parser().parse_args(list(argv if argv is not None else sys.argv[1:]))
+        given = tuple(argv if argv is not None else sys.argv[1:])
+        a = _parser().parse_args(list(given))
         if not a.verb:
             raise UsageError("a verb is needed; `tempergraph --help` lists them")
         if a.verb not in COMMANDS:
@@ -859,7 +899,7 @@ def main(argv: Sequence[str] | None = None, *, catalog: Catalog | None = None, r
         env = Env(catalog=catalog if catalog is not None else Catalog() if light else from_registry(),
                   registry=registry if registry is not None else default_registry(),
                   cwd=(cwd or Path.cwd()).resolve(), out=out, err=err, run_settings=run_settings,
-                  signals=signals)
+                  signals=signals, argv=given, hand_over=hand_over)
         return COMMANDS[a.verb](env, a)
     except UsageError as exc:
         err.write(f"tempergraph: {exc}\n")

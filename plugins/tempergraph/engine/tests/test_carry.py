@@ -156,7 +156,8 @@ def test_nothing_private_travels(world: World) -> None:
     assert {"carry.json", "checkpoint.sqlite", "ledger.jsonl", "workspace.json", "run/run.jsonl"} <= inner
     assert {f"run/{k}" for k in kept} <= inner
     assert not any(f"run/{p}" in inner for p in private)
-    assert not any(part in p for p in inner for part in ("config", "scratch", "locks", "authoring", "upgrades",
+    assert "run/engine.json" in inner  # the thread's engine record travels with it (MIG §2.1)
+    assert not any(part in p for p in inner - {"run/engine.json"} for part in ("config", "scratch", "locks", "authoring", "upgrades",
                                                           "backups", "engine", "carry.local", "other", "t9"))
     blob = git(world.remote, "grep", "-c", "-e", SECRET, BRANCH, check=False)
     assert blob == ""  # the scrubber ran on every text file
