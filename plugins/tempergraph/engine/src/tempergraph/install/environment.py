@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,6 +20,7 @@ from tempergraph.install.launch import INSTALL_TIMEOUT_S, run
 from tempergraph.release import release
 from tempergraph.store.layout import now_iso
 
+PREVIOUS_RE = re.compile(r"^[0-9][0-9A-Za-z.]*-[0-9a-f]{12}$")
 SKIP = frozenset({"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", "build", "dist"})
 
 
@@ -72,7 +74,7 @@ class Builder(Protocol):
     def create(self, python: str, env: Path) -> None: ...
     def install(self, env: Path, engine: Path, extras: tuple[str, ...]) -> None: ...
     def self_check(self, env: Path) -> dict[str, Any]: ...
-    def reconcile(self, env: Path) -> dict[str, Any]: ...
+    def reconcile(self, env: Path, previous: str | None = None) -> dict[str, Any]: ...
 
 
 class VenvBuilder:
@@ -101,8 +103,11 @@ class VenvBuilder:
         return doc
 
 
-    def reconcile(self, env: Path) -> dict[str, Any]:
-        got = run([str(interpreter(env)), "-m", "tempergraph.install.reconcile"], timeout_s=600)
+    def reconcile(self, env: Path, previous: str | None = None) -> dict[str, Any]:
+        argv = [str(interpreter(env)), "-m", "tempergraph.install.reconcile"]
+        if previous and PREVIOUS_RE.match(previous):  # constants-only argv: an engine folder name of ours
+            argv += ["--previous", previous, "--install"]
+        got = run(argv, timeout_s=INSTALL_TIMEOUT_S)
         try:
             doc = json.loads(got.out)
         except ValueError:
@@ -118,12 +123,15 @@ class Installed:
     check: dict[str, Any]
 
 
-def install_engine(home: Path, python: str, engine: Path, builder: Builder, extras: tuple[str, ...] = ()) -> Installed:
+def install_engine(home: Path, python: str, engine: Path, builder: Builder, extras: tuple[str, ...] = (),
+                   *, version: str | None = None) -> Installed:
     """UPD §2.3 steps 3 and 4 into a new environment folder; on failure the folder is removed and
     `current.json` is untouched."""
-    version = str(release()["engine_version"])
+    version = version or str(release()["engine_version"])
     digest = source_digest(engine)
     env = engines_dir(home) / f"{version}-{digest[:12]}"
+    if (env / ".complete").is_file():  # this release is already installed (a rollback kept it): use it as it is
+        return Installed(env=env, engine_version=version, digest=digest, check=builder.self_check(env))
     if env.exists():
         shutil.rmtree(env)
     env.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -133,6 +141,8 @@ def install_engine(home: Path, python: str, engine: Path, builder: Builder, extr
         check = builder.self_check(env)
         if check.get("engine_version") != version:
             raise InstallFailed(f"self-check reports engine {check.get('engine_version')!r}, expected {version!r}")
+        rel = _read(engine / "src" / "tempergraph" / "data" / "release.json") or dict(release())
+        write_json(env / "release.json", rel)  # read by a later engine to choose a pin (MIG §2.4)
         (env / ".complete").write_text(now_iso() + "\n", encoding="utf-8")
     except BaseException:
         shutil.rmtree(env, ignore_errors=True)
@@ -140,13 +150,19 @@ def install_engine(home: Path, python: str, engine: Path, builder: Builder, extr
     return Installed(env=env, engine_version=version, digest=digest, check=check)
 
 
-def switch(home: Path, inst: Installed) -> dict[str, Any]:
+def switch(home: Path, inst: Installed, *, extras: tuple[str, ...] = (),
+           release_doc: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Make `inst` current. The pointer also records what the engine reads, so a rollback can be checked
+    without starting it (UPD §2.6)."""
     eng = engines_dir(home)
     cur = eng / "current.json"
-    if cur.is_file():
+    if cur.is_file() and _read(cur).get("path") != str(inst.env):
         write_json(eng / "previous.json", _read(cur))
+    rel = release_doc or release()
     doc = {"schema_version": 1, "engine_version": inst.engine_version, "digest": inst.digest,
-           "path": str(inst.env), "switched_at": now_iso()}
+           "path": str(inst.env), "switched_at": now_iso(), "extras": list(extras),
+           "reads_store_layouts": list(rel.get("reads_store_layouts") or [rel.get("store_layout") or 1]),
+           "resumes_checkpoint_formats": list(rel.get("resumes_checkpoint_formats") or [1])}
     write_json(cur, doc)
     return doc
 

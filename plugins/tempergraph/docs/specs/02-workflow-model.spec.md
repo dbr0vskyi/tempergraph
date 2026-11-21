@@ -88,6 +88,7 @@ What a package holds and how `load` reads it is [PKG](88-workflow-package.spec.m
 - Workflows declare neutral tiers and capabilities so a team can move a step between executors by changing one field ([ADR-0008](../adr/0008-portable-model-aliases.adr.md)).
 - A workflow package is imported into the engine's process. Isolation is by rule and review, not a sandbox: workflows import the engine's public interface only, and new dependencies pass the dependency gate.
 - A new spec field is appended last with a default, recorded in the compatibility changelog, and kept out of the diagram digest unless it changes the shape.
+- **As built (R2-T7).** Kinds `ask`, `wait` and `parallel` are in the release; `council`, `contest` and `subworkflow` stay `not_in_release`. The fields the contract table does not list: a wait has `event` (slug), `check` (callable ref), `deadline_s` and `on_deadline`; a parallel unit has `branches` (two or more unit names). Finding codes added: `ask-*`, `wait-*`, `deadline-*`, `fallback-*`, `parallel-branches`, `parallel-branch-unknown`, `parallel-join-before-branch`, `parallel-branch-kind`, `parallel-branch-flow`, `parallel-writer-branch`, `parallel-branch-shared`, `parallel-branches-not-adjacent`, `parallel-join-gate` and `self-check-without-check`.
 
 ## 6. Acceptance criteria
 

@@ -38,17 +38,20 @@ def context_doc(gate: GateSpec, ctx: checkmod.CheckContext) -> dict[str, Any]:
             "out_dir": str(ctx.out_dir) if ctx.out_dir else None,
             "reuse_store": str(ctx.reuse_store) if ctx.reuse_store else None,
             "no_reuse_exit_codes": {k: list(v) for k, v in ctx.no_reuse_exit_codes.items()},
-            "git": {"branch": g.branch, "base": g.base, "head": g.head, "base_head": g.base_head, "clean": g.clean,
-                    "pushed": g.pushed, "changed_paths": list(g.changed_paths),
-                    "commits_since_base": list(g.commits_since_base)},
+            "changed_paths": list(ctx.changed_paths),
+            "git": None if g is None else {
+                "branch": g.branch, "base": g.base, "head": g.head, "base_head": g.base_head, "clean": g.clean,
+                "pushed": g.pushed, "changed_paths": list(g.changed_paths),
+                "commits_since_base": list(g.commits_since_base)},
         },
     }
 
 
 def _context_from(doc: dict[str, Any]) -> checkmod.CheckContext:
     c = doc["context"]
-    g = c.get("git") or {}
+    g = c.get("git")
     return checkmod.CheckContext(
+        changed_paths=tuple(c.get("changed_paths") or ()),
         unit=c["unit"], workdir=Path(c["workdir"]), request=c.get("request") or {}, item=c.get("item"),
         visit=int(c.get("visit", 1)), attempt=int(c.get("attempt", 1)), preview=bool(c.get("preview")),
         main_checkout=Path(c["main_checkout"]) if c.get("main_checkout") else None,
@@ -57,10 +60,11 @@ def _context_from(doc: dict[str, Any]) -> checkmod.CheckContext:
         out_dir=Path(c["out_dir"]) if c.get("out_dir") else None,
         reuse_store=Path(c["reuse_store"]) if c.get("reuse_store") else None,
         no_reuse_exit_codes={k: tuple(v) for k, v in (c.get("no_reuse_exit_codes") or {}).items()},
-        git=checkmod.GitFacts(branch=g.get("branch", ""), base=g.get("base", ""), head=g.get("head", ""),
-                              base_head=g.get("base_head", ""), clean=bool(g.get("clean", True)),
-                              pushed=bool(g.get("pushed")), changed_paths=tuple(g.get("changed_paths") or ()),
-                              commits_since_base=tuple(g.get("commits_since_base") or ())))
+        git=None if g is None else checkmod.GitFacts(
+            branch=g.get("branch", ""), base=g.get("base", ""), head=g.get("head", ""),
+            base_head=g.get("base_head", ""), clean=bool(g.get("clean", True)), pushed=bool(g.get("pushed")),
+            changed_paths=tuple(g.get("changed_paths") or ()),
+            commits_since_base=tuple(g.get("commits_since_base") or ())))
 
 
 def result_from(doc: dict[str, Any]) -> CheckResult:
@@ -68,7 +72,8 @@ def result_from(doc: dict[str, Any]) -> CheckResult:
         result=doc.get("result", "FAIL"), evidence=str(doc.get("evidence") or ""),
         environmental=bool(doc.get("environmental")), untracked_only=bool(doc.get("untracked_only")),
         findings=[CheckFinding(status=f.get("status", "maybe"), criterion=f.get("criterion"),
-                               place=f.get("place", ""), fix=f.get("fix", ""), message=f.get("message", ""))
+                               place=f.get("place", ""), fix=f.get("fix", ""), message=f.get("message", ""),
+                               kind=f.get("kind") if f.get("kind") in ("substance", "output_contract") else None)
                   for f in doc.get("findings") or []],
         facts=dict(doc.get("facts") or {}), runs=list(doc.get("runs") or []))
 
@@ -101,12 +106,19 @@ def run_in_worker(gate: GateSpec, ctx: checkmod.CheckContext, *, python: str | N
     """Run the gate's check in a check worker; a worker past its limit is an environmental FAIL."""
     if gate.check is None:
         return CheckResult(result="PASS", evidence=""), []
+    return run_doc(context_doc(gate, ctx), ctx.workdir, gate.check_timeout_s, f"check-{ctx.unit}-{ctx.attempt}",
+                   python=python)
+
+
+def run_doc(doc: dict[str, Any], workdir: Path, timeout_s: int, key: str, *, python: str | None = None
+            ) -> tuple[CheckResult, list[str]]:
+    """One worker run of a context document; the check preview sends a stored one (CHK §2.5)."""
     from tempergraph.executors.launcher import LaunchSpec, launch
 
-    payload = json.dumps(context_doc(gate, ctx), default=str).encode()
+    payload = json.dumps(doc, default=str).encode()
     spec = LaunchSpec(argv=[python or sys.executable, "-m", "tempergraph.run.check_worker"], stdin_payload=payload,
-                      workdir=ctx.workdir, timeout_s=gate.check_timeout_s + WORKER_GRACE_S,
-                      session_key=f"check-{ctx.unit}-{ctx.attempt}", prompt_window_s=float(gate.check_timeout_s))
+                      workdir=workdir, timeout_s=timeout_s + WORKER_GRACE_S,
+                      session_key=key, prompt_window_s=float(timeout_s))
     got: list[bytes] = []
 
     def keep(line: bytes) -> list[Any]:
@@ -115,18 +127,18 @@ def run_in_worker(gate: GateSpec, ctx: checkmod.CheckContext, *, python: str | N
 
     raw = launch(spec, keep, EventSink())
     if raw.stop_reason is not None or raw.killed:
-        return CheckResult(result="FAIL", evidence=f"check worker ended at its limit of {gate.check_timeout_s} s",
+        return CheckResult(result="FAIL", evidence=f"check worker ended at its limit of {timeout_s} s",
                            environmental=True), ["check_worker_limit"]
     text = b"".join(got).decode("utf-8", errors="replace").strip()
     try:
-        doc = json.loads(text) if text else {}
+        out = json.loads(text) if text else {}
     except ValueError:
-        doc = {}
-    if raw.spawn_error is not None or "result" not in doc:
-        why = doc.get("worker_error") or (type(raw.spawn_error).__name__ if raw.spawn_error else "no result")
+        out = {}
+    if raw.spawn_error is not None or "result" not in out:
+        why = out.get("worker_error") or (type(raw.spawn_error).__name__ if raw.spawn_error else "no result")
         return CheckResult(result="FAIL", evidence=f"check worker failed: {str(why)[:_PRINT_LIMIT]}",
                            environmental=True), [f"check_worker_failed: {why}"]
-    return result_from(doc["result"]), list(doc.get("notes") or [])
+    return result_from(out["result"]), list(out.get("notes") or [])
 
 
 if __name__ == "__main__":

@@ -1,11 +1,48 @@
 {
   "schema_version": 1,
-  "engine_version": "0.0.1",
+  "engine_version": "0.2.0",
   "workflow_api": 1,
-  "workflow_version": "0.1.0+67576ccd6b17",
+  "workflow_version": "0.1.0+1364549f7324",
   "docs_digest": "57c535868d629212378699dd54589a58a0d686dbb4fd6d3826a9f716e5b0f804",
   "shape_digest": "10ebe7b340b9a76158ada4c12436484c5f01dbb51f94160e7142fff0fcb6eac4",
-  "entries_applied": [],
+  "entries_applied": [
+    {
+      "id": "E0.2.0-1",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-2",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-3",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-4",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-5",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-6",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-7",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-8",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-9",
+      "by": "none"
+    }
+  ],
   "tool_set": {
     "claude": [
       "Glob",
@@ -18,9 +55,10 @@
     "outcome-unverified-blocker|draft|rn-faithful|outcome.json",
     "outcome-unverified-blocker|outcome|rn-complete|outcome.json"
   ],
+  "outcome_revision": 1,
   "baseline": {
     "error": 0,
     "warning": 0
   },
-  "stamped_at": "2026-11-20T19:09:39.649Z"
+  "stamped_at": "2026-11-21T19:18:36.611Z"
 }

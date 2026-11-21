@@ -84,7 +84,7 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0087](0087-a-supervision-journal-written-by-the-host-not-by-read-only-verbs.adr.md) | Supervision cost is measured by a journal the host writes, not by the engine's read-only verbs | proposed |
 | [0088](0088-attribute-supervision-spend-by-marginal-tokens-beside-turn-totals.adr.md) | Attribute a supervising session's spend to runs by marginal tokens, shown beside turn totals | proposed |
 | [0089](0089-supervision-is-a-promotion-and-improvement-measure.adr.md) | Supervision by every decider is a promotion criterion and an improvement signal | proposed |
-| [0090](0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md) | The first release is simple, trusted workflows on one machine, with their creation and full observability | proposed |
+| [0090](0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md) | The first release is simple, trusted workflows on one machine, with their creation and full observability | proposed; release 2 and 3 rows superseded in part by 0125 |
 | [0091](0091-first-release-ships-the-claude-executor-only.adr.md) | The first release ships the Claude Code executor only; the other three follow by release | proposed |
 | [0095](0095-a-model-free-tick-behind-os-agnostic-triggers.adr.md) | A model-free, OS-agnostic tick holds every schedule rule; a portable engine loop calls it, OS and other schedulers are optional adapters | proposed |
 | [0096](0096-exact-formats-first-and-an-optional-word-grammar-echoed-back.adr.md) | Exact date formats are the deterministic path; an optional word grammar sits on top; both are model-free and echoed back | proposed |
@@ -112,4 +112,12 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0118](0118-the-reviewer-is-tool-less-and-reads-a-condensed-datamarked-view.adr.md) | The reviewer is tool-less and reads a condensed, scrubbed, datamarked view | proposed |
 | [0119](0119-review-observations-are-candidates-corroborated-before-they-file.adr.md) | Review observations are candidates, corroborated before they file | proposed |
 | [0120](0120-a-workflow-plugin-name-is-the-workflow-name-plus-tgraph.adr.md) | A workflow plugin's name is the workflow name plus `-tgraph` | accepted |
+| [0121](0121-ladders-climb-only-on-trusted-substantive-evidence.adr.md) | Ladders climb only on trusted, substantive evidence: effort first, one model step last | proposed |
+| [0122](0122-a-judge-is-raised-by-a-model-free-risk-rule-and-every-level-is-calibrated.adr.md) | A judge is raised by a model-free risk rule, and every level is calibrated | proposed |
+| [0123](0123-complexity-chooses-a-decomposition-through-a-measured-switch.adr.md) | Complexity chooses a decomposition through a measured switch, failing safe and re-arming one way | proposed |
+| [0124](0124-promotion-is-a-model-free-stamp-per-workflow-version.adr.md) | Promotion is a model-free stamp per workflow version; pipelines come in a later release | proposed |
+| [0125](0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md) | Release 2 adds upgrade, strict ladders, judge by risk and complexity routing to ADR-0090's forecast | proposed |
+| [0126](0126-a-run-carries-a-scrubbed-thread-state-on-its-own-branch-and-deletes-it-when-done.adr.md) | A run carries a scrubbed thread state on its own branch and deletes it when done | proposed |
+| [0127](0127-outside-git-the-state-root-is-found-by-walk-up-and-the-guard-hashes-files.adr.md) | Outside git, the state root is found by walk-up and the guard hashes files | proposed |
+| [0128](0128-windows-is-supported-natively-with-job-objects-and-probes-before-judges.adr.md) | Windows is supported natively, with job objects, and probes before judges | proposed |
 | [0129](0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md) | The engine names no workflow, and takes a workflow's request as a general capability | accepted |

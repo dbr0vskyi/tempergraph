@@ -29,9 +29,21 @@ Run `tempergraph executors`. For each step, read the chosen executor's `capabili
 
 Only executors that `executors` lists can be chosen. Record each choice and its stated consequence as a decision.
 
-## Models
+## Models and effort
 
-Use aliases, never model ids. A mechanical step with a mostly deterministic gate takes the cheapest alias. A step where reasoning decides takes the strongest. A judge is at least as strong as its producer. Limits and caps come from recorded runs, not guesses.
+Assess every step and every judge, one by one, and write the result in the blueprint as `sizing` and `judge_sizing`: `{"model": "<tier>", "effort": "<effort>", "why": "<one sentence>"}`. `blueprint check` refuses a step or judge without one, and `author verify` fails rung 6 on a declaration that leaves model, effort or the reason to a default. Ask the person only when the cost matters to them; otherwise decide, and record the sizing as an assumption.
+
+Use aliases (`small`, `medium`, `large`), never model ids. Efforts are `low`, `medium`, `high`, `xhigh`, `max`.
+
+| The session mostly | Start at | Raise when |
+|---|---|---|
+| Sorts, extracts, copies or reformats one input | `small` or `medium`, effort `low` or `medium` | Its gate fails on substance, not on shape |
+| Writes one document from a few inputs | `medium`, `medium` | It must reconcile several sources |
+| Designs, plans, researches or reads across many files | `medium`, `high`; `large` only with a measured reason | A weak result costs a later long session |
+| Runs long with tools and tests that catch slips | `medium`, `high` | Tests cannot catch the defect class |
+| Judges one file against a few criteria | The step's tier, `low` or `medium` | It reads across files (never `small`), or a miss ships a defect: `high` |
+
+A judge is at least as strong as its producer. The `why` names the work, not the wish: "reads the diff and the proof of every criterion" and not "needs to be good". Limits and caps come from recorded runs, not guesses; a sizing made before any run says so in its decision.
 
 Approve with `tempergraph author approve <id> 5`.
 

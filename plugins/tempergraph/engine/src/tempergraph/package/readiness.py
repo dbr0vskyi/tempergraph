@@ -109,6 +109,16 @@ def stable_findings(spec: WorkflowSpec) -> list[Finding]:
     """LIF-B6: a `stable` workflow needs every judged gate `ready`."""
     if spec.improvement_mode != "stable":
         return []
-    return [Finding("gate-not-ready", g.gate, f"`stable` needs the gate `ready`; it is {g.grade!r}"
-                    + (f": {'; '.join(g.findings)}" if g.findings else " (no accepted judge binding)"))
+    from tempergraph.improve import calibration
+
+    def why(g: GateReadiness) -> str:
+        if g.findings:
+            return f": {'; '.join(g.findings)}"
+        raised = calibration.unaccepted_levels(spec, g.gate)  # JRK-B5: every routed level, with what fixes it
+        if raised and g.acceptance == "accepted":
+            return "; " + "; ".join(f"risk level {lv!r} is {st}: run `tempergraph evals score {spec.name} {g.gate} "
+                                    f"--level {lv}`" for lv, st in raised)
+        return " (no accepted judge binding)"
+
+    return [Finding("gate-not-ready", g.gate, f"`stable` needs the gate `ready`; it is {g.grade!r}" + why(g))
             for g in readiness(spec) if g.grade != "ready"]

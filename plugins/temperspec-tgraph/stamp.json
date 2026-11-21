@@ -1,11 +1,48 @@
 {
   "schema_version": 1,
-  "engine_version": "0.0.1",
+  "engine_version": "0.2.0",
   "workflow_api": 1,
-  "workflow_version": "0.1.0+19a69a36f804",
-  "docs_digest": "6580a60862d446eb6f37ac9b906232233ccf3cdd652a4eb05f55200b6097b771",
+  "workflow_version": "0.1.0+f177744267e9",
+  "docs_digest": "1a82f2823aa1a9d0e850475d62e04c91635f107c100895c52a9f4c90b4d7a23e",
   "shape_digest": "345ad186df7cff52c44cf76540ca2fc76a4d2daedeaf91ab03ac33955bd4dcce",
-  "entries_applied": [],
+  "entries_applied": [
+    {
+      "id": "E0.2.0-1",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-2",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-3",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-4",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-5",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-6",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-7",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-8",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-9",
+      "by": "none"
+    }
+  ],
   "tool_set": {
     "claude": [
       "Bash",
@@ -55,5 +92,5 @@
     "error": 0,
     "warning": 11
   },
-  "stamped_at": "2026-11-21T15:01:36.858Z"
+  "stamped_at": "2026-11-21T19:18:37.390Z"
 }

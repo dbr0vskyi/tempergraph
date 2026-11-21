@@ -40,6 +40,7 @@ class CompiledWorkflow:
     spec: WorkflowSpec
     nodes: list[str]
     edges: list[tuple[str, str]]  # every possible (source, target), conditional ones included
+    engine: Any = None  # the node bodies' owner, for a state write deferred to the first node (`defer`)
 
     def config(self, thread_id: str) -> dict[str, Any]:
         return {"configurable": {"thread_id": thread_id}, "recursion_limit": RECURSION_LIMIT}
@@ -54,13 +55,14 @@ def compile_workflow(spec: WorkflowSpec, nodes: UnitNodes, checkpointer: BaseChe
     order = flow.effective_order(spec)
     names: list[str] = []
     edges: list[tuple[str, str]] = []
+    post: Callable[[dict[str, Any]], dict[str, Any]] = getattr(nodes, "settle", lambda w: w)
 
     for unit in order:
         step, judge, gate, human = flow.node_names(unit)
-        g.add_node(step, _bind1(nodes.step, unit))
-        g.add_node(judge, _bind1(nodes.judge, unit))
-        g.add_node(gate, _bind1(nodes.gate, unit))
-        g.add_node(human, _human_node(nodes, unit))
+        g.add_node(step, _bind1(nodes.step, unit, post))
+        g.add_node(judge, _bind1(nodes.judge, unit, post))
+        g.add_node(gate, _bind1(nodes.gate, unit, post))
+        g.add_node(human, _human_node(nodes, unit, post))
         names += [step, judge, gate, human]
         g.add_edge(step, judge)
         g.add_edge(judge, gate)
@@ -72,27 +74,55 @@ def compile_workflow(spec: WorkflowSpec, nodes: UnitNodes, checkpointer: BaseChe
         g.add_conditional_edges(human, _router(unit, human_targets), {t: _end(t) for t in human_targets})
         edges += [(human, t) for t in human_targets]
 
+    for join in order:  # CMP §2.2: a parallel block forks to every branch and joins on every pass
+        u = spec.units.get(join)
+        if u is None or u.kind != "parallel":
+            continue
+        fork = flow.fork_node(join)
+        g.add_node(fork, _passthrough(fork))
+        names.append(fork)
+        dones = []
+        for b in u.branches:
+            done = flow.done_node(b)
+            g.add_node(done, _passthrough(done))
+            g.add_edge(fork, flow.step_node(b))
+            names.append(done)
+            dones.append(done)
+            edges.append((fork, flow.step_node(b)))
+            edges.append((done, flow.step_node(join)))
+        g.add_edge(dones, flow.step_node(join))  # the engine-owned AND-join
+
     g.add_node(flow.FINALIZER, nodes.finalizer)
     names.append(flow.FINALIZER)
     g.add_edge(flow.FINALIZER, END)
     edges.append((flow.FINALIZER, flow.END))
-    g.add_edge(START, flow.step_node(order[0]))
+    g.add_edge(START, flow.entry_node(spec, order[0]))
     compiled = g.compile(checkpointer=checkpointer)
-    return CompiledWorkflow(graph=compiled, spec=spec, nodes=names, edges=edges)
+    return CompiledWorkflow(graph=compiled, spec=spec, nodes=names, edges=edges, engine=nodes)
 
 
-def _bind1(fn: Callable[[str, RunState], dict[str, Any]], unit: str) -> Callable[[RunState], dict[str, Any]]:
+def _bind1(fn: Callable[[str, RunState], dict[str, Any]], unit: str,
+           post: Callable[[dict[str, Any]], dict[str, Any]]) -> Callable[[RunState], dict[str, Any]]:
     def node(state: RunState) -> dict[str, Any]:
-        return fn(unit, state)
+        return post(fn(unit, state))
 
     node.__name__ = f"{fn.__name__}_{unit}"
     return node
 
 
-def _human_node(nodes: UnitNodes, unit: str) -> Callable[[RunState], dict[str, Any]]:
+def _passthrough(name: str) -> Callable[[RunState], dict[str, Any]]:
+    def node(state: RunState) -> dict[str, Any]:
+        return {}
+
+    node.__name__ = name.replace(".", "_")
+    return node
+
+
+def _human_node(nodes: UnitNodes, unit: str,
+                post: Callable[[dict[str, Any]], dict[str, Any]]) -> Callable[[RunState], dict[str, Any]]:
     def human(state: RunState) -> dict[str, Any]:
         decision = interrupt((state.get("pause") or {}).get(unit))
-        return nodes.human(unit, state, decision)
+        return post(nodes.human(unit, state, decision))
 
     return human
 

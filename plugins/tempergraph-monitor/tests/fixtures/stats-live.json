@@ -3,17 +3,17 @@
   "source": "home",
   "machines": [
     {
-      "machine_id": "70ddb97d-b454-4d26-8eb5-c2b6211b8298",
+      "machine_id": "440102e7-70af-4870-a8e3-8e130f5e85a2",
       "label": "laptop-a",
-      "at": "2026-11-20T17:51:31.653Z",
+      "at": "2026-11-21T18:29:43.646Z",
       "age_s": -0.0,
       "stale": false,
       "this_machine": true
     },
     {
-      "machine_id": "bbc88313-0b2e-4837-b32b-65080eae2c9b",
+      "machine_id": "edf0f51e-c85e-4e30-b2e0-d1c6bc93bad1",
       "label": "desk-b",
-      "at": "2026-11-20T17:51:31.239Z",
+      "at": "2026-11-21T18:29:43.238Z",
       "age_s": 0.4,
       "stale": false,
       "this_machine": false
@@ -27,10 +27,10 @@
       "unit": "review",
       "attempt": 2,
       "estimated_cost_usd": null,
-      "waiting_for_person_s": 0.7,
+      "waiting_for_person_s": 0.8,
       "waiting_on": "person",
       "thread_id": "demo/T-1",
-      "machine_id": "70ddb97d-b454-4d26-8eb5-c2b6211b8298",
+      "machine_id": "440102e7-70af-4870-a8e3-8e130f5e85a2",
       "label": "laptop-a",
       "stale": false
     },
@@ -44,13 +44,13 @@
       "waiting_for_person_s": 0.4,
       "waiting_on": "person",
       "thread_id": "demo/T-8",
-      "machine_id": "70ddb97d-b454-4d26-8eb5-c2b6211b8298",
+      "machine_id": "440102e7-70af-4870-a8e3-8e130f5e85a2",
       "label": "laptop-a",
       "stale": false
     },
     {
-      "thread_hash": "cc25b9e321f53089afc590876e9ddd13",
-      "repo_id": "7e92fb78c43c6ea813c62b74ba526aaf",
+      "thread_hash": "36a43657dcaf06b3fabee0ade1a7480a",
+      "repo_id": "d83bf9c6dd94fe4c74d0a21888911063",
       "workflow": "demo",
       "alias": null,
       "state": "paused",
@@ -59,13 +59,13 @@
       "estimated_cost_usd": null,
       "waiting_for_person_s": 0.7,
       "waiting_on": "person",
-      "machine_id": "bbc88313-0b2e-4837-b32b-65080eae2c9b",
+      "machine_id": "edf0f51e-c85e-4e30-b2e0-d1c6bc93bad1",
       "label": "desk-b",
       "stale": false
     },
     {
-      "thread_hash": "fba08be97c7da6cb3eb1b0387f5be5c3",
-      "repo_id": "7e92fb78c43c6ea813c62b74ba526aaf",
+      "thread_hash": "cf3d455167158545e412b94d6c534ae7",
+      "repo_id": "d83bf9c6dd94fe4c74d0a21888911063",
       "workflow": "demo",
       "alias": null,
       "state": "paused",
@@ -74,7 +74,7 @@
       "estimated_cost_usd": null,
       "waiting_for_person_s": 0.4,
       "waiting_on": "person",
-      "machine_id": "bbc88313-0b2e-4837-b32b-65080eae2c9b",
+      "machine_id": "edf0f51e-c85e-4e30-b2e0-d1c6bc93bad1",
       "label": "desk-b",
       "stale": false
     }

@@ -73,7 +73,14 @@ def test_minimal_workflow_scaffolds_and_its_generated_tests_pass(pkg: Path, tmp_
     assert json.loads((pkg / ".claude-plugin/plugin.json").read_text())["name"] == "release-notes-tgraph"
     assert json.loads((pkg / "tempergraph.json").read_text())["name"] == "release-notes"  # ADR-0120
     lp = load_package(pkg)
-    assert lp.spec.units["draft"].gate.check is not None
+    draft = lp.spec.units["draft"]
+    assert draft.gate.check is not None
+    # SCF §2.1.1: the blueprint's sizing becomes the step's and the judge's model, effort and reason
+    assert draft.step is not None and draft.gate.judge is not None
+    assert (draft.step.model, draft.step.session_options.effort) == ("medium", "medium")  # type: ignore[union-attr]
+    assert draft.step.sizing == "One document written from a short list of changes"
+    assert (draft.gate.judge.model, draft.gate.judge.session_options.effort) == ("medium", "medium")  # type: ignore[union-attr]
+    assert draft.gate.judge.sizing == "Reads one file against three criteria"
     for name in selftest.NAMES:
         work = tmp_path / f"t-{name}"
         work.mkdir()

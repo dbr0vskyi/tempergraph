@@ -10,7 +10,7 @@ adrs: [0070, 0071, 0072, 0080, 0008]
 
 ## 1. Overview
 
-Every value that decides how much a run may spend, how long it may take, how often it may repeat, which executor and model do the work, and which workflow-declared switch is taken is a **run setting**: a key in one engine catalog (§2.2), set at a **scope** (the run, all steps, all judges, one unit, one judge, one council member, chair or contest slot, one script) on one of a fixed list of **layers** (§2.3), from a flag to a machine-wide default. The engine resolves every key the same way, validates every override before spend, snapshots the result on the thread, reapplies it on resume, and records each value with its source ([ADR-0070](../adr/0070-one-catalog-of-run-settings-over-fixed-layers.adr.md), [R-070](../research/R-070-config-overrides-and-reruns-gaps.rsrch.md)).
+Every value that decides how much a run may spend, how long it may take, how often it may repeat, which executor and model do the work, and which workflow-declared switch is taken is a **run setting**: a key in one engine catalog (§2.2), set at a **scope** (the run, all steps, all judges, one unit, one judge, one council member, chair or contest slot, one script) on one of fixed **layers** (§2.3), from a flag to a machine default. The engine resolves every key alike, validates every override before spend, snapshots the result on the thread, reapplies it on resume, and records each value with its source ([ADR-0070](../adr/0070-one-catalog-of-run-settings-over-fixed-layers.adr.md), [R-070](../research/R-070-config-overrides-and-reruns-gaps.rsrch.md)).
 
 What verifies the work is not a setting: criteria, checks, the presence of a judge, the judge's independence, flow targets, back targets and prompts cannot be overridden ([ADR-0071](../adr/0071-overrides-never-change-what-verifies-the-work.adr.md)). Declared tools are the one part of a step a person may widen for a run, by a recorded **tool grant** (§2.9): a step that failed or paused because it could not reach a tool, a skill, an MCP server or a command is resumed with the grant instead of an edit of the package ([ADR-0080](../adr/0080-a-person-may-grant-a-step-tools-for-a-run.adr.md)). The model and timeout orders of [CON §2.4](01-contracts.spec.md) and [BUD §2.1](08-budgets-and-failures.spec.md) are instances of this spec's order.
 
@@ -45,10 +45,11 @@ A map item has no scope of its own: items share their unit's settings, and a per
 | Name | Scopes | Value | Engine default | Notes |
 |---|---|---|---|---|
 | `executor` | steps, judges, unit, judge, member, chair, slot | registered executor | workflow `default_executor` | A judge's still must declare `restricts_judge_tools` ([EXI](10-executor-interface.spec.md)) |
-| `model` | steps, unit, member, chair, slot | alias, or a ladder of 1–8 aliases on steps and unit | `inherit` | Judges, members, chair and slots take one alias |
-| `model` | judges, judge | alias | per CON §2.4 | Never a ladder |
+| `model` | steps, unit, member, chair, slot | one alias | `inherit` | A list is refused (LAD §2.8) |
+| `model` | judges, judge | alias | per CON §2.4 | |
+| `loop_model` | run | alias | `medium` | The loop's own sessions (SIL §2.3) |
 | `subagent_model` | steps, unit | alias | the session's own alias | Only on executors that host subagents; elsewhere a warning |
-| `effort` | every session scope | `low` \| `medium` \| `high` \| `max` | none | Unapplied is a warning (CON §4) |
+| `effort` | every session scope | `low` \| `medium` \| `high` \| `xhigh` \| `max` | none | Unapplied warns (CON §4); pins an effort ladder |
 | `session_cost_cap_usd` | every session scope | float > 0 | none | `SessionOptions.cost_cap_usd` |
 | `turn_cap` | every session scope | int 1–500 | none | |
 | `fallback_alias` | steps, unit, member, chair, slot | alias | none | Never on a judge |
@@ -65,6 +66,7 @@ A map item has no scope of its own: items share their unit's settings, and a per
 | `infra_tries` | run | int 0–10 | 3 | In a row |
 | `infra_backoff_max_s` | run | int 10–300 | 300 | Backoff doubles from 10 s up to this |
 | `attempt_cap` | run | int 1–100 | 15 | Per invocation |
+| `self_check_limit` | run | int 1–10 | 3 | Check previews a step may run in one attempt ([CHK §2.5](75-check-contract-and-command-runs.spec.md)) |
 | `human_cap` | run | int 1–100 | 100 | |
 | `run_cost_cap_usd` | run | float > 0 | workflow's, else none | |
 | `auto_reopen` | run | int 0–10 | 0 | |
@@ -97,7 +99,7 @@ Resolution is layer-major: the highest layer that sets a key at any scope matchi
 | 3 | `project:overrides` | `<state root>/config/settings.json`, `overrides` entries matching the workflow |
 | 4 | `user:overrides` | `~/.tempergraph/config/settings.json`, `overrides` entries matching the workflow |
 | 5 | `arm:<switch>.<arm>` | While a switch arm is in force, the workflow-declared per-arm values of `model`, `timeout_s`, `idle_s` and `effort` for the units the arm names ([SWM](79-measured-switches.spec.md)) |
-| 6 | `workflow:unit` | The unit's own field: a step's `model` (its ladder rung for the attempt), `timeout_s`, a gate's budgets, a member's `executor` |
+| 6 | `workflow:unit` | The unit's own field: a step's `model`, `timeout_s`, a gate's budgets, a member's `executor` |
 | 7 | `workflow:default` | Workflow-wide values: `default_executor`, `model_profile`, `run_cost_cap_usd`, `workspace`, `worktree.base` and `worktree.cleanup` ([WTR §2.3](82-worktree-mode.spec.md)), a declared setting's default |
 | 8 | `project:defaults` | `<state root>/config/settings.json`, `defaults` |
 | 9 | `user:defaults` | `~/.tempergraph/config/settings.json`, `defaults` |
@@ -107,7 +109,7 @@ Three rules keep the existing guarantees:
 
 | Rule | Effect |
 |---|---|
-| Judges apart | `steps` and `<unit>` keys never reach a judge. The one step-to-judge inheritance is CON §2.4's: at the workflow layers, a judge with no model of its own takes the step's model (its ladder's last rung). |
+| Judges apart | `steps` and `<unit>` keys never reach a judge. The one step-to-judge inheritance is CON §2.4's: at the workflow layers, a judge with no model of its own takes the step's model. |
 | Declared diversity kept | `steps` and `<unit>` values of `model` and `executor` reach a member, chair or slot only when the workflow declares none for it; the council's diversity check runs on the resolved values ([CNL §2.6](71-council-unit.spec.md)). |
 | Tighten-only keys | `approve`, `enforce_tools` and `strict_permissions` can only be set to `true`; a `false` is refused at any layer. |
 
@@ -160,7 +162,6 @@ A changed value meets the counters already spent as follows:
 |---|---|
 | `retry_budget`, `loop_budget` | At the next gate decision, against the counter already used in the current visit or pair; a lowered value at or under the count used is spent at the next failure |
 | `run_cost_cap_usd` | At once; a thread drained with reason `cost_cap` continues when the new cap is above its cost |
-| `model` ladder | From the next attempt, at the rung for its number in the current budget |
 | `timeout_s`, `idle_s`, session options, `executor` | From the next session |
 | `attempt_cap`, `infra_tries` | Per invocation, from this one |
 | `arm`, `settings.<name>` | From the next read; a switch already decided in this visit keeps its arm |
@@ -275,14 +276,14 @@ Files are edited by hand or by a skill; the engine has no write verb for them.
 | A configuration file that does not parse, or a newer major `schema_version` | Exit 2 naming the file; `config validate` shows the line |
 | A file `defaults` entry that names a unit | Exit 2, `unit_in_defaults` |
 | A setting the executor cannot apply (`effort`) | Warning, recorded (CON §4) |
-| A key whose feature is not in this release: the audit judge, switch arms, council, contest, wait and ask keys, the release 2 worktree values (ADR-0090) | Exit 2, `setting_not_in_release` |
+| A key whose feature is not in this release: the audit judge, council, contest, wait and ask keys, the release 2 worktree values (ADR-0090) | Exit 2, `setting_not_in_release` |
 
 ## 5. Design notes
 
 - **Files above and below the workflow.** `overrides` serve an operator who must change a workflow's value on this machine (a slow host's longer limit, a team's model choice); `defaults` serve every workflow that states nothing. Both are per machine: a committed repository file is not a layer in the first release, so a pull request cannot raise anyone's cost cap.
 - **Snapshot, not live files.** A paused thread resumes days later with the settings it started with unless the operator says otherwise, so a run's record explains its behaviour ([ADR-0072](../adr/0072-threads-snapshot-settings-and-reapply-them-on-resume.adr.md)).
 - **Provenance is data for the loop.** Settings digests let reports compare like with like and stop the loop blaming a workflow for an operator's cheaper model ([IMD](43-improvement-data.spec.md)).
-- The legacy flags of [CLI §2.1](17-engine-cli.spec.md) stay as spellings of `--set`; the mapping is in that table.
+- The legacy flags of [CLI §2.1](17-engine-cli.spec.md) are spellings of `--set`, mapped there.
 
 ## 6. Acceptance criteria
 

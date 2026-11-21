@@ -158,6 +158,8 @@ RULES: tuple[Rule, ...] = (
     # C6 cost (ARC §2.7)
     _r("small-judge-cross-file", "definition", "C6", "warning / medium", "model_too_small",
        "Use `medium` or `large` for reading across files (F6.4: 5 of 19 against 18 of 19)"),
+    _r("sizing-unassessed", "definition", "C6", "error / high", "sizing_unassessed",
+       "State the model tier, the effort and one sentence of why on the step or judge (SCF §2.1.1)"),
     _r("large-everywhere", "definition", "C6", "info / low", "model_heavy",
        "Choose models by what each step must find; start mechanical steps lower"),
     _r("no-run-cost-cap", "definition", "C6", "info / high", "no_cost_cap", "Set `run_cost_cap_usd` near the p90 run cost"),

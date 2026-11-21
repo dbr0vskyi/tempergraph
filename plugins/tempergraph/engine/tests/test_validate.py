@@ -77,7 +77,7 @@ CASES: list[tuple[str, Callable[[], WorkflowSpec]]] = [
     ("template-unreadable", lambda: _step(two_step(), "draft", prompt=api.text("prompts/missing.md"))),
     ("timeout-invalid", lambda: _step(two_step(), "draft", timeout_s=0)),
     ("issue-repository-invalid", lambda: dataclasses.replace(two_step(), issue_repository="nope")),
-    ("ladder-too-long", lambda: _step(two_step(), "draft", model=("small",) * 9)),
+    ("model-ladder-retired", lambda: _step(two_step(), "draft", model=("small", "medium"))),
     ("setting-default-invalid", lambda: dataclasses.replace(
         two_step(), settings={"depth": api.Setting(kind="int", default=99, max=5)})),
     ("profile-key-unknown", lambda: dataclasses.replace(two_step(), profiles={"fast": {"settings.nope": 1}})),
@@ -98,7 +98,7 @@ CASES: list[tuple[str, Callable[[], WorkflowSpec]]] = [
     ("script-run-or-call", lambda: _step(two_step(), "draft", before=(Script(),))),
     ("script-before-external", lambda: _step(two_step(), "draft", before=(
         Script(run=["pytest"], side_effects="external"),))),
-    ("not_in_release", lambda: _step(two_step(), "draft", self_check=True)),
+    ("self-check-without-check", lambda: _step(two_step(), "review", self_check=True)),
 ]
 
 
@@ -112,7 +112,7 @@ def test_codes_are_distinct_per_fixture() -> None:
     assert len({c for c, _ in CASES}) == len(CASES)
 
 
-LATER = ["Parallel", "Map", "Ask", "Wait", "Council", "Contest", "Subworkflow"]
+LATER = ["Council", "Contest", "Subworkflow"]
 
 
 @pytest.mark.parametrize("builder", LATER)
@@ -125,13 +125,8 @@ def test_later_kinds_not_in_release(builder: str) -> None:
     assert found and any("release" in f.message for f in found)
 
 
-@pytest.mark.parametrize("field", ["fallback", "cache"])
-def test_later_fields_not_in_release(field: str) -> None:
-    spec = two_step()
-    if field == "fallback":
-        spec = _gate(spec, "draft", on_budget_spent="fallback", fallback="review")
-    else:
-        spec = _step(spec, "draft", before=(Script(run=["pytest"], cache="thread", side_effects="none", inputs=["x"]),))
+def test_later_fields_not_in_release() -> None:
+    spec = _step(two_step(), "draft", before=(Script(run=["pytest"], cache="thread", side_effects="none", inputs=["x"]),))
     assert "not_in_release" in codes(spec)
 
 

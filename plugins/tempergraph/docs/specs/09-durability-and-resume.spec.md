@@ -41,6 +41,8 @@ def wait(selector: Selector, timeout_s: int) -> WaitOutcome: ...
 | `thread_id`, `workflow`, `state`, `alive` | `alive` from the lock probe |
 | `attempt_in_flight` | unit, item, attempt number, executor, started at |
 | `pending_gates` | unit, item, pause kind, resume command |
+| `carry` | Only for a carried thread ([CAR](96-run-state-on-a-branch.spec.md)): `on`, `pushed`, `pulled`, `unpushed` or `delete_failed` |
+| `engine`, `engine_pin` | The engine version of the thread's last process, and its pin `{engine, reason, since}` when it has one ([MIG §2.1](62-state-and-run-migration.spec.md)) |
 | `last_verdict`, `cost` | cost carries `reported`, `estimated`, `incomplete` |
 | `executors` | executors used so far, with CLI versions |
 | `log_path` | run log location (local only) |

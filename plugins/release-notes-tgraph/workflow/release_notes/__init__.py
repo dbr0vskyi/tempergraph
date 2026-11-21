@@ -14,7 +14,12 @@ def workflow():
             "draft": Step(
                 prompt=text("prompts/draft.md"), tools=["read", "write"], produces={"notes": "file"},
                 summary="Write the release notes", timeout_s=900,
-                gate=Gate(check=draft_check, judge=Judge(file="judges/draft.md", references=["notes"])),
+                model="medium", effort_ladder=["medium", "high"],
+                sizing="It writes one short document from a list of changes it reads; a repeated blocker from a "
+                       "trusted judge earns one retry at high effort",
+                gate=Gate(check=draft_check, judge=Judge(
+                    file="judges/draft.md", references=["notes"], model="medium", effort="medium",
+                    sizing="It reads one file against a few criteria")),
             ),
         },
     )

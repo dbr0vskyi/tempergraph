@@ -22,11 +22,23 @@ States only what was decided; an omitted field takes its default. An unknown key
 |---|---|---|
 | `schema_version` | int | `1` |
 | `name` | slug | The workflow name ([PKG §2.2.1](88-workflow-package.spec.md)); the scaffold writes the plugin name as `<name>-tgraph`. A name ending in `-tgraph`, starting with a reserved prefix or over 57 characters is `blueprint-invalid` |
-| `units` | list, 1 to 20, of `{name, kind, summary, produces[], reads[], gate: {check: bool, judge: bool, signoff: bool}, on_fail?, on_budget_spent?, approval?, back_targets[]?, executor?}` | `kind` is a release kind ([PKG §2.4](88-workflow-package.spec.md)); `summary` ≤ 60 characters; `reads` names earlier `produces` keys |
+| `units` | list, 1 to 20, of `{name, kind, summary, produces[], reads[], gate: {check: bool, judge: bool, signoff: bool}, on_fail?, on_budget_spent?, approval?, back_targets[]?, executor?, sizing, judge_sizing}` | `kind` is a release kind ([PKG §2.4](88-workflow-package.spec.md)); `summary` ≤ 60 characters; `reads` names earlier `produces` keys |
 | `flow` | map unit → `{route: [targets]}` \| `{switch: {arms, default}}` \| `{parallel: [branches]}` \| `{map: {over, item_unit}}` \| `{wait: {}}` | Shape only; no predicate |
 | `outcome_ref` | `{revision, digest}` | The draft `outcome.json` approved with it |
 | `input` | `{kind, parameters: [names]}` | |
 
+
+#### 2.1.1 Sizing: model and effort per session
+
+Every `step` unit carries `sizing`, and every `step` unit whose gate has a judge carries `judge_sizing`: `{model, effort, why}`. `model` is a tier (`small`, `medium`, `large`) or a qualified alias, never `inherit`; `effort` is one of [CON §2.6](01-contracts.spec.md); `why` is at least four words on why they fit this session. A missing one is `sizing-missing`, a malformed one or one on a unit that runs no such session is `sizing-invalid`. The scaffold writes them as the step's and the judge's `model`, `effort` and `sizing`. A workflow written by hand states the same three on `Step` and `Judge`; the audit rule `sizing-unassessed` ([ARC](56-audit-rule-catalog.spec.md)) is an error, so rung 6 of §2.5 fails on any step or judge that leaves model, effort or the reason to a default. An `effort_ladder` ([LAD](92-effort-ladder-and-model-escalation.spec.md)) states the effort.
+
+| The session mostly | Start at | Raise when |
+|---|---|---|
+| Sorts, extracts, copies or reformats one input | `small` or `medium`, effort `low` or `medium` | Its gate fails on substance, not on shape |
+| Writes one document from a few inputs | `medium`, `medium` | It must reconcile several sources |
+| Designs, plans, researches or reads across many files | `medium`, `high`; `large` only with a measured reason | A weak result costs a later long session |
+| Runs long with tools and tests that catch slips | `medium`, `high` | Tests cannot catch the defect class |
+| Judges one file against a few criteria | The step's tier, `low` or `medium` | It reads across files (never `small`) or a miss ships a defect: `high` |
 
 `blueprint check <file>` turns the blueprint into a throwaway `WorkflowSpec` with stub prompts and stub gates and runs [WFM](02-workflow-model.spec.md) validation on it, so a reference no earlier unit produces, a backward target no gate allows and an unreachable unit are refused before anything is drawn. It also checks the blueprint against the draft outcome: each unit with a gate has an intermediate outcome, `outcome_ref` matches, every `check: true` gate has a `check` criterion and every `check` criterion a `check: true` gate.
 
@@ -150,6 +162,7 @@ The person approves the drawing as a whole; the skill records the approval with 
 | Condition | Result |
 |---|---|
 | A blueprint with more than 20 units, a summary over 60 characters, or an unknown key | `blueprint check` error with the path |
+| A step without `sizing`, a judged step without `judge_sizing`, or a `sizing` that is malformed or misplaced | `sizing-missing` or `sizing-invalid` |
 | `outcome_ref` that does not match the outcome draft | `blueprint_outcome_mismatch`; the approval is cleared |
 | `scaffold` into a non-empty folder without `--update` | Refused, exit 2 |
 | `author verify --trial` or `--judge-seeds` without the person's yes, or `--trial` with no case | Refused, exit 2; rungs 1 to 7 still run |

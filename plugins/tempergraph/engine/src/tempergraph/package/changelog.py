@@ -29,7 +29,7 @@ DETECT_KINDS = frozenset({"field", "symbol", "template_key", "tool_ref", "findin
 MIGRATE = frozenset({"transform", "assisted", "owner", "none"})
 TRANSFORMS = {"rename_field": "spec_field", "set_field": "spec_field", "drop_field": "spec_field",
               "rename_symbol": "declaration", "rename_template_key": "template", "rename_tool": "tool_name",
-              "map_capability": "capability"}
+              "map_capability": "capability", "model_list_to_escalation": "spec_field"}
 TYPED = ("field", "symbol", "template_key", "tool_ref", "finding")
 
 

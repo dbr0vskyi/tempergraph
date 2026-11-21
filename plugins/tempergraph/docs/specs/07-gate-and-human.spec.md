@@ -29,6 +29,7 @@ class PausePayload: kind: Literal["escalation", "budget", "approval", "event_wai
 | Unresolved gap (blocker UNVERIFIABLE, gap flag, unparsed or discarded judgement) | escalation |
 | A workflow escalation rule | escalation |
 | Retry or loop budget spent on a gate set to `ask` | budget |
+| A model escalation whose conditions hold at a stage that offers it; the payload carries the evidence and `resume --escalate` ([LAD §2.4](92-effort-ladder-and-model-escalation.spec.md)) | budget |
 | A check FAIL marked environmental (no retry can fix it) | escalation |
 | A failed or blocked attempt that could not reach a tool, skill, MCP server or command (cause `tool_access`); the payload lists the refused names and the `--grant` or `--allow-command` that fixes each ([RST §2.8](80-run-settings-and-overrides.spec.md)) | escalation |
 | An upstream claim the judge could neither confirm nor refute ([JDG-B9](05-judge-and-verdict.spec.md)), or one on a gate with no judge; a defect attributed outside the allowed targets | escalation |
@@ -90,12 +91,13 @@ Any feedback may be given as a **ruling** (`--ruling`): it is then shown to ever
 
 - One interrupt per gate keeps resume cheap and correct under LangGraph's replay-from-top rule ([ADR-0004](../adr/0004-four-nodes-per-unit.adr.md)).
 - Exit 3 means "a person is needed", never failure; callers tell it from 4 and 5 by code alone ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)).
+- **As built (R2-T7).** Pause kinds `input` (ask), `event_wait` (wait) and `breakpoint` are built. A wait declares `event` and a pure `check(value)`; `resume --decision event:<name>=<value>` passes it only when the check accepts the value, and `proceed` is refused. With two gates pending in a parallel block, `--decision` takes `--unit <name>` and the other gate stays pending. `--decision` is repeatable only for `answer:` words.
 
 ## 6. Acceptance criteria
 
 - [ ] HUM-AC-1 A source test asserts `interrupt` is the first statement of the human node.
 - [ ] HUM-AC-2 Each pause kind of §2.1 exits 3 with a payload holding a working resume command.
-- [ ] HUM-AC-3 Every row of the HUM-B4 table holds.
+- [x] HUM-AC-3 Every row of the HUM-B4 table holds.
 - [ ] HUM-AC-4 Agent resumes, by caller kind and decider, are counted apart from a person's in every report ([SUP §2.2](86-supervision-metrics.spec.md)).
 
 ## Open questions

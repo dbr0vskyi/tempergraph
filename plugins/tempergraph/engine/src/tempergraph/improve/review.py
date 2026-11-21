@@ -262,7 +262,7 @@ def loop_log(root: Path, workflow: str, task: str) -> Path:
     return run_dir(root, workflow, task) / "loop.jsonl"
 
 
-def _reviewer(registry: Registry, name: str, d: Mapping[str, Any]) -> Any:
+def _reviewer(registry: Registry, name: str, d: Mapping[str, Any], alias: str = ALIAS) -> Any:
     """SRV §2.6: the loop's judge executor, of the reviewed session's provider unless `cross_provider` allows."""
     try:
         ex = registry.get(name)
@@ -270,8 +270,8 @@ def _reviewer(registry: Registry, name: str, d: Mapping[str, Any]) -> Any:
         return None
     reviewed = str(d.get("executor") or name)
     if reviewed in registry.available() and reviewed != name:
-        fam = ex.capabilities().families.get(ALIAS)
-        if fam and fam != registry.get(reviewed).capabilities().families.get(ALIAS):
+        fam = ex.capabilities().families.get(alias)
+        if fam and fam != registry.get(reviewed).capabilities().families.get(alias):
             return None
     return ex
 
@@ -309,13 +309,13 @@ def run(t: Mapping[str, Any], registry: Registry, *, reason: str = "dev", keys: 
             p["skipped"].append({"session_key": key, "reason": "budget"})
             append_jsonl(log, {"ts": now_iso(), "kind": "review_skipped", "session_key": key, "reason": "budget"})
             continue
-        ex = _reviewer(registry, str(t.get("executor") or "claude"), d)
+        ex = _reviewer(registry, str(t.get("executor") or "claude"), d, str(t.get("alias") or ALIAS))
         if ex is None:
             append_jsonl(log, {"ts": now_iso(), "kind": "review_skipped", "session_key": key, "reason": "provider"})
             continue
         judge = d.get("kind") in digestmod.JUDGE_KINDS
         prompt = prompt_for(text, token, judge)
-        block, cost = _ask(ex, root, wf, task, key, prompt, d)
+        block, cost = _ask(ex, root, wf, task, key, prompt, d, str(t.get("alias") or ALIAS))
         out["cost"]["reported"] += cost[0]
         out["cost"]["estimated_only"] += cost[1]
         spent += cost[0] + cost[1]
@@ -354,14 +354,14 @@ def _blockers(root: Path, wf: str, task: str) -> dict[str, list[str]]:
 
 
 def _ask(ex: Any, root: Path, wf: str, task: str, key: str, prompt: str,
-         d: Mapping[str, Any]) -> tuple[dict[str, Any] | None, tuple[float, float]]:
+         d: Mapping[str, Any], alias: str = ALIAS) -> tuple[dict[str, Any] | None, tuple[float, float]]:
     """One reviewer session with no tools; one re-ask when the block does not parse (SRV §2.6.2)."""
     rep = est = 0.0
     for n in (1, 2):
         rkey = f"review.{key}.{n}"
         sdir = run_dir(root, wf, task) / "loop" / "sessions" / rkey
         req = SessionRequest(kind="judge", prompt=prompt if n == 1 else prompt + "\n\nEnd with the JSON block only.",
-                             workdir=root, alias=ALIAS, session_key=rkey, timeout_s=TIMEOUT_S, session_dir=sdir)
+                             workdir=root, alias=alias, session_key=rkey, timeout_s=TIMEOUT_S, session_dir=sdir)
         try:
             res = ex.run_judge(req, ViewSet(tool_less=True), LiveSink(sdir))
         except Exception:  # noqa: BLE001 - one reviewer's failure never stops the plan (SRV §4)
@@ -372,7 +372,7 @@ def _ask(ex: Any, root: Path, wf: str, task: str, key: str, prompt: str,
             est += float(res.usage.estimated_cost_usd or estimate(res.usage, res.model) or 0.0)
         append_jsonl(loop_log(root, wf, task), {"ts": now_iso(), "kind": "review_session", "session_key": rkey,
                                                 "reviewed": key, "ok": res.ok, "executor": ex.name,
-                                                "alias": ALIAS})
+                                                "alias": alias})
         block = parse(res.text) if res.ok else None
         if block is not None:
             return block, (rep, est)

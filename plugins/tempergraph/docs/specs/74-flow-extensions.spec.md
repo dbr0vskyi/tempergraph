@@ -90,13 +90,14 @@ The failed unit's artifacts are kept and marked `failed`, not cleared, so the fa
 - Every target stays a declared name, so validation checks reachability and the diagram draws every edge ([ADR-0062](../adr/0062-new-node-kinds-keep-the-gated-unit.adr.md)).
 - Deadlines need no resident process: the engine still exits at a pause, and an owner who wants deadlines to act on time schedules `resume --apply-deadline` from their own scheduler; the schedule tick is the engine's candidate for that job in a later slice ([TCK §5](84-schedule-ticks-and-unattended-fires.spec.md)).
 - Breakpoints fit the local stage of a workflow's life, when a person still reviews each step before it spends ([ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)).
+- **As built (R2-T7).** Deadlines (§2.3), the fallback target (§2.4) and breakpoints (§2.5) are built; selective parallel (§2.1) and a map over a sub-workflow (§2.2) stay in release 3 and validation refuses them `not_in_release`. A fallback sets `run.degraded`, and the exit file, the ledger, the status row and `RunOutcome` carry `degraded: true`. A breakpoint is a marker file `breakpoint.json` beside the run log plus LangGraph's `interrupt_before`; `--pause-before <unit>.<item>` is refused `not_in_release`, an unknown unit is refused `breakpoint_unknown` before any spend, `stop` at a breakpoint leaves the thread stopped and resumable, and the unit a breakpoint released is not paused again in the same segment. The diagram draws fallback and deadline edges; `select` edges come with §2.1.
 
 ## 6. Acceptance criteria
 
 - [ ] FLX-AC-1 Every row of §2.6 has a fixture that fails validation (or preflight) with its own finding code.
 - [ ] FLX-AC-2 Every row of the FLX-B1 table holds offline.
-- [ ] FLX-AC-3 A breakpoint pause starts no session and writes no attempt record.
-- [ ] FLX-AC-4 A degraded run is never reported `finished` without `degraded: true` in the status document and the stats rows.
+- [x] FLX-AC-3 A breakpoint pause starts no session and writes no attempt record.
+- [x] FLX-AC-4 A degraded run is never reported `finished` without `degraded: true` in the status document and the stats rows.
 - [ ] FLX-AC-5 The diagram model draws `select`, fallback and deadline edges, and the diagram-currency test covers them.
 
 ## Open questions

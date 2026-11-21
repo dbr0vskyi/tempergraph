@@ -34,6 +34,7 @@ WHOLE = re.compile(r"\b(write|produce|draft|generate)\s+(the\s+)?(whole|entire|c
 IN_PARTS = re.compile(r"\b(in parts|part by part|section by section|one (part|section) at a time|skeleton|"
                       r"outline first|one edit per)\b", re.I)
 STANDARD_FRONTMATTER = frozenset({"name", "description", "license", "compatibility", "metadata", "allowed-tools"})
+SIZING_MIN_WORDS = 4
 SMALL = {"small", "haiku"}
 LARGE = {"large", "opus"}
 
@@ -178,10 +179,27 @@ class Definition:
         first = model if isinstance(model, str) else (list(model)[0] if model else "")  # type: ignore[call-overload]
         return str(first).rsplit(":", 1)[-1].lower()
 
+    def _sizing(self, name: str, who: str, model: object, options: object, ladder: tuple[str, ...], why: str,
+                field: str) -> None:
+        """SCF §2.1.1: a session whose model, effort or reason nobody stated runs on defaults nobody chose."""
+        missing = [w for w, absent in (
+            ("model", not model or model == "inherit"),
+            ("effort", not ladder and getattr(options, "effort", None) is None),
+            ("sizing", len(why.split()) < SIZING_MIN_WORDS)) if absent]
+        if missing:
+            self.add("sizing-unassessed", name, f"the {who} of {name} states no {', '.join(missing)}",
+                     session=who, evidence={"missing": missing}, field=field)
+
     def c6(self) -> None:
         tiers: list[str] = []
         for name, u in self.units():
             j: JudgeSpec | None = u.gate.judge
+            if u.step is not None:
+                self._sizing(name, "step", u.step.model or self.spec.model_profile.get(name), u.step.session_options,
+                             tuple(u.step.effort_ladder), u.step.sizing, f"units.{name}.sizing")
+            if j is not None and u.step is not None:
+                self._sizing(name, "judge", j.model, j.session_options, (), j.sizing,
+                             f"units.{name}.gate.judge.sizing")
             if u.step is not None:
                 tiers.append(self._tier(u.step.model or self.spec.model_profile.get(name)))
             if j is not None:

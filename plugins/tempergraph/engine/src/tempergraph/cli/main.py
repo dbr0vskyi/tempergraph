@@ -28,13 +28,14 @@ from tempergraph.cli import workflows as workflows_cli
 from tempergraph.constants import SCHEMA, ExitCode
 from tempergraph.contracts import WorkflowSpec, thread_id
 from tempergraph.executors.registry import Registry, default_registry
+from tempergraph.store.layout import ROOT_VAR
 
 # Every verb word of CLI §2, reserved so it is never read as a workflow or a request (CLI-B2, AC-3).
-VERBS = ("attention", "audit", "author", "batch", "blueprint", "config", "evals", "events", "executors", "facts",
+VERBS = ("attention", "audit", "author", "batch", "blueprint", "carry", "config", "evals", "events", "executors", "facts",
          "graph", "hooks", "improve", "install", "label", "labels", "list", "literals", "logs", "orchestrate",
-         "outcome", "report", "rerun", "resume", "run", "scaffold", "schedule", "self-check", "stats", "status",
-         "stop", "store", "supervision", "update", "upgrade", "upgrade-check", "validate", "wait", "workflows",
-         "worktree", "help")
+         "outcome", "promote-check", "report", "rerun", "resume", "run", "scaffold", "schedule", "self-check",
+         "stats", "status", "stop", "store", "supervision", "update", "upgrade", "upgrade-check", "validate", "wait",
+         "workflows", "worktree", "help")
 WORKSPACES = ("auto", "worktree", "in_place")
 CHECK_EXIT = {"ok": ExitCode.FINISHED, "needs": ExitCode.USAGE, "error": ExitCode.USAGE,
               "broken": ExitCode.INTERNAL}
@@ -51,6 +52,7 @@ class _Parser(argparse.ArgumentParser):
 
 def _parser() -> _Parser:
     p = _Parser(prog="tempergraph", description="Tempered rails for AI workflows")
+    p.add_argument("--state-root", metavar="DIR", help="outside a git repository: the state root to use (WSP §2.4)")
     sub = p.add_subparsers(dest="verb", parser_class=_Parser)
 
     run = sub.add_parser("run", help="resolve, preflight and start a workflow")
@@ -64,7 +66,16 @@ def _parser() -> _Parser:
     res = sub.add_parser("resume", help="resume a paused, stopped or unfinished thread")
     res.add_argument("workflow")
     res.add_argument("thread")
-    res.add_argument("--decision")
+    res.add_argument("--decision", action="append", default=[],
+                     help="one decision; repeat only for an ask's answer:<name>=<value>")
+    res.add_argument("--answers", metavar="FILE", help="a JSON map of an ask's answers (ASK §2.3)")
+    res.add_argument("--apply-deadline", action="store_true",
+                     help="apply the overdue deadline of a wait or an ask (FLX §2.3)")
+    res.add_argument("--unit", help="which pending gate the decision answers, when there are several (HUM-B3)")
+    res.add_argument("--unpin", action="store_true",
+                     help="clear the thread's engine pin when this engine can resume it (MIG §2.4)")
+    res.add_argument("--escalate", action="store_true",
+                     help="take the offered one-step model escalation for the next attempt (LAD §2.4)")
     fb = res.add_mutually_exclusive_group()
     fb.add_argument("--feedback")
     fb.add_argument("--feedback-file")
@@ -111,6 +122,19 @@ def _parser() -> _Parser:
     va.add_argument("workflow")
     ex = sub.add_parser("executors", help="registered executors and their capabilities")
     ex.add_argument("--probe", action="store_true")
+    sc = sub.add_parser("self-check", help="a step's preview of its gate's check (CHK §2.5)")
+    sc.add_argument("ticket")
+    hk = sub.add_parser("hooks", help="run lifecycle hooks (CLI §2.2)")
+    hks = hk.add_subparsers(dest="action", required=True)
+    hka = hks.add_parser("add", help="register a command for an event: hooks add <event> -- <argv…>")
+    hka.add_argument("event")
+    hka.add_argument("argv", nargs=argparse.REMAINDER)
+    _caller_options(hka)
+    hkr = hks.add_parser("remove", help="remove one hook by its id")
+    hkr.add_argument("id")
+    _caller_options(hkr)
+    hks.add_parser("list", help="the registered hooks")
+    hks.add_parser("test", help="run an event's hooks once against a fixture facts file").add_argument("event")
     fa = sub.add_parser("facts", help="read-only facts about a run")
     fa.add_argument("selector")
     gr = sub.add_parser("graph", help="the workflow diagram")
@@ -130,6 +154,14 @@ def _parser() -> _Parser:
     wp = wsub.add_parser("path")
     wp.add_argument("thread")
     observe_cli.add_parsers(sub)
+    ca = sub.add_parser("carry", help="a run's state on its own branch: push, pull, status, drop (CAR)")
+    ca.add_argument("action", choices=("push", "pull", "status", "drop"))
+    ca.add_argument("workflow")
+    ca.add_argument("thread")
+    ca.add_argument("--remote")
+    ca.add_argument("--force", action="store_true")
+    ca.add_argument("--json", action="store_true")
+    _caller_options(ca)
     co = sub.add_parser("config", help="resolved run settings and the settings files (RST §2.9)")
     csub = co.add_subparsers(dest="action", parser_class=_Parser)
     cs = csub.add_parser("show")
@@ -199,6 +231,7 @@ def _run_options(p: argparse.ArgumentParser, start: bool = True) -> None:
     _spellings(p)
     _caller_options(p)
     p.add_argument("--json", action="store_true")
+    p.add_argument("--carry", action="store_true", help="carry this thread's state on its own branch (CAR)")
     _settings_options(p, resume=not start)
     p.add_argument("--pause-before", action="append", default=[], metavar="UNIT")
     if start:
@@ -222,6 +255,8 @@ class Env:
     err: IO[str]
     run_settings: Callable[..., Any] | None = None  # tests pass a factory to replace the backoff sleep
     signals: tuple[Mapping[str, str], bool] | None = None  # (environment, terminal); tests stub them (PRV-AC-1)
+    hand_over: Callable[[Path, list[str]], int] | None = None  # tests replace the pinned engine's launch
+    argv: tuple[str, ...] = ()  # this process's own arguments, handed unchanged to a pinned engine (MIG §2.4)
 
     def caller(self, a: argparse.Namespace) -> dict[str, Any]:
         """PRV §2.3, once per mutating call, before any write; read-only verbs never call this."""
@@ -241,6 +276,9 @@ def _emit(env: Env, doc: Any) -> None:
 
 def _spec(env: Env, name: str) -> WorkflowSpec:
     if name in VERBS:
+        own = env.catalog.specs.get(name)
+        if own is not None and own.builtin:  # a built-in workflow's threads are resumed and read like any other
+            return own
         raise UsageError(f"{name!r} is a reserved verb, not a workflow (CLI-B2)")
     if name not in env.catalog.specs and name not in env.catalog.broken:
         from tempergraph.package.manifest import workflow_name
@@ -316,13 +354,17 @@ def _flags(env: Env, a: argparse.Namespace) -> dict[str, Any]:
 def _settings(env: Env, a: argparse.Namespace, mutating: bool = True) -> Any:
     from tempergraph.run.runner import RunSettings
 
-    if getattr(a, "pause_before", None):  # FLX §2.5 breakpoints are release 2 (X2-13)
-        raise UsageError("not_in_release: --pause-before is a release 2 option (FLX §2.5)")
     fields: dict[str, Any] = {"flags": _flags(env, a), "caller": env.caller(a) if mutating else {},
                               "relayed": bool(getattr(a, "relayed", False)),
                               "profiles": tuple(a.profile) if getattr(a, "profile", None) is not None else None}
     if hasattr(a, "alias"):
         fields.update(alias=a.alias, label=a.label, dry_run=bool(getattr(a, "dry_run", False)))
+    if getattr(a, "escalate", False):
+        fields["escalate"] = True
+    if getattr(a, "carry", False):
+        fields["carry"] = True
+    if getattr(a, "pause_before", None):  # FLX §2.5
+        fields["pause_before"] = tuple(a.pause_before)
     if hasattr(a, "unset"):
         fields.update(unset=tuple(a.unset), reload_settings=a.reload_settings)
     if hasattr(a, "ruling"):
@@ -363,6 +405,11 @@ def cmd_run(env: Env, a: argparse.Namespace) -> int:
         return int(CHECK_EXIT["broken"])
     if a.request and a.request[0] in VERBS:
         raise UsageError(f"{a.request[0]!r} is a reserved verb and cannot start a request (CLI-B2)")
+    if spec.builtin:  # UWF-B5: a built-in workflow is started by its own verb
+        raise UsageError(f"{spec.name} is started by `tempergraph {spec.name} <workflow>`, not by `run`")
+    for name in a.pause_before:  # FLX §2.6: refused before spend, by `--check` too
+        if name not in spec.units:
+            raise UsageError(f"breakpoint_unknown: --pause-before {name}: the workflow has no such unit")
     try:
         res = resolve_request(spec, list(a.request), _inputs(a.input), env.cwd, a.task_id)
     except PackageNotLoaded as exc:
@@ -410,9 +457,61 @@ def cmd_resume(env: Env, a: argparse.Namespace) -> int:
             feedback = path.read_text(encoding="utf-8")
         except OSError as exc:
             raise UsageError(f"--feedback-file {a.feedback_file}: {type(exc).__name__}") from exc
-    out = resume(spec, task, env.cwd, env.registry, decision=a.decision, feedback=feedback,
-                 settings=_settings(env, a))
+    code = _pinned_engine(env, spec, task, a)
+    if code is not None:
+        return code
+    answers: dict[str, Any] = {}
+    if a.answers:  # ASK §2.3: a JSON map of answers
+        try:
+            doc = json.loads((env.cwd / a.answers).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise UsageError(f"--answers {a.answers}: {type(exc).__name__}") from exc
+        if not isinstance(doc, dict):
+            raise UsageError(f"--answers {a.answers}: not a JSON map of answers")
+        answers.update(doc)
+    words = []
+    for text in a.decision:
+        if text.startswith("answer:") and "=" in text:
+            name, _, value = text[len("answer:"):].partition("=")
+            answers[name] = value
+        else:
+            words.append(text)
+    if len(words) > 1:
+        raise UsageError("one --decision a resume; only answer:<name>=<value> repeats")
+    settings = dataclasses.replace(_settings(env, a), answers=answers, apply_deadline=bool(a.apply_deadline),
+                                   unit=a.unit)
+    out = resume(spec, task, env.cwd, env.registry, decision=words[0] if words else None, feedback=feedback,
+                 settings=settings)
+    if out.exit_code == ExitCode.FINISHED:  # MIG §2.4: a pin ends with its thread
+        from tempergraph.durability import engine_file
+
+        root = _root_or_none(env)
+        if root is not None:
+            engine_file.unpin(root, spec.name, task)
     return _report(env, out, a.json)
+
+
+def _pinned_engine(env: Env, spec: WorkflowSpec, task: str, a: argparse.Namespace) -> int | None:
+    """MIG §2.4, before anything else: None when this engine resumes the thread, else the exit code of the
+    pinned engine that did, or 2 with the reason."""
+    from tempergraph.durability import engine_file
+    from tempergraph.install import environment, launch
+    from tempergraph.store.layout import home_path
+
+    root = _root_or_none(env)
+    if root is None or not engine_file.path(root, spec.name, task).is_file():
+        return None
+    if getattr(a, "unpin", False):
+        why = engine_file.try_unpin(root, spec.name, task)
+        if why:
+            raise UsageError(f"--unpin: {why}")
+    action, detail = engine_file.at_resume(root, spec.name, task)
+    if action == "move":
+        return None
+    if action == "refuse":
+        raise UsageError(str(detail))
+    argv = [x for x in env.argv if x != "--unpin"]
+    return (env.hand_over or launch.hand_over)(environment.interpreter(home_path() / "engines" / str(detail)), argv)
 
 
 def _feedback_text(env: Env, a: argparse.Namespace) -> str | None:
@@ -450,6 +549,14 @@ def _root(env: Env) -> Path:
         return state_root_path(env.cwd)
     except NotInRepository as exc:
         raise UsageError("not inside a git repository") from exc
+
+
+def _needs_git(env: Env, what: str) -> None:
+    """WSP §2.4: a verb that works on branches or worktrees is refused outside a git repository."""
+    from tempergraph.store.layout import outside_git
+
+    if outside_git(env.cwd):
+        raise UsageError(f"needs_git: {what} needs a git repository")
 
 
 def _root_or_none(env: Env) -> Path | None:
@@ -590,6 +697,41 @@ def cmd_executors(env: Env, a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_self_check(env: Env, a: argparse.Namespace) -> int:
+    """CHK §2.5: the one verb a step session may call; it changes no state."""
+    from tempergraph.run import selfcheck
+
+    root = _root_or_none(env)
+    if root is None:
+        env.out.write("self-check: unknown or expired ticket; nothing was run\n")
+        return int(ExitCode.USAGE)
+    return selfcheck.run(root, a.ticket, env.out)
+
+
+def cmd_hooks(env: Env, a: argparse.Namespace) -> int:
+    """CLI §2.2: the operator's registry of lifecycle hooks; add and remove write, list and test do not."""
+    from tempergraph.observe import hooks
+
+    root = _root(env)
+    try:
+        if a.action == "add":
+            caller = env.caller(a)
+            words = a.argv[1:] if a.argv[:1] == ["--"] else a.argv
+            _emit(env, {"schema_version": 1, "added": hooks.add(root, a.event, words), "caller": caller})
+        elif a.action == "remove":
+            caller = env.caller(a)
+            _emit(env, {"schema_version": 1, "removed": hooks.remove(root, a.id), "caller": caller})
+        elif a.action == "list":
+            _emit(env, {"schema_version": 1, "events": list(hooks.RUN_EVENTS), "hooks": hooks.load(root)})
+        else:
+            results = hooks.test(root, a.event)
+            _emit(env, {"schema_version": 1, "event": a.event, "results": results})
+            return int(ExitCode.FINISHED if all(r["ok"] for r in results) else ExitCode.ADVISORY)
+    except hooks.HookRefused as exc:
+        raise UsageError(str(exc)) from exc
+    return int(ExitCode.FINISHED)
+
+
 def cmd_facts(env: Env, a: argparse.Namespace) -> int:
     from tempergraph.durability.status import row
 
@@ -649,6 +791,56 @@ def cmd_stop(env: Env, a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_carry(env: Env, a: argparse.Namespace) -> int:
+    """CAR §2: `carry push|pull|status|drop <workflow> <thread>`."""
+    from tempergraph import identity
+    from tempergraph.durability import carry
+    from tempergraph.durability.lock import is_held
+    from tempergraph.package.loader import full_version
+    from tempergraph.store.layout import lock_path
+
+    spec = _spec(env, a.workflow)
+    root = _root(env)
+    _needs_git(env, "carry")
+    repo = root.parent
+    task = a.thread.split("/", 1)[1] if a.thread.startswith(f"{spec.name}/") else a.thread
+    machine = identity.machine_id()
+    try:
+        if a.action == "status":
+            doc: dict[str, Any] = carry.status(root, repo, spec.name, task, remote=a.remote)
+        elif is_held(lock_path(root, spec.name, task)):
+            raise UsageError(f"{spec.name}/{task} is running in another process")
+        elif a.action == "push":
+            if not (run_dir_of(root, spec.name, task) / "run.jsonl").exists():
+                raise UsageError(f"{spec.name}/{task}: no such thread")
+            got = carry.push(root, repo, spec.name, task, remote=a.remote, workflow_version=full_version(spec),
+                             machine=machine, force=a.force)
+            doc = {"branch": got.branch, "remote": got.remote, "seq": got.seq, "commit": got.commit}
+        elif a.action == "pull":
+            caller = _stop_caller(env, a) if a.force else {}
+            doc = carry.pull(root, repo, spec.name, task, remote=a.remote, current_version=full_version(spec),
+                             machine=machine, force=a.force, caller=caller)
+        else:
+            doc = carry.drop(root, repo, spec.name, task, remote=a.remote)
+    except carry.CarryRefused as exc:
+        raise UsageError(f"{exc.code}: {exc}") from exc
+    except carry.CarryFailed as exc:
+        env.err.write(f"tempergraph: the remote could not be reached or refused: {exc}\n")
+        return int(ExitCode.BUDGET_OR_INFRA)
+    doc = {"schema_version": 1, "action": a.action, "thread_id": f"{spec.name}/{task}", **doc}
+    if a.json:
+        _emit(env, doc)
+    else:
+        env.out.write("".join(f"{k}: {v}\n" for k, v in doc.items() if k != "schema_version" and v is not None))
+    return 0
+
+
+def run_dir_of(root: Path, workflow: str, task_id: str) -> Path:
+    from tempergraph.store.layout import run_dir
+
+    return run_dir(root, workflow, task_id)
+
+
 def _stop_caller(env: Env, a: argparse.Namespace) -> dict[str, Any]:
     from tempergraph.provenance import decide
     from tempergraph.store.layout import home_path
@@ -697,12 +889,14 @@ def cmd_config(env: Env, a: argparse.Namespace) -> int:
     try:
         if a.thread:
             from tempergraph.durability.checkpoint import thread_values
-            from tempergraph.store.layout import checkpoint_path
 
             if root is None:
                 raise UsageError("--thread needs a git repository")
             task = a.thread.split("/", 1)[1] if "/" in a.thread else a.thread
-            values = thread_values(checkpoint_path(root, spec.name), spec, thread_id(spec.name, task))
+            from tempergraph.durability import engine_file
+
+            values = thread_values(engine_file.checkpoint_of(root, spec.name, task), spec,
+                                   thread_id(spec.name, task))
             if not values:
                 raise UsageError(f"no thread {thread_id(spec.name, task)}")
             settled = settle_resume(spec, settings, root, values)
@@ -755,8 +949,8 @@ def cmd_outcome(env: Env, a: argparse.Namespace) -> int:
 
 COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "run": cmd_run, "resume": cmd_resume, "status": cmd_status, "list": cmd_list, "validate": cmd_validate,
-    "executors": cmd_executors, "events": cmd_events, "facts": cmd_facts, "graph": cmd_graph, "wait": cmd_wait,
-    "stop": cmd_stop, "worktree": cmd_worktree, "config": cmd_config, "rerun": cmd_rerun, "outcome": cmd_outcome,
+    "executors": cmd_executors, "events": cmd_events, "facts": cmd_facts, "self-check": cmd_self_check, "hooks": cmd_hooks, "graph": cmd_graph, "wait": cmd_wait,
+    "stop": cmd_stop, "carry": cmd_carry, "worktree": cmd_worktree, "config": cmd_config, "rerun": cmd_rerun, "outcome": cmd_outcome,
     **observe_cli.COMMANDS,
     "workflows": workflows_cli.cmd_workflows,
     "audit": audit_cli.cmd_audit,
@@ -765,11 +959,13 @@ COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "scaffold": author_cli.cmd_scaffold,
     "author": author_cli.cmd_author,
     "install": install_cli.cmd_install,
+    "update": install_cli.cmd_update,
     "upgrade": upgrade_cli.cmd_upgrade,
     "upgrade-check": upgrade_cli.cmd_upgrade,
     "evals": lambda env, a: _improve().cmd_evals(env, a),
     "labels": lambda env, a: _improve().cmd_labels(env, a),
     "improve": lambda env, a: _improve().cmd_improve(env, a),
+    "promote-check": lambda env, a: _improve().cmd_promote_check(env, a),
 }
 
 
@@ -781,11 +977,16 @@ def _improve() -> Any:
 
 def main(argv: Sequence[str] | None = None, *, catalog: Catalog | None = None, registry: Registry | None = None,
          cwd: Path | None = None, out: IO[str] | None = None, err: IO[str] | None = None,
-         run_settings: Callable[..., Any] | None = None, signals: tuple[Mapping[str, str], bool] | None = None
-         ) -> int:
+         run_settings: Callable[..., Any] | None = None, signals: tuple[Mapping[str, str], bool] | None = None,
+         hand_over: Callable[[Path, list[str]], int] | None = None) -> int:
     out, err = out or sys.stdout, err or sys.stderr
+    root_before = os.environ.get(ROOT_VAR)
     try:
-        a = _parser().parse_args(list(argv if argv is not None else sys.argv[1:]))
+        given = tuple(argv if argv is not None else sys.argv[1:])
+        a = _parser().parse_args(list(given))
+        if a.state_root:  # read by `state_root_path` outside git; inside a repository it changes nothing
+            declared = Path(a.state_root).expanduser()
+            os.environ[ROOT_VAR] = str((declared if declared.is_absolute() else (cwd or Path.cwd()) / declared).resolve())
         if not a.verb:
             raise UsageError("a verb is needed; `tempergraph --help` lists them")
         if a.verb not in COMMANDS:
@@ -794,7 +995,7 @@ def main(argv: Sequence[str] | None = None, *, catalog: Catalog | None = None, r
         env = Env(catalog=catalog if catalog is not None else Catalog() if light else from_registry(),
                   registry=registry if registry is not None else default_registry(),
                   cwd=(cwd or Path.cwd()).resolve(), out=out, err=err, run_settings=run_settings,
-                  signals=signals)
+                  signals=signals, argv=given, hand_over=hand_over)
         return COMMANDS[a.verb](env, a)
     except UsageError as exc:
         err.write(f"tempergraph: {exc}\n")
@@ -808,6 +1009,11 @@ def main(argv: Sequence[str] | None = None, *, catalog: Catalog | None = None, r
         _engine_error(exc)
         err.write(f"tempergraph: internal error ({type(exc).__name__})\n")
         return int(ExitCode.INTERNAL)
+    finally:  # `--state-root` holds for this call only
+        if root_before is None:
+            os.environ.pop(ROOT_VAR, None)
+        else:
+            os.environ[ROOT_VAR] = root_before
 
 
 def _engine_error(exc: BaseException) -> None:

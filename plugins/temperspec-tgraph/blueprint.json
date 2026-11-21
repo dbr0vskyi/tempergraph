@@ -27,7 +27,17 @@
         "check": true,
         "judge": true
       },
-      "on_budget_spent": "stop"
+      "on_budget_spent": "stop",
+      "sizing": {
+        "model": "medium",
+        "effort": "high",
+        "why": "It reads a whole repository once and writes the specs every later task trusts"
+      },
+      "judge_sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "It compares each written spec with the code it describes, one file at a time"
+      }
     },
     {
       "name": "triage",
@@ -42,7 +52,17 @@
         "check": true,
         "judge": true
       },
-      "on_budget_spent": "stop"
+      "on_budget_spent": "stop",
+      "sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "It reads one task and the spec index to sort gaps and pick a route; the check verifies the note's shape"
+      },
+      "judge_sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "It reads one note against the task; the route it confirms is cheap to correct later"
+      }
     },
     {
       "name": "discovery",
@@ -58,7 +78,17 @@
         "check": true,
         "judge": true
       },
-      "on_budget_spent": "stop"
+      "on_budget_spent": "stop",
+      "sizing": {
+        "model": "medium",
+        "effort": "max",
+        "why": "It closes gaps by research and design, the deepest thinking in the workflow, and nothing downstream rechecks its facts"
+      },
+      "judge_sizing": {
+        "model": "medium",
+        "effort": "high",
+        "why": "It decides whether each gap is really closed across specs, records and research notes"
+      }
     },
     {
       "name": "plan",
@@ -77,7 +107,17 @@
       },
       "back_targets": [
         "discovery"
-      ]
+      ],
+      "sizing": {
+        "model": "medium",
+        "effort": "high",
+        "why": "It designs across specs and code, and a weak plan costs a whole code session"
+      },
+      "judge_sizing": {
+        "model": "medium",
+        "effort": "high",
+        "why": "It judges that the design covers every criterion and contradicts no spec it references"
+      }
     },
     {
       "name": "expand",
@@ -96,7 +136,17 @@
       "back_targets": [
         "plan",
         "discovery"
-      ]
+      ],
+      "sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "It turns an approved plan into task rows and decides little"
+      },
+      "judge_sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "It compares the task rows with the plan they expand"
+      }
     },
     {
       "name": "code",
@@ -118,7 +168,17 @@
         "plan",
         "discovery",
         "triage"
-      ]
+      ],
+      "sizing": {
+        "model": "medium",
+        "effort": "high",
+        "why": "It is a long session that builds test first; the tests and the code check catch slips that more effort would not"
+      },
+      "judge_sizing": {
+        "model": "medium",
+        "effort": "high",
+        "why": "It reads the diff, the report and the proof of every criterion, and a miss ships a defect"
+      }
     }
   ],
   "flow": {

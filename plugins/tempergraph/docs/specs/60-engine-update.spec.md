@@ -211,15 +211,16 @@ tempergraph workflows reinstall [<name>|--all]      # dependencies into the curr
 
 - The verb updates no workflow and no repository's store: a machine may hold many repositories, and some are not checked out at update time. Each store moves when the new engine first writes to it ([MIG](62-state-and-run-migration.spec.md)).
 - A later Python-package channel (pip, uv tool) would replace steps 1 and 3 only; the switch, the report and MIG stay ([R-057](../research/R-057-engine-update-and-workflow-upgrade-gaps.rsrch.md) open question).
+- **As built (R2-T6.1).** `install/update.py` holds the verb; it is routed by the launcher's bootstrap, so it runs before an engine is importable. Each environment folder keeps the `release.json` of the release it was built from, and `current.json` records `extras`, `reads_store_layouts` and `resumes_checkpoint_formats`, so a rollback and a pin are checked without starting that engine. A release already installed and complete is reused, not rebuilt. The environment builder is a parameter; tests replace it and create no environment. The report prints one `extras` line even when the release has none. Open: the two-process criteria AC-2 and AC-5 need two installed engines; AC-7's table is tested on a fixed set of faults, not a generated one.
 
 ## 6. Acceptance criteria
 
-- [ ] UPD-AC-1 A failure injected at each step of §2.3 leaves `current.json` and the old environment byte-for-byte unchanged.
+- [x] UPD-AC-1 A failure injected at each step of §2.3 leaves `current.json` and the old environment byte-for-byte unchanged.
 - [ ] UPD-AC-2 A run started before an update finishes on its engine and records it; a run started after uses the new one (two-process test).
-- [ ] UPD-AC-3 `update --check` leaves the home folder, every state root and the plugin data folder unchanged (hash test) and starts no package installer.
-- [ ] UPD-AC-4 Every line kind of §2.4 has a JSON form with a fixed key set, tested against a schema.
+- [x] UPD-AC-3 `update --check` leaves the home folder, every state root and the plugin data folder unchanged (hash test) and starts no package installer.
+- [x] UPD-AC-4 Every line kind of §2.4 has a JSON form with a fixed key set, tested against a schema.
 - [ ] UPD-AC-5 Every row of UPD-B2's table is a test.
-- [ ] UPD-AC-6 `--prune-engines` never removes an engine named by a lock, a thread or workflow pin, `current.json` or `previous.json`.
+- [x] UPD-AC-6 `--prune-engines` never removes an engine named by a lock, a thread or workflow pin, `current.json` or `previous.json`.
 - [ ] UPD-AC-7 Every row of UPD-B7's table is a test; no update, install, reinstall or reconcile removes a registry entry (property test over fault injection).
 - [ ] UPD-AC-8 `install` run twice gives the same files byte for byte, and the shell file holds the `PATH` block once.
 

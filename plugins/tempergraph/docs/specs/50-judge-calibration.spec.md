@@ -138,6 +138,7 @@ Per gate and binding, read by other specs. The latest score for the current bind
 | Outcome filing ([SIL-B7](16-self-improvement.spec.md): "a calibration score") | `accepted` for the outcome judge |
 | Corrected rates in reports ([EVS §2.5](51-eval-suites.spec.md)) | `accepted` or `provisional`, else the rate is shown `uncorrected` |
 | Judge-graded targets of an improvement trial (PRP) | `accepted`, in addition to FBK's own grade |
+| A judge blocker as climbing evidence for an effort ladder or escalation ([LAD §2.2](92-effort-ladder-and-model-escalation.spec.md)) | `accepted` (`provisional` at stage `local-dev`), per risk level ([JRK](93-judge-model-by-risk.spec.md)) |
 
 ### 2.6 Verbs
 

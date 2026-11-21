@@ -18,7 +18,7 @@ Build AI workflows you can trust: state the good outcome first, check every step
 </div>
 
 > [!IMPORTANT]
-> **Release 1 is built and offline-tested; it has not yet been run against a live Claude Code session.** The offline suite runs every component on stand-in executors. The checks that need a signed-in `claude` (install from the plugin, a real two-step run, judge scoring, the monitor mod) are listed with their commands and pass criteria in [live-checks.plan.md](plugins/tempergraph/docs/plans/live-checks.plan.md) and are still pending. Expect rough edges until those pass.
+> **Releases 1 and 2 are built and offline-tested; neither has yet been run against a live Claude Code session.** The offline suite runs every component on stand-in executors. The checks that need a signed-in `claude` (install from the plugin, a real two-step run, judge scoring, the monitor mod) are listed with their commands and pass criteria in [live-checks.plan.md](plugins/tempergraph/docs/plans/live-checks.plan.md) and are still pending. Expect rough edges until those pass.
 
 ## Quick start
 
@@ -193,6 +193,7 @@ You mostly work through Claude Code. The plugin's skills turn plain requests int
 | `run` | Start, resume and report runs; every pause goes back to you |
 | `author` | Turn a process, script, template or idea into a workflow, starting from the good outcome |
 | `troubleshoot` | Find out, read-only, why a run failed, stalled or cost more than expected |
+| `evals` | Run a workflow's eval suites, score its judges and grade what needs a person |
 
 The marketplace also carries:
 
@@ -251,12 +252,14 @@ The project is designed spec-first: acceptance criteria rank above specs and dec
 
 **Release 1** (built, live checks pending): simple trusted workflows on one machine, workflow authoring, full local observability and supervision, and the self-improvement loop, on the Claude Code executor ([scope](plugins/tempergraph/docs/adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md), [plan](plugins/tempergraph/docs/plans/first-release.plan.md)).
 
+**Release 2** (built, live checks pending; engine `0.2.0`): effort ladders and one-step model escalation on evidence, a judge raised by risk, routing by task size, eval suites, promotion to `local-stable`, run state carried on a branch, engine `update` and workflow `upgrade`, ask and wait steps, parallel read-only steps, breakpoints, lifecycle hooks, and runs outside git ([plan](plugins/tempergraph/docs/plans/second-release.plan.md)).
+
 **Designed, not built yet:**
 
 - More executors: the Antigravity CLI, the Claude Agent SDK and the Anthropic Messages API, with refusal before spend when an executor can't enforce what a workflow asks.
 - Orchestration: many runs planned as a graph of runs and supervised without a model.
-- Advanced node types: councils, contests, per-item maps and the rest of LangGraph's shapes as workflow data.
-- Scheduled runs, and engine updates and workflow upgrades that never break a run in flight.
+- Advanced node types: councils, contests, sub-workflows and the rest of LangGraph's shapes as workflow data.
+- Scheduled runs, Windows, and writing steps side by side in their own worktrees.
 - temperspec as the first large workflow built on the engine.
 
 ## License

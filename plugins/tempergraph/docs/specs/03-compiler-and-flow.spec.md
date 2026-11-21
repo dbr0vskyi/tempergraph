@@ -97,6 +97,7 @@ State is JSON, one level deep, merged by reducers ([DUR](09-durability-and-resum
 - An engine-owned join replaces LangGraph's deferred node, which cannot tell a stopped branch from a finished one.
 - LangGraph features left out on purpose: a node routing itself or its parent with `Command`, `RetryPolicy` on model and judge nodes, `defer`, and the functional API; each conflicts with C4, C5, C6 or workflows as data. The capability-by-capability comparison is [R-060](../research/R-060-node-types-against-langgraph.rsrch.md).
 - Per-call values (alias, timeout, session options) go to the executor for that call only, never into graph state or the checkpoint.
+- **As built (R2-T7).** A parallel block is a unit of kind `parallel` naming its branches, which stand just before it in `order`. The compiler adds `<join>.fork` and one `<branch>.done` per branch, and the join's step node waits on every `done` node, so it fires once, after every branch has passed (CMP-B4). Branches are read-only steps: a branch that changes the workspace fails `branch_changed_the_workspace`. The join is engine-owned and takes no check or judge; a trip back to the block clears and runs every branch again. Branch state is merged by reducers (path union, cost by delta). Writer branches and selective parallel are release 3.
 
 ## 6. Acceptance criteria
 

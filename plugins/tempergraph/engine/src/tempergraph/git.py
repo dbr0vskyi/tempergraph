@@ -44,6 +44,17 @@ def git(args: list[str], cwd: Path, *, check: bool = True, stdin: str | None = N
     return proc.stdout
 
 
+def git_bytes(args: list[str], cwd: Path) -> bytes:
+    """Run git and return its raw output, for a blob that is not text. Raises GitError when git fails."""
+    try:
+        proc = subprocess.run(["git", *args], cwd=cwd, capture_output=True, env=_env(), timeout=120)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise GitError(f"git {args[0] if args else ''}: {type(exc).__name__}") from None
+    if proc.returncode != 0:
+        raise GitError(f"git {args[0] if args else ''} exited {proc.returncode}")
+    return proc.stdout
+
+
 def toplevel(start: Path) -> Path | None:
     try:
         return Path(git(["rev-parse", "--show-toplevel"], start).strip())
@@ -75,9 +86,19 @@ def main_checkout(start: Path) -> Path | None:
 class Fingerprint:
     head: str
     status: str
+    manifest: bool = False  # outside git: `status` is the workspace manifest's digest (WSP §2.4)
+
+    @property
+    def dirty(self) -> bool | None:
+        """Uncommitted changes; None outside git, where the word has no meaning."""
+        return None if self.manifest else bool(self.status)
 
 
 def fingerprint(workdir: Path) -> Fingerprint:
+    if toplevel(workdir) is None:  # outside git the guard compares manifests of the files (WSP §2.4)
+        from tempergraph.store import manifest
+
+        return Fingerprint("", manifest.status(workdir), manifest=True)
     try:
         head = git(["rev-parse", "HEAD"], workdir, check=False).strip()
         status = git(["status", "--porcelain=v1", "--untracked-files=all"], workdir, check=False)
@@ -92,6 +113,17 @@ def branch(workdir: Path) -> str:
         return git(["rev-parse", "--abbrev-ref", "HEAD"], workdir, check=False).strip()
     except GitError:
         return ""
+
+
+def pushed(workdir: Path, name: str) -> bool:
+    """CHK §2.1: the branch exists on any configured remote, by its remote-tracking refs; no network."""
+    if not name or not is_safe_ref(name):
+        return False
+    try:
+        refs = git(["for-each-ref", "--format=%(refname)", "refs/remotes"], workdir, check=False)
+    except Exception:  # noqa: BLE001 - not a repository, or git is missing: not pushed
+        return False
+    return any(r.split("/", 3)[-1] == name for r in refs.splitlines() if r.count("/") >= 3)
 
 
 def changed_paths(workdir: Path, base: str | None = None, limit: int = 500) -> list[str]:

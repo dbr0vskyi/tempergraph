@@ -34,11 +34,13 @@ from tempergraph.security.launch import has_shell_metacharacter
 
 SETTINGS_FILE = "settings.json"
 
-# Rank order of RST §2.3 (the `arm:` layer is release 2 with measured switches).
+# Rank order of RST §2.3. The `arm:` layer sits below the first four: it is applied where a session request is
+# built, for the keys no operator layer set (SWM §2.3).
 LAYERS = ("flag", "profile", "project:overrides", "user:overrides", "workflow:unit", "workflow:default",
           "project:defaults", "user:defaults", "engine")
 OPERATOR_LAYERS = ("flag", "profile", "project:overrides", "user:overrides", "project:defaults", "user:defaults")
 
+SESSION_KINDS = ("step", "map")  # unit kinds whose `step` runs model sessions (a map runs its step per item)
 SESSION = frozenset({"steps", "judges", "unit", "judge"})
 STEP_SIDE = frozenset({"steps", "unit"})
 JUDGE_SIDE = frozenset({"judges", "judge"})
@@ -51,7 +53,6 @@ REF_PART = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$")
 NOT_IN_RELEASE = {
     "audit_rate": "the audit judge (JDG-B7) is release 2",
     "audit_executor": "the audit judge (JDG-B7) is release 2",
-    "arm": "switch-arm settings come with measured switches (SWM), release 2",
     "attempt_cost_cap_usd": "council and contest units are release 2",
     "concurrency": "contest units are release 2",
     "deadline_s": "wait and ask units are release 2",
@@ -127,13 +128,11 @@ def _alias(v: Any) -> str:
     return v
 
 
-def _ladder(v: Any) -> str | tuple[str, ...]:
-    if isinstance(v, str) and "," in v:
-        v = [p.strip() for p in v.split(",")]
-    if isinstance(v, (list, tuple)):
-        if not 1 <= len(v) <= 8:
-            raise SettingError("setting_value", "a model ladder has 1 to 8 aliases")
-        return tuple(_alias(a) for a in v)
+def _one_alias(v: Any) -> str:
+    """LAD §2.6: `model` takes one alias; release 1's list is retired (LAD §2.8)."""
+    if isinstance(v, (list, tuple)) or (isinstance(v, str) and "," in v):
+        raise SettingError("setting_value", "`model` takes one alias; a list of models is retired, declare an "
+                                            "`escalation` on the step instead")
     return _alias(v)
 
 
@@ -177,9 +176,9 @@ def _base(v: Any) -> None:
 RUN = frozenset({"run"})
 CATALOG: dict[str, Entry] = {
     "executor": Entry(SESSION, _slug),
-    "model": Entry(SESSION, _ladder, "inherit"),  # one alias on the judge side, checked in _value
+    "model": Entry(SESSION, _one_alias, "inherit"),
     "subagent_model": Entry(STEP_SIDE, _alias),
-    "effort": Entry(SESSION, _choice("low", "medium", "high", "max")),
+    "effort": Entry(SESSION, _choice("low", "medium", "high", "xhigh", "max")),
     "session_cost_cap_usd": Entry(SESSION, _float(0)),
     "turn_cap": Entry(SESSION, _int(1, 500)),
     "fallback_alias": Entry(STEP_SIDE, _alias),
@@ -193,8 +192,10 @@ CATALOG: dict[str, Entry] = {
     "infra_backoff_max_s": Entry(RUN, _int(10, 300), 300),
     "attempt_cap": Entry(RUN, _int(1, 100), 15),
     "human_cap": Entry(RUN, _int(1, 100), 100),
+    "self_check_limit": Entry(RUN, _int(1, 10), 3),  # check previews a step may run in one attempt (CHK §2.5)
     "run_cost_cap_usd": Entry(RUN, _float(0)),
     "daily_cap_usd": Entry(RUN, _float(0)),  # stable mode's self-improvement budget per day (SIL §4)
+    "loop_model": Entry(RUN, _alias, "medium"),  # the alias of the loop's own sessions (SIL §2.3)
     "auto_reopen": Entry(RUN, _int(0, 10), 0),
     "workspace": Entry(RUN, _choice("auto", "in_place", "worktree"), "auto"),
     "session_review": Entry(RUN, _choice("auto", "full", "signals", "off"), "auto"),  # lowers only (SRV §2.3)
@@ -338,7 +339,10 @@ def parse_key(spec: WorkflowSpec, raw: str) -> Key:
         u = spec.units[str(key.unit)]
         if key.scope == "judge" and u.gate.judge is None:
             raise SettingError("setting_not_for_kind", f"{raw}: {key.unit} has no judge")
-        if key.scope == "unit" and not (u.kind == "step" or (u.kind == "script" and name == "timeout_s")):
+        if name == "arm":
+            if u.switch is None:
+                raise SettingError("setting_not_for_kind", f"{raw}: {key.unit} is a {u.kind}, not a switch")
+        elif key.scope == "unit" and not (u.kind in SESSION_KINDS or (u.kind == "script" and name == "timeout_s")):
             raise SettingError("setting_not_for_kind", f"{raw}: {key.unit} is a {u.kind}")
         if key.scope == "script":
             phase, n = key.script or ("", 0)
@@ -362,8 +366,13 @@ def _value(spec: WorkflowSpec, key: Key, value: Any) -> Any:
         raise SettingError("setting_value", "a judge takes one alias, never a ladder")
     if entry.release1 is not None:
         entry.release1(v)
+    if key.name == "arm":
+        sw = spec.units[str(key.unit)].switch
+        if sw is None or v not in sw.arms:
+            raise SettingError("setting_value", f"{key.text()}: {v!r} is not one of the arms "
+                                                f"{', '.join(sw.arms) if sw else ''}")
     if key.name == "on_budget_spent" and v == "fallback":
-        units = [key.unit] if key.unit else [n for n, u in spec.units.items() if u.kind == "step"]
+        units = [key.unit] if key.unit else [n for n, u in spec.units.items() if u.kind in SESSION_KINDS]
         if any(spec.units[str(n)].gate.fallback is None for n in units):
             raise SettingError("no_fallback_target", f"{key.text()}: the gate declares no fallback target")
     return v
@@ -604,7 +613,7 @@ def _workflow_values(spec: WorkflowSpec) -> dict[str, dict[str, dict[str, Any]]]
 
     for name, u in spec.units.items():
         g = u.gate
-        if u.kind == "step" and u.step is not None:
+        if u.kind in SESSION_KINDS and u.step is not None:
             st = u.step
             put(unit_l, f"{name}.executor", st.executor, f"units.{name}.executor")
             put(unit_l, f"{name}.model", st.model, f"units.{name}.model")
@@ -638,8 +647,8 @@ def _workflow_values(spec: WorkflowSpec) -> dict[str, dict[str, dict[str, Any]]]
             if j.model:
                 put(unit_l, f"judge:{name}.model", j.model, f"units.{name}.gate.judge.model")
             elif u.step is not None and u.step.model:
-                ladder = [u.step.model] if isinstance(u.step.model, str) else list(u.step.model)
-                put(unit_l, f"judge:{name}.model", ladder[-1], f"units.{name}.model[-1]")  # CON §2.4
+                first = u.step.model if isinstance(u.step.model, str) else list(u.step.model)[0]
+                put(unit_l, f"judge:{name}.model", first, f"units.{name}.model")  # CON §2.4
             prof = spec.model_profile.get(f"judge:{name}")
             put(dflt, f"judge:{name}.model", prof if isinstance(prof, str) or prof is None else list(prof)[0],
                 f"model_profile.judge:{name}")
@@ -667,7 +676,11 @@ def targets(spec: WorkflowSpec) -> list[tuple[str, str, list[str]]]:
         for name, e in CATALOG.items():
             if name in NOT_IN_RELEASE or name in NOT_BUILT:
                 continue
-            if u.kind == "step" and e.scopes & STEP_SIDE:
+            if name == "arm":
+                if u.switch is not None:
+                    out.append((f"{unit}.arm", "arm", [f"{unit}.arm"]))
+                continue
+            if u.kind in SESSION_KINDS and e.scopes & STEP_SIDE:
                 out.append((f"{unit}.{name}", name, [f"{unit}.{name}", f"steps.{name}"] if "steps" in e.scopes
                             else [f"{unit}.{name}"]))
             if u.kind == "script" and name == "timeout_s":
@@ -751,10 +764,11 @@ def effective_spec(spec: WorkflowSpec, res: ResolvedSettings) -> WorkflowSpec:
     runner's step-to-judge inheritance (RST §2.3, Judges apart).
     """
     v = res.values
+    layer_of = {r.key: r.layer for r in res.rows}
     units: dict[str, UnitSpec] = {}
     for name, u in spec.units.items():
         g: GateSpec = u.gate
-        if u.kind == "step" and u.step is not None:
+        if u.kind in SESSION_KINDS and u.step is not None:
             st: StepSpec = u.step
             opts = SessionOptions(**{f: v.get(f"{name}.{k}") for k, f in SESSION_OPTIONS.items()})
             added = tuple(v.get(f"{name}.tools.add") or ())
@@ -773,7 +787,11 @@ def effective_spec(spec: WorkflowSpec, res: ResolvedSettings) -> WorkflowSpec:
                                     loop_budget=int(v.get(f"{name}.loop_budget", g.loop_budget)),
                                     on_budget_spent=v.get(f"{name}.on_budget_spent") or g.on_budget_spent,
                                     approval=g.approval or bool(v.get(f"{name}.approve")))
-            u = dataclasses.replace(u, step=st)
+            operator = tuple(k for k in ("model", "timeout_s", "idle_s", "effort")
+                             if layer_of.get(f"{name}.{k}") in LAYERS[:4])
+            u = dataclasses.replace(u, step=st, extra={**u.extra, "operator_set": operator} if operator else u.extra)
+        if u.switch is not None and v.get(f"{name}.arm"):
+            u = dataclasses.replace(u, extra={**u.extra, "arm": v.get(f"{name}.arm")})  # CMP-B7
         if u.kind == "script" and u.script is not None:
             u = dataclasses.replace(u, script=dataclasses.replace(u.script, timeout_s=int(
                 v.get(f"{name}.timeout_s") or u.script.timeout_s)))
@@ -787,6 +805,9 @@ def effective_spec(spec: WorkflowSpec, res: ResolvedSettings) -> WorkflowSpec:
                                     timeout_s=v.get(f"judge:{name}.timeout_s"), idle_s=v.get(f"judge:{name}.idle_s"),
                                     session_options=jopts if jopts.set_names() else None)
             g = dataclasses.replace(g, judge=j)
+            jpins = tuple(k for k in ("model", "effort") if layer_of.get(f"judge:{name}.{k}") in LAYERS[:4])
+            if jpins:  # JRK §2.3 rule 1: a pinned judge model or effort wins over a risk level
+                u = dataclasses.replace(u, extra={**u.extra, "judge_operator_set": jpins})
             views = tuple(v.get(f"judge:{name}.views.add") or ())
             if views:
                 u = dataclasses.replace(u, extra={**u.extra, "views_add": views})

@@ -51,11 +51,14 @@ GATEWAY_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_USE_BE
 PROBED_FLAGS = ("--permission-prompts", "--bare", "--tools", "--setting-sources", "--max-budget-usd",
                 "--fallback-model", "--effort", "--plugin-dir", "--strict-mcp-config")
 _VERSION_RE = re.compile(r"(\d+\.\d+\.\d+)")
-_EFFORTS = frozenset({"low", "medium", "high", "max"})
+_EFFORTS = frozenset({"low", "medium", "high", "xhigh", "max"})
 
 
 # ---------------------------------------------------------------------------------------------
 # Argv (ECC §2.3, §2.4)
+
+
+SELF_CHECK = "tempergraph self-check "
 
 
 def allow_rules(tools: tuple[str, ...], commands: tuple[str, ...], in_engine_worktree: bool) -> list[str]:
@@ -71,6 +74,8 @@ def allow_rules(tools: tuple[str, ...], commands: tuple[str, ...], in_engine_wor
             rules.append("Agent")
         else:
             rules.extend(tool_names(CLAUDE, cap))
+    # the check preview is granted as one exact command even when the step declares no shell (CHK §2.5)
+    rules.extend(f"Bash({c})" for c in commands if c.startswith(SELF_CHECK))
     return list(dict.fromkeys(rules))
 
 
@@ -81,6 +86,11 @@ def builtin_tools(tools: tuple[str, ...]) -> list[str]:
             continue
         names.extend(tool_names(CLAUDE, cap)[:1])
     return list(dict.fromkeys(names))
+
+
+def _with_preview(names: list[str], commands: tuple[str, ...]) -> list[str]:
+    """Under `--tools`, the check preview needs the shell tool itself; the allow rule keeps it to one command."""
+    return list(dict.fromkeys([*names, "Bash"])) if any(c.startswith(SELF_CHECK) for c in commands) else names
 
 
 def step_argv(req: SessionRequest, model: str | None, fallback: str | None, flags: frozenset[str],
@@ -94,7 +104,7 @@ def step_argv(req: SessionRequest, model: str | None, fallback: str | None, flag
     if rules:
         argv += ["--allowedTools", ",".join(rules)]
     if req.enforce_tools:
-        argv += ["--tools", ",".join(builtin_tools(req.tools))]
+        argv += ["--tools", ",".join(_with_preview(builtin_tools(req.tools), req.commands))]
     argv += ["--disallowedTools", ALWAYS_DISALLOWED]
     if req.enforce_tools and mcp_config is not None and any(t.startswith("mcp:") for t in req.tools):
         argv += ["--strict-mcp-config", "--mcp-config", str(mcp_config)]

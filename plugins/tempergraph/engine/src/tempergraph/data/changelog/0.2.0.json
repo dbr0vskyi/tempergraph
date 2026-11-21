@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "engine_version": "0.2.0",
+  "entries": [
+    {
+      "id": "E0.2.0-1",
+      "audience": "workflow",
+      "kind": "tightened",
+      "breaking": true,
+      "surface": "spec_field",
+      "subject": "units.*.model",
+      "detect": [
+        {
+          "id": "model-list",
+          "kind": "finding",
+          "match": "model-ladder-retired"
+        }
+      ],
+      "migrate": {
+        "action": "transform",
+        "transform": "model_list_to_escalation"
+      },
+      "proof": [
+        "model-ladder-retired"
+      ],
+      "note": "A list of models in a step's `model` or in `model_profile` is retired. A step names one alias; a stronger model is reached only through `escalation`, one tier up, on a repeated blocker from a trusted judge (LAD \u00a72.8)."
+    },
+    {
+      "id": "E0.2.0-2",
+      "audience": "workflow",
+      "kind": "added",
+      "breaking": false,
+      "surface": "spec_field",
+      "subject": "units.*.effort_ladder, units.*.escalation",
+      "detect": [],
+      "migrate": {
+        "action": "none"
+      },
+      "proof": [],
+      "note": "A step may declare an effort ladder and one model escalation; both climb only on evidence (LAD)."
+    },
+    {
+      "id": "E0.2.0-3",
+      "audience": "workflow",
+      "kind": "added",
+      "breaking": false,
+      "surface": "spec_field",
+      "subject": "units.*.gate.judge.risk",
+      "detect": [],
+      "migrate": {
+        "action": "none"
+      },
+      "proof": [],
+      "note": "A gate's judge may be raised by a model-free risk rule, calibrated per level (JRK)."
+    },
+    {
+      "id": "E0.2.0-4",
+      "audience": "workflow",
+      "kind": "added",
+      "breaking": false,
+      "surface": "declaration",
+      "subject": "ComplexitySwitch, Measure, stock, Map",
+      "detect": [],
+      "migrate": {
+        "action": "none"
+      },
+      "proof": [],
+      "note": "Measured switches, complexity switches with a rules file, and the sequential map (SWM, CXR, MAP)."
+    },
+    {
+      "id": "E0.2.0-5",
+      "audience": "workflow",
+      "kind": "added",
+      "breaking": false,
+      "surface": "declaration",
+      "subject": "Ask, Question, Wait, Parallel",
+      "detect": [],
+      "migrate": {
+        "action": "none"
+      },
+      "proof": [],
+      "note": "The ask unit, the event wait and parallel read-only branches (ASK, HUM, CMP)."
+    },
+    {
+      "id": "E0.2.0-6",
+      "audience": "workflow",
+      "kind": "added",
+      "breaking": false,
+      "surface": "spec_field",
+      "subject": "units.*.gate.fallback, units.*.deadline_s, units.*.self_check",
+      "detect": [],
+      "migrate": {
+        "action": "none"
+      },
+      "proof": [],
+      "note": "A gate's fallback target, a deadline on a wait or ask, and a step's check preview (FLX, CHK \u00a72.5)."
+    },
+    {
+      "id": "E0.2.0-7",
+      "audience": "workflow",
+      "kind": "changed",
+      "breaking": false,
+      "surface": "callable",
+      "subject": "CheckContext.git, CheckContext.changed_paths",
+      "detect": [],
+      "migrate": {
+        "action": "none"
+      },
+      "proof": [],
+      "note": "Outside a git repository a check receives `git = None`; `changed_paths` on the context is filled in both cases. `GitFacts.pushed` is now set from the remote-tracking refs (WSP \u00a72.4, CHK \u00a72.1)."
+    },
+    {
+      "id": "E0.2.0-8",
+      "audience": "workflow",
+      "kind": "behaviour",
+      "breaking": false,
+      "surface": "document",
+      "subject": "outcome deliverables",
+      "detect": [],
+      "migrate": {
+        "action": "none"
+      },
+      "proof": [],
+      "note": "A deliverable is required only on a path that produces it, so a run that took another switch arm is no longer failed for an artifact its path never makes (OUT)."
+    },
+    {
+      "id": "E0.2.0-9",
+      "audience": "workflow",
+      "kind": "added",
+      "breaking": false,
+      "surface": "declaration",
+      "subject": "@repository",
+      "detect": [],
+      "migrate": {
+        "action": "none"
+      },
+      "proof": [],
+      "note": "A step or check may list `@repository` among its commands to take the prefixes the repository declares in `tempergraph.commands.json` (CHK \u00a72.2)."
+    },
+    {
+      "id": "E0.2.0-10",
+      "audience": "operator",
+      "kind": "added",
+      "breaking": false,
+      "surface": "cli",
+      "subject": "update, upgrade, evals run|report|grade|harvest|replay, promote-check, carry, hooks, self-check",
+      "detect": [],
+      "migrate": {
+        "action": "none"
+      },
+      "proof": [],
+      "note": "New verbs of release 2 (UPD, WUP, EVS, PRO, CAR, CLI \u00a72.2)."
+    },
+    {
+      "id": "E0.2.0-11",
+      "audience": "operator",
+      "kind": "added",
+      "breaking": false,
+      "surface": "cli",
+      "subject": "--state-root, --pause-before, --answers, --apply-deadline, --unit, --escalate, --carry",
+      "detect": [],
+      "migrate": {
+        "action": "none"
+      },
+      "proof": [],
+      "note": "New options of `run` and `resume`; `--pause-before` was refused `not_in_release` before."
+    },
+    {
+      "id": "E0.2.0-12",
+      "audience": "operator",
+      "kind": "behaviour",
+      "breaking": false,
+      "surface": "cli",
+      "subject": "state root outside git",
+      "detect": [],
+      "migrate": {
+        "action": "none"
+      },
+      "proof": [],
+      "note": "A folder outside a git repository may hold runs: the engine no longer refuses with `not_git`, it keeps the state in `<start dir>/.tempergraph/` or the nearest one upward (WSP \u00a72.4)."
+    },
+    {
+      "id": "E0.2.0-13",
+      "audience": "operator",
+      "kind": "added",
+      "breaking": false,
+      "surface": "document",
+      "subject": "config/hooks.json",
+      "detect": [],
+      "migrate": {
+        "action": "none"
+      },
+      "proof": [],
+      "note": "Lifecycle hooks: an operator's command run detached on a run event, with a facts file (CLI \u00a72.2)."
+    }
+  ]
+}

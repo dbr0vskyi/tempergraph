@@ -10,7 +10,7 @@ from __future__ import annotations
 # Module path -> what it launches. Keep in step with SEC §2.2.
 SANCTIONED_SITES: dict[str, str] = {
     "tempergraph.git": "git reader: git with constant arguments",
-    "tempergraph.run.commands": "workflow command runner: resolved allow-list argv for checks, scripts, finalizer",
+    "tempergraph.run.commands": "workflow command runner: resolved allow-list argv for checks, scripts, finalizer; an operator's registered hook argv",
     "tempergraph.install.launch": "updater: venv, pip from engine-derived paths, the interpreter probe and self-check",
     "tempergraph.executors.launcher": "session launcher: an executor's CLI, its model-free probes, host speed, the resources listing",
     "tempergraph.detach": "detached child launcher: the engine interpreter with a constant module and words",

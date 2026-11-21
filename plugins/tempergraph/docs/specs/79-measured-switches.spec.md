@@ -10,7 +10,7 @@ adrs: [0079]
 
 ## 1. Overview
 
-A switch picks one arm by a pure predicate ([CMP §2.2](03-compiler-and-flow.spec.md)). temperspec's code-mode router (one session for a small plan, one per phase for a large one) needs three more things before such a switch can be trusted: a **shadow mode** that records what the predicate would pick and routes nothing, **arm overrides** that give the units of an arm their own limits and models (the single-session arm needs a longer code timeout), and **re-arming** that moves a run to the safer arm when the cheaper one spends its budget ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T46, [ADR-0079](../adr/0079-switches-are-measured-before-they-route.adr.md)). The same three serve any switch whose choice is a cost bet.
+A switch picks one arm by a pure predicate ([CMP §2.2](03-compiler-and-flow.spec.md)). temperspec's code-mode router (one session for a small plan, one per phase for a large one) needs three more things before such a switch can be trusted: a **shadow mode** that records what the predicate would pick and routes nothing, **arm overrides** that give the units of an arm their own limits and models (the single-session arm needs a longer code timeout), and **re-arming** that moves a run to the safer arm when the cheaper one spends its budget ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T46, [ADR-0079](../adr/0079-switches-are-measured-before-they-route.adr.md)). The same three serve any switch whose choice is a cost bet. A switch whose predicate the engine builds from declared complexity measures and a rules file, with a failsafe arm, one-way re-arming and an arm contract, is a complexity switch ([CXR](94-complexity-routing.spec.md)).
 
 ## 2. Contract
 
@@ -21,7 +21,7 @@ A switch picks one arm by a pure predicate ([CMP §2.2](03-compiler-and-flow.spe
 | `predicate` | callable ref | Pure: `(state) -> arm` or `(state) -> (arm, signals)`; `signals` is a map of at most 10 names to numbers or strings ≤ 60 chars |
 | `default` | arm name | Taken on a predicate fault, and always in shadow mode |
 | `mode` | `route` \| `shadow`, default `route` | §2.2 |
-| `arm_overrides` | map arm → map unit → `{model, timeout_s, idle_s, effort}` | §2.3 |
+| `arm_overrides` | map arm → map unit → `{model, timeout_s, idle_s, effort, effort_ladder, escalation}` | §2.3; the last two from release 2 ([LAD](92-effort-ladder-and-model-escalation.spec.md)) |
 | `rearm` | list of `{from, to, units, on}` | §2.4; `on` ⊆ {`budget_spent`, `timeout`} |
 
 ### 2.2 Shadow mode
@@ -64,13 +64,14 @@ When a unit listed in a `rearm` entry, while arm `from` is in force, ends with a
 ## 5. Design notes
 
 - Overrides belong to the arm because the reason for them (a longer limit for a whole-plan session) belongs to the arm, not to the unit; they are workflow data below every operator layer.
+- As built (R2-T1.1): a step timeout listed in `on` re-arms at once, without spending the retry budget first; a switch re-arms at most once per run, and a re-armed pick is never made again by the predicate. An attempt under an override carries `sources: {<key>: arm:<switch>.<arm>}` on its `attempt_start` and `agent_run` records. `effort_ladder` and `escalation` are accepted here and applied by [LAD](92-effort-ladder-and-model-escalation.spec.md). The shadow report is `report --switch` ([CXR §2.7](94-complexity-routing.spec.md)).
 - Re-arming is a trip back, not a new edge kind, so budgets, clearing and records stay the ones every other trip back uses.
 
 ## 6. Acceptance criteria
 
-- [ ] SWM-AC-1 SWM-B1 to SWM-B3 and every row of the SWM-B3 table hold offline with scripted executors.
-- [ ] SWM-AC-2 In shadow mode the arm taken is the default (or the operator's) in every fixture, whatever the predicate returns.
-- [ ] SWM-AC-3 Every limit and alias record of a unit under an arm override names the layer `arm:<switch>.<arm>`.
+- [x] SWM-AC-1 SWM-B1 to SWM-B3 and every row of the SWM-B3 table hold offline with scripted executors.
+- [x] SWM-AC-2 In shadow mode the arm taken is the default (or the operator's) in every fixture, whatever the predicate returns.
+- [x] SWM-AC-3 Every limit and alias record of a unit under an arm override names the layer `arm:<switch>.<arm>`.
 
 ## Open questions
 
@@ -80,4 +81,4 @@ When a unit listed in a `rearm` entry, while arm `from` is in force, ends with a
 
 ## References
 
-[CMP §2.2](03-compiler-and-flow.spec.md) · [BUD](08-budgets-and-failures.spec.md) · [OBS](15-observability-and-cost.spec.md) · [MAP](77-map-unit.spec.md) · [ADR-0079](../adr/0079-switches-are-measured-before-they-route.adr.md)
+[CMP §2.2](03-compiler-and-flow.spec.md) · [CXR](94-complexity-routing.spec.md) · [BUD](08-budgets-and-failures.spec.md) · [OBS](15-observability-and-cost.spec.md) · [MAP](77-map-unit.spec.md) · [ADR-0079](../adr/0079-switches-are-measured-before-they-route.adr.md)

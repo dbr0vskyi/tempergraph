@@ -46,6 +46,7 @@ class AttemptContext:
     upstream_targets: tuple[str, ...] = ()
     grants: tuple[str, ...] = ()  # capabilities granted for this run (RST §2.8)
     lessons: str = ""  # the rendered lessons block (LSN §2.2); the step only, never a judge
+    self_check: str = ""  # the check preview's command for this attempt (CHK §2.5)
 
 
 @dataclass
@@ -66,8 +67,14 @@ def render_step(unit: str, spec: UnitSpec, ctx: AttemptContext, caps: Capabiliti
         parts.append(text)
         sections.append(name)
 
-    if step.commands:
-        add("commands", "## Commands you may run\n" + "\n".join(f"- `{c}`" for c in step.commands))
+    commands = [*step.commands, *([ctx.self_check] if ctx.self_check else [])]
+    if commands:
+        add("commands", "## Commands you may run\n" + "\n".join(f"- `{c}`" for c in commands))
+    if ctx.self_check:  # PRM §2.1: a fixed section, only when the step declares `self_check`
+        add("self_check", "## Check your work before you end\n"
+                          f"Run `{ctx.self_check}` to see what the gate's check would find in the workspace as it "
+                          "is now. It changes nothing and can be run a few times in this attempt. The gate's own "
+                          "check still runs after you end.")
     tools = list(dict.fromkeys(tuple(step.tools) + ctx.grants))
     if tools:
         add("tools", _tools_block(tools, caps))

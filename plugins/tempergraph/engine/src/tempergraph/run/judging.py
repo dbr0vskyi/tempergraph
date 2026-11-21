@@ -245,7 +245,8 @@ def derive(judgement: Judgement | None, gate: GateSpec, check: CheckResult | Non
             escalate = True
         failing.append((c, f or CriterionFinding(n=i, status="UNMET"), status))
     out.blockers = [{"criterion": c.id or str(f.n), "place": f.place, "problem": f"{status}: {f.evidence}".strip(),
-                     "fix": f.fix} for c, f, status in failing]
+                     "fix": f.fix, **({"no_change": True} if f.no_change else {}),
+                     **({"defect_in": f.defect_in} if f.defect_in else {})} for c, f, status in failing]
     if escalate:
         out.verdict, out.reason = Verdict.ESCALATE, "unresolved_gap"
         return out

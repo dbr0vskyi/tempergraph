@@ -87,6 +87,55 @@ class Criterion:
 
 
 @dataclass(frozen=True, kw_only=True)
+class RiskLevel:
+    """JRK §2.1: one level of a judge. Level 0 states no model: it is the gate's own judge, resolved as without
+    `risk`; a later level names the alias, the effort, or both."""
+
+    name: str
+    model: str | None = None
+    effort: str | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class RiskWhen:
+    """A stock risk rule (JRK, open question 1): the level holds when the attempt changed at least `min_paths`
+    paths matching `paths`, or at least `min_lines` lines; with a fact, when its number is at least `min_fact`."""
+
+    level: str
+    paths: tuple[str, ...] = ()
+    min_paths: int = 1
+    min_lines: int | None = None
+    fact: tuple[str, str] | None = None
+    min_fact: float | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class RiskSpec:
+    """JRK §2.1: a model-free rule that only ever raises the judge. Exactly one of `rule` and `when`."""
+
+    levels: tuple[RiskLevel, ...]
+    rule: CallableRef | None = None
+    when: tuple[RiskWhen, ...] = ()
+    mode: Literal["route", "shadow"] = "route"
+
+
+@dataclass(frozen=True, kw_only=True)
+class RiskContext:
+    """What a risk rule reads (JRK §2.2). It holds no step text, artifact content or step value."""
+
+    unit: str
+    item: str | None
+    visit: int
+    attempt: int
+    git: Any
+    facts: Mapping[str, Mapping[str, Any]]
+    request: Mapping[str, Any]
+    settings: Mapping[str, Any]
+    stage: str
+    producer: Mapping[str, Any]
+
+
+@dataclass(frozen=True, kw_only=True)
 class JudgeSpec:
     stance: str = ""
     brief: str = ""
@@ -99,6 +148,8 @@ class JudgeSpec:
     tools: tuple[str, ...] | None = None
     idle_s: int | None = None
     session_options: SessionOptions | None = None
+    sizing: str = ""  # why this model and effort fit the judge's reading (SCF §2.1.1)
+    risk: RiskSpec | None = None  # JRK: a stronger judge for a riskier attempt
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -118,7 +169,7 @@ class GateSpec:
 
 @dataclass(frozen=True, kw_only=True)
 class SessionOptions:
-    effort: Literal["low", "medium", "high", "max"] | None = None
+    effort: Literal["low", "medium", "high", "xhigh", "max"] | None = None
     cost_cap_usd: float | None = None
     fallback_alias: str | None = None
     turn_cap: int | None = None
@@ -159,23 +210,172 @@ class StepSpec:
     self_check: bool = False
     summary: str = ""
     subagent_model: str | None = None
+    sizing: str = ""  # why this model and effort fit the step's work (SCF §2.1.1)
+    effort_ladder: tuple[str, ...] = ()  # LAD §2.1: rung 0 is the effort of a visit's first attempt
+    escalation: EscalationSpec | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class EscalationSpec:
+    """LAD §2.4: one attempt on the next tier up, only on a repeated trusted blocker."""
+
+    to: str
+    stages: Mapping[str, str] = field(default_factory=dict)  # stage -> off | offer | auto
+    effort: str | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class RearmSpec:
+    """SWM §2.4: while arm `from_arm` is in force, a listed unit ending on a cause in `on` sends the run to
+    the entry of arm `to`."""
+
+    from_arm: str
+    to: str
+    units: tuple[str, ...]
+    on: tuple[str, ...] = ("budget_spent",)
+
+
+@dataclass(frozen=True, kw_only=True)
+class MeasureSpec:
+    """CXR §2.1: one named measure, from a stock measure (`stock`: its name and arguments) or a callable."""
+
+    name: str
+    stock: tuple[str, ...] = ()
+    call: CallableRef | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class ComplexitySpec:
+    """CXR §2.1: what makes a switch a complexity switch. Its arms run from the simplest to the safe arm."""
+
+    measures: tuple[MeasureSpec, ...]
+    joins_at: str
+    rules: str | None = None  # a path in the package; `routing/<switch>.json` when None
+    size: str | None = None
+    explore: Mapping[str, Any] | None = None  # {rate, per_week}
+
+
+@dataclass(kw_only=True)
+class MeasureContext:
+    """What a measure callable reads (CXR §2.3). It holds no step value."""
+
+    request: Mapping[str, Any]
+    facts: Mapping[str, Mapping[str, str]]
+    artifacts: Mapping[str, Mapping[str, str]]
+    settings: Mapping[str, Any]
+    stage: str
+    workdir: Path
+    git: Any = None
+
+    def read_text(self, path: str | Path, max_bytes: int = 1_000_000) -> str:
+        p = (self.workdir / path).resolve()
+        if not p.is_relative_to(self.workdir.resolve()):
+            raise ValueError(f"{path} is outside the workspace")
+        with open(p, "rb") as fh:
+            return fh.read(max_bytes).decode("utf-8", errors="replace")
+
+
+EFFORTS = ("low", "medium", "high", "xhigh", "max")  # ascending (LAD §2.1)
+STAGES = ("local-dev", "local-stable", "pipeline")  # PRO §2.1
+ARM_OVERRIDE_KEYS = ("model", "timeout_s", "idle_s", "effort", "effort_ladder", "escalation")
+REARM_CAUSES = ("budget_spent", "timeout")
 
 
 @dataclass(frozen=True, kw_only=True)
 class SwitchSpec:
-    """CMP §2.2 switch: predicate, arms and a default arm; stickiness per visit or run."""
+    """CMP §2.2 switch: predicate, arms and a default arm; stickiness per visit or run. SWM §2.1 adds the
+    mode, the per-arm overrides and the re-arm entries."""
 
-    predicate: CallableRef
+    predicate: CallableRef | None
     arms: Mapping[str, str]  # arm name -> target unit or "finalizer"
     default: str
     sticky: Literal["visit", "run"] = "visit"
+    mode: Literal["route", "shadow"] = "route"
+    arm_overrides: Mapping[str, Mapping[str, Mapping[str, Any]]] = field(default_factory=dict)  # arm -> unit -> values
+    rearm: tuple[RearmSpec, ...] = ()
+    complexity: ComplexitySpec | None = None  # CXR: the engine builds the predicate from measures and rules
+
+    def rearm_units(self) -> frozenset[str]:
+        return frozenset(u for r in self.rearm for u in r.units)
+
+
+@dataclass(frozen=True, kw_only=True)
+class MapItem:
+    """MAP §2.1: one item of a map's list; `id` names its artifacts, records and pauses."""
+
+    id: str
+    text: str = ""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ExtractContext:
+    """What a map's `extract` callable reads (MAP §2.1): read-only."""
+
+    artifact: Path
+    workdir: Path
+    values: Mapping[str, str] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, kw_only=True)
+class MapSpec:
+    """MAP §2.1. The step and the gate every item runs are the unit's own `step` and `gate`."""
+
+    items_from: tuple[str, str]  # (unit, key) of the artifact that holds the list
+    extract: CallableRef | None = None
+    max_items: int = 20
+    on_empty: Literal["one_item", "stop", "skip"] = "stop"
+    mode: Literal["sequential", "concurrent"] = "sequential"
+    concurrency: int = 3
+    item_model: CallableRef | None = None
+    models: tuple[str, ...] = ()  # the aliases `item_model` may choose among
+
+
+AnswerKind = Literal["text", "choice", "choices", "number", "bool", "file", "url"]
+
+
+@dataclass(frozen=True, kw_only=True)
+class AskQuestion:
+    """ASK §2.1 `Question`: one typed question of an ask unit."""
+
+    name: str
+    text: str
+    kind: AnswerKind = "text"
+    choices: tuple[str, ...] = ()
+    required: bool = True
+    default: Any = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class AskSpec:
+    """ASK §2.1: declared questions, or a list artifact of them written by an earlier step."""
+
+    questions: tuple[AskQuestion, ...] = ()
+    questions_from: str | None = None  # the `from` field: an artifact key
+    context: tuple[str, ...] = ()
+    check: CallableRef | None = None  # pure: answers -> a list of problems, empty when they pass
+    deadline_s: int | None = None
+    on_deadline: str = "escalate"  # `escalate`, `stop` or a forward unit (FLX §2.3)
+
+
+@dataclass(frozen=True, kw_only=True)
+class WaitSpec:
+    """An event wait (CMP §2.2, HUM-B4): passes only on `event:<name>=<value>` the pure check accepts."""
+
+    event: str
+    check: CallableRef  # pure: the delivered value -> bool
+    deadline_s: int | None = None
+    on_deadline: str = "escalate"
 
 
 @dataclass(frozen=True, kw_only=True)
 class UnitSpec:
     kind: UnitKind
     gate: GateSpec
+    ask: AskSpec | None = None
+    wait: WaitSpec | None = None
+    branches: tuple[str, ...] = ()  # a parallel block's branch units; the unit itself is the join (CMP §2.2)
     step: StepSpec | None = None
+    map: MapSpec | None = None
     script: ScriptSpec | None = None
     route: CallableRef | None = None  # route unit or a step's route (CMP §2.2)
     route_targets: tuple[str, ...] = ()
@@ -280,7 +480,7 @@ class WorkflowSpec:
     profiles: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
     outcome: OutcomeSpec | None = None
     allow_commands: tuple[str, ...] = ()  # the workflow-wide command allow-list (WFM §2.1)
-    builtin: bool = False  # the built-in self-improvement workflow flag (WFM §2)
+    builtin: bool | str = False  # a workflow the engine ships, by its flag, for example `upgrade` (WFM §2, UWF §2.1)
     package_root: Path | None = None
     extra: Mapping[str, Any] = field(default_factory=dict)  # fields outside this release
 
@@ -369,6 +569,8 @@ class Capabilities:
     fresh_session: bool = False
     hosts_authoring_surface: bool = False
     session_options: frozenset[str] = frozenset()
+    efforts: frozenset[str] = frozenset({"low", "medium", "high", "xhigh", "max"})  # efforts it applies
+    efforts_uncertain: frozenset[str] = frozenset()  # declared, not yet shown by a live probe (LAD §2.6)
     tool_map: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
     version: str = ""
 
@@ -544,6 +746,7 @@ class CheckFinding:
     place: str = ""
     fix: str = ""
     message: str = ""
+    kind: Literal["substance", "output_contract"] | None = None  # LAD §2.2: what the failing finding verified
 
 
 @dataclass(kw_only=True)

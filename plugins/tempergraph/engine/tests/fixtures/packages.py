@@ -58,8 +58,12 @@ from tempergraph.api import CheckFinding, CheckResult
 
 
 def draft_check(ctx):
-    return CheckResult(result="PASS", evidence="four headings",
-                       findings=[CheckFinding(status="pass", criterion="rn-sections")])
+    path = ctx.workdir / str((ctx.artifacts.get("draft") or {}).get("notes") or "notes.md")
+    text = path.read_text(encoding="utf-8") if path.is_file() else None
+    bad = text is not None and text.lstrip().startswith("# Added") and "# Removed" not in text
+    return CheckResult(result="FAIL" if bad else "PASS", evidence="four headings",
+                       findings=[CheckFinding(status="fail" if bad else "pass", criterion="rn-sections",
+                                              message="the four headings")])
 '''
 
 OVERVIEW = """# Release notes
@@ -93,7 +97,11 @@ def blueprint(name: str = "release-notes", outcome: dict[str, Any] | None = None
     o = outcome or OUTCOME
     return {"schema_version": 1, "name": name,
             "units": [{"name": "draft", "kind": "step", "summary": "Write the release notes", "produces": ["notes"],
-                       "reads": [], "gate": {"check": True, "judge": True, "signoff": False}}],
+                       "reads": [], "gate": {"check": True, "judge": True, "signoff": False},
+                       "sizing": {"model": "medium", "effort": "medium",
+                                  "why": "One document written from a short list of changes"},
+                       "judge_sizing": {"model": "medium", "effort": "medium",
+                                        "why": "Reads one file against three criteria"}}],
             "outcome_ref": {"revision": o["revision"], "digest": outcome_digest(o)},
             "input": {"kind": "text", "parameters": []}}
 

@@ -91,6 +91,26 @@ tempergraph workflows register <folder>
 tempergraph author list | show <id>         # pick up unfinished sessions
 ```
 
+## Spend more only on evidence
+
+A step names one model and one effort, and says why in `sizing`. Three declarations let a run spend more where it is earned, and none of them reacts to just any failure:
+
+| Declaration | What it does | When it acts |
+|---|---|---|
+| `effort_ladder=["medium", "high"]` on a step | Retries at the next effort | Only after a judge you have calibrated repeats the same blocker |
+| `escalation=Escalation(to="large")` on a step | One attempt on the next model tier | The same evidence; in a new workflow it is offered to you at a pause, not taken |
+| `risk=Risk(...)` on a judge | A stronger judge for a riskier attempt | A model-free rule: paths touched, lines changed, a check's fact |
+
+A list of models in `model` is no longer accepted; `tempergraph upgrade <workflow>` rewrites it.
+
+## Route by size
+
+A complexity switch picks a short path for a small task and the detailed path for a large one, from measures that cost nothing (a count in an earlier step's output, an input, a setting) and a rules file in the package. The detailed path is the safe arm: any doubt takes it, and a short path that turns out too small moves up once, never down. `tempergraph report --switch <workflow>/<switch>` shows how each arm did.
+
+## Ask, wait and work side by side
+
+`Ask` puts typed questions to a person and hands the answers to later steps. `Wait` holds the run until an outside value arrives that its check accepts. `Parallel` runs read-only steps side by side and goes on when all have passed. A step with `self_check=True` may run its gate's check before it ends, up to three times, so it can fix what the check would find.
+
 ## Revise a workflow
 
 To change an existing workflow's outcome, ask Claude to revise it, or run `tempergraph outcome candidates <workflow>` and then `tempergraph author start <workflow> --revise`. A revision that weakens a criterion needs your explicit yes.

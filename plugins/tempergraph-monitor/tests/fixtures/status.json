@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-20T17:51:30.985Z",
+  "generated_at": "2026-11-21T18:29:42.959Z",
   "threads": [
     {
       "thread_id": "demo/T-1",
@@ -43,7 +43,8 @@
         "state": "active"
       },
       "exit_code": 3,
-      "exit_reason": "escalation"
+      "exit_reason": "escalation",
+      "engine": "0.0.1"
     }
   ]
 }

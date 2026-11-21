@@ -59,13 +59,19 @@ def loop_log(root: Path, workflow: str, task_id: str) -> Path:
     return run_dir(root, workflow, task_id) / "loop.jsonl"  # LOS §2.1
 
 
+def alias_of(t: Mapping[str, Any]) -> str:
+    """The alias of the loop's own sessions: the run setting `loop_model` the ticket carries, else `medium`."""
+    return str(t.get("alias") or ALIAS)
+
+
 def mode() -> str:
     return os.environ.get("TEMPERGRAPH_LOOP", "detached")
 
 
 def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary: Mapping[str, Any], *,
              dry_run: bool, judge_executor: str, home: Path | None = None, operator_review: str | None = None,
-             run_cost_usd: float = 0.0, trial: bool = False, daily_cap_usd: float | None = None) -> Path | None:
+             run_cost_usd: float = 0.0, trial: bool = False, daily_cap_usd: float | None = None,
+             loop_model: str | None = None) -> Path | None:
     """Writes the ticket when a judged lens fired at this final exit and there is a fault to judge, when the
     outcome lens has candidates, or when the session review (SRV §2.3) has a depth other than none."""
     from tempergraph.improve import proposals as prp
@@ -95,6 +101,7 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
               "units": unit_decls(spec) if depth != "off" else {},
               "autonomy": prp.autonomy(spec, os.environ.get("TEMPERGRAPH_AUTONOMY")),
               "daily_cap_usd": autonomy.daily_cap(spec.improvement_mode, daily_cap_usd),
+              "alias": loop_model or ALIAS,
               "package_root": str(spec.package_root) if spec.package_root else None}
     path = tickets_dir(home or home_path()) / f"{tid}.json"
     write_json(path, ticket)
@@ -210,7 +217,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
         ex = registry.get(str(t.get("executor") or "claude"))
         sdir = run_dir(root, wf, task) / "loop" / "sessions" / f"friction-{t.get('ticket_id')}"
         req = SessionRequest(kind="judge", prompt=prompt(faults, _records(root, wf, task)), workdir=root,
-                             alias=ALIAS, session_key=f"loop.{t.get('ticket_id')}.judge", timeout_s=TIMEOUT_S,
+                             alias=alias_of(t), session_key=f"loop.{t.get('ticket_id')}.judge", timeout_s=TIMEOUT_S,
                              session_dir=sdir)
         res = ex.run_judge(req, ViewSet(), LiveSink(sdir))
         if res.usage.reported_cost_usd is not None:
@@ -219,7 +226,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
             cost["estimated_only"] += float(res.usage.estimated_cost_usd or estimate(res.usage, res.model) or 0.0)
         judged = parse(res.text) if res.ok else {}
         append_jsonl(log, {"ts": now_iso(), "kind": "loop_judged", "lens": "friction", "executor": ex.name,
-                           "alias": ALIAS, "ok": res.ok, "parsed": bool(judged), "usage": dataclasses.asdict(res.usage),
+                           "alias": alias_of(t), "ok": res.ok, "parsed": bool(judged), "usage": dataclasses.asdict(res.usage),
                            "session_id": res.session_id})
     cands: list[filing.Candidate] = []
     for f in mine:

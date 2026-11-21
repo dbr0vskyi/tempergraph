@@ -26,9 +26,19 @@ def diagram_model(spec: WorkflowSpec) -> dict[str, Any]:
         for token, targets in s.by_token().items():
             for t in targets:
                 edges.append([gate, t, token])
+        fb = flow.fallback_node(spec, unit)
+        if fb:
+            edges.append([gate, fb, "FALLBACK"])
+        dl = flow.deadline_node(spec, unit)
         for t in flow.human_targets(spec, unit):
-            edges.append([human, t, "decision"])
+            edges.append([human, t, "DEADLINE" if t == dl and t not in s.proceed else "decision"])
         u = spec.units.get(unit)
+        if u is not None and u.kind == "parallel":  # the fork to every branch and the engine-owned join
+            fork = flow.fork_node(unit)
+            nodes.append(fork)
+            for b in u.branches:
+                nodes.append(flow.done_node(b))
+                edges += [[fork, flow.step_node(b), "fork"], [flow.done_node(b), step, "join"]]
         units.append({
             "name": unit,
             "kind": u.kind if u is not None else "outcome",
@@ -37,7 +47,7 @@ def diagram_model(spec: WorkflowSpec) -> dict[str, Any]:
         })
     nodes.append(flow.FINALIZER)
     edges.append([flow.FINALIZER, flow.END, "next"])
-    edges.append(["__start__", flow.step_node(order[0]), "next"])
+    edges.append(["__start__", flow.entry_node(spec, order[0]), "next"])
     shape = {"nodes": sorted(nodes), "edges": sorted({(a, b) for a, b, _ in edges})}
     digest = hashlib.sha256(json.dumps(shape, sort_keys=True).encode()).hexdigest()
     return {
@@ -68,27 +78,39 @@ def to_mermaid(model: dict[str, Any]) -> str:
         lines.append(f'  {ids[u["name"]]}["{label}"]')
     lines.append("  fin([finalizer])")
     lines.append("  stop((end))")
-    first = model["units"][0]["name"]
-    lines.append(f"  start --> {ids[first]}")
+    for a, b, _ in model["edges"]:
+        if a == "__start__":
+            entry = [e.split(".")[0] for x, e, t in model["edges"] if x == b and t == "fork"] or [b.split(".")[0]]
+            lines += [f"  start --> {ids[name]}" for name in entry if name in ids]
     seen: set[tuple[str, str, str]] = set()
     taken: dict[tuple[str, str, str], int] = {}
     for a, b, token, n in ov.get("edges") or []:
         dst_unit = "fin" if b == flow.FINALIZER.split(".")[0] else b
         taken[(a, dst_unit, token)] = taken.get((a, dst_unit, token), 0) + n
+    forks: dict[str, list[str]] = {a: [] for a, _, t in model["edges"] if t == "fork"}
+    for a, b, token in model["edges"]:
+        if token == "fork":
+            forks[a].append(b.split(".")[0])
+    joins = {a: b.split(".")[0] for a, b, t in model["edges"] if t == "join"}
+    drawn = {"PROCEED": "-->", "BACK": "-.->|back|", "FALLBACK": "-.->|fallback|", "DEADLINE": "-.->|deadline|"}
     for a, b, token in model["edges"]:
         src = a.split(".")[0]
-        if a.endswith(".gate") and token in ("PROCEED", "BACK"):
-            dst = "fin" if b == flow.FINALIZER else ids.get(b.split(".")[0])
-            if dst is None:
-                continue
-            key = (ids[src], dst, token)
-            if key in seen:
-                continue
-            seen.add(key)
-            n = taken.pop((src, "fin" if b == flow.FINALIZER else b.split(".")[0], token), 0)
-            mark = f" ×{n}" if n else ""
-            arrow = (f"-->|{mark.strip()}|" if n else "-->") if token == "PROCEED" else f"-.->|back{mark}|"
-            lines.append(f"  {ids[src]} {arrow} {dst}")
+        if (a.endswith(".gate") and token in ("PROCEED", "BACK", "FALLBACK")) or token == "DEADLINE":
+            # a block is entered at every branch, and a branch's pass goes to its join
+            names = forks[b] if b in forks else [joins[b]] if b in joins else [b.split(".")[0]]
+            for name in names:
+                dst = "fin" if b == flow.FINALIZER else ids.get(name)
+                if dst is None:
+                    continue
+                key = (ids[src], dst, token)
+                if key in seen:
+                    continue
+                seen.add(key)
+                n = taken.pop((src, "fin" if b == flow.FINALIZER else b.split(".")[0], token), 0)
+                mark = f" ×{n}" if n else ""
+                arrow = (f"-->|{mark.strip()}|" if n else "-->") if token == "PROCEED" else \
+                    drawn[token].replace("|", f"|{mark.strip()} " if n else "|", 1) if n else drawn[token]
+                lines.append(f"  {ids[src]} {arrow} {dst}")
     for (src, dst_unit, token), n in sorted(taken.items()):  # taken routes the unit boxes do not draw
         dst = "fin" if dst_unit in ("fin", "end") else ids.get(dst_unit)
         if src in ids and dst is not None:

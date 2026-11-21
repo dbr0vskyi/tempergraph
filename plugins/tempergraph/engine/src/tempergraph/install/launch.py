@@ -26,3 +26,12 @@ def run(argv: list[str], *, timeout_s: int = PROBE_TIMEOUT_S, cwd: Path | None =
     except (OSError, subprocess.TimeoutExpired) as exc:
         return Ran(127 if isinstance(exc, OSError) else 124, "", type(exc).__name__)
     return Ran(p.returncode, p.stdout, p.stderr)
+
+
+def hand_over(interpreter: Path, argv: list[str]) -> int:
+    """MIG §2.4 dispatch: the pinned engine's own interpreter runs the same verb with this process's streams;
+    the argv is the one this process was given, and nothing is read from it here."""
+    try:
+        return subprocess.run([str(interpreter), "-m", "tempergraph", *argv], check=False).returncode
+    except OSError:
+        return 127

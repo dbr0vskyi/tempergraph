@@ -116,6 +116,7 @@ An entry whose detect rules all have a deterministic match **must** carry `trans
 | `rename_template_key(from, to)` | Rewrites a field in templates and briefs |
 | `rename_tool(executor, from, to)` | Rewrites a tool name in declarations and in model-facing text where the name stands alone |
 | `map_capability(from, to)` | Rewrites a capability name or alias tier in declarations |
+| `model_list_to_escalation()` | Release 2: rewrites a step's `model` list as its first alias plus an `escalation` to the second when it is one tier up; any other list becomes an owner item ([LAD §2.8](92-effort-ladder-and-model-escalation.spec.md)) |
 
 Transforms are pure functions over the package files, each idempotent and each tested on a before and after fixture.
 
@@ -213,12 +214,13 @@ The changelog files are `tempergraph/data/changelog/<engine_version>.json`; the 
 - `workflow_api` exists apart from the engine major so a release that breaks only the CLI or a document does not ask every workflow owner to upgrade.
 - `workflow_version` closes gap G5 of [R-011](../research/R-011-design-gap-review.rsrch.md): a declared version for people and a digest for measurement.
 - The package layout and declaration format are [PKG](88-workflow-package.spec.md); `stamp.json` and `changes/` sit at the package root. The stamp also records `docs_digest`, the digest of the package's `docs/` folder ([PKG §2.5](88-workflow-package.spec.md)), and `release.json` records `loads_workflow_api_from`, the oldest declaration level the engine still loads ([PKG §2.3](88-workflow-package.spec.md)).
+- **As built (R2-T6.3).** `package/transforms.py` holds the eight transforms of §2.3.4 as pure text edits found by Python's own parser, so comments and layout outside the edited span keep their bytes. A transform that cannot say what the new value should be (a model list whose members are not one step apart, a field written through a variable) changes nothing and returns the item to its owner. The release 2 changelog entry that carries the model-list transform ships with the version bump (release 2 plan R2-T9).
 
 ## 6. Acceptance criteria
 
 - [ ] VER-AC-1 `release.json` equals the engine's constants by a generated drift test.
 - [ ] VER-AC-2 Every changelog entry validates against the schema of §2.3, and every `renamed` entry on a surface §2.3.4 covers carries a transform (release check).
-- [ ] VER-AC-3 Each transform of §2.3.4 passes its before and after fixture and is idempotent (applied twice, same bytes).
+- [x] VER-AC-3 Each transform of §2.3.4 passes its before and after fixture and is idempotent (applied twice, same bytes).
 - [ ] VER-AC-4 Every row of VER-B2's table is a test.
 - [ ] VER-AC-5 A workflow written before §2.4 loads with the defaults and validates unchanged.
 - [ ] VER-AC-6 The repository check of VER-B6 fails on each of its two fixtures.

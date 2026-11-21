@@ -227,6 +227,7 @@ Before and after every step session the engine reads `git worktree list --porcel
 - `head` as the default base keeps a run offline-safe and starts it from what the person sees; `default_branch` matches Claude Code's `fresh` ([ADR-0104](../adr/0104-a-new-worktree-starts-from-the-main-checkouts-head.adr.md)).
 - The engine's lock with a reason keeps `git worktree prune` and other tools' sweeps from dropping the admin data of a paused run's worktree.
 - Release split, for the first-release thread: `auto`/`worktree`/`in_place`, the `sibling` root, `head` base, names, start, resume and re-attach, executor pointing and the two disallowed tools, `worktree list`, `path` and the `ref:` base (for trial and eval cases, PRP and plan T12.6) are first-release; `in_repo` and `path:` roots, the `default_branch` base, `cleanup: on_finish`, `prune --apply`, foreign-worktree scans and `.worktreeinclude` follow. Writer, slot and item worktrees arrive with the units that need them.
+- **As built (R2-T6.4).** An in-place run started from inside a linked worktree works in that worktree, not in the repository's main checkout; the built-in upgrade workflow depends on it ([UWF](64-upgrade-workflow.spec.md)).
 
 ## 6. Acceptance criteria
 

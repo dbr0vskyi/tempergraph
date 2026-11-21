@@ -7,5 +7,5 @@ standard library and the stdlib-only engine modules in :data:`BOOTSTRAP_IMPORTS`
 
 BOOTSTRAP_IMPORTS = (
     "tempergraph.constants", "tempergraph.docs", "tempergraph.git", "tempergraph.store.layout",
-    "tempergraph.security.launch", "tempergraph.release", "tempergraph.install",
+    "tempergraph.security.launch", "tempergraph.release", "tempergraph.install", "tempergraph.store.migrate",
 )

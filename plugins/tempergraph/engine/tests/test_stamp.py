@@ -58,6 +58,15 @@ def test_shipped_changelog_exists_and_validates() -> None:
             assert changelog.entry_problems(e) == [], e["id"]
 
 
+def test_the_release_retires_the_model_list_with_its_transform() -> None:  # LAD-AC-6
+    files = dict((f"{v[0]}.{v[1]}.{v[2]}", p) for v, p in changelog.releases())
+    entries = json.loads(files[ENGINE_VERSION].read_text())["entries"]
+    (retired,) = [e for e in entries if "model-ladder-retired" in e["proof"]]
+    assert retired["breaking"] and retired["kind"] == "tightened"
+    assert retired["migrate"] == {"action": "transform", "transform": "model_list_to_escalation"}
+    assert [e["id"] for e in entries] == [f"E{ENGINE_VERSION}-{n}" for n in range(1, len(entries) + 1)]
+
+
 def test_renamed_entry_must_carry_its_transform() -> None:
     """VER-B4."""
     e = {**entry("E1.0.0-1", breaking=True), "kind": "renamed", "migrate": {"action": "assisted"}}
@@ -124,7 +133,7 @@ def test_upgrade_check_then_stamp(tmp_path: Path, repo: Path) -> None:
     assert code == 0, (err, doc)
     states = {v["check"]: v["state"] for v in doc["verification"]}
     assert states["V1 load"] == states["V2 validation"] == states["V7 diagram"] == "passed"
-    assert states["V4 audit"] == "passed" and states["V6 suites"] == "skipped"
+    assert states["V4 audit"] == "passed" and states["V6 suites"] == "passed"
     stamp = json.loads((pkg / "stamp.json").read_text())
     assert stamp["engine_version"] == ENGINE_VERSION and stamp["workflow_version"].startswith("0.1.0+")
     assert stamp["tool_set"]["claude"] == ["Glob", "Grep", "Read", "Write"]
@@ -144,12 +153,23 @@ def test_stamp_refused_when_validation_fails(tmp_path: Path, repo: Path) -> None
     assert {v["check"]: v["state"] for v in doc["verification"]}["V2 validation"] == "failed"
 
 
-def test_installed_copy_and_release_3_refusals(tmp_path: Path, repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_stamp_needs_green_model_free_suites(tmp_path: Path, repo: Path) -> None:  # EVS-B7
+    pkg = minimal_package(tmp_path)
+    write(pkg, "evals/checks/draft/must-pass/notes.md", "# Added\n")  # the must-pass fixture now fails the check
+    code, doc, _ = cli(repo, "upgrade-check", str(pkg), "--stamp")
+    assert code == 4 and not (pkg / "stamp.json").exists()
+    v6 = next(v for v in doc["verification"] if v["check"] == "V6 suites")
+    assert v6["state"] == "failed" and "draft must-pass/notes.md" in v6["evidence"]
+
+
+def test_installed_copy_and_later_release_refusals(tmp_path: Path, repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "claude"))
     cached = minimal_package(tmp_path / "claude" / "plugins" / "cache" / "acme" / "release-notes")
     code, _, err = cli(repo, "upgrade-check", str(cached), "--stamp")
     assert code == 2 and "installed copy" in err
     code, _, err = cli(repo, "upgrade", str(cached))
+    assert code == 2 and "installed copy" in err
+    code, _, err = cli(repo, "upgrade", str(cached), "--trial")
     assert code == 2 and "not_in_release" in err
     code, _, err = cli(repo, "upgrade-check", "nothing-here")
     assert code == 2 and "unknown workflow" in err

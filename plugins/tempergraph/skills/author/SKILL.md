@@ -40,7 +40,7 @@ If the person returns to unfinished work, run `tempergraph author list`, then `t
 | 2 Final outcome | `statement`, `deliverables`, `final` criteria | [references/outcome-and-guidance.md](references/outcome-and-guidance.md) |
 | 3 Work backwards | `intermediate` outcomes per unit, each criterion's `serves` | [references/backwards-and-verification.md](references/backwards-and-verification.md) |
 | 4 Find verifications | `verified_by`, `verifier`, `source` for every criterion | [references/backwards-and-verification.md](references/backwards-and-verification.md) |
-| 5 Steps' work | `blueprint.json` units: kind, produces, reads, check, judge, policies, executor | [references/steps-and-executors.md](references/steps-and-executors.md) |
+| 5 Steps' work | `blueprint.json` units: kind, produces, reads, check, judge, policies, executor, and `sizing` and `judge_sizing` (model, effort, why) for every step and judge | [references/steps-and-executors.md](references/steps-and-executors.md) |
 | 6 Start and routing | `input` in the blueprint, examples, `routing` in the record | [references/steps-and-executors.md](references/steps-and-executors.md) |
 | 7 Approval | One yes on the drawing and both tables together | [references/approve-scaffold-verify.md](references/approve-scaffold-verify.md) |
 | 8 Scaffold | The package | [references/approve-scaffold-verify.md](references/approve-scaffold-verify.md) |

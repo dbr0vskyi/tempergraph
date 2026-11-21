@@ -108,7 +108,7 @@ def _fake(monkeypatch: pytest.MonkeyPatch, decision: str | None) -> list[str]:
     opened: list[str] = []
     monkeypatch.setattr("tempergraph.package.loader.load", lambda p: __import__(
         "tests.fixtures.workflows", fromlist=["two_step"]).two_step())
-    monkeypatch.setattr(prp, "propose", lambda root, spec, cl, ex: {
+    monkeypatch.setattr(prp, "propose", lambda root, spec, cl, ex, **kw: {
         "proposal_id": "p1", "state": "drafted", "workflow": "demo", "cluster": cl, "at": now_iso(),
         "spend": {"reported": 1.0}})
     monkeypatch.setattr(prp, "open_pr", lambda root, spec, pid, host: opened.append(pid) or {"pull_request": "u"})

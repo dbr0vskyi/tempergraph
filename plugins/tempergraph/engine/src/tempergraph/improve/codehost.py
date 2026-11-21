@@ -36,12 +36,12 @@ class PullRequestHost(Protocol):
     def create_draft_pr(self, repo: str, head: str, base: str, title: str, body: str, labels: list[str]) -> str: ...
 
 
-BRANCH = re.compile(r"^improve/[A-Za-z0-9_.-]{1,80}$")
+BRANCH = re.compile(r"^(improve/[A-Za-z0-9_.-]{1,80}|tempergraph/upgrade/[A-Za-z0-9_.-]{1,80}/[A-Za-z0-9_.-]{1,40})$")
 
 
 def _check_branch(head: str) -> str:
     if not BRANCH.match(head):
-        raise CodeHostError(f"branch {head!r} is not an improve/<proposal> branch")
+        raise CodeHostError(f"branch {head!r} is not an improve/<proposal> or upgrade branch")
     return head
 
 

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "provenance": "default_no_data",
+  "stages": {
+    "local-stable": {
+      "window": 10,
+      "runs": 10,
+      "distinct_requests": 3,
+      "first_pass_yield": 0.5,
+      "gate_escapes": 2,
+      "undesigned_per_run": 1.0,
+      "unattended_lower_bound": 0.5,
+      "supervision_share_median": 0.1,
+      "share_measured": 0.5,
+      "callers_known": 0.8
+    },
+    "pipeline": {
+      "window": 20,
+      "runs": 20,
+      "distinct_requests": 3,
+      "first_pass_yield": 0.7,
+      "gate_escapes": 0,
+      "undesigned_per_run": 0.3,
+      "unattended_lower_bound": 0.8,
+      "agent_own_rescue_share": 0.05,
+      "supervision_share_median": 0.03,
+      "share_measured": 0.8,
+      "callers_known": 0.95,
+      "cost_measured": 0.8,
+      "escalated_attempts": 5,
+      "escalation_pass_lower_bound": 0.5,
+      "runs_per_arm": 5
+    }
+  }
+}

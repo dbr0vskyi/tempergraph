@@ -151,7 +151,7 @@ def act(t: Mapping[str, Any], registry: Any, host: Any, log: Any, now: datetime 
 
     spec = load(Path(str(t["package_root"])))
     ex = registry.get(str(t.get("executor") or spec.default_executor))
-    rec = prp.propose(root, spec, cl, ex)
+    rec = prp.propose(root, spec, cl, ex, alias=str(t.get("alias") or "medium"))
     rec["author"] = "loop"
     prp.save(root, rec)
     out["proposal"] = rec.get("proposal_id")

@@ -8,12 +8,13 @@ its limit.
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import re
 import signal
 import subprocess
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -24,6 +25,38 @@ CREDENTIAL_VARS = re.compile(r"(TOKEN|SECRET|PASSWORD|API_KEY|CREDENTIAL|_AUTH)"
 TAIL_LINES = 40
 TAIL_CHARS = 8000
 _CD_RE = re.compile(r"^cd\s+([A-Za-z0-9_./-]+)\s*&&\s*(.+)$")
+
+
+REPOSITORY = "@repository"  # in an allow-list or a step's commands: the commands the repository declares
+REPO_FILE = "tempergraph.commands.json"
+REPO_COMMANDS_MAX = 50
+
+
+def _plain(text: str) -> bool:
+    words = text.split()
+    return bool(words) and not has_shell_metacharacter(text) and not any(
+        w.startswith("/") or ".." in w.split("/") for w in words)
+
+
+def repository_commands(workdir: Path) -> list[str]:
+    """CHK §2.2: the command prefixes a repository declares in `tempergraph.commands.json` at its root, as a
+    list or as a map of names to commands. An entry that is not plain words is dropped, never run."""
+    try:
+        doc = json.loads((workdir / REPO_FILE).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    got = doc.get("commands") if isinstance(doc, dict) and doc.get("schema_version") == 1 else None
+    items = list(got.values()) if isinstance(got, dict) else got if isinstance(got, list) else []
+    out = [" ".join(c.split()) for c in items if isinstance(c, str) and _plain(c)]
+    return list(dict.fromkeys(out))[:REPO_COMMANDS_MAX]
+
+
+def expand(commands: Sequence[str], workdir: Path) -> tuple[str, ...]:
+    """A step's commands with `@repository` replaced by what the repository declares."""
+    out: list[str] = []
+    for c in commands:
+        out.extend(repository_commands(workdir) if c == REPOSITORY else [c])
+    return tuple(dict.fromkeys(out))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -79,9 +112,14 @@ def resolve_command(allow: Sequence[str], text: str, workdir: Path) -> ResolvedC
         return CommandRefusal(reason="empty")
     if any(w.startswith("/") or ".." in w.split("/") for w in words):
         return CommandRefusal(reason="absolute or parent path")
-    for prefix in sorted(allow, key=len, reverse=True):
+    for prefix in sorted((a for a in allow if a != REPOSITORY), key=len, reverse=True):
         if text == prefix or text.startswith(prefix + " "):
             return ResolvedCommand(argv=tuple(words), prefix=prefix, cwd=cwd)
+    if REPOSITORY in allow:  # documented by the repository itself (CHK §2.2)
+        for prefix in sorted(repository_commands(workdir), key=len, reverse=True):
+            if text == prefix or text.startswith(prefix + " "):
+                return ResolvedCommand(argv=tuple(words), prefix=prefix, cwd=cwd, documented=True,
+                                       resolver="repository")
     return CommandRefusal(reason="not declared")
 
 
@@ -100,7 +138,8 @@ def _placeholders(text: str, workdir: Path, main: Path | None) -> str:
 
 
 def run_command(cmd: ResolvedCommand, workdir: Path, out_path: Path, timeout_s: float, *,
-                main: Path | None = None, finished_codes: Sequence[int] | None = None) -> CommandRun:
+                main: Path | None = None, finished_codes: Sequence[int] | None = None,
+                env_extra: Mapping[str, str] | None = None) -> CommandRun:
     out_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     cwd = workdir / cmd.cwd if cmd.cwd else workdir
     t0 = time.monotonic()
@@ -109,7 +148,7 @@ def run_command(cmd: ResolvedCommand, workdir: Path, out_path: Path, timeout_s: 
         try:
             proc = subprocess.Popen(  # noqa: S603 - resolved list argv (CHK §2.3)
                 list(cmd.argv), cwd=cwd, stdin=subprocess.DEVNULL, stdout=fh, stderr=subprocess.STDOUT,
-                env=command_env(), start_new_session=(os.name == "posix"))
+                env={**command_env(), **(env_extra or {})}, start_new_session=(os.name == "posix"))
         except OSError as exc:
             run.extra["error"] = type(exc).__name__
             run.duration_s = time.monotonic() - t0

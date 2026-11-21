@@ -34,8 +34,9 @@ def _text(ctx: Any, key: str) -> str | None:
 
 
 def _f(ok: bool, criterion: str, place: str, message: str, fix: str = "") -> CheckFinding:
+    # every stock helper checks the shape of the output, never its substance (LAD §2.2)
     return CheckFinding(status="pass" if ok else "fail", criterion=criterion, place=place,
-                        message=message if not ok else "", fix=fix if not ok else "")
+                        message=message if not ok else "", fix=fix if not ok else "", kind="output_contract")
 
 
 def file_present(ctx: Any, key: str, criterion: str) -> CheckFinding:

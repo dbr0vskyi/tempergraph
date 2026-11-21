@@ -104,13 +104,14 @@ The judge reads the diff, the entry's note and instruction, and the files before
 - Running the model's part as a workflow is the engine's own thesis applied to itself: a model edit is a step, an independent judge grades it, a rule decides ([ADR-0005](../adr/0005-independent-judge-engine-verdict.adr.md)). It also makes the upgrade visible to `status`, the monitor and the cost reports with no new mechanism.
 - Steps and their gates change apart ([ADR-0031](../adr/0031-steps-and-their-graders-change-apart.adr.md)): the model may touch a gate's text only through an owner item, so a grader is never loosened by the session it would grade.
 - Like every workflow, this one is evaluated: its check and step suites ([EVS](51-eval-suites.spec.md)) hold fixture packages with planted upgrade items, and its judge is calibrated before the workflow is `stable` ([JCL](50-judge-calibration.spec.md)).
+- **As built (R2-T6.4).** `builtin/upgrade.py` builds the workflow: a script unit that reads the open items, then one map that drafts an answer for each owner item and one that makes each model item's edit, each graded by the four checks of §2.4 and then the judge. The flag is the spec's `builtin` field, whose value is now `true` (self-improvement) or a name (`upgrade`); a built-in is exempt from the issue-repository rule, is added to the catalog after every package, is hidden from `workflows list`, and `run` refuses it by name. It runs in place inside the upgrade's worktree: an in-place run started inside a linked worktree stays in that worktree ([WTR](82-worktree-mode.spec.md)). Its inputs and results travel in `.tempergraph-upgrade/` under the worktree, which the upgrade removes before it commits.
 
 ## 6. Acceptance criteria
 
-- [ ] UWF-AC-1 The workflow validates under the engine that ships it and is found by its flag, not its name (source-scan test).
-- [ ] UWF-AC-2 Each check of §2.4 has a fixture attempt that fails it alone.
-- [ ] UWF-AC-3 Every row of UWF-B3's table is a test with a scripted executor.
-- [ ] UWF-AC-4 No attempt of the workflow can write outside the package folder (file-system guard with scripted executors).
+- [x] UWF-AC-1 The workflow validates under the engine that ships it and is found by its flag, not its name (source-scan test).
+- [x] UWF-AC-2 Each check of §2.4 has a fixture attempt that fails it alone.
+- [x] UWF-AC-3 Every row of UWF-B3's table is a test with a scripted executor.
+- [x] UWF-AC-4 No attempt of the workflow can write outside the package folder (file-system guard with scripted executors).
 - [ ] UWF-AC-5 The workflow's step suite upgrades each planted item of its fixture packages, and its judge's gold set reaches the acceptance bar of [JCL](50-judge-calibration.spec.md) before it is marked `stable`.
 
 ## Open questions

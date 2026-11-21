@@ -3,7 +3,7 @@ title: tempergraph system overview
 type: overview
 status: review
 prefix: OVR
-adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035, 0062, 0070, 0073, 0075, 0085, 0089, 0090, 0091, 0095, 0099, 0105, 0107, 0108, 0109]
+adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035, 0062, 0070, 0073, 0075, 0085, 0089, 0090, 0091, 0095, 0099, 0105, 0107, 0108, 0109, 0125]
 ---
 
 # tempergraph system overview
@@ -157,6 +157,12 @@ flowchart LR
 | AUT | [89 Workflow authoring](89-workflow-authoring.spec.md) | Entry paths, intake inventory, the backwards interview, verification search and classification, authoring record, revise mode |
 | OUT | [90 Run-level good outcome](90-run-outcome.spec.md) | The outcome file, verifier classes, trust and coverage, the outcome gate, the outcome record and measures, revisions |
 | SCF | [91 Blueprint, scaffold and authoring checks](91-blueprint-and-scaffold.spec.md) | The blueprint and its drawing, the literal check, the scaffold and its generated tests, `author verify` up to a first trial |
+| LAD | [92 Effort ladder and one-step model escalation](92-effort-ladder-and-model-escalation.spec.md) | Evidence, escalation |
+| JRK | [93 Judge model by risk](93-judge-model-by-risk.spec.md) | Risk levels, floor |
+| CXR | [94 Complexity routing between decompositions](94-complexity-routing.spec.md) | Zones, re-arm |
+| PRO | [95 Promotion check and workflow stages](95-promotion-check.spec.md) | Stages, stamp |
+| CAR | [96 Run state carried on a branch](96-run-state-on-a-branch.spec.md) | State branch |
+| WIN | [97 Windows support](97-windows-support.spec.md) | Platform rules |
 
 ### 2.3 Engine-wide contracts
 

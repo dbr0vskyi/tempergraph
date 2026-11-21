@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -128,6 +129,7 @@ class RunLog:
         self.segment: int | None = None
         self.checked_tail = False
         self.observers = observers  # an ObserverHub (run/events.py) or None; enabled in operator config only
+        self._lock = threading.RLock()  # branches of a parallel block write from their own threads (WSP §5)
 
     def _segment(self) -> int:
         """This process's segment: the one after the log's last `run_started`, or 0 for a new thread."""
@@ -138,6 +140,10 @@ class RunLog:
         return self.segment
 
     def write(self, record: str, /, **fields: Any) -> int:
+        with self._lock:
+            return self._write(record, **fields)
+
+    def _write(self, record: str, /, **fields: Any) -> int:
         self.seq += 1
         try:
             segment = self._segment()
@@ -172,7 +178,17 @@ class RunLog:
         if record in ("run_started", "run_exit"):
             self._rows(record, segment)
         self._beat(record)
+        self._hooks(out)
         return self.seq
+
+    def _hooks(self, rec: Mapping[str, Any]) -> None:
+        """Lifecycle hooks for the record's event (CLI §2.2); best effort, never changes the run (C2)."""
+        try:
+            from tempergraph.observe import hooks
+
+            hooks.on_record(self.path, rec)
+        except Exception:  # noqa: BLE001
+            self.failures += 1
 
     def _beat(self, record: str) -> None:
         """The heartbeat to configured sinks, at most every 60 s and at the run's ends (CST §2.2); best effort."""

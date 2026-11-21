@@ -94,7 +94,7 @@ def test_same_request_same_thread() -> None:
     assert a.task_id == b.task_id and a.inputs["request"] == "Release notes"
 
 
-@pytest.mark.parametrize("argv", [["update"], ["run", "update", "x"], ["run", "demo", "status"], ["nope"],
+@pytest.mark.parametrize("argv", [["schedule"], ["run", "update", "x"], ["run", "demo", "status"], ["nope"],
                                   ["run", "missing", "x"], ["run", "demo", "x", "--bogus"]])
 def test_usage_refusals_exit_2(repo: Path, argv: list[str]) -> None:
     code, _, err = cli(repo, happy(), *argv)
@@ -187,12 +187,17 @@ def test_registered_package_loads_and_runs(repo: Path, tmp_path: Path, monkeypat
     assert code == ExitCode.INTERNAL and "not_loaded" in err
 
 
-def test_pause_before_is_release_2_and_dry_run_is_recorded(repo: Path) -> None:  # CLI §2.1, FLX §2.5
+def test_pause_before_and_dry_run(repo: Path) -> None:  # CLI §2.1, FLX §2.5, §2.6
     for argv in (["--check"], []):
-        code, _, err = cli(repo, happy(), "run", "demo", "notes", "--task-id", "D-1", "--pause-before", "draft",
+        code, _, err = cli(repo, happy(), "run", "demo", "notes", "--task-id", "D-1", "--pause-before", "nowhere",
                            *argv)
-        assert code == 2 and "not_in_release" in err
+        assert code == 2 and "breakpoint_unknown" in err
     assert not (repo / ".tempergraph" / "runs" / "demo" / "D-1").exists()
+    ex = happy()
+    code, doc, err = cli(repo, ex, "run", "demo", "notes", "--task-id", "D-1", "--pause-before", "draft", "--json")
+    assert code == ExitCode.PAUSED and doc["reason"] == "breakpoint" and ex.calls == [], err
+    code, _, err = cli(repo, ex, "resume", "demo", "D-1", "--decision", "proceed")
+    assert code == 0, err
     code, _, err = cli(repo, happy(), "run", "demo", "notes", "--task-id", "D-2", "--dry-run", "--auto-reopen", "1")
     assert code == 0, err
     log = (repo / ".tempergraph" / "runs" / "demo" / "D-2" / "run.jsonl").read_text().splitlines()

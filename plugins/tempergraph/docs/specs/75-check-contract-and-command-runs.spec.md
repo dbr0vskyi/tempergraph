@@ -38,7 +38,8 @@ def resolve_command(workflow: str, text: str, workdir: Path) -> ResolvedCommand 
 | `artifacts` | map key → pointer | Every artifact in state that the unit's path produced, by key, item-keyed for map items |
 | `values` | map key → str | Step values ([VAL](76-step-values-and-template-keys.spec.md)) |
 | `facts` | map unit → map key → str | Facts recorded by earlier checks on this path (§2.4) |
-| `git` | `GitFacts` | Computed by the engine's git reader before the check starts |
+| `git` | `GitFacts`, or `None` outside a git repository | Computed by the engine's git reader before the check starts |
+| `changed_paths` | list of paths | Git's changed paths, or outside git the manifest's ([WSP §2.4](13-workspace-and-concurrency.spec.md)) |
 | `settings` | map name → value | The workflow's resolved settings for this run (owned by the settings design; read-only here) |
 | `criteria` | list of `{id, mechanical}` | The gate's criteria, so findings can name them |
 | `deadline_s` | float | Seconds left of `GateSpec.check_timeout_s` |
@@ -175,6 +176,7 @@ A check runs in a child engine process (the check worker) that receives the cont
 - A check worker costs about one interpreter start per gate. It is the only way to bound a check whose own code hangs, and it keeps workflow code off the engine's main thread.
 - The preview is an engine command, not a resumed session: a resumed retry was measured dearer than a fresh one ([R-001 F20](../research/R-001-claude-code-cli-headless.rsrch.md)), while a preview lets the session repair a structural miss before it ends at no judge cost ([ADR-0077](../adr/0077-a-step-previews-its-own-check-in-the-attempt.adr.md)).
 - Which commands a temperspec gate runs, how it splits a suite, how many workers it asks pytest for and how it reads the plan are temperspec's design; nothing here names a tool.
+- **As built (R2-T7).** `run/selfcheck.py` keeps the ticket as `<state root>/tickets/<ticket>.json` for the length of the session and removes it after; the verb is `tempergraph self-check <ticket>` and only the `claude` grant ships (`Bash(<command>)` allow rule), the other executors with their own release. The preview sees the artifacts state held when the attempt began, so an artifact the session is still writing is read from the workspace by the check itself. `self_check_limit` is a run setting ([RST §2.2](80-run-settings-and-overrides.spec.md)). A repository declares its own commands in `tempergraph.commands.json` at its root (`{"commands": ["<prefix>", …]}`); a step or check that lists `@repository` among its commands gets them, each marked `documented`, and a missing or malformed file declares none. `GitFacts.pushed` is true when the head commit is on a remote-tracking ref.
 
 ## 6. Acceptance criteria
 
@@ -183,7 +185,7 @@ A check runs in a child engine process (the check worker) that receives the cont
 - [ ] CHK-AC-3 `resolve_command` gives the same answer to a check, the tool host and the commands block for every fixture command (one shared function, source-scan test).
 - [ ] CHK-AC-4 No `CommandRun.tail` or `program_path` in any record contains the workspace, main checkout or home path (canary test).
 - [ ] CHK-AC-5 A FAIL with findings renders every finding's criterion, place and fix in the retry prompt, and starts no judge session.
-- [ ] CHK-AC-6 `self-check` writes no state, verdict, fact or budget change (state digest before and after), and its runs are reused by the gate's check on an unchanged tree.
+- [x] CHK-AC-6 `self-check` writes no state, verdict, fact or budget change (state digest before and after), and its runs are reused by the gate's check on an unchanged tree.
 - [ ] CHK-AC-7 Facts survive a resume and are cleared by a trip back exactly as artifacts are.
 
 ## Open questions

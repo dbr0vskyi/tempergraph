@@ -148,18 +148,19 @@ A trial graded `needs_person` counts in no rate until a person records a grade. 
 
 ## 5. Design notes
 
+- **As built (R2-T4).** `improve/suites.py` holds the suites and `improve/harvest.py` harvest and replay. Check cases are the fixtures of `evals/checks/<unit>/must-pass|must-fail/`; step cases are `evals/steps/<unit>/<case_id>/case.json` (`role`, `inputs`, `expect`, `covered`, `trials`) with an optional `workspace/`; workflow cases are the entries of `evals/cases.json` with `role`, `end_state`, `answers`, `covered` and `trials`. An assertion is `{path}` (exists), `{path, absent}`, `{path, pattern}`, `{path, heading}` or `{changed_within: [globs]}`; `covered: true` says the assertions cover the case, so code decides a pass. A step trial runs the one step as its own workflow in a fresh repository made from the case's workspace, and what earlier units would have produced comes from the case's `inputs`. Results are rows of `evals/results.jsonl` under the state root; a person's grade is a row beside them. A trial that stops for a person for a reason other than a spent budget is `paused` and counts in no rate. `evals run --kind judge` scores every judged gate and risk level under the one cap. The test marker is the test runner's environment variable, lifted only by `TEMPERGRAPH_LIVE=1`. Open: `max_level` of a workflow case is not enforced, a test-result assertion is not built, and the per-criterion pass rates of `report` do not yet carry the judge's state (the step suite's rate does), so EVS-AC-2 stays open.
 - **pass^k for gates.** A gate that passes once in three is not a working gate. `pass_hat_k` exposes it where `pass_at_1` averages it away.
 - **One case, two uses.** Workflow cases are PRP case-set entries so a reviewed case is written once and serves both a release check here and a version trial there.
 - **Corrected, never replaced.** The raw rate stays the record; the corrected rate is an estimate whose error bars depend on a small gold set, so it is a reading aid. An interval that carries the gold set's own uncertainty is a later refinement.
 
 ## 6. Acceptance criteria
 
-- [ ] EVS-AC-1 Every row of the EVS-B3 table is reproduced by the figures function.
+- [x] EVS-AC-1 Every row of the EVS-B3 table is reproduced by the figures function.
 - [ ] EVS-AC-2 The corrected rate of EVS-B5 is reproduced, and every label of the §2.5 table appears for its states in a fixture report.
-- [ ] EVS-AC-3 No live suite can start under the test marker.
-- [ ] EVS-AC-4 A `needs_person` result counts in no rate and leaves a regression suite `incomplete`.
-- [ ] EVS-AC-5 A live suite record contains no request, output or model text (canary test).
-- [ ] EVS-AC-6 `evals report` and `evals grade` make no model call.
+- [x] EVS-AC-3 No live suite can start under the test marker.
+- [x] EVS-AC-4 A `needs_person` result counts in no rate and leaves a regression suite `incomplete`.
+- [x] EVS-AC-5 A live suite record contains no request, output or model text (canary test).
+- [x] EVS-AC-6 `evals report` and `evals grade` make no model call.
 
 ## Open questions
 

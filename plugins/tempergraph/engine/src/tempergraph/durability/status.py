@@ -7,16 +7,19 @@ being created, and nothing is written. Fields the run has not recorded yet are l
 
 from __future__ import annotations
 
+import contextlib
 import json
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from tempergraph.constants import SCHEMA, ExitCode
 from tempergraph.contracts import ThreadState, WorkflowSpec, thread_id
 from tempergraph.durability import alias as aliases
+from tempergraph.durability import engine_file
 from tempergraph.durability.checkpoint import (
     Snapshot,
     classify_snapshot,
@@ -41,16 +44,33 @@ def split_thread(tid: str) -> tuple[str, str]:
 def _read(state_root: Path, spec: WorkflowSpec, tid: str) -> tuple[Snapshot, bool]:
     _, task = split_thread(tid)
     held = is_held(lock_path(state_root, spec.name, task))
-    with open_readonly(checkpoint_path(state_root, spec.name)) as saver:
+    with open_readonly(engine_file.checkpoint_of(state_root, spec.name, task)) as saver:
         if saver is None:
             return Snapshot(exists=False), held
         return snapshot(observer_graph(spec, saver), tid), held
 
 
+def breakpoint_at(state_root: Path, workflow: str, task_id: str) -> dict[str, Any] | None:
+    """The operator breakpoint a thread is paused at, if any (FLX §2.5): a marker beside the run log."""
+    try:
+        doc = json.loads((run_dir(state_root, workflow, task_id) / "breakpoint.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return doc if isinstance(doc, dict) else None
+
+
+def _state(state_root: Path, spec: WorkflowSpec, tid: str, snap: Snapshot, held: bool) -> ThreadState:
+    state = classify_snapshot(snap, held)
+    if state is ThreadState.UNFINISHED and breakpoint_at(state_root, spec.name, split_thread(tid)[1]):
+        return ThreadState.PAUSED  # nothing of the next unit ran; a person's `proceed` runs it
+    return state
+
+
 def classify(state_root: Path, spec: WorkflowSpec, task_id: str) -> ThreadState:
     """DUR §2 `classify`: read-only; creates nothing."""
-    snap, held = _read(state_root, spec, thread_id(spec.name, task_id))
-    return classify_snapshot(snap, held)
+    tid = thread_id(spec.name, task_id)
+    snap, held = _read(state_root, spec, tid)
+    return _state(state_root, spec, tid, snap, held)
 
 
 def resume_command(workflow: str, tid: str, decisions: list[str] | None = None) -> str:
@@ -63,9 +83,32 @@ def _pending(workflow: str, tid: str, snap: Snapshot) -> list[dict[str, Any]]:
     for node, payload in snap.interrupts:
         p = payload if isinstance(payload, dict) else {}
         unit = node.rsplit(".", 1)[0] if node.endswith(".human") else node
-        out.append({"unit": unit, "item": p.get("item"), "kind": p.get("kind", "escalation"),
-                    "resume": p.get("resume") or resume_command(workflow, tid, p.get("decisions"))})
+        g = {"unit": unit, "item": p.get("item"), "kind": p.get("kind", "escalation"),
+             "resume": p.get("resume") or resume_command(workflow, tid, p.get("decisions"))}
+        if p.get("deadline_at"):  # FLX §2.3: overdue until someone applies the deadline
+            g["deadline_at"] = p["deadline_at"]
+            g["on_deadline"] = p.get("on_deadline")
+            with contextlib.suppress(ValueError, TypeError):
+                due = datetime.fromisoformat(str(p["deadline_at"]))
+                g["overdue"] = datetime.now(due.tzinfo) >= due
+        out.append(g)
     return out
+
+
+def _input_counts(state_root: Path, workflow: str, tid: str, gates: list[dict[str, Any]], snap: Snapshot) -> None:
+    """ASK-B4: an `input` gate's count of required questions still unanswered, from the answers file."""
+    for g in gates:
+        if g["kind"] != "input":
+            continue
+        qs = ((snap.values.get("attempts") or {}).get(g["unit"]) or {}).get("questions") or []
+        try:
+            doc = json.loads((run_dir(state_root, workflow, split_thread(tid)[1]) / "answers"
+                              / f"{g['unit']}.json").read_text(encoding="utf-8"))
+            have = set(doc.get("answers") or {})
+        except (OSError, ValueError, AttributeError):
+            have = set()
+        g["questions"] = len(qs)
+        g["unanswered"] = sum(1 for q in qs if q.get("required", True) and q.get("name") not in have)
 
 
 def _settings(state_root: Path, spec: WorkflowSpec, options: Any) -> dict[str, Any]:
@@ -112,14 +155,23 @@ def _lineage(state_root: Path, workflow: str, tid: str, run: Mapping[str, Any]) 
 
 def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     snap, held = _read(state_root, spec, tid)
-    state = classify_snapshot(snap, held)
+    state = _state(state_root, spec, tid, snap, held)
+    gates = _pending(spec.name, tid, snap)
+    _input_counts(state_root, spec.name, tid, gates, snap)
+    bp = breakpoint_at(state_root, spec.name, split_thread(tid)[1]) if state is ThreadState.PAUSED and not gates \
+        else None
+    if bp:
+        gates.append({"unit": bp.get("unit"), "item": None, "kind": "breakpoint", "resume": bp.get("resume")})
     r: dict[str, Any] = {"thread_id": tid, "workflow": spec.name, "state": str(state), "alive": held,
-                         "pending_gates": _pending(spec.name, tid, snap),
+                         "pending_gates": gates,
                          "log_path": str(run_dir(state_root, spec.name, split_thread(tid)[1]) / "run.jsonl")}
     run = snap.values.get("run") or {}
     for key in RUN_FIELDS:
         if key in run:
             r[key] = run[key]
+    if run.get("degraded"):  # FLX-AC-4: a run that took a fallback is never shown without it
+        r["degraded"] = True
+        r["degraded_unit"] = (run["degraded"] or {}).get("unit")
     r.update(_settings(state_root, spec, run.get("options")))
     r.update(_lineage(state_root, spec.name, tid, run))
     ws = (snap.values.get("workspace") or {})
@@ -136,6 +188,16 @@ def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     name = aliases.alias_of(state_root, tid)
     if name:
         r["alias"] = name
+    from tempergraph.durability import carry
+
+    carried = carry.marker(state_root, spec.name, split_thread(tid)[1])
+    if carried.get("on") or carried.get("state") in ("unpushed", "delete_failed"):  # CAR §4
+        r["carry"] = carried.get("state") or "on"
+    eng = engine_file.read(state_root, spec.name, split_thread(tid)[1])  # MIG §2.1
+    if (eng.get("last_on") or {}).get("engine_version"):
+        r["engine"] = eng["last_on"]["engine_version"]
+    if eng.get("pinned"):
+        r["engine_pin"] = dict(eng["pinned"])
     if snap.next and state is ThreadState.UNFINISHED:
         r["next"] = [n for n in snap.next if n != flow.FINALIZER] or list(snap.next)
     return r
@@ -149,8 +211,12 @@ class Selector:
 
 
 def _threads(state_root: Path, spec: WorkflowSpec) -> list[str]:
-    with open_readonly(checkpoint_path(state_root, spec.name)) as saver:
-        return thread_ids(saver) if saver is not None else []
+    """Every thread in the databases of the checkpoint formats this engine resumes (MIG §2.4)."""
+    out: list[str] = []
+    for fmt in sorted({*engine_file.resumes(), engine_file.checkpoint_format()}):
+        with open_readonly(checkpoint_path(state_root, spec.name, fmt)) as saver:
+            out += [t for t in (thread_ids(saver) if saver is not None else []) if t not in out]
+    return out
 
 
 def select(state_root: Path, specs: Mapping[str, WorkflowSpec], sel: Selector) -> list[tuple[WorkflowSpec, str]]:
@@ -215,7 +281,7 @@ def wait(state_root: Path, spec: WorkflowSpec, tid: str, timeout_s: float, *, po
 
     Polls file sizes and times and rebuilds the row only when one moved."""
     _, task = split_thread(tid)
-    db = checkpoint_path(state_root, spec.name)
+    db = engine_file.checkpoint_of(state_root, spec.name, task)
     watched = [db, db.with_name(db.name + "-wal"), lock_path(state_root, spec.name, task),
                run_dir(state_root, spec.name, task) / "run.jsonl"]
     start = clock()

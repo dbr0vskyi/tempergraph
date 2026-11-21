@@ -66,6 +66,23 @@ class LoadedPackage:
         return workflow_version(self.spec.version, self.content_digest)
 
 
+# The workflow version with its content digest, by package root, as of the last load in this process (VER §2.4).
+_VERSIONS: dict[Path, str] = {}
+
+
+def full_version(spec: WorkflowSpec) -> str:
+    """`<version>+<digest>` of a loaded package, else the spec's declared version."""
+    root = spec.package_root
+    if root is None:
+        return spec.version
+    if root not in _VERSIONS:
+        try:
+            load_package(root)
+        except PackageNotLoaded:
+            return spec.version
+    return _VERSIONS.get(root, spec.version)
+
+
 # Load-time findings by package root, so the one validation function reports them (WFM-AC-2).
 _LOAD_FINDINGS: dict[Path, list[Finding]] = {}
 
@@ -177,9 +194,11 @@ def load_package(package_path: Path, *, engine_api: int = WORKFLOW_API,
     findings += outcome_findings
     inventory = package_files(root)
     _LOAD_FINDINGS[root] = list(findings)
-    return LoadedPackage(root=root, manifests=m, pyproject=pyproject, spec=spec, inventory=inventory,
-                         content_digest=content_digest(spec, inventory, deps), docs_digest=docs_digest(inventory),
-                         findings=findings, outcome_pending=pending)
+    lp = LoadedPackage(root=root, manifests=m, pyproject=pyproject, spec=spec, inventory=inventory,
+                       content_digest=content_digest(spec, inventory, deps), docs_digest=docs_digest(inventory),
+                       findings=findings, outcome_pending=pending)
+    _VERSIONS[root] = lp.workflow_version
+    return lp
 
 
 def load(package_path: Path) -> WorkflowSpec:
@@ -203,6 +222,7 @@ def package_findings(spec: WorkflowSpec, mode: Literal["dev", "stable"] | None =
     if isinstance(py, Pyproject):
         out += rules.layout(root, got, py, inventory)
     out += rules.text_refs(spec, root)
+    out += rules.check_cases(spec, root)
     out += docs_check.docs_check(spec, root, mode)
     from tempergraph.package.readiness import stable_findings
 

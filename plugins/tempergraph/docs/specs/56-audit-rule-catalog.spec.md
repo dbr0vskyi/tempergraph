@@ -94,6 +94,7 @@ Rules are ranked by family in R-050 order (C1 highest) and, within a family, by 
 | id | layer | sev / conf | cause | Fires when | Remedy |
 |---|---|---|---|---|---|
 | `small-judge-cross-file` | definition | warning / medium | `model_too_small` *new* | A judge or review step on tier `small` has references or subject spanning more than one artifact | Use `medium` or `large` for reading across files (F6.4: 5 of 19 against 18 of 19) |
+| `sizing-unassessed` | definition | error / high | `sizing_unassessed` *new* | A step or a judge states no model (or `inherit`), no effort (nor an effort ladder), or no reason of four words | State the model tier, the effort and one sentence of why on the step or judge ([SCF §2.1.1](91-blueprint-and-scaffold.spec.md)) |
 | `large-everywhere` | definition | info / low | `model_heavy` *new* | Every step and judge resolves to `large` | Choose models by what each step must find; start mechanical steps lower |
 | `no-run-cost-cap` | definition | info / high | `no_cost_cap` *new* | `run_cost_cap_usd` unset and `improvement_mode` is `stable` | Set a cap near the p90 run cost |
 | `context-heavy-step` | history | warning / medium | `context_heavy` *new* | A step's median `peak_context_tokens` exceeds 150,000, or ≥ 50% of its cost is in turns above 200,000; `min_n` 5 attempts | Split the step or narrow what it reads (F6.3) |

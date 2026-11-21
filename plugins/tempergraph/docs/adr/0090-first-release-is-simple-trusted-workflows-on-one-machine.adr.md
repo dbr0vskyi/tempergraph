@@ -5,6 +5,7 @@
 | Status | proposed |
 | Date | 2026-11-20 |
 | Authors | Claude (design session for the owner) |
+| Superseded in part by | [ADR-0125](0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md): the release 2 and 3 rows (upgrade moves to release 2; ladders, judge by risk, complexity routing and the promotion spec join release 2) |
 | Supersedes | — (answers R-011 G4 and U3; keeps accepted [ADR-0029](0029-own-observability-first-export-deferred.adr.md) and [ADR-0040](0040-take-script-steps-attention-and-composition-from-archon.adr.md)) |
 
 ## Context

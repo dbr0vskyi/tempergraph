@@ -122,14 +122,15 @@ Hooks, sinks and the monitor read engine documents with tolerant readers ([CON �
 - The engine names compiled nodes after unit names ([CMP](03-compiler-and-flow.spec.md)); renaming that scheme is a checkpoint-format change by definition, so it pins rather than breaks.
 - A workflow change is never blocked for what a checkpoint does not hold: a person who improves a prompt while a run waits for their decision gets the improved prompt on resume, recorded.
 - Migrations run on first write, not in `update`, because `update` cannot reach repositories that are not checked out, and a store must never be half-moved under a live run of an older engine.
+- **As built (R2-T6.2).** `durability/engine_file.py` holds the engine file, the decision of §2.4 as a pure function, and the four tests of §2.5; `store/migrate.py` holds the layout steps. The latest history entry also keeps a digest, the kind and the produced keys of each unit, which is what the tests of §2.5 and the `workflow_changed` notice compare; earlier entries drop it, and the history keeps its last 50 entries. A thread keeps the checkpoint format it was written in for as long as it lives, and every reader of one thread opens that format's database; a listing reads the databases of every format the engine resumes. The CLI decides before anything else and hands a pinned thread to its engine's interpreter with the argv it was given; the runner itself refuses such a thread with `engine_pinned`, so no path resumes it on the wrong engine. This release ships layout 1, checkpoint format 1 and no converter: `resume --unpin` clears a pin only when this engine resumes the thread's format. The engine file travels with a carried thread ([CAR](96-run-state-on-a-branch.spec.md)). The workflow version compared is the version with its content digest for a loaded package, and the declared version otherwise. Open: MIG-AC-6 waits for orchestration; MIG-B7's fixture checkpoints of earlier releases start with the first release that follows this one.
 
 ## 6. Acceptance criteria
 
-- [ ] MIG-AC-1 Every row of §2.4's table and of MIG-B2's table is a test with fixture checkpoints.
-- [ ] MIG-AC-2 Each test of §2.5 has a failing fixture that refuses with its own message and writes nothing, and a passing fixture that records `workflow_changed`.
-- [ ] MIG-AC-3 Every layout migration step has a before and after fixture tree, is idempotent, and a fault injected mid-step restores the backup.
-- [ ] MIG-AC-4 A read-only verb run against an older layout leaves it unchanged (hash test).
-- [ ] MIG-AC-5 Two engines of different checkpoint formats never open the same database file (test with both formats in one state root).
+- [x] MIG-AC-1 Every row of §2.4's table and of MIG-B2's table is a test with fixture checkpoints.
+- [x] MIG-AC-2 Each test of §2.5 has a failing fixture that refuses with its own message and writes nothing, and a passing fixture that records `workflow_changed`.
+- [x] MIG-AC-3 Every layout migration step has a before and after fixture tree, is idempotent, and a fault injected mid-step restores the backup.
+- [x] MIG-AC-4 A read-only verb run against an older layout leaves it unchanged (hash test).
+- [x] MIG-AC-5 Two engines of different checkpoint formats never open the same database file (test with both formats in one state root).
 - [ ] MIG-AC-6 A supervisor started before an update starts every child on its own engine (two-process test).
 
 ## Open questions
