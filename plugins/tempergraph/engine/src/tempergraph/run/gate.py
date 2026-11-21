@@ -12,8 +12,10 @@ from typing import Any
 
 from tempergraph.contracts import Decision, RouteView, UnitSpec, Verdict, WorkflowSpec
 from tempergraph.model import flow
+from tempergraph.run import mapping
 
-ESCALATE_CAUSES = frozenset({"auth", "refused", "tool_access", "environmental", "blocked", "upstream"})
+ESCALATE_CAUSES = frozenset({"auth", "refused", "tool_access", "environmental", "blocked", "upstream",
+                             "workflow_fault"})
 HUMAN_CAP = 100
 
 
@@ -69,6 +71,8 @@ def pick(spec: WorkflowSpec, unit: str, state: Mapping[str, Any]) -> dict[str, A
 
 
 SIGNALS_MAX, SIGNAL_CHARS = 10, 60
+COMPLEXITY_FIELDS = ("zone", "measures", "rules_digest", "rules_source", "rules_error")
+EVIDENCE_REASONS = frozenset({"blockers", "check_fail"})
 
 
 def _signals(raw: Any) -> tuple[dict[str, Any], int]:
@@ -102,16 +106,24 @@ def _switch_pick(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], view: 
     fault: str | None = None
     signals: dict[str, Any] = {}
     clipped = 0
-    try:
-        got = sw.predicate.resolve()(view)
-        if isinstance(got, tuple) and len(got) == 2:
-            got, raw = got
-            signals, clipped = _signals(raw)
-        would = str(got) if str(got) in sw.arms else None
+    measured: dict[str, Any] = {}
+    if sw.complexity is not None:  # CXR §2.4: the step node evaluated the rules once; the gate reads the result
+        measured = dict(((state.get("attempts") or {}).get(unit) or {}).get("complexity") or {})
+        would = measured.get("arm") if measured.get("arm") in sw.arms else None
         if would is None:
-            fault = "unknown_arm"
-    except Exception as exc:  # noqa: BLE001 - a predicate fault takes the default arm
-        fault = type(exc).__name__
+            fault = "not_evaluated"
+    else:
+        try:
+            assert sw.predicate is not None
+            got = sw.predicate.resolve()(view)
+            if isinstance(got, tuple) and len(got) == 2:
+                got, raw = got
+                signals, clipped = _signals(raw)
+            would = str(got) if str(got) in sw.arms else None
+            if would is None:
+                fault = "unknown_arm"
+        except Exception as exc:  # noqa: BLE001 - a predicate fault takes the default arm
+            fault = type(exc).__name__
     shadow = sw.mode == "shadow"
     operator = u.extra.get("arm")
     if operator in sw.arms:
@@ -128,6 +140,7 @@ def _switch_pick(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], view: 
         p["signals_clipped"] = clipped
     if fault:
         p["fault"] = fault
+    p.update({k: measured[k] for k in COMPLEXITY_FIELDS if k in measured})
     return p
 
 
@@ -184,7 +197,8 @@ def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: 
     rubric = [{"n": i, "id": c.id, "text": c.text, "severity": c.severity} for i, c in enumerate(u.gate.criteria, 1)]
     ws = state.get("workspace") or {}
     del s
-    out = {"kind": kind, "unit": unit, "item": None, "reason": reason, "artifacts": arts, "rubric": rubric,
+    item = ((state.get("attempts") or {}).get(unit) or {}).get("item")  # a map's item in hand (MAP §2.2)
+    out = {"kind": kind, "unit": unit, "item": item, "reason": reason, "artifacts": arts, "rubric": rubric,
            "blockers": blockers or [], "decisions": words, "workspace": ws.get("path"),
            "resume": resume_command(spec, task_id, words)}
     if reason == "tool_access":  # each refused or missing name and what fixes it (RST §2.8)
@@ -219,13 +233,15 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
         name, r = found
         sw = spec.units[name].switch
         assert sw is not None
+        if sw.complexity is not None and cause == "budget_spent" and judged.get("reason") not in EVIDENCE_REASONS:
+            return None  # CXR §2.5: a budget spent on held causes keeps the gate's own policy
         entry = sw.arms[r.to]
         prior = ((state.get("route") or {}).get(name) or {}).get("pick") or {}
         visits = (state.get("visits") or {}).get(entry) or {}
         loops[entry] = int(loops.get(entry, 0)) + 1
         p = {"arm": r.to, "target": entry, "chosen_by": "rearm", "visit": prior.get("visit", 1),
              "shadow": False, "would_choose": prior.get("would_choose"), "rearmed_from": r.from_arm,
-             "rearm_unit": unit, "rearm_cause": cause}
+             "rearm_unit": unit, "rearm_cause": cause, **{k: prior[k] for k in COMPLEXITY_FIELDS if k in prior}}
         return _merge(clear_from(spec, entry, state), route("BACK", flow.step_node(entry), rearm=name),
                       {"route": {name: {"pick": p, "rearmed": True}},
                        "counters": {unit: {**counters, "retries": 0, "infra": 0, "loops": loops}},
@@ -243,6 +259,9 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
                                                                          "detail": reason}}})
         return to_human("budget", reason)
 
+    if att.get("map_fault"):  # the list could not be used: stop before any item (MAP §2.2 row 1, MAP-B5)
+        return _merge(route("STOP", s.stop[0]), {"run": {"stopped": {"reason": "map", "unit": unit,
+                                                                     "detail": att.get("map_fault")}}})
     if att.get("infra_spent"):
         return _merge(route("STOP", s.stop[0]), {"run": {"stopped": {"reason": "infra", "unit": unit,
                                                                      "detail": att.get("infra_cause")}}})
@@ -282,7 +301,11 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
         extra = {"pick": p} if p else {}
         if g.approval:
             return to_human("approval", "approval", **extra)
-        return route("PROCEED", flow.target_node(p["target"]) if p else s.proceed[0], **extra)
+        nxt = mapping.advance(spec, unit, state)
+        if nxt is not None:  # a map's next item runs the unit's own step node again (MAP §2.2)
+            return _merge(route("NEXT", s.retry[0], item=att.get("item")), nxt)
+        return _merge(route("PROCEED", flow.target_node(p["target"]) if p else s.proceed[0], **extra),
+                      mapping.passed_write(spec, unit, state))
     return to_human("escalation", judged.get("reason") or "escalate")
 
 
@@ -394,9 +417,12 @@ def _apply(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payload: Map
         return {"route": {unit: {"token": token, "node": node, "by": "person"}}, "pause": {unit: None}}
 
     if d.word == "proceed":
+        more = mapping.advance(spec, unit, state)
+        if more is not None:  # a person passed one item of a map; the next item runs
+            return _merge(route("NEXT", s.retry[0]), more)
         picked = ((state.get("route") or {}).get(unit) or {}).get("pick")  # made before the approval pause
         nxt = flow.target_node(picked["target"]) if picked else s.proceed[0]
-        w = route("PROCEED", nxt)
+        w = _merge(route("PROCEED", nxt), mapping.passed_write(spec, unit, state))
         if picked:
             w["route"][unit]["pick"] = picked
         nxt_unit = nxt.rsplit(".", 1)[0] if nxt.endswith(".step") else None

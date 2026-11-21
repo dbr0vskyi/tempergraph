@@ -46,6 +46,17 @@ Weight: light
 Goal: MAP-AC-1 to MAP-AC-4 for the sequential form; item keys validated; the concurrent mode stays `not_in_release`.
 Weight: heavy (refactor)
 
+| Row | Kind | File | Proves | Change |
+|---|---|---|---|---|
+| 2.1 | test | `plugins/tempergraph/engine/tests/test_map.py` | MAP-AC-1, MAP-AC-2, MAP-AC-3, MAP-AC-4 | MAP-B1 to B6 for the sequential form, every §2.3 row that the form can reach, VAL-B4 |
+| 2.2 | code | `plugins/tempergraph/engine/src/tempergraph/contracts.py` | | `MapSpec`, `MapItem`, `ExtractContext`, `UnitSpec.map` |
+| 2.3 | code | `plugins/tempergraph/engine/src/tempergraph/api.py` | | The `Map` builder |
+| 2.4 | code | `plugins/tempergraph/engine/src/tempergraph/run/mapping.py` | | Reading the list, the item in hand, advancing |
+| 2.5 | code | `plugins/tempergraph/engine/src/tempergraph/run/nodes.py` | | Fan-out, item sessions, item keys and records |
+| 2.6 | code | `plugins/tempergraph/engine/src/tempergraph/run/gate.py` | | Next item, list fault stop, item on the pause |
+| 2.7 | code | `plugins/tempergraph/engine/src/tempergraph/model/validate.py` | | MAP §2.3 rows and limits |
+| 2.8 | code | `plugins/tempergraph/engine/src/tempergraph/settings.py` | | A map's step takes the step-side settings |
+
 ### Phase 3: Complexity switches
 
 Goal: CXR-AC-1 to CXR-AC-5: stock measures, the rules file and its repository override, zones, the arm contract at validation, one-way re-arm, exploration, `report --switch`.
@@ -59,6 +70,7 @@ Weight: heavy (many-tests)
 | Criterion | Test | Command |
 |---|---|---|
 | AC 1 | `plugins/tempergraph/engine/tests/test_measured_switches.py` | `cd plugins/tempergraph/engine && python -m pytest` |
+| AC 2 | `plugins/tempergraph/engine/tests/test_map.py` | `cd plugins/tempergraph/engine && python -m pytest` |
 
 ## 4. Docs to update
 

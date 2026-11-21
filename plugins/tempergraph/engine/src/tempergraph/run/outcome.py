@@ -121,7 +121,7 @@ def check_against(outcome: OutcomeSpec, spec: WorkflowSpec) -> list[Finding]:
         if unit not in spec.units:
             out.append(Finding(code="outcome-unit-unknown", unit=unit, message=f"{unit} is not in the workflow"))
     for name, u in spec.units.items():
-        if u.kind == "step" and name not in outcome.intermediate:
+        if u.kind in ("step", "map") and name not in outcome.intermediate:
             out.append(Finding(code="outcome-unit-missing", unit=name, message=f"{name} has no intermediate outcome"))
     for name, io in outcome.intermediate.items():
         found = spec.units.get(name)

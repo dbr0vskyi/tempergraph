@@ -40,6 +40,7 @@ LAYERS = ("flag", "profile", "project:overrides", "user:overrides", "workflow:un
           "project:defaults", "user:defaults", "engine")
 OPERATOR_LAYERS = ("flag", "profile", "project:overrides", "user:overrides", "project:defaults", "user:defaults")
 
+SESSION_KINDS = ("step", "map")  # unit kinds whose `step` runs model sessions (a map runs its step per item)
 SESSION = frozenset({"steps", "judges", "unit", "judge"})
 STEP_SIDE = frozenset({"steps", "unit"})
 JUDGE_SIDE = frozenset({"judges", "judge"})
@@ -341,7 +342,7 @@ def parse_key(spec: WorkflowSpec, raw: str) -> Key:
         if name == "arm":
             if u.switch is None:
                 raise SettingError("setting_not_for_kind", f"{raw}: {key.unit} is a {u.kind}, not a switch")
-        elif key.scope == "unit" and not (u.kind == "step" or (u.kind == "script" and name == "timeout_s")):
+        elif key.scope == "unit" and not (u.kind in SESSION_KINDS or (u.kind == "script" and name == "timeout_s")):
             raise SettingError("setting_not_for_kind", f"{raw}: {key.unit} is a {u.kind}")
         if key.scope == "script":
             phase, n = key.script or ("", 0)
@@ -371,7 +372,7 @@ def _value(spec: WorkflowSpec, key: Key, value: Any) -> Any:
             raise SettingError("setting_value", f"{key.text()}: {v!r} is not one of the arms "
                                                 f"{', '.join(sw.arms) if sw else ''}")
     if key.name == "on_budget_spent" and v == "fallback":
-        units = [key.unit] if key.unit else [n for n, u in spec.units.items() if u.kind == "step"]
+        units = [key.unit] if key.unit else [n for n, u in spec.units.items() if u.kind in SESSION_KINDS]
         if any(spec.units[str(n)].gate.fallback is None for n in units):
             raise SettingError("no_fallback_target", f"{key.text()}: the gate declares no fallback target")
     return v
@@ -612,7 +613,7 @@ def _workflow_values(spec: WorkflowSpec) -> dict[str, dict[str, dict[str, Any]]]
 
     for name, u in spec.units.items():
         g = u.gate
-        if u.kind == "step" and u.step is not None:
+        if u.kind in SESSION_KINDS and u.step is not None:
             st = u.step
             put(unit_l, f"{name}.executor", st.executor, f"units.{name}.executor")
             put(unit_l, f"{name}.model", st.model, f"units.{name}.model")
@@ -679,7 +680,7 @@ def targets(spec: WorkflowSpec) -> list[tuple[str, str, list[str]]]:
                 if u.switch is not None:
                     out.append((f"{unit}.arm", "arm", [f"{unit}.arm"]))
                 continue
-            if u.kind == "step" and e.scopes & STEP_SIDE:
+            if u.kind in SESSION_KINDS and e.scopes & STEP_SIDE:
                 out.append((f"{unit}.{name}", name, [f"{unit}.{name}", f"steps.{name}"] if "steps" in e.scopes
                             else [f"{unit}.{name}"]))
             if u.kind == "script" and name == "timeout_s":
@@ -767,7 +768,7 @@ def effective_spec(spec: WorkflowSpec, res: ResolvedSettings) -> WorkflowSpec:
     units: dict[str, UnitSpec] = {}
     for name, u in spec.units.items():
         g: GateSpec = u.gate
-        if u.kind == "step" and u.step is not None:
+        if u.kind in SESSION_KINDS and u.step is not None:
             st: StepSpec = u.step
             opts = SessionOptions(**{f: v.get(f"{name}.{k}") for k, f in SESSION_OPTIONS.items()})
             added = tuple(v.get(f"{name}.tools.add") or ())

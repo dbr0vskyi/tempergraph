@@ -66,7 +66,7 @@ def preflight(spec: WorkflowSpec, registry: Registry, *, judge_override: str | N
     for unit in spec.order:
         u = spec.units[unit]
         st = u.step
-        if u.kind != "step" or st is None:
+        if u.kind not in ("step", "map") or st is None:
             continue
         ex = st.executor or spec.default_executor
         rep.step_executors[unit] = ex

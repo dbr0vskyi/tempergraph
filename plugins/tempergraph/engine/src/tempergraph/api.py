@@ -9,7 +9,7 @@ with ``not_in_release`` (ADR-0090).
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
 from tempergraph import check_helpers as checks  # `tempergraph.api.checks` (SCF §2.4)
@@ -17,10 +17,13 @@ from tempergraph.contracts import (
     CallableRef,
     CheckFinding,
     CheckResult,
+    ComplexitySpec,
     Criterion,
     GateSpec,
     InputDeclaration,
     JudgeSpec,
+    MapSpec,
+    MeasureSpec,
     ProducesKind,
     RearmSpec,
     ResolveResult,
@@ -42,7 +45,7 @@ from tempergraph.run.finalize import FinalizerContext, FinalizerResult
 
 __all__ = [
     "CheckFinding", "CheckResult", "Criterion", "FinalizerContext", "FinalizerResult", "Gate", "Input", "Judge", "Param", "ResolveResult", "Route",
-    "Rearm", "RouteView", "Routing", "Script", "SessionOptions", "Setting", "Step", "Switch", "Value", "Workflow",
+    "ComplexitySwitch", "Measure", "stock", "Rearm", "RouteView", "Routing", "Script", "SessionOptions", "Setting", "Step", "Switch", "Value", "Workflow",
     "WorktreeDecl", "checks", "text", "Parallel", "Map", "Ask", "Wait", "Council", "Contest", "Subworkflow",
 ]
 
@@ -167,6 +170,58 @@ def Switch(*, predicate: Callable[..., Any], arms: Mapping[str, str], default: s
     return UnitSpec(kind="switch", gate=gate or GateSpec(), switch=sw)
 
 
+class stock:  # noqa: N801 - a namespace of the stock measures (CXR §2.3)
+    """Stock measures for `Measure(name, stock.<measure>(...))`."""
+
+    @staticmethod
+    def fact(unit: str, key: str) -> tuple[str, ...]:
+        return ("fact", unit, key)
+
+    @staticmethod
+    def input(name: str) -> tuple[str, ...]:
+        return ("input", name)
+
+    @staticmethod
+    def setting(name: str) -> tuple[str, ...]:
+        return ("setting", name)
+
+    @staticmethod
+    def count_items(unit: str, key: str) -> tuple[str, ...]:
+        return ("count_items", unit, key)
+
+    @staticmethod
+    def count_lines(unit: str, key: str, pattern: str) -> tuple[str, ...]:
+        return ("count_lines", unit, key, pattern)
+
+    @staticmethod
+    def changed_paths() -> tuple[str, ...]:
+        return ("changed_paths",)
+
+
+def Measure(name: str, source: tuple[str, ...] | Callable[..., Any]) -> MeasureSpec:  # noqa: N802
+    """One measure of a complexity switch: a stock measure or a pure, model-free callable (CXR §2.1)."""
+    if callable(source):
+        return MeasureSpec(name=name, call=callable_ref(source))
+    return MeasureSpec(name=name, stock=tuple(str(x) for x in source))
+
+
+def ComplexitySwitch(*, arms: Mapping[str, str], measures: Iterable[MeasureSpec], joins_at: str,  # noqa: N802
+                     rules: str | None = None, size: str | None = None, explore: Mapping[str, Any] | None = None,
+                     mode: str = "route", arm_overrides: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
+                     rearm: Iterable[RearmSpec] = (), gate: GateSpec | None = None) -> UnitSpec:
+    """A complexity switch (CXR): `arms` run from the simplest to the most detailed, which is the safe arm and
+    the default. The engine picks the arm from the measures and the rules file; there is no predicate."""
+    names = list(arms)
+    sw = SwitchSpec(predicate=None, arms=dict(arms), default=names[-1] if names else "", sticky="run",
+                    mode=mode,  # type: ignore[arg-type]
+                    arm_overrides={a: {u: dict(v) for u, v in units.items()}
+                                   for a, units in (arm_overrides or {}).items()},
+                    rearm=tuple(rearm),
+                    complexity=ComplexitySpec(measures=tuple(measures), joins_at=joins_at, rules=rules, size=size,
+                                              explore=dict(explore) if explore else None))
+    return UnitSpec(kind="switch", gate=gate or GateSpec(), switch=sw)
+
+
 def _later(kind: str) -> Callable[..., UnitSpec]:
     def build(*, gate: GateSpec | None = None, **fields: Any) -> UnitSpec:
         return UnitSpec(kind=kind, gate=gate or GateSpec(), extra=dict(fields))  # type: ignore[arg-type]
@@ -176,8 +231,23 @@ def _later(kind: str) -> Callable[..., UnitSpec]:
     return build
 
 
+def Map(*, items_from: tuple[str, str] | Sequence[str], step: UnitSpec, extract: Callable[..., Any] | None = None,  # noqa: N802
+        max_items: int = 20, on_empty: str = "stop", mode: str = "sequential", concurrency: int = 3,
+        item_model: Callable[..., Any] | None = None, models: Iterable[str] = ()) -> UnitSpec:
+    """A map: `step` (built with `Step`) runs once per item of the list at `items_from` (`(unit, key)`), each
+    item gated on its own by the step's gate (MAP §2.1). Release 2 builds the sequential mode."""
+    if step.kind != "step" or step.step is None:
+        raise TypeError("Map(step=...) takes a unit built with Step()")
+    if step.route is not None:
+        raise TypeError("a map's step takes no route")
+    unit, key = tuple(items_from)
+    m = MapSpec(items_from=(str(unit), str(key)), extract=_opt_ref(extract), max_items=max_items,
+                on_empty=on_empty, mode=mode, concurrency=concurrency,  # type: ignore[arg-type]
+                item_model=_opt_ref(item_model), models=tuple(models))
+    return UnitSpec(kind="map", gate=step.gate, step=step.step, map=m)
+
+
 Parallel = _later("parallel")
-Map = _later("map")
 Ask = _later("ask")
 Wait = _later("wait")
 Council = _later("council")

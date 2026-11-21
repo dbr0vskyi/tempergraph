@@ -85,14 +85,15 @@ Artifacts, values and facts of an item are keyed `<key>[<item id>]`. A later uni
 ## 5. Design notes
 
 - The list is read once per visit so a step cannot change the plan under the map mid-visit; changing it takes a trip back.
+- As built (R2-T1.2, sequential mode): the items run through the unit's own four nodes, one at a time, with the list, the passed ids and each item's attempt count in a `maps` state channel; an item's attempt number continues across visits so session keys never repeat. `Map(items_from=(unit, key), step=Step(...))` builds the unit, and `models` lists the aliases `item_model` may return. A sequential map holds one pause at a time, so MAP-B6's two pending items arise only in the concurrent mode, which is refused with `not_in_release` together with the parallel map (release 3). A list fault stops the run with reason `map`. The plain key of an item's artifact holds the item in hand; `<key>[<item id>]` holds each item's.
 - Whether per-item work pays is the workflow's measurement: temperspec measured it dearer on small plans and routes between a map arm and a single-session arm ([SWM](79-measured-switches.spec.md), [CXR](94-complexity-routing.spec.md)).
 
 ## 6. Acceptance criteria
 
-- [ ] MAP-AC-1 Every row of the MAP-B1 table and MAP-B2 to MAP-B6 holds offline with scripted executors and a scratch git repository.
-- [ ] MAP-AC-2 Every row of §2.3 has a fixture workflow that fails validation with its own finding code.
-- [ ] MAP-AC-3 A passed item starts no session after a resume, a person's retry of a sibling, or a re-open (scripted executor call count).
-- [ ] MAP-AC-4 Sequential item k sees the commits of items 1 to k−1 and nothing of k+1.
+- [x] MAP-AC-1 Every row of the MAP-B1 table and MAP-B2 to MAP-B6 holds offline with scripted executors and a scratch git repository.
+- [x] MAP-AC-2 Every row of §2.3 has a fixture workflow that fails validation with its own finding code.
+- [x] MAP-AC-3 A passed item starts no session after a resume, a person's retry of a sibling, or a re-open (scripted executor call count).
+- [x] MAP-AC-4 Sequential item k sees the commits of items 1 to k−1 and nothing of k+1.
 
 ## Open questions
 

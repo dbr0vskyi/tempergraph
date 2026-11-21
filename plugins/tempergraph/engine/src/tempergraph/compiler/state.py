@@ -45,6 +45,7 @@ class RunState(TypedDict, total=False):
     feedback: Annotated[dict[str, Any], merge_units]  # unit -> one-time feedback for the next attempt
     counters: Annotated[dict[str, Any], merge_units]  # unit -> budget counters
     visits: Annotated[dict[str, Any], merge_units]  # unit -> {visit, reason, from}
+    maps: Annotated[dict[str, Any], merge_units]  # map unit -> {visit, items, passed, attempts} (MAP §2.2)
     rulings: Annotated[dict[str, Any], merge_units]  # id -> ruling (own reducer, never cleared by a trip back)
     finalized: Annotated[dict[str, Any], replace]
     run: Annotated[dict[str, Any], merge_units]  # run-level facts: {"stopped": {...}, "path": [...]}

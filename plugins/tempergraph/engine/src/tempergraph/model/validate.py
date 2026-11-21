@@ -28,7 +28,14 @@ from tempergraph.contracts import (
 )
 from tempergraph.improve import lessons
 from tempergraph.model import flow
-from tempergraph.model.text import ENGINE_KEYS, RESERVED_KEYS, TextUnreadable, input_names, load_text
+from tempergraph.model.text import (
+    ENGINE_KEYS,
+    ITEM_KEYS,
+    RESERVED_KEYS,
+    TextUnreadable,
+    input_names,
+    load_text,
+)
 from tempergraph.render.template import TemplateError, fields
 from tempergraph.security.launch import has_shell_metacharacter
 
@@ -43,7 +50,7 @@ class Finding:
 
 # Kinds, primitives and fields this release does not build, with the release that adds them (ADR-0090).
 LATER_KINDS: dict[str, int] = {
-    "parallel": 2, "map": 2, "wait": 2, "ask": 2, "council": 3, "contest": 3, "subworkflow": 3,
+    "parallel": 2, "wait": 2, "ask": 2, "council": 3, "contest": 3, "subworkflow": 3,
 }
 MODEL_KINDS = frozenset({"step"})
 # Keys the settings resolution writes into a unit's `extra` (RST `effective_spec`), never a workflow's own field.
@@ -167,6 +174,9 @@ class _Validator:
             self.err("mechanical-without-check", name, "a `mechanical` criterion needs a gate check")
         if u.kind == "step":
             self._step(name, u)
+        elif u.kind == "map":
+            self._step(name, u)
+            self._map(name, u)
         elif u.kind == "script":
             self._script_unit(name, u)
         elif u.kind == "route":
@@ -187,6 +197,42 @@ class _Validator:
                 self.err("criterion-invalid", name, f"criterion severity {c.severity!r}")
             if not c.check_method.strip():
                 self.warn("criterion-no-check-method", name, f"criterion {c.id or c.text[:30]!r} has no check method")
+
+    def _map(self, name: str, u: UnitSpec) -> None:
+        """MAP §2.3 and the limits of §2.1; the concurrent mode is a later release."""
+        m = u.map
+        s = self.spec
+        if m is None:
+            self.err("map-invalid", name, "a map unit needs its map fields")
+            return
+        if m.mode != "sequential":
+            self.err("not_in_release", name, f"map mode {m.mode!r} is built in release 3, not release {RELEASE}")
+        if m.on_empty not in ("one_item", "stop", "skip"):
+            self.err("map-invalid", name, f"on_empty {m.on_empty!r} is not one_item, stop or skip")
+        if isinstance(m.max_items, bool) or not isinstance(m.max_items, int) or not 1 <= m.max_items <= 50:
+            self.err("map-invalid", name, "`max_items` must be an integer from 1 to 50")
+        if u.gate.back_targets:
+            self.err("map-back-target", name, "a map's gate takes no back targets: a defect across items is found "
+                                              "at the join (MAP §2.3)")
+        if u.route is not None or u.switch is not None:
+            self.err("map-invalid", name, "a map takes no route")
+        src, key = m.items_from
+        order = list(s.order)
+        if src not in s.units or src not in order or name not in order or order.index(src) >= order.index(name):
+            self.err("map-items-unknown", name, f"items_from names {src!r}, which does not precede the map")
+        elif key not in _produced(s.units[src]):
+            self.err("map-items-unknown", name, f"{src!r} produces no {key!r}")
+        elif key not in self._earlier_keys(name)["all"]:
+            self.err("map-items-unknown", name, f"{key!r} is not produced on every path into the map")
+        for ref, what in ((m.extract, "map extract"), (m.item_model, "map item_model")):
+            if ref is not None:
+                self._callable(name, ref, what)
+        if m.item_model is not None and not 1 <= len(m.models) <= 8:
+            self.err("map-invalid", name, "`item_model` needs one to eight declared `models`")
+        caps = self.executors.get((u.step.executor if u.step else None) or s.default_executor)
+        if caps is not None:
+            for alias in m.models:
+                self._alias(name, alias, caps)
 
     def _measured_switch(self, name: str, sw: SwitchSpec) -> None:
         """SWM §4: the mode, every arm override and every re-arm entry."""
@@ -389,6 +435,8 @@ class _Validator:
         earlier = self._earlier_keys(unit)
         for f in names:
             if f in ENGINE_KEYS or f in inputs:
+                continue
+            if f in ITEM_KEYS and self.spec.units[unit].kind == "map":
                 continue
             if f.startswith("settings."):
                 if f[len("settings."):] not in self.spec.settings:

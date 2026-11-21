@@ -20,6 +20,8 @@ from tempergraph.compiler.state import RunState
 from tempergraph.contracts import (
     CheckResult,
     Executor,
+    MapItem,
+    MeasureContext,
     ScriptSpec,
     SessionOptions,
     SessionRequest,
@@ -37,7 +39,7 @@ from tempergraph.render.output import parse_output
 from tempergraph.render.prompt import AttemptContext, Blocker, render_step
 from tempergraph.run import checks as checkmod
 from tempergraph.run import gate as gatemod
-from tempergraph.run import tool_access
+from tempergraph.run import complexity, mapping, tool_access
 from tempergraph.run.check_worker import run_in_worker
 from tempergraph.run.commands import ResolvedCommand, run_command
 from tempergraph.run.guard import guard, view_set
@@ -92,6 +94,8 @@ class RunContext:
     capture: Capture = field(default_factory=Capture)  # the operator's capture level (LOS §2.6)
     main_checkout: Path | None = None
     attempts_started: int = 0
+    origin: str = "cli"
+    stage: str = "local-dev"  # PRO §2.1
 
     @property
     def thread(self) -> str:
@@ -193,25 +197,51 @@ class EngineNodes:
         prev = (state.get("attempts") or {}).get(unit) or {}
         visit = int(((state.get("visits") or {}).get(unit) or {}).get("visit", 1))
         counters = (state.get("counters") or {}).get(unit) or {}
-        first = prev.get("visit") != visit
-        attempt = int(prev.get("attempt", 0)) + 1
-        retries = int(counters.get("retries", 0))
-        self.ctx.attempts_started += 1
+        entered = prev.get("visit") != visit
         workdir = self._workdir(state)
         path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
-        if first:
+        if entered:
             fp = gitmod.fingerprint(workdir)
             self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=bool(fp.status),
                                entered_from=_entered_from(state, unit))
+        item: dict[str, Any] | None = None
+        maps: dict[str, Any] = {}
+        if u.map is not None:  # the list is read once per visit; the item in hand is the first not passed
+            done, m, item = self._map_item(unit, state, visit, workdir, prev, path_units)
+            if done is not None:
+                return done
+            assert item is not None
+            maps = {unit: m}
+        iid = item["id"] if item else None
+        first = entered or prev.get("item") != iid
+        attempt = int(item["attempt"]) if item else int(prev.get("attempt", 0)) + 1
+        retries = int(counters.get("retries", 0))
+        self.ctx.attempts_started += 1
         ov, layer = gatemod.arm_overrides(spec, unit, state)  # below the operator layers (SWM §2.3, RST §2.3)
         ov = {k: v for k, v in ov.items() if k in ("model", "timeout_s", "idle_s", "effort")
               and k not in (u.extra.get("operator_set") or ())}
         sources = {k: layer for k in ov}
         ladder = _aliases(ov.get("model")) or _aliases(st.model) or _aliases(spec.model_profile.get(unit)) or ["inherit"]
         alias = ladder[min(retries, len(ladder) - 1)]
+        if item and u.map is not None and u.map.item_model is not None:
+            try:
+                chosen = str(u.map.item_model.resolve()(MapItem(id=item["id"], text=item["text"])))
+            except Exception as exc:  # noqa: BLE001 - a workflow fault, recorded
+                chosen = f"<{type(exc).__name__}>"
+            if chosen not in u.map.models:  # MAP §4: the attempt fails before launch
+                self.ctx.log.write("engine_error", unit=unit, item=iid, error="item_model",
+                                   detail=f"{chosen!r} is not one of {list(u.map.models)}")
+                record = {"attempt": attempt, "visit": visit, "item": iid, "ok": False, "text": "", "issues": [],
+                          "tools": [], "session_id": None, "error_kind": "item_model", "infra_spent": False,
+                          "check": None, "escalate": "workflow_fault", "timed_out": False}
+                return {"attempts": {unit: record}, "maps": maps}
+            alias = chosen
         ex = self.ctx.registry.get(st.executor or spec.default_executor)
         caps = ex.capabilities()
         fields = self._fields(unit, state, attempt, visit, workdir)
+        if item:  # VAL §2.3 item keys
+            fields.update(item_id=item["id"], item_index=str(item["index"]), item_count=str(item["count"]),
+                          item=item["text"])
         failed, env, hybrid = self._scripts(st.before, unit, attempt, "before", state, workdir)
         fields.update(hybrid)  # a `before` script's keys are the session's to read (SCR §2.1)
         if failed is not None:
@@ -238,7 +268,7 @@ class EngineNodes:
             rulings=tuple(gatemod.active_rulings(spec, state, unit)),
             upstream_targets=tuple(u.gate.back_targets))
         rendered = render_step(unit, u, ctx, caps)
-        key = session_key(unit, attempt, "retry" if retry else "step")
+        key = session_key(unit, attempt, "retry" if retry else "step", item=iid)
         req = SessionRequest(
             kind="retry" if retry else "step", prompt=rendered.text, workdir=workdir, alias=alias, session_key=key,
             tools=tuple(st.tools), commands=tuple(st.commands),
@@ -269,6 +299,7 @@ class EngineNodes:
         elif parsed.upstream:
             escalate = "upstream"
         record = {
+            "item": iid,
             "attempt": attempt, "visit": visit, "ok": res.ok, "text": clip(scrub(res.text), 8000), "blocked": parsed.blocked, "upstream": parsed.upstream,
             "issues": parsed.issues, "infra_cause": str(res.infra_cause) if res.infra_cause else None,
             "infra_spent": res.infra_cause is not None, "timed_out": res.timed_out, "stalled": res.stalled,
@@ -287,10 +318,46 @@ class EngineNodes:
         run: dict[str, Any] = {"cost": self._cost(state, results),
                                "executors": {**((state.get("run") or {}).get("executors") or {}),
                                              ex.name: res.cli_version}}
-        if first and unit not in path_units:
+        if entered and unit not in path_units:
             run["path"] = {"units": path_units + [unit]}
-        return {"attempts": {unit: record}, "artifacts": {unit: {**hybrid, **parsed.artifacts} or None},
-                "values": {unit: parsed.values or None}, "run": run}  # feedback is cleared at the gate
+        arts: dict[str, Any] = {**hybrid, **parsed.artifacts}
+        vals: dict[str, Any] = dict(parsed.values)
+        if iid:  # an item's keys are kept as `<key>[<item id>]`; the plain key is the item in hand (MAP §2.2)
+            arts.update({mapping.item_key(k, iid): v for k, v in list(arts.items())})
+            vals.update({mapping.item_key(k, iid): v for k, v in list(vals.items())})
+            return {"attempts": {unit: record}, "artifacts": {unit: arts} if arts else {},
+                    "values": {unit: vals} if vals else {}, "run": run, "maps": maps}
+        return {"attempts": {unit: record}, "artifacts": {unit: arts or None},
+                "values": {unit: vals or None}, "run": run}  # feedback is cleared at the gate
+
+    def _map_item(self, unit: str, state: Mapping[str, Any], visit: int, workdir: Path, prev: Mapping[str, Any],
+                  path_units: list[str]) -> tuple[dict[str, Any] | None, dict[str, Any], dict[str, Any] | None]:
+        """Fan-out at the start of a visit, then the item in hand (MAP §2.2). Returns a finished state write
+        when the list stops or skips the map, else the `maps` record and the item with its attempt number."""
+        m = mapping.record(state, unit)
+        run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
+        base = {"attempt": int(prev.get("attempt", 0)) + 1, "visit": visit, "ok": True, "text": "", "issues": [],
+                "tools": [], "session_id": None, "escalate": None, "infra_spent": False, "check": None,
+                "item": None, "timed_out": False}
+        if m.get("visit") != visit:
+            try:
+                items = mapping.read_items(self.ctx.spec, unit, state, workdir)
+            except mapping.MapFault as exc:
+                self.ctx.log.write("map_items", unit=unit, visit=visit, count=exc.count, ids=[], error=exc.code,
+                                   detail=str(exc))
+                return ({"attempts": {unit: {**base, "ok": False, "map_fault": f"{unit}: {exc}"}}, "run": run},
+                        m, None)
+            m = {"visit": visit, "items": [{"id": i.id, "text": i.text} for i in items], "passed": [],
+                 "attempts": dict(m.get("attempts") or {})}
+            self.ctx.log.write("map_items", unit=unit, visit=visit, count=len(items), ids=[i.id for i in items])
+            if not items:  # `on_empty: skip` passes the map with no item
+                return {"attempts": {unit: {**base, "map_skip": True}}, "maps": {unit: m}, "run": run}, m, None
+        item = mapping.pending(m)
+        if item is None:  # every item passed already (a resume at the gate): nothing to run
+            return {"attempts": {unit: {**dict(prev), "visit": visit}}, "maps": {unit: m}, "run": run}, m, None
+        n = int((m.get("attempts") or {}).get(item["id"], 0)) + 1
+        m["attempts"] = {**(m.get("attempts") or {}), item["id"]: n}
+        return None, m, {**item, "attempt": n}
 
     def _script_failed(self, unit: str, state: Mapping[str, Any], attempt: int, visit: int, name: str, env: bool,
                        path_units: list[str], first: bool, arts: dict[str, str]) -> dict[str, Any]:
@@ -376,11 +443,30 @@ class EngineNodes:
     def _flow_unit(self, unit: str, state: RunState) -> dict[str, Any]:
         """A route or switch unit runs no session: its pick is made in the gate node (CMP §2.2)."""
         visit = int(((state.get("visits") or {}).get(unit) or {}).get("visit", 1))
-        record = {"attempt": 1, "visit": visit, "ok": True, "text": "", "escalate": None, "infra_spent": False,
-                  "check": None, "flow": True}
+        record: dict[str, Any] = {"attempt": 1, "visit": visit, "ok": True, "text": "", "escalate": None,
+                                  "infra_spent": False, "check": None, "flow": True}
+        sw = self.ctx.spec.units[unit].switch
+        if sw is not None and sw.complexity is not None:
+            prev = ((state.get("attempts") or {}).get(unit) or {}).get("complexity")
+            record["complexity"] = prev or self._complexity(unit, state)  # once per run (CXR §2.1)
         path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
         run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
         return {"attempts": {unit: record}, "run": run}
+
+    def _complexity(self, unit: str, state: Mapping[str, Any]) -> dict[str, Any]:
+        """CXR §2.3 and §2.4: the measures, the rules in force and the zone, evaluated in the switch's step node."""
+        ctx = self.ctx
+        workdir = self._workdir(state)
+        maps = (dict, Mapping)
+        mctx = MeasureContext(
+            request=dict(state.get("request") or {}),
+            facts={u: dict(f) for u, f in (state.get("facts") or {}).items() if isinstance(f, maps)},
+            artifacts={u: dict(a) for u, a in (state.get("artifacts") or {}).items() if isinstance(a, maps)},
+            settings=dict(ctx.settings), stage=ctx.stage, workdir=workdir,
+            git=checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or ""))
+        return complexity.evaluate(ctx.spec, unit, state, mctx, state_root=ctx.state_root, thread=ctx.thread,
+                                   origin=ctx.origin,
+                                   recent=complexity.explored_recent(ctx.state_root, ctx.spec.name, unit))
 
     # -- judge -----------------------------------------------------------------------------------
 
@@ -430,6 +516,10 @@ class EngineNodes:
         u = spec.units[unit]
         g = u.gate
         att = dict((state.get("attempts") or {}).get(unit) or {})
+        if att.get("map_fault"):
+            return {"judgements": {unit: {"verdict": str(Verdict.ESCALATE), "reason": "map_fault"}}}
+        if att.get("map_skip"):
+            return {"judgements": {unit: {"verdict": str(Verdict.PROCEED), "reason": "map_empty"}}}
         if (att.get("escalate") == "upstream" and att.get("upstream") and att.get("ok") and g.judge is not None
                 and not att.get("infra_spent")):
             return self._judge_claim(unit, state, att)
@@ -447,8 +537,13 @@ class EngineNodes:
         workdir = self._workdir(state)
         cres, notes = self._check(unit, state, att, workdir)
         att["check"] = checkmod.to_json(cres)
-        write: dict[str, Any] = {"attempts": {unit: att}, "facts": {unit: cres.facts or None}}
-        self.ctx.log.write("check", unit=unit, result=cres.result, environmental=cres.environmental,
+        iid = att.get("item")
+        facts: dict[str, Any] = dict(cres.facts or {})
+        if iid:
+            facts.update({mapping.item_key(k, str(iid)): v for k, v in list(facts.items())})
+        write: dict[str, Any] = {"attempts": {unit: att},
+                                 "facts": {unit: facts} if iid and facts else {} if iid else {unit: facts or None}}
+        self.ctx.log.write("check", unit=unit, item=iid, attempt=att.get("attempt"), result=cres.result, environmental=cres.environmental,
                            evidence=clip(cres.evidence, 200), notes=notes)
         if cres.result == "FAIL":
             if cres.environmental:
@@ -495,14 +590,15 @@ class EngineNodes:
         u = self.ctx.spec.units[unit]
         facts = {k: v for k, v in (state.get("facts") or {}).items() if k != unit}
         ctx = checkmod.CheckContext(
-            unit=unit, workdir=workdir, request=state.get("request") or {}, attempt=int(att.get("attempt", 1)),
+            unit=unit, item=att.get("item"), workdir=workdir, request=state.get("request") or {},
+            attempt=int(att.get("attempt", 1)),
             visit=int(att.get("visit", 1)), main_checkout=self.ctx.main_checkout,
             artifacts=state.get("artifacts") or {}, values=state.get("values") or {}, facts=facts,
             git=checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or ""),
             criteria=tuple({"id": c.id, "mechanical": c.mechanical} for c in u.gate.criteria),
             allow=tuple(self.ctx.spec.allow_commands),
-            out_dir=self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "checks" / unit
-            / str(att.get("attempt", 1)), settings=self._check_settings(u),
+            out_dir=self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "checks"
+            / (f"{unit}.{att['item']}" if att.get("item") else unit) / str(att.get("attempt", 1)), settings=self._check_settings(u),
             reuse_store=self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "command_runs.jsonl")
         got = run_in_worker(u.gate, ctx)
         if not self.ctx.capture.check_output and ctx.out_dir is not None:  # `observe.check_output = off`
@@ -562,7 +658,8 @@ class EngineNodes:
             visit_reason=str(((state.get("visits") or {}).get(unit) or {}).get("reason") or "")))
         alias = j.model or "inherit"  # resolved on the judge chain alone (RST §2.3, CON §2.4)
         attempt = int(att.get("attempt", 1))
-        key = session_key(unit, attempt, "judge")
+        iid = att.get("item")
+        key = session_key(unit, attempt, "judge", item=iid)
         req = SessionRequest(kind="judge", prompt=prompt, workdir=workdir, alias=alias, session_key=key,
                              timeout_s=j.timeout_s or DEFAULT_TIMEOUT_S, idle_s=j.idle_s,
                              options=j.session_options or SessionOptions(),
@@ -581,7 +678,7 @@ class EngineNodes:
             try:
                 judgement = parse_judgement(res.text, g)
             except Unparsed:
-                rkey = session_key(unit, attempt, "judge_reask")
+                rkey = session_key(unit, attempt, "judge_reask", item=iid)
                 rreq = SessionRequest(kind="judge_reask", prompt=reask_prompt(res.text, g), workdir=workdir,
                                       alias=alias, session_key=rkey, timeout_s=req.timeout_s, idle_s=req.idle_s,
                                       options=req.options,
@@ -607,7 +704,7 @@ class EngineNodes:
         outcome = derive(judgement, g, cres, {} if claim else back_units)
         if judgement is None and gr.status == "discarded":
             outcome.reason = f"guard:{gr.reason}"
-        self.ctx.log.write("judgement", unit=unit, statuses=outcome.statuses, blockers=[
+        self.ctx.log.write("judgement", unit=unit, item=iid, attempt=attempt, statuses=outcome.statuses, blockers=[
             b["criterion"] for b in outcome.blockers], confidence=outcome.confidence,
             confidence_source=outcome.confidence_source, gap=outcome.gap, guard=gr.status, views=list(views.tools),
             judge_executor=judge_name, brief_digest=brief_digest(stance, brief),
@@ -627,7 +724,7 @@ class EngineNodes:
 
         visit, attempt = int(att.get("visit", 1)), int(att.get("attempt", 1))
         path = (run_dir(self.ctx.state_root, self.ctx.spec.name, self.ctx.task_id) / "evidence" / "judgements"
-                / unit / f"{visit}.{attempt}.json")
+                / (f"{unit}.{att['item']}" if att.get("item") else unit) / f"{visit}.{attempt}.json")
         rows = [{"criterion": b.get("criterion"),
                  "evidence": clip(scrub(str(b.get("evidence") or b.get("problem") or "")), 400),
                  "fix": clip(scrub(str(b.get("fix") or "")), 400)} for b in blockers]
@@ -644,7 +741,8 @@ class EngineNodes:
             w.setdefault("feedback", {})[unit] = None  # one-time: seen by the attempt and its judge (RRN §2.2)
         r = w["route"][unit]
         so_far = cost_so_far((state.get("run") or {}).get("cost"))
-        self.ctx.log.write("gate", unit=unit, verdict=((state.get("judgements") or {}).get(unit) or {}).get("verdict"),
+        self.ctx.log.write("gate", unit=unit, item=((state.get("attempts") or {}).get(unit) or {}).get("item"),
+                           verdict=((state.get("judgements") or {}).get(unit) or {}).get("verdict"),
                            token=r["token"], route_target=r["node"], cost_so_far=so_far)
         self._budget_records(unit, state, w)
         for name, rr in w["route"].items():  # every pick: predicate, default, operator or re-arm (OBS `route`)
@@ -652,11 +750,12 @@ class EngineNodes:
             if p and (name == unit or p.get("chosen_by") == "rearm"):
                 self.ctx.log.write("route", unit=name, arm=p["arm"], target=p["target"], chosen_by=p["chosen_by"],
                                    **{k: p[k] for k in ("shadow", "would_choose", "signals", "signals_clipped",
-                                                        "fault", "rearmed_from", "rearm_unit", "rearm_cause")
+                                                        "fault", "rearmed_from", "rearm_unit", "rearm_cause",
+                                                        *gatemod.COMPLEXITY_FIELDS)
                                       if k in p})
         if unit in (w.get("pause") or {}) and w["pause"][unit]:
             p = w["pause"][unit]
-            self.ctx.log.write("pause", unit=unit, pause_kind=p["kind"], decisions=p["decisions"], resume=p["resume"],
+            self.ctx.log.write("pause", unit=unit, item=p.get("item"), pause_kind=p["kind"], decisions=p["decisions"], resume=p["resume"],
                                cost_so_far=so_far, reason=p.get("reason"),
                                tool_access=[{k: t.get(k) for k in ("name", "capability", "class")}
                                             for t in p.get("tool_access") or []] or None)

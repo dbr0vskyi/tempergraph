@@ -172,6 +172,46 @@ class RearmSpec:
     on: tuple[str, ...] = ("budget_spent",)
 
 
+@dataclass(frozen=True, kw_only=True)
+class MeasureSpec:
+    """CXR §2.1: one named measure, from a stock measure (`stock`: its name and arguments) or a callable."""
+
+    name: str
+    stock: tuple[str, ...] = ()
+    call: CallableRef | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class ComplexitySpec:
+    """CXR §2.1: what makes a switch a complexity switch. Its arms run from the simplest to the safe arm."""
+
+    measures: tuple[MeasureSpec, ...]
+    joins_at: str
+    rules: str | None = None  # a path in the package; `routing/<switch>.json` when None
+    size: str | None = None
+    explore: Mapping[str, Any] | None = None  # {rate, per_week}
+
+
+@dataclass(kw_only=True)
+class MeasureContext:
+    """What a measure callable reads (CXR §2.3). It holds no step value."""
+
+    request: Mapping[str, Any]
+    facts: Mapping[str, Mapping[str, str]]
+    artifacts: Mapping[str, Mapping[str, str]]
+    settings: Mapping[str, Any]
+    stage: str
+    workdir: Path
+    git: Any = None
+
+    def read_text(self, path: str | Path, max_bytes: int = 1_000_000) -> str:
+        p = (self.workdir / path).resolve()
+        if not p.is_relative_to(self.workdir.resolve()):
+            raise ValueError(f"{path} is outside the workspace")
+        with open(p, "rb") as fh:
+            return fh.read(max_bytes).decode("utf-8", errors="replace")
+
+
 EFFORTS = ("low", "medium", "high", "max")
 ARM_OVERRIDE_KEYS = ("model", "timeout_s", "idle_s", "effort", "effort_ladder", "escalation")
 REARM_CAUSES = ("budget_spent", "timeout")
@@ -182,13 +222,45 @@ class SwitchSpec:
     """CMP §2.2 switch: predicate, arms and a default arm; stickiness per visit or run. SWM §2.1 adds the
     mode, the per-arm overrides and the re-arm entries."""
 
-    predicate: CallableRef
+    predicate: CallableRef | None
     arms: Mapping[str, str]  # arm name -> target unit or "finalizer"
     default: str
     sticky: Literal["visit", "run"] = "visit"
     mode: Literal["route", "shadow"] = "route"
     arm_overrides: Mapping[str, Mapping[str, Mapping[str, Any]]] = field(default_factory=dict)  # arm -> unit -> values
     rearm: tuple[RearmSpec, ...] = ()
+    complexity: ComplexitySpec | None = None  # CXR: the engine builds the predicate from measures and rules
+
+
+@dataclass(frozen=True, kw_only=True)
+class MapItem:
+    """MAP §2.1: one item of a map's list; `id` names its artifacts, records and pauses."""
+
+    id: str
+    text: str = ""
+
+
+@dataclass(frozen=True, kw_only=True)
+class ExtractContext:
+    """What a map's `extract` callable reads (MAP §2.1): read-only."""
+
+    artifact: Path
+    workdir: Path
+    values: Mapping[str, str] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, kw_only=True)
+class MapSpec:
+    """MAP §2.1. The step and the gate every item runs are the unit's own `step` and `gate`."""
+
+    items_from: tuple[str, str]  # (unit, key) of the artifact that holds the list
+    extract: CallableRef | None = None
+    max_items: int = 20
+    on_empty: Literal["one_item", "stop", "skip"] = "stop"
+    mode: Literal["sequential", "concurrent"] = "sequential"
+    concurrency: int = 3
+    item_model: CallableRef | None = None
+    models: tuple[str, ...] = ()  # the aliases `item_model` may choose among
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -196,6 +268,7 @@ class UnitSpec:
     kind: UnitKind
     gate: GateSpec
     step: StepSpec | None = None
+    map: MapSpec | None = None
     script: ScriptSpec | None = None
     route: CallableRef | None = None  # route unit or a step's route (CMP §2.2)
     route_targets: tuple[str, ...] = ()
