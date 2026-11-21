@@ -113,7 +113,7 @@ After the import, resume re-attaches or recreates the worktree on the recorded b
 
 | Question | Owner | Default |
 |---|---|---|
-| State branch or the work branch? | Owner (asked 2026-11-20) | State branch |
+| State branch or the work branch? | Owner: state branch (decided 2026-11-21) | State branch |
 | Should a workflow be able to default carrying on? | Owner | No: a person turns it on per run |
 
 ## References

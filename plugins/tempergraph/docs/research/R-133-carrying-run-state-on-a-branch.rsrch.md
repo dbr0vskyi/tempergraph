@@ -68,6 +68,6 @@ A pushed state is a copy; two machines resuming it fork the thread. A **lease** 
 
 | Question | Who answers | Default until answered |
 |---|---|---|
-| Separate state branch, or the work branch as first proposed? | Owner (asked on 2026-11-20) | Separate state branch |
+| Separate state branch, or the work branch as first proposed? | Owner: separate state branch (decided 2026-11-21) | Separate state branch |
 | Carry automatically at every pause, or only by a verb? | Owner | At every pause and exit when the setting is on, and by the `state push` verb |
 | Keep the carried run log's text fields, or only metadata? | Owner | Keep the run log as written (already scrubbed and clipped); drop transcripts and prompts |
