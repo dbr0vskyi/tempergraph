@@ -139,6 +139,17 @@ Recommendation: start with direct edit and C7, because it needs only a check and
 6. A check can hold completeness, link and id consistency, the criterion-to-test trace and the collateral share; a judge is needed only for contradiction between linked specs and for whether the change does what the behaviours say.
 7. Nothing here is measured on a temperspec run. The collateral share and documentation spend should be recorded from the first runs.
 
+## Owner's rulings after reading (2026-11-21)
+
+| Subject | Ruling |
+|---|---|
+| The proposed format and rules C1 to C8 | Agreed |
+| Interface section (Q1) | Not a section: it would use lines in the spec. Interface facts are written as behaviours, without exact names. Whether a name that another tool or a person depends on may appear is still being settled |
+| Behaviour wording (Q5) | A fixed format |
+| Size | A length cap per spec; a spec that reaches it is split or compressed. The value is not set yet |
+| Direct edit or delta (Q3) | Direct edit with the collateral check, as recommended |
+| The engine's 70 specs (Q4) | Migrated once temperspec is ready |
+
 ## Open questions
 
 | # | Question | Owner |
