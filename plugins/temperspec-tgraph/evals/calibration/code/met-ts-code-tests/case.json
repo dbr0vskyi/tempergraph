@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-ts-code-tests",
+  "gate": "code",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-code-tests",
+    "expected": "MET",
+    "reason": "The CFG-AC1 test asserts one line that names the file; the CFG-AC2 test asserts the return value 2."
+  }
+}

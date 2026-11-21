@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-ts-plan-spec",
+  "gate": "plan",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-plan-spec",
+    "expected": "UNMET",
+    "reason": "R2 requires exit code 1, while CFG-B2 states exit code 2."
+  }
+}

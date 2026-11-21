@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-ts-code-change",
+  "gate": "code",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-code-change",
+    "expected": "MET",
+    "reason": "Each of the five rows has its change in the file it names."
+  }
+}

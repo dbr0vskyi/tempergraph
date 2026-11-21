@@ -43,6 +43,21 @@ step's own output cannot fix it (a missing source, a person's decision, an outsi
 This line is an example and not valid JSON: {criteria: [n: 1, status: MET]}"""
 
 
+CLAIM_CRITERION_ID = "upstream-claim"
+
+
+def claim_criterion(target: str, defect: str) -> Criterion:
+    """The one criterion a step's upstream claim is judged against (BUD §2.1): MET confirms the claim."""
+    return Criterion(
+        id=CLAIM_CRITERION_ID, no_change_policy="retry",
+        text=(f"The step claims a defect in the output of the earlier unit `{target}` that it cannot work around. "
+              f"The claim, to verify and not to trust: {head_tail(defect, 1000)}"),
+        check_method=(f"Read the output of `{target}` listed under What to grade. MET only when the defect is there "
+                      f"as claimed and the claiming step could not do its work without `{target}` changing its "
+                      f"output; UNMET when the defect is absent or the step could have worked around it; "
+                      f"UNVERIFIABLE when you cannot read what the claim is about."))
+
+
 @dataclass(frozen=True, kw_only=True)
 class JudgeInputs:
     gate: GateSpec

@@ -18,6 +18,11 @@
       "description": "Claude Mod showing progress of tempergraph runs"
     },
     {
+      "name": "temperspec-tgraph",
+      "source": "./plugins/temperspec-tgraph",
+      "description": "temperspec, a delivery workflow on tempergraph: triage, discovery, plan, tested code and a draft pull request, with rule files for specs, plans, decision records and research notes"
+    },
+    {
       "name": "release-notes-tgraph",
       "source": "./plugins/release-notes-tgraph",
       "description": "Example tempergraph workflow: release notes for the changes since the last tag (the minimal package)"

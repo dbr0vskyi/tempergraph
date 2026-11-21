@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-ts-dis-gaps",
+  "gate": "discovery",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-dis-gaps",
+    "expected": "UNMET",
+    "reason": "G2 asks which exit codes are in use; the hand-off points at the spec, which does not say, and no research note exists."
+  }
+}

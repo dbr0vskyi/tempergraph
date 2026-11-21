@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-ts-spec-sync",
+  "gate": "outcome",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-spec-sync",
+    "expected": "UNMET",
+    "reason": "CFG-B2 states exit code 2 on a missing config file, while CLI-B2 now states that every failed start exits with code 1."
+  }
+}

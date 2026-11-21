@@ -78,6 +78,8 @@ A verdict the judge writes itself is ignored; a mismatch is only logged. Confide
 
 **JDG-B8 No-change blocker escalates.** Given a judge RETRY whose only blocker is UNMET with `no_change = true` ("the ticket names no acceptance test"), when the verdict is derived, then it is ESCALATE, the retry budget is unchanged, and the pause payload shows the blocker.
 
+**JDG-B9 An upstream claim is judged on its own.** Given a step that ended with `UPSTREAM draft: <defect>` on a gate that has a judge, when the judge node runs, then no check runs and one judge session grades a single engine criterion (`upstream-claim`: the defect is in `draft`'s output as claimed and the step could not work around it) with `draft`'s artifacts and values as the subject and the claim labelled as a claim. MET sends the run BACK to `draft` with the claim as the visit reason, inside the loop budget ([BUD](08-budgets-and-failures.spec.md)); PARTIAL or UNMET is a RETRY of the claiming step, told the claim was not confirmed; UNVERIFIABLE, a gap or an unparsed answer asks a person. A gate with no judge asks a person.
+
 ## 4. Error conditions
 
 | Condition | Result |
@@ -102,6 +104,7 @@ A verdict the judge writes itself is ignored; a mismatch is only logged. Confide
 - [ ] JDG-AC-5 Every judge record names its executor, alias, alias source and confidence source.
 - [ ] JDG-AC-6 No shipped judge brief contains a sentence telling the judge to accept a step's claim (scan test).
 - [ ] JDG-AC-7 An audit judge at any rate leaves every verdict, route and counter of a fixture run unchanged.
+- [ ] JDG-AC-8 A confirmed upstream claim goes back with no pause, a refuted one retries the step, and an undecided one pauses (three scripted runs).
 
 ## Open questions
 

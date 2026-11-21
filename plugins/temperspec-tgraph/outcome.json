@@ -1,0 +1,891 @@
+{
+  "schema_version": 1,
+  "revision": 3,
+  "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
+  "deliverables": [
+    {
+      "key": "triage_note",
+      "kind": "file",
+      "where": "the task's triage note, in the run's branch"
+    }
+  ],
+  "check": "tgwf_temperspec.checks:outcome_check",
+  "judge": {
+    "model": "medium",
+    "stance": "The task's acceptance criteria and the files on the run's branch are the truth; everything a step said is a claim to verify. Judge meaning, not wording."
+  },
+  "final": [
+    {
+      "id": "ts-committed",
+      "severity": "blocker",
+      "verified_by": "check",
+      "text": "Every file the run changed is committed on the run's own branch",
+      "check_method": "Read the git facts of the worktree: no uncommitted change, no untracked file outside the ignore rules",
+      "source": "created",
+      "verifier": {
+        "check": "tgwf_temperspec.checks:outcome_check"
+      }
+    },
+    {
+      "id": "ts-spec-form",
+      "severity": "blocker",
+      "verified_by": "check",
+      "text": "Every spec the run edited passes the spec rule's structure check",
+      "check_method": "For each edited `*.spec.md`: a Purpose section, at least one behaviour in the fixed pattern with a scenario, at least one acceptance criterion, each behaviour named by a criterion, each criterion naming a behaviour",
+      "source": "created",
+      "verifier": {
+        "check": "tgwf_temperspec.checks:outcome_check"
+      }
+    },
+    {
+      "id": "ts-spec-cap",
+      "severity": "blocker",
+      "verified_by": "check",
+      "text": "No spec the run edited is over 400 lines",
+      "check_method": "Count the lines of each edited `*.spec.md`",
+      "source": "created",
+      "verifier": {
+        "check": "tgwf_temperspec.checks:outcome_check"
+      }
+    },
+    {
+      "id": "ts-spec-links",
+      "severity": "blocker",
+      "verified_by": "check",
+      "text": "Every id that a spec the run edited links to resolves to exactly one definition",
+      "check_method": "Collect the ids each edited spec links; search the docs folders for each id's definition; fail on none or on more than one",
+      "source": "created",
+      "verifier": {
+        "check": "tgwf_temperspec.checks:outcome_check"
+      }
+    },
+    {
+      "id": "ts-traced",
+      "severity": "blocker",
+      "verified_by": "check",
+      "text": "Every acceptance criterion of each spec the run edited is named by at least one test that is not skipped",
+      "check_method": "Search the test folders for each criterion id and read the lines above it for a skip mark; N/A when the run delivers documents only",
+      "source": "created",
+      "verifier": {
+        "check": "tgwf_temperspec.checks:outcome_check"
+      }
+    },
+    {
+      "id": "ts-verify",
+      "severity": "blocker",
+      "verified_by": "check",
+      "text": "Every verification command the plan lists exits 0 on the branch head",
+      "check_method": "Run each command through the engine's command runner, reusing the code gate's run on an unchanged tree; N/A when the run delivers documents only",
+      "source": "created",
+      "verifier": {
+        "check": "tgwf_temperspec.checks:outcome_check"
+      }
+    },
+    {
+      "id": "ts-collateral",
+      "severity": "warning",
+      "verified_by": "check",
+      "text": "No spec file is edited without a change to a behaviour or an acceptance criterion",
+      "check_method": "Diff each edited spec against the run's base commit; report each file whose diff touches no behaviour block and no criterion row",
+      "source": "created",
+      "verifier": {
+        "check": "tgwf_temperspec.checks:outcome_check"
+      }
+    },
+    {
+      "id": "ts-spec-sync",
+      "severity": "blocker",
+      "verified_by": "judge",
+      "text": "No behaviour in a spec the run edited contradicts a behaviour in a spec it links to",
+      "check_method": "Read each edited spec, then each spec it links by id; compare the behaviours that share a subject",
+      "source": "interview",
+      "verifier": {
+        "references": [
+          "triage_note"
+        ],
+        "scale": {
+          "met": "every pair of behaviours that share a subject states compatible results",
+          "partial": "one pair differs only in wording that a reader could take two ways",
+          "unmet": "two behaviours state results that cannot both hold",
+          "evidence": "the ids of the behaviours compared, with a quote of each",
+          "seeds": [
+            "met-ts-spec-sync",
+            "unmet-ts-spec-sync"
+          ]
+        }
+      }
+    },
+    {
+      "id": "ts-accepted",
+      "severity": "blocker",
+      "verified_by": "judge",
+      "text": "Each acceptance criterion of the task is achieved by the run's commits",
+      "check_method": "Take the numbered acceptance criteria from the triage note; for each, find the commit content that achieves it",
+      "source": "interview",
+      "verifier": {
+        "references": [
+          "triage_note"
+        ],
+        "scale": {
+          "met": "each criterion is achieved, by code with a passing test or by a document when the run delivers documents only",
+          "partial": "each criterion is addressed but one is achieved only in part",
+          "unmet": "one criterion has nothing in the commits that achieves it",
+          "evidence": "per criterion number: the path and line that achieve it",
+          "seeds": [
+            "met-ts-accepted",
+            "unmet-ts-accepted"
+          ]
+        }
+      }
+    }
+  ],
+  "intermediate": {
+    "setup": {
+      "statement": "A repository with no overview spec gets one, and one spec per component, that describe the code as it is",
+      "criteria": [
+        {
+          "id": "ts-set-form",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "The overview spec and every spec the setup note lists pass the spec rule's structure check",
+          "check_method": "As ts-spec-form plus the line cap, on the overview and on each spec path in the note's component table",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:setup_check"
+          },
+          "serves": [
+            "ts-accepted",
+            "ts-spec-form"
+          ]
+        },
+        {
+          "id": "ts-set-listed",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every spec the setup note lists exists and is named by its path in the overview spec",
+          "check_method": "Read the note's component table; open each path; search the overview for each path",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:setup_check"
+          }
+        },
+        {
+          "id": "ts-set-links",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every id that a spec of the setup step mentions resolves to exactly one definition",
+          "check_method": "As ts-spec-links, on the overview and the specs the note lists",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:setup_check"
+          },
+          "serves": [
+            "ts-spec-links",
+            "ts-spec-sync"
+          ]
+        },
+        {
+          "id": "ts-set-commit",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every file the setup step changed is committed",
+          "check_method": "Read the git facts",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:setup_check"
+          },
+          "serves": [
+            "ts-committed"
+          ]
+        },
+        {
+          "id": "ts-set-true",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "Every behaviour the setup step wrote describes what the code does now",
+          "check_method": "For each behaviour, open the code the setup note names for its component and find where the stated result is produced",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "setup_note"
+            ],
+            "scale": {
+              "met": "each behaviour's result is produced by the code as written",
+              "partial": "each behaviour holds but one cannot be traced because the note names the wrong code for it",
+              "unmet": "a behaviour states a result the code does not produce",
+              "evidence": "per behaviour id: the path and line that produce the result",
+              "seeds": [
+                "met-ts-set-true",
+                "unmet-ts-set-true"
+              ]
+            }
+          }
+        },
+        {
+          "id": "ts-set-cover",
+          "severity": "warning",
+          "verified_by": "judge",
+          "text": "Every top-level part of the code base belongs to a component with a spec or is listed as not covered",
+          "check_method": "List the top-level folders and entry points; match each with the note's component table and its Not covered list",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "setup_note"
+            ],
+            "scale": {
+              "met": "each top-level part is in the component table or under Not covered with a reason",
+              "partial": "no partial: any gap is UNMET",
+              "unmet": "a top-level part is in neither list",
+              "evidence": "per top-level part: the component or the Not covered line",
+              "seeds": [
+                "met-ts-set-cover",
+                "unmet-ts-set-cover"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "triage": {
+      "statement": "The triage note states the task's acceptance criteria, the gaps in the specs, and a route that follows the gaps and the size of the task",
+      "criteria": [
+        {
+          "id": "ts-tri-form",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "The triage note has each section the triage rule requires",
+          "check_method": "Read the note's headings against the rule's list",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:triage_check"
+          }
+        },
+        {
+          "id": "ts-tri-route",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "The route follows the gap list: discovery with a gap, plan or quick with none, and quick only within the quick lane's limits and never on a return to triage",
+          "check_method": "Compare the route with the gap list and the delivery; for quick, measure the note's criteria count and its Change section against the limits, resolve its commands, and read the visit number",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:triage_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-tri-commit",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every file the triage step changed is committed",
+          "check_method": "Read the git facts",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:triage_check"
+          },
+          "serves": [
+            "ts-committed"
+          ]
+        },
+        {
+          "id": "ts-tri-criteria",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "Every acceptance criterion in the triage note is stated by the task",
+          "check_method": "Read the task, then each numbered criterion of the note",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "request"
+            ],
+            "scale": {
+              "met": "each criterion is a statement the task makes, with none added and none missing",
+              "partial": "each criterion comes from the task but one is reworded so that its meaning shifts",
+              "unmet": "a criterion is in the note that the task does not state, or one the task states is missing",
+              "evidence": "per criterion: the quote from the task",
+              "seeds": [
+                "met-ts-tri-criteria",
+                "unmet-ts-tri-criteria"
+              ]
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-tri-gaps",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "Every concept the task needs that no ready spec covers is listed as a gap",
+          "check_method": "Search the spec folders for each concept the task names; compare with the gap list",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "request"
+            ],
+            "scale": {
+              "met": "each concept without a ready spec is a gap row, each gap row names the search that found nothing",
+              "partial": "no partial: any gap is UNMET",
+              "unmet": "a concept has no ready spec yet no gap row lists it",
+              "evidence": "per concept: the spec path that covers it, or the search that found none",
+              "seeds": [
+                "met-ts-tri-gaps",
+                "unmet-ts-tri-gaps"
+              ]
+            }
+          },
+          "serves": [
+            "ts-accepted",
+            "ts-spec-sync"
+          ]
+        }
+      ]
+    },
+    "discovery": {
+      "statement": "Every gap is closed by a spec, a decision record or a research note in the agreed format, committed",
+      "criteria": [
+        {
+          "id": "ts-dis-form",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every spec the discovery step wrote passes the spec rule's structure check",
+          "check_method": "As ts-spec-form, on the files this step changed",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          },
+          "serves": [
+            "ts-accepted",
+            "ts-spec-form"
+          ]
+        },
+        {
+          "id": "ts-dis-names",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every document the discovery step created carries its type suffix in its file name",
+          "check_method": "Match each new file under the docs folders against the naming table",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          }
+        },
+        {
+          "id": "ts-dis-links",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every id that a document of the discovery step links to resolves to exactly one definition",
+          "check_method": "As ts-spec-links, on the files this step changed",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          },
+          "serves": [
+            "ts-spec-links",
+            "ts-spec-sync"
+          ]
+        },
+        {
+          "id": "ts-dis-commit",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every file the discovery step changed is committed",
+          "check_method": "Read the git facts",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          },
+          "serves": [
+            "ts-committed"
+          ]
+        },
+        {
+          "id": "ts-dis-gaps",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "Every gap in the triage note is closed by a document the hand-off names",
+          "check_method": "Read the gap rows, then the document the hand-off names for each",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "triage_note"
+            ],
+            "scale": {
+              "met": "each gap row has a document whose content settles the gap",
+              "partial": "each gap has a document but one leaves an open question that blocks planning",
+              "unmet": "a gap row has no document, or its document does not address the gap",
+              "evidence": "per gap: the path and the behaviour id or section that settles it",
+              "seeds": [
+                "met-ts-dis-gaps",
+                "unmet-ts-dis-gaps"
+              ]
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-dis-behaviour",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "Every behaviour the discovery step wrote states an observable result with no internal name",
+          "check_method": "Read each new or changed behaviour; a name is allowed only when someone outside the capability depends on it",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "triage_note"
+            ],
+            "scale": {
+              "met": "each behaviour names an event and a result an outside observer could see, with no class, function or module name",
+              "partial": "each behaviour is observable but one carries an internal name that could be removed without loss",
+              "unmet": "a behaviour describes how the code works, not what an observer sees",
+              "evidence": "per behaviour id: the quoted sentence",
+              "seeds": [
+                "met-ts-dis-behaviour",
+                "unmet-ts-dis-behaviour"
+              ]
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-dis-scope",
+          "severity": "warning",
+          "verified_by": "judge",
+          "text": "No document the discovery step wrote covers a concept outside the task's gaps",
+          "check_method": "Compare each changed document with the gap rows",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "triage_note"
+            ],
+            "scale": {
+              "met": "each changed document maps to a gap row",
+              "partial": "no partial: any gap is UNMET",
+              "unmet": "a document adds behaviour no gap row asks for",
+              "evidence": "per document: the gap row it serves",
+              "seeds": [
+                "met-ts-dis-scope",
+                "unmet-ts-dis-scope"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "plan": {
+      "statement": "The plan traces every acceptance criterion to requirements and phases, states its complexity, and agrees with the specs",
+      "criteria": [
+        {
+          "id": "ts-plan-form",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "The plan has each section the plan rule requires",
+          "check_method": "Read the plan's headings and its hand-off section against the rule's list",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:plan_check"
+          }
+        },
+        {
+          "id": "ts-plan-trace",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every acceptance criterion in the triage note is named by at least one plan requirement, and in a simple plan by a proof row with its test file and command",
+          "check_method": "Match criterion numbers between the note, the plan's requirement table and, for a simple plan, the proof table; a proof row's test is the file of a test row and its command is a listed command",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:plan_check"
+          },
+          "serves": [
+            "ts-accepted",
+            "ts-traced"
+          ]
+        },
+        {
+          "id": "ts-plan-size",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "The complexity value matches the plan's measured signs",
+          "check_method": "Count phases, task rows, test rows, files, commands and reading-set bytes, and read each phase's weight; compare with the rule's limits for `simple`",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:plan_check"
+          }
+        },
+        {
+          "id": "ts-plan-commit",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every file the plan step changed is committed",
+          "check_method": "Read the git facts",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:plan_check"
+          },
+          "serves": [
+            "ts-committed"
+          ]
+        },
+        {
+          "id": "ts-plan-spec",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "No plan requirement contradicts a behaviour of a spec the plan references",
+          "check_method": "Read each requirement, then the behaviours of each spec the plan references",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "triage_note"
+            ],
+            "scale": {
+              "met": "each requirement follows from a behaviour or an acceptance criterion",
+              "partial": "each requirement is compatible but one goes beyond what any behaviour states",
+              "unmet": "a requirement states a result a referenced behaviour forbids",
+              "evidence": "per requirement id: the behaviour id it follows from",
+              "seeds": [
+                "met-ts-plan-spec",
+                "unmet-ts-plan-spec"
+              ]
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        }
+      ]
+    },
+    "expand": {
+      "statement": "Every phase of a complex plan has task rows with tests first and verification commands that run",
+      "criteria": [
+        {
+          "id": "ts-exp-rows",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every phase of the plan has at least one task row",
+          "check_method": "Read the plan's phase headings and task tables",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:expand_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-exp-tests",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every code row is preceded by a test row that names an acceptance criterion id, and every acceptance criterion of the task has a proof row with its test file and command",
+          "check_method": "Read the row order of each task table, and match the triage note's criterion numbers against the proof table",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:expand_check"
+          },
+          "serves": [
+            "ts-traced"
+          ]
+        },
+        {
+          "id": "ts-exp-commands",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every verification command in the plan resolves against the repository's allowed commands",
+          "check_method": "Resolve each command with the engine's command resolver, without running it",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:expand_check"
+          },
+          "serves": [
+            "ts-verify"
+          ]
+        },
+        {
+          "id": "ts-exp-commit",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every file the expand step changed is committed",
+          "check_method": "Read the git facts",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:expand_check"
+          },
+          "serves": [
+            "ts-committed"
+          ]
+        },
+        {
+          "id": "ts-exp-design",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "Every task row implements a requirement of the plan with no change to the plan's design",
+          "check_method": "Read the design sections as approved at the plan gate, then each task row",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "plan"
+            ],
+            "scale": {
+              "met": "each row names the requirement it implements, with the design sections unchanged",
+              "partial": "each row implements a requirement but one row's file or scope is too loose to act on",
+              "unmet": "a row implements nothing in the design, or the design sections were rewritten",
+              "evidence": "per row id: the requirement id",
+              "seeds": [
+                "met-ts-exp-design",
+                "unmet-ts-exp-design"
+              ]
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        }
+      ]
+    },
+    "code": {
+      "statement": "The whole plan, or the small change of the quick lane, is built test first, committed, with its verification passing in the gate's own run and each criterion carried by a test",
+      "criteria": [
+        {
+          "id": "ts-code-rows",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every task row of the plan is marked done",
+          "check_method": "Read the plan's task rows, then the row table of the code report",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-code-verify",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every verification command the plan lists exits 0 when the gate runs it",
+          "check_method": "Run each command through the engine's command runner with the test budget",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "serves": [
+            "ts-accepted",
+            "ts-verify"
+          ]
+        },
+        {
+          "id": "ts-code-proof",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each criterion a test row proves is carried by a test in the row's file, and that test is not skipped",
+          "check_method": "Open the file of every test row (in the quick lane, the note's test files), find the criterion id of its Proves cell, and read the lines above it for a skip mark",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "serves": [
+            "ts-accepted",
+            "ts-traced"
+          ]
+        },
+        {
+          "id": "ts-code-lane",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "A change in the quick lane edits no spec or decision record, only the files its triage note names, at most 2 code files and at most 200 lines",
+          "check_method": "Read the changed paths from the git facts and the size of the diff against the run's base; N/A outside the quick lane",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-code-commit",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every file the code step changed is committed with no commit on a remote",
+          "check_method": "Read the git facts",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "serves": [
+            "ts-committed"
+          ]
+        },
+        {
+          "id": "ts-code-aligned",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "The code change agrees by meaning with every behaviour of each spec the run edited",
+          "check_method": "Read the changed paths and the edited specs the check lists. For each behaviour of each edited spec, read its scenarios, then the code that implements it. Judge the meaning, not the wording or the names",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "plan",
+              "triage_note"
+            ],
+            "scale": {
+              "met": "each behaviour's scenarios hold in the code as written, with nothing in the diff that a behaviour forbids",
+              "partial": "each behaviour holds in its main scenario but one further scenario is not handled by the code",
+              "unmet": "the code does something a behaviour forbids, or a behaviour of an edited spec has no code",
+              "evidence": "per behaviour id: the file and line of the code that implements it",
+              "seeds": [
+                "met-ts-code-aligned",
+                "unmet-ts-code-aligned"
+              ]
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-code-related",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "The code change breaks no behaviour of a related spec that the run did not edit",
+          "check_method": "Related specs are those an edited spec links by id plus those the plan references; the check lists them. Read their behaviours against the changed code",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "plan",
+              "triage_note"
+            ],
+            "scale": {
+              "met": "no behaviour of a related spec is contradicted by the diff",
+              "partial": "no contradiction, but one related behaviour now depends on code the diff changed with no test that covers it",
+              "unmet": "the diff makes a behaviour of a related spec false",
+              "evidence": "per related spec: the behaviour ids read, with the diff lines compared",
+              "seeds": [
+                "met-ts-code-related",
+                "unmet-ts-code-related"
+              ]
+            }
+          },
+          "serves": [
+            "ts-accepted",
+            "ts-spec-sync"
+          ]
+        },
+        {
+          "id": "ts-code-change",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "Each task row's change is in the file the row names",
+          "check_method": "Read each row, then the file it names",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "plan"
+            ],
+            "scale": {
+              "met": "each row's change is present in its named file",
+              "partial": "each row's change exists but one sits in a different file than the row names",
+              "unmet": "a row is marked done with no matching change",
+              "evidence": "per row id: the path and line",
+              "seeds": [
+                "met-ts-code-change",
+                "unmet-ts-code-change"
+              ]
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-code-tests",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "Each test that carries an acceptance criterion id asserts what that criterion states",
+          "check_method": "Read each test that names a criterion id, then the criterion in its spec",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "plan"
+            ],
+            "scale": {
+              "met": "each such test fails if the criterion's result is absent",
+              "partial": "each test exercises the behaviour but one asserts a weaker result than the criterion",
+              "unmet": "a test carries a criterion id yet asserts nothing about it, or is skipped",
+              "evidence": "per criterion id: the test name and the asserting line",
+              "seeds": [
+                "met-ts-code-tests",
+                "unmet-ts-code-tests"
+              ]
+            }
+          },
+          "serves": [
+            "ts-accepted",
+            "ts-traced"
+          ]
+        },
+        {
+          "id": "ts-code-scope",
+          "severity": "warning",
+          "verified_by": "judge",
+          "text": "No file is changed that no task row names",
+          "check_method": "Compare the changed paths with the files the rows name",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "plan"
+            ],
+            "scale": {
+              "met": "each changed path is named by a row",
+              "partial": "no partial: any gap is UNMET",
+              "unmet": "a changed path has no row",
+              "evidence": "the changed paths with their row ids",
+              "seeds": [
+                "met-ts-code-scope",
+                "unmet-ts-code-scope"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "assumptions": [
+    "Per-phase coding waits for the engine's sequential map; until then a complex plan is coded in one session.",
+    "The plan, the code report and the discovery hand-off are not listed as deliverables because the engine requires every listed deliverable on every path, and a docs-only run or a run with no gaps does not produce them all.",
+    "No step or judge uses the large model tier.",
+    "Whether the code agrees with the specs by meaning is judged once, at the code gate (ts-code-aligned, ts-code-related), not again at the outcome gate.",
+    "The release step and a work-tracker start are left out of the first version.",
+    "Verification commands resolve against one fixed list (pytest, ruff, mypy and read-only git) because release 1 of the engine reads no per-repository command resolver; a repository with another toolchain adds its prefixes to the workflow's list.",
+    "Whether a commit is absent from every remote is not checked: the engine's git facts do not report it in release 1. Steps cannot push, and only the last stage does.",
+    "Specs written by the setup step describe behaviour that exists already, so the outcome gate does not ask for a test that names each of their acceptance criteria; a task that later touches such a behaviour adds the id to its test.",
+    "Repository setup is a conditional first step of this workflow because release 1 of the engine has no sub-workflows; it moves into one when the engine has them.",
+    "The quick lane's limits (3 acceptance criteria, 2 code files, 200 changed lines) are first values with no run behind them; the share of quick runs sent back to triage is the measure to tune them by.",
+    "A test carries its criterion as text (the spec's id, or `AC <n>`); the check finds the text and a skip mark near it, and does not prove that the named test is the one the command ran."
+  ],
+  "revisions": [
+    {
+      "revision": 1,
+      "origin": "authored",
+      "at": "2026-11-21T10:33:48.308Z"
+    },
+    {
+      "revision": 2,
+      "origin": "authored",
+      "at": "2026-11-21T12:30:00.000Z",
+      "note": "setup step added on the owner's request"
+    },
+    {
+      "revision": 3,
+      "origin": "authored",
+      "at": "2026-11-21T15:20:00.000Z",
+      "note": "quick lane, proof table, criterion-to-test link and pull request summary, chosen by the owner"
+    }
+  ]
+}

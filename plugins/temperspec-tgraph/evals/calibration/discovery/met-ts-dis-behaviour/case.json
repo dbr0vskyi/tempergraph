@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-ts-dis-behaviour",
+  "gate": "discovery",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-dis-behaviour",
+    "expected": "MET",
+    "reason": "CFG-B1 and CFG-B2 state events and results a person starting the tool can see; `tool.toml` is a name they depend on."
+  }
+}

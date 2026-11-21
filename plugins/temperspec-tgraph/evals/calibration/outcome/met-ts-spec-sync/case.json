@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-ts-spec-sync",
+  "gate": "outcome",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-spec-sync",
+    "expected": "MET",
+    "reason": "CFG-B2 (exit code 2) agrees with CLI-B2 (a code above 0); CFG-B1 shares no subject with the command line spec."
+  }
+}

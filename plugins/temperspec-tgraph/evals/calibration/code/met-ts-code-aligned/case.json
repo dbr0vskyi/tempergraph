@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-ts-code-aligned",
+  "gate": "code",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-code-aligned",
+    "expected": "MET",
+    "reason": "One line naming `tool.toml` goes to standard error and the entry point returns 2; nothing else prints to standard error."
+  }
+}

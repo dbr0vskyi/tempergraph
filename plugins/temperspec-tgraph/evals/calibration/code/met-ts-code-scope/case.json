@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-ts-code-scope",
+  "gate": "code",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-code-scope",
+    "expected": "MET",
+    "reason": "Every changed path is named by a row or is one of the run's own notes."
+  }
+}

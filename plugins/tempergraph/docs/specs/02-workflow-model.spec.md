@@ -94,7 +94,7 @@ What a package holds and how `load` reads it is [PKG](88-workflow-package.spec.m
 - [ ] WFM-AC-1 Every row of §2.1 has a fixture workflow that fails validation with its own finding code.
 - [ ] WFM-AC-2 The catalog, start, resume, pre-start check and upgrade check call the same `validate`.
 - [ ] WFM-AC-3 A refused start leaves the state root byte-for-byte unchanged.
-- [ ] WFM-AC-4 No engine source file names a shipped workflow (source-scan test).
+- [ ] WFM-AC-4 No engine source file, engine skill or engine test names a workflow package of the repository or its workflow; the scans take the names from the packages found, never from a typed list ([ADR-0129](../adr/0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md)).
 - [ ] WFM-AC-5 A workflow using only tiers and capability names validates against all four shipped executors.
 - [ ] WFM-AC-6 A fixture workflow using each kind, primitive and field outside the running release fails validation with `not_in_release`, on the catalog, a start and the pre-start check alike.
 

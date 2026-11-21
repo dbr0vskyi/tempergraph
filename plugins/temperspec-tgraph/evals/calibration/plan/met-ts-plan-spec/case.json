@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-ts-plan-spec",
+  "gate": "plan",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-plan-spec",
+    "expected": "MET",
+    "reason": "R1 follows CFG-B1, R2 follows CFG-B2 and R3 follows CLI-B1."
+  }
+}

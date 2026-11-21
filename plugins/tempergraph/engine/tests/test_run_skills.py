@@ -16,6 +16,8 @@ import pytest
 
 from tempergraph.cli.main import COMMANDS, _parser
 
+from .test_source_rules import SHIPPED_WORKFLOW_NAMES
+
 SKILLS = Path(__file__).resolve().parents[2] / "skills"
 HELPER = SKILLS / "bootstrap" / "scripts" / "ignore_rule.py"
 
@@ -102,4 +104,4 @@ def test_run_driver_names_built_verbs_and_options_only() -> None:  # SHL-AC-1, S
         for opt in re.findall(r"(--[a-z-]+)", rest):
             assert opt in opts, f"{verb} {opt}"
     assert "--relayed" in text and "never resume on your" in text.lower().replace("\n", " ")
-    assert not re.search(r"\b(release-notes|temperspec)\b", text)  # names no shipped workflow
+    assert not [w for w in SHIPPED_WORKFLOW_NAMES if w in text]  # names no workflow of the repository
