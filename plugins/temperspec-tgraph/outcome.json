@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 3,
+  "revision": 4,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -485,8 +485,8 @@
           "id": "ts-plan-form",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "The plan has each section the plan rule requires",
-          "check_method": "Read the plan's headings and its hand-off section against the rule's list",
+          "text": "The plan has each section the plan rule requires, with the status `planned` and no row marked completed",
+          "check_method": "Read the plan's headings, its hand-off section, its front matter status and the Completed cell of each row against the rule",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:plan_check"
@@ -508,11 +508,36 @@
           ]
         },
         {
+          "id": "ts-plan-links",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "In a simple plan every task row names a requirement of the plan, every requirement is named by a row, and every document under Docs to update is the file of a docs row",
+          "check_method": "Match the Req cell of each row against the requirement table, and the paths under Docs to update against the files of the docs rows; N/A for a complex plan, whose rows the expand step writes",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:plan_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
           "id": "ts-plan-size",
           "severity": "blocker",
           "verified_by": "check",
           "text": "The complexity value matches the plan's measured signs",
           "check_method": "Count phases, task rows, test rows, files, commands and reading-set bytes, and read each phase's weight; compare with the rule's limits for `simple`",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:plan_check"
+          }
+        },
+        {
+          "id": "ts-plan-scope",
+          "severity": "warning",
+          "verified_by": "check",
+          "text": "No requirement or task row says it does less than asked (a stub, a placeholder, for now, a later task)",
+          "check_method": "Search the requirement statements and the rows' Change cells for words that cut scope; a hit is a maybe for the judge, never a fail",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:plan_check"
@@ -567,8 +592,8 @@
           "id": "ts-exp-rows",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "Every phase of the plan has at least one task row",
-          "check_method": "Read the plan's phase headings and task tables",
+          "text": "Every phase of the plan has at least one task row, none marked completed, and the plan's status is still `planned`",
+          "check_method": "Read the plan's phase headings, task tables, Completed cells and front matter status",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:expand_check"
@@ -592,6 +617,20 @@
           ]
         },
         {
+          "id": "ts-exp-links",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every task row names a requirement of the plan, every requirement is named by a row, and every document under Docs to update is the file of a docs row",
+          "check_method": "Match the Req cell of each row against the requirement table, and the paths under Docs to update against the files of the docs rows",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:expand_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
           "id": "ts-exp-commands",
           "severity": "blocker",
           "verified_by": "check",
@@ -604,6 +643,17 @@
           "serves": [
             "ts-verify"
           ]
+        },
+        {
+          "id": "ts-exp-scope",
+          "severity": "warning",
+          "verified_by": "check",
+          "text": "No task row says it does less than asked (a stub, a placeholder, for now, a later task)",
+          "check_method": "Search the requirement statements and the rows' Change cells for words that cut scope; a hit is a maybe for the judge, never a fail",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:expand_check"
+          }
         },
         {
           "id": "ts-exp-commit",
@@ -654,8 +704,22 @@
           "id": "ts-code-rows",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "Every task row of the plan is marked done",
-          "check_method": "Read the plan's task rows, then the row table of the code report",
+          "text": "Every task row of the plan is marked completed with its date in a plan whose status is `completed`, checked before any command runs",
+          "check_method": "Read the plan's Completed cells and status first, and end the check there when one is missing. In the quick lane, read the code report's row table instead",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-code-changed",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "The file of every task row marked completed changed in the run",
+          "check_method": "Compare each marked row's file with the paths the run changed since its base commit; N/A without a base commit or in the quick lane",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:code_check"
@@ -886,6 +950,12 @@
       "origin": "authored",
       "at": "2026-11-21T15:20:00.000Z",
       "note": "quick lane, proof table, criterion-to-test link and pull request summary, chosen by the owner"
+    },
+    {
+      "revision": 4,
+      "origin": "authored",
+      "at": "2026-11-21T22:45:00.000Z",
+      "note": "plan status and row completion marks checked first at the code gate, requirement and docs links per row, the scope-cut warning, chosen by the owner"
     }
   ]
 }

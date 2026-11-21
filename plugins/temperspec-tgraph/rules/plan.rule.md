@@ -13,6 +13,7 @@ A plan turns the task's acceptance criteria and the specs into requirements, pha
 ---
 task: TASK-12
 complexity: simple
+status: planned
 specs: [docs/specs/session-expiry.spec.md]
 ---
 
@@ -37,10 +38,10 @@ specs: [docs/specs/session-expiry.spec.md]
 Goal: a request on an idle session is refused.
 Weight: light
 
-| Row | Kind | File | Proves | Change |
-|---|---|---|---|---|
-| 1.1 | test | `tests/test_session.py` | SES-AC1 | A request after 31 idle minutes is refused |
-| 1.2 | code | `src/auth/session.py` | | End a session idle for 30 minutes |
+| Row | Kind | Req | File | Proves | Change | Completed |
+|---|---|---|---|---|---|---|
+| 1.1 | test | R1 | `tests/test_session.py` | SES-AC1 | A request after 31 idle minutes is refused | |
+| 1.2 | code | R1 | `src/auth/session.py` | | End a session idle for 30 minutes | |
 
 ## 3. Verification
 
@@ -59,20 +60,27 @@ Weight: light
 
 - `task`: the run's task id.
 - `complexity`: `simple` or `complex` (see Complexity).
+- `status`: `planned` when the plan and expand steps write it, `in-progress` while the code step works, `completed` when every row is marked (see Status and marks).
 - `specs`: the spec files the plan implements or depends on.
+
+A plan is a working document for one task, not a spec: it carries its status and the completion marks of its rows, which no other document does.
 
 ## Requirements
 
 - Every numbered acceptance criterion of the triage note appears in the `Criteria` cell of at least one requirement, written `AC <n>`.
-- Every requirement is served by at least one phase.
+- A requirement's id is `R<n>`. Every requirement is named by at least one task row.
 - A requirement follows from a behaviour or a criterion. A plan never adds behaviour that no spec states: if a spec is missing or has an open question the plan needs, the plan is not written and the defect is reported against discovery.
 
 ## Phases and task rows
 
 - A phase is one unit of work with one goal. Its heading is `### Phase <n>: <name>`, followed by a `Goal:` line and a `Weight:` line.
-- A task row is one logical change in one exact file. Columns: `Row` (an id unique in the plan, such as `1.2`), `Kind` (`test`, `code`, `docs` or `chore`), `File`, `Proves`, `Change`.
+- A task row is one logical change in one exact file. Columns: `Row` (an id unique in the plan, such as `1.2`), `Kind` (`test`, `code`, `docs` or `chore`), `Req` (the requirement ids it serves, such as `R1` or `R1, R3`), `File`, `Proves`, `Change`, `Completed` (empty until the code step marks it).
+- Every row names at least one requirement of the plan, and names none that the plan does not have.
+- A `Change` cell says the whole change. Words that cut it down (a stub, a placeholder, "for now", a later task) are read by the plan judge: cut scope only when the task says so, and then say why in the hand-off.
+- Before writing a row that changes a type, a signature or the order of fields, search the tests for code that pins it (constructs it by position, compares its fields, checks its signature). Each test it would break gets a row; if none, say so in the row's Change cell.
 - Test first: in every phase, a `code` row comes after a `test` row of that phase. A `test` row names in `Proves` the acceptance criterion it proves: the spec's id (`SES-AC1`), or `AC <n>` of the task when no spec criterion fits.
 - A plan of complexity `simple` carries its task rows. A plan of complexity `complex` is written with phases, goals and weights only; the expand step adds the rows and the proof table without changing sections 0, 1 and 4 or any goal.
+- Write a plan in parts: first every section with the phase headings, goals and weights and no rows, then one edit per phase that adds its table. No single write is over about 12 KB. A response that runs too long is cut off and retried for a long time.
 
 ## Complexity
 
@@ -100,4 +108,11 @@ A phase is heavy when it is much heavier than the others. Mark it `Weight: heavy
 
 ## Docs to update
 
-Every document the change will make false, with the reason, or `None`.
+Every document the change will make false, with the reason, or `None`. Each document listed here is the file of a `docs` row.
+
+## Status and marks
+
+- The plan and expand steps leave the status `planned` and every `Completed` cell empty.
+- The code step sets the status to `in-progress` when it starts. When a row's change is in its file and the phase's tests pass, it writes `✓ <date>` in that row's `Completed` cell, with the date of that day as `YYYY-MM-DD` (`✓ 2026-11-21`). When every row is marked, it sets the status to `completed`.
+- A mark is a claim. The code gate first checks that every row is marked and the plan is `completed`, and sends the run back to the code step at once when not, without running anything. A marked plan is then verified as if it had no marks: the file of each marked row must have changed in the run, the verification commands are run, and each criterion's test is read.
+- The code step changes nothing else in the plan. A row it could not do stays unmarked, and the code report says why.

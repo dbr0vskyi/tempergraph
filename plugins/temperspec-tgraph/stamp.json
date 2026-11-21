@@ -2,8 +2,8 @@
   "schema_version": 1,
   "engine_version": "0.2.0",
   "workflow_api": 1,
-  "workflow_version": "0.1.0+f177744267e9",
-  "docs_digest": "1a82f2823aa1a9d0e850475d62e04c91635f107c100895c52a9f4c90b4d7a23e",
+  "workflow_version": "0.1.0+3bb3f0263370",
+  "docs_digest": "295c19179c63e1e18a816a37eae139f5cc434f67fd2757e44854035ce82331ff",
   "shape_digest": "345ad186df7cff52c44cf76540ca2fc76a4d2daedeaf91ab03ac33955bd4dcce",
   "entries_applied": [
     {
@@ -77,20 +77,18 @@
     "oversized-step|code||workflow/temperspec/__init__.py",
     "readiness:needs-work|code||",
     "readiness:needs-work|discovery||",
-    "readiness:needs-work|expand||",
     "readiness:needs-work|outcome||",
     "readiness:needs-work|setup||",
     "validate:criterion-overlap|code||",
     "validate:criterion-overlap|discovery||",
-    "validate:criterion-overlap|expand||",
     "validate:criterion-overlap|setup||",
     "validate:criterion-overlap|||",
     "validate:template-key-not-on-every-path|code||"
   ],
-  "outcome_revision": 3,
+  "outcome_revision": 4,
   "baseline": {
     "error": 0,
     "warning": 11
   },
-  "stamped_at": "2026-11-21T19:18:37.390Z"
+  "stamped_at": "2026-11-21T22:42:31.229Z"
 }

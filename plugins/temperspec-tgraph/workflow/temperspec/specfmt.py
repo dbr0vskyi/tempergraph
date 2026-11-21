@@ -13,7 +13,8 @@ SPEC_HEADINGS = ("Purpose", "Behaviours", "Acceptance criteria")
 TRIAGE_HEADINGS = ("Task", "Acceptance criteria", "Existing documents", "Gaps", "Route")
 HANDOFF_HEADINGS = ("Problem", "Gaps closed", "Changed documents", "Decisions", "Open questions")
 PLAN_HEADINGS = ("0. Hand-off", "1. Requirements", "2. Phases", "3. Verification", "4. Docs to update")
-REPORT_HEADINGS = ("Rows", "Verification", "Deviations")
+REPORT_HEADINGS = ("Verification", "Deviations")  # the quick lane adds `## Rows` before them (no plan to mark)
+QUICK_REPORT_HEADINGS = ("Rows", *REPORT_HEADINGS)
 SETUP_HEADINGS = ("Components", "Commands", "Not covered")
 # The block the prepare script keeps in the project-context file, between these two lines.
 CONTEXT_START = "<!-- temperspec:start -->"
@@ -21,6 +22,13 @@ CONTEXT_END = "<!-- temperspec:end -->"
 DELIVER = ("code", "docs")
 COMPLEXITY = ("simple", "complex")
 ROW_KINDS = ("test", "code", "docs", "chore")
+PLAN_STATUS = ("planned", "in-progress", "completed")
+ROW_COLUMNS = ("row", "kind", "req", "file", "proves", "change", "completed")
+DONE_MARK = re.compile(r"^[✓✔]\s*(\d{4}-\d{2}-\d{2})$")
+REQ_ID = re.compile(r"\bR\d+\b")
+# Words that say a requirement or a row does less than asked; the plan judge then looks at the scope.
+SCOPE_CUT = re.compile(r"\b(stub(?:s|bed)?|for now|placeholder|temporar(?:y|ily)|hard-?coded|v1 only|not yet|"
+                       r"later (?:release|version|task)|follow-?up task|skip(?:ped)? for|mock(?:ed)? out|TODO)\b", re.I)
 # The signs that make a phase heavy, and so the plan `complex` (the plan rule lists the same four).
 HEAVY_SIGNS = ("refactor", "many-tests", "large-context", "long-running")
 ROUTES = ("discovery", "plan", "discovery-only", "quick")
@@ -256,6 +264,10 @@ class Row:
     file: str
     proves: str
     phase: str
+    req: list[str] = field(default_factory=list)
+    completed: str = ""  # the Completed cell as written: empty until the code step marks it `✓ <date>`
+    change: str = ""
+    has_req: bool = True  # the table has a `Req` column
 
 
 @dataclass
@@ -270,6 +282,9 @@ class Plan:
     proof: list[tuple[str, str, str]] = field(default_factory=list)  # (criterion cell, test file, command)
     handoff_lines: int = 0
     missing: list[str] = field(default_factory=list)
+    status: str = ""
+    requirements: dict[str, str] = field(default_factory=dict)  # requirement id -> its statement
+    docs: list[str] = field(default_factory=list)  # paths under `## 4. Docs to update`
 
 
 def _cells(line: str) -> list[str] | None:
@@ -285,6 +300,7 @@ def parse_plan(text: str) -> Plan:
     front = re.match(r"^---\n(.*?)\n---\n", text.replace("\r\n", "\n"), re.S)
     if front:
         plan.complexity = _field(front.group(1).splitlines(), "complexity").lower()
+        plan.status = _field(front.group(1).splitlines(), "status").lower()
         specs = _field(front.group(1).splitlines(), "specs")
         plan.specs = [s.strip().strip("'\"") for s in specs.strip("[]").split(",") if s.strip()]
     section, phase, header = "", "", None
@@ -298,6 +314,8 @@ def parse_plan(text: str) -> Plan:
         elif section.startswith("1.") and (cells := _cells(line)) and len(cells) >= 2:
             if cells[0].lower() not in ("req", "requirement"):
                 plan.requirement_criteria |= {int(n) for n in re.findall(r"\bAC\s*(\d+)\b", cells[1], re.I)}
+                if REQ_ID.fullmatch(cells[0].strip("*` ")):
+                    plan.requirements[cells[0].strip("*` ")] = cells[2] if len(cells) > 2 else ""
         elif section.startswith("2."):
             if m and len(m.group(1)) == 3:
                 phase, header = m.group(2).strip(), None
@@ -311,7 +329,9 @@ def parse_plan(text: str) -> Plan:
                 got = dict(zip(header, cells, strict=False))
                 plan.rows.append(Row(id=got.get("row", ""), kind=got.get("kind", "").lower(),
                                      file=got.get("file", "").strip("`"), proves=got.get("proves", ""),
-                                     phase=phase))
+                                     phase=phase, req=REQ_ID.findall(got.get("req", "")),
+                                     completed=got.get("completed", "").strip(), change=got.get("change", ""),
+                                     has_req="req" in header))
         elif section.startswith("3.") and (b := re.match(r"^\s*[-*]\s+`([^`]+)`", line)):
             plan.commands.append(b.group(1).strip())
         elif section.startswith("3.") and (cells := _cells(line)):
@@ -321,7 +341,59 @@ def parse_plan(text: str) -> Plan:
             got = dict(zip(header, cells, strict=False))
             plan.proof.append((got.get("criterion", ""), got.get("test", "").strip("` "),
                                got.get("command", "").strip("` ")))
+        elif section.startswith("4."):
+            plan.docs += listed_paths([line])
     return plan
+
+
+def link_problems(plan: Plan) -> list[str]:
+    """Rows against requirements and docs: every row names a requirement of the plan in its `Req` cell, every
+    requirement is named by a row, and every document under Docs to update is the file of a `docs` row."""
+    bad: list[str] = []
+    named: set[str] = set()
+    for r in plan.rows:
+        if not r.has_req:
+            bad.append(f"the task table of `{r.phase}` has no `Req` column")
+            continue
+        unknown = [q for q in r.req if q not in plan.requirements]
+        if not r.req:
+            bad.append(f"row `{r.id}` names no requirement in its Req cell")
+        elif unknown:
+            bad.append(f"row `{r.id}` names {', '.join(unknown)}, which is not a requirement of the plan")
+        named |= set(r.req)
+    bad += [f"requirement {q} is named by no task row" for q in plan.requirements if q not in named]
+    doc_rows = {r.file for r in plan.rows if r.kind == "docs"}
+    bad += [f"`{d}` is under Docs to update but no `docs` row changes it" for d in plan.docs if d not in doc_rows]
+    return list(dict.fromkeys(bad))
+
+
+def mark_problems(plan: Plan, done: bool) -> list[str]:
+    """The plan's status and the rows' Completed marks. Before code (`done` false) the plan is `planned` and no
+    row is marked; after code every row carries `✓ <date>` and the plan is `completed`."""
+    bad: list[str] = []
+    if plan.status not in PLAN_STATUS:
+        bad.append(f"the front matter has no `status: {'|'.join(PLAN_STATUS)}`")
+    if not done:
+        if plan.status in PLAN_STATUS and plan.status != "planned":
+            bad.append(f"the plan's status is `{plan.status}` before any code is written; it is `planned`")
+        bad += [f"row `{r.id}` is already marked completed" for r in plan.rows if r.completed]
+        return bad
+    if plan.status in PLAN_STATUS and plan.status != "completed":
+        bad.append(f"the plan's status is `{plan.status}`, not `completed`")
+    for r in plan.rows:
+        m = DONE_MARK.match(r.completed)
+        if not r.completed:
+            bad.append(f"row `{r.id}` is not marked completed")
+        elif not m:
+            bad.append(f"row `{r.id}` is marked `{r.completed}`; a mark is `✓ YYYY-MM-DD`")
+    return bad
+
+
+def scope_cuts(plan: Plan) -> list[str]:
+    """Requirements and rows whose words say they do less than asked (`stub`, `for now`, …)."""
+    out = [f"requirement {q}: \"{m.group(0)}\"" for q, text in plan.requirements.items() if (m := SCOPE_CUT.search(text))]
+    out += [f"row `{r.id}`: \"{m.group(0)}\"" for r in plan.rows if (m := SCOPE_CUT.search(r.change))]
+    return out
 
 
 def simple_overruns(plan: Plan, reading_bytes: int = 0) -> list[str]:

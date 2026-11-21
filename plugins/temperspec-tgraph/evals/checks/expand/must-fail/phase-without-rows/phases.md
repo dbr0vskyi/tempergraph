@@ -1,6 +1,7 @@
 ---
 task: STANDIN-1
 complexity: complex
+status: planned
 specs: []
 ---
 
@@ -25,37 +26,37 @@ specs: []
 Goal: restructure config loading is in place.
 Weight: heavy (refactor)
 
-| Row | Kind | File | Proves | Change |
-|---|---|---|---|---|
-| 1.1 | test | `tests/test_config.py` | AC 1 | The phase's result is asserted |
-| 1.2 | code | `src/tool/config.py` | | The phase's change |
+| Row | Kind | Req | File | Proves | Change | Completed |
+|---|---|---|---|---|---|---|
+| 1.1 | test | R1 | `tests/test_config.py` | AC 1 | The phase's result is asserted | |
+| 1.2 | code | R1, R2 | `src/tool/config.py` | | The phase's change | |
 
 ### Phase 2: Missing file message
 
 Goal: missing file message is in place.
 Weight: light
 
-| Row | Kind | File | Proves | Change |
-|---|---|---|---|---|
-| 2.1 | test | `tests/test_config.py` | AC 1 | The phase's result is asserted |
-| 2.2 | code | `src/tool/config.py` | | The phase's change |
+| Row | Kind | Req | File | Proves | Change | Completed |
+|---|---|---|---|---|---|---|
+| 2.1 | test | R1 | `tests/test_config.py` | AC 1 | The phase's result is asserted | |
+| 2.2 | code | R1 | `src/tool/config.py` | | The phase's change | |
 
 ### Phase 3: Exit code
 
 Goal: exit code is in place.
 Weight: light
 
-| Row | Kind | File | Proves | Change |
-|---|---|---|---|---|
+| Row | Kind | Req | File | Proves | Change | Completed |
+|---|---|---|---|---|---|---|
 
 ### Phase 4: Docs
 
 Goal: docs is in place.
 Weight: light
 
-| Row | Kind | File | Proves | Change |
-|---|---|---|---|---|
-| 4.1 | docs | `README.md` | | Describe the missing-file message |
+| Row | Kind | Req | File | Proves | Change | Completed |
+|---|---|---|---|---|---|---|
+| 4.1 | docs | R1 | `README.md` | | Describe the missing-file message | |
 
 
 ## 3. Verification
