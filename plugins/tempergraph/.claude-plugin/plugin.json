@@ -1,6 +1,6 @@
 {
   "name": "tempergraph",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "description": "The tempergraph engine: opinionated, LangGraph-based workflows with deterministic and LLM-as-judge checks",
   "author": { "name": "Yevhenii Dubrovskyi" }
 }

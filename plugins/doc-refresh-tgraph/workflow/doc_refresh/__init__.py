@@ -24,7 +24,9 @@ def workflow():
                 prompt=text("prompts/draft.md"), summary="Rewrite the requested sections", timeout_s=900,
                 tools=["read", "write"], produces={"doc": "file", "size": Value(choices=["major", "minor"])},
                 route=route_draft, route_targets=["review", "finalizer"],
-                model="medium", effort="medium", sizing="It rewrites named sections from the repository's files",
+                model="medium", effort_ladder=["medium", "high"],
+                sizing="It rewrites named sections from the repository's files; a repeated blocker from a trusted "
+                       "judge earns one retry at high effort",
                 gate=Gate(check=draft_check, judge=Judge(
                     file="judges/draft.md", references=["doc", "outline"], model="medium", effort="medium",
                     sizing="It compares the rewritten sections with the outline and the request"))),

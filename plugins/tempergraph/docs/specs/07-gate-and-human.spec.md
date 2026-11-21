@@ -91,7 +91,7 @@ Any feedback may be given as a **ruling** (`--ruling`): it is then shown to ever
 
 - One interrupt per gate keeps resume cheap and correct under LangGraph's replay-from-top rule ([ADR-0004](../adr/0004-four-nodes-per-unit.adr.md)).
 - Exit 3 means "a person is needed", never failure; callers tell it from 4 and 5 by code alone ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)).
-- **As built (R2-T7).** Pause kinds `input` (ask), `event_wait` (wait) and `breakpoint` are built. A wait declares `event` and a pure `check(value)`; `resume --input <event>=<value>` passes it only when the check accepts the value, and `proceed` is refused. With two gates pending in a parallel block, `--decision` takes `--unit <name>` and the other gate stays pending. `--decision` is repeatable only for `answer:` words.
+- **As built (R2-T7).** Pause kinds `input` (ask), `event_wait` (wait) and `breakpoint` are built. A wait declares `event` and a pure `check(value)`; `resume --decision event:<name>=<value>` passes it only when the check accepts the value, and `proceed` is refused. With two gates pending in a parallel block, `--decision` takes `--unit <name>` and the other gate stays pending. `--decision` is repeatable only for `answer:` words.
 
 ## 6. Acceptance criteria
 

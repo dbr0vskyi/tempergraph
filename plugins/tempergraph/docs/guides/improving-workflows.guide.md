@@ -66,3 +66,36 @@ tempergraph report --supervision     # how often runs needed a person, and for w
 tempergraph report --loop            # what the self-improvement loop did and spent
 tempergraph supervision show         # the cost of supervising runs
 ```
+
+## 6. Run the eval suite
+
+Cases live in the package's `evals/`. A regression case must pass; a capability case measures.
+
+```sh
+tempergraph evals run <workflow> --kind check        # no model
+tempergraph evals run <workflow> --kind judge --cap 2
+tempergraph evals report <workflow>
+tempergraph evals harvest <workflow> <gate>          # turn labelled judgements into cases
+```
+
+## 7. Promote a workflow
+
+A workflow starts in the `local-dev` stage, where the engine offers a stronger model and you decide. When it has earned it, promote it:
+
+```sh
+tempergraph promote-check <workflow> --to local-stable            # read-only: each criterion, met or not
+tempergraph promote-check <workflow> --to local-stable --stamp    # write the stamp when all are met
+```
+
+The check reads your runs: enough of them, judges accepted by calibration, the suite passing, and how much of a person's time a run still takes.
+
+## 8. Keep up with the engine
+
+```sh
+tempergraph update --check          # is a newer engine staged?
+tempergraph update                  # install it beside the current one and switch; --rollback goes back
+tempergraph upgrade <workflow> --check
+tempergraph upgrade <workflow>      # on a branch: deterministic rewrites first, a gated workflow for the rest
+```
+
+A paused run stays on the engine it started on unless the new one can resume it.

@@ -65,6 +65,25 @@ tempergraph resume <workflow> <thread> --decision retry --feedback 'Keep the tab
 
 Use `--ruling` with your feedback when it should hold on every later attempt, not just the next one. Don't `proceed` after an infrastructure failure: nothing was judged.
 
+### Questions, events and breakpoints
+
+Some pauses are not about a failed gate. They show their kind in `tempergraph attention`:
+
+| Kind | What it waits for | How to answer |
+|---|---|---|
+| `input` | Answers to the questions of an ask step | `--answers <file>` (a JSON object of name and value), or `--decision answer:<name>=<value>` once per answer. Partial answers are kept; the run goes on when the set is complete |
+| `event_wait` | A value from an outside system | `--decision event:<name>=<value>`. The step's own check decides; `proceed` is refused |
+| `breakpoint` | You asked for it | `--decision proceed` or `stop` |
+
+```sh
+tempergraph run <workflow> 'the request' --pause-before <step>   # stop before a step, with nothing spent on it
+tempergraph resume <workflow> <thread> --answers answers.json
+tempergraph resume <workflow> <thread> --apply-deadline          # take an overdue wait's declared way out
+tempergraph resume <workflow> <thread> --decision proceed --unit <step>   # when two parallel gates wait
+```
+
+A run that took a gate's fallback finishes with `degraded: true` in its status. Read why before you trust the result.
+
 ## Watch and inspect
 
 ```sh
@@ -99,3 +118,21 @@ Every model call is costed. Where Claude Code does not report a cost, the engine
 ## When something goes wrong
 
 Ask Claude: "why did my doc-refresh run fail?" The `troubleshoot` skill reads the run's state and logs without changing anything, and gives you ranked causes with the next command to run.
+
+## Outside a git repository
+
+A plain folder can hold runs too. The state goes to `.tempergraph/` in the folder you start in, or the nearest one above it that already has one; `--state-root <dir>` (before the verb) or `TEMPERGRAPH_STATE_ROOT` names another place. Runs work in place only, and what needs git is refused before anything is spent: worktrees, `--carry`, trials, and rules that count changed lines.
+
+## Be told when a run ends
+
+A hook is a command of yours that the engine starts on a run event (`started`, `unit_entered`, `gate_verdict`, `paused`, `resumed`, `stop_requested`, `finished`, `failed`). It gets the event's facts as a JSON file named in `TEMPERGRAPH_HOOK_FACTS`, never the run's text, and its failure never changes a run.
+
+```sh
+tempergraph hooks add paused -- notify-send 'A run is waiting'
+tempergraph hooks test paused      # run it once against made-up facts
+tempergraph hooks list
+```
+
+## Carry a run to another machine
+
+`--carry` on `run` keeps the run's scrubbed state on its own branch, so a paused run can be resumed elsewhere: `tempergraph carry pull <workflow> <thread>` on the other machine, then `resume`. The branch is deleted when the run finishes.

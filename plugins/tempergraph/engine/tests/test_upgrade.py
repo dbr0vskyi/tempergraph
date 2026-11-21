@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 
 from tempergraph.cli.main import main
+from tempergraph.constants import ENGINE_VERSION
 from tempergraph.executors.registry import default_registry
 from tempergraph.improve.codehost import MemoryCodeHost
 from tempergraph.package import transforms
@@ -292,4 +293,5 @@ def test_the_verb(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     text = out.getvalue()  # WUP §4: an error the workflow had before is not counted against V2; the report leads with it
     assert text.splitlines()[1].startswith("  before the upgrade: model-ladder-retired")
     assert "V2 validation: passed" in text and "upgrade release-notes: engine unstamped" in text
-    assert "proposed version 0.1.1 (patch)" in text
+    # the shipped changelog retires the model list (a breaking entry), so the proposal is a minor version
+    assert f"proposed version 0.2.0 (minor), requires_engine >={ENGINE_VERSION},<1" in text

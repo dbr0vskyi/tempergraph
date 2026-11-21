@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Status
 
-Release 1 is being built from `plugins/tempergraph/docs/plans/first-release.plan.md`, one track plan per track (`plugins/tempergraph/docs/plans/t<N>-*.plan.md`). The engine's Python source is the plugin's staged engine at `plugins/tempergraph/engine/` (src layout, ADR-0115). Truth ranking: acceptance criteria, then specs and decision records, then plans, then code; a code change that makes a doc false updates the doc in the same pull request.
+Release 1 was built from `plugins/tempergraph/docs/plans/first-release.plan.md`, one track plan per track (`plugins/tempergraph/docs/plans/t<N>-*.plan.md`); release 2 from `plugins/tempergraph/docs/plans/second-release.plan.md` (track plans `r2-t<N>-*.plan.md`, each with a triage note and a code report in `plugins/tempergraph/docs/tasks/`). Both wait on the live checks of `plugins/tempergraph/docs/plans/live-checks.plan.md`. The engine's Python source is the plugin's staged engine at `plugins/tempergraph/engine/` (src layout, ADR-0115). Truth ranking: acceptance criteria, then specs and decision records, then plans, then code; a code change that makes a doc false updates the doc in the same pull request.
 
 ## Commands
 

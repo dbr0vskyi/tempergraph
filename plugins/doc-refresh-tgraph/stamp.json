@@ -1,11 +1,48 @@
 {
   "schema_version": 1,
-  "engine_version": "0.0.1",
+  "engine_version": "0.2.0",
   "workflow_api": 1,
-  "workflow_version": "0.1.0+302609ea3868",
+  "workflow_version": "0.1.0+91e72a052d30",
   "docs_digest": "825fd1cb265f46702595278a2ce813401a0e57e1651c94f718b51fc3aeb8aa78",
   "shape_digest": "a61c8ccc145f65880ba6b3e4a0f75073d75d6f1960922b7aa3480f7d0b199543",
-  "entries_applied": [],
+  "entries_applied": [
+    {
+      "id": "E0.2.0-1",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-2",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-3",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-4",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-5",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-6",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-7",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-8",
+      "by": "none"
+    },
+    {
+      "id": "E0.2.0-9",
+      "by": "none"
+    }
+  ],
   "tool_set": {
     "claude": [
       "Glob",
@@ -19,9 +56,10 @@
     "outcome-unverified-blocker|outcome|dr-request|outcome.json",
     "outcome-unverified-blocker|review|dr-reviewed|outcome.json"
   ],
+  "outcome_revision": 1,
   "baseline": {
     "error": 0,
     "warning": 0
   },
-  "stamped_at": "2026-11-20T19:09:42.952Z"
+  "stamped_at": "2026-11-21T19:18:36.677Z"
 }

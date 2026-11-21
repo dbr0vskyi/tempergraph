@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "engine_version": "0.0.1",
+  "engine_version": "0.2.0",
   "workflow_api": 1,
   "loads_workflow_api_from": 1,
   "store_layout": 1,

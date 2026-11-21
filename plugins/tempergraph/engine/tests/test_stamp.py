@@ -58,6 +58,15 @@ def test_shipped_changelog_exists_and_validates() -> None:
             assert changelog.entry_problems(e) == [], e["id"]
 
 
+def test_the_release_retires_the_model_list_with_its_transform() -> None:  # LAD-AC-6
+    files = dict((f"{v[0]}.{v[1]}.{v[2]}", p) for v, p in changelog.releases())
+    entries = json.loads(files[ENGINE_VERSION].read_text())["entries"]
+    (retired,) = [e for e in entries if "model-ladder-retired" in e["proof"]]
+    assert retired["breaking"] and retired["kind"] == "tightened"
+    assert retired["migrate"] == {"action": "transform", "transform": "model_list_to_escalation"}
+    assert [e["id"] for e in entries] == [f"E{ENGINE_VERSION}-{n}" for n in range(1, len(entries) + 1)]
+
+
 def test_renamed_entry_must_carry_its_transform() -> None:
     """VER-B4."""
     e = {**entry("E1.0.0-1", breaking=True), "kind": "renamed", "migrate": {"action": "assisted"}}

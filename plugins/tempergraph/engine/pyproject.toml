@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tempergraph"
-version = "0.0.1"
+version = "0.2.0"
 description = "Tempered rails for AI workflows: an opinionated LangGraph-based workflow engine"
 requires-python = ">=3.11"
 license = { text = "Proprietary" }
