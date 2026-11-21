@@ -60,6 +60,38 @@ The M1 test runs in a scratch repository that pytest removes afterwards, so its 
 
 ## 4. Results
 
+All rows below were run on 2026-11-21 in the project's cloud container, not on the owner's machine: a hosted Claude Code 2.1.330 signed in by the environment, each `claude` started from inside a Claude Code session with the `CLAUDECODE*` variables removed. Section 1 asks for a plain terminal, so these are results for this container. The probe rows of ECC §2.7, the `LIVE_FACTS` table and `executor_compat.json` are left as they were until the owner accepts the container as a place of record or repeats the rows on a machine. Spend for the whole pass: about 8 USD reported.
+
 | Row | Date | CLI version | Result | Notes |
 |---|---|---|---|---|
-| L-0 to L-30 | | | not run | |
+| L-0 | 2026-11-21 | 2.1.330 | passed | `2.1.330 (Claude Code)` |
+| L-1 | 2026-11-21 | 2.1.330 | failed | Sign-in works under `--bare` (`success`), no MCP servers, tools are `[Read]`. `system/init` still lists four plugins of source `@builtin` (`cc-plugin-agents-md`, `cc-plugin-telemetry`, `cc-plugin-privacy`, `cc-plugin-plugin-authoring`), so the test's `not plugins` fails. They are part of this CLI build, not user configuration; the same list appears with the host variables removed. Open: whether P-CC-1 should ignore `@builtin` plugins |
+| L-2 | 2026-11-21 | 2.1.330 | passed | `init.tools == [Glob, Grep, Read]` |
+| L-3 | 2026-11-21 | 2.1.330 | passed | subtype `error_max_budget_usd`, `is_error: true`; `BUDGET_SUBTYPE` matches |
+| L-4 | 2026-11-21 | 2.1.330 | passed |  |
+| L-5 | 2026-11-21 | 2.1.330 | passed | no `out.txt`, the session ended by itself; 0 `permission_denied` events in the stream, so the second half of P-CC-6 (the event) is not seen |
+| L-6 | 2026-11-21 | 2.1.330 | passed | a native transcript is kept at `~/.claude/projects/<cwd slug>/<session id>.jsonl` |
+| L-7 | 2026-11-21 | 2.1.330 | passed | `system/init` names `hello` and `helper`; the tool record is `Skill {skill: tgprobe:hello}` |
+| L-8 | 2026-11-21 | 2.1.330 | passed |  |
+| L-9 | 2026-11-21 | 2.1.330 | passed |  |
+| L-10, L-11 | 2026-11-21 | 2.1.330 | passed | on engine 0.0.1 and again on 0.2.0: exit 0, four sessions `ok`, every digest `capture: full`, `loop.jsonl` has `review_planned` and four `review_done` |
+| L-12 | 2026-11-21 | 2.1.330 | passed in part | CLI surface only: inside a `claude -p` session `echo $CLAUDE_CODE_SESSION_ID` printed the `session_id` of `system/init`. `/status`, desktop and the IDE cannot be reached from the container: not run |
+| L-13 | 2026-11-21 | 2.1.330 | passed | the hook's stdin JSON has `prompt` (also `session_id`, `transcript_path`, `cwd`, `permission_mode`, `hook_event_name`). The hook fired when given with `--settings`; the same hook in the scratch project's `.claude/settings.json` did not fire in this container, which ignores persisted folder trust |
+| L-14 | 2026-11-21 | 2.1.330 | not run | needs a normally used interactive session |
+| L-15 | 2026-11-21 | 2.1.330 | passed | `claude-agent-sdk` (Python): the Bash tool sees `CLAUDECODE=1` and `CLAUDE_CODE_ENTRYPOINT=sdk-py` (the second set by the SDK itself; it was removed from the parent environment first) |
+| L-16 | 2026-11-21 | 2.1.330 | passed, one warning | `claude plugin marketplace add`, `claude plugin install tempergraph@tempergraph`, `install --check --json` (`would_install`), `install --json` (engine installed, shim at `~/.tempergraph/bin/tempergraph`), `executors --probe`: `ok`, `logged_in: true`, version 2.1.330, compat state `outside` the recorded `2.1.329`. Run on engine 0.0.1 |
+| L-17 | 2026-11-21 | 2.1.330 | not run | needs a scratch GitHub repository of the owner's and a signed-in `gh`; the container has neither |
+| L-18 | 2026-11-21 | 2.1.330 | not run | no workflow has reviewed cases: `evals bar` says `unscored; needs write reviewed cases` for every gate. Waits on the owner's labels |
+| L-19 | 2026-11-21 | 2.1.330 | not run | the backlog lists clusters from the L-25 runs (all `score 0.00, 1 runs`); a trial was not started, since its last step opens a draft pull request and needs the code host of L-17 |
+| L-20 | 2026-11-21 | 2.1.330 | recorded | `claude mcp list --json` does not exist on 2.1.330 (`error: unknown option '--json'`); `claude mcp list` prints text (`No MCP servers configured. …`). 6.3.5 cannot be built on a JSON listing |
+| L-21 | 2026-11-21 | 2.1.330 | not run | the L-25 runs hold `raw.jsonl` streams, but the scratch runs are not kept; record them on the next run meant for fixtures |
+| L-22 | 2026-11-21 | 2.1.330 | recorded | the agent's own model wins: with `CLAUDE_CODE_SUBAGENT_MODEL=haiku` and the session on `haiku`, an agent declared with `model: sonnet` (through `--agents`) reported `claude-sonnet-5-5` on its turns |
+| L-23 | 2026-11-21 | 2.1.330 | passed in part | `claude plugin test plugins/tempergraph-monitor`: 7 pass, 0 fail. The mod drawing a live run in the terminal and on desktop: not run (no interactive surface) |
+| L-24 | 2026-11-21 | 2.1.330 | not run | needs acted scenarios in fresh interactive sessions |
+| L-25 | 2026-11-21 | 2.1.330 | passed, with findings | engine 0.0.1, model `claude-opus-5-5` (alias `inherit`), 1.28 USD for both. release-notes paused with the judge's gap and finished after `proceed`. doc-refresh wrote `outline.md` with no session, went `draft` → `review`, and the finalizer said `written`. Findings: every one of the five judgements came back `gap: true` with all criteria `MET` (the judge has no shell, so it says it could not confirm the diff or `git log`), so every judged gate paused; the release-notes step, with `read` and `write` only, read `.git` files instead of running `git log`; doc-refresh's `dr-approved` was `UNVERIFIABLE`; the run log has no record of the `size` value the route used |
+| L-26 | 2026-11-21 | 2.1.330 | failed in part | see the package's own file: TS-L1 fails before any session, the real run of TS-L2 passes |
+| L-27 | 2026-11-21 | 2.1.330 | not run | needs two installed engine releases and a paused run |
+| L-28 | 2026-11-21 | 2.1.330 | not run |  |
+| L-29 | 2026-11-21 | 2.1.330 | not run |  |
+| L-30 | 2026-11-21 | 2.1.330 | passed | engine 0.2.0: `hooks test finished` exits 0; after a real run the notifier fired once and `hooks/results.jsonl` has `exit_code: 0`; with `/bin/false` as the hook the line has `exit_code: 1`, `ok: false` and the run's own `exit.json` still has `exit_code: 0` |
+| P-LAD-1 | 2026-11-21 | 2.1.330 | recorded | `--effort xhigh` and `--effort max` are accepted with `success` on `haiku`, `sonnet` and `opus`; the stream of 2.1.330 holds no `applied_options` (nor any effort field), so whether the effort was applied cannot be read from it |
