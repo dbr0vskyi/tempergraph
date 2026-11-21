@@ -170,7 +170,7 @@ flowchart LR
 | C5 | Gates, routes and joins are pure and safe to re-run; the judge and the gate run once. | [CMP](03-compiler-and-flow.spec.md) |
 | C6 | One interrupt per gate; only a person decides a pause. | [HUM](07-gate-and-human.spec.md) |
 | C7 | State is JSON merged by reducers under a stable thread id; a fresh run never merges into a thread. | [DUR](09-durability-and-resume.spec.md) |
-| C8 | The engine core never names a workflow. | [WFM](02-workflow-model.spec.md) |
+| C8 | The engine core never names a workflow. A workflow's request for an engine change lands only as a capability any workflow can use ([ADR-0129](../adr/0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md)). | [WFM](02-workflow-model.spec.md) |
 | C9 | Secrets are scrubbed; published artefacts carry metadata only. | [SEC](14-security.spec.md) |
 | C10 | Paths resolve inside the workspace; the state root is the main checkout. | [WSP](13-workspace-and-concurrency.spec.md) |
 | C11 | One graph per process. | [WSP](13-workspace-and-concurrency.spec.md) |

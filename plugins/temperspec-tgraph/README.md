@@ -44,4 +44,8 @@ The `setup` skill installs or updates the rule files by hand, for the repository
 - Rung 8, `--judge-seeds`: grades the 32 seed cases under `evals/calibration/` with the real judges. Until it passes, every judged criterion is at uncalibrated trust.
 - Rung 9, `--trial`: one capped trial run of a case from `evals/cases.json`.
 
-No real run has been made yet.
+No real run has been made yet. The commands and pass criteria are in [docs/plans/live-checks.plan.md](docs/plans/live-checks.plan.md).
+
+## What it asks of the engine
+
+temperspec uses the engine like any other workflow package: through `tempergraph.api`, its manifests and its settings. The engine names no workflow. When temperspec needs something the engine lacks, the need is written here under Limits first, and the engine change is made as a capability any workflow can use, stated in the engine's specs without temperspec (engine ADR-0129).

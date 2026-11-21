@@ -13,12 +13,12 @@ from pathlib import Path
 
 from tempergraph.security.launch import SANCTIONED_SITES
 
-from .conftest import SRC
+from .conftest import SRC, workflow_names
 
 LANGGRAPH_ALLOWED = ("tempergraph.compiler", "tempergraph.durability")
 CONCRETE_EXECUTORS = ("tempergraph.executors.claude", "tempergraph.executors.standins")
 EXECUTOR_PACKAGE = "tempergraph.executors"
-SHIPPED_WORKFLOW_NAMES = ("temperspec", "release-notes", "release_notes", "doc-review", "doc_review")
+SHIPPED_WORKFLOW_NAMES = tuple(workflow_names())  # found in the repository, never typed here
 LAUNCH_CALLS = {("os", "system"), ("os", "popen"), ("os", "execv"), ("os", "execve"), ("os", "execvp"),
                 ("os", "spawnv"), ("os", "spawnl"), ("os", "posix_spawn"), ("os", "fork")}
 
