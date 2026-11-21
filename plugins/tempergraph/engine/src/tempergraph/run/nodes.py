@@ -44,6 +44,7 @@ from tempergraph.run import gate as gatemod
 from tempergraph.run import ladder as laddermod
 from tempergraph.run.check_worker import run_in_worker
 from tempergraph.run.commands import ResolvedCommand, run_command
+from tempergraph.run.commands import expand as expand_commands
 from tempergraph.run.guard import guard, view_set
 from tempergraph.run.judging import (
     CLAIM_CRITERION_ID,
@@ -100,6 +101,7 @@ class RunContext:
     stage: str = "local-dev"  # PRO §2.1
     judge_state: Callable[[str], str] | None = None  # a gate's judge binding state (JCL §2.5); None reads it
     escalation_record: Callable[[str], bool] | None = None  # LAD §2.5; None reads the ledger
+    self_check_limit: int = 3  # CHK §2.5
 
     @property
     def thread(self) -> str:
@@ -307,11 +309,23 @@ class EngineNodes:
             feedback=str(fb.get("text") or "") if fb.get("as") == "feedback" else "",
             rulings=tuple(gatemod.active_rulings(spec, state, unit)),
             upstream_targets=tuple(u.gate.back_targets))
-        rendered = render_step(unit, u, ctx, caps)
+        commands = expand_commands(st.commands, workdir)  # `@repository`: what the repository declares (CHK §2.2)
+        shown = u if commands == tuple(st.commands) else dataclasses.replace(
+            u, step=dataclasses.replace(st, commands=commands))
+        ticket: str | None = None
+        if st.self_check and u.gate.check is not None:  # CHK §2.5: a ticket for this attempt only
+            from tempergraph.run import selfcheck
+
+            ticket = selfcheck.issue(
+                self.ctx.state_root, u.gate,
+                self._check_context(unit, state, {"item": iid, "attempt": attempt, "visit": visit}, workdir,
+                                    sub="-preview"), thread=self.ctx.thread, limit=self.ctx.self_check_limit)
+            ctx = dataclasses.replace(ctx, self_check=selfcheck.command(ticket))
+        rendered = render_step(unit, shown, ctx, caps)
         key = session_key(unit, attempt, "retry" if retry else "step", item=iid)
         req = SessionRequest(
             kind="retry" if retry else "step", prompt=rendered.text, workdir=workdir, alias=alias, session_key=key,
-            tools=tuple(st.tools), commands=tuple(st.commands),
+            tools=tuple(st.tools), commands=(*commands, *([ctx.self_check] if ctx.self_check else [])),
             timeout_s=ov.get("timeout_s") or st.timeout_s or DEFAULT_TIMEOUT_S,
             idle_s=ov.get("idle_s") or st.idle_s,
             options=dataclasses.replace(st.session_options or SessionOptions(),
@@ -331,7 +345,16 @@ class EngineNodes:
         if climb:
             extra["ladder"] = climb
         before = gitmod.fingerprint(workdir)
-        res, results = self._session(ex, req, lessons_digest=lessonsmod.digest(lessons_text), extra=extra or None)
+        try:
+            res, results = self._session(ex, req, lessons_digest=lessonsmod.digest(lessons_text),
+                                         extra=extra or None)
+        finally:
+            if ticket is not None:  # the ticket ends with its attempt; one record a preview (CHK §2.5 Record)
+                from tempergraph.run import selfcheck
+
+                for call in selfcheck.close(self.ctx.state_root, ticket):
+                    self.ctx.log.write("self_check", unit=unit, item=iid, attempt=attempt, result=call.get("result"),
+                                       findings=call.get("findings"), duration_s=call.get("duration_s"))
         after = gitmod.fingerprint(workdir)
         parsed = parse_output(res.text, st.produces, tuple(u.gate.back_targets))
         after_failed, after_env = None, False
@@ -727,8 +750,19 @@ class EngineNodes:
     def _check(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], workdir: Path
                ) -> tuple[CheckResult, list[str]]:
         u = self.ctx.spec.units[unit]
+        ctx = self._check_context(unit, state, att, workdir)
+        got = run_in_worker(u.gate, ctx)
+        if not self.ctx.capture.check_output and ctx.out_dir is not None:  # `observe.check_output = off`
+            for f in ctx.out_dir.glob("*.out"):
+                with contextlib.suppress(OSError):
+                    f.unlink()
+        return got
+
+    def _check_context(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], workdir: Path,
+                       sub: str = "") -> checkmod.CheckContext:
+        u = self.ctx.spec.units[unit]
         facts = {k: v for k, v in (state.get("facts") or {}).items() if k != unit}
-        ctx = checkmod.CheckContext(
+        return checkmod.CheckContext(
             unit=unit, item=att.get("item"), workdir=workdir, request=state.get("request") or {},
             attempt=int(att.get("attempt", 1)),
             visit=int(att.get("visit", 1)), main_checkout=self.ctx.main_checkout,
@@ -737,20 +771,19 @@ class EngineNodes:
             criteria=tuple({"id": c.id, "mechanical": c.mechanical} for c in u.gate.criteria),
             allow=tuple(self.ctx.spec.allow_commands),
             out_dir=self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "checks"
-            / (f"{unit}.{att['item']}" if att.get("item") else unit) / str(att.get("attempt", 1)), settings=self._check_settings(u),
+            / (f"{unit}.{att['item']}" if att.get("item") else unit) / (str(att.get("attempt", 1)) + sub),
+            settings={**self._check_settings(u), **({"path_units": list(
+                ((state.get("run") or {}).get("path") or {}).get("units") or [])} if u.extra.get("outcome") else {})},
             reuse_store=self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "command_runs.jsonl")
-        got = run_in_worker(u.gate, ctx)
-        if not self.ctx.capture.check_output and ctx.out_dir is not None:  # `observe.check_output = off`
-            for f in ctx.out_dir.glob("*.out"):
-                with contextlib.suppress(OSError):
-                    f.unlink()
-        return got
 
     def _check_settings(self, u: UnitSpec) -> dict[str, Any]:
         o = self.ctx.spec.outcome
         if not u.extra.get("outcome") or o is None:
             return dict(self.ctx.settings)  # the workflow-declared settings a check reads (RST §2.5)
+        from tempergraph.run.outcome import deliverable_producers
+
         return {**self.ctx.settings, "deliverables": [dict(d) for d in o.deliverables],
+                "deliverable_producers": deliverable_producers(self.ctx.spec),
                 "outcome_check": o.check.ref if o.check else None}
 
     def _judge_session(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], cres: CheckResult | None,

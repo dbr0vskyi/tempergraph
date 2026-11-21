@@ -41,7 +41,8 @@ class GitFacts:
 
 def git_facts(workdir: Path, base: str = "") -> GitFacts:
     fp = gitmod.fingerprint(workdir)
-    return GitFacts(branch=gitmod.branch(workdir), base=base, head=fp.head, clean=not fp.status,
+    name = gitmod.branch(workdir)
+    return GitFacts(branch=name, base=base, head=fp.head, clean=not fp.status, pushed=gitmod.pushed(workdir, name),
                     changed_paths=tuple(gitmod.changed_paths(workdir, base or None)))
 
 

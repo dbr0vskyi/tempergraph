@@ -192,6 +192,7 @@ CATALOG: dict[str, Entry] = {
     "infra_backoff_max_s": Entry(RUN, _int(10, 300), 300),
     "attempt_cap": Entry(RUN, _int(1, 100), 15),
     "human_cap": Entry(RUN, _int(1, 100), 100),
+    "self_check_limit": Entry(RUN, _int(1, 10), 3),  # check previews a step may run in one attempt (CHK §2.5)
     "run_cost_cap_usd": Entry(RUN, _float(0)),
     "daily_cap_usd": Entry(RUN, _float(0)),  # stable mode's self-improvement budget per day (SIL §4)
     "loop_model": Entry(RUN, _alias, "medium"),  # the alias of the loop's own sessions (SIL §2.3)

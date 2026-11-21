@@ -102,12 +102,19 @@ def run_in_worker(gate: GateSpec, ctx: checkmod.CheckContext, *, python: str | N
     """Run the gate's check in a check worker; a worker past its limit is an environmental FAIL."""
     if gate.check is None:
         return CheckResult(result="PASS", evidence=""), []
+    return run_doc(context_doc(gate, ctx), ctx.workdir, gate.check_timeout_s, f"check-{ctx.unit}-{ctx.attempt}",
+                   python=python)
+
+
+def run_doc(doc: dict[str, Any], workdir: Path, timeout_s: int, key: str, *, python: str | None = None
+            ) -> tuple[CheckResult, list[str]]:
+    """One worker run of a context document; the check preview sends a stored one (CHK §2.5)."""
     from tempergraph.executors.launcher import LaunchSpec, launch
 
-    payload = json.dumps(context_doc(gate, ctx), default=str).encode()
+    payload = json.dumps(doc, default=str).encode()
     spec = LaunchSpec(argv=[python or sys.executable, "-m", "tempergraph.run.check_worker"], stdin_payload=payload,
-                      workdir=ctx.workdir, timeout_s=gate.check_timeout_s + WORKER_GRACE_S,
-                      session_key=f"check-{ctx.unit}-{ctx.attempt}", prompt_window_s=float(gate.check_timeout_s))
+                      workdir=workdir, timeout_s=timeout_s + WORKER_GRACE_S,
+                      session_key=key, prompt_window_s=float(timeout_s))
     got: list[bytes] = []
 
     def keep(line: bytes) -> list[Any]:
@@ -116,18 +123,18 @@ def run_in_worker(gate: GateSpec, ctx: checkmod.CheckContext, *, python: str | N
 
     raw = launch(spec, keep, EventSink())
     if raw.stop_reason is not None or raw.killed:
-        return CheckResult(result="FAIL", evidence=f"check worker ended at its limit of {gate.check_timeout_s} s",
+        return CheckResult(result="FAIL", evidence=f"check worker ended at its limit of {timeout_s} s",
                            environmental=True), ["check_worker_limit"]
     text = b"".join(got).decode("utf-8", errors="replace").strip()
     try:
-        doc = json.loads(text) if text else {}
+        out = json.loads(text) if text else {}
     except ValueError:
-        doc = {}
-    if raw.spawn_error is not None or "result" not in doc:
-        why = doc.get("worker_error") or (type(raw.spawn_error).__name__ if raw.spawn_error else "no result")
+        out = {}
+    if raw.spawn_error is not None or "result" not in out:
+        why = out.get("worker_error") or (type(raw.spawn_error).__name__ if raw.spawn_error else "no result")
         return CheckResult(result="FAIL", evidence=f"check worker failed: {str(why)[:_PRINT_LIMIT]}",
                            environmental=True), [f"check_worker_failed: {why}"]
-    return result_from(doc["result"]), list(doc.get("notes") or [])
+    return result_from(out["result"]), list(out.get("notes") or [])
 
 
 if __name__ == "__main__":

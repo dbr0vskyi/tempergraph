@@ -98,7 +98,7 @@ CASES: list[tuple[str, Callable[[], WorkflowSpec]]] = [
     ("script-run-or-call", lambda: _step(two_step(), "draft", before=(Script(),))),
     ("script-before-external", lambda: _step(two_step(), "draft", before=(
         Script(run=["pytest"], side_effects="external"),))),
-    ("not_in_release", lambda: _step(two_step(), "draft", self_check=True)),
+    ("self-check-without-check", lambda: _step(two_step(), "review", self_check=True)),
 ]
 
 

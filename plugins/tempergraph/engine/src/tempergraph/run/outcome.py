@@ -154,8 +154,12 @@ def outcome_unit(spec: WorkflowSpec) -> UnitSpec | None:
     unverified = [{"id": c.id, "reason": (c.verifier or {}).get("reason", "")} for c in o.final
                   if c.verified_by == "none"]
     jcfg = dict(o.judge or {})
-    refs: dict[str, Literal["required", "optional"]] = {str(d.get("key")): "required" for d in o.deliverables
-                                                         if d.get("key")}
+    made = deliverable_producers(spec)
+    every = _on_every_path(spec)
+    # a deliverable some path does not produce is an optional reference for the outcome judge (OUT §2.4)
+    refs: dict[str, Literal["required", "optional"]] = {
+        str(d.get("key")): "required" if not made.get(str(d.get("key"))) or set(made[str(d.get("key"))]) & every
+        else "optional" for d in o.deliverables if d.get("key")}
     refs.update({str(r): "required" for r in jcfg.get("references") or ()})
     judge = None
     if any(c.verified_by == "judge" for c in graded):
@@ -177,14 +181,46 @@ def with_outcome(spec: WorkflowSpec) -> WorkflowSpec:
     return dataclasses.replace(spec, units={**spec.units, flow.OUTCOME_UNIT: u})
 
 
+def deliverable_producers(spec: WorkflowSpec) -> dict[str, list[str]]:
+    """Each deliverable key and the units that declare they produce it."""
+    o = spec.outcome
+    out: dict[str, list[str]] = {}
+    for d in (o.deliverables if o else ()):
+        key = str(d.get("key") or "")
+        for name in spec.order:
+            u = spec.units[name]
+            keys = set(u.step.produces) if u.step else set()
+            for sc in ((u.step.before + u.step.after) if u.step else ()) + ((u.script,) if u.script else ()):
+                keys |= set(sc.produces)
+            if u.kind == "ask":
+                keys.add("answers")
+            if key in keys:
+                out.setdefault(key, []).append(name)
+    return out
+
+
+def _on_every_path(spec: WorkflowSpec) -> set[str]:
+    """Units no route, switch, fallback or deadline can skip: a workflow with none of them runs all its units."""
+    skipping = any(u.route is not None or u.switch is not None or u.gate.fallback or name in spec.flow
+                   or flow.deadline_node(spec, name) for name, u in spec.units.items())
+    return set() if skipping else set(spec.order)
+
+
 def outcome_check(ctx: Any) -> CheckResult:
     """The built-in check: every deliverable exists; then the workflow's own outcome check, if any."""
     findings: list[CheckFinding] = []
     deliverables = (ctx.settings or {}).get("deliverables") or []
     arts = {k: v for vs in (ctx.artifacts or {}).values() if isinstance(vs, Mapping) for k, v in vs.items()}
     vals = {k: v for vs in (ctx.values or {}).values() if isinstance(vs, Mapping) for k, v in vs.items()}
+    producers = (ctx.settings or {}).get("deliverable_producers") or {}
+    path = set((ctx.settings or {}).get("path_units") or ())
+    off_path = 0
     for d in deliverables:
         key, kind = str(d.get("key") or ""), str(d.get("kind") or "file")
+        made_by = producers.get(key) or []
+        if made_by and path and not path & set(made_by):  # OUT §2.4: required only on a path that produces it
+            off_path += 1
+            continue
         present = key in arts or key in vals
         if present and kind == "file" and key in arts:
             present = (ctx.workdir / str(arts[key])).exists()
@@ -192,8 +228,9 @@ def outcome_check(ctx: Any) -> CheckResult:
             findings.append(CheckFinding(status="fail", criterion=None, place=str(d.get("where") or key),
                                          message=f"deliverable {key} is missing", fix=f"produce {key}"))
     result: CheckResult = CheckResult(result="FAIL" if findings else "PASS", findings=findings,
-                                      evidence=f"{len(deliverables) - len(findings)} of {len(deliverables)} "
-                                               "deliverables present")
+                                      evidence=f"{len(deliverables) - len(findings) - off_path} of "
+                                               f"{len(deliverables) - off_path} deliverables present"
+                                               + (f"; {off_path} not produced on this path" if off_path else ""))
     ref = (ctx.settings or {}).get("outcome_check")
     if ref and not findings:
         mod, _, qual = str(ref).partition(":")

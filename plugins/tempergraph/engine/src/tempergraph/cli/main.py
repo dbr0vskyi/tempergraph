@@ -120,6 +120,8 @@ def _parser() -> _Parser:
     va.add_argument("workflow")
     ex = sub.add_parser("executors", help="registered executors and their capabilities")
     ex.add_argument("--probe", action="store_true")
+    sc = sub.add_parser("self-check", help="a step's preview of its gate's check (CHK §2.5)")
+    sc.add_argument("ticket")
     fa = sub.add_parser("facts", help="read-only facts about a run")
     fa.add_argument("selector")
     gr = sub.add_parser("graph", help="the workflow diagram")
@@ -674,6 +676,17 @@ def cmd_executors(env: Env, a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_self_check(env: Env, a: argparse.Namespace) -> int:
+    """CHK §2.5: the one verb a step session may call; it changes no state."""
+    from tempergraph.run import selfcheck
+
+    root = _root_or_none(env)
+    if root is None:
+        env.out.write("self-check: unknown or expired ticket; nothing was run\n")
+        return int(ExitCode.USAGE)
+    return selfcheck.run(root, a.ticket, env.out)
+
+
 def cmd_facts(env: Env, a: argparse.Namespace) -> int:
     from tempergraph.durability.status import row
 
@@ -890,7 +903,7 @@ def cmd_outcome(env: Env, a: argparse.Namespace) -> int:
 
 COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "run": cmd_run, "resume": cmd_resume, "status": cmd_status, "list": cmd_list, "validate": cmd_validate,
-    "executors": cmd_executors, "events": cmd_events, "facts": cmd_facts, "graph": cmd_graph, "wait": cmd_wait,
+    "executors": cmd_executors, "events": cmd_events, "facts": cmd_facts, "self-check": cmd_self_check, "graph": cmd_graph, "wait": cmd_wait,
     "stop": cmd_stop, "carry": cmd_carry, "worktree": cmd_worktree, "config": cmd_config, "rerun": cmd_rerun, "outcome": cmd_outcome,
     **observe_cli.COMMANDS,
     "workflows": workflows_cli.cmd_workflows,

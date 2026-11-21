@@ -105,6 +105,17 @@ def branch(workdir: Path) -> str:
         return ""
 
 
+def pushed(workdir: Path, name: str) -> bool:
+    """CHK §2.1: the branch exists on any configured remote, by its remote-tracking refs; no network."""
+    if not name or not is_safe_ref(name):
+        return False
+    try:
+        refs = git(["for-each-ref", "--format=%(refname)", "refs/remotes"], workdir, check=False)
+    except Exception:  # noqa: BLE001 - not a repository, or git is missing: not pushed
+        return False
+    return any(r.split("/", 3)[-1] == name for r in refs.splitlines() if r.count("/") >= 3)
+
+
 def changed_paths(workdir: Path, base: str | None = None, limit: int = 500) -> list[str]:
     paths: list[str] = []
     try:

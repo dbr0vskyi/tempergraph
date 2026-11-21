@@ -121,8 +121,8 @@ class _Validator:
             if u.kind in LATER_KINDS:
                 self.err("not_in_release", name,
                          f"unit kind {u.kind!r} is built in release {LATER_KINDS[u.kind]}, not release {RELEASE}")
-            if u.step is not None and u.step.self_check:
-                self.err("not_in_release", name, "`self_check` is built in release 2, not release 1")
+            if u.step is not None and u.step.self_check and u.gate.check is None:
+                self.err("self-check-without-check", name, "`self_check` needs a gate check to preview (CHK §4)")
             for sc in (u.step.before + u.step.after) if u.step else ():
                 if sc.cache != "off":
                     self.err("not_in_release", name, "the script cache is built in release 2, not release 1")

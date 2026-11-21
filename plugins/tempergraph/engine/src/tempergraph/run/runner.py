@@ -302,7 +302,7 @@ def _context(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, s
                      infra_tries=max(1, int(rv["infra_tries"])), backoff_max_s=int(rv["infra_backoff_max_s"]),
                      settings=rst.workflow_settings(settled.resolved), origin=settings.origin, judge_state=settings.judge_state,
                      escalation_record=settings.escalation_record,
-                     stage=_stage(spec, settings)[0])
+                     stage=_stage(spec, settings)[0], self_check_limit=int(rv.get("self_check_limit") or 3))
     if settings.sleep is not None:
         ctx.sleep = settings.sleep
     return ctx
