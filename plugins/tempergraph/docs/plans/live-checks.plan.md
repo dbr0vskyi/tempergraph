@@ -52,9 +52,11 @@ The M1 test runs in a scratch repository that pytest removes afterwards, so its 
 | L-23 | P-MOD-1 to P-MOD-4 the monitor mod | `claude plugin test plugins/tempergraph-monitor`, then install the mod and start a run in another terminal | the tests pass; the mod draws the run and updates while it runs, in the terminal and on desktop | monitor R-001, T10 plan |
 | L-24 | SHL-AC-2, AUT-AC-1, AUT-AC-8, LSK-AC-1 skill rubric scenarios | For each scenario in SHL §6, AUT §6 and LSK §6, start a fresh Claude Code session with the plugin installed and act it out | each rubric line holds (for example, the run skill asks before guessing and never answers a pause) | T9 plan 9.1.4, 9.2.7, 9.3.3 |
 | L-25 | T11.1 the example workflows on a real `claude` | `tempergraph workflows register plugins/release-notes-tgraph` and `plugins/doc-refresh-tgraph`; in a repository with a tag and merged changes, `tempergraph run release-notes <tag>`; in a repository with a Markdown guide, `tempergraph run doc-refresh "docs/guide.md: the install section"`, then answer the approval | release-notes finishes or pauses with a judge's question; doc-refresh writes `outline.md` with no session, routes on `size`, and after `proceed` the finalizer says `written` | first-release plan 11.1.6 |
+| L-26 | temperspec judge seeds (`author verify` rung 8) | `tempergraph author verify plugins/temperspec-tgraph --judge-seeds --cap 10` | rung 8 `passed`: each of the 28 seeds under `evals/calibration/` is graded as its `case.json` expects, twice; a seed graded otherwise is a defect of the judge brief, the criterion's scale or the seed, and is fixed before any run | [temperspec README](../../../temperspec-tgraph/README.md), SCF §2.5 |
+| L-27 | temperspec trial run (`author verify` rung 9), then a real run | In a scratch Python repository with `pytest` and `ruff` on PATH: `tempergraph author verify <path to plugins/temperspec-tgraph> --trial --case missing-config --cap 15`; then `tempergraph run temperspec "<a small task with its acceptance criteria>"` | the trial reaches the outcome gate; the real run commits after every step, and its last stage reports `opened`, `reused`, `pushed` or `skipped` | [temperspec README](../../../temperspec-tgraph/README.md), SCF §2.5 |
 
 ## 4. Results
 
 | Row | Date | CLI version | Result | Notes |
 |---|---|---|---|---|
-| L-0 to L-25 | | | not run | |
+| L-0 to L-27 | | | not run | |

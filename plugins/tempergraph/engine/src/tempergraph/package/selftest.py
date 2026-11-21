@@ -219,7 +219,9 @@ def standin_run(root: Path, tmp: Path) -> list[str]:
         if u.gate.judge is not None:
             judges.append(verdict(len(u.gate.criteria), f"j-{name}"))  # the judge rows every criterion
     if spec.outcome is not None and any(c.verified_by == "judge" for c in spec.outcome.final):
-        judges.append(verdict(sum(1 for c in spec.outcome.final if c.verified_by == "judge"), "j-outcome"))
+        # the outcome judge rows every graded criterion, the checked ones too (OUT §2.4)
+        judges.append(verdict(sum(1 for c in spec.outcome.final if c.verified_by in ("judge", "check")),
+                              "j-outcome"))
     r = scripted_registry("claude", steps, judges)
     quiet = RunSettings(sleep=lambda s: None)
     try:

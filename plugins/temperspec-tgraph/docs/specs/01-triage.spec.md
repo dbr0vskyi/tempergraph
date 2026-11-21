@@ -1,0 +1,15 @@
+# triage
+
+## 1. Overview
+
+The triage note states the task's acceptance criteria, the gaps in the specs, and a route that follows the gaps
+
+Part of the [overview](00-overview.spec.md).
+
+## 6. Acceptance criteria
+
+- [ ] ts-tri-form The triage note has each section the triage rule requires
+- [ ] ts-tri-route The route value is `plan` exactly when the gap list is `none`
+- [ ] ts-tri-commit Every file the triage step changed is committed
+- [ ] ts-tri-criteria Every acceptance criterion in the triage note is stated by the task
+- [ ] ts-tri-gaps Every concept the task needs that no ready spec covers is listed as a gap

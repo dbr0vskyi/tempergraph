@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-ts-code-change",
+  "gate": "code",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-code-change",
+    "expected": "UNMET",
+    "reason": "Row 1.5 is marked done, but `README.md` says nothing about a missing file."
+  }
+}

@@ -1,0 +1,415 @@
+{
+  "schema_version": 1,
+  "id": "temperspec-20261121-1e33",
+  "name": "temperspec",
+  "path": "sources",
+  "mode": "new",
+  "started_at": "2026-11-21T08:06:19.065Z",
+  "sources": [
+    {
+      "id": "s45",
+      "kind": "reference",
+      "locator": "plugins/tempergraph/docs/README.md",
+      "digest": "f351836f18a7500feabce67bf7ea9d97c8b92daa4fd3f016a3c1fb87f7a28c0f",
+      "size": 8203,
+      "private": false,
+      "candidates": [],
+      "file": "s45-README.md"
+    },
+    {
+      "id": "s46",
+      "kind": "reference",
+      "locator": "plugins/tempergraph/docs/research/R-125-temperspec-as-the-first-authored-workflow.rsrch.md",
+      "digest": "5d671674d2ea9693298c469a8c64483b060cd70269ab8440fa5551726b2e9b96",
+      "size": 23675,
+      "private": false,
+      "candidates": [
+        "c1",
+        "c2"
+      ],
+      "file": "s46-R-125-temperspec-as-the-first-authored-workflow.rsrch.md"
+    },
+    {
+      "id": "s47",
+      "kind": "reference",
+      "locator": "plugins/tempergraph/docs/research/R-127-spec-format-behaviours-first-without-cascades.rsrch.md",
+      "digest": "43642a10ee4132ed4fe94c9b67795a218a27dce34e3eaf88447eb06654e42632",
+      "size": 15784,
+      "private": false,
+      "candidates": [],
+      "file": "s47-R-127-spec-format-behaviours-first-without-cascades.rsrch.md"
+    }
+  ],
+  "candidates": [
+    {
+      "id": "c1",
+      "source": "s46",
+      "kind": "existing:checklist",
+      "detail": {
+        "item": 1,
+        "line": 16,
+        "from": "R-125-temperspec-as-the-first-authored-workflow.rsrch.md"
+      },
+      "used": false
+    },
+    {
+      "id": "c2",
+      "source": "s46",
+      "kind": "existing:checklist",
+      "detail": {
+        "item": 2,
+        "line": 184,
+        "from": "R-125-temperspec-as-the-first-authored-workflow.rsrch.md"
+      },
+      "used": false
+    }
+  ],
+  "phases": [
+    {
+      "phase": 1,
+      "approved_at": "2026-11-21T10:33:43.858Z",
+      "by": {
+        "kind": "agent",
+        "confidence": "marked",
+        "decided_by": null,
+        "relay": null,
+        "host": "claude-code",
+        "host_session": "14833490-5f94-5a82-a861-d00f62492afb",
+        "caller_app": null,
+        "parent": null,
+        "schedule": null,
+        "trace_id": "a66d501dc6e8e887c6790ccf7b8c0b85",
+        "evidence": [
+          {
+            "signal": "S2",
+            "value": "set"
+          },
+          {
+            "signal": "S3",
+            "value": "unset"
+          },
+          {
+            "signal": "S4",
+            "value": "unset"
+          },
+          {
+            "signal": "S5",
+            "value": "unset"
+          },
+          {
+            "signal": "S6",
+            "value": "unset"
+          }
+        ],
+        "call_id": "dfee2faee98642ac92c86a644dc3a8e5"
+      },
+      "digest": "b9f58e5dbfd55f514a12b406a6042a4467fec3e36f600b48fc14e32ff0714fd7"
+    },
+    {
+      "phase": 2,
+      "approved_at": "2026-11-21T10:33:44.035Z",
+      "by": {
+        "kind": "agent",
+        "confidence": "marked",
+        "decided_by": null,
+        "relay": null,
+        "host": "claude-code",
+        "host_session": "14833490-5f94-5a82-a861-d00f62492afb",
+        "caller_app": null,
+        "parent": null,
+        "schedule": null,
+        "trace_id": "a66d501dc6e8e887c6790ccf7b8c0b85",
+        "evidence": [
+          {
+            "signal": "S2",
+            "value": "set"
+          },
+          {
+            "signal": "S3",
+            "value": "unset"
+          },
+          {
+            "signal": "S4",
+            "value": "unset"
+          },
+          {
+            "signal": "S5",
+            "value": "unset"
+          },
+          {
+            "signal": "S6",
+            "value": "unset"
+          }
+        ],
+        "call_id": "de22f6898c264a56b6ed70acbabc7dce"
+      },
+      "digest": "049a20ac28da1f052469e2f29d41deb0bc7fab69a9a833112e353733ef49c778"
+    },
+    {
+      "phase": 3,
+      "approved_at": "2026-11-21T10:33:44.240Z",
+      "by": {
+        "kind": "agent",
+        "confidence": "marked",
+        "decided_by": null,
+        "relay": null,
+        "host": "claude-code",
+        "host_session": "14833490-5f94-5a82-a861-d00f62492afb",
+        "caller_app": null,
+        "parent": null,
+        "schedule": null,
+        "trace_id": "a66d501dc6e8e887c6790ccf7b8c0b85",
+        "evidence": [
+          {
+            "signal": "S2",
+            "value": "set"
+          },
+          {
+            "signal": "S3",
+            "value": "unset"
+          },
+          {
+            "signal": "S4",
+            "value": "unset"
+          },
+          {
+            "signal": "S5",
+            "value": "unset"
+          },
+          {
+            "signal": "S6",
+            "value": "unset"
+          }
+        ],
+        "call_id": "1e5d5ef05f084f2c82cb0d6c6e54b494"
+      },
+      "digest": "1ec1d7fb9d0c29e37eaae2a15d2ad5ea0ca604089e266a13a6448528dc9cdb3b"
+    },
+    {
+      "phase": 4,
+      "approved_at": "2026-11-21T10:33:44.435Z",
+      "by": {
+        "kind": "agent",
+        "confidence": "marked",
+        "decided_by": null,
+        "relay": null,
+        "host": "claude-code",
+        "host_session": "14833490-5f94-5a82-a861-d00f62492afb",
+        "caller_app": null,
+        "parent": null,
+        "schedule": null,
+        "trace_id": "a66d501dc6e8e887c6790ccf7b8c0b85",
+        "evidence": [
+          {
+            "signal": "S2",
+            "value": "set"
+          },
+          {
+            "signal": "S3",
+            "value": "unset"
+          },
+          {
+            "signal": "S4",
+            "value": "unset"
+          },
+          {
+            "signal": "S5",
+            "value": "unset"
+          },
+          {
+            "signal": "S6",
+            "value": "unset"
+          }
+        ],
+        "call_id": "6f95f827a0bb4c0681976bd796343fa8"
+      },
+      "digest": "b88394dd60421c56a98373ed9a048a46f24eac1077b7b172a559eadef6e8c3ce"
+    },
+    {
+      "phase": 5,
+      "approved_at": "2026-11-21T10:33:44.711Z",
+      "by": {
+        "kind": "agent",
+        "confidence": "marked",
+        "decided_by": null,
+        "relay": null,
+        "host": "claude-code",
+        "host_session": "14833490-5f94-5a82-a861-d00f62492afb",
+        "caller_app": null,
+        "parent": null,
+        "schedule": null,
+        "trace_id": "a66d501dc6e8e887c6790ccf7b8c0b85",
+        "evidence": [
+          {
+            "signal": "S2",
+            "value": "set"
+          },
+          {
+            "signal": "S3",
+            "value": "unset"
+          },
+          {
+            "signal": "S4",
+            "value": "unset"
+          },
+          {
+            "signal": "S5",
+            "value": "unset"
+          },
+          {
+            "signal": "S6",
+            "value": "unset"
+          }
+        ],
+        "call_id": "e41b909e8f2441a2baf8871e031a9cd9"
+      },
+      "digest": "019410154c7b4c44b8ee7b2bff16227bf1111d959d6b97bca6f550a4a7870de7"
+    },
+    {
+      "phase": 6,
+      "approved_at": "2026-11-21T10:33:44.909Z",
+      "by": {
+        "kind": "agent",
+        "confidence": "marked",
+        "decided_by": null,
+        "relay": null,
+        "host": "claude-code",
+        "host_session": "14833490-5f94-5a82-a861-d00f62492afb",
+        "caller_app": null,
+        "parent": null,
+        "schedule": null,
+        "trace_id": "a66d501dc6e8e887c6790ccf7b8c0b85",
+        "evidence": [
+          {
+            "signal": "S2",
+            "value": "set"
+          },
+          {
+            "signal": "S3",
+            "value": "unset"
+          },
+          {
+            "signal": "S4",
+            "value": "unset"
+          },
+          {
+            "signal": "S5",
+            "value": "unset"
+          },
+          {
+            "signal": "S6",
+            "value": "unset"
+          }
+        ],
+        "call_id": "28dc239d79054eb0bc48ddded15e9687"
+      },
+      "digest": "97ea913e6c57be79da2337698281767a90d8a1310b636a67f2e0d11f70558efa"
+    },
+    {
+      "phase": 7,
+      "approved_at": "2026-11-21T10:33:45.137Z",
+      "by": {
+        "kind": "agent",
+        "confidence": "marked",
+        "decided_by": null,
+        "relay": null,
+        "host": "claude-code",
+        "host_session": "14833490-5f94-5a82-a861-d00f62492afb",
+        "caller_app": null,
+        "parent": null,
+        "schedule": null,
+        "trace_id": "a66d501dc6e8e887c6790ccf7b8c0b85",
+        "evidence": [
+          {
+            "signal": "S2",
+            "value": "set"
+          },
+          {
+            "signal": "S3",
+            "value": "unset"
+          },
+          {
+            "signal": "S4",
+            "value": "unset"
+          },
+          {
+            "signal": "S5",
+            "value": "unset"
+          },
+          {
+            "signal": "S6",
+            "value": "unset"
+          }
+        ],
+        "call_id": "6ee5526d982f49b3aa65c7365bb749cb"
+      },
+      "digest": "e65d2e61ee83ad68cd4062649166f63648418c2d95bb789a788b9b415110fe56"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "d1",
+      "phase": 4,
+      "subject": "ts-spec-sync",
+      "choice": "Accept ts-spec-sync as judged at the outcome gate with no deterministic check serving it on every step; its trust stays uncalibrated until its judge seeds are graded by a signed-in judge (author verify rung 8).",
+      "alternatives": [
+        "A person signs off spec agreement on every run",
+        "A deterministic check for contradictions between behaviours, which no rule can express"
+      ],
+      "consequence": "Until rung 8 has run and the outcome judge is accepted, a contradiction between specs can pass the outcome gate on the judge's word alone; ts-dis-links (one definition per id) and ts-code-related (judged at the code gate) are the earlier lines of defence.",
+      "decided_by": "agent, on the owner's approval of the blueprint and outcome on 2026-11-21; to be confirmed by the owner"
+    }
+  ],
+  "blueprint_digest": "082b8dc6cacc7cc3f1b8834193243811087662da13e62d127e8823be50cb89ee",
+  "outcome_revision": 1,
+  "scaffold": {
+    "files": {
+      ".claude-plugin/plugin.json": "39a15359d0849808c9b96dbe747fc4a87e59647eb16287e5e76655356aeffef7",
+      "README.md": "47bb1f2987e3a82273c9756610bcff6bb0369aa6f7cedc7b500074b45d7a4c06",
+      "blueprint.json": "017080d162824994da2c2d7c396d74e1454530ca221f3a58df92d258623fdae9",
+      "docs/README.md": "0d419f131f6673444963568b3869d273dd131c097db3c7f1cc21213661d3a459",
+      "docs/research/sources.rsrch.md": "4363a4fc03363c0665105193288686f320c6292a33f7b11b65917f91dfe808c8",
+      "docs/specs/00-overview.spec.md": "141673d42dd703b85bc85428d9799bac2929a62f3df632f9888e8790ba71e835",
+      "docs/specs/01-triage.spec.md": "df05aaf2bb929712bfa762aa36bbe4ac8be088ea9d1636aeb17d8c8d256f5125",
+      "docs/specs/02-discovery.spec.md": "b676083df90a2655601db5dcee6dedc239257a0080223e123b76be0303e73bd2",
+      "docs/specs/03-plan.spec.md": "f2585607636b0d49b33f6118da607e7dd490ba4bf5bc26c8815f57c81dffc47c",
+      "docs/specs/04-expand.spec.md": "ebd869055193a819140af1f0d74a39d7c2f9003d040800b4bcb112b3ce7b8a71",
+      "docs/specs/05-code.spec.md": "1ead3bb93b3a26dad531bd1e22152125c018136519ca35c825116e7e6c9ed895",
+      "evals/cases.json": "504c998fb4553a3fa205262032547d00acfe7029c056bdc59583693462f755da",
+      "judges/code.md": "67878935431fed350f1c48fb6214bc251b8c0ee6d1c6a8818b2533ba50cfa81d",
+      "judges/discovery.md": "ec21af46e05f3d39cfcd6187f9c225783a56f6a97a9e5a48d26e56e59aea46b1",
+      "judges/expand.md": "91b471aec35a30c6c76176da4c41862c91aba00d0ec8f3b47f2234ea812620e3",
+      "judges/plan.md": "444150f59e6e73b94a6fe2dea1e9fa753bac362c445699d6e6a238755c646914",
+      "judges/triage.md": "6fc1c294df3330c1ecc890000d4d1e4bcb0daa4934b760d587321692bd110050",
+      "outcome.json": "12b8d243c8ef24b0b03045946b7ef72f08336fc83c0dae257ddc1b6397eabfcb",
+      "prompts/code.md": "7f9914abd5bde9cbde360f956d98c229406072650ca7c7284b862906fedb7067",
+      "prompts/discovery.md": "44ffc4307686db238df0fefbb8f16277fe323a237e5387ba4a783ca589df1fce",
+      "prompts/expand.md": "a42efcbe74f0ba961602aae6ecbd8345566b68b1506210bd5bfb1e303e9fe712",
+      "prompts/plan.md": "f3d3e7ea9097510dc6d89abf100e36234b1346ae434d62fc38ddab8e5a822e7e",
+      "prompts/triage.md": "132f7aeda4a504f008e13e7fce014b70ae815ef534bbaca35cc7d6d803fdbac8",
+      "tempergraph.json": "974d65a511bba4f1b0233778cca3f527ce65158af24bd4f5dfba6f5b090d7bcd",
+      "tests/test_temperspec_generated.py": "5737c9952d45ddb4fd26615b375c55054c9074af86f025dd63cdefeed800e05a",
+      "workflow/pyproject.toml": "e75eecb5e77bc86cad1caf36abbb831e872d117c8d1f7407861eff9b0dd729cc",
+      "workflow/temperspec/__init__.py": "8da0598e4a4922ef92b68581f99ca86c7c18e014fa606728f234e5cbbc2ab7d9",
+      "workflow/temperspec/checks.py": "bc431ea4003ef33f82707fde2ad1e80e076d22f4f2818e99d91672919406393f",
+      "workflow/temperspec/routing.py": "6d15d7e1a903e2347dc27c4a7931dd4fe7d1f36b496ce012b846f08147f47c2a"
+    },
+    "at": "2026-11-21T10:33:48.312Z"
+  },
+  "verify": {
+    "at": "2026-11-21T11:01:40.581Z",
+    "ok": true,
+    "rungs": {
+      "load": "passed",
+      "compare": "passed",
+      "literals": "passed",
+      "generated_tests": "passed",
+      "coverage": "passed",
+      "audit": "passed",
+      "register": "passed",
+      "judge_seeds": "skipped",
+      "trial": "skipped",
+      "stamp": "passed"
+    }
+  }
+}

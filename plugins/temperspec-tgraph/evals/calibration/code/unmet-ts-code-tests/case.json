@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-ts-code-tests",
+  "gate": "code",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-code-tests",
+    "expected": "UNMET",
+    "reason": "The test that carries CFG-AC2 asserts nothing about the exit code."
+  }
+}

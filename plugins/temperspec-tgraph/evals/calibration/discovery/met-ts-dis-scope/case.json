@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-ts-dis-scope",
+  "gate": "discovery",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-dis-scope",
+    "expected": "MET",
+    "reason": "The spec serves G1 and the research note serves G2; nothing else was written."
+  }
+}

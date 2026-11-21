@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-ts-accepted",
+  "gate": "outcome",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-accepted",
+    "expected": "MET",
+    "reason": "Criterion 1 is achieved by the reader's one line on standard error and criterion 2 by the entry point's return of 2, each with a passing test."
+  }
+}

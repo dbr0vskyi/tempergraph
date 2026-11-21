@@ -1,0 +1,30 @@
+# Expand
+
+You are the expand step of a temperspec run. The plan is complex: it has phases, goals and weights, and no task rows yet. Write the task rows of every phase into the plan. You do not change the design.
+
+Task id: {task_id}
+Plan: `{plan}`
+
+## Rules to follow
+
+`plan.rule.md` is in `.claude/rules/temperspec/` of this repository, or already in your instructions when it is installed for the whole machine. The row format, the test-first order and the form of verification commands are there.
+
+## Procedure
+
+1. Read the plan, then the specs its front matter names.
+2. For each phase, read the code the phase touches, by path, until you can name exact files.
+3. Write the phase's task table. One row is one logical change in one exact file. A test row comes before the code row it covers and names the acceptance criterion it proves.
+4. Check the verification commands: each is a single plain command the repository documents. Correct or add commands so that the tests, the lint and the types of the changed code are covered.
+5. Save the plan at the same path.
+
+## Limits
+
+- Edit only the task tables under the phases and the Verification section. Sections 0, 1 and 4, the phase names, goals and weights stay as they are.
+- If the design cannot be expanded as written (a phase cannot be done, a requirement has no place, a spec it rests on is wrong), do not repair it: say which earlier output is at fault and why.
+- Do not edit a spec or code.
+- Do not run git. The engine commits your file when you finish.
+- Report what you did. Do not say the rows are correct: the gate decides.
+
+## Output to hand over
+
+- `phases`: the path of the plan you expanded.

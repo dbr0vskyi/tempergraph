@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-ts-tri-gaps",
+  "gate": "triage",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-tri-gaps",
+    "expected": "MET",
+    "reason": "No spec states what happens on a missing config file or which exit codes are in use; both are gap rows with their searches."
+  }
+}

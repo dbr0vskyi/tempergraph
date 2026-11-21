@@ -128,7 +128,8 @@ def _literals(spec: WorkflowSpec, rung: Rung) -> None:
 def _tests(root: Path, rung: Rung) -> None:
     from tempergraph.package import selftest
 
-    with tempfile.TemporaryDirectory(prefix="tg-verify-") as tmp:
+    # a detached helper of the stand-in run may still be writing its record when the folder is removed
+    with tempfile.TemporaryDirectory(prefix="tg-verify-", ignore_cleanup_errors=True) as tmp:
         for name in selftest.NAMES:
             work = Path(tmp) / name
             work.mkdir()

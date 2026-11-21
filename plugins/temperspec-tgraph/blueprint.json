@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "name": "temperspec",
+  "units": [
+    {
+      "name": "triage",
+      "kind": "step",
+      "summary": "Read the task, find the gaps, pick the route",
+      "produces": [
+        "triage_note",
+        "gaps",
+        "route"
+      ],
+      "gate": {
+        "check": true,
+        "judge": true
+      },
+      "on_budget_spent": "stop"
+    },
+    {
+      "name": "discovery",
+      "kind": "step",
+      "summary": "Close each gap with a spec, record or research note",
+      "produces": [
+        "handoff"
+      ],
+      "reads": [
+        "triage_note"
+      ],
+      "gate": {
+        "check": true,
+        "judge": true
+      },
+      "on_budget_spent": "stop"
+    },
+    {
+      "name": "plan",
+      "kind": "step",
+      "summary": "Design requirements and phases; state complexity",
+      "produces": [
+        "plan",
+        "complexity"
+      ],
+      "reads": [
+        "triage_note"
+      ],
+      "gate": {
+        "check": true,
+        "judge": true
+      },
+      "back_targets": [
+        "discovery"
+      ]
+    },
+    {
+      "name": "expand",
+      "kind": "step",
+      "summary": "Write task rows and verification for a complex plan",
+      "produces": [
+        "phases"
+      ],
+      "reads": [
+        "plan"
+      ],
+      "gate": {
+        "check": true,
+        "judge": true
+      },
+      "back_targets": [
+        "plan",
+        "discovery"
+      ]
+    },
+    {
+      "name": "code",
+      "kind": "step",
+      "summary": "Build the plan test first in one session",
+      "produces": [
+        "code_report",
+        "tests_passed"
+      ],
+      "reads": [
+        "plan"
+      ],
+      "gate": {
+        "check": true,
+        "judge": true
+      },
+      "back_targets": [
+        "plan",
+        "discovery"
+      ]
+    }
+  ],
+  "flow": {
+    "triage": {
+      "route": [
+        "discovery",
+        "plan"
+      ]
+    },
+    "discovery": {
+      "route": [
+        "plan",
+        "finalizer"
+      ]
+    },
+    "plan": {
+      "route": [
+        "expand",
+        "code"
+      ]
+    }
+  },
+  "input": {
+    "kind": "text",
+    "parameters": [
+      "deliver"
+    ]
+  }
+}

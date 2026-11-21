@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-ts-accepted",
+  "gate": "outcome",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-accepted",
+    "expected": "UNMET",
+    "reason": "The entry point prints the message but then carries on and returns 0, so criterion 2 (exit code 2) is not achieved."
+  }
+}

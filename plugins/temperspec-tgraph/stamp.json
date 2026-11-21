@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "engine_version": "0.0.1",
+  "workflow_api": 1,
+  "workflow_version": "0.1.0+1ef9ee7086d4",
+  "docs_digest": "961917048d7a8812e33d5a00cfd4eeb15bcd6c2be1850041e2ed6261f43a9dcd",
+  "shape_digest": "1e95c98f8e44d99aad902c085dc262a09da003e471293d01a6abd0483914b62f",
+  "entries_applied": [],
+  "tool_set": {
+    "claude": [
+      "Bash",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Read",
+      "WebFetch",
+      "WebSearch",
+      "Write"
+    ]
+  },
+  "audit": [
+    "criterion-not-in-reach|triage|ts-tri-route:plan|workflow/temperspec/__init__.py",
+    "hold-time-exposure|code||workflow/temperspec/__init__.py",
+    "hold-time-exposure|discovery||workflow/temperspec/__init__.py",
+    "hold-time-exposure||order|workflow/temperspec/__init__.py",
+    "outcome-uncovered|outcome|ts-spec-sync|outcome.json",
+    "outcome-unverified-blocker|code|ts-code-aligned|outcome.json",
+    "outcome-unverified-blocker|code|ts-code-change|outcome.json",
+    "outcome-unverified-blocker|code|ts-code-related|outcome.json",
+    "outcome-unverified-blocker|code|ts-code-tests|outcome.json",
+    "outcome-unverified-blocker|discovery|ts-dis-behaviour|outcome.json",
+    "outcome-unverified-blocker|discovery|ts-dis-gaps|outcome.json",
+    "outcome-unverified-blocker|expand|ts-exp-design|outcome.json",
+    "outcome-unverified-blocker|outcome|ts-accepted|outcome.json",
+    "outcome-unverified-blocker|outcome|ts-spec-sync|outcome.json",
+    "outcome-unverified-blocker|plan|ts-plan-spec|outcome.json",
+    "outcome-unverified-blocker|triage|ts-tri-criteria|outcome.json",
+    "outcome-unverified-blocker|triage|ts-tri-gaps|outcome.json",
+    "readiness:needs-work|code||",
+    "readiness:needs-work|discovery||",
+    "readiness:needs-work|expand||",
+    "readiness:needs-work|outcome||",
+    "validate:criterion-overlap|code||",
+    "validate:criterion-overlap|discovery||",
+    "validate:criterion-overlap|expand||",
+    "validate:criterion-overlap|||"
+  ],
+  "baseline": {
+    "error": 0,
+    "warning": 9
+  },
+  "stamped_at": "2026-11-21T11:01:40.579Z"
+}

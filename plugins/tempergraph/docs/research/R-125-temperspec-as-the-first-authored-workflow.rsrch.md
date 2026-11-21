@@ -196,6 +196,10 @@ Risks to name early: the content volume (seven prompts, seven judge briefs, abou
 | Q9 | Should the approval pause after the code gate be on by default while the workflow is in `dev`? | Owner |
 | Q10 | Are the draft final criteria (ts-verify to ts-review) the right bar, and what would make the owner reject a run that passes all of them? | Owner, in interview phase 2 |
 
+## What was built from this note (2026-11-21)
+
+The package is [`plugins/temperspec-tgraph`](../../../temperspec-tgraph/README.md): a model-free repository probe, six steps (setup, which runs only in a repository without an overview spec, then triage, discovery, plan, expand, code), the outcome gate and a last stage that pushes and opens a draft pull request. `author verify` passes its model-free rungs; the judge seeds and the trial run are rows TS-L1 and TS-L2 of the package's [live checks](../../../temperspec-tgraph/docs/plans/live-checks.plan.md). 
+
 ## References
 
 [R-075](R-075-temperspec-needs-against-the-engine.rsrch.md) · [R-105](R-105-workflow-packages-authoring-and-good-outcomes.rsrch.md) · [R-120](R-120-effort-ladders-and-one-step-model-escalation.rsrch.md) · [first-release plan](../plans/first-release.plan.md) · [live checks](../plans/live-checks.plan.md)

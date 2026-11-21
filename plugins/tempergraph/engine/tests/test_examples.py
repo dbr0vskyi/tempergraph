@@ -24,6 +24,7 @@ from .conftest import REPO_ROOT
 from .test_run import registry, verdict_block
 
 EXAMPLES = ("release-notes", "doc-refresh")
+PACKAGES = (*EXAMPLES, "temperspec")  # every workflow package of the repository
 NO_SLEEP = RunSettings(sleep=lambda s: None)
 
 
@@ -31,18 +32,20 @@ def plugin(name: str) -> Path:
     return REPO_ROOT / "plugins" / f"{name}-tgraph"  # the plugin folder carries the suffix (ADR-0120)
 
 
-@pytest.mark.parametrize("name", EXAMPLES)
+@pytest.mark.parametrize("name", PACKAGES)
 def test_example_loads_and_passes_its_generated_tests(name: str, tmp_path: Path) -> None:
     spec = load_package(plugin(name)).spec
     assert spec.name == name and spec.outcome is not None
-    assert all(c.covered for c in coverage(spec.outcome, spec)), "every final criterion is covered (SCF rung 5)"
+    record = json.loads((plugin(name) / "authoring.json").read_text())
+    decided = {d.get("subject") for d in record.get("decisions") or []}  # an accepted gap is a decision (AUT §2.5)
+    assert all(c.covered or c.criterion in decided for c in coverage(spec.outcome, spec)), "SCF rung 5"
     for test in selftest.NAMES:
         work = tmp_path / test
         work.mkdir()
         assert selftest.run(test, plugin(name), work) == [], test
 
 
-@pytest.mark.parametrize("name", EXAMPLES)
+@pytest.mark.parametrize("name", PACKAGES)
 def test_example_is_in_the_marketplace(name: str) -> None:
     market = json.loads((REPO_ROOT / ".claude-plugin" / "marketplace.json").read_text())
     entry = next(p for p in market["plugins"] if p["name"] == f"{name}-tgraph")  # ADR-0120
@@ -51,8 +54,9 @@ def test_example_is_in_the_marketplace(name: str) -> None:
     assert "tempergraph" in manifest["dependencies"]
 
 
-def test_release_notes_own_tests_pass() -> None:
-    root = plugin("release-notes")
+@pytest.mark.parametrize("name", ["release-notes", "temperspec"])
+def test_a_package_own_tests_pass(name: str) -> None:
+    root = plugin(name)
     got = subprocess.run([sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-o", "addopts=",
                           str(root / "tests")], cwd=root, capture_output=True, text=True,
                          env={**__import__("os").environ, "PYTHONPATH": str(root / "workflow")})

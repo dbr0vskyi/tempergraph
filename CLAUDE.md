@@ -31,6 +31,7 @@ Besides the framework, this repo is a Claude plugin marketplace with several plu
 
 - `tempergraph`: the engine itself.
 - `tempergraph-monitor`: a Claude Mod showing progress of runs, etc.
+- `temperspec-tgraph`: the temperspec delivery workflow (see Layout).
 - `release-notes-tgraph` and `doc-refresh-tgraph`: example workflow packages (workflows `release-notes` and `doc-refresh`) (first-release plan T11.1); the engine's `tests/test_examples.py` loads and runs them on stand-ins, so a change that breaks them fails the engine's suite.
 
 Layout:
@@ -41,6 +42,7 @@ Layout:
 - `plugins/tempergraph-monitor/docs/{specs,adr,research}/`: the monitor mod's own design set, same rules as the engine's (start at its `README.md`); it reads only engine documents defined in the engine specs 09 and 30 to 35.
 - Workflow packages (temperspec and any authored workflow) are Claude plugins with a Python part and their own `docs/{specs,adr,research}/` in the engine's shape, rules provisional until temperspec owns them (engine spec 88, PKG). A workflow plugin is named `<workflow name>-tgraph` (for example `release-notes-tgraph`); the workflow name inside the engine stays short (ADR-0120).
 - `plugins/tempergraph/docs/{specs,adr,research,plans}/`: the engine's design (overview and component specs, decision records, research notes), written per the temperspec method. Start at `plugins/tempergraph/docs/README.md`. New artifacts use a type suffix (`*.spec.md`, `*.adr.md`, `*.rsrch.md`, `*.plan.md`, …); the rule is under File naming in that README. Engine features found useful and not built yet are GitHub issues labelled `area: engine` (their text names no workflow).
+- `plugins/temperspec-tgraph/`: **temperspec**, the delivery workflow (triage → discovery → plan → code → draft pull request), authored through the engine's own authoring path. Besides the package parts it ships `rules/*.rule.md` (how specs, plans, decision records, research notes and task notes are written; `workflow/temperspec/specfmt.py` reads the same formats and `tests/test_temperspec.py` holds the two together) and the `setup` skill that installs them. Its own tests run with the engine's suite (`tests/test_examples.py`).
 
 Use the `plugin-authoring` skill when making mods or hooks.
 

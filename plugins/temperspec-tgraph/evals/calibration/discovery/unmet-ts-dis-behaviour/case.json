@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-ts-dis-behaviour",
+  "gate": "discovery",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-dis-behaviour",
+    "expected": "UNMET",
+    "reason": "CFG-B2 names a function and an exception class and states no result an outside observer can see."
+  }
+}
