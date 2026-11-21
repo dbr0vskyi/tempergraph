@@ -14,6 +14,16 @@
         "check": true,
         "judge": true,
         "signoff": false
+      },
+      "sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "It writes one short document from a list of changes it reads"
+      },
+      "judge_sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "It reads one file against a few criteria"
       }
     }
   ],

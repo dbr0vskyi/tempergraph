@@ -13,6 +13,7 @@ from typing import Any
 
 from tempergraph.api import Criterion, Gate, Judge, Route, Routing, Script, Step, Switch, Workflow
 from tempergraph.contracts import (
+    EFFORTS,
     Capabilities,
     InputDeclaration,
     OutcomeSpec,
@@ -26,7 +27,10 @@ from tempergraph.package.manifest import name_problem
 BLUEPRINT_FILE = "blueprint.json"
 TOP_KEYS = frozenset({"schema_version", "name", "units", "flow", "outcome_ref", "input"})
 UNIT_KEYS = frozenset({"name", "kind", "summary", "produces", "reads", "gate", "on_fail", "on_budget_spent",
-                       "approval", "back_targets", "executor"})
+                       "approval", "back_targets", "executor", "sizing", "judge_sizing"})
+SIZING_KEYS = frozenset({"model", "effort", "why"})
+SIZING_MIN_WORDS = 4
+TIERS = ("small", "medium", "large")
 GATE_KEYS = frozenset({"check", "judge", "signoff"})
 RELEASE_KINDS = frozenset({"step", "script", "route", "switch"})
 FLOW_KINDS = frozenset({"route", "switch", "parallel", "map", "wait"})
@@ -59,6 +63,8 @@ class BlueprintUnit:
     approval: bool | None = None
     back_targets: tuple[str, ...] = ()
     executor: str | None = None
+    sizing: Mapping[str, str] | None = None  # the step's model, effort and why (SCF §2.1, SCF §2.1.1)
+    judge_sizing: Mapping[str, str] | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -93,6 +99,26 @@ def _f(code: str, unit: str | None, message: str) -> Finding:
 
 def _strs(v: Any) -> bool:
     return isinstance(v, list) and all(isinstance(x, str) and x for x in v)
+
+
+def _sizing(unit: str, at: str, got: Any, needed: bool) -> list[Finding]:
+    """SCF §2.1: every model step and every judge states its model tier, its effort and why (SCF §2.1.1)."""
+    if got is None:
+        return [_f("sizing-missing", unit, f"{at} is missing: state the model, the effort and why")] if needed else []
+    if not needed:
+        return [_f("sizing-invalid", unit, f"{at} is set on a unit that runs no such session")]
+    if not isinstance(got, dict) or set(got) != SIZING_KEYS or not all(isinstance(v, str) for v in got.values()):
+        return [_f("sizing-invalid", unit, f"{at} takes exactly {sorted(SIZING_KEYS)} as text")]
+    out = []
+    tier = got["model"].rsplit(":", 1)[-1]
+    if got["model"] == "inherit" or not tier or (":" not in got["model"] and tier not in TIERS):
+        out.append(_f("sizing-invalid", unit, f"{at}.model {got['model']!r} is not a tier of {sorted(TIERS)} or "
+                                              "a qualified alias"))
+    if got["effort"] not in EFFORTS:
+        out.append(_f("sizing-invalid", unit, f"{at}.effort {got['effort']!r} is not one of {list(EFFORTS)}"))
+    if len(got["why"].split()) < SIZING_MIN_WORDS:
+        out.append(_f("sizing-invalid", unit, f"{at}.why must say in a sentence why this model and effort fit"))
+    return out
 
 
 def parse(data: Any) -> Blueprint | list[Finding]:
@@ -142,7 +168,11 @@ def parse(data: Any) -> Blueprint | list[Finding]:
             gate = {}
         for k in sorted(set(gate) - GATE_KEYS):
             out.append(_f("unknown_key", uname, f"{at}.gate.{k} is not a gate field"))
+        for key, needed in (("sizing", kind == "step"), ("judge_sizing", kind == "step" and bool(gate.get("judge")))):
+            out.extend(_sizing(uname, f"{at}.{key}", u.get(key), needed))
         units.append(BlueprintUnit(
+            sizing=u.get("sizing") if isinstance(u.get("sizing"), dict) else None,
+            judge_sizing=u.get("judge_sizing") if isinstance(u.get("judge_sizing"), dict) else None,
             name=uname, kind=str(kind), summary=str(summary or ""),
             produces=tuple(u.get("produces") or ()) if _strs(u.get("produces") or []) else (),
             reads=tuple(u.get("reads") or ()) if _strs(u.get("reads") or []) else (),

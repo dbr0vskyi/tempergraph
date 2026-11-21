@@ -175,7 +175,9 @@ def _declaration(s: Session, mod: str) -> tuple[str, str, list[str]]:
             gate.append(f"check={fn}_check")
         if u.judge:
             refs = sorted(set(u.produces) | set(u.reads))
-            gate.append(f'judge=Judge(file="judges/{u.name}.md", references={refs!r})')
+            js = u.judge_sizing or {}
+            sized = f", model={js['model']!r}, effort={js['effort']!r}, sizing={js['why']!r}" if js else ""
+            gate.append(f'judge=Judge(file="judges/{u.name}.md", references={refs!r}{sized})')
         if u.approval or u.signoff:
             gate.append("approval=True")
         if u.on_fail:
@@ -219,6 +221,8 @@ def _declaration(s: Session, mod: str) -> tuple[str, str, list[str]]:
                 extra = f", route=route_{fn}, route_targets={route!r}"
                 todo.append(f"route_{fn}")
             executor = f", executor={u.executor!r}" if u.executor else ""
+            if u.sizing:
+                executor += f", model={u.sizing['model']!r}, effort={u.sizing['effort']!r}, sizing={u.sizing['why']!r}"
             units.append(f'"{u.name}": Step(prompt=text("prompts/{u.name}.md"), summary={u.summary!r}, '
                          f'tools=["read", "write"], produces={produces!r}{executor}{extra}, gate={gate_src})')
     a = s.authoring

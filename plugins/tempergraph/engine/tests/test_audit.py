@@ -47,6 +47,9 @@ def crit(cid: str, text: str = "The output is good", **kw: Any) -> Criterion:
 
 def judge(**kw: Any) -> Any:
     kw.setdefault("timeout_s", 300)
+    kw.setdefault("model", "medium")
+    kw.setdefault("effort", "medium")
+    kw.setdefault("sizing", "Reads one file against one criterion")
     return Judge(stance="Verify against the artifacts.", brief="Read the artifacts.", **kw)
 
 
@@ -55,6 +58,10 @@ def clean_step(**kw: Any) -> Any:
     kw.setdefault("tools", ["read", "write"])
     kw.setdefault("produces", {"notes": "file"})
     kw.setdefault("timeout_s", 900)
+    kw.setdefault("model", "medium")
+    if "effort_ladder" not in kw:
+        kw.setdefault("effort", "medium")
+    kw.setdefault("sizing", "One short document from one request")
     gate = kw.pop("gate", None) or Gate(check=draft_check, judge=judge(references=["notes"]), criteria=[crit("c1")])
     return Step(gate=gate, **kw)
 
@@ -121,6 +128,30 @@ def test_owned_rules_call_their_owner() -> None:
 def test_clean_fixture_raises_no_audit_rule(tmp_path: Path) -> None:
     rep = run(wf({"draft": clean_step()}, allow_commands=["git status"]), tmp_path)
     assert own_rules(rep) == set(), [f.statement for f in rep.findings if f.owner == "audit"]
+
+
+@pytest.mark.parametrize(("step", "judged", "missing"), [  # SCF §2.1.1, ARC `sizing-unassessed`
+    ({"model": None}, {}, ("step", ["model"])),
+    ({"model": "inherit"}, {}, ("step", ["model"])),
+    ({"effort": None}, {}, ("step", ["effort"])),
+    ({"sizing": ""}, {}, ("step", ["sizing"])),
+    ({"sizing": "because"}, {}, ("step", ["sizing"])),
+    ({"model": None, "effort": None, "sizing": ""}, {}, ("step", ["model", "effort", "sizing"])),
+    ({}, {"model": None}, ("judge", ["model"])),
+    ({}, {"effort": None}, ("judge", ["effort"])),
+    ({}, {"sizing": ""}, ("judge", ["sizing"])),
+    ({"effort": None, "effort_ladder": ["medium", "high"]}, {}, None),  # a ladder states the effort
+])
+def test_an_unstated_model_or_effort_is_an_error(tmp_path: Path, step: dict[str, Any], judged: dict[str, Any],
+                                                 missing: Any) -> None:
+    gate = Gate(check=draft_check, judge=judge(references=["notes"], **judged), criteria=[crit("c1")])
+    rep = run(wf({"draft": clean_step(gate=gate, **step)}, allow_commands=["git status"]), tmp_path)
+    found = [f for f in rep.findings if f.rule == "sizing-unassessed"]
+    if missing is None:
+        assert found == []
+        return
+    (f,) = found
+    assert (f.severity, f.session, f.evidence["missing"]) == ("error", *missing)
 
 
 C1_UNITS = {

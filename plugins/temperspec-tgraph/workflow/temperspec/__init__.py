@@ -9,12 +9,13 @@ The code gate measures a quick change and sends a larger one back to `triage`, w
 from `expand`, a simple one already has them. `code` builds the whole plan in one session (per-phase coding
 waits for the engine's sequential map). The engine commits after every step and the last stage pushes.
 
-No unit uses the large model tier. `discovery` thinks at the highest effort.
+Every step and judge states its model tier, its effort and why (`SIZING` below; decision record 0002). No unit
+uses the large model tier. `discovery` thinks at the highest effort.
 """
 
 from typing import Any
 
-from tempergraph.api import Gate, Judge, Route, Routing, Script, SessionOptions, Step, Value, Workflow, text
+from tempergraph.api import Gate, Judge, Route, Routing, Script, Step, Value, Workflow, text
 
 from . import specfmt
 from .checks import code_check, discovery_check, expand_check, plan_check, setup_check, triage_check
@@ -38,12 +39,35 @@ VERIFY = ["pytest", "python3 -m pytest", "ruff check", "ruff format --check", "m
 ALLOW = [*VERIFY, "git remote", "git push -u origin", "gh pr list", "gh pr create", "gh pr edit"]
 
 
+# Per unit: the step's effort and why, then its judge's effort and why. Every session runs on MODEL.
+SIZING = {
+    "setup": (("high", "It reads a whole repository once and writes the specs every later task trusts"),
+             ("medium", "It compares each written spec with the code it describes, one file at a time")),
+    "triage": (("medium", "It reads one task and the spec index to sort gaps and pick a route; the check verifies the note's shape"),
+              ("medium", "It reads one note against the task; the route it confirms is cheap to correct later")),
+    "discovery": (("max", "It closes gaps by research and design, the deepest thinking in the workflow, and nothing downstream rechecks its facts"),
+                 ("high", "It decides whether each gap is really closed across specs, records and research notes")),
+    "plan": (("high", "It designs across specs and code, and a weak plan costs a whole code session"),
+            ("high", "It judges that the design covers every criterion and contradicts no spec it references")),
+    "expand": (("medium", "It turns an approved plan into task rows and decides little"),
+              ("medium", "It compares the task rows with the plan they expand")),
+    "code": (("high", "It is a long session that builds test first; the tests and the code check catch slips that more effort would not"),
+            ("high", "It reads the diff, the report and the proof of every criterion, and a miss ships a defect")),
+}
+
+
+def _sized(unit: str) -> dict[str, Any]:
+    effort, why = SIZING[unit][0]
+    return {"model": MODEL, "effort": effort, "sizing": why}
+
+
 def _commit() -> Any:
     return Script(call=commit_step, name="commit", side_effects="workspace", summary="Commit the step's files")
 
 
 def _judge(unit: str, references: Any) -> Any:
-    return Judge(file=f"judges/{unit}.md", references=references, model=MODEL)
+    effort, why = SIZING[unit][1]
+    return Judge(file=f"judges/{unit}.md", references=references, model=MODEL, effort=effort, sizing=why)
 
 
 def workflow() -> Any:
@@ -65,40 +89,40 @@ def workflow() -> Any:
             "setup_route": Route(select=route_setup, targets=["setup", "triage"]),
             "setup": Step(
                 prompt=text("prompts/setup.md"), summary="Write the overview spec and one spec per component",
-                model=MODEL, tools=[*READ, "edit", "write"], timeout_s=3600,
+                **_sized("setup"), tools=[*READ, "edit", "write"], timeout_s=3600,
                 produces={"overview": "file", "setup_note": "file"}, after=[_commit()],
                 gate=Gate(check=setup_check, judge=_judge("setup", ["overview", "setup_note"]),
                           on_budget_spent="stop")),
             "triage": Step(
                 prompt=text("prompts/triage.md"), summary="Read the task, find the gaps, pick the route",
-                model=MODEL, tools=[*READ, "write"], timeout_s=1200,
+                **_sized("triage"), tools=[*READ, "write"], timeout_s=1200,
                 produces={"triage_note": "file", "gaps": Value(choices=["some", "none"]),
                           "route": Value(choices=list(specfmt.ROUTES))},
                 after=[_commit()], route=route_triage, route_targets=["discovery", "plan", "code"],
                 gate=Gate(check=triage_check, judge=_judge("triage", ["triage_note"]), on_budget_spent="stop")),
             "discovery": Step(
                 prompt=text("prompts/discovery.md"), summary="Close each gap with a spec, record or research note",
-                model=MODEL, session_options=SessionOptions(effort="max"), timeout_s=3600,
+                **_sized("discovery"), timeout_s=3600,
                 tools=[*READ, "edit", "write", "web_search", "web_fetch"], produces={"handoff": "file"},
                 after=[_commit()], route=route_discovery, route_targets=["plan", "finalizer"],
                 gate=Gate(check=discovery_check, judge=_judge("discovery", ["handoff", "triage_note"]),
                           on_budget_spent="stop")),
             "plan": Step(
                 prompt=text("prompts/plan.md"), summary="Design requirements and phases; state complexity",
-                model=MODEL, tools=[*READ, "edit", "write"], timeout_s=1800,
+                **_sized("plan"), tools=[*READ, "edit", "write"], timeout_s=1800,
                 produces={"plan": "file", "complexity": Value(choices=["complex", "simple"])},
                 after=[_commit()], route=route_plan, route_targets=["expand", "code"],
                 gate=Gate(check=plan_check, judge=_judge("plan", ["plan", "triage_note"]),
                           back_targets=["discovery"])),
             "expand": Step(
                 prompt=text("prompts/expand.md"), summary="Write task rows and verification for a complex plan",
-                model=MODEL, tools=[*READ, "edit", "write"], timeout_s=1800, produces={"phases": "file"},
+                **_sized("expand"), tools=[*READ, "edit", "write"], timeout_s=1800, produces={"phases": "file"},
                 after=[_commit()],
                 gate=Gate(check=expand_check, judge=_judge("expand", ["phases", "plan"]),
                           back_targets=["plan", "discovery"])),
             "code": Step(
                 prompt=text("prompts/code.md"), summary="Build the plan test first in one session",
-                model=MODEL, tools=[*READ, "edit", "write", "shell"], commands=VERIFY, timeout_s=5400,
+                **_sized("code"), tools=[*READ, "edit", "write", "shell"], commands=VERIFY, timeout_s=5400,
                 produces={"code_report": "file", "tests_passed": Value(choices=["yes", "no"])},
                 after=[_commit()],
                 gate=Gate(check=code_check, check_timeout_s=1800,

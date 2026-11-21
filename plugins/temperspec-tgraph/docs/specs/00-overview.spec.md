@@ -31,7 +31,7 @@ Units:
 
 - Per-phase coding waits for the engine's sequential map; until then a complex plan is coded in one session.
 - The plan, the code report and the discovery hand-off are not listed as deliverables because the engine requires every listed deliverable on every path, and a docs-only run or a run with no gaps does not produce them all.
-- No step or judge uses the large model tier.
+- No step or judge uses the large model tier; each states its effort and the reason ([0002](../adr/0002-model-and-effort-per-unit.adr.md)).
 - Whether the code agrees with the specs by meaning is judged once, at the code gate (ts-code-aligned, ts-code-related), not again at the outcome gate.
 - The release step and a work-tracker start are left out of the first version.
 - Verification commands resolve against one fixed list (pytest, ruff, mypy and read-only git) because release 1 of the engine reads no per-repository command resolver; a repository with another toolchain adds its prefixes to the workflow's list.

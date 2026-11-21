@@ -27,6 +27,16 @@
       "gate": {
         "check": true,
         "judge": true
+      },
+      "sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "It rewrites named sections from the repository's files"
+      },
+      "judge_sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "It compares the rewritten sections with the outline and the request"
       }
     },
     {
@@ -46,7 +56,17 @@
       "approval": true,
       "back_targets": [
         "draft"
-      ]
+      ],
+      "sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "It reads one document against the request and gives a verdict"
+      },
+      "judge_sizing": {
+        "model": "medium",
+        "effort": "low",
+        "why": "It confirms a one-word verdict that a person then approves"
+      }
     }
   ],
   "flow": {

@@ -334,6 +334,26 @@ def test_no_unit_uses_the_large_model_tier() -> None:
     assert SPEC.units["discovery"].step.session_options.effort == "max"  # type: ignore[union-attr]
 
 
+def test_every_step_and_judge_states_its_model_effort_and_reason() -> None:  # decision record 0002
+    blueprint = {u["name"]: u for u in json.loads((ROOT / "blueprint.json").read_text())["units"]}
+    efforts = {}
+    for name in SPEC.order:
+        unit = SPEC.units[name]
+        if unit.kind != "step":
+            continue
+        step, judge = unit.step, unit.gate.judge
+        assert step is not None and judge is not None
+        assert step.session_options is not None and judge.session_options is not None, name
+        efforts[name] = (step.session_options.effort, judge.session_options.effort)
+        assert len(step.sizing.split()) >= 4 and len(judge.sizing.split()) >= 4, name
+        assert blueprint[name]["sizing"] == {"model": step.model, "effort": step.session_options.effort,
+                                             "why": step.sizing}, name
+        assert blueprint[name]["judge_sizing"] == {"model": judge.model, "effort": judge.session_options.effort,
+                                                   "why": judge.sizing}, name
+    assert efforts == {"setup": ("high", "medium"), "triage": ("medium", "medium"), "discovery": ("max", "high"),
+                       "plan": ("high", "high"), "expand": ("medium", "medium"), "code": ("high", "high")}
+
+
 # -- the quick lane, the proof of a criterion and the pull request's description ---------------------------
 
 QUICK = ROOT / "evals" / "checks" / "code" / "must-pass" / "3-quick"

@@ -161,6 +161,7 @@ A changelog entry of release 2 ([VER §2.3](61-version-metadata.spec.md)) detect
 
 ## 5. Design notes
 
+- As built (R2-T2.1): the judge node writes `judge_state` and `trusted` on the judgement, and the gate classifies the failed attempt (`run/ladder.py`); the rung of a visit is kept in the unit's counters with the visit and item it belongs to. `held_by` is one of `timeout`, `stall`, `infra`, `turn_cap`, `cost_cap`, `model`, `cut_off`, `output_contract`, `check_no_substance`, `environmental`, `judge_not_trusted`, `judge_placeholder`, `no_substantive_blocker`, `step_failed`, `operator_pin`. A workflow with no calibration score has an `unscored` judge, so its ladder never climbs on a judge's word. Validation codes: `ladder-invalid`, `effort-rung-unsupported` (a preflight refusal), `effort-rung-uncertain` (a warning; `xhigh` and `max` until P-LAD-1). The stock check helpers mark their findings `output_contract`. The escalation of §2.4 and the retirement of §2.8 are R2-T2.2 and R2-T2.3.
 - The ladder changes only the effort or model of attempts the retry budget already allows (BUD §2); budgets and the run cost cap are unchanged.
 - Strictness comes from the cause table the engine already keeps, narrowed by trust: a RETRY counts only from a judge whose clean rate was measured ([R-121](../research/R-121-judge-model-by-risk-and-evidence-for-escalation.rsrch.md) F3).
 - Remedy order for one unit: the effort ladder, then a re-arm to a more detailed decomposition ([CXR](94-complexity-routing.spec.md)), then one model step, then a person ([ADR-0123](../adr/0123-complexity-chooses-a-decomposition-through-a-measured-switch.adr.md)).
@@ -170,9 +171,9 @@ A changelog entry of release 2 ([VER §2.3](61-version-metadata.spec.md)) detect
 ## 6. Acceptance criteria
 
 - [ ] LAD-AC-1 LAD-B1 to LAD-B8 and every row of §2.3 hold offline with scripted executors and scripted judge states.
-- [ ] LAD-AC-2 For every cause of BUD §2.2, a fixture shows the rung of the next attempt; only the two evidence kinds of §2.2 ever raise it.
+- [x] LAD-AC-2 For every cause of BUD §2.2, a fixture shows the rung of the next attempt; only the two evidence kinds of §2.2 ever raise it.
 - [ ] LAD-AC-3 No fixture produces an escalated attempt unless all of E1 to E9 hold; each condition has a fixture where it alone fails.
-- [ ] LAD-AC-4 No judge, member, chair or slot session ever runs with a ladder effort or an escalated alias.
+- [x] LAD-AC-4 No judge, member, chair or slot session ever runs with a ladder effort or an escalated alias.
 - [ ] LAD-AC-5 First-pass yield and cost per version in `report` exclude climbed attempts from the rung-0 figures.
 - [ ] LAD-AC-6 The §2.8 transform rewrites each fixture of release 1 `model` lists as its table says, and V1 to V7 of the upgrade pass on the result.
 - [ ] LAD-AC-7 Live: `--effort xhigh` and `--effort max` are applied on each alias of the shipped binding table (probe P-LAD-1 in the [live checks plan](../plans/live-checks.plan.md)).

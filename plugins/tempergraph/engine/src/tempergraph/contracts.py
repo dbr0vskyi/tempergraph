@@ -99,6 +99,7 @@ class JudgeSpec:
     tools: tuple[str, ...] | None = None
     idle_s: int | None = None
     session_options: SessionOptions | None = None
+    sizing: str = ""  # why this model and effort fit the judge's reading (SCF §2.1.1)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -159,6 +160,7 @@ class StepSpec:
     self_check: bool = False
     summary: str = ""
     subagent_model: str | None = None
+    sizing: str = ""  # why this model and effort fit the step's work (SCF §2.1.1)
     effort_ladder: tuple[str, ...] = ()  # LAD §2.1: rung 0 is the effort of a visit's first attempt
     escalation: EscalationSpec | None = None
 

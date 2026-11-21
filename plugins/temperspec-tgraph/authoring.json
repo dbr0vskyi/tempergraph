@@ -360,7 +360,7 @@
       "decided_by": "agent, on the owner's approval of the blueprint and outcome on 2026-11-21; to be confirmed by the owner"
     }
   ],
-  "blueprint_digest": "082b8dc6cacc7cc3f1b8834193243811087662da13e62d127e8823be50cb89ee",
+  "blueprint_digest": "f3cfde244d99f7aed0e6208d70084b9e6124a4ac60c072c79fc66ff67cb91322",
   "outcome_revision": 1,
   "scaffold": {
     "files": {

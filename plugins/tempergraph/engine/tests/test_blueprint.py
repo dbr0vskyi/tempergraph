@@ -42,9 +42,13 @@ def cli(cwd: Path, *argv: str) -> tuple[int, str]:
 def two_units() -> dict[str, Any]:
     return {"schema_version": 1, "name": "plan-then-code", "units": [
         {"name": "plan", "kind": "step", "summary": "Write the plan", "produces": ["plan"],
-         "gate": {"check": False, "judge": True, "signoff": False}},
+         "gate": {"check": False, "judge": True, "signoff": False}, "sizing": dict(SIZING), "judge_sizing": dict(SIZING)},
         {"name": "code", "kind": "step", "summary": "Write the code", "produces": ["patch"], "reads": ["plan"],
-         "gate": {"check": False, "judge": True, "signoff": False}, "back_targets": ["plan"]}]}
+         "gate": {"check": False, "judge": True, "signoff": False}, "back_targets": ["plan"],
+         "sizing": dict(SIZING), "judge_sizing": dict(SIZING)}]}
+
+
+SIZING = {"model": "medium", "effort": "high", "why": "Design work that reads several files"}
 
 
 def codes(found: list[Any]) -> list[str]:
@@ -86,6 +90,14 @@ def test_reference_nobody_produces() -> None:
      "blueprint-invalid"),
     (lambda d: d.update(name="release-notes-tgraph"), "blueprint-invalid"),  # ADR-0120: suffix is the plugin's
     (lambda d: d["units"][0].update(summary="x" * 61), "summary-too-long"),
+    (lambda d: d["units"][0].pop("sizing"), "sizing-missing"),  # SCF §2.1.1: stated for every step
+    (lambda d: d["units"][0].pop("judge_sizing"), "sizing-missing"),  # and for every judge
+    (lambda d: d["units"][0]["sizing"].update(model="inherit"), "sizing-invalid"),
+    (lambda d: d["units"][0]["sizing"].update(model="huge"), "sizing-invalid"),
+    (lambda d: d["units"][0]["sizing"].update(effort="extreme"), "sizing-invalid"),
+    (lambda d: d["units"][0]["sizing"].update(why="because"), "sizing-invalid"),
+    (lambda d: d["units"][0]["sizing"].pop("why"), "sizing-invalid"),
+    (lambda d: d["units"][0]["gate"].update(judge=False), "sizing-invalid"),  # a judge's sizing with no judge
     (lambda d: d.update(colour="blue"), "unknown_key"),
     (lambda d: d["units"][0].update(kind="council"), "not_in_release"),
     (lambda d: d.update(flow={"plan": {"parallel": ["a", "b"]}}), "not_in_release"),

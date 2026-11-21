@@ -83,6 +83,7 @@ Every item release 2 ships. Items not built are refused with `not_in_release`, n
 | I2-24 | The loop's alias as a setting (R-130 G4) | RST, SIL | R2-T2 | divergence |
 | I2-25 | Run state carried on its own branch: `--carry`, `carry push\|pull\|status\|drop`, lease, deletion at finish | CAR | R2-T5 | new, owner 2026-11-20 |
 | I2-26 | Deliverables required per path; a repository-level command declaration; `GitFacts.pushed` set (R-130 G10 to G12) | WFM, CHK | R2-T7 | new, from the first authored workflow |
+| I2-27 | Sizing: every step and judge states model, effort and why; `sizing` in the blueprint, `sizing-unassessed` in the audit (owner 2026-11-21) | SCF §2.1.1, ARC | R2-T2 | new |
 
 ### 1.3 Trim of 2026-11-21
 

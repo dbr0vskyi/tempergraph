@@ -102,11 +102,18 @@ def Setting(*, kind: str, default: Any, meaning: str = "", choices: Iterable[str
 def Judge(*, file: str | None = None, stance: str = "", brief: str = "",  # noqa: N802
           references: Mapping[str, str] | Iterable[str] = (), subject: Iterable[str] = (),
           executor: str | None = None, model: str | None = None, timeout_s: int | None = None,
-          tools: Iterable[str] | None = None) -> JudgeSpec:
+          tools: Iterable[str] | None = None, effort: str | None = None,
+          session_options: SessionOptions | None = None, sizing: str = "") -> JudgeSpec:
+    """`sizing` is one sentence on why `model` and `effort` fit what this judge must read (SCF §2.1.1)."""
     refs = dict(references) if isinstance(references, Mapping) else {k: "required" for k in references}
+    if effort is not None:
+        if session_options is not None and session_options.effort is not None:
+            raise TypeError("Judge() takes `effort` once: as a field or in `session_options`")
+        session_options = dataclasses.replace(session_options or SessionOptions(), effort=effort)  # type: ignore[arg-type]
     return JudgeSpec(file=file, stance=stance, brief=brief, references=refs, subject=tuple(subject),  # type: ignore[arg-type]
                      executor=executor, model=model, timeout_s=timeout_s,
-                     tools=tuple(tools) if tools is not None else None)
+                     tools=tuple(tools) if tools is not None else None, session_options=session_options,
+                     sizing=sizing)
 
 
 def Gate(*, check: Callable[..., Any] | None = None, check_timeout_s: int = 1800,  # noqa: N802
@@ -140,8 +147,9 @@ def Step(*, gate: GateSpec, prompt: str | TextRef = "default", executor: str | N
          after: Iterable[ScriptSpec] = (), self_check: bool = False, summary: str = "",
          subagent_model: str | None = None, route: Callable[..., Any] | None = None,
          route_targets: Iterable[str] = (), effort: str | None = None, effort_ladder: Iterable[str] = (),
-         escalation: EscalationSpec | None = None) -> UnitSpec:
-    """`effort` is the fixed effort; `effort_ladder` and `escalation` are the evidence-gated ladder (LAD §2.1)."""
+         escalation: EscalationSpec | None = None, sizing: str = "") -> UnitSpec:
+    """`effort` is the fixed effort; `effort_ladder` and `escalation` are the evidence-gated ladder (LAD §2.1).
+    `sizing` is one sentence on why `model` and the effort fit the step's work (SCF §2.1.1)."""
     m: str | tuple[str, ...] | None = model if model is None or isinstance(model, str) else tuple(model)
     if effort is not None:
         if session_options is not None and session_options.effort is not None:
@@ -151,7 +159,7 @@ def Step(*, gate: GateSpec, prompt: str | TextRef = "default", executor: str | N
                     produces=dict(produces or {}), model=m, timeout_s=timeout_s, idle_s=idle_s,
                     session_options=session_options, before=tuple(before), after=tuple(after),
                     self_check=self_check, summary=summary, subagent_model=subagent_model,
-                    effort_ladder=tuple(effort_ladder), escalation=escalation)
+                    effort_ladder=tuple(effort_ladder), escalation=escalation, sizing=sizing)
     return UnitSpec(kind="step", gate=gate, step=step, route=_opt_ref(route), route_targets=tuple(route_targets))
 
 
