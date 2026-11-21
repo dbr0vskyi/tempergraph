@@ -203,6 +203,7 @@ def package_findings(spec: WorkflowSpec, mode: Literal["dev", "stable"] | None =
     if isinstance(py, Pyproject):
         out += rules.layout(root, got, py, inventory)
     out += rules.text_refs(spec, root)
+    out += rules.check_cases(spec, root)
     out += docs_check.docs_check(spec, root, mode)
     from tempergraph.package.readiness import stable_findings
 

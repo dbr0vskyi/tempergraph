@@ -63,6 +63,21 @@ def layout(root: Path, manifests: Manifests, pyproject: Pyproject, inventory: Pa
     return out
 
 
+def check_cases(spec: WorkflowSpec, root: Path) -> list[Finding]:
+    """EVS-B1: every check is tested both ways, with a must-pass and a must-fail fixture under
+    `evals/checks/<unit>/`."""
+    out: list[Finding] = []
+    for name, u in spec.units.items():
+        if u.gate.check is None:
+            continue
+        base = root / "evals" / "checks" / name
+        for which, code in (("must-fail", "check_without_fail_case"), ("must-pass", "check_without_pass_case")):
+            if not any((base / which).glob("*")):
+                out.append(Finding(code, name, f"the check of {name} has no {which} fixture under "
+                                               f"evals/checks/{name}/{which}/ (EVS §2.2)", "warning"))
+    return out
+
+
 def text_refs(spec: WorkflowSpec, root: Path) -> list[Finding]:
     """Every `text()` reference and judge file resolves inside the package (PKG §2.4, §4 `text-ref`)."""
     out: list[Finding] = []

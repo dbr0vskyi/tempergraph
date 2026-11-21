@@ -42,7 +42,7 @@ Paths are relative to the package root, which is the plugin root. Every name bel
 | `skills/<name>/SKILL.md` | plugin | Workflow skills, declared by steps as `skill:<plugin>:<name>` ([ADR-0078](../adr/0078-skills-are-a-declared-tool-capability.adr.md)) | no |
 | `agents/<name>.md` | plugin | Workflow subagents a step may start through `subagent` | no |
 | `lessons/<unit>.json` | engine | Per-step lessons ([LSN](42-workflow-lessons.spec.md)) | no |
-| `evals/` | engine | `cases.json` (the workflow case set, [PRP §2.5](40-improvement-proposals.spec.md), [EVS §2.3](51-eval-suites.spec.md)), `checks/<unit>/` (check fixtures), `calibration/<gate>/` (gold cases, [JCL §2.1](50-judge-calibration.spec.md)) | `cases.json` with one case |
+| `evals/` | engine | `cases.json` (workflow cases, [PRP §2.5](40-improvement-proposals.spec.md), [EVS §2.3](51-eval-suites.spec.md)), `checks/<unit>/` (check fixtures), `steps/<unit>/` (step cases), `calibration/<gate>/` (gold cases, [JCL §2.1](50-judge-calibration.spec.md)) | `cases.json` with one case |
 | `blueprint.json` | engine | The approved blueprint ([SCF §2.1](91-blueprint-and-scaffold.spec.md)) | yes, once authored |
 | `diagram/` | engine | Generated `workflow.md`, `workflow.svg`, `model.json` ([LIF](18-lifecycle-and-evals.spec.md)); never typed | yes |
 | `authoring.json` | engine | The authoring record: entry path, source list with digests, verification decisions, assumptions ([AUT §2.6](89-workflow-authoring.spec.md)); metadata only | yes, once authored |

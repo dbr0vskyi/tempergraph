@@ -34,6 +34,33 @@ def add_parsers(sub: Any, parser_class: type[argparse.ArgumentParser]) -> None:
     ba = esub.add_parser("bar", help="each gate's acceptance state, figures and failing rules")
     ba.add_argument("workflow", nargs="?")
     ba.add_argument("--json", action="store_true")
+    ru = esub.add_parser("run", help="run the eval suites of one kind and record the results (EVS §2.7)")
+    ru.add_argument("workflow")
+    ru.add_argument("--kind", required=True, choices=("check", "judge", "step", "workflow"))
+    ru.add_argument("--role", choices=("regression", "capability"))
+    ru.add_argument("--trials", type=int)
+    ru.add_argument("--executor")
+    ru.add_argument("--cap", type=float, default=None, metavar="USD")
+    ru.add_argument("--json", action="store_true")
+    rep = esub.add_parser("report", help="figures per suite and case, graduation, stale and waiting results")
+    rep.add_argument("workflow")
+    rep.add_argument("--json", action="store_true")
+    gr_ = esub.add_parser("grade", help="a person's grade for a trial no grader could decide")
+    gr_.add_argument("result")
+    verdict = gr_.add_mutually_exclusive_group(required=True)
+    verdict.add_argument("--pass", dest="passed", action="store_true")
+    verdict.add_argument("--fail", dest="failed", action="store_true")
+    gr_.add_argument("--reason", required=True)
+    gr_.add_argument("--json", action="store_true")
+    hv = esub.add_parser("harvest", help="turn recorded judge misses into local calibration case candidates")
+    hv.add_argument("workflow")
+    hv.add_argument("gate")
+    hv.add_argument("--json", action="store_true")
+    rpl = esub.add_parser("replay", help="rerun the judges on kept cases and compare with the recorded score")
+    rpl.add_argument("workflow")
+    rpl.add_argument("--executor")
+    rpl.add_argument("--cap", type=float, default=None, metavar="USD")
+    rpl.add_argument("--json", action="store_true")
     la = esub.add_parser("label", help="write or confirm one gold label as a reviewer")
     la.add_argument("case", metavar="WORKFLOW/GATE/CASE")
     la.add_argument("--criterion", required=True)
@@ -88,10 +115,86 @@ def _usage(msg: str) -> Exception:
     return UsageError(msg)
 
 
+def _suites(env: Any, a: argparse.Namespace) -> int:
+    """`evals run|report|grade` (EVS §2.7). Only `run` on a live kind makes a model call."""
+    from tempergraph.cli.main import _emit, _root, _spec
+    from tempergraph.improve import calibration as cal
+    from tempergraph.improve import suites
+
+    root = _root(env)
+    try:
+        if a.action == "grade":
+            by = os.environ.get("USER") or "unknown"
+            doc: dict[str, Any] = suites.person_grade(root, a.result, bool(a.passed), a.reason, by)
+            text = f"result {a.result} graded {'passed' if a.passed else 'failed'}\n"
+        elif a.action == "report":
+            doc = suites.report(_spec(env, a.workflow), root)
+            lines = [f"{s['kind']} {s['subject']} ({s['role']}): {s['status']}"
+                     + (f", pass@1 {s['figures']['pass_at_1']:.2f}" if s["figures"]["pass_at_1"] is not None else "")
+                     + (f", pass^k {s['figures']['pass_hat_k']:.2f}" if s["figures"]["pass_hat_k"] is not None else "")
+                     for s in doc["suites"]]
+            lines += [f"graduate: {g['kind']} {g['subject']} {g['case']}" for g in doc["graduation"]]
+            lines += [f"needs a person: {w['command']}" for w in doc["needs_person"]]
+            lines += [f"never passed, check the case first: {n['kind']} {n['subject']} {n['case']}"
+                      for n in doc["never_passed"]]
+            text = "\n".join(lines or [f"{a.workflow}: no eval result recorded"]) + "\n"
+        else:
+            spec = _spec(env, a.workflow)
+            ex = None
+            if a.kind != "check":
+                name = a.executor or spec.default_executor
+                if a.kind == "judge" and not a.executor:
+                    name = env.registry.judge_executor(spec.default_executor, None, None)
+                ex = env.registry.get(name)
+            doc = suites.run(spec, a.kind, root, registry=env.registry, repo=env.cwd, executor=ex, role=a.role,
+                             trials=a.trials, cap_usd=a.cap)
+            done = sum(1 for r in doc["results"] if r["status"] == "passed")
+            text = (f"{a.workflow} {a.kind}: {done} of {len(doc['results'])} trials passed"
+                    + (" (partial: the cap was reached)" if doc["partial"] else "") + "\n")
+    except (suites.SuiteRefused, cal.CalibrationError) as exc:
+        raise _usage(str(exc)) from exc
+    if a.json:
+        _emit(env, doc)
+    else:
+        env.out.write(text)
+    failed = a.action == "run" and any(r["status"] in ("failed", "invalid") and r["role"] == "regression"
+                                       for r in doc["results"])
+    return 1 if failed else 0
+
+
 def cmd_evals(env: Any, a: argparse.Namespace) -> int:
     from tempergraph.cli.main import _emit, _root_or_none, _spec
     from tempergraph.improve import calibration as cal
 
+    if a.action in ("run", "report", "grade"):
+        return _suites(env, a)
+    if a.action in ("harvest", "replay"):
+        from tempergraph.cli.main import _root
+        from tempergraph.improve import harvest as hv
+        from tempergraph.improve import suites
+
+        spec = _spec(env, a.workflow)
+        try:
+            if a.action == "harvest":
+                rows = hv.harvest(_root(env), spec, a.gate)
+                out: dict[str, Any] = {"schema_version": 1, "workflow": spec.name, "gate": a.gate, "candidates": rows}
+                text = "".join(f"{'new' if r['new'] else 'kept'} {r['case_id']}: {r['path']}\n" for r in rows) or \
+                    f"{a.gate}: no recorded judge miss to harvest\n"
+                text += "Review each candidate, copy it into the package's evals/calibration and label it with " \
+                        "`tempergraph evals label`.\n" if rows else ""
+            else:
+                name = a.executor or env.registry.judge_executor(spec.default_executor, None, None)
+                out = hv.replay(spec, _root(env), env.registry.get(name), cap_usd=a.cap)
+                text = "".join(f"{g['gate']}: {g['cases']} cases, agreement "
+                               f"{g['agreement'] if g['agreement'] is not None else '-'}, {len(g['flips'])} changed\n"
+                               for g in out["gates"]) or f"{spec.name}: no scored case to replay\n"
+        except (cal.CalibrationError, suites.SuiteRefused) as exc:
+            raise _usage(str(exc)) from exc
+        if a.json:
+            _emit(env, out)
+        else:
+            env.out.write(text)
+        return 0
     if a.action == "bar":
         specs = [_spec(env, a.workflow)] if a.workflow else list(env.catalog.specs.values())
         root = _root_or_none(env)

@@ -124,7 +124,7 @@ def test_upgrade_check_then_stamp(tmp_path: Path, repo: Path) -> None:
     assert code == 0, (err, doc)
     states = {v["check"]: v["state"] for v in doc["verification"]}
     assert states["V1 load"] == states["V2 validation"] == states["V7 diagram"] == "passed"
-    assert states["V4 audit"] == "passed" and states["V6 suites"] == "skipped"
+    assert states["V4 audit"] == "passed" and states["V6 suites"] == "passed"
     stamp = json.loads((pkg / "stamp.json").read_text())
     assert stamp["engine_version"] == ENGINE_VERSION and stamp["workflow_version"].startswith("0.1.0+")
     assert stamp["tool_set"]["claude"] == ["Glob", "Grep", "Read", "Write"]
@@ -142,6 +142,15 @@ def test_stamp_refused_when_validation_fails(tmp_path: Path, repo: Path) -> None
     code, doc, _ = cli(repo, "upgrade-check", str(pkg), "--stamp")
     assert code == 4 and not (pkg / "stamp.json").exists()
     assert {v["check"]: v["state"] for v in doc["verification"]}["V2 validation"] == "failed"
+
+
+def test_stamp_needs_green_model_free_suites(tmp_path: Path, repo: Path) -> None:  # EVS-B7
+    pkg = minimal_package(tmp_path)
+    write(pkg, "evals/checks/draft/must-pass/notes.md", "# Added\n")  # the must-pass fixture now fails the check
+    code, doc, _ = cli(repo, "upgrade-check", str(pkg), "--stamp")
+    assert code == 4 and not (pkg / "stamp.json").exists()
+    v6 = next(v for v in doc["verification"] if v["check"] == "V6 suites")
+    assert v6["state"] == "failed" and "draft must-pass/notes.md" in v6["evidence"]
 
 
 def test_installed_copy_and_release_3_refusals(tmp_path: Path, repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:

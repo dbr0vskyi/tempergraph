@@ -157,8 +157,11 @@ def check(path: Path, caps: Mapping[str, Capabilities], *, stamp: bool = False,
         rep.checks.append(Verification(check="V4 audit", state="passed",
                                        evidence=f"no audit baseline yet; {len(audit_keys)} findings recorded"))
     rep.checks.append(Verification(check="V5 change classes", state="passed", evidence="no change was made"))
-    rep.checks.append(Verification(check="V6 suites", state="skipped",
-                                   evidence="model-free eval suites are release 2 (ADR-0090)"))
+    from tempergraph.improve.suites import green_model_free
+
+    red = green_model_free(lp.spec)  # EVS-B7: the model-free regression suites must be green
+    rep.checks.append(Verification(check="V6 suites", state="failed" if red else "passed",
+                                   evidence="; ".join(red)[:400] if red else "check suites pass with LF and CRLF"))
     model = diagram_model(lp.spec)
     if any(v.state == "failed" for v in rep.checks):
         rep.exit_code = 4

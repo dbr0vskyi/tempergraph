@@ -81,6 +81,7 @@ The deterministic scenario of a package is the stand-in run of its generated tes
 
 - Every executor changes between releases (Claude's `-p` permission default; `agy`'s permission matching and self-update; the Agent SDK's bundled CLI; the Messages API's tool and parameter versions), so their versions are part of compatibility, not an afterthought ([ADR-0007](../adr/0007-two-first-class-executors.adr.md), [ADR-0018](../adr/0018-add-messages-api-and-agent-sdk-executors.adr.md)).
 - Skills are evaluated with Claude Code's plugin eval; no harness for Antigravity skills is assumed.
+- As built (R2-T4): `evals harvest <workflow> <gate>` writes one candidate per judged attempt a recorded label disagreed with, under `evals/harvest/<gate>/<case_id>/case.json` in the state root: the origin (thread, attempt, label ids), the suggested expected status per criterion (`UNMET` where the gate proceeded, `MET` where it blocked), the unit's produced keys and the run's workspace. It holds no request text and no label; a person copies it into the package and labels it. `evals replay <workflow>` reruns each judged gate's judge once on every reviewed case of its latest complete score and reports the share of equal statuses and verdicts and each changed status; records are `evals/replays.jsonl`.
 
 ## 6. Acceptance criteria
 
@@ -88,7 +89,7 @@ The deterministic scenario of a package is the stand-in run of its generated tes
 - [ ] LIF-AC-2 The diagram-currency test fails on a shape change and passes on a line-ending change.
 - [ ] LIF-AC-3 A rubric scenario passes only from a score whose digests match.
 - [ ] LIF-AC-4 The executor compatibility table is read by preflight and shown by `executors`.
-- [ ] LIF-AC-5 A harvested case contains no request text and is never written outside the state root until a person commits it.
+- [x] LIF-AC-5 A harvested case contains no request text and is never written outside the state root until a person commits it.
 - [ ] LIF-AC-6 Prompt lint finds each planted defect of its fixture set and nothing in the shipped workflows.
 
 ## Open questions

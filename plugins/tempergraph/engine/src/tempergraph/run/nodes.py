@@ -718,7 +718,11 @@ class EngineNodes:
                 for vs in (state.get(chan) or {}).values():
                     if isinstance(vs, dict) and ref in vs:
                         refs[ref] = str(vs[ref])
-        req_text = str(((state.get("request") or {}).get("inputs") or {}).get("request", ""))
+        inputs = (state.get("request") or {}).get("inputs") or {}
+        for ref in j.references:  # a reference may name a request input (validation allows it)
+            if ref not in refs and ref != "request" and ref in inputs:
+                refs[ref] = str(inputs[ref])
+        req_text = str(inputs.get("request", ""))
         prompt = render_judge(JudgeInputs(
             gate=g, stance=stance, brief=brief, request=req_text, references=refs,
             subject={**{k: str(v) for k, v in arts.items()}, **{k: str(v) for k, v in vals.items()}},

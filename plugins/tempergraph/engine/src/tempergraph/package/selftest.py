@@ -88,13 +88,14 @@ def _artifacts(spec: WorkflowSpec, unit: str, files: list[Path], base: Path) -> 
     return out
 
 
-def check_fixtures(root: Path, tmp: Path) -> list[str]:
-    """Every check passes its must-pass and fails its must-fail fixtures, naming a criterion id; each fixture
-    also with CRLF line endings (EVS §2.2)."""
+def fixture_runs(root: Path, tmp: Path, spec: WorkflowSpec | None = None) -> list[dict[str, Any]]:
+    """Every check fixture run with LF and with CRLF line endings (EVS §2.2): `{unit, which, fixture, crlf,
+    result, named, evidence}`, where `named` says the findings name one of the check's criteria. A unit whose
+    check lacks a must-pass or a must-fail fixture gives one row with `missing`."""
     from tempergraph.run.checks import CheckContext, run_check
 
-    spec = _spec(root)
-    out = []
+    spec = spec or _spec(root)
+    out: list[dict[str, Any]] = []
     for name in spec.order:
         u = spec.units[name]
         if u.gate.check is None:
@@ -102,7 +103,7 @@ def check_fixtures(root: Path, tmp: Path) -> list[str]:
         dirs = _fixture_dirs(root, name)
         ids = {c.id for c in u.gate.criteria if c.mechanical or c.verified_by == "check"}
         if not dirs["must-pass"] or not dirs["must-fail"]:
-            out.append(f"{name}: the check needs a must-pass and a must-fail fixture under evals/checks/{name}/")
+            out.append({"unit": name, "missing": [w for w in dirs if not dirs[w]]})
             continue
         for which, paths in dirs.items():
             for p in paths:
@@ -122,14 +123,29 @@ def check_fixtures(root: Path, tmp: Path) -> list[str]:
                                        artifacts=_artifacts(spec, name, copied, work),
                                        allow=spec.allow_commands, out_dir=work / ".out")
                     res, _ = run_check(u.gate, ctx)
-                    named = {f.criterion for f in res.findings} & ids
-                    tag = f"{name} {which}/{p.name}{' (CRLF)' if crlf else ''}"
-                    if which == "must-pass" and res.result != "PASS":
-                        out.append(f"{tag}: expected PASS, got {res.result} ({res.evidence[:120]})")
-                    if which == "must-fail" and res.result != "FAIL":
-                        out.append(f"{tag}: expected FAIL, got {res.result}")
-                    if not named:
-                        out.append(f"{tag}: the check names none of its criteria {sorted(i for i in ids if i)}")
+                    out.append({"unit": name, "which": which, "fixture": p.name, "crlf": crlf, "result": res.result,
+                                "named": bool({f.criterion for f in res.findings} & ids),
+                                "evidence": res.evidence[:120], "criteria": sorted(i for i in ids if i)})
+    return out
+
+
+def check_fixtures(root: Path, tmp: Path) -> list[str]:
+    """Every check passes its must-pass and fails its must-fail fixtures, naming a criterion id; each fixture
+    also with CRLF line endings (EVS §2.2)."""
+    out = []
+    for r in fixture_runs(root, tmp):
+        name = r["unit"]
+        if "missing" in r:
+            out.append(f"{name}: the check needs a must-pass and a must-fail fixture under evals/checks/{name}/")
+            continue
+        which = r["which"]
+        tag = f"{name} {which}/{r['fixture']}{' (CRLF)' if r['crlf'] else ''}"
+        if which == "must-pass" and r["result"] != "PASS":
+            out.append(f"{tag}: expected PASS, got {r['result']} ({r['evidence']})")
+        if which == "must-fail" and r["result"] != "FAIL":
+            out.append(f"{tag}: expected FAIL, got {r['result']}")
+        if not r["named"]:
+            out.append(f"{tag}: the check names none of its criteria {r['criteria']}")
     return out
 
 

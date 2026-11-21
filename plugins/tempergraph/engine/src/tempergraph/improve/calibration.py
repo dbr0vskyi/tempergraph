@@ -971,13 +971,18 @@ def state_name_for(spec: WorkflowSpec, state_root: Path | None = None) -> Callab
     return name
 
 
+UNCORRECTABLE = 0.2  # EVS §2.5: below this `catch_rate + clean_rate - 1`, no corrected estimate is shown
+
+
 def corrected(raw: float | None, st: State) -> dict[str, Any]:
     """EVS §2.5: a judge-graded rate with the judge's state, and a corrected estimate where it allows."""
     if raw is None:
         return {"raw": None, "label": "uncorrected", "state": st.state}
     fig = (st.score or {}).get("figures") or {}
     c, g = fig.get("catch_rate"), fig.get("clean_rate")
-    if st.state in ("accepted", "provisional") and c is not None and g is not None and c + g - 1 > 0:
+    if c is not None and g is not None and c + g - 1 < UNCORRECTABLE:  # the judge separates too little
+        return {"raw": raw, "label": "uncorrectable", "state": st.state}
+    if st.state in ("accepted", "provisional") and c is not None and g is not None:
         theta = min(1.0, max(0.0, (raw + c - 1) / (c + g - 1)))
         return {"raw": raw, "corrected": round(theta, 4), "label": "corrected", "state": st.state}
     return {"raw": raw, "label": f"uncorrected ({st.state})", "state": st.state}

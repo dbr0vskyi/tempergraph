@@ -245,6 +245,12 @@ def test_corrected_rate() -> None:  # EVS-B5
     st = cal.State(gate="g", state="accepted", binding={}, score={"figures": {"catch_rate": 0.9, "clean_rate": 0.95}})
     assert cal.corrected(0.80, st) == {"raw": 0.8, "corrected": 0.8235, "label": "corrected", "state": "accepted"}
     assert cal.corrected(0.80, dataclasses.replace(st, state="stale"))["label"] == "uncorrected (stale)"
+    assert cal.corrected(0.80, dataclasses.replace(st, state="provisional"))["label"] == "corrected"
+    for name in ("unscored", "below_bar", "contradicted"):  # EVS-AC-2: every label of the §2.5 table
+        got = cal.corrected(0.80, dataclasses.replace(st, state=name, score=None))
+        assert got == {"raw": 0.8, "label": f"uncorrected ({name})", "state": name}
+    weak = dataclasses.replace(st, score={"figures": {"catch_rate": 0.6, "clean_rate": 0.55}})
+    assert cal.corrected(0.80, weak) == {"raw": 0.8, "label": "uncorrectable", "state": "accepted"}
 
 
 def test_a_cap_keeps_the_score_partial_and_out_of_the_state(tmp_path: Path) -> None:  # JCL §4

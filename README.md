@@ -193,6 +193,7 @@ You mostly work through Claude Code. The plugin's skills turn plain requests int
 | `run` | Start, resume and report runs; every pause goes back to you |
 | `author` | Turn a process, script, template or idea into a workflow, starting from the good outcome |
 | `troubleshoot` | Find out, read-only, why a run failed, stalled or cost more than expected |
+| `evals` | Run a workflow's eval suites, score its judges and grade what needs a person |
 
 The marketplace also carries:
 
