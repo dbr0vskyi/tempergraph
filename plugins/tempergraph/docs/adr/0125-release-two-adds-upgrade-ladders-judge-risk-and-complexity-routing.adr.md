@@ -17,6 +17,8 @@ Release 1 code is complete on `main` ([first-release plan](../plans/first-releas
 
 Later the same day the owner asked for research on running on Windows and outside a git repository, moved CI pipelines to a later release, and proposed carrying a run's `.tempergraph` state on a branch meanwhile, removed when the run is done.
 
+On 2026-11-21 the owner reviewed the list and approved a trim: release 2 keeps the owner's asks, what the first authored workflow needs, evals, promotion, update and upgrade and carried state; items nothing uses yet move to release 3.
+
 Readiness of the release 2 list is in [R-130](../research/R-130-release-two-readiness-and-gaps.rsrch.md).
 
 ## Decision
@@ -34,11 +36,15 @@ We will commit release 2 to the scope below, planned in the [second-release plan
 | **Effort ladder and one-step model escalation**, `xhigh` effort, retirement of the retry-count model ladder ([LAD](../specs/92-effort-ladder-and-model-escalation.spec.md), [ADR-0121](0121-ladders-climb-only-on-trusted-substantive-evidence.adr.md)) | 2 | New |
 | **Judge model by risk** ([JRK](../specs/93-judge-model-by-risk.spec.md), [ADR-0122](0122-a-judge-is-raised-by-a-model-free-risk-rule-and-every-level-is-calibrated.adr.md)) | 2 | New |
 | **Complexity switches between decompositions** ([CXR](../specs/94-complexity-routing.spec.md), [ADR-0123](0123-complexity-chooses-a-decomposition-through-a-measured-switch.adr.md)) with measured switches ([SWM](../specs/79-measured-switches.spec.md)) and the sequential map ([MAP](../specs/77-map-unit.spec.md)) | 2 | New; pulls SWM and MAP to the front of the release |
-| Audit history layer, history rules, tool surface audit ([AUD](../specs/55-workflow-audit.spec.md), [ARC](../specs/56-audit-rule-catalog.spec.md), [TSA](../specs/57-tool-surface-audit.spec.md)) | 2 | — |
-| Ask unit, event waits, breakpoints, deadlines, fallback target, parallel read-only branches, script cache, `self-check`, sampled audit judge, judge MCP views ([ASK](../specs/73-ask-unit.spec.md), [HUM](../specs/07-gate-and-human.spec.md), [FLX](../specs/74-flow-extensions.spec.md), [SCR](../specs/70-script-units-and-hybrid-steps.spec.md), [CHK](../specs/75-check-contract-and-command-runs.spec.md), [JDG](../specs/05-judge-and-verdict.spec.md), [GRD](../specs/06-independence-guard.spec.md)) | 2 | — |
-| Lifecycle hooks, in-process observers, wider hook events | 2 | — |
-| Schedules, release 2 slice ([SCH §5](../specs/83-schedules.spec.md), [TCK](../specs/84-schedule-ticks-and-unattended-fires.spec.md)); worktree extras ([WTR](../specs/82-worktree-mode.spec.md)); session review in stable mode ([SRV](../specs/44-session-review.spec.md)) | 2 | — |
-| State root outside git ([WSP §2.4](../specs/13-workspace-and-concurrency.spec.md), [ADR-0127](0127-outside-git-the-state-root-is-found-by-walk-up-and-the-guard-hashes-files.adr.md)); native Windows ([WIN](../specs/97-windows-support.spec.md), [ADR-0128](0128-windows-is-supported-natively-with-job-objects-and-probes-before-judges.adr.md)) | 2 | Researched in [R-131](../research/R-131-running-outside-a-git-repository.rsrch.md) and [R-132](../research/R-132-running-on-windows.rsrch.md); Windows judges wait for live probes |
+| Audit history layer, history rules, tool surface audit ([AUD](../specs/55-workflow-audit.spec.md), [ARC](../specs/56-audit-rule-catalog.spec.md), [TSA](../specs/57-tool-surface-audit.spec.md)) | 3 | Moved from 2 by the owner on 2026-11-21: nothing uses it yet |
+| Ask unit, event waits, breakpoints, deadlines, fallback target, parallel read-only branches, `self-check` ([ASK](../specs/73-ask-unit.spec.md), [HUM](../specs/07-gate-and-human.spec.md), [FLX](../specs/74-flow-extensions.spec.md), [SCR](../specs/70-script-units-and-hybrid-steps.spec.md), [CHK](../specs/75-check-contract-and-command-runs.spec.md), [JDG](../specs/05-judge-and-verdict.spec.md), [GRD](../specs/06-independence-guard.spec.md)) | 2 | — |
+| Script cache, sampled audit judge, judge MCP views | 3 | Moved from 2 by the owner on 2026-11-21 |
+| Deliverables required per path, a repository-level command declaration, `GitFacts.pushed` set ([R-130](../research/R-130-release-two-readiness-and-gaps.rsrch.md) F5) | 2 | New, asked by the first authored workflow, stated for any workflow |
+| Lifecycle hooks, wider hook events | 2 | — |
+| In-process observers | 3 | Moved from 2 by the owner on 2026-11-21 |
+| Schedules, release 2 slice ([SCH §5](../specs/83-schedules.spec.md), [TCK](../specs/84-schedule-ticks-and-unattended-fires.spec.md)); worktree extras ([WTR](../specs/82-worktree-mode.spec.md)); session review in stable mode ([SRV](../specs/44-session-review.spec.md)) | 3 | Moved from 2 by the owner on 2026-11-21 |
+| State root outside git ([WSP §2.4](../specs/13-workspace-and-concurrency.spec.md), [ADR-0127](0127-outside-git-the-state-root-is-found-by-walk-up-and-the-guard-hashes-files.adr.md)) | 2 | Researched in [R-131](../research/R-131-running-outside-a-git-repository.rsrch.md) |
+| Native Windows ([WIN](../specs/97-windows-support.spec.md), [ADR-0128](0128-windows-is-supported-natively-with-job-objects-and-probes-before-judges.adr.md)) | 3 | Moved from 2 by the owner on 2026-11-21: its probes need a Windows machine. Designed in [R-132](../research/R-132-running-on-windows.rsrch.md) |
 | Orchestration, council, contest, writer branches, parallel map, sub-workflows, other executors, the rest of schedules | 3 | — |
 
 Claude CLI stays the only executor through release 2 ([ADR-0091](0091-first-release-ships-the-claude-executor-only.adr.md)). Kinds and fields not built are still refused with `not_in_release`.
@@ -64,7 +70,7 @@ Claude CLI stays the only executor through release 2 ([ADR-0091](0091-first-rele
 
 - Positive: release 2 ships its own first breaking change (the model ladder list) together with the tools that carry workflows across it.
 - Negative: more calibration work per workflow: each judge risk level is a binding to score.
-- Risk: release 2 is large. Mitigation: the plan orders tracks so switches, maps and ladders land first; state root outside git and Windows move first if it must shrink.
+- Risk: release 2 is large. Mitigation: the plan orders tracks so switches, maps and ladders land first; the owner trimmed it on 2026-11-21 to what the asks and the first authored workflow use.
 
 ## Assumptions
 

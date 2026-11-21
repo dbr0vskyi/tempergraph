@@ -93,5 +93,5 @@ Retiring the model list (LAD §2.8) is release 2's only change that rewrites wor
 
 | Question | Who answers | Default until answered |
 |---|---|---|
-| Keep state root outside git and Windows in release 2? | Owner (asked 2026-11-20 for research) | Kept; Windows judges wait for the probes |
+| Keep state root outside git and Windows in release 2? | Owner: outside git stays; Windows and the items nothing uses yet move to release 3 (decided 2026-11-21, ADR-0125) | — |
 | Where does carried state live: its own branch or the work branch? | Owner: its own state branch (decided 2026-11-21) | Its own state branch (CAR) |

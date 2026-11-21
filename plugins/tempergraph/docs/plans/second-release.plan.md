@@ -2,7 +2,7 @@
 goal: Build release 2 of tempergraph — measure a workflow, route it by complexity, escalate only on trusted evidence, promote it to stable mode, move a paused run between machines, and carry it across engine releases
 version: 1
 date_created: 2026-11-20
-last_updated: 2026-11-20
+last_updated: 2026-11-21
 owner: dbr0vskyi
 status: Planned
 tags: [release-plan, tempergraph]
@@ -33,12 +33,12 @@ task_id: second-release
 | Scope | ADR-0090's release 2 forecast plus upgrade, LAD, JRK, CXR and PRO | Owner's ask ([ADR-0125](../adr/0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md)) |
 | Executor | `claude` only | [ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md) |
 | Pipelines | A later release; a paused run moves between machines by its state branch | [ADR-0124](../adr/0124-promotion-is-a-model-free-stamp-per-workflow-version.adr.md), [ADR-0126](../adr/0126-a-run-carries-a-scrubbed-thread-state-on-its-own-branch-and-deletes-it-when-done.adr.md) |
-| Platforms | macOS, Linux, native Windows (judges after probes), WSL as Linux; folders outside git | [ADR-0127](../adr/0127-outside-git-the-state-root-is-found-by-walk-up-and-the-guard-hashes-files.adr.md), [ADR-0128](../adr/0128-windows-is-supported-natively-with-job-objects-and-probes-before-judges.adr.md) |
+| Platforms | macOS, Linux; folders outside git. Native Windows is release 3 (owner, 2026-11-21) | [ADR-0127](../adr/0127-outside-git-the-state-root-is-found-by-walk-up-and-the-guard-hashes-files.adr.md), [ADR-0128](../adr/0128-windows-is-supported-natively-with-job-objects-and-probes-before-judges.adr.md) |
 | Ladders | Evidence-gated effort ladder; one model step, last resort; the release 1 model list retired by a transform | Owner: "I don't want to increase model or efforts on any failure" ([ADR-0121](../adr/0121-ladders-climb-only-on-trusted-substantive-evidence.adr.md)) |
 | Order | Switches, maps and ladders first, because CXR, UWF and PRO build on them | R-130 F1 |
 | Plan shape | Tracks and phases only; each track's expanded plan is written when its specs pass status (EC-2) | temperspec 3.6 |
 
-**Status: Planned.** No code yet. The owner's go on this plan and ADR-0125 is EC-1.
+**Status: In progress.** The owner approved this plan on 2026-11-21 with a trim (§1.3): EC-1 is met. The build follows the plan, task-note and test-first rules of the delivery workflow's rule files; each phase has a plan under `plans/r2-*.plan.md` and a report under `tasks/`. Live checks stay pending on the owner's machine and are never faked.
 
 ## 1. Requirements analysis
 
@@ -50,7 +50,6 @@ task_id: second-release
 | EC-2 | A track's specs are `ready-for-implementation`: its first phase turns each open question into a recorded default and sets the status (R-130 G5) | Each track | Implementer, owner may veto |
 | EC-3 | Release 1's live checks that a track builds on are recorded ([live checks plan](live-checks.plan.md)) | The live half of each track | Owner's machine |
 | EC-4 | Satisfied: WSP §2.4 with ADR-0127 and R-131; WIN with ADR-0128 and R-132 | R2-T8 | — |
-| EC-5 | A Windows machine for P-WIN-1 to P-WIN-3 | R2-T8.3 live (Windows judges) | Owner |
 
 ### 1.2 Feature list
 
@@ -72,18 +71,22 @@ Every item release 2 ships. Items not built are refused with `not_in_release`, n
 | I2-12 | Migrations and pins | MIG | R2-T6 | X2-6 |
 | I2-13 | Changelog, detect rules and transforms | VER, WUP | R2-T6 | X2-7 |
 | I2-14 | `upgrade` beyond `--check`, the built-in upgrade workflow, the upgrade skill | WUP, UWF, LSK | R2-T6 | X3-13, moved by the owner |
-| I2-15 | Audit history layer and its rules; tool surface audit | AUD, ARC, TSA | R2-T7 | X2-9, X2-10 |
+| I2-15 | Moved to release 3 (§1.3) | AUD, ARC, TSA | — | X2-9, X2-10 |
 | I2-16 | Ask unit; event waits; `--pause-before`, deadlines, fallback target; parallel read-only branches | ASK, HUM, FLX | R2-T7 | X2-11 to X2-14 |
-| I2-17 | Script cache; `self-check`; audit judge; judge MCP views | SCR, CHK, JDG, GRD, ECC | R2-T7 | X2-17 to X2-20 |
-| I2-18 | Lifecycle hooks, in-process observers, wider hook events, `workflow_regressed` | CLI, EVT, PRO | R2-T7 | X2-21 |
-| I2-19 | Schedules, release 2 slice | SCH §5, TCK | R2-T8 | X2-22 |
-| I2-20 | Worktree extras | WTR | R2-T8 | X2-23 |
+| I2-17 | `self-check` | CHK | R2-T7 | X2-18; script cache, audit judge and judge MCP views moved to release 3 (§1.3) |
+| I2-18 | Lifecycle hooks, wider hook events | CLI, EVT | R2-T7 | X2-21; in-process observers moved to release 3 (§1.3) |
+| I2-19 | Moved to release 3 (§1.3) | SCH §5, TCK | — | X2-22 |
+| I2-20 | Moved to release 3 (§1.3) | WTR | — | X2-23 |
 | I2-21 | State root outside git: walk-up or declared root, `in_place` only, manifest fingerprint, `needs_git` refusals | WSP §2.4 | R2-T8 | X2-24 |
-| I2-22 | Native Windows: job objects, ACLs, replace retries, `.cmd` shim, CRLF-normalized digests, long paths; judges after P-WIN probes | WIN | R2-T8 | X2-25 |
-| I2-23 | Session review in stable mode | SRV §2.4, §5 | R2-T8 | X2-26 |
+| I2-22 | Moved to release 3 (§1.3) | WIN | — | X2-25 |
+| I2-23 | Moved to release 3 (§1.3) | SRV §2.4, §5 | — | X2-26 |
 | I2-24 | The loop's alias as a setting (R-130 G4) | RST, SIL | R2-T2 | divergence |
 | I2-25 | Run state carried on its own branch: `--carry`, `carry push\|pull\|status\|drop`, lease, deletion at finish | CAR | R2-T5 | new, owner 2026-11-20 |
 | I2-26 | Deliverables required per path; a repository-level command declaration; `GitFacts.pushed` set (R-130 G10 to G12) | WFM, CHK | R2-T7 | new, from the first authored workflow |
+
+### 1.3 Trim of 2026-11-21
+
+The owner approved moving to release 3 every item that neither an owner ask nor the first authored workflow uses: native Windows, the schedules slice, worktree extras, the audit history layer and tool surface audit, the script cache, the sampled audit judge, judge MCP views, in-process observers and session review in stable mode. Their specs stay as designed; their fields and verbs are refused with `not_in_release`.
 
 ## 2. Tracks and phases
 
@@ -96,8 +99,8 @@ Every item release 2 ships. Items not built are refused with `not_in_release`, n
 | R2-T4 Evals | EVS, JCL, LIF, SHL | R2-T4.1–R2-T4.3 | R2-T3 | code |
 | R2-T5 Promotion and carried state | PRO, SUP, CAR | R2-T5.1–R2-T5.2 | R2-T2, R2-T3, R2-T4, R2-T1.3 | code |
 | R2-T6 Update and upgrade | UPD, MIG, VER, WUP, UWF, LSK | R2-T6.1–R2-T6.4 | R2-T1.2 (UWF maps), R2-T4 (fixtures) | code |
-| R2-T7 Node features, audit, hooks | ASK, HUM, FLX, SCR, CHK, JDG, GRD, AUD, ARC, TSA, CLI, EVT | R2-T7.1–R2-T7.4 | EC-1 | code |
-| R2-T8 Schedules, worktrees, platforms, stable review | SCH, TCK, WTR, WSP, WIN, SRV | R2-T8.1–R2-T8.4 | R2-T6.1 (shim) for WIN | code |
+| R2-T7 Node features and hooks | ASK, HUM, FLX, CHK, WFM, CLI, EVT | R2-T7.1–R2-T7.4 | EC-1 | code |
+| R2-T8 Outside git | WSP | R2-T8.1 | — | code |
 | R2-T9 Release | all | R2-T9.1–R2-T9.2 | every track | release |
 
 Milestones: **N1** after R2-T1 and R2-T2, a workflow with a complexity switch and an effort ladder runs on stand-ins, and its report shows arms, zones and rungs. **N2** after R2-T4, `evals bar` grades every risk level and `evals run` passes on the examples. **N3** after R2-T5, the example workflow is stamped for `local-stable` on fixture data, and a carried run pauses on one state root and finishes on another, leaving no state branch. **N4** after R2-T6, a release 1 workflow with a model list is upgraded by `upgrade` and passes V1 to V7.
@@ -107,7 +110,7 @@ Milestones: **N1** after R2-T1 and R2-T2, a workflow with a complexity switch an
 | Probe | Command, on the owner's machine | Pass |
 |---|---|---|
 | P-LAD-1 | For each alias of the binding table: `claude -p --model <alias> --effort xhigh` and `--effort max` on a one-line prompt, reading `applied_options` from the stream | Each effort is applied, or the CLI names it unsupported for that alias; recorded per alias in ECC §2.7 |
-| P-WIN-1 to P-WIN-3 | The probes of [WIN §2.4](../specs/97-windows-support.spec.md) on a Windows machine | As WIN §2.4 says |
+| P-WIN-1 to P-WIN-3 | Release 3, with Windows | — |
 | P-PRO-1 | Moved to the pipeline release with `--to pipeline` | — |
 
 ### R2-T1 Switches, maps and complexity
@@ -173,21 +176,18 @@ Goal: VER-AC-3 (task 8.3.6 of the T8 plan), every transform of VER §2.3.4 with 
 #### R2-T6.4 Upgrade, the upgrade workflow and skill
 Goal: WUP phases 4 to 7, UWF, the upgrade skill of LSK; N4 on the retired model list.
 
-### R2-T7 Node features, audit, hooks
+### R2-T7 Node features and hooks
 
 #### R2-T7.1 Ask, waits, breakpoints, deadlines, fallback
-#### R2-T7.2 Parallel read-only branches, script cache, `self-check`
-#### R2-T7.3 Audit judge, judge MCP views, audit history, tool surface audit
-#### R2-T7.4 Lifecycle hooks and in-process observers
+#### R2-T7.2 Parallel read-only branches, `self-check`
+#### R2-T7.3 Deliverables per path, repository command declaration, `GitFacts.pushed` (I2-26)
+#### R2-T7.4 Lifecycle hooks
 Goal for each: the acceptance criteria of the specs named in §1.2 for its items.
 
-### R2-T8 Schedules, worktrees, platforms, stable review
+### R2-T8 Outside git
 
-#### R2-T8.1 Schedules, release 2 slice
-#### R2-T8.2 Worktree extras
-#### R2-T8.3 State root outside git (WSP §2.4) and native Windows (WIN)
-#### R2-T8.4 Session review in stable mode
-Goal for each: the acceptance criteria of the specs named in §1.2 for its items.
+#### R2-T8.1 State root outside git
+Goal: WSP-AC-5 and every row of WSP §2.4.
 
 ### R2-T9 Release
 
@@ -204,4 +204,3 @@ Goal: the release record, the changelog with the model-list entry, the version b
 | Ladders rarely climb because few judges are `accepted` | By design; the offer in `local-dev` gathers labelled evidence |
 | Calibration cost grows with judge levels | Levels are 2 or 3; shadow mode before route mode |
 | Release 2 too large | R2-T8.3 moves to release 3 first, then the rest of R2-T8 |
-| No Windows machine for probes | Windows runs work without judges only by refusal; WSL works as Linux |
