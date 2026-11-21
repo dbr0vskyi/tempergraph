@@ -98,6 +98,7 @@ class RunContext:
     origin: str = "cli"
     stage: str = "local-dev"  # PRO §2.1
     judge_state: Callable[[str], str] | None = None  # a gate's judge binding state (JCL §2.5); None reads it
+    escalation_record: Callable[[str], bool] | None = None  # LAD §2.5; None reads the ledger
 
     @property
     def thread(self) -> str:
@@ -217,14 +218,13 @@ class EngineNodes:
         iid = item["id"] if item else None
         first = entered or prev.get("item") != iid
         attempt = int(item["attempt"]) if item else int(prev.get("attempt", 0)) + 1
-        retries = int(counters.get("retries", 0))
         self.ctx.attempts_started += 1
         ov, layer = gatemod.arm_overrides(spec, unit, state)  # below the operator layers (SWM §2.3, RST §2.3)
         ov = {k: v for k, v in ov.items() if k in ("model", "timeout_s", "idle_s", "effort")
               and k not in (u.extra.get("operator_set") or ())}
         sources = {k: layer for k in ov}
-        ladder = _aliases(ov.get("model")) or _aliases(st.model) or _aliases(spec.model_profile.get(unit)) or ["inherit"]
-        alias = ladder[min(retries, len(ladder) - 1)]
+        # one alias per attempt: release 1's retry-count list is retired (LAD §2.8) and validation refuses it
+        alias = (_aliases(ov.get("model")) or _aliases(st.model) or _aliases(spec.model_profile.get(unit)) or ["inherit"])[0]
         full_ov, _ = gatemod.arm_overrides(spec, unit, state)
         rungs, pinned = laddermod.rungs_of(u, full_ov)
         rung = laddermod.held_rung(counters, visit, iid) if rungs and not pinned else 0
@@ -232,6 +232,14 @@ class EngineNodes:
         if rungs and not pinned:  # the effort of this attempt is its rung's (LAD §2.1); a pin switches it off
             ov["effort"] = rungs[rung]
             sources["effort"] = f"ladder:effort[{rung}]"
+        held = counters.get("ladder") or {}
+        up = held.get("escalate") if held.get("visit") == visit and held.get("item") == iid and not first else None
+        if up:  # LAD §2.4: one attempt on the tier above, at the escalation's effort
+            alias = str(up["to"])
+            sources["model"] = "escalation:+1"
+            if up.get("effort"):
+                ov["effort"] = up["effort"]
+                sources["effort"] = "escalation:+1"
         if item and u.map is not None and u.map.item_model is not None:
             try:
                 chosen = str(u.map.item_model.resolve()(MapItem(id=item["id"], text=item["text"])))
@@ -288,11 +296,14 @@ class EngineNodes:
             session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, key),
             enforce_tools=self.ctx.enforce_tools, in_engine_worktree=self._in_worktree(state),
             plugin_dir=spec.package_root)
-        if rungs:
+        if rungs or up or laddermod.escalation_of(u, full_ov) is not None:
             last = (counters.get("ladder") or {}) if not first else {}
             climb = {"rung": rung, "effort": req.options.effort, "alias": alias,
-                     "source": "operator" if pinned else f"ladder:effort[{rung}]",
+                     "source": "escalation:+1" if up else "operator" if pinned else f"ladder:effort[{rung}]"
+                     if rungs else "declared",
                      "evidence": last.get("evidence"), "held_by": last.get("held_by")}
+            if up:
+                climb["taken_by"] = up.get("taken_by")
         extra: dict[str, Any] = {"sources": sources} if sources else {}
         if climb:
             extra["ladder"] = climb
@@ -326,6 +337,13 @@ class EngineNodes:
             "duration_s": res.duration_s, "tool_wall_share": res.tool_wall_share,
             "slow_host": res.timed_out and res.tool_wall_share >= 0.6, "missing_fields": rendered.missing_fields,
         }
+        esc_spec = laddermod.escalation_of(u, full_ov)
+        if up:
+            record.update(escalated=True, escalated_to=alias)
+        elif esc_spec is not None:  # E6: what this attempt's tokens would cost one tier up (OBS §2.2 prices)
+            priced = estimate(res.usage, laddermod.TIER_FAMILY.get(laddermod.tier(esc_spec.to)))
+            usages = [*(prev.get("up_estimates") or [])] if not first else []
+            record["up_estimates"] = [*usages, priced][-5:]
         if record["slow_host"]:
             record.update(infra_cause="slow_host", infra_spent=False)
         if after_failed is not None:
@@ -469,6 +487,25 @@ class EngineNodes:
         run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
         return {"attempts": {unit: record}, "run": run}
 
+    def _escalation_facts(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any],
+                          write: Mapping[str, Any]) -> dict[str, Any]:
+        """What the gate cannot read from state for E1, E6 and E7 (LAD §2.4): the stage, whether the escalation
+        record is met, the median estimate of one attempt on the tier above and what the run cost cap leaves."""
+        ctx = self.ctx
+        met = ctx.escalation_record or (lambda u: laddermod.record_met(ctx.state_root, ctx.spec.name,
+                                                                         ctx.spec.version, u))
+        try:
+            record_met = bool(met(unit))
+        except Exception:  # noqa: BLE001 - LAD §4: a record that cannot be read is not met
+            record_met = False
+        known = sorted(float(x) for x in att.get("up_estimates") or [] if isinstance(x, int | float))
+        estimate_usd = known[len(known) // 2] if known and len(known) == len(att.get("up_estimates") or []) else None
+        cap = ctx.spec.run_cost_cap_usd
+        cost = (write.get("run") or {}).get("cost") or write["judgements"][unit].get("_cost") or (
+            state.get("run") or {}).get("cost")
+        left = round(float(cap) - CostTotals.from_json(cost).figure(), 6) if cap is not None else None
+        return {"stage": ctx.stage, "record_met": record_met, "estimate_usd": estimate_usd, "cap_left_usd": left}
+
     def _judge_state(self) -> Callable[[str], str]:
         if self.ctx.judge_state is None:
             from tempergraph.improve import calibration
@@ -586,6 +623,8 @@ class EngineNodes:
                 sw.switch is not None and unit in sw.switch.rearm_units() for sw in spec.units.values())):
             state_of = self._judge_state()(unit)  # the gate reads trust from the judgement (LAD §2.2)
             write["judgements"][unit].update(judge_state=state_of, trusted=laddermod.trusted(state_of, self.ctx.stage))
+            if u.step.escalation is not None or gatemod.arm_overrides(spec, unit, state)[0].get("escalation"):
+                write["judgements"][unit]["escalation"] = self._escalation_facts(unit, state, att, write)
         if write["judgements"][unit].get("infra_spent"):
             att["infra_spent"] = True
             att["infra_cause"] = "judge_infra"
@@ -775,6 +814,12 @@ class EngineNodes:
         self._budget_records(unit, state, w)
         if r.get("ladder"):  # LAD §2.7: every gate that chose the next attempt's rung
             self.ctx.log.write("ladder_decision", unit=unit, **r["ladder"])
+        att = (state.get("attempts") or {}).get(unit) or {}
+        if att.get("escalated"):  # LAD §2.7: the escalation record
+            laddermod.record_escalation(
+                self.ctx.state_root, workflow=self.ctx.spec.name, version=self.ctx.spec.version, unit=unit,
+                thread=self.ctx.thread, passed=r["token"] in ("PROCEED", "NEXT"), to=str(att.get("escalated_to")),
+                judge_state=((state.get("judgements") or {}).get(unit) or {}).get("judge_state"))
         for name, rr in w["route"].items():  # every pick: predicate, default, operator or re-arm (OBS `route`)
             p = (rr or {}).get("pick")
             if p and (name == unit or p.get("chosen_by") == "rearm"):
@@ -786,7 +831,7 @@ class EngineNodes:
         if unit in (w.get("pause") or {}) and w["pause"][unit]:
             p = w["pause"][unit]
             self.ctx.log.write("pause", unit=unit, item=p.get("item"), pause_kind=p["kind"], decisions=p["decisions"], resume=p["resume"],
-                               cost_so_far=so_far, reason=p.get("reason"),
+                               cost_so_far=so_far, reason=p.get("reason"), escalation=p.get("escalation"),
                                tool_access=[{k: t.get(k) for k in ("name", "capability", "class")}
                                             for t in p.get("tool_access") or []] or None)
         return w

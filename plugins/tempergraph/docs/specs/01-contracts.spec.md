@@ -112,8 +112,8 @@ A template holds literal text, `{{` `}}` for literal braces, and plain fields `{
 
 - **Alias grammar.** `inherit`, an engine-neutral tier `small` \| `medium` \| `large`, or an executor-qualified alias `<executor>:<name>` (for example `claude:opus`, `antigravity:gemini-pro`). Never a deployment id. Binding is per executor ([ADR-0008](../adr/0008-portable-model-aliases.adr.md)).
 - **`ModelProfile`**: map from step name and from `judge:<step name>` to an alias or a ladder.
-- **Resolution order for a step attempt:** the operator layers of [RST §2.3](80-run-settings-and-overrides.spec.md), an arm in force that names the step, the step's model (ladder rung n for attempt n, last rung repeats; release 2: [LAD](92-effort-ladder-and-model-escalation.spec.md)), workflow default, project and user defaults, `inherit`.
-- **Resolution order for a judge:** the same operator layers on the judge scopes only (`judge:<unit>`, then `judges`), the gate's judge model, the step's model (its ladder's last rung), workflow default, project and user defaults, `inherit`.
+- **Resolution order for a step attempt:** the operator layers of [RST §2.3](80-run-settings-and-overrides.spec.md), an arm in force that names the step, the step's model (one alias; an escalated attempt: [LAD](92-effort-ladder-and-model-escalation.spec.md)), workflow default, project and user defaults, `inherit`.
+- **Resolution order for a judge:** the same operator layers on the judge scopes only (`judge:<unit>`, then `judges`), the gate's judge model, the step's model, workflow default, project and user defaults, `inherit`.
 - Every record carries the alias, its source layer and the executor that bound it.
 
 ### 2.5 Tool capabilities

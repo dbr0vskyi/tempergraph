@@ -77,7 +77,7 @@ CASES: list[tuple[str, Callable[[], WorkflowSpec]]] = [
     ("template-unreadable", lambda: _step(two_step(), "draft", prompt=api.text("prompts/missing.md"))),
     ("timeout-invalid", lambda: _step(two_step(), "draft", timeout_s=0)),
     ("issue-repository-invalid", lambda: dataclasses.replace(two_step(), issue_repository="nope")),
-    ("ladder-too-long", lambda: _step(two_step(), "draft", model=("small",) * 9)),
+    ("model-ladder-retired", lambda: _step(two_step(), "draft", model=("small", "medium"))),
     ("setting-default-invalid", lambda: dataclasses.replace(
         two_step(), settings={"depth": api.Setting(kind="int", default=99, max=5)})),
     ("profile-key-unknown", lambda: dataclasses.replace(two_step(), profiles={"fast": {"settings.nope": 1}})),

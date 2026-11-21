@@ -66,7 +66,7 @@ A verdict the judge writes itself is ignored; a mismatch is only logged. Confide
 | antigravity / `medium` | claude (cross-executor) | step model → tier `medium` | Claude |
 | antigravity / `large`, gate judge `antigravity:gemini-pro` | antigravity (once restriction is confirmed) | gate | Gemini |
 | agent-sdk / `medium` | agent-sdk | step model | Claude |
-| messages-api / `small` | messages-api | step model's ladder last rung | Claude |
+| messages-api / `small` | messages-api | the step's model | Claude |
 
 **JDG-B4 Own timeout.** Given a judge timeout of 600 s and a step timeout of 1800 s, when the judge runs, then it gets 600 s; a judge timeout is an unparsed judgement that escalates, with a timeout row in its record.
 

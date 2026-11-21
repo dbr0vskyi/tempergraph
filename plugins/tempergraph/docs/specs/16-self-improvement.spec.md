@@ -77,7 +77,7 @@ Cause codes come from run-log and session-digest names and numbers only ([SRV §
 ## 5. Design notes
 
 - The loop is a workflow inside the engine so every run is analyzed without an optional install ([ADR-0003](../adr/0003-workflows-as-data.adr.md)).
-- Its friction and outcome judges follow the same executor selection as any gate ([JDG](05-judge-and-verdict.spec.md)); by default they run on a mid-tier alias for 1800 s.
+- Its friction and outcome judges follow the same executor selection as any gate ([JDG](05-judge-and-verdict.spec.md)); they run on the run setting `loop_model` (default `medium`, [RST §2.2](80-run-settings-and-overrides.spec.md)) for 1800 s; the session review and the proposer's sessions use the same alias.
 - Thresholds (audit 1 in 20, 30-day pattern window, confidence floor) are defaults with no data behind them; they are parameter records with provenance `default_no_data` ([IMD §2.5](43-improvement-data.spec.md)) and revisited with real runs.
 - The pattern rule and the cost windows count runs from the shared store when one is reachable, so a pattern spread over several machines fires; otherwise they read the local ledger and say so ([IMD-B1](43-improvement-data.spec.md)).
 - Release 1 layout: findings are `runs/<workflow>/<task>/findings.json` (one document per thread, each segment appends), the evidence file is `runs/<workflow>/<task>/evidence/record.json`, both owner-only ([LOS §2.1](33-local-observability-store.spec.md)); each exit writes a `finding_recorded` run-log record (causes, sides, and the lenses at a final exit). Cause codes, classes, sides and remedies are one table in `improve/causes.py`; thresholds are parameter records in `improve/params.py` ([IMD §2.5](43-improvement-data.spec.md)).

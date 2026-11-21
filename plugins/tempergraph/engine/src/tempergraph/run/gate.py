@@ -273,14 +273,33 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
         if w is not None:
             return w
     verdict = judged.get("verdict", str(Verdict.ESCALATE))
+    if verdict == Verdict.RETRY and att.get("escalated"):  # LAD §2.4: a failed escalated attempt ends it
+        return spent("escalation")
     if verdict == Verdict.RETRY:
         if retries < g.retry_budget:
             counters["retries"] = retries + 1
-            step = laddermod.decide(u, att, judged, counters, arm_overrides(spec, unit, state)[0])
+            ov = arm_overrides(spec, unit, state)[0]
+            step = laddermod.decide(u, att, judged, counters, ov)
             if step is None:
                 return _merge(route("RETRY", s.retry[0]), {"counters": {unit: counters}})
-            counters["ladder"] = {k: step[k] for k in ("visit", "item", "rung", "evidence", "held_by")}
-            return _merge(route("RETRY", s.retry[0], ladder=step), {"counters": {unit: counters}})
+            counters["ladder"] = {k: step[k] for k in ("visit", "item", "rung", "evidence", "held_by", "trail",
+                                                       "escalated")}
+            esc = laddermod.escalation(u, step, judged, retry_left=True, overrides=ov,
+                                       rearm_available=_rearm(spec, unit, state, "budget_spent") is not None)
+            shown = {k: v for k, v in step.items() if k not in ("trail", "escalated")}
+            if esc is not None:
+                shown["escalation"] = esc
+            if esc and esc["take"] == "offer":  # LAD §2.4: a person chooses; no retry is spent yet
+                counters["retries"] = retries
+                counters["ladder"]["offer"] = {k: esc[k] for k in ("to", "effort", "criteria")}
+                w = to_human("budget", "escalation_offer", ladder=shown)
+                w["pause"][unit]["escalation"] = {**counters["ladder"]["offer"], "judge_state": esc["judge_state"],
+                                                  "command": f"tempergraph resume {spec.name} {task_id} --escalate"}
+                return _merge(w, {"counters": {unit: counters}})
+            if esc and esc["take"] == "auto":
+                counters["ladder"].update(escalate={"to": esc["to"], "effort": esc["effort"], "taken_by": "auto"},
+                                          escalated=True)
+            return _merge(route("RETRY", s.retry[0], ladder=shown), {"counters": {unit: counters}})
         return spent("retry_budget")
     if verdict == Verdict.BACK:
         target = judged.get("back_to")
@@ -434,8 +453,17 @@ def _apply(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payload: Map
             w["feedback"] = {nxt_unit: {"text": one_time, "as": "notes"}}
         return w
     if d.word == "retry":
+        held = counters.get("ladder") or {}
+        if payload.get("escalate") and held.get("offer"):  # the person took the offer: it spends a retry (E5)
+            counters.update(retries=int(counters.get("retries", 0)) + 1, human=int(counters.get("human", 0)) + 1)
+            counters["ladder"] = {**{k: v for k, v in held.items() if k != "offer"}, "escalated": True,
+                                  "escalate": {**held["offer"], "taken_by": "person"}}
+            return _merge(route("RETRY", s.retry[0]), {"counters": {unit: counters}},
+                          {"feedback": {unit: {"text": one_time, "as": "feedback"}}} if one_time else {})
         counters.update(retries=0, human=int(counters.get("human", 0)) + 1, infra=0)
-        counters["ladder"] = None  # a person's retry starts the visit at rung 0 (LAD §2.3)
+        # a person's retry starts the visit at rung 0 (LAD §2.3); an escalation of this visit stays spent (E9)
+        counters["ladder"] = {"visit": held.get("visit"), "item": held.get("item"), "rung": 0,
+                              "escalated": True} if held.get("escalated") else None
         w = _merge(route("RETRY", s.retry[0]), {"counters": {unit: counters}})
         if one_time:
             w["feedback"] = {unit: {"text": one_time, "as": "feedback"}}

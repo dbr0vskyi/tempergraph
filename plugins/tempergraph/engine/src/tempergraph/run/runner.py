@@ -96,6 +96,8 @@ class RunSettings:
     relayed: bool = False  # `--relayed`: the call carries a person's decision (PRV §2.4)
     dry_run: bool = False  # `--dry-run`: self-improvement files nothing for this run (CLI §2.1)
     home: Path | None = None  # the user config folder's parent; default `home_path()`
+    escalate: bool = False  # `resume --escalate`: take the offered escalation (LAD §2.4)
+    escalation_record: Callable[[str], bool] | None = None  # a seam for LAD §2.5's escalation record
     judge_state: Callable[[str], str] | None = None  # a seam for a gate's judge binding state (JCL §2.5)
 
     def all_flags(self) -> dict[str, Any]:
@@ -274,6 +276,7 @@ def _context(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, s
                      drain_requested=drain, main_checkout=main, attempt_cap=int(rv["attempt_cap"]),
                      infra_tries=max(1, int(rv["infra_tries"])), backoff_max_s=int(rv["infra_backoff_max_s"]),
                      settings=rst.workflow_settings(settled.resolved), origin=settings.origin, judge_state=settings.judge_state,
+                     escalation_record=settings.escalation_record,
                      stage="local-stable" if spec.improvement_mode == "stable" else "local-dev")
     if settings.sleep is not None:
         ctx.sleep = settings.sleep
@@ -385,7 +388,7 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                 log.write("finding_recorded", **summary)
                 _loop(root, spec, task_id, tid, summary, settings, registry, judges,
                       operator_review=settled.run.get("session_review"), run_cost_usd=cost.reported + cost.estimated_only,
-                      daily_cap_usd=settled.run.get("daily_cap_usd"))
+                      daily_cap_usd=settled.run.get("daily_cap_usd"), loop_model=settled.run.get("loop_model"))
         except Exception as exc:  # noqa: BLE001
             log.write("engine_error", scope="improve", error=type(exc).__name__)
         outcome.thread_id = tid
@@ -399,7 +402,8 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
 
 def _loop(root: Path, spec: WorkflowSpec, task_id: str, tid: str, summary: Mapping[str, Any],
           settings: RunSettings, registry: Registry, judges: Mapping[str, str], *,
-          operator_review: str | None = None, run_cost_usd: float = 0.0, daily_cap_usd: float | None = None) -> None:
+          operator_review: str | None = None, run_cost_usd: float = 0.0, daily_cap_usd: float | None = None,
+          loop_model: str | None = None) -> None:
     """SIL-B1: hand the judged lenses to the detached loop child; `TEMPERGRAPH_LOOP=inline|off` for tests."""
     from tempergraph.improve import child
 
@@ -412,7 +416,7 @@ def _loop(root: Path, spec: WorkflowSpec, task_id: str, tid: str, summary: Mappi
                                           dry_run=True) is not None
     if child.hand_off(root, spec, task_id, tid, summary, dry_run=dry, judge_executor=executor,
                       operator_review=operator_review, run_cost_usd=run_cost_usd,
-                      trial=settings.origin == "trial", daily_cap_usd=daily_cap_usd) is None:
+                      trial=settings.origin == "trial", daily_cap_usd=daily_cap_usd, loop_model=loop_model) is None:
         return
     if child.mode() == "inline":
         child.drain(registry=registry)
@@ -632,7 +636,12 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
     unknown = [u for u in settings.ruling_for if u not in spec.units]
     if unknown:
         return _refuse("ruling_for_unknown", f"--ruling-for names no unit {', '.join(unknown)}", tid=tid)
+    if settings.escalate:
+        if d is not None and d.word != "retry":
+            return _refuse("decision_invalid", "--escalate goes with a retry, not another decision", tid=tid)
+        d = Decision.parse("retry")
     human_payload: dict[str, Any] = {"feedback": feedback, "caller": dict(settings.caller),
+                                     "escalate": settings.escalate,
                                      "ruling": {"applies_to": list(settings.ruling_for)} if settings.ruling else None,
                                      "revoke": list(settings.revoke_rulings)}
     declared = spec
@@ -657,6 +666,12 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
             settings = decided(settings, deciding=deciding, words=(d.word,) if d else ("grant",),
                                since=(pause or {}).get("ts"))
             human_payload["caller"] = dict(settings.caller)
+            if settings.escalate:
+                if not (pause or {}).get("escalation"):
+                    return _refuse("no_escalation_offered", f"{tid} offers no escalation", tid=tid)
+                if settings.caller and not provenance.may_widen(settings.caller):  # LAD-B6, PRV §2.8
+                    return _refuse("escalate_needs_person",
+                                   "--escalate is a person's choice: run it at a terminal, or relay it", tid=tid)
             settled = settle_resume(declared, settings, root, values)
         except SettingsRefused as exc:
             return _refuse_settings(exc, tid)

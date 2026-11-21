@@ -45,8 +45,9 @@ A map item has no scope of its own: items share their unit's settings, and a per
 | Name | Scopes | Value | Engine default | Notes |
 |---|---|---|---|---|
 | `executor` | steps, judges, unit, judge, member, chair, slot | registered executor | workflow `default_executor` | A judge's still must declare `restricts_judge_tools` ([EXI](10-executor-interface.spec.md)) |
-| `model` | steps, unit, member, chair, slot | alias, or a ladder of 1–8 aliases on steps and unit | `inherit` | Judges, members, chair and slots take one alias.; release 2 retires the ladder (LAD) |
-| `model` | judges, judge | alias | per CON §2.4 | Never a ladder |
+| `model` | steps, unit, member, chair, slot | one alias | `inherit` | A list is refused (LAD §2.8) |
+| `model` | judges, judge | alias | per CON §2.4 | |
+| `loop_model` | run | alias | `medium` | The loop's own sessions (SIL §2.3) |
 | `subagent_model` | steps, unit | alias | the session's own alias | Only on executors that host subagents; elsewhere a warning |
 | `effort` | every session scope | `low` \| `medium` \| `high` \| `xhigh` \| `max` | none | Unapplied warns (CON §4); pins an effort ladder |
 | `session_cost_cap_usd` | every session scope | float > 0 | none | `SessionOptions.cost_cap_usd` |
@@ -97,7 +98,7 @@ Resolution is layer-major: the highest layer that sets a key at any scope matchi
 | 3 | `project:overrides` | `<state root>/config/settings.json`, `overrides` entries matching the workflow |
 | 4 | `user:overrides` | `~/.tempergraph/config/settings.json`, `overrides` entries matching the workflow |
 | 5 | `arm:<switch>.<arm>` | While a switch arm is in force, the workflow-declared per-arm values of `model`, `timeout_s`, `idle_s` and `effort` for the units the arm names ([SWM](79-measured-switches.spec.md)) |
-| 6 | `workflow:unit` | The unit's own field: a step's `model` (its ladder rung for the attempt), `timeout_s`, a gate's budgets, a member's `executor` |
+| 6 | `workflow:unit` | The unit's own field: a step's `model`, `timeout_s`, a gate's budgets, a member's `executor` |
 | 7 | `workflow:default` | Workflow-wide values: `default_executor`, `model_profile`, `run_cost_cap_usd`, `workspace`, `worktree.base` and `worktree.cleanup` ([WTR §2.3](82-worktree-mode.spec.md)), a declared setting's default |
 | 8 | `project:defaults` | `<state root>/config/settings.json`, `defaults` |
 | 9 | `user:defaults` | `~/.tempergraph/config/settings.json`, `defaults` |
@@ -107,7 +108,7 @@ Three rules keep the existing guarantees:
 
 | Rule | Effect |
 |---|---|
-| Judges apart | `steps` and `<unit>` keys never reach a judge. The one step-to-judge inheritance is CON §2.4's: at the workflow layers, a judge with no model of its own takes the step's model (its ladder's last rung). |
+| Judges apart | `steps` and `<unit>` keys never reach a judge. The one step-to-judge inheritance is CON §2.4's: at the workflow layers, a judge with no model of its own takes the step's model. |
 | Declared diversity kept | `steps` and `<unit>` values of `model` and `executor` reach a member, chair or slot only when the workflow declares none for it; the council's diversity check runs on the resolved values ([CNL §2.6](71-council-unit.spec.md)). |
 | Tighten-only keys | `approve`, `enforce_tools` and `strict_permissions` can only be set to `true`; a `false` is refused at any layer. |
 
@@ -160,7 +161,6 @@ A changed value meets the counters already spent as follows:
 |---|---|
 | `retry_budget`, `loop_budget` | At the next gate decision, against the counter already used in the current visit or pair; a lowered value at or under the count used is spent at the next failure |
 | `run_cost_cap_usd` | At once; a thread drained with reason `cost_cap` continues when the new cap is above its cost |
-| `model` ladder | From the next attempt, at the rung for its number in the current budget |
 | `timeout_s`, `idle_s`, session options, `executor` | From the next session |
 | `attempt_cap`, `infra_tries` | Per invocation, from this one |
 | `arm`, `settings.<name>` | From the next read; a switch already decided in this visit keeps its arm |

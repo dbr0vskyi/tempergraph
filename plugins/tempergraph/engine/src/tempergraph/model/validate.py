@@ -18,6 +18,7 @@ from tempergraph.contracts import (
     EFFORTS,
     READ_ONLY_CAPABILITIES,
     REARM_CAUSES,
+    STAGES,
     CallableRef,
     Capabilities,
     Criterion,
@@ -283,6 +284,21 @@ class _Validator:
         from tempergraph.run.ladder import ascending
 
         rungs = tuple(st.effort_ladder)
+        esc = st.escalation
+        if esc is not None:  # LAD §2.1: one tier above a plain tier alias, never from `large`, `inherit` or an item
+            from tempergraph.run.ladder import MODES, TIER_UP, stages_ok
+
+            model = st.model if isinstance(st.model, str) else None
+            m = self.spec.units[name].map
+            if model not in TIER_UP or TIER_UP[model] != esc.to or (m is not None and m.item_model is not None):
+                self.err("escalation-invalid", name,
+                         f"`escalation.to` must be exactly one tier above a `small` or `medium` step ({model!r} -> {esc.to!r})")
+            elif caps is not None:
+                self._alias(name, esc.to, caps)
+            if not stages_ok(esc) or (esc.effort is not None and esc.effort not in EFFORTS):
+                self.err("escalation-invalid", name, f"`escalation` takes stages {list(STAGES)} as {list(MODES)} and an effort")
+            if dict(esc.stages).get("pipeline") == "offer":
+                self.err("escalation-invalid", name, "a pipeline never waits on an offer: use `off` or `auto`")
         if not rungs:
             return
         if not 2 <= len(rungs) <= 4 or not ascending(rungs):
@@ -416,7 +432,7 @@ class _Validator:
         if caps is None:
             self.err("executor-unknown", name, f"unknown executor {executor!r}")
         else:
-            for alias in _aliases(st.model) + _aliases(s.model_profile.get(name)):
+            for alias in _aliases(st.model)[:1] + _aliases(s.model_profile.get(name))[:1]:
                 self._alias(name, alias, caps)
             for tool in st.tools:
                 if not is_capability(tool):
@@ -431,8 +447,12 @@ class _Validator:
                         else:
                             self.err("option-unsupported", name, f"{executor!r} does not support {opt!r}")
         self._ladder(name, st, caps, executor)
-        if isinstance(st.model, tuple) and len(st.model) > 8:
-            self.err("ladder-too-long", name, "a model ladder holds at most eight aliases")
+        from tempergraph.model import retire
+
+        for where, got in retire.detect(s).items():  # LAD §2.6: a release 1 model list, with its rewrite (§2.8)
+            if where in (f"units.{name}.model", f"model_profile.{name}"):
+                self.err("model-ladder-retired", name,
+                         f"`{where}` is a list of models, retired in release 2; write {retire.describe(got)}")
         for label, val in (("timeout_s", st.timeout_s), ("idle_s", st.idle_s)):
             if val is not None and (not isinstance(val, int) or val <= 0):
                 self.err("timeout-invalid", name, f"`{label}` must be a positive integer")

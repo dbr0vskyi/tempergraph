@@ -128,13 +128,11 @@ def _alias(v: Any) -> str:
     return v
 
 
-def _ladder(v: Any) -> str | tuple[str, ...]:
-    if isinstance(v, str) and "," in v:
-        v = [p.strip() for p in v.split(",")]
-    if isinstance(v, (list, tuple)):
-        if not 1 <= len(v) <= 8:
-            raise SettingError("setting_value", "a model ladder has 1 to 8 aliases")
-        return tuple(_alias(a) for a in v)
+def _one_alias(v: Any) -> str:
+    """LAD §2.6: `model` takes one alias; release 1's list is retired (LAD §2.8)."""
+    if isinstance(v, (list, tuple)) or (isinstance(v, str) and "," in v):
+        raise SettingError("setting_value", "`model` takes one alias; a list of models is retired, declare an "
+                                            "`escalation` on the step instead")
     return _alias(v)
 
 
@@ -178,7 +176,7 @@ def _base(v: Any) -> None:
 RUN = frozenset({"run"})
 CATALOG: dict[str, Entry] = {
     "executor": Entry(SESSION, _slug),
-    "model": Entry(SESSION, _ladder, "inherit"),  # one alias on the judge side, checked in _value
+    "model": Entry(SESSION, _one_alias, "inherit"),
     "subagent_model": Entry(STEP_SIDE, _alias),
     "effort": Entry(SESSION, _choice("low", "medium", "high", "xhigh", "max")),
     "session_cost_cap_usd": Entry(SESSION, _float(0)),
@@ -196,6 +194,7 @@ CATALOG: dict[str, Entry] = {
     "human_cap": Entry(RUN, _int(1, 100), 100),
     "run_cost_cap_usd": Entry(RUN, _float(0)),
     "daily_cap_usd": Entry(RUN, _float(0)),  # stable mode's self-improvement budget per day (SIL §4)
+    "loop_model": Entry(RUN, _alias, "medium"),  # the alias of the loop's own sessions (SIL §2.3)
     "auto_reopen": Entry(RUN, _int(0, 10), 0),
     "workspace": Entry(RUN, _choice("auto", "in_place", "worktree"), "auto"),
     "session_review": Entry(RUN, _choice("auto", "full", "signals", "off"), "auto"),  # lowers only (SRV §2.3)
@@ -647,8 +646,8 @@ def _workflow_values(spec: WorkflowSpec) -> dict[str, dict[str, dict[str, Any]]]
             if j.model:
                 put(unit_l, f"judge:{name}.model", j.model, f"units.{name}.gate.judge.model")
             elif u.step is not None and u.step.model:
-                ladder = [u.step.model] if isinstance(u.step.model, str) else list(u.step.model)
-                put(unit_l, f"judge:{name}.model", ladder[-1], f"units.{name}.model[-1]")  # CON §2.4
+                first = u.step.model if isinstance(u.step.model, str) else list(u.step.model)[0]
+                put(unit_l, f"judge:{name}.model", first, f"units.{name}.model")  # CON §2.4
             prof = spec.model_profile.get(f"judge:{name}")
             put(dflt, f"judge:{name}.model", prof if isinstance(prof, str) or prof is None else list(prof)[0],
                 f"model_profile.judge:{name}")

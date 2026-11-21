@@ -65,6 +65,8 @@ def _parser() -> _Parser:
     res.add_argument("workflow")
     res.add_argument("thread")
     res.add_argument("--decision")
+    res.add_argument("--escalate", action="store_true",
+                     help="take the offered one-step model escalation for the next attempt (LAD §2.4)")
     fb = res.add_mutually_exclusive_group()
     fb.add_argument("--feedback")
     fb.add_argument("--feedback-file")
@@ -323,6 +325,8 @@ def _settings(env: Env, a: argparse.Namespace, mutating: bool = True) -> Any:
                               "profiles": tuple(a.profile) if getattr(a, "profile", None) is not None else None}
     if hasattr(a, "alias"):
         fields.update(alias=a.alias, label=a.label, dry_run=bool(getattr(a, "dry_run", False)))
+    if getattr(a, "escalate", False):
+        fields["escalate"] = True
     if hasattr(a, "unset"):
         fields.update(unset=tuple(a.unset), reload_settings=a.reload_settings)
     if hasattr(a, "ruling"):

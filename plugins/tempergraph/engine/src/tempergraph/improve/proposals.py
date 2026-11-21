@@ -522,7 +522,8 @@ def _brief(cl: Mapping[str, Any]) -> str:
 
 
 def propose(root: Path, spec: WorkflowSpec, cl: Mapping[str, Any], executor: Any, *,
-            judge_executor: Any | None = None, worktrees: Path | None = None) -> dict[str, Any]:
+            judge_executor: Any | None = None, worktrees: Path | None = None,
+            alias: str = "medium") -> dict[str, Any]:
     """`improve propose <cluster>` without `--patch`: the proposer's step in its own worktree on branch
     `improve/<id>`, the engine's check (apply, validate, class check), then an independent judge."""
     from tempergraph.contracts import EventSink, GateSpec, JudgeSpec, SessionRequest
@@ -546,7 +547,7 @@ def propose(root: Path, spec: WorkflowSpec, cl: Mapping[str, Any], executor: Any
     rel = pkg.resolve().relative_to(repo.resolve())
     work_pkg = wt / rel
     prompt = PROPOSER_BRIEF + "\n\n" + _brief(cl)
-    req = SessionRequest(kind="step", prompt=prompt, workdir=work_pkg, alias="medium",
+    req = SessionRequest(kind="step", prompt=prompt, workdir=work_pkg, alias=alias,
                          session_key=f"improve.{pid}.step", tools=("read", "search", "list", "edit", "write"),
                          timeout_s=1800, in_engine_worktree=True)
     res = executor.run_step(req, EventSink())
@@ -573,7 +574,7 @@ def propose(root: Path, spec: WorkflowSpec, cl: Mapping[str, Any], executor: Any
                                        references={"diff": patch[:20000], "rule": rule}))
     from tempergraph.contracts import StepSpec
 
-    jres = jex.run_judge(SessionRequest(kind="judge", prompt=jprompt, workdir=work_pkg, alias="medium",
+    jres = jex.run_judge(SessionRequest(kind="judge", prompt=jprompt, workdir=work_pkg, alias=alias,
                                         session_key=f"improve.{pid}.judge", timeout_s=1800),
                          view_set(StepSpec(), [], jex.capabilities()), EventSink())
     spend["sessions"] = 2

@@ -77,6 +77,8 @@ class Session:
     duration_s: float | None = None
     slow_host: bool = False
     prompt_digest: str | None = None
+    climbed: bool = False  # ran above rung 0 or on an escalated alias (LAD §2.7)
+    escalated: bool = False
 
 
 @dataclass(kw_only=True)
@@ -143,7 +145,10 @@ def fold(recs: Iterable[dict[str, Any]], folder: Path | None = None) -> Thread |
                                       stalled=bool(r.get("stalled")), session_key=r.get("session_key"), cause=cause,
                                       duration_s=float(r["duration_s"]) if isinstance(r.get("duration_s"), int | float)
                                       else None, slow_host=bool(r.get("slow_host")),
-                                      prompt_digest=digests.get(str(r.get("session_key")))))
+                                      prompt_digest=digests.get(str(r.get("session_key"))),
+                                      climbed=int((r.get("ladder") or {}).get("rung") or 0) > 0
+                                      or (r.get("ladder") or {}).get("source") == "escalation:+1",
+                                      escalated=(r.get("ladder") or {}).get("source") == "escalation:+1"))
         elif kind == "gate" and unit:
             last_gate[unit] = r
             t.gates.append(r)
@@ -162,11 +167,14 @@ def fold(recs: Iterable[dict[str, Any]], folder: Path | None = None) -> Thread |
             t.outcome = r
         elif kind == "run_exit":
             t.exit = r
-    # a judge's sessions carry the cause of the attempt they judged
+    # a judge's sessions carry the cause of the attempt they judged, and whether that attempt had climbed
     causes = {(s.unit, s.attempt): s.cause for s in t.sessions if s.kind in STEP_KINDS} if t else {}
+    climbed = {(s.unit, s.visit, s.attempt) for s in t.sessions if s.kind in STEP_KINDS and s.climbed} if t else set()
     for s in t.sessions if t else []:
         if s.kind in ("judge", "grouping"):
             s.cause = causes.get((s.unit, s.attempt))
+        if s.kind in JUDGE_KINDS and (s.unit, s.visit, s.attempt) in climbed:
+            s.climbed = True
     return t
 
 
@@ -283,6 +291,26 @@ def arms(ts: list[Thread]) -> list[dict[str, Any]]:
     return [{"workflow": wf, "unit": u, "arm": a, "count": n} for (wf, u, a), n in sorted(route.items())]
 
 
+def ladder(ts: list[Thread]) -> list[dict[str, Any]]:
+    """Per workflow version: rung-0 attempts and climbed attempts apart, the runs that held an escalated
+    attempt, and first-pass yield, which a climbed attempt can never enter (LAD §2.7, LAD-AC-5)."""
+    by: dict[tuple[str, str], list[Thread]] = defaultdict(list)
+    for t in ts:
+        by[(t.workflow, str(t.version or "?"))].append(t)
+    out = []
+    for (wf, version), group in sorted(by.items()):
+        sessions = [s for t in group for s in t.sessions]
+        first: dict[tuple[str, str, Any], str] = {}
+        for t in group:
+            for g in t.gates:
+                first.setdefault((t.thread_id, str(g.get("unit")), g.get("item")), str(g.get("verdict")))
+        out.append({"workflow": wf, "version": version, "rung0": _money(s for s in sessions if not s.climbed),
+                    "climbed": _money(s for s in sessions if s.climbed),
+                    "escalated_runs": sorted({s.thread_id for s in sessions if s.escalated}),
+                    "first_pass": {"gates": len(first), "passed": sum(1 for v in first.values() if v == "PROCEED")}})
+    return out
+
+
 def timeouts(ts: list[Thread]) -> list[dict[str, Any]]:
     """Stalled sessions as their own class; timeouts sorted as far as the records say (OBS-B6)."""
     out = []
@@ -364,7 +392,7 @@ def report(root: Path, since: datetime | None = None, by: str = "unit") -> dict[
         "by_executor": _group(sessions, lambda s: s.executor or "unknown"),
         "by_version": _group(sessions, lambda s: f"{s.workflow}@{s.version or '?'}"),
         "units": by_unit(ts), "criteria": criteria(ts), "arms": arms(ts), "timeouts": timeouts(ts), "prompts": prompts(ts),
-        "time_profile": profile, "loops": loops,
+        "time_profile": profile, "loops": loops, "ladder": ladder(ts),
     }
     doc["by"] = by
     return doc

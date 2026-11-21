@@ -405,28 +405,19 @@ def test_auto_reopen_never_answers_a_pause(repo: Path) -> None:  # BUD-B6
     assert out.exit_code is ExitCode.PAUSED and not any("auto_reopen" in w for w in out.warnings)
 
 
-def test_model_ladder_climbs_and_a_person_retry_resets_it(repo: Path) -> None:  # BUD-B7
+def test_a_retry_never_changes_the_model(repo: Path) -> None:  # BUD-B7: no retry-count ladder (LAD §2.8)
     fail = verdict_block("UNMET")
     broken = SessionResult(ok=False, infra_cause=InfraCause.BROKEN_PIPE, usage=Usage())
     ex = standin("claude", steps=[DRAFT, broken, DRAFT, DRAFT, DRAFT], judges=[judge(fail)] * 4)
     spec = two_step()
-    units = dict(spec.units)  # a declared ladder: a `--set` ladder stays on the step side (RST, Judges apart)
-    units["draft"] = dataclasses.replace(units["draft"], step=dataclasses.replace(
-        units["draft"].step, model=("small", "medium", "large")))
+    units = dict(spec.units)
+    units["draft"] = dataclasses.replace(units["draft"], step=dataclasses.replace(units["draft"].step, model="small"))
     spec = dataclasses.replace(spec, units=units)
     out = go(repo, ex, spec, flags={"draft.retry_budget": 3}, task="L-1")
     assert out.exit_code is ExitCode.PAUSED and out.payload["kind"] == "budget"
-
-    def aliases() -> list[tuple[str, str]]:
-        return [(r["session_key"], r["alias"]) for r in records(repo, "L-1") if r["kind"] == "attempt_start"]
-
-    steps = [a for k, a in aliases() if "judge" not in k]
-    assert steps == ["small", "medium", "medium", "large", "large"]  # the infra rerun repeats its rung
-    assert {a for k, a in aliases() if "judge" in k} == {"large"}
-    ex.steps, ex.judges = [DRAFT, REVIEW], [judge(), judge()]
-    back = resume(spec, "L-1", repo, registry(ex), decision="retry", settings=NO_SLEEP)
-    assert back.exit_code is ExitCode.FINISHED, back.message
-    assert [a for k, a in aliases() if "judge" not in k and k.startswith("draft")][5] == "small"
+    aliases = [(r["session_key"], r["alias"]) for r in records(repo, "L-1") if r["kind"] == "attempt_start"]
+    assert [a for k, a in aliases if "judge" not in k] == ["small"] * 5  # four attempts and one infra rerun
+    assert {a for k, a in aliases if "judge" in k} == {"small"}  # the judge inherits the step's alias (CON §2.4)
 
 
 def test_workspace_records(repo: Path) -> None:  # EVT §2.2 `workspace`, WTR §2.6
