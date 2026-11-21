@@ -90,7 +90,7 @@ The person approves the drawing as a whole; the skill records the approval with 
 | 7 Register | `workflows register <path> --check`, then `register` ([UPD §2.8](60-engine-update.spec.md)) | Entry `ok` |
 | 8 Judge seeds | With `--judge-seeds` (or `--trial`, which implies it), after the person's yes on the stated cost: each judge runs on its criteria's seed fixtures ([OUT §2.2.1](90-run-outcome.spec.md)) twice, with no step session, capped by `--cap` | Every seed graded as expected both times. A seed graded wrong or a status that flips between the two runs names the criterion: its text or scale is not clear enough, and the skill returns to the guidance ladder of AUT §2.4.1 for it |
 | 9 First trial | With `--trial`, only after the person's yes on the stated cost (each step attempt is two sessions, plus the outcome judge): one live run of the case in a fresh worktree, dry run, capped by `--cap` (default $5), caller recorded ([PRV](85-caller-provenance.spec.md)) | The run reaches the outcome gate; the report is produced whatever the verdict |
-| 10 Stamp | `upgrade --stamp` ([VER §2.5](61-version-metadata.spec.md)); the stamp records `docs_digest` | Stamp written |
+| 10 Stamp | `upgrade --stamp` ([VER §2.5](61-version-metadata.spec.md)); the stamp records `docs_digest`. Under an outcome revision newer than the stamped one, the audit findings rung 6 showed become the new baseline ([WUP §2.6](63-workflow-upgrade.spec.md)) | Stamp written |
 
 
 ### 2.6 Verbs

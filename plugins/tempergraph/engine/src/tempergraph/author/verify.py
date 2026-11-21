@@ -200,7 +200,7 @@ def _register(root: Path, caps: Mapping[str, Capabilities], rung: Rung) -> None:
 def _stamp(root: Path, caps: Mapping[str, Capabilities], rung: Rung) -> None:
     from tempergraph.package.stamp import check
 
-    got = check(root, caps, stamp=True)
+    got = check(root, caps, stamp=True, accept_revision=True)
     if got.stamp is None:
         reason = got.refused or "; ".join(f"{v.check}: {v.evidence}" for v in got.checks if v.state == "failed")
         rung.findings.append(_row("stamp-not-written", None, reason, "`tempergraph upgrade-check <workflow> --stamp`"))

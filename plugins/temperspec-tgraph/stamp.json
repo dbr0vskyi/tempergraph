@@ -2,9 +2,9 @@
   "schema_version": 1,
   "engine_version": "0.0.1",
   "workflow_api": 1,
-  "workflow_version": "0.1.0+1ef9ee7086d4",
-  "docs_digest": "961917048d7a8812e33d5a00cfd4eeb15bcd6c2be1850041e2ed6261f43a9dcd",
-  "shape_digest": "1e95c98f8e44d99aad902c085dc262a09da003e471293d01a6abd0483914b62f",
+  "workflow_version": "0.1.0+0f4d68dc961d",
+  "docs_digest": "7f7199bfae9a44fd5cd914d7cfb57fec4bf02abc0e1cccdb498930c1ec80e9db",
+  "shape_digest": "a602a9de459d539634d942ede7e67193378bdb4d5505c0d766824da907c306f5",
   "entries_applied": [],
   "tool_set": {
     "claude": [
@@ -22,6 +22,7 @@
     "criterion-not-in-reach|triage|ts-tri-route:plan|workflow/temperspec/__init__.py",
     "hold-time-exposure|code||workflow/temperspec/__init__.py",
     "hold-time-exposure|discovery||workflow/temperspec/__init__.py",
+    "hold-time-exposure|setup||workflow/temperspec/__init__.py",
     "hold-time-exposure||order|workflow/temperspec/__init__.py",
     "outcome-uncovered|outcome|ts-spec-sync|outcome.json",
     "outcome-unverified-blocker|code|ts-code-aligned|outcome.json",
@@ -34,20 +35,24 @@
     "outcome-unverified-blocker|outcome|ts-accepted|outcome.json",
     "outcome-unverified-blocker|outcome|ts-spec-sync|outcome.json",
     "outcome-unverified-blocker|plan|ts-plan-spec|outcome.json",
+    "outcome-unverified-blocker|setup|ts-set-true|outcome.json",
     "outcome-unverified-blocker|triage|ts-tri-criteria|outcome.json",
     "outcome-unverified-blocker|triage|ts-tri-gaps|outcome.json",
     "readiness:needs-work|code||",
     "readiness:needs-work|discovery||",
     "readiness:needs-work|expand||",
     "readiness:needs-work|outcome||",
+    "readiness:needs-work|setup||",
     "validate:criterion-overlap|code||",
     "validate:criterion-overlap|discovery||",
     "validate:criterion-overlap|expand||",
+    "validate:criterion-overlap|setup||",
     "validate:criterion-overlap|||"
   ],
+  "outcome_revision": 2,
   "baseline": {
     "error": 0,
-    "warning": 9
+    "warning": 10
   },
-  "stamped_at": "2026-11-21T11:01:40.579Z"
+  "stamped_at": "2026-11-21T12:29:20.479Z"
 }
