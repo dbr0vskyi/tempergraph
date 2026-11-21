@@ -69,6 +69,16 @@ def gate_digest(spec: WorkflowSpec, gate: str) -> str:
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
 
 
+def _seed_expected(doc: Mapping[str, Any], criterion: str) -> str | None:
+    """The author's own expectation, stated in the case's `seed` block (one entry or a list of them). It serves
+    rung 8 only, which writes no score; a person's label for the criterion comes first (SCF §2.5)."""
+    block = doc.get("seed")
+    for entry in block if isinstance(block, list) else [block]:
+        if isinstance(entry, Mapping) and entry.get("criterion_id") == criterion and entry.get("expected"):
+            return str(entry["expected"])
+    return None
+
+
 def seeds(spec: WorkflowSpec, executor_for: Callable[[str], Any], cap: float | None,
           shown: Mapping[str, Mapping[str, str]] | None = None) -> SeedResult:
     """Each judged criterion's seeds, graded twice by its gate's judge; one judge session grades every
@@ -116,10 +126,11 @@ def seeds(spec: WorkflowSpec, executor_for: Callable[[str], Any], cap: float | N
                     continue
                 case = cal.load_case(folder, gate)
                 exp = next((str(lab.get("expected")) for lab in case.labels
-                            if lab.get("criterion_id") == c.id), None)
+                            if lab.get("criterion_id") == c.id), None) or _seed_expected(case.doc, str(c.id))
                 if exp is None:
                     out.findings.append(_row("seed-unlabelled", gate, f"{c.id}: seed {sid} has no expected "
-                                             f"status for it", f"`tempergraph evals label {spec.name}/{gate}/{sid} "
+                                             f"status for it", f"state it in the case's `seed` block, or "
+                                             f"`tempergraph evals label {spec.name}/{gate}/{sid} "
                                              f"--criterion {c.id} --expected …`"))
                     continue
                 wanted.setdefault(sid, []).append((str(c.id), exp))
