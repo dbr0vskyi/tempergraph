@@ -202,6 +202,7 @@ A revision is made by a person through the authoring skill's revise mode ([AUT �
 - **Why the outcome gate is mandatory.** R-011 recommended it; without it, a run whose every step passed can still miss the request, and the loop has nothing to grade against. Its cost is one judge session per run in `dev`; `stable` may sample ([ADR-0108](../adr/0108-a-run-is-measured-at-a-final-outcome-gate.adr.md)).
 - **Why show, not hide.** An unverifiable requirement left out of the file looks verified to everyone who reads the reports. Keeping it as `none` with a reason makes the gap a number the owner can watch and the promotion rule can refuse.
 - **Release 1** builds §2.1 to §2.5, sign-off, the measures without correction where no judge is calibrated, `outcome show` and `outcome candidates`, and revise mode. Calibration, corrected rates and `outcome` proposals from the loop are in release 1 too, built after the core ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md)).
+- **As built (R2-T7).** A deliverable is required only on a path that produces it: the outcome gate takes the units the run passed and skips a deliverable whose producing unit is on no path the run took (a switch arm not taken); a deliverable no unit declares is still required. The same rule makes a judge reference to an off-path artifact optional.
 
 ## 6. Acceptance criteria
 

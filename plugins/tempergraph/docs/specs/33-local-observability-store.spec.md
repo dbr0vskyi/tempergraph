@@ -44,7 +44,8 @@ Everything a repository's runs leave on the machine lives in one folder, the sta
       output/                       messages-api only: clipped command output per tool call, local
     checks/<unit>/<attempt>/
       <n>.out                       the n-th command the check ran: standard output and error together (release 1; see §5)
-    hooks/<event>-<seq>.log         a lifecycle hook's output and exit code
+    hooks/<event>-<seq>.<hook>.log  a lifecycle hook's output; beside it <event>-<seq>.facts.json and results.jsonl
+    answers/<unit>.json             an ask unit's answers [ASK §2.3]
   batches/<batch_id>/               batch file and batch event file [WSP §2.2]
   ledger.jsonl                      [SIL]
   filing-outbox.jsonl               issue payloads a code host refused, redelivered by the next filing [SIL §4]

@@ -122,6 +122,17 @@ def _parser() -> _Parser:
     ex.add_argument("--probe", action="store_true")
     sc = sub.add_parser("self-check", help="a step's preview of its gate's check (CHK §2.5)")
     sc.add_argument("ticket")
+    hk = sub.add_parser("hooks", help="run lifecycle hooks (CLI §2.2)")
+    hks = hk.add_subparsers(dest="action", required=True)
+    hka = hks.add_parser("add", help="register a command for an event: hooks add <event> -- <argv…>")
+    hka.add_argument("event")
+    hka.add_argument("argv", nargs=argparse.REMAINDER)
+    _caller_options(hka)
+    hkr = hks.add_parser("remove", help="remove one hook by its id")
+    hkr.add_argument("id")
+    _caller_options(hkr)
+    hks.add_parser("list", help="the registered hooks")
+    hks.add_parser("test", help="run an event's hooks once against a fixture facts file").add_argument("event")
     fa = sub.add_parser("facts", help="read-only facts about a run")
     fa.add_argument("selector")
     gr = sub.add_parser("graph", help="the workflow diagram")
@@ -687,6 +698,30 @@ def cmd_self_check(env: Env, a: argparse.Namespace) -> int:
     return selfcheck.run(root, a.ticket, env.out)
 
 
+def cmd_hooks(env: Env, a: argparse.Namespace) -> int:
+    """CLI §2.2: the operator's registry of lifecycle hooks; add and remove write, list and test do not."""
+    from tempergraph.observe import hooks
+
+    root = _root(env)
+    try:
+        if a.action == "add":
+            caller = env.caller(a)
+            words = a.argv[1:] if a.argv[:1] == ["--"] else a.argv
+            _emit(env, {"schema_version": 1, "added": hooks.add(root, a.event, words), "caller": caller})
+        elif a.action == "remove":
+            caller = env.caller(a)
+            _emit(env, {"schema_version": 1, "removed": hooks.remove(root, a.id), "caller": caller})
+        elif a.action == "list":
+            _emit(env, {"schema_version": 1, "events": list(hooks.RUN_EVENTS), "hooks": hooks.load(root)})
+        else:
+            results = hooks.test(root, a.event)
+            _emit(env, {"schema_version": 1, "event": a.event, "results": results})
+            return int(ExitCode.FINISHED if all(r["ok"] for r in results) else ExitCode.ADVISORY)
+    except hooks.HookRefused as exc:
+        raise UsageError(str(exc)) from exc
+    return int(ExitCode.FINISHED)
+
+
 def cmd_facts(env: Env, a: argparse.Namespace) -> int:
     from tempergraph.durability.status import row
 
@@ -903,7 +938,7 @@ def cmd_outcome(env: Env, a: argparse.Namespace) -> int:
 
 COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "run": cmd_run, "resume": cmd_resume, "status": cmd_status, "list": cmd_list, "validate": cmd_validate,
-    "executors": cmd_executors, "events": cmd_events, "facts": cmd_facts, "self-check": cmd_self_check, "graph": cmd_graph, "wait": cmd_wait,
+    "executors": cmd_executors, "events": cmd_events, "facts": cmd_facts, "self-check": cmd_self_check, "hooks": cmd_hooks, "graph": cmd_graph, "wait": cmd_wait,
     "stop": cmd_stop, "carry": cmd_carry, "worktree": cmd_worktree, "config": cmd_config, "rerun": cmd_rerun, "outcome": cmd_outcome,
     **observe_cli.COMMANDS,
     "workflows": workflows_cli.cmd_workflows,

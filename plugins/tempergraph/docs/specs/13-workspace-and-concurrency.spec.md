@@ -86,6 +86,7 @@ A folder that is not inside a git repository may hold runs ([R-131](../research/
 - The default concurrency of three is a guess for every executor: no gateway's or API organization's concurrent-session or rate limit was measured. It is marked projected. On `messages-api` and `agent-sdk` a 429 with `retry-after` is `throttled` (infra), and a batch whose children report `throttled` twice lowers its concurrency by one for the rest of the batch, recorded.
 - A merge is textual; two branches that merge cleanly but contradict each other are caught only by the join's judge or a check.
 - Cleanup is never automatic unless a run sets `run.worktree.cleanup: on_finish`, which removes only clean worktrees; `worktree list` and `worktree prune` cover the rest; branches are never deleted ([WTR §2.7](82-worktree-mode.spec.md)).
+- **As built (R2-T7).** Parallel branches run on LangGraph's own threads in one workspace and may not write it; the run log's writer takes a lock, and a state write asked for while several nodes are pending is deferred to the segment's end.
 
 ## 6. Acceptance criteria
 

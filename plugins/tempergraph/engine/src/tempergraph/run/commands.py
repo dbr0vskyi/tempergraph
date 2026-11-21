@@ -14,7 +14,7 @@ import re
 import signal
 import subprocess
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -138,7 +138,8 @@ def _placeholders(text: str, workdir: Path, main: Path | None) -> str:
 
 
 def run_command(cmd: ResolvedCommand, workdir: Path, out_path: Path, timeout_s: float, *,
-                main: Path | None = None, finished_codes: Sequence[int] | None = None) -> CommandRun:
+                main: Path | None = None, finished_codes: Sequence[int] | None = None,
+                env_extra: Mapping[str, str] | None = None) -> CommandRun:
     out_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     cwd = workdir / cmd.cwd if cmd.cwd else workdir
     t0 = time.monotonic()
@@ -147,7 +148,7 @@ def run_command(cmd: ResolvedCommand, workdir: Path, out_path: Path, timeout_s: 
         try:
             proc = subprocess.Popen(  # noqa: S603 - resolved list argv (CHK §2.3)
                 list(cmd.argv), cwd=cwd, stdin=subprocess.DEVNULL, stdout=fh, stderr=subprocess.STDOUT,
-                env=command_env(), start_new_session=(os.name == "posix"))
+                env={**command_env(), **(env_extra or {})}, start_new_session=(os.name == "posix"))
         except OSError as exc:
             run.extra["error"] = type(exc).__name__
             run.duration_s = time.monotonic() - t0

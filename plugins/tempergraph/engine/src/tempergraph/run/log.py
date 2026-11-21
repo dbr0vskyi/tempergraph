@@ -178,7 +178,17 @@ class RunLog:
         if record in ("run_started", "run_exit"):
             self._rows(record, segment)
         self._beat(record)
+        self._hooks(out)
         return self.seq
+
+    def _hooks(self, rec: Mapping[str, Any]) -> None:
+        """Lifecycle hooks for the record's event (CLI §2.2); best effort, never changes the run (C2)."""
+        try:
+            from tempergraph.observe import hooks
+
+            hooks.on_record(self.path, rec)
+        except Exception:  # noqa: BLE001
+            self.failures += 1
 
     def _beat(self, record: str) -> None:
         """The heartbeat to configured sinks, at most every 60 s and at the run's ends (CST §2.2); best effort."""

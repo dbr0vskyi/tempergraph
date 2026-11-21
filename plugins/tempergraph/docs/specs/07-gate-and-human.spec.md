@@ -91,12 +91,13 @@ Any feedback may be given as a **ruling** (`--ruling`): it is then shown to ever
 
 - One interrupt per gate keeps resume cheap and correct under LangGraph's replay-from-top rule ([ADR-0004](../adr/0004-four-nodes-per-unit.adr.md)).
 - Exit 3 means "a person is needed", never failure; callers tell it from 4 and 5 by code alone ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)).
+- **As built (R2-T7).** Pause kinds `input` (ask), `event_wait` (wait) and `breakpoint` are built. A wait declares `event` and a pure `check(value)`; `resume --input <event>=<value>` passes it only when the check accepts the value, and `proceed` is refused. With two gates pending in a parallel block, `--decision` takes `--unit <name>` and the other gate stays pending. `--decision` is repeatable only for `answer:` words.
 
 ## 6. Acceptance criteria
 
 - [ ] HUM-AC-1 A source test asserts `interrupt` is the first statement of the human node.
 - [ ] HUM-AC-2 Each pause kind of §2.1 exits 3 with a payload holding a working resume command.
-- [ ] HUM-AC-3 Every row of the HUM-B4 table holds.
+- [x] HUM-AC-3 Every row of the HUM-B4 table holds.
 - [ ] HUM-AC-4 Agent resumes, by caller kind and decider, are counted apart from a person's in every report ([SUP §2.2](86-supervision-metrics.spec.md)).
 
 ## Open questions

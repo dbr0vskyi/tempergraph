@@ -78,12 +78,13 @@ The pause payload ([HUM](07-gate-and-human.spec.md), kind `input`) lists each qu
 - One interrupt per gate holds: the ask's only pause is its human node, and a partial answer re-enters the same node.
 - An ask differs from an approval (a decision on work) and from a wait (a value from an outside system, checked); its answers are data for later steps.
 - No executor is involved, so an ask behaves the same on all four executors.
+- **As built (R2-T7).** `run/asking.py` holds the question rules and the answers file `runs/<workflow>/<thread>/answers/<unit>.json`, which becomes the `answers` artifact when the set is complete; in Python the `from` field is `questions_from`. `resume --answers <file>` and `--decision answer:<name>=<value>` (repeatable) give answers; a complete set that passes the author's check continues without `proceed`. The author's check is `check(answers)` and returns nothing, `True`, `False` or a list of problems. The answers also reach later prompts as step values. ASK-AC-3 holds for the placements this release has (a parallel branch and a map item); ASK-AC-4 holds in the status document (`input` with answered and open counts) and waits on the monitor's own documents.
 
 ## 6. Acceptance criteria
 
-- [ ] ASK-AC-1 Every row of the ASK-B1 table holds offline.
-- [ ] ASK-AC-2 A partial answer, a crash and a resume keep the answers already accepted.
-- [ ] ASK-AC-3 Validation refuses an ask in every placement §2.2 forbids.
+- [x] ASK-AC-1 Every row of the ASK-B1 table holds offline.
+- [x] ASK-AC-2 A partial answer, a crash and a resume keep the answers already accepted.
+- [x] ASK-AC-3 Validation refuses an ask in every placement §2.2 forbids.
 - [ ] ASK-AC-4 The monitor's documents show kind `input` with question counts ([RDD](31-run-detail-document.spec.md)).
 
 ## Open questions

@@ -66,6 +66,7 @@ A map item has no scope of its own: items share their unit's settings, and a per
 | `infra_tries` | run | int 0–10 | 3 | In a row |
 | `infra_backoff_max_s` | run | int 10–300 | 300 | Backoff doubles from 10 s up to this |
 | `attempt_cap` | run | int 1–100 | 15 | Per invocation |
+| `self_check_limit` | run | int 1–10 | 3 | Check previews a step may run in one attempt ([CHK §2.5](75-check-contract-and-command-runs.spec.md)) |
 | `human_cap` | run | int 1–100 | 100 | |
 | `run_cost_cap_usd` | run | float > 0 | workflow's, else none | |
 | `auto_reopen` | run | int 0–10 | 0 | |
