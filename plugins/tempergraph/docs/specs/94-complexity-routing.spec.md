@@ -149,15 +149,16 @@ The `route` record ([SWM §2.2](79-measured-switches.spec.md)) gains `zone`, `me
 - Predict, then fall back once: neither alone suits a mix where most tasks are complex but some are trivial ([R-126](../research/R-126-routing-by-complexity-between-decompositions.rsrch.md) F5).
 - Thresholds are data so the improvement loop can move them: a change to a rules file is a producer proposal of kind `flow` ([PRP §2.3](40-improvement-proposals.spec.md)), measured by a trial on the case set; a repository override is the person's own, recorded on every route record.
 - A complexity switch inside a map item is refused, as a map in a map is ([MAP §2.3](77-map-unit.spec.md)); per-item choice stays `item_model`.
+- As built (R2-T1.3): the switch's step node evaluates the measures and the rules once per run and keeps the result on its attempt record; the gate's pick reads it. Validation codes: `complexity-predicate`, `complexity-invalid`, `complexity-joins`, `complexity-rearm`, `complexity-explore`, `complexity-rules`, `arm-contract`. The arm contract reads prompt fields, judge references and a map's list. Climbing evidence is [LAD §2.2](92-effort-ladder-and-model-escalation.spec.md)'s; the stage is `local-stable` for a workflow in `stable` mode, else `local-dev`.
 - Remedy order across specs for one unit: the effort ladder, a re-arm, one model step, a person ([LAD §5](92-effort-ladder-and-model-escalation.spec.md)).
 
 ## 6. Acceptance criteria
 
-- [ ] CXR-AC-1 CXR-B1 to CXR-B6 and every table row hold offline with scripted executors.
-- [ ] CXR-AC-2 A measure cannot read a step `value`: a fixture whose step writes `ARTIFACT size: trivial` routes the same as one that writes nothing.
-- [ ] CXR-AC-3 Every §4 row has a fixture workflow that fails with its finding code.
-- [ ] CXR-AC-4 `report --switch` excludes re-armed runs from per-arm figures and marks cells under 5 runs.
-- [ ] CXR-AC-5 A run never re-arms twice and never re-arms toward a simpler arm.
+- [x] CXR-AC-1 CXR-B1 to CXR-B6 and every table row hold offline with scripted executors.
+- [x] CXR-AC-2 A measure cannot read a step `value`: a fixture whose step writes `ARTIFACT size: trivial` routes the same as one that writes nothing.
+- [x] CXR-AC-3 Every §4 row has a fixture workflow that fails with its finding code.
+- [x] CXR-AC-4 `report --switch` excludes re-armed runs from per-arm figures and marks cells under 5 runs.
+- [x] CXR-AC-5 A run never re-arms twice and never re-arms toward a simpler arm.
 
 ## Open questions
 

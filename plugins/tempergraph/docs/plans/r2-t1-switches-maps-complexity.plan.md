@@ -62,6 +62,18 @@ Weight: heavy (refactor)
 Goal: CXR-AC-1 to CXR-AC-5: stock measures, the rules file and its repository override, zones, the arm contract at validation, one-way re-arm, exploration, `report --switch`.
 Weight: heavy (many-tests)
 
+| Row | Kind | File | Proves | Change |
+|---|---|---|---|---|
+| 3.1 | test | `plugins/tempergraph/engine/tests/test_complexity.py` | CXR-AC-1, CXR-AC-2, CXR-AC-3, CXR-AC-4, CXR-AC-5 | CXR-B1 to B6, every §2.3 fault, every §4 row, the report's cells |
+| 3.2 | code | `plugins/tempergraph/engine/src/tempergraph/contracts.py` | | `MeasureSpec`, `ComplexitySpec`, `MeasureContext`, the optional predicate |
+| 3.3 | code | `plugins/tempergraph/engine/src/tempergraph/api.py` | | `ComplexitySwitch`, `Measure`, `stock` |
+| 3.4 | code | `plugins/tempergraph/engine/src/tempergraph/run/complexity.py` | | Measures, the rules file and its override, zones, exploration |
+| 3.5 | code | `plugins/tempergraph/engine/src/tempergraph/run/nodes.py` | | The switch's step node evaluates once; the route record's fields |
+| 3.6 | code | `plugins/tempergraph/engine/src/tempergraph/run/gate.py` | | The pick reads the evaluation; a spent budget re-arms only on evidence |
+| 3.7 | code | `plugins/tempergraph/engine/src/tempergraph/model/validate.py` | | CXR §4 and the arm contract |
+| 3.8 | code | `plugins/tempergraph/engine/src/tempergraph/observe/switch_report.py` | | Per arm and zone, re-armed runs apart, cells under 5 runs |
+| 3.9 | code | `plugins/tempergraph/engine/src/tempergraph/cli/observe_cli.py` | | `report --switch` |
+
 ## 3. Verification
 
 - `cd plugins/tempergraph/engine && python -m pytest`
@@ -71,6 +83,7 @@ Weight: heavy (many-tests)
 |---|---|---|
 | AC 1 | `plugins/tempergraph/engine/tests/test_measured_switches.py` | `cd plugins/tempergraph/engine && python -m pytest` |
 | AC 2 | `plugins/tempergraph/engine/tests/test_map.py` | `cd plugins/tempergraph/engine && python -m pytest` |
+| AC 3 | `plugins/tempergraph/engine/tests/test_complexity.py` | `cd plugins/tempergraph/engine && python -m pytest` |
 
 ## 4. Docs to update
 

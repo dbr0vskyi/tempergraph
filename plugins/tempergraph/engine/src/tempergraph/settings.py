@@ -180,7 +180,7 @@ CATALOG: dict[str, Entry] = {
     "executor": Entry(SESSION, _slug),
     "model": Entry(SESSION, _ladder, "inherit"),  # one alias on the judge side, checked in _value
     "subagent_model": Entry(STEP_SIDE, _alias),
-    "effort": Entry(SESSION, _choice("low", "medium", "high", "max")),
+    "effort": Entry(SESSION, _choice("low", "medium", "high", "xhigh", "max")),
     "session_cost_cap_usd": Entry(SESSION, _float(0)),
     "turn_cap": Entry(SESSION, _int(1, 500)),
     "fallback_alias": Entry(STEP_SIDE, _alias),

@@ -12,6 +12,7 @@ from typing import Any
 
 from tempergraph.contracts import Decision, RouteView, UnitSpec, Verdict, WorkflowSpec
 from tempergraph.model import flow
+from tempergraph.run import ladder as laddermod
 from tempergraph.run import mapping
 
 ESCALATE_CAUSES = frozenset({"auth", "refused", "tool_access", "environmental", "blocked", "upstream",
@@ -72,7 +73,6 @@ def pick(spec: WorkflowSpec, unit: str, state: Mapping[str, Any]) -> dict[str, A
 
 SIGNALS_MAX, SIGNAL_CHARS = 10, 60
 COMPLEXITY_FIELDS = ("zone", "measures", "rules_digest", "rules_source", "rules_error")
-EVIDENCE_REASONS = frozenset({"blockers", "check_fail"})
 
 
 def _signals(raw: Any) -> tuple[dict[str, Any], int]:
@@ -233,7 +233,7 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
         name, r = found
         sw = spec.units[name].switch
         assert sw is not None
-        if sw.complexity is not None and cause == "budget_spent" and judged.get("reason") not in EVIDENCE_REASONS:
+        if sw.complexity is not None and cause == "budget_spent" and laddermod.classify(att, judged).evidence is None:
             return None  # CXR §2.5: a budget spent on held causes keeps the gate's own policy
         entry = sw.arms[r.to]
         prior = ((state.get("route") or {}).get(name) or {}).get("pick") or {}
@@ -276,7 +276,11 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
     if verdict == Verdict.RETRY:
         if retries < g.retry_budget:
             counters["retries"] = retries + 1
-            return _merge(route("RETRY", s.retry[0]), {"counters": {unit: counters}})
+            step = laddermod.decide(u, att, judged, counters, arm_overrides(spec, unit, state)[0])
+            if step is None:
+                return _merge(route("RETRY", s.retry[0]), {"counters": {unit: counters}})
+            counters["ladder"] = {k: step[k] for k in ("visit", "item", "rung", "evidence", "held_by")}
+            return _merge(route("RETRY", s.retry[0], ladder=step), {"counters": {unit: counters}})
         return spent("retry_budget")
     if verdict == Verdict.BACK:
         target = judged.get("back_to")
@@ -431,6 +435,7 @@ def _apply(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payload: Map
         return w
     if d.word == "retry":
         counters.update(retries=0, human=int(counters.get("human", 0)) + 1, infra=0)
+        counters["ladder"] = None  # a person's retry starts the visit at rung 0 (LAD §2.3)
         w = _merge(route("RETRY", s.retry[0]), {"counters": {unit: counters}})
         if one_time:
             w["feedback"] = {unit: {"text": one_time, "as": "feedback"}}

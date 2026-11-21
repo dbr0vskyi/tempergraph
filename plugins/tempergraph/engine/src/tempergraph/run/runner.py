@@ -96,6 +96,7 @@ class RunSettings:
     relayed: bool = False  # `--relayed`: the call carries a person's decision (PRV §2.4)
     dry_run: bool = False  # `--dry-run`: self-improvement files nothing for this run (CLI §2.1)
     home: Path | None = None  # the user config folder's parent; default `home_path()`
+    judge_state: Callable[[str], str] | None = None  # a seam for a gate's judge binding state (JCL §2.5)
 
     def all_flags(self) -> dict[str, Any]:
         """The named run options are spellings of `--set` (CLI §2.1)."""
@@ -272,7 +273,7 @@ def _context(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, s
                      enforce_tools=bool(rv["enforce_tools"] or rv["strict_permissions"]), stop=stop,
                      drain_requested=drain, main_checkout=main, attempt_cap=int(rv["attempt_cap"]),
                      infra_tries=max(1, int(rv["infra_tries"])), backoff_max_s=int(rv["infra_backoff_max_s"]),
-                     settings=rst.workflow_settings(settled.resolved), origin=settings.origin,
+                     settings=rst.workflow_settings(settled.resolved), origin=settings.origin, judge_state=settings.judge_state,
                      stage="local-stable" if spec.improvement_mode == "stable" else "local-dev")
     if settings.sleep is not None:
         ctx.sleep = settings.sleep

@@ -40,6 +40,7 @@ def add_parsers(sub: Any) -> None:
     rp.add_argument("--by", choices=("unit", "executor", "version", "workflow", "host", "level"), default=None)
     rp.add_argument("--supervision", action="store_true", help="touches, levels, waits and supervision cost (SUP §2.4)")
     rp.add_argument("--loop", action="store_true", help="the self-improvement loop's own figures (IMD §2.4)")
+    rp.add_argument("--switch", metavar="WORKFLOW/SWITCH", help="finished runs per arm and zone (CXR §2.7)")
     rp.add_argument("--json", action="store_true")
     lb = sub.add_parser("label", help="a person's label on a gate judgement (FBK §2.2 explicit)")
     lb.add_argument("selector")
@@ -212,6 +213,34 @@ def _loop_report(env: Any, a: argparse.Namespace, since: Any) -> int:
     return 0
 
 
+def _switch_report(env: Any, a: argparse.Namespace, since: Any) -> int:
+    from tempergraph.cli.main import UsageError, _emit, _root
+    from tempergraph.model import flow
+    from tempergraph.observe import switch_report as swr
+
+    workflow, _, switch = str(a.switch).partition("/")
+    if not workflow or not switch:
+        raise UsageError("report --switch takes <workflow>/<switch>")
+    spec = env.catalog.specs.get(workflow)
+    units: set[str] | None = None
+    size: str | None = None
+    if spec is not None:
+        u = spec.units.get(switch)
+        if u is None or u.switch is None:
+            raise UsageError(f"{workflow} has no switch {switch!r}")
+        comp = u.switch.complexity
+        units = set().union(*[flow.arm_units(spec, e) for e in u.switch.arms.values()])
+        if comp is not None:
+            units -= flow.arm_units(spec, comp.joins_at)
+            size = comp.size
+    doc = swr.report(_root(env), workflow, switch, since, units=units, size=size)
+    if a.json:
+        _emit(env, doc)
+    else:
+        env.out.write(swr.text(doc))
+    return 0
+
+
 def cmd_report(env: Any, a: argparse.Namespace) -> int:
     from tempergraph.cli.main import UsageError, _emit, _root
     from tempergraph.observe import report as rep
@@ -222,6 +251,8 @@ def cmd_report(env: Any, a: argparse.Namespace) -> int:
         raise UsageError(str(exc)) from exc
     if a.loop:
         return _loop_report(env, a, since)
+    if a.switch:
+        return _switch_report(env, a, since)
     if a.supervision:
         from tempergraph.observe import supervision_report as sup
 

@@ -118,7 +118,7 @@ class GateSpec:
 
 @dataclass(frozen=True, kw_only=True)
 class SessionOptions:
-    effort: Literal["low", "medium", "high", "max"] | None = None
+    effort: Literal["low", "medium", "high", "xhigh", "max"] | None = None
     cost_cap_usd: float | None = None
     fallback_alias: str | None = None
     turn_cap: int | None = None
@@ -159,6 +159,17 @@ class StepSpec:
     self_check: bool = False
     summary: str = ""
     subagent_model: str | None = None
+    effort_ladder: tuple[str, ...] = ()  # LAD §2.1: rung 0 is the effort of a visit's first attempt
+    escalation: EscalationSpec | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class EscalationSpec:
+    """LAD §2.4: one attempt on the next tier up, only on a repeated trusted blocker."""
+
+    to: str
+    stages: Mapping[str, str] = field(default_factory=dict)  # stage -> off | offer | auto
+    effort: str | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -212,7 +223,8 @@ class MeasureContext:
             return fh.read(max_bytes).decode("utf-8", errors="replace")
 
 
-EFFORTS = ("low", "medium", "high", "max")
+EFFORTS = ("low", "medium", "high", "xhigh", "max")  # ascending (LAD §2.1)
+STAGES = ("local-dev", "local-stable", "pipeline")  # PRO §2.1
 ARM_OVERRIDE_KEYS = ("model", "timeout_s", "idle_s", "effort", "effort_ladder", "escalation")
 REARM_CAUSES = ("budget_spent", "timeout")
 
@@ -230,6 +242,9 @@ class SwitchSpec:
     arm_overrides: Mapping[str, Mapping[str, Mapping[str, Any]]] = field(default_factory=dict)  # arm -> unit -> values
     rearm: tuple[RearmSpec, ...] = ()
     complexity: ComplexitySpec | None = None  # CXR: the engine builds the predicate from measures and rules
+
+    def rearm_units(self) -> frozenset[str]:
+        return frozenset(u for r in self.rearm for u in r.units)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -462,6 +477,8 @@ class Capabilities:
     fresh_session: bool = False
     hosts_authoring_surface: bool = False
     session_options: frozenset[str] = frozenset()
+    efforts: frozenset[str] = frozenset({"low", "medium", "high", "xhigh", "max"})  # efforts it applies
+    efforts_uncertain: frozenset[str] = frozenset()  # declared, not yet shown by a live probe (LAD §2.6)
     tool_map: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
     version: str = ""
 
@@ -637,6 +654,7 @@ class CheckFinding:
     place: str = ""
     fix: str = ""
     message: str = ""
+    kind: Literal["substance", "output_contract"] | None = None  # LAD §2.2: what the failing finding verified
 
 
 @dataclass(kw_only=True)

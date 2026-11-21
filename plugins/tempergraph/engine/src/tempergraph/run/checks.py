@@ -175,7 +175,8 @@ def normalise(res: CheckResult) -> tuple[CheckResult, list[str]]:
         else:
             notes.append(f"fact_key_invalid: {clip(str(k), 40)}")
     findings = [CheckFinding(status=f.status, criterion=f.criterion, place=clip(scrub(f.place), 200),
-                             fix=clip(scrub(f.fix), 200), message=clip(scrub(f.message), 200)) for f in res.findings]
+                             fix=clip(scrub(f.fix), 200), message=clip(scrub(f.message), 200), kind=f.kind)
+                for f in res.findings]
     out = CheckResult(result=worst, evidence=scrub(res.evidence)[:8000], environmental=res.environmental,
                       untracked_only=res.untracked_only, findings=findings, facts=facts, runs=list(res.runs))
     return out, notes
@@ -203,5 +204,5 @@ def to_json(res: CheckResult) -> dict[str, Any]:
     return {"result": res.result, "evidence": res.evidence, "environmental": res.environmental,
             "untracked_only": res.untracked_only,
             "findings": [{"status": f.status, "criterion": f.criterion, "place": f.place, "fix": f.fix,
-                          "message": f.message} for f in res.findings],
+                          "message": f.message, "kind": f.kind} for f in res.findings],
             "facts": res.facts, "runs": res.runs}

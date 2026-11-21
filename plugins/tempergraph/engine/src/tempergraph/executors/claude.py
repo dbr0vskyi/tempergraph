@@ -51,7 +51,7 @@ GATEWAY_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_USE_BE
 PROBED_FLAGS = ("--permission-prompts", "--bare", "--tools", "--setting-sources", "--max-budget-usd",
                 "--fallback-model", "--effort", "--plugin-dir", "--strict-mcp-config")
 _VERSION_RE = re.compile(r"(\d+\.\d+\.\d+)")
-_EFFORTS = frozenset({"low", "medium", "high", "max"})
+_EFFORTS = frozenset({"low", "medium", "high", "xhigh", "max"})
 
 
 # ---------------------------------------------------------------------------------------------

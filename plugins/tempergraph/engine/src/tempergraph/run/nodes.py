@@ -38,8 +38,9 @@ from tempergraph.model.text import load_text, split_judge_file
 from tempergraph.render.output import parse_output
 from tempergraph.render.prompt import AttemptContext, Blocker, render_step
 from tempergraph.run import checks as checkmod
-from tempergraph.run import gate as gatemod
 from tempergraph.run import complexity, mapping, tool_access
+from tempergraph.run import gate as gatemod
+from tempergraph.run import ladder as laddermod
 from tempergraph.run.check_worker import run_in_worker
 from tempergraph.run.commands import ResolvedCommand, run_command
 from tempergraph.run.guard import guard, view_set
@@ -96,6 +97,7 @@ class RunContext:
     attempts_started: int = 0
     origin: str = "cli"
     stage: str = "local-dev"  # PRO §2.1
+    judge_state: Callable[[str], str] | None = None  # a gate's judge binding state (JCL §2.5); None reads it
 
     @property
     def thread(self) -> str:
@@ -144,7 +146,7 @@ class EngineNodes:
             self.ctx.log.write("attempt_start", session_key=req.session_key, kind=req.kind, executor=ex.name,
                                alias=req.alias, timeout_s=req.timeout_s,
                                prompt_digest=hashlib.sha256((req.prompt or "").encode()).hexdigest()[:16],
-                               **({"sources": extra["sources"]} if extra and "sources" in extra else {}))
+                               **{k: extra[k] for k in ("sources", "ladder") if extra and k in extra})
             try:
                 if judge_views is None:
                     res = ex.run_step(req, sink)
@@ -223,6 +225,13 @@ class EngineNodes:
         sources = {k: layer for k in ov}
         ladder = _aliases(ov.get("model")) or _aliases(st.model) or _aliases(spec.model_profile.get(unit)) or ["inherit"]
         alias = ladder[min(retries, len(ladder) - 1)]
+        full_ov, _ = gatemod.arm_overrides(spec, unit, state)
+        rungs, pinned = laddermod.rungs_of(u, full_ov)
+        rung = laddermod.held_rung(counters, visit, iid) if rungs and not pinned else 0
+        climb: dict[str, Any] | None = None
+        if rungs and not pinned:  # the effort of this attempt is its rung's (LAD §2.1); a pin switches it off
+            ov["effort"] = rungs[rung]
+            sources["effort"] = f"ladder:effort[{rung}]"
         if item and u.map is not None and u.map.item_model is not None:
             try:
                 chosen = str(u.map.item_model.resolve()(MapItem(id=item["id"], text=item["text"])))
@@ -279,9 +288,16 @@ class EngineNodes:
             session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, key),
             enforce_tools=self.ctx.enforce_tools, in_engine_worktree=self._in_worktree(state),
             plugin_dir=spec.package_root)
+        if rungs:
+            last = (counters.get("ladder") or {}) if not first else {}
+            climb = {"rung": rung, "effort": req.options.effort, "alias": alias,
+                     "source": "operator" if pinned else f"ladder:effort[{rung}]",
+                     "evidence": last.get("evidence"), "held_by": last.get("held_by")}
+        extra: dict[str, Any] = {"sources": sources} if sources else {}
+        if climb:
+            extra["ladder"] = climb
         before = gitmod.fingerprint(workdir)
-        res, results = self._session(ex, req, lessons_digest=lessonsmod.digest(lessons_text),
-                                     extra={"sources": sources} if sources else None)
+        res, results = self._session(ex, req, lessons_digest=lessonsmod.digest(lessons_text), extra=extra or None)
         after = gitmod.fingerprint(workdir)
         parsed = parse_output(res.text, st.produces, tuple(u.gate.back_targets))
         after_failed, after_env = None, False
@@ -453,6 +469,13 @@ class EngineNodes:
         run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
         return {"attempts": {unit: record}, "run": run}
 
+    def _judge_state(self) -> Callable[[str], str]:
+        if self.ctx.judge_state is None:
+            from tempergraph.improve import calibration
+
+            self.ctx.judge_state = calibration.state_name_for(self.ctx.spec, self.ctx.state_root)
+        return self.ctx.judge_state
+
     def _complexity(self, unit: str, state: Mapping[str, Any]) -> dict[str, Any]:
         """CXR §2.3 and §2.4: the measures, the rules in force and the zone, evaluated in the switch's step node."""
         ctx = self.ctx
@@ -543,7 +566,8 @@ class EngineNodes:
             facts.update({mapping.item_key(k, str(iid)): v for k, v in list(facts.items())})
         write: dict[str, Any] = {"attempts": {unit: att},
                                  "facts": {unit: facts} if iid and facts else {} if iid else {unit: facts or None}}
-        self.ctx.log.write("check", unit=unit, item=iid, attempt=att.get("attempt"), result=cres.result, environmental=cres.environmental,
+        self.ctx.log.write("check", unit=unit, item=iid, attempt=att.get("attempt") if iid else None,  # per item
+                           result=cres.result, environmental=cres.environmental,
                            evidence=clip(cres.evidence, 200), notes=notes)
         if cres.result == "FAIL":
             if cres.environmental:
@@ -558,6 +582,10 @@ class EngineNodes:
             write["judgements"] = {unit: {"verdict": str(Verdict.PROCEED), "reason": "check_only"}}
             return write
         write["judgements"] = {unit: self._judge_session(unit, state, att, cres, workdir)}
+        if u.step is not None and (u.step.effort_ladder or u.step.escalation is not None or any(
+                sw.switch is not None and unit in sw.switch.rearm_units() for sw in spec.units.values())):
+            state_of = self._judge_state()(unit)  # the gate reads trust from the judgement (LAD §2.2)
+            write["judgements"][unit].update(judge_state=state_of, trusted=laddermod.trusted(state_of, self.ctx.stage))
         if write["judgements"][unit].get("infra_spent"):
             att["infra_spent"] = True
             att["infra_cause"] = "judge_infra"
@@ -745,6 +773,8 @@ class EngineNodes:
                            verdict=((state.get("judgements") or {}).get(unit) or {}).get("verdict"),
                            token=r["token"], route_target=r["node"], cost_so_far=so_far)
         self._budget_records(unit, state, w)
+        if r.get("ladder"):  # LAD §2.7: every gate that chose the next attempt's rung
+            self.ctx.log.write("ladder_decision", unit=unit, **r["ladder"])
         for name, rr in w["route"].items():  # every pick: predicate, default, operator or re-arm (OBS `route`)
             p = (rr or {}).get("pick")
             if p and (name == unit or p.get("chosen_by") == "rearm"):

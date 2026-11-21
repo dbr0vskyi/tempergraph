@@ -27,6 +27,7 @@ CLAUDE = Capabilities(
     judge_mcp=False,  # ADR-0091 item 3: no filtering MCP proxy before release 2
     isolates_user_config=False,  # true once P-CC-1 is confirmed (ECC §2.1)
     hosts_authoring_surface=True,
+    efforts_uncertain=frozenset({"xhigh", "max"}),  # until live probe P-LAD-1 (LAD §2.6)
     session_options=frozenset({"effort", "cost_cap_usd", "fallback_alias", "turn_cap"}),
     tool_map=_CLAUDE_TOOLS,
 )
@@ -38,6 +39,7 @@ AGENT_SDK = Capabilities(
     prompt_off_argv=True, streams_events=True, reports_actions=True, reports_tokens=True, reports_cost=True,
     fresh_session=True, enforces_step_tools=True, step_allow_rules=True, judge_mcp=True,
     restricts_judge_tools=True, isolates_user_config=False, hosts_authoring_surface=True,
+    efforts_uncertain=frozenset({"xhigh", "max"}),  # until live probe P-LAD-1 (LAD §2.6)
     session_options=frozenset({"effort", "cost_cap_usd", "fallback_alias", "turn_cap"}),
     tool_map=dict(_CLAUDE_TOOLS),
 )
@@ -64,6 +66,7 @@ ANTIGRAVITY = Capabilities(
     prompt_off_argv=True, streams_events=True, reports_actions=True, reports_tokens=True, reports_cost=False,
     fresh_session=True, isolates_user_config=False, enforces_step_tools=False, judge_mcp=False,
     restricts_judge_tools=False, step_allow_rules=True, hosts_authoring_surface=True,
+    efforts=frozenset({"low", "medium", "high"}),
     session_options=frozenset({"effort"}),
     tool_map={
         "read": ("view_file",), "search": ("grep_search",), "list": ("list_dir", "find_by_name"),

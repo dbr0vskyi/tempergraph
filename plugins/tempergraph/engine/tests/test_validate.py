@@ -112,7 +112,7 @@ def test_codes_are_distinct_per_fixture() -> None:
     assert len({c for c, _ in CASES}) == len(CASES)
 
 
-LATER = ["Parallel", "Map", "Ask", "Wait", "Council", "Contest", "Subworkflow"]
+LATER = ["Parallel", "Ask", "Wait", "Council", "Contest", "Subworkflow"]
 
 
 @pytest.mark.parametrize("builder", LATER)

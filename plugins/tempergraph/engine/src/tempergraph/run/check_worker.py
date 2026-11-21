@@ -68,7 +68,8 @@ def result_from(doc: dict[str, Any]) -> CheckResult:
         result=doc.get("result", "FAIL"), evidence=str(doc.get("evidence") or ""),
         environmental=bool(doc.get("environmental")), untracked_only=bool(doc.get("untracked_only")),
         findings=[CheckFinding(status=f.get("status", "maybe"), criterion=f.get("criterion"),
-                               place=f.get("place", ""), fix=f.get("fix", ""), message=f.get("message", ""))
+                               place=f.get("place", ""), fix=f.get("fix", ""), message=f.get("message", ""),
+                               kind=f.get("kind") if f.get("kind") in ("substance", "output_contract") else None)
                   for f in doc.get("findings") or []],
         facts=dict(doc.get("facts") or {}), runs=list(doc.get("runs") or []))
 

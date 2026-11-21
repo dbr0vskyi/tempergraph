@@ -8,6 +8,7 @@ with ``not_in_release`` (ADR-0090).
 
 from __future__ import annotations
 
+import dataclasses
 import inspect
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
@@ -19,6 +20,7 @@ from tempergraph.contracts import (
     CheckResult,
     ComplexitySpec,
     Criterion,
+    EscalationSpec,
     GateSpec,
     InputDeclaration,
     JudgeSpec,
@@ -45,7 +47,7 @@ from tempergraph.run.finalize import FinalizerContext, FinalizerResult
 
 __all__ = [
     "CheckFinding", "CheckResult", "Criterion", "FinalizerContext", "FinalizerResult", "Gate", "Input", "Judge", "Param", "ResolveResult", "Route",
-    "ComplexitySwitch", "Measure", "stock", "Rearm", "RouteView", "Routing", "Script", "SessionOptions", "Setting", "Step", "Switch", "Value", "Workflow",
+    "ComplexitySwitch", "Escalation", "Measure", "stock", "Rearm", "RouteView", "Routing", "Script", "SessionOptions", "Setting", "Step", "Switch", "Value", "Workflow",
     "WorktreeDecl", "checks", "text", "Parallel", "Map", "Ask", "Wait", "Council", "Contest", "Subworkflow",
 ]
 
@@ -137,12 +139,19 @@ def Step(*, gate: GateSpec, prompt: str | TextRef = "default", executor: str | N
          session_options: SessionOptions | None = None, before: Iterable[ScriptSpec] = (),
          after: Iterable[ScriptSpec] = (), self_check: bool = False, summary: str = "",
          subagent_model: str | None = None, route: Callable[..., Any] | None = None,
-         route_targets: Iterable[str] = ()) -> UnitSpec:
+         route_targets: Iterable[str] = (), effort: str | None = None, effort_ladder: Iterable[str] = (),
+         escalation: EscalationSpec | None = None) -> UnitSpec:
+    """`effort` is the fixed effort; `effort_ladder` and `escalation` are the evidence-gated ladder (LAD §2.1)."""
     m: str | tuple[str, ...] | None = model if model is None or isinstance(model, str) else tuple(model)
+    if effort is not None:
+        if session_options is not None and session_options.effort is not None:
+            raise TypeError("Step() takes `effort` once: as a field or in `session_options`")
+        session_options = dataclasses.replace(session_options or SessionOptions(), effort=effort)  # type: ignore[arg-type]
     step = StepSpec(executor=executor, prompt=prompt, tools=tuple(tools), commands=tuple(commands),
                     produces=dict(produces or {}), model=m, timeout_s=timeout_s, idle_s=idle_s,
                     session_options=session_options, before=tuple(before), after=tuple(after),
-                    self_check=self_check, summary=summary, subagent_model=subagent_model)
+                    self_check=self_check, summary=summary, subagent_model=subagent_model,
+                    effort_ladder=tuple(effort_ladder), escalation=escalation)
     return UnitSpec(kind="step", gate=gate, step=step, route=_opt_ref(route), route_targets=tuple(route_targets))
 
 
@@ -203,6 +212,11 @@ def Measure(name: str, source: tuple[str, ...] | Callable[..., Any]) -> MeasureS
     if callable(source):
         return MeasureSpec(name=name, call=callable_ref(source))
     return MeasureSpec(name=name, stock=tuple(str(x) for x in source))
+
+
+def Escalation(*, to: str, stages: Mapping[str, str] | None = None, effort: str | None = None) -> EscalationSpec:  # noqa: N802
+    """One attempt on the tier above the step's alias, on a repeated trusted blocker only (LAD §2.4)."""
+    return EscalationSpec(to=to, stages=dict(stages or {}), effort=effort)
 
 
 def ComplexitySwitch(*, arms: Mapping[str, str], measures: Iterable[MeasureSpec], joins_at: str,  # noqa: N802

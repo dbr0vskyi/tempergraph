@@ -91,6 +91,7 @@ class Thread:
     routes: list[dict[str, Any]] = field(default_factory=list)
     humans: list[dict[str, Any]] = field(default_factory=list)
     exit: dict[str, Any] | None = None
+    outcome: dict[str, Any] | None = None  # the latest `outcome` record (OUT §2.5)
     folder: Path | None = None
 
 
@@ -157,6 +158,8 @@ def fold(recs: Iterable[dict[str, Any]], folder: Path | None = None) -> Thread |
             t.routes.append(r)
         elif kind == "human":
             t.humans.append(r)
+        elif kind == "outcome":
+            t.outcome = r
         elif kind == "run_exit":
             t.exit = r
     # a judge's sessions carry the cause of the attempt they judged

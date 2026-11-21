@@ -6,6 +6,7 @@ One function guards the catalog, a start, a resume, the pre-start check and the 
 
 from __future__ import annotations
 
+import contextlib
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -20,6 +21,7 @@ from tempergraph.contracts import (
     CallableRef,
     Capabilities,
     Criterion,
+    StepSpec,
     SwitchSpec,
     UnitSpec,
     ValueKind,
@@ -190,8 +192,12 @@ class _Validator:
                 self._measured_switch(name, sw)
         if u.route is not None:
             self._callable(name, u.route, "route")
-        if u.switch is not None:
-            self._callable(name, u.switch.predicate, "switch predicate")
+        if u.switch is not None and u.switch.complexity is not None:
+            self._complexity(name, u.switch)
+        elif u.switch is not None and u.switch.predicate is None:
+            self.err("switch-invalid", name, "a switch needs a predicate")
+        elif u.switch is not None:
+            self._callable(name, u.switch.predicate, "switch predicate")  # type: ignore[arg-type]
         for c in g.criteria:
             if c.severity not in ("blocker", "warning"):
                 self.err("criterion-invalid", name, f"criterion severity {c.severity!r}")
@@ -272,6 +278,109 @@ class _Validator:
                     self.err("switch-rearm-invalid", name,
                              f"the entry of arm {r.to!r} ({entry}) does not precede {unit!r}")
 
+    def _ladder(self, name: str, st: StepSpec, caps: Capabilities | None, executor: str) -> None:
+        """LAD §2.1 and §2.6: the shape of an effort ladder and whether the executor applies each rung."""
+        from tempergraph.run.ladder import ascending
+
+        rungs = tuple(st.effort_ladder)
+        if not rungs:
+            return
+        if not 2 <= len(rungs) <= 4 or not ascending(rungs):
+            self.err("ladder-invalid", name, f"`effort_ladder` holds 2 to 4 efforts of {list(EFFORTS)}, strictly ascending")
+            return
+        pinned = "effort" in (self.spec.units[name].extra.get("operator_set") or ())  # an operator's pin is no field
+        if st.session_options is not None and st.session_options.effort is not None and not pinned:
+            self.err("ladder-invalid", name, "`effort_ladder` excludes a fixed `effort`")
+        if caps is None:
+            return
+        for rung in rungs:
+            if "effort" not in caps.session_options or rung not in caps.efforts:
+                self.err("effort-rung-unsupported", name,
+                         f"step {name!r}: executor {executor!r} cannot apply effort {rung!r}; a climb would be silent")
+            elif rung in caps.efforts_uncertain:
+                self.warn("effort-rung-uncertain", name,
+                          f"step {name!r}: effort {rung!r} on {executor!r} is not yet shown by a live probe")
+
+    def _complexity(self, name: str, sw: SwitchSpec) -> None:
+        """CXR §4: the declaration, the rules file, the direction of re-arms and the arm contract."""
+        from tempergraph.run import complexity as cx
+
+        s = self.spec
+        comp = sw.complexity
+        assert comp is not None
+        arms = list(sw.arms)
+        if sw.predicate is not None:
+            self.err("complexity-predicate", name, "a complexity switch takes no predicate; the engine reads the rules")
+        names = [m.name for m in comp.measures]
+        if not 2 <= len(arms) <= 3 or sw.default != (arms[-1] if arms else None) or sw.sticky != "run":
+            self.err("complexity-invalid", name,
+                     "a complexity switch has 2 or 3 arms, the last one as its default, and is sticky for the run")
+        if not names or len(set(names)) != len(names) or any(not SLUG_RE.match(n) for n in names):
+            self.err("complexity-invalid", name, "measures need unique slug names, at least one")
+        for m in comp.measures:
+            if m.call is not None:
+                self._callable(name, m.call, f"measure {m.name}")
+            elif not m.stock or cx.STOCK_ARITY.get(m.stock[0]) != len(m.stock) - 1:
+                self.err("complexity-invalid", name, f"measure {m.name!r} is not a stock measure with its arguments")
+            elif m.stock[0] in ("fact", "count_items", "count_lines") and m.stock[1] not in s.units:
+                self.err("complexity-invalid", name, f"measure {m.name!r} names unknown unit {m.stock[1]!r}")
+        if comp.size is not None and comp.size not in names:
+            self.err("complexity-invalid", name, f"`size` names {comp.size!r}, which is not a measure")
+        ex = comp.explore
+        if ex is not None:
+            rate, per_week = cx._num(ex.get("rate")), cx._num(ex.get("per_week"))
+            if rate is None or per_week is None or not 0 < rate <= cx.EXPLORE_MAX_RATE \
+                    or not 0 < per_week <= cx.EXPLORE_MAX_PER_WEEK or set(ex) - {"rate", "per_week"}:
+                self.err("complexity-explore", name,
+                         f"explore takes rate up to {cx.EXPLORE_MAX_RATE} and per_week up to {cx.EXPLORE_MAX_PER_WEEK}")
+        for r in sw.rearm:
+            if r.from_arm in arms and r.to in arms and arms.index(r.to) <= arms.index(r.from_arm):
+                self.err("complexity-rearm", name, f"rearm {r.from_arm} -> {r.to} goes toward a simpler arm")
+        if s.package_root is not None and len(set(names)) == len(names):
+            loaded = cx.load_rules(s, name, None)
+            if loaded["error"]:
+                self.err("complexity-rules", name, f"rules file: {loaded['error']}")
+        if any(t != flow.FINALIZER and t not in s.units for t in sw.arms.values()):
+            return  # reported as target-unknown by the flow pass
+        join = comp.joins_at
+        if join not in s.units or join in sw.arms.values():
+            self.err("complexity-joins", name, f"`joins_at` {join!r} is not a unit after every arm's entry")
+            return
+        after = flow.arm_units(s, join)
+        paths: dict[str, set[str]] = {}
+        for arm, entry in sw.arms.items():
+            reach = flow.arm_units(s, entry) if entry != flow.FINALIZER else set()
+            if join not in reach:
+                self.err("complexity-joins", name, f"arm {arm!r} does not reach `joins_at` {join!r}")
+                return
+            paths[arm] = reach - after
+            if flow.OUTCOME_UNIT in paths[arm]:
+                self.err("complexity-joins", name, f"arm {arm!r} holds the final outcome gate")
+            if any(s.units[u].switch is not None and s.units[u].switch.complexity is not None  # type: ignore[union-attr]
+                   for u in paths[arm]):
+                self.err("complexity-invalid", name, f"arm {arm!r} holds another complexity switch")
+        made = {arm: set().union(*[_produced(s.units[u]) for u in units]) for arm, units in paths.items()}
+        on_arms = set().union(*made.values())
+        for reader in [u for u in s.order if u in after]:
+            for key in sorted(self._reads(reader) & on_arms):
+                for arm in arms:
+                    if key not in made[arm]:
+                        self.err("arm-contract", name,
+                                 f"arm {arm!r} does not produce {key!r}, which {reader!r} reads after `joins_at`")
+
+    def _reads(self, unit: str) -> set[str]:
+        """Artifact keys a unit's prompt, judge references and map list name."""
+        u = self.spec.units[unit]
+        keys: set[str] = set()
+        if u.step is not None:
+            with contextlib.suppress(TextUnreadable, TemplateError):
+                keys |= set(fields(load_text(self.spec, u.step.prompt)))
+        if u.gate.judge is not None:
+            keys |= set(u.gate.judge.references)
+        if u.map is not None:
+            keys.add(u.map.items_from[1])
+        return keys
+
     def _override_value(self, name: str, arm: str, unit: str, target: UnitSpec, key: str, value: object) -> None:
         where = f"arm_overrides.{arm}.{unit}.{key}"
         if key not in ARM_OVERRIDE_KEYS:
@@ -321,6 +430,7 @@ class _Validator:
                             self.warn("effort-unsupported", name, f"{executor!r} cannot apply `effort`")
                         else:
                             self.err("option-unsupported", name, f"{executor!r} does not support {opt!r}")
+        self._ladder(name, st, caps, executor)
         if isinstance(st.model, tuple) and len(st.model) > 8:
             self.err("ladder-too-long", name, "a model ladder holds at most eight aliases")
         for label, val in (("timeout_s", st.timeout_s), ("idle_s", st.idle_s)):
