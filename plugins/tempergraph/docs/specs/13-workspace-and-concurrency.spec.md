@@ -68,7 +68,7 @@ A folder that is not inside a git repository may hold runs ([R-131](../research/
 
 **WSP-B5 Executor scratch stays in the state root.** Given a judge on any executor that needs a private config (an MCP config, an Antigravity session home, a worker request document), when it is created, then it lives under the state root's scratch folder with owner-only permissions and is removed after the session, never in the operating system's temp folder, which a sandboxed child may not read.
 
-**WSP-B6 Writes in place.** Given a workflow with writing branches, when it is started `in_place`, then the start is refused with exit 2.
+**WSP-B6 Writes in place.** Given a workflow that writes files, when it is started with `run.workspace in_place`, then it runs in the checkout and the start carries the warning `in_place_writes` ([WTR §2.2](82-worktree-mode.spec.md)); writer branches, which need their own worktrees, are release 3.
 
 **WSP-B7 Batch re-run skips done targets.** Given a batch file of 10 targets whose parent crashed after 6 children started, when the same file is run again, then the 6 existing threads are not started afresh (each is listed with its state and resume command) and the 4 others start.
 
@@ -87,6 +87,7 @@ A folder that is not inside a git repository may hold runs ([R-131](../research/
 - A merge is textual; two branches that merge cleanly but contradict each other are caught only by the join's judge or a check.
 - Cleanup is never automatic unless a run sets `run.worktree.cleanup: on_finish`, which removes only clean worktrees; `worktree list` and `worktree prune` cover the rest; branches are never deleted ([WTR §2.7](82-worktree-mode.spec.md)).
 - **As built (R2-T7).** Parallel branches run on LangGraph's own threads in one workspace and may not write it; the run log's writer takes a lock, and a state write asked for while several nodes are pending is deferred to the segment's end.
+- **As built (R2-T8).** `store/layout.py` resolves the state root and `store/manifest.py` holds the manifest. A declared root is the state root folder itself, taken from `--state-root <dir>` (a global option, before the verb) or `TEMPERGRAPH_STATE_ROOT`; inside a repository both are ignored. The walk upward skips the home folder, and a start whose root would be the home folder is refused `not_git` with the way out. The fingerprint outside git is one line, the file count and a SHA-256 over every file's path, size and `mtime_ns`; the state root, declared or not, is left out. The thread's first manifest is kept as `runs/<workflow>/<thread>/manifest.json`, and a check's `changed_paths` is every path added, removed or with another size or time since then; a single file's SHA-256 (`manifest.file_hash`) is there for reports and is not part of the fingerprint. The start is refused `workspace_too_large` above 20,000 files when the workflow has a judge. `needs_git` refuses, before anything is created: `--carry`, a stock risk rule on changed paths or lines, the `changed_paths` measure, and the verbs `carry` and `improve trial`; `upgrade` refuses outside a repository by its own rule. Not built: `workspace: none`, which the contract does not have yet; and a finalizer's push cannot be refused ahead, since a finalizer declares nothing, so outside git it receives `git = None`. `unit_entered` carries `head_commit: ""` and `dirty: null` outside git.
 
 ## 6. Acceptance criteria
 
@@ -94,7 +95,7 @@ A folder that is not inside a git repository may hold runs ([R-131](../research/
 - [ ] WSP-AC-2 A test session fails if any test leaves state in the real state root.
 - [ ] WSP-AC-3 Each shape of §2.1 is tested with real git worktrees and scripted executors.
 - [ ] WSP-AC-4 No executor scratch file outlives its session on any exit path.
-- [ ] WSP-AC-5 Outside git: the state root rule, the `in_place` rule, the manifest fingerprint catching a write by a read-only session, and every `needs_git` refusal of §2.4 hold on fixtures in a plain folder.
+- [x] WSP-AC-5 Outside git: the state root rule, the `in_place` rule, the manifest fingerprint catching a write by a read-only session, and every `needs_git` refusal of §2.4 hold on fixtures in a plain folder.
 
 ## Open questions
 

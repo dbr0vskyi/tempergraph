@@ -48,6 +48,7 @@ from tempergraph.run.log import CostTotals, Ledger, RunLog, cost_so_far, last_re
 from tempergraph.run.nodes import Drain, EngineNodes, RunContext
 from tempergraph.run.outcome import with_outcome
 from tempergraph.security.scrub import clip, scrub
+from tempergraph.store import manifest as manifestmod
 from tempergraph.store.layout import (
     NotInRepository,
     ensure_state_root,
@@ -564,6 +565,21 @@ def _bad_breakpoint(spec: WorkflowSpec, settings: RunSettings) -> RunOutcome | N
     return None
 
 
+def needs_git(spec: WorkflowSpec, settings: RunSettings) -> list[str]:
+    """WSP §2.4: what a run outside a git repository cannot use; empty when it can start."""
+    out: list[str] = []
+    if settings.carry:
+        out.append("--carry (run state on a branch)")
+    for name, u in spec.units.items():
+        risk = u.gate.judge.risk if u.gate is not None and u.gate.judge is not None else None
+        if risk is not None and any(w.paths or w.min_lines is not None for w in risk.when):
+            out.append(f"the risk rule of {name} (changed paths or lines)")
+        cx = u.switch.complexity if u.switch is not None else None
+        if cx is not None and any(m.stock[:1] == ("changed_paths",) for m in cx.measures):
+            out.append(f"the `changed_paths` measure of {name}")
+    return out
+
+
 def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: Path, registry: Registry,
            settings: RunSettings) -> RunOutcome:
     tid = thread_id(spec.name, task_id)
@@ -572,8 +588,8 @@ def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: 
         return bad
     try:
         root = _root(target)
-    except NotInRepository:
-        return _refuse("not_git", "the engine keeps its state in a git repository's main checkout")
+    except NotInRepository as exc:
+        return _refuse("not_git", str(exc))
     if classify(root, spec, task_id) is not ThreadState.NONE:
         return _refuse("thread_exists", f"{tid} already exists; resume it with `tempergraph resume {spec.name} "
                                         f"{task_id}` or start a new thread with another task id", tid=tid)
@@ -597,6 +613,15 @@ def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: 
                                  prefix=str(rv["worktree.branch_prefix"]), base=str(rv.get("worktree.base") or "head"))
     except WorkspaceRefused as exc:
         return _refuse(exc.word, str(exc), tid=tid)
+    if plan.main is None:  # WSP §2.4: what needs git is refused before anything is created
+        needs = needs_git(spec, settings)
+        if needs:
+            return _refuse("needs_git", f"outside a git repository this run cannot use {needs[0]}",
+                           [f"needs_git: {n}" for n in needs], tid)
+        guarded = any(u.gate is not None and u.gate.judge is not None for u in spec.units.values())
+        if guarded and manifestmod.count_over(plan.path):
+            return _refuse("workspace_too_large", f"{plan.path} holds more than {manifestmod.MAX_FILES} files; "
+                           "outside git the guard cannot watch it for a read-only session", tid=tid)
     carry_remote = None
     if settings.carry:  # CAR §4: refused at start without a remote, before anything is created
         try:
@@ -622,6 +647,10 @@ def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: 
             return _refuse(exc.word, str(exc), tid=tid)
         if carry_remote:
             carrymod.set_marker(root, spec.name, task_id, on=True, remote=carry_remote, state="on")
+        if plan.main is None:  # the thread's first manifest: what `changed_paths` is measured against
+            with contextlib.suppress(OSError, manifestmod.TooManyFiles):
+                write_json(run_dir(root, spec.name, task_id) / "manifest.json",
+                           {"schema_version": 1, "files": {k: list(v) for k, v in manifestmod.scan(plan.path).items()}})
         RunLog(run_dir(root, spec.name, task_id) / "run.jsonl").write(
             "task", chars=sum(len(v) for v in inputs.values()), request=clip(scrub(inputs.get("request", "")), 200))
         initial = {"request": {"task_id": task_id, "inputs": dict(inputs)}, "workspace": rec.to_json(),
@@ -719,8 +748,8 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
     tid = thread_id(spec.name, task_id)
     try:
         root = _root(target)
-    except NotInRepository:
-        return _refuse("not_git", "not inside a git repository")
+    except NotInRepository as exc:
+        return _refuse("not_git", str(exc))
     action, detail = enginefile.at_resume(root, spec.name, task_id, write=False)  # MIG §2.4; the CLI dispatches
     if action != "move":
         return _refuse("engine_pinned", str(detail) if action == "refuse" else

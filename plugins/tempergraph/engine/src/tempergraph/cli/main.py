@@ -28,6 +28,7 @@ from tempergraph.cli import workflows as workflows_cli
 from tempergraph.constants import SCHEMA, ExitCode
 from tempergraph.contracts import WorkflowSpec, thread_id
 from tempergraph.executors.registry import Registry, default_registry
+from tempergraph.store.layout import ROOT_VAR
 
 # Every verb word of CLI §2, reserved so it is never read as a workflow or a request (CLI-B2, AC-3).
 VERBS = ("attention", "audit", "author", "batch", "blueprint", "carry", "config", "evals", "events", "executors", "facts",
@@ -51,6 +52,7 @@ class _Parser(argparse.ArgumentParser):
 
 def _parser() -> _Parser:
     p = _Parser(prog="tempergraph", description="Tempered rails for AI workflows")
+    p.add_argument("--state-root", metavar="DIR", help="outside a git repository: the state root to use (WSP §2.4)")
     sub = p.add_subparsers(dest="verb", parser_class=_Parser)
 
     run = sub.add_parser("run", help="resolve, preflight and start a workflow")
@@ -549,6 +551,14 @@ def _root(env: Env) -> Path:
         raise UsageError("not inside a git repository") from exc
 
 
+def _needs_git(env: Env, what: str) -> None:
+    """WSP §2.4: a verb that works on branches or worktrees is refused outside a git repository."""
+    from tempergraph.store.layout import outside_git
+
+    if outside_git(env.cwd):
+        raise UsageError(f"needs_git: {what} needs a git repository")
+
+
 def _root_or_none(env: Env) -> Path | None:
     from tempergraph.store.layout import NotInRepository, state_root_path
 
@@ -791,6 +801,7 @@ def cmd_carry(env: Env, a: argparse.Namespace) -> int:
 
     spec = _spec(env, a.workflow)
     root = _root(env)
+    _needs_git(env, "carry")
     repo = root.parent
     task = a.thread.split("/", 1)[1] if a.thread.startswith(f"{spec.name}/") else a.thread
     machine = identity.machine_id()
@@ -969,9 +980,13 @@ def main(argv: Sequence[str] | None = None, *, catalog: Catalog | None = None, r
          run_settings: Callable[..., Any] | None = None, signals: tuple[Mapping[str, str], bool] | None = None,
          hand_over: Callable[[Path, list[str]], int] | None = None) -> int:
     out, err = out or sys.stdout, err or sys.stderr
+    root_before = os.environ.get(ROOT_VAR)
     try:
         given = tuple(argv if argv is not None else sys.argv[1:])
         a = _parser().parse_args(list(given))
+        if a.state_root:  # read by `state_root_path` outside git; inside a repository it changes nothing
+            declared = Path(a.state_root).expanduser()
+            os.environ[ROOT_VAR] = str((declared if declared.is_absolute() else (cwd or Path.cwd()) / declared).resolve())
         if not a.verb:
             raise UsageError("a verb is needed; `tempergraph --help` lists them")
         if a.verb not in COMMANDS:
@@ -994,6 +1009,11 @@ def main(argv: Sequence[str] | None = None, *, catalog: Catalog | None = None, r
         _engine_error(exc)
         err.write(f"tempergraph: internal error ({type(exc).__name__})\n")
         return int(ExitCode.INTERNAL)
+    finally:  # `--state-root` holds for this call only
+        if root_before is None:
+            os.environ.pop(ROOT_VAR, None)
+        else:
+            os.environ[ROOT_VAR] = root_before
 
 
 def _engine_error(exc: BaseException) -> None:

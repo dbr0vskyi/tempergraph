@@ -86,9 +86,19 @@ def main_checkout(start: Path) -> Path | None:
 class Fingerprint:
     head: str
     status: str
+    manifest: bool = False  # outside git: `status` is the workspace manifest's digest (WSP §2.4)
+
+    @property
+    def dirty(self) -> bool | None:
+        """Uncommitted changes; None outside git, where the word has no meaning."""
+        return None if self.manifest else bool(self.status)
 
 
 def fingerprint(workdir: Path) -> Fingerprint:
+    if toplevel(workdir) is None:  # outside git the guard compares manifests of the files (WSP §2.4)
+        from tempergraph.store import manifest
+
+        return Fingerprint("", manifest.status(workdir), manifest=True)
     try:
         head = git(["rev-parse", "HEAD"], workdir, check=False).strip()
         status = git(["status", "--porcelain=v1", "--untracked-files=all"], workdir, check=False)

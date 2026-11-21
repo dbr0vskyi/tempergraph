@@ -34,7 +34,7 @@ class FinalizerContext:
     open_warnings: int
     degraded: bool
     run_options: Mapping[str, Any]
-    git: checkmod.GitFacts
+    git: checkmod.GitFacts | None  # None outside a git repository (WSP §2.4)
     allow: tuple[str, ...] = ()
     main: Path | None = None
     out_dir: Path | None = None

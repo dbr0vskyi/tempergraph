@@ -38,17 +38,20 @@ def context_doc(gate: GateSpec, ctx: checkmod.CheckContext) -> dict[str, Any]:
             "out_dir": str(ctx.out_dir) if ctx.out_dir else None,
             "reuse_store": str(ctx.reuse_store) if ctx.reuse_store else None,
             "no_reuse_exit_codes": {k: list(v) for k, v in ctx.no_reuse_exit_codes.items()},
-            "git": {"branch": g.branch, "base": g.base, "head": g.head, "base_head": g.base_head, "clean": g.clean,
-                    "pushed": g.pushed, "changed_paths": list(g.changed_paths),
-                    "commits_since_base": list(g.commits_since_base)},
+            "changed_paths": list(ctx.changed_paths),
+            "git": None if g is None else {
+                "branch": g.branch, "base": g.base, "head": g.head, "base_head": g.base_head, "clean": g.clean,
+                "pushed": g.pushed, "changed_paths": list(g.changed_paths),
+                "commits_since_base": list(g.commits_since_base)},
         },
     }
 
 
 def _context_from(doc: dict[str, Any]) -> checkmod.CheckContext:
     c = doc["context"]
-    g = c.get("git") or {}
+    g = c.get("git")
     return checkmod.CheckContext(
+        changed_paths=tuple(c.get("changed_paths") or ()),
         unit=c["unit"], workdir=Path(c["workdir"]), request=c.get("request") or {}, item=c.get("item"),
         visit=int(c.get("visit", 1)), attempt=int(c.get("attempt", 1)), preview=bool(c.get("preview")),
         main_checkout=Path(c["main_checkout"]) if c.get("main_checkout") else None,
@@ -57,10 +60,11 @@ def _context_from(doc: dict[str, Any]) -> checkmod.CheckContext:
         out_dir=Path(c["out_dir"]) if c.get("out_dir") else None,
         reuse_store=Path(c["reuse_store"]) if c.get("reuse_store") else None,
         no_reuse_exit_codes={k: tuple(v) for k, v in (c.get("no_reuse_exit_codes") or {}).items()},
-        git=checkmod.GitFacts(branch=g.get("branch", ""), base=g.get("base", ""), head=g.get("head", ""),
-                              base_head=g.get("base_head", ""), clean=bool(g.get("clean", True)),
-                              pushed=bool(g.get("pushed")), changed_paths=tuple(g.get("changed_paths") or ()),
-                              commits_since_base=tuple(g.get("commits_since_base") or ())))
+        git=None if g is None else checkmod.GitFacts(
+            branch=g.get("branch", ""), base=g.get("base", ""), head=g.get("head", ""),
+            base_head=g.get("base_head", ""), clean=bool(g.get("clean", True)), pushed=bool(g.get("pushed")),
+            changed_paths=tuple(g.get("changed_paths") or ()),
+            commits_since_base=tuple(g.get("commits_since_base") or ())))
 
 
 def result_from(doc: dict[str, Any]) -> CheckResult:

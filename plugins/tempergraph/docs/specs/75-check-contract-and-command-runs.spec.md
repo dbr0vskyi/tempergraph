@@ -38,7 +38,8 @@ def resolve_command(workflow: str, text: str, workdir: Path) -> ResolvedCommand 
 | `artifacts` | map key → pointer | Every artifact in state that the unit's path produced, by key, item-keyed for map items |
 | `values` | map key → str | Step values ([VAL](76-step-values-and-template-keys.spec.md)) |
 | `facts` | map unit → map key → str | Facts recorded by earlier checks on this path (§2.4) |
-| `git` | `GitFacts` | Computed by the engine's git reader before the check starts |
+| `git` | `GitFacts`, or `None` outside a git repository | Computed by the engine's git reader before the check starts |
+| `changed_paths` | list of paths | Git's changed paths, or outside git the manifest's ([WSP §2.4](13-workspace-and-concurrency.spec.md)) |
 | `settings` | map name → value | The workflow's resolved settings for this run (owned by the settings design; read-only here) |
 | `criteria` | list of `{id, mechanical}` | The gate's criteria, so findings can name them |
 | `deadline_s` | float | Seconds left of `GateSpec.check_timeout_s` |

@@ -66,6 +66,8 @@ def line_counts(workdir: Path, base: str = "") -> tuple[int, int]:
 
 
 def git_of(facts: Any, workdir: Path) -> RiskGit:
+    if facts is None:  # outside git a rule reads empty git facts; git-based stock rules are refused at start
+        return RiskGit()
     added, removed = line_counts(workdir, getattr(facts, "base", "") or "")
     return RiskGit(branch=facts.branch, base=facts.base, head=facts.head, clean=facts.clean, pushed=facts.pushed,
                    changed_paths=tuple(facts.changed_paths), commits_since_base=tuple(facts.commits_since_base),

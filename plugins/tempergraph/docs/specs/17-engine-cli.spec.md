@@ -91,6 +91,7 @@ The `tempergraph` command line is the engine's public interface for people, skil
 | `--as-agent` | The same as `--caller agent` |
 | `--relayed` | The decision is a person's, carried by an agent; counted as the person's only with a person turn in the host ([PRV §2.4](85-caller-provenance.spec.md)) |
 | `--pause-before <unit>[.<item>]` | Run and resume: an operator breakpoint before that unit ([FLX §2.5](74-flow-extensions.spec.md)); built in release 2 for a unit name; `<unit>.<item>` is refused `not_in_release` and an unknown unit `breakpoint_unknown` |
+| `--state-root <dir>` | A global option, before the verb: outside a git repository, the state root to use; ignored inside one ([WSP §2.4](13-workspace-and-concurrency.spec.md)) |
 | `--schedule <fire_id>` | Set by the schedule tick only, with its fire token; recorded as `schedule` ([TCK §2.3](84-schedule-ticks-and-unattended-fires.spec.md)) |
 | `--parent <orchestration>/<node>[/<item>]` | Set by the orchestration supervisor only; recorded with the run options and shown as `parent` ([ORC §2.8](45-orchestration.spec.md) N1) |
 | `--dry-run` | Self-improvement files nothing; every step still runs; recorded as `dry_run` on `run_started` and in the run's meta |

@@ -230,7 +230,7 @@ class EngineNodes:
         path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
         if entered:
             fp = gitmod.fingerprint(workdir)
-            self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=bool(fp.status),
+            self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=fp.dirty,
                                entered_from=_entered_from(state, unit))
         item: dict[str, Any] | None = None
         maps: dict[str, Any] = {}
@@ -541,7 +541,7 @@ class EngineNodes:
         prev = (state.get("attempts") or {}).get(unit) or {}
         if prev.get("visit") != visit:
             fp = gitmod.fingerprint(self._workdir(state))
-            self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=bool(fp.status),
+            self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=fp.dirty,
                                entered_from="join", branches=list(self.ctx.spec.units[unit].branches))
         record = {"attempt": int(prev.get("attempt", 0)) + 1, "visit": visit, "ok": True, "text": "",
                   "escalate": None, "infra_spent": False, "check": None, "join": True}
@@ -560,7 +560,7 @@ class EngineNodes:
         workdir = self._workdir(state)
         if prev.get("visit") != visit:
             fp = gitmod.fingerprint(workdir)
-            self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=bool(fp.status),
+            self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=fp.dirty,
                                entered_from=_entered_from(state, unit))
         record: dict[str, Any] = {"attempt": int(prev.get("attempt", 0)) + 1, "visit": visit, "ok": True, "text": "",
                                   "escalate": None, "infra_spent": False, "check": None, u.kind: True}
@@ -627,7 +627,7 @@ class EngineNodes:
         path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
         if prev.get("visit") != visit:
             fp = gitmod.fingerprint(self._workdir(state))
-            self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=bool(fp.status),
+            self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=fp.dirty,
                                entered_from=_entered_from(state, unit))
         o = self.ctx.spec.outcome
         record = {"attempt": attempt, "visit": visit, "ok": True, "text": "", "issues": [], "tools": [],
@@ -762,12 +762,15 @@ class EngineNodes:
                        sub: str = "") -> checkmod.CheckContext:
         u = self.ctx.spec.units[unit]
         facts = {k: v for k, v in (state.get("facts") or {}).items() if k != unit}
+        gfacts = checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or "")
         return checkmod.CheckContext(
+            changed_paths=checkmod.changed_paths(
+                workdir, gfacts, self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "manifest.json"),
             unit=unit, item=att.get("item"), workdir=workdir, request=state.get("request") or {},
             attempt=int(att.get("attempt", 1)),
             visit=int(att.get("visit", 1)), main_checkout=self.ctx.main_checkout,
             artifacts=state.get("artifacts") or {}, values=state.get("values") or {}, facts=facts,
-            git=checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or ""),
+            git=gfacts,
             criteria=tuple({"id": c.id, "mechanical": c.mechanical} for c in u.gate.criteria),
             allow=tuple(self.ctx.spec.allow_commands),
             out_dir=self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "checks"

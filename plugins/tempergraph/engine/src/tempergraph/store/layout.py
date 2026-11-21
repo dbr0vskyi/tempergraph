@@ -31,12 +31,36 @@ def now_iso() -> str:
     return datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
+ROOT_VAR = "TEMPERGRAPH_STATE_ROOT"
+
+
 def state_root_path(start_dir: Path) -> Path:
-    """`<main checkout>/.tempergraph/`, from git's common directory, whatever the start dir (WSP-AC-1)."""
+    """`<main checkout>/.tempergraph/`, from git's common directory, whatever the start dir (WSP-AC-1).
+
+    Outside git (WSP §2.4): the declared root, else the nearest folder upward that holds a state root with a
+    manifest, else `<start dir>/.tempergraph/`. The home folder is never a state root.
+    """
     main = git.main_checkout(start_dir)
-    if main is None:
-        raise NotInRepository(f"{start_dir} is not inside a git repository")
-    return main / STATE_DIR
+    if main is not None:
+        return main / STATE_DIR
+    home = home_path().resolve()
+    declared = os.environ.get(ROOT_VAR)
+    if declared:
+        root = Path(declared).expanduser()
+        root = (root if root.is_absolute() else start_dir / root).resolve()
+    else:
+        here = start_dir.resolve()
+        found = next((d / STATE_DIR for d in (here, *here.parents)
+                      if (d / STATE_DIR / "manifest.json").is_file() and (d / STATE_DIR).resolve() != home), None)
+        root = found or here / STATE_DIR
+    if root.resolve() == home:
+        raise NotInRepository(f"{root} is the engine's home folder; start in another folder or name a state root "
+                              f"with --state-root or {ROOT_VAR}")
+    return root
+
+
+def outside_git(start_dir: Path) -> bool:
+    return git.main_checkout(start_dir) is None
 
 
 def home_path() -> Path:

@@ -79,9 +79,12 @@ def run(state_root: Path, ticket: str, out: IO[str]) -> int:
     c = doc["context"]
     workdir = Path(c["workdir"])
     g = checkmod.git_facts(workdir, str((c.get("git") or {}).get("base") or ""))
-    c["git"] = {"branch": g.branch, "base": g.base, "head": g.head, "base_head": g.base_head, "clean": g.clean,
-                "pushed": g.pushed, "changed_paths": list(g.changed_paths),
-                "commits_since_base": list(g.commits_since_base)}
+    c["git"] = None if g is None else {
+        "branch": g.branch, "base": g.base, "head": g.head, "base_head": g.base_head, "clean": g.clean,
+        "pushed": g.pushed, "changed_paths": list(g.changed_paths),
+        "commits_since_base": list(g.commits_since_base)}
+    if g is not None:
+        c["changed_paths"] = list(g.changed_paths)
     c["preview"] = True
     t0 = time.monotonic()
     res, _ = run_doc(doc, workdir, int(doc.get("check_timeout_s") or 1800), f"preview-{c['unit']}-{c.get('attempt')}")

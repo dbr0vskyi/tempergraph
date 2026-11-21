@@ -356,6 +356,10 @@ def cmd_improve(env: Any, a: argparse.Namespace) -> int:
                  + (f" ({rec['refusal']})" if rec.get("refusal") else "") + f", classes {rec.get('classes')}")
             return 0 if rec["state"] != "refused" else 2
         if a.action == "trial":
+            from tempergraph.store.layout import outside_git
+
+            if outside_git(env.cwd):  # a trial runs its arms in worktrees (WSP §2.4)
+                raise _usage("needs_git: a trial needs a git repository")
             rec = prp.load_proposal(root, a.proposal)
             spec = _spec(env, str(rec["workflow"]))
             judge = env.registry.get(a.executor or spec.default_executor) if rec.get("side") == "grader" else None

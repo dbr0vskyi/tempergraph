@@ -39,11 +39,29 @@ class GitFacts:
     commits_since_base: tuple[str, ...] = ()
 
 
-def git_facts(workdir: Path, base: str = "") -> GitFacts:
+def git_facts(workdir: Path, base: str = "") -> GitFacts | None:
+    """The workspace's git facts; None outside a git repository (WSP §2.4)."""
+    if gitmod.toplevel(workdir) is None:
+        return None
     fp = gitmod.fingerprint(workdir)
     name = gitmod.branch(workdir)
     return GitFacts(branch=name, base=base, head=fp.head, clean=not fp.status, pushed=gitmod.pushed(workdir, name),
                     changed_paths=tuple(gitmod.changed_paths(workdir, base or None)))
+
+
+def changed_paths(workdir: Path, facts: GitFacts | None, baseline: Path | None) -> tuple[str, ...]:
+    """What changed in the workspace: git's answer, or outside git the manifest against the thread's first one."""
+    if facts is not None:
+        return tuple(facts.changed_paths)
+    import json
+
+    from tempergraph.store import manifest
+
+    try:
+        files = json.loads(baseline.read_text(encoding="utf-8")).get("files") if baseline is not None else None
+    except (OSError, ValueError, AttributeError):
+        files = None
+    return tuple(manifest.changed(workdir, files)) if isinstance(files, dict) else ()
 
 
 @dataclass(kw_only=True)
@@ -59,7 +77,8 @@ class CheckContext:
     artifacts: Mapping[str, Any] = field(default_factory=dict)
     values: Mapping[str, Any] = field(default_factory=dict)
     facts: Mapping[str, Any] = field(default_factory=dict)
-    git: GitFacts = field(default_factory=GitFacts)
+    git: GitFacts | None = field(default_factory=GitFacts)  # None outside git (WSP §2.4)
+    changed_paths: tuple[str, ...] = ()  # git's outside the state root, or the manifest's outside git
     settings: Mapping[str, Any] = field(default_factory=dict)
     criteria: tuple[dict[str, Any], ...] = ()
     allow: tuple[str, ...] = ()
