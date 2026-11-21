@@ -144,9 +144,9 @@ Recommendation: start with direct edit and C7, because it needs only a check and
 | Subject | Ruling |
 |---|---|
 | The proposed format and rules C1 to C8 | Agreed |
-| Interface section (Q1) | Not a section: it would use lines in the spec. Interface facts are written as behaviours, without exact names. Whether a name that another tool or a person depends on may appear is still being settled |
+| Interface section (Q1) | Not a section: it would use lines in the spec. Interface facts are written as behaviours. A behaviour may name only what someone outside the capability depends on (a command a person types, a field another tool reads), never an internal name |
 | Behaviour wording (Q5) | A fixed format |
-| Size | A length cap per spec; a spec that reaches it is split or compressed. The value is not set yet |
+| Size | A cap of 400 lines per spec; a spec that reaches it is split or compressed |
 | Direct edit or delta (Q3) | Direct edit with the collateral check, as recommended |
 | The engine's 70 specs (Q4) | Migrated once temperspec is ready |
 
