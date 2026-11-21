@@ -193,6 +193,8 @@ class EngineNodes:
             return self._script_unit(unit, state)
         if u.kind in ("route", "switch"):
             return self._flow_unit(unit, state)
+        if u.kind in ("ask", "wait"):
+            return self._person_unit(unit, state)
         if u.extra.get("outcome"):
             return self._outcome_step(unit, state)
         st = u.step
@@ -487,6 +489,33 @@ class EngineNodes:
         run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
         return {"attempts": {unit: record}, "run": run}
 
+    def _person_unit(self, unit: str, state: RunState) -> dict[str, Any]:
+        """An ask or a wait runs nothing: its step node records the entry and the human node pauses (CMP §2.2).
+        An ask reads its questions here, once per visit, and starts the visit with no answers (ASK-B2)."""
+        from tempergraph.run import asking
+
+        u = self.ctx.spec.units[unit]
+        visit = int(((state.get("visits") or {}).get(unit) or {}).get("visit", 1))
+        prev = (state.get("attempts") or {}).get(unit) or {}
+        workdir = self._workdir(state)
+        if prev.get("visit") != visit:
+            fp = gitmod.fingerprint(workdir)
+            self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=bool(fp.status),
+                               entered_from=_entered_from(state, unit))
+        record: dict[str, Any] = {"attempt": int(prev.get("attempt", 0)) + 1, "visit": visit, "ok": True, "text": "",
+                                  "escalate": None, "infra_spent": False, "check": None, u.kind: True}
+        if u.ask is not None:
+            folder = self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id
+            with contextlib.suppress(OSError):
+                asking.answers_path(folder, unit).unlink()
+            try:
+                record["questions"] = [asking.to_json(q) for q in asking.questions(u.ask, state, workdir)]
+            except asking.AskFault as exc:
+                record.update(ok=False, ask_fault=str(exc))
+        path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
+        run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
+        return {"attempts": {unit: record}, "artifacts": {unit: None}, "values": {unit: None}, "run": run}
+
     def _escalation_facts(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any],
                           write: Mapping[str, Any]) -> dict[str, Any]:
         """What the gate cannot read from state for E1, E6 and E7 (LAD §2.4): the stage, whether the escalation
@@ -578,6 +607,8 @@ class EngineNodes:
         att = dict((state.get("attempts") or {}).get(unit) or {})
         if att.get("map_fault"):
             return {"judgements": {unit: {"verdict": str(Verdict.ESCALATE), "reason": "map_fault"}}}
+        if u.kind in ("ask", "wait"):  # no model and no judge: the person's input is the bar (ASK §1, WFM-B4)
+            return {"judgements": {unit: {"verdict": str(Verdict.ESCALATE), "reason": u.kind}}}
         if att.get("map_skip"):
             return {"judgements": {unit: {"verdict": str(Verdict.PROCEED), "reason": "map_empty"}}}
         if (att.get("escalate") == "upstream" and att.get("upstream") and att.get("ok") and g.judge is not None
@@ -878,7 +909,10 @@ class EngineNodes:
             self.ctx.log.write("pause", unit=unit, item=p.get("item"), pause_kind=p["kind"], decisions=p["decisions"], resume=p["resume"],
                                cost_so_far=so_far, reason=p.get("reason"), escalation=p.get("escalation"),
                                tool_access=[{k: t.get(k) for k in ("name", "capability", "class")}
-                                            for t in p.get("tool_access") or []] or None)
+                                            for t in p.get("tool_access") or []] or None,
+                               **({"deadline_at": p["deadline_at"], "on_deadline": p.get("on_deadline")}
+                                  if p.get("deadline_at") else {}),
+                               **({"questions": len(p["questions"])} if p.get("questions") is not None else {}))
         return w
 
     def _budget_records(self, unit: str, state: RunState, w: Mapping[str, Any]) -> None:
@@ -901,6 +935,11 @@ class EngineNodes:
         w = gatemod.apply_decision(self.ctx.spec, unit, state, payload)
         self.ctx.log.write("human", unit=unit, decision=payload.get("decision"), caller=payload.get("caller"),
                            feedback=bool(payload.get("feedback")) and not payload.get("ruling"))
+        p = (w.get("pause") or {}).get(unit)
+        if p:  # an applied deadline turned the pause into an escalation (FLX §2.3)
+            self.ctx.log.write("pause", unit=unit, item=p.get("item"), pause_kind=p["kind"], decisions=p["decisions"],
+                               resume=p["resume"], reason=p.get("reason"),
+                               cost_so_far=cost_so_far((state.get("run") or {}).get("cost")))
         return w
 
     def finalizer(self, state: RunState) -> dict[str, Any]:

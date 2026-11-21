@@ -115,7 +115,10 @@ def successors(spec: WorkflowSpec, unit: str) -> SuccessorSet:
 
 def human_targets(spec: WorkflowSpec, unit: str) -> list[str]:
     s = successors(spec, unit)
-    return list(dict.fromkeys(s.proceed + s.retry + s.back + s.rewind + s.stop))
+    extra: list[str] = []
+    if deadline_of(spec, unit) is not None:  # an applied deadline re-enters the human node, or goes forward
+        extra = [node_names(unit)[3]] + ([n] if (n := deadline_node(spec, unit)) else [])
+    return list(dict.fromkeys(s.proceed + s.retry + s.back + s.rewind + s.stop + extra))
 
 
 def rearm_targets(spec: WorkflowSpec, unit: str) -> list[str]:
@@ -143,9 +146,32 @@ def arm_units(spec: WorkflowSpec, entry: str) -> set[str]:
     return seen
 
 
+def fallback_node(spec: WorkflowSpec, unit: str) -> str | None:
+    """The node a gate's fallback target leads to (FLX §2.4); the finalizer is reached through the outcome gate."""
+    fb = spec.units[unit].gate.fallback if unit in spec.units else None
+    return target_node(through_outcome(spec, fb)) if fb else None
+
+
+def deadline_of(spec: WorkflowSpec, unit: str) -> tuple[int, str] | None:
+    """`(deadline_s, on_deadline)` of a wait or an ask that declares a deadline (FLX §2.3)."""
+    u = spec.units.get(unit)
+    d = (u.ask or u.wait) if u is not None else None
+    return (int(d.deadline_s), str(d.on_deadline)) if d is not None and d.deadline_s else None
+
+
+def deadline_node(spec: WorkflowSpec, unit: str) -> str | None:
+    """The forward unit's node when `on_deadline` names one."""
+    d = deadline_of(spec, unit)
+    if d is None or d[1] in ("escalate", "stop"):
+        return None
+    return target_node(through_outcome(spec, d[1]))
+
+
 def gate_targets(spec: WorkflowSpec, unit: str) -> list[str]:
     s = successors(spec, unit)
-    return list(dict.fromkeys(s.proceed + s.retry + s.back + s.escalate + s.stop + rearm_targets(spec, unit)))
+    fb = fallback_node(spec, unit)
+    return list(dict.fromkeys(s.proceed + s.retry + s.back + s.escalate + s.stop + rearm_targets(spec, unit)
+                              + ([fb] if fb else [])))
 
 
 def reachable_units(spec: WorkflowSpec) -> set[str]:
@@ -159,7 +185,10 @@ def reachable_units(spec: WorkflowSpec) -> set[str]:
         if u in seen or u == FINALIZER or u not in order:
             continue
         seen.add(u)
-        todo.extend(proceed_targets(spec, u) + back_targets(spec, u))
+        fb = spec.units[u].gate.fallback if u in spec.units else None
+        dl = deadline_of(spec, u)
+        todo.extend(proceed_targets(spec, u) + back_targets(spec, u) + ([fb] if fb else [])
+                    + ([dl[1]] if dl and dl[1] not in ("escalate", "stop") else []))
     return seen
 
 

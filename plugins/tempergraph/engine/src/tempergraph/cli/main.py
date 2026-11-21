@@ -64,7 +64,12 @@ def _parser() -> _Parser:
     res = sub.add_parser("resume", help="resume a paused, stopped or unfinished thread")
     res.add_argument("workflow")
     res.add_argument("thread")
-    res.add_argument("--decision")
+    res.add_argument("--decision", action="append", default=[],
+                     help="one decision; repeat only for an ask's answer:<name>=<value>")
+    res.add_argument("--answers", metavar="FILE", help="a JSON map of an ask's answers (ASK §2.3)")
+    res.add_argument("--apply-deadline", action="store_true",
+                     help="apply the overdue deadline of a wait or an ask (FLX §2.3)")
+    res.add_argument("--unit", help="which pending gate the decision answers, when there are several (HUM-B3)")
     res.add_argument("--unpin", action="store_true",
                      help="clear the thread's engine pin when this engine can resume it (MIG §2.4)")
     res.add_argument("--escalate", action="store_true",
@@ -334,8 +339,6 @@ def _flags(env: Env, a: argparse.Namespace) -> dict[str, Any]:
 def _settings(env: Env, a: argparse.Namespace, mutating: bool = True) -> Any:
     from tempergraph.run.runner import RunSettings
 
-    if getattr(a, "pause_before", None):  # FLX §2.5 breakpoints are release 2 (X2-13)
-        raise UsageError("not_in_release: --pause-before is a release 2 option (FLX §2.5)")
     fields: dict[str, Any] = {"flags": _flags(env, a), "caller": env.caller(a) if mutating else {},
                               "relayed": bool(getattr(a, "relayed", False)),
                               "profiles": tuple(a.profile) if getattr(a, "profile", None) is not None else None}
@@ -345,6 +348,8 @@ def _settings(env: Env, a: argparse.Namespace, mutating: bool = True) -> Any:
         fields["escalate"] = True
     if getattr(a, "carry", False):
         fields["carry"] = True
+    if getattr(a, "pause_before", None):  # FLX §2.5
+        fields["pause_before"] = tuple(a.pause_before)
     if hasattr(a, "unset"):
         fields.update(unset=tuple(a.unset), reload_settings=a.reload_settings)
     if hasattr(a, "ruling"):
@@ -387,6 +392,9 @@ def cmd_run(env: Env, a: argparse.Namespace) -> int:
         raise UsageError(f"{a.request[0]!r} is a reserved verb and cannot start a request (CLI-B2)")
     if spec.builtin:  # UWF-B5: a built-in workflow is started by its own verb
         raise UsageError(f"{spec.name} is started by `tempergraph {spec.name} <workflow>`, not by `run`")
+    for name in a.pause_before:  # FLX §2.6: refused before spend, by `--check` too
+        if name not in spec.units:
+            raise UsageError(f"breakpoint_unknown: --pause-before {name}: the workflow has no such unit")
     try:
         res = resolve_request(spec, list(a.request), _inputs(a.input), env.cwd, a.task_id)
     except PackageNotLoaded as exc:
@@ -437,8 +445,28 @@ def cmd_resume(env: Env, a: argparse.Namespace) -> int:
     code = _pinned_engine(env, spec, task, a)
     if code is not None:
         return code
-    out = resume(spec, task, env.cwd, env.registry, decision=a.decision, feedback=feedback,
-                 settings=_settings(env, a))
+    answers: dict[str, Any] = {}
+    if a.answers:  # ASK §2.3: a JSON map of answers
+        try:
+            doc = json.loads((env.cwd / a.answers).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise UsageError(f"--answers {a.answers}: {type(exc).__name__}") from exc
+        if not isinstance(doc, dict):
+            raise UsageError(f"--answers {a.answers}: not a JSON map of answers")
+        answers.update(doc)
+    words = []
+    for text in a.decision:
+        if text.startswith("answer:") and "=" in text:
+            name, _, value = text[len("answer:"):].partition("=")
+            answers[name] = value
+        else:
+            words.append(text)
+    if len(words) > 1:
+        raise UsageError("one --decision a resume; only answer:<name>=<value> repeats")
+    settings = dataclasses.replace(_settings(env, a), answers=answers, apply_deadline=bool(a.apply_deadline),
+                                   unit=a.unit)
+    out = resume(spec, task, env.cwd, env.registry, decision=words[0] if words else None, feedback=feedback,
+                 settings=settings)
     if out.exit_code == ExitCode.FINISHED:  # MIG §2.4: a pin ends with its thread
         from tempergraph.durability import engine_file
 

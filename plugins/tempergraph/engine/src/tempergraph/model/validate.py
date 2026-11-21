@@ -53,7 +53,7 @@ class Finding:
 
 # Kinds, primitives and fields this release does not build, with the release that adds them (ADR-0090).
 LATER_KINDS: dict[str, int] = {
-    "parallel": 2, "wait": 2, "ask": 2, "council": 3, "contest": 3, "subworkflow": 3,
+    "parallel": 2, "council": 3, "contest": 3, "subworkflow": 3,
 }
 MODEL_KINDS = frozenset({"step"})
 # Keys the settings resolution writes into a unit's `extra` (RST `effective_spec`), never a workflow's own field.
@@ -128,9 +128,6 @@ class _Validator:
                     self.err("not_in_release", name, "the script cache is built in release 2, not release 1")
             if u.script is not None and u.script.cache != "off":
                 self.err("not_in_release", name, "the script cache is built in release 2, not release 1")
-            g = u.gate
-            if g.on_fail == "fallback" or g.on_budget_spent == "fallback" or g.fallback:
-                self.err("not_in_release", name, "the fallback target is built in release 2, not release 1")
             later = sorted(k for k in u.extra if k not in RESOLVED_EXTRA)
             if later:
                 self.err("not_in_release", name, f"fields {later} are not built in release {RELEASE}")
@@ -158,6 +155,77 @@ class _Validator:
                     elif not _setting_ok(found.kind, value, found.choices, found.min, found.max):
                         self.err("profile-value-invalid", None, f"profile {pname!r}: {key} outside its range")
 
+    # -- person units and flow extensions (ASK, HUM-B4, FLX §2.6) -------------------------------------
+    def _forward(self, name: str, target: str, *, finalizer: bool) -> bool:
+        order = list(self.spec.order)
+        if target == flow.FINALIZER:
+            return finalizer
+        return target in order and name in order and order.index(target) > order.index(name)
+
+    def _deadline(self, name: str, deadline_s: int | None, on_deadline: str) -> None:
+        if deadline_s is None:
+            return
+        if not isinstance(deadline_s, int) or deadline_s <= 0:
+            self.err("deadline-invalid", name, "`deadline_s` must be a positive integer")
+        if on_deadline not in ("escalate", "stop") and not self._forward(name, on_deadline, finalizer=True):
+            self.err("deadline-target-not-forward", name,
+                     f"`on_deadline` is `escalate`, `stop` or a unit after {name!r}, not {on_deadline!r}")
+
+    def _person_gate(self, name: str, u: UnitSpec) -> None:
+        g = u.gate
+        if g.judge is not None or g.criteria:
+            self.err("person-unit-judge", name, f"a `{u.kind}` unit has no judge and no criteria: the person's "
+                                                "input, checked by rule, is the bar")
+        if g.approval or g.back_targets:
+            self.err("person-unit-gate", name, f"a `{u.kind}` unit takes no approval and no back target")
+
+    def _ask(self, name: str, u: UnitSpec) -> None:
+        from tempergraph.run import asking
+
+        a = u.ask
+        if a is None:
+            self.err("ask-invalid", name, "an ask unit needs questions or `questions_from`")
+            return
+        self._person_gate(name, u)
+        if bool(a.questions) == bool(a.questions_from):
+            self.err("ask-invalid", name, "an ask takes exactly one of `questions` and `questions_from`")
+        for problem in asking.question_problems(a.questions) if a.questions else ():
+            self.err("ask-question-invalid", name, problem)
+        if a.questions_from and a.questions_from not in self._keys_before(name):
+            self.err("ask-from-unknown", name, f"`questions_from` names {a.questions_from!r}, which no earlier "
+                                               "unit produces")
+        for key in a.context:
+            if key not in self._keys_before(name):
+                self.err("ask-context-unknown", name, f"context names {key!r}, which no earlier unit produces")
+        if a.check is not None:
+            self._callable(name, a.check, "check")
+        self._deadline(name, a.deadline_s, a.on_deadline)
+
+    def _wait(self, name: str, u: UnitSpec) -> None:
+        w = u.wait
+        if w is None:
+            self.err("wait-invalid", name, "a wait unit needs an event name and a check")
+            return
+        self._person_gate(name, u)
+        if not SLUG_RE.match(w.event.replace("_", "-")):
+            self.err("wait-invalid", name, f"event name {w.event!r} is not a slug")
+        self._callable(name, w.check, "check")
+        self._deadline(name, w.deadline_s, w.on_deadline)
+
+    def _keys_before(self, name: str) -> set[str]:
+        return self._earlier_keys(name)["any"]
+
+    def _fallback(self, name: str, u: UnitSpec) -> None:
+        g = u.gate
+        if (g.on_fail == "fallback" or g.on_budget_spent == "fallback") and not g.fallback:
+            self.err("fallback-missing", name, "`on_fail: fallback` or `on_budget_spent: fallback` needs `fallback`")
+        if g.fallback and not self._forward(name, g.fallback, finalizer=True):
+            self.err("fallback-not-forward", name, f"`fallback` names {g.fallback!r}, which is not a unit after "
+                                                   f"{name!r} or the finalizer")
+        if g.fallback and g.on_fail != "fallback" and g.on_budget_spent != "fallback":
+            self.warn("fallback-unused", name, "`fallback` is set but neither `on_fail` nor `on_budget_spent` "
+                                               "uses it")
+
     def _routing(self) -> None:
         if not self.spec.routing.description.strip():
             self.err("routing-description-missing", None, "routing metadata needs a one-line description")
@@ -174,6 +242,12 @@ class _Validator:
             self.err("timeout-invalid", name, "`check_timeout_s` must be a positive integer")
         if g.check is not None:
             self._callable(name, g.check, "check")
+        self._fallback(name, u)
+        if u.kind not in ("ask", "wait"):
+            for label, d in (("ask", u.ask), ("wait", u.wait)):
+                if d is not None:
+                    self.err("deadline-misplaced", name, f"`{label}` fields, deadlines included, go on a "
+                                                         f"`{label}` unit, not a `{u.kind}`")
         mechanical = [c for c in g.criteria if c.mechanical]
         if mechanical and g.check is None:
             self.err("mechanical-without-check", name, "a `mechanical` criterion needs a gate check")
@@ -184,6 +258,10 @@ class _Validator:
             self._map(name, u)
         elif u.kind == "script":
             self._script_unit(name, u)
+        elif u.kind == "ask":
+            self._ask(name, u)
+        elif u.kind == "wait":
+            self._wait(name, u)
         elif u.kind == "route":
             if u.route is None or not u.route_targets:
                 self.err("route-invalid", name, "a route unit needs a select function and targets")
@@ -719,6 +797,8 @@ def _produced(u: UnitSpec) -> set[str]:
             keys |= set(sc.produces)
     if u.script is not None:
         keys |= set(u.script.produces)
+    if u.kind == "ask":
+        keys.add("answers")  # ASK §2.1: the unit's one artifact
     return keys
 
 

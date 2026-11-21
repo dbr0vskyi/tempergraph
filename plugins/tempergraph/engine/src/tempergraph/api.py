@@ -15,6 +15,8 @@ from typing import Any
 
 from tempergraph import check_helpers as checks  # `tempergraph.api.checks` (SCF §2.4)
 from tempergraph.contracts import (
+    AskQuestion,
+    AskSpec,
     CallableRef,
     CheckFinding,
     CheckResult,
@@ -42,6 +44,7 @@ from tempergraph.contracts import (
     TextRef,
     UnitSpec,
     ValueKind,
+    WaitSpec,
     WorkflowSpec,
     WorktreeDecl,
 )
@@ -51,7 +54,7 @@ from tempergraph.run.finalize import FinalizerContext, FinalizerResult
 __all__ = [
     "CheckFinding", "CheckResult", "Criterion", "FinalizerContext", "FinalizerResult", "Gate", "Input", "Judge", "Param", "ResolveResult", "Route",
     "ComplexitySwitch", "Escalation", "Level", "Measure", "Risk", "When", "stock", "Rearm", "RouteView", "Routing", "Script", "SessionOptions", "Setting", "Step", "Switch", "Value", "Workflow",
-    "WorktreeDecl", "checks", "text", "Parallel", "Map", "Ask", "Wait", "Council", "Contest", "Subworkflow",
+    "WorktreeDecl", "checks", "text", "Parallel", "Question", "Map", "Ask", "Wait", "Council", "Contest", "Subworkflow",
 ]
 
 
@@ -294,9 +297,34 @@ def Map(*, items_from: tuple[str, str] | Sequence[str], step: UnitSpec, extract:
     return UnitSpec(kind="map", gate=step.gate, step=step.step, map=m)
 
 
-Parallel = _later("parallel")
-Ask = _later("ask")
-Wait = _later("wait")
+def Question(name: str, text: str, *, kind: str = "text", choices: Iterable[str] = (), required: bool = True,  # noqa: N802
+             default: Any = None) -> AskQuestion:
+    return AskQuestion(name=name, text=text, kind=kind, choices=tuple(choices), required=required,  # type: ignore[arg-type]
+                       default=default)
+
+
+def Ask(*, questions: Iterable[AskQuestion] = (), questions_from: str | None = None,  # noqa: N802
+        context: Iterable[str] = (), check: Callable[..., Any] | None = None, deadline_s: int | None = None,
+        on_deadline: str = "escalate", gate: GateSpec | None = None) -> UnitSpec:
+    """An ask unit: pauses for a person's typed answers and stores them as the `answers` artifact (ASK §2)."""
+    return UnitSpec(kind="ask", gate=gate or GateSpec(), ask=AskSpec(
+        questions=tuple(questions), questions_from=questions_from, context=tuple(context), check=_opt_ref(check),
+        deadline_s=deadline_s, on_deadline=on_deadline))
+
+
+def Wait(*, event: str, check: Callable[..., Any], deadline_s: int | None = None,  # noqa: N802
+         on_deadline: str = "escalate", gate: GateSpec | None = None) -> UnitSpec:
+    """An event wait: passes only on `event:<name>=<value>` that `check(value)` accepts (HUM-B4)."""
+    return UnitSpec(kind="wait", gate=gate or GateSpec(), wait=WaitSpec(
+        event=event, check=callable_ref(check), deadline_s=deadline_s, on_deadline=on_deadline))
+
+
+def Parallel(*, branches: Iterable[str], gate: GateSpec | None = None) -> UnitSpec:  # noqa: N802
+    """A parallel block's join: `branches` names two or more read-only units that run at once; the unit runs
+    nothing itself and passes when every branch has passed (CMP §2.2)."""
+    return UnitSpec(kind="parallel", gate=gate or GateSpec(), branches=tuple(branches))
+
+
 Council = _later("council")
 Contest = _later("contest")
 Subworkflow = _later("subworkflow")

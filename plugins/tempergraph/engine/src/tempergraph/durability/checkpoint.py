@@ -91,6 +91,7 @@ class Snapshot:
     next: tuple[str, ...] = ()
     interrupts: tuple[tuple[str, Any], ...] = ()  # (node, payload)
     values: dict[str, Any] = field(default_factory=dict)
+    interrupt_ids: dict[str, str] = field(default_factory=dict)  # interrupt id -> unit, for a resume by unit
 
 
 def snapshot(cw: CompiledWorkflow, thread_id: str) -> Snapshot:
@@ -101,7 +102,8 @@ def snapshot(cw: CompiledWorkflow, thread_id: str) -> Snapshot:
     if not st.values:
         return Snapshot(exists=False)
     ints = tuple((t.name, i.value) for t in st.tasks for i in t.interrupts)
-    return Snapshot(exists=True, next=tuple(st.next), interrupts=ints, values=dict(st.values))
+    ids = {str(getattr(i, "id", "")): t.name.rsplit(".", 1)[0] for t in st.tasks for i in t.interrupts}
+    return Snapshot(exists=True, next=tuple(st.next), interrupts=ints, values=dict(st.values), interrupt_ids=ids)
 
 
 def classify_snapshot(snap: Snapshot, lock_held: bool) -> ThreadState:

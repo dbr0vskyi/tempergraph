@@ -7,7 +7,7 @@ state write that routes the run. It never pauses; a pause is the human node's.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from tempergraph.contracts import Decision, RouteView, UnitSpec, Verdict, WorkflowSpec
@@ -201,6 +201,21 @@ def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: 
     out = {"kind": kind, "unit": unit, "item": item, "reason": reason, "artifacts": arts, "rubric": rubric,
            "blockers": blockers or [], "decisions": words, "workspace": ws.get("path"),
            "resume": resume_command(spec, task_id, words)}
+    if kind == "input":  # ASK §2.3: each question with its kind, choices, default and whether it is answered
+        qs = list(((state.get("attempts") or {}).get(unit) or {}).get("questions") or [])
+        out["questions"] = [{**q, "answered": False} for q in qs]
+        out["context"] = list(u.ask.context) if u.ask else []
+        out["decisions"] = ["answer:<name>=<value>", "proceed", "stop"]
+        out["resume"] = (f"tempergraph resume {spec.name} {task_id} --decision answer:<name>=<value> "
+                         "[--decision answer:...] [--decision proceed]")
+    elif kind == "event_wait" and u.wait is not None:
+        out["event"] = u.wait.event
+        out["decisions"] = [f"event:{u.wait.event}=<value>", "stop"]
+        out["resume"] = f"tempergraph resume {spec.name} {task_id} --decision event:{u.wait.event}=<value>"
+    dl = flow.deadline_of(spec, unit)
+    if dl is not None and kind in ("input", "event_wait"):  # FLX §2.3: overdue once this time has passed
+        out["deadline_at"] = (datetime.now(UTC) + timedelta(seconds=dl[0])).isoformat(timespec="seconds")
+        out["on_deadline"] = dl[1]
     if reason == "tool_access":  # each refused or missing name and what fixes it (RST §2.8)
         out["tool_access"] = list((((state.get("attempts") or {}).get(unit) or {}).get("tool_access")) or [])
     if kind == "approval" and u.extra.get("sign_off"):
@@ -249,16 +264,38 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
                                           "reason": f"re-armed from {r.from_arm} to {r.to} ({cause})", "from": unit,
                                           "entered_from": f"rearm:{unit}"}}})
 
+    def fallback(reason: str) -> dict[str, Any]:
+        """FLX §2.4: forward to the fallback target with the reason; the failed unit's artifacts are kept."""
+        node = flow.fallback_node(spec, unit)
+        assert node is not None and g.fallback is not None
+        why = "; ".join(b.get("problem", "") for b in judged.get("blockers") or [] if b.get("problem"))
+        w = _merge(route("FALLBACK", node, fallback=g.fallback, reason=reason),
+                   {"attempts": {unit: {"failed": True}},
+                    "run": {"degraded": {"unit": unit, "reason": reason, "to": g.fallback}}})
+        if g.fallback != flow.FINALIZER:
+            w["feedback"] = {g.fallback: {"text": f"`{unit}` did not pass ({reason})." + (f" {why}" if why else ""),
+                                          "as": "notes"}}
+        return w
+
     def spent(reason: str) -> dict[str, Any]:
         if reason == "retry_budget":
             w = rearm("budget_spent")
             if w is not None:
                 return w
+        if g.on_budget_spent == "fallback" and g.fallback:
+            return fallback(reason)
         if g.on_budget_spent == "stop":
             return _merge(route("STOP", s.stop[0]), {"run": {"stopped": {"reason": "budget", "unit": unit,
                                                                          "detail": reason}}})
         return to_human("budget", reason)
 
+    if u.kind == "ask":
+        if att.get("ask_fault"):  # ASK-B2: a list that cannot be used stops the unit before its pause
+            return _merge(route("STOP", s.stop[0]), {"run": {"stopped": {"reason": "ask", "unit": unit,
+                                                                         "detail": att.get("ask_fault")}}})
+        return to_human("input", "input")
+    if u.kind == "wait":
+        return to_human("event_wait", "event_wait")
     if att.get("map_fault"):  # the list could not be used: stop before any item (MAP §2.2 row 1, MAP-B5)
         return _merge(route("STOP", s.stop[0]), {"run": {"stopped": {"reason": "map", "unit": unit,
                                                                      "detail": att.get("map_fault")}}})
@@ -275,6 +312,11 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
     verdict = judged.get("verdict", str(Verdict.ESCALATE))
     if verdict == Verdict.RETRY and att.get("escalated"):  # LAD §2.4: a failed escalated attempt ends it
         return spent("escalation")
+    if verdict == Verdict.RETRY and g.on_fail == "fallback" and g.fallback:  # a hard failure, no retry
+        return fallback("failed")
+    if verdict == Verdict.RETRY and g.on_fail == "stop":
+        return _merge(route("STOP", s.stop[0]), {"run": {"stopped": {"reason": "failed", "unit": unit,
+                                                                     "detail": "on_fail: stop"}}})
     if verdict == Verdict.RETRY:
         if retries < g.retry_budget:
             counters["retries"] = retries + 1
@@ -345,8 +387,29 @@ def check_decision(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], d: D
     """HUM §4: refuse before anything is written."""
     g = spec.units[unit].gate
     path = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
-    if d.word in ("event", "answer"):
-        raise DecisionRefused(f"{d.word}: is only accepted at a wait or an ask")
+    u = spec.units[unit]
+    pause_kind = str(((state.get("pause") or {}).get(unit) or {}).get("kind") or "")
+    if d.word == "event":
+        if u.wait is None:
+            raise DecisionRefused("event: is only accepted at a wait")
+        if d.name != u.wait.event:
+            raise DecisionRefused(f"this wait takes event:{u.wait.event}=<value>, not {d.name!r}")
+        try:
+            ok = bool(u.wait.check.resolve()(d.value or ""))
+        except Exception as exc:  # noqa: BLE001 - a check that raises does not pass
+            raise DecisionRefused(f"the wait's check raised {type(exc).__name__}") from None
+        if not ok:
+            raise DecisionRefused(f"the wait's check does not accept {d.name}={d.value}")
+        return
+    if d.word == "answer":
+        raise DecisionRefused("answer: is only accepted at an ask")
+    if pause_kind == "event_wait" and d.word != "stop":  # HUM-B4: a wait is not passable by word
+        raise DecisionRefused(f"a wait passes only on event:{u.wait.event if u.wait else '<name>'}=<value>; "
+                              "`stop` ends the run")
+    if pause_kind == "input" and d.word not in ("proceed", "stop"):
+        raise DecisionRefused("an ask accepts answer:<name>=<value>, proceed and stop")
+    if pause_kind == "breakpoint" and d.word not in ("proceed", "stop"):
+        raise DecisionRefused("a breakpoint accepts proceed and stop")
     if d.word == "back" and d.unit not in g.back_targets:
         raise DecisionRefused(f"back:{d.unit} is not a back target of {unit}")
     if d.word == "rewind" and d.unit not in path:
@@ -418,8 +481,29 @@ def ruling_writes(state: Mapping[str, Any], payload: Mapping[str, Any], given_at
     return w
 
 
+def apply_deadline(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str) -> dict[str, Any]:
+    """FLX §2.3: what `resume --apply-deadline` does to an overdue wait or ask."""
+    dl = flow.deadline_of(spec, unit)
+    assert dl is not None
+    s = flow.successors(spec, unit)
+    how = dl[1]
+    if how == "stop":
+        return {"route": {unit: {"token": "STOP", "node": s.stop[0], "by": "deadline"}}, "pause": {unit: None},
+                "run": {"stopped": {"reason": "deadline", "unit": unit, "detail": "on_deadline: stop"}}}
+    if how == "escalate":  # the pause becomes an escalation a person answers with the usual decisions
+        payload = pause_payload(spec, unit, "escalation", "deadline", state, task_id)
+        return {"route": {unit: {"token": "ESCALATE", "node": s.escalate[0], "by": "deadline", "kind": "escalation"}},
+                "pause": {unit: payload}}
+    node = flow.deadline_node(spec, unit)
+    assert node is not None
+    return {"route": {unit: {"token": "DEADLINE", "node": node, "by": "deadline"}}, "pause": {unit: None},
+            "feedback": {how: {"text": f"`{unit}` got no answer before its deadline.", "as": "notes"}}}
+
+
 def apply_decision(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payload: Mapping[str, Any]
                    ) -> dict[str, Any]:
+    if payload.get("decision") == "deadline":
+        return apply_deadline(spec, unit, state, str((state.get("request") or {}).get("task_id") or ""))
     w = _apply(spec, unit, state, payload)
     d = Decision.parse(str(payload.get("decision", "")))
     rulings = ruling_writes(state, payload, decision_target(spec, unit, d))
@@ -451,7 +535,13 @@ def _apply(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payload: Map
         nxt_unit = nxt.rsplit(".", 1)[0] if nxt.endswith(".step") else None
         if one_time and nxt_unit:
             w["feedback"] = {nxt_unit: {"text": one_time, "as": "notes"}}
+        if payload.get("answers") is not None:  # ASK §2.1: the answers file is the unit's one artifact
+            w["artifacts"] = {unit: {"answers": str(payload.get("answers_path") or "")}}
+            w["values"] = {unit: {str(k): ", ".join(map(str, v)) if isinstance(v, list) else str(v)
+                                  for k, v in dict(payload["answers"]).items()}}
         return w
+    if d.word == "event":  # HUM-B4: the delivered value passed the wait's check before this node ran
+        return _merge(route("PROCEED", s.proceed[0]), {"values": {unit: {str(d.name): str(d.value or "")}}})
     if d.word == "retry":
         held = counters.get("ladder") or {}
         if payload.get("escalate") and held.get("offer"):  # the person took the offer: it spends a retry (E5)

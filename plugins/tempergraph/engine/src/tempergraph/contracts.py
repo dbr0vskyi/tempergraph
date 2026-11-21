@@ -330,10 +330,50 @@ class MapSpec:
     models: tuple[str, ...] = ()  # the aliases `item_model` may choose among
 
 
+AnswerKind = Literal["text", "choice", "choices", "number", "bool", "file", "url"]
+
+
+@dataclass(frozen=True, kw_only=True)
+class AskQuestion:
+    """ASK §2.1 `Question`: one typed question of an ask unit."""
+
+    name: str
+    text: str
+    kind: AnswerKind = "text"
+    choices: tuple[str, ...] = ()
+    required: bool = True
+    default: Any = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class AskSpec:
+    """ASK §2.1: declared questions, or a list artifact of them written by an earlier step."""
+
+    questions: tuple[AskQuestion, ...] = ()
+    questions_from: str | None = None  # the `from` field: an artifact key
+    context: tuple[str, ...] = ()
+    check: CallableRef | None = None  # pure: answers -> a list of problems, empty when they pass
+    deadline_s: int | None = None
+    on_deadline: str = "escalate"  # `escalate`, `stop` or a forward unit (FLX §2.3)
+
+
+@dataclass(frozen=True, kw_only=True)
+class WaitSpec:
+    """An event wait (CMP §2.2, HUM-B4): passes only on `event:<name>=<value>` the pure check accepts."""
+
+    event: str
+    check: CallableRef  # pure: the delivered value -> bool
+    deadline_s: int | None = None
+    on_deadline: str = "escalate"
+
+
 @dataclass(frozen=True, kw_only=True)
 class UnitSpec:
     kind: UnitKind
     gate: GateSpec
+    ask: AskSpec | None = None
+    wait: WaitSpec | None = None
+    branches: tuple[str, ...] = ()  # a parallel block's branch units; the unit itself is the join (CMP §2.2)
     step: StepSpec | None = None
     map: MapSpec | None = None
     script: ScriptSpec | None = None

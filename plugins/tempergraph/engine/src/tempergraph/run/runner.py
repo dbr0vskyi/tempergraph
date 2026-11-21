@@ -28,7 +28,7 @@ from tempergraph.durability import engine_file as enginefile
 from tempergraph.durability.checkpoint import classify_snapshot, open_saver, resume_input, snapshot
 from tempergraph.durability.control import StopWatcher, take_stop
 from tempergraph.durability.lock import LockHeld, RunLock, is_held
-from tempergraph.durability.status import classify
+from tempergraph.durability.status import breakpoint_at, classify
 from tempergraph.executors.launcher import StopRequest
 from tempergraph.executors.preflight import preflight
 from tempergraph.executors.registry import Registry
@@ -68,6 +68,7 @@ class RunOutcome:
     reason: str = ""
     message: str = ""
     payload: dict[str, Any] | None = None
+    degraded: bool = False  # a gate's fallback target was taken (FLX §2.4)
     thread_id: str = ""
     warnings: list[str] = field(default_factory=list)
     refusals: list[str] = field(default_factory=list)
@@ -101,6 +102,10 @@ class RunSettings:
     escalation_record: Callable[[str], bool] | None = None  # a seam for LAD §2.5's escalation record
     judge_state: Callable[[str], str] | None = None  # a seam for a gate's judge binding state (JCL §2.5)
     carry: bool = False  # `--carry`: carry this thread's state on its own branch (CAR §2)
+    answers: Mapping[str, Any] = field(default_factory=dict)  # `answer:<name>=<value>` and `--answers` (ASK §2.3)
+    apply_deadline: bool = False  # `resume --apply-deadline` (FLX §2.3)
+    pause_before: tuple[str, ...] = ()  # `--pause-before <unit>`: operator breakpoints of this segment (FLX §2.5)
+    unit: str | None = None  # `resume --unit`: which of several pending gates the decision answers (HUM-B3)
 
     def all_flags(self) -> dict[str, Any]:
         """The named run options are spellings of `--set` (CLI §2.1)."""
@@ -311,9 +316,10 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
            judges: Mapping[str, str], first_input: Any, settled: Settled, *,
            before: Callable[[Any], None] | None = None, executors: Mapping[str, str] | None = None,
            ruling_records: Sequence[Mapping[str, Any]] = (), rerun_of: Mapping[str, Any] | None = None,
-           workspace: Mapping[str, Any] | None = None) -> RunOutcome:
+           workspace: Mapping[str, Any] | None = None, skip_breakpoint: str | None = None) -> RunOutcome:
     """Run the graph from `first_input` while holding the lock, then turn the thread state into an exit."""
     tid = thread_id(spec.name, task_id)
+    stops = [flow.step_node(u) for u in settings.pause_before if u != skip_breakpoint]  # FLX §2.5
     cap = rst.capture(rst.load_files(root, settings.home or home_path()))  # operator config, per segment
     hub, missing = _observers(cap)
     log = RunLog(run_dir(root, spec.name, task_id) / "run.jsonl", observers=hub)
@@ -368,8 +374,8 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         with StopWatcher(root, spec.name, task_id, stop, poll_s=1.0) as watcher:
             box["w"] = watcher
             try:
-                cw.graph.invoke(first_input, cfg)
-                outcome = _settle(cw, cfg, spec, task_id, root)
+                cw.graph.invoke(first_input, cfg, **({"interrupt_before": stops} if stops else {}))
+                outcome = _settle(cw, cfg, spec, task_id, root, stops, log)
             except Drain as d:
                 code = ExitCode.BUDGET_OR_INFRA if d.reason == "cost_cap" else ExitCode.STOPPED
                 outcome = RunOutcome(exit_code=code, reason=d.reason, thread_id=tid,
@@ -383,12 +389,15 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
             log.write("outcome", **orec)  # OUT §2.5; a thread's latest `outcome` record is its record
         sup = supervision.build(root / "ledger.jsonl", log.path, tid, supervision.path_units(final))
         log.write("supervision", **sup)  # SUP §2.2, before run_exit
+        degraded = (final.get("run") or {}).get("degraded") or None  # FLX §2.4: a fallback was taken
+        deg = {"degraded": True, "degraded_unit": degraded.get("unit")} if degraded else {}
+        outcome.degraded = bool(degraded)
         log.write("run_exit", exit_code=int(outcome.exit_code), reason=outcome.reason, cost=cost.to_json(),
-                  cost_so_far=cost_so_far(cost.to_json()))
+                  cost_so_far=cost_so_far(cost.to_json()), **deg)
         try:
             write_json(exit_file(root, spec.name, task_id), {"schema_version": 1,
                                                               "exit_code": int(outcome.exit_code),
-                                                              "reason": outcome.reason})
+                                                              "reason": outcome.reason, **deg})
         except OSError as exc:  # OBS-B3: logging never changes the exit; one record of the failure is attempted
             log.write("engine_error", scope="exit_file", error=type(exc).__name__)
         ledger = Ledger(path=root / "ledger.jsonl")
@@ -396,7 +405,7 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                        "workflow_version": spec.version, **join_keys(root, settings),
                        "exit_code": int(outcome.exit_code), "reason": outcome.reason,
                        "cost": cost.to_json(), "origin": settings.origin, "stage": _stage(spec, settings)[0],
-                       "settings_digest": settled.resolved.digest,
+                       "settings_digest": settled.resolved.digest, **deg,
                        "overridden_keys": rst.overridden_keys(settled.resolved),
                        "grants": _grants_used(spec, registry, settled, final),
                        "supervision": sup, **({"outcome": orec} if orec is not None else {})})
@@ -485,10 +494,31 @@ def workspace_record(log: RunLog, ws: Mapping[str, Any]) -> None:
               path=ws.get("path"))
 
 
-def _settle(cw: Any, cfg: Mapping[str, Any], spec: WorkflowSpec, task_id: str, root: Path) -> RunOutcome:
+def breakpoint_file(root: Path, workflow: str, task_id: str) -> Path:
+    return run_dir(root, workflow, task_id) / "breakpoint.json"  # read by `durability.status.breakpoint_at`
+
+
+def _settle(cw: Any, cfg: Mapping[str, Any], spec: WorkflowSpec, task_id: str, root: Path,
+            stops: Sequence[str] = (), log: RunLog | None = None) -> RunOutcome:
     snap = snapshot(cw, cfg["configurable"]["thread_id"])
     state = classify_snapshot(snap, lock_held=False)
     tid = cfg["configurable"]["thread_id"]
+    at = next((n for n in snap.next if n in stops), None) if state is ThreadState.UNFINISHED else None
+    if at is not None:  # FLX §2.5: nothing of the unit ran; no session and no attempt record
+        unit = at.rsplit(".", 1)[0]
+        u = spec.units.get(unit)
+        prompt = u.step.prompt if u is not None and u.step is not None else None
+        words = ["proceed", "stop"]
+        payload = {"kind": "breakpoint", "unit": unit, "item": None, "reason": "breakpoint", "decisions": words,
+                   "prompt": str(getattr(prompt, "path", "") or "inline") if prompt is not None else None,
+                   "resume": gatemod.resume_command(spec, task_id, words)}
+        write_json(breakpoint_file(root, spec.name, task_id), {"schema_version": 1, **payload})
+        if log is not None:
+            log.write("pause", unit=unit, item=None, pause_kind="breakpoint", decisions=words,
+                      resume=payload["resume"], reason="breakpoint",
+                      cost_so_far=cost_so_far((snap.values.get("run") or {}).get("cost")))
+        return RunOutcome(exit_code=ExitCode.PAUSED, reason="breakpoint", payload=payload,
+                          message=f"{tid} is paused before {unit}")
     if state is ThreadState.PAUSED:
         payload = snap.interrupts[0][1] if snap.interrupts else None
         return RunOutcome(exit_code=ExitCode.PAUSED, reason=str((payload or {}).get("kind", "escalation")),
@@ -514,9 +544,24 @@ def start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: P
                       settings)
 
 
+def _bad_breakpoint(spec: WorkflowSpec, settings: RunSettings) -> RunOutcome | None:
+    """FLX §2.6: `--pause-before` naming a unit the workflow does not have is refused before spend."""
+    for name in settings.pause_before:
+        if name in spec.units or name == flow.OUTCOME_UNIT and spec.outcome is not None:
+            continue
+        if name.split(".", 1)[0] in spec.units:
+            return _refuse("not_in_release", f"--pause-before {name}: a breakpoint on one item of a map is not "
+                                             "built in this release; name the unit")
+        return _refuse("breakpoint_unknown", f"--pause-before {name}: the workflow has no such unit")
+    return None
+
+
 def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: Path, registry: Registry,
            settings: RunSettings) -> RunOutcome:
     tid = thread_id(spec.name, task_id)
+    bad = _bad_breakpoint(spec, settings)
+    if bad is not None:
+        return bad
     try:
         root = _root(target)
     except NotInRepository:
@@ -672,6 +717,9 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
     if action != "move":
         return _refuse("engine_pinned", str(detail) if action == "refuse" else
                        f"{tid} resumes on engine {detail}, not this one", tid=tid)
+    bad = _bad_breakpoint(spec, settings)
+    if bad is not None:
+        return bad
     state = classify(root, spec, task_id)
     if state in (ThreadState.NONE, ThreadState.RUNNING, ThreadState.FINISHED):
         hint = {"none": "no such thread", "running": "it is running",
@@ -761,19 +809,76 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
             gatemod.check_rulings(values, feedback if settings.ruling else None, settings.revoke_rulings)
         except gatemod.DecisionRefused as exc:
             return _refuse("ruling_refused", str(exc), tid=tid)
-        if state is ThreadState.PAUSED:
-            if d is None:
-                units = [n.rsplit(".", 1)[0] for n, _ in snap.interrupts]
-                return _refuse("decision_missing", f"{tid} is paused at {', '.join(units)}; pass --decision", tid=tid)
-            unit = snap.interrupts[0][0].rsplit(".", 1)[0]
-            try:
-                gatemod.check_decision(spec, unit, values, d, human_cap=human_cap)
-            except gatemod.DecisionRefused as exc:
-                return _refuse("decision_refused", str(exc), tid=tid)
-            first_input: Any = resume_input({"decision": str(d), **human_payload})
+        skip_bp: str | None = None
+        row_decision: str | None = None
+        if state is ThreadState.PAUSED and not snap.interrupts:  # an operator's breakpoint (FLX §2.5)
+            bp = breakpoint_at(root, spec.name, task_id) or {}
+            unit = str(bp.get("unit") or "")
+            if d is None or d.word not in ("proceed", "stop"):
+                return _refuse("decision_missing" if d is None else "decision_refused",
+                               f"{tid} is paused before {unit}; pass --decision proceed or stop", tid=tid)
+            touch = (unit, "breakpoint", "")
+            with contextlib.suppress(OSError):
+                breakpoint_file(root, spec.name, task_id).unlink()
+            if d.word == "stop":  # the segment ends; the thread stays unfinished and a resume continues it
+                intervention(root, spec, task_id, touch, d, feedback, settings, settled)
+                RunLog(run_dir(root, spec.name, task_id) / "run.jsonl").write(
+                    "human", unit=unit, decision="stop", caller=dict(settings.caller), feedback=False)
+                write_json(exit_file(root, spec.name, task_id), {"schema_version": 1,
+                                                                  "exit_code": int(ExitCode.STOPPED),
+                                                                  "reason": "person"})
+                return RunOutcome(exit_code=ExitCode.STOPPED, reason="person", thread_id=tid,
+                                  message=f"{tid} stopped before {unit}; resume continues it")
+            first_input, before, skip_bp = None, None, unit
+        elif state is ThreadState.PAUSED:
+            pending = {n.rsplit(".", 1)[0]: (p if isinstance(p, dict) else {}) for n, p in snap.interrupts}
+            if len(pending) > 1 and settings.unit not in pending:  # HUM-B3: each gate is answered by unit
+                lines = [f"{u}: tempergraph resume {spec.name} {task_id} --unit {u} --decision "
+                         f"<{'|'.join(p.get('decisions') or [])}>" for u, p in pending.items()]
+                return _refuse("unit_missing", f"{tid} has {len(pending)} pending gates; name one with --unit",
+                               lines, tid=tid)
+            if settings.unit is not None and settings.unit not in pending:
+                return _refuse("unit_unknown", f"{tid} is not paused at {settings.unit}", tid=tid)
+            unit = settings.unit or next(iter(pending))
+            pause = pending[unit]
+            kind = str(pause.get("kind") or "escalation")
+            touch = (unit, kind, str(pause.get("reason") or ""))
+            extra: dict[str, Any] = {}
+            if settings.apply_deadline:  # FLX §2.3
+                if d is not None or settings.answers:
+                    return _refuse("decision_refused", "--apply-deadline goes with no decision", tid=tid)
+                if settings.caller.get("kind") == "orchestrator":
+                    return _refuse("deadline_needs_person", "an orchestration supervisor never applies a deadline",
+                                   tid=tid)
+                due = str(pause.get("deadline_at") or "")
+                if not due or datetime.fromisoformat(due) > datetime.now(datetime.fromisoformat(due).tzinfo):
+                    return _refuse("deadline_not_passed", f"{tid} has no overdue pause at {unit}"
+                                   + (f"; its deadline is {due}" if due else ""), tid=tid)
+                row_decision = "deadline"
+                d = Decision(word="proceed")  # only for the intervention row's shape; the node applies the deadline
+                first_input = resume_input({"decision": "deadline", **human_payload})
+            elif kind == "input":
+                got = _answers_step(spec, task_id, root, unit, values, d, settings)
+                if isinstance(got, RunOutcome):
+                    if got.exit_code is ExitCode.PAUSED:  # accepted, still asking: the graph does not move
+                        intervention(root, spec, task_id, touch, Decision(word="answer", name="", value=""),
+                                     feedback, settings, settled)
+                    got.thread_id = tid
+                    return got
+                extra = got
+                d = d or Decision(word="proceed")
+            elif d is None:
+                return _refuse("decision_missing", f"{tid} is paused at {', '.join(pending)}; pass --decision",
+                               tid=tid)
+            if row_decision is None:
+                try:
+                    gatemod.check_decision(spec, unit, values, d, human_cap=human_cap)
+                except gatemod.DecisionRefused as exc:
+                    return _refuse("decision_refused", str(exc), tid=tid)
+                payload_in = {"decision": str(d), **human_payload, **extra}
+                first_input = resume_input(payload_in if len(pending) == 1 else
+                                           {i: payload_in for i, u in snap.interrupt_ids.items() if u == unit})
             before = None
-            pause = snap.interrupts[0][1] if isinstance(snap.interrupts[0][1], dict) else {}
-            touch = (unit, str(pause.get("kind") or "escalation"), str(pause.get("reason") or ""))
         elif state is ThreadState.UNFINISHED:
             if d is not None and d.word != "rewind":
                 return _refuse("decision_refused", "an unfinished thread accepts only `rewind:<unit>`", tid=tid)
@@ -824,7 +929,7 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
             ws_update = None
         prior = before
         if touch is not None and d is not None:
-            intervention(root, spec, task_id, touch, d, feedback, settings, settled)
+            intervention(root, spec, task_id, touch, d, feedback, settings, settled, decision=row_decision)
 
         def before_all(cw2: Any) -> None:
             cfg = cw2.config(tid)
@@ -835,7 +940,7 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                 prior(cw2)
 
         out = _drive(spec, task_id, root, registry, settings, rep.judges, first_input, settled, before=before_all,
-                     executors=rep.step_executors, workspace=ws_update, ruling_records=_ruling_records(spec, values, d, touch, settings,
+                     executors=rep.step_executors, workspace=ws_update, skip_breakpoint=skip_bp, ruling_records=_ruling_records(spec, values, d, touch, settings,
                                                                                   feedback, snap.next))
         if stale is not None:
             out.warnings.append("stale_stop_request_removed")
@@ -853,6 +958,12 @@ def touches(pause_kind: str, stop_reason: str, d: Decision) -> list[dict[str, st
     out: list[dict[str, str]] = []
     if pause_kind == "approval":
         out.append({"class": "designed", "action": "approve"})
+    elif pause_kind == "input" and d.word != "stop":
+        out.append({"class": "designed", "action": "answer"})
+    elif pause_kind == "event_wait" and d.word != "stop":
+        out.append({"class": "designed", "action": "event"})
+    elif pause_kind == "breakpoint" and d.word != "stop":
+        out.append({"class": "steer", "action": "breakpoint"})
     elif pause_kind in RESCUE_PAUSES or pause_kind == "stopped" and stop_reason in ("budget", "infra"):
         out.append({"class": "rescue", "action": "decide"})
     if d.word == "rewind":
@@ -864,8 +975,55 @@ def touches(pause_kind: str, stop_reason: str, d: Decision) -> list[dict[str, st
     return out
 
 
+def _answers_step(spec: WorkflowSpec, task_id: str, root: Path, unit: str, values: Mapping[str, Any],
+                  d: Decision | None, settings: RunSettings) -> dict[str, Any] | RunOutcome:
+    """ASK §2.3: validate and keep this resume's answers. Returns the human node's extra payload when the set
+    is complete and the check passes, else the outcome of this call: a refusal, or `still asking` (exit 3)."""
+    from tempergraph.run import asking
+
+    tid = thread_id(spec.name, task_id)
+    u = spec.units[unit]
+    assert u.ask is not None
+    if d is not None and d.word == "stop":
+        return {}
+    if d is not None and d.word != "proceed":
+        return _refuse("decision_refused", "an ask accepts answer:<name>=<value>, proceed and stop", tid=tid)
+    if d is None and not settings.answers:
+        return _refuse("decision_missing", f"{tid} is asking at {unit}; pass --decision answer:<name>=<value>",
+                       tid=tid)
+    qs = [asking.of_json(q) for q in ((values.get("attempts") or {}).get(unit) or {}).get("questions") or []]
+    ws = values.get("workspace") or {}
+    workdir = Path(str(ws.get("path"))) if ws.get("path") else root.parent
+    try:
+        new = asking.accept(qs, settings.answers, workdir)
+    except asking.AnswerRefused as exc:
+        return _refuse("answer_refused", str(exc), tid=tid)
+    path = asking.answers_path(run_dir(root, spec.name, task_id), unit)
+    merged = {**asking.load(path), **new}
+    if d is not None and asking.unanswered(qs, merged, defaults=True):  # `proceed` needs the set complete
+        return _refuse("answers_missing", f"{unit} still needs "
+                       f"{', '.join(asking.unanswered(qs, merged, defaults=True))}", tid=tid)
+    log = RunLog(run_dir(root, spec.name, task_id) / "run.jsonl")
+    missing = asking.unanswered(qs, merged, defaults=False) if d is None else []
+    final = asking.complete(qs, merged)
+    problems = [] if missing else asking.check_problems(u.ask, final)
+    log.write("answers", unit=unit, answered=sorted(new), missing=missing, check_passed=not problems and not missing,
+              caller=dict(settings.caller))
+    if missing or problems:
+        asking.store(path, unit, merged, done=False)
+        payload = {"kind": "input", "unit": unit, "questions": asking.shown(qs, merged), "missing": missing,
+                   "check_problems": problems,
+                   "resume": f"tempergraph resume {spec.name} {task_id} --decision answer:<name>=<value>"}
+        why = f"still needs {', '.join(missing)}" if missing else f"the answers check: {'; '.join(problems)}"
+        return RunOutcome(exit_code=ExitCode.PAUSED, reason="input", payload=payload,
+                          message=f"{tid}: answers kept; {unit} {why}")
+    asking.store(path, unit, final, done=True)
+    return {"answers": final, "answers_path": str(path)}
+
+
 def intervention(root: Path, spec: WorkflowSpec, task_id: str, touch: tuple[str, str, str], d: Decision,
-                 feedback: str | None, settings: RunSettings, settled: Settled | None = None) -> dict[str, Any]:
+                 feedback: str | None, settings: RunSettings, settled: Settled | None = None, *,
+                 decision: str | None = None) -> dict[str, Any]:
     """HUM-B6: one metadata-only ledger row per accepted resume, appended before the graph runs."""
     unit, kind, reason = touch
     pause = last_record(run_dir(root, spec.name, task_id) / "run.jsonl", "pause", unit=unit)
@@ -878,8 +1036,9 @@ def intervention(root: Path, spec: WorkflowSpec, task_id: str, touch: tuple[str,
     row = {"kind": "intervention", "id": uuid.uuid4().hex, "thread_id": thread_id(spec.name, task_id),
            "workflow": spec.name, "workflow_version": spec.version, **join_keys(root, settings), "unit": unit, "caller": dict(settings.caller),
            "touches": [{"class": "engine", "action": "reopen"}] if engine
+           else [{"class": "designed", "action": "deadline"}] if decision == "deadline"
            else touches(kind, reason if kind == "stopped" else "", d), "pause_kind": kind,
-           "decision": d.word + (f":{d.unit}" if d.unit else ""), "wait_s": wait_s, "feedback": bool(feedback) and not settings.ruling,
+           "decision": decision or d.word + (f":{d.unit}" if d.unit else ""), "wait_s": wait_s, "feedback": bool(feedback) and not settings.ruling,
            "ruling": settings.ruling, "settings_changed": list(settled.changed) if settled else [],
            "grants": [{k: v for k, v in g.items() if k != "key"} for g in (settled.grant_changes() if settled else [])],
            "cause": "auto_reopen" if engine else reason or kind}
