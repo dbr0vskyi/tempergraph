@@ -87,7 +87,7 @@ def to_mermaid(model: dict[str, Any]) -> str:
     for a, b, token, n in ov.get("edges") or []:
         dst_unit = "fin" if b == flow.FINALIZER.split(".")[0] else b
         taken[(a, dst_unit, token)] = taken.get((a, dst_unit, token), 0) + n
-    forks = {a: [] for a, _, t in model["edges"] if t == "fork"}
+    forks: dict[str, list[str]] = {a: [] for a, _, t in model["edges"] if t == "fork"}
     for a, b, token in model["edges"]:
         if token == "fork":
             forks[a].append(b.split(".")[0])

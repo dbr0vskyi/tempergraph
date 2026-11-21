@@ -557,7 +557,7 @@ def upgrade(path: Path, caps: Mapping[str, Capabilities], *, no_assist: bool = F
                 i.action = "manual"
         if assist is None and not no_assist:
             rep.warnings.append("no assist step is available; the assisted and owner items stay for a person")
-    elif todo:  # phase 5
+    elif todo and assist is not None:  # phase 5
         got = dict(assist(Assist(upgrade_id=place.upgrade_id, record=place.record, worktree=place.worktree, package=pkg,
                                  items=todo, cap_usd=cap_usd, entries=by_id, base=base,
                                  executor=executor or (src.spec.upgrade or {}).get("executor"),

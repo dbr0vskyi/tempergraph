@@ -209,11 +209,12 @@ def drain(home: Path | None = None) -> list[dict[str, Any]]:
 
 def fixture(event: str) -> dict[str, Any]:
     """The fixture facts `hooks test` runs a hook against: the shape of a real file, with made-up ids."""
-    rec = {"seq": 1, "ts": now_iso(), "segment": 0, "unit": "example", "item": None, "attempt": 1}
-    rec.update({"gate_verdict": {"token": "PROCEED", "verdict": "PASS", "route_target": "next.step"},
+    rec: dict[str, Any] = {"seq": 1, "ts": now_iso(), "segment": 0, "unit": "example", "item": None, "attempt": 1}
+    extra: dict[str, dict[str, Any]] = {"gate_verdict": {"token": "PROCEED", "verdict": "PASS", "route_target": "next.step"},
                 "paused": {"pause_kind": "approval"}, "finished": {"exit_code": 0, "reason": "finished"},
                 "failed": {"exit_code": 1, "reason": "failed"}, "stop_requested": {"mode": "graceful"},
-                "resumed": {"segment": 1}}.get(event, {}))
+                "resumed": {"segment": 1}}
+    rec.update(extra.get(event, {}))
     return facts(event, "example", "hook-test", rec)
 
 

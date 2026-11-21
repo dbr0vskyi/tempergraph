@@ -175,7 +175,7 @@ def step_binding(spec: WorkflowSpec, unit: str) -> str:
     st = spec.units[unit].step
     assert st is not None
     try:
-        prompt = load_text(spec, st.prompt)  # type: ignore[arg-type]
+        prompt = load_text(spec, st.prompt)
     except TextUnreadable:
         prompt = ""
     opts = st.session_options

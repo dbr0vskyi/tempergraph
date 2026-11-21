@@ -302,7 +302,7 @@ def rename_template_key(root: Path, *, old: str, new: str) -> Result:
     mods = _modules(root)
     for m in mods:
         for node in _strings(m):
-            if pat.search(node.value):
+            if isinstance(node.value, str) and pat.search(node.value):
                 start, end = m.span(node)
                 m.replace(start, end, pat.sub("{" + new, m.src[start:end].decode("utf-8")))
     return _finish(root, mods, res)

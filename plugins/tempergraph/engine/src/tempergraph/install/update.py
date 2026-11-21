@@ -71,7 +71,8 @@ def find_source() -> Path | None:
 def index_roots(home: Path) -> list[Path]:
     """The state roots of the machine index (CST §2.1) that still exist."""
     doc = _read(home / "index.json")
-    roots = doc.get("roots") if isinstance(doc.get("roots"), list) else []
+    got = doc.get("roots")
+    roots = got if isinstance(got, list) else []
     return [Path(str(r.get("path"))) for r in roots if isinstance(r, dict) and Path(str(r.get("path"))).is_dir()]
 
 
@@ -245,7 +246,7 @@ def kept_engines(home: Path, roots: Sequence[Path]) -> dict[str, str]:
 def prune(home: Path, *, dry_run: bool = False) -> list[dict[str, Any]]:
     eng = envmod.engines_dir(home)
     kept = kept_engines(home, index_roots(home))
-    lines = []
+    lines: list[dict[str, Any]] = []
     for env in sorted(p for p in eng.iterdir() if p.is_dir()) if eng.is_dir() else []:
         why = kept.get(env.name)
         if why:

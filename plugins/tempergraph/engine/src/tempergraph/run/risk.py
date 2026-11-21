@@ -98,7 +98,8 @@ def top_rank(j: JudgeSpec | None) -> int:
     if j is None:
         return -1
     aliases = models(j.risk, j.model) if j.risk is not None else [j.model]
-    return max((rank(a) if rank(a) is not None else -1) for a in aliases)  # type: ignore[type-var]
+    ranks = [rank(a) for a in aliases]
+    return max(-1 if r is None else r for r in ranks)
 
 
 def problems(risk: RiskSpec, base_model: str | None, base_effort: str | None) -> list[str]:
@@ -125,7 +126,7 @@ def problems(risk: RiskSpec, base_model: str | None, base_effort: str | None) ->
             if a is None or b is None or b < a:
                 out.append(f"level {lv.name!r} must be at a tier at or above {ms[i - 1]!r} "
                            "(tier aliases `small`, `medium`, `large`)")
-        lower = es[i] is not None and es[i - 1] is not None and EFFORTS.index(es[i]) < EFFORTS.index(es[i - 1])  # type: ignore[arg-type]
+        lower = es[i] is not None and es[i - 1] is not None and EFFORTS.index(es[i]) < EFFORTS.index(es[i - 1])
         if lower:
             out.append(f"level {lv.name!r} lowers the effort of the level before it")
         elif ms[i] == ms[i - 1] and es[i] == es[i - 1]:

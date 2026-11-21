@@ -273,7 +273,8 @@ class EngineNodes:
             if chosen not in u.map.models:  # MAP §4: the attempt fails before launch
                 self.ctx.log.write("engine_error", unit=unit, item=iid, error="item_model",
                                    detail=f"{chosen!r} is not one of {list(u.map.models)}")
-                record = {"attempt": attempt, "visit": visit, "item": iid, "ok": False, "text": "", "issues": [],
+                record: dict[str, Any] = {
+                    "attempt": attempt, "visit": visit, "item": iid, "ok": False, "text": "", "issues": [],
                           "tools": [], "session_id": None, "error_kind": "item_model", "infra_spent": False,
                           "check": None, "escalate": "workflow_fault", "timed_out": False}
                 return {"attempts": {unit: record}, "maps": maps}

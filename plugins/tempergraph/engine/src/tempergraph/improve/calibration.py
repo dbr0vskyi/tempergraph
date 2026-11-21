@@ -113,7 +113,7 @@ def gate_spec(spec: WorkflowSpec, gate: str, level: str | None = None
     step = u.step
     g = u.gate
     if level is not None:
-        g = dataclasses.replace(g, judge=_level_judge(spec, gate, g.judge, level))
+        g = dataclasses.replace(g, judge=_level_judge(spec, gate, u.gate.judge, level))
     return g, step, (step.executor if step and step.executor else spec.default_executor)
 
 
@@ -843,7 +843,8 @@ def state(spec: WorkflowSpec, gate: str, *, observed: Mapping[str, Any] | None =
     if root is None:
         return st
     us, st.skipped = usable(spec, gate)
-    base = (levels(spec, gate) or [None])[0]  # a score belongs to one level's binding (JRK §2.3)
+    known = levels(spec, gate)
+    base = known[0] if known else None  # a score belongs to one level's binding (JRK §2.3)
     complete = [s for s in scores(root, gate) if not s.get("partial")  # a partial record is never a state (JCL §4)
                 and (s.get("level") if s.get("level") != base else None) == level]
     if not complete:

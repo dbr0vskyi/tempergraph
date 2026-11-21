@@ -518,7 +518,7 @@ def _settle(cw: Any, cfg: Mapping[str, Any], spec: WorkflowSpec, task_id: str, r
         u = spec.units.get(unit)
         prompt = u.step.prompt if u is not None and u.step is not None else None
         words = ["proceed", "stop"]
-        payload = {"kind": "breakpoint", "unit": unit, "item": None, "reason": "breakpoint", "decisions": words,
+        payload: Any = {"kind": "breakpoint", "unit": unit, "item": None, "reason": "breakpoint", "decisions": words,
                    "prompt": str(getattr(prompt, "path", "") or "inline") if prompt is not None else None,
                    "resume": gatemod.resume_command(spec, task_id, words)}
         write_json(breakpoint_file(root, spec.name, task_id), {"schema_version": 1, **payload})
@@ -868,16 +868,17 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                                   message=f"{tid} stopped before {unit}; resume continues it")
             first_input, before, skip_bp = None, None, unit
         elif state is ThreadState.PAUSED:
-            pending = {n.rsplit(".", 1)[0]: (p if isinstance(p, dict) else {}) for n, p in snap.interrupts}
-            if len(pending) > 1 and settings.unit not in pending:  # HUM-B3: each gate is answered by unit
+            gates: dict[str, dict[str, Any]] = {n.rsplit(".", 1)[0]: (p if isinstance(p, dict) else {})
+                                                for n, p in snap.interrupts}
+            if len(gates) > 1 and settings.unit not in gates:  # HUM-B3: each gate is answered by unit
                 lines = [f"{u}: tempergraph resume {spec.name} {task_id} --unit {u} --decision "
-                         f"<{'|'.join(p.get('decisions') or [])}>" for u, p in pending.items()]
-                return _refuse("unit_missing", f"{tid} has {len(pending)} pending gates; name one with --unit",
+                         f"<{'|'.join(p.get('decisions') or [])}>" for u, p in gates.items()]
+                return _refuse("unit_missing", f"{tid} has {len(gates)} pending gates; name one with --unit",
                                lines, tid=tid)
-            if settings.unit is not None and settings.unit not in pending:
+            if settings.unit is not None and settings.unit not in gates:
                 return _refuse("unit_unknown", f"{tid} is not paused at {settings.unit}", tid=tid)
-            unit = settings.unit or next(iter(pending))
-            pause = pending[unit]
+            unit = settings.unit or next(iter(gates))
+            pause = gates[unit]
             kind = str(pause.get("kind") or "escalation")
             touch = (unit, kind, str(pause.get("reason") or ""))
             extra: dict[str, Any] = {}
@@ -905,7 +906,7 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                 extra = got
                 d = d or Decision(word="proceed")
             elif d is None:
-                return _refuse("decision_missing", f"{tid} is paused at {', '.join(pending)}; pass --decision",
+                return _refuse("decision_missing", f"{tid} is paused at {', '.join(gates)}; pass --decision",
                                tid=tid)
             if row_decision is None:
                 try:
@@ -913,7 +914,7 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                 except gatemod.DecisionRefused as exc:
                     return _refuse("decision_refused", str(exc), tid=tid)
                 payload_in = {"decision": str(d), **human_payload, **extra}
-                if len(pending) == 1:
+                if len(gates) == 1:
                     first_input = resume_input(payload_in)
                 else:
                     def first_input(cw2: Any, payload_in: dict[str, Any] = payload_in, unit: str = unit) -> Any:
@@ -930,8 +931,8 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                 before = _human_update(spec, unit, values, d, human_payload)
                 touch = (unit, "unfinished", "rewind")
             elif feedback or settings.revoke_rulings:  # RRN-B4: the pending unit's next attempt and its judge
-                pending = next((n.rsplit(".", 1)[0] for n in snap.next if n.endswith(".step")), _last_unit(values))
-                before = _pending_update(spec, pending, values, human_payload)
+                waiting = next((n.rsplit(".", 1)[0] for n in snap.next if n.endswith(".step")), _last_unit(values))
+                before = _pending_update(spec, waiting, values, human_payload)
         else:  # stopped
             if d is None or d.word not in ("retry", "back", "rewind"):
                 return _refuse("decision_refused", "a stopped thread re-opens with retry, back:<unit> or rewind:<unit>",

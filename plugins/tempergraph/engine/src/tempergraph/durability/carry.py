@@ -454,7 +454,7 @@ def pull(root: Path, repo: Path, workflow: str, task_id: str, *, remote: str | N
     lease = manifest.get("lease")
     takeover = _held_by_other(lease, machine)
     if takeover and not force:
-        raise CarryRefused("carry_leased", _lease_text(lease) + "; pass --force to take it")
+        raise CarryRefused("carry_leased", _lease_text(lease or {}) + "; pass --force to take it")
     with tempfile.TemporaryDirectory(prefix="tg-carry-") as tmp:
         files = _read_tree(repo, tip, Path(tmp))
         checks(repo, remote, manifest, files, current_version=current_version, force=force)
@@ -489,7 +489,7 @@ def pull(root: Path, repo: Path, workflow: str, task_id: str, *, remote: str | N
             "kind": "intervention", "thread_id": tid, "workflow": workflow, "unit": None,
             "caller": dict(caller or {}), "touches": [{"class": "steer", "action": "carry_takeover"}],
             "pause_kind": "carry", "decision": "carry_pull:force", "cause": "carry_takeover",
-            "taken_from": {"machine": lease.get("machine"), "since": lease.get("since")}})
+            "taken_from": {"machine": (lease or {}).get("machine"), "since": (lease or {}).get("since")}})
     return {"branch": branch, "remote": remote, "seq": manifest.get("seq"), "imported": len(files),
             "takeover": bool(takeover), "backup": backup, "work_branch": br, "workspace": ws.get("mode"),
             **({"note": f"check out {br} before resuming: the run works in your checkout"}
