@@ -86,6 +86,8 @@ In the reference a step's upstream claim ("the plan conflicts with the tooling")
 
 So trips back driven by the judge work as in the reference; trips back driven by a step's own claim cost one pause, where the person picks `back`. That is safe and usable for a first version, but it is a difference from the reference and from what [HUM §2.1](../specs/07-gate-and-human.spec.md) implies ("an upstream claim the judge could not confirm" escalates). It should be either built or recorded as release 1 behaviour in the spec. This is a small engine item, not a blocker.
 
+**Since fixed (2026-11-21, on the owner's ruling to reduce pauses):** a claim is now judged on its own against one criterion; confirmed goes back, refuted retries the step, undecided asks a person ([JDG-B9](../specs/05-judge-and-verdict.spec.md)).
+
 ### F5 The outcome gate adds a grader the reference does not have `confirmed`
 
 

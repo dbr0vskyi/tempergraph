@@ -7,6 +7,7 @@ the human node's interrupt is the compiler's. Budgets follow BUD §2.2: the caus
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import hashlib
 import time
 from collections.abc import Callable, Mapping
@@ -41,9 +42,11 @@ from tempergraph.run.check_worker import run_in_worker
 from tempergraph.run.commands import ResolvedCommand, run_command
 from tempergraph.run.guard import guard, view_set
 from tempergraph.run.judging import (
+    CLAIM_CRITERION_ID,
     JudgeInputs,
     Unparsed,
     brief_digest,
+    claim_criterion,
     criteria_digest,
     derive,
     parse_judgement,
@@ -418,6 +421,9 @@ class EngineNodes:
         u = spec.units[unit]
         g = u.gate
         att = dict((state.get("attempts") or {}).get(unit) or {})
+        if (att.get("escalate") == "upstream" and att.get("upstream") and att.get("ok") and g.judge is not None
+                and not att.get("infra_spent")):
+            return self._judge_claim(unit, state, att)
         if att.get("infra_spent") or att.get("escalate"):
             return {"judgements": {unit: {"verdict": str(Verdict.ESCALATE), "reason": att.get("escalate") or "infra",
                                           "confidence": 1.0, "confidence_source": "engine_placeholder"}}}
@@ -454,6 +460,27 @@ class EngineNodes:
         return {**write, "run": {"cost": write["judgements"][unit].pop("_cost")}} if "_cost" in write["judgements"][
             unit] else write
 
+    def _judge_claim(self, unit: str, state: RunState, att: dict[str, Any]) -> dict[str, Any]:
+        """A step's upstream claim is judged on its own against one criterion: confirmed goes BACK, refuted
+        retries, undecided asks a person (BUD §2.1, HUM §2.1). No check runs: the step produced nothing to check."""
+        target, defect = (str(x) for x in att["upstream"])
+        j = self._judge_session(unit, state, att, None, self._workdir(state), claim=(target, defect))
+        cost = j.pop("_cost", None)
+        verdict = j.get("verdict")
+        if j.get("infra_spent"):
+            att["infra_spent"], att["infra_cause"] = True, "judge_infra"
+        elif verdict == str(Verdict.PROCEED):  # the one criterion is MET: the defect is there
+            j.update(verdict=str(Verdict.BACK), back_to=target, reason="upstream_confirmed",
+                     blockers=[{"criterion": CLAIM_CRITERION_ID, "problem": defect}])
+            att["escalate"] = None
+        elif verdict == str(Verdict.RETRY):
+            j.update(reason="upstream_refuted")
+            att["escalate"] = None
+        else:
+            j.update(verdict=str(Verdict.ESCALATE), reason="upstream")
+        write: dict[str, Any] = {"attempts": {unit: att}, "judgements": {unit: j}}
+        return {**write, "run": {"cost": cost}} if cost is not None else write
+
     def _check(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], workdir: Path
                ) -> tuple[CheckResult, list[str]]:
         u = self.ctx.spec.units[unit]
@@ -482,14 +509,16 @@ class EngineNodes:
         return {**self.ctx.settings, "deliverables": [dict(d) for d in o.deliverables],
                 "outcome_check": o.check.ref if o.check else None}
 
-    def _judge_session(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], cres: CheckResult,
-                       workdir: Path) -> dict[str, Any]:
+    def _judge_session(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], cres: CheckResult | None,
+                       workdir: Path, claim: tuple[str, str] | None = None) -> dict[str, Any]:
         spec = self.ctx.spec
         u = spec.units[unit]
         g = u.gate
         st = u.step
         assert g.judge is not None and st is not None
         j = g.judge
+        if claim:  # one engine criterion replaces the gate's own; the subject is the claimed unit's output
+            g = dataclasses.replace(g, criteria=(claim_criterion(*claim),))
         step_ex = st.executor or spec.default_executor
         judge_name = self.ctx.judges.get(unit) or self.ctx.registry.judge_executor(step_ex, j.executor,
                                                                                   self.ctx.judge_override)
@@ -504,8 +533,9 @@ class EngineNodes:
             from tempergraph.contracts import TextRef
 
             stance, brief = split_judge_file(load_text(spec, TextRef(path=j.file)))
-        arts = (state.get("artifacts") or {}).get(unit) or {}
-        vals = (state.get("values") or {}).get(unit) or {}
+        subject_unit = claim[0] if claim else unit
+        arts = (state.get("artifacts") or {}).get(subject_unit) or {}
+        vals = (state.get("values") or {}).get(subject_unit) or {}
         refs: dict[str, str] = {}
         for ref in j.references:
             for chan in ("artifacts", "values"):
@@ -565,14 +595,14 @@ class EngineNodes:
                 tu = spec.units[target]
                 for k in (tu.step.produces if tu.step else {}):
                     back_units[k] = target
-        outcome = derive(judgement, g, cres, back_units)
+        outcome = derive(judgement, g, cres, {} if claim else back_units)
         if judgement is None and gr.status == "discarded":
             outcome.reason = f"guard:{gr.reason}"
         self.ctx.log.write("judgement", unit=unit, statuses=outcome.statuses, blockers=[
             b["criterion"] for b in outcome.blockers], confidence=outcome.confidence,
             confidence_source=outcome.confidence_source, gap=outcome.gap, guard=gr.status, views=list(views.tools),
             judge_executor=judge_name, brief_digest=brief_digest(stance, brief),
-            criteria_digest=criteria_digest(g.criteria))
+            criteria_digest=criteria_digest(g.criteria), **({"claim": claim[0]} if claim else {}))
         self._keep_evidence(unit, att, outcome.blockers)
         out.update(outcome.to_json())
         out["guard"] = gr.status
