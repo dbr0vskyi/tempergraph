@@ -118,9 +118,34 @@ def human_targets(spec: WorkflowSpec, unit: str) -> list[str]:
     return list(dict.fromkeys(s.proceed + s.retry + s.back + s.rewind + s.stop))
 
 
+def rearm_targets(spec: WorkflowSpec, unit: str) -> list[str]:
+    """Entry nodes a re-arm can send `unit`'s gate to: the entry of arm `to` of every entry listing it (SWM §2.4)."""
+    out: list[str] = []
+    for u in spec.units.values():
+        sw = u.switch
+        for r in (sw.rearm if sw is not None else ()):
+            entry = sw.arms.get(r.to) if sw is not None else None
+            if unit in r.units and entry and entry != FINALIZER and entry in spec.units:
+                out.append(step_node(entry))
+    return list(dict.fromkeys(out))
+
+
+def arm_units(spec: WorkflowSpec, entry: str) -> set[str]:
+    """Units a pass can reach from an arm's entry, the entry included."""
+    seen: set[str] = set()
+    todo = [entry]
+    while todo:
+        u = todo.pop()
+        if u in seen or u == FINALIZER or u not in spec.units:
+            continue
+        seen.add(u)
+        todo.extend(proceed_targets(spec, u))
+    return seen
+
+
 def gate_targets(spec: WorkflowSpec, unit: str) -> list[str]:
     s = successors(spec, unit)
-    return list(dict.fromkeys(s.proceed + s.retry + s.back + s.escalate + s.stop))
+    return list(dict.fromkeys(s.proceed + s.retry + s.back + s.escalate + s.stop + rearm_targets(spec, unit)))
 
 
 def reachable_units(spec: WorkflowSpec) -> set[str]:

@@ -56,17 +56,7 @@ def pick(spec: WorkflowSpec, unit: str, state: Mapping[str, Any]) -> dict[str, A
     u = spec.units[unit]
     view = route_view(unit, state)
     if u.switch is not None:
-        sw = u.switch
-        prior = ((state.get("route") or {}).get(unit) or {}).get("pick")
-        if prior and (sw.sticky == "run" or prior.get("visit") == view.visit):
-            return dict(prior)
-        try:
-            arm, by = str(sw.predicate.resolve()(view)), "predicate"
-        except Exception:  # noqa: BLE001 - a predicate fault takes the default arm
-            arm, by = "", "default"
-        if arm not in sw.arms:
-            arm, by = sw.default, "default"
-        return {"arm": arm, "target": flow.through_outcome(spec, sw.arms[arm]), "chosen_by": by, "visit": view.visit}
+        return _switch_pick(spec, unit, state, view)
     if u.route is None:
         return None
     try:
@@ -76,6 +66,96 @@ def pick(spec: WorkflowSpec, unit: str, state: Mapping[str, Any]) -> dict[str, A
     if not isinstance(got, str) or got not in u.route_targets:
         raise RouteFault(f"route {u.route.ref} returned {got!r}, not one of {list(u.route_targets)}")
     return {"arm": got, "target": flow.through_outcome(spec, got), "chosen_by": "predicate", "visit": view.visit}
+
+
+SIGNALS_MAX, SIGNAL_CHARS = 10, 60
+
+
+def _signals(raw: Any) -> tuple[dict[str, Any], int]:
+    """SWM §2.1: at most 10 names to numbers or strings of at most 60 characters; the rest is clipped and counted."""
+    if not isinstance(raw, Mapping):
+        return {}, 0
+    out: dict[str, Any] = {}
+    clipped = 0
+    for k, v in raw.items():
+        if len(out) >= SIGNALS_MAX:
+            clipped += 1
+            continue
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            v = str(v)
+            if len(v) > SIGNAL_CHARS:
+                v, clipped = v[:SIGNAL_CHARS], clipped + 1
+        out[str(k)[:SIGNAL_CHARS]] = v
+    return out, clipped
+
+
+def _switch_pick(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], view: RouteView) -> dict[str, Any]:
+    """A switch's pick with what the predicate would choose (SWM §2.2). The operator's arm wins in either mode
+    (CMP-B7); shadow mode and any predicate fault take the default; a re-armed pick is never made again."""
+    u = spec.units[unit]
+    sw = u.switch
+    assert sw is not None
+    prior = ((state.get("route") or {}).get(unit) or {}).get("pick")
+    if prior and (prior.get("chosen_by") == "rearm" or sw.sticky == "run" or prior.get("visit") == view.visit):
+        return dict(prior)
+    would: str | None = None
+    fault: str | None = None
+    signals: dict[str, Any] = {}
+    clipped = 0
+    try:
+        got = sw.predicate.resolve()(view)
+        if isinstance(got, tuple) and len(got) == 2:
+            got, raw = got
+            signals, clipped = _signals(raw)
+        would = str(got) if str(got) in sw.arms else None
+        if would is None:
+            fault = "unknown_arm"
+    except Exception as exc:  # noqa: BLE001 - a predicate fault takes the default arm
+        fault = type(exc).__name__
+    shadow = sw.mode == "shadow"
+    operator = u.extra.get("arm")
+    if operator in sw.arms:
+        arm, by = str(operator), "operator"
+    elif shadow or would is None:
+        arm, by = sw.default, "default"
+    else:
+        arm, by = would, "predicate"
+    p: dict[str, Any] = {"arm": arm, "target": flow.through_outcome(spec, sw.arms[arm]), "chosen_by": by,
+                         "visit": view.visit, "shadow": shadow, "would_choose": would}
+    if signals:
+        p["signals"] = signals
+    if clipped:
+        p["signals_clipped"] = clipped
+    if fault:
+        p["fault"] = fault
+    return p
+
+
+def arm_overrides(spec: WorkflowSpec, unit: str, state: Mapping[str, Any]) -> tuple[dict[str, Any], str]:
+    """SWM §2.3: the override values of the arm in force that names `unit`, and their layer `arm:<switch>.<arm>`."""
+    for name, other in spec.units.items():
+        sw = other.switch
+        if sw is None or not sw.arm_overrides:
+            continue
+        p = ((state.get("route") or {}).get(name) or {}).get("pick") or {}
+        values = (sw.arm_overrides.get(str(p.get("arm"))) or {}).get(unit)
+        if values:
+            return dict(values), f"arm:{name}.{p.get('arm')}"
+    return {}, ""
+
+
+def _rearm(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], cause: str) -> tuple[str, Any] | None:
+    """The switch and re-arm entry that apply to `unit` ending on `cause`, once per switch and run (SWM §2.4)."""
+    for name, other in spec.units.items():
+        sw = other.switch
+        stored = (state.get("route") or {}).get(name) or {}
+        p = stored.get("pick") or {}
+        if sw is None or not p or stored.get("rearmed"):
+            continue
+        for r in sw.rearm:
+            if r.from_arm == p.get("arm") and unit in r.units and cause in r.on:
+                return name, r
+    return None
 
 
 def _merge(*writes: Mapping[str, Any]) -> dict[str, Any]:
@@ -131,7 +211,33 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
         payload = pause_payload(spec, unit, kind, reason, state, task_id, judged.get("blockers"))
         return _merge(route("ESCALATE", s.escalate[0], kind=kind, **extra), {"pause": {unit: payload}})
 
+    def rearm(cause: str) -> dict[str, Any] | None:
+        """A trip back to the entry of the safer arm in place of the gate's own policy (SWM §2.4)."""
+        found = _rearm(spec, unit, state, cause)
+        if found is None:
+            return None
+        name, r = found
+        sw = spec.units[name].switch
+        assert sw is not None
+        entry = sw.arms[r.to]
+        prior = ((state.get("route") or {}).get(name) or {}).get("pick") or {}
+        visits = (state.get("visits") or {}).get(entry) or {}
+        loops[entry] = int(loops.get(entry, 0)) + 1
+        p = {"arm": r.to, "target": entry, "chosen_by": "rearm", "visit": prior.get("visit", 1),
+             "shadow": False, "would_choose": prior.get("would_choose"), "rearmed_from": r.from_arm,
+             "rearm_unit": unit, "rearm_cause": cause}
+        return _merge(clear_from(spec, entry, state), route("BACK", flow.step_node(entry), rearm=name),
+                      {"route": {name: {"pick": p, "rearmed": True}},
+                       "counters": {unit: {**counters, "retries": 0, "infra": 0, "loops": loops}},
+                       "visits": {entry: {"visit": int(visits.get("visit", 1)) + 1,
+                                          "reason": f"re-armed from {r.from_arm} to {r.to} ({cause})", "from": unit,
+                                          "entered_from": f"rearm:{unit}"}}})
+
     def spent(reason: str) -> dict[str, Any]:
+        if reason == "retry_budget":
+            w = rearm("budget_spent")
+            if w is not None:
+                return w
         if g.on_budget_spent == "stop":
             return _merge(route("STOP", s.stop[0]), {"run": {"stopped": {"reason": "budget", "unit": unit,
                                                                          "detail": reason}}})
@@ -143,6 +249,10 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
     cause = att.get("escalate")
     if cause in ESCALATE_CAUSES:
         return to_human("escalation", str(cause))
+    if att.get("timed_out") and not att.get("slow_host"):  # a step timeout re-arms at once (SWM §2.4)
+        w = rearm("timeout")
+        if w is not None:
+            return w
     verdict = judged.get("verdict", str(Verdict.ESCALATE))
     if verdict == Verdict.RETRY:
         if retries < g.retry_budget:

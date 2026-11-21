@@ -34,7 +34,8 @@ from tempergraph.security.launch import has_shell_metacharacter
 
 SETTINGS_FILE = "settings.json"
 
-# Rank order of RST §2.3 (the `arm:` layer is release 2 with measured switches).
+# Rank order of RST §2.3. The `arm:` layer sits below the first four: it is applied where a session request is
+# built, for the keys no operator layer set (SWM §2.3).
 LAYERS = ("flag", "profile", "project:overrides", "user:overrides", "workflow:unit", "workflow:default",
           "project:defaults", "user:defaults", "engine")
 OPERATOR_LAYERS = ("flag", "profile", "project:overrides", "user:overrides", "project:defaults", "user:defaults")
@@ -51,7 +52,6 @@ REF_PART = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$")
 NOT_IN_RELEASE = {
     "audit_rate": "the audit judge (JDG-B7) is release 2",
     "audit_executor": "the audit judge (JDG-B7) is release 2",
-    "arm": "switch-arm settings come with measured switches (SWM), release 2",
     "attempt_cost_cap_usd": "council and contest units are release 2",
     "concurrency": "contest units are release 2",
     "deadline_s": "wait and ask units are release 2",
@@ -338,7 +338,10 @@ def parse_key(spec: WorkflowSpec, raw: str) -> Key:
         u = spec.units[str(key.unit)]
         if key.scope == "judge" and u.gate.judge is None:
             raise SettingError("setting_not_for_kind", f"{raw}: {key.unit} has no judge")
-        if key.scope == "unit" and not (u.kind == "step" or (u.kind == "script" and name == "timeout_s")):
+        if name == "arm":
+            if u.switch is None:
+                raise SettingError("setting_not_for_kind", f"{raw}: {key.unit} is a {u.kind}, not a switch")
+        elif key.scope == "unit" and not (u.kind == "step" or (u.kind == "script" and name == "timeout_s")):
             raise SettingError("setting_not_for_kind", f"{raw}: {key.unit} is a {u.kind}")
         if key.scope == "script":
             phase, n = key.script or ("", 0)
@@ -362,6 +365,11 @@ def _value(spec: WorkflowSpec, key: Key, value: Any) -> Any:
         raise SettingError("setting_value", "a judge takes one alias, never a ladder")
     if entry.release1 is not None:
         entry.release1(v)
+    if key.name == "arm":
+        sw = spec.units[str(key.unit)].switch
+        if sw is None or v not in sw.arms:
+            raise SettingError("setting_value", f"{key.text()}: {v!r} is not one of the arms "
+                                                f"{', '.join(sw.arms) if sw else ''}")
     if key.name == "on_budget_spent" and v == "fallback":
         units = [key.unit] if key.unit else [n for n, u in spec.units.items() if u.kind == "step"]
         if any(spec.units[str(n)].gate.fallback is None for n in units):
@@ -667,6 +675,10 @@ def targets(spec: WorkflowSpec) -> list[tuple[str, str, list[str]]]:
         for name, e in CATALOG.items():
             if name in NOT_IN_RELEASE or name in NOT_BUILT:
                 continue
+            if name == "arm":
+                if u.switch is not None:
+                    out.append((f"{unit}.arm", "arm", [f"{unit}.arm"]))
+                continue
             if u.kind == "step" and e.scopes & STEP_SIDE:
                 out.append((f"{unit}.{name}", name, [f"{unit}.{name}", f"steps.{name}"] if "steps" in e.scopes
                             else [f"{unit}.{name}"]))
@@ -751,6 +763,7 @@ def effective_spec(spec: WorkflowSpec, res: ResolvedSettings) -> WorkflowSpec:
     runner's step-to-judge inheritance (RST §2.3, Judges apart).
     """
     v = res.values
+    layer_of = {r.key: r.layer for r in res.rows}
     units: dict[str, UnitSpec] = {}
     for name, u in spec.units.items():
         g: GateSpec = u.gate
@@ -773,7 +786,11 @@ def effective_spec(spec: WorkflowSpec, res: ResolvedSettings) -> WorkflowSpec:
                                     loop_budget=int(v.get(f"{name}.loop_budget", g.loop_budget)),
                                     on_budget_spent=v.get(f"{name}.on_budget_spent") or g.on_budget_spent,
                                     approval=g.approval or bool(v.get(f"{name}.approve")))
-            u = dataclasses.replace(u, step=st)
+            operator = tuple(k for k in ("model", "timeout_s", "idle_s", "effort")
+                             if layer_of.get(f"{name}.{k}") in LAYERS[:4])
+            u = dataclasses.replace(u, step=st, extra={**u.extra, "operator_set": operator} if operator else u.extra)
+        if u.switch is not None and v.get(f"{name}.arm"):
+            u = dataclasses.replace(u, extra={**u.extra, "arm": v.get(f"{name}.arm")})  # CMP-B7
         if u.kind == "script" and u.script is not None:
             u = dataclasses.replace(u, script=dataclasses.replace(u.script, timeout_s=int(
                 v.get(f"{name}.timeout_s") or u.script.timeout_s)))

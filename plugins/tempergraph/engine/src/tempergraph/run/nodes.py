@@ -139,7 +139,8 @@ class EngineNodes:
             sink = session_sink(self.ctx.log, req, ex.name, tool_inputs=self.ctx.capture.tool_inputs)
             self.ctx.log.write("attempt_start", session_key=req.session_key, kind=req.kind, executor=ex.name,
                                alias=req.alias, timeout_s=req.timeout_s,
-                               prompt_digest=hashlib.sha256((req.prompt or "").encode()).hexdigest()[:16])
+                               prompt_digest=hashlib.sha256((req.prompt or "").encode()).hexdigest()[:16],
+                               **({"sources": extra["sources"]} if extra and "sources" in extra else {}))
             try:
                 if judge_views is None:
                     res = ex.run_step(req, sink)
@@ -202,7 +203,11 @@ class EngineNodes:
             fp = gitmod.fingerprint(workdir)
             self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=bool(fp.status),
                                entered_from=_entered_from(state, unit))
-        ladder = _aliases(st.model) or _aliases(spec.model_profile.get(unit)) or ["inherit"]
+        ov, layer = gatemod.arm_overrides(spec, unit, state)  # below the operator layers (SWM §2.3, RST §2.3)
+        ov = {k: v for k, v in ov.items() if k in ("model", "timeout_s", "idle_s", "effort")
+              and k not in (u.extra.get("operator_set") or ())}
+        sources = {k: layer for k in ov}
+        ladder = _aliases(ov.get("model")) or _aliases(st.model) or _aliases(spec.model_profile.get(unit)) or ["inherit"]
         alias = ladder[min(retries, len(ladder) - 1)]
         ex = self.ctx.registry.get(st.executor or spec.default_executor)
         caps = ex.capabilities()
@@ -236,13 +241,17 @@ class EngineNodes:
         key = session_key(unit, attempt, "retry" if retry else "step")
         req = SessionRequest(
             kind="retry" if retry else "step", prompt=rendered.text, workdir=workdir, alias=alias, session_key=key,
-            tools=tuple(st.tools), commands=tuple(st.commands), timeout_s=st.timeout_s or DEFAULT_TIMEOUT_S,
-            idle_s=st.idle_s, options=st.session_options or SessionOptions(),
+            tools=tuple(st.tools), commands=tuple(st.commands),
+            timeout_s=ov.get("timeout_s") or st.timeout_s or DEFAULT_TIMEOUT_S,
+            idle_s=ov.get("idle_s") or st.idle_s,
+            options=dataclasses.replace(st.session_options or SessionOptions(),
+                                        **({"effort": ov["effort"]} if "effort" in ov else {})),
             session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, key),
             enforce_tools=self.ctx.enforce_tools, in_engine_worktree=self._in_worktree(state),
             plugin_dir=spec.package_root)
         before = gitmod.fingerprint(workdir)
-        res, results = self._session(ex, req, lessons_digest=lessonsmod.digest(lessons_text))
+        res, results = self._session(ex, req, lessons_digest=lessonsmod.digest(lessons_text),
+                                     extra={"sources": sources} if sources else None)
         after = gitmod.fingerprint(workdir)
         parsed = parse_output(res.text, st.produces, tuple(u.gate.back_targets))
         after_failed, after_env = None, False
@@ -638,9 +647,13 @@ class EngineNodes:
         self.ctx.log.write("gate", unit=unit, verdict=((state.get("judgements") or {}).get(unit) or {}).get("verdict"),
                            token=r["token"], route_target=r["node"], cost_so_far=so_far)
         self._budget_records(unit, state, w)
-        if r.get("pick"):  # every pick, by the function or the default arm (OBS `route`)
-            p = r["pick"]
-            self.ctx.log.write("route", unit=unit, arm=p["arm"], target=p["target"], chosen_by=p["chosen_by"])
+        for name, rr in w["route"].items():  # every pick: predicate, default, operator or re-arm (OBS `route`)
+            p = (rr or {}).get("pick")
+            if p and (name == unit or p.get("chosen_by") == "rearm"):
+                self.ctx.log.write("route", unit=name, arm=p["arm"], target=p["target"], chosen_by=p["chosen_by"],
+                                   **{k: p[k] for k in ("shadow", "would_choose", "signals", "signals_clipped",
+                                                        "fault", "rearmed_from", "rearm_unit", "rearm_cause")
+                                      if k in p})
         if unit in (w.get("pause") or {}) and w["pause"][unit]:
             p = w["pause"][unit]
             self.ctx.log.write("pause", unit=unit, pause_kind=p["kind"], decisions=p["decisions"], resume=p["resume"],

@@ -13,10 +13,14 @@ from typing import Literal
 
 from tempergraph.constants import RELEASE
 from tempergraph.contracts import (
+    ARM_OVERRIDE_KEYS,
+    EFFORTS,
     READ_ONLY_CAPABILITIES,
+    REARM_CAUSES,
     CallableRef,
     Capabilities,
     Criterion,
+    SwitchSpec,
     UnitSpec,
     ValueKind,
     WorkflowSpec,
@@ -42,6 +46,8 @@ LATER_KINDS: dict[str, int] = {
     "parallel": 2, "map": 2, "wait": 2, "ask": 2, "council": 3, "contest": 3, "subworkflow": 3,
 }
 MODEL_KINDS = frozenset({"step"})
+# Keys the settings resolution writes into a unit's `extra` (RST `effective_spec`), never a workflow's own field.
+RESOLVED_EXTRA = frozenset({"operator_set", "arm"})
 ISSUE_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 READ_VIEW_KINDS = frozenset({"file", "url", "value"})  # what a claude judge can read without MCP views
@@ -115,8 +121,9 @@ class _Validator:
             g = u.gate
             if g.on_fail == "fallback" or g.on_budget_spent == "fallback" or g.fallback:
                 self.err("not_in_release", name, "the fallback target is built in release 2, not release 1")
-            if u.extra:
-                self.err("not_in_release", name, f"fields {sorted(u.extra)} are not built in release {RELEASE}")
+            later = sorted(k for k in u.extra if k not in RESOLVED_EXTRA)
+            if later:
+                self.err("not_in_release", name, f"fields {later} are not built in release {RELEASE}")
         if s.extra:
             self.err("not_in_release", None, f"workflow fields {sorted(s.extra)} are not built in release {RELEASE}")
 
@@ -169,6 +176,8 @@ class _Validator:
             sw = u.switch
             if sw is None or not sw.arms or sw.default not in sw.arms:
                 self.err("switch-invalid", name, "a switch needs arms and a default arm among them")
+            else:
+                self._measured_switch(name, sw)
         if u.route is not None:
             self._callable(name, u.route, "route")
         if u.switch is not None:
@@ -178,6 +187,63 @@ class _Validator:
                 self.err("criterion-invalid", name, f"criterion severity {c.severity!r}")
             if not c.check_method.strip():
                 self.warn("criterion-no-check-method", name, f"criterion {c.id or c.text[:30]!r} has no check method")
+
+    def _measured_switch(self, name: str, sw: SwitchSpec) -> None:
+        """SWM §4: the mode, every arm override and every re-arm entry."""
+        s = self.spec
+        order = list(s.order)
+        if sw.mode not in ("route", "shadow"):
+            self.err("switch-invalid", name, f"switch mode {sw.mode!r} is not route or shadow")
+        if any(t != flow.FINALIZER and t not in s.units for t in sw.arms.values()):
+            return  # reported as target-unknown by the flow pass
+        for arm, units in sw.arm_overrides.items():
+            if arm not in sw.arms:
+                self.err("switch-arm-unknown", name, f"arm_overrides names arm {arm!r}, which the switch lacks")
+                continue
+            reach = flow.arm_units(s, sw.arms[arm])
+            for unit, values in units.items():
+                target = s.units.get(unit)
+                if unit not in reach or target is None or target.step is None:
+                    self.err("switch-override-unreachable", name,
+                             f"arm {arm!r} overrides {unit!r}, which is not a step on that arm's path")
+                    continue
+                for key, value in values.items():
+                    self._override_value(name, arm, unit, target, key, value)
+        for r in sw.rearm:
+            if r.from_arm not in sw.arms or r.to not in sw.arms:
+                self.err("switch-arm-unknown", name, f"rearm names an arm the switch lacks ({r.from_arm} -> {r.to})")
+                continue
+            entry = sw.arms[r.to]
+            if not r.units or not r.on or any(c not in REARM_CAUSES for c in r.on):
+                self.err("switch-rearm-invalid", name, f"rearm needs units and causes among {list(REARM_CAUSES)}")
+            if r.from_arm == r.to or entry == flow.FINALIZER:
+                self.err("switch-rearm-invalid", name, "rearm needs two different arms and a unit as the entry of `to`")
+                continue
+            for unit in r.units:
+                if unit not in order or unit not in flow.arm_units(s, sw.arms[r.from_arm]):
+                    self.err("switch-rearm-invalid", name, f"rearm unit {unit!r} is not on the path of arm {r.from_arm!r}")
+                elif order.index(entry) >= order.index(unit):
+                    self.err("switch-rearm-invalid", name,
+                             f"the entry of arm {r.to!r} ({entry}) does not precede {unit!r}")
+
+    def _override_value(self, name: str, arm: str, unit: str, target: UnitSpec, key: str, value: object) -> None:
+        where = f"arm_overrides.{arm}.{unit}.{key}"
+        if key not in ARM_OVERRIDE_KEYS:
+            self.err("switch-override-invalid", name, f"{where}: an arm overrides only {', '.join(ARM_OVERRIDE_KEYS)}")
+        elif key == "model":
+            st = target.step
+            caps = self.executors.get((st.executor if st else None) or self.spec.default_executor)
+            aliases = [value] if isinstance(value, str) else list(value) if isinstance(value, (list, tuple)) else []
+            if not aliases or not all(isinstance(a, str) for a in aliases):
+                self.err("switch-override-invalid", name, f"{where}: not a model alias")
+            elif caps is not None:
+                for a in aliases:
+                    self._alias(name, str(a), caps)
+        elif key in ("timeout_s", "idle_s"):
+            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                self.err("switch-override-invalid", name, f"{where} must be a positive integer")
+        elif key == "effort" and value not in EFFORTS:
+            self.err("switch-override-invalid", name, f"{where}: {value!r} is not one of {', '.join(EFFORTS)}")
 
     def _step(self, name: str, u: UnitSpec) -> None:
         s = self.spec

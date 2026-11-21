@@ -64,13 +64,14 @@ When a unit listed in a `rearm` entry, while arm `from` is in force, ends with a
 ## 5. Design notes
 
 - Overrides belong to the arm because the reason for them (a longer limit for a whole-plan session) belongs to the arm, not to the unit; they are workflow data below every operator layer.
+- As built (R2-T1.1): a step timeout listed in `on` re-arms at once, without spending the retry budget first; a switch re-arms at most once per run, and a re-armed pick is never made again by the predicate. An attempt under an override carries `sources: {<key>: arm:<switch>.<arm>}` on its `attempt_start` and `agent_run` records. `effort_ladder` and `escalation` are accepted here and applied by [LAD](92-effort-ladder-and-model-escalation.spec.md). The shadow report is `report --switch` ([CXR §2.7](94-complexity-routing.spec.md)).
 - Re-arming is a trip back, not a new edge kind, so budgets, clearing and records stay the ones every other trip back uses.
 
 ## 6. Acceptance criteria
 
-- [ ] SWM-AC-1 SWM-B1 to SWM-B3 and every row of the SWM-B3 table hold offline with scripted executors.
-- [ ] SWM-AC-2 In shadow mode the arm taken is the default (or the operator's) in every fixture, whatever the predicate returns.
-- [ ] SWM-AC-3 Every limit and alias record of a unit under an arm override names the layer `arm:<switch>.<arm>`.
+- [x] SWM-AC-1 SWM-B1 to SWM-B3 and every row of the SWM-B3 table hold offline with scripted executors.
+- [x] SWM-AC-2 In shadow mode the arm taken is the default (or the operator's) in every fixture, whatever the predicate returns.
+- [x] SWM-AC-3 Every limit and alias record of a unit under an arm override names the layer `arm:<switch>.<arm>`.
 
 ## Open questions
 

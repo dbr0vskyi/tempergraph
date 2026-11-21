@@ -275,7 +275,7 @@ Files are edited by hand or by a skill; the engine has no write verb for them.
 | A configuration file that does not parse, or a newer major `schema_version` | Exit 2 naming the file; `config validate` shows the line |
 | A file `defaults` entry that names a unit | Exit 2, `unit_in_defaults` |
 | A setting the executor cannot apply (`effort`) | Warning, recorded (CON §4) |
-| A key whose feature is not in this release: the audit judge, switch arms, council, contest, wait and ask keys, the release 2 worktree values (ADR-0090) | Exit 2, `setting_not_in_release` |
+| A key whose feature is not in this release: the audit judge, council, contest, wait and ask keys, the release 2 worktree values (ADR-0090) | Exit 2, `setting_not_in_release` |
 
 ## 5. Design notes
 

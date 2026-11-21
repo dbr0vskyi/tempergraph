@@ -22,6 +22,7 @@ from tempergraph.contracts import (
     InputDeclaration,
     JudgeSpec,
     ProducesKind,
+    RearmSpec,
     ResolveResult,
     RouteView,
     RoutingMetadata,
@@ -41,7 +42,7 @@ from tempergraph.run.finalize import FinalizerContext, FinalizerResult
 
 __all__ = [
     "CheckFinding", "CheckResult", "Criterion", "FinalizerContext", "FinalizerResult", "Gate", "Input", "Judge", "Param", "ResolveResult", "Route",
-    "RouteView", "Routing", "Script", "SessionOptions", "Setting", "Step", "Switch", "Value", "Workflow",
+    "Rearm", "RouteView", "Routing", "Script", "SessionOptions", "Setting", "Step", "Switch", "Value", "Workflow",
     "WorktreeDecl", "checks", "text", "Parallel", "Map", "Ask", "Wait", "Council", "Contest", "Subworkflow",
 ]
 
@@ -147,9 +148,22 @@ def Route(*, select: Callable[..., Any], targets: Iterable[str], gate: GateSpec 
     return UnitSpec(kind="route", gate=gate or GateSpec(), route=callable_ref(select), route_targets=tuple(targets))
 
 
+def Rearm(*, from_arm: str, to: str, units: Iterable[str], on: Iterable[str] = ("budget_spent",)) -> RearmSpec:  # noqa: N802
+    """SWM §2.4: move a run from arm `from_arm` to the entry of arm `to` when a listed unit ends on `on`."""
+    return RearmSpec(from_arm=from_arm, to=to, units=tuple(units), on=tuple(on))
+
+
 def Switch(*, predicate: Callable[..., Any], arms: Mapping[str, str], default: str, sticky: str = "visit",  # noqa: N802
-           gate: GateSpec | None = None) -> UnitSpec:
-    sw = SwitchSpec(predicate=callable_ref(predicate), arms=dict(arms), default=default, sticky=sticky)  # type: ignore[arg-type]
+           gate: GateSpec | None = None, mode: str = "route",
+           arm_overrides: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
+           rearm: Iterable[RearmSpec] = ()) -> UnitSpec:
+    """A switch: a pure predicate picks one arm, the default on a fault (CMP §2.2). `mode="shadow"` records
+    the pick and takes the default; `arm_overrides` and `rearm` are SWM §2.3 and §2.4."""
+    sw = SwitchSpec(predicate=callable_ref(predicate), arms=dict(arms), default=default, sticky=sticky,  # type: ignore[arg-type]
+                    mode=mode,  # type: ignore[arg-type]
+                    arm_overrides={a: {u: dict(v) for u, v in units.items()}
+                                   for a, units in (arm_overrides or {}).items()},
+                    rearm=tuple(rearm))
     return UnitSpec(kind="switch", gate=gate or GateSpec(), switch=sw)
 
 

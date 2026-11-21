@@ -162,13 +162,33 @@ class StepSpec:
 
 
 @dataclass(frozen=True, kw_only=True)
+class RearmSpec:
+    """SWM §2.4: while arm `from_arm` is in force, a listed unit ending on a cause in `on` sends the run to
+    the entry of arm `to`."""
+
+    from_arm: str
+    to: str
+    units: tuple[str, ...]
+    on: tuple[str, ...] = ("budget_spent",)
+
+
+EFFORTS = ("low", "medium", "high", "max")
+ARM_OVERRIDE_KEYS = ("model", "timeout_s", "idle_s", "effort", "effort_ladder", "escalation")
+REARM_CAUSES = ("budget_spent", "timeout")
+
+
+@dataclass(frozen=True, kw_only=True)
 class SwitchSpec:
-    """CMP §2.2 switch: predicate, arms and a default arm; stickiness per visit or run."""
+    """CMP §2.2 switch: predicate, arms and a default arm; stickiness per visit or run. SWM §2.1 adds the
+    mode, the per-arm overrides and the re-arm entries."""
 
     predicate: CallableRef
     arms: Mapping[str, str]  # arm name -> target unit or "finalizer"
     default: str
     sticky: Literal["visit", "run"] = "visit"
+    mode: Literal["route", "shadow"] = "route"
+    arm_overrides: Mapping[str, Mapping[str, Mapping[str, Any]]] = field(default_factory=dict)  # arm -> unit -> values
+    rearm: tuple[RearmSpec, ...] = ()
 
 
 @dataclass(frozen=True, kw_only=True)
