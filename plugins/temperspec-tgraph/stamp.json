@@ -2,9 +2,9 @@
   "schema_version": 1,
   "engine_version": "0.0.1",
   "workflow_api": 1,
-  "workflow_version": "0.1.0+0f4d68dc961d",
-  "docs_digest": "7d85906b773f1b6a4509330c05db87ed8d2490959e33cc241bf57ab3c1b0fef3",
-  "shape_digest": "a602a9de459d539634d942ede7e67193378bdb4d5505c0d766824da907c306f5",
+  "workflow_version": "0.1.0+19a69a36f804",
+  "docs_digest": "6580a60862d446eb6f37ac9b906232233ccf3cdd652a4eb05f55200b6097b771",
+  "shape_digest": "345ad186df7cff52c44cf76540ca2fc76a4d2daedeaf91ab03ac33955bd4dcce",
   "entries_applied": [],
   "tool_set": {
     "claude": [
@@ -19,7 +19,6 @@
     ]
   },
   "audit": [
-    "criterion-not-in-reach|triage|ts-tri-route:plan|workflow/temperspec/__init__.py",
     "hold-time-exposure|code||workflow/temperspec/__init__.py",
     "hold-time-exposure|discovery||workflow/temperspec/__init__.py",
     "hold-time-exposure|setup||workflow/temperspec/__init__.py",
@@ -38,6 +37,7 @@
     "outcome-unverified-blocker|setup|ts-set-true|outcome.json",
     "outcome-unverified-blocker|triage|ts-tri-criteria|outcome.json",
     "outcome-unverified-blocker|triage|ts-tri-gaps|outcome.json",
+    "oversized-step|code||workflow/temperspec/__init__.py",
     "readiness:needs-work|code||",
     "readiness:needs-work|discovery||",
     "readiness:needs-work|expand||",
@@ -47,12 +47,13 @@
     "validate:criterion-overlap|discovery||",
     "validate:criterion-overlap|expand||",
     "validate:criterion-overlap|setup||",
-    "validate:criterion-overlap|||"
+    "validate:criterion-overlap|||",
+    "validate:template-key-not-on-every-path|code||"
   ],
-  "outcome_revision": 2,
+  "outcome_revision": 3,
   "baseline": {
     "error": 0,
-    "warning": 10
+    "warning": 11
   },
-  "stamped_at": "2026-11-21T13:59:07.972Z"
+  "stamped_at": "2026-11-21T15:01:36.858Z"
 }

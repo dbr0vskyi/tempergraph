@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 2,
+  "revision": 3,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -63,8 +63,8 @@
       "id": "ts-traced",
       "severity": "blocker",
       "verified_by": "check",
-      "text": "Every acceptance criterion of each spec the run edited is named by at least one test",
-      "check_method": "Search the test folders for each criterion id; N/A when the run delivers documents only",
+      "text": "Every acceptance criterion of each spec the run edited is named by at least one test that is not skipped",
+      "check_method": "Search the test folders for each criterion id and read the lines above it for a skip mark; N/A when the run delivers documents only",
       "source": "created",
       "verifier": {
         "check": "tgwf_temperspec.checks:outcome_check"
@@ -247,7 +247,7 @@
       ]
     },
     "triage": {
-      "statement": "The triage note states the task's acceptance criteria, the gaps in the specs, and a route that follows the gaps",
+      "statement": "The triage note states the task's acceptance criteria, the gaps in the specs, and a route that follows the gaps and the size of the task",
       "criteria": [
         {
           "id": "ts-tri-form",
@@ -264,8 +264,8 @@
           "id": "ts-tri-route",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "The route value is `plan` exactly when the gap list is `none`",
-          "check_method": "Compare the two values the step handed over",
+          "text": "The route follows the gap list: discovery with a gap, plan or quick with none, and quick only within the quick lane's limits and never on a return to triage",
+          "check_method": "Compare the route with the gap list and the delivery; for quick, measure the note's criteria count and its Change section against the limits, resolve its commands, and read the visit number",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:triage_check"
@@ -496,8 +496,8 @@
           "id": "ts-plan-trace",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "Every acceptance criterion in the triage note is named by at least one plan requirement",
-          "check_method": "Match criterion numbers between the note and the plan's requirement table",
+          "text": "Every acceptance criterion in the triage note is named by at least one plan requirement, and in a simple plan by a proof row with its test file and command",
+          "check_method": "Match criterion numbers between the note, the plan's requirement table and, for a simple plan, the proof table; a proof row's test is the file of a test row and its command is a listed command",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:plan_check"
@@ -581,8 +581,8 @@
           "id": "ts-exp-tests",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "Every code row is preceded by a test row that names an acceptance criterion id",
-          "check_method": "Read the row order of each task table",
+          "text": "Every code row is preceded by a test row that names an acceptance criterion id, and every acceptance criterion of the task has a proof row with its test file and command",
+          "check_method": "Read the row order of each task table, and match the triage note's criterion numbers against the proof table",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:expand_check"
@@ -648,7 +648,7 @@
       ]
     },
     "code": {
-      "statement": "The whole plan is built test first, committed, with the plan's verification passing in the gate's own run",
+      "statement": "The whole plan, or the small change of the quick lane, is built test first, committed, with its verification passing in the gate's own run and each criterion carried by a test",
       "criteria": [
         {
           "id": "ts-code-rows",
@@ -677,6 +677,35 @@
           "serves": [
             "ts-accepted",
             "ts-verify"
+          ]
+        },
+        {
+          "id": "ts-code-proof",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each criterion a test row proves is carried by a test in the row's file, and that test is not skipped",
+          "check_method": "Open the file of every test row (in the quick lane, the note's test files), find the criterion id of its Proves cell, and read the lines above it for a skip mark",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "serves": [
+            "ts-accepted",
+            "ts-traced"
+          ]
+        },
+        {
+          "id": "ts-code-lane",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "A change in the quick lane edits no spec or decision record, only the files its triage note names, at most 2 code files and at most 200 lines",
+          "check_method": "Read the changed paths from the git facts and the size of the diff against the run's base; N/A outside the quick lane",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "serves": [
+            "ts-accepted"
           ]
         },
         {
@@ -836,7 +865,9 @@
     "Verification commands resolve against one fixed list (pytest, ruff, mypy and read-only git) because release 1 of the engine reads no per-repository command resolver; a repository with another toolchain adds its prefixes to the workflow's list.",
     "Whether a commit is absent from every remote is not checked: the engine's git facts do not report it in release 1. Steps cannot push, and only the last stage does.",
     "Specs written by the setup step describe behaviour that exists already, so the outcome gate does not ask for a test that names each of their acceptance criteria; a task that later touches such a behaviour adds the id to its test.",
-    "Repository setup is a conditional first step of this workflow because release 1 of the engine has no sub-workflows; it moves into one when the engine has them."
+    "Repository setup is a conditional first step of this workflow because release 1 of the engine has no sub-workflows; it moves into one when the engine has them.",
+    "The quick lane's limits (3 acceptance criteria, 2 code files, 200 changed lines) are first values with no run behind them; the share of quick runs sent back to triage is the measure to tune them by.",
+    "A test carries its criterion as text (the spec's id, or `AC <n>`); the check finds the text and a skip mark near it, and does not prove that the named test is the one the command ran."
   ],
   "revisions": [
     {
@@ -849,6 +880,12 @@
       "origin": "authored",
       "at": "2026-11-21T12:30:00.000Z",
       "note": "setup step added on the owner's request"
+    },
+    {
+      "revision": 3,
+      "origin": "authored",
+      "at": "2026-11-21T15:20:00.000Z",
+      "note": "quick lane, proof table, criterion-to-test link and pull request summary, chosen by the owner"
     }
   ]
 }

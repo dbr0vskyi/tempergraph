@@ -23,7 +23,10 @@ COMPLEXITY = ("simple", "complex")
 ROW_KINDS = ("test", "code", "docs", "chore")
 # The signs that make a phase heavy, and so the plan `complex` (the plan rule lists the same four).
 HEAVY_SIGNS = ("refactor", "many-tests", "large-context", "long-running")
-ROUTES = ("discovery", "plan", "discovery-only")
+ROUTES = ("discovery", "plan", "discovery-only", "quick")
+# What the quick lane may hold at most (the task-notes rule lists the same); over any of these the task is planned.
+QUICK_MAX = {"criteria": 3, "code_files": 2, "lines": 200}
+PROOF_HEADER = ("criterion", "test", "command")
 SUFFIX_BY_FOLDER = {"specs": ".spec.md", "adr": ".adr.md", "research": ".rsrch.md", "plans": ".plan.md"}
 # What a `simple` plan may hold at most; over any of these the plan is `complex`.
 SIMPLE_MAX = {"phases": 3, "rows": 12, "test_rows": 6, "files": 10, "commands": 3, "reading_bytes": 200_000}
@@ -171,6 +174,11 @@ class Triage:
     gap_rows: int = 0
     route: str = ""
     missing: list[str] = field(default_factory=list)
+    # The Change section, which only a `quick` note has: the code files, the test files and the commands.
+    change: bool = False
+    change_files: list[str] = field(default_factory=list)
+    change_tests: list[str] = field(default_factory=list)
+    change_commands: list[str] = field(default_factory=list)
 
 
 def _field(lines: list[str], name: str) -> str:
@@ -194,7 +202,39 @@ def parse_triage(text: str) -> Triage:
         t.gaps = "none"
     route = low.get("route", [])
     t.deliver, t.route = _field(route, "Deliver").lower(), _field(route, "Route").lower()
+    t.change = "change" in low
+    for line in low.get("change", []):
+        m = re.match(r"^\s*[-*]\s+\**(Files|Tests|Verify)\**\s*:\s*(.*)$", line, re.I)
+        if m:
+            target = {"files": t.change_files, "tests": t.change_tests, "verify": t.change_commands}[m.group(1).lower()]
+            target += [span.strip() for span in CODE_SPAN.findall(m.group(2)) if span.strip()]
     return t
+
+
+def quick_problems(note: Triage) -> list[str]:
+    """Why a note may not take the quick lane; empty when it may. Measured from the note alone."""
+    bad = []
+    if note.gaps != "none":
+        bad.append("the quick lane needs `None` under Gaps")
+    if note.deliver != "code":
+        bad.append("the quick lane delivers code")
+    if len(note.criteria) > QUICK_MAX["criteria"]:
+        bad.append(f"{len(note.criteria)} acceptance criteria, over {QUICK_MAX['criteria']}")
+    if not note.change:
+        bad.append("the quick lane needs a `## Change` section")
+        return bad
+    if not note.change_files:
+        bad.append("the Change section names no code file under `Files:`")
+    if len(note.change_files) > QUICK_MAX["code_files"]:
+        bad.append(f"{len(note.change_files)} code files, over {QUICK_MAX['code_files']}")
+    if not note.change_tests:
+        bad.append("the Change section names no test file under `Tests:`")
+    if not note.change_commands:
+        bad.append("the Change section names no command under `Verify:`")
+    docs = [f for f in note.change_files + note.change_tests if f.endswith(".md")]
+    if docs:
+        bad.append(f"`{docs[0]}` is a document: a change to a document is not a quick change")
+    return bad
 
 
 def listed_paths(lines: list[str]) -> list[str]:
@@ -227,6 +267,7 @@ class Plan:
     rows: list[Row] = field(default_factory=list)
     commands: list[str] = field(default_factory=list)
     heavy: dict[str, str] = field(default_factory=dict)  # phase -> the sign that makes it heavy
+    proof: list[tuple[str, str, str]] = field(default_factory=list)  # (criterion cell, test file, command)
     handoff_lines: int = 0
     missing: list[str] = field(default_factory=list)
 
@@ -273,6 +314,13 @@ def parse_plan(text: str) -> Plan:
                                      phase=phase))
         elif section.startswith("3.") and (b := re.match(r"^\s*[-*]\s+`([^`]+)`", line)):
             plan.commands.append(b.group(1).strip())
+        elif section.startswith("3.") and (cells := _cells(line)):
+            if header is None:
+                header = [c.lower() for c in cells]
+                continue
+            got = dict(zip(header, cells, strict=False))
+            plan.proof.append((got.get("criterion", ""), got.get("test", "").strip("` "),
+                               got.get("command", "").strip("` ")))
     return plan
 
 
@@ -306,6 +354,54 @@ def row_problems(plan: Plan) -> tuple[list[str], list[str]]:
         elif r.kind == "code" and r.phase not in tested:
             bad.append(f"code row `{r.id}` has no test row before it in `{r.phase}`")
     return empty, bad
+
+
+def task_criteria(cell: str) -> set[int]:
+    """The task criteria a cell names, written `AC <n>`."""
+    return {int(n) for n in re.findall(r"(?<![A-Z0-9-])AC\s*(\d+)\b", cell)}
+
+
+def proof_problems(plan: Plan, criteria: list[int]) -> list[str]:
+    """The proof table of `## 3. Verification`: every acceptance criterion of the task has a row that names
+    a test file of a test row and one of the plan's verification commands."""
+    bad: list[str] = []
+    test_files = {r.file for r in plan.rows if r.kind == "test" and r.file}
+    proved: set[int] = set()
+    for cell, test, command in plan.proof:
+        named = task_criteria(cell)
+        if not named:
+            bad.append(f"proof row `{cell or '?'}` names no criterion as `AC <n>`")
+            continue
+        if test not in test_files:
+            bad.append(f"the test `{test or '?'}` of {cell} is the file of no test row")
+        elif command not in plan.commands:
+            bad.append(f"the command `{command or '?'}` of {cell} is not one of the listed commands")
+        else:
+            proved |= named
+    bad += [f"acceptance criterion {n} has no row in the proof table" for n in criteria if n not in proved
+            and not any(n in task_criteria(c) for c, _, _ in plan.proof)]
+    return bad
+
+
+def marker(criterion: str) -> re.Pattern[str]:
+    """How a test carries a criterion: the spec's id as written, or `AC <n>` of the task."""
+    n = task_criteria(criterion)
+    if n and not ANY_ID.search(criterion):
+        return re.compile(rf"(?<![A-Za-z0-9-])AC[\s_]*{next(iter(n))}(?!\d)", re.I)
+    return re.compile(rf"\b{re.escape(criterion.strip())}\b")
+
+
+SKIP_MARK = re.compile(r"(@pytest\.mark\.(skip|xfail)|@unittest\.skip|pytest\.skip\(|\b(it|test|describe)\.skip\(|"
+                       r"\bx(it|describe)\(|@Disabled|@Ignore\b|\bt\.Skip\()")
+
+
+def carried(text: str, criterion: str) -> tuple[bool, bool]:
+    """(the text names the criterion, a naming place is skipped): a skip mark on the line or the three above."""
+    lines = text.splitlines()
+    pat = marker(criterion)
+    hits = [i for i, line in enumerate(lines) if pat.search(line)]
+    skipped = bool(hits) and all(any(SKIP_MARK.search(x) for x in lines[max(0, i - 3):i + 1]) for i in hits)
+    return bool(hits), skipped
 
 
 def parse_report(text: str) -> dict[str, str]:

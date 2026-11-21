@@ -3,7 +3,10 @@
 You are the code step of a temperspec run. Build the whole plan, test first, in this one session. The plan is the authority: you implement it, you do not improve it.
 
 Task id: {task_id}
+Triage note: `{triage_note}`
 Plan: `{plan}`
+
+**The quick lane.** When the triage note's Route is `quick`, there is no plan and the Plan line above names none. The note's `## Change` section is then your plan: its `Files` and `Tests` are the only files you change, its `Verify` commands are the verification, and each acceptance criterion of the note is one row, with the id `AC <n>`. For a bug, first write the test that reproduces it and see it fail. If the change turns out to need a spec edit, a file the section does not name, or more than a small change, stop: write the report with what you found and end with `UPSTREAM triage: the task is larger than the quick lane`, so the task is planned.
 
 ## Rules to follow
 
@@ -13,7 +16,7 @@ Plan: `{plan}`
 
 1. Read the plan, then the triage note its hand-off section names, then the specs its front matter names. Read the files the task rows name before you change them.
 2. Work through the phases in order and the rows of each phase in order.
-3. For a test row, write the test first and see it fail for the right reason. The test carries the id of the acceptance criterion it proves, in its name or in a comment on it.
+3. For a test row, write the test first and see it fail for the right reason. The test carries the id its row names under Proves, in its name or in a comment on it: the spec's id (`SES-AC1`), or `AC <n>` of the task. A test that carries a criterion is never skipped.
 4. For a code row, make the smallest change in the named file that makes the phase's tests pass.
 5. For a docs row, edit the named document. A spec is edited only where the plan says a behaviour or a criterion changes.
 6. After each phase, run the plan's verification commands that cover it. Fix what fails in your change. Never weaken, skip or delete a test to make a command pass.

@@ -3,8 +3,9 @@
 `prepare` runs no session: it installs the rule files and the project note, and sends a repository that has
 no overview spec through `setup`, which writes the overview and one spec per component from the code as it is.
 
-`triage` reads the task and routes it: no gap in the specs goes to `plan`, any gap to `discovery`, and a
-docs-only task ends after `discovery`. `plan` states the task's complexity; a complex plan gets its task rows
+`triage` reads the task and routes it: a small fix that changes no spec goes straight to `code` (the quick
+lane), no gap in the specs goes to `plan`, any gap to `discovery`, and a docs-only task ends after `discovery`.
+The code gate measures a quick change and sends a larger one back to `triage`, which then plans it. `plan` states the task's complexity; a complex plan gets its task rows
 from `expand`, a simple one already has them. `code` builds the whole plan in one session (per-phase coding
 waits for the engine's sequential map). The engine commits after every step and the last stage pushes.
 
@@ -34,14 +35,14 @@ READ = ["read", "search", "list"]
 # wants every program here on PATH, so the list holds one toolchain; add a repository's own prefixes here.
 VERIFY = ["pytest", "python3 -m pytest", "ruff check", "ruff format --check", "mypy",
           "git --version", "git status", "git diff", "git log", "git show"]
-ALLOW = [*VERIFY, "git remote", "git push -u origin", "gh pr list", "gh pr create"]
+ALLOW = [*VERIFY, "git remote", "git push -u origin", "gh pr list", "gh pr create", "gh pr edit"]
 
 
 def _commit() -> Any:
     return Script(call=commit_step, name="commit", side_effects="workspace", summary="Commit the step's files")
 
 
-def _judge(unit: str, references: list[str]) -> Any:
+def _judge(unit: str, references: Any) -> Any:
     return Judge(file=f"judges/{unit}.md", references=references, model=MODEL)
 
 
@@ -73,7 +74,7 @@ def workflow() -> Any:
                 model=MODEL, tools=[*READ, "write"], timeout_s=1200,
                 produces={"triage_note": "file", "gaps": Value(choices=["some", "none"]),
                           "route": Value(choices=list(specfmt.ROUTES))},
-                after=[_commit()], route=route_triage, route_targets=["discovery", "plan"],
+                after=[_commit()], route=route_triage, route_targets=["discovery", "plan", "code"],
                 gate=Gate(check=triage_check, judge=_judge("triage", ["triage_note"]), on_budget_spent="stop")),
             "discovery": Step(
                 prompt=text("prompts/discovery.md"), summary="Close each gap with a spec, record or research note",
@@ -101,8 +102,9 @@ def workflow() -> Any:
                 produces={"code_report": "file", "tests_passed": Value(choices=["yes", "no"])},
                 after=[_commit()],
                 gate=Gate(check=code_check, check_timeout_s=1800,
-                          judge=_judge("code", ["code_report", "plan", "triage_note"]),
-                          back_targets=["plan", "discovery"])),
+                          judge=_judge("code", {"code_report": "required", "triage_note": "required",
+                                                "plan": "optional"}),
+                          back_targets=["plan", "discovery", "triage"])),
         },
         finalizer=finalize,
         finalizer_outcomes=["opened", "reused", "pushed", "skipped"],

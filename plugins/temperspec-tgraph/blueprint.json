@@ -107,6 +107,7 @@
         "tests_passed"
       ],
       "reads": [
+        "triage_note",
         "plan"
       ],
       "gate": {
@@ -115,7 +116,8 @@
       },
       "back_targets": [
         "plan",
-        "discovery"
+        "discovery",
+        "triage"
       ]
     }
   ],
@@ -129,7 +131,8 @@
     "triage": {
       "route": [
         "discovery",
-        "plan"
+        "plan",
+        "code"
       ]
     },
     "discovery": {

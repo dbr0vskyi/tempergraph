@@ -155,6 +155,11 @@ def _standin_files(root: Path, unit: str, produces: dict[str, Any], workdir: Pat
         else:
             choices = getattr(kind, "choices", None)
             out[key] = str(choices[0]) if choices else "stand-in"
+    for src in files:  # what else the fixture holds beside the produced files (a test a check will open)
+        target = workdir / src.relative_to(base)
+        if not target.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(src, target)
     return out
 
 

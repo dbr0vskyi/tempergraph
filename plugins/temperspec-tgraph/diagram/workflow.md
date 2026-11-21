@@ -19,6 +19,7 @@ flowchart TD
   u2 --> u3
   u3 --> u4
   u3 --> u5
+  u3 --> u7
   u4 --> u5
   u4 --> u8
   u5 --> u6
@@ -30,6 +31,7 @@ flowchart TD
   u7 --> u8
   u7 -.->|back| u5
   u7 -.->|back| u4
+  u7 -.->|back| u3
   u8 --> fin
   u8 -.->|back| u2
   u8 -.->|back| u3

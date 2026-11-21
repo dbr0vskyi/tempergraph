@@ -6,7 +6,7 @@ The task's acceptance criteria rank above the specs and decision records, those 
 
 The check evidence under What to grade lists the changed paths, the edited specs and the related specs. You cannot run git or tests: the verification commands were run by the check, and their result is given.
 
-Read the plan, then each edited spec, then the changed code and tests.
+Read the plan, then each edited spec, then the changed code and tests. A run in the quick lane has no plan: the triage note's Change section is the plan, its acceptance criteria are the rows (`AC <n>`), and no spec was edited, so read the specs the check evidence lists as related and the specs that cover the changed files. The check evidence also lists, under Criterion tests, which test file carries each criterion.
 
 - Alignment with the edited specs: for each behaviour of each edited spec, read its scenarios, then find the code that implements it. Every scenario must hold in the code as written, and nothing in the changed code may do what a behaviour forbids. Judge meaning, not wording and not names.
 - Related specs: read the behaviours of each related spec that concern the changed code. A behaviour the changed code makes false is the defect, even though no test fails.

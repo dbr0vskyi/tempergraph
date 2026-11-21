@@ -20,7 +20,8 @@ The format of the triage note is in `task-notes.rule.md`, and the folders and na
 4. For each concept the task needs, decide whether a spec covers it completely. A concept is covered only when a behaviour and an acceptance criterion in a spec state it. Otherwise it is a gap. Write one gap row per gap with its kind and the search that found nothing. In doubt, list the gap.
 5. Decide what the run delivers: `docs` when the task asks only for documents, otherwise `code`.
 6. Set the route from the gaps and the delivery, as the rule says.
-7. Write the note to `docs/tasks/{task_id}.triage.md` (use the repository's own docs folder if it keeps its specs elsewhere).
+7. Consider the quick lane only when there is no gap and the delivery is code. Read the code the task touches. The task is `quick` when all of this holds: no behaviour and no acceptance criterion of any spec has to change (a bug where the code disagrees with a spec qualifies, because the spec is already right); the task has at most three acceptance criteria; and the change fits in at most two code files plus their tests. Then write the `## Change` section the rule describes, with the code files, the test files and the repository's own command that runs those tests, and set the route to `quick`. In doubt, or when this run has come back to triage from a later step, choose `plan`.
+8. Write the note to `docs/tasks/{task_id}.triage.md` (use the repository's own docs folder if it keeps its specs elsewhere).
 
 ## Limits
 

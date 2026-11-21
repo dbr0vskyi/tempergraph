@@ -84,6 +84,7 @@ def test_a_met_seed_passes_the_check_of_its_gate(seed: Path, tmp_path: Path) -> 
                 values.setdefault(OWNER.get(key, gate), {})[key] = value
     if gate not in ("setup", "triage"):
         artifacts.setdefault("discovery", {})["handoff"] = "docs/tasks/TASK-7.handoff.md"
+        artifacts.setdefault("triage", {}).setdefault("triage_note", "docs/tasks/TASK-7.triage.md")
     res, _ = run_check(SPEC.units[gate].gate, _context(gate, tmp_path, artifacts, values))
     assert res.result == "PASS", res.evidence
 
@@ -130,6 +131,8 @@ def test_the_plan_rule_example_and_limits_match_the_parser() -> None:
     assert plan.missing == [] and plan.complexity == "simple" and plan.requirement_criteria == {1}
     assert [r.id for r in plan.rows] == ["1.1", "1.2"] and plan.commands == ["pytest tests/test_session.py"]
     assert fmt.row_problems(plan) == ([], []) and fmt.simple_overruns(plan) == []
+    assert plan.proof == [("AC 1", "tests/test_session.py", "pytest tests/test_session.py")]
+    assert fmt.proof_problems(plan, [1]) == [] and fmt.proof_problems(plan, [1, 2]) != []
     for sign in fmt.HEAVY_SIGNS:
         assert f"`{sign}`" in rule
     limits = {"Phases": "phases", "Task rows": "rows", "Test rows": "test_rows", "Files named by rows": "files",
@@ -150,6 +153,13 @@ def test_the_task_notes_rule_examples_match_the_parsers() -> None:
     assert fmt.parse_report(report) == {"1.1": "done", "1.2": "done"}
     for route in fmt.ROUTES:
         assert f"`{route}`" in rule
+    quick = fmt.parse_triage("## Acceptance criteria\n\n1. One\n\n## Gaps\n\nNone\n\n" + _example(rule, "## Route"))
+    assert quick.route == "quick" and fmt.quick_problems(quick) == []
+    assert (quick.change_files, quick.change_tests, quick.change_commands) == (
+        ["src/auth/session.py"], ["tests/test_session.py"], ["pytest tests/test_session.py"])
+    assert f"| Acceptance criteria of the task | at most {fmt.QUICK_MAX['criteria']} |" in rule
+    assert f"| Code files to change, beside their tests | at most {fmt.QUICK_MAX['code_files']} |" in rule
+    assert f"more than {fmt.QUICK_MAX['lines']} changed lines" in rule
 
 
 def test_the_documents_rule_names_every_suffix() -> None:
@@ -168,6 +178,7 @@ def _view(**values: str) -> Any:
 def test_routes_follow_the_values() -> None:
     assert routing.route_triage(_view(route="plan")) == "plan"
     assert routing.route_triage(_view(route="discovery")) == "discovery"
+    assert routing.route_triage(_view(route="quick")) == "code"
     assert routing.route_triage(_view()) == "discovery"  # an unreadable route takes the longer path
     assert routing.route_discovery(_view(route="discovery-only")) == "finalizer"
     assert routing.route_discovery(_view(route="discovery")) == "plan"
@@ -321,3 +332,116 @@ def test_no_unit_uses_the_large_model_tier() -> None:
         assert unit.gate.judge is not None and unit.gate.judge.model == "medium", name
     assert outcome_unit(SPEC).gate.judge.model == "medium"  # type: ignore[union-attr]
     assert SPEC.units["discovery"].step.session_options.effort == "max"  # type: ignore[union-attr]
+
+
+# -- the quick lane, the proof of a criterion and the pull request's description ---------------------------
+
+QUICK = ROOT / "evals" / "checks" / "code" / "must-pass" / "3-quick"
+
+
+def _quick_ctx(work: Path, changed: tuple[str, ...], visit: int = 1, unit: str = "code") -> CheckContext:
+    _copy(QUICK, work)
+    ctx = _context(unit, work, {"triage": {"triage_note": "triage_note.md"}, "code": {"code_report": "code_report.md"}},
+                   {"triage": {"route": "quick", "gaps": "none"}}, GitFacts(changed_paths=changed))
+    ctx.visit = visit
+    return ctx
+
+
+def _named(res: Any, criterion: str) -> list[str]:
+    return [f.status for f in res.findings if f.criterion == criterion]
+
+
+def test_a_quick_change_inside_its_limits_passes_the_code_gate(tmp_path: Path) -> None:
+    ctx = _quick_ctx(tmp_path, ("src/tool/config.py", "tests/test_config.py", "docs/tasks/T.triage.md", "CLAUDE.md"))
+    res, _ = run_check(SPEC.units["code"].gate, ctx)
+    assert res.result == "PASS", res.evidence
+    assert _named(res, "ts-code-lane") == ["pass"] and _named(res, "ts-code-proof") == ["pass"]
+    assert "Criterion tests: AC 1 -> tests/test_config.py; AC 2 -> tests/test_config.py" in res.evidence
+
+
+@pytest.mark.parametrize("changed", [
+    ("src/tool/config.py", "docs/specs/config-file.spec.md"),  # a spec was edited
+    ("src/tool/config.py", "src/tool/main.py"),  # a file the note does not name
+    ("src/tool/config.py", "src/tool/a.py", "src/tool/b.py"),  # too many code files
+])
+def test_a_quick_change_outside_its_limits_is_sent_back(changed: tuple[str, ...], tmp_path: Path) -> None:
+    res, _ = run_check(SPEC.units["code"].gate, _quick_ctx(tmp_path, changed))
+    lane = [f for f in res.findings if f.criterion == "ts-code-lane"]
+    assert res.result == "FAIL" and lane and all(f.status == "fail" for f in lane)
+    assert "UPSTREAM triage" in lane[0].fix
+    assert "triage" in SPEC.units["code"].gate.back_targets
+
+
+def test_a_planned_run_is_not_measured_as_quick(tmp_path: Path) -> None:
+    files = _copy(ROOT / "evals" / "checks" / "code" / "must-pass" / "2-simple-plan", tmp_path)
+    artifacts = {OWNER[f.stem]: {f.stem: f.relative_to(tmp_path).as_posix()} for f in files if f.stem in OWNER}
+    ctx = _context("code", tmp_path, artifacts, {"triage": {"route": "plan"}},
+                   GitFacts(changed_paths=("src/a.py", "src/b.py", "src/c.py", "docs/specs/x.spec.md")))
+    res, _ = run_check(SPEC.units["code"].gate, ctx)
+    assert _named(res, "ts-code-lane") == ["n_a"] and res.result == "PASS", res.evidence
+
+
+def test_a_run_that_came_back_to_triage_cannot_take_the_quick_lane_again(tmp_path: Path) -> None:
+    first = _quick_ctx(tmp_path / "a", (), unit="triage")
+    again = _quick_ctx(tmp_path / "b", (), visit=2, unit="triage")
+    assert run_check(SPEC.units["triage"].gate, first)[0].result == "PASS"
+    res, _ = run_check(SPEC.units["triage"].gate, again)
+    assert res.result == "FAIL" and _named(res, "ts-tri-route") == ["fail"]
+
+
+def test_a_criterion_is_carried_only_by_a_test_that_runs() -> None:
+    assert fmt.carried("def test_x():  # SES-AC1\n", "SES-AC1") == (True, False)
+    assert fmt.carried("@pytest.mark.skip\ndef test_x():  # SES-AC1\n", "SES-AC1") == (True, True)
+    assert fmt.carried("def test_ac_2_exit_code():\n", "AC 2") == (True, False)
+    assert fmt.carried("def test_ac_21():\n", "AC 2") == (False, False)
+    assert fmt.carried("it.skip('AC 1 refuses', () => {})\n", "AC 1") == (True, True)
+
+
+class _Summary(_Final):
+    """A last-stage context with a workspace, for the pull request's description."""
+
+    def __init__(self, work: Path, replies: dict[str, tuple[int, str]], diffs: dict[str, str]) -> None:
+        super().__init__(replies, base="main")
+        self.workdir, self.out_dir, self.task_id, self.diffs = work, work / ".out", "TASK-7", diffs
+        self.artifacts = {"triage": {"triage_note": "note.md"}, "discovery": {"handoff": "handoff.md"},
+                          "code": {"code_report": "report.md"}}
+        self.values = {"triage": {"route": "discovery"}}
+
+    def run(self, cmd: str) -> CommandRun:
+        for prefix, text in self.diffs.items():
+            if cmd.startswith(prefix):
+                self.ran.append(cmd)
+                out = self.workdir / f"{len(self.ran)}.diff"
+                out.write_text(text)
+                return CommandRun(argv=tuple(cmd.split()), finished=True, exit_code=0, output_path=str(out))
+        return super().run(cmd)
+
+
+def test_the_pull_request_says_what_the_owner_has_to_read(tmp_path: Path) -> None:
+    (tmp_path / "note.md").write_text("# Triage\n\n## Acceptance criteria\n\n1. An idle session is refused\n")
+    (tmp_path / "handoff.md").write_text("# Hand-off\n\n## Decisions\n\n- Idle time counts from the last request\n\n"
+                                         "## Open questions\n\n- None\n")
+    (tmp_path / "report.md").write_text("# Code report\n\n## Verification\n\n- `pytest`: passed\n\n## Deviations\n\n"
+                                        "- `src/auth/clock.py` was needed for the test\n")
+    diff = ("+### SES-B2 Idle expiry\n+WHEN a session is idle for 30 minutes THE service SHALL refuse its requests\n"
+            "+- SES-AC2 (SES-B2): a request after 31 idle minutes is refused\n+Some prose that is not listed\n")
+    ctx = _Summary(tmp_path, {"git remote": (0, "origin\n"), "git push": (0, ""), "gh pr list": (0, "[]\n"),
+                              "gh pr create": (0, "https://github.com/acme/tool/pull/12\n")},
+                   {"git diff --name-only": "docs/specs/session.spec.md\nsrc/auth/session.py\n.claude/rules/x.md\n",
+                    "git diff --unified=0": diff})
+    got = routing.finalize(ctx)
+    assert got.outcome == "opened" and ctx.ran[-1].endswith(f"--body-file {tmp_path / '.out' / 'pull-request.md'}")
+    body = (tmp_path / ".out" / "pull-request.md").read_text()
+    assert "1. An idle session is refused" in body and "`docs/specs/session.spec.md`" in body
+    assert "added: SES-B2 Idle expiry" in body and "added: SES-AC2 (SES-B2)" in body and "prose" not in body
+    assert "Idle time counts from the last request" in body and "Open questions" not in body
+    assert "`src/auth/clock.py` was needed for the test" in body and ".claude/rules" not in body
+
+
+def test_a_reused_pull_request_gets_the_new_description(tmp_path: Path) -> None:
+    (tmp_path / "note.md").write_text("## Acceptance criteria\n\n1. One\n")
+    ctx = _Summary(tmp_path, {"git remote": (0, "origin\n"), "git push": (0, ""), "gh pr edit": (0, ""),
+                              "gh pr list": (0, '[{"url":"https://github.com/acme/tool/pull/9"}]\n')}, {})
+    got = routing.finalize(ctx)
+    assert got.outcome == "reused" and "not updated" not in got.reason
+    assert ctx.ran[-1].startswith("gh pr edit https://github.com/acme/tool/pull/9 --body-file ")

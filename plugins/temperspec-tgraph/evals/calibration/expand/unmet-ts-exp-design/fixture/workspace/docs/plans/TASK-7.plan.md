@@ -58,6 +58,11 @@ Weight: light
 - `pytest tests/test_config.py`
 - `ruff check src tests`
 
+| Criterion | Test | Command |
+|---|---|---|
+| AC 1 | `tests/test_config.py` | `pytest tests/test_config.py` |
+| AC 2 | `tests/test_config.py` | `pytest tests/test_config.py` |
+
 ## 4. Docs to update
 
 - `README.md`: it names `tool.toml` and must say what happens when the file is missing

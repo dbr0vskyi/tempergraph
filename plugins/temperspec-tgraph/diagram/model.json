@@ -279,6 +279,11 @@
     ],
     [
       "triage.gate",
+      "code.step",
+      "PROCEED"
+    ],
+    [
+      "triage.gate",
       "triage.step",
       "RETRY"
     ],
@@ -300,6 +305,11 @@
     [
       "triage.human",
       "plan.step",
+      "decision"
+    ],
+    [
+      "triage.human",
+      "code.step",
       "decision"
     ],
     [
@@ -604,6 +614,11 @@
     ],
     [
       "code.gate",
+      "triage.step",
+      "BACK"
+    ],
+    [
+      "code.gate",
       "code.human",
       "ESCALATE"
     ],
@@ -634,6 +649,11 @@
     ],
     [
       "code.human",
+      "triage.step",
+      "decision"
+    ],
+    [
+      "code.human",
       "prepare.step",
       "decision"
     ],
@@ -645,11 +665,6 @@
     [
       "code.human",
       "setup.step",
-      "decision"
-    ],
-    [
-      "code.human",
-      "triage.step",
       "decision"
     ],
     [
@@ -788,5 +803,5 @@
       "next"
     ]
   ],
-  "digest": "a602a9de459d539634d942ede7e67193378bdb4d5505c0d766824da907c306f5"
+  "digest": "345ad186df7cff52c44cf76540ca2fc76a4d2daedeaf91ab03ac33955bd4dcce"
 }

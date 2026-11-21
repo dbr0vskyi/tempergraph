@@ -22,7 +22,7 @@ The task:
 4. Write the requirements: every numbered acceptance criterion of the triage note is named by at least one requirement, and every requirement follows from a behaviour or a criterion of a spec.
 5. Split the work into phases, each with one goal, and give each phase its weight.
 6. Measure the complexity against the limits in the plan rule and state it in the front matter.
-7. If the plan is `simple`, write the task rows of every phase, test rows first, and the verification commands. If it is `complex`, write phases, goals and weights only, plus the verification commands; the expand step writes the rows.
+7. If the plan is `simple`, write the task rows of every phase, test rows first, the verification commands, and the proof table: one row for each acceptance criterion of the task, with the test file that will prove it and the command that runs that test. If it is `complex`, write phases, goals and weights only, plus the verification commands; the expand step writes the rows.
 8. List every document the change will make false under Docs to update.
 9. Write the plan to `docs/plans/{task_id}.plan.md`.
 

@@ -7,12 +7,13 @@ import os
 import re
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 
 from tempergraph.api import FinalizerResult
 
-from . import specfmt
+from . import specfmt, summary
 
 PACKAGE = Path(__file__).resolve().parents[2]
 RULES = "rules"
@@ -37,6 +38,7 @@ behaviour specs and a plan to tested code.
 """
 SAFE_REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,200}$")
 URL = re.compile(r"https://\S+/pull/\d+")
+PLAIN_PATH = re.compile(r"^[A-Za-z0-9._/:\\-]+$")
 
 
 # -- routes ---------------------------------------------------------------------------------------
@@ -48,8 +50,9 @@ def route_setup(view: Any) -> str:
 
 
 def route_triage(view: Any) -> str:
-    """No gap goes straight to the plan; any gap goes to discovery."""
-    return "plan" if view.values.get("route") == "plan" else "discovery"
+    """A quick task goes straight to code; no gap goes to the plan; any gap goes to discovery."""
+    route = view.values.get("route")
+    return {"quick": "code", "plan": "plan"}.get(route, "discovery")
 
 
 def route_discovery(view: Any) -> str:
@@ -139,9 +142,22 @@ def _passed(run: Any) -> bool:
     return bool(run.finished) and run.exit_code == 0
 
 
+def _body_file(ctx: Any) -> str:
+    """The pull request description, written outside the repository; empty when it cannot be written."""
+    try:
+        folder = Path(ctx.out_dir) if ctx.out_dir else Path(tempfile.mkdtemp(prefix="temperspec-"))
+        folder.mkdir(parents=True, exist_ok=True)
+        path = folder / "pull-request.md"
+        path.write_text(summary.build(ctx), encoding="utf-8")
+    except Exception:  # noqa: BLE001 - a description is never worth a failed last stage
+        return ""
+    return str(path) if PLAIN_PATH.match(str(path)) else ""
+
+
 def finalize(ctx: Any) -> FinalizerResult:
-    """Push the run's branch and open a draft pull request, or reuse the open one. A repository with no
-    remote, or a host with no `gh`, ends with the branch and the steps a person takes by hand."""
+    """Push the run's branch and open a draft pull request, or reuse the open one, with a description of what
+    the owner has to read. A repository with no remote, or a host with no `gh`, ends with the branch and the
+    steps a person takes by hand."""
     branch = ctx.branch or ctx.git.branch
     if not SAFE_REF.match(branch or ""):
         return FinalizerResult(outcome="skipped", reason="the run has no branch name that can be pushed")
@@ -153,11 +169,14 @@ def finalize(ctx: Any) -> FinalizerResult:
                                manual_steps=[f"`git push -u origin {branch}`, then open a draft pull request"])
     listed = ctx.run(f"gh pr list --head {branch} --state open --json url --limit 1")
     found = URL.search(str(listed.tail)) if _passed(listed) else None
+    body = _body_file(ctx)
     if found:
-        return FinalizerResult(outcome="reused", reason=f"{branch} pushed to its open pull request",
-                               url=found.group(0))
+        told = bool(body) and _passed(ctx.run(f"gh pr edit {found.group(0)} --body-file {body}"))
+        return FinalizerResult(outcome="reused", url=found.group(0),
+                               reason=f"{branch} pushed to its open pull request"
+                               + ("" if told else "; its description was not updated"))
     base = f" --base {ctx.base}" if SAFE_REF.match(ctx.base or "") else ""
-    made = ctx.run(f"gh pr create --draft --fill{base} --head {branch}")
+    made = ctx.run(f"gh pr create --draft --fill{base} --head {branch}" + (f" --body-file {body}" if body else ""))
     found = URL.search(str(made.tail)) if _passed(made) else None
     if found:
         return FinalizerResult(outcome="opened", reason=f"draft pull request opened for {branch}", url=found.group(0))

@@ -64,6 +64,11 @@ Weight: light
 
 - `pytest -q && ruff check .`
 
+| Criterion | Test | Command |
+|---|---|---|
+| AC 1 | `tests/test_config.py` | `pytest -q && ruff check .` |
+| AC 2 | `tests/test_config.py` | `pytest -q && ruff check .` |
+
 ## 4. Docs to update
 
 - `README.md`: say what happens when `tool.toml` is missing

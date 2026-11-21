@@ -64,6 +64,11 @@ Weight: light
 
 - `git --version`
 
+| Criterion | Test | Command |
+|---|---|---|
+| AC 1 | `tests/test_config.py` | `git --version` |
+| AC 2 | `tests/test_config.py` | `git --version` |
+
 ## 4. Docs to update
 
 - `README.md`: say what happens when `tool.toml` is missing

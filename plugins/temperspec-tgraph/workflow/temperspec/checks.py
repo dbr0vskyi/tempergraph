@@ -141,7 +141,8 @@ def _related(ctx: Any, specs: list[str], index: dict[str, list[str]], plan: fmt.
     return out
 
 
-def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None) -> Any:
+def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
+            links: list[str] | None = None) -> Any:
     """The result, with the facts a read-only judge cannot get by itself as its evidence."""
     bad = "; ".join(f"{f.criterion}: {f.message}" for f in found if f.status == "fail")
     specs, _ = _edited_specs(ctx)
@@ -155,6 +156,8 @@ def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None) -
         lines.append("Related specs: " + (", ".join(related[:40]) or "none"))
     elif plan is not None and plan.specs:
         lines.append("Related specs: " + ", ".join(plan.specs[:40]))
+    if links:
+        lines.append("Criterion tests: " + "; ".join(links[:40]))
     return checks.result(found, evidence="\n".join(lines))
 
 
@@ -268,6 +271,12 @@ def triage_check(ctx: Any) -> Any:
     bad = []
     if note.route not in fmt.ROUTES:
         bad.append(f"the note's route is `{note.route}`, not one of {', '.join(fmt.ROUTES)}")
+    elif note.route == "quick":
+        bad += fmt.quick_problems(note)
+        if ctx.visit > 1:
+            bad.append("a run that came back to triage takes `plan` or `discovery`, never `quick` again")
+        bad += [f.message for f in _commands(ctx, fmt.Plan(commands=note.change_commands), "ts-tri-route")
+                if note.change_commands]
     elif note.gaps and note.route != want:
         bad.append(f"the note's route is `{note.route}` but its gaps and delivery give `{want}`")
     if note.gaps == "none" and note.deliver == "docs":
@@ -380,10 +389,15 @@ def plan_check(ctx: Any) -> Any:
     if note_text is None:
         found.append(_find("fail", "ts-plan-trace", note_path, "the triage note cannot be read"))
     else:
-        lost = [n for n in fmt.parse_triage(note_text).criteria if n not in plan.requirement_criteria]
-        found += [_find("fail", "ts-plan-trace", path, f"acceptance criterion {n} is named by no requirement",
-                        f"add a requirement row whose Criteria cell holds `AC {n}`") for n in lost] or [
-            _ok("ts-plan-trace", path)]
+        criteria = fmt.parse_triage(note_text).criteria
+        lost = [_find("fail", "ts-plan-trace", path, f"acceptance criterion {n} is named by no requirement",
+                      f"add a requirement row whose Criteria cell holds `AC {n}`")
+                for n in criteria if n not in plan.requirement_criteria]
+        if plan.complexity == "simple":  # a complex plan gets its proof table from expand
+            lost += [_find("fail", "ts-plan-trace", "3. Verification", b,
+                           "add a row `| AC <n> | <test file> | <command> |` for each criterion")
+                     for b in fmt.proof_problems(plan, criteria)[:8]]
+        found += lost or [_ok("ts-plan-trace", path)]
 
     value = _value(ctx, "complexity")
     over = fmt.simple_overruns(plan, _reading_bytes(ctx, plan))
@@ -416,8 +430,15 @@ def expand_check(ctx: Any) -> Any:
         empty = ["(none)"]
     found += [_find("fail", "ts-exp-rows", f"{path}: {p}", "the phase has no task row",
                     "add a table `| Row | Kind | File | Proves | Change |`") for p in empty] or [_ok("ts-exp-rows", path)]
-    found += [_find("fail", "ts-exp-tests", path, b, "put the test row first and name its criterion")
-              for b in bad[:8]] or [_ok("ts-exp-tests", path)]
+    note_text, note_path = _read(ctx, "triage_note")
+    tests = [_find("fail", "ts-exp-tests", path, b, "put the test row first and name its criterion") for b in bad[:8]]
+    if note_text is None:
+        tests.append(_find("fail", "ts-exp-tests", note_path, "the triage note cannot be read"))
+    else:
+        tests += [_find("fail", "ts-exp-tests", "3. Verification", b,
+                        "add a row `| AC <n> | <test file> | <command> |` for each criterion")
+                  for b in fmt.proof_problems(plan, fmt.parse_triage(note_text).criteria)[:8]]
+    found += tests or [_ok("ts-exp-tests", path)]
     found += _commands(ctx, plan, "ts-exp-commands") or [_ok("ts-exp-commands", path)]
     found.append(_committed(ctx, "ts-exp-commit"))
     return checks.result(found)
@@ -427,13 +448,98 @@ def expand_check(ctx: Any) -> Any:
 # code
 
 
+def _quick(ctx: Any) -> fmt.Triage | None:
+    """The triage note of a run in the quick lane, else None."""
+    route = _value(ctx, "route")
+    if route not in (None, "quick"):
+        return None
+    text, _ = _read(ctx, "triage_note")
+    note = fmt.parse_triage(text) if text is not None else None
+    if route is None:  # no value was handed over (a fixture): the note's own route, when no plan was written
+        planned = any(checks.artifact_path(ctx, key) for key in ("plan", "phases"))
+        return note if note is not None and note.route == "quick" and not planned else None
+    return note
+
+
 def _plan(ctx: Any) -> tuple[fmt.Plan | None, str]:
-    """The plan the code step built from: the expanded one when expand ran."""
+    """The plan the code step built from: the expanded one when expand ran. In the quick lane the triage
+    note's Change section stands in: its commands, and one row per acceptance criterion."""
+    note = _quick(ctx)
+    if note is not None:
+        rows = [fmt.Row(id=f"AC {n}", kind="test", file=(note.change_tests or [""])[0], proves=f"AC {n}",
+                        phase="quick") for n in note.criteria]
+        return fmt.Plan(rows=rows, commands=list(note.change_commands)), checks.artifact_path(ctx, "triage_note") or ""
     for key in ("phases", "plan"):
         text, path = _read(ctx, key)
         if text is not None:
             return fmt.parse_plan(text), path
     return None, "plan"
+
+
+def _is_test(path: str) -> bool:
+    return bool(set(Path(path).parts[:-1]) & TEST_DIRS or TEST_FILE.match(Path(path).name))
+
+
+def _proof(ctx: Any, plan: fmt.Plan, criterion: str) -> tuple[list[CheckFinding], list[str]]:
+    """Each criterion a test row proves is carried by a test in the row's file, and that test is not skipped.
+    In the quick lane any of the note's test files may carry it. Returns the findings and `id -> file` lines."""
+    note = _quick(ctx)
+    found: list[CheckFinding] = []
+    links: list[str] = []
+    for row in plan.rows:
+        if row.kind != "test":
+            continue
+        files = list(note.change_tests) if note is not None else [row.file]
+        texts = {f: _read_path(ctx, f) for f in files if f}
+        gone = [f for f, text in texts.items() if text is None]
+        if gone or not texts:
+            found.append(_find("fail", criterion, gone[0] if gone else row.id,
+                               f"the test file of row `{row.id}` does not exist", "write the test in the named file"))
+            continue
+        ids = fmt.ANY_ID.findall(row.proves) or [f"AC {n}" for n in sorted(fmt.task_criteria(row.proves))]
+        for cid in ids:
+            got = {f: fmt.carried(text or "", cid) for f, text in texts.items()}
+            live = [f for f, (named, skipped) in got.items() if named and not skipped]
+            if live:
+                links.append(f"{cid} -> {live[0]}")
+            elif any(named for named, _ in got.values()):
+                found.append(_find("fail", criterion, next(iter(texts)), f"the test that carries {cid} is skipped",
+                                   "remove the skip; a criterion is proved by a test that runs"))
+            else:
+                found.append(_find("fail", criterion, next(iter(texts)), f"no test in the file carries {cid}",
+                                   f"name {cid} in the test's name or in a comment on it"))
+    return (found[:12] or [_ok(criterion)]), links
+
+
+IGNORED_BY_LANE = (".claude/", "docs/tasks/", ".tempergraph/")
+SHORTSTAT = re.compile(r"(\d+) insertion|(\d+) deletion")
+
+
+def _lane(ctx: Any, criterion: str) -> list[CheckFinding]:
+    """The guard of the quick lane, measured on what the run changed. A run in another lane is not measured."""
+    note = _quick(ctx)
+    if note is None:
+        return [_find("n_a", criterion, message="the run is not in the quick lane")]
+    fix = ("end the step with `UPSTREAM triage: the task is larger than the quick lane`, so triage plans it")
+    described = set(_setup_specs(ctx))
+    changed = [p for p in ctx.git.changed_paths if not p.startswith(IGNORED_BY_LANE)
+               and p not in ("CLAUDE.md", "AGENTS.md") and p not in described]
+    found = [_find("fail", criterion, p, "the quick lane changed a spec or a decision record", fix)
+             for p in changed if p.endswith((".spec.md", ".adr.md"))][:4]
+    code = [p for p in changed if not p.endswith(".md") and not _is_test(p)]
+    named = set(note.change_files) | set(note.change_tests)
+    found += [_find("fail", criterion, p, "changed, but the triage note's Change section does not name it", fix)
+              for p in code if p not in named][:6]
+    if len(code) > fmt.QUICK_MAX["code_files"]:
+        found.append(_find("fail", criterion, "", f"{len(code)} code files changed, over "
+                           f"{fmt.QUICK_MAX['code_files']}", fix))
+    measured = [p for p in changed if not p.endswith(".md")][:20]
+    if ctx.git.base and measured:
+        run = ctx.run(f"git diff --shortstat {ctx.git.base} -- {' '.join(measured)}")
+        lines = sum(int(a or b) for a, b in SHORTSTAT.findall(str(run.tail or ""))) if run.exit_code == 0 else 0
+        if lines > fmt.QUICK_MAX["lines"]:
+            found.append(_find("fail", criterion, "", f"{lines} changed lines, over {fmt.QUICK_MAX['lines']}", fix))
+    return found or [_ok(criterion)]
 
 
 def _verify(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
@@ -452,7 +558,7 @@ def _verify(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
 
 
 def code_check(ctx: Any) -> Any:
-    """ts-code-rows, ts-code-verify, ts-code-commit."""
+    """ts-code-rows, ts-code-verify, ts-code-proof, ts-code-lane, ts-code-commit."""
     plan, path = _plan(ctx)
     if plan is None:
         return checks.result([_find("fail", "ts-code-rows", path, "the plan cannot be read")])
@@ -477,8 +583,10 @@ def code_check(ctx: Any) -> Any:
                            "make the plan's verification pass"))
     else:
         found += _verify(ctx, plan, "ts-code-verify")
+    proof, links = _proof(ctx, plan, "ts-code-proof")
+    found += proof + _lane(ctx, "ts-code-lane")
     found.append(_committed(ctx, "ts-code-commit"))
-    return _result(ctx, found, plan)
+    return _result(ctx, found, plan, links)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -499,15 +607,19 @@ def _traced(ctx: Any, specs: list[str], files: list[str]) -> list[CheckFinding]:
         wanted.update({cid: path for cid in spec.criteria})
     if not wanted:
         return [_find("n_a", "ts-traced", message="no edited spec defines an acceptance criterion")]
-    tests = [f for f in files if (set(Path(f).parts[:-1]) & TEST_DIRS or TEST_FILE.match(Path(f).name))
-             and not f.endswith(".md")]
+    tests = [f for f in files if _is_test(f) and not f.endswith(".md")]
     seen: set[str] = set()
+    skipped: set[str] = set()
     for f in tests:
-        seen |= fmt.linked_ids(_read_path(ctx, f) or "") & set(wanted)
+        text = _read_path(ctx, f) or ""
+        for cid in fmt.linked_ids(text) & set(wanted):
+            (skipped if fmt.carried(text, cid)[1] else seen).add(cid)
         if len(seen) == len(wanted):
             break
-    return [_find("fail", "ts-traced", wanted[c], f"{c} is named by no test",
-                  f"name {c} in the test that proves it") for c in sorted(set(wanted) - seen)[:12]] or [_ok("ts-traced")]
+    lost = sorted(set(wanted) - seen)[:12]
+    return [_find("fail", "ts-traced", wanted[c], f"{c} is named only by a skipped test" if c in skipped else
+                  f"{c} is named by no test", f"name {c} in a test that runs and proves it") for c in lost] or [
+        _ok("ts-traced")]
 
 
 def _collateral(ctx: Any, specs: list[str]) -> list[CheckFinding]:

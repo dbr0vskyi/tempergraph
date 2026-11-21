@@ -64,6 +64,11 @@ Weight: light
 
 - `rm -rf build`
 
+| Criterion | Test | Command |
+|---|---|---|
+| AC 1 | `tests/test_config.py` | `rm -rf build` |
+| AC 2 | `tests/test_config.py` | `rm -rf build` |
+
 ## 4. Docs to update
 
 - `README.md`: say what happens when `tool.toml` is missing

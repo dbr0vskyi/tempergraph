@@ -40,7 +40,38 @@ Source and a one-line summary.
 
 - **Acceptance criteria** are numbered and copied from the task. None is added, none is dropped, none is reworded so that its meaning shifts. A task that states no acceptance criterion ends blocked.
 - **Gaps** holds one row per gap, `G<n> <kind>: <concept>. <the search that found nothing>`, or the single word `None`. The kinds: `spec gap` (no spec covers the concept), `spec update` (a spec covers it wrongly or partly), `decision needed`, `research needed`. In doubt, list the gap.
-- **Route** has two lines. `Deliver` is `docs` when the task asks only for documents (it says so, or it asks for a spec, a decision record or research and no code), otherwise `code`. `Route` is `plan` when Gaps is `None`; otherwise `discovery`, or `discovery-only` when `Deliver` is `docs`.
+- **Route** has two lines. `Deliver` is `docs` when the task asks only for documents (it says so, or it asks for a spec, a decision record or research and no code), otherwise `code`. `Route` is `plan` or `quick` when Gaps is `None`; otherwise `discovery`, or `discovery-only` when `Deliver` is `docs`.
+
+### The quick lane
+
+A small fix goes from triage straight to code, with no discovery and no plan. A note takes `Route: quick` only when all of these hold:
+
+| Condition | Limit |
+|---|---|
+| Gaps | `None` |
+| Deliver | `code` |
+| Behaviours and acceptance criteria of specs that must change | none. A bug where the code disagrees with a spec qualifies: the spec is already right |
+| Acceptance criteria of the task | at most 3 |
+| Code files to change, beside their tests | at most 2 |
+
+A quick note ends with a Change section, which is the plan of the code step:
+
+```markdown
+## Route
+
+- Deliver: code
+- Route: quick
+
+## Change
+
+- Files: `src/auth/session.py`
+- Tests: `tests/test_session.py`
+- Verify: `pytest tests/test_session.py`
+```
+
+- `Files` names the code files, `Tests` the test files, `Verify` the commands that run those tests, each in a code span. A command follows the plan rule's Verification section.
+- The code gate measures the change afterwards. A spec or decision record changed, a code file changed that `Files` does not name, more than 2 code files, or more than 200 changed lines sends the run back to triage, which then routes it to `plan`. A run that came back to triage never takes `quick` again.
+- Each acceptance criterion is one row of the code report, with the id `AC <n>`, and is carried by a test in one of the `Tests` files.
 - Triage writes this note and nothing else.
 
 ## Hand-off (`<task>.handoff.md`)
@@ -94,7 +125,7 @@ Two or three sentences.
 - None
 ```
 
-- **Rows** has one line per task row of the plan, by the row's id. `Status` is `done` only when the row's change exists in the file the row names; otherwise `open`, with the reason.
+- **Rows** has one line per task row of the plan, by the row's id. In the quick lane there is no plan: one line per acceptance criterion, with the id `AC <n>`. `Status` is `done` only when the row's change exists in the file the row names; otherwise `open`, with the reason.
 - **Verification** reports each command of the plan as the step saw it. These are claims: the gate runs the commands itself.
 - **Deviations** lists every place where the code differs from the plan, with the reason, or `None`. The plan itself is not edited by the code step.
 

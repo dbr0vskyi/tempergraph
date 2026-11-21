@@ -15,7 +15,8 @@ Plan: `{plan}`
 2. For each phase, read the code the phase touches, by path, until you can name exact files.
 3. Write the phase's task table. One row is one logical change in one exact file. A test row comes before the code row it covers and names the acceptance criterion it proves.
 4. Check the verification commands: each is a single plain command the repository documents. Correct or add commands so that the tests, the lint and the types of the changed code are covered.
-5. Save the plan at the same path.
+5. Write the proof table under the commands: one row for each acceptance criterion of the triage note, with the test file of the test row that proves it and the listed command that runs that test. What "done" means is fixed here, before any code exists.
+6. Save the plan at the same path.
 
 ## Limits
 
