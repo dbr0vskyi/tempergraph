@@ -136,6 +136,11 @@ def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     name = aliases.alias_of(state_root, tid)
     if name:
         r["alias"] = name
+    from tempergraph.durability import carry
+
+    carried = carry.marker(state_root, spec.name, split_thread(tid)[1])
+    if carried.get("on") or carried.get("state") in ("unpushed", "delete_failed"):  # CAR §4
+        r["carry"] = carried.get("state") or "on"
     if snap.next and state is ThreadState.UNFINISHED:
         r["next"] = [n for n in snap.next if n != flow.FINALIZER] or list(snap.next)
     return r

@@ -23,6 +23,7 @@ from tempergraph.constants import ExitCode
 from tempergraph.contracts import Decision, ResolvedSettings, RunOptions, ThreadState, WorkflowSpec, thread_id
 from tempergraph.docs import read_json, write_json
 from tempergraph.durability import alias as aliases
+from tempergraph.durability import carry as carrymod
 from tempergraph.durability.checkpoint import classify_snapshot, open_saver, resume_input, snapshot
 from tempergraph.durability.control import StopWatcher, take_stop
 from tempergraph.durability.lock import LockHeld, RunLock, is_held
@@ -99,6 +100,7 @@ class RunSettings:
     escalate: bool = False  # `resume --escalate`: take the offered escalation (LAD §2.4)
     escalation_record: Callable[[str], bool] | None = None  # a seam for LAD §2.5's escalation record
     judge_state: Callable[[str], str] | None = None  # a seam for a gate's judge binding state (JCL §2.5)
+    carry: bool = False  # `--carry`: carry this thread's state on its own branch (CAR §2)
 
     def all_flags(self) -> dict[str, Any]:
         """The named run options are spellings of `--set` (CLI §2.1)."""
@@ -531,6 +533,12 @@ def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: 
                                  prefix=str(rv["worktree.branch_prefix"]), base=str(rv.get("worktree.base") or "head"))
     except WorkspaceRefused as exc:
         return _refuse(exc.word, str(exc), tid=tid)
+    carry_remote = None
+    if settings.carry:  # CAR §4: refused at start without a remote, before anything is created
+        try:
+            carry_remote = carrymod.remote_of(root.parent)
+        except carrymod.CarryRefused as exc:
+            return _refuse(exc.code, str(exc), tid=tid)
     ensure_state_root(root)
     lock = RunLock(lock_path(root, spec.name, task_id))
     try:
@@ -548,6 +556,8 @@ def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: 
                                     read_include=bool(rv["worktree.read_worktreeinclude"]))
         except WorkspaceRefused as exc:
             return _refuse(exc.word, str(exc), tid=tid)
+        if carry_remote:
+            carrymod.set_marker(root, spec.name, task_id, on=True, remote=carry_remote, state="on")
         RunLog(run_dir(root, spec.name, task_id) / "run.jsonl").write(
             "task", chars=sum(len(v) for v in inputs.values()), request=clip(scrub(inputs.get("request", "")), 200))
         initial = {"request": {"task_id": task_id, "inputs": dict(inputs)}, "workspace": rec.to_json(),
@@ -557,9 +567,23 @@ def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: 
         out = _drive(spec, task_id, root, registry, settings, rep.judges, initial, settled,
                      executors=rep.step_executors, workspace=rec.to_json())
         out.warnings = list(plan.warnings) + [f"{w.code}: {w.message}" for w in rep.warnings]
-        return out
+        return _carry_exit(root, spec, task_id, settings, out)
     finally:
         lock.release()
+
+
+def _carry_exit(root: Path, spec: WorkflowSpec, task_id: str, settings: RunSettings, out: RunOutcome) -> RunOutcome:
+    """CAR §2.3: push the new state at a pause or an unfinished exit, delete the branch at the finish. The
+    exit never changes (contract C2); what is left to do is a warning and the thread's carry record."""
+    try:
+        warn = carrymod.after_exit(root, root.parent, spec.name, task_id, exit_code=int(out.exit_code),
+                                   workflow_version=_content_version(spec),
+                                   machine=join_keys(root, settings)["machine"])
+    except Exception as exc:  # noqa: BLE001
+        warn = f"carry: failed ({type(exc).__name__})"
+    if warn:
+        out.warnings.append(warn)
+    return out
 
 
 def _live(root: Path, spec: WorkflowSpec, tid: str) -> bool:
@@ -745,7 +769,22 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
             first_input, before = None, _human_update(spec, unit, values, d, human_payload)
             reason = str(((values.get("run") or {}).get("stopped") or {}).get("reason") or "")
             touch = (unit, "stopped", reason)
+        carry_warnings: list[str] = []
+        if settings.carry and not carrymod.is_on(root, spec.name, task_id):
+            try:
+                carrymod.set_marker(root, spec.name, task_id, on=True, remote=carrymod.remote_of(root.parent),
+                                    state="on")
+            except carrymod.CarryRefused as exc:
+                return _refuse(exc.code, str(exc), tid=tid)
         ws = values.get("workspace") or {}
+        if carrymod.is_on(root, spec.name, task_id):  # CAR §2.4: the lease, before the first attempt
+            try:
+                carry_warnings = carrymod.before_resume(
+                    root, root.parent, spec.name, task_id, workflow_version=_content_version(declared),
+                    machine=join_keys(root, settings)["machine"])
+            except carrymod.CarryRefused as exc:
+                return _refuse(exc.code, str(exc), tid=tid)
+            ws = carrymod.relocate(root, root.parent, spec.name, task_id, ws) if ws else ws
         if ws:
             try:
                 rec = attach_workspace(WorkspaceRecord.from_json(ws), tid, spec.worktree, root)
@@ -771,7 +810,8 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                                                                                   feedback, snap.next))
         if stale is not None:
             out.warnings.append("stale_stop_request_removed")
-        return out
+        out.warnings.extend(carry_warnings)
+        return _carry_exit(root, spec, task_id, settings, out)
     finally:
         lock.release()
 

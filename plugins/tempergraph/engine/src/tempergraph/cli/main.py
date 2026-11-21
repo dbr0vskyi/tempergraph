@@ -132,6 +132,14 @@ def _parser() -> _Parser:
     wp = wsub.add_parser("path")
     wp.add_argument("thread")
     observe_cli.add_parsers(sub)
+    ca = sub.add_parser("carry", help="a run's state on its own branch: push, pull, status, drop (CAR)")
+    ca.add_argument("action", choices=("push", "pull", "status", "drop"))
+    ca.add_argument("workflow")
+    ca.add_argument("thread")
+    ca.add_argument("--remote")
+    ca.add_argument("--force", action="store_true")
+    ca.add_argument("--json", action="store_true")
+    _caller_options(ca)
     co = sub.add_parser("config", help="resolved run settings and the settings files (RST §2.9)")
     csub = co.add_subparsers(dest="action", parser_class=_Parser)
     cs = csub.add_parser("show")
@@ -201,6 +209,7 @@ def _run_options(p: argparse.ArgumentParser, start: bool = True) -> None:
     _spellings(p)
     _caller_options(p)
     p.add_argument("--json", action="store_true")
+    p.add_argument("--carry", action="store_true", help="carry this thread's state on its own branch (CAR)")
     _settings_options(p, resume=not start)
     p.add_argument("--pause-before", action="append", default=[], metavar="UNIT")
     if start:
@@ -327,6 +336,8 @@ def _settings(env: Env, a: argparse.Namespace, mutating: bool = True) -> Any:
         fields.update(alias=a.alias, label=a.label, dry_run=bool(getattr(a, "dry_run", False)))
     if getattr(a, "escalate", False):
         fields["escalate"] = True
+    if getattr(a, "carry", False):
+        fields["carry"] = True
     if hasattr(a, "unset"):
         fields.update(unset=tuple(a.unset), reload_settings=a.reload_settings)
     if hasattr(a, "ruling"):
@@ -653,6 +664,55 @@ def cmd_stop(env: Env, a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_carry(env: Env, a: argparse.Namespace) -> int:
+    """CAR §2: `carry push|pull|status|drop <workflow> <thread>`."""
+    from tempergraph import identity
+    from tempergraph.durability import carry
+    from tempergraph.durability.lock import is_held
+    from tempergraph.package.loader import full_version
+    from tempergraph.store.layout import lock_path
+
+    spec = _spec(env, a.workflow)
+    root = _root(env)
+    repo = root.parent
+    task = a.thread.split("/", 1)[1] if a.thread.startswith(f"{spec.name}/") else a.thread
+    machine = identity.machine_id()
+    try:
+        if a.action == "status":
+            doc: dict[str, Any] = carry.status(root, repo, spec.name, task, remote=a.remote)
+        elif is_held(lock_path(root, spec.name, task)):
+            raise UsageError(f"{spec.name}/{task} is running in another process")
+        elif a.action == "push":
+            if not (run_dir_of(root, spec.name, task) / "run.jsonl").exists():
+                raise UsageError(f"{spec.name}/{task}: no such thread")
+            got = carry.push(root, repo, spec.name, task, remote=a.remote, workflow_version=full_version(spec),
+                             machine=machine, force=a.force)
+            doc = {"branch": got.branch, "remote": got.remote, "seq": got.seq, "commit": got.commit}
+        elif a.action == "pull":
+            caller = _stop_caller(env, a) if a.force else {}
+            doc = carry.pull(root, repo, spec.name, task, remote=a.remote, current_version=full_version(spec),
+                             machine=machine, force=a.force, caller=caller)
+        else:
+            doc = carry.drop(root, repo, spec.name, task, remote=a.remote)
+    except carry.CarryRefused as exc:
+        raise UsageError(f"{exc.code}: {exc}") from exc
+    except carry.CarryFailed as exc:
+        env.err.write(f"tempergraph: the remote could not be reached or refused: {exc}\n")
+        return int(ExitCode.BUDGET_OR_INFRA)
+    doc = {"schema_version": 1, "action": a.action, "thread_id": f"{spec.name}/{task}", **doc}
+    if a.json:
+        _emit(env, doc)
+    else:
+        env.out.write("".join(f"{k}: {v}\n" for k, v in doc.items() if k != "schema_version" and v is not None))
+    return 0
+
+
+def run_dir_of(root: Path, workflow: str, task_id: str) -> Path:
+    from tempergraph.store.layout import run_dir
+
+    return run_dir(root, workflow, task_id)
+
+
 def _stop_caller(env: Env, a: argparse.Namespace) -> dict[str, Any]:
     from tempergraph.provenance import decide
     from tempergraph.store.layout import home_path
@@ -760,7 +820,7 @@ def cmd_outcome(env: Env, a: argparse.Namespace) -> int:
 COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "run": cmd_run, "resume": cmd_resume, "status": cmd_status, "list": cmd_list, "validate": cmd_validate,
     "executors": cmd_executors, "events": cmd_events, "facts": cmd_facts, "graph": cmd_graph, "wait": cmd_wait,
-    "stop": cmd_stop, "worktree": cmd_worktree, "config": cmd_config, "rerun": cmd_rerun, "outcome": cmd_outcome,
+    "stop": cmd_stop, "carry": cmd_carry, "worktree": cmd_worktree, "config": cmd_config, "rerun": cmd_rerun, "outcome": cmd_outcome,
     **observe_cli.COMMANDS,
     "workflows": workflows_cli.cmd_workflows,
     "audit": audit_cli.cmd_audit,

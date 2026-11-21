@@ -101,13 +101,14 @@ After the import, resume re-attaches or recreates the worktree on the recorded b
 - A separate orphan branch keeps state out of the work branch, its pull request and its diff statistics, and is deleted whole; a removal commit on the work branch would leave the state in its history ([R-133](../research/R-133-carrying-run-state-on-a-branch.rsrch.md) F4).
 - The subset is what a resume reads; transcripts and prompts stay local by LOS's marks and contract C9.
 - Plumbing commits touch no checkout, so a carry never disturbs the person's working tree or the run's worktree.
+- **As built (R2-T5.2).** `durability/carry.py`. Each machine keeps its own record of a carried thread in `runs/<workflow>/<task_id>/carry.local.json` (on or off, remote, state, last pushed `seq`), which is never carried. `seq` is the run log's last sequence number. A push fetches the state branch first and is refused when the branch holds a newer `seq` or another machine's lease; the new commit's parent is the fetched tip, so the branch stays a line of engine commits. The engine never pushes the work branch: the person pushes it, and a pull refuses until it is on the remote. A pull creates the local work branch from the remote when it is missing, and the next resume moves the workspace record to this machine's worktree root; for a run in the checkout itself the pull says which branch to check out. A forced pull is one `intervention` ledger row with a `steer` touch, the caller and the machine it was taken from. The thread's status row shows `carry` (`unpushed`, `delete_failed`) when something is left to do; `carry status` compares the local and the remote `seq` and shows the lease. A finish with exit 0 deletes the branch; a stopped thread is pushed and ends with `carry drop`. Open: `attention` does not yet list a branch whose deletion the remote refused (the status row and `carry status` do).
 
 ## 6. Acceptance criteria
 
-- [ ] CAR-AC-1 CAR-B1 to CAR-B4 and every row of the CAR-B4 table hold offline with two state roots and one bare remote repository.
-- [ ] CAR-AC-2 No state commit holds a path outside `.tempergraph-carry/`, and none of the never-carried paths of §2.2 (fixture with every LOS file present).
-- [ ] CAR-AC-3 A finished carried thread leaves no ref under `refs/heads/tempergraph/state/` locally or on the remote.
-- [ ] CAR-AC-4 Each row of §2.5 refuses with its message on a fixture.
+- [x] CAR-AC-1 CAR-B1 to CAR-B4 and every row of the CAR-B4 table hold offline with two state roots and one bare remote repository.
+- [x] CAR-AC-2 No state commit holds a path outside `.tempergraph-carry/`, and none of the never-carried paths of §2.2 (fixture with every LOS file present).
+- [x] CAR-AC-3 A finished carried thread leaves no ref under `refs/heads/tempergraph/state/` locally or on the remote.
+- [x] CAR-AC-4 Each row of §2.5 refuses with its message on a fixture.
 
 ## Open questions
 

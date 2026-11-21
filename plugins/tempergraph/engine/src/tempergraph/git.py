@@ -44,6 +44,17 @@ def git(args: list[str], cwd: Path, *, check: bool = True, stdin: str | None = N
     return proc.stdout
 
 
+def git_bytes(args: list[str], cwd: Path) -> bytes:
+    """Run git and return its raw output, for a blob that is not text. Raises GitError when git fails."""
+    try:
+        proc = subprocess.run(["git", *args], cwd=cwd, capture_output=True, env=_env(), timeout=120)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise GitError(f"git {args[0] if args else ''}: {type(exc).__name__}") from None
+    if proc.returncode != 0:
+        raise GitError(f"git {args[0] if args else ''} exited {proc.returncode}")
+    return proc.stdout
+
+
 def toplevel(start: Path) -> Path | None:
     try:
         return Path(git(["rev-parse", "--show-toplevel"], start).strip())
