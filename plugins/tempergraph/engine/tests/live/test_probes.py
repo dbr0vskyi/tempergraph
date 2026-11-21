@@ -69,7 +69,10 @@ def test_p_cc_1_bare_isolates_user_config(tmp_path: Path) -> None:  # P-CC-1
     init = _init(ev)
     print("init tools:", init.get("tools"), "mcp:", init.get("mcp_servers"), "plugins:", init.get("plugins"))
     assert _result(ev).get("subtype") == "success", "credentials did not work under --bare"
-    assert not init.get("mcp_servers") and not init.get("plugins")
+    # Plugins of source `@builtin` ship inside the CLI build; they are not user configuration (ECC §2.7).
+    user_plugins = [p for p in init.get("plugins") or []
+                    if not str(p.get("source") if isinstance(p, dict) else p).endswith("@builtin")]
+    assert not init.get("mcp_servers") and not user_plugins, user_plugins
 
 
 def test_p_cc_2_judge_tools_are_exact(tmp_path: Path) -> None:  # P-CC-2

@@ -21,7 +21,7 @@ Paste `live-report.txt` (or its summary and the printed lines) into the thread. 
 | Row | Check | Test | A pass looks like | Then update |
 |---|---|---|---|---|
 | L-0 | CLI version | `test_version` | prints `claude --version` | the version column of every row below |
-| L-1 | P-CC-1 `--bare` isolates user config, sign-in still works | `test_p_cc_1_bare_isolates_user_config` | `success`; no MCP servers or plugins in `system/init` | ECC §2.7 |
+| L-1 | P-CC-1 `--bare` isolates user config, sign-in still works | `test_p_cc_1_bare_isolates_user_config` | `success`; no MCP servers and no plugins in `system/init` other than the CLI's own (source `@builtin`) | ECC §2.7 |
 | L-2 | P-CC-2 judge tools are exactly `Read`, `Grep`, `Glob` | `test_p_cc_2_judge_tools_are_exact` | `init.tools == [Glob, Grep, Read]` | ECC §2.7 (`restricts_judge_tools`) |
 | L-3 | P-CC-3 the stream shape at `--max-budget-usd` | `test_p_cc_3_budget_end_shape` | result subtype `error_max_budget_usd` | ECC §2.7; `BUDGET_SUBTYPE` in `executors/claude.py` if it differs |
 | L-4 | P-CC-5 prompt on stdin with `-p` | `test_p_cc_5_prompt_on_stdin` | `success` and the reply holds `stdin-ok` | ECC §2.7 |
@@ -65,7 +65,7 @@ All rows below were run on 2026-11-21 in the project's cloud container, not on t
 | Row | Date | CLI version | Result | Notes |
 |---|---|---|---|---|
 | L-0 | 2026-11-21 | 2.1.330 | passed | `2.1.330 (Claude Code)` |
-| L-1 | 2026-11-21 | 2.1.330 | failed | Sign-in works under `--bare` (`success`), no MCP servers, tools are `[Read]`. `system/init` still lists four plugins of source `@builtin` (`cc-plugin-agents-md`, `cc-plugin-telemetry`, `cc-plugin-privacy`, `cc-plugin-plugin-authoring`), so the test's `not plugins` fails. They are part of this CLI build, not user configuration; the same list appears with the host variables removed. Open: whether P-CC-1 should ignore `@builtin` plugins |
+| L-1 | 2026-11-21 | 2.1.330 | failed | Sign-in works under `--bare` (`success`), no MCP servers, tools are `[Read]`. `system/init` still lists four plugins of source `@builtin` (`cc-plugin-agents-md`, `cc-plugin-telemetry`, `cc-plugin-privacy`, `cc-plugin-plugin-authoring`), so the test's `not plugins` fails. They are part of this CLI build, not user configuration; the same list appears with the host variables removed. The owner's ruling the same day: `@builtin` plugins are not user configuration, and the test now ignores them. Not run again since the change |
 | L-2 | 2026-11-21 | 2.1.330 | passed | `init.tools == [Glob, Grep, Read]` |
 | L-3 | 2026-11-21 | 2.1.330 | passed | subtype `error_max_budget_usd`, `is_error: true`; `BUDGET_SUBTYPE` matches |
 | L-4 | 2026-11-21 | 2.1.330 | passed |  |

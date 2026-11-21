@@ -74,7 +74,7 @@ The judge's statuses and the verdict rule are fixed engine-wide ([CON §2.8](01-
 | `unmet` | The typical failure, phrased so a reviewer would recognise it | Required |
 | `evidence` | What the judge must cite for `met`: a quote, a path and line, a count, a command result | Required; `MET` without it is `PARTIAL` already (JDG §2.2) |
 | `n_a` | When the criterion does not apply, if ever | Optional; absent means N/A is never valid and is read as UNMET |
-| `seeds` | Ids of fixtures in `evals/calibration/<gate>/`: at least one expected `met` and one expected `unmet` or `partial` | Required before `author verify` rung 8, which grades them ([SCF §2.5](91-blueprint-and-scaffold.spec.md)) |
+| `seeds` | Ids of fixtures in `evals/calibration/<gate>/`: at least one expected `met` and one expected `unmet` or `partial`. A seed states its expectation in its `case.json`, as a label or in a `seed` block ([SCF §2.5](91-blueprint-and-scaffold.spec.md)) | Required before `author verify` rung 8, which grades them ([SCF §2.5](91-blueprint-and-scaffold.spec.md)) |
 
 The judge prompt renders each criterion's `met`, `partial`, `unmet` and `evidence` beside its check method ([JDG §2.1](05-judge-and-verdict.spec.md)); the step sees only the criterion text and `met` as its target, never the check method or the failure descriptions. A reworded scale stales the judge's score for that criterion, as a reworded text does (§2.6).
 

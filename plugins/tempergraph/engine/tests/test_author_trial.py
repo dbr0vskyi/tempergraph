@@ -122,6 +122,28 @@ def test_seeds_graded_as_expected_pass_with_judge_sessions_only(pkg: Path, repo:
     assert not (pkg / "evals" / "calibration" / "draft" / "scores.jsonl").exists()  # never counts as a score
 
 
+def test_a_seed_states_its_own_expectation_without_a_label(pkg: Path, repo: Path) -> None:
+    """A synthetic seed with no label is graded against its `seed` block; a block for another criterion is not
+    an expectation, so the seed stays `seed-unlabelled` (SCF §2.5)."""
+    for gate, sid, cid, exp in (("draft", "draft-good", "rn-faithful", "MET"), ("draft", "draft-bad", "rn-faithful", "UNMET"),
+                                ("outcome", "out-good", "rn-complete", "MET"), ("outcome", "out-bad", "rn-complete", "UNMET")):
+        write(pkg / "evals" / "calibration" / gate / sid, "case.json", {
+            "schema_version": 1, "case_id": sid, "gate": gate, "labels": [], "provenance": "synthetic",
+            "state": "candidate", "split": "holdout", "seed": {"criterion_id": cid, "expected": exp, "reason": "seed"}})
+    reg = registry([], seed_answers())
+    code, doc, _ = cli(repo, reg, "author", "verify", str(pkg), "--judge-seeds", "--json")
+    assert code == 0 and states(doc)["judge_seeds"] == "passed"
+    assert {(g["seed"], g["expected"]) for g in doc["seeds"]} == {
+        ("draft-good", "MET"), ("draft-bad", "UNMET"), ("out-good", "MET"), ("out-bad", "UNMET")}
+    assert not (pkg / "evals" / "calibration" / "draft" / "scores.jsonl").exists()
+    write(pkg / "evals" / "calibration" / "outcome" / "out-bad", "case.json", {
+        "schema_version": 1, "case_id": "out-bad", "gate": "outcome", "labels": [],
+        "seed": {"criterion_id": "another", "expected": "UNMET"}})
+    code, doc, _ = cli(repo, registry([], seed_answers()), "author", "verify", str(pkg), "--judge-seeds", "--json")
+    rung = next(r for r in doc["rungs"] if r["name"] == "judge_seeds")
+    assert code != 0 and "seed-unlabelled" in {f["code"] for f in rung["findings"]}
+
+
 def test_an_unclear_scale_flips_and_fails_rung_8(pkg: Path, repo: Path) -> None:
     """SCF-B8 / SCF-AC-7: the unmet seed graded PARTIAL once and UNMET once names rn-faithful; no stamp."""
     reg = registry([], seed_answers(("PARTIAL", "UNMET")))

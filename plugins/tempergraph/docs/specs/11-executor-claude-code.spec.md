@@ -111,7 +111,7 @@ Each probe is run by the owner against the pinned CLI version with an isolated c
 
 | Id | Fact to confirm | Used by | Result |
 |---|---|---|---|
-| P-CC-1 | `--bare` removes tools registered by user-level plugins and hooks from a headless session, and the gateway credentials still work | `isolates_user_config`, judge launch | not run |
+| P-CC-1 | `--bare` removes tools registered by user-level plugins and hooks from a headless session, and the gateway credentials still work. Plugins the CLI build carries itself (source `@builtin` in `system/init`) stay listed and are not user configuration | `isolates_user_config`, judge launch | not run |
 | P-CC-2 | `--tools Read,Grep,Glob` plus `--disallowedTools "mcp__*"` leaves exactly those tools in `system/init` | `restricts_judge_tools` | not run |
 | P-CC-3 | The stream shape when `--max-budget-usd` ends a session | `cap_reached` classification | not run |
 | P-CC-4 | Precedence of `CLAUDE_CODE_SUBAGENT_MODEL` against an agent call's own model | subagent alias | not run |
