@@ -8,7 +8,7 @@ paths:
 
 # Task notes: the triage note, the hand-off, the code report and the setup note
 
-These notes carry a run from one step to the next. Each step starts with no memory of the others, so what is not in a note or a document does not exist for the next step. They live in `docs/tasks/`, named by the task id.
+These notes carry a run from one step to the next. Each step starts with no memory of the others, so what is not in a note or a document does not exist for the next step. They live in `docs/tasks/`, named by the task id. Each example below is also installed as a fill-in template in `docs/templates/` (`triage.template.md`, `hand-off.template.md`, `code-report.template.md`, `setup.template.md`), generated from this file. Change this rule, never a template.
 
 ## Triage note (`<task>.triage.md`)
 

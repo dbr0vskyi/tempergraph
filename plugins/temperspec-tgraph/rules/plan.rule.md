@@ -9,6 +9,8 @@ A plan turns the task's acceptance criteria and the specs into requirements, pha
 
 ## Structure
 
+The example below is also installed as the fill-in template `docs/templates/plan.template.md`, generated from this file. Change this rule, never the template.
+
 ```markdown
 ---
 task: TASK-12

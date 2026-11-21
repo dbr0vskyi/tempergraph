@@ -85,7 +85,8 @@ def _spec_index(ctx: Any, files: list[str]) -> dict[str, list[str]]:
 
 def _changed_docs(ctx: Any) -> list[str]:
     """Documents the run changed: the git facts, plus the hand-off's own list (the only source in a fixture)."""
-    paths = [p for p in ctx.git.changed_paths if p.endswith(".md") and not (set(Path(p).parts) & SKIP_DIRS)]
+    paths = [p for p in ctx.git.changed_paths if p.endswith(".md") and not (set(Path(p).parts) & SKIP_DIRS)
+             and not p.startswith(fmt.TEMPLATE_DIR + "/")]  # templates hold example ids, not links
     text, own = _read(ctx, "handoff")
     if text is not None:
         paths += [own] if own not in paths else []

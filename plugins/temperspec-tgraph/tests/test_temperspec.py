@@ -233,6 +233,44 @@ def test_install_rules_writes_the_rule_files_once(repo: Path, monkeypatch: pytes
     (target / "spec.rule.md").write_text("edited here\n")
     routing.install_rules(ctx)
     assert (target / "spec.rule.md").read_text() == "edited here\n"  # a repository's own copy is kept
+    assert sorted(p.name for p in (repo / fmt.TEMPLATE_DIR).iterdir()) == sorted(_templates())
+
+
+# -- the fill-in templates are the rule files' own examples ----------------------------------------------
+
+
+def _templates() -> dict[str, str]:
+    out: dict[str, str] = {}
+    for rule in sorted((ROOT / "rules").glob("*.rule.md")):
+        out.update(fmt.rule_templates(rule.name.split(".")[0], rule.read_text(encoding="utf-8")))
+    return out
+
+
+def test_each_template_is_its_rules_example_and_the_rule_names_it() -> None:
+    names = {"decision": "# <The decision", "plan": "---\ntask:", "research": "# <The question>",
+             "spec": "# <Capability name>", "triage": "# Triage:", "hand-off": "# Hand-off:",
+             "code-report": "# Code report:", "setup": "# Setup:"}
+    got = _templates()
+    assert sorted(got) == sorted(f"{n}.template.md" for n in names)
+    for name, opening in names.items():
+        rule = _rule(name if name in ("decision", "plan", "research", "spec") else "task-notes")
+        assert got[f"{name}.template.md"] == _example(rule, opening)
+        assert f"`{name}.template.md`" in rule or f"`docs/templates/{name}.template.md`" in rule
+    assert fmt.headings_missing(got["decision.template.md"], fmt.DECISION_HEADINGS) == []
+    assert fmt.headings_missing(got["research.template.md"], fmt.RESEARCH_HEADINGS) == []
+
+
+def test_the_setup_skill_installs_rules_and_templates_and_keeps_local_edits(tmp_path: Path) -> None:
+    script = ROOT / "skills" / "setup" / "install_rules.py"
+    run = subprocess.run(["python3", "-I", str(script), "--target", str(tmp_path)], capture_output=True, text=True,
+                         check=True)
+    assert run.stdout.count("installed") == len(list((ROOT / "rules").glob("*.rule.md"))) + len(_templates())
+    for name, body in _templates().items():
+        assert (tmp_path / fmt.TEMPLATE_DIR / name).read_text(encoding="utf-8") == body
+    (tmp_path / fmt.TEMPLATE_DIR / "plan.template.md").write_text("mine\n")
+    again = subprocess.run(["python3", "-I", str(script), "--target", str(tmp_path)], capture_output=True, text=True,
+                           check=True).stdout
+    assert "kept (differs)" in again and "plan.template.md" in again
 
 
 def test_prepare_installs_rules_and_the_project_note_once_and_reports_setup(

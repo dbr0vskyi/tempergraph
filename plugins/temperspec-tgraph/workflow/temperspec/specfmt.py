@@ -35,6 +35,10 @@ ROUTES = ("discovery", "plan", "discovery-only", "quick")
 # What the quick lane may hold at most (the task-notes rule lists the same); over any of these the task is planned.
 QUICK_MAX = {"criteria": 3, "code_files": 2, "lines": 200}
 PROOF_HEADER = ("criterion", "test", "command")
+DECISION_HEADINGS = ("Context", "Decision", "Options considered", "Consequences")
+RESEARCH_HEADINGS = ("Problem statement", "Sources consulted", "Key findings", "Conclusions", "Open questions")
+TEMPLATE_DIR = "docs/templates"
+EXAMPLE = re.compile(r"^```markdown\n(.*?)^```$", re.M | re.S)
 SUFFIX_BY_FOLDER = {"specs": ".spec.md", "adr": ".adr.md", "research": ".rsrch.md", "plans": ".plan.md"}
 # What a `simple` plan may hold at most; over any of these the plan is `complex`.
 SIMPLE_MAX = {"phases": 3, "rows": 12, "test_rows": 6, "files": 10, "commands": 3, "reading_bytes": 200_000}
@@ -51,6 +55,21 @@ GAP_ROW = re.compile(r"^\s*(?:[-*]|\|)\s*\**G\d+\b")
 NUMBERED = re.compile(r"^\s*(\d+)[.)]\s+\S")
 TABLE_ROW = re.compile(r"^\s*\|(.+)\|\s*$")
 CODE_SPAN = re.compile(r"`([^`]+)`")
+
+
+def rule_templates(rule: str, text: str) -> dict[str, str]:
+    """The fill-in templates of a rule file: each example in it of a whole document (one that opens with front
+    matter or a `# ` title), named `<rule>.template.md`, or by the example's title when the rule has several.
+    Generated at install, so a template is never a second copy to keep in step with its rule."""
+    docs = [b for b in EXAMPLE.findall(text.replace("\r\n", "\n")) if b.startswith(("---\n", "# "))]
+    out: dict[str, str] = {}
+    for body in docs:
+        name = rule
+        if len(docs) > 1:
+            title = re.search(r"^# ([^:\n]+)", body, re.M)
+            name = re.sub(r"[^a-z0-9]+", "-", (title.group(1) if title else rule).lower()).strip("-")
+        out[f"{name}.template.md"] = body
+    return out
 
 
 def sections(text: str, level: int = 2) -> dict[str, list[str]]:

@@ -9,6 +9,8 @@ A spec states what one capability does, as seen from outside it. Behaviours are 
 
 ## Structure
 
+The example below is also installed as the fill-in template `docs/templates/spec.template.md`, generated from this file. Change this rule, never the template.
+
 Sections in this order, with these headings:
 
 ```markdown
