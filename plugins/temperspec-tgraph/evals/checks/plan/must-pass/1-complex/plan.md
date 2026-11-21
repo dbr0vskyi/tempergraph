@@ -1,6 +1,7 @@
 ---
 task: STANDIN-1
 complexity: complex
+status: planned
 specs: []
 ---
 

@@ -1,6 +1,7 @@
 ---
 task: TASK-7
 complexity: simple
+status: planned
 specs: [docs/specs/config-file.spec.md, docs/specs/cli.spec.md]
 ---
 
@@ -28,13 +29,13 @@ specs: [docs/specs/config-file.spec.md, docs/specs/cli.spec.md]
 Goal: a start with no `tool.toml` prints one line to standard error and exits with code 2.
 Weight: light
 
-| Row | Kind | File | Proves | Change |
-|---|---|---|---|---|
-| 1.1 | test | `tests/test_config.py` | CFG-AC1 | A start with no config file prints exactly one line that names it |
-| 1.2 | test | `tests/test_config.py` | CFG-AC2 | A start with no config file exits with code 2 |
-| 1.3 | code | `src/tool/config.py` | | Read the settings; report a missing file on standard error |
-| 1.4 | code | `src/tool/main.py` | | Use the settings reader; return exit code 2 when the file is missing |
-| 1.5 | docs | `README.md` | | Say what happens when `tool.toml` is missing |
+| Row | Kind | Req | File | Proves | Change | Completed |
+|---|---|---|---|---|---|---|
+| 1.1 | test | R1 | `tests/test_config.py` | CFG-AC1 | A start with no config file prints exactly one line that names it | |
+| 1.2 | test | R2 | `tests/test_config.py` | CFG-AC2 | A start with no config file exits with code 2 | |
+| 1.3 | code | R2, R3 | `src/tool/config.py` | | Read the settings; report a missing file on standard error | |
+| 1.4 | code | R2 | `src/tool/main.py` | | Use the settings reader; return exit code 2 when the file is missing | |
+| 1.5 | docs | R2 | `README.md` | | Say what happens when `tool.toml` is missing | |
 
 ## 3. Verification
 

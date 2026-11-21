@@ -131,6 +131,12 @@ def test_the_plan_rule_example_and_limits_match_the_parser() -> None:
     assert plan.missing == [] and plan.complexity == "simple" and plan.requirement_criteria == {1}
     assert [r.id for r in plan.rows] == ["1.1", "1.2"] and plan.commands == ["pytest tests/test_session.py"]
     assert fmt.row_problems(plan) == ([], []) and fmt.simple_overruns(plan) == []
+    assert plan.status == "planned" and list(plan.requirements) == ["R1"] and [r.req for r in plan.rows] == [["R1"]] * 2
+    assert fmt.link_problems(plan) == [] and fmt.mark_problems(plan, done=False) == [] and fmt.scope_cuts(plan) == []
+    assert "| " + " | ".join(c.capitalize() for c in fmt.ROW_COLUMNS) + " |" in rule
+    for status in fmt.PLAN_STATUS:
+        assert f"`{status}`" in rule
+    assert "`✓ 2026-11-21`" in rule and fmt.DONE_MARK.match("✓ 2026-11-21")
     assert plan.proof == [("AC 1", "tests/test_session.py", "pytest tests/test_session.py")]
     assert fmt.proof_problems(plan, [1]) == [] and fmt.proof_problems(plan, [1, 2]) != []
     for sign in fmt.HEAVY_SIGNS:
@@ -149,8 +155,8 @@ def test_the_task_notes_rule_examples_match_the_parsers() -> None:
         "some", "code", "discovery")
     assert fmt.headings_missing(_example(rule, "# Hand-off:"), fmt.HANDOFF_HEADINGS) == []
     report = _example(rule, "# Code report:")
-    assert fmt.headings_missing(report, fmt.REPORT_HEADINGS) == []
-    assert fmt.parse_report(report) == {"1.1": "done", "1.2": "done"}
+    assert fmt.headings_missing(report, fmt.REPORT_HEADINGS) == [] and fmt.parse_report(report) == {}
+    assert "## Rows\n\n  | Row | Status | Note |" in rule and fmt.QUICK_REPORT_HEADINGS[0] == "Rows"
     for route in fmt.ROUTES:
         assert f"`{route}`" in rule
     quick = fmt.parse_triage("## Acceptance criteria\n\n1. One\n\n## Gaps\n\nNone\n\n" + _example(rule, "## Route"))
@@ -227,6 +233,44 @@ def test_install_rules_writes_the_rule_files_once(repo: Path, monkeypatch: pytes
     (target / "spec.rule.md").write_text("edited here\n")
     routing.install_rules(ctx)
     assert (target / "spec.rule.md").read_text() == "edited here\n"  # a repository's own copy is kept
+    assert sorted(p.name for p in (repo / fmt.TEMPLATE_DIR).iterdir()) == sorted(_templates())
+
+
+# -- the fill-in templates are the rule files' own examples ----------------------------------------------
+
+
+def _templates() -> dict[str, str]:
+    out: dict[str, str] = {}
+    for rule in sorted((ROOT / "rules").glob("*.rule.md")):
+        out.update(fmt.rule_templates(rule.name.split(".")[0], rule.read_text(encoding="utf-8")))
+    return out
+
+
+def test_each_template_is_its_rules_example_and_the_rule_names_it() -> None:
+    names = {"decision": "# <The decision", "plan": "---\ntask:", "research": "# <The question>",
+             "spec": "# <Capability name>", "triage": "# Triage:", "hand-off": "# Hand-off:",
+             "code-report": "# Code report:", "setup": "# Setup:"}
+    got = _templates()
+    assert sorted(got) == sorted(f"{n}.template.md" for n in names)
+    for name, opening in names.items():
+        rule = _rule(name if name in ("decision", "plan", "research", "spec") else "task-notes")
+        assert got[f"{name}.template.md"] == _example(rule, opening)
+        assert f"`{name}.template.md`" in rule or f"`docs/templates/{name}.template.md`" in rule
+    assert fmt.headings_missing(got["decision.template.md"], fmt.DECISION_HEADINGS) == []
+    assert fmt.headings_missing(got["research.template.md"], fmt.RESEARCH_HEADINGS) == []
+
+
+def test_the_setup_skill_installs_rules_and_templates_and_keeps_local_edits(tmp_path: Path) -> None:
+    script = ROOT / "skills" / "setup" / "install_rules.py"
+    run = subprocess.run(["python3", "-I", str(script), "--target", str(tmp_path)], capture_output=True, text=True,
+                         check=True)
+    assert run.stdout.count("installed") == len(list((ROOT / "rules").glob("*.rule.md"))) + len(_templates())
+    for name, body in _templates().items():
+        assert (tmp_path / fmt.TEMPLATE_DIR / name).read_text(encoding="utf-8") == body
+    (tmp_path / fmt.TEMPLATE_DIR / "plan.template.md").write_text("mine\n")
+    again = subprocess.run(["python3", "-I", str(script), "--target", str(tmp_path)], capture_output=True, text=True,
+                           check=True).stdout
+    assert "kept (differs)" in again and "plan.template.md" in again
 
 
 def test_prepare_installs_rules_and_the_project_note_once_and_reports_setup(
@@ -465,3 +509,59 @@ def test_a_reused_pull_request_gets_the_new_description(tmp_path: Path) -> None:
     got = routing.finalize(ctx)
     assert got.outcome == "reused" and "not updated" not in got.reason
     assert ctx.ran[-1].startswith("gh pr edit https://github.com/acme/tool/pull/9 --body-file ")
+
+
+# -- the plan's marks: checked first at the code gate, then verified against what changed -------------------
+
+DONE = ROOT / "evals" / "checks" / "code" / "must-pass" / "1-done"
+
+
+class _Counting(CheckContext):
+    """A check context that counts the commands the check runs."""
+
+    ran: list[str]
+
+    def run(self, cmd: str, **kw: Any) -> Any:  # type: ignore[override]
+        self.ran.append(cmd)
+        return super().run(cmd, **kw)
+
+
+def _code_ctx(work: Path, fixture: Path, git: GitFacts | None = None) -> _Counting:
+    files = _copy(fixture, work)
+    artifacts: dict[str, dict[str, str]] = {}
+    for f in files:
+        if f.stem in OWNER:
+            artifacts.setdefault(OWNER[f.stem], {})[f.stem] = f.relative_to(work).as_posix()
+    ctx = _Counting(unit="code", workdir=work, request={}, artifacts=artifacts, values={"triage": {"route": "plan"}},
+                    git=git or GitFacts(), allow=SPEC.allow_commands, out_dir=work.parent / f"{work.name}.out",
+                    deadline_at=time.monotonic() + 60)
+    ctx.ran = []
+    return ctx
+
+
+def test_an_unmarked_plan_goes_back_to_code_with_no_command_run(tmp_path: Path) -> None:
+    ctx = _code_ctx(tmp_path, ROOT / "evals" / "checks" / "code" / "must-fail" / "open-row")
+    res, _ = run_check(SPEC.units["code"].gate, ctx)
+    assert res.result == "FAIL" and _named(res, "ts-code-rows") == ["fail"] and ctx.ran == []
+    assert not _named(res, "ts-code-verify") and not _named(res, "ts-code-proof")
+
+
+def test_a_marked_row_whose_file_did_not_change_fails_the_code_gate(tmp_path: Path) -> None:
+    git = GitFacts(base="abc123", changed_paths=("tests/test_config.py", "src/tool/config.py"))
+    res, _ = run_check(SPEC.units["code"].gate, _code_ctx(tmp_path / "a", DONE, git))
+    rows = [f for f in res.findings if f.criterion == "ts-code-changed"]
+    assert res.result == "FAIL" and [f.place for f in rows] == ["README.md"], res.evidence
+    git = GitFacts(base="abc123", changed_paths=("tests/test_config.py", "src/tool/config.py", "README.md"))
+    res, _ = run_check(SPEC.units["code"].gate, _code_ctx(tmp_path / "b", DONE, git))
+    assert _named(res, "ts-code-changed") == ["pass"] and _named(res, "ts-code-rows") == ["pass"], res.evidence
+
+
+def test_words_that_cut_scope_are_a_maybe_for_the_plan_judge(tmp_path: Path) -> None:
+    files = _copy(ROOT / "evals" / "checks" / "plan" / "must-pass" / "2-simple", tmp_path)
+    plan = tmp_path / "plan.md"
+    plan.write_text(plan.read_text().replace("Report the missing file and exit with code 2",
+                                             "Report the missing file with a stub for now"))
+    artifacts = {OWNER[f.stem]: {f.stem: f.relative_to(tmp_path).as_posix()} for f in files if f.stem in OWNER}
+    res, _ = run_check(SPEC.units["plan"].gate, _context("plan", tmp_path, artifacts))
+    assert res.result == "MAYBE" and _named(res, "ts-plan-scope") == ["maybe"], res.evidence
+    assert "stub" in next(f.message for f in res.findings if f.criterion == "ts-plan-scope")

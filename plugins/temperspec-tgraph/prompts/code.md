@@ -14,19 +14,19 @@ Plan: `{plan}`
 
 ## Procedure
 
-1. Read the plan, then the triage note its hand-off section names, then the specs its front matter names. Read the files the task rows name before you change them.
+1. Read the plan, then the triage note its hand-off section names, then the specs its front matter names. Read the files the task rows name before you change them. Set the plan's `status` to `in-progress`.
 2. Work through the phases in order and the rows of each phase in order.
 3. For a test row, write the test first and see it fail for the right reason. The test carries the id its row names under Proves, in its name or in a comment on it: the spec's id (`SES-AC1`), or `AC <n>` of the task. A test that carries a criterion is never skipped.
 4. For a code row, make the smallest change in the named file that makes the phase's tests pass.
 5. For a docs row, edit the named document. A spec is edited only where the plan says a behaviour or a criterion changes.
-6. After each phase, run the plan's verification commands that cover it. Fix what fails in your change. Never weaken, skip or delete a test to make a command pass.
-7. When every row is done, run every verification command of the plan once more.
-8. Write the code report to `docs/tasks/{task_id}.report.md`: one line per row with its status, what each verification command gave, and every deviation from the plan.
+6. After each phase, run the plan's verification commands that cover it. Fix what fails in your change. Never weaken, skip or delete a test to make a command pass. Then mark each row of the phase whose change is in its file: `✓ <today's date as YYYY-MM-DD>` in its Completed cell.
+7. When every row is done, run every verification command of the plan once more, and set the plan's `status` to `completed`. The gate checks the marks first and sends an unfinished plan straight back; then it checks every marked row's file and runs the commands itself.
+8. Write the code report to `docs/tasks/{task_id}.report.md`: what each verification command gave, and every deviation from the plan, including each row you could not mark and why. In the quick lane the report also has its Rows table, one line per acceptance criterion.
 
 ## Limits
 
-- Change only the files the task rows name, plus the code report. If a row cannot be done without another file, do it and list it under Deviations with the reason.
-- Do not edit the plan. A row is `done` in the report only when its change exists in its named file.
+- Change only the files the task rows name, the plan's marks and status, and the code report. If a row cannot be done without another file, do it and list it under Deviations with the reason.
+- In the plan, change only the Completed cells and the status. A row is marked only when its change exists in its named file.
 - If the plan conflicts with the code base or with a spec, do not work around it: say that the plan (or the discovery output it rests on) is at fault, with the row and the conflict.
 - If a verification command already fails before your first change, note the failing tests under Deviations and do not count them against your rows; do not repair unrelated failures.
 - Do not run `git commit`, `git push` or `gh`. The engine commits your files when you finish, and only the last stage publishes.

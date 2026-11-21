@@ -9,6 +9,8 @@ A decision record says why: the context, the options and the consequences of one
 
 ## Structure
 
+The example below is also installed as the fill-in template `docs/templates/decision.template.md`, generated from this file. Change this rule, never the template.
+
 ```markdown
 # <The decision in a few words>
 

@@ -29,7 +29,7 @@ A change to code that makes a document false changes that document in the same r
 
 ## Rules against cascade edits
 
-1. A document carries no version, date, status, change log or list of the tests that prove it. Git holds the history.
+1. A document carries no version, date, status, change log or list of the tests that prove it. Git holds the history. The one exception is the plan: it is a working document for one task, linked by nothing else, so its status and its rows' completion marks and dates cause no cascade (`plan.rule.md`).
 2. A link lives in one place. No document lists "who links to me".
 3. An index is generated from the files. Nobody edits an index by hand.
 4. A link names an id (`SES-B3`) or a file path, never a section number. An id is never reused and never renumbered.

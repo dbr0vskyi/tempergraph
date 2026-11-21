@@ -9,6 +9,7 @@ Read the plan at the path under What to grade: its requirements, then each phase
 - For each task row: name the requirement it implements. A row that implements nothing in the design is the defect. A row whose file or change is too loose to act on is a partial.
 - The design sections (0, 1 and 4, the phase names, goals and weights) must read as a design that the rows follow. Rows that contradict a goal or a requirement mean the design was changed or ignored: the defect.
 - When the design itself cannot be implemented as written, name the plan output as the place of the defect.
-- Row order, criterion ids on test rows, the verification commands and the commit are checked before you and are given as check findings; take them as given.
+- Row order, criterion ids on test rows, each row's Req cell, the docs rows, the verification commands and the commit are checked before you and are given as check findings; take them as given. Whether a row really implements the requirement it names is yours to judge.
+- A `maybe` finding of `ts-exp-scope` quotes words that may cut a row down (a stub, "for now", a later task): a row that does less than its requirement asks implements nothing of it in full, a partial at least.
 - Cite the row id and the requirement id for every MET. Without evidence, grade PARTIAL.
 - Grade only the criteria listed.

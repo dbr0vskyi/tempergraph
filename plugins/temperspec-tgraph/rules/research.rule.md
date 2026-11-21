@@ -9,6 +9,8 @@ A research note answers one unknown, so that a spec or a decision does not rest 
 
 ## Structure
 
+The example below is also installed as the fill-in template `docs/templates/research.template.md`, generated from this file. Change this rule, never the template.
+
 ```markdown
 # <The question>
 

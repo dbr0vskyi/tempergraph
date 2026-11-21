@@ -9,6 +9,7 @@ Read the triage note, then the plan, then every spec the plan's front matter nam
 - For each requirement of the plan: find the behaviour or acceptance criterion it follows from. A requirement that states a result a behaviour forbids is the defect. A requirement that goes beyond every behaviour is a partial.
 - When the defect is in a spec (two specs contradict each other, or a spec the plan needs is missing or leaves a question open), name the discovery output as the place of the defect, so the run goes back there.
 - Judge meaning, not wording or names.
-- The plan's sections, the trace from acceptance criteria to requirements, the complexity and the commit are checked before you and are given as check findings; take them as given.
+- The plan's sections, its status and marks, the trace from acceptance criteria to requirements, the rows' links to requirements and docs, the complexity and the commit are checked before you and are given as check findings; take them as given.
+- A `maybe` finding of `ts-plan-scope` quotes words that may cut a requirement or a row down (a stub, "for now", a later task). Read that requirement against its behaviour: a cut the task does not ask for is a requirement that falls short of the behaviour, graded as a partial at least.
 - Cite the requirement id and the behaviour id with a quote of each for every MET. Without evidence, grade PARTIAL.
 - Grade only the criteria listed. Do not judge whether you would have designed it differently.

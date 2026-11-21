@@ -1,6 +1,7 @@
 ---
 task: STANDIN-1
 complexity: simple
+status: planned
 specs: []
 ---
 
@@ -25,12 +26,12 @@ specs: []
 Goal: a start with no `tool.toml` prints one line and exits with code 2.
 Weight: light
 
-| Row | Kind | File | Proves | Change |
-|---|---|---|---|---|
-| 1.1 | test | `tests/test_config.py` | AC 1 | A start with no config file prints one line that names it |
-| 1.2 | test | `tests/test_config.py` | AC 2 | A start with no config file exits with code 2 |
-| 1.3 | code | `src/tool/config.py` | | Report the missing file and exit with code 2 |
-| 1.4 | docs | `README.md` | | Describe the missing-file message |
+| Row | Kind | Req | File | Proves | Change | Completed |
+|---|---|---|---|---|---|---|
+| 1.1 | test | R1 | `tests/test_config.py` | AC 1 | A start with no config file prints one line that names it | |
+| 1.2 | test | R2 | `tests/test_config.py` | AC 2 | A start with no config file exits with code 2 | |
+| 1.3 | code | R2 | `src/tool/config.py` | | Report the missing file and exit with code 2 | |
+| 1.4 | docs | R2 | `README.md` | | Describe the missing-file message | |
 
 ## 3. Verification
 

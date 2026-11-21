@@ -8,7 +8,7 @@ paths:
 
 # Task notes: the triage note, the hand-off, the code report and the setup note
 
-These notes carry a run from one step to the next. Each step starts with no memory of the others, so what is not in a note or a document does not exist for the next step. They live in `docs/tasks/`, named by the task id.
+These notes carry a run from one step to the next. Each step starts with no memory of the others, so what is not in a note or a document does not exist for the next step. They live in `docs/tasks/`, named by the task id. Each example below is also installed as a fill-in template in `docs/templates/` (`triage.template.md`, `hand-off.template.md`, `code-report.template.md`, `setup.template.md`), generated from this file. Change this rule, never a template.
 
 ## Triage note (`<task>.triage.md`)
 
@@ -109,13 +109,6 @@ Two or three sentences.
 ```markdown
 # Code report: TASK-12
 
-## Rows
-
-| Row | Status | Note |
-|---|---|---|
-| 1.1 | done | `tests/test_session.py::test_idle_session_refused` |
-| 1.2 | done | `src/auth/session.py` |
-
 ## Verification
 
 - `pytest tests/test_session.py`: passed, 14 tests
@@ -125,9 +118,20 @@ Two or three sentences.
 - None
 ```
 
-- **Rows** has one line per task row of the plan, by the row's id. In the quick lane there is no plan: one line per acceptance criterion, with the id `AC <n>`. `Status` is `done` only when the row's change exists in the file the row names; otherwise `open`, with the reason.
+- A row's progress is marked in the plan, not here (`plan.rule.md`, Status and marks).
+- **Rows** comes first, and only in the quick lane, where there is no plan to mark: one line per acceptance criterion, with the id `AC <n>`.
+
+  ```markdown
+  ## Rows
+
+  | Row | Status | Note |
+  |---|---|---|
+  | AC 1 | done | `tests/test_session.py::test_idle_session_refused` |
+  ```
+
+  `Status` is `done` only when the change exists in the file the note's Change section names; otherwise `open`, with the reason.
 - **Verification** reports each command of the plan as the step saw it. These are claims: the gate runs the commands itself.
-- **Deviations** lists every place where the code differs from the plan, with the reason, or `None`. The plan itself is not edited by the code step.
+- **Deviations** lists every place where the code differs from the plan, with the reason, or `None`, and every row left unmarked with the reason. The code step edits the plan only to mark rows and set its status.
 
 ## Setup note (`<task>.setup.md`)
 

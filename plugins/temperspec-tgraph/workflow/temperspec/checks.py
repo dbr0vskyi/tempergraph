@@ -85,7 +85,8 @@ def _spec_index(ctx: Any, files: list[str]) -> dict[str, list[str]]:
 
 def _changed_docs(ctx: Any) -> list[str]:
     """Documents the run changed: the git facts, plus the hand-off's own list (the only source in a fixture)."""
-    paths = [p for p in ctx.git.changed_paths if p.endswith(".md") and not (set(Path(p).parts) & SKIP_DIRS)]
+    paths = [p for p in ctx.git.changed_paths if p.endswith(".md") and not (set(Path(p).parts) & SKIP_DIRS)
+             and not p.startswith(fmt.TEMPLATE_DIR + "/")]  # templates hold example ids, not links
     text, own = _read(ctx, "handoff")
     if text is not None:
         paths += [own] if own not in paths else []
@@ -332,9 +333,29 @@ def discovery_check(ctx: Any) -> Any:
 def _rows(ctx: Any, plan: fmt.Plan, criterion: str, rows_criterion: str | None = None) -> list[CheckFinding]:
     empty, bad = fmt.row_problems(plan)
     found = [_find("fail", rows_criterion or criterion, f"phase {p}", "the phase has no task row",
-                   "add a table `| Row | Kind | File | Proves | Change |`") for p in empty]
+                   f"add a table `{ROW_TABLE}`") for p in empty]
     found += [_find("fail", criterion, "2. Phases", b, "put the test row first and name its criterion") for b in bad[:8]]
     return found
+
+
+ROW_TABLE = "| " + " | ".join(c.capitalize() for c in fmt.ROW_COLUMNS) + " |"
+
+
+def _links_of(plan: fmt.Plan, criterion: str, place: str) -> list[CheckFinding]:
+    return [_find("fail", criterion, place, b, "name the requirement in each row's Req cell, and give each listed "
+                  "document a `docs` row") for b in fmt.link_problems(plan)[:10]] or [_ok(criterion, place)]
+
+
+def _marks(plan: fmt.Plan, criterion: str, place: str, done: bool) -> list[CheckFinding]:
+    fix = ("mark each row `✓ <date>` in its Completed cell when its change is in its file, and set `status: "
+           "completed`") if done else "leave Completed empty and the status `planned`: the code step marks them"
+    return [_find("fail", criterion, place, b, fix) for b in fmt.mark_problems(plan, done)[:10]]
+
+
+def _scope(plan: fmt.Plan, criterion: str, place: str) -> list[CheckFinding]:
+    return [_find("maybe", criterion, place, f"may do less than asked: {c}",
+                  "do what the requirement asks, or say in the hand-off why the cut is part of the task")
+            for c in fmt.scope_cuts(plan)[:6]] or [_ok(criterion, place)]
 
 
 def _commands(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
@@ -364,7 +385,7 @@ def _reading_bytes(ctx: Any, plan: fmt.Plan) -> int:
 
 
 def plan_check(ctx: Any) -> Any:
-    """ts-plan-form, ts-plan-trace, ts-plan-size, ts-plan-commit."""
+    """ts-plan-form, ts-plan-trace, ts-plan-links, ts-plan-size, ts-plan-scope, ts-plan-commit."""
     text, path = _read(ctx, "plan")
     if text is None:
         return checks.result([_find("fail", "ts-plan-form", path, "the plan cannot be read",
@@ -382,8 +403,13 @@ def plan_check(ctx: Any) -> Any:
                            "state the complexity in the front matter"))
     if plan.complexity == "simple":  # a simple plan carries its task rows; a complex one gets them from expand
         found += _rows(ctx, plan, "ts-plan-form") + _commands(ctx, plan, "ts-plan-form")
+    found += _marks(plan, "ts-plan-form", path, done=False)
     if not any(f.status == "fail" for f in found):
         found.append(_ok("ts-plan-form", path))
+    if plan.complexity == "simple":
+        found += _links_of(plan, "ts-plan-links", path)
+    else:
+        found.append(_find("n_a", "ts-plan-links", path, "a complex plan gets its task rows from the expand step"))
 
     note_text, note_path = _read(ctx, "triage_note")
     if note_text is None:
@@ -413,12 +439,13 @@ def plan_check(ctx: Any) -> Any:
             bad.append(f"phase `{phase}` is heavy with no sign of {', '.join(fmt.HEAVY_SIGNS)}")
     found += [_find("fail", "ts-plan-size", path, b, "state the complexity the signs give") for b in bad] or [
         _ok("ts-plan-size", path)]
+    found += _scope(plan, "ts-plan-scope", path)
     found.append(_committed(ctx, "ts-plan-commit"))
     return _result(ctx, found, plan)
 
 
 def expand_check(ctx: Any) -> Any:
-    """ts-exp-rows, ts-exp-tests, ts-exp-commands, ts-exp-commit."""
+    """ts-exp-rows, ts-exp-tests, ts-exp-links, ts-exp-commands, ts-exp-scope, ts-exp-commit."""
     text, path = _read(ctx, "phases")
     if text is None:
         return checks.result([_find("fail", "ts-exp-rows", path, "the expanded plan cannot be read",
@@ -428,8 +455,9 @@ def expand_check(ctx: Any) -> Any:
     found: list[CheckFinding] = []
     if not plan.phases:
         empty = ["(none)"]
-    found += [_find("fail", "ts-exp-rows", f"{path}: {p}", "the phase has no task row",
-                    "add a table `| Row | Kind | File | Proves | Change |`") for p in empty] or [_ok("ts-exp-rows", path)]
+    rows = [_find("fail", "ts-exp-rows", f"{path}: {p}", "the phase has no task row", f"add a table `{ROW_TABLE}`")
+            for p in empty] + _marks(plan, "ts-exp-rows", path, done=False)
+    found += rows or [_ok("ts-exp-rows", path)]
     note_text, note_path = _read(ctx, "triage_note")
     tests = [_find("fail", "ts-exp-tests", path, b, "put the test row first and name its criterion") for b in bad[:8]]
     if note_text is None:
@@ -439,7 +467,9 @@ def expand_check(ctx: Any) -> Any:
                         "add a row `| AC <n> | <test file> | <command> |` for each criterion")
                   for b in fmt.proof_problems(plan, fmt.parse_triage(note_text).criteria)[:8]]
     found += tests or [_ok("ts-exp-tests", path)]
+    found += _links_of(plan, "ts-exp-links", path)
     found += _commands(ctx, plan, "ts-exp-commands") or [_ok("ts-exp-commands", path)]
+    found += _scope(plan, "ts-exp-scope", path)
     found.append(_committed(ctx, "ts-exp-commit"))
     return checks.result(found)
 
@@ -558,26 +588,44 @@ def _verify(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
 
 
 def code_check(ctx: Any) -> Any:
-    """ts-code-rows, ts-code-verify, ts-code-proof, ts-code-lane, ts-code-commit."""
+    """ts-code-rows, ts-code-changed, ts-code-verify, ts-code-proof, ts-code-lane, ts-code-commit.
+
+    The marks come first: a plan with a row not marked completed goes back to the code step at once, with no
+    command run. Marks are claims, so a marked plan is then verified as before, and each marked row's file must
+    be among the paths the run changed."""
     plan, path = _plan(ctx)
     if plan is None:
         return checks.result([_find("fail", "ts-code-rows", path, "the plan cannot be read")])
     report, report_path = _read(ctx, "code_report")
-    status = fmt.parse_report(report or "")
+    quick = _quick(ctx) is not None
     found: list[CheckFinding] = []
     if report is None:
         found.append(_find("fail", "ts-code-rows", report_path, "the code report cannot be read",
                            "write the report and name its path"))
     else:
+        wanted = fmt.QUICK_REPORT_HEADINGS if quick else fmt.REPORT_HEADINGS
         found += [_find("fail", "ts-code-rows", report_path, f"section `## {h}` is missing or out of order",
-                        f"add `## {h}`") for h in fmt.headings_missing(report, fmt.REPORT_HEADINGS)]
-        if not plan.rows:
-            found.append(_find("fail", "ts-code-rows", path, "the plan has no task row"))
-        open_rows = [r.id for r in plan.rows if status.get(r.id) != "done"]
-        found += [_find("fail", "ts-code-rows", report_path, f"row `{r}` is not marked `done` in the report",
-                        "finish the row, or say which earlier output makes it impossible") for r in open_rows[:10]]
-    if not any(f.status == "fail" for f in found):
-        found.append(_ok("ts-code-rows", report_path))
+                        f"add `## {h}`") for h in fmt.headings_missing(report, wanted)]
+    if not plan.rows:
+        found.append(_find("fail", "ts-code-rows", path, "the plan has no task row"))
+    elif quick:  # no plan to mark: the report's rows, one per acceptance criterion
+        status = fmt.parse_report(report or "")
+        found += [_find("fail", "ts-code-rows", report_path, f"row `{r.id}` is not marked `done` in the report",
+                        "finish the row, or say which earlier output makes it impossible")
+                  for r in plan.rows if status.get(r.id) != "done"][:10]
+    else:
+        found += _marks(plan, "ts-code-rows", path, done=True)
+    if any(f.status == "fail" for f in found):  # the cheap return: nothing is run on an unfinished plan
+        return _result(ctx, found + [_committed(ctx, "ts-code-commit")], plan)
+    found.append(_ok("ts-code-rows", report_path if quick else path))
+    if quick or not ctx.git.base:
+        found.append(_find("n_a", "ts-code-changed", message="the quick lane has no plan to mark" if quick else
+                           "no base commit to compare with"))
+    else:
+        changed = set(ctx.git.changed_paths)
+        found += [_find("fail", "ts-code-changed", r.file, f"row `{r.id}` is marked completed but its file did not "
+                        "change in the run", "make the row's change, or clear its mark and say why")
+                  for r in plan.rows if r.file and r.file not in changed][:10] or [_ok("ts-code-changed", path)]
     if _value(ctx, "tests_passed") == "no":
         found.append(_find("fail", "ts-code-verify", "tests_passed", "the step itself reports failing tests",
                            "make the plan's verification pass"))

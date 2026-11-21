@@ -29,7 +29,8 @@ behaviour specs and a plan to tested code.
 
 - Specs are in `docs/specs/` (`*.spec.md`), starting at the overview spec. Decision records are in `docs/adr/`,
   research notes in `docs/research/`, plans in `docs/plans/`, task notes in `docs/tasks/`.
-- How each document is written: the rule files in `.claude/rules/temperspec/`.
+- How each document is written: the rule files in `.claude/rules/temperspec/`; fill-in templates generated from
+  them are in `docs/templates/`.
 - When two sources disagree: the task's acceptance criteria, then specs and decision records, then the plan,
   then the code. A code change that makes a spec false changes the spec in the same change.
 - A test that proves an acceptance criterion of a spec carries the criterion's id.
@@ -74,13 +75,19 @@ def _git(workdir: Path, *args: str) -> subprocess.CompletedProcess[str]:
 
 
 def install_rules(ctx: Any) -> dict[str, str]:
-    """Put the rule files into the repository unless it, or the whole machine, has them."""
+    """Put the rule files, and the templates generated from their examples, into the repository unless it, or
+    the whole machine, has the rules."""
     target = Path(ctx.workdir) / REPO_RULES
     if target.is_dir() or (Path.home() / REPO_RULES).is_dir():
         return {}
     target.mkdir(parents=True)
+    templates = Path(ctx.workdir) / specfmt.TEMPLATE_DIR
     for src in sorted((PACKAGE / RULES).glob("*.rule.md")):
         shutil.copyfile(src, target / src.name)
+        for name, body in specfmt.rule_templates(src.name.split(".")[0], src.read_text(encoding="utf-8")).items():
+            if not (templates / name).exists():  # a repository's own template is kept
+                templates.mkdir(parents=True, exist_ok=True)
+                (templates / name).write_text(body, encoding="utf-8")
     return {}
 
 
