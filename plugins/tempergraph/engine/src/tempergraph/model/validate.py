@@ -140,7 +140,9 @@ class _Validator:
     # -- settings and routing ---------------------------------------------------------------------
     def _settings(self) -> None:
         s = self.spec
-        if not s.issue_repository or not ISSUE_REPO_RE.match(s.issue_repository):
+        if s.builtin and not s.issue_repository:
+            pass  # a workflow the engine ships files nothing: it has no repository of its own (UWF §2.1)
+        elif not s.issue_repository or not ISSUE_REPO_RE.match(s.issue_repository):
             self.err("issue-repository-invalid", None, "`issue_repository` must be `owner/name`")
         if s.run_cost_cap_usd is not None and not s.run_cost_cap_usd > 0:
             self.err("cost-cap-invalid", None, "`run_cost_cap_usd` must be positive")

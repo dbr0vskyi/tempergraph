@@ -167,6 +167,7 @@ The verb never merges and never writes the installed copy. Consumers receive the
 
 - The model work is a tempergraph workflow, not a loose session, so it inherits the engine's own rails: an independent judge, a deterministic check first, budgets, pauses and records ([UWF](64-upgrade-workflow.spec.md)).
 - The shares by transform, model and person in every report are the measurement R-056's open question asks for.
+- **As built (R2-T6.3).** `package/upgrade.py` holds phases 1 to 7 and `cli/upgrade.py` the verb. The branch is `tempergraph/upgrade/<workflow>/<engine>` in a sibling worktree `<repo>.worktrees/upgrade--<workflow>--<engine>`, and the record is `.tempergraph/upgrades/<workflow>-<engine>/` with `baseline.json`, `plan.json` and `report.json`. Owner items are reconciled only by `--continue`, which re-reads the package and closes an item whose hit is gone. A transform that fails leaves its item for the owner and does not count against V2. Not built in release 2: `--trial` and so V8 (refused with `not_in_release`), the host audit items and a sub-workflow's change notes in the plan. Tests drive two of the eight transforms through the verb; the other six are tested as transforms ([VER-AC-3](61-version-metadata.spec.md)). V7 has no failing fixture, because every earlier check already refuses what would trip it, and WUP-B8's row for a criterion edited on a protected path is covered by the upgrade workflow's scope check ([UWF §2.4](64-upgrade-workflow.spec.md)), not by a test of this verb.
 
 ## 6. Acceptance criteria
 
@@ -174,8 +175,8 @@ The verb never merges and never writes the installed copy. Consumers receive the
 - [ ] WUP-AC-2 A fixture workflow per transform of [VER §2.3.4](61-version-metadata.spec.md) is upgraded with no session started.
 - [ ] WUP-AC-3 Each check V1 to V8 has a fixture upgrade that fails it alone, exits 4 and writes no stamp.
 - [ ] WUP-AC-4 Every row of WUP-B8's table is a test.
-- [ ] WUP-AC-5 No upgrade writes outside its branch's package folder and its upgrade record (file-system guard in tests).
-- [ ] WUP-AC-6 The report's shares by transform, model and person add up to the items done.
+- [x] WUP-AC-5 No upgrade writes outside its branch's package folder and its upgrade record (file-system guard in tests).
+- [x] WUP-AC-6 The report's shares by transform, model and person add up to the items done.
 
 ## Open questions
 

@@ -256,6 +256,9 @@ def _emit(env: Env, doc: Any) -> None:
 
 def _spec(env: Env, name: str) -> WorkflowSpec:
     if name in VERBS:
+        own = env.catalog.specs.get(name)
+        if own is not None and own.builtin:  # a built-in workflow's threads are resumed and read like any other
+            return own
         raise UsageError(f"{name!r} is a reserved verb, not a workflow (CLI-B2)")
     if name not in env.catalog.specs and name not in env.catalog.broken:
         from tempergraph.package.manifest import workflow_name
@@ -382,6 +385,8 @@ def cmd_run(env: Env, a: argparse.Namespace) -> int:
         return int(CHECK_EXIT["broken"])
     if a.request and a.request[0] in VERBS:
         raise UsageError(f"{a.request[0]!r} is a reserved verb and cannot start a request (CLI-B2)")
+    if spec.builtin:  # UWF-B5: a built-in workflow is started by its own verb
+        raise UsageError(f"{spec.name} is started by `tempergraph {spec.name} <workflow>`, not by `run`")
     try:
         res = resolve_request(spec, list(a.request), _inputs(a.input), env.cwd, a.task_id)
     except PackageNotLoaded as exc:

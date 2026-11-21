@@ -440,7 +440,7 @@ class WorkflowSpec:
     profiles: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
     outcome: OutcomeSpec | None = None
     allow_commands: tuple[str, ...] = ()  # the workflow-wide command allow-list (WFM §2.1)
-    builtin: bool = False  # the built-in self-improvement workflow flag (WFM §2)
+    builtin: bool | str = False  # a workflow the engine ships, by its flag, for example `upgrade` (WFM §2, UWF §2.1)
     package_root: Path | None = None
     extra: Mapping[str, Any] = field(default_factory=dict)  # fields outside this release
 

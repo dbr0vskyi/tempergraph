@@ -153,12 +153,14 @@ def test_stamp_needs_green_model_free_suites(tmp_path: Path, repo: Path) -> None
     assert v6["state"] == "failed" and "draft must-pass/notes.md" in v6["evidence"]
 
 
-def test_installed_copy_and_release_3_refusals(tmp_path: Path, repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_installed_copy_and_later_release_refusals(tmp_path: Path, repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "claude"))
     cached = minimal_package(tmp_path / "claude" / "plugins" / "cache" / "acme" / "release-notes")
     code, _, err = cli(repo, "upgrade-check", str(cached), "--stamp")
     assert code == 2 and "installed copy" in err
     code, _, err = cli(repo, "upgrade", str(cached))
+    assert code == 2 and "installed copy" in err
+    code, _, err = cli(repo, "upgrade", str(cached), "--trial")
     assert code == 2 and "not_in_release" in err
     code, _, err = cli(repo, "upgrade-check", "nothing-here")
     assert code == 2 and "unknown workflow" in err

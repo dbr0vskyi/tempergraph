@@ -46,7 +46,7 @@ A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engin
 | | `profiles` | map name → map `SettingKey` → value, optional | Named bundles of settings ([RST §2.5](80-run-settings-and-overrides.spec.md)). |
 | | `outcome` | `OutcomeSpec` (§2.14) | Read from `outcome.json` at load; gates take criteria from it ([OUT](90-run-outcome.spec.md), [PKG §2.3](88-workflow-package.spec.md)). |
 | | `allow_commands` | list of command prefixes | The workflow-wide allow-list ([WFM §2.1](02-workflow-model.spec.md)). |
-| | `builtin`, `package_root` | bool; path | Engine-set: the self-improvement flag ([WFM §2](02-workflow-model.spec.md)); the package folder text refs resolve in. |
+| | `builtin`, `package_root` | bool or name; path | Engine-set: `true` for self-improvement ([WFM §2](02-workflow-model.spec.md)), a name for another built-in ([UWF](64-upgrade-workflow.spec.md)); the package folder text refs resolve in. |
 | `UnitSpec` | `kind` | `step` \| `route` \| `switch` \| `parallel` \| `map` \| `subworkflow` \| `wait` \| `script` \| `council` \| `contest` \| `ask` | Owners: [CMP §2.2](03-compiler-and-flow.spec.md), [FLX](74-flow-extensions.spec.md) (flow); [SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md). |
 | | `step` | `StepSpec`, for kind `step`, `map` and `contest` | |
 | | `script`, `council`, `contest`, `ask`, `map` | `ScriptSpec`, `CouncilSpec`, `ContestSpec`, `AskSpec`, `MapSpec`, for their kind | Defined in the owning spec ([MAP](77-map-unit.spec.md) for `MapSpec`). |

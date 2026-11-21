@@ -87,9 +87,9 @@ The order of steps 2, 3 and 6 comes from where the update code lives. Claude Cod
 
 | Part | Release 1 |
 |---|---|
-| Skills | Only `tempergraph:install` ships (I-72). The update skill is release 2 with `update` (X2-8), and the upgrade skill release 2 with `upgrade` beyond `--check` (moved from release 3 by [ADR-0125](../adr/0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md)); the authoring skill's upgrade mode runs `upgrade-check` and reports |
+| Skills | Release 1 ships `tempergraph:install` (I-72). Release 2 ships the update skill with `update` (X2-8) and the upgrade skill with `upgrade` beyond `--check` (moved from release 3 by [ADR-0125](../adr/0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md)); the authoring skill's upgrade mode runs `upgrade-check` and reports |
 | `<plugin>` | The skill's base directory's grandparent (`<plugin>/skills/install/`), which Claude Code shows when the skill loads |
-| Step 1 | An engine already current is reported as current; there is no update skill to hand over to |
+| Step 1 | An engine already current is reported as current; from release 2 the install skill names the update skill for a newer release |
 | Step 2 | Only `claude` runs steps, so no `--with` extra is asked; the skill reads `claude`'s row of `executors` for the consequences and says the other executors come later |
 | Step 5 | The shim is called by the absolute path its `shim` line names: `workflows list`, then `executors --probe`. The CLI has no `--version` flag; the `engine` line of the install output is quoted instead |
 | JSON | `install` takes `--json`; `workflows list` and `executors` print JSON always |
@@ -132,11 +132,12 @@ The order of steps 2, 3 and 6 comes from where the update code lives. Claude Cod
 |---|---|---|
 | P-LSK-1 | `claude plugin update --json` names the installed version, or the cache folder of the new version can be found by its documented layout | Fall back to asking for `/reload-plugins` (§4) |
 | P-LSK-2 | `claude plugin update` and `claude plugin marketplace update` run non-interactively from a session's shell tool | Fall back to `/plugin` by the person (§4) |
+- **As built (R2-T6.4).** The `update` and `upgrade` skills ship in `skills/`. The structure tests hold them to the engine's verbs and options and to LSK-AC-2 and LSK-AC-3's command list; the rubric scenarios and the two probes are live checks ([live-checks.plan.md](../plans/live-checks.plan.md) L-24, L-28).
 
 ## 6. Acceptance criteria
 
 - [ ] LSK-AC-1 Each skill has rubric scenarios for one-plan-one-yes, ask-again-for-money, never-answer-a-pause and each row of §4 ([SHL-AC-2](19-plugin-shell.spec.md)).
-- [ ] LSK-AC-2 No skill text names an engine version or a shipped workflow (source scan).
+- [x] LSK-AC-2 No skill text names an engine version or a shipped workflow (source scan).
 - [ ] LSK-AC-3 Every command a skill runs is in its fixed command list, and every value in it comes from a verb's JSON output (scenario check on the transcript).
 - [ ] LSK-AC-4 Every row of LSK-B2's table holds in a scenario with a scripted CLI.
 - [ ] LSK-AC-5 P-LSK-1 and P-LSK-2 are recorded with date, machine and Claude Code version before the update skill is marked `LIVE-PROVEN`.

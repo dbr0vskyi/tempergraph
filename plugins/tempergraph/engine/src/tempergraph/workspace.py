@@ -22,7 +22,7 @@ from typing import Any, Literal
 
 from tempergraph.contracts import WorkflowSpec, WorktreeDecl
 from tempergraph.durability.lock import LockHeld, RunLock
-from tempergraph.git import GitError, branch, git, is_safe_ref, main_checkout
+from tempergraph.git import GitError, branch, git, is_safe_ref, main_checkout, toplevel
 
 Mode = Literal["in_place", "worktree"]
 WRITE_TOOLS = frozenset({"edit", "write", "shell"})
@@ -148,7 +148,8 @@ def resolve_workspace(spec: WorkflowSpec, target: Path, requested: str | None = 
     if mode == "in_place":
         if req == "in_place" and writes:
             warnings.append("in_place_writes: the workflow writes files in your checkout")
-        return WorkspacePlan(mode="in_place", requested=req, resolved_by=by, main=main, path=main,
+        here = toplevel(target)  # started inside a linked worktree, the run stays in that worktree
+        return WorkspacePlan(mode="in_place", requested=req, resolved_by=by, main=main, path=here or main,
                              warnings=tuple(warnings))
     head = git(["rev-parse", "--verify", "HEAD"], main, check=False).strip()
     if not head:

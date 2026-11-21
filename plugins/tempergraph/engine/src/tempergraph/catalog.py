@@ -39,7 +39,7 @@ class Catalog:
                  "units": list(s.order),
                  "workflow_version": self.packages[n].workflow_version if n in self.packages else None,
                  "compatibility": self.compat.get(n)}
-                for n, s in sorted(self.specs.items())]
+                for n, s in sorted(self.specs.items()) if not s.builtin]  # a built-in is no routing target
         rows += [{"name": n, "state": "not_loaded", "reason": r} for n, r in sorted(self.broken.items())]
         return {"schema_version": SCHEMA.get("catalog", 1), "workflows": rows}
 
@@ -60,15 +60,25 @@ def _compat(loaded: LoadedPackage) -> str:
         return "unknown"
 
 
+def builtins(cat: Catalog) -> Catalog:
+    """The engine's own workflows, added after every package so none can shadow them (UWF §2.1)."""
+    from tempergraph.builtin import upgrade
+
+    cat.broken.pop(upgrade.NAME, None)
+    cat.packages.pop(upgrade.NAME, None)
+    cat.specs[upgrade.NAME] = upgrade.workflow()
+    return cat
+
+
 def from_registry(home: Path | None = None) -> Catalog:
     cat = Catalog()
     reg = (home or home_path()) / "registry.json"
     if not reg.exists():
-        return cat
+        return builtins(cat)
     try:
         entries = json.loads(reg.read_text(encoding="utf-8")).get("workflows") or []
     except (OSError, ValueError, AttributeError):
-        return cat
+        return builtins(cat)
     for e in entries:
         name = str(e.get("name") or "")
         if not name:
@@ -79,7 +89,7 @@ def from_registry(home: Path | None = None) -> Catalog:
             cat.compat[name] = _compat(loaded)
         except PackageNotLoaded as exc:
             cat.broken[name] = exc.reason
-    return cat
+    return builtins(cat)
 
 
 def _digest(text: str, n: int = 10) -> str:
