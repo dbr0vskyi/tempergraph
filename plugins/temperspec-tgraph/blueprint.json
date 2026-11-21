@@ -3,6 +3,33 @@
   "name": "temperspec",
   "units": [
     {
+      "name": "prepare",
+      "kind": "script",
+      "summary": "Install rules and the project note; see if setup is due",
+      "produces": [
+        "setup_needed",
+        "setup_ready"
+      ]
+    },
+    {
+      "name": "setup_route",
+      "kind": "route"
+    },
+    {
+      "name": "setup",
+      "kind": "step",
+      "summary": "Write the overview spec and one spec per component",
+      "produces": [
+        "overview",
+        "setup_note"
+      ],
+      "gate": {
+        "check": true,
+        "judge": true
+      },
+      "on_budget_spent": "stop"
+    },
+    {
       "name": "triage",
       "kind": "step",
       "summary": "Read the task, find the gaps, pick the route",
@@ -93,6 +120,12 @@
     }
   ],
   "flow": {
+    "setup_route": {
+      "route": [
+        "setup",
+        "triage"
+      ]
+    },
     "triage": {
       "route": [
         "discovery",

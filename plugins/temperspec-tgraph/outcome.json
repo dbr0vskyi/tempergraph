@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 1,
+  "revision": 2,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -140,6 +140,112 @@
     }
   ],
   "intermediate": {
+    "setup": {
+      "statement": "A repository with no overview spec gets one, and one spec per component, that describe the code as it is",
+      "criteria": [
+        {
+          "id": "ts-set-form",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "The overview spec and every spec the setup note lists pass the spec rule's structure check",
+          "check_method": "As ts-spec-form plus the line cap, on the overview and on each spec path in the note's component table",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:setup_check"
+          },
+          "serves": [
+            "ts-accepted",
+            "ts-spec-form"
+          ]
+        },
+        {
+          "id": "ts-set-listed",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every spec the setup note lists exists and is named by its path in the overview spec",
+          "check_method": "Read the note's component table; open each path; search the overview for each path",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:setup_check"
+          }
+        },
+        {
+          "id": "ts-set-links",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every id that a spec of the setup step mentions resolves to exactly one definition",
+          "check_method": "As ts-spec-links, on the overview and the specs the note lists",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:setup_check"
+          },
+          "serves": [
+            "ts-spec-links",
+            "ts-spec-sync"
+          ]
+        },
+        {
+          "id": "ts-set-commit",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every file the setup step changed is committed",
+          "check_method": "Read the git facts",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:setup_check"
+          },
+          "serves": [
+            "ts-committed"
+          ]
+        },
+        {
+          "id": "ts-set-true",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "Every behaviour the setup step wrote describes what the code does now",
+          "check_method": "For each behaviour, open the code the setup note names for its component and find where the stated result is produced",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "setup_note"
+            ],
+            "scale": {
+              "met": "each behaviour's result is produced by the code as written",
+              "partial": "each behaviour holds but one cannot be traced because the note names the wrong code for it",
+              "unmet": "a behaviour states a result the code does not produce",
+              "evidence": "per behaviour id: the path and line that produce the result",
+              "seeds": [
+                "met-ts-set-true",
+                "unmet-ts-set-true"
+              ]
+            }
+          }
+        },
+        {
+          "id": "ts-set-cover",
+          "severity": "warning",
+          "verified_by": "judge",
+          "text": "Every top-level part of the code base belongs to a component with a spec or is listed as not covered",
+          "check_method": "List the top-level folders and entry points; match each with the note's component table and its Not covered list",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "setup_note"
+            ],
+            "scale": {
+              "met": "each top-level part is in the component table or under Not covered with a reason",
+              "partial": "no partial: any gap is UNMET",
+              "unmet": "a top-level part is in neither list",
+              "evidence": "per top-level part: the component or the Not covered line",
+              "seeds": [
+                "met-ts-set-cover",
+                "unmet-ts-set-cover"
+              ]
+            }
+          }
+        }
+      ]
+    },
     "triage": {
       "statement": "The triage note states the task's acceptance criteria, the gaps in the specs, and a route that follows the gaps",
       "criteria": [
@@ -728,13 +834,21 @@
     "Whether the code agrees with the specs by meaning is judged once, at the code gate (ts-code-aligned, ts-code-related), not again at the outcome gate.",
     "The release step and a work-tracker start are left out of the first version.",
     "Verification commands resolve against one fixed list (pytest, ruff, mypy and read-only git) because release 1 of the engine reads no per-repository command resolver; a repository with another toolchain adds its prefixes to the workflow's list.",
-    "Whether a commit is absent from every remote is not checked: the engine's git facts do not report it in release 1. Steps cannot push, and only the last stage does."
+    "Whether a commit is absent from every remote is not checked: the engine's git facts do not report it in release 1. Steps cannot push, and only the last stage does.",
+    "Specs written by the setup step describe behaviour that exists already, so the outcome gate does not ask for a test that names each of their acceptance criteria; a task that later touches such a behaviour adds the id to its test.",
+    "Repository setup is a conditional first step of this workflow because release 1 of the engine has no sub-workflows; it moves into one when the engine has them."
   ],
   "revisions": [
     {
       "revision": 1,
       "origin": "authored",
       "at": "2026-11-21T10:33:48.308Z"
+    },
+    {
+      "revision": 2,
+      "origin": "authored",
+      "at": "2026-11-21T12:30:00.000Z",
+      "note": "setup step added on the owner's request"
     }
   ]
 }

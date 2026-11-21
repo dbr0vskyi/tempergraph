@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-ts-set-cover",
+  "gate": "setup",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-set-cover",
+    "expected": "MET",
+    "reason": "The code base is `src/tool/`, which the component table covers; nothing else holds code."
+  }
+}

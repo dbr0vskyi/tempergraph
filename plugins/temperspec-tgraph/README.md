@@ -10,6 +10,8 @@ Start: `tempergraph run temperspec <request>`. The request is the task with its 
 
 | Step | Writes | Then |
 |---|---|---|
+| prepare | Nothing by a model: installs the rule files when missing, adds the temperspec note to `CLAUDE.md` (or `AGENTS.md`), and looks for an overview spec | No overview spec goes to setup; otherwise triage |
+| setup | Only in a repository without an overview spec: the overview spec, one spec per component, and the setup note listing what it covered and left out | |
 | triage | The triage note: the task's acceptance criteria, the documents that exist, the gaps | No gap goes to plan; any gap goes to discovery |
 | discovery | Specs, decision records, research notes and the hand-off, one per gap | A docs-only run ends here; every other run goes to plan |
 | plan | The plan: requirements, phases, verification, and its complexity | A complex plan goes to expand; a simple one already has its task rows |
@@ -23,9 +25,11 @@ Per-phase coding is not built yet: a complex plan is still coded in one session,
 
 ## Rule files
 
-`rules/*.rule.md` say how each document is written: `spec`, `plan`, `decision`, `research`, `task-notes` (the triage note, the hand-off, the code report) and `documents` (folders, names, the truth ranking, the rules against cascade edits). The checks read the same formats from `workflow/temperspec/specfmt.py`, and `tests/test_temperspec.py` fails when a rule file and that module disagree.
+`rules/*.rule.md` say how each document is written: `spec`, `plan`, `decision`, `research`, `task-notes` (the setup note, the triage note, the hand-off, the code report) and `documents` (folders, names, the truth ranking, the rules against cascade edits). The checks read the same formats from `workflow/temperspec/specfmt.py`, and `tests/test_temperspec.py` fails when a rule file and that module disagree.
 
-A run installs the rules into `.claude/rules/temperspec/` of the repository when neither the repository nor `~/.claude/rules/temperspec/` has them. The `setup` skill installs or updates them by hand, for the repository (the default) or for the whole machine.
+A run starts by checking that the repository is set up, with no model. It installs the rules into `.claude/rules/temperspec/` when neither the repository nor `~/.claude/rules/temperspec/` has them, and it adds a short block to `CLAUDE.md` (to `AGENTS.md` when the repository has that instead) saying that the repository uses temperspec and where its documents are. When the repository has no overview spec, the `setup` step then writes one from the code and the existing docs, with one spec per component, extending documents that exist and never replacing them. A repository that is already set up skips the step. The step is built so that it can become a sub-workflow once the engine has them.
+
+The `setup` skill installs or updates the rule files by hand, for the repository (the default) or for the whole machine.
 
 ## Limits of this version
 
@@ -37,7 +41,7 @@ A run installs the rules into `.claude/rules/temperspec/` of the repository when
 
 `tempergraph author verify plugins/temperspec-tgraph` passes its model-free rungs (1 to 7 and 10). Two rungs need a signed-in `claude` and have not run:
 
-- Rung 8, `--judge-seeds`: grades the 28 seed cases under `evals/calibration/` with the real judges. Until it passes, every judged criterion is at uncalibrated trust.
+- Rung 8, `--judge-seeds`: grades the 32 seed cases under `evals/calibration/` with the real judges. Until it passes, every judged criterion is at uncalibrated trust.
 - Rung 9, `--trial`: one capped trial run of a case from `evals/cases.json`.
 
 No real run has been made yet.

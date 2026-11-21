@@ -66,7 +66,7 @@ def test_outcome_check_on_its_fixtures(fixture: Path, tmp_path: Path) -> None:
 
 
 SEEDS = sorted(p for p in (ROOT / "evals" / "calibration").glob("*/met-*") if p.parent.name in
-               ("triage", "discovery", "plan", "expand"))
+               ("setup", "triage", "discovery", "plan", "expand"))
 
 
 @pytest.mark.parametrize("seed", SEEDS, ids=lambda p: f"{p.parent.name}/{p.name}")
@@ -82,7 +82,7 @@ def test_a_met_seed_passes_the_check_of_its_gate(seed: Path, tmp_path: Path) -> 
                 artifacts.setdefault(OWNER.get(key, gate), {})[key] = value
             else:
                 values.setdefault(OWNER.get(key, gate), {})[key] = value
-    if gate != "triage":
+    if gate not in ("setup", "triage"):
         artifacts.setdefault("discovery", {})["handoff"] = "docs/tasks/TASK-7.handoff.md"
     res, _ = run_check(SPEC.units[gate].gate, _context(gate, tmp_path, artifacts, values))
     assert res.result == "PASS", res.evidence
@@ -175,6 +175,12 @@ def test_routes_follow_the_values() -> None:
     assert routing.route_plan(_view(complexity="simple")) == "code"
 
 
+def test_setup_runs_only_for_a_repository_with_no_overview_spec() -> None:
+    assert routing.route_setup(SimpleNamespace(artifact_keys=("setup_needed",))) == "setup"
+    assert routing.route_setup(SimpleNamespace(artifact_keys=("setup_ready",))) == "triage"
+    assert SPEC.order[:4] == ("prepare", "setup_route", "setup", "triage")
+
+
 def _git(cwd: Path, *args: str) -> str:
     return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=True).stdout
 
@@ -210,6 +216,45 @@ def test_install_rules_writes_the_rule_files_once(repo: Path, monkeypatch: pytes
     (target / "spec.rule.md").write_text("edited here\n")
     routing.install_rules(ctx)
     assert (target / "spec.rule.md").read_text() == "edited here\n"  # a repository's own copy is kept
+
+
+def test_prepare_installs_rules_and_the_project_note_once_and_reports_setup(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(Path, "home", lambda: repo / "no-home")
+    (repo / "CLAUDE.md").write_text("# Project\n\nRun the tests with `pytest`.\n")
+    ctx = SimpleNamespace(workdir=repo, unit="prepare", request={"task_id": "TASK-7"})
+    assert routing.prepare(ctx) == {"setup_needed": "yes"}
+    text = (repo / "CLAUDE.md").read_text()
+    assert text.startswith("# Project\n\nRun the tests with `pytest`.\n")  # the repository's own text is kept
+    assert text.count(fmt.CONTEXT_START) == 1 and "temperspec" in text
+    assert (repo / ".claude" / "rules" / "temperspec" / "spec.rule.md").is_file()
+    assert git_facts(repo).clean and _git(repo, "log", "-1", "--format=%s").strip().startswith("docs(temperspec): prepare")
+    head = _git(repo, "rev-parse", "HEAD")
+    (repo / "docs" / "specs").mkdir(parents=True)
+    (repo / "docs" / "specs" / "overview.spec.md").write_text("# x\n")
+    _git(repo, "add", "-A")
+    _git(repo, "-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "-m", "overview")
+    after = _git(repo, "rev-parse", "HEAD")
+    assert routing.prepare(ctx) == {"setup_ready": "yes"}
+    assert (repo / "CLAUDE.md").read_text() == text and _git(repo, "rev-parse", "HEAD") == after != head
+
+
+def test_the_project_note_goes_to_agents_md_when_that_is_the_file_and_is_replaced_in_place(tmp_path: Path) -> None:
+    (tmp_path / "AGENTS.md").write_text(f"# A\n\n{fmt.CONTEXT_START}\nold\n{fmt.CONTEXT_END}\n\n## After\n")
+    assert routing.write_context(tmp_path) == "AGENTS.md" and not (tmp_path / "CLAUDE.md").exists()
+    text = (tmp_path / "AGENTS.md").read_text()
+    assert "old" not in text and text.endswith("## After\n") and text.count(fmt.CONTEXT_END) == 1
+
+
+def test_specs_of_the_setup_step_need_no_test_that_names_their_criteria(tmp_path: Path) -> None:
+    fixture = ROOT / "evals" / "checks" / "setup" / "must-pass" / "2-components"
+    _copy(fixture, tmp_path)
+    artifacts = {"setup": {"overview": "overview.md", "setup_note": "setup_note.md"}}
+    ctx = _context("outcome", tmp_path, artifacts)
+    spec = "docs/specs/config-file.spec.md"
+    assert [f.status for f in checks._traced(ctx, [spec], checks._walk(ctx))] == ["n_a"]
+    assert [f.status for f in checks._traced(_context("outcome", tmp_path, {}), [spec], checks._walk(ctx))] == [
+        "fail", "fail"]
 
 
 class _Final:
@@ -270,6 +315,8 @@ def test_a_spec_edit_with_no_behaviour_change_is_reported_as_collateral(repo: Pa
 def test_no_unit_uses_the_large_model_tier() -> None:
     for name in SPEC.order:
         unit = SPEC.units[name]
+        if unit.kind != "step":
+            continue
         assert unit.step is not None and unit.step.model == "medium", name
         assert unit.gate.judge is not None and unit.gate.judge.model == "medium", name
     assert outcome_unit(SPEC).gate.judge.model == "medium"  # type: ignore[union-attr]

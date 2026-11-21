@@ -7,7 +7,7 @@ description: Install or update the temperspec rule files (spec, plan, decision r
 
 temperspec ships rule files that say how each document is written. Claude Code loads them from `.claude/rules/temperspec/` of a repository, or from `~/.claude/rules/temperspec/` for every repository on the machine.
 
-A temperspec run installs the rules into the repository by itself when neither place has them. Use this skill to install them ahead of a run, to install them for the whole machine, or to update them.
+A temperspec run installs the rules into the repository by itself when neither place has them, adds the temperspec note to `CLAUDE.md`, and writes the overview and component specs when the repository has no overview spec. This skill covers the rule files only. Use this skill to install them ahead of a run, to install them for the whole machine, or to update them.
 
 ## Steps
 

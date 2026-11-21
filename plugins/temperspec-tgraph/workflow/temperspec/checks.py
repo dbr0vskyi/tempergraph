@@ -158,12 +158,26 @@ def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None) -
     return checks.result(found, evidence="\n".join(lines))
 
 
-def _links(ctx: Any, criterion: str) -> list[CheckFinding]:
+def _setup_specs(ctx: Any) -> list[str]:
+    """The specs the setup step wrote: its overview and every spec its note lists. Empty when setup did not run."""
+    out = [p for p in [checks.artifact_path(ctx, "overview")] if p]
+    text, _ = _read(ctx, "setup_note")
+    if text is not None:
+        low = {k.lower(): v for k, v in fmt.sections(text).items()}
+        out += [p for p in fmt.listed_paths(low.get("components", [])) if p.endswith(".md") and p not in out]
+    return out
+
+
+def _links(ctx: Any, criterion: str, docs: list[str] | None = None) -> list[CheckFinding]:
     """Every id a changed document mentions has exactly one definition among the repository's specs."""
-    docs = [p for p in _changed_docs(ctx) if _read_path(ctx, p) is not None]
+    docs = [p for p in (_changed_docs(ctx) if docs is None else docs) if _read_path(ctx, p) is not None]
     if not docs:
         return [_find("n_a", criterion, message="the run changed no document")]
     index = _spec_index(ctx, _walk(ctx))
+    overview = checks.artifact_path(ctx, "overview")
+    if overview and not overview.endswith(".spec.md"):  # the overview is a spec wherever it is
+        for own in fmt.defined_ids(_read_path(ctx, overview) or ""):
+            index.setdefault(own, []).append(overview)
     found: list[CheckFinding] = []
     for path in docs:
         text = _read_path(ctx, path) or ""
@@ -180,6 +194,48 @@ def _links(ctx: Any, criterion: str) -> list[CheckFinding]:
                 found.append(_find("fail", criterion, path, f"{ref} is defined {len(homes)} times: "
                                    + ", ".join(sorted(set(homes))[:3]), "keep one definition; link the others to it"))
     return found[:12] or [_ok(criterion)]
+
+
+# ---------------------------------------------------------------------------------------------
+# setup
+
+
+def setup_check(ctx: Any) -> Any:
+    """ts-set-form, ts-set-listed, ts-set-links, ts-set-commit."""
+    note, note_path = _read(ctx, "setup_note")
+    overview, overview_path = _read(ctx, "overview")
+    if note is None or overview is None:
+        return checks.result([_find("fail", "ts-set-form", note_path if note is None else overview_path,
+                                    "the setup note or the overview spec cannot be read",
+                                    "write both and name their paths")])
+    found = [_find("fail", "ts-set-form", note_path, f"setup note section `## {h}` is missing or out of order",
+                   f"add `## {h}`") for h in fmt.headings_missing(note, fmt.SETUP_HEADINGS)]
+    specs = _setup_specs(ctx)
+    listed: list[CheckFinding] = []
+    for path in specs:
+        text = _read_path(ctx, path)
+        if text is None:
+            listed.append(_find("fail", "ts-set-listed", path, "the setup note lists this spec but the file does "
+                                "not exist", "write the spec or drop it from the list"))
+            continue
+        spec = fmt.parse_spec(text)
+        if spec.legacy:
+            found.append(_find("fail", "ts-set-form", path, "a new spec is written in the earlier layout",
+                               "use Purpose, Behaviours and Acceptance criteria"))
+        if spec.lines > fmt.SPEC_CAP_LINES:
+            found.append(_find("fail", "ts-set-form", path, f"{spec.lines} lines, over the cap of "
+                               f"{fmt.SPEC_CAP_LINES}", "split the spec by capability"))
+        found += [_find("fail", "ts-set-form", f"{path}:{line}", message, fix) for line, message, fix in
+                  spec.problems[:6]]
+        if path != overview_path and path not in overview:
+            listed.append(_find("fail", "ts-set-listed", overview_path, f"the overview does not name `{path}`",
+                                "name each component spec by its path in the overview's Purpose"))
+    if not any(f.status == "fail" for f in found):
+        found.append(_ok("ts-set-form", overview_path))
+    found += listed or [_ok("ts-set-listed", note_path)]
+    found += _links(ctx, "ts-set-links", specs)
+    found.append(_committed(ctx, "ts-set-commit"))
+    return checks.result(found)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -435,7 +491,10 @@ def _docs_only(ctx: Any) -> bool:
 
 def _traced(ctx: Any, specs: list[str], files: list[str]) -> list[CheckFinding]:
     wanted: dict[str, str] = {}
+    described = set(_setup_specs(ctx))  # specs of existing behaviour: their tests get ids as tasks touch them
     for path in specs:
+        if path in described:
+            continue
         spec = fmt.parse_spec(_read_path(ctx, path) or "")
         wanted.update({cid: path for cid in spec.criteria})
     if not wanted:

@@ -6,11 +6,14 @@ Every acceptance criterion in the task's triage_note is met on the run's own bra
 
 Units:
 
-- [triage](01-triage.spec.md): Read the task, find the gaps, pick the route
-- [discovery](02-discovery.spec.md): Close each gap with a spec, record or research note
-- [plan](03-plan.spec.md): Design requirements and phases; state complexity
-- [expand](04-expand.spec.md): Write task rows and verification for a complex plan
-- [code](05-code.spec.md): Build the plan test first in one session
+- [prepare](01-prepare.spec.md): Install rules and the project note; see if setup is due
+- [setup_route](02-setup_route.spec.md): a repository with no overview spec goes to setup
+- [setup](03-setup.spec.md): Write the overview spec and one spec per component
+- [triage](04-triage.spec.md): Read the task, find the gaps, pick the route
+- [discovery](05-discovery.spec.md): Close each gap with a spec, record or research note
+- [plan](06-plan.spec.md): Design requirements and phases; state complexity
+- [expand](07-expand.spec.md): Write task rows and verification for a complex plan
+- [code](08-code.spec.md): Build the plan test first in one session
 
 ## 6. Acceptance criteria
 
@@ -33,3 +36,5 @@ Units:
 - The release step and a work-tracker start are left out of the first version.
 - Verification commands resolve against one fixed list (pytest, ruff, mypy and read-only git) because release 1 of the engine reads no per-repository command resolver; a repository with another toolchain adds its prefixes to the workflow's list.
 - Whether a commit is absent from every remote is not checked: the engine's git facts do not report it in release 1. Steps cannot push, and only the last stage does.
+- Specs written by the setup step describe behaviour that exists already, so the outcome gate does not ask for a test that names each of their acceptance criteria; a task that later touches such a behaviour adds the id to its test.
+- Repository setup is a conditional first step of this workflow because release 1 of the engine has no sub-workflows; it moves into one when the engine has them.

@@ -3,11 +3,12 @@ paths:
   - "**/*.triage.md"
   - "**/*.handoff.md"
   - "**/*.report.md"
+  - "**/*.setup.md"
 ---
 
-# Task notes: the triage note, the hand-off and the code report
+# Task notes: the triage note, the hand-off, the code report and the setup note
 
-These three notes carry a run from one step to the next. Each step starts with no memory of the others, so what is not in a note or a document does not exist for the next step. They live in `docs/tasks/`, named by the task id.
+These notes carry a run from one step to the next. Each step starts with no memory of the others, so what is not in a note or a document does not exist for the next step. They live in `docs/tasks/`, named by the task id.
 
 ## Triage note (`<task>.triage.md`)
 
@@ -96,3 +97,31 @@ Two or three sentences.
 - **Rows** has one line per task row of the plan, by the row's id. `Status` is `done` only when the row's change exists in the file the row names; otherwise `open`, with the reason.
 - **Verification** reports each command of the plan as the step saw it. These are claims: the gate runs the commands itself.
 - **Deviations** lists every place where the code differs from the plan, with the reason, or `None`. The plan itself is not edited by the code step.
+
+## Setup note (`<task>.setup.md`)
+
+Written once, by the run that finds a repository with no overview spec.
+
+```markdown
+# Setup: TASK-12
+
+## Components
+
+| Component | Spec | Code |
+|---|---|---|
+| System | `docs/specs/overview.spec.md` | `src/` |
+| Sessions | `docs/specs/session.spec.md` | `src/auth/session.py` |
+
+## Commands
+
+- Tests: `pytest`
+- Lint: `ruff check src tests`
+
+## Not covered
+
+- `scripts/`: one-off maintenance scripts, no behaviour anyone depends on
+```
+
+- **Components** has one row per spec the setup step wrote, the overview first, each with its path in a code span and the code it describes.
+- **Commands** lists the repository's own commands for tests, lint and types, as its README or build files give them, or `None found`.
+- **Not covered** lists every part of the code base that got no spec, with the reason, or `None`.

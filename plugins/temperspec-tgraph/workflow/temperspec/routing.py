@@ -3,6 +3,7 @@ context: no model, no request text."""
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -11,15 +12,39 @@ from typing import Any
 
 from tempergraph.api import FinalizerResult
 
+from . import specfmt
+
 PACKAGE = Path(__file__).resolve().parents[2]
 RULES = "rules"
 REPO_RULES = Path(".claude") / "rules" / "temperspec"
 COMMIT_TYPE = {"code": "feat"}
+CONTEXT_FILES = ("CLAUDE.md", "AGENTS.md")
+SKIP_DIRS = {".git", ".tempergraph", ".claude", "node_modules", ".venv", "venv", "evals", "fixtures", "baseline"}
+CONTEXT_BLOCK = f"""{specfmt.CONTEXT_START}
+## temperspec
+
+This repository is developed with temperspec: a change goes from a task with acceptance criteria through
+behaviour specs and a plan to tested code.
+
+- Specs are in `docs/specs/` (`*.spec.md`), starting at the overview spec. Decision records are in `docs/adr/`,
+  research notes in `docs/research/`, plans in `docs/plans/`, task notes in `docs/tasks/`.
+- How each document is written: the rule files in `.claude/rules/temperspec/`.
+- When two sources disagree: the task's acceptance criteria, then specs and decision records, then the plan,
+  then the code. A code change that makes a spec false changes the spec in the same change.
+- A test that proves an acceptance criterion of a spec carries the criterion's id.
+- Start a run with `tempergraph run temperspec "<the task and its acceptance criteria>"`.
+{specfmt.CONTEXT_END}
+"""
 SAFE_REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,200}$")
 URL = re.compile(r"https://\S+/pull/\d+")
 
 
 # -- routes ---------------------------------------------------------------------------------------
+
+
+def route_setup(view: Any) -> str:
+    """A repository with no overview spec is set up first; every other run starts at triage."""
+    return "setup" if "setup_needed" in view.artifact_keys else "triage"
 
 
 def route_triage(view: Any) -> str:
@@ -46,7 +71,7 @@ def _git(workdir: Path, *args: str) -> subprocess.CompletedProcess[str]:
 
 
 def install_rules(ctx: Any) -> dict[str, str]:
-    """Before triage: put the rule files into the repository unless it, or the whole machine, has them."""
+    """Put the rule files into the repository unless it, or the whole machine, has them."""
     target = Path(ctx.workdir) / REPO_RULES
     if target.is_dir() or (Path.home() / REPO_RULES).is_dir():
         return {}
@@ -54,6 +79,39 @@ def install_rules(ctx: Any) -> dict[str, str]:
     for src in sorted((PACKAGE / RULES).glob("*.rule.md")):
         shutil.copyfile(src, target / src.name)
     return {}
+
+
+def has_overview(workdir: Path) -> bool:
+    """Whether the repository holds an overview spec (`overview.spec.md`, with or without a number prefix)."""
+    for _, dirs, files in os.walk(workdir):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        if any(name.endswith("overview.spec.md") for name in files):
+            return True
+    return False
+
+
+def write_context(workdir: Path) -> str:
+    """Keep the temperspec block in the project-context file: added once, replaced in place afterwards."""
+    target = next((workdir / n for n in CONTEXT_FILES if (workdir / n).is_file()), workdir / CONTEXT_FILES[0])
+    text = target.read_text(encoding="utf-8") if target.is_file() else ""
+    start, end = text.find(specfmt.CONTEXT_START), text.find(specfmt.CONTEXT_END)
+    if start >= 0 and end > start:
+        new = text[:start] + CONTEXT_BLOCK.rstrip("\n") + text[end + len(specfmt.CONTEXT_END):]
+    else:
+        new = (text.rstrip("\n") + "\n\n" if text.strip() else "") + CONTEXT_BLOCK
+    if new != text:
+        target.write_text(new, encoding="utf-8")
+    return target.name
+
+
+def prepare(ctx: Any) -> dict[str, str]:
+    """The first unit, with no session: install the rule files when missing, keep the temperspec block in the
+    project-context file, commit both, and say whether the repository still needs its overview and specs."""
+    workdir = Path(ctx.workdir)
+    install_rules(ctx)
+    write_context(workdir)
+    commit_step(ctx)
+    return {"setup_ready": "yes"} if has_overview(workdir) else {"setup_needed": "yes"}
 
 
 def commit_step(ctx: Any) -> dict[str, str]:

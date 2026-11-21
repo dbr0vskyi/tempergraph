@@ -63,6 +63,10 @@ A spec has at most 400 lines. A spec that would pass the cap is split by capabil
 
 Edit only the behaviours and criteria the task changes, in place. Do not touch other specs to "keep them consistent" unless one of their behaviours or criteria changes. Follow `documents.rule.md` for the rules against cascade edits.
 
+## The overview spec
+
+Every repository has one overview spec, `docs/specs/overview.spec.md`, in this same structure. Its Purpose says what the system is and names every component spec by its path. Its behaviours are the ones that belong to the system as a whole and to no single component. A new component spec is added to the overview's Purpose in the change that creates it; that edit is not collateral.
+
 ## Specs in an earlier layout
 
 A spec with numbered sections such as `## 1. Overview` and `## 2. Contract` is in an earlier layout. Leave its layout as it is when you edit it; follow this rule for every new spec.

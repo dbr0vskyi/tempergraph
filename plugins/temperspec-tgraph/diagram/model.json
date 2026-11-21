@@ -3,6 +3,24 @@
   "workflow": "temperspec",
   "units": [
     {
+      "name": "prepare",
+      "kind": "script",
+      "summary": "",
+      "approval": false
+    },
+    {
+      "name": "setup_route",
+      "kind": "route",
+      "summary": "",
+      "approval": false
+    },
+    {
+      "name": "setup",
+      "kind": "step",
+      "summary": "Write the overview spec and one spec per component",
+      "approval": false
+    },
+    {
       "name": "triage",
       "kind": "step",
       "summary": "Read the task, find the gaps, pick the route",
@@ -40,6 +58,18 @@
     }
   ],
   "nodes": [
+    "prepare.step",
+    "prepare.judge",
+    "prepare.gate",
+    "prepare.human",
+    "setup_route.step",
+    "setup_route.judge",
+    "setup_route.gate",
+    "setup_route.human",
+    "setup.step",
+    "setup.judge",
+    "setup.gate",
+    "setup.human",
     "triage.step",
     "triage.judge",
     "triage.gate",
@@ -68,6 +98,166 @@
   ],
   "edges": [
     [
+      "prepare.step",
+      "prepare.judge",
+      "next"
+    ],
+    [
+      "prepare.judge",
+      "prepare.gate",
+      "next"
+    ],
+    [
+      "prepare.gate",
+      "setup_route.step",
+      "PROCEED"
+    ],
+    [
+      "prepare.gate",
+      "prepare.step",
+      "RETRY"
+    ],
+    [
+      "prepare.gate",
+      "prepare.human",
+      "ESCALATE"
+    ],
+    [
+      "prepare.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "prepare.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "prepare.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "prepare.human",
+      "__end__",
+      "decision"
+    ],
+    [
+      "setup_route.step",
+      "setup_route.judge",
+      "next"
+    ],
+    [
+      "setup_route.judge",
+      "setup_route.gate",
+      "next"
+    ],
+    [
+      "setup_route.gate",
+      "setup.step",
+      "PROCEED"
+    ],
+    [
+      "setup_route.gate",
+      "triage.step",
+      "PROCEED"
+    ],
+    [
+      "setup_route.gate",
+      "setup_route.step",
+      "RETRY"
+    ],
+    [
+      "setup_route.gate",
+      "setup_route.human",
+      "ESCALATE"
+    ],
+    [
+      "setup_route.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "setup_route.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "setup_route.human",
+      "triage.step",
+      "decision"
+    ],
+    [
+      "setup_route.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "setup_route.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "setup_route.human",
+      "__end__",
+      "decision"
+    ],
+    [
+      "setup.step",
+      "setup.judge",
+      "next"
+    ],
+    [
+      "setup.judge",
+      "setup.gate",
+      "next"
+    ],
+    [
+      "setup.gate",
+      "triage.step",
+      "PROCEED"
+    ],
+    [
+      "setup.gate",
+      "setup.step",
+      "RETRY"
+    ],
+    [
+      "setup.gate",
+      "setup.human",
+      "ESCALATE"
+    ],
+    [
+      "setup.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "setup.human",
+      "triage.step",
+      "decision"
+    ],
+    [
+      "setup.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "setup.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "setup.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "setup.human",
+      "__end__",
+      "decision"
+    ],
+    [
       "triage.step",
       "triage.judge",
       "next"
@@ -115,6 +305,21 @@
     [
       "triage.human",
       "triage.step",
+      "decision"
+    ],
+    [
+      "triage.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "triage.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "triage.human",
+      "setup.step",
       "decision"
     ],
     [
@@ -170,6 +375,21 @@
     [
       "discovery.human",
       "discovery.step",
+      "decision"
+    ],
+    [
+      "discovery.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "discovery.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "discovery.human",
+      "setup.step",
       "decision"
     ],
     [
@@ -244,6 +464,21 @@
     ],
     [
       "plan.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "plan.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "plan.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "plan.human",
       "triage.step",
       "decision"
     ],
@@ -314,6 +549,21 @@
     ],
     [
       "expand.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "expand.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "expand.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "expand.human",
       "triage.step",
       "decision"
     ],
@@ -384,6 +634,21 @@
     ],
     [
       "code.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "code.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "code.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "code.human",
       "triage.step",
       "decision"
     ],
@@ -416,6 +681,11 @@
       "outcome.gate",
       "outcome.step",
       "RETRY"
+    ],
+    [
+      "outcome.gate",
+      "setup.step",
+      "BACK"
     ],
     [
       "outcome.gate",
@@ -464,6 +734,11 @@
     ],
     [
       "outcome.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
       "triage.step",
       "decision"
     ],
@@ -485,6 +760,16 @@
     [
       "outcome.human",
       "code.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "setup_route.step",
       "decision"
     ],
     [
@@ -499,9 +784,9 @@
     ],
     [
       "__start__",
-      "triage.step",
+      "prepare.step",
       "next"
     ]
   ],
-  "digest": "1e95c98f8e44d99aad902c085dc262a09da003e471293d01a6abd0483914b62f"
+  "digest": "a602a9de459d539634d942ede7e67193378bdb4d5505c0d766824da907c306f5"
 }

@@ -1,5 +1,8 @@
 """temperspec: a task goes from triage through discovery and a plan to tested code and a draft pull request.
 
+`prepare` runs no session: it installs the rule files and the project note, and sends a repository that has
+no overview spec through `setup`, which writes the overview and one spec per component from the code as it is.
+
 `triage` reads the task and routes it: no gap in the specs goes to `plan`, any gap to `discovery`, and a
 docs-only task ends after `discovery`. `plan` states the task's complexity; a complex plan gets its task rows
 from `expand`, a simple one already has them. `code` builds the whole plan in one session (per-phase coding
@@ -10,11 +13,19 @@ No unit uses the large model tier. `discovery` thinks at the highest effort.
 
 from typing import Any
 
-from tempergraph.api import Gate, Judge, Routing, Script, SessionOptions, Step, Value, Workflow, text
+from tempergraph.api import Gate, Judge, Route, Routing, Script, SessionOptions, Step, Value, Workflow, text
 
 from . import specfmt
-from .checks import code_check, discovery_check, expand_check, plan_check, triage_check
-from .routing import commit_step, finalize, install_rules, route_discovery, route_plan, route_triage
+from .checks import code_check, discovery_check, expand_check, plan_check, setup_check, triage_check
+from .routing import (
+    commit_step,
+    finalize,
+    prepare,
+    route_discovery,
+    route_plan,
+    route_setup,
+    route_triage,
+)
 
 MODEL = "medium"
 READ = ["read", "search", "list"]
@@ -36,7 +47,7 @@ def _judge(unit: str, references: list[str]) -> Any:
 
 def workflow() -> Any:
     return Workflow(
-        order=["triage", "discovery", "plan", "expand", "code"],
+        order=["prepare", "setup_route", "setup", "triage", "discovery", "plan", "expand", "code"],
         routing=Routing(
             description="Take a task from its acceptance criteria to specs, a plan, tested code and a draft "
                         "pull request",
@@ -45,13 +56,23 @@ def workflow() -> Any:
         issue_repository="dbr0vskyi/tempergraph",
         allow_commands=ALLOW,
         units={
+            "prepare": Script(
+                call=prepare, summary="Install rules and the project note; see if setup is due",
+                side_effects="workspace", gate=Gate(),
+                produces={"setup_needed": Value(choices=["yes"], optional=True),
+                          "setup_ready": Value(choices=["yes"], optional=True)}),
+            "setup_route": Route(select=route_setup, targets=["setup", "triage"]),
+            "setup": Step(
+                prompt=text("prompts/setup.md"), summary="Write the overview spec and one spec per component",
+                model=MODEL, tools=[*READ, "edit", "write"], timeout_s=3600,
+                produces={"overview": "file", "setup_note": "file"}, after=[_commit()],
+                gate=Gate(check=setup_check, judge=_judge("setup", ["overview", "setup_note"]),
+                          on_budget_spent="stop")),
             "triage": Step(
                 prompt=text("prompts/triage.md"), summary="Read the task, find the gaps, pick the route",
                 model=MODEL, tools=[*READ, "write"], timeout_s=1200,
                 produces={"triage_note": "file", "gaps": Value(choices=["some", "none"]),
                           "route": Value(choices=list(specfmt.ROUTES))},
-                before=[Script(call=install_rules, name="install-rules", side_effects="workspace",
-                               summary="Install the rule files when missing")],
                 after=[_commit()], route=route_triage, route_targets=["discovery", "plan"],
                 gate=Gate(check=triage_check, judge=_judge("triage", ["triage_note"]), on_budget_spent="stop")),
             "discovery": Step(

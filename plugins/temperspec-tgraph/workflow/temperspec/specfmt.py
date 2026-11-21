@@ -14,6 +14,10 @@ TRIAGE_HEADINGS = ("Task", "Acceptance criteria", "Existing documents", "Gaps", 
 HANDOFF_HEADINGS = ("Problem", "Gaps closed", "Changed documents", "Decisions", "Open questions")
 PLAN_HEADINGS = ("0. Hand-off", "1. Requirements", "2. Phases", "3. Verification", "4. Docs to update")
 REPORT_HEADINGS = ("Rows", "Verification", "Deviations")
+SETUP_HEADINGS = ("Components", "Commands", "Not covered")
+# The block the prepare script keeps in the project-context file, between these two lines.
+CONTEXT_START = "<!-- temperspec:start -->"
+CONTEXT_END = "<!-- temperspec:end -->"
 DELIVER = ("code", "docs")
 COMPLEXITY = ("simple", "complex")
 ROW_KINDS = ("test", "code", "docs", "chore")

@@ -10,7 +10,7 @@ These rules hold for every document below. Each document type has its own rule f
 | Decision record | `docs/adr/` | `.adr.md` | `decision.rule.md` |
 | Research note | `docs/research/` | `.rsrch.md` | `research.rule.md` |
 | Plan | `docs/plans/` | `.plan.md` | `plan.rule.md` |
-| Triage note, hand-off, code report | `docs/tasks/` | `.triage.md`, `.handoff.md`, `.report.md` | `task-notes.rule.md` |
+| Triage note, hand-off, code report, setup note | `docs/tasks/` | `.triage.md`, `.handoff.md`, `.report.md`, `.setup.md` | `task-notes.rule.md` |
 
 A repository that already keeps these folders elsewhere (for example under a plugin's `docs/`) keeps its place; the folder names `specs`, `adr`, `research` and `plans` and the endings stay the same. `README.md` and `index.md` are exempt from the endings.
 
