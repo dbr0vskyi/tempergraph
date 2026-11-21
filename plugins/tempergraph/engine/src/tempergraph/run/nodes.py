@@ -9,6 +9,7 @@ from __future__ import annotations
 import contextlib
 import dataclasses
 import hashlib
+import threading
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -113,9 +114,26 @@ def _aliases(v: object) -> list[str]:
 
 class EngineNodes:
     def __init__(self, ctx: RunContext) -> None:
+        self._deferred: list[dict[str, Any]] = []
+        self._deferred_lock = threading.Lock()
         self.ctx = ctx
 
     # -- helpers ---------------------------------------------------------------------------------
+
+    def defer(self, update: Mapping[str, Any]) -> None:
+        """A state write the runner could not make before the graph ran, because several nodes are pending
+        (branches of a parallel block): the first node to finish carries it."""
+        with self._deferred_lock:
+            self._deferred.append(dict(update))
+
+    def settle(self, w: dict[str, Any]) -> dict[str, Any]:
+        with self._deferred_lock:
+            held, self._deferred = self._deferred, []
+        for update in held:
+            for ch, val in update.items():
+                w[ch] = {**val, **w[ch]} if isinstance(val, dict) and isinstance(w.get(ch), dict) else \
+                    w.get(ch, val) if ch in w else val
+        return w
 
     def _workdir(self, state: Mapping[str, Any]) -> Path:
         return Path((state.get("workspace") or {}).get("path") or self.ctx.state_root.parent)
@@ -179,9 +197,10 @@ class EngineNodes:
 
     def _cost(self, state: Mapping[str, Any], results: list[SessionResult]) -> dict[str, Any]:
         totals = CostTotals.from_json((state.get("run") or {}).get("cost"))
+        base = dict(totals.to_json()["counters"])  # what this writer read: the reducer adds only its delta
         for r in results:
             totals.add(r.usage)
-        return totals.to_json()
+        return {**totals.to_json(), "_base": base}
 
     # -- step ------------------------------------------------------------------------------------
 
@@ -195,6 +214,8 @@ class EngineNodes:
             return self._flow_unit(unit, state)
         if u.kind in ("ask", "wait"):
             return self._person_unit(unit, state)
+        if u.kind == "parallel":
+            return self._join_unit(unit, state)
         if u.extra.get("outcome"):
             return self._outcome_step(unit, state)
         st = u.step
@@ -348,6 +369,8 @@ class EngineNodes:
             record["up_estimates"] = [*usages, priced][-5:]
         if record["slow_host"]:
             record.update(infra_cause="slow_host", infra_spent=False)
+        if res.ok and before != after and flow.block_of(spec, unit):  # WSP §2.1: a branch is read-only
+            record.update(ok=False, error_kind="branch_changed_the_workspace")
         if after_failed is not None:
             record.update(ok=False, error_kind=f"script_failed:{after_failed}",
                           escalate="environmental" if after_env else record["escalate"])
@@ -485,6 +508,20 @@ class EngineNodes:
         if sw is not None and sw.complexity is not None:
             prev = ((state.get("attempts") or {}).get(unit) or {}).get("complexity")
             record["complexity"] = prev or self._complexity(unit, state)  # once per run (CXR §2.1)
+        path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
+        run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
+        return {"attempts": {unit: record}, "run": run}
+
+    def _join_unit(self, unit: str, state: RunState) -> dict[str, Any]:
+        """A parallel block's join runs nothing: every branch has passed when this node starts (CMP-B4)."""
+        visit = int(((state.get("visits") or {}).get(unit) or {}).get("visit", 1))
+        prev = (state.get("attempts") or {}).get(unit) or {}
+        if prev.get("visit") != visit:
+            fp = gitmod.fingerprint(self._workdir(state))
+            self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=bool(fp.status),
+                               entered_from="join", branches=list(self.ctx.spec.units[unit].branches))
+        record = {"attempt": int(prev.get("attempt", 0)) + 1, "visit": visit, "ok": True, "text": "",
+                  "escalate": None, "infra_spent": False, "check": None, "join": True}
         path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
         run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
         return {"attempts": {unit: record}, "run": run}
@@ -818,6 +855,10 @@ class EngineNodes:
                 tu = spec.units[target]
                 for k in (tu.step.produces if tu.step else {}):
                     back_units[k] = target
+                for b in tu.branches:  # a defect in a branch's output sends the run back to its block
+                    bu = spec.units.get(b)
+                    for k in (bu.step.produces if bu is not None and bu.step else {}):
+                        back_units[k] = target
         outcome = derive(judgement, g, cres, {} if claim else back_units)
         if judgement is None and gr.status == "discarded":
             outcome.reason = f"guard:{gr.reason}"

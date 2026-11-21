@@ -36,6 +36,39 @@ def target_node(target: str) -> str:
     return FINALIZER if target == FINALIZER else step_node(target)
 
 
+def fork_node(join: str) -> str:
+    return f"{join}.fork"
+
+
+def done_node(branch: str) -> str:
+    return f"{branch}.done"
+
+
+def block_of(spec: WorkflowSpec, unit: str) -> str | None:
+    """The parallel block (its join unit) that `unit` is a branch of, if any (CMP §2.2)."""
+    for name, u in spec.units.items():
+        if u.kind == "parallel" and unit in u.branches:
+            return name
+    return None
+
+
+def entry_node(spec: WorkflowSpec, target: str) -> str:
+    """The node that enters `target`: a parallel block, named by its join or by a branch, is entered at its
+    fork, which starts every branch."""
+    if target == FINALIZER:
+        return FINALIZER
+    u = spec.units.get(target)
+    if u is not None and u.kind == "parallel":
+        return fork_node(target)
+    block = block_of(spec, target)
+    return fork_node(block) if block else step_node(target)
+
+
+def entry_unit(node: str) -> str | None:
+    """The unit a target node belongs to; None for the finalizer and the end."""
+    return node.rsplit(".", 1)[0] if "." in node else None
+
+
 @dataclass
 class SuccessorSet:
     proceed: list[str] = field(default_factory=list)  # target nodes
@@ -55,6 +88,9 @@ def next_unit(spec: WorkflowSpec, unit: str) -> str:
     flow = spec.flow.get(unit)
     if flow is not None and flow.next:
         return flow.next
+    block = block_of(spec, unit)
+    if block is not None:
+        return block  # a branch's pass goes to its block's join
     i = order.index(unit)
     return order[i + 1] if i + 1 < len(order) else FINALIZER
 
@@ -104,12 +140,18 @@ def successors(spec: WorkflowSpec, unit: str) -> SuccessorSet:
     order = effective_order(spec)
     step, _, _, human = node_names(unit)
     s = SuccessorSet()
-    s.proceed = [target_node(t) for t in proceed_targets(spec, unit)]
+    if block_of(spec, unit) is not None:
+        s.proceed = [done_node(unit)]  # the join fires when every branch's `done` has (CMP-B4)
+    else:
+        s.proceed = [entry_node(spec, t) for t in proceed_targets(spec, unit)]
     s.retry = [step]
-    s.back = [step_node(t) for t in back_targets(spec, unit)]
+    s.back = [entry_node(spec, t) for t in back_targets(spec, unit)]
     s.escalate = [human]
     s.stop = [END]
-    s.rewind = [step_node(u) for u in order[: order.index(unit)]]
+    own = block_of(spec, unit) or unit
+    before = [u for u in order[: order.index(unit)] if block_of(spec, u) != block_of(spec, unit) or
+              block_of(spec, u) is None]
+    s.rewind = list(dict.fromkeys(entry_node(spec, u) for u in before if u != own))
     return s
 
 
@@ -129,7 +171,7 @@ def rearm_targets(spec: WorkflowSpec, unit: str) -> list[str]:
         for r in (sw.rearm if sw is not None else ()):
             entry = sw.arms.get(r.to) if sw is not None else None
             if unit in r.units and entry and entry != FINALIZER and entry in spec.units:
-                out.append(step_node(entry))
+                out.append(entry_node(spec, entry))
     return list(dict.fromkeys(out))
 
 
@@ -149,7 +191,7 @@ def arm_units(spec: WorkflowSpec, entry: str) -> set[str]:
 def fallback_node(spec: WorkflowSpec, unit: str) -> str | None:
     """The node a gate's fallback target leads to (FLX §2.4); the finalizer is reached through the outcome gate."""
     fb = spec.units[unit].gate.fallback if unit in spec.units else None
-    return target_node(through_outcome(spec, fb)) if fb else None
+    return entry_node(spec, through_outcome(spec, fb)) if fb else None
 
 
 def deadline_of(spec: WorkflowSpec, unit: str) -> tuple[int, str] | None:
@@ -164,7 +206,7 @@ def deadline_node(spec: WorkflowSpec, unit: str) -> str | None:
     d = deadline_of(spec, unit)
     if d is None or d[1] in ("escalate", "stop"):
         return None
-    return target_node(through_outcome(spec, d[1]))
+    return entry_node(spec, through_outcome(spec, d[1]))
 
 
 def gate_targets(spec: WorkflowSpec, unit: str) -> list[str]:
@@ -185,6 +227,10 @@ def reachable_units(spec: WorkflowSpec) -> set[str]:
         if u in seen or u == FINALIZER or u not in order:
             continue
         seen.add(u)
+        for t in list(proceed_targets(spec, u)):  # entering a block reaches each of its branches
+            tu = spec.units.get(t)
+            todo.extend(tu.branches if tu is not None and tu.kind == "parallel" else
+                        spec.units[b].branches if (b := block_of(spec, t)) else ())
         fb = spec.units[u].gate.fallback if u in spec.units else None
         dl = deadline_of(spec, u)
         todo.extend(proceed_targets(spec, u) + back_targets(spec, u) + ([fb] if fb else [])

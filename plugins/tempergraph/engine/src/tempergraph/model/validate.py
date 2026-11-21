@@ -53,7 +53,7 @@ class Finding:
 
 # Kinds, primitives and fields this release does not build, with the release that adds them (ADR-0090).
 LATER_KINDS: dict[str, int] = {
-    "parallel": 2, "council": 3, "contest": 3, "subworkflow": 3,
+    "council": 3, "contest": 3, "subworkflow": 3,
 }
 MODEL_KINDS = frozenset({"step"})
 # Keys the settings resolution writes into a unit's `extra` (RST `effective_spec`), never a workflow's own field.
@@ -215,6 +215,39 @@ class _Validator:
     def _keys_before(self, name: str) -> set[str]:
         return self._earlier_keys(name)["any"]
 
+    def _parallel(self, name: str, u: UnitSpec) -> None:
+        """CMP §2.2, WFM §2: two or more read-only branches directly before their join."""
+        order = list(self.spec.order)
+        if len(u.branches) < 2 or len(set(u.branches)) != len(u.branches):
+            self.err("parallel-branches", name, "a parallel block needs two or more distinct branches")
+            return
+        at = order.index(name)
+        for b in u.branches:
+            bu = self.spec.units.get(b)
+            if bu is None or b not in order:
+                self.err("parallel-branch-unknown", name, f"branch {b!r} is not a unit in `order`")
+                continue
+            if order.index(b) > at:
+                self.err("parallel-join-before-branch", name, f"the join {name!r} comes before its branch {b!r}")
+            if bu.kind not in ("step", "script"):
+                self.err("parallel-branch-kind", b, f"a branch is a step or a script unit, not a `{bu.kind}`")
+            if bu.gate.back_targets or bu.gate.fallback or bu.route is not None or b in self.spec.flow:
+                self.err("parallel-branch-flow", b, "a branch takes no back target, fallback, route or `next`: "
+                                                    "its pass goes to the join")
+            if bu.step is not None and {"write", "edit"} & set(bu.step.tools):
+                self.err("parallel-writer-branch", b, "a branch is read-only in this release; writer branches "
+                                                      "that merge at the join come later (WSP §2.1)")
+            others = [n for n, o in self.spec.units.items() if n != name and o.kind == "parallel" and b in o.branches]
+            if others:
+                self.err("parallel-branch-shared", b, f"{b!r} is a branch of {name!r} and of {others[0]!r}")
+        placed = [order.index(b) for b in u.branches if b in order]
+        if placed and sorted(placed) != list(range(at - len(placed), at)):
+            self.err("parallel-branches-not-adjacent", name, "a block's branches are the units directly before "
+                                                             "its join in `order`")
+        if u.gate.judge is not None or u.gate.criteria or u.gate.check is not None or u.gate.approval:
+            self.err("parallel-join-gate", name, "the join is engine-owned in this release: it takes no check, "
+                                                 "judge, criteria or approval")
+
     def _fallback(self, name: str, u: UnitSpec) -> None:
         g = u.gate
         if (g.on_fail == "fallback" or g.on_budget_spent == "fallback") and not g.fallback:
@@ -258,6 +291,8 @@ class _Validator:
             self._map(name, u)
         elif u.kind == "script":
             self._script_unit(name, u)
+        elif u.kind == "parallel":
+            self._parallel(name, u)
         elif u.kind == "ask":
             self._ask(name, u)
         elif u.kind == "wait":

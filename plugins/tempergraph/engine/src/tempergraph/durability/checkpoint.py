@@ -121,6 +121,18 @@ def classify_snapshot(snap: Snapshot, lock_held: bool) -> ThreadState:
     return ThreadState.STOPPED
 
 
+def update_values(cw: CompiledWorkflow, config: Any, update: Any) -> bool:
+    """A state write outside any node. False when several nodes are pending and LangGraph cannot attribute it;
+    the caller then hands it to the first node that runs."""
+    from langgraph.errors import InvalidUpdateError
+
+    try:
+        cw.graph.update_state(config, update)
+    except InvalidUpdateError:
+        return False
+    return True
+
+
 def resume_input(value: Any) -> Any:
     """The graph input that answers a pending interrupt; keeps LangGraph inside durability (ADR-0115)."""
     from langgraph.types import Command

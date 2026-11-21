@@ -25,13 +25,16 @@ def clear_from(spec: WorkflowSpec, unit: str, state: Mapping[str, Any] | None = 
 
     Every later unit that already ran gets a new visit, so its next entry is recorded as one (EVT §2.2)."""
     order = flow.effective_order(spec)
-    later = order[order.index(unit):] if unit in order else [unit]
+    block = unit if unit in spec.units and spec.units[unit].kind == "parallel" else flow.block_of(spec, unit)
+    first = min((order.index(b) for b in spec.units[block].branches if b in order), default=None) if block else None
+    start = first if first is not None else order.index(unit) if unit in order else None
+    later = list(order[start:]) if start is not None else [unit]  # a block is cleared from its first branch
     out: dict[str, Any] = {k: {u: None for u in later} for k in ("artifacts", "values", "facts", "judgements")}
     out["counters"] = {u: {"retries": 0, "infra": 0} for u in later}
     attempts = (state or {}).get("attempts") or {}
     visits = (state or {}).get("visits") or {}
     out["visits"] = {u: {"visit": int((visits.get(u) or {}).get("visit", 1)) + 1, "entered_from": "proceed"}
-                     for u in later[1:] if attempts.get(u)}
+                     for u in later if u != unit and attempts.get(u)}
     return out
 
 
@@ -257,7 +260,7 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
         p = {"arm": r.to, "target": entry, "chosen_by": "rearm", "visit": prior.get("visit", 1),
              "shadow": False, "would_choose": prior.get("would_choose"), "rearmed_from": r.from_arm,
              "rearm_unit": unit, "rearm_cause": cause, **{k: prior[k] for k in COMPLEXITY_FIELDS if k in prior}}
-        return _merge(clear_from(spec, entry, state), route("BACK", flow.step_node(entry), rearm=name),
+        return _merge(clear_from(spec, entry, state), route("BACK", flow.entry_node(spec, entry), rearm=name),
                       {"route": {name: {"pick": p, "rearmed": True}},
                        "counters": {unit: {**counters, "retries": 0, "infra": 0, "loops": loops}},
                        "visits": {entry: {"visit": int(visits.get("visit", 1)) + 1,
@@ -353,7 +356,7 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
         visits = (state.get("visits") or {}).get(target) or {}
         reason = "; ".join(b.get("problem", "") for b in judged.get("blockers") or []) or "sent back"
         return _merge(clear_from(spec, target, state),
-                      route("BACK", flow.step_node(target)),
+                      route("BACK", flow.entry_node(spec, target)),
                       {"counters": {unit: {**counters, "retries": 0, "infra": 0, "loops": loops}},
                        "visits": {target: {"visit": int(visits.get("visit", 1)) + 1, "reason": reason, "from": unit,
                                            "entered_from": f"back:{unit}"}}})
@@ -369,7 +372,7 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
         nxt = mapping.advance(spec, unit, state)
         if nxt is not None:  # a map's next item runs the unit's own step node again (MAP §2.2)
             return _merge(route("NEXT", s.retry[0], item=att.get("item")), nxt)
-        return _merge(route("PROCEED", flow.target_node(p["target"]) if p else s.proceed[0], **extra),
+        return _merge(route("PROCEED", flow.entry_node(spec, p["target"]) if p else s.proceed[0], **extra),
                       mapping.passed_write(spec, unit, state))
     return to_human("escalation", judged.get("reason") or "escalate")
 
@@ -412,6 +415,9 @@ def check_decision(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], d: D
         raise DecisionRefused("a breakpoint accepts proceed and stop")
     if d.word == "back" and d.unit not in g.back_targets:
         raise DecisionRefused(f"back:{d.unit} is not a back target of {unit}")
+    if d.word in ("back", "rewind") and d.unit and flow.block_of(spec, d.unit) and \
+            flow.block_of(spec, d.unit) != flow.block_of(spec, unit):
+        raise DecisionRefused(f"{d.unit} is a branch of {flow.block_of(spec, d.unit)}; name the block")
     if d.word == "rewind" and d.unit not in path:
         raise DecisionRefused(f"rewind:{d.unit}: {d.unit} was not completed on this path")
     human = int(((state.get("counters") or {}).get(unit) or {}).get("human", 0))
@@ -528,7 +534,7 @@ def _apply(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payload: Map
         if more is not None:  # a person passed one item of a map; the next item runs
             return _merge(route("NEXT", s.retry[0]), more)
         picked = ((state.get("route") or {}).get(unit) or {}).get("pick")  # made before the approval pause
-        nxt = flow.target_node(picked["target"]) if picked else s.proceed[0]
+        nxt = flow.entry_node(spec, picked["target"]) if picked else s.proceed[0]
         w = _merge(route("PROCEED", nxt), mapping.passed_write(spec, unit, state))
         if picked:
             w["route"][unit]["pick"] = picked
@@ -561,7 +567,7 @@ def _apply(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payload: Map
     if d.word in ("back", "rewind") and d.unit:
         visits = (state.get("visits") or {}).get(d.unit) or {}
         human = int(counters.get("human", 0)) + (1 if d.word == "rewind" else 0)
-        w = _merge(clear_from(spec, d.unit, state), route(d.word.upper(), flow.step_node(d.unit)),
+        w = _merge(clear_from(spec, d.unit, state), route(d.word.upper(), flow.entry_node(spec, d.unit)),
                    {"visits": {d.unit: {"visit": int(visits.get("visit", 1)) + 1,
                                         "reason": feedback or f"{d.word} by a person", "from": unit,
                                         "entered_from": f"{d.word}:{unit}"}}})

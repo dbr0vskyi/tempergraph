@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -128,6 +129,7 @@ class RunLog:
         self.segment: int | None = None
         self.checked_tail = False
         self.observers = observers  # an ObserverHub (run/events.py) or None; enabled in operator config only
+        self._lock = threading.RLock()  # branches of a parallel block write from their own threads (WSP §5)
 
     def _segment(self) -> int:
         """This process's segment: the one after the log's last `run_started`, or 0 for a new thread."""
@@ -138,6 +140,10 @@ class RunLog:
         return self.segment
 
     def write(self, record: str, /, **fields: Any) -> int:
+        with self._lock:
+            return self._write(record, **fields)
+
+    def _write(self, record: str, /, **fields: Any) -> int:
         self.seq += 1
         try:
             segment = self._segment()

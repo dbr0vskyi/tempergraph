@@ -25,7 +25,13 @@ from tempergraph.docs import read_json, write_json
 from tempergraph.durability import alias as aliases
 from tempergraph.durability import carry as carrymod
 from tempergraph.durability import engine_file as enginefile
-from tempergraph.durability.checkpoint import classify_snapshot, open_saver, resume_input, snapshot
+from tempergraph.durability.checkpoint import (
+    classify_snapshot,
+    open_saver,
+    resume_input,
+    snapshot,
+    update_values,
+)
 from tempergraph.durability.control import StopWatcher, take_stop
 from tempergraph.durability.lock import LockHeld, RunLock, is_held
 from tempergraph.durability.status import breakpoint_at, classify
@@ -334,6 +340,8 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         cfg = cw.config(tid)
         if before is not None:
             before(cw)
+        if callable(first_input):  # an answer to one of several pending gates is addressed after `before`
+            first_input = first_input(cw)
         meta = (((cw.graph.get_state(cfg).values or {}).get("run") or {}).get("meta") or {})
         shape = diagram_model(spec)["digest"]
         was = enginefile.last(enginefile.read(root, spec.name, task_id))
@@ -876,8 +884,12 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                 except gatemod.DecisionRefused as exc:
                     return _refuse("decision_refused", str(exc), tid=tid)
                 payload_in = {"decision": str(d), **human_payload, **extra}
-                first_input = resume_input(payload_in if len(pending) == 1 else
-                                           {i: payload_in for i, u in snap.interrupt_ids.items() if u == unit})
+                if len(pending) == 1:
+                    first_input = resume_input(payload_in)
+                else:
+                    def first_input(cw2: Any, payload_in: dict[str, Any] = payload_in, unit: str = unit) -> Any:
+                        ids = snapshot(cw2, tid).interrupt_ids
+                        return resume_input({i: payload_in for i, u in ids.items() if u == unit})
             before = None
         elif state is ThreadState.UNFINISHED:
             if d is not None and d.word != "rewind":
@@ -933,9 +945,10 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
 
         def before_all(cw2: Any) -> None:
             cfg = cw2.config(tid)
-            cw2.graph.update_state(cfg, {"run": {"options": settled.snapshot_json()}})
-            if ws_update is not None:
-                cw2.graph.update_state(cfg, {"workspace": ws_update})
+            for update in ({"run": {"options": settled.snapshot_json()}},
+                           *([{"workspace": ws_update}] if ws_update is not None else [])):
+                if not update_values(cw2, cfg, update):  # several nodes pending: the first to run carries it
+                    cw2.engine.defer(update)
             if prior is not None:
                 prior(cw2)
 
