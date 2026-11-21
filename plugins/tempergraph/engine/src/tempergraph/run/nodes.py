@@ -621,7 +621,11 @@ class EngineNodes:
         write["judgements"] = {unit: self._judge_session(unit, state, att, cres, workdir)}
         if u.step is not None and (u.step.effort_ladder or u.step.escalation is not None or any(
                 sw.switch is not None and unit in sw.switch.rearm_units() for sw in spec.units.values())):
-            state_of = self._judge_state()(unit)  # the gate reads trust from the judgement (LAD §2.2)
+            level = (write["judgements"][unit].get("risk") or {}).get("level")  # a level is its own binding
+            g_names = [lv.name for lv in g.judge.risk.levels] if g.judge.risk is not None else []
+            raised = level in g_names[1:]
+            # the gate reads trust from the judgement (LAD §2.2)
+            state_of = self._judge_state()(f"{unit}@{level}" if raised else unit)
             write["judgements"][unit].update(judge_state=state_of, trusted=laddermod.trusted(state_of, self.ctx.stage))
             if u.step.escalation is not None or gatemod.arm_overrides(spec, unit, state)[0].get("escalation"):
                 write["judgements"][unit]["escalation"] = self._escalation_facts(unit, state, att, write)
@@ -726,16 +730,27 @@ class EngineNodes:
         alias = j.model or "inherit"  # resolved on the judge chain alone (RST §2.3, CON §2.4)
         attempt = int(att.get("attempt", 1))
         iid = att.get("item")
+        jopts = j.session_options or SessionOptions()
+        risk = self._risk(unit, state, att, cres, workdir, j) if j.risk is not None else None
+        if risk is not None:  # JRK §2.3: the level's alias and effort for this attempt; a pin keeps its own
+            alias = risk.pop("model") or alias
+            effort = risk.pop("effort")
+            if effort:
+                jopts = dataclasses.replace(jopts, effort=effort)
+            self.ctx.log.write("judge_risk", unit=unit, item=iid, attempt=attempt, alias=alias,
+                               effort=jopts.effort, **risk)
         key = session_key(unit, attempt, "judge", item=iid)
         req = SessionRequest(kind="judge", prompt=prompt, workdir=workdir, alias=alias, session_key=key,
                              timeout_s=j.timeout_s or DEFAULT_TIMEOUT_S, idle_s=j.idle_s,
-                             options=j.session_options or SessionOptions(),
+                             options=jopts,
                              session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, key))
         before = gitmod.fingerprint(workdir)
         changed = list(gitmod.changed_paths(workdir))[:200]  # the digest's `changed_read` (SRV §2.1)
         res, results = self._session(ex, req, views, extra={"changed_paths": changed})
         all_results = list(results)
         out: dict[str, Any] = {"judge_executor": judge_name, "alias": alias, "views": list(views.tools)}
+        if risk is not None:
+            out["risk"] = risk
         if res.infra_cause is not None:
             out.update(verdict=str(Verdict.ESCALATE), infra_spent=True, reason="judge_infra")
             out["_cost"] = self._cost(state, all_results)
@@ -775,12 +790,38 @@ class EngineNodes:
             b["criterion"] for b in outcome.blockers], confidence=outcome.confidence,
             confidence_source=outcome.confidence_source, gap=outcome.gap, guard=gr.status, views=list(views.tools),
             judge_executor=judge_name, brief_digest=brief_digest(stance, brief),
-            criteria_digest=criteria_digest(g.criteria), **({"claim": claim[0]} if claim else {}))
+            criteria_digest=criteria_digest(g.criteria), **({"claim": claim[0]} if claim else {}),
+            **({"level": risk["level"]} if risk is not None else {}))
         self._keep_evidence(unit, att, outcome.blockers)
         out.update(outcome.to_json())
         out["guard"] = gr.status
         out["_cost"] = self._cost(state, all_results)
         return out
+
+    def _risk(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], cres: CheckResult | None,
+              workdir: Path, j: Any) -> dict[str, Any]:
+        """JRK §2.2, §2.3: the rule on model-free facts of the attempt, then the level that grades it."""
+        from tempergraph.contracts import RiskContext
+        from tempergraph.run import risk as riskmod
+
+        ctx = self.ctx
+        maps = (dict, Mapping)
+        facts = {u: dict(f) for u, f in (state.get("facts") or {}).items() if isinstance(f, maps)}
+        if cres is not None and cres.facts:
+            facts[unit] = {**facts.get(unit, {}), **dict(cres.facts)}
+        escalated = bool(att.get("escalated"))
+        rctx = RiskContext(
+            unit=unit, item=att.get("item"), visit=int(att.get("visit", 1)), attempt=int(att.get("attempt", 1)),
+            git=riskmod.git_of(checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or ""),
+                               workdir),
+            facts=facts, request=dict((state.get("request") or {}).get("inputs") or {}), settings=dict(ctx.settings),
+            stage=ctx.stage, producer={"alias": att.get("alias"), "escalated": escalated,
+                                       "source": "escalation:+1" if escalated else "declared"})
+        opts = j.session_options
+        pinned = any(k in (ctx.spec.units[unit].extra.get("judge_operator_set") or ()) for k in riskmod.PIN_KEYS)
+        return riskmod.resolve(j.risk, riskmod.run_rule(j.risk, rctx), base_model=j.model,
+                               base_effort=opts.effort if opts else None, pinned=pinned,
+                               producer_rank=riskmod.rank(att.get("alias")) if escalated else None)
 
     def _keep_evidence(self, unit: str, att: Mapping[str, Any], blockers: list[dict[str, Any]]) -> None:
         """One judgement's evidence and fix lines per attempt, scrubbed and local only (LOS §2.1, RDD §2.1)."""

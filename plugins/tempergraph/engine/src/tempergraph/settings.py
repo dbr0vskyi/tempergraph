@@ -804,6 +804,9 @@ def effective_spec(spec: WorkflowSpec, res: ResolvedSettings) -> WorkflowSpec:
                                     timeout_s=v.get(f"judge:{name}.timeout_s"), idle_s=v.get(f"judge:{name}.idle_s"),
                                     session_options=jopts if jopts.set_names() else None)
             g = dataclasses.replace(g, judge=j)
+            jpins = tuple(k for k in ("model", "effort") if layer_of.get(f"judge:{name}.{k}") in LAYERS[:4])
+            if jpins:  # JRK §2.3 rule 1: a pinned judge model or effort wins over a risk level
+                u = dataclasses.replace(u, extra={**u.extra, "judge_operator_set": jpins})
             views = tuple(v.get(f"judge:{name}.views.add") or ())
             if views:
                 u = dataclasses.replace(u, extra={**u.extra, "views_add": views})

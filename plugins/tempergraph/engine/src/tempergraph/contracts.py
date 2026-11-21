@@ -87,6 +87,55 @@ class Criterion:
 
 
 @dataclass(frozen=True, kw_only=True)
+class RiskLevel:
+    """JRK §2.1: one level of a judge. Level 0 states no model: it is the gate's own judge, resolved as without
+    `risk`; a later level names the alias, the effort, or both."""
+
+    name: str
+    model: str | None = None
+    effort: str | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class RiskWhen:
+    """A stock risk rule (JRK, open question 1): the level holds when the attempt changed at least `min_paths`
+    paths matching `paths`, or at least `min_lines` lines; with a fact, when its number is at least `min_fact`."""
+
+    level: str
+    paths: tuple[str, ...] = ()
+    min_paths: int = 1
+    min_lines: int | None = None
+    fact: tuple[str, str] | None = None
+    min_fact: float | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class RiskSpec:
+    """JRK §2.1: a model-free rule that only ever raises the judge. Exactly one of `rule` and `when`."""
+
+    levels: tuple[RiskLevel, ...]
+    rule: CallableRef | None = None
+    when: tuple[RiskWhen, ...] = ()
+    mode: Literal["route", "shadow"] = "route"
+
+
+@dataclass(frozen=True, kw_only=True)
+class RiskContext:
+    """What a risk rule reads (JRK §2.2). It holds no step text, artifact content or step value."""
+
+    unit: str
+    item: str | None
+    visit: int
+    attempt: int
+    git: Any
+    facts: Mapping[str, Mapping[str, Any]]
+    request: Mapping[str, Any]
+    settings: Mapping[str, Any]
+    stage: str
+    producer: Mapping[str, Any]
+
+
+@dataclass(frozen=True, kw_only=True)
 class JudgeSpec:
     stance: str = ""
     brief: str = ""
@@ -100,6 +149,7 @@ class JudgeSpec:
     idle_s: int | None = None
     session_options: SessionOptions | None = None
     sizing: str = ""  # why this model and effort fit the judge's reading (SCF §2.1.1)
+    risk: RiskSpec | None = None  # JRK: a stronger judge for a riskier attempt
 
 
 @dataclass(frozen=True, kw_only=True)

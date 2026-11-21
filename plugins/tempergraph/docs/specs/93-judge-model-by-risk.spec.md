@@ -25,7 +25,8 @@ def risk(ctx: RiskContext) -> str | tuple[str, dict[str, int | float | str]]: ..
 |---|---|---|
 | `risk` | `RiskSpec`, optional | Without it the judge resolves as today ([CON §2.4](01-contracts.spec.md)) |
 | `RiskSpec.rule` | callable ref | Pure and model-free, like a route predicate (contract C5) |
-| `RiskSpec.levels` | ordered list of 2 or 3 `{name, model, effort?}` | Level 0 is the gate's own judge model (resolved as without `risk`); each later level is at a tier at or above the one before, and differs from it in model or effort |
+| `RiskSpec.when` | list of stock rules, in place of `rule` | `{level, paths, min_paths, min_lines, fact, min_fact}`: the level holds when the attempt changed `min_paths` paths under the globs, `min_lines` lines, or a check fact reached `min_fact`; of the levels that hold, the highest wins; a missing fact is a fault |
+| `RiskSpec.levels` | ordered list of 2 or 3 `{name, model?, effort?}` | Level 0 is the gate's own judge (resolved as without `risk`) and states no model; each later level is at a tier at or above the one before, never at a lower effort, and differs from it in model or effort. A level that states no model keeps the one before |
 | `RiskSpec.mode` | `route` \| `shadow`, default `route` | Shadow records the level and runs level 0 |
 
 ### 2.2 What the rule reads
@@ -96,22 +97,25 @@ The judge's record gains `risk: {level, would_choose, signals, chosen_by}` with 
 
 ## 5. Design notes
 
+- As built (R2-T3): `run/risk.py` runs the rule under a one-second guard and resolves the level in the judge node; the builder gives `Risk`, `Level` and `When`. `*` and `**` in a glob both cross directories. `lines_added` counts the lines of untracked files. The judge's record and the `judge_risk` record carry the alias and effort that ran; `report --risk` shows attempts, PROCEED and RETRY rates, judge cost and `chosen_by` per gate and level, and gate escapes and labels per level join it with the per-level reliability grades of R2-T4. Validation code: `risk-invalid`.
+- As built (calibration): a level above the judge's own is a binding with its own scores (`evals score <workflow> <gate> --level <name>`, kept in the gate's `scores.jsonl` with `level`); `evals bar` lists a row per level; a gate counts as accepted only when every level a routed rule may pick is accepted; the trust a ladder reads is the state of the level that graded the attempt. An operator-pinned judge is the judge's own binding with the pinned alias, so its score is stale until re-scored.
+- `risk` on a council member, chair, contest slot or the audit judge cannot be declared: those units are not built, and their specs fix their bindings.
 - Only up: a cheaper judge for "low-risk" work is the agreeable-judge hazard in a new form ([R-045](../research/R-045-evaluating-llm-judges-public-practice.rsrch.md) F2).
 - The sampled audit judge ([JDG-B7](05-judge-and-verdict.spec.md)) audits whatever level graded the attempt; its agreement is recorded per level.
 - A risk rule is a cost bet like a switch ([SWM](79-measured-switches.spec.md)), so it has the same shadow mode, and moving a threshold is a `judge_model` proposal of class `grader` measured by a trial ([PRP §2.3](40-improvement-proposals.spec.md)).
 
 ## 6. Acceptance criteria
 
-- [ ] JRK-AC-1 JRK-B1 to JRK-B5 and every row of the JRK-B5 table hold offline with scripted executors.
-- [ ] JRK-AC-2 No fixture makes a judge run below level 0, or below the producer's escalated tier.
-- [ ] JRK-AC-3 A rule given a context built from a step whose artifacts contain the word "trivial" picks the same level as from an empty artifact (the rule cannot read them).
-- [ ] JRK-AC-4 `evals bar` lists a state per level, and a change to any level's model or effort makes that level, and only it, `stale`.
+- [x] JRK-AC-1 JRK-B1 to JRK-B5 and every row of the JRK-B5 table hold offline with scripted executors.
+- [x] JRK-AC-2 No fixture makes a judge run below level 0, or below the producer's escalated tier.
+- [x] JRK-AC-3 A rule given a context built from a step whose artifacts contain the word "trivial" picks the same level as from an empty artifact (the rule cannot read them).
+- [x] JRK-AC-4 `evals bar` lists a state per level, and a change to any level's model or effort makes that level, and only it, `stale`.
 
 ## Open questions
 
 | Question | Owner | Default |
 |---|---|---|
-| Should the engine ship stock rules (paths by glob, lines changed) so a workflow declares only thresholds? | Owner | Yes, as helpers in the builder library; a workflow may still write its own |
+| Should the engine ship stock rules (paths by glob, lines changed) so a workflow declares only thresholds? | Owner | Yes, built as `when` rules; a workflow may still write its own `rule` |
 
 ## References
 

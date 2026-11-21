@@ -29,6 +29,7 @@ def add_parsers(sub: Any, parser_class: type[argparse.ArgumentParser]) -> None:
     sc.add_argument("--variants", default="persuasive_account,out_of_reach",
                     help="comma-separated kinds, or none")
     sc.add_argument("--cap", type=float, default=None, metavar="USD")
+    sc.add_argument("--level", help="score the judge of this risk level (JRK §2.4)")
     sc.add_argument("--json", action="store_true")
     ba = esub.add_parser("bar", help="each gate's acceptance state, figures and failing rules")
     ba.add_argument("workflow", nargs="?")
@@ -97,7 +98,7 @@ def cmd_evals(env: Any, a: argparse.Namespace) -> int:
         doc: dict[str, Any] = {"schema_version": 1, "workflows": []}
         for spec in specs:
             rows = []
-            for st in cal.states(spec, root):
+            for st in cal.states(spec, root, every_level=True):
                 rows.append({**st.to_json(), "needed": cal.needed(st)})
             doc["workflows"].append({"workflow": spec.name, "gates": rows})
         if a.json:
@@ -105,7 +106,8 @@ def cmd_evals(env: Any, a: argparse.Namespace) -> int:
         else:
             for w in doc["workflows"]:
                 for g in w["gates"]:
-                    env.out.write(f"{w['workflow']} {g['gate']}: {g['state']}"
+                    env.out.write(f"{w['workflow']} {g['gate']}" + (f" level {g['level']}" if g.get("level") else "")
+                                  + f": {g['state']}"
                                   + (f" ({'; '.join(g['failing'])})" if g["failing"] else "")
                                   + (f"; needs {', '.join(g['needed'])}" if g["needed"] else "") + "\n")
         return 0
@@ -140,11 +142,11 @@ def cmd_evals(env: Any, a: argparse.Namespace) -> int:
                 step_ex, None, None)
             ex = env.registry.get(name)
             rec = cal.score(spec, a.gate, ex, repeats=a.repeat, variants=kinds, cap_usd=a.cap,
-                            run_by="person")
+                            run_by="person", level=a.level)
+            st = cal.state(spec, a.gate, level=a.level)
         except cal.CalibrationError as exc:
             raise _usage(str(exc)) from exc
-        st = cal.state(spec, a.gate)
-        doc = {"score_id": rec["score_id"], "gate": a.gate, "partial": rec["partial"], "usage": rec["usage"],
+        doc = {"score_id": rec["score_id"], "gate": a.gate, **({"level": a.level} if a.level else {}), "partial": rec["partial"], "usage": rec["usage"],
                "figures": rec["figures"], "state": st.state, "failing": st.failing}
         if a.json:
             _emit(env, doc)

@@ -151,6 +151,13 @@ def tier(alias: object) -> str:
     return str(alias or "").rsplit(":", 1)[-1]
 
 
+def _judge_rank(judge: Any) -> int:
+    """The strongest tier the gate's judge can grade on: its own, or its highest risk level's (JRK §2.3 floor)."""
+    from tempergraph.run.risk import top_rank
+
+    return top_rank(judge)
+
+
 def escalation(u: UnitSpec, step: Mapping[str, Any], judged: Mapping[str, Any], *, retry_left: bool,
                rearm_available: bool, overrides: Mapping[str, Any] | None = None) -> dict[str, Any] | None:
     """LAD §2.4: whether the next attempt is escalated. None when the unit declares no escalation or the failed
@@ -176,8 +183,7 @@ def escalation(u: UnitSpec, step: Mapping[str, Any], judged: Mapping[str, Any], 
         ("E1", allowed == "off"),
         ("E2", len(last) < 2 or not all(t["top"] for t in last)),
         ("E3", len(last) < 2 or any(t["evidence"] != "judge_blocker" for t in last) or not shared),
-        ("E4", judge is None or TIER_RANK.get(tier(judge.model), -1) < TIER_RANK.get(tier(esc.to), 9)
-         or judged.get("judge_state") != "accepted"),
+        ("E4", _judge_rank(judge) < TIER_RANK.get(tier(esc.to), 9) or judged.get("judge_state") != "accepted"),
         ("E5", not retry_left),
         ("E6_unmeasured", estimate is None),
         ("E6", estimate is not None and left is not None and float(estimate) > float(left)),

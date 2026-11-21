@@ -35,6 +35,7 @@ from tempergraph.contracts import (
     EventSink,
     GateSpec,
     JudgeSpec,
+    SessionOptions,
     SessionRequest,
     StepSpec,
     ToolCall,
@@ -99,8 +100,10 @@ def tree_digest(folder: Path) -> str:
 
 # -- gates and cases (JCL §2.1) ------------------------------------------------------------------------------
 
-def gate_spec(spec: WorkflowSpec, gate: str) -> tuple[GateSpec, StepSpec | None, str]:
-    """The judged gate's spec, its step (None for the outcome gate) and its step executor."""
+def gate_spec(spec: WorkflowSpec, gate: str, level: str | None = None
+              ) -> tuple[GateSpec, StepSpec | None, str]:
+    """The judged gate's spec, its step (None for the outcome gate) and its step executor. With `level`, the
+    judge is the one of that risk level: its alias and effort (JRK §2.3), a binding of its own."""
     from tempergraph.run.outcome import with_outcome
 
     full = with_outcome(spec)
@@ -108,7 +111,40 @@ def gate_spec(spec: WorkflowSpec, gate: str) -> tuple[GateSpec, StepSpec | None,
     if u is None or u.gate.judge is None:
         raise CalibrationError(f"{spec.name} has no judged gate {gate!r}")
     step = u.step
-    return u.gate, step, (step.executor if step and step.executor else spec.default_executor)
+    g = u.gate
+    if level is not None:
+        g = dataclasses.replace(g, judge=_level_judge(spec, gate, g.judge, level))
+    return g, step, (step.executor if step and step.executor else spec.default_executor)
+
+
+def levels(spec: WorkflowSpec, gate: str) -> list[str]:
+    """The risk levels of a gate's judge, level 0 first; empty for a judge without `risk` (JRK §2.1)."""
+    from tempergraph.run.outcome import with_outcome
+
+    u = with_outcome(spec).units.get(gate)
+    j = u.gate.judge if u is not None else None
+    return [lv.name for lv in j.risk.levels] if j is not None and j.risk is not None else []
+
+
+def _level_judge(spec: WorkflowSpec, gate: str, j: JudgeSpec, level: str) -> JudgeSpec:
+    from tempergraph.contracts import SessionOptions
+    from tempergraph.run import risk as riskmod
+
+    names = levels(spec, gate)
+    if level not in names or j.risk is None:
+        raise CalibrationError(f"{gate} has no risk level {level!r}" + (f" ({', '.join(names)})" if names else ""))
+    i = names.index(level)
+    opts = j.session_options
+    effort = riskmod.efforts(j.risk, opts.effort if opts else None)[i]
+    if effort != (opts.effort if opts else None):
+        opts = dataclasses.replace(opts or SessionOptions(), effort=effort)  # type: ignore[arg-type]
+    return dataclasses.replace(j, model=riskmod.models(j.risk, j.model)[i], session_options=opts)
+
+
+def _base_level(spec: WorkflowSpec, gate: str, level: str | None) -> str | None:
+    """None for a judge's own level (no `risk`, or its level 0): the scores written before `risk` stay its."""
+    names = levels(spec, gate)
+    return None if level is None or not names or level == names[0] else level
 
 
 def judged_gates(spec: WorkflowSpec) -> list[str]:
@@ -342,7 +378,8 @@ def variant(base: Subject, kind: str, criteria: Sequence[Criterion], reach: Mapp
 # -- the score (JCL §2.3) ------------------------------------------------------------------------------------
 
 def current_binding(spec: WorkflowSpec, gate: str, executor: str | None = None,
-                    observed: Mapping[str, Any] | None = None, home: Path | None = None) -> dict[str, Any]:
+                    observed: Mapping[str, Any] | None = None, home: Path | None = None,
+                    level: str | None = None) -> dict[str, Any]:
     """The binding a gate's judge has now, model-free: executor and alias from the workflow, the model slug
     from the operator's binding table, the digests from the spec. ``observed`` (the latest judgement's
     binding in the run logs) supplies the executor version, which only a session reports."""
@@ -350,7 +387,7 @@ def current_binding(spec: WorkflowSpec, gate: str, executor: str | None = None,
     from tempergraph.model.text import load_text, split_judge_file
     from tempergraph.run.judging import brief_digest, criteria_digest
 
-    g, _, step_ex = gate_spec(spec, gate)
+    g, _, step_ex = gate_spec(spec, gate, _base_level(spec, gate, level))
     j = g.judge
     assert j is not None
     name = executor or j.executor or (observed or {}).get("executor") or step_ex
@@ -398,7 +435,7 @@ class Judged:
     version: str = ""
 
 
-def judge_once(spec: WorkflowSpec, gate: str, s: Subject, ex: Any, key: str) -> Judged:
+def judge_once(spec: WorkflowSpec, gate: str, s: Subject, ex: Any, key: str, level: str | None = None) -> Judged:
     """One judge session on a scratch copy of the subject: the gate's real brief, stance, view set and
     independence guard, and the engine's derivation rules (JDG §2.2)."""
     from tempergraph import git as gitmod
@@ -408,7 +445,7 @@ def judge_once(spec: WorkflowSpec, gate: str, s: Subject, ex: Any, key: str) -> 
     from tempergraph.run.judging import JudgeInputs, Unparsed, derive, parse_judgement, render_judge
     from tempergraph.run.log import estimate
 
-    g, step, _ = gate_spec(spec, gate)
+    g, step, _ = gate_spec(spec, gate, _base_level(spec, gate, level))
     j = g.judge or JudgeSpec()
     caps = ex.capabilities()
     if not _can_judge(ex):
@@ -439,7 +476,8 @@ def judge_once(spec: WorkflowSpec, gate: str, s: Subject, ex: Any, key: str) -> 
             (work / name).write_text(text, encoding="utf-8")
         _git_init(work)
         req = SessionRequest(kind="judge", prompt=prompt, workdir=work, alias=j.model or "inherit", session_key=key,
-                             timeout_s=j.timeout_s or 600, idle_s=j.idle_s)
+                             timeout_s=j.timeout_s or 600, idle_s=j.idle_s,
+                             options=j.session_options or SessionOptions())
         before = gitmod.fingerprint(work)
         res = ex.run_judge(req, views, EventSink())
         after = gitmod.fingerprint(work)
@@ -469,7 +507,7 @@ def judge_once(spec: WorkflowSpec, gate: str, s: Subject, ex: Any, key: str) -> 
 
 def score(spec: WorkflowSpec, gate: str, ex: Any, *, repeats: int = 3, variants: Sequence[str] = REQUIRED_VARIANTS,
           cap_usd: float | None = None, run_by: str = "person", write: bool = True,
-          split: str = "all") -> dict[str, Any]:
+          split: str = "all", level: str | None = None) -> dict[str, Any]:
     """`evals score`: the gate's judge on each reviewed case `repeats` times and on each variant once. The
     record keeps ids and statuses only (JCL-AC-6); a cap reached mid-score keeps it `partial` (JCL §4)."""
     if repeats < 1:
@@ -503,7 +541,7 @@ def score(spec: WorkflowSpec, gate: str, ex: Any, *, repeats: int = 3, variants:
         if cap_usd is not None and spent >= cap_usd:
             partial = True
             break
-        jd = judge_once(spec, gate, s, ex, f"calibration.{u.case.case_id}.{s.variant}.{r}.{i}")
+        jd = judge_once(spec, gate, s, ex, f"calibration.{u.case.case_id}.{s.variant}.{r}.{i}", level)
         spent += jd.cost
         usage["sessions"] += 1
         usage["input_tokens"] += int(jd.usage.get("input_tokens") or 0)
@@ -515,13 +553,14 @@ def score(spec: WorkflowSpec, gate: str, ex: Any, *, repeats: int = 3, variants:
                         "confidence_source": jd.confidence_source, "guard": jd.guard,
                         **({"removed_for": s.removed_for} if s.removed_for else {})})
     usage["cost_usd"] = round(spent, 6)
-    b = current_binding(spec, gate, ex.name)
+    level = _base_level(spec, gate, level)
+    b = current_binding(spec, gate, ex.name, level=level)
     b["executor_version"] = version or b.get("executor_version")
     b["model_slug"] = b.get("model_slug") or seen_model
     rec = {"schema_version": 1, "score_id": uuid.uuid4().hex[:16], "at": now_iso(), "run_by": run_by,
            "workflow": spec.name, "workflow_version": spec.version, "gate": gate, "case_set_digest": case_set_digest(us),
            "split": split, "binding": b, "repeats": repeats, "variants": list(variants), "partial": partial,
-           "skipped": skipped, "results": results, "usage": usage}
+           "skipped": skipped, "results": results, "usage": usage, **({"level": level} if level else {})}
     rec["figures"] = figures(rec, spec)
     if write and spec.package_root is not None:
         append_jsonl(calibration_dir(spec.package_root, gate) / "scores.jsonl", rec)
@@ -778,30 +817,35 @@ class State:
     history: list[dict[str, Any]] = field(default_factory=list)
     skipped: list[dict[str, Any]] = field(default_factory=list)
     production_grade: str | None = None
+    level: str | None = None  # a risk level above the judge's own (JRK §2.4)
 
     def to_json(self) -> dict[str, Any]:
         sc = self.score or {}
         return {"gate": self.gate, "state": self.state, "binding": self.binding, "score_id": sc.get("score_id"),
                 "scored_at": sc.get("at"), "figures": sc.get("figures"), "failing": self.failing,
                 "warnings": self.warnings, "changed": self.changed, "history": self.history,
-                "skipped": self.skipped, "production_grade": self.production_grade}
+                "skipped": self.skipped, "production_grade": self.production_grade,
+                **({"level": self.level} if self.level else {})}
 
 
 def state(spec: WorkflowSpec, gate: str, *, observed: Mapping[str, Any] | None = None,
           production_grade: Callable[[str, Mapping[str, Any]], str] | None = None,
-          home: Path | None = None) -> State:
+          home: Path | None = None, level: str | None = None) -> State:
     """JCL §2.5: the latest complete score for the current binding decides. Model-free (JCL-AC-8).
 
     ``observed`` is the binding of the gate's latest production judgement, when a state root is at hand: an
     executor version or model slug that changed since the score makes it `stale` (JCL-B3).
     ``production_grade(gate, binding)`` is FBK's grade, for `contradicted` (JCL-B7)."""
     root = spec.package_root
-    cur = current_binding(spec, gate, observed=observed, home=home)
-    st = State(gate=gate, state="unscored", binding=cur)
+    level = _base_level(spec, gate, level)
+    cur = current_binding(spec, gate, observed=observed, home=home, level=level)
+    st = State(gate=gate, state="unscored", binding=cur, level=level)
     if root is None:
         return st
     us, st.skipped = usable(spec, gate)
-    complete = [s for s in scores(root, gate) if not s.get("partial")]  # a partial record is never a state (JCL §4)
+    base = (levels(spec, gate) or [None])[0]  # a score belongs to one level's binding (JRK §2.3)
+    complete = [s for s in scores(root, gate) if not s.get("partial")  # a partial record is never a state (JCL §4)
+                and (s.get("level") if s.get("level") != base else None) == level]
     if not complete:
         return st
     latest = complete[-1]
@@ -833,8 +877,10 @@ def state(spec: WorkflowSpec, gate: str, *, observed: Mapping[str, Any] | None =
     return st
 
 
-def states(spec: WorkflowSpec, state_root: Path | None = None, home: Path | None = None) -> list[State]:
-    """Every judged gate's state; with a state root, the observed binding and FBK's grade are read too."""
+def states(spec: WorkflowSpec, state_root: Path | None = None, home: Path | None = None,
+           every_level: bool = False) -> list[State]:
+    """Every judged gate's state; with a state root, the observed binding and FBK's grade are read too. With
+    `every_level`, a gate whose judge has risk levels gets one more state per level above its own."""
     out = []
     for gate in judged_gates(spec):
         observed = None
@@ -850,6 +896,28 @@ def states(spec: WorkflowSpec, state_root: Path | None = None, home: Path | None
                 return reliability.report(state_root, spec.name, [g], live)[0]["grade"]
 
         out.append(state(spec, gate, observed=observed, production_grade=grade, home=home))
+        if every_level:
+            out += [state(spec, gate, home=home, level=lv) for lv in levels(spec, gate)[1:]]
+    return out
+
+
+def unaccepted_levels(spec: WorkflowSpec, gate: str) -> list[tuple[str, str]]:
+    """JRK §2.4: the levels above the judge's own that a routed rule may pick and that are not `accepted`, with
+    their state. Shadow mode runs level 0 only, so it needs none of them."""
+    from tempergraph.run.outcome import with_outcome
+
+    u = with_outcome(spec).units.get(gate)
+    j = u.gate.judge if u is not None else None
+    if j is None or j.risk is None or j.risk.mode != "route":
+        return []
+    out = []
+    for lv in levels(spec, gate)[1:]:
+        try:
+            name = state(spec, gate, level=lv).state
+        except (CalibrationError, OSError, ValueError):
+            name = "unscored"
+        if name != "accepted":
+            out.append((lv, name))
     return out
 
 
@@ -866,7 +934,7 @@ def passing(spec: WorkflowSpec, gate: str) -> bool:
 def has_score(spec: WorkflowSpec, gate: str, state_root: Path | None = None) -> bool:
     """The seam for filing (SIL-B7, `Candidate.calibrated`): the gate's judge is `accepted`."""
     try:
-        return _state_of(spec, gate, state_root) == "accepted"
+        return _state_of(spec, gate, state_root) == "accepted" and not unaccepted_levels(spec, gate)
     except (CalibrationError, OSError, ValueError):  # a reader never fails on a broken case file
         return False
 
@@ -890,8 +958,12 @@ def accepted_for(spec: WorkflowSpec, state_root: Path | None = None) -> Callable
 
 
 def state_name_for(spec: WorkflowSpec, state_root: Path | None = None) -> Callable[[str], str]:
+    """`name(gate)` for the judge's own binding, `name("<gate>@<level>")` for a risk level above it."""
     def name(gate: str) -> str:
+        gate, _, level = gate.partition("@")
         try:
+            if level and _base_level(spec, gate, level):
+                return state(spec, gate, level=level).state
             return _state_of(spec, gate, state_root)
         except (CalibrationError, OSError, ValueError):
             return "unscored"

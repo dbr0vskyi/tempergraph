@@ -29,6 +29,9 @@ from tempergraph.contracts import (
     ProducesKind,
     RearmSpec,
     ResolveResult,
+    RiskLevel,
+    RiskSpec,
+    RiskWhen,
     RouteView,
     RoutingMetadata,
     ScriptSpec,
@@ -47,7 +50,7 @@ from tempergraph.run.finalize import FinalizerContext, FinalizerResult
 
 __all__ = [
     "CheckFinding", "CheckResult", "Criterion", "FinalizerContext", "FinalizerResult", "Gate", "Input", "Judge", "Param", "ResolveResult", "Route",
-    "ComplexitySwitch", "Escalation", "Measure", "stock", "Rearm", "RouteView", "Routing", "Script", "SessionOptions", "Setting", "Step", "Switch", "Value", "Workflow",
+    "ComplexitySwitch", "Escalation", "Level", "Measure", "Risk", "When", "stock", "Rearm", "RouteView", "Routing", "Script", "SessionOptions", "Setting", "Step", "Switch", "Value", "Workflow",
     "WorktreeDecl", "checks", "text", "Parallel", "Map", "Ask", "Wait", "Council", "Contest", "Subworkflow",
 ]
 
@@ -103,7 +106,8 @@ def Judge(*, file: str | None = None, stance: str = "", brief: str = "",  # noqa
           references: Mapping[str, str] | Iterable[str] = (), subject: Iterable[str] = (),
           executor: str | None = None, model: str | None = None, timeout_s: int | None = None,
           tools: Iterable[str] | None = None, effort: str | None = None,
-          session_options: SessionOptions | None = None, sizing: str = "") -> JudgeSpec:
+          session_options: SessionOptions | None = None, sizing: str = "",
+          risk: RiskSpec | None = None) -> JudgeSpec:
     """`sizing` is one sentence on why `model` and `effort` fit what this judge must read (SCF §2.1.1)."""
     refs = dict(references) if isinstance(references, Mapping) else {k: "required" for k in references}
     if effort is not None:
@@ -113,7 +117,28 @@ def Judge(*, file: str | None = None, stance: str = "", brief: str = "",  # noqa
     return JudgeSpec(file=file, stance=stance, brief=brief, references=refs, subject=tuple(subject),  # type: ignore[arg-type]
                      executor=executor, model=model, timeout_s=timeout_s,
                      tools=tuple(tools) if tools is not None else None, session_options=session_options,
-                     sizing=sizing)
+                     sizing=sizing, risk=risk)
+
+
+def Level(name: str, *, model: str | None = None, effort: str | None = None) -> RiskLevel:  # noqa: N802
+    """One level of a judge (JRK §2.1). The first level takes no model: it is the gate's own judge."""
+    return RiskLevel(name=name, model=model, effort=effort)
+
+
+def When(level: str, *, paths: Iterable[str] = (), min_paths: int = 1, min_lines: int | None = None,  # noqa: N802
+         fact: tuple[str, str] | None = None, min_fact: float | None = None) -> RiskWhen:
+    """A stock risk rule: `level` holds when the attempt changed `min_paths` paths under `paths`, `min_lines`
+    lines, or a check fact reached `min_fact`. Of the rules that hold, the highest level wins."""
+    return RiskWhen(level=level, paths=tuple(paths), min_paths=min_paths, min_lines=min_lines,
+                    fact=tuple(fact) if fact else None, min_fact=min_fact)  # type: ignore[arg-type]
+
+
+def Risk(*, levels: Iterable[RiskLevel], rule: Callable[..., Any] | None = None,  # noqa: N802
+         when: Iterable[RiskWhen] = (), mode: str = "route") -> RiskSpec:
+    """Raise a gate's judge by model-free facts of the attempt (JRK): a `rule(ctx: RiskContext)` that returns a
+    level name (and optional signals), or stock `when` rules. It only ever raises, and a fault takes the last
+    level."""
+    return RiskSpec(levels=tuple(levels), rule=_opt_ref(rule), when=tuple(when), mode=mode)  # type: ignore[arg-type]
 
 
 def Gate(*, check: Callable[..., Any] | None = None, check_timeout_s: int = 1800,  # noqa: N802

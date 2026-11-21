@@ -49,8 +49,8 @@ Weight: medium
 |---|---|---|---|---|
 | 2.1 | test | `plugins/tempergraph/engine/tests/test_judge_risk_calibration.py` | JRK-AC-4, JRK-AC-1 (B5) | A state per level, staleness of one level, the JRK-B5 table |
 | 2.2 | code | `plugins/tempergraph/engine/src/tempergraph/improve/calibration.py` | | Bindings, scores and states per level |
-| 2.3 | code | `plugins/tempergraph/engine/src/tempergraph/cli/evals.py` | | `evals score --level`, `evals bar` rows per level |
 | 2.4 | code | `plugins/tempergraph/engine/src/tempergraph/package/readiness.py` | | Every routed level accepted for stable mode |
+| 2.3 | code | `plugins/tempergraph/engine/src/tempergraph/cli/improve.py` | | `evals score --level`, `evals bar` rows per level |
 
 ## 3. Verification
 
@@ -60,4 +60,5 @@ Weight: medium
 ## 4. Doc changes
 
 - `plugins/tempergraph/docs/specs/93-judge-model-by-risk.spec.md`: as-built notes and ticked criteria
-- `plugins/tempergraph/docs/specs/09-cli.spec.md`: `report --risk`, `evals score --level`
+- `plugins/tempergraph/docs/specs/17-engine-cli.spec.md`: `evals score --level`
+- `plugins/tempergraph/docs/specs/30-run-events.spec.md`: the fields of `judge_risk`

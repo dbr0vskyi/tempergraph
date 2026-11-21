@@ -57,7 +57,7 @@ LATER_KINDS: dict[str, int] = {
 }
 MODEL_KINDS = frozenset({"step"})
 # Keys the settings resolution writes into a unit's `extra` (RST `effective_spec`), never a workflow's own field.
-RESOLVED_EXTRA = frozenset({"operator_set", "arm"})
+RESOLVED_EXTRA = frozenset({"operator_set", "arm", "judge_operator_set"})
 ISSUE_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 READ_VIEW_KINDS = frozenset({"file", "url", "value"})  # what a claude judge can read without MCP views
@@ -529,6 +529,19 @@ class _Validator:
             target = caps or self.executors.get("claude")
             if target is not None:
                 self._alias(unit, j.model, target)
+        if j.risk is not None:  # JRK §2.1, §4
+            from tempergraph.run import risk as riskmod
+
+            base = j.model or (u.step.model if u.step is not None and isinstance(u.step.model, str) else None)
+            opts = j.session_options
+            for problem in riskmod.problems(j.risk, base, opts.effort if opts else None):
+                self.err("risk-invalid", unit, f"judge `risk`: {problem}")
+            target = caps or self.executors.get("claude")
+            for lv in j.risk.levels[1:]:
+                if lv.model and target is not None:
+                    self._alias(unit, lv.model, target)
+            if j.risk.rule is not None:
+                self._callable(unit, j.risk.rule, "risk rule")
         produces = u.step.produces if u.step else {}
         subject = j.subject or tuple(produces)
         unverified = any(c.unverified_system for c in g.criteria)
