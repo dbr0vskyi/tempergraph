@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-ts-tri-gaps",
+  "gate": "triage",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-tri-gaps",
+    "expected": "UNMET",
+    "reason": "No spec covers the missing config file, yet the gap list is None and the route is plan."
+  }
+}

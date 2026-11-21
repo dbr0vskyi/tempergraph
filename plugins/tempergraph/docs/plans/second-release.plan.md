@@ -83,6 +83,7 @@ Every item release 2 ships. Items not built are refused with `not_in_release`, n
 | I2-23 | Session review in stable mode | SRV §2.4, §5 | R2-T8 | X2-26 |
 | I2-24 | The loop's alias as a setting (R-130 G4) | RST, SIL | R2-T2 | divergence |
 | I2-25 | Run state carried on its own branch: `--carry`, `carry push\|pull\|status\|drop`, lease, deletion at finish | CAR | R2-T5 | new, owner 2026-11-20 |
+| I2-26 | Deliverables required per path; a repository-level command declaration; `GitFacts.pushed` set (R-130 G10 to G12) | WFM, CHK | R2-T7 | new, from the first authored workflow |
 
 ## 2. Tracks and phases
 

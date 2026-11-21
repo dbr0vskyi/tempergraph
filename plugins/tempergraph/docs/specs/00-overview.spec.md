@@ -3,7 +3,7 @@ title: tempergraph system overview
 type: overview
 status: review
 prefix: OVR
-adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035, 0062, 0070, 0073, 0075, 0085, 0089, 0090, 0091, 0095, 0099, 0105, 0107, 0108, 0109, 0121, 0122, 0123, 0124, 0125]
+adrs: [0001, 0002, 0003, 0004, 0005, 0006, 0007, 0018, 0021, 0035, 0062, 0070, 0073, 0075, 0085, 0089, 0090, 0091, 0095, 0099, 0105, 0107, 0108, 0109, 0125]
 ---
 
 # tempergraph system overview
@@ -157,12 +157,12 @@ flowchart LR
 | AUT | [89 Workflow authoring](89-workflow-authoring.spec.md) | Entry paths, intake inventory, the backwards interview, verification search and classification, authoring record, revise mode |
 | OUT | [90 Run-level good outcome](90-run-outcome.spec.md) | The outcome file, verifier classes, trust and coverage, the outcome gate, the outcome record and measures, revisions |
 | SCF | [91 Blueprint, scaffold and authoring checks](91-blueprint-and-scaffold.spec.md) | The blueprint and its drawing, the literal check, the scaffold and its generated tests, `author verify` up to a first trial |
-| LAD | [92 Effort ladder and one-step model escalation](92-effort-ladder-and-model-escalation.spec.md) | Climbing evidence, held causes, escalation |
-| JRK | [93 Judge model by risk](93-judge-model-by-risk.spec.md) | Risk rule, judge levels, floor, calibration per level |
-| CXR | [94 Complexity routing between decompositions](94-complexity-routing.spec.md) | Measures, zones, arm contract, one-way re-arm |
-| PRO | [95 Promotion check and workflow stages](95-promotion-check.spec.md) | Stages, `promote-check`, the stamp |
-| CAR | [96 Run state carried on a branch](96-run-state-on-a-branch.spec.md) | State branch, subset, lease, deletion |
-| WIN | [97 Windows support](97-windows-support.spec.md) | Platform rules, probes |
+| LAD | [92 Effort ladder and one-step model escalation](92-effort-ladder-and-model-escalation.spec.md) | Evidence, escalation |
+| JRK | [93 Judge model by risk](93-judge-model-by-risk.spec.md) | Risk levels, floor |
+| CXR | [94 Complexity routing between decompositions](94-complexity-routing.spec.md) | Zones, re-arm |
+| PRO | [95 Promotion check and workflow stages](95-promotion-check.spec.md) | Stages, stamp |
+| CAR | [96 Run state carried on a branch](96-run-state-on-a-branch.spec.md) | State branch |
+| WIN | [97 Windows support](97-windows-support.spec.md) | Platform rules |
 
 ### 2.3 Engine-wide contracts
 
@@ -176,9 +176,9 @@ flowchart LR
 | C5 | Gates, routes and joins are pure and safe to re-run; the judge and the gate run once. | [CMP](03-compiler-and-flow.spec.md) |
 | C6 | One interrupt per gate; only a person decides a pause. | [HUM](07-gate-and-human.spec.md) |
 | C7 | State is JSON merged by reducers under a stable thread id; a fresh run never merges into a thread. | [DUR](09-durability-and-resume.spec.md) |
-| C8 | The engine core never names a workflow. | [WFM](02-workflow-model.spec.md) |
+| C8 | The engine core never names a workflow. A workflow's request for an engine change lands only as a capability any workflow can use ([ADR-0129](../adr/0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md)). | [WFM](02-workflow-model.spec.md) |
 | C9 | Secrets are scrubbed; published artefacts carry metadata only. | [SEC](14-security.spec.md) |
-| C10 | Paths resolve inside the workspace; the state root is the main checkout (outside git, WSP §2.4). | [WSP](13-workspace-and-concurrency.spec.md) |
+| C10 | Paths resolve inside the workspace; the state root is the main checkout. | [WSP](13-workspace-and-concurrency.spec.md) |
 | C11 | One graph per process. | [WSP](13-workspace-and-concurrency.spec.md) |
 | C12 | Versioned schemas, tolerant readers. | [CON](01-contracts.spec.md) |
 | C13 | Input resolution and the read-only verbs call no model and create nothing. | [CLI](17-engine-cli.spec.md) |

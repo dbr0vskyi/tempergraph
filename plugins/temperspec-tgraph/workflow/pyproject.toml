@@ -1,0 +1,4 @@
+[project]
+name = "tgwf-temperspec"
+requires-python = ">=3.11"
+dependencies = []

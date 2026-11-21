@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "missing-config",
+      "request": "Starting the tool in a folder with no `tool.toml` crashes with a stack trace.\n\nAcceptance criteria:\n1. Starting the tool with no config file prints one line to standard error that names the missing file\n2. Starting the tool with no config file exits with code 2"
+    },
+    {
+      "id": "docs-only-idle-expiry",
+      "request": "Docs only: write the spec for idle session expiry. No code in this run.\n\nAcceptance criteria:\n1. A spec states when an idle session ends\n2. A spec states what a request on an ended session receives"
+    }
+  ]
+}

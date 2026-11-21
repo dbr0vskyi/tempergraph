@@ -32,7 +32,7 @@ class PausePayload: kind: Literal["escalation", "budget", "approval", "event_wai
 | A model escalation whose conditions hold at a stage that offers it; the payload carries the evidence and `resume --escalate` ([LAD §2.4](92-effort-ladder-and-model-escalation.spec.md)) | budget |
 | A check FAIL marked environmental (no retry can fix it) | escalation |
 | A failed or blocked attempt that could not reach a tool, skill, MCP server or command (cause `tool_access`); the payload lists the refused names and the `--grant` or `--allow-command` that fixes each ([RST §2.8](80-run-settings-and-overrides.spec.md)) | escalation |
-| An upstream claim the judge could not confirm; a defect attributed outside the allowed targets | escalation |
+| An upstream claim the judge could neither confirm nor refute ([JDG-B9](05-judge-and-verdict.spec.md)), or one on a gate with no judge; a defect attributed outside the allowed targets | escalation |
 | A pass on a gate with `approval`, or a step named by the operator's approval option | approval |
 | A pass on a gate with criteria verified by `person` (a sign-off); the payload's `rubric` lists them with each `role` and `question`, and `resume --criterion <id>=signed\|declined` records a status per criterion ([OUT §2.2](90-run-outcome.spec.md)) | approval |
 | A `wait` unit | event_wait |

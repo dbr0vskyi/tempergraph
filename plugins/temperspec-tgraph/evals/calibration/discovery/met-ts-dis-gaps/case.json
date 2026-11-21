@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-ts-dis-gaps",
+  "gate": "discovery",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-dis-gaps",
+    "expected": "MET",
+    "reason": "G1 is closed by the config file spec and G2 by the research note, which answers from the code it cites."
+  }
+}

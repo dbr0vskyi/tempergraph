@@ -177,6 +177,35 @@ def test_back_to_an_earlier_unit(repo: Path) -> None:
     assert "Why this unit runs again" in revisit and "sent back by `review`" in revisit
 
 
+CLAIM = answer("The notes name no version\nUPSTREAM draft: notes.md names no version", session_id="s-claim")
+
+
+def test_confirmed_upstream_claim_goes_back_without_a_person(repo: Path) -> None:
+    ex = standin("claude", steps=[DRAFT, CLAIM, DRAFT, REVIEW], judges=[judge(), judge(), judge(), judge()])
+    assert go(repo, ex).exit_code is ExitCode.FINISHED  # BUD §2.1: confirmed goes BACK, no pause
+    assert [c.kind for c in ex.calls] == ["step", "judge"] * 4
+    claim_judge = ex.calls[3].request.prompt
+    assert "upstream-claim" in claim_judge and "notes.md names no version" in claim_judge
+    assert "- notes: notes.md" in claim_judge  # the subject is the claimed unit's output
+    revisit = ex.calls[4].request.prompt
+    assert "sent back by `review`" in revisit and "notes.md names no version" in revisit
+    judged = [r for r in records(repo) if r["kind"] == "judgement"]
+    assert judged[1]["claim"] == "draft"
+
+
+def test_refuted_upstream_claim_retries_the_step(repo: Path) -> None:
+    ex = standin("claude", steps=[DRAFT, CLAIM, REVIEW], judges=[judge(), judge(verdict_block("UNMET")), judge()])
+    assert go(repo, ex).exit_code is ExitCode.FINISHED
+    assert [c.kind for c in ex.calls] == ["step", "judge", "step", "judge", "step", "judge"]
+    assert "upstream-claim" in ex.calls[4].request.prompt  # the retry is told the claim was not confirmed
+
+
+def test_undecided_upstream_claim_asks_a_person(repo: Path) -> None:
+    ex = standin("claude", steps=[DRAFT, CLAIM], judges=[judge(), judge(verdict_block("UNVERIFIABLE"))])
+    out = go(repo, ex)
+    assert out.exit_code is ExitCode.PAUSED and out.payload["reason"] == "upstream"
+
+
 def test_cost_cap_drains_with_exit_5(repo: Path) -> None:
     spec = dataclasses.replace(two_step(), run_cost_cap_usd=0.015)
     ex = standin("claude", steps=[DRAFT], judges=[judge()])

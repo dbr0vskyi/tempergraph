@@ -10,7 +10,6 @@ adrs: [0122, 0121]
 
 ## 1. Overview
 
-A gate may raise its judge to a stronger model, or a higher effort, when model-free facts about the attempt say the work is riskier: the diff touches engine code, a migration or many files; the check counted many rows. temperspec judges code on a stronger model than the one that wrote it for this reason, by a fixed rule. This spec makes the rule data, per attempt, while keeping every judge a calibrated binding ([R-121](../research/R-121-judge-model-by-risk-and-evidence-for-escalation.rsrch.md), [ADR-0122](../adr/0122-a-judge-is-raised-by-a-model-free-risk-rule-and-every-level-is-calibrated.adr.md)).
 
 A risk rule only ever raises the judge. It never reads what the step says about itself, and a fault picks the strongest level.
 

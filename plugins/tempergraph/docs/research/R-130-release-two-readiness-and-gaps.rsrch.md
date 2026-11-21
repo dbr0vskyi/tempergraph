@@ -64,6 +64,20 @@ This branch updates them in place, so the set stays consistent:
 | G5 | Status passes: EVS, PRO, SUP, MIG, UWF, LAD, JRK, CXR, SWM, MAP, TSA, ASK, FLX, SCH, TCK, each turning its open questions into recorded defaults | First phase of each track (as release 1's EC-2) |
 | G6 | Live probes: P-LAD-1 (`--effort xhigh` and `max` per alias), P-WIN-1 to P-WIN-3 (on a Windows machine), plus release 1's pending probes the release 2 items build on | [Second-release plan §2](../plans/second-release.plan.md) |
 
+### F5 What the first authored workflow asks of the engine `confirmed`
+
+The first authored workflow package (merged 2026-11-21) lists the engine limits it works around in its overview spec and backlog. By [ADR-0129](../adr/0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md) each is stated here for any workflow:
+
+| # | Capability any workflow can use | Release 2 owner | State |
+|---|---|---|---|
+| G7 | Per-item coding in fresh sessions over a plan's phases | MAP sequential form (I2-2) | Covered |
+| G8 | Parallel read-only branches; a batched pause with typed questions and defaults | ASK, FLX (I2-16) | Covered |
+| G9 | A cheaper model for mechanical items, a stronger one only after a judged blocker | LAD, CXR | Covered |
+| G10 | Deliverables required only on the paths that produce them, instead of on every path | None yet | Needs a WFM rule (I2-26) |
+| G11 | Verification commands resolved per repository, not one fixed list per workflow | CHK §2.2 resolver exists; a repository-level declaration does not | Needs a CHK rule (I2-26) |
+| G12 | `GitFacts.pushed` set as CHK §2.1 already specifies | CHK | A release 1 code gap, not a design gap (I2-26) |
+| G13 | Sub-workflows | Release 3 (ADR-0125) | Unchanged |
+
 ### F4 The first breaking change lands with the tools to carry it `confirmed`
 
 Retiring the model list (LAD §2.8) is release 2's only change that rewrites workflow source. It ships as a changelog entry with a transform and an owner item, so a release 1 workflow is carried by `upgrade`, which the owner moved into the same release.

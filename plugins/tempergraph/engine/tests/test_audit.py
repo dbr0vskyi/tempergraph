@@ -507,6 +507,34 @@ def test_stamp_v4_fails_on_a_new_finding(tmp_path: Path, repo: Path) -> None:
     assert v4["state"] == "failed" and "every-retry-asks" in v4["evidence"]
 
 
+def test_stamp_v4_records_anew_on_a_newer_outcome_revision(tmp_path: Path, repo: Path) -> None:
+    """WUP §2.6 V4: at `author verify`, an outcome revision newer than the stamped one records the audit
+    list anew; the same revision still blocks, and so does `upgrade-check --stamp` at any revision."""
+    from tempergraph.package.stamp import check, read_stamp
+
+    root = minimal_package(tmp_path / "src")
+    reg = Registry()
+    reg.register(standin("claude"))
+    caps = {"claude": reg.get("claude").capabilities()}
+    assert check(root, caps, stamp=True, accept_revision=True).exit_code == 0
+    first = read_stamp(root)
+    assert first is not None
+    decl = root / "workflow/release_notes/__init__.py"
+    decl.write_text(decl.read_text().replace("references=[\"notes\"]))", "references=[\"notes\"]), retry_budget=0)"))
+    assert check(root, caps, stamp=True, accept_revision=True).exit_code == 4  # same revision: still blocks
+    outcome = root / "outcome.json"
+    doc = json.loads(outcome.read_text())
+    doc["revision"] = int(doc["revision"]) + 1
+    outcome.write_text(json.dumps(doc))
+    assert check(root, caps, stamp=True).exit_code == 4  # the upgrade path never records anew
+    got = check(root, caps, stamp=True, accept_revision=True)
+    v4 = next(v for v in got.checks if v.check == "V4 audit")
+    assert got.exit_code == 0 and v4.state == "passed" and "every-retry-asks" in v4.evidence
+    after = read_stamp(root)
+    assert after is not None and after["outcome_revision"] == first["outcome_revision"] + 1
+    assert any(k.startswith("every-retry-asks|") for k in after["audit"])
+
+
 def test_package_parts_fixture_still_audits(tmp_path: Path) -> None:
     """A package written by `package_parts` (no docs tree) audits without a rule error."""
     root = package_parts(tmp_path / "p", "p", units=("draft",))

@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "engine_version": "0.0.1",
+  "workflow_api": 1,
+  "workflow_version": "0.1.0+19a69a36f804",
+  "docs_digest": "6580a60862d446eb6f37ac9b906232233ccf3cdd652a4eb05f55200b6097b771",
+  "shape_digest": "345ad186df7cff52c44cf76540ca2fc76a4d2daedeaf91ab03ac33955bd4dcce",
+  "entries_applied": [],
+  "tool_set": {
+    "claude": [
+      "Bash",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Read",
+      "WebFetch",
+      "WebSearch",
+      "Write"
+    ]
+  },
+  "audit": [
+    "hold-time-exposure|code||workflow/temperspec/__init__.py",
+    "hold-time-exposure|discovery||workflow/temperspec/__init__.py",
+    "hold-time-exposure|setup||workflow/temperspec/__init__.py",
+    "hold-time-exposure||order|workflow/temperspec/__init__.py",
+    "outcome-uncovered|outcome|ts-spec-sync|outcome.json",
+    "outcome-unverified-blocker|code|ts-code-aligned|outcome.json",
+    "outcome-unverified-blocker|code|ts-code-change|outcome.json",
+    "outcome-unverified-blocker|code|ts-code-related|outcome.json",
+    "outcome-unverified-blocker|code|ts-code-tests|outcome.json",
+    "outcome-unverified-blocker|discovery|ts-dis-behaviour|outcome.json",
+    "outcome-unverified-blocker|discovery|ts-dis-gaps|outcome.json",
+    "outcome-unverified-blocker|expand|ts-exp-design|outcome.json",
+    "outcome-unverified-blocker|outcome|ts-accepted|outcome.json",
+    "outcome-unverified-blocker|outcome|ts-spec-sync|outcome.json",
+    "outcome-unverified-blocker|plan|ts-plan-spec|outcome.json",
+    "outcome-unverified-blocker|setup|ts-set-true|outcome.json",
+    "outcome-unverified-blocker|triage|ts-tri-criteria|outcome.json",
+    "outcome-unverified-blocker|triage|ts-tri-gaps|outcome.json",
+    "oversized-step|code||workflow/temperspec/__init__.py",
+    "readiness:needs-work|code||",
+    "readiness:needs-work|discovery||",
+    "readiness:needs-work|expand||",
+    "readiness:needs-work|outcome||",
+    "readiness:needs-work|setup||",
+    "validate:criterion-overlap|code||",
+    "validate:criterion-overlap|discovery||",
+    "validate:criterion-overlap|expand||",
+    "validate:criterion-overlap|setup||",
+    "validate:criterion-overlap|||",
+    "validate:template-key-not-on-every-path|code||"
+  ],
+  "outcome_revision": 3,
+  "baseline": {
+    "error": 0,
+    "warning": 11
+  },
+  "stamped_at": "2026-11-21T15:01:36.858Z"
+}

@@ -12,6 +12,23 @@ DOCS = ENGINE_ROOT.parent / "docs"
 REPO_ROOT = ENGINE_ROOT.parents[2]
 
 
+def workflow_packages() -> list[Path]:
+    """The workflow packages next to the engine in this repository, found by their manifest. The engine's
+    tests name none of them (WFM-AC-4, ADR-0129)."""
+    return sorted(p.parent for p in (REPO_ROOT / "plugins").glob("*/tempergraph.json"))
+
+
+def workflow_names() -> list[str]:
+    """Each package's workflow name and plugin name, in the hyphen and underscore spellings."""
+    import json
+
+    names: set[str] = set()
+    for root in workflow_packages():
+        name = str(json.loads((root / "tempergraph.json").read_text(encoding="utf-8"))["name"])
+        names |= {name, name.replace("-", "_"), root.name, root.name.replace("-", "_")}
+    return sorted(names)
+
+
 @pytest.fixture(autouse=True)
 def _isolated_home(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
     """No test touches the real home folder or a real state root (WSP-AC-2)."""

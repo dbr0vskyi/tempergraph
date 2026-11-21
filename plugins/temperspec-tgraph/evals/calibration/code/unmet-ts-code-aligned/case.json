@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-ts-code-aligned",
+  "gate": "code",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-code-aligned",
+    "expected": "UNMET",
+    "reason": "The reader prints two lines to standard error, while CFG-B1 states exactly one; the test only looks for the file name."
+  }
+}

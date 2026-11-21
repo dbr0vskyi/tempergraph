@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-ts-code-related",
+  "gate": "code",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-code-related",
+    "expected": "UNMET",
+    "reason": "The settings are now read before `--version` is handled, so `--version` exits with code 2 in a folder with no config file, against CLI-B1."
+  }
+}

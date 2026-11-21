@@ -120,3 +120,4 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0126](0126-a-run-carries-a-scrubbed-thread-state-on-its-own-branch-and-deletes-it-when-done.adr.md) | A run carries a scrubbed thread state on its own branch and deletes it when done | proposed |
 | [0127](0127-outside-git-the-state-root-is-found-by-walk-up-and-the-guard-hashes-files.adr.md) | Outside git, the state root is found by walk-up and the guard hashes files | proposed |
 | [0128](0128-windows-is-supported-natively-with-job-objects-and-probes-before-judges.adr.md) | Windows is supported natively, with job objects, and probes before judges | proposed |
+| [0129](0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md) | The engine names no workflow, and takes a workflow's request as a general capability | accepted |

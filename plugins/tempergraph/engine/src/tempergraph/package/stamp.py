@@ -103,8 +103,15 @@ def _diagram_current(lp: LoadedPackage, model: Mapping[str, Any]) -> bool:
     return isinstance(doc, dict) and doc.get("digest") == model.get("digest")
 
 
+def _outcome_revision(lp: Any) -> int:
+    outcome = getattr(lp.spec, "outcome", None)
+    return int(getattr(outcome, "revision", 0) or 0)
+
+
 def check(path: Path, caps: Mapping[str, Capabilities], *, stamp: bool = False,
-          fail_on_pending: bool = False) -> StampReport:
+          fail_on_pending: bool = False, accept_revision: bool = False) -> StampReport:
+    """`accept_revision` is `author verify`'s rung 10 (SCF §2.5): an outcome revision newer than the last
+    stamp's is the owner's re-approval, so V4 records the audit list anew instead of comparing (WUP §2.6)."""
     root = path.resolve()
     rep = StampReport(workflow=root.name)
     if root.is_relative_to(plugin_cache().resolve()):  # WUP §2.2: phase 1 locate
@@ -133,7 +140,15 @@ def check(path: Path, caps: Mapping[str, Capabilities], *, stamp: bool = False,
                                    evidence=f"{len(rep.pending)} changelog items pending"))
     audit_keys = _audit_keys(lp, caps)
     before = (prior or {}).get("audit")
-    if isinstance(before, list):
+    revision = _outcome_revision(lp)
+    stamped_revision = int((prior or {}).get("outcome_revision") or 1)
+    if isinstance(before, list) and accept_revision and revision > stamped_revision:
+        added = sorted(set(audit_keys) - set(before))
+        rep.checks.append(Verification(check="V4 audit", state="passed",
+                                       evidence=(f"outcome revision {revision} is newer than the stamped "
+                                                 f"{stamped_revision}; new findings recorded: "
+                                                 f"{', '.join(added) or 'none'}")))
+    elif isinstance(before, list):
         new = sorted(set(audit_keys) - set(before))
         rep.checks.append(Verification(check="V4 audit", state="failed" if new else "passed",
                                        evidence=(f"new findings: {', '.join(new)}" if new else
@@ -160,6 +175,7 @@ def check(path: Path, caps: Mapping[str, Capabilities], *, stamp: bool = False,
         "entries_applied": [{"id": e, "by": "none"} for e in rep.compat["entries"]],
         "tool_set": tool_set(lp.spec),
         "audit": audit_keys,
+        "outcome_revision": revision,
         "baseline": {"error": 0, "warning": sum(1 for f in found if f.severity == "warning")},
         "stamped_at": now_iso(),
     }

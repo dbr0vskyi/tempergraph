@@ -1,0 +1,11 @@
+{
+  "name": "temperspec-tgraph",
+  "version": "0.1.0",
+  "description": "temperspec: a tempergraph workflow that takes a task from its acceptance criteria through specs and a plan to tested code and a draft pull request, with rule files for the documents it writes",
+  "author": {
+    "name": "Yevhenii Dubrovskyi"
+  },
+  "dependencies": [
+    "tempergraph"
+  ]
+}

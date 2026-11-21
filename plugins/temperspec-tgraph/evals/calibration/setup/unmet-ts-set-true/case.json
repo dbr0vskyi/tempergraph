@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-ts-set-true",
+  "gate": "setup",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-set-true",
+    "expected": "UNMET",
+    "reason": "CLI-B3 states a `--quiet` option; `main.py` handles no such option."
+  }
+}

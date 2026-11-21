@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-ts-tri-criteria",
+  "gate": "triage",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-tri-criteria",
+    "expected": "UNMET",
+    "reason": "Criterion 3 (the message is red) is stated nowhere in the task."
+  }
+}
