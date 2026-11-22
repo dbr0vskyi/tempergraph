@@ -12,7 +12,7 @@ Read the plan, then each edited spec, then the changed code and tests. A run in 
 - Related specs: read the behaviours of each related spec that concern the changed code. A behaviour the changed code makes false is the defect, even though no test fails.
 - Rows: for each task row, open the file it names and find the change. The check has already confirmed every row is marked completed and its file changed; a row marked completed with no matching change is the defect.
 - Tests: for each test that carries an acceptance criterion id, read the criterion in its spec. The test must fail if the criterion's result were absent. A test that asserts nothing about the criterion, or is skipped, is the defect.
-- Scope: each changed path should be named by a task row or by the report's deviations.
+- Scope: each path the code step changed should be named by a task row or by the report's deviations. The changed paths in the check evidence are counted from the run's base, so they also hold what earlier steps wrote: the run's own notes under `docs/tasks/`, the plan, and the specs and research notes the hand-off lists. Those need no row.
 - When the code is right and the fault is in the plan or in a spec, name that earlier output as the place of the defect, so the run goes back there.
 - Cite a path and a line for every MET. Without evidence, grade PARTIAL. If you cannot check something, say so; do not guess.
 - Grade only the criteria listed. Style and naming are not defects.

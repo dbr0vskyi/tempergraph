@@ -2,8 +2,8 @@
   "schema_version": 1,
   "engine_version": "0.2.0",
   "workflow_api": 1,
-  "workflow_version": "0.1.0+3cf2382b79d3",
-  "docs_digest": "1fa868f24adfd9ce9a58c2c0a1093bd5320774fa22a46495eea46a628856978b",
+  "workflow_version": "0.1.0+5df360c6d4b4",
+  "docs_digest": "c9d04d5738f48ae446b2a22368a829feb5f84c1d49f136fd0a0eaef0e552265c",
   "shape_digest": "345ad186df7cff52c44cf76540ca2fc76a4d2daedeaf91ab03ac33955bd4dcce",
   "entries_applied": [
     {
@@ -90,5 +90,5 @@
     "error": 0,
     "warning": 11
   },
-  "stamped_at": "2026-11-21T22:53:41.654Z"
+  "stamped_at": "2026-11-22T00:47:47.050Z"
 }
