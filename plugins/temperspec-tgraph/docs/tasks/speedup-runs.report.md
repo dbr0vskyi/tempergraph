@@ -48,3 +48,14 @@ Wall time of the engine suite (row 6.5 asks for serial and parallel):
 - Phase 4: see item 6. The plan chose a second step without checking the engine's stand-in run, the docs self-test and the stamp.
 - Row 3.4: see item 3.
 - Verification command `mypy` fails on a file this task does not touch.
+
+## Operator review after the run
+
+The operator stopped the run at the code gate's `tool_access` pause (20.80 USD reported, before the gate's check and judge ran) and made these changes by hand, each because the run's own result would have been false or slower:
+
+- `test_each_test_file_passes_alone` (TST-AC5) runs every test file of the suite again in its own process, which added about 3.5 minutes to every suite run and undid most of AC 1's saving. It is now marked `suite_audit` and runs only with `TEMPERGRAPH_SUITE_AUDIT=1`, as `live` tests run only with `TEMPERGRAPH_LIVE=1`; TST-AC5 says so. It passed when run that way (2 passed in 276 s, `-n 0`).
+- `ts-dis-short` and `ts-dis-full` were removed from the discovery spec and from `outcome.json`: they describe the short visit of Phase 4, which was not built, so a judge would have graded every run against a claim the workflow does not meet. The decision record became [0003](../adr/0003-short-discovery-visit.adr.md), status proposed, not built; backlog row B21 now holds what is left, and rows B25 and B26 hold this run's other findings.
+- The temperspec block that `prepare` wrote into the root `CLAUDE.md` was removed (backlog B19): it names root folders this repository does not have.
+- `tempergraph author verify plugins/temperspec-tgraph` was run (rungs 1 to 7 and 10 passed) and wrote `stamp.json` and `authoring.json` (row 6.3).
+
+Measured by the operator on this machine (4 processors): the engine suite on main took 553 s in one process and 189 s with `-n auto`; on this branch the default run takes 200 s (1421 passed, 13 skipped). `mypy` reports one error in `src/tempergraph/improve/harvest.py`, which is the same on main and lies in code another change is editing, so it was left alone.

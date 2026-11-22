@@ -219,10 +219,14 @@ os.environ.setdefault("TEMPERGRAPH_LOG_LEVEL", "WARNING")
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
-    """`live` tests spend money on a signed-in `claude`: skipped unless TEMPERGRAPH_LIVE=1 (live-checks plan)."""
-    if os.environ.get("TEMPERGRAPH_LIVE") == "1":
-        return
-    skip = pytest.mark.skip(reason="live: set TEMPERGRAPH_LIVE=1 on a machine with a signed-in claude")
+    """`live` tests spend money on a signed-in `claude`: skipped unless TEMPERGRAPH_LIVE=1 (live-checks plan).
+    `suite_audit` tests run the suite again file by file: skipped unless TEMPERGRAPH_SUITE_AUDIT=1 (TST-AC5)."""
+    live = os.environ.get("TEMPERGRAPH_LIVE") == "1"
+    audit = os.environ.get("TEMPERGRAPH_SUITE_AUDIT") == "1"
+    skip_live = pytest.mark.skip(reason="live: set TEMPERGRAPH_LIVE=1 on a machine with a signed-in claude")
+    skip_audit = pytest.mark.skip(reason="suite_audit: set TEMPERGRAPH_SUITE_AUDIT=1 to run every test file alone")
     for item in items:
-        if "live" in item.keywords:
-            item.add_marker(skip)
+        if "live" in item.keywords and not live:
+            item.add_marker(skip_live)
+        if "suite_audit" in item.keywords and not audit:
+            item.add_marker(skip_audit)

@@ -499,44 +499,6 @@
           }
         },
         {
-          "id": "ts-dis-short",
-          "severity": "warning",
-          "verified_by": "judge",
-          "text": "A task whose gap rows all say `Covered by` gets a short discovery visit: an effort below `max` and a prompt that states a reading limit of at most 10 files",
-          "check_method": "Read the gap rows of the triage note, then the visit the run made for them",
-          "source": "interview",
-          "verifier": {
-            "references": [
-              "triage_note"
-            ],
-            "scale": {
-              "met": "every gap row says `Covered by` and the run made the short visit, or a gap row does not say it and the run made the full visit",
-              "partial": "no partial: any gap is UNMET",
-              "unmet": "every gap row says `Covered by` and the run made the full visit",
-              "evidence": "per gap row: whether it says `Covered by`, and the visit the run made"
-            }
-          }
-        },
-        {
-          "id": "ts-dis-full",
-          "severity": "warning",
-          "verified_by": "judge",
-          "text": "A task with a gap that no spec covers, and every return to discovery from a later step, gets the full discovery visit at effort `max`",
-          "check_method": "Read the gap rows of the triage note and the visit the run made",
-          "source": "interview",
-          "verifier": {
-            "references": [
-              "triage_note"
-            ],
-            "scale": {
-              "met": "a gap row without `Covered by`, or a return from a later step, was met by the full visit",
-              "partial": "no partial: any gap is UNMET",
-              "unmet": "a gap row without `Covered by`, or a return from a later step, was met by the short visit",
-              "evidence": "per gap row without `Covered by`: the visit the run made"
-            }
-          }
-        },
-        {
           "id": "ts-dis-narrow",
           "severity": "warning",
           "verified_by": "judge",

@@ -1,4 +1,6 @@
-# Discovery gets a short visit when triage marks every gap covered
+# 0003 Discovery gets a short visit when triage marks every gap covered
+
+Status: proposed, not built. The run `speedup-runs` (2026-11-22) built the covered marks that this decision reads, but not the second step: the engine's generated stand-in run needs every unit of `order` visited, and the docs self-test, the eval fixtures, the diagram and the stamp all change with a new unit ([code report](../tasks/speedup-runs.report.md), deviation 6). Backlog row B21 holds what is left.
 
 ## Context
 

@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 
+import pytest
+
 from .conftest import ENGINE_ROOT, SAMPLE_TEST_FILES, is_nested, nested_pytest, outcome_counts
 
 SUITE_FILES = {"test_suite_runner.py", "test_suite_same_result.py", "test_suite_isolation.py"}
@@ -35,6 +37,7 @@ def test_workers_and_one_process_pass_and_skip_the_same_tests() -> None:  # TST-
     assert _ids(one.stdout) and _ids(one.stdout) == _ids(many.stdout)
 
 
+@pytest.mark.suite_audit  # it runs the whole suite again, file by file: about 3.5 minutes on four processors
 def test_each_test_file_passes_alone() -> None:  # TST-AC5, AC 1
     if is_nested():
         return

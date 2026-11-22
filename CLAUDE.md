@@ -11,7 +11,7 @@ Release 1 was built from `plugins/tempergraph/docs/plans/first-release.plan.md`,
 Run from `plugins/tempergraph/engine/`:
 
 - Install: `python -m pip install -e '.[dev]'` (Python 3.11+)
-- Test: `python -m pytest` (offline; stand-in executors only). It runs on up to four workers by default (one per processor, at most four; `pytest-xdist` comes with the `dev` extra); `python -m pytest -n 0` runs one process, and so does a run where `pytest-xdist` is missing. Live checks against a signed-in `claude` are marked `live` and run only with `TEMPERGRAPH_LIVE=1`.
+- Test: `python -m pytest` (offline; stand-in executors only). It runs on up to four workers by default (one per processor, at most four; `pytest-xdist` comes with the `dev` extra); `python -m pytest -n 0` runs one process, and so does a run where `pytest-xdist` is missing. `TEMPERGRAPH_SUITE_AUDIT=1` adds the slow check that every test file passes alone. Live checks against a signed-in `claude` are marked `live` and run only with `TEMPERGRAPH_LIVE=1`.
 - Lint: `ruff check src tests`
 - Types: `mypy`
 
@@ -53,19 +53,3 @@ Use the `plugin-authoring` skill when making mods or hooks.
 - Commits follow [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): summary`. Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build`, `ci`, `perf`, `style`, `revert`. The scope is optional, e.g. a plugin name (`docs(tempergraph): …`). Mark breaking changes with `!` or a `BREAKING CHANGE:` footer.
 - Repo: github.com/dbr0vskyi/tempergraph (private), default branch `main`.
 - `.vscode/settings.json` holds only an `airun.settings` workspace ID; it is untracked editor config.
-
-<!-- temperspec:start -->
-## temperspec
-
-This repository is developed with temperspec: a change goes from a task with acceptance criteria through
-behaviour specs and a plan to tested code.
-
-- Specs are in `docs/specs/` (`*.spec.md`), starting at the overview spec. Decision records are in `docs/adr/`,
-  research notes in `docs/research/`, plans in `docs/plans/`, task notes in `docs/tasks/`.
-- How each document is written: the rule files in `.claude/rules/temperspec/`; fill-in templates generated from
-  them are in `docs/templates/`.
-- When two sources disagree: the task's acceptance criteria, then specs and decision records, then the plan,
-  then the code. A code change that makes a spec false changes the spec in the same change.
-- A test that proves an acceptance criterion of a spec carries the criterion's id.
-- Start a run with `tempergraph run temperspec "<the task and its acceptance criteria>"`.
-<!-- temperspec:end -->

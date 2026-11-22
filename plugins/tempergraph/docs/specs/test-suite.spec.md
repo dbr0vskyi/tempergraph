@@ -51,7 +51,7 @@ WHEN a developer installs the engine with its `dev` extra THE install SHALL prov
 - TST-AC2 (TST-B2): `python -m pytest -n 0 -v` prints no worker prefix on any test line and counts the same tests as the default run
 - TST-AC3 (TST-B3): `python -m pytest -p no:xdist --collect-only -q` is not stopped by an option error, and its output names `pytest-xdist` and the `dev` extra
 - TST-AC4 (TST-B4): The full suite passes, with the same skipped tests, in one process and on workers
-- TST-AC5 (TST-B4): Each test file passes when it runs alone
+- TST-AC5 (TST-B4): Each test file passes when it runs alone. The test that proves it runs the suite again file by file, so it runs only with `TEMPERGRAPH_SUITE_AUDIT=1` and is skipped otherwise, as `live` tests are
 - TST-AC6 (TST-B5): Two tests running at the same time on two workers get different temporary folders, home folders and state roots
 - TST-AC7 (TST-B5): After a full run, no file of the repository outside cache folders, of the real home folder or of the real state root differs from before the run
 - TST-AC8 (TST-B6): The engine's `dev` extra lists `pytest-xdist`
