@@ -397,7 +397,7 @@
     "at": "2026-11-21T10:33:48.312Z"
   },
   "verify": {
-    "at": "2026-11-21T22:53:41.655Z",
+    "at": "2026-11-22T00:47:47.052Z",
     "ok": true,
     "rungs": {
       "load": "passed",
@@ -407,9 +407,29 @@
       "coverage": "passed",
       "audit": "passed",
       "register": "passed",
-      "judge_seeds": "skipped",
-      "trial": "skipped",
+      "judge_seeds": "passed",
+      "trial": "passed",
       "stamp": "passed"
     }
+  },
+  "seeds_shown": {
+    "expand": {
+      "met-ts-exp-design": "b5ab0f944790266974f4c739dc858ffeb7bcc145eb76d38710a7f31b3fccd7d9"
+    },
+    "triage": {
+      "met-ts-tri-gaps": "c68440f732afdf194cb27866a1ae96ad799fd99dc38c01dfd2c9ff409156e882"
+    }
+  },
+  "trial": {
+    "case": "missing-config",
+    "task": "trial-missing-config-6ed4",
+    "thread": "temperspec/trial-missing-config-6ed4",
+    "at": "2026-11-22T00:47:46.475Z",
+    "exit_code": 0,
+    "reason": "skipped",
+    "cap_usd": 12.231333,
+    "grades": {},
+    "state": "ended",
+    "verdict": "met"
   }
 }

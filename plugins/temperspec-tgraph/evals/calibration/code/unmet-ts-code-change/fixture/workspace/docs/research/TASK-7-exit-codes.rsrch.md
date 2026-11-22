@@ -13,9 +13,9 @@ The task asks for exit code 2 on a missing config file (gap G2). A code that alr
 
 ## Key findings
 
-### F1 The entry point returns 0 or 1 only `confirmed`
+### F1 The entry point returns 0 only, and a crash exits with 1 `confirmed`
 
-`src/tool/main.py` returns 0 after a run and 1 from its one error branch. No other code is returned anywhere under `src/tool/`.
+When this note was written, `src/tool/main.py` returned 0 from both of its branches and had no error branch. A missing `tool.toml` raised an uncaught exception, which Python turns into exit code 1. No other code was returned anywhere under `src/tool/`.
 
 ### F2 The spec asks only for a code above zero on failure `confirmed`
 
