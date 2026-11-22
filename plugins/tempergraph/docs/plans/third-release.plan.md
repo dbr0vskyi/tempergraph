@@ -35,7 +35,7 @@ task_id: third-release
 | Orchestration | Release 4 | ADR-0132: needs sub-workflows and the reserving cap first |
 | Sub-workflow shape | A subgraph inside the parent's thread, workspace and cap | [ADR-0133](../adr/0133-a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md) |
 | Order | Cap and reach first, because every parallel shape relies on them | R-140 F4, F5 |
-| Plan shape | Tracks and phases only; each track's expanded plan is written when its specs pass status (EC-2) | As in release 2 |
+| Plan shape | Tracks and phases only; each track's expanded plan is written when its specs are ready (EC-2) | As in release 2 |
 
 **Status: Planned.** Waiting for EC-1.
 
@@ -46,7 +46,7 @@ task_id: third-release
 | Id | Condition | Before | Owner |
 |---|---|---|---|
 | EC-1 | The owner accepts ADR-0132 and ADR-0133, or edits them | Any code track | Owner |
-| EC-2 | A track's specs are `ready-for-implementation`: its first phase turns each open question into a recorded default and sets the status (R-140 F6) | Each track | Implementer, owner may veto |
+| EC-2 | A track's specs are ready: its first phase gives each open question of its specs an `Until answered:` default (R-140 F6; specs carry no status since the spec migration) | Each track | Implementer, owner may veto |
 | EC-3 | The owner answers R-135's questions; ADR-0130 and ADR-0131 are accepted and spec 98 is written | R3-T7 | Owner |
 | EC-4 | P-WIN-1 to P-WIN-3 have run on a Windows machine | R3-T9 | Owner's machine |
 

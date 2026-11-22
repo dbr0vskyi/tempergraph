@@ -1,7 +1,7 @@
 ---
 task: spec-migration
 complexity: complex
-status: in-progress
+status: completed
 specs: [plugins/tempergraph/docs/specs/*.spec.md, plugins/temperspec-tgraph/rules/spec.rule.md]
 ---
 
@@ -12,7 +12,7 @@ specs: [plugins/tempergraph/docs/specs/*.spec.md, plugins/temperspec-tgraph/rule
 - Asked by the owner on 2026-11-22 ("Migrate tempergraph specs"), after the format and rules C1 to C8 of [R-127](../research/R-127-spec-format-behaviours-first-without-cascades.rsrch.md) were agreed on 2026-11-21 and the 400-line cap was set.
 - The target format is temperspec's [spec rule](../../../temperspec-tgraph/rules/spec.rule.md): `# Title`, `## Purpose`, `## Behaviours` (`### PREFIX-Bn name`, one `WHEN … THE … SHALL …` line, `- GIVEN … WHEN … THEN …` scenarios), `## Acceptance criteria` (`- PREFIX-ACn (behaviour ids): …`), and `## Open questions` only while one is open. No front matter, no status, no version, no interface section, no contract tables, no design notes, no references list. At most 400 lines; this set also keeps its 30 KB budget ([test_spec_budget](../../engine/tests/test_spec_budget.py)).
 - The check is temperspec's own parser, `workflow/temperspec/specfmt.py` (`parse_spec`), the same one its `ts-spec-form` gate runs. Every migrated spec passes it with no problem.
-- Why one pass and not spec by spec as they are edited: the rule's last section would leave the set in two layouts for months, and every temperspec run on this repository that edits an engine spec fails `ts-spec-form` until the spec is migrated (stage M of temperspec's [next-stages plan](../../../temperspec-tgraph/docs/plans/next-stages.plan.md)).
+- Why one pass and not spec by spec as they are edited: the rule's last section would leave the set in two layouts for months, and every temperspec run on this repository that edits an engine spec fails `ts-spec-form` until the spec is migrated (stage M of temperspec's next-stages plan, in pull request 40).
 
 ## 1. Requirements
 
@@ -44,7 +44,7 @@ specs: [plugins/tempergraph/docs/specs/*.spec.md, plugins/temperspec-tgraph/rule
 
 - Behaviour ids keep their number and their meaning. New behaviours take the next free number of the prefix. Ids are never renumbered.
 - `X-AC-n` becomes `X-ACn` everywhere in the repository in one mechanical rename. Nothing else about a criterion id changes.
-- A link to another spec is a link to its ids: `[EVT-B12](30-run-events.spec.md)`. While specs are migrated one by one, a migrated spec may still write an unmigrated spec's old `§` reference; the last phase rewrites them all from the map.
+- A link to another spec is a link to its ids: `[EVT-B12](../specs/30-run-events.spec.md)`. While specs are migrated one by one, a migrated spec may still write an unmigrated spec's old `§` reference; the last phase rewrites them all from the map.
 - The map (section 5) lists, for every numbered section of every spec, the ids it became. It is written as each spec is migrated and is frozen when the plan completes: an old reference in a branch made before the migration (or in a commit message) still resolves through it. The repository is then rewritten from it, and a test fails on any `PREFIX §n` reference outside this plan and R-150.
 - The overview's engine-wide contracts C1 to C18 become overview behaviours; `contract Cn` references are rewritten from the map in the same way.
 
@@ -84,7 +84,7 @@ Weight: heavy (refactor)
 - `cd plugins/tempergraph/engine && ruff check src tests`
 - `cd plugins/tempergraph/engine && mypy`
 
-The form of every spec is checked with temperspec's parser, run over `plugins/tempergraph/docs/specs/*.spec.md` (`specfmt.parse_spec` returns no problem and `legacy` is false), and every id defined on `main` before the migration is compared with the ids defined after it.
+The engine's own test `tests/test_spec_form.py` holds the form, that the overview names every spec, and that no old reference is left. The form of every spec was also checked with temperspec's parser, run over `plugins/tempergraph/docs/specs/*.spec.md` (`specfmt.parse_spec` returns no problem and `legacy` is false), and every id defined on `main` before the migration is compared with the ids defined after it.
 
 ## 5. Section map
 
@@ -177,3 +177,4 @@ Renamed ids (applied before the generic `X-AC-n` to `X-ACn` rename): `IMD-R1` = 
 - Dissolve the contracts spec (R-127 C5): each shared type moves to the spec that owns its behaviour.
 - The scaffold writes package specs in temperspec's layout, and the package docs check reads it (specs 88 PKG and 91 SCF).
 - A generated index of specs in the overview's Purpose (R-127 C3), so adding a spec edits no hand-kept list.
+- Dogfooding: spec 35 TEL was migrated by a temperspec run (thread `t-4836f11b73`, 2026-11-22, about 25 minutes, $5.15 reported and $4.41 estimated against a $12 cap) and taken as it came out after review. The run surfaced three things for temperspec's backlog: its setup route wrote `.claude/rules/temperspec/`, `docs/templates/` and `CLAUDE.md` lines into a repository that already ships the rules under `plugins/temperspec-tgraph/rules/` (not taken into this change); a docs-only task ends in an escalation at the outcome gate because `ts-traced` and `ts-verify` are not applicable and the judge reads that as a gap; and the process stopped with an ImportError after the pause was recorded because `main` was merged into the editable engine install under the live run (operator error; the thread stayed paused and resumable).

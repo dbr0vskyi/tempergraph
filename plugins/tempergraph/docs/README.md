@@ -8,7 +8,7 @@ Code for releases 1 and 2 lives in [`../engine/`](../engine/pyproject.toml) (eng
 
 | Folder | Document type | Holds | Rule |
 |---|---|---|---|
-| [specs/](specs/00-overview.spec.md) | Behaviour specs | **What** the engine does: contracts, Given/When/Then behaviours, error conditions, acceptance criteria. Never implementation code. | [Spec rules](#spec-rules) |
+| [specs/](specs/00-overview.spec.md) | Behaviour specs | **What** the engine does: a purpose, `WHEN … THE … SHALL …` behaviours with Given/When/Then scenarios, acceptance criteria. Never implementation code. | [Spec rules](#spec-rules) |
 | [adr/](adr/README.md) | Architecture decision records | **Why**: one decision each, its options, trade-offs and consequences. Links specs, restates none. | [Decision rules](#decision-rules) |
 | [research/](research/README.md) | Research notes | Background findings that answer an unknown, with sources and confidence marks. | [Research rules](#research-rules) |
 | [guides/](guides/README.md) | How-to guides | **How to use** tempergraph, for people who run and author workflows: install, run, author, improve. Restate no requirement; link the spec instead. | Same truth ranking: a guide never outranks a spec |
@@ -48,15 +48,16 @@ Acceptance criteria rank above specs and decision records, then plans, then code
 
 ## Spec rules
 
-Taken from the temperspec reference (artifact 3.5), applied here:
+Since 2026-11-22 the engine's specs follow temperspec's [spec rule](../../temperspec-tgraph/rules/spec.rule.md) ([spec-migration plan](plans/spec-migration.plan.md)); the engine test `tests/test_spec_form.py` holds the set to it:
 
-- **Types.** One **overview** spec (the index of the set, no component requirement), one **contracts** spec (the only definition of a type two specs share) and one **component** spec per unit of work.
-- **Six numbered sections**: 1 Overview, 2 Contract (signatures and types, no bodies), 3 Behaviours (Given/When/Then with example tables), 4 Error conditions (a table of types, not classes), 5 Design notes (prose, links to decision records), 6 Acceptance criteria (verifiable checkboxes). Then, unnumbered: Open questions (with an owner) and References.
-- **Header.** YAML front matter with `title`, `type`, `status`, `prefix` and `adrs`. Status is one of `draft`, `review`, `ready-for-implementation`, `implemented`, set once at file level.
-- **Ids.** Acceptance criteria are `PREFIX-AC-n`; each spec owns one prefix, listed in the overview.
-- **Budget.** At most 400 lines and 30 KB per spec. An over-budget spec is split, never extended.
-- **Updating.** A row says what the engine does now. A change rewrites the rows it affects; no dated or versioned notes, no list of proving tests, no copy of a list another document owns.
-- **Behaviour, not code.** Contracts are given as typed field tables and Python-flavoured signatures without bodies.
+- **Sections.** `# Title`, `## Purpose`, `## Behaviours`, `## Acceptance criteria`, and `## Open questions` only while a question is open. No front matter, no status, no numbered sections, no contract or error tables, no design notes, no references list, no code blocks, no checkboxes.
+- **Behaviours.** `### PREFIX-Bn Name`, then one line `WHEN <event> THE <system> SHALL <response>`, then at least one scenario `- GIVEN … WHEN … THEN …`. A verb, an option, a field, a file path, a default, an exit code or a record kind that someone outside the capability depends on is named in a behaviour.
+- **Criteria.** `- PREFIX-ACn (behaviour ids): <what an observer can verify>`. Every behaviour is named by at least one criterion.
+- **Open questions.** One item each: the question, `Until answered:` the default the engine applies, `Owner:`. Work a spec describes and the code does not hold yet is a `Not built yet:` item with its owner.
+- **Ids.** Each spec owns one prefix, and the overview's Purpose names every spec by its path. Ids are never renumbered; a new behaviour takes the next free number. A behaviour moved by a split keeps its old id. A link to another spec names its ids: `[EVT-B12](specs/30-run-events.spec.md)`.
+- **Types.** The contracts spec (CON, with the session contract SSN) is still the only definition of a type two specs share; dissolving it into the owning specs is a follow-up of the migration plan.
+- **Why.** The reasons behind a behaviour live in the decision record or research note the Purpose links; what the specs held before 2026-11-22 as design notes, release notes and probe observations is in [R-150](research/R-150-rationale-carried-from-the-engine-specs.rsrch.md). An old `PREFIX §n` reference resolves through section 5 of the migration plan.
+- **Budget.** At most 400 lines and 30 KB per spec. An over-budget spec is split by capability, never extended.
 
 ## Decision rules
 
@@ -76,7 +77,6 @@ Taken from the temperspec reference (artifact 3.3):
 - Confidence marks: `confirmed` (several sources), `supported` (one source), `inferred`, `uncertain`.
 - Speculation beyond the sources is forbidden. A fact about a third-party binary that no probe has confirmed stays `supported` or `uncertain`, and no control may rest on it alone.
 
-## Readiness flags
+## Readiness
 
-
-A flag moves to `LIVE-PROVEN` only with a written result: the date, the machine, the executor and its version, and what was run, recorded in the spec's probe table or acceptance criterion. A passing test against a stand-in moves a capability no further than `BUILT, AWAITING LIVE CHECK`.
+Specs describe intended behaviour and carry no status or maturity flag. What releases 1 and 2 built, track by track, and what each track left open, is in the [plans index](plans/README.md) and the track plans; what a spec describes and the code does not hold yet is a `Not built yet:` item in its Open questions. What is proven against a real executor is in the [live-checks plan](plans/live-checks.plan.md): a capability counts as live-proven only with a written result there (the date, the machine, the executor and its version, and what was run). A passing test against a stand-in proves it built, never live.
