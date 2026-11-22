@@ -112,7 +112,7 @@ A step declares `self_check: true` ([CON §2.1](01-contracts.spec.md) `StepSpec`
 | Part | Behaviour |
 |---|---|
 | Grant | The engine adds one command to the step's commands block, `tempergraph self-check <ticket>`, where the ticket is random and names thread, unit, item and attempt. It is granted as a command prefix on every executor (an allow rule on `claude` and `agent-sdk`, the tool host on `messages-api`, `command(tempergraph self-check)` on `antigravity`), even when the step declares no `shell` |
-| Prompt | A fixed section "Check your work before you end" names the command and says it reports what the gate's check would find |
+| Prompt | A fixed section "Check your work before you end" names the command and says it reports what the gate's check would find. On a step with no `shell`, the tools section says there is no shell except for this one command and names the tool that runs it; the plain "no shell" line alone made a real session skip the preview (live check L-29, 2026-11-22) |
 | Run | The verb runs the unit's check on the current workspace in the check worker with `preview = true`; it prints the result and the findings (status, criterion, place, fix, message) and at most 2,000 chars of evidence |
 | Never | It writes no verdict, fact, artifact or state, runs no judge, and spends no budget; it is not the gate's check, which always runs after the session |
 | Limit | `self_check_limit` per attempt (default 3); the next call prints that the limit is reached and exits 2 |
