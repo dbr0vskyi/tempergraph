@@ -34,7 +34,7 @@ def _workspace(root: Path, workflow: str, thread: str) -> dict[str, Any]:
         recs = records(run_dir(root, workflow, task) / "run.jsonl")
     except OSError:
         return {}
-    ws = next((r for r in reversed(recs) if r.get("kind") == "workspace"), {})
+    ws: dict[str, Any] = next((r for r in reversed(recs) if r.get("kind") == "workspace"), {})
     return {k: ws.get(k) for k in ("mode", "branch", "base_commit", "path") if ws.get(k)}
 
 
