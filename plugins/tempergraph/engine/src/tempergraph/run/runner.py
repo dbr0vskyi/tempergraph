@@ -451,6 +451,14 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                        "overridden_keys": rst.overridden_keys(settled.resolved),
                        "grants": _grants_used(spec, registry, settled, final),
                        "supervision": sup, **({"outcome": orec} if orec is not None else {})})
+        for unit, kid in ((final.get("run") or {}).get("children") or {}).items():
+            # SWF-B9: the outcome record of a child that ran inside this thread counts in the child's own measures. It is
+            # no run segment of the child and no folder of its own: the thread, the log and the `run_segment` row are the parent's
+            if isinstance(kid, Mapping) and kid.get("outcome"):
+                ledger.append({"kind": "child_outcome", "thread_id": tid, "workflow": kid.get("workflow"),
+                               "workflow_version": kid.get("version"), "parent": spec.name, "child": unit,
+                               **join_keys(root, settings), "origin": f"{outcome_record.CHILD_ORIGIN}{spec.name}",
+                               "outcome": kid["outcome"]})
         if ledger.failures:
             log.write("engine_error", scope="ledger", error="write_failed")
         try:  # SIL-B8: every exit is recorded, no model call; never changes the exit (OVR-B4)

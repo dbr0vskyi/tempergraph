@@ -658,7 +658,8 @@ class EngineNodes:
         if self.ctx.judge_state is None:
             from tempergraph.improve import calibration
 
-            self.ctx.judge_state = calibration.state_name_for(self.ctx.spec, self.ctx.state_root)
+            self.ctx.judge_state = calibration.state_name_for(self.ctx.spec, self.ctx.state_root,
+                                                              child=self.ctx.child)  # SWF-B9: a child's own gates
         return self.ctx.judge_state
 
     def _complexity(self, unit: str, state: Mapping[str, Any]) -> dict[str, Any]:

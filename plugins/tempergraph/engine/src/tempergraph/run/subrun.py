@@ -21,6 +21,7 @@ from tempergraph.compiler.graph import CompiledWorkflow, compile_workflow
 from tempergraph.compiler.state import RunState, child_input, flat
 from tempergraph.contracts import RunOptions, UnitSpec, WorkflowSpec
 from tempergraph.git import fingerprint
+from tempergraph.improve import calibration
 from tempergraph.model import subworkflow
 from tempergraph.run import outcome_record
 from tempergraph.run.log import ChildLog, CostTotals, RunLog, last_record
@@ -138,9 +139,11 @@ def build(ctx: RunContext, unit: str, declared: UnitSpec, child: subworkflow.Chi
     path = f"{ctx.child}/{unit}" if ctx.child else unit
     mine = child_options(unit, options)
     cspec, res = applied(ctx.spec, child, mine)
+    # SWF-B9: the child's judges keep the child's own bindings and cases: a judge map of its own, and a judge state
+    # read from its own calibration cases and its own gates' judgements, never the parent's (nor the parent's seam)
     cctx = dataclasses.replace(ctx, spec=cspec, log=ChildLog(root_log(ctx.log), path), judges={},
                                settings=rst.workflow_settings(res), child=path, parent_thread=ctx.thread,
-                               judge_state=None)
+                               judge_state=calibration.state_name_for(cspec, ctx.state_root, child=path))
     nodes = ChildNodes(cctx, unit, declared)
     return Built(name=child.name, path=path, spec=cspec, graph=compile_workflow(cspec, nodes, None), nodes=nodes,
                  version=child.version, options=mine)

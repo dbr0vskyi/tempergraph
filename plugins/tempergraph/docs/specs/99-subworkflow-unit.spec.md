@@ -100,7 +100,3 @@ WHEN a template names `{<unit>.<key>}` THE engine SHALL accept it at validation 
 - SWF-AC2 (SWF-B8): A parent run with a child leaves one `run.jsonl`, one checkpoint thread and one ledger row; every child record carries `child`
 - SWF-AC3 (SWF-B8): A carried parent paused inside its child resumes on a second state root and finishes, the child continuing where it paused and its earlier units not run again ([CAR-AC1](96-run-state-on-a-branch.spec.md))
 - SWF-AC5 (SWF-B12): A template that names `{<unit>.<key>}` validates for a key a sub-workflow unit before it exposes, and fails `template-unknown-field` for a key that unit does not expose and for a unit that comes after the template
-
-## Open questions
-
-- Not built yet: measures and carrying (SWF-B9, SWF-AC3). Owner: engine owner.

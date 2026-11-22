@@ -122,6 +122,25 @@ def fingerprint(side: str, workflow: str, cause: str, unit: str) -> str:
     return hashlib.sha256(f"{side}|{workflow}|{cause}|{unit}".encode()).hexdigest()[:16]
 
 
+def _child_owner(spec: WorkflowSpec, path: Any, kids: Mapping[str, Any]) -> dict[str, Any]:
+    """SWF-B9: the fields that make a finding about a sub-workflow child's unit the child workflow's: its name and
+    version as the run started it (`run_started.children`), the parent, the unit's path, and the child's own
+    `issue_repository` (none when the child declares none: a child's finding never files to its parent's repository).
+    Empty for a unit of the run's own workflow."""
+    if not path:
+        return {}
+    held = kids.get(str(path)) or {}
+    name = str(held.get("workflow") or "")
+    if not name:
+        return {}
+    from tempergraph.model import subworkflow
+
+    got = subworkflow.read_child(name)
+    repo = got.spec.issue_repository if isinstance(got, subworkflow.Child) else None
+    return {"workflow": name, "workflow_version": held.get("workflow_version"), "parent": spec.name,
+            "child": str(path), "issue_repository": repo}
+
+
 def _side(code: str, executor: str | None) -> str:
     side = causemod.cause_of(code).side
     return f"executor:{executor or 'unknown'}" if side == "executor" else side
@@ -180,13 +199,16 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
     digest = identity.request_digest(req) if req else None
     at = datetime.now(UTC).isoformat(timespec="seconds")
     rerun_of = next((r.get("rerun_of") for r in seg if r.get("kind") == "run_started" and r.get("rerun_of")), None)
+    kids = next((r.get("children") or {} for r in seg if r.get("kind") == "run_started"), {})
     lines = []
     for f in found:
         c = causemod.cause_of(f["cause"])
         side = _side(f["cause"], f.get("executor"))
-        lines.append({"kind": "finding", "thread": thread, **keys, "segment_exit": row.get("exit_code"),
+        owner = _child_owner(spec, f.get("child"), kids)  # SWF-B9: a child's unit is the child workflow's
+        lines.append({"kind": "finding", "thread": thread, **keys, **owner, "segment_exit": row.get("exit_code"),
                       "unit": f["unit"], "cause": f["cause"], "class": c.klass, "side": side, "count": f["count"],
-                      "remedy": c.remedy, "fingerprint": fingerprint(side, spec.name, f["cause"], f["unit"]),
+                      "remedy": c.remedy,
+                      "fingerprint": fingerprint(side, str(owner.get("workflow") or spec.name), f["cause"], f["unit"]),
                       "at": at, "request_digest": digest,
                       **({"executor_version": f["executor_version"]} if f.get("executor_version") else {}),
                       **({"lens": f["lens"]} if f.get("lens") else {}),

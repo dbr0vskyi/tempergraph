@@ -38,6 +38,18 @@ def test_one_run_log_one_thread_and_one_ledger_row(ran: Path) -> None:  # SWF-AC
     assert [r["workflow"] for r in rows] == ["deliver"]
 
 
+def test_the_childs_outcome_row_is_no_run_segment_and_adds_no_folder(ran: Path) -> None:  # SWF-AC1, SWF-AC2, AC 3
+    root = state_root_path(ran)
+    everything = ledger_rows(root)
+    child = [r for r in everything if r.get("kind") == "child_outcome"]
+    assert [(r["workflow"], r["parent"], r["thread_id"], r["child"]) for r in child] == [
+        ("child", "deliver", "deliver/T-1", "setup")]
+    assert not [r for r in everything if r.get("kind") == "run_segment" and r.get("workflow") == "child"]
+    assert [r["workflow"] for r in everything if r.get("kind") == "run_segment"] == ["deliver"]
+    assert [p.name for p in (root / "runs").iterdir()] == ["deliver"]  # the child's row made no folder of its own
+    assert [p.name for p in (root / "runs" / "deliver").iterdir()] == ["T-1"]
+
+
 def test_every_child_record_carries_child(ran: Path) -> None:  # SWF-AC2, AC 2
     rows = records(ran)
     kids = [r for r in rows if r.get("child")]

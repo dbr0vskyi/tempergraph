@@ -55,6 +55,8 @@ def repository(finding: Mapping[str, Any], issue_repository: str) -> str | None:
         return None  # host findings are recorded only
     if side == "engine" or side.startswith("executor:"):
         return ENGINE_REPOSITORY
+    if finding.get("child"):  # SWF-B9: a finding about a child's unit files to the child's own repository, never the parent's
+        return str(finding.get("issue_repository") or "") or None
     return issue_repository or None
 
 
@@ -97,14 +99,16 @@ def title(f: Mapping[str, Any]) -> str:
 
 def body(d: Decision) -> str:
     f = d.candidate.finding
+    parent = ([f"**Parent** `{f.get('parent')}` ran this workflow as its sub-workflow unit `{f.get('child')}`."]
+              if f.get("child") and f.get("parent") else [])  # SWF-B9
     rows = [_marker_line(str(f.get("fingerprint"))), "",
             f"**Cause** `{f.get('cause')}` ({f.get('class')}, side `{f.get('side')}`), lens {d.candidate.lens}.",
             f"**Workflow** `{f.get('workflow')}` version `{f.get('workflow_version')}`; unit `{f.get('unit') or '-'}`;"
             f" count {f.get('count')}." + (f" Executor CLI `{f['executor_version']}`." if f.get("executor_version") else ""),
-            "", f"**Drafted remedy** {f.get('remedy')}", "",
+            *parent, "", f"**Drafted remedy** {f.get('remedy')}", "",
             "An issue is evidence, not an order: a person decides (SIL-B8)."]
     if d.counts:
-        rows.insert(4, "**Pattern** " + ", ".join(f"{k} {v}" for k, v in sorted(d.counts.items())) + ".")
+        rows.insert(4 + len(parent), "**Pattern** " + ", ".join(f"{k} {v}" for k, v in sorted(d.counts.items())) + ".")
     return "\n".join(rows)
 
 
