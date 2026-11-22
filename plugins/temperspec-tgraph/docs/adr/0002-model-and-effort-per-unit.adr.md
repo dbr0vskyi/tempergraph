@@ -10,6 +10,7 @@ Every step and every judge states its model tier, its effort and one sentence of
 |---|---|---|---|---|
 | `setup` | medium, high | It reads a whole repository once and writes the specs every later task trusts | medium, medium | It compares each written spec with the code it describes, one file at a time |
 | `triage` | medium, medium | It reads one task and the spec index to sort gaps and pick a route; the check verifies the note's shape | medium, medium | It reads one note against the task; the route it confirms is cheap to correct later |
+| `discovery_short` | medium, high | It confirms that each behaviour triage cited answers its gap and lists the files the plan will need; it designs nothing, and the check verifies the cited ids | medium, high | A gap wrongly taken as answered costs a whole code session, so the verdict keeps the effort of the full visit's judge |
 | `discovery` | medium, max | It closes gaps by research and design, the deepest thinking in the workflow, and nothing downstream rechecks its facts | medium, high | It decides whether each gap is really closed across specs, records and research notes |
 | `plan` | medium, high | It designs across specs and code, and a weak plan costs a whole code session | medium, high | It judges that the design covers every criterion and contradicts no spec it references |
 | `expand` | medium, medium | It turns an approved plan into task rows and decides little | medium, medium | It compares the task rows with the plan they expand |
@@ -23,4 +24,4 @@ One effort for the whole workflow, which pays for deep thinking where a step onl
 
 ## Consequence
 
-A run costs more than at the default effort on `setup`, `plan`, `code` and three judges, and less surprise comes from a changed default. Efforts `xhigh` and `max` are not yet shown by a live probe on every alias; `discovery` keeps `max` as before.
+A run costs more than at the default effort on `setup`, `plan`, `code` and three judges, and less surprise comes from a changed default. Efforts `xhigh` and `max` are not yet shown by a live probe on every alias; `discovery` keeps `max` as before. The row `discovery_short` was added by [0003](0003-short-discovery-visit.adr.md), which replaces no row.

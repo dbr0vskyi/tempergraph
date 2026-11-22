@@ -1,6 +1,6 @@
 # 0003 Discovery gets a short visit when triage marks every gap covered
 
-Status: proposed, not built. The run `speedup-runs` (2026-11-22) built the covered marks that this decision reads, but not the second step: the engine's generated stand-in run needs every unit of `order` visited, and the docs self-test, the eval fixtures, the diagram and the stamp all change with a new unit ([code report](../tasks/speedup-runs.report.md), deviation 6). Backlog row B21 holds what is left.
+Status: accepted, built (backlog row B21, 2026-11-22), to be confirmed by the owner. The run `speedup-runs` built the covered marks that this decision reads but not the second step, because the engine's generated stand-in run answered steps from one queue in declaration order, so a unit the route skipped took the next unit's reply ([code report](../tasks/speedup-runs.report.md), deviation 6). The engine now answers each stand-in session by the unit that asks, and gives a check fixture's files to the unit under test when two units produce the same key (engine spec SCF-B16, stated for any workflow, [ADR-0129](../../../tempergraph/docs/adr/0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md)). The step, its check, its judge, its spec ([09](../specs/09-discovery_short.spec.md)), its fixtures and seeds, the diagram and the stamp came with it.
 
 ## Context
 
@@ -16,7 +16,9 @@ The task `speedup-runs` asks that triage mark a gap a spec already answers, that
 
 ## Decision
 
-We will declare a second discovery step, the short visit, beside the existing one, and let the route after triage choose it. A run takes the short visit only when the triage check has verified that every gap row says `Covered by` and names a behaviour and a criterion that exist. A task with any other gap takes the full discovery as today, and every return to discovery from a later gate takes the full one. Both visits produce the same hand-off, with its reading list, and are held by the same discovery check and the same judge file. The short visit's prompt states a reading limit of 10 files.
+We will declare a second discovery step, the short visit, beside the existing one, and let the route after triage choose it. A run takes the short visit only when the triage check has verified that every gap row says `Covered by` and names a behaviour and a criterion that exist. A task with any other gap takes the full discovery as today, and every return to discovery from a later gate takes the full one. Both visits write the same hand-off file, with its reading list. The short visit is held by a check and a judge file of its own (`discovery_short_check`, `judges/discovery_short.md`), because each unit's criteria are its own ids in `outcome.json` and its spec; the check reuses the discovery check's reading-list rule. The short visit's prompt states a reading limit of 10 files, and its reading list holds at most 10 items.
+
+The short visit writes no spec, record or note. When it finds that a cited behaviour does not answer its gap, its hand-off says `Not covered` for that gap, its `settled` value is `no`, and the route after it sends the run to the full discovery, which closes the gap with a document. This adds a fourth net below the three named under Consequences, and costs one short session instead of a failed gate and a retry.
 
 Each step and judge states its effort and why, as 0002 requires. A first assessment, made without a run:
 
@@ -51,7 +53,7 @@ For: it uses a means the workflow already has; each visit states its own sizing 
 
 A task whose gaps a spec already answers costs less: an effort of `high` instead of `max`, and 10 files instead of an open reading. The plan starts from a reading list on both paths. The cost is a second step to maintain.
 
-A gap marked covered by mistake meets three nets: the triage check confirms that the cited behaviour and criterion exist and that the criterion names the behaviour, the short visit's judge reads whether the behaviour answers the gap, and a later gate sends the run back to the full visit. The effort `high` and the limit of 10 files are first assessments, as in 0002: the session log of a short visit shows how many files it read.
+A gap marked covered by mistake meets four nets: the short visit itself hands a gap it finds not answered to the full visit; the triage check confirms that the cited behaviour and criterion exist and that the criterion names the behaviour; the short visit's judge reads whether the behaviour answers the gap (ts-dsh-answers); and a later gate sends the run back to the full visit. The effort `high` and the limit of 10 files are first assessments, as in 0002: the session log of a short visit shows how many files it read.
 
 ## Revisit when
 
