@@ -110,7 +110,7 @@ Hooks, sinks and the monitor read engine documents with tolerant readers ([CON Â
 
 | Condition | Result |
 |---|---|
-| `engine.json` missing (a thread from before this spec) | Read as `started_on` unknown, not pinned; written at the next resume |
+| `engine.json` missing (a thread from before this spec) | Read as `started_on` unknown, not pinned; written at the next resume with `started_on: {engine_version: null, engine: unknown}`, and that resume's `run_started` carries `moved_from: {engine_version: unknown}` with no `workflow_changed` notice (live check L-27 found it recorded as started on the resuming engine) |
 | The pinned engine's folder is gone | Exit 2 naming it; `update` from a plugin copy of that version reinstalls it beside the current one |
 | A migration step raises | The step's backup is restored, the manifest unchanged, exit 1 |
 | Migration lock held past 60 s | Exit 2 naming the holder's pid |

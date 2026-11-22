@@ -348,7 +348,7 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         was = enginefile.last(enginefile.read(root, spec.name, task_id))
         try:  # MIG §2.1: the thread's engine record; never changes the run (C2)
             moved = enginefile.record(root, spec, task_id, content_version=_content_version(spec),
-                                      shape_digest=shape)
+                                      shape_digest=shape, resumed=bool(meta))
         except OSError:
             moved = None
         log.write("run_started", origin=settings.origin, caller=dict(settings.caller),
@@ -369,7 +369,7 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         if settled.changed:
             rec["caller"] = dict(settings.caller)
         log.write("settings_resolved", **rec)
-        if moved and moved.get("workflow_version") != _content_version(spec):  # MIG §2.5: one notice
+        if moved and moved.get("workflow_version") and moved["workflow_version"] != _content_version(spec):  # MIG §2.5
             log.write("workflow_changed", from_version=moved.get("workflow_version"),
                       to_version=_content_version(spec), units=enginefile.changed_units(was, spec))
         if workspace:
