@@ -12,10 +12,17 @@ def test_fields_and_literal_braces() -> None:
     assert render("{{x}} {a}", {"a": "1"})[0] == "{x} 1"
 
 
-@pytest.mark.parametrize("bad", ["{", "}", "{a b}", "{a.b}", "{1x}", "{}", "x {a"])
+@pytest.mark.parametrize("bad", ["{", "}", "{a b}", "{1x}", "{}", "x {a", "{a.b.c}", "{a.}", "{.b}"])
 def test_outside_grammar_refused(bad: str) -> None:
     with pytest.raises(TemplateError):
         fields(bad)
+
+
+def test_unit_key_field_is_in_the_grammar() -> None:  # SWF-AC5: CON-B8 accepts `{<unit>.<key>}`
+    assert fields("{setup.overview} and {settings.depth}") == ["setup.overview", "settings.depth"]
+    assert render("see {setup.overview}", {"setup.overview": "the map"}) == ("see the map", [])
+    text, missing = render("see {setup.overview}", {})
+    assert text == "see ⟨missing:setup.overview⟩" and missing == ["setup.overview"]
 
 
 def test_missing_value_renders_marker_and_is_recorded() -> None:

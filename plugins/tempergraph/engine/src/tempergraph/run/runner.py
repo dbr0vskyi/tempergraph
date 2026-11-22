@@ -39,7 +39,7 @@ from tempergraph.executors.launcher import StopRequest
 from tempergraph.executors.preflight import preflight
 from tempergraph.executors.registry import Registry
 from tempergraph.git import main_checkout
-from tempergraph.model import flow
+from tempergraph.model import flow, subworkflow
 from tempergraph.model.diagram import diagram_model
 from tempergraph.model.validate import Finding
 from tempergraph.run import gate as gatemod
@@ -572,14 +572,15 @@ def needs_git(spec: WorkflowSpec, settings: RunSettings) -> list[str]:
     out: list[str] = []
     if settings.carry:
         out.append("--carry (run state on a branch)")
-    for name, u in spec.units.items():
-        risk = u.gate.judge.risk if u.gate is not None and u.gate.judge is not None else None
-        if risk is not None and any(w.paths or w.min_lines is not None for w in risk.when):
-            out.append(f"the risk rule of {name} (changed paths or lines)")
-        cx = u.switch.complexity if u.switch is not None else None
-        if cx is not None and any(m.stock[:1] == ("changed_paths",) for m in cx.measures):
-            out.append(f"the `changed_paths` measure of {name}")
+    out += subworkflow.unit_reasons(spec)
+    out += subworkflow.needs_git(spec)  # SWF-B6: a child, or a child of a child, that needs git
     return out
+
+
+def subworkflow_stop(spec: WorkflowSpec) -> RunOutcome | None:
+    """SWF-B11: a workflow with a sub-workflow unit stops here until running a child is built, after every other refusal."""
+    message = subworkflow.stop_message(spec)
+    return None if message is None else _refuse("not_in_release", message)
 
 
 def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: Path, registry: Registry,
@@ -630,6 +631,9 @@ def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: 
             carry_remote = carrymod.remote_of(root.parent)
         except carrymod.CarryRefused as exc:
             return _refuse(exc.code, str(exc), tid=tid)
+    stopped = subworkflow_stop(spec)  # SWF-B11: nothing is created for a run that cannot start a child
+    if stopped is not None:
+        return dataclasses.replace(stopped, thread_id=tid)
     ensure_state_root(root)
     lock = RunLock(lock_path(root, spec.name, task_id))
     try:

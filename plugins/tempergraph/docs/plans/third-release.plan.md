@@ -125,6 +125,8 @@ Status: built. ECC-B14 for a step, a retry and a judge launch (host names droppe
 #### R3-T2.1 Declaration and validation
 Goal: SWF-B7, SWF-B6, SWF-B8, SWF-B6.
 
+Status: built. SWF-B6, SWF-B7, SWF-B11 and SWF-B12 (a declared sub-workflow unit, every refusal of a bad child before spend, the interim stop of a run, and `{<unit>.<key>}` in a template), proved by SWF-AC1, SWF-AC4 and SWF-AC5 in `plugins/tempergraph/engine/tests/test_subworkflow_validate.py`, `test_subworkflow_inputs.py`, `test_subworkflow_template.py` and `test_subworkflow_start.py`; SWF-B8's `subworkflow-finalizer-skipped` warning is left, with running a child (R3-T2.2).
+
 #### R3-T2.2 Running a child
 Goal: SWF-B8, SWF-B2, SWF-B5, SWF-B1 to B5, SWF-AC1 and AC-2.
 

@@ -107,4 +107,4 @@ WHEN a template names `{<unit>.<key>}` THE engine SHALL accept it at validation 
 
 ## Open questions
 
-- Not built yet: sub-workflows are release 3 work (third-release plan R3-T2). Owner: engine owner.
+- Not built yet: running a child (SWF-B1 to SWF-B5, SWF-B8, SWF-B10), which SWF-B11 refuses meanwhile, and measures and carrying (SWF-B9, SWF-AC3). Owner: engine owner.

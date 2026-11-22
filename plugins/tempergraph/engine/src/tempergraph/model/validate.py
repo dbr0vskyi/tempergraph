@@ -10,7 +10,7 @@ import contextlib
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from tempergraph.constants import RELEASE
 from tempergraph.contracts import (
@@ -53,7 +53,7 @@ class Finding:
 
 # Kinds, primitives and fields this release does not build, with the release that adds them (ADR-0090).
 LATER_KINDS: dict[str, int] = {
-    "council": 3, "contest": 3, "subworkflow": 3,
+    "council": 3, "contest": 3,
 }
 MODEL_KINDS = frozenset({"step"})
 # Keys the settings resolution writes into a unit's `extra` (RST `effective_spec`), never a workflow's own field.
@@ -78,6 +78,15 @@ class _Validator:
         self.spec = spec
         self.executors = executors
         self.findings: list[Finding] = []
+        self._children: dict[str, Any] = {}
+
+    def _child(self, name: str) -> Any:
+        """A child read once per validation, by the one reader (SWF-B6, SWF-B12); loaded only when a unit names one."""
+        if name not in self._children:
+            from tempergraph.model import subworkflow
+
+            self._children[name] = subworkflow.read_child(name)
+        return self._children[name]
 
     def err(self, code: str, unit: str | None, message: str) -> None:
         self.findings.append(Finding(code, unit, message, "error"))
@@ -248,6 +257,30 @@ class _Validator:
             self.err("parallel-join-gate", name, "the join is engine-owned in this release: it takes no check, "
                                                  "judge, criteria or approval")
 
+    def _subworkflow(self, name: str, u: UnitSpec) -> None:
+        """SWF-B6: the refusals of one sub-workflow unit, from the one reader of a child, with no spend."""
+        if u.subworkflow is None:
+            return
+        from tempergraph.model import subworkflow
+
+        for code, unit, message in subworkflow.unit_problems(self.spec, name, read=self._child):
+            self.err(code, unit, message)
+
+    def _exposed(self, unit: str, owner: str, key: str) -> bool:
+        """SWF-B12: `{<owner>.<key>}` read by `unit` names a key a sub-workflow unit earlier in the order exposes."""
+        from tempergraph.model import subworkflow
+
+        s = self.spec
+        order = list(s.order)
+        o = s.units.get(owner)
+        if o is None or o.subworkflow is None or owner not in order or unit not in order \
+                or order.index(owner) >= order.index(unit):
+            return False
+        child = self._child(o.subworkflow.workflow)
+        if not isinstance(child, subworkflow.Child):  # a child that cannot be read exposes nothing
+            return False
+        return key in subworkflow.exposed_keys(o, child)
+
     def _fallback(self, name: str, u: UnitSpec) -> None:
         g = u.gate
         if (g.on_fail == "fallback" or g.on_budget_spent == "fallback") and not g.fallback:
@@ -293,6 +326,8 @@ class _Validator:
             self._script_unit(name, u)
         elif u.kind == "parallel":
             self._parallel(name, u)
+        elif u.kind == "subworkflow":
+            self._subworkflow(name, u)
         elif u.kind == "ask":
             self._ask(name, u)
         elif u.kind == "wait":
@@ -699,6 +734,12 @@ class _Validator:
             if f.startswith("settings."):
                 if f[len("settings."):] not in self.spec.settings:
                     self.err("template-unknown-field", unit, f"field {{{f}}} names no declared setting")
+                continue
+            if "." in f:  # `<unit>.<key>` (CON-B8, SWF-B12)
+                owner, key = f.split(".", 1)
+                if not self._exposed(unit, owner, key):
+                    self.err("template-unknown-field", unit,
+                             f"field {{{f}}} is not a key an earlier sub-workflow unit {owner!r} exposes")
                 continue
             if f in earlier["any"]:
                 if f not in earlier["all"]:

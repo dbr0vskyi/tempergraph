@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import dataclasses
 import inspect
+import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
@@ -40,6 +41,7 @@ from tempergraph.contracts import (
     SessionOptions,
     SettingDecl,
     StepSpec,
+    SubworkflowSpec,
     SwitchSpec,
     TextRef,
     UnitSpec,
@@ -327,7 +329,29 @@ def Parallel(*, branches: Iterable[str], gate: GateSpec | None = None) -> UnitSp
 
 Council = _later("council")
 Contest = _later("contest")
-Subworkflow = _later("subworkflow")
+
+_INPUT_REF_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _input_form(name: str, value: object) -> str:
+    """SWF-B7: a child parameter is read from `request`, `<unit>.<key>` or a quoted literal, and nothing else."""
+    if isinstance(value, str) and (value == "request" or _INPUT_REF_RE.match(value)
+                                   or (len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'")):
+        return value
+    raise ValueError(f"Subworkflow(inputs=...): {name!r} reads {value!r}; write `request`, `<unit>.<key>` "
+                     "or a quoted literal")
+
+
+def Subworkflow(*, workflow: str, requires: str | None = None, inputs: Mapping[str, str] | None = None,  # noqa: N802
+                produces: Iterable[str] = (), gate: GateSpec | None = None, summary: str = "") -> UnitSpec:
+    """A sub-workflow unit: the registered workflow `workflow` runs as one unit of the parent (SWF-B7).
+    `inputs` maps each child parameter to `request`, `<unit>.<key>` or a quoted literal; `produces` names the child
+    keys the parent's later units see as `{<unit>.<key>}`."""
+    rec = SubworkflowSpec(workflow=workflow, requires=requires,
+                          inputs={str(k): _input_form(str(k), v) for k, v in (inputs or {}).items()},
+                          produces=tuple(produces), summary=summary)
+    return UnitSpec(kind="subworkflow", gate=gate or GateSpec(), subworkflow=rec)
+
 
 _WORKFLOW_FIELDS = {f for f in WorkflowSpec.__dataclass_fields__} - {"name", "version", "package_root", "outcome"}
 

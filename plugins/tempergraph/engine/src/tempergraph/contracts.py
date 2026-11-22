@@ -368,6 +368,17 @@ class WaitSpec:
 
 
 @dataclass(frozen=True, kw_only=True)
+class SubworkflowSpec:
+    """SWF-B7: a registered workflow run as one unit. The gate is the unit's own `gate`."""
+
+    workflow: str
+    requires: str | None = None  # the child version range the parent was written for; none means any version
+    inputs: Mapping[str, str] = field(default_factory=dict)  # child parameter -> `request`, `<unit>.<key>` or a quoted literal
+    produces: tuple[str, ...] = ()  # child keys the parent's later units see under the unit's name; empty: the deliverables
+    summary: str = ""
+
+
+@dataclass(frozen=True, kw_only=True)
 class UnitSpec:
     kind: UnitKind
     gate: GateSpec
@@ -380,6 +391,7 @@ class UnitSpec:
     route: CallableRef | None = None  # route unit or a step's route (CMP-B10 to CMP-B16)
     route_targets: tuple[str, ...] = ()
     switch: SwitchSpec | None = None
+    subworkflow: SubworkflowSpec | None = None
     extra: Mapping[str, Any] = field(default_factory=dict)  # fields of kinds not in this release
 
 
