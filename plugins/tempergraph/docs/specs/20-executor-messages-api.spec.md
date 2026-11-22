@@ -1,170 +1,108 @@
----
-title: Messages API executor
-type: component
-status: review
-prefix: EMA
-adrs: [0006, 0008, 0012, 0018, 0019, 0020]
----
-
 # Messages API executor
 
-## 1. Overview
+## Purpose
 
-The `messages-api` executor runs each step attempt and each judge run as one conversation on Anthropic's Messages API, driven by an engine-owned loop in an engine worker process ([ADR-0019](../adr/0019-in-process-executors-run-in-a-worker-process.adr.md), [ADR-0020](../adr/0020-engine-owned-tool-loop-for-the-messages-api.adr.md)). The API runs no client tool, so every file and command tool is executed by the engine's [tool host](22-tool-host.spec.md). It implements the [executor interface](10-executor-interface.spec.md); facts about the API come from [R-004](../research/R-004-anthropic-messages-api-executor.rsrch.md). It is the lightest executor to run in CI: one Python client library and an API or cloud credential.
+The `messages-api` executor runs each step attempt and each judge run as one conversation on Anthropic's Messages API, driven by an engine-owned loop in an engine worker process ([ADR-0019](../adr/0019-in-process-executors-run-in-a-worker-process.adr.md), [ADR-0020](../adr/0020-engine-owned-tool-loop-for-the-messages-api.adr.md)). The API runs no client tool, so every file and command tool is executed by the engine's [tool host](22-tool-host.spec.md). It implements the [executor interface](10-executor-interface.spec.md); facts about the API come from [R-004](../research/R-004-anthropic-messages-api-executor.rsrch.md). It is the lightest executor to run in CI: one client library and an API or cloud credential. A workflow that relies on CLAUDE.md, skills or subagents cannot move a step here without bringing that content into the prompt ([ADR-0016](../adr/0016-portable-authoring-surface.adr.md)). No beta feature is used: no tool runner, no compaction, no context editing. Operators and workflow authors who choose it depend on what it declares and does.
 
-## 2. Contract
+## Behaviours
 
-### 2.1 Declared capabilities
+### EMA-B6 Declared capabilities
 
-| Capability | Value | Basis |
-|---|---|---|
-| `binds_aliases` | `small`, `medium`, `large`, `inherit` (bound to the table's `medium`), every `messages-api:<name>` in the binding table | [R-004 M12](../research/R-004-anthropic-messages-api-executor.rsrch.md) |
-| `prompt_off_argv`, `streams_events`, `reports_actions`, `reports_tokens`, `fresh_session` | true | M1, M7, M11; the prompt travels in the worker's request document on stdin |
-| `reports_cost` | false; the engine estimate is the only cost ([ADR-0012](../adr/0012-cost-when-executor-reports-tokens-only.adr.md)) | M7 |
-| `enforces_step_tools`, `restricts_judge_tools`, `isolates_user_config`, `step_allow_rules` | true by construction: the session is offered only the declared tools and the engine runs every call | ADR-0020 |
-| `judge_mcp` | true for local (stdio) servers through the tool host's MCP client | [THS §2.6](22-tool-host.spec.md) |
-| `hosts_authoring_surface` | false: no instruction files, skills, agents or subagents | R-004 conclusion 4 |
-| `session_options` | `effort`, `cost_cap_usd`, `turn_cap`; not `fallback_alias` | M9; caps enforced between responses |
+WHEN the `messages-api` executor declares its capabilities THE executor SHALL declare `binds_aliases` (`small`, `medium`, `large`, `inherit` bound to the table's `medium`, and every `messages-api:<name>` in the binding table), `prompt_off_argv`, `streams_events`, `reports_actions`, `reports_tokens` and `fresh_session` true, `reports_cost` false (the engine estimate is the only cost, [ADR-0012](../adr/0012-cost-when-executor-reports-tokens-only.adr.md)), `enforces_step_tools`, `restricts_judge_tools`, `isolates_user_config` and `step_allow_rules` true by construction, `judge_mcp` true for local stdio servers through the tool host's MCP client ([THS §2.6](22-tool-host.spec.md)), `hosts_authoring_surface` false, and `session_options` `effort`, `cost_cap_usd` and `turn_cap` but not `fallback_alias`.
 
-### 2.2 Tool map
+- GIVEN a step with `fallback_alias` on `messages-api` WHEN preflighted THEN it exits 2
+- GIVEN a step on `messages-api` whose template names a skill WHEN preflighted THEN a warning is recorded
 
-| Capability | Offered to the model | Executed by |
-|---|---|---|
-| `read` | `read_file` | Tool host |
-| `search` | `search_files` | Tool host |
-| `list` | `list_files` | Tool host |
-| `edit` | `edit_file` | Tool host |
-| `write` | `write_file` | Tool host |
-| `shell` | `run_command` (declared prefixes only) | Tool host |
-| `web_fetch` | server tool `web_fetch` (current version for the bound model) | Anthropic, where the model and platform offer it |
-| `web_search` | server tool `web_search` | Anthropic, where offered |
-| `subagent` | none | not in `tool_map`; preflight refuses a step that declares it |
-| `skill:<p>:<n>` | none | no authoring surface; preflight refuses a step that declares it |
-| `mcp:<s>/<t>` | `mcp__<s>__<t>`, schema copied from the server | Tool host MCP client |
+### EMA-B7 Tool map
 
-Server tool versions per model and platform live in the binding table, never in code: a platform without web fetch (for example Vertex AI, M4) simply has no `web_fetch` row and the preflight refuses the step.
+WHEN a step declares tools on `messages-api` THE executor SHALL offer `read_file`, `search_files`, `list_files`, `edit_file`, `write_file` and `run_command` (declared prefixes only) for `read`, `search`, `list`, `edit`, `write` and `shell`, all run by the tool host; the server tools `web_fetch` and `web_search` at the version the binding table gives for the bound model and platform, run by Anthropic where offered; `mcp__<s>__<t>` with the server's schema for `mcp:<s>/<t>`, run by the tool host's MCP client; and nothing for `subagent` or `skill:`, which preflight refuses.
 
-### 2.3 Worker request document
+- GIVEN a step declaring `subagent` WHEN preflighted on `messages-api` THEN it exits 2
 
-The launcher starts `<engine python> -m tempergraph.executors.api_worker` with no other argument and writes one JSON document on stdin:
+### EMA-B5 Unavailable server tool refused
 
-| Field | Source | Re-checked by the worker |
-|---|---|---|
-| `version` | constant | equals the worker's own |
-| `kind` | `SessionRequest.kind` | enum |
-| `prompt` | rendered prompt | string; never logged |
-| `workdir` | state | absolute, exists, inside the state root's known workspaces |
-| `model`, `provider`, `server_tools` | binding table entry selected by the alias | entry exists in the table the worker reads itself |
-| `tools`, `commands` | declaration | each in the tool map; prefixes in the workflow allow-list |
-| `views` | judge only | read-only capabilities and catalogued MCP views |
-| `limits` | `timeout_s` (informational), `turn_cap`, `cost_cap_usd`, `max_tokens` | positive numbers |
-| `effort` | option | enum, and listed for the model in the binding table |
+WHEN a step declares a server tool the binding row's provider does not offer THE engine SHALL exit 2 at preflight naming the step, the executor and the tool.
 
-The worker emits normalized events ([CON §2.7](01-contracts.spec.md)) as JSON lines on stdout and ends with exactly one `result` line.
+- GIVEN a step declaring `web_fetch` and a Vertex AI binding row with no web fetch WHEN preflighted THEN it exits 2 naming the step, `messages-api` and `web_fetch`
 
-### 2.4 The loop
+### EMA-B8 Worker request document
 
-1. Build the request: model, `max_tokens` from the binding table, the system text (a constant engine sentence: work in the given directory with the given tools), the tools of §2.2 in a fixed order so the prefix is cacheable ([R-004 M8](../research/R-004-anthropic-messages-api-executor.rsrch.md)), and the prompt as the first user message. Thinking and effort parameters are taken from the binding table's model row, because valid values differ by model (M9).
-2. Send with streaming; translate stream events into normalized events (§2.5).
-3. On `stop_reason`:
+WHEN the launcher starts the worker THE launcher SHALL run the engine interpreter with the constant API worker module and no other argument, and write one JSON document on standard input with `version` (equal to the worker's own), `kind`, `prompt` (never logged), `workdir` (absolute, existing, inside the state root's known workspaces), `model`, `provider` and `server_tools` (an entry the worker finds in the binding table it reads itself), `tools` and `commands` (each in the tool map, prefixes in the workflow allow-list), `views` for a judge (read-only capabilities and catalogued MCP views), `limits` (`timeout_s`, `turn_cap`, `cost_cap_usd`, `max_tokens`, positive numbers) and `effort` (listed for the model in the binding table), and the worker SHALL re-check each field, emit normalized events ([SSN-B7](25-session-contract.spec.md)) as JSON lines on standard output and end with exactly one `result` line.
 
-| Stop reason | Action |
-|---|---|
-| `end_turn` | Session ends `ok`; final text is the answer |
-| `tool_use` | Run each `tool_use` block through the tool host in order; send all `tool_result` blocks in one user message, failed calls with `is_error: true`; continue |
-| `pause_turn` | Resend the conversation unchanged; counts as a turn |
-| `max_tokens` | Do not run any `tool_use` block of that response; end with `error_kind = model` and `partial = true` |
-| `refusal` | Run no tool of that response; end with `error_kind = refused` |
+- GIVEN a request document whose `workdir` is outside the known workspaces WHEN the worker reads it THEN it writes a `result` with `infra_cause = prompt_not_delivered` and exits
 
-4. After every response, add its usage to the running total, compute the estimate from the price table, and check the caps: turns above `turn_cap` end with `error_kind = turn_cap`; an estimate at or above `cost_cap_usd` ends with `error_kind = cap_reached` before the next request is sent.
+### EMA-B9 The request
 
-### 2.5 Event mapping
+WHEN the loop builds a request THE worker SHALL send the model, `max_tokens` from the binding table, a constant engine system sentence, the tools in a fixed order so the prefix is cacheable ([R-004 M8](../research/R-004-anthropic-messages-api-executor.rsrch.md)), thinking and effort parameters from the binding table's model row (valid values differ by model), and the prompt as the first user message, streaming.
 
-| API stream | Normalized event |
-|---|---|
-| First `message_start` | `session_started` (`session_id` = first message id, `model`, `cli_version` = client library version and API version header, `tools` = offered names) |
-| `content_block_delta` text | `model_delta` (count only) |
-| Completed `tool_use` block | `tool_started` (`subagent = false`) |
-| Tool host finishes the call | `tool_finished` (`ok`, `error_kind`) |
-| Server tool use and its result block | `tool_started` and `tool_finished` with the server tool's name |
-| Final text block | `text` (last line, scrubbed) |
-| SDK retry of a 429, 5xx or 529 | `retrying` (`category` = `rate_limit`, `overloaded` or `server_error`) |
-| Tool host refuses a call (path outside, undeclared prefix) | `denied` |
-| Loop ends | `result` with summed `usage`, `reported_cost_usd = null`, `estimated_cost_usd` |
+- GIVEN two attempts of one step WHEN their first requests are compared THEN the tools array is in the same order
 
-### 2.6 Failure classification
+### EMA-B10 Stop reasons
 
-| Observed (structured) | `infra_cause` / `error_kind` |
-|---|---|
-| Worker spawn raised | `spawn_failed` |
-| Worker ended with no line | `no_output` |
-| Worker ended with no `result` line | `no_result` |
-| Connection error type from the client after its retries | `connection` |
-| Timeout error type from the client | `request_timed_out` |
-| 429 with a `retry-after`, or 529, after the client's retries | `throttled` |
-| 429 without `retry-after` (spend cap, M10) | `error_kind = cap_reached` |
-| 401, 403 | `error_kind = auth` |
-| 402 | `error_kind = auth` (billing), recorded with the status |
-| 400, 404, 413 | `error_kind = model`, with the error type recorded |
-| 500 after retries | `error_kind = model` |
-| `stop_reason = refusal` | `error_kind = refused` |
+WHEN a response ends THE worker SHALL end the session `ok` on `end_turn`; run each `tool_use` block through the tool host in order and continue on `tool_use`; resend the conversation unchanged, counting a turn, on `pause_turn`; run no tool and end with `error_kind = model` and `partial = true` on `max_tokens`; and run no tool and end with `error_kind = refused` on `refusal`.
 
-The status code and the error `type` field are the only inputs; error message text is never read.
+- GIVEN `stop_reason = refusal` WHEN handled THEN no tool runs and the result is `refused`
+- GIVEN `stop_reason = pause_turn` WHEN handled THEN the same conversation is sent again
 
-### 2.7 Providers and credentials
+### EMA-B2 Truncated tool input never runs
 
-The binding table row names a `provider`: `anthropic`, `bedrock`, `vertex` or `foundry` (M12). The worker picks the matching client class by that constant. Model ids are per provider and live only in the table. Credentials resolve as the client library resolves them (M13); the engine passes a judge-only profile by laying its variables over the worker's environment. Keys never enter the request document, the log or the checkpoint ([SEC](14-security.spec.md)).
+WHEN a response with `stop_reason = max_tokens` ends in a `tool_use` block THE worker SHALL run no tool and end the session `partial` with `error_kind = model`.
 
-## 3. Behaviours
+- GIVEN a response cut off inside a `tool_use` input WHEN handled THEN the tool host is not called
 
-**EMA-B1 Judge offered only views.** Given a judge with views `read`, `search`, `list`, when its first request is built, then the `tools` array holds exactly `read_file`, `search_files` and `list_files`, and a `tool_use` naming any other tool returns an `is_error` result and a `denied` event without running anything.
+### EMA-B4 One message of results
 
-**EMA-B2 Truncated tool input never runs.** Given a response with `stop_reason = max_tokens` whose last block is a `tool_use`, when the loop handles it, then no tool runs and the session ends `partial` with `error_kind = model`.
+WHEN a response's `tool_use` blocks have run THE worker SHALL send one user message with one `tool_result` per block, matched by `tool_use_id`, failures marked `is_error: true`.
 
-| Stop reason | Tools run | Outcome |
-|---|---|---|
-| `tool_use` | all blocks, in order | continue |
-| `max_tokens` | none | `model`, partial |
-| `refusal` | none | `refused` |
-| `pause_turn` | none | resend |
+- GIVEN three `tool_use` blocks, one failing WHEN they have run THEN the next request has one user message with three results and one `is_error`
 
-**EMA-B3 Cost cap between responses.** Given `cost_cap_usd = 0.50` and an estimate of 0.48 after turn 4 and 0.53 after turn 5, when turn 5's usage is recorded, then no sixth request is sent and the result carries `error_kind = cap_reached` with the usage of five turns.
+### EMA-B3 Caps between responses
 
-**EMA-B4 One message of results.** Given a response with three `tool_use` blocks, when they have run, then the next request carries one user message with three `tool_result` blocks matched by `tool_use_id`, failures marked `is_error`.
+WHEN a response's usage is added to the running total THE worker SHALL compute the estimate from the price table and end with `error_kind = turn_cap` when turns pass `turn_cap`, or `error_kind = cap_reached` when the estimate reaches `cost_cap_usd`, before the next request is sent.
 
-**EMA-B5 Unavailable server tool refused.** Given a step that declares `web_fetch` and a binding row whose provider has no web fetch, when the run is preflighted, then it exits 2 naming the step, the executor and `web_fetch`.
+- GIVEN `cost_cap_usd = 0.50` and estimates of 0.48 after turn 4 and 0.53 after turn 5 WHEN turn 5's usage is recorded THEN no sixth request is sent and the result carries `cap_reached` with five turns of usage
 
-## 4. Error conditions
+### EMA-B1 Judge offered only views
 
-| Type | Handling |
-|---|---|
-| Client library not importable in the engine interpreter | Probe fails; exit 2 at preflight |
-| No credential resolvable for the provider | Probe fails; exit 2 (the probe makes no model call) |
-| A request document field fails re-validation | Worker writes a `result` with `infra_cause = prompt_not_delivered` and exits |
-| Context window exceeded (400 of that type) | `error_kind = model`; peak context recorded ([R-004 open question](../research/R-004-anthropic-messages-api-executor.rsrch.md)) |
-| An unknown stream event type | Skipped and counted |
+WHEN a judge's request is built THE worker SHALL offer only the tools of its views, and answer a `tool_use` naming any other tool with an `is_error` result and a `denied` event, running nothing.
 
-## 5. Design notes
+- GIVEN a judge with views `read`, `search` and `list` WHEN its first request is built THEN `tools` holds exactly `read_file`, `search_files` and `list_files`
 
-- A workflow that relies on CLAUDE.md, skills or subagents cannot move a step here without bringing that content into the prompt; the preflight warns when a step on this executor names a skill ([ADR-0016](../adr/0016-portable-authoring-surface.adr.md)).
-- Effort and thinking parameters are binding-table facts per model, because a wrong value is a 400 on some models.
-- No beta feature is used in the first release: no tool runner, no compaction, no context editing.
+### EMA-B11 Event mapping
 
-## 6. Acceptance criteria
+WHEN the worker reads the API stream THE worker SHALL map the first `message_start` to `session_started` (`session_id` the first message id, `model`, `cli_version` the client library version and API version header, `tools` the offered names), text deltas to `model_delta` counts, a completed `tool_use` block to `tool_started` with `subagent` false, the tool host's finish to `tool_finished`, a server tool's use and result to `tool_started` and `tool_finished` with its name, the final text block to `text`, a client retry of a 429, 5xx or 529 to `retrying` (`rate_limit`, `overloaded` or `server_error`), a tool host refusal to `denied`, and the loop's end to `result` with summed usage, `reported_cost_usd` null and `estimated_cost_usd`, skipping and counting an unknown event type.
 
-- [ ] EMA-AC-1 Each row of §2.4 and §2.6 has a recorded-response fixture and a test.
-- [ ] EMA-AC-2 A judge request never offers a write, edit or command tool (contract test over every view set).
-- [ ] EMA-AC-3 The prompt and any key never appear in the worker's argv, environment listing or log (planted canary).
-- [ ] EMA-AC-4 The worker passes the conformance suite of [EXI-B11](10-executor-interface.spec.md) against a recorded API stand-in.
-- [ ] EMA-AC-5 Caps stop the loop before the next request, with a replaced price table.
+- GIVEN a 529 retried by the client WHEN read THEN a `retrying` event with `overloaded` is pushed
+
+### EMA-B12 Failure classification
+
+WHEN a session fails THE worker SHALL classify by the status code and the error `type` field only, never the message text: spawn raised `spawn_failed`, no line `no_output`, no `result` line `no_result`, a connection error after retries `connection`, a timeout error `request_timed_out`, a 429 with `retry-after` or a 529 after retries `throttled`, a 429 without `retry-after` (a spend cap) `cap_reached`, 401, 403 and 402 `auth` (402 recorded as billing), 400, 404, 413 and a 500 after retries `model` with the error type recorded, and a context window exceeded `model` with the peak context recorded.
+
+- GIVEN a 429 with no `retry-after` WHEN classified THEN `error_kind` is `cap_reached`, not throttled
+
+### EMA-B13 Providers and credentials
+
+WHEN the worker starts a conversation THE worker SHALL pick the client class by the binding row's `provider` (`anthropic`, `bedrock`, `vertex` or `foundry`), take model ids only from the table, and let credentials resolve as the client library resolves them, a judge-only profile laid over the worker's environment, with keys never in the request document, the log or the checkpoint ([SEC](14-security.spec.md)).
+
+- GIVEN a `bedrock` row WHEN a session starts THEN the Bedrock client is used with the row's model id
+
+### EMA-B14 Probe refusals
+
+WHEN the client library cannot be imported in the engine interpreter, or no credential resolves for the provider THE probe SHALL fail with no model call and preflight SHALL exit 2.
+
+- GIVEN no API key and no cloud credential WHEN preflighted THEN it exits 2 and no request was sent
+
+## Acceptance criteria
+
+- EMA-AC1 (EMA-B10, EMA-B12, EMA-B2): Each stop reason and each failure classification has a recorded-response fixture and a test
+- EMA-AC2 (EMA-B1): A judge request never offers a write, edit or command tool, by a contract test over every view set
+- EMA-AC3 (EMA-B8, EMA-B13): The prompt and any key never appear in the worker's argv, environment listing or log, by a planted canary
+- EMA-AC4 (EMA-B6, EMA-B11): The worker passes the conformance suite of [EXI-B11](10-executor-interface.spec.md) against a recorded API stand-in
+- EMA-AC5 (EMA-B3): Caps stop the loop before the next request, with a replaced price table
+- EMA-AC6 (EMA-B7, EMA-B5, EMA-B14): Each capability maps to its offered tool, and an unavailable server tool, `subagent`, `skill:` or a missing client or credential is refused at preflight
+- EMA-AC7 (EMA-B4, EMA-B9): Tool results go back in one message matched by id, and the tools array keeps one order across attempts
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Use server-side compaction for long steps, or end at the context window? First release ends; revisit with measured peak context. | Executor implementer |
-| Does a judge on this executor grade as well as one on `claude`? Settle with calibration sets per gate ([LIF](18-lifecycle-and-evals.spec.md)). | Engine owner |
-
-## References
-
-[EXI](10-executor-interface.spec.md) · [THS](22-tool-host.spec.md) · [R-004](../research/R-004-anthropic-messages-api-executor.rsrch.md) · [R-003](../research/R-003-executor-capability-matrix.rsrch.md) · [ADR-0020](../adr/0020-engine-owned-tool-loop-for-the-messages-api.adr.md)
+- Use server-side compaction for long steps, or end at the context window? First release ends; revisit with measured peak context. Owner: executor implementer.
+- Does a judge on this executor grade as well as one on `claude`? Settle with calibration sets per gate ([LIF](18-lifecycle-and-evals.spec.md)). Owner: engine owner.
