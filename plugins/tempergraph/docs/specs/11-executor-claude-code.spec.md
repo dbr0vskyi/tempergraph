@@ -45,9 +45,11 @@ WHEN the executor declares its capabilities THE executor SHALL declare `binds_al
 
 ### ECC-B7 Tool map
 
-WHEN a capability is mapped THE executor SHALL map `read` to `Read`, `search` to `Grep`, `list` to `Glob`, `web_fetch` to `WebFetch` and `web_search` to `WebSearch` with rules of the same name; `edit` and `write` to `Edit` and `Write` with `Edit(./**)` and `Write(./**)` in the engine's own worktree only; `shell` to `Bash` as ECC-B1; `subagent` to `Agent` (reported as `Task` by older releases); `mcp:<s>/<t>` to `mcp__<s>__<t>`; and `skill:<p>:<n>` to `Skill` with the rule `Skill(<p>:<n>)` once P-CC-8 confirms it, else `Skill` with the called name checked in the tool record ([ADR-0078](../adr/0078-skills-are-a-declared-tool-capability.adr.md)).
+WHEN a capability is mapped THE executor SHALL map `read` to `Read` with the rule `Read(./**)` on a step, plus a read rule for the workflow plugin's folder when the step is given one; `search` to `Grep` and `list` to `Glob` with no rule on a step, the CLI admitting them inside the workspace only; `web_fetch` to `WebFetch` and `web_search` to `WebSearch` with rules of the same name; `edit` and `write` to `Edit` and `Write` with `Edit(./**)` and `Write(./**)` in the engine's own worktree only; `shell` to `Bash` as ECC-B1; `subagent` to `Agent` (reported as `Task` by older releases); `mcp:<s>/<t>` to `mcp__<s>__<t>`; and `skill:<p>:<n>` to `Skill` with the rule `Skill(<p>:<n>)` once P-CC-8 confirms it, else `Skill` with the called name checked in the tool record ([ADR-0078](../adr/0078-skills-are-a-declared-tool-capability.adr.md)).
 
 - GIVEN a step declaring `edit` that runs in place WHEN it launches THEN no `Edit(./**)` rule is sent
+- GIVEN a step declaring `read` and `search` WHEN it reads or searches a file outside its workspace THEN the call is refused
+- GIVEN a step declaring `read` that is given a workflow plugin WHEN a skill of that plugin reads its own reference file THEN the read succeeds
 
 ### ECC-B8 Step launch
 
@@ -90,11 +92,12 @@ WHEN the executor is probed THE executor SHALL fail the probe with exit 2 at pre
 
 ### ECC-B14 Step reach inside a host session
 
-WHEN a step session, a retry of it or a judge session launches THE executor SHALL leave `CLAUDECODE` and every name beginning `CLAUDE_` out of that session's environment, the `CLAUDE_CODE_*` names and the session and additional-directory names a host Claude Code session sets for its children among them, keeping `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR` with the value ECC-B9 gives it, the `CLAUDE_CODE_SUBAGENT_MODEL` ECC-B9 sets on a step, the credentials ECC-B10 lays on a judge, the provider switches `CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX` and `CLAUDE_CODE_USE_FOUNDRY`, `ANTHROPIC_*` and the proxy and certificate variables; send `--tools` with the mapped built-ins on every step launch, so a host's tools are never offered; and send no `--add-dir` on any step or judge launch, a session reaching only its workspace and the engine's scratch folder ([WSP-B5](13-workspace-and-concurrency.spec.md)); P-CC-10 (a step launched inside a host lists only its `--tools` and a read outside the workspace is refused) and P-CC-11 (`--bare` drops user-scope plugins on the pinned version) confirming it.
+WHEN a step session, a retry of it or a judge session launches THE executor SHALL leave `CLAUDECODE` and every name beginning `CLAUDE_` out of that session's environment, the `CLAUDE_CODE_*` names and the session and additional-directory names a host Claude Code session sets for its children among them, keeping `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR` with the value ECC-B9 gives it, the `CLAUDE_CODE_SUBAGENT_MODEL` ECC-B9 sets on a step, the credentials ECC-B10 lays on a judge, the provider switches `CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX` and `CLAUDE_CODE_USE_FOUNDRY`, the operator's sign-in `CLAUDE_CODE_OAUTH_TOKEN` and config folder `CLAUDE_CONFIG_DIR`, `ANTHROPIC_*` and the proxy and certificate variables; send `--tools` with the mapped built-ins on every step launch, so a host's tools are never offered; and send no `--add-dir` on any step or judge launch, a session reaching only its workspace and the engine's scratch folder ([WSP-B5](13-workspace-and-concurrency.spec.md)); P-CC-10 (a step launched inside a host lists only its `--tools` and a read outside the workspace is refused) and P-CC-11 (`--bare` drops user-scope plugins on the pinned version) confirming it.
 
 - GIVEN a step launched from inside a host session WHEN its `system/init` is read THEN it lists only the tools of its `--tools`
 - GIVEN a host environment holding `CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`, `CLAUDE_CODE_SESSION_ID` and `CLAUDE_CODE_CHILD_SESSION` WHEN a step, a retry of it and a judge launch THEN none of the four names is in any of the three environments
 - GIVEN a host environment holding `ANTHROPIC_API_KEY`, `CLAUDE_CODE_USE_BEDROCK`, `HTTPS_PROXY` and `SSL_CERT_FILE` WHEN a step and a judge launch THEN all four reach both sessions
+- GIVEN a pipeline that signs `claude` in with `CLAUDE_CODE_OAUTH_TOKEN` and `CLAUDE_CONFIG_DIR` WHEN a step and a judge launch THEN both names reach both sessions
 - GIVEN a host holding `CLAUDE_CODE_SUBAGENT_MODEL=haiku` and not `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR` WHEN a step bound to model `sonnet` launches THEN its environment holds `CLAUDE_CODE_SUBAGENT_MODEL=sonnet` and `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1`
 - GIVEN a judge credentials profile holding `CLAUDE_CODE_OAUTH_TOKEN` and a host holding `CLAUDE_CODE_SESSION_ID` WHEN the judge launches THEN its environment holds the profile's token and no `CLAUDE_CODE_SESSION_ID`
 - GIVEN a retry of a step declaring `read` WHEN it launches THEN `--tools` is `Read`
@@ -107,7 +110,7 @@ WHEN a step session, a retry of it or a judge session launches THE executor SHAL
 - ECC-AC3 (ECC-B5, ECC-B12): Each failure classification is covered by a fixture and classified without reading prose beyond the one exact match
 - ECC-AC4 (ECC-B3, ECC-B10): A judge launch never contains a write tool, a step allow rule, `--fallback-model` or `--resume`
 - ECC-AC5 (ECC-B6, ECC-B13, ECC-B14): The probe results are recorded for the pinned CLI version before the executor is marked live-proven
-- ECC-AC6 (ECC-B8, ECC-B14): Argv and environment scans of a step, a retry and a judge launch from a planted host environment find `--tools` on the step and the retry, `--add-dir` on none of the three, no planted `CLAUDECODE` or `CLAUDE_*` name in any of the three environments except the ones ECC-B14 keeps, and the planted `ANTHROPIC_*`, proxy and certificate names present in each
+- ECC-AC6 (ECC-B7, ECC-B8, ECC-B14): Argv and environment scans of a step, a retry and a judge launch from a planted host environment find `--tools` on the step and the retry, `--add-dir` on none of the three, no planted `CLAUDECODE` or `CLAUDE_*` name in any of the three environments except the ones ECC-B14 keeps, and the planted `ANTHROPIC_*`, proxy and certificate names present in each; the step's read rule is `Read(./**)` with no bare `Read`, `Grep` or `Glob` rule
 
 ## Open questions
 

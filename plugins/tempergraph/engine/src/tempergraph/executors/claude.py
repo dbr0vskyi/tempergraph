@@ -51,7 +51,9 @@ GATEWAY_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_USE_BE
 # ECC-B14: inside a host Claude Code session, every step, retry and judge launch leaves out the host's own names
 HOST_DROP_PREFIXES = ("CLAUDECODE", "CLAUDE_")
 HOST_KEEP = ("CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR", "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX",
-             "CLAUDE_CODE_USE_FOUNDRY")
+             "CLAUDE_CODE_USE_FOUNDRY",
+             # the operator's own sign-in and config folder: a pipeline signs `claude` in with these
+             "CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CONFIG_DIR")
 PROBED_FLAGS = ("--permission-prompts", "--bare", "--tools", "--setting-sources", "--max-budget-usd",
                 "--fallback-model", "--effort", "--plugin-dir", "--strict-mcp-config")
 _VERSION_RE = re.compile(r"(\d+\.\d+\.\d+)")
@@ -66,7 +68,7 @@ SELF_CHECK = "tempergraph self-check "
 
 
 def allow_rules(tools: tuple[str, ...], commands: tuple[str, ...], in_engine_worktree: bool) -> list[str]:
-    """ECC-B7 allow rules for the declared capabilities; never an absolute path (ECC-B1)."""
+    """ECC-B7 allow rules for the declared capabilities; no absolute path (ECC-B1)."""
     rules: list[str] = []
     for cap in tools:
         if cap in ("edit", "write"):
@@ -76,6 +78,10 @@ def allow_rules(tools: tuple[str, ...], commands: tuple[str, ...], in_engine_wor
             rules.extend(f"Bash({c} *)" for c in commands)
         elif cap == "subagent":
             rules.append("Agent")
+        elif cap == "read":
+            rules.append("Read(./**)")  # ECC-B7: a bare `Read` rule would admit any path on the machine (P-CC-10)
+        elif cap in ("search", "list"):
+            continue  # ECC-B7: no rule; the CLI admits them inside the workspace and refuses them outside
         else:
             rules.extend(tool_names(CLAUDE, cap))
     # the check preview is granted as one exact command even when the step declares no shell (CHK-B17)
@@ -105,6 +111,9 @@ def step_argv(req: SessionRequest, model: str | None, fallback: str | None, flag
     if model is not None:
         argv += ["--model", model]
     rules = allow_rules(req.tools, req.commands, req.in_engine_worktree)
+    if req.plugin_dir is not None and "read" in req.tools:
+        # ECC-B7: the workflow plugin's own files stay readable; `//` marks an absolute path in a rule
+        rules.append(f"Read(/{Path(req.plugin_dir).resolve().as_posix()}/**)")
     if rules:
         argv += ["--allowedTools", ",".join(rules)]
     # ECC-B8, ECC-B14: every step launch names its built-in tools, so a host's tools are never offered
