@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from tempergraph.contracts import RunOptions, SettingDecl, WorkflowSpec
+from tempergraph.contracts import RunOptions, SettingDecl, WorkflowSpec, WorktreeDecl
 from tempergraph.settings import (
     ConfigFiles,
     effective_spec,
@@ -77,14 +77,14 @@ def test_judges_apart() -> None:  # RST-B2
                                            ("draft.approve", "tighten_only"), ("judges.model", "setting_value"),
                                            ("draft.retry_budget", "setting_value"),
                                            ("draft.on_budget_spent", "no_fallback_target"),
-                                           ("run.worktree.root", "setting_not_in_release"),
+                                           ("run.worktree.root", "setting_value"),
                                            ("draft.tools.add", "unknown-capability"),
                                            ("judge:draft.views.add", "judge-view-not-read-only"),
                                            ("judge:draft.views.add", "judge-view-unclassified"),
                                            ("draft.commands.add", "command-metacharacter")])
 def test_refusals(key: str, code: str) -> None:  # RST-B5, B6, B10, RST-B32
     value = {"draft.approve": False, "judges.model": ["small", "large"], "draft.retry_budget": 99,
-             "draft.on_budget_spent": "fallback", "run.worktree.root": "in_repo",
+             "draft.on_budget_spent": "fallback", "run.worktree.root": "path:relative/dir",
              "draft.commands.add": "npm run build; rm"}.get(key, "x")
     if key == "judge:draft.views.add":
         value = "edit" if code == "judge-view-not-read-only" else "mcp:tracker/get_issue"
@@ -92,6 +92,29 @@ def test_refusals(key: str, code: str) -> None:  # RST-B5, B6, B10, RST-B32
     assert [f.code for f in findings] == [code], findings
     if code == "unknown_setting" and key.startswith("drafft"):
         assert "draft" in findings[0].message
+
+
+@pytest.mark.parametrize(("key", "value"), [("run.worktree.root", "in_repo"), ("run.worktree.root", "sibling"),
+                                            ("run.worktree.root", "path:/var/worktrees"),
+                                            ("run.worktree.base", "default_branch"), ("run.worktree.base", "head"),
+                                            ("run.worktree.base", "ref:release/1"),
+                                            ("run.worktree.cleanup", "on_finish")])
+def test_worktree_extras_are_accepted(key: str, value: str) -> None:  # WTR-AC3 (WTR-B17): no setting_not_in_release
+    res, findings = go(spec(), {key: value})
+    assert findings == [] and res.values[key] == value
+
+
+@pytest.mark.parametrize("value", ["elsewhere", "path:", "path:relative/dir", "in_repo/x"])
+def test_worktree_root_stays_refused_for_other_values(value: str) -> None:  # WTR-AC3 (WTR-B17)
+    _, findings = go(spec(), {"run.worktree.root": value})
+    assert [f.code for f in findings] == ["setting_value"], findings
+
+
+def test_a_workflows_own_worktree_base_is_not_refused() -> None:  # WTR-AC3 (WTR-B17, WTR-B19)
+    sp = spec(worktree=WorktreeDecl(base="default_branch", cleanup="on_finish"))
+    res, findings = go(sp, {})
+    assert findings == []
+    assert res.values["run.worktree.base"] == "default_branch" and res.values["run.worktree.cleanup"] == "on_finish"
 
 
 def test_tighten_only_from_a_file() -> None:  # RST-B6

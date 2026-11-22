@@ -8,6 +8,7 @@ judge executor selection (EXI-B24), tool enforcement (EXI-B12) and deferred judg
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from tempergraph import executor_compat
@@ -31,6 +32,14 @@ class PreflightReport:
 
     def first(self) -> Finding | None:
         return self.refusals[0] if self.refusals else None
+
+
+def observer_warnings(missing: Sequence[str]) -> list[Finding]:
+    """EVT-B23: an observer the operator config names that is not installed is a warning, never a refusal."""
+    return [Finding("observer-missing", None,
+                    f"observer {name!r} is named in the operator config but not installed under the "
+                    "`tempergraph.observers` entry-point group; the run starts without it", "warning")
+            for name in missing]
 
 
 def _aliases(value: object) -> list[str]:

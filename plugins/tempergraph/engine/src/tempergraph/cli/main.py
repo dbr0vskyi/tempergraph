@@ -150,9 +150,18 @@ def _parser() -> _Parser:
     _caller_options(so)
     wt = sub.add_parser("worktree", help="run worktrees")
     wsub = wt.add_subparsers(dest="action", parser_class=_Parser)
-    wsub.add_parser("list")
+    wl = wsub.add_parser("list")
+    wl.add_argument("--all", action="store_true", help="also foreign worktrees and git worktrees no record owns")
+    wl.add_argument("--json", action="store_true")
     wp = wsub.add_parser("path")
     wp.add_argument("thread")
+    wr = wsub.add_parser("prune", help="list removable run worktrees; --apply removes them, clean ones only")
+    wr.add_argument("--thread", metavar="THREAD")
+    wr.add_argument("--finished", action="store_true")
+    wr.add_argument("--older-than", type=float, metavar="DAYS")
+    wr.add_argument("--apply", action="store_true")
+    wr.add_argument("--json", action="store_true")
+    _caller_options(wr)
     observe_cli.add_parsers(sub)
     ca = sub.add_parser("carry", help="a run's state on its own branch: push, pull, status, drop (CAR)")
     ca.add_argument("action", choices=("push", "pull", "status", "drop"))
@@ -849,10 +858,18 @@ def _stop_caller(env: Env, a: argparse.Namespace) -> dict[str, Any]:
 
 
 def cmd_worktree(env: Env, a: argparse.Namespace) -> int:
-    from tempergraph.workspace import list_worktrees, worktree_path
+    from tempergraph.workspace import list_worktrees, prune_apply, prune_plan, worktree_path
 
     if a.action == "list":
-        _emit(env, {"schema_version": 1, "worktrees": list_worktrees(env.cwd)})
+        _emit(env, {"schema_version": 1, "worktrees": list_worktrees(env.cwd, all=bool(a.all))})
+        return 0
+    if a.action == "prune":  # WTR-B27, WTR-B16: without --apply it only lists; with it, clean ones go, no branch
+        rows = prune_plan(env.cwd, thread=a.thread, finished=bool(a.finished), older_than=a.older_than)
+        if not a.apply:
+            _emit(env, {"schema_version": 1, "removable": rows})
+            return 0
+        caller = env.caller(a)  # PRV: the call that changed the repository's worktrees records who made it
+        _emit(env, {"schema_version": 1, "removed": prune_apply(env.cwd, rows), "caller": caller})
         return 0
     if a.action == "path":
         p = worktree_path(env.cwd, a.thread)
@@ -860,7 +877,7 @@ def cmd_worktree(env: Env, a: argparse.Namespace) -> int:
             raise UsageError(f"no run worktree for {a.thread}")
         env.out.write(f"{p}\n")
         return 0
-    raise UsageError("worktree needs list or path")
+    raise UsageError("worktree needs list, path or prune")
 
 
 def cmd_config(env: Env, a: argparse.Namespace) -> int:

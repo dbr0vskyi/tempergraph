@@ -112,6 +112,14 @@ def cluster_key(f: Mapping[str, Any]) -> str:
     return _sha(f.get("side"), f.get("workflow"), f.get("unit"), cause)
 
 
+def saturation(root: Path, workflow: str, finding: Mapping[str, Any], version: str | None) -> int:
+    """SRV-B5, PRP-B12: the corroborated observations the cluster of `finding` holds on one workflow version, the
+    sum of the `review_weight` of its member findings recorded on it."""
+    key = cluster_key(finding)
+    return sum(int(f.get("review_weight") or 0) for f in _findings(root, workflow)
+               if f.get("class") == "fault" and f.get("workflow_version") == version and cluster_key(f) == key)
+
+
 def _session_cost(r: Mapping[str, Any]) -> float:
     u = r.get("usage") or {}
     for k in ("reported_cost_usd", "estimated_cost_usd"):

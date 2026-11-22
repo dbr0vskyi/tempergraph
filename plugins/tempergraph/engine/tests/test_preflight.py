@@ -130,3 +130,13 @@ def test_mcp_judge_views_deferred() -> None:
     assert rep.ok, rep.refusals
     assert [d.capability for d in rep.deferred["review"]] == ["mcp:tracker/get_issue"]
     assert "judge-view-deferred" in [w.code for w in rep.warnings]
+
+
+def test_missing_observers_are_preflight_warnings() -> None:  # EVT-AC5 (EVT-B23): one warning per missing name
+    from tempergraph.executors.preflight import observer_warnings
+
+    got = observer_warnings(["alpha", "beta"])
+    assert [f.severity for f in got] == ["warning", "warning"]
+    assert "alpha" in got[0].message and "beta" in got[1].message
+    assert {f.code for f in got} == {"observer-missing"}
+    assert observer_warnings([]) == []

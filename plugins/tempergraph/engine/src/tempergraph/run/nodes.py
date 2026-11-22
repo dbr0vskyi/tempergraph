@@ -9,9 +9,10 @@ from __future__ import annotations
 import contextlib
 import dataclasses
 import hashlib
+import os
 import threading
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -63,6 +64,7 @@ from tempergraph.run.log import CostTotals, RunLog, cost_so_far, estimate, sessi
 from tempergraph.security.scrub import clip, scrub
 from tempergraph.settings import Capture
 from tempergraph.store.layout import session_dir, session_key
+from tempergraph.workspace import scan_foreign_worktrees
 
 ATTEMPT_CAP = 15
 INFRA_TRIES = 3
@@ -144,6 +146,30 @@ class EngineNodes:
 
     def _in_worktree(self, state: Mapping[str, Any]) -> bool:
         return (state.get("workspace") or {}).get("mode") == "worktree"
+
+    @staticmethod
+    def _workspace_paths(state: Mapping[str, Any]) -> list[str]:
+        ws = state.get("workspace") or {}
+        return [str(p) for p in (ws.get("path"), *(c.get("path") for c in ws.get("children") or [])) if p]
+
+    def _foreign_worktrees(self, unit: str, iid: str | None, key: str, known: Sequence[str],
+                           before: Mapping[str, str]) -> list[str]:
+        """WTR-B26, WTR-B13: a worktree that appeared during a step session and is not in the run's record (a
+        subagent's, P-WTR-2) is recorded as a `workspace` record `foreign` with its path relative to the
+        repository's parent, its branch and the session key. Nothing is removed, merged or read. Returns the
+        relative paths."""
+        main = self.ctx.main_checkout
+        if main is None:
+            return []
+        out: list[str] = []
+        for path, br in scan_foreign_worktrees(main, known).items():
+            if path in before:
+                continue
+            rel = os.path.relpath(path, main.parent)
+            out.append(rel)
+            self.ctx.log.write("workspace", action="foreign", unit=unit, item=iid, mode="worktree", path=rel,
+                               branch=br or None, session_key=key)
+        return out
 
     def _boundary(self, state: Mapping[str, Any]) -> None:
         reason = self.ctx.drain_requested()
@@ -381,6 +407,8 @@ class EngineNodes:
         if climb:
             extra["ladder"] = climb
         before = gitmod.fingerprint(workdir)
+        known = self._workspace_paths(state)
+        worktrees_before = scan_foreign_worktrees(self.ctx.main_checkout, known) if self.ctx.main_checkout else {}
         try:
             res, results = self._session(ex, req, lessons_digest=lessonsmod.digest(lessons_text),
                                          extra=extra or None, hold=self._hold(unit, state))
@@ -392,6 +420,7 @@ class EngineNodes:
                     self.ctx.log.write("self_check", unit=unit, item=iid, attempt=attempt, result=call.get("result"),
                                        findings=call.get("findings"), duration_s=call.get("duration_s"))
         after = gitmod.fingerprint(workdir)
+        foreign = self._foreign_worktrees(unit, iid, key, known, worktrees_before)  # WTR-B26: recorded, never touched
         parsed = parse_output(res.text, st.produces, tuple(u.gate.back_targets))
         after_failed, after_env = None, False
         if res.ok and st.after:
@@ -431,6 +460,8 @@ class EngineNodes:
             priced = estimate(res.usage, laddermod.TIER_FAMILY.get(laddermod.tier(esc_spec.to)))
             usages = [*(prev.get("up_estimates") or [])] if not first else []
             record["up_estimates"] = [*usages, priced][-5:]
+        if foreign:
+            record.update(foreign_worktrees=foreign, warnings=[f"foreign_worktree: {rel}" for rel in foreign])
         if record["slow_host"]:
             record.update(infra_cause="slow_host", infra_spent=False)
         if res.ok and before != after and flow.block_of(spec, unit):  # WSP-B11, WSP-B12: a branch is read-only
@@ -445,13 +476,14 @@ class EngineNodes:
             run["path"] = {"units": path_units + [unit]}
         arts: dict[str, Any] = {**hybrid, **parsed.artifacts}
         vals: dict[str, Any] = dict(parsed.values)
+        seen = {"facts": {unit: {"foreign_worktrees": foreign}}} if foreign else {}  # the check and the judge read it
         if iid:  # an item's keys are kept as `<key>[<item id>]`; the plain key is the item in hand (MAP-B8, MAP-B9, MAP-B10)
             arts.update({mapping.item_key(k, iid): v for k, v in list(arts.items())})
             vals.update({mapping.item_key(k, iid): v for k, v in list(vals.items())})
             return {"attempts": {unit: record}, "artifacts": {unit: arts} if arts else {},
-                    "values": {unit: vals} if vals else {}, "run": run, "maps": maps}
+                    "values": {unit: vals} if vals else {}, "run": run, "maps": maps, **seen}
         return {"attempts": {unit: record}, "artifacts": {unit: arts or None},
-                "values": {unit: vals or None}, "run": run}  # feedback is cleared at the gate
+                "values": {unit: vals or None}, "run": run, **seen}  # feedback is cleared at the gate
 
     def _map_item(self, unit: str, state: Mapping[str, Any], visit: int, workdir: Path, prev: Mapping[str, Any],
                   path_units: list[str]) -> tuple[dict[str, Any] | None, dict[str, Any], dict[str, Any] | None]:
@@ -731,6 +763,8 @@ class EngineNodes:
         att["check"] = checkmod.to_json(cres)
         iid = att.get("item")
         facts: dict[str, Any] = dict(cres.facts or {})
+        if att.get("foreign_worktrees"):  # WTR-B26: the step's fact outlives the check's own facts
+            facts["foreign_worktrees"] = att["foreign_worktrees"]
         if iid:
             facts.update({mapping.item_key(k, str(iid)): v for k, v in list(facts.items())})
         write: dict[str, Any] = {"attempts": {unit: att},
