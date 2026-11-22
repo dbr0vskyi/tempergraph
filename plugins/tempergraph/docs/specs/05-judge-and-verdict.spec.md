@@ -29,7 +29,7 @@ Rendered by an engine-owned brief that names no workflow, then the workflow's st
 |---|---|
 | Workspace facts | Branch, base, changed files, diff stat, computed by the engine |
 | References | The request (whole up to 32,000 chars, else head and tail around a marker with the omitted count) and earlier artifacts |
-| Subject | The artifacts graded, the check's evidence and its findings ([CHK §2.4](75-check-contract-and-command-runs.spec.md)) |
+| Subject | The artifacts graded, the check's evidence and its findings ([CHK §2.4](75-check-contract-and-command-runs.spec.md)). The evidence is labelled as the engine's run of the deterministic check, not the step's claim, to be taken as given and not counted as out of reach: a workflow hands a read-only judge what its tools cannot fetch this way, such as a git log (live check L-25) |
 | Step account | The step's final text, labelled "claims to verify, not facts", ≤ 8,000 chars |
 | Feedback | A person's one-time feedback and every active ruling that applies to the unit, as direction that wins over a reference; each ruling adds one engine blocker, the output follows it ([RRN §2.2](81-reruns-and-feedback.spec.md)) |
 | Criteria | Numbered, with id, text, check method, severity and, for an outcome criterion, its scale: what met, partial and unmet look like and the evidence met needs ([OUT §2.2.1](90-run-outcome.spec.md)); a `mechanical` criterion with the check's finding and a fixed sentence that its evidence is given; a criterion the check found `n_a` with the check's reason. Never a criterion verified by `person` or `none`: those go to the approval payload or the outcome record, and a judge that graded a sign-off answered UNVERIFIABLE for it (live check L-25). A gate whose every criterion is such keeps them |

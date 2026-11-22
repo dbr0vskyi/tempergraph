@@ -25,6 +25,8 @@ ENGINE_BRIEF = (
     "You are an independent reviewer. Grade the work below against each numbered criterion. Read the files "
     "yourself with the read-only tools you have; the step's own account is a claim to verify, not a fact. "
     "You cannot change anything. Report one finding per criterion.")
+CHECK_EVIDENCE = ("Check evidence (the engine ran the workflow's deterministic check after the step; it is not "
+                  "the step's claim. Take what it lists as given, and do not count it as out of reach):")
 MECHANICAL_SENTENCE = "The deterministic check verified this criterion; take its evidence as given."
 OUT_OF_REACH = ("You cannot read {key} with your tools. Report UNVERIFIABLE for criteria that depend on it; "
                 "do not accept the step's word for it.")
@@ -134,7 +136,7 @@ def render_judge(inp: JudgeInputs) -> str:
     if inp.check is not None and (inp.check.evidence or inp.check.findings):
         subj.append(f"Check result: {inp.check.result}")
         if inp.check.evidence:
-            subj.append("Check evidence:\n" + head_tail(inp.check.evidence, 4000))
+            subj.append(CHECK_EVIDENCE + "\n" + head_tail(inp.check.evidence, 4000))
         for f in inp.check.findings:
             subj.append(f"- finding {f.status} {f.criterion or ''} {f.place} {f.message} {f.fix}".rstrip())
     if subj:

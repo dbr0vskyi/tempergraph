@@ -109,3 +109,11 @@ def test_a_judge_never_grades_a_sign_off() -> None:  # OUT §2.2, live check L-2
     assert "c-rev" in prompt and "c-ok" not in prompt and "c-none" not in prompt
     only = GateSpec(criteria=(Criterion(text="a person approves", id="c-ok", verified_by="person"),))
     assert judged(only) is only
+
+
+def test_check_evidence_is_given_not_a_claim() -> None:  # JDG §2.1, live check L-25 (outcome judge gap)
+    from tempergraph.run.judging import CHECK_EVIDENCE
+
+    prompt = render_judge(JudgeInputs(gate=GATE, stance="", brief="", request="r", references={}, subject={},
+                                      check=CheckResult(result="PASS", evidence="Changes since v1.0: - abc fix")))
+    assert CHECK_EVIDENCE in prompt and "not the step's claim" in prompt and "- abc fix" in prompt
