@@ -102,6 +102,7 @@ def test_catalog_records_are_complete() -> None:
 
 
 def test_every_family_has_a_rule_and_params_name_their_source() -> None:
+    # TSA-AC1 (ARC-B14): the C4 family is TSA's rules, so every family C1 to C8 has one
     families = {r.family for r in cat.RULES}
     assert {f"C{i}" for i in range(1, 9)} <= families  # C4 is TSA's tool surface rules (ARC-B14), built in release 3
     assert {r.spec for r in cat.RULES if r.family == "C4"} == {"TSA"}
@@ -342,7 +343,7 @@ def test_owned_finding_appears_once(tmp_path: Path) -> None:
 
 
 def test_definition_only_before_first_run(tmp_path: Path) -> None:
-    """AUD-B1: history is skipped with its reason and its rules are listed as skipped, never passed."""
+    """AUD-AC3 (AUD-B1): history is skipped with its reason and its rules are listed as skipped, never passed."""
     rep = audit(wf({"draft": clean_step()}), {"definition", "host", "history"}, ctx(tmp_path))
     assert rep.layers_run == ["definition", "host"]
     assert {"layer": "history", "reason": "no runs in window"} in rep.layers_skipped
@@ -529,7 +530,7 @@ def test_audit_prompts_reads_changed_from_history(tmp_path: Path, repo: Path) ->
 
 
 @pytest.mark.parametrize(("argv", "code"), [
-    (["audit", "tools", "{root}", "--executor", "no-such-executor"], 2),
+    (["audit", "tools", "{root}", "--executor", "no-such-executor"], 2),  # TSA-AC6: `audit tools` runs; a bad executor exits 2
     (["audit", "no-such-workflow"], 2), (["audit", "{root}", "--target", "nowhere"], 2),
 ])
 def test_refusals(tmp_path: Path, argv: list[str], code: int) -> None:
