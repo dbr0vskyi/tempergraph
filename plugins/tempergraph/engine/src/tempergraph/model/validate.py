@@ -123,11 +123,6 @@ class _Validator:
                          f"unit kind {u.kind!r} is built in release {LATER_KINDS[u.kind]}, not release {RELEASE}")
             if u.step is not None and u.step.self_check and u.gate.check is None:
                 self.err("self-check-without-check", name, "`self_check` needs a gate check to preview (CHK-B15, CHK-B14, CHK-B10, CHK-B17)")
-            for sc in (u.step.before + u.step.after) if u.step else ():
-                if sc.cache != "off":
-                    self.err("not_in_release", name, f"the script cache is built in release 3, not release {RELEASE}")
-            if u.script is not None and u.script.cache != "off":
-                self.err("not_in_release", name, f"the script cache is built in release 3, not release {RELEASE}")
             later = sorted(k for k in u.extra if k not in RESOLVED_EXTRA)
             if later:
                 self.err("not_in_release", name, f"fields {later} are not built in release {RELEASE}")

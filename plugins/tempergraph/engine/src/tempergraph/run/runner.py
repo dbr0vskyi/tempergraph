@@ -113,6 +113,7 @@ class RunSettings:
     apply_deadline: bool = False  # `resume --apply-deadline` (FLX-B8)
     pause_before: tuple[str, ...] = ()  # `--pause-before <unit>`: operator breakpoints of this segment (FLX-B10)
     unit: str | None = None  # `resume --unit`: which of several pending gates the decision answers (HUM-B3)
+    audit_seed: int | None = None  # a test hook: mixed into the audit judge's draw so a test's sampling is stable (JDG-B7)
 
     def all_flags(self) -> dict[str, Any]:
         """The named run options are spellings of `--set` (ROP-B1 to ROP-B13)."""
@@ -303,7 +304,9 @@ def _context(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, s
                      infra_tries=max(1, int(rv["infra_tries"])), backoff_max_s=int(rv["infra_backoff_max_s"]),
                      settings=rst.workflow_settings(settled.resolved), origin=settings.origin, judge_state=settings.judge_state,
                      escalation_record=settings.escalation_record,
-                     stage=_stage(spec, settings)[0], self_check_limit=int(rv.get("self_check_limit") or 3))
+                     stage=_stage(spec, settings)[0], self_check_limit=int(rv.get("self_check_limit") or 3),
+                     audit_rate=float(rv.get("audit_rate") or 0.0), audit_executor=rv.get("audit_executor") or None,
+                     audit_seed=settings.audit_seed)
     if settings.sleep is not None:
         ctx.sleep = settings.sleep
     return ctx

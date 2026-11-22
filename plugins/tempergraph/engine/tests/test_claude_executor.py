@@ -86,6 +86,24 @@ def test_judge_launch_is_read_only(tmp_path: Path) -> None:
     assert "--bare" in judge_argv(ViewSet(), None, isolated=True)
 
 
+def test_ecc_ac7_judge_launch_with_mcp_views_is_strict_and_private(tmp_path: Path) -> None:
+    # ECC-AC7 (ECC-B3, ECC-B10): `--tools` holds the built-in views only; the MCP views come from a private strict config
+    views = ViewSet(tools=("Read", "Grep", "Glob", "mcp__tracker__get_issue"))
+    cfg = tmp_path / "mcp.json"
+    argv = judge_argv(views, "opus", isolated=False, mcp_config=cfg)
+    assert flag(argv, "--tools") == "Read,Grep,Glob"
+    assert "--strict-mcp-config" in argv and flag(argv, "--mcp-config") == str(cfg)
+    assert flag(argv, "--permission-mode") == "dontAsk"
+    assert "--disallowedTools" not in argv and all("mcp__*" not in a for a in argv)
+    assert flag(argv, "--allowedTools") == "Read,Grep,Glob,mcp__tracker__get_issue"  # the view rules
+    for bad in ("Write", "Edit", "Bash", "--fallback-model", "--resume", "--continue", "acceptEdits"):
+        assert all(bad not in a for a in argv)  # ECC-AC4
+    # no private config path (no proxiable server): the launch is the read-only one of today
+    plain = judge_argv(views, "opus", isolated=False)
+    assert flag(plain, "--tools") == "Read,Grep,Glob" and flag(plain, "--disallowedTools") == "mcp__*"
+    assert "--mcp-config" not in plain
+
+
 def test_ecc_ac6_tools_sent_on_every_step_launch(tmp_path: Path) -> None:
     # ECC-AC6 (ECC-B8, ECC-B14): `--tools` follows the declared tools whether or not enforcement is set
     shell = req(tmp_path, tools=("read", "shell"), commands=("pytest",), enforce_tools=False)
@@ -288,6 +306,27 @@ def test_run_judge_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     assert res.ok and res.session_id == "j-1"
     assert seen["env"]["JUDGE_ONLY_TOKEN"] == "abc"
     assert "dontAsk" in seen["argv"] and "opus" in seen["argv"]
+
+
+def test_ecc_ac7_run_judge_with_mcp_views_through_the_stand_in(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "userhome"
+    home.mkdir()
+    (home / ".claude.json").write_text(json.dumps({"mcpServers": {"tracker": {"command": "tracker-mcp"}}}))
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+    rec = tmp_path / "rec.json"
+    S.fake_claude(tmp_path, monkeypatch, {"record": str(rec), "lines": [S.init(session_id="j-1"),
+                                                                        S.result("{}", session_id="j-1")]})
+    state = tmp_path / "state"
+    (state / "scratch").mkdir(parents=True)
+    ex = ClaudeExecutor(bindings=BindingTable())
+    res = ex.run_judge(req(tmp_path, kind="judge", alias="large", session_dir=state / "runs" / "w" / "t" / "sessions" / "k"),
+                       ViewSet(tools=("Read", "Grep", "Glob", "mcp__tracker__get_issue")), EventSink())
+    argv = json.loads(rec.read_text())["argv"]
+    assert res.ok
+    assert flag(argv, "--tools") == "Read,Grep,Glob" and "--strict-mcp-config" in argv
+    assert flag(argv, "--permission-mode") == "dontAsk" and "--mcp-config" in argv
+    assert "--disallowedTools" not in argv
 
 
 HOST_SESSION = {

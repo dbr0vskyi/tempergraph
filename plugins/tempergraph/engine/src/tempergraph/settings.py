@@ -51,8 +51,6 @@ REF_PART = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$")
 
 # Keys of the catalog whose feature is not in this release (ADR-0090, ADR-0125): refused rather than silently ignored.
 NOT_IN_RELEASE = {
-    "audit_rate": "the audit judge (JDG-B7) is release 3",
-    "audit_executor": "the audit judge (JDG-B7) is release 3",
     "attempt_cost_cap_usd": "council and contest units are release 3",
     "concurrency": "contest units are release 3",
 }
@@ -237,8 +235,9 @@ def _caps(v: Any, *, read_only: bool) -> tuple[str, ...]:
         if not (c in CAPABILITIES or MCP_CAP.match(c) or SKILL_CAP.match(c)):
             raise SettingError("unknown-capability", f"{c!r} is not a tool capability (CON-B11)")
         if read_only and c.startswith("mcp:"):
-            raise SettingError("judge-view-unclassified", f"{c!r}: release 1 has no read-only MCP catalog; a judge "
-                                                          "sees an MCP tool only as the derived view of its step's")
+            raise SettingError("judge-view-unclassified", f"{c!r}: a judge sees an MCP tool only through the "
+                                                          "engine's view catalog, as the read view of its step's tool; "
+                                                          "a grant cannot add one")
         if read_only and c not in READ_ONLY:
             raise SettingError("judge-view-not-read-only", f"{c!r}: a judge takes read-only views only")
     return tuple(out)

@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from tempergraph.contracts import Capabilities, Deferred, StepSpec, ToolCall, ViewSet
+from tempergraph.executors import viewcatalog
 from tempergraph.executors.capabilities import tool_names
 from tempergraph.git import Fingerprint
 
@@ -24,15 +25,20 @@ class GuardResult:
 
 def view_set(step: StepSpec, step_calls: Sequence[ToolCall], judge_caps: Capabilities,
              judge_tools: Sequence[str] | None = None, granted: Sequence[str] = ()) -> ViewSet:
-    """GRD-B1: the base read views, plus a read view per MCP write; an author may narrow, never widen."""
+    """GRD-B1: the base read views, plus a read view per MCP write; an author may narrow, never widen. An MCP
+    view comes from the catalog, never from the step's own tool (GRD-B7, GRD-AC6): a tool the catalog does not
+    list gives no view and is recorded as deferred."""
     caps = list(BASE_VIEWS)
     deferred: list[Deferred] = []
     for t in step.tools:
         if t.startswith("mcp:"):
-            if judge_caps.judge_mcp:
-                caps.append(t)
-            else:
+            if not judge_caps.judge_mcp:
                 deferred.append(Deferred(capability=t, reason="judge_mcp"))
+                continue
+            found = viewcatalog.read_views(t)
+            if not found:
+                deferred.append(Deferred(capability=t, reason="view_unlisted"))
+            caps += [v for v in found if v not in caps]
     if judge_tools is not None:
         caps = [c for c in caps if c in judge_tools]
         caps = caps or list(BASE_VIEWS)
