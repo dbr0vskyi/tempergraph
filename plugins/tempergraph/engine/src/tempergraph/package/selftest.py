@@ -76,9 +76,10 @@ def _produces(spec: WorkflowSpec, unit: str) -> dict[str, Any]:
 
 
 def _artifacts(spec: WorkflowSpec, unit: str, files: list[Path], base: Path) -> dict[str, dict[str, str]]:
-    """Each file whose stem is an artifact key, as the artifact of the unit producing it; the unit's own keys
-    take the fixture's files when no stem matches (a one-file fixture)."""
-    owner = {k: n for n in spec.order for k in _produces(spec, n)}
+    """Each file whose stem is an artifact key, as the artifact of the unit producing it, the unit under test
+    first when two units produce the same key; the unit's own keys take the fixture's files when no stem matches
+    (a one-file fixture)."""
+    owner = {k: n for n in spec.order for k in _produces(spec, n)} | {k: unit for k in _produces(spec, unit)}
     out: dict[str, dict[str, str]] = {}
     for f in files:
         if f.stem in owner:
@@ -185,7 +186,8 @@ def standin_script(ctx: Any) -> dict[str, str]:  # pragma: no cover - replaced p
 def standin_run(root: Path, tmp: Path) -> list[str]:
     """A scripted executor stands in for each step and judge and for the outcome judge, and a stand-in for each
     script unit; the run reaches the finalizer (SCF-B14, SCF-B15, SCF-B16, SCF-B17). Step and script stand-ins write the unit's must-pass
-    fixtures as its files and give a value its first choice; an approval is answered `proceed`."""
+    fixtures as its files and give a value its first choice; an approval is answered `proceed`. Each session is
+    answered by the unit that asks, at most once, so a unit the routes skip on the stand-in path asks nothing."""
     import dataclasses
 
     from tempergraph import git
@@ -231,18 +233,32 @@ def standin_run(root: Path, tmp: Path) -> list[str]:
         return answer("Stand-in.\n```json\n" + json.dumps({"criteria": rows, "gap": False, "confidence": 0.9})
                       + "\n```", tools=("Read",), session_id=sid)
 
-    steps, judges = [], []
+    step_by: dict[str, Any] = {}
+    judge_by: dict[str, Any] = {}
     for name in spec.order:
         u = spec.units[name]
         if u.kind == "step":
-            steps.append(step_reply(name))
+            step_by[name] = step_reply(name)
         if u.gate.judge is not None:
-            judges.append(verdict(len(u.gate.criteria), f"j-{name}"))  # the judge rows every criterion
+            judge_by[name] = verdict(len(u.gate.criteria), f"j-{name}")  # the judge rows every criterion
     if spec.outcome is not None and any(c.verified_by == "judge" for c in spec.outcome.final):
         # the outcome judge rows every graded criterion, the checked ones too (OUT-B15, OUT-B16, OUT-B17)
-        judges.append(verdict(sum(1 for c in spec.outcome.final if c.verified_by in ("judge", "check")),
-                              "j-outcome"))
-    r = scripted_registry("claude", steps, judges)
+        judge_by["outcome"] = verdict(sum(1 for c in spec.outcome.final if c.verified_by in ("judge", "check")),
+                                      "j-outcome")
+
+    def by_unit(table: dict[str, Any], what: str) -> Callable[[Any], Any]:
+        """A reply for the unit named by the session key (`<unit>.<attempt>.<kind>`), each one used once: a
+        second session of a unit, or one of a unit with no reply, ends the run as a dry queue would."""
+        def reply(req: Any) -> Any:
+            unit = str(req.session_key).split(".", 1)[0]
+            got = table.pop(unit, None)
+            if got is None:
+                raise AssertionError(f"no scripted {what} reply left for {req.session_key}")
+            return got(req) if callable(got) else got
+        return reply
+
+    r = scripted_registry("claude", [by_unit(step_by, "step")] * len(step_by),
+                          [by_unit(judge_by, "judge")] * len(judge_by))
     quiet = RunSettings(sleep=lambda s: None)
     try:
         got = start(spec, "STANDIN-1", {"request": "stand-in"}, repo, r, quiet)

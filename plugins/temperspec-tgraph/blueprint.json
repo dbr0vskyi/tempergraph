@@ -66,6 +66,33 @@
       }
     },
     {
+      "name": "discovery_short",
+      "kind": "step",
+      "summary": "Confirm the cited behaviours; write the hand-off",
+      "produces": [
+        "handoff",
+        "settled"
+      ],
+      "reads": [
+        "triage_note"
+      ],
+      "gate": {
+        "check": true,
+        "judge": true
+      },
+      "on_budget_spent": "stop",
+      "sizing": {
+        "model": "medium",
+        "effort": "high",
+        "why": "It confirms that each behaviour triage cited answers its gap and lists the files the plan will need; it designs nothing, and the check verifies the cited ids"
+      },
+      "judge_sizing": {
+        "model": "medium",
+        "effort": "high",
+        "why": "A gap wrongly taken as answered costs a whole code session, so the verdict keeps the effort of the full visit's judge"
+      }
+    },
+    {
       "name": "discovery",
       "kind": "step",
       "summary": "Close each gap with a spec, record or research note",
@@ -191,9 +218,16 @@
     },
     "triage": {
       "route": [
+        "discovery_short",
         "discovery",
         "plan",
         "code"
+      ]
+    },
+    "discovery_short": {
+      "route": [
+        "discovery",
+        "plan"
       ]
     },
     "discovery": {

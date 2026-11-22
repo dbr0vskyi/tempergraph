@@ -12,21 +12,22 @@ Start: `tempergraph run temperspec <request>`. The request is the task with its 
 |---|---|---|
 | prepare | Nothing by a model: installs the rule files when missing, adds the temperspec note to `CLAUDE.md` (or `AGENTS.md`), and looks for an overview spec | No overview spec goes to setup; otherwise triage |
 | setup | Only in a repository without an overview spec: the overview spec, one spec per component, and the setup note listing what it covered and left out | |
-| triage | The triage note: the task's acceptance criteria, the documents that exist, the gaps | A small fix that changes no spec goes straight to code (the quick lane); no gap goes to plan; any gap goes to discovery |
+| triage | The triage note: the task's acceptance criteria, the documents that exist, the gaps | A small fix that changes no spec goes straight to code (the quick lane); no gap goes to plan; a task whose every gap a spec already answers takes the short discovery visit; any other gap goes to discovery |
+| discovery_short | Only the hand-off: for each gap, the cited behaviour and how it answers the gap, or `Not covered`; a reading list of at most 10 files | Every gap answered goes to plan; a gap not covered goes on to the full discovery |
 | discovery | Specs, decision records, research notes and the hand-off, one per gap | A docs-only run ends here; every other run goes to plan |
 | plan | The plan: requirements, phases, verification, and its complexity | A complex plan goes to expand; a simple one already has its task rows |
 | expand | The task rows of a complex plan | |
 | code | Tests first, then code, and the code report, in one session | |
 | last stage | Pushes the branch and opens a draft pull request, or reuses the open one, with a description of what to read | |
 
-Each step is followed by a gate: a model-free check first, then a read-only judge. The engine commits after every step. A gate that finds the defect in an earlier step's output sends the run back there by itself. No step or judge uses the large model tier; discovery thinks at the highest effort.
+Each step is followed by a gate: a model-free check first, then a read-only judge. The engine commits after every step. A gate that finds the defect in an earlier step's output sends the run back there by itself. No step or judge uses the large model tier; discovery thinks at the highest effort, its short visit at `high`. A judge grades only what it can read in the step's output and references: criteria about how a step works (narrow reading, the reading list, commands run once, a reused gate result) are checked by the gate's model-free check, from the package's prompts and the gate's own command runs.
 
 ### Three lanes
 
 | Lane | Path | For |
 |---|---|---|
 | quick | triage → code | A fix or small change that leaves every spec as it is: no gap, at most 3 acceptance criteria, at most 2 code files beside their tests |
-| standard | triage → (discovery) → plan → code | A change of ordinary size |
+| standard | triage → (discovery or its short visit) → plan → code | A change of ordinary size |
 | full | triage → discovery → plan → expand → code | A complex plan |
 
 Triage proposes the quick lane and writes a short Change section that stands in for the plan. The code gate stays whole, and it measures the change afterwards: a spec or decision record edited, a file the note does not name, more than 2 code files or more than 200 changed lines sends the run back to triage, which then plans the task. A run never moves to a lighter lane.
@@ -51,7 +52,7 @@ The `setup` skill installs or updates the rule files by hand, for the repository
 
 ## Limits of this version
 
-- Verification commands come from one fixed list: `pytest`, `python3 -m pytest`, `ruff check`, `ruff format --check`, `mypy` and read-only `git`. Another toolchain is added to `VERIFY` in `workflow/temperspec/__init__.py`.
+- Verification commands come from one fixed list: `pytest`, `python -m pytest`, `python3 -m pytest`, `ruff check`, `ruff format --check`, `mypy` and read-only `git`. A command may be written `cd <folder> && <command>`, as a repository's `CLAUDE.md` often writes it, and runs in that folder. Another toolchain is added to `VERIFY` in `workflow/temperspec/__init__.py`.
 - No release step and no start from a work tracker.
 - The quick lane's limits are first values with no run behind them. A test carries its criterion as text; the check does not prove that the named test is the one the command ran.
 - The last stage needs a remote named `origin` and the `gh` command; without them the run still ends, with the branch and the steps to take by hand.
@@ -60,7 +61,7 @@ The `setup` skill installs or updates the rule files by hand, for the repository
 
 `tempergraph author verify plugins/temperspec-tgraph` passes its model-free rungs (1 to 7 and 10). Two rungs need a signed-in `claude` and have not run:
 
-- Rung 8, `--judge-seeds`: grades the 32 seed cases under `evals/calibration/` with the real judges. Until it passes, every judged criterion is at uncalibrated trust.
+- Rung 8, `--judge-seeds`: grades the 34 seed cases under `evals/calibration/` with the real judges. Until it passes, every judged criterion is at uncalibrated trust.
 - Rung 9, `--trial`: one capped trial run of a case from `evals/cases.json`.
 
 No real run has been made yet. The commands and pass criteria are in [docs/plans/live-checks.plan.md](docs/plans/live-checks.plan.md).
