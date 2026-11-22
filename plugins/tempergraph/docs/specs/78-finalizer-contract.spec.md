@@ -1,104 +1,74 @@
----
-title: Finalizer contract
-type: component
-status: ready-for-implementation
-prefix: FIN
-adrs: [0015, 0075]
----
-
 # Finalizer contract
 
-## 1. Overview
+## Purpose
 
-A workflow's **finalizer** runs once after the last pass (and after an approval pause, when one is set) and calls no model (contract C1). For temperspec it is the final stage that pushes the branch and opens a draft pull request, the only thing a person reviews ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T51 to T53). [CON §2.1](01-contracts.spec.md) declares the field; this spec defines what the finalizer receives, what it may do, what it returns, and the rule that it can never fail a run that has passed every gate.
+A workflow's finalizer runs once after the last pass (and after an approval pause, when one is set) and calls no model (contract C1). It is a workflow's final stage, such as pushing the branch and opening a draft pull request, often the only thing a person reviews ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T51 to T53). [CON-B4](01-contracts.spec.md) declares the field `WorkflowSpec.finalizer`, a callable `(ctx: FinalizerContext) -> FinalizerResult`; this spec defines what the finalizer receives, what it may do, what it returns, and the rule that it can never fail a run that has passed every gate, since the run's exit code is a contract for callers ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)). It reuses the check's command machinery ([ADR-0075](../adr/0075-checks-get-a-context-and-an-engine-command-runner.adr.md)), so there is one guarded launch site for workflow commands. What to publish, where and how to word it are the workflow's choices. Workflow authors and callers reading exit codes depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-## 2. Contract
+## Behaviours
 
-```python
-def finalizer(ctx: FinalizerContext) -> FinalizerResult: ...   # WorkflowSpec.finalizer
-```
+### FIN-B6 What it receives
 
-### 2.1 What it receives
+WHEN the finalizer is called THE engine SHALL give it `task_id`, `thread_id`, `workflow`, `branch`, `base` and `workdir` as in the run ([VAL-B8](76-step-values-and-template-keys.spec.md); `base` the workspace record's `base_branch` and `workdir` the run worktree in worktree mode, [WTR](82-worktree-mode.spec.md)); `artifacts`, `values` and `facts`, every pointer, value and check fact in final state by unit and item; `open_warnings`, the count, never the text, of warnings left unmet by every unit's final judgement; `degraded`, true when a gate's fallback was taken ([FLX-B9](74-flow-extensions.spec.md)); `run_options`, the options recorded at start it may read (`dry_run`, the resolved workspace `mode` and the workflow's resolved settings); `git` (`GitFacts`, [CHK](75-check-contract-and-command-runs.spec.md)); `resolve(text)` and `run(cmd, timeout_s)` as for checks, through the finalizer's own allow-list entries; and `scrub(text)` and `clip(text, n)`, the engine's scrubber ([SEC-B8](14-security.spec.md)) and a clip that never splits a character; and never the request text, a person's feedback, a step's final text, judge text or the evidence file, so the publish boundary holds by construction.
 
-| Field or method | Meaning |
-|---|---|
-| `task_id`, `thread_id`, `workflow`, `branch`, `base`, `workdir` | As in the run ([VAL §2.3](76-step-values-and-template-keys.spec.md)); `base` is the workspace record's `base_branch` and `workdir` the run worktree in worktree mode ([WTR §2.5, §2.6](82-worktree-mode.spec.md)) |
-| `artifacts`, `values`, `facts` | Every artifact pointer, value and check fact in final state, by unit and item |
-| `open_warnings` | The number of warnings left unmet by the final judgement of every unit; a count, never their text |
-| `degraded` | True when a gate's `fallback` was taken ([FLX §2.4](74-flow-extensions.spec.md)) |
-| `run_options` | The options recorded at start that a finalizer may read: `dry_run`, the resolved workspace `mode`, and the workflow's resolved settings |
-| `git` | `GitFacts` ([CHK §2.1](75-check-contract-and-command-runs.spec.md)) |
-| `resolve(text)`, `run(cmd, timeout_s)` | As for checks ([CHK §2.2, §2.3](75-check-contract-and-command-runs.spec.md)), through the finalizer's own allow-list entries |
-| `scrub(text)`, `clip(text, n)` | The engine's scrubber ([SEC §2.3](14-security.spec.md)) and a clip that never splits a character |
+- GIVEN a finalizer context WHEN its fields are listed THEN none holds request, feedback, step or judge text
 
-It never receives the request text, a person's feedback, a step's final text, judge text or the evidence file; the publish boundary of [SEC §2.3](14-security.spec.md) holds by construction.
+### FIN-B5 Nothing private reaches it
 
-### 2.2 How its commands run
+WHEN the finalizer builds its text from its context THE engine SHALL keep out of every argv, standard input and record of the finalizer run a canary planted in the request, the feedback, a step's final text or a judge's evidence ([SEC-B2](14-security.spec.md)).
 
-| Rule | Detail |
-|---|---|
-| Programs | Found by path lookup; a program found only in the current directory is refused |
-| Prompts | Terminal credential prompts are disabled in the environment (`GIT_TERMINAL_PROMPT=0`, `GH_PROMPT_DISABLED=1` and the equivalent of each declared program), so a missing credential fails at once |
-| Text arguments | A title or other text passes as one argv element after `scrub`; a body goes on standard input |
-| Limit | `timeout_s` per command, default 120 s; the whole finalizer at most 600 s |
+- GIVEN a canary in the request, the feedback, a step's final text and a judge's evidence WHEN the finalizer runs THEN the canary appears nowhere it wrote
 
-### 2.3 What it returns
+### FIN-B7 How its commands run
 
-| Field | Kind | Meaning |
-|---|---|---|
-| `outcome` | slug from the workflow's declared `finalizer_outcomes` | For temperspec: `opened`, `reused`, `pushed`, `skipped` |
-| `reason` | one line, ≤ 200 chars, scrubbed | Why, for anything but the expected outcome |
-| `url` | URL, optional | The published item, such as the pull request |
-| `manual_steps` | list of ≤ 5 command lines | What a person runs by hand when it could not publish |
+WHEN the finalizer runs a command THE engine SHALL find the program by path lookup, refusing one found only in the current directory; disable terminal credential prompts (`GIT_TERMINAL_PROMPT=0`, `GH_PROMPT_DISABLED=1` and the equivalent of each declared program) so a missing credential fails at once; pass a title or other text as one argv element after `scrub` and a body on standard input; limit each command to `timeout_s` (default 120 s) and the whole finalizer to 600 s; and answer a command outside the finalizer's allow-list entries with `CommandRefusal`, the finalizer deciding its outcome.
 
-| Situation | Exit code of the run | Recorded |
-|---|---|---|
-| Returns any declared outcome | Unchanged by the finalizer (0 for a finished run) | `finalize` event: outcome, reason, url, duration, step count |
-| Returns an undeclared outcome | Unchanged | Outcome `invalid`, the value clipped into `reason` |
-| Raises, or passes its limit | Unchanged | Outcome `error`, the exception type or `timed_out` |
+- GIVEN a remote that asks for a credential WHEN the finalizer pushes THEN no prompt is inherited and the push fails at once
 
-When `manual_steps` is not empty, or the outcome is `error`, one line goes to standard error and the status document shows the steps.
+### FIN-B8 What it returns
 
-### 2.4 Once, and on resume
+WHEN the finalizer returns THE engine SHALL take `outcome` (a slug from the workflow's declared `finalizer_outcomes`, such as `opened`, `reused`, `pushed` or `skipped`), `reason` (one scrubbed line of at most 200 characters, why for anything but the expected outcome), an optional `url` (the published item) and `manual_steps` (at most 5 command lines a person runs by hand when it could not publish); record a `finalize` event with outcome, reason, url, duration and step count; record outcome `invalid` with the value clipped into `reason` for an undeclared outcome, and outcome `error` with the exception type or `timed_out` when it raises or passes its limit; leave the run's exit code unchanged in every case, 0 for a finished run; and when `manual_steps` is not empty or the outcome is `error`, write one line to standard error and show the steps in the status document.
 
-The engine writes `finalized` to state when the finalizer returns. A resume of a run that reached the finalizer but has no `finalized` mark runs it again, so a finalizer must be safe to repeat (temperspec reuses an open pull request for the branch). A finished run is never finalized twice.
+- GIVEN an undeclared outcome WHEN returned THEN the event records `invalid` and the run exits 0
 
-## 3. Behaviours
+### FIN-B1 Published
 
-**FIN-B1 Published.** Given a run that passed every gate, when the finalizer pushes and opens a draft, then the run exits 0, the `finalize` event holds `outcome: opened` and the URL, and the self-improvement loop's pull-request label reads that URL later ([FBK](41-feedback-and-judge-reliability.spec.md) `pr_state`).
+WHEN a run that passed every gate is finalized and the finalizer publishes THE engine SHALL exit 0 with the `finalize` event holding the outcome and the URL.
 
-**FIN-B2 Cannot publish.** Given no remote, when the finalizer returns `skipped` with reason `no origin` and two manual steps, then the run still exits 0, one line goes to standard error, and the status document lists both steps.
+- GIVEN a finalizer that pushes and opens a draft WHEN it returns `opened` THEN the run exits 0, the event holds `opened` and the URL, and the self-improvement loop's pull-request label reads that URL later ([FBK](41-feedback-and-judge-reliability.spec.md) `pr_state`)
 
-**FIN-B3 Raising is not failing.** Given a finalizer that raises, when it runs, then the run exits 0, the event records `outcome: error` and the exception type, and the committed branch is untouched by the engine.
+### FIN-B2 Cannot publish
 
-**FIN-B4 Dry run.** Given a run started with a dry-run setting and resumed without it, when the finalizer runs, then `run_options.dry_run` is true, because options are read as recorded at start.
+WHEN the finalizer returns `skipped` with manual steps THE engine SHALL exit 0, write one line to standard error and list the steps in the status document.
 
-**FIN-B5 Nothing private reaches it.** Given a canary planted in the request, the feedback, a step's final text and a judge's evidence, when the finalizer builds its text from its context, then the canary cannot appear, because none of those is in the context ([SEC-B2](14-security.spec.md)).
+- GIVEN no remote and `skipped` with reason `no origin` and two manual steps WHEN returned THEN the run exits 0 and the status document lists both steps
 
-## 4. Error conditions
+### FIN-B3 Raising is not failing
 
-| Condition | Result |
-|---|---|
-| A finalizer that imports an executor or the engine's model clients | Validation error (source-scan of the package, contract C1) |
-| `finalizer_outcomes` empty while a finalizer is declared | Validation error |
-| A command outside the finalizer's allow-list entries | `CommandRefusal`; the finalizer decides its outcome |
+WHEN the finalizer raises THE engine SHALL exit 0, record `outcome: error` and the exception type, and leave the committed branch untouched.
 
-## 5. Design notes
+- GIVEN a finalizer that raises WHEN it runs THEN the run exits 0 and the event records `error` and the exception type
 
-- The run's exit code is a contract for callers ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)): a run that passed every gate has finished, whatever publishing does after. The work exists on a committed branch, and the manual steps say how to finish by hand.
-- The finalizer reuses the check's command machinery ([ADR-0075](../adr/0075-checks-get-a-context-and-an-engine-command-runner.adr.md)) so there is one guarded launch site for workflow commands.
-- What to publish, where, as a draft or not, and how to word it are the workflow's choices; the engine supplies context without private text, a scrubber, a guarded runner and a record.
+### FIN-B9 Once, and on resume
 
-## 6. Acceptance criteria
+WHEN the finalizer returns THE engine SHALL write `finalized` to state, run the finalizer again on a resume of a run that reached it with no `finalized` mark, so a finalizer must be safe to repeat (for example by reusing an open pull request for the branch), and never finalize a finished run twice.
 
-- [ ] FIN-AC-1 Every row of the §2.3 situation table holds in an offline test with a local bare remote.
-- [ ] FIN-AC-2 FIN-B5's canary appears in no argv, standard input or record of a finalizer run.
-- [ ] FIN-AC-3 A run killed during its finalizer and resumed runs the finalizer once more and then never again.
-- [ ] FIN-AC-4 No finalizer run inherits an interactive credential prompt (test with a remote that asks for one).
+- GIVEN a run killed during its finalizer WHEN resumed THEN the finalizer runs once more and then never again
 
-## Open questions
+### FIN-B4 Dry run
 
-None.
+WHEN a run started with a dry-run setting is resumed without it THE finalizer SHALL read `run_options.dry_run` as true, since options are read as recorded at start.
 
-## References
+- GIVEN a dry-run start and a plain resume WHEN the finalizer runs THEN `run_options.dry_run` is true
 
+### FIN-B10 What is refused
+
+WHEN a workflow with a finalizer is validated THE engine SHALL refuse a finalizer that imports an executor or the engine's model clients (a source scan of the package, contract C1) and an empty `finalizer_outcomes` while a finalizer is declared.
+
+- GIVEN a declared finalizer and no `finalizer_outcomes` WHEN validated THEN it is refused
+
+## Acceptance criteria
+
+- FIN-AC1 (FIN-B8, FIN-B1, FIN-B2, FIN-B3): Every case of FIN-B8 holds in an offline test with a local bare remote
+- FIN-AC2 (FIN-B5, FIN-B6): FIN-B5's canary appears in no argv, standard input or record of a finalizer run
+- FIN-AC3 (FIN-B9, FIN-B4): A run killed during its finalizer and resumed runs the finalizer once more and then never again
+- FIN-AC4 (FIN-B7, FIN-B10): No finalizer run inherits an interactive credential prompt (test with a remote that asks for one), and each refusal of FIN-B10 has a fixture
