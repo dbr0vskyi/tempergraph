@@ -38,7 +38,7 @@
    | Value | Behaviour | For |
    |---|---|---|
    | `never` | Take every default; list them in the pull request as assumptions to confirm | A pipeline, a night run |
-   | `blocking` (proposed default) | Ask only when a decision has no safe default | Daily use |
+   | `blocking` (the default, owner 2026-11-22) | Ask only when a decision has no safe default | Daily use |
    | `always` | Ask every owner decision | A new repository, a risky area |
 
    A time limit turns an unanswered pause into "take the defaults".
