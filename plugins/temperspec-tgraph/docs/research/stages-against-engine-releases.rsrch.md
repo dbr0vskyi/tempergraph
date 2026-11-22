@@ -24,7 +24,7 @@
 | A deliverable is required only on a path that produces it; a judge reference to an off-path artifact is optional ([OUT, as built R2-T7](../../../tempergraph/docs/specs/90-run-outcome.spec.md)) | Only `triage_note` is a deliverable; the plan, the code report and the discovery hand-off are not, so the outcome judge never sees them as deliverables (overview, open question 2) | List `handoff`, `plan` and `code_report` as deliverables; the outcome gate checks each on the paths that produce it |
 | A repository declares commands in `tempergraph.commands.json`; a step or check that lists `@repository` gets them ([CHK, as built R2-T7](../../../tempergraph/docs/specs/75-check-contract-and-command-runs.spec.md)) | One fixed list: pytest, ruff, mypy, read-only git (overview, open question 6) | Backlog B10. `prepare` writes the file when it is missing and the repository is Python, so today's behaviour is the default |
 | `GitFacts.pushed` is true when the head is on a remote-tracking ref (same note) | "No commit on a remote" is not checked (open question 7) | The outcome check can say whether the branch was pushed. Steps still cannot push; the last stage does |
-| A complexity switch: model-free measures, a rules file, the most detailed arm as the safe default, one-way re-arm, an override at start, a report by arm ([CXR](../../../tempergraph/docs/specs/94-complexity-routing.spec.md)) | `routing.py` routes on the plan's `complexity` value, which the plan check confirms on measurable signs | The plan's route becomes a complexity switch in CXR's "after planning" shape, measured on the plan check's facts. Same rule, but the choice is reported per arm and the owner's override at start comes from the engine. Not in the backlog yet |
+| A complexity switch: model-free measures, a rules file, the most detailed arm as the safe default, one-way re-arm, an override at start, a report by arm ([CXR](../../../tempergraph/docs/specs/94-complexity-routing.spec.md)) | `routing.py` routes on the plan's `complexity` value, which the plan check confirms on measurable signs | The plan's route becomes a complexity switch in CXR's "after planning" shape, measured on the plan check's facts. Same rule, but the choice is reported per arm and the owner's override at start comes from the engine. Backlog B17 |
 
 The blueprint now takes `map`, `parallel`, `ask` and `wait` (engine R-140 F1, in review), so each change can go through `author verify` as before.
 
@@ -64,21 +64,16 @@ Two notes. ECC §2.8 matters to temperspec more than to most workflows, because 
 
 ### F5 What every stage waits on `confirmed`
 
-- **Live evidence.** TS-L1 (judge seeds) and the trial pass on the fixes in the open pull request 36. The real run of TS-L2 passed in part: it had no remote, so the push and the draft pull request never ran. Sizing (decision record 0002), the quick lane's limits (T1) and any ladder need measured runs.
+- **Live evidence.** TS-L1 (judge seeds) and the trial passed live on 2026-11-22. The real run of TS-L2 passed in part: it had no remote, so the push and the draft pull request never ran. Sizing (decision record 0002), the quick lane's limits (T1) and any ladder need measured runs.
 - **The owner's confirmations**: decision records 0001 and 0002, and the default for tests that already fail before the code step (T3).
 
 ## 3. Recommendation
 
-Build in the order of the [next stages plan](../plans/next-stages.plan.md): evidence (S0), then what release 2 gives with no new shape (S1), then the new shapes of release 2 (S2), then release 3 (S3), then release 4 (S4). The migration of the engine's own specs to temperspec's format waits until S1 has given temperspec a drift check and two real runs.
+Build in the order of the [next stages plan](../plans/next-stages.plan.md): evidence (S0), then what release 2 gives with no new shape (S1), then the new shapes of release 2 (S2), then release 3 (S3), then release 4 (S4). The migration of the engine's own specs to temperspec's format is work of its own, started on the owner's word of 2026-11-22.
 
 ## 4. Open questions
 
-| Question | Owner | Default taken in the plan |
-|---|---|---|
-| The conversation's default mode | Owner | `never`, from the owner's ruling "no approval pause by default"; `blocking` is a per-repository setting. next-features §2 had proposed `blocking` |
-| Replace the hand-written plan route with the engine's complexity switch (F1, row 4) | Owner | Yes, in S1, as a new backlog row once the owner agrees |
-| Ask the engine for a deadline that takes the defaults (F2) | Owner, then the engine's release 3 | Ask; `escalate` until it exists |
-| When to migrate the engine's specs to temperspec's format | Owner | After S1 and two real runs |
+None. The owner ruled on 2026-11-22: temperspec is used for the development of tempergraph and temperspec, so the evidence of F5 comes from this repository's own tasks; the three proposals are backlog rows B16 (F1, deliverables and `pushed`), B17 (F1, the complexity switch) and B18 (F2, a deadline that takes the defaults); the conversation's default mode is `blocking`, because the agent that orchestrates the runs can answer or escalate to a person; and the engine's specs migrate now.
 
 ## 5. Sources
 
