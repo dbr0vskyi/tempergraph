@@ -16,7 +16,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from tempergraph.contracts import SessionRequest, Usage, ViewSet
+from tempergraph.contracts import SessionOptions, SessionRequest, Usage, ViewSet
 from tempergraph.docs import append_jsonl, write_json
 from tempergraph.executors.registry import Registry, UnknownExecutor
 from tempergraph.improve import digest as digestmod
@@ -28,6 +28,7 @@ from tempergraph.store.layout import now_iso, run_dir
 
 SETTINGS = ("off", "signals", "full")  # lowest first; `auto` resolves to one of them
 ALIAS = "medium"
+EFFORT = "max"  # the loop run setting `loop_effort` (SIL-B17)
 TIMEOUT_S = 1800
 TEXT_CHARS = 600
 TAIL_CHARS = 400
@@ -315,7 +316,8 @@ def run(t: Mapping[str, Any], registry: Registry, *, reason: str = "dev", keys: 
             continue
         judge = d.get("kind") in digestmod.JUDGE_KINDS
         prompt = prompt_for(text, token, judge)
-        block, cost = _ask(ex, root, wf, task, key, prompt, d, str(t.get("alias") or ALIAS))
+        block, cost = _ask(ex, root, wf, task, key, prompt, d, str(t.get("alias") or ALIAS),
+                           str(t.get("effort") or EFFORT))
         out["cost"]["reported"] += cost[0]
         out["cost"]["estimated_only"] += cost[1]
         spent += cost[0] + cost[1]
@@ -354,14 +356,16 @@ def _blockers(root: Path, wf: str, task: str) -> dict[str, list[str]]:
 
 
 def _ask(ex: Any, root: Path, wf: str, task: str, key: str, prompt: str,
-         d: Mapping[str, Any], alias: str = ALIAS) -> tuple[dict[str, Any] | None, tuple[float, float]]:
+         d: Mapping[str, Any], alias: str = ALIAS, effort: str = "max"
+         ) -> tuple[dict[str, Any] | None, tuple[float, float]]:
     """One reviewer session with no tools; one re-ask when the block does not parse (SRV-B20)."""
     rep = est = 0.0
     for n in (1, 2):
         rkey = f"review.{key}.{n}"
         sdir = run_dir(root, wf, task) / "loop" / "sessions" / rkey
         req = SessionRequest(kind="judge", prompt=prompt if n == 1 else prompt + "\n\nEnd with the JSON block only.",
-                             workdir=root, alias=alias, session_key=rkey, timeout_s=TIMEOUT_S, session_dir=sdir)
+                             workdir=root, alias=alias, session_key=rkey, timeout_s=TIMEOUT_S, session_dir=sdir,
+                             options=SessionOptions(effort=effort))  # type: ignore[arg-type]
         try:
             res = ex.run_judge(req, ViewSet(tool_less=True), LiveSink(sdir))
         except Exception:  # noqa: BLE001 - one reviewer's failure never stops the plan (SRV-B1, SRV-B20, SRV-B21, SRV-B22, SRV-B18)
@@ -372,7 +376,7 @@ def _ask(ex: Any, root: Path, wf: str, task: str, key: str, prompt: str,
             est += float(res.usage.estimated_cost_usd or estimate(res.usage, res.model) or 0.0)
         append_jsonl(loop_log(root, wf, task), {"ts": now_iso(), "kind": "review_session", "session_key": rkey,
                                                 "reviewed": key, "ok": res.ok, "executor": ex.name,
-                                                "alias": alias})
+                                                "alias": alias, "effort": effort})
         block = parse(res.text) if res.ok else None
         if block is not None:
             return block, (rep, est)

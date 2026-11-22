@@ -81,15 +81,40 @@ WHEN sessions of one run can be in flight together (parallel branches, a paralle
 
 - GIVEN two parallel branches whose reservations together cross the cap WHEN both are due THEN one starts and the other waits
 
+### BUD-B13 Reservations are in the run log
+
+WHEN a session of a run with a cost cap takes its reservation (BUD-B12) THE engine SHALL write a `reservation` record with `action` `held` before the session starts, giving the amount reserved (`reserved_usd`), where that figure came from (`source`: `session_cap`, `projection` or `share`), the run's spend as BUD-B9 counts it (`spent_usd`), what the other running sessions hold (`in_flight_usd`) and the run's cap (`cap_usd`).
+
+- GIVEN a cap of 5.00 USD, 1.00 USD spent, nothing running and a branch with a per-session cost cap of 2.50 USD WHEN its session is due THEN a `reservation` record with `action` `held`, `reserved_usd` 2.50, `source` `session_cap`, `spent_usd` 1.00, `in_flight_usd` 0 and `cap_usd` 5.00 comes before that session's `attempt_start` record
+- GIVEN a cap of 5.00 USD, 1.00 USD spent, two parallel branches and no per-session cap or projection WHEN both are due THEN each branch's `held` record has `source` `share` and `reserved_usd` 2.00, the remaining 4.00 USD divided by the 2 branches
+- GIVEN two parallel branches whose reservations fit together under the cap WHEN both are due THEN each has a `held` record and no `reservation` record has `action` `waiting`
+
+### BUD-B14 A wait is in the run log
+
+WHEN a session must wait for a running session to end because its reservation would take spend plus reservations over the run cost cap (BUD-B12) THE engine SHALL write once, when the wait begins, a `reservation` record with `action` `waiting` that gives the figures of BUD-B13 and lists the running sessions' `session_key` values ([EVT-B8](30-run-events.spec.md)) in `waiting_for`.
+
+- GIVEN a cap of 5.00 USD, 1.00 USD spent and two parallel branches that each reserve 2.50 USD WHEN both are due THEN the branch that does not start has a `waiting` record with `reserved_usd` 2.50, `in_flight_usd` 2.50 and `waiting_for` listing the `session_key` of the branch that started
+- GIVEN a cap of 5.00 USD, 1.00 USD spent, a running session that holds 2.50 USD and a branch waiting to reserve 2.50 USD WHEN the running session ends with a real cost of 0.40 USD THEN the branch's `held` record follows that session's `agent_run` record with `spent_usd` 1.40 and `in_flight_usd` 0, and the branch wrote no second `waiting` record
+
+### BUD-B15 A refused reservation is in the run log
+
+WHEN a session's reservation would take spend plus reservations over the run cost cap and no session is running (BUD-B12) THE engine SHALL write a `reservation` record with `action` `refused` that gives the figures of BUD-B13, before the run drains with `cost_cap`.
+
+- GIVEN a cap of 5.00 USD, 3.00 USD spent, nothing running and a branch that reserves 2.50 USD WHEN its session is due THEN its `reservation` record has `action` `refused`, no session of the branch starts and the `run_exit` record that follows carries exit code 5 and reason `cost_cap`
+- GIVEN a cap of 5.00 USD, 1.00 USD spent, a running session that holds 2.50 USD and a branch waiting to reserve 2.50 USD WHEN the running session ends with a real cost of 2.40 USD THEN the branch's `reservation` record has `action` `refused`, after its `waiting` record, and the run drains with `cost_cap`
+
 ## Acceptance criteria
 
 - BUD-AC1 (BUD-B1, BUD-B2, BUD-B11): Each cause rule is tested on every executor's fixtures
 - BUD-AC2 (BUD-B3, BUD-B4, BUD-B6, BUD-B7, BUD-B8, BUD-B9, BUD-B12): Every loop in a run has a counter with a default; a test drives each to its limit
 - BUD-AC3 (BUD-B1, BUD-B8): An infra failure never produces a pause
 - BUD-AC4 (BUD-B5, BUD-B10): Every step and judge record carries its timeout and source layer
+- BUD-AC5 (BUD-B13): A fixture run of two parallel branches whose reservations fit together under the cap writes a `reservation` record with `action` `held` before each branch's first `attempt_start` record and writes no `reservation` record with another action
+- BUD-AC6 (BUD-B14): A fixture run of two parallel branches whose reservations together cross the cap writes, for the branch that waited, one `waiting` record that lists the other branch's `session_key` in `waiting_for` and, after that session's `agent_run` record, a `held` record
+- BUD-AC7 (BUD-B15): A fixture run whose next reservation does not fit while nothing is running writes a `reservation` record with `action` `refused` before the `run_exit` record, which carries exit code 5 and reason `cost_cap`
 
 ## Open questions
 
 - Should a `throttled` session wait longer than the standard backoff? Until answered: no, the standard 10, 20, 40 s backoff; it needs a live concurrency measurement per executor. Owner: operator.
 - Do repeated resumes of one thread each get a fresh attempt allowance without bound, or should a thread carry a lifetime cap? Until answered: the per-invocation cap of 15 only, with the chain length on the status row. Owner: engine owner.
-- Not built yet: reservations for concurrent sessions (BUD-B12) are release 3 work; release 2's parallel read-only branches check spend only, so two branches may start together just under the cap and end above it by at most one session's cost each ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F5). Owner: engine owner.
+- Not built yet: the reservations of BUD-B12 to BUD-B15 are built for a run's parallel read-only branches; they are not built for maps, contests and councils (release 3, tracks R3-T3 and R3-T4 of the third-release plan), which reuse them when they run sessions at once. The `projection` source is not taken, because the central run stats hold no per-unit projection ([CST-B15](34-central-run-stats.spec.md) projects per workflow); a reservation is the per-session cap or the share ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F5). Owner: engine owner.

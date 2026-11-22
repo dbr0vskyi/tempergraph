@@ -195,6 +195,7 @@ CATALOG: dict[str, Entry] = {
     "run_cost_cap_usd": Entry(RUN, _float(0)),
     "daily_cap_usd": Entry(RUN, _float(0)),  # stable mode's self-improvement budget per day (SIL-B19, SIL-B20)
     "loop_model": Entry(RUN, _alias, "medium"),  # the alias of the loop's own sessions (SIL-B11)
+    "loop_effort": Entry(RUN, _choice("low", "medium", "high", "xhigh", "max"), "max"),  # their effort (SIL-B17)
     "auto_reopen": Entry(RUN, _int(0, 10), 0),
     "workspace": Entry(RUN, _choice("auto", "in_place", "worktree"), "auto"),
     "session_review": Entry(RUN, _choice("auto", "full", "signals", "off"), "auto"),  # lowers only (SRV-B13, SRV-B14, SRV-B15)

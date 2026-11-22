@@ -523,10 +523,10 @@ def _brief(cl: Mapping[str, Any]) -> str:
 
 def propose(root: Path, spec: WorkflowSpec, cl: Mapping[str, Any], executor: Any, *,
             judge_executor: Any | None = None, worktrees: Path | None = None,
-            alias: str = "medium") -> dict[str, Any]:
+            alias: str = "medium", effort: str = "max") -> dict[str, Any]:
     """`improve propose <cluster>` without `--patch`: the proposer's step in its own worktree on branch
     `improve/<id>`, the engine's check (apply, validate, class check), then an independent judge."""
-    from tempergraph.contracts import EventSink, GateSpec, JudgeSpec, SessionRequest
+    from tempergraph.contracts import EventSink, GateSpec, JudgeSpec, SessionOptions, SessionRequest
     from tempergraph.git import GitError, git, main_checkout
     from tempergraph.run.guard import view_set
     from tempergraph.run.judging import JudgeInputs, Unparsed, derive, parse_judgement, render_judge
@@ -549,7 +549,8 @@ def propose(root: Path, spec: WorkflowSpec, cl: Mapping[str, Any], executor: Any
     prompt = PROPOSER_BRIEF + "\n\n" + _brief(cl)
     req = SessionRequest(kind="step", prompt=prompt, workdir=work_pkg, alias=alias,
                          session_key=f"improve.{pid}.step", tools=("read", "search", "list", "edit", "write"),
-                         timeout_s=1800, in_engine_worktree=True)
+                         timeout_s=1800, in_engine_worktree=True,
+                         options=SessionOptions(effort=effort))  # type: ignore[arg-type]
     res = executor.run_step(req, EventSink())
     spend = {"sessions": 1, "reported": res.usage.reported_cost_usd}
     git(["add", "-A"], wt)  # everything the session touched, so a write outside the package is seen
@@ -575,7 +576,8 @@ def propose(root: Path, spec: WorkflowSpec, cl: Mapping[str, Any], executor: Any
     from tempergraph.contracts import StepSpec
 
     jres = jex.run_judge(SessionRequest(kind="judge", prompt=jprompt, workdir=work_pkg, alias=alias,
-                                        session_key=f"improve.{pid}.judge", timeout_s=1800),
+                                        session_key=f"improve.{pid}.judge", timeout_s=1800,
+                                        options=SessionOptions(effort=effort)),  # type: ignore[arg-type]
                          view_set(StepSpec(), [], jex.capabilities()), EventSink())
     spend["sessions"] = 2
     try:

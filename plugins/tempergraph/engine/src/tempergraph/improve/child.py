@@ -25,7 +25,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from tempergraph.contracts import SessionRequest, ViewSet, WorkflowSpec
+from tempergraph.contracts import SessionOptions, SessionRequest, ViewSet, WorkflowSpec
 from tempergraph.docs import append_jsonl, write_json
 from tempergraph.executors.registry import Registry, default_registry
 from tempergraph.improve import autonomy, filing
@@ -35,6 +35,7 @@ from tempergraph.run.log import Ledger, LiveSink, estimate
 from tempergraph.store.layout import home_path, now_iso, run_dir
 
 ALIAS = "medium"
+EFFORT = "max"  # the loop reads session logs: Sonnet thinks at its most (SIL-B17)
 TIMEOUT_S = 1800
 FENCE = re.compile(r"```(?:json)?\s*\n(.*?)\n```", re.S)
 BRIEF = """You review the friction of one workflow run for a self-improvement loop.
@@ -64,6 +65,11 @@ def alias_of(t: Mapping[str, Any]) -> str:
     return str(t.get("alias") or ALIAS)
 
 
+def options_of(t: Mapping[str, Any]) -> SessionOptions:
+    """The options of the loop's own sessions: the run setting `loop_effort` the ticket carries, else `max`."""
+    return SessionOptions(effort=t.get("effort") or EFFORT)  # type: ignore[arg-type]
+
+
 def mode() -> str:
     return os.environ.get("TEMPERGRAPH_LOOP", "detached")
 
@@ -71,7 +77,7 @@ def mode() -> str:
 def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary: Mapping[str, Any], *,
              dry_run: bool, judge_executor: str, home: Path | None = None, operator_review: str | None = None,
              run_cost_usd: float = 0.0, trial: bool = False, daily_cap_usd: float | None = None,
-             loop_model: str | None = None) -> Path | None:
+             loop_model: str | None = None, loop_effort: str | None = None) -> Path | None:
     """Writes the ticket when a judged lens fired at this final exit and there is a fault to judge, when the
     outcome lens has candidates, or when the session review (SRV-B13, SRV-B14, SRV-B15) has a depth other than none."""
     from tempergraph.improve import proposals as prp
@@ -101,7 +107,7 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
               "units": unit_decls(spec) if depth != "off" else {},
               "autonomy": prp.autonomy(spec, os.environ.get("TEMPERGRAPH_AUTONOMY")),
               "daily_cap_usd": autonomy.daily_cap(spec.improvement_mode, daily_cap_usd),
-              "alias": loop_model or ALIAS,
+              "alias": loop_model or ALIAS, "effort": loop_effort or EFFORT,
               "package_root": str(spec.package_root) if spec.package_root else None}
     path = tickets_dir(home or home_path()) / f"{tid}.json"
     write_json(path, ticket)
@@ -218,7 +224,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
         sdir = run_dir(root, wf, task) / "loop" / "sessions" / f"friction-{t.get('ticket_id')}"
         req = SessionRequest(kind="judge", prompt=prompt(faults, _records(root, wf, task)), workdir=root,
                              alias=alias_of(t), session_key=f"loop.{t.get('ticket_id')}.judge", timeout_s=TIMEOUT_S,
-                             session_dir=sdir)
+                             session_dir=sdir, options=options_of(t))
         res = ex.run_judge(req, ViewSet(), LiveSink(sdir))
         if res.usage.reported_cost_usd is not None:
             cost["reported"] += res.usage.reported_cost_usd
@@ -226,7 +232,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
             cost["estimated_only"] += float(res.usage.estimated_cost_usd or estimate(res.usage, res.model) or 0.0)
         judged = parse(res.text) if res.ok else {}
         append_jsonl(log, {"ts": now_iso(), "kind": "loop_judged", "lens": "friction", "executor": ex.name,
-                           "alias": alias_of(t), "ok": res.ok, "parsed": bool(judged), "usage": dataclasses.asdict(res.usage),
+                           "alias": alias_of(t), "effort": options_of(t).effort, "ok": res.ok, "parsed": bool(judged), "usage": dataclasses.asdict(res.usage),
                            "session_id": res.session_id})
     cands: list[filing.Candidate] = []
     for f in mine:
