@@ -15,3 +15,4 @@ Part of the [overview](00-overview.spec.md).
 - [ ] ts-plan-scope No requirement or task row says it does less than asked (a stub, a placeholder, for now, a later task)
 - [ ] ts-plan-commit Every file the plan step changed is committed
 - [ ] ts-plan-spec No plan requirement contradicts a behaviour of a spec the plan references
+- [ ] ts-plan-reading The plan prompt tells the session to start from the hand-off's reading list and to open another file only for what the list does not answer

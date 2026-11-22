@@ -19,3 +19,5 @@ Part of the [overview](00-overview.spec.md).
 - [ ] ts-code-change Each task row's change is in the file the row names
 - [ ] ts-code-tests Each test that carries an acceptance criterion id asserts what that criterion states
 - [ ] ts-code-scope No file is changed that no task row names
+- [ ] ts-code-once A code session runs only the test files a phase's rows name after that phase, and each verification command of the plan once, after the last phase and before it writes the report (in the quick lane, the note's `Verify` commands once, after the last criterion), and its prompt says so
+- [ ] ts-code-reuse The code gate runs a verification command only when no result of that command is recorded for the same tree, so a retry or a later visit of the code step on an unchanged tree runs nothing again (CHK-B13)
