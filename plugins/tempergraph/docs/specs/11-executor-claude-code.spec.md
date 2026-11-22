@@ -129,4 +129,4 @@ WHEN a judge view names an MCP server that is not in the operator's own MCP conf
 
 - Use `--input-format stream-json` for the prompt instead of plain stdin, to share framing with the Antigravity executor? Until answered: plain UTF-8 on stdin, then stdin closes; decided after P-CC-5. Owner: executor implementer.
 - Not built yet: probes P-CC-1 to P-CC-11 have not been confirmed on the owner's machine. Owner: engine owner.
-- Not built yet: the filtering proxy of ECC-B3 has run only against stand-in MCP servers; no live check against the pinned CLI has shown that the session lists exactly the offered tools, runs a proxied tool without a prompt under `dontAsk` and reports a proxy that failed to start. Owner: engine owner.
+- Not built yet: the filtering proxy of ECC-B3 has run live on 2.1.330 only against the suite's stand-in server (live row L-32: only the viewed tool listed, a proxied call ran under `dontAsk` with no prompt, a server that cannot start or is missing deferred before the launch); no live run against a real tracker or wiki server and no whole workflow run grading the deferred criterion has been made. Owner: engine owner.
