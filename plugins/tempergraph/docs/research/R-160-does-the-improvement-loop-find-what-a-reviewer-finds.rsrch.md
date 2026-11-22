@@ -45,6 +45,10 @@ Every loop result was `recorded` (`designed`, `below_floor`, `uncalibrated`). Ea
 
 The second code visit (commits after `2d8787a` on the run's branch `tg/temperspec/r3-t1-1b`, not merged) tagged old tests with criterion ids and, doing so, found that `attempt_start` records carry no timeout source although BUD-AC4 says every step and judge record carries it, and that the run log's `human` record lacks the touch classes and `wait_s` that OBS-B9 names (they are on the `intervention` ledger row, and `observe/rows.py` reads `human.wait_s`, which is never written). Its judge escalated on alignment, so the change was left on that branch. Both are open engine defects.
 
+### F6 After the fixes, the same run's review reads every session and records repeats `supported`
+
+The loop fixes (run `temperspec/loop-fixes`, SRV-B24 to SRV-B28, BUD-B16, SIL-B22, SIL-B23) were rerun over the sessions of `r3-t1-1b` with `tempergraph improve review`: all 18 sessions were read, the failed and later ones first, none skipped, for 0.80 USD at max effort. Three `review_repeat` findings reached `improve backlog` on their own: `instruction_ignored` on `code` and on `plan`, and `wasted_turns` on `code`. The sessions after the trip back were read this time but named its symptoms (context, rows marked one by one), not its cause (H4). H3, H5 and H6 stay out of sight of a session review. The rerun wrote into the thread's own state root although `--state-root` named another one.
+
 ## Conclusions
 
 - The loop can see what goes wrong inside sessions (H1, H2, F2) at a low cost: 0.66 USD for 13 sessions at max effort. It cannot see faults that sit in the environment or in files a step wrote outside its view (H5, H6), and it does not explain causes it only counts (H3, H4).
