@@ -169,7 +169,7 @@ def resolve_workspace(spec: WorkflowSpec, target: Path, requested: str | None = 
         head, base_ref = commit, base
         base_branch = name if local else _default_branch(main)
     elif base != "head":
-        raise WorkspaceRefused("base_unresolved", f"run.worktree.base {base!r}: release 1 takes head or ref:<name>")
+        raise WorkspaceRefused("base_unresolved", f"run.worktree.base {base!r}: this release takes head or ref:<name>")
     dirty = [ln for ln in git(["status", "--porcelain=v1"], main, check=False).splitlines()
              if ".tempergraph/" not in ln]
     if dirty:
@@ -348,7 +348,7 @@ def attach_workspace(rec: WorkspaceRecord, thread: str, decl: WorktreeDecl | Non
 
 def release_workspace(rec: WorkspaceRecord, cleanup: str = "never", state_root: Path | None = None
                       ) -> WorkspaceRecord:
-    """After the finalizer: unlock. Release 1 keeps every worktree (`cleanup: on_finish` is release 2)."""
+    """After the finalizer: unlock. This release keeps every worktree (`cleanup: on_finish` is release 3)."""
     if rec.mode == "worktree" and Path(rec.path).exists():
         git(["worktree", "unlock", "--end-of-options", rec.path], Path(rec.path), check=False)
     rec.state = "released"

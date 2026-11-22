@@ -12,7 +12,7 @@ and never typed (PKG §2.1).
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -175,7 +175,7 @@ def check(path: Path, caps: Mapping[str, Capabilities], *, stamp: bool = False,
     rep.stamp = {
         "schema_version": 1, "engine_version": ENGINE_VERSION, "workflow_api": WORKFLOW_API,
         "workflow_version": lp.workflow_version, "docs_digest": lp.docs_digest, "shape_digest": model["digest"],
-        "entries_applied": [{"id": e, "by": "none"} for e in rep.compat["entries"]],
+        "entries_applied": _entries_applied(prior, rep.compat["entries"]),
         "tool_set": tool_set(lp.spec),
         "audit": audit_keys,
         "outcome_revision": revision,
@@ -184,3 +184,20 @@ def check(path: Path, caps: Mapping[str, Capabilities], *, stamp: bool = False,
     }
     write_json(root / STAMP, rep.stamp, mode=0o644)
     return rep
+
+
+def _entries_applied(prior: Mapping[str, Any] | None, new_ids: Sequence[str],
+                     by: Mapping[str, str] | None = None) -> list[dict[str, str]]:
+    """VER §2.5: the entries handled over the package's life. A restamp keeps what the prior stamp held, with
+    its `by`, and adds the entries met since; a restamp of a package already current adds nothing."""
+    out: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for e in (prior or {}).get("entries_applied") or []:
+        if isinstance(e, Mapping) and e.get("id") and str(e["id"]) not in seen:
+            seen.add(str(e["id"]))
+            out.append({"id": str(e["id"]), "by": str(e.get("by") or "none")})
+    for eid in new_ids:
+        if eid not in seen:
+            seen.add(eid)
+            out.append({"id": eid, "by": (by or {}).get(eid) or "none"})
+    return out

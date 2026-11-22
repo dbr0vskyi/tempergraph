@@ -132,3 +132,17 @@ def test_doc_refresh_outline_needs_a_named_document(repo: Path) -> None:
     ex = standin("claude")
     out = start(SPEC, "D-4", {"request": "the install section"}, repo, registry(ex), NO_SLEEP)
     assert out.exit_code is not ExitCode.FINISHED and not ex.calls  # no session starts after a failed script
+
+
+def test_doc_refresh_hands_the_judges_the_changed_sections(repo: Path) -> None:
+    """L-25: a judge cannot run `git diff`, so the draft and outcome checks name the sections that changed."""
+    doc_repo(repo)
+    ex = standin("claude", steps=[draft("minor")], judges=[met(2), met(1, "j-outcome")])
+    out = start(SPEC, "D-5", {"request": REQUEST}, repo, registry(ex), NO_SLEEP)
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    by_unit = {c["unit"]: c["evidence"] for c in records(repo, "D-5", "check")}
+    assert "Sections changed: Install" in by_unit["draft"]
+    assert "Sections changed: Install" in by_unit["outcome"]
+    prompts = [c.request.prompt for c in ex.calls if c.kind == "judge"]
+    assert len(prompts) == 2 and all("Sections changed: Install" in p for p in prompts)
+    assert all("byte-for-byte the same as at the base: (top), Guide, Use\nSections added: none" in p for p in prompts)

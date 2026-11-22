@@ -4,4 +4,4 @@ The repository is the truth. The document's statements and the step's account ar
 
 # Brief
 
-Read `doc` and `outline`. For each section the request names, check each statement against the file or command it is about, and cite that file. Compare the other sections with the branch's base (`git diff`) and name any that changed.
+Read `doc` and `outline`. For each section the request names, check each statement against the file it is about, and cite that file. The check's evidence lists the sections that changed since the run's base; any changed section the request does not name is a change outside the request.

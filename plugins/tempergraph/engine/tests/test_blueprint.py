@@ -100,7 +100,9 @@ def test_reference_nobody_produces() -> None:
     (lambda d: d["units"][0]["gate"].update(judge=False), "sizing-invalid"),  # a judge's sizing with no judge
     (lambda d: d.update(colour="blue"), "unknown_key"),
     (lambda d: d["units"][0].update(kind="council"), "not_in_release"),
-    (lambda d: d.update(flow={"plan": {"parallel": ["a", "b"]}}), "not_in_release"),
+    (lambda d: d.update(flow={"plan": {"parallel": ["a", "b"]}}), "blueprint-invalid"),  # a shape on a step
+    (lambda d: d["units"][1].update(kind="map"), "blueprint-invalid"),  # a map states what it runs over
+    (lambda d: d["units"][0].update(kind="ask", produces=["plan"]), "blueprint-invalid"),
     (lambda d: d["units"][0]["gate"].update(review=True), "unknown_key"),
 ])
 def test_error_rows(mutate: Any, code: str) -> None:
@@ -247,3 +249,37 @@ def test_clean_package_has_no_literals(tmp_path: Path) -> None:
     root = minimal_package(tmp_path)
     assert scan(load_package(root).spec) == []
     assert cli(tmp_path, "literals", str(root), "--cases")[0] == 0
+
+
+def shapes() -> dict[str, Any]:
+    judged = {"check": False, "judge": True, "signoff": False}
+    plain = {"check": False, "judge": False, "signoff": False}
+
+    def step(name: str, produces: list[str], reads: list[str] = (), kind: str = "step") -> dict[str, Any]:  # type: ignore[assignment]
+        return {"name": name, "kind": kind, "summary": name, "produces": produces, "reads": list(reads),
+                "gate": judged, "sizing": dict(SIZING), "judge_sizing": dict(SIZING)}
+
+    return {"schema_version": 1, "name": "shapes", "units": [
+        step("look-a", ["a"]), step("look-b", ["b"]),
+        {"name": "both", "kind": "parallel", "summary": "Both reads", "gate": plain},
+        step("plan", ["phases"], ["a", "b"]),
+        {"name": "go", "kind": "ask", "summary": "Go ahead?", "reads": ["phases"], "gate": plain},
+        step("code", ["patch"], kind="map"),
+        {"name": "merged", "kind": "wait", "summary": "Wait for the merge", "gate": plain}],
+        "flow": {"both": {"parallel": ["look-a", "look-b"]}, "code": {"map": {"over": "plan.phases"}},
+                 "merged": {"wait": {"event": "merged"}}}}
+
+
+def test_release_two_shapes_check_clean() -> None:  # SCF §2.1: parallel, map, ask and wait
+    bp = bpm.parse(shapes())
+    assert isinstance(bp, bpm.Blueprint)
+    assert bpm.check(bp, CAPS) == []  # `b` of the second branch is produced on every path into `plan`
+    spec = bpm.to_spec(bp)
+    assert spec.units["look-a"].step.tools == ("read",)  # type: ignore[union-attr]  # a branch reads only
+    assert spec.units["code"].map.items_from == ("plan", "phases")  # type: ignore[union-attr]
+    assert compare(bp, spec) == []
+    moved = shapes()
+    moved["flow"]["code"]["map"]["over"] = "plan.other"
+    other = bpm.parse(moved)
+    assert isinstance(other, bpm.Blueprint)
+    assert [d.field for d in compare(other, spec)] == ["map.over"]

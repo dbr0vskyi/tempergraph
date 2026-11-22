@@ -163,6 +163,7 @@ flowchart LR
 | PRO | [95 Promotion check and workflow stages](95-promotion-check.spec.md) | Stages, stamp |
 | CAR | [96 Run state carried on a branch](96-run-state-on-a-branch.spec.md) | State branch |
 | WIN | [97 Windows support](97-windows-support.spec.md) | Platform rules |
+| SWF | [99 Sub-workflow unit](99-subworkflow-unit.spec.md) | A child workflow as a unit |
 
 ### 2.3 Engine-wide contracts
 

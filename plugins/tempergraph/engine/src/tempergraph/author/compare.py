@@ -1,6 +1,6 @@
 """`blueprint compare <workflow>` and rung 2 of `author verify` (SCF §2.5): the built spec against the approved
 blueprint. Compared: names, order, artifacts and reads, checks, judges, sign-offs, failure and approval
-policy, back and route targets, switch arms, and the outcome digest. Not compared: summaries, models,
+policy, back and route targets, switch arms, map lists, parallel branches, wait events, and the outcome digest. Not compared: summaries, models,
 criteria texts and prompts (SCF-AC-3). Each difference is said in words, with the two fixes."""
 
 from __future__ import annotations
@@ -32,6 +32,8 @@ class Difference:
 def _reads(spec: WorkflowSpec, u: UnitSpec, produced: set[str]) -> list[str]:
     if u.script is not None:
         return sorted(set(u.script.inputs) & produced)
+    if u.ask is not None:
+        return sorted(set(u.ask.context) & produced)  # ASK §2.1: what the person is shown
     if u.step is None or u.step.prompt == "default":
         return []
     try:
@@ -47,6 +49,8 @@ def _produces(u: UnitSpec) -> list[str]:
         return sorted(u.step.produces)
     if u.script is not None:
         return sorted(u.script.produces)
+    if u.ask is not None:
+        return ["answers"]  # ASK §2.1: the unit's one artifact
     return []
 
 
@@ -96,6 +100,17 @@ def compare(bp: Blueprint, spec: WorkflowSpec, outcome_doc: Any = None) -> list[
             built = {"arms": dict(u.switch.arms), "default": u.switch.default} if u.switch else {}
             diff(b.name, "switch", {"arms": dict(sw.get("arms") or {}), "default": sw.get("default")}, built,
                  f"{b.name}'s switch arms or default differ from the blueprint")
+        if u.map is not None or "map" in shape:
+            built_over = ".".join(u.map.items_from) if u.map else None
+            diff(b.name, "map.over", (shape.get("map") or {}).get("over"), built_over,
+                 f"{b.name} maps over {built_over}; the blueprint says {(shape.get('map') or {}).get('over')}")
+        if u.kind == "parallel" or "parallel" in shape:
+            diff(b.name, "parallel", sorted(shape.get("parallel") or ()), sorted(u.branches),
+                 f"{b.name} joins {sorted(u.branches)}; the blueprint says {sorted(shape.get('parallel') or ())}")
+        if u.wait is not None or "wait" in shape:
+            want = str((shape.get("wait") or {}).get("event") or b.name)
+            diff(b.name, "wait.event", want, u.wait.event if u.wait else None,
+                 f"{b.name} waits for {u.wait.event if u.wait else None}; the blueprint says {want}")
         if spec.outcome is not None:
             io = spec.outcome.intermediate.get(b.name)
             signs = any(c.verified_by == "person" for c in (io.criteria if io else ()))

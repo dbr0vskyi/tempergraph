@@ -86,7 +86,7 @@ The always-present base is the read, search and list capabilities. Workflow data
 - [ ] GRD-AC-2 Each row of the GRD-B2 table is covered for every executor's tool names.
 - [ ] GRD-AC-3 A discarded judgement never routes PROCEED.
 - [ ] GRD-AC-4 The run log records, per judgement, the view set used and the guard status.
-- [ ] GRD-AC-5 A planted subagent call in a judge stream is detected on the stream fixtures of every executor that maps `subagent`.
+- [x] GRD-AC-5 A planted subagent call in a judge stream is detected on the stream fixtures of every executor that maps `subagent`. (`claude`: streams recorded on 2.1.330, `tests/test_recorded_streams.py`; the other executors are not built.)
 
 ## Open questions
 

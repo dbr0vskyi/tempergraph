@@ -61,5 +61,5 @@ def prompt_rows(spec: WorkflowSpec, report: AuditReport) -> list[dict[str, Any]]
         out.append({"file": file, "used_by": row["used_by"], "chars": len(text),
                     "names": {"found": len(n.skills) + len(n.agents) + len(n.files) + len(n.tools),
                               "unresolved": unresolved, "stale": stale},
-                    "findings": counts, "changed": "not recorded (history is release 2)"})
+                    "findings": counts, "changed": "not recorded (history is release 3)"})
     return out

@@ -17,6 +17,7 @@ def workflow():
         routing=Routing(description="Refresh named sections of a document so they match the repository",
                         when_to_use="A document's named sections are out of date; give its path and the sections"),
         issue_repository="acme/docs",
+        allow_commands=["git show"],
         units={
             "outline": Script(call=script_outline, produces={"outline": "file"}, side_effects="workspace",
                               summary="List the document's headings", gate=Gate(check=outline_check)),

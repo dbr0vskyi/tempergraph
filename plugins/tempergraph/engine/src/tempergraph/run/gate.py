@@ -71,7 +71,13 @@ def pick(spec: WorkflowSpec, unit: str, state: Mapping[str, Any]) -> dict[str, A
         raise RouteFault(f"route {u.route.ref} raised {type(exc).__name__}") from None
     if not isinstance(got, str) or got not in u.route_targets:
         raise RouteFault(f"route {u.route.ref} returned {got!r}, not one of {list(u.route_targets)}")
-    return {"arm": got, "target": flow.through_outcome(spec, got), "chosen_by": "predicate", "visit": view.visit}
+    out = {"arm": got, "target": flow.through_outcome(spec, got), "chosen_by": "predicate", "visit": view.visit}
+    signals, clipped = _signals(view.values)  # the step values the route read, so a report can say why (L-25)
+    if signals:
+        out["signals"] = signals
+    if clipped:
+        out["signals_clipped"] = clipped
+    return out
 
 
 SIGNALS_MAX, SIGNAL_CHARS = 10, 60

@@ -42,7 +42,7 @@ def classify(env: Mapping[str, str], tty: bool, *, declared: str | None = None, 
         # release 1 has no orchestrations, so no supervisor digest can match (ORC is release 3)
         raise CallerRefused("supervisor_token_invalid", "no orchestration on this machine issued that token")
     if env.get("TEMPERGRAPH_SCHEDULE_TOKEN") or schedule:
-        raise CallerRefused("schedule_token_invalid", "no schedule entry on this machine matches (SCH is release 2)")
+        raise CallerRefused("schedule_token_invalid", "no schedule entry on this machine matches (SCH is release 3)")
     declared = declared or env.get("TEMPERGRAPH_CALLER") or None
     caller_app = caller_app or env.get("TEMPERGRAPH_CALLER_APP") or None
     if declared in RESERVED:

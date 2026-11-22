@@ -12,7 +12,7 @@ Write one unit per intermediate outcome, in order:
 ```
 
 - `summary` is at most 60 characters. A blueprint has at most 20 units.
-- Kinds in this release: `step` (a model session), `script` (model-free work), `route` and `switch` (a choice on a value). Offer later kinds (council, contest, ask, map, sub-workflow) only by name, marked "later".
+- Kinds in this release: `step` (a model session), `script` (model-free work), `route` and `switch` (a choice on a value), `map` (one step run per item of a list: `flow: {"<unit>": {"map": {"over": "<unit>.<key>"}}}`, sized like a step), `parallel` (the join of two or more read-only branches: `{"parallel": [branches]}`), `ask` (a pause for a person's typed answers, which it produces as `answers`) and `wait` (a pause for an outside event: `{"wait": {"event": "<name>"}}`). Offer later kinds (council, contest, sub-workflow) only by name, marked "later".
 - Each step gets a check where any criterion is `check`, and a judge where any is `judge`. Every step declares at least one criterion.
 - `outcome_ref.digest` must match the outcome draft. After an outcome edit, `blueprint check` reports `blueprint_outcome_mismatch`; update the digest.
 - Ask each policy as a choice with its consequence: what a failure does, what a spent retry budget does (stop, or ask a person), whether a person approves after a pass, when a person is asked, the self-improvement mode, the repository for the workflow's own issues (required: set `issue_repository` in `authoring.json`), and whether steps run in a worktree. Every option you do not ask takes its documented default; show the defaults.

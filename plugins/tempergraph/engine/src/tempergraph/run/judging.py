@@ -27,6 +27,8 @@ ENGINE_BRIEF = (
     "You cannot change anything. Use only the tools you were given: a call to any other tool, a shell or git "
     "included, voids the whole review. Report one finding per criterion, each graded on its own: what you "
     "could not confirm for one criterion does not lower another.")
+CHECK_EVIDENCE = ("Check evidence (the engine ran the workflow's deterministic check after the step; it is not "
+                  "the step's claim. Take what it lists as given, and do not count it as out of reach):")
 MECHANICAL_SENTENCE = "The deterministic check verified this criterion; take its evidence as given."
 OUT_OF_REACH = ("You cannot read {key} with your tools. Report UNVERIFIABLE for criteria that depend on it; "
                 "do not accept the step's word for it.")
@@ -85,6 +87,15 @@ def brief_digest(stance: str, brief: str) -> str:
     return hashlib.sha256(json.dumps([stance.strip(), brief.strip()]).encode()).hexdigest()[:16]
 
 
+def judged(g: Any) -> Any:
+    """The gate as its judge sees it (OUT §2.2): without the criteria a person signs or nobody verifies, which
+    go to the approval payload or the outcome record. A gate with nothing else keeps its criteria."""
+    import dataclasses
+
+    graded = tuple(c for c in g.criteria if c.verified_by not in ("person", "none"))
+    return dataclasses.replace(g, criteria=graded) if graded and len(graded) != len(g.criteria) else g
+
+
 def criteria_digest(criteria: Sequence[Criterion]) -> str:
     """FBK §2.1, JCL §2.1 binding field: the criterion texts, check methods and severities a judge grades."""
     import hashlib
@@ -127,7 +138,7 @@ def render_judge(inp: JudgeInputs) -> str:
     if inp.check is not None and (inp.check.evidence or inp.check.findings):
         subj.append(f"Check result: {inp.check.result}")
         if inp.check.evidence:
-            subj.append("Check evidence:\n" + head_tail(inp.check.evidence, 4000))
+            subj.append(CHECK_EVIDENCE + "\n" + head_tail(inp.check.evidence, 4000))
         for f in inp.check.findings:
             subj.append(f"- finding {f.status} {f.criterion or ''} {f.place} {f.message} {f.fix}".rstrip())
     if subj:
