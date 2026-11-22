@@ -1,9 +1,11 @@
-"""`tempergraph audit` (AUD, ARC, PRA): advisory, read-only, model-free (OVR-B15).
+"""`tempergraph audit` (AUD, ARC, TSA, PRA): advisory, read-only, model-free (OVR-B15).
 
-Release 1 runs the `definition` and `host` layers and the prompt audit; the `history` layer (X2-9) and the
-tool-surface audit (TSA, X2-10) are release 2, so their rules are listed as skipped, never as passed.
-Owned checks (validation, prompt lint, the readiness report, executor compatibility) are run through
-their component and rendered under `<owner>:<code>` (ADR-0054, AUD-B8).
+Release 3 runs the `definition`, `host` and `history` layers, the tool-surface audit and the prompt audit. The
+`history` layer reads the workflow's local run records once (`audit.history`) and every history rule reads those
+facts only; a rule with fewer runs than its `min_n` is listed as skipped with `n=<runs> of <min>`, a layer with no
+runs as skipped with `no runs in window`, never as passed (AUD-B1, AUD-B5). Owned checks (validation, prompt lint,
+the readiness report, executor compatibility, the cost lens and the engine's own findings) are run through their
+component and rendered under `<owner>:<code>` (ADR-0054, AUD-B8).
 """
 
 from __future__ import annotations
@@ -16,13 +18,19 @@ from typing import Any
 
 from tempergraph.audit.catalog import RULES, Layer
 from tempergraph.audit.definition import Definition
+from tempergraph.audit.history import HistoryFacts
+from tempergraph.audit.history_rules import HISTORY_C1_C3, RuleSkipped, hot_spots
+from tempergraph.audit.history_rules_more import HISTORY_C5_C8, SAMPLE_N
 from tempergraph.audit.host import Host, HostInputs, ShellTiming, shell_timing
+from tempergraph.audit.owned import HISTORY_OWNED
 from tempergraph.audit.report import AuditFinding, AuditReport, Ignore, apply_ignores, order, parse_ignores
+from tempergraph.audit.surface import build_surface
+from tempergraph.audit.tools import TOOL_HISTORY, ToolRules, run_history
 from tempergraph.constants import ENGINE_VERSION
 from tempergraph.contracts import Capabilities, WorkflowSpec
 from tempergraph.model.validate import Finding, validate
 
-BUILT_LAYERS: frozenset[Layer] = frozenset({"definition", "host"})
+BUILT_LAYERS: frozenset[Layer] = frozenset({"definition", "host", "history"})
 CONFIDENCE = {"lint-vague-word": "medium", "lint-rule-branching": "medium", "lint-human-wait": "medium",
               "lint-self-grading": "medium", "lint-accepting-brief": "medium"}
 
@@ -41,6 +49,10 @@ class AuditContext:
     steps: tuple[str, ...] = ()
     show_all: bool = False
     today: dt.date = field(default_factory=dt.date.today)
+    history: HistoryFacts | None = None  # the facts of the runs in the window and version (AUD-B3, AUD-B11)
+    tool_executor: str | None = None  # show every session on this executor's tool map (`audit tools --executor`)
+    mcp_servers: Callable[[], set[str] | None] | None = None  # the MCP servers of the operator's own configuration
+    ambient_tools: Callable[[str], list[str] | None] | None = None  # plugin tools a probe lists for an executor
 
 
 def _decl_file(spec: WorkflowSpec, manifest: Any) -> str:
@@ -103,19 +115,30 @@ def audit(spec: WorkflowSpec, layers: set[Layer], ctx: AuditContext, *, manifest
     findings = list(owned)
     decl = _decl_file(spec, manifest)
     run: list[Layer] = []
+    why: dict[str, str] = {}
+    facts = ctx.history
+    if facts is not None:
+        rep.runs, rep.unreadable_runs = facts.runs, facts.unreadable
     for layer in ("definition", "host", "history"):
         if layer not in layers:
-            rep.layers_skipped.append({"layer": layer, "reason": "--layer not given"})
+            why[layer] = "--layer not given"
         elif layer not in BUILT_LAYERS:
-            rep.layers_skipped.append({"layer": layer, "reason": "not in this release (release 3)"})
+            why[layer] = "not in this release"
         elif broken and layer != "definition":
-            rep.layers_skipped.append({"layer": layer, "reason": "the workflow does not validate"})
+            why[layer] = "the workflow does not validate"
+        elif layer == "history" and (facts is None or facts.runs == 0):
+            why[layer] = "no runs in window"
         else:
             run.append(layer)
+            continue
+        rep.layers_skipped.append({"layer": layer, "reason": why[layer]})
     rep.layers_run = list(run)
+    tools = _tools(spec, ctx, rep, run, manifest, decl, stamp)  # the session surface, built once per audit
     if "definition" in run:
         findings += _guarded(rep, "definition", lambda: Definition(spec, decl, dict(getattr(manifest, "surfaces", {})
                                                                                    or {})).run())
+        if tools is not None:
+            findings += _guarded(rep, "tools definition", tools.definition)
     if "host" in run:
         inputs = HostInputs(target=ctx.target, probe=ctx.probe, timing=ctx.timing, plugin_cache=ctx.plugin_cache,
                             stamp=stamp)
@@ -123,16 +146,21 @@ def audit(spec: WorkflowSpec, layers: set[Layer], ctx: AuditContext, *, manifest
             inputs.which = ctx.which
         findings += _guarded(rep, "host", lambda: Host(spec, decl, inputs).run())
         rep.rules_skipped += inputs.skipped
+        if tools is not None:
+            findings += _guarded(rep, "tools host", tools.host)
+            rep.rules_skipped += tools.skipped
+    if "history" in run and facts is not None:
+        hist = _history_layer(spec, ctx, rep, facts, tools)
+        findings += hist
+        owned += [f for f in hist if f.owner != "audit"]
     for r in RULES:
         if r.layer not in run:
-            reason = ("not in release 1" if r.layer not in BUILT_LAYERS else
-                      "the workflow does not validate" if broken else "--layer not given")
-            entry: dict[str, Any] = {"rule": r.id, "reason": reason}
+            entry: dict[str, Any] = {"rule": r.id, "reason": why.get(r.layer, "--layer not given")}
             if r.min_n is not None:
                 entry["min_n"] = r.min_n
             rep.rules_skipped.append(entry)
-        elif r.built > 1:
-            rep.rules_skipped.append({"rule": r.id, "reason": _NOT_BUILT.get(r.id, f"release {r.built}")})
+        elif r.id in _NOT_BUILT:
+            rep.rules_skipped.append({"rule": r.id, "reason": _NOT_BUILT[r.id]})
     findings = _narrow(spec, findings, ctx)
     findings = _dedupe(findings)
     ignores, _problems = parse_ignores(dict(getattr(manifest, "audit", {}) or {}).get("ignore"))
@@ -142,9 +170,81 @@ def audit(spec: WorkflowSpec, layers: set[Layer], ctx: AuditContext, *, manifest
     return rep
 
 
-_NOT_BUILT = {
+_NOT_BUILT = {  # definition rules whose unit kinds the engine does not build yet (ARC-B15)
     "unbounded-wait": "kind not in release 1 (wait and ask are release 2)",
+    "council-one-family": "the council unit is not built yet",
+    "council-even-majority": "the council unit is not built yet",
+    "contest-identical-slots": "the contest unit is not built yet",
 }
+
+
+def _tools(spec: WorkflowSpec, ctx: AuditContext, rep: AuditReport, run: list[Layer], manifest: Any, decl: str,
+           stamp: dict[str, Any] | None) -> ToolRules | None:
+    """TSA-B6: the session surface, built once from the tool maps, the manifest and (with history) the recorded use,
+    shared by the C4 rules and by `audit tools`."""
+    if not run:
+        return None
+    try:
+        surface = build_surface(spec, ctx.caps, manifest, ctx.history if "history" in run else None,
+                                executor=ctx.tool_executor)
+    except Exception as exc:  # noqa: BLE001 - AUD-B15: the rules that need the surface are skipped
+        import logging
+
+        logging.getLogger("tempergraph").warning("audit surface error: %s", type(exc).__name__)
+        rep.rules_skipped.append({"rule": "tool surface", "reason": f"rule error ({type(exc).__name__})"})
+        return None
+    rep.surface = surface
+    return ToolRules(spec, surface, ctx.caps, decl, stamp=stamp, plugin_cache=ctx.plugin_cache,
+                     mcp_servers=ctx.mcp_servers, ambient_tools=ctx.ambient_tools)
+
+HistoryRule = Callable[[WorkflowSpec, HistoryFacts], list[AuditFinding] | None]
+# rule id -> its function; None back means the owner is not present
+HISTORY_RULES: dict[str, HistoryRule] = {**HISTORY_C1_C3, **HISTORY_C5_C8, **HISTORY_OWNED}
+
+
+def sample_n(rule_id: str, facts: HistoryFacts) -> int:
+    """The sample a history rule counts: the runs in the window, or the records of its own shape (AUD-B5)."""
+    count = SAMPLE_N.get(rule_id)
+    return count(facts) if count is not None else facts.runs
+
+
+def _history_layer(spec: WorkflowSpec, ctx: AuditContext, rep: AuditReport, facts: HistoryFacts,
+                   tools: ToolRules | None = None) -> list[AuditFinding]:
+    """AUD-B3, AUD-B5, ARC-B7: every history rule on the facts; below `min_n` it is skipped with `n=<runs> of <min>`."""
+    out: list[AuditFinding] = []
+    for r in RULES:
+        if r.layer != "history":
+            continue
+        n, need = sample_n(r.id, facts), r.min_n or 1
+        if n < need:
+            rep.rules_skipped.append({"rule": r.id, "reason": f"n={n} of {need}", "min_n": need})
+            continue
+        fn: HistoryRule | None = HISTORY_RULES.get(r.id)
+        if r.id in TOOL_HISTORY:
+            if tools is None:
+                rep.rules_skipped.append({"rule": r.id, "reason": "tool surface not built", "min_n": need})
+                continue
+            fn = lambda _s, f, rid=r.id: run_history(tools, rid, f)  # noqa: E731
+        if fn is None:
+            rep.rules_skipped.append({"rule": r.id, "reason": "not built", "min_n": need})
+            continue
+        try:
+            got = fn(spec, facts)
+        except RuleSkipped as why:
+            rep.rules_skipped.append({"rule": r.id, "reason": why.reason, "min_n": need})
+            continue
+        except Exception as exc:  # noqa: BLE001 - AUD-B15: a rule that raises is skipped, the report continues
+            import logging
+
+            logging.getLogger("tempergraph").warning("audit rule error in %s: %s", r.id, type(exc).__name__)
+            rep.rules_skipped.append({"rule": r.id, "reason": f"rule error ({type(exc).__name__})", "min_n": need})
+            continue
+        if got is None:
+            rep.rules_skipped.append({"rule": r.id, "reason": "owner not present", "min_n": need})
+            continue
+        out += got
+    rep.hot_spots = hot_spots(facts, out)
+    return out
 
 
 def _guarded(rep: AuditReport, layer: str, fn: Callable[[], list[AuditFinding]]) -> list[AuditFinding]:
