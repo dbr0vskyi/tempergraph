@@ -38,6 +38,8 @@ WHEN a mapped child item escalates THE engine SHALL pause the parent with the pa
 WHEN a `wait` or `ask` declares `deadline_s` (seconds from the pause's start) and `on_deadline` (`escalate`, `stop`, a forward unit, a static edge validated like a route target, or `defaults` on an `ask`) THE engine SHALL show the pause `overdue` in `status`, `attention` and the run detail once the deadline has passed and nobody applied it; apply it only by `resume <thread> --apply-deadline`, refused with exit 2 and nothing written before the deadline or with no overdue pause; turn it on `escalate` into an `escalation` a person answers with the usual decisions and on `defaults` into the ask's answers completed from their defaults ([ASK-B10](73-ask-unit.spec.md)); record the applier as `deadline` in the intervention row ([HUM-B6](07-gate-and-human.spec.md)); and never let the orchestration supervisor apply it (C16); this gives a wait a timeout ([R-060](../research/R-060-node-types-against-langgraph.rsrch.md) F2).
 
 - GIVEN `--apply-deadline` before the deadline WHEN resumed THEN it exits 2 and nothing is written
+- GIVEN an ask with `deadline_s: 86400` and `on_deadline: defaults` WHEN `resume --apply-deadline` runs before the deadline THEN it exits 2 and no answers file is written
+- GIVEN that ask WHEN two days pass and `resume --apply-deadline` runs THEN the ask takes its defaults as ASK-B10 states and the intervention row records `deadline`
 
 ### FLX-B3 Overdue wait
 
@@ -71,9 +73,12 @@ WHEN a run reaches a unit named by `--pause-before` THE engine SHALL exit 3 with
 
 ### FLX-B11 What is refused
 
-WHEN a workflow with flow extensions is validated THE engine SHALL refuse with an `error` a `select` on a block with fewer than two branches or one not importable; a mapped sub-workflow holding a map, a wait or an ask or exceeding depth three; `deadline_s` on a unit that is not a wait or an ask, or an `on_deadline` target that is not forward; `fallback` naming a unit not after this one on every path or the unit itself; and `on_fail: fallback` or `on_budget_spent: fallback` with no `fallback`; and the diagram model SHALL draw `select`, fallback and deadline edges, covered by the diagram-currency test.
+WHEN a workflow with flow extensions is validated THE engine SHALL refuse with an `error` a `select` on a block with fewer than two branches or one not importable; a mapped sub-workflow holding a map, a wait or an ask or exceeding depth three; `deadline_s` on a unit that is not a wait or an ask, or an `on_deadline` target that is not forward; `on_deadline: defaults` on a unit that is not an ask, or on an ask whose declared questions hold a required question with no `default`, whether or not `deadline_s` is declared (a list read from a step is checked when the ask is entered, [ASK-B13](73-ask-unit.spec.md)); `fallback` naming a unit not after this one on every path or the unit itself; and `on_fail: fallback` or `on_budget_spent: fallback` with no `fallback`; and the diagram model SHALL draw `select`, fallback and deadline edges, covered by the diagram-currency test.
 
 - GIVEN `fallback` naming the unit itself WHEN validated THEN it is refused with its own finding code
+- GIVEN a wait with `on_deadline: defaults` WHEN validated THEN it is refused with its own finding code
+- GIVEN an ask with `on_deadline: defaults`, no `deadline_s` and a declared required question with no `default` WHEN validated THEN it is refused with its own finding code naming the question
+- GIVEN an ask with `on_deadline: defaults` whose declared required questions all have a `default` WHEN validated THEN it is accepted
 
 ## Acceptance criteria
 
@@ -82,6 +87,8 @@ WHEN a workflow with flow extensions is validated THE engine SHALL refuse with a
 - FLX-AC3 (FLX-B10, FLX-B5): A breakpoint pause starts no session and writes no attempt record
 - FLX-AC4 (FLX-B9, FLX-B4): A degraded run is never reported `finished` without `degraded: true` in the status document and the stats rows
 - FLX-AC5 (FLX-B11, FLX-B8, FLX-B3): The diagram model draws `select`, fallback and deadline edges, and the diagram-currency test covers them
+- FLX-AC6 (FLX-B8): On an ask with `on_deadline: defaults`, `resume --apply-deadline` before the deadline exits 2 and writes no answers file, and after the deadline it takes the defaults as ASK-B10 states and the intervention row records `deadline`
+- FLX-AC7 (FLX-B11): Validation accepts `on_deadline: defaults` on an ask whose declared required questions all have a `default`, and refuses it, each with its own finding code, on a wait and on an ask with a declared required question that has no `default`
 
 ## Open questions
 
