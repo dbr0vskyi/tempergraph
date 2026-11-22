@@ -2,7 +2,7 @@
 goal: Build release 1 of tempergraph — author a simple workflow, run it on Claude Code, see everything it did, and trust its result
 version: 1
 date_created: 2026-11-20
-last_updated: 2026-11-20
+last_updated: 2026-11-22
 owner: dbr0vskyi
 status: In Progress
 tags: [release-plan, tempergraph, tempergraph-monitor]
@@ -39,7 +39,7 @@ task_id: first-release
 
 **Context for the implementer.** Read the [docs README](../README.md), the overview, the contracts, then the component spec. Truth ranking: acceptance criteria, then specs and decision records, then this plan, then code.
 
-**Status: In Progress.** Started 2026-11-20 on the owner's instruction to start release 1, which this plan takes as EC-1 met for the scope of ADR-0090 and ADR-0091 (both stay `proposed` until their pull request merges). Each track's expanded plan is listed in the [plans index](README.md).
+**Status: Built, live checks pending.** Every track is built and passes offline; what is open is the live rows (owner's machine or a signed-in cloud session, [live-checks](live-checks.plan.md)) and the `released_at` stamp of 11.3.5. Started 2026-11-20 on the owner's instruction to start release 1, which this plan takes as EC-1 met for the scope of ADR-0090 and ADR-0091 (both stay `proposed` until their pull request merges). Each track's expanded plan is listed in the [plans index](README.md).
 
 ## 1. Requirements analysis
 
@@ -646,7 +646,7 @@ Goal: plugin manifests and marketplace entries, `release.json`, the empty change
 | 11.3.2 | `engine/src/tempergraph/data/release.json`, `constants.py` | The release record names every persisted document release 1 writes with a schema version (labels, stamp, registry and engine pointers added); its drift test holds | VER §2.2, VER-AC-1 | yes | P1 | ✓ | 2026-11-20 |
 | 11.3.3 | `engine/src/tempergraph/data/changelog/0.0.1.json` | The changelog of the first release is empty: there is no earlier release to be compatible with | VER §2.3 | yes | P1 | ✓ | 2026-11-20 |
 | 11.3.4 | `README.md`, `CONTEXT.md`, `CLAUDE.md` | The repository's status, plugins and examples current | — | | P1 | ✓ | 2026-11-20 |
-| 11.3.5 | owner | The version and `released_at`: set when the live checks pass (M5); the engine stays `0.0.1` until then | VER §2.2 | | P1 | ○ | |
+| 11.3.5 | owner | The version and `released_at`: set when the live checks pass (M5); the version moved to `0.2.0` with release 2 ([R2-T9](r2-t9-release.plan.md)), and `released_at` stays unset until then | VER §2.2 | | P1 | ○ | |
 
 ## 3. Architecture decisions
 

@@ -39,7 +39,7 @@ The plan ends with a proof table: for each acceptance criterion of the task, the
 
 The last stage writes the description with no model: the task's acceptance criteria, the behaviours and criteria that changed in each spec, the decisions and open questions of discovery, and the deviations of the code report. The notes that steps hand to each other are listed by path as not needed for review.
 
-Per-phase coding is not built yet: a complex plan is still coded in one session, and will be split by phase once the engine has its sequential map.
+Per-phase coding is not built yet: a complex plan is still coded in one session. The engine has had the sequential map it needs since release 2 (`0.2.0`); splitting the code step by phase is backlog row B7.
 
 ## Rule files
 

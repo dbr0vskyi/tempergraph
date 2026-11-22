@@ -2,7 +2,7 @@
 
 The design of the tempergraph engine, written the spec-driven way temperspec follows: **research → decision record → spec → plan → code**. Each link is a document the next link reads, so a fresh session can implement a component from its spec without a conversation.
 
-Code for release 1 lives in [`../engine/`](../engine/pyproject.toml) and is built track by track. Release 1 is scoped by [ADR-0090](adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md) and planned in [plans/first-release.plan.md](plans/first-release.plan.md); its readiness review is [R-090](research/R-090-implementation-readiness.rsrch.md). Release 2 is scoped by [ADR-0125](adr/0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md) and planned in [plans/second-release.plan.md](plans/second-release.plan.md), with readiness in [R-130](research/R-130-release-two-readiness-and-gaps.rsrch.md). Release 3 is proposed in [ADR-0132](adr/0132-release-three-is-workflows-that-compose-run-in-parallel-and-grade-in-the-pipeline.adr.md) and planned in [plans/third-release.plan.md](plans/third-release.plan.md), with readiness in [R-140](research/R-140-release-three-readiness-and-gaps.rsrch.md). Each track has its expanded plan in [plans/](plans/README.md).
+Code for releases 1 and 2 lives in [`../engine/`](../engine/pyproject.toml) (engine `0.2.0`), built track by track; the live checks still open are in [plans/live-checks.plan.md](plans/live-checks.plan.md). Release 1 is scoped by [ADR-0090](adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md) and planned in [plans/first-release.plan.md](plans/first-release.plan.md); its readiness review is [R-090](research/R-090-implementation-readiness.rsrch.md). Release 2 is scoped by [ADR-0125](adr/0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md) and planned in [plans/second-release.plan.md](plans/second-release.plan.md), with readiness in [R-130](research/R-130-release-two-readiness-and-gaps.rsrch.md). Release 3 is proposed in [ADR-0132](adr/0132-release-three-is-workflows-that-compose-run-in-parallel-and-grade-in-the-pipeline.adr.md) and planned in [plans/third-release.plan.md](plans/third-release.plan.md), with readiness in [R-140](research/R-140-release-three-readiness-and-gaps.rsrch.md). Each track has its expanded plan in [plans/](plans/README.md).
 
 ## Where things live
 
@@ -13,12 +13,13 @@ Code for release 1 lives in [`../engine/`](../engine/pyproject.toml) and is buil
 | [research/](research/README.md) | Research notes | Background findings that answer an unknown, with sources and confidence marks. | [Research rules](#research-rules) |
 | [guides/](guides/README.md) | How-to guides | **How to use** tempergraph, for people who run and author workflows: install, run, author, improve. Restate no requirement; link the spec instead. | Same truth ranking: a guide never outranks a spec |
 | [plans/](plans/README.md) | Implementation plans | **In what order**: the release plan's tracks and phases, then one expanded plan per track. | Release 2 tracks follow temperspec's [plan rule](../../temperspec-tgraph/rules/plan.rule.md) |
+| [tasks/](tasks/) | Task notes | Per release 2 track: its triage note (`*.triage.md`) and its code report (`*.report.md`). | temperspec's [task-notes rule](../../temperspec-tgraph/rules/task-notes.rule.md) |
 
 Read in this order before planning or coding a component: the [overview spec](specs/00-overview.spec.md), the [contracts spec](specs/01-contracts.spec.md), the component spec, then the decision records and research notes it links.
 
 ## File naming
 
-Every SDD artifact carries its type in a double suffix, `<name>.<type>.md`, so a tool or a rule can tell an artifact's type from its path alone, without reading it. temperspec's rule files will enforce this later; until then, this table is the rule ([ADR-0017](adr/0017-artifact-type-suffixes.adr.md)).
+Every SDD artifact carries its type in a double suffix, `<name>.<type>.md`, so a tool or a rule can tell an artifact's type from its path alone, without reading it. temperspec's rule files ([`rules/`](../../temperspec-tgraph/rules/documents.rule.md)) now hold the same rule for repositories it sets up; for this set, this table is the rule ([ADR-0017](adr/0017-artifact-type-suffixes.adr.md)).
 
 | Artifact type | Suffix | Name pattern | Folder |
 |---|---|---|---|
@@ -28,10 +29,11 @@ Every SDD artifact carries its type in a double suffix, `<name>.<type>.md`, so a
 | Implementation plan (skeleton or expanded) | `.plan.md` | `<component>.plan.md` | `plans/` |
 | Task, story or request | `.task.md` | `<work-item>.task.md` | `tasks/` |
 | Triage note (gap list and route) | `.triage.md` | `<work-item>.triage.md` | `tasks/` |
+| Code report | `.report.md` | `<work-item>.report.md` | `tasks/` |
 | How-to guide | `.guide.md` | `<topic>.guide.md` | `guides/` |
 | Rule file | `.rule.md` | `<artifact-type>.rule.md` | the repo's rule folder |
 
-- Specs, decision records, research notes and plans exist in this set today; the other types are reserved so the next links in the chain need no new decision.
+- Specs, decision records, research notes, plans, guides, triage notes and code reports exist in this set today; the other types are reserved so the next links in the chain need no new decision.
 - A folder index is `README.md` and carries no suffix: it lists artifacts, it is not one.
 - Short titles are lower-case words joined by `-`. Numbers are never reused, and a rename keeps the number.
 - A check for this rule fails on any Markdown file in `specs/`, `adr/` or `research/` other than `README.md` whose name lacks its folder's suffix.

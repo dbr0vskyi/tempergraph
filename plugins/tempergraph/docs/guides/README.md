@@ -3,7 +3,7 @@
 How-to guides for people who use tempergraph: install it, run workflows, create your own and improve them over time. The design behind each step is in the [specs](../specs/00-overview.spec.md); these guides only say what to do.
 
 > [!NOTE]
-> Releases 1 and 2 are built and tested offline. Neither has been run against a live Claude Code session yet, so the commands here come from the code and its tests, not from a live run. The pending checks are in [live-checks.plan.md](../plans/live-checks.plan.md).
+> Releases 1 and 2 are built and tested offline, and their live checks are under way. Until a command's live check has passed, it comes from the code and its tests, not from a live run. Each check and its result is in [live-checks.plan.md](../plans/live-checks.plan.md).
 
 | Guide | Read it when you want to |
 |---|---|

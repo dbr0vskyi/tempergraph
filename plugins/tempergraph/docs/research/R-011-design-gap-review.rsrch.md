@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The owner asked whether the current tempergraph design has gaps or unclarified areas, judged against its goals and concept. This note reviews the set as merged on `main` after PR 2 (overview, contracts, 22 component specs, ADR-0001 to ADR-0021, R-001 to R-006) against the concept in the [README](../../../../README.md) and [CONTEXT](../../../../CONTEXT.md) and the goals G1–G8 of the [overview](../specs/00-overview.spec.md). It lists each gap, contradiction or unclear area with a suggested resolution and the document that should carry it.
+The owner asked whether the current tempergraph design has gaps or unclarified areas, judged against its goals and concept. This note reviews the set as merged on `main` after PR 2 (overview, contracts, 22 component specs, ADR-0001 to ADR-0021, R-001 to R-006) against the concept in the [README](../../../../README.md) and CONTEXT (since merged into [CLAUDE.md](../../../../CLAUDE.md)) and the goals G1–G8 of the [overview](../specs/00-overview.spec.md). It lists each gap, contradiction or unclear area with a suggested resolution and the document that should carry it.
 
 Shared specs are not edited here, because other threads are writing in parallel. Each resolution names its target so a later change can apply it. The positioning against other products is [R-010](R-010-landscape-and-verdict.rsrch.md). Observability across machines, the monitor plugin, the self-improvement extension and the orchestrator skill are the owner's points 3 to 6 and are being designed in other threads; where a gap touches them, this note names the gap and leaves the design to them.
 
@@ -13,7 +13,7 @@ Shared specs are not edited here, because other threads are writing in parallel.
 | Specs 00–22 | Behaviour specs | [specs/](../specs/00-overview.spec.md) |
 | ADR-0001 to ADR-0021 | Decision records | [adr/](../adr/README.md) |
 | R-001 to R-006 | Research notes | [research/](README.md) |
-| Concept | Repository README and CONTEXT | [README](../../../../README.md), [CONTEXT](../../../../CONTEXT.md) |
+| Concept | Repository README and CONTEXT | [README](../../../../README.md), CONTEXT (since merged into [CLAUDE.md](../../../../CLAUDE.md)) |
 | Public comparisons | See R-010 | [R-010](R-010-landscape-and-verdict.rsrch.md) |
 
 ## Key findings

@@ -2,7 +2,7 @@
 goal: Build workflow packages and their registry, then first install, the stamp, scenarios and lint, audit, and the blueprint and scaffold
 version: 1
 date_created: 2026-11-20
-last_updated: 2026-11-20
+last_updated: 2026-11-22
 owner: dbr0vskyi
 status: In progress
 tags: [track-plan, tempergraph, T8]
@@ -21,7 +21,7 @@ task_id: first-release-t8
 | Origin | [Release 1 plan](first-release.plan.md) track T8 |
 | Specs | [PKG](../specs/88-workflow-package.spec.md), [UPD](../specs/60-engine-update.spec.md), [VER](../specs/61-version-metadata.spec.md), [LIF](../specs/18-lifecycle-and-evals.spec.md), [AUD](../specs/55-workflow-audit.spec.md), [ARC](../specs/56-audit-rule-catalog.spec.md), [PRA](../specs/58-prompt-audit.spec.md), [SCF](../specs/91-blueprint-and-scaffold.spec.md) |
 
-**Status: In progress.** T8.1 is built: a package on disk loads by every step of PKG §2.3, step 5 through OUT's `read_outcome`, `gate_criteria` and `check_against` (plan T5.8.1), validates with the package rules, and registers, lists, unregisters and reinstalls through `tempergraph workflows`. T8.2 is built against a stand-in environment builder; a real `pip install` of the engine into a fresh environment waits on the owner's machine (it needs the package index). T8.3 is built, with the two calls in preflight and `executors` (8.3.5) added at the main build thread's request. T8.4 is built: prompt lint (LIF §2.1), the structural readiness report (LIF §2.2), and the stand-in scenario and diagram currency (LIF §2.3). T8.5 is built for the `definition` and `host` layers (AUD §2.5); the history layer and TSA are release 2. T8.6 has the blueprint check, draw and compare, the literal check, the scaffold and every rung of `author verify`; rungs 8 and 9, the trial report and the grades were built once T12.4 landed judge calibration.
+**Status: In progress.** T8.1 is built: a package on disk loads by every step of PKG §2.3, step 5 through OUT's `read_outcome`, `gate_criteria` and `check_against` (plan T5.8.1), validates with the package rules, and registers, lists, unregisters and reinstalls through `tempergraph workflows`. T8.2 is built against a stand-in environment builder; a real `pip install` of the engine into a fresh environment waits on the owner's machine (it needs the package index). T8.3 is built, with the two calls in preflight and `executors` (8.3.5) added at the main build thread's request. T8.4 is built: prompt lint (LIF §2.1), the structural readiness report (LIF §2.2), and the stand-in scenario and diagram currency (LIF §2.3). T8.5 is built for the `definition` and `host` layers (AUD §2.5); the history layer and TSA moved to release 3. T8.6 has the blueprint check, draw and compare, the literal check, the scaffold and every rung of `author verify`; rungs 8 and 9, the trial report and the grades were built once T12.4 landed judge calibration.
 
 Status pass: PKG, UPD, VER and WUP are `ready-for-implementation`, with release 1 defaults for their open questions. LIF, AUD, ARC, PRA and SCF get theirs in the first row of T8.4, T8.5 and T8.6.
 
@@ -91,7 +91,7 @@ Status pass: WUP is `ready-for-implementation` (its open question has a release 
 | 8.3.3 | `engine/src/tempergraph/package/stamp.py`, `cli/upgrade.py` | `upgrade --check [--stamp]`, `upgrade-check [--stamp]`; V1 to V7 with V4 and V6 skipped; `stamp.json`; `verified_engine` at load | WUP §2.1, §2.6, VER §2.5 | | P1 | ✓ | 2026-11-20 |
 | 8.3.4 | `engine/src/tempergraph/executor_compat.py`, `data/executor_compat.json` | The executor compatibility table, `row` and `finding` | LIF §2 | | P1 | ✓ | 2026-11-20 |
 | 8.3.5 | `executors/preflight.py`, `cli/main.py` (T6 owner) | Preflight warns `executor-version-untested`; `executors` shows the row (LIF-AC-4); added on this branch at the main build thread's request | LIF-AC-4 | yes | P1 | ✓ | 2026-11-20 |
-| 8.3.6 | | The transforms of VER §2.3.4 (VER-AC-3) | VER §2.3.4 | yes | P3 | ○ | release 2, with phase 4 of WUP ([ADR-0125](../adr/0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md)) |
+| 8.3.6 | `engine/src/tempergraph/package/transforms.py` | The transforms of VER §2.3.4 (VER-AC-3) | VER §2.3.4 | yes | P3 | ✓ | 2026-11-21, built in release 2 ([R2-T6](r2-t6-update-and-upgrade.plan.md) phase 3) |
 
 ### T8.4 Scenarios, lint and readiness
 
@@ -116,8 +116,8 @@ Status pass: WUP is `ready-for-implementation` (its open question has a release 
 | 8.5.6 | `package/manifest.py`, `package/loader.py` | `audit.ignore` in `tempergraph.json`; `audit-ignore-invalid` | PKG §2.2, AUD-AC-7 | yes | P1 | ✓ | 2026-11-20 |
 | 8.5.7 | `package/stamp.py` | V4 runs the definition layer against the last stamp's list | WUP §2.6 | yes | P1 | ✓ | 2026-11-20 |
 | 8.5.8 | `package/importer.py` | A package import writes no bytecode into the package (AUD-B6) | AUD-B6 | yes | P1 | ✓ | 2026-11-20 |
-| 8.5.9 | | The history layer and its rules (X2-9), hot spots, ARC-B3 | AUD, ARC | yes | P2 | ○ | release 2 |
-| 8.5.10 | | `audit tools` and TSA's rules (X2-10) | TSA | yes | P2 | ○ | release 2 |
+| 8.5.9 | | The history layer and its rules (X2-9), hot spots, ARC-B3 | AUD, ARC | yes | P2 | ○ | release 3 ([second-release plan §1.3](second-release.plan.md)) |
+| 8.5.10 | | `audit tools` and TSA's rules (X2-10) | TSA | yes | P2 | ○ | release 3 ([second-release plan §1.3](second-release.plan.md)) |
 | 8.5.11 | `run/outcome_trust.py`, `audit/definition.py` | OUT trust and coverage (computed, never stored) and the two outcome rules on them | ARC §2.8, OUT §2.3 | yes | P1 | ✓ | 2026-11-20 |
 
 ### T8.6 Blueprint and scaffold
