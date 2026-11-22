@@ -71,7 +71,3 @@ WHEN a script unit runs in a workflow whose model steps use any executor THE eng
 - SCR-AC3 (SCR-B2, SCR-B7, SCR-B8): Every scenario of SCR-B2 holds in an offline test
 - SCR-AC4 (SCR-B9, SCR-B3): A cache hit and a miss are told apart in the run log, and a changed input always misses
 - SCR-AC5 (SCR-B7): The run detail document shows each script with phase, exit code, duration and `cached` ([RDD](31-run-detail-document.spec.md))
-
-## Open questions
-
-- Not built yet: the script cache (SCR-B9, SCR-B3, SCR-AC4); release 1 records every script with `cached: false` and the cache is a later-release row (X2-17). Owner: engine owner.

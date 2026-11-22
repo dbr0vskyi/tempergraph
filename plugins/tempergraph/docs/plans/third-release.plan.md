@@ -37,7 +37,7 @@ task_id: third-release
 | Order | Cap and reach first, because every parallel shape relies on them | R-140 F4, F5 |
 | Plan shape | Tracks and phases only; each track's expanded plan is written when its specs are ready (EC-2) | As in release 2 |
 
-**Status: In progress.** R3-T1.1 and R3-T1.2 are built (2026-11-22). EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
+**Status: In progress.** R3-T1.1, R3-T1.2 and R3-T8.1 are built (2026-11-22). EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
 
 ## 1. Requirements analysis
 
@@ -171,6 +171,9 @@ Goal: whichever of `block`, judge reasons and GitLab the owner accepts.
 ### R3-T8 Moved from release 2
 
 #### R3-T8.1 Script cache, audit judge, judge MCP views
+
+Status: built. SCR-B9 and SCR-B3 (the script cache for a script unit and a step's `before` and `after` script), proved by SCR-AC4 in `plugins/tempergraph/engine/tests/test_script_cache.py`; JDG-B7 (the sampled audit judge, `audit_rate` and `audit_executor`), proved by JDG-AC7 and ROP-AC1 in `plugins/tempergraph/engine/tests/test_audit_judge.py`; ECC-B3, ECC-B10 and ECC-B15 (the judge view catalog, the filtering proxy with its private configuration, and deferral of a view with no working proxy), proved by GRD-AC6, ECC-AC7, ECC-AC8 and ECC-AC9 in `plugins/tempergraph/engine/tests/test_view_catalog.py`, `test_mcp_proxy.py` and `test_judge_mcp_deferral.py`; the live check of the proxy against the pinned CLI is left (the owner's row in `live-checks.plan.md`).
+
 #### R3-T8.2 Observers, worktree extras, session review in stable mode
 #### R3-T8.3 Audit history and tool surface audit
 

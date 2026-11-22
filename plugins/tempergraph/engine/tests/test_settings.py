@@ -94,6 +94,26 @@ def test_refusals(key: str, code: str) -> None:  # RST-B5, B6, B10, RST-B32
         assert "draft" in findings[0].message
 
 
+def test_grd_ac6_an_mcp_view_grant_stays_refused_and_its_message_names_the_catalog() -> None:  # RST-B28
+    _, findings = go(spec(), {"judge:draft.views.add": "mcp:tracker/get_issue"})
+    assert [f.code for f in findings] == ["judge-view-unclassified"]
+    message = findings[0].message
+    assert "release 1" not in message and "no read-only MCP catalog" not in message
+    assert "catalog" in message  # a judge sees an MCP tool only through the engine's view catalog
+
+
+def test_audit_settings_are_accepted_and_resolved() -> None:  # ROP-AC1, RST-B20, RST-B32
+    res, findings = go(spec())
+    assert not findings and res.values["run.audit_rate"] == 0.0  # the audit judge is off by default
+    assert res.values.get("run.audit_executor") is None
+    res, findings = go(spec(), {"run.audit_rate": 0.25, "run.audit_executor": "claude"})
+    assert not findings, findings  # no `setting_not_in_release`
+    assert res.values["run.audit_rate"] == 0.25 and res.values["run.audit_executor"] == "claude"
+    assert row(res, "run.audit_rate")["layer"] == "flag" and row(res, "run.audit_executor")["layer"] == "flag"
+    _, findings = go(spec(), {"run.audit_rate": 1.5})
+    assert [f.code for f in findings] == ["setting_value"]
+
+
 def test_tighten_only_from_a_file() -> None:  # RST-B6
     files = ConfigFiles(project={"schema_version": 1, "overrides": [{"workflow": "*", "set": {"draft.approve": False}}]})
     _, findings = go(spec(), files=files)

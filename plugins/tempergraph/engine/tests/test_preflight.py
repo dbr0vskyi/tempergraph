@@ -121,12 +121,26 @@ def test_enforcement_refused_when_undeclared() -> None:
     assert preflight_of(two_step(), reg("claude"), enforce_tools=True).ok  # EXI-B12
 
 
-def test_mcp_judge_views_deferred() -> None:
+def _mcp_spec() -> Any:
     units = dict(two_step().units)
     units["review"] = Step(prompt="Review", tools=["read", "mcp:tracker/get_issue"],
                            gate=Gate(judge=Judge(stance="V."), criteria=[crit("c-r")]))
-    spec = dataclasses.replace(two_step(), units=units)
-    rep = preflight_of(spec, reg("claude"))
+    return dataclasses.replace(two_step(), units=units)
+
+
+def test_ecc_ac9_mcp_judge_views_are_not_deferred_on_claude() -> None:
+    rep = preflight_of(_mcp_spec(), reg("claude"))  # `claude` declares `judge_mcp` (ECC-B6)
     assert rep.ok, rep.refusals
-    assert [d.capability for d in rep.deferred["review"]] == ["mcp:tracker/get_issue"]
+    assert "review" not in rep.deferred
+    assert "judge-view-deferred" not in [w.code for w in rep.warnings]
+
+
+def test_ecc_ac9_mcp_judge_views_are_deferred_where_judge_mcp_is_false() -> None:
+    r = Registry()
+    bare = standin("claude")
+    bare.caps = dataclasses.replace(bare.caps, judge_mcp=False)  # a judge executor that restricts tools but has no proxy
+    r.register(bare)
+    rep = preflight_of(_mcp_spec(), r)
+    assert rep.ok, rep.refusals
+    assert [(d.capability, d.reason) for d in rep.deferred["review"]] == [("mcp:tracker/get_issue", "judge_mcp")]  # EXI-B19
     assert "judge-view-deferred" in [w.code for w in rep.warnings]
