@@ -67,7 +67,7 @@ def test_outcome_check_on_its_fixtures(fixture: Path, tmp_path: Path) -> None:
 
 
 SEEDS = sorted(p for p in (ROOT / "evals" / "calibration").glob("*/met-*") if p.parent.name in
-               ("setup", "triage", "discovery", "plan", "expand"))
+               ("setup", "triage", "discovery_short", "discovery", "plan", "expand"))
 
 
 @pytest.mark.parametrize("seed", SEEDS, ids=lambda p: f"{p.parent.name}/{p.name}")
@@ -306,6 +306,12 @@ def test_routes_follow_the_values() -> None:
     assert routing.route_triage(_view(route="discovery")) == "discovery"
     assert routing.route_triage(_view(route="quick")) == "code"
     assert routing.route_triage(_view()) == "discovery"  # an unreadable route takes the longer path
+    assert routing.route_triage(_view(route="discovery", covered="yes")) == "discovery_short"
+    assert routing.route_triage(_view(route="discovery", covered="no")) == "discovery"
+    assert routing.route_triage(_view(route="discovery-only", covered="yes")) == "discovery"  # docs are the goal
+    assert routing.route_short(_view(settled="yes")) == "plan"
+    assert routing.route_short(_view(settled="no")) == "discovery"
+    assert routing.route_short(_view()) == "discovery"
     assert routing.route_discovery(_view(route="discovery-only")) == "finalizer"
     assert routing.route_discovery(_view(route="discovery")) == "plan"
     assert routing.route_plan(_view(complexity="complex")) == "expand"
@@ -514,7 +520,8 @@ def test_every_step_and_judge_states_its_model_effort_and_reason() -> None:  # d
                                              "why": step.sizing}, name
         assert blueprint[name]["judge_sizing"] == {"model": judge.model, "effort": judge.session_options.effort,
                                                    "why": judge.sizing}, name
-    assert efforts == {"setup": ("high", "medium"), "triage": ("medium", "medium"), "discovery": ("max", "high"),
+    assert efforts == {"setup": ("high", "medium"), "triage": ("medium", "medium"),
+                       "discovery_short": ("high", "high"), "discovery": ("max", "high"),
                        "plan": ("high", "high"), "expand": ("medium", "medium"), "code": ("high", "high")}
 
 
@@ -710,11 +717,152 @@ def test_a_second_gate_run_on_an_unchanged_tree_runs_no_verification_command(
         ctx = _code_ctx(repo, DONE, git_facts(repo, base), store)
         res, _ = run_check(SPEC.units["code"].gate, ctx)
         assert _named(res, "ts-code-verify") == ["pass"], res.evidence
+        assert _named(res, "ts-code-reuse") == ["pass"], res.evidence  # read from the gate's own runs (B30)
+        reuse.append(next(f.message for f in res.findings if f.criterion == "ts-code-reuse"))
         return list(res.runs)
+
+    reuse: list[str] = []
 
     first, second = gate_run(), gate_run()  # a retry, or a later visit, on the same tree and the same store
     assert first and all(r["reused"] is False and r["exit_code"] == 0 for r in first)
     assert len(second) == len(first) and all(r["reused"] is True for r in second)  # none was started again
+    assert reuse[0].startswith("0 of ") and reuse[1].startswith(f"{len(second)} of {len(second)} ")
     (repo / "notes.txt").write_text("changed\n")  # a changed tree changes the key: the commands run again
     third = gate_run()
     assert third and all(r["reused"] is False for r in third)
+
+
+# -- criteria about how the run works are checked, never judged (B30) ---------------------------------------
+
+PROCESS = {"ts-dis-narrow": "discovery", "ts-plan-reading": "plan", "ts-code-once": "code", "ts-code-reuse": "code"}
+# Words that put a criterion on what a judge cannot open: the step's prompt, its session or the gate's runs.
+UNSEEN = re.compile(r"\b(prompts?|sessions?|command runs?|reused|run once|runs once)\b", re.I)
+
+
+def test_criteria_about_how_the_run_works_are_checked_by_the_gate_not_a_judge() -> None:  # B30
+    o = json.loads((ROOT / "outcome.json").read_text())
+    by_id = {c["id"]: (u, c) for u, io in o["intermediate"].items() for c in io["criteria"]}
+    for cid, unit in PROCESS.items():
+        got_unit, c = by_id[cid]
+        assert got_unit == unit and c["verified_by"] == "check", cid
+        assert c["verifier"] == {"check": f"tgwf_temperspec.checks:{unit}_check"}, cid
+    judged = [(u, c) for u, c in by_id.values() if c["verified_by"] == "judge"]
+    judged += [("outcome", c) for c in o["final"] if c["verified_by"] == "judge"]
+    assert judged
+    for unit, c in judged:  # a judge reads the step's output and its references, nothing else
+        assert not UNSEEN.search(c["text"] + " " + c.get("check_method", "")), (unit, c["id"])
+
+
+def test_a_prompt_that_drops_an_instruction_fails_its_gate_check(tmp_path: Path,
+                                                                 monkeypatch: pytest.MonkeyPatch) -> None:  # B30
+    for cid in PROCESS:
+        if cid in checks.PROMPT_SAYS:
+            assert _named_list(checks._prompt_says(cid)) == ["pass"], cid
+    prompts = tmp_path / "prompts"
+    _copy(ROOT / "prompts", prompts)
+    plan = prompts / "plan.md"
+    plan.write_text(plan.read_text().replace("open another file only", "open any file"))
+    monkeypatch.setattr(checks, "PROMPTS", prompts)
+    got = checks._prompt_says("ts-plan-reading")
+    assert [f.status for f in got] == ["fail"] and "open another file only" in got[0].message
+    assert all(f.status == "pass" for f in checks._prompt_says("ts-code-once"))
+    (prompts / "code.md").unlink()
+    assert [f.status for f in checks._prompt_says("ts-code-once")] == ["fail"]
+
+
+def test_the_code_gate_names_its_process_criteria_on_a_finished_plan(tmp_path: Path) -> None:  # B30
+    res, _ = run_check(SPEC.units["code"].gate, _code_ctx(tmp_path, DONE))
+    assert _named(res, "ts-code-once") == ["pass"], res.evidence
+    assert _named(res, "ts-code-reuse") == ["n_a"]  # no store outside a run
+
+
+def _named_list(found: list[Any]) -> list[str]:
+    return [f.status for f in found]
+
+
+# -- a verification command run in a folder, as CLAUDE.md writes it (B31) -------------------------------------
+
+
+@pytest.mark.parametrize("command", ["cd sub/engine && python -m pytest", "cd sub/engine && python3 -m pytest",
+                                     "cd sub/engine && ruff check src tests", "python -m pytest -q"])
+def test_the_plan_check_takes_a_command_run_in_a_folder(command: str, tmp_path: Path) -> None:
+    # B31, ts-plan-form, ts-exp-commands
+    files = _copy(ROOT / "evals" / "checks" / "plan" / "must-pass" / "2-simple", tmp_path)
+    (tmp_path / "sub" / "engine").mkdir(parents=True)
+    plan = tmp_path / "plan.md"
+    plan.write_text(plan.read_text().replace("`git --version`", f"`{command}`"))
+    artifacts = {OWNER[f.stem]: {f.stem: f.relative_to(tmp_path).as_posix()} for f in files if f.stem in OWNER}
+    res, _ = run_check(SPEC.units["plan"].gate, _context("plan", tmp_path, artifacts))
+    assert _named(res, "ts-plan-form") == ["pass"], res.evidence
+
+
+@pytest.mark.parametrize(("command", "said"), [
+    ("cd sub && node test.js", "start the command with a prefix the workflow allows"),
+    ("cd sub && pytest | tee out", "the one chain allowed"),
+    ("cd ../elsewhere && pytest", "inside the repository"),
+    ("cd sub && git push -u origin main", "only the last stage"),
+])
+def test_a_refused_command_is_told_how_to_write_it_without_dropping_the_cd(command: str, said: str,
+                                                                          tmp_path: Path) -> None:  # B31
+    found = checks._commands(_context("plan", tmp_path, {}), fmt.Plan(commands=[command]), "ts-plan-form")
+    assert len(found) == 1 and found[0].status == "fail", command
+    assert said in found[0].message + " " + found[0].fix, (command, found[0])
+    assert "no `&&` chain" not in found[0].fix
+
+
+# -- the short discovery visit (decision record 0003, B21) ---------------------------------------------------
+
+SHORT_CHECKS = ROOT / "evals" / "checks" / "discovery_short"
+
+
+def _short(fixture: Path, work: Path, **values: str) -> Any:
+    _copy(fixture, work)
+    ctx = _context("discovery_short", work, {"discovery_short": {"handoff": "handoff.md"},
+                                             "triage": {"triage_note": "triage_note.md"}},
+                   {"discovery_short": values} if values else None)
+    return run_check(SPEC.units["discovery_short"].gate, ctx)[0]
+
+
+def test_the_short_visit_is_a_second_discovery_step_with_its_own_sizing() -> None:
+    short, full = SPEC.units["discovery_short"], SPEC.units["discovery"]
+    assert short.step is not None and full.step is not None
+    assert SPEC.order.index("triage") < SPEC.order.index("discovery_short") < SPEC.order.index("discovery")
+    assert short.step.model == full.step.model  # the same tier; only the effort differs
+    assert (short.step.session_options.effort, full.step.session_options.effort) == ("high", "max")
+    assert short.gate.judge is not None and short.gate.judge.session_options.effort == "high"
+    assert "handoff" in short.step.produces and "handoff" in full.step.produces
+    assert not {"edit", "web_search", "web_fetch"} & set(short.step.tools)  # it writes the hand-off only
+    for unit in ("plan", "expand", "code"):  # every return to discovery goes to the full visit
+        assert "discovery_short" not in SPEC.units[unit].gate.back_targets
+
+
+@pytest.mark.parametrize("fixture", sorted((SHORT_CHECKS / "must-pass").iterdir()), ids=lambda p: p.name)
+def test_the_short_check_passes_a_settled_and_a_handed_on_visit(fixture: Path, tmp_path: Path) -> None:
+    res = _short(fixture, tmp_path)
+    assert res.result == "PASS", res.evidence
+    assert _named(res, "ts-dsh-cited") == ["pass"] and _named(res, "ts-dsh-only") == ["pass"]
+    assert _named(res, "ts-dsh-reading") == (["n_a"] if "not-covered" in fixture.name else ["pass"])
+
+
+@pytest.mark.parametrize(("name", "criterion"), [("wrote-a-spec", "ts-dsh-only"),
+                                                 ("cited-id-missing", "ts-dsh-cited"),
+                                                 ("long-reading-list", "ts-dsh-reading")])
+def test_the_short_check_fails_what_the_short_visit_may_not_do(name: str, criterion: str, tmp_path: Path) -> None:
+    res = _short(SHORT_CHECKS / "must-fail" / name, tmp_path)
+    assert res.result == "FAIL" and "fail" in _named(res, criterion), res.evidence
+
+
+def test_the_settled_value_follows_the_not_covered_lines(tmp_path: Path) -> None:
+    settled, handed = SHORT_CHECKS / "must-pass" / "1-settled", SHORT_CHECKS / "must-pass" / "2-not-covered"
+    assert _named(_short(settled, tmp_path / "a", settled="yes"), "ts-dsh-settled") == ["pass"]
+    assert _named(_short(settled, tmp_path / "b", settled="no"), "ts-dsh-settled") == ["fail"]
+    assert _named(_short(handed, tmp_path / "c", settled="no"), "ts-dsh-settled") == ["pass"]
+    assert _named(_short(handed, tmp_path / "d", settled="yes"), "ts-dsh-settled") == ["fail"]
+
+
+def test_the_short_prompt_states_the_reading_limit_and_reads_narrowly() -> None:
+    text = " ".join((ROOT / "prompts" / "discovery_short.md").read_text(encoding="utf-8").split()).lower()
+    assert "read at most 10 files" in text and "not covered" in text and "settled" in text
+    assert checks.SHORT_READING_MAX == 10
+    assert [f.status for f in checks._prompt_says("ts-dsh-limit")] == ["pass"]
+    assert all(f.status == "pass" for f in checks._prompt_says("ts-dis-narrow"))  # both discovery prompts

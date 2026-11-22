@@ -308,6 +308,47 @@ def test_standin_scenario_names_every_executor(pkg: Path, tmp_path: Path) -> Non
     assert got and "antigravity" in got[0], got
 
 
+def test_standin_run_answers_each_unit_by_name_when_a_route_skips_one(pkg: Path, tmp_path: Path) -> None:
+    """SCF-B16, SCF-AC2: the stand-in run answers each session by the unit that asks, so a unit the routes skip on the
+    stand-in path takes no reply meant for a later unit."""
+    decl = pkg / "workflow/release_notes/__init__.py"
+    text = decl.read_text().replace("order=['draft']", "order=['draft', 'polish', 'final']")
+    text = text.replace("gate=Gate(check=draft_check", "route=pick, route_targets=['polish', 'final'], "
+                        "gate=Gate(check=draft_check")
+    judge = ("Judge(file='judges/draft.md', references=['notes'], model='medium', effort='medium', "
+             "sizing='Reads one file')")
+    extra = "".join(
+        f"        \"{name}\": Step(prompt='{name} {{request}}.', summary='{name}', tools=['read', 'write'], "
+        f"produces={{'{key}': 'file'}}, model='medium', effort='medium', sizing='Short', gate=Gate(judge={judge})),\n"
+        for name, key in (("polish", "extra"), ("final", "summary")))
+    decl.write_text(text.replace("        },\n    )", extra + "        },\n    )")
+                    + "\n\ndef pick(view):\n    return 'final'\n")
+    o = json.loads((pkg / "outcome.json").read_text())
+    judged = next(c for c in o["intermediate"]["draft"]["criteria"] if c.get("verified_by") == "judge")
+    for name in ("polish", "final"):
+        o["intermediate"][name] = {**o["intermediate"]["draft"], "criteria": [{**judged, "id": f"{name}-1"}]}
+    (pkg / "outcome.json").write_text(json.dumps(o))
+    assert selftest.run("standin_run", pkg, tmp_path / "a") == []
+    written = {f.name for f in (tmp_path / "a").rglob("*.md") if ".worktrees" in f.parts[-3]}
+    assert "summary.md" in written and "extra.md" not in written  # `final` was given its own reply
+
+
+def test_a_fixture_file_belongs_to_the_unit_under_test_when_two_units_produce_its_key(tmp_path: Path) -> None:
+    """SCF-B16, SCF-AC2: two visits of one kind may produce the same artifact key; each one's check fixtures are
+    its own artifacts, not the other unit's."""
+    from types import SimpleNamespace
+
+    def step(*keys: str) -> Any:
+        return SimpleNamespace(step=SimpleNamespace(produces={k: "file" for k in keys}), script=None)
+
+    spec = SimpleNamespace(order=("note", "short", "full"),
+                           units={"note": step("note"), "short": step("handoff"), "full": step("handoff")})
+    files = [tmp_path / "handoff.md", tmp_path / "note.md"]
+    for name in ("short", "full"):
+        got = selftest._artifacts(spec, name, files, tmp_path)  # type: ignore[arg-type]
+        assert got == {name: {"handoff": "handoff.md"}, "note": {"note": "note.md"}}, name
+
+
 def test_verify_rung_1_runs_the_criteria_lint(pkg: Path, tmp_path: Path) -> None:
     """SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22 rung 1 with AUT-B19, AUT-B20, AUT-B21: a vague final criterion fails the ladder before the comparison."""
     o = json.loads((pkg / "outcome.json").read_text())

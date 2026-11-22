@@ -5,12 +5,15 @@ no overview spec through `setup`, which writes the overview and one spec per com
 
 `triage` reads the task and routes it: a small fix that changes no spec goes straight to `code` (the quick
 lane), no gap in the specs goes to `plan`, any gap to `discovery`, and a docs-only task ends after `discovery`.
+A task whose every gap a spec already answers (the triage check has verified each `Covered by` mark) takes the
+short visit `discovery_short` instead: it confirms the cited behaviours, writes the hand-off and its reading list,
+and hands a gap it finds not answered to the full `discovery` (decision record 0003).
 The code gate measures a quick change and sends a larger one back to `triage`, which then plans it. `plan` states the task's complexity; a complex plan gets its task rows
 from `expand`, a simple one already has them. `code` builds the whole plan in one session (per-phase coding
 waits for the engine's sequential map). The engine commits after every step and the last stage pushes.
 
 Every step and judge states its model tier, its effort and why (`SIZING` below; decision record 0002). No unit
-uses the large model tier. `discovery` thinks at the highest effort.
+uses the large model tier. `discovery` thinks at the highest effort; its short visit, which designs nothing, at `high`.
 """
 
 from typing import Any
@@ -18,7 +21,15 @@ from typing import Any
 from tempergraph.api import Gate, Judge, Route, Routing, Script, Step, Value, Workflow, text
 
 from . import specfmt
-from .checks import code_check, discovery_check, expand_check, plan_check, setup_check, triage_check
+from .checks import (
+    code_check,
+    discovery_check,
+    discovery_short_check,
+    expand_check,
+    plan_check,
+    setup_check,
+    triage_check,
+)
 from .routing import (
     commit_step,
     finalize,
@@ -26,6 +37,7 @@ from .routing import (
     route_discovery,
     route_plan,
     route_setup,
+    route_short,
     route_triage,
 )
 
@@ -34,7 +46,9 @@ READ = ["read", "search", "list"]
 # What a plan may list as verification (VERIFY), and what the last stage runs on top. A check refuses
 # `git push` and `gh` in a plan. Release 1 of the engine reads no per-repository command resolver and its audit
 # wants every program here on PATH, so the list holds one toolchain; add a repository's own prefixes here.
-VERIFY = ["pytest", "python3 -m pytest", "ruff check", "ruff format --check", "mypy",
+# Both spellings of the test runner are listed because a repository's CLAUDE.md writes either, and the engine
+# reads `cd <folder> && <command>` as the command run in that folder (CHK-B11), so a plan may copy them as written.
+VERIFY = ["pytest", "python -m pytest", "python3 -m pytest", "ruff check", "ruff format --check", "mypy",
           "git --version", "git status", "git diff", "git log", "git show"]
 ALLOW = [*VERIFY, "git remote", "git push -u origin", "gh pr list", "gh pr create", "gh pr edit"]
 
@@ -45,6 +59,10 @@ SIZING = {
              ("medium", "It compares each written spec with the code it describes, one file at a time")),
     "triage": (("medium", "It reads one task and the spec index to sort gaps and pick a route; the check verifies the note's shape"),
               ("medium", "It reads one note against the task; the route it confirms is cheap to correct later")),
+    "discovery_short": (("high", "It confirms that each behaviour triage cited answers its gap and lists the files the plan "
+                                 "will need; it designs nothing, and the check verifies the cited ids"),
+                        ("high", "A gap wrongly taken as answered costs a whole code session, so the verdict keeps the "
+                                 "effort of the full visit's judge")),
     "discovery": (("max", "It closes gaps by research and design, the deepest thinking in the workflow, and nothing downstream rechecks its facts"),
                  ("high", "It decides whether each gap is really closed across specs, records and research notes")),
     "plan": (("high", "It designs across specs and code, and a weak plan costs a whole code session"),
@@ -72,7 +90,7 @@ def _judge(unit: str, references: Any) -> Any:
 
 def workflow() -> Any:
     return Workflow(
-        order=["prepare", "setup_route", "setup", "triage", "discovery", "plan", "expand", "code"],
+        order=["prepare", "setup_route", "setup", "triage", "discovery_short", "discovery", "plan", "expand", "code"],
         routing=Routing(
             description="Take a task from its acceptance criteria to specs, a plan, tested code and a draft "
                         "pull request",
@@ -99,8 +117,16 @@ def workflow() -> Any:
                 produces={"triage_note": "file", "gaps": Value(choices=["some", "none"]),
                           "route": Value(choices=list(specfmt.ROUTES)),
                           "covered": Value(choices=["no", "yes"], optional=True)},
-                after=[_commit()], route=route_triage, route_targets=["discovery", "plan", "code"],
+                after=[_commit()], route=route_triage, route_targets=["discovery_short", "discovery", "plan", "code"],
                 gate=Gate(check=triage_check, judge=_judge("triage", ["triage_note"]), on_budget_spent="stop")),
+            "discovery_short": Step(
+                prompt=text("prompts/discovery_short.md"),
+                summary="Confirm the cited behaviours; write the hand-off",
+                **_sized("discovery_short"), timeout_s=1200, tools=[*READ, "write"],
+                produces={"handoff": "file", "settled": Value(choices=["no", "yes"])},
+                after=[_commit()], route=route_short, route_targets=["discovery", "plan"],
+                gate=Gate(check=discovery_short_check,
+                          judge=_judge("discovery_short", ["handoff", "triage_note"]), on_budget_spent="stop")),
             "discovery": Step(
                 prompt=text("prompts/discovery.md"), summary="Close each gap with a spec, record or research note",
                 **_sized("discovery"), timeout_s=3600,

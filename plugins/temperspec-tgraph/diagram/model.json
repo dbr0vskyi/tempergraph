@@ -27,6 +27,12 @@
       "approval": false
     },
     {
+      "name": "discovery_short",
+      "kind": "step",
+      "summary": "Confirm the cited behaviours; write the hand-off",
+      "approval": false
+    },
+    {
       "name": "discovery",
       "kind": "step",
       "summary": "Close each gap with a spec, record or research note",
@@ -74,6 +80,10 @@
     "triage.judge",
     "triage.gate",
     "triage.human",
+    "discovery_short.step",
+    "discovery_short.judge",
+    "discovery_short.gate",
+    "discovery_short.human",
     "discovery.step",
     "discovery.judge",
     "discovery.gate",
@@ -269,6 +279,11 @@
     ],
     [
       "triage.gate",
+      "discovery_short.step",
+      "PROCEED"
+    ],
+    [
+      "triage.gate",
       "discovery.step",
       "PROCEED"
     ],
@@ -296,6 +311,11 @@
       "triage.gate",
       "__end__",
       "STOP"
+    ],
+    [
+      "triage.human",
+      "discovery_short.step",
+      "decision"
     ],
     [
       "triage.human",
@@ -334,6 +354,81 @@
     ],
     [
       "triage.human",
+      "__end__",
+      "decision"
+    ],
+    [
+      "discovery_short.step",
+      "discovery_short.judge",
+      "next"
+    ],
+    [
+      "discovery_short.judge",
+      "discovery_short.gate",
+      "next"
+    ],
+    [
+      "discovery_short.gate",
+      "discovery.step",
+      "PROCEED"
+    ],
+    [
+      "discovery_short.gate",
+      "plan.step",
+      "PROCEED"
+    ],
+    [
+      "discovery_short.gate",
+      "discovery_short.step",
+      "RETRY"
+    ],
+    [
+      "discovery_short.gate",
+      "discovery_short.human",
+      "ESCALATE"
+    ],
+    [
+      "discovery_short.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "discovery_short.human",
+      "discovery.step",
+      "decision"
+    ],
+    [
+      "discovery_short.human",
+      "plan.step",
+      "decision"
+    ],
+    [
+      "discovery_short.human",
+      "discovery_short.step",
+      "decision"
+    ],
+    [
+      "discovery_short.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "discovery_short.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "discovery_short.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "discovery_short.human",
+      "triage.step",
+      "decision"
+    ],
+    [
+      "discovery_short.human",
       "__end__",
       "decision"
     ],
@@ -405,6 +500,11 @@
     [
       "discovery.human",
       "triage.step",
+      "decision"
+    ],
+    [
+      "discovery.human",
+      "discovery_short.step",
       "decision"
     ],
     [
@@ -494,6 +594,11 @@
     ],
     [
       "plan.human",
+      "discovery_short.step",
+      "decision"
+    ],
+    [
+      "plan.human",
       "__end__",
       "decision"
     ],
@@ -575,6 +680,11 @@
     [
       "expand.human",
       "triage.step",
+      "decision"
+    ],
+    [
+      "expand.human",
+      "discovery_short.step",
       "decision"
     ],
     [
@@ -669,6 +779,11 @@
     ],
     [
       "code.human",
+      "discovery_short.step",
+      "decision"
+    ],
+    [
+      "code.human",
       "expand.step",
       "decision"
     ],
@@ -705,6 +820,11 @@
     [
       "outcome.gate",
       "triage.step",
+      "BACK"
+    ],
+    [
+      "outcome.gate",
+      "discovery_short.step",
       "BACK"
     ],
     [
@@ -755,6 +875,11 @@
     [
       "outcome.human",
       "triage.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "discovery_short.step",
       "decision"
     ],
     [
@@ -803,5 +928,5 @@
       "next"
     ]
   ],
-  "digest": "345ad186df7cff52c44cf76540ca2fc76a4d2daedeaf91ab03ac33955bd4dcce"
+  "digest": "e8a7c2f9bebb39f807cc94d32fec0964038f63ed828d224ba1375909d5930942"
 }

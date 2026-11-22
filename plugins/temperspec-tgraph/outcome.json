@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 5,
+  "revision": 6,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -354,6 +354,120 @@
         }
       ]
     },
+    "discovery_short": {
+      "statement": "A task whose every gap a spec already answers gets a hand-off and a reading list from a short, read-only visit, and a gap the citation does not answer goes on to the full discovery",
+      "criteria": [
+        {
+          "id": "ts-dsh-form",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "The short visit's hand-off has each section the task-notes rule requires",
+          "check_method": "Read the hand-off's headings in order",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_short_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-dsh-cited",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "The hand-off's `Gaps closed` names every behaviour id a gap row of the triage note cites",
+          "check_method": "Read the cited ids of the triage note's gap rows and look for each in `Gaps closed`",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_short_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-dsh-only",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "The short visit's hand-off lists no changed document",
+          "check_method": "Read the hand-off's `Changed documents`: `None`, or nothing but the hand-off itself",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_short_check"
+          }
+        },
+        {
+          "id": "ts-dsh-settled",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "The `settled` value is `no` exactly when a line of `Gaps closed` says `Not covered`",
+          "check_method": "Compare the value with the `Not covered` lines of the hand-off",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_short_check"
+          }
+        },
+        {
+          "id": "ts-dsh-reading",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "The hand-off of a settled short visit has a reading list of at most 10 items, each naming an existing file, the line ranges or ids that matter and one line on why",
+          "check_method": "Read the hand-off's reading list: count the items, and each names a file that exists, with its ranges or ids and a reason",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_short_check"
+          }
+        },
+        {
+          "id": "ts-dsh-limit",
+          "severity": "warning",
+          "verified_by": "check",
+          "text": "The short visit's prompt tells the session to read at most 10 files",
+          "check_method": "Read the short visit's prompt file of the package for the reading limit, phrase by phrase",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_short_check"
+          }
+        },
+        {
+          "id": "ts-dsh-commit",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every file the short discovery step changed is committed",
+          "check_method": "Read the git facts of the worktree after the step's commit",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_short_check"
+          }
+        },
+        {
+          "id": "ts-dsh-answers",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "Every behaviour a gap row cites answers that gap's question as the task's acceptance criteria need it, or the hand-off says `Not covered` for the gap",
+          "check_method": "Read each gap row, the behaviour and criterion it cites, and the hand-off's line for the gap",
+          "source": "created",
+          "verifier": {
+            "references": [
+              "triage_note"
+            ],
+            "scale": {
+              "met": "each gap's cited behaviour states the event, the result and every limit the task's criteria name, or its line says `Not covered` with what is left out",
+              "partial": "no partial: any gap is UNMET",
+              "unmet": "a gap is taken as answered by a behaviour that leaves out an event, a result or a limit the task needs, or a `Not covered` line names a gap the behaviour does answer",
+              "evidence": "per gap: the spec path, the behaviour id and the quote that answers the gap, or what it leaves out",
+              "seeds": [
+                "met-ts-dsh-answers",
+                "unmet-ts-dsh-answers"
+              ]
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        }
+      ]
+    },
     "discovery": {
       "statement": "Every gap is closed by a spec, a decision record or a research note in the agreed format, committed",
       "criteria": [
@@ -500,22 +614,14 @@
         },
         {
           "id": "ts-dis-narrow",
-          "severity": "warning",
-          "verified_by": "judge",
+          "verified_by": "check",
           "text": "Every discovery prompt tells the session to search for ids and names, to read the line ranges it needs instead of whole files, and to stop reading once each gap has its answer",
-          "check_method": "Read each discovery prompt of the package for the three instructions",
-          "source": "interview",
+          "check_method": "Read each discovery prompt file of the package for the three instructions, phrase by phrase",
+          "source": "created",
           "verifier": {
-            "references": [
-              "triage_note"
-            ],
-            "scale": {
-              "met": "each discovery prompt has all three instructions",
-              "partial": "no partial: any gap is UNMET",
-              "unmet": "a discovery prompt lacks one of the three instructions",
-              "evidence": "per prompt: the sentence for each instruction"
-            }
-          }
+            "check": "tgwf_temperspec.checks:discovery_check"
+          },
+          "severity": "warning"
         }
       ]
     },
@@ -626,22 +732,14 @@
         },
         {
           "id": "ts-plan-reading",
-          "severity": "warning",
-          "verified_by": "judge",
+          "verified_by": "check",
           "text": "The plan prompt tells the session to start from the hand-off's reading list and to open another file only for what the list does not answer",
-          "check_method": "Read the plan prompt of the package, and section 0 of the plan for the extra files it opened",
-          "source": "interview",
+          "check_method": "Read the plan prompt file of the package for the two instructions, phrase by phrase",
+          "source": "created",
           "verifier": {
-            "references": [
-              "triage_note"
-            ],
-            "scale": {
-              "met": "the prompt has both instructions, and section 0 names each extra file with its reason",
-              "partial": "no partial: any gap is UNMET",
-              "unmet": "the prompt lacks one of the instructions, or an extra file is opened with no reason",
-              "evidence": "the quoted sentences, and each extra file with its reason"
-            }
-          }
+            "check": "tgwf_temperspec.checks:plan_check"
+          },
+          "severity": "warning"
         }
       ]
     },
@@ -979,41 +1077,25 @@
         },
         {
           "id": "ts-code-once",
-          "severity": "warning",
-          "verified_by": "judge",
-          "text": "A code session runs only the test files a phase's rows name after that phase, and each verification command of the plan once, after the last phase and before it writes the report (in the quick lane, the note's `Verify` commands once, after the last criterion), and its prompt says so",
-          "check_method": "Read the code prompt, then the commands the report says the session ran",
-          "source": "interview",
+          "verified_by": "check",
+          "text": "The code prompt tells the session to run only the test files a phase's rows name after that phase, and each verification command of the plan once, after the last phase and before it writes the report (in the quick lane, the note's `Verify` commands once, after the last criterion)",
+          "check_method": "Read the code prompt file of the package for the two instructions, phrase by phrase",
+          "source": "created",
           "verifier": {
-            "references": [
-              "code_report"
-            ],
-            "scale": {
-              "met": "the prompt says both, and the report shows each verification command run once, after the last phase",
-              "partial": "no partial: any gap is UNMET",
-              "unmet": "the prompt lacks one of the two instructions, or a verification command ran between phases",
-              "evidence": "the quoted prompt sentences, and each verification command with when it ran"
-            }
-          }
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "warning"
         },
         {
           "id": "ts-code-reuse",
-          "severity": "warning",
-          "verified_by": "judge",
+          "verified_by": "check",
           "text": "The code gate runs a verification command only when no result of that command is recorded for the same tree, so a retry or a later visit of the code step on an unchanged tree runs nothing again (CHK-B13)",
-          "check_method": "Read the gate's command runs for each visit of the code step and whether the tree changed between them",
-          "source": "interview",
+          "check_method": "Read the gate's own command runs: each verification command asked for with reuse, none started twice on one tree, and the count taken from a recorded result",
+          "source": "created",
           "verifier": {
-            "references": [
-              "code_report"
-            ],
-            "scale": {
-              "met": "each command that ran on an unchanged tree was reused, none started again",
-              "partial": "no partial: any gap is UNMET",
-              "unmet": "a command ran again on a tree that had not changed",
-              "evidence": "per command: the visit, whether the tree changed, and whether the run was reused"
-            }
-          }
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "warning"
         }
       ]
     }
@@ -1060,6 +1142,12 @@
       "origin": "authored",
       "at": "2026-11-22T15:00:00.000Z",
       "note": "faster runs: the covered mark in triage, a reading list in the hand-off, narrow discovery and plan reading, one full code run per visit and its reuse at the gate (task speedup-runs)"
+    },
+    {
+      "revision": 6,
+      "origin": "authored",
+      "at": "2026-11-22T18:30:00.000Z",
+      "note": "criteria about how the run works (narrow reading, the reading list, commands run once, a reused gate result) are checked model-free from the package's prompts and the gate's own command runs instead of asked of a judge, which sees neither (backlog B30); ts-code-once narrowed to what the prompt says; the short discovery visit `discovery_short` with criteria ts-dsh-* (decision record 0003, backlog B21)"
     }
   ]
 }

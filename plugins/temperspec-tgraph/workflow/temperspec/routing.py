@@ -51,9 +51,18 @@ def route_setup(view: Any) -> str:
 
 
 def route_triage(view: Any) -> str:
-    """A quick task goes straight to code; no gap goes to the plan; any gap goes to discovery."""
+    """A quick task goes straight to code; no gap goes to the plan; a task whose every gap a spec answers takes the
+    short visit; any other gap, and a docs-only task, goes to the full discovery."""
     route = view.values.get("route")
+    if route == "discovery" and view.values.get("covered") == "yes":
+        return "discovery_short"
     return {"quick": "code", "plan": "plan"}.get(route, "discovery")
+
+
+def route_short(view: Any) -> str:
+    """A short visit that confirmed every gap goes to the plan; one that found a gap not answered hands it to the
+    full discovery. An unreadable value takes the longer path."""
+    return "plan" if view.values.get("settled") == "yes" else "discovery"
 
 
 def route_discovery(view: Any) -> str:
