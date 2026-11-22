@@ -1,143 +1,132 @@
----
-title: State and run migration across releases
-type: component
-status: review
-prefix: MIG
-adrs: [0056, 0055, 0014, 0024]
----
-
 # State and run migration across releases
 
-## 1. Overview
+## Purpose
 
-Runs outlive releases: a thread may sit paused for days, an orchestration supervises runs for hours, and every repository keeps a store of checkpoints and logs ([DUR](09-durability-and-resume.spec.md), [LOS](33-local-observability-store.spec.md)). This spec owns what happens to that state when the engine changes ([UPD](60-engine-update.spec.md)) or when a workflow's content changes under a thread (a plugin update, a merged upgrade, [WUP](63-workflow-upgrade.spec.md)).
+Runs outlive releases: a thread may sit paused for days, an orchestration supervises runs for hours, and every repository keeps a store of checkpoints and logs ([DUR](09-durability-and-resume.spec.md), [LOS](33-local-observability-store.spec.md)). This spec owns what happens to that state when the engine changes ([UPD](60-engine-update.spec.md)) or when a workflow's content changes under a thread (a plugin update, a merged upgrade, [WUP](63-workflow-upgrade.spec.md)). The rule is move at the resume boundary, pin only on a break ([ADR-0056](../adr/0056-threads-move-to-the-new-engine-at-resume-unless-a-release-pins-them.adr.md)): a running process is never touched; a paused, unfinished or stopped thread moves to the current engine at its next resume, because each resume is a new process at a checkpoint and every unit is a fresh session; only a release that cannot resume a thread's checkpoint format pins that thread to a kept engine that can. A workflow change is tested by the two things a checkpoint holds, unit names and state keys; edges may change freely ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U13). People resuming threads, the update verb and the store's readers depend on it; design and build notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-The rule is **move at the resume boundary, pin only on a break** ([ADR-0056](../adr/0056-threads-move-to-the-new-engine-at-resume-unless-a-release-pins-them.adr.md)). A running process is never touched. A paused, unfinished or stopped thread moves to the current engine at its next resume, because each resume is a new process at a checkpoint and every unit is a fresh session. Only a release that cannot resume a thread's checkpoint format pins that thread to an engine that can, which is kept for it. A workflow change is tested by the two things a checkpoint holds, unit names and state keys; edges may change freely ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U13).
+## Behaviours
 
-## 2. Contract
+### MIG-B8 What a thread records
 
-### 2.1 What a thread records
+WHEN a run process starts or resumes THE engine SHALL add `engine_version`, `engine_digest` and `pid` to the lock file `locks/<workflow>/<task_id>.lock` ([LOS-B7](33-local-observability-store.spec.md)); keep `runs/<workflow>/<task_id>/engine.json` with `schema_version`, `started_on` (engine version and digest), `last_on`, `pinned` (null or `{engine, reason, since}`) and `history[]` (one entry per process: engine, `workflow_version`, `shape_digest`, started at, the latest entry also keeping each unit's digest, kind and produced keys, the list keeping its last 50); add `engine_version`, `shape_digest` and `moved_from` (the previous process's engine and workflow version, when they differ) to `run_started` ([EVT](30-run-events.spec.md)), its `workflow_version` in the form of [VER-B15](61-version-metadata.spec.md); and add `engine` and `engine_pin` to the status row ([DUR-B11](09-durability-and-resume.spec.md)), all optional keys that older readers skip ([CON-B14](01-contracts.spec.md)).
 
-| Record | Where | Fields |
-|---|---|---|
-| Lock file | `locks/<workflow>/<task_id>.lock` ([LOS §2.1](33-local-observability-store.spec.md)) | Adds `engine_version`, `engine_digest`, `pid`; read by `update` and `--prune-engines` |
-| Engine file | `runs/<workflow>/<task_id>/engine.json`, new | `schema_version`, `started_on` (engine version and digest), `last_on`, `pinned` (null or `{engine, reason, since}`), `history[]` (one entry per process: engine, `workflow_version`, `shape_digest`, started at) |
-| `run_started` | Run log ([EVT §2.2](30-run-events.spec.md)) | Adds `engine_version`, `shape_digest` and `moved_from` (the engine and workflow version of the previous process, when they differ); its existing `workflow_version` takes the form of [VER §2.4](61-version-metadata.spec.md) |
-| Status row | [DUR §2.2](09-durability-and-resume.spec.md) | Adds `engine` (last engine) and `engine_pin` |
+- GIVEN a thread resumed by a second process WHEN `engine.json` is read THEN `history` has two entries
 
-All additions are optional keys under the current schema versions; readers that do not know them skip them ([CON §2.10](01-contracts.spec.md)).
+### MIG-B9 Store layout steps
 
-### 2.2 Store layout migration
+WHEN a release's `store_layout` is above a store's THE release SHALL ship one migration per step (`N → N+1`), each a pure function over the folder, `additive` (new files or folders an older engine still reads tolerantly) or `breaking` (a file moved, renamed or rewritten), and the engine SHALL run them in a state root at the first verb of the new engine that writes there (`run`, `resume`, `batch`, `orchestrate start`, `store prune`, `label` and the like) and in the home folder at the layout step of `update` ([UPD-B14](60-engine-update.spec.md)), never from a read-only verb, which reads older layouts tolerantly ([LOS-B12](33-local-observability-store.spec.md)).
 
-A release whose `store_layout` is above a store's ships one migration per step (`N → N+1`), each a pure function over the folder.
+- GIVEN a read-only verb against an older layout WHEN it runs THEN the layout is unchanged
 
-| Rule | Value |
-|---|---|
-| Kinds | `additive` (new files or folders; an older engine still reads the store tolerantly) or `breaking` (a file moved, renamed or rewritten) |
-| When | State root: the first verb of the new engine that writes there (`run`, `resume`, `batch`, `orchestrate start`, `store prune`, `label` and the like). Home folder: `update` step 5 ([UPD §2.3](60-engine-update.spec.md)). Read-only verbs never migrate; they read older layouts tolerantly ([LOS §4](33-local-observability-store.spec.md)). |
-| Lock | A migration lock `locks/.migrate`, created exclusively; a second process waits up to 60 s, then refuses with exit 2 |
-| Live older processes | An `additive` step proceeds. A `breaking` step is refused while any run lock in the root names an older engine: the verb exits 2 naming the live run and `stop --drain` ([RCT](32-run-control.spec.md)) |
-| Backup | Before a `breaking` step, every file it will move or rewrite and the manifest are copied to `backups/layout-<N>-<UTC timestamp>/`; append-only logs are never rewritten, only left in place for tolerant readers |
-| After | `manifest.json` records the new layout, the engine that moved it and the backup path; one `store_migrated` engine-log line |
-| Rollback | A backup restores only while no run has written to the root since the step ([UPD §2.6](60-engine-update.spec.md)); `store usage` lists backups; `store prune --backups` removes them |
+### MIG-B10 Migration lock, backup and record
 
-### 2.3 Running processes
+WHEN a layout step runs THE engine SHALL take `locks/.migrate` exclusively, a second process waiting up to 60 s and then exiting 2 naming the holder's pid; before a `breaking` step copy every file it will move or rewrite and the manifest to `backups/layout-<N>-<UTC timestamp>/`, never rewriting an append-only log; afterwards record in `manifest.json` the new layout, the engine that moved it and the backup path, with one `store_migrated` engine-log line; on a step that raises restore its backup, leave the manifest unchanged and exit 1; restore a backup only while no run has written to the root since the step ([UPD-B17](60-engine-update.spec.md)); list backups in `store usage` and remove them with `store prune --backups`.
 
-A process that holds a run lock keeps the engine it started on until it exits: it was loaded from its own environment folder, which `update` neither changes nor removes ([UPD §2.2](60-engine-update.spec.md)). Child sessions are executor processes, not engine processes, and are unaffected. The detached self-improvement child ([SIL](16-self-improvement.spec.md)) is a process of its own and keeps the engine that started it.
+- GIVEN a fault injected mid-step WHEN the step raises THEN the backup is restored, the manifest is unchanged and it exits 1
 
-### 2.4 A thread at its next resume
+### MIG-B5 Breaking layout step waits for older runs
 
-The current engine reads `engine.json` and the checkpoint's format before anything else, and decides:
+WHEN a `breaking` layout step would run while a run lock in the root names an older engine THE engine SHALL refuse with exit 2 naming the live run and `stop --drain` ([RCT](32-run-control.spec.md)), and an `additive` step SHALL proceed.
 
-| Condition | Result |
-|---|---|
-| `pinned` is set | Dispatch: the shim re-executes the pinned engine's interpreter with the same constants-only argv; the decision and inputs pass by the usual hand-off ([SEC](14-security.spec.md)). The pinned engine resumes the thread. |
-| The checkpoint format is in `resumes_checkpoint_formats` ([VER §2.2](61-version-metadata.spec.md)) | Move: the thread resumes on the current engine; `last_on` and `history` are updated; `run_started` carries `moved_from` |
-| The checkpoint format is not | Pin: `pinned` is set to the newest kept engine that resumes the format, with reason `checkpoint_format`; then dispatch as above |
-| No kept engine resumes the format | Refused, exit 2, naming the engine version needed; nothing written |
+- GIVEN a live run on 1.4.0 and a 1.5.0 whose step is `breaking` WHEN a second run starts on 1.5.0 THEN it exits 2 naming the live run and `stop --drain`, and once that run exits the next start migrates with a backup
 
-A release that changes the checkpoint format starts new threads in a separate database, `checkpoints/<workflow>.f<format>.sqlite`, so engines of two formats never open one file. Format 1 keeps the name `checkpoints/<workflow>.sqlite`. A pin is cleared only when the thread finishes or a person runs `resume --unpin` after the pinned engine is gone, which restarts the thread from its last unit boundary under the current engine's format only where the release ships a converter for that format; otherwise `--unpin` is refused.
+### MIG-B11 Running processes keep their engine
 
-### 2.5 A workflow changed under a thread
+WHEN `update` switches engines while a process holds a run lock THE process SHALL keep the engine it started on until it exits, loaded from its own environment folder that `update` neither changes nor removes ([UPD-B11](60-engine-update.spec.md)); executor child sessions are not engine processes and are unaffected, and the detached self-improvement child ([SIL](16-self-improvement.spec.md)) keeps the engine that started it.
 
-At each resume the engine compares the workflow's current `content_digest` with the one in `history`'s last entry. When they differ:
+- GIVEN a run in progress on 1.4.0 WHEN 1.5.0 becomes current THEN the run finishes on 1.4.0 and records it
 
-| Test | Passes when |
-|---|---|
-| Pending unit | The unit the thread is paused at, or would enter next, exists with the same name and kind |
-| Units behind | Every unit the thread has completed still exists, so a `back` decision or a loop-back can still find it |
-| State keys | Every artifact key a completed unit produced, and every one a pending or later unit reads, is still declared or still recorded |
-| Inputs | Every input parameter the new version requires has a value in the thread's resolved input |
+### MIG-B12 A thread at its next resume
 
-All pass: the thread resumes on the new content, `run_started` carries `moved_from` with both workflow versions, and the run log records one `workflow_changed` notice naming the units whose prompts, gates or limits changed. Edges, routes, prompts, criteria, limits and new units after the pending one may differ. Any test fails: the resume is refused with exit 2 and a list of the breaks; the remedies named are to reinstall the workflow version the thread started on (its `workflow_version` is in `history`) and resume, or to start a new thread.
+WHEN a thread resumes THE engine SHALL read `engine.json` and the checkpoint's format before anything else, the CLI deciding before the runner and the runner itself refusing a pinned thread with `engine_pinned`, and then: where `pinned` is set, dispatch, the shim re-executing the pinned engine's interpreter with the same constants-only argv and the decision and inputs passing by the usual hand-off ([SEC](14-security.spec.md)); where the format is in `resumes_checkpoint_formats` ([VER-B8](61-version-metadata.spec.md)), move, updating `last_on` and `history` and putting `moved_from` on `run_started`; where it is not, pin to the newest kept engine that resumes it with reason `checkpoint_format` and dispatch; and where no kept engine resumes it, exit 2 naming the engine version needed and write nothing, or naming the pinned engine whose folder is gone, which `update` from a plugin copy of that version reinstalls beside the current one.
 
-### 2.6 Orchestrations and batches
+- GIVEN a thread paused on 1.4.0 and 1.5.0 resuming the same format WHEN resumed THEN 1.5.0 resumes it, `run_started` carries `moved_from: 1.4.0` and status shows `engine: 1.5.0`
+- GIVEN a pinned engine's folder removed WHEN its thread resumes THEN it exits 2 naming that engine
 
-| Case | Engine |
-|---|---|
-| A running supervisor ([ORC](45-orchestration.spec.md)) or batch parent | Keeps its engine; the child runs it starts use the supervisor's own environment, not the shim's current pointer, so one supervising process runs one engine ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U16) |
-| `orchestrate resume` after the supervisor exited | The current engine supervises; each child thread follows §2.4 on its own resume |
-| Mixed engines across an orchestration's nodes | Allowed; each node's status shows its run's engine |
-| An orchestration file or event log of an older schema | Read tolerantly; written in the new schema only from the next event, never rewritten |
+### MIG-B1 A paused thread moves
 
-### 2.7 Documents read by integrations
+WHEN a thread paused on an older engine resumes on an engine that resumes its checkpoint format THE engine SHALL resume it on the current engine and record the move.
 
-Hooks, sinks and the monitor read engine documents with tolerant readers ([CON §2.10](01-contracts.spec.md)). A release with an `integration`-audience entry ([VER §2.3](61-version-metadata.spec.md)) is listed by `update`'s report; the engine keeps writing every key an older reader needs until the entry's `removal_in` release.
+- GIVEN thread format 2 and a current engine resuming 2 and 3 WHEN resumed THEN it moves
 
-## 3. Behaviours
+### MIG-B2 A format break pins
 
-**MIG-B1 A paused thread moves.** Given a thread paused on 1.4.0 and an engine now at 1.5.0 that resumes the same checkpoint format, when the person resumes it, then 1.5.0 resumes it, `run_started` carries `moved_from: 1.4.0`, and status shows `engine: 1.5.0`.
+WHEN a thread's checkpoint format is not resumed by the current engine THE engine SHALL pin it to a kept engine that resumes the format, and start new threads of the same workflow on the current engine.
 
-**MIG-B2 A format break pins.** Given a thread paused on 1.6.2 (format 2) and an engine now at 2.0.0 that resumes format 3 only, with 1.6.2 kept, when the person resumes it, then `engine.json` records `pinned: 1.6.2, reason: checkpoint_format`, the thread resumes on 1.6.2, and a new thread of the same workflow starts on 2.0.0 in `checkpoints/<workflow>.f3.sqlite`.
+- GIVEN a thread on 1.6.2 (format 2), an engine at 2.0.0 resuming format 3 only and 1.6.2 kept WHEN resumed THEN `engine.json` records `pinned: 1.6.2, reason: checkpoint_format`, it resumes on 1.6.2, and a new thread starts on 2.0.0 in `checkpoints/<workflow>.f3.sqlite`
+- GIVEN thread format 2, a current engine resuming 3 and no kept engine resuming 2 WHEN resumed THEN it exits 2 naming an engine that resumes format 2
 
-| Thread format | Current resumes | Kept engines | Result |
-|---|---|---|---|
-| 2 | 2, 3 | — | move |
-| 2 | 3 | 1.6.2 (resumes 2) | pin to 1.6.2 |
-| 2 | 3 | none resumes 2 | exit 2, names an engine that resumes format 2 |
+### MIG-B13 One database per checkpoint format
 
-**MIG-B3 A workflow change that keeps the path.** Given a thread paused at `review` and a workflow upgrade that rewrote the `review` judge brief and added a unit after it, when the thread resumes, then it resumes on the new content with one `workflow_changed` notice naming `review`.
+WHEN a release changes the checkpoint format THE engine SHALL start new threads in `checkpoints/<workflow>.f<format>.sqlite`, format 1 keeping `checkpoints/<workflow>.sqlite`, so engines of two formats never open one file; a thread keeps its format for life, every reader of one thread opens that format's database, and a listing reads the databases of every format the engine resumes.
 
-**MIG-B4 A workflow change that breaks the path.** Given a thread paused at `expand` and a new workflow version that renamed `expand` to `elaborate`, when the thread resumes, then it is refused with exit 2, the message names the missing unit and the workflow version the thread started on, and nothing is written.
+- GIVEN threads of formats 1 and 2 in one state root WHEN both engines run THEN neither opens the other's database
 
-**MIG-B5 Breaking layout step waits for older runs.** Given a state root with a live run on 1.4.0 and a 1.5.0 whose layout step is `breaking`, when a second run starts on 1.5.0 in that root, then it exits 2 naming the live run and `stop --drain`; once the run exits, the next start migrates with a backup.
+### MIG-B14 Clearing a pin
 
-**MIG-B6 Supervisor keeps its engine.** Given an orchestration supervised on 1.4.0 and an update to 1.5.0 mid-way, when the supervisor starts its next node's run, then that run starts on 1.4.0; after the supervisor exits, `orchestrate resume` supervises on 1.5.0.
+WHEN a pinned thread finishes, or a person runs `resume --unpin` after the pinned engine is gone THE engine SHALL clear the pin, `--unpin` restarting the thread from its last unit boundary under the current engine's format only where the release ships a converter for that format or the current engine resumes it, and refused otherwise.
 
-**MIG-B7 Old checkpoints resume, as before.** Given the fixture checkpoints of every earlier release of the same format ([DUR-B6](09-durability-and-resume.spec.md)), when the current engine resumes each, then every one moves and is answered correctly.
+- GIVEN no converter and a format the current engine does not resume WHEN `resume --unpin` runs THEN it is refused
 
-## 4. Error conditions
+### MIG-B15 A workflow changed under a thread
 
-| Condition | Result |
-|---|---|
-| `engine.json` missing (a thread from before this spec) | Read as `started_on` unknown, not pinned; written at the next resume with `started_on: {engine_version: null, engine: unknown}`, and that resume's `run_started` carries `moved_from: {engine_version: unknown}` with no `workflow_changed` notice (live check L-27 found it recorded as started on the resuming engine) |
-| The pinned engine's folder is gone | Exit 2 naming it; `update` from a plugin copy of that version reinstalls it beside the current one |
-| A migration step raises | The step's backup is restored, the manifest unchanged, exit 1 |
-| Migration lock held past 60 s | Exit 2 naming the holder's pid |
-| A workflow's `content_digest` cannot be computed (unreadable file) | Validation's own error; resume exit 2 |
+WHEN a thread resumes and the workflow's current `content_digest` differs from the last `history` entry's (the declared version where no package is loaded) THE engine SHALL test that the pending unit (the one paused at or entered next) exists with the same name and kind, every completed unit still exists so a `back` decision or loop-back can find it, every artifact key a completed unit produced and every one a pending or later unit reads is still declared or recorded, and every input parameter the new version requires has a value in the resolved input; when all pass, resume on the new content with `moved_from` carrying both workflow versions and one `workflow_changed` notice naming the units whose prompts, gates or limits changed, edges, routes, prompts, criteria, limits and new units after the pending one free to differ; when any fails, exit 2 listing the breaks, naming as remedies reinstalling the `workflow_version` the thread started on or starting a new thread, and write nothing; an unreadable file is validation's own error and the resume exits 2.
 
-## 5. Design notes
+- GIVEN a passing fixture for each test WHEN resumed THEN `workflow_changed` is recorded
+- GIVEN a failing fixture for each test WHEN resumed THEN it refuses with its own message and writes nothing
 
-- LangGraph applies the latest graph to every thread ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U12), which is the default here; pinning, taken from Temporal's model (U15), is kept for the one case LangGraph cannot handle, a checkpoint the new code cannot read ([ADR-0056](../adr/0056-threads-move-to-the-new-engine-at-resume-unless-a-release-pins-them.adr.md)).
-- The engine names compiled nodes after unit names ([CMP](03-compiler-and-flow.spec.md)); renaming that scheme is a checkpoint-format change by definition, so it pins rather than breaks.
-- A workflow change is never blocked for what a checkpoint does not hold: a person who improves a prompt while a run waits for their decision gets the improved prompt on resume, recorded.
-- Migrations run on first write, not in `update`, because `update` cannot reach repositories that are not checked out, and a store must never be half-moved under a live run of an older engine.
-- **As built (R2-T6.2).** `durability/engine_file.py` holds the engine file, the decision of §2.4 as a pure function, and the four tests of §2.5; `store/migrate.py` holds the layout steps. The latest history entry also keeps a digest, the kind and the produced keys of each unit, which is what the tests of §2.5 and the `workflow_changed` notice compare; earlier entries drop it, and the history keeps its last 50 entries. A thread keeps the checkpoint format it was written in for as long as it lives, and every reader of one thread opens that format's database; a listing reads the databases of every format the engine resumes. The CLI decides before anything else and hands a pinned thread to its engine's interpreter with the argv it was given; the runner itself refuses such a thread with `engine_pinned`, so no path resumes it on the wrong engine. This release ships layout 1, checkpoint format 1 and no converter: `resume --unpin` clears a pin only when this engine resumes the thread's format. The engine file travels with a carried thread ([CAR](96-run-state-on-a-branch.spec.md)). The workflow version compared is the version with its content digest for a loaded package, and the declared version otherwise. Open: MIG-AC-6 waits for orchestration; MIG-B7's fixture checkpoints of earlier releases start with the first release that follows this one.
+### MIG-B3 A workflow change that keeps the path
 
-## 6. Acceptance criteria
+WHEN a changed workflow passes every test of MIG-B15 THE engine SHALL resume on the new content with one `workflow_changed` notice.
 
-- [x] MIG-AC-1 Every row of §2.4's table and of MIG-B2's table is a test with fixture checkpoints.
-- [x] MIG-AC-2 Each test of §2.5 has a failing fixture that refuses with its own message and writes nothing, and a passing fixture that records `workflow_changed`.
-- [x] MIG-AC-3 Every layout migration step has a before and after fixture tree, is idempotent, and a fault injected mid-step restores the backup.
-- [x] MIG-AC-4 A read-only verb run against an older layout leaves it unchanged (hash test).
-- [x] MIG-AC-5 Two engines of different checkpoint formats never open the same database file (test with both formats in one state root).
-- [ ] MIG-AC-6 A supervisor started before an update starts every child on its own engine (two-process test).
+- GIVEN a thread paused at `review` and an upgrade that rewrote the `review` brief and added a unit after it WHEN resumed THEN it resumes on the new content with one `workflow_changed` notice naming `review`
+
+### MIG-B4 A workflow change that breaks the path
+
+WHEN a changed workflow fails a test of MIG-B15 THE engine SHALL refuse the resume and write nothing.
+
+- GIVEN a thread paused at `expand` and a version that renamed `expand` to `elaborate` WHEN resumed THEN it exits 2 naming the missing unit and the version the thread started on, and nothing is written
+
+### MIG-B16 A thread from before the engine file
+
+WHEN a thread with no `engine.json` resumes THE engine SHALL read it as started on an unknown engine and not pinned, write `started_on: {engine_version: null, engine: unknown}`, and put `moved_from: {engine_version: unknown}` on that resume's `run_started` with no `workflow_changed` notice.
+
+- GIVEN a thread from before the engine file WHEN resumed THEN it is recorded as started on an unknown engine, not on the resuming one
+
+### MIG-B17 Orchestrations and batches
+
+WHEN a supervisor ([ORC](45-orchestration.spec.md)) or batch parent runs across an update THE engine SHALL start its child runs from the supervisor's own environment, not the shim's current pointer, so one supervising process runs one engine ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U16); after it exits, `orchestrate resume` supervises on the current engine and each child thread follows MIG-B12 on its own resume; mixed engines across nodes are allowed and each node's status shows its run's engine; and an orchestration file or event log of an older schema is read tolerantly and written in the new schema only from the next event, never rewritten.
+
+- GIVEN an orchestration event log of an older schema WHEN the current engine appends THEN earlier lines are unchanged
+
+### MIG-B6 Supervisor keeps its engine
+
+WHEN a supervisor started on one engine starts a node's run after an update THE engine SHALL start that run on the supervisor's engine.
+
+- GIVEN an orchestration supervised on 1.4.0 and an update to 1.5.0 mid-way WHEN the next node's run starts THEN it starts on 1.4.0, and after the supervisor exits `orchestrate resume` supervises on 1.5.0
+
+### MIG-B18 Documents read by integrations
+
+WHEN a release has an `integration`-audience changelog entry ([VER-B9](61-version-metadata.spec.md)) THE engine SHALL list it in `update`'s report and keep writing every key an older tolerant reader ([CON-B14](01-contracts.spec.md)) needs until the entry's `removal_in` release.
+
+- GIVEN a key deprecated with `removal_in: 3.0.0` WHEN 2.5.0 writes the document THEN the key is still written
+
+### MIG-B7 Old checkpoints resume, as before
+
+WHEN the current engine resumes the fixture checkpoints of every earlier release of the same format ([DUR-B6](09-durability-and-resume.spec.md)) THE engine SHALL move each and answer it correctly.
+
+- GIVEN the fixture checkpoints of each earlier release WHEN resumed THEN every one moves and is answered correctly
+
+## Acceptance criteria
+
+- MIG-AC1 (MIG-B12, MIG-B1, MIG-B2, MIG-B8, MIG-B16): Every case of MIG-B12 and MIG-B2 is a test with fixture checkpoints
+- MIG-AC2 (MIG-B15, MIG-B3, MIG-B4): Each test of MIG-B15 has a failing fixture that refuses with its own message and writes nothing, and a passing fixture that records `workflow_changed`
+- MIG-AC3 (MIG-B9, MIG-B10, MIG-B5): Every layout migration step has a before and after fixture tree, is idempotent, and a fault injected mid-step restores the backup
+- MIG-AC4 (MIG-B9): A read-only verb run against an older layout leaves it unchanged (hash test)
+- MIG-AC5 (MIG-B13, MIG-B14): Two engines of different checkpoint formats never open the same database file (test with both formats in one state root)
+- MIG-AC6 (MIG-B6, MIG-B11, MIG-B17, MIG-B18, MIG-B7): A supervisor started before an update starts every child on its own engine (two-process test), and fixture checkpoints of each earlier release resume
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should a release that breaks the checkpoint format ship a thread converter, so pinned threads can be moved and old engines retired sooner? The design allows one (`resume --unpin`) but does not require it. | Owner |
-
-## References
-
+- Should a release that breaks the checkpoint format ship a thread converter, so pinned threads can be moved and old engines retired sooner? The design allows one (`resume --unpin`) but does not require it. Owner: owner.
+- Not built yet: MIG-AC6 waits for orchestration, and the fixture checkpoints of earlier releases start with the first release after release 2, which ships layout 1, checkpoint format 1 and no converter. Owner: engine owner.
