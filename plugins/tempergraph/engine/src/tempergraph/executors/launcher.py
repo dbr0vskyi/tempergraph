@@ -48,6 +48,8 @@ class LaunchSpec:
     idle_s: int | None = None
     idle_floor_tool_s: int = IDLE_FLOOR_TOOL_S
     env_overlay: Mapping[str, str] = field(default_factory=dict)
+    env_drop: tuple[str, ...] = ()  # names beginning with one of these are left out of the inherited environment
+    env_keep: tuple[str, ...] = ()  # exact names that the drop prefixes never remove
     session_dir: Path | None = None
     grace_s: float = GRACE_S
     prompt_window_s: float = PROMPT_WINDOW_S
@@ -95,10 +97,11 @@ def idle_action(age_s: float, tool_open: bool, idle_s: int | None, floor_s: int 
     return "kill" if age_s > limit else "wait"
 
 
-def session_env(overlay: Mapping[str, str], session_key: str, base: Mapping[str, str] | None = None
-                ) -> dict[str, str]:
-    env = {k: v for k, v in (os.environ if base is None else base).items() if k not in CALLER_VARS}
-    env.update(overlay)
+def session_env(overlay: Mapping[str, str], session_key: str, base: Mapping[str, str] | None = None,
+                drop: tuple[str, ...] = (), keep: tuple[str, ...] = ()) -> dict[str, str]:
+    env = {k: v for k, v in (os.environ if base is None else base).items()
+           if k not in CALLER_VARS and (k in keep or not (drop and k.startswith(drop)))}
+    env.update(overlay)  # laid after the filter, so the engine's own names always arrive
     env[SESSION_KEY_VAR] = session_key
     return env
 
@@ -153,7 +156,8 @@ def launch(spec: LaunchSpec, parse_line: Callable[[bytes], list[Event]], sink: E
         try:
             proc = subprocess.Popen(  # noqa: S603 - list argv from executor constants (SEC-B5, SEC-B6)
                 spec.argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=err, cwd=spec.workdir,
-                env=session_env(spec.env_overlay, spec.session_key), **_popen_kwargs())  # type: ignore[call-overload]
+                env=session_env(spec.env_overlay, spec.session_key, drop=spec.env_drop, keep=spec.env_keep),
+                **_popen_kwargs())  # type: ignore[call-overload]
         except OSError as exc:
             out.spawn_error = exc
             return out

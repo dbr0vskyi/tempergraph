@@ -44,7 +44,7 @@ def test_declared_shell_in_engine_worktree(tmp_path: Path) -> None:
     argv, _ = step_argv(r, "sonnet", None, FLAGS)
     assert flag(argv, "--permission-mode") == "acceptEdits"
     rules = flag(argv, "--allowedTools")
-    assert rules == "Read,Edit(./**),Bash(pytest *),Bash(git status *)"  # ECC-B1
+    assert rules == "Read(./**),Edit(./**),Bash(pytest *),Bash(git status *)"  # ECC-B1, ECC-B7
     assert "/" not in rules.replace("./**", "")
     assert flag(argv, "--disallowedTools") == "EnterWorktree,ExitWorktree"
     assert flag(argv, "--permission-prompts") == "none"
@@ -54,7 +54,7 @@ def test_declared_shell_in_engine_worktree(tmp_path: Path) -> None:
 def test_in_place_has_default_mode_and_no_write_rules(tmp_path: Path) -> None:
     argv, _ = step_argv(req(tmp_path, tools=("read", "write")), "sonnet", None, frozenset())
     assert flag(argv, "--permission-mode") == "default"
-    assert flag(argv, "--allowedTools") == "Read"
+    assert flag(argv, "--allowedTools") == "Read(./**)"  # ECC-B7: the read rule stays inside the workspace
     assert "--permission-prompts" not in argv  # only when the probe saw the flag
 
 
@@ -63,7 +63,7 @@ def test_tool_names_and_rules_stay_apart(tmp_path: Path) -> None:
     argv, _ = step_argv(r, "sonnet", None, FLAGS)
     assert flag(argv, "--tools") == "Read,Bash"  # names only (ECC-B2)
     assert "(" not in flag(argv, "--tools")
-    assert flag(argv, "--allowedTools") == "Read,Bash(pytest *),mcp__tracker__get_issue"
+    assert flag(argv, "--allowedTools") == "Read(./**),Bash(pytest *),mcp__tracker__get_issue"
 
 
 def test_options_and_inherit(tmp_path: Path) -> None:
@@ -84,6 +84,35 @@ def test_judge_launch_is_read_only(tmp_path: Path) -> None:
     for bad in ("Write", "Edit", "Bash", "--fallback-model", "--resume", "--continue", "acceptEdits"):
         assert all(bad not in a for a in argv)  # ECC-AC4
     assert "--bare" in judge_argv(ViewSet(), None, isolated=True)
+
+
+def test_ecc_ac6_tools_sent_on_every_step_launch(tmp_path: Path) -> None:
+    # ECC-AC6 (ECC-B8, ECC-B14): `--tools` follows the declared tools whether or not enforcement is set
+    shell = req(tmp_path, tools=("read", "shell"), commands=("pytest",), enforce_tools=False)
+    argv, _ = step_argv(shell, "sonnet", None, FLAGS)
+    assert flag(argv, "--tools") == "Read,Bash"
+    preview = req(tmp_path, tools=("read",), commands=("tempergraph self-check draft.1.step",), enforce_tools=False)
+    argv, _ = step_argv(preview, "sonnet", None, FLAGS)
+    assert flag(argv, "--tools") == "Read,Bash"
+    assert flag(argv, "--allowedTools") == "Read(./**),Bash(tempergraph self-check draft.1.step)"  # the one Bash rule
+    argv, _ = step_argv(req(tmp_path, tools=(), enforce_tools=False), "sonnet", None, FLAGS)
+    assert "--tools" in argv and flag(argv, "--tools") == ""  # no tool: an empty value, not an absent flag
+    mcp = req(tmp_path, tools=("read", "mcp:tracker/get_issue"), enforce_tools=True)
+    argv, _ = step_argv(mcp, "sonnet", None, FLAGS, tmp_path / "mcp.json")
+    assert flag(argv, "--tools") == "Read" and "--strict-mcp-config" in argv  # as before
+
+
+def test_ecc_ac6_no_launch_sends_add_dir(tmp_path: Path) -> None:
+    # ECC-AC6 (ECC-B14): no step and no judge argv holds `--add-dir`
+    o = SessionOptions(effort="high", cost_cap_usd=2.5, fallback_alias="small", turn_cap=30)
+    full = req(tmp_path, tools=("read", "edit", "shell", "mcp:tracker/get_issue"), commands=("pytest",),
+               in_engine_worktree=True, enforce_tools=True, options=o, plugin_dir=tmp_path / "plugin")
+    argv, _ = step_argv(full, "sonnet", "haiku", FLAGS | {"--tools"}, tmp_path / "mcp.json")
+    assert "--add-dir" not in argv and all("add-dir" not in a for a in argv)
+    for judge in (judge_argv(ViewSet(tools=("Read", "Grep", "Glob")), "opus", isolated=False),
+                  judge_argv(ViewSet(tools=("Read",)), None, isolated=True),
+                  judge_argv(ViewSet(tool_less=True), "opus", isolated=False)):
+        assert all("add-dir" not in a for a in judge)
 
 
 def test_step_env() -> None:
@@ -259,6 +288,97 @@ def test_run_judge_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     assert res.ok and res.session_id == "j-1"
     assert seen["env"]["JUDGE_ONLY_TOKEN"] == "abc"
     assert "dontAsk" in seen["argv"] and "opus" in seen["argv"]
+
+
+HOST_SESSION = {
+    "CLAUDECODE": "1", "CLAUDE_CODE_ENTRYPOINT": "cli", "CLAUDE_CODE_SESSION_ID": "host-session",
+    "CLAUDE_CODE_CHILD_SESSION": "1", "CLAUDE_CODE_SUBAGENT_MODEL": "haiku", "CLAUDE_UNKNOWN_HOST_NAME": "x",
+    "ANTHROPIC_API_KEY": "key", "CLAUDE_CODE_USE_BEDROCK": "1", "HTTPS_PROXY": "http://proxy.test:3128",
+    "SSL_CERT_FILE": "/etc/ca.pem", "CLAUDE_CODE_OAUTH_TOKEN": "pipeline-token", "CLAUDE_CONFIG_DIR": "/srv/claude",
+}
+HOST_ONLY_NAMES = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_CHILD_SESSION",
+                   "CLAUDE_UNKNOWN_HOST_NAME")
+REACHING_NAMES = ("ANTHROPIC_API_KEY", "CLAUDE_CODE_USE_BEDROCK", "HTTPS_PROXY", "SSL_CERT_FILE",
+                  "CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CONFIG_DIR")  # the last two: a pipeline's own sign-in
+
+
+def _launch_three(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, host_extra: dict[str, str] | None = None
+                  ) -> list[dict[str, object]]:
+    """Run a step, a retry (a second run of the same request) and a judge through the stand-in; return what each saw."""
+    for name, value in {**HOST_SESSION, **(host_extra or {})}.items():
+        monkeypatch.setenv(name, value)
+    scenario = {"lines": [S.init(), S.result()]}
+    path = S.fake_claude(tmp_path, monkeypatch, scenario)
+    home = tmp_path / "home"
+    (home / "config" / "credentials").mkdir(parents=True)
+    (home / "config" / "credentials" / "judge").write_text("CLAUDE_CODE_OAUTH_TOKEN=judge-token\n")
+    ex = ClaudeExecutor(bindings=BindingTable(), home=home)
+    assert ex.probe().ok
+    seen: list[dict[str, object]] = []
+    for i in range(3):
+        rec = tmp_path / f"rec{i}.json"
+        S.set_scenario(path, {**scenario, "record": str(rec)})
+        if i < 2:  # a step, then a retry: a retry is a fresh launch of the same request (ECC-B9)
+            ex.run_step(req(tmp_path, tools=("read",)), EventSink())
+        else:
+            ex.run_judge(req(tmp_path, kind="judge", alias="large", credentials_profile="judge"),
+                         ViewSet(tools=("Read", "Grep", "Glob")), EventSink())
+        seen.append(json.loads(rec.read_text()))
+    return seen
+
+
+def test_ecc_ac6_step_retry_and_judge_reach_only_what_they_declare(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # ECC-AC6: argv and environment scans of a step, a retry and a judge launch from a planted host environment
+    step, retry, judge = _launch_three(tmp_path, monkeypatch)
+    for one in (step, retry, judge):
+        env = one["env"]
+        assert isinstance(env, dict) and isinstance(one["argv"], list)
+        for name in HOST_ONLY_NAMES:
+            assert name not in env
+        for name in REACHING_NAMES:
+            if one is judge and name == "CLAUDE_CODE_OAUTH_TOKEN":
+                continue  # the judge's credentials profile lays its own token over the host's (ECC-B10)
+            assert env[name] == HOST_SESSION[name]
+        assert "--add-dir" not in one["argv"]
+    for one in (step, retry):
+        assert one["env"]["CLAUDE_CODE_SUBAGENT_MODEL"] == "sonnet"  # the engine's value, never the host's
+        assert one["env"]["CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR"] == "1"
+        assert flag(one["argv"], "--tools") == "Read"
+        assert flag(one["argv"], "--allowedTools") == "Read(./**)"  # ECC-B7: no rule admits a path outside
+    assert judge["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == "judge-token"  # the credentials profile arrives
+    assert "CLAUDE_CODE_SUBAGENT_MODEL" not in judge["env"]
+
+
+def test_ecc_ac6_read_search_list_rules_stay_in_the_workspace(tmp_path: Path) -> None:
+    # ECC-AC6 (ECC-B7, ECC-B14): read gets the workspace-scoped rule, search and list get none (P-CC-10)
+    argv, _ = step_argv(req(tmp_path, tools=("read", "search", "list")), "sonnet", None, FLAGS)
+    assert flag(argv, "--tools") == "Read,Grep,Glob"
+    assert flag(argv, "--allowedTools") == "Read(./**)"
+    for bare in ("Read", "Grep", "Glob"):
+        assert bare not in (flag(argv, "--allowedTools") or "").split(",")
+
+
+def test_ecc_ac6_plugin_files_stay_readable(tmp_path: Path) -> None:
+    # ECC-AC6 (ECC-B7): a step given a workflow plugin may read that plugin's files and nothing else outside
+    plugin = tmp_path / "plug"
+    argv, _ = step_argv(req(tmp_path, tools=("read",), plugin_dir=plugin), "sonnet", None, FLAGS)
+    assert flag(argv, "--allowedTools") == f"Read(./**),Read(/{plugin.resolve().as_posix()}/**)"
+    argv, _ = step_argv(req(tmp_path, tools=("edit",), plugin_dir=plugin), "sonnet", None, FLAGS)
+    assert "Read(" not in (flag(argv, "--allowedTools") or "")
+
+
+def test_ecc_ac6_host_working_dir_setting_is_kept(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # ECC-AC6 (ECC-B9): a host that sets CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=0 keeps its value for a step
+    step, retry, _ = _launch_three(tmp_path, monkeypatch, {"CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "0"})
+    assert step["env"]["CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR"] == "0"
+    assert retry["env"]["CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR"] == "0"
+
+
+def test_task_ac5_live_probes_p_cc_10_and_p_cc_11_are_listed_not_run() -> None:
+    # AC 5 of the task (ECC-B14, CLI-B3): the executors listing carries P-CC-10 and P-CC-11 as not run
+    facts = ClaudeExecutor.live_facts  # type: ignore[attr-defined]
+    assert facts["P-CC-10"] == "not run" and facts["P-CC-11"] == "not run"
+    assert set(facts.values()) == {"not run"}
 
 
 def test_unbound_alias_returns_a_result(tmp_path: Path) -> None:

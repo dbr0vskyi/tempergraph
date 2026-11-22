@@ -37,7 +37,7 @@ task_id: third-release
 | Order | Cap and reach first, because every parallel shape relies on them | R-140 F4, F5 |
 | Plan shape | Tracks and phases only; each track's expanded plan is written when its specs are ready (EC-2) | As in release 2 |
 
-**Status: In progress.** R3-T1.1 is built (2026-11-22). EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
+**Status: In progress.** R3-T1.1 and R3-T1.2 are built (2026-11-22). EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
 
 ## 1. Requirements analysis
 
@@ -117,6 +117,8 @@ Status: built. BUD-B12 to BUD-B15 for parallel read-only branches, proved by BUD
 
 #### R3-T1.2 Step reach
 Goal: ECC-B14, tested by argv and environment scans; the live half is P-CC-10.
+
+Status: built. ECC-B14 for a step, a retry and a judge launch (host names dropped from the child's environment, `--tools` on every step launch, no `--add-dir`), proved by ECC-AC6 in `plugins/tempergraph/engine/tests/test_claude_executor.py`; the live half, P-CC-10 and P-CC-11, is left.
 
 ### R3-T2 Sub-workflows
 

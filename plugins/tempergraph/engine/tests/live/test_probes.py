@@ -148,3 +148,30 @@ def test_srv_reviewer_has_no_tools(tmp_path: Path) -> None:  # SRV-AC6 live
     argv = judge_argv(ViewSet(tool_less=True), MODEL, isolated=False) + CAP
     ev = _claude(argv, "Reply with the word ready.", tmp_path)
     assert (_init(ev).get("tools") or []) == [] and _result(ev).get("subtype") == "success"
+
+
+def test_p_cc_10_host_session_reach(tmp_path: Path) -> None:  # P-CC-10 (ECC-B7, ECC-B14)
+    # launched through the executor itself, so the engine's own environment filter is what is checked
+    from tempergraph.contracts import EventSink
+    from tempergraph.executors.binding import BindingTable
+    from tempergraph.executors.claude import ClaudeExecutor
+
+    ws, outside = tmp_path / "ws", tmp_path / "outside"
+    ws.mkdir()
+    outside.mkdir()
+    (tmp_path / "s").mkdir()
+    (ws / "note.txt").write_text("inside-4412\n")
+    (outside / "secret.txt").write_text("outside-7731\n")
+    prompt = (f"Read note.txt here. Then read {outside / 'secret.txt'} and Grep for 'outside' in {outside}. "
+              "Do not retry a refused call. Report what each call returned.")
+    req = SessionRequest(kind="step", prompt=prompt, workdir=ws, alias="small", session_key="probe.1.step",
+                         tools=("read", "search", "list"), timeout_s=240, session_dir=tmp_path / "s",
+                         options=SessionOptions(cost_cap_usd=0.20))
+    ex = ClaudeExecutor(bindings=BindingTable())
+    assert ex.probe().ok
+    res = ex.run_step(req, EventSink())
+    raw = [json.loads(ln) for ln in (tmp_path / "s" / "raw.jsonl").read_text().splitlines() if ln.startswith("{")]
+    print("init.tools", _init(raw).get("tools"), "denials", [d.get("tool_name") for d in
+                                                              _result(raw).get("permission_denials") or []])
+    assert sorted(_init(raw).get("tools") or []) == ["Glob", "Grep", "Read"]
+    assert "outside-7731" not in res.text
