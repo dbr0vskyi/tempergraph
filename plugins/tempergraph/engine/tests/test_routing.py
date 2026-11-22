@@ -45,6 +45,7 @@ def test_a_step_route_picks_its_target(repo: Path) -> None:
     assert out.exit_code is ExitCode.FINISHED and units_entered(repo) == ["draft"]  # light goes to the finalizer
     (r,) = recs(repo, "route")
     assert (r["unit"], r["arm"], r["target"], r["chosen_by"]) == ("draft", "finalizer", "finalizer", "predicate")
+    assert r["signals"] == {"mode": "light"}  # the value the route read is in the record (L-25)
     out = go(repo, routed(), [mode("full"), PLAIN], [judge(), judge()], task="R-2")
     assert out.exit_code is ExitCode.FINISHED and units_entered(repo, "R-2") == ["draft", "review"]
 
