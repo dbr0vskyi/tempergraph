@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
-  "revision": 1,
+  "revision": 2,
+  "check": "tgwf_doc_refresh.checks:outcome_check",
   "statement": "The doc's requested sections say what is true now, and nothing else in it changed.",
   "deliverables": [
     {
@@ -150,6 +151,12 @@
       "revision": 1,
       "origin": "authored",
       "at": "2026-11-20T17:30:06.839Z"
+    },
+    {
+      "revision": 2,
+      "origin": "authored",
+      "at": "2026-11-22T02:00:00.000Z",
+      "note": "the outcome gate's own check lists the sections changed since the run's base as the outcome judge's evidence (live check L-25); no criterion changed"
     }
   ]
 }
