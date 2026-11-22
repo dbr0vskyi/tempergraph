@@ -4,7 +4,7 @@ version: 1
 date_created: 2026-11-22
 last_updated: 2026-11-22
 owner: dbr0vskyi
-status: Planned
+status: In progress
 tags: [release-plan, tempergraph]
 tracker: none
 spec: plugins/tempergraph/docs/specs/00-overview.spec.md
@@ -37,7 +37,7 @@ task_id: third-release
 | Order | Cap and reach first, because every parallel shape relies on them | R-140 F4, F5 |
 | Plan shape | Tracks and phases only; each track's expanded plan is written when its specs are ready (EC-2) | As in release 2 |
 
-**Status: Planned.** EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
+**Status: In progress.** R3-T1.1 is built (2026-11-22). EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
 
 ## 1. Requirements analysis
 
