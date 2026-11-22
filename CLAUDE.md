@@ -11,7 +11,7 @@ Release 1 was built from `plugins/tempergraph/docs/plans/first-release.plan.md`,
 Run from `plugins/tempergraph/engine/`:
 
 - Install: `python -m pip install -e '.[dev]'` (Python 3.11+)
-- Test: `python -m pytest` (offline; stand-in executors only). Live checks against a signed-in `claude` are marked `live` and run only with `TEMPERGRAPH_LIVE=1`.
+- Test: `python -m pytest` (offline; stand-in executors only). It runs on up to four workers by default (one per processor, at most four; `pytest-xdist` comes with the `dev` extra); `python -m pytest -n 0` runs one process, and so does a run where `pytest-xdist` is missing. `TEMPERGRAPH_SUITE_AUDIT=1` adds the slow check that every test file passes alone. Live checks against a signed-in `claude` are marked `live` and run only with `TEMPERGRAPH_LIVE=1`.
 - Lint: `ruff check src tests`
 - Types: `mypy`
 

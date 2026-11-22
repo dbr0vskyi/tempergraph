@@ -46,7 +46,8 @@
       "produces": [
         "triage_note",
         "gaps",
-        "route"
+        "route",
+        "covered"
       ],
       "gate": {
         "check": true,

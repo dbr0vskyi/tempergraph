@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 4,
+  "revision": 5,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -340,6 +340,17 @@
             "ts-accepted",
             "ts-spec-sync"
           ]
+        },
+        {
+          "id": "ts-tri-covered",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every gap row that says `Covered by` names a behaviour id and the id of a criterion that names that behaviour, both of one spec and each defined exactly once",
+          "check_method": "Read each `Covered by` mark, then look the two ids up in the specs and read the criterion's brackets",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:triage_check"
+          }
         }
       ]
     },
@@ -475,6 +486,36 @@
               ]
             }
           }
+        },
+        {
+          "id": "ts-dis-reading",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "The hand-off of a task that goes on to a plan has a reading list with one item for each file the plan will need, naming an existing file, the line ranges or ids that matter and one line on why",
+          "check_method": "Read the hand-off's reading list: each item names a file that exists, with its ranges or ids and a reason",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          }
+        },
+        {
+          "id": "ts-dis-narrow",
+          "severity": "warning",
+          "verified_by": "judge",
+          "text": "Every discovery prompt tells the session to search for ids and names, to read the line ranges it needs instead of whole files, and to stop reading once each gap has its answer",
+          "check_method": "Read each discovery prompt of the package for the three instructions",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "triage_note"
+            ],
+            "scale": {
+              "met": "each discovery prompt has all three instructions",
+              "partial": "no partial: any gap is UNMET",
+              "unmet": "a discovery prompt lacks one of the three instructions",
+              "evidence": "per prompt: the sentence for each instruction"
+            }
+          }
         }
       ]
     },
@@ -582,6 +623,25 @@
           "serves": [
             "ts-accepted"
           ]
+        },
+        {
+          "id": "ts-plan-reading",
+          "severity": "warning",
+          "verified_by": "judge",
+          "text": "The plan prompt tells the session to start from the hand-off's reading list and to open another file only for what the list does not answer",
+          "check_method": "Read the plan prompt of the package, and section 0 of the plan for the extra files it opened",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "triage_note"
+            ],
+            "scale": {
+              "met": "the prompt has both instructions, and section 0 names each extra file with its reason",
+              "partial": "no partial: any gap is UNMET",
+              "unmet": "the prompt lacks one of the instructions, or an extra file is opened with no reason",
+              "evidence": "the quoted sentences, and each extra file with its reason"
+            }
+          }
         }
       ]
     },
@@ -916,6 +976,44 @@
               ]
             }
           }
+        },
+        {
+          "id": "ts-code-once",
+          "severity": "warning",
+          "verified_by": "judge",
+          "text": "A code session runs only the test files a phase's rows name after that phase, and each verification command of the plan once, after the last phase and before it writes the report (in the quick lane, the note's `Verify` commands once, after the last criterion), and its prompt says so",
+          "check_method": "Read the code prompt, then the commands the report says the session ran",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "code_report"
+            ],
+            "scale": {
+              "met": "the prompt says both, and the report shows each verification command run once, after the last phase",
+              "partial": "no partial: any gap is UNMET",
+              "unmet": "the prompt lacks one of the two instructions, or a verification command ran between phases",
+              "evidence": "the quoted prompt sentences, and each verification command with when it ran"
+            }
+          }
+        },
+        {
+          "id": "ts-code-reuse",
+          "severity": "warning",
+          "verified_by": "judge",
+          "text": "The code gate runs a verification command only when no result of that command is recorded for the same tree, so a retry or a later visit of the code step on an unchanged tree runs nothing again (CHK-B13)",
+          "check_method": "Read the gate's command runs for each visit of the code step and whether the tree changed between them",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "code_report"
+            ],
+            "scale": {
+              "met": "each command that ran on an unchanged tree was reused, none started again",
+              "partial": "no partial: any gap is UNMET",
+              "unmet": "a command ran again on a tree that had not changed",
+              "evidence": "per command: the visit, whether the tree changed, and whether the run was reused"
+            }
+          }
         }
       ]
     }
@@ -956,6 +1054,12 @@
       "origin": "authored",
       "at": "2026-11-21T22:45:00.000Z",
       "note": "plan status and row completion marks checked first at the code gate, requirement and docs links per row, the scope-cut warning, chosen by the owner"
+    },
+    {
+      "revision": 5,
+      "origin": "authored",
+      "at": "2026-11-22T15:00:00.000Z",
+      "note": "faster runs: the covered mark in triage, a reading list in the hand-off, narrow discovery and plan reading, one full code run per visit and its reuse at the gate (task speedup-runs)"
     }
   ]
 }

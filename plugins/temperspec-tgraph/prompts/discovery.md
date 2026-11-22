@@ -16,7 +16,7 @@ The task:
 ## Procedure
 
 1. Read the triage note: the acceptance criteria, the existing documents and every gap row.
-2. For each gap, read the existing documents the note names and the code the gap concerns. A claim about the code is a hypothesis until you have read it in the code.
+2. For each gap, read the existing documents the note names and the code the gap concerns. A claim about the code is a hypothesis until you have read it in the code. Read narrowly: search for ids and names with grep first, read the line ranges you need instead of whole files, and stop reading once each gap has its answer.
 3. Close each gap with the document its kind asks for:
    - `spec gap`: a new spec, or new behaviours in the spec that owns the capability.
    - `spec update`: an edit to the behaviours and criteria that are wrong or missing, in place.
@@ -24,7 +24,7 @@ The task:
    - `research needed`: a research note that answers the unknown from sources it cites.
 4. Write behaviours first, each in the fixed pattern, observable from outside, with no internal name. Then write the acceptance criteria that prove them. Every acceptance criterion of the task that a gap concerns must be provable from the behaviours you wrote.
 5. Check each spec you touched against the specs it links: no behaviour of yours may contradict a behaviour there. If one does, change yours, or change theirs when the task requires it and say so in the hand-off.
-6. Write the hand-off to `docs/tasks/{task_id}.handoff.md`: for every gap row the document that closes it, and every document you created or edited.
+6. Write the hand-off to `docs/tasks/{task_id}.handoff.md`: for every gap row the document that closes it, and every document you created or edited. End it with a `## Reading list` section for the plan step, which starts from it: one item for each file the plan will need, an existing file in a code span, the line ranges or ids that matter in brackets, a colon, and one line on why. Add only files you read or searched while closing the gaps.
 
 ## Limits
 

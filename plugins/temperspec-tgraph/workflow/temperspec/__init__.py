@@ -97,7 +97,8 @@ def workflow() -> Any:
                 prompt=text("prompts/triage.md"), summary="Read the task, find the gaps, pick the route",
                 **_sized("triage"), tools=[*READ, "write"], timeout_s=1200,
                 produces={"triage_note": "file", "gaps": Value(choices=["some", "none"]),
-                          "route": Value(choices=list(specfmt.ROUTES))},
+                          "route": Value(choices=list(specfmt.ROUTES)),
+                          "covered": Value(choices=["no", "yes"], optional=True)},
                 after=[_commit()], route=route_triage, route_targets=["discovery", "plan", "code"],
                 gate=Gate(check=triage_check, judge=_judge("triage", ["triage_note"]), on_budget_spent="stop")),
             "discovery": Step(

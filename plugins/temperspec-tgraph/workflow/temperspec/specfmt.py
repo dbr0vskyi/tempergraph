@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 SPEC_CAP_LINES = 400
 SPEC_HEADINGS = ("Purpose", "Behaviours", "Acceptance criteria")
 TRIAGE_HEADINGS = ("Task", "Acceptance criteria", "Existing documents", "Gaps", "Route")
-HANDOFF_HEADINGS = ("Problem", "Gaps closed", "Changed documents", "Decisions", "Open questions")
+HANDOFF_HEADINGS = ("Problem", "Gaps closed", "Changed documents", "Decisions", "Open questions", "Reading list")
 PLAN_HEADINGS = ("0. Hand-off", "1. Requirements", "2. Phases", "3. Verification", "4. Docs to update")
 REPORT_HEADINGS = ("Verification", "Deviations")  # the quick lane adds `## Rows` before them (no plan to mark)
 QUICK_REPORT_HEADINGS = ("Rows", *REPORT_HEADINGS)
@@ -52,6 +52,9 @@ ANY_ID = re.compile(rf"\b({ID}-(?:B|AC)\d+)\b")
 HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
 LEGACY = re.compile(r"^##\s+\d+\.\s+(Overview|Contract)\b", re.M)
 GAP_ROW = re.compile(r"^\s*(?:[-*]|\|)\s*\**G\d+\b")
+COVERED_WORDS = re.compile(r"\bCovered by\b", re.I)
+COVERED = re.compile(rf"\b(?i:Covered by)\s+`?({ID}-B\d+)`?\s+and\s+`?({ID}-AC\d+)\b`?")
+READING_ITEM = re.compile(r"^\s*[-*]\s+`([^`]+)`\s*(.*)$")
 NUMBERED = re.compile(r"^\s*(\d+)[.)]\s+\S")
 TABLE_ROW = re.compile(r"^\s*\|(.+)\|\s*$")
 CODE_SPAN = re.compile(r"`([^`]+)`")
@@ -199,6 +202,11 @@ class Triage:
     deliver: str = ""
     gaps: str = ""  # `none`, `some`, or empty when the Gaps section is neither
     gap_rows: int = 0
+    # Gap rows that end `Covered by <behaviour id> and <criterion id>`: the cited pairs, one per covered row, and
+    # how many rows say `Covered by` at all (a row that says it without two ids is claimed but not counted).
+    covered: list[tuple[str, str]] = field(default_factory=list)
+    covered_rows: int = 0
+    covered_claimed: int = 0
     route: str = ""
     missing: list[str] = field(default_factory=list)
     # The Change section, which only a `quick` note has: the code files, the test files and the commands.
@@ -222,7 +230,14 @@ def parse_triage(text: str) -> Triage:
     t = Triage(missing=headings_missing(text, TRIAGE_HEADINGS))
     t.criteria = [int(m.group(1)) for line in low.get("acceptance criteria", []) if (m := NUMBERED.match(line))]
     gaps = [ln for ln in low.get("gaps", []) if ln.strip()]
-    t.gap_rows = sum(1 for ln in gaps if GAP_ROW.match(ln))
+    rows = [ln for ln in gaps if GAP_ROW.match(ln)]
+    t.gap_rows = len(rows)
+    for ln in rows:
+        if COVERED_WORDS.search(ln):
+            t.covered_claimed += 1
+        if (c := COVERED.search(ln)):
+            t.covered.append((c.group(1), c.group(2)))
+    t.covered_rows = len(t.covered)
     if t.gap_rows:
         t.gaps = "some"
     elif len(gaps) == 1 and re.fullmatch(r"\W*none\W*", gaps[0], re.I):
@@ -236,6 +251,30 @@ def parse_triage(text: str) -> Triage:
             target = {"files": t.change_files, "tests": t.change_tests, "verify": t.change_commands}[m.group(1).lower()]
             target += [span.strip() for span in CODE_SPAN.findall(m.group(2)) if span.strip()]
     return t
+
+
+@dataclass
+class ReadingItem:
+    path: str
+    locator: str  # the line ranges or ids that matter
+    reason: str  # one line on why the plan will need the file
+
+
+def parse_reading_list(text: str) -> list[ReadingItem]:
+    """The items of a hand-off's `## Reading list`: each bullet is `` `path` (ranges or ids): why ``. The first
+    code span is the path, the words between it and the colon the locator, the rest the reason."""
+    low = {k.lower(): v for k, v in sections(text).items()}
+    items: list[ReadingItem] = []
+    for line in low.get("reading list", []):
+        m = READING_ITEM.match(line)
+        if not m:
+            continue
+        locator, colon, reason = m.group(2).partition(":")
+        locator = locator.strip()
+        if locator.startswith("(") and locator.endswith(")"):
+            locator = locator[1:-1].strip()
+        items.append(ReadingItem(path=m.group(1).strip(), locator=locator, reason=reason.strip() if colon else ""))
+    return items
 
 
 def quick_problems(note: Triage) -> list[str]:

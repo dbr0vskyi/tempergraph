@@ -1,0 +1,22 @@
+# Triage: STANDIN-1
+
+## Task
+
+Source: the start request. Summary: the tool reports a missing config file instead of crashing.
+
+## Acceptance criteria
+
+1. Starting the tool with no config file prints one line that names the missing file
+
+## Existing documents
+
+- `docs/specs/config-file.spec.md`: states what the tool does when `tool.toml` is missing
+
+## Gaps
+
+- G1 spec update: the message for a missing config file. `docs/specs/config-file.spec.md` states it. Covered by CFG-B9 and CFG-AC9
+
+## Route
+
+- Deliver: code
+- Route: discovery

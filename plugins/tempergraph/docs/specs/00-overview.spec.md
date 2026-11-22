@@ -108,6 +108,7 @@ The component specs, each owning what follows its name:
 - [96-run-state-on-a-branch.spec.md](96-run-state-on-a-branch.spec.md) CAR: run state carried on a branch.
 - [97-windows-support.spec.md](97-windows-support.spec.md) WIN: platform rules.
 - [99-subworkflow-unit.spec.md](99-subworkflow-unit.spec.md) SWF: a child workflow as a unit.
+- [test-suite.spec.md](test-suite.spec.md) TST: the engine's own test run: workers, one-process runs, folders no test shares.
 
 The monitor's own design set is [plugins/tempergraph-monitor/docs](../../../tempergraph-monitor/docs/specs/00-overview.spec.md). Assumptions made while the owner was unavailable are in [ADR-0001](../adr/0001-standalone-design-assumptions.adr.md); design notes and the origin of each spec block are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 

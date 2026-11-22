@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import re
 import subprocess
 import time
 from pathlib import Path
@@ -153,7 +154,15 @@ def test_the_task_notes_rule_examples_match_the_parsers() -> None:
     note = fmt.parse_triage(_example(rule, "# Triage:"))
     assert note.missing == [] and note.criteria == [1, 2] and (note.gaps, note.deliver, note.route) == (
         "some", "code", "discovery")
-    assert fmt.headings_missing(_example(rule, "# Hand-off:"), fmt.HANDOFF_HEADINGS) == []
+    # AC 4, ts-tri-covered: the Gaps example carries a covered row, and the words match the parser's
+    assert note.covered == [("SES-B1", "SES-AC1")] and (note.covered_rows, note.gap_rows) == (1, 2)
+    assert "`Covered by <behaviour id> and <criterion id>`" in rule and "short discovery visit" in rule
+    # AC 5, ts-dis-reading: the hand-off example ends with a Reading list the module reads
+    handoff = _example(rule, "# Hand-off:")
+    assert fmt.headings_missing(handoff, fmt.HANDOFF_HEADINGS) == [] and fmt.HANDOFF_HEADINGS[-1] == "Reading list"
+    assert [(i.path, i.locator, bool(i.reason)) for i in fmt.parse_reading_list(handoff)] == [
+        ("docs/specs/session-expiry.spec.md", "SES-B1, SES-B2", True), ("src/auth/session.py", "lines 10-60", True)]
+    assert "**Reading list**" in rule and "opens another file only for what the list does not answer" in rule
     report = _example(rule, "# Code report:")
     assert fmt.headings_missing(report, fmt.REPORT_HEADINGS) == [] and fmt.parse_report(report) == {}
     assert "## Rows\n\n  | Row | Status | Note |" in rule and fmt.QUICK_REPORT_HEADINGS[0] == "Rows"
@@ -172,6 +181,117 @@ def test_the_documents_rule_names_every_suffix() -> None:
     rule = _rule("documents")
     for folder, suffix in fmt.SUFFIX_BY_FOLDER.items():
         assert f"`docs/{folder}/`" in rule and f"`{suffix}`" in rule
+
+
+# -- the covered mark in triage ---------------------------------------------------------------------------
+
+TRIAGE_CHECKS = ROOT / "evals" / "checks" / "triage"
+DISCOVERY_CHECKS = ROOT / "evals" / "checks" / "discovery"
+
+
+def _triage(fixture: Path, work: Path, **values: str) -> Any:
+    _copy(fixture, work)
+    ctx = _context("triage", work, {"triage": {"triage_note": "triage_note.md"}}, {"triage": values})
+    res, _ = run_check(SPEC.units["triage"].gate, ctx)
+    return res
+
+
+def test_a_gap_row_can_say_it_is_covered_and_the_note_reports_how_many() -> None:  # AC 4, ts-tri-covered
+    note = fmt.parse_triage(
+        "## Acceptance criteria\n\n1. One\n\n## Gaps\n\n"
+        "- G1 spec update: a. Covered by CFG-B1 and CFG-AC1\n"
+        "- G2 spec gap: b. Searched `docs/specs/`: nothing\n"
+        "- G3 spec update: c. Covered by the config spec\n\n## Route\n\n- Deliver: code\n- Route: discovery\n")
+    assert note.gap_rows == 3 and note.covered == [("CFG-B1", "CFG-AC1")] and note.covered_rows == 1
+    assert note.covered_claimed == 2  # G3 says it without two ids: claimed, not counted
+
+
+def test_triage_check_confirms_the_ids_a_covered_row_cites(tmp_path: Path) -> None:  # AC 4, ts-tri-covered
+    res = _triage(TRIAGE_CHECKS / "must-pass" / "5-covered", tmp_path / "a", route="discovery", gaps="some",
+                  covered="yes")
+    assert res.result == "PASS" and _named(res, "ts-tri-covered") == ["pass"], res.evidence
+    res = _triage(TRIAGE_CHECKS / "must-fail" / "covered-unknown-id", tmp_path / "b")
+    assert res.result == "FAIL" and _named(res, "ts-tri-covered") == ["fail"], res.evidence
+    assert "defined 0 times" in next(f.message for f in res.findings if f.criterion == "ts-tri-covered")
+    plain = _triage(TRIAGE_CHECKS / "must-pass" / "1-gap", tmp_path / "c")
+    assert plain.result == "PASS" and _named(plain, "ts-tri-covered") == ["n_a"]
+
+
+def test_a_covered_criterion_must_name_the_behaviour_and_the_value_must_follow_the_rows(tmp_path: Path) -> None:
+    # AC 4, ts-tri-covered
+    work = tmp_path / "a"
+    _copy(TRIAGE_CHECKS / "must-pass" / "5-covered", work)
+    note = work / "triage_note.md"
+    note.write_text(note.read_text().replace("CFG-B1 and CFG-AC1", "CFG-B1 and CFG-AC1x"))  # AC1x is not an id
+    ctx = _context("triage", work, {"triage": {"triage_note": "triage_note.md"}}, {"triage": {}})
+    assert _named(run_check(SPEC.units["triage"].gate, ctx)[0], "ts-tri-covered") == ["fail"]
+    spec = work / "docs" / "specs" / "config-file.spec.md"  # a criterion that names no behaviour of the cited one
+    spec.write_text(spec.read_text().replace("(CFG-B1): Started", "(CFG-B2): Started"))
+    note.write_text(note.read_text().replace("CFG-AC1x", "CFG-AC1"))
+    ctx = _context("triage", work, {"triage": {"triage_note": "triage_note.md"}}, {"triage": {}})
+    res = run_check(SPEC.units["triage"].gate, ctx)[0]
+    assert "does not name" in next(f.message for f in res.findings if f.criterion == "ts-tri-covered")
+    wrong = _triage(TRIAGE_CHECKS / "must-pass" / "1-gap", tmp_path / "b", route="discovery", gaps="some",
+                    covered="yes")  # the note has an uncovered row, the value says every row is covered
+    assert wrong.result == "FAIL" and _named(wrong, "ts-tri-covered") == ["fail"]
+    right = _triage(TRIAGE_CHECKS / "must-pass" / "1-gap", tmp_path / "c", route="discovery", gaps="some",
+                    covered="no")
+    assert _named(right, "ts-tri-covered") == ["pass"]
+    none = _triage(TRIAGE_CHECKS / "must-pass" / "5-covered", tmp_path / "d", covered="no")
+    assert _named(none, "ts-tri-covered") == ["fail"]  # every row is covered, so the value is `yes`
+
+
+# -- the reading list of the hand-off and narrow reading ------------------------------------------------------
+
+
+def _discovery(fixture: Path, work: Path, **values: str) -> Any:
+    _copy(fixture, work)
+    ctx = _context("discovery", work, {"discovery": {"handoff": "handoff.md"}}, {"triage": values} if values else None)
+    return run_check(SPEC.units["discovery"].gate, ctx)[0]
+
+
+def test_discovery_check_reads_the_reading_list(tmp_path: Path) -> None:  # AC 5, ts-dis-reading
+    for fixture in sorted((DISCOVERY_CHECKS / "must-pass").iterdir()):
+        res = _discovery(fixture, tmp_path / fixture.name)
+        assert res.result == "PASS" and _named(res, "ts-dis-reading") == ["pass"], (fixture.name, res.evidence)
+    res = _discovery(DISCOVERY_CHECKS / "must-fail" / "no-reading-list", tmp_path / "none")
+    assert res.result == "FAIL" and _named(res, "ts-dis-reading") == ["fail"], res.evidence
+    work = tmp_path / "gone"
+    _copy(DISCOVERY_CHECKS / "must-pass" / "2-new-spec", work)
+    hand = work / "handoff.md"
+    original = hand.read_text()
+    item = "`docs/specs/config-file.spec.md` (CFG-B1, CFG-B2): the new behaviours the plan implements"
+    assert item in original
+    ctx = _context("discovery", work, {"discovery": {"handoff": "handoff.md"}})
+    for broken, message in ((item.replace("config-file", "missing"), "does not exist"),
+                            (item.replace(" (CFG-B1, CFG-B2)", ""), "ranges or ids"),
+                            (item.replace(": the new behaviours the plan implements", ""), "reason")):
+        hand.write_text(original.replace(item, broken))
+        res = run_check(SPEC.units["discovery"].gate, ctx)[0]
+        assert res.result == "FAIL" and message in next(
+            f.message for f in res.findings if f.criterion == "ts-dis-reading" and f.status == "fail"), broken
+
+
+def test_a_run_that_ends_after_discovery_needs_no_reading_list(tmp_path: Path) -> None:  # AC 5, ts-dis-reading
+    res = _discovery(DISCOVERY_CHECKS / "must-fail" / "no-reading-list", tmp_path, route="discovery-only")
+    assert _named(res, "ts-dis-reading") == ["n_a"]
+
+
+def test_every_discovery_prompt_says_to_read_narrowly() -> None:  # AC 5, ts-dis-narrow
+    prompts = sorted((ROOT / "prompts").glob("discovery*.md"))
+    assert prompts
+    for prompt in prompts:
+        text = " ".join(prompt.read_text(encoding="utf-8").split()).lower()
+        assert "search for ids and names" in text, prompt.name
+        assert re.search(r"line ranges you need instead of whole files", text), prompt.name
+        assert "stop reading once each gap has its answer" in text, prompt.name
+        assert "## reading list" in text, prompt.name  # and the hand-off ends with the list the plan starts from
+
+
+def test_the_plan_prompt_starts_from_the_reading_list() -> None:  # AC 5, ts-plan-reading
+    text = " ".join((ROOT / "prompts" / "plan.md").read_text(encoding="utf-8").split()).lower()
+    assert "start from the hand-off's reading list" in text
+    assert "open another file only for what the list does not answer" in text
 
 
 # -- routes, scripts and the last stage -------------------------------------------------------------------
@@ -526,7 +646,7 @@ class _Counting(CheckContext):
         return super().run(cmd, **kw)
 
 
-def _code_ctx(work: Path, fixture: Path, git: GitFacts | None = None) -> _Counting:
+def _code_ctx(work: Path, fixture: Path, git: GitFacts | None = None, reuse_store: Path | None = None) -> _Counting:
     files = _copy(fixture, work)
     artifacts: dict[str, dict[str, str]] = {}
     for f in files:
@@ -534,7 +654,7 @@ def _code_ctx(work: Path, fixture: Path, git: GitFacts | None = None) -> _Counti
             artifacts.setdefault(OWNER[f.stem], {})[f.stem] = f.relative_to(work).as_posix()
     ctx = _Counting(unit="code", workdir=work, request={}, artifacts=artifacts, values={"triage": {"route": "plan"}},
                     git=git or GitFacts(), allow=SPEC.allow_commands, out_dir=work.parent / f"{work.name}.out",
-                    deadline_at=time.monotonic() + 60)
+                    deadline_at=time.monotonic() + 60, reuse_store=reuse_store)
     ctx.ran = []
     return ctx
 
@@ -565,3 +685,36 @@ def test_words_that_cut_scope_are_a_maybe_for_the_plan_judge(tmp_path: Path) -> 
     res, _ = run_check(SPEC.units["plan"].gate, _context("plan", tmp_path, artifacts))
     assert res.result == "MAYBE" and _named(res, "ts-plan-scope") == ["maybe"], res.evidence
     assert "stub" in next(f.message for f in res.findings if f.criterion == "ts-plan-scope")
+
+
+# -- one full run per code visit, and a result the gate already holds is not run again -------------------------
+
+
+def test_the_code_prompt_runs_a_phases_test_files_and_the_full_commands_once() -> None:  # AC 2, ts-code-once
+    text = " ".join((ROOT / "prompts" / "code.md").read_text(encoding="utf-8").split())
+    assert "After each phase, run only the test files that the phase's rows name" in text
+    assert "never the whole suite" in text
+    assert "run each verification command of the plan once, after the last phase and before you write the report" in text
+    assert "in the quick lane, the note's `Verify` commands once, after the last criterion" in text
+
+
+def test_a_second_gate_run_on_an_unchanged_tree_runs_no_verification_command(
+        repo: Path, tmp_path_factory: pytest.TempPathFactory) -> None:  # AC 3, ts-code-reuse (CHK-B13)
+    store = tmp_path_factory.mktemp("store") / "command_runs.jsonl"
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _copy(DONE, repo)
+    _git(repo, "add", "-A")
+    _git(repo, "-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "-m", "the code step")
+
+    def gate_run() -> list[dict[str, Any]]:
+        ctx = _code_ctx(repo, DONE, git_facts(repo, base), store)
+        res, _ = run_check(SPEC.units["code"].gate, ctx)
+        assert _named(res, "ts-code-verify") == ["pass"], res.evidence
+        return list(res.runs)
+
+    first, second = gate_run(), gate_run()  # a retry, or a later visit, on the same tree and the same store
+    assert first and all(r["reused"] is False and r["exit_code"] == 0 for r in first)
+    assert len(second) == len(first) and all(r["reused"] is True for r in second)  # none was started again
+    (repo / "notes.txt").write_text("changed\n")  # a changed tree changes the key: the commands run again
+    third = gate_run()
+    assert third and all(r["reused"] is False for r in third)
