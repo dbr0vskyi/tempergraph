@@ -75,6 +75,15 @@ WHEN a session ends with `error_kind` `auth` or `refused`, a judge RETRY whose e
 
 - GIVEN a step whose session recorded a `denied` event WHEN the gate decides THEN the run pauses with cause `tool_access` and the payload lists the grants
 
+### BUD-B16 The same check failure twice
+
+WHEN a unit's check fails on two attempts in a row of one visit and item with the same evidence (the same failing findings by criterion, place and message, or the same scrubbed evidence text when it returns no findings) although the later attempt's step changed files in the workspace THE gate SHALL escalate at once with cause `check_repeat`, spend no further retry, infra try or ladder step, and show the repeated failing findings in the pause payload.
+
+- GIVEN a retry budget of 3 and a check that fails with the same finding on attempts 1 and 2, attempt 2's step having changed files WHEN the gate decides after attempt 2 THEN the run pauses with kind `escalation` and cause `check_repeat`, the payload lists the finding, no third attempt starts and no further retry is spent
+- GIVEN a check that fails with one finding on attempt 1 and with another on attempt 2 WHEN the gate decides after attempt 2 THEN the unit is retried as BUD-B8 says
+- GIVEN the same failing finding on attempts 1 and 2 and a step that changed no file on attempt 2 WHEN the gate decides THEN the unit is retried as BUD-B8 says
+- GIVEN an `effort_ladder` and the same failing finding on two attempts in a row with changed files WHEN the gate decides THEN the ladder does not climb and the run pauses with cause `check_repeat`
+
 ### BUD-B12 Concurrent sessions under one cap
 
 WHEN sessions of one run can be in flight together (parallel branches, a parallel map, contest slots, council members) THE engine SHALL count what is in flight in the check before each attempt, a starting session reserving its per-session cap, or the projection of its unit from the stats ([CST](34-central-run-stats.spec.md)), or the run's remaining cap divided by the sessions that may run at once, the reservation becoming its real cost when it ends; make an attempt whose reservation would cross the cap wait for a running session, and start none when nothing is running, then drain with `cost_cap`.
@@ -112,9 +121,11 @@ WHEN a session's reservation would take spend plus reservations over the run cos
 - BUD-AC5 (BUD-B13): A fixture run of two parallel branches whose reservations fit together under the cap writes a `reservation` record with `action` `held` before each branch's first `attempt_start` record and writes no `reservation` record with another action
 - BUD-AC6 (BUD-B14): A fixture run of two parallel branches whose reservations together cross the cap writes, for the branch that waited, one `waiting` record that lists the other branch's `session_key` in `waiting_for` and, after that session's `agent_run` record, a `held` record
 - BUD-AC7 (BUD-B15): A fixture run whose next reservation does not fit while nothing is running writes a `reservation` record with `action` `refused` before the `run_exit` record, which carries exit code 5 and reason `cost_cap`
+- BUD-AC8 (BUD-B16): A fixture check that fails with the same finding on two attempts in a row, the second attempt's step having changed a file, pauses the run with kind `escalation` and cause `check_repeat` and starts no third attempt, while a fixture check that fails with a different finding on the second attempt, or whose second step changed no file, is retried as BUD-B8 says
 
 ## Open questions
 
 - Should a `throttled` session wait longer than the standard backoff? Until answered: no, the standard 10, 20, 40 s backoff; it needs a live concurrency measurement per executor. Owner: operator.
 - Do repeated resumes of one thread each get a fresh attempt allowance without bound, or should a thread carry a lifetime cap? Until answered: the per-invocation cap of 15 only, with the chain length on the status row. Owner: engine owner.
+- Should the comparison of BUD-B16 ignore durations and temporary paths in a check's message? Until answered: no, the scrubbed text must be identical, so a check whose message carries a changing duration never repeats and the check's author keeps its messages stable; a repeat is never taken from a failure that changed. Owner: engine owner.
 - Not built yet: the reservations of BUD-B12 to BUD-B15 are built for a run's parallel read-only branches; they are not built for maps, contests and councils (release 3, tracks R3-T3 and R3-T4 of the third-release plan), which reuse them when they run sessions at once. The `projection` source is not taken, because the central run stats hold no per-unit projection ([CST-B15](34-central-run-stats.spec.md) projects per workflow); a reservation is the per-session cap or the share ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F5). Owner: engine owner.

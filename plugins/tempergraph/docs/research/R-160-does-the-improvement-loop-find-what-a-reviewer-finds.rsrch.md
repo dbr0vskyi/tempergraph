@@ -12,6 +12,7 @@ On 2026-11-22 the owner ran release 3's first task (R3-T1.1, cost cap reservatio
 | S2 | The loop child of `r3-t1-1b`: one friction judge and 12 session reviews in dev mode, all at `loop_effort` `max` on `medium` (0.66 USD) | Loop log, review records | `loop.jsonl`, `tempergraph improve review show` |
 | S3 | `tempergraph improve backlog temperspec` after both runs | Finding clusters | the state root |
 | S4 | The hand-found list, written before the loop ran (thread "Build release three with temperspec") | Reviewer's notes | the run's pull request |
+| S5 | The review planner and its budget check | Code | `plugins/tempergraph/engine/src/tempergraph/improve/review.py` (`plan`, `run`) |
 
 ## Key findings
 
@@ -34,7 +35,7 @@ On 2026-11-22 the owner ran release 3's first task (R3-T1.1, cost cap reservatio
 
 ### F3 The review budget ran out before the sessions that mattered most `confirmed`
 
-The dev review is capped (3.46 USD for this run) and reads targets oldest first. Six targets were skipped `budget`: `code.5.judge`, `plan.3.step`, `plan.4.retry`, `plan.4.judge`, `code.6.step` and `code.6.judge`, so the trip back from the outcome gate (H4) and the judge that escalated were never read. The 12 reviews that ran cost 0.66 USD reported, so the cap was set from the estimate, not from what was spent.
+The dev review lists its targets in run order and keeps the first 12 (`review.max_sessions.full`, in `plan` of S5), marking every later one `skipped: budget` before any review runs. Six targets were skipped that way: `code.5.judge`, `plan.3.step`, `plan.4.retry`, `plan.4.judge`, `code.6.step` and `code.6.judge`, so the trip back from the outcome gate (H4) and the judge that escalated were never read. The money cap of this run (3.46 USD, a quarter of its 13.84 USD) was never reached: the 12 reviews that ran cost 0.66 USD reported. The check in `run` that compares the spend with that cap prices the next review from the size of its view and, on a miss, goes on to the next target, so it can read a later session after skipping an earlier one.
 
 ### F4 Nothing reached a person or a proposal `confirmed`
 
@@ -48,7 +49,7 @@ The second code visit (commits after `2d8787a` on the run's branch `tg/temperspe
 
 - The loop can see what goes wrong inside sessions (H1, H2, F2) at a low cost: 0.66 USD for 13 sessions at max effort. It cannot see faults that sit in the environment or in files a step wrote outside its view (H5, H6), and it does not explain causes it only counts (H3, H4).
 - For it to "simply happen", four changes follow from the findings, each stated without any workflow:
-  1. Review order by signal, not by age: sessions after a failed check, a trip back or an escalation are read first, and the cap is checked against the reported spend of the reviews so far (F3).
+  1. Review order by signal, not by age: sessions after a failed check, a trip back or an escalation are read first, the money cap is checked against the reported spend of the reviews so far, and no count cap drops a target that the money allows (F3).
   2. A cross-session merge: the same observation category on the same unit in several sessions of one run counts as corroboration for filing, as a model-free repeat does (F2, F4).
   3. A one-paragraph loop summary in the run's exit output and in `attention`, naming the top observations, so a person sees them without asking (F4).
   4. An environment lens: a check FAIL whose evidence is the same before and after the step's change is classed environmental and named as such in the finding (H1, H6), and a write outside the declared folders is a finding (H5).
