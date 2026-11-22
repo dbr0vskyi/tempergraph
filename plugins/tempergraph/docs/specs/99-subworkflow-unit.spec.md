@@ -38,15 +38,28 @@ WHEN a child judge's `defect_in` or `UPSTREAM` names a key the parent mapped int
 
 ### SWF-B6 Refusals
 
-WHEN a sub-workflow unit is validated THE engine SHALL refuse, with no spend, a child that names the parent directly or not (`subworkflow-recursive`), a nesting deeper than three (`subworkflow-depth`), an unmapped required input (`subworkflow-input-missing`), a child version outside `requires` (`subworkflow-version`), a child that is not registered or does not load (`subworkflow-unknown`, naming the child), a key in `produces` the child declares no producer for (`subworkflow-produces`), a child that needs git under a parent outside git (`needs_git`, [WSP-B15](13-workspace-and-concurrency.spec.md)), and a built-in workflow with `builtin` set as a child ([UWF](64-upgrade-workflow.spec.md)).
+WHEN a sub-workflow unit is validated THE engine SHALL refuse, with no spend, a child that names the parent directly or not (`subworkflow-recursive`), a nesting deeper than three levels, the parent's child being level one (`subworkflow-depth`), an unmapped required input (`subworkflow-input-missing`; every input the child declares is required, and a child that declares none has the one input `request`, [VAL-B8](76-step-values-and-template-keys.spec.md)), a child version outside `requires` (`subworkflow-version`), a child that is not registered or does not load (`subworkflow-unknown`, naming the child), a key in `produces` the child declares no producer for (`subworkflow-produces`), a child that needs git under a parent outside git (`needs_git`, [WSP-B18](13-workspace-and-concurrency.spec.md)), and a built-in workflow with `builtin` set as a child (`subworkflow-builtin`, [UWF](64-upgrade-workflow.spec.md)).
 
 - GIVEN a child that names the parent WHEN validation runs THEN it fails `subworkflow-recursive` with no spend
+- GIVEN `deliver` declares `a`, `a` declares `b` and `b` declares `deliver` WHEN `deliver` validates THEN it fails `subworkflow-recursive`
+- GIVEN `deliver` declares `a`, `a` declares `b` and `b` declares `c` (three levels) WHEN `deliver` validates THEN it passes the depth check
+- GIVEN the same chain with `c` declaring `d` (four levels) WHEN `deliver` validates THEN it fails `subworkflow-depth`
+- GIVEN a child that declares the input `scope` and a parent whose `inputs` does not map it WHEN validation runs THEN it fails `subworkflow-input-missing` naming `scope`
+- GIVEN a child that declares no input and a parent whose `inputs` does not map `request` WHEN validation runs THEN it fails `subworkflow-input-missing` naming `request`
+- GIVEN `requires=">=0.3,<0.4"` and a child at version 0.4.0 WHEN validation runs THEN it fails `subworkflow-version`
+- GIVEN a child that no registry entry names WHEN validation runs THEN it fails `subworkflow-unknown` naming the child
+- GIVEN a child whose registered package does not load WHEN validation runs THEN it fails `subworkflow-unknown` naming the child
+- GIVEN `produces=["overview"]` and a child none of whose units produces `overview` WHEN validation runs THEN it fails `subworkflow-produces` naming `overview`
+- GIVEN a child with a stock risk rule on changed paths and a parent run started outside git WHEN the run starts THEN it is refused `needs_git` before anything is created
+- GIVEN a child whose spec has `builtin` set WHEN validation runs THEN it fails `subworkflow-builtin`
 
 ### SWF-B7 Declaration
 
-WHEN a workflow declares `Subworkflow(workflow=…, requires=…, inputs=…, produces=…, gate=…, summary=…)` THE engine SHALL resolve `workflow` from the registry at run start ([PKG-B15](88-workflow-package.spec.md)); read `requires` as the child version range the parent was written for; read `inputs` as child parameter to `request`, `<unit>.<key>` or a quoted literal; read `produces` as the child artifact or value keys the parent's later units, gate and outcome see under the unit's name, empty meaning the child's deliverables ([OUT-B8](90-run-outcome.spec.md)); grade with `gate` what `produces` exposes against the parent's intermediate criteria for the unit; and at run time fail the unit's gate check as a missing artifact for a `produces` key the child did not make.
+WHEN a workflow declares `Subworkflow(workflow=…, requires=…, inputs=…, produces=…, gate=…, summary=…)` THE engine SHALL resolve `workflow` from the registry at run start ([PKG-B15](88-workflow-package.spec.md)); read `requires` as the child version range the parent was written for, in the form [VER-B14](61-version-metadata.spec.md) gives `requires_engine`, none meaning any version and an invalid range refused `subworkflow-version`; read `inputs` as child parameter to `request`, `<unit>.<key>` or a quoted literal; read `produces` as the child artifact or value keys the parent's later units, gate and outcome see under the unit's name, empty meaning the child's deliverables ([OUT-B8](90-run-outcome.spec.md)); read `summary` as a step's ([CON-B6](01-contracts.spec.md)); grade with `gate` what `produces` exposes against the parent's intermediate criteria for the unit; and at run time fail the unit's gate check as a missing artifact for a `produces` key the child did not make.
 
 - GIVEN `produces=["overview"]` and a child run that made no `overview` WHEN the unit's gate checks THEN it fails as a missing artifact
+- GIVEN `deliver` declares `setup = Subworkflow(workflow="repo-setup", requires=">=0.3,<1", inputs={"request": "request"}, produces=["overview"])` and `repo-setup` is registered at version 0.3.1, declares no input and has a unit that produces `overview` WHEN `deliver` validates THEN it has no error finding and its catalog row is valid
+- GIVEN `requires="newer"` WHEN the workflow validates THEN it fails `subworkflow-version`
 
 ### SWF-B8 Where the child runs
 
@@ -66,11 +79,31 @@ WHEN a sub-workflow is the parent's last unit THE engine SHALL never run the chi
 
 - GIVEN a parent whose last unit is a child with a finalizer and whose final gate grades the child's criteria WHEN the run ends THEN the child's outcome gate ran, the child's finalizer did not, and the parent's finalizer ran once
 
+### SWF-B11 A child does not run yet
+
+WHEN `run` or `run --check` is given a workflow with a sub-workflow unit and finds no other reason to refuse it THE engine SHALL refuse it with exit 2 `not_in_release`, before any session starts and with nothing created under the state root, in one message that names the first such unit and says that running a child is not built yet.
+
+- GIVEN a parent `deliver` that nothing else refuses and that declares `setup = Subworkflow(workflow="repo-setup", inputs={"request": "request"})` WHEN `run deliver` starts it THEN it exits 2 `not_in_release`, the one message names `setup` and says that running a child is not built yet, no session ran and the state root is unchanged
+- GIVEN the same parent WHEN `run --check` checks it THEN it exits 2 with the same finding and creates nothing
+- GIVEN a parent whose sub-workflow unit fails `subworkflow-version` WHEN `run` starts it THEN the refusal is that finding and not this one
+- GIVEN a child that needs git and a run started outside git WHEN `run` starts the parent THEN the refusal is `needs_git` and not this one
+
+### SWF-B12 A child's key in a template
+
+WHEN a template names `{<unit>.<key>}` THE engine SHALL accept it at validation only for a sub-workflow unit earlier in the order that exposes `<key>` (by its `produces`, or with `produces` empty by the child's deliverables, SWF-B7) and refuse any other field of that form with `template-unknown-field` ([CON-B8](01-contracts.spec.md), [VAL-B8](76-step-values-and-template-keys.spec.md)).
+
+- GIVEN `setup = Subworkflow(workflow="repo-setup", produces=["overview"])` and a later unit whose prompt names `{setup.overview}` WHEN the workflow validates THEN it has no error finding
+- GIVEN `produces` empty and a child whose outcome lists the deliverable `overview` WHEN a later prompt names `{setup.overview}` THEN it has no error finding
+- GIVEN a later prompt that names `{setup.notes}`, a key `setup` does not expose WHEN the workflow validates THEN it fails `template-unknown-field`
+- GIVEN a prompt of a unit before `setup` that names `{setup.overview}` WHEN the workflow validates THEN it fails `template-unknown-field`
+
 ## Acceptance criteria
 
 - SWF-AC1 (SWF-B1, SWF-B2, SWF-B3, SWF-B4, SWF-B5, SWF-B6, SWF-B7, SWF-B9, SWF-B10): SWF-B1 to SWF-B6 hold offline on stand-ins with an engine fixture parent and child, neither a shipped workflow
 - SWF-AC2 (SWF-B8): A parent run with a child leaves one `run.jsonl`, one checkpoint thread and one ledger row; every child record carries `child`
 - SWF-AC3 (SWF-B8): A carried parent paused inside its child resumes on a second state root ([CAR-AC1](96-run-state-on-a-branch.spec.md))
+- SWF-AC4 (SWF-B11): A workflow with a sub-workflow unit that nothing else refuses is refused by `run` and by `run --check` with exit 2 and `not_in_release`, in one message naming the unit and saying that running a child is not built yet, with no session started and the state root unchanged, and a workflow that another refusal stops (a validation finding, `needs_git`) gets that refusal instead
+- SWF-AC5 (SWF-B12): A template that names `{<unit>.<key>}` validates for a key a sub-workflow unit before it exposes, and fails `template-unknown-field` for a key that unit does not expose and for a unit that comes after the template
 
 ## Open questions
 

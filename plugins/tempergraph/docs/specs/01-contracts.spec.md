@@ -39,7 +39,7 @@ WHEN a gate is declared THE engine SHALL read `check` (a model-free callable tha
 
 ### CON-B8 Template grammar
 
-WHEN a template is validated THE engine SHALL accept only literal text, `{{` and `}}` for literal braces, and plain fields `{name}` naming a key of [VAL-B8](76-step-values-and-template-keys.spec.md) or `settings.<name>` for a declared setting ([RST-B25](80-run-settings-and-overrides.spec.md)), and refuse any other text between braces with exit 2.
+WHEN a template is validated THE engine SHALL accept only literal text, `{{` and `}}` for literal braces, and plain fields `{name}` naming a key of [VAL-B8](76-step-values-and-template-keys.spec.md), `settings.<name>` for a declared setting ([RST-B25](80-run-settings-and-overrides.spec.md)) or `<unit>.<key>` for a key a sub-workflow unit exposes ([SWF-B12](99-subworkflow-unit.spec.md)), and refuse any other text between braces with exit 2.
 
 - GIVEN `{task_id}` WHEN rendered THEN the run's task id replaces it
 - GIVEN `{a.b()}` WHEN the workflow is validated THEN it is invalid and the command exits 2
