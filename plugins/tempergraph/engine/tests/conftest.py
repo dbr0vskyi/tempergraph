@@ -35,7 +35,13 @@ def _isolated_home(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest
     home = tmp_path_factory.mktemp("home")
     monkeypatch.setenv("TEMPERGRAPH_HOME", str(home / ".tempergraph"))
     monkeypatch.setenv("TEMPERGRAPH_LOOP", "off")  # no detached loop child from a test run (SIL-B1)
-    for var in ("TEMPERGRAPH_STATE_ROOT", "TEMPERGRAPH_CALLER", "TEMPERGRAPH_CALLER_APP", "TEMPERGRAPH_SUPERVISOR_TOKEN"):
+    for var in (
+        "TEMPERGRAPH_STATE_ROOT",
+        "TEMPERGRAPH_CALLER",
+        "TEMPERGRAPH_CALLER_APP",
+        "TEMPERGRAPH_SUPERVISOR_TOKEN",
+        "TEMPERGRAPH_SESSION_KEY",  # a suite run from inside an engine session is not a step driving the engine (PRV-B13)
+    ):
         monkeypatch.delenv(var, raising=False)
 
 

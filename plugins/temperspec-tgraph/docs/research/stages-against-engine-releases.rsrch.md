@@ -30,14 +30,14 @@ The blueprint now takes `map`, `parallel`, `ask` and `wait` (engine R-140 F1, in
 
 ### F2 Two rows were filed against the wrong release `confirmed`
 
-- **B8 parallel reading.** Release 2's parallel block has a fixed set of branches; picking branches at run time is FLX §2.1 and a concurrent map is MAP's `concurrent` mode, both refused `not_in_release` in release 2 (`model/validate.py`; [FLX, as built](../../../tempergraph/docs/specs/74-flow-extensions.spec.md)). Discovery has one branch per gap and setup one per component, both of varying number. A sequential map over gaps works in release 2 and gives each gap a fresh context, but not a shorter run. The cap also needs the reservation of [BUD §2.3](../../../tempergraph/docs/specs/08-budgets-and-failures.spec.md) (release 3) before sessions run at once. B8 moves to "Waiting for the engine".
-- **B6 deadlines.** `on_deadline` is `escalate`, `stop` or a forward unit ([FLX §2.3](../../../tempergraph/docs/specs/74-flow-extensions.spec.md)). A forward unit skips the ask without writing `answers`, so later steps would read no answers at all. What next-features §2 asks for is "a passed deadline answers every question with its default and continues". Stated for any workflow: *an `on_deadline` choice that fills each unanswered question with its default and proceeds when the set is then complete*. Per the engine's ADR-0129 the need is written here first, and the engine states and tests it without naming temperspec. Until it exists, `escalate` is the fallback. A deadline also acts only when someone runs `resume --apply-deadline`, until the schedule tick (release 3) can do it.
+- **B8 parallel reading.** Release 2's parallel block has a fixed set of branches; picking branches at run time is FLX-B6 and a concurrent map is MAP's `concurrent` mode, both refused `not_in_release` in release 2 (`model/validate.py`; [FLX, as built](../../../tempergraph/docs/specs/74-flow-extensions.spec.md)). Discovery has one branch per gap and setup one per component, both of varying number. A sequential map over gaps works in release 2 and gives each gap a fresh context, but not a shorter run. The cap also needs the reservation of [BUD-B12](../../../tempergraph/docs/specs/08-budgets-and-failures.spec.md) (release 3) before sessions run at once. B8 moves to "Waiting for the engine".
+- **B6 deadlines.** `on_deadline` is `escalate`, `stop` or a forward unit ([FLX-B8](../../../tempergraph/docs/specs/74-flow-extensions.spec.md)). A forward unit skips the ask without writing `answers`, so later steps would read no answers at all. What next-features §2 asks for is "a passed deadline answers every question with its default and continues". Stated for any workflow: *an `on_deadline` choice that fills each unanswered question with its default and proceeds when the set is then complete*. Per the engine's ADR-0129 the need is written here first, and the engine states and tests it without naming temperspec. Until it exists, `escalate` is the fallback. A deadline also acts only when someone runs `resume --apply-deadline`, until the schedule tick (release 3) can do it.
 
 ### F3 Per-phase coding on the sequential map `confirmed`
 
 The engine's MAP spec was written for this shape (expand writes the list, a phase step runs per item, code is the join). Four points the design must take into account:
 
-1. **No line back from an item.** A map's gate refuses `back_targets` ([MAP §2.3](../../../tempergraph/docs/specs/77-map-unit.spec.md)). The quick-lane guard (back to triage) and an upstream claim against the plan are therefore raised at the join, which runs the whole-change check (`ts-verify`, the changed-files limit) and holds the code judge's upstream line. A phase gate checks only its own rows.
+1. **No line back from an item.** A map's gate refuses `back_targets` ([MAP-B11](../../../tempergraph/docs/specs/77-map-unit.spec.md)). The quick-lane guard (back to triage) and an upstream claim against the plan are therefore raised at the join, which runs the whole-change check (`ts-verify`, the changed-files limit) and holds the code judge's upstream line. A phase gate checks only its own rows.
 2. **The list.** `extract` reads the plan's phases with `specfmt.py`, one item per phase, at most 20 by MAP's default and 50 at most. The phase text carries its `Read:` and `Produces:` lists (plan-format note, B7 additions).
 3. **A commit per phase.** The engine's `after` script runs after each step attempt, so each item commits as each step does today, which is the owner's rule.
 4. **Simple plans keep one session.** The switch of F1 sends a simple plan to today's `code` unit. Per-phase code cost 130% of one session on small plans (the engine's R-126 F1), so the map arm is the complex one only.
@@ -56,11 +56,11 @@ These rest on the engine's ADR-0132, which is proposed and not accepted.
 | B13 | Several answers to a hard choice | Contest and council units | 3 |
 | B14 | A scheduled drift audit | Schedules and unattended fires | 3 |
 | B15 | A trust report on the pull request (in review in its own pull request) | The pull-request gate | 3, if the owner accepts R-135 |
-| — | Steps reach only what they declare when a run starts inside a Claude Code session | ECC §2.8 | 3 |
+| — | Steps reach only what they declare when a run starts inside a Claude Code session | ECC-B14 | 3 |
 | — | Other executors (comparison §10, "behind" 4) | Antigravity, Messages API, Agent SDK | 4 |
 | — | Several tasks at once, coordinated (next features §3, case C) | Orchestration of runs | 4 |
 
-Two notes. ECC §2.8 matters to temperspec more than to most workflows, because its runs usually start from the owner's own Claude Code session. And the docs-only version the owner asked for (today the `discovery-only` route) can become a second workflow built from the same sub-workflows as setup, once B11 exists; it needs no feature of its own.
+Two notes. ECC-B14 matters to temperspec more than to most workflows, because its runs usually start from the owner's own Claude Code session. And the docs-only version the owner asked for (today the `discovery-only` route) can become a second workflow built from the same sub-workflows as setup, once B11 exists; it needs no feature of its own.
 
 ### F5 What every stage waits on `confirmed`
 

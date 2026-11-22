@@ -39,7 +39,7 @@ from tempergraph.model.text import load_text, split_judge_file
 from tempergraph.render.output import parse_output
 from tempergraph.render.prompt import AttemptContext, Blocker, render_step
 from tempergraph.run import checks as checkmod
-from tempergraph.run import complexity, mapping, tool_access
+from tempergraph.run import complexity, mapping, reserve, tool_access
 from tempergraph.run import gate as gatemod
 from tempergraph.run import ladder as laddermod
 from tempergraph.run.check_worker import run_in_worker
@@ -119,6 +119,7 @@ class EngineNodes:
     def __init__(self, ctx: RunContext) -> None:
         self._deferred: list[dict[str, Any]] = []
         self._deferred_lock = threading.Lock()
+        self.ledger = reserve.Ledger()  # what each running session of a parallel block holds (BUD-B12)
         self.ctx = ctx
 
     # -- helpers ---------------------------------------------------------------------------------
@@ -154,45 +155,78 @@ class EngineNodes:
         if cap is not None and CostTotals.from_json((state.get("run") or {}).get("cost")).figure() >= cap:
             raise Drain("cost_cap")
 
+    def _hold(self, unit: str, state: Mapping[str, Any]) -> dict[str, Any] | None:
+        """What a session of `unit` needs to take a reservation (BUD-B12): only a branch of a parallel block, in
+        a run with a cost cap. Units outside a block run one session at a time and keep the BUD-B9 check."""
+        spec = self.ctx.spec
+        cap = spec.run_cost_cap_usd
+        block = flow.block_of(spec, unit)
+        if cap is None or block is None:
+            return None
+        totals = CostTotals.from_json((state.get("run") or {}).get("cost"))
+        return {"cap": float(cap), "width": len(spec.units[block].branches), "snapshot": totals.sessions,
+                "spent": totals.figure()}
+
     def _session(self, ex: Executor, req: SessionRequest, judge_views: Any = None,
-                 lessons_digest: str | None = None, extra: Mapping[str, Any] | None = None
-                 ) -> tuple[SessionResult, list]:
-        """One session with infra tries and backoff outside the retry budget (BUD-B1, JDG-B5)."""
+                 lessons_digest: str | None = None, extra: Mapping[str, Any] | None = None,
+                 hold: Mapping[str, Any] | None = None) -> tuple[SessionResult, list]:
+        """One session with infra tries and backoff outside the retry budget (BUD-B1, JDG-B5). With `hold`, each
+        try takes a reservation first and gives it back, replaced by its real cost, when it ends (BUD-B12)."""
         results: list[SessionResult] = []
         if req.kind in ("step", "retry"):  # the rendered prompt, kept local for the session review (SRV-B17)
             from tempergraph.improve.record import write_prompt
 
             write_prompt(self.ctx.state_root, self.ctx.spec.name, self.ctx.task_id, req.session_key, req.prompt)
+        key = req.session_key
         for n in range(self.ctx.infra_tries):
-            sink = session_sink(self.ctx.log, req, ex.name, tool_inputs=self.ctx.capture.tool_inputs)
-            self.ctx.log.write("attempt_start", session_key=req.session_key, kind=req.kind, executor=ex.name,
-                               alias=req.alias, timeout_s=req.timeout_s,
-                               prompt_digest=hashlib.sha256((req.prompt or "").encode()).hexdigest()[:16],
-                               **{k: extra[k] for k in ("sources", "ladder") if extra and k in extra})
+            if hold is not None:
+                reason = self.ledger.acquire(
+                    key, snapshot=hold["snapshot"], spent_usd=hold["spent"], cap_usd=hold["cap"],
+                    amount=lambda spent: reserve.session_amount(req.options.cost_cap_usd, hold["cap"], spent,
+                                                                hold["width"]),
+                    write=lambda action, **fig: self.ctx.log.write("reservation", action=action, session_key=key,
+                                                                   **fig),
+                    drain=self.ctx.drain_requested)
+                if reason:
+                    raise Drain(reason)
             try:
-                if judge_views is None:
-                    res = ex.run_step(req, sink)
-                else:
-                    res = ex.run_judge(req, judge_views, sink)
+                sink = session_sink(self.ctx.log, req, ex.name, tool_inputs=self.ctx.capture.tool_inputs)
+                self.ctx.log.write("attempt_start", session_key=req.session_key, kind=req.kind, executor=ex.name,
+                                   alias=req.alias, timeout_s=req.timeout_s,
+                                   prompt_digest=hashlib.sha256((req.prompt or "").encode()).hexdigest()[:16],
+                                   **{k: extra[k] for k in ("sources", "ladder") if extra and k in extra})
+                try:
+                    if judge_views is None:
+                        res = ex.run_step(req, sink)
+                    else:
+                        res = ex.run_judge(req, judge_views, sink)
+                finally:
+                    sink.close()
+                    if not self.ctx.capture.raw and req.session_dir is not None:  # `observe.raw = off` (LOS-B17)
+                        with contextlib.suppress(OSError):
+                            (req.session_dir / "raw.jsonl").unlink(missing_ok=True)
+                if res.usage.estimated_cost_usd is None:
+                    res.usage.estimated_cost_usd = estimate(res.usage, res.model)
+                results.append(res)
+                self.ctx.log.write("agent_run", session_key=req.session_key, kind=req.kind, executor=ex.name,
+                                   alias=req.alias, usage=res.usage, ok=res.ok,
+                                   tools=[c.name for c in res.tool_calls],
+                                   cli_version=res.cli_version, session_id=res.session_id,
+                                   unknown_tools=sorted({c.name for c in res.tool_calls
+                                                         if not ex.capabilities().knows_tool(c.name)}),
+                                   infra_cause=str(res.infra_cause) if res.infra_cause else None,
+                                   error_kind=res.error_kind, timed_out=res.timed_out, stalled=res.stalled,
+                                   duration_s=res.duration_s, tool_wall_share=res.tool_wall_share,
+                                   slow_host=bool(res.timed_out and res.tool_wall_share >= 0.6),
+                                   **({"lessons_digest": lessons_digest} if lessons_digest else {}),
+                                   **dict(extra or {}))
+                if hold is not None:
+                    spent = CostTotals()
+                    spent.add(res.usage)
+                    self.ledger.release(key, snapshot=hold["snapshot"], real_usd=spent.figure())
             finally:
-                sink.close()
-                if not self.ctx.capture.raw and req.session_dir is not None:  # `observe.raw = off` (LOS-B17)
-                    with contextlib.suppress(OSError):
-                        (req.session_dir / "raw.jsonl").unlink(missing_ok=True)
-            if res.usage.estimated_cost_usd is None:
-                res.usage.estimated_cost_usd = estimate(res.usage, res.model)
-            results.append(res)
-            self.ctx.log.write("agent_run", session_key=req.session_key, kind=req.kind, executor=ex.name,
-                               alias=req.alias, usage=res.usage, ok=res.ok, tools=[c.name for c in res.tool_calls],
-                               cli_version=res.cli_version, session_id=res.session_id,
-                               unknown_tools=sorted({c.name for c in res.tool_calls
-                                                     if not ex.capabilities().knows_tool(c.name)}),
-                               infra_cause=str(res.infra_cause) if res.infra_cause else None,
-                               error_kind=res.error_kind, timed_out=res.timed_out, stalled=res.stalled,
-                               duration_s=res.duration_s, tool_wall_share=res.tool_wall_share,
-                               slow_host=bool(res.timed_out and res.tool_wall_share >= 0.6),
-                               **({"lessons_digest": lessons_digest} if lessons_digest else {}),
-                               **dict(extra or {}))
+                if hold is not None:
+                    self.ledger.release(key, snapshot=hold["snapshot"], real_usd=0.0)  # a no-op once released
             if res.infra_cause is None or n + 1 >= self.ctx.infra_tries:
                 break
             self.ctx.sleep(min(BACKOFF_S[min(n, len(BACKOFF_S) - 1)], self.ctx.backoff_max_s))
@@ -349,7 +383,7 @@ class EngineNodes:
         before = gitmod.fingerprint(workdir)
         try:
             res, results = self._session(ex, req, lessons_digest=lessonsmod.digest(lessons_text),
-                                         extra=extra or None)
+                                         extra=extra or None, hold=self._hold(unit, state))
         finally:
             if ticket is not None:  # the ticket ends with its attempt; one record a preview (CHK-B17 Record)
                 from tempergraph.run import selfcheck
@@ -858,7 +892,8 @@ class EngineNodes:
                              session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, key))
         before = gitmod.fingerprint(workdir)
         changed = list(gitmod.changed_paths(workdir))[:200]  # the digest's `changed_read` (SRV-B11)
-        res, results = self._session(ex, req, views, extra={"changed_paths": changed})
+        hold = self._hold(unit, state)
+        res, results = self._session(ex, req, views, extra={"changed_paths": changed}, hold=hold)
         all_results = list(results)
         out: dict[str, Any] = {"judge_executor": judge_name, "alias": alias, "views": list(views.tools)}
         if risk is not None:
@@ -877,7 +912,7 @@ class EngineNodes:
                                       alias=alias, session_key=rkey, timeout_s=req.timeout_s, idle_s=req.idle_s,
                                       options=req.options,
                                       session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, rkey))
-                res2, r2 = self._session(ex, rreq, views)
+                res2, r2 = self._session(ex, rreq, views, hold=hold)
                 all_results += r2
                 try:
                     judgement = parse_judgement(res2.text, g)

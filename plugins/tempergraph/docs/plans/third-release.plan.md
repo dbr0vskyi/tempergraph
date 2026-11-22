@@ -113,6 +113,8 @@ Milestones: **N1** after R3-T1, two parallel branches started just under the cap
 #### R3-T1.1 Reservations
 Goal: BUD-B12 for parallel read-only branches (the only concurrent shape release 2 has), with a test that two branches started under the cap never end above it by more than the reservation's error.
 
+Status: built. BUD-B12 to BUD-B15 for parallel read-only branches, proved by BUD-AC2, BUD-AC5, BUD-AC6 and BUD-AC7 in `plugins/tempergraph/engine/tests/test_reservations.py`; the per-unit projection tier and the shapes not yet concurrent (maps, contests, councils) remain.
+
 #### R3-T1.2 Step reach
 Goal: ECC-B14, tested by argv and environment scans; the live half is P-CC-10.
 
