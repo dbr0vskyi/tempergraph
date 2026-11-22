@@ -40,16 +40,17 @@ Every live check that can run in a cloud container now passes (S3). What is left
 
 ### F2 What the first real workflow asks of release 3 `confirmed`
 
-temperspec's backlog names four features that wait for the engine (S4). Each maps onto a capability already designed for release 3, so none needs a new engine concept ([ADR-0129](../adr/0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md)):
+temperspec's backlog names five features that wait for the engine (S4). Each maps onto a capability already designed for release 3, so none needs a new engine concept ([ADR-0129](../adr/0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md)):
 
 | Row | Feature | Engine capability | Spec, status |
 |---|---|---|---|
+| B8 | Reading in parallel: discovery per gap, the setup survey per component | The concurrent map over a list, under the reserving cap (release 2's parallel block has fixed branches only) | [MAP](../specs/77-map-unit.spec.md) `review`, [BUD §2.3](../specs/08-budgets-and-failures.spec.md) |
 | B11 | Repository setup as a workflow of its own, used alone or inside the delivery run | Sub-workflow units | CMP §2.2 has one row; **no spec** (F3) |
 | B12 | Coding phases in parallel, behind declared independence and a disjoint-files check | Writer branches, concurrent map mode | [FLX](../specs/74-flow-extensions.spec.md), [MAP](../specs/77-map-unit.spec.md) `review` |
 | B13 | Several answers to a hard choice, then a pick or a vote | Contest and council units | [CTS](../specs/72-contest-unit.spec.md), [CNL](../specs/71-council-unit.spec.md) `review` |
 | B14 | A scheduled drift audit | The rest of schedules | [SCH](../specs/83-schedules.spec.md), [TCK](../specs/84-schedule-ticks-and-unattended-fires.spec.md) `review` |
 
-The owner's other open ask is the pull-request gate (S5): one check and an optional judge that re-grade a run's result in the pipeline, buildable before pipeline runs. Its research recommends release 3 and leaves five questions to the owner.
+The owner's other open ask is the pull-request gate (S5): one check and an optional judge that re-grade a run's result in the pipeline, buildable before pipeline runs. Its research recommends release 3 and leaves five questions to the owner. The package also asks for an `on_deadline` choice that fills each unanswered question of an ask unit with its default and proceeds, so the `answers` artifact is complete (FLX §2.3 offers escalate, stop or a forward unit, and a forward unit leaves no answers); it is general, and is listed in the plan as I3-15 for the owner to accept.
 
 ### F3 Sub-workflows had a row, not a spec `confirmed`
 

@@ -60,7 +60,7 @@ Every item release 3 ships. Items not built are refused with `not_in_release`, n
 | I3-2 | A step reaches only what it declares inside a host session: host variables dropped, `--tools` always sent, no added directories; probes P-CC-10, P-CC-11 | ECC §2.8 | R3-T1 | new (R-140 F4) |
 | I3-3 | Sub-workflow units: declaration, version record, inputs and `produces`, child records, pauses, upstream defects, child outcome, findings | SWF, CMP, MIG, OUT | R3-T2 | CMP §2.2 row |
 | I3-4 | Writer branches with their own worktrees and the merge after | FLX, WTR | R3-T3 | ADR-0090 release 3 |
-| I3-5 | The concurrent map mode, with item worktrees for a writing map | MAP | R3-T3 | ADR-0090 release 3 |
+| I3-5 | The concurrent map mode, with item worktrees for a writing map; a read-only concurrent map for parallel reading over a list | MAP | R3-T3 | ADR-0090 release 3 |
 | I3-6 | Council and contest units | CNL, CTS | R3-T4 | ADR-0090 release 3 |
 | I3-7 | Schedules and unattended fires, the release 2 slice and the rest | SCH, TCK | R3-T5 | moved from release 2 |
 | I3-8 | CI pipelines: the `pipeline` stage, `promote-check --to pipeline`, the regressed watch, P-PRO-1 | PRO, SUP §2.7 | R3-T6 | moved from release 2 |
@@ -70,6 +70,7 @@ Every item release 3 ships. Items not built are refused with `not_in_release`, n
 | I3-12 | The audit history layer and the tool surface audit | AUD, ARC, TSA | R3-T8 | moved from release 2 |
 | I3-13 | Native Windows | WIN | R3-T9 | moved from release 2 |
 | I3-14 | A complexity switch in an example workflow | CXR | R3-T10 | moved from R2-T9.1 |
+| I3-15 | `on_deadline: defaults` for ask units: each unanswered question takes its default and the unit proceeds with a complete `answers` artifact (if the owner agrees) | FLX §2.3, ASK | R3-T8 | new, asked by the first real workflow |
 
 ### 1.3 Excluded
 
