@@ -1,4 +1,4 @@
-"""The ask unit's questions and answers (ASK-B5 to ASK-B9): pure validation and the answers file.
+"""The ask unit's questions and answers (ASK-B5 to ASK-B13): pure validation and the answers file.
 
 A person's answers are kept in a JSON file under the thread's folder, not in graph state, so a resume that
 does not complete the set never moves the graph and a crash loses nothing (ASK-AC2). The file becomes the
@@ -170,6 +170,13 @@ def unanswered(qs: Sequence[AskQuestion], answers: Mapping[str, Any], *, default
     return [q.name for q in qs if q.required and q.name not in answers and not (defaults and q.default is not None)]
 
 
+def defaults_problems(qs: Sequence[AskQuestion]) -> list[str]:
+    """ASK-B13, FLX-B11: one problem for each required question with no default, which `on_deadline: defaults`
+    could not fill; validation and the entry check both read this."""
+    return [f"question {q.name!r} is required and has no default, so `on_deadline: defaults` cannot fill it"
+            for q in qs if q.required and q.default is None]
+
+
 def complete(qs: Sequence[AskQuestion], answers: Mapping[str, Any]) -> dict[str, Any]:
     """The answers with each unanswered question's default filled in."""
     out = dict(answers)
@@ -207,9 +214,18 @@ def load(path: Path) -> dict[str, Any]:
     return dict(got) if isinstance(got, dict) else {}
 
 
-def store(path: Path, unit: str, answers: Mapping[str, Any], *, done: bool) -> None:
+def defaulted(qs: Sequence[AskQuestion], answers: Mapping[str, Any]) -> list[str]:
+    """ASK-B12: the questions an applied deadline fills from their default, in question order."""
+    return [q.name for q in qs if q.name not in answers and q.default is not None]
+
+
+def store(path: Path, unit: str, answers: Mapping[str, Any], *, done: bool,
+          defaulted: Sequence[str] | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    write_json(path, {"schema_version": 1, "unit": unit, "complete": done, "answers": dict(answers)})
+    doc: dict[str, Any] = {"schema_version": 1, "unit": unit, "complete": done, "answers": dict(answers)}
+    if defaulted is not None:  # only an applied deadline marks what took its default (ASK-B12)
+        doc["defaulted"] = list(defaulted)
+    write_json(path, doc)
 
 
 def shown(qs: Sequence[AskQuestion], answers: Mapping[str, Any]) -> list[dict[str, Any]]:

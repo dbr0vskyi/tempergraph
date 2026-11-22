@@ -896,7 +896,14 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                                    + (f"; its deadline is {due}" if due else ""), tid=tid)
                 row_decision = "deadline"
                 d = Decision(word="proceed")  # only for the intervention row's shape; the node applies the deadline
-                first_input = resume_input({"decision": "deadline", **human_payload})
+                if kind == "input" and (flow.deadline_of(spec, unit) or (0, ""))[1] == "defaults":  # ASK-B10
+                    got = _deadline_answers(spec, task_id, root, unit, values, settings)
+                    if isinstance(got, RunOutcome):  # the check refused the defaults: the ask stays open
+                        intervention(root, spec, task_id, touch, d, feedback, settings, settled, decision="deadline")
+                        got.thread_id = tid
+                        return got
+                    extra = got
+                first_input = resume_input({"decision": "deadline", **human_payload, **extra})
             elif kind == "input":
                 got = _answers_step(spec, task_id, root, unit, values, d, settings)
                 if isinstance(got, RunOutcome):
@@ -1063,6 +1070,35 @@ def _answers_step(spec: WorkflowSpec, task_id: str, root: Path, unit: str, value
         return RunOutcome(exit_code=ExitCode.PAUSED, reason="input", payload=payload,
                           message=f"{tid}: answers kept; {unit} {why}")
     asking.store(path, unit, final, done=True)
+    return {"answers": final, "answers_path": str(path)}
+
+
+def _deadline_answers(spec: WorkflowSpec, task_id: str, root: Path, unit: str, values: Mapping[str, Any],
+                      settings: RunSettings) -> dict[str, Any] | RunOutcome:
+    """ASK-B10, ASK-B11: complete an overdue ask from its defaults and run the author's check as for a person's
+    answers. A pass returns the human node's extra payload; a refusal keeps only the given answers (exit 3)."""
+    from tempergraph.run import asking
+
+    tid = thread_id(spec.name, task_id)
+    u = spec.units[unit]
+    assert u.ask is not None
+    qs = [asking.of_json(q) for q in ((values.get("attempts") or {}).get(unit) or {}).get("questions") or []]
+    path = asking.answers_path(run_dir(root, spec.name, task_id), unit)
+    given = asking.load(path)
+    took = asking.defaulted(qs, given)
+    final = asking.complete(qs, given)
+    problems = asking.check_problems(u.ask, final)
+    RunLog(run_dir(root, spec.name, task_id) / "run.jsonl").write(
+        "answers", unit=unit, answered=[], missing=[], check_passed=not problems, caller=dict(settings.caller))
+    if problems:
+        asking.store(path, unit, given, done=False)
+        payload = {"kind": "input", "unit": unit, "questions": asking.shown(qs, given), "missing": [],
+                   "check_problems": problems,
+                   "resume": f"tempergraph resume {spec.name} {task_id} --decision answer:<name>=<value>"}
+        return RunOutcome(exit_code=ExitCode.PAUSED, reason="input", payload=payload,
+                          message=f"{tid}: the deadline's defaults were refused; {unit} the answers check: "
+                                  f"{'; '.join(problems)}")
+    asking.store(path, unit, final, done=True, defaulted=took)
     return {"answers": final, "answers_path": str(path)}
 
 

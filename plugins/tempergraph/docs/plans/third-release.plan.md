@@ -70,7 +70,7 @@ Every item release 3 ships. Items not built are refused with `not_in_release`, n
 | I3-12 | The audit history layer and the tool surface audit | AUD, ARC, TSA | R3-T8 | moved from release 2 |
 | I3-13 | Native Windows | WIN | R3-T9 | moved from release 2 |
 | I3-14 | A complexity switch in an example workflow | CXR | R3-T10 | moved from R2-T9.1 |
-| I3-15 | `on_deadline: defaults` for ask units: each unanswered question takes its default and the unit proceeds with a complete `answers` artifact (if the owner agrees) | FLX-B8, ASK | R3-T8 | new, asked by the first real workflow |
+| I3-15 | `on_deadline: defaults` for ask units: each unanswered question takes its default and the unit proceeds with a complete `answers` artifact | FLX-B8, ASK | R3-T8 | new, asked by the first real workflow. Status: built. FLX-B8, FLX-B11 and ASK-B10 to ASK-B13, proved by FLX-AC5 to FLX-AC7 and ASK-AC5 to ASK-AC8 in `plugins/tempergraph/engine/tests/test_ask_wait.py` |
 
 ### 1.3 Excluded
 

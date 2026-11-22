@@ -498,12 +498,18 @@ def ruling_writes(state: Mapping[str, Any], payload: Mapping[str, Any], given_at
     return w
 
 
-def apply_deadline(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str) -> dict[str, Any]:
-    """FLX-B8: what `resume --apply-deadline` does to an overdue wait or ask."""
+def apply_deadline(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str,
+                   payload: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """FLX-B8: what `resume --apply-deadline` does to an overdue wait or ask. `defaults` (an ask only) goes on
+    as a person's complete answers do; `payload` carries the completed answers the resume built (ASK-B10)."""
     dl = flow.deadline_of(spec, unit)
     assert dl is not None
     s = flow.successors(spec, unit)
     how = dl[1]
+    if how == "defaults":
+        w = _apply(spec, unit, state, {**(payload or {}), "decision": "proceed"})
+        w["route"][unit]["by"] = "deadline"
+        return w
     if how == "stop":
         return {"route": {unit: {"token": "STOP", "node": s.stop[0], "by": "deadline"}}, "pause": {unit: None},
                 "run": {"stopped": {"reason": "deadline", "unit": unit, "detail": "on_deadline: stop"}}}
@@ -520,7 +526,7 @@ def apply_deadline(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task
 def apply_decision(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payload: Mapping[str, Any]
                    ) -> dict[str, Any]:
     if payload.get("decision") == "deadline":
-        return apply_deadline(spec, unit, state, str((state.get("request") or {}).get("task_id") or ""))
+        return apply_deadline(spec, unit, state, str((state.get("request") or {}).get("task_id") or ""), payload)
     w = _apply(spec, unit, state, payload)
     d = Decision.parse(str(payload.get("decision", "")))
     rulings = ruling_writes(state, payload, decision_target(spec, unit, d))
