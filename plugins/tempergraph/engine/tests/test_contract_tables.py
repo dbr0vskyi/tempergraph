@@ -1,4 +1,4 @@
-"""Generated-table drift tests: CON §2.9 exit codes equal the engine constants (CON-AC-6, CLI-AC-4)."""
+"""Generated-table drift tests: CON-B13 exit codes equal the engine constants (CON-AC6, CLI-AC4)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from .conftest import DOCS
 
 def test_exit_codes_match_contracts_spec() -> None:
     text = (DOCS / "specs" / "01-contracts.spec.md").read_text(encoding="utf-8")
-    row = next(line for line in text.splitlines() if line.startswith("| `ExitCode` |"))
+    row = text.split("### CON-B13 ", 1)[1].split("\n- ", 1)[0]
     documented = {int(n) for n in re.findall(r"`(\d+)`", row)}
     assert documented == {int(c) for c in ExitCode}
 
