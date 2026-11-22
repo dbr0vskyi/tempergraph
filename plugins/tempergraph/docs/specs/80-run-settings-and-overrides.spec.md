@@ -1,307 +1,223 @@
----
-title: Run settings and overrides
-type: component
-status: ready-for-implementation
-prefix: RST
-adrs: [0070, 0071, 0072, 0080, 0008]
----
-
 # Run settings and overrides
 
-## 1. Overview
-
-Every value that decides how much a run may spend, how long it may take, how often it may repeat, which executor and model do the work, and which workflow-declared switch is taken is a **run setting**: a key in one engine catalog (§2.2), set at a **scope** (the run, all steps, all judges, one unit, one judge, one council member, chair or contest slot, one script) on one of fixed **layers** (§2.3), from a flag to a machine default. The engine resolves every key alike, validates every override before spend, snapshots the result on the thread, reapplies it on resume, and records each value with its source ([ADR-0070](../adr/0070-one-catalog-of-run-settings-over-fixed-layers.adr.md), [R-070](../research/R-070-config-overrides-and-reruns-gaps.rsrch.md)).
-
-What verifies the work is not a setting: criteria, checks, the presence of a judge, the judge's independence, flow targets, back targets and prompts cannot be overridden ([ADR-0071](../adr/0071-overrides-never-change-what-verifies-the-work.adr.md)). Declared tools are the one part of a step a person may widen for a run, by a recorded **tool grant** (§2.9): a step that failed or paused because it could not reach a tool, a skill, an MCP server or a command is resumed with the grant instead of an edit of the package ([ADR-0080](../adr/0080-a-person-may-grant-a-step-tools-for-a-run.adr.md)). The model and timeout orders of [CON §2.4](01-contracts.spec.md) and [BUD §2.1](08-budgets-and-failures.spec.md) are instances of this spec's order.
-
-## 2. Contract
-
-```python
-def resolve(spec: WorkflowSpec, options: RunOptions, files: ConfigFiles) -> ResolvedSettings: ...   # pure, model-free
-def validate_overrides(spec: WorkflowSpec, options: RunOptions, files: ConfigFiles) -> list[Finding]: ...
-```
-
-`RunOptions`, `SettingKey`, `SettingValue` and `ResolvedSettings` are defined in [CON §2.12](01-contracts.spec.md). `run --check`, `run`, `resume`, `rerun` ([RRN](81-reruns-and-feedback.spec.md)), `config show`, `orchestrate validate` and the batch parent call these same two functions.
-
-### 2.1 Keys and scopes
-
-A key is `<scope>.<name>`. Scopes, narrowest last in each group:
-
-| Scope | Addresses |
-|---|---|
-| `run` | Values of the run as a whole |
-| `steps` | Every step-side session: steps, council members and chair, contest slots |
-| `judges` | Every judge session, including the audit judge's binding only through `run.audit_executor` |
-| `<unit>` | One unit of any kind; `<unit>/<child unit>` inside a sub-workflow (repeat `/` per level) |
-| `judge:<unit>` | That unit's judge |
-| `<unit>.member:<name>`, `<unit>.chair`, `<unit>.slot:<name>` | A council member, the chair, a contest slot ([CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md)) |
-| `<unit>.before:<n>`, `<unit>.after:<n>` | A hybrid step's n-th script, from 1 ([SCR](70-script-units-and-hybrid-steps.spec.md)) |
-| `settings` | Workflow-declared settings (§2.5): `settings.<name>` |
-
-A map item has no scope of its own: items share their unit's settings, and a per-item model stays the item function of [CON §2.1](01-contracts.spec.md).
-
-### 2.2 Catalog
-
-| Name | Scopes | Value | Engine default | Notes |
-|---|---|---|---|---|
-| `executor` | steps, judges, unit, judge, member, chair, slot | registered executor | workflow `default_executor` | A judge's still must declare `restricts_judge_tools` ([EXI](10-executor-interface.spec.md)) |
-| `model` | steps, unit, member, chair, slot | one alias | `inherit` | A list is refused (LAD §2.8) |
-| `model` | judges, judge | alias | per CON §2.4 | |
-| `loop_model` | run | alias | `medium` | The loop's own sessions (SIL §2.3) |
-| `subagent_model` | steps, unit | alias | the session's own alias | Only on executors that host subagents; elsewhere a warning |
-| `effort` | every session scope | `low` \| `medium` \| `high` \| `xhigh` \| `max` | none | Unapplied warns (CON §4); pins an effort ladder |
-| `session_cost_cap_usd` | every session scope | float > 0 | none | `SessionOptions.cost_cap_usd` |
-| `turn_cap` | every session scope | int 1–500 | none | |
-| `fallback_alias` | steps, unit, member, chair, slot | alias | none | Never on a judge |
-| `timeout_s` | every session scope, script scopes | int 1–86 400 | 600 | Script default 600 ([SCR §2.1](70-script-units-and-hybrid-steps.spec.md)) |
-| `idle_s` | every session scope | int 30–`timeout_s` | none (off) | |
-| `retry_budget` | steps, unit | int 0–10 | 2 | Per visit ([BUD](08-budgets-and-failures.spec.md)) |
-| `loop_budget` | steps, unit | int 0–5 | 1 | Per (unit, target) |
-| `on_budget_spent` | steps, unit | `stop` \| `ask` \| `fallback` | gate's | `fallback` only where the gate declares a `fallback` target |
-| `attempt_cost_cap_usd` | council or contest unit | float > 0 | the unit's `cost_cap_usd` | Per attempt |
-| `concurrency` | contest unit | int 1–5 | 3 | |
-| `arm` | switch unit | a declared arm | the switch function's pick | Replaces `--arm`; recorded in the `route` record |
-| `deadline_s` | wait or ask unit | int > 0 | the unit's | [FLX §2.3](74-flow-extensions.spec.md) |
-| `approve` | unit | `true` | the gate's `approval` | Tighten-only: adds a sign-off, never removes one the workflow declares |
-| `infra_tries` | run | int 0–10 | 3 | In a row |
-| `infra_backoff_max_s` | run | int 10–300 | 300 | Backoff doubles from 10 s up to this |
-| `attempt_cap` | run | int 1–100 | 15 | Per invocation |
-| `self_check_limit` | run | int 1–10 | 3 | Check previews a step may run in one attempt ([CHK §2.5](75-check-contract-and-command-runs.spec.md)) |
-| `human_cap` | run | int 1–100 | 100 | |
-| `run_cost_cap_usd` | run | float > 0 | workflow's, else none | |
-| `auto_reopen` | run | int 0–10 | 0 | |
-| `workspace` | run | `auto` \| `in_place` \| `worktree` | workflow's, else `auto` | `in_place` refused for a workflow with writer branches or writing items; fixed at start ([WTR §2.1](82-worktree-mode.spec.md)) |
-| `session_review` | run | `auto` \| `full` \| `signals` \| `off` | workflow's `session_review`, else `auto` | The operator's setting lowers the workflow's, never raises it ([SRV §2.3](44-session-review.spec.md)) |
-| `daily_cap_usd` | run | float ≥ 0 | workflow's `daily_cap_usd`, else $50 | Stable mode's loop budget per UTC day; dev mode has none ([SIL §4](16-self-improvement.spec.md)) |
-| `worktree.root` | run | `sibling` \| `in_repo` \| `path:<absolute>` | `sibling` | Fixed at start ([WTR §2.4](82-worktree-mode.spec.md)) |
-| `worktree.base` | run | `head` \| `default_branch` \| `ref:<name>` | workflow's `worktree.base`, else `head` | Fixed at start ([WTR §2.5](82-worktree-mode.spec.md)) |
-| `worktree.branch_prefix` | run | 1–3 ref-safe components | `tg` | Fixed at start |
-| `worktree.cleanup` | run | `never` \| `on_finish` | workflow's `worktree.cleanup`, else `never` | May change at resume ([WTR §2.7](82-worktree-mode.spec.md)) |
-| `worktree.read_worktreeinclude` | run | bool | `true` | [WTR §2.3](82-worktree-mode.spec.md) |
-| `enforce_tools`, `strict_permissions` | run | `true` | `false` | Tighten-only |
-| `audit_rate` | run | float 0–1 | 0 | [JDG-B7](05-judge-and-verdict.spec.md) |
-| `audit_executor` | run | registered executor | the gate judge's | |
-| `<name>` | settings | the declared kind (§2.5) | the declared default | |
-| `tools.add` | steps, unit, slot, chair | list of `ToolCapability` ([CON §2.5](01-contracts.spec.md)), including `mcp:<server>/<tool>` and `skill:<plugin>:<name>` | none | Widening; §2.8. Members and the chair take read-only capabilities only |
-| `commands.add` | steps, unit, slot, `before:<n>`, `after:<n>` | list of command prefixes | none | Widening; adds the prefix to the step and to the run's allow-list; §2.9 |
-| `views.add` | judge | list of read-only `ToolCapability` from the view catalog | none | Widening a judge's read view; §2.8 |
-
-Run options that are not settings stay flags only: `--alias`, `--label`, `--parent`, `--as-agent`, `--pause-before`, `--dry-run` ([CLI §2.1](17-engine-cli.spec.md)).
-
-### 2.3 Layers
-
-Resolution is layer-major: the highest layer that sets a key at any scope matching the session wins; inside that layer the narrowest matching scope wins.
-
-| Rank | Layer | Source |
-|---|---|---|
-| 1 | `flag` | `--set <key>=<value>` and the named flags of CLI §2.1 on `run`, `resume` or `rerun`; an orchestration node's `options`, a batch's shared options and a schedule's `options` arrive here, recorded with `via` = `cli`, `orchestration`, `batch`, `schedule` ([SCH §2.5.5](83-schedules.spec.md)) or `rerun` |
-| 2 | `profile` | The named profiles chosen with `--profile <name>` (repeatable; a later profile wins per key) |
-| 3 | `project:overrides` | `<state root>/config/settings.json`, `overrides` entries matching the workflow |
-| 4 | `user:overrides` | `~/.tempergraph/config/settings.json`, `overrides` entries matching the workflow |
-| 5 | `arm:<switch>.<arm>` | While a switch arm is in force, the workflow-declared per-arm values of `model`, `timeout_s`, `idle_s` and `effort` for the units the arm names ([SWM](79-measured-switches.spec.md)) |
-| 6 | `workflow:unit` | The unit's own field: a step's `model`, `timeout_s`, a gate's budgets, a member's `executor` |
-| 7 | `workflow:default` | Workflow-wide values: `default_executor`, `model_profile`, `run_cost_cap_usd`, `workspace`, `worktree.base` and `worktree.cleanup` ([WTR §2.3](82-worktree-mode.spec.md)), a declared setting's default |
-| 8 | `project:defaults` | `<state root>/config/settings.json`, `defaults` |
-| 9 | `user:defaults` | `~/.tempergraph/config/settings.json`, `defaults` |
-| 10 | `engine` | The engine default of §2.2 |
-
-Three rules keep the existing guarantees:
-
-| Rule | Effect |
-|---|---|
-| Judges apart | `steps` and `<unit>` keys never reach a judge. The one step-to-judge inheritance is CON §2.4's: at the workflow layers, a judge with no model of its own takes the step's model. |
-| Declared diversity kept | `steps` and `<unit>` values of `model` and `executor` reach a member, chair or slot only when the workflow declares none for it; the council's diversity check runs on the resolved values ([CNL §2.6](71-council-unit.spec.md)). |
-| Tighten-only keys | `approve`, `enforce_tools` and `strict_permissions` can only be set to `true`; a `false` is refused at any layer. |
+## Purpose
 
-An environment variable is never a layer: settings come from flags and files that are recorded, never from the environment ([EXI §2.1](10-executor-interface.spec.md)).
+Every value that decides how much a run may spend, how long it may take, how often it may repeat, which executor and model do the work, and which workflow-declared switch is taken is a run setting: a key in one engine catalog, set at a scope (the run, all steps, all judges, one unit, one judge, one council member, chair or contest slot, one script) on one of fixed layers, from a flag to a machine default. The engine resolves every key alike, validates every override before spend, snapshots the result on the thread, reapplies it on resume, and records each value with its source ([ADR-0070](../adr/0070-one-catalog-of-run-settings-over-fixed-layers.adr.md), [ADR-0072](../adr/0072-threads-snapshot-settings-and-reapply-them-on-resume.adr.md), [R-070](../research/R-070-config-overrides-and-reruns-gaps.rsrch.md)). What verifies the work is not a setting: criteria, checks, the presence of a judge, the judge's independence, flow targets, back targets and prompts cannot be overridden ([ADR-0071](../adr/0071-overrides-never-change-what-verifies-the-work.adr.md)). Declared tools are the one part of a step a person may widen for a run, by a recorded tool grant, instead of editing the package ([ADR-0080](../adr/0080-a-person-may-grant-a-step-tools-for-a-run.adr.md)). The model and timeout orders of [CON](01-contracts.spec.md) and [BUD](08-budgets-and-failures.spec.md) are instances of this spec's order. Operators, the CLI ([ROP](23-run-options.spec.md)), reruns ([RRN](81-reruns-and-feedback.spec.md)), orchestration, schedules and the improvement loop depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-### 2.4 Configuration files
+## Behaviours
 
-`settings.json` in the operator config folder of the state root and of the home folder ([LOS §2.1](33-local-observability-store.spec.md)), owner-only, versioned ([CON §2.10](01-contracts.spec.md)):
+### RST-B16 One resolver
 
-| Field | Kind | Meaning |
-|---|---|---|
-| `schema_version` | int | 1 |
-| `defaults` | map key → value | Layer 8 or 9: replaces the engine default for every workflow |
-| `overrides` | list of `{workflow, set}` | Layer 3 or 4; `workflow` is a name or `*`; inside a layer a named entry beats `*` per key |
-| `profiles` | map name → map key → value | Profiles available to every workflow |
-| `observe` | map | Operator capture and observers, read from the files only, never a run layer ([LOS §2.6](33-local-observability-store.spec.md)) |
+WHEN `run --check`, `run`, `resume`, `rerun`, `config show`, `orchestrate validate` or the batch parent needs settings THE engine SHALL call the same two pure, model-free functions, `resolve(spec, options, files) -> ResolvedSettings` and `validate_overrides(spec, options, files) -> list[Finding]`, over the shared types `SettingKey` (`<scope>.<name>` from the catalog), `SettingDecl`, `RunOptions` (`settings`, the snapshot of layer to key to `{value, ref, via?}` for the flag, profile and file layers; `profiles` in the order given; the non-setting options `alias`, `label`, `parent`, `schedule`, `origin`, `pause_before` and `dry_run`; `caller`, the `Caller` of the call that started or resumed the thread, classified per call and never snapshot, [PRV](85-caller-provenance.spec.md); and `rerun_of`, `{thread, unit, checkpoint_id, workflow_version}` or null), `ResolvedSettings` (`rows` per session scope and key with value, winning layer, `ref` and shadowed layers; `digest`, SHA-256 of the canonical table with `text` values entering as their digests) and `UnitRef` (`<unit>`, `<unit>.<item>` or `<unit>/<child unit>`).
 
-A key in `defaults` may not name a unit (units belong to one workflow); `overrides` and profiles may. A profile name is looked up in the project file, then the user file, then the workflow's `profiles`; the first found is used whole, never merged.
+- GIVEN `config show` and `run --check` with the same options WHEN both resolve THEN they call the same `resolve`
 
-### 2.5 Workflow-declared settings and profiles
+### RST-B17 Keys and scopes
 
-Two fields appended to `WorkflowSpec` ([CON §2.1](01-contracts.spec.md)):
+WHEN a key `<scope>.<name>` is read THE engine SHALL take the scope as `run` (the run as a whole), `steps` (every step-side session: steps, council members and chair, contest slots), `judges` (every judge session, the audit judge's binding only through `run.audit_executor`), `<unit>` (one unit of any kind, `<unit>/<child unit>` inside a sub-workflow, one `/` per level), `judge:<unit>`, `<unit>.member:<name>`, `<unit>.chair` or `<unit>.slot:<name>` ([CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md)), `<unit>.before:<n>` or `<unit>.after:<n>` (a hybrid step's n-th script from 1, [SCR](70-script-units-and-hybrid-steps.spec.md)), or `settings` (`settings.<name>`), a map item sharing its unit's settings with a per-item model staying the item function ([MAP](77-map-unit.spec.md)); and keep as flags only, never settings, `--alias`, `--label`, `--parent`, `--as-agent`, `--pause-before` and `--dry-run` ([ROP](23-run-options.spec.md)), the legacy flags being spellings of `--set`.
 
-| Field | Kind | Meaning |
-|---|---|---|
-| `settings` | map name → `SettingDecl` | Typed switches the workflow's checks, routes, switch functions, scripts, finalizer and templates read |
-| `profiles` | map name → map key → value | Named bundles the author ships, such as `thorough` or `cheap` |
+- GIVEN `--set plan.member:a.model=large` where `plan` is not a council WHEN validated THEN it is refused `setting_not_for_kind`
 
-| `SettingDecl` field | Kind | Meaning |
-|---|---|---|
-| `kind` | `int` \| `float` \| `bool` \| `choice` \| `duration_s` \| `text` | |
-| `default` | value of `kind` | Required |
-| `choices` | list of slugs | `choice` only |
-| `min`, `max` | numbers | `int`, `float`, `duration_s` |
-| `meaning` | one line | Shown by `config show` and the catalog |
+### RST-B18 Session keys
 
-Code reads a setting from the resolved table passed in its context (`ScriptContext.settings`, the check's and route's state view); a template names it as the engine key `settings.<name>` ([CON §2.2](01-contracts.spec.md)). A `text` setting is never rendered into a script's argv and is scrubbed in every record; other kinds are checked numbers or constants, so they may ([SEC](14-security.spec.md)).
+WHEN a session's settings are resolved THE catalog SHALL hold `executor` (steps, judges, unit, judge, member, chair, slot; a registered executor; default the workflow's `default_executor`; a judge's must still declare `restricts_judge_tools`, [EXI](10-executor-interface.spec.md)), `model` (steps, unit, member, chair, slot: one alias, default `inherit`, a list refused, [LAD](92-effort-ladder-and-model-escalation.spec.md); judges, judge: an alias by the judge chain of [CON-B3](01-contracts.spec.md)), `loop_model` (run; default `medium`; the loop's own sessions, [SIL-B11](16-self-improvement.spec.md)), `subagent_model` (steps, unit; default the session's alias; a warning on executors that host no subagents), `effort` (every session scope; `low`, `medium`, `high`, `xhigh` or `max`; none; unapplied warns, [CON-B3](01-contracts.spec.md); pins an effort ladder), `session_cost_cap_usd` (every session scope, float above 0, `SessionOptions.cost_cap_usd`), `turn_cap` (every session scope, 1 to 500), `fallback_alias` (steps, unit, member, chair, slot; never a judge), `timeout_s` (every session and script scope, 1 to 86,400, default 600) and `idle_s` (every session scope, 30 to `timeout_s`, default off).
 
-### 2.6 Snapshot and resume
+- GIVEN `--set judge:code.fallback_alias=small` WHEN validated THEN it is refused `setting_not_for_kind`
 
-| Moment | Engine does |
-|---|---|
-| Start | Reads both files once, resolves, stores the flag, profile and file layers' values in `RunOptions.settings`; the workflow layers come from the content the thread runs |
-| Resume | Reapplies the snapshot. `--set` adds or replaces a flag value; `--unset <key>` removes one; `--profile` replaces the profile list, looked up in the files as they are now while the file layers stay; `--reload-settings` reads both files again. The workflow layers follow the content the thread resumes on ([MIG §2.5](62-state-and-run-migration.spec.md)) |
-| Rerun | Copies the source's snapshot, then applies the rerun's own flags ([RRN §2.4](81-reruns-and-feedback.spec.md)) |
+### RST-B19 Gate and unit keys
 
-A changed value meets the counters already spent as follows:
+WHEN a unit's limits are resolved THE catalog SHALL hold `retry_budget` (steps, unit; 0 to 10; default 2 per visit, [BUD](08-budgets-and-failures.spec.md)), `loop_budget` (steps, unit; 0 to 5; default 1 per unit and target), `on_budget_spent` (steps, unit; `stop`, `ask` or `fallback` only where the gate declares a fallback target, else `no_fallback_target`; default the gate's), `attempt_cost_cap_usd` (council or contest unit; float above 0; default the unit's `cost_cap_usd`, per attempt), `concurrency` (contest unit; 1 to 5; default 3), `arm` (switch unit; a declared arm; default the switch function's pick; replaces `--arm` and is recorded in the `route` record), `deadline_s` (wait or ask unit; above 0; default the unit's, [FLX-B8](74-flow-extensions.spec.md)) and `approve` (unit; tighten-only `true`; default the gate's `approval`, adding a sign-off and never removing one).
 
-| Key | Takes effect |
-|---|---|
-| `retry_budget`, `loop_budget` | At the next gate decision, against the counter already used in the current visit or pair; a lowered value at or under the count used is spent at the next failure |
-| `run_cost_cap_usd` | At once; a thread drained with reason `cost_cap` continues when the new cap is above its cost |
-| `timeout_s`, `idle_s`, session options, `executor` | From the next session |
-| `attempt_cap`, `infra_tries` | Per invocation, from this one |
-| `arm`, `settings.<name>` | From the next read; a switch already decided in this visit keeps its arm |
+- GIVEN `--set plan.deadline_s=60` where `plan` is a step WHEN validated THEN it is refused with its own finding code
 
-### 2.7 Effective settings record
+### RST-B20 Run keys
 
-| Record | Written | Fields |
-|---|---|---|
-| `settings_resolved` (run log, [EVT §2.2](30-run-events.spec.md)) | After `run_started`, on start, each resume and a rerun | `settings_digest` (SHA-256 of the canonical resolved table); `rows[]` of `{key, value, layer, ref, shadowed[]}` for every key set on any layer above `engine`; `changed_keys` since the last segment. `ref` is the flag, the file path and its entry, the profile name, or the workflow field path. A `text` value is replaced by its digest |
-| `run_started` | As today | adds `settings_digest`, `profiles`, `overridden_keys` (keys whose winning layer ranks 1 to 4) |
-| `attempt_start`, `agent_run` | As today | each value already recorded carries its layer and `ref` |
-| Status row, stats row, ledger row | As today | add `settings_digest` and `overridden_keys` (names only, [CON §2.10](01-contracts.spec.md)); the status row adds `settings_stale` when the files now resolve differently from the thread's snapshot ([DUR §2.2](09-durability-and-resume.spec.md)) |
+WHEN a run's limits are resolved THE catalog SHALL hold at scope `run` `infra_tries` (0 to 10, default 3 in a row), `infra_backoff_max_s` (10 to 300, default 300, backoff doubling from 10 s), `attempt_cap` (1 to 100, default 15 per invocation), `self_check_limit` (1 to 10, default 3 previews per attempt, [CHK-B17](75-check-contract-and-command-runs.spec.md)), `human_cap` (1 to 100, default 100), `run_cost_cap_usd` (above 0, default the workflow's, else none), `auto_reopen` (0 to 10, default 0), `workspace` (`auto`, `in_place` or `worktree`, default the workflow's else `auto`, `in_place` refused for a workflow with writer branches or writing items, fixed at start, [WTR](82-worktree-mode.spec.md)), `session_review` (`auto`, `full`, `signals` or `off`, default the workflow's else `auto`, the operator's setting lowering the workflow's and never raising it, [SRV-B13](44-session-review.spec.md)), `daily_cap_usd` (at least 0, default the workflow's else $50, stable mode's loop budget per UTC day, none in dev mode, [SIL-B19](16-self-improvement.spec.md)), `enforce_tools` and `strict_permissions` (tighten-only `true`, default `false`), `audit_rate` (0 to 1, default 0, [JDG](05-judge-and-verdict.spec.md)) and `audit_executor` (a registered executor, default the gate judge's), and at scope `settings` each declared `<name>` with its declared kind and default.
 
-### 2.8 Tool grants
+- GIVEN `--set run.attempt_cap=0` WHEN validated THEN it is refused `setting_value`
 
-The three widening keys above, `tools.add`, `commands.add` and `views.add`, follow every rule of this spec and five more:
+### RST-B21 Worktree keys
 
-| Rule | Detail |
-|---|---|
-| Who | Only the `flag` layer, given by a person, and a workflow's own profiles. A settings file entry or a user-file profile that widens is refused (`widening_in_file`): a machine file would widen every run unseen. A schedule's options are refused the same way (`widening_in_schedule`, [SCH §2.5.5](83-schedules.spec.md)). A caller whose decider is not a person cannot widen (`widening_by_agent`); an agent relaying a person's grant needs a named person turn ([PRV §2.8](85-caller-provenance.spec.md)) |
-| What | A grant passes the same checks as a declaration ([WFM §2.1](02-workflow-model.spec.md)): the executor's `tool_map` maps it, a command prefix holds no shell metacharacter and its resolver argv is safe, an MCP server is configured on this machine, a skill's plugin is installed and the executor hosts an authoring surface. A grant that fails one is refused with the declaration's own finding code |
-| Never | A path outside the workspace (C10); a write, edit, shell or writing MCP tool for a judge, a council member or the chair; a judge view outside the read-only catalog; any grant that removes `strict_permissions` or enforcement. The judge stays on an executor that declares `restricts_judge_tools`, and the guard of [GRD](06-independence-guard.spec.md) runs on the widened view |
-| Shown | The step's tools block lists granted tools as declared ones ([PRM §2.2](04-prompt-rendering.spec.md)); `settings_resolved` marks each grant `widening: true`; the pause payload and `config show` list grants apart |
-| Kept | In the thread's snapshot like any flag (§2.6): reapplied on later resumes and copied into a rerun; `--unset <unit>.tools.add` removes it |
+WHEN worktree settings are resolved THE catalog SHALL hold at scope `run` `worktree.root` (`sibling`, `in_repo` or `path:<absolute>`, default `sibling`, fixed at start), `worktree.base` (`head`, `default_branch` or `ref:<name>`, default the workflow's else `head`, fixed at start), `worktree.branch_prefix` (1 to 3 ref-safe components, default `tg`, fixed at start), `worktree.cleanup` (`never` or `on_finish`, default the workflow's else `never`, changeable at resume) and `worktree.read_worktreeinclude` (bool, default `true`) ([WTR](82-worktree-mode.spec.md)).
 
-When an attempt failed, or ended blocked, and the session recorded a `denied` event or a declared tool missing from its start tool list, the gate escalates with cause `tool_access` and spends no retry ([BUD §2.2](08-budgets-and-failures.spec.md)). The pause payload ([HUM §2.1](07-gate-and-human.spec.md)) lists each refused or missing name with its refusal class ([TSA §2.2](57-tool-surface-audit.spec.md)) and what fixes it:
+- GIVEN `--set run.worktree.root=elsewhere` WHEN validated THEN it is refused `setting_value`
 
-| Class | Payload offers |
-|---|---|
-| `undeclared_tool`, a missing MCP tool or skill | `resume … --decision retry --grant <unit>=<capability>`; for a server not configured or a plugin not installed, the host step first |
-| `needed_command` | `resume … --decision retry --allow-command <unit>=<prefix>` |
-| `shell_for_read`, `dir_change_then_command` | No grant: these calls had a permitted form. `retry` with feedback naming the form |
-| `outside_workspace` | No grant is possible; `retry` with feedback, or `stop` |
-| `missing_at_start`, a declared tool the session started without | The host step (configure the server, install the plugin), then `retry` |
+### RST-B22 Layers
 
-Release 1 classifies by tool name only, so a refused shell call is `unclassified`; a judge takes no `mcp:` view grant (`judge-view-unclassified`), since no read-only MCP catalog exists yet.
+WHEN a key is resolved THE engine SHALL resolve layer-major, the highest layer that sets the key at any scope matching the session winning and the narrowest matching scope winning inside it, over the ranks `flag` (`--set <key>=<value>` and the named flags on `run`, `resume` or `rerun`, an orchestration node's `options`, a batch's shared options and a schedule's `options` arriving here recorded with `via` `cli`, `orchestration`, `batch`, `schedule` ([SCH](83-schedules.spec.md)) or `rerun`), `profile` (`--profile <name>`, repeatable, a later profile winning per key), `project:overrides` and `user:overrides` (the state root's and home folder's `settings.json` `overrides` entries matching the workflow), `arm:<switch>.<arm>` (an arm's `model`, `timeout_s`, `idle_s` and `effort` for the units it names while in force, [SWM](79-measured-switches.spec.md)), `workflow:unit` (the unit's own field), `workflow:default` (`default_executor`, `model_profile`, `run_cost_cap_usd`, `workspace`, `worktree.base`, `worktree.cleanup`, a declared setting's default), `project:defaults`, `user:defaults` and `engine`; and SHALL never read an environment variable as a layer ([EXI-B16](10-executor-interface.spec.md)).
 
-Every grant is tracked: a `grant` run-log record when it takes effect ([EVT §2.2](30-run-events.spec.md)), the intervention row of the resume that gave it ([HUM-B6](07-gate-and-human.spec.md)), and an entry of the ledger row's `grants[]` saying whether a later attempt used it ([SIL §2.4](16-self-improvement.spec.md), [IMD-R14](43-improvement-data.spec.md)). A grant used on a passing attempt is a `grant_missing` finding against the workflow; the audit's history layer reports it (`granted-at-run`, [TSA §2.4](57-tool-surface-audit.spec.md)), and the improvement loop drafts a `tools` proposal that declares it ([PRP §2.4](40-improvement-proposals.spec.md)), so a grant needed on every run ends up in the package once.
+- GIVEN `steps.model=medium` in the user file and `--set steps.model=large` WHEN resolved THEN `large` wins from `flag`
 
-### 2.9 The `config` verb
+### RST-B1 One order for every key
 
-| Verb | Does | Writes | Spends |
-|---|---|---|---|
-| `config show <workflow> [--thread <t>] [--set …] [--profile …] [--key <glob>] [--json]` | The resolved table for a start with these options, or for the thread's next resume: value, winning layer and `ref`, shadowed layers, and findings | no | no |
-| `config validate [--file <path>]` | Validates both files (or one) against the catalog and every registered workflow they name | no | no |
-| `config paths` | The two file paths and whether each exists | no | no |
+WHEN values for one key sit on several layers THE engine SHALL give each session the value of its highest layer.
 
-Files are edited by hand or by a skill; the engine has no write verb for them.
+- GIVEN user `defaults: {"steps.timeout_s": 900}`, project `overrides` setting `code.timeout_s` 7200, `code` declaring 3000, `review` 1800, `plan` and `triage` none, and `--set plan.timeout_s=1200` WHEN resolved THEN `plan` gets 1200 (`flag`), `code` 7200 (`project:overrides`), `review` 1800 (`workflow:unit`), `triage` 900 (`user:defaults`) and the `code` judge 600 (`engine`)
 
-## 3. Behaviours
+### RST-B23 Three rules that keep the guarantees
 
-**RST-B1 One order for every key.** Given the user file `defaults: {"steps.timeout_s": 900}`, the project file `overrides: [{workflow: "temperspec", set: {"code.timeout_s": 7200}}]`, the step `code` declaring `timeout_s: 3000` and `plan` declaring none, when a run starts with `--set plan.timeout_s=1200`, then:
+WHEN layers are resolved THE engine SHALL let no `steps` or `<unit>` key reach a judge, the one step-to-judge inheritance being that at the workflow layers a judge with no model of its own takes the step's model; let `steps` and `<unit>` values of `model` and `executor` reach a member, chair or slot only when the workflow declares none for it, running the council's diversity check on the resolved values ([CNL-B16](71-council-unit.spec.md)); and refuse `false` for the tighten-only keys `approve`, `enforce_tools` and `strict_permissions` at any layer (`tighten_only`).
 
-| Session | Value | Layer |
-|---|---|---|
-| `plan` step | 1200 | `flag` |
-| `code` step | 7200 | `project:overrides` |
-| `review` step (declares 1800) | 1800 | `workflow:unit` |
-| `triage` step (declares none) | 900 | `user:defaults` |
-| `code` judge | 600 | `engine` (a judge never reads a step's value) |
+- GIVEN a property test over random layer assignments WHEN resolved THEN no `steps` key reaches a judge and no tighten-only key ends `false`
 
-**RST-B2 Judges apart.** Given `--set steps.model=small`, when the run resolves, then every step, member, chair and slot without a declared model uses `small`, and every judge resolves on the judge chain alone; a judge with no model of its own takes its step's declared model (workflow layer), never `small`.
+### RST-B2 Judges apart
 
-**RST-B3 Diversity kept.** Given a council whose members declare `claude:opus` and `antigravity:gemini-pro`, when `--set review.model=small` is given, then the members keep their models; a council whose members declare none all take `small`, and if its diversity rule then fails the start is refused with exit 2 naming the rule.
+WHEN `steps.model` is set THE engine SHALL apply it to every step, member, chair and slot without a declared model and resolve every judge on the judge chain alone.
 
-**RST-B4 Raise at resume.** Given a run stopped with its retry budget of 2 spent at `expand` (exit 5), when `resume --set expand.retry_budget=4` is given without a decision, then the resume is refused with exit 2 because a stopped thread needs `retry` or `back`; when `resume --decision retry --set expand.retry_budget=4` is given, then the visit gets a fresh budget of 4 and `settings_resolved.changed_keys` lists the key.
+- GIVEN `--set steps.model=small` WHEN resolved THEN a judge with no model takes its step's declared model, never `small`
 
-**RST-B5 Not a setting.** Given `--set code.criteria=…`, `--set judge:code.tools=edit` or `--set code.prompt=…`, when validated, then each is refused with exit 2, finding `not_a_setting`, naming [ADR-0071](../adr/0071-overrides-never-change-what-verifies-the-work.adr.md); nothing is created.
+### RST-B3 Diversity kept
 
-**RST-B6 Tighten-only.** Given a gate declaring `approval: true`, when a project file sets `code.approve=false`, then validation refuses the file entry with exit 2 at the start; `--set code.approve=true` on a gate without approval adds the pause.
+WHEN a unit model is set on a council THE engine SHALL leave members that declare models unchanged, and refuse the start with exit 2 naming the rule when members that declare none all take it and the diversity rule then fails.
 
-**RST-B7 Workflow settings.** Given temperspec declaring `test_budget_s` (`duration_s`, default 1800, max 7200), `code_mode` (`choice`: `per_phase`, `single`; default `per_phase`), `publish` (`bool`, default true) and `base_branch` (`text`), when `run --set settings.code_mode=single --set settings.test_budget_s=3600` starts, then the switch function reads `single`, the code check reads 3600, the finalizer reads `publish = true`, and a resume reapplies both; `--set settings.code_mode=fast` is refused with exit 2 listing the choices.
+- GIVEN members declaring `claude:opus` and `antigravity:gemini-pro` WHEN `--set review.model=small` is given THEN the members keep their models
 
-**RST-B8 Profiles.** Given the workflow's profile `cheap: {"steps.model": "small", "run.run_cost_cap_usd": 5}` and a user-file profile `cheap` with other values, when `--profile cheap` is given, then the user file's profile is used whole, its values sit on the `profile` layer, and `run_started.profiles` is `["cheap"]` with its source.
+### RST-B6 Tighten-only
 
-**RST-B9 Show equals run.** Given any workflow, files and options, when `config show` and `run --check` run with the same options, then the table `config show` prints equals the `settings_resolved` rows the run then writes; both call `resolve`.
+WHEN a tighten-only key is set THE engine SHALL refuse `false` and apply `true`.
 
-**RST-B10 Misaimed override.** Given `--set plann.model=large` on a workflow with a unit `plan`, or `--set plan.member:a.model=large` where `plan` is not a council, or `--set plan.deadline_s=60` where `plan` is a step, when validated, then each is refused with exit 2 with its own finding code and, for an unknown name, the nearest declared one.
+- GIVEN a gate declaring `approval: true` and a project file setting `code.approve=false` WHEN the run starts THEN it exits 2
+- GIVEN `--set code.approve=true` on a gate without approval WHEN it runs THEN the pause is added
 
-**RST-B11 Shadowed values are shown.** Given the user file sets `steps.model=medium` and the run passes `--set steps.model=large`, when `config show` runs, then the row shows `large` from `flag` with `user:overrides` shadowed; nothing warns at the start.
+### RST-B24 Configuration files
 
-**RST-B13 Resume a run blocked on a tool.** Given a `triage` step whose session called `mcp:tracker/get_issue`, which it does not declare, and ended `BLOCKED`, when the gate decides, then it escalates with cause `tool_access`, no retry is spent, and the payload offers `--grant triage=mcp:tracker/get_issue`; `resume --decision retry --grant triage=mcp:tracker/get_issue` runs the next attempt with the tool, and a later resume keeps the grant.
+WHEN the engine reads `settings.json` in the operator config folder of the state root or of the home folder ([LOS-B7](33-local-observability-store.spec.md)), owner-only and versioned ([CON-B14](01-contracts.spec.md)) THE engine SHALL read `schema_version` 1, `defaults` (key to value, layer `project:defaults` or `user:defaults`, replacing the engine default for every workflow, an entry naming a unit refused `unit_in_defaults`), `overrides` (a list of `{workflow, set}`, `workflow` a name or `*`, a named entry beating `*` per key inside a layer), `profiles` (name to key to value) and `observe` (capture and observers, read from the files only and never a run layer, [LOS-B17](33-local-observability-store.spec.md)); look a profile name up in the project file, then the user file, then the workflow's `profiles`, using the first found whole, never merged, an unknown name refused `unknown_profile`; and exit 2 naming a file that does not parse or has a newer major `schema_version`, `config validate` showing the line.
 
-| Grant | Result |
-|---|---|
-| `--grant triage=mcp:tracker/get_issue`, server configured | applied, recorded `widening: true` |
-| the same, server not configured on this machine | exit 2, `mcp-server-not-configured`, nothing written |
-| `--grant judge:triage=edit` | exit 2: a judge takes views only |
-| `--set judge:triage.views.add=mcp:tracker/get_issue` | applied when the catalog classifies the tool read-only |
-| `--allow-command code="npm run build; rm"` | exit 2: shell metacharacter |
-| a user file `overrides` entry with `code.tools.add` | exit 2, `widening_in_file` |
+- GIVEN a `defaults` entry `code.timeout_s` WHEN read THEN it is refused `unit_in_defaults`
 
-**RST-B15 Grants feed the loop.** Given five runs on two machines in which a person granted `triage` the tool `mcp:tracker/get_issue` and each next attempt used it and passed, when self-improvement reads them, then each ledger row lists the grant as used, the five `grant_missing` findings form one cluster, one workflow issue is filed with the declaration as its remedy, and at `propose` autonomy a draft pull request adds `mcp:tracker/get_issue` to `triage`'s tools, naming the five runs.
+### RST-B8 Profiles
 
-**RST-B14 A missing skill fails before spend.** Given a step declaring `skill:review-kit:security` whose plugin is not installed, when a run or resume preflights, then it exits 2 naming the plugin and the install command; no grant can replace an install.
+WHEN `--profile <name>` names a profile in the user file and the workflow THE engine SHALL use the file's whole, put its values on the `profile` layer and record it in `run_started.profiles` with its source.
 
-**RST-B12 Overrides reach the improvement loop.** Given a run whose `code` step used `small` from a `flag` override and failed its gate three times, when self-improvement reads it, then the finding carries `overridden_keys: [code.model]` and the friction lens does not file it as a workflow fault unless the same cluster also holds runs without that override ([SIL](16-self-improvement.spec.md)).
+- GIVEN the workflow's profile `cheap: {"steps.model": "small", "run.run_cost_cap_usd": 5}` and a user-file `cheap` WHEN `--profile cheap` is given THEN the user file's is used whole and `run_started.profiles` is `["cheap"]`
 
-## 4. Error conditions
+### RST-B25 Workflow-declared settings and profiles
 
-| Condition | Result |
-|---|---|
-| Unknown key, scope or setting name | Exit 2, finding `unknown_setting` with the nearest name; nothing created |
-| Key not valid for the scope's unit kind | Exit 2, `setting_not_for_kind` |
-| Value outside type or range; a choice not declared | Exit 2, `setting_value` |
-| A key of the verification surface (§1) | Exit 2, `not_a_setting` |
-| A widening key from a file, a user-file profile or an agent caller | Exit 2, `widening_in_file` or `widening_by_agent` |
-| A grant that fails a declaration check or a never rule of §2.8 | Exit 2 with the declaration's finding code |
-| `false` for a tighten-only key | Exit 2, `tighten_only` |
-| `on_budget_spent=fallback` where the gate has no `fallback` | Exit 2, `no_fallback_target` |
-| Unknown profile name | Exit 2, `unknown_profile` |
-| A configuration file that does not parse, or a newer major `schema_version` | Exit 2 naming the file; `config validate` shows the line |
-| A file `defaults` entry that names a unit | Exit 2, `unit_in_defaults` |
-| A setting the executor cannot apply (`effort`) | Warning, recorded (CON §4) |
-| A key whose feature is not in this release: the audit judge, council, contest, wait and ask keys, the release 2 worktree values (ADR-0090) | Exit 2, `setting_not_in_release` |
+WHEN a workflow declares `settings` (name to `SettingDecl`: `kind` `int`, `float`, `bool`, `choice`, `duration_s` or `text`; a required `default`; `choices` for `choice`; `min` and `max` for numbers and durations; a one-line `meaning` shown by `config show` and the catalog) and `profiles` (named bundles such as `thorough` or `cheap`), both appended to `WorkflowSpec` ([CON-B4](01-contracts.spec.md)) THE engine SHALL give code the resolved table in its context (`ScriptContext.settings`, the check's and route's state view) and templates the key `settings.<name>` ([VAL-B8](76-step-values-and-template-keys.spec.md)), never render a `text` setting into a script's argv and scrub it in every record, other kinds being checked numbers or constants ([SEC](14-security.spec.md)).
 
-## 5. Design notes
+- GIVEN a `text` setting named in a script's `run` argv WHEN validated THEN it is refused
 
-- **Files above and below the workflow.** `overrides` serve an operator who must change a workflow's value on this machine (a slow host's longer limit, a team's model choice); `defaults` serve every workflow that states nothing. Both are per machine: a committed repository file is not a layer in the first release, so a pull request cannot raise anyone's cost cap.
-- **Snapshot, not live files.** A paused thread resumes days later with the settings it started with unless the operator says otherwise, so a run's record explains its behaviour ([ADR-0072](../adr/0072-threads-snapshot-settings-and-reapply-them-on-resume.adr.md)).
-- **Provenance is data for the loop.** Settings digests let reports compare like with like and stop the loop blaming a workflow for an operator's cheaper model ([IMD](43-improvement-data.spec.md)).
-- The legacy flags of [CLI §2.1](17-engine-cli.spec.md) are spellings of `--set`, mapped there.
+### RST-B7 Workflow settings
 
-## 6. Acceptance criteria
+WHEN `--set settings.<name>` is given THE engine SHALL validate it against the declaration, give it to every reader and reapply it on resume.
 
-- [ ] RST-AC-1 Every row of §2.2 has a fixture that resolves it from each layer of §2.3 and records the winning layer and `ref`.
-- [ ] RST-AC-2 Every row of §4 has a fixture refused before any file is created under the state root (hash test).
-- [ ] RST-AC-3 A property test over random layer assignments finds no case where a `steps` or `<unit>` key reaches a judge, or where a tighten-only key ends `false`.
-- [ ] RST-AC-4 `config show` output equals the run's `settings_resolved` rows on a corpus of workflows and options (RST-B9).
-- [ ] RST-AC-5 A thread started, paused, its files edited, and resumed without `--reload-settings` resolves the same `settings_digest`; with it, the digest and `changed_keys` reflect the edit.
-- [ ] RST-AC-6 Every row of the §2.6 counters table is tested on resume.
-- [ ] RST-AC-8 Every row of the RST-B13 table holds, and a property test finds no grant that gives a judge, member or chair a non-read-only tool.
-- [ ] RST-AC-7 No `text` setting value appears in argv, a ledger row, a stats row or a finding (canary test, [SEC-B2](14-security.spec.md)).
+- GIVEN `test_budget_s` (`duration_s`, default 1800, max 7200), `code_mode` (`choice` of `per_phase` or `single`), `publish` (`bool`, default true) WHEN `run --set settings.code_mode=single --set settings.test_budget_s=3600` starts THEN the switch reads `single`, the check reads 3600, the finalizer reads `publish = true`, and a resume reapplies both
+- GIVEN `--set settings.code_mode=fast` WHEN validated THEN it exits 2 listing the choices
+
+### RST-B26 Snapshot and resume
+
+WHEN a thread starts, resumes or is rerun THE engine SHALL at start read both files once, resolve, and store the flag, profile and file layers' values in `RunOptions.settings`, the workflow layers coming from the content the thread runs; at resume reapply the snapshot, `--set` adding or replacing a flag value, `--unset <key>` removing one, `--profile` replacing the profile list looked up in the files as they are now while the file layers stay, and `--reload-settings` reading both files again, the workflow layers following the content resumed on ([MIG-B15](62-state-and-run-migration.spec.md)); at a rerun copy the source's snapshot and apply the rerun's own flags ([RRN](81-reruns-and-feedback.spec.md)); and apply a changed `retry_budget` or `loop_budget` at the next gate decision against the counter already used in the visit or pair (a lowered value at or under the count spent at the next failure), `run_cost_cap_usd` at once (a thread drained for `cost_cap` continuing when the new cap is above its cost), `timeout_s`, `idle_s`, session options and `executor` from the next session, `attempt_cap` and `infra_tries` per invocation from this one, and `arm` and `settings.<name>` from the next read, a switch already decided in the visit keeping its arm.
+
+- GIVEN a thread paused, its files edited, and resumed without `--reload-settings` WHEN resolved THEN `settings_digest` is unchanged
+
+### RST-B4 Raise at resume
+
+WHEN a run stopped with its retry budget spent is resumed with a raised budget THE engine SHALL refuse it without a decision and, with `retry`, give the visit the new budget.
+
+- GIVEN `expand` stopped with its budget of 2 spent WHEN `resume --set expand.retry_budget=4` is given without a decision THEN it exits 2 because a stopped thread needs `retry` or `back`
+- GIVEN `resume --decision retry --set expand.retry_budget=4` WHEN resumed THEN the visit gets 4 and `settings_resolved.changed_keys` lists the key
+
+### RST-B27 Effective settings record
+
+WHEN settings are resolved for a segment THE engine SHALL write `settings_resolved` after `run_started` on start, each resume and a rerun ([EVT](30-run-events.spec.md)), with `settings_digest`, `rows[]` of `{key, value, layer, ref, shadowed[]}` for every key set above `engine` (`ref` the flag, the file path and entry, the profile name or the workflow field path; a `text` value replaced by its digest) and `changed_keys` since the last segment; add `settings_digest`, `profiles` and `overridden_keys` (keys whose winning layer is `flag` to `user:overrides`) to `run_started`; give each value already on `attempt_start` and `agent_run` its layer and `ref`; and add `settings_digest` and `overridden_keys` (names only) to the status, stats and ledger rows, the status row adding `settings_stale` when the files now resolve differently from the snapshot ([DUR-B11](09-durability-and-resume.spec.md)).
+
+- GIVEN a `text` setting WHEN `settings_resolved` is written THEN its value appears only as a digest
+
+### RST-B11 Shadowed values are shown
+
+WHEN a higher layer shadows a lower one THE engine SHALL show both in `config show` and warn nothing at the start.
+
+- GIVEN user `steps.model=medium` and `--set steps.model=large` WHEN `config show` runs THEN the row shows `large` from `flag` with `user:overrides` shadowed
+
+### RST-B12 Overrides reach the improvement loop
+
+WHEN self-improvement reads a run whose failing unit ran under an override THE loop SHALL carry `overridden_keys` on the finding and not file it as a workflow fault unless the same cluster also holds runs without that override ([SIL](16-self-improvement.spec.md)).
+
+- GIVEN `code` failing three times on `small` from a `flag` override WHEN read THEN the finding carries `overridden_keys: [code.model]` and is not filed as a workflow fault alone
+
+### RST-B28 Tool grants
+
+WHEN `tools.add` (steps, unit, slot, chair: `ToolCapability` values of [CON-B11](01-contracts.spec.md) including `mcp:<server>/<tool>` and `skill:<plugin>:<name>`, members and the chair read-only only), `commands.add` (steps, unit, slot, `before:<n>`, `after:<n>`: command prefixes added to the step and the run's allow-list) or `views.add` (judge: read-only capabilities from the view catalog) is set THE engine SHALL take it only from the `flag` layer given by a person or a workflow's own profiles, refusing a file entry or user-file profile (`widening_in_file`), a schedule's options (`widening_in_schedule`, [SCH](83-schedules.spec.md)) and a caller whose decider is not a person (`widening_by_agent`; an agent relaying a person's grant needs a named person turn, [PRV](85-caller-provenance.spec.md)); pass a grant through the declaration's own checks with their finding codes ([WFM](02-workflow-model.spec.md)): the executor's `tool_map` maps it, a command prefix holds no shell metacharacter and its resolver argv is safe, an MCP server is configured on this machine (`mcp-server-not-configured`), a skill's plugin is installed and the executor hosts an authoring surface; never grant a path outside the workspace (C10), a write, edit, shell or writing MCP tool to a judge, member or chair, a judge view outside the read-only catalog (a judge takes no `mcp:` view grant, `judge-view-unclassified`, while no read-only MCP catalog exists), or anything that removes `strict_permissions` or enforcement, the judge staying on an executor that declares `restricts_judge_tools` with the guard of [GRD](06-independence-guard.spec.md) on the widened view; list granted tools as declared ones in the tools block ([PRM-B8](04-prompt-rendering.spec.md)), mark each `widening: true` in `settings_resolved` and list grants apart in the pause payload and `config show`; and keep a grant in the snapshot, reapplied on later resumes and copied into a rerun, `--unset <unit>.tools.add` removing it.
+
+- GIVEN a user file `overrides` entry with `code.tools.add` WHEN read THEN it exits 2 `widening_in_file`
+
+### RST-B29 Escalation for tool access
+
+WHEN an attempt failed or ended blocked and its session recorded a `denied` event or a declared tool missing from its start tool list THE gate SHALL escalate with cause `tool_access`, spending no retry ([BUD](08-budgets-and-failures.spec.md)), and the pause payload ([HUM-B7](07-gate-and-human.spec.md)) SHALL list each refused or missing name with its refusal class ([TSA-B7](57-tool-surface-audit.spec.md)) and its fix: for `undeclared_tool` or a missing MCP tool or skill `resume … --decision retry --grant <unit>=<capability>`, the host step first for a server not configured or a plugin not installed; for `needed_command` `resume … --decision retry --allow-command <unit>=<prefix>`; for `shell_for_read` and `dir_change_then_command` no grant, `retry` with feedback naming the permitted form; for `outside_workspace` no grant, `retry` with feedback or `stop`; for `missing_at_start` the host step then `retry`; release 1 classifying by tool name only, a refused shell call being `unclassified`.
+
+- GIVEN a `needed_command` refusal WHEN the pause is shown THEN it offers `--allow-command <unit>=<prefix>`
+
+### RST-B13 Resume a run blocked on a tool
+
+WHEN a step ends blocked on an undeclared tool THE engine SHALL escalate it with `tool_access`, offer the grant, and run the next attempt with the grant applied.
+
+- GIVEN `triage` calling the undeclared `mcp:tracker/get_issue` and ending `BLOCKED` WHEN the gate decides THEN it escalates with `tool_access`, spends no retry and offers `--grant triage=mcp:tracker/get_issue`, and `resume --decision retry --grant …` runs with the tool and a later resume keeps it
+- GIVEN the same grant and the server configured WHEN applied THEN it is recorded `widening: true`
+- GIVEN the server not configured WHEN granted THEN it exits 2 `mcp-server-not-configured` and nothing is written
+- GIVEN `--grant judge:triage=edit` WHEN validated THEN it exits 2, a judge taking views only
+- GIVEN `--set judge:triage.views.add=mcp:tracker/get_issue` WHEN validated THEN it applies only when the catalog classifies the tool read-only
+- GIVEN `--allow-command code="npm run build; rm"` WHEN validated THEN it exits 2 for a shell metacharacter
+
+### RST-B14 A missing skill fails before spend
+
+WHEN a step declares a skill whose plugin is not installed THE preflight SHALL exit 2 naming the plugin and the install command, no grant replacing an install.
+
+- GIVEN `skill:review-kit:security` with the plugin not installed WHEN preflighted THEN it exits 2 naming the plugin and the install command
+
+### RST-B30 Grants are tracked
+
+WHEN a grant takes effect THE engine SHALL write a `grant` run-log record ([EVT](30-run-events.spec.md)), note it in the intervention row of the resume that gave it ([HUM-B6](07-gate-and-human.spec.md)) and in the ledger row's `grants[]` with whether a later attempt used it ([SIL-B12](16-self-improvement.spec.md), [IMD-B18](43-improvement-data.spec.md)), and count a grant used on a passing attempt as a `grant_missing` finding against the workflow, reported by the audit's history layer as `granted-at-run` ([TSA-B9](57-tool-surface-audit.spec.md)) and drafted by the improvement loop as a `tools` proposal that declares it ([PRP-B14](40-improvement-proposals.spec.md)).
+
+- GIVEN a grant used on a passing attempt WHEN the ledger row is written THEN `grants[]` marks it used and a `grant_missing` finding is recorded
+
+### RST-B15 Grants feed the loop
+
+WHEN several runs needed the same grant and passed with it THE loop SHALL cluster the findings into one workflow issue whose remedy is the declaration and, at `propose` autonomy, draft a pull request that declares it.
+
+- GIVEN five runs on two machines granting `triage` `mcp:tracker/get_issue`, each next attempt passing WHEN self-improvement reads them THEN one cluster, one issue and one draft pull request adding the tool name the five runs
+
+### RST-B31 The config verb
+
+WHEN `config show <workflow> [--thread <t>] [--set …] [--profile …] [--key <glob>] [--json]`, `config validate [--file <path>]` or `config paths` runs THE engine SHALL print the resolved table for a start with these options or for the thread's next resume (value, winning layer and `ref`, shadowed layers, findings); validate both files or one against the catalog and every registered workflow they name; or print the two file paths and whether each exists; writing nothing and spending nothing, the files being edited by hand or by a skill.
+
+- GIVEN `config paths` WHEN run THEN it prints both paths and writes nothing
+
+### RST-B9 Show equals run
+
+WHEN `config show` and `run --check` run with the same options THE engine SHALL print in `config show` the table the run then writes as `settings_resolved` rows.
+
+- GIVEN a corpus of workflows and options WHEN both run THEN the tables are equal
+
+### RST-B32 Refusals before spend
+
+WHEN an override is validated THE engine SHALL exit 2 before any file is created under the state root with `unknown_setting` and the nearest name for an unknown key, scope or setting; `setting_not_for_kind` for a key not valid for the scope's unit kind; `setting_value` for a value outside type or range or an undeclared choice; `not_a_setting`, naming [ADR-0071](../adr/0071-overrides-never-change-what-verifies-the-work.adr.md), for a key of the verification surface; and `setting_not_in_release` for a key whose feature is not in this release (the audit judge, council, contest, wait and ask keys); and SHALL record as a warning a setting the executor cannot apply (`effort`, [CON-B3](01-contracts.spec.md)).
+
+- GIVEN an unknown key WHEN validated THEN nothing is created under the state root (hash test)
+
+### RST-B5 Not a setting
+
+WHEN an override names what verifies the work THE engine SHALL refuse it with `not_a_setting` and create nothing.
+
+- GIVEN `--set code.criteria=…`, `--set judge:code.tools=edit` or `--set code.prompt=…` WHEN validated THEN each exits 2 `not_a_setting`
+
+### RST-B10 Misaimed override
+
+WHEN an override names a unit that does not exist or a scope its unit lacks THE engine SHALL refuse it with its own finding code and, for an unknown name, the nearest declared one.
+
+- GIVEN `--set plann.model=large` on a workflow with a unit `plan` WHEN validated THEN it exits 2 naming `plan`
+
+## Acceptance criteria
+
+- RST-AC1 (RST-B17, RST-B18, RST-B19, RST-B20, RST-B21, RST-B22, RST-B1): Every catalog key has a fixture that resolves it from each layer and records the winning layer and `ref`
+- RST-AC2 (RST-B32, RST-B5, RST-B10, RST-B24): Every refusal has a fixture refused before any file is created under the state root (hash test)
+- RST-AC3 (RST-B23, RST-B2, RST-B3, RST-B6): A property test over random layer assignments finds no case where a `steps` or `<unit>` key reaches a judge, or where a tighten-only key ends `false`
+- RST-AC4 (RST-B9, RST-B16, RST-B31, RST-B11): `config show` output equals the run's `settings_resolved` rows on a corpus of workflows and options
+- RST-AC5 (RST-B26, RST-B27): A thread started, paused, its files edited, and resumed without `--reload-settings` resolves the same `settings_digest`; with it, the digest and `changed_keys` reflect the edit
+- RST-AC6 (RST-B26, RST-B4): Every counter rule of RST-B26 is tested on resume
+- RST-AC7 (RST-B25, RST-B7, RST-B8): No `text` setting value appears in argv, a ledger row, a stats row or a finding (canary test, [SEC-B2](14-security.spec.md))
+- RST-AC8 (RST-B28, RST-B29, RST-B13, RST-B14, RST-B30, RST-B15, RST-B12): Every scenario of RST-B13 holds, and a property test finds no grant that gives a judge, member or chair a non-read-only tool
 
 ## Open questions
 
-| Question | Owner | Release 1 default |
-|---|---|---|
-| Should a team be able to commit a shared settings file in the repository (a third file layer), with cost caps limited to lowering? | Owner | No |
-| Should an organisation be able to impose a managed layer above `flag` (hard ceilings), as Claude Code's managed settings do? | Owner | No |
-
-## References
-
+- Should a team be able to commit a shared settings file in the repository (a third file layer), with cost caps limited to lowering? Until answered: no. Owner: owner.
+- Should an organisation be able to impose a managed layer above `flag` (hard ceilings), as Claude Code's managed settings do? Until answered: no. Owner: owner.
