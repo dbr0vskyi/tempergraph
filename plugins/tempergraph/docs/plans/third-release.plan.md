@@ -37,7 +37,7 @@ task_id: third-release
 | Order | Cap and reach first, because every parallel shape relies on them | R-140 F4, F5 |
 | Plan shape | Tracks and phases only; each track's expanded plan is written when its specs are ready (EC-2) | As in release 2 |
 
-**Status: In progress.** R3-T1.1 and R3-T1.2 are built (2026-11-22). EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
+**Status: In progress.** R3-T1.1, R3-T1.2 and R3-T5.1 are built (2026-11-22). EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
 
 ## 1. Requirements analysis
 
@@ -151,6 +151,8 @@ Goal: CTS acceptance criteria; `concurrency` and `attempt_cost_cap_usd` settable
 
 #### R3-T5.1 The schedule command
 Goal: R-150 SCH's slice, then the rest of SCH; P-SCH-1 and P-SCH-2.
+
+Status: built. The exact formats (`--at`, `--rrule`, `--every`, `--cron`), the word grammar, the canonical form and echo, slots with daylight saving, the entry and its fire log, the verbs `parse`, `add` for a workflow target, `list`, `show`, `history`, `edit`, `pause`, `resume`, `skip` and `remove`, and the catch-up, overlap, failure, budget and fire-identity rules as pure functions, proved by SCH-AC1 to SCH-AC6 and SCH-AC8 to SCH-AC12 in `plugins/tempergraph/engine/tests/test_schedule_*.py`; the tick, `fire`, `loop`, `trigger`, `runs`, `export`, the credential check, the fire token, the ledger and SCH-AC7 are R3-T5.2, and P-SCH-1 and P-SCH-2 are left.
 
 #### R3-T5.2 Ticks and unattended fires
 Goal: TCK, with unattended credentials.
