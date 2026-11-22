@@ -66,12 +66,18 @@ WHEN a workflow declares `Subworkflow(workflow=…, requires=…, inputs=…, pr
 WHEN a child runs THE engine SHALL record its `workflow_version` at run start in `run_started.children` and the thread's engine file ([MIG-B8](62-state-and-run-migration.spec.md)); compile it as a LangGraph subgraph under the parent's checkpointer and thread, checkpoint namespace `<unit>.<visit>.<attempt>` for the unit's visit and attempt (`<unit>[<item>].<visit>.<attempt>` in a map), so a resume continues the child where it paused and a retry or a trip back starts it afresh; run it in the parent's workspace (the run worktree, or the item's writer worktree in a writing map), ignoring the child's own `run.workspace` with one note; write its records to the parent's `run.jsonl`, each carrying `child: <unit>` and its own `unit`, session keys being `<unit>/<child unit>.<attempt>.<kind>`; apply the child's declared defaults under every layer of the parent's run, a flag reaching a child unit as `<unit>/<child unit>.<key>` ([RST-B22](80-run-settings-and-overrides.spec.md)); never run the child's finalizer, warning once at validation `subworkflow-finalizer-skipped` for a child that declares one; keep the child's outcome record under the parent's as `children[<unit>]` ([OUT-B18](90-run-outcome.spec.md)); and refuse with exit 2 naming the child a resume whose child was removed while the parent was paused inside it, `workflows register` restoring it.
 
 - GIVEN a parent run with a child WHEN it ends THEN it left one `run.jsonl`, one checkpoint thread and one ledger row, every child record carrying `child`
+- GIVEN a parent started with `--carry` that paused inside its child on one machine WHEN another machine runs `carry pull` and `resume --decision proceed` THEN the child continues where it paused, its units that ended before the pause do not run again, and the run finishes
 
 ### SWF-B9 Learning and measurement
 
 WHEN a child's work is learned from and measured THE engine SHALL keep the child's judges on the child's own bindings and cases ([JCL](50-judge-calibration.spec.md)); file a finding about a child unit to the child workflow with `sides: [workflow]`, `workflow: <child>` and the parent named ([SIL](16-self-improvement.spec.md)); count the child's outcome record in the child's measures with `origin: subworkflow:<parent>`, in the child's promotion window only when that window says so ([PRO](95-promotion-check.spec.md)); and let a parent's `upgrade` read the child's change notes ([VER-B17](61-version-metadata.spec.md), [WUP-B6](63-workflow-upgrade.spec.md)).
 
-- GIVEN a child unit's friction finding WHEN the loop files it THEN it is filed to the child workflow with the parent named
+- GIVEN a child gate `survey` accepted on the child's own calibration cases and a parent gate also named `survey` with no cases, each on a step with an effort ladder WHEN the run judges both THEN the child's judgement carries `judge_state` `accepted` and the parent's carries `unscored`
+- GIVEN a parent whose own judges run on alias `medium` and a child whose `survey` judge declares alias `strong` WHEN the child's gate judges THEN its judge session opens on alias `strong`
+- GIVEN a parent `deliver` and a child `repo-setup` with different `issue_repository` values, and a friction finding on the child's unit `survey` attributed to the workflow at 0.8 WHEN the loop files it THEN the issue is made in the `issue_repository` of `repo-setup` and none in that of `deliver`, with `sides: [workflow]` and `workflow: repo-setup`, and it names `deliver` as the parent
+- GIVEN a parent `deliver` whose child `repo-setup` ended with outcome `met` WHEN `outcome show repo-setup --runs` runs THEN its measures count the child's outcome record, carrying `origin: subworkflow:deliver`
+- GIVEN ten outcome records of `repo-setup` carrying `origin: subworkflow:deliver` and no run of its own WHEN `promote-check repo-setup --to local-stable` reads its window THEN the window holds none of them and P1 is `unmeasured`
+- GIVEN a parent whose `setup` unit runs a child that renamed its produced key `overview` in its change notes WHEN `upgrade <parent> --check` runs THEN the plan holds a `rename_field` item that points at the parent's reference to `overview`
 
 ### SWF-B10 The child's finalizer and outcome gate stay its own
 
@@ -90,9 +96,9 @@ WHEN a template names `{<unit>.<key>}` THE engine SHALL accept it at validation 
 
 ## Acceptance criteria
 
-- SWF-AC1 (SWF-B1, SWF-B2, SWF-B3, SWF-B4, SWF-B5, SWF-B6, SWF-B7, SWF-B9, SWF-B10): SWF-B1 to SWF-B6 hold offline on stand-ins with an engine fixture parent and child, neither a shipped workflow
+- SWF-AC1 (SWF-B1, SWF-B2, SWF-B3, SWF-B4, SWF-B5, SWF-B6, SWF-B7, SWF-B9, SWF-B10): SWF-B1 to SWF-B6 and every scenario of SWF-B9 hold offline on stand-ins with an engine fixture parent and child, neither a shipped workflow
 - SWF-AC2 (SWF-B8): A parent run with a child leaves one `run.jsonl`, one checkpoint thread and one ledger row; every child record carries `child`
-- SWF-AC3 (SWF-B8): A carried parent paused inside its child resumes on a second state root ([CAR-AC1](96-run-state-on-a-branch.spec.md))
+- SWF-AC3 (SWF-B8): A carried parent paused inside its child resumes on a second state root and finishes, the child continuing where it paused and its earlier units not run again ([CAR-AC1](96-run-state-on-a-branch.spec.md))
 - SWF-AC5 (SWF-B12): A template that names `{<unit>.<key>}` validates for a key a sub-workflow unit before it exposes, and fails `template-unknown-field` for a key that unit does not expose and for a unit that comes after the template
 
 ## Open questions
