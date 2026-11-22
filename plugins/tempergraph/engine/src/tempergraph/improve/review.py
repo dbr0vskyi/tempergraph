@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import re
 import secrets
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +20,7 @@ from tempergraph.contracts import SessionOptions, SessionRequest, Usage, ViewSet
 from tempergraph.docs import append_jsonl, write_json
 from tempergraph.executors.registry import Registry, UnknownExecutor
 from tempergraph.improve import digest as digestmod
-from tempergraph.improve import params
+from tempergraph.improve import params, repeat
 from tempergraph.improve.record import read_prompt
 from tempergraph.run.log import LiveSink, estimate
 from tempergraph.security.scrub import clip, scrub
@@ -115,9 +115,26 @@ def _run_digests(root: Path, workflow: str, task: str) -> list[dict[str, Any]]:
     return [d for d in (digestmod.read(root, workflow, task, k) for k in keys) if d is not None]
 
 
+def _trouble(root: Path, workflow: str, task: str) -> set[str]:
+    """SRV-B24: the units whose gate in this run failed its check, sent the run back, escalated or paused."""
+    out: set[str] = set()
+    for r in _jsonl(run_dir(root, workflow, task) / "run.jsonl"):
+        kind, unit = r.get("kind"), r.get("unit")
+        if kind == "route" and r.get("chosen_by") == "rearm" and r.get("rearm_unit"):
+            out.add(str(r["rearm_unit"]))  # a re-arm sent the unit back to a safer arm
+        elif not unit:
+            continue
+        elif (kind == "check" and r.get("result") == "FAIL") or kind == "pause" \
+                or (kind == "judgement" and r.get("blockers")) \
+                or (kind == "gate" and "BACK" in (r.get("verdict"), r.get("token"))) \
+                or (kind == "gate" and "ESCALATE" in (r.get("verdict"), r.get("token"))):
+            out.add(str(unit))
+    return out
+
+
 def plan(t: Mapping[str, Any], digests: Sequence[Mapping[str, Any]], *, reason: str = "dev",
-         keys: Sequence[str] = (), force_full: bool = False) -> dict[str, Any]:
-    """SRV-B13, SRV-B14, SRV-B15: the run's plan, before any spend."""
+         keys: Sequence[str] = (), force_full: bool = False, trouble: Iterable[str] = ()) -> dict[str, Any]:
+    """SRV-B13, SRV-B14, SRV-B15, SRV-B24: the run's plan, before any spend, its targets in priority order."""
     depth_setting = "full" if force_full else str(t.get("review") or "off")
     out: dict[str, Any] = {"setting": depth_setting, "depth": "none", "targets": [], "skipped": [],
                            "estimate_tokens": 0, "cap_usd": None}
@@ -128,15 +145,18 @@ def plan(t: Mapping[str, Any], digests: Sequence[Mapping[str, Any]], *, reason: 
         return out
     pool = [d for d in digests if d.get("kind") in digestmod.STEP_KINDS | digestmod.JUDGE_KINDS
             and (not keys or d.get("session_key") in keys)]
-    limit = int(params.value("review.max_sessions.full"))
-    for d in pool:
+    pool.reverse()  # the session that started later before the one that started earlier
+    units = set(trouble)
+    named = set(keys)
+    groups = ([d for d in pool if d.get("unit") in units],
+              [d for d in pool if d.get("unit") not in units and d.get("session_key") in named],
+              [d for d in pool if d.get("unit") not in units and d.get("session_key") not in named])
+    for d in (d for group in groups for d in group):  # no count cap in `full`: the money caps decide (SRV-B21)
         key = str(d.get("session_key"))
         if d.get("capture") in ("not_captured", "pruned"):
             out["skipped"].append({"session_key": key, "reason": str(d.get("capture"))})
         elif not d.get("turns"):
             out["skipped"].append({"session_key": key, "reason": "infra_only"})
-        elif len(out["targets"]) >= limit:
-            out["skipped"].append({"session_key": key, "reason": "budget"})
         else:
             out["targets"].append({"session_key": key, "reason": reason, "slices": "all"})
     out["depth"] = "full" if out["targets"] else "none"
@@ -284,7 +304,7 @@ def run(t: Mapping[str, Any], registry: Registry, *, reason: str = "dev", keys: 
     wf, task = str(t["workflow"]), str(t["task_id"])
     digests = _run_digests(root, wf, task)
     by_key = {str(d.get("session_key")): d for d in digests}
-    p = plan(t, digests, reason=reason, keys=keys, force_full=force_full)
+    p = plan(t, digests, reason=reason, keys=keys, force_full=force_full, trouble=_trouble(root, wf, task))
     decls: Mapping[str, Any] = t.get("units") or {}
     token = secrets.token_hex(8)
     views: dict[str, tuple[str, list[int]]] = {}
@@ -300,13 +320,16 @@ def run(t: Mapping[str, Any], registry: Registry, *, reason: str = "dev", keys: 
     out: dict[str, Any] = {"plan": p, "done": [], "failed": [], "cost": {"reported": 0.0, "estimated_only": 0.0}}
     if dry_run or p["depth"] == "none":
         return out
-    spent = 0.0
+    over = False  # SRV-B25: once a review is refused for money, every later target is too
     for target in list(p["targets"]):
         key = target["session_key"]
         d = by_key[key]
         text, kept_turns = views[key]
-        est = estimate(Usage(input_tokens=len(text) // 4, output_tokens=1500), str(d.get("model") or "")) or 0.0
-        if p["cap_usd"] is not None and spent + est > float(p["cap_usd"]):
+        spent, mean = _spend(log)
+        est = mean if mean is not None else \
+            estimate(Usage(input_tokens=len(text) // 4, output_tokens=1500), str(d.get("model") or "")) or 0.0
+        over = over or (p["cap_usd"] is not None and spent + est > float(p["cap_usd"]))
+        if over:
             p["skipped"].append({"session_key": key, "reason": "budget"})
             append_jsonl(log, {"ts": now_iso(), "kind": "review_skipped", "session_key": key, "reason": "budget"})
             continue
@@ -320,10 +343,10 @@ def run(t: Mapping[str, Any], registry: Registry, *, reason: str = "dev", keys: 
                            str(t.get("effort") or EFFORT))
         out["cost"]["reported"] += cost[0]
         out["cost"]["estimated_only"] += cost[1]
-        spent += cost[0] + cost[1]
+        paid = {"cost_usd": round(cost[0] + cost[1], 6), "reported": cost[1] == 0.0 and cost[0] > 0.0}
         if block is None:
             out["failed"].append(key)
-            append_jsonl(log, {"ts": now_iso(), "kind": "review_failed", "session_key": key})
+            append_jsonl(log, {"ts": now_iso(), "kind": "review_failed", "session_key": key, **paid})
             continue
         observations = []
         for o in block.get("observations") or []:
@@ -342,9 +365,25 @@ def run(t: Mapping[str, Any], registry: Registry, *, reason: str = "dev", keys: 
         public = [{k: v for k, v in o.items() if k != "note"} for o in observations]
         append_jsonl(log, {"ts": now_iso(), "kind": "review_done", "session_key": key, "observations": public,
                            "kept": sum(1 for o in observations if o["check"] == "kept"),
-                           "none_found": bool(block.get("none_found"))})
+                           "none_found": bool(block.get("none_found")), **paid})
         out["done"].append(key)
+    if out["done"]:  # SRV-B26: a category kept in several sessions of one unit is a finding; it never files (SRV-B28)
+        repeat.record(root, wf, task, str(t.get("thread") or f"{wf}/{task}"))
     return out
+
+
+def _spend(log: Path) -> tuple[float, float | None]:
+    """SRV-B25: the run's review spend so far and the mean reported cost of its finished reviews (None before one).
+
+    Each finished or failed review counts at its reported cost, else at its estimate; earlier plans of the thread count."""
+    total = 0.0
+    reported: list[float] = []
+    for r in _jsonl(log):
+        if r.get("kind") in ("review_done", "review_failed"):
+            total += float(r.get("cost_usd") or 0.0)
+            if r.get("kind") == "review_done" and r.get("reported"):
+                reported.append(float(r.get("cost_usd") or 0.0))
+    return total, (sum(reported) / len(reported) if reported else None)
 
 
 def _blockers(root: Path, wf: str, task: str) -> dict[str, list[str]]:
@@ -392,13 +431,18 @@ def show(root: Path, workflow: str, task: str) -> dict[str, Any]:
     planned = [r for r in recs if r.get("kind") == "review_planned"]
     sessions = []
     folder = review_dir(root, workflow, task)
+    weights = repeat.recorded(root, workflow, task)  # SRV-B27: the finding corroborates its own category and unit
     for f in sorted(folder.glob("*.json")) if folder.is_dir() else ():
         try:
             doc = json.loads(f.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
+        unit = digestmod.parse_key(str(doc.get("session_key")))[0]
+        kept = [{**o, "corroborated": True, "review_weight": weights[(unit, str(o.get("category")))]}
+                if (unit, str(o.get("category"))) in weights else o
+                for o in doc.get("observations") or [] if o.get("check") == "kept"]
         sessions.append({"session_key": doc.get("session_key"),
-                         "observations": [o for o in doc.get("observations") or [] if o.get("check") == "kept"],
+                         "observations": kept,
                          "unsupported": sum(1 for o in doc.get("observations") or [] if o.get("check") != "kept"),
                          "conformance": doc.get("conformance") or [], "none_found": doc.get("none_found")})
     return {"schema_version": 1, "thread": f"{workflow}/{task}", "plan": planned[-1] if planned else None,
@@ -408,6 +452,7 @@ def show(root: Path, workflow: str, task: str) -> dict[str, Any]:
 def summary(root: Path, workflow: str | None = None, version: str | None = None) -> dict[str, Any]:
     """`improve review summary`: observations by unit, category and check result; corroboration rate."""
     rows: dict[tuple[str, str, str, str], int] = {}
+    corroborated: dict[tuple[str, str, str, str], int] = {}
     base = root / "runs"
     for wdir in sorted(base.iterdir()) if base.is_dir() else ():
         if workflow and wdir.name != workflow:
@@ -416,6 +461,7 @@ def summary(root: Path, workflow: str | None = None, version: str | None = None)
             started = next((r for r in _jsonl(tdir / "run.jsonl") if r.get("kind") == "run_started"), {})
             if version and started.get("workflow_version") != version:
                 continue
+            pairs = repeat.recorded(root, wdir.name, tdir.name)  # SRV-B27: read with the findings, no record rewritten
             for r in _jsonl(tdir / "loop.jsonl"):
                 if r.get("kind") != "review_done":
                     continue
@@ -423,8 +469,12 @@ def summary(root: Path, workflow: str | None = None, version: str | None = None)
                 for o in r.get("observations") or []:
                     k = (wdir.name, unit, str(o.get("category")), str(o.get("check")))
                     rows[k] = rows.get(k, 0) + 1
+                    if o.get("check") == "kept" and (unit, str(o.get("category"))) in pairs:
+                        corroborated[k] = corroborated.get(k, 0) + 1
     total = sum(n for (_, _, _, c), n in rows.items() if c == "kept")
+    done = sum(corroborated.values())
     return {"schema_version": 1, "workflow": workflow, "version": version,
-            "rows": [{"workflow": w, "unit": u, "category": c, "check": k, "count": n}
+            "rows": [{"workflow": w, "unit": u, "category": c, "check": k, "count": n,
+                      **({"corroborated": corroborated[(w, u, c, k)]} if (w, u, c, k) in corroborated else {})}
                      for (w, u, c, k), n in sorted(rows.items())],
-            "kept": total, "corroborated": 0, "corroboration_rate": 0.0 if total else None}
+            "kept": total, "corroborated": done, "corroboration_rate": round(done / total, 4) if total else None}

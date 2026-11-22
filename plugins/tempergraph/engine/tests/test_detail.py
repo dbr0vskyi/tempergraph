@@ -295,6 +295,29 @@ def test_status_detail_verb(repo: Path) -> None:
     assert hash_tree(root) == before
 
 
+def test_the_detail_carries_the_loop_summary_of_the_thread(repo: Path) -> None:  # RDD-AC6
+    from tempergraph.docs import append_jsonl
+
+    fixture_run(repo)
+    root = state_root_path(repo)
+    log = run_dir(root, "demo", "T-1") / "loop.jsonl"
+    assert detail(root, two_step(), "demo/T-1")["loop"] is None  # type: ignore[index]  # no loop child has ended
+    top = [{"category": "tool_thrash", "unit": "draft", "confidence": 0.7},
+           {"category": "wasted_turns", "unit": "review", "confidence": 0.6}]
+    append_jsonl(log, {"ts": "2026-11-22T10:00:00Z", "kind": "loop_summary", "thread": "demo/T-1", "recorded": 1,
+                       "filed": 0, "top": top[:1]})
+    append_jsonl(log, {"ts": "2026-11-22T11:00:00Z", "kind": "loop_summary", "thread": "demo/T-1", "recorded": 3,
+                       "filed": 1, "top": top})
+    doc = detail(root, two_step(), "demo/T-1")
+    assert doc is not None and doc["loop"]["recorded"] == 3 and doc["loop"]["filed"] == 1  # the newest summary
+    assert doc["loop"]["top"] == top and all(set(o) == {"category", "unit", "confidence"} for o in doc["loop"]["top"])
+    assert cut(dict(doc), limit=1)["loop"] == doc["loop"]  # the size cut leaves it in place
+    code, one, _ = cli(repo, None, "status", "demo/T-1", "--detail", "--json")
+    assert code == 0 and one["loop"]["recorded"] == 3
+    other = detail(root, two_step(), "demo/T-1", unit="review")
+    assert other is not None and "loop" in other
+
+
 def _shape(value: object) -> object:
     """Keys and value types, not values: what a reader of the document relies on."""
     if isinstance(value, dict):

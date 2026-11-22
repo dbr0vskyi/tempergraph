@@ -88,6 +88,14 @@ def read_findings(root: Path, workflow: str, task_id: str) -> list[dict[str, Any
     return [f for f in doc.get("findings") or [] if isinstance(f, dict)] if isinstance(doc, dict) else []
 
 
+def append_findings(root: Path, workflow: str, task_id: str, thread: str, lines: Sequence[Mapping[str, Any]]) -> None:
+    """Appends finding lines to the thread's findings document, in one private write (SIL-B8, SRV-B26)."""
+    if not lines:
+        return
+    doc = {"schema_version": 1, "thread": thread, "findings": read_findings(root, workflow, task_id) + list(lines)}
+    _write_private(findings_path(root, workflow, task_id), json.dumps(doc, default=str))
+
+
 def _jsonl(path: Path) -> list[dict[str, Any]]:
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
@@ -183,10 +191,7 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
                       **({"executor_version": f["executor_version"]} if f.get("executor_version") else {}),
                       **({"lens": f["lens"]} if f.get("lens") else {}),
                       **({"rerun_of": rerun_of} if rerun_of else {})})
-    if lines:  # one document per thread; each segment appends its findings (SIL-B8)
-        doc = {"schema_version": 1, "thread": thread,
-               "findings": read_findings(root, spec.name, task_id) + lines}
-        _write_private(findings_path(root, spec.name, task_id), json.dumps(doc, default=str))
+    append_findings(root, spec.name, task_id, thread, lines)  # one document per thread; each segment appends (SIL-B8)
     _write_private(evidence_path(root, spec.name, task_id), json.dumps(evidence(values), default=str))
     summary: dict[str, Any] = {"digests": len(digests), "causes": sorted({x["cause"] for x in lines}),
                                "sides": sorted({x["side"] for x in lines if x["class"] == "fault"}),

@@ -48,6 +48,13 @@ WHEN a plan is computed THE engine SHALL record it as a `review_planned` loop re
 
 - GIVEN any plan WHEN recorded THEN `review_planned` precedes every reviewer session
 
+### SRV-B24 Targets in priority order
+
+WHEN a plan is made THE engine SHALL record its `targets[]` in priority order and review them in that order, not in run order: first the sessions of a unit whose gate in this run failed its check, sent the run back, escalated or paused, then the sessions a signal names, in the order SRV-B16 lists the signals with cost and audit last (SRV-B17), then the rest, and inside each of these three groups the session that started later before the one that started earlier.
+
+- GIVEN a run whose unit `code` failed its check twice and escalated at its third attempt, and whose units `triage` and `plan` passed at their first attempts WHEN planned THEN `targets[]` lists `code`'s sessions first, the third attempt's before the first attempt's, then `plan`'s sessions, then `triage`'s
+- GIVEN a run in which no gate failed its check, sent the run back, escalated or paused WHEN planned THEN `targets[]` runs from the session that started last to the one that started first
+
 ### SRV-B3 Dev mode reads everything within the cap
 
 WHEN a run of a `dev` workflow with `session_review: auto`, 2 units and one retry (5 sessions) finishes THE engine SHALL plan `full` with 5 targets and keep each step session's `conformance[]` in the review evidence.
@@ -110,9 +117,17 @@ WHEN a `tool_thrash` observation citing turns 12 to 14 is checked where the dige
 
 ### SRV-B21 Budget
 
-WHEN reviews are planned and run THE engine SHALL keep within `review.max_input_tokens` (60 000 per reviewer session), `review.max_sessions` (3 in `signals`, 12 in `full`, per run), `review.run_share` (review spend at most 0.10 of the run's own reported plus estimate-only cost in stable, 0.25 in dev and probation), `review.run_cap_usd` ($2 in stable, $5 in dev and probation) and in stable mode SIL's daily cap, shared, all parameters with provenance `default_no_data`, log review spend in `loop.jsonl` and the `loop` ledger row with the other loop costs and never in the run's own cost, and drop targets over a cap by signal priority as `skipped: budget`, mid-plan included.
+WHEN reviews are planned and run THE engine SHALL keep within `review.max_input_tokens` (60 000 per reviewer session), `review.max_sessions` (3 per run in `signals`, none in `full`, where the money caps decide), `review.run_share` (review spend at most 0.10 of the run's own reported plus estimate-only cost in stable, 0.25 in dev and probation), `review.run_cap_usd` ($2 in stable, $5 in dev and probation) and in stable mode SIL's daily cap, shared (these three are the money caps), all parameters with provenance `default_no_data`, log review spend in `loop.jsonl` and the `loop` ledger row with the other loop costs and never in the run's own cost, and drop what a cap leaves out as `skipped: budget`, the lowest priority first (SRV-B24), mid-plan included.
 
-- GIVEN a plan whose estimate passes `review.run_cap_usd` WHEN planned THEN the lowest-priority targets are `skipped: budget`
+- GIVEN a `full` plan of 18 sessions and money for all of them WHEN planned THEN all 18 are targets and none is `skipped: budget`
+
+### SRV-B25 Each review is paid for from what was reported
+
+WHEN a review is about to start THE engine SHALL start it when the run's review spend so far (each finished review at its reported cost, at its estimate only where none was reported) plus an estimate for this review stays within the money caps of SRV-B21, the estimate being the mean reported cost of the run's finished reviews or, until one has reported, the price of this review's view by its size, and otherwise skip it and every later target of the plan as `skipped: budget`.
+
+- GIVEN a cap of 3.46 USD, 18 targets and 12 finished reviews that reported 0.66 USD together WHEN the next review is decided THEN it starts, and the 5 after it start in turn, with none `skipped: budget`
+- GIVEN a cap of 1.00 USD, 6 targets and 4 finished reviews that reported 0.25 USD each WHEN the fifth is decided THEN the fifth and the sixth are `skipped: budget`, whatever the sixth's view size
+- GIVEN no finished review and a first view priced at 0.30 USD against a cap of 0.20 USD WHEN it is decided THEN it and every later target are `skipped: budget`
 
 ### SRV-B22 Records and readers
 
@@ -126,6 +141,29 @@ WHEN filing runs THE engine SHALL add `review:<category>` and `review_weight` to
 
 - GIVEN a kept `prompt_misread` on `plan` and no finding on `plan` WHEN filing runs THEN no issue or comment is made
 - GIVEN a `tool_thrash` observation on a unit whose findings carry `tool_repeat` WHEN filing runs THEN that finding's issue body gains `tool_thrash` and no note text
+
+### SRV-B26 A category kept in several sessions is a finding
+
+WHEN the reviews of a run have kept the same category on the same unit in at least `review.repeat_sessions` (3, provenance `default_no_data`) distinct sessions THE engine SHALL record one finding `review_repeat:<category>` on that unit in the thread's findings ([SIL-B8](16-self-improvement.spec.md)), once per unit and category in the run, carrying the unit, the category and the session keys and no note text, as a fault of the workflow except that `environment_fault` gives `infra` and `request_ambiguous` gives `designed` (SRV-B19; the reasons are in [the decision record](../adr/a-review-category-kept-in-several-sessions-is-a-finding-that-never-files-alone.adr.md)).
+
+- GIVEN `tool_thrash` kept on `code` in sessions `code.1.step`, `code.2.retry` and `code.3.retry` WHEN the reviews end THEN the thread's findings hold one `review_repeat:tool_thrash` finding on `code` with those three session keys and no note text, and `improve backlog` lists a cluster for it
+- GIVEN `tool_thrash` kept on `code` in two sessions and rejected by the citation check in a third WHEN the reviews end THEN no `review_repeat` finding is recorded
+- GIVEN `tool_thrash` kept on `code` three times in one session and once in a second WHEN the reviews end THEN no `review_repeat` finding is recorded
+- GIVEN `tool_thrash` kept in three sessions of `code` and in two of `plan` WHEN the reviews end THEN the finding is on `code` only
+- GIVEN `environment_fault` kept in three sessions of `code` WHEN the reviews end THEN the finding is class `infra` and no cluster of `improve backlog` holds it
+
+### SRV-B27 The finding corroborates its own category
+
+WHEN SRV-B26 records a finding THE engine SHALL count the kept observations of its category on its unit as corroborated by it, as SRV-B7 does for a model-free finding: the finding carries `review:<category>` and a `review_weight` that is their number, and `improve review show` and `improve review summary` report them `corroborated`.
+
+- GIVEN three kept `tool_thrash` observations on `code` and the finding `review_repeat:tool_thrash` WHEN `improve review show` runs THEN each of the three is `corroborated`, and the cluster of `improve backlog` has a `review_weight` of 3
+- GIVEN a kept `tool_thrash` observation on `plan` and the finding on `code` WHEN `improve review show` runs THEN the observation on `plan` is not `corroborated`
+
+### SRV-B28 A review still files nothing alone
+
+WHEN filing runs THE loop SHALL file or comment nothing for a `review_repeat` finding, in the run that records it or in any later run.
+
+- GIVEN `review_repeat:tool_thrash` on `code` recorded by two runs and no other finding on `code` WHEN filing runs THEN no issue or comment is made
 
 ### SRV-B8 Injected text has nothing to act with
 
@@ -154,6 +192,10 @@ WHEN `improve review <selector> [--session <key>…] [--full] [--dry-run] [--jso
 - SRV-AC5 (SRV-B7, SRV-B8, SRV-B10, SRV-B17): A canary planted in a tool output and the request appears in no issue, comment, finding, ledger row, loop record or step or judge prompt after a review
 - SRV-AC6 (SRV-B18): The reviewer session is launched with no tools and no setting sources, pinned by the launch-site test ([SEC-B7](14-security.spec.md))
 - SRV-AC7 (SRV-B23): The review verbs plan, show and summarize a fixture run, and `--dry-run` spends nothing
+- SRV-AC8 (SRV-B24): A fixture run with a unit that failed its check and escalated and two units that passed at the first attempt gives a plan whose `targets[]` list the failed unit's sessions first, then the others, the session that started later before the one that started earlier inside each group, with no model call
+- SRV-AC9 (SRV-B21, SRV-B25): A fixture review of 18 targets with 12 finished reviews reporting 0.66 USD together and a cap of 3.46 USD skips no target, and a fixture whose next estimate passes the cap skips that target and every later one as `skipped: budget`, so each skipped target ranks below every target reviewed
+- SRV-AC10 (SRV-B26, SRV-B27): Fixture review records that keep one category on one unit in three sessions give one finding with the unit, the category and the three session keys and no note text, listed by `improve backlog`, and show those observations `corroborated`, while two sessions give none
+- SRV-AC11 (SRV-B28): The finding of that fixture, recorded by one run and by two runs, files no issue and no comment
 
 ## Open questions
 
@@ -161,3 +203,4 @@ WHEN `improve review <selector> [--session <key>…] [--full] [--dry-run] [--jso
 - Should a person be asked before the first automatic review of a workflow? Until answered: no prompt, since the content stays on the machine and goes to the provider that produced it; `session_review: off` turns it off. Owner: owner.
 - Is the condensed view a fair proxy of the raw session? Measured at the first live dev-mode review; until then the cap is 60 000 tokens. Owner: engine owner.
 - May review categories file on their own once the reviewer has a calibration score ([JCL](50-judge-calibration.spec.md)) on a gold set of reviewed sessions? Until answered: no, corroboration only. Owner: owner.
+- Should a `full` plan keep a count cap as a backstop against a run with very many sessions? Until answered: no count cap in `full`, only the money caps of SRV-B21. Owner: engine owner.
