@@ -98,7 +98,7 @@ Release 2 is finished on the engine side; what is left is the owner's own checks
 
 | Question | Owner | Default |
 |---|---|---|
-| Accept the release 3 scope, or move executors or orchestration back in? | Owner | ADR-0132 as proposed |
+| Accept the release 3 scope, or move executors or orchestration back in? | Owner | Answered 2026-11-22: ADR-0132 accepted as written |
 | The pull-request gate's five questions (R-135) | Owner | R-135's defaults: report mode first, GitHub first, statuses without judge reasons, only on runs that name the workflow, release 3 |
 | Tag release 2 now, or after the owner's remaining live checks? | Owner | After: `released_at` stays unset |
 

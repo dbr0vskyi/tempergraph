@@ -103,10 +103,7 @@ The child may hold no sub-workflow deeper than the limit of three, never the par
 
 ## Open questions
 
-| Question | Owner | Default |
-|---|---|---|
-| Should a parent be able to run the child's finalizer when the child is the parent's last unit? | Owner | No: the parent's finalizer can call the same code |
-| Should the child's outcome gate be skippable when the parent's gate grades the same criteria? | Implementer | No: the child's outcome record is what its measures read |
+None. Closed with the owner's acceptance of ADR-0133 on 2026-11-22: a parent never runs the child's finalizer, even when the child is its last unit (the parent's finalizer can call the same code), and the child's outcome gate is never skipped (its outcome record is what the child's measures read).
 
 ## References
 

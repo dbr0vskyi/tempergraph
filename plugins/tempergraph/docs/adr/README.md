@@ -121,5 +121,5 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0127](0127-outside-git-the-state-root-is-found-by-walk-up-and-the-guard-hashes-files.adr.md) | Outside git, the state root is found by walk-up and the guard hashes files | proposed |
 | [0128](0128-windows-is-supported-natively-with-job-objects-and-probes-before-judges.adr.md) | Windows is supported natively, with job objects, and probes before judges | proposed |
 | [0129](0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md) | The engine names no workflow, and takes a workflow's request as a general capability | accepted |
-| [0132](0132-release-three-is-workflows-that-compose-run-in-parallel-and-grade-in-the-pipeline.adr.md) | Release 3 is workflows that compose, run in parallel and are graded in the pipeline | proposed |
-| [0133](0133-a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md) | A sub-workflow runs inside its parent's thread, workspace and cap | proposed |
+| [0132](0132-release-three-is-workflows-that-compose-run-in-parallel-and-grade-in-the-pipeline.adr.md) | Release 3 is workflows that compose, run in parallel and are graded in the pipeline | accepted |
+| [0133](0133-a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md) | A sub-workflow runs inside its parent's thread, workspace and cap | accepted |
