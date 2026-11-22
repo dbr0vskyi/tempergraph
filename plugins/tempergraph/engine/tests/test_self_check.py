@@ -129,10 +129,13 @@ def test_the_prompt_and_the_grant(repo: Path) -> None:
     (cmd,) = [c for c in req.commands if c.startswith("tempergraph self-check ")]
     assert f"- `{cmd}`" in req.prompt
     assert f"Bash({cmd})" in allow_rules(("read",), req.commands, False)  # granted with no `shell` declared
+    # live check L-29: "There is no shell in this step." alone made a real session skip the preview
+    assert "no shell in this step except for the check preview" in req.prompt
     plain = Previewing(repo, calls=0)
     with contextlib.suppress(ValueError):  # the stand-in looks for a ticket this prompt does not hold
         start(wf(self_check=False), "S-2", {"request": "x"}, repo, registry(plain), NO_SLEEP)
     assert plain.request is not None and "self-check" not in plain.request.prompt
+    assert "There is no shell in this step." in plain.request.prompt
 
 
 def test_self_check_needs_a_gate_check() -> None:  # CHK §4
