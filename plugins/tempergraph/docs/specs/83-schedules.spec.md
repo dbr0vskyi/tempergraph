@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A schedule starts a registered workflow, or a saved orchestration, once or on a recurrence, given in an exact format (ISO 8601, an RFC 5545 rule, cron) or, optionally, in words ("tomorrow at 9", "every weekday at 8:00", "every month on the last day at 17:00"). Both paths are deterministic and model-free; the words are a convenience on top of the exact formats, never a requirement ([ADR-0096](../adr/0096-exact-formats-first-and-an-optional-word-grammar-echoed-back.adr.md)). This spec owns the `schedule` verbs, the exact formats, the word grammar, how either becomes one canonical form that is echoed back before anything is saved, time zones and daylight saving ([ADR-0097](../adr/0097-schedules-keep-an-iana-zone-and-rfc-5545-daylight-saving-rules.adr.md)), the schedule entry and its fire log, and the policies for missed fires, overlapping runs, failures and spend ([ADR-0098](../adr/0098-missed-slots-catch-up-latest-and-a-live-run-skips-the-next.adr.md)). What fires a schedule is the tick, an OS-agnostic, model-free engine routine that reads the schedules, decides what is due and starts each due run through the engine's own `run` verb; the engine's portable loop calls it, and an OS scheduler or a pipeline may too ([TCK](84-schedule-ticks-and-unattended-fires.spec.md), [ADR-0095](../adr/0095-a-model-free-tick-behind-os-agnostic-triggers.adr.md)). The tick calls no model and answers no gate (OVR-B20). A scheduled run is an ordinary run, preflighted, capped, logged and costed, every pause staying with a person; a schedule adds who started it (caller kind `scheduler`, [PRV](85-caller-provenance.spec.md)), which slot it served, and the rules that keep it from piling up paused runs or spend ([ADR-0099](../adr/0099-a-scheduled-fire-is-an-attested-caller-with-a-capped-unattended-spend.adr.md)). Operators, the schedule skill and pipelines depend on it; design notes and assumptions are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
+A schedule starts a registered workflow, or a saved orchestration, once or on a recurrence, given in an exact format (ISO 8601, an RFC 5545 rule, cron) or, optionally, in words ("tomorrow at 9", "every weekday at 8:00", "every month on the last day at 17:00"). Both paths are deterministic and model-free; the words are a convenience on top of the exact formats, never a requirement ([ADR-0096](../adr/0096-exact-formats-first-and-an-optional-word-grammar-echoed-back.adr.md)). This spec owns the `schedule` verbs, the word grammar (the exact formats and their refusals are [STM](26-schedule-timing-formats.spec.md)), how either becomes one canonical form that is echoed back before anything is saved, time zones and daylight saving ([ADR-0097](../adr/0097-schedules-keep-an-iana-zone-and-rfc-5545-daylight-saving-rules.adr.md)), the schedule entry and its fire log, and the policies for missed fires, overlapping runs, failures and spend ([ADR-0098](../adr/0098-missed-slots-catch-up-latest-and-a-live-run-skips-the-next.adr.md)). What fires a schedule is the tick, an OS-agnostic, model-free engine routine that reads the schedules, decides what is due and starts each due run through the engine's own `run` verb; the engine's portable loop calls it, and an OS scheduler or a pipeline may too ([TCK](84-schedule-ticks-and-unattended-fires.spec.md), [ADR-0095](../adr/0095-a-model-free-tick-behind-os-agnostic-triggers.adr.md)). The tick calls no model and answers no gate (OVR-B20). A scheduled run is an ordinary run, preflighted, capped, logged and costed, every pause staying with a person; a schedule adds who started it (caller kind `scheduler`, [PRV](85-caller-provenance.spec.md)), which slot it served, and the rules that keep it from piling up paused runs or spend ([ADR-0099](../adr/0099-a-scheduled-fire-is-an-attested-caller-with-a-capped-unattended-spend.adr.md)). Operators, the schedule skill and pipelines depend on it; design notes and assumptions are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
 ## Behaviours
 
@@ -17,55 +17,6 @@ WHEN schedules are kept THE engine SHALL keep each as one entry file plus its fi
 WHEN an entry is written, owner-only (0600) and atomically, with values that are constants, checked numbers, names or scrubbed strings THE engine SHALL write `schema_version` 1; `schedule_id`, `name` and a `description` of at most 200 characters; `state` (`active`, `paused`, `done` after a `once` fired or a `recur` passed its end, or `removed`); `target` (`{kind, workflow, repo, request, inputs}` or `{kind, orchestration_file, repo, args}`, `repo` the absolute main checkout whose state root the run uses, [WSP](13-workspace-and-concurrency.spec.md)); `when` (`{input, phrase, kind, at | rule, zone, starts, ends, count}`, `phrase` what `--when` gave or null, `at` an ISO 8601 local date-time, `rule` a RECUR string of the stored subset, `zone` an IANA name); `options` (any settings key on the `flag` layer with `via: schedule`, [RST-B22](80-run-settings-and-overrides.spec.md), plus `profiles`); the required `run_cost_cap_usd`; an optional `budget` `{period: day|week|month, cap_usd}` over the calendar period in the schedule's zone; `catch_up` and `catch_up_window_s`; `overlap`; `max_live` (1 to 4, default 1); `pause_after_failures` (1 to 10, default 3); `executors_checked` (`{executor, credential_kind, checked_at}` from the creation preflight, [TCK](84-schedule-ticks-and-unattended-fires.spec.md)); `created` and `edited` as `{at, caller, from}`; `token_digest`, the SHA-256 of the fire token; and the derived `next_slot` and `last_fire`, readers trusting the fire log over them; the request reaching a run only through a hand-off ticket ([SEC-B5](14-security.spec.md)).
 
 - GIVEN an entry WHEN its mode is read THEN it is 0600
-
-### SCH-B15 Exact formats
-
-WHEN timing is given by `--at` (ISO 8601 local, or with an offset or `Z`; `once`), `--rrule` (RFC 5545 RECUR of the stored subset with `--starts` as DTSTART; `recur`), `--every` (an ISO 8601 duration of at least `PT15M` from `--starts`, default now; an interval `recur`), `--cron` (five fields read in the schedule's zone, SCH-B29; `recur`), with `--tz` (IANA), `--starts`, `--until` and `--count` THE engine SHALL parse it with no model (OVR-B15) and never interpret it, so it never produces a `needs`, refusing only a malformed value (`when_malformed` naming the format), a recurrence the stored rule cannot hold (`rule_unsupported`, SCH-B30 and SCH-B31), slots under 15 minutes apart (`interval_too_short`, SCH-B32), a time in the past (`when_in_past`), no slot within 400 days (`when_too_far`), a gap the rule cannot leave or an unknown zone (`zone_unknown`).
-
-- GIVEN `--at 2026-12-01T08:00`, `--every PT2H` or `--cron "0 8 * * 1-5"` with `--yes` from a script WHEN added THEN none exits 3
-
-### SCH-B19 Exact formats never ask
-
-WHEN a schedule is added with an exact format and `--yes` from a script with no terminal THE engine SHALL save it with exit 0 and give the same echo as its word-grammar twin.
-
-- GIVEN `schedule add digest "daily digest" --rrule "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=8;BYMINUTE=0" --tz Europe/Warsaw --run-cost-cap 3 --yes` WHEN it runs THEN it is saved with exit 0 and the echo equals that of `every weekday at 8:00`
-
-### SCH-B29 Cron maps onto the stored rule
-
-WHEN `--cron` gives five fields (minute, hour, day of month, month, day of week), each a `*`, a number, a range `a-b`, a step `*/n` or `a-b/n`, or a comma-separated list of these, with month and weekday names (`jan` to `dec`, `mon` to `sun`, any case) and `7` as Sunday, THE engine SHALL store the one rule that fires at the local times the fields name in the schedule's zone: `FREQ=HOURLY` when the hour is `*`, otherwise `FREQ=DAILY`, `FREQ=WEEKLY` when only the day of week is restricted or `FREQ=MONTHLY` when only the day of month is restricted, with `BYDAY` or `BYMONTHDAY` for that restriction, `BYHOUR` unless the hour is `*`, and `BYMINUTE`, each an ascending list of the values the field names (a range or step expanded, a field that names every value counting as `*`), and never an `INTERVAL`.
-
-- GIVEN `schedule parse --cron "0 8 * * 1-5" --tz Europe/Warsaw` WHEN run THEN the echo's rule is `FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=8;BYMINUTE=0`, the rule of `every weekday at 8:00`
-- GIVEN `--cron "*/15 9-17 * * *"` WHEN parsed THEN the rule is `FREQ=DAILY;BYHOUR=9,10,11,12,13,14,15,16,17;BYMINUTE=0,15,30,45`
-- GIVEN `--cron "0 9 1,15 * *"` WHEN parsed THEN the rule is `FREQ=MONTHLY;BYMONTHDAY=1,15;BYHOUR=9;BYMINUTE=0`
-- GIVEN `--cron "30 * * * mon-fri"` WHEN parsed THEN the rule is `FREQ=HOURLY;BYDAY=MO,TU,WE,TH,FR;BYMINUTE=30`
-- GIVEN `--cron "0 9 * * 7"` WHEN parsed THEN the rule is `FREQ=WEEKLY;BYDAY=SU;BYHOUR=9;BYMINUTE=0`
-
-### SCH-B30 Cron the stored rule cannot hold is refused
-
-WHEN `--cron` is not five fields of the forms SCH-B29 accepts, restricts the month, or restricts both the day of month and the day of week THE engine SHALL exit 2 and save nothing, with `when_malformed` naming `cron` for a value outside those forms (a macro such as `@daily`, a seconds or year field, `?`, `L`, `W` or `#`, a number out of range, a range written backwards) and `rule_unsupported` naming the field for a month restriction or for both day fields restricted.
-
-- GIVEN `--cron "0 9 * 6 *"` WHEN added THEN it exits 2 `rule_unsupported` naming the month field
-- GIVEN `--cron "0 9 1 * 1"` WHEN added THEN it exits 2 `rule_unsupported` naming the day of month and the day of week
-- GIVEN `--cron "@daily"` or `--cron "0 9 * *"` WHEN added THEN it exits 2 `when_malformed` naming `cron`
-- GIVEN `--cron "0 9 1-31 1-12 0-7"` WHEN added THEN it is accepted as the rule of `daily at 09:00`
-
-### SCH-B31 A recurrence outside the stored subset is refused
-
-WHEN `--rrule` carries a part or value that the stored subset of SCH-B18 leaves out THE engine SHALL exit 2 `rule_unsupported` naming the part and save nothing, the parts left out being a `FREQ` other than `MINUTELY`, `HOURLY`, `DAILY`, `WEEKLY` or `MONTHLY`, `BYMONTH`, `BYSETPOS`, `BYWEEKNO`, `BYYEARDAY`, `BYSECOND`, `WKST`, a `BYDAY` ordinal outside `MONTHLY`, a `BYMONTHDAY` other than 1 to 31 or −1, and a `DTSTART`, `RDATE` or `EXDATE` line.
-
-- GIVEN `--rrule "FREQ=YEARLY;BYMONTH=6;BYMONTHDAY=1"` WHEN added THEN it exits 2 `rule_unsupported` naming `FREQ=YEARLY`
-- GIVEN `--rrule "FREQ=MONTHLY;BYDAY=MO;BYSETPOS=1"` WHEN added THEN it exits 2 `rule_unsupported` naming `BYSETPOS`
-- GIVEN `--rrule "FREQ=WEEKLY;BYDAY=1MO"` WHEN added THEN it exits 2 `rule_unsupported` naming the ordinal on `BYDAY`
-- GIVEN `--rrule "FREQ=MONTHLY;BYDAY=1MO;BYHOUR=9;BYMINUTE=0"` WHEN added THEN it is accepted
-
-### SCH-B32 Slots under fifteen minutes apart are refused
-
-WHEN an exact format gives consecutive slots less than 15 minutes apart on the local clock (`--every` under `PT15M`, or an `--rrule` or `--cron` whose times fall closer) THE engine SHALL exit 2 `interval_too_short` naming the shortest gap and save nothing.
-
-- GIVEN `--every PT10M` WHEN added THEN it exits 2 `interval_too_short`
-- GIVEN `--cron "*/10 * * * *"` or `--rrule "FREQ=DAILY;BYHOUR=9;BYMINUTE=0,10"` WHEN added THEN it exits 2 `interval_too_short`
-- GIVEN `--rrule "FREQ=MINUTELY;INTERVAL=10"` WHEN added THEN it exits 2 `interval_too_short`
-- GIVEN `--every PT15M` WHEN added THEN it is accepted
 
 ### SCH-B16 Word grammar parts
 
@@ -224,15 +175,11 @@ WHEN a schedule's events happen THE engine SHALL append JSON lines to its fire l
 
 - SCH-AC1 (SCH-B15, SCH-B16, SCH-B17, SCH-B18, SCH-B2): Every exact format, phrase and ambiguity case has a fixture giving its canonical form, echo sentence and next three slots for a fixed "now" and zone; the echo sentence is generated from the canonical form only (re-parse of its rule equals the stored rule)
 - SCH-AC2 (SCH-B20, SCH-B3): For 5,000 random rules of the stored subset in 20 zones, the engine's slots over two years equal `dateutil.rrule` with `zoneinfo`, including every gap and overlap of those years
-- SCH-AC3 (SCH-B19, SCH-B15): No input given through `--at`, `--rrule`, `--every` or `--cron` exits 3 in a corpus of 1,000 valid values, and each equals the canonical form of its word-grammar twin where one exists
 - SCH-AC4 (SCH-B27, SCH-B13): `parse`, `list`, `show` and `history` leave the home store unchanged (hash test) and start no process
 - SCH-AC5 (SCH-B21, SCH-B22, SCH-B23, SCH-B24, SCH-B5, SCH-B6, SCH-B7, SCH-B8, SCH-B9, SCH-B11, SCH-B26): With scripted runs and a fake clock, SCH-B5 to SCH-B9 give the stated fire-log events, and no slot ever has two `started` events across 1,000 runs of two concurrent ticks
 - SCH-AC6 (SCH-B1, SCH-B10, SCH-B12, SCH-B25): Every refusal exits with its code and writes nothing
 - SCH-AC7 (SCH-B28): A scheduled run's status document, `run_started` and stats row carry `origin: schedule` and the schedule fields, and `report --by schedule` totals match the fire log's `ended` costs
 - SCH-AC8 (SCH-B14, SCH-B28): No fire log line carries request, input or feedback text; the request lives only in the owner-only entry and reaches the run through a ticket
-- SCH-AC9 (SCH-B29): For a corpus of `--cron` values using every accepted form (lists, ranges, steps, month and weekday names, `7` for Sunday), the stored rule is the one SCH-B29 states, and its slots over two years in three zones equal those of a minute-by-minute match of the five fields against the local clock
-- SCH-AC10 (SCH-B30, SCH-B31): Every `--cron` value outside the accepted forms exits 2 `when_malformed`, every `--cron` value that restricts the month or both day fields and every `--rrule` value outside the stored subset exits 2 `rule_unsupported`, and none of them writes anything
-- SCH-AC11 (SCH-B32, SCH-B15): `--every PT14M`, an `--rrule` or `--cron` with slots 14 minutes apart and `--rrule "FREQ=MINUTELY;INTERVAL=10"` exit 2 `interval_too_short` and write nothing, and the same inputs at 15 minutes are accepted
 - SCH-AC12 (SCH-B33): Each of `schedule fire`, `tick`, `loop`, `trigger`, `runs` and `export`, and `schedule add --orchestration`, exits 2 `not_in_release`, leaves the home store unchanged and starts no process
 
 ## Open questions
