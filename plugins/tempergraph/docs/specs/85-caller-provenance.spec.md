@@ -1,238 +1,156 @@
----
-title: Caller provenance
-type: component
-status: ready-for-implementation
-prefix: PRV
-adrs: [0085, 0086, 0099]
----
-
 # Caller provenance
 
-## 1. Overview
+## Purpose
 
-Most runs are not started or resumed by a person typing `tempergraph`. A Claude session using the run driver, the orchestrator skill, the orchestration supervisor, a pipeline job or an application on the Agent SDK or the Messages API makes the call, and a person is somewhere behind it, or nowhere ([R-085](../research/R-085-callers-supervision-and-babysitting-cost.rsrch.md)). This spec owns how the engine tells these callers apart on **every** call that changes a thread, how much it trusts each signal, and how a person's decision relayed by an agent is told from the agent's own decision. It owns contract C17: every intervention on a run carries its caller and decider with the evidence for them, and a person is never inferred from a caller's word alone.
+Most runs are not started or resumed by a person typing `tempergraph`. A Claude session using the run driver, the orchestrator skill, the orchestration supervisor, a pipeline job or an application on the Agent SDK or the Messages API makes the call, and a person is somewhere behind it, or nowhere ([R-085](../research/R-085-callers-supervision-and-babysitting-cost.rsrch.md)). This spec owns how the engine tells these callers apart on every call that changes a thread, how much it trusts each signal, and how a person's decision relayed by an agent is told from the agent's own decision. It owns contract C17: every intervention on a run carries its caller and decider with the evidence for them, and a person is never inferred from a caller's word alone. Provenance is accounting, not a security boundary: every signal can be forged by a process of the same user; it is built so that an honest host and an honest agent produce a true record without effort, a careless agent cannot pass as a person, and a refusal that rests on provenance only ever fails toward the more careful side ([ADR-0085](../adr/0085-classify-callers-by-the-strongest-signal.adr.md), [ADR-0086](../adr/0086-a-relayed-decision-counts-as-a-persons-only-with-host-turn-evidence.adr.md)). Supervision measures ([SUP](86-supervision-metrics.spec.md)), supervision cost ([SCO](87-supervision-cost.spec.md)), schedules ([TCK](84-schedule-ticks-and-unattended-fires.spec.md)) and judge labels ([FBK](41-feedback-and-judge-reliability.spec.md)) depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-Provenance is accounting, not a security boundary: every signal here can be forged by a process of the same user (§2.2). It is built so that an honest host and an honest agent produce a true record without effort, a careless agent cannot pass as a person, and a refusal that rests on provenance only ever fails toward the more careful side. The supervision measures built on it are [SUP](86-supervision-metrics.spec.md); the cost of supervising sessions is [SCO](87-supervision-cost.spec.md).
+## Behaviours
 
-## 2. Contract
+### PRV-B1 A person at a terminal
 
-### 2.1 Caller kinds
+WHEN a person types a deciding command in a plain shell THE engine SHALL record the caller `{kind: person, confidence: observed, host: terminal, decided_by: person, relay: direct}`.
 
-| Kind | Who made the call | Typical host |
-|---|---|---|
-| `person` | A person, directly, at a terminal | A shell outside any agent host; an IDE terminal |
-| `agent` | A model session, for a person or on its own | Claude Code (CLI, IDE, desktop, cloud), an Agent SDK application, a Messages API application, an Antigravity session |
-| `orchestrator` | The model-free orchestration supervisor (contract C16) | The engine itself, detached |
-| `scheduler` | The model-free schedule tick firing a person's schedule (contract C18, [SCH](83-schedules.spec.md)) | The engine itself, started by the per-user OS trigger |
-| `pipeline` | A scripted job with no model deciding | A CI runner, a cron job, a lifecycle hook command |
-| `engine` | The engine on its own account: an infra re-open, an applied deadline, a self-improvement child | The running engine |
-| `unknown` | No signal says which | Anything that leaves no mark |
+- GIVEN a person who types `tempergraph resume fix 42 --decision proceed` in a plain shell WHEN the resume is applied THEN the `human` record's `caller` is `person`, `observed`, `direct`
 
-`unknown` is a kind of its own, never folded into `person`. The earlier `who` words of the intervention row map onto these kinds: `auto_reopen` is `engine`, `event` is the kind of the caller that delivered the event, `deadline` is the kind of the caller that applied it, `rewind` is an action, not a caller ([HUM-B6](07-gate-and-human.spec.md)).
+### PRV-B2 An agent that does not say so
 
-### 2.2 Signals
+WHEN a Claude Code tool child calls a deciding verb without `--as-agent` THE engine SHALL record the caller `agent` with confidence `marked` and host `claude-code`, `decided_by: agent`, the intervention row counting as an agent's.
 
-Read once per process, before any write, by one function shared by every mutating verb; read-only verbs read nothing of this (contract C13).
+- GIVEN a Claude Code Bash tool that runs `tempergraph resume fix 42 --decision proceed` WHEN it is applied THEN the caller is `agent` (`marked`) and `decided_by` is `agent`
 
-| # | Signal | Says | How it is read | Missing when | Forged by |
-|---|---|---|---|---|---|
-| S1 | Supervisor token | `orchestrator`, and which orchestration and node | `TEMPERGRAPH_SUPERVISOR_TOKEN` in the environment; its SHA-256 must equal the digest the supervisor wrote in the orchestration's state file, and `--parent` must name that orchestration ([ORC §2.8](45-orchestration.spec.md)) | Never, for a run the supervisor starts | A same-user process that reads the owner-only state file |
-| S1s | Schedule fire token | `scheduler`, and which schedule, fire and slot | `TEMPERGRAPH_SCHEDULE_TOKEN`; its SHA-256 must equal the `token_digest` of the schedule entry that `--schedule <fire_id>` names ([TCK §2.3](84-schedule-ticks-and-unattended-fires.spec.md)) | Never, for a run or orchestration the tick starts | A same-user process that reads the owner-only entry |
-| S2 | Host marker | `agent`, and the host and its session | Claude Code: `CLAUDE_CODE_CHILD_SESSION=1` (set for tool, hook and status-line children, not for IDE terminals), `CLAUDE_CODE_SESSION_ID`, `CLAUDE_CODE_REMOTE`; other hosts per §2.7 | A host that marks nothing (Antigravity until P-SUP-5; a plain application) | Any process that sets the variable; an agent that unsets it |
-| S3 | IDE terminal marker | Not an agent tool call | `CLAUDECODE=1` without `CLAUDE_CODE_CHILD_SESSION` | Outside an IDE | As S2 |
-| S4 | CI marker | `pipeline`, and the system | `CI=true` or one of `GITHUB_ACTIONS`, `GITLAB_CI`, `BUILDKITE`, `CIRCLECI`, `JENKINS_URL`, `TF_BUILD`, `TEAMCITY_VERSION` | A runner that sets none | Setting the variable |
-| S5 | Terminal | Probably a person | Standard input and standard output are both terminals | Piped or backgrounded calls | A pseudo-terminal |
-| S6 | Declaration | What the caller says it is | `--caller <kind>`, `--as-agent` (= `--caller agent`), `TEMPERGRAPH_CALLER`, and for an application `--caller-app <name>` | The caller does not say | Saying it |
-| S7 | Trace context | Correlation only | `TRACEPARENT` ([R-085](../research/R-085-callers-supervision-and-babysitting-cost.rsrch.md) H8): its trace id is kept on the `caller` block so a caller's own traces can be joined | The caller does not propagate it | Setting it; never used to classify |
+### PRV-B3 A person in an IDE terminal
 
-A host that marks its children is described by a **host profile**: the variables that mark a tool child, the variable that holds its session id, and whether its plugin hooks can write person turns ([SCO §2.2](87-supervision-cost.spec.md)). Profiles ship with the engine; §2.7 lists them.
+WHEN a person types a command in an IDE terminal where `CLAUDECODE=1` and `CLAUDE_CODE_CHILD_SESSION` is unset THE engine SHALL record the caller `person` (`observed`) with S3 listed as `set` in the evidence.
 
-### 2.3 Classification
+- GIVEN a VS Code terminal with `CLAUDECODE=1` WHEN the person resumes a thread THEN the caller is `person` and the evidence lists S3 `set`
 
-The first row that matches decides the kind; the `evidence` list keeps every signal seen, matched or not.
+### PRV-B4 A relayed decision
 
-| Order | Condition | Kind | `confidence` |
-|---|---|---|---|
-| 1 | S1 valid | `orchestrator` | `attested` |
-| 1s | S1s valid | `scheduler` | `attested` |
-| 2 | The engine itself acts (no process call) | `engine` | `attested` |
-| 3 | S2 present | `agent` | `marked` |
-| 4 | S4 present and no S5 | `pipeline` | `marked` |
-| 5 | S6 says `agent` or `pipeline` | as declared | `declared` |
-| 6 | S5 present (with or without S3), no S2, no S6 other than `person` | `person` | `observed` |
-| 7 | S6 says `person`, no S5 | `unknown` | `declared` |
-| 8 | Nothing | `unknown` | `none` |
+WHEN an agent passes `--relayed` on a deciding call THE engine SHALL record `decided_by: person, relay: turn_named` when a person turn after the pause names the decision, `decided_by: person, relay: turn_only` when a later person turn does not name it, `decided_by: agent, relay: claimed` when no person turn followed the pause, and without `--relayed` `decided_by: agent, relay: none`, keeping the person turn's time beside the call.
 
-Rules:
+- GIVEN a run paused at 10:00 and a person turn "yes, proceed" at 10:05 WHEN the session runs `resume … --decision proceed --relayed` at 10:06 THEN `relay` is `turn_named`
+- GIVEN a person turn "go ahead" at 10:05 WHEN the same call runs THEN `relay` is `turn_only`
+- GIVEN no person turn since 09:40 WHEN the same call runs THEN `decided_by` is `agent` and `relay` is `claimed`
 
-- **A declaration only lowers trust.** S6 can turn a would-be `person` into `agent` or `pipeline`; it can never make an S2 caller a `person` (§4 `caller_conflict`). An agent that carries a person's word uses `--relayed` (§2.4), not `--caller person`.
-- An invalid S1 (a token whose digest does not match) is refused before anything is written (§4), never downgraded silently.
-- Release 1 has no orchestrations (ORC) and no schedules (SCH), so rows 1 and 1s never match: any S1 or S1s token is refused with its §4 code. Until the SCO hooks write a journal, a relayed call finds no person turns and records `relay: claimed`.
-- A call inside a Claude Code subagent is classified like its parent session; the subagent's id reaches the record only through the host hooks ([SCO §2.2](87-supervision-cost.spec.md)).
-- The `caller_app` name from `--caller-app` is free text checked against `[a-z0-9-]{1,40}`, like an alias.
+### PRV-B5 A declaration cannot raise trust
 
-### 2.4 Decider and relay evidence
+WHEN a caller with a host marker passes `--caller person` or sets `TEMPERGRAPH_CALLER=person` THE engine SHALL refuse the call with exit 2 `caller_conflict`, naming `--relayed` as the way to carry a person's decision, and write nothing.
 
-For a call that decides something a person may be needed for (a decision at a pause, an answer to an ask, an approval node's answer, a grant, a ruling, a rewind, a rerun with feedback, a stop), the engine records the **decider** apart from the caller.
+- GIVEN a Claude Code tool child WHEN it passes `--caller person` THEN it exits 2 `caller_conflict` and nothing is written
 
-| Caller | Relay claim | Host evidence (§2.4.1) | `decided_by` | `relay` |
-|---|---|---|---|---|
-| `person` | — | — | `person` | `direct` |
-| `agent` | none | — | `agent` | `none` |
-| `agent` | `--relayed` | a person turn that names the decision | `person` | `turn_named` |
-| `agent` | `--relayed` | a person turn that does not name it, or the host cannot check the words | `person` | `turn_only` |
-| `agent` | `--relayed` | no person turn since the pause was shown, or the host writes no turns | `agent` | `claimed` |
-| `orchestrator` | carrying an `orchestrate answer` | the answer's own caller block | that block's `decided_by` | as that block |
-| `pipeline`, `engine` | — | — | the caller kind | `none` |
-| `unknown` | any | — | `unknown` | `none` or `claimed` |
+### PRV-B6 The supervisor's children
 
-#### 2.4.1 Person turns
+WHEN the supervisor starts a node's run with its token and `--parent` THE engine SHALL record `run_started.caller` as `orchestrator` (`attested`) with that `parent`, and a pause of that run answered through the orchestrator skill SHALL hold the `orchestrator` caller with `decided_by` from the answer's own block ([ORC](45-orchestration.spec.md)).
 
-The plugin's `UserPromptSubmit` hook on Claude Code appends a **person turn** to the host's supervision journal ([SCO §2.2](87-supervision-cost.spec.md)): host session id, time, and `names` (the decision words of the thread's open pauses that occur as whole words in the prompt, matched locally against the attention list). The prompt text is never stored. A monitor action fills the prompt for the person to send ([monitor MAC](../../../tempergraph-monitor/docs/specs/05-actions-and-safety.spec.md)), so a decision sent from the monitor is a person turn too.
+- GIVEN an orchestration whose supervisor starts node `api` with `--parent o7/api` WHEN the run starts THEN its caller is `orchestrator` with `parent` `o7/api`
 
-A relay is backed when the journal holds a person turn of the same host session after the `pause` record's time (or after the approval node or ask failure became due) and before the call. `turn_named` needs the decision word (or, for an answer, the answer value's key) among `names`; any later turn is enough for `turn_only`.
+### PRV-B7 A pipeline job
 
-### 2.5 The caller block
+WHEN a CI job calls the engine with no terminal THE engine SHALL record the caller `pipeline`, host `ci:<system>`, confidence `marked`.
 
-Every mutating call on a thread writes one `caller` block, the same shape everywhere:
+- GIVEN a GitHub Actions job that runs `tempergraph run triage …` WHEN it starts THEN the caller is `pipeline`, host `ci:github-actions`
 
-| Field | Meaning |
-|---|---|
-| `kind`, `confidence` | §2.3 |
-| `decided_by`, `relay` | §2.4, for deciding calls; null otherwise |
-| `host` | `terminal`, `claude-code`, `agent-sdk`, `messages-api-app`, `antigravity`, `ci:<system>`, `orchestration`, `schedule`, `engine`, `unknown` |
-| `host_session` | The host's session id (local records); an HMAC with the sink key in anything that leaves the machine ([CST §2.4](34-central-run-stats.spec.md)) |
-| `caller_app` | From `--caller-app`, or null |
-| `parent` | The orchestration, node and item, for `orchestrator` |
-| `schedule` | `{schedule_id, fire_id, slot, created_by}` for `scheduler`; `{schedule_id, declared: true}` for a pipeline export ([TCK §2.7](84-schedule-ticks-and-unattended-fires.spec.md)) |
-| `trace_id` | From S7, or null |
-| `evidence[]` | The signals seen: S-number and the value class (`set`, `unset`, `valid`, `invalid`), never a value other than the host and CI system names |
-| `call_id` | A random id, so a host's journal entry for the same call can be joined ([SCO §2.4](87-supervision-cost.spec.md)) |
+### PRV-B8 No signal
 
-Where it is written:
+WHEN a call carries no terminal, no marker and no declaration THE engine SHALL record the caller `unknown` (`none`), and `status` and the reports SHALL show it as unknown, never as a person.
 
-| Call | Record |
-|---|---|
-| `run`, `rerun`, `resume` (any) | `run_started` gains `caller` ([EVT §2.2](30-run-events.spec.md)) |
-| A decision, answer, event value, applied deadline | The `human` record and the ledger's intervention row ([HUM-B6](07-gate-and-human.spec.md)) |
-| Settings changed on a resume or rerun | `settings_resolved` gains `caller` |
-| A grant, a ruling given or revoked | `grant` and `ruling` records: `by` becomes the `caller` block |
-| `stop` | `stop_requested`: requested by becomes the `caller` block ([RCT](32-run-control.spec.md)) |
-| `orchestrate answer`, `edit`, `stop`, `resume` | The orchestration event log entry ([ORC §2.7](45-orchestration.spec.md)), and the child run's records with `parent` |
-| `label` | The label's `source` follows `decided_by` ([FBK §2.1](41-feedback-and-judge-reliability.spec.md)) |
+- GIVEN a detached script WHEN it resumes a thread THEN the caller is `unknown` and `report` lists it as unknown
 
-The `caller` block holds no request, prompt, feedback or command text ([SEC](14-security.spec.md)).
+### PRV-B9 A relayed grant
 
-### 2.6 Options
+WHEN an agent resumes with a grant and `--relayed` THE engine SHALL apply it with `decided_by: person, relay: turn_named` when a person turn in the agent's host session names the grant, and refuse it `widening_by_agent` otherwise.
 
-| Option or variable | Effect |
-|---|---|
-| `--caller person\|agent\|pipeline` | S6. `orchestrator`, `scheduler` and `engine` cannot be declared |
-| `--as-agent` | Kept: the same as `--caller agent` |
-| `--caller-app <name>` | Names the application that called, for `agent` and `pipeline` |
-| `--relayed` | The call carries a person's decision; checked per §2.4 |
-| `TEMPERGRAPH_CALLER`, `TEMPERGRAPH_CALLER_APP` | The same as the flags, for callers that cannot change argv; a flag wins |
-| `TEMPERGRAPH_SUPERVISOR_TOKEN` | Set by the supervisor for its children only; never documented for people |
-| `TEMPERGRAPH_SCHEDULE_TOKEN`, `--schedule <fire_id>` | Set by the schedule tick for the runs it starts only; `--schedule` without a valid token is refused |
+- GIVEN a step paused with cause `tool_access` and no person turn WHEN the agent resumes with `--grant triage=mcp:tracker/get_issue --relayed` THEN it exits 2 `widening_by_agent`
 
-These are run options, not settings: they are not in the settings catalog and are not snapshot on the thread ([RST §2.2](80-run-settings-and-overrides.spec.md)); each call is classified on its own.
+### PRV-B10 An application declares itself
 
-### 2.7 Host profiles
+WHEN an application resumes with `--caller agent --caller-app <name>` THE engine SHALL record the caller `agent` (`declared`), its host and `caller_app`.
 
-| Host | Tool-child marker | Session id | Person turns | Status |
-|---|---|---|---|---|
-| Claude Code CLI, IDE, desktop | `CLAUDE_CODE_CHILD_SESSION=1` | `CLAUDE_CODE_SESSION_ID` | plugin `UserPromptSubmit` hook | marker supported; session id P-SUP-1; prompt field P-SUP-2 |
-| Claude Code cloud session | as above, plus `CLAUDE_CODE_REMOTE=true` | as above | as above | as above |
-| Agent SDK application | the SDK's session children carry the Claude Code markers | as above | the application's own hook or `--relayed` with no turn | P-SUP-4 |
-| Messages API application | none | none | none | declares `--caller agent --caller-app <name>` |
-| Antigravity session | unknown | unknown | unknown | P-SUP-5; until then `unknown` unless it declares |
-| CI runner | S4 | the job id variable of the system | none | supported |
+- GIVEN a Messages API application WHEN it resumes with `--caller agent --caller-app triage-bot` THEN the caller is `agent`, host `messages-api-app`, `caller_app` `triage-bot`
 
-A profile whose probe has not run is used only to read markers it lists; its rows are shown as projected in `executors --probe` beside the executor facts ([CLI-B3](17-engine-cli.spec.md)).
+### PRV-B11 Caller kinds
 
-### 2.8 What provenance changes
+WHEN a call is classified THE engine SHALL give it one `CallerKind`: `person` (a person directly, at a terminal), `agent` (a model session, for a person or on its own, in Claude Code, an Agent SDK or Messages API application or Antigravity), `orchestrator` (the model-free supervisor, contract C16), `scheduler` (the model-free schedule tick, contract C18, [SCH](83-schedules.spec.md)), `pipeline` (a scripted job with no model deciding: a CI runner, a cron job, a lifecycle hook command), `engine` (the engine on its own account: an infra re-open, an applied deadline, a self-improvement child) or `unknown`, never folded into `person`; and map the earlier `who` words of the intervention row as `auto_reopen` to `engine`, `event` and `deadline` to the kind of the caller that delivered or applied them, `rewind` being an action, not a caller ([HUM-B6](07-gate-and-human.spec.md)).
 
-| Use | Rule |
-|---|---|
-| Widening tools, commands or views ([RST §2.8](80-run-settings-and-overrides.spec.md)) | Refused (`widening_by_agent`) unless `decided_by` is `person`: a person at a terminal, or an agent relay with `turn_named`. `turn_only`, `claimed`, `unknown`, `pipeline` and `orchestrator` are refused. A workflow's own profile still widens on any caller |
-| A decision at a pause | Never refused on provenance in the first release; recorded. A delegation policy is out of scope ([HUM §5](07-gate-and-human.spec.md)) |
-| An answer in an orchestration | `orchestrate answer` is refused (`answer_not_by_person`) unless `decided_by` is `person`, because every pause in an orchestration stays with a person ([ORC-B6](45-orchestration.spec.md), [ADR-0039](../adr/0039-pauses-stay-with-the-person-failures-follow-node-policy.adr.md)) |
-| Judge labels | Only `decided_by = person` makes a `person` label; everything else is `agent` or `unknown` and is kept out of judge figures ([FBK-B2](41-feedback-and-judge-reliability.spec.md)) |
-| Rulings | Recorded with the block; the owner question of [RRN](81-reruns-and-feedback.spec.md) on agent rulings stays open |
-| Supervision measures | Every touch counts, split by `kind` and `decided_by` ([SUP §2.2](86-supervision-metrics.spec.md)) |
-| Creating or widening a schedule | `schedule add`, `edit`, `resume` and `fire` are refused (`schedule_not_by_person`) unless `decided_by` is `person`; a relay needs a person turn within 10 minutes ([TCK §2.6](84-schedule-ticks-and-unattended-fires.spec.md)) |
+- GIVEN an infra re-open WHEN its intervention row is written THEN its caller kind is `engine`
 
-## 3. Behaviours
+### PRV-B12 Signals
 
-**PRV-B1 A person at a terminal.** Given a person who types `tempergraph resume fix 42 --decision proceed` in a plain shell, when the resume is applied, then the `human` record's `caller` is `{kind: person, confidence: observed, host: terminal, decided_by: person, relay: direct}`.
+WHEN a mutating verb runs THE engine SHALL read, once per process before any write, by one function shared by every mutating verb, the signals S1 supervisor token (`TEMPERGRAPH_SUPERVISOR_TOKEN`, its SHA-256 equal to the digest in the orchestration's state file and `--parent` naming that orchestration, [ORC-B17](45-orchestration.spec.md)); S1s schedule fire token (`TEMPERGRAPH_SCHEDULE_TOKEN`, its SHA-256 equal to the `token_digest` of the entry `--schedule <fire_id>` names, [TCK-B17](84-schedule-ticks-and-unattended-fires.spec.md)); S2 host marker (on Claude Code `CLAUDE_CODE_CHILD_SESSION=1`, set for tool, hook and status-line children and not for IDE terminals, with `CLAUDE_CODE_SESSION_ID` and `CLAUDE_CODE_REMOTE`; other hosts per PRV-B20); S3 IDE terminal marker (`CLAUDECODE=1` without `CLAUDE_CODE_CHILD_SESSION`); S4 CI marker (`CI=true` or one of `GITHUB_ACTIONS`, `GITLAB_CI`, `BUILDKITE`, `CIRCLECI`, `JENKINS_URL`, `TF_BUILD`, `TEAMCITY_VERSION`); S5 terminal (standard input and output both terminals); S6 declaration (`--caller`, `--as-agent`, `TEMPERGRAPH_CALLER`, `--caller-app`); and S7 trace context (`TRACEPARENT`, its trace id kept for correlation and never used to classify); read-only verbs reading none of them (contract C13).
 
-**PRV-B2 An agent that does not say so.** Given a Claude Code session whose Bash tool runs `tempergraph resume fix 42 --decision proceed` without `--as-agent`, when it is applied, then the caller is `agent` with confidence `marked` and host `claude-code`, `decided_by` is `agent`, and the intervention row counts as an agent's.
+- GIVEN `status` WHEN it runs THEN no signal or journal is read
 
-**PRV-B3 A person in an IDE terminal.** Given a person who types the same command in a VS Code terminal where `CLAUDECODE=1` and `CLAUDE_CODE_CHILD_SESSION` is unset, when it is applied, then the caller is `person` (`observed`), and the evidence lists S3 as `set`.
+### PRV-B13 Classification
 
-**PRV-B4 A relayed decision.** Given a run paused at 10:00 and a Claude Code session in which the person wrote "yes, proceed" at 10:05, when the session runs `resume … --decision proceed --relayed` at 10:06, then `decided_by` is `person` with `relay: turn_named`, and the person turn's time is kept beside the call.
+WHEN the signals are read THE engine SHALL take the first matching row of: S1 valid gives `orchestrator` (`attested`); S1s valid gives `scheduler` (`attested`); the engine acting itself gives `engine` (`attested`); S2 gives `agent` (`marked`); S4 without S5 gives `pipeline` (`marked`); S6 saying `agent` or `pipeline` gives that kind (`declared`); S5 with or without S3, no S2 and no S6 other than `person` gives `person` (`observed`); S6 saying `person` without S5 gives `unknown` (`declared`); nothing gives `unknown` (`none`); keep every signal seen, matched or not, in `evidence`; let a declaration only lower trust; refuse an invalid S1 or S1s before anything is written rather than downgrade it; classify a call inside a Claude Code subagent like its parent session, the subagent's id reaching the record only through the host hooks ([SCO](87-supervision-cost.spec.md)); and check `caller_app` against `[a-z0-9-]{1,40}`, exit 2 otherwise.
 
-| Person turn after the pause | Words | `--relayed` | `decided_by` | `relay` |
-|---|---|---|---|---|
-| 10:05 "yes, proceed" | `proceed` | yes | person | `turn_named` |
-| 10:05 "go ahead" | none | yes | person | `turn_only` |
-| none since 09:40 | — | yes | agent | `claimed` |
-| 10:05 "yes, proceed" | `proceed` | no | agent | `none` |
+- GIVEN `TEMPERGRAPH_CALLER=person` with no terminal WHEN a call is classified THEN its kind is `unknown` (`declared`)
 
-**PRV-B5 A declaration cannot raise trust.** Given a Claude Code tool child that passes `--caller person`, when the call is checked, then it is refused with exit 2 `caller_conflict`, naming `--relayed` as the way to carry a person's decision, and nothing is written.
+### PRV-B14 Decider
 
-**PRV-B6 The supervisor's children.** Given an orchestration whose supervisor starts node `api` with its token and `--parent o7/api`, when the run starts, then `run_started.caller` is `orchestrator` (`attested`) with `parent` `o7/api`; when the person answers that run's pause through the orchestrator skill with the person's word, then the `human` record holds the `orchestrator` caller and `decided_by` from the answer's own block ([ORC §2.6](45-orchestration.spec.md)).
+WHEN a call decides something a person may be needed for (a decision at a pause, an answer to an ask, an approval node's answer, a grant, a ruling, a rewind, a rerun with feedback, a stop) THE engine SHALL record `decided_by` and `relay` apart from the caller: `person` and `direct` for a person; for an agent as PRV-B4; for an `orchestrator` carrying an `orchestrate answer` the answer's own block; the caller kind and `none` for `pipeline` and `engine`; and `unknown` with `none` or `claimed` for `unknown`; refusing `--relayed` on a call that decides nothing (`run` without feedback, `status`) with exit 2 `relay_not_applicable`.
 
-**PRV-B7 A pipeline job.** Given a GitHub Actions job that runs `tempergraph run triage …` with no terminal, when it starts, then the caller is `pipeline`, host `ci:github-actions`, confidence `marked`.
+- GIVEN `run` without feedback WHEN it is called with `--relayed` THEN it exits 2 `relay_not_applicable`
 
-**PRV-B8 No signal.** Given a call from a detached script with no terminal, no marker and no declaration, when it is applied, then the caller is `unknown` (`none`); `status` and the reports show it as unknown, never as a person.
+### PRV-B15 Person turns
 
-**PRV-B9 A relayed grant.** Given a step paused with cause `tool_access` and a person turn naming the grant in the agent's host session, when the agent resumes with `--grant triage=mcp:tracker/get_issue --relayed`, then the grant is applied with `decided_by: person, relay: turn_named`; without the person turn it is refused with `widening_by_agent`.
+WHEN a person submits a prompt in a host with person-turn hooks THE plugin's `UserPromptSubmit` hook SHALL append a person turn to the host's supervision journal ([SCO](87-supervision-cost.spec.md)) with the host session id, the time and `names` (the decision words of the thread's open pauses that occur as whole words in the prompt, matched locally against the attention list), never storing the prompt text, a decision sent from the monitor ([monitor MAC](../../../tempergraph-monitor/docs/specs/05-actions-and-safety.spec.md)) being a person turn too; and THE engine SHALL count a relay backed when the journal holds a person turn of the same host session after the `pause` record's time (or after the approval node or ask failure became due) and before the call, `turn_named` needing the decision word or the answer value's key among `names`, and an unreadable journal giving `relay: claimed` with evidence `journal_unreadable` while the call goes on.
 
-**PRV-B10 An application declares itself.** Given a Messages API application that resumes with `--caller agent --caller-app triage-bot`, when it is applied, then the caller is `agent` (`declared`), host `messages-api-app`, `caller_app` `triage-bot`.
+- GIVEN an unreadable journal WHEN a relayed decision is checked THEN `relay` is `claimed`, the evidence lists `journal_unreadable` and the decision is applied
 
-## 4. Error conditions
+### PRV-B16 The caller block
 
-| Condition | Result |
-|---|---|
-| `--caller person` (or `TEMPERGRAPH_CALLER=person`) from a caller with a host marker | Exit 2 `caller_conflict`, nothing written |
-| `--caller orchestrator`, `--caller scheduler` or `--caller engine` | Exit 2 `caller_reserved` |
-| A schedule token whose digest does not match the entry `--schedule` names | Exit 2 `schedule_token_invalid`, nothing written |
-| A supervisor token whose digest matches no orchestration, or not the one `--parent` names | Exit 2 `supervisor_token_invalid`, nothing written |
-| `--relayed` on a call that decides nothing (`run` without feedback, `status`) | Exit 2 `relay_not_applicable` |
-| `--caller-app` outside `[a-z0-9-]{1,40}` | Exit 2 |
-| A mutating verb other than `self-check` called from inside one of the engine's own sessions (`TEMPERGRAPH_SESSION_KEY` set, [EXI §2.3](10-executor-interface.spec.md)) | Exit 2 `engine_session_caller`: a step never drives the engine |
-| The supervision journal cannot be read when checking a relay | `relay: claimed` with evidence `journal_unreadable`; the call goes on |
+WHEN a mutating call on a thread is applied THE engine SHALL write one `Caller` block with `kind` and `confidence` (`attested`, `marked`, `observed`, `declared`, `none`); `decided_by` and `relay` (`direct`, `turn_named`, `turn_only`, `claimed`, `none`) for deciding calls, null otherwise; `host` (`terminal`, `claude-code`, `agent-sdk`, `messages-api-app`, `antigravity`, `ci:<system>`, `orchestration`, `schedule`, `engine`, `unknown`); `host_session` (an HMAC with the sink key in anything that leaves the machine, [CST](34-central-run-stats.spec.md)); `caller_app`; `parent` for `orchestrator`; `schedule` (`{schedule_id, fire_id, slot, created_by}` for `scheduler`, `{schedule_id, declared: true}` for a pipeline export, [TCK-B20](84-schedule-ticks-and-unattended-fires.spec.md)); `trace_id`; `evidence[]` (S-number and value class `set`, `unset`, `valid`, `invalid`, never a value other than the host and CI system names); and a random `call_id` for joining a host's journal entry ([SCO](87-supervision-cost.spec.md)); holding no request, prompt, feedback or command text ([SEC](14-security.spec.md)).
 
-## 5. Design notes
+- GIVEN a canary run WHEN its caller blocks are scanned THEN none holds the canary
 
-- **Strongest signal first** ([ADR-0085](../adr/0085-classify-callers-by-the-strongest-signal.adr.md)). Claude Code sets its child markers without the model's help, so an agent that forgets `--as-agent` is still seen. Self-declaration stays useful for hosts that mark nothing and for honest applications, and it can only move the record toward "not a person".
-- **Relay needs the host** ([ADR-0086](../adr/0086-a-relayed-decision-counts-as-a-persons-only-with-host-turn-evidence.adr.md)). The only event that proves a person typed something is the host's own prompt-submit event; the engine never sees the conversation and never stores its text.
-- **Not a security control.** Every signal is forgeable by the same user (R-085 H10). Refusals built on provenance (widening) fail toward refusal; nothing grants more because of a signal except a backed relay, which needs a person turn in the host.
-- **Probes.**
+### PRV-B17 Where the block is written
 
-| Probe | Question | Gates | State |
-|---|---|---|---|
-| P-SUP-1 | `CLAUDE_CODE_SESSION_ID` is in the Bash tool environment on the CLI, IDE, desktop and cloud surfaces and equals the hook input's `session_id` | host session on the caller block; relay join | not run |
-| P-SUP-2 | `UserPromptSubmit` input carries the prompt text to the hook | `names`, so `turn_named` | not run; without it relays are `turn_only` at best |
-| P-SUP-4 | Bash children of an Agent SDK session carry the Claude Code markers, and which entry point is visible | Agent SDK host profile | not run |
-| P-SUP-5 | Antigravity marks its tool children or exposes hooks with a session id | Antigravity host profile | not run |
+WHEN a mutating call is recorded THE engine SHALL put the caller block in `run_started` for `run`, `rerun` and `resume` ([EVT](30-run-events.spec.md)); in the `human` record and the ledger's intervention row for a decision, answer, event value or applied deadline ([HUM-B6](07-gate-and-human.spec.md)); in `settings_resolved` for settings changed on a resume or rerun; as `by` in `grant` and `ruling` records for a grant or a ruling given or revoked; as requested-by in `stop_requested` ([RCT](32-run-control.spec.md)); in the orchestration event log entry and the child run's records with `parent` for `orchestrate answer`, `edit`, `stop` and `resume` ([ORC](45-orchestration.spec.md)); and let a label's `source` follow `decided_by` ([FBK-B2](41-feedback-and-judge-reliability.spec.md)).
 
-## 6. Acceptance criteria
+- GIVEN a `stop` from an agent WHEN `stop_requested` is written THEN it carries the agent's caller block
 
-- [ ] PRV-AC-1 Every row of the §2.3 table and of the PRV-B4 table is reproduced by a fixture test over a stubbed environment, terminal and journal.
-- [ ] PRV-AC-2 Every mutating verb of [CLI](17-engine-cli.spec.md) writes exactly one `caller` block per call where §2.5 says, and no read-only verb reads the signals or the journal (source test plus the hash test of CLI-AC-1).
-- [ ] PRV-AC-3 No `caller` block in a canary run contains the canary, a prompt, a command or a feedback text ([SEC-B2](14-security.spec.md)).
-- [ ] PRV-AC-4 A call with a host marker can never produce `kind: person`, whatever it declares (property test over all combinations of S2 to S6).
-- [ ] PRV-AC-5 A widening on a resume is applied only when `decided_by` is `person` and, for an agent caller, `relay` is `turn_named`.
-- [ ] PRV-AC-6 P-SUP-1, P-SUP-2 and P-SUP-4 each have a recorded result with date, machine and Claude Code version before the Claude Code and Agent SDK host profiles leave `projected`.
+### PRV-B18 Options
+
+WHEN caller options are given THE engine SHALL read `--caller person|agent|pipeline` as S6, refusing `--caller orchestrator`, `scheduler` or `engine` with exit 2 `caller_reserved`; `--as-agent` as `--caller agent`; `--caller-app <name>` for `agent` and `pipeline`; `--relayed` as a claim checked per PRV-B14; `TEMPERGRAPH_CALLER` and `TEMPERGRAPH_CALLER_APP` as the flags, a flag winning; `TEMPERGRAPH_SUPERVISOR_TOKEN` set by the supervisor for its children only and never documented for people; and `TEMPERGRAPH_SCHEDULE_TOKEN` with `--schedule <fire_id>` set by the tick only; these being run options, not settings, absent from the settings catalog and never snapshot on the thread ([RST](80-run-settings-and-overrides.spec.md)), each call classified on its own.
+
+- GIVEN `--caller scheduler` WHEN any verb runs THEN it exits 2 `caller_reserved`
+
+### PRV-B19 Engine sessions never drive the engine
+
+WHEN a mutating verb other than `self-check` is called from inside one of the engine's own sessions (`TEMPERGRAPH_SESSION_KEY` set, [EXI](10-executor-interface.spec.md)) THE engine SHALL refuse it with exit 2 `engine_session_caller` and write nothing.
+
+- GIVEN a step session WHEN its shell runs `tempergraph resume …` THEN it exits 2 `engine_session_caller`
+
+### PRV-B20 Host profiles
+
+WHEN markers are read for a host THE engine SHALL use the host profile shipped with it (the variables that mark a tool child, the variable that holds its session id, and whether its plugin hooks can write person turns): Claude Code CLI, IDE and desktop marked by `CLAUDE_CODE_CHILD_SESSION=1` with session `CLAUDE_CODE_SESSION_ID` and person turns from the plugin `UserPromptSubmit` hook (P-SUP-1, P-SUP-2); a Claude Code cloud session the same plus `CLAUDE_CODE_REMOTE=true`; an Agent SDK application by the Claude Code markers on its session children, with its own hook or `--relayed` with no turn (P-SUP-4); a Messages API application by its declaration `--caller agent --caller-app <name>`; an Antigravity session `unknown` unless it declares (P-SUP-5); a CI runner by S4 with the system's job id variable; a profile whose probe has not run reading only the markers it lists and shown as projected in `executors --probe` ([CLI-B3](17-engine-cli.spec.md)).
+
+- GIVEN an Antigravity session that declares nothing WHEN it resumes a thread THEN the caller is `unknown`
+
+### PRV-B21 Widening and answers need a person
+
+WHEN a call widens tools, commands or views on a resume ([RST](80-run-settings-and-overrides.spec.md)) or answers in an orchestration THE engine SHALL refuse it (`widening_by_agent`, `answer_not_by_person`) unless `decided_by` is `person`, a widening from an agent needing `relay: turn_named` and `turn_only`, `claimed`, `unknown`, `pipeline` and `orchestrator` being refused, a workflow's own profile still widening on any caller, every pause in an orchestration staying with a person ([ORC-B6](45-orchestration.spec.md), [ADR-0039](../adr/0039-pauses-stay-with-the-person-failures-follow-node-policy.adr.md)).
+
+- GIVEN an agent relay with `turn_only` WHEN it widens a step's tools THEN it exits 2 `widening_by_agent`
+
+### PRV-B22 Other uses of provenance
+
+WHEN provenance is used elsewhere THE engine SHALL record, never refuse, a decision at a pause on provenance (a delegation policy is out of scope, [HUM](07-gate-and-human.spec.md)); make a `person` judge label only from `decided_by = person`, every other label being `agent` or `unknown` and kept out of judge figures ([FBK-B2](41-feedback-and-judge-reliability.spec.md)); record rulings with the block ([RRN](81-reruns-and-feedback.spec.md)); count every touch by `kind` and `decided_by` in supervision ([SUP](86-supervision-metrics.spec.md)); and refuse `schedule add`, `edit`, `resume` and `fire` `schedule_not_by_person` unless `decided_by` is `person` within the relay window ([TCK-B22](84-schedule-ticks-and-unattended-fires.spec.md)).
+
+- GIVEN an agent's own decision at an undesigned pause WHEN it is applied THEN it is recorded with `decided_by: agent` and not refused
+
+## Acceptance criteria
+
+- PRV-AC1 (PRV-B1, PRV-B2, PRV-B3, PRV-B4, PRV-B6, PRV-B7, PRV-B8, PRV-B10, PRV-B11, PRV-B13, PRV-B14, PRV-B15): Every row of the classification and every relay case is reproduced by a fixture test over a stubbed environment, terminal and journal
+- PRV-AC2 (PRV-B12, PRV-B17, PRV-B19): Every mutating verb of [CLI](17-engine-cli.spec.md) writes exactly one `caller` block per call where PRV-B17 says, and no read-only verb reads the signals or the journal (source test plus the hash test of CLI-AC1)
+- PRV-AC3 (PRV-B16): No `caller` block in a canary run contains the canary, a prompt, a command or a feedback text ([SEC-B2](14-security.spec.md))
+- PRV-AC4 (PRV-B5, PRV-B18): A call with a host marker can never produce `kind: person`, whatever it declares (property test over all combinations of S2 to S6)
+- PRV-AC5 (PRV-B9, PRV-B21, PRV-B22): A widening on a resume is applied only when `decided_by` is `person` and, for an agent caller, `relay` is `turn_named`
+- PRV-AC6 (PRV-B20): P-SUP-1 (`CLAUDE_CODE_SESSION_ID` is in the Bash tool environment on the CLI, IDE, desktop and cloud surfaces and equals the hook input's `session_id`), P-SUP-2 (`UserPromptSubmit` input carries the prompt text to the hook; without it relays are `turn_only` at best) and P-SUP-4 (Bash children of an Agent SDK session carry the Claude Code markers) each have a recorded result with date, machine and Claude Code version before the Claude Code and Agent SDK host profiles leave `projected`; P-SUP-5 (Antigravity marks its tool children or exposes hooks with a session id) before the Antigravity profile does
 
 ## Open questions
 
-| Question | Owner | Release 1 default |
-|---|---|---|
-| Should an agent's own decision at an undesigned pause be refused once a delegation policy exists? Kept allowed and recorded. | Owner | Allowed, recorded |
-| Should `turn_only` relays be enough for widening? Assumed no. | Owner | No |
-
-## References
-
+- Should an agent's own decision at an undesigned pause be refused once a delegation policy exists? Until answered: allowed and recorded. Owner: owner.
+- Should `turn_only` relays be enough for widening? Until answered: no. Owner: owner.
+- Not built yet: orchestrations and schedules do not exist yet, so S1 and S1s never match and any token is refused with its code; until the SCO hooks write a journal on a host, a relayed call there finds no person turns and records `relay: claimed`; probes P-SUP-1, P-SUP-2, P-SUP-4 and P-SUP-5 have not run. Owner: engine owner.
