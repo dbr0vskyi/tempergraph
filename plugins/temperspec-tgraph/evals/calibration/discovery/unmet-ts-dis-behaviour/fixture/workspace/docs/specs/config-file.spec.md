@@ -8,7 +8,7 @@ The tool reads its settings from `tool.toml` in the folder it is started in. Peo
 
 ### CFG-B1 A missing config file is reported
 
-WHEN the tool starts and `tool.toml` does not exist THE tool SHALL print exactly one line to standard error that names the missing file.
+WHEN the tool starts a run (any start other than `--version`) and `tool.toml` does not exist THE tool SHALL print exactly one line to standard error that names the missing file.
 
 - GIVEN a folder with no `tool.toml` WHEN the tool starts THEN standard error holds exactly one line and it contains `tool.toml`
 - GIVEN a folder with a `tool.toml` WHEN the tool starts THEN standard error is empty

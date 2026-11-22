@@ -9,6 +9,6 @@
   "seed": {
     "criterion_id": "ts-exp-design",
     "expected": "MET",
-    "reason": "Rows 1.1 and 1.2 implement R1, rows 2.1 and 2.2 implement R2 and R3, row 3.1 the docs update; the design sections are as planned."
+    "reason": "Rows 1.1 and 1.2 implement R1, rows 2.1 to 2.3 implement R2 and R3, row 3.1 the docs update; the design sections are as planned."
   }
 }

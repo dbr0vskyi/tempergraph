@@ -5,10 +5,18 @@
   "labels": [],
   "provenance": "synthetic",
   "state": "candidate",
-  "split": "holdout",
+  "split": "tune",
   "seed": {
     "criterion_id": "ts-dis-gaps",
     "expected": "MET",
     "reason": "G1 is closed by the config file spec and G2 by the research note, which answers from the code it cites."
-  }
+  },
+  "tuned": {
+    "by": "author",
+    "at": "2026-11-21T23:59:36.958Z"
+  },
+  "producer_family": "unknown",
+  "criteria_digest": null,
+  "fixture_digest": null,
+  "reach": {}
 }

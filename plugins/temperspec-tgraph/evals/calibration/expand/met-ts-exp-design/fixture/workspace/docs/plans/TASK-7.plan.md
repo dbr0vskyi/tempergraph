@@ -32,7 +32,7 @@ Weight: heavy (refactor)
 | Row | Kind | Req | File | Proves | Change | Completed |
 |---|---|---|---|---|---|---|
 | 1.1 | test | R1 | `tests/test_config.py` | CFG-AC1 | A start with no config file prints exactly one line that names it | |
-| 1.2 | code | R1, R3 | `src/tool/config.py` | | Move reading `tool.toml` out of the entry point; report a missing file on standard error | |
+| 1.2 | code | R1 | `src/tool/config.py` | | Move reading `tool.toml` out of the entry point; report a missing file on standard error | |
 
 ### Phase 2: Exit code
 
@@ -42,7 +42,8 @@ Weight: light
 | Row | Kind | Req | File | Proves | Change | Completed |
 |---|---|---|---|---|---|---|
 | 2.1 | test | R2 | `tests/test_config.py` | CFG-AC2 | A start with no config file exits with code 2 | |
-| 2.2 | code | R2 | `src/tool/main.py` | | Use the settings reader; return exit code 2 when the file is missing | |
+| 2.2 | test | R3 | `tests/test_config.py` | CLI-AC1 | `--version` in a folder with no config file prints the version and exits with code 0 | |
+| 2.3 | code | R2, R3 | `src/tool/main.py` | | Call the settings reader after the `--version` branch, so `--version` still answers with no config file; return exit code 2 when the file is missing | |
 
 ### Phase 3: Docs
 

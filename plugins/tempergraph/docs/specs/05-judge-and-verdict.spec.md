@@ -27,6 +27,7 @@ Rendered by an engine-owned brief that names no workflow, then the workflow's st
 
 | Part | Content |
 |---|---|
+| Engine brief | The reviewer's role and three fixed rules: the step's account is a claim to verify; only the tools given may be called, since a call to any other tool voids the whole review ([GRD](06-independence-guard.spec.md)); each criterion is graded on its own, so what could not be confirmed for one does not lower another. The last two were added after live judge sessions tried a shell for git and lowered one criterion for another's missing evidence |
 | Workspace facts | Branch, base, changed files, diff stat, computed by the engine |
 | References | The request (whole up to 32,000 chars, else head and tail around a marker with the omitted count) and earlier artifacts |
 | Subject | The artifacts graded, the check's evidence and its findings ([CHK §2.4](75-check-contract-and-command-runs.spec.md)) |

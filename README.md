@@ -18,7 +18,7 @@ Build AI workflows you can trust: state the good outcome first, check every step
 </div>
 
 > [!IMPORTANT]
-> **Releases 1 and 2 are built and offline-tested; neither has yet been run against a live Claude Code session.** The offline suite runs every component on stand-in executors. The checks that need a signed-in `claude` (install from the plugin, a real two-step run, judge scoring, the monitor mod) are listed with their commands and pass criteria in [live-checks.plan.md](plugins/tempergraph/docs/plans/live-checks.plan.md) and are still pending. Expect rough edges until those pass.
+> **Releases 1 and 2 are built and offline-tested; their live checks are under way.** The offline suite runs every component on stand-in executors. The checks that need a signed-in `claude` (install from the plugin, a real two-step run, judge scoring, the monitor mod) are listed with their commands, pass criteria and results in [live-checks.plan.md](plugins/tempergraph/docs/plans/live-checks.plan.md). Until every row there passes, expect rough edges.
 
 ## Quick start
 
@@ -194,12 +194,15 @@ You mostly work through Claude Code. The plugin's skills turn plain requests int
 | `author` | Turn a process, script, template or idea into a workflow, starting from the good outcome |
 | `troubleshoot` | Find out, read-only, why a run failed, stalled or cost more than expected |
 | `evals` | Run a workflow's eval suites, score its judges and grade what needs a person |
+| `update` | Update the plugin and engine with one plan and one yes, then report what each registered workflow needs |
+| `upgrade` | Bring one workflow package up to the running engine on a branch of its source, leaving the owner's decisions to the owner |
 
 The marketplace also carries:
 
 | Plugin | What it is |
 |---|---|
 | `tempergraph-monitor` | A Claude Code mod that shows live runs, alerts, a per-step drill-down and cost |
+| `temperspec-tgraph` | temperspec, the delivery workflow: triage, discovery, a plan and tested code to a draft pull request |
 | `release-notes-tgraph` | Example workflow: one judged step that writes release notes since the last tag |
 | `doc-refresh-tgraph` | Example workflow: a script, a route on a value, a trip back, an approval and a finalizer |
 
@@ -260,7 +263,8 @@ The project is designed spec-first: acceptance criteria rank above specs and dec
 - Orchestration: many runs planned as a graph of runs and supervised without a model.
 - Advanced node types: councils, contests, sub-workflows and the rest of LangGraph's shapes as workflow data.
 - Scheduled runs, Windows, and writing steps side by side in their own worktrees.
-- temperspec as the first large workflow built on the engine.
+
+**temperspec**, the first large workflow built on the engine, is built as its own package ([`temperspec-tgraph`](plugins/temperspec-tgraph/README.md)); the features it still wants are in its [backlog](plugins/temperspec-tgraph/docs/plans/backlog.plan.md).
 
 ## License
 

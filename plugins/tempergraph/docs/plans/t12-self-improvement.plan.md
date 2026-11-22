@@ -2,7 +2,7 @@
 goal: Build the self-improvement loop's model-free core first (records, cause codes, lenses, filing and measurement), then lessons; labels, calibration, proposals and trials follow once T7 and T8 land
 version: 1
 date_created: 2026-11-20
-last_updated: 2026-11-20
+last_updated: 2026-11-22
 owner: dbr0vskyi
 status: In progress
 tags: [track-plan, tempergraph, T12]
@@ -22,7 +22,7 @@ task_id: first-release-t12
 | Specs | [SIL](../specs/16-self-improvement.spec.md), [IMD](../specs/43-improvement-data.spec.md), [LSN](../specs/42-workflow-lessons.spec.md); later [FBK](../specs/41-feedback-and-judge-reliability.spec.md), [JCL](../specs/50-judge-calibration.spec.md), [PRP](../specs/40-improvement-proposals.spec.md) |
 | Split | This thread: T12.1, T12.2, T12.7 (and T9.1). T7 keeps FBK's `label` verb and the reports; T8 keeps T9.2 and T9.3. T12.3 to T12.6 are built in the thread "Build judge calibration and proposals" on T7's label rows and T8's readiness hooks; `author verify` rungs 8 and 9 are T8's |
 
-**Status: In progress.** T12.1 records, causes and lenses, T12.2 filing and measurement, T12.3 labels and reliability, T12.4 judge calibration, T12.5 proposals, T12.6 trials and T12.7 lessons are built and tested offline; T12.8 remains; the loop child (12.1.5) runs the friction judge and files after a final exit.
+**Status: In progress.** T12.1 records, causes and lenses, T12.2 filing and measurement, T12.3 labels and reliability, T12.4 judge calibration, T12.5 proposals, T12.6 trials and T12.7 lessons and T12.8 stable mode, the loop report and outcome proposals are built and tested offline; only the live row 12.8.4 remains; the loop child (12.1.5) runs the friction judge and files after a final exit.
 
 Status pass: SIL and IMD move to `ready-for-implementation` with release 1 defaults recorded in their Open questions; FBK, JCL and PRP move to `ready-for-implementation` with their release 1 build recorded in §5.
 

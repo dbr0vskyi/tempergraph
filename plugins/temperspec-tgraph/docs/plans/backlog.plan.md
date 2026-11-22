@@ -27,6 +27,7 @@ The one list of features found useful and not built yet. A feature enters here w
 | B12 | Coding phases in parallel, behind three rules: the plan declares independence, a check proves disjoint files, verification runs again after the merge | Writer branches and the parallel map (engine release 3) | [next features §3, case B](../research/next-features.rsrch.md) |
 | B13 | Several independent answers to a hard choice, then a pick or a vote | Contest and council units (engine release 3), and a measured gain | [next features §3, case D](../research/next-features.rsrch.md) |
 | B14 | A scheduled drift audit: a judge compares specs with the code and files what it finds | Schedules (engine, designed) | [next features §5, row 4](../research/next-features.rsrch.md) |
+| B15 | A trust report on the pull request: the engine's pull-request gate grades the final criteria in CI and posts task completion, plan completion and code-to-spec alignment | The engine's pull-request gate (proposed in its research note R-135, release not set) | [pull request report](../research/pull-request-report.rsrch.md) |
 
 ## To tune once runs exist
 
