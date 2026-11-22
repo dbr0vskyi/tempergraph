@@ -610,7 +610,10 @@ class EngineNodes:
             with contextlib.suppress(OSError):
                 asking.answers_path(folder, unit).unlink()
             try:
-                record["questions"] = [asking.to_json(q) for q in asking.questions(u.ask, state, workdir)]
+                listed = asking.questions(u.ask, state, workdir)
+                if u.ask.on_deadline == "defaults" and (gaps := asking.defaults_problems(listed)):  # ASK-B13
+                    raise asking.AskFault(gaps[0])
+                record["questions"] = [asking.to_json(q) for q in listed]
             except asking.AskFault as exc:
                 record.update(ok=False, ask_fault=str(exc))
         path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])

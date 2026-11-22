@@ -64,12 +64,42 @@ WHEN `attention` runs with a paused ask THE engine SHALL show the item with kind
 
 - GIVEN a paused ask WHEN `attention` runs THEN it shows kind `input`, the unanswered count and the resume command
 
+### ASK-B10 Defaults at a deadline
+
+WHEN `resume <thread> --apply-deadline` is applied after the deadline of a paused ask that declares `on_deadline: defaults` ([FLX-B8](74-flow-extensions.spec.md)) and its `check` passes on the answers given plus the `default` of each unanswered question that has one THE engine SHALL continue the run past the ask with an `answers` artifact (ASK-B6) holding those answers.
+
+- GIVEN `env` (choice `staging` or `prod`, default `staging`) answered `prod`, `ticket` (text, default `PRJ-0`) and `notify` (bool, optional, default `false`) unanswered, and a `check` that accepts a `ticket` starting with `PRJ-` WHEN the deadline has passed and `resume --apply-deadline` runs THEN the run continues to the next unit and `answers` holds `env` `prod`, `ticket` `PRJ-0` and `notify` `false`
+- GIVEN an optional question with no `default` left unanswered and an ask with no `check` WHEN the deadline is applied THEN the run continues and `answers` holds no entry for that question
+
+### ASK-B11 A refused defaulted set keeps the ask open
+
+WHEN `resume <thread> --apply-deadline` is applied after the deadline of a paused ask that declares `on_deadline: defaults` and its `check` refuses the answers given plus the `default` of each unanswered question that has one THE engine SHALL keep the run paused at the ask, as it does for a person's answers (ASK-B8), exiting 3 with the check's problems.
+
+- GIVEN `env` answered `staging`, `ticket` with the default `NONE` and a `check` that accepts only a `ticket` starting with `PRJ-` WHEN the deadline is applied THEN it exits 3 listing the check's problem, the answers file holds only `env` and the intervention row records `deadline`
+
+### ASK-B12 Defaulted answers are marked
+
+WHEN an applied deadline lets the run continue past an ask THE engine SHALL list under `defaulted` in the `answers` artifact the name of each question that took its default.
+
+- GIVEN `env` answered `prod` and `ticket` and `notify` left to their defaults WHEN the deadline lets the run continue THEN `defaulted` lists `ticket` and `notify` and not `env`
+
+### ASK-B13 A list needs defaults for a defaults deadline
+
+WHEN an ask with `from` and `on_deadline: defaults` is entered and its list holds a required question with no `default` THE engine SHALL stop the unit before the pause with run exit 4 and a finding naming that question.
+
+- GIVEN `from: open_questions`, `on_deadline: defaults` and a JSON list whose required question `owner` has no `default` WHEN the ask is entered THEN the run stops with exit 4 naming `owner` and no pause is written
+- GIVEN an ask with `from` and `on_deadline: defaults` WHEN it is validated THEN it is accepted, since the list is not known before the ask is entered
+
 ## Acceptance criteria
 
 - ASK-AC1 (ASK-B1, ASK-B8, ASK-B9): Every scenario of ASK-B1 holds offline
 - ASK-AC2 (ASK-B8, ASK-B6): A partial answer, a crash and a resume keep the answers already accepted
 - ASK-AC3 (ASK-B7, ASK-B5, ASK-B2): Validation refuses an ask in every placement ASK-B7 forbids
 - ASK-AC4 (ASK-B4, ASK-B3): The monitor's documents show kind `input` with question counts ([RDD](31-run-detail-document.spec.md))
+- ASK-AC5 (ASK-B10): At a passed deadline, `resume --apply-deadline` on an ask with `on_deadline: defaults` continues the run with an `answers` artifact that holds the answers already given and the `default` of each unanswered question that has one
+- ASK-AC6 (ASK-B11): When the ask's `check` refuses the answers a deadline would complete, the run stays paused at the ask with exit 3 and the check's problems, and the answers file holds only the answers already given
+- ASK-AC7 (ASK-B12): The `answers` artifact of an ask that continued on an applied deadline lists under `defaulted` exactly the questions that took their default
+- ASK-AC8 (ASK-B13): An ask with `from` and `on_deadline: defaults` stops before its pause with exit 4, naming the question, when its list holds a required question with no `default`
 
 ## Open questions
 

@@ -1,4 +1,4 @@
-"""Ask units, event waits and their deadlines (ASK-B5 to ASK-B9, HUM-B4, FLX-B8)."""
+"""Ask units, event waits and their deadlines (ASK-B5 to ASK-B13, HUM-B4, FLX-B8)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from typing import Any
 
 from tempergraph.api import Ask, Gate, Judge, Question, Routing, Script, Step, Wait, Workflow
 from tempergraph.constants import ExitCode
-from tempergraph.durability.status import row
+from tempergraph.durability.status import _read, row
 from tempergraph.executors.standins import answer, standin
 from tempergraph.model.validate import errors, validate
 from tempergraph.run import asking
@@ -42,6 +42,28 @@ def write_questions(ctx: Any) -> dict[str, str]:
 def write_bad_questions(ctx: Any) -> dict[str, str]:
     (ctx.workdir / "questions.md").write_text("no list here\n")
     return {"open_questions": "questions.md"}
+
+
+LACKING = '[{"name": "scope", "text": "Which service?", "default": "all"}, {"name": "owner", "text": "Who?"}]'
+LISTED_OK = ('[{"name": "scope", "text": "Which service?", "default": "all"},'
+             ' {"name": "owner", "text": "Who?", "required": false}]')
+
+
+def _listing(ctx: Any, name: str, text: str) -> dict[str, str]:
+    (ctx.workdir / name).write_text(text)
+    return {"open_questions": name}
+
+
+def write_lacking(ctx: Any) -> dict[str, str]:
+    return _listing(ctx, "q.json", LACKING)
+
+
+def write_listed_ok(ctx: Any) -> dict[str, str]:
+    return _listing(ctx, "q.json", LISTED_OK)
+
+
+def write_md_lacking(ctx: Any) -> dict[str, str]:
+    return _listing(ctx, "q.md", "- scope: Which service?\n")
 
 
 def plan_step(prompt: str = "Plan for {request}") -> Any:
@@ -227,6 +249,43 @@ def test_validation_refuses_a_malformed_ask() -> None:  # ASK-AC3 for the placem
     assert not codes(Ask(questions=[Question("a", "A?")], deadline_s=5, on_deadline="plan"))
 
 
+def test_defaults_deadline_is_refused_when_incomplete() -> None:  # FLX-AC7
+    def found(unit: Any) -> list[Any]:
+        units = {"details": unit, "plan": plan_step()}
+        spec = named(Workflow(order=["details", "plan"], units=units, issue_repository="acme/x",
+                              routing=Routing(description="x")))
+        return errors(validate(spec, CAPS))
+
+    complete = [Question("a", "A?", default="x"), Question("b", "B?", required=False)]
+    for kw in ({"deadline_s": 60}, {}):
+        assert not found(Ask(questions=complete, on_deadline="defaults", **kw)), kw
+        bad = found(Ask(questions=[*complete, Question("owner", "Who owns it?")], on_deadline="defaults", **kw))
+        assert [f.code for f in bad] == ["deadline-defaults-incomplete"], kw
+        assert "owner" in bad[0].message, kw
+    wait = Wait(event="approved", check=approved, deadline_s=60, on_deadline="defaults")
+    assert [f.code for f in found(wait)] == ["deadline-defaults-not-ask"]
+    assert not found(Ask(questions=complete, deadline_s=60, on_deadline="plan"))
+    assert not found(Ask(questions=[Question("a", "A?")], deadline_s=60, on_deadline="escalate"))
+
+
+def test_defaults_deadline_stops_an_ask_whose_list_lacks_a_default(repo: Path) -> None:  # ASK-AC8
+    def wf(call: Any) -> Any:
+        units = {"discover": Script(call=call, produces={"open_questions": "file"}, gate=Gate()),
+                 "details": Ask(questions_from="open_questions", on_deadline="defaults"), "plan": plan_step()}
+        return named(Workflow(order=["discover", "details", "plan"], units=units, issue_repository="acme/x",
+                              routing=Routing(description="Ask what discovery left open")))
+
+    assert not errors(validate(wf(write_lacking), CAPS))
+    out = begin(repo, wf(write_lacking))
+    assert out.exit_code is ExitCode.STOPPED and out.reason == "ask", out.message
+    snap, _ = _read(state_root_path(repo), wf(write_lacking), "demo/A-1")
+    assert "owner" in snap.values["run"]["stopped"]["detail"] and recs(repo, "pause") == []
+    paused = begin(repo, wf(write_listed_ok), task="A-2")
+    assert paused.exit_code is ExitCode.PAUSED and paused.payload["kind"] == "input", paused.message
+    md = begin(repo, wf(write_md_lacking), task="A-3")
+    assert md.exit_code is ExitCode.STOPPED and md.reason == "ask" and recs(repo, "pause", "A-3") == []
+
+
 # -- the wait unit --------------------------------------------------------------------------------------
 
 
@@ -315,3 +374,99 @@ def test_apply_deadline_without_a_deadline_is_refused(repo: Path) -> None:  # FL
     begin(repo, spec)
     out = again(repo, spec, apply_deadline=True)
     assert out.exit_code is ExitCode.USAGE and recs(repo, "human") == []
+
+
+# -- on_deadline: defaults ------------------------------------------------------------------------------
+
+
+def only_prj(answers: dict[str, Any]) -> list[str]:
+    return [] if str(answers.get("ticket", "")).startswith("PRJ-") else ["ticket must start with PRJ-"]
+
+
+def default_questions(ticket: str = "PRJ-0") -> list[Any]:
+    return [Question("env", "Which environment?", kind="choice", choices=["staging", "prod"], default="staging"),
+            Question("ticket", "Which ticket?", default=ticket),
+            Question("notify", "Notify the channel?", kind="bool", required=False, default=False)]
+
+
+def defaults_wf(ticket: str = "PRJ-0", **ask: Any) -> Any:
+    units = {"details": Ask(questions=default_questions(ticket), deadline_s=60, on_deadline="defaults", **ask),
+             "plan": plan_step()}
+    return named(Workflow(order=["details", "plan"], units=units, issue_repository="acme/x",
+                          routing=Routing(description="Ask, then plan")))
+
+
+def interventions(repo: Path) -> list[dict[str, Any]]:
+    p = state_root_path(repo) / "ledger.jsonl"
+    rows = [json.loads(ln) for ln in p.read_text().splitlines()] if p.exists() else []
+    return [r for r in rows if r.get("kind") == "intervention"]
+
+
+def test_applied_deadline_completes_an_ask_from_its_defaults(repo: Path) -> None:  # ASK-AC5, FLX-AC6
+    for n, ask in enumerate(({}, {"check": only_prj})):
+        spec, task = defaults_wf(**ask), f"A-{n + 1}"
+        e = ex()
+        begin(repo, spec, e, task=task)
+        held = again(repo, spec, e, task=task, answers={"env": "prod"})
+        assert held.exit_code is ExitCode.PAUSED and held.payload["missing"] == ["ticket"]
+        _expire(repo, task)
+        done = again(repo, spec, e, task=task, apply_deadline=True)
+        assert done.exit_code is ExitCode.FINISHED, done.message
+        assert answers_file(repo, task) == {"schema_version": 1, "unit": "details", "complete": True,
+                                            "answers": {"env": "prod", "ticket": "PRJ-0", "notify": False},
+                                            "defaulted": ["ticket", "notify"]}
+        assert [r["unit"] for r in recs(repo, "unit_entered", task)] == ["details", "plan"]
+        assert interventions(repo)[-1]["decision"] == "deadline" and interventions(repo)[-1]["unit"] == "details"
+
+
+def test_applied_deadline_refused_by_the_check_keeps_the_ask_open(repo: Path) -> None:  # ASK-AC6, FLX-AC6
+    spec = defaults_wf(ticket="12", check=only_prj)
+    begin(repo, spec)
+    again(repo, spec, answers={"env": "prod"})
+    _expire(repo)
+    out = again(repo, spec, apply_deadline=True)
+    assert out.exit_code is ExitCode.PAUSED and out.payload["check_problems"] == ["ticket must start with PRJ-"]
+    assert answers_file(repo) == {"schema_version": 1, "unit": "details", "complete": False,
+                                  "answers": {"env": "prod"}}
+    (gate,) = row(state_root_path(repo), spec, "demo/A-1")["pending_gates"]
+    assert gate["overdue"] is True and gate["kind"] == "input"
+    assert interventions(repo)[-1]["decision"] == "deadline"
+
+
+def test_defaulted_lists_only_the_questions_that_took_a_default(repo: Path) -> None:  # ASK-AC7
+    spec = defaults_wf()
+    begin(repo, spec)
+    again(repo, spec, answers={"ticket": "PRJ-7"})
+    _expire(repo)
+    assert again(repo, spec, apply_deadline=True).exit_code is ExitCode.FINISHED
+    assert answers_file(repo)["defaulted"] == ["env", "notify"]
+    assert answers_file(repo)["answers"]["ticket"] == "PRJ-7"
+    qs = default_questions()
+    assert asking.defaulted(qs, {"env": "prod", "ticket": "t", "notify": True}) == []
+    assert asking.defaulted(qs, {"env": "prod"}) == ["ticket", "notify"]
+    begin(repo, spec, task="A-2")  # a person's `proceed` that takes defaults is not marked
+    assert again(repo, spec, task="A-2", decision="proceed", answers={"env": "staging"}).exit_code is ExitCode.FINISHED
+    assert "defaulted" not in answers_file(repo, "A-2")
+
+
+def test_defaults_deadline_before_the_time_is_refused_with_nothing_written(repo: Path) -> None:  # FLX-AC6
+    spec = defaults_wf()
+    begin(repo, spec)
+    out = again(repo, spec, apply_deadline=True)
+    assert out.exit_code is ExitCode.USAGE and out.reason == "deadline_not_passed"
+    assert not asking.answers_path(run_dir(state_root_path(repo), "demo", "A-1"), "details").exists()
+    assert recs(repo, "human") == [] and interventions(repo) == []
+
+
+def test_defaults_is_a_word_not_a_unit_name() -> None:  # FLX-AC5
+    from tempergraph.model import flow
+    from tempergraph.model.diagram import diagram_model, to_mermaid
+
+    spec = defaults_wf()
+    ask = spec.units["details"].ask
+    assert ask is not None
+    esc = dataclasses.replace(spec, units={**spec.units, "details": dataclasses.replace(
+        spec.units["details"], ask=dataclasses.replace(ask, on_deadline="escalate"))})
+    assert flow.deadline_node(spec, "details") is None
+    assert flow.reachable_units(spec) == flow.reachable_units(esc)
+    assert to_mermaid(diagram_model(spec)) == to_mermaid(diagram_model(esc))

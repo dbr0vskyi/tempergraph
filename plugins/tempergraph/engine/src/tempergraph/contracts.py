@@ -354,7 +354,7 @@ class AskSpec:
     context: tuple[str, ...] = ()
     check: CallableRef | None = None  # pure: answers -> a list of problems, empty when they pass
     deadline_s: int | None = None
-    on_deadline: str = "escalate"  # `escalate`, `stop` or a forward unit (FLX-B8)
+    on_deadline: str = "escalate"  # `escalate`, `stop`, `defaults` (an ask only) or a forward unit (FLX-B8)
 
 
 @dataclass(frozen=True, kw_only=True)
