@@ -72,7 +72,7 @@ def test_judges_apart() -> None:  # RST-B2
 @pytest.mark.parametrize(("key", "code"), [("draft.criteria", "not_a_setting"), ("judge:draft.tools", "not_a_setting"),
                                            ("draft.prompt", "not_a_setting"), ("drafft.model", "unknown_setting"),
                                            ("draft.member:a.model", "setting_not_for_kind"),
-                                           ("draft.deadline_s", "setting_not_in_release"),
+                                           ("draft.deadline_s", "setting_not_for_kind"),  # RST-B10: a step has no deadline
                                            ("draft.bogus", "unknown_setting"), ("run.retry_budget", "setting_not_for_kind"),
                                            ("draft.approve", "tighten_only"), ("judges.model", "setting_value"),
                                            ("draft.retry_budget", "setting_value"),
@@ -341,3 +341,15 @@ def test_tool_access_pause_offers_the_grant_and_resume_applies_it(repo: Path) ->
     assert seg["grants"][0]["capability"] == "mcp:tracker/get_issue"
     shown = cli(repo, None, "config", "show", "demo", "--thread", "G-1", "--key", "draft.tools.add")[1]
     assert shown["rows"][0]["value"] == ["mcp:tracker/get_issue"]  # kept for later resumes
+
+
+def test_an_operator_moves_a_wait_or_ask_deadline() -> None:  # RST §2.2 `deadline_s`, FLX §2.3
+    from .test_ask_wait import waiting_wf
+
+    sp = waiting_wf(deadline_s=600, on_deadline="stop")
+    res, findings = go(sp, {"signoff.deadline_s": 60})
+    assert findings == []
+    eff = effective_spec(sp, res)
+    assert eff.units["signoff"].wait.deadline_s == 60 and eff.units["signoff"].wait.on_deadline == "stop"  # type: ignore[union-attr]
+    _, refused = go(sp, {"plan.deadline_s": 60})
+    assert [f.code for f in refused] == ["setting_not_for_kind"]

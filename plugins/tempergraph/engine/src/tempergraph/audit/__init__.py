@@ -107,7 +107,7 @@ def audit(spec: WorkflowSpec, layers: set[Layer], ctx: AuditContext, *, manifest
         if layer not in layers:
             rep.layers_skipped.append({"layer": layer, "reason": "--layer not given"})
         elif layer not in BUILT_LAYERS:
-            rep.layers_skipped.append({"layer": layer, "reason": "not in release 1 (release 2)"})
+            rep.layers_skipped.append({"layer": layer, "reason": "not in this release (release 3)"})
         elif broken and layer != "definition":
             rep.layers_skipped.append({"layer": layer, "reason": "the workflow does not validate"})
         else:

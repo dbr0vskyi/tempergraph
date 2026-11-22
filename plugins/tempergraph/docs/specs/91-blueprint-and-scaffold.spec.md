@@ -23,7 +23,7 @@ States only what was decided; an omitted field takes its default. An unknown key
 | `schema_version` | int | `1` |
 | `name` | slug | The workflow name ([PKG §2.2.1](88-workflow-package.spec.md)); the scaffold writes the plugin name as `<name>-tgraph`. A name ending in `-tgraph`, starting with a reserved prefix or over 57 characters is `blueprint-invalid` |
 | `units` | list, 1 to 20, of `{name, kind, summary, produces[], reads[], gate: {check: bool, judge: bool, signoff: bool}, on_fail?, on_budget_spent?, approval?, back_targets[]?, executor?, sizing, judge_sizing}` | `kind` is a release kind ([PKG §2.4](88-workflow-package.spec.md)); `summary` ≤ 60 characters; `reads` names earlier `produces` keys |
-| `flow` | map unit → `{route: [targets]}` \| `{switch: {arms, default}}` \| `{parallel: [branches]}` \| `{map: {over, item_unit}}` \| `{wait: {}}` | Shape only; no predicate |
+| `flow` | map unit → `{route: [targets]}` \| `{switch: {arms, default}}` \| `{parallel: [branches]}` \| `{map: {over: "<unit>.<key>"}}` \| `{wait: {event?}}` | Shape only; no predicate. `parallel`, `map` and `wait` sit on a unit of that kind, and a `parallel` or `map` unit must state its shape. A `map` unit is itself the step run per item and carries `sizing`; a `parallel` block's branches are drawn read-only; an `ask` unit produces `answers` only and its `reads` are what the person is shown; a `wait` without `event` waits for one named after the unit |
 | `outcome_ref` | `{revision, digest}` | The draft `outcome.json` approved with it |
 | `input` | `{kind, parameters: [names]}` | |
 

@@ -11,7 +11,22 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from tempergraph.api import Criterion, Gate, Judge, Route, Routing, Script, Step, Switch, Workflow
+from tempergraph.api import (
+    Ask,
+    Criterion,
+    Gate,
+    Judge,
+    Map,
+    Parallel,
+    Question,
+    Route,
+    Routing,
+    Script,
+    Step,
+    Switch,
+    Wait,
+    Workflow,
+)
 from tempergraph.contracts import (
     EFFORTS,
     Capabilities,
@@ -32,7 +47,10 @@ SIZING_KEYS = frozenset({"model", "effort", "why"})
 SIZING_MIN_WORDS = 4
 TIERS = ("small", "medium", "large")
 GATE_KEYS = frozenset({"check", "judge", "signoff"})
-RELEASE_KINDS = frozenset({"step", "script", "route", "switch"})
+RELEASE_KINDS = frozenset({"step", "script", "route", "switch", "map", "parallel", "ask", "wait"})
+SESSION_UNIT_KINDS = frozenset({"step", "map"})  # kinds whose units run model sessions and so carry `sizing`
+# A flow shape that belongs to one unit kind (SCF §2.1): the shape states that kind's parameters.
+SHAPE_KIND = {"map": "map", "parallel": "parallel", "wait": "wait"}
 FLOW_KINDS = frozenset({"route", "switch", "parallel", "map", "wait"})
 MAX_UNITS = 20
 SUMMARY_CHARS = 60
@@ -121,6 +139,23 @@ def _sizing(unit: str, at: str, got: Any, needed: bool) -> list[Finding]:
     return out
 
 
+def _shape(unit: str, kind: str, body: Any, kinds: Mapping[str, str]) -> list[Finding]:
+    """SCF §2.1: `map`, `parallel` and `wait` shapes sit on a unit of that kind and state its parameters."""
+    at = f"$.flow.{unit}.{kind}"
+    if kind in SHAPE_KIND and kinds.get(unit, SHAPE_KIND[kind]) != SHAPE_KIND[kind]:
+        return [_f("blueprint-invalid", unit, f"{at} belongs on a `{SHAPE_KIND[kind]}` unit; {unit} is a "
+                   f"{kinds[unit]}")]
+    if kind == "map" and not (isinstance(body, dict) and set(body) <= {"over"} and isinstance(body.get("over"), str)
+                              and body["over"].count(".") == 1):
+        return [_f("blueprint-invalid", unit, f"{at} takes {{over: \"<unit>.<key>\"}}, the list it runs over")]
+    if kind == "parallel" and not (_strs(body) and len(body) >= 2):
+        return [_f("blueprint-invalid", unit, f"{at} lists two or more branch units")]
+    if kind == "wait" and not (isinstance(body, dict) and set(body) <= {"event"}
+                               and isinstance(body.get("event", unit), str)):
+        return [_f("blueprint-invalid", unit, f"{at} takes {{}} or {{event: <name>}}")]
+    return []
+
+
 def parse(data: Any) -> Blueprint | list[Finding]:
     """SCF §2.1: an unknown key is an error, so a misspelt field is reported, never drawn (SCF-B1)."""
     out: list[Finding] = []
@@ -156,6 +191,8 @@ def parse(data: Any) -> Blueprint | list[Finding]:
             out.append(_f("not_in_release", uname, f"{at}.kind {kind!r} is built in release {LATER_KINDS[kind]}"))
         elif kind not in RELEASE_KINDS:
             out.append(_f("blueprint-invalid", uname, f"{at}.kind {kind!r} is not a unit kind"))
+        if kind == "ask" and list(u.get("produces") or ["answers"]) != ["answers"]:
+            out.append(_f("blueprint-invalid", uname, f"{at}.produces: an ask unit produces `answers` only (ASK §2.1)"))
         summary = u.get("summary", "")
         if not isinstance(summary, str) or len(summary) > SUMMARY_CHARS:
             out.append(_f("summary-too-long", uname, f"{at}.summary is over {SUMMARY_CHARS} characters"))
@@ -168,13 +205,15 @@ def parse(data: Any) -> Blueprint | list[Finding]:
             gate = {}
         for k in sorted(set(gate) - GATE_KEYS):
             out.append(_f("unknown_key", uname, f"{at}.gate.{k} is not a gate field"))
-        for key, needed in (("sizing", kind == "step"), ("judge_sizing", kind == "step" and bool(gate.get("judge")))):
+        session = kind in SESSION_UNIT_KINDS
+        for key, needed in (("sizing", session), ("judge_sizing", session and bool(gate.get("judge")))):
             out.extend(_sizing(uname, f"{at}.{key}", u.get(key), needed))
         units.append(BlueprintUnit(
             sizing=u.get("sizing") if isinstance(u.get("sizing"), dict) else None,
             judge_sizing=u.get("judge_sizing") if isinstance(u.get("judge_sizing"), dict) else None,
             name=uname, kind=str(kind), summary=str(summary or ""),
-            produces=tuple(u.get("produces") or ()) if _strs(u.get("produces") or []) else (),
+            produces=(("answers",) if kind == "ask" else
+                      tuple(u.get("produces") or ()) if _strs(u.get("produces") or []) else ()),
             reads=tuple(u.get("reads") or ()) if _strs(u.get("reads") or []) else (),
             check=bool(gate.get("check")), judge=bool(gate.get("judge")), signoff=bool(gate.get("signoff")),
             on_fail=u.get("on_fail"), on_budget_spent=u.get("on_budget_spent"), approval=u.get("approval"),
@@ -189,8 +228,10 @@ def parse(data: Any) -> Blueprint | list[Finding]:
             out.append(_f("blueprint-invalid", unit, f"$.flow.{unit} must be one of {sorted(FLOW_KINDS)}"))
             continue
         kind = next(iter(shape))
-        if kind in ("parallel", "map", "wait"):
-            out.append(_f("not_in_release", unit, f"$.flow.{unit}.{kind} is built in release 2"))
+        out.extend(_shape(unit, kind, shape[kind], {u.name: u.kind for u in units}))
+    for u in units:
+        if u.kind in ("map", "parallel") and u.kind not in dict(flow.get(u.name) or {}):
+            out.append(_f("blueprint-invalid", u.name, f"$.flow.{u.name} must state the {u.kind}'s shape"))
     for key in ("outcome_ref", "input"):
         if key in data and not isinstance(data[key], dict):
             out.append(_f("blueprint-invalid", None, f"$.{key} must be an object"))
@@ -208,11 +249,18 @@ def read(path: Path) -> Blueprint | list[Finding]:
     return parse(data)
 
 
+def branch_units(bp: Blueprint) -> set[str]:
+    """The units a `parallel` shape names as its branches."""
+    return {b for shape in bp.flow.values() if isinstance(shape, dict) for b in (shape.get("parallel") or ())}
+
+
 def to_spec(bp: Blueprint) -> WorkflowSpec:
     """The throwaway spec: stub prompts that name each read, stub gates, the blueprint's policies."""
     units: dict[str, Any] = {}
+    branches = branch_units(bp)
     for u in bp.units:
         shape = dict(bp.flow.get(u.name) or {})
+        tools = ["read"] if u.name in branches else ["read", "write"]  # FLX §2.1: a branch reads only
         gate_kw: dict[str, Any] = {"check": stub_check if u.check else None,
                                    "judge": Judge(stance="stub", brief="stub", references=list(u.reads))
                                    if u.judge else None,
@@ -228,6 +276,19 @@ def to_spec(bp: Blueprint) -> WorkflowSpec:
         produces: dict[str, ProducesKind] = {k: "file" for k in u.produces}
         if u.kind == "script":
             units[u.name] = Script(call=stub_check, produces=produces, inputs=list(u.reads), gate=gate)
+        elif u.kind == "map":
+            src, key = str((shape.get("map") or {}).get("over") or ".").split(".", 1)
+            units[u.name] = Map(items_from=(src, key), step=Step(prompt=prompt + " {item}", tools=["read", "write"],
+                                                                 produces=produces, executor=u.executor,
+                                                                 summary=u.summary, gate=gate))
+        elif u.kind == "parallel":
+            units[u.name] = Parallel(branches=list(shape.get("parallel") or ()), gate=gate)
+        elif u.kind == "ask":
+            units[u.name] = Ask(questions=[Question("answer", u.summary or f"Answer for {u.name}?")],
+                                context=list(u.reads), gate=gate)
+        elif u.kind == "wait":
+            units[u.name] = Wait(event=str((shape.get("wait") or {}).get("event") or u.name), check=stub_select,
+                                 gate=gate)
         elif u.kind == "route":
             units[u.name] = Route(select=stub_select, targets=list(shape.get("route") or ()), gate=gate)
         elif u.kind == "switch":
@@ -236,7 +297,7 @@ def to_spec(bp: Blueprint) -> WorkflowSpec:
                                    default=str(sw.get("default") or ""), gate=gate)
         else:
             route = list(shape.get("route") or ())
-            units[u.name] = Step(prompt=prompt, tools=["read", "write"], produces=produces, executor=u.executor,
+            units[u.name] = Step(prompt=prompt, tools=tools, produces=produces, executor=u.executor,
                                  summary=u.summary, gate=gate, route=stub_select if route else None,
                                  route_targets=route)
     inp = bp.input

@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from tempergraph.author.blueprint import Blueprint, digest, parse
+from tempergraph.author.blueprint import Blueprint, branch_units, digest, parse
 from tempergraph.constants import WORKFLOW_API
 from tempergraph.docs import write_json
 from tempergraph.package.manifest import plugin_name
@@ -163,6 +163,7 @@ def _declaration(s: Session, mod: str) -> tuple[str, str, list[str]]:
     todo: list[str] = []
     routing_fns: list[str] = []
     units = []
+    branches = branch_units(bp)
     for u in bp.units:
         crits = _unit_criteria(outcome, u.name)
         fn = u.name.replace("-", "_")
@@ -211,6 +212,21 @@ def _declaration(s: Session, mod: str) -> tuple[str, str, list[str]]:
             units.append(f'"{u.name}": Script(call=script_{fn}, produces={produces!r}, inputs={list(u.reads)!r}, '
                          f'summary={u.summary!r}, gate={gate_src})')
             todo.append(f"script_{fn}")
+        elif u.kind == "parallel":
+            imports.add("Parallel")
+            units.append(f'"{u.name}": Parallel(branches={list(shape.get("parallel") or ())!r}, gate={gate_src})')
+        elif u.kind == "ask":
+            imports |= {"Ask", "Question"}
+            units.append(f'"{u.name}": Ask(questions=[Question("answer", {(u.summary or u.name)!r})], '
+                         f'context={list(u.reads)!r}, gate={gate_src})')
+            todo.append(f"{u.name} questions")
+        elif u.kind == "wait":
+            imports.add("Wait")
+            event = str((shape.get("wait") or {}).get("event") or u.name)
+            routing_fns.append(f"def wait_{fn}(value):\n    \"\"\"Accept the `{event}` event's value; replace this "
+                               "default.\"\"\"\n    return bool(value)\n")
+            units.append(f'"{u.name}": Wait(event={event!r}, check=wait_{fn}, gate={gate_src})')
+            todo.append(f"wait_{fn}")
         else:
             imports |= {"Step", "text"}
             extra = ""
@@ -223,8 +239,14 @@ def _declaration(s: Session, mod: str) -> tuple[str, str, list[str]]:
             executor = f", executor={u.executor!r}" if u.executor else ""
             if u.sizing:
                 executor += f", model={u.sizing['model']!r}, effort={u.sizing['effort']!r}, sizing={u.sizing['why']!r}"
-            units.append(f'"{u.name}": Step(prompt=text("prompts/{u.name}.md"), summary={u.summary!r}, '
-                         f'tools=["read", "write"], produces={produces!r}{executor}{extra}, gate={gate_src})')
+            tools = ["read"] if u.name in branches else ["read", "write"]  # FLX §2.1: a branch reads only
+            step = (f'Step(prompt=text("prompts/{u.name}.md"), summary={u.summary!r}, '
+                    f'tools={tools!r}, produces={produces!r}{executor}{extra}, gate={gate_src})')
+            if u.kind == "map":  # MAP §2.1: the unit's step runs once per item of the list it reads
+                imports.add("Map")
+                src, key = str((shape.get("map") or {}).get("over") or ".").split(".", 1)
+                step = f"Map(items_from=({src!r}, {key!r}), step={step})"
+            units.append(f'"{u.name}": {step}')
     a = s.authoring
     routing = a.get("routing") or {}
     description = str(routing.get("description") or _first_sentence(str(outcome.get("statement", ""))))
@@ -253,6 +275,8 @@ def _declaration(s: Session, mod: str) -> tuple[str, str, list[str]]:
 def _prompt(u: Any, crits: list[dict[str, Any]]) -> str:
     lines = [f"# {u.name}", "", u.summary or "", "", "The request: {request}"]
     lines += [f"Read `{r}`: {{{r}}}" for r in u.reads]
+    if u.kind == "map":  # MAP §2.2: each item's session is told which item it holds
+        lines += ["", "This item ({item_index} of {item_count}): {item}"]
     judged = [c for c in crits if c.get("verified_by") in ("judge", "check", "person")]
     if judged:
         lines += ["", "## What a good result shows", ""]
@@ -396,7 +420,7 @@ def files(s: Session) -> dict[str, bytes]:
     if routing:
         put(f"workflow/{mod}/routing.py", routing)
     for u in bp.units:
-        if u.kind == "step":
+        if u.kind in ("step", "map"):
             put(f"prompts/{u.name}.md", _prompt(u, _unit_criteria(o, u.name)))
         if u.judge:
             put(f"judges/{u.name}.md", _judge(u))
@@ -433,6 +457,10 @@ def _routing_file(s: Session) -> str:
         elif u.kind == "script":
             fns.append(f"def script_{fn}(ctx):\n    \"\"\"The {u.name} script; write it before verify.\"\"\"\n"
                        "    raise NotImplementedError\n")
+        elif u.kind == "wait":
+            event = str((shape.get("wait") or {}).get("event") or u.name)
+            fns.append(f"def wait_{fn}(value):\n    \"\"\"Accept the `{event}` event's value; replace this "
+                       "default.\"\"\"\n    return bool(value)\n")
     if not fns:
         return ""
     return f'"""{GENERATED} Defaults to replace before `author verify`."""\n\n\n' + "\n\n".join(fns)

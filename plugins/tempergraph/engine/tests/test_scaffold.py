@@ -317,3 +317,36 @@ def test_verify_rung_1_runs_the_criteria_lint(pkg: Path, tmp_path: Path) -> None
     assert code == 2
     assert doc["rungs"][0]["state"] == "failed"
     assert "criterion-vague" in {f["code"] for f in doc["rungs"][0]["findings"]}
+
+
+def test_release_two_shapes_scaffold_and_compare_clean(tmp_path: Path) -> None:  # SCF §2.1: map, ask and wait
+    from tempergraph.author.blueprint import parse
+    from tempergraph.author.compare import compare
+
+    o = outcome()
+    o["intermediate"]["each"] = {"statement": "Each entry is checked", "criteria": [
+        {"id": "rn-each", "severity": "blocker", "verified_by": "judge", "serves": ["rn-complete"],
+         "text": "The entry matches its change", "check_method": "Read the entry and its change",
+         "verifier": {"references": ["notes"], "scale": {"met": "it matches", "partial": "no partial",
+                                                         "unmet": "it does not", "evidence": "the entry"}}}]}
+    bp = blueprint(outcome=o)
+    sizing = dict(bp["units"][0]["sizing"])
+    bp["units"] += [
+        {"name": "ok", "kind": "ask", "summary": "Publish these notes?", "reads": ["notes"],
+         "gate": {"check": False, "judge": False, "signoff": False}},
+        {"name": "each", "kind": "map", "summary": "Check one entry", "produces": ["entry_note"],
+         "gate": {"check": False, "judge": True, "signoff": False}, "sizing": sizing, "judge_sizing": sizing},
+        {"name": "merged", "kind": "wait", "summary": "Wait for the merge",
+         "gate": {"check": False, "judge": False, "signoff": False}}]
+    bp["flow"] = {"each": {"map": {"over": "draft.notes"}}, "merged": {"wait": {"event": "notes-merged"}}}
+    out = tmp_path / "out"
+    scaffold(read_session(session(tmp_path, o=o, bp=bp)), out)
+    init = (out / "workflow/release_notes/__init__.py").read_text()
+    assert "Map(items_from=('draft', 'notes'), step=Step(" in init and "Ask(questions=[Question(" in init
+    assert "Wait(event='notes-merged', check=wait_merged" in init
+    assert "{item}" in (out / "prompts/each.md").read_text()
+    lp = load_package(out)
+    assert [lp.spec.units[n].kind for n in ("draft", "ok", "each", "merged")] == ["step", "ask", "map", "wait"]
+    parsed = parse(bp)
+    assert not isinstance(parsed, list)
+    assert compare(parsed, lp.spec, o) == []
