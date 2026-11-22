@@ -190,7 +190,7 @@ WHEN `config show` and `run --check` run with the same options THE engine SHALL 
 
 ### RST-B32 Refusals before spend
 
-WHEN an override is validated THE engine SHALL exit 2 before any file is created under the state root with `unknown_setting` and the nearest name for an unknown key, scope or setting; `setting_not_for_kind` for a key not valid for the scope's unit kind; `setting_value` for a value outside type or range or an undeclared choice; `not_a_setting`, naming [ADR-0071](../adr/0071-overrides-never-change-what-verifies-the-work.adr.md), for a key of the verification surface; and `setting_not_in_release` for a key whose feature is not in this release (the audit judge, council, contest, wait and ask keys); and SHALL record as a warning a setting the executor cannot apply (`effort`, [CON-B3](01-contracts.spec.md)).
+WHEN an override is validated THE engine SHALL exit 2 before any file is created under the state root with `unknown_setting` and the nearest name for an unknown key, scope or setting; `setting_not_for_kind` for a key not valid for the scope's unit kind; `setting_value` for a value outside type or range or an undeclared choice; `not_a_setting`, naming [ADR-0071](../adr/0071-overrides-never-change-what-verifies-the-work.adr.md), for a key of the verification surface; and `setting_not_in_release` for a key whose feature is not in this release (the council, contest, wait and ask keys); and SHALL record as a warning a setting the executor cannot apply (`effort`, [CON-B3](01-contracts.spec.md)).
 
 - GIVEN an unknown key WHEN validated THEN nothing is created under the state root (hash test)
 

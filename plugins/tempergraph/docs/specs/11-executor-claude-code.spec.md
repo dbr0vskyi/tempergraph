@@ -23,6 +23,8 @@ WHEN argv is built for any launch THE executor SHALL put tool names only in `--t
 WHEN a judge launches with MCP views THE executor SHALL set `--tools` to the mapped built-in views, list in a private MCP config one filtering proxy per MCP view server offering only the viewed tools, and use mode `dontAsk`.
 
 - GIVEN a view set `read`, `search`, `list` and `mcp:tracker/get_issue` WHEN the judge launches THEN `--tools` is `Read,Grep,Glob`, the private config lists one proxy in front of `tracker` offering only `get_issue`, and the mode is `dontAsk`
+- GIVEN views `mcp:tracker/get_issue` and `mcp:tracker/get_comments` on `tracker` and `mcp:wiki/get_page` on `wiki` WHEN the judge launches THEN the private config lists two proxies, one in front of `tracker` offering the two viewed tools and one in front of `wiki` offering `get_page`
+- GIVEN a stand-in `tracker` server that offers `get_issue` and `update_issue` and a view of `mcp:tracker/get_issue` only WHEN the proxy is asked to list its tools THEN it offers `get_issue` and not `update_issue`
 
 ### ECC-B4 Reported cost
 
@@ -103,6 +105,14 @@ WHEN a step session, a retry of it or a judge session launches THE executor SHAL
 - GIVEN a retry of a step declaring `read` WHEN it launches THEN `--tools` is `Read`
 - GIVEN any step or judge launch WHEN its argv is read THEN it holds no `--add-dir`
 
+### ECC-B15 A judge view server with no working proxy is out of reach
+
+WHEN a judge view names an MCP server that is not in the operator's own MCP configuration, that the operator's configuration defines by a URL, or whose filtering proxy fails to start THE executor SHALL report that server's views as deferred for the attempt, so that the engine renders the artifact out of reach ([GRD-B5](06-independence-guard.spec.md)).
+
+- GIVEN a judge view of `mcp:tracker/get_issue` and a `tracker` server that exits at start WHEN the judge launches THEN the view is recorded as deferred for that attempt, no tool of `tracker` is in the judge's session and the judge prompt names the artifact out of reach
+- GIVEN a judge view of `mcp:wiki/get_page` and no `wiki` server in the operator's own MCP configuration WHEN the judge launches THEN the view is deferred for that attempt
+- GIVEN a judge view of a server that the operator's configuration defines by a URL WHEN the judge launches THEN the view is deferred for that attempt
+
 ## Acceptance criteria
 
 - ECC-AC1 (ECC-B1, ECC-B2, ECC-B7, ECC-B8, ECC-B9): Argv for every launch shape is built from constants and the binding table only (source-scan and planted-canary tests)
@@ -111,6 +121,9 @@ WHEN a step session, a retry of it or a judge session launches THE executor SHAL
 - ECC-AC4 (ECC-B3, ECC-B10): A judge launch never contains a write tool, a step allow rule, `--fallback-model` or `--resume`
 - ECC-AC5 (ECC-B6, ECC-B13, ECC-B14): The probe results are recorded for the pinned CLI version before the executor is marked live-proven
 - ECC-AC6 (ECC-B7, ECC-B8, ECC-B14): Argv and environment scans of a step, a retry and a judge launch from a planted host environment find `--tools` on the step and the retry, `--add-dir` on none of the three, no planted `CLAUDECODE` or `CLAUDE_*` name in any of the three environments except the ones ECC-B14 keeps, and the planted `ANTHROPIC_*`, proxy and certificate names present in each; the step's read rule is `Read(./**)` with no bare `Read`, `Grep` or `Glob` rule
+- ECC-AC7 (ECC-B3, ECC-B10): Against stand-in MCP servers, a judge launch whose view set holds `mcp:<server>/<tool>` views has `--tools` of the mapped built-in views only, `--strict-mcp-config` with a private `--mcp-config` that lists exactly one filtering proxy per viewed server, mode `dontAsk` and no `--disallowedTools "mcp__*"`, and each proxy offers only the viewed tools of its server when asked to list its tools
+- ECC-AC8 (ECC-B15): Against stand-in MCP servers, a judge view of a server that exits at start, of a server missing from the operator's MCP configuration and of a server that configuration defines by a URL is each recorded as deferred for the attempt, no tool of that server is in the judge's session and the judge prompt names the artifact out of reach (a scripted judge that follows the prompt grades its criterion UNVERIFIABLE, never MET)
+- ECC-AC9 (ECC-B6): `executors --json` declares `judge_mcp` true for `claude`
 
 ## Open questions
 
