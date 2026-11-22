@@ -1,109 +1,88 @@
----
-title: Flow extensions
-type: component
-status: review
-prefix: FLX
-adrs: [0062, 0066]
----
-
 # Flow extensions
 
-## 1. Overview
+## Purpose
 
-Five additions to the flow primitives of [CMP §2.2](03-compiler-and-flow.spec.md) that give a workflow every graph shape LangGraph 1.2 can express ([R-060](../research/R-060-node-types-against-langgraph.rsrch.md), [ADR-0066](../adr/0066-flow-extensions-for-langgraph-parity.adr.md)): a parallel block that picks its branches at run time, a map whose item is a sub-workflow, deadlines on waits and asks, a fallback target on a gate, and operator breakpoints. Each keeps static, validated targets, pure routing (contract C5) and one interrupt per gate (C6).
+Five additions to the flow primitives of [CMP](03-compiler-and-flow.spec.md) that give a workflow every graph shape LangGraph 1.2 can express ([R-060](../research/R-060-node-types-against-langgraph.rsrch.md), [ADR-0066](../adr/0066-flow-extensions-for-langgraph-parity.adr.md)): a parallel block that picks its branches at run time, a map whose item is a sub-workflow, deadlines on waits and asks, a fallback target on a gate, and operator breakpoints. Each keeps static, validated targets, pure routing (contract C5) and one interrupt per gate (C6), so validation checks reachability and the diagram draws every edge ([ADR-0062](../adr/0062-new-node-kinds-keep-the-gated-unit.adr.md)). Workflow authors, operators and the compiler depend on it; design and build notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-## 2. Contract
+## Behaviours
 
-### 2.1 Selective parallel
+### FLX-B6 Selective parallel
 
-| Field (on a `parallel` unit) | Kind | Meaning |
-|---|---|---|
-| `select` | callable ref, optional | Pure function of state returning a non-empty subset of the declared branch names. |
-| `on_select_fault` | `all` \| `stop`, default `stop` | What a raise, an empty set or an unknown name does. |
+WHEN a `parallel` unit declares `select` (a pure function of state returning a non-empty subset of its branch names) THE engine SHALL wait at the join for the selected branches only, record each unselected branch `skipped` in a `route` record ([OBS](15-observability-and-cost.spec.md)), allow a selection of one branch, and on a raise, an empty set or an unknown name apply `on_select_fault` (`all` runs every branch, `stop`, the default, stops the run with exit 4 naming the block), the `select` code calling no model or executor ([CMP-AC5](03-compiler-and-flow.spec.md)); this is LangGraph's router returning several destinations (L4).
 
-The join waits for the selected branches only; each unselected branch is recorded `skipped` in a `route` record ([OBS](15-observability-and-cost.spec.md)). A selection of one branch is allowed. LangGraph's router returning several destinations (L4).
+- GIVEN `select` returning `{security}` WHEN the block runs THEN one branch runs and the join fires on its pass
+- GIVEN `select` returning `{}` under `stop` WHEN the block runs THEN the run stops with exit 4 naming the block
+- GIVEN `select` raising under `all` WHEN the block runs THEN every branch runs
+- GIVEN `select` returning `{unknown}` under `stop` WHEN the block runs THEN the run stops with exit 4
 
-### 2.2 Map over a sub-workflow
+### FLX-B1 Selective join
 
-A `map` unit may name `subworkflow: <name>` in place of `step`. Each item runs the registered child with the item as its input; the child's last unit's artifacts are the item's result; the map's gate grades the collected results as today. The child may contain no `map`, `wait` or `ask`, its depth counts toward the limit of three, and its writing units need the map's writer form or the sequential form ([WSP §2.1](13-workspace-and-concurrency.spec.md)). A child item's pause is addressed by unit and item, as for any child (CMP §4). LangGraph's `Send` to a subgraph (L7).
+WHEN a `select` picks some branches and they pass THE engine SHALL fire the join, never start the unselected branches and record them `skipped`.
 
-### 2.3 Deadlines
+- GIVEN branches `security`, `perf`, `docs` and `select` returning `{security, docs}` WHEN both pass THEN the join fires and `perf` never starts and is recorded `skipped`
 
-| Field (on `wait` and `ask`) | Kind | Meaning |
-|---|---|---|
-| `deadline_s` | positive int | Seconds from the pause's start. |
-| `on_deadline` | `escalate` \| `stop` \| `<forward unit>` | Applied only by `resume <thread> --apply-deadline` once the deadline has passed. |
+### FLX-B7 Map over a sub-workflow
 
+WHEN a `map` unit names `subworkflow: <name>` in place of `step` THE engine SHALL run the registered child for each item with the item as its input, take the child's last unit's artifacts as the item's result and grade the collected results with the map's gate, the child holding no `map`, `wait` or `ask`, counting toward the depth limit of three, its writing units needing the map's writer or sequential form ([WSP-B11](13-workspace-and-concurrency.spec.md)), and a child item's pause addressed by unit and item ([CMP-B17](03-compiler-and-flow.spec.md)); this is LangGraph's `Send` to a subgraph (L7).
 
-### 2.4 Fallback target
+- GIVEN a mapped child holding a `wait` WHEN validated THEN it is refused
 
-| Field (on `GateSpec`) | Kind | Meaning |
-|---|---|---|
-| `fallback` | forward unit name or `finalizer`, optional | Where the run goes instead of stopping or asking. |
-| `on_budget_spent` | adds `fallback` | Use `fallback` when the retry or loop budget is spent. |
-| `on_fail` | adds `fallback` | Use `fallback` on a hard failure. |
+### FLX-B2 Mapped child
 
-The failed unit's artifacts are kept and marked `failed`, not cleared, so the fallback can read them; the fallback's prompt receives the reason as a trip back would. The run's final status carries `degraded: true` and the unit, and its exit code stays 0 only if the rest passes. Infra failures never take the fallback ([BUD](08-budgets-and-failures.spec.md)). LangGraph's node error handler routing to a fallback node (L19).
+WHEN a mapped child item escalates THE engine SHALL pause the parent with the pause addressed by unit and item, keeping the other items' results.
 
-### 2.5 Operator breakpoints
+- GIVEN a map over three tickets whose item is a two-step child WHEN item 2's second step escalates THEN the parent pauses addressed `triage.t2` and items 1 and 3 keep their results
 
-`run` and `resume` accept `--pause-before <unit>` (repeatable; `<unit>` or `<unit>.<item>`). The compiled graph is invoked with LangGraph's `interrupt_before` on those units' step nodes, so nothing of the unit runs before the pause. The pause has kind `breakpoint`, prints the rendered prompt's location (never its text on the terminal beyond the first line) and accepts `proceed` and `stop`. A breakpoint is not an escalation and not friction for self-improvement, like an approval (HUM-B5). LangGraph's static `interrupt_before` (L13).
+### FLX-B8 Deadlines
 
-### 2.6 What is refused
+WHEN a `wait` or `ask` declares `deadline_s` (seconds from the pause's start) and `on_deadline` (`escalate`, `stop`, a forward unit, a static edge validated like a route target, or `defaults` on an `ask`) THE engine SHALL show the pause `overdue` in `status`, `attention` and the run detail once the deadline has passed and nobody applied it; apply it only by `resume <thread> --apply-deadline`, refused with exit 2 and nothing written before the deadline or with no overdue pause; turn it on `escalate` into an `escalation` a person answers with the usual decisions and on `defaults` into the ask's answers completed from their defaults ([ASK-B10](73-ask-unit.spec.md)); record the applier as `deadline` in the intervention row ([HUM-B6](07-gate-and-human.spec.md)); and never let the orchestration supervisor apply it (C16); this gives a wait a timeout ([R-060](../research/R-060-node-types-against-langgraph.rsrch.md) F2).
 
-| Refused before a run (`error`) |
-|---|
-| A `select` on a block with fewer than two branches; `select` not importable |
-| A mapped sub-workflow containing a map, a wait or an ask, or exceeding depth three |
-| `deadline_s` on a unit that is not a wait or an ask; an `on_deadline` target that is not forward |
-| `fallback` naming a unit not after this one in every path, or the unit itself; `on_fail: fallback` or `on_budget_spent: fallback` with no `fallback` |
-| `--pause-before` naming a unit or item the workflow does not have (exit 2 before spend) |
+- GIVEN `--apply-deadline` before the deadline WHEN resumed THEN it exits 2 and nothing is written
 
-## 3. Behaviours
+### FLX-B3 Overdue wait
 
-**FLX-B1 Selective join.** Given a parallel block with branches `security`, `perf`, `docs` and a `select` returning `{security, docs}`, when both pass, then the join fires; `perf` never starts and is recorded `skipped`.
+WHEN a wait's deadline passes THE engine SHALL list it `overdue` and change nothing until `resume --apply-deadline`.
 
-| `select` returns | `on_select_fault` | Result |
-|---|---|---|
-| `{security}` | — | one branch runs; join fires on its pass |
-| `{}` | stop | run stops, exit 4, naming the block |
-| raises | all | every branch runs |
-| `{unknown}` | stop | run stops, exit 4 |
+- GIVEN `deadline_s: 86400` and `on_deadline: escalate` WHEN two days pass THEN `attention` lists it `overdue` and only `resume --apply-deadline` turns it into an escalation
 
-**FLX-B2 Mapped child.** Given a map over three tickets whose item is a two-step child workflow, when item 2's second child step escalates, then the parent pauses and the pause is addressed `triage.t2`; items 1 and 3 keep their results.
+### FLX-B9 Fallback target
 
-**FLX-B3 Overdue wait.** Given a wait with `deadline_s: 86400` and `on_deadline: escalate`, when two days pass, then `attention` lists it `overdue`; nothing changes until `resume --apply-deadline`, which turns it into an escalation a person answers.
+WHEN a gate declares `fallback` (a forward unit name or `finalizer`) and `on_budget_spent: fallback` or `on_fail: fallback` THE engine SHALL go to the fallback instead of stopping or asking when the retry or loop budget is spent or on a hard failure, keep the failed unit's artifacts marked `failed` so the fallback can read them, give the fallback's prompt the reason as a trip back would, and carry `degraded: true` and the unit on the exit file, the ledger, the status row and `RunOutcome`, the exit code staying 0 only if the rest passes; an infra failure never takes the fallback ([BUD](08-budgets-and-failures.spec.md)); this is LangGraph's node error handler routing to a fallback node (L19).
 
-**FLX-B4 Fallback.** Given a gate with `retry_budget: 2`, `on_budget_spent: fallback` and `fallback: manual_brief`, when the third attempt fails, then the run goes to `manual_brief` with the reason and the failed artifacts, and the final status is `finished` with `degraded: true`.
+- GIVEN an infra failure on a gate with a fallback WHEN routed THEN the fallback is not taken
 
-**FLX-B5 Breakpoint.** Given `run --pause-before plan`, when the run reaches `plan`, then it exits 3 with kind `breakpoint` before any session starts; `resume --decision proceed` runs `plan` normally.
+### FLX-B4 Fallback
 
-## 4. Error conditions
+WHEN a gate's budget is spent and its policy is `fallback` THE engine SHALL route to the fallback with the reason and the failed artifacts and finish the run degraded.
 
-| Type | Result |
-|---|---|
-| A `select` that calls a model or an executor | Source-scan failure (CMP-AC-5 extends to `select`) |
-| `--apply-deadline` on a thread with no overdue pause | Exit 2, nothing written |
+- GIVEN `retry_budget: 2`, `on_budget_spent: fallback` and `fallback: manual_brief` WHEN the third attempt fails THEN the run goes to `manual_brief` and the final status is `finished` with `degraded: true`
 
-## 5. Design notes
+### FLX-B10 Operator breakpoints
 
-- Every target stays a declared name, so validation checks reachability and the diagram draws every edge ([ADR-0062](../adr/0062-new-node-kinds-keep-the-gated-unit.adr.md)).
-- Deadlines need no resident process: the engine still exits at a pause, and an owner who wants deadlines to act on time schedules `resume --apply-deadline` from their own scheduler; the schedule tick is the engine's candidate for that job in a later slice ([TCK §5](84-schedule-ticks-and-unattended-fires.spec.md)).
-- Breakpoints fit the local stage of a workflow's life, when a person still reviews each step before it spends ([ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)).
-- **As built (R2-T7).** Deadlines (§2.3), the fallback target (§2.4) and breakpoints (§2.5) are built; selective parallel (§2.1) and a map over a sub-workflow (§2.2) stay in release 3 and validation refuses them `not_in_release`. A fallback sets `run.degraded`, and the exit file, the ledger, the status row and `RunOutcome` carry `degraded: true`. A breakpoint is a marker file `breakpoint.json` beside the run log plus LangGraph's `interrupt_before`; `--pause-before <unit>.<item>` is refused `not_in_release`, an unknown unit is refused `breakpoint_unknown` before any spend, `stop` at a breakpoint leaves the thread stopped and resumable, and the unit a breakpoint released is not paused again in the same segment. The diagram draws fallback and deadline edges; `select` edges come with §2.1.
+WHEN `run` or `resume` takes `--pause-before <unit>` (repeatable; `<unit>.<item>` too) THE engine SHALL invoke the compiled graph with LangGraph's `interrupt_before` on those units' step nodes and write a marker `breakpoint.json` beside the run log, so nothing of the unit runs and no attempt record is written before the pause; give the pause kind `breakpoint`, print the rendered prompt's location (never its text beyond the first line) and accept `proceed` and `stop`, `stop` leaving the thread stopped and resumable; not pause again in the same segment the unit a breakpoint released; refuse an unknown unit `breakpoint_unknown` with exit 2 before any spend; and count a breakpoint as neither an escalation nor friction for self-improvement, like an approval ([HUM-B5](07-gate-and-human.spec.md)); this is LangGraph's static `interrupt_before` (L13).
 
-## 6. Acceptance criteria
+- GIVEN `--pause-before nosuch` WHEN the run starts THEN it exits 2 `breakpoint_unknown` and nothing is spent
 
-- [ ] FLX-AC-1 Every row of §2.6 has a fixture that fails validation (or preflight) with its own finding code.
-- [ ] FLX-AC-2 Every row of the FLX-B1 table holds offline.
-- [x] FLX-AC-3 A breakpoint pause starts no session and writes no attempt record.
-- [x] FLX-AC-4 A degraded run is never reported `finished` without `degraded: true` in the status document and the stats rows.
-- [ ] FLX-AC-5 The diagram model draws `select`, fallback and deadline edges, and the diagram-currency test covers them.
+### FLX-B5 Breakpoint
+
+WHEN a run reaches a unit named by `--pause-before` THE engine SHALL exit 3 with kind `breakpoint` before any session starts, and `resume --decision proceed` SHALL run the unit normally.
+
+- GIVEN `run --pause-before plan` WHEN the run reaches `plan` THEN it exits 3 with kind `breakpoint` and `resume --decision proceed` runs `plan`
+
+### FLX-B11 What is refused
+
+WHEN a workflow with flow extensions is validated THE engine SHALL refuse with an `error` a `select` on a block with fewer than two branches or one not importable; a mapped sub-workflow holding a map, a wait or an ask or exceeding depth three; `deadline_s` on a unit that is not a wait or an ask, or an `on_deadline` target that is not forward; `fallback` naming a unit not after this one on every path or the unit itself; and `on_fail: fallback` or `on_budget_spent: fallback` with no `fallback`; and the diagram model SHALL draw `select`, fallback and deadline edges, covered by the diagram-currency test.
+
+- GIVEN `fallback` naming the unit itself WHEN validated THEN it is refused with its own finding code
+
+## Acceptance criteria
+
+- FLX-AC1 (FLX-B11, FLX-B7): Every refusal of FLX-B11 and the unknown breakpoint of FLX-B10 has a fixture that fails validation (or preflight) with its own finding code
+- FLX-AC2 (FLX-B6, FLX-B1, FLX-B2): Every scenario of FLX-B6 holds offline
+- FLX-AC3 (FLX-B10, FLX-B5): A breakpoint pause starts no session and writes no attempt record
+- FLX-AC4 (FLX-B9, FLX-B4): A degraded run is never reported `finished` without `degraded: true` in the status document and the stats rows
+- FLX-AC5 (FLX-B11, FLX-B8, FLX-B3): The diagram model draws `select`, fallback and deadline edges, and the diagram-currency test covers them
 
 ## Open questions
 
-None.
-
-## References
-
-[CMP](03-compiler-and-flow.spec.md) · [HUM](07-gate-and-human.spec.md) · [BUD](08-budgets-and-failures.spec.md) · [WSP](13-workspace-and-concurrency.spec.md) · [ADR-0066](../adr/0066-flow-extensions-for-langgraph-parity.adr.md)
+- Not built yet: selective parallel (FLX-B6, FLX-B1), a map over a sub-workflow (FLX-B7, FLX-B2) and `--pause-before <unit>.<item>` stay in release 3 and are refused `not_in_release`; `select` edges in the diagram come with them. Owner: engine owner.
