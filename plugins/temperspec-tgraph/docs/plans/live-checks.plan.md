@@ -15,7 +15,7 @@ What temperspec still has to confirm on the owner's machine against a signed-in 
 | TS-L1 | Judge seeds (`author verify` rung 8) | `tempergraph author verify plugins/temperspec-tgraph --judge-seeds --cap 10` | rung 8 `passed`: each of the 32 seeds under `evals/calibration/` is graded as its `case.json` expects, twice. A seed graded otherwise is a defect of the judge brief, the criterion's scale or the seed, and is fixed before any run |
 | TS-L2 | Trial run (`author verify` rung 9), then a real run | In a scratch Python repository with `pytest` and `ruff` on PATH: `tempergraph author verify <path to plugins/temperspec-tgraph> --trial --case missing-config --cap 15`; then `tempergraph run temperspec "<a small task with its acceptance criteria>"` | the trial reaches the outcome gate; the real run sets the repository up when it has no overview spec, commits after every step, opens its pull request with the description of what to read, and its last stage reports `opened`, `reused`, `pushed` or `skipped` |
 
-Until TS-L1 passes, every judged criterion is at uncalibrated trust.
+Until TS-L1 passes, every judged criterion is at uncalibrated trust. It passed on 2026-11-22; calibration (`evals score`) still waits on the owner's labels.
 
 ## Results
 
@@ -23,5 +23,28 @@ Until TS-L1 passes, every judged criterion is at uncalibrated trust.
 |---|---|---|---|---|
 | TS-L1 | 2026-11-21 | 2.1.330 | failed | Rung 8 failed with no session and no spend: 32 findings `seed-unlabelled`. Each seed's `case.json` states its expectation under `seed` (`criterion_id`, `expected`, `reason`) and has `labels: []`; the engine's rung 8 reads the expected status from `labels` only. The owner's ruling the same day: rung 8 reads the `seed` block when a seed has no label for the criterion (engine SCF §2.5). Not run again since the change. Run in the project's cloud container, engine 0.0.1 |
 | TS-L1 | 2026-11-21 | 2.1.330 | failed | Run again on main after the engine fix and the plan format change (outcome revision 4): 32 seed gradings, 64 judge sessions, 3.23 USD. 26 seeds were graded as expected both times. Six were not. Unstable: `setup/met-ts-set-true` (MET, then PARTIAL), `triage/unmet-ts-tri-criteria` (UNMET, then DISCARDED), `plan/unmet-ts-plan-spec` (DISCARDED, then UNMET). Graded wrong both times: `discovery/met-ts-dis-gaps` (PARTIAL, expected MET), `expand/met-ts-exp-design` (PARTIAL, expected MET), `code/met-ts-code-scope` (UNMET, expected MET). Each is a defect of the judge brief, the criterion's scale or the seed, to be fixed before the trial. The run's `seeds_shown` record in `authoring.json` was not committed |
-| TS-L2 trial | | | not run | `--trial` implies rung 8, which still fails on six seeds |
+| TS-L1 | 2026-11-22 | 2.1.330 | passed | After the changes under Seed findings: three full runs of rung 8, 64 judge sessions each. 29 of 32 as expected (2.82 USD), then 31 of 32 (2.74 USD; `triage/met-ts-tri-gaps` came back PARTIAL once, and MET in five further runs of that seed, with no cause found), then 32 of 32 (2.77 USD). The pass stands on the third run; one grading in the 64 of the second run was noise |
+| TS-L2 trial | 2026-11-22 | 2.1.330 | passed | `author verify --trial --case missing-config --cap 15` in a scratch repository holding the case's tool: the trial run `trial-missing-config-6ed4` reached the outcome gate with verdict `met` and no pause, for 1.98 USD; rung 10 stamped. The owner's grades (`author grade`) are not given yet |
 | TS-L2 real run | 2026-11-21 | 2.1.330 | passed in part | Cloud container, engine 0.2.0, scratch Python repository with no overview spec and no remote, task "add a multiply function" with three acceptance criteria. The run finished with exit 0 and no pause for 2.01 USD reported: `prepare`, `setup` (overview spec and one component spec written), `triage`, `discovery`, `plan`, `code`, outcome gate, every judgement all `MET` (or `N/A`) with `gap: false`; one commit after each step; `pytest` 5 passed and `ruff` clean on the run's branch. The last stage reported `skipped` ("no remote named origin"), so the push and the draft pull request are not run |
+
+## Seed findings
+
+What each seed that failed the first full rung 8 (2026-11-21) showed, from the judge's own answer on a second run of that seed, and what was changed. No expected status was changed.
+
+| Seed | What the judge said | Defect in | Change |
+|---|---|---|---|
+| `discovery/met-ts-dis-gaps` (PARTIAL for MET, twice) | Finding F1 of the fixture's research note says the entry point returns 1 from an error branch; the fixture's `main.py` returns only 0 and has no error branch, so a `confirmed` finding had no support in its source | the seed | F1 in the research note of every fixture now says what the code does: it returns 0 only, and a crash exits with 1 |
+| `code/met-ts-code-scope` (UNMET for MET, twice) | The changed paths hold the triage note, hand-off, report, a spec and a research note, which no task row names | the judge brief | The code brief says the changed paths are counted from the run's base and that earlier steps' documents and the run's own notes need no row |
+| `expand/met-ts-exp-design` (PARTIAL for MET, twice) | Requirement R3 has no test row; every row names its requirement and the design is unchanged | the judge's instructions: a concern that belongs to another criterion lowered this one | The engine's judge instructions now say each criterion is graded on its own |
+| `setup/met-ts-set-true` (MET, then PARTIAL) | Every behaviour traced to its code; "downgraded to PARTIAL only for the unconfirmed commit state", which is criterion `ts-set-commit` | the same | the same |
+| `plan/unmet-ts-plan-spec` (DISCARDED, then UNMET) | The judge found the contradiction, then called a shell to run git; a call outside its tools voids the whole judgement by the engine's guard | the judge's instructions | The engine's judge instructions now say that only the tools given may be called and what a call to another costs |
+| `triage/unmet-ts-tri-criteria` (UNMET, then DISCARDED) | UNMET in three further runs; the discarded one was not seen again and is taken to be the same outside call | the same | the same |
+
+The rung 8 run after those changes graded 29 of 32 as expected (2.82 USD) and showed three more causes:
+
+| Seed | What the judge said | Defect in | Change |
+|---|---|---|---|
+| `discovery/met-ts-dis-gaps` (PARTIAL for MET, twice) | With F1 corrected, the next fault: CFG-B1 and CFG-B2 say "when the tool starts" with no exception for `--version`, which CLI-B1 says must answer with no config file. The two fixture specs contradict each other | the seed | CFG-B1 and CFG-B2 in every fixture now say "a run (any start other than `--version`)" |
+| `discovery/unmet-ts-dis-gaps` (PARTIAL once, UNMET once) | G2's named document is a spec behaviour that restates the criterion and cites nothing; the judge was unsure whether that is "no document" or "an open question" | the judge brief | The discovery brief says a gap whose named document does not answer its question is unmet, and partial is only for an answered question that leaves a further one open |
+| `expand/met-ts-exp-design` (PARTIAL once, MET once) | Row 1.2 names R3 but its change says nothing about `--version`, and no test row proves R3. The seed's own reason said rows 2.1 and 2.2 implement R3 | the seed | The plan fixture now does what the reason says: a test row for R3 that proves CLI-AC1, and a code row in phase 2 that names R2 and R3 and states the `--version` branch |
+

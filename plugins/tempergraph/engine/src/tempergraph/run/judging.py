@@ -24,7 +24,9 @@ _FENCE = re.compile(r"```(?:json)?\s*\n(.*?)\n```", re.S)
 ENGINE_BRIEF = (
     "You are an independent reviewer. Grade the work below against each numbered criterion. Read the files "
     "yourself with the read-only tools you have; the step's own account is a claim to verify, not a fact. "
-    "You cannot change anything. Report one finding per criterion.")
+    "You cannot change anything. Use only the tools you were given: a call to any other tool, a shell or git "
+    "included, voids the whole review. Report one finding per criterion, each graded on its own: what you "
+    "could not confirm for one criterion does not lower another.")
 MECHANICAL_SENTENCE = "The deterministic check verified this criterion; take its evidence as given."
 OUT_OF_REACH = ("You cannot read {key} with your tools. Report UNVERIFIABLE for criteria that depend on it; "
                 "do not accept the step's word for it.")

@@ -5,10 +5,18 @@
   "labels": [],
   "provenance": "synthetic",
   "state": "candidate",
-  "split": "holdout",
+  "split": "tune",
   "seed": {
     "criterion_id": "ts-dis-gaps",
     "expected": "UNMET",
     "reason": "G2 asks which exit codes are in use; the hand-off points at the spec, which does not say, and no research note exists."
-  }
+  },
+  "tuned": {
+    "by": "author",
+    "at": "2026-11-21T23:59:36.959Z"
+  },
+  "producer_family": "unknown",
+  "criteria_digest": null,
+  "fixture_digest": null,
+  "reach": {}
 }
