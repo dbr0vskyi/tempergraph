@@ -19,3 +19,7 @@ The tool crashes with a stack trace when `tool.toml` is missing. The task asks f
 ## Open questions
 
 - None
+
+## Reading list
+
+- `docs/specs/config-file.spec.md` (CFG-B1, CFG-B2): the behaviours the plan checks the message and the exit code against

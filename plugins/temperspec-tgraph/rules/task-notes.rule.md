@@ -31,6 +31,7 @@ Source and a one-line summary.
 ## Gaps
 
 - G1 spec gap: idle expiry. Searched `docs/specs/` for "idle", "expiry", "timeout": nothing
+- G2 spec update: refusal wording. `docs/specs/session.spec.md` states it. Covered by SES-B1 and SES-AC1
 
 ## Route
 
@@ -40,6 +41,7 @@ Source and a one-line summary.
 
 - **Acceptance criteria** are numbered and copied from the task. None is added, none is dropped, none is reworded so that its meaning shifts. A task that states no acceptance criterion ends blocked.
 - **Gaps** holds one row per gap, `G<n> <kind>: <concept>. <the search that found nothing>`, or the single word `None`. The kinds: `spec gap` (no spec covers the concept), `spec update` (a spec covers it wrongly or partly), `decision needed`, `research needed`. In doubt, list the gap.
+- A gap that an existing spec already answers is still listed. Its row ends `Covered by <behaviour id> and <criterion id>`: a behaviour and a criterion that one spec defines once each, the criterion naming the behaviour, both read in the spec. When every gap row says so, the run takes the short discovery visit; any other gap takes the full one.
 - **Route** has two lines. `Deliver` is `docs` when the task asks only for documents (it says so, or it asks for a spec, a decision record or research and no code), otherwise `code`. `Route` is `plan` or `quick` when Gaps is `None`; otherwise `discovery`, or `discovery-only` when `Deliver` is `docs`.
 
 ### The quick lane
@@ -98,11 +100,17 @@ Two or three sentences.
 ## Open questions
 
 - None
+
+## Reading list
+
+- `docs/specs/session-expiry.spec.md` (SES-B1, SES-B2): the behaviours the plan implements
+- `src/auth/session.py` (lines 10-60): where the idle time is read
 ```
 
 - **Gaps closed** names, for every gap row of the triage note, the document that closes it. A gap that needs no document says why.
 - **Changed documents** lists every document discovery created or edited, with its path in a code span, or `None`.
 - **Open questions** lists what only a person can decide, with the options. An open question that blocks planning ends the step blocked.
+- **Reading list** has one item for each file the plan will need: an existing file in a code span, the line ranges or ids that matter in brackets, a colon and one line on why. A hand-off with none is a finding, except in a run that ends after discovery. The plan starts from this list and opens another file only for what the list does not answer.
 
 ## Code report (`<task>.report.md`)
 

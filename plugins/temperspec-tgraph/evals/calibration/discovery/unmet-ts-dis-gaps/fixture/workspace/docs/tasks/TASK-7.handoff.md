@@ -20,3 +20,8 @@ The tool crashes with a stack trace when `tool.toml` is missing. The task asks f
 ## Open questions
 
 - None
+
+## Reading list
+
+- `docs/specs/config-file.spec.md` (CFG-B1, CFG-B2): the behaviours the plan implements
+- `src/tool/main.py` (the start-up code): where the tool reads `tool.toml`

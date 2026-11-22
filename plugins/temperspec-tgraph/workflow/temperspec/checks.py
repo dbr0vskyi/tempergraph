@@ -288,8 +288,43 @@ def triage_check(ctx: Any) -> Any:
         bad.append(f"the gaps value `{gaps}` differs from the note's gap list (`{note.gaps}`)")
     found += [_find("fail", "ts-tri-route", path, b, "make the route follow the gap list") for b in bad] or [
         _ok("ts-tri-route", path)]
+    found += _covered(ctx, note, path)
     found.append(_committed(ctx, "ts-tri-commit"))
     return checks.result(found)
+
+
+def _covered(ctx: Any, note: fmt.Triage, path: str) -> list[CheckFinding]:
+    """ts-tri-covered: each `Covered by <behaviour id> and <criterion id>` names two ids that one spec defines
+    once each, the criterion naming the behaviour; a `covered` value says `yes` exactly when every gap row is
+    covered and there is at least one."""
+    crit, fix = "ts-tri-covered", "cite a behaviour and a criterion that one spec defines, or drop the mark"
+    bad: list[tuple[str, str]] = []
+    if note.covered_claimed != note.covered_rows:
+        bad.append((path, "a gap row says `Covered by` without a behaviour id and a criterion id"))
+    index = _spec_index(ctx, _walk(ctx)) if note.covered else {}
+    for behaviour, criterion in note.covered:
+        place, where = f"{behaviour} and {criterion}", {i: index.get(i, []) for i in (behaviour, criterion)}
+        wrong = next((f"`{i}` is defined {len(w)} times in the specs, not once" for i, w in where.items()
+                      if len(w) != 1), None)
+        if wrong is None and where[behaviour][0] != where[criterion][0]:
+            wrong = f"`{behaviour}` and `{criterion}` are defined in two different specs"
+        if wrong is None:
+            spec = fmt.parse_spec(_read_path(ctx, where[behaviour][0]) or "")
+            if not spec.legacy and behaviour not in getattr(spec.criteria.get(criterion), "proves", []):
+                wrong = f"`{criterion}` does not name `{behaviour}`"
+        if wrong is not None:
+            bad.append((place, wrong))
+    value = _value(ctx, "covered")
+    if value is not None:
+        every = note.gap_rows > 0 and note.covered_rows == note.gap_rows
+        if value != ("yes" if every else "no"):
+            bad.append((path, f"the covered value `{value}` differs from the gap rows "
+                              f"({note.covered_rows} of {note.gap_rows} say `Covered by`)"))
+    if bad:
+        return [_find("fail", crit, place, message, fix) for place, message in bad]
+    if note.covered or value is not None:
+        return [_ok(crit, path)]
+    return [_find("n_a", crit, path, "no gap row says `Covered by`")]
 
 
 # ---------------------------------------------------------------------------------------------
@@ -318,12 +353,41 @@ def discovery_check(ctx: Any) -> Any:
         return checks.result([_find("fail", "ts-dis-form", path, "the hand-off cannot be read",
                                     "write the hand-off and name its path")])
     found = [_find("fail", "ts-dis-form", path, f"hand-off section `## {h}` is missing or out of order",
-                   f"add `## {h}`") for h in fmt.headings_missing(text, fmt.HANDOFF_HEADINGS)]
+                   f"add `## {h}`") for h in fmt.headings_missing(text, fmt.HANDOFF_HEADINGS) if h != READING]
     found += _spec_form(ctx, "ts-dis-form")
     found += _names(ctx, "ts-dis-names")
     found += _links(ctx, "ts-dis-links")
+    found += _reading(ctx, text, path)
     found.append(_committed(ctx, "ts-dis-commit"))
     return _result(ctx, found)
+
+
+READING = "Reading list"
+
+
+def _reading(ctx: Any, text: str, path: str) -> list[CheckFinding]:
+    """ts-dis-reading: a hand-off that goes on to a plan lists each file the plan will need, an existing file with
+    the ranges or ids that matter and one line on why. A run that ends after discovery has no plan to read for."""
+    crit = "ts-dis-reading"
+    if _docs_only(ctx):
+        return [_find("n_a", crit, path, "the run ends after discovery, so no plan reads a list")]
+    if READING in fmt.headings_missing(text, fmt.HANDOFF_HEADINGS):
+        return [_find("fail", crit, path, f"hand-off section `## {READING}` is missing or out of order",
+                      f"add `## {READING}` with one item per file the plan will need")]
+    items = fmt.parse_reading_list(text)
+    if not items:
+        return [_find("fail", crit, path, "the reading list has no item",
+                      "list each file the plan will need as `path` (ranges or ids): why")]
+    found: list[CheckFinding] = []
+    for item in items:
+        if _read_path(ctx, item.path) is None:
+            found.append(_find("fail", crit, item.path[:80], "the reading list names a file that does not exist",
+                               "name an existing file, or drop the item"))
+        elif not item.locator or not item.reason:
+            found.append(_find("fail", crit, item.path[:80],
+                               "the item lacks " + ("the line ranges or ids" if not item.locator else "its reason"),
+                               "write `path` (ranges or ids): one line on why"))
+    return found or [_ok(crit, path)]
 
 
 # ---------------------------------------------------------------------------------------------
