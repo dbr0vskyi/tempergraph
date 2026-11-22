@@ -75,6 +75,50 @@ def test_prompt_on_stdin_never_argv_or_env(tmp_path: Path, monkeypatch: pytest.M
     assert [e.kind for e in out.events] == ["session_started", "result"]
 
 
+PLANTED_HOST = {
+    "CLAUDECODE": "1", "CLAUDE_CODE_ENTRYPOINT": "cli", "CLAUDE_CODE_SESSION_ID": "host-session",
+    "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "0", "CLAUDE_CODE_USE_BEDROCK": "1",
+    "ANTHROPIC_API_KEY": "key", "HTTPS_PROXY": "http://proxy.test:3128", "SSL_CERT_FILE": "/etc/ca.pem",
+}
+KEPT_BY_SPEC = ("CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR", "CLAUDE_CODE_USE_BEDROCK")
+
+
+def _recorded_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, **kw: Any) -> dict[str, str]:
+    for name, value in PLANTED_HOST.items():
+        monkeypatch.setenv(name, value)
+    rec = tmp_path / "rec.json"
+    launch(spec_for(monkeypatch, tmp_path, {"record": str(rec), "lines": [S.init(), S.result()]}, **kw),
+           parse_line, EventSink())
+    env: dict[str, str] = json.loads(rec.read_text())["env"]
+    return env
+
+
+def test_launch_drops_named_prefixes_and_keeps_named_exceptions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # ECC-AC6: the launcher drops host names by prefix per launch and keeps the exact exceptions
+    env = _recorded_env(monkeypatch, tmp_path, env_drop=("CLAUDECODE", "CLAUDE_"), env_keep=KEPT_BY_SPEC)
+    for name in ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SESSION_ID"):
+        assert name not in env
+    assert env["CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR"] == "0" and env["CLAUDE_CODE_USE_BEDROCK"] == "1"
+    for name in ("ANTHROPIC_API_KEY", "HTTPS_PROXY", "SSL_CERT_FILE"):
+        assert env[name] == PLANTED_HOST[name]
+    assert env["TEMPERGRAPH_SESSION_KEY"] == "draft.1.step"
+
+
+def test_launch_overlay_survives_a_dropped_prefix(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # ECC-AC6: the overlay is laid after the filter, so an overlay name that matches a dropped prefix arrives
+    env = _recorded_env(monkeypatch, tmp_path, env_drop=("CLAUDECODE", "CLAUDE_"), env_keep=KEPT_BY_SPEC,
+                        env_overlay={"CLAUDE_CODE_SESSION_ID": "engine-value", "CLAUDE_CODE_OAUTH_TOKEN": "tok"})
+    assert env["CLAUDE_CODE_SESSION_ID"] == "engine-value" and env["CLAUDE_CODE_OAUTH_TOKEN"] == "tok"
+    assert "CLAUDECODE" not in env and "CLAUDE_CODE_ENTRYPOINT" not in env
+
+
+def test_launch_naming_no_prefix_keeps_every_host_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # EXI-B22 as before: a spec that names no prefix records every planted name
+    env = _recorded_env(monkeypatch, tmp_path)
+    for name, value in PLANTED_HOST.items():
+        assert env[name] == value
+
+
 def test_raw_files_owner_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     sd = tmp_path / "sess"
     out = launch(spec_for(monkeypatch, tmp_path, {"lines": [S.init(), "not json", S.result()]}, session_dir=sd),

@@ -48,6 +48,10 @@ AUTH_CATEGORY = "authentication_failed"
 BUDGET_SUBTYPE = "error_max_budget_usd"  # shape to be confirmed by P-CC-3
 GATEWAY_VARS = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CLAUDE_CODE_USE_BEDROCK",
                 "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY")
+# ECC-B14: inside a host Claude Code session, every step, retry and judge launch leaves out the host's own names
+HOST_DROP_PREFIXES = ("CLAUDECODE", "CLAUDE_")
+HOST_KEEP = ("CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR", "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX",
+             "CLAUDE_CODE_USE_FOUNDRY")
 PROBED_FLAGS = ("--permission-prompts", "--bare", "--tools", "--setting-sources", "--max-budget-usd",
                 "--fallback-model", "--effort", "--plugin-dir", "--strict-mcp-config")
 _VERSION_RE = re.compile(r"(\d+\.\d+\.\d+)")
@@ -103,8 +107,8 @@ def step_argv(req: SessionRequest, model: str | None, fallback: str | None, flag
     rules = allow_rules(req.tools, req.commands, req.in_engine_worktree)
     if rules:
         argv += ["--allowedTools", ",".join(rules)]
-    if req.enforce_tools:
-        argv += ["--tools", ",".join(_with_preview(builtin_tools(req.tools), req.commands))]
+    # ECC-B8, ECC-B14: every step launch names its built-in tools, so a host's tools are never offered
+    argv += ["--tools", ",".join(_with_preview(builtin_tools(req.tools), req.commands))]
     argv += ["--disallowedTools", ALWAYS_DISALLOWED]
     if req.enforce_tools and mcp_config is not None and any(t.startswith("mcp:") for t in req.tools):
         argv += ["--strict-mcp-config", "--mcp-config", str(mcp_config)]
@@ -375,7 +379,8 @@ class ClaudeExecutor:
         argv = [path or BINARY, *argv[1:]]
         spec = LaunchSpec(argv=argv, stdin_payload=req.prompt.encode("utf-8"), workdir=req.workdir,
                           timeout_s=req.timeout_s, idle_s=idle_s, session_key=req.session_key,
-                          env_overlay=env, session_dir=req.session_dir, grace_s=self.grace_s)
+                          env_overlay=env, env_drop=HOST_DROP_PREFIXES, env_keep=HOST_KEEP,
+                          session_dir=req.session_dir, grace_s=self.grace_s)
         raw = launch(spec, functools.partial(parse_line, workdir=req.workdir), sink, stop=self.stop)
         s = summarize(raw.events, raw.duration_s)
         infra, kind = classify(raw, s)
@@ -388,5 +393,5 @@ class ClaudeExecutor:
 
 
 # Live probe facts of ECC-B13 and their recorded state; none has run on a signed-in host yet (T0.1).
-LIVE_FACTS: dict[str, str] = {f"P-CC-{i}": "not run" for i in range(1, 10)}
+LIVE_FACTS: dict[str, str] = {f"P-CC-{i}": "not run" for i in range(1, 12)}
 ClaudeExecutor.live_facts = LIVE_FACTS  # type: ignore[attr-defined]  # read by `executors` (CLI-B3)

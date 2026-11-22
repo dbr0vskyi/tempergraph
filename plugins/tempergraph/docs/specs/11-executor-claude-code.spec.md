@@ -112,4 +112,4 @@ WHEN a step session, a retry of it or a judge session launches THE executor SHAL
 ## Open questions
 
 - Use `--input-format stream-json` for the prompt instead of plain stdin, to share framing with the Antigravity executor? Until answered: plain UTF-8 on stdin, then stdin closes; decided after P-CC-5. Owner: executor implementer.
-- Not built yet: the host-session reach rules (ECC-B14) are release 3 work (R-140 F4); probes P-CC-1 to P-CC-11 have not been confirmed on the owner's machine. Owner: engine owner.
+- Not built yet: probes P-CC-1 to P-CC-11 have not been confirmed on the owner's machine. Owner: engine owner.
