@@ -79,15 +79,6 @@ WHEN a sub-workflow is the parent's last unit THE engine SHALL never run the chi
 
 - GIVEN a parent whose last unit is a child with a finalizer and whose final gate grades the child's criteria WHEN the run ends THEN the child's outcome gate ran, the child's finalizer did not, and the parent's finalizer ran once
 
-### SWF-B11 A child does not run yet
-
-WHEN `run` or `run --check` is given a workflow with a sub-workflow unit and finds no other reason to refuse it THE engine SHALL refuse it with exit 2 `not_in_release`, before any session starts and with nothing created under the state root, in one message that names the first such unit and says that running a child is not built yet.
-
-- GIVEN a parent `deliver` that nothing else refuses and that declares `setup = Subworkflow(workflow="repo-setup", inputs={"request": "request"})` WHEN `run deliver` starts it THEN it exits 2 `not_in_release`, the one message names `setup` and says that running a child is not built yet, no session ran and the state root is unchanged
-- GIVEN the same parent WHEN `run --check` checks it THEN it exits 2 with the same finding and creates nothing
-- GIVEN a parent whose sub-workflow unit fails `subworkflow-version` WHEN `run` starts it THEN the refusal is that finding and not this one
-- GIVEN a child that needs git and a run started outside git WHEN `run` starts the parent THEN the refusal is `needs_git` and not this one
-
 ### SWF-B12 A child's key in a template
 
 WHEN a template names `{<unit>.<key>}` THE engine SHALL accept it at validation only for a sub-workflow unit earlier in the order that exposes `<key>` (by its `produces`, or with `produces` empty by the child's deliverables, SWF-B7) and refuse any other field of that form with `template-unknown-field` ([CON-B8](01-contracts.spec.md), [VAL-B8](76-step-values-and-template-keys.spec.md)).
@@ -102,9 +93,8 @@ WHEN a template names `{<unit>.<key>}` THE engine SHALL accept it at validation 
 - SWF-AC1 (SWF-B1, SWF-B2, SWF-B3, SWF-B4, SWF-B5, SWF-B6, SWF-B7, SWF-B9, SWF-B10): SWF-B1 to SWF-B6 hold offline on stand-ins with an engine fixture parent and child, neither a shipped workflow
 - SWF-AC2 (SWF-B8): A parent run with a child leaves one `run.jsonl`, one checkpoint thread and one ledger row; every child record carries `child`
 - SWF-AC3 (SWF-B8): A carried parent paused inside its child resumes on a second state root ([CAR-AC1](96-run-state-on-a-branch.spec.md))
-- SWF-AC4 (SWF-B11): A workflow with a sub-workflow unit that nothing else refuses is refused by `run` and by `run --check` with exit 2 and `not_in_release`, in one message naming the unit and saying that running a child is not built yet, with no session started and the state root unchanged, and a workflow that another refusal stops (a validation finding, `needs_git`) gets that refusal instead
 - SWF-AC5 (SWF-B12): A template that names `{<unit>.<key>}` validates for a key a sub-workflow unit before it exposes, and fails `template-unknown-field` for a key that unit does not expose and for a unit that comes after the template
 
 ## Open questions
 
-- Not built yet: running a child (SWF-B1 to SWF-B5, SWF-B8, SWF-B10), which SWF-B11 refuses meanwhile, and measures and carrying (SWF-B9, SWF-AC3). Owner: engine owner.
+- Not built yet: measures and carrying (SWF-B9, SWF-AC3). Owner: engine owner.

@@ -1,16 +1,18 @@
-"""The one reader of a sub-workflow's child (SWF-B6, SWF-B7, SWF-B11, SWF-B12, WFM-AC2).
+"""The one reader of a sub-workflow's child (SWF-B1, SWF-B5 to SWF-B8, SWF-B12, WFM-AC2).
 
-`validate`, the start and `run --check` all read a child here, so they agree on what a child is. A child is found
-by name in the home registry (PKG-B15) or among the engine's own built-in workflows; it is never run here and no
-model is called. A child that cannot be read is an answer (`ChildUnknown`), not an exception.
+`validate`, the start, `run --check` and the run of a child all read a child here, so they agree on what a child is.
+A child is found by name in the home registry (PKG-B15) or among the engine's own built-in workflows; it is never run
+here and no model is called (the run is `tempergraph.run.subrun`). A child that cannot be read is an answer
+(`ChildUnknown`), not an exception.
 """
 
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from tempergraph.contracts import UnitSpec, WorkflowSpec
 from tempergraph.model.text import input_names
@@ -209,9 +211,59 @@ def needs_git(spec: WorkflowSpec, read: Reader = read_child) -> list[str]:
     return out
 
 
-def stop_message(spec: WorkflowSpec) -> str | None:
-    """SWF-B11: the one message that stops a run of a workflow with a sub-workflow unit, naming the first such unit."""
-    units = units_of(spec)
-    if not units:
+def child_inputs(unit: UnitSpec, request: Mapping[str, Any], earlier: Mapping[str, Mapping[str, Any]]) -> dict[str, str]:
+    """SWF-B7: the child's `request.inputs`: each parameter read from the parent's request text, an earlier unit's key
+    (`earlier` maps unit to its artifacts and values) or a quoted literal. A key no unit made is left out, so the child
+    sees it as a missing field."""
+    rec = unit.subworkflow
+    out: dict[str, str] = {}
+    if rec is None:
+        return out
+    for param, src in rec.inputs.items():
+        if src == "request":
+            out[param] = str((request.get("inputs") or {}).get("request", ""))
+        elif len(src) >= 2 and src[0] == src[-1] and src[0] in "\"'":
+            out[param] = src[1:-1]
+        else:
+            owner, _, key = src.partition(".")
+            got = (earlier.get(owner) or {}).get(key)
+            if got is not None:
+                out[param] = str(got)
+    return out
+
+
+def exposed(unit: UnitSpec, child: Child | ChildUnknown, artifacts: Mapping[str, Any], values: Mapping[str, Any]
+            ) -> tuple[dict[str, Any], dict[str, Any], list[str]]:
+    """SWF-B7: of the child's final artifacts and values, the ones `produces` exposes under the unit's name, and the
+    exposed keys the child did not make (each fails the unit's gate as a missing artifact)."""
+    keys = exposed_keys(unit, child)
+    arts = {k: artifacts[k] for k in keys if k in artifacts}
+    vals = {k: values[k] for k in keys if k in values and k not in arts}
+    return arts, vals, [k for k in keys if k not in arts and k not in vals]
+
+
+def mapped_source(unit: UnitSpec, name: str) -> str | None:
+    """SWF-B5: the parent unit that made the key `inputs` maps to the child parameter `name` (or that names the
+    mapped `<unit>.<key>` itself); None when the parameter reads the request or a literal, or none is mapped."""
+    rec = unit.subworkflow
+    if rec is None:
         return None
-    return f"unit {units[0]!r} is a sub-workflow unit, and running a child is not built yet"
+    for param, src in rec.inputs.items():
+        if name in (param, src):
+            owner, dot, _ = src.partition(".")
+            return owner if dot and src[0] not in "\"'" else None
+    return None
+
+
+def is_input_name(unit: UnitSpec, name: str) -> bool:
+    """SWF-B5: `name` is a child parameter the parent mapped, or the `<unit>.<key>` it was mapped from."""
+    rec = unit.subworkflow
+    return rec is not None and any(name in (param, src) for param, src in rec.inputs.items())
+
+
+def workspace_note(child: Child) -> str | None:
+    """SWF-B8: the one note written when the child declares a `run.workspace` of its own, which a child never uses."""
+    if child.spec.workspace == "auto":
+        return None
+    return (f"child {child.name!r} declares run.workspace {child.spec.workspace!r}; it runs in the parent's workspace "
+            "and the declaration is ignored")

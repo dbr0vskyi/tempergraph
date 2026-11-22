@@ -265,6 +265,11 @@ class _Validator:
 
         for code, unit, message in subworkflow.unit_problems(self.spec, name, read=self._child):
             self.err(code, unit, message)
+        child = self._child(u.subworkflow.workflow)
+        if isinstance(child, subworkflow.Child) and child.spec.finalizer is not None:  # SWF-B8, SWF-B10
+            self.warn("subworkflow-finalizer-skipped", name,
+                      f"unit {name!r}: child {child.name!r} declares a finalizer, which never runs from a parent; the "
+                      "parent's own finalizer can call the same code")
 
     def _exposed(self, unit: str, owner: str, key: str) -> bool:
         """SWF-B12: `{<owner>.<key>}` read by `unit` names a key a sub-workflow unit earlier in the order exposes."""

@@ -41,8 +41,11 @@ def _status(raw: Any) -> str:
     return "n_a" if s == "N/A" else s
 
 
-def build(spec: WorkflowSpec, values: Mapping[str, Any], log_path: Path) -> dict[str, Any] | None:
-    """The `OutcomeRecord` of a thread so far; None for a workflow with no final criteria."""
+def build(spec: WorkflowSpec, values: Mapping[str, Any], log_path: Path, child: str | None = None
+          ) -> dict[str, Any] | None:
+    """The `OutcomeRecord` of a thread so far; None for a workflow with no final criteria. `child` names the
+    sub-workflow unit whose child `spec` and `values` are, so only that child's records of the log are read (SWF-B8); a
+    parent's record keeps the record of each child that ran as `children[<unit>]` (OUT-B18)."""
     o = spec.outcome
     if o is None or not o.final:
         return None
@@ -51,7 +54,8 @@ def build(spec: WorkflowSpec, values: Mapping[str, Any], log_path: Path) -> dict
     att = (values.get("attempts") or {}).get(unit) or {}
     statuses = {s["id"]: _status(s.get("status")) for s in (judged or {}).get("statuses") or [] if s.get("id")}
     check_failed = ((att.get("check") or {}).get("result")) == "FAIL"
-    humans = [r for r in _jsonl(log_path) if r.get("kind") == "human" and r.get("unit") == unit]
+    humans = [r for r in _jsonl(log_path) if r.get("kind") == "human" and r.get("unit") == unit
+              and r.get("child") == child]
     reached = bool(att) or judged is not None
     from tempergraph.improve.calibration import accepted_for
 
@@ -81,8 +85,13 @@ def build(spec: WorkflowSpec, values: Mapping[str, Any], log_path: Path) -> dict
         for c in io.criteria:
             if c.id in got:
                 intermediate.append({"unit": name, "id": c.id, "status": got[c.id]})
-    return {"revision": o.revision, "verdict": verdict(criteria, reached), "criteria": criteria,
-            "intermediate": intermediate, "later": []}
+    record: dict[str, Any] = {"revision": o.revision, "verdict": verdict(criteria, reached), "criteria": criteria,
+                              "intermediate": intermediate, "later": []}
+    kids = {name: c["outcome"] for name, c in ((values.get("run") or {}).get("children") or {}).items()
+            if isinstance(c, Mapping) and c.get("outcome")}
+    if kids:
+        record["children"] = kids
+    return record
 
 
 def verdict(criteria: Iterable[Mapping[str, Any]], reached: bool = True) -> str:

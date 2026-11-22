@@ -27,6 +27,7 @@ from tempergraph.contracts import (
     SessionOptions,
     SessionRequest,
     SessionResult,
+    StepSpec,
     UnitSpec,
     Verdict,
     WorkflowSpec,
@@ -103,10 +104,17 @@ class RunContext:
     judge_state: Callable[[str], str] | None = None  # a gate's judge binding state (JCL-B17); None reads it
     escalation_record: Callable[[str], bool] | None = None  # LAD-B13; None reads the ledger
     self_check_limit: int = 3  # CHK-B17
+    child: str | None = None  # SWF-B8: the sub-workflow unit whose child this context runs; None for the run's own spec
+    parent_thread: str = ""  # a child's context keeps the parent's thread
 
     @property
     def thread(self) -> str:
-        return f"{self.spec.name}/{self.task_id}"
+        return self.parent_thread or f"{self.spec.name}/{self.task_id}"
+
+    @property
+    def key_prefix(self) -> str:
+        """SWF-B8: session keys of a child read `<unit>/<child unit>.<attempt>.<kind>`."""
+        return f"{self.child}/" if self.child else ""
 
 
 def _aliases(v: object) -> list[str]:
@@ -241,10 +249,17 @@ class EngineNodes:
 
     # -- step ------------------------------------------------------------------------------------
 
-    def step(self, unit: str, state: RunState) -> dict[str, Any]:
+    def _skey(self, unit: str, attempt: int, kind: str, item: str | None = None) -> str:
+        return self.ctx.key_prefix + session_key(unit, attempt, kind, item=item)
+
+    def step(self, unit: str, state: RunState, config: Any = None) -> dict[str, Any]:
         spec = self.ctx.spec
         u = spec.units[unit]
         self._boundary(state)
+        if u.kind == "subworkflow":  # SWF-B1: the child runs as one unit, on a graph and state of its own
+            from tempergraph.run import subrun
+
+            return subrun.run_child(self, unit, state, config)
         if u.kind == "script":
             return self._script_unit(unit, state)
         if u.kind in ("route", "switch"):
@@ -358,7 +373,7 @@ class EngineNodes:
                                     sub="-preview"), thread=self.ctx.thread, limit=self.ctx.self_check_limit)
             ctx = dataclasses.replace(ctx, self_check=selfcheck.command(ticket))
         rendered = render_step(unit, shown, ctx, caps)
-        key = session_key(unit, attempt, "retry" if retry else "step", item=iid)
+        key = self._skey(unit, attempt, "retry" if retry else "step", item=iid)
         req = SessionRequest(
             kind="retry" if retry else "step", prompt=rendered.text, workdir=workdir, alias=alias, session_key=key,
             tools=tuple(st.tools), commands=(*commands, *([ctx.self_check] if ctx.self_check else [])),
@@ -504,9 +519,12 @@ class EngineNodes:
                    attempt=str(attempt), visit=str(visit), branch=ws.get("branch") or gitmod.branch(workdir),
                    base=ws.get("base_branch") or "", workdir=str(workdir), run_label=None)
         for chan in ("artifacts", "values"):
-            for vals in (state.get(chan) or {}).values():
+            for owner, vals in (state.get(chan) or {}).items():
                 if isinstance(vals, dict):
                     out.update({k: str(v) for k, v in vals.items()})
+                    held = self.ctx.spec.units.get(owner)
+                    if held is not None and held.kind == "subworkflow":  # SWF-B12: `{<unit>.<key>}`
+                        out.update({f"{owner}.{k}": str(v) for k, v in vals.items()})
         return out
 
     # -- script units (SCR) ------------------------------------------------------------------------
@@ -712,6 +730,8 @@ class EngineNodes:
             return {"judgements": {unit: {"verdict": str(Verdict.ESCALATE), "reason": u.kind}}}
         if att.get("map_skip"):
             return {"judgements": {unit: {"verdict": str(Verdict.PROCEED), "reason": "map_empty"}}}
+        if u.kind == "subworkflow" and (done := self._child_verdict(unit, att)) is not None:
+            return done
         if (att.get("escalate") == "upstream" and att.get("upstream") and att.get("ok") and g.judge is not None
                 and not att.get("infra_spent")):
             return self._judge_claim(unit, state, att)
@@ -771,6 +791,27 @@ class EngineNodes:
             att["infra_cause"] = "judge_infra"
         return {**write, "run": {"cost": write["judgements"][unit].pop("_cost")}} if "_cost" in write["judgements"][
             unit] else write
+
+    def _child_verdict(self, unit: str, att: Mapping[str, Any]) -> dict[str, Any] | None:
+        """SWF-B5: what the child's end says about the unit's gate, before anything else is checked. An upstream defect
+        in a key the unit mapped into `inputs` goes back to the parent unit that made it when it is a back target of
+        the gate (the gate's own rule), else asks a person; a child that stopped or ended `unmet` or `needs_person`
+        fails the gate with the child's failing final criteria as blockers. None: the child ended well."""
+        up = att.get("upstream_child")
+        if up:
+            blockers = [{"criterion": "upstream", "problem": str(up.get("reason") or "an upstream defect"),
+                         "defect_in": up.get("key")}]
+            if up.get("unit") in self.ctx.spec.units[unit].gate.back_targets:
+                return {"judgements": {unit: {"verdict": str(Verdict.BACK), "back_to": up["unit"], "blockers": blockers,
+                                              "reason": "upstream_confirmed", "confidence": 1.0,
+                                              "confidence_source": "child_judge"}}}
+            return {"judgements": {unit: {"verdict": str(Verdict.ESCALATE), "reason": "upstream", "blockers": blockers,
+                                          "confidence": 1.0, "confidence_source": "child_judge"}}}
+        failing = att.get("child_failed")
+        if failing:
+            return {"judgements": {unit: {"verdict": str(Verdict.RETRY), "reason": "child_unmet", "blockers": [
+                {"criterion": str(f.get("criterion")), "problem": str(f.get("problem"))} for f in failing]}}}
+        return None
 
     @staticmethod
     def _repeats(att: Mapping[str, Any], cres: CheckResult) -> bool:
@@ -849,8 +890,8 @@ class EngineNodes:
         spec = self.ctx.spec
         u = spec.units[unit]
         g = u.gate
-        st = u.step
-        assert g.judge is not None and st is not None
+        st = u.step if u.step is not None else StepSpec()  # a sub-workflow unit has no step: its judge reads what `produces` exposes
+        assert g.judge is not None
         j = g.judge
         if claim:  # one engine criterion replaces the gate's own; the subject is the claimed unit's output
             g = dataclasses.replace(g, criteria=(claim_criterion(*claim),))
@@ -904,7 +945,7 @@ class EngineNodes:
                 jopts = dataclasses.replace(jopts, effort=effort)
             self.ctx.log.write("judge_risk", unit=unit, item=iid, attempt=attempt, alias=alias,
                                effort=jopts.effort, **risk)
-        key = session_key(unit, attempt, "judge", item=iid)
+        key = self._skey(unit, attempt, "judge", item=iid)
         req = SessionRequest(kind="judge", prompt=prompt, workdir=workdir, alias=alias, session_key=key,
                              timeout_s=j.timeout_s or DEFAULT_TIMEOUT_S, idle_s=j.idle_s,
                              options=jopts,
@@ -926,7 +967,7 @@ class EngineNodes:
             try:
                 judgement = parse_judgement(res.text, g)
             except Unparsed:
-                rkey = session_key(unit, attempt, "judge_reask", item=iid)
+                rkey = self._skey(unit, attempt, "judge_reask", item=iid)
                 rreq = SessionRequest(kind="judge_reask", prompt=reask_prompt(res.text, g), workdir=workdir,
                                       alias=alias, session_key=rkey, timeout_s=req.timeout_s, idle_s=req.idle_s,
                                       options=req.options,

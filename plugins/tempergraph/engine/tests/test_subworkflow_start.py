@@ -1,16 +1,13 @@
-"""Until a child can run, a valid parent stops before any spend with one message (SWF-B11, SWF-AC4; task AC 4)."""
+"""A parent with a sub-workflow unit starts: the interim refusal `not_in_release` is gone, every other refusal stays (SWF-B1, SWF-B6; task AC 1, AC 6)."""
 
 from __future__ import annotations
 
-import dataclasses
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from tempergraph.api import Subworkflow
 from tempergraph.catalog import Catalog
-from tempergraph.constants import ExitCode
 from tempergraph.contracts import WorkflowSpec
 from tempergraph.executors.capabilities import CLAUDE
 from tempergraph.model.validate import errors, validate
@@ -48,41 +45,26 @@ def valid() -> WorkflowSpec:
     return parent_spec("deliver", workflow="child", inputs=REQUEST)
 
 
-def test_the_stop_is_no_finding_of_validation(child: None) -> None:  # SWF-AC4, AC 4
+def test_the_stop_is_no_finding_of_validation(child: None) -> None:  # SWF-AC1, AC 6
     assert errors(validate(valid(), {"claude": CLAUDE})) == []
 
 
-def test_run_stops_with_one_message_and_creates_nothing(repo: Path, child: None) -> None:  # SWF-AC4, AC 4
-    before = hash_tree(repo / ".tempergraph")
-    code, doc, _, ex = run(repo, valid())
-    assert code == ExitCode.USAGE == 2 and doc["reason"] == "not_in_release"
-    assert "setup" in doc["message"] and "running a child is not built yet" in doc["message"]
-    assert "\n" not in doc["message"] and doc["refusals"] == []
-    assert ex.calls == [] and hash_tree(repo / ".tempergraph") == before
-
-
-def test_run_check_gives_the_same_finding_and_creates_nothing(repo: Path, child: None) -> None:  # SWF-AC4, AC 4
+def test_run_check_no_longer_refuses_a_valid_parent_and_creates_nothing(repo: Path, child: None) -> None:  # SWF-AC1, AC 6
     before = hash_tree(repo / ".tempergraph")
     code, doc, _, ex = run(repo, valid(), "--check")
-    assert code == 2 and doc["status"] == "error"
-    assert [(r["code"], r["unit"]) for r in doc["refusals"]] == [("not_in_release", "setup")]
-    assert "running a child is not built yet" in doc["refusals"][0]["message"]
+    assert code == 0 and doc["status"] == "ok" and doc["refusals"] == []
+    assert "not_in_release" not in str(doc)
     assert ex.calls == [] and hash_tree(repo / ".tempergraph") == before
 
 
-@pytest.mark.parametrize("extra", [(), ("--check",)])
-def test_the_message_names_the_first_unit_in_order(repo: Path, child: None, extra: tuple[str, ...]) -> None:  # SWF-AC4, AC 4
-    spec = valid()
-    units = {**spec.units, "again": Subworkflow(workflow="child", inputs=REQUEST)}
-    spec = dataclasses.replace(spec, units=units, order=(*spec.order, "again"))
-    code, doc, _, _ = run(repo, spec, *extra)
-    assert code == 2
-    text = doc["message"] if not extra else doc["refusals"][0]["message"]
-    assert "'setup'" in text and "'again'" not in text
+def test_run_starts_a_valid_parent_with_no_not_in_release_finding(repo: Path, child: None) -> None:  # SWF-AC1, AC 6
+    code, doc, err, ex = run(repo, valid())
+    assert "not_in_release" not in err and "not_in_release" not in str(doc)
+    assert ex.calls != [] and (repo / ".tempergraph").exists()  # the run began: sessions started, a state root exists
 
 
 @pytest.mark.parametrize("extra", [(), ("--check",)])
-def test_another_refusal_comes_first_a_finding(repo: Path, child: None, extra: tuple[str, ...]) -> None:  # SWF-AC4, AC 4
+def test_a_finding_is_still_a_refusal(repo: Path, child: None, extra: tuple[str, ...]) -> None:  # SWF-AC1, AC 6
     spec = parent_spec("deliver", workflow="child", inputs=REQUEST, requires=">=9")
     code, doc, _, _ = run(repo, spec, *extra)
     assert code == 2
@@ -93,7 +75,7 @@ def test_another_refusal_comes_first_a_finding(repo: Path, child: None, extra: t
 
 
 @pytest.mark.parametrize("extra", [(), ("--check",)])
-def test_another_refusal_comes_first_needs_git(tmp_path: Path, plain: Path, extra: tuple[str, ...]) -> None:  # SWF-AC4, AC 4
+def test_needs_git_is_still_a_refusal(tmp_path: Path, plain: Path, extra: tuple[str, ...]) -> None:  # SWF-AC1, AC 6
     register_workflow(home_dir(), tmp_path / "pkgs", "risky", needs_git=True)
     code, doc, _, ex = run(plain, parent_spec("deliver", workflow="risky", inputs=REQUEST), *extra)
     assert code == 2 and ex.calls == []

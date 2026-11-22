@@ -1,7 +1,9 @@
-"""Fixture parents and children for the sub-workflow unit (SWF-B6, SWF-B7, SWF-B11, SWF-B12): engine fixtures, none a shipped workflow.
+"""Fixture parents and children for the sub-workflow unit (SWF-B1 to SWF-B8, SWF-B10, SWF-B12): engine fixtures, none a shipped workflow.
 
 `register_workflow` writes a workflow package to disk and enters it in the registry of the test home, so the one
-reader of a child (`tempergraph.model.subworkflow`) finds it as it finds a real one (PKG-B15).
+reader of a child (`tempergraph.model.subworkflow`) finds it as it finds a real one (PKG-B15). A child written here
+can also be run: its `work` unit can write the files it produces or none, can wait for an approval, can carry a
+finalizer, and its outcome gate is a judge, so a test scripts every session with a stand-in executor.
 """
 
 from __future__ import annotations
@@ -20,6 +22,8 @@ from tempergraph.package import registry
 from .packages import package_parts, write
 from .workflows import named, two_step
 
+FINALIZER_MARK = "child-finalizer-ran.txt"  # the file a child's fixture finalizer writes in the workspace when it runs
+
 
 def home_dir() -> Path:
     """The home folder `conftest.py` gives each test (`TEMPERGRAPH_HOME`)."""
@@ -27,25 +31,39 @@ def home_dir() -> Path:
 
 
 def _declaration(inputs: tuple[str, ...], produces: tuple[str, ...], children: Mapping[str, Mapping[str, Any]],
-                 needs_git: bool, broken: bool) -> str:
+                 needs_git: bool, broken: bool, *, finalizer: bool, approval: bool, workspace: str | None,
+                 defaults: bool) -> str:
     names = inputs or ("request",)
     prompt = "Work on " + " and ".join("{" + n + "}" for n in names)
     risk = (', risk=Risk(levels=[Level("base"), Level("high", model="large")], when=[When("high", paths=["src/**"])])'
             if needs_git else "")
     params = f"input=Input(parameters=[{', '.join(f'Param(name={n!r})' for n in inputs)}]), " if inputs else ""
+    extra = ""
+    if finalizer:
+        extra += "finalizer=finish, finalizer_outcomes=['done'], "
+    if workspace:
+        extra += f"workspace={workspace!r}, "
+    if defaults:
+        extra += "settings={'depth': SettingDecl(kind='int', default=2, min=1, max=9)}, "
+    gate_args = "approval=True, " if approval else ""
     lines = [
-        "from tempergraph.api import Criterion, Gate, Input, Judge, Level, Param, Risk, Routing, Step, Subworkflow, When, Workflow",
+        "from tempergraph.api import Criterion, FinalizerResult, Gate, Input, Judge, Level, Param, Risk, Routing, SettingDecl, Step, Subworkflow, When, Workflow",
         *(["raise RuntimeError('a package that does not import')"] if broken else []),
+        "",
+        "",
+        "def finish(ctx):",
+        f"    (ctx.workdir / {FINALIZER_MARK!r}).write_text('ran')",
+        "    return FinalizerResult(outcome='done')",
         "",
         "",
         "def workflow():",
         "    units = {}",
         f"    units['work'] = Step(prompt={prompt!r}, tools=['read', 'write'], produces={dict.fromkeys(produces, 'file')!r},",
-        f"                         gate=Gate(judge=Judge(stance='Verify.'{risk}),",
+        f"                         gate=Gate({gate_args}judge=Judge(stance='Verify.'{risk}),",
         "                                   criteria=[Criterion(id='c-work', text='The work is done', check_method='Read the result')]))",
         *(f"    units[{n!r}] = Subworkflow(**{dict(kw)!r})" for n, kw in children.items()),
         f"    return Workflow(order={['work', *children]!r}, units=units, routing=Routing(description='A fixture workflow'),",
-        f"                    {params}issue_repository='acme/fixture')",
+        f"                    {params}{extra}issue_repository='acme/fixture')",
         "",
     ]
     return "\n".join(lines)
@@ -60,15 +78,22 @@ def _outcome(produces: tuple[str, ...]) -> dict[str, Any]:
 
 
 # SWF-AC1: this helper builds the parents and children the tests of SWF-AC1 run on (test_subworkflow_validate.py,
-# test_subworkflow_inputs.py, test_outside_git.py): each refusal of SWF-B6 is proved against a package it writes.
+# test_subworkflow_inputs.py, test_outside_git.py, test_subworkflow_run.py, test_subworkflow_gate.py): each refusal of
+# SWF-B6 and each behaviour of SWF-B1 to SWF-B5 is proved against a package it writes.
 def register_workflow(home: Path, parent: Path, name: str, *, version: str = "0.3.1", inputs: Iterable[str] = (),
                       produces: Iterable[str] = (), children: Mapping[str, Mapping[str, Any]] | None = None,
-                      needs_git: bool = False, broken: bool = False) -> Path:
+                      needs_git: bool = False, broken: bool = False, finalizer: bool = False, approval: bool = False,
+                      workspace: str | None = None, defaults: bool = False, deliverables: bool = True) -> Path:
     """Write the fixture package `name` under `parent` and enter it in the registry of `home`; return its root.
 
-    One step unit `work` produces the keys in `produces` (the outcome lists them as deliverables), then one
+    One step unit `work` produces the keys in `produces` (the outcome lists them as deliverables unless
+    `deliverables` is off, which lets a child end well without making a key it declares), then one
     `Subworkflow(**kwargs)` unit per item of `children`. `inputs` are the declared inputs (none: the one input
-    `request`). `needs_git` adds a stock risk rule on changed paths. `broken` makes the package fail to import."""
+    `request`). `needs_git` adds a stock risk rule on changed paths. `broken` makes the package fail to import.
+    `finalizer` gives the workflow a finalizer that writes `FINALIZER_MARK` in the workspace. `approval` makes the
+    `work` gate pause for a person. `workspace` is the workflow's own `run.workspace` default. `defaults` declares the
+    setting `depth` (default 2). A test scripts the sessions: the `work` step ends with `ARTIFACT <key>: <file>` lines
+    for the keys it makes, and a judge answers with a verdict block."""
     kids = dict(children or {})
     root = parent / name
     mod = name.replace("-", "_")
@@ -78,8 +103,9 @@ def register_workflow(home: Path, parent: Path, name: str, *, version: str = "0.
                                                "license": "MIT", "dependencies": ["tempergraph"]})
     write(root, "tempergraph.json", {"schema_version": 1, "name": name, "entry": f"{mod}:workflow",
                                      "workflow_api": 1, "docs": "provisional"})
-    write(root, f"workflow/{mod}/__init__.py", _declaration(ins, keys, kids, needs_git, broken))
-    package_parts(root, name, outcome=_outcome(keys))
+    write(root, f"workflow/{mod}/__init__.py", _declaration(ins, keys, kids, needs_git, broken, finalizer=finalizer,
+                                                           approval=approval, workspace=workspace, defaults=defaults))
+    package_parts(root, name, outcome=_outcome(keys if deliverables else ()))
     entries = [e for e in registry.read_entries(home) if e["name"] != name]
     registry.write_entries([*entries, {"name": name, "kind": "local", "path": str(root), "version": version}], home)
     return root

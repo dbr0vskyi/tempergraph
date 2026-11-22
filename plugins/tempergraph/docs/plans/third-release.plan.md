@@ -125,10 +125,12 @@ Status: built. ECC-B14 for a step, a retry and a judge launch (host names droppe
 #### R3-T2.1 Declaration and validation
 Goal: SWF-B7, SWF-B6, SWF-B8, SWF-B6.
 
-Status: built. SWF-B6, SWF-B7, SWF-B11 and SWF-B12 (a declared sub-workflow unit, every refusal of a bad child before spend, the interim stop of a run, and `{<unit>.<key>}` in a template), proved by SWF-AC1, SWF-AC4 and SWF-AC5 in `plugins/tempergraph/engine/tests/test_subworkflow_validate.py`, `test_subworkflow_inputs.py`, `test_subworkflow_template.py` and `test_subworkflow_start.py`; SWF-B8's `subworkflow-finalizer-skipped` warning is left, with running a child (R3-T2.2).
+Status: built. SWF-B6, SWF-B7 and SWF-B12 (a declared sub-workflow unit, every refusal of a bad child before spend, and `{<unit>.<key>}` in a template), proved by SWF-AC1 and SWF-AC5 in `plugins/tempergraph/engine/tests/test_subworkflow_validate.py`, `test_subworkflow_inputs.py` and `test_subworkflow_template.py`.
 
 #### R3-T2.2 Running a child
 Goal: SWF-B8, SWF-B2, SWF-B5, SWF-B1 to B5, SWF-AC1 and AC-2.
+
+Status: built. SWF-B1 to SWF-B5, SWF-B8 and SWF-B10 (a child run as one unit in the parent's workspace, thread and cap; its pause, its changed or removed version under a paused parent, its spend, its upstream defect and its verdict at the unit's gate; its records, version and outcome record in the parent's; its finalizer never run and its outcome gate always run, with the `subworkflow-finalizer-skipped` warning), proved by SWF-AC1 and SWF-AC2 in `plugins/tempergraph/engine/tests/test_subworkflow_run.py`, `test_subworkflow_record.py`, `test_subworkflow_pause.py`, `test_subworkflow_cap.py` and `test_subworkflow_gate.py`; SWF-B9 and SWF-AC3 are left (R3-T2.3).
 
 #### R3-T2.3 Measures and carrying
 Goal: SWF-B9, SWF-AC3.
