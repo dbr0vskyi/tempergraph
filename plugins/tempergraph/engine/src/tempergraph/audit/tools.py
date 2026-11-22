@@ -148,13 +148,16 @@ class ToolRules:
         return self.found[start:]
 
     def _catalog(self, s: SessionSurface, tools: tuple[str, ...]) -> None:
-        """TSA-B10: a declared MCP tool whose judge gets no view (the judge's executor has no MCP view)."""
+        """TSA-B10: a declared MCP tool the view catalog does not classify, or whose judge's executor has no MCP
+        view: either way its judge gets no view of it."""
+        from tempergraph.executors.viewcatalog import read_views
+
         judge = self.surface.get(f"{s.unit}:judge")
         jc = caps_of(self.caps, judge.executor) if judge else None
-        if jc is None or jc.judge_mcp:
+        if jc is None:
             return
         for cap in tools:
-            if cap.startswith("mcp:"):
+            if cap.startswith("mcp:") and (not jc.judge_mcp or not read_views(cap)):
                 self.add("mcp-tool-not-in-catalog", s.unit, f"{cap} is declared on {s.unit}, but its judge on "
                          f"{judge.executor if judge else '?'} gets no view of it", session="judge", item=cap,
                          field=f"units.{s.unit}.step.tools")

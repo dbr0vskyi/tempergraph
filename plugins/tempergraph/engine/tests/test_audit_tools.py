@@ -5,6 +5,7 @@ their minimum sample, and every widening remedy marked."""
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -49,7 +50,7 @@ ISSUE = {"produces": {"issue": "tracker_issue"}, "prompt": "Write the issue for 
 # -- definition and host rules: rule id -> (raising fixture, clean fixture) ---------------------------------------------
 
 CASES: dict[str, Case] = {
-    "mcp-tool-not-in-catalog": (D(tools=["read", "mcp:tracker/create_issue"]), D(tools=["read"])),
+    "mcp-tool-not-in-catalog": (D(tools=["read", "mcp:notes/append_note"]), D(tools=["read"])),  # no catalog entry
     "artifact-needs-write": (D(tools=["read", "edit"], **ISSUE), D(tools=["read", "mcp:tracker/create_issue"], **ISSUE)),
     "shell-without-commands": (D(tools=["read", "shell"]), D(**SHELL)),
     "dir-change-in-commands": (
@@ -215,10 +216,11 @@ def test_the_ambient_probe_that_cannot_list_skips_the_host_rule_and_history_stil
 
 def test_judge_view_missing_is_validations_finding_once(tmp_path: Path) -> None:
     """TSA-B9, AUD-B8: a judge with no read view of an artifact kind is validation's finding, shown once."""
+    no_mcp = {**DECLARED, "claude": replace(DECLARED["claude"], judge_mcp=False)}  # a judge without MCP views
     rep = defs(tspec(tools=["read", "shell"], commands=["pytest"], produces={"issue": "tracker_issue"},
-                     prompt="Write the issue for {request} into issue."), tmp_path)
+                     prompt="Write the issue for {request} into issue."), tmp_path, caps=no_mcp)
     assert len(hits(rep, "validate:judge-view-unavailable")) == 1 and hits(rep, "judge-view-missing") == []
-    assert hits(defs(tspec(), tmp_path), "validate:judge-view-unavailable") == []
+    assert hits(defs(tspec(), tmp_path, caps=no_mcp), "validate:judge-view-unavailable") == []
 
 
 def test_needed_not_granted_is_validations_finding_once(tmp_path: Path) -> None:
