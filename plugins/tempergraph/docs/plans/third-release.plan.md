@@ -18,7 +18,7 @@ task_id: third-release
 
 | Field | Value |
 |---|---|
-| Origin | Release 3 preparation for the owner, 2026-11-22 (thread "Check release two and prepare release three") |
+| Origin | Release 3 preparation for the owner, 2026-11-22 (thread "Verify release two and plan release three") |
 | Research | [R-140 readiness and gaps](../research/R-140-release-three-readiness-and-gaps.rsrch.md); R-135 (pull-request gate, in review) |
 | Decisions | [ADR-0132 scope](../adr/0132-release-three-is-workflows-that-compose-run-in-parallel-and-grade-in-the-pipeline.adr.md), [ADR-0133 sub-workflows](../adr/0133-a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md); ADR-0130 and ADR-0131 when the pull-request gate is accepted |
 | Spec, read at | [Overview](../specs/00-overview.spec.md) and the specs named in §1, at `da5584c` plus this branch |
