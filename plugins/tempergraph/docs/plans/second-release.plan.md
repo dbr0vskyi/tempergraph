@@ -38,7 +38,7 @@ task_id: second-release
 | Order | Switches, maps and ladders first, because CXR, UWF and PRO build on them | R-130 F1 |
 | Plan shape | Tracks and phases only; each track's expanded plan is written when its specs pass status (EC-2) | temperspec 3.6 |
 
-**Status: Built, live checks pending.** Tracks R2-T1 to R2-T9 are built and pass offline (engine `0.2.0`); what each track left open is in its code report under `tasks/` and in the status column of [plans/README.md](README.md). The owner approved this plan on 2026-11-21 with a trim (§1.3): EC-1 is met. The build follows the plan, task-note and test-first rules of the delivery workflow's rule files; each phase has a plan under `plans/r2-*.plan.md` and a report under `tasks/`. Live checks stay pending on the owner's machine and are never faked.
+**Status: Built; the owner's own live checks pending.** Tracks R2-T1 to R2-T9 are built and pass offline (engine `0.2.0`), and every live check a cloud container can run passed on 2026-11-22 ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F1); what each track left open is in its code report under `tasks/` and in the status column of [plans/README.md](README.md). The owner approved this plan on 2026-11-21 with a trim (§1.3): EC-1 is met. The build follows the plan, task-note and test-first rules of the delivery workflow's rule files; each phase has a plan under `plans/r2-*.plan.md` and a report under `tasks/`. Live checks stay pending on the owner's machine and are never faked.
 
 ## 1. Requirements analysis
 

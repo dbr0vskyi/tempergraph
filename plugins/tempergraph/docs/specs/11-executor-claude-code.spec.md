@@ -123,6 +123,18 @@ Each probe is run by the owner against the pinned CLI version with an isolated c
 
 **Model-free checks on 2.1.329** (2026-11-20, argument parsing only, in the engine's cloud build container, not the owner's machine). `--help` lists the permission modes `acceptEdits`, `auto`, `bypassPermissions`, `manual`, `dontAsk` and `plan`; `default` is no longer listed but is still accepted. `--max-turns` is accepted though not listed. `--permission-prompts` takes `host` or `none`. `-p` with an empty stdin and no positional prompt fails with "Input must be provided either through stdin or as a prompt argument", which shows stdin is read as the prompt but does not confirm P-CC-5. `auth status` prints JSON with `loggedIn`. The probe reads the flags from `--help`, so `--permission-prompts none` is sent only when listed. No live probe was run: a nested session in that container inherits the host session's environment, so its result would not stand for the owner's machine.
 
+### 2.8 Step reach inside a host session (release 3)
+
+A live run on 2.1.330 from inside a Claude Code session showed a step offered the host's own tools and its additional directories; one step read a file outside the workspace ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F4). The allow rules held, but reach was wider than the declaration. Release 3 closes it:
+
+| Rule | Detail |
+|---|---|
+| Host variables | The launcher drops from a step's and a judge's environment every variable the host session sets for its own children (the `CLAUDE_CODE_*` and `CLAUDECODE` names, additional-directory and session variables), keeping only the overlay of §2.3 and the credentials the probe needs |
+| Tool list | `--tools` with the mapped built-ins is sent on every step launch, not only under the operator's enforcement setting, so a host's tools are never offered |
+| Directories | No `--add-dir` is sent; a step reaches only its workspace and the engine's scratch folder |
+| Probe P-CC-10 | A step launched from inside a host session lists in `system/init` only the tools of its `--tools`, and a read outside the workspace is refused |
+| Probe P-CC-11 | `--bare` drops user-scope plugins from `system/init` on the pinned version (2.1.330 still listed them, so `isolates_user_config` stays false) |
+
 ## 3. Behaviours
 
 **ECC-B1 Declared shell.** Given a step that declares `shell` with command prefixes `pytest` and `git status`, when it launches in the engine's own worktree, then `--allowedTools` holds `Bash(pytest *)` and `Bash(git status *)`, the permission mode is `acceptEdits`, and no rule names an absolute path.
