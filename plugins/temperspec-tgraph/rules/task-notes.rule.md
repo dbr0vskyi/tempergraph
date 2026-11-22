@@ -108,6 +108,7 @@ Two or three sentences.
 ```
 
 - **Gaps closed** names, for every gap row of the triage note, the document that closes it. A gap that needs no document says why.
+- After a short discovery visit (every gap row of the triage note says `Covered by`), **Gaps closed** names, for every gap row, the cited behaviour id and how it answers the gap, or the id and `Not covered:` with what it leaves out; **Changed documents** is `- None`, and the reading list holds at most 10 items. A `Not covered` line sends the run to the full discovery.
 - **Changed documents** lists every document discovery created or edited, with its path in a code span, or `None`.
 - **Open questions** lists what only a person can decide, with the options. An open question that blocks planning ends the step blocked.
 - **Reading list** has one item for each file the plan will need: an existing file in a code span, the line ranges or ids that matter in brackets, a colon and one line on why. A hand-off with none is a finding, except in a run that ends after discovery. The plan starts from this list and opens another file only for what the list does not answer.

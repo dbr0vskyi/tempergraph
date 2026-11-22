@@ -20,6 +20,7 @@ TEST_DIRS = {"tests", "test", "__tests__", "spec", "specs_test", "e2e"}
 TEST_FILE = re.compile(r"(^test_.*|.*_test\.[a-z]+|.*\.test\.[a-z]+|.*Tests?\.[a-z]+|.*\.spec\.(?:ts|tsx|js|jsx))$")
 # Commands the last stage alone may run; a plan may not list them as verification.
 FINAL_ONLY = ("git push", "gh ")
+IN_FOLDER = re.compile(r"^cd\s+\S+\s*&&\s*")
 MAX_FILES = 4000
 
 
@@ -58,6 +59,39 @@ def _read_path(ctx: Any, path: str) -> str | None:
 
 def _committed(ctx: Any, criterion: str) -> CheckFinding:
     return checks.git_clean(ctx, criterion)
+
+
+# What a step's prompt tells its session about how to work: narrow reading, the reading list, commands run once.
+# A judge sees the step's output, never its prompt or its command runs, so these criteria are checked here, from
+# the prompt files the package gives its steps (B30). Each phrase is matched case-insensitively, spacing ignored.
+PROMPTS = Path(__file__).resolve().parents[2] / "prompts"
+PROMPT_SAYS: dict[str, tuple[str, tuple[str, ...]]] = {
+    "ts-dis-narrow": ("discovery*.md", ("search for ids and names", "line ranges you need instead of whole files",
+                                        "stop reading once each gap has its answer")),
+    "ts-plan-reading": ("plan.md", ("start from the hand-off's reading list",
+                                    "open another file only for what the list does not answer")),
+    "ts-code-once": ("code.md", ("after each phase, run only the test files that the phase's rows name",
+                                 "never the whole suite",
+                                 "run each verification command of the plan once, after the last phase and before "
+                                 "you write the report",
+                                 "in the quick lane, the note's `verify` commands once, after the last criterion")),
+    "ts-dsh-limit": ("discovery_short.md", ("read at most 10 files",)),
+}
+
+
+def _prompt_says(criterion: str) -> list[CheckFinding]:
+    """One finding per prompt file that lacks an instruction its criterion asks for, else one pass."""
+    pattern, phrases = PROMPT_SAYS[criterion]
+    files = sorted(PROMPTS.glob(pattern))
+    if not files:
+        return [_find("fail", criterion, f"prompts/{pattern}", "no prompt file of the package matches",
+                      "restore the step's prompt")]
+    found: list[CheckFinding] = []
+    for f in files:
+        text = " ".join(f.read_text(encoding="utf-8").split()).lower()
+        found += [_find("fail", criterion, f"prompts/{f.name}", f"the prompt does not say \"{p}\"",
+                        "put the instruction back in the prompt") for p in phrases if p not in text]
+    return found or [_ok(criterion, ", ".join(f"prompts/{f.name}" for f in files))]
 
 
 def _walk(ctx: Any) -> list[str]:
@@ -347,7 +381,7 @@ def _names(ctx: Any, criterion: str) -> list[CheckFinding]:
 
 
 def discovery_check(ctx: Any) -> Any:
-    """ts-dis-form, ts-dis-names, ts-dis-links, ts-dis-commit."""
+    """ts-dis-form, ts-dis-names, ts-dis-links, ts-dis-reading, ts-dis-narrow, ts-dis-commit."""
     text, path = _read(ctx, "handoff")
     if text is None:
         return checks.result([_find("fail", "ts-dis-form", path, "the hand-off cannot be read",
@@ -358,11 +392,69 @@ def discovery_check(ctx: Any) -> Any:
     found += _names(ctx, "ts-dis-names")
     found += _links(ctx, "ts-dis-links")
     found += _reading(ctx, text, path)
+    found += _prompt_says("ts-dis-narrow")
     found.append(_committed(ctx, "ts-dis-commit"))
     return _result(ctx, found)
 
 
 READING = "Reading list"
+SHORT_READING_MAX = 10  # the short visit's reading limit (decision record 0003); its reading list holds at most this
+NOT_COVERED = re.compile(r"\bnot covered\b", re.I)
+
+
+def discovery_short_check(ctx: Any) -> Any:
+    """ts-dsh-form, ts-dsh-cited, ts-dsh-only, ts-dsh-settled, ts-dsh-reading, ts-dsh-limit, ts-dsh-commit.
+
+    The short visit confirms what triage cited and designs nothing: its hand-off names every cited behaviour,
+    lists no changed document, says `Not covered` for a gap the citation does not answer, and its `settled` value
+    follows those lines. A settled visit's reading list is the plan's start, at most 10 files."""
+    text, path = _read(ctx, "handoff")
+    if text is None:
+        return checks.result([_find("fail", "ts-dsh-form", path, "the hand-off cannot be read",
+                                    "write the hand-off and name its path")])
+    found = [_find("fail", "ts-dsh-form", path, f"hand-off section `## {h}` is missing or out of order",
+                   f"add `## {h}`") for h in fmt.headings_missing(text, fmt.HANDOFF_HEADINGS) if h != READING]
+    found += [] if any(f.status == "fail" for f in found) else [_ok("ts-dsh-form", path)]
+    low = {k.lower(): v for k, v in fmt.sections(text).items()}
+    closed = [ln for ln in low.get("gaps closed", []) if ln.strip()]
+    open_lines = [ln for ln in closed if NOT_COVERED.search(ln)]
+    note_text, note_path = _read(ctx, "triage_note")
+    note = fmt.parse_triage(note_text or "")
+    if note_text is None:
+        found.append(_find("fail", "ts-dsh-cited", note_path, "the triage note cannot be read"))
+    else:
+        said = " ".join(closed)
+        missing = [b for b, _ in note.covered if not re.search(rf"(?<![\w-]){re.escape(b)}(?![\w-])", said)]
+        found += [_find("fail", "ts-dsh-cited", path, f"`## Gaps closed` does not name {b}, which triage cited",
+                        "name each cited behaviour on its gap's line, or say `Not covered` and why")
+                  for b in missing] or [_ok("ts-dsh-cited", path)]
+    changed = [p for p in fmt.listed_paths(low.get("changed documents", [])) if p != path]
+    found += [_find("fail", "ts-dsh-only", p, "the short visit lists a changed document; it writes the hand-off only",
+                    "write no spec, record or note: say `Not covered` and let the full discovery write it")
+              for p in changed[:6]] or [_ok("ts-dsh-only", path)]
+    value = _value(ctx, "settled")
+    if value is None:
+        found.append(_find("n_a", "ts-dsh-settled", path, "no `settled` value to compare"))
+    elif (value == "yes") == bool(open_lines):
+        found.append(_find("fail", "ts-dsh-settled", "settled", f"`settled` is `{value}` but {len(open_lines)} "
+                           "gap line(s) say `Not covered`", "say `yes` only when every cited behaviour answers "
+                           "its gap, `no` when a line says `Not covered`"))
+    else:
+        found.append(_ok("ts-dsh-settled", path))
+    if open_lines or value == "no":
+        found.append(_find("n_a", "ts-dsh-reading", path, "the full discovery writes the reading list"))
+    else:
+        reading = [f if f.criterion != "ts-dis-reading" else _find(f.status, "ts-dsh-reading", f.place, f.message,
+                                                                    f.fix) for f in _reading(ctx, text, path)]
+        items = fmt.parse_reading_list(text)
+        if len(items) > SHORT_READING_MAX:
+            reading = [f for f in reading if f.status != "pass"] + [_find(
+                "fail", "ts-dsh-reading", path, f"{len(items)} reading-list items, over the short visit's limit "
+                f"of {SHORT_READING_MAX}", "keep the files the plan needs; a task that needs more is not short")]
+        found += reading
+    found += _prompt_says("ts-dsh-limit")
+    found.append(_committed(ctx, "ts-dsh-commit"))
+    return _result(ctx, found)
 
 
 def _reading(ctx: Any, text: str, path: str) -> list[CheckFinding]:
@@ -428,12 +520,26 @@ def _commands(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
         found.append(_find("fail", criterion, "3. Verification", "the plan lists no verification command",
                            "list each command as a bullet in a code span"))
     for cmd in plan.commands:
-        reason = "only the last stage pushes or opens a pull request" if cmd.startswith(FINAL_ONLY) else getattr(
+        bare = IN_FOLDER.sub("", cmd, count=1)  # `cd <folder> && git push` is still a push
+        reason = "only the last stage pushes or opens a pull request" if bare.startswith(FINAL_ONLY) else getattr(
             ctx.resolve(cmd), "reason", None)
         if reason:
             found.append(_find("fail", criterion, "3. Verification", f"`{cmd[:80]}` is not allowed: {reason}",
-                               "use a plain command the workflow allows, with no pipe and no `&&` chain"))
+                               COMMAND_FIX.get(reason, COMMAND_FIX[""])))
     return found
+
+
+# What to do about each refusal of the engine's resolver. `cd <folder> && <command>` is allowed as written: the
+# engine runs the command in that folder (CHK-B11), so the fix never tells a session to drop the `cd`.
+ALLOWED_SHAPES = ", ".join(f"`{c}`" for c in ("pytest", "python -m pytest", "python3 -m pytest", "ruff check", "mypy"))
+COMMAND_FIX = {
+    "not declared": f"start the command with a prefix the workflow allows ({ALLOWED_SHAPES}, read-only `git`); "
+                    "`cd <folder> && <command>` runs it in a folder of the repository",
+    "shell metacharacter": "write one command per bullet, with no pipe, `;`, redirect or second `&&`; "
+                           "`cd <folder> && <command>` is the one chain allowed",
+    "change of directory outside the repository": "`cd` only to a folder inside the repository, by a relative path",
+    "": "use a plain command the workflow allows; `cd <folder> && <command>` runs it in a folder of the repository",
+}
 
 
 def _reading_bytes(ctx: Any, plan: fmt.Plan) -> int:
@@ -449,7 +555,7 @@ def _reading_bytes(ctx: Any, plan: fmt.Plan) -> int:
 
 
 def plan_check(ctx: Any) -> Any:
-    """ts-plan-form, ts-plan-trace, ts-plan-links, ts-plan-size, ts-plan-scope, ts-plan-commit."""
+    """ts-plan-form, ts-plan-trace, ts-plan-links, ts-plan-size, ts-plan-scope, ts-plan-reading, ts-plan-commit."""
     text, path = _read(ctx, "plan")
     if text is None:
         return checks.result([_find("fail", "ts-plan-form", path, "the plan cannot be read",
@@ -504,6 +610,7 @@ def plan_check(ctx: Any) -> Any:
     found += [_find("fail", "ts-plan-size", path, b, "state the complexity the signs give") for b in bad] or [
         _ok("ts-plan-size", path)]
     found += _scope(plan, "ts-plan-scope", path)
+    found += _prompt_says("ts-plan-reading")
     found.append(_committed(ctx, "ts-plan-commit"))
     return _result(ctx, found, plan)
 
@@ -651,8 +758,28 @@ def _verify(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
     return found or [_ok(criterion)]
 
 
+def _reuse(ctx: Any, criterion: str) -> CheckFinding:
+    """ts-code-reuse, from the gate's own command runs: every verification command is asked for with reuse, so
+    the engine takes a result recorded for the same tree instead of starting it again (CHK-B13). The finding
+    says how many were reused; a command asked for twice in one gate run with no reuse is the failure."""
+    if ctx.reuse_store is None:
+        return _find("n_a", criterion, message="no store of earlier command runs (the gate runs outside a run)")
+    runs = [r for r in ctx.runs if not r.not_started]
+    started: set[tuple[str, ...]] = set()
+    for r in runs:
+        if r.reused:
+            continue
+        if tuple(r.argv) in started:
+            return _find("fail", criterion, " ".join(r.argv)[:80], "the command ran twice on one tree",
+                         "ask for the command once per gate run, with reuse")
+        started.add(tuple(r.argv))
+    return _find("pass", criterion, message=f"{sum(1 for r in runs if r.reused)} of {len(runs)} verification runs "
+                 "were taken from a result recorded for the same tree")
+
+
 def code_check(ctx: Any) -> Any:
-    """ts-code-rows, ts-code-changed, ts-code-verify, ts-code-proof, ts-code-lane, ts-code-commit.
+    """ts-code-rows, ts-code-changed, ts-code-verify, ts-code-reuse, ts-code-proof, ts-code-lane, ts-code-once,
+    ts-code-commit.
 
     The marks come first: a plan with a row not marked completed goes back to the code step at once, with no
     command run. Marks are claims, so a marked plan is then verified as before, and each marked row's file must
@@ -695,8 +822,9 @@ def code_check(ctx: Any) -> Any:
                            "make the plan's verification pass"))
     else:
         found += _verify(ctx, plan, "ts-code-verify")
+    found.append(_reuse(ctx, "ts-code-reuse"))
     proof, links = _proof(ctx, plan, "ts-code-proof")
-    found += proof + _lane(ctx, "ts-code-lane")
+    found += proof + _lane(ctx, "ts-code-lane") + _prompt_says("ts-code-once")
     found.append(_committed(ctx, "ts-code-commit"))
     return _result(ctx, found, plan, links)
 

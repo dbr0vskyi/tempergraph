@@ -2,9 +2,9 @@
   "schema_version": 1,
   "engine_version": "0.2.0",
   "workflow_api": 1,
-  "workflow_version": "0.1.0+677054cd79a7",
-  "docs_digest": "ab9eb7803865b43d9617f54df1d426f6fdd6f1e1e9e2b77b7fd124bf53eaa60d",
-  "shape_digest": "345ad186df7cff52c44cf76540ca2fc76a4d2daedeaf91ab03ac33955bd4dcce",
+  "workflow_version": "0.1.0+3567135efe27",
+  "docs_digest": "d369b3820aa9b525c5890c3c78fc6a9f082a40bba4a96a3e3bb7094e0c9f64d2",
+  "shape_digest": "e8a7c2f9bebb39f807cc94d32fec0964038f63ed828d224ba1375909d5930942",
   "entries_applied": [
     {
       "id": "E0.2.0-1",
@@ -65,6 +65,7 @@
     "outcome-unverified-blocker|code|ts-code-change|outcome.json",
     "outcome-unverified-blocker|code|ts-code-related|outcome.json",
     "outcome-unverified-blocker|code|ts-code-tests|outcome.json",
+    "outcome-unverified-blocker|discovery_short|ts-dsh-answers|outcome.json",
     "outcome-unverified-blocker|discovery|ts-dis-behaviour|outcome.json",
     "outcome-unverified-blocker|discovery|ts-dis-gaps|outcome.json",
     "outcome-unverified-blocker|expand|ts-exp-design|outcome.json",
@@ -79,19 +80,16 @@
     "readiness:needs-work|discovery||",
     "readiness:needs-work|outcome||",
     "readiness:needs-work|setup||",
-    "validate:criterion-no-seed|code||",
-    "validate:criterion-no-seed|discovery||",
-    "validate:criterion-no-seed|plan||",
     "validate:criterion-overlap|code||",
     "validate:criterion-overlap|discovery||",
     "validate:criterion-overlap|setup||",
     "validate:criterion-overlap|||",
     "validate:template-key-not-on-every-path|code||"
   ],
-  "outcome_revision": 5,
+  "outcome_revision": 6,
   "baseline": {
     "error": 0,
-    "warning": 15
+    "warning": 11
   },
-  "stamped_at": "2026-11-22T15:45:50.712Z"
+  "stamped_at": "2026-11-22T17:38:17.552Z"
 }
