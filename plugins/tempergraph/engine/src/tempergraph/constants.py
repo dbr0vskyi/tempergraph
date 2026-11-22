@@ -9,7 +9,7 @@ from __future__ import annotations
 from enum import IntEnum
 
 ENGINE_VERSION = "0.2.0"
-RELEASE = 1  # the release this engine builds (ADR-0090)
+RELEASE = 2  # the release this engine builds (ADR-0090, ADR-0125)
 WORKFLOW_API = 1  # the declaration interface level (PKG §2.2, VER §2.2)
 LOADS_WORKFLOW_API_FROM = 1
 STORE_LAYOUT = 1  # LOS §2.1 layout version

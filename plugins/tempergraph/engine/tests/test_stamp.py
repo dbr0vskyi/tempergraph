@@ -145,6 +145,20 @@ def test_upgrade_check_then_stamp(tmp_path: Path, repo: Path) -> None:
     assert stamp["workflow_version"] == cat.packages["release-notes"].workflow_version  # stamp.json is not content
 
 
+def test_restamp_of_a_current_package_keeps_its_entries(tmp_path: Path, repo: Path) -> None:  # VER §2.5
+    pkg = minimal_package(tmp_path)
+    code, _, err = cli(repo, "upgrade-check", str(pkg), "--stamp")
+    assert code == 0, err
+    first = json.loads((pkg / "stamp.json").read_text())["entries_applied"]
+    assert first, "an unstamped package meets every workflow entry"
+    held = [dict(e, by="transform") if i == 0 else e for i, e in enumerate(first)]
+    doc = json.loads((pkg / "stamp.json").read_text())
+    write(pkg, "stamp.json", dict(doc, entries_applied=held))
+    code, _, err = cli(repo, "upgrade-check", str(pkg), "--stamp")  # already current: no entry is new
+    assert code == 0, err
+    assert json.loads((pkg / "stamp.json").read_text())["entries_applied"] == held
+
+
 def test_stamp_refused_when_validation_fails(tmp_path: Path, repo: Path) -> None:
     pkg = minimal_package(tmp_path)
     (pkg / "prompts" / "draft.md").unlink()

@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
-  "revision": 1,
+  "revision": 2,
+  "check": "tgwf_release_notes.checks:outcome_check",
   "statement": "Release notes that cover every merged change since the last tag, faithfully.",
   "deliverables": [
     {
@@ -79,5 +80,12 @@
     }
   },
   "assumptions": [],
-  "revisions": []
+  "revisions": [
+    {
+      "revision": 2,
+      "origin": "authored",
+      "at": "2026-11-22T02:00:00.000Z",
+      "note": "the outcome gate's own check lists the changes since the last tag as the outcome judge's evidence (live check L-25); no criterion changed"
+    }
+  ]
 }

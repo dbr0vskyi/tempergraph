@@ -125,9 +125,9 @@ class _Validator:
                 self.err("self-check-without-check", name, "`self_check` needs a gate check to preview (CHK §4)")
             for sc in (u.step.before + u.step.after) if u.step else ():
                 if sc.cache != "off":
-                    self.err("not_in_release", name, "the script cache is built in release 2, not release 1")
+                    self.err("not_in_release", name, f"the script cache is built in release 3, not release {RELEASE}")
             if u.script is not None and u.script.cache != "off":
-                self.err("not_in_release", name, "the script cache is built in release 2, not release 1")
+                self.err("not_in_release", name, f"the script cache is built in release 3, not release {RELEASE}")
             later = sorted(k for k in u.extra if k not in RESOLVED_EXTRA)
             if later:
                 self.err("not_in_release", name, f"fields {later} are not built in release {RELEASE}")
@@ -843,6 +843,9 @@ def _dominates(spec: WorkflowSpec, a: str, b: str) -> bool:
     start = order[0]
     if a == start:
         return True
+    join = flow.block_of(spec, a)
+    if join is not None and join != b:  # CMP §2.2: a join runs only once every branch has passed
+        return _dominates(spec, join, b)
     seen: set[str] = set()
     todo = [start]
     while todo:

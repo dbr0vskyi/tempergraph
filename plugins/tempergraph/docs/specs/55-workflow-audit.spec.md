@@ -92,7 +92,7 @@ Release 1 builds the `definition` and `host` layers, the prompt audit and `audit
 | Not loaded | `validate:not_loaded`, one finding with the manifest row only; exit 0, or 6 with `--fail-on error` |
 | `AuditFinding.owner` | Added: `audit` or the owning component, so a reader can tell rendered findings from the audit's own |
 | Probes | The executors' `probe()` through the registry and the login-shell timing of ARC `slow-host`, under the 30 s budget; tests inject both |
-| Prompts view | `audit prompts` prints JSON rows; `changed` reads `not recorded (history is release 2)`, never zero |
+| Prompts view | `audit prompts` prints JSON rows; `changed` reads `not recorded (history is release 3)`, never zero |
 | Stamp | `upgrade-check --stamp` runs the `definition` layer as V4 ([WUP §2.6](63-workflow-upgrade.spec.md)) |
 
 ## 3. Behaviours

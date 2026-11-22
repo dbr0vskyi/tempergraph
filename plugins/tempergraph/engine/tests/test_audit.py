@@ -344,7 +344,7 @@ def test_definition_only_before_first_run(tmp_path: Path) -> None:
     """AUD-B1: history is skipped with its reason and its rules are listed as skipped, never passed."""
     rep = audit(wf({"draft": clean_step()}), {"definition", "host", "history"}, ctx(tmp_path))
     assert rep.layers_run == ["definition", "host"]
-    assert {"layer": "history", "reason": "not in release 1 (release 2)"} in rep.layers_skipped
+    assert {"layer": "history", "reason": "not in this release (release 3)"} in rep.layers_skipped
     history = {r.id for r in cat.RULES if r.layer == "history"}
     assert history <= {s["rule"] for s in rep.rules_skipped}
     assert all("min_n" in s for s in rep.rules_skipped if s["rule"] in history)

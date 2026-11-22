@@ -28,8 +28,8 @@
     }
   ],
   "outcome_ref": {
-    "revision": 1,
-    "digest": "b22565457b7ebf58daed7f04113d7318203b9318de78fd9de92bd5acfa123560"
+    "revision": 2,
+    "digest": "91d25f44f95ad81c8913e4c3507815d86607313e1e9d25dfa1a37d336d0497cc"
   },
   "input": {
     "kind": "text",

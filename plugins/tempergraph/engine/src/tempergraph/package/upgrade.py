@@ -27,7 +27,7 @@ from tempergraph.package.changelog import detect, entries_between, semver
 from tempergraph.package.inventory import canonical
 from tempergraph.package.loader import LoadedPackage, PackageNotLoaded, load_package
 from tempergraph.package.registry import plugin_cache
-from tempergraph.package.stamp import STAMP, Verification, _audit_keys, read_stamp, tool_set
+from tempergraph.package.stamp import STAMP, Verification, _audit_keys, _entries_applied, read_stamp, tool_set
 from tempergraph.store.layout import ensure_state_root, now_iso, state_root_path
 
 BRANCH_PREFIX = "tempergraph/upgrade"
@@ -439,7 +439,7 @@ def _stamp(place: Place, rep: Report, lp: LoadedPackage, base: Mapping[str, Any]
     rep.stamp = {
         "schema_version": 1, "engine_version": rep.to_engine, "workflow_api": lp.manifests.engine.workflow_api,
         "workflow_version": lp.workflow_version, "docs_digest": lp.docs_digest, "shape_digest": model["digest"],
-        "entries_applied": [{"id": e, "by": by.get(e, "none")} for e in entry_ids],
+        "entries_applied": _entries_applied(read_stamp(_pkg(place)), entry_ids, by),
         "tool_set": tool_set(lp.spec), "audit": _audit_keys(lp, caps),
         "outcome_revision": int(getattr(outcome, "revision", 0) or 0),
         "baseline": {"error": sum(1 for f in found if f.severity == "error"),

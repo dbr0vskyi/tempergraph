@@ -22,7 +22,7 @@ task_id: first-release-t5
 | Specs | [OBS](../specs/15-observability-and-cost.spec.md), [CHK](../specs/75-check-contract-and-command-runs.spec.md), [JDG](../specs/05-judge-and-verdict.spec.md), [GRD](../specs/06-independence-guard.spec.md), [HUM](../specs/07-gate-and-human.spec.md), [BUD](../specs/08-budgets-and-failures.spec.md), [SCR](../specs/70-script-units-and-hybrid-steps.spec.md), [FIN](../specs/78-finalizer-contract.spec.md), [OUT](../specs/90-run-outcome.spec.md) |
 | Event kinds | [EVT §2.2](../specs/30-run-events.spec.md) |
 
-**Status: Completed** for the offline build; GRD-AC-5 on recorded `claude` stream fixtures (5.4.2) waits on the owner's machine. The funnel runs end to end with scripted executors: start, step, check, judge, re-ask, guard, verdict by rule, gate routing, pauses, resume with a decision, BACK to an earlier unit, budget ask or stop, infra stop with exit 5, the run cost cap drain, and the finalizer. Status pass: all nine specs are `ready-for-implementation`; GRD, BUD, CHK and OUT have release 1 defaults for their open questions.
+**Status: Completed** for the offline build; GRD-AC-5 on recorded `claude` stream fixtures (5.4.2) was built on 2026-11-22 from streams recorded in the cloud container (live check L-21). The funnel runs end to end with scripted executors: start, step, check, judge, re-ask, guard, verdict by rule, gate routing, pauses, resume with a decision, BACK to an earlier unit, budget ask or stop, infra stop with exit 5, the run cost cap drain, and the finalizer. Status pass: all nine specs are `ready-for-implementation`; GRD, BUD, CHK and OUT have release 1 defaults for their open questions.
 
 Doc changes this track made:
 - OBS §2.2 names the release 1 default price table. It uses the first-party list prices of the generation the tier aliases resolve to, as of 2026-11.
@@ -82,7 +82,7 @@ All tests are in `engine/tests/test_run.py` unless named. ✓ means built and te
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
 | 5.4.1 | `run/guard.py` | `view_set` from the step's tools and the judge executor's capabilities; `guard` voids a judgement with an outside call, the step's own session or a changed workspace | GRD §2.1–2.3 | yes | P1 | ✓ | 2026-11-20 |
-| 5.4.2 | `tests/test_guard.py` | GRD-AC-5 on recorded `claude` stream fixtures | GRD-AC-5 | yes | P2 | ○ | |
+| 5.4.2 | `tests/test_recorded_streams.py` | GRD-AC-5 on recorded `claude` stream fixtures | GRD-AC-5 | yes | P2 | ✓ | streams recorded on CLI 2.1.330 in the cloud container, 2026-11-22 (L-21) |
 
 ### T5.5 Gate and human nodes
 

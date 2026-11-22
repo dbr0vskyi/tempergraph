@@ -2,7 +2,7 @@
 
 Advisory: exit 0 whatever is found, 6 with `--fail-on` when a finding not ignored is at or above the level,
 2 for an unknown workflow or option. Output goes to stdout only; nothing is written (AUD-B6).
-`audit tools` (TSA) and `--layer history` are release 2 and refused with `not_in_release`.
+`audit tools` (TSA) and `--layer history` are release 3 and refused with `not_in_release`.
 """
 
 from __future__ import annotations
@@ -46,13 +46,13 @@ def _probe(env: Any) -> Any:
 def cmd_audit(env: Any, a: argparse.Namespace) -> int:
     view, name = ("findings", a.first) if a.second is None else (a.first, a.second)
     if view == "tools":
-        env.err.write("tempergraph: audit tools (the tool surface audit, TSA) is not_in_release (release 2)\n")
+        env.err.write("tempergraph: audit tools (the tool surface audit, TSA) is not_in_release (release 3)\n")
         return int(ExitCode.USAGE)
     if view not in ("findings", "prompts"):
         env.err.write(f"tempergraph: audit takes a workflow, or prompts <workflow>; got {view!r}\n")
         return int(ExitCode.USAGE)
     if a.layer and "history" in a.layer:
-        env.err.write("tempergraph: audit --layer history is not_in_release (release 2); release 1 audits the "
+        env.err.write("tempergraph: audit --layer history is not_in_release (release 3); this release audits the "
                       "definition and host layers\n")
         return int(ExitCode.USAGE)
     target = Path(a.target) if a.target else env.cwd

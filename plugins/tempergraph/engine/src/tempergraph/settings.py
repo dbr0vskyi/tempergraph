@@ -49,13 +49,12 @@ ALIAS = re.compile(r"^(inherit|small|medium|large|[a-z][a-z0-9-]*:[A-Za-z0-9._-]
 SLUG = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 REF_PART = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$")
 
-# Keys of the catalog whose feature is not in release 1 (ADR-0090): refused rather than silently ignored.
+# Keys of the catalog whose feature is not in this release (ADR-0090, ADR-0125): refused rather than silently ignored.
 NOT_IN_RELEASE = {
-    "audit_rate": "the audit judge (JDG-B7) is release 2",
-    "audit_executor": "the audit judge (JDG-B7) is release 2",
-    "attempt_cost_cap_usd": "council and contest units are release 2",
-    "concurrency": "contest units are release 2",
-    "deadline_s": "wait and ask units are release 2",
+    "audit_rate": "the audit judge (JDG-B7) is release 3",
+    "audit_executor": "the audit judge (JDG-B7) is release 3",
+    "attempt_cost_cap_usd": "council and contest units are release 3",
+    "concurrency": "contest units are release 3",
 }
 # Keys whose effect is not built yet on this branch, with the plan row that builds it.
 NOT_BUILT: dict[str, str] = {}
@@ -154,22 +153,22 @@ class Entry:
     scopes: frozenset[str]
     check: Callable[[Any], Any]
     default: Any = None
-    release1: Callable[[Any], None] | None = None  # refuses a value whose feature is release 2
+    release1: Callable[[Any], None] | None = None  # refuses a value whose feature is a later release
 
 
 def _only(name: str, *ok: str) -> Callable[[Any], None]:
     def check(v: Any) -> None:
         if v not in ok:
-            raise SettingError("setting_not_in_release", f"{name} {v!r} is release 2 (X2-23); release 1 takes "
+            raise SettingError("setting_not_in_release", f"{name} {v!r} is release 3 (worktree extras, ADR-0125); this release takes "
                                                          f"{', '.join(ok)}")
     return check
 
 
 def _base(v: Any) -> None:
-    """WTR §2.5 release 1: `head` and `ref:<name>` (trial cases); `default_branch` is release 2."""
+    """WTR §2.5: `head` and `ref:<name>` (trial cases); `default_branch` is release 3 (ADR-0125)."""
     if v == "head" or (isinstance(v, str) and v.startswith("ref:") and len(v) > 4):
         return
-    raise SettingError("setting_not_in_release", f"worktree.base {v!r} is release 2 (X2-23); release 1 takes head "
+    raise SettingError("setting_not_in_release", f"worktree.base {v!r} is release 3 (worktree extras, ADR-0125); this release takes head "
                                                  "or ref:<name>")
 
 
@@ -316,7 +315,7 @@ def parse_key(spec: WorkflowSpec, raw: str) -> Key:
         if sub:
             _unit_exists(spec, unit, raw)
             raise SettingError("setting_not_for_kind", f"{raw}: {unit} is a {spec.units[unit].kind}, not a council "
-                                                       "or contest (those are release 2)")
+                                                       "or contest (those are release 3)")
         if m:
             key = Key("script", m.group(3), unit=unit, script=(m.group(1), int(m.group(2))))
         else:
@@ -342,6 +341,9 @@ def parse_key(spec: WorkflowSpec, raw: str) -> Key:
         if name == "arm":
             if u.switch is None:
                 raise SettingError("setting_not_for_kind", f"{raw}: {key.unit} is a {u.kind}, not a switch")
+        elif name == "deadline_s":
+            if u.kind not in ("ask", "wait"):
+                raise SettingError("setting_not_for_kind", f"{raw}: {key.unit} is a {u.kind}, not a wait or ask unit")
         elif key.scope == "unit" and not (u.kind in SESSION_KINDS or (u.kind == "script" and name == "timeout_s")):
             raise SettingError("setting_not_for_kind", f"{raw}: {key.unit} is a {u.kind}")
         if key.scope == "script":
@@ -680,6 +682,10 @@ def targets(spec: WorkflowSpec) -> list[tuple[str, str, list[str]]]:
                 if u.switch is not None:
                     out.append((f"{unit}.arm", "arm", [f"{unit}.arm"]))
                 continue
+            if name == "deadline_s":
+                if u.kind in ("ask", "wait"):
+                    out.append((f"{unit}.deadline_s", name, [f"{unit}.deadline_s"]))
+                continue
             if u.kind in SESSION_KINDS and e.scopes & STEP_SIDE:
                 out.append((f"{unit}.{name}", name, [f"{unit}.{name}", f"steps.{name}"] if "steps" in e.scopes
                             else [f"{unit}.{name}"]))
@@ -792,6 +798,11 @@ def effective_spec(spec: WorkflowSpec, res: ResolvedSettings) -> WorkflowSpec:
             u = dataclasses.replace(u, step=st, extra={**u.extra, "operator_set": operator} if operator else u.extra)
         if u.switch is not None and v.get(f"{name}.arm"):
             u = dataclasses.replace(u, extra={**u.extra, "arm": v.get(f"{name}.arm")})  # CMP-B7
+        deadline = v.get(f"{name}.deadline_s")
+        if deadline and u.ask is not None:  # FLX §2.3: an operator may move a declared or default deadline
+            u = dataclasses.replace(u, ask=dataclasses.replace(u.ask, deadline_s=int(deadline)))
+        if deadline and u.wait is not None:
+            u = dataclasses.replace(u, wait=dataclasses.replace(u.wait, deadline_s=int(deadline)))
         if u.kind == "script" and u.script is not None:
             u = dataclasses.replace(u, script=dataclasses.replace(u.script, timeout_s=int(
                 v.get(f"{name}.timeout_s") or u.script.timeout_s)))

@@ -102,7 +102,13 @@ def test_a_thread_from_before_the_record_is_not_pinned(repo: Path) -> None:  # M
     ex = standin("claude", steps=[REVIEW], judges=[judge()])
     assert resume(two_step(), "T-1", repo, registry(ex), decision="proceed",
                   settings=NO_SLEEP).exit_code is ExitCode.FINISHED
-    assert ef.read(root, "demo", "T-1")["last_on"]["engine_version"] == ENGINE_VERSION
+    doc = ef.read(root, "demo", "T-1")
+    assert doc["last_on"]["engine_version"] == ENGINE_VERSION
+    # live check L-27: a release 1 thread was recorded as started on 0.2.0; the start is unknown (MIG §4)
+    assert doc["started_on"] == {"engine_version": None, "engine": "unknown"}
+    started = [r for r in records(repo) if r["kind"] == "run_started"]
+    assert started[-1]["moved_from"] == {"engine_version": "unknown", "workflow_version": None}
+    assert not [r for r in records(repo) if r["kind"] == "workflow_changed"]
 
 
 # -- MIG-B1: a paused thread moves -----------------------------------------------------------------------------

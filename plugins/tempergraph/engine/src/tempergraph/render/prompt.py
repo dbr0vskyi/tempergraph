@@ -77,7 +77,7 @@ def render_step(unit: str, spec: UnitSpec, ctx: AttemptContext, caps: Capabiliti
                           "check still runs after you end.")
     tools = list(dict.fromkeys(tuple(step.tools) + ctx.grants))
     if tools:
-        add("tools", _tools_block(tools, caps))
+        add("tools", _tools_block(tools, caps, preview=bool(ctx.self_check)))
     if ctx.lessons:
         add("lessons", ctx.lessons)
     if step.produces:
@@ -107,7 +107,7 @@ def render_step(unit: str, spec: UnitSpec, ctx: AttemptContext, caps: Capabiliti
     return RenderedPrompt(text="\n\n".join(parts) + "\n", missing_fields=missing, sections=sections)
 
 
-def _tools_block(tools: list[str], caps: Capabilities) -> str:
+def _tools_block(tools: list[str], caps: Capabilities, preview: bool = False) -> str:
     names: list[str] = []
     for t in tools:
         names.extend(tool_names(caps, t))
@@ -119,6 +119,10 @@ def _tools_block(tools: list[str], caps: Capabilities) -> str:
             lines.append("Prefer the file tools over the shell when both can do the job.")
         lines.append("Run git without a leading change of directory.")
         lines.append("Run only the listed commands.")
+    elif preview:  # CHK §2.5: the preview is granted as one exact command; say so, or a model believes the line
+        shell = (tool_names(caps, "shell") or ["shell"])[0]  # below and never runs it (live check L-29)
+        lines.append(f"There is no shell in this step except for the check preview: run that one command with the "
+                     f"`{shell}` tool, exactly as written above.")
     else:
         lines.append("There is no shell in this step.")
     return "\n".join(lines)

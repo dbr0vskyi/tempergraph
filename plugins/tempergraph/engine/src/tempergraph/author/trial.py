@@ -49,6 +49,8 @@ class SeedResult:
     spent: float = 0.0
     shown: dict[str, dict[str, str]] = field(default_factory=dict)  # gate -> seed id -> gate digest when shown
     tuned: list[str] = field(default_factory=list)  # gate/seed ids moved to `tune`
+    passed: dict[str, dict[str, str]] = field(default_factory=dict)  # gate -> seed id -> seed key when passed
+    carried: list[str] = field(default_factory=list)  # gate/seed ids whose earlier pass still holds
 
 
 def gate_digest(spec: WorkflowSpec, gate: str) -> str:
@@ -69,6 +71,20 @@ def gate_digest(spec: WorkflowSpec, gate: str) -> str:
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
 
 
+def seed_key(spec: WorkflowSpec, gate: str, folder: Path, pairs: list[tuple[str, str]]) -> str:
+    """What a seed's pass depends on: the gate's criteria and brief, the judge's binding (executor, alias,
+    model, effort), the seed's files and the expectations graded. A pass is carried only while this holds."""
+    import hashlib
+
+    from tempergraph.improve import calibration as cal
+
+    binding = cal.current_binding(spec, gate)
+    body = json.dumps([gate_digest(spec, gate), {k: binding.get(k) for k in ("executor", "alias", "model_slug",
+                                                                           "sampling")},
+                       cal.tree_digest(folder), sorted(pairs)], sort_keys=True, default=str)
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
 def _seed_expected(doc: Mapping[str, Any], criterion: str) -> str | None:
     """The author's own expectation, stated in the case's `seed` block (one entry or a list of them). It serves
     rung 8 only, which writes no score; a person's label for the criterion comes first (SCF §2.5)."""
@@ -80,13 +96,18 @@ def _seed_expected(doc: Mapping[str, Any], criterion: str) -> str | None:
 
 
 def seeds(spec: WorkflowSpec, executor_for: Callable[[str], Any], cap: float | None,
-          shown: Mapping[str, Mapping[str, str]] | None = None) -> SeedResult:
+          shown: Mapping[str, Mapping[str, str]] | None = None,
+          passed: Mapping[str, Mapping[str, str]] | None = None) -> SeedResult:
     """Each judged criterion's seeds, graded twice by its gate's judge; one judge session grades every
     criterion of the gate for a seed, so a seed shared by two criteria is judged twice, not four times.
 
     `shown` holds the seeds a failing rung 8 showed the author, with the gate's digest then. A seed whose gate
     changed since was in front of someone editing that gate, so it moves to `tune` for good (JCL §2.1.1); a
-    seed only graded and never edited against stays `holdout`."""
+    seed only graded and never edited against stays `holdout`.
+
+    `passed` holds the seeds an earlier rung 8 graded as expected both times, each with its `seed_key`. A seed
+    whose key is unchanged keeps that pass and starts no session, so a rerun after one stray grading regrades
+    only the seeds that failed; the bar per seed (graded as expected twice in a row) is the same."""
     from tempergraph.improve import calibration as cal
 
     out = SeedResult()
@@ -136,9 +157,18 @@ def seeds(spec: WorkflowSpec, executor_for: Callable[[str], Any], cap: float | N
                 wanted.setdefault(sid, []).append((str(c.id), exp))
         if not wanted:
             continue
-        ex = executor_for(gate)
+        ex = None
         for sid, pairs in sorted(wanted.items()):
-            case = cal.load_case(cal.calibration_dir(root, gate) / sid, gate)
+            folder = cal.calibration_dir(root, gate) / sid
+            key = seed_key(spec, gate, folder, pairs)
+            if (passed or {}).get(gate, {}).get(sid) == key:
+                out.passed.setdefault(gate, {})[sid] = key
+                out.carried.append(f"{gate}/{sid}")
+                out.graded += [{"gate": gate, "criterion": cid, "seed": sid, "expected": exp, "got": [exp, exp],
+                                "carried": True} for cid, exp in pairs]
+                continue
+            ex = ex if ex is not None else executor_for(gate)
+            case = cal.load_case(folder, gate)
             subject = cal.base_subject(case, g.criteria)
             got: list[dict[str, str]] = []
             for r in (1, 2):
@@ -151,6 +181,8 @@ def seeds(spec: WorkflowSpec, executor_for: Callable[[str], Any], cap: float | N
                 out.sessions += 1
                 out.spent += jd.cost
                 got.append(jd.statuses)
+            if all(got[0].get(cid) == got[1].get(cid) == exp for cid, exp in pairs):
+                out.passed.setdefault(gate, {})[sid] = key
             for cid, exp in pairs:
                 a, b = got[0].get(cid, "missing"), got[1].get(cid, "missing")
                 if a != b or a != exp:  # shown to the author, who now goes back to the guidance ladder

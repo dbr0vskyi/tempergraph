@@ -26,7 +26,7 @@ What a package holds and how `load` reads it is [PKG](88-workflow-package.spec.m
 
 | Area | Refused before a run (`error`) |
 |---|---|
-| Structure | Empty `order`; a unit `order` does not know; a step with no gate; a model step whose gate has no judge or no criterion (`wait`, `ask` and `script` units are the exceptions); a judge reference not produced on every path into the step, unless declared optional |
+| Structure | Empty `order`; a unit `order` does not know; a step with no gate; a model step whose gate has no judge or no criterion (`wait`, `ask` and `script` units are the exceptions); a judge reference not produced on every path into the step, unless declared optional (a parallel branch's output counts as produced on every path past its join, which runs only once every branch has passed) |
 | Flow | A target outside `order`; a backward target the gate does not list; an unreachable unit or finalizer; a parallel block with fewer than two branches or a join before a branch; a sub-workflow that is unregistered, recursive or nested deeper than three; a writer branch or writing map item in a workflow without worktrees |
 | Executors | An executor name not registered; an alias no binding resolves for that executor; a tool capability missing from the executor's `tool_map` |
 | Judge view | A judge tool outside the read-only catalog; an artifact kind whose read view the judge executor cannot give, unless the criterion is marked as an unverified system |

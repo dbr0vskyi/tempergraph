@@ -43,6 +43,8 @@ class VerifyReport:
     usage: dict[str, Any] = field(default_factory=lambda: {"judge_sessions": 0, "cost_usd": 0.0})
     seeds_shown: dict[str, dict[str, str]] | None = None  # rung 8: seeds the author saw, by gate (JCL §2.1.1)
     tuned: list[str] = field(default_factory=list)  # rung 8: seeds moved to `tune` after an edit
+    seeds_passed: dict[str, dict[str, str]] | None = None  # rung 8: seeds graded as expected, by gate, with key
+    carried: list[str] = field(default_factory=list)  # rung 8: seeds whose earlier pass still holds
 
     @property
     def ok(self) -> bool:
@@ -58,7 +60,7 @@ class VerifyReport:
     def to_json(self) -> dict[str, Any]:
         return {"schema_version": 1, "workflow": self.workflow, "ok": self.ok, "refused": self.refused,
                 "rungs": [r.to_json() for r in self.rungs], "warnings": self.warnings, "seeds": self.seeds,
-                "trial": self.trial, "usage": self.usage, "tuned": self.tuned}
+                "trial": self.trial, "usage": self.usage, "tuned": self.tuned, "carried": self.carried}
 
 
 def _row(code: str, unit: str | None, message: str, remedy: str = "") -> dict[str, Any]:
@@ -213,13 +215,19 @@ def _seed_rung(spec: WorkflowSpec, executor_for: Callable[[str], Any], cap: floa
     from tempergraph.author.trial import seeds
 
     shown = authoring.get("seeds_shown") if isinstance(authoring, dict) else None
-    got = seeds(spec, executor_for, cap, shown if isinstance(shown, dict) else None)
+    passed = authoring.get("seeds_passed") if isinstance(authoring, dict) else None
+    got = seeds(spec, executor_for, cap, shown if isinstance(shown, dict) else None,
+                passed if isinstance(passed, dict) else None)
     rep.seeds_shown = got.shown
+    rep.seeds_passed = got.passed
+    rep.carried = got.carried
     rep.tuned = got.tuned
     rung.findings += got.findings
     rep.seeds = got.graded
     rep.usage = {"judge_sessions": got.sessions, "cost_usd": round(got.spent, 6)}
     rung.note = f"{len(got.graded)} seed gradings, {got.sessions} judge sessions, ${got.spent:.2f}"
+    if got.carried:
+        rung.note += f"; {len(got.carried)} seeds kept an earlier pass"
 
 
 def _trial_rung(spec: WorkflowSpec, case: str, target: Path, registry: Any, caller: Mapping[str, Any],
@@ -327,5 +335,7 @@ def verify(root: Path, caps: Mapping[str, Capabilities], *, target: Path,
             authoring["trial"] = rep.trial
         if rep.seeds_shown is not None:
             authoring["seeds_shown"] = rep.seeds_shown
+        if rep.seeds_passed is not None:
+            authoring["seeds_passed"] = rep.seeds_passed
         write_json(root / "authoring.json", authoring, mode=0o644)
     return rep

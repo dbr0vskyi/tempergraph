@@ -68,21 +68,30 @@ def last(doc: Mapping[str, Any]) -> dict[str, Any]:
     return dict(hist[-1]) if hist and isinstance(hist[-1], dict) else {}
 
 
-def record(root: Path, spec: WorkflowSpec, task_id: str, *, content_version: str, shape_digest: str
-           ) -> dict[str, Any] | None:
+UNKNOWN = {"engine_version": None, "engine": "unknown"}
+
+
+def record(root: Path, spec: WorkflowSpec, task_id: str, *, content_version: str, shape_digest: str,
+           resumed: bool = False) -> dict[str, Any] | None:
     """One history entry for this process. Returns `moved_from` (the engine and workflow version of the
-    previous process) when either differs from this one's, else None."""
+    previous process) when either differs from this one's, else None. A resumed thread with no engine file
+    was started by a release before this file existed (MIG §4): `started_on` is unknown, never this engine,
+    and `moved_from` says so."""
     doc = read(root, spec.name, task_id)
     eng = this_engine()
     prev = last(doc)
+    legacy = resumed and not doc.get("history")
     entry = {**eng, "workflow_version": content_version, "shape_digest": shape_digest,
              "checkpoint_format": int(prev.get("checkpoint_format") or checkpoint_format()), "units": unit_digests(spec), "started_at": now_iso()}
     hist = [*(doc.get("history") or []), entry][-HISTORY_KEPT:]
     for old in hist[:-1]:  # only the latest entry needs the per-unit digests
         old.pop("units", None)
-    new = {"schema_version": 1, "started_on": doc.get("started_on") or (eng if not prev else None),
+    started = doc.get("started_on") or (dict(UNKNOWN) if legacy else eng if not prev else None)
+    new = {"schema_version": 1, "started_on": started,
            "last_on": eng, "pinned": doc.get("pinned"), "history": hist}
     write_json(path(root, spec.name, task_id), new)
+    if legacy:
+        return {"engine_version": "unknown", "workflow_version": None}
     moved = prev and (prev.get("engine_version") != eng["engine_version"]
                       or prev.get("workflow_version") != content_version)
     return {"engine_version": prev.get("engine_version"), "workflow_version": prev.get("workflow_version")} \

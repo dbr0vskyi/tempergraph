@@ -41,6 +41,10 @@ Step: the operator layers of [RST §2.3](80-run-settings-and-overrides.spec.md) 
 | Check FAIL marked environmental | none: escalate with no judge and no new attempt |
 | A failed or blocked attempt whose session recorded a `denied` event or lacked a declared tool at start | none: escalate with cause `tool_access`; the payload offers the grants that fix it ([RST §2.8](80-run-settings-and-overrides.spec.md)) |
 
+### 2.3 Concurrent sessions under one cap (release 3)
+
+When sessions of one run can be in flight together (parallel branches, a parallel map, contest slots, council members), the check before each attempt counts what is already in flight: a session that starts **reserves** its own per-session cap, or where none is set the projection of its unit from the stats ([CST](34-central-run-stats.spec.md)), or with no stats the run's remaining cap divided by the number of sessions that may run at once, and the reservation becomes the session's real cost when it ends. An attempt whose reservation would take the run over its cap waits for a running session to end, and starts no session when nothing is running; then the run drains with `cost_cap` as above. Release 2's parallel read-only branches check spend only, so two branches may start together just under the cap and end above it by at most one session's cost each ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F5).
+
 ## 3. Behaviours
 
 **BUD-B1 Cause picks the counter.** Given a step attempt that ends with `broken_pipe`, when the gate decides, then the retry budget is unchanged, the infra counter rises, and the attempt reruns on the same ladder rung after the backoff.

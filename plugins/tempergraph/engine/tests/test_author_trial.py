@@ -156,6 +156,27 @@ def test_an_unclear_scale_flips_and_fails_rung_8(pkg: Path, repo: Path) -> None:
     assert "guidance ladder" in rows[0]["remedy"]
 
 
+def test_a_rerun_regrades_only_the_seeds_that_failed(pkg: Path, repo: Path) -> None:
+    """SCF §2.5: a stray grading fails rung 8; the rerun starts sessions for that seed only, because the other
+    seeds' passes still hold (same gate, judge binding, files and expectation). An edit to a seed regrades it."""
+    code, doc, _ = cli(repo, registry([], seed_answers(("PARTIAL", "UNMET"))), "author", "verify", str(pkg),
+                       "--judge-seeds", "--json")
+    assert code == 2 and states(doc)["judge_seeds"] == "failed"
+    passed = json.loads((pkg / "authoring.json").read_text())["seeds_passed"]
+    assert sorted(passed["draft"]) == ["draft-good"] and sorted(passed["outcome"]) == ["out-bad", "out-good"]
+    reg = registry([], [draft_judge("UNMET"), draft_judge("UNMET")])
+    code, doc, _ = cli(repo, reg, "author", "verify", str(pkg), "--judge-seeds", "--json")
+    assert code == 0, json.dumps(doc["rungs"][7], indent=1)
+    assert len(reg.get("claude").calls) == 2  # type: ignore[attr-defined]
+    assert sorted(doc["carried"]) == ["draft/draft-good", "outcome/out-bad", "outcome/out-good"]
+    assert "3 seeds kept an earlier pass" in doc["rungs"][7]["note"]
+    write(pkg / "evals" / "calibration" / "outcome" / "out-good", "fixture/workspace/notes.md", GOOD_NOTES + "\n")
+    reg = registry([], [verdict("MET"), verdict("MET")])
+    code, doc, _ = cli(repo, reg, "author", "verify", str(pkg), "--judge-seeds", "--json")
+    assert code == 0 and len(reg.get("claude").calls) == 2  # type: ignore[attr-defined]
+    assert "outcome/out-good" not in doc["carried"]
+
+
 def test_a_seed_graded_wrong_both_times_fails(pkg: Path, repo: Path) -> None:
     reg = registry([], seed_answers(("MET", "MET")))
     code, doc, _ = cli(repo, reg, "author", "verify", str(pkg), "--judge-seeds", "--json")
