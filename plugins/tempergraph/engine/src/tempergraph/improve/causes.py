@@ -75,6 +75,11 @@ CAUSES: dict[str, Cause] = {
                            remedy="Re-score the judge on its calibration cases and review the gate for the new binding"),
     "outcome_unmet": Cause(klass="fault", side="workflow",
                            remedy="The outcome judge found this final criterion unmet: a gate let the gap through"),
+    "review_repeat": Cause(klass="fault", side="workflow",
+                           remedy="A review category was kept in several sessions of this unit: fix what it names"),
+    "check_repeat": Cause(klass="fault", side="workflow",
+                          remedy="The same check failure twice although the step changed files: "
+                                 "a person decides whether the check, the environment or the prompt is wrong"),
     "judge_unparsed": Cause(klass="fault", side="engine", remedy="The judge's answer could not be parsed twice"),
     "guard": Cause(klass="fault", side="engine", remedy="The independence guard discarded a judgement"),
     "engine_error": Cause(klass="fault", side="engine", remedy="The engine recorded an internal error"),
@@ -95,6 +100,10 @@ CAUSES: dict[str, Cause] = {
 def cause_of(code: str) -> Cause:
     if code == "timeout:slow_host":  # SRV-B12: the slow-host shape joins SIL's host side
         return Cause(klass="infra", side="host", remedy="Recorded only: the session timed out on a slow host")
+    if code == "review_repeat:environment_fault":  # SRV-B26: an environment fault is the host's, never the workflow's
+        return Cause(klass="infra", side="host", remedy="Recorded only: reviews kept an environment fault")
+    if code == "review_repeat:request_ambiguous":
+        return Cause(klass="designed", side="workflow", remedy="Recorded only: reviews kept an ambiguous request")
     return CAUSES.get(code.split(":", 1)[0], Cause(klass="fault", side="engine", remedy="Unclassified cause"))
 
 
@@ -166,6 +175,8 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
                 add(unit, "gap_escalation")
             elif reason == "no_change":
                 add(unit, "no_change")
+            elif reason == "check_repeat":  # BUD-B16, SIL-B23: the same check failure twice
+                add(unit, "check_repeat")
             elif reason.startswith("guard:") or reason in ("refused", "auth", "environmental", "upstream"):
                 add(unit, reason)
             elif reason == "unparsed":

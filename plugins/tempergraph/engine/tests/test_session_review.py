@@ -136,7 +136,8 @@ def test_capture_levels(tmp_path: Path) -> None:  # SRV-B9
     plan = review.plan({"review": "full"}, [{"session_key": "draft.1.step", "kind": "step", "capture": "pruned"},
                                             {"session_key": "x.1.step", "kind": "step", "capture": "full",
                                              "turns": 0}])
-    assert plan["depth"] == "none" and [s["reason"] for s in plan["skipped"]] == ["pruned", "infra_only"]
+    # SRV-AC8: the session that started later is listed before the one that started earlier
+    assert plan["depth"] == "none" and [s["reason"] for s in plan["skipped"]] == ["infra_only", "pruned"]
 
 
 # -- SRV-B3, B4: the settings and the plan -------------------------------------------------------------------
@@ -158,6 +159,11 @@ def test_dev_plan_reads_every_session_within_the_cap() -> None:  # SRV-B3
     p = review.plan({"review": "full", "mode": "dev", "run_cost_usd": 4.0}, ds)
     assert p["depth"] == "full" and len(p["targets"]) == 5 and p["cap_usd"] == 1.0  # 25 % of the run's 4 USD
     assert {t["reason"] for t in p["targets"]} == {"dev"}
+    # SRV-AC8: with no unit in trouble the targets run from the session that started last to the first
+    assert [t["session_key"] for t in p["targets"]] == [d["session_key"] for d in reversed(ds)]
+    many = [{"session_key": f"u{i}.1.step", "kind": "step", "capture": "full", "turns": 3} for i in range(20)]
+    big = review.plan({"review": "full", "mode": "dev", "run_cost_usd": 4.0}, many)
+    assert len(big["targets"]) == 20 and not big["skipped"]  # a `full` plan has no count cap (SRV-B21)
 
 
 def test_stable_signals_plan_is_release_2() -> None:  # SRV-B4, release 1 shape (R-150 SRV)

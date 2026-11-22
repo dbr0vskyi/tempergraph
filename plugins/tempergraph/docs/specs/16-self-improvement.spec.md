@@ -52,6 +52,12 @@ WHEN a friction finding is made THE loop SHALL carry the cause code's fixed reme
 - GIVEN a unit retried three times in one visit WHEN its finding is made THEN it carries `retry_burst` with the criterion ids
 - GIVEN a `BLOCKED:` pause whose check ran nothing WHEN classified THEN the fault is the workflow's `blocked_without_check`
 
+### SIL-B23 A repeated check failure is a finding
+
+WHEN a run exits after its gate escalated with cause `check_repeat` ([BUD-B16](08-budgets-and-failures.spec.md)) THE loop SHALL make a friction finding `check_repeat` on that unit, a fault of the workflow with no evidence text and the fixed remedy that a person decides whether the check, the environment or the prompt is wrong.
+
+- GIVEN a run that paused on `check_repeat` at unit `code` WHEN it exits THEN the findings of `code` carry `check_repeat` and the exit's `finding_recorded` record names it
+
 ### SIL-B13 Outcome evidence
 
 WHEN the outcome lens judges a run THE loop SHALL include the run branch's commits, changed paths and diff stat, and spend no session of its own: its candidates are the final criteria the outcome gate's judge graded `UNMET` or `PARTIAL`, recorded as `outcome_unmet:<criterion>` on the `outcome` unit.
@@ -86,9 +92,16 @@ WHEN an outcome finding comes from a judge with no calibration score for the gat
 
 ### SIL-B17 The loop child
 
-WHEN the loop child claims a ticket THE loop child SHALL run one friction judge session on the run's judge executor, on the run setting `loop_model` (default `medium`, [RST-B18, RST-B19, RST-B20, RST-B21](80-run-settings-and-overrides.spec.md)) at the run setting `loop_effort` (default `max`, because the loop reads session logs and the owner keeps it on the medium tier) for 1800 s, over the findings' metadata and the segment's record kinds and never the evidence file, then decide and file each finding, run the session review when planned, write `loop_started`, `loop_judged`, `issue_filed`, `issue_commented` and the review records (`review_planned`, `review_session`, `review_skipped`, `review_done`, `review_failed`) and, at autonomy `propose` or `trial`, `loop_proposed`, `loop_trialled`, `loop_opened` and `loop_skipped` ([PRP-B23](40-improvement-proposals.spec.md)) to the thread's `loop.jsonl`, and add one `loop` ledger row with its cost.
+WHEN the loop child claims a ticket THE loop child SHALL run one friction judge session on the run's judge executor, on the run setting `loop_model` (default `medium`, [RST-B18, RST-B19, RST-B20, RST-B21](80-run-settings-and-overrides.spec.md)) at the run setting `loop_effort` (default `max`, because the loop reads session logs and the owner keeps it on the medium tier) for 1800 s, over the findings' metadata and the segment's record kinds and never the evidence file, then decide and file each finding, run the session review when planned, write `loop_started`, `loop_judged`, `issue_filed`, `issue_commented`, the review records (`review_planned`, `review_session`, `review_skipped`, `review_done`, `review_failed`) and `loop_summary` (SIL-B22) and, at autonomy `propose` or `trial`, `loop_proposed`, `loop_trialled`, `loop_opened` and `loop_skipped` ([PRP-B23](40-improvement-proposals.spec.md)) to the thread's `loop.jsonl`, and add one `loop` ledger row with its cost.
 
 - GIVEN a ticket WHEN the child ends THEN `loop.jsonl` holds `loop_started` and `loop_judged`, and the ledger holds one `loop` row with its cost
+
+### SIL-B22 The loop's summary
+
+WHEN the loop child ends THE loop child SHALL write one `loop_summary` record to the thread's `loop.jsonl` with `recorded` (the findings the thread holds), `filed` (the issues this child opened or commented on) and `top[]`, at most three kept review observations of the thread, the highest `confidence` first and ties in plan order ([SRV-B24](44-session-review.spec.md)), each with `category`, `unit` and `confidence` and no note text.
+
+- GIVEN a child that leaves 14 findings, files none and keeps five observations with confidence 0.7, 0.7, 0.55, 0.5 and 0.45 WHEN it ends THEN `loop_summary` has `recorded` 14, `filed` 0 and `top[]` of the first three, each with category, unit and confidence and none with a note
+- GIVEN a child that keeps no observation WHEN it ends THEN `loop_summary` has an empty `top[]`
 
 ### SIL-B18 Filing by attribution
 
@@ -153,6 +166,8 @@ WHEN the cost lens runs THE loop SHALL apply six rules, each a finding per unit 
 - SIL-AC11 (SIL-B5): A measurement makes no model call and writes only one comment and at most one reopen
 - SIL-AC12 (SIL-B21): Each cost rule is produced by a fixture ledger, and a saving under 10 USD a month is not filed
 - SIL-AC13 (SIL-B17): The ticket carries `loop_effort`, `max` when unset, and the friction judge, every reviewer session and the proposer's step and judge are asked at that effort
+- SIL-AC14 (SIL-B22): A fixture loop child leaves one `loop_summary` record with the counts of findings recorded and filed and at most three kept observations by confidence, each with category, unit and confidence and none with note text
+- SIL-AC15 (SIL-B23): The fixture run of BUD-AC8 that pauses on `check_repeat` exits with `check_repeat` among the findings of its unit and in its `finding_recorded` record
 
 ## Open questions
 

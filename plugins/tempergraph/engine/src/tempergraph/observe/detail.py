@@ -20,6 +20,7 @@ from tempergraph.durability import engine_file
 from tempergraph.durability.checkpoint import Snapshot, observer_graph, open_readonly, snapshot
 from tempergraph.durability.status import row as status_row
 from tempergraph.durability.status import split_thread
+from tempergraph.improve import loop_summary
 from tempergraph.model import flow
 from tempergraph.model.diagram import diagram_model
 from tempergraph.run.events import records, route_unit, tail
@@ -474,6 +475,7 @@ def detail(root: Path, spec: WorkflowSpec, tid: str, *, unit: str | None = None,
                         "designed_by": (fold.supervision or {}).get("designed_by"),
                         "cost": _closed_cost(root, f"{spec.name}/{task}")
                         or (fold.supervision or {}).get("supervision_cost", (fold.supervision or {}).get("cost"))},
+        "loop": loop_summary.thread_newest(root, spec.name, task),  # RDD-B7: null until a loop child has ended
         "events_tail": tail(recs),
         "truncated": truncated,
     }
