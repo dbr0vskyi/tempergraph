@@ -51,9 +51,12 @@ WHEN a capability is mapped THE executor SHALL map `read` to `Read`, `search` to
 
 ### ECC-B8 Step launch
 
-WHEN a step launches THE executor SHALL assemble argv only from constants, binding-table values and engine-checked numbers, never from typed text: `claude -p --output-format stream-json --verbose`; `--permission-mode` `acceptEdits` in the engine's worktree, else `default`; `--permission-prompts none` when the CLI lists it; `--model <bound model>` unless the alias is `inherit`; `--allowedTools` with the ECC-B7 rules when the step declares tools; `--tools` with the mapped built-ins under the operator's enforcement setting; always `--disallowedTools EnterWorktree,ExitWorktree`, the run's worktree being the engine's ([WTR-B25](82-worktree-mode.spec.md)); `--strict-mcp-config --mcp-config <engine file>` under enforcement with an MCP tool declared; `--plugin-dir <package root>` for a workflow plugin's skills and agents ([PKG-B23](88-workflow-package.spec.md)); and `--effort`, `--max-budget-usd`, `--fallback-model` or `--max-turns` when that option is set.
+WHEN a step launches THE executor SHALL assemble argv only from constants, binding-table values and engine-checked numbers, never from typed text: `claude -p --output-format stream-json --verbose`; `--permission-mode` `acceptEdits` in the engine's worktree, else `default`; `--permission-prompts none` when the CLI lists it; `--model <bound model>` unless the alias is `inherit`; `--allowedTools` with the ECC-B7 rules when the step declares tools; `--tools` with the built-ins mapped from the step's declared tools on every launch, whether or not the operator's enforcement setting is on, the shell tool added when the step is granted the check preview command ([CHK-B17](75-check-contract-and-command-runs.spec.md)); always `--disallowedTools EnterWorktree,ExitWorktree`, the run's worktree being the engine's ([WTR-B25](82-worktree-mode.spec.md)); `--strict-mcp-config --mcp-config <engine file>` under enforcement with an MCP tool declared; `--plugin-dir <package root>` for a workflow plugin's skills and agents ([PKG-B23](88-workflow-package.spec.md)); and `--effort`, `--max-budget-usd`, `--fallback-model` or `--max-turns` when that option is set.
 
 - GIVEN a step with `effort: high` and alias `inherit` WHEN it launches THEN argv holds `--effort high` and no `--model`
+- GIVEN a step declaring `read` and `shell` with prefix `pytest` and the enforcement setting off WHEN it launches THEN `--tools` is `Read,Bash`
+- GIVEN a step declaring only `read` and granted the check preview command WHEN it launches THEN `--tools` is `Read,Bash` and the preview command is the only `Bash` rule in `--allowedTools`
+- GIVEN a step declaring no tool and the enforcement setting off WHEN it launches THEN argv holds `--tools` with an empty value
 
 ### ECC-B9 Step environment and prompt
 
@@ -87,9 +90,15 @@ WHEN the executor is probed THE executor SHALL fail the probe with exit 2 at pre
 
 ### ECC-B14 Step reach inside a host session
 
-WHEN a step or judge launches from inside a Claude Code host session THE launcher SHALL drop from its environment every variable the host sets for its own children (the `CLAUDE_CODE_*` and `CLAUDECODE` names, additional-directory and session variables), keeping only the ECC-B9 overlay and the credentials the probe needs; send `--tools` with the mapped built-ins on every step launch, so a host's tools are never offered; and send no `--add-dir`, a step reaching only its workspace and the engine's scratch folder; P-CC-10 (a step launched inside a host lists only its `--tools` and a read outside the workspace is refused) and P-CC-11 (`--bare` drops user-scope plugins on the pinned version) confirming it.
+WHEN a step session, a retry of it or a judge session launches THE executor SHALL leave `CLAUDECODE` and every name beginning `CLAUDE_` out of that session's environment, the `CLAUDE_CODE_*` names and the session and additional-directory names a host Claude Code session sets for its children among them, keeping `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR` with the value ECC-B9 gives it, the `CLAUDE_CODE_SUBAGENT_MODEL` ECC-B9 sets on a step, the credentials ECC-B10 lays on a judge, the provider switches `CLAUDE_CODE_USE_BEDROCK`, `CLAUDE_CODE_USE_VERTEX` and `CLAUDE_CODE_USE_FOUNDRY`, `ANTHROPIC_*` and the proxy and certificate variables; send `--tools` with the mapped built-ins on every step launch, so a host's tools are never offered; and send no `--add-dir` on any step or judge launch, a session reaching only its workspace and the engine's scratch folder ([WSP-B5](13-workspace-and-concurrency.spec.md)); P-CC-10 (a step launched inside a host lists only its `--tools` and a read outside the workspace is refused) and P-CC-11 (`--bare` drops user-scope plugins on the pinned version) confirming it.
 
 - GIVEN a step launched from inside a host session WHEN its `system/init` is read THEN it lists only the tools of its `--tools`
+- GIVEN a host environment holding `CLAUDECODE`, `CLAUDE_CODE_ENTRYPOINT`, `CLAUDE_CODE_SESSION_ID` and `CLAUDE_CODE_CHILD_SESSION` WHEN a step, a retry of it and a judge launch THEN none of the four names is in any of the three environments
+- GIVEN a host environment holding `ANTHROPIC_API_KEY`, `CLAUDE_CODE_USE_BEDROCK`, `HTTPS_PROXY` and `SSL_CERT_FILE` WHEN a step and a judge launch THEN all four reach both sessions
+- GIVEN a host holding `CLAUDE_CODE_SUBAGENT_MODEL=haiku` and not `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR` WHEN a step bound to model `sonnet` launches THEN its environment holds `CLAUDE_CODE_SUBAGENT_MODEL=sonnet` and `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1`
+- GIVEN a judge credentials profile holding `CLAUDE_CODE_OAUTH_TOKEN` and a host holding `CLAUDE_CODE_SESSION_ID` WHEN the judge launches THEN its environment holds the profile's token and no `CLAUDE_CODE_SESSION_ID`
+- GIVEN a retry of a step declaring `read` WHEN it launches THEN `--tools` is `Read`
+- GIVEN any step or judge launch WHEN its argv is read THEN it holds no `--add-dir`
 
 ## Acceptance criteria
 
@@ -98,6 +107,7 @@ WHEN a step or judge launches from inside a Claude Code host session THE launche
 - ECC-AC3 (ECC-B5, ECC-B12): Each failure classification is covered by a fixture and classified without reading prose beyond the one exact match
 - ECC-AC4 (ECC-B3, ECC-B10): A judge launch never contains a write tool, a step allow rule, `--fallback-model` or `--resume`
 - ECC-AC5 (ECC-B6, ECC-B13, ECC-B14): The probe results are recorded for the pinned CLI version before the executor is marked live-proven
+- ECC-AC6 (ECC-B8, ECC-B14): Argv and environment scans of a step, a retry and a judge launch from a planted host environment find `--tools` on the step and the retry, `--add-dir` on none of the three, no planted `CLAUDECODE` or `CLAUDE_*` name in any of the three environments except the ones ECC-B14 keeps, and the planted `ANTHROPIC_*`, proxy and certificate names present in each
 
 ## Open questions
 
