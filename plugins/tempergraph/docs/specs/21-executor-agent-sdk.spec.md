@@ -1,158 +1,111 @@
----
-title: Claude Agent SDK executor
-type: component
-status: review
-prefix: EAS
-adrs: [0006, 0008, 0010, 0012, 0018, 0019]
----
-
 # Claude Agent SDK executor
 
-## 1. Overview
+## Purpose
 
+The `agent-sdk` executor runs each step attempt and each judge run as one `query` session of the Claude Agent SDK, inside an engine worker process ([ADR-0019](../adr/0019-in-process-executors-run-in-a-worker-process.adr.md)). The SDK drives a bundled Claude Code CLI, so tool names, permission rules and the authoring surface are Claude Code's; what changes is that options are typed, messages are typed, and the engine can install an in-process `PreToolUse` gatekeeper. It implements the [executor interface](10-executor-interface.spec.md); facts come from [R-005](../research/R-005-claude-agent-sdk-executor.rsrch.md), and its probes and design notes are kept in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md). It is the planned CI executor. Operators running unattended and workflow authors who move a step here depend on what it declares and does.
 
-## 2. Contract
+## Behaviours
 
-### 2.1 Declared capabilities
+### EAS-B5 Declared capabilities
 
-| Capability | Value | Basis |
-|---|---|---|
-| `binds_aliases` | `small`, `medium`, `large`, `inherit`, every `agent-sdk:<name>` in the binding table | S11 |
-| `prompt_off_argv` | true: the prompt reaches the worker on stdin and the SDK as a typed argument; P-AS-3 confirms how the SDK passes it to its CLI | S2 |
-| `streams_events`, `reports_actions`, `reports_tokens`, `reports_cost`, `fresh_session` | true | S12, S13 |
-| `enforces_step_tools`, `step_allow_rules`, `judge_mcp` | true | S4, S5, S9 |
-| `restricts_judge_tools` | true: `tools` plus `disallowed_tools` plus the gatekeeper hook, whose deny holds in every mode | S4, S7 |
-| `isolates_user_config` | true when P-AS-1 passes, else false | S8 |
-| `hosts_authoring_surface` | true (Claude Code's) | S1 |
-| `session_options` | `effort`, `cost_cap_usd`, `fallback_alias`, `turn_cap` | S11 |
+WHEN the `agent-sdk` executor declares its capabilities THE executor SHALL declare `binds_aliases` (`small`, `medium`, `large`, `inherit` and every `agent-sdk:<name>` in the binding table), `prompt_off_argv` (the prompt reaches the worker on standard input and the SDK as a typed argument, confirmed for its CLI by P-AS-3), `streams_events`, `reports_actions`, `reports_tokens`, `reports_cost`, `fresh_session`, `enforces_step_tools`, `step_allow_rules`, `judge_mcp` and `restricts_judge_tools` true, `isolates_user_config` true only when P-AS-1 passes, `hosts_authoring_surface` true (Claude Code's), and `session_options` `effort`, `cost_cap_usd`, `fallback_alias` and `turn_cap`.
 
-### 2.2 Tool map
+- GIVEN P-AS-1 not passed WHEN `executors` shows `agent-sdk` THEN `isolates_user_config` is false
 
-The same as [ECC §2.2](11-executor-claude-code.spec.md): `Read`, `Grep`, `Glob`, `Edit`, `Write`, `Bash`, `WebFetch`, `WebSearch`, `Agent`, `mcp__<s>__<t>`, `Skill`, with the same allow rules; a `skill:` capability needs the workflow's plugin among the step's setting sources. The view catalog shares Claude Code's rows ([GRD](06-independence-guard.spec.md)).
+### EAS-B6 Tool map
 
-### 2.3 Worker request document
+WHEN a step declares tools on `agent-sdk` THE executor SHALL use the tool map and allow rules of the `claude` executor ([ECC](11-executor-claude-code.spec.md)) (`Read`, `Grep`, `Glob`, `Edit`, `Write`, `Bash`, `WebFetch`, `WebSearch`, `Agent`, `mcp__<s>__<t>`, `Skill`), share Claude Code's view catalog rows ([GRD](06-independence-guard.spec.md)), and grant a `skill:` capability only with the workflow's plugin among the step's setting sources.
 
-The launcher starts `<engine python> -m tempergraph.executors.sdk_worker` and writes one JSON document on stdin with the fields of [EMA §2.3](20-executor-messages-api.spec.md) (minus `server_tools`, plus `cli_path` from the binding table when the operator pins a CLI other than the bundled one). The worker re-validates every field, builds `ClaudeAgentOptions` from constants and those fields, and emits normalized events as JSON lines.
+- GIVEN a step declaring `read` and `shell` with prefix `pytest` WHEN its options are built THEN they hold `Read` and `Bash(pytest *)`
 
-### 2.4 Step options
+### EAS-B7 Worker request document
 
-| Option | Value |
-|---|---|
-| `cwd` | `workdir` |
-| `model` | bound model, omitted for `inherit` |
-| `tools` | mapped built-ins, when the operator enabled enforcement; else the `claude_code` preset |
-| `allowed_tools` | the rules of §2.2 |
-| `permission_mode` | `acceptEdits` in the engine's own worktree, `default` in place; never `bypassPermissions` or `auto` |
-| `setting_sources` | `["project"]`, so the repository's CLAUDE.md and skills load and user settings do not |
-| `mcp_servers`, `strict_mcp_config` | the engine's file and `True`, when enforcement is on and an MCP tool is declared |
-| `disallowed_tools` | `EnterWorktree`, `ExitWorktree`: the run's worktree is the engine's ([WTR §2.9](82-worktree-mode.spec.md)) |
-| `hooks` | the gatekeeper `PreToolUse` hook (§2.6); it also denies an `Agent` call that asks for worktree isolation |
-| `max_turns`, `max_budget_usd`, `fallback_model`, `effort` | from options, when set |
-| `env` | the overlay of [ECC §2.3](11-executor-claude-code.spec.md) |
-| `can_use_tool` | none: an unlisted call in `default` mode is denied by the gatekeeper, never prompted |
+WHEN the launcher starts the worker THE launcher SHALL run the engine interpreter with the constant SDK worker module and no other argument, and write on standard input one JSON document with the fields of the Messages API worker ([EMA-B8](20-executor-messages-api.spec.md)) less `server_tools`, plus `cli_path` from the binding table when the operator pins a CLI other than the bundled one, and the worker SHALL re-validate every field, build the SDK options from constants and those fields only, and emit normalized events as JSON lines.
 
-### 2.5 Judge options
+- GIVEN a request document whose `cli_path` is not in the binding table WHEN the worker reads it THEN it writes a `result` with `infra_cause = prompt_not_delivered` and exits
 
-| Option | Value |
-|---|---|
-| `tools` | `Read`, `Grep`, `Glob` plus built-in views |
-| `disallowed_tools` | `["mcp__*"]` when the judge has no MCP view |
-| `setting_sources` | `[]` |
-| `strict_mcp_config` | `True`, with only the filtering proxy per MCP view in `mcp_servers` |
-| `permission_mode` | `dontAsk` |
-| `allowed_tools` | view rules, plus read-only command rules when opted in |
-| `hooks` | the gatekeeper with the view set as its allow list |
-| never set | `fallback_model`, `resume`, `continue_conversation`, `fork_session`, a write tool, a step allow rule |
+### EAS-B8 Step options
 
-### 2.6 Gatekeeper hook
+WHEN a step session's options are built THE worker SHALL set `cwd` to the workdir, the bound model (omitted for `inherit`), the mapped built-ins as `tools` when the operator enabled enforcement and else the `claude_code` preset, the allow rules of EAS-B6, `permission_mode` `acceptEdits` in the engine's own worktree and `default` in place (never `bypassPermissions` or `auto`), `setting_sources` `["project"]` so the repository's CLAUDE.md and skills load and user settings do not, the engine's MCP file with `strict_mcp_config` when enforcement is on and an MCP tool is declared, `disallowed_tools` `EnterWorktree` and `ExitWorktree` (the run's worktree is the engine's, [WTR](82-worktree-mode.spec.md)), the gatekeeper hook (EAS-B10), `max_turns`, `max_budget_usd`, `fallback_model` and `effort` from the session options when set, the environment overlay of the `claude` executor ([ECC](11-executor-claude-code.spec.md)), and no `can_use_tool` callback, so an unlisted call in `default` mode is denied, never prompted.
 
-An in-process `PreToolUse` callback built by the worker from the declaration. It allows a call when the tool's name is in the session's mapped set and, for `Bash`, when the command's first words match a declared prefix and contain no shell metacharacter of [THS §2.5](22-tool-host.spec.md); otherwise it denies with a fixed reason and the worker emits `denied`. It is the first rule evaluated (S7), so it holds whatever the mode, and it is the step's enforcement when the operator enabled it.
+- GIVEN a step running in place WHEN its options are built THEN `permission_mode` is `default` and `disallowed_tools` holds `EnterWorktree` and `ExitWorktree`
 
-### 2.7 Message mapping
+### EAS-B9 Judge options
 
-| SDK message | Normalized event |
-|---|---|
-| `SystemMessage`, init subtype | `session_started` (session id, model, tools; `cli_version` = SDK version plus bundled CLI version) |
-| `AssistantMessage` `ToolUseBlock` | `tool_started` (`subagent` = `parent_tool_use_id` is set) |
-| `UserMessage` `ToolResultBlock` | `tool_finished` (`ok` = not `is_error`) |
-| `StreamEvent` text delta (partial messages on) | `model_delta` |
-| `AssistantMessage` text block | `text` |
-| `RateLimitEvent`, or `AssistantMessage.error = rate_limit` | `retrying` (`category = rate_limit`) |
-| Gatekeeper deny, or an entry of `ResultMessage.permission_denials` | `denied` |
-| `ResultMessage` | `result`: `total_cost_usd` → `reported_cost_usd`, `usage`, `model_usage` → `by_model`, `num_turns` → `turns`, `session_id` |
+WHEN a judge session's options are built THE worker SHALL set `tools` to `Read`, `Grep`, `Glob` plus the built-in views, `disallowed_tools` `["mcp__*"]` when the judge has no MCP view, `setting_sources` `[]`, `strict_mcp_config` with only the filtering proxy per MCP view in `mcp_servers`, `permission_mode` `dontAsk`, the view rules (plus read-only command rules when opted in) as `allowed_tools`, and the gatekeeper with the view set as its allow list, and SHALL never set `fallback_model`, `resume`, `continue_conversation`, `fork_session`, a write tool or a step allow rule.
 
-### 2.8 Failure classification
+- GIVEN any judge WHEN its options are built THEN they hold no write tool, no step rule, no `fallback_model` and no resume option
 
-| Observed (typed) | `infra_cause` / `error_kind` |
-|---|---|
-| Worker spawn raised | `spawn_failed` |
-| SDK raised its CLI-not-found or connection error type | `spawn_failed` |
-| Worker ended with no `result` line | `no_result` |
-| No `ResultMessage` before the stream closed | `no_result` |
-| Last `AssistantMessage.error` is `rate_limit` or `server_error` and no `ResultMessage` | `throttled` |
-| `subtype = error_max_turns` | `error_kind = turn_cap` |
-| `subtype = error_max_budget_usd` | `error_kind = cap_reached` |
-| `AssistantMessage.error` is `authentication_failed` or `billing_error` | `error_kind = auth` |
-| `subtype = error_during_execution`, or `is_error` otherwise | `error_kind = model`, with `api_error_status` and `terminal_reason` recorded |
-| An `error` value the SDK does not list | `error_kind = unknown` |
+### EAS-B1 Judge loads nothing of the operator's
 
-### 2.9 Probes
+WHEN a judge session starts for an operator with user-level settings, plugins and MCP servers THE worker SHALL pass `setting_sources=[]`, `strict_mcp_config=True` and only the judge's proxies, so the init message lists only the view tools.
 
-| Id | Fact to confirm | Used by | Result |
-|---|---|---|---|
-| P-AS-1 | `setting_sources=[]` keeps user-level plugin tools, hooks and MCP servers out of the session (seen in the init message) | `isolates_user_config` | not run |
-| P-AS-2 | The session's `PreToolUse` hook sees and can deny a subagent's tool calls | gatekeeper on steps that declare `subagent` | not run |
-| P-AS-3 | The SDK hands the prompt to its CLI off argv on the pinned version | `prompt_off_argv` | not run |
-| P-AS-4 | Whether the SDK's session keeps a native transcript with `setting_sources=[]`, and at which path | transcript locator ([EVT §2.4](30-run-events.spec.md)) | not run |
-| P-AS-5 | A step session with `setting_sources=[]` and `plugins=[{"type": "local", "path": <package root>}]` lists the workflow plugin and its skills in the init message, and no user plugin | workflow skills on step sessions ([PKG §2.6](88-workflow-package.spec.md)) | not run |
+- GIVEN an operator with a user-level MCP server WHEN a judge session starts THEN the init message lists only the view tools
 
-Until P-AS-2 passes, a step that declares `subagent` with enforcement on is refused at preflight on this executor.
+### EAS-B10 The gatekeeper rule
 
-## 3. Behaviours
+WHEN the model calls a tool THE gatekeeper SHALL allow the call only when the tool's name is in the session's mapped set and, for `Bash`, the command's first words match a declared prefix and contain no shell metacharacter of the tool host ([THS](22-tool-host.spec.md)), and otherwise deny it with a fixed reason while the worker emits `denied`; as the first rule evaluated it is the step's enforcement when the operator enabled it.
 
-**EAS-B1 Judge loads nothing of the operator's.** Given an operator with user-level settings, plugins and MCP servers, when a judge session starts, then the options carry `setting_sources=[]`, `strict_mcp_config=True` and only the judge's proxies, and the init message lists only the view tools.
+- GIVEN a call to a tool outside the mapped set WHEN the gatekeeper decides THEN it denies with the fixed reason
 
-**EAS-B2 Gatekeeper holds in every mode.** Given a step in `acceptEdits` that declares `shell` with prefix `pytest`, when the model calls `Bash` with `rm -rf build`, then the hook denies it, nothing runs, and a `denied` event is emitted.
+### EAS-B2 Gatekeeper holds in every mode
 
-| Command | Decision |
-|---|---|
-| `pytest -q` | allow |
-| `pytest; rm x` | deny (metacharacter) |
-| `rm -rf build` | deny (prefix) |
+WHEN a step in `acceptEdits` that declares `shell` with prefix `pytest` calls `Bash` THE gatekeeper SHALL decide by EAS-B10 whatever the mode, and deny an `Agent` call that asks for worktree isolation.
 
-**EAS-B3 Typed subtypes, not text.** Given a `ResultMessage` with `subtype = error_max_budget_usd`, when the outcome is classified, then `error_kind = cap_reached` and `result` text is not read.
+- GIVEN `pytest -q` WHEN decided THEN it is allowed
+- GIVEN `pytest; rm x` WHEN decided THEN it is denied for the metacharacter
+- GIVEN `rm -rf build` WHEN decided THEN it is denied for the prefix, nothing runs and a `denied` event is emitted
 
-**EAS-B4 Both versions stamped.** Given any session, when it is recorded, then `cli_version` holds the SDK version and the bundled or pinned CLI version, so a change in either is visible.
+### EAS-B14 Subagents wait for P-AS-2
 
-## 4. Error conditions
+WHEN a step that declares `subagent` with enforcement on is preflighted on `agent-sdk` before P-AS-2 passes THE engine SHALL refuse it with exit 2.
 
-| Type | Handling |
-|---|---|
-| SDK not importable, or its CLI missing | Probe fails; exit 2 |
-| Only a claude.ai sign-in available, no API or cloud credential | Probe fails; exit 2 with reason `credential` ([R-005 S3](../research/R-005-claude-agent-sdk-executor.rsrch.md)) |
-| Init message lists a tool outside the judge's views | Judgement discarded as an unresolved gap ([GRD](06-independence-guard.spec.md)) |
-| Unknown message type | Skipped and counted |
+- GIVEN P-AS-2 not passed and a step declaring `subagent` with enforcement on WHEN preflighted THEN it exits 2
 
-## 5. Design notes
+### EAS-B11 Message mapping
 
-- Steps load project settings only, so a repository's CLAUDE.md and skills work as on `claude` while the operator's user settings stay out of CI.
-- The executor never uses `ClaudeSDKClient`: one `query()` per session matches the fresh-session rule, and a retry is a new session told the last report.
-- Because the SDK's own CLI is a child of the worker, the launcher's tree kill ends it with the worker ([EXI-B5](10-executor-interface.spec.md)).
+WHEN the worker reads the SDK's messages THE worker SHALL map the init system message to `session_started` (session id, model, tools, `cli_version`), a tool-use block to `tool_started` (`subagent` true when `parent_tool_use_id` is set), a tool-result block to `tool_finished` (`ok` when not `is_error`), a streamed text delta to `model_delta`, an assistant text block to `text`, a rate-limit event or an assistant error `rate_limit` to `retrying` (`rate_limit`), a gatekeeper deny or an entry of the result's `permission_denials` to `denied`, and the result message to `result` (`total_cost_usd` as `reported_cost_usd`, `usage`, `model_usage` as `by_model`, `num_turns` as `turns`, `session_id`), skipping and counting an unknown message type.
 
-## 6. Acceptance criteria
+- GIVEN a tool-use block with `parent_tool_use_id` set WHEN mapped THEN `tool_started` has `subagent` true
 
-- [ ] EAS-AC-1 Options for every launch shape are built from constants and the binding table only (source-scan and planted-canary tests).
-- [ ] EAS-AC-2 Each row of §2.7 and §2.8 has a recorded-message fixture.
-- [ ] EAS-AC-3 A judge's options never contain a write tool, a step rule, `fallback_model` or a resume option.
-- [ ] EAS-AC-4 The gatekeeper follows the table of EAS-B2 in a unit test without the SDK.
-- [ ] EAS-AC-5 The probe table is filled for the pinned SDK and CLI versions before the executor is marked live-proven.
+### EAS-B4 Both versions stamped
+
+WHEN any session is recorded THE worker SHALL put in `cli_version` the SDK version and the bundled or pinned CLI version, so a change in either is visible.
+
+- GIVEN SDK 0.2.0 with bundled CLI 2.1.330 WHEN a session is recorded THEN `cli_version` names both
+
+### EAS-B12 Failure classification
+
+WHEN a session fails THE worker SHALL classify by typed values only: worker spawn raised, or the SDK raised its CLI-not-found or connection error, `spawn_failed`; no `result` line or no result message before the stream closed `no_result`; a last assistant error `rate_limit` or `server_error` with no result message `throttled`; subtype `error_max_turns` `error_kind = turn_cap`; subtype `error_max_budget_usd` `error_kind = cap_reached`; an assistant error `authentication_failed` or `billing_error` `error_kind = auth`; subtype `error_during_execution`, or `is_error` otherwise, `error_kind = model` with `api_error_status` and `terminal_reason` recorded; and an `error` value the SDK does not list `error_kind = unknown`.
+
+- GIVEN a result with `subtype = error_max_turns` WHEN classified THEN `error_kind` is `turn_cap`
+
+### EAS-B3 Typed subtypes, not text
+
+WHEN a result message is classified THE worker SHALL read its subtype and never its `result` text.
+
+- GIVEN a result with `subtype = error_max_budget_usd` WHEN classified THEN `error_kind = cap_reached` and the `result` text is not read
+
+### EAS-B13 Probe refusals
+
+WHEN the SDK cannot be imported or its CLI is missing, or only a claude.ai sign-in is available with no API or cloud credential THE probe SHALL fail and preflight SHALL exit 2, the second with reason `credential` ([R-005](../research/R-005-claude-agent-sdk-executor.rsrch.md) S3).
+
+- GIVEN only a claude.ai sign-in WHEN preflighted THEN it exits 2 with reason `credential`
+
+### EAS-B15 Init outside the views
+
+WHEN a judge session's init message lists a tool outside the judge's views THE engine SHALL discard the judgement as an unresolved gap ([GRD](06-independence-guard.spec.md)).
+
+- GIVEN a judge init listing `Write` WHEN read THEN the judgement is discarded as an unresolved gap
+
+## Acceptance criteria
+
+- EAS-AC1 (EAS-B7, EAS-B8, EAS-B9): Options for every launch shape are built from constants and the binding table only, by source-scan and planted-canary tests
+- EAS-AC2 (EAS-B11, EAS-B12, EAS-B3, EAS-B4): Each message mapping and each failure classification has a recorded-message fixture, and every recorded session names both versions
+- EAS-AC3 (EAS-B9, EAS-B1, EAS-B15): A judge's options never contain a write tool, a step rule, `fallback_model` or a resume option, and a judge whose init lists a tool outside its views is discarded
+- EAS-AC4 (EAS-B2, EAS-B10, EAS-B6): The gatekeeper follows the scenarios of EAS-B2 in a unit test without the SDK, and each capability maps to its tool and rule
+- EAS-AC5 (EAS-B5, EAS-B14, EAS-B13): The probe table in R-150 is filled for the pinned SDK and CLI versions before the executor is marked live-proven
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| May an operator run this executor on a subscription sign-in? The design assumes API or cloud credentials only ([R-005 S3](../research/R-005-claude-agent-sdk-executor.rsrch.md)). | Owner |
-
-## References
-
-[EXI](10-executor-interface.spec.md) · [ECC](11-executor-claude-code.spec.md) · [R-005](../research/R-005-claude-agent-sdk-executor.rsrch.md) · [ADR-0019](../adr/0019-in-process-executors-run-in-a-worker-process.adr.md)
+- May an operator run this executor on a subscription sign-in? The design assumes API or cloud credentials only ([R-005](../research/R-005-claude-agent-sdk-executor.rsrch.md) S3). Owner: owner.
