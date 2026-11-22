@@ -100,7 +100,7 @@ def crossing(repo: Path, first: float | None = None) -> tuple[Costed, Any]:
     return ex, go(repo, spec(), ex)
 
 
-def test_two_branches_that_cross_the_cap_start_one_and_wait_BUD_AC2(repo: Path) -> None:  # AC 2, AC 3
+def test_two_branches_that_cross_the_cap_start_one_and_wait_BUD_AC2(repo: Path) -> None:  # BUD-AC2, AC 2, AC 3
     ex, out = crossing(repo)
     assert out.exit_code is ExitCode.FINISHED, out.message
     assert sorted(steps(ex)) == ["perf", "plan", "report", "security"]
@@ -112,7 +112,7 @@ def test_two_branches_that_cross_the_cap_start_one_and_wait_BUD_AC2(repo: Path) 
     assert exit_rec["cost"]["counters"]["estimated_only"] + exit_rec["cost"]["counters"]["reported"] < CAP
 
 
-def test_branches_that_all_fit_run_as_before_BUD_AC2(repo: Path) -> None:  # AC 2, AC 3
+def test_branches_that_all_fit_run_as_before_BUD_AC2(repo: Path) -> None:  # BUD-AC2, AC 2, AC 3
     ex = Costed(repo)
     out = go(repo, dataclasses.replace(spec(), run_cost_cap_usd=50.0), ex)
     assert out.exit_code is ExitCode.FINISHED, out.message
@@ -122,7 +122,7 @@ def test_branches_that_all_fit_run_as_before_BUD_AC2(repo: Path) -> None:  # AC 
     assert holds(repo, "held")
 
 
-def test_held_records_carry_amount_source_and_figures_BUD_AC5(repo: Path) -> None:  # AC 1, AC 4
+def test_held_records_carry_amount_source_and_figures_BUD_AC5(repo: Path) -> None:  # BUD-AC5, AC 1, AC 4
     ex = Costed(repo, barrier=True)
     out = go(repo, spec(session_cap=None), ex)
     assert out.exit_code is ExitCode.FINISHED, out.message
@@ -135,7 +135,7 @@ def test_held_records_carry_amount_source_and_figures_BUD_AC5(repo: Path) -> Non
         assert r["seq"] < seqs[r["session_key"]]
 
 
-def test_a_ledger_holds_a_session_cap_with_nothing_running_BUD_AC5() -> None:  # AC 1, AC 4
+def test_a_ledger_holds_a_session_cap_with_nothing_running_BUD_AC5() -> None:  # BUD-AC5, AC 1, AC 4
     calls: list[tuple[str, dict[str, Any]]] = []
     got = Ledger().acquire("a.1.step", snapshot=2, spent_usd=1.0, cap_usd=CAP, amount=lambda spent: (2.5, "session_cap"),
                            write=lambda action, **kw: calls.append((action, kw)), drain=lambda: None)
@@ -144,7 +144,7 @@ def test_a_ledger_holds_a_session_cap_with_nothing_running_BUD_AC5() -> None:  #
                                "cap_usd": CAP})]
 
 
-def test_a_reservation_that_lands_exactly_on_the_cap_fits_BUD_AC5() -> None:  # AC 1
+def test_a_reservation_that_lands_exactly_on_the_cap_fits_BUD_AC5() -> None:  # BUD-AC5, AC 1
     ledger = Ledger()
     for key, amount in (("a", 2.0), ("b", 2.0), ("c", 1.0)):
         got = ledger.acquire(key, snapshot=1, spent_usd=0.0, cap_usd=CAP, amount=lambda spent, a=amount: (a, "share"),
@@ -152,7 +152,7 @@ def test_a_reservation_that_lands_exactly_on_the_cap_fits_BUD_AC5() -> None:  # 
         assert got is None
 
 
-def test_a_waiting_branch_logs_one_waiting_record_then_held_BUD_AC6(repo: Path) -> None:  # AC 1, AC 2, AC 4
+def test_a_waiting_branch_logs_one_waiting_record_then_held_BUD_AC6(repo: Path) -> None:  # BUD-AC6, AC 1, AC 2, AC 4
     crossing(repo)
     waits = holds(repo, "waiting")
     assert len(waits) == 1
@@ -168,7 +168,7 @@ def test_a_waiting_branch_logs_one_waiting_record_then_held_BUD_AC6(repo: Path) 
     assert (later["spent_usd"], later["in_flight_usd"]) == (1.4, 0)
 
 
-def test_a_wait_ends_when_a_drain_is_requested_BUD_AC6() -> None:  # AC 2
+def test_a_wait_ends_when_a_drain_is_requested_BUD_AC6() -> None:  # BUD-AC6, AC 2
     ledger = Ledger()
     quiet = lambda action, **kw: None  # noqa: E731
     assert ledger.acquire("a", snapshot=1, spent_usd=0.0, cap_usd=CAP, amount=lambda s: (2.0, "share"),
@@ -180,7 +180,7 @@ def test_a_wait_ends_when_a_drain_is_requested_BUD_AC6() -> None:  # AC 2
     assert sorted(ledger.held) == ["a"]
 
 
-def test_a_reservation_that_cannot_fit_is_refused_and_the_run_drains_BUD_AC7(repo: Path) -> None:  # AC 2, AC 4
+def test_a_reservation_that_cannot_fit_is_refused_and_the_run_drains_BUD_AC7(repo: Path) -> None:  # BUD-AC7, AC 2, AC 4
     ex = Costed(repo, plan=1.5)
     out = go(repo, spec(), ex)
     assert out.exit_code is ExitCode.BUDGET_OR_INFRA and out.reason == "cost_cap", out.message
@@ -193,7 +193,7 @@ def test_a_reservation_that_cannot_fit_is_refused_and_the_run_drains_BUD_AC7(rep
     assert (exit_rec["exit_code"], exit_rec["reason"]) == (5, "cost_cap")
 
 
-def test_a_waiting_branch_is_refused_when_the_running_session_costs_too_much_BUD_AC7(repo: Path) -> None:  # AC 2, AC 4
+def test_a_waiting_branch_is_refused_when_the_running_session_costs_too_much_BUD_AC7(repo: Path) -> None:  # BUD-AC7, AC 2, AC 4
     ex, out = crossing(repo, first=2.4)
     assert out.exit_code is ExitCode.BUDGET_OR_INFRA and out.reason == "cost_cap", out.message
     (wait,) = holds(repo, "waiting")
