@@ -137,7 +137,7 @@ def test_later_kinds_not_in_release(builder: str) -> None:
     assert found and any("release" in f.message for f in found)
 
 
-def test_scr_ac1_script_cache_is_built_and_its_own_refusals_hold() -> None:
+def test_scr_ac1_script_cache_is_built_and_its_own_refusals_hold() -> None:  # SCR-AC1
     ok = Script(run=["pytest"], cache="thread", side_effects="none", inputs=["x"])
     assert codes(_step(two_step(), "draft", before=(ok,))) == set()  # no `not_in_release` for `cache: thread`
     assert codes(_step(two_step(), "draft", after=(ok,))) == set()

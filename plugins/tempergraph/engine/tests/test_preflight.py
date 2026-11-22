@@ -128,14 +128,14 @@ def _mcp_spec() -> Any:
     return dataclasses.replace(two_step(), units=units)
 
 
-def test_ecc_ac9_mcp_judge_views_are_not_deferred_on_claude() -> None:
+def test_ecc_ac9_mcp_judge_views_are_not_deferred_on_claude() -> None:  # ECC-AC9
     rep = preflight_of(_mcp_spec(), reg("claude"))  # `claude` declares `judge_mcp` (ECC-B6)
     assert rep.ok, rep.refusals
     assert "review" not in rep.deferred
     assert "judge-view-deferred" not in [w.code for w in rep.warnings]
 
 
-def test_ecc_ac9_mcp_judge_views_are_deferred_where_judge_mcp_is_false() -> None:
+def test_ecc_ac9_mcp_judge_views_are_deferred_where_judge_mcp_is_false() -> None:  # ECC-AC9
     r = Registry()
     bare = standin("claude")
     bare.caps = dataclasses.replace(bare.caps, judge_mcp=False)  # a judge executor that restricts tools but has no proxy

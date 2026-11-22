@@ -94,7 +94,7 @@ def test_refusals(key: str, code: str) -> None:  # RST-B5, B6, B10, RST-B32
         assert "draft" in findings[0].message
 
 
-def test_grd_ac6_an_mcp_view_grant_stays_refused_and_its_message_names_the_catalog() -> None:  # RST-B28
+def test_grd_ac6_an_mcp_view_grant_stays_refused_and_its_message_names_the_catalog() -> None:  # GRD-AC6, RST-B28
     _, findings = go(spec(), {"judge:draft.views.add": "mcp:tracker/get_issue"})
     assert [f.code for f in findings] == ["judge-view-unclassified"]
     message = findings[0].message
