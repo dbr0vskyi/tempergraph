@@ -1,4 +1,4 @@
-"""The map unit's list and item bookkeeping (MAP §2.2). Model-free.
+"""The map unit's list and item bookkeeping (MAP-B8, MAP-B9, MAP-B10). Model-free.
 
 A map's items run through the unit's own four nodes, one item at a time. The `maps` state channel holds, per
 map unit, the list read at the start of the visit, the ids that passed and each item's attempt count. The
@@ -47,7 +47,7 @@ def _items(raw: Any) -> list[MapItem]:
 
 
 def read_items(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], workdir: Path) -> list[MapItem]:
-    """The list of one visit, read once (MAP §2.2 row 1). Raises `MapFault`."""
+    """The list of one visit, read once (MAP-B8, MAP-B9, MAP-B10 row 1). Raises `MapFault`."""
     m: MapSpec | None = spec.units[unit].map
     assert m is not None
     src, key = m.items_from
@@ -104,7 +104,7 @@ def pending(m: Mapping[str, Any]) -> dict[str, Any] | None:
 
 
 def item_key(key: str, item: str) -> str:
-    """`<key>[<item id>]`: how an item's artifacts, values and facts are keyed (MAP §2.2)."""
+    """`<key>[<item id>]`: how an item's artifacts, values and facts are keyed (MAP-B8, MAP-B9, MAP-B10)."""
     return f"{key}[{item}]"
 
 

@@ -1,9 +1,9 @@
-"""Refuse before spend (EXI-B1, contract C15).
+"""Refuse before spend (EXI-B1, OVR-B17).
 
 Runs with no model call. Validation already refuses unknown executors, unbound tier aliases, unmapped
 tools and unsupported options against the registered capability sets; the preflight adds what needs the
 registry and the machine: each executor's probe, executor-qualified aliases against the binding table,
-judge executor selection (EXI §2.4), tool enforcement (EXI-B12) and deferred judge MCP views.
+judge executor selection (EXI-B24), tool enforcement (EXI-B12) and deferred judge MCP views.
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ def preflight(spec: WorkflowSpec, registry: Registry, *, judge_override: str | N
                 return False
             caps[name] = registry.get(name).capabilities()  # now carries the probed version
         p = rep.probes[name]
-        untested = executor_compat.finding(name, p.version) if p.ok else None  # LIF-AC-4
+        untested = executor_compat.finding(name, p.version) if p.ok else None  # LIF-AC4
         if untested is not None and untested not in rep.warnings:
             rep.warnings.append(untested)
         if not p.ok:

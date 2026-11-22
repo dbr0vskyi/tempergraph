@@ -1,7 +1,7 @@
-"""The pattern scrubber (SEC §2.3).
+"""The pattern scrubber (SEC-B8 to SEC-B11).
 
 Patterns are a floor, not the control: the publish boundary is a file boundary. A scrubber that raises
-drops the text and returns a fixed word, and the run continues (contract C2, SEC §4).
+drops the text and returns a fixed word, and the run continues (OVR-B4, SEC-B7, SEC-B8).
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ def clip(text: str | None, limit: int) -> str:
 
 
 def head_tail(text: str, limit: int, marker: str = "⟨… {n} chars omitted …⟩") -> str:
-    """Keep head and tail around an exact marker with the omitted count (JDG §4)."""
+    """Keep head and tail around an exact marker with the omitted count (JDG-B3, JDG-B13, JDG-B11)."""
     if len(text) <= limit:
         return text
     keep = max(0, limit - 40)

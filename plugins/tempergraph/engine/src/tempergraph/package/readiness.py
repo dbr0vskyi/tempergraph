@@ -1,8 +1,8 @@
-"""The structural judge readiness report (LIF §2, LIF-B6): per judged gate, model-free.
+"""The structural judge readiness report (LIF-B7 to LIF-B16, LIF-B6): per judged gate, model-free.
 
 Grades: `ready` (structure clean and the judge binding `accepted` under JCL), `needs cases` (structure clean,
 not accepted), `needs work` (a structural finding). Acceptance is read from the package's calibration scores
-(JCL §2.5, `improve/calibration.py`), so a workflow in `stable` mode is refused with `gate-not-ready` until
+(JCL-B17, `improve/calibration.py`), so a workflow in `stable` mode is refused with `gate-not-ready` until
 every judged gate is `accepted` (LIF-B6).
 """
 
@@ -48,7 +48,7 @@ def _structural(c: Criterion) -> list[str]:
         if c.severity == "blocker" and not str(scale.get("partial") or "").strip():
             missing.append("partial")
         if missing:
-            out.append(f"{c.id}: scale lacks {', '.join(missing)} (OUT §2.2.1)")
+            out.append(f"{c.id}: scale lacks {', '.join(missing)} (OUT-B11)")
     low = c.text.lower()
     vague = [w for w in VAGUE if w in low]
     if vague:
@@ -73,7 +73,7 @@ def _gates(spec: WorkflowSpec) -> Iterable[tuple[str, list[Criterion]]]:
 
 def readiness(spec: WorkflowSpec, accepted: Callable[[str], bool] | None = None,
               state_of: Callable[[str], str] | None = None) -> list[GateReadiness]:
-    """`accepted(gate)` answers whether the gate's judge binding is `accepted` (JCL §2.5); by default it is
+    """`accepted(gate)` answers whether the gate's judge binding is `accepted` (JCL-B17); by default it is
     read from the package's calibration scores (`improve/calibration.py`), as is `state_of(gate)`."""
     from tempergraph.author.criteria_lint import lint, package_doc
 
@@ -97,7 +97,7 @@ def readiness(spec: WorkflowSpec, accepted: Callable[[str], bool] | None = None,
             notes.append("no judged criterion is a blocker, so the judge can never send the work back")
         ok = accepted(gate)
         grade = "needs work" if notes else ("ready" if ok else "needs cases")
-        # AUT §2.8: a missing seed is a calibration gap, shown but not graded as structural
+        # AUT-B12, AUT-B15, AUT-B19, AUT-B24, AUT-B25: a missing seed is a calibration gap, shown but not graded as structural
         notes += [f"criterion-no-seed: {c} has no met and unmet seed" for c in seedless]
         out.append(GateReadiness(gate=gate, grade=grade, findings=notes, criteria=len(criteria), blockers=blockers,
                                  calibration_cases=_cases(spec.package_root, gate),

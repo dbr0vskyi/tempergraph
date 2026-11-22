@@ -28,7 +28,7 @@ WHEN an alias is bound THE executor SHALL read the operator file `<home>/config/
 
 ### EXI-B1 Refuse before spend
 
-WHEN a start, resume, batch or check is preflighted THE engine SHALL check, with no model call, that every step's executor is registered and probes ok, that every alias is in its executor's `binds_aliases`, every tool capability in its `tool_map`, every gated step's judge executor declares `restricts_judge_tools` and `prompt_off_argv`, `cost_cap_usd`, `fallback_alias` and `turn_cap` are in `session_options`, enforced step tools have `enforces_step_tools`, `subagent`, `web_fetch` and `web_search` on `messages-api` are in its `tool_map` for the bound provider, `--strict-permissions` finds no undeclared-tool finding, and a scheduled start's every binding accepts the credential kind the profile provides unattended ([TCK §2.4](84-schedule-ticks-and-unattended-fires.spec.md)), and exit 2 at the first miss naming the step, the executor and the missing capability.
+WHEN a start, resume, batch or check is preflighted THE engine SHALL check, with no model call, that every step's executor is registered and probes ok, that every alias is in its executor's `binds_aliases`, every tool capability in its `tool_map`, every gated step's judge executor declares `restricts_judge_tools` and `prompt_off_argv`, `cost_cap_usd`, `fallback_alias` and `turn_cap` are in `session_options`, enforced step tools have `enforces_step_tools`, `subagent`, `web_fetch` and `web_search` on `messages-api` are in its `tool_map` for the bound provider, `--strict-permissions` finds no undeclared-tool finding, and a scheduled start's every binding accepts the credential kind the profile provides unattended ([TCK-B18, TCK-B19](84-schedule-ticks-and-unattended-fires.spec.md)), and exit 2 at the first miss naming the step, the executor and the missing capability.
 
 - GIVEN a scheduled start whose judge binding needs an interactive sign-in WHEN preflighted THEN it exits 2 with `judge_credential`
 - GIVEN `turn_cap` on an executor without it WHEN preflighted THEN it exits 2 and the state root is unchanged
@@ -47,7 +47,7 @@ WHEN the launcher starts a session THE launcher SHALL deliver the prompt on stan
 
 ### EXI-B20 Library executors run as workers
 
-WHEN a library executor runs a session THE launcher SHALL start `[<engine interpreter>, "-m", <constant worker module>]` with the worker's request document, which holds the prompt, on standard input ([EMA §2.3](20-executor-messages-api.spec.md)), and the worker SHALL re-validate every field before use.
+WHEN a library executor runs a session THE launcher SHALL start `[<engine interpreter>, "-m", <constant worker module>]` with the worker's request document, which holds the prompt, on standard input ([EMA-B8](20-executor-messages-api.spec.md)), and the worker SHALL re-validate every field before use.
 
 - GIVEN a request document with an alias that is not bound WHEN the worker reads it THEN it refuses the session
 
@@ -65,13 +65,13 @@ WHEN the prompt write ends THE launcher SHALL record the gap from spawn, and a g
 
 ### EXI-B22 Caller variables
 
-WHEN the launcher starts a session THE launcher SHALL set `TEMPERGRAPH_SESSION_KEY` to the session's key ([EVT §2.1](30-run-events.spec.md)) and remove `TEMPERGRAPH_SUPERVISOR_TOKEN`, `TEMPERGRAPH_CALLER` and `TEMPERGRAPH_CALLER_APP` from the session's environment, so a step can neither pose as the orchestration supervisor nor be counted as a supervising session ([PRV §4](85-caller-provenance.spec.md), [SCO §2.1](87-supervision-cost.spec.md)).
+WHEN the launcher starts a session THE launcher SHALL set `TEMPERGRAPH_SESSION_KEY` to the session's key ([EVT-B8, EVT-B9](30-run-events.spec.md)) and remove `TEMPERGRAPH_SUPERVISOR_TOKEN`, `TEMPERGRAPH_CALLER` and `TEMPERGRAPH_CALLER_APP` from the session's environment, so a step can neither pose as the orchestration supervisor nor be counted as a supervising session ([PRV-B5, PRV-B18, PRV-B17, PRV-B14, PRV-B13, PRV-B19, PRV-B15](85-caller-provenance.spec.md), [SCO-B9](87-supervision-cost.spec.md)).
 
 - GIVEN an engine started with `TEMPERGRAPH_CALLER=person` WHEN a step session reads its environment THEN the variable is absent and `TEMPERGRAPH_SESSION_KEY` is set
 
 ### EXI-B23 One launch site
 
-WHEN an executor's model-free probe (`--version`, `--help`, `auth status`) or the host-speed timing runs THE engine SHALL start it through the launcher, so every executor process starts at one site ([SEC §2.2](14-security.spec.md)).
+WHEN an executor's model-free probe (`--version`, `--help`, `auth status`) or the host-speed timing runs THE engine SHALL start it through the launcher, so every executor process starts at one site ([SEC-B7](14-security.spec.md)).
 
 - GIVEN a source scan WHEN it looks for process starts in executor code THEN it finds only the launcher
 

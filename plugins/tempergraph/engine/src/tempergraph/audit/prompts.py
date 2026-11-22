@@ -1,5 +1,5 @@
-"""`audit prompts <workflow>`: one row per model-facing file (PRA §2.4). The `changed` column needs history
-(release 2) and reads "not recorded", never zero (CON §2.10)."""
+"""`audit prompts <workflow>`: one row per model-facing file (PRA-B11). The `changed` column needs history
+(release 2) and reads "not recorded", never zero (CON-B14, CON-B1, CON-B15)."""
 
 from __future__ import annotations
 

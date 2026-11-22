@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A workflow is data: a `WorkflowSpec` ([CON-B4](01-contracts.spec.md)) in its own package, registered once and validated in full before anything is spent. The same validation guards the catalog, a start, a resume, the pre-start check and the upgrade check, so a bad workflow fails before a model call. This spec owns what a workflow may declare and what is refused, and contract C8: the engine core never names a workflow ([ADR-0129](../adr/0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md)). What a package holds and how it is loaded is [PKG](88-workflow-package.spec.md). The compiler ([CMP](03-compiler-and-flow.spec.md)), the CLI, authoring ([SCF](91-blueprint-and-scaffold.spec.md)) and upgrade depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
+A workflow is data: a `WorkflowSpec` ([CON-B4](01-contracts.spec.md)) in its own package, registered once and validated in full before anything is spent. The same validation guards the catalog, a start, a resume, the pre-start check and the upgrade check, so a bad workflow fails before a model call. This spec owns what a workflow may declare and what is refused, and OVR-B10: the engine core never names a workflow ([ADR-0129](../adr/0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md)). What a package holds and how it is loaded is [PKG](88-workflow-package.spec.md). The compiler ([CMP](03-compiler-and-flow.spec.md)), the CLI, authoring ([SCF](91-blueprint-and-scaffold.spec.md)) and upgrade depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
 ## Behaviours
 

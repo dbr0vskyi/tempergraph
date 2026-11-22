@@ -33,7 +33,7 @@ WHEN the manifest is reconciled THE engine SHALL repoint stale entries and regis
 
 ### LIF-B2 Stamp only when clean
 
-WHEN `upgrade --stamp` or `upgrade-check --stamp` runs THE engine SHALL write the workflow stamp (the engine release it was last verified against, with its stamp record) only after every check of [WUP §2.6](63-workflow-upgrade.spec.md) passes, matching the workflow against the typed compatibility changelog ([VER §2.3](61-version-metadata.spec.md)).
+WHEN `upgrade --stamp` or `upgrade-check --stamp` runs THE engine SHALL write the workflow stamp (the engine release it was last verified against, with its stamp record) only after every check of [WUP-B19](63-workflow-upgrade.spec.md) passes, matching the workflow against the typed compatibility changelog ([VER-B9](61-version-metadata.spec.md)).
 
 - GIVEN a workflow whose detect rules match code a breaking release changed WHEN `upgrade-check --stamp` runs THEN it prints each hit with its changelog entry and writes no stamp
 
@@ -65,7 +65,7 @@ WHEN `validate` runs THE engine SHALL lint each step template, judge stance and 
 
 ### LIF-B13 Judge readiness report
 
-WHEN judge readiness is reported THE engine SHALL list, per judged gate and the outcome gate, a judged criterion with no `check_method`, a judge criterion whose scale lacks `met`, `unmet` or `evidence` (or `partial` for a blocker, [OUT §2.2.1](90-run-outcome.spec.md)), vague words in a criterion, a gate with no judged blocker, criteria lint findings on `outcome.json` ([AUT §2.4.1](89-workflow-authoring.spec.md)), the count of calibration cases under `evals/calibration/<gate>/`, and the last score per judge executor with its acceptance state ([JCL §2.5](50-judge-calibration.spec.md)), and grade the gate `ready` (structure clean and the judge `accepted`), `needs cases` or `needs work`; a criteria lint finding grades it `needs work`, except `criterion-no-seed`, which is shown and left to calibration.
+WHEN judge readiness is reported THE engine SHALL list, per judged gate and the outcome gate, a judged criterion with no `check_method`, a judge criterion whose scale lacks `met`, `unmet` or `evidence` (or `partial` for a blocker, [OUT-B11](90-run-outcome.spec.md)), vague words in a criterion, a gate with no judged blocker, criteria lint findings on `outcome.json` ([AUT-B19, AUT-B20, AUT-B21](89-workflow-authoring.spec.md)), the count of calibration cases under `evals/calibration/<gate>/`, and the last score per judge executor with its acceptance state ([JCL-B17](50-judge-calibration.spec.md)), and grade the gate `ready` (structure clean and the judge `accepted`), `needs cases` or `needs work`; a criteria lint finding grades it `needs work`, except `criterion-no-seed`, which is shown and left to calibration.
 
 - GIVEN a gate whose judge criterion has no `check_method` WHEN reported THEN the gate grades `needs work`
 - GIVEN a clean gate whose judge has no score WHEN reported THEN it does not grade `ready`
@@ -78,7 +78,7 @@ WHEN a workflow declaring `stable` is validated THE engine SHALL refuse it with 
 
 ### LIF-B4 Executor conformance in the eval set
 
-WHEN a package's deterministic scenario runs THE engine SHALL run its generated tests on stand-ins ([SCF §2.7](91-blueprint-and-scaffold.spec.md)): a scripted `claude` as the reference plays every step and judge and the run must finish, and a step naming an executor without a stand-in is reported by name ("executors […] are not in release 1") rather than passed.
+WHEN a package's deterministic scenario runs THE engine SHALL run its generated tests on stand-ins ([SCF-B11, SCF-B13, SCF-B15, SCF-B16, SCF-B17, SCF-B18, SCF-B19, SCF-B20, SCF-B22](91-blueprint-and-scaffold.spec.md)): a scripted `claude` as the reference plays every step and judge and the run must finish, and a step naming an executor without a stand-in is reported by name ("executors […] are not in release 1") rather than passed.
 
 - GIVEN a package whose step names `antigravity` WHEN its scenario runs THEN the report names `antigravity` as not in this release
 

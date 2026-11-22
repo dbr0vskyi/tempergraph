@@ -9,7 +9,7 @@
 
 ## Context
 
-The owner wants "runs stats and numbers from all the machines in single place". Today stats rows stay on each machine and "nothing is sent anywhere"; tracing to an external service was marked "a governance decision" ([OBS](../specs/15-observability-and-cost.spec.md)). The project is a framework for small teams and non-experts; asking them to run a service is a cost. Records shared beyond a machine must carry metadata only (contract C9).
+The owner wants "runs stats and numbers from all the machines in single place". Today stats rows stay on each machine and "nothing is sent anywhere"; tracing to an external service was marked "a governance decision" ([OBS](../specs/15-observability-and-cost.spec.md)). The project is a framework for small teams and non-experts; asking them to run a service is a cost. Records shared beyond a machine must carry metadata only (OVR-B11).
 
 ## Decision
 

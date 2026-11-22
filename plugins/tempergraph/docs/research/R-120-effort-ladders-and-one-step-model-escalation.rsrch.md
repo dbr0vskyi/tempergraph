@@ -19,7 +19,7 @@ This is research only. No spec, decision record or code changes with this note. 
 
 | # | Source | Type | Where |
 |---|---|---|---|
-| S6 | This design on `main` after PR 27: BUD §2.2 and BUD-B7, RST §2.1 and §2.3, ECC §2.3, EXI, JDG, JCL `binding`, FBK-B4, PRP kinds, SWM `arm_overrides`, MAP `item_model`, ADR-0041 | Design set | [specs](../specs/00-overview.spec.md), [adr](../adr/README.md) |
+| S6 | This design on `main` after PR 27: BUD-B1, BUD-B11 and BUD-B7, RST-B17, RST-B22, RST-B23, ECC-B8, ECC-B9, EXI, JDG, JCL `binding`, FBK-B4, PRP kinds, SWM `arm_overrides`, MAP `item_model`, ADR-0041 | Design set | [specs](../specs/00-overview.spec.md), [adr](../adr/README.md) |
 | S7 | Engine code on `main`: `run/nodes.py` (rung chosen by the retry counter), `run/gate.py` (counter resets), `executors/claude.py` (`_EFFORTS`, `--effort`, `--fallback-model`), `contracts.py` (`SessionOptions.effort`), `settings.py`, `improve/child.py` and `improve/review.py` (loop alias) | Code | `plugins/tempergraph/engine/src/tempergraph/` |
 | S8 | [R-001](R-001-claude-code-cli-headless.rsrch.md) F10: `--effort` takes `low`, `medium`, `high`, `xhigh`, `max`, with availability per model | Design set | research/ |
 | S9 | Anthropic's guidance on effort and cost: what effort controls, levels per model, defaults per model, "sweep effort before touching the model", "re-run failures at higher effort", "price in cost per completed task", "switch models between conversations, not inside one" | Vendor guidance (Claude API skill reference, cached 2026-11-03) | Claude API documentation, Effort and Cost Optimization pages |
@@ -44,9 +44,9 @@ This is research only. No spec, decision record or code changes with this note. 
 
 | Capability | Where | State |
 |---|---|---|
-| Model ladder of 1 to 8 aliases on steps, a judge on the last rung, reset on a person's retry, a re-open or a trip back, infra on the same rung | BUD-B7, RST §2.1, `run/nodes.py` (rung = `min(retries, len - 1)`), `run/gate.py` (counter resets), test `test_model_ladder_climbs_and_a_person_retry_resets_it` | Built in release 1 |
-| `effort` as one value per scope: steps, a unit, judges, a switch arm | RST §2.1 and layer 5, ECC §2.3 | Built in release 1, arms in release 2 |
-| `fallback_alias` on an overload, never sent to a judge | RST §2.1, ECC-AC-4, `executors/claude.py` | Built in release 1 |
+| Model ladder of 1 to 8 aliases on steps, a judge on the last rung, reset on a person's retry, a re-open or a trip back, infra on the same rung | BUD-B7, RST-B17, `run/nodes.py` (rung = `min(retries, len - 1)`), `run/gate.py` (counter resets), test `test_model_ladder_climbs_and_a_person_retry_resets_it` | Built in release 1 |
+| `effort` as one value per scope: steps, a unit, judges, a switch arm | RST-B17 and layer 5, ECC-B8, ECC-B9 | Built in release 1, arms in release 2 |
+| `fallback_alias` on an overload, never sent to a judge | RST-B17, ECC-AC4, `executors/claude.py` | Built in release 1 |
 | Judge binding includes `sampling` (temperature and effort), so a changed judge effort is a changed binding | JCL `binding`, FBK `binding` | Built in release 1 |
 | A new model slug behind a judge's alias makes it `unmeasured` | FBK-B4, JCL-B3 | Built in release 1 |
 | Per-item model on a map, per-arm model and effort on a switch | MAP `item_model`, SWM `arm_overrides` | Release 2 |
@@ -54,8 +54,8 @@ This is research only. No spec, decision record or code changes with this note. 
 
 Two gaps in what exists today:
 
-- **`xhigh` is missing.** The CLI accepts `low`, `medium`, `high`, `xhigh` and `max` (S8). The setting catalog (RST §2.1), `SessionOptions.effort` in `contracts.py` and `_EFFORTS` in `executors/claude.py` know only `low`, `medium`, `high` and `max`. The vendor guidance names `xhigh` as the best setting for most coding and agentic work on several current models (S9). An effort ladder without it would skip the most useful rung.
-- **The rung follows the retry count, not the cause.** In `run/nodes.py` the rung is chosen from the retry counter alone. Every cause that spends the retry budget (BUD §2.2: a judge blocker, a check failure, a timeout, a stall, a turn cap, a cost cap, a `model` error) climbs the ladder alike.
+- **`xhigh` is missing.** The CLI accepts `low`, `medium`, `high`, `xhigh` and `max` (S8). The setting catalog (RST-B17), `SessionOptions.effort` in `contracts.py` and `_EFFORTS` in `executors/claude.py` know only `low`, `medium`, `high` and `max`. The vendor guidance names `xhigh` as the best setting for most coding and agentic work on several current models (S9). An effort ladder without it would skip the most useful rung.
+- **The rung follows the retry count, not the cause.** In `run/nodes.py` the rung is chosen from the retry counter alone. Every cause that spends the retry budget (BUD-B1, BUD-B11: a judge blocker, a check failure, a timeout, a stall, a turn cap, a cost cap, a `model` error) climbs the ladder alike.
 
 ### F4 Public guidance favours effort over model, and raising effort only on failures `supported`
 
@@ -70,7 +70,7 @@ These points come from one vendor source (S9), so they stay `supported`:
 
 ### F5 The engine already has the signals strict criteria need `confirmed`
 
-- BUD §2.2 classifies every failure into a counter: infra, the retry budget, or an escalation with no retry. Judgements carry blocker criterion ids, and a check FAIL names its criterion (S6).
+- BUD-B1, BUD-B11 classifies every failure into a counter: infra, the retry budget, or an escalation with no retry. Judgements carry blocker criterion ids, and a check FAIL names its criterion (S6).
 - A judge blocker is the largest cause of repeat cost, ahead of a person, a trip back and a failed check ([R-050](R-050-why-runs-fail-stall-repeat-or-overspend.rsrch.md) F1.1).
 - Cut-off attempts are already kept on the same rung, because "the machine is not the model's fault" (S1, BUD-B1).
 - The ledger and run log record the alias and its source per attempt (RST, `settings_resolved`), so a rung that came from escalation can be told apart from a declared one.
@@ -90,13 +90,13 @@ Why it fits better than a model ladder (F2, F4):
 Rules it would need to fit the engine:
 
 1. **It climbs only on causes that more thinking can fix.** These are a judge RETRY with at least one unmet blocker that is not `no_change`, and a check FAIL that is not environmental. Together they are most of repeat cost (F5).
-2. **It holds the rung on causes that more thinking makes worse or cannot fix.** These are a timeout or a stall, a turn cap, a cost cap, infra, and `tool_access`. A timed-out attempt at higher effort runs longer, and a capped attempt costs more. These causes stay on the same rung, as infra does today. The `auth` and `refused` causes and the no-change escalations already spend no retry (BUD §2.2).
+2. **It holds the rung on causes that more thinking makes worse or cannot fix.** These are a timeout or a stall, a turn cap, a cost cap, infra, and `tool_access`. A timed-out attempt at higher effort runs longer, and a capped attempt costs more. These causes stay on the same rung, as infra does today. The `auth` and `refused` causes and the no-change escalations already spend no retry (BUD-B1, BUD-B11).
 3. **It resets where the model ladder resets:** on a person's retry, a re-open and a trip back. A person's feedback is new information, so the cheap rung gets a fresh chance with it.
 4. **It starts from an explicit level, never from "unset".** The defaults differ by model and change between releases (F4), so a ladder whose first rung is "the model's default" would move when the binding changes.
 5. **Preflight checks every rung.** Each level must be one the executor applies for the bound model. Today an unapplied effort is only a warning (EXI). For a ladder, a rung the model cannot apply would silently merge two rungs, so it should be a validation error.
 6. **Records carry the rung.** Each attempt records its effort and the source, for example `ladder:effort[2]`. The cost lens, the gate scorecard and PRP trials must group by rung. Otherwise, a run that climbed would corrupt first-pass yield and cost per arm, the same hazard as a run that mixes switch arms.
 7. **`xhigh` joins the effort enum first** (F3).
-8. **It stays inside the budgets.** A ladder adds no attempt. It changes only the effort of attempts the retry budget already allows, and the run cost cap is checked before each attempt as today (BUD §2).
+8. **It stays inside the budgets.** A ladder adds no attempt. It changes only the effort of attempts the retry budget already allows, and the run cost cap is checked before each attempt as today (BUD-B8, BUD-B9).
 
 What it costs, unmeasured: one cheap attempt that fails is wasted (F1). The vendor figure of "a little over half the cost" (F4) is from coding benchmarks with a test signal, not from this engine's gates. Until runs exist, it is a hypothesis to measure per workflow, with a watch like the one in F2.
 

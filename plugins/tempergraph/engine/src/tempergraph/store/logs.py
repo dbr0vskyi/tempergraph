@@ -1,6 +1,6 @@
-"""The local store's verbs (LOS §2.4) and retention (LOS §2.5): `logs`, `store usage|prune|export`.
+"""The local store's verbs (LOS-B14, LOS-B15) and retention (LOS-B16): `logs`, `store usage|prune|export`.
 
-`logs` and `store usage` read only (contract C13); `store prune --dry-run` reads only too. `store prune` removes
+`logs` and `store usage` read only (OVR-B15); `store prune --dry-run` reads only too. `store prune` removes
 what the retention rule allows of finished threads and never touches a run log, a session's `meta.json`, a
 checkpoint, the ledger or stats. `store export` packs one run after a scrub pass over every text file.
 """
@@ -27,7 +27,7 @@ from tempergraph.store.layout import lock_path, run_dir
 DAY = 86_400.0
 KINDS = ("run", "raw", "activity", "stderr", "check", "hook", "engine")
 
-#: LOS §2.5: what `store prune` removes by default and after how many days.
+#: LOS-B16: what `store prune` removes by default and after how many days.
 SESSION_LOGS = ("raw.jsonl", "activity.jsonl", "stderr.log", "output")
 LOG_DAYS = 30
 EVIDENCE_DAYS = 90
@@ -50,7 +50,7 @@ def _size(path: Path) -> int:
 
 
 def kind_of(rel: Path) -> str:
-    """The LOS §2.1 kind of a file under a run folder, by its place."""
+    """The LOS-B7, LOS-B8, LOS-B9 kind of a file under a run folder, by its place."""
     parts = rel.parts
     if parts[0] == "sessions" and len(parts) >= 3:
         name = parts[2]
@@ -197,7 +197,7 @@ class Plan:
 
 
 def prunable(t: Thread, now: float, older_than_days: float = LOG_DAYS, keep_failed: bool = True) -> list[Path]:
-    """LOS §2.5 for one thread: session logs, check output and hook logs past `older_than_days`, evidence past 90."""
+    """LOS-B16 for one thread: session logs, check output and hook logs past `older_than_days`, evidence past 90."""
     if not t.finished or t.ended_at is None or (keep_failed and t.failed):
         return []
     age = (now - t.ended_at) / DAY
@@ -241,7 +241,7 @@ def plan_prune(root: Path, now: float | None = None, older_than_days: float = LO
 
 
 def apply(plan: Plan) -> list[str]:
-    """Removes the plan's paths; a path that cannot be removed is reported, the others go on (contract C2)."""
+    """Removes the plan's paths; a path that cannot be removed is reported, the others go on (OVR-B4)."""
     failed = []
     for p in plan.remove:
         try:
@@ -290,7 +290,7 @@ def _is_text(data: bytes) -> bool:
 
 
 def export(t: Thread, target: Path) -> dict[str, Any]:
-    """Packs one run's folder as `<workflow>/<task_id>/…` in a tar.gz, every text file scrubbed (LOS-AC-3)."""
+    """Packs one run's folder as `<workflow>/<task_id>/…` in a tar.gz, every text file scrubbed (LOS-AC3)."""
     scrubbed = skipped = 0
     target.parent.mkdir(parents=True, exist_ok=True)
     with tarfile.open(target, "w:gz") as tar:

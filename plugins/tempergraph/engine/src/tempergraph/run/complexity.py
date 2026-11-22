@@ -1,4 +1,4 @@
-"""Complexity switches: measures, the rules file and zones (CXR §2.3 to §2.6). Model-free.
+"""Complexity switches: measures, the rules file and zones (CXR-B9, CXR-B12, CXR-B5). Model-free.
 
 The switch's own step node evaluates once per run and keeps the result on its attempt record; the gate's pick
 reads it there, so the gate stays a pure function of state.
@@ -33,7 +33,7 @@ def default_rules_path(switch: str) -> str:
 
 
 def override_path(state_root: Path, workflow: str, switch: str) -> Path:
-    """A repository's whole-file override of a switch's rules (CXR §2.4)."""
+    """A repository's whole-file override of a switch's rules (CXR-B10, CXR-B1)."""
     return state_root / "routing" / workflow / f"{switch}.json"
 
 
@@ -163,7 +163,7 @@ def _stock(m: MeasureSpec, mctx: MeasureContext, spec: WorkflowSpec, state: Mapp
 
 
 def measure(m: MeasureSpec, mctx: MeasureContext, spec: WorkflowSpec, state: Mapping[str, Any]) -> Any:
-    """One measure's value, or `FAULT` when it raises, runs over a second or returns another type (CXR §2.3)."""
+    """One measure's value, or `FAULT` when it raises, runs over a second or returns another type (CXR-B9)."""
     def run() -> Any:
         if m.call is not None:
             return m.call.resolve()(mctx)
@@ -196,7 +196,7 @@ def _in_band(value: Any, band: Mapping[str, Any]) -> bool:
 
 
 def explores(comp: ComplexitySpec, thread: str, switch: str, stage: str, origin: str, explored_recent: int) -> bool:
-    """CXR §2.6: a deterministic draw on the thread, a weekly limit, and never in a pipeline, a scheduled
+    """CXR-B12, CXR-B5: a deterministic draw on the thread, a weekly limit, and never in a pipeline, a scheduled
     fire or a trial."""
     ex = comp.explore
     if not ex or stage == "pipeline" or origin in NO_EXPLORE_ORIGINS:
@@ -232,7 +232,7 @@ def explored_recent(state_root: Path, workflow: str, switch: str, now: datetime 
 
 def evaluate(spec: WorkflowSpec, switch: str, state: Mapping[str, Any], mctx: MeasureContext, *,
              state_root: Path | None, thread: str, origin: str = "cli", recent: int = 0) -> dict[str, Any]:
-    """The zone and the arm it gives (CXR §2.4), with every measure's value, for the `route` record."""
+    """The zone and the arm it gives (CXR-B10, CXR-B1), with every measure's value, for the `route` record."""
     sw = spec.units[switch].switch
     assert sw is not None and sw.complexity is not None
     comp = sw.complexity

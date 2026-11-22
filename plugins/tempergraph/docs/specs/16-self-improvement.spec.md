@@ -2,20 +2,20 @@
 
 ## Purpose
 
-A built-in program that reads every finished run's record, judges it with an independent judge, and files, comments on or only records a finding in the repository that owns the fault: the engine's or the workflow's. It is inside the engine so every run is analyzed without an optional install ([ADR-0003](../adr/0003-workflows-as-data.adr.md)); it runs as a detached child and never pauses. The loop closes through people: an issue is evidence, not an order, and a measurement call never writes code. It is the first half of the loop: clusters of its findings become measured proposals ([PRP](40-improvement-proposals.spec.md)), human ground truth becomes labels and judge grades ([FBK](41-feedback-and-judge-reliability.spec.md)), its data needs are [IMD](43-improvement-data.spec.md), and what it reads from sessions is [SRV](44-session-review.spec.md). Workflow owners, the engine's maintainers and operators who read the issues depend on it. Its thresholds are parameter records with provenance `default_no_data` ([IMD §2.5](43-improvement-data.spec.md)), to be revisited with real runs.
+A built-in program that reads every finished run's record, judges it with an independent judge, and files, comments on or only records a finding in the repository that owns the fault: the engine's or the workflow's. It is inside the engine so every run is analyzed without an optional install ([ADR-0003](../adr/0003-workflows-as-data.adr.md)); it runs as a detached child and never pauses. The loop closes through people: an issue is evidence, not an order, and a measurement call never writes code. It is the first half of the loop: clusters of its findings become measured proposals ([PRP](40-improvement-proposals.spec.md)), human ground truth becomes labels and judge grades ([FBK](41-feedback-and-judge-reliability.spec.md)), its data needs are [IMD](43-improvement-data.spec.md), and what it reads from sessions is [SRV](44-session-review.spec.md). Workflow owners, the engine's maintainers and operators who read the issues depend on it. Its thresholds are parameter records with provenance `default_no_data` ([IMD-B23](43-improvement-data.spec.md)), to be revisited with real runs.
 
 ## Behaviours
 
 ### SIL-B8 Records on every exit
 
-WHEN a run exits THE engine SHALL write, with no model call, the findings `runs/<workflow>/<task>/findings.json` (signal and step names, cause codes, counts, executor names, published only as metadata; one document per thread that each segment appends to), the local evidence file `runs/<workflow>/<task>/evidence/record.json` (request, outputs, scrubbed feedback, never published), both owner-only ([LOS §2.1](33-local-observability-store.spec.md)), one ledger row (names, counts, hashes, executor and CLI versions, no text), the session digests ([SRV §2.1](44-session-review.spec.md)), and a `finding_recorded` run-log record with the causes, sides and, at a final exit, the lenses.
+WHEN a run exits THE engine SHALL write, with no model call, the findings `runs/<workflow>/<task>/findings.json` (signal and step names, cause codes, counts, executor names, published only as metadata; one document per thread that each segment appends to), the local evidence file `runs/<workflow>/<task>/evidence/record.json` (request, outputs, scrubbed feedback, never published), both owner-only ([LOS-B7, LOS-B8, LOS-B9](33-local-observability-store.spec.md)), one ledger row (names, counts, hashes, executor and CLI versions, no text), the session digests ([SRV-B11](44-session-review.spec.md)), and a `finding_recorded` run-log record with the causes, sides and, at a final exit, the lenses.
 
 - GIVEN a run that exits 5 WHEN recording finishes THEN `findings.json`, `evidence/record.json` and one ledger row exist and no session ran
 - GIVEN a paused run resumed and finished WHEN its findings are read THEN both segments appended to the one document
 
 ### SIL-B1 Detached and best effort
 
-WHEN a final exit's friction lens fires on at least one fault, its outcome lens has candidates, or its session review plan has a depth THE engine SHALL write a hand-off ticket (ids, enums, the state root path and the fingerprints, never request text) to `improve/tickets/` under the home and start the loop child detached through the detached child launcher ([SEC §2.2](14-security.spec.md)), and the child's failure SHALL never change the parent's exit code.
+WHEN a final exit's friction lens fires on at least one fault, its outcome lens has candidates, or its session review plan has a depth THE engine SHALL write a hand-off ticket (ids, enums, the state root path and the fingerprints, never request text) to `improve/tickets/` under the home and start the loop child detached through the detached child launcher ([SEC-B7](14-security.spec.md)), and the child's failure SHALL never change the parent's exit code.
 
 - GIVEN a run that exits 0 and a loop child that crashes WHEN the parent's exit code is read THEN it is 0
 - GIVEN `TEMPERGRAPH_LOOP=inline` WHEN the run exits THEN the loop runs in-process; with `off` it does not run
@@ -28,14 +28,14 @@ WHEN the loop decides which exits are final THE engine SHALL treat every exit th
 
 ### SIL-B10 Lenses
 
-WHEN a final exit is judged THE loop SHALL apply the friction lens (where the process hurt and whose fault: every flagged final exit in dev mode; in stable mode a `tool_access` pause or tool grant, spent retries or a stop, an uncleared failed step, a gap escalation, repeated blockers, a retry burst, cost above the version's p90, a new version's first five runs, or a person pushing back), the outcome lens (read from the run's outcome record, [OUT §2.5](90-run-outcome.spec.md): every final exit in dev mode; in stable mode a person pushing back, a pass at judge confidence at most 0.5, or every 20th clean run), the cost lens (every 10th final exit of a version), the session lens (digest causes on every exit, a model review only on a plan, [SRV §2.3, §2.4](44-session-review.spec.md)) and the per-gate quality scorecard (reported for every gate; a gate's rows may file only while its judge binding is graded `reliable`, [FBK-B5](41-feedback-and-judge-reliability.spec.md)).
+WHEN a final exit is judged THE loop SHALL apply the friction lens (where the process hurt and whose fault: every flagged final exit in dev mode; in stable mode a `tool_access` pause or tool grant, spent retries or a stop, an uncleared failed step, a gap escalation, repeated blockers, a retry burst, cost above the version's p90, a new version's first five runs, or a person pushing back), the outcome lens (read from the run's outcome record, [OUT-B18, OUT-B19](90-run-outcome.spec.md): every final exit in dev mode; in stable mode a person pushing back, a pass at judge confidence at most 0.5, or every 20th clean run), the cost lens (every 10th final exit of a version), the session lens (digest causes on every exit, a model review only on a plan, [SRV-B13, SRV-B14, SRV-B15, SRV-B16, SRV-B5](44-session-review.spec.md)) and the per-gate quality scorecard (reported for every gate; a gate's rows may file only while its judge binding is graded `reliable`, [FBK-B5](41-feedback-and-judge-reliability.spec.md)).
 
 - GIVEN stable mode and a clean run that is the 20th since the last outcome review WHEN it exits THEN the outcome lens runs
 - GIVEN a gate whose judge binding is not `reliable` WHEN its scorecard rows show a drop THEN they are reported and not filed
 
 ### SIL-B11 Fault sides
 
-WHEN a cause is classified THE loop SHALL take cause codes from run-log and session-digest names and numbers only ([SRV §2.2](44-session-review.spec.md)), class each `fault`, `infra` or `designed`, attribute a fault to `engine`, `workflow`, `executor:<name>` (an unknown event or message shape, a tool name outside the catalog, a refused flag or option, an API error type the classifier does not list) or `host` (the host-speed preflight warned, or timeouts sorted `slow_host`, [OBS](15-observability-and-cost.spec.md)), file executor-side issues to the engine's repository with an executor label, and record host findings only.
+WHEN a cause is classified THE loop SHALL take cause codes from run-log and session-digest names and numbers only ([SRV-B12](44-session-review.spec.md)), class each `fault`, `infra` or `designed`, attribute a fault to `engine`, `workflow`, `executor:<name>` (an unknown event or message shape, a tool name outside the catalog, a refused flag or option, an API error type the classifier does not list) or `host` (the host-speed preflight warned, or timeouts sorted `slow_host`, [OBS](15-observability-and-cost.spec.md)), file executor-side issues to the engine's repository with an executor label, and record host findings only.
 
 - GIVEN a timeout on a host whose preflight warned WHEN classified THEN the finding is `host` and nothing is filed
 
@@ -47,7 +47,7 @@ WHEN sessions show a tool name the executor's view catalog does not map THE loop
 
 ### SIL-B12 What a friction finding carries
 
-WHEN a friction finding is made THE loop SHALL carry the cause code's fixed remedy and, where the fault is in a prompt or check, the file and the kind of change (a person decides; the loop opens no pull request); mark three or more retries of one unit in one visit `retry_burst` with the blockers' criterion ids, and a judge-sent-back retry `judge_blocked:<criterion id>` ([PRP §2.2](40-improvement-proposals.spec.md)); and mark a pause on `BLOCKED:` whose check ran no command and read no file as the workflow fault `blocked_without_check`.
+WHEN a friction finding is made THE loop SHALL carry the cause code's fixed remedy and, where the fault is in a prompt or check, the file and the kind of change (a person decides; the loop opens no pull request); mark three or more retries of one unit in one visit `retry_burst` with the blockers' criterion ids, and a judge-sent-back retry `judge_blocked:<criterion id>` ([PRP-B12](40-improvement-proposals.spec.md)); and mark a pause on `BLOCKED:` whose check ran no command and read no file as the workflow fault `blocked_without_check`.
 
 - GIVEN a unit retried three times in one visit WHEN its finding is made THEN it carries `retry_burst` with the criterion ids
 - GIVEN a `BLOCKED:` pause whose check ran nothing WHEN classified THEN the fault is the workflow's `blocked_without_check`
@@ -60,20 +60,20 @@ WHEN the outcome lens judges a run THE loop SHALL include the run branch's commi
 
 ### SIL-B14 Tool access and grants
 
-WHEN a run had a `tool_access` pause or a tool grant ([RST §2.8](80-run-settings-and-overrides.spec.md)) THE loop SHALL make a friction finding `tool_access:<refusal class>` ([TSA §2.2](57-tool-surface-audit.spec.md)), write each grant and allowed command as one entry of the ledger row's `grants[]` (unit, capability or prefix, the refusal class it answered, `via` `cli`, `orchestration` or `profile`, whether a later attempt called it, the unit's outcome after it), make a grant a passing attempt used a workflow finding `grant_missing` whose remedy is the declaration, record a grant never called as `grant_unused` without filing, and cluster both by workflow, unit and capability.
+WHEN a run had a `tool_access` pause or a tool grant ([RST-B28, RST-B29, RST-B30](80-run-settings-and-overrides.spec.md)) THE loop SHALL make a friction finding `tool_access:<refusal class>` ([TSA-B7](57-tool-surface-audit.spec.md)), write each grant and allowed command as one entry of the ledger row's `grants[]` (unit, capability or prefix, the refusal class it answered, `via` `cli`, `orchestration` or `profile`, whether a later attempt called it, the unit's outcome after it), make a grant a passing attempt used a workflow finding `grant_missing` whose remedy is the declaration, record a grant never called as `grant_unused` without filing, and cluster both by workflow, unit and capability.
 
 - GIVEN `--grant code=shell` used by a passing attempt WHEN the loop runs THEN a `grant_missing` finding is made for `code`
 - GIVEN the same grant on five runs on three machines WHEN the pattern rule runs THEN one issue is filed
 
 ### SIL-B15 Agent rescues and supervision
 
-WHEN an agent decided a `rescue` touch on its own ([SUP §2.1](86-supervision-metrics.spec.md), [PRV §2.4](85-caller-provenance.spec.md)) THE loop SHALL make a friction finding `agent_decided:<pause cause>` clustered by workflow, unit and pause cause, file a workflow issue whose remedy is a check or an environmental cause for a cluster whose decisions were mostly `proceed` with no workspace change, write `supervision{}` on the ledger row, and show supervision cost in the cost lens as its own figure, never in run cost ([SCO](87-supervision-cost.spec.md)).
+WHEN an agent decided a `rescue` touch on its own ([SUP-B9](86-supervision-metrics.spec.md), [PRV-B14](85-caller-provenance.spec.md)) THE loop SHALL make a friction finding `agent_decided:<pause cause>` clustered by workflow, unit and pause cause, file a workflow issue whose remedy is a check or an environmental cause for a cluster whose decisions were mostly `proceed` with no workspace change, write `supervision{}` on the ledger row, and show supervision cost in the cost lens as its own figure, never in run cost ([SCO](87-supervision-cost.spec.md)).
 
 - GIVEN ten agent `proceed` rescues on unit `test` with no workspace change WHEN clustered THEN one workflow issue is filed
 
 ### SIL-B16 Review observations corroborate
 
-WHEN a session review keeps an observation THE loop SHALL keep it local and file nothing from it alone, adding `review:<category>` and `review_weight` to a model-free finding on the same unit and run that it corroborates ([SRV §2.8](44-session-review.spec.md), [ADR-0119](../adr/0119-review-observations-are-candidates-corroborated-before-they-file.adr.md)).
+WHEN a session review keeps an observation THE loop SHALL keep it local and file nothing from it alone, adding `review:<category>` and `review_weight` to a model-free finding on the same unit and run that it corroborates ([SRV-B22](44-session-review.spec.md), [ADR-0119](../adr/0119-review-observations-are-candidates-corroborated-before-they-file.adr.md)).
 
 - GIVEN a review observation with no model-free finding on its unit WHEN filing runs THEN nothing is filed for it
 
@@ -86,7 +86,7 @@ WHEN an outcome finding comes from a judge with no calibration score for the gat
 
 ### SIL-B17 The loop child
 
-WHEN the loop child claims a ticket THE loop child SHALL run one friction judge session on the run's judge executor, on the run setting `loop_model` (default `medium`, [RST §2.2](80-run-settings-and-overrides.spec.md)) for 1800 s, over the findings' metadata and the segment's record kinds and never the evidence file, then decide and file each finding, run the session review when planned, write `loop_started`, `loop_judged`, `issue_filed`, `issue_commented` and the review records (`review_planned`, `review_session`, `review_skipped`, `review_done`, `review_failed`) and, at autonomy `propose` or `trial`, `loop_proposed`, `loop_trialled`, `loop_opened` and `loop_skipped` ([PRP §5](40-improvement-proposals.spec.md)) to the thread's `loop.jsonl`, and add one `loop` ledger row with its cost.
+WHEN the loop child claims a ticket THE loop child SHALL run one friction judge session on the run's judge executor, on the run setting `loop_model` (default `medium`, [RST-B18, RST-B19, RST-B20, RST-B21](80-run-settings-and-overrides.spec.md)) for 1800 s, over the findings' metadata and the segment's record kinds and never the evidence file, then decide and file each finding, run the session review when planned, write `loop_started`, `loop_judged`, `issue_filed`, `issue_commented` and the review records (`review_planned`, `review_session`, `review_skipped`, `review_done`, `review_failed`) and, at autonomy `propose` or `trial`, `loop_proposed`, `loop_trialled`, `loop_opened` and `loop_skipped` ([PRP-B23](40-improvement-proposals.spec.md)) to the thread's `loop.jsonl`, and add one `loop` ledger row with its cost.
 
 - GIVEN a ticket WHEN the child ends THEN `loop.jsonl` holds `loop_started` and `loop_judged`, and the ledger holds one `loop` row with its cost
 
@@ -110,13 +110,13 @@ WHEN a workflow-side outcome gap would file THE loop SHALL require at least thre
 
 ### SIL-B19 Code host unreachable
 
-WHEN the code host refuses or cannot be reached THE loop SHALL keep the payload in the state root's `filing-outbox.jsonl` ([LOS §2.1](33-local-observability-store.spec.md)) and redeliver it with the next filing.
+WHEN the code host refuses or cannot be reached THE loop SHALL keep the payload in the state root's `filing-outbox.jsonl` ([LOS-B7, LOS-B8, LOS-B9](33-local-observability-store.spec.md)) and redeliver it with the next filing.
 
 - GIVEN `gh` failing with a network error WHEN an issue files THEN the payload is in the outbox, and the next filing sends it
 
 ### SIL-B20 Daily cap
 
-WHEN stable mode's spend for the UTC day reaches the run setting `daily_cap_usd` (default 50 USD, from the workflow, a settings file or `--daily-cap`, [RST §2.2](80-run-settings-and-overrides.spec.md)), counting the workflow's `loop` ledger rows and the proposals and trials the loop started itself, THE loop SHALL skip its judges, still write the records, and write `loop_skipped` with reason `daily_cap`; dev mode has no daily limit.
+WHEN stable mode's spend for the UTC day reaches the run setting `daily_cap_usd` (default 50 USD, from the workflow, a settings file or `--daily-cap`, [RST-B18, RST-B19, RST-B20, RST-B21](80-run-settings-and-overrides.spec.md)), counting the workflow's `loop` ledger rows and the proposals and trials the loop started itself, THE loop SHALL skip its judges, still write the records, and write `loop_skipped` with reason `daily_cap`; dev mode has no daily limit.
 
 - GIVEN stable mode and 50 USD spent today WHEN a run exits THEN records are written and `loop_skipped` says `daily_cap`
 

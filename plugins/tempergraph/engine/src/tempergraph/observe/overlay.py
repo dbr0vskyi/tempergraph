@@ -1,4 +1,4 @@
-"""The run overlay on the workflow diagram (OBS §2.4, CLI `graph <workflow> --overlay <thread>`).
+"""The run overlay on the workflow diagram (OBS-B15, CLI `graph <workflow> --overlay <thread>`).
 
 Counts and engine words only, read from the thread's run log: visits, sessions and repeats per unit, gate
 verdicts, money (reported and estimated apart), and how many times each routing edge was taken. No request,

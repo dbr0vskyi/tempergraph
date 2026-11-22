@@ -1,19 +1,19 @@
-"""Trust and coverage of the outcome's criteria (OUT §2.3), computed and never stored.
+"""Trust and coverage of the outcome's criteria (OUT-B13, OUT-B14), computed and never stored.
 
 | Trust | When |
 |---|---|
 | deterministic | `check`, with a must-pass and a must-fail fixture under `evals/checks/<unit>/` |
-| calibrated | `judge` whose binding is `accepted` (JCL §2.5, read from the package's scores) |
+| calibrated | `judge` whose binding is `accepted` (JCL-B17, read from the package's scores) |
 | uncalibrated | `judge` in any other state, or `check` without both fixtures |
 | human | `person` |
 | unverified | `none` |
 
 Coverage, release 1 reading: a final criterion is covered when the outcome gate verifies it at deterministic,
 calibrated or human trust, or when every model step and script unit with a gate has an intermediate
-criterion serving it at such trust (OUT §2.3 says "on every path to the outcome gate"; release 1 flows are
+criterion serving it at such trust (OUT-B13, OUT-B14 says "on every path to the outcome gate"; release 1 flows are
 routes and switches over `order`, so every gated unit stands in for every path). This reading lets a
 workflow whose final criteria are judged, before any judge is calibrated, be covered by its units' checks
-(SCF-B3); recorded in SCF §2.7.
+(SCF-B3); recorded in SCF-B11, SCF-B13, SCF-B15, SCF-B16, SCF-B17, SCF-B18, SCF-B19, SCF-B20, SCF-B22.
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ def has_fixtures(root: Path | None, unit: str) -> bool:
 
 
 def trust(c: Criterion, unit: str, root: Path | None, accepted: Callable[[str], bool] = lambda gate: False) -> Trust:
-    """OUT §2.3 for one criterion on `unit` (`outcome` for a final criterion)."""
+    """OUT-B13, OUT-B14 for one criterion on `unit` (`outcome` for a final criterion)."""
     if c.verified_by == "person":
         return "human"
     if c.verified_by == "none":

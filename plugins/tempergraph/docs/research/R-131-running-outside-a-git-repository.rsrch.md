@@ -11,7 +11,7 @@ The questions: what in the engine depends on git, what each dependency is for, a
 | # | Source | Type | Where |
 |---|---|---|---|
 | S3 | [R-011](R-011-design-gap-review.rsrch.md) G9: proposed fallback state root, `in_place` only, file hashes for the guard | Design set | research/ |
-| S4 | This design: WSP §2 and C10, LOS §2.1, WTR, GRD (the head-and-status fingerprint), CHK `GitFacts`, FIN (push, draft PR), SIL filing, PRP trials (worktrees at a base), VER stamp and digest, SCH | Design set | [specs](../specs/00-overview.spec.md) |
+| S4 | This design: WSP-B8, WSP-B9, WSP-B11 and C10, LOS-B7, LOS-B8, LOS-B9, WTR, GRD (the head-and-status fingerprint), CHK `GitFacts`, FIN (push, draft PR), SIL filing, PRP trials (worktrees at a base), VER stamp and digest, SCH | Design set | [specs](../specs/00-overview.spec.md) |
 | S5 | Engine code on `main`: `git.py` (`main_checkout`, `fingerprint`, `branch`, `changed_paths`), `store/layout.py` (`state_root_path`) | Code | `plugins/tempergraph/engine/src/tempergraph/` |
 
 ## Key findings
@@ -20,9 +20,9 @@ The questions: what in the engine depends on git, what each dependency is for, a
 
 | Use | Where | What it protects |
 |---|---|---|
-| Finding the state root from any subfolder or worktree | WSP §2, `store/layout.py` | One state root per project, so locks and checkpoints are never split |
-| The workspace fingerprint (head and status) before and after an attempt | GRD, WSP §2.1 parallel branches, JCL fixtures | A read-only session that wrote something is caught |
-| `GitFacts` for checks (branch, base, changed paths, commits) | CHK §2.1 | Checks that a step committed, stayed on its branch, touched only some paths |
+| Finding the state root from any subfolder or worktree | WSP-B8, WSP-B9, WSP-B11, `store/layout.py` | One state root per project, so locks and checkpoints are never split |
+| The workspace fingerprint (head and status) before and after an attempt | GRD, WSP-B11, WSP-B12 parallel branches, JCL fixtures | A read-only session that wrote something is caught |
+| `GitFacts` for checks (branch, base, changed paths, commits) | CHK-B10 | Checks that a step committed, stayed on its branch, touched only some paths |
 | Engine worktrees, writer branches, trial cases at a base | WTR, WSP, PRP | Isolation of a run's writes; undo by branch |
 | Push and draft pull request in a finalizer | FIN | Publishing only after every gate passed |
 | Diff statistics for a judge's risk rule and complexity measures | JRK, CXR | Model-free risk and size signals |

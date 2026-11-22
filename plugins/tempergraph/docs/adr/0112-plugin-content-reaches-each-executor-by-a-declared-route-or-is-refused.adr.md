@@ -13,7 +13,7 @@ A workflow package is a Claude plugin, and four executors must run it. The engin
 
 ## Decision
 
-We will route plugin content per executor as [PKG §2.6](../specs/88-workflow-package.spec.md) lists, and refuse before spend a step whose declared skill or agent has no route on its executor (C15). Judges never load the workflow plugin. A workflow package ships no hooks, MCP servers, `bin/`, session settings or root instruction files; rules a step must follow are in its prompt or in a skill it declares. A second form of a skill for another executor is named in `tempergraph.json` `surfaces` and used once that executor's probe confirms the route.
+We will route plugin content per executor as [PKG-B23, PKG-B24](../specs/88-workflow-package.spec.md) lists, and refuse before spend a step whose declared skill or agent has no route on its executor (C15). Judges never load the workflow plugin. A workflow package ships no hooks, MCP servers, `bin/`, session settings or root instruction files; rules a step must follow are in its prompt or in a skill it declares. A second form of a skill for another executor is named in `tempergraph.json` `surfaces` and used once that executor's probe confirms the route.
 
 ## Options considered
 

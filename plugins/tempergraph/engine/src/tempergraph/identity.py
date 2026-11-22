@@ -1,4 +1,4 @@
-"""Pseudonymous join keys for the ledger (IMD-R1, R12): the machine id, the repository and request digests.
+"""Pseudonymous join keys for the ledger (IMD-B5, R12): the machine id, the repository and request digests.
 
 The machine id is the random id of `<home>/machine.json`, never a host name. The repository digest is the
 SHA-256 of the normalized `origin` remote URL (no scheme, no credentials, no `.git`, lower case), cut to 16 hex;
@@ -20,7 +20,7 @@ def machine_id(home: Path | None = None) -> str | None:
     try:
         h = ensure_home(home or home_path())
         doc = json.loads((h / "machine.json").read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001 - a missing id never stops a run (C2)
+    except Exception:  # noqa: BLE001 - a missing id never stops a run (OVR-B4)
         return None
     return str(doc.get("machine_id")) if isinstance(doc, dict) and doc.get("machine_id") else None
 
@@ -46,7 +46,7 @@ def repo_id(main: Path | None) -> str | None:
 
 
 def request_digest(text: str, home: Path | None = None) -> str | None:
-    """IMD-R12: a keyed hash with a per-installation key, so equal requests match without the text."""
+    """IMD-B16: a keyed hash with a per-installation key, so equal requests match without the text."""
     import hmac
     import os
     import secrets

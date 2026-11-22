@@ -84,7 +84,7 @@ def run(spec: WorkflowSpec, tmp: Path, layers: set[str] | None = None, **kw: Any
     return audit(spec, layers or {"definition", "host"}, ctx(tmp, **kw))  # type: ignore[arg-type]
 
 
-# -- the catalog (ARC-AC-1 to AC-3) ------------------------------------------------------------------------------
+# -- the catalog (ARC-AC1 to AC-3) ------------------------------------------------------------------------------
 
 
 def test_catalog_records_are_complete() -> None:
@@ -103,14 +103,14 @@ def test_catalog_records_are_complete() -> None:
 
 def test_every_family_has_a_rule_and_params_name_their_source() -> None:
     families = {r.family for r in cat.RULES}
-    assert {f"C{i}" for i in range(1, 8)} - {"C4"} <= families  # C4 is TSA's (ARC §2.8), release 2
+    assert {f"C{i}" for i in range(1, 8)} - {"C4"} <= families  # C4 is TSA's (ARC-B14), release 2
     assert "C8" in families
     for p in cat.PARAMS.values():
         assert p.default > 0 and p.source, p.name
 
 
 def test_owned_rules_call_their_owner() -> None:
-    """ARC-AC-4: the audit renders owned findings and has no copy of their logic."""
+    """ARC-AC4: the audit renders owned findings and has no copy of their logic."""
     src = Path(cat.__file__).parent
     body = "".join(p.read_text(encoding="utf-8") for p in src.glob("*.py"))
     assert "from tempergraph.model.validate import" in body and "readiness(spec)" in body
@@ -122,7 +122,7 @@ def test_owned_rules_call_their_owner() -> None:
         assert f'self.add("{rid}"' not in body, rid
 
 
-# -- definition rules: each raised by a fixture, quiet on a clean one (AUD-AC-1) ----------------------------------
+# -- definition rules: each raised by a fixture, quiet on a clean one (AUD-AC1) ----------------------------------
 
 
 def test_clean_fixture_raises_no_audit_rule(tmp_path: Path) -> None:
@@ -130,7 +130,7 @@ def test_clean_fixture_raises_no_audit_rule(tmp_path: Path) -> None:
     assert own_rules(rep) == set(), [f.statement for f in rep.findings if f.owner == "audit"]
 
 
-@pytest.mark.parametrize(("step", "judged", "missing"), [  # SCF §2.1.1, ARC `sizing-unassessed`
+@pytest.mark.parametrize(("step", "judged", "missing"), [  # SCF-B10, ARC `sizing-unassessed`
     ({"model": None}, {}, ("step", ["model"])),
     ({"model": "inherit"}, {}, ("step", ["model"])),
     ({"effort": None}, {}, ("step", ["effort"])),
@@ -239,7 +239,7 @@ def test_prompt_tool_conflict_table(tmp_path: Path, template: str, tools: list[s
 
 @pytest.mark.parametrize("executor", sorted(DECLARED))
 def test_foreign_tool_name_across_the_tool_maps(executor: str) -> None:
-    """PRA-AC-2 / PRA-B3 row 4: a tool name of another executor is owned by prompt lint, once."""
+    """PRA-AC2 / PRA-B3 row 4: a tool name of another executor is owned by prompt lint, once."""
     from tempergraph.model.prompt_lint import lint
 
     spec = wf({"draft": clean_step(prompt="Use `Grep` to search, then write the notes.", executor=executor,
@@ -319,6 +319,7 @@ def test_skill_found_in_other_plugins(tmp_path: Path) -> None:
 
 
 def test_tool_name_stale_against_the_stamp(tmp_path: Path) -> None:
+    """PRA-B1 with the stamp's tool set as the baseline (PRA)."""
     spec = wf({"draft": clean_step(prompt="Use `ReadFile` on the notes.")})
     stamp = {"engine_version": "0.0.1", "tool_set": {"claude": ["ReadFile", "Write"]}}
     rep = audit(spec, {"host"}, ctx(tmp_path), stamp=stamp)
@@ -331,7 +332,7 @@ def test_tool_name_stale_against_the_stamp(tmp_path: Path) -> None:
 
 
 def test_owned_finding_appears_once(tmp_path: Path) -> None:
-    """AUD-B8 / AUD-AC-4: a criterion with no check method is WFM's warning, never an audit rule too."""
+    """AUD-B8 / AUD-AC4: a criterion with no check method is WFM's warning, never an audit rule too."""
     spec = wf({"draft": clean_step(gate=Gate(check=draft_check, judge=judge(references=["notes"]),
                                              criteria=[crit("c1", check_method="")]))})
     rep = run(spec, tmp_path)
@@ -386,7 +387,7 @@ def test_quiet_by_default() -> None:
     (["error"], "never", 0), ([], "warning", 0),
 ])
 def test_fail_on(severities: list[str], level: str, code: int) -> None:
-    """AUD-AC-5."""
+    """AUD-AC5."""
     rep = AuditReport(workflow="w", version="1", engine_version="0.0.1",
                       findings=[finding(f"r{i}", s, "low") for i, s in enumerate(severities)])
     assert rep.exit_code(level) == code
@@ -396,7 +397,7 @@ def test_fail_on(severities: list[str], level: str, code: int) -> None:
 
 
 def test_ignores() -> None:
-    """AUD §2.4, AUD-AC-7."""
+    """AUD-B14, AUD-AC7."""
     igs, problems = parse_ignores([{"rule": "default-step-timeout", "reason": ""}, {"rule": "x"}, "bad"])
     assert igs == [] and len(problems) == 3
     igs, problems = parse_ignores([
@@ -428,7 +429,7 @@ def test_ignore_without_reason_is_a_validation_error(tmp_path: Path) -> None:
 
 
 def test_json_schema_and_tolerant_reader(tmp_path: Path) -> None:
-    """AUD-AC-6."""
+    """AUD-AC6."""
     rep = run(wf({"draft": clean_step(timeout_s=None)}), tmp_path)
     doc = rep.to_json()
     assert doc["schema_version"] == 1
@@ -461,7 +462,7 @@ def test_sarif_maps_findings_to_package_files(tmp_path: Path) -> None:
 
 
 def test_audit_is_read_only_and_model_free(tmp_path: Path, repo: Path) -> None:
-    """AUD-B6 / AUD-AC-2."""
+    """AUD-B6 / AUD-AC2."""
     root = minimal_package(tmp_path / "src")
     ex = standin("claude", probe_report=ProbeReport(ok=True, version="2.1.329"))
     reg = Registry()
@@ -503,7 +504,7 @@ def test_refusals(tmp_path: Path, argv: list[str], code: int) -> None:
 
 
 def test_not_loaded_is_one_finding(tmp_path: Path) -> None:
-    """AUD §4: a workflow that does not load is one finding; exit 0, or 6 with `--fail-on error`."""
+    """AUD-B15, AUD-B9, AUD-B2: a workflow that does not load is one finding; exit 0, or 6 with `--fail-on error`."""
     root = minimal_package(tmp_path)
     write(root, "workflow/release_notes/__init__.py", "import nowhere_to_be_found\n")
     reg = Registry()
@@ -524,7 +525,7 @@ def test_script_after_external_is_owned_by_validation(tmp_path: Path) -> None:
 
 
 def test_stamp_v4_fails_on_a_new_finding(tmp_path: Path, repo: Path) -> None:
-    """WUP §2.6 V4: a finding at warning or above that the last stamp's list lacks blocks the stamp."""
+    """WUP-B19 V4: a finding at warning or above that the last stamp's list lacks blocks the stamp."""
     root = minimal_package(tmp_path / "src")
     out = io.StringIO()
     reg = Registry()
@@ -539,7 +540,7 @@ def test_stamp_v4_fails_on_a_new_finding(tmp_path: Path, repo: Path) -> None:
 
 
 def test_stamp_v4_records_anew_on_a_newer_outcome_revision(tmp_path: Path, repo: Path) -> None:
-    """WUP §2.6 V4: at `author verify`, an outcome revision newer than the stamped one records the audit
+    """WUP-B19 V4: at `author verify`, an outcome revision newer than the stamped one records the audit
     list anew; the same revision still blocks, and so does `upgrade-check --stamp` at any revision."""
     from tempergraph.package.stamp import check, read_stamp
 
@@ -581,7 +582,7 @@ def test_package_parts_fixture_still_audits(tmp_path: Path) -> None:
 
 
 def test_outcome_trust_and_coverage(tmp_path: Path) -> None:
-    """OUT §2.3 as read in release 1, and ARC `outcome-unverified-blocker`, `outcome-uncovered`."""
+    """OUT-B13, OUT-B14 as read in release 1, and ARC `outcome-unverified-blocker`, `outcome-uncovered`."""
     import shutil
 
     from tempergraph.package.loader import load_package

@@ -1,4 +1,4 @@
-"""The engine-shipped transforms, each on a before and after fixture and applied twice (VER §2.3.4, VER-AC-3)."""
+"""The engine-shipped transforms, each on a before and after fixture and applied twice (VER-B13, VER-AC3)."""
 
 from __future__ import annotations
 

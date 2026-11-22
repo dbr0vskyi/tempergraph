@@ -1,4 +1,4 @@
-"""The built-in upgrade workflow (UWF §2.1 to §2.4, UWF-B3, B5, UWF-AC-1 to AC-4) on scripted executors."""
+"""The built-in upgrade workflow (UWF-B6, UWF-B5, UWF-B7, UWF-B12, UWF-B13, UWF-B3, B5, UWF-AC1 to AC-4) on scripted executors."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ MET = verdict_block(*["MET"] * 8)
 PERSON = {"kind": "person"}
 
 
-def test_it_validates_and_is_found_by_its_flag() -> None:  # UWF-AC-1
+def test_it_validates_and_is_found_by_its_flag() -> None:  # UWF-AC1
     spec = uwf.workflow()
     assert errors(validate(spec, caps())) == []
     assert spec.builtin and uwf.is_upgrade(spec)
@@ -54,7 +54,7 @@ def test_a_direct_start_is_refused(repo: Path) -> None:  # UWF-B5
     assert not (repo / ".tempergraph" / "runs").exists()
 
 
-# -- UWF §2.4: the check of each item --------------------------------------------------------------------------
+# -- UWF-B12, UWF-B13: the check of each item --------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -99,7 +99,7 @@ def test_the_item_check_passes_a_clean_edit(branch: SimpleNamespace) -> None:
         "uwf-scope", "uwf-loads", "uwf-proof", "uwf-fixtures"}
 
 
-def test_scope_fails_alone(branch: SimpleNamespace) -> None:  # UWF-AC-2, AC-4
+def test_scope_fails_alone(branch: SimpleNamespace) -> None:  # UWF-AC2, AC-4
     fix(branch)
     (branch.work / "README.md").write_text("also rewritten\n")
     assert failed(check(branch)) == ["uwf-scope"]
@@ -192,7 +192,7 @@ def test_the_owner_proceeds_and_the_model_adjusts(repo: Path, tmp_path: Path) ->
     assert [c["entry"] for c in done.commits][:2] == ["E0.2.0-1", "assist"]
     assert not (Path(done.worktree) / uwf.ITEMS_DIR).exists() and git(Path(done.worktree), "status", "--porcelain") == ""
     assert git(repo, "rev-parse", "HEAD") == head and git(repo, "status", "--porcelain") == ""
-    assert hash_tree(pkg) == before  # UWF-AC-4: nothing outside the branch's package changed
+    assert hash_tree(pkg) == before  # UWF-AC4: nothing outside the branch's package changed
     text = (branch_pkg(done) / "workflow" / "release_notes" / "__init__.py").read_text()
     assert 'escalation=Escalation(to="medium")' in text and done.stamp is not None
 

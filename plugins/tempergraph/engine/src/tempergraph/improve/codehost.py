@@ -1,6 +1,6 @@
 """The code host client for filing (ADR-0090 S5): GitHub through the person's own `gh` sign-in.
 
-A sanctioned launch site (SEC §2.2): constant subcommands as list argv, the repository checked as
+A sanctioned launch site (SEC-B7): constant subcommands as list argv, the repository checked as
 `owner/name`, the issue number an int, and every user-derived text (title, body, comment) on stdin as JSON
 through `gh api --input -`. Never imports or opens the evidence file.
 """
@@ -30,7 +30,7 @@ class CodeHost(Protocol):
 
 
 class PullRequestHost(Protocol):
-    """Draft pull requests for proposals (PRP-B8). There is no merge method, by design (PRP-AC-2)."""
+    """Draft pull requests for proposals (PRP-B8). There is no merge method, by design (PRP-AC2)."""
 
     def default_branch(self, repo: str) -> str: ...
     def create_draft_pr(self, repo: str, head: str, base: str, title: str, body: str, labels: list[str]) -> str: ...
@@ -60,7 +60,7 @@ class GhCodeHost:
         if exe is None:
             raise CodeHostError("gh is not installed")
         try:
-            proc = subprocess.run(  # noqa: S603 - constant subcommands, text on stdin (SEC §2.2)
+            proc = subprocess.run(  # noqa: S603 - constant subcommands, text on stdin (SEC-B7)
                 [exe, *args], input=json.dumps(payload) if payload is not None else None, capture_output=True,
                 text=True, timeout=self.timeout_s)
         except (OSError, subprocess.TimeoutExpired) as exc:

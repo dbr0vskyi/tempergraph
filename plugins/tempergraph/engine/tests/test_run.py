@@ -1,5 +1,5 @@
-"""The gate funnel end to end with scripted executors (JDG-AC-1–4, GRD-AC-3, HUM-AC-2, BUD-AC-3, DUR-B1,
-DUR §2.1 resume rows, OBS §2.1 records)."""
+"""The gate funnel end to end with scripted executors (JDG-AC1–4, GRD-AC3, HUM-AC2, BUD-AC3, DUR-B1,
+DUR-B9 resume rows, OBS-B7, OBS-B1, OBS-B8, OBS-B9 records)."""
 
 from __future__ import annotations
 
@@ -64,7 +64,7 @@ def test_happy_path(repo: Path) -> None:
     assert kinds.count("agent_run") == 4 and "run_exit" in kinds and kinds[0] == "schema"
     row = status(root, {"demo": two_step()})["threads"][0]
     assert row["state"] == "finished" and row["exit_code"] == 0
-    assert row["workspace"]["mode"] == "worktree"  # the workflow writes files (WTR §2.2)
+    assert row["workspace"]["mode"] == "worktree"  # the workflow writes files (WTR-B18)
     assert [c.kind for c in ex.calls] == ["step", "judge", "step", "judge"]
     draft_prompt = ex.calls[0].request.prompt
     assert "Release 1.2 notes" in draft_prompt and "## How this output will be judged" in draft_prompt
@@ -90,7 +90,7 @@ def test_escalation_pauses_and_proceed_finishes(repo: Path) -> None:
     ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("UNVERIFIABLE"))])
     out = go(repo, ex)
     assert out.exit_code is ExitCode.PAUSED and out.payload["kind"] == "escalation"
-    assert out.payload["resume"].startswith("tempergraph resume demo T-1")  # HUM-AC-2
+    assert out.payload["resume"].startswith("tempergraph resume demo T-1")  # HUM-AC2
     ex.steps, ex.judges = [REVIEW], [judge()]
     assert resume(two_step(), "T-1", repo, registry(ex), decision="proceed",
                   settings=NO_SLEEP).exit_code is ExitCode.FINISHED
@@ -118,7 +118,7 @@ def test_infra_failure_never_pauses(repo: Path) -> None:
     broken = SessionResult(ok=False, infra_cause=InfraCause.BROKEN_PIPE, usage=Usage())
     ex = standin("claude", steps=[broken] * 3)
     out = go(repo, ex)
-    assert out.exit_code is ExitCode.BUDGET_OR_INFRA and out.reason == "infra"  # BUD-AC-3
+    assert out.exit_code is ExitCode.BUDGET_OR_INFRA and out.reason == "infra"  # BUD-AC3
     assert len(ex.calls) == 3 and all(c.kind == "step" for c in ex.calls)
 
 
@@ -132,7 +132,7 @@ def test_failed_check_starts_no_judge(repo: Path) -> None:
     ex = standin("claude", steps=[DRAFT])
     out = go(repo, ex, dataclasses.replace(spec, units=units))
     assert out.exit_code is ExitCode.PAUSED and out.payload["kind"] == "budget"
-    assert [c.kind for c in ex.calls] == ["step"]  # JDG-AC-2
+    assert [c.kind for c in ex.calls] == ["step"]  # JDG-AC2
     del CheckResult
 
 
@@ -153,7 +153,7 @@ def _callable(fn: Any) -> Any:
 def test_outside_call_discards_the_judgement(repo: Path) -> None:
     ex = standin("claude", steps=[DRAFT], judges=[judge(tools=("Read", "Write"))])
     out = go(repo, ex)
-    assert out.exit_code is ExitCode.PAUSED and out.payload["kind"] == "escalation"  # GRD-AC-3
+    assert out.exit_code is ExitCode.PAUSED and out.payload["kind"] == "escalation"  # GRD-AC3
 
 
 def test_same_session_discards(repo: Path) -> None:
@@ -165,7 +165,7 @@ def test_one_reask_then_escalate(repo: Path) -> None:
     ex = standin("claude", steps=[DRAFT], judges=[judge("no block"), judge("still none")])
     out = go(repo, ex)
     assert out.exit_code is ExitCode.PAUSED
-    assert [c.request.kind for c in ex.calls] == ["step", "judge", "judge_reask"]  # JDG-AC-3
+    assert [c.request.kind for c in ex.calls] == ["step", "judge", "judge_reask"]  # JDG-AC3
 
 
 def test_back_to_an_earlier_unit(repo: Path) -> None:
@@ -182,7 +182,7 @@ CLAIM = answer("The notes name no version\nUPSTREAM draft: notes.md names no ver
 
 def test_confirmed_upstream_claim_goes_back_without_a_person(repo: Path) -> None:
     ex = standin("claude", steps=[DRAFT, CLAIM, DRAFT, REVIEW], judges=[judge(), judge(), judge(), judge()])
-    assert go(repo, ex).exit_code is ExitCode.FINISHED  # BUD §2.1: confirmed goes BACK, no pause
+    assert go(repo, ex).exit_code is ExitCode.FINISHED  # BUD-B10: confirmed goes BACK, no pause
     assert [c.kind for c in ex.calls] == ["step", "judge"] * 4
     claim_judge = ex.calls[3].request.prompt
     assert "upstream-claim" in claim_judge and "notes.md names no version" in claim_judge
@@ -270,7 +270,7 @@ def test_trip_back_records_new_visits(repo: Path) -> None:
     assert go(repo, ex).exit_code is ExitCode.FINISHED
     entered = [(r["unit"], r["visit"], r["entered_from"]) for r in records(repo) if r["kind"] == "unit_entered"]
     assert entered == [("draft", 1, "start"), ("review", 1, "proceed"), ("draft", 2, "back:review"),
-                       ("review", 2, "proceed")]  # EVT §2.2
+                       ("review", 2, "proceed")]  # EVT-B10 to EVT-B16
     started = next(r for r in records(repo) if r["kind"] == "run_started")
     assert started["plan_digest"] and started["executors"]["steps"]["draft"] == "claude"
 
@@ -302,7 +302,7 @@ def test_outcome_gate_runs_before_the_finalizer(repo: Path) -> None:
     assert [c.kind for c in ex.calls] == ["step", "judge", "step", "judge", "judge"]  # no outcome session
     outcome_prompt = ex.calls[4].request.prompt
     assert "rn-complete" in outcome_prompt and "The request and the deliverables are the truth" in outcome_prompt
-    assert "MET means: all four headings" in outcome_prompt  # the scale is rendered (OUT §2.2.1)
+    assert "MET means: all four headings" in outcome_prompt  # the scale is rendered (OUT-B11)
 
 
 def test_missing_deliverable_fails_the_outcome_check(repo: Path) -> None:
@@ -343,7 +343,7 @@ def test_cost_so_far_on_gate_pause_and_exit(repo: Path) -> None:
     recs = {r["kind"]: r for r in records(repo)}
     for kind in ("gate", "pause", "run_exit"):
         c = recs[kind]["cost_so_far"]
-        assert c["reported"] == pytest.approx(0.02) and c["completeness"] in ("complete", "estimated")  # EVT §2.2
+        assert c["reported"] == pytest.approx(0.02) and c["completeness"] in ("complete", "estimated")  # EVT-B10 to EVT-B16
 
 
 def hybrid(before: tuple[Any, ...] = (), after: tuple[Any, ...] = ()) -> Any:
@@ -405,7 +405,7 @@ def test_auto_reopen_never_answers_a_pause(repo: Path) -> None:  # BUD-B6
     assert out.exit_code is ExitCode.PAUSED and not any("auto_reopen" in w for w in out.warnings)
 
 
-def test_a_retry_never_changes_the_model(repo: Path) -> None:  # BUD-B7: no retry-count ladder (LAD §2.8)
+def test_a_retry_never_changes_the_model(repo: Path) -> None:  # BUD-B7: no retry-count ladder (LAD-B18)
     fail = verdict_block("UNMET")
     broken = SessionResult(ok=False, infra_cause=InfraCause.BROKEN_PIPE, usage=Usage())
     ex = standin("claude", steps=[DRAFT, broken, DRAFT, DRAFT, DRAFT], judges=[judge(fail)] * 4)
@@ -417,10 +417,10 @@ def test_a_retry_never_changes_the_model(repo: Path) -> None:  # BUD-B7: no retr
     assert out.exit_code is ExitCode.PAUSED and out.payload["kind"] == "budget"
     aliases = [(r["session_key"], r["alias"]) for r in records(repo, "L-1") if r["kind"] == "attempt_start"]
     assert [a for k, a in aliases if "judge" not in k] == ["small"] * 5  # four attempts and one infra rerun
-    assert {a for k, a in aliases if "judge" in k} == {"small"}  # the judge inherits the step's alias (CON §2.4)
+    assert {a for k, a in aliases if "judge" in k} == {"small"}  # the judge inherits the step's alias (CON-B3)
 
 
-def test_workspace_records(repo: Path) -> None:  # EVT §2.2 `workspace`, WTR §2.6
+def test_workspace_records(repo: Path) -> None:  # EVT-B10 to EVT-B16 `workspace`, WTR-B22
     ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("UNVERIFIABLE"))])
     assert go(repo, ex, task="W-1").exit_code is ExitCode.PAUSED
     ex.steps, ex.judges = [REVIEW], [judge()]

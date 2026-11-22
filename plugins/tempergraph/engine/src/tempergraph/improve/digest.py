@@ -1,4 +1,4 @@
-"""The session digest: a model-free pass over every session of a segment (SRV §2.1, §2.2; ADR-0116).
+"""The session digest: a model-free pass over every session of a segment (SRV-B11, SRV-B12; ADR-0116).
 
 One `sessions/<session_key>/digest.json` per session, names and numbers only: tool names, enums, counts, sizes,
 durations and keyed digests of paths and targets. It is built from the activity journal, `meta.json` and the run
@@ -354,7 +354,7 @@ def read(root: Path, workflow: str, task_id: str, key: str) -> dict[str, Any] | 
 
 def write_segment(root: Path, workflow: str, task_id: str, seg: Sequence[Mapping[str, Any]],
                   units: Mapping[str, Mapping[str, Any]]) -> list[dict[str, Any]]:
-    """Digests of every session the segment ran; a failed write leaves that one out (SRV §4)."""
+    """Digests of every session the segment ran; a failed write leaves that one out (SRV-B1, SRV-B20, SRV-B21, SRV-B22, SRV-B18)."""
     out: list[dict[str, Any]] = []
     last_by_unit: dict[str, dict[str, Any]] = {}
     timeouts: dict[str, Any] = {}
@@ -371,7 +371,7 @@ def write_segment(root: Path, workflow: str, task_id: str, seg: Sequence[Mapping
         try:
             doc = build(sdir, r, units.get(unit), last_by_unit.get(unit) if kind == "retry" else None, changed)
             write_json(sdir / "digest.json", doc)
-        except Exception:  # noqa: BLE001 - contract C2: findings are derived without this digest
+        except Exception:  # noqa: BLE001 - OVR-B4: findings are derived without this digest
             continue
         if kind in STEP_KINDS:
             last_by_unit[unit] = doc
@@ -400,7 +400,7 @@ def _history(root: Path, workflow: str, version: str | None, unit: str) -> list[
 def causes(digests: Sequence[Mapping[str, Any]], *, root: Path | None = None, workflow: str = "",
            version: str | None = None, units: Mapping[str, Mapping[str, Any]] | None = None,
            judged: Mapping[str, Mapping[str, Any]] | None = None) -> list[dict[str, Any]]:
-    """SRV §2.2 cause codes from digest fields only: `{unit, cause, count}`."""
+    """SRV-B12 cause codes from digest fields only: `{unit, cause, count}`."""
     out: dict[tuple[str, str], int] = {}
 
     def add(unit: str, code: str) -> None:

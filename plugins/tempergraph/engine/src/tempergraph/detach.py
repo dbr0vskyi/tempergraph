@@ -1,9 +1,9 @@
-"""The detached child launcher (SEC §2.2): the engine interpreter with a constant module and constant words.
+"""The detached child launcher (SEC-B7): the engine interpreter with a constant module and constant words.
 
 A child started here outlives its parent in its own session, with stdin, stdout and stderr closed, so a slow
 share or a hung network never delays the process that started it. Release 1 starts two children: the stats
-flusher at `run_exit` (CST §2.3) and the self-improvement loop after a final exit (SIL-B1); release 2 adds
-the lifecycle hook runner (CLI §2.2). The schedule
+flusher at `run_exit` (CST-B10, CST-B12, CST-B13) and the self-improvement loop after a final exit (SIL-B1); release 2 adds
+the lifecycle hook runner (HOK-B1 to HOK-B6). The schedule
 tick's `run` and `orchestrate start` join this site later.
 """
 
@@ -15,7 +15,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-# module -> the argv words it may be started with; nothing else is ever passed (SEC §2.1)
+# module -> the argv words it may be started with; nothing else is ever passed (SEC-B5, SEC-B6)
 DETACHED = {"tempergraph.observe.sinks": (("flush",),), "tempergraph.improve.child": (("drain",),),
             "tempergraph.observe.hooks": (("drain",),)}
 

@@ -13,7 +13,7 @@ A laptop sleeps or is off when a slot passes. A scheduled run may still be runni
 
 ## Decision
 
-We will decide missed and overlapping slots in the engine, the same on every platform ([SCH §2.5](../specs/83-schedules.spec.md)):
+We will decide missed and overlapping slots in the engine, the same on every platform ([SCH-B21 to SCH-B25](../specs/83-schedules.spec.md)):
 
 - **Catch-up `latest`** by default: after a gap, fire only the most recent passed slot within a window (one period, at most 24 hours); record the older ones `missed`. `none` and `all` (at most 3 per tick) are options. A missed `once` becomes an attention item.
 - **Overlap `skip`** by default: a slot that comes due while the schedule has a live run is `skipped`; a **paused run counts as live**. `queue` and `parallel` (worktree only, `max_live` ≤ 4) are options. After three skips behind one pause, the pause is marked as blocking the schedule.

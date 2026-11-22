@@ -56,12 +56,12 @@ task_id: first-release
 
 ### 1.2 Requirements by spec
 
-A spec listed is in scope with all its acceptance criteria except those named; excluded criteria belong to a later release ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md)). CON-AC-5, WFM-AC-5, PRM-AC-1, PRA-AC-2 and EXI-AC-9 run against the four declared capability sets as test data, and again when each adapter ships.
+A spec listed is in scope with all its acceptance criteria except those named; excluded criteria belong to a later release ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md)). CON-AC5, WFM-AC5, PRM-AC1, PRA-AC2 and EXI-AC9 run against the four declared capability sets as test data, and again when each adapter ships.
 
 | Req | Spec | Criteria in scope | Phase |
 |---|---|---|---|
 | REQ-1 | CON | all | T1.2 |
-| REQ-2 | SEC | all but SEC-AC-4 (tool host) | T1.3 |
+| REQ-2 | SEC | all but SEC-AC4 (tool host) | T1.3 |
 | REQ-3 | LOS | all | T1.4, T7.3 |
 | REQ-4 | WFM | all | T2.1 |
 | REQ-5 | PRM, VAL | all; VAL-B4 item keys later | T2.2 |
@@ -85,8 +85,8 @@ A spec listed is in scope with all its acceptance criteria except those named; e
 | REQ-23 | PRV | all; AC-6 for P-SUP-1 and P-SUP-2 | T6.5 |
 | REQ-24 | EVT | all; AC-5 for file observers | T7.1 |
 | REQ-25 | RDD | all; AC-1's fixture without a map | T7.2 |
-| REQ-26 | SUP, IMD, FBK | SUP all but AC-3's `promote-check` half; IMD record fields and AC-1; FBK-AC-3 (`label`) | T7.5 |
-| REQ-27 | SCO, SHL §2.2 | SCO AC-1 to AC-5, AC-6's P-SUP-3 half | T7.6 |
+| REQ-26 | SUP, IMD, FBK | SUP all but AC-3's `promote-check` half; IMD record fields and AC-1; FBK-AC3 (`label`) | T7.5 |
+| REQ-27 | SCO, SHL-B14, SHL-B15 | SCO AC-1 to AC-5, AC-6's P-SUP-3 half | T7.6 |
 | REQ-28 | UPD, VER | UPD AC-7, AC-8; VER AC-1, 2, 5, 6 | T8.1–T8.3 |
 | REQ-29 | AUD, ARC, PRA | AUD AC-2, 4–7 and AC-1 for definition and host rules; ARC same; PRA all | T8.5 |
 | REQ-30 | SHL, LSK | SHL all for run driver, authoring, bootstrap, troubleshooter; LSK install skill | T9.1–T9.3 |
@@ -101,7 +101,7 @@ A spec listed is in scope with all its acceptance criteria except those named; e
 | REQ-39 | JCL | all | T12.4 |
 | REQ-40 | PRP | all; trials without `batch` | T12.5, T12.6 |
 | REQ-41 | LSN | all | T12.7 |
-| REQ-42 | IMD, LIF-B6, OUT-AC-6 | IMD all; stable mode; outcome proposals | T12.8 |
+| REQ-42 | IMD, LIF-B6, OUT-AC6 | IMD all; stable mode; outcome proposals | T12.8 |
 | REQ-43 | SRV | AC-1 to AC-6; stable-mode plans in X2-26 | T12.9 |
 
 ### 1.3 Feature list
@@ -112,18 +112,18 @@ Every item release 1 ships, then every item it leaves out with its release. The 
 
 | # | Feature | Spec | Phase |
 |---|---|---|---|
-| I-1 | Workflow package: plugin, Python and docs halves, `tempergraph.json` manifest, loading in isolation | PKG §2.1–2.3 | T8.1 |
-| I-2 | Typed Python builders for step, script, route, switch and workflow; prompt and check text kept in files | PKG §2.4 | T8.1 |
-| I-3 | Docs half and the `docs-drift` check (warning) | PKG §2.5 | T8.1 |
-| I-4 | Package skills and agents on step sessions through `--plugin-dir`, never on judges | PKG §2.6 | T8.1 |
-| I-5 | Minimal package | PKG §2.7 | T8.1 |
-| I-6 | `outcome.json`: final and intermediate outcomes, one verifier per criterion | OUT §2.1–2.2 | T5.8 |
-| I-7 | Scoring scale on every judged criterion | OUT §2.2.1, ADR-0114 | T5.8 |
-| I-8 | Trust and coverage; unverified criteria always shown | OUT §2.3 | T5.8 |
-| I-9 | Final outcome gate before the finalizer | OUT §2.4 | T5.8 |
+| I-1 | Workflow package: plugin, Python and docs halves, `tempergraph.json` manifest, loading in isolation | PKG-B11, PKG-B12, PKG-B13, PKG-B15, PKG-B16, PKG-B17 | T8.1 |
+| I-2 | Typed Python builders for step, script, route, switch and workflow; prompt and check text kept in files | PKG-B19, PKG-B20 | T8.1 |
+| I-3 | Docs half and the `docs-drift` check (warning) | PKG-B21, PKG-B22 | T8.1 |
+| I-4 | Package skills and agents on step sessions through `--plugin-dir`, never on judges | PKG-B23, PKG-B24 | T8.1 |
+| I-5 | Minimal package | PKG-B25 | T8.1 |
+| I-6 | `outcome.json`: final and intermediate outcomes, one verifier per criterion | OUT-B8, OUT-B9, OUT-B10, OUT-B12 | T5.8 |
+| I-7 | Scoring scale on every judged criterion | OUT-B11, ADR-0114 | T5.8 |
+| I-8 | Trust and coverage; unverified criteria always shown | OUT-B13, OUT-B14 | T5.8 |
+| I-9 | Final outcome gate before the finalizer | OUT-B15, OUT-B16, OUT-B17 | T5.8 |
 | I-10 | Person sign-off criteria in the approval pause | OUT, HUM | T5.8 |
-| I-11 | Outcome record, uncorrected measures, `outcome show`, `outcome candidates` | OUT §2.5 | T5.8 |
-| I-12 | Outcome revision through revise mode; a weakening needs a person's yes | OUT, AUT §2.7 | T9.2 |
+| I-11 | Outcome record, uncorrected measures, `outcome show`, `outcome candidates` | OUT-B18, OUT-B19 | T5.8 |
+| I-12 | Outcome revision through revise mode; a weakening needs a person's yes | OUT, AUT-B25 | T9.2 |
 | I-13 | Validation before spend, including `not_in_release` | WFM | T2.1 |
 | I-14 | Template grammar, prompt rendering, output contract | CON, PRM | T2.2 |
 | I-15 | Value artifacts and template keys (no item keys) | VAL | T2.2 |
@@ -166,17 +166,17 @@ Every item release 1 ships, then every item it leaves out with its release. The 
 | I-52 | Improvement-data fields and the ledger | IMD | T7.5 |
 | I-53 | `label` for gates and the outcome | FBK | T7.5 |
 | I-54 | Security: constants-only argv, prompt off argv, scrubbing, canary, config cleanup | SEC (no tool-host criterion) | T1.3 |
-| I-55 | First install: launcher, home folder, environment, shim, `PATH` | UPD §2.7 | T8.2 |
-| I-56 | `workflows list\|register\|unregister\|reinstall` | UPD §2.8 | T8.1 |
+| I-55 | First install: launcher, home folder, environment, shim, `PATH` | UPD-B18, UPD-B19 | T8.2 |
+| I-56 | `workflows list\|register\|unregister\|reinstall` | UPD-B20 to UPD-B24 | T8.1 |
 | I-57 | Workflow version, content digest, release record; stamp by `upgrade --check --stamp` over an empty changelog | VER, WUP | T8.3 |
 | I-58 | Executor compatibility table | VER | T8.3 |
 | I-59 | Diagram model and diagram currency | LIF | T2.4 |
 | I-60 | Prompt lint and the structural readiness report | LIF | T8.4 |
 | I-61 | Deterministic scenarios on stand-ins | LIF | T8.4 |
 | I-62 | `audit` definition and host layers, their ARC rules, PRA, ignores, json and sarif, `--fail-on` | AUD, ARC, PRA | T8.5 |
-| I-63 | `author start\|intake\|check\|show\|list\|drop`; entry from a solution, sources or a chat; the inventory | AUT §2.1–2.3 | T9.2 |
-| I-64 | Backwards interview, verification classification, flag-never-hide, criteria lint, guidance rungs | AUT §2.4–2.6, ADR-0114 | T9.2 |
-| I-65 | Authoring record and revise mode | AUT §2.7 | T9.2 |
+| I-63 | `author start\|intake\|check\|show\|list\|drop`; entry from a solution, sources or a chat; the inventory | AUT-B11, AUT-B12, AUT-B13, AUT-B14, AUT-B15 | T9.2 |
+| I-64 | Backwards interview, verification classification, flag-never-hide, criteria lint, guidance rungs | AUT-B16, AUT-B17, AUT-B18, AUT-B22, AUT-B23, ADR-0114 | T9.2 |
+| I-65 | Authoring record and revise mode | AUT-B25 | T9.2 |
 | I-66 | Blueprint check, draw and compare; literal check; `scaffold` with `--update`; generated tests | SCF | T8.6 |
 | I-67 | `author verify` ladder with judge seeds and a capped, consented trial | SCF | T8.6 |
 | I-68 | Authoring skill `tempergraph:author` | SHL, AUT | T9.2 |
@@ -184,34 +184,34 @@ Every item release 1 ships, then every item it leaves out with its release. The 
 | I-70 | Project bootstrap skill | SHL | T9.1 |
 | I-71 | Troubleshooter skill | SHL | T9.3 |
 | I-72 | Install skill | LSK | T9.3 |
-| I-73 | Supervision host hooks | SHL §2.2, SCO | T7.6 |
+| I-73 | Supervision host hooks | SHL-B14, SHL-B15, SCO | T7.6 |
 | I-74 | Platforms: macOS and Linux, git repositories only | WSP | all |
 | I-75 | Example workflows: the minimal one and a three-step document workflow | PKG, SCF | T11.1 |
-| I-76 | Self-improvement records on every exit: findings, local evidence, ledger row, with no model call | SIL §2.1 | T12.1 |
-| I-77 | The four lenses (friction, outcome from the outcome record, cost, per-gate quality) in dev mode | SIL §2.2 | T12.1 |
-| I-78 | Fault sides and cause codes, executor drift, host findings recorded only | SIL §2.3 | T12.1 |
-| I-79 | Findings with drafted remedies, git facts, retry bursts, grant and agent-rescue causes | SIL §2.4 | T12.1 |
+| I-76 | Self-improvement records on every exit: findings, local evidence, ledger row, with no model call | SIL-B8 | T12.1 |
+| I-77 | The four lenses (friction, outcome from the outcome record, cost, per-gate quality) in dev mode | SIL-B10 | T12.1 |
+| I-78 | Fault sides and cause codes, executor drift, host findings recorded only | SIL-B11 | T12.1 |
+| I-79 | Findings with drafted remedies, git facts, retry bursts, grant and agent-rescue causes | SIL-B12 to SIL-B16 | T12.1 |
 | I-80 | Filing to the owning repository: de-duplication by cause, the pattern rule, uncalibrated stays local, `--dry-run`, redelivery | SIL-B1–B3, B6, B7 | T12.2 |
 | I-81 | Measurement with no writes, and the post-release comparison | SIL-B5, PRP-B9 | T12.2 |
 | I-82 | Labels from every pause and approval, judge reliability grades per binding, `labels queue`, binding-shift watch | FBK (no harvest) | T12.3 |
 | I-83 | Judge calibration: gold case sets, tune and holdout, variants, score, bar, acceptance state, `evals score\|bar\|label`; built-in judges graded the same way | JCL | T12.4 |
 | I-84 | Corrected outcome rates | OUT, JCL | T12.4 |
-| I-85 | Clusters, ranked backlog, proposals, change classes, weakening person-only, literal check | PRP §2.2–2.4 | T12.5 |
-| I-86 | Proposer workflow on its own branch and worktree; draft pull request, never a merge; autonomy `record\|file\|propose\|trial` (default `file`) | PRP §2.1, B4, B8 | T12.5 |
-| I-87 | Case sets, paired trials (cases one at a time), A/A noise floor, trial and monthly caps, `improve` verbs | PRP §2.5–2.7 | T12.6 |
+| I-85 | Clusters, ranked backlog, proposals, change classes, weakening person-only, literal check | PRP-B12, PRP-B13, PRP-B14, PRP-B15 | T12.5 |
+| I-86 | Proposer workflow on its own branch and worktree; draft pull request, never a merge; autonomy `record\|file\|propose\|trial` (default `file`) | PRP-B11, B4, B8 | T12.5 |
+| I-87 | Case sets, paired trials (cases one at a time), A/A noise floor, trial and monthly caps, `improve` verbs | PRP-B17, PRP-B18, PRP-B19, PRP-B20, PRP-B4, PRP-B12, PRP-B21, PRP-B8, PRP-B22 | T12.6 |
 | I-88 | Workflow lessons, step-only, never in judge prompts | LSN | T12.7 |
 | I-89 | Stable mode with its lens triggers and daily cap | LIF-B6, SIL | T12.8 |
 | I-90 | `report --loop` and the loop's local and aggregate queries | IMD, OBS | T12.8 |
 | I-91 | Outcome proposals from the loop | OUT, PRP | T12.8 |
-| I-92 | Session digest on every exit, model-free, and its cause codes | SRV §2.1, §2.2 | T12.9 |
-| I-93 | Session review in dev mode, probation and authoring trials: plan, condensed datamarked view, tool-less reviewer, citation check, local report; never files | SRV §2.3, §2.5 to §2.8 | T12.9 |
-| I-94 | `improve review`, `improve review show`, `improve review summary` | SRV §2.9 | T12.9 |
+| I-92 | Session digest on every exit, model-free, and its cause codes | SRV-B11, SRV-B12 | T12.9 |
+| I-93 | Session review in dev mode, probation and authoring trials: plan, condensed datamarked view, tool-less reviewer, citation check, local report; never files | SRV-B13, SRV-B14, SRV-B15, SRV-B17, SRV-B18, SRV-B19, SRV-B20, SRV-B21, SRV-B22 | T12.9 |
+| I-94 | `improve review`, `improve review show`, `improve review summary` | SRV-B23 | T12.9 |
 
 **Excluded, release 2** (planned in the [second-release plan](second-release.plan.md), scope [ADR-0125](../adr/0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md))
 
 | # | Feature | Spec |
 |---|---|---|
-| X2-1 | Promotion to `local-stable`: `promote-check`, SUP §2.7; the pipeline stage moves to a later release, with carried state as the stopgap | PRO, CAR, ADR-0041, SUP |
+| X2-1 | Promotion to `local-stable`: `promote-check`, SUP-B17; the pipeline stage moves to a later release, with carried state as the stopgap | PRO, CAR, ADR-0041, SUP |
 | X2-2 | Eval suites and `evals run\|report\|grade` | EVS |
 | X2-3 | Live scoring, harvest and replay | EVS |
 | X2-4 | Eval skill | SHL |
@@ -232,11 +232,11 @@ Every item release 1 ships, then every item it leaves out with its release. The 
 | X2-19 | Audit judge | JDG-B7 |
 | X2-20 | Judge MCP views through the filtering proxy | GRD, ECC |
 | X2-21 | Lifecycle hooks, in-process observers, wider hook events | EVT |
-| X2-22 | Schedules, release-2 slice: once and calendar recur for workflow targets, `catch_up latest\|none`, overlap skip, both caps, all verbs but `export`, portable loop with the host adapter | SCH §5, TCK |
+| X2-22 | Schedules, release-2 slice: once and calendar recur for workflow targets, `catch_up latest\|none`, overlap skip, both caps, all verbs but `export`, portable loop with the host adapter | R-150 SCH, TCK |
 | X2-23 | Worktree extras: `in_repo` and `path:` roots, `default_branch` base, `cleanup on_finish`, `prune --apply`, foreign-worktree scan, `.worktreeinclude` | WTR |
-| X2-24 | State root outside git | WSP §2.4, ADR-0127, R-131 |
+| X2-24 | State root outside git | WSP-B15 to WSP-B18, ADR-0127, R-131 |
 | X2-25 | Windows | WIN, ADR-0128, R-132 |
-| X2-26 | Session review in stable mode: `signals` plans, saturation, corroborated filing, the proposer reading observations | SRV §2.4, §5 |
+| X2-26 | Session review in stable mode: `signals` plans, saturation, corroborated filing, the proposer reading observations | SRV-B16, SRV-B5, R-150 SRV |
 | X2-27 | `upgrade` beyond `--check`, the built-in upgrade workflow and its skill (was X3-13; moved by the owner on 2026-11-20) | WUP, UWF, LSK |
 | X2-28 | Effort ladder and one-step model escalation on evidence only; retirement of the retry-count model list | LAD |
 | X2-29 | Judge model by risk | JRK |
@@ -277,7 +277,7 @@ Every item release 1 ships, then every item it leaves out with its release. The 
 
 | Track | Component specs | Phases | Depends on | Kind |
 |---|---|---|---|---|
-| T0 Live probes | ECC §2.7, PRV §5, SCO §5 | T0.1–T0.2 | — | probe |
+| T0 Live probes | ECC-B13, R-150 PRV, R-150 SCO | T0.1–T0.2 | — | probe |
 | T1 Foundations | CON, SEC, LOS | T1.1–T1.4 | EC-1 | code |
 | T2 Model and compiler | WFM, PRM, VAL, CMP, LIF | T2.1–T2.4 | T1 | code |
 | T3 Executors | EXI, ECC | T3.1–T3.4 | T1; T0.1 for live | code |
@@ -296,7 +296,7 @@ Milestones: **M1** after T6.1, a two-step workflow defined in Python test code r
 ### T0 Live probes
 
 #### T0.1 Executor probes
-Goal: record P-CC-1 to P-CC-9 on the pinned Claude Code release in [ECC §2.7](../specs/11-executor-claude-code.spec.md), P-CC-2, 5, 6 and 9 first, and P-WTR-1 in [WTR](../specs/82-worktree-mode.spec.md).
+Goal: record P-CC-1 to P-CC-9 on the pinned Claude Code release in [ECC-B13](../specs/11-executor-claude-code.spec.md), P-CC-2, 5, 6 and 9 first, and P-WTR-1 in [WTR](../specs/82-worktree-mode.spec.md).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T0.1 -->
 
@@ -308,7 +308,7 @@ Goal: record P-SUP-1 to P-SUP-3, and check the monitor's mods facts against the 
 ### T1 Foundations
 
 #### T1.1 Repository skeleton and rules
-Goal: the engine package, test runner, linters, type checker and the source-scan harness (EXI-AC-1, WFM-AC-4, LangGraph confinement), with their commands recorded in CLAUDE.md.
+Goal: the engine package, test runner, linters, type checker and the source-scan harness (EXI-AC1, WFM-AC4, LangGraph confinement), with their commands recorded in CLAUDE.md.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T1.1 -->
 
@@ -374,7 +374,7 @@ Goal: step and judge launches, stream mapping and failure classes of ECC, passin
 ### T4 Durability and workspace
 
 #### T4.1 Checkpoints and resume
-Goal: the SQLite checkpointer, thread states, the lock, aliases and the resume table of DUR §2.1.
+Goal: the SQLite checkpointer, thread states, the lock, aliases and the resume table of DUR-B9.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T4.1 -->
 
@@ -431,7 +431,7 @@ Goal: script units, `before` and `after` scripts, the finalizer contract.
 <!-- expand: T5.7 -->
 
 #### T5.8 Run outcome gate
-Goal: load `outcome.json`, give each gate its intermediate criteria, the scoring scales, trust and coverage, the final outcome gate, sign-off criteria in the approval pause, the outcome record, `outcome show` and `outcome candidates` ([OUT §2.1–2.5](../specs/90-run-outcome.spec.md)).
+Goal: load `outcome.json`, give each gate its intermediate criteria, the scoring scales, trust and coverage, the final outcome gate, sign-off criteria in the approval pause, the outcome record, `outcome show` and `outcome candidates` ([OUT-B8, OUT-B9, OUT-B10, OUT-B12, OUT-B13, OUT-B14, OUT-B15, OUT-B16, OUT-B17, OUT-B18, OUT-B19](../specs/90-run-outcome.spec.md)).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T5.8 -->
 
@@ -576,7 +576,7 @@ Expanded in [t10-monitor.plan.md](t10-monitor.plan.md) §2 T10.4.
 ### T12 Self-improvement
 
 #### T12.1 Records and lenses
-Goal: the loop as a built-in workflow started detached after every exit; findings, evidence and ledger row with no model call; the four lenses, fault sides and what a finding carries ([SIL §2](../specs/16-self-improvement.spec.md)).
+Goal: the loop as a built-in workflow started detached after every exit; findings, evidence and ledger row with no model call; the four lenses, fault sides and what a finding carries ([SIL-B8, SIL-B10, SIL-B11, SIL-B12](../specs/16-self-improvement.spec.md)).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T12.1 -->
 
@@ -596,12 +596,12 @@ Goal: gold case sets, variants, score, bar and acceptance state, `evals score|ba
 <!-- expand: T12.4 -->
 
 #### T12.5 Proposals and the proposer
-Goal: clusters, backlog, proposals, change classes, autonomy levels, the proposer workflow on its own branch, draft pull requests, never a merge ([PRP §2.1–2.4](../specs/40-improvement-proposals.spec.md)).
+Goal: clusters, backlog, proposals, change classes, autonomy levels, the proposer workflow on its own branch, draft pull requests, never a merge ([PRP-B11, PRP-B12, PRP-B13, PRP-B14, PRP-B15](../specs/40-improvement-proposals.spec.md)).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T12.5 -->
 
 #### T12.6 Case sets and trials
-Goal: case sets, paired trials with cases run one at a time in `ref:` worktrees, the A/A noise floor, caps, the `improve` verbs ([PRP §2.5–2.7](../specs/40-improvement-proposals.spec.md)).
+Goal: case sets, paired trials with cases run one at a time in `ref:` worktrees, the A/A noise floor, caps, the `improve` verbs ([PRP-B17, PRP-B18, PRP-B19, PRP-B20, PRP-B4, PRP-B12, PRP-B21, PRP-B8, PRP-B22](../specs/40-improvement-proposals.spec.md)).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T12.6 -->
 
@@ -611,7 +611,7 @@ Goal: per-step lessons files, validation and digests ([LSN](../specs/42-workflow
 <!-- expand: T12.7 -->
 
 #### T12.8 Stable mode, loop report, outcome proposals
-Goal: stable mode and its daily cap (LIF-B6), `report --loop` and the loop queries ([IMD](../specs/43-improvement-data.spec.md)), outcome proposals (OUT-AC-6).
+Goal: stable mode and its daily cap (LIF-B6), `report --loop` and the loop queries ([IMD](../specs/43-improvement-data.spec.md)), outcome proposals (OUT-AC6).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T12.8 -->
 
@@ -626,10 +626,10 @@ Goal: the model-free session digest and its causes on every exit; `full` reviews
 Goal: the minimal one-step workflow, and a three-step document workflow using a script, a route on a value, a trip back, an approval and a finalizer, both authored through T9.2.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 11.1.1 | `plugins/release-notes-tgraph/` | The minimal package of PKG §2.7 as a real plugin: one judged step with a model-free headings check, the outcome gate, a seed pair per judged criterion under `evals/calibration/`, its own tests; `author verify` passes rungs 1 to 7 and 10 | PKG §2.7, OUT §2.2.1, SCF §2.5 | yes | P1 | ✓ | 2026-11-20 |
-| 11.1.2 | `plugins/doc-refresh-tgraph/` | The three-step document workflow, scaffolded from an approved blueprint and outcome (T9.2) then completed by hand: `outline` script unit (`call=`), `draft` with a check, a judge and a route on its `size` value (`minor` to the finalizer, `major` to `review`), `review` with a judge, a person's approval and a trip back to `draft`, and a finalizer (`written`); `author verify` passes rungs 1 to 7 and 10 | PKG, SCF, SCR, CMP §2.2, FIN | yes | P1 | ✓ | 2026-11-20 |
+| 11.1.1 | `plugins/release-notes-tgraph/` | The minimal package of PKG-B25 as a real plugin: one judged step with a model-free headings check, the outcome gate, a seed pair per judged criterion under `evals/calibration/`, its own tests; `author verify` passes rungs 1 to 7 and 10 | PKG-B25, OUT-B11, SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22 | yes | P1 | ✓ | 2026-11-20 |
+| 11.1.2 | `plugins/doc-refresh-tgraph/` | The three-step document workflow, scaffolded from an approved blueprint and outcome (T9.2) then completed by hand: `outline` script unit (`call=`), `draft` with a check, a judge and a route on its `size` value (`minor` to the finalizer, `major` to `review`), `review` with a judge, a person's approval and a trip back to `draft`, and a finalizer (`written`); `author verify` passes rungs 1 to 7 and 10 | PKG, SCF, SCR, CMP-B10 to CMP-B16, FIN | yes | P1 | ✓ | 2026-11-20 |
 | 11.1.3 | `engine/tests/test_workflow_packages.py`, each package's `tests/` (as built, ADR-0129) | Both examples load, pass their generated tests and cover their outcome; doc-refresh runs on stand-ins through the trip back, the approval and the finalizer, the minor route past the review, a dropped heading caught by the check, and a request with no document stopping at the script | T11.1 goal | yes | P1 | ✓ | 2026-11-20 |
-| 11.1.4 | `engine/src/tempergraph/package/selftest.py` | The stand-in run stands in for script units (their must-pass fixtures, no real script), gives a value its first choice and answers an approval `proceed`; a check fixture may be a folder of files named by artifact key, for a check that reads more than one artifact | SCF §2.4, EVS §2.2 | yes | P1 | ✓ | 2026-11-20 |
+| 11.1.4 | `engine/src/tempergraph/package/selftest.py` | The stand-in run stands in for script units (their must-pass fixtures, no real script), gives a value its first choice and answers an approval `proceed`; a check fixture may be a folder of files named by artifact key, for a check that reads more than one artifact | SCF-B14, SCF-B15, SCF-B16, SCF-B17, EVS-B9, EVS-B2, EVS-B10 | yes | P1 | ✓ | 2026-11-20 |
 | 11.1.5 | `.claude-plugin/marketplace.json` | Both examples listed in the marketplace | CLAUDE.md layout | yes | P1 | ✓ | 2026-11-20 |
 | 11.1.6 | live, owner's machine | One real run of each example: `tempergraph run release-notes <tag>` in a repository with tags, `tempergraph run doc-refresh "<path>: <section>"` ([live-checks](live-checks.plan.md) L-25) | T11.1 goal | | P2 | ○ | |
 
@@ -642,23 +642,23 @@ Goal: the end-to-end story of §3 A6 on the owner's machine under a spend cap, w
 Goal: plugin manifests and marketplace entries, `release.json`, the empty changelog, docs and CLAUDE.md current.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 11.3.1 | `.claude-plugin/marketplace.json`, `plugins/*/.claude-plugin/plugin.json` | Four plugins listed: the engine, the monitor mod and the two examples; each example's manifest depends on `tempergraph` | CLAUDE.md layout, PKG §2.1 | yes | P1 | ✓ | 2026-11-20 |
-| 11.3.2 | `engine/src/tempergraph/data/release.json`, `constants.py` | The release record names every persisted document release 1 writes with a schema version (labels, stamp, registry and engine pointers added); its drift test holds | VER §2.2, VER-AC-1 | yes | P1 | ✓ | 2026-11-20 |
-| 11.3.3 | `engine/src/tempergraph/data/changelog/0.0.1.json` | The changelog of the first release is empty: there is no earlier release to be compatible with | VER §2.3 | yes | P1 | ✓ | 2026-11-20 |
+| 11.3.1 | `.claude-plugin/marketplace.json`, `plugins/*/.claude-plugin/plugin.json` | Four plugins listed: the engine, the monitor mod and the two examples; each example's manifest depends on `tempergraph` | CLAUDE.md layout, PKG-B11, PKG-B12 | yes | P1 | ✓ | 2026-11-20 |
+| 11.3.2 | `engine/src/tempergraph/data/release.json`, `constants.py` | The release record names every persisted document release 1 writes with a schema version (labels, stamp, registry and engine pointers added); its drift test holds | VER-B8, VER-AC1 | yes | P1 | ✓ | 2026-11-20 |
+| 11.3.3 | `engine/src/tempergraph/data/changelog/0.0.1.json` | The changelog of the first release is empty: there is no earlier release to be compatible with | VER-B9 | yes | P1 | ✓ | 2026-11-20 |
 | 11.3.4 | `README.md`, `CONTEXT.md`, `CLAUDE.md` | The repository's status, plugins and examples current | — | | P1 | ✓ | 2026-11-20 |
-| 11.3.5 | owner | The version and `released_at`: set when the live checks pass (M5); the version moved to `0.2.0` with release 2 ([R2-T9](r2-t9-release.plan.md)), and `released_at` stays unset until then | VER §2.2 | | P1 | ○ | |
+| 11.3.5 | owner | The version and `released_at`: set when the live checks pass (M5); the version moved to `0.2.0` with release 2 ([R2-T9](r2-t9-release.plan.md)), and `released_at` stays unset until then | VER-B8 | | P1 | ○ | |
 
 ## 3. Architecture decisions
 
 | # | Decision | Why |
 |---|---|---|
-| A1 | The engine is one Python 3.11+ package `tempergraph` under `plugins/tempergraph/engine/` (source layout); skills under `plugins/tempergraph/skills/`, the launcher under `plugins/tempergraph/bin/`; the monitor under `plugins/tempergraph-monitor/`. | The plugin ships the engine and its shim (ADR-0001 A8, UPD §2.7) |
-| A2 | Module boundaries follow the spec index; LangGraph is imported only by the compiler and durability modules; concrete executors only by the executor package (source-scan tests). | R-011 U4, EXI-AC-1, ADR-0002's mitigation |
+| A1 | The engine is one Python 3.11+ package `tempergraph` under `plugins/tempergraph/engine/` (source layout); skills under `plugins/tempergraph/skills/`, the launcher under `plugins/tempergraph/bin/`; the monitor under `plugins/tempergraph-monitor/`. | The plugin ships the engine and its shim (ADR-0001 A8, UPD-B18, UPD-B19) |
+| A2 | Module boundaries follow the spec index; LangGraph is imported only by the compiler and durability modules; concrete executors only by the executor package (source-scan tests). | R-011 U4, EXI-AC1, ADR-0002's mitigation |
 | A3 | Scripted stand-ins are test code: a recorded stream of `claude` and four capability sets. They are never registered in a shipped engine. | ADR-0091 |
 | A4 | Tooling is chosen in T1.1 (proposed: `uv`, `pytest`, `ruff`, `pyright`) and recorded in CLAUDE.md, which states no command until then. | CLAUDE.md rule |
 | A5 | Live spend happens only in T0, T12's live checks and T11, each under a stated cap (proposed: T11 $25 for the whole acceptance set; T12 $25, with a trial cap of $10 and the stable-mode daily cap). | R-011 U7 |
 | A6 | Release 1 is accepted when, on `claude`: a person authors a workflow with the authoring skill; `audit` is clean; `run` pauses at an approval; `attention` lists it; `resume` with a ruling passes; `status --detail`, `events`, `logs`, `report`, `report --supervision` and the monitor show the run, its cost and its deciders; `rerun --from` with `--set` makes a linked thread; `stop --drain` and `resume` finish it; the loop files the run's friction finding (or shows it under `--dry-run`), grades the gate's judge, and a trial on a small case set ends in a decision and a draft pull request that nobody merges automatically. | The owner's "author, run, see, trust" |
-| A7 | The loop's issue and pull-request client is GitHub through the person's own `gh` sign-in, behind one small interface so another code host can be added; with no sign-in, filing keeps its payload for redelivery (SIL §4) and the loop still records. | R-090 D5, ADR-0090 S5 |
+| A7 | The loop's issue and pull-request client is GitHub through the person's own `gh` sign-in, behind one small interface so another code host can be added; with no sign-in, filing keeps its payload for redelivery (SIL-B19, SIL-B20) and the loop still records. | R-090 D5, ADR-0090 S5 |
 
 ## 4. Dependencies and imports
 <!-- expand: dependencies -->

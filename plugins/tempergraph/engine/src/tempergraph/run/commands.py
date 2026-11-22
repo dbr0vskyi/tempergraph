@@ -1,4 +1,4 @@
-"""Command resolution and the workflow command runner (CHK §2.2, §2.3; SEC §2.2 "Workflow command runner").
+"""Command resolution and the workflow command runner (CHK-B11, CHK-B12, CHK-B13; SEC-B7 "Workflow command runner").
 
 A command reaches a process only as list argv resolved against the workflow's allow-list, with standard
 input closed, output to a file, credentials removed from the environment and the process tree ended at
@@ -39,7 +39,7 @@ def _plain(text: str) -> bool:
 
 
 def repository_commands(workdir: Path) -> list[str]:
-    """CHK §2.2: the command prefixes a repository declares in `tempergraph.commands.json` at its root, as a
+    """CHK-B11: the command prefixes a repository declares in `tempergraph.commands.json` at its root, as a
     list or as a map of names to commands. An entry that is not plain words is dropped, never run."""
     try:
         doc = json.loads((workdir / REPO_FILE).read_text(encoding="utf-8"))
@@ -95,7 +95,7 @@ class CommandRun:
 
 
 def resolve_command(allow: Sequence[str], text: str, workdir: Path) -> ResolvedCommand | CommandRefusal:
-    """CHK §2.2 without a custom resolver: a declared prefix with plain-word arguments."""
+    """CHK-B11 without a custom resolver: a declared prefix with plain-word arguments."""
     text = text.strip()
     cwd = None
     m = _CD_RE.match(text)
@@ -115,7 +115,7 @@ def resolve_command(allow: Sequence[str], text: str, workdir: Path) -> ResolvedC
     for prefix in sorted((a for a in allow if a != REPOSITORY), key=len, reverse=True):
         if text == prefix or text.startswith(prefix + " "):
             return ResolvedCommand(argv=tuple(words), prefix=prefix, cwd=cwd)
-    if REPOSITORY in allow:  # documented by the repository itself (CHK §2.2)
+    if REPOSITORY in allow:  # documented by the repository itself (CHK-B11)
         for prefix in sorted(repository_commands(workdir), key=len, reverse=True):
             if text == prefix or text.startswith(prefix + " "):
                 return ResolvedCommand(argv=tuple(words), prefix=prefix, cwd=cwd, documented=True,
@@ -146,7 +146,7 @@ def run_command(cmd: ResolvedCommand, workdir: Path, out_path: Path, timeout_s: 
     run = CommandRun(argv=tuple(scrub(a) for a in cmd.argv), output_path=str(out_path))
     with open(out_path, "wb") as fh:
         try:
-            proc = subprocess.Popen(  # noqa: S603 - resolved list argv (CHK §2.3)
+            proc = subprocess.Popen(  # noqa: S603 - resolved list argv (CHK-B12, CHK-B13)
                 list(cmd.argv), cwd=cwd, stdin=subprocess.DEVNULL, stdout=fh, stderr=subprocess.STDOUT,
                 env={**command_env(), **(env_extra or {})}, start_new_session=(os.name == "posix"))
         except OSError as exc:

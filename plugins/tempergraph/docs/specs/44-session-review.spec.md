@@ -14,7 +14,7 @@ WHEN a segment exits THE recorder SHALL write, after `run_exit` and before findi
 
 ### SRV-B1 Digest on every exit, no model
 
-WHEN recording runs at any run exit in either mode THE recorder SHALL give every session of the segment a `digest.json` with no model call, and when a digest write fails derive findings without its causes and leave the exit code unchanged (contract C2).
+WHEN recording runs at any run exit in either mode THE recorder SHALL give every session of the segment a `digest.json` with no model call, and when a digest write fails derive findings without its causes and leave the exit code unchanged (OVR-B4).
 
 - GIVEN a failing digest write WHEN findings are derived THEN they lack its causes and the exit code is unchanged
 

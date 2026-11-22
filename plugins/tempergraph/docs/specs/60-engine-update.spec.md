@@ -50,7 +50,7 @@ WHEN `update` runs on an installed 1.5.0 whose digest differs from the plugin's 
 
 ### UPD-B6 Check is read-only
 
-WHEN `update --check` runs THE engine SHALL run the source and plan steps only, change no file under the home folder, a state root or the plugin data folder, and start no model or package installer (contract C13); `--dry-run` prints the plan with every write it would make, and `--json` one object per line ([LIF-B8](18-lifecycle-and-evals.spec.md)).
+WHEN `update --check` runs THE engine SHALL run the source and plan steps only, change no file under the home folder, a state root or the plugin data folder, and start no model or package installer (OVR-B15); `--dry-run` prints the plan with every write it would make, and `--json` one object per line ([LIF-B8](18-lifecycle-and-evals.spec.md)).
 
 - GIVEN any machine WHEN `update --check` runs THEN a hash of the home, state roots and plugin data is unchanged
 

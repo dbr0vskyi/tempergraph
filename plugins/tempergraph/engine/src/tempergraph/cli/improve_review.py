@@ -1,9 +1,9 @@
-"""`tempergraph improve review <selector>`, `improve review show <selector>`, `improve review summary` (SRV §2.9).
+"""`tempergraph improve review <selector>`, `improve review show <selector>`, `improve review summary` (SRV-B23).
 
 `improve review <selector>` plans and runs a review of one run now, `reason: person`, under the per-run cap; in
 release 1 a person's review reads `full` (the `signals` plans are release 2, X2-26), and `--full` is accepted for
 the release 2 shape. `--dry-run` prints the plan and its estimate and spends nothing. `show` and `summary` are
-read-only. Exit 0, or 2 for a bad selector or option. Results stay on the machine (SRV §2.8).
+read-only. Exit 0, or 2 for a bad selector or option. Results stay on the machine (SRV-B22).
 """
 
 from __future__ import annotations

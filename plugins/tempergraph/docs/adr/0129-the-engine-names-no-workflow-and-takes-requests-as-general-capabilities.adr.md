@@ -11,7 +11,7 @@ Numbers 0121 to 0128 are held by the release 2 design, which is in review.
 
 ## Context
 
-Contract C8 says the engine core never names a workflow, and [WFM-AC-4](../specs/02-workflow-model.spec.md) checks the engine's source for it. Building the first real workflow packages showed where that rule was thinner than it read:
+OVR-B10 says the engine core never names a workflow, and [WFM-AC4](../specs/02-workflow-model.spec.md) checks the engine's source for it. Building the first real workflow packages showed where that rule was thinner than it read:
 
 - The source scan and the skill scans compared against a typed list of names. The list was already wrong: it missed one example and named a workflow that does not exist.
 - The engine's test suite named the packages it loaded, and held one example's own scenarios.
@@ -43,6 +43,6 @@ We will keep every workflow outside the engine, and let a workflow's request int
 
 - `tests/test_workflow_packages.py` replaces the test that named the examples; the document workflow's scenarios moved into its package; the scans read the names from the repository.
 - The engine's live-check list has one row for "every package's own list"; the delivery workflow's two rows moved into its package.
-- Requests already taken this way: a step's claim about an earlier step is judged instead of pausing ([JDG-B9](../specs/05-judge-and-verdict.spec.md)); a newer outcome revision records the stamp's audit list anew ([WUP §2.6](../specs/63-workflow-upgrade.spec.md)). Neither names a workflow.
+- Requests already taken this way: a step's claim about an earlier step is judged instead of pausing ([JDG-B9](../specs/05-judge-and-verdict.spec.md)); a newer outcome revision records the stamp's audit list anew ([WUP-B19](../specs/63-workflow-upgrade.spec.md)). Neither names a workflow.
 - Known debt: two engine behaviours describe one workflow, PKG-B8 and AUT-B8. They are examples of the general rules beside them and move to that workflow's package when the engine's specs are migrated to the new spec format. Other specs name that workflow only inside scenarios.
 - Limits a package has found and the engine has not yet answered stay listed in the package's README until an engine change, stated generally, removes them.

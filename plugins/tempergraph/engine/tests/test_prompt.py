@@ -1,4 +1,4 @@
-"""Prompt rendering (PRM §2; PRM-B1..B5, PRM-AC-1..4) and the output contract (PRM §2.3, VAL §2.1)."""
+"""Prompt rendering (PRM-B1, PRM-B6; PRM-B1..B5, PRM-AC1..4) and the output contract (PRM-B11, VAL-B5, VAL-B6)."""
 
 from __future__ import annotations
 
@@ -65,7 +65,7 @@ def test_retry_told_not_resumed() -> None:
                     previous_report="I wrote it all" * 400, changed_paths=tuple(f"p{i}" for i in range(30))),
                     DECLARED["claude"])
     assert "c-file" in r.text and "fill it" in r.text and "a claim, not a fact" in r.text
-    assert "p19" in r.text and "p20" not in r.text  # ≤ 20 paths (PRM-AC-4)
+    assert "p19" in r.text and "p20" not in r.text  # ≤ 20 paths (PRM-AC4)
     section = r.text[r.text.index("What the previous attempt reported"):]
     assert len(section.split("Paths changed")[0]) < 3200  # ≤ 3000 chars of report
 

@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-Point 4 of the owner's request asks for run stats and numbers from every machine in one place. The engine records everything locally ([OBS](../specs/15-observability-and-cost.spec.md)) and, until now, sent nothing anywhere. If a run is to reach a shared backend (a tracing store, a metrics system, an LLM observability product), the engine needs one export format that many backends read, and that format must not carry prompts, outputs or secrets (contract C9). This note records what the OpenTelemetry (OTel) generative-AI semantic conventions offer, how stable they are, and what that means for [TEL](../specs/35-telemetry-export.spec.md).
+Point 4 of the owner's request asks for run stats and numbers from every machine in one place. The engine records everything locally ([OBS](../specs/15-observability-and-cost.spec.md)) and, until now, sent nothing anywhere. If a run is to reach a shared backend (a tracing store, a metrics system, an LLM observability product), the engine needs one export format that many backends read, and that format must not carry prompts, outputs or secrets (OVR-B11). This note records what the OpenTelemetry (OTel) generative-AI semantic conventions offer, how stable they are, and what that means for [TEL](../specs/35-telemetry-export.spec.md).
 
 ## Sources consulted
 
@@ -34,11 +34,11 @@ Point 4 of the owner's request asks for run stats and numbers from every machine
 ## Conclusions
 
 1. OTel with the GenAI conventions is the export format with the widest reach; nothing in tempergraph's records needs a vendor format.
-2. The conventions are not stable, so the engine pins one semconv version, keeps every name in one mapping table ([TEL §2.2](../specs/35-telemetry-export.spec.md)) and records the pinned version on every exported resource.
+2. The conventions are not stable, so the engine pins one semconv version, keeps every name in one mapping table ([TEL-B12 to TEL-B33](../specs/35-telemetry-export.spec.md)) and records the pinned version on every exported resource.
 3. Cost has no convention: estimated and reported cost go out as tempergraph-namespaced attributes and metrics, kept apart as [ADR-0012](../adr/0012-cost-when-executor-reports-tokens-only.adr.md) requires.
-4. Content capture is a convention option the engine never turns on; tool spans carry the tool name only. This matches the publish boundary ([SEC §2.3](../specs/14-security.spec.md)).
+4. Content capture is a convention option the engine never turns on; tool spans carry the tool name only. This matches the publish boundary ([SEC-B8 to SEC-B11](../specs/14-security.spec.md)).
 5. Only the Messages API executor sees each model request; for the three agent executors the engine sees a session, not its requests, so a session is an `invoke_agent` span and per-request `chat` spans exist only for `messages-api`.
-6. A fully local backend is possible today without LangSmith: Phoenix (one Python process, no account) or a self-hosted Langfuse both receive the engine's OTLP export on localhost. LangSmith itself runs locally only under an Enterprise license, so it is not the default. [TEL §2.4](../specs/35-telemetry-export.spec.md) adds a loopback-only mode so nothing can leave the machine by mistake.
+6. A fully local backend is possible today without LangSmith: Phoenix (one Python process, no account) or a self-hosted Langfuse both receive the engine's OTLP export on localhost. LangSmith itself runs locally only under an Enterprise license, so it is not the default. [TEL-B6, TEL-B8](../specs/35-telemetry-export.spec.md) adds a loopback-only mode so nothing can leave the machine by mistake.
 
 ## Open questions
 

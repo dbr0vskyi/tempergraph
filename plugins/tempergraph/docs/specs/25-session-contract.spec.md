@@ -59,7 +59,7 @@ WHEN an executor reports tokens but no cost THE engine SHALL record `reported_co
 
 ### SSN-B7 Normalized session events
 
-WHEN an executor reads its session's stream THE executor SHALL push only these events to the sink: `session_started` (`session_id`, `model`, `cli_version`, `tools` as listed by the CLI), `model_delta` (`chars`, a count only), `tool_started` (`name`, `subagent`, `call_id`, and `input_summary`, a scrubbed one-line summary kept in local records only, [EVT §2.5](30-run-events.spec.md)), `tool_finished` (`call_id`, `ok`, `error_kind`), `text` (`last_line`, scrubbed and clipped to 200 characters), `retrying` (`category` from the CLI's retry event), `denied` (`name` of a refused or soft-denied tool) and `result` (`ok`, `usage`).
+WHEN an executor reads its session's stream THE executor SHALL push only these events to the sink: `session_started` (`session_id`, `model`, `cli_version`, `tools` as listed by the CLI), `model_delta` (`chars`, a count only), `tool_started` (`name`, `subagent`, `call_id`, and `input_summary`, a scrubbed one-line summary kept in local records only, [EVT-B21](30-run-events.spec.md)), `tool_finished` (`call_id`, `ok`, `error_kind`), `text` (`last_line`, scrubbed and clipped to 200 characters), `retrying` (`category` from the CLI's retry event), `denied` (`name` of a refused or soft-denied tool) and `result` (`ok`, `usage`).
 
 - GIVEN a model reply of 5000 characters WHEN the stream is read THEN `model_delta` events carry counts and no text
 - GIVEN a text line of 300 characters WHEN a `text` event is pushed THEN `last_line` holds 200 characters
@@ -79,7 +79,7 @@ WHEN a gate decides THE engine SHALL derive one verdict of `PROCEED`, `RETRY`, `
 
 ### SSN-B10 Check result
 
-WHEN a check returns THE engine SHALL read `result` (`PASS`, `MAYBE` or `FAIL`), `evidence` (bounded text), `environmental`, `untracked_only`, `findings` (each `{criterion, status, place, fix, message, kind}`, `status` one of `pass`, `maybe`, `fail` or `n_a`, `kind` one of `substance`, `output_contract` or `other`, the default), `facts` (at most 20 slugs to strings of at most 200 characters), and add `runs` (the check's command runs); the rules are [CHK §2.4](75-check-contract-and-command-runs.spec.md).
+WHEN a check returns THE engine SHALL read `result` (`PASS`, `MAYBE` or `FAIL`), `evidence` (bounded text), `environmental`, `untracked_only`, `findings` (each `{criterion, status, place, fix, message, kind}`, `status` one of `pass`, `maybe`, `fail` or `n_a`, `kind` one of `substance`, `output_contract` or `other`, the default), `facts` (at most 20 slugs to strings of at most 200 characters), and add `runs` (the check's command runs); the rules are [CHK-B14](75-check-contract-and-command-runs.spec.md).
 
 - GIVEN a finding with no `kind` WHEN it is read THEN its kind is `other`
 

@@ -13,7 +13,7 @@ The best public method found the decisive step of a multi-agent failure 14.2% of
 
 ## Decision
 
-We will rank what the loop knows in three tiers of trust: run records, then the model-free digest, then review observations ([SRV §2.6.2, §2.8](../specs/44-session-review.spec.md)). A review observation is kept only if its citations pass the engine's check, and it files nothing on its own: it is shown in a local report, weights the cluster of a model-free finding it corroborates on the same unit and run (adding its category word, never its note, to that finding's issue), and is context for the proposer and for lessons drafts. A step session's observation may propose producer classes only, a judge session's grader classes only. Release 1 builds the local report and never files from reviews; corroborated filing comes with stable-mode plans.
+We will rank what the loop knows in three tiers of trust: run records, then the model-free digest, then review observations ([SRV-B20, SRV-B22](../specs/44-session-review.spec.md)). A review observation is kept only if its citations pass the engine's check, and it files nothing on its own: it is shown in a local report, weights the cluster of a model-free finding it corroborates on the same unit and run (adding its category word, never its note, to that finding's issue), and is context for the proposer and for lessons drafts. A step session's observation may propose producer classes only, a judge session's grader classes only. Release 1 builds the local report and never files from reviews; corroborated filing comes with stable-mode plans.
 
 ## Options considered
 
@@ -42,8 +42,8 @@ We will rank what the loop knows in three tiers of trust: run records, then the 
 
 | Id | Assumption | Where it binds |
 |---|---|---|
-| A1 | A model-free finding on the same unit and run is a fair corroboration for a review category, even when the two describe the problem differently | SRV §2.8, SRV-B7 |
-| A2 | The author of a dev-mode workflow reads the local report; nothing has to be filed for the signal to be used | SRV §2.9 |
+| A1 | A model-free finding on the same unit and run is a fair corroboration for a review category, even when the two describe the problem differently | SRV-B22, SRV-B7 |
+| A2 | The author of a dev-mode workflow reads the local report; nothing has to be filed for the signal to be used | SRV-B23 |
 
 ## Revisit when
 

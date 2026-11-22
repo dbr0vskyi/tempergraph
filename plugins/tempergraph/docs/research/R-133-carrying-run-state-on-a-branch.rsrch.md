@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The owner decided on 2026-11-20 that CI pipelines go to a later release, and proposed a stopgap: "temporary we can push .tempergraph folder from project to branch which would have state/sqlite etc, and when workflow will be fully done we can remove the folder to leave no traces." Today a paused run resumes only on the machine that holds its state root ([WSP §2](../specs/13-workspace-and-concurrency.spec.md)); the state root is gitignored by its own `.gitignore` ([LOS §2.1](../specs/33-local-observability-store.spec.md)).
+The owner decided on 2026-11-20 that CI pipelines go to a later release, and proposed a stopgap: "temporary we can push .tempergraph folder from project to branch which would have state/sqlite etc, and when workflow will be fully done we can remove the folder to leave no traces." Today a paused run resumes only on the machine that holds its state root ([WSP-B8, WSP-B9, WSP-B11](../specs/13-workspace-and-concurrency.spec.md)); the state root is gitignored by its own `.gitignore` ([LOS-B7, LOS-B8, LOS-B9](../specs/33-local-observability-store.spec.md)).
 
 The questions: what of the state root a resume on another machine needs, what must never leave the machine, where on git it should live, how two machines are kept from driving one run, and how "no traces" can actually hold.
 
@@ -10,7 +10,7 @@ The questions: what of the state root a resume on another machine needs, what mu
 
 | # | Source | Type | Where |
 |---|---|---|---|
-| S3 | This design: LOS §2.1 layout (what each file holds, "local only" marks), SEC §2.3 and contract C9 (published artefacts carry metadata only), DUR (checkpoints, locks, thread states), WTR §2.2 (`WorkspaceRecord` paths), MIG (layout and checkpoint format versions), RRN (feedback and rulings) | Design set | [specs](../specs/00-overview.spec.md) |
+| S3 | This design: LOS-B7, LOS-B8, LOS-B9 layout (what each file holds, "local only" marks), SEC-B8 to SEC-B11 and OVR-B11 (published artefacts carry metadata only), DUR (checkpoints, locks, thread states), WTR-B18 (`WorkspaceRecord` paths), MIG (layout and checkpoint format versions), RRN (feedback and rulings) | Design set | [specs](../specs/00-overview.spec.md) |
 | S4 | git documentation: an orphan branch (`git switch --orphan`) shares no history with other branches; `git push origin --delete <branch>` removes a remote branch; a commit stays reachable from a branch that contains it until that history is rewritten; a squash merge adds one commit holding the branch's final tree only | Tool documentation | [git-switch](https://git-scm.com/docs/git-switch), [git-push](https://git-scm.com/docs/git-push), [git-merge](https://git-scm.com/docs/git-merge) |
 | S5 | LangGraph's SQLite checkpointer stores checkpoints and pending writes in tables keyed by `thread_id`, so one thread's rows can be copied apart | Library documentation | [langgraph-checkpoint-sqlite](https://pypi.org/project/langgraph-checkpoint-sqlite/) |
 
@@ -22,7 +22,7 @@ A run in CI pauses on one runner and resumes on another, so a CI path saves a pa
 
 ### F2 A resume elsewhere needs a small, thread-scoped part of the state root `confirmed`
 
-From LOS §2.1 (S3):
+From LOS-B7, LOS-B8, LOS-B9 (S3):
 
 | Needed to resume | Not needed, or must stay local |
 |---|---|
@@ -35,7 +35,7 @@ Copying the whole folder, as the request literally reads, would publish transcri
 
 ### F3 The subset still holds a person's words `confirmed`
 
-Checkpoints carry feedback, rulings and answers verbatim (RRN), and artifacts may quote repository content. On a private repository this is the same exposure as the work itself; on a public one it is not acceptable. The engine cannot tell a private remote from a public one without a network call, so carrying must be an explicit opt-in per run or per workflow, scrubbed by the same scrubber as the run log (SEC §2.3).
+Checkpoints carry feedback, rulings and answers verbatim (RRN), and artifacts may quote repository content. On a private repository this is the same exposure as the work itself; on a public one it is not acceptable. The engine cannot tell a private remote from a public one without a network call, so carrying must be an explicit opt-in per run or per workflow, scrubbed by the same scrubber as the run log (SEC-B8 to SEC-B11).
 
 ### F4 "No traces" depends on where the state is committed `confirmed`
 
@@ -53,7 +53,7 @@ A pushed state is a copy; two machines resuming it fork the thread. A **lease** 
 
 ### F6 What changes on the other machine `confirmed`
 
-`WorkspaceRecord` holds absolute paths (WTR §2.2), and the checkpoint database format and layout carry versions (MIG). A pull must re-derive the worktree path for this machine from the recorded branch and the root rule, refuse a checkpoint format newer than the running engine, and re-attach the worktree to the branch, as resume after a deleted worktree already does.
+`WorkspaceRecord` holds absolute paths (WTR-B18), and the checkpoint database format and layout carry versions (MIG). A pull must re-derive the worktree path for this machine from the recorded branch and the root rule, refuse a checkpoint format newer than the running engine, and re-attach the worktree to the branch, as resume after a deleted worktree already does.
 
 ## Conclusions
 

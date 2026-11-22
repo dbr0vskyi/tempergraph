@@ -12,7 +12,7 @@
 | S4 | Git for Windows, "Git cannot create a file or directory with a long path": `core.longpaths` | Vendor documentation | [gitforwindows.org](https://gitforwindows.org/git-cannot-create-a-file-or-directory-with-a-long-path.html) |
 | S5 | Job objects with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, as used by build tools (rustc's bootstrap, uv) to end a whole process tree with the parent | Open-source code | [rust bootstrap job.rs](https://doc.rust-lang.org/stable/nightly-rustc/src/bootstrap/utils/job.rs.html), [uv-windows job.rs](https://docs.rs/crate/uv-windows/0.0.45/source/src/job.rs) |
 | S6 | Engine code on `main`: `executors/launcher.py` (process group on POSIX; on Windows `CREATE_NEW_PROCESS_GROUP`, `taskkill /T` on a hard stop, "the job-object form is the next step"), `durability/lock.py` (`fcntl` or `msvcrt.locking`), `install/shim.py` (a `/bin/sh` shim, `bin/python`), `chmod` calls guarded by `os.name`, `shell_timing` (`$SHELL`) | Code | `plugins/tempergraph/engine/src/tempergraph/` |
-| S7 | This design: EXI-B5 (children end with the engine), SEC §2.1 (argv constants, prompt on stdin), LOS §2.1 (owner-only modes), UPD §2.2 and §2.7 (shim, `PATH` block), TCK (OS adapters), WTR (worktree names), CHK (command resolution), ARC `slow-host` | Design set | [specs](../specs/00-overview.spec.md) |
+| S7 | This design: EXI-B5 (children end with the engine), SEC-B5, SEC-B6 (argv constants, prompt on stdin), LOS-B7, LOS-B8, LOS-B9 (owner-only modes), UPD-B11, UPD-B12, UPD-B13, UPD-B18, UPD-B19 (shim, `PATH` block), TCK (OS adapters), WTR (worktree names), CHK (command resolution), ARC `slow-host` | Design set | [specs](../specs/00-overview.spec.md) |
 
 ## Key findings
 
@@ -21,7 +21,7 @@ On Windows a session's process tree outlives the engine unless a job object ties
 
 ### F2 Claude Code runs natively on Windows, and its shell differs `confirmed`
 
-Native Windows is supported from Windows 10 1809. With Git for Windows the Bash tool uses Git Bash; without it shell commands go through the PowerShell tool (S2). A workflow's `shell` capability and its declared command prefixes ([CHK §2.2](../specs/75-check-contract-and-command-runs.spec.md)) therefore meet a different shell per machine. In WSL, Claude Code is a Linux program, and the engine should run inside WSL too.
+Native Windows is supported from Windows 10 1809. With Git for Windows the Bash tool uses Git Bash; without it shell commands go through the PowerShell tool (S2). A workflow's `shell` capability and its declared command prefixes ([CHK-B11](../specs/75-check-contract-and-command-runs.spec.md)) therefore meet a different shell per machine. In WSL, Claude Code is a Linux program, and the engine should run inside WSL too.
 
 ### F3 What is POSIX-only in tempergraph today `confirmed`
 
@@ -29,8 +29,8 @@ Native Windows is supported from Windows 10 1809. With Git for Windows the Bash 
 |---|---|---|
 | Session lifetime (EXI-B5) | Process group; Windows uses a new process group and `taskkill /T` on a hard stop | A job object with kill-on-close, so a crashed engine still ends its sessions (S1, S5) |
 | Run lock | `msvcrt.locking` on one byte | Works; locks are mandatory on Windows, so readers of the lock file must not expect to read it |
-| Owner-only files (LOS §2.1) | `chmod 0700/0600`, skipped off POSIX | The user profile's default ACL is owner-only; a state root outside the profile needs an explicit ACL (`icacls`), or a warning |
-| Shim (UPD §2.2) | `/bin/sh` script calling `<env>/bin/python` | A `tempergraph.cmd` calling `<env>\Scripts\python.exe`; `PATH` set in the user's environment registry key, not a shell profile |
+| Owner-only files (LOS-B7, LOS-B8, LOS-B9) | `chmod 0700/0600`, skipped off POSIX | The user profile's default ACL is owner-only; a state root outside the profile needs an explicit ACL (`icacls`), or a warning |
+| Shim (UPD-B11, UPD-B12, UPD-B13) | `/bin/sh` script calling `<env>/bin/python` | A `tempergraph.cmd` calling `<env>\Scripts\python.exe`; `PATH` set in the user's environment registry key, not a shell profile |
 | Atomic replace | `os.replace` | Works on NTFS but fails with `PermissionError` while another process (often antivirus) holds the target; needs a short retry |
 | Host-speed probe (ARC `slow-host`) | `$SHELL -lc true` | `powershell -NoProfile -Command exit` against `-Command exit` with the profile |
 | Paths | POSIX assumptions in tests | 260-character limit unless long paths are on (S3, S4); worktrees beside the repository add depth; CPython declares `longPathAware`, but git needs `core.longpaths` |
@@ -48,7 +48,7 @@ Native Windows is supported from Windows 10 1809. With Git for Windows the Bash 
 
 2. Native Windows is the target; WSL is Linux and needs nothing new.
 3. Three facts about the CLI on Windows need live probes before any judge runs there, because judge isolation rests on them.
-4. Until those probes pass, preflight on Windows should refuse judge sessions it cannot prove restricted, by contract C15.
+4. Until those probes pass, preflight on Windows should refuse judge sessions it cannot prove restricted, by OVR-B17.
 
 ## Open questions
 

@@ -13,7 +13,7 @@ The owner added that during an engine update the installed workflows must be rei
 
 ## Decision
 
-We will ([UPD §2.8](../specs/60-engine-update.spec.md)):
+We will ([UPD-B20 to UPD-B24](../specs/60-engine-update.spec.md)):
 
 1. Keep registration in `~/.tempergraph/registry.json`, outside every environment, with `plugin`, `local` and `builtin` entries. Only `workflows unregister` removes an entry.
 2. On every update and install, install each entry's declared Python dependencies into the new environment, then load and validate each workflow under the new engine before the switch.
@@ -42,8 +42,8 @@ We will ([UPD §2.8](../specs/60-engine-update.spec.md)):
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | "Reinstall the installed workflows" means re-registering them and reinstalling their Python dependencies into the new engine, not reinstalling their plugins, which Claude Code owns. | UPD §2.8 |
-| A2 | A workflow package declares its Python dependencies in its package metadata; the exact place waits for the package-layout spec ([R-011](../research/R-011-design-gap-review.rsrch.md) G2). | UPD §2.8 |
+| A1 | "Reinstall the installed workflows" means re-registering them and reinstalling their Python dependencies into the new engine, not reinstalling their plugins, which Claude Code owns. | UPD-B20 to UPD-B24 |
+| A2 | A workflow package declares its Python dependencies in its package metadata; the exact place waits for the package-layout spec ([R-011](../research/R-011-design-gap-review.rsrch.md) G2). | UPD-B20 to UPD-B24 |
 | A3 | Running a pinned workflow on an older engine is acceptable to the owner, as long as it is visible. | UPD-B7 |
 
 ## Consequences

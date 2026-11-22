@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Every model step is graded by a fresh, read-only judge session that reports a finding per criterion; the engine, never the judge, derives the verdict by rule. A deterministic check runs first and can end the attempt with no model call, and a judging failure never passes. This spec owns contract C4, which prompt rendering ([PRM](04-prompt-rendering.spec.md)) and the independence guard ([GRD](06-independence-guard.spec.md)) uphold ([ADR-0005](../adr/0005-independent-judge-engine-verdict.adr.md)). Gates, budgets ([BUD](08-budgets-and-failures.spec.md)), pauses ([HUM](07-gate-and-human.spec.md)), calibration ([JCL](50-judge-calibration.spec.md)) and the outcome gate ([OUT](90-run-outcome.spec.md)) depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
+Every model step is graded by a fresh, read-only judge session that reports a finding per criterion; the engine, never the judge, derives the verdict by rule. A deterministic check runs first and can end the attempt with no model call, and a judging failure never passes. This spec owns OVR-B6, which prompt rendering ([PRM](04-prompt-rendering.spec.md)) and the independence guard ([GRD](06-independence-guard.spec.md)) uphold ([ADR-0005](../adr/0005-independent-judge-engine-verdict.adr.md)). Gates, budgets ([BUD](08-budgets-and-failures.spec.md)), pauses ([HUM](07-gate-and-human.spec.md)), calibration ([JCL](50-judge-calibration.spec.md)) and the outcome gate ([OUT](90-run-outcome.spec.md)) depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
 ## Behaviours
 

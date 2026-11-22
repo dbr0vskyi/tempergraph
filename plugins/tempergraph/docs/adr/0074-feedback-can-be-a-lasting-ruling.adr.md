@@ -13,7 +13,7 @@ Feedback today reaches the retried step and its judge once ([HUM-B12](../specs/0
 
 ## Decision
 
-We will accept feedback on every resume that a person decides, and on `rerun`, and let a person mark it as a **ruling** with `--ruling`. A ruling is engine state: it is rendered to every attempt of the units it applies to (by default the unit it was given at and every later unit), shown to each of their judges as direction that wins over a reference with one engine blocker that the output follows it, kept across retries, trips back, rewinds and reruns, and ended only by a person's revocation ([RRN §2.2](../specs/81-reruns-and-feedback.spec.md)). One-time feedback keeps today's behaviour.
+We will accept feedback on every resume that a person decides, and on `rerun`, and let a person mark it as a **ruling** with `--ruling`. A ruling is engine state: it is rendered to every attempt of the units it applies to (by default the unit it was given at and every later unit), shown to each of their judges as direction that wins over a reference with one engine blocker that the output follows it, kept across retries, trips back, rewinds and reruns, and ended only by a person's revocation ([RRN-B14, RRN-B15](../specs/81-reruns-and-feedback.spec.md)). One-time feedback keeps today's behaviour.
 
 ## Options considered
 
@@ -35,7 +35,7 @@ We will accept feedback on every resume that a person decides, and on `rerun`, a
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | A ruling the work cannot satisfy is a conflict for a person, so a `no_change` blocker against it escalates rather than retries. | RRN §2.2 |
+| A1 | A ruling the work cannot satisfy is a conflict for a person, so a `no_change` blocker against it escalates rather than retries. | RRN-B14, RRN-B15 |
 
 ## Consequences
 

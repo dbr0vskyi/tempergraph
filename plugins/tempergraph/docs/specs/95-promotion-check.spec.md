@@ -38,7 +38,7 @@ WHEN a run exits at stage `pipeline` and a re-read criterion fails THE engine SH
 
 ### PRO-B6 The verb
 
-WHEN `promote-check <workflow> --to local-stable|pipeline [--executor <name>] [--window <n>] [--stamp] [--json]` runs THE engine SHALL be read-only without `--stamp`, writing nothing (contract C13); exit 0 when every criterion is met, 6 when any is not (an advisory verb, [CON-B12](01-contracts.spec.md)) and 2 on a usage error; read the same functions as `report --supervision`, `report --loop` and `evals bar`, so a number never differs between two verbs; and refuse `--to pipeline`, and a `--executor` not registered in this release, with exit 2 `not_in_release`.
+WHEN `promote-check <workflow> --to local-stable|pipeline [--executor <name>] [--window <n>] [--stamp] [--json]` runs THE engine SHALL be read-only without `--stamp`, writing nothing (OVR-B15); exit 0 when every criterion is met, 6 when any is not (an advisory verb, [CON-B12](01-contracts.spec.md)) and 2 on a usage error; read the same functions as `report --supervision`, `report --loop` and `evals bar`, so a number never differs between two verbs; and refuse `--to pipeline`, and a `--executor` not registered in this release, with exit 2 `not_in_release`.
 
 - GIVEN `promote-check --to pipeline` WHEN it runs THEN it exits 2 `not_in_release`
 
@@ -68,7 +68,7 @@ WHEN `--stamp` runs and every criterion is met THE engine SHALL write `promotion
 
 ### PRO-B11 Pauses in a pipeline
 
-WHEN a pipeline run pauses THE engine SHALL exit 3, ending the job, the question reaching a person through `attention`, a hook or the monitor and the person resuming where the run's state root lives ([ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)), and never make an escalation `offer` at stage `pipeline` ([LAD-B13](92-effort-ladder-and-model-escalation.spec.md)); the regressed watch re-reading P2, P3, P5, P6 and P9 over the sliding window after every final exit at stage `pipeline`, best effort (contract C2).
+WHEN a pipeline run pauses THE engine SHALL exit 3, ending the job, the question reaching a person through `attention`, a hook or the monitor and the person resuming where the run's state root lives ([ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)), and never make an escalation `offer` at stage `pipeline` ([LAD-B13](92-effort-ladder-and-model-escalation.spec.md)); the regressed watch re-reading P2, P3, P5, P6 and P9 over the sliding window after every final exit at stage `pipeline`, best effort (OVR-B4).
 
 - GIVEN a pipeline run that pauses WHEN it exits THEN the exit is 3 and `attention` lists the pause
 

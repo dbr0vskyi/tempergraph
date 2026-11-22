@@ -1,4 +1,4 @@
-"""Stable mode's daily cap and the loop's own proposals and trials (SIL §4, PRP §2.1, PRP-B8; plan T12.8).
+"""Stable mode's daily cap and the loop's own proposals and trials (SIL-B19, SIL-B20, PRP-B11, PRP-B8; plan T12.8).
 
 The daily cap bounds what the loop child spends without a person: its friction judge, its session review, and,
 at autonomy `propose` or `trial`, the proposer and a trial it starts on its own. A day is the UTC date. The spend
@@ -46,7 +46,7 @@ def _day(now: datetime | None) -> str:
 
 def daily_cap(mode: str, setting: float | None) -> float | None:
     """The run setting `daily_cap_usd` (the workflow's `daily_cap_usd`, a settings file or `--daily-cap`), else
-    `stable.daily_cap_usd` ($50); None in dev mode, which has no daily limit (SIL §4)."""
+    `stable.daily_cap_usd` ($50); None in dev mode, which has no daily limit (SIL-B19, SIL-B20)."""
     if mode != "stable":
         return None
     return float(setting) if isinstance(setting, (int, float)) and setting >= 0 \

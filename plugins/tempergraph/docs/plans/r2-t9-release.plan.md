@@ -15,10 +15,10 @@ specs: [plugins/tempergraph/docs/specs/61-version-metadata.spec.md, plugins/temp
 
 | Req | Criteria | Statement | Spec ids |
 |---|---|---|---|
-| R1 | AC 1 | Each example's draft step declares an effort ladder | LAD §2.1 |
+| R1 | AC 1 | Each example's draft step declares an effort ladder | LAD-B9 |
 | R2 | AC 2 | The guides say what to do for every release 2 feature a person uses | — |
-| R3 | AC 3 | Version `0.2.0` in the engine, the release record and the plugin manifest; `data/changelog/0.2.0.json` | VER §2.2, §2.3, LAD-AC-6 |
-| R4 | AC 4 | The packages' stamps | VER §2.5 |
+| R3 | AC 3 | Version `0.2.0` in the engine, the release record and the plugin manifest; `data/changelog/0.2.0.json` | VER-B8, VER-B9, LAD-AC6 |
+| R4 | AC 4 | The packages' stamps | VER-B16 |
 
 ## 2. Phases
 
@@ -29,7 +29,7 @@ Weight: light
 
 | Row | Kind | File | Proves | Change |
 |---|---|---|---|---|
-| 1.1 | test | `plugins/tempergraph/engine/tests/test_stamp.py` | VER-AC-6, LAD-AC-6 | The release ships its changelog file, every entry is well formed, and the model-list entry carries its transform |
+| 1.1 | test | `plugins/tempergraph/engine/tests/test_stamp.py` | VER-AC6, LAD-AC6 | The release ships its changelog file, every entry is well formed, and the model-list entry carries its transform |
 | 1.2 | code | `plugins/tempergraph/engine/src/tempergraph/data/changelog/0.2.0.json` | | The entries of release 2 |
 | 1.3 | code | `plugins/tempergraph/engine/src/tempergraph/constants.py` | | `0.2.0`, with `release.json`, `pyproject.toml` and `plugin.json` |
 | 1.4 | code | `plugins/release-notes-tgraph/workflow/release_notes/__init__.py` | | An effort ladder on `draft`; the same in `doc-refresh` |

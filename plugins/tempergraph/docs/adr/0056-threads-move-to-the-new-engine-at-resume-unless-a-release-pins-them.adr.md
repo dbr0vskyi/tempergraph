@@ -43,9 +43,9 @@ We will ([MIG](../specs/62-state-and-run-migration.spec.md)):
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | Running a thread's later attempts on a newer engine than its earlier ones is acceptable, because each attempt is recorded with its engine and workflow version. | MIG §2.1 |
-| A2 | Checkpoint-format breaks are rare (a release that renames the node scheme, a state key or the saver's tables), so pins are rare. | MIG §2.4 |
-| A3 | A person who changes a workflow while a run waits wants the changed prompts on resume, as long as the path still exists. | MIG §2.5 |
+| A1 | Running a thread's later attempts on a newer engine than its earlier ones is acceptable, because each attempt is recorded with its engine and workflow version. | MIG-B8 |
+| A2 | Checkpoint-format breaks are rare (a release that renames the node scheme, a state key or the saver's tables), so pins are rare. | MIG-B12, MIG-B13, MIG-B14 |
+| A3 | A person who changes a workflow while a run waits wants the changed prompts on resume, as long as the path still exists. | MIG-B15 |
 
 ## Consequences
 

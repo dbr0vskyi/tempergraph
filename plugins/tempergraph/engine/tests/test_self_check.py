@@ -1,4 +1,4 @@
-"""The check preview a step runs from inside its attempt (CHK §2.5, CHK-B7, CHK-AC-6)."""
+"""The check preview a step runs from inside its attempt (CHK-B17, CHK-B7, CHK-AC6)."""
 
 from __future__ import annotations
 
@@ -103,7 +103,7 @@ def test_two_previews_then_the_gates_own_check(repo: Path) -> None:  # CHK-B7
     assert check["result"] == "PASS" and "preview=False" in check["evidence"]
 
 
-def test_a_preview_writes_no_state_and_spends_no_budget(repo: Path) -> None:  # CHK-AC-6
+def test_a_preview_writes_no_state_and_spends_no_budget(repo: Path) -> None:  # CHK-AC6
     ex = Previewing(repo, calls=2)
     go(repo, ex)
     assert ex.state_during == {"same": "True"}
@@ -138,6 +138,6 @@ def test_the_prompt_and_the_grant(repo: Path) -> None:
     assert "There is no shell in this step." in plain.request.prompt
 
 
-def test_self_check_needs_a_gate_check() -> None:  # CHK §4
+def test_self_check_needs_a_gate_check() -> None:  # CHK-B15, CHK-B14, CHK-B10, CHK-B17
     assert not errors(validate(wf(), CAPS))
     assert "self-check-without-check" in {f.code for f in errors(validate(wf(check=None), CAPS))}

@@ -16,24 +16,24 @@ specs: [plugins/tempergraph/docs/specs/51-eval-suites.spec.md, plugins/tempergra
 
 | Req | Criteria | Statement | Spec ids |
 |---|---|---|---|
-| R1 | AC 1 | Check, step and workflow suites run and record results; figures follow EVS §2.7 | EVS §2.1 to §2.4, §2.7, EVS-B2, B3, B6 |
-| R2 | AC 1 | A trial is graded by code, then an accepted judge, then a person; a `needs_person` trial counts in no rate | EVS §2.6, EVS-B4, EVS-AC-4 |
-| R3 | AC 1 | No live suite starts under the test marker; a record holds no text; report and grade make no model call | EVS-AC-3, AC-5, AC-6 |
+| R1 | AC 1 | Check, step and workflow suites run and record results; figures follow EVS-B17, EVS-B18 | EVS-B8, EVS-B13, EVS-B14, EVS-B17, EVS-B18, EVS-B2, B3, B6 |
+| R2 | AC 1 | A trial is graded by code, then an accepted judge, then a person; a `needs_person` trial counts in no rate | EVS-B16, EVS-B4, EVS-AC4 |
+| R3 | AC 1 | No live suite starts under the test marker; a record holds no text; report and grade make no model call | EVS-AC3, AC-5, AC-6 |
 | R4 | AC 1 | A check without both kinds of fixture warns; a stamp needs green model-free suites | EVS-B1, EVS-B7 |
-| R5 | AC 2 | A judge miss becomes a local case candidate | LIF §2 harvest, LIF-AC-5 |
-| R6 | AC 3 | Judges are replayed on kept cases and compared with the recorded score | LIF §2 replay |
-| R7 | AC 4 | A skill drives the eval verbs and never grades or labels | SHL §2.3 |
+| R5 | AC 2 | A judge miss becomes a local case candidate | LIF-B7 to LIF-B16 harvest, LIF-AC5 |
+| R6 | AC 3 | Judges are replayed on kept cases and compared with the recorded score | LIF-B7 to LIF-B16 replay |
+| R7 | AC 4 | A skill drives the eval verbs and never grades or labels | SHL-B5, SHL-B12, SHL-B13 |
 
 ## 2. Phases
 
 ### Phase 1: Suites and grading
 
-Goal: EVS-AC-1, AC-3 to AC-6: the three suite kinds, the grader order, figures, the cap, `evals run|report|grade`, the stamp rule.
+Goal: EVS-AC1, AC-3 to AC-6: the three suite kinds, the grader order, figures, the cap, `evals run|report|grade`, the stamp rule.
 Weight: heavy (many-tests)
 
 | Row | Kind | File | Proves | Change |
 |---|---|---|---|---|
-| 1.1 | test | `plugins/tempergraph/engine/tests/test_eval_suites.py` | EVS-AC-1, AC-3 to AC-6 | Figures, grader order, each suite kind, cap, grade, stale, graduation, the CLI |
+| 1.1 | test | `plugins/tempergraph/engine/tests/test_eval_suites.py` | EVS-AC1, AC-3 to AC-6 | Figures, grader order, each suite kind, cap, grade, stale, graduation, the CLI |
 | 1.2 | code | `plugins/tempergraph/engine/src/tempergraph/improve/suites.py` | | Cases, trials, grading, results, figures, report |
 | 1.3 | code | `plugins/tempergraph/engine/src/tempergraph/package/selftest.py` | | Per-fixture check runs |
 | 1.4 | code | `plugins/tempergraph/engine/src/tempergraph/cli/improve.py` | | `evals run`, `evals report`, `evals grade` |
@@ -43,12 +43,12 @@ Weight: heavy (many-tests)
 
 ### Phase 2: Harvest and replay
 
-Goal: LIF-AC-5 and the replay batch.
+Goal: LIF-AC5 and the replay batch.
 Weight: medium
 
 | Row | Kind | File | Proves | Change |
 |---|---|---|---|---|
-| 2.1 | test | `plugins/tempergraph/engine/tests/test_eval_harvest_replay.py` | LIF-AC-5 | Candidates, no request text, replay agreement, the cap, the CLI |
+| 2.1 | test | `plugins/tempergraph/engine/tests/test_eval_harvest_replay.py` | LIF-AC5 | Candidates, no request text, replay agreement, the cap, the CLI |
 | 2.2 | code | `plugins/tempergraph/engine/src/tempergraph/improve/harvest.py` | | Harvest and replay |
 | 2.3 | code | `plugins/tempergraph/engine/src/tempergraph/cli/improve.py` | | `evals harvest`, `evals replay` |
 
@@ -59,7 +59,7 @@ Weight: light
 
 | Row | Kind | File | Proves | Change |
 |---|---|---|---|---|
-| 3.1 | test | `plugins/tempergraph/engine/tests/test_shell_skills.py` | SHL-AC-1 | The structure test finds the new skill |
+| 3.1 | test | `plugins/tempergraph/engine/tests/test_shell_skills.py` | SHL-AC1 | The structure test finds the new skill |
 | 3.2 | doc | `plugins/tempergraph/skills/evals/SKILL.md` | | The skill |
 
 ## 3. Verification

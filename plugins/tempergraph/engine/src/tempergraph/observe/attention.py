@@ -1,7 +1,7 @@
 """`attention` (CLI-B6, AC-5): everything waiting on a person, oldest first, with the command that answers it.
 
 Built from the status document of each state root and the last `pause` record of each paused thread; reads only
-and calls no model (contract C13). Orchestration and schedule items join when those features ship (release 2).
+and calls no model (OVR-B15). Orchestration and schedule items join when those features ship (release 2).
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""Stop requests (RCT §2, RCT-B2, RCT-B3, RCT §4; RCT-AC-2 with the launcher's tree kill)."""
+"""Stop requests (RCT-B6, RCT-B7, RCT-B2, RCT-B3, RCT-B8, RCT-B9, RCT-B10; RCT-AC2 with the launcher's tree kill)."""
 
 from __future__ import annotations
 
@@ -70,4 +70,4 @@ def test_stop_now_ends_the_session_tree(root: Path, tmp_path: Path) -> None:
     assert time.monotonic() - t < 15  # RCT-B2
     assert out.stop_reason == "stop" and out.killed and w.taken is not None and w.taken.mode == "now"
     time.sleep(0.2)
-    assert not alive(int(pid.read_text()))  # RCT-AC-2
+    assert not alive(int(pid.read_text()))  # RCT-AC2

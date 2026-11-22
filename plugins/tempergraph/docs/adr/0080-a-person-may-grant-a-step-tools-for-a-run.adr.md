@@ -13,7 +13,7 @@ The owner asked what happens when a run fails or pauses because a step cannot re
 
 ## Decision
 
-We will let a person widen a run's tools with the settings keys `tools.add`, `commands.add` and, for a judge, `views.add`, spelled `--grant` and `--allow-command` on `run`, `resume` and `rerun` ([RST §2.8](../specs/80-run-settings-and-overrides.spec.md)). A grant passes every check a declaration passes. It comes only from flags or the workflow's own profiles, never from a settings file or an agent caller. It is recorded as widening and kept on the thread. A judge, a council member and the chair may only gain read-only views from the catalog. A failed or blocked attempt that met a denial or a missing declared tool escalates with cause `tool_access`, spends no retry, and its pause payload offers the exact grant. Every grant is tracked in the run log, the intervention row and the ledger, with whether it was used; a used grant is a `grant_missing` finding the improvement loop clusters across runs and machines and answers with a `tools` proposal that declares it, and the audit reports a grant used on two runs, so the declaration is fixed in the package.
+We will let a person widen a run's tools with the settings keys `tools.add`, `commands.add` and, for a judge, `views.add`, spelled `--grant` and `--allow-command` on `run`, `resume` and `rerun` ([RST-B28, RST-B29, RST-B30](../specs/80-run-settings-and-overrides.spec.md)). A grant passes every check a declaration passes. It comes only from flags or the workflow's own profiles, never from a settings file or an agent caller. It is recorded as widening and kept on the thread. A judge, a council member and the chair may only gain read-only views from the catalog. A failed or blocked attempt that met a denial or a missing declared tool escalates with cause `tool_access`, spends no retry, and its pause payload offers the exact grant. Every grant is tracked in the run log, the intervention row and the ledger, with whether it was used; a used grant is a `grant_missing` finding the improvement loop clusters across runs and machines and answers with a `tools` proposal that declares it, and the audit reports a grant used on two runs, so the declaration is fixed in the package.
 
 ## Options considered
 
@@ -37,8 +37,8 @@ We will let a person widen a run's tools with the settings keys `tools.add`, `co
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | A grant widens a step's reach, not what verifies the step: the gate, the criteria and the judge are unchanged, so ADR-0071's promise holds. | RST §1 |
-| A2 | A denial in a failed attempt is the likeliest cause of the failure, so escalating is better than spending a retry that meets the same refusal. A denial in a passing attempt is only recorded. | BUD §2.2 |
+| A1 | A grant widens a step's reach, not what verifies the step: the gate, the criteria and the judge are unchanged, so ADR-0071's promise holds. | RST |
+| A2 | A denial in a failed attempt is the likeliest cause of the failure, so escalating is better than spending a retry that meets the same refusal. A denial in a passing attempt is only recorded. | BUD-B1, BUD-B11 |
 
 ## Consequences
 

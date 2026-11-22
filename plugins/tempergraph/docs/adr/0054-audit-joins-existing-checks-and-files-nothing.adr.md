@@ -49,14 +49,14 @@ The audit owns only rules no one else owns: host checks, timeout fit and hold-ti
 | # | Assumption | Where it matters |
 |---|---|---|
 | J1 | The cost lens's rules are functions that can run over any window without a model. | ARC-B13 |
-| J2 | Judge calibration and the proposals backlog are merged; any owner not yet built makes the rules that show it skip with `owner not present`. | ARC §4 |
-| J3 | Prompt lint (LIF) may grow the four text rules named above; its owner accepts them. | LIF §2 |
+| J2 | Judge calibration and the proposals backlog are merged; any owner not yet built makes the rules that show it skip with `owner not present`. | ARC-B7 |
+| J3 | Prompt lint (LIF) may grow the four text rules named above; its owner accepts them. | LIF-B7 to LIF-B16 |
 
 ## Consequences
 
 - Positive: an author gets one report; each finding has one owner; the loop's backlog can show which clusters the audit predicted.
 - Negative: the audit's coverage moves with its owners; a missing owner shows as skipped rules.
-- Risk: an owner changes a function's output and the audit misreads it. Mitigation: owners' outputs carry schema versions and the audit reads them tolerantly (contract C12).
+- Risk: an owner changes a function's output and the audit misreads it. Mitigation: owners' outputs carry schema versions and the audit reads them tolerantly (OVR-B14).
 
 ## Revisit when
 

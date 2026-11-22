@@ -48,7 +48,7 @@ WHEN an ask with `from` is entered THE engine SHALL validate the list against th
 
 ### ASK-B9 A file answer outside the workspace
 
-WHEN a `file` answer names a path outside the workspace THE engine SHALL exit 2 (contract C10) and write nothing.
+WHEN a `file` answer names a path outside the workspace THE engine SHALL exit 2 (OVR-B12) and write nothing.
 
 - GIVEN `answer:spec=/etc/passwd` for a `file` question WHEN resumed THEN it exits 2
 

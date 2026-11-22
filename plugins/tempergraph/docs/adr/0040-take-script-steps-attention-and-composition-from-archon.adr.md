@@ -28,7 +28,7 @@ We will:
 3. Keep **step outputs free-form**. An artifact is declared by key and kind (file, URL, wiki page, tracker issue, pull request, and later more) and points to where the content lives. The judge reads it through its view set. No step output must be JSON. [R-011 G6](../research/R-011-design-gap-review.rsrch.md) narrows to the judge's own answer, whose shape the engine defines, and stays optional per executor.
 4. Add a read-only, model-free verb **`tempergraph attention`**. It lists every item waiting on a person across all threads under the state root, oldest first. Each item gives the thread, workflow, unit and item, pause kind, age, a one-line reason and the exact command that answers it. Orchestration attention items (spec 45 ORC, in PR 5) are included when present.
 5. Make **composition** a first-class authoring rule. Reference workflows ship as small workflows in **workflow packs**. A pack is a Claude Code plugin with its skills, prompts and agents, plus the Python part tempergraph loads once the pack is registered. Each workflow runs on its own and is usable as a sub-workflow unit through its declared artifacts. Composition across runs is the orchestration of PR 5.
-6. Treat the **detailed run log** as covered by the observability work in PR 7. The run log on `main` is a JSON-lines event log ([OBS §2.1](../specs/15-observability-and-cost.spec.md)). Its per-attempt detail view is the run detail document of spec 31 RDD, built by `status --detail`. This record adds nothing there and checks only that `script` units and hybrid-step scripts appear in it as attempts with their check, duration and exit code.
+6. Treat the **detailed run log** as covered by the observability work in PR 7. The run log on `main` is a JSON-lines event log ([OBS-B7, OBS-B1, OBS-B8, OBS-B9](../specs/15-observability-and-cost.spec.md)). Its per-attempt detail view is the run detail document of spec 31 RDD, built by `status --detail`. This record adds nothing there and checks only that `script` units and hybrid-step scripts appear in it as attempts with their check, duration and exit code.
 
 ## Options considered
 
@@ -54,8 +54,8 @@ We will:
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| B1 | "Hybrid step" means scripts before and after one model session in the same attempt, not a script that calls a model itself. | CON §2.1, CMP |
-| B2 | A `script` unit may carry an optional judge; a model step must carry one, as today. | WFM §2.1 |
+| B1 | "Hybrid step" means scripts before and after one model session in the same attempt, not a script that calls a model itself. | CON-B4, CON-B5, CON-B6, CON-B7, CMP |
+| B2 | A `script` unit may carry an optional judge; a model step must carry one, as today. | WFM-B8, WFM-B9, WFM-B10, WFM-B11 |
 | B3 | Specs 31 RDD and 45 ORC land as designed in PRs 7 and 5; if they change, items 4 and 6 follow them. | CLI, OBS |
 
 ## Consequences

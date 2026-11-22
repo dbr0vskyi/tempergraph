@@ -1,4 +1,4 @@
-"""The per-thread run lock (WSP §2, DUR §2.1 `running`, DUR-B4).
+"""The per-thread run lock (WSP-B8, WSP-B9, WSP-B11, DUR-B9 `running`, DUR-B4).
 
 An OS file lock held for the life of the run process. Observers probe it without creating the file and
 for an instant only: a shared, non-blocking lock on an existing file that is released at once.
@@ -51,7 +51,7 @@ class LockHeld(Exception):
 
 
 def holder() -> dict[str, Any]:
-    """MIG §2.1: the process and the engine it runs on, read by `update` and `--prune-engines`."""
+    """MIG-B8: the process and the engine it runs on, read by `update` and `--prune-engines`."""
     env = Path(sys.prefix)
     managed = env.parent.name == "engines"
     return {"pid": os.getpid(), "engine_version": ENGINE_VERSION, "engine": env.name if managed else None,

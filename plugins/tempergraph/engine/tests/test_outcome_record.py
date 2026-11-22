@@ -1,4 +1,4 @@
-"""The outcome record and the outcome measures (OUT §2.5, §2.6, OUT-B7, CON §2.14)."""
+"""The outcome record and the outcome measures (OUT-B18, OUT-B19, OUT-B20, OUT-B21, OUT-B7, PKG, OUT (moved))."""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ def c(status: str, cls: str = "judge", severity: str = "blocker") -> dict[str, A
     ([c("MET"), c("not_judged", "person")], "needs_person"),
     ([c("MET"), c("declined", "person")], "unmet"),
 ])
-def test_verdict_rules(rows: list[dict[str, Any]], want: str) -> None:  # OUT §2.5
+def test_verdict_rules(rows: list[dict[str, Any]], want: str) -> None:  # OUT-B18, OUT-B19
     assert verdict(rows) == want
     assert verdict(rows, reached=False) == "not_reached"
 
@@ -92,7 +92,7 @@ def test_a_run_that_ends_before_the_gate_is_not_reached(repo: Path) -> None:
     assert [r for r in ledger(repo) if r["kind"] == "run_segment"][-1]["outcome"]["verdict"] == "not_reached"
 
 
-def test_outcome_show_and_candidates(repo: Path) -> None:  # OUT §2.5, §2.6, C13
+def test_outcome_show_and_candidates(repo: Path) -> None:  # OUT-B18, OUT-B19, OUT-B20, OUT-B21, C13
     spec = with_outcome_spec()
     cat = Catalog(specs={"demo": spec})
     for task in ("O-4", "O-5"):
@@ -104,7 +104,7 @@ def test_outcome_show_and_candidates(repo: Path) -> None:  # OUT §2.5, §2.6, C
     assert code == 0, err
     before = hash_tree(repo / ".tempergraph")
     code, doc, _ = cli(repo, None, "outcome", "show", "demo", "--runs", catalog=cat)
-    # OUT §2.3 via run/outcome_trust: counts per trust over every criterion, final and intermediate; no
+    # OUT-B13, OUT-B14 via run/outcome_trust: counts per trust over every criterion, final and intermediate; no
     # check has fixtures and no judge is calibrated, so all four are uncalibrated and nothing is covered
     assert code == 0 and doc["outcome"]["trust_profile"] == {"uncalibrated": 4}
     assert [c["covered"] for c in doc["outcome"]["coverage"]] == [False]

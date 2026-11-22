@@ -16,14 +16,14 @@ WHEN `hooks add <event> -- <argv…>` is given THE engine CLI SHALL store the ar
 
 ### HOK-B2 Events a hook may name
 
-WHEN a hook is added THE engine CLI SHALL accept the run events `started`, `unit_entered`, `gate_verdict`, `paused`, `resumed`, `stop_requested`, `finished` and `failed` ([EVT §2.6](30-run-events.spec.md)), and refuse `stalled`, the orchestration events `orchestration_attention` and `orchestration_finished` ([ORC](45-orchestration.spec.md)) and the schedule events `schedule_fired`, `schedule_missed`, `schedule_refused` and `schedule_paused` ([SCH §2.8](83-schedules.spec.md)) until a record marks them.
+WHEN a hook is added THE engine CLI SHALL accept the run events `started`, `unit_entered`, `gate_verdict`, `paused`, `resumed`, `stop_requested`, `finished` and `failed` ([EVT-B22, EVT-B23, EVT-B24](30-run-events.spec.md)), and refuse `stalled`, the orchestration events `orchestration_attention` and `orchestration_finished` ([ORC](45-orchestration.spec.md)) and the schedule events `schedule_fired`, `schedule_missed`, `schedule_refused` and `schedule_paused` ([SCH-B28](83-schedules.spec.md)) until a record marks them.
 
 - GIVEN `hooks add paused -- notify` WHEN it runs THEN the hook is stored
 - GIVEN `hooks add stalled -- notify` WHEN it runs THEN it is refused as not built yet
 
 ### HOK-B3 How a hook runs
 
-WHEN a run event a hook names happens THE engine SHALL run the hook as a detached child in the main checkout, with a 60 s limit, with `TEMPERGRAPH_HOOK_EVENT` and `TEMPERGRAPH_HOOK_FACTS` (the path of a facts file) in its environment and never with run text on its argv ([SEC §2.1](14-security.spec.md)).
+WHEN a run event a hook names happens THE engine SHALL run the hook as a detached child in the main checkout, with a 60 s limit, with `TEMPERGRAPH_HOOK_EVENT` and `TEMPERGRAPH_HOOK_FACTS` (the path of a facts file) in its environment and never with run text on its argv ([SEC-B5, SEC-B6](14-security.spec.md)).
 
 - GIVEN a hook on `finished` WHEN the run finishes THEN the hook reads `finished` from `TEMPERGRAPH_HOOK_EVENT` and the facts file from `TEMPERGRAPH_HOOK_FACTS`
 - GIVEN a hook that sleeps for 90 s WHEN it runs THEN it is ended at 60 s

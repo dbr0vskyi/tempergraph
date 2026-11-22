@@ -1,6 +1,6 @@
-"""The check context and running a gate's check (CHK §2.1, §2.4; contract C5).
+"""The check context and running a gate's check (CHK-B10, CHK-B14; OVR-B7).
 
-`run_check` is the call itself; the engine makes it inside the check worker (`run.check_worker`, CHK §2.6),
+`run_check` is the call itself; the engine makes it inside the check worker (`run.check_worker`, CHK-B16),
 and the deadline is also enforced on every command the check runs.
 """
 
@@ -40,7 +40,7 @@ class GitFacts:
 
 
 def git_facts(workdir: Path, base: str = "") -> GitFacts | None:
-    """The workspace's git facts; None outside a git repository (WSP §2.4)."""
+    """The workspace's git facts; None outside a git repository (WSP-B15 to WSP-B18)."""
     if gitmod.toplevel(workdir) is None:
         return None
     fp = gitmod.fingerprint(workdir)
@@ -77,7 +77,7 @@ class CheckContext:
     artifacts: Mapping[str, Any] = field(default_factory=dict)
     values: Mapping[str, Any] = field(default_factory=dict)
     facts: Mapping[str, Any] = field(default_factory=dict)
-    git: GitFacts | None = field(default_factory=GitFacts)  # None outside git (WSP §2.4)
+    git: GitFacts | None = field(default_factory=GitFacts)  # None outside git (WSP-B15 to WSP-B18)
     changed_paths: tuple[str, ...] = ()  # git's outside the state root, or the manifest's outside git
     settings: Mapping[str, Any] = field(default_factory=dict)
     criteria: tuple[dict[str, Any], ...] = ()
@@ -85,7 +85,7 @@ class CheckContext:
     out_dir: Path | None = None
     deadline_at: float = 0.0
     runs: list[CommandRun] = field(default_factory=list)
-    reuse_store: Path | None = None  # the thread's stored command runs (CHK §2.3 Reuse)
+    reuse_store: Path | None = None  # the thread's stored command runs (CHK-B12, CHK-B13 Reuse)
     no_reuse_exit_codes: Mapping[str, tuple[int, ...]] = field(default_factory=dict)  # per allow-list prefix
 
     @property
@@ -130,7 +130,7 @@ class CheckContext:
 
 
 def reuse_key(cmd: ResolvedCommand, workdir: Path) -> str:
-    """CHK §2.3: argv, resolved program, `head`, the status listing and the content of changed files."""
+    """CHK-B12, CHK-B13: argv, resolved program, `head`, the status listing and the content of changed files."""
     raw = gitmod.git(["status", "--porcelain=v1", "-uall", "-z"], workdir, check=False)
     entries = [e for e in raw.split("\0") if e[3:] and not e[3:].startswith(".tempergraph")]  # not the state root
     h = hashlib.sha256()
@@ -179,7 +179,7 @@ def _store(store: Path | None, key: str, run: CommandRun) -> None:
 
 
 def normalise(res: CheckResult) -> tuple[CheckResult, list[str]]:
-    """CHK §2.4: the worse of `result` and the worst finding; bounded, scrubbed facts."""
+    """CHK-B14: the worse of `result` and the worst finding; bounded, scrubbed facts."""
     notes: list[str] = []
     worst = res.result
     for f in res.findings:
@@ -211,7 +211,7 @@ def run_check(gate: GateSpec, ctx: CheckContext) -> tuple[CheckResult, list[str]
     try:
         res = fn(ctx)
     except Exception as exc:  # noqa: BLE001 - a check's own failure is a result
-        # CHK §4: a raising check is a workflow fault, not an environmental one; a retry is spent
+        # CHK-B15, CHK-B14, CHK-B10, CHK-B17: a raising check is a workflow fault, not an environmental one; a retry is spent
         return CheckResult(result="FAIL", evidence=f"check raised {type(exc).__name__}"), [
             f"check_raised: {type(exc).__name__}"]
     if not isinstance(res, CheckResult):

@@ -1,4 +1,4 @@
-"""Complexity switches: measures, the rules file, zones, one-way re-arm, exploration (CXR-AC-1 to AC-3, AC-5)."""
+"""Complexity switches: measures, the rules file, zones, one-way re-arm, exploration (CXR-AC1 to AC-3, AC-5)."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ MEASURES = (Measure("criteria", stock.fact("triage", "criteria")), Measure("file
 
 
 def sizing(ctx: Any) -> CheckResult:
-    """The triage check: it verifies the counts and records them as facts (CXR §2.3)."""
+    """The triage check: it verifies the counts and records them as facts (CXR-B9)."""
     return CheckResult(result="PASS", evidence="counted", facts={k: str(v) for k, v in
                                                                  json.loads(ctx.read_text("size.json")).items()})
 
@@ -161,7 +161,7 @@ def test_zones(repo: Path, size: dict[str, Any], zone: str, arm: str) -> None:  
 @pytest.mark.parametrize("rules", [None, "{not json", {"schema_version": 1, "arms": {"quick": {"when": {"x": {}}}}},
                                    {"schema_version": 1, "arms": {"direct": {"when": {"lines": {"max": 3}}}}},
                                    {"schema_version": 1, "arms": {"planned": {"when": {"files": {"max": 3}}}}}])
-def test_unusable_rules_take_the_safe_arm(repo: Path, rules: Any) -> None:  # CXR §2.4 row 1, §4 row 5 at run time
+def test_unusable_rules_take_the_safe_arm(repo: Path, rules: Any) -> None:  # CXR-B10, CXR-B1 row 1, CXR-B7, CXR-B4, CXR-B10 row 5 at run time
     setup(repo, {"criteria": 1, "files": 1}, rules)
     out = go(repo, wf(), PLANNED)
     assert out.exit_code is ExitCode.FINISHED, out.message
@@ -170,7 +170,7 @@ def test_unusable_rules_take_the_safe_arm(repo: Path, rules: Any) -> None:  # CX
 
 
 @pytest.mark.parametrize("measure", [raising, a_list])
-def test_a_faulting_measure_takes_the_safe_arm(repo: Path, measure: Any) -> None:  # CXR §2.3
+def test_a_faulting_measure_takes_the_safe_arm(repo: Path, measure: Any) -> None:  # CXR-B9
     setup(repo, {"criteria": 1, "files": 1})
     out = go(repo, wf(measures=[*MEASURES, Measure("odd", measure)]), PLANNED)
     assert out.exit_code is ExitCode.FINISHED, out.message
@@ -186,7 +186,7 @@ def test_shadow_first(repo: Path) -> None:  # CXR-B2
     assert (r["arm"], r["would_choose"], r["zone"], r["shadow"]) == ("planned", "direct", "simple", True)
 
 
-def test_a_step_value_is_no_measure(repo: Path) -> None:  # CXR-AC-2
+def test_a_step_value_is_no_measure(repo: Path) -> None:  # CXR-AC2
     setup(repo, {"criteria": 2, "files": 4})
     spec = wf(triage_makes={"size": Value(optional=True)})
     claimed = [claiming, *PLANNED[1:]]
@@ -197,7 +197,7 @@ def test_a_step_value_is_no_measure(repo: Path) -> None:  # CXR-AC-2
         "complex", "planned", {"criteria": 2, "files": 4})
 
 
-def test_a_budget_spent_on_blockers_re_arms_once(repo: Path) -> None:  # CXR-B3 rows 1 and 4, CXR-AC-5
+def test_a_budget_spent_on_blockers_re_arms_once(repo: Path) -> None:  # CXR-B3 rows 1 and 4, CXR-AC5
     setup(repo, {"criteria": 2, "files": 1})
     spec = wf(rearm=[REARM])
     steps = [TRIAGE, DONE, DONE, DONE, *PLANNED[1:4], VERIFIED, VERIFIED, VERIFIED]
@@ -247,7 +247,7 @@ def explored_task(want: bool, skip: int = 0) -> str:
     raise AssertionError
 
 
-def test_exploration_in_the_margin(repo: Path) -> None:  # CXR-B5, CXR §2.6
+def test_exploration_in_the_margin(repo: Path) -> None:  # CXR-B5, CXR-B12, CXR-B5
     setup(repo, {"criteria": 4, "files": 1})
     spec = wf(explore={"rate": 0.2, "per_week": 2}, spec_fields={"improvement_mode": "stable"})
     unlucky = explored_task(False)
@@ -295,7 +295,7 @@ def test_other_parameters(repo: Path) -> None:  # CXR-B6
     assert (r["arm"], r["chosen_by"], r["zone"], r["would_choose"]) == ("direct", "operator", "complex", "planned")
 
 
-def test_stock_measures(repo: Path, tmp_path: Path) -> None:  # CXR §2.3
+def test_stock_measures(repo: Path, tmp_path: Path) -> None:  # CXR-B9
     setup(repo, {"criteria": 2, "files": 1}, {"schema_version": 1, "arms": {"direct": {"when": {"phases": {"max": 0}}}}})
     measures = [Measure("phases", stock.count_items("plan", "phases")), Measure("depth", stock.input("request")),
                 Measure("lines", stock.count_lines("plan", "phases", "id")), Measure("touched", stock.changed_paths())]
@@ -331,7 +331,7 @@ def package(tmp_path: Path, rules: Any) -> Path:
     return tmp_path
 
 
-def test_validation_codes(tmp_path: Path) -> None:  # CXR-AC-3, CXR-B4, CXR §4
+def test_validation_codes(tmp_path: Path) -> None:  # CXR-AC3, CXR-B4, CXR-B7, CXR-B4, CXR-B10
     predicate = wf().units["triage"].gate.check
     assert "complexity-predicate" in codes(with_switch(wf(), predicate=predicate))
     found = [f for f in validate(wf(direct_makes="patch"), DECLARED) if f.code == "arm-contract"]  # CXR-B4
@@ -352,7 +352,7 @@ def test_validation_codes(tmp_path: Path) -> None:  # CXR-AC-3, CXR-B4, CXR §4
     assert len(rules) == 1 and "'quick'" in rules[0] and "'lines'" in rules[0]
 
 
-def test_package_rules_and_a_missing_file(tmp_path: Path) -> None:  # CXR §2.1 `rules`, §2.4
+def test_package_rules_and_a_missing_file(tmp_path: Path) -> None:  # CXR-B7 `rules`, CXR-B10, CXR-B1
     (tmp_path / "a").mkdir()
     (tmp_path / "b").mkdir()
     good = dataclasses.replace(wf(), package_root=package(tmp_path / "a", RULES))
@@ -361,7 +361,7 @@ def test_package_rules_and_a_missing_file(tmp_path: Path) -> None:  # CXR §2.1 
     assert "complexity-rules" in codes(dataclasses.replace(wf(), package_root=package(tmp_path / "b", None)))
 
 
-def test_bounds() -> None:  # CXR §2.4
+def test_bounds() -> None:  # CXR-B10, CXR-B1
     assert complexity._holds(3, {"max": 3}) and not complexity._holds(4, {"max": 3})
     assert complexity._holds("3", {"min": 2, "max": 3}) and not complexity._holds("many", {"max": 3})
     assert complexity._holds("light", {"in": ["light"]}) and complexity._holds(2, {"in": [2, 3]})
@@ -388,7 +388,7 @@ def logged(root: Path, task: str, arm: str, zone: str, *, first: str = "PROCEED"
     log.write("run_exit", exit_code=code, reason="finished")
 
 
-def test_the_switch_report(repo: Path) -> None:  # CXR-AC-4, CXR §2.7
+def test_the_switch_report(repo: Path) -> None:  # CXR-AC4, CXR-B13
     from tempergraph.catalog import Catalog
     from tempergraph.observe import switch_report as swr
 

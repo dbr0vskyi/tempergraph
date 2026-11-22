@@ -43,9 +43,9 @@ We will add `tempergraph upgrade <workflow>` ([WUP](../specs/63-workflow-upgrade
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | "Adjust it" means produce the changes for the owner to review and merge, not change what runs on other machines without review. | WUP §2.7 |
-| A2 | A default cap of $10 per upgrade's assist run is acceptable; the owner can raise it per call. | UWF §2.1 |
-| A3 | The upgrade workflow's steps run on `claude` by default because its judge needs `restricts_judge_tools`; a workflow may choose another executor in its policy. | UWF §2.1 |
+| A1 | "Adjust it" means produce the changes for the owner to review and merge, not change what runs on other machines without review. | WUP-B20, WUP-B21 |
+| A2 | A default cap of $10 per upgrade's assist run is acceptable; the owner can raise it per call. | UWF-B6, UWF-B5, UWF-B7 |
+| A3 | The upgrade workflow's steps run on `claude` by default because its judge needs `restricts_judge_tools`; a workflow may choose another executor in its policy. | UWF-B6, UWF-B5, UWF-B7 |
 
 ## Consequences
 

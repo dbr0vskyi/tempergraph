@@ -23,17 +23,17 @@ Code, specs and plans agreed except for the gaps below, all closed on this branc
 
 | Gap | Fix |
 |---|---|
-| A restamp of a current package dropped the entries it had already applied | The stamp keeps the prior entries and their `by` (VER §2.5) |
-| `author verify` regraded every judge seed on each run | Seeds keep a pass keyed on gate, binding and fixture digest (SCF §2.5 rung 8) |
-| A judge was asked to grade `person` and `none` criteria | Those criteria are left out of the judge's list (JDG §2.1) |
-| A step route record lacked the signals it routed on | `signals` added (OBS §2.1) |
+| A restamp of a current package dropped the entries it had already applied | The stamp keeps the prior entries and their `by` (VER-B16) |
+| `author verify` regraded every judge seed on each run | Seeds keep a pass keyed on gate, binding and fixture digest (SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22 rung 8) |
+| A judge was asked to grade `person` and `none` criteria | Those criteria are left out of the judge's list (JDG-B11, JDG-B12) |
+| A step route record lacked the signals it routed on | `signals` added (OBS-B7, OBS-B1, OBS-B8, OBS-B9) |
 | The two examples' judges could not see what changed, so they paused for a person (L-25) | Each example's check lists the changes as evidence, and the judge is told check evidence is given, not claimed; each example has an outcome check |
-| A model skipped the check preview because the prompt said "There is no shell" (L-29) | The tools block names the one granted command (CHK §2.5) |
-| A thread from before the engine record failed to resume | It resumes with its start recorded as unknown (MIG §4) |
-| GRD-AC-5 had no recorded stream | Scrubbed 2.1.330 recordings with a planted subagent call |
-| A blueprint refused release 2's `map`, `parallel`, `ask` and `wait` | Blueprint, scaffold and comparison take them (SCF §2.1) |
+| A model skipped the check preview because the prompt said "There is no shell" (L-29) | The tools block names the one granted command (CHK-B17) |
+| A thread from before the engine record failed to resume | It resumes with its start recorded as unknown (MIG-B16, MIG-B12, MIG-B10, MIG-B15) |
+| GRD-AC5 had no recorded stream | Scrubbed 2.1.330 recordings with a planted subagent call |
+| A blueprint refused release 2's `map`, `parallel`, `ask` and `wait` | Blueprint, scaffold and comparison take them (SCF-B9, SCF-B11) |
 | A parallel branch's output was "not produced on every path" past its join | Dominance passes through the join (WFM validation) |
-| `deadline_s` on a wait or ask was refused as a later release | Settable, as RST §2.2 says |
+| `deadline_s` on a wait or ask was refused as a later release | Settable, as RST-B18, RST-B19, RST-B20, RST-B21 says |
 | The engine reported itself as release 1; refusals named release 2 for items moved to 3 | Fixed |
 
 Every live check that can run in a cloud container now passes (S3). What is left needs the owner's machine or hands, and does not block the engine: L-12 parts, L-14, L-17 and L-19 (a scratch GitHub repository), L-18 (the owner's labels), L-23 part, L-24 and the P-LSK skill scenarios (interactive), TS-L2's owner grade, and the Windows probes, which moved to release 3 with Windows. `released_at` stays unset until the owner tags the release.
@@ -44,25 +44,25 @@ temperspec's backlog names five features that wait for the engine (S4). Each map
 
 | Row | Feature | Engine capability | Spec, status |
 |---|---|---|---|
-| B8 | Reading in parallel: discovery per gap, the setup survey per component | The concurrent map over a list, under the reserving cap (release 2's parallel block has fixed branches only) | [MAP](../specs/77-map-unit.spec.md) `review`, [BUD §2.3](../specs/08-budgets-and-failures.spec.md) |
-| B11 | Repository setup as a workflow of its own, used alone or inside the delivery run | Sub-workflow units | CMP §2.2 has one row; **no spec** (F3) |
+| B8 | Reading in parallel: discovery per gap, the setup survey per component | The concurrent map over a list, under the reserving cap (release 2's parallel block has fixed branches only) | [MAP](../specs/77-map-unit.spec.md) `review`, [BUD-B12](../specs/08-budgets-and-failures.spec.md) |
+| B11 | Repository setup as a workflow of its own, used alone or inside the delivery run | Sub-workflow units | CMP-B10 to CMP-B16 has one row; **no spec** (F3) |
 | B12 | Coding phases in parallel, behind declared independence and a disjoint-files check | Writer branches, concurrent map mode | [FLX](../specs/74-flow-extensions.spec.md), [MAP](../specs/77-map-unit.spec.md) `review` |
 | B13 | Several answers to a hard choice, then a pick or a vote | Contest and council units | [CTS](../specs/72-contest-unit.spec.md), [CNL](../specs/71-council-unit.spec.md) `review` |
 | B14 | A scheduled drift audit | The rest of schedules | [SCH](../specs/83-schedules.spec.md), [TCK](../specs/84-schedule-ticks-and-unattended-fires.spec.md) `review` |
 
-The owner's other open ask is the pull-request gate (S5): one check and an optional judge that re-grade a run's result in the pipeline, buildable before pipeline runs. Its research recommends release 3 and leaves five questions to the owner. The package also asks for an `on_deadline` choice that fills each unanswered question of an ask unit with its default and proceeds, so the `answers` artifact is complete (FLX §2.3 offers escalate, stop or a forward unit, and a forward unit leaves no answers); it is general, and is listed in the plan as I3-15 for the owner to accept.
+The owner's other open ask is the pull-request gate (S5): one check and an optional judge that re-grade a run's result in the pipeline, buildable before pipeline runs. Its research recommends release 3 and leaves five questions to the owner. The package also asks for an `on_deadline` choice that fills each unanswered question of an ask unit with its default and proceeds, so the `answers` artifact is complete (FLX-B8 offers escalate, stop or a forward unit, and a forward unit leaves no answers); it is general, and is listed in the plan as I3-15 for the owner to accept.
 
 ### F3 Sub-workflows had a row, not a spec `confirmed`
 
-[CMP §2.2](../specs/03-compiler-and-flow.spec.md) says a sub-workflow is a registered workflow compiled as a subgraph under the parent's checkpointer, at most three deep, never recursive. It leaves open: which child version runs and what a resume does when it changed; how parameters are mapped; what the parent sees; whose workspace, log, settings, cap and finalizer apply; where pauses, upstream defects and the child's outcome go; and where findings and calibration land. A workflow cannot be written against a row. New spec [SWF](../specs/99-subworkflow-unit.spec.md) answers each, and [ADR-0133](../adr/0133-a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md) records the main choice: the child runs inside the parent's thread, workspace and cap, not as a separate run.
+[CMP-B10 to CMP-B16](../specs/03-compiler-and-flow.spec.md) says a sub-workflow is a registered workflow compiled as a subgraph under the parent's checkpointer, at most three deep, never recursive. It leaves open: which child version runs and what a resume does when it changed; how parameters are mapped; what the parent sees; whose workspace, log, settings, cap and finalizer apply; where pauses, upstream defects and the child's outcome go; and where findings and calibration land. A workflow cannot be written against a row. New spec [SWF](../specs/99-subworkflow-unit.spec.md) answers each, and [ADR-0133](../adr/0133-a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md) records the main choice: the child runs inside the parent's thread, workspace and cap, not as a separate run.
 
 ### F4 A step's reach is wider than its declaration inside a host session `confirmed`
 
-In L-29, run from inside a Claude Code session, a step's `system/init` listed about 35 tools, among them the host's `Artifact` and `SendMessage`, and the host's additional directories; one session read a file of the host's memory folder outside the workspace (S3). The allow rules held: judges stayed in `dontAsk`, and nothing outside the step's grants was written. The cause is the environment the step inherits from the host, plus `--tools` being sent only under the operator's enforcement setting. `--bare` on 2.1.330 also still lists user-scope plugins, so `isolates_user_config` stays false. A pipeline or a scheduled fire does not run inside a host session, but an operator's own `claude` session does, and that is where most runs start. Resolution: [ECC §2.8](../specs/11-executor-claude-code.spec.md), with probes P-CC-10 and P-CC-11.
+In L-29, run from inside a Claude Code session, a step's `system/init` listed about 35 tools, among them the host's `Artifact` and `SendMessage`, and the host's additional directories; one session read a file of the host's memory folder outside the workspace (S3). The allow rules held: judges stayed in `dontAsk`, and nothing outside the step's grants was written. The cause is the environment the step inherits from the host, plus `--tools` being sent only under the operator's enforcement setting. `--bare` on 2.1.330 also still lists user-scope plugins, so `isolates_user_config` stays false. A pipeline or a scheduled fire does not run inside a host session, but an operator's own `claude` session does, and that is where most runs start. Resolution: [ECC-B14](../specs/11-executor-claude-code.spec.md), with probes P-CC-10 and P-CC-11.
 
 ### F5 The cost cap assumes one session at a time `confirmed`
 
-[BUD §2](../specs/08-budgets-and-failures.spec.md) checks the run's spend before each attempt. With one session in flight that bounds the overrun to one session. Release 2's parallel read-only branches already break the assumption: two branches may start just under the cap and both finish above it. Release 3 adds concurrent maps, contest slots and council members, where the overrun grows with the width. Resolution: [BUD §2.3](../specs/08-budgets-and-failures.spec.md), where a session reserves its own cap or its projection before it starts.
+[BUD-B8, BUD-B9](../specs/08-budgets-and-failures.spec.md) checks the run's spend before each attempt. With one session in flight that bounds the overrun to one session. Release 2's parallel read-only branches already break the assumption: two branches may start just under the cap and both finish above it. Release 3 adds concurrent maps, contest slots and council members, where the overrun grows with the width. Resolution: [BUD-B12](../specs/08-budgets-and-failures.spec.md), where a session reserves its own cap or its projection before it starts.
 
 ### F6 Specs a release 3 item rests on are still in `review` `confirmed`
 

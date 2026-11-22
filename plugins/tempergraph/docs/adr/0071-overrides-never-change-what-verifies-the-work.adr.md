@@ -9,11 +9,11 @@
 
 ## Context
 
-"All possible variations" of configuration could be read as letting an operator change anything in a workflow for one run. The engine's promise rests on a fixed verification surface: criteria a judge grades, checks the engine runs, an independent judge with a read-only view, the engine's verdict, declared flow targets (contracts C4 to C6, [ADR-0005](0005-independent-judge-engine-verdict.adr.md)). A per-run override of any of them would let a run pass a gate its workflow would fail, invisibly to the workflow's owner and its improvement loop.
+"All possible variations" of configuration could be read as letting an operator change anything in a workflow for one run. The engine's promise rests on a fixed verification surface: criteria a judge grades, checks the engine runs, an independent judge with a read-only view, the engine's verdict, declared flow targets (OVR-B6 to OVR-B8, [ADR-0005](0005-independent-judge-engine-verdict.adr.md)). A per-run override of any of them would let a run pass a gate its workflow would fail, invisibly to the workflow's owner and its improvement loop.
 
 ## Decision
 
-We will make only these settable: executor and model choices, session options, limits, budgets and caps, approvals and breakpoints added, enforcement tightened, workspace mode, the audit rate, a switch's arm, workflow-declared settings, and a person's recorded tool grants that widen a step's tools or a judge's read-only views ([RST §2.2, §2.8](../specs/80-run-settings-and-overrides.spec.md), [ADR-0080](0080-a-person-may-grant-a-step-tools-for-a-run.adr.md)). Criteria, checks, the presence of a judge, the judge's independence and write-free view, flow and back targets and prompts are not settings; an override that names them is refused with `not_a_setting`. `approve`, `enforce_tools` and `strict_permissions` are tighten-only. Changing the verification surface is a workflow change, made in the package and reviewed.
+We will make only these settable: executor and model choices, session options, limits, budgets and caps, approvals and breakpoints added, enforcement tightened, workspace mode, the audit rate, a switch's arm, workflow-declared settings, and a person's recorded tool grants that widen a step's tools or a judge's read-only views ([RST-B18, RST-B19, RST-B20, RST-B21, RST-B28, RST-B29, RST-B30](../specs/80-run-settings-and-overrides.spec.md), [ADR-0080](0080-a-person-may-grant-a-step-tools-for-a-run.adr.md)). Criteria, checks, the presence of a judge, the judge's independence and write-free view, flow and back targets and prompts are not settings; an override that names them is refused with `not_a_setting`. `approve`, `enforce_tools` and `strict_permissions` are tighten-only. Changing the verification surface is a workflow change, made in the package and reviewed.
 
 ## Options considered
 
@@ -35,7 +35,7 @@ We will make only these settable: executor and model choices, session options, l
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | A model or a budget override can lower quality but cannot make a failing gate pass, because the judge and the verdict rule are unchanged. | RST §1 |
+| A1 | A model or a budget override can lower quality but cannot make a failing gate pass, because the judge and the verdict rule are unchanged. | RST |
 | A2 | The owner's "all variations" means every knob of cost, time, repetition and model choice, not the gates themselves. | [R-070](../research/R-070-config-overrides-and-reruns-gaps.rsrch.md) problem statement |
 
 ## Consequences

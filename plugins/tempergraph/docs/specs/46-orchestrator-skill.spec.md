@@ -92,7 +92,7 @@ WHEN the skill reports at the end THE skill SHALL send one message with the outc
 
 ### OSK-B15 Never
 
-WHEN the skill acts THE skill SHALL never answer a pause, an approval or an `ask` failure itself in any mode (contract C6, [ADR-0039](../adr/0039-pauses-stay-with-the-person-failures-follow-node-policy.adr.md)), start a node's run with `run` (the supervisor owns starts), edit the orchestration folder, a checkpoint or run state by hand (edits go through `orchestrate edit` after the person's yes to a shown patch, runs through resume), set `mode: unattended` or pass `--as-agent`, draw the graph by model, or hand a person's request for a run outside the orchestration to anything but the run driver; a fix inside one run's worktree is made only when the person asks, by a fresh helper scoped to that worktree that answers no gate.
+WHEN the skill acts THE skill SHALL never answer a pause, an approval or an `ask` failure itself in any mode (OVR-B8, [ADR-0039](../adr/0039-pauses-stay-with-the-person-failures-follow-node-policy.adr.md)), start a node's run with `run` (the supervisor owns starts), edit the orchestration folder, a checkpoint or run state by hand (edits go through `orchestrate edit` after the person's yes to a shown patch, runs through resume), set `mode: unattended` or pass `--as-agent`, draw the graph by model, or hand a person's request for a run outside the orchestration to anything but the run driver; a fix inside one run's worktree is made only when the person asks, by a fresh helper scoped to that worktree that answers no gate.
 
 - GIVEN a request to edit the plan WHEN the skill handles it THEN it shows a patch and applies it with `orchestrate edit` only after a yes
 

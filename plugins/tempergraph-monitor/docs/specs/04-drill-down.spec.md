@@ -47,7 +47,7 @@ When the run waits for a person, the run view opens here with `g`: the pause kin
 | Log | Tail of `raw.jsonl` as plain text lines, of `stderr.log`, and for `messages-api` of `tools.jsonl` | Same |
 | Info | Executor and CLI version, alias and bound model, session id, `session_key`, transcript locator (engine copy and native), activity and live paths, isolation mode, usage with reported and estimated cost | Same |
 
-**"Which shell is it running"** is answered by two views together: the Now tab's open tool, when it is a shell tool, shows the command line as the engine summarised it ([EVT §2.5](../../../tempergraph/docs/specs/30-run-events.spec.md)) with its elapsed time, and the Processes tab shows which programs that command started and how long each has run (for example `bash → make → pytest → python`).
+**"Which shell is it running"** is answered by two views together: the Now tab's open tool, when it is a shell tool, shows the command line as the engine summarised it ([EVT-B21](../../../tempergraph/docs/specs/30-run-events.spec.md)) with its elapsed time, and the Processes tab shows which programs that command started and how long each has run (for example `bash → make → pytest → python`).
 
 ### 2.5 Settings that hide data
 

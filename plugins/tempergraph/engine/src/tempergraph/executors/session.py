@@ -1,4 +1,4 @@
-"""Turn a launcher outcome into a `SessionResult` (EXI-B6, EXI-B7, CON §2.6).
+"""Turn a launcher outcome into a `SessionResult` (EXI-B6, EXI-B7, SSN-B1 to SSN-B6).
 
 The shared part: tool calls in order, denied names, tools at start, the share of wall time inside tool
 calls, usage from the `result` event only (never 0 when unknown), and the process-level infra causes.

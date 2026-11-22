@@ -1,4 +1,4 @@
-"""Run settings: catalog, layers, files, profiles and the effective spec (RST §2, B1–B11, AC-3, AC-7)."""
+"""Run settings: catalog, layers, files, profiles and the effective spec (RST-B16 to RST-B32, B1–B11, AC-3, AC-7)."""
 
 from __future__ import annotations
 
@@ -82,7 +82,7 @@ def test_judges_apart() -> None:  # RST-B2
                                            ("judge:draft.views.add", "judge-view-not-read-only"),
                                            ("judge:draft.views.add", "judge-view-unclassified"),
                                            ("draft.commands.add", "command-metacharacter")])
-def test_refusals(key: str, code: str) -> None:  # RST-B5, B6, B10, §4
+def test_refusals(key: str, code: str) -> None:  # RST-B5, B6, B10, RST-B32
     value = {"draft.approve": False, "judges.model": ["small", "large"], "draft.retry_budget": 99,
              "draft.on_budget_spent": "fallback", "run.worktree.root": "in_repo",
              "draft.commands.add": "npm run build; rm"}.get(key, "x")
@@ -165,7 +165,7 @@ def test_digest_is_stable_and_moves_with_a_value() -> None:
     assert a.digest == b.digest != c.digest
 
 
-def test_property_no_step_key_reaches_a_judge_and_tighten_only_stays_true() -> None:  # RST-AC-3
+def test_property_no_step_key_reaches_a_judge_and_tighten_only_stays_true() -> None:  # RST-AC3
     rnd = random.Random(7)
     keys = ["steps.model", "draft.model", "review.model", "steps.timeout_s", "draft.timeout_s", "steps.effort"]
     vals = {"model": ["small", "large", "medium"], "timeout_s": [60, 120, 900], "effort": ["low", "high"]}
@@ -183,7 +183,7 @@ def test_property_no_step_key_reaches_a_judge_and_tighten_only_stays_true() -> N
         assert res.values["run.enforce_tools"] is ("run.enforce_tools" in flags)
 
 
-def test_snapshot_reapplies_without_files() -> None:  # RST-AC-5
+def test_snapshot_reapplies_without_files() -> None:  # RST-AC5
     files = ConfigFiles(user={"schema_version": 1, "defaults": {"steps.timeout_s": 900}})
     opts, _ = options_snapshot(spec(), {}, (), files)
     again = resolve(spec(), RunOptions(settings=json.loads(json.dumps(opts.settings)), profiles=opts.profiles))
@@ -199,7 +199,7 @@ def _records(repo: Path, task: str, kind: str) -> list[dict[str, Any]]:
     return [r for r in (json.loads(x) for x in log.read_text().splitlines()) if r.get("kind") == kind]
 
 
-def test_run_records_settings_and_show_equals_run(repo: Path) -> None:  # RST-B9, RST §2.7
+def test_run_records_settings_and_show_equals_run(repo: Path) -> None:  # RST-B9, RST-B27
     from .test_cli import cli, happy
 
     argv = ["--set", "draft.timeout_s=1200", "--step-model", "review=large", "--judge-timeout", "300"]
@@ -219,7 +219,7 @@ def test_run_records_settings_and_show_equals_run(repo: Path) -> None:  # RST-B9
     assert all(r["timeout_s"] == 300 for k, r in starts.items() if "judge" in k)
 
 
-def test_refused_setting_creates_nothing(repo: Path) -> None:  # RST-AC-2, RST-B5
+def test_refused_setting_creates_nothing(repo: Path) -> None:  # RST-AC2, RST-B5
     from .conftest import hash_tree
     from .test_cli import cli, happy
 
@@ -233,7 +233,7 @@ def test_refused_setting_creates_nothing(repo: Path) -> None:  # RST-AC-2, RST-B
     assert hash_tree(repo) == before
 
 
-def test_resume_reapplies_the_snapshot_and_records_changes(repo: Path, tmp_path: Path) -> None:  # RST-AC-5
+def test_resume_reapplies_the_snapshot_and_records_changes(repo: Path, tmp_path: Path) -> None:  # RST-AC5
     from tempergraph.executors.standins import standin
 
     from .test_cli import cli
@@ -273,7 +273,7 @@ def test_config_paths_and_validate(repo: Path) -> None:
 
 
 # ---------------------------------------------------------------------------------------------
-# Tool grants (RST §2.8, RST-B13)
+# Tool grants (RST-B28, RST-B29, RST-B30, RST-B13)
 
 
 def test_grants_widen_the_step_and_the_allow_list() -> None:
@@ -292,7 +292,7 @@ def test_an_agent_cannot_widen() -> None:
     assert [f.code for f in findings] == ["widening_by_agent"]
 
 
-def test_property_no_grant_gives_a_judge_a_writing_tool() -> None:  # RST-AC-8
+def test_property_no_grant_gives_a_judge_a_writing_tool() -> None:  # RST-AC8
     rnd = random.Random(3)
     pool = ["read", "search", "list", "edit", "write", "shell", "web_fetch", "web_search", "subagent",
             "mcp:tracker/create_issue", "skill:kit:review"]
@@ -343,7 +343,7 @@ def test_tool_access_pause_offers_the_grant_and_resume_applies_it(repo: Path) ->
     assert shown["rows"][0]["value"] == ["mcp:tracker/get_issue"]  # kept for later resumes
 
 
-def test_an_operator_moves_a_wait_or_ask_deadline() -> None:  # RST §2.2 `deadline_s`, FLX §2.3
+def test_an_operator_moves_a_wait_or_ask_deadline() -> None:  # RST-B18, RST-B19, RST-B20, RST-B21 `deadline_s`, FLX-B8
     from .test_ask_wait import waiting_wf
 
     sp = waiting_wf(deadline_s=600, on_deadline="stop")

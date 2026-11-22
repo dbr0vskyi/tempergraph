@@ -1,4 +1,4 @@
-"""The per-machine binding table (EXI §2.2, SEC-B1).
+"""The per-machine binding table (EXI-B18, SEC-B1).
 
 The table lives at ``<home>/config/bindings.json``. A typed alias only selects an entry; the entry's
 value, never the typed text, reaches argv. With no file, each executor's built-in tiers apply.
@@ -79,7 +79,7 @@ def _row(executor: str, data: Mapping[str, Any]) -> Binding:
 
 
 def load(home: Path | None = None) -> BindingTable:
-    """Read the operator's table; unknown keys are ignored (CON §2.10 tolerant reader)."""
+    """Read the operator's table; unknown keys are ignored (CON-B14, CON-B1, CON-B15 tolerant reader)."""
     path = (home or home_path()) / "config" / BINDINGS_FILE
     if not path.exists():
         return BindingTable()

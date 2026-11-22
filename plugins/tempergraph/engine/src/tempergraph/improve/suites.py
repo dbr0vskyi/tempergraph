@@ -1,4 +1,4 @@
-"""Eval suites for checks, steps and whole workflows (EVS §2.1 to §2.7).
+"""Eval suites for checks, steps and whole workflows (EVS-B8, EVS-B17, EVS-B18).
 
 A suite's cases live in the package (`evals/checks/<unit>/`, `evals/steps/<unit>/<case>/`, `evals/cases.json`);
 its results are rows of `evals/results.jsonl` under the state root, holding ids, statuses, counts and digests
@@ -44,7 +44,7 @@ def results_path(root: Path) -> Path:
 
 
 def under_test() -> bool:
-    """The engine's test marker (EVS §4): set by the test runner, lifted only for marked live checks."""
+    """The engine's test marker (EVS-B13, EVS-B12, EVS-B14): set by the test runner, lifted only for marked live checks."""
     return TEST_MARKER in os.environ and os.environ.get("TEMPERGRAPH_LIVE") != "1"
 
 
@@ -54,12 +54,12 @@ def is_live(executor: Any) -> bool:
 
 
 def refuse_live(kind: str, executor: Any) -> None:
-    """EVS-AC-3: no live suite starts under the test marker."""
+    """EVS-AC3: no live suite starts under the test marker."""
     if kind in LIVE_KINDS and is_live(executor) and under_test():
         raise SuiteRefused(f"a live `{kind}` suite cannot start from the test suite or CI")
 
 
-# -- assertions (EVS §2.2 `expect`, §2.3 `end_state`) --------------------------------------------------------
+# -- assertions (EVS-B9, EVS-B2, EVS-B10 `expect`, EVS-B12 `end_state`) --------------------------------------------------------
 
 def assertion_failures(asserts: Sequence[Mapping[str, Any]], workdir: Path,
                        changed: Sequence[str] = ()) -> list[str]:
@@ -104,7 +104,7 @@ class StepCase:
     role: str = "regression"
     inputs: Mapping[str, str] = dataclasses.field(default_factory=dict)
     expect: tuple[Mapping[str, Any], ...] = ()
-    covered: bool = False  # the assertions cover the case fully, so code decides a pass (EVS §2.6)
+    covered: bool = False  # the assertions cover the case fully, so code decides a pass (EVS-B16)
     trials: int = STEP_TRIALS
     workspace: Path | None = None
 
@@ -139,7 +139,7 @@ def step_cases(spec: WorkflowSpec) -> tuple[list[StepCase], list[dict[str, str]]
 
 
 def workflow_cases(spec: WorkflowSpec) -> list[dict[str, Any]]:
-    """The reviewed entries of `evals/cases.json` (PRP §2.5) with the fields of EVS §2.3."""
+    """The reviewed entries of `evals/cases.json` (PRP-B17) with the fields of EVS-B12."""
     from tempergraph.improve.trials import case_set
 
     root = spec.package_root
@@ -168,7 +168,7 @@ def _sha(data: Any) -> str:
 
 def step_binding(spec: WorkflowSpec, unit: str) -> str:
     """The digest of what a step trial ran on: the step's executor, alias, effort and prompt, and its judge's
-    binding (EVS §2.4)."""
+    binding (EVS-B13, EVS-B14)."""
     from tempergraph.improve import calibration
     from tempergraph.model.text import TextUnreadable, load_text
 
@@ -189,7 +189,7 @@ def workflow_binding(spec: WorkflowSpec) -> str:
                                                     if u.step is not None and u.gate.judge is not None}})
 
 
-# -- grading (EVS §2.6) --------------------------------------------------------------------------------------
+# -- grading (EVS-B16) --------------------------------------------------------------------------------------
 
 def grade(*, finished: bool, failures: Sequence[str], covered: bool, failed_by_code: bool,
           judge_state: str) -> tuple[str, str]:
@@ -283,7 +283,7 @@ def _git_repo(workspace: Path | None, into: Path) -> Path:
 def run_step_trial(spec: WorkflowSpec, case: StepCase, registry: Any, trial: int, run_id: str, *,
                    judge_state: Callable[[str], str], settings: Callable[..., Any] | None = None) -> dict[str, Any]:
     """One step trial in a fresh repository at the case's workspace: the step, its check and its judge exactly
-    as in a run (EVS §2.2)."""
+    as in a run (EVS-B9, EVS-B2, EVS-B10)."""
     from tempergraph import git as gitmod
     from tempergraph.constants import ExitCode
     from tempergraph.improve.trials import _records, run_cost
@@ -320,7 +320,7 @@ def run_workflow_trial(spec: WorkflowSpec, entry: Mapping[str, Any], repo: Path,
                        run_id: str, *, judge_state: Callable[[str], str],
                        settings: Callable[..., Any] | None = None) -> dict[str, Any]:
     """One whole run on a fixed case as a dry run, with the recorded answers applied to its pauses in order
-    (EVS §2.3)."""
+    (EVS-B12)."""
     from tempergraph import git as gitmod
     from tempergraph.constants import ExitCode
     from tempergraph.improve.trials import ChildRuns, _records, run_cost
@@ -448,7 +448,7 @@ def run(spec: WorkflowSpec, kind: str, root: Path, *, registry: Any = None, repo
             "cost_usd": round(spent, 6), "cap_usd": cap, "results": rows, "invalid": invalid}
 
 
-# -- reading, grading by a person, figures (EVS §2.7) --------------------------------------------------------
+# -- reading, grading by a person, figures (EVS-B17, EVS-B18) --------------------------------------------------------
 
 def read_results(root: Path) -> list[dict[str, Any]]:
     try:
@@ -513,7 +513,7 @@ def figures(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
 
 def suite_status(role: str, rows: Sequence[Mapping[str, Any]]) -> str:
     """A regression suite fails on one failing case and is `incomplete` while a trial waits on a person or a
-    pause (EVS-AC-4); a capability suite is tracked as a rate and never fails."""
+    pause (EVS-AC4); a capability suite is tracked as a rate and never fails."""
     if role == "capability":
         return "tracked"
     if any(r.get("status") in ("failed", "invalid") for r in rows):
@@ -551,7 +551,7 @@ def report(spec: WorkflowSpec, root: Path) -> dict[str, Any]:
         now = current[kind](subject) if kind in current else None
         stale = now is not None and any(r.get("binding") != now for r in latest)
         fig = figures(latest)
-        if kind == "step" and any(r.get("graded_by") == "judge" for r in latest):  # EVS §2.5
+        if kind == "step" and any(r.get("graded_by") == "judge" for r in latest):  # EVS-B15
             fig["judge_graded"] = _corrected(spec, subject, fig["pass_at_1"])
         out.append({"kind": kind, "subject": subject, "role": role, "run_id": runs[-1],
                     "status": "stale" if stale else suite_status(role, latest), "figures": fig,

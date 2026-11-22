@@ -1,7 +1,7 @@
 """Engine-wide constants: exit codes, schema versions, release, reserved words.
 
-The exit-code table is the caller contract of CON §2.9; ``tests/test_contract_tables.py`` checks it
-against the table in ``docs/specs/01-contracts.spec.md`` (CON-AC-6, CLI-AC-4).
+The exit-code table is the caller contract of CON-B12, CON-B13; ``tests/test_contract_tables.py`` checks it
+against the table in ``docs/specs/01-contracts.spec.md`` (CON-AC6, CLI-AC4).
 """
 
 from __future__ import annotations
@@ -10,13 +10,13 @@ from enum import IntEnum
 
 ENGINE_VERSION = "0.2.0"
 RELEASE = 2  # the release this engine builds (ADR-0090, ADR-0125)
-WORKFLOW_API = 1  # the declaration interface level (PKG §2.2, VER §2.2)
+WORKFLOW_API = 1  # the declaration interface level (PKG-B13, VER-B8)
 LOADS_WORKFLOW_API_FROM = 1
-STORE_LAYOUT = 1  # LOS §2.1 layout version
+STORE_LAYOUT = 1  # LOS-B7, LOS-B8, LOS-B9 layout version
 
 
 class ExitCode(IntEnum):
-    """CON §2.9 ``ExitCode``."""
+    """CON-B12, CON-B13 ``ExitCode``."""
 
     FINISHED = 0
     INTERNAL = 1
@@ -28,7 +28,7 @@ class ExitCode(IntEnum):
     NOT_INSTALLED = 127  # engine not installed (shim)
 
 
-# Schema versions of persisted documents (CON §2.10).
+# Schema versions of persisted documents (CON-B14, CON-B1, CON-B15).
 SCHEMA = {
     "run_log": 1,
     "status": 1,
@@ -54,7 +54,7 @@ SCHEMA = {
     "engine_pointers": 1,
 }
 
-# Verb words are reserved and refused as run input (CLI-B2, CLI-AC-3).
+# Verb words are reserved and refused as run input (CLI-B2, CLI-AC3).
 RESERVED_VERBS = frozenset(
     {
         "run", "resume", "rerun", "config", "status", "events", "logs", "wait", "attention", "list",
@@ -65,8 +65,8 @@ RESERVED_VERBS = frozenset(
     }
 )
 
-# Executor names are constants, registered in this order (EXI §2.1).
+# Executor names are constants, registered in this order (EXI-B16, EXI-B17).
 EXECUTOR_NAMES = ("claude", "agent-sdk", "messages-api", "antigravity")
 SHIPPED_EXECUTORS = ("claude",)  # ADR-0091: release 1 and 2 ship claude only
 
-MISSING_MARKER = "⟨missing:{name}⟩"  # CON §2.2
+MISSING_MARKER = "⟨missing:{name}⟩"  # CON-B8

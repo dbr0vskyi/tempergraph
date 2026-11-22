@@ -1,4 +1,4 @@
-"""GRD-AC-5 and ECC §2.5 on streams recorded from a real `claude` (live check L-21, CLI 2.1.330, 2026-11-22).
+"""GRD-AC5 and ECC-B11 on streams recorded from a real `claude` (live check L-21, CLI 2.1.330, 2026-11-22).
 
 `fixtures/recorded/` holds one judge session and one step session of the doc-refresh example, without the
 partial-message events, with paths replaced by `/work` and `/scratch` and the host's own init fields dropped.
@@ -54,7 +54,7 @@ def test_a_recorded_judge_session_is_clean() -> None:
     assert judged(recs).status == "clean"
 
 
-def test_a_planted_subagent_call_in_a_recorded_judge_stream_is_caught() -> None:  # GRD-AC-5
+def test_a_planted_subagent_call_in_a_recorded_judge_stream_is_caught() -> None:  # GRD-AC5
     recs = records("claude-2.1.330-judge.jsonl")
     got = judged(planted(recs, use("Task", "p1"), use("Read", "p2", parent="p1")))
     assert (got.status, got.reason) == ("discarded", "outside_call:Task")
@@ -62,7 +62,7 @@ def test_a_planted_subagent_call_in_a_recorded_judge_stream_is_caught() -> None:
     assert (child_only.status, child_only.reason) == ("discarded", "outside_call:Read")
 
 
-def test_a_recorded_step_session_maps_to_events() -> None:  # ECC §2.5 on 2.1.330
+def test_a_recorded_step_session_maps_to_events() -> None:  # ECC-B11 on 2.1.330
     s = summary(records("claude-2.1.330-step.jsonl"))
     assert s.session_id and s.model == "claude-sonnet-5-5" and s.result is not None
     names = [c.name for c in s.tool_calls]

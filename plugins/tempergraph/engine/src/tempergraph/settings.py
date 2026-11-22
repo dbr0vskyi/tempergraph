@@ -1,8 +1,8 @@
-"""Run settings: one catalog over fixed layers, resolved the same way everywhere (RST §2; ADR-0070, 0071, 0072).
+"""Run settings: one catalog over fixed layers, resolved the same way everywhere (RST-B16 to RST-B32; ADR-0070, 0071, 0072).
 
 `resolve` and `validate_overrides` are pure and model-free. `run --check`, `run`, `resume` and `config show` call
 them. The operator layers (flag, profile and both files) are snapshotted on the thread at start and reapplied on
-resume (RST §2.6); the workflow layers come from the content the thread runs.
+resume (RST-B26); the workflow layers come from the content the thread runs.
 """
 
 from __future__ import annotations
@@ -34,8 +34,8 @@ from tempergraph.security.launch import has_shell_metacharacter
 
 SETTINGS_FILE = "settings.json"
 
-# Rank order of RST §2.3. The `arm:` layer sits below the first four: it is applied where a session request is
-# built, for the keys no operator layer set (SWM §2.3).
+# Rank order of RST-B22, RST-B23. The `arm:` layer sits below the first four: it is applied where a session request is
+# built, for the keys no operator layer set (SWM-B6).
 LAYERS = ("flag", "profile", "project:overrides", "user:overrides", "workflow:unit", "workflow:default",
           "project:defaults", "user:defaults", "engine")
 OPERATOR_LAYERS = ("flag", "profile", "project:overrides", "user:overrides", "project:defaults", "user:defaults")
@@ -58,7 +58,7 @@ NOT_IN_RELEASE = {
 }
 # Keys whose effect is not built yet on this branch, with the plan row that builds it.
 NOT_BUILT: dict[str, str] = {}
-WIDENING = frozenset({"tools.add", "commands.add", "views.add"})  # RST §2.8, T6.3
+WIDENING = frozenset({"tools.add", "commands.add", "views.add"})  # RST-B28, RST-B29, RST-B30, T6.3
 
 
 class SettingError(ValueError):
@@ -109,7 +109,7 @@ def _choice(*choices: str) -> Callable[[Any], str]:
 def _true(v: Any) -> bool:
     if v is True or v == "true":
         return True
-    raise SettingError("tighten_only", "this key can only be set to true (RST §2.3)")
+    raise SettingError("tighten_only", "this key can only be set to true (RST-B22, RST-B23)")
 
 
 def _bool(v: Any) -> bool:
@@ -128,7 +128,7 @@ def _alias(v: Any) -> str:
 
 
 def _one_alias(v: Any) -> str:
-    """LAD §2.6: `model` takes one alias; release 1's list is retired (LAD §2.8)."""
+    """LAD-B14: `model` takes one alias; release 1's list is retired (LAD-B18)."""
     if isinstance(v, (list, tuple)) or (isinstance(v, str) and "," in v):
         raise SettingError("setting_value", "`model` takes one alias; a list of models is retired, declare an "
                                             "`escalation` on the step instead")
@@ -165,7 +165,7 @@ def _only(name: str, *ok: str) -> Callable[[Any], None]:
 
 
 def _base(v: Any) -> None:
-    """WTR §2.5: `head` and `ref:<name>` (trial cases); `default_branch` is release 3 (ADR-0125)."""
+    """WTR-B21: `head` and `ref:<name>` (trial cases); `default_branch` is release 3 (ADR-0125)."""
     if v == "head" or (isinstance(v, str) and v.startswith("ref:") and len(v) > 4):
         return
     raise SettingError("setting_not_in_release", f"worktree.base {v!r} is release 3 (worktree extras, ADR-0125); this release takes head "
@@ -191,13 +191,13 @@ CATALOG: dict[str, Entry] = {
     "infra_backoff_max_s": Entry(RUN, _int(10, 300), 300),
     "attempt_cap": Entry(RUN, _int(1, 100), 15),
     "human_cap": Entry(RUN, _int(1, 100), 100),
-    "self_check_limit": Entry(RUN, _int(1, 10), 3),  # check previews a step may run in one attempt (CHK §2.5)
+    "self_check_limit": Entry(RUN, _int(1, 10), 3),  # check previews a step may run in one attempt (CHK-B17)
     "run_cost_cap_usd": Entry(RUN, _float(0)),
-    "daily_cap_usd": Entry(RUN, _float(0)),  # stable mode's self-improvement budget per day (SIL §4)
-    "loop_model": Entry(RUN, _alias, "medium"),  # the alias of the loop's own sessions (SIL §2.3)
+    "daily_cap_usd": Entry(RUN, _float(0)),  # stable mode's self-improvement budget per day (SIL-B19, SIL-B20)
+    "loop_model": Entry(RUN, _alias, "medium"),  # the alias of the loop's own sessions (SIL-B11)
     "auto_reopen": Entry(RUN, _int(0, 10), 0),
     "workspace": Entry(RUN, _choice("auto", "in_place", "worktree"), "auto"),
-    "session_review": Entry(RUN, _choice("auto", "full", "signals", "off"), "auto"),  # lowers only (SRV §2.3)
+    "session_review": Entry(RUN, _choice("auto", "full", "signals", "off"), "auto"),  # lowers only (SRV-B13, SRV-B14, SRV-B15)
     "worktree.root": Entry(RUN, str, "sibling", _only("worktree.root", "sibling")),
     "worktree.base": Entry(RUN, str, "head", _base),
     "worktree.branch_prefix": Entry(RUN, _prefix, "tg"),
@@ -230,11 +230,11 @@ def _list(v: Any) -> list[str]:
 
 
 def _caps(v: Any, *, read_only: bool) -> tuple[str, ...]:
-    """RST §2.8 What and Never: a capability name; a judge view is read-only (RST-B13)."""
+    """RST-B28, RST-B29, RST-B30 What and Never: a capability name; a judge view is read-only (RST-B13)."""
     out = _list(v)
     for c in out:
         if not (c in CAPABILITIES or MCP_CAP.match(c) or SKILL_CAP.match(c)):
-            raise SettingError("unknown-capability", f"{c!r} is not a tool capability (CON §2.5)")
+            raise SettingError("unknown-capability", f"{c!r} is not a tool capability (CON-B11)")
         if read_only and c.startswith("mcp:"):
             raise SettingError("judge-view-unclassified", f"{c!r}: release 1 has no read-only MCP catalog; a judge "
                                                           "sees an MCP tool only as the derived view of its step's")
@@ -295,7 +295,7 @@ def _nearest(word: str, names: Iterable[str]) -> str:
 
 
 def parse_key(spec: WorkflowSpec, raw: str) -> Key:
-    """RST §2.1 keys, checked against the workflow and the catalog (RST-B5, B10, §4)."""
+    """RST-B17 keys, checked against the workflow and the catalog (RST-B5, B10, RST-B32)."""
     head, dot, rest = raw.partition(".")
     if not dot or not rest:
         raise SettingError("unknown_setting", f"{raw!r} is not <scope>.<name>")
@@ -381,7 +381,7 @@ def _value(spec: WorkflowSpec, key: Key, value: Any) -> Any:
 
 
 def check_declared(decl: SettingDecl, value: Any) -> Any:
-    """RST §2.5 value kinds."""
+    """RST-B25 value kinds."""
     kind = decl.kind
     if kind == "bool":
         return _bool(value)
@@ -412,7 +412,7 @@ def check_declared(decl: SettingDecl, value: Any) -> Any:
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class ConfigFiles:
-    """The two `settings.json` files (RST §2.4); `None` where the file does not exist."""
+    """The two `settings.json` files (RST-B24); `None` where the file does not exist."""
 
     project: Mapping[str, Any] | None = None
     user: Mapping[str, Any] | None = None
@@ -423,7 +423,7 @@ class ConfigFiles:
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class Capture:
-    """The operator's capture level and observers (LOS §2.6, EVT §2.5): full capture unless lowered."""
+    """The operator's capture level and observers (LOS-B17, EVT-B21): full capture unless lowered."""
 
     raw: bool = True
     tool_inputs: bool = True
@@ -456,7 +456,7 @@ def config_paths(state_root: Path | None, home: Path) -> tuple[Path | None, Path
 
 
 def load_files(state_root: Path | None, home: Path) -> ConfigFiles:
-    """Read both files once; a file that does not parse or has a newer schema is a finding (RST §4)."""
+    """Read both files once; a file that does not parse or has a newer schema is a finding (RST-B32)."""
     pp, up = config_paths(state_root, home)
     docs: dict[str, Any] = {}
     errors: list[Finding] = []
@@ -494,7 +494,7 @@ def _file_layers(spec: WorkflowSpec, files: ConfigFiles) -> tuple[dict[str, dict
             for k, v in (entry.get("set") or {}).items():
                 if _widening(str(k)):
                     out.append(Finding(code="widening_in_file", unit=None, message=f"{path}: {k} widens tools; only "
-                                                                                     "a person's flag may (RST §2.8)"))
+                                                                                     "a person's flag may (RST-B28, RST-B29, RST-B30)"))
                     continue
                 specific = entry.get("workflow") == spec.name
                 if k in ov and not specific and k in named:
@@ -529,7 +529,7 @@ def as_list(v: Any) -> list[str]:
 
 
 def find_profile(spec: WorkflowSpec, name: str, files: ConfigFiles) -> tuple[Mapping[str, Any], str] | None:
-    """Project file, then user file, then the workflow's own; the first found is used whole (RST §2.4)."""
+    """Project file, then user file, then the workflow's own; the first found is used whole (RST-B24)."""
     for doc, path in ((files.project, files.project_path), (files.user, files.user_path)):
         prof = ((doc or {}).get("profiles") or {}).get(name)
         if isinstance(prof, Mapping):
@@ -545,7 +545,7 @@ def find_profile(spec: WorkflowSpec, name: str, files: ConfigFiles) -> tuple[Map
 
 def snapshot(spec: WorkflowSpec, flags: Mapping[str, Any], profiles: Sequence[str], files: ConfigFiles,
              via: str = "cli") -> tuple[dict[str, dict[str, dict[str, Any]]], list[Finding]]:
-    """The operator layers for `RunOptions.settings`: layer -> key -> {value, ref, via?} (RST §2.6)."""
+    """The operator layers for `RunOptions.settings`: layer -> key -> {value, ref, via?} (RST-B26)."""
     out: list[Finding] = []
     layers, file_findings = _file_layers(spec, files)
     out += file_findings
@@ -575,7 +575,7 @@ def validate_layers(spec: WorkflowSpec, layers: Mapping[str, Mapping[str, Mappin
         for raw in (layers.get("flag") or {}):
             if _widening(raw):
                 out.append(Finding(code="widening_by_agent", unit=None,
-                                   message=f"{raw}: only a person may widen a step's tools (RST §2.8, PRV §2.8)"))
+                                   message=f"{raw}: only a person may widen a step's tools (RST-B28, RST-B29, RST-B30, PRV-B21, PRV-B22)"))
     for layer in OPERATOR_LAYERS:
         for raw, cell in (layers.get(layer) or {}).items():
             try:
@@ -594,7 +594,7 @@ def options_snapshot(spec: WorkflowSpec, flags: Mapping[str, Any], profiles: Seq
 
 
 def validate_overrides(spec: WorkflowSpec, options: RunOptions, files: ConfigFiles) -> list[Finding]:
-    """RST §2 contract: every operator value of these options and files, checked before spend."""
+    """RST-B16 to RST-B32 contract: every operator value of these options and files, checked before spend."""
     flags = {k: c["value"] for k, c in (options.settings.get("flag") or {}).items()}
     _, out = options_snapshot(spec, flags, options.profiles, files)
     return out
@@ -650,7 +650,7 @@ def _workflow_values(spec: WorkflowSpec) -> dict[str, dict[str, dict[str, Any]]]
                 put(unit_l, f"judge:{name}.model", j.model, f"units.{name}.gate.judge.model")
             elif u.step is not None and u.step.model:
                 first = u.step.model if isinstance(u.step.model, str) else list(u.step.model)[0]
-                put(unit_l, f"judge:{name}.model", first, f"units.{name}.model")  # CON §2.4
+                put(unit_l, f"judge:{name}.model", first, f"units.{name}.model")  # CON-B3
             prof = spec.model_profile.get(f"judge:{name}")
             put(dflt, f"judge:{name}.model", prof if isinstance(prof, str) or prof is None else list(prof)[0],
                 f"model_profile.judge:{name}")
@@ -667,7 +667,7 @@ def _workflow_values(spec: WorkflowSpec) -> dict[str, dict[str, dict[str, Any]]]
 
 
 def targets(spec: WorkflowSpec) -> list[tuple[str, str, list[str]]]:
-    """Every concrete key the run reads, its catalog name, and its matching keys narrowest first (RST §2.3)."""
+    """Every concrete key the run reads, its catalog name, and its matching keys narrowest first (RST-B22, RST-B23)."""
     out: list[tuple[str, str, list[str]]] = []
     for name, e in CATALOG.items():
         if name in NOT_IN_RELEASE or name in NOT_BUILT:
@@ -709,7 +709,7 @@ def _canonical(v: Any) -> Any:
 
 
 def resolve(spec: WorkflowSpec, options: RunOptions, files: ConfigFiles | None = None) -> ResolvedSettings:
-    """Pure: the winning value, layer and ref of every key the run reads (RST §2.3, §2.7).
+    """Pure: the winning value, layer and ref of every key the run reads (RST-B22, RST-B23, RST-B27).
 
     `options.settings` is the snapshot of the operator layers. With `files`, the file and profile layers are
     built from them and only the flags are taken from the options (a start, `config show`, `run --check`).
@@ -748,7 +748,7 @@ def resolve(spec: WorkflowSpec, options: RunOptions, files: ConfigFiles | None =
 
 
 def overridden_keys(res: ResolvedSettings) -> list[str]:
-    """Keys whose winning layer ranks 1 to 4 (RST §2.7)."""
+    """Keys whose winning layer ranks 1 to 4 (RST-B27)."""
     return [r.key for r in res.rows if r.layer in LAYERS[:4]]
 
 
@@ -767,7 +767,7 @@ def effective_spec(spec: WorkflowSpec, res: ResolvedSettings) -> WorkflowSpec:
     """The workflow with every resolved session, budget and workflow-wide value in its own field.
 
     Judges get their resolved model written in, so a step-side override never reaches them through the
-    runner's step-to-judge inheritance (RST §2.3, Judges apart).
+    runner's step-to-judge inheritance (RST-B22, RST-B23, Judges apart).
     """
     v = res.values
     layer_of = {r.key: r.layer for r in res.rows}
@@ -799,7 +799,7 @@ def effective_spec(spec: WorkflowSpec, res: ResolvedSettings) -> WorkflowSpec:
         if u.switch is not None and v.get(f"{name}.arm"):
             u = dataclasses.replace(u, extra={**u.extra, "arm": v.get(f"{name}.arm")})  # CMP-B7
         deadline = v.get(f"{name}.deadline_s")
-        if deadline and u.ask is not None:  # FLX §2.3: an operator may move a declared or default deadline
+        if deadline and u.ask is not None:  # FLX-B8: an operator may move a declared or default deadline
             u = dataclasses.replace(u, ask=dataclasses.replace(u.ask, deadline_s=int(deadline)))
         if deadline and u.wait is not None:
             u = dataclasses.replace(u, wait=dataclasses.replace(u.wait, deadline_s=int(deadline)))
@@ -817,7 +817,7 @@ def effective_spec(spec: WorkflowSpec, res: ResolvedSettings) -> WorkflowSpec:
                                     session_options=jopts if jopts.set_names() else None)
             g = dataclasses.replace(g, judge=j)
             jpins = tuple(k for k in ("model", "effort") if layer_of.get(f"judge:{name}.{k}") in LAYERS[:4])
-            if jpins:  # JRK §2.3 rule 1: a pinned judge model or effort wins over a risk level
+            if jpins:  # JRK-B8 rule 1: a pinned judge model or effort wins over a risk level
                 u = dataclasses.replace(u, extra={**u.extra, "judge_operator_set": jpins})
             views = tuple(v.get(f"judge:{name}.views.add") or ())
             if views:
@@ -845,7 +845,7 @@ def run_values(res: ResolvedSettings) -> dict[str, Any]:
 
 
 def workflow_settings(res: ResolvedSettings) -> dict[str, Any]:
-    """`settings.<name>` values for checks, scripts and templates (RST §2.5)."""
+    """`settings.<name>` values for checks, scripts and templates (RST-B25)."""
     return {k[9:]: val for k, val in res.values.items() if k.startswith("settings.")}
 
 
@@ -855,7 +855,7 @@ def rows_json(res: ResolvedSettings) -> list[dict[str, Any]]:
 
 
 def grants(res: ResolvedSettings) -> list[dict[str, Any]]:
-    """Every resolved widening value as one grant: `{unit, key, capability | prefix}` (RST §2.8 Shown)."""
+    """Every resolved widening value as one grant: `{unit, key, capability | prefix}` (RST-B28, RST-B29, RST-B30 Shown)."""
     out: list[dict[str, Any]] = []
     for k, v in sorted(res.values.items()):
         if not _widening(k) or not v:

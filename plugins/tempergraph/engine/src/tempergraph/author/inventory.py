@@ -1,6 +1,6 @@
-"""The intake inventory of AUT §2.3: model-free, one record per source file and the verification candidates it
-detects. The record holds names, paths, counts, line numbers and digests, never source text (AUT-AC-2); the
-text stays in the session folder. A source over 5 MB or binary is `kind: other` with no candidates (AUT §4)."""
+"""The intake inventory of AUT-B14, AUT-B15: model-free, one record per source file and the verification candidates it
+detects. The record holds names, paths, counts, line numbers and digests, never source text (AUT-AC2); the
+text stays in the session folder. A source over 5 MB or binary is `kind: other` with no candidates (AUT-B15, AUT-B17, AUT-B24, AUT-B12)."""
 
 from __future__ import annotations
 

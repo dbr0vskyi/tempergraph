@@ -21,7 +21,7 @@ WHEN a step's output is read for a value THE engine SHALL store the trimmed, low
 
 ### VAL-B7 Where values are read
 
-WHEN a value is read THE engine SHALL give it to route and switch predicates as `state.values[unit][key]`, to checks as `ctx.values` ([CHK](75-check-contract-and-command-runs.spec.md)), to templates as `{key}`, to judges as one quoted line for a `references` or `subject` entry naming it, to the finalizer as `FinalizerContext.values` ([FIN](78-finalizer-contract.spec.md)), and to people and tools through `facts` and the status and detail documents; keep values in a per-unit state channel (contract C7) cleared with the unit's other artifacts by a trip back to or past it ([BUD-B4](08-budgets-and-failures.spec.md)); and key a map item's values by item ([MAP](77-map-unit.spec.md)).
+WHEN a value is read THE engine SHALL give it to route and switch predicates as `state.values[unit][key]`, to checks as `ctx.values` ([CHK](75-check-contract-and-command-runs.spec.md)), to templates as `{key}`, to judges as one quoted line for a `references` or `subject` entry naming it, to the finalizer as `FinalizerContext.values` ([FIN](78-finalizer-contract.spec.md)), and to people and tools through `facts` and the status and detail documents; keep values in a per-unit state channel (OVR-B9) cleared with the unit's other artifacts by a trip back to or past it ([BUD-B4](08-budgets-and-failures.spec.md)); and key a map item's values by item ([MAP](77-map-unit.spec.md)).
 
 - GIVEN a trip back past a unit WHEN its values are read THEN they are absent
 

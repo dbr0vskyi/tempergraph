@@ -1,4 +1,4 @@
-"""Engine environments under `~/.tempergraph/engines/` (UPD §2.2) and the first one (UPD §2.7 step 3).
+"""Engine environments under `~/.tempergraph/engines/` (UPD-B11, UPD-B12, UPD-B13) and the first one (UPD-B18, UPD-B19 step 3).
 
 One virtual environment per installed release, named `<engine_version>-<digest12>` by the staged engine's
 source digest; `.complete` is written last, and an environment without it is never made current.
@@ -29,13 +29,13 @@ class InstallFailed(Exception):
 
 
 def staged_engine() -> Path | None:
-    """The plugin's staged engine this code runs from (UPD §2.3 step 1: no option names a path)."""
+    """The plugin's staged engine this code runs from (UPD-B14, UPD-B6 step 1: no option names a path)."""
     root = Path(__file__).resolve().parents[3]
     return root if (root / "pyproject.toml").is_file() and (root / "src" / "tempergraph").is_dir() else None
 
 
 def source_digest(engine: Path) -> str:
-    """VER §2.1 engine source digest: `pyproject.toml` and every file under `src/`."""
+    """VER-B7 engine source digest: `pyproject.toml` and every file under `src/`."""
     h = hashlib.sha256()
     files = [engine / "pyproject.toml", *sorted(p for p in (engine / "src").rglob("*")
                                                 if p.is_file() and not (SKIP & set(p.parts)) and p.suffix != ".pyc")]
@@ -125,7 +125,7 @@ class Installed:
 
 def install_engine(home: Path, python: str, engine: Path, builder: Builder, extras: tuple[str, ...] = (),
                    *, version: str | None = None) -> Installed:
-    """UPD §2.3 steps 3 and 4 into a new environment folder; on failure the folder is removed and
+    """UPD-B14, UPD-B6 steps 3 and 4 into a new environment folder; on failure the folder is removed and
     `current.json` is untouched."""
     version = version or str(release()["engine_version"])
     digest = source_digest(engine)
@@ -142,7 +142,7 @@ def install_engine(home: Path, python: str, engine: Path, builder: Builder, extr
         if check.get("engine_version") != version:
             raise InstallFailed(f"self-check reports engine {check.get('engine_version')!r}, expected {version!r}")
         rel = _read(engine / "src" / "tempergraph" / "data" / "release.json") or dict(release())
-        write_json(env / "release.json", rel)  # read by a later engine to choose a pin (MIG §2.4)
+        write_json(env / "release.json", rel)  # read by a later engine to choose a pin (MIG-B12, MIG-B13, MIG-B14)
         (env / ".complete").write_text(now_iso() + "\n", encoding="utf-8")
     except BaseException:
         shutil.rmtree(env, ignore_errors=True)
@@ -153,7 +153,7 @@ def install_engine(home: Path, python: str, engine: Path, builder: Builder, extr
 def switch(home: Path, inst: Installed, *, extras: tuple[str, ...] = (),
            release_doc: dict[str, Any] | None = None) -> dict[str, Any]:
     """Make `inst` current. The pointer also records what the engine reads, so a rollback can be checked
-    without starting it (UPD §2.6)."""
+    without starting it (UPD-B17)."""
     eng = engines_dir(home)
     cur = eng / "current.json"
     if cur.is_file() and _read(cur).get("path") != str(inst.env):

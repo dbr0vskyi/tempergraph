@@ -1,12 +1,12 @@
-"""Case sets, paired trials, the A/A noise floor and the trial caps (PRP §2.5 to §2.7, B5 to B7, B9;
+"""Case sets, paired trials, the A/A noise floor and the trial caps (PRP-B17, PRP-B4, PRP-B12, PRP-B18, PRP-B21, PRP-B8, PRP-B22, B5 to B7, B9;
 plan T12.6).
 
 Release 1 (ADR-0090 S4): before `batch` exists, each case runs as one engine child run at a time, arm A (the
 base package) then arm B (the patched copy), each in its own engine worktree at the case's base commit
 (`run.worktree.base = ref:<base>`), with `--dry-run` so the loop files nothing for them. A case that stops at
 a pause is a tie (PRP open question default). A trial writes no code: only the proposer writes, on its own
-branch (C14). Trial child runs are ordinary threads with `origin: trial`, so their spend is logged per session
-like any run and joins no workflow run's cost line (PRP-AC-6).
+branch (OVR-B16). Trial child runs are ordinary threads with `origin: trial`, so their spend is logged per session
+like any run and joins no workflow run's cost line (PRP-AC6).
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ class TrialRefused(ValueError):
     """Refused before spend (exit 2)."""
 
 
-# -- case sets (PRP §2.5) ------------------------------------------------------------------------------------
+# -- case sets (PRP-B17) ------------------------------------------------------------------------------------
 
 @dataclass(frozen=True, kw_only=True)
 class TrialCase:
@@ -62,7 +62,7 @@ def case_set(spec: WorkflowSpec) -> tuple[list[TrialCase], str]:
     rows = doc.get("cases") if isinstance(doc, dict) else doc
     out = []
     for r in rows or []:
-        cid = r.get("case_id") or r.get("id") if isinstance(r, dict) else None  # PKG §2.7's minimal set uses `id`
+        cid = r.get("case_id") or r.get("id") if isinstance(r, dict) else None  # PKG-B25's minimal set uses `id`
         if not isinstance(r, dict) or not cid:
             continue
         c = TrialCase(case_id=str(cid), base=str(r.get("base") or "HEAD"), request=str(r.get("request") or ""),
@@ -78,14 +78,14 @@ def case_set(spec: WorkflowSpec) -> tuple[list[TrialCase], str]:
 
 
 def in_sample(c: TrialCase, cluster_threads: Sequence[str]) -> bool:
-    """A case harvested from a run of the proposal's cluster (PRP §2.5)."""
+    """A case harvested from a run of the proposal's cluster (PRP-B17)."""
     if not c.origin.startswith("harvested:"):
         return False
     run = c.origin.split(":", 1)[1]
     return any(run == t or run.startswith(t + "#") for t in cluster_threads)
 
 
-# -- the decision rule (PRP §2.6, ADR-0034) ------------------------------------------------------------------
+# -- the decision rule (PRP-B18, PRP-B19, PRP-B20, ADR-0034) ------------------------------------------------------------------
 
 def sign_count(n: int, alpha: float | None = None) -> int | None:
     """The fewest wins of `n` non-tied pairs with a one-sided sign-test p ≤ alpha (R-031 F3); None if none."""
@@ -304,7 +304,7 @@ def _load(path: Path) -> WorkflowSpec:
 
 
 def _judge_ready(root: Path, spec: WorkflowSpec, gate: str) -> tuple[bool, str]:
-    """PRP §2.6: a judge-graded target needs FBK `reliable` and JCL `accepted` for that gate's judge."""
+    """PRP-B18, PRP-B19, PRP-B20: a judge-graded target needs FBK `reliable` and JCL `accepted` for that gate's judge."""
     from tempergraph.improve import calibration as cal
     from tempergraph.improve import reliability as rel
 

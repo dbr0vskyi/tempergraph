@@ -42,8 +42,8 @@ We will add, in [FLX](../specs/74-flow-extensions.spec.md):
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| F1 | A deadline is advisory until someone applies it; owners who want time-driven action schedule `resume --apply-deadline` from their own scheduler. | FLX §2.3 |
-| F2 | A fallback is forward only; a backward recovery is already a back-edge. | FLX §2.4 |
+| F1 | A deadline is advisory until someone applies it; owners who want time-driven action schedule `resume --apply-deadline` from their own scheduler. | FLX-B8 |
+| F2 | A fallback is forward only; a backward recovery is already a back-edge. | FLX-B9 |
 
 ## Consequences
 

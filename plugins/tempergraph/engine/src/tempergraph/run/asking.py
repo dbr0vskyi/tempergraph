@@ -1,7 +1,7 @@
-"""The ask unit's questions and answers (ASK §2): pure validation and the answers file.
+"""The ask unit's questions and answers (ASK-B5 to ASK-B9): pure validation and the answers file.
 
 A person's answers are kept in a JSON file under the thread's folder, not in graph state, so a resume that
-does not complete the set never moves the graph and a crash loses nothing (ASK-AC-2). The file becomes the
+does not complete the set never moves the graph and a crash loses nothing (ASK-AC2). The file becomes the
 unit's `answers` artifact when the set is complete and the author's check passes.
 """
 
@@ -24,7 +24,7 @@ _TRUE, _FALSE = frozenset({"true", "yes", "y", "1"}), frozenset({"false", "no", 
 
 
 class AskFault(Exception):
-    """The question list cannot be used: the unit stops before its pause (ASK-B2, ASK §4)."""
+    """The question list cannot be used: the unit stops before its pause (ASK-B2, ASK-B2, ASK-B9)."""
 
 
 class AnswerRefused(ValueError):
@@ -145,7 +145,7 @@ def parse(q: AskQuestion, raw: Any, workdir: Path | None = None) -> Any:
         if not re.fullmatch(r"https?://[^\s]+", text):
             raise AnswerRefused(f"{q.name}: {text!r} is not an http or https address")
         return text
-    # file: a path inside the workspace (contract C10)
+    # file: a path inside the workspace (OVR-B12)
     p = Path(text)
     if not text or p.is_absolute() or ".." in p.parts:
         raise AnswerRefused(f"{q.name}: a file answer is a path inside the workspace")
@@ -213,5 +213,5 @@ def store(path: Path, unit: str, answers: Mapping[str, Any], *, done: bool) -> N
 
 
 def shown(qs: Sequence[AskQuestion], answers: Mapping[str, Any]) -> list[dict[str, Any]]:
-    """The pause payload's question list: kind, choices, default and whether it is answered (ASK §2.3)."""
+    """The pause payload's question list: kind, choices, default and whether it is answered (ASK-B8)."""
     return [{**to_json(q), "answered": q.name in answers} for q in qs]

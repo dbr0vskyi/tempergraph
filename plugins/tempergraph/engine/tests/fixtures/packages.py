@@ -1,4 +1,4 @@
-"""Fixture workflow packages written to disk (PKG §2.1, §2.7), one builder per shape the tests need."""
+"""Fixture workflow packages written to disk (PKG-B11, PKG-B12, PKG-B25), one builder per shape the tests need."""
 
 from __future__ import annotations
 
@@ -91,7 +91,7 @@ Writes the notes. See the [overview](00-overview.spec.md).
 
 
 def blueprint(name: str = "release-notes", outcome: dict[str, Any] | None = None) -> dict[str, Any]:
-    """The approved blueprint of the minimal package (SCF §2.1)."""
+    """The approved blueprint of the minimal package (SCF-B9, SCF-B11)."""
     from tempergraph.author.blueprint import outcome_digest
 
     o = outcome or OUTCOME
@@ -115,7 +115,7 @@ def write(root: Path, rel: str, content: str | dict[str, Any] | list[Any]) -> Pa
 
 def minimal_package(parent: Path, name: str = "release-notes", version: str = "0.1.0", *,
                     declaration: str = DECLARATION, checks: str = CHECKS, inline_criteria: bool = False) -> Path:
-    """The minimal package of PKG §2.7. `inline_criteria` also declares the draft gate's criteria inline
+    """The minimal package of PKG-B25. `inline_criteria` also declares the draft gate's criteria inline
     (the older form, WFM-B5), which with `outcome.json` is `criterion-declared-twice`."""
     root = parent / name
     mod = name.replace("-", "_")
@@ -154,7 +154,7 @@ def minimal_package(parent: Path, name: str = "release-notes", version: str = "0
 
 
 def package_parts(root: Path, name: str, outcome: dict[str, Any] | None = None, units: tuple[str, ...] = ()) -> Path:
-    """The non-declaration parts every package carries (PKG §2.1), for a test that writes its own declaration."""
+    """The non-declaration parts every package carries (PKG-B11, PKG-B12), for a test that writes its own declaration."""
     write(root, "workflow/pyproject.toml", f'[project]\nname = "tgwf-{name}"\ndependencies = []\n')
     write(root, "outcome.json", outcome or {"schema_version": 1, "revision": 1, "statement": "Done well.",
                                             "deliverables": [], "intermediate": {

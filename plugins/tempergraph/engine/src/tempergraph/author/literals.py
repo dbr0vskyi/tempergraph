@@ -1,8 +1,8 @@
-"""`literals <workflow> [--cases]` (SCF §2.3): a deterministic scan for literals that belong to one case, not to
+"""`literals <workflow> [--cases]` (SCF-B13): a deterministic scan for literals that belong to one case, not to
 the workflow: a ticket id, a URL, an e-mail address, a path outside the package, or a run of at least six
 words from a case request or an intake example. A hit recorded in `authoring.json` decisions (by its
 `literal_digest`) is not reported again. Source files of an authoring session live in the session folder,
-not the package, so a packaged workflow is scanned against its cases and examples only (SCF §2.7)."""
+not the package, so a packaged workflow is scanned against its cases and examples only (SCF-B11, SCF-B13, SCF-B15, SCF-B16, SCF-B17, SCF-B18, SCF-B19, SCF-B20, SCF-B22)."""
 
 from __future__ import annotations
 

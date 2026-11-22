@@ -2,20 +2,20 @@
 
 ## Purpose
 
-The one control an observer may ask for: stop a live run. A person asks for it with the `stop` verb, typed or filled into the prompt by the monitor and sent by the person; the orchestration supervisor stops its node runs with the same verb ([ORC §2.8](45-orchestration.spec.md)). The running engine stops through the launcher's stop contract ([EXI §2.3](10-executor-interface.spec.md)), so the thread ends resumable and nothing the engine already wrote is lost. A stop never decides a gate: a run paused for a person is already stopped, and its decision stays theirs. Why a request file and no pause or skip verb: [ADR-0028](../adr/0028-stop-verb-as-the-only-observer-control.adr.md).
+The one control an observer may ask for: stop a live run. A person asks for it with the `stop` verb, typed or filled into the prompt by the monitor and sent by the person; the orchestration supervisor stops its node runs with the same verb ([ORC-B17, ORC-B24, ORC-B26](45-orchestration.spec.md)). The running engine stops through the launcher's stop contract ([EXI-B2, EXI-B20, EXI-B21, EXI-B22, EXI-B23, EXI-B15](10-executor-interface.spec.md)), so the thread ends resumable and nothing the engine already wrote is lost. A stop never decides a gate: a run paused for a person is already stopped, and its decision stays theirs. Why a request file and no pause or skip verb: [ADR-0028](../adr/0028-stop-verb-as-the-only-observer-control.adr.md).
 
 ## Behaviours
 
 ### RCT-B6 Stop writes one request file
 
-WHEN `stop <selector> [--drain | --now] [--caller …] [--relayed]` names a live thread THE engine CLI SHALL write the request file `runs/<workflow>/<task_id>/control/stop.json` under the state root ([LOS §2.1](33-local-observability-store.spec.md)), created atomically and readable by the owner only, with the fields `schema_version`, `mode`, `requested_at` and `caller`, and spend no session.
+WHEN `stop <selector> [--drain | --now] [--caller …] [--relayed]` names a live thread THE engine CLI SHALL write the request file `runs/<workflow>/<task_id>/control/stop.json` under the state root ([LOS-B7, LOS-B8, LOS-B9](33-local-observability-store.spec.md)), created atomically and readable by the owner only, with the fields `schema_version`, `mode`, `requested_at` and `caller`, and spend no session.
 
 - GIVEN a live thread WHEN `stop <task_id> --now` runs THEN the request file holds `mode` `now`, the command exits 0 and no session starts
 - GIVEN a live thread WHEN `stop <task_id>` runs with no mode THEN the request file holds `mode` `drain`
 
 ### RCT-B7 The running engine acts on the request
 
-WHEN a request file exists for the thread it runs THE engine SHALL notice it between records and at least once a second while a session runs, write `stop_requested` ([EVT §2.2](30-run-events.spec.md)), remove the file, stop by the mode and exit 4 with reason `stopped_by_request`.
+WHEN a request file exists for the thread it runs THE engine SHALL notice it between records and at least once a second while a session runs, write `stop_requested` ([EVT-B10 to EVT-B16](30-run-events.spec.md)), remove the file, stop by the mode and exit 4 with reason `stopped_by_request`.
 
 - GIVEN a session that writes no record for a minute WHEN a request file appears THEN `stop_requested` is written within 2 seconds and the file is gone
 - GIVEN a stopped run WHEN its status is read THEN the thread is `unfinished` and the exit reason is `stopped_by_request`
@@ -49,7 +49,7 @@ WHEN `stop` is given a batch selector THE engine CLI SHALL write one request per
 
 ### RCT-B5 Agent caller
 
-WHEN a stop requested by a Claude Code tool child is acted on THE engine SHALL record the `Caller` with kind `agent` on the `stop_requested` record ([PRV §2.3](85-caller-provenance.spec.md)), with or without `--as-agent`.
+WHEN a stop requested by a Claude Code tool child is acted on THE engine SHALL record the `Caller` with kind `agent` on the `stop_requested` record ([PRV-B13](85-caller-provenance.spec.md)), with or without `--as-agent`.
 
 - GIVEN a `stop` run from a Claude Code tool child without `--as-agent` WHEN the engine acts on it THEN the `stop_requested` record's caller kind is `agent`
 

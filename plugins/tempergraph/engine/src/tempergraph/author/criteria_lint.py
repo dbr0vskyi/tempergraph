@@ -1,6 +1,6 @@
-"""The criteria lint and the sufficiency check of AUT §2.4.1, over an outcome document (`outcome.json` shape).
+"""The criteria lint and the sufficiency check of AUT-B19, AUT-B20, AUT-B21, over an outcome document (`outcome.json` shape).
 
-Model-free. Severities follow AUT §2.8: in `author check` and `author verify` rung 1 every code is an error
+Model-free. Severities follow AUT-B12, AUT-B15, AUT-B19, AUT-B24, AUT-B25: in `author check` and `author verify` rung 1 every code is an error
 except `criterion-overlap` and `criterion-no-seed` (warnings); validation and the readiness report show all of
 them as warnings. Each finding carries the guidance the authoring skill gives for it.
 """
@@ -70,7 +70,7 @@ def _overlap(a: str, b: str) -> bool:
 
 
 def vague_words(text: str) -> list[str]:
-    """Vague words with no measure in the same sentence (AUT §2.8)."""
+    """Vague words with no measure in the same sentence (AUT-B12, AUT-B15, AUT-B19, AUT-B24, AUT-B25)."""
     out = []
     for sentence in re.split(r"(?<=[.!?])\s+", text):
         low = sentence.lower()
@@ -112,7 +112,7 @@ def _observable(text: str, c: Mapping[str, Any], names: set[str]) -> bool:
 
 
 def lint(doc: Mapping[str, Any]) -> list[LintFinding]:
-    """Every code of AUT §2.4.1 over the statement and each criterion."""
+    """Every code of AUT-B19, AUT-B20, AUT-B21 over the statement and each criterion."""
     out: list[LintFinding] = []
     names = _names(doc)
 
@@ -162,7 +162,7 @@ def lint(doc: Mapping[str, Any]) -> list[LintFinding]:
 
 
 def sufficiency(doc: Mapping[str, Any], found: list[LintFinding] | None = None) -> list[LintFinding]:
-    """AUT §2.4.1 sufficiency check of the outcome (before phase 2 ends); empty when it holds."""
+    """AUT-B19, AUT-B20, AUT-B21 sufficiency check of the outcome (before phase 2 ends); empty when it holds."""
     found = lint(doc) if found is None else found
     out = []
 

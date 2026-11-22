@@ -8,7 +8,7 @@ The `tempergraph` plugin wraps the engine CLI in skills a person uses from a con
 
 ### SHL-B5 The skills and what they never do
 
-WHEN the plugin is installed THE plugin SHALL ship the run driver `tempergraph:run` (turn a request into CLI calls, start in the background, report outcomes by exit code, walk the person through each pause; never answer a pause, default a value the workflow asks for or edit run state), the orchestrator ([OSK](46-orchestrator-skill.spec.md)), the optional schedule skill ([TCK §2.6](84-schedule-ticks-and-unattended-fires.spec.md); never fire runs from Claude Code's own scheduled tasks, save a schedule the person did not confirm or schedule a tool grant), the project bootstrap `tempergraph:bootstrap` (the state-root ignore rule only; never stage, commit or delete), the install, update and upgrade skills ([LSK](65-lifecycle-skills.spec.md)), the authoring skill `tempergraph:author` ([AUT](89-workflow-authoring.spec.md), [AUT §2.8](89-workflow-authoring.spec.md); never edit the engine or draw a diagram by model), the troubleshooter `tempergraph:troubleshoot` (read-only diagnosis with ranked hypotheses and next actions; never write, commit, install or run a mutating command) and the eval skill `tempergraph:evals` (never call a model from the runner, never grade, never label).
+WHEN the plugin is installed THE plugin SHALL ship the run driver `tempergraph:run` (turn a request into CLI calls, start in the background, report outcomes by exit code, walk the person through each pause; never answer a pause, default a value the workflow asks for or edit run state), the orchestrator ([OSK](46-orchestrator-skill.spec.md)), the optional schedule skill ([TCK-B21, TCK-B22](84-schedule-ticks-and-unattended-fires.spec.md); never fire runs from Claude Code's own scheduled tasks, save a schedule the person did not confirm or schedule a tool grant), the project bootstrap `tempergraph:bootstrap` (the state-root ignore rule only; never stage, commit or delete), the install, update and upgrade skills ([LSK](65-lifecycle-skills.spec.md)), the authoring skill `tempergraph:author` ([AUT](89-workflow-authoring.spec.md), [AUT-B12, AUT-B15, AUT-B19, AUT-B24, AUT-B25](89-workflow-authoring.spec.md); never edit the engine or draw a diagram by model), the troubleshooter `tempergraph:troubleshoot` (read-only diagnosis with ranked hypotheses and next actions; never write, commit, install or run a mutating command) and the eval skill `tempergraph:evals` (never call a model from the runner, never grade, never label).
 
 - GIVEN any shipped skill WHEN the structure test reads it THEN it has frontmatter, its links resolve and it names no shipped workflow
 - GIVEN a backticked `tempergraph …` call in a skill WHEN the structure test reads it THEN it is a verb of the CLI with options the parser builds
@@ -21,7 +21,7 @@ WHEN the run driver prepares a start whose request lacks a value the workflow ne
 
 ### SHL-B2 Pauses go to the person
 
-WHEN a run exits 3 THE run driver SHALL show the payload and the decisions and resume only with the person's explicit decision, passing `--relayed` so the person turn backs it ([PRV §2.4](85-caller-provenance.spec.md)), and never resume on its own.
+WHEN a run exits 3 THE run driver SHALL show the payload and the decisions and resume only with the person's explicit decision, passing `--relayed` so the person turn backs it ([PRV-B14](85-caller-provenance.spec.md)), and never resume on its own.
 
 - GIVEN a run that exits 3 WHEN the person has not answered THEN no `resume` is run
 
@@ -46,7 +46,7 @@ WHEN the bootstrap skill runs THE bootstrap skill SHALL ask git (`check-ignore` 
 
 ### SHL-B9 Authoring writes nothing before approval
 
-WHEN the authoring skill leads a session THE authoring skill SHALL follow the entry paths, phases, verification search and revise mode of [AUT](89-workflow-authoring.spec.md), write the outcome first ([OUT](90-run-outcome.spec.md)), write nothing before the person approves the engine-drawn blueprint and the tables, check the result as [SCF](91-blueprint-and-scaffold.spec.md) says (including `audit --layer definition --layer host` and a first trial), and in upgrade mode hand over to the upgrade skill ([LSK §2.5](65-lifecycle-skills.spec.md)).
+WHEN the authoring skill leads a session THE authoring skill SHALL follow the entry paths, phases, verification search and revise mode of [AUT](89-workflow-authoring.spec.md), write the outcome first ([OUT](90-run-outcome.spec.md)), write nothing before the person approves the engine-drawn blueprint and the tables, check the result as [SCF](91-blueprint-and-scaffold.spec.md) says (including `audit --layer definition --layer host` and a first trial), and in upgrade mode hand over to the upgrade skill ([LSK-B13](65-lifecycle-skills.spec.md)).
 
 - GIVEN a session before blueprint approval WHEN the package folder is read THEN nothing exists
 
@@ -88,7 +88,7 @@ WHEN the eval skill runs THE eval skill SHALL run the free checks first (`evals 
 
 ### SHL-B14 Host hooks write the supervision journal
 
-WHEN Claude Code fires `SessionStart`, `UserPromptSubmit`, `PostToolUse` on `Bash`, `Stop`, `SubagentStop` or `SessionEnd` THE plugin's hooks in `plugins/tempergraph/hooks/hooks.json` SHALL run `tempergraph supervision hook <Event> >/dev/null 2>&1 || true` with a 2 s timeout, writing the supervision journal ([SCO §2.2](87-supervision-cost.spec.md)): person turns with matched decision words and never the text ([PRV §2.4.1](85-caller-provenance.spec.md)), engine commands, usage numbers read from the transcript, and `supervision close` at `SessionEnd`.
+WHEN Claude Code fires `SessionStart`, `UserPromptSubmit`, `PostToolUse` on `Bash`, `Stop`, `SubagentStop` or `SessionEnd` THE plugin's hooks in `plugins/tempergraph/hooks/hooks.json` SHALL run `tempergraph supervision hook <Event> >/dev/null 2>&1 || true` with a 2 s timeout, writing the supervision journal ([SCO-B10, SCO-B11](87-supervision-cost.spec.md)): person turns with matched decision words and never the text ([PRV-B15](85-caller-provenance.spec.md)), engine commands, usage numbers read from the transcript, and `supervision close` at `SessionEnd`.
 
 - GIVEN a machine with no engine WHEN a hook fires THEN the host call goes on unchanged
 - GIVEN a person's turn "proceed please" WHEN `UserPromptSubmit` fires THEN the journal holds the matched word and not the text

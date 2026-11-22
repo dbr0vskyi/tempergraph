@@ -1,4 +1,4 @@
-"""Run events for observers (EVT-B1–B7, EVT-AC-1–AC-6): the envelope, session_opened, the activity journal,
+"""Run events for observers (EVT-B1–B7, EVT-AC1–AC-6): the envelope, session_opened, the activity journal,
 tool input summaries, the `events` verb and in-process observers."""
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ def log_path(repo: Path, task: str = "T-1") -> Path:
     return run_dir(state_root_path(repo), "demo", task) / "run.jsonl"
 
 
-# -- envelope and sequence (EVT §2.1, AC-1, AC-2, B2) ----------------------------------------------------
+# -- envelope and sequence (EVT-B8, EVT-B9, AC-1, AC-2, B2) ----------------------------------------------------
 
 
 def test_every_record_carries_the_envelope(repo: Path) -> None:
@@ -56,7 +56,7 @@ def test_every_record_carries_the_envelope(repo: Path) -> None:
     assert gate["unit"] == "draft" and "route_target" in gate
     att = next(r for r in recs if r["kind"] == "attempt_start" and r["session_key"] == "draft.2.retry")
     assert (att["unit"], att["attempt"]) == ("draft", 2)
-    # an old reader that knows only the OBS §2.1 kinds reads the same file and skips the rest (C12)
+    # an old reader that knows only the OBS-B7, OBS-B1, OBS-B8, OBS-B9 kinds reads the same file and skips the rest (OVR-B14)
     counts: dict[str, int] = {}
     old = list(iter_jsonl(log_path(repo), frozenset({"run_started", "agent_run", "gate", "run_exit"}), counts))
     assert old and counts.get("unknown_kinds", 0) > 0 and counts.get("unparsable", 0) == 0
@@ -75,7 +75,7 @@ def test_seq_continues_across_three_resumes(repo: Path) -> None:
                   settings=NO_SLEEP).exit_code is ExitCode.FINISHED
     recs = records(log_path(repo))
     seqs = [r["seq"] for r in recs]
-    assert seqs == sorted(set(seqs)) and seqs == list(range(1, len(seqs) + 1))  # EVT-AC-2
+    assert seqs == sorted(set(seqs)) and seqs == list(range(1, len(seqs) + 1))  # EVT-AC2
     starts = [r for r in recs if r["kind"] == "run_started"]
     assert [r["segment"] for r in starts] == [0, 1, 2, 3]
     for s in starts[1:]:  # EVT-B2: a resume's first run-started record continues from the last seq
@@ -105,7 +105,7 @@ def test_split_session_key(key: str, expected: tuple[Any, ...]) -> None:
     assert split_session_key(key) == expected
 
 
-# -- session_opened and the journal (EVT-B1, §2.3, §2.4) -----------------------------------------------------
+# -- session_opened and the journal (EVT-B1, EVT-B17, EVT-B18, EVT-B7, EVT-B19, EVT-B20) -----------------------------------------------------
 
 
 def test_a_session_is_visible_with_its_transcript_locator(repo: Path) -> None:
@@ -195,7 +195,7 @@ def test_journal_write_failure_is_contained(tmp_path: Path) -> None:
     assert sink.disabled and sink.failures >= 1
 
 
-# -- tool input summaries (EVT §2.5, B4, AC-3) ------------------------------------------------------------
+# -- tool input summaries (EVT-B21, B4, AC-3) ------------------------------------------------------------
 
 
 def _summary(name: str, inp: dict[str, Any], workdir: Path) -> Any:
@@ -243,7 +243,7 @@ def test_every_declared_tool_has_a_capability() -> None:
     assert input_summary("shell", "Bash", {"command": "ls"}, None) == "ls"
 
 
-# -- the canary (EVT-AC-4) -----------------------------------------------------------------------------------
+# -- the canary (EVT-AC4) -----------------------------------------------------------------------------------
 
 
 def test_tool_inputs_only_in_journals_and_live_files(tmp_path: Path) -> None:
@@ -274,7 +274,7 @@ def test_tool_inputs_only_in_journals_and_live_files(tmp_path: Path) -> None:
         assert CANARY not in text
 
 
-# -- in-process observers (EVT §2.6, B5, AC-5) -----------------------------------------------------------------
+# -- in-process observers (EVT-B22, EVT-B23, EVT-B24, B5, AC-5) -----------------------------------------------------------------
 
 
 class Recorder:
@@ -346,7 +346,7 @@ def test_register_observers_reports_missing_names() -> None:
     assert found == [] and missing == ["not-installed"]
 
 
-# -- the events verb (EVT §2.6, B3, AC-6, §4) --------------------------------------------------------------------
+# -- the events verb (EVT-B22, EVT-B23, EVT-B24, B3, AC-6, EVT-B25) --------------------------------------------------------------------
 
 
 def test_events_since_prints_in_order_and_creates_nothing(repo: Path) -> None:
@@ -361,7 +361,7 @@ def test_events_since_prints_in_order_and_creates_nothing(repo: Path) -> None:
     assert code == 0 and isinstance(text, str) and "segment 0 exited 0" in text
     code, act, _ = cli(repo, None, "events", "demo/T-1", "--activity", "draft.1.step")
     assert code == 0
-    assert hash_tree(root) == before  # read-only (C13)
+    assert hash_tree(root) == before  # read-only (OVR-B15)
 
 
 def test_events_without_a_run_log_is_a_usage_error(repo: Path) -> None:

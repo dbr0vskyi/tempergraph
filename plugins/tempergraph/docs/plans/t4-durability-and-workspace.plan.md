@@ -26,17 +26,17 @@ task_id: first-release-t4
 - DUR-B4 says how an observer opens the store.
 - DUR-B5 gives wait's exit codes.
 - DUR-B8 names the alias file and its form.
-- WTR §2.2 now reads `side_effects: workspace`. It said `local`, which is no SCR value.
-- CON's `WorktreeDecl` in code now carries every WTR §2.3 field.
+- WTR-B18 now reads `side_effects: workspace`. It said `local`, which is no SCR value.
+- CON's `WorktreeDecl` in code now carries every WTR-B19 field.
 
-The run-path behaviours land where their code is: `start` and `resume`, DUR-B1, B2 and B7, RCT-B1 and AC-3 with the runner in T5 and T6.1. DUR-AC-4 needs a fixture from an earlier release, and none exists yet, so it starts with release 1's own fixture at T6.1. RCT-B4 (batch) is release 3.
+The run-path behaviours land where their code is: `start` and `resume`, DUR-B1, B2 and B7, RCT-B1 and AC-3 with the runner in T5 and T6.1. DUR-AC4 needs a fixture from an earlier release, and none exists yet, so it starts with release 1's own fixture at T6.1. RCT-B4 (batch) is release 3.
 
 ## 1. Requirements
 
 | Req | Spec | Criteria | Phase |
 |---|---|---|---|
 | REQ-10 | DUR | AC-1 (state rows), AC-2, AC-3; B3, B4, B5, B8 | T4.1, T4.2 |
-| REQ-11 | WSP, WTR | WSP-AC-1, B1, B2, B3; WTR §2.2, §2.4, §2.5 `head`, §2.6 start, resume and release, `worktree list` and `path` data | T4.3 |
+| REQ-11 | WSP, WTR | WSP-AC1, B1, B2, B3; WTR-B18, WTR-B20, WTR-B21 `head`, §2.6 start, resume and release, `worktree list` and `path` data | T4.3 |
 | REQ-12 | RCT | B2, B3, §4, AC-2 | T4.4 |
 
 ## 2. Phases
@@ -45,30 +45,30 @@ The run-path behaviours land where their code is: `start` and `resume`, DUR-B1, 
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 4.1.1 | `engine/tests/test_durability.py` | Test every thread state, running over a held lock, 16 writer processes, the lock probe, aliases | DUR §2.1, B3, B8 | yes | P1 | ✓ | 2026-11-20 |
-| 4.1.2 | `engine/src/tempergraph/durability/checkpoint.py` | Create `open_saver`, `open_readonly`, `thread_ids`, `observer_graph`, `snapshot`, `classify_snapshot` | DUR §2, B3, B4 | | P1 | ✓ | 2026-11-20 |
-| 4.1.3 | `engine/src/tempergraph/durability/lock.py`, `alias.py` | Create `RunLock`, `is_held`, alias `claim` and `resolve` | WSP §2, DUR-B8 | | P1 | ✓ | 2026-11-20 |
+| 4.1.1 | `engine/tests/test_durability.py` | Test every thread state, running over a held lock, 16 writer processes, the lock probe, aliases | DUR-B9, B3, B8 | yes | P1 | ✓ | 2026-11-20 |
+| 4.1.2 | `engine/src/tempergraph/durability/checkpoint.py` | Create `open_saver`, `open_readonly`, `thread_ids`, `observer_graph`, `snapshot`, `classify_snapshot` | DUR-B9, DUR-B11, B3, B4 | | P1 | ✓ | 2026-11-20 |
+| 4.1.3 | `engine/src/tempergraph/durability/lock.py`, `alias.py` | Create `RunLock`, `is_held`, alias `claim` and `resolve` | WSP-B8, WSP-B9, WSP-B11, DUR-B8 | | P1 | ✓ | 2026-11-20 |
 
 ### T4.2 Status and wait
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 4.2.1 | `engine/tests/test_durability.py` | Test the status rows, selection by alias, wait outcomes with a replaced clock, nothing written | DUR §2.2, B4, B5, AC-3 | yes | P1 | ✓ | 2026-11-20 |
-| 4.2.2 | `engine/src/tempergraph/durability/status.py` | Create `classify`, `status`, `select`, `wait` | DUR §2.2 | | P1 | ✓ | 2026-11-20 |
+| 4.2.1 | `engine/tests/test_durability.py` | Test the status rows, selection by alias, wait outcomes with a replaced clock, nothing written | DUR-B11, B4, B5, AC-3 | yes | P1 | ✓ | 2026-11-20 |
+| 4.2.2 | `engine/src/tempergraph/durability/status.py` | Create `classify`, `status`, `select`, `wait` | DUR-B11 | | P1 | ✓ | 2026-11-20 |
 
 ### T4.3 Workspace
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 4.3.1 | `engine/tests/test_workspace.py` | Test flat names, `auto` rows, the lifecycle with real git worktrees, a failed bootstrap, the interpreter order | WTR §2.2–§2.6, WSP-B1–B3 | yes | P1 | ✓ | 2026-11-20 |
-| 4.3.2 | `engine/src/tempergraph/workspace.py` | Create `resolve_workspace`, `check_plan`, `prepare_workspace`, `bootstrap`, `attach_workspace`, `release_workspace`, `list_worktrees`, `worktree_path`, `python_for` | WTR §2, WSP | | P1 | ✓ | 2026-11-20 |
+| 4.3.1 | `engine/tests/test_workspace.py` | Test flat names, `auto` rows, the lifecycle with real git worktrees, a failed bootstrap, the interpreter order | WTR-B18, WTR-B19, WTR-B20, WTR-B21, WTR-B22, WSP-B1–B3 | yes | P1 | ✓ | 2026-11-20 |
+| 4.3.2 | `engine/src/tempergraph/workspace.py` | Create `resolve_workspace`, `check_plan`, `prepare_workspace`, `bootstrap`, `attach_workspace`, `release_workspace`, `list_worktrees`, `worktree_path`, `python_for` | WTR-B17 to WTR-B27, WSP | | P1 | ✓ | 2026-11-20 |
 
 ### T4.4 Stop
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
 | 4.4.1 | `engine/tests/test_control.py` | Test not-live refusal, the stronger mode, an unparsable request, `--now` ending a real tree within 15 s | RCT-B2, B3, §4, AC-2 | yes | P1 | ✓ | 2026-11-20 |
-| 4.4.2 | `engine/src/tempergraph/durability/control.py` | Create `request_stop`, `take_stop`, `StopWatcher` | RCT §2 | | P1 | ✓ | 2026-11-20 |
+| 4.4.2 | `engine/src/tempergraph/durability/control.py` | Create `request_stop`, `take_stop`, `StopWatcher` | RCT-B6, RCT-B7 | | P1 | ✓ | 2026-11-20 |
 
 ## 6. Code verification
 
@@ -83,5 +83,5 @@ The run-path behaviours land where their code is: `start` and `resume`, DUR-B1, 
 |---|---|
 | A1 | Thread states are read through a graph compiled with node bodies that never run, so classification uses LangGraph's own view of pending nodes and interrupts rather than the checkpoint's internal channel names. |
 | A2 | `stopped` and `finished` both have no pending node; `finished` is told by the finalizer's `finalized` state channel. |
-| A3 | Setup commands of a worktree bootstrap run through a command runner passed in; T5's runner (CHK §2.3) is that runner. |
+| A3 | Setup commands of a worktree bootstrap run through a command runner passed in; T5's runner (CHK-B12, CHK-B13) is that runner. |
 | A4 | Release 1 never removes a worktree: `release_workspace` unlocks it and keeps it (`cleanup: on_finish` is release 2). |

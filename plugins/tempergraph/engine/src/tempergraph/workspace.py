@@ -1,9 +1,9 @@
-"""The run's workspace: in place, or one engine-owned git worktree (WSP §2, WTR §2; release-1 part, ADR-0090).
+"""The run's workspace: in place, or one engine-owned git worktree (WSP-B8, WSP-B9, WSP-B11, WTR-B17 to WTR-B27; release-1 part, ADR-0090).
 
 Release 1 builds `run.workspace` (`auto`, `worktree`, `in_place`), the `sibling` root, the `head` base,
 derived names, start with bootstrap, resume with re-attach, release without removal, and the data behind
 `worktree list` and `worktree path`. Names are derived, never typed, and every git call puts
-`--end-of-options` before a ref or path (WTR §2.4).
+`--end-of-options` before a ref or path (WTR-B20).
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ class WorkspaceRefused(Exception):
 
 
 # ---------------------------------------------------------------------------------------------
-# Names (WTR §2.4)
+# Names (WTR-B20)
 
 
 def flat_part(text: str) -> str:
@@ -88,7 +88,7 @@ class WorkspacePlan:
 
 @dataclass(kw_only=True)
 class WorkspaceRecord:
-    """WTR §2.8; stored in state as a plain dict."""
+    """WTR-B24; stored in state as a plain dict."""
 
     mode: Mode
     requested: str
@@ -129,7 +129,7 @@ def writes_files(spec: WorkflowSpec) -> bool:
 
 def resolve_workspace(spec: WorkflowSpec, target: Path, requested: str | None = None, *, task_id: str = "",
                       prefix: str = BRANCH_PREFIX, base: str = "head") -> WorkspacePlan:
-    """WTR §2.2 and §2.5 for the release-1 values; pure and model-free (it reads git, writes nothing)."""
+    """WTR-B18, WTR-B21 for the release-1 values; pure and model-free (it reads git, writes nothing)."""
     req = requested or spec.workspace or "auto"
     if req not in ("auto", "worktree", "in_place"):
         raise WorkspaceRefused("workspace_invalid", f"run.workspace {req!r} is not auto, worktree or in_place")
@@ -157,7 +157,7 @@ def resolve_workspace(spec: WorkflowSpec, target: Path, requested: str | None = 
     cur = branch(main)
     base_branch = cur if cur and cur != "HEAD" else _default_branch(main)
     base_ref = "head"
-    if base.startswith("ref:"):  # WTR §2.5: a trial or eval case starts at its own commit (release 1 for trials)
+    if base.startswith("ref:"):  # WTR-B21: a trial or eval case starts at its own commit (release 1 for trials)
         name = base[4:]
         if not name or not is_safe_ref(name) or name.startswith("-"):
             raise WorkspaceRefused("base_unresolved", f"run.worktree.base {base!r} is not a valid ref")
@@ -193,7 +193,7 @@ def _default_branch(main: Path) -> str:
 
 
 def check_plan(plan: WorkspacePlan) -> list[str]:
-    """`run --check`: what a start would refuse, creating nothing (WTR §2.6)."""
+    """`run --check`: what a start would refuse, creating nothing (WTR-B22)."""
     problems: list[str] = []
     if plan.mode != "worktree" or plan.main is None:
         return problems
@@ -213,7 +213,7 @@ def _branch_exists(main: Path, br: str) -> bool:
 
 
 # ---------------------------------------------------------------------------------------------
-# Lifecycle (WTR §2.6)
+# Lifecycle (WTR-B22)
 
 RunCommand = Callable[[Sequence[str], Path, float], int]  # argv, cwd, timeout -> exit code
 

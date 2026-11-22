@@ -1,4 +1,4 @@
-"""The compatibility changelog and a workflow's compatibility with the running engine (VER §2.3, §2.7).
+"""The compatibility changelog and a workflow's compatibility with the running engine (VER-B9, VER-B2, VER-B5).
 
 One file per release, `tempergraph/data/changelog/<engine_version>.json`. Range selection reads the files
 after the stamp up to and including the running engine, oldest first (VER-B2). Detect rules run typed kinds
@@ -41,7 +41,7 @@ def semver(v: str) -> tuple[int, int, int]:
 
 
 def entry_problems(e: Mapping[str, Any]) -> list[str]:
-    """VER-AC-2: an entry against §2.3, and VER-B4: a `renamed` entry a transform fits carries it."""
+    """VER-AC2: an entry against VER-B9, and VER-B4: a `renamed` entry a transform fits carries it."""
     out = []
     if not re.match(r"^E\d+\.\d+\.\d+-\d+$", str(e.get("id") or "")):
         out.append("id must be E<version>-<n>")
@@ -93,7 +93,7 @@ def entries_between(stamp: str | None, engine: str = ENGINE_VERSION,
 
 def breaking_since_level(level: int, folder: Path | None = None) -> list[str]:
     """PKG-B6 row 2: ids of the breaking `workflow` entries a package at interface `level` has not met. The
-    level starts at 1 and grows by one with each release holding such an entry (VER §2.2), so the entries of
+    level starts at 1 and grows by one with each release holding such an entry (VER-B8), so the entries of
     every release that raised it above `level` are the ones listed, oldest first."""
     at, out = 1, []
     for _, path in releases(folder):
@@ -174,7 +174,7 @@ def detect(entry: Mapping[str, Any], spec: WorkflowSpec, root: Path,
 def compatibility(spec: WorkflowSpec, root: Path, stamp: Mapping[str, Any] | None, *,
                   engine: str = ENGINE_VERSION, folder: Path | None = None,
                   finding_codes: Iterable[str] = ()) -> dict[str, Any]:
-    """VER §2.7: `current`, `stamp_behind`, `needs_upgrade`, `out_of_range`, `unstamped`, with the hits."""
+    """VER-B2, VER-B5: `current`, `stamp_behind`, `needs_upgrade`, `out_of_range`, `unstamped`, with the hits."""
     stamped = str(stamp.get("engine_version")) if stamp else None
     entries = [e for e in entries_between(stamped, engine, folder) if e.get("audience") == "workflow"]
     hits = {str(e["id"]): detect(e, spec, root, finding_codes) for e in entries}

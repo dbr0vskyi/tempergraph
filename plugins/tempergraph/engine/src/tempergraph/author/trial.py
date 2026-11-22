@@ -1,12 +1,12 @@
-"""Rungs 8 and 9 of `author verify` (SCF §2.5) and the trial report and grades (SCF §2.5, §2.7).
+"""Rungs 8 and 9 of `author verify` (SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22) and the trial report and grades (SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22, SCF-B11, SCF-B13, SCF-B15, SCF-B16, SCF-B17).
 
-Rung 8 grades each judged criterion's seed fixtures (`scale.seeds`, OUT §2.2.1) with the gate's real judge,
-twice, on scratch copies, with no step session (SCF-AC-5, AC-7). Rung 9 starts one run of a case from
+Rung 8 grades each judged criterion's seed fixtures (`scale.seeds`, OUT-B11) with the gate's real judge,
+twice, on scratch copies, with no step session (SCF-AC5, AC-7). Rung 9 starts one run of a case from
 `evals/cases.json` in a fresh worktree, as a dry run with `run.run_cost_cap_usd` set to what is left of the
 cap. `author trial` shows each criterion's status beside the person's grade, disagreements first, and
 `author grade` writes one grade: a ledger label (`source` from the caller's decider, `origin: authoring_trial`,
-FBK §2.1) for a judged criterion, and the grade into a calibration case candidate for that gate (JCL §2.1).
-The workflow's `improvement_mode` is never changed (SCF-AC-6).
+FBK-B8) for a judged criterion, and the grade into a calibration case candidate for that gate (JCL-B9, JCL-B10).
+The workflow's `improvement_mode` is never changed (SCF-AC6).
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ def _row(code: str, unit: str | None, message: str, remedy: str = "") -> dict[st
     return {"code": code, "unit": unit, "message": message, "remedy": remedy}
 
 
-LADDER = "return to the guidance ladder of AUT §2.4.1 for this criterion: its text or scale is not clear enough"
+LADDER = "return to the guidance ladder of AUT-B19, AUT-B20, AUT-B21 for this criterion: its text or scale is not clear enough"
 
 
 # -- rung 8: judge seeds ------------------------------------------------------------------------------------
@@ -87,7 +87,7 @@ def seed_key(spec: WorkflowSpec, gate: str, folder: Path, pairs: list[tuple[str,
 
 def _seed_expected(doc: Mapping[str, Any], criterion: str) -> str | None:
     """The author's own expectation, stated in the case's `seed` block (one entry or a list of them). It serves
-    rung 8 only, which writes no score; a person's label for the criterion comes first (SCF §2.5)."""
+    rung 8 only, which writes no score; a person's label for the criterion comes first (SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22)."""
     block = doc.get("seed")
     for entry in block if isinstance(block, list) else [block]:
         if isinstance(entry, Mapping) and entry.get("criterion_id") == criterion and entry.get("expected"):
@@ -102,7 +102,7 @@ def seeds(spec: WorkflowSpec, executor_for: Callable[[str], Any], cap: float | N
     criterion of the gate for a seed, so a seed shared by two criteria is judged twice, not four times.
 
     `shown` holds the seeds a failing rung 8 showed the author, with the gate's digest then. A seed whose gate
-    changed since was in front of someone editing that gate, so it moves to `tune` for good (JCL §2.1.1); a
+    changed since was in front of someone editing that gate, so it moves to `tune` for good (JCL-B11); a
     seed only graded and never edited against stays `holdout`.
 
     `passed` holds the seeds an earlier rung 8 graded as expected both times, each with its `seed_key`. A seed
@@ -136,7 +136,7 @@ def seeds(spec: WorkflowSpec, executor_for: Callable[[str], Any], cap: float | N
             ids = [str(s) for s in (scale or {}).get("seeds") or [] if s] if isinstance(scale, Mapping) else []
             if len(ids) < 2:
                 out.findings.append(_row("criterion-no-seed", gate, f"{c.id}: needs a met seed and an unmet or "
-                                         f"partial seed (OUT §2.2.1)", "ask for one example of each, or offer a "
+                                         f"partial seed (OUT-B11)", "ask for one example of each, or offer a "
                                          "contrast pair, and save them under evals/calibration/" + gate))
                 continue
             for sid in ids:
@@ -343,7 +343,7 @@ def grade(spec: WorkflowSpec, root: Path, target: Path, trial: dict[str, Any], u
 def _candidate(spec: WorkflowSpec, root: Path, target: Path, trial: Mapping[str, Any], gate: str, criterion: str,
                status: str, reason: str, reviewer: str, by_person: bool) -> str | None:
     """The trial's output as a calibration case candidate for the gate's judge: the request and the trial
-    workspace's files, and the person's grade as its label (JCL §2.1, `provenance: harvested`)."""
+    workspace's files, and the person's grade as its label (JCL-B9, JCL-B10, `provenance: harvested`)."""
     from tempergraph.improve import calibration as cal
 
     try:
@@ -368,7 +368,7 @@ def _candidate(spec: WorkflowSpec, root: Path, target: Path, trial: Mapping[str,
            "reviewer": reviewer, "by_person": by_person, "at": now_iso(), "origin": "authoring_trial",
            **({"criterion_digest": cal.criterion_digest(ids[criterion])} if criterion in ids else {})}
     c.labels = [x for x in c.labels if x.get("criterion_id") != criterion] + [lab]
-    c.state = "candidate"  # a person confirms it with `evals label` before it is scored (JCL §2.1)
+    c.state = "candidate"  # a person confirms it with `evals label` before it is scored (JCL-B9, JCL-B10)
     c.save()
     return f"{gate}/{case_id}"
 

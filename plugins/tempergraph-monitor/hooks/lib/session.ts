@@ -1,5 +1,5 @@
 // The session view's Calls, Processes and Log tabs (MDD §2.4), as pure functions over what the mod read:
-// the activity journal (engine EVT §2.3), a `ps` listing with constant argv, and the tails of local logs.
+// the activity journal (engine EVT-B17, EVT-B18, EVT-B7, EVT-B19), a `ps` listing with constant argv, and the tails of local logs.
 
 import { clip, duration } from './model'
 

@@ -1,8 +1,8 @@
-"""Classification, the status document and wait (DUR §2, §2.2, DUR-B4, DUR-B5).
+"""Classification, the status document and wait (DUR-B9, DUR-B11, DUR-B4, DUR-B5).
 
 All three are read-only and model-free: the checkpoint opens read-only, the lock is probed without
 being created, and nothing is written. Fields the run has not recorded yet are left out, never zeroed
-(CON §2.10).
+(CON-B14, CON-B1, CON-B15).
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ def _read(state_root: Path, spec: WorkflowSpec, tid: str) -> tuple[Snapshot, boo
 
 
 def breakpoint_at(state_root: Path, workflow: str, task_id: str) -> dict[str, Any] | None:
-    """The operator breakpoint a thread is paused at, if any (FLX §2.5): a marker beside the run log."""
+    """The operator breakpoint a thread is paused at, if any (FLX-B10): a marker beside the run log."""
     try:
         doc = json.loads((run_dir(state_root, workflow, task_id) / "breakpoint.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -67,7 +67,7 @@ def _state(state_root: Path, spec: WorkflowSpec, tid: str, snap: Snapshot, held:
 
 
 def classify(state_root: Path, spec: WorkflowSpec, task_id: str) -> ThreadState:
-    """DUR §2 `classify`: read-only; creates nothing."""
+    """DUR-B9, DUR-B11 `classify`: read-only; creates nothing."""
     tid = thread_id(spec.name, task_id)
     snap, held = _read(state_root, spec, tid)
     return _state(state_root, spec, tid, snap, held)
@@ -85,7 +85,7 @@ def _pending(workflow: str, tid: str, snap: Snapshot) -> list[dict[str, Any]]:
         unit = node.rsplit(".", 1)[0] if node.endswith(".human") else node
         g = {"unit": unit, "item": p.get("item"), "kind": p.get("kind", "escalation"),
              "resume": p.get("resume") or resume_command(workflow, tid, p.get("decisions"))}
-        if p.get("deadline_at"):  # FLX §2.3: overdue until someone applies the deadline
+        if p.get("deadline_at"):  # FLX-B8: overdue until someone applies the deadline
             g["deadline_at"] = p["deadline_at"]
             g["on_deadline"] = p.get("on_deadline")
             with contextlib.suppress(ValueError, TypeError):
@@ -112,7 +112,7 @@ def _input_counts(state_root: Path, workflow: str, tid: str, gates: list[dict[st
 
 
 def _settings(state_root: Path, spec: WorkflowSpec, options: Any) -> dict[str, Any]:
-    """RST §2.7: the thread's digest and overridden keys from its snapshot, and `settings_stale` when the
+    """RST-B27: the thread's digest and overridden keys from its snapshot, and `settings_stale` when the
     settings files now resolve differently. Read-only; a snapshot it cannot read adds nothing."""
     if not isinstance(options, dict) or not options.get("settings"):
         return {}
@@ -128,12 +128,12 @@ def _settings(state_root: Path, spec: WorkflowSpec, options: Any) -> dict[str, A
         files = rst.load_files(state_root, home_path())
         out["settings_stale"] = None if files.errors else rst.resolve(spec, opts, files).digest != then.digest
         return out
-    except Exception:  # noqa: BLE001 - a status row never fails on its settings (DUR §4)
+    except Exception:  # noqa: BLE001 - a status row never fails on its settings (DUR-B10, DUR-B3, DUR-B11)
         return {}
 
 
 def _lineage(state_root: Path, workflow: str, tid: str, run: Mapping[str, Any]) -> dict[str, Any]:
-    """RRN §2.4: the source of a rerun (from the thread's state) and the reruns made from it (`lineage.json`)."""
+    """RRN-B17, RRN-B18: the source of a rerun (from the thread's state) and the reruns made from it (`lineage.json`)."""
     out: dict[str, Any] = {}
     src = run.get("rerun_of") or (run.get("meta") or {}).get("rerun_of")
     if isinstance(src, dict):
@@ -149,7 +149,7 @@ def _lineage(state_root: Path, workflow: str, tid: str, run: Mapping[str, Any]) 
     if made:
         out["reruns"] = made
     if isinstance(superseded, str):
-        out["superseded_by"] = superseded  # RRN §2.4: a `--same-branch` rerun took this finished thread's branch
+        out["superseded_by"] = superseded  # RRN-B17, RRN-B18: a `--same-branch` rerun took this finished thread's branch
     return out
 
 
@@ -169,7 +169,7 @@ def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     for key in RUN_FIELDS:
         if key in run:
             r[key] = run[key]
-    if run.get("degraded"):  # FLX-AC-4: a run that took a fallback is never shown without it
+    if run.get("degraded"):  # FLX-AC4: a run that took a fallback is never shown without it
         r["degraded"] = True
         r["degraded_unit"] = (run["degraded"] or {}).get("unit")
     r.update(_settings(state_root, spec, run.get("options")))
@@ -191,9 +191,9 @@ def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     from tempergraph.durability import carry
 
     carried = carry.marker(state_root, spec.name, split_thread(tid)[1])
-    if carried.get("on") or carried.get("state") in ("unpushed", "delete_failed"):  # CAR §4
+    if carried.get("on") or carried.get("state") in ("unpushed", "delete_failed"):  # CAR-B5, CAR-B8, CAR-B11, CAR-B6
         r["carry"] = carried.get("state") or "on"
-    eng = engine_file.read(state_root, spec.name, split_thread(tid)[1])  # MIG §2.1
+    eng = engine_file.read(state_root, spec.name, split_thread(tid)[1])  # MIG-B8
     if (eng.get("last_on") or {}).get("engine_version"):
         r["engine"] = eng["last_on"]["engine_version"]
     if eng.get("pinned"):
@@ -211,7 +211,7 @@ class Selector:
 
 
 def _threads(state_root: Path, spec: WorkflowSpec) -> list[str]:
-    """Every thread in the databases of the checkpoint formats this engine resumes (MIG §2.4)."""
+    """Every thread in the databases of the checkpoint formats this engine resumes (MIG-B12, MIG-B13, MIG-B14)."""
     out: list[str] = []
     for fmt in sorted({*engine_file.resumes(), engine_file.checkpoint_format()}):
         with open_readonly(checkpoint_path(state_root, spec.name, fmt)) as saver:
@@ -243,7 +243,7 @@ def status(state_root: Path, specs: Mapping[str, WorkflowSpec], sel: Selector | 
     for spec, tid in select(state_root, specs, sel or Selector()):
         try:
             rows.append(row(state_root, spec, tid))
-        except Exception as exc:  # noqa: BLE001 - one unreadable thread marks only its row (DUR §4)
+        except Exception as exc:  # noqa: BLE001 - one unreadable thread marks only its row (DUR-B10, DUR-B3, DUR-B11)
             rows.append({"thread_id": tid, "workflow": spec.name, "state": "unreadable", "error": type(exc).__name__})
     return {"schema_version": SCHEMA["status"], "generated_at": now_iso(), "threads": rows}
 

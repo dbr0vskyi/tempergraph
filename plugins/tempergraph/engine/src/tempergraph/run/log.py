@@ -1,4 +1,4 @@
-"""The run log, cost rules and the live progress file (OBS §2.1–§2.3, EVT §2.2; contract C2).
+"""The run log, cost rules and the live progress file (OBS-B7, OBS-B1, OBS-B8, OBS-B9, OBS-B10 to OBS-B13, OBS-B14, EVT-B10 to EVT-B16; OVR-B4).
 
 Every write is best effort: a failing write is counted and never changes the run.
 """
@@ -21,7 +21,7 @@ from tempergraph.security.scrub import clip, scrub
 from tempergraph.store.layout import now_iso
 
 # Engine default prices, USD per million tokens, by model family, for the current generation that the tier
-# aliases resolve to (first-party list prices as of 2026-11; OBS §2.2). The binding table overrides per model.
+# aliases resolve to (first-party list prices as of 2026-11; OBS-B10 to OBS-B13). The binding table overrides per model.
 # A row without `cache_read` prices cache reads at CACHE_READ_FACTOR of input.
 DEFAULT_PRICES: dict[str, dict[str, float]] = {
     "haiku": {"input": 0.10, "output": 0.50},
@@ -39,7 +39,7 @@ def family(model: str | None) -> str | None:
 
 def estimate(usage: Usage, model: str | None, prices: Mapping[str, Mapping[str, float]] | None = None
              ) -> float | None:
-    """The engine's own estimate for a session with tokens; None when unmeasured (OBS §2.2)."""
+    """The engine's own estimate for a session with tokens; None when unmeasured (OBS-B10 to OBS-B13)."""
     if not usage.has_tokens():
         return None
     row = (prices or {}).get(model or "") or DEFAULT_PRICES.get(family(model) or "")
@@ -54,7 +54,7 @@ def estimate(usage: Usage, model: str | None, prices: Mapping[str, Mapping[str, 
 
 @dataclass(kw_only=True)
 class CostTotals:
-    """Run cost so far: reported and estimated kept apart (OBS §2.2)."""
+    """Run cost so far: reported and estimated kept apart (OBS-B10 to OBS-B13)."""
 
     reported: float = 0.0
     estimated: float = 0.0
@@ -84,7 +84,7 @@ class CostTotals:
         return "complete" if self.reported_sessions == self.sessions else "estimated"
 
     def figure(self) -> float:
-        """The run line's figure: reported where present, else estimated, per session (BUD §2)."""
+        """The run line's figure: reported where present, else estimated, per session (BUD-B8, BUD-B9)."""
         return round(self.reported + self.estimated_only, 6)
 
     def to_json(self) -> dict[str, Any]:
@@ -107,7 +107,7 @@ ENVELOPE_OPTIONAL = ("unit", "item", "attempt", "session_key")
 
 
 def cost_so_far(cost: Mapping[str, Any] | None) -> dict[str, Any]:
-    """EVT §2.2 `cost_so_far`: reported, estimated and the completeness flag for the thread so far."""
+    """EVT-B10 to EVT-B16 `cost_so_far`: reported, estimated and the completeness flag for the thread so far."""
     t = CostTotals.from_json(cost)
     j = t.to_json()
     return {"reported": j["reported"], "estimated": j["estimated"], "completeness": t.completeness}
@@ -116,7 +116,7 @@ def cost_so_far(cost: Mapping[str, Any] | None) -> dict[str, Any]:
 class RunLog:
     """`runs/<workflow>/<task_id>/run.jsonl`; the first line carries the schema.
 
-    Every record carries the envelope of EVT §2.1: `seq` continues across instances and segments,
+    Every record carries the envelope of EVT-B8, EVT-B9: `seq` continues across instances and segments,
     `segment` counts process lifetimes (0 at the start, +1 per resume), `thread_id` comes from the path,
     and `unit`, `item`, `attempt` and `session_key` are present, null when the record has no unit.
     """
@@ -129,7 +129,7 @@ class RunLog:
         self.segment: int | None = None
         self.checked_tail = False
         self.observers = observers  # an ObserverHub (run/events.py) or None; enabled in operator config only
-        self._lock = threading.RLock()  # branches of a parallel block write from their own threads (WSP §5)
+        self._lock = threading.RLock()  # branches of a parallel block write from their own threads (R-150 WSP)
 
     def _segment(self) -> int:
         """This process's segment: the one after the log's last `run_started`, or 0 for a new thread."""
@@ -168,7 +168,7 @@ class RunLog:
                 _end_cut_line(self.path)
             self.checked_tail = True
             append_jsonl(self.path, out)
-        except Exception:  # noqa: BLE001 - observability never changes the run (C2)
+        except Exception:  # noqa: BLE001 - observability never changes the run (OVR-B4)
             self.failures += 1
             return self.seq
         if self.observers is not None:
@@ -182,7 +182,7 @@ class RunLog:
         return self.seq
 
     def _hooks(self, rec: Mapping[str, Any]) -> None:
-        """Lifecycle hooks for the record's event (CLI §2.2); best effort, never changes the run (C2)."""
+        """Lifecycle hooks for the record's event (HOK-B1 to HOK-B6); best effort, never changes the run (OVR-B4)."""
         try:
             from tempergraph.observe import hooks
 
@@ -191,7 +191,7 @@ class RunLog:
             self.failures += 1
 
     def _beat(self, record: str) -> None:
-        """The heartbeat to configured sinks, at most every 60 s and at the run's ends (CST §2.2); best effort."""
+        """The heartbeat to configured sinks, at most every 60 s and at the run's ends (CST-B9); best effort."""
         try:
             from tempergraph.observe import sinks
 
@@ -200,7 +200,7 @@ class RunLog:
             self.failures += 1
 
     def _rows(self, record: str, segment: int) -> None:
-        """The machine index at `run_started` and the stats row at `run_exit` (CST §2.1, §2.2); best effort (C2)."""
+        """The machine index at `run_started` and the stats row at `run_exit` (CST-B8, CST-B9); best effort (OVR-B4)."""
         try:
             from tempergraph.observe import rows
 
@@ -226,7 +226,7 @@ def _end_cut_line(path: Path) -> None:
 
 
 def split_session_key(key: str) -> tuple[str | None, str | None, int | None]:
-    """`<unit>[.<item>].<attempt>.<kind>[.<n>]` back into unit, item and attempt (EVT §2.1)."""
+    """`<unit>[.<item>].<attempt>.<kind>[.<n>]` back into unit, item and attempt (EVT-B8, EVT-B9)."""
     parts = key.split(".")
     for i in range(len(parts) - 2, 0, -1):
         if parts[i].isdigit() and not parts[i + 1].isdigit():
@@ -287,7 +287,7 @@ def _jsonable(v: Any) -> Any:
 
 JOURNAL_MAX_LINES = 20_000
 JOURNAL_MAX_BYTES = 8 * 1024 * 1024
-# The journal cap's drop order (EVT §2.3): past half the cap `model_delta` lines are dropped, past three
+# The journal cap's drop order (EVT-B17, EVT-B18, EVT-B7, EVT-B19): past half the cap `model_delta` lines are dropped, past three
 # quarters `text` lines too, and past 95 % everything but tool lines; the last slot is the `truncated` line.
 _DROP_STAGES: tuple[tuple[float, frozenset[str] | None], ...] = (
     (0.95, None), (0.75, frozenset({"model_delta", "text"})), (0.5, frozenset({"model_delta"})))
@@ -295,7 +295,7 @@ _TOOL_EVENTS = frozenset({"tool_started", "tool_finished"})
 
 
 class LiveSink(EventSink):
-    """The live progress file (OBS §2.3, RDD §2.2) and the activity journal (EVT §2.3).
+    """The live progress file (OBS-B14, RDD-B12) and the activity journal (EVT-B17, EVT-B18, EVT-B7, EVT-B19).
 
     The journal is buffered and flushed at most once a second and at session end; the live file is replaced
     at most once a second. `opened` is called once with the `session_started` data, so the caller writes
@@ -370,7 +370,7 @@ class LiveSink(EventSink):
                 for row in rows:
                     fh.write(json.dumps(row, ensure_ascii=False) + "\n")
             os.chmod(path, 0o600)
-        except Exception:  # noqa: BLE001 - EVT §4: journal off for this session, the session goes on
+        except Exception:  # noqa: BLE001 - EVT-B25: journal off for this session, the session goes on
             self.failures += 1
             self.disabled = True
             return
@@ -426,7 +426,7 @@ class LiveSink(EventSink):
             self._live()
 
     def process_started(self, pgid: int, *, listing: Any = None, every_s: float | None = None) -> None:
-        """The launcher's group id (EVT §2.3): kept for `session_opened` and sampled for `resources` lines."""
+        """The launcher's group id (EVT-B17, EVT-B18, EVT-B7, EVT-B19): kept for `session_opened` and sampled for `resources` lines."""
         from tempergraph.run.resources import EVERY_S, Sampler
 
         self.pgid = pgid
@@ -441,7 +441,7 @@ class LiveSink(EventSink):
             self._journal({"n": self.n, **row})
 
     def write_meta(self, **fields: Any) -> None:
-        """`meta.json` of the session (LOS §2.1), merged field by field; best effort (contract C2)."""
+        """`meta.json` of the session (LOS-B7, LOS-B8, LOS-B9), merged field by field; best effort (OVR-B4)."""
         if self.dir is None or self.disabled:
             return
         path = self.dir / "meta.json"
@@ -490,7 +490,7 @@ class LiveSink(EventSink):
         self.flush()
         self.open_tool = None
         self.write_meta(ended_at=now_iso())
-        if self.dir is not None:  # LOS §2.1: the live file is removed at session end
+        if self.dir is not None:  # LOS-B7, LOS-B8, LOS-B9: the live file is removed at session end
             try:
                 (self.dir / "live.json").unlink(missing_ok=True)
             except OSError:

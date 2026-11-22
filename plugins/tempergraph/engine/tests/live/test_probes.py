@@ -1,4 +1,4 @@
-"""Live probes against a signed-in `claude` (ECC §2.7, WTR §5, SRV; live-checks plan L-1 to L-12).
+"""Live probes against a signed-in `claude` (ECC-B13, R-150 WTR, SRV; live-checks plan L-1 to L-12).
 
 Skipped unless TEMPERGRAPH_LIVE=1. Each test launches `claude -p` with the argv the engine itself builds, so a
 pass confirms the engine's launch, not a hand-written one. Each session is capped with `--max-budget-usd`; the
@@ -69,7 +69,7 @@ def test_p_cc_1_bare_isolates_user_config(tmp_path: Path) -> None:  # P-CC-1
     init = _init(ev)
     print("init tools:", init.get("tools"), "mcp:", init.get("mcp_servers"), "plugins:", init.get("plugins"))
     assert _result(ev).get("subtype") == "success", "credentials did not work under --bare"
-    # Plugins of source `@builtin` ship inside the CLI build; they are not user configuration (ECC §2.7).
+    # Plugins of source `@builtin` ship inside the CLI build; they are not user configuration (ECC-B13).
     user_plugins = [p for p in init.get("plugins") or []
                     if not str(p.get("source") if isinstance(p, dict) else p).endswith("@builtin")]
     assert not init.get("mcp_servers") and not user_plugins, user_plugins
@@ -144,7 +144,7 @@ def test_p_wtr_1_no_worktree_tools(tmp_path: Path) -> None:  # P-WTR-1
     assert "EnterWorktree" not in tools and "ExitWorktree" not in tools
 
 
-def test_srv_reviewer_has_no_tools(tmp_path: Path) -> None:  # SRV-AC-6 live
+def test_srv_reviewer_has_no_tools(tmp_path: Path) -> None:  # SRV-AC6 live
     argv = judge_argv(ViewSet(tool_less=True), MODEL, isolated=False) + CAP
     ev = _claude(argv, "Reply with the word ready.", tmp_path)
     assert (_init(ev).get("tools") or []) == [] and _result(ev).get("subtype") == "success"

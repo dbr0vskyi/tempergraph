@@ -49,7 +49,7 @@ task_id: second-release
 | EC-1 | The owner accepts ADR-0125 (and ADR-0121 to ADR-0124), or edits them | Any code track | Owner |
 | EC-2 | A track's specs are `ready-for-implementation`: its first phase turns each open question into a recorded default and sets the status (R-130 G5) | Each track | Implementer, owner may veto |
 | EC-3 | Release 1's live checks that a track builds on are recorded ([live checks plan](live-checks.plan.md)) | The live half of each track | Owner's machine |
-| EC-4 | Satisfied: WSP §2.4 with ADR-0127 and R-131; WIN with ADR-0128 and R-132 | R2-T8 | — |
+| EC-4 | Satisfied: WSP-B15 to WSP-B18 with ADR-0127 and R-131; WIN with ADR-0128 and R-132 | R2-T8 | — |
 
 ### 1.2 Feature list
 
@@ -62,11 +62,11 @@ Every item release 2 ships. Items not built are refused with `not_in_release`, n
 | I2-3 | Complexity switches: measures, rules file and zones, arm contract, one-way re-arm, exploration, `report --switch` | CXR | R2-T1 | new |
 | I2-4 | Effort ladder, climbing evidence, held causes, `xhigh`, `CheckFinding.kind` | LAD, CON, RST | R2-T2 | new |
 | I2-5 | One-step model escalation, its stages and offer pause, `resume --escalate`, the escalation record | LAD, HUM, CLI | R2-T2 | new |
-| I2-6 | Retirement of the retry-count model list and its transform | LAD §2.8, VER | R2-T2 | new (replaces BUD-B7) |
+| I2-6 | Retirement of the retry-count model list and its transform | LAD-B18, VER | R2-T2 | new (replaces BUD-B7) |
 | I2-7 | Judge model by risk: rule, levels, floor, shadow, `report --risk` | JRK | R2-T3 | new |
 | I2-8 | Eval suites and `evals run\|report\|grade`; live scoring, harvest and replay; eval skill | EVS, SHL | R2-T4 | X2-2 to X2-4 |
 | I2-9 | Calibration and readiness per judge risk level | JCL, LIF, JRK | R2-T4 | new |
-| I2-10 | Stages of a run, `promote-check --to local-stable`, promotion stamp; `--to pipeline` refused `not_in_release` | PRO, SUP §2.7 | R2-T5 | X2-1, pipelines moved later |
+| I2-10 | Stages of a run, `promote-check --to local-stable`, promotion stamp; `--to pipeline` refused `not_in_release` | PRO, SUP-B17 | R2-T5 | X2-1, pipelines moved later |
 | I2-11 | `update`, rollback, `prune-engines`, update skill | UPD, LSK | R2-T6 | X2-5, X2-8 |
 | I2-12 | Migrations and pins | MIG | R2-T6 | X2-6 |
 | I2-13 | Changelog, detect rules and transforms | VER, WUP | R2-T6 | X2-7 |
@@ -75,15 +75,15 @@ Every item release 2 ships. Items not built are refused with `not_in_release`, n
 | I2-16 | Ask unit; event waits; `--pause-before`, deadlines, fallback target; parallel read-only branches | ASK, HUM, FLX | R2-T7 | X2-11 to X2-14 |
 | I2-17 | `self-check` | CHK | R2-T7 | X2-18; script cache, audit judge and judge MCP views moved to release 3 (§1.3) |
 | I2-18 | Lifecycle hooks, wider hook events | CLI, EVT | R2-T7 | X2-21; in-process observers moved to release 3 (§1.3) |
-| I2-19 | Moved to release 3 (§1.3) | SCH §5, TCK | — | X2-22 |
+| I2-19 | Moved to release 3 (§1.3) | R-150 SCH, TCK | — | X2-22 |
 | I2-20 | Moved to release 3 (§1.3) | WTR | — | X2-23 |
-| I2-21 | State root outside git: walk-up or declared root, `in_place` only, manifest fingerprint, `needs_git` refusals | WSP §2.4 | R2-T8 | X2-24 |
+| I2-21 | State root outside git: walk-up or declared root, `in_place` only, manifest fingerprint, `needs_git` refusals | WSP-B15 to WSP-B18 | R2-T8 | X2-24 |
 | I2-22 | Moved to release 3 (§1.3) | WIN | — | X2-25 |
-| I2-23 | Moved to release 3 (§1.3) | SRV §2.4, §5 | — | X2-26 |
+| I2-23 | Moved to release 3 (§1.3) | SRV-B16, SRV-B5, R-150 SRV | — | X2-26 |
 | I2-24 | The loop's alias as a setting (R-130 G4) | RST, SIL | R2-T2 | divergence |
 | I2-25 | Run state carried on its own branch: `--carry`, `carry push\|pull\|status\|drop`, lease, deletion at finish | CAR | R2-T5 | new, owner 2026-11-20 |
 | I2-26 | Deliverables required per path; a repository-level command declaration; `GitFacts.pushed` set (R-130 G10 to G12) | WFM, CHK | R2-T7 | new, from the first authored workflow |
-| I2-27 | Sizing: every step and judge states model, effort and why; `sizing` in the blueprint, `sizing-unassessed` in the audit (owner 2026-11-21) | SCF §2.1.1, ARC | R2-T2 | new |
+| I2-27 | Sizing: every step and judge states model, effort and why; `sizing` in the blueprint, `sizing-unassessed` in the audit (owner 2026-11-21) | SCF-B10, ARC | R2-T2 | new |
 
 ### 1.3 Trim of 2026-11-21
 
@@ -110,39 +110,39 @@ Milestones: **N1** after R2-T1 and R2-T2, a workflow with a complexity switch an
 
 | Probe | Command, on the owner's machine | Pass |
 |---|---|---|
-| P-LAD-1 | For each alias of the binding table: `claude -p --model <alias> --effort xhigh` and `--effort max` on a one-line prompt, reading `applied_options` from the stream | Each effort is applied, or the CLI names it unsupported for that alias; recorded per alias in ECC §2.7 |
+| P-LAD-1 | For each alias of the binding table: `claude -p --model <alias> --effort xhigh` and `--effort max` on a one-line prompt, reading `applied_options` from the stream | Each effort is applied, or the CLI names it unsupported for that alias; recorded per alias in ECC-B13 |
 | P-WIN-1 to P-WIN-3 | Release 3, with Windows | — |
 | P-PRO-1 | Moved to the pipeline release with `--to pipeline` | — |
 
 ### R2-T1 Switches, maps and complexity
 
 #### R2-T1.1 Measured switches
-Goal: SWM-AC-1 to AC-3, with `effort_ladder` and `escalation` accepted in `arm_overrides` (validated, applied in R2-T2).
+Goal: SWM-AC1 to AC-3, with `effort_ladder` and `escalation` accepted in `arm_overrides` (validated, applied in R2-T2).
 
 #### R2-T1.2 Sequential map and item keys
-Goal: MAP-AC-1 to AC-4 for the sequential form; VAL item keys; concurrent mode stays `not_in_release`.
+Goal: MAP-AC1 to AC-4 for the sequential form; VAL item keys; concurrent mode stays `not_in_release`.
 
 #### R2-T1.3 Complexity switches
-Goal: CXR-AC-1 to AC-5: stock measures, the rules file and its repository override, zones, arm contract at validation, one-way re-arm on LAD evidence (stand-in evidence until R2-T2.1), exploration, `report --switch`.
+Goal: CXR-AC1 to AC-5: stock measures, the rules file and its repository override, zones, arm contract at validation, one-way re-arm on LAD evidence (stand-in evidence until R2-T2.1), exploration, `report --switch`.
 
 ### R2-T2 Ladders
 
 #### R2-T2.1 Effort ladder
-Goal: LAD-AC-1, AC-2, AC-4: `xhigh`, `CheckFinding.kind`, climbing evidence, every held cause, resets, preflight of each rung, the `ladder` record and `ladder_decision`.
+Goal: LAD-AC1, AC-2, AC-4: `xhigh`, `CheckFinding.kind`, climbing evidence, every held cause, resets, preflight of each rung, the `ladder` record and `ladder_decision`.
 
 #### R2-T2.2 Escalation
-Goal: LAD-AC-3, AC-5: E1 to E9, stages from PRO §2.1 (stand-in until R2-T5), the offer pause and `resume --escalate` with PRV relay rules, the escalation record, rung-0 figures in `report`.
+Goal: LAD-AC3, AC-5: E1 to E9, stages from PRO-B7, PRO-B4 (stand-in until R2-T5), the offer pause and `resume --escalate` with PRV relay rules, the escalation record, rung-0 figures in `report`.
 
 #### R2-T2.3 Model list retirement
-Goal: LAD-AC-6: `model-ladder-retired`, the changelog entry and the `model_list_to_escalation` transform; the loop alias setting (I2-24).
+Goal: LAD-AC6: `model-ladder-retired`, the changelog entry and the `model_list_to_escalation` transform; the loop alias setting (I2-24).
 
 ### R2-T3 Judge by risk
 
 #### R2-T3.1 Rule, levels and resolution
-Goal: JRK-AC-1 to AC-3: `RiskContext`, stock rules, levels, fault and floor, shadow mode, the `judge_risk` record.
+Goal: JRK-AC1 to AC-3: `RiskContext`, stock rules, levels, fault and floor, shadow mode, the `judge_risk` record.
 
 #### R2-T3.2 Calibration per level
-Goal: JRK-AC-4: scores, states and `evals bar` per level; LIF-B6 per level.
+Goal: JRK-AC4: scores, states and `evals bar` per level; LIF-B6 per level.
 
 ### R2-T4 Evals
 
@@ -158,10 +158,10 @@ Goal: the eval skill of SHL.
 ### R2-T5 Promotion
 
 #### R2-T5.1 Stages and the check
-Goal: PRO-AC-1 to AC-4 and AC-6, to `local-stable`: stage of a run, window, P1 to P12, `promotion.json`, voiding.
+Goal: PRO-AC1 to AC-4 and AC-6, to `local-stable`: stage of a run, window, P1 to P12, `promotion.json`, voiding.
 
 #### R2-T5.2 Carried state
-Goal: CAR-AC-1 to AC-4 with two state roots and a bare remote; `--carry`, the four `carry` verbs, the lease and deletion at finish. PRO §2.5 and §2.6 wait for the pipeline release.
+Goal: CAR-AC1 to AC-4 with two state roots and a bare remote; `--carry`, the four `carry` verbs, the lease and deletion at finish. PRO-B5, PRO-B11 wait for the pipeline release.
 
 ### R2-T6 Update and upgrade
 
@@ -172,7 +172,7 @@ Goal: UPD's release 2 part, the registry reinstall and pins, the update skill.
 Goal: MIG layouts, threads across releases, workflow change under a paused thread.
 
 #### R2-T6.3 Changelog and transforms
-Goal: VER-AC-3 (task 8.3.6 of the T8 plan), every transform of VER §2.3.4 with fixtures.
+Goal: VER-AC3 (task 8.3.6 of the T8 plan), every transform of VER-B13 with fixtures.
 
 #### R2-T6.4 Upgrade, the upgrade workflow and skill
 Goal: WUP phases 4 to 7, UWF, the upgrade skill of LSK; N4 on the retired model list.
@@ -188,7 +188,7 @@ Goal for each: the acceptance criteria of the specs named in §1.2 for its items
 ### R2-T8 Outside git
 
 #### R2-T8.1 State root outside git
-Goal: WSP-AC-5 and every row of WSP §2.4.
+Goal: WSP-AC5 and every row of WSP-B15 to WSP-B18.
 
 ### R2-T9 Release
 

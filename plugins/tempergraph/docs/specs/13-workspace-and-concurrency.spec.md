@@ -8,14 +8,14 @@ Where a run's files live, how runs and writing units stay apart, and how many ru
 
 ### WSP-B8 The state root
 
-WHEN the engine starts inside a git repository THE engine SHALL use `<main checkout>/.tempergraph/`, found from git's common directory whatever directory it starts in, as the gitignored state root holding checkpoints, run logs, locks, the ledger, batch folders, every session's logs, the engine's code log and executor scratch in the layout of [LOS §2.1](33-local-observability-store.spec.md), and ignore `--state-root` and `TEMPERGRAPH_STATE_ROOT`.
+WHEN the engine starts inside a git repository THE engine SHALL use `<main checkout>/.tempergraph/`, found from git's common directory whatever directory it starts in, as the gitignored state root holding checkpoints, run logs, locks, the ledger, batch folders, every session's logs, the engine's code log and executor scratch in the layout of [LOS-B7, LOS-B8, LOS-B9](33-local-observability-store.spec.md), and ignore `--state-root` and `TEMPERGRAPH_STATE_ROOT`.
 
 - GIVEN the engine started in a nested worktree WHEN it resolves the state root THEN it is the main checkout's `.tempergraph/`
 - GIVEN `TEMPERGRAPH_STATE_ROOT=/tmp/s` inside a repository WHEN a run starts THEN the main checkout's `.tempergraph/` is used
 
 ### WSP-B9 Workspace and run lock
 
-WHEN a run starts THE engine SHALL fix its workspace for the run, the main checkout (`in_place`) or an engine-owned git worktree on its own branch chosen by `run.workspace` (`auto` by default) and stored in state ([WTR §2.2, §2.4, §2.8](82-worktree-mode.spec.md)), and hold a per-thread OS file lock under the state root while it runs.
+WHEN a run starts THE engine SHALL fix its workspace for the run, the main checkout (`in_place`) or an engine-owned git worktree on its own branch chosen by `run.workspace` (`auto` by default) and stored in state ([WTR-B18, WTR-B20, WTR-B24](82-worktree-mode.spec.md)), and hold a per-thread OS file lock under the state root while it runs.
 
 - GIVEN `run.workspace auto` and a workflow that writes files WHEN the run starts THEN it runs in its own worktree on its own branch
 
@@ -27,7 +27,7 @@ WHEN a paused run whose worktree was deleted resumes THE engine SHALL re-attach 
 
 ### WSP-B2 Bootstrap of a worktree
 
-WHEN a worktree is created for a workflow whose `worktree.include` names untracked local files and setup commands ([WTR §2.3](82-worktree-mode.spec.md)) THE engine SHALL copy those files and run the commands with list argv, and remove the new worktree and branch when the bootstrap fails.
+WHEN a worktree is created for a workflow whose `worktree.include` names untracked local files and setup commands ([WTR-B19](82-worktree-mode.spec.md)) THE engine SHALL copy those files and run the commands with list argv, and remove the new worktree and branch when the bootstrap fails.
 
 - GIVEN `include: [".env.test"]` WHEN the worktree is made THEN `.env.test` is in it
 - GIVEN a setup command that exits 1 WHEN the worktree is made THEN the worktree and its branch are gone
@@ -46,7 +46,7 @@ WHEN a workflow declares `import_roots` THE engine SHALL put those paths, relati
 
 ### WSP-B11 Shapes of parallel work
 
-WHEN units work in parallel THE engine SHALL run a parallel branch read-only in the run worktree, failing one whose head or status fingerprint changed; a writer branch or writing map item in its own sibling worktree cut from the run's branch after a checkpoint commit ([WTR §2.4](82-worktree-mode.spec.md)) and merged without fast-forward in declared order at the join; a sequential map one item at a time in the run worktree, item k seeing what earlier items left; and a batch child in its own process and worktree with no join.
+WHEN units work in parallel THE engine SHALL run a parallel branch read-only in the run worktree, failing one whose head or status fingerprint changed; a writer branch or writing map item in its own sibling worktree cut from the run's branch after a checkpoint commit ([WTR-B20](82-worktree-mode.spec.md)) and merged without fast-forward in declared order at the join; a sequential map one item at a time in the run worktree, item k seeing what earlier items left; and a batch child in its own process and worktree with no join.
 
 - GIVEN a parallel branch that edits a file WHEN it ends THEN it fails
 - GIVEN a sequential map of three items WHEN item 2 runs THEN it sees item 1's files
@@ -90,7 +90,7 @@ WHEN a session needs a private config (an MCP config, an Antigravity session hom
 
 ### WSP-B6 Writes in place
 
-WHEN a workflow that writes files is started with `run.workspace in_place` THE engine SHALL run it in the checkout with the warning `in_place_writes` on the start ([WTR §2.2](82-worktree-mode.spec.md)).
+WHEN a workflow that writes files is started with `run.workspace in_place` THE engine SHALL run it in the checkout with the warning `in_place_writes` on the start ([WTR-B18](82-worktree-mode.spec.md)).
 
 - GIVEN a writing workflow and `--in-place` WHEN it starts THEN the start carries `in_place_writes`
 
@@ -109,7 +109,7 @@ WHEN a run starts outside git THE engine SHALL run it `in_place` (`auto` resolve
 
 ### WSP-B17 The guard fingerprint outside git
 
-WHEN a run outside git needs a workspace fingerprint THE engine SHALL take the file count and a SHA-256 over every file's path, size and `mtime_ns`, leaving out the state root, keep the thread's first manifest as `runs/<workflow>/<thread>/manifest.json`, give a check `changed_paths` as every path added, removed or with another size or time since then and `git` as none ([CHK §2.1](75-check-contract-and-command-runs.spec.md)), write `head_commit: ""` and `dirty: null` on `unit_entered`, and refuse the start `workspace_too_large` above 20,000 files when the workflow has a judge.
+WHEN a run outside git needs a workspace fingerprint THE engine SHALL take the file count and a SHA-256 over every file's path, size and `mtime_ns`, leaving out the state root, keep the thread's first manifest as `runs/<workflow>/<thread>/manifest.json`, give a check `changed_paths` as every path added, removed or with another size or time since then and `git` as none ([CHK-B10](75-check-contract-and-command-runs.spec.md)), write `head_commit: ""` and `dirty: null` on `unit_entered`, and refuse the start `workspace_too_large` above 20,000 files when the workflow has a judge.
 
 - GIVEN a read-only judge that writes a file outside git WHEN the guard compares fingerprints THEN the write is caught
 - GIVEN 25,000 files and a workflow with a judge WHEN the run starts THEN it is refused `workspace_too_large`

@@ -16,7 +16,7 @@ The owner asked for a mechanism, maybe a CLI command, that audits a workflow and
 We will add `tempergraph audit <workflow>` ([AUD](../specs/55-workflow-audit.spec.md)):
 
 1. **Advisory.** It never refuses a start or a resume and is never called by them. `validate` stays the only gate.
-2. **Read-only and model-free** (contract C13). Its only child processes are the read-only executor probes and a host-speed probe under a 30 s budget.
+2. **Read-only and model-free** (OVR-B15). Its only child processes are the read-only executor probes and a host-speed probe under a 30 s budget.
 3. **Three layers**, `definition`, `host` and `history`, each rule declaring the one it needs; a layer whose inputs are missing is reported as skipped, never as clean.
 4. **Exit 0** by default; `--fail-on` makes it exit 6 for CI. JSON and SARIF output.
 
@@ -43,8 +43,8 @@ We will add `tempergraph audit <workflow>` ([AUD](../specs/55-workflow-audit.spe
 | # | Assumption | Where it matters |
 |---|---|---|
 | A1 | "Audit the workflow" means one workflow package and its runs, not the engine. Engine defects found in runs are shown but not diagnosed. | AUD, ARC |
-| A2 | Starting a login shell and the executor probes counts as read-only, as `executors --probe` does today ([CLI-AC-1](../specs/17-engine-cli.spec.md)). | AUD §2.1 |
-| A3 | A new exit code 6 is acceptable for an advisory verb, rather than reusing 4 or 5, which mean a run ended. | CON §2.9 |
+| A2 | Starting a login shell and the executor probes counts as read-only, as `executors --probe` does today ([CLI-AC1](../specs/17-engine-cli.spec.md)). | AUD-B11, AUD-B6, AUD-B9 |
+| A3 | A new exit code 6 is acceptable for an advisory verb, rather than reusing 4 or 5, which mean a run ended. | CON-B12, CON-B13 |
 
 ## Consequences
 

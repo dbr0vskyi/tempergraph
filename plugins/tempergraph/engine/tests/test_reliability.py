@@ -1,5 +1,5 @@
 """Labels derived from runs, reliability grades, the labelling queue and the binding-shift watch
-(FBK-AC-1 to AC-5, FBK-B1 to B5, B7)."""
+(FBK-AC1 to AC-5, FBK-B1 to B5, B7)."""
 
 from __future__ import annotations
 
@@ -82,11 +82,11 @@ def kinds(labels: list[dict[str, Any]]) -> list[tuple[str, str, Any]]:
        "statuses": [{"id": "a-1", "status": "MET"}, {"id": "a-2", "status": "UNMET"}]}],
      [("audit", "agree", "a"), ("audit", "disagree", "a")]),
 ])
-def test_every_kind_is_derived_without_a_model(recs: list[dict[str, Any]], want: list[Any]) -> None:  # FBK-AC-1
+def test_every_kind_is_derived_without_a_model(recs: list[dict[str, Any]], want: list[Any]) -> None:  # FBK-AC1
     assert kinds(rel.derive(recs, "demo/T-1")) == want
 
 
-def test_rerun_disagrees_with_the_source_runs_last_proceed() -> None:  # FBK §2.2 rerun
+def test_rerun_disagrees_with_the_source_runs_last_proceed() -> None:  # FBK-B9 rerun
     old = [START, *gate_block("a", "PROCEED", 1)]
     new = [{"kind": "run_started", "seq": 0, "ts": ts(60 * 24), "rerun_of": {"thread": "demo/T-1"},
             "caller": PERSON}]
@@ -96,7 +96,7 @@ def test_rerun_disagrees_with_the_source_runs_last_proceed() -> None:  # FBK §2
     assert rel.derive(late, "demo/T-2", earlier=lambda t: old) == []  # outside 14 days
 
 
-def test_label_ids_are_stable_and_agent_answers_are_agent() -> None:  # FBK-B2, FBK §4
+def test_label_ids_are_stable_and_agent_answers_are_agent() -> None:  # FBK-B2, FBK-B10
     recs = [START, *gate_block("a", "PROCEED", 1), pause("a", "approval", 10), human("a", "retry", 11, AGENT)]
     one, two = rel.derive(recs, "demo/T-1"), rel.derive(recs, "demo/T-1")
     assert [x["label_id"] for x in one] == [x["label_id"] for x in two]
@@ -134,7 +134,7 @@ def labels(n: int, false_pass: int, known_bad_blocks: int = 0, *, binding: dict[
     (labels(40, 8, audits=(54, 60)), True, "unreliable"),
     (labels(40, 2, audits=(31, 45)), True, "unreliable"),
 ])
-def test_grades_reproduce_the_table(rows: list[dict[str, Any]], live: bool, want: str) -> None:  # FBK-AC-2
+def test_grades_reproduce_the_table(rows: list[dict[str, Any]], live: bool, want: str) -> None:  # FBK-AC2
     fig = rel.figures(rows, "g", B1, NOW)
     assert rel.grade(fig, live, NOW)[0] == want
 
@@ -149,14 +149,14 @@ def test_table_figures() -> None:  # FBK-B3 row 2: 7 known-bad, false-pass rate 
     assert rel.grade(stale, True, NOW) == ("unmeasured", ["no label in the last 30 days"])
 
 
-def test_agent_labels_change_no_figure() -> None:  # FBK-AC-4
+def test_agent_labels_change_no_figure() -> None:  # FBK-AC4
     base = labels(40, 3, 4)
     with_agents = base + labels(40, 40, source="agent")
     a, b = rel.figures(base, "g", B1, NOW), rel.figures(with_agents, "g", B1, NOW)
     assert a.to_json() == b.to_json()
 
 
-def test_a_binding_change_starts_unmeasured() -> None:  # FBK-AC-5, FBK-B4
+def test_a_binding_change_starts_unmeasured() -> None:  # FBK-AC5, FBK-B4
     b2 = {**B1, "model_slug": "m-2"}
     rows = labels(40, 3, 4)
     assert rel.grade(rel.figures(rows, "g", B1, NOW), True, NOW)[0] == "reliable"
@@ -164,13 +164,13 @@ def test_a_binding_change_starts_unmeasured() -> None:  # FBK-AC-5, FBK-B4
     assert fig.n == 0 and rel.grade(fig, True, NOW)[0] == "unmeasured"
 
 
-def test_orphan_labels_are_counted_apart() -> None:  # FBK §4
+def test_orphan_labels_are_counted_apart() -> None:  # FBK-B10
     rows = [{**labels(1, 0)[0], "gate_record": None}]
     fig = rel.figures(rows, "g", B1, NOW)
     assert fig.orphan_labels == 1 and fig.n == 0
 
 
-def test_labels_are_metadata_only_after_a_run(repo: Path) -> None:  # FBK-AC-3, FBK-B1 end to end
+def test_labels_are_metadata_only_after_a_run(repo: Path) -> None:  # FBK-AC3, FBK-B1 end to end
     spec = two_step()
     units = dict(spec.units)
     units["review"] = dataclasses.replace(units["review"], gate=dataclasses.replace(units["review"].gate,
@@ -190,7 +190,7 @@ def test_labels_are_metadata_only_after_a_run(repo: Path) -> None:  # FBK-AC-3, 
     assert len(rel.read_labels(root, "demo")) == 1  # a second derivation writes nothing new
 
 
-def test_queue_orders_the_most_informative_first(repo: Path) -> None:  # FBK §2.4
+def test_queue_orders_the_most_informative_first(repo: Path) -> None:  # FBK-B13
     ex = standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge(verdict_block("MET"))])
     assert go(repo, ex).exit_code is ExitCode.FINISHED
     rows = rel.queue(state_root_path(repo), "demo", {"draft": "unmeasured", "review": "reliable"})

@@ -1,4 +1,4 @@
-"""The two manifests and the Python half's `pyproject.toml` (PKG §2.1, §2.2); read without import or model."""
+"""The two manifests and the Python half's `pyproject.toml` (PKG-B11, PKG-B12, PKG-B13); read without import or model."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from typing import Any
 from tempergraph.contracts import PackageManifest
 from tempergraph.model.validate import Finding
 
-# A workflow package's plugin name is its workflow name plus PLUGIN_SUFFIX (PKG §2.2, ADR-0120), so a
+# A workflow package's plugin name is its workflow name plus PLUGIN_SUFFIX (PKG-B13, ADR-0120), so a
 # tempergraph workflow is recognisable by name wherever Claude Code lists plugins. The workflow name stays short:
 # it is what `run` takes, the registry key, the run folder and the `tgwf-<name>` distribution.
 PLUGIN_SUFFIX = "-tgraph"
@@ -25,7 +25,7 @@ PLUGIN_JSON = Path(".claude-plugin") / "plugin.json"
 ENGINE_JSON = Path("tempergraph.json")
 PYPROJECT = Path("workflow") / "pyproject.toml"
 
-# The dependency gate (PKG §2.3.1): a PEP 508 name, optional extras, optional version specifiers and an
+# The dependency gate (PKG-B18): a PEP 508 name, optional extras, optional version specifiers and an
 # optional environment marker. Direct references (`@ url`), paths and installer options are refused.
 _REQ_NAME = r"[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?"
 _REQ_SPEC = r"(?:===|==|!=|~=|>=|<=|<|>)\s*[A-Za-z0-9.*+!_-]+"
@@ -73,7 +73,7 @@ def workflow_name(name: str) -> str:
 
 
 def name_problem(name: str) -> str | None:
-    """Why `name` cannot be a workflow name, or None (PKG §2.2)."""
+    """Why `name` cannot be a workflow name, or None (PKG-B13)."""
     if not NAME_RE.match(name):
         return f"workflow name {name!r} is not kebab-case (lower-case letters, digits and hyphens)"
     if name.endswith(PLUGIN_SUFFIX):
@@ -104,7 +104,7 @@ def _object(path: Path) -> dict[str, Any] | Finding:
 
 
 def read_manifests(package_path: Path) -> Manifests | list[Finding]:
-    """Step 1 of PKG §2.3: both manifests, the plugin name is the workflow name plus `-tgraph`,
+    """Step 1 of PKG-B15, PKG-B16, PKG-B17: both manifests, the plugin name is the workflow name plus `-tgraph`,
     `schema_version` known; no import, no model."""
     plugin = _object(package_path / PLUGIN_JSON)
     engine = _object(package_path / ENGINE_JSON)
@@ -137,7 +137,7 @@ def read_manifests(package_path: Path) -> Manifests | list[Finding]:
         out.append(_err("manifest", "surfaces must map an executor to a surface form"))
     audit = engine.get("audit", {})
     if not isinstance(audit, dict):
-        out.append(_err("manifest", "audit must be an object, such as {\"ignore\": [...]} (AUD §2.4)"))
+        out.append(_err("manifest", "audit must be an object, such as {\"ignore\": [...]} (AUD-B14)"))
     unknown = set(engine) - {"schema_version", "name", "entry", "workflow_api", "docs", "surfaces", "audit"}
     if unknown:
         out.append(_err("manifest-field-unknown", f"tempergraph.json fields {sorted(unknown)} are unknown "
@@ -150,7 +150,7 @@ def read_manifests(package_path: Path) -> Manifests | list[Finding]:
 
 
 def read_manifest(package_path: Path) -> PackageManifest | list[Finding]:
-    """The PKG §2 contract: the engine manifest, or the findings that stop it loading."""
+    """The PKG-B13, PKG-B15 contract: the engine manifest, or the findings that stop it loading."""
     got = read_manifests(package_path)
     return got if isinstance(got, list) else got.engine
 
@@ -183,7 +183,7 @@ def normalized(name: str) -> str:
 
 
 def gate_dependencies(deps: tuple[str, ...]) -> list[Finding]:
-    """The dependency gate (PKG §2.3.1): a refusal makes the package `not_loaded: dependency_refused`."""
+    """The dependency gate (PKG-B18): a refusal makes the package `not_loaded: dependency_refused`."""
     out = []
     for line in deps:
         name = requirement_name(line)

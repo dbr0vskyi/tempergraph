@@ -1,4 +1,4 @@
-"""The updater's launch site (SEC §2.2): `python -m venv`, `pip` from engine-derived paths and an
+"""The updater's launch site (SEC-B7): `python -m venv`, `pip` from engine-derived paths and an
 engine-written requirements file, the interpreter probe and the self-check. Argv holds constants and
 engine-computed paths only; no shell; output captured; a timeout on every call."""
 
@@ -29,7 +29,7 @@ def run(argv: list[str], *, timeout_s: int = PROBE_TIMEOUT_S, cwd: Path | None =
 
 
 def hand_over(interpreter: Path, argv: list[str]) -> int:
-    """MIG §2.4 dispatch: the pinned engine's own interpreter runs the same verb with this process's streams;
+    """MIG-B12, MIG-B13, MIG-B14 dispatch: the pinned engine's own interpreter runs the same verb with this process's streams;
     the argv is the one this process was given, and nothing is read from it here."""
     try:
         return subprocess.run([str(interpreter), "-m", "tempergraph", *argv], check=False).returncode

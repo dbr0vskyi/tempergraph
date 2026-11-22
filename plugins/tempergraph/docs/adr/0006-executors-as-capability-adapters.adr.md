@@ -13,7 +13,7 @@ Each step and judge needs an agent session with tools (read files, run commands,
 
 ## Decision
 
-We will define one executor protocol ([EXI](../specs/10-executor-interface.spec.md), [CON §2.6](../specs/01-contracts.spec.md)) whose implementations start a headless CLI as a child process through a shared, engine-owned session launcher, translate its stream into normalized events, and **declare** their capabilities as data. The preflight refuses, before any spend, any need an executor does not declare (contract C15). Timeouts, idle limits, process-tree lifetime and cost estimation are engine-owned, not delegated to a CLI.
+We will define one executor protocol ([EXI](../specs/10-executor-interface.spec.md), [SSN-B1 to SSN-B6](../specs/25-session-contract.spec.md)) whose implementations start a headless CLI as a child process through a shared, engine-owned session launcher, translate its stream into normalized events, and **declare** their capabilities as data. The preflight refuses, before any spend, any need an executor does not declare (OVR-B17). Timeouts, idle limits, process-tree lifetime and cost estimation are engine-owned, not delegated to a CLI.
 
 ## Options considered
 

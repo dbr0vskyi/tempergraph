@@ -1,4 +1,4 @@
-"""Judgement parsing and the verdict rule (JDG §2.2, JDG-B2)."""
+"""Judgement parsing and the verdict rule (JDG-B13, JDG-B2)."""
 
 from __future__ import annotations
 
@@ -97,7 +97,7 @@ def test_prompt_marks_the_account_as_claims() -> None:
     assert "claims to verify, not facts" in text and "Do X" in text and "1. [c-file] (blocker)" in text
 
 
-def test_a_judge_never_grades_a_sign_off() -> None:  # OUT §2.2, live check L-25 (dr-approved UNVERIFIABLE)
+def test_a_judge_never_grades_a_sign_off() -> None:  # OUT-B10, OUT-B12, live check L-25 (dr-approved UNVERIFIABLE)
     from tempergraph.run.judging import judged
 
     gate = GateSpec(criteria=(Criterion(text="review names each section", id="c-rev", verified_by="judge"),
@@ -111,7 +111,7 @@ def test_a_judge_never_grades_a_sign_off() -> None:  # OUT §2.2, live check L-2
     assert judged(only) is only
 
 
-def test_check_evidence_is_given_not_a_claim() -> None:  # JDG §2.1, live check L-25 (outcome judge gap)
+def test_check_evidence_is_given_not_a_claim() -> None:  # JDG-B11, JDG-B12, live check L-25 (outcome judge gap)
     from tempergraph.run.judging import CHECK_EVIDENCE
 
     prompt = render_judge(JudgeInputs(gate=GATE, stance="", brief="", request="r", references={}, subject={},

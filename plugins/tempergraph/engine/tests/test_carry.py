@@ -1,4 +1,4 @@
-"""Run state carried on its own branch (CAR §2, CAR-B1 to B4, CAR-AC-1 to AC-4): two state roots, one bare
+"""Run state carried on its own branch (CAR-B5, CAR-B1 to B4, CAR-AC1 to AC-4): two state roots, one bare
 remote, and two machine identities."""
 
 from __future__ import annotations
@@ -115,7 +115,7 @@ def test_pause_on_one_machine_resume_on_another(world: World) -> None:
     assert [r["unit"] for r in _records(b) if r["kind"] == "agent_run" and r.get("session_kind") == "step"] == [
         "draft", "review"]
 
-    # CAR-B3, CAR-AC-3: no trace after the finish
+    # CAR-B3, CAR-AC3: no trace after the finish
     assert BRANCH not in world.remote_heads()
     assert git(b, "for-each-ref", "refs/heads/tempergraph/state/") == ""
     assert git(world.remote, "rev-parse", work) == before  # carrying added no commit to the work branch
@@ -129,7 +129,7 @@ def _records(repo: Path) -> list[dict[str, Any]]:
     return list(records(run_dir(state_root_path(repo), "demo", "t1") / "run.jsonl"))
 
 
-# -- CAR-B2, CAR-AC-2 -------------------------------------------------------------------------------------------
+# -- CAR-B2, CAR-AC2 -------------------------------------------------------------------------------------------
 
 
 def test_nothing_private_travels(world: World) -> None:
@@ -156,7 +156,7 @@ def test_nothing_private_travels(world: World) -> None:
     assert {"carry.json", "checkpoint.sqlite", "ledger.jsonl", "workspace.json", "run/run.jsonl"} <= inner
     assert {f"run/{k}" for k in kept} <= inner
     assert not any(f"run/{p}" in inner for p in private)
-    assert "run/engine.json" in inner  # the thread's engine record travels with it (MIG §2.1)
+    assert "run/engine.json" in inner  # the thread's engine record travels with it (MIG-B8)
     assert not any(part in p for p in inner - {"run/engine.json"} for part in ("config", "scratch", "locks", "authoring", "upgrades",
                                                           "backups", "engine", "carry.local", "other", "t9"))
     blob = git(world.remote, "grep", "-c", "-e", SECRET, BRANCH, check=False)
@@ -168,7 +168,7 @@ def test_nothing_private_travels(world: World) -> None:
 
 
 def test_a_state_commit_holds_only_the_carry_folder(world: World, tmp_path: Path) -> None:
-    """CAR §4."""
+    """CAR-B5, CAR-B8, CAR-B11, CAR-B6."""
     f = tmp_path / "x.txt"
     f.write_text("x\n")
     with pytest.raises(carry.CarryRefused, match="not a path inside"):
@@ -235,7 +235,7 @@ def test_pull_where_the_thread_is_needs_a_newer_state(world: World) -> None:
     assert code == 2 and "carry_not_newer" in err
 
 
-# -- CAR §2.5, CAR-AC-4 --------------------------------------------------------------------------------------------
+# -- CAR-B10, CAR-AC4 --------------------------------------------------------------------------------------------
 
 
 def _rewrite(world: World, change: Any) -> None:
@@ -298,7 +298,7 @@ def test_pull_of_an_unregistered_workflow_is_refused(world: World) -> None:
         carry.pull(state_root_path(world.b), world.on("b"), "demo", "t1", current_version=None)
 
 
-# -- CAR §4 -----------------------------------------------------------------------------------------------------
+# -- CAR-B5, CAR-B8, CAR-B11, CAR-B6 -----------------------------------------------------------------------------------------------------
 
 
 def test_carry_needs_a_remote(repo: Path) -> None:

@@ -1,4 +1,4 @@
-"""Template and brief text of a workflow: inline, a package file, or the engine default (PKG §2.4, PRM)."""
+"""Template and brief text of a workflow: inline, a package file, or the engine default (PKG-B19, PKG-B20, PRM)."""
 
 from __future__ import annotations
 
@@ -6,15 +6,15 @@ from pathlib import Path
 
 from tempergraph.contracts import TextRef, TextSource, WorkflowSpec
 
-# VAL §2.3 engine keys; reserved, so no input or artifact may use them.
+# VAL-B8 engine keys; reserved, so no input or artifact may use them.
 ENGINE_KEYS = frozenset(
     {"task_id", "thread_id", "workflow", "unit", "attempt", "visit", "branch", "base", "workdir", "run_label"}
 )
 ITEM_KEYS = frozenset({"item_id", "item_index", "item_count", "item"})
 RESERVED_KEYS = ENGINE_KEYS | ITEM_KEYS
 
-# PRM §2.1: the engine's default template. A workflow that declares no input parameters has one input,
-# `request`: the whole start request (CLI §2, PRM §2.1).
+# PRM-B6: the engine's default template. A workflow that declares no input parameters has one input,
+# `request`: the whole start request (CLI-B7, CLI-B8, CLI-B14, PRM-B6).
 DEFAULT_TEMPLATE = "{request}"
 
 
@@ -50,7 +50,7 @@ def input_names(spec: WorkflowSpec) -> set[str]:
 
 
 def split_judge_file(text: str) -> tuple[str, str]:
-    """`judges/<unit>.md`: the stance, then the brief, under two fixed headings (PKG §2.1)."""
+    """`judges/<unit>.md`: the stance, then the brief, under two fixed headings (PKG-B11, PKG-B12)."""
     stance: list[str] = []
     brief: list[str] = []
     cur: list[str] | None = None

@@ -1,5 +1,5 @@
-"""Harvest of judge misses into calibration case candidates, and replay of judges on kept cases (LIF §2,
-JCL §2.1, EVS §2.4).
+"""Harvest of judge misses into calibration case candidates, and replay of judges on kept cases (LIF-B7 to LIF-B16,
+JCL-B9, JCL-B10, EVS-B13, EVS-B14).
 
 A harvested candidate is local: it is written under the state root, holds ids, paths and statuses only, and
 enters a package's gold set only after a person reviewed it and wrote its labels.

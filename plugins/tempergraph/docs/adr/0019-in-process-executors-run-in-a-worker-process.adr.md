@@ -9,7 +9,7 @@
 
 ## Context
 
-Contract C3 says executors behave the same everywhere: prompt off argv, constants-only argv, no raise, and children tied to the engine. The session launcher ([EXI §2.3](../specs/10-executor-interface.spec.md)) enforces this for CLIs: it owns the wall-clock timeout, the idle watchdog and the process-tree kill. The Agent SDK and the Messages API are Python libraries. Called inside the engine process, a hung network call or a hung tool command could not be killed with its tree, a library exception could escape, and a library's memory or thread state would live in the process that holds the graph and the checkpoint.
+OVR-B5 says executors behave the same everywhere: prompt off argv, constants-only argv, no raise, and children tied to the engine. The session launcher ([EXI-B2, EXI-B20, EXI-B21, EXI-B22, EXI-B23, EXI-B15](../specs/10-executor-interface.spec.md)) enforces this for CLIs: it owns the wall-clock timeout, the idle watchdog and the process-tree kill. The Agent SDK and the Messages API are Python libraries. Called inside the engine process, a hung network call or a hung tool command could not be killed with its tree, a library exception could escape, and a library's memory or thread state would live in the process that holds the graph and the checkpoint.
 
 ## Decision
 
@@ -28,7 +28,7 @@ We will run each library-based session in an engine **worker process**: the laun
 | Criterion | Worker | In process | Async |
 |---|---|---|---|
 | Tree kill on timeout and signal | yes | no | no |
-| Contract C3 holds unchanged | yes | partly | partly |
+| OVR-B5 holds unchanged | yes | partly | partly |
 | Isolation of library failures | yes | no | no |
 | Cost | one process per session | none | none |
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A workflow's finalizer runs once after the last pass (and after an approval pause, when one is set) and calls no model (contract C1). It is a workflow's final stage, such as pushing the branch and opening a draft pull request, often the only thing a person reviews ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T51 to T53). [CON-B4](01-contracts.spec.md) declares the field `WorkflowSpec.finalizer`, a callable `(ctx: FinalizerContext) -> FinalizerResult`; this spec defines what the finalizer receives, what it may do, what it returns, and the rule that it can never fail a run that has passed every gate, since the run's exit code is a contract for callers ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)). It reuses the check's command machinery ([ADR-0075](../adr/0075-checks-get-a-context-and-an-engine-command-runner.adr.md)), so there is one guarded launch site for workflow commands. What to publish, where and how to word it are the workflow's choices. Workflow authors and callers reading exit codes depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
+A workflow's finalizer runs once after the last pass (and after an approval pause, when one is set) and calls no model (OVR-B3). It is a workflow's final stage, such as pushing the branch and opening a draft pull request, often the only thing a person reviews ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T51 to T53). [CON-B4](01-contracts.spec.md) declares the field `WorkflowSpec.finalizer`, a callable `(ctx: FinalizerContext) -> FinalizerResult`; this spec defines what the finalizer receives, what it may do, what it returns, and the rule that it can never fail a run that has passed every gate, since the run's exit code is a contract for callers ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)). It reuses the check's command machinery ([ADR-0075](../adr/0075-checks-get-a-context-and-an-engine-command-runner.adr.md)), so there is one guarded launch site for workflow commands. What to publish, where and how to word it are the workflow's choices. Workflow authors and callers reading exit codes depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
 ## Behaviours
 
@@ -62,7 +62,7 @@ WHEN a run started with a dry-run setting is resumed without it THE finalizer SH
 
 ### FIN-B10 What is refused
 
-WHEN a workflow with a finalizer is validated THE engine SHALL refuse a finalizer that imports an executor or the engine's model clients (a source scan of the package, contract C1) and an empty `finalizer_outcomes` while a finalizer is declared.
+WHEN a workflow with a finalizer is validated THE engine SHALL refuse a finalizer that imports an executor or the engine's model clients (a source scan of the package, OVR-B3) and an empty `finalizer_outcomes` while a finalizer is declared.
 
 - GIVEN a declared finalizer and no `finalizer_outcomes` WHEN validated THEN it is refused
 

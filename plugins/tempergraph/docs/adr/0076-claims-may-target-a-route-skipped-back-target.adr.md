@@ -37,7 +37,7 @@ We will treat a listed back target that a route or switch **skipped on the path 
 | # | Assumption | Where it matters |
 |---|---|---|
 | K1 | A skipped unit's artifacts are absent, so a step that names them already sees the missing marker; a claim against it is the natural signal. | [VAL-B3](../specs/76-step-values-and-template-keys.spec.md) |
-| K2 | The judge confirms an upstream claim as today ([HUM §2.1](../specs/07-gate-and-human.spec.md)); an unconfirmed claim still escalates. | PRM, JDG |
+| K2 | The judge confirms an upstream claim as today ([HUM-B7 to HUM-B11](../specs/07-gate-and-human.spec.md)); an unconfirmed claim still escalates. | PRM, JDG |
 
 ## Consequences
 

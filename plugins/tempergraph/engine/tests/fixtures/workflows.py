@@ -1,4 +1,4 @@
-"""Fixture workflows built with the public builders, as a workflow package would (PKG §2.4)."""
+"""Fixture workflows built with the public builders, as a workflow package would (PKG-B19, PKG-B20)."""
 
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
-"""T7.4: `report` (OBS §2.4), stats rows and `stats` (OBS §2.4, CST §2.2, §2.5), the machine index and
-`--all-roots` (CST §2.1), and `attention` (CLI-B6, AC-5)."""
+"""T7.4: `report` (OBS-B15), stats rows and `stats` (OBS-B15, CST-B9, CST-B14, CST-B15, CST-B16), the machine index and
+`--all-roots` (CST-B8), and `attention` (CLI-B6, AC-5)."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ def usage(rep_usd: float | None, est_usd: float | None) -> dict[str, Any]:
     return {"input_tokens": 10, "output_tokens": 5, "reported_cost_usd": rep_usd, "estimated_cost_usd": est_usd}
 
 
-def test_units_first_visit_and_repeats(repo: Path) -> None:  # OBS-AC-5
+def test_units_first_visit_and_repeats(repo: Path) -> None:  # OBS-AC5
     paused_run(repo)
     doc = rep.report(state_root_path(repo), None)
     units = {u["unit"]: u for u in doc["units"]}
@@ -51,7 +51,7 @@ def test_units_first_visit_and_repeats(repo: Path) -> None:  # OBS-AC-5
     assert {(a["unit"], a["arm"]) for a in doc["arms"]} >= {("review", "gate:ESCALATE"), ("draft", "gate:RETRY")}
 
 
-def test_mixed_executors_never_summed(repo: Path) -> None:  # OBS-B2, OBS-AC-3
+def test_mixed_executors_never_summed(repo: Path) -> None:  # OBS-B2, OBS-AC3
     root = state_root_path(repo)
     write_log(root, "T-9", [
         {"kind": "run_started", "workflow_version": "1"},
@@ -74,7 +74,7 @@ def test_mixed_executors_never_summed(repo: Path) -> None:  # OBS-B2, OBS-AC-3
     assert code == 0 and "≥ $0.22 rep (1 of 4) · $0.95 est · incomplete" in text
 
 
-def test_gate_escape_and_timeouts(repo: Path) -> None:  # OBS §2.4, OBS-B6
+def test_gate_escape_and_timeouts(repo: Path) -> None:  # OBS-B15, OBS-B6
     root = state_root_path(repo)
     write_log(root, "T-8", [
         {"kind": "judgement", "unit": "a", "statuses": [{"n": 1, "id": "tests", "status": "MET"}]},
@@ -121,7 +121,7 @@ def test_report_is_read_only_and_windowed(repo: Path) -> None:
     assert rep.report(root, rep.window("1h"))["threads"] == 1
 
 
-def test_stats_row_at_each_exit(repo: Path) -> None:  # OBS §2.4, CST §2.2
+def test_stats_row_at_each_exit(repo: Path) -> None:  # OBS-B15, CST-B9
     paused_run(repo)
     files = sorted((home_path() / "stats").glob("*.jsonl"))
     assert len(files) == 1
@@ -135,13 +135,13 @@ def test_stats_row_at_each_exit(repo: Path) -> None:  # OBS §2.4, CST §2.2
     assert doc["projection"] == []  # no finished run yet
 
 
-def test_projection_marks_thin_samples() -> None:  # CST §2.5
+def test_projection_marks_thin_samples() -> None:  # CST-B14, CST-B15, CST-B16
     found = [{"row_id": str(i), "thread_id": f"w/T-{i}", "workflow": "w", "exit_code": 0, "estimated_cost_usd": c}
              for i, c in enumerate([1.0, 2.0, 3.0, 10.0])]
     assert rows.projection(found) == [{"workflow": "w", "runs": 4, "median_usd": 2.5, "p90_usd": 10.0, "thin": True}]
 
 
-def test_rows_deduplicated(tmp_path: Path) -> None:  # CST-AC-3
+def test_rows_deduplicated(tmp_path: Path) -> None:  # CST-AC3
     p = tmp_path / "a.jsonl"
     p.write_text("\n".join(json.dumps({"row_id": "r1", "n": i}) for i in range(2)) + "\n"
                  + json.dumps({"row_id": "r2", "schema_version": 2}) + "\nnot json\n")
@@ -149,7 +149,7 @@ def test_rows_deduplicated(tmp_path: Path) -> None:  # CST-AC-3
     assert [r["row_id"] for r in found] == ["r1"] and unknown == 2
 
 
-def test_machine_index_and_all_roots(repo: Path, tmp_path: Path) -> None:  # CST §2.1
+def test_machine_index_and_all_roots(repo: Path, tmp_path: Path) -> None:  # CST-B8
     paused_run(repo)
     index = rows.read_index()
     assert [r["path"] for r in index] == [str(state_root_path(repo).resolve())]
@@ -177,7 +177,7 @@ def test_attention_lists_each_pause_once_oldest_first(repo: Path) -> None:  # CL
     assert code == 0 and "tempergraph resume demo T-2" in str(text)
 
 
-def test_status_row_settings_and_stale(repo: Path) -> None:  # RST §2.7
+def test_status_row_settings_and_stale(repo: Path) -> None:  # RST-B27
     paused_run(repo)
     code, doc, _ = cli(repo, None, "status", "demo/T-1")
     [row] = doc["threads"]
@@ -190,7 +190,7 @@ def test_status_row_settings_and_stale(repo: Path) -> None:  # RST §2.7
     assert row["settings_stale"] is True
 
 
-def test_status_row_rerun_lineage(repo: Path) -> None:  # RRN §2.4, DUR §2.2
+def test_status_row_rerun_lineage(repo: Path) -> None:  # RRN-B17, RRN-B18, DUR-B11
     from .test_cli import happy
     from .test_rerun import finished
 
@@ -211,7 +211,7 @@ def test_status_row_rerun_lineage(repo: Path) -> None:  # RRN §2.4, DUR §2.2
     assert rows_["demo/R-1"]["reruns"][-1] == {**rows_["demo/R-1"]["reruns"][-1], "same_branch": True}
 
 
-def test_slow_host_agent_time_and_prompt_digests(repo: Path) -> None:  # OBS §2.4, OBS-B6
+def test_slow_host_agent_time_and_prompt_digests(repo: Path) -> None:  # OBS-B15, OBS-B6
     root = state_root_path(repo)
     write_log(root, "P-1", [
         {"kind": "run_started", "workflow_version": "1"},
@@ -233,7 +233,7 @@ def test_slow_host_agent_time_and_prompt_digests(repo: Path) -> None:  # OBS §2
     assert got == {"aaaa": (1, 0.0, 1), "bbbb": (1, 1.0, 0)}
 
 
-def test_session_rows_are_opt_in(repo: Path, tmp_path: Path, monkeypatch: Any) -> None:  # CST §2.2, §2.4
+def test_session_rows_are_opt_in(repo: Path, tmp_path: Path, monkeypatch: Any) -> None:  # CST-B9, CST-B11
     from .test_sinks import machine
 
     monkeypatch.setenv("TEMPERGRAPH_FLUSHER", "inline")
@@ -252,7 +252,7 @@ def test_session_rows_are_opt_in(repo: Path, tmp_path: Path, monkeypatch: Any) -
     assert "S-2" not in f.read_text()
 
 
-def test_duplicate_row_ids_with_other_content_are_shown(repo: Path) -> None:  # CST §4
+def test_duplicate_row_ids_with_other_content_are_shown(repo: Path) -> None:  # CST-B10, CST-B14, CST-B8
     p = home_path() / "stats" / "2026-11.jsonl"
     p.parent.mkdir(parents=True, exist_ok=True)
     base = {"row_id": "r1", "kind": "run", "schema_version": 1, "machine_id": "m", "workflow": "demo",
@@ -265,7 +265,7 @@ def test_duplicate_row_ids_with_other_content_are_shown(repo: Path) -> None:  # 
     assert code == 0 and doc["duplicate_row_ids"] == ["r1"] and "appear twice" in err
 
 
-def test_graph_overlay_counts_only(repo: Path) -> None:  # OBS §2.4 run overlay, SEC-B2, CLI `graph --overlay`
+def test_graph_overlay_counts_only(repo: Path) -> None:  # OBS-B15 run overlay, SEC-B2, CLI `graph --overlay`
     canary = "canary-0v3r"
     retry = judge(verdict_block("UNMET"))
     go(repo, standin("claude", steps=[DRAFT, DRAFT, REVIEW], judges=[retry, judge(), judge()]), task="O-1")

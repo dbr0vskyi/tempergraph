@@ -1,4 +1,4 @@
-"""Spec budget rule of the docs README: at most 400 lines and 30 KB per spec (OVR-AC-2)."""
+"""Spec budget rule of the docs README: at most 400 lines and 30 KB per spec (OVR-AC2)."""
 
 from __future__ import annotations
 

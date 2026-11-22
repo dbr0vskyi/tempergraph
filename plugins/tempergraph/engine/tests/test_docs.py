@@ -1,4 +1,4 @@
-"""Tolerant readers (CON-AC-4, CON-B1)."""
+"""Tolerant readers (CON-AC4, CON-B1)."""
 
 from __future__ import annotations
 

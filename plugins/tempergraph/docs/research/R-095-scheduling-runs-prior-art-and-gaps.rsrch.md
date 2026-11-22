@@ -17,7 +17,7 @@ The work was done standalone, without questions to the owner; assumptions are re
 
 | # | Source | Type | Where |
 |---|---|---|---|
-| S4 | This design on `main` after PR 13: R-006 deferral of the scheduler, ADR-0021, SEC §2.1 ticket row, FLX deadlines, ORC supervisor, PRV caller kinds, RST layers, OSK open question on schedules | Design set | [specs](../specs/00-overview.spec.md) |
+| S4 | This design on `main` after PR 13: R-006 deferral of the scheduler, ADR-0021, SEC-B5, SEC-B6 ticket row, FLX deadlines, ORC supervisor, PRV caller kinds, RST layers, OSK open question on schedules | Design set | [specs](../specs/00-overview.spec.md) |
 | S5 | Claude Code, "Run prompts on a schedule" (session-scoped tasks, `/loop`, cron tools) | Official docs | https://code.claude.com/docs/en/scheduled-tasks.md |
 | S6 | Claude Code, "Schedule recurring tasks in Claude Code Desktop" | Official docs | https://code.claude.com/docs/en/desktop-scheduled-tasks.md |
 | S7 | Claude Code, "Authentication": credential order, `claude setup-token`, storage | Official docs | https://code.claude.com/docs/en/authentication.md |
@@ -39,7 +39,7 @@ The work was done standalone, without questions to the owner; assumptions are re
 | F4 | A detached scheduled run gets its data through a hand-off ticket: this design's SEC-B5, SEC-B6 already lists "schedule" among the ticket users, though no spec owns a schedule (S4). | confirmed |
 | F5 | This design deferred the scheduler: R-006 marks "Token-free schedule for declared programs" deferred ("no scheduler in the first release") and asks the owner whether a recurring scheduler is in scope; ADR-0021 defers "batch, schedule or multi-repository orchestration"; OSK defers a recurring schedule for orchestration templates "with schedules" (S4). | confirmed |
 | F6 | FLX deadlines need no resident process: "an owner who wants deadlines to act on time schedules `resume --apply-deadline` from their own scheduler" (S4). A wait timeout that acts on time therefore needs a scheduler. | confirmed |
-| F7 | The orchestration supervisor is a detached, model-free process **per orchestration**, held by a file lock, which exits when its orchestration ends; it is not a resident engine service (S4, ORC §2.1). | confirmed |
+| F7 | The orchestration supervisor is a detached, model-free process **per orchestration**, held by a file lock, which exits when its orchestration ends; it is not a resident engine service (S4, ORC-B18). | confirmed |
 | F8 | PRV lists `pipeline` for "a cron job" and has no kind for a schedule the engine itself fires; `origin` in the status document has no `schedule` value (S4). | confirmed |
 | F9 | `mode: unattended` is reserved and refused for orchestrations until a delegation policy exists; every pause stays with a person (ADR-0039, S4). | confirmed |
 
@@ -62,7 +62,7 @@ The work was done standalone, without questions to the owner; assumptions are re
 |---|---|---|
 | F18 | Claude Code accepts, for scripts with no browser, `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` (a one-year token that can only make model requests and is not saved by the command), `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, an `apiKeyHelper`, or cloud-provider credentials; a `/login` subscription sign-in lives in the macOS Keychain or `~/.claude/.credentials.json` and, when it expires, requests fail and unattended sessions stall (S7). | supported (S7) |
 | F19 | In `-p` mode an `ANTHROPIC_API_KEY` present in the environment is always used (S7), so a scheduled run inherits whichever credential the trigger's environment carries; a person's shell profile is not read by an OS trigger. | supported (S7), inferred for OS triggers |
-| F20 | The Agent SDK executor assumes API or cloud credentials only, and its probe fails with `credential` when only a claude.ai sign-in exists (R-005 S3, EAS §4). The Messages API executor resolves credentials as the client library does (R-004 M13). Both work with no person present once a key is resolvable. | confirmed (S11) |
+| F20 | The Agent SDK executor assumes API or cloud credentials only, and its probe fails with `credential` when only a claude.ai sign-in exists (R-005 S3, EAS-B13, EAS-B15). The Messages API executor resolves credentials as the client library does (R-004 M13). Both work with no person present once a key is resolvable. | confirmed (S11) |
 | F21 | Antigravity headless uses cached credentials from an interactive login, or API-key mode with `GEMINI_API_KEY`; an unauthenticated non-TTY run exits with "authentication required" (R-002 A1, A11). Whether a cached sign-in survives in a session home started by an OS trigger is P-AG-1, not run. | supported (S11), uncertain for triggers |
 | F22 | An unattended run spends with no one to stop it; the design's only per-run limit is `run.run_cost_cap_usd`, which is optional ([BUD](../specs/08-budgets-and-failures.spec.md)). A recurring schedule multiplies any overspend by its fire count. | inferred |
 | F23 | A scheduled run that pauses waits for a person like any other (C6). If the next fire starts anyway, paused runs pile up and each holds a branch or worktree; a "no live attempt" rule before a slot fires (F1) prevents it. | inferred |
@@ -93,4 +93,4 @@ The work was done standalone, without questions to the owner; assumptions are re
 | Does a systemd user unit (the optional `os` adapter) run while the user is logged out on the owner's Linux machines, with or without lingering? | Implementer | Probe P-SCH-1 ([TCK](../specs/84-schedule-ticks-and-unattended-fires.spec.md)) |
 | Can a loop started by a LaunchAgent read a Claude Code `/login` sign-in from the Keychain while the screen is locked? | Implementer | Probe P-SCH-2 |
 | Does Antigravity's cached sign-in work from a session home started by the loop or an `os` adapter (P-AG-1)? | Implementer | Probe P-SCH-3 |
-| Is scheduling in the first release? | Owner | This note recommends the slice named in [SCH §5](../specs/83-schedules.spec.md) for the release after the first |
+| Is scheduling in the first release? | Owner | This note recommends the slice named in [R-150 SCH](R-150-rationale-carried-from-the-engine-specs.rsrch.md) for the release after the first |

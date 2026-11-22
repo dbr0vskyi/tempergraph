@@ -1,4 +1,4 @@
-"""The executor registry and judge executor selection (EXI §2.1, §2.4).
+"""The executor registry and judge executor selection (EXI-B16, EXI-B17, EXI-B24).
 
 Names are constants registered in a fixed order; workflow data selects one by name and never supplies a
 path or a command. Release 1 registers ``claude`` only (ADR-0091). Tests build their own `Registry`
@@ -41,7 +41,7 @@ class Registry:
 
     def judge_executor(self, step_executor: str, gate_judge_executor: str | None,
                        operator_override: str | None, designated: str | None = None) -> str:
-        """EXI §2.4 order: override, the gate's, the step's if it restricts judge tools, the designated,
+        """EXI-B24 order: override, the gate's, the step's if it restricts judge tools, the designated,
         else the first registered executor that declares it."""
         for name in (operator_override, gate_judge_executor):
             if name:

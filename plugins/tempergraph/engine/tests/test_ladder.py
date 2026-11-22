@@ -1,4 +1,4 @@
-"""The effort ladder: climbing evidence, held causes, resets, validation (LAD-AC-1, AC-2, AC-4)."""
+"""The effort ladder: climbing evidence, held causes, resets, validation (LAD-AC1, AC-2, AC-4)."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ def provisional(unit: str) -> str:
 
 
 def third_fails(ctx: Any) -> CheckResult:
-    """A check whose third attempt fails a test it ran: substance (LAD §2.2)."""
+    """A check whose third attempt fails a test it ran: substance (LAD-B10)."""
     if ctx.attempt == 3:
         return CheckResult(result="FAIL", evidence="pytest failed", findings=[
             CheckFinding(status="fail", criterion="c4", message="test_x failed", kind="substance")])
@@ -94,7 +94,7 @@ def efforts(ex: Any, kind: str = "step") -> list[str | None]:
     return [c.request.options.effort for c in ex.calls if c.kind == kind]
 
 
-def test_climb_on_trusted_evidence_only(repo: Path) -> None:  # LAD-B1, LAD-AC-4
+def test_climb_on_trusted_evidence_only(repo: Path) -> None:  # LAD-B1, LAD-AC4
     out, ex = go(repo, wf(check=third_fails), [OK, SLOW, OK, OK], [judge(FAIL), judge(MET2)])
     assert out.exit_code is ExitCode.FINISHED, out.message
     assert efforts(ex) == ["medium", "high", "high", "xhigh"]
@@ -109,7 +109,7 @@ def test_climb_on_trusted_evidence_only(repo: Path) -> None:  # LAD-B1, LAD-AC-4
         (1, "high", "medium", "ladder:effort[1]"), (2, "xhigh", "medium", "ladder:effort[2]")]
 
 
-def test_the_top_rung_is_the_end(repo: Path) -> None:  # LAD §5: a ladder never adds an attempt
+def test_the_top_rung_is_the_end(repo: Path) -> None:  # LAD-B11: a ladder never adds an attempt
     out, ex = go(repo, wf(effort_ladder=("low", "medium"), retry_budget=2), [OK, OK, OK],
                  [judge(FAIL), judge(FAIL), judge(FAIL)])
     assert out.exit_code is ExitCode.PAUSED and out.payload["kind"] == "budget"
@@ -150,7 +150,7 @@ def test_an_output_contract_failure_holds_the_rung(repo: Path) -> None:  # LAD-B
 
 
 @pytest.mark.parametrize(("check", "held"), [(contract_fails, "output_contract"), (unkinded_fails, "check_no_substance")])
-def test_a_check_failure_without_substance_holds_the_rung(repo: Path, check: Any, held: str) -> None:  # LAD §2.2
+def test_a_check_failure_without_substance_holds_the_rung(repo: Path, check: Any, held: str) -> None:  # LAD-B10
     out, ex = go(repo, wf(check=check), [OK, OK], [judge(MET2)])
     assert out.exit_code is ExitCode.FINISHED, out.message
     assert efforts(ex) == ["medium", "medium"] and recs(repo, "ladder_decision")[0]["held_by"] == held
@@ -169,7 +169,7 @@ def test_a_person_retry_starts_at_rung_zero(repo: Path) -> None:  # LAD-B8
 
 
 @pytest.mark.parametrize("flags", [{"work.effort": "high"}, {"work.model": "large"}])
-def test_an_operator_pin_switches_the_ladder_off(repo: Path, flags: dict[str, Any]) -> None:  # LAD §2.3 last row
+def test_an_operator_pin_switches_the_ladder_off(repo: Path, flags: dict[str, Any]) -> None:  # LAD-B11 last row
     out, ex = go(repo, wf(), [OK, OK], [judge(FAIL), judge(MET2)], flags=flags)
     assert out.exit_code is ExitCode.FINISHED, out.message
     want = flags.get("work.effort")
@@ -180,7 +180,7 @@ def test_an_operator_pin_switches_the_ladder_off(repo: Path, flags: dict[str, An
 
 
 @pytest.mark.parametrize("key", ["work.effort_ladder", "work.escalation"])
-def test_an_operator_cannot_set_a_ladder(repo: Path, key: str) -> None:  # LAD §2.6 last row
+def test_an_operator_cannot_set_a_ladder(repo: Path, key: str) -> None:  # LAD-B14 last row
     out, _ = go(repo, wf(), [OK], [judge(MET2)], flags={key: "high"})
     assert out.exit_code is ExitCode.USAGE
 
@@ -224,7 +224,7 @@ SUBSTANCE = {"result": "FAIL", "environmental": False,
      {"verdict": "RETRY", "reason": "check_fail"}, None, "check_no_substance"),
 ])
 def test_only_two_kinds_of_evidence_climb(att: dict[str, Any], judged: dict[str, Any], evidence: Any,
-                                          held: Any) -> None:  # LAD-AC-2, LAD §2.2, §2.3
+                                          held: Any) -> None:  # LAD-AC2, LAD-B10, LAD-B11
     got = ladder.classify(att, judged)
     assert (got.evidence, got.held_by) == (evidence, held)
 
@@ -233,17 +233,17 @@ def codes(spec: WorkflowSpec, caps: Any = DECLARED) -> set[str]:
     return {f.code for f in validate(spec, caps) if f.severity == "error"}
 
 
-def test_validation() -> None:  # LAD §2.1, §2.6
+def test_validation() -> None:  # LAD-B9, LAD-B14
     assert codes(wf()) == set()
     for rungs in (("medium",), ("low", "medium", "high", "xhigh", "max"), ("high", "medium"), ("high", "high"),
                   ("medium", "extreme")):
         assert "ladder-invalid" in codes(wf(effort_ladder=rungs)), rungs
     assert "ladder-invalid" in codes(wf(effort="high"))  # a ladder excludes a fixed effort
     assert "ladder-invalid" in codes(wf(session_options=SessionOptions(effort="high")))
-    assert codes(wf(effort_ladder=(), effort="xhigh")) == set()  # `xhigh` joins the enum (CON §2.6)
+    assert codes(wf(effort_ladder=(), effort="xhigh")) == set()  # `xhigh` joins the enum (SSN-B1 to SSN-B6)
 
 
-def test_a_rung_the_executor_cannot_apply_is_refused_before_the_run(repo: Path) -> None:  # LAD §2.6, §4 row 1
+def test_a_rung_the_executor_cannot_apply_is_refused_before_the_run(repo: Path) -> None:  # LAD-B14 row 1
     weak = dataclasses.replace(DECLARED["claude"], efforts=frozenset({"low", "medium", "high"}),
                                efforts_uncertain=frozenset())
     ex = standin("claude", steps=[OK], judges=[judge(MET2)])
@@ -255,7 +255,7 @@ def test_a_rung_the_executor_cannot_apply_is_refused_before_the_run(repo: Path) 
     assert out.exit_code is ExitCode.USAGE and ex.calls == []
 
 
-def test_an_unprobed_rung_is_warned_and_runs() -> None:  # LAD §2.6 row 2, pending probe P-LAD-1
+def test_an_unprobed_rung_is_warned_and_runs() -> None:  # LAD-B14 row 2, pending probe P-LAD-1
     ex = standin("claude", steps=[OK], judges=[judge(MET2)])
     rep = preflight(wf(), registry(ex))
     assert rep.refusals == [] and "effort-rung-uncertain" in [f.code for f in rep.warnings]

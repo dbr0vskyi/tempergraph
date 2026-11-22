@@ -1,5 +1,5 @@
 """Judge model by risk: the rule, levels, fault, floor, shadow, pins, stock rules, validation and the report
-(JRK-AC-1 to AC-3)."""
+(JRK-AC1 to AC-3)."""
 
 from __future__ import annotations
 
@@ -107,7 +107,7 @@ def test_raise_on_engine_code(repo: Path) -> None:  # JRK-B1
 
 
 @pytest.mark.parametrize(("rule", "fault"), [(raises, "KeyError"), (slow, "timeout"), (unknown, "undeclared_level")])
-def test_a_fault_takes_the_strongest_level(repo: Path, rule: Any, fault: str) -> None:  # JRK-B2, §4
+def test_a_fault_takes_the_strongest_level(repo: Path, rule: Any, fault: str) -> None:  # JRK-B2, JRK-B6, JRK-B7, JRK-B2
     ex = go(repo, wf(Risk(levels=LEVELS, rule=rule)), writes("docs/a.md"))
     assert judged_on(ex) == [("large", None)]
     (r,) = recs(repo, "judge_risk")
@@ -122,7 +122,7 @@ def test_shadow_records_and_runs_level_zero(repo: Path) -> None:  # JRK-B4
     assert (r["level"], r["chosen_by"], r["would_choose"]) == ("base", "shadow", "code")
 
 
-def test_an_operator_pin_wins_and_the_rule_still_records(repo: Path) -> None:  # JRK §2.3 rule 1
+def test_an_operator_pin_wins_and_the_rule_still_records(repo: Path) -> None:  # JRK-B8 rule 1
     ex = go(repo, wf(Risk(levels=LEVELS, rule=always_code)), writes("a.md"), flags={"judge:work.model": "small"})
     assert judged_on(ex) == [("small", None)]
     (r,) = recs(repo, "judge_risk")
@@ -154,7 +154,7 @@ def test_a_missing_fact_is_a_fault(repo: Path) -> None:
     assert recs(repo, "judge_risk")[0]["chosen_by"] == "fault"
 
 
-def test_the_rule_cannot_read_what_the_step_says(repo: Path) -> None:  # JRK-AC-3
+def test_the_rule_cannot_read_what_the_step_says(repo: Path) -> None:  # JRK-AC3
     names = {f.name for f in dataclasses.fields(RiskContext)}
     assert names == {"unit", "item", "visit", "attempt", "git", "facts", "request", "settings", "stage", "producer"}
     levels = []
@@ -179,7 +179,7 @@ def test_floor_after_an_escalated_producer() -> None:  # JRK-B3
     assert (got["level"], got["chosen_by"], got["would_choose"]) == ("code", "floor", "code")
 
 
-def test_no_judge_runs_below_level_zero_or_the_escalated_tier() -> None:  # JRK-AC-2
+def test_no_judge_runs_below_level_zero_or_the_escalated_tier() -> None:  # JRK-AC2
     rnd = random.Random(11)
     tiers = ["small", "medium", "large"]
     for _ in range(500):
@@ -198,7 +198,7 @@ def test_no_judge_runs_below_level_zero_or_the_escalated_tier() -> None:  # JRK-
             assert got["level"] == "top"
 
 
-def test_escalation_counts_the_highest_level_as_the_judge_tier() -> None:  # LAD §2.4 E4 with JRK §2.3 rule 3
+def test_escalation_counts_the_highest_level_as_the_judge_tier() -> None:  # LAD-B12 E4 with JRK-B8 rule 3
     plain = Judge(stance="V.", model="medium")
     assert riskmod.top_rank(plain) == 1
     assert riskmod.top_rank(dataclasses.replace(plain, risk=Risk(levels=LEVELS, rule=always_base))) == 2
@@ -220,7 +220,7 @@ def test_escalation_counts_the_highest_level_as_the_judge_tier() -> None:  # LAD
     (Risk(levels=[Level("base"), Level("code", model="large", effort="huge")], rule=always_base), "not an effort"),
     (Risk(levels=[Level("base"), Level("code", model="claude:opus")], rule=always_base), "at or above"),
 ])
-def test_validation_refuses(risk: Any, words: str) -> None:  # JRK §2.1, §4
+def test_validation_refuses(risk: Any, words: str) -> None:  # JRK-B6, JRK-B7, JRK-B2
     hit = [f for f in validate(wf(risk), DECLARED) if f.code == "risk-invalid"]
     assert hit and any(words in f.message for f in hit), [f.message for f in hit]
 
@@ -229,11 +229,11 @@ def test_validation_accepts_and_binds_each_level() -> None:
     assert not [f for f in validate(wf(Risk(levels=LEVELS, rule=by_src)), DECLARED) if f.severity == "error"]
     lower = wf(Risk(levels=[Level("base"), Level("less", effort="low")], rule=always_base), effort="high")
     assert any("lowers the effort" in f.message for f in validate(lower, DECLARED))
-    inherited = wf(Risk(levels=LEVELS, rule=by_src), judge_model=None)  # level 0 is the step's alias (CON §2.4)
+    inherited = wf(Risk(levels=LEVELS, rule=by_src), judge_model=None)  # level 0 is the step's alias (CON-B3)
     assert not [f for f in validate(inherited, DECLARED) if f.severity == "error"]
 
 
-def test_report_by_gate_and_level(repo: Path) -> None:  # JRK §2.5
+def test_report_by_gate_and_level(repo: Path) -> None:  # JRK-B10
     spec = wf(Risk(levels=LEVELS, rule=by_src))
     go(repo, spec, writes("src/x.py"))
     go(repo, spec, writes("docs/a.md"), task="R-2")
@@ -254,7 +254,7 @@ def test_report_by_gate_and_level(repo: Path) -> None:  # JRK §2.5
     assert code == 0 and got["rows"] == doc["rows"]
 
 
-def test_a_ladder_reads_the_trust_of_the_level_that_graded(repo: Path) -> None:  # JRK §2.3, LAD §2.2
+def test_a_ladder_reads_the_trust_of_the_level_that_graded(repo: Path) -> None:  # JRK-B8, LAD-B10
     asked: list[str] = []
 
     def state_of(key: str) -> str:

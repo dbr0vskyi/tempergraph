@@ -13,7 +13,7 @@ The owner asked for "a parameter which allows native worktree support". The desi
 
 ## Decision
 
-We will read "native" as built into the engine: the engine creates, records, re-attaches and removes the run's worktree with git, the same way on all four executors, and points each executor at it through its working directory ([WTR §2.9](../specs/82-worktree-mode.spec.md)). The engine never passes an executor's worktree option, makes `EnterWorktree` and `ExitWorktree` unavailable to steps, denies a subagent's worktree request where a gatekeeper sees it, and reports any worktree that appears during a session as foreign without touching it. The engine reads Claude Code's `.worktreeinclude` as an extra include source.
+We will read "native" as built into the engine: the engine creates, records, re-attaches and removes the run's worktree with git, the same way on all four executors, and points each executor at it through its working directory ([WTR-B25](../specs/82-worktree-mode.spec.md)). The engine never passes an executor's worktree option, makes `EnterWorktree` and `ExitWorktree` unavailable to steps, denies a subagent's worktree request where a gatekeeper sees it, and reports any worktree that appears during a session as foreign without touching it. The engine reads Claude Code's `.worktreeinclude` as an extra include source.
 
 ## Options considered
 
@@ -37,9 +37,9 @@ We will read "native" as built into the engine: the engine creates, records, re-
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | "Native worktree support" means the engine supports worktrees itself, switched by one parameter; it does not require the executor's own feature. | WTR §1 |
-| A2 | `--disallowedTools` removes `EnterWorktree` and `ExitWorktree` from a `claude -p` session (probe P-WTR-1). | WTR §2.9 |
-| A3 | A step that needs several trees is a writer branch or a contest, never a subagent worktree. | WSP §2.1 |
+| A1 | "Native worktree support" means the engine supports worktrees itself, switched by one parameter; it does not require the executor's own feature. | WTR |
+| A2 | `--disallowedTools` removes `EnterWorktree` and `ExitWorktree` from a `claude -p` session (probe P-WTR-1). | WTR-B25 |
+| A3 | A step that needs several trees is a writer branch or a contest, never a subagent worktree. | WSP-B11, WSP-B12 |
 
 ## Consequences
 

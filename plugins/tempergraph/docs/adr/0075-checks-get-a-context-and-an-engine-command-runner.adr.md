@@ -38,14 +38,14 @@ We will give a check a typed **context** (workspace, main checkout, request, art
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| K1 | One interpreter start per gate (about a second) is small against a gate's judge session. | CHK §2.6 |
-| K2 | A workflow can state per command prefix which exit codes are results; without that, any normal exit is one. | CHK §2.3 |
+| K1 | One interpreter start per gate (about a second) is small against a gate's judge session. | CHK-B16 |
+| K2 | A workflow can state per command prefix which exit codes are results; without that, any normal exit is one. | CHK-B12, CHK-B13 |
 
 ## Consequences
 
 - Positive: temperspec's test run becomes workflow policy over engine mechanics; every workflow's checks gain the same safety and evidence rules.
 - Positive: findings with criterion ids let the self-improvement loop and the audit cluster check failures by criterion, not only judge failures.
-- Negative: CON §2.8 grows (`findings`, `facts`), and SEC lists one more launch site.
+- Negative: SSN-B8, SSN-B9, SSN-B10 grows (`findings`, `facts`), and SEC lists one more launch site.
 - Risk: reuse returns a stale result when a command reads outside the tree. Mitigation: the key covers head, status and the digest of changed and untracked files; a workflow passes `reuse=False` for commands that read elsewhere.
 
 ## Revisit when

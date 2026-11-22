@@ -1,8 +1,8 @@
-"""The outcome record of a thread and the workflow's uncorrected outcome measures (OUT §2.5, CON §2.14).
+"""The outcome record of a thread and the workflow's uncorrected outcome measures (OUT-B18, OUT-B19, PKG, OUT (moved)).
 
 Model-free and metadata only: statuses and ids, never criterion text from a session. Each criterion's trust is
-computed by `run/outcome_trust.py` (OUT §2.3): a check is `deterministic` only with its must-pass and must-fail
-fixtures, and a judge is `uncalibrated` until calibration accepts it (JCL §2.5).
+computed by `run/outcome_trust.py` (OUT-B13, OUT-B14): a check is `deterministic` only with its must-pass and must-fail
+fixtures, and a judge is `uncalibrated` until calibration accepts it (JCL-B17).
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ def build(spec: WorkflowSpec, values: Mapping[str, Any], log_path: Path) -> dict
     reached = bool(att) or judged is not None
     from tempergraph.improve.calibration import accepted_for
 
-    accepted = accepted_for(spec)  # JCL §2.5: `calibrated` only for an `accepted` outcome judge
+    accepted = accepted_for(spec)  # JCL-B17: `calibrated` only for an `accepted` outcome judge
     criteria: list[dict[str, Any]] = []
     for c in o.final:
         grader: Any = None
@@ -86,7 +86,7 @@ def build(spec: WorkflowSpec, values: Mapping[str, Any], log_path: Path) -> dict
 
 
 def verdict(criteria: Iterable[Mapping[str, Any]], reached: bool = True) -> str:
-    """OUT §2.5: met, met_with_open, unmet, needs_person or not_reached."""
+    """OUT-B18, OUT-B19: met, met_with_open, unmet, needs_person or not_reached."""
     if not reached:
         return "not_reached"
     rows = list(criteria)
@@ -115,7 +115,7 @@ def _latest(rows: Iterable[Mapping[str, Any]], workflow: str) -> dict[str, dict[
 
 
 def measures(spec: WorkflowSpec, ledger: Path, since: str | None = None) -> dict[str, Any]:
-    """OUT §2.5 measures, uncorrected, per revision; a revision is never pooled with another (OUT-B7)."""
+    """OUT-B18, OUT-B19 measures, uncorrected, per revision; a revision is never pooled with another (OUT-B7)."""
     rows = _jsonl(ledger)
     if since:
         rows = [r for r in rows if str(r.get("ts", "")) >= since]
@@ -162,7 +162,7 @@ def measures(spec: WorkflowSpec, ledger: Path, since: str | None = None) -> dict
             "weak_blockers": weak, "upstream_agreement": upstream,
             "sign_off": {"per_run": round(len(person) / len(graded), 2) if graded else None,
                          "wait_s": round(sum(sum(v) for v in waits.values()), 1)},
-            "corrected": None})  # judge-error correction waits on calibration (EVS §2.5)
+            "corrected": None})  # judge-error correction waits on calibration (EVS-B15)
     return {"schema_version": 1, "workflow": spec.name, "revisions": out}
 
 
@@ -171,7 +171,7 @@ UPSTREAM_MIN_N = 5
 
 
 def candidates(spec: WorkflowSpec, ledger: Path, since: str | None = None) -> dict[str, Any]:
-    """OUT §2.6 revision candidates, model-free: signals with thread ids and counts, never text."""
+    """OUT-B20, OUT-B21 revision candidates, model-free: signals with thread ids and counts, never text."""
     rows = _jsonl(ledger)
     if since:
         rows = [r for r in rows if str(r.get("ts", "")) >= since]

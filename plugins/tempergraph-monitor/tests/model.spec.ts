@@ -181,7 +181,7 @@ describe('sources (MDS §2, contract M1)', () => {
     }
     for (const v of WRITING_VERBS) expect((READ_ONLY_VERBS as readonly string[]).includes(v)).toBe(false)
     for (const w of [['tempergraph', 'stats', 'flush'], ['tempergraph', 'stats', 'sync'], ['tempergraph', 'stats', '--sync', '--json']])
-      expect(isReadOnly(w)).toBe(false) // stats writes only as flush and sync (engine CST §2.5)
+      expect(isReadOnly(w)).toBe(false) // stats writes only as flush and sync (engine CST-B14, CST-B15, CST-B16)
     expect(() => fleetArgv('live', 'team; rm')).toThrow()
     expect(() => detailArgv('demo/T-1; rm -rf /')).toThrow()
     expect(() => detailArgv('demo/T-1', '--now')).toThrow()
@@ -223,7 +223,7 @@ describe('sources (MDS §2, contract M1)', () => {
   })
 })
 
-describe('supervision level (SUP §2.3, MRV §2.4)', () => {
+describe('supervision level (SUP-B11, MRV §2.4)', () => {
   test('the paused fixture has a level from the engine\'s record, and a missing record shows none', () => {
     expect(levelText(paused)).toMatch(/^(observer|approver|consultant|collaborator|operator)/)
     const d = clone(paused)

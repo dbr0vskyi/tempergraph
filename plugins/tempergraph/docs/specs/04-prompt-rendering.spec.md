@@ -16,7 +16,7 @@ WHEN a step is rendered for different executors THE renderer SHALL produce promp
 
 ### PRM-B6 Sections and their order
 
-WHEN a step prompt is rendered THE renderer SHALL write, in this order and each only when its condition holds: the step's template ([CON-B8](01-contracts.spec.md)); item and event sections (item id, index and count; an event value cut at 4000 characters); commands you may run (declared prefixes, or `self_check`); check your work before you end, with the `self-check` command and what it reports ([CHK §2.5](75-check-contract-and-command-runs.spec.md)); tools for this step; lessons from earlier runs, active entries in id order with their ids ([LSN §2.2](42-workflow-lessons.spec.md)); the artifact contract, one line per declared key and kind; how this output will be judged (criterion texts only); the blocked line and, when allowed, the upstream line; notes from the previous judgement (unmet warnings of the last pass); the reason for this visit and who sent it; the rejection reason on a retry; human feedback ([RRN §2.2](81-reruns-and-feedback.spec.md)); and rulings from a person.
+WHEN a step prompt is rendered THE renderer SHALL write, in this order and each only when its condition holds: the step's template ([CON-B8](01-contracts.spec.md)); item and event sections (item id, index and count; an event value cut at 4000 characters); commands you may run (declared prefixes, or `self_check`); check your work before you end, with the `self-check` command and what it reports ([CHK-B17](75-check-contract-and-command-runs.spec.md)); tools for this step; lessons from earlier runs, active entries in id order with their ids ([LSN-B8, LSN-B2](42-workflow-lessons.spec.md)); the artifact contract, one line per declared key and kind; how this output will be judged (criterion texts only); the blocked line and, when allowed, the upstream line; notes from the previous judgement (unmet warnings of the last pass); the reason for this visit and who sent it; the rejection reason on a retry; human feedback ([RRN-B14, RRN-B15](81-reruns-and-feedback.spec.md)); and rulings from a person.
 
 - GIVEN a step with commands and `self_check` WHEN rendered THEN the commands section comes before the self-check section, and both after the template
 - GIVEN active lessons for the unit WHEN its judge's prompt is rendered THEN no lesson appears in it
@@ -35,7 +35,7 @@ WHEN text is appended after the template THE renderer SHALL append it verbatim, 
 
 ### PRM-B7 The default prompt
 
-WHEN a step's `prompt` is `default` THE renderer SHALL render the engine template `{request}`, the whole start request, which is the one input of a workflow that declares no input parameters ([VAL §2.3](76-step-values-and-template-keys.spec.md)).
+WHEN a step's `prompt` is `default` THE renderer SHALL render the engine template `{request}`, the whole start request, which is the one input of a workflow that declares no input parameters ([VAL-B8](76-step-values-and-template-keys.spec.md)).
 
 - GIVEN a workflow with no input parameters and a step with `prompt: default` WHEN started with "summarize the changes" THEN the prompt begins with "summarize the changes"
 
@@ -47,7 +47,7 @@ WHEN a gate has criteria THE renderer SHALL list their texts as the target and a
 
 ### PRM-B8 The tools block
 
-WHEN a step declares tools or holds a tool grant ([RST §2.8](80-run-settings-and-overrides.spec.md)) THE renderer SHALL write the tools by their executor names and the rules to stay in the working directory, prefer file tools over the shell when both are declared, run git without a leading change of directory and run only the listed commands, say there is no shell when `shell` is not declared, and never say an undeclared tool is unavailable, because enforcement is opt-in.
+WHEN a step declares tools or holds a tool grant ([RST-B28, RST-B29, RST-B30](80-run-settings-and-overrides.spec.md)) THE renderer SHALL write the tools by their executor names and the rules to stay in the working directory, prefer file tools over the shell when both are declared, run git without a leading change of directory and run only the listed commands, say there is no shell when `shell` is not declared, and never say an undeclared tool is unavailable, because enforcement is opt-in.
 
 - GIVEN a step declaring `read` and `edit` WHEN rendered THEN the tools block says there is no shell
 - GIVEN a grant of `shell` for this run WHEN the step is rendered THEN the tools block lists the shell tool
@@ -75,7 +75,7 @@ WHEN a person gave feedback or rulings THE renderer SHALL show one-time feedback
 
 ### PRM-B11 Output contract
 
-WHEN a step ends THE engine SHALL read its last non-blank lines: `ARTIFACT <key>: <value>`, one per declared key (a key with no line falls back to the raw output; for a `value` key the text sets the value, [VAL §2.1](76-step-values-and-template-keys.spec.md)); `BLOCKED: <what a person must decide or provide>`, which skips the judge; or `UPSTREAM <unit>: <defect>`.
+WHEN a step ends THE engine SHALL read its last non-blank lines: `ARTIFACT <key>: <value>`, one per declared key (a key with no line falls back to the raw output; for a `value` key the text sets the value, [VAL-B5, VAL-B6](76-step-values-and-template-keys.spec.md)); `BLOCKED: <what a person must decide or provide>`, which skips the judge; or `UPSTREAM <unit>: <defect>`.
 
 - GIVEN a step ending `BLOCKED: need the API key` WHEN its gate runs THEN no judge session starts and the run pauses for a person
 - GIVEN `UPSTREAM deploy: …` where `deploy` is not a listed target on this path WHEN read THEN the claim is read as blocked

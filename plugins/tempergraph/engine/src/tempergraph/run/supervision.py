@@ -1,7 +1,7 @@
-"""The supervision record of a run, built at every `run_exit` for the thread so far (SUP §2.2, §2.3).
+"""The supervision record of a run, built at every `run_exit` for the thread so far (SUP-B10, SUP-B11).
 
 Read from the thread's intervention rows in the ledger and its `run_started` records. Cost fields and
-`observations` come from the supervision journal (SCO §2.5, T7.6) and stay null until then: unmeasured is
+`observations` come from the supervision journal (SCO-B15, T7.6) and stay null until then: unmeasured is
 never zero.
 """
 

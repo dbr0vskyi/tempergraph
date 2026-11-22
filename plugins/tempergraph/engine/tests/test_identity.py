@@ -1,4 +1,4 @@
-"""IMD-R1 join keys on the ledger rows: workflow version, machine id and repository digest."""
+"""IMD-B5 join keys on the ledger rows: workflow version, machine id and repository digest."""
 
 from __future__ import annotations
 

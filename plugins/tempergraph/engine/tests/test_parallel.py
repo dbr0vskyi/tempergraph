@@ -1,4 +1,4 @@
-"""Parallel read-only branches and their engine-owned join (CMP §2.2, CMP-B4, HUM-B3, WSP §2.1)."""
+"""Parallel read-only branches and their engine-owned join (CMP-B10 to CMP-B16, CMP-B4, HUM-B3, WSP-B11, WSP-B12)."""
 
 from __future__ import annotations
 
@@ -111,7 +111,7 @@ def test_a_branch_that_stops_stops_the_block(repo: Path) -> None:  # CMP-B4
     assert "report" not in steps(ex) and "reviews" not in [r["unit"] for r in recs(repo, "unit_entered")]
 
 
-def test_a_branch_that_changes_the_workspace_fails(repo: Path) -> None:  # WSP §2.1
+def test_a_branch_that_changes_the_workspace_fails(repo: Path) -> None:  # WSP-B11, WSP-B12
     ex = ByUnit(write="security")
     out = go(repo, wf(retry_budget=0, on_budget_spent="stop"), ex)
     assert out.exit_code is ExitCode.BUDGET_OR_INFRA, out.message
@@ -154,7 +154,7 @@ def test_a_trip_back_to_the_block_runs_every_branch_again(repo: Path) -> None:
     assert got.count("plan") == 1
 
 
-def test_the_block_refusals() -> None:  # WFM §2
+def test_the_block_refusals() -> None:  # WFM-B7
     def codes(**change: Any) -> set[str]:
         spec = wf()
         units = dict(spec.units)

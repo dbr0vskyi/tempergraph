@@ -18,17 +18,17 @@ What the monitor reads, from where, how often, and the rule that it never writes
 
 | Source | How | When | Engine owner |
 |---|---|---|---|
-| State roots to watch | The session's own repository (git common directory of the session's working directory, found by `git rev-parse --git-common-dir` with constant argv), plus every root in `~/.tempergraph/index.json` when `scope = machine` | At start, and when the index file's mtime changes | [CST §2.1](../../../tempergraph/docs/specs/34-central-run-stats.spec.md) |
-| Run rows | `tempergraph status --json` per watched root (the verb is run in that root) | Every 5 s while any row is alive or the pane is open; every 30 s otherwise; at once when a watched run log grew | [DUR §2.2](../../../tempergraph/docs/specs/09-durability-and-resume.spec.md) |
-| Change signal | `$.fs.stat` of each live thread's `run.jsonl` | Every 1 s | [LOS §2.1](../../../tempergraph/docs/specs/33-local-observability-store.spec.md) |
-| Run-log tail | `$.fs.read` with `{offset, length}` from the last offset read | When the change signal moved | [EVT §2.1](../../../tempergraph/docs/specs/30-run-events.spec.md) |
+| State roots to watch | The session's own repository (git common directory of the session's working directory, found by `git rev-parse --git-common-dir` with constant argv), plus every root in `~/.tempergraph/index.json` when `scope = machine` | At start, and when the index file's mtime changes | [CST-B8](../../../tempergraph/docs/specs/34-central-run-stats.spec.md) |
+| Run rows | `tempergraph status --json` per watched root (the verb is run in that root) | Every 5 s while any row is alive or the pane is open; every 30 s otherwise; at once when a watched run log grew | [DUR-B11](../../../tempergraph/docs/specs/09-durability-and-resume.spec.md) |
+| Change signal | `$.fs.stat` of each live thread's `run.jsonl` | Every 1 s | [LOS-B7, LOS-B8, LOS-B9](../../../tempergraph/docs/specs/33-local-observability-store.spec.md) |
+| Run-log tail | `$.fs.read` with `{offset, length}` from the last offset read | When the change signal moved | [EVT-B8, EVT-B9](../../../tempergraph/docs/specs/30-run-events.spec.md) |
 | Detail document | `tempergraph status --detail <thread> --json` (with `--unit` when the document says it was cut) | When the person opens a run, then when its run log grew, at most every 2 s | [RDD](../../../tempergraph/docs/specs/31-run-detail-document.spec.md) |
-| Live session | `$.fs.read` of `live.json`; tail of `activity.jsonl` | Every 1 s while a session view is open | [EVT §2.3](../../../tempergraph/docs/specs/30-run-events.spec.md) |
-| Processes | `ps -A -o pid=,pgid=,ppid=,etime=,comm=` (constant argv, POSIX), filtered to the session's `pgid` | Every 2 s while a session view's Processes tab is open | [RDD §2.2](../../../tempergraph/docs/specs/31-run-detail-document.spec.md) |
+| Live session | `$.fs.read` of `live.json`; tail of `activity.jsonl` | Every 1 s while a session view is open | [EVT-B17, EVT-B18, EVT-B7, EVT-B19](../../../tempergraph/docs/specs/30-run-events.spec.md) |
+| Processes | `ps -A -o pid=,pgid=,ppid=,etime=,comm=` (constant argv, POSIX), filtered to the session's `pgid` | Every 2 s while a session view's Processes tab is open | [RDD-B12](../../../tempergraph/docs/specs/31-run-detail-document.spec.md) |
 | Log tails | `$.fs.read` of the last 64 KB of `raw.jsonl`, `stderr.log`, a check's `stdout.log` | On request in a session or check view | [LOS](../../../tempergraph/docs/specs/33-local-observability-store.spec.md) |
-| Orchestrations | `tempergraph orchestrate list --json`, then `orchestrate status <id> --json` | Every 5 s while one is live or open | [ORC §2.7](../../../tempergraph/docs/specs/45-orchestration.spec.md) |
-| Projection | `tempergraph stats --projection --by workflow --json` | Every 10 min, and when a run of a new workflow appears | [CST §2.5](../../../tempergraph/docs/specs/34-central-run-stats.spec.md) |
-| Fleet | `tempergraph stats --live --json`, which reads the home folder's fleet copy (`~/.tempergraph/fleet/`); the mod stats `synced.json` to know when it changed | Every 60 s while the fleet tab is open or `alerts.fleet = on` | [CST §2.5](../../../tempergraph/docs/specs/34-central-run-stats.spec.md) |
+| Orchestrations | `tempergraph orchestrate list --json`, then `orchestrate status <id> --json` | Every 5 s while one is live or open | [ORC-B25](../../../tempergraph/docs/specs/45-orchestration.spec.md) |
+| Projection | `tempergraph stats --projection --by workflow --json` | Every 10 min, and when a run of a new workflow appears | [CST-B14, CST-B15, CST-B16](../../../tempergraph/docs/specs/34-central-run-stats.spec.md) |
+| Fleet | `tempergraph stats --live --json`, which reads the home folder's fleet copy (`~/.tempergraph/fleet/`); the mod stats `synced.json` to know when it changed | Every 60 s while the fleet tab is open or `alerts.fleet = on` | [CST-B14, CST-B15, CST-B16](../../../tempergraph/docs/specs/34-central-run-stats.spec.md) |
 
 Every verb is run by `$.process.run` with list argv built from constants and values the engine itself printed (thread ids, session keys, sink names from config), never from text a person typed into the pane ([MAC](05-actions-and-safety.spec.md)). A call has a 20 s timeout; at most two verb calls run at once (release 1 runs one at a time: one timer tick reads, and a tick that finds the last one still running is skipped).
 
@@ -39,7 +39,7 @@ Every verb is run by `$.process.run` with list argv built from constants and val
 | One copy per document | The last good copy of each document is kept in session state with its read time; a failed read keeps it and marks it `stale since` |
 | Partial lines | A tail read drops a last line without a newline and re-reads it next time |
 | Rotation | A file whose size shrank, or whose inode changed, is read again from 0 (release 1 checks size only: `$.fs.stat` gives no inode, and the engine never replaces a run log in place) |
-| Schema | A document with a newer major schema is not drawn; its row says so (contract C12 of the engine) |
+| Schema | A document with a newer major schema is not drawn; its row says so (OVR-B14 of the engine) |
 | Bounds | At most 4 MiB per read; tails keep the last 2 000 activity lines and 500 run-log records per thread in memory |
 
 ### 2.3 Read-only rule (contract M1)

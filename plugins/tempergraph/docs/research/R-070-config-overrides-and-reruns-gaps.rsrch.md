@@ -14,7 +14,7 @@ The owner asked on 2026-11-20 whether the engine design lets a person override a
 
 | # | Source | Type | Where |
 |---|---|---|---|
-| S4 | This design on `main` after PR 10: CON §2.1, §2.4, §2.6; BUD; DUR; HUM; CLI §2.1; EXI §2.2; EVT §2.2; ORC §2.2; MIG §2.5; FLX; CNL; CTS; SCR | Design set | [specs](../specs/00-overview.spec.md) |
+| S4 | This design on `main` after PR 10: CON-B4, CON-B5, CON-B6, CON-B7, CON-B3, SSN-B1 to SSN-B6; BUD; DUR; HUM; ROP-B1 to ROP-B13; EXI-B18; EVT-B10 to EVT-B16; ORC-B19, ORC-B20; MIG-B15; FLX; CNL; CTS; SCR | Design set | [specs](../specs/00-overview.spec.md) |
 | S5 | LangGraph "Use time travel": replay from a `checkpoint_id`, fork with `update_state` | Official docs | https://docs.langchain.com/oss/python/langgraph/use-time-travel |
 | S6 | LangGraph checkpointers: state history per thread, checkpoint ids | Official docs | https://docs.langchain.com/oss/langgraph/checkpointers |
 | S7 | Claude Code settings: scopes and precedence (managed, command line, local project, shared project, user) | Official docs | https://code.claude.com/docs/en/settings |
@@ -28,7 +28,7 @@ The owner asked on 2026-11-20 whether the engine design lets a person override a
 | # | Finding | Confidence |
 |---|---|---|
 | F1 | Models have a full layered order for steps (operator per step, operator per run, the step's model or ladder rung, workflow default, `inherit`) and a separate one for judges, so a step override never reaches a judge (CON-B3). Every record carries alias, source layer and executor. | confirmed (S4) |
-| F2 | Timeouts have the same layered order for steps and judges (BUD §2.1), and the record carries the source layer. `idle_s` has a step field and a run flag (`--idle`) but no per-step operator layer and no judge layer. | confirmed (S4) |
+| F2 | Timeouts have the same layered order for steps and judges (BUD-B10), and the record carries the source layer. `idle_s` has a step field and a run flag (`--idle`) but no per-step operator layer and no judge layer. | confirmed (S4) |
 | F3 | Executors can be overridden per run, per step and for judges (`--executor`, `--step-executor`, `--judge-executor`); DUR-B7 reapplies a per-step executor override across resume. | confirmed (S4) |
 | F4 | Only one budget has an operator override: `--run-cost-cap`. The retry budget, loop budget, infra tries and backoff, attempt cap, human cap and `on_budget_spent` are workflow-only or engine constants. temperspec's operators need an iteration budget "pass more for a long plan" and a test budget switch (S3 11). | confirmed (S3, S4) |
 | F5 | Session options (`effort`, `cost_cap_usd`, `turn_cap`, `fallback_alias`) are step data only; no operator layer exists, though nothing stops them resolving in the order models do. No subagent model setting exists, so an operator cannot choose the model of a step's subagent, such as a discovery step's survey. | confirmed (S4) |
@@ -37,7 +37,7 @@ The owner asked on 2026-11-20 whether the engine design lets a person override a
 | F8 | There is no machine or project configuration layer for run settings. An operator config exists under the state root and the home folder, but it holds hooks, observers, sinks, price overrides and `observe.*` only (LOS-B7, LOS-B8, LOS-B9). The binding table is per machine but maps aliases to models; it does not choose them. | confirmed (S4) |
 | F9 | Workflow-specific switches have only one generic form: `--arm <switch>=<arm>` for a switch unit. temperspec needs a test budget, a single-session code mode, a publish base branch, PR opening off and filing off, and an operator diagnosing any workflow needs overrides too. Nothing lets a workflow declare a typed knob with a default that a check, route, script or template reads. | confirmed (S4) |
 | F10 | There are no named profiles: an operator who wants "the cheap configuration" or "the thorough one" repeats a set of flags. | confirmed (S4) |
-| F11 | `RunOptions` is named in DUR's signature and "stored with the run options" in DUR and ORC, but no type defines it; ORC §2.2 lists a "subset of run options" by prose. | confirmed (S4) |
+| F11 | `RunOptions` is named in DUR's signature and "stored with the run options" in DUR and ORC, but no type defines it; ORC-B19, ORC-B20 lists a "subset of run options" by prose. | confirmed (S4) |
 | F12 | There is no one record of the effective configuration of a run. Each `attempt_start` carries its own alias and timeout with their sources, but budgets, caps and flags appear nowhere as resolved values, and no read-only verb shows what a run would use before it starts. `run --check` reports `ok`, `needs`, `error` or `broken` only. | confirmed (S4) |
 | F13 | Validation of overrides is partial: an unknown alias, an unmapped tool, an unsupported session option and an unknown `--pause-before` unit are refused before spend; nothing refuses an override aimed at a unit that does not exist, or at a setting a unit kind does not have (`--step-model` on a script unit). | confirmed (S4) |
 | F14 | Self-improvement cannot tell a failure caused by an operator's override (a smaller model, a shorter limit) from one the workflow owns, because findings and ledger rows carry no settings provenance. Counting a re-run of the same task as ground truth about a run, as FBK does, assumes a rerun is linked to its source. | supported (S4) |
@@ -48,12 +48,12 @@ The owner asked on 2026-11-20 whether the engine design lets a person override a
 | # | Finding | Confidence |
 |---|---|---|
 | F16 | Automatic retries are edges spent from a per-visit retry budget; infra failures rerun on their own counter with backoff; a model ladder steps up per attempt; automatic re-open is a person's retry given in advance (BUD). | confirmed (S4) |
-| F17 | A person at a pause can `proceed`, `retry` with feedback, `back:<unit>` with feedback (only to the gate's `back_targets`), `stop`, deliver an event or answer an ask (HUM §2.2). A `stopped` thread re-opens with `retry` or `back`; an `unfinished` one continues but refuses a decision or feedback; a `finished` one is refused (DUR §2.1). | confirmed (S4) |
-| F18 | Feedback reaches the retried step and its judge **once** (HUM §2.2, PRM §2.1). temperspec copies a person's feedback "word for word into the next artifact as a ruling and shown to the judge", and lists as not verified "that a person's earlier feedback reaches every later judge" (S3 7.5, 14 C). A ruling that disappears after one attempt lets a later retry or a later unit's judge undo it. | confirmed (S3, S4) |
+| F17 | A person at a pause can `proceed`, `retry` with feedback, `back:<unit>` with feedback (only to the gate's `back_targets`), `stop`, deliver an event or answer an ask (HUM-B12). A `stopped` thread re-opens with `retry` or `back`; an `unfinished` one continues but refuses a decision or feedback; a `finished` one is refused (DUR-B9). | confirmed (S4) |
+| F18 | Feedback reaches the retried step and its judge **once** (HUM-B12, PRM-B6). temperspec copies a person's feedback "word for word into the next artifact as a ruling and shown to the judge", and lists as not verified "that a person's earlier feedback reaches every later judge" (S3 7.5, 14 C). A ruling that disappears after one attempt lets a later retry or a later unit's judge undo it. | confirmed (S3, S4) |
 | F19 | `proceed` takes no feedback, so a person who accepts work with a note for the next step has no form for it. | confirmed (S4) |
 | F20 | There is no way to run again from a chosen unit of a finished run: the only options are a new thread from scratch or nothing. A person unhappy with the result of `release` must rerun triage, discovery, plan and code. LangGraph supports this directly: invoking a thread with a past `checkpoint_id` replays from it, and `update_state` on a past checkpoint forks a new branch of history (S5, S6). Temporal's reset makes a new run of the same id from a chosen point and keeps the old history (S8); Argo distinguishes retry (same workflow, failed nodes) from resubmit (a new workflow, optionally reusing memoized successes) (S9). | confirmed (S5, S6, S8, S9) |
 | F21 | A person's `back` is limited to the gate's declared `back_targets`. That list exists to bound automatic attribution; a person who sees that the fault is two units earlier than any listed target has no way to say so short of a new thread. | confirmed (S1, S4) |
-| F22 | Resuming with changed settings exists only for executors (DUR-B7) and the run cost cap ("re-openable after the operator raises it", BUD §2), with no stated rule for how a raised budget meets a counter already spent. | confirmed (S4) |
+| F22 | Resuming with changed settings exists only for executors (DUR-B7) and the run cost cap ("re-openable after the operator raises it", BUD-B8, BUD-B9), with no stated rule for how a raised budget meets a counter already spent. | confirmed (S4) |
 | F23 | A map item, contest slot or council member is answered by unit and item at a pause, and a passed map item never runs again (S3 11, HUM-B3, CTS, CNL). This covers "rerun one item" inside a live thread. | confirmed (S3, S4) |
 | F24 | The orchestration supervisor re-opens infra failures and re-runs by node identity (ORC-B9, ORC-B13); `orchestrate answer` passes a decision and feedback. It has no form for rerunning a finished node from a unit. | confirmed (S4) |
 | F25 | Every retry starts a fresh session; a self-check that resumes the session would continue an agent's conversation instead. Session continuation is not declared by every executor (the Messages API executor owns its loop; Antigravity's resume is unprobed). | supported (S4; R-002, R-003) |
@@ -77,7 +77,7 @@ The owner asked on 2026-11-20 whether the engine design lets a person override a
 
 | Variation | Before | After |
 |---|---|---|
-| Step model, judge model, per step and per run | yes (CON §2.4) | same order, now one catalog row each; per member, chair and slot added |
+| Step model, judge model, per step and per run | yes (CON-B3) | same order, now one catalog row each; per member, chair and slot added |
 | Model ladder | workflow only | settable as a list on the step scope |
 | Subagent model | no | `subagent_model` per step |
 | Effort, session cost cap, turn cap, fallback model | workflow only | all layers |
@@ -99,7 +99,7 @@ The owner asked on 2026-11-20 whether the engine design lets a person override a
 | Back to an unlisted earlier unit | no | `rewind:<unit>`, a person's decision |
 | Rerun a finished run from a unit | no | `rerun --from <unit>`: a new linked thread |
 | Rerun with other settings | executor only | any setting, at resume or rerun |
-| Allow a tool, skill, MCP tool or command a step lacked | edit the package and start again | `--grant`, `--allow-command` on run, resume or rerun; a `tool_access` pause offers them (RST §2.8, ADR-0080) |
+| Allow a tool, skill, MCP tool or command a step lacked | edit the package and start again | `--grant`, `--allow-command` on run, resume or rerun; a `tool_access` pause offers them (RST-B28, RST-B29, RST-B30, ADR-0080) |
 
 ## Open questions
 

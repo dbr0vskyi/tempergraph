@@ -1,4 +1,4 @@
-"""The loop's model-free records, cause codes and lenses (SIL §2.1 to §2.4, IMD §2.2, §2.5)."""
+"""The loop's model-free records, cause codes and lenses (SIL-B8, SIL-B12 to SIL-B16, IMD-B20, IMD-B23)."""
 
 from __future__ import annotations
 
@@ -41,11 +41,11 @@ def found(repo: Path, task: str) -> list[dict[str, Any]]:
     ([{"kind": "check", "unit": "a", "result": "FAIL"}], "check_fail:a"),
     ([{"kind": "run_exit", "reason": "person"}], "person_stop"),
 ])
-def test_cause_rows(recs: list[dict[str, Any]], want: str) -> None:  # SIL §2.3
+def test_cause_rows(recs: list[dict[str, Any]], want: str) -> None:  # SIL-B11
     assert want in [f["cause"] for f in causes.derive(recs)]
 
 
-def test_classes_and_sides() -> None:  # SIL §2.3
+def test_classes_and_sides() -> None:  # SIL-B11
     assert causes.cause_of("infra:broken_pipe").klass == "infra"
     assert causes.cause_of("slow_host").side == "host"
     assert causes.cause_of("unknown_tool_name:Foo").side == "executor"
@@ -53,7 +53,7 @@ def test_classes_and_sides() -> None:  # SIL §2.3
     assert causes.cause_of("judge_unparsed").side == "engine"
 
 
-def test_retry_burst_agent_rescues_pushback_and_grants() -> None:  # SIL §2.4
+def test_retry_burst_agent_rescues_pushback_and_grants() -> None:  # SIL-B12 to SIL-B16
     recs = [{"kind": "unit_entered", "unit": "a"}] + [
         {"kind": "attempt_start", "session_key": f"a.{n}.retry", "session_kind": "retry"} for n in (2, 3, 4)]
     ivs = [{"unit": "a", "pause_kind": "escalation", "caller": {"decided_by": "agent"},
@@ -64,7 +64,7 @@ def test_retry_burst_agent_rescues_pushback_and_grants() -> None:  # SIL §2.4
     assert {"retry_burst", "agent_decided:escalation", "pushback", "grant_missing:shell", "grant_unused:web"} <= got
 
 
-def test_every_exit_writes_findings_and_evidence(repo: Path) -> None:  # SIL §2.1
+def test_every_exit_writes_findings_and_evidence(repo: Path) -> None:  # SIL-B8
     ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("UNVERIFIABLE"))])
     assert go(repo, ex, task="I-1").exit_code is ExitCode.PAUSED
     rec = [r for r in records(repo, "I-1") if r["kind"] == "finding_recorded"]
@@ -77,7 +77,7 @@ def test_every_exit_writes_findings_and_evidence(repo: Path) -> None:  # SIL §2
     assert "Release 1.2 notes" not in findings_path(repo / ".tempergraph", "demo", "I-1").read_text()  # metadata
 
 
-def test_a_final_exit_decides_the_lenses(repo: Path) -> None:  # SIL §2.2 dev mode
+def test_a_final_exit_decides_the_lenses(repo: Path) -> None:  # SIL-B10 dev mode
     broken = SessionResult(ok=False, infra_cause=InfraCause.BROKEN_PIPE, usage=Usage())
     ex = standin("claude", steps=[broken] * 3)
     assert go(repo, ex, task="I-2").exit_code is ExitCode.BUDGET_OR_INFRA
@@ -93,7 +93,7 @@ def test_a_final_exit_decides_the_lenses(repo: Path) -> None:  # SIL §2.2 dev m
     assert rec["lenses"]["quality"]["draft"]["first_try_pass"] == 1
 
 
-def test_stable_mode_fires_friction_on_its_triggers(repo: Path) -> None:  # SIL §2.2 stable mode
+def test_stable_mode_fires_friction_on_its_triggers(repo: Path) -> None:  # SIL-B10 stable mode
     spec = dataclasses.replace(with_outcome_spec(), improvement_mode="stable")
     met2 = verdict_block("MET", "MET")
     for n in range(7):
@@ -104,7 +104,7 @@ def test_stable_mode_fires_friction_on_its_triggers(repo: Path) -> None:  # SIL 
     assert not any(x["outcome"]["fire"] for x in lens)  # no pushback, no low confidence, not the 20th
 
 
-def test_cost_rules_on_a_window(repo: Path) -> None:  # SIL §2.2 cost lens
+def test_cost_rules_on_a_window(repo: Path) -> None:  # SIL-B10 cost lens
     fail = verdict_block("UNMET", "MET")
     met2 = verdict_block("MET", "MET")
     spec = with_outcome_spec()
@@ -120,12 +120,12 @@ def test_cost_rules_on_a_window(repo: Path) -> None:  # SIL §2.2 cost lens
     assert thin["status"] == "thin"
 
 
-def test_every_threshold_is_a_parameter() -> None:  # IMD-AC-3 for this track
+def test_every_threshold_is_a_parameter() -> None:  # IMD-AC3 for this track
     for p in params.PARAMS.values():
         assert p.provenance in ("default_no_data", "fitted", "owner_decision") and p.source
 
 
-def test_publish_boundary() -> None:  # SIL §2.1, §4: only the recorder names the evidence file
+def test_publish_boundary() -> None:  # SIL-B8, SIL-B19, SIL-B20: only the recorder names the evidence file
     for f in (SRC / "improve").glob("*.py"):
         if f.name != "record.py":
             text = f.read_text()

@@ -9,11 +9,11 @@
 
 ## Context
 
-A run whose every step passed can still miss the request; the outcome lens of self-improvement graded "did the result meet the request" against nothing declared ([SIL §2.2](../specs/16-self-improvement.spec.md)). R-011 recommended a mandatory outcome gate. The owner asks for verifiable outcomes and, by the thread's brief, for unverifiable ones to be flagged rather than hidden.
+A run whose every step passed can still miss the request; the outcome lens of self-improvement graded "did the result meet the request" against nothing declared ([SIL-B10](../specs/16-self-improvement.spec.md)). R-011 recommended a mandatory outcome gate. The owner asks for verifiable outcomes and, by the thread's brief, for unverifiable ones to be flagged rather than hidden.
 
 ## Decision
 
-We will compile a reserved `outcome` unit before the finalizer on every workflow: a built-in deliverables check, the workflow's outcome check, a fresh judge over the judge-verified final criteria, and a sign-off for person-verified ones. A failure goes back to the earliest unit whose criteria serve the failed criterion. Every run writes an outcome record whose verdict separates `met` from `met_with_open`, and every report lists the unverified criteria. The outcome lens reads this record. Details: [OUT §2.4, §2.5](../specs/90-run-outcome.spec.md).
+We will compile a reserved `outcome` unit before the finalizer on every workflow: a built-in deliverables check, the workflow's outcome check, a fresh judge over the judge-verified final criteria, and a sign-off for person-verified ones. A failure goes back to the earliest unit whose criteria serve the failed criterion. Every run writes an outcome record whose verdict separates `met` from `met_with_open`, and every report lists the unverified criteria. The outcome lens reads this record. Details: [OUT-B15, OUT-B16, OUT-B17, OUT-B18, OUT-B19](../specs/90-run-outcome.spec.md).
 
 ## Options considered
 
@@ -35,7 +35,7 @@ We will compile a reserved `outcome` unit before the finalizer on every workflow
 
 - Positive: the outcome met rate, escape rate and unverified share exist for every workflow and feed promotion.
 - Negative: `outcome` is a reserved unit name.
-- Risk: a weak outcome judge passes misses. Mitigation: its calibration and corrected rates as for any judge ([JCL](../specs/50-judge-calibration.spec.md), [EVS §2.5](../specs/51-eval-suites.spec.md)); `stable` may sample it.
+- Risk: a weak outcome judge passes misses. Mitigation: its calibration and corrected rates as for any judge ([JCL](../specs/50-judge-calibration.spec.md), [EVS-B15](../specs/51-eval-suites.spec.md)); `stable` may sample it.
 
 ## Assumptions
 

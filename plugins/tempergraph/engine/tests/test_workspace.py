@@ -1,4 +1,4 @@
-"""Workspace and the release-1 worktree mode (WSP-B1–B3, B6, WSP-AC-1; WTR §2.2, §2.4–§2.6)."""
+"""Workspace and the release-1 worktree mode (WSP-B1–B3, B6, WSP-AC1; WTR-B18, WTR-B20, WTR-B21, WTR-B22)."""
 
 from __future__ import annotations
 
@@ -82,7 +82,7 @@ def test_worktree_lifecycle(repo: Path) -> None:
     wt = Path(rec.path)
     assert branch(wt) == "tg/demo/T-1" and (wt / ".env").read_text() == "SECRET_FOR_TEST=1\n"
     assert not (wt / "dirty.txt").exists() and rec.bootstrap["included"] == 1
-    assert state_root_path(wt) == root  # WSP-AC-1: the state root from inside the worktree
+    assert state_root_path(wt) == root  # WSP-AC1: the state root from inside the worktree
     assert worktree_path(repo, "demo/T-1") == wt
     assert [r["thread"] for r in list_worktrees(wt)] == ["demo/T-1"]
     assert check_plan(plan)  # a second start would collide

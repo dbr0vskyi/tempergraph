@@ -1,4 +1,4 @@
-"""The check worker: a gate's check runs in a child engine process (CHK §2.6, ADR-0019).
+"""The check worker: a gate's check runs in a child engine process (CHK-B16, ADR-0019).
 
 The engine sends the check context as one JSON document on standard input. The worker imports the check
 by its reference, calls it, normalises the result and writes it as one JSON document on standard output;
@@ -28,7 +28,7 @@ def context_doc(gate: GateSpec, ctx: checkmod.CheckContext) -> dict[str, Any]:
         "check": {"module": gate.check.module, "qualname": gate.check.qualname},
         "check_timeout_s": gate.check_timeout_s,
         "sys_path": [p for p in sys.path if p],
-        "packages": importer.mapping(),  # private package names (PKG §2.3 step 3)
+        "packages": importer.mapping(),  # private package names (PKG-B15, PKG-B16, PKG-B17 step 3)
         "context": {
             "unit": ctx.unit, "workdir": str(ctx.workdir), "request": ctx.request, "item": ctx.item,
             "visit": ctx.visit, "attempt": ctx.attempt, "preview": ctx.preview,
@@ -112,7 +112,7 @@ def run_in_worker(gate: GateSpec, ctx: checkmod.CheckContext, *, python: str | N
 
 def run_doc(doc: dict[str, Any], workdir: Path, timeout_s: int, key: str, *, python: str | None = None
             ) -> tuple[CheckResult, list[str]]:
-    """One worker run of a context document; the check preview sends a stored one (CHK §2.5)."""
+    """One worker run of a context document; the check preview sends a stored one (CHK-B17)."""
     from tempergraph.executors.launcher import LaunchSpec, launch
 
     payload = json.dumps(doc, default=str).encode()

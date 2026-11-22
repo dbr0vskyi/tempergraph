@@ -1,5 +1,5 @@
-"""The `definition` layer (AUD §1): rules that read the workflow package only (ARC §2.3 to §2.8, PRA §2.3).
-Pure over the spec and the package files; no host, no history, no model (contract C13)."""
+"""The `definition` layer (AUD): rules that read the workflow package only (ARC-B8, ARC-B9, ARC-B14, PRA-B7 to PRA-B10).
+Pure over the spec and the package files; no host, no history, no model (OVR-B15)."""
 
 from __future__ import annotations
 
@@ -181,7 +181,7 @@ class Definition:
 
     def _sizing(self, name: str, who: str, model: object, options: object, ladder: tuple[str, ...], why: str,
                 field: str) -> None:
-        """SCF §2.1.1: a session whose model, effort or reason nobody stated runs on defaults nobody chose."""
+        """SCF-B10: a session whose model, effort or reason nobody stated runs on defaults nobody chose."""
         missing = [w for w, absent in (
             ("model", not model or model == "inherit"),
             ("effort", not ladder and getattr(options, "effort", None) is None),
@@ -268,7 +268,7 @@ class Definition:
                          f"Agent Skills standard: {', '.join(extra)}", item=p.parent.name,
                          file=p.relative_to(root).as_posix(), evidence={"fields": extra})
 
-    # -- outcome (ARC §2.8) --------------------------------------------------------------------------------
+    # -- outcome (ARC-B14) --------------------------------------------------------------------------------
     def outcome(self) -> None:
         from tempergraph.run.outcome_trust import coverage, trust
 

@@ -19,7 +19,7 @@
 | # | Gap | Evidence | Mark | Closed by |
 |---|---|---|---|---|
 | G2 | No fixed case set for comparing workflow versions. LIF's `evals replay` re-runs judges only; a set of whole past runs to replay is not in the design. | LIF-B7 to LIF-B16; figures per version move with the mix of work each version ran on | `confirmed` | [PRP](../specs/40-improvement-proposals.spec.md) trial over a case set |
-| G3 | Human ground truth is scattered (approval answers, pull-request state, re-runs, feedback, audit disagreements) and read ad hoc. Judge reliability is never computed against it, so the quality lens is deferred with no path out. | SIL §2.2 quality row; JDG-B7 records agreement only | `confirmed` | [FBK](../specs/41-feedback-and-judge-reliability.spec.md) |
+| G3 | Human ground truth is scattered (approval answers, pull-request state, re-runs, feedback, audit disagreements) and read ad hoc. Judge reliability is never computed against it, so the quality lens is deferred with no path out. | SIL-B10 quality row; JDG-B7 records agreement only | `confirmed` | [FBK](../specs/41-feedback-and-judge-reliability.spec.md) |
 | G4 | Nothing stops a fix from weakening the gate that found the fault (drop a criterion, lower a severity, widen a check's pass). This is the gaming failure of R-030 F5. | A person check written as advice stops nothing | `inferred` | [PRP](../specs/40-improvement-proposals.spec.md) change classes, [ADR-0031](../adr/0031-steps-and-their-graders-change-apart.adr.md) |
 | G5 | The backlog is not ranked: 32 open loop issues, most citing one run, six engine–workflow twins. Filing selects nothing beyond de-duplication. |  callout | `supported` | [PRP](../specs/40-improvement-proposals.spec.md) clusters and ranking |
 | G6 | The pattern rule and the cost windows read one machine's ledger. Other developers' runs of the same workflow are invisible, so a pattern seen once on each of three machines never fires. | A ledger holds only the runs of its own machine | `supported` | [IMD](../specs/43-improvement-data.spec.md) requirement on the shared store |
@@ -37,13 +37,13 @@ Grouped by the question it answers. "Where" says which record carries it today; 
 |---|---|---|
 | What happened | Unit, attempt, kind, executor, alias, model slug, CLI version, usage, timings, cause per repeat | Run log `agent_run`, `gate` ([OBS](../specs/15-observability-and-cost.spec.md)) |
 | Why the judge decided | Per-criterion id, status, `defect_in`, `no_change`, confidence and source | `gate` record |
-| What version ran | Workflow version, prompt digest per template, criterion-set digest, check digest, lessons digest | Prompt digests in OBS §2.4; criterion and lessons digests **new** |
+| What version ran | Workflow version, prompt digest per template, criterion-set digest, check digest, lessons digest | Prompt digests in OBS-B15; criterion and lessons digests **new** |
 | Was the judge right | Labels from people and from later facts, joined to run, gate and criterion | **new** (FBK) |
 | Does a change help | Trial results per case, per version, paired | **new** (PRP) |
 | Is the loop worth it | Issue and proposal states over time | **new** (IMD) |
 | Is it the same elsewhere | The above, metadata only, from every machine | **new** requirement on the shared store |
 
-Text (request, outputs, feedback) stays in the local evidence file; every new record is names, ids, counts, digests and enums, so it can be aggregated across machines without crossing the publish boundary (C9). `inferred` from C9 and SIL §2.1.
+Text (request, outputs, feedback) stays in the local evidence file; every new record is names, ids, counts, digests and enums, so it can be aggregated across machines without crossing the publish boundary (C9). `inferred` from C9 and SIL-B8.
 
 ### F3 How many cases a paired trial needs
 

@@ -1,4 +1,4 @@
-"""The home workflow registry and `workflows list|register|unregister|reinstall` (UPD §2.8, PKG-B1)."""
+"""The home workflow registry and `workflows list|register|unregister|reinstall` (UPD-B20 to UPD-B24, PKG-B1)."""
 
 from __future__ import annotations
 

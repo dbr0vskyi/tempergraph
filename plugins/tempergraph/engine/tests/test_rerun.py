@@ -1,4 +1,4 @@
-"""`rerun` as a linked fork (RRN §2.4, RRN-B6, B7, B8, AC-3, AC-4)."""
+"""`rerun` as a linked fork (RRN-B17, RRN-B18, RRN-B6, B7, B8, AC-3, AC-4)."""
 
 from __future__ import annotations
 
@@ -69,7 +69,7 @@ def test_rerun_from_start_reuses_the_input(repo: Path) -> None:  # RRN-B8
     assert a["request"] and seen.with_text("notes")
 
 
-def test_rerun_check_creates_nothing_and_refuses_alike(repo: Path) -> None:  # RRN-AC-4, C13
+def test_rerun_check_creates_nothing_and_refuses_alike(repo: Path) -> None:  # RRN-AC4, C13
     finished(repo, "R-3")
     root = repo / ".tempergraph"
     before = hash_tree(root)
@@ -106,7 +106,7 @@ def test_external_effects_need_consent(repo: Path) -> None:  # RRN-B6, AC-5
     assert code == 0, err
 
 
-def test_same_branch_supersedes_a_finished_source(repo: Path) -> None:  # RRN §2.4 Workspace
+def test_same_branch_supersedes_a_finished_source(repo: Path) -> None:  # RRN-B17, RRN-B18 Workspace
     finished(repo, "R-5")
     ex = standin("claude", steps=[REVIEW], judges=[judge()])
     code, doc, _ = cli(repo, ex, "rerun", "demo", "R-5", "--from", "review", "--same-branch", "--check")

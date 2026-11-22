@@ -1,4 +1,4 @@
-"""The template grammar of CON §2.2.
+"""The template grammar of CON-B8.
 
 Literal text, doubled braces for literal braces, and plain fields ``{name}`` where ``name`` is an engine
 key, a declared input, an earlier artifact key, or ``settings.<name>``. Nothing else between braces is
@@ -69,7 +69,7 @@ def fields(template: str) -> list[str]:
 
 
 def render(template: str, values: Mapping[str, str | None]) -> tuple[str, list[str]]:
-    """Render; return the text and the fields rendered as the missing marker (CON-AC-2)."""
+    """Render; return the text and the fields rendered as the missing marker (CON-AC2)."""
     out: list[str] = []
     missing: list[str] = []
     for p in parse(template):

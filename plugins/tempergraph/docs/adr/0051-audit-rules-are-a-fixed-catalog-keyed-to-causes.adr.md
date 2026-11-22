@@ -36,7 +36,7 @@ We will define the audit's rules as a fixed, versioned engine catalog ([ARC](../
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| B1 | SIL's cause list may grow by the codes ARC and TSA mark *new*; SIL keeps classing each as fault, infra or designed. | SIL §2.3 |
+| B1 | SIL's cause list may grow by the codes ARC and TSA mark *new*; SIL keeps classing each as fault, infra or designed. | SIL-B11 |
 | B2 | Thresholds are defaults chosen without fitted data; they are named parameters so the loop's parameter record ([IMD](../specs/43-improvement-data.spec.md)) can hold them later. | ARC-B6 |
 
 ## Consequences

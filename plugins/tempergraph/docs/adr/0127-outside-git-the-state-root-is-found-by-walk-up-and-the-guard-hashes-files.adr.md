@@ -13,7 +13,7 @@ The engine refuses to start outside a git repository, yet many workflows are not
 
 ## Decision
 
-We will run workflows outside git ([WSP §2.4](../specs/13-workspace-and-concurrency.spec.md)) with: a state root from `--state-root` or `TEMPERGRAPH_STATE_ROOT`, else walk-up to the nearest `.tempergraph/manifest.json`, else the start dir; `in_place` workspaces only, or an engine scratch folder for a workflow with no folder; a file-manifest fingerprint with a 20,000-file ceiling; and a `needs_git` refusal at validation for every feature that needs git.
+We will run workflows outside git ([WSP-B15 to WSP-B18](../specs/13-workspace-and-concurrency.spec.md)) with: a state root from `--state-root` or `TEMPERGRAPH_STATE_ROOT`, else walk-up to the nearest `.tempergraph/manifest.json`, else the start dir; `in_place` workspaces only, or an engine scratch folder for a workflow with no folder; a file-manifest fingerprint with a 20,000-file ceiling; and a `needs_git` refusal at validation for every feature that needs git.
 
 ## Options considered
 
@@ -41,7 +41,7 @@ We will run workflows outside git ([WSP §2.4](../specs/13-workspace-and-concurr
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| N1 | Inside a repository the git rules always apply. | WSP §2.4 |
+| N1 | Inside a repository the git rules always apply. | WSP-B15 to WSP-B18 |
 
 ## Revisit when
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-What the engine writes and emits while a run is live, so an observer (the `tempergraph-monitor` mod, an exporter, a tracker plugin, a script) can follow it without reading the checkpoint and without changing it: the observer record kinds added to the run log, the per-session activity journal, and the ways to subscribe (the `events` verb, the in-process observer interface and the widened lifecycle hook events). Everything here is best effort and never changes a run or its exit code (contract C2, owned by [OBS](15-observability-and-cost.spec.md)). The record kinds of [OBS](15-observability-and-cost.spec.md) stay where they are; this spec adds kinds and fields, never renames. Observers read append-only files and read-only verbs, with no socket and no daemon ([ADR-0022](../adr/0022-observers-read-files-not-sockets.adr.md)); shell commands stay local and scrubbed ([ADR-0023](../adr/0023-local-activity-journal-with-tool-input-summaries.adr.md)); observers and hook events follow [ADR-0027](../adr/0027-in-process-observers-and-wider-hook-events.adr.md). The monitor, exporters, central stats, tracker plugins and the detail document depend on these records ([R-021](../research/R-021-observer-needs-against-engine-documents.rsrch.md)).
+What the engine writes and emits while a run is live, so an observer (the `tempergraph-monitor` mod, an exporter, a tracker plugin, a script) can follow it without reading the checkpoint and without changing it: the observer record kinds added to the run log, the per-session activity journal, and the ways to subscribe (the `events` verb, the in-process observer interface and the widened lifecycle hook events). Everything here is best effort and never changes a run or its exit code (OVR-B4, owned by [OBS](15-observability-and-cost.spec.md)). The record kinds of [OBS](15-observability-and-cost.spec.md) stay where they are; this spec adds kinds and fields, never renames. Observers read append-only files and read-only verbs, with no socket and no daemon ([ADR-0022](../adr/0022-observers-read-files-not-sockets.adr.md)); shell commands stay local and scrubbed ([ADR-0023](../adr/0023-local-activity-journal-with-tool-input-summaries.adr.md)); observers and hook events follow [ADR-0027](../adr/0027-in-process-observers-and-wider-hook-events.adr.md). The monitor, exporters, central stats, tracker plugins and the detail document depend on these records ([R-021](../research/R-021-observer-needs-against-engine-documents.rsrch.md)).
 
 ## Behaviours
 
@@ -124,7 +124,7 @@ WHEN `observe.tool_inputs = off` is set in the operator config THE engine SHALL 
 
 ### EVT-B22 The events verb
 
-WHEN `events <selector> [--since <seq>] [--follow] [--activity <session_key>] [--json]` runs THE engine SHALL print the records in `seq` order, read-only and model-free (contract C13), end `--follow` when the segment's `run_exit` is read and no lock is held, and exit 2 creating nothing on a selector with no run log.
+WHEN `events <selector> [--since <seq>] [--follow] [--activity <session_key>] [--json]` runs THE engine SHALL print the records in `seq` order, read-only and model-free (OVR-B15), end `--follow` when the segment's `run_exit` is read and no lock is held, and exit 2 creating nothing on a selector with no run log.
 
 - GIVEN a selector with no run log WHEN `events` runs THEN it exits 2 and nothing is created
 
@@ -154,7 +154,7 @@ WHEN a run-log record is written and lifecycle hooks are registered ([HOK](24-li
 
 ### EVT-B25 Write failures never change a run
 
-WHEN the activity journal cannot be written, the ledger row or the exit file cannot be written, or recording the loop's findings fails THE engine SHALL disable the journal for that session while the session and live file go on, attempt one `engine_error` record of scope `ledger` or `exit_file` ([OBS-B3](15-observability-and-cost.spec.md)), or write one of scope `improve` ([SIL-B1](16-self-improvement.spec.md)), leaving the exit code unchanged, and a reader SHALL skip an unknown kind or field (contract C12).
+WHEN the activity journal cannot be written, the ledger row or the exit file cannot be written, or recording the loop's findings fails THE engine SHALL disable the journal for that session while the session and live file go on, attempt one `engine_error` record of scope `ledger` or `exit_file` ([OBS-B3](15-observability-and-cost.spec.md)), or write one of scope `improve` ([SIL-B1](16-self-improvement.spec.md)), leaving the exit code unchanged, and a reader SHALL skip an unknown kind or field (OVR-B14).
 
 - GIVEN a full disk when the ledger row is written WHEN the run exits THEN its exit code is unchanged
 

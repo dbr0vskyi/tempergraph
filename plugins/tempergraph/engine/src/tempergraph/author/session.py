@@ -1,9 +1,9 @@
-"""Authoring sessions (AUT §2.1, §2.6, §2.8): `author start|intake|check|show|list|drop|approve`.
+"""Authoring sessions (AUT-B11, AUT-B12, AUT-B23, AUT-B15, AUT-B19, AUT-B24, AUT-B25): `author start|intake|check|show|list|drop|approve`.
 
 A session is a folder `<state root>/authoring/<id>/` holding `authoring.json`, the draft `outcome.json` and
-`blueprint.json`, and `sources/`. Every verb here is model-free and writes only inside that folder (AUT-AC-4).
+`blueprint.json`, and `sources/`. Every verb here is model-free and writes only inside that folder (AUT-AC4).
 A phase approval records the digest of the part of the drafts that phase owns; an approval whose part changed
-since counts as cleared, with every later one (AUT §4), so a session resumes from `author show` alone (AUT-AC-5).
+since counts as cleared, with every later one (AUT-B15, AUT-B17, AUT-B24, AUT-B12), so a session resumes from `author show` alone (AUT-AC5).
 """
 
 from __future__ import annotations
@@ -95,7 +95,7 @@ def _blank_outcome() -> dict[str, Any]:
 
 def start(state_root: Path, name: str, path: str | list[str], *, mode: str = "new",
           today: dt.date | None = None) -> Session:
-    """AUT §2.1 `author start`; one open session per name (AUT §4)."""
+    """AUT-B11, AUT-B12 `author start`; one open session per name (AUT-B15, AUT-B17, AUT-B24, AUT-B12)."""
     if not SLUG.match(name):
         raise AuthorRefused("name-invalid", f"{name!r} is not a workflow name (a lowercase slug)")
     paths = [path] if isinstance(path, str) else list(path)
@@ -120,7 +120,7 @@ def start(state_root: Path, name: str, path: str | list[str], *, mode: str = "ne
 
 
 def revise(state_root: Path, package: Path) -> Session:
-    """AUT §2.8 revise: a `mode: revise` session holding copies of the package's drafts and record."""
+    """AUT-B12, AUT-B15, AUT-B19, AUT-B24, AUT-B25 revise: a `mode: revise` session holding copies of the package's drafts and record."""
     try:
         name = _json(package / "tempergraph.json")["name"]
         outcome, bp = _json(package / "outcome.json"), _json(package / "blueprint.json")
@@ -132,7 +132,7 @@ def revise(state_root: Path, package: Path) -> Session:
     keep = {k: prior[k] for k in ("sources", "candidates", "decisions", "issue_repository", "routing", "author",
                                   "phases", "blueprint_digest", "outcome_revision") if k in prior}
     # the package's approvals come along: an unchanged part stays approved, the first changed one and every
-    # later one are cleared, so revise asks again only from where the drafts moved (AUT §2.7 step 3)
+    # later one are cleared, so revise asks again only from where the drafts moved (AUT-B25 step 3)
     s.record.update(keep, package=str(package.resolve()), base_revision=outcome.get("revision"))
     write_json(s.folder / "outcome.json", outcome, mode=0o644)
     write_json(s.folder / "blueprint.json", bp, mode=0o644)
@@ -142,7 +142,7 @@ def revise(state_root: Path, package: Path) -> Session:
 
 def intake(s: Session, paths: list[Path], workspace: Path | None, *, kind: str | None = None,
            artifact: str | None = None, unit: str | None = None, outside: bool = False) -> list[dict[str, Any]]:
-    """AUT §2.3 `author intake`: copy each file into `sources/` and record its inventory."""
+    """AUT-B14, AUT-B15 `author intake`: copy each file into `sources/` and record its inventory."""
     if kind is not None and kind not in KINDS:
         raise AuthorRefused("kind-invalid", f"--kind takes {', '.join(KINDS)}")
     default = "solution" if s.record.get("path") == "solution" else "reference"
@@ -191,7 +191,7 @@ def _strip(c: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def part(s: Session, phase: int) -> str:
-    """The digest of what `phase` owns (AUT §2.8)."""
+    """The digest of what `phase` owns (AUT-B12, AUT-B15, AUT-B19, AUT-B24, AUT-B25)."""
     o, bp = s.outcome, s.blueprint
     if phase == 1:
         doc: Any = [[x.get("id"), x.get("digest"), x.get("kind")] for x in s.record.get("sources") or []]
@@ -248,7 +248,7 @@ def _criteria(o: Mapping[str, Any]) -> list[tuple[str | None, Mapping[str, Any]]
 
 
 def check(s: Session, caps: Mapping[str, Any]) -> dict[str, Any]:
-    """AUT §2.1 `author check`: OUT §4 on the outcome, SCF §2.1 on the blueprint, the criteria lint and the
+    """AUT-B11, AUT-B12 `author check`: OUT-B22 on the outcome, SCF-B9, SCF-B11 on the blueprint, the criteria lint and the
     sufficiency check, coverage and trust. Read-only."""
     from tempergraph.author import blueprint as bpm
     from tempergraph.run.outcome import parse_outcome
@@ -290,9 +290,9 @@ def check(s: Session, caps: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def verification(s: Session, parsed: Any, bp: Any) -> dict[str, Any]:
-    """The verification table with each criterion's trust as it will be once scaffolded (OUT §2.3): a check is
+    """The verification table with each criterion's trust as it will be once scaffolded (OUT-B13, OUT-B14): a check is
     `deterministic` when the session holds a good example for its unit or artifact, since scaffold writes the
-    must-pass and must-fail fixtures from it (SCF §2.7)."""
+    must-pass and must-fail fixtures from it (SCF-B11, SCF-B13, SCF-B15, SCF-B16, SCF-B17, SCF-B18, SCF-B19, SCF-B20, SCF-B22)."""
     from tempergraph.run.outcome_trust import TRUSTED
 
     goods = [x for x in s.record.get("sources") or [] if x.get("kind") == "example_good"]
@@ -333,7 +333,7 @@ RANK = {"unverified": 0, "uncalibrated": 1, "deterministic": 2, "calibrated": 2,
 
 
 def changes(s: Session) -> list[dict[str, Any]]:
-    """AUT §2.8 revise: each criterion's change class against the package's outcome."""
+    """AUT-B12, AUT-B15, AUT-B19, AUT-B24, AUT-B25 revise: each criterion's change class against the package's outcome."""
     pkg = Path(str(s.record.get("package") or ""))
     try:
         base = _json(pkg / "outcome.json")
@@ -392,7 +392,7 @@ def _phase_problems(s: Session, phase: int, caps: Mapping[str, Any]) -> list[str
 
 
 def approve(s: Session, phase: int, caller: Mapping[str, Any], caps: Mapping[str, Any]) -> dict[str, Any]:
-    """`author approve <id> <phase>`: the person's yes on a phase's drafts (AUT §2.8)."""
+    """`author approve <id> <phase>`: the person's yes on a phase's drafts (AUT-B12, AUT-B15, AUT-B19, AUT-B24, AUT-B25)."""
     if phase not in APPROVABLE:
         raise AuthorRefused("phase-invalid", "phases 1 to 7 are approved; 8 and 9 are `scaffold` and `author verify`")
     good = {int(p["phase"]) for p in approvals(s)[0]}
@@ -413,7 +413,7 @@ def approve(s: Session, phase: int, caller: Mapping[str, Any], caps: Mapping[str
 
 
 def show(s: Session, caps: Mapping[str, Any]) -> dict[str, Any]:
-    """AUT §2.1 `author show`: everything a new conversation needs to resume (AUT-AC-5)."""
+    """AUT-B11, AUT-B12 `author show`: everything a new conversation needs to resume (AUT-AC5)."""
     good, cleared = approvals(s)
     nxt = next_phase(s)
     rep = check(s, caps)

@@ -13,7 +13,7 @@ The owner asked on 2026-11-20 which node (unit) types the engine has in this des
 
 | # | Source | Type | Where |
 |---|---|---|---|
-| S3 | This design: CON §2.1, CMP §2.2, HUM, ORC, ADR-0040, JDG §5, JCL §5 | Design set on `main` | [CON](../specs/01-contracts.spec.md), [CMP](../specs/03-compiler-and-flow.spec.md), [HUM](../specs/07-gate-and-human.spec.md), [ORC](../specs/45-orchestration.spec.md), [ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md) |
+| S3 | This design: CON-B4, CON-B5, CON-B6, CON-B7, CMP-B10 to CMP-B16, HUM, ORC, ADR-0040, R-150 JDG, JCL-B9 | Design set on `main` | [CON](../specs/01-contracts.spec.md), [CMP](../specs/03-compiler-and-flow.spec.md), [HUM](../specs/07-gate-and-human.spec.md), [ORC](../specs/45-orchestration.spec.md), [ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md) |
 | S4 | LangGraph "Use the graph API" | Official docs | https://docs.langchain.com/oss/langgraph/use-graph-api |
 | S5 | LangGraph changelog (v1.0.0 2025-10-20, v1.1.0 2026-03-10, v1.2.0 2026-05-12) | Official docs | https://docs.langchain.com/oss/python/releases/changelog.md |
 | S6 | LangGraph fault tolerance (retry, per-node timeouts, error handlers, `set_node_defaults`, graceful drain; `langgraph>=1.2`) | Official docs | https://docs.langchain.com/oss/python/langgraph/fault-tolerance.md |
@@ -33,7 +33,7 @@ Council-specific sources (debate, voting, conformity) are in [R-061](R-061-counc
 | F1 | The design has one gated unit (four nodes: step, judge, gate, human), one finalizer and eight flow primitives: order, route, switch, back-edge, parallel (engine-owned AND-join, writer branches), map (parallel or sequential, at most 50 items, per-item model), sub-workflow (depth three) and event wait. The unit stays closed: a new flow shape decides only where PROCEED goes (S3). | confirmed |
 | F2 | Shapes the design does **not** support: writing branches inside a sub-workflow, a map inside a map, an event wait inside a branch, and a timeout or trigger for a wait. A voting panel of judges is deferred, since it multiplies the cost of every judged gate (S3). | confirmed |
 | F4 | This design's `UnitSpec.kind` lists `step`, `route`, `switch`, `parallel`, `map`, `subworkflow`, `wait`, plus an operator switch-arm override (CMP-B7) and a sampled audit judge that records only (JDG-B7) (S3). | confirmed |
-| F5 | [ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md) (accepted) adds a `script` unit and `before`/`after` scripts on a model step, but no spec carries them yet: `UnitSpec.kind` in CON §2.1 has no `script` and `StepSpec` has no `before`/`after` (S3). | confirmed |
+| F5 | [ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md) (accepted) adds a `script` unit and `before`/`after` scripts on a model step, but no spec carries them yet: `UnitSpec.kind` in CON-B4, CON-B5, CON-B6, CON-B7 has no `script` and `StepSpec` has no `before`/`after` (S3). | confirmed |
 | F6 | The orchestration layer has its own node kinds (`run`, `map`, `approval`) over whole runs (ORC); they are not graph units and are out of scope here (S3). | confirmed |
 | F7 | A person can supply input only at the start (`ResolveResult.needs`) or as a decision at a gate pause (`proceed`, `retry`, `back`, `stop`, `event`). No unit asks a person mid-run for data that becomes an artifact (S3). | confirmed |
 

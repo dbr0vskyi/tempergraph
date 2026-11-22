@@ -1,6 +1,6 @@
-"""The one renderer for every step prompt on every executor (PRM §2).
+"""The one renderer for every step prompt on every executor (PRM-B1, PRM-B6).
 
-``executor`` selects only the tool names written in the tools block; nothing else differs (PRM-AC-2).
+``executor`` selects only the tool names written in the tools block; nothing else differs (PRM-AC2).
 The step is shown its criteria texts as the target and never asked to grade itself (PRM-B2). Everything
 after the template is appended verbatim, never format-processed (PRM-B4).
 """
@@ -37,16 +37,16 @@ class AttemptContext:
     check_evidence: str = ""
     previous_report: str = ""
     changed_paths: tuple[str, ...] = ()
-    paths_only: bool = False  # after a timeout, infra failure or cut-off (PRM §2.1)
+    paths_only: bool = False  # after a timeout, infra failure or cut-off (PRM-B6)
     notes: tuple[str, ...] = ()  # unmet warnings of the last pass
     visit_reason: str = ""
     visit_from: str = ""
     feedback: str = ""
     rulings: tuple[str, ...] = ()
     upstream_targets: tuple[str, ...] = ()
-    grants: tuple[str, ...] = ()  # capabilities granted for this run (RST §2.8)
-    lessons: str = ""  # the rendered lessons block (LSN §2.2); the step only, never a judge
-    self_check: str = ""  # the check preview's command for this attempt (CHK §2.5)
+    grants: tuple[str, ...] = ()  # capabilities granted for this run (RST-B28, RST-B29, RST-B30)
+    lessons: str = ""  # the rendered lessons block (LSN-B8, LSN-B2); the step only, never a judge
+    self_check: str = ""  # the check preview's command for this attempt (CHK-B17)
 
 
 @dataclass
@@ -70,7 +70,7 @@ def render_step(unit: str, spec: UnitSpec, ctx: AttemptContext, caps: Capabiliti
     commands = [*step.commands, *([ctx.self_check] if ctx.self_check else [])]
     if commands:
         add("commands", "## Commands you may run\n" + "\n".join(f"- `{c}`" for c in commands))
-    if ctx.self_check:  # PRM §2.1: a fixed section, only when the step declares `self_check`
+    if ctx.self_check:  # PRM-B6: a fixed section, only when the step declares `self_check`
         add("self_check", "## Check your work before you end\n"
                           f"Run `{ctx.self_check}` to see what the gate's check would find in the workspace as it "
                           "is now. It changes nothing and can be run a few times in this attempt. The gate's own "
@@ -119,7 +119,7 @@ def _tools_block(tools: list[str], caps: Capabilities, preview: bool = False) ->
             lines.append("Prefer the file tools over the shell when both can do the job.")
         lines.append("Run git without a leading change of directory.")
         lines.append("Run only the listed commands.")
-    elif preview:  # CHK §2.5: the preview is granted as one exact command; say so, or a model believes the line
+    elif preview:  # CHK-B17: the preview is granted as one exact command; say so, or a model believes the line
         shell = (tool_names(caps, "shell") or ["shell"])[0]  # below and never runs it (live check L-29)
         lines.append(f"There is no shell in this step except for the check preview: run that one command with the "
                      f"`{shell}` tool, exactly as written above.")

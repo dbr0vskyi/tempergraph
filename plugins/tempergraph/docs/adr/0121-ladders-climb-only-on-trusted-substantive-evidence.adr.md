@@ -48,9 +48,9 @@ We will replace the retry-count model ladder with an **effort ladder** and a **o
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| L1 | "Bulletproof" means no climb without evidence, not no climb at all. | LAD §2.2 |
-| L2 | Two repeated blockers and ≥ 5 escalations with a lower bound ≥ 0.5 are defaults without data. | LAD §2.4, §2.5 |
-| L3 | `xhigh` is applied by the CLI on the shipped aliases; until probe P-LAD-1 it is `uncertain` and warned. | LAD §2.6 |
+| L1 | "Bulletproof" means no climb without evidence, not no climb at all. | LAD-B10 |
+| L2 | Two repeated blockers and ≥ 5 escalations with a lower bound ≥ 0.5 are defaults without data. | LAD-B12, LAD-B13 |
+| L3 | `xhigh` is applied by the CLI on the shipped aliases; until probe P-LAD-1 it is `uncertain` and warned. | LAD-B14 |
 
 ## Revisit when
 

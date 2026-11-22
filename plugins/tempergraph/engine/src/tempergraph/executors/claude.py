@@ -1,8 +1,8 @@
 """The `claude` executor: one headless Claude Code session per step attempt or judge run (ECC).
 
-Argv is built from the constants of ECC §2.3 and §2.4 and values from the binding table or engine-checked
-numbers (ECC-AC-1, SEC-B1). The prompt goes on stdin (EXI-B2). The stream is mapped by ECC §2.5 and
-failures are classified by ECC §2.6 from structured facts and one exact text match (ECC-B5).
+Argv is built from the constants of ECC-B8, ECC-B9, ECC-B10 and values from the binding table or engine-checked
+numbers (ECC-AC1, SEC-B1). The prompt goes on stdin (EXI-B2). The stream is mapped by ECC-B11 and
+failures are classified by ECC-B12 from structured facts and one exact text match (ECC-B5).
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ BINARY = "claude"
 BASE_ARGV = ("-p", "--output-format", "stream-json", "--verbose")
 ALWAYS_DISALLOWED = "EnterWorktree,ExitWorktree"
 JUDGE_TOOLS = ("Read", "Grep", "Glob")
-REQUEST_TIMED_OUT = "Request timed out"  # ECC §2.6: exact equality only
+REQUEST_TIMED_OUT = "Request timed out"  # ECC-B12: exact equality only
 THROTTLE_CATEGORIES = frozenset({"rate_limit", "overloaded"})
 CONNECTION_CATEGORIES = frozenset({"connection_error", "network_error"})
 AUTH_CATEGORY = "authentication_failed"
@@ -55,14 +55,14 @@ _EFFORTS = frozenset({"low", "medium", "high", "xhigh", "max"})
 
 
 # ---------------------------------------------------------------------------------------------
-# Argv (ECC §2.3, §2.4)
+# Argv (ECC-B8, ECC-B9, ECC-B10)
 
 
 SELF_CHECK = "tempergraph self-check "
 
 
 def allow_rules(tools: tuple[str, ...], commands: tuple[str, ...], in_engine_worktree: bool) -> list[str]:
-    """ECC §2.2 allow rules for the declared capabilities; never an absolute path (ECC-B1)."""
+    """ECC-B7 allow rules for the declared capabilities; never an absolute path (ECC-B1)."""
     rules: list[str] = []
     for cap in tools:
         if cap in ("edit", "write"):
@@ -74,7 +74,7 @@ def allow_rules(tools: tuple[str, ...], commands: tuple[str, ...], in_engine_wor
             rules.append("Agent")
         else:
             rules.extend(tool_names(CLAUDE, cap))
-    # the check preview is granted as one exact command even when the step declares no shell (CHK §2.5)
+    # the check preview is granted as one exact command even when the step declares no shell (CHK-B17)
     rules.extend(f"Bash({c})" for c in commands if c.startswith(SELF_CHECK))
     return list(dict.fromkeys(rules))
 
@@ -132,7 +132,7 @@ def judge_argv(views: ViewSet, model: str | None, *, isolated: bool) -> list[str
     argv += ["--bare"] if isolated else ["--setting-sources", ""]
     if model is not None:
         argv += ["--model", model]
-    if views.tool_less:  # SRV §2.6, SRV-AC-6: the session reviewer gets no tool and no MCP server
+    if views.tool_less:  # SRV-B18, SRV-B19, SRV-B20, SRV-AC6: the session reviewer gets no tool and no MCP server
         return argv + ["--tools", "", "--strict-mcp-config", "--disallowedTools", "mcp__*",
                        "--permission-mode", "dontAsk"]
     tools = [t for t in views.tools if not t.startswith("mcp__")] or list(JUDGE_TOOLS)
@@ -156,7 +156,7 @@ def step_env(model: str | None, host: Mapping[str, str] | None = None) -> dict[s
 
 
 # ---------------------------------------------------------------------------------------------
-# Stream mapping (ECC §2.5)
+# Stream mapping (ECC-B11)
 
 
 def _usage(result: Mapping[str, Any]) -> Usage:
@@ -177,9 +177,9 @@ def _usage(result: Mapping[str, Any]) -> Usage:
 
 
 def parse_line(line: bytes, workdir: Path | None = None) -> list[Event]:
-    """Map one stream-json line to normalized events; unknown types map to nothing (ECC §4).
+    """Map one stream-json line to normalized events; unknown types map to nothing (ECC-B13, ECC-B11).
 
-    `tool_started` carries the tool's capability and its one-line `input_summary` (EVT §2.5), with paths
+    `tool_started` carries the tool's capability and its one-line `input_summary` (EVT-B21), with paths
     relative to `workdir`.
     """
     msg = json.loads(line)
@@ -238,7 +238,7 @@ def parse_line(line: bytes, workdir: Path | None = None) -> list[Event]:
 
 
 # ---------------------------------------------------------------------------------------------
-# Failure classification (ECC §2.6)
+# Failure classification (ECC-B12)
 
 
 def classify(raw: RawOutcome, s: Summary) -> tuple[InfraCause | None, ErrorKind | None]:
@@ -278,7 +278,7 @@ def classify(raw: RawOutcome, s: Summary) -> tuple[InfraCause | None, ErrorKind 
 
 
 def _credentials(profile: str | None, home: Path | None) -> dict[str, str]:
-    """Judge-only credentials: name=value lines laid over the judge's environment (SEC §2.4)."""
+    """Judge-only credentials: name=value lines laid over the judge's environment (SEC-B12, SEC-B13)."""
     if not profile or not re.fullmatch(r"[A-Za-z0-9_.-]+", profile):
         return {}
     path = (home or binding_mod.home_path()) / "config" / "credentials" / profile
@@ -387,6 +387,6 @@ class ClaudeExecutor:
                             error_kind=kind, ok=s.result is not None and bool(s.result.get("ok")))
 
 
-# Live probe facts of ECC §2.7 and their recorded state; none has run on a signed-in host yet (T0.1).
+# Live probe facts of ECC-B13 and their recorded state; none has run on a signed-in host yet (T0.1).
 LIVE_FACTS: dict[str, str] = {f"P-CC-{i}": "not run" for i in range(1, 10)}
 ClaudeExecutor.live_facts = LIVE_FACTS  # type: ignore[attr-defined]  # read by `executors` (CLI-B3)

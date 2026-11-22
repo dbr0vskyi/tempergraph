@@ -1,4 +1,4 @@
-"""State root and home layouts (LOS §2.1, §2.2; WSP-AC-1; LOS-B4)."""
+"""State root and home layouts (LOS-B7, LOS-B8, LOS-B9, LOS-B10, LOS-B11; WSP-AC1; LOS-B4)."""
 
 from __future__ import annotations
 

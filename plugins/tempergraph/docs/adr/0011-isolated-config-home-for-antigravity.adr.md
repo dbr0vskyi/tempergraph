@@ -13,7 +13,7 @@
 
 ## Decision
 
-We will start each isolated Antigravity session with `HOME` pointing at a fresh, owner-only session home that holds only the engine's settings, permission rules, MCP config for the allowed views, a hook entry for the engine's gatekeeper, and the credentials P-AG-1 confirms. The gatekeeper answers only `deny` for tool calls outside the session's allow-list and stays silent otherwise. The home is removed on every exit path. Until P-AG-1 and P-AG-2 are confirmed for the installed version, sessions run in **user mode** with the operator's home, enforcement off and `isolation = user` recorded ([EAG §2.3](../specs/12-executor-antigravity.spec.md)).
+We will start each isolated Antigravity session with `HOME` pointing at a fresh, owner-only session home that holds only the engine's settings, permission rules, MCP config for the allowed views, a hook entry for the engine's gatekeeper, and the credentials P-AG-1 confirms. The gatekeeper answers only `deny` for tool calls outside the session's allow-list and stays silent otherwise. The home is removed on every exit path. Until P-AG-1 and P-AG-2 are confirmed for the installed version, sessions run in **user mode** with the operator's home, enforcement off and `isolation = user` recorded ([EAG-B10, EAG-B11, EAG-B5](../specs/12-executor-antigravity.spec.md)).
 
 ## Options considered
 

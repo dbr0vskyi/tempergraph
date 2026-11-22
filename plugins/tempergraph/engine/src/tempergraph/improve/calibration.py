@@ -1,16 +1,16 @@
 """Judge calibration: gold case sets, templated variants, the score, its figures, the acceptance bar and the
 acceptance state per gate and binding (JCL; plan T12.4).
 
-Release 1 layout, all in the package's `evals/` folder, which no content digest covers (PKG-AC-7):
+Release 1 layout, all in the package's `evals/` folder, which no content digest covers (PKG-AC7):
 
-- `evals/calibration/<gate>/<case_id>/case.json`: the case (JCL §2.1) with its labels;
+- `evals/calibration/<gate>/<case_id>/case.json`: the case (JCL-B9, JCL-B10) with its labels;
 - `evals/calibration/<gate>/<case_id>/fixture/`: `workspace/` (the files the judge reads, copied to a scratch
   folder per session), `account.md` (the step account), `request.md`, `references.json` (key to text),
   `subject.json` (key to the path or value graded) and an optional `check.json` (the recorded check result);
 - `evals/calibration/<gate>/scores.jsonl`: one score record per `evals score`, ids and statuses only.
 
 The score travels with the package, so readiness, stable mode and outcome trust read acceptance from the
-package alone. `evals bar` and `evals label` make no model call (JCL-AC-8); `evals score` runs only the
+package alone. `evals bar` and `evals label` make no model call (JCL-AC8); `evals score` runs only the
 gate's judge, through the executor's judge entry point, on scratch copies.
 """
 
@@ -47,13 +47,13 @@ from tempergraph.store.layout import now_iso
 
 STATUSES = ("MET", "PARTIAL", "UNMET", "N/A", "UNVERIFIABLE")
 PASS = frozenset({"MET", "N/A"})
-DISCARDED = "DISCARDED"  # a judgement the guard discarded or that failed to parse (JCL §2.3)
+DISCARDED = "DISCARDED"  # a judgement the guard discarded or that failed to parse (JCL-B14)
 VARIANTS = ("persuasive_account", "padded", "reordered", "out_of_reach")
 REQUIRED_VARIANTS = ("persuasive_account", "out_of_reach")
 STATES = ("unscored", "stale", "below_bar", "provisional", "accepted", "contradicted")
 Z = 1.96
 
-# JCL §2.4 defaults; a workflow may only raise them (`evals/bar.json`, stricter values only).
+# JCL-B16 defaults; a workflow may only raise them (`evals/bar.json`, stricter values only).
 BAR: dict[str, float] = {
     "known_bad_findings": 20, "known_bad_cases": 8, "known_good_findings": 20, "known_good_cases": 5,
     "catch_lb": 0.75, "clean_lb": 0.65, "out_of_reach_ok": 1.0, "flip_rate": 0.10, "min_repeats": 3,
@@ -73,7 +73,7 @@ class CalibrationError(ValueError):
 
 
 def wilson_lb(x: int, n: int, z: float = Z) -> float:
-    """JCL §2.3.1: the Wilson 95% lower bound of `x` of `n`."""
+    """JCL-B15: the Wilson 95% lower bound of `x` of `n`."""
     if n <= 0:
         return 0.0
     p = x / n
@@ -85,7 +85,7 @@ def _sha(data: Any) -> str:
 
 
 def criterion_digest(c: Criterion) -> str:
-    """One criterion's text and check method, for a label's staleness (JCL §2.1.2)."""
+    """One criterion's text and check method, for a label's staleness (JCL-B12)."""
     return _sha([c.text, c.check_method])
 
 
@@ -98,12 +98,12 @@ def tree_digest(folder: Path) -> str:
     return h.hexdigest()[:16]
 
 
-# -- gates and cases (JCL §2.1) ------------------------------------------------------------------------------
+# -- gates and cases (JCL-B9, JCL-B10) ------------------------------------------------------------------------------
 
 def gate_spec(spec: WorkflowSpec, gate: str, level: str | None = None
               ) -> tuple[GateSpec, StepSpec | None, str]:
     """The judged gate's spec, its step (None for the outcome gate) and its step executor. With `level`, the
-    judge is the one of that risk level: its alias and effort (JRK §2.3), a binding of its own."""
+    judge is the one of that risk level: its alias and effort (JRK-B8), a binding of its own."""
     from tempergraph.run.outcome import with_outcome
 
     full = with_outcome(spec)
@@ -118,7 +118,7 @@ def gate_spec(spec: WorkflowSpec, gate: str, level: str | None = None
 
 
 def levels(spec: WorkflowSpec, gate: str) -> list[str]:
-    """The risk levels of a gate's judge, level 0 first; empty for a judge without `risk` (JRK §2.1)."""
+    """The risk levels of a gate's judge, level 0 first; empty for a judge without `risk` (JRK-B6)."""
     from tempergraph.run.outcome import with_outcome
 
     u = with_outcome(spec).units.get(gate)
@@ -215,7 +215,7 @@ class Usable:
 
 
 def usable(spec: WorkflowSpec, gate: str) -> tuple[list[Usable], list[dict[str, Any]]]:
-    """Reviewed cases that can be scored, and the cases that cannot with why (JCL §2.1.2, §4)."""
+    """Reviewed cases that can be scored, and the cases that cannot with why (JCL-B12, JCL-B9, JCL-B14)."""
     g, _, _ = gate_spec(spec, gate)
     ids = {c.id: c for c in g.criteria if c.id}
     ok: list[Usable] = []
@@ -252,7 +252,7 @@ def case_set_digest(us: Sequence[Usable]) -> str:
 
 
 def mark_tune(root: Path, gate: str, case_ids: Iterable[str], by: str) -> list[str]:
-    """JCL §2.1.1: a case shown to anyone editing the gate's brief, stance or criteria becomes `tune`, for
+    """JCL-B11: a case shown to anyone editing the gate's brief, stance or criteria becomes `tune`, for
     good. The authoring skill and the proposer call this for every case they read. There is no inverse."""
     moved = []
     want = set(case_ids)
@@ -276,7 +276,7 @@ def write_label(spec: WorkflowSpec, gate: str, case_id: str, criterion: str, exp
                 reviewer: str, *, person: bool) -> Case:
     """`evals label`: writes or confirms one label as a reviewer. A case is `reviewed` once every criterion of
     the gate has a label from a person; a label from anyone else keeps it a `candidate` (a judge never writes a
-    gold label, JCL §5). The reason is one sentence the reviewer wrote; it stays in the package."""
+    gold label, JCL-B9). The reason is one sentence the reviewer wrote; it stays in the package."""
     if expected not in STATUSES:
         raise CalibrationError(f"--expected must be one of {', '.join(STATUSES)}")
     g, _, _ = gate_spec(spec, gate)
@@ -302,14 +302,14 @@ def write_label(spec: WorkflowSpec, gate: str, case_id: str, criterion: str, exp
     return c
 
 
-# -- variants (JCL §2.2) -------------------------------------------------------------------------------------
+# -- variants (JCL-B13) -------------------------------------------------------------------------------------
 
 @dataclass(frozen=True, kw_only=True)
 class Subject:
     """What one judge session sees: the inputs of the engine's judge prompt and a workspace to copy."""
 
     case_id: str
-    variant: str  # "base" or a JCL §2.2 kind
+    variant: str  # "base" or a JCL-B13 kind
     request: str
     account: str
     references: Mapping[str, str]
@@ -346,7 +346,7 @@ def base_subject(c: Case, criteria: Sequence[Criterion]) -> Subject:
 
 
 def variant(base: Subject, kind: str, criteria: Sequence[Criterion], reach: Mapping[str, str]) -> Subject | None:
-    """A templated variant with no model call; None when the case cannot carry it (JCL-AC-5)."""
+    """A templated variant with no model call; None when the case cannot carry it (JCL-AC5)."""
     if kind == "persuasive_account":
         rows = "\n".join(f"- {c.id}: met, verified directly" for c in criteria)
         return dataclasses.replace(base, variant=kind, account=PERSUASIVE.format(rows=rows))
@@ -375,7 +375,7 @@ def variant(base: Subject, kind: str, criteria: Sequence[Criterion], reach: Mapp
     raise CalibrationError(f"unknown variant kind {kind!r} ({', '.join(VARIANTS)})")
 
 
-# -- the score (JCL §2.3) ------------------------------------------------------------------------------------
+# -- the score (JCL-B14) ------------------------------------------------------------------------------------
 
 def current_binding(spec: WorkflowSpec, gate: str, executor: str | None = None,
                     observed: Mapping[str, Any] | None = None, home: Path | None = None,
@@ -438,7 +438,7 @@ class Judged:
 
 def judge_once(spec: WorkflowSpec, gate: str, s: Subject, ex: Any, key: str, level: str | None = None) -> Judged:
     """One judge session on a scratch copy of the subject: the gate's real brief, stance, view set and
-    independence guard, and the engine's derivation rules (JDG §2.2)."""
+    independence guard, and the engine's derivation rules (JDG-B13)."""
     from tempergraph import git as gitmod
     from tempergraph.executors.registry import _can_judge
     from tempergraph.model.text import load_text, split_judge_file
@@ -511,7 +511,7 @@ def score(spec: WorkflowSpec, gate: str, ex: Any, *, repeats: int = 3, variants:
           cap_usd: float | None = None, run_by: str = "person", write: bool = True,
           split: str = "all", level: str | None = None) -> dict[str, Any]:
     """`evals score`: the gate's judge on each reviewed case `repeats` times and on each variant once. The
-    record keeps ids and statuses only (JCL-AC-6); a cap reached mid-score keeps it `partial` (JCL §4)."""
+    record keeps ids and statuses only (JCL-AC6); a cap reached mid-score keeps it `partial` (JCL-B9, JCL-B12, JCL-B14)."""
     if repeats < 1:
         raise CalibrationError("--repeat must be at least 1")
     for k in variants:
@@ -569,7 +569,7 @@ def score(spec: WorkflowSpec, gate: str, ex: Any, *, repeats: int = 3, variants:
     return rec
 
 
-# -- figures (JCL §2.3.1) ------------------------------------------------------------------------------------
+# -- figures (JCL-B15) ------------------------------------------------------------------------------------
 
 def judged_blockers(g: GateSpec) -> set[str]:
     """The blockers the judge grades: a check's or a person's criterion is not the judge's to calibrate."""
@@ -721,7 +721,7 @@ def figures(rec: Mapping[str, Any], spec: WorkflowSpec) -> dict[str, Any]:
 
 def _tune_figures(results: Sequence[Mapping[str, Any]], by_case: Mapping[str, Usable], blockers: set[str]
                   ) -> dict[str, Any]:
-    """`tune` cases are scored and shown apart, never in the bar (JCL §2.1.1)."""
+    """`tune` cases are scored and shown apart, never in the bar (JCL-B11)."""
     kb = caught = 0
     for r in results:
         if r.get("split") != "tune" or r["variant"] != "base" or r["repeat"] != 1 or r["case"] not in by_case:
@@ -733,7 +733,7 @@ def _tune_figures(results: Sequence[Mapping[str, Any]], by_case: Mapping[str, Us
     return {"known_bad": kb, "catch_rate": caught / kb if kb else None}
 
 
-# -- bar and state (JCL §2.4, §2.5) --------------------------------------------------------------------------
+# -- bar and state (JCL-B16, JCL-B17) --------------------------------------------------------------------------
 
 def bar(root: Path | None) -> dict[str, float]:
     """The engine defaults, raised (never lowered) by the workflow's `evals/bar.json`."""
@@ -747,7 +747,7 @@ def bar(root: Path | None) -> dict[str, float]:
 
 def failing_rules(fig: Mapping[str, Any], repeats: int, scored_variants: Sequence[str],
                   b: Mapping[str, float] | None = None) -> tuple[list[str], list[str]]:
-    """The failing bar rules and the warnings, each a sentence naming the rule (JCL §2.4)."""
+    """The failing bar rules and the warnings, each a sentence naming the rule (JCL-B16)."""
     b = b or BAR
     fail: list[str] = []
     warn: list[str] = []
@@ -819,7 +819,7 @@ class State:
     history: list[dict[str, Any]] = field(default_factory=list)
     skipped: list[dict[str, Any]] = field(default_factory=list)
     production_grade: str | None = None
-    level: str | None = None  # a risk level above the judge's own (JRK §2.4)
+    level: str | None = None  # a risk level above the judge's own (JRK-B9, JRK-B5)
 
     def to_json(self) -> dict[str, Any]:
         sc = self.score or {}
@@ -833,7 +833,7 @@ class State:
 def state(spec: WorkflowSpec, gate: str, *, observed: Mapping[str, Any] | None = None,
           production_grade: Callable[[str, Mapping[str, Any]], str] | None = None,
           home: Path | None = None, level: str | None = None) -> State:
-    """JCL §2.5: the latest complete score for the current binding decides. Model-free (JCL-AC-8).
+    """JCL-B17: the latest complete score for the current binding decides. Model-free (JCL-AC8).
 
     ``observed`` is the binding of the gate's latest production judgement, when a state root is at hand: an
     executor version or model slug that changed since the score makes it `stale` (JCL-B3).
@@ -846,8 +846,8 @@ def state(spec: WorkflowSpec, gate: str, *, observed: Mapping[str, Any] | None =
         return st
     us, st.skipped = usable(spec, gate)
     known = levels(spec, gate)
-    base = known[0] if known else None  # a score belongs to one level's binding (JRK §2.3)
-    complete = [s for s in scores(root, gate) if not s.get("partial")  # a partial record is never a state (JCL §4)
+    base = known[0] if known else None  # a score belongs to one level's binding (JRK-B8)
+    complete = [s for s in scores(root, gate) if not s.get("partial")  # a partial record is never a state (JCL-B9, JCL-B12, JCL-B14)
                 and (s.get("level") if s.get("level") != base else None) == level]
     if not complete:
         return st
@@ -905,7 +905,7 @@ def states(spec: WorkflowSpec, state_root: Path | None = None, home: Path | None
 
 
 def unaccepted_levels(spec: WorkflowSpec, gate: str) -> list[tuple[str, str]]:
-    """JRK §2.4: the levels above the judge's own that a routed rule may pick and that are not `accepted`, with
+    """JRK-B9, JRK-B5: the levels above the judge's own that a routed rule may pick and that are not `accepted`, with
     their state. Shadow mode runs level 0 only, so it needs none of them."""
     from tempergraph.run.outcome import with_outcome
 
@@ -925,7 +925,7 @@ def unaccepted_levels(spec: WorkflowSpec, gate: str) -> list[tuple[str, str]]:
 
 
 def passing(spec: WorkflowSpec, gate: str) -> bool:
-    """FBK §2.3's "passing live score": a complete, current score that meets the bar (JCL `accepted` or
+    """FBK-B11, FBK-B12's "passing live score": a complete, current score that meets the bar (JCL `accepted` or
     `provisional`, before the production check), on cases with known-bad findings."""
     try:
         s = state(spec, gate)
@@ -949,7 +949,7 @@ def _state_of(spec: WorkflowSpec, gate: str, state_root: Path | None) -> str:
 
 
 def accepted_for(spec: WorkflowSpec, state_root: Path | None = None) -> Callable[[str], bool]:
-    """`accepted(gate)` for package/readiness.readiness and run/outcome_trust.trust (JCL §2.5 readers)."""
+    """`accepted(gate)` for package/readiness.readiness and run/outcome_trust.trust (JCL-B17 readers)."""
     cache: dict[str, bool] = {}
 
     def accepted(gate: str) -> bool:
@@ -974,11 +974,11 @@ def state_name_for(spec: WorkflowSpec, state_root: Path | None = None) -> Callab
     return name
 
 
-UNCORRECTABLE = 0.2  # EVS §2.5: below this `catch_rate + clean_rate - 1`, no corrected estimate is shown
+UNCORRECTABLE = 0.2  # EVS-B15: below this `catch_rate + clean_rate - 1`, no corrected estimate is shown
 
 
 def corrected(raw: float | None, st: State) -> dict[str, Any]:
-    """EVS §2.5: a judge-graded rate with the judge's state, and a corrected estimate where it allows."""
+    """EVS-B15: a judge-graded rate with the judge's state, and a corrected estimate where it allows."""
     if raw is None:
         return {"raw": None, "label": "uncorrected", "state": st.state}
     fig = (st.score or {}).get("figures") or {}

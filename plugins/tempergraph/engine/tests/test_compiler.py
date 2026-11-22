@@ -1,4 +1,4 @@
-"""Compiler and flow (CMP §2; CMP-AC-1, AC-4, AC-6 for release-1 kinds; CMP-B1, B6; HUM-AC-1)."""
+"""Compiler and flow (CMP-B8; CMP-AC1, AC-4, AC-6 for release-1 kinds; CMP-B1, B6; HUM-AC1)."""
 
 from __future__ import annotations
 

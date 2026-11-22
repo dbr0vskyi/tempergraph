@@ -1,4 +1,4 @@
-"""Validation before spend (WFM §2.1, WFM-AC-1, AC-5, AC-6; CON-AC-5; WFM-B3)."""
+"""Validation before spend (WFM-B8, WFM-B9, WFM-B10, WFM-B11, WFM-AC1, AC-5, AC-6; CON-AC5; WFM-B3)."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def not_module_level(ctx: Any) -> None:
 BROKEN = api.callable_ref(not_module_level)
 BROKEN = dataclasses.replace(BROKEN, qualname="does_not_exist", func=None)
 
-# One fixture per row of WFM §2.1 built by release 1, with its own finding code (WFM-AC-1).
+# One fixture per row of WFM-B8, WFM-B9, WFM-B10, WFM-B11 built by release 1, with its own finding code (WFM-AC1).
 CASES: list[tuple[str, Callable[[], WorkflowSpec]]] = [
     ("order-empty", lambda: dataclasses.replace(two_step(), order=())),
     ("order-unknown-unit", lambda: dataclasses.replace(two_step(), order=("draft", "nope"))),
@@ -131,7 +131,7 @@ def test_later_fields_not_in_release() -> None:
 
 
 def portable() -> WorkflowSpec:
-    """Only tiers and the six portable capabilities (CON-AC-5, WFM-AC-5)."""
+    """Only tiers and the six portable capabilities (CON-AC5, WFM-AC5)."""
     return _step(two_step(), "draft", tools=("read", "search", "list", "edit", "write", "shell"), model="medium")
 
 

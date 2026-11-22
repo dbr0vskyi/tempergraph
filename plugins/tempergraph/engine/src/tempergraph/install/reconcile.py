@@ -1,4 +1,4 @@
-"""Registry reconcile, run inside an engine environment by `install` step 5 and `update` step 6 (UPD §2.8).
+"""Registry reconcile, run inside an engine environment by `install` step 5 and `update` step 6 (UPD-B20 to UPD-B24).
 Prints one JSON document; a constant module the updater's launch site starts. With `--install` (an update)
 each workflow's declared requirements are installed into this environment from an engine-owned file, and
 `--previous <engine folder>` names the engine a workflow that broke is pinned to."""

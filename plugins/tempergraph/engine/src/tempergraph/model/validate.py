@@ -1,7 +1,7 @@
-"""Validation before spend (WFM §2.1, §2.2).
+"""Validation before spend (WFM-B8, WFM-B9, WFM-B10, WFM-B11, WFM-B12).
 
 One function guards the catalog, a start, a resume, the pre-start check and the upgrade check
-(WFM-AC-2). Each refusal has its own finding code (WFM-AC-1). The engine never names a workflow (C8).
+(WFM-AC2). Each refusal has its own finding code (WFM-AC1). The engine never names a workflow (OVR-B10).
 """
 
 from __future__ import annotations
@@ -96,7 +96,7 @@ class _Validator:
         if any(f.code == "order-unknown-unit" for f in self.findings):
             return
         if flow.OUTCOME_UNIT in s.units:
-            self.err("reserved-unit-name", flow.OUTCOME_UNIT, "the unit name 'outcome' is reserved (OUT §2.4)")
+            self.err("reserved-unit-name", flow.OUTCOME_UNIT, "the unit name 'outcome' is reserved (OUT-B15, OUT-B16, OUT-B17)")
         self._release()
         self._settings()
         self._routing()
@@ -104,12 +104,12 @@ class _Validator:
             self._unit(name, s.units[name])
         self._flow()
         self._finalizer()
-        for code, unit, msg in lessons.validate(s):  # LSN §2.1, §4
+        for code, unit, msg in lessons.validate(s):  # LSN-B6, LSN-B7
             self.err(code, unit, msg)
         from tempergraph.model.prompt_lint import lint  # LIF: prompt lint is part of validate, as warnings
 
         self.findings += [Finding(f.code, f.unit, f"{f.where}: {f.message}", "warning") for f in lint(s)]
-        if s.package_root is not None and (s.package_root / "tempergraph.json").is_file():  # PKG §2.3 step 6
+        if s.package_root is not None and (s.package_root / "tempergraph.json").is_file():  # PKG-B15, PKG-B16, PKG-B17 step 6
             from tempergraph.package.loader import package_findings
 
             self.findings += package_findings(s)
@@ -122,7 +122,7 @@ class _Validator:
                 self.err("not_in_release", name,
                          f"unit kind {u.kind!r} is built in release {LATER_KINDS[u.kind]}, not release {RELEASE}")
             if u.step is not None and u.step.self_check and u.gate.check is None:
-                self.err("self-check-without-check", name, "`self_check` needs a gate check to preview (CHK §4)")
+                self.err("self-check-without-check", name, "`self_check` needs a gate check to preview (CHK-B15, CHK-B14, CHK-B10, CHK-B17)")
             for sc in (u.step.before + u.step.after) if u.step else ():
                 if sc.cache != "off":
                     self.err("not_in_release", name, f"the script cache is built in release 3, not release {RELEASE}")
@@ -138,7 +138,7 @@ class _Validator:
     def _settings(self) -> None:
         s = self.spec
         if s.builtin and not s.issue_repository:
-            pass  # a workflow the engine ships files nothing: it has no repository of its own (UWF §2.1)
+            pass  # a workflow the engine ships files nothing: it has no repository of its own (UWF-B6, UWF-B5, UWF-B7)
         elif not s.issue_repository or not ISSUE_REPO_RE.match(s.issue_repository):
             self.err("issue-repository-invalid", None, "`issue_repository` must be `owner/name`")
         if s.run_cost_cap_usd is not None and not s.run_cost_cap_usd > 0:
@@ -155,7 +155,7 @@ class _Validator:
                     elif not _setting_ok(found.kind, value, found.choices, found.min, found.max):
                         self.err("profile-value-invalid", None, f"profile {pname!r}: {key} outside its range")
 
-    # -- person units and flow extensions (ASK, HUM-B4, FLX §2.6) -------------------------------------
+    # -- person units and flow extensions (ASK, HUM-B4, FLX-B11) -------------------------------------
     def _forward(self, name: str, target: str, *, finalizer: bool) -> bool:
         order = list(self.spec.order)
         if target == flow.FINALIZER:
@@ -216,7 +216,7 @@ class _Validator:
         return self._earlier_keys(name)["any"]
 
     def _parallel(self, name: str, u: UnitSpec) -> None:
-        """CMP §2.2, WFM §2: two or more read-only branches directly before their join."""
+        """CMP-B10 to CMP-B16, WFM-B7: two or more read-only branches directly before their join."""
         order = list(self.spec.order)
         if len(u.branches) < 2 or len(set(u.branches)) != len(u.branches):
             self.err("parallel-branches", name, "a parallel block needs two or more distinct branches")
@@ -236,7 +236,7 @@ class _Validator:
                                                     "its pass goes to the join")
             if bu.step is not None and {"write", "edit"} & set(bu.step.tools):
                 self.err("parallel-writer-branch", b, "a branch is read-only in this release; writer branches "
-                                                      "that merge at the join come later (WSP §2.1)")
+                                                      "that merge at the join come later (WSP-B11, WSP-B12)")
             others = [n for n, o in self.spec.units.items() if n != name and o.kind == "parallel" and b in o.branches]
             if others:
                 self.err("parallel-branch-shared", b, f"{b!r} is a branch of {name!r} and of {others[0]!r}")
@@ -321,7 +321,7 @@ class _Validator:
                 self.warn("criterion-no-check-method", name, f"criterion {c.id or c.text[:30]!r} has no check method")
 
     def _map(self, name: str, u: UnitSpec) -> None:
-        """MAP §2.3 and the limits of §2.1; the concurrent mode is a later release."""
+        """MAP-B11 and the limits of MAP-B7; the concurrent mode is a later release."""
         m = u.map
         s = self.spec
         if m is None:
@@ -335,7 +335,7 @@ class _Validator:
             self.err("map-invalid", name, "`max_items` must be an integer from 1 to 50")
         if u.gate.back_targets:
             self.err("map-back-target", name, "a map's gate takes no back targets: a defect across items is found "
-                                              "at the join (MAP §2.3)")
+                                              "at the join (MAP-B11)")
         if u.route is not None or u.switch is not None:
             self.err("map-invalid", name, "a map takes no route")
         src, key = m.items_from
@@ -357,7 +357,7 @@ class _Validator:
                 self._alias(name, alias, caps)
 
     def _measured_switch(self, name: str, sw: SwitchSpec) -> None:
-        """SWM §4: the mode, every arm override and every re-arm entry."""
+        """SWM-B4, SWM-B5: the mode, every arm override and every re-arm entry."""
         s = self.spec
         order = list(s.order)
         if sw.mode not in ("route", "shadow"):
@@ -395,12 +395,12 @@ class _Validator:
                              f"the entry of arm {r.to!r} ({entry}) does not precede {unit!r}")
 
     def _ladder(self, name: str, st: StepSpec, caps: Capabilities | None, executor: str) -> None:
-        """LAD §2.1 and §2.6: the shape of an effort ladder and whether the executor applies each rung."""
+        """LAD-B9, LAD-B14: the shape of an effort ladder and whether the executor applies each rung."""
         from tempergraph.run.ladder import ascending
 
         rungs = tuple(st.effort_ladder)
         esc = st.escalation
-        if esc is not None:  # LAD §2.1: one tier above a plain tier alias, never from `large`, `inherit` or an item
+        if esc is not None:  # LAD-B9: one tier above a plain tier alias, never from `large`, `inherit` or an item
             from tempergraph.run.ladder import MODES, TIER_UP, stages_ok
 
             model = st.model if isinstance(st.model, str) else None
@@ -433,7 +433,7 @@ class _Validator:
                           f"step {name!r}: effort {rung!r} on {executor!r} is not yet shown by a live probe")
 
     def _complexity(self, name: str, sw: SwitchSpec) -> None:
-        """CXR §4: the declaration, the rules file, the direction of re-arms and the arm contract."""
+        """CXR-B7, CXR-B4, CXR-B10: the declaration, the rules file, the direction of re-arms and the arm contract."""
         from tempergraph.run import complexity as cx
 
         s = self.spec
@@ -564,7 +564,7 @@ class _Validator:
         self._ladder(name, st, caps, executor)
         from tempergraph.model import retire
 
-        for where, got in retire.detect(s).items():  # LAD §2.6: a release 1 model list, with its rewrite (§2.8)
+        for where, got in retire.detect(s).items():  # LAD-B14: a release 1 model list, with its rewrite (LAD-B18)
             if where in (f"units.{name}.model", f"model_profile.{name}"):
                 self.err("model-ladder-retired", name,
                          f"`{where}` is a list of models, retired in release 2; write {retire.describe(got)}")
@@ -635,7 +635,7 @@ class _Validator:
                     self.err("judge-tool-not-read-only", unit, f"judge tool {t!r} is outside the read-only catalog")
         judge_ex = j.executor or step_executor
         caps = self.executors.get(judge_ex)
-        # The judge moves to a capable executor at preflight (EXI §2.4); refuse only when none exists.
+        # The judge moves to a capable executor at preflight (EXI-B24); refuse only when none exists.
         if caps is not None and not caps.restricts_judge_tools and not any(
             c.restricts_judge_tools for c in self.executors.values()
         ):
@@ -644,7 +644,7 @@ class _Validator:
             target = caps or self.executors.get("claude")
             if target is not None:
                 self._alias(unit, j.model, target)
-        if j.risk is not None:  # JRK §2.1, §4
+        if j.risk is not None:  # JRK-B6, JRK-B7, JRK-B2
             from tempergraph.run import risk as riskmod
 
             base = j.model or (u.step.model if u.step is not None and isinstance(u.step.model, str) else None)
@@ -833,7 +833,7 @@ def _produced(u: UnitSpec) -> set[str]:
     if u.script is not None:
         keys |= set(u.script.produces)
     if u.kind == "ask":
-        keys.add("answers")  # ASK §2.1: the unit's one artifact
+        keys.add("answers")  # ASK-B5, ASK-B6: the unit's one artifact
     return keys
 
 
@@ -844,7 +844,7 @@ def _dominates(spec: WorkflowSpec, a: str, b: str) -> bool:
     if a == start:
         return True
     join = flow.block_of(spec, a)
-    if join is not None and join != b:  # CMP §2.2: a join runs only once every branch has passed
+    if join is not None and join != b:  # CMP-B10 to CMP-B16: a join runs only once every branch has passed
         return _dominates(spec, join, b)
     seen: set[str] = set()
     todo = [start]

@@ -1,15 +1,15 @@
 // The fleet tab (MCF §2.2), the projection line of the cost tab (MCF §2.1) and the other repositories of
 // `scope = machine` (MDS §2.1, MRV §2.3), as pure functions over the engine's `stats` and `status --all-roots`
-// documents (engine CST §2.5, §2.1). Contract M4: reported and estimated money stay apart, and a figure the
+// documents (engine CST-B14, CST-B15, CST-B16, CST-B8). Contract M4: reported and estimated money stay apart, and a figure the
 // engine did not record is `—`, never 0.
 
 import { duration } from './model'
 
-/** One row of `stats --projection` (engine CST §2.5). */
+/** One row of `stats --projection` (engine CST-B14, CST-B15, CST-B16). */
 export type Projection = { workflow: string; runs: number; median_usd: number; p90_usd: number; thin: boolean }
 export type ProjectionDoc = { schema_version: number; projection?: Projection[] }
 
-/** A thread of a heartbeat as `stats --live` prints it (engine CST §2.2 `heartbeat`). */
+/** A thread of a heartbeat as `stats --live` prints it (engine CST-B9 `heartbeat`). */
 export type LiveThread = {
   thread_id?: string // this machine's own threads only; another machine's carry a hash at most
   thread_hash?: string

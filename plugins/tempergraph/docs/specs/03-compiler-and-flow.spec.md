@@ -8,7 +8,7 @@ The compiler turns a validated workflow into a durable state graph with four nod
 
 ### CMP-B8 Node names and routing tokens
 
-WHEN a workflow is compiled THE compiler SHALL name each unit's nodes `<unit>.step`, `<unit>.judge`, `<unit>.gate` and `<unit>.human`, add one `finalizer` node, and give each gate static edges per routing token: `PROCEED` to the next unit, route target, switch arm or finalizer; `RETRY` to the unit's step node; `BACK` to each listed earlier unit; `ESCALATE` to the unit's human node; `STOP` to the end; and give each human node the same edges without `ESCALATE`, plus `rewind:<unit>` to the step node of every earlier unit in `order` ([RRN §2.3](81-reruns-and-feedback.spec.md)).
+WHEN a workflow is compiled THE compiler SHALL name each unit's nodes `<unit>.step`, `<unit>.judge`, `<unit>.gate` and `<unit>.human`, add one `finalizer` node, and give each gate static edges per routing token: `PROCEED` to the next unit, route target, switch arm or finalizer; `RETRY` to the unit's step node; `BACK` to each listed earlier unit; `ESCALATE` to the unit's human node; `STOP` to the end; and give each human node the same edges without `ESCALATE`, plus `rewind:<unit>` to the step node of every earlier unit in `order` ([RRN-B16](81-reruns-and-feedback.spec.md)).
 
 - GIVEN an order of two steps WHEN compiled THEN the graph has 8 nodes plus `finalizer`, and each gate has edges for `PROCEED`, `RETRY`, `ESCALATE` and `STOP`
 - GIVEN `back_targets: [a]` on unit `b` WHEN compiled THEN `b.gate` has a `BACK` edge to `a`
@@ -81,7 +81,7 @@ WHEN a unit of kind `parallel` names its branches, which stand just before it in
 
 ### CMP-B14 Maps, sub-workflows and waits
 
-WHEN a map, sub-workflow or event wait is compiled THE compiler SHALL compile a map as one subgraph per item of a list artifact (at most 20 by default, at most 50), each item gated on its own and collected by item id, with no back-edge from an item ([MAP](77-map-unit.spec.md)); a sub-workflow as a registered workflow under the parent's checkpointer, its artifacts going to the unit's own gate, at most three deep, with no recursion and no meta child; and an event wait with no model and no judge, on the main chain only, that arms once and then pauses until a delivered event passes its pure check ([FLX §2.3](74-flow-extensions.spec.md)).
+WHEN a map, sub-workflow or event wait is compiled THE compiler SHALL compile a map as one subgraph per item of a list artifact (at most 20 by default, at most 50), each item gated on its own and collected by item id, with no back-edge from an item ([MAP](77-map-unit.spec.md)); a sub-workflow as a registered workflow under the parent's checkpointer, its artifacts going to the unit's own gate, at most three deep, with no recursion and no meta child; and an event wait with no model and no judge, on the main chain only, that arms once and then pauses until a delivered event passes its pure check ([FLX-B8](74-flow-extensions.spec.md)).
 
 - GIVEN a map over 51 items WHEN it fans out THEN it is refused
 - GIVEN a sub-workflow four levels deep WHEN the workflow is validated THEN it fails
@@ -89,7 +89,7 @@ WHEN a map, sub-workflow or event wait is compiled THE compiler SHALL compile a 
 
 ### CMP-B15 The outcome gate
 
-WHEN a workflow is compiled THE compiler SHALL add the reserved unit `outcome` after every unit and before the finalizer, so every path to the finalizer passes it, its step node assembling the subject and starting no session, and its back targets derived from the outcome's `serves` links ([OUT §2.4](90-run-outcome.spec.md)).
+WHEN a workflow is compiled THE compiler SHALL add the reserved unit `outcome` after every unit and before the finalizer, so every path to the finalizer passes it, its step node assembling the subject and starting no session, and its back targets derived from the outcome's `serves` links ([OUT-B15, OUT-B16, OUT-B17](90-run-outcome.spec.md)).
 
 - GIVEN a route straight to the finalizer WHEN it is taken THEN the `outcome` unit runs first
 

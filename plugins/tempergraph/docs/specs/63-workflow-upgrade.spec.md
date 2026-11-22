@@ -8,7 +8,7 @@
 
 ### WUP-B10 The verb and its phases
 
-WHEN `tempergraph upgrade <workflow> [--check [--fail-on pending|never]] [--no-assist] [--executor <name>] [--cap <usd>] [--trial [--cases <set>]] [--stamp] [--bump] [--open-pr] [--continue <upgrade_id>] [--format text|json]` runs THE engine SHALL run in order locate (find the source and refuse an installed copy), baseline, plan, transform, assist (the upgrade workflow over assisted and owner items, the only phase that spends, under `--executor` and `--cap`, defaults from `UpgradePolicy` and $10), verify (and the trial with `--trial`) and finish, and SHALL keep `tempergraph upgrade-check <workflow> [--stamp]` as an alias of `upgrade --check`, which runs locate to plan writing nothing (contract C13) and prints the plan.
+WHEN `tempergraph upgrade <workflow> [--check [--fail-on pending|never]] [--no-assist] [--executor <name>] [--cap <usd>] [--trial [--cases <set>]] [--stamp] [--bump] [--open-pr] [--continue <upgrade_id>] [--format text|json]` runs THE engine SHALL run in order locate (find the source and refuse an installed copy), baseline, plan, transform, assist (the upgrade workflow over assisted and owner items, the only phase that spends, under `--executor` and `--cap`, defaults from `UpgradePolicy` and $10), verify (and the trial with `--trial`) and finish, and SHALL keep `tempergraph upgrade-check <workflow> [--stamp]` as an alias of `upgrade --check`, which runs locate to plan writing nothing (OVR-B15) and prints the plan.
 
 - GIVEN `upgrade-check` and `upgrade --check` on one workflow WHEN both run THEN they print the same plan
 

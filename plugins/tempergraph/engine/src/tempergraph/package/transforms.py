@@ -1,9 +1,9 @@
-"""The engine-shipped transforms of a changelog entry (VER §2.3.4). Model-free.
+"""The engine-shipped transforms of a changelog entry (VER-B13). Model-free.
 
 A transform is a pure function over a package's files: it reads the declaration modules by syntax tree and
 the model-facing text files, and rewrites only the bytes of the nodes it names, so comments, layout and line
 endings stay. Each is idempotent. What a transform cannot express it leaves alone (the entry's detect rules
-then still hit, and the upgrade turns the rest into an assisted item, WUP §2.4) or raises `TransformError`.
+then still hit, and the upgrade turns the rest into an assisted item, WUP-B17) or raises `TransformError`.
 """
 
 from __future__ import annotations
@@ -357,7 +357,7 @@ def _import_name(m: _Module, name: str) -> None:
 
 
 def model_list_to_escalation(root: Path) -> Result:
-    """LAD §2.8: a step's `model` list becomes its first alias, with an `escalation` to the second when that
+    """LAD-B18: a step's `model` list becomes its first alias, with an `escalation` to the second when that
     is one tier up; any other list leaves an owner item."""
     from tempergraph.model.retire import model_list_to_escalation as rewrite
 
@@ -422,7 +422,7 @@ PARAMETERS = {"rename_field": {"from": "old", "to": "new"}, "rename_symbol": {"f
 
 
 def apply(root: Path, migrate: Mapping[str, Any]) -> Result:
-    """Run the transform a changelog entry's `migrate` names, with the parameters it carries (VER §2.3.3)."""
+    """Run the transform a changelog entry's `migrate` names, with the parameters it carries (VER-B12)."""
     name = str(migrate.get("transform") or "")
     if name not in TRANSFORMS:
         raise TransformError(f"{name!r} is not a transform of this engine")

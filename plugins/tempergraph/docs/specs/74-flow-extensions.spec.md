@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Five additions to the flow primitives of [CMP](03-compiler-and-flow.spec.md) that give a workflow every graph shape LangGraph 1.2 can express ([R-060](../research/R-060-node-types-against-langgraph.rsrch.md), [ADR-0066](../adr/0066-flow-extensions-for-langgraph-parity.adr.md)): a parallel block that picks its branches at run time, a map whose item is a sub-workflow, deadlines on waits and asks, a fallback target on a gate, and operator breakpoints. Each keeps static, validated targets, pure routing (contract C5) and one interrupt per gate (C6), so validation checks reachability and the diagram draws every edge ([ADR-0062](../adr/0062-new-node-kinds-keep-the-gated-unit.adr.md)). Workflow authors, operators and the compiler depend on it; design and build notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
+Five additions to the flow primitives of [CMP](03-compiler-and-flow.spec.md) that give a workflow every graph shape LangGraph 1.2 can express ([R-060](../research/R-060-node-types-against-langgraph.rsrch.md), [ADR-0066](../adr/0066-flow-extensions-for-langgraph-parity.adr.md)): a parallel block that picks its branches at run time, a map whose item is a sub-workflow, deadlines on waits and asks, a fallback target on a gate, and operator breakpoints. Each keeps static, validated targets, pure routing (OVR-B7) and one interrupt per gate (C6), so validation checks reachability and the diagram draws every edge ([ADR-0062](../adr/0062-new-node-kinds-keep-the-gated-unit.adr.md)). Workflow authors, operators and the compiler depend on it; design and build notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
 ## Behaviours
 

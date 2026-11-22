@@ -1,6 +1,6 @@
-"""State-root and home layouts with their manifests (LOS §2.1, §2.2; WSP §2 contract C10).
+"""State-root and home layouts with their manifests (LOS-B7, LOS-B8, LOS-B9, LOS-B10, LOS-B11; WSP-B8, WSP-B9, WSP-B11 OVR-B12).
 
-Read-only callers use the ``*_path`` helpers, which create nothing (contract C13). Only
+Read-only callers use the ``*_path`` helpers, which create nothing (OVR-B15). Only
 :func:`ensure_state_root` and :func:`ensure_home` create folders, owner-only.
 """
 
@@ -35,9 +35,9 @@ ROOT_VAR = "TEMPERGRAPH_STATE_ROOT"
 
 
 def state_root_path(start_dir: Path) -> Path:
-    """`<main checkout>/.tempergraph/`, from git's common directory, whatever the start dir (WSP-AC-1).
+    """`<main checkout>/.tempergraph/`, from git's common directory, whatever the start dir (WSP-AC1).
 
-    Outside git (WSP §2.4): the declared root, else the nearest folder upward that holds a state root with a
+    Outside git (WSP-B15 to WSP-B18): the declared root, else the nearest folder upward that holds a state root with a
     manifest, else `<start dir>/.tempergraph/`. The home folder is never a state root.
     """
     main = git.main_checkout(start_dir)
@@ -93,7 +93,7 @@ def ensure_state_root(root: Path) -> Path:
     _check_layout(manifest)
     if not manifest.exists():
         write_json(manifest, _manifest("state_root"))
-    else:  # MIG §2.2: the first writing verb of a newer engine moves the store forward
+    else:  # MIG-B9, MIG-B10, MIG-B5: the first writing verb of a newer engine moves the store forward
         from tempergraph.store import migrate
 
         migrate.migrate(root, target=STORE_LAYOUT, engine=ENGINE_VERSION, older_live=migrate.older_live)
@@ -129,7 +129,7 @@ def session_dir(root: Path, workflow: str, task_id: str, session_key: str) -> Pa
 
 
 def checkpoint_path(root: Path, workflow: str, fmt: int | None = None) -> Path:
-    """The checkpoint database of one checkpoint format (MIG §2.4): this engine's own unless `fmt` names
+    """The checkpoint database of one checkpoint format (MIG-B12, MIG-B13, MIG-B14): this engine's own unless `fmt` names
     another. Format 1 keeps the plain name, so engines of two formats never share a file."""
     if fmt is None:
         from tempergraph.release import release
@@ -143,6 +143,6 @@ def lock_path(root: Path, workflow: str, task_id: str) -> Path:
 
 
 def session_key(unit: str, attempt: int, kind: str, item: str | None = None, n: int | None = None) -> str:
-    """`<unit>[.<item>].<attempt>.<kind>[.<n>]` (EVT §2.1)."""
+    """`<unit>[.<item>].<attempt>.<kind>[.<n>]` (EVT-B8, EVT-B9)."""
     parts = [unit] + ([item] if item else []) + [str(attempt), kind] + ([str(n)] if n is not None else [])
     return ".".join(parts)

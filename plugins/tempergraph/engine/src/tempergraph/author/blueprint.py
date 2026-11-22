@@ -1,6 +1,6 @@
-"""The blueprint (SCF §2.1): a strict JSON document of the decided shape; `blueprint check` turns it into a
+"""The blueprint (SCF-B9, SCF-B11): a strict JSON document of the decided shape; `blueprint check` turns it into a
 throwaway spec with stub prompts and gates, validates it, and checks it against the draft outcome.
-Model-free and read-only (C13)."""
+Model-free and read-only (OVR-B15)."""
 
 from __future__ import annotations
 
@@ -49,7 +49,7 @@ TIERS = ("small", "medium", "large")
 GATE_KEYS = frozenset({"check", "judge", "signoff"})
 RELEASE_KINDS = frozenset({"step", "script", "route", "switch", "map", "parallel", "ask", "wait"})
 SESSION_UNIT_KINDS = frozenset({"step", "map"})  # kinds whose units run model sessions and so carry `sizing`
-# A flow shape that belongs to one unit kind (SCF §2.1): the shape states that kind's parameters.
+# A flow shape that belongs to one unit kind (SCF-B9, SCF-B11): the shape states that kind's parameters.
 SHAPE_KIND = {"map": "map", "parallel": "parallel", "wait": "wait"}
 FLOW_KINDS = frozenset({"route", "switch", "parallel", "map", "wait"})
 MAX_UNITS = 20
@@ -81,7 +81,7 @@ class BlueprintUnit:
     approval: bool | None = None
     back_targets: tuple[str, ...] = ()
     executor: str | None = None
-    sizing: Mapping[str, str] | None = None  # the step's model, effort and why (SCF §2.1, SCF §2.1.1)
+    sizing: Mapping[str, str] | None = None  # the step's model, effort and why (SCF-B9, SCF-B11, SCF-B10)
     judge_sizing: Mapping[str, str] | None = None
 
 
@@ -105,7 +105,7 @@ def digest(doc: Any) -> str:
 
 def outcome_digest(doc: Any) -> str:
     """`outcome_ref.digest`: the outcome as canonical JSON without its `revisions` history, which records how
-    the outcome changed rather than what it says (scaffold adds the `authored` entry; SCF §2.7)."""
+    the outcome changed rather than what it says (scaffold adds the `authored` entry; SCF-B11, SCF-B13, SCF-B15, SCF-B16, SCF-B17, SCF-B18, SCF-B19, SCF-B20, SCF-B22)."""
     if isinstance(doc, dict):
         doc = {k: v for k, v in doc.items() if k != "revisions"}
     return digest(doc)
@@ -120,7 +120,7 @@ def _strs(v: Any) -> bool:
 
 
 def _sizing(unit: str, at: str, got: Any, needed: bool) -> list[Finding]:
-    """SCF §2.1: every model step and every judge states its model tier, its effort and why (SCF §2.1.1)."""
+    """SCF-B9, SCF-B11: every model step and every judge states its model tier, its effort and why (SCF-B10)."""
     if got is None:
         return [_f("sizing-missing", unit, f"{at} is missing: state the model, the effort and why")] if needed else []
     if not needed:
@@ -140,7 +140,7 @@ def _sizing(unit: str, at: str, got: Any, needed: bool) -> list[Finding]:
 
 
 def _shape(unit: str, kind: str, body: Any, kinds: Mapping[str, str]) -> list[Finding]:
-    """SCF §2.1: `map`, `parallel` and `wait` shapes sit on a unit of that kind and state its parameters."""
+    """SCF-B9, SCF-B11: `map`, `parallel` and `wait` shapes sit on a unit of that kind and state its parameters."""
     at = f"$.flow.{unit}.{kind}"
     if kind in SHAPE_KIND and kinds.get(unit, SHAPE_KIND[kind]) != SHAPE_KIND[kind]:
         return [_f("blueprint-invalid", unit, f"{at} belongs on a `{SHAPE_KIND[kind]}` unit; {unit} is a "
@@ -157,7 +157,7 @@ def _shape(unit: str, kind: str, body: Any, kinds: Mapping[str, str]) -> list[Fi
 
 
 def parse(data: Any) -> Blueprint | list[Finding]:
-    """SCF §2.1: an unknown key is an error, so a misspelt field is reported, never drawn (SCF-B1)."""
+    """SCF-B9, SCF-B11: an unknown key is an error, so a misspelt field is reported, never drawn (SCF-B1)."""
     out: list[Finding] = []
     if not isinstance(data, dict):
         return [_f("blueprint-invalid", None, "the blueprint must be a JSON object")]
@@ -192,7 +192,7 @@ def parse(data: Any) -> Blueprint | list[Finding]:
         elif kind not in RELEASE_KINDS:
             out.append(_f("blueprint-invalid", uname, f"{at}.kind {kind!r} is not a unit kind"))
         if kind == "ask" and list(u.get("produces") or ["answers"]) != ["answers"]:
-            out.append(_f("blueprint-invalid", uname, f"{at}.produces: an ask unit produces `answers` only (ASK §2.1)"))
+            out.append(_f("blueprint-invalid", uname, f"{at}.produces: an ask unit produces `answers` only (ASK-B5, ASK-B6)"))
         summary = u.get("summary", "")
         if not isinstance(summary, str) or len(summary) > SUMMARY_CHARS:
             out.append(_f("summary-too-long", uname, f"{at}.summary is over {SUMMARY_CHARS} characters"))
@@ -260,7 +260,7 @@ def to_spec(bp: Blueprint) -> WorkflowSpec:
     branches = branch_units(bp)
     for u in bp.units:
         shape = dict(bp.flow.get(u.name) or {})
-        tools = ["read"] if u.name in branches else ["read", "write"]  # FLX §2.1: a branch reads only
+        tools = ["read"] if u.name in branches else ["read", "write"]  # FLX-B6: a branch reads only
         gate_kw: dict[str, Any] = {"check": stub_check if u.check else None,
                                    "judge": Judge(stance="stub", brief="stub", references=list(u.reads))
                                    if u.judge else None,
@@ -312,7 +312,7 @@ def to_spec(bp: Blueprint) -> WorkflowSpec:
 
 def check(bp: Blueprint, caps: Mapping[str, Capabilities], outcome: OutcomeSpec | None = None,
           outcome_doc: Any = None) -> list[Finding]:
-    """`blueprint check` (SCF §2.1): WFM validation of the throwaway spec, then the outcome cross-check."""
+    """`blueprint check` (SCF-B9, SCF-B11): WFM validation of the throwaway spec, then the outcome cross-check."""
     from tempergraph.run.outcome import check_against
 
     spec = to_spec(bp)

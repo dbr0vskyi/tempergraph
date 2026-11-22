@@ -13,7 +13,7 @@ A proposal needs evidence ([ADR-0030](0030-improvement-closes-through-measured-p
 
 ## Decision
 
-We will run each case of a reviewed case set on the current and the proposed version, score each pair as win, loss or tie on one target metric, and decide on out-of-sample non-tied pairs: `shown_better` at the one-sided sign-test count for p ≤ 0.05 with every guard metric within its margin, `regressed` on the mirror count or a broken guard, otherwise `not_shown`; fewer than 8 non-tied pairs is `not_shown`. An A/A run records each case set's noise floor ([PRP §2.6](../specs/40-improvement-proposals.spec.md), [R-031 F3](../research/R-031-self-improvement-gap-analysis.rsrch.md)).
+We will run each case of a reviewed case set on the current and the proposed version, score each pair as win, loss or tie on one target metric, and decide on out-of-sample non-tied pairs: `shown_better` at the one-sided sign-test count for p ≤ 0.05 with every guard metric within its margin, `regressed` on the mirror count or a broken guard, otherwise `not_shown`; fewer than 8 non-tied pairs is `not_shown`. An A/A run records each case set's noise floor ([PRP-B18, PRP-B19, PRP-B20](../specs/40-improvement-proposals.spec.md), [R-031 F3](../research/R-031-self-improvement-gap-analysis.rsrch.md)).
 
 ## Options considered
 

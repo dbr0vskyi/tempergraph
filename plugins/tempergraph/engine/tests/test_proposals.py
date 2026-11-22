@@ -1,5 +1,5 @@
 """Clusters, proposals, change classes, the proposer, draft pull requests, case sets and paired trials
-(PRP-AC-1 to AC-6, PRP-B1 to B8, B10; the `ref:` worktree base of trial cases, WTR §2.5)."""
+(PRP-AC1 to AC-6, PRP-B1 to B8, B10; the `ref:` worktree base of trial cases, WTR-B21)."""
 
 from __future__ import annotations
 
@@ -80,7 +80,7 @@ PROMPT = "Write release notes for {request} into notes.md. Write each entry from
     ("person", {"outcome.json": "WEAKEN"}, "drafted", ["outcome", "weakening"]),
 ])
 def test_classes_and_refusals(repo: Path, pkg: Path, author: str, edits: dict[str, str], state: str,
-                              want: list[str] | None) -> None:  # PRP-AC-1, PRP-B1, PRP-B2
+                              want: list[str] | None) -> None:  # PRP-AC1, PRP-B1, PRP-B2
     root = state_root_path(repo)
     for k, v in list(edits.items()):
         if v == "WEAKEN":
@@ -96,7 +96,7 @@ def test_classes_and_refusals(repo: Path, pkg: Path, author: str, edits: dict[st
         assert rec["labels"] == ["weakens-gate"]
 
 
-def test_a_reformatted_file_changes_nothing(repo: Path, pkg: Path) -> None:  # PRP-AC-1, PRP §5
+def test_a_reformatted_file_changes_nothing(repo: Path, pkg: Path) -> None:  # PRP-AC1, PRP-B23
     doc = json.loads((pkg / "outcome.json").read_text())
     rec = prp.record(state_root_path(repo), load(pkg), CLUSTER,
                      patch(pkg, {"outcome.json": json.dumps(doc, indent=1, sort_keys=True) + "\n"}),
@@ -104,7 +104,7 @@ def test_a_reformatted_file_changes_nothing(repo: Path, pkg: Path) -> None:  # P
     assert rec["refusal"] == "no_change"
 
 
-def test_a_verifier_moved_down_the_ladder_is_weakening(repo: Path, pkg: Path) -> None:  # PRP §2.4, OUT §2.6
+def test_a_verifier_moved_down_the_ladder_is_weakening(repo: Path, pkg: Path) -> None:  # PRP-B14, PRP-B15, OUT-B20, OUT-B21
     rec = prp.record(state_root_path(repo), load(pkg), CLUSTER,
                      patch(pkg, {"outcome.json": outcome_with(pkg, verified_by="person")}), author="proposer",
                      rule=RULE)
@@ -128,7 +128,7 @@ def test_literals_are_refused(repo: Path, pkg: Path) -> None:  # PRP-B3
                       rule="Fix PROJ-9 as asked")["refusal"] == "literal"
 
 
-def test_engine_side_stale_and_invalid(repo: Path, pkg: Path) -> None:  # PRP-B10, PRP §4
+def test_engine_side_stale_and_invalid(repo: Path, pkg: Path) -> None:  # PRP-B10, PRP-B16, PRP-B17, PRP-B20, PRP-B7, PRP-B8
     root = state_root_path(repo)
     spec = load(pkg)
     assert prp.record(root, spec, {**CLUSTER, "side": "executor:claude"}, "x", author="person",
@@ -147,7 +147,7 @@ def finding(thread: str, side: str, cause: str, at: str, unit: str = "draft", ma
             "side": side, "fingerprint": f"{side}-{cause}", "at": at, "request_digest": thread, "machine": machine}
 
 
-def test_clusters_rank_and_fold_twins(tmp_path: Path) -> None:  # PRP §2.2
+def test_clusters_rank_and_fold_twins(tmp_path: Path) -> None:  # PRP-B12
     root = tmp_path / ".tempergraph"
     rows = {"T-1": [finding("demo/T-1", "workflow", "retries_spent", "2026-11-19T00:00:00+00:00"),
                     finding("demo/T-1", "engine", "retries_spent", "2026-11-19T01:00:00+00:00")],
@@ -168,7 +168,7 @@ def test_clusters_rank_and_fold_twins(tmp_path: Path) -> None:  # PRP §2.2
     assert len(got) == 2  # the engine twin is folded under the side attributed first
 
 
-def test_no_code_path_merges() -> None:  # PRP-AC-2
+def test_no_code_path_merges() -> None:  # PRP-AC2
     hits = []
     for p in SRC.rglob("*.py"):
         for node in ast.walk(ast.parse(p.read_text())):
@@ -225,7 +225,7 @@ def test_open_pushes_its_branch_and_opens_a_draft(repo: Path, pkg: Path, tmp_pat
     assert git(remote, "branch", "--list").split() == [rec["branch"]]  # only its own branch, never main
     down = MemoryCodeHost(down=True)
     rec2 = prp.propose(root, spec, CLUSTER, proposer_ex({"prompts/draft.md": PROMPT}))
-    assert prp.open_pr(root, spec, rec2["proposal_id"], down).get("open_error")  # PRP §4: rerun later
+    assert prp.open_pr(root, spec, rec2["proposal_id"], down).get("open_error")  # PRP-B16, PRP-B17, PRP-B20, PRP-B7, PRP-B8: rerun later
     assert prp.load_proposal(root, rec2["proposal_id"])["state"] == "drafted"
 
 
@@ -246,7 +246,7 @@ HOLD = [{"name": "run_cost", "state": "held"}]
     (4, 1, 9, HOLD, "not_shown", "too_few_pairs"),
 ])
 def test_decision_table(w: int, lo: int, t: int, guards: list[dict[str, Any]], want: str,
-                        reason: str | None) -> None:  # PRP-AC-3, PRP-B6
+                        reason: str | None) -> None:  # PRP-AC3, PRP-B6
     got = trl.decide(pairs(w, lo, t), guards)
     assert (got["decision"], got["reason"]) == (want, reason)
     assert trl.sign_count(10) == 9
@@ -258,7 +258,7 @@ def test_cost_guard_margin() -> None:  # PRP-B6 row 3: cost +22%
     assert {x["name"]: x["state"] for x in trl.guard_states({"cost": 10.0}, {"cost": 11.0})}["run_cost"] == "held"
 
 
-def test_in_sample_pairs_never_decide() -> None:  # PRP-AC-5
+def test_in_sample_pairs_never_decide() -> None:  # PRP-AC5
     got = trl.decide(pairs(2, 1, 0, in_sample=12), HOLD)
     assert got["counts"]["in_sample"] == 12 and got["decision"] == "not_shown" and got["reason"] == "too_few_pairs"
 
@@ -293,7 +293,7 @@ def drafted(repo: Path, pkg: Path) -> tuple[Path, Any, dict[str, Any]]:
     return root, spec, rec
 
 
-def test_a_trial_decides_on_paired_cases(repo: Path, pkg: Path) -> None:  # PRP-B6, PRP §2.6
+def test_a_trial_decides_on_paired_cases(repo: Path, pkg: Path) -> None:  # PRP-B6, PRP-B18, PRP-B19, PRP-B20
     cases(pkg, 14)
     root, spec, rec = drafted(repo, pkg)
     a = [0] * 14
@@ -319,7 +319,7 @@ def test_a_cap_stops_cleanly(repo: Path, pkg: Path) -> None:  # PRP-B7
     assert len(run.calls) == 8
 
 
-def test_judge_graded_target_with_an_unmeasured_judge_spends_nothing(repo: Path, pkg: Path) -> None:  # PRP-AC-4
+def test_judge_graded_target_with_an_unmeasured_judge_spends_nothing(repo: Path, pkg: Path) -> None:  # PRP-AC4
     cases(pkg, 10)
     root, spec, rec = drafted(repo, pkg)
     run = fake_runner({"A": [0] * 10, "B": [1] * 10})
@@ -328,7 +328,7 @@ def test_judge_graded_target_with_an_unmeasured_judge_spends_nothing(repo: Path,
     assert run.calls == [] and not trl.all_trials(root)
 
 
-def test_refusals_before_spend(repo: Path, pkg: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # PRP §4
+def test_refusals_before_spend(repo: Path, pkg: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # PRP-B16, PRP-B17, PRP-B20, PRP-B7, PRP-B8
     root, spec, rec = drafted(repo, pkg)
     run = fake_runner({"A": [0], "B": [1]})
     (pkg / "evals" / "cases.json").write_text(json.dumps({"cases": []}))
@@ -341,14 +341,14 @@ def test_refusals_before_spend(repo: Path, pkg: Path, monkeypatch: pytest.Monkey
     assert run.calls == []
 
 
-def test_in_sample_case_is_reported_apart(repo: Path, pkg: Path) -> None:  # PRP §2.5, PRP-AC-5
+def test_in_sample_case_is_reported_apart(repo: Path, pkg: Path) -> None:  # PRP-B17, PRP-AC5
     cases(pkg, 10, harvested_from="release-notes/T-1")
     root, spec, rec = drafted(repo, pkg)
     out = trl.trial(root, spec, rec["proposal_id"], fake_runner({"A": [0] * 10, "B": [1] * 10}))
     assert out["pairs"][0]["in_sample"] and out["counts"]["in_sample"] == 1 and out["counts"]["wins"] == 9
 
 
-def test_aa_records_the_noise_floor(repo: Path, pkg: Path) -> None:  # PRP §2.6 noise floor
+def test_aa_records_the_noise_floor(repo: Path, pkg: Path) -> None:  # PRP-B18, PRP-B19, PRP-B20 noise floor
     cases(pkg, 4)
     root, spec, _ = drafted(repo, pkg)
     flip = {"n": 0}
@@ -366,7 +366,7 @@ def test_aa_records_the_noise_floor(repo: Path, pkg: Path) -> None:  # PRP §2.6
     assert "noisy_case_set" in got["warnings"]
 
 
-def test_trial_cases_start_at_their_base(repo: Path) -> None:  # WTR §2.5 `ref:` base, ADR-0090 S4
+def test_trial_cases_start_at_their_base(repo: Path) -> None:  # WTR-B21 `ref:` base, ADR-0090 S4
     first = git(repo, "rev-parse", "HEAD").strip()
     (repo / "later.md").write_text("later\n")
     git(repo, "add", "later.md")
@@ -381,7 +381,7 @@ def test_trial_cases_start_at_their_base(repo: Path) -> None:  # WTR §2.5 `ref:
     assert bad.exit_code is ExitCode.USAGE and bad.reason == "base_unresolved"
 
 
-def test_child_runs_are_dry_trial_threads(repo: Path) -> None:  # PRP-AC-6
+def test_child_runs_are_dry_trial_threads(repo: Path) -> None:  # PRP-AC6
     from .fixtures.workflows import two_step
 
     ex = standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge()])

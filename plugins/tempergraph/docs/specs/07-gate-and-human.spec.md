@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The gate only routes. The human node is the single place a run pauses, and only a person answers it. Escalations, spent budgets that ask, approval pauses after a pass, event waits and asks for a person's input all pause in that node, so a resume replays only it under the graph runtime's replay-from-top rule ([ADR-0004](../adr/0004-four-nodes-per-unit.adr.md)); the one other pause is an operator's breakpoint before a step node ([FLX §2.5](74-flow-extensions.spec.md)). People answering pauses, skills and CI depend on the pause kinds, the payload, the decision words and exit 3, which means "a person is needed", never failure ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)). Callers are classified from host and CI markers, and a relayed decision counts as a person's only with a person turn in the host ([ADR-0085](../adr/0085-classify-callers-by-the-strongest-signal.adr.md), [ADR-0086](../adr/0086-a-relayed-decision-counts-as-a-persons-only-with-host-turn-evidence.adr.md)).
+The gate only routes. The human node is the single place a run pauses, and only a person answers it. Escalations, spent budgets that ask, approval pauses after a pass, event waits and asks for a person's input all pause in that node, so a resume replays only it under the graph runtime's replay-from-top rule ([ADR-0004](../adr/0004-four-nodes-per-unit.adr.md)); the one other pause is an operator's breakpoint before a step node ([FLX-B10](74-flow-extensions.spec.md)). People answering pauses, skills and CI depend on the pause kinds, the payload, the decision words and exit 3, which means "a person is needed", never failure ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)). Callers are classified from host and CI markers, and a relayed decision counts as a person's only with a person turn in the host ([ADR-0085](../adr/0085-classify-callers-by-the-strongest-signal.adr.md), [ADR-0086](../adr/0086-a-relayed-decision-counts-as-a-persons-only-with-host-turn-evidence.adr.md)).
 
 ## Behaviours
 
@@ -20,27 +20,27 @@ WHEN the human node interrupts THE engine SHALL print the payload (`kind`, `unit
 
 ### HUM-B7 What pauses as an escalation
 
-WHEN a gate meets an unresolved gap (a blocker UNVERIFIABLE, the gap flag, an unparsed or discarded judgement), a workflow escalation rule, a check FAIL marked environmental, a failed or blocked attempt with cause `tool_access`, an upstream claim the judge could neither confirm nor refute ([JDG-B9](05-judge-and-verdict.spec.md)) or one on a gate with no judge, a defect attributed outside the allowed targets, a council with no decision and `on_no_decision: escalate` ([CNL §2.4](71-council-unit.spec.md)), or a wait or ask past its deadline applied with `escalate` ([FLX §2.3](74-flow-extensions.spec.md)) THE gate SHALL pause with kind `escalation`.
+WHEN a gate meets an unresolved gap (a blocker UNVERIFIABLE, the gap flag, an unparsed or discarded judgement), a workflow escalation rule, a check FAIL marked environmental, a failed or blocked attempt with cause `tool_access`, an upstream claim the judge could neither confirm nor refute ([JDG-B9](05-judge-and-verdict.spec.md)) or one on a gate with no judge, a defect attributed outside the allowed targets, a council with no decision and `on_no_decision: escalate` ([CNL-B13](71-council-unit.spec.md)), or a wait or ask past its deadline applied with `escalate` ([FLX-B8](74-flow-extensions.spec.md)) THE gate SHALL pause with kind `escalation`.
 
-- GIVEN an attempt that was refused the `shell` tool WHEN its gate decides THEN the run pauses with kind `escalation` and the payload lists the refused names and the `--grant` or `--allow-command` that fixes each ([RST §2.8](80-run-settings-and-overrides.spec.md))
+- GIVEN an attempt that was refused the `shell` tool WHEN its gate decides THEN the run pauses with kind `escalation` and the payload lists the refused names and the `--grant` or `--allow-command` that fixes each ([RST-B28, RST-B29, RST-B30](80-run-settings-and-overrides.spec.md))
 - GIVEN a check FAIL marked environmental WHEN the gate decides THEN no retry runs and the run pauses with kind `escalation`
 
 ### HUM-B8 What pauses as budget
 
-WHEN a gate set to `ask` has its retry or loop budget spent, or a model escalation's conditions hold at a stage that offers it ([LAD §2.4](92-effort-ladder-and-model-escalation.spec.md)) THE gate SHALL pause with kind `budget`.
+WHEN a gate set to `ask` has its retry or loop budget spent, or a model escalation's conditions hold at a stage that offers it ([LAD-B12](92-effort-ladder-and-model-escalation.spec.md)) THE gate SHALL pause with kind `budget`.
 
 - GIVEN `on_budget_spent: ask` and retries spent WHEN the gate decides THEN the run pauses with kind `budget`
 - GIVEN an escalation offer WHEN the run pauses THEN the payload carries the evidence and `resume --escalate`
 
 ### HUM-B9 What pauses for approval
 
-WHEN a gate with `approval`, or a step the operator named with the approval option, passes, or a gate with criteria verified by `person` passes THE gate SHALL pause with kind `approval`; for a sign-off the payload's `rubric` lists those criteria with each `role` and `question`, and `resume --criterion <id>=signed|declined` records a status per criterion ([OUT §2.2](90-run-outcome.spec.md)).
+WHEN a gate with `approval`, or a step the operator named with the approval option, passes, or a gate with criteria verified by `person` passes THE gate SHALL pause with kind `approval`; for a sign-off the payload's `rubric` lists those criteria with each `role` and `question`, and `resume --criterion <id>=signed|declined` records a status per criterion ([OUT-B10, OUT-B12](90-run-outcome.spec.md)).
 
 - GIVEN a sign-off criterion `c7` WHEN its gate passes THEN the run pauses and `resume --criterion c7=signed` records `c7` signed
 
 ### HUM-B10 Waits, asks and breakpoints
 
-WHEN a `wait` unit, an `ask` unit ([ASK](73-ask-unit.spec.md)) or an operator's `--pause-before` ([FLX §2.5](74-flow-extensions.spec.md)) is reached THE engine SHALL pause with kind `event_wait`, `input` or `breakpoint`.
+WHEN a `wait` unit, an `ask` unit ([ASK](73-ask-unit.spec.md)) or an operator's `--pause-before` ([FLX-B10](74-flow-extensions.spec.md)) is reached THE engine SHALL pause with kind `event_wait`, `input` or `breakpoint`.
 
 - GIVEN an `ask` unit WHEN it is reached THEN the run pauses with kind `input`
 
@@ -52,11 +52,11 @@ WHEN an infra failure ends an attempt, or the self-improvement workflow runs THE
 
 ### HUM-B12 Decisions
 
-WHEN a resume carries a decision THE human node SHALL apply `proceed` (accept and go on without rerunning step, judge or gate; feedback reaches the next unit once as notes), `retry` (the step runs again with a fresh retry budget; feedback reaches the step and its judge once), `back:<unit>` (to a listed earlier unit; feedback becomes that visit's reason; the pair's loop budget resets), `rewind:<unit>` (to any unit completed on the path, cleared as a trip back, no loop budget charged, counted against the human cap, [RRN §2.3](81-reruns-and-feedback.spec.md)), `stop` (exit 4, feedback recorded locally as the cause), `event:<name>=<value>` (only at a wait) or `answer:<name>=<value>` (only at an ask or a council's no-decision pause, validated by the question's kind, [ASK §2.3](73-ask-unit.spec.md)).
+WHEN a resume carries a decision THE human node SHALL apply `proceed` (accept and go on without rerunning step, judge or gate; feedback reaches the next unit once as notes), `retry` (the step runs again with a fresh retry budget; feedback reaches the step and its judge once), `back:<unit>` (to a listed earlier unit; feedback becomes that visit's reason; the pair's loop budget resets), `rewind:<unit>` (to any unit completed on the path, cleared as a trip back, no loop budget charged, counted against the human cap, [RRN-B16](81-reruns-and-feedback.spec.md)), `stop` (exit 4, feedback recorded locally as the cause), `event:<name>=<value>` (only at a wait) or `answer:<name>=<value>` (only at an ask or a council's no-decision pause, validated by the question's kind, [ASK-B8](73-ask-unit.spec.md)).
 
 - GIVEN `resume --decision back:plan --feedback "wrong api"` WHEN applied THEN `plan` runs with "wrong api" as its visit reason
-- GIVEN `--feedback x --ruling` WHEN applied THEN the ruling is shown to every later attempt of the units it applies to and to their judges until revoked ([RRN §2.2](81-reruns-and-feedback.spec.md))
-- GIVEN a resume with `--set` WHEN applied THEN the run settings change for the rest of the run ([RST §2.6](80-run-settings-and-overrides.spec.md))
+- GIVEN `--feedback x --ruling` WHEN applied THEN the ruling is shown to every later attempt of the units it applies to and to their judges until revoked ([RRN-B14, RRN-B15](81-reruns-and-feedback.spec.md))
+- GIVEN a resume with `--set` WHEN applied THEN the run settings change for the rest of the run ([RST-B26](80-run-settings-and-overrides.spec.md))
 
 ### HUM-B3 Several pending gates
 
@@ -83,7 +83,7 @@ WHEN a passing gate pauses for approval THE engine SHALL keep the recorded verdi
 
 ### HUM-B6 Intervention row
 
-WHEN a resume is accepted THE engine SHALL append one ledger row before the graph runs, with a random id, the `Caller` of the resume with its kind, decider and relay evidence ([PRV §2.5](85-caller-provenance.spec.md)), the touch classes it counts as ([SUP §2.1](86-supervision-metrics.spec.md)), the pause kind, the decision, the seconds the pause waited, whether feedback was given and whether as a ruling, the setting keys changed, the grants given (unit and capability names) and a cause word from metadata only.
+WHEN a resume is accepted THE engine SHALL append one ledger row before the graph runs, with a random id, the `Caller` of the resume with its kind, decider and relay evidence ([PRV-B16, PRV-B17](85-caller-provenance.spec.md)), the touch classes it counts as ([SUP-B9](86-supervision-metrics.spec.md)), the pause kind, the decision, the seconds the pause waited, whether feedback was given and whether as a ruling, the setting keys changed, the grants given (unit and capability names) and a cause word from metadata only.
 
 - GIVEN an infra re-open WHEN its row is written THEN its caller kind is `engine`
 - GIVEN an event value delivered by a pipeline WHEN its row is written THEN it carries the pipeline's caller
@@ -91,7 +91,7 @@ WHEN a resume is accepted THE engine SHALL append one ledger row before the grap
 
 ### HUM-B13 Refused decisions
 
-WHEN a decision is not valid for the thread state ([DUR](09-durability-and-resume.spec.md)), names `back` to a unit the gate does not list, would take a person's retries and rewinds above the human cap (default 100), or rewinds to a unit not completed on the path ([RRN §4](81-reruns-and-feedback.spec.md)) THE engine CLI SHALL exit 2 and write nothing.
+WHEN a decision is not valid for the thread state ([DUR](09-durability-and-resume.spec.md)), names `back` to a unit the gate does not list, would take a person's retries and rewinds above the human cap (default 100), or rewinds to a unit not completed on the path ([RRN-B16, RRN-B17, RRN-B18, RRN-B14, RRN-B15](81-reruns-and-feedback.spec.md)) THE engine CLI SHALL exit 2 and write nothing.
 
 - GIVEN `back:deploy` where the gate lists only `plan` WHEN resumed THEN it exits 2
 - GIVEN 100 retries by a person WHEN the 101st is sent THEN it exits 2
@@ -101,7 +101,7 @@ WHEN a decision is not valid for the thread state ([DUR](09-durability-and-resum
 - HUM-AC1 (HUM-B1): A source test asserts the interrupt is the first statement of the human node
 - HUM-AC2 (HUM-B2, HUM-B7, HUM-B8, HUM-B9, HUM-B10): Each pause kind exits 3 with a payload holding a working resume command
 - HUM-AC3 (HUM-B4): Every scenario of HUM-B4 holds
-- HUM-AC4 (HUM-B6): Agent resumes, by caller kind and decider, are counted apart from a person's in every report ([SUP §2.2](86-supervision-metrics.spec.md))
+- HUM-AC4 (HUM-B6): Agent resumes, by caller kind and decider, are counted apart from a person's in every report ([SUP-B10](86-supervision-metrics.spec.md))
 - HUM-AC5 (HUM-B11): No infra failure and no self-improvement run produces a pause
 - HUM-AC6 (HUM-B12): Each decision word has the effect HUM-B12 states, tested on a fixture run
 - HUM-AC7 (HUM-B3): A resume without `--unit` at two pending gates exits 2 listing both, and with `--unit` answers only that gate

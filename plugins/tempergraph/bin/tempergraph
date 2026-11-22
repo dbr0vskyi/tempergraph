@@ -1,5 +1,5 @@
 #!/bin/sh
-# The tempergraph plugin's launcher (UPD §2.7). Before the engine is installed there is no shim on PATH,
+# The tempergraph plugin's launcher (UPD-B18, UPD-B19). Before the engine is installed there is no shim on PATH,
 # so this runs the staged engine's bootstrap with the first real Python 3.11+ it finds. It accepts only
 # `install` and `update`; every other verb exits 127 with the line to run.
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)

@@ -1,5 +1,5 @@
 """A thread at its next resume, a workflow changed under a thread, and store layout steps
-(MIG §2.2, §2.4, §2.5; MIG-AC-1 to AC-5)."""
+(MIG-B9, MIG-B10, MIG-B5, MIG-B12, MIG-B13, MIG-B14, MIG-B15; MIG-AC1 to AC-5)."""
 
 from __future__ import annotations
 
@@ -70,7 +70,7 @@ def cli(repo: Path, *argv: str, handed: list[Any] | None = None) -> tuple[int, s
     return code, out.getvalue() + err.getvalue()
 
 
-# -- MIG §2.4 and MIG-B2: the decision -------------------------------------------------------------------------
+# -- MIG-B12, MIG-B13, MIG-B14 and MIG-B2: the decision -------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(("fmt", "resumes", "kept", "want"), [
@@ -95,7 +95,7 @@ def test_a_pinned_thread_dispatches_whatever_this_engine_resumes() -> None:
     assert ef.decide(doc, resumes=[1], kept={}, current="1.6.2-aaa") == ("move", None)  # the pinned engine itself
 
 
-def test_a_thread_from_before_the_record_is_not_pinned(repo: Path) -> None:  # MIG §4
+def test_a_thread_from_before_the_record_is_not_pinned(repo: Path) -> None:  # MIG-B16, MIG-B12, MIG-B10, MIG-B15
     root = paused(repo)
     ef.path(root, "demo", "T-1").unlink()
     assert ef.at_resume(root, "demo", "T-1") == ("move", None)
@@ -104,7 +104,7 @@ def test_a_thread_from_before_the_record_is_not_pinned(repo: Path) -> None:  # M
                   settings=NO_SLEEP).exit_code is ExitCode.FINISHED
     doc = ef.read(root, "demo", "T-1")
     assert doc["last_on"]["engine_version"] == ENGINE_VERSION
-    # live check L-27: a release 1 thread was recorded as started on 0.2.0; the start is unknown (MIG §4)
+    # live check L-27: a release 1 thread was recorded as started on 0.2.0; the start is unknown (MIG-B16, MIG-B12, MIG-B10, MIG-B15)
     assert doc["started_on"] == {"engine_version": None, "engine": "unknown"}
     started = [r for r in records(repo) if r["kind"] == "run_started"]
     assert started[-1]["moved_from"] == {"engine_version": "unknown", "workflow_version": None}
@@ -164,7 +164,7 @@ def test_no_kept_engine_resumes_the_format(repo: Path, monkeypatch: pytest.Monke
     assert hash_tree(root) == before
 
 
-def test_a_pinned_engine_that_is_gone(repo: Path) -> None:  # MIG §4
+def test_a_pinned_engine_that_is_gone(repo: Path) -> None:  # MIG-B16, MIG-B12, MIG-B10, MIG-B15
     root = paused(repo)
     ef.pin(root, "demo", "T-1", "1.6.2-aaa", "checkpoint_format")
     before = hash_tree(root)
@@ -193,7 +193,7 @@ def test_a_finished_thread_loses_its_pin(repo: Path, monkeypatch: pytest.MonkeyP
     assert ef.read(root, "demo", "T-1")["pinned"] is None
 
 
-def test_two_formats_never_share_a_database(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # MIG-AC-5
+def test_two_formats_never_share_a_database(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # MIG-AC5
     root = paused(repo)
     assert checkpoint_path(root, "demo").name == "demo.sqlite"  # format 1 keeps its name
     release_is(monkeypatch, checkpoint_format=3, resumes_checkpoint_formats=[1, 3])
@@ -209,7 +209,7 @@ def test_two_formats_never_share_a_database(repo: Path, monkeypatch: pytest.Monk
     assert ef.at_resume(root, "demo", "T-1")[0] == "refuse"  # an engine never opens a format it does not resume
 
 
-# -- MIG §2.5: a workflow changed under a thread ---------------------------------------------------------------
+# -- MIG-B15: a workflow changed under a thread ---------------------------------------------------------------
 
 
 def changed(**units: Any) -> Any:
@@ -303,7 +303,7 @@ def test_an_unchanged_workflow_writes_no_notice(repo: Path) -> None:
     assert all("moved_from" not in r for r in recs if r["kind"] == "run_started")
 
 
-# -- MIG §2.2: layout steps ------------------------------------------------------------------------------------
+# -- MIG-B9, MIG-B10, MIG-B5: layout steps ------------------------------------------------------------------------------------
 
 
 def old_root(tmp_path: Path) -> Path:
@@ -323,7 +323,7 @@ ADDITIVE = {0: migrate.Step(from_layout=0, kind="additive", apply=lambda r: (r /
 BREAKING = {0: migrate.Step(from_layout=0, kind="breaking", apply=_move, touches=lambda r: ["config/settings.json"])}
 
 
-def test_an_additive_step_before_and_after(tmp_path: Path) -> None:  # MIG-AC-3
+def test_an_additive_step_before_and_after(tmp_path: Path) -> None:  # MIG-AC3
     root = old_root(tmp_path)
     assert migrate.migrate(root, target=1, engine="9.0.0", steps=ADDITIVE) == [0]
     man = json.loads((root / "manifest.json").read_text())
@@ -360,7 +360,7 @@ def test_a_fault_mid_step_restores_the_backup(tmp_path: Path) -> None:
     assert not (root / "locks" / ".migrate").exists()
 
 
-def test_a_held_migration_lock_refuses_with_the_holder(tmp_path: Path) -> None:  # MIG §4
+def test_a_held_migration_lock_refuses_with_the_holder(tmp_path: Path) -> None:  # MIG-B16, MIG-B12, MIG-B10, MIG-B15
     root = old_root(tmp_path)
     (root / "locks" / ".migrate").write_text("4242", encoding="utf-8")
     with pytest.raises(migrate.MigrationRefused, match="pid 4242"):
@@ -384,7 +384,7 @@ def test_a_breaking_step_waits_for_a_run_of_an_older_engine(tmp_path: Path) -> N
 
 
 def test_reading_never_migrates_and_the_first_write_does(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    root = paused(repo)  # MIG-AC-4
+    root = paused(repo)  # MIG-AC4
     man = json.loads((root / "manifest.json").read_text())
     (root / "manifest.json").write_text(json.dumps({**man, "layout": 0}), encoding="utf-8")
     monkeypatch.setattr(migrate, "STEPS", ADDITIVE)

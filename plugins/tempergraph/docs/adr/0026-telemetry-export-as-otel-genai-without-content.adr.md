@@ -35,7 +35,7 @@ We will ship an OTLP exporter as an in-process observer in an optional extra, ma
 ## Consequences
 
 - Positive: a team sees runs, units, sessions and gates as traces, and tokens and cost as metrics, in a backend they already use.
-- Negative: for the three agent executors a session is one span; per-request detail exists only for the Messages API. Stated in [TEL §5](../specs/35-telemetry-export.spec.md).
+- Negative: for the three agent executors a session is one span; per-request detail exists only for the Messages API. Stated in [R-150 TEL](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 - Risk: the conventions change after the pin. Mitigation: the mapping table is the one place names live, with a drift test.
 
 ## Assumptions

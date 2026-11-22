@@ -64,7 +64,7 @@ R-075 found 17 gap rows and closed them in specs 75 to 79 and ADR-0075 to 0079. 
 | R-075 gap | Closed by | In release 1 code? | Evidence |
 |---|---|---|---|
 | Check context, findings, facts, `n_a`, mechanical criteria (T19, T24, T29 to T31) | CHK | **Yes** | `run/checks.py` `CheckContext` (artifacts, values, facts, git, settings, criteria); `contracts.py` `CheckResult.facts`, `Criterion.mechanical` |
-| Check runs commands with a budget, tree kill, reuse (T25, T26) | CHK §2.3 | **Yes** | `CheckContext.resolve`, `.run(reuse=…)`, `run/commands.py` |
+| Check runs commands with a budget, tree kill, reuse (T25, T26) | CHK-B12, CHK-B13 | **Yes** | `CheckContext.resolve`, `.run(reuse=…)`, `run/commands.py` |
 | Run values and template keys (T13, T14) | VAL | **Yes**, without item keys | `api.Value`; used by `doc-refresh` for its route |
 | Finalizer contract, outcomes, URL (T51 to T53) | FIN | **Yes** | `run/finalize.py` `FinalizerContext` with `resolve` and `run`, `open_warnings`, `run_options` |
 | Skill as a declared tool (T11) | ADR-0078 | **Yes, coarse** | `executors/capabilities.py`: `skill:*` maps to the bare `Skill` tool; a per-skill allow rule waits on probe P-CC-8 |
@@ -80,11 +80,11 @@ Everything R-075 marked covered that temperspec's line needs is in the release 1
 
 In the reference a step's upstream claim ("the plan conflicts with the tooling") sends the run back by itself, once per edge (S1 §7.6). In the code:
 
-- `render/output.py` accepts `UPSTREAM <unit>:` for any unit in the gate's `back_targets`. It does not check that the target ran or was route-skipped, so it is more permissive than [PRM §2.3](../specs/04-prompt-rendering.spec.md).
+- `render/output.py` accepts `UPSTREAM <unit>:` for any unit in the gate's `back_targets`. It does not check that the target ran or was route-skipped, so it is more permissive than [PRM-B11](../specs/04-prompt-rendering.spec.md).
 - `run/nodes.py` turns an accepted claim into `escalate = "upstream"`, and `run/gate.py` sends every escalation cause to a person. No judge confirms the claim and no automatic trip back follows.
 - A **judge's** attribution (`back_to`) does route back automatically within the loop budget (`run/gate.py`).
 
-So trips back driven by the judge work as in the reference; trips back driven by a step's own claim cost one pause, where the person picks `back`. That is safe and usable for a first version, but it is a difference from the reference and from what [HUM §2.1](../specs/07-gate-and-human.spec.md) implies ("an upstream claim the judge could not confirm" escalates). It should be either built or recorded as release 1 behaviour in the spec. This is a small engine item, not a blocker.
+So trips back driven by the judge work as in the reference; trips back driven by a step's own claim cost one pause, where the person picks `back`. That is safe and usable for a first version, but it is a difference from the reference and from what [HUM-B7 to HUM-B11](../specs/07-gate-and-human.spec.md) implies ("an upstream claim the judge could not confirm" escalates). It should be either built or recorded as release 1 behaviour in the spec. This is a small engine item, not a blocker.
 
 **Since fixed (2026-11-21, on the owner's ruling to reduce pauses):** a claim is now judged on its own against one criterion; confirmed goes back, refuted retries the step, undecided asks a person ([JDG-B9](../specs/05-judge-and-verdict.spec.md)).
 
@@ -153,7 +153,7 @@ Intermediate outcomes, each serving the final criteria above:
 | code | The whole plan is built test first and committed | Rows marked, committed, not pushed, then the plan's commands | Each row's change is where it says; scenarios covered by asserting tests; nothing beyond the plan (large tier) |
 | release | Release rows are done and truthful | Rows marked, commit past the code gate's, release commands | Changelog truthful, nothing else changed (Sonnet) |
 
-Trust at the start: every judged criterion is `uncalibrated` until its seeds are graded live, and the outcome record shows that rather than hiding it ([OUT §2.3](../specs/90-run-outcome.spec.md)).
+Trust at the start: every judged criterion is `uncalibrated` until its seeds are graded live, and the outcome record shows that rather than hiding it ([OUT-B13, OUT-B14](../specs/90-run-outcome.spec.md)).
 
 ### Models and effort
 

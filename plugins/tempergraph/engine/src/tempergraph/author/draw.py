@@ -1,4 +1,4 @@
-"""`blueprint draw` (SCF §2.2): the diagram of the throwaway spec plus the outcome, verification and
+"""`blueprint draw` (SCF-B12): the diagram of the throwaway spec plus the outcome, verification and
 unverified tables and the defaults the person did not set. Pure renderers; no model draws a diagram."""
 
 from __future__ import annotations

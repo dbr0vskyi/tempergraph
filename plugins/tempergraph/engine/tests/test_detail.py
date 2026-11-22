@@ -1,4 +1,4 @@
-"""The run detail document (RDD-B1–B6, RDD-AC-1–AC-4) and `status --detail`."""
+"""The run detail document (RDD-B1–B6, RDD-AC1–AC-4) and `status --detail`."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ CANARY = "sk-ant-CANARY0123456789abcdef"
 
 
 def fixture_run(repo: Path) -> dict[str, Any]:
-    """A retry on draft, a trip back from review, then an escalation pause on review (RDD-AC-1 without a map)."""
+    """A retry on draft, a trip back from review, then an escalation pause on review (RDD-AC1 without a map)."""
     ex = standin("claude", steps=[DRAFT, DRAFT, REVIEW, DRAFT, REVIEW],
                  judges=[judge(verdict_block("UNMET")), judge(), judge(verdict_block("UNMET", defect_in="notes")),
                          judge(), judge(verdict_block("UNVERIFIABLE"))])
@@ -89,7 +89,7 @@ EXPECTED = {
 }
 
 
-def test_fixture_reproduces_the_expected_document(repo: Path) -> None:  # RDD-AC-1, B2, B3
+def test_fixture_reproduces_the_expected_document(repo: Path) -> None:  # RDD-AC1, B2, B3
     doc = fixture_run(repo)
     assert doc["schema_version"] == 1 and doc["truncated"] == []
     got = shape(doc)
@@ -227,7 +227,7 @@ def leaky(ctx: Any) -> Any:
                        findings=[CheckFinding(status="pass", criterion="c-file")])
 
 
-def test_text_is_scrubbed_and_clipped(repo: Path) -> None:  # RDD-AC-3
+def test_text_is_scrubbed_and_clipped(repo: Path) -> None:  # RDD-AC3
     spec = two_step()
     units = dict(spec.units)
     from tempergraph.api import callable_ref
@@ -251,7 +251,7 @@ def test_text_is_scrubbed_and_clipped(repo: Path) -> None:  # RDD-AC-3
         assert CANARY not in line
 
 
-def test_cut_drops_blocks_in_order(repo: Path) -> None:  # RDD-AC-4
+def test_cut_drops_blocks_in_order(repo: Path) -> None:  # RDD-AC4
     doc = fixture_run(repo)
     small = cut(json.loads(json.dumps(doc)), limit=len(json.dumps(doc)) - 10)
     assert small["truncated"] == ["events_tail"] and small["events_tail"] == []

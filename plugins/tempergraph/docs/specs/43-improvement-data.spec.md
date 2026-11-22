@@ -38,7 +38,7 @@ WHEN a loop-filed issue or a proposal's pull request changes state THE store SHA
 
 ### IMD-B10 Evidence stays on its machine
 
-WHEN records cross a machine boundary THE engine SHALL keep the local evidence file (request, outputs, feedback text) on the machine that made it and send only what IMD-B20 allows (contract C9, [SEC-B9](14-security.spec.md)).
+WHEN records cross a machine boundary THE engine SHALL keep the local evidence file (request, outputs, feedback text) on the machine that made it and send only what IMD-B20 allows (OVR-B11, [SEC-B9](14-security.spec.md)).
 
 - GIVEN a run on machine A WHEN its records are synced THEN no evidence file leaves A
 
@@ -146,7 +146,7 @@ WHEN a report row decided by `trial.guard.run_cost_pct = 15` with provenance `de
 
 ### IMD-B24 Store failures
 
-WHEN a store write fails THE engine SHALL leave the run and its exit code unchanged (contract C2), the loop reading what exists.
+WHEN a store write fails THE engine SHALL leave the run and its exit code unchanged (OVR-B4), the loop reading what exists.
 
 - GIVEN a failing store write WHEN the run ends THEN its exit code is unchanged
 

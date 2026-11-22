@@ -1,4 +1,4 @@
-"""The `resources` line of the activity journal (EVT §2.3): CPU seconds, peak resident memory and the process
+"""The `resources` line of the activity journal (EVT-B17, EVT-B18, EVT-B7, EVT-B19): CPU seconds, peak resident memory and the process
 count of a session's process group, from a read-only process listing with constant argv. POSIX only; a
 listing that fails gives no line, never an error."""
 

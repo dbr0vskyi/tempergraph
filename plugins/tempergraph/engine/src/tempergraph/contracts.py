@@ -1,6 +1,6 @@
 """Shared types of CON (docs/specs/01-contracts.spec.md).
 
-This module is the only definition of a type two or more engine components share (CON-AC-1).
+This module is the only definition of a type two or more engine components share (CON-AC1).
 Field names and defaults follow the spec tables; section numbers are given per block.
 """
 
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Literal, Protocol
 
 # ---------------------------------------------------------------------------------------------
-# Callable references (PKG §2.4): callables are recorded as `<module>:<qualname>`.
+# Callable references (PKG-B19, PKG-B20): callables are recorded as `<module>:<qualname>`.
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -40,7 +40,7 @@ class CallableRef:
 
 @dataclass(frozen=True, kw_only=True)
 class TextRef:
-    """A file reference relative to the package root (PKG §2.4 ``text()``)."""
+    """A file reference relative to the package root (PKG-B19, PKG-B20 ``text()``)."""
 
     path: str
 
@@ -48,7 +48,7 @@ class TextRef:
 TextSource = str | TextRef  # inline text or a file ref; "default" is a literal value
 
 # ---------------------------------------------------------------------------------------------
-# §2.1 Workflow specification
+# CON-B4, CON-B5, CON-B6, CON-B7 Workflow specification
 
 UnitKind = Literal[
     "step", "route", "switch", "parallel", "map", "subworkflow", "wait", "script", "council", "contest", "ask"
@@ -59,7 +59,7 @@ Severity = Literal["blocker", "warning"]
 
 @dataclass(frozen=True, kw_only=True)
 class ValueKind:
-    """A `value` artifact with optional `choices` and `pattern` (VAL §2.1)."""
+    """A `value` artifact with optional `choices` and `pattern` (VAL-B5, VAL-B6)."""
 
     choices: tuple[str, ...] | None = None
     pattern: str | None = None
@@ -79,7 +79,7 @@ class Criterion:
     unverified_system: str | None = None
     no_change_policy: Literal["escalate", "retry"] = "escalate"
     mechanical: bool = False
-    # Outcome fields (CON §2.14 OutcomeCriterion); empty for inline criteria.
+    # Outcome fields (PKG, OUT (moved) OutcomeCriterion); empty for inline criteria.
     verified_by: Literal["check", "judge", "person", "none"] | None = None
     verifier: Mapping[str, Any] | None = None
     source: str | None = None
@@ -88,7 +88,7 @@ class Criterion:
 
 @dataclass(frozen=True, kw_only=True)
 class RiskLevel:
-    """JRK §2.1: one level of a judge. Level 0 states no model: it is the gate's own judge, resolved as without
+    """JRK-B6: one level of a judge. Level 0 states no model: it is the gate's own judge, resolved as without
     `risk`; a later level names the alias, the effort, or both."""
 
     name: str
@@ -111,7 +111,7 @@ class RiskWhen:
 
 @dataclass(frozen=True, kw_only=True)
 class RiskSpec:
-    """JRK §2.1: a model-free rule that only ever raises the judge. Exactly one of `rule` and `when`."""
+    """JRK-B6: a model-free rule that only ever raises the judge. Exactly one of `rule` and `when`."""
 
     levels: tuple[RiskLevel, ...]
     rule: CallableRef | None = None
@@ -121,7 +121,7 @@ class RiskSpec:
 
 @dataclass(frozen=True, kw_only=True)
 class RiskContext:
-    """What a risk rule reads (JRK §2.2). It holds no step text, artifact content or step value."""
+    """What a risk rule reads (JRK-B7). It holds no step text, artifact content or step value."""
 
     unit: str
     item: str | None
@@ -139,7 +139,7 @@ class RiskContext:
 class JudgeSpec:
     stance: str = ""
     brief: str = ""
-    file: str | None = None  # judges/<unit>.md with two headings (PKG §2.4)
+    file: str | None = None  # judges/<unit>.md with two headings (PKG-B19, PKG-B20)
     references: Mapping[str, Literal["required", "optional"]] = field(default_factory=dict)
     subject: tuple[str, ...] = ()
     executor: str | None = None
@@ -148,7 +148,7 @@ class JudgeSpec:
     tools: tuple[str, ...] | None = None
     idle_s: int | None = None
     session_options: SessionOptions | None = None
-    sizing: str = ""  # why this model and effort fit the judge's reading (SCF §2.1.1)
+    sizing: str = ""  # why this model and effort fit the judge's reading (SCF-B10)
     risk: RiskSpec | None = None  # JRK: a stronger judge for a riskier attempt
 
 
@@ -180,7 +180,7 @@ class SessionOptions:
 
 @dataclass(frozen=True, kw_only=True)
 class ScriptSpec:
-    """SCR §2.1."""
+    """SCR-B5."""
 
     run: tuple[str, ...] | None = None
     call: CallableRef | None = None
@@ -210,14 +210,14 @@ class StepSpec:
     self_check: bool = False
     summary: str = ""
     subagent_model: str | None = None
-    sizing: str = ""  # why this model and effort fit the step's work (SCF §2.1.1)
-    effort_ladder: tuple[str, ...] = ()  # LAD §2.1: rung 0 is the effort of a visit's first attempt
+    sizing: str = ""  # why this model and effort fit the step's work (SCF-B10)
+    effort_ladder: tuple[str, ...] = ()  # LAD-B9: rung 0 is the effort of a visit's first attempt
     escalation: EscalationSpec | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
 class EscalationSpec:
-    """LAD §2.4: one attempt on the next tier up, only on a repeated trusted blocker."""
+    """LAD-B12: one attempt on the next tier up, only on a repeated trusted blocker."""
 
     to: str
     stages: Mapping[str, str] = field(default_factory=dict)  # stage -> off | offer | auto
@@ -226,7 +226,7 @@ class EscalationSpec:
 
 @dataclass(frozen=True, kw_only=True)
 class RearmSpec:
-    """SWM §2.4: while arm `from_arm` is in force, a listed unit ending on a cause in `on` sends the run to
+    """SWM-B7: while arm `from_arm` is in force, a listed unit ending on a cause in `on` sends the run to
     the entry of arm `to`."""
 
     from_arm: str
@@ -237,7 +237,7 @@ class RearmSpec:
 
 @dataclass(frozen=True, kw_only=True)
 class MeasureSpec:
-    """CXR §2.1: one named measure, from a stock measure (`stock`: its name and arguments) or a callable."""
+    """CXR-B7: one named measure, from a stock measure (`stock`: its name and arguments) or a callable."""
 
     name: str
     stock: tuple[str, ...] = ()
@@ -246,7 +246,7 @@ class MeasureSpec:
 
 @dataclass(frozen=True, kw_only=True)
 class ComplexitySpec:
-    """CXR §2.1: what makes a switch a complexity switch. Its arms run from the simplest to the safe arm."""
+    """CXR-B7: what makes a switch a complexity switch. Its arms run from the simplest to the safe arm."""
 
     measures: tuple[MeasureSpec, ...]
     joins_at: str
@@ -257,7 +257,7 @@ class ComplexitySpec:
 
 @dataclass(kw_only=True)
 class MeasureContext:
-    """What a measure callable reads (CXR §2.3). It holds no step value."""
+    """What a measure callable reads (CXR-B9). It holds no step value."""
 
     request: Mapping[str, Any]
     facts: Mapping[str, Mapping[str, str]]
@@ -275,15 +275,15 @@ class MeasureContext:
             return fh.read(max_bytes).decode("utf-8", errors="replace")
 
 
-EFFORTS = ("low", "medium", "high", "xhigh", "max")  # ascending (LAD §2.1)
-STAGES = ("local-dev", "local-stable", "pipeline")  # PRO §2.1
+EFFORTS = ("low", "medium", "high", "xhigh", "max")  # ascending (LAD-B9)
+STAGES = ("local-dev", "local-stable", "pipeline")  # PRO-B7, PRO-B4
 ARM_OVERRIDE_KEYS = ("model", "timeout_s", "idle_s", "effort", "effort_ladder", "escalation")
 REARM_CAUSES = ("budget_spent", "timeout")
 
 
 @dataclass(frozen=True, kw_only=True)
 class SwitchSpec:
-    """CMP §2.2 switch: predicate, arms and a default arm; stickiness per visit or run. SWM §2.1 adds the
+    """CMP-B10 to CMP-B16 switch: predicate, arms and a default arm; stickiness per visit or run. SWM-B4 adds the
     mode, the per-arm overrides and the re-arm entries."""
 
     predicate: CallableRef | None
@@ -301,7 +301,7 @@ class SwitchSpec:
 
 @dataclass(frozen=True, kw_only=True)
 class MapItem:
-    """MAP §2.1: one item of a map's list; `id` names its artifacts, records and pauses."""
+    """MAP-B7: one item of a map's list; `id` names its artifacts, records and pauses."""
 
     id: str
     text: str = ""
@@ -309,7 +309,7 @@ class MapItem:
 
 @dataclass(frozen=True, kw_only=True)
 class ExtractContext:
-    """What a map's `extract` callable reads (MAP §2.1): read-only."""
+    """What a map's `extract` callable reads (MAP-B7): read-only."""
 
     artifact: Path
     workdir: Path
@@ -318,7 +318,7 @@ class ExtractContext:
 
 @dataclass(frozen=True, kw_only=True)
 class MapSpec:
-    """MAP §2.1. The step and the gate every item runs are the unit's own `step` and `gate`."""
+    """MAP-B7. The step and the gate every item runs are the unit's own `step` and `gate`."""
 
     items_from: tuple[str, str]  # (unit, key) of the artifact that holds the list
     extract: CallableRef | None = None
@@ -335,7 +335,7 @@ AnswerKind = Literal["text", "choice", "choices", "number", "bool", "file", "url
 
 @dataclass(frozen=True, kw_only=True)
 class AskQuestion:
-    """ASK §2.1 `Question`: one typed question of an ask unit."""
+    """ASK-B5, ASK-B6 `Question`: one typed question of an ask unit."""
 
     name: str
     text: str
@@ -347,19 +347,19 @@ class AskQuestion:
 
 @dataclass(frozen=True, kw_only=True)
 class AskSpec:
-    """ASK §2.1: declared questions, or a list artifact of them written by an earlier step."""
+    """ASK-B5, ASK-B6: declared questions, or a list artifact of them written by an earlier step."""
 
     questions: tuple[AskQuestion, ...] = ()
     questions_from: str | None = None  # the `from` field: an artifact key
     context: tuple[str, ...] = ()
     check: CallableRef | None = None  # pure: answers -> a list of problems, empty when they pass
     deadline_s: int | None = None
-    on_deadline: str = "escalate"  # `escalate`, `stop` or a forward unit (FLX §2.3)
+    on_deadline: str = "escalate"  # `escalate`, `stop` or a forward unit (FLX-B8)
 
 
 @dataclass(frozen=True, kw_only=True)
 class WaitSpec:
-    """An event wait (CMP §2.2, HUM-B4): passes only on `event:<name>=<value>` the pure check accepts."""
+    """An event wait (CMP-B10 to CMP-B16, HUM-B4): passes only on `event:<name>=<value>` the pure check accepts."""
 
     event: str
     check: CallableRef  # pure: the delivered value -> bool
@@ -373,11 +373,11 @@ class UnitSpec:
     gate: GateSpec
     ask: AskSpec | None = None
     wait: WaitSpec | None = None
-    branches: tuple[str, ...] = ()  # a parallel block's branch units; the unit itself is the join (CMP §2.2)
+    branches: tuple[str, ...] = ()  # a parallel block's branch units; the unit itself is the join (CMP-B10 to CMP-B16)
     step: StepSpec | None = None
     map: MapSpec | None = None
     script: ScriptSpec | None = None
-    route: CallableRef | None = None  # route unit or a step's route (CMP §2.2)
+    route: CallableRef | None = None  # route unit or a step's route (CMP-B10 to CMP-B16)
     route_targets: tuple[str, ...] = ()
     switch: SwitchSpec | None = None
     extra: Mapping[str, Any] = field(default_factory=dict)  # fields of kinds not in this release
@@ -442,7 +442,7 @@ class SettingDecl:
 
 @dataclass(frozen=True, kw_only=True)
 class WorktreeDecl:
-    """WTR §2.3."""
+    """WTR-B19."""
 
     include: tuple[str, ...] = ()  # gitignore-style patterns, at most 50
     setup: tuple[tuple[str, ...], ...] = ()  # argv lists, at most 10, each on the allow-list
@@ -468,25 +468,25 @@ class WorkflowSpec:
     issue_repository: str = ""
     routing: RoutingMetadata = field(default_factory=RoutingMetadata)
     improvement_mode: Literal["dev", "stable"] = "dev"
-    session_review: Literal["auto", "full", "signals", "off"] = "auto"  # improvement.session_review (SRV §2.3)
+    session_review: Literal["auto", "full", "signals", "off"] = "auto"  # improvement.session_review (SRV-B13, SRV-B14, SRV-B15)
     verified_engine: str | None = None
     command_resolver: CallableRef | None = None
     run_cost_cap_usd: float | None = None
-    daily_cap_usd: float | None = None  # stable mode's loop budget per UTC day; dev mode has none (SIL §4)
+    daily_cap_usd: float | None = None  # stable mode's loop budget per UTC day; dev mode has none (SIL-B19, SIL-B20)
     version: str = "0.0.0"
     requires_engine: str | None = None
     upgrade: Mapping[str, Any] | None = None
     settings: Mapping[str, SettingDecl] = field(default_factory=dict)
     profiles: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
     outcome: OutcomeSpec | None = None
-    allow_commands: tuple[str, ...] = ()  # the workflow-wide command allow-list (WFM §2.1)
-    builtin: bool | str = False  # a workflow the engine ships, by its flag, for example `upgrade` (WFM §2, UWF §2.1)
+    allow_commands: tuple[str, ...] = ()  # the workflow-wide command allow-list (WFM-B8, WFM-B9, WFM-B10, WFM-B11)
+    builtin: bool | str = False  # a workflow the engine ships, by its flag, for example `upgrade` (WFM-B7, UWF-B6, UWF-B5, UWF-B7)
     package_root: Path | None = None
     extra: Mapping[str, Any] = field(default_factory=dict)  # fields outside this release
 
 
 # ---------------------------------------------------------------------------------------------
-# §2.5 Tool capabilities
+# CON-B11 Tool capabilities
 
 READ_ONLY_CAPABILITIES = frozenset({"read", "search", "list", "web_fetch", "web_search"})
 WRITE_CAPABILITIES = frozenset({"edit", "write", "shell"})
@@ -500,7 +500,7 @@ def is_capability(name: str) -> bool:
 
 
 # ---------------------------------------------------------------------------------------------
-# §2.6 Executor protocol types
+# SSN-B1 to SSN-B6 Executor protocol types
 
 
 class InfraCause(StrEnum):
@@ -570,7 +570,7 @@ class Capabilities:
     hosts_authoring_surface: bool = False
     session_options: frozenset[str] = frozenset()
     efforts: frozenset[str] = frozenset({"low", "medium", "high", "xhigh", "max"})  # efforts it applies
-    efforts_uncertain: frozenset[str] = frozenset()  # declared, not yet shown by a live probe (LAD §2.6)
+    efforts_uncertain: frozenset[str] = frozenset()  # declared, not yet shown by a live probe (LAD-B14)
     tool_map: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
     version: str = ""
 
@@ -601,10 +601,10 @@ class SessionRequest:
     idle_s: int | None = None
     options: SessionOptions = field(default_factory=SessionOptions)
     credentials_profile: str | None = None
-    session_dir: Path | None = None  # where the launcher writes raw.jsonl, stderr.log (LOS §2.1)
+    session_dir: Path | None = None  # where the launcher writes raw.jsonl, stderr.log (LOS-B7, LOS-B8, LOS-B9)
     enforce_tools: bool = False
     in_engine_worktree: bool = False
-    plugin_dir: Path | None = None  # PKG §2.6: step sessions only
+    plugin_dir: Path | None = None  # PKG-B23, PKG-B24: step sessions only
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -632,7 +632,7 @@ class SessionResult:
     model: str | None = None
     denied: tuple[str, ...] = ()
     tools_at_start: tuple[str, ...] = ()
-    tool_wall_share: float = 0.0  # share of wall time spent inside tool calls (BUD §2.2 slow_host)
+    tool_wall_share: float = 0.0  # share of wall time spent inside tool calls (BUD-B1, BUD-B11 slow_host)
     prompt_gap_s: float | None = None
     duration_s: float | None = None
     argv: tuple[str, ...] = ()  # the launch argv, for records and canary tests
@@ -643,7 +643,7 @@ ProbeWord = Literal["ok", "missing", "signed_out", "version_unreadable", "probe_
 
 @dataclass(frozen=True, kw_only=True)
 class ProbeReport:
-    """What `Executor.probe()` saw, read-only and model-free (EXI §2.1, ECC §4)."""
+    """What `Executor.probe()` saw, read-only and model-free (EXI-B16, EXI-B17, ECC-B13, ECC-B11)."""
 
     ok: bool
     reason: ProbeWord = "ok"
@@ -662,15 +662,15 @@ class Deferred:
 
 @dataclass(frozen=True, kw_only=True)
 class ViewSet:
-    """A judge's view set, in the judge executor's own tool names (GRD §2)."""
+    """A judge's view set, in the judge executor's own tool names (GRD-B1, GRD-B8)."""
 
     tools: tuple[str, ...] = ()
     deferred: tuple[Deferred, ...] = ()
-    tool_less: bool = False  # the session reviewer: no tools at all, not the default read-only set (SRV §2.6)
+    tool_less: bool = False  # the session reviewer: no tools at all, not the default read-only set (SRV-B18, SRV-B19, SRV-B20)
 
 
 class Executor(Protocol):
-    """CON §2.6. Neither run method raises for a session failure; failure is a field of the result."""
+    """SSN-B1 to SSN-B6. Neither run method raises for a session failure; failure is a field of the result."""
 
     name: str
 
@@ -681,7 +681,7 @@ class Executor(Protocol):
 
 
 # ---------------------------------------------------------------------------------------------
-# §2.7 Normalized session events
+# SSN-B7 Normalized session events
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -704,7 +704,7 @@ class EventSink:
 
 
 # ---------------------------------------------------------------------------------------------
-# §2.8 Judgement, verdict and check results
+# SSN-B8, SSN-B9, SSN-B10 Judgement, verdict and check results
 
 
 class Verdict(StrEnum):
@@ -746,7 +746,7 @@ class CheckFinding:
     place: str = ""
     fix: str = ""
     message: str = ""
-    kind: Literal["substance", "output_contract"] | None = None  # LAD §2.2: what the failing finding verified
+    kind: Literal["substance", "output_contract"] | None = None  # LAD-B10: what the failing finding verified
 
 
 @dataclass(kw_only=True)
@@ -761,7 +761,7 @@ class CheckResult:
 
 
 # ---------------------------------------------------------------------------------------------
-# §2.9 Runs, threads and exit codes
+# CON-B12, CON-B13 Runs, threads and exit codes
 
 
 class ThreadState(StrEnum):
@@ -810,7 +810,7 @@ def thread_id(workflow: str, task_id: str) -> str:
 
 
 # ---------------------------------------------------------------------------------------------
-# §2.12 Run settings, options and feedback; §2.13 callers
+# Run settings, options and feedback (RST, RRN); callers (PRV)
 
 
 CallerKind = Literal["person", "agent", "orchestrator", "scheduler", "pipeline", "engine", "unknown"]
@@ -873,7 +873,7 @@ class SettingRow:
 
 @dataclass(frozen=True, kw_only=True)
 class ResolvedSettings:
-    """RST §2.7: rows for every key set above the engine layer; `values` holds every key the run reads."""
+    """RST-B27: rows for every key set above the engine layer; `values` holds every key the run reads."""
 
     rows: tuple[SettingRow, ...] = ()
     values: Mapping[str, Any] = field(default_factory=dict)
@@ -882,7 +882,7 @@ class ResolvedSettings:
 
 
 # ---------------------------------------------------------------------------------------------
-# §2.14 Workflow packages and outcomes
+# Workflow packages and outcomes (PKG, OUT)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -893,7 +893,7 @@ class PackageManifest:
     workflow_api: int
     docs: str = "provisional"
     surfaces: Mapping[str, Any] = field(default_factory=dict)
-    audit: Mapping[str, Any] = field(default_factory=dict)  # `{ignore: [...]}`, AUD §2.4
+    audit: Mapping[str, Any] = field(default_factory=dict)  # `{ignore: [...]}`, AUD-B14
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -9,7 +9,7 @@
 
 ## Context
 
-The owner asked for a council node. A council puts one question to several model sessions and combines what they say. Public work ([R-061](../research/R-061-councils-debate-and-voting.rsrch.md)) finds that independent answers plus a vote give most of the benefit of debate (K2), that diversity matters (K3), that members conform to majorities (K4) and withhold dissent (K5), and that agreement is not correctness (K6). The design already defers a panel of voting **judges** until single judges are calibrated ([JCL §5](../specs/50-judge-calibration.spec.md)).
+The owner asked for a council node. A council puts one question to several model sessions and combines what they say. Public work ([R-061](../research/R-061-councils-debate-and-voting.rsrch.md)) finds that independent answers plus a vote give most of the benefit of debate (K2), that diversity matters (K3), that members conform to majorities (K4) and withhold dissent (K5), and that agreement is not correctness (K6). The design already defers a panel of voting **judges** until single judges are calibrated ([JCL-B9](../specs/50-judge-calibration.spec.md)).
 
 ## Decision
 
@@ -44,9 +44,9 @@ We will add a unit kind **`council`** ([CNL](../specs/71-council-unit.spec.md)):
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| C1 | "Council" means several members deliberating or voting on one question, with a combined verdict out, as the coordinator read the owner's ask. | CNL §1 |
-| C2 | Members need read access only; work that changes files is a contest, not a council. | CNL §2.1, WSP |
-| C3 | Model family can be read from each executor's binding table (a `family` label per bound alias). | CNL §2, audit rule `council-one-family` |
+| C1 | "Council" means several members deliberating or voting on one question, with a combined verdict out, as the coordinator read the owner's ask. | CNL |
+| C2 | Members need read access only; work that changes files is a contest, not a council. | CNL-B9, CNL-B10, WSP |
+| C3 | Model family can be read from each executor's binding table (a `family` label per bound alias). | CNL-B9 to CNL-B16, audit rule `council-one-family` |
 
 ## Consequences
 

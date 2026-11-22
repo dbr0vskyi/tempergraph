@@ -1,4 +1,4 @@
-"""Lifecycle hooks: the registry, the facts file, the detached runner and a failing hook (CLI §2.2, EVT §2.6)."""
+"""Lifecycle hooks: the registry, the facts file, the detached runner and a failing hook (HOK-B1 to HOK-B6, EVT-B22, EVT-B23, EVT-B24)."""
 
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ def test_a_run_fires_hooks_with_facts_only(repo: Path, monkeypatch: pytest.Monke
     folder = run_dir(root, "demo", tid) / "hooks"
     facts = [json.loads(p.read_text()) for p in sorted(folder.glob("*.facts.json"))]
     assert {f["event"] for f in facts} == {"started", "gate_verdict", "finished"}
-    assert all("secret request" not in json.dumps(f) for f in facts)  # ids, enums and numbers only (SEC §2.1)
+    assert all("secret request" not in json.dumps(f) for f in facts)  # ids, enums and numbers only (SEC-B5, SEC-B6)
     tickets = list(hooks.tickets_dir(home_path()).glob("*.json"))
     assert tickets and all("argv" not in json.loads(t.read_text()) for t in tickets)
     done = hooks.drain()  # what the detached child does
@@ -108,6 +108,6 @@ def test_hooks_test_runs_against_a_fixture(repo: Path) -> None:
     assert cli(repo, None, "hooks", "test", "paused")[0] == ExitCode.ADVISORY
 
 
-def test_detached_site_is_constant() -> None:  # SEC §2.2
+def test_detached_site_is_constant() -> None:  # SEC-B7
     assert detach.DETACHED["tempergraph.observe.hooks"] == (("drain",),)
     assert hooks.main(["drain", "extra"]) == 2

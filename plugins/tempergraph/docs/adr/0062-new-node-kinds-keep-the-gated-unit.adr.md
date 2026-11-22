@@ -44,7 +44,7 @@ We will:
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | "Support what LangGraph supports" means expressive parity through workflow data, not access to LangGraph's API. | R-060, CON §2.1 |
+| A1 | "Support what LangGraph supports" means expressive parity through workflow data, not access to LangGraph's API. | R-060, CON-B4, CON-B5, CON-B6, CON-B7 |
 | A2 | A higher-level kind is worth adding only when a pattern would otherwise need three or more hand-wired units ([R-061](../research/R-061-councils-debate-and-voting.rsrch.md) K7, simplicity advice). | Future kinds |
 
 ## Consequences

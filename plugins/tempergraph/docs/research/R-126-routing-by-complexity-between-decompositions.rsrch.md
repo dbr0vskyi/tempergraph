@@ -13,7 +13,7 @@ The engine already has the parts: a switch with a pure predicate and a default a
 | S5 | Prasad et al., *ADaPT: As-Needed Decomposition and Planning with Language Models* (NAACL Findings 2024): an executor tries the task first; only when it fails does a planner decompose it, recursively, so decomposition depth adapts to the task and to the executor's ability. Reported higher success than fixed plan-and-execute baselines on ALFWorld, WebShop and TextCraft | Paper | [arXiv 2311.05772](https://arxiv.org/pdf/2311.05772), [ACL Anthology](https://aclanthology.org/2024.findings-naacl.264) |
 | S6 | Anthropic, *Building effective agents* (2024): the routing workflow (classify, then a specialised path) and orchestrator-workers (a planner splits work whose subtasks cannot be known in advance); start simple and add steps only when they measurably help | Vendor guidance | [anthropic.com/engineering/building-effective-agents](https://anthropic.com/engineering/building-effective-agents) |
 | S7 | Ong et al., *RouteLLM* (ICLR 2025): routing by predicted query difficulty saves cost only with a router measured on held-out data | Paper | [arXiv 2406.18665](https://arxiv.org/abs/2406.18665v4) |
-| S8 | This design: CMP §2.2 switch (sticky arm, default on fault, operator `--arm`), SWM (shadow, `arm_overrides`, `rearm`), MAP (`items_from`, per-item gates, join, `on_empty`), VAL step values, CHK facts, RST layer 5, ADR-0071 (overrides never change what verifies the work), [R-121](R-121-judge-model-by-risk-and-evidence-for-escalation.rsrch.md) | Design set | [specs](../specs/00-overview.spec.md) |
+| S8 | This design: CMP-B10 to CMP-B16 switch (sticky arm, default on fault, operator `--arm`), SWM (shadow, `arm_overrides`, `rearm`), MAP (`items_from`, per-item gates, join, `on_empty`), VAL step values, CHK facts, RST layer 5, ADR-0071 (overrides never change what verifies the work), [R-121](R-121-judge-model-by-risk-and-evidence-for-escalation.rsrch.md) | Design set | [specs](../specs/00-overview.spec.md) |
 
 ## Key findings
 
@@ -90,4 +90,4 @@ What a release 2 design needs, on top of SWM and MAP:
 |---|---|---|
 | Should a switch in `route` mode be refused in `local-stable` until it has a shadow record? | Owner | Warned, not refused, in `local-stable`; required for `pipeline` by the promotion check. |
 | Should the margin exploration ship in release 2? | Owner | Yes, off by default, never in the pipeline. |
-| Should a map item be able to decompose further (a nested switch per item)? | Owner | No: a map inside a map is refused (MAP §2.3); a per-item model stays `item_model`. |
+| Should a map item be able to decompose further (a nested switch per item)? | Owner | No: a map inside a map is refused (MAP-B11); a per-item model stays `item_model`. |

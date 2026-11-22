@@ -9,11 +9,11 @@
 
 ## Context
 
-The owner asked for human-readable dates ("tomorrow at 9", "every weekday"), and then for as much determinism as possible, with no model needed, through an optional strict date format. Words like "next Friday", "at 9" and "03/04" have more than one reading, and a wrong reading on a recurring schedule repeats every period with real spend. Input resolution must call no model (contract C13). Natural-language date libraries pick a reading by settings and locale without saying so ([R-095](../research/R-095-scheduling-runs-prior-art-and-gaps.rsrch.md) F26). Standards exist for every form needed: ISO 8601 date-times and durations, RFC 5545 recurrence rules, five-field cron (F24).
+The owner asked for human-readable dates ("tomorrow at 9", "every weekday"), and then for as much determinism as possible, with no model needed, through an optional strict date format. Words like "next Friday", "at 9" and "03/04" have more than one reading, and a wrong reading on a recurring schedule repeats every period with real spend. Input resolution must call no model (OVR-B15). Natural-language date libraries pick a reading by settings and locale without saying so ([R-095](../research/R-095-scheduling-runs-prior-art-and-gaps.rsrch.md) F26). Standards exist for every form needed: ISO 8601 date-times and durations, RFC 5545 recurrence rules, five-field cron (F24).
 
 ## Decision
 
-We will accept timing in **exact formats** that are never interpreted ([SCH §2.3](../specs/83-schedules.spec.md)): `--at` (ISO 8601 date-time), `--rrule` (an RFC 5545 RECUR subset), `--every` (an ISO 8601 duration), `--cron` (five fields), with `--tz` (IANA), `--starts`, `--until`, `--count`. They never produce a `needs`; scripts, pipelines, packages and the skill use them.
+We will accept timing in **exact formats** that are never interpreted ([SCH-B15, SCH-B16, SCH-B17](../specs/83-schedules.spec.md)): `--at` (ISO 8601 date-time), `--rrule` (an RFC 5545 RECUR subset), `--every` (an ISO 8601 duration), `--cron` (five fields), with `--tz` (IANA), `--starts`, `--until`, `--count`. They never produce a `needs`; scripts, pipelines, packages and the skill use them.
 
 On top, an **optional word grammar** (`--when "every weekday at 8:00"`): a fixed, table-tested English grammar, parsed with no model, where every ambiguity is a `needs` (exit 3) with its readings, never a guess.
 
@@ -42,7 +42,7 @@ Both paths end in one canonical form (a local date-time or an RFC 5545 rule, eac
 
 - Positive: any caller can make a schedule with no model and no question; people keep plain words; every saved schedule was shown in exact form.
 - Negative: phrases outside the grammar are refused. Mitigation: the refusal names the nearest phrases and the exact format that would express it.
-- Risk: the echo sentence and the rule disagree. Mitigation: the sentence is generated from the rule and re-parsed in a test (SCH-AC-1); each exact input equals its word twin (SCH-AC-1a).
+- Risk: the echo sentence and the rule disagree. Mitigation: the sentence is generated from the rule and re-parsed in a test (SCH-AC1); each exact input equals its word twin (SCH-AC3).
 
 ## Assumptions
 

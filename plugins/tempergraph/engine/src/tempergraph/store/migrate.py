@@ -1,4 +1,4 @@
-"""Store layout migration (MIG §2.2): one step per layout number, run under a lock, with a backup before a
+"""Store layout migration (MIG-B9, MIG-B10, MIG-B5): one step per layout number, run under a lock, with a backup before a
 breaking step and the backup restored when a step raises. Standard library only, so `update` can run it.
 
 This release writes layout 1 and ships no step; the machinery is here for the first release that does.
@@ -145,7 +145,7 @@ def migrate(root: Path, *, target: int, engine: str, steps: Mapping[int, Step] |
 
 
 def older_live(root: Path, engine: str | None = None) -> list[str]:
-    """The threads whose run lock is held by a live process of another engine version (MIG §2.2)."""
+    """The threads whose run lock is held by a live process of another engine version (MIG-B9, MIG-B10, MIG-B5)."""
     if engine is None:
         from tempergraph.constants import ENGINE_VERSION as engine  # noqa: N811
     out = []
@@ -174,7 +174,7 @@ def _written_since(root: Path, moved_at: str) -> bool:
 
 
 def restorable(root: Path) -> bool:
-    """MIG §2.2 rollback: a backup restores only while no run has written to the root since the step."""
+    """MIG-B9, MIG-B10, MIG-B5 rollback: a backup restores only while no run has written to the root since the step."""
     man = _manifest(root)
     backup = Path(str(man.get("backup") or ""))
     return bool(man.get("backup")) and (backup / "backup.json").is_file() \

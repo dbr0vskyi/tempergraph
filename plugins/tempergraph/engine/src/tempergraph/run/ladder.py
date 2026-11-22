@@ -1,7 +1,7 @@
-"""The effort ladder: climbing evidence, held causes and the rung of the next attempt (LAD §2.2, §2.3). Pure.
+"""The effort ladder: climbing evidence, held causes and the rung of the next attempt (LAD-B10, LAD-B11). Pure.
 
 A ladder never adds an attempt: it only chooses the effort of a retry the budget already allows, and only
-the two kinds of evidence of §2.2 ever move it up.
+the two kinds of evidence of LAD-B10 ever move it up.
 """
 
 from __future__ import annotations
@@ -16,30 +16,30 @@ from tempergraph.contracts import EFFORTS, STAGES, EscalationSpec, UnitSpec
 
 TRUSTED_STATES = {"local-dev": ("accepted", "provisional"), "local-stable": ("accepted",), "pipeline": ("accepted",)}
 PIN_KEYS = ("effort", "model")
-TIER_UP = {"small": "medium", "medium": "large"}  # LAD §2.1: exactly one tier above
+TIER_UP = {"small": "medium", "medium": "large"}  # LAD-B9: exactly one tier above
 TIER_RANK = {"small": 0, "medium": 1, "large": 2}
-TIER_FAMILY = {"small": "haiku", "medium": "sonnet", "large": "opus"}  # the price row of a tier (OBS §2.2)
+TIER_FAMILY = {"small": "haiku", "medium": "sonnet", "large": "opus"}  # the price row of a tier (OBS-B10 to OBS-B13)
 MODES = ("off", "offer", "auto")
 DEFAULT_STAGES = {"local-dev": "offer", "local-stable": "offer", "pipeline": "off"}
-RECORD_MIN, RECORD_LB = 5, 0.5  # LAD §2.5: escalated attempts graded by an accepted judge, Wilson lower bound
+RECORD_MIN, RECORD_LB = 5, 0.5  # LAD-B13: escalated attempts graded by an accepted judge, Wilson lower bound
 HELD_ERRORS = {"turn_cap": "turn_cap", "cap_reached": "cost_cap", "model": "model"}
 
 
 def trusted(judge_state: str, stage: str) -> bool:
-    """LAD §2.2: a RETRY counts from an `accepted` binding, or a `provisional` one at stage `local-dev`. A
-    binding graded `unreliable` in production is `contradicted` (JCL §2.5), so it is never trusted."""
+    """LAD-B10: a RETRY counts from an `accepted` binding, or a `provisional` one at stage `local-dev`. A
+    binding graded `unreliable` in production is `contradicted` (JCL-B17), so it is never trusted."""
     return judge_state in TRUSTED_STATES.get(stage, ("accepted",))
 
 
 @dataclass(frozen=True, kw_only=True)
 class Classified:
     evidence: str | None = None  # `judge_blocker`, `check_fail` or None
-    held_by: str | None = None  # the held cause of LAD §2.3 when there is no evidence
+    held_by: str | None = None  # the held cause of LAD-B11 when there is no evidence
     criteria: tuple[str, ...] = field(default=())
 
 
 def _held_attempt(att: Mapping[str, Any]) -> str | None:
-    """Why the attempt did not end with a result (LAD §2.3 rows 1 and 2), or None when it did."""
+    """Why the attempt did not end with a result (LAD-B11 rows 1 and 2), or None when it did."""
     if att.get("timed_out"):
         return "timeout"
     if att.get("stalled"):
@@ -85,8 +85,8 @@ def classify(att: Mapping[str, Any], judged: Mapping[str, Any]) -> Classified:
 
 
 def rungs_of(u: UnitSpec, overrides: Mapping[str, Any] | None = None) -> tuple[tuple[str, ...], bool]:
-    """The ladder in force for a unit, and whether an operator pin switches it off (LAD §2.3 last row). An arm
-    in force may give its own ladder, or a fixed effort that replaces the step's ladder (SWM §2.3)."""
+    """The ladder in force for a unit, and whether an operator pin switches it off (LAD-B11 last row). An arm
+    in force may give its own ladder, or a fixed effort that replaces the step's ladder (SWM-B6)."""
     st = u.step
     if st is None:
         return (), False
@@ -97,7 +97,7 @@ def rungs_of(u: UnitSpec, overrides: Mapping[str, Any] | None = None) -> tuple[t
 
 
 def held_rung(counters: Mapping[str, Any], visit: int, item: Any) -> int:
-    """The rung this visit (and item) stands on; any other visit starts at rung 0 (LAD §2.3)."""
+    """The rung this visit (and item) stands on; any other visit starts at rung 0 (LAD-B11)."""
     held = counters.get("ladder") or {}
     return int(held.get("rung", 0)) if held.get("visit") == visit and held.get("item") == item else 0
 
@@ -126,7 +126,7 @@ def decide(u: UnitSpec, att: Mapping[str, Any], judged: Mapping[str, Any], count
 
 
 def escalation_of(u: UnitSpec, overrides: Mapping[str, Any] | None = None) -> EscalationSpec | None:
-    """The escalation in force: the arm's when it gives one (SWM §2.3), else the step's; none under a pin."""
+    """The escalation in force: the arm's when it gives one (SWM-B6), else the step's; none under a pin."""
     st = u.step
     if st is None or any(k in (u.extra.get("operator_set") or ()) for k in PIN_KEYS):
         return None
@@ -137,8 +137,8 @@ def escalation_of(u: UnitSpec, overrides: Mapping[str, Any] | None = None) -> Es
 
 
 def mode(esc: EscalationSpec, stage: str, record_met: bool) -> str:
-    """LAD §2.5: what the stage allows. `auto` is an offer in local-dev and, without a met escalation record,
-    in local-stable; a pipeline never waits on an offer, and its `auto` needs a promotion stamp (PRO §2.4)."""
+    """LAD-B13: what the stage allows. `auto` is an offer in local-dev and, without a met escalation record,
+    in local-stable; a pipeline never waits on an offer, and its `auto` needs a promotion stamp (PRO-B10)."""
     m = {**DEFAULT_STAGES, **dict(esc.stages)}.get(stage, "off")
     if stage == "pipeline":
         return "off"
@@ -152,7 +152,7 @@ def tier(alias: object) -> str:
 
 
 def _judge_rank(judge: Any) -> int:
-    """The strongest tier the gate's judge can grade on: its own, or its highest risk level's (JRK §2.3 floor)."""
+    """The strongest tier the gate's judge can grade on: its own, or its highest risk level's (JRK-B8 floor)."""
     from tempergraph.run.risk import top_rank
 
     return top_rank(judge)
@@ -160,7 +160,7 @@ def _judge_rank(judge: Any) -> int:
 
 def escalation(u: UnitSpec, step: Mapping[str, Any], judged: Mapping[str, Any], *, retry_left: bool,
                rearm_available: bool, overrides: Mapping[str, Any] | None = None) -> dict[str, Any] | None:
-    """LAD §2.4: whether the next attempt is escalated. None when the unit declares no escalation or the failed
+    """LAD-B12: whether the next attempt is escalated. None when the unit declares no escalation or the failed
     attempt carried no `judge_blocker` evidence; else `take` (`auto`, `offer` or None) and, when not taken,
     `held_by` naming the first condition that failed."""
     esc = escalation_of(u, overrides)
@@ -198,7 +198,7 @@ def escalation(u: UnitSpec, step: Mapping[str, Any], judged: Mapping[str, Any], 
 
 def record_escalation(root: Path, *, workflow: str, version: str | None, unit: str, thread: str, passed: bool,
                       judge_state: str | None, to: str) -> None:
-    """One row of the escalation record (LAD §2.7): an escalated attempt, how it ended and who graded it."""
+    """One row of the escalation record (LAD-B16, LAD-B17): an escalated attempt, how it ended and who graded it."""
     from tempergraph.run.log import Ledger
 
     Ledger(path=root / "ledger.jsonl").append({"kind": "escalation", "workflow": workflow, "version": version,
@@ -207,7 +207,7 @@ def record_escalation(root: Path, *, workflow: str, version: str | None, unit: s
 
 
 def record_met(root: Path, workflow: str, version: str | None, unit: str) -> bool:
-    """LAD §2.5: at least five escalated attempts of this step and workflow version graded by an `accepted`
+    """LAD-B13: at least five escalated attempts of this step and workflow version graded by an `accepted`
     judge, with a pass rate whose Wilson lower bound is at least 0.5. An unreadable record is not met."""
     from tempergraph.improve.calibration import wilson_lb
 

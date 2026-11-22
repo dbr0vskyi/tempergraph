@@ -1,4 +1,4 @@
-"""Which lenses fire at a final exit, and the model-free cost rules and gate scorecard (SIL §2.2).
+"""Which lenses fire at a final exit, and the model-free cost rules and gate scorecard (SIL-B10).
 
 Friction and outcome need a judge in the loop child (T12.1.5); this module only decides that they fire, from
 records. The cost lens is model-free here: fixed rules over a window of one workflow version.
@@ -53,7 +53,7 @@ def _final_rows(root: Path, workflow: str, version: str | None) -> list[dict[str
 
 def decide(spec: WorkflowSpec, root: Path, thread: str, findings: Sequence[Mapping[str, Any]],
            row: Mapping[str, Any], seg: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    """SIL §2.2 triggers for this final exit, in the workflow's improvement mode."""
+    """SIL-B10 triggers for this final exit, in the workflow's improvement mode."""
     mode = spec.improvement_mode
     faults = [f for f in findings if f.get("class") == "fault"]
     bases = {str(f["cause"]).split(":", 1)[0] for f in faults}
@@ -122,7 +122,7 @@ def _usage_cost(r: Mapping[str, Any]) -> float | None:
 
 
 def cost_rules(spec: WorkflowSpec, root: Path, version: str | None, now: datetime | None = None) -> dict[str, Any]:
-    """The model-free cost lens over a 30-day window of one version (SIL §2.2, release 1 rule set)."""
+    """The model-free cost lens over a 30-day window of one version (SIL-B10, release 1 rule set)."""
     now = now or datetime.now(UTC)
     days = int(params.value("cost.window_days"))
     since = (now - timedelta(days=days)).isoformat()

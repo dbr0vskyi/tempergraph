@@ -1,7 +1,7 @@
-"""The `host` layer (AUD §1): this machine and the target repository (ARC §2.4, PRA §2.3).
+"""The `host` layer (AUD): this machine and the target repository (ARC-B10, PRA-B7 to PRA-B10).
 
 Read-only. The only child processes are the executor probes of `executors --probe` and the host-speed
-probe, under a total budget of 30 s (AUD §2.1); both are injectable so tests start none.
+probe, under a total budget of 30 s (AUD-B11, AUD-B6, AUD-B9); both are injectable so tests start none.
 """
 
 from __future__ import annotations

@@ -1,5 +1,5 @@
 """Retirement of the release 1 model list: the refusal, the transform by rule, one alias per `model`, and the
-loop's alias as a setting (LAD-AC-6, LAD §2.6, §2.8)."""
+loop's alias as a setting (LAD-AC6, LAD-B14, LAD-B18)."""
 
 from __future__ import annotations
 

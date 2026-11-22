@@ -13,7 +13,7 @@ The owner calls the extra cost of agentic babysitting a crucial metric. A superv
 
 ## Decision
 
-We will measure supervision cost from a **supervision journal** per host session in the home folder, written by the tempergraph plugin's Claude Code hooks (engine calls, person turns, per-message usage read from the transcript, session start and end) and, for applications, by one writing verb, `supervision log` ([SCO §2.2](../specs/87-supervision-cost.spec.md)). The model-free orchestration supervisor and scripted pipelines are `measured_zero` by construction; any other supervisor is `unmeasured`, never zero. The engine joins the journal to run logs when a thread's supervision closes and writes the figures to the ledger and the sinks. No read-only verb writes anything; C13 is unchanged. The engine's own sessions are excluded by an environment key the launcher sets.
+We will measure supervision cost from a **supervision journal** per host session in the home folder, written by the tempergraph plugin's Claude Code hooks (engine calls, person turns, per-message usage read from the transcript, session start and end) and, for applications, by one writing verb, `supervision log` ([SCO-B10, SCO-B11](../specs/87-supervision-cost.spec.md)). The model-free orchestration supervisor and scripted pipelines are `measured_zero` by construction; any other supervisor is `unmeasured`, never zero. The engine joins the journal to run logs when a thread's supervision closes and writes the figures to the ledger and the sinks. No read-only verb writes anything; C13 is unchanged. The engine's own sessions are excluded by an environment key the launcher sets.
 
 ## Options considered
 
@@ -38,15 +38,15 @@ We will measure supervision cost from a **supervision journal** per host session
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| C1 | Claude Code hooks can see an engine command, its response size, and the transcript path whose lines carry usage (P-SUP-3). | SCO §2.3 |
-| C2 | Reading the host's transcript for numbers only, from the person's own plugin, on the person's machine, is acceptable; nothing is copied but counts. | SCO §2.7 |
-| C3 | Prices for the supervising host's model come from the engine's price table, so the figure is an estimate beside any session cost the host reports. | SCO §2.4 |
+| C1 | Claude Code hooks can see an engine command, its response size, and the transcript path whose lines carry usage (P-SUP-3). | SCO-B12 |
+| C2 | Reading the host's transcript for numbers only, from the person's own plugin, on the person's machine, is acceptable; nothing is copied but counts. | SCO-B17 |
+| C3 | Prices for the supervising host's model come from the engine's price table, so the figure is an estimate beside any session cost the host reports. | SCO-B13, SCO-B14 |
 
 ## Consequences
 
-- Positive: supervision cost per run, per workflow and per orchestration becomes a number the loop, the audit and promotion can use; OSK-AC-4 can be checked.
+- Positive: supervision cost per run, per workflow and per orchestration becomes a number the loop, the audit and promotion can use; OSK-AC4 can be checked.
 - Negative: one more home-folder file per session, hooks that must stay fast, and a figure that is projected until the probe runs.
-- Risk: hooks slow the host. Mitigation: append-only writes, no network, a 2 s ceiling and failure containment (SCO-AC-4).
+- Risk: hooks slow the host. Mitigation: append-only writes, no network, a 2 s ceiling and failure containment (SCO-AC4).
 
 ## Revisit when
 

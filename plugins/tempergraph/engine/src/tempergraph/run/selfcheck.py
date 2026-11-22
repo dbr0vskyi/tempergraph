@@ -1,4 +1,4 @@
-"""The check preview a step may run from inside its attempt (CHK §2.5).
+"""The check preview a step may run from inside its attempt (CHK-B17).
 
 A step that declares `self_check` gets a random ticket for one attempt. The ticket file holds the check
 worker's input document, so the `self-check` verb needs no checkpoint and no catalog: it refreshes the git

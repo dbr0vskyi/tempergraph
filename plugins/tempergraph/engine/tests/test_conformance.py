@@ -1,4 +1,4 @@
-"""The executor conformance suite (EXI-B11; EXI-AC-3, AC-4, AC-6, AC-9; ADR-0091 item 2).
+"""The executor conformance suite (EXI-B11; EXI-AC3, AC-4, AC-6, AC-9; ADR-0091 item 2).
 
 Each of the four declared capability sets runs through the real launcher against the recorded CLI
 stand-in, plus the scripted stand-ins the engine's own tests use. Release 1 ships `claude` only, so the
@@ -39,7 +39,7 @@ from .fixtures import streams as S
 from .test_launcher import alive
 
 CANARY = "CANARY-conformance-91c2"
-# slow_host is assigned by the gate from the host-speed record (BUD §2.2), never by an executor.
+# slow_host is assigned by the gate from the host-speed record (BUD-B1, BUD-B11), never by an executor.
 EXECUTOR_CAUSES = [c for c in InfraCause if c is not InfraCause.SLOW_HOST]
 
 
@@ -133,7 +133,7 @@ def test_timeout_and_signal_kill_the_tree(name: str, tmp_path: Path) -> None:
         assert res.partial and not res.ok
         assert res.timed_out is (how == "timeout")
         time.sleep(0.2)
-        assert not alive(int(pid.read_text()))  # EXI-AC-4
+        assert not alive(int(pid.read_text()))  # EXI-AC4
 
 
 CAUSE_SCENARIOS: dict[InfraCause, dict[str, Any]] = {
@@ -160,7 +160,7 @@ def test_no_raise_on_every_infra_cause(name: str, cause: InfraCause, tmp_path: P
     case = CAUSE_SCENARIOS[cause]
     ex = CliStandin(DECLARED[name], scenario(tmp_path, case.get("sc", {})), argv0=case.get("argv0"))
     res = ex.run_step(request(tmp_path, prompt=case.get("prompt", CANARY)), EventSink())  # never raises (EXI-B6)
-    assert not res.ok and res.infra_cause is cause  # EXI-AC-6
+    assert not res.ok and res.infra_cause is cause  # EXI-AC6
     if cause is not InfraCause.REQUEST_TIMED_OUT:  # no result event: usage is unknown, never 0
         assert res.usage.reported_cost_usd is None and res.usage.input_tokens is None
 

@@ -1,4 +1,4 @@
-"""The session launcher (EXI-B2 to B5, B13 to B15; EXI-AC-3, AC-4, AC-5, AC-10)."""
+"""The session launcher (EXI-B2 to B5, B13 to B15; EXI-AC3, AC-4, AC-5, AC-10)."""
 
 from __future__ import annotations
 
@@ -59,7 +59,7 @@ def alive(pid: int) -> bool:
     (299, False, "wait"), (301, False, "kill"), (600, True, "wait"), (901, True, "kill"),
 ])
 def test_idle_table(age: float, tool: bool, action: str) -> None:
-    assert idle_action(age, tool, 300) == action  # EXI-B4 table, EXI-AC-5
+    assert idle_action(age, tool, 300) == action  # EXI-B4 table, EXI-AC5
 
 
 def test_idle_none_never_kills() -> None:
@@ -102,7 +102,7 @@ def test_timeout_kills_tree_with_grandchild(tmp_path: Path) -> None:
     assert time.monotonic() - t < 10
     assert out.stop_reason == "timeout" and out.killed
     time.sleep(0.2)
-    assert not alive(int(pidfile.read_text()))  # EXI-AC-4
+    assert not alive(int(pidfile.read_text()))  # EXI-AC4
 
 
 @pytest.mark.skipif(os.name != "posix", reason="POSIX process groups")
@@ -174,7 +174,7 @@ def test_host_speed_with_replaced_clock(tmp_path: Path) -> None:
 
 
 @pytest.mark.skipif(os.name != "posix", reason="POSIX process groups")
-def test_launcher_gives_the_group_and_resources_are_sampled(tmp_path: Path) -> None:  # EVT §2.3
+def test_launcher_gives_the_group_and_resources_are_sampled(tmp_path: Path) -> None:  # EVT-B17, EVT-B18, EVT-B7, EVT-B19
     from tempergraph.run.log import LiveSink
 
     sd = tmp_path / "sess"

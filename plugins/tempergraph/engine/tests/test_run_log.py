@@ -31,7 +31,7 @@ def test_a_full_disk_on_the_ledger_keeps_the_exit_code(repo: Path, monkeypatch: 
     assert json.loads((repo / ".tempergraph" / "runs" / "demo" / "T-1" / "exit.json").read_text())["exit_code"] == 0
 
 
-def test_budget_records_name_each_charged_counter(repo: Path) -> None:  # EVT §2.2 `budget`
+def test_budget_records_name_each_charged_counter(repo: Path) -> None:  # EVT-B10 to EVT-B16 `budget`
     from .test_run import verdict_block
 
     ex = standin("claude", steps=[DRAFT, DRAFT, REVIEW, DRAFT, REVIEW],
@@ -42,7 +42,7 @@ def test_budget_records_name_each_charged_counter(repo: Path) -> None:  # EVT §
     assert got == [("draft", "retries", 1, 2), ("review", "loops:draft", 1, 1)]
 
 
-def test_operator_capture_level_and_observers(repo: Path) -> None:  # LOS §2.6, EVT §2.5, EVT-B6, EVT §2.6
+def test_operator_capture_level_and_observers(repo: Path) -> None:  # LOS-B17, EVT-B21, EVT-B6, EVT-B22, EVT-B23, EVT-B24
     import os
 
     from tempergraph.store.layout import run_dir, state_root_path

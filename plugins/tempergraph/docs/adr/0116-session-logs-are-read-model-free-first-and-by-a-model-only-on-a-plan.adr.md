@@ -5,7 +5,7 @@
 | Status | proposed |
 | Date | 2026-11-20 |
 | Authors | Claude (design session for the owner) |
-| Supersedes | — (amends the evidence rule of [SIL §2.1](../specs/16-self-improvement.spec.md) and [SEC §2.3](../specs/14-security.spec.md)) |
+| Supersedes | — (amends the evidence rule of [SIL-B8](../specs/16-self-improvement.spec.md) and [SEC-B8 to SEC-B11](../specs/14-security.spec.md)) |
 
 ## Context
 
@@ -37,15 +37,15 @@ We will read session logs in two layers ([SRV](../specs/44-session-review.spec.m
 
 - Positive: new model-free causes (`tool_repeat`, `idle_burn`, `shell_for_files`, `context_bloat`, `timeout:<shape>`, `judge_unread_pass`, `retry_same_path`) file with the same rules as today's.
 - Positive: a timeout sort and a record-only loop detector exist as digest fields.
-- Negative: SEC §2.3's evidence rule widens to session logs and review evidence; a second source test is needed (SRV-AC-4).
-- Risk: digest thresholds have no data. Mitigation: parameters with provenance `default_no_data` ([IMD §2.5](../specs/43-improvement-data.spec.md)), and digest causes of class `designed` are recorded, not filed.
+- Negative: SEC-B8 to SEC-B11's evidence rule widens to session logs and review evidence; a second source test is needed (SRV-AC4).
+- Risk: digest thresholds have no data. Mitigation: parameters with provenance `default_no_data` ([IMD-B23](../specs/43-improvement-data.spec.md)), and digest causes of class `designed` are recorded, not filed.
 
 ## Assumptions
 
 | Id | Assumption | Where it binds |
 |---|---|---|
-| A1 | The activity journal's tool input summaries and the stream's turn usage are enough to compute every digest field without reading tool outputs | SRV §2.1 |
-| A2 | Reading local logs on the owner's machine by the owner's engine is acceptable, as the supervision journal already reads host transcripts for numbers ([ADR-0087](0087-a-supervision-journal-written-by-the-host-not-by-read-only-verbs.adr.md) C2) | SRV §2.1 |
+| A1 | The activity journal's tool input summaries and the stream's turn usage are enough to compute every digest field without reading tool outputs | SRV-B11 |
+| A2 | Reading local logs on the owner's machine by the owner's engine is acceptable, as the supervision journal already reads host transcripts for numbers ([ADR-0087](0087-a-supervision-journal-written-by-the-host-not-by-read-only-verbs.adr.md) C2) | SRV-B11 |
 
 ## Revisit when
 

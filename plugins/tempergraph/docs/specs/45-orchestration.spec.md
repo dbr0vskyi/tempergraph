@@ -47,7 +47,7 @@ WHEN a node's state is read THE engine SHALL derive it from its thread's status 
 
 ### ORC-B22 Event log
 
-WHEN a transition happens THE supervisor SHALL append one JSON line beside the file with `seq`, `at`, `kind`, `node`, `item` and metadata only, of kind `planned`, `started` (with thread id), `state` (from, to, reason), `expanded`, `reopened`, `answered` (node, decision word, caller), `edited` (diff summary), `cost_cap`, `stopping`, `supervisor_started`, `supervisor_lost` or `finished` (outcome), and when the write fails note it once on standard error and go on scheduling, status falling back to run status (contract C2).
+WHEN a transition happens THE supervisor SHALL append one JSON line beside the file with `seq`, `at`, `kind`, `node`, `item` and metadata only, of kind `planned`, `started` (with thread id), `state` (from, to, reason), `expanded`, `reopened`, `answered` (node, decision word, caller), `edited` (diff summary), `cost_cap`, `stopping`, `supervisor_started`, `supervisor_lost` or `finished` (outcome), and when the write fails note it once on standard error and go on scheduling, status falling back to run status (OVR-B4).
 
 - GIVEN an event log write that fails WHEN the next node is due THEN it starts and status reads from run status
 

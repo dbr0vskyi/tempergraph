@@ -9,7 +9,7 @@
 
 ## Context
 
-The owner asked for a `.tempergraph` folder per repository "with all the logs of local repos runs: logs from all sessions of agents, logs from code, stats etc." The state root already exists at `<main checkout>/.tempergraph/` and holds checkpoints, run logs, locks, the ledger, batches and scratch ([WSP](../specs/13-workspace-and-concurrency.spec.md)), but no spec fixes where a session's raw stream, the engine's own code log, check output or hook output go, nor how long they live ([R-021](../research/R-021-observer-needs-against-engine-documents.rsrch.md) N10). Four executors produce four stream shapes. Per-user stats already live on the operator's machine ([OBS §2.4](../specs/15-observability-and-cost.spec.md)).
+The owner asked for a `.tempergraph` folder per repository "with all the logs of local repos runs: logs from all sessions of agents, logs from code, stats etc." The state root already exists at `<main checkout>/.tempergraph/` and holds checkpoints, run logs, locks, the ledger, batches and scratch ([WSP](../specs/13-workspace-and-concurrency.spec.md)), but no spec fixes where a session's raw stream, the engine's own code log, check output or hook output go, nor how long they live ([R-021](../research/R-021-observer-needs-against-engine-documents.rsrch.md) N10). Four executors produce four stream shapes. Per-user stats already live on the operator's machine ([OBS-B15](../specs/15-observability-and-cost.spec.md)).
 
 ## Decision
 
@@ -37,7 +37,7 @@ We will fix one layout for the state root and one for a per-user home folder `~/
 
 - Positive: the monitor, troubleshooter and a shell all find a session's log by `session_key`; `store export` gives a person one archive to share by hand.
 - Negative: disk use. Mitigation: `store usage`, a size warning in `status`, and a default prune rule with the shortest life for bulky command output.
-- Risk: a layout change breaks readers. Mitigation: the manifest's layout version and tolerant readers (contract C12).
+- Risk: a layout change breaks readers. Mitigation: the manifest's layout version and tolerant readers (OVR-B14).
 
 ## Assumptions
 

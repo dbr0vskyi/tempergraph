@@ -37,8 +37,8 @@ We will add to the switch a `mode` (`route` or `shadow`), `arm_overrides` (per a
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| K1 | The run settings design places workflow-declared arm overrides below every operator layer. | SWM §2.3; the settings design (specs 80 to 84) |
-| K2 | One re-arm per visit is enough; a second loss falls to the gate's own policy. | SWM §2.4 |
+| K1 | The run settings design places workflow-declared arm overrides below every operator layer. | SWM-B6; the settings design (specs 80 to 84) |
+| K2 | One re-arm per visit is enough; a second loss falls to the gate's own policy. | SWM-B7 |
 
 ## Consequences
 

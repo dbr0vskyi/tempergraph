@@ -1,8 +1,8 @@
-"""Caller provenance: who made a mutating call, and who decided it (PRV §2; ADR-0085, ADR-0086).
+"""Caller provenance: who made a mutating call, and who decided it (PRV-B11 to PRV-B22; ADR-0085, ADR-0086).
 
 Accounting, not a security boundary: every signal can be forged by a process of the same user. A declaration
 only lowers trust, and a refusal built on provenance fails toward the careful side. Read-only verbs never call
-this module (contract C13).
+this module (OVR-B15).
 """
 
 from __future__ import annotations
@@ -35,9 +35,9 @@ def _set(env: Mapping[str, str], name: str) -> bool:
 
 def classify(env: Mapping[str, str], tty: bool, *, declared: str | None = None, caller_app: str | None = None,
              schedule: str | None = None, parent: str | None = None) -> dict[str, Any]:
-    """PRV §2.3: the first matching row decides; `evidence` keeps every signal seen."""
+    """PRV-B13: the first matching row decides; `evidence` keeps every signal seen."""
     if env.get("TEMPERGRAPH_SESSION_KEY"):
-        raise CallerRefused("engine_session_caller", "a step never drives the engine (PRV §4)")
+        raise CallerRefused("engine_session_caller", "a step never drives the engine (PRV-B5, PRV-B18, PRV-B17, PRV-B14, PRV-B13, PRV-B19, PRV-B15)")
     if env.get("TEMPERGRAPH_SUPERVISOR_TOKEN") or parent:
         # release 1 has no orchestrations, so no supervisor digest can match (ORC is release 3)
         raise CallerRefused("supervisor_token_invalid", "no orchestration on this machine issued that token")
@@ -90,7 +90,7 @@ def journal_path(home: Path, host: str, session: str) -> Path:
 
 
 def person_turns(home: Path, host: str, session: str | None) -> list[dict[str, Any]] | None:
-    """`person_turn` entries of the host session's supervision journal (SCO §2.2); None when unreadable."""
+    """`person_turn` entries of the host session's supervision journal (SCO-B10, SCO-B11); None when unreadable."""
     if not session or not re.match(r"^[A-Za-z0-9_.-]{1,128}$", session):
         return None
     p = journal_path(home, host, session)
@@ -122,7 +122,7 @@ def _after(at: Any, since: str | None) -> bool:
 
 def decide(block: Mapping[str, Any], *, relayed: bool, words: Sequence[str] = (), since: str | None = None,
            home: Path | None = None) -> dict[str, Any]:
-    """PRV §2.4: the decider of a deciding call, from the caller and the host's person turns."""
+    """PRV-B14: the decider of a deciding call, from the caller and the host's person turns."""
     out = dict(block)
     kind = str(block.get("kind"))
     if kind == "person":
@@ -149,5 +149,5 @@ def decide(block: Mapping[str, Any], *, relayed: bool, words: Sequence[str] = ()
 
 
 def may_widen(block: Mapping[str, Any]) -> bool:
-    """PRV §2.8: a widening needs a person, at a terminal or through a `turn_named` relay."""
+    """PRV-B21, PRV-B22: a widening needs a person, at a terminal or through a `turn_named` relay."""
     return block.get("decided_by") == "person" and block.get("relay") in ("direct", "turn_named")

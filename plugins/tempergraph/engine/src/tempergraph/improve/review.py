@@ -1,10 +1,10 @@
-"""The session review: plan, condensed view, tool-less reviewer, citation check, records (SRV §2.3 to §2.9).
+"""The session review: plan, condensed view, tool-less reviewer, citation check, records (SRV-B13, SRV-B14, SRV-B15, SRV-B23).
 
-Release 1 (SRV §5, first-release plan T12.9): `full` reviews in dev mode, probation and authoring trials, and
+Release 1 (R-150 SRV, first-release plan T12.9): `full` reviews in dev mode, probation and authoring trials, and
 on a person's `improve review`; stable mode's `signals` plans, saturation, corroborated filing and the
 proposer's reading follow in release 2 (X2-26). Review results never file and never reach a step or judge
 prompt (SRV-B7, B10). This module is the review writer and the review report: with the proposer, the only code
-that names the review evidence folder (SRV-AC-4).
+that names the review evidence folder (SRV-AC4).
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ INTENT_CHARS = 12_000
 FENCE = re.compile(r"```(?:json)?\s*\n(.*?)\n```", re.S)
 PRODUCER = frozenset({"prompt", "lessons", "tools", "flow"})
 GRADER = frozenset({"brief", "criterion", "judge_model"})
-CATALOG: dict[str, frozenset[str]] = {  # SRV §2.6.1: category -> remedy classes allowed
+CATALOG: dict[str, frozenset[str]] = {  # SRV-B19: category -> remedy classes allowed
     "prompt_misread": frozenset({"prompt", "lessons"}),
     "instruction_ignored": frozenset({"prompt", "lessons"}),
     "skill_not_used": frozenset({"prompt", "tools", "lessons"}),
@@ -78,14 +78,14 @@ def resolve(setting: str | None, mode: str, probation: bool, trial: bool = False
 
 
 def effective(workflow: str | None, operator: str | None, mode: str, probation: bool, trial: bool = False) -> str:
-    """The operator may lower the workflow's setting, never raise it (SRV §2.3)."""
+    """The operator may lower the workflow's setting, never raise it (SRV-B13, SRV-B14, SRV-B15)."""
     a = resolve(workflow, mode, probation, trial)
     b = resolve(operator, mode, probation, trial) if operator not in (None, "auto") else a
     return min(a, b, key=SETTINGS.index)
 
 
 def probation(root: Path, workflow: str, version: str | None) -> bool:
-    """The first `review.probation_runs` final exits of a workflow version (SRV §2.3)."""
+    """The first `review.probation_runs` final exits of a workflow version (SRV-B13, SRV-B14, SRV-B15)."""
     finals = [r for r in _jsonl(root / "ledger.jsonl") if r.get("kind") == "run_segment"
               and r.get("workflow") == workflow and r.get("workflow_version") == version
               and int(r.get("exit_code") or 0) in (0, 4, 5)]
@@ -116,7 +116,7 @@ def _run_digests(root: Path, workflow: str, task: str) -> list[dict[str, Any]]:
 
 def plan(t: Mapping[str, Any], digests: Sequence[Mapping[str, Any]], *, reason: str = "dev",
          keys: Sequence[str] = (), force_full: bool = False) -> dict[str, Any]:
-    """SRV §2.3: the run's plan, before any spend."""
+    """SRV-B13, SRV-B14, SRV-B15: the run's plan, before any spend."""
     depth_setting = "full" if force_full else str(t.get("review") or "off")
     out: dict[str, Any] = {"setting": depth_setting, "depth": "none", "targets": [], "skipped": [],
                            "estimate_tokens": 0, "cap_usd": None}
@@ -155,7 +155,7 @@ def _mark(text: str) -> str:
 
 def view(root: Path, workflow: str, task: str, d: Mapping[str, Any], decl: Mapping[str, Any] | None,
          token: str, retry_blockers: Sequence[str] = ()) -> tuple[str, list[int]]:
-    """SRV §2.5: header, intent, turns, digest, retry context; scrubbed, datamarked, capped. Returns the turn ns."""
+    """SRV-B17: header, intent, turns, digest, retry context; scrubbed, datamarked, capped. Returns the turn ns."""
     key = str(d.get("session_key"))
     tl, _ = digestmod.turns(run_dir(root, workflow, task) / "sessions" / key)
     judge = d.get("kind") in digestmod.JUDGE_KINDS
@@ -224,7 +224,7 @@ def _overlaps(a: tuple[int, int], turns: Sequence[int]) -> bool:
 
 
 def check(obs: Mapping[str, Any], d: Mapping[str, Any], view_turns: Sequence[int]) -> str:
-    """SRV §2.6.2, model-free: `kept` or `unsupported`."""
+    """SRV-B20, model-free: `kept` or `unsupported`."""
     cat = str(obs.get("category") or "")
     turns = [int(n) for n in obs.get("turns") or [] if isinstance(n, int) or str(n).isdigit()]
     if cat not in CATALOG or not turns or any(n not in view_turns for n in turns):
@@ -255,7 +255,7 @@ def check(obs: Mapping[str, Any], d: Mapping[str, Any], view_turns: Sequence[int
 
 
 def review_dir(root: Path, workflow: str, task: str) -> Path:
-    return run_dir(root, workflow, task) / "evidence" / "review"  # SRV §2.8: local only, never published
+    return run_dir(root, workflow, task) / "evidence" / "review"  # SRV-B22: local only, never published
 
 
 def loop_log(root: Path, workflow: str, task: str) -> Path:
@@ -263,7 +263,7 @@ def loop_log(root: Path, workflow: str, task: str) -> Path:
 
 
 def _reviewer(registry: Registry, name: str, d: Mapping[str, Any], alias: str = ALIAS) -> Any:
-    """SRV §2.6: the loop's judge executor, of the reviewed session's provider unless `cross_provider` allows."""
+    """SRV-B18, SRV-B19, SRV-B20: the loop's judge executor, of the reviewed session's provider unless `cross_provider` allows."""
     try:
         ex = registry.get(name)
     except UnknownExecutor:
@@ -278,7 +278,7 @@ def _reviewer(registry: Registry, name: str, d: Mapping[str, Any], alias: str = 
 
 def run(t: Mapping[str, Any], registry: Registry, *, reason: str = "dev", keys: Sequence[str] = (),
         force_full: bool = False, dry_run: bool = False) -> dict[str, Any]:
-    """Plans and runs the review of one run; every result stays local (SRV §2.8)."""
+    """Plans and runs the review of one run; every result stays local (SRV-B22)."""
     root = Path(str(t["state_root"]))
     wf, task = str(t["workflow"]), str(t["task_id"])
     digests = _run_digests(root, wf, task)
@@ -355,7 +355,7 @@ def _blockers(root: Path, wf: str, task: str) -> dict[str, list[str]]:
 
 def _ask(ex: Any, root: Path, wf: str, task: str, key: str, prompt: str,
          d: Mapping[str, Any], alias: str = ALIAS) -> tuple[dict[str, Any] | None, tuple[float, float]]:
-    """One reviewer session with no tools; one re-ask when the block does not parse (SRV §2.6.2)."""
+    """One reviewer session with no tools; one re-ask when the block does not parse (SRV-B20)."""
     rep = est = 0.0
     for n in (1, 2):
         rkey = f"review.{key}.{n}"
@@ -364,7 +364,7 @@ def _ask(ex: Any, root: Path, wf: str, task: str, key: str, prompt: str,
                              workdir=root, alias=alias, session_key=rkey, timeout_s=TIMEOUT_S, session_dir=sdir)
         try:
             res = ex.run_judge(req, ViewSet(tool_less=True), LiveSink(sdir))
-        except Exception:  # noqa: BLE001 - one reviewer's failure never stops the plan (SRV §4)
+        except Exception:  # noqa: BLE001 - one reviewer's failure never stops the plan (SRV-B1, SRV-B20, SRV-B21, SRV-B22, SRV-B18)
             return None, (rep, est)
         if res.usage.reported_cost_usd is not None:
             rep += res.usage.reported_cost_usd

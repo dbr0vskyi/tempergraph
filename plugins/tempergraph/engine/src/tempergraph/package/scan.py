@@ -1,4 +1,4 @@
-"""The source scan of a package's Python half, before any import (PKG §2.3 step 3, PKG-B4).
+"""The source scan of a package's Python half, before any import (PKG-B15, PKG-B16, PKG-B17 step 3, PKG-B4).
 
 Imports are limited to the standard library, the requirements in `pyproject.toml`, the package's own
 modules (imported relatively, because the entry module is imported under its private name) and

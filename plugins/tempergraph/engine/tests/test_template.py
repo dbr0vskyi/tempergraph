@@ -1,4 +1,4 @@
-"""Template grammar (CON §2.2, CON-AC-2)."""
+"""Template grammar (CON-B8, CON-AC2)."""
 
 from __future__ import annotations
 

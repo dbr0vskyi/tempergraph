@@ -1,4 +1,4 @@
-"""Routes and switches pick their target in the gate node (CMP §2.2, CMP-B3; OBS `route` records)."""
+"""Routes and switches pick their target in the gate node (CMP-B10 to CMP-B16, CMP-B3; OBS `route` records)."""
 
 from __future__ import annotations
 

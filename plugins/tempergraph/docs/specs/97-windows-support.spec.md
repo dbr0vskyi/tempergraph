@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The engine is to run natively on Windows 10 1809 or later and Windows Server 2019 or later, where Claude Code itself runs ([R-132](../research/R-132-running-on-windows.rsrch.md) F2). In WSL the engine is a Linux program and nothing here applies. This spec lists each place where Windows needs its own rule; every other spec's behaviour is unchanged ([ADR-0128](../adr/0128-windows-is-supported-natively-with-job-objects-and-probes-before-judges.adr.md)). Judges run on Windows only after three probes pass: judge isolation rests on CLI facts nobody has checked there yet, so until then preflight refuses a judge session on Windows (contract C15). Operators on Windows and the executor, durability, store and install specs depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
+The engine is to run natively on Windows 10 1809 or later and Windows Server 2019 or later, where Claude Code itself runs ([R-132](../research/R-132-running-on-windows.rsrch.md) F2). In WSL the engine is a Linux program and nothing here applies. This spec lists each place where Windows needs its own rule; every other spec's behaviour is unchanged ([ADR-0128](../adr/0128-windows-is-supported-natively-with-job-objects-and-probes-before-judges.adr.md)). Judges run on Windows only after three probes pass: judge isolation rests on CLI facts nobody has checked there yet, so until then preflight refuses a judge session on Windows (OVR-B17). Operators on Windows and the executor, durability, store and install specs depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
 ## Behaviours
 

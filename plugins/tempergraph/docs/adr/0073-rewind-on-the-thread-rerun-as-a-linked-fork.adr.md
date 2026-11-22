@@ -41,8 +41,8 @@ Both refuse to cross a unit with external effects (a pull request, a tracker iss
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | A person may judge that a fault lies earlier than any declared target; that judgement belongs to them, like any pause decision (C6). | RRN §2.3 |
-| A2 | Workspace files are not reset by a rewind or a default rerun, as for a trip back ("nothing resets the worktree", temperspec 7.6); a rerun may start from the commit recorded at the unit instead. | RRN §2.4 |
+| A1 | A person may judge that a fault lies earlier than any declared target; that judgement belongs to them, like any pause decision (C6). | RRN-B16 |
+| A2 | Workspace files are not reset by a rewind or a default rerun, as for a trip back ("nothing resets the worktree", temperspec 7.6); a rerun may start from the commit recorded at the unit instead. | RRN-B17, RRN-B18 |
 | A3 | A workflow's finalizer handles an existing pull request for its branch; the engine does not. | RRN-B6 |
 
 ## Consequences

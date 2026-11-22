@@ -1,6 +1,6 @@
 """tempergraph: tempered rails for AI workflows.
 
-Workflow packages import only :mod:`tempergraph.api` (PKG §2.3).
+Workflow packages import only :mod:`tempergraph.api` (PKG-B15, PKG-B16, PKG-B17).
 """
 
 from tempergraph.constants import ENGINE_VERSION as __version__

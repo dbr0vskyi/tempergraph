@@ -54,7 +54,7 @@ WHEN a thread's state is copied from its state root ([LOS-B7](33-local-observabi
 
 ### CAR-B8 When carrying happens
 
-WHEN carrying is on THE engine SHALL push, releasing the lease, when the run pauses (exit 3) or exits unfinished or stopped; on `carry pull` on a machine without the thread fetch the branch, run the import checks, import the checkpoint rows and files, create the local work branch from the remote when it is missing, and take the lease on the next resume; on `carry pull` on a machine that has the thread refuse unless the carried `seq` is newer, then replace the local copy after a backup under `backups/`; and on a failed push keep the run's exit code (contract C2), show `carry: unpushed` on the status row and retry on `carry push`.
+WHEN carrying is on THE engine SHALL push, releasing the lease, when the run pauses (exit 3) or exits unfinished or stopped; on `carry pull` on a machine without the thread fetch the branch, run the import checks, import the checkpoint rows and files, create the local work branch from the remote when it is missing, and take the lease on the next resume; on `carry pull` on a machine that has the thread refuse unless the carried `seq` is newer, then replace the local copy after a backup under `backups/`; and on a failed push keep the run's exit code (OVR-B4), show `carry: unpushed` on the status row and retry on `carry push`.
 
 - GIVEN a network failure at the pause push WHEN the run exits 3 THEN the exit code stays 3 and the status row shows `carry: unpushed`
 

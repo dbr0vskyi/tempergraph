@@ -35,7 +35,7 @@ We will allow `cache: thread` on a **script** unit or a hybrid step's script who
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| K1 | Authors can name a script's inputs; a script that cannot is left uncached. | SCR §2.3 |
+| K1 | Authors can name a script's inputs; a script that cannot is left uncached. | SCR-B9 |
 
 ## Consequences
 

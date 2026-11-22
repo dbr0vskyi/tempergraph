@@ -13,7 +13,7 @@ Judges must be read-only ([ADR-0010](0010-judge-isolation-per-executor.adr.md)).
 
 ## Decision
 
-We will choose each gate's judge executor by a fixed order ([EXI §2.4](../specs/10-executor-interface.spec.md)): operator override, the gate's named judge executor, the step's executor if it declares `restricts_judge_tools`, the workflow's designated judge executor, then the first registered executor that declares it. No candidate is a preflight refusal. `claude` is the default judge executor. The chosen executor and the reason are recorded on the judgement.
+We will choose each gate's judge executor by a fixed order ([EXI-B24](../specs/10-executor-interface.spec.md)): operator override, the gate's named judge executor, the step's executor if it declares `restricts_judge_tools`, the workflow's designated judge executor, then the first registered executor that declares it. No candidate is a preflight refusal. `claude` is the default judge executor. The chosen executor and the reason are recorded on the judgement.
 
 ## Options considered
 

@@ -14,7 +14,7 @@ REPO_ROOT = ENGINE_ROOT.parents[2]
 
 def workflow_packages() -> list[Path]:
     """The workflow packages next to the engine in this repository, found by their manifest. The engine's
-    tests name none of them (WFM-AC-4, ADR-0129)."""
+    tests name none of them (WFM-AC4, ADR-0129)."""
     return sorted(p.parent for p in (REPO_ROOT / "plugins").glob("*/tempergraph.json"))
 
 
@@ -31,7 +31,7 @@ def workflow_names() -> list[str]:
 
 @pytest.fixture(autouse=True)
 def _isolated_home(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
-    """No test touches the real home folder or a real state root (WSP-AC-2)."""
+    """No test touches the real home folder or a real state root (WSP-AC2)."""
     home = tmp_path_factory.mktemp("home")
     monkeypatch.setenv("TEMPERGRAPH_HOME", str(home / ".tempergraph"))
     monkeypatch.setenv("TEMPERGRAPH_LOOP", "off")  # no detached loop child from a test run (SIL-B1)
@@ -59,7 +59,7 @@ def repo(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def real_state_root_guard() -> None:
-    """Fail if the test left a state root in the engine's own repository (WSP-AC-2)."""
+    """Fail if the test left a state root in the engine's own repository (WSP-AC2)."""
     before = (REPO_ROOT / ".tempergraph").exists()
     yield
     assert (REPO_ROOT / ".tempergraph").exists() == before, "a test wrote the real state root"

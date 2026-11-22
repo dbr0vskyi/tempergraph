@@ -13,7 +13,7 @@ Claude Code emits `stream-json` lines (`system/init`, `assistant`, `user` tool r
 
 ## Decision
 
-We will have each executor translate its CLI's stream into a small fixed set of normalized events ([CON §2.7](../specs/01-contracts.spec.md)): `session_started`, `model_delta`, `tool_started`, `tool_finished`, `text`, `retrying`, `denied` and `result`. The launcher stamps each line with its receive time. Every engine consumer reads only normalized events. Raw lines are kept in the session's log file for diagnosis, and no consumer parses them.
+We will have each executor translate its CLI's stream into a small fixed set of normalized events ([SSN-B7](../specs/25-session-contract.spec.md)): `session_started`, `model_delta`, `tool_started`, `tool_finished`, `text`, `retrying`, `denied` and `result`. The launcher stamps each line with its receive time. Every engine consumer reads only normalized events. Raw lines are kept in the session's log file for diagnosis, and no consumer parses them.
 
 ## Options considered
 

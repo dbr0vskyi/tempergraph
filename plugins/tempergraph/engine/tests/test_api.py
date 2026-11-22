@@ -1,4 +1,4 @@
-"""Builders of the public interface (PKG §2.4, PKG-AC-4, PKG-B2)."""
+"""Builders of the public interface (PKG-B19, PKG-B20, PKG-AC4, PKG-B2)."""
 
 from __future__ import annotations
 

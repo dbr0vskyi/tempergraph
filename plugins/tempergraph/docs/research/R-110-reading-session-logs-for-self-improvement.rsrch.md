@@ -7,7 +7,7 @@
 
 | Id | Source | Type | Where |
 |---|---|---|---|
-| S8 | This design: SIL, SEC §2.3, PRP §5, LOS, EVT, IMD, R-030, R-045 | Design set | [specs/](../specs/00-overview.spec.md) |
+| S8 | This design: SIL, SEC-B8 to SEC-B11, PRP-B23, LOS, EVT, IMD, R-030, R-045 | Design set | [specs/](../specs/00-overview.spec.md) |
 | S9 | Zhang et al., *Which Agent Causes Task Failures and When? On Automated Failure Attribution of LLM Multi-Agent Systems* (ICML 2025) | Paper | [arXiv 2505.00212](https://arxiv.org/abs/2505.00212) |
 | S10 | Cemri et al., *Why Do Multi-Agent LLM Systems Fail?* (NeurIPS 2025) | Paper | [arXiv 2503.13657](https://arxiv.org/abs/2503.13657) |
 | S11 | LangSmith Insights Agent documentation | Vendor docs | [docs.langchain.com/langsmith/insights](https://docs.langchain.com/langsmith/insights) |
@@ -37,7 +37,7 @@
 
 **B8 Judges are graded by a person reading the judge's transcript.** Calibration's scoring step is "a person runs the judge over each output (a live development-mode run, then the judge's transcript and the gate's judgement)" (S6). The outcome judge reads only the evidence file with each step's last output cut to 2,000 characters, so 7 of 18 requirements of one accepted run were "not shown" though they were facts in git; the fix is mechanical git facts, not more text (S5). `confirmed`.
 
-**B9 The loop cannot say why retries repeat.** temperspec's planned list: "Today two reports say 'no cause code' for retry bursts ... The loop sees the retries and cannot say why, so it cannot propose a fix" (S7, 14 G). This design added `judge_blocked:<criterion id>` ([SIL §2.4](../specs/16-self-improvement.spec.md)), which says which criterion blocked; it still cannot say what the step did wrong each time, or whether attempt 2 repeated attempt 1's approach. `confirmed` (S7, S8).
+**B9 The loop cannot say why retries repeat.** temperspec's planned list: "Today two reports say 'no cause code' for retry bursts ... The loop sees the retries and cannot say why, so it cannot propose a fix" (S7, 14 G). This design added `judge_blocked:<criterion id>` ([SIL-B12 to SIL-B16](../specs/16-self-improvement.spec.md)), which says which criterion blocked; it still cannot say what the step did wrong each time, or whether attempt 2 repeated attempt 1's approach. `confirmed` (S7, S8).
 
 **B10 Flagging is not selecting.** The friction lens flagged 89 of 90 delivery runs; of 137 filing records, 22 opened an issue (S1). Reading every flagged run's sessions would read almost every run. Selection has to come from specific signals and from what is already explained. `confirmed` (S1).
 
@@ -45,9 +45,9 @@
 
 ### What this design records today
 
-**D1** Every session keeps `raw.jsonl` (verbatim stream) and `activity.jsonl` (normalized events, tool input summaries scrubbed and clipped to 200 characters, resource samples), retained 30 days, capture level lowerable per item ([LOS §2.5, §2.6](../specs/33-local-observability-store.spec.md), [EVT §2.3, §2.5](../specs/30-run-events.spec.md)). `confirmed` (S8).
+**D1** Every session keeps `raw.jsonl` (verbatim stream) and `activity.jsonl` (normalized events, tool input summaries scrubbed and clipped to 200 characters, resource samples), retained 30 days, capture level lowerable per item ([LOS-B16, LOS-B17](../specs/33-local-observability-store.spec.md), [EVT-B17, EVT-B18, EVT-B7, EVT-B19, EVT-B21](../specs/30-run-events.spec.md)). `confirmed` (S8).
 
-**D2** The loop reads `run.jsonl`, the ledger and `findings.json`; the friction judge gets finding metadata, per-unit record counts and blocker ids, with no tools ([SIL §5](../specs/16-self-improvement.spec.md)). The evidence file is clipped at 32 KB and only the recorder names it (source test). The proposer is specified to read its runs' local evidence ([PRP §5](../specs/40-improvement-proposals.spec.md)). No component reads `raw.jsonl` or `activity.jsonl` for improvement. `confirmed` (S8 and the code in `improve/`).
+**D2** The loop reads `run.jsonl`, the ledger and `findings.json`; the friction judge gets finding metadata, per-unit record counts and blocker ids, with no tools ([SIL-B17, SIL-B18](../specs/16-self-improvement.spec.md)). The evidence file is clipped at 32 KB and only the recorder names it (source test). The proposer is specified to read its runs' local evidence ([PRP-B23](../specs/40-improvement-proposals.spec.md)). No component reads `raw.jsonl` or `activity.jsonl` for improvement. `confirmed` (S8 and the code in `improve/`).
 
 **D3** The audit's tool-surface layer already compares grant, need and use per step and judge session ([TSA](../specs/57-tool-surface-audit.spec.md)), and OBS keeps session metrics. Several digest facts below exist in pieces. `confirmed` (S8).
 
@@ -100,11 +100,11 @@ Three conclusions from the table. First, about half the cases need no model at a
 | Case | Why not |
 |---|---|
 | A clean first-pass run in stable mode with no signal | Low yield; the outcome lens's 1-in-20 audit already samples clean runs (S1) |
-| A cause already classified as infra, host or executor drift | The digest and the record already say it; nothing to propose on the workflow (SIL §2.3) |
+| A cause already classified as infra, host or executor drift | The digest and the record already say it; nothing to propose on the workflow (SIL-B11) |
 | Grading whether the output is good | The gates and the outcome gate own that; a reviewer that re-grades results becomes a second, uncalibrated judge (B3) |
 | A cause whose cluster already holds several corroborated observations for this version | Diminishing returns: reading more of the same explains nothing new until the version changes (B10) |
 | A session past retention, pruned, or captured with `observe.raw = off` | Nothing to read; the digest falls back to the activity journal or records `not_captured` (D1) |
-| Changing a verdict or a route of the run that was read | Never: the loop measures after the fact, and contract C14 holds |
+| Changing a verdict or a route of the run that was read | Never: the loop measures after the fact, and OVR-B16 holds |
 
 ### Cost of the reading itself
 
@@ -115,7 +115,7 @@ Three conclusions from the table. First, about half the cases need no model at a
 
 ### Privacy and security
 
-- **Local only.** Session logs, the condensed view and the reviewer's text are evidence-class: local, owner-only, never published, never sent to a sink (B2, [SEC §2.3](../specs/14-security.spec.md), IMD-R6). What crosses the publish boundary is category codes, unit names, turn counts and fixed remedy words.
+- **Local only.** Session logs, the condensed view and the reviewer's text are evidence-class: local, owner-only, never published, never sent to a sink (B2, [SEC-B8 to SEC-B11](../specs/14-security.spec.md), IMD-B10). What crosses the publish boundary is category codes, unit names, turn counts and fixed remedy words.
 - **No new provider.** The reviewer sends session content to a model. In release 1 that is the same `claude` executor that produced the session, so the content goes nowhere it has not been. With more executors, a review runs on an executor of the same provider as the session it reads, unless the operator allows another.
 - **Scrubbed and condensed.** The view passes the pattern scrubber; tool outputs are elided except clipped error tails; the request text is included only through the evidence file's clipped copy.
 - **Prompt injection.** Everything in a session log is untrusted (P7). The reviewer gets no tools, so an injected instruction has nothing to act with; the untrusted text is datamarked and fenced with a per-review random boundary; the output is a fixed schema of enum categories and turn numbers, and its free text never reaches filing, a gate judge or a step prompt. The engine checks each citation against the digest (ADR-0118). This follows S14's layering: the design does not rely on the model resisting the injection.

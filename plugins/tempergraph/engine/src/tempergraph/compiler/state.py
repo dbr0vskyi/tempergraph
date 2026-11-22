@@ -1,4 +1,4 @@
-"""Run state: JSON one level deep, merged by reducers (CMP §2.3, DUR contract C7).
+"""Run state: JSON one level deep, merged by reducers (CMP-B17, DUR OVR-B9).
 
 Channels written by units that can run in one superstep are keyed by unit. One reducer deletes: a key
 written as ``None`` is removed, which is how a trip back clears artifacts, values, facts and judgements.
@@ -72,7 +72,7 @@ class RunState(TypedDict, total=False):
     feedback: Annotated[dict[str, Any], merge_units]  # unit -> one-time feedback for the next attempt
     counters: Annotated[dict[str, Any], merge_units]  # unit -> budget counters
     visits: Annotated[dict[str, Any], merge_units]  # unit -> {visit, reason, from}
-    maps: Annotated[dict[str, Any], merge_units]  # map unit -> {visit, items, passed, attempts} (MAP §2.2)
+    maps: Annotated[dict[str, Any], merge_units]  # map unit -> {visit, items, passed, attempts} (MAP-B8, MAP-B9, MAP-B10)
     rulings: Annotated[dict[str, Any], merge_units]  # id -> ruling (own reducer, never cleared by a trip back)
     finalized: Annotated[dict[str, Any], replace]
     run: Annotated[dict[str, Any], merge_run]  # run-level facts: {"stopped": {...}, "path": [...]}

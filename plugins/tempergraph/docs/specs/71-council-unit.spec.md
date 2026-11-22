@@ -72,7 +72,7 @@ WHEN a member session fails on infrastructure THE engine SHALL count it missing 
 
 ### CNL-B16 What is refused
 
-WHEN a workflow with a council is validated THE engine SHALL refuse with an `error` fewer than 2 or more than 7 members or two with one name; a member tool the engine catalog does not hold read-only ([GRD](06-independence-guard.spec.md)); `synthesize` without a chair; `vote` without options or with fewer than 2; `options` from an artifact no earlier unit produces; `rule` or `options` outside `vote`; `retry_scope: chair` with `vote`; a council in a map item or in a parallel branch whose block is a writer; and no judge on the council's gate (contract C4); and SHALL warn on every member bound to one model family (audit `council-one-family`), `rule: majority` with an even member count, and `rounds > 0` with `anonymize: false`.
+WHEN a workflow with a council is validated THE engine SHALL refuse with an `error` fewer than 2 or more than 7 members or two with one name; a member tool the engine catalog does not hold read-only ([GRD](06-independence-guard.spec.md)); `synthesize` without a chair; `vote` without options or with fewer than 2; `options` from an artifact no earlier unit produces; `rule` or `options` outside `vote`; `retry_scope: chair` with `vote`; a council in a map item or in a parallel branch whose block is a writer; and no judge on the council's gate (OVR-B6); and SHALL warn on every member bound to one model family (audit `council-one-family`), `rule: majority` with an even member count, and `rounds > 0` with `anonymize: false`.
 
 - GIVEN `synthesize` without a chair WHEN validated THEN it is refused with its own finding code
 

@@ -1,5 +1,5 @@
 """Eval suites: check, step and workflow suites, the grader order, figures, the cap, a person's grade and the
-report (EVS-AC-1, AC-3 to AC-6, EVS-B1 to B4, B6)."""
+report (EVS-AC1, AC-3 to AC-6, EVS-B1 to B4, B6)."""
 
 from __future__ import annotations
 
@@ -91,7 +91,7 @@ def state(name: str) -> Any:
     return lambda unit: name
 
 
-def test_figures_reproduce_the_table() -> None:  # EVS-AC-1, EVS-B3
+def test_figures_reproduce_the_table() -> None:  # EVS-AC1, EVS-B3
     passed = {"a": 3, "b": 2, "c": 3, "d": 0, "e": 3, "f": 1}
     rows = [{"case": c, "trial": t, "status": "passed" if t <= n else "failed", "attempts": 1, "first_attempt": t <= n}
             for c, n in passed.items() for t in (1, 2, 3)]
@@ -100,7 +100,7 @@ def test_figures_reproduce_the_table() -> None:  # EVS-AC-1, EVS-B3
     assert fig["first_attempt_pass"] == 0.6667 and fig["mean_attempts"] == 1.0
 
 
-def test_a_needs_person_trial_counts_in_no_rate(tmp_path: Path) -> None:  # EVS-AC-4
+def test_a_needs_person_trial_counts_in_no_rate(tmp_path: Path) -> None:  # EVS-AC4
     rows = [{"case": "a", "status": "passed"}, {"case": "b", "status": "needs_person", "result_id": "r1"}]
     fig = suites.figures(rows)
     assert (fig["pass_at_1"], fig["pass_hat_k"], fig["needs_person"], fig["counted"]) == (1.0, 1.0, 1, 1)
@@ -120,7 +120,7 @@ def test_a_needs_person_trial_counts_in_no_rate(tmp_path: Path) -> None:  # EVS-
     (False, [], False, False, "provisional", ("needs_person", "person")),
 ])
 def test_grader_order(finished: bool, failures: list[str], covered: bool, by_code: bool, judge_state: str,
-                      want: tuple[str, str]) -> None:  # EVS §2.6
+                      want: tuple[str, str]) -> None:  # EVS-B16
     assert suites.grade(finished=finished, failures=failures, covered=covered, failed_by_code=by_code,
                         judge_state=judge_state) == want
 
@@ -144,7 +144,7 @@ def test_a_check_without_a_fail_case_warns(tmp_path: Path) -> None:  # EVS-B1
     assert doc["results"][0]["status"] == "invalid" and doc["results"][0]["reason"] == "check_without_fail_case"
 
 
-def test_step_suite_grades_in_order_and_keeps_no_text(tmp_path: Path) -> None:  # EVS-B4, EVS-AC-5
+def test_step_suite_grades_in_order_and_keeps_no_text(tmp_path: Path) -> None:  # EVS-B4, EVS-AC5
     root = tmp_path / "state"
     step_case(tmp_path, "judged", trials=2)
     step_case(tmp_path, "covered", trials=1, covered=True, expect=[{"path": "notes.md", "heading": "Notes"}])
@@ -163,7 +163,7 @@ def test_step_suite_grades_in_order_and_keeps_no_text(tmp_path: Path) -> None:  
     assert len(rep["needs_person"]) == 2 and "evals grade" in rep["needs_person"][0]["command"]
 
 
-def test_an_accepted_judge_decides_and_a_retry_counts(tmp_path: Path) -> None:  # EVS §2.2, §2.7
+def test_an_accepted_judge_decides_and_a_retry_counts(tmp_path: Path) -> None:  # EVS-B9, EVS-B2, EVS-B10, EVS-B17, EVS-B18
     root = tmp_path / "state"
     step_case(tmp_path, "one", trials=2)
     spec = package(tmp_path)
@@ -175,11 +175,11 @@ def test_an_accepted_judge_decides_and_a_retry_counts(tmp_path: Path) -> None:  
     fig = suites.figures(rows)
     assert (fig["pass_at_1"], fig["pass_hat_k"], fig["first_attempt_pass"], fig["mean_attempts"]) == (1.0, 1.0, 0.5, 1.5)
     assert fig["cost_per_pass"] == pytest.approx(0.03)
-    shown = suites.report(spec, root)["suites"][0]["figures"]["judge_graded"]  # EVS §2.5: the judge's state rides along
+    shown = suites.report(spec, root)["suites"][0]["figures"]["judge_graded"]  # EVS-B15: the judge's state rides along
     assert shown == {"raw": 1.0, "label": "uncorrected (unscored)", "state": "unscored"}
 
 
-def test_a_failing_check_is_decided_by_code(tmp_path: Path) -> None:  # EVS §2.6 order 1
+def test_a_failing_check_is_decided_by_code(tmp_path: Path) -> None:  # EVS-B16 order 1
     step_case(tmp_path, "one", trials=1)
     spec = package(tmp_path)
     r, ex = reg([bad_draft] * 3, [])
@@ -200,7 +200,7 @@ class LiveExecutor:
     name = "claude"
 
 
-def test_no_live_suite_starts_under_the_test_marker(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # EVS-AC-3
+def test_no_live_suite_starts_under_the_test_marker(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # EVS-AC3
     fixtures(tmp_path)
     for kind in suites.LIVE_KINDS:
         with pytest.raises(suites.SuiteRefused, match="live"):
@@ -211,7 +211,7 @@ def test_no_live_suite_starts_under_the_test_marker(tmp_path: Path, monkeypatch:
     assert not (tmp_path / "state" / "evals" / "results.jsonl").read_text().count('"kind": "step"')
 
 
-def test_a_person_grades_what_no_grader_could(tmp_path: Path) -> None:  # EVS-AC-4, EVS-AC-6
+def test_a_person_grades_what_no_grader_could(tmp_path: Path) -> None:  # EVS-AC4, EVS-AC6
     root = tmp_path / "state"
     step_case(tmp_path, "one", trials=1)
     spec = package(tmp_path)
@@ -229,7 +229,7 @@ def test_a_person_grades_what_no_grader_could(tmp_path: Path) -> None:  # EVS-AC
         suites.person_grade(root, "nope", True, "x", "dana")
 
 
-def test_a_changed_prompt_makes_results_stale(tmp_path: Path) -> None:  # EVS §2.4
+def test_a_changed_prompt_makes_results_stale(tmp_path: Path) -> None:  # EVS-B13, EVS-B14
     root = tmp_path / "state"
     step_case(tmp_path, "one", trials=1)
     spec = package(tmp_path)
@@ -242,7 +242,7 @@ def test_a_changed_prompt_makes_results_stale(tmp_path: Path) -> None:  # EVS §
     assert suites.report(changed, root)["suites"][0]["status"] == "stale"
 
 
-def test_graduation_and_never_passed(tmp_path: Path) -> None:  # EVS §2.1, §2.7
+def test_graduation_and_never_passed(tmp_path: Path) -> None:  # EVS-B8, EVS-B17, EVS-B18
     root = tmp_path / "state"
     step_case(tmp_path, "soon", trials=1, role="capability")
     step_case(tmp_path, "broken", trials=2, role="capability", expect=[{"path": "missing.md"}])
@@ -256,7 +256,7 @@ def test_graduation_and_never_passed(tmp_path: Path) -> None:  # EVS §2.1, §2.
     assert [(n["case"], n["trials"]) for n in rep["never_passed"]] == [("broken", 6)]
 
 
-def test_invalid_step_cases_are_listed(tmp_path: Path) -> None:  # EVS §4
+def test_invalid_step_cases_are_listed(tmp_path: Path) -> None:  # EVS-B13, EVS-B12, EVS-B14
     step_case(tmp_path, "one", unit="nope")
     step_case(tmp_path, "two", role="sometimes")
     cases, bad = suites.step_cases(package(tmp_path))
@@ -273,7 +273,7 @@ def reviews(req: SessionRequest) -> SessionResult:
     return answer("Looks fine\nARTIFACT verdict: ok", session_id="s-review")
 
 
-def test_workflow_suite_runs_a_case_as_a_dry_run(tmp_path: Path, repo: Path) -> None:  # EVS §2.3
+def test_workflow_suite_runs_a_case_as_a_dry_run(tmp_path: Path, repo: Path) -> None:  # EVS-B12
     pkg = tmp_path / "pkg"
     workflow_cases(pkg, end_state=[{"path": "notes.md", "heading": "Notes"}, {"changed_within": ["notes.md"]}])
     spec = package(pkg)
@@ -293,7 +293,7 @@ def test_workflow_suite_runs_a_case_as_a_dry_run(tmp_path: Path, repo: Path) -> 
     assert (row["status"], row["reason"]) == ("invalid", "base_missing")
 
 
-def test_a_pause_takes_a_recorded_answer_or_ends_paused(tmp_path: Path, repo: Path) -> None:  # EVS §2.3 answers
+def test_a_pause_takes_a_recorded_answer_or_ends_paused(tmp_path: Path, repo: Path) -> None:  # EVS-B12 answers
     pkg = tmp_path / "pkg"
     workflow_cases(pkg)
     spec = package(pkg)
@@ -312,7 +312,7 @@ def test_a_pause_takes_a_recorded_answer_or_ends_paused(tmp_path: Path, repo: Pa
     assert (row["status"], row["graded_by"]) == ("passed", "judge")
 
 
-def test_evals_run_report_and_grade_in_the_cli(tmp_path: Path, repo: Path) -> None:  # EVS §2.7, EVS-AC-6
+def test_evals_run_report_and_grade_in_the_cli(tmp_path: Path, repo: Path) -> None:  # EVS-B17, EVS-B18, EVS-AC6
     pkg = tmp_path / "pkg"
     fixtures(pkg)
     step_case(pkg, "one", trials=1)

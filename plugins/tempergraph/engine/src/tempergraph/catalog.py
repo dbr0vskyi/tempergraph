@@ -1,6 +1,6 @@
-"""The workflow catalog and request resolution (CLI §2, CON §2.3, UPD §2.8).
+"""The workflow catalog and request resolution (CLI-B7, CLI-B8, CLI-B14, CON-B9, UPD-B20 to UPD-B24).
 
-The catalog reads the home registry (`registry.json`, UPD §2.8) and loads each entry's package by PKG §2.3
+The catalog reads the home registry (`registry.json`, UPD-B20 to UPD-B24) and loads each entry's package by PKG-B15, PKG-B16, PKG-B17
 (`tempergraph.package.loader`): both manifests, the interface level, the dependency gate and the source
 scan, the import under the package's private name, the build and the outcome.
 """
@@ -31,7 +31,7 @@ class Catalog:
     specs: dict[str, WorkflowSpec] = field(default_factory=dict)
     broken: dict[str, str] = field(default_factory=dict)  # name -> not_loaded reason
     packages: dict[str, LoadedPackage] = field(default_factory=dict)  # name -> digests and load findings
-    compat: dict[str, str] = field(default_factory=dict)  # name -> VER §2.7 state
+    compat: dict[str, str] = field(default_factory=dict)  # name -> VER-B2, VER-B5 state
 
     def to_json(self) -> dict[str, Any]:
         rows = [{"name": n, "version": s.version, "state": "ok", "description": s.routing.description,
@@ -45,12 +45,12 @@ class Catalog:
 
 
 def load_package(path: Path) -> WorkflowSpec:
-    """PKG §2.3; read-only, calls no model."""
+    """PKG-B15, PKG-B16, PKG-B17; read-only, calls no model."""
     return _load(path).spec
 
 
 def _compat(loaded: LoadedPackage) -> str:
-    """VER §2.7, read-only and model-free; the state is a catalog column and never refuses on its own."""
+    """VER-B2, VER-B5, read-only and model-free; the state is a catalog column and never refuses on its own."""
     from tempergraph.package.changelog import compatibility
     from tempergraph.package.stamp import read_stamp
 
@@ -61,7 +61,7 @@ def _compat(loaded: LoadedPackage) -> str:
 
 
 def builtins(cat: Catalog) -> Catalog:
-    """The engine's own workflows, added after every package so none can shadow them (UWF §2.1)."""
+    """The engine's own workflows, added after every package so none can shadow them (UWF-B6, UWF-B5, UWF-B7)."""
     from tempergraph.builtin import upgrade
 
     cat.broken.pop(upgrade.NAME, None)
@@ -101,7 +101,7 @@ def resolve_request(spec: WorkflowSpec, words: list[str], inputs: Mapping[str, s
     """Turn a start request into a task source with a stable id; read-only, model-free.
 
     Without a resolver the id is the request's own: a tracker key as given, else `t-<hash>` of the
-    whitespace-normalised text, so the same request finds the same thread (CLI §2.1)."""
+    whitespace-normalised text, so the same request finds the same thread (ROP-B1 to ROP-B13)."""
     text = " ".join(words).strip()
     if task_id is not None and not TASK_ID.match(task_id):
         return ResolveResult(status="error", message=f"task id {task_id!r}: 1 to 64 letters, digits, '.', '_' or '-'")

@@ -1,4 +1,4 @@
-"""Authoring sessions (AUT §2.1, §2.6, §2.8, §4; AUT-AC-4, AUT-AC-5, AUT-AC-7 second half, AUT-B7, AUT-B9)."""
+"""Authoring sessions (AUT-B11, AUT-B12, AUT-B23, AUT-B15, AUT-B19, AUT-B24, AUT-B25, AUT-B17; AUT-AC4, AUT-AC5, AUT-AC7 second half, AUT-B7, AUT-B9)."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from tempergraph.executors.standins import standin
 from .conftest import hash_tree
 from .fixtures.packages import OUTCOME, blueprint
 
-SIGNALS = ({}, True)  # a person at a terminal (PRV §2.3)
+SIGNALS = ({}, True)  # a person at a terminal (PRV-B13)
 
 
 def cli(repo: Path, *argv: str) -> tuple[int, Any, str]:
@@ -51,7 +51,7 @@ def write_drafts(repo: Path, sid: str, outcome: dict[str, Any] | None = None,
 
 
 def test_start_intake_show_and_nothing_outside_the_session(repo: Path) -> None:
-    """AUT-AC-4: the session verbs write only their session folder, never a package folder."""
+    """AUT-AC4: the session verbs write only their session folder, never a package folder."""
     (repo / "templates").mkdir()
     (repo / "templates" / "release-notes-template.md").write_text("# Added\n\n# Changed\n\n# Fixed\n")
     (repo / "good.md").write_text("# Added\n\n- a change\n\n# Changed\n\n# Fixed\n")
@@ -86,7 +86,7 @@ def test_one_open_session_per_name_and_paths(repo: Path, tmp_path: Path) -> None
 
 
 def test_phase_two_needs_the_sufficiency_check(repo: Path) -> None:
-    """AUT-AC-7 second half, AUT-B9: a vague statement keeps phase 2 open."""
+    """AUT-AC7 second half, AUT-B9: a vague statement keeps phase 2 open."""
     sid = started(repo)
     (repo / "t.md").write_text("# Added\n")
     assert cli(repo, "author", "intake", sid, "t.md")[0] == 0
@@ -127,7 +127,7 @@ def _authored(repo: Path, tmp_path: Path) -> tuple[str, Path, dict[str, Any]]:
 
 
 def test_revise_marks_a_weakening_and_writes_the_revision(repo: Path, tmp_path: Path) -> None:
-    """AUT-AC-6 / AUT §2.7: a blocker made a warning is a weakening; nothing is written before the phase 7 yes;
+    """AUT-AC6 / AUT-B25: a blocker made a warning is a weakening; nothing is written before the phase 7 yes;
     `scaffold --update-docs` writes revision 2 with origin revise_session, and `author verify` passes."""
     from tempergraph.author.blueprint import outcome_digest
 
@@ -164,7 +164,7 @@ def test_revise_marks_a_weakening_and_writes_the_revision(repo: Path, tmp_path: 
 
 
 def test_full_path_to_scaffold_and_resume(repo: Path, tmp_path: Path) -> None:
-    """AUT-AC-5 / AUT-B7: after phase 4, `author show` alone says where to go on; an edit clears approvals;
+    """AUT-AC5 / AUT-B7: after phase 4, `author show` alone says where to go on; an edit clears approvals;
     phase 7 then lets scaffold run, and the session counts as finished."""
     sid = started(repo)
     (repo / "notes.md").write_text("# Added\n\n- a change\n\n# Changed\n\n# Fixed\n\n# Removed\n")

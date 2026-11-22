@@ -8,7 +8,7 @@ A retry may run with more effort, and as a last resort on the next model tier up
 
 ### LAD-B9 Declaring a ladder
 
-WHEN a step (or the `arm_overrides` of a switch arm, [SWM §2.3](79-measured-switches.spec.md)) declares `effort` (`low`, `medium`, `high`, `xhigh` or `max`), `effort_ladder` (2 to 4 efforts, strictly ascending, excluding `effort`) or `escalation` (`to`, `stages`, `effort`) THE engine SHALL run the first attempt of a visit at rung 0, and accept `escalation` only with `to` exactly one tier above the step's alias, stages defaulting to `local-dev: offer`, `local-stable: offer`, `pipeline: off`, and the escalated effort defaulting to the ladder's top rung, else `effort`.
+WHEN a step (or the `arm_overrides` of a switch arm, [SWM-B6](79-measured-switches.spec.md)) declares `effort` (`low`, `medium`, `high`, `xhigh` or `max`), `effort_ladder` (2 to 4 efforts, strictly ascending, excluding `effort`) or `escalation` (`to`, `stages`, `effort`) THE engine SHALL run the first attempt of a visit at rung 0, and accept `escalation` only with `to` exactly one tier above the step's alias, stages defaulting to `local-dev: offer`, `local-stable: offer`, `pipeline: off`, and the escalated effort defaulting to the ladder's top rung, else `effort`.
 
 - GIVEN `model: small` and `escalation: {to: medium}` WHEN the workflow is validated THEN it passes with the default stages
 - GIVEN `model: small` and `escalation: {to: large}` WHEN the workflow is validated THEN it fails with `escalation-invalid`
@@ -17,7 +17,7 @@ WHEN a step (or the `arm_overrides` of a switch arm, [SWM §2.3](79-measured-swi
 
 ### LAD-B10 Climbing evidence
 
-WHEN a failed attempt carries climbing evidence THE gate SHALL run the next attempt one rung up, and otherwise on the same rung; the evidence is `judge_blocker` (a parsed RETRY whose unmet blocker is neither `no_change` nor attributed upstream or to an earlier unit, from a binding `accepted` ([JCL §2.5](50-judge-calibration.spec.md)), or `provisional` at stage `local-dev`, with no FBK grade `unreliable`, after an attempt that ended with a result) or `check_fail` (a check FAIL not marked environmental, with a failing finding that names a criterion and has `kind: substance`, none of kind `output_contract`, after an attempt that ended with a result).
+WHEN a failed attempt carries climbing evidence THE gate SHALL run the next attempt one rung up, and otherwise on the same rung; the evidence is `judge_blocker` (a parsed RETRY whose unmet blocker is neither `no_change` nor attributed upstream or to an earlier unit, from a binding `accepted` ([JCL-B17](50-judge-calibration.spec.md)), or `provisional` at stage `local-dev`, with no FBK grade `unreliable`, after an attempt that ended with a result) or `check_fail` (a check FAIL not marked environmental, with a failing finding that names a criterion and has `kind: substance`, none of kind `output_contract`, after an attempt that ended with a result).
 
 - GIVEN `effort_ladder: [medium, high, xhigh]`, retry budget 3 and an `accepted` judge WHEN attempt 1 at `medium` ends with a judge RETRY on blocker `c2` THEN attempt 2 runs at `high`
 - GIVEN that run WHEN attempt 2 at `high` times out THEN attempt 3 runs at `high`
@@ -25,7 +25,7 @@ WHEN a failed attempt carries climbing evidence THE gate SHALL run the next atte
 
 ### LAD-B1 Climb on trusted evidence only
 
-WHEN the attempts of a visit fail THE gate SHALL raise the rung only on the two evidence kinds, never on any other cause ([BUD §2.2](08-budgets-and-failures.spec.md)).
+WHEN the attempts of a visit fail THE gate SHALL raise the rung only on the two evidence kinds, never on any other cause ([BUD-B1, BUD-B11](08-budgets-and-failures.spec.md)).
 
 - GIVEN `effort_ladder: [medium, high, xhigh]` WHEN attempts end with judge RETRY on `c2`, then a timeout, then a `check_fail` on `c4`, then a pass THEN they ran at `medium`, `high`, `high` and `xhigh`
 
@@ -45,7 +45,7 @@ WHEN an attempt fails its output contract (a missing artifact, a value outside `
 
 ### LAD-B11 Held causes
 
-WHEN a failed attempt ends with any other cause THE gate SHALL hold the rung, or not retry, as the cause says: timeout, stall, turn cap, session cost cap, `model` error and any `infra_cause` retry on the same rung (infra on the infra counter, BUD-B1); `auth`, `refused`, `tool_access`, an environmental check FAIL and a `no_change` blocker escalate with no retry; a blocker attributed upstream or to an earlier unit goes back ([HUM](07-gate-and-human.spec.md)); a placeholder judgement holds; and an operator pin of `effort` or `model` at any operator layer runs the pinned value with no ladder ([RST §2.3](80-run-settings-and-overrides.spec.md)).
+WHEN a failed attempt ends with any other cause THE gate SHALL hold the rung, or not retry, as the cause says: timeout, stall, turn cap, session cost cap, `model` error and any `infra_cause` retry on the same rung (infra on the infra counter, BUD-B1); `auth`, `refused`, `tool_access`, an environmental check FAIL and a `no_change` blocker escalate with no retry; a blocker attributed upstream or to an earlier unit goes back ([HUM](07-gate-and-human.spec.md)); a placeholder judgement holds; and an operator pin of `effort` or `model` at any operator layer runs the pinned value with no ladder ([RST-B22, RST-B23](80-run-settings-and-overrides.spec.md)).
 
 - GIVEN each cause WHEN it ends an attempt THEN the next attempt's record names its `held_by`, one of `timeout`, `stall`, `infra`, `turn_cap`, `cost_cap`, `model`, `cut_off`, `output_contract`, `check_no_substance`, `environmental`, `judge_not_trusted`, `judge_placeholder`, `no_substantive_blocker`, `step_failed` or `operator_pin`
 - GIVEN `--set code.effort=high` WHEN a ladder step retries on `judge_blocker` THEN every attempt runs at `high`
@@ -58,7 +58,7 @@ WHEN a visit starts again by a person's retry, an automatic re-open, a trip back
 
 ### LAD-B12 Escalation conditions
 
-WHEN an attempt fails with `judge_blocker` evidence THE gate SHALL consider one escalated attempt on `escalation.to` at `escalation.effort`, and take it only when every condition holds: E1 the step declares `escalation` and the stage allows it; E2 the last two attempts ran at the top rung (or a fixed `effort`); E3 both failed with `judge_blocker` and at least one blocker criterion is unmet in both; E4 the judge that will grade it has an alias at or above `escalation.to` and an `accepted` binding ([JRK §2.3](93-judge-model-by-risk.spec.md)); E5 the visit has a retry left, which the attempt spends; E6 the run's remaining cost cap covers the estimate of one attempt on `escalation.to` from the price table and this visit's median usage; E7 preflight bound `escalation.to` on the step's executor; E8 no re-arm is available under the switch arm in force ([CXR §2.5](94-complexity-routing.spec.md)); E9 no escalated attempt has run in this visit.
+WHEN an attempt fails with `judge_blocker` evidence THE gate SHALL consider one escalated attempt on `escalation.to` at `escalation.effort`, and take it only when every condition holds: E1 the step declares `escalation` and the stage allows it; E2 the last two attempts ran at the top rung (or a fixed `effort`); E3 both failed with `judge_blocker` and at least one blocker criterion is unmet in both; E4 the judge that will grade it has an alias at or above `escalation.to` and an `accepted` binding ([JRK-B8](93-judge-model-by-risk.spec.md)); E5 the visit has a retry left, which the attempt spends; E6 the run's remaining cost cap covers the estimate of one attempt on `escalation.to` from the price table and this visit's median usage; E7 preflight bound `escalation.to` on the step's executor; E8 no re-arm is available under the switch arm in force ([CXR-B4, CXR-B11, CXR-B7](94-complexity-routing.spec.md)); E9 no escalated attempt has run in this visit.
 
 - GIVEN `model: medium`, `effort_ladder: [high, xhigh]`, `escalation: {to: large, stages: {local-stable: auto}}` at stage `local-stable`, an `accepted` gate judge on `large`, a met escalation record, retry budget 3 and cost headroom WHEN attempts 1 to 3 fail with a judge RETRY on `c2` THEN attempt 2 runs at `medium, xhigh` (climb), attempt 3 at `medium, xhigh` (E2 failed) and attempt 4 at `large, xhigh` with source `escalation:+1`
 - GIVEN any one condition failing WHEN the gate decides THEN the step retries on its top rung and `escalation.held_by` names the first failed condition, `E1` to `E9`
@@ -74,7 +74,7 @@ WHEN the top-rung attempts fail on different blocker criteria THE gate SHALL not
 
 WHEN a re-arm is declared for the unit under the switch arm in force THE gate SHALL apply the re-arm instead of escalating.
 
-- GIVEN a unit under arm `direct` with `rearm` to `planned` WHEN E1 to E7 hold THEN E8 fails, no escalation runs, and the re-arm of [CXR §2.5](94-complexity-routing.spec.md) applies when the budget is spent
+- GIVEN a unit under arm `direct` with `rearm` to `planned` WHEN E1 to E7 hold THEN E8 fails, no escalation runs, and the re-arm of [CXR-B4, CXR-B11, CXR-B7](94-complexity-routing.spec.md) applies when the budget is spent
 
 ### LAD-B4 A failed escalated attempt ends the escalation
 
@@ -85,16 +85,16 @@ WHEN an escalated attempt fails THE gate SHALL apply `on_budget_spent` at once, 
 
 ### LAD-B6 Offer
 
-WHEN every condition holds and the stage says `offer` THE gate SHALL pause with kind `budget` and reason `escalation_offer`, spending no retry, with the evidence and the exact `resume <thread> --escalate` command next to the retry, back and stop choices ([HUM §2.1](07-gate-and-human.spec.md)).
+WHEN every condition holds and the stage says `offer` THE gate SHALL pause with kind `budget` and reason `escalation_offer`, spending no retry, with the evidence and the exact `resume <thread> --escalate` command next to the retry, back and stop choices ([HUM-B7 to HUM-B11](07-gate-and-human.spec.md)).
 
 - GIVEN LAD-B12's set-up at stage `local-dev` WHEN E1 to E9 hold THEN the run pauses and the escalated attempt runs only after a person's `resume --escalate`
 - GIVEN that pause WHEN a resume without `--escalate` retries THEN the attempt runs on the base tier
-- GIVEN an agent's `resume --escalate` with no relay evidence WHEN it runs THEN it is refused with exit 2 and `escalate_needs_person` ([PRV §2.8](85-caller-provenance.spec.md))
+- GIVEN an agent's `resume --escalate` with no relay evidence WHEN it runs THEN it is refused with exit 2 and `escalate_needs_person` ([PRV-B21, PRV-B22](85-caller-provenance.spec.md))
 - GIVEN a pause with no offer WHEN `resume --escalate` runs THEN it is refused with `no_escalation_offered`
 
 ### LAD-B13 Stages
 
-WHEN the gate reads the run's stage ([PRO §2.1](95-promotion-check.spec.md)) THE gate SHALL apply it: at `local-dev` an `auto` is read as `offer`; at `local-stable` `auto` runs only when the escalation record for this step and workflow version has at least 5 escalated attempts graded by an `accepted` judge with a pass rate whose Wilson lower bound is at least 0.5, else it offers; at `pipeline` `escalation` stays `off` until the promotion stamp covers escalated attempts of the step (PRO §2.4) and the run has a run cost cap, `offer` is read as `off`, and an effort ladder runs only if the promotion stamp saw it.
+WHEN the gate reads the run's stage ([PRO-B7, PRO-B4](95-promotion-check.spec.md)) THE gate SHALL apply it: at `local-dev` an `auto` is read as `offer`; at `local-stable` `auto` runs only when the escalation record for this step and workflow version has at least 5 escalated attempts graded by an `accepted` judge with a pass rate whose Wilson lower bound is at least 0.5, else it offers; at `pipeline` `escalation` stays `off` until the promotion stamp covers escalated attempts of the step (PRO-B10) and the run has a run cost cap, `offer` is read as `off`, and an effort ladder runs only if the promotion stamp saw it.
 
 - GIVEN `stages: {local-dev: auto}` at `local-dev` WHEN every condition holds THEN the run pauses with the offer
 - GIVEN `local-stable: auto` and an escalation record of 4 attempts WHEN every condition holds THEN the run offers instead
@@ -116,7 +116,7 @@ WHEN an operator layer sets `effort_ladder` or `escalation` THE engine SHALL ref
 
 ### LAD-B16 Ladder records
 
-WHEN an attempt ends THE engine SHALL write a `ladder` object on its step record with `rung`, `effort`, `alias`, `source` (`declared`, `ladder:effort[<i>]`, `escalation:+1`, `operator` or `arm:<switch>.<arm>`), `evidence` (with the criterion ids, the judge binding and its state), `held_by`, and for an offer `offered` and `taken_by` with the PRV caller block, and the gate that chose the next rung SHALL write a `ladder_decision` record ([EVT §2.2](30-run-events.spec.md)).
+WHEN an attempt ends THE engine SHALL write a `ladder` object on its step record with `rung`, `effort`, `alias`, `source` (`declared`, `ladder:effort[<i>]`, `escalation:+1`, `operator` or `arm:<switch>.<arm>`), `evidence` (with the criterion ids, the judge binding and its state), `held_by`, and for an offer `offered` and `taken_by` with the PRV caller block, and the gate that chose the next rung SHALL write a `ladder_decision` record ([EVT-B10 to EVT-B16](30-run-events.spec.md)).
 
 - GIVEN a climbed attempt WHEN its step record is read THEN `ladder.source` is `ladder:effort[1]` and `ladder.evidence` names `judge_blocker` with the criterion ids
 - GIVEN a judgement WHEN the gate reads it THEN it carries `judge_state` and `trusted`
@@ -129,21 +129,21 @@ WHEN escalated attempts are graded THE engine SHALL keep the escalation record a
 
 ### LAD-B18 Retiring the release 1 model list
 
-WHEN a step's `model` or a `model_profile` is a list of aliases THE engine SHALL fail validation with `model-ladder-retired` and the rewrite in the message, and the release 2 changelog transform `model_list_to_escalation` ([VER §2.3](61-version-metadata.spec.md)) SHALL rewrite `[a]` as `model: a`, `[a, b]` with `b` one tier above as `model: a` with `escalation: {to: b}`, and anything else as `model: a` with the owner item "choose an `escalation.to`, or none" ([WUP §2.3](63-workflow-upgrade.spec.md)).
+WHEN a step's `model` or a `model_profile` is a list of aliases THE engine SHALL fail validation with `model-ladder-retired` and the rewrite in the message, and the release 2 changelog transform `model_list_to_escalation` ([VER-B9](61-version-metadata.spec.md)) SHALL rewrite `[a]` as `model: a`, `[a, b]` with `b` one tier above as `model: a` with `escalation: {to: b}`, and anything else as `model: a` with the owner item "choose an `escalation.to`, or none" ([WUP-B15, WUP-B16](63-workflow-upgrade.spec.md)).
 
 - GIVEN `model: [small, medium]` WHEN the workflow is validated THEN it fails with `model-ladder-retired` naming `model: small` and `escalation: {to: medium}`
 - GIVEN `model: [small, medium, large]` WHEN the transform runs THEN the result is `model: small` and an owner item
 
 ### LAD-B19 Proposals may add a ladder
 
-WHEN the improvement loop proposes an `effort_ladder` or `escalation` THE engine SHALL treat it as a producer `model` proposal measured by a trial that counts rung-0 and climbed attempts apart ([PRP §2.3](40-improvement-proposals.spec.md)).
+WHEN the improvement loop proposes an `effort_ladder` or `escalation` THE engine SHALL treat it as a producer `model` proposal measured by a trial that counts rung-0 and climbed attempts apart ([PRP-B13](40-improvement-proposals.spec.md)).
 
 - GIVEN a proposal adding `effort_ladder: [medium, high]` WHEN its trial runs THEN the trial report shows rung-0 and climbed attempts in separate rows
 
 ## Acceptance criteria
 
 - LAD-AC1 (LAD-B1, LAD-B2, LAD-B3, LAD-B4, LAD-B5, LAD-B6, LAD-B7, LAD-B8, LAD-B11): Each scenario of these behaviours and each held cause holds offline with scripted executors and scripted judge states
-- LAD-AC2 (LAD-B10, LAD-B11): For every cause of [BUD §2.2](08-budgets-and-failures.spec.md), a fixture shows the rung of the next attempt, and only the two evidence kinds ever raise it
+- LAD-AC2 (LAD-B10, LAD-B11): For every cause of [BUD-B1, BUD-B11](08-budgets-and-failures.spec.md), a fixture shows the rung of the next attempt, and only the two evidence kinds ever raise it
 - LAD-AC3 (LAD-B12): No fixture produces an escalated attempt unless all of E1 to E9 hold, and each condition has a fixture where it alone fails
 - LAD-AC4 (LAD-B14): No judge, member, chair or slot session runs with a ladder effort or an escalated alias
 - LAD-AC5 (LAD-B17): First-pass yield and cost per version in `report` exclude climbed attempts from the rung-0 figures

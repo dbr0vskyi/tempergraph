@@ -13,7 +13,7 @@ A supervising session's message is billed for its whole context, which holds eve
 
 ## Decision
 
-We will attribute per engine call two figures, never summed ([SCO §2.4](../specs/87-supervision-cost.spec.md)): a **marginal** figure (the issuing message's output share, the result the next message read, and the cache write of a wake the run caused, as `rewake`) and a **turn** figure (the whole usage of the messages involved, relay messages between a shown pause and its decision, and the whole usage of helper subagents that called about the run). Calls about an orchestration are split equally over its live runs. Everything else in the session is `other` and never on a run. Promotion and the audit use the marginal figure.
+We will attribute per engine call two figures, never summed ([SCO-B13, SCO-B14](../specs/87-supervision-cost.spec.md)): a **marginal** figure (the issuing message's output share, the result the next message read, and the cache write of a wake the run caused, as `rewake`) and a **turn** figure (the whole usage of the messages involved, relay messages between a shown pause and its decision, and the whole usage of helper subagents that called about the run). Calls about an orchestration are split equally over its live runs. Everything else in the session is `other` and never on a run. Promotion and the audit use the marginal figure.
 
 ## Options considered
 
@@ -36,8 +36,8 @@ We will attribute per engine call two figures, never summed ([SCO §2.4](../spec
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| D1 | Four bytes per token is close enough to price a result the next message read; the figure is capped by that message's actual new input. | SCO §2.4 |
-| D2 | A message after 300 s of idle that follows a background engine call's end is a wake the run caused. | SCO §2.4 |
+| D1 | Four bytes per token is close enough to price a result the next message read; the figure is capped by that message's actual new input. | SCO-B13, SCO-B14 |
+| D2 | A message after 300 s of idle that follows a background engine call's end is a wake the run caused. | SCO-B13, SCO-B14 |
 
 ## Consequences
 

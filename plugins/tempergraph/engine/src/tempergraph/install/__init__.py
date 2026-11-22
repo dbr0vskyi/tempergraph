@@ -1,4 +1,4 @@
-"""First install of the engine (UPD §2.7): the bootstrap the plugin's launcher runs, the engine environment,
+"""First install of the engine (UPD-B18, UPD-B19): the bootstrap the plugin's launcher runs, the engine environment,
 the shim and the `PATH` block, and the self-check.
 
 Like the updater, this package loads none of the engine's compiled libraries: its modules import the
