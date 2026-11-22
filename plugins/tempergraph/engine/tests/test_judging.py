@@ -95,3 +95,17 @@ def test_no_judgement_escalates_with_a_placeholder_confidence() -> None:
 def test_prompt_marks_the_account_as_claims() -> None:
     text = render_judge(JudgeInputs(gate=GATE, stance="", brief="", request="Do X", step_account="I did it"))
     assert "claims to verify, not facts" in text and "Do X" in text and "1. [c-file] (blocker)" in text
+
+
+def test_a_judge_never_grades_a_sign_off() -> None:  # OUT §2.2, live check L-25 (dr-approved UNVERIFIABLE)
+    from tempergraph.run.judging import judged
+
+    gate = GateSpec(criteria=(Criterion(text="review names each section", id="c-rev", verified_by="judge"),
+                              Criterion(text="a person approves", id="c-ok", verified_by="person"),
+                              Criterion(text="nobody yet", id="c-none", verified_by="none")))
+    shown = judged(gate)
+    assert [c.id for c in shown.criteria] == ["c-rev"]
+    prompt = render_judge(JudgeInputs(gate=shown, stance="", brief="", request="r", references={}, subject={}))
+    assert "c-rev" in prompt and "c-ok" not in prompt and "c-none" not in prompt
+    only = GateSpec(criteria=(Criterion(text="a person approves", id="c-ok", verified_by="person"),))
+    assert judged(only) is only

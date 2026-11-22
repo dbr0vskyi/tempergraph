@@ -385,9 +385,10 @@ def current_binding(spec: WorkflowSpec, gate: str, executor: str | None = None,
     binding in the run logs) supplies the executor version, which only a session reports."""
     from tempergraph.executors import binding as bindings
     from tempergraph.model.text import load_text, split_judge_file
-    from tempergraph.run.judging import brief_digest, criteria_digest
+    from tempergraph.run.judging import brief_digest, criteria_digest, judged
 
     g, _, step_ex = gate_spec(spec, gate, _base_level(spec, gate, level))
+    g = judged(g)
     j = g.judge
     assert j is not None
     name = executor or j.executor or (observed or {}).get("executor") or step_ex
@@ -442,10 +443,11 @@ def judge_once(spec: WorkflowSpec, gate: str, s: Subject, ex: Any, key: str, lev
     from tempergraph.executors.registry import _can_judge
     from tempergraph.model.text import load_text, split_judge_file
     from tempergraph.run.guard import guard, view_set
-    from tempergraph.run.judging import JudgeInputs, Unparsed, derive, parse_judgement, render_judge
+    from tempergraph.run.judging import JudgeInputs, Unparsed, derive, judged, parse_judgement, render_judge
     from tempergraph.run.log import estimate
 
     g, step, _ = gate_spec(spec, gate, _base_level(spec, gate, level))
+    g = judged(g)
     j = g.judge or JudgeSpec()
     caps = ex.capabilities()
     if not _can_judge(ex):

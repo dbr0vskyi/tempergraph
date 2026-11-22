@@ -54,6 +54,7 @@ from tempergraph.run.judging import (
     claim_criterion,
     criteria_digest,
     derive,
+    judged,
     parse_judgement,
     reask_prompt,
     render_judge,
@@ -800,6 +801,8 @@ class EngineNodes:
         j = g.judge
         if claim:  # one engine criterion replaces the gate's own; the subject is the claimed unit's output
             g = dataclasses.replace(g, criteria=(claim_criterion(*claim),))
+        else:  # OUT §2.2: a judge grades no criterion a person signs or nobody verifies
+            g = judged(g)
         step_ex = st.executor or spec.default_executor
         judge_name = self.ctx.judges.get(unit) or self.ctx.registry.judge_executor(step_ex, j.executor,
                                                                                   self.ctx.judge_override)

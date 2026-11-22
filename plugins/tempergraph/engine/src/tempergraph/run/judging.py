@@ -83,6 +83,15 @@ def brief_digest(stance: str, brief: str) -> str:
     return hashlib.sha256(json.dumps([stance.strip(), brief.strip()]).encode()).hexdigest()[:16]
 
 
+def judged(g: Any) -> Any:
+    """The gate as its judge sees it (OUT §2.2): without the criteria a person signs or nobody verifies, which
+    go to the approval payload or the outcome record. A gate with nothing else keeps its criteria."""
+    import dataclasses
+
+    graded = tuple(c for c in g.criteria if c.verified_by not in ("person", "none"))
+    return dataclasses.replace(g, criteria=graded) if graded and len(graded) != len(g.criteria) else g
+
+
 def criteria_digest(criteria: Sequence[Criterion]) -> str:
     """FBK §2.1, JCL §2.1 binding field: the criterion texts, check methods and severities a judge grades."""
     import hashlib
