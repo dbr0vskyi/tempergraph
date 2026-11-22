@@ -9,7 +9,7 @@ This guide takes you from nothing to a first run of an example workflow.
 - git, and a git repository to run workflows in
 - [Claude Code](https://docs.claude.com/en/docs/claude-code), installed and signed in (`claude --version` prints a version)
 
-Release 1 runs every step on Claude Code. The other executors are designed but not built yet.
+Releases 1 and 2 run every step on Claude Code. The other executors are designed but not built yet.
 
 ## 1. Add the plugin marketplace
 

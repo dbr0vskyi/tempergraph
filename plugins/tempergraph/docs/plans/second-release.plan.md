@@ -2,9 +2,9 @@
 goal: Build release 2 of tempergraph — measure a workflow, route it by complexity, escalate only on trusted evidence, promote it to stable mode, move a paused run between machines, and carry it across engine releases
 version: 1
 date_created: 2026-11-20
-last_updated: 2026-11-21
+last_updated: 2026-11-22
 owner: dbr0vskyi
-status: Planned
+status: In progress
 tags: [release-plan, tempergraph]
 tracker: none
 spec: plugins/tempergraph/docs/specs/00-overview.spec.md
