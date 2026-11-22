@@ -1,4 +1,4 @@
-"""Judge model by risk: the rule under its guard, the level of one attempt and stock rules (JRK §2.2, §2.3).
+"""Judge model by risk: the rule under its guard, the level of one attempt and stock rules (JRK-B7, JRK-B8).
 
 A risk rule only ever raises the judge. It reads model-free facts of the attempt and never the step's text,
 artifacts or values; a fault takes the last, strongest level.
@@ -26,7 +26,7 @@ BASE_LEVEL = "base"  # the name of a judge's one level when it declares no `risk
 
 @dataclass(frozen=True, kw_only=True)
 class RiskGit:
-    """`GitFacts` of the attempt plus the size of its diff (JRK §2.2)."""
+    """`GitFacts` of the attempt plus the size of its diff (JRK-B7)."""
 
     branch: str = ""
     base: str = ""
@@ -94,7 +94,7 @@ def rank(alias: object) -> int | None:
 
 
 def top_rank(j: JudgeSpec | None) -> int:
-    """The strongest tier a gate's judge can run on: its own, or its highest risk level's (LAD §2.4 E4)."""
+    """The strongest tier a gate's judge can run on: its own, or its highest risk level's (LAD-B12 E4)."""
     if j is None:
         return -1
     aliases = models(j.risk, j.model) if j.risk is not None else [j.model]
@@ -103,7 +103,7 @@ def top_rank(j: JudgeSpec | None) -> int:
 
 
 def problems(risk: RiskSpec, base_model: str | None, base_effort: str | None) -> list[str]:
-    """Why a declaration cannot be used (JRK §2.1, §4)."""
+    """Why a declaration cannot be used (JRK-B6, JRK-B7, JRK-B2)."""
     out: list[str] = []
     names = [lv.name for lv in risk.levels]
     if not 2 <= len(names) <= 3 or len(set(names)) != len(names) or not all(names):
@@ -204,7 +204,7 @@ def run_rule(risk: RiskSpec, ctx: RiskContext) -> dict[str, Any]:
 
 def resolve(risk: RiskSpec, ran: Mapping[str, Any], *, base_model: str | None, base_effort: str | None,
             pinned: bool = False, producer_rank: int | None = None) -> dict[str, Any]:
-    """JRK §2.3: the level that grades one attempt. `ran` is `run_rule`'s result; `producer_rank` is the tier of
+    """JRK-B8: the level that grades one attempt. `ran` is `run_rule`'s result; `producer_rank` is the tier of
     an escalated producer, else None. Returns `{level, would_choose, signals, chosen_by, model, effort}`, with
     `fault` when the rule failed; under an operator pin `model` and `effort` are None (the pin's own)."""
     names = [lv.name for lv in risk.levels]

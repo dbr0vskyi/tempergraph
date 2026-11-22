@@ -1,4 +1,4 @@
-"""Runs in a folder outside git: the state root, in place only, the manifest and the refusals (WSP §2.4, AC-5)."""
+"""Runs in a folder outside git: the state root, in place only, the manifest and the refusals (WSP-B15 to WSP-B18, AC-5)."""
 
 from __future__ import annotations
 
@@ -149,7 +149,7 @@ class WritingJudge:
         return answer(MET, tools=("Read",), session_id="j")
 
 
-def test_the_guard_catches_a_judge_that_writes_outside_git(plain: Path) -> None:  # WSP-AC-5, GRD
+def test_the_guard_catches_a_judge_that_writes_outside_git(plain: Path) -> None:  # WSP-AC5, GRD
     start(two_step(), "T-1", {"request": "x"}, plain, registry(WritingJudge(plain)), NO_SLEEP)
     gates = [r for r in records(plain) if r["kind"] == "judgement"]
     assert gates and gates[0]["guard"] == "warned"  # in place a changed tree warns (GRD); in git it is the same

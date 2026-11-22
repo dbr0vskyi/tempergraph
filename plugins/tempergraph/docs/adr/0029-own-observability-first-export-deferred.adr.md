@@ -35,7 +35,7 @@ We will ship the local store ([LOS](../specs/33-local-observability-store.spec.m
 
 - Positive: every fact a later exporter would need is already captured locally, so TEL can be built later as a reader of the same records.
 - Negative: no LangSmith-style trace browser for now; the monitor and `stats`, `report`, `events`, `logs` are the views.
-- Risk: the local store grows faster with full capture. Mitigation: `store usage`, the size warning and manual `store prune` ([LOS §2.5](../specs/33-local-observability-store.spec.md)).
+- Risk: the local store grows faster with full capture. Mitigation: `store usage`, the size warning and manual `store prune` ([LOS-B16](../specs/33-local-observability-store.spec.md)).
 
 ## Assumptions
 

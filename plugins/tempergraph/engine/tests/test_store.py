@@ -1,4 +1,4 @@
-"""T7.3: the local store's verbs and retention (LOS §2.4, §2.5) and the session's `meta.json` (LOS §2.1)."""
+"""T7.3: the local store's verbs and retention (LOS-B14, LOS-B15, LOS-B16) and the session's `meta.json` (LOS-B7, LOS-B8, LOS-B9)."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ def plant_logs(folder: Path) -> None:
     (folder / "hooks" / "run_started-1.log").write_text("ok\n")
 
 
-def test_session_meta_is_written_and_closed(repo: Path) -> None:  # LOS §2.1
+def test_session_meta_is_written_and_closed(repo: Path) -> None:  # LOS-B7, LOS-B8, LOS-B9
     folder = finished_run(repo)
     meta = json.loads((folder / "sessions" / "draft.1.step" / "meta.json").read_text())
     assert meta["executor"] == "claude" and meta["session_key"] == "draft.1.step"
@@ -48,7 +48,7 @@ def test_session_meta_is_written_and_closed(repo: Path) -> None:  # LOS §2.1
     assert meta["transcript"]["engine"].endswith("sessions/draft.1.step/raw.jsonl")
 
 
-def test_logs_lists_and_prints_without_writing(repo: Path) -> None:  # LOS-AC-2
+def test_logs_lists_and_prints_without_writing(repo: Path) -> None:  # LOS-AC2
     folder = finished_run(repo)
     plant_logs(folder)
     root = state_root_path(repo)
@@ -114,7 +114,7 @@ def test_prune_spares_young_paused_failed_and_running(repo: Path) -> None:
     assert plan.remove and all(str(p).startswith(str(failed)) for p in plan.remove)
 
 
-def test_prune_refuses_a_running_thread(repo: Path) -> None:  # LOS §4
+def test_prune_refuses_a_running_thread(repo: Path) -> None:  # LOS-B12, LOS-B18, LOS-B15
     from tempergraph.durability.lock import RunLock
     from tempergraph.store.layout import lock_path
 
@@ -127,7 +127,7 @@ def test_prune_refuses_a_running_thread(repo: Path) -> None:  # LOS §4
     assert plan.remove == [] and plan.refused == [{"thread_id": "demo/T-1", "reason": "running"}]
 
 
-def test_export_is_scrubbed(repo: Path, tmp_path: Path) -> None:  # LOS-AC-3
+def test_export_is_scrubbed(repo: Path, tmp_path: Path) -> None:  # LOS-AC3
     folder = finished_run(repo)
     plant_logs(folder)
     target = tmp_path / "out" / "run.tar.gz"

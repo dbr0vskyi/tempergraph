@@ -1,234 +1,174 @@
----
-title: Engine install and update
-type: component
-status: ready-for-implementation
-prefix: UPD
-adrs: [0055, 0056, 0057, 0060, 0015]
----
-
 # Engine install and update
 
-## 1. Overview
+## Purpose
 
+`tempergraph update` moves a machine from one engine release to another: the CLI on `PATH`, the managed Python environment and its optional executor packages, the home folder's layout, and every registered workflow, which is reinstalled into the new environment so it keeps working. `tempergraph install` is the same machinery on a machine with no engine yet. Both are deterministic code that calls no model. Neither stops, waits for or rewrites a run: a running process keeps the engine it started on, and paused threads and each repository's store are owned by [MIG](62-state-and-run-migration.spec.md). Claude Code updates the `tempergraph` plugin ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U1); the plugin carries a staged copy of the engine of the same version, and only this verb installs it. The new release is installed beside the current one and made current by one atomic switch ([ADR-0055](../adr/0055-side-by-side-engine-environments-switched-atomically.adr.md)), so a failed install changes nothing, a rollback is a switch back, and Windows file locks on a running engine's libraries never meet the installer; registered workflows are reinstalled and pinned, never lost ([ADR-0060](../adr/0060-registered-workflows-are-reinstalled-and-pinned-never-lost.adr.md)). Operators, the install and update skills and CI images depend on it; design and build notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-The `tempergraph` Claude Code plugin and the engine update by different mechanisms. Claude Code updates the plugin ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U1); the plugin carries a staged copy of the engine of the same version, and only this verb installs it. §2.5 says how the plugin's skills learn that the two differ.
+## Behaviours
 
-The new release is installed **beside** the current one and made current by one atomic switch ([ADR-0055](../adr/0055-side-by-side-engine-environments-switched-atomically.adr.md)), so a failed install changes nothing, a rollback is a switch back, and Windows file locks on a running engine's libraries never meet the installer.
+### UPD-B10 What moves, and who moves it
 
-## 2. Contract
+WHEN a machine changes release THE engine SHALL leave the plugin, its skills, hooks and staged engine and the workflow plugins in Claude Code's plugin cache to Claude Code; move with this verb the engine environments under `~/.tempergraph/engines/<engine_version>-<digest12>/`, their optional executor packages (the `agent-sdk` and `messages-api` extras from `release.json` `extras`), the shim and Windows wrapper in `~/.tempergraph/bin/` when their content changes, the home layout ([LOS-B10](33-local-observability-store.spec.md)) by [MIG](62-state-and-run-migration.spec.md), and the registry entries and Python dependencies of registered workflows; and never move a repository's state root (moved by MIG at the new engine's first write), a paused or unfinished thread (moved at its next resume) or workflow content (its owner's, helped by [WUP](63-workflow-upgrade.spec.md)).
 
-### 2.1 What moves, and who moves it
+- GIVEN an update WHEN it ends THEN no state root under a repository has changed
 
-| Part | Where | Moved by |
-|---|---|---|
-| `tempergraph` plugin (skills, hooks, staged engine) | Claude Code's plugin cache, one folder per version | Claude Code (`claude plugin update`, auto-update, `/plugin`) |
-| Workflow plugins | Same cache | Claude Code; their registry entries and Python dependencies by this verb (§2.8) |
-| Local workflow sources (a person's own repositories) | Their checkouts | Their owner; their registry entries and Python dependencies by this verb (§2.8); their content by [WUP](63-workflow-upgrade.spec.md) |
-| Workflow registry | `~/.tempergraph/registry.json` (§2.8) | `install`, `update`, `workflows register\|unregister`; outside every engine environment, so no update can lose it |
-| CLI shim and Windows wrapper | `~/.tempergraph/bin/` | `install` once (§2.7); this verb when the shim's content changes |
-| Engine environments | `~/.tempergraph/engines/<engine_version>-<digest12>/` | This verb |
-| Optional executor packages (`agent-sdk`, `messages-api` extras) | Inside each engine environment | This verb, from `release.json` `extras` |
-| Home folder layout (`~/.tempergraph/`) | [LOS §2.2](33-local-observability-store.spec.md) | This verb, by [MIG §2.2](62-state-and-run-migration.spec.md) |
-| State roots of repositories | `<checkout>/.tempergraph/` | [MIG](62-state-and-run-migration.spec.md), at first write by the new engine; never by this verb |
-| Paused and unfinished threads | Checkpoints | [MIG §2.4](62-state-and-run-migration.spec.md), at their next resume |
-| Workflow content | The workflow's source | Its owner, helped by [WUP](63-workflow-upgrade.spec.md); never by this verb |
+### UPD-B11 Engine environments and the switch
 
-### 2.2 Engine environments
+WHEN an environment is installed or made current THE engine SHALL write `.complete` last in its folder, never make current a folder without it, keep in the folder the `release.json` it was built from, replace `engines/current.json` (`schema_version`, `engine_version`, `digest`, `path`, `switched_at`, `extras`, `reads_store_layouts`, `resumes_checkpoint_formats`) by write-then-rename after moving the old value to `previous.json`, and reuse a release already installed and complete rather than rebuild it.
 
-```text
-~/.tempergraph/
-  bin/tempergraph, bin/tempergraph.cmd   shim: reads engines/current.json, execs that environment's interpreter
-  engines/
-    current.json                        {schema_version, engine_version, digest, path, switched_at}
-    previous.json                       the one before, same shape
-    <engine_version>-<digest12>/        one virtual environment per installed release
-      .complete                         written last by the install; an environment without it is never made current
-```
+- GIVEN `current.json` naming a folder without `.complete` WHEN the shim runs THEN it uses `previous.json` and warns, and `update` repairs it
 
-| Rule | Value |
-|---|---|
-| Switch | `current.json` is replaced by write-then-rename; the old value moves to `previous.json` first |
-| Shim | Content-independent of the release: it reads `current.json`, or the engine an internal dispatch names ([MIG §2.4](62-state-and-run-migration.spec.md)); exits 127 when no complete environment is found |
-| Kept | `current`, `previous`, every engine a thread ([MIG §2.4](62-state-and-run-migration.spec.md)) or a workflow (§2.8) is pinned to, and every engine a live process runs on (its lock file names it, [MIG §2.3](62-state-and-run-migration.spec.md)) |
-| Removed | Only by `update --prune-engines`, and only environments that are none of the kept ones |
+### UPD-B12 The shim
 
-### 2.3 Verb
+WHEN the CLI is invoked through `~/.tempergraph/bin/tempergraph` (a POSIX `sh` script on macOS and Linux) THE shim SHALL read `current.json`, or the engine an internal dispatch names ([MIG](62-state-and-run-migration.spec.md)), and exec that environment's interpreter with `-m tempergraph`, find the interpreter by `TEMPERGRAPH_PYTHON` (for CI) then the managed environment, never a bare `python` or an alias stub, and exit 127 when no complete environment is found.
 
-```text
-tempergraph update [--check] [--dry-run] [--json]
-                   [--with agent-sdk|messages-api]...
-                   [--rollback [--restore-backups]] [--prune-engines]
-```
+- GIVEN no complete environment WHEN the shim runs THEN it exits 127
 
-| Step | Does | On failure |
-|---|---|---|
-| 2 Plan | Reads both `release.json` files ([VER §2.2](61-version-metadata.spec.md)) and the content digest; decides `up_to_date`, `install`, `reinstall` (same version, other digest) or `refused_downgrade`; lists live processes and pinned threads across the state roots in the machine index ([CST §2.1](34-central-run-stats.spec.md)); lists each registered workflow's compatibility under the new release ([VER §2.7](61-version-metadata.spec.md)); lists state roots whose layout the new release will migrate | Exit 2 on a downgrade, naming the newer shim to run first |
-| 3 Install | Creates the new environment folder, installs the engine, the extras the current environment has plus those asked by `--with`, and the Python dependencies of every registered workflow (§2.8), with constants-only argv and a long timeout; writes `.complete` | Exit 1; the folder is removed; `current.json` untouched |
-| 4 Self-check | Runs the new environment's `tempergraph --version --json`, an import check of every executor module, and a load and `validate` of every registered workflow under the new engine; no probe, no model | Engine failure: exit 1 as step 3. A workflow that fails is pinned at step 6 (§2.8), not a failure of the update |
-| 5 Home migration | Moves the home layout forward by [MIG §2.2](62-state-and-run-migration.spec.md), with its backup | Exit 1; the switch does not happen |
-| 6 Switch and reconcile | Writes `current.json`; refreshes the shim if its content differs; reconciles the registry (§2.8: repoint stale entries, register newly installed workflow plugins, never delete one) and pins each workflow that worked on the old engine and fails on the new one | A registry failure is reported; the switch stands |
-| 7 Report | §2.4 | — |
+### UPD-B13 Kept and pruned engines
 
-`--check` runs steps 1 and 2 only and is read-only (contract C13); `--dry-run` prints the plan with every write it would make; `--json` prints one object per line ([LIF](18-lifecycle-and-evals.spec.md)).
+WHEN `update --prune-engines` runs THE engine SHALL remove only environments that are none of `current`, `previous`, an engine a thread or a workflow is pinned to, and an engine a live process's lock names, naming each one kept.
 
-### 2.4 Report
+- GIVEN a lock naming engine 1.4.0 WHEN pruned THEN 1.4.0 is kept and named
 
-| Line kind | Says |
-|---|---|
-| `engine` | One sentence: up to date, will install, will reinstall (same version, other content), installed, refused downgrade with the likely cause (an older shim found first on `PATH`) and the fix |
-| `extras` | Each optional package, its version range and state |
-| `live` | Each live process, its thread and engine: "keeps engine X until it exits" |
-| `threads` | Counts per state root of threads that will move at their next resume and threads pinned to an older engine, with the reason ([MIG §2.4](62-state-and-run-migration.spec.md)) |
-| `store` | State roots whose layout moves at the first run, and whether a backup will be taken |
-| `workflow` | Per registered workflow: version, source (`plugin` or `local`), dependencies reinstalled, loads and validates on the new engine, compatibility state, a pin to the previous engine with its reason, and the remedy: `tempergraph upgrade <workflow>` for a local source, a plugin update for a marketplace one |
-| `plugin` | Whether the plugin copy that ran the verb matches the installed engine, and `/reload-plugins` when the session still runs an older plugin copy |
-| `summary` | Answers "am I on the latest, and must I do anything?" in one line |
+### UPD-B14 The update verb
 
-### 2.5 Plugin and engine in step
+WHEN `tempergraph update [--check] [--dry-run] [--json] [--with agent-sdk|messages-api]... [--rollback [--restore-backups]] [--prune-engines]` runs THE engine SHALL take as source the staged engine of the plugin copy that invoked it, no option naming a path; plan from both `release.json` files ([VER](61-version-metadata.spec.md)) and the content digest one of `up_to_date`, `install`, `reinstall` (same version, other digest) or `refused_downgrade` (exit 2 naming the newer shim to run first), listing live processes and pinned threads across the indexed state roots ([CST-B8](34-central-run-stats.spec.md)), each registered workflow's compatibility and the state roots whose layout will move; install the new environment with the current extras plus those of `--with` and every registered workflow's dependencies, with constants-only argv and a long timeout, removing the folder and exiting 1 on failure; self-check it by running the constant self-check module in the new environment (engine version and workflow interface level, executor imports, the CLI import) and loading and validating every registered workflow, no probe and no model, an engine failure exiting 1; migrate the home layout with its backup, exiting 1 and restoring the backup on failure; switch, refresh the shim if its content differs, reconcile the registry inside the new environment and pin each workflow that worked on the old engine and fails on the new one, a registry failure reported while the switch stands; and report.
 
-| Rule | Value |
-|---|---|
-| Version parity | The plugin's `plugin.json` version equals the staged engine's `engine_version` ([VER §2.1](61-version-metadata.spec.md)) |
-| Session check | The run driver's preflight, and a session-start hook of the plugin, run `update --check --json`; on `install` or `reinstall` the skill tells the person what will change and offers the update; it never runs it unasked |
-| Last seen | The hook keeps the last plugin version it checked in `${CLAUDE_PLUGIN_DATA}`, which survives plugin updates ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U5), so it runs the check once per plugin version, not every session |
-| CI | Skips the plugin; the image builds the environment and sets `TEMPERGRAPH_PYTHON`; `update --check --json` reports drift |
+- GIVEN a package install that fails half-way WHEN the verb exits 1 THEN `current.json` names the old engine
 
-### 2.6 Rollback
+### UPD-B1 A failed install changes nothing
 
-`update --rollback` swaps `current.json` and `previous.json`. Before it does, it checks every indexed state root and the home folder: a root whose layout the previous engine cannot read ([VER §2.2](61-version-metadata.spec.md) `store_layout`) is listed, and the rollback is refused with exit 2 unless `--restore-backups` is given, which restores each such root's pre-migration backup when no run has written to it since ([MIG §2.2](62-state-and-run-migration.spec.md)). Threads resumed on the newer engine since the switch keep their checkpoints; a checkpoint format the previous engine cannot resume pins them to the newer one, which is then kept.
+WHEN an update's package install fails half-way THE engine SHALL exit 1 with `current.json` naming the old engine and the half folder gone, so the next `run` uses the old engine.
 
-### 2.7 First install
+- GIVEN a failure injected at each step WHEN the verb exits THEN `current.json` and the old environment are byte-for-byte unchanged
 
+### UPD-B3 Same version, other content
 
-```text
-<plugin>/bin/tempergraph install [--check] [--json] [--with agent-sdk|messages-api]...
-                                 [--add-to-path] [--repair]
-```
+WHEN `update` runs on an installed 1.5.0 whose digest differs from the plugin's staged 1.5.0 THE engine SHALL plan `reinstall`, install into a folder with the new digest and switch ([LIF-B1](18-lifecycle-and-evals.spec.md)).
 
-| Step | Does |
-|---|---|
-| 1 Python | Ordered lookup: `TEMPERGRAPH_PYTHON`, an activated environment, the Windows launcher, the 3.11+ names; never a bare `python` or an alias stub. None found: exit 2 with how to install one |
-| 2 Home | Creates `~/.tempergraph/` in the layout of [LOS §2.2](33-local-observability-store.spec.md), owner-only, with `manifest.json` and `machine.json` |
-| 3 Engine | Update steps 3 and 4 into the first environment folder, then writes `current.json` (no `previous.json`) |
-| 4 Shim | Writes `~/.tempergraph/bin/tempergraph` and the Windows wrapper. Prints the `PATH` block for the detected shell. With `--add-to-path`, appends it to the detected shell file after a marker check, so a second run adds nothing. |
-| 5 Registry | Creates `registry.json`, merges a legacy manifest if one exists, and registers every installed workflow plugin it finds in Claude Code's plugin cache (§2.8) |
-| 6 Report | The engine, the extras, the shim and the `PATH` state, the registered workflows, each executor found on this machine (`executors`, no probe), and the next steps: open a new terminal, and run `tempergraph executors --probe` and the project bootstrap per repository ([SHL](19-plugin-shell.spec.md)) |
+- GIVEN equal versions and different digests WHEN updated THEN the plan is `reinstall`
 
-| Case | Result |
-|---|---|
-| An engine is already current | Nothing installed; the report says so and names `update`; exit 0 |
-| `--repair` | Rewrites the shim and `current.json` from the newest complete environment, and rebuilds missing home files; installs nothing |
-| `--check` | Steps 1 and 2 are only looked up and the plan is printed; read-only |
-| CI | Not used: the image installs the engine package and sets `TEMPERGRAPH_PYTHON` ([§2.5](#25-plugin-and-engine-in-step)) |
+### UPD-B6 Check is read-only
 
-Once the shim is on `PATH`, `tempergraph install` and `tempergraph update` run the same code through the shim.
+WHEN `update --check` runs THE engine SHALL run the source and plan steps only, change no file under the home folder, a state root or the plugin data folder, and start no model or package installer (OVR-B15); `--dry-run` prints the plan with every write it would make, and `--json` one object per line ([LIF-B8](18-lifecycle-and-evals.spec.md)).
 
-**Release 1.** macOS and Linux only, so the shim is a POSIX `sh` script that execs `<environment>/bin/python -m tempergraph`, and no Windows wrapper is written. The launcher puts the staged engine (`<plugin>/engine/src`) on the import path and runs `tempergraph.install.bootstrap`, which imports only the standard library and the stdlib-only engine modules (a test pins this). The self-check of step 4 runs the constant module `tempergraph.install.selfcheck` in the new environment: it reports the engine version and the workflow interface level, imports the shipped executors through the registry, and imports the CLI. Step 5 reconciles inside the new environment (`tempergraph.install.reconcile`), because loading a workflow needs the engine's libraries. No earlier release wrote a legacy manifest, so nothing is merged. `update` belongs to release 2 ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md)): the launcher refuses it with exit 2. The `PATH` block goes to `~/.zshrc`, `~/.bashrc`, fish's `config.fish`, or `~/.profile` for any other shell, between `# >>> tempergraph >>>` markers. Reconcile takes each plugin's newest version folder that holds a `tempergraph.json` and has no `.orphaned_at` marker. A cached plugin whose workflow name is already registered from a local path is reported as `name-taken` and not registered.
+- GIVEN any machine WHEN `update --check` runs THEN a hash of the home, state roots and plugin data is unchanged
 
-### 2.8 Workflow registry and reinstall
+### UPD-B15 Report
 
+WHEN `update` reports THE engine SHALL print `engine` (up to date, will install, will reinstall, installed, or refused downgrade with the likely cause, an older shim first on `PATH`, and the fix), `extras` (each optional package, version range and state, one line even when there is none), `live` (each live process, its thread and engine, "keeps engine X until it exits"), `threads` (per state root the threads that move at their next resume and those pinned to an older engine with the reason), `store` (state roots whose layout moves at the first run, and whether a backup is taken), `workflow` (per registered workflow: version, source `plugin` or `local`, dependencies reinstalled, loads and validates on the new engine, compatibility state, a pin with its reason, and the remedy `tempergraph upgrade <workflow>` for a local source or a plugin update for a marketplace one), `plugin` (whether the invoking plugin copy matches the installed engine, and `/reload-plugins` when the session runs an older copy) and `summary` (one line answering "am I on the latest, and must I do anything?"), each with a fixed JSON key set.
 
-| `registry.json` entry field | Meaning |
-|---|---|
-| `name` | The workflow's name; unique |
-| `kind` | `plugin` (installed from a marketplace), `local` (a source checkout the person registered) or `builtin` |
-| `plugin` | `<plugin>@<marketplace>`, for `plugin` |
-| `path` | The package folder. For `plugin` it is recomputed from Claude Code's cache at each reconcile, because that folder changes with every version ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U4) |
-| `version`, `workflow_version` | Last seen ([VER §2.4](61-version-metadata.spec.md)) |
-| `requirements_digest`, `installed_into[]` | The Python dependencies the package declares, and the environments they are installed in |
-| `engine_pin` | null, or `{engine, reason, since}` |
-| `state` | `ok`, `pinned`, `not_loaded` (with a reason code), `missing` |
-| `registered_at`, `last_checked_at` | |
+- GIVEN `update --json` WHEN read THEN every line kind has its fixed key set
 
-| Rule | Value |
-|---|---|
-| Dependencies | Read from the package's declared Python requirements. Each line is checked against the requirement grammar and the dependency gate ([SEC](14-security.spec.md)). They are written to an engine-owned requirements file in the environment and installed from that file, so no package text reaches the installer's argv. A conflict with the engine or with another workflow gives that workflow `not_loaded: dependency_conflict` and touches no other workflow. |
-| On every update | Step 3 installs every entry's dependencies into the new environment. Step 4 loads and validates each entry under the new engine. Step 6 reconciles. |
-| Pin on breakage | A workflow that loaded and validated on the old engine but fails on the new one is pinned to the old engine. Its runs, resumes and checks are dispatched there, as [MIG §2.4](62-state-and-run-migration.spec.md) dispatches a pinned thread, so it **keeps working**. The catalog, `run --check` and the report show the pin, the failing finding and the remedy. A pinned engine is kept (§2.2). |
-| Pin cleared | Automatically, at the first reconcile, reinstall or plugin update after which the workflow loads and validates on the current engine |
-| Never lost | No verb but `workflows unregister` removes an entry. A `missing` path (a local checkout moved, or a plugin uninstalled) keeps its entry and its threads, and is reported. |
+### UPD-B2 A live run keeps its engine
 
-```text
-tempergraph workflows list [--json]                 # the registry, with state and pins (the catalog of `list` adds routing data)
-tempergraph workflows register <path> [--check]     # a local source: the folder must hold a workflow package that loads and validates
-tempergraph workflows unregister <name>             # removes the entry only, never files; refused while a thread of it is live
-tempergraph workflows reinstall [<name>|--all]      # dependencies into the current environment, then load and validate; clears a pin that no longer applies
-```
+WHEN `update` installs 1.5.0 while a run is in progress on 1.4.0 THE engine SHALL let the run's process continue on 1.4.0 to its exit, keep the 1.4.0 folder while the lock names it, report it, and start any new `run` after the switch on 1.5.0.
 
-`register` resolves the path, refuses one under Claude Code's plugin cache (that is a `plugin` entry, found by reconcile), and runs validation before it writes the entry. Refusals exit 2 and write nothing: `not-a-package` (no `tempergraph.json`), `plugin-cache-path`, `not-valid` (with the findings), `name-taken` (the name, or its private import name [PKG §2.3](88-workflow-package.spec.md), is registered from another path). Registering the same path again refreshes the entry. `unregister` checks the run locks of the current repository's state root; the home keeps no index of repositories, so a live thread elsewhere is not seen.
+- GIVEN a running thread WHEN updated THEN the same process keeps the engine it started on
+- GIVEN a paused, unfinished or stopped thread WHEN next resumed THEN it runs on the current engine unless pinned ([MIG](62-state-and-run-migration.spec.md))
+- GIVEN a new run WHEN started THEN it runs on the current engine
+- GIVEN a running orchestration supervisor WHEN updated THEN it and the child runs it starts keep the supervisor's engine ([MIG-B6](62-state-and-run-migration.spec.md))
 
-**Release 1.** No managed engine environment exists before plan T8.2, so `reinstall` checks each declared requirement against the dependency gate and records `requirements_digest`, but installs nothing: an entry that declares requirements shows `dependencies: pending`.
+### UPD-B16 Plugin and engine in step
 
-## 3. Behaviours
+WHEN a session starts or the run driver prepares a run THE plugin SHALL keep its `plugin.json` version equal to the staged engine's `engine_version` ([VER](61-version-metadata.spec.md)), run `update --check --json` from the run driver's preflight and from a session-start hook that keeps the last plugin version it checked in `${CLAUDE_PLUGIN_DATA}` so it checks once per plugin version ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U5), tell the person what will change and offer the update on `install` or `reinstall` without running it unasked, and decide from what the engine answers when the engine is newer than the plugin; CI skips the plugin, builds the environment in the image, sets `TEMPERGRAPH_PYTHON` and reads drift from `update --check --json`.
 
-**UPD-B1 A failed install changes nothing.** Given an update whose package install fails half-way, when the verb exits 1, then `current.json` names the old engine, the half folder is gone, and the next `run` uses the old engine.
+- GIVEN a person who declines the update WHEN the run goes ahead THEN it runs on the installed engine
 
-**UPD-B2 A live run keeps its engine.** Given a run in progress on 1.4.0, when `update` installs 1.5.0, then the run's process continues on 1.4.0 to its exit, the 1.4.0 folder is kept while the lock names it, and the report says so; a new `run` started after the switch uses 1.5.0.
+### UPD-B4 Plugin updated, engine not
 
-| Thread at update | Next process | Engine |
-|---|---|---|
-| running | the same process | the one it started on |
-| paused, unfinished, stopped | the next resume | the current one, unless pinned ([MIG §2.4](62-state-and-run-migration.spec.md)) |
-| none (new run) | `run` | the current one |
-| orchestration supervisor, running | the same process and the child runs it starts | the supervisor's ([MIG-B6](62-state-and-run-migration.spec.md)) |
+WHEN the next session's run driver prepares a run after Claude Code updated the plugin to 1.6.0 while the engine is 1.5.0 THE skill SHALL see `install` from `update --check --json`, show the engine and workflow lines and ask before updating, the run going ahead on 1.5.0 if the person declines.
 
-**UPD-B3 Same version, other content.** Given an installed 1.5.0 whose digest differs from the plugin's staged 1.5.0, when `update` runs, then it plans `reinstall`, installs into a folder with the new digest and switches ([LIF-B1](18-lifecycle-and-evals.spec.md)).
+- GIVEN plugin 1.6.0 and engine 1.5.0 WHEN a run is prepared THEN the skill asks before updating
 
-**UPD-B4 Plugin updated, engine not.** Given Claude Code updated the plugin to 1.6.0 while the engine is 1.5.0, when the next session's run driver prepares a run, then `update --check --json` reports `install`, the skill shows the engine line and the workflow lines and asks before updating; the run may go ahead on 1.5.0 if the person declines.
+### UPD-B17 Rollback
 
-**UPD-B5 Rollback across a layout change.** Given 1.6.0 moved a state root from layout 1 to 2 and the person rolls back to 1.5.0, which reads layout 1 only, when `update --rollback` runs, then it is refused naming that root; with `--restore-backups` and no run since the move, the root's backup is restored and the switch is made.
+WHEN `update --rollback` runs THE engine SHALL swap `current.json` and `previous.json` after checking every indexed state root and the home folder, refusing with exit 2 and listing each root whose layout the previous engine cannot read (`store_layout`, [VER](61-version-metadata.spec.md)) unless `--restore-backups` is given, which restores each such root's pre-migration backup when no run has written to it since ([MIG](62-state-and-run-migration.spec.md)); threads resumed on the newer engine keep their checkpoints, and a checkpoint format the previous engine cannot resume pins them to the newer one, which is then kept.
 
-**UPD-B6 Check is read-only.** Given any machine, when `update --check` runs, then no file under the home folder, a state root or the plugin data folder changes, and no model or package installer is started.
+- GIVEN a root written by a run since its migration WHEN rolled back with `--restore-backups` THEN that root is refused
 
-**UPD-B7 Registered workflows survive an update.** Given three registered workflows, one from a marketplace, one local source with a Python dependency, and one whose validation the new release tightens, when `update` installs 2.0.0, then all three entries remain. The first two are reinstalled into the new environment and run on 2.0.0. The third is pinned to 1.6.2 with the failing finding, its runs dispatch to 1.6.2, and the report offers `tempergraph upgrade <name>` for its local source.
+### UPD-B5 Rollback across a layout change
 
-| Workflow on the new engine | Worked on the old | Result |
-|---|---|---|
-| loads and validates | — | `ok`, runs on the new engine |
-| fails | yes | `pinned` to the old engine; keeps working |
-| fails | no | `not_loaded`, as before; nothing pinned |
-| dependency conflict | yes | `pinned`, reason `dependency_conflict` |
+WHEN `update --rollback` runs to 1.5.0, which reads layout 1 only, after 1.6.0 moved a state root from layout 1 to 2 THE engine SHALL refuse it naming that root, and with `--restore-backups` and no run since the move restore the root's backup and switch.
 
-**UPD-B8 Pin clears itself.** Given a workflow pinned to 1.6.2, when the person merges its upgrade and the next reconcile finds it validates on 2.0.0, then the pin is removed and its next run starts on 2.0.0.
+- GIVEN no run since the move and `--restore-backups` WHEN rolled back THEN the backup is restored and the switch made
 
-**UPD-B9 First install from the plugin.** Given a machine with the plugin and no `~/.tempergraph/`, when `<plugin>/bin/tempergraph install --add-to-path` runs, then the home folder, the first environment, `current.json`, the shim, the `PATH` block (once) and the registry with every installed workflow plugin exist, and a second run changes nothing.
+### UPD-B18 First-install launcher
 
-## 4. Error conditions
+WHEN a machine has the plugin and no engine THE plugin's launcher `${CLAUDE_PLUGIN_ROOT}/bin/tempergraph` SHALL put the staged engine (`<plugin>/engine/src`) on the import path and run its bootstrap code, which imports only the standard library and stdlib-only engine modules and loads none of the engine's compiled libraries, with the first real Python 3.11+ it finds, accept only `install` and `update`, and refuse every other verb with exit 127 and the line to run.
 
-| Condition | Result |
-|---|---|
-| No Python matching `release.json` `python` | Exit 2 before any write; says how to install one |
-| Downgrade | Exit 2; names the newer copy and the `PATH` cause |
-| Package install or self-check fails | Exit 1; nothing switched |
-| Home layout migration fails | Exit 1; backup restored; nothing switched |
-| `current.json` names a folder without `.complete` | The shim uses `previous.json` and warns; `update` repairs |
-| Manifest reconcile fails | Reported; exit 0 with a warning line, since the engine is installed |
-| `--prune-engines` while a process holds a lock naming an engine | That engine kept and named |
-| A workflow's dependencies fail to install in the new environment | That workflow pinned (UPD-B7); the update goes on |
-| `registry.json` unreadable | Restored from the last copy the engine keeps beside it; never rebuilt empty over the old file |
+- GIVEN `<plugin>/bin/tempergraph run` WHEN invoked THEN it exits 127 with the line to run
 
-## 5. Design notes
+### UPD-B19 First install
 
-- The verb updates no workflow and no repository's store: a machine may hold many repositories, and some are not checked out at update time. Each store moves when the new engine first writes to it ([MIG](62-state-and-run-migration.spec.md)).
-- A later Python-package channel (pip, uv tool) would replace steps 1 and 3 only; the switch, the report and MIG stay ([R-057](../research/R-057-engine-update-and-workflow-upgrade-gaps.rsrch.md) open question).
-- **As built (R2-T6.1).** `install/update.py` holds the verb; it is routed by the launcher's bootstrap, so it runs before an engine is importable. Each environment folder keeps the `release.json` of the release it was built from, and `current.json` records `extras`, `reads_store_layouts` and `resumes_checkpoint_formats`, so a rollback and a pin are checked without starting that engine. A release already installed and complete is reused, not rebuilt. The environment builder is a parameter; tests replace it and create no environment. The report prints one `extras` line even when the release has none. Open: the two-process criteria AC-2 and AC-5 need two installed engines; AC-7's table is tested on a fixed set of faults, not a generated one.
+WHEN `<plugin>/bin/tempergraph install [--check] [--json] [--with agent-sdk|messages-api]... [--add-to-path] [--repair]` runs THE engine SHALL find Python by `TEMPERGRAPH_PYTHON`, an activated environment, the Windows launcher, then the 3.11+ names, never a bare `python` or an alias stub, exiting 2 before any write with how to install one when none matches `release.json` `python`; create `~/.tempergraph/` owner-only with `manifest.json` and `machine.json`; run the update's install and self-check into the first environment and write `current.json` with no `previous.json`; write the shim, print the `PATH` block for the detected shell and with `--add-to-path` append it once between `# >>> tempergraph >>>` markers to `~/.zshrc`, `~/.bashrc`, fish's `config.fish` or `~/.profile`; create `registry.json` and reconcile the installed workflow plugins; and report the engine, extras, shim and `PATH` state, registered workflows, each executor found (no probe) and the next steps (a new terminal, `tempergraph executors --probe` and the project bootstrap per repository, [SHL](19-plugin-shell.spec.md)); when an engine is already current install nothing and name `update` with exit 0; with `--repair` rewrite the shim and `current.json` from the newest complete environment and rebuild missing home files, installing nothing; and with `--check` only look up and print the plan, read-only.
 
-## 6. Acceptance criteria
+- GIVEN `install --add-to-path` run twice WHEN the shell file is read THEN it holds the block once and the files are byte for byte the same
 
-- [x] UPD-AC-1 A failure injected at each step of §2.3 leaves `current.json` and the old environment byte-for-byte unchanged.
-- [ ] UPD-AC-2 A run started before an update finishes on its engine and records it; a run started after uses the new one (two-process test).
-- [x] UPD-AC-3 `update --check` leaves the home folder, every state root and the plugin data folder unchanged (hash test) and starts no package installer.
-- [x] UPD-AC-4 Every line kind of §2.4 has a JSON form with a fixed key set, tested against a schema.
-- [ ] UPD-AC-5 Every row of UPD-B2's table is a test.
-- [x] UPD-AC-6 `--prune-engines` never removes an engine named by a lock, a thread or workflow pin, `current.json` or `previous.json`.
-- [ ] UPD-AC-7 Every row of UPD-B7's table is a test; no update, install, reinstall or reconcile removes a registry entry (property test over fault injection).
-- [ ] UPD-AC-8 `install` run twice gives the same files byte for byte, and the shell file holds the `PATH` block once.
+### UPD-B9 First install from the plugin
+
+WHEN `<plugin>/bin/tempergraph install --add-to-path` runs on a machine with the plugin and no `~/.tempergraph/` THE engine SHALL create the home folder, the first environment, `current.json`, the shim, the `PATH` block once and the registry with every installed workflow plugin, a second run changing nothing.
+
+- GIVEN a second run WHEN it ends THEN nothing has changed
+
+### UPD-B20 Workflow registry
+
+WHEN the registry `~/.tempergraph/registry.json` is written THE engine SHALL keep it outside every engine environment, one entry per workflow with `name` (unique), `kind` (`plugin`, `local` or `builtin`), `plugin` (`<plugin>@<marketplace>`), `path` (for `plugin` recomputed from Claude Code's cache at each reconcile, [R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U4), `version` and `workflow_version` last seen ([VER](61-version-metadata.spec.md)), `requirements_digest`, `installed_into[]`, `engine_pin` (null or `{engine, reason, since}`), `state` (`ok`, `pinned`, `not_loaded` with a reason code, `missing`), `registered_at` and `last_checked_at`; keep a copy beside it and restore from it when the file is unreadable, never rebuilding it empty; and remove an entry only by `workflows unregister`, a `missing` path keeping its entry and its threads and being reported.
+
+- GIVEN an unreadable registry WHEN read THEN it is restored from the kept copy
+
+### UPD-B21 Reconcile
+
+WHEN the registry is reconciled ([LIF-B9](18-lifecycle-and-evals.spec.md)) THE engine SHALL take each cached plugin's newest version folder that holds a `tempergraph.json` and has no `.orphaned_at` marker, repoint stale entries, register newly installed workflow plugins, report a cached plugin whose workflow name is already registered from a local path as `name-taken` without registering it, and delete no entry.
+
+- GIVEN a cached plugin whose name is registered locally WHEN reconciled THEN it is reported `name-taken`
+
+### UPD-B22 Workflow dependencies
+
+WHEN a workflow's Python dependencies are installed THE engine SHALL check each declared requirement line against the requirement grammar and the dependency gate ([SEC](14-security.spec.md)), write them to an engine-owned requirements file in the environment and install from that file so no package text reaches the installer's argv, give a workflow whose dependencies conflict with the engine or another workflow `not_loaded: dependency_conflict` touching no other workflow, and pin a workflow whose dependencies fail to install in the new environment while the update goes on.
+
+- GIVEN two workflows with conflicting requirements WHEN installed THEN only the later one is `not_loaded: dependency_conflict`
+
+### UPD-B23 Pin on breakage and its clearing
+
+WHEN a workflow that loaded and validated on the old engine fails on the new one THE engine SHALL pin it to the old engine, dispatch its runs, resumes and checks there as MIG dispatches a pinned thread so it keeps working, keep the pinned engine, show the pin, the failing finding and the remedy in the catalog, `run --check` and the report, and clear the pin at the first reconcile, reinstall or plugin update after which it loads and validates on the current engine.
+
+- GIVEN a pinned workflow WHEN `run --check` runs THEN it shows the pin and the failing finding
+
+### UPD-B7 Registered workflows survive an update
+
+WHEN `update` installs 2.0.0 with three registered workflows, one from a marketplace, one local source with a Python dependency, and one whose validation the new release tightens THE engine SHALL keep all three entries, reinstall the first two into the new environment to run on 2.0.0, and pin the third to 1.6.2 with the failing finding, dispatching its runs there and offering `tempergraph upgrade <name>` for its local source.
+
+- GIVEN a workflow that loads and validates on the new engine WHEN updated THEN it is `ok`
+- GIVEN a workflow that fails on the new engine and worked on the old WHEN updated THEN it is `pinned` and keeps working
+- GIVEN a workflow that fails on both WHEN updated THEN it stays `not_loaded` and nothing is pinned
+- GIVEN a dependency conflict for a workflow that worked on the old WHEN updated THEN it is `pinned` with reason `dependency_conflict`
+
+### UPD-B8 Pin clears itself
+
+WHEN the next reconcile finds a workflow pinned to 1.6.2 validating on 2.0.0 after its upgrade was merged THE engine SHALL remove the pin and start its next run on 2.0.0.
+
+- GIVEN the upgrade merged WHEN reconciled THEN the pin is gone
+
+### UPD-B24 Workflows verbs
+
+WHEN `tempergraph workflows list [--json]`, `workflows register <path> [--check]`, `workflows unregister <name>` or `workflows reinstall [<name>|--all]` runs THE engine SHALL print the registry with state and pins; resolve the path, run validation and write an entry, refreshing it for a path registered again and refusing with exit 2 writing nothing `not-a-package` (no `tempergraph.json`), `plugin-cache-path` (a path under Claude Code's plugin cache), `not-valid` (with the findings) or `name-taken` (the name, or its private import name, [PKG](88-workflow-package.spec.md), registered from another path); remove the entry only, never files, refused while a thread of it is live under the current repository's state root; or install dependencies into the current environment then load and validate, clearing a pin that no longer applies.
+
+- GIVEN a path under the plugin cache WHEN registered THEN it exits 2 `plugin-cache-path` and writes nothing
+
+## Acceptance criteria
+
+- UPD-AC1 (UPD-B1, UPD-B11, UPD-B14): A failure injected at each update step leaves `current.json` and the old environment byte-for-byte unchanged
+- UPD-AC2 (UPD-B2): A run started before an update finishes on its engine and records it; a run started after uses the new one, by a two-process test
+- UPD-AC3 (UPD-B6): `update --check` leaves the home folder, every state root and the plugin data folder unchanged, by a hash test, and starts no package installer
+- UPD-AC4 (UPD-B15): Every report line kind has a JSON form with a fixed key set, tested against a schema
+- UPD-AC5 (UPD-B2): Every scenario of UPD-B2 is a test
+- UPD-AC6 (UPD-B13): `--prune-engines` never removes an engine named by a lock, a thread or workflow pin, `current.json` or `previous.json`
+- UPD-AC7 (UPD-B7, UPD-B20, UPD-B21, UPD-B23): Every scenario of UPD-B7 is a test; no update, install, reinstall or reconcile removes a registry entry, by a property test over fault injection
+- UPD-AC8 (UPD-B19, UPD-B9): `install` run twice gives the same files byte for byte, and the shell file holds the `PATH` block once
+- UPD-AC9 (UPD-B3, UPD-B4, UPD-B5, UPD-B8, UPD-B10, UPD-B12, UPD-B16, UPD-B17, UPD-B18, UPD-B22, UPD-B24): Fixtures cover a reinstall, the session check, a refused and a restoring rollback, a cleared pin, the shim's exit 127, the launcher's refusals, a dependency conflict and each registry refusal
 
 ## Open questions
 
-| Question | Owner | Release 1 default |
-|---|---|---|
-| How many unpinned old engines should `update` keep before it suggests `--prune-engines`? The design keeps two and reports the size of the rest. | Owner | Two |
-
-## References
-
+- How many unpinned old engines should `update` keep before it suggests `--prune-engines`? Until answered: two, with the size of the rest reported. Owner: owner.
+- Not built yet: `workflows reinstall` checks each requirement against the dependency gate and records `requirements_digest` but installs nothing, so an entry that declares requirements shows `dependencies: pending`; a Windows wrapper is not written; AC2 and AC5 need two installed engines, and AC7 is tested on a fixed set of faults. Owner: engine owner.

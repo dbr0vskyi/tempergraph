@@ -37,8 +37,8 @@ We will audit tools as three views per session ([TSA](../specs/57-tool-surface-a
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| T1 | Every executor's `session_started` event lists the tools the session holds, as [CON §2.7](../specs/01-contracts.spec.md) requires. Where an executor lists none, the judge rule falls back to the host probe. | TSA-B1 |
-| T2 | Refusal shapes can be classed from the tool name and a scrubbed input summary (spec 30, PR 7) without reading model text. | TSA §2.2 |
+| T1 | Every executor's `session_started` event lists the tools the session holds, as [SSN-B7](../specs/25-session-contract.spec.md) requires. Where an executor lists none, the judge rule falls back to the host probe. | TSA-B1 |
+| T2 | Refusal shapes can be classed from the tool name and a scrubbed input summary (spec 30, PR 7) without reading model text. | TSA-B7 |
 
 ## Consequences
 

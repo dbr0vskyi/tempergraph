@@ -1,172 +1,132 @@
----
-title: Eval suites for checks, steps and workflows
-type: component
-status: review
-prefix: EVS
-adrs: [0048, 0049, 0045]
----
-
 # Eval suites for checks, steps and workflows
 
-## 1. Overview
+## Purpose
 
-Judges are graded by [JCL](50-judge-calibration.spec.md). This spec covers everything else a workflow is evaluated on: its **deterministic checks** (do they fail what they should, and only that), its **steps** (does a step's prompt produce work that passes its gate, and how consistently), and the **whole workflow** (does a fixed set of real cases keep ending well). It fixes the order in which graders are trusted, how live suites are run and capped, the split between regression and capability suites, and the rule that a rate graded by a judge is shown with that judge's measured error. The gaps it closes are E10, E12–E14 and E17 of [R-046](../research/R-046-eval-and-judge-gap-analysis.rsrch.md).
+Judges are graded by [JCL](50-judge-calibration.spec.md). This spec covers everything else a workflow is evaluated on: its deterministic checks (do they fail what they should, and only that), its steps (does a step's prompt produce work that passes its gate, and how consistently), and the whole workflow (does a fixed set of real cases keep ending well). It fixes the order in which graders are trusted (code first, then an accepted judge, then a person, [ADR-0049](../adr/0049-eval-graders-in-a-fixed-order-of-trust.adr.md)), how live suites are run and capped, the split between regression and capability suites, and the rule that a rate graded by a judge is shown with that judge's measured error ([ADR-0048](../adr/0048-judge-graded-rates-carry-the-judges-error.adr.md)). It extends the eval tooling of [LIF](18-lifecycle-and-evals.spec.md) and reuses the case-set format of [PRP](40-improvement-proposals.spec.md) for workflow cases, so one reviewed case serves both a release check and a paired trial. The gaps it closes are E10, E12 to E14 and E17 of [R-046](../research/R-046-eval-and-judge-gap-analysis.rsrch.md); notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md). Workflow authors, the eval skill and `upgrade-check --stamp` depend on it.
 
-It extends the eval tooling of [LIF](18-lifecycle-and-evals.spec.md) (deterministic and rubric scenarios, replay of judges) and reuses the case-set format of [PRP](40-improvement-proposals.spec.md) for workflow cases, so one reviewed case serves both a release check and a paired trial.
+## Behaviours
 
-## 2. Contract
+### EVS-B8 Suites and roles
 
-### 2.1 Suites
+WHEN a workflow package holds suites THE engine SHALL read each with one kind, `check` (one gate's deterministic check on fixture artifacts, model-free, graded by the expected check result), `judge` (one gate's judge on its gold set, graded by gold labels), `step` (one step session and its gate on a fixed input and workspace) or `workflow` (a whole run on a fixed case as a dry run), the last two graded by the grader order, and one role, `regression` (every case must pass, one failing case failing the suite) or `capability` (tracked as a rate, never failing a suite), listing for graduation a capability case that passed in each of its last three recorded runs on the current binding, for a person to move to `regression` ([R-045](../research/R-045-evaluating-llm-judges-public-practice.rsrch.md) F12).
 
-A workflow package holds suites beside its scenarios. Each suite has one kind and one role.
+- GIVEN a capability case passing three recorded runs in a row WHEN reported THEN it is listed for graduation
 
-| Kind | Subject | Spends model calls | Graded by |
-|---|---|---|---|
-| `check` | One gate's deterministic check on fixture artifacts | no | code: the expected `CheckResult` |
-| `judge` | One gate's judge on its gold set | yes | gold labels ([JCL](50-judge-calibration.spec.md)) |
-| `step` | One step session and its gate on a fixed input and workspace | yes | the grader ladder of §2.6 |
-| `workflow` | A whole run on a fixed case, as a dry run | yes | the grader ladder of §2.6 |
+### EVS-B9 Check cases
 
-| Role | Meaning | Expected pass level |
-|---|---|---|
-| `regression` | Behaviour a change must keep | Every case passes; one failing case is a failed suite |
-| `capability` | Behaviour the workflow is working toward | Tracked as a rate; never fails a suite |
+WHEN check cases are read from `evals/checks/<unit>/must-pass|must-fail/` THE engine SHALL take each fixture's artifacts, workspace state and git facts, expect `PASS`, `MAYBE` or `FAIL` (for `FAIL` the criterion id the evidence must name).
 
-A capability case that passed in each of its last three recorded runs on the current binding is listed for **graduation**; a person moves it to `regression` ([R-045 F12](../research/R-045-evaluating-llm-judges-public-practice.rsrch.md)).
+- GIVEN a must-fail case WHEN its check returns `FAIL` naming another criterion THEN the case fails
 
-### 2.2 Check and step cases
+### EVS-B2 Line endings
 
-| Field | `check` case | `step` case |
-|---|---|---|
-| `case_id` | stable id | stable id |
-| `fixture` | artifacts, workspace state, git facts | input values, workspace at a base, references |
-| `expect` | `PASS`, `MAYBE` or `FAIL`, and for `FAIL` the criterion id the evidence must name | deterministic assertions over the produced artifacts (paths, headings, patterns, test results), optional |
-| `trials` | — | `k`, default 3 |
+WHEN a check suite runs THE engine SHALL run each fixture once with LF and once with CRLF line endings, a different result between the two failing the case.
 
-Every check has at least one must-fail and one must-pass case; validation warns for a check without both. A check case that fails on one line-ending convention and passes on the other is a failed case: each fixture runs with LF and CRLF.
+- GIVEN a check case whose fixture table counts rows WHEN the suite runs THEN it runs with LF and CRLF and a different result fails it
 
-A step trial runs in a fresh worktree at the case's base, with the step's real prompt and executor, then its check and its judge, exactly as in a run. It **passes** when the gate's derived verdict is PROCEED within the step's retry budget and every `expect` assertion holds.
+### EVS-B1 Checks are tested both ways
 
-### 2.3 Workflow cases
+WHEN a workflow whose check has only must-pass cases is validated THE engine SHALL warn `check_without_fail_case` naming the gate.
 
-A workflow case is a PRP case-set entry (case id, base commit, request, expected scope) plus:
+- GIVEN a check with no must-fail case WHEN validated THEN it warns `check_without_fail_case`
 
-| Field | Meaning |
-|---|---|
-| `role` | `regression` or `capability` |
-| `end_state[]` | Deterministic assertions on the finished branch: paths changed inside the expected scope only, tests passing, artifacts present |
-| `answers[]`, optional | Recorded answers per pause, applied in order with caller `pipeline` and `caller_app: evals` ([PRV](85-caller-provenance.spec.md)); a pause with no recorded answer ends the trial as `paused` |
-| `max_level`, optional | The highest supervision level a trial may need ([SUP §2.3](86-supervision-metrics.spec.md)); a trial above it fails. Eval runs never enter production supervision figures |
-| `trials` | `k`, default 1; 3 for regression cases of a workflow that declares `stable` |
+### EVS-B10 Step cases and trials
 
-A trial runs as a dry-run batch item ([WSP](13-workspace-and-concurrency.spec.md)): nothing is pushed, filed or commented. It **passes** when the run ends with exit 0 and every `end_state` assertion holds, or, where the workflow declares an outcome gate, when that gate passes too.
+WHEN step cases are read from `evals/steps/<unit>/<case_id>/case.json` (`role`, `inputs`, `expect`, `covered`, `trials` with `k` 3 by default, and an optional `workspace/`) THE engine SHALL run each trial as the one step as its own workflow in a fresh repository made from the case's workspace, with what earlier units would have produced taken from `inputs`, the step's real prompt and executor, then its check and judge exactly as in a run, and pass it when the gate's derived verdict is PROCEED within the step's retry budget and every `expect` assertion holds.
 
-### 2.4 Running and cost
+- GIVEN a step trial whose gate proceeds on attempt 2 within budget WHEN graded THEN it passes
 
-| Rule | Detail |
-|---|---|
-| Model-free suites | `check` suites, prompt lint, deterministic scenarios and any suite run on scripted stand-in executors ([LIF-B4](18-lifecycle-and-evals.spec.md)) run in the test suite and in CI |
-| Live suites | `judge`, `step` and `workflow` suites on a real executor are opt-in verbs, never part of the test suite or CI: no test starts a live model session |
-| Cap | Every live suite run takes `--cap <usd>` (default from the operator config, else $20); at the cap no new session starts, running sessions finish, and the record is `partial` |
-| Binding | Every result records the binding of each session (executor, version, alias, model slug, prompt and brief digests); a result whose binding differs from the current one reads `stale` |
-| Logging | Every session is logged and costed like a run's ([OBS](15-observability-and-cost.spec.md)); results are ids, statuses, counts and digests only |
+### EVS-B11 Assertions
 
-### 2.5 Judge-graded rates carry the judge's error
+WHEN an `expect` or `end_state` assertion is read THE engine SHALL accept `{path}` (exists), `{path, absent}`, `{path, pattern}`, `{path, heading}` and `{changed_within: [globs]}`, `covered: true` saying the assertions cover the case so code decides a pass.
 
-Any rate in a report that counts judge statuses or judge-derived verdicts (per-criterion pass rates and gate pass rates in [OBS §2.4](15-observability-and-cost.spec.md), step-suite pass rates, judge-graded trial targets) is shown with the judge's state and, where the state allows, a corrected estimate ([ADR-0048](../adr/0048-judge-graded-rates-carry-the-judges-error.adr.md), [R-045 F4](../research/R-045-evaluating-llm-judges-public-practice.rsrch.md)).
+- GIVEN `{path: "docs/x.md", heading: "Plan"}` WHEN the file lacks that heading THEN the assertion fails
 
-| Judge state ([JCL §2.5](50-judge-calibration.spec.md)) | Shown |
-|---|---|
-| `accepted`, `provisional` | Raw rate, corrected rate `θ = (p + c − 1) / (c + g − 1)` clipped to [0, 1], where `p` is the raw pass rate, `c` the judge's `catch_rate` and `g` its `clean_rate`; and the label `corrected` |
-| any state with `c + g − 1 < 0.2` | Raw rate only, labelled `uncorrectable` (the judge separates too little) |
-| `unscored`, `stale`, `below_bar`, `contradicted` | Raw rate only, labelled `uncorrected` with the state |
+### EVS-B12 Workflow cases and trials
 
-The raw rate is never hidden and the corrected rate is never stored in place of it.
+WHEN workflow cases are read from the entries of `evals/cases.json` (the case-set fields of PRP plus `role`, `end_state[]`, optional `answers[]`, optional `max_level`, `covered` and `trials`, `k` 1 by default and 3 for regression cases of a workflow declaring `stable`) THE engine SHALL run each trial as a dry-run item that pushes, files and comments nothing ([WSP](13-workspace-and-concurrency.spec.md)), apply recorded answers per pause in order with caller `pipeline` and `caller_app: evals` ([PRV](85-caller-provenance.spec.md)), end a trial that stops for a person for any reason other than a spent budget as `paused`, counted in no rate, fail a trial above `max_level` ([SUP](86-supervision-metrics.spec.md)), keep eval runs out of production supervision figures, list a case whose base commit is missing as invalid while running the rest, and pass a trial when the run ends with exit 0 and every `end_state` assertion holds, with the outcome gate passing too where the workflow declares one.
 
-### 2.6 Grader order
+- GIVEN a case whose base commit is missing WHEN the suite runs THEN it is listed invalid and the rest run
 
-A step or workflow case is graded by the first grader that can decide it, in this order ([ADR-0049](../adr/0049-eval-graders-in-a-fixed-order-of-trust.adr.md)):
+### EVS-B13 Model-free and live suites
 
-| Order | Grader | Decides when |
-|---|---|---|
-| 1 | Code: `expect`, `end_state`, the gate's check | The assertion or check fails, or the case is fully covered by assertions |
-| 2 | The gate's judge or the outcome judge | Its state is `accepted` |
-| 3 | A person | Otherwise: the trial result is `needs_person`, listed with the command to record a grade |
+WHEN suites run THE engine SHALL run `check` suites, prompt lint, deterministic scenarios and any suite on scripted stand-in executors ([LIF-B4](18-lifecycle-and-evals.spec.md)) in the test suite and CI, and refuse with exit 2, starting no session, a `judge`, `step` or `workflow` suite on a real executor under the test runner's marker unless `TEMPERGRAPH_LIVE=1` lifts it, so no test starts a live model session.
 
-A trial graded `needs_person` counts in no rate until a person records a grade. In a `regression` suite a `needs_person` case leaves the suite `incomplete`, never `passed`.
+- GIVEN a live suite under the test marker WHEN started THEN it exits 2 and no session starts
 
-### 2.7 Figures and verbs
+### EVS-B14 Cap, binding and logging
 
-| Figure | Definition |
-|---|---|
-| `pass_at_1` | Passing trials ÷ trials |
-| `pass_hat_k` | Cases whose `k` trials all passed ÷ cases ([R-045 F11](../research/R-045-evaluating-llm-judges-public-practice.rsrch.md)) |
-| `first_attempt_pass` | Trials whose gate passed on attempt 1 ÷ trials |
-| `mean_attempts` | Attempts to PROCEED, over passing trials |
-| `cost_per_pass` | Estimated cost of all trials ÷ passing trials |
-| `never_passed` | Cases with 0 passing trials over at least 5 trials: listed as "check the case first", since such a case is most often broken ([R-045 F13](../research/R-045-evaluating-llm-judges-public-practice.rsrch.md)) |
+WHEN a live suite runs THE engine SHALL take `--cap <usd>` (default from the operator config, else $20) and start no new session at the cap while running sessions finish and the record is `partial`, refuse a step case whose executor cannot provide the step's tools before spend ([EXI](10-executor-interface.spec.md)), record each session's binding (executor, version, alias, model slug, prompt and brief digests) so a result whose binding differs from the current one reads `stale`, log and cost every session like a run's ([OBS](15-observability-and-cost.spec.md)), and write results as rows of `evals/results.jsonl` under the state root holding ids, statuses, counts and digests only; `evals run --kind judge` scores every judged gate and risk level under the one cap.
 
-| Verb | Does | Model calls |
-|---|---|---|
-| `evals run <workflow> --kind <kind> [--role <role>] [--trials k] [--executor <name>] [--cap <usd>]` | Runs suites, records results | only for live kinds |
-| `evals report <workflow> [--json]` | Figures per suite and case, graduation list, stale and `needs_person` results | no |
-| `evals grade <result> --pass\|--fail --reason <text>` | Records a person's grade for a `needs_person` trial | no |
+- GIVEN a result whose judge alias was rebound WHEN reported THEN it reads `stale`
 
-## 3. Behaviours
+### EVS-B6 Cap stops cleanly
 
-**EVS-B1 Checks are tested both ways.** Given a check with only must-pass cases, when the workflow is validated, then validation warns `check_without_fail_case` naming the gate.
+WHEN a workflow suite run with `--cap 20` reaches an estimated $20 after 4 of 7 cases THE engine SHALL start no fifth case, let the fourth finish, and record `partial` with 4 results.
 
-**EVS-B2 Line endings.** Given a check case whose fixture table counts rows, when the suite runs, then it runs once with LF and once with CRLF line endings, and a different result between the two fails the case.
+- GIVEN $20 reached after 4 of 7 cases WHEN the cap is reached THEN the record is `partial` with 4 results
 
-**EVS-B3 Consistency over a lucky pass.** Given a step suite of 6 cases at `k` = 3, when results come in, then `pass_hat_k` counts only cases with all three trials passing.
+### EVS-B15 Judge-graded rates carry the judge's error
 
-| Case | Trials passed | Counts for `pass_at_1` | Counts for `pass_hat_k` |
-|---|---|---|---|
-| a | 3 of 3 | 3 | yes |
-| b | 2 of 3 | 2 | no |
-| c | 3 of 3 | 3 | yes |
-| d | 0 of 3 | 0 | no |
-| e | 3 of 3 | 3 | yes |
-| f | 1 of 3 | 1 | no |
-| **Suite** | | 12 / 18 = 0.67 | 3 / 6 = 0.50 |
+WHEN a report shows a rate that counts judge statuses or judge-derived verdicts (per-criterion and gate pass rates of [OBS](15-observability-and-cost.spec.md), step-suite pass rates, judge-graded trial targets) THE engine SHALL show the raw rate with the judge's state ([JCL-B17](50-judge-calibration.spec.md)) and, for `accepted` or `provisional`, the corrected rate `θ = (p + c − 1) / (c + g − 1)` clipped to [0, 1] (`p` the raw pass rate, `c` the judge's `catch_rate`, `g` its `clean_rate`) labelled `corrected`; the raw rate only labelled `uncorrectable` when `c + g − 1` is below 0.2; the raw rate only labelled `uncorrected` with the state for `unscored`, `stale`, `below_bar` or `contradicted`; never hiding the raw rate or storing the corrected one in its place ([R-045](../research/R-045-evaluating-llm-judges-public-practice.rsrch.md) F4).
 
-**EVS-B4 Unaccepted judge defers to a person.** Given a step case with no `expect` assertions whose gate judge is `below_bar`, when the trial ends with PROCEED, then the result is `needs_person`, not `passed`, and a regression suite holding it reads `incomplete`.
+- GIVEN a judge with catch 0.55 and clean 0.60 WHEN a rate is shown THEN it is raw only, labelled `uncorrectable`
 
-**EVS-B5 Corrected rate.** Given a criterion with a raw pass rate of 0.80 over 50 runs and an `accepted` judge with `catch_rate` 0.90 and `clean_rate` 0.95, when the per-criterion report runs, then it shows raw 0.80 and corrected (0.80 + 0.90 − 1) / (0.90 + 0.95 − 1) = 0.82, labelled `corrected`. With the judge `stale`, it shows 0.80 labelled `uncorrected (stale)`.
+### EVS-B5 Corrected rate
 
-**EVS-B6 Cap stops cleanly.** Given a workflow suite run with `--cap 20` whose estimated spend reaches $20 after 4 of 7 cases, when the cap is reached, then no fifth case starts, the fourth finishes, and the record is `partial` with 4 results.
+WHEN the per-criterion report runs for a criterion with a raw pass rate of 0.80 over 50 runs THE engine SHALL show, for an `accepted` judge with `catch_rate` 0.90 and `clean_rate` 0.95, raw 0.80 and corrected (0.80 + 0.90 − 1) / (0.90 + 0.95 − 1) = 0.82 labelled `corrected`, and for a `stale` judge 0.80 labelled `uncorrected (stale)`.
 
-**EVS-B7 Stamp needs green model-free regression suites.** Given a workflow whose `check` regression suite has one failing case, when `upgrade-check --stamp` runs, then no stamp is written and the failing case is printed ([LIF-B2](18-lifecycle-and-evals.spec.md)).
+- GIVEN an `accepted` judge with catch 0.90 and clean 0.95 WHEN reported THEN the corrected rate is 0.82
+- GIVEN the judge `stale` WHEN reported THEN 0.80 shows labelled `uncorrected (stale)`
 
-## 4. Error conditions
+### EVS-B16 Grader order
 
-| Condition | Result |
-|---|---|
-| A live suite started from the test suite or CI (detected by the engine's test marker) | Refused, exit 2, no session |
-| A workflow case whose base commit is missing | Case invalid, listed; the suite runs the rest |
-| A step case whose executor cannot provide the step's tools | Refused before spend for that case ([EXI](10-executor-interface.spec.md)) |
+WHEN a step or workflow case is graded THE engine SHALL take the first grader that can decide it: code (`expect`, `end_state`, the gate's check) when an assertion or check fails or the case is `covered`; then the gate's judge or the outcome judge when its state is `accepted`; otherwise a person, the result being `needs_person` listed with the command to record a grade, counted in no rate until a grade is recorded, and leaving a regression suite `incomplete`, never `passed`.
 
-## 5. Design notes
+- GIVEN a failing assertion WHEN graded THEN code decides and no judge is read
 
-- **As built (R2-T4).** `improve/suites.py` holds the suites and `improve/harvest.py` harvest and replay. Check cases are the fixtures of `evals/checks/<unit>/must-pass|must-fail/`; step cases are `evals/steps/<unit>/<case_id>/case.json` (`role`, `inputs`, `expect`, `covered`, `trials`) with an optional `workspace/`; workflow cases are the entries of `evals/cases.json` with `role`, `end_state`, `answers`, `covered` and `trials`. An assertion is `{path}` (exists), `{path, absent}`, `{path, pattern}`, `{path, heading}` or `{changed_within: [globs]}`; `covered: true` says the assertions cover the case, so code decides a pass. A step trial runs the one step as its own workflow in a fresh repository made from the case's workspace, and what earlier units would have produced comes from the case's `inputs`. Results are rows of `evals/results.jsonl` under the state root; a person's grade is a row beside them. A trial that stops for a person for a reason other than a spent budget is `paused` and counts in no rate. `evals run --kind judge` scores every judged gate and risk level under the one cap. The test marker is the test runner's environment variable, lifted only by `TEMPERGRAPH_LIVE=1`. Open: `max_level` of a workflow case is not enforced, a test-result assertion is not built, and the per-criterion pass rates of `report` do not yet carry the judge's state (the step suite's rate does), so EVS-AC-2 stays open.
-- **pass^k for gates.** A gate that passes once in three is not a working gate. `pass_hat_k` exposes it where `pass_at_1` averages it away.
-- **One case, two uses.** Workflow cases are PRP case-set entries so a reviewed case is written once and serves both a release check here and a version trial there.
-- **Corrected, never replaced.** The raw rate stays the record; the corrected rate is an estimate whose error bars depend on a small gold set, so it is a reading aid. An interval that carries the gold set's own uncertainty is a later refinement.
+### EVS-B4 Unaccepted judge defers to a person
 
-## 6. Acceptance criteria
+WHEN a trial of a step case with no `expect` assertions whose gate judge is `below_bar` ends with PROCEED THE engine SHALL record `needs_person`, not `passed`, and read a regression suite holding it `incomplete`.
 
-- [x] EVS-AC-1 Every row of the EVS-B3 table is reproduced by the figures function.
-- [ ] EVS-AC-2 The corrected rate of EVS-B5 is reproduced, and every label of the §2.5 table appears for its states in a fixture report.
-- [x] EVS-AC-3 No live suite can start under the test marker.
-- [x] EVS-AC-4 A `needs_person` result counts in no rate and leaves a regression suite `incomplete`.
-- [x] EVS-AC-5 A live suite record contains no request, output or model text (canary test).
-- [x] EVS-AC-6 `evals report` and `evals grade` make no model call.
+- GIVEN a `below_bar` judge and PROCEED WHEN graded THEN the result is `needs_person`
+
+### EVS-B17 Figures
+
+WHEN suite figures are computed THE engine SHALL compute `pass_at_1` (passing trials over trials), `pass_hat_k` (cases whose `k` trials all passed over cases, [R-045](../research/R-045-evaluating-llm-judges-public-practice.rsrch.md) F11), `first_attempt_pass` (trials whose gate passed on attempt 1), `mean_attempts` (attempts to PROCEED over passing trials), `cost_per_pass` (estimated cost of all trials over passing trials) and `never_passed` (cases with 0 passing trials over at least 5, listed as "check the case first", F13).
+
+- GIVEN a case with 0 of 6 trials passing WHEN reported THEN it is listed under `never_passed`
+
+### EVS-B3 Consistency over a lucky pass
+
+WHEN results come in for a step suite of 6 cases at `k` = 3 with trials passed 3, 2, 3, 0, 3 and 1 THE engine SHALL compute `pass_at_1` 12 / 18 = 0.67 and `pass_hat_k` 3 / 6 = 0.50, counting for `pass_hat_k` only the cases with all three trials passing.
+
+- GIVEN those trials WHEN computed THEN `pass_at_1` is 0.67 and `pass_hat_k` is 0.50
+
+### EVS-B18 Eval verbs
+
+WHEN `evals run <workflow> --kind <kind> [--role <role>] [--trials k] [--executor <name>] [--cap <usd>]`, `evals report <workflow> [--json]` or `evals grade <result> --pass|--fail --reason <text>` runs THE engine SHALL run suites and record results, calling a model only for live kinds; print figures per suite and case, the graduation list, and stale and `needs_person` results with no model call; or record a person's grade for a `needs_person` trial as a row beside the results with no model call.
+
+- GIVEN `evals report` WHEN run THEN no model is called
+
+### EVS-B7 Stamp needs green model-free regression suites
+
+WHEN `upgrade-check --stamp` runs for a workflow whose `check` regression suite has one failing case THE engine SHALL write no stamp and print the failing case ([LIF-B2](18-lifecycle-and-evals.spec.md)).
+
+- GIVEN one failing check regression case WHEN `upgrade-check --stamp` runs THEN no stamp is written
+
+## Acceptance criteria
+
+- EVS-AC1 (EVS-B3, EVS-B17): Every scenario of EVS-B3 is reproduced by the figures function
+- EVS-AC2 (EVS-B5, EVS-B15): The corrected rate of EVS-B5 is reproduced, and every label of EVS-B15 appears for its states in a fixture report
+- EVS-AC3 (EVS-B13): No live suite can start under the test marker
+- EVS-AC4 (EVS-B16, EVS-B4): A `needs_person` result counts in no rate and leaves a regression suite `incomplete`
+- EVS-AC5 (EVS-B14): A live suite record contains no request, output or model text, by a canary test
+- EVS-AC6 (EVS-B18): `evals report` and `evals grade` make no model call
+- EVS-AC7 (EVS-B1, EVS-B2, EVS-B6, EVS-B7, EVS-B8, EVS-B9, EVS-B10, EVS-B11, EVS-B12): Fixtures cover a check without a fail case, both line endings, step and workflow trials, each assertion form, graduation, the cap and the stamp refusal
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should a workflow declaring `stable` also need a live regression suite result on its current binding, not only green model-free suites? Assumed not for the first release, because live suites cost money and need the owner's run. | Owner |
-
-## References
-
+- Should a workflow declaring `stable` also need a live regression suite result on its current binding, not only green model-free suites? Until answered: not in the first release, because live suites cost money and need the owner's run. Owner: owner.
+- The default cap of $20 per live suite run is low: a full replay of a workflow's cases costs far more, and workflow suites will usually need a higher cap set by the operator. Owner: owner.
+- Not built yet: `max_level` of a workflow case is not enforced, a test-result assertion does not exist, and the per-criterion pass rates of `report` do not yet carry the judge's state (the step suite's rate does), so EVS-AC2 is not met. Owner: engine owner.

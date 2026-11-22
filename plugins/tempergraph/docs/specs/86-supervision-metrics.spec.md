@@ -1,180 +1,128 @@
----
-title: Supervision metrics
-type: component
-status: review
-prefix: SUP
-adrs: [0085, 0086, 0088, 0089]
----
-
 # Supervision metrics
 
-## 1. Overview
+## Purpose
 
-How much a run needed someone, and who that was. A workflow you can trust is one that reaches a good result with few touches by anyone, not only with few touches by a person: a run babysat by an agent looks autonomous if only people are counted ([R-085](../research/R-085-callers-supervision-and-babysitting-cost.rsrch.md) D6, B3). This spec defines a **touch**, the per-run **supervision record**, a run's **supervision level**, the per-workflow aggregates, where each figure is written and read, and the supervision criteria for promoting a workflow ([ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md), [ADR-0089](../adr/0089-supervision-is-a-promotion-and-improvement-measure.adr.md)).
+How much a run needed someone, and who that was. A workflow you can trust is one that reaches a good result with few touches by anyone, not only with few touches by a person: a run babysat by an agent looks autonomous if only people are counted ([R-085](../research/R-085-callers-supervision-and-babysitting-cost.rsrch.md) D6, B3). This spec defines a touch, the per-run supervision record, a run's supervision level, the per-workflow aggregates, where each figure is written and read, and the supervision criteria for promoting a workflow ([ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md), [ADR-0089](../adr/0089-supervision-is-a-promotion-and-improvement-measure.adr.md)). Every figure is built from records written when the act happened: the `caller` blocks of [PRV](85-caller-provenance.spec.md) and, for the spend of supervising sessions, the supervision journal of [SCO](87-supervision-cost.spec.md); nothing is classified after the fact by a model. Building and writing them is best effort and never changes a run (OVR-B4); every reader is model-free (C13). Reports, the monitor, audit, eval suites, the improvement loop and the promotion check ([PRO](95-promotion-check.spec.md)) depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-Every figure is built from records written when the act happened: the `caller` blocks of [PRV](85-caller-provenance.spec.md) and, for the spend of supervising sessions, the supervision journal of [SCO](87-supervision-cost.spec.md). Nothing is classified after the fact by a model. Building and writing them is best effort and never changes a run (contract C2); every reader is model-free (C13).
+## Behaviours
 
-## 2. Contract
+### SUP-B1 An agent-babysat run is not autonomous
 
-### 2.1 Touches
+WHEN a run's escalations are answered by an agent with no relay THE record builder SHALL count them as undesigned agent rescues, give the run level `consultant` with `level_by: agent`, and count the run against the unattended rate.
 
-A **touch** is one accepted call that changes a thread's course or answers it, made by anyone but the thread's own graph. Each has a class, an action and the `caller` block of the call.
+- GIVEN a run with two escalations both answered by a Claude Code session with `proceed` and no relay WHEN the record is built THEN `undesigned` is 2, `agent_own_rescues` is 2 and the level is `consultant` by `agent`
 
-| Class | Actions | Meaning |
-|---|---|---|
-| `designed` | `approve` (approval pause or approval node), `answer` (an ask's `input` pause), `event` (a wait's event value) | The workflow asked for it; part of the job |
-| `rescue` | `decide` at an `escalation` or `budget` pause (any cause, `tool_access` and council no-decision included), `apply_deadline` with `escalate` | The workflow could not go on alone |
-| `steer` | `rewind`, `rerun` (on the source thread), `stop`, `grant`, `override` (settings changed on a resume), `ruling`, `breakpoint` (the resume of a `--pause-before`), `edit` (an orchestration edit naming the node) | Someone changed the course unasked |
-| `engine` | infra re-open, the orchestrator's `reopen_infra`, the self-improvement child | No supervisor; counted apart and never as supervision |
+### SUP-B2 Designed pauses keep a run unattended
 
-The start of a run is not a touch; it is counted as `starts`. A scheduled start is a `starts` entry of caller `scheduler`; the person's `schedule add` and `edit` are setup counted once per schedule, never per run ([TCK §2.7](84-schedule-ticks-and-unattended-fires.spec.md)). One resume can be several touches (a `decide` that also grants and overrides is one `rescue` and two `steer`). An undesigned touch is a `rescue` or a `steer`.
+WHEN a run's only touches are designed ones THE record builder SHALL give it level `approver` with `undesigned` 0 and count it toward the unattended rate.
 
-### 2.2 Supervision record of a run
+- GIVEN no touch WHEN the record is built THEN the level is `observer`, `level_by` `none`
+- GIVEN one approval by a person WHEN the record is built THEN the level is `approver`, `level_by` `none`
+- GIVEN an escalation decided by an agent relayed `turn_named` WHEN the record is built THEN the level is `consultant`, `level_by` `person`
+- GIVEN an escalation decided by an agent and a grant by a person WHEN the record is built THEN the level is `collaborator`, `level_by` `mixed`
+- GIVEN a person's rewind and decide on 3 of 4 units reached WHEN the record is built THEN the level is `operator`, `level_by` `person`
 
-Built at every `run_exit` for the thread so far, written as the `supervision{}` object of the ledger row ([SIL §2.4](16-self-improvement.spec.md)) and as a `supervision` run-log record ([EVT §2.2](30-run-events.spec.md)). Cost fields are filled later by [SCO §2.5](87-supervision-cost.spec.md) and are null until then.
+### SUP-B3 One resume, several touches
 
-| Field | Meaning |
-|---|---|
-| `touches` | Counts by class × `decided_by` (`person`, `agent`, `unknown`, `pipeline`, `orchestrator`, `scheduler`), and by pause kind for `rescue` |
-| `undesigned` | `rescue` + `steer`, every decider |
-| `relayed` | Counts by `relay` (`turn_named`, `turn_only`, `claimed`) |
-| `agent_own_rescues` | `rescue` touches with `decided_by: agent` |
-| `wait_s` | Seconds from each `pause` record (or due approval node) to the touch that answered it, summed per decider; `person_wait_s` is the `person` sum, as in [CST §2.2](34-central-run-stats.spec.md) |
-| `latency_s` | Median and maximum of the same per-pause times |
-| `observations` | Read-only engine calls about the thread by supervising hosts, from the journal; null with no journal ([SCO §2.4](87-supervision-cost.spec.md)) |
-| `supervisors` | Number of distinct host sessions that called about the thread, and their hosts |
-| `callers_unknown` | Touches and starts whose caller is `unknown` |
-| `supervision_cost` | `{marginal, turn, completeness}` per [SCO §2.5](87-supervision-cost.spec.md) |
-| `supervision_share` | Marginal estimated supervision cost ÷ (the run's estimated cost + that), null when either is unmeasured |
-| `level`, `level_by` | §2.3 |
+WHEN one resume carries a decision, grants and overrides THE record builder SHALL count each as its own touch with the resume's decider and relay.
 
-A rerun thread has its own record; the rerun is a `steer` touch on its source thread. Reports roll a lineage up to its root on request ([RRN §2.4](81-reruns-and-feedback.spec.md)).
+- GIVEN a resume of a `tool_access` pause with `--decision retry --grant code=shell --set code.timeout_s=900 --relayed` backed by a named person turn WHEN the record is built THEN it counts one `rescue` and two `steer` touches, each `decided_by: person`, `relay: turn_named`
 
-### 2.3 Supervision level of a run
+### SUP-B4 Waiting time per decider
 
-The user's-role scale of Feng, McDonald and Zhang ([R-085](../research/R-085-callers-supervision-and-babysitting-cost.rsrch.md) P4), read from the run's own touches. The first matching row from the top wins.
+WHEN pauses are answered THE record builder SHALL sum the wait from each pause to its answer per decider.
 
-| Level | Rule |
-|---|---|
-| `operator` | Undesigned touches on half or more of the units the run reached, or a breakpoint before every unit |
-| `collaborator` | At least one `steer` touch |
-| `consultant` | At least one `rescue` touch, no `steer` |
-| `approver` | `designed` touches only |
-| `observer` | No touch after the start |
+- GIVEN a pause at 10:00 relayed by an agent at 10:40 with `turn_named` and a pause at 11:00 answered by the agent alone at 11:01 WHEN the record is built THEN `person_wait_s` is 2400 and the agent wait is 60
 
-`level_by` says who made the undesigned touches: `person` (every one `decided_by: person`), `agent` (every one `agent`), `mixed`, or `none` for `observer` and `approver`. An `approver` run whose designed touches were all made by an agent is `approver` with `designed_by: agent` shown beside it, since the workflow asked a person and got an agent.
+### SUP-B5 Thin and unmeasured figures
 
-### 2.4 Workflow aggregates
+WHEN an aggregate rests on fewer than 5 runs or on runs with missing data THE engine SHALL show it with its count and `thin`, show measured counts beside cost figures, never count an unmeasured cost as zero, and report a promotion criterion with missing data on more runs than its row allows as not met.
 
-Read-only, over a window (default 30 days) per workflow and version, from the ledger and the stats rows, local or from the fleet copy ([CST §2.5](34-central-run-stats.spec.md)). A figure over fewer than 5 runs is shown with its count and marked `thin`.
+- GIVEN a workflow version with 3 runs WHEN `report --supervision` runs THEN every figure shows `n = 3` and `thin`
+- GIVEN 12 runs of which 4 have no supervision journal WHEN `report --supervision` runs THEN cost figures show `measured 8 of 12` and the `pipeline` criterion on measured cost reads 0.67, not met
 
-| Figure | Definition |
-|---|---|
-| Runs, by level and `level_by` | Counts and shares |
-| Unattended rate | Share of runs at `observer` or `approver`, with a 95% Wilson interval |
-| Undesigned touches per run | Mean, by class and by decider |
-| Agent's own rescue share | `agent_own_rescues` ÷ all `rescue` touches |
-| Relay quality | Share of agent relays by `relay` value |
-| Wait on people | p50 and p90 of `person_wait_s` per run, and per pause kind |
-| Supervision cost per run | p50 and p90 of marginal estimated cost; the turn figure beside it ([ADR-0088](../adr/0088-attribute-supervision-spend-by-marginal-tokens-beside-turn-totals.adr.md)) |
-| Supervision share | Median and p90 of `supervision_share` |
-| Observations per run | Median; and the share of supervision cost spent re-reading after a wake (`rewake`, [SCO §2.4](87-supervision-cost.spec.md)) |
-| Data quality | Share of runs with every caller known; share with supervision cost measured |
+### SUP-B6 Eval runs stay apart
 
-### 2.5 Where the figures land
+WHEN an eval trial needs a higher level than its case's `max_level` THE engine SHALL fail the trial naming both levels, and keep every eval run out of the production aggregates.
 
-| Place | What it holds | Owner of the shape |
-|---|---|---|
-| Run log | `caller` blocks on every intervention ([PRV §2.5](85-caller-provenance.spec.md)); the `supervision` record at each `run_exit` | [EVT §2.2](30-run-events.spec.md) |
-| Ledger row | `supervision{}` (§2.2), cost filled on close | [SIL §2.4](16-self-improvement.spec.md), [IMD-R15](43-improvement-data.spec.md) |
-| Stats and sink rows | The `run` row gains `touches_undesigned`, `touches_by_decider`, `agent_own_rescues`, `level`, `level_by`, `callers_unknown`; the `supervision` row carries the cost when it closes; the heartbeat says who a waiting run waits on (`person` or the supervising host) | [CST §2.2](34-central-run-stats.spec.md) |
-| Detail document | A `supervision` block: touches in time order with class, action, caller kind, decider, relay and wait; the open supervising sessions; cost so far | [RDD](31-run-detail-document.spec.md) |
-| Monitor | Run view: the level and the touch list; cost tab: run cost and supervision cost apart, and the share; fleet tab: level and supervision share per workflow | monitor [MRV](../../../tempergraph-monitor/docs/specs/03-run-view.spec.md), [MCF](../../../tempergraph-monitor/docs/specs/06-cost-and-fleet.spec.md) |
-| Reports | `report --supervision [window] [--by workflow\|version\|unit\|host\|level]` prints §2.4; `stats --by level\|decider\|host` | [CLI](17-engine-cli.spec.md), [CST §2.5](34-central-run-stats.spec.md) |
-| Orchestration report | Per orchestration: the skill's own supervision cost, the runs' cost and the share, against [OSK-AC-4](46-orchestrator-skill.spec.md)'s 3% | [ORC](45-orchestration.spec.md) |
+- GIVEN a case declaring `max_level: approver` whose trial needed a recorded answer at an escalation WHEN the suite runs THEN the trial fails with `level consultant above approver` and appears in no production aggregate
 
-### 2.6 Audit, evals and the improvement loop
+### SUP-B7 Agent rescues feed the loop
 
-| Place | Use |
-|---|---|
-| Eval suites ([EVS §2.3](51-eval-suites.spec.md)) | A workflow case's pauses are answered by its recorded `answers[]`, with caller `pipeline` and `caller_app: evals`; eval runs never enter the production aggregates of §2.4. A case may declare `max_level: <level>`; a trial that needed a higher level fails, so an eval asserts autonomy as well as quality, much as an assisted evaluation does ([R-085](../research/R-085-callers-supervision-and-babysitting-cost.rsrch.md) P4) |
-| Improvement loop ([SIL §2.4](16-self-improvement.spec.md)) | Each agent's own rescue is a friction finding with cause `agent_decided:<pause cause>`, clustered by (workflow, unit, pause cause) across runs and machines; a cluster whose decisions were mostly `proceed` with no workspace change files a workflow issue whose remedy is a check or an environmental cause, so the pause stops happening. Supervision cost joins the cost lens as its own figure, never summed into run cost |
-| Promotion | §2.7 |
+WHEN self-improvement reads runs in which agents answered the same gate's pause with `proceed` and no change THE engine SHALL cluster the `agent_decided:<pause cause>` findings by workflow, unit and pause cause across runs and machines, and file one workflow issue naming a check or the environmental cause as the remedy.
 
-### 2.7 Supervision criteria for promotion
+- GIVEN seven runs on two machines in which an agent answered the `code` gate's `check_environmental` escalation with `proceed` and each run then passed WHEN self-improvement reads them THEN one cluster and one workflow issue result
 
-`promote-check` ([ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)) reads §2.4 over its window for the workflow version. These rows replace ADR-0041's "person interventions per run" row ([ADR-0089](../adr/0089-supervision-is-a-promotion-and-improvement-measure.adr.md)); its other criteria stand. Defaults, with no data behind them.
+### SUP-B8 Promotion counts agents
 
-| Criterion | To `local-stable` | To `pipeline` |
-|---|---|---|
-| Undesigned touches per run, every decider | ≤ 1.0 | ≤ 0.3 |
-| Unattended rate, lower bound of the interval | ≥ 0.5 | ≥ 0.8 |
-| Agent's own rescue share | reported | ≤ 0.05 |
-| Supervision share, median | ≤ 0.10 | ≤ 0.03 |
-| Runs with every caller known | ≥ 0.8 | ≥ 0.95 |
-| Runs with supervision cost measured | reported | ≥ 0.8 |
+WHEN `promote-check` reads undesigned touches THE engine SHALL count every decider, not only people, and name the leading pause cause of a failing row.
 
-A criterion whose data is missing on more runs than its row allows is reported `unmeasured`, which is not met. After promotion the same rows are re-read over the sliding window; a failing row shows the workflow `regressed` with the number, and nothing is demoted automatically (ADR-0041).
+- GIVEN 20 runs with 0.1 person interventions and 0.9 agent's own rescues per run WHEN `promote-check --to pipeline` runs THEN "undesigned touches per run" reads 1.0, not met, naming the leading pause cause
 
-## 3. Behaviours
+### SUP-B9 Touches
 
-**SUP-B1 An agent-babysat run is not autonomous.** Given a run with two escalations, both answered by a Claude Code session with `proceed` and no relay, when the record is built, then `undesigned` is 2, `agent_own_rescues` is 2, the level is `consultant` with `level_by: agent`, and the run counts against the unattended rate.
+WHEN an accepted call changes a thread's course or answers it, made by anyone but the thread's own graph THE engine SHALL count it as a touch with a class, an action and the call's `caller` block, the classes being `designed` (`approve` at an approval pause or node, `answer` to an ask's `input` pause, `event` for a wait's event value), `rescue` (`decide` at an `escalation` or `budget` pause of any cause, `tool_access` and council no-decision included, and `apply_deadline` with `escalate`), `steer` (`rewind`, `rerun` on the source thread, `stop`, `grant`, `override` of settings on a resume, `ruling`, `breakpoint` for the resume of a `--pause-before`, `edit` of an orchestration naming the node) and `engine` (infra re-open, the orchestrator's `reopen_infra`, the self-improvement child, counted apart and never as supervision); count a run's start as `starts`, a scheduled start as a `starts` entry of caller `scheduler`, the person's `schedule add` and `edit` once per schedule as setup ([TCK-B24](84-schedule-ticks-and-unattended-fires.spec.md)); and count a record with no `caller` block (an older engine) with caller `unknown`, shown in data quality.
 
-**SUP-B2 Designed pauses keep a run unattended.** Given a run with one approval answered by a person and nothing else, when the record is built, then the level is `approver`, `undesigned` is 0 and the run counts toward the unattended rate.
+- GIVEN a ledger row written by an older engine with no caller WHEN touches are counted THEN the touch is `unknown` and the data-quality figure shows it
 
-| Run | Touches | Level | `level_by` |
-|---|---|---|---|
-| A | none | observer | none |
-| B | approve (person) | approver | none |
-| C | decide escalation (agent, relayed `turn_named`) | consultant | person |
-| D | decide escalation (agent) + grant (person) | collaborator | mixed |
-| E | rewind and decide on 3 of 4 units reached (person) | operator | person |
+### SUP-B10 Supervision record of a run
 
-**SUP-B3 One resume, several touches.** Given a resume of a `tool_access` pause with `--decision retry --grant code=shell --set code.timeout_s=900 --relayed` backed by a named person turn, when the record is built, then it counts one `rescue` and two `steer` touches, each `decided_by: person`, `relay: turn_named`.
+WHEN a run exits THE engine SHALL build the thread's record so far and write it as the `supervision{}` object of the ledger row ([SIL](16-self-improvement.spec.md)) and a `supervision` run-log record ([EVT](30-run-events.spec.md)), with `touches` (by class and `decided_by` of `person`, `agent`, `unknown`, `pipeline`, `orchestrator`, `scheduler`, and by pause kind for `rescue`); `undesigned` (`rescue` plus `steer`, every decider); `relayed` (by `relay`); `agent_own_rescues`; `wait_s` per decider from each `pause` record or due approval node to its touch, `person_wait_s` the person sum ([CST](34-central-run-stats.spec.md)); `latency_s` median and maximum; `observations` from the journal, null without one ([SCO](87-supervision-cost.spec.md)); `supervisors` (distinct host sessions and their hosts); `callers_unknown`; `supervision_cost` `{marginal, turn, completeness}` filled when SCO closes it, null until then; `supervision_share` (marginal estimated supervision cost over the run's estimated cost plus that, null when either is unmeasured); and `level` and `level_by`; a rerun thread having its own record, its rerun a `steer` on the source thread, reports rolling a lineage to its root on request ([RRN](81-reruns-and-feedback.spec.md)); an unwritable ledger row giving one failure record with the run's exit code unchanged (C2).
 
-**SUP-B4 Waiting time per decider.** Given a pause at 10:00 relayed by an agent at 10:40 with `turn_named`, and a second pause at 11:00 answered by the agent alone at 11:01, when the record is built, then `person_wait_s` is 2400 and the agent wait is 60.
+- GIVEN an unwritable ledger WHEN a run exits THEN one failure record is written and the exit code is unchanged
 
-**SUP-B5 Thin and unmeasured figures.** Given a workflow version with 3 runs, when `report --supervision` runs, then every figure shows `n = 3` and `thin`; given 12 runs of which 4 have no supervision journal, then the supervision cost figures show `measured 8 of 12` and the `pipeline` criterion "runs with supervision cost measured" reads 0.67, not met.
+### SUP-B11 Supervision level
 
-**SUP-B6 Eval runs stay apart.** Given a workflow case that declares `max_level: approver` and whose trial needed a recorded answer at an escalation, when the suite runs, then the trial fails with `level consultant above approver`, and the run appears in no production aggregate.
+WHEN a run's level is read from its own touches ([R-085](../research/R-085-callers-supervision-and-babysitting-cost.rsrch.md) P4) THE engine SHALL take the first matching of `operator` (undesigned touches on half or more of the units reached, or a breakpoint before every unit), `collaborator` (at least one `steer`), `consultant` (at least one `rescue`, no `steer`), `approver` (`designed` touches only) and `observer` (no touch after the start); set `level_by` to `person` or `agent` when every undesigned touch had that decider, `mixed` otherwise, and `none` for `observer` and `approver`; and show `designed_by: agent` beside an `approver` run whose designed touches were all an agent's.
 
-**SUP-B7 Agent rescues feed the loop.** Given seven runs on two machines in which an agent answered the `code` gate's `check_environmental` escalation with `proceed` and no change, and each run then passed, when self-improvement reads them, then the seven `agent_decided:escalation` findings form one cluster and one workflow issue is filed naming the environmental cause as the remedy.
+- GIVEN an approval answered by an agent WHEN the level is read THEN it is `approver` with `designed_by: agent`
 
-**SUP-B8 Promotion counts agents.** Given 20 runs whose person interventions are 0.1 per run but whose agent's own rescues are 0.9 per run, when `promote-check --to pipeline` runs, then "undesigned touches per run" reads 1.0, not met, and the check names the leading pause cause.
+### SUP-B12 Workflow aggregates
 
-## 4. Error conditions
+WHEN aggregates are read for a workflow and version over a window (default 30 days) from the ledger and the stats rows, local or from the fleet copy ([CST](34-central-run-stats.spec.md)) THE engine SHALL give runs by level and `level_by`; the unattended rate (share at `observer` or `approver`) with a 95% Wilson interval; undesigned touches per run by class and decider; the agent's own rescue share; relay quality by `relay` value; p50 and p90 of `person_wait_s` per run and per pause kind; p50 and p90 of marginal estimated supervision cost with the turn figure beside it ([ADR-0088](../adr/0088-attribute-supervision-spend-by-marginal-tokens-beside-turn-totals.adr.md)); median and p90 of `supervision_share`; median observations per run and the share of supervision cost spent on `rewake`; and data quality (share of runs with every caller known, share with supervision cost measured); read-only, `report --supervision` and `promote-check` reading the same function, an empty window giving an empty report with exit 0.
 
-| Condition | Result |
-|---|---|
-| A record lacks a `caller` block (written by an older engine) | The touch is counted with caller `unknown`; the data-quality figure shows it |
-| The ledger row cannot be written | One failure record; the run's exit code is unchanged (C2) |
-| `report --supervision` over a window with no runs | An empty report, exit 0 |
-| `max_level` names an unknown level | `validate` refuses the case, exit 2 |
+- GIVEN a window with no runs WHEN `report --supervision` runs THEN it prints an empty report and exits 0
 
-## 5. Design notes
+### SUP-B13 Where the figures land
 
-- **Count every decider** ([ADR-0089](../adr/0089-supervision-is-a-promotion-and-improvement-measure.adr.md)). The owner's lifecycle is "less human-in-the-loop, then the pipeline". In the pipeline no agent babysits a run, so a workflow that today needs an agent's rescues is not ready even if no person was touched.
-- **Designed touches are the job.** An approval the workflow asks for is not supervision debt; counting it would push authors to remove approvals ([HUM-B5](07-gate-and-human.spec.md)). It is counted, shown, and kept out of the undesigned figures.
-- **Levels describe a run, not a workflow.** A workflow's autonomy is the distribution of its runs' levels, which is what public measurement found: autonomy is a property of a deployment ([R-085](../research/R-085-callers-supervision-and-babysitting-cost.rsrch.md) P1).
-- **No active time.** How long a person spent reading a pause cannot be measured from records; only waiting time and turn counts are. The design does not estimate it.
+WHEN supervision figures are written and shown THE engine SHALL put `caller` blocks on every intervention and the `supervision` record at each `run_exit` in the run log ([PRV-B17](85-caller-provenance.spec.md)); `supervision{}` in the ledger row, cost filled on close ([IMD](43-improvement-data.spec.md)); `touches_undesigned`, `touches_by_decider`, `agent_own_rescues`, `level`, `level_by` and `callers_unknown` in the `run` stats and sink row, the cost in the `supervision` row when it closes, and who a waiting run waits on in the heartbeat ([CST](34-central-run-stats.spec.md)); a `supervision` block in the detail document with touches in time order (class, action, caller kind, decider, relay, wait), the open supervising sessions and cost so far ([RDD](31-run-detail-document.spec.md)); the level, touch list, run and supervision cost apart and the share in the monitor (monitor [MRV](../../../tempergraph-monitor/docs/specs/03-run-view.spec.md), [MCF](../../../tempergraph-monitor/docs/specs/06-cost-and-fleet.spec.md)); `report --supervision [window] [--by workflow|version|unit|host|level]` and `stats --by level|decider|host` ([CLI](17-engine-cli.spec.md)); and per orchestration the skill's own supervision cost, the runs' cost and the share against [OSK](46-orchestrator-skill.spec.md)'s 3% ([ORC](45-orchestration.spec.md)).
 
-- Release 1 build ([T7 plan](../plans/t7-observability.plan.md) T7.5): the record is built by `run/supervision.py` (T5 and T6) and read by the stats row, the sink row, the detail document and `report --supervision` (`observe/supervision_report.py`). Deviations: a run is a thread and its figures are the thread's last record; `--by unit` counts touches from the ledger's intervention rows; waits per pause kind are read from the ledger's intervention rows decided by a person (p50, p90 and the number of pauses per kind); supervision cost, share and observations are joined from SCO's closed ledger lines (T7.6), so a thread counts as not measured until its supervision closes; the share is null while the run has no estimated cost. `promote-check` is not built (AC-3's other half).
+- GIVEN a run WHEN its ledger, stats and sink rows are compared THEN they carry the same touch figures from one builder
 
-## 6. Acceptance criteria
+### SUP-B14 Audit rules on supervision
 
-- [ ] SUP-AC-1 Every row of the SUP-B2 table is reproduced from a fixture run log by the record builder.
-- [ ] SUP-AC-2 The ledger row, the stats row and the sink row of a run carry the same touch figures (one builder, as [CST §2.2](34-central-run-stats.spec.md) requires of cost).
-- [ ] SUP-AC-3 `report --supervision` and `promote-check` read the same function for §2.4, and both leave the state root unchanged (hash test).
-- [ ] SUP-AC-4 Eval-origin runs are absent from every §2.4 figure (fixture test).
-- [ ] SUP-AC-5 No supervision figure counts an unmeasured cost as zero.
+WHEN audit history rules run ([ARC](56-audit-rule-catalog.spec.md)) THE engine SHALL count undesigned touches by every decider in `interventions-per-run`; fire `agent-rescues-alone` when agents made 30% or more of a gate's rescue decisions (`min_n` 5 rescues); fire `supervision-cost-share` when the median share exceeds 10% (`min_n` 5 measured runs); fire `polling-supervisor` when observations per run exceed 20 or `rewake` exceeds half the supervision cost; and fire `callers-unknown` (info) when more than 20% of touches have an unknown caller.
+
+- GIVEN six rescues of one gate, two by agents WHEN audit runs THEN `agent-rescues-alone` fires
+
+### SUP-B15 Eval cases and levels
+
+WHEN an eval suite runs a workflow case ([EVS](51-eval-suites.spec.md)) THE engine SHALL answer its pauses from the case's recorded `answers[]` with caller `pipeline` and `caller_app: evals`, keep eval runs out of every production aggregate, honour a case's optional `max_level` (SUP-B6) so an eval asserts autonomy as well as quality, and refuse a case whose `max_level` names an unknown level in `validate` with exit 2.
+
+- GIVEN a case with `max_level: pilot` WHEN `validate` runs THEN it exits 2
+
+### SUP-B16 Supervision in the improvement loop
+
+WHEN the improvement loop reads supervision ([SIL](16-self-improvement.spec.md)) THE engine SHALL make each agent's own rescue a friction finding with cause `agent_decided:<pause cause>` clustered as SUP-B7, and join supervision cost to the cost lens as its own figure, never summed into run cost.
+
+- GIVEN a run with $0.40 run cost and $0.10 supervision cost WHEN the cost lens reads it THEN it shows the two figures apart
+
+### SUP-B17 Supervision criteria for promotion
+
+WHEN `promote-check` ([PRO](95-promotion-check.spec.md), [ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)) reads the aggregates over its window for a workflow version THE engine SHALL use these rows in place of ADR-0041's "person interventions per run" ([ADR-0089](../adr/0089-supervision-is-a-promotion-and-improvement-measure.adr.md)), its other criteria standing: undesigned touches per run, every decider, at most 1.0 to `local-stable` and 0.3 to `pipeline`; the unattended rate's lower bound at least 0.5 and 0.8; the agent's own rescue share reported and at most 0.05; median supervision share at most 0.10 and 0.03; runs with every caller known at least 0.8 and 0.95; runs with supervision cost measured reported and at least 0.8; a criterion with too much missing data `unmeasured`, which is not met; and after promotion the same rows re-read over the sliding window, a failing row showing the workflow `regressed` with the number, nothing demoted automatically.
+
+- GIVEN a promoted workflow whose unattended rate falls below its bound WHEN the window is re-read THEN it shows `regressed` with the number and stays promoted
+
+## Acceptance criteria
+
+- SUP-AC1 (SUP-B1, SUP-B2, SUP-B3, SUP-B4, SUP-B9, SUP-B10, SUP-B11): Every level case of SUP-B2 is reproduced from a fixture run log by the record builder
+- SUP-AC2 (SUP-B13): The ledger row, the stats row and the sink row of a run carry the same touch figures (one builder, as [CST](34-central-run-stats.spec.md) requires of cost)
+- SUP-AC3 (SUP-B8, SUP-B12, SUP-B17): `report --supervision` and `promote-check` read the same aggregate function, and both leave the state root unchanged (hash test)
+- SUP-AC4 (SUP-B6, SUP-B15): Eval-origin runs are absent from every aggregate (fixture test)
+- SUP-AC5 (SUP-B5, SUP-B7, SUP-B14, SUP-B16): No supervision figure counts an unmeasured cost as zero, and each audit rule and the `agent_decided` cluster have a fixture
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Are the §2.7 thresholds and the audit thresholds of §2.6 right? Defaults, revisited after the first 20 runs of one workflow version. | Owner |
-| Should an `approver` run whose approvals an agent gave count as unattended? Assumed yes for the rate, flagged by `designed_by: agent`. | Owner |
-
-## References
-
-[PRV](85-caller-provenance.spec.md) · [SCO](87-supervision-cost.spec.md) · [HUM](07-gate-and-human.spec.md) · [SIL](16-self-improvement.spec.md) · [CST](34-central-run-stats.spec.md) · [ARC](56-audit-rule-catalog.spec.md) · [EVS](51-eval-suites.spec.md) · [ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md) · [R-085](../research/R-085-callers-supervision-and-babysitting-cost.rsrch.md)
+- Are the promotion thresholds and the audit thresholds right? Until answered: the stated defaults, revisited after the first 20 runs of one workflow version. Owner: owner.
+- Should an `approver` run whose approvals an agent gave count as unattended? Until answered: yes for the rate, flagged by `designed_by: agent`. Owner: owner.
+- Not built yet: an eval case's `max_level` (SUP-B6, SUP-B15). Owner: engine owner.

@@ -1,209 +1,168 @@
----
-title: Schedule ticks and unattended fires
-type: component
-status: review
-prefix: TCK
-adrs: [0095, 0099, 0085, 0035]
----
-
 # Schedule ticks and unattended fires
 
-## 1. Overview
+## Purpose
 
-A schedule ([SCH](83-schedules.spec.md)) must fire when nobody is at a terminal or in a conversation. This spec owns what makes it fire: the **tick**, one OS-agnostic, deterministic, model-free routine that decides what is due and starts it; the **triggers** that call the tick, of which the engine's own portable **loop** is the default and OS schedulers, pipelines and any other scheduler are optional adapters; the fire token that marks a scheduled run as the scheduler's; the credentials a run needs when nobody is present to sign in; what a fire leaves in the records; and the `tempergraph:schedule` skill ([ADR-0095](../adr/0095-a-model-free-tick-behind-os-agnostic-triggers.adr.md)).
+A schedule ([SCH](83-schedules.spec.md)) must fire when nobody is at a terminal or in a conversation. This spec owns what makes it fire: the tick, one OS-agnostic, deterministic, model-free routine that decides what is due and starts it; the triggers that call the tick, of which the engine's own portable loop is the default and OS schedulers, pipelines and any other scheduler are optional adapters; the fire token that marks a scheduled run as the scheduler's; the credentials a run needs when nobody is present to sign in; what a fire leaves in the records; and the `tempergraph:schedule` skill ([ADR-0095](../adr/0095-a-model-free-tick-behind-os-agnostic-triggers.adr.md)). All scheduling logic (slots, zones, catch-up, overlap, budgets, idempotence) lives in the tick and reads only the engine's files, so it behaves the same on macOS, Linux and Windows and under any trigger; a trigger only decides when the tick is called. The tick is a sibling of the orchestration supervisor ([ORC](45-orchestration.spec.md)): both start work only through the engine's own verbs and answer no gate (OVR-B20). Operators, the schedule skill, pipelines and caller provenance ([PRV](85-caller-provenance.spec.md)) depend on it; design notes and assumptions are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-All scheduling logic (slots, zones, catch-up, overlap, budgets, idempotence) lives in the tick and reads only the engine's files, so it behaves the same on macOS, Linux and Windows and under any trigger. A trigger only decides when the tick is called; it carries no rule. The tick is a sibling of the orchestration supervisor ([ORC](45-orchestration.spec.md)): both start work only through the engine's own verbs and answer no gate (contract C18). A schedule whose target is an orchestration fires `orchestrate start`, which starts that orchestration's own supervisor.
+## Behaviours
 
-## 2. Contract
+### TCK-B1 The default trigger is portable
 
-### 2.1 Triggers
+WHEN the person runs `schedule loop --detach` on a machine with no trigger THE engine SHALL start one loop, a second call reporting it and exiting 0, write no OS entry, and show `loop`, its pid and `last_tick_at` in `schedule trigger status`; and `schedule trigger install --os` run twice SHALL leave exactly one autostart entry that names the shim and `schedule loop` only.
 
-The tick (§2.2) is the one contract every trigger calls: `tempergraph schedule tick`. It is idempotent and lock-guarded, so it is safe at any frequency, from several triggers at once, and after any gap; a trigger that calls it late only makes slots late, and the catch-up rule decides what then fires ([SCH §2.5.1](83-schedules.spec.md)).
+- GIVEN macOS, Linux or Windows with no trigger WHEN `schedule loop --detach` runs twice THEN one loop runs and no OS entry exists
 
-| Trigger | What calls the tick | OS-specific | Survives a reboot | Timing |
-|---|---|---|---|---|
-| `loop` (default) | `schedule loop [--detach]`: a portable engine process in the engine's interpreter. It runs the tick, then sleeps until the earlier of the next slot of any schedule and 60 s, and repeats. It holds nothing in memory between ticks; one per user (lock `schedules/loop.lock`); `schedule loop --stop` ends it | No | Only if something starts it again: a person, the plugin hook below, or an `os` adapter | Seconds after the slot |
-| `host` (optional) | The plugin's Claude Code `SessionStart` hook starts `schedule loop --detach` when `schedule.loop_autostart` is on and none is running ([SHL §2.2](19-plugin-shell.spec.md)) | No | Yes, from the first session after it | As `loop` |
-| `os` (optional) | `schedule trigger install --os` writes one per-user autostart entry that starts the loop at login and restarts it if it exits: a LaunchAgent on macOS, a systemd user unit on Linux, a Task Scheduler task on Windows; where none exists, a crontab line that runs `schedule tick` every 5 minutes | Only the entry it writes | Yes | As `loop`, or the cron interval |
-| `external` (optional) | Any scheduler the owner already runs calls `schedule tick`: cron, a CI schedule, a Kubernetes CronJob, a cloud routine, a desktop task that runs a shell command | Belongs to that scheduler | As that scheduler | That scheduler's interval |
+### TCK-B2 One tick at a time
 
-- **The default needs no OS integration.** `schedule add` checks that some trigger is alive (a loop's lock, an `os` entry, or a tick heartbeat within three intervals) and, when none is, offers `schedule loop --detach` and names the optional adapters once.
-- **Adapters hold constants only.** An `os` entry or a hook runs the shim's absolute path with `schedule loop` or `schedule tick` and nothing else: no shell, no person-typed value, no environment value of its own ([SEC §2.1](14-security.spec.md)). `install` is idempotent and rewrites an entry whose shim path changed after `update` ([UPD](60-engine-update.spec.md)); `schedule trigger status` lists every trigger seen (loop, hook, entries, external ticks from the heartbeat); `remove` deletes what `install` wrote.
-- **Sleep and power-off are the trigger's limit, not the tick's.** While the machine sleeps or is off, nothing calls the tick; on wake the loop's sleep ends late or the restarted loop ticks at once, and the catch-up rule applies. Whether an `os` entry runs while the user is logged out is per platform (P-SCH-1, P-SCH-4) and only matters for that adapter.
+WHEN a tick starts while another tick holds the lock THE tick SHALL exit 0 within one second without reading any schedule.
 
-### 2.2 The tick
+- GIVEN a tick holding `tick.lock` WHEN a second tick starts THEN it exits 0 at once and reads no schedule
 
-| Step | Rule |
-|---|---|
-| 1 Lock | Take `~/.tempergraph/schedules/tick.lock` without waiting; if held, exit 0 at once. One tick runs at a time per user |
-| 2 Heartbeat | Write `schedules/tick.json`: `last_tick_at`, engine version, trigger kind, interval, and per executor the credential kinds the tick's environment resolves (§2.4, presence only) |
-| 3 Settle ended fires | For every `started` fire with no `ended` event, read its thread's status (or orchestration status); when ended, append `ended` with exit, outcome and cost, and update the failure count ([SCH §2.5.3](83-schedules.spec.md)) |
-| 4 Find due slots | For each `active` schedule in order of next slot: the slots passed since its last handled slot, as UTC instants from the canonical When ([SCH §2.3.4](83-schedules.spec.md)); apply `catch_up` and the window; record `missed` ones |
-| 5 Decide each slot | In order: schedule still `active`; overlap against live fires ([SCH §2.5.2](83-schedules.spec.md)); period budget ([SCH §2.5.4](83-schedules.spec.md)); then the preflight: `run --check` (or `orchestrate validate`) with the schedule's options, which includes the credential check of §2.4; a refusal is a `refused` event and a failure, with no spend |
-| 6 Start | Append `started` with the thread id, then launch the engine's `run` (or `orchestrate start`) detached, in its own process group, with the fire token (§2.3), `--schedule <fire_id>` and a hand-off ticket carrying the rendered request and inputs ([SEC §2.1](14-security.spec.md)); the tick never waits for the run |
-| 7 Bound | At most 4 starts per tick and 20 s of wall time; what is left waits for the next tick, oldest slot first |
-| 8 Release | Release the lock and exit 0. An unhandled error is logged in the engine code log ([LOS §2.3](33-local-observability-store.spec.md)), the heartbeat records it, and the next tick starts over |
+### TCK-B3 Missed while asleep
 
-The tick reads each schedule's repository through its state root, so a schedule in a repository that was moved or deleted is `refused` (`repo_missing`) at its next slot and, after the failure count, paused.
+WHEN a machine wakes after sleeping through a slot THE loop SHALL end its sleep and tick at once on every OS and under every trigger, and the tick SHALL start a slot still inside its catch-up window, the run's `run_started` showing the slot and the later start time.
 
-### 2.3 The fire token and the caller
+- GIVEN a laptop asleep from 08:50 to 09:40 with a schedule due at 09:00 WHEN it wakes THEN the 09:00 slot starts at about 09:40 and `run_started` shows `slot` 09:00
 
-Each schedule has a random **fire token** made at `add`; its SHA-256 is the entry's `token_digest`. The tick passes the token to the run it starts in `TEMPERGRAPH_SCHEDULE_TOKEN`, with `--schedule <fire_id>` on argv. The run's caller classification ([PRV §2.3](85-caller-provenance.spec.md)) checks the digest against the entry the fire id names and records caller kind `scheduler`, confidence `attested`, host `schedule`, with a `schedule` block `{schedule_id, fire_id, slot, created_by}` where `created_by` is the entry's `created.caller` kind and decider. A token that does not match is refused (`schedule_token_invalid`) before anything is written. The token is never on argv, in a record or in a step session's environment ([EXI §2.3](10-executor-interface.spec.md)), as for the supervisor's token ([ORC-B17](45-orchestration.spec.md)).
+### TCK-B4 A pause reaches a person
 
-For an orchestration target, the tick's `orchestrate start` is classified `scheduler`; the supervisor's children are `orchestrator` as always, and their status shows both `parent` and the orchestration's `schedule`.
+WHEN a scheduled run pauses with nobody at the machine THE engine SHALL exit the run 3, fire the `paused` lifecycle hook with the facts file ([HOK](17-engine-cli.spec.md)), list the pause in `attention` with its schedule and the resume command, show it in the monitor, and let nothing answer it but a person.
 
-### 2.4 Unattended credentials
+- GIVEN a scheduled run that pauses at 08:20 WHEN it exits 3 THEN `attention` lists the pause with `schedule digest` and the resume command
 
-A fire runs in the trigger's environment, not in the person's shell: no shell profile, no agent host, no keychain prompt anyone can answer. Credentials for scheduled runs come from the operator's credentials profile under `~/.tempergraph/config/` (the profile the executors already read, [ECC](11-executor-claude-code.spec.md), [EAG](12-executor-antigravity.spec.md)), never from a value in the trigger entry. Each executor declares the credential kinds it can use unattended, a capability like any other (C15).
+### TCK-B5 Credential missing at a fire
 
-| Credential kind | Meaning |
-|---|---|
-| `api_key` | An API key in the profile (`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`) or an `apiKeyHelper` command |
-| `cloud` | Bedrock, Vertex or Foundry credentials resolvable without a person |
-| `oauth_token` | A long-lived token made for scripts, such as Claude Code's `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` (one year, model requests only, [R-095](../research/R-095-scheduling-runs-prior-art-and-gaps.rsrch.md) F18) |
-| `interactive_login` | A person's sign-in cached by the product (Claude Code `/login`, Antigravity's login) |
+WHEN a slot comes due and a credential the run needs is gone from the profile THE tick SHALL refuse the fire in the preflight with reason `credential`, record `refused` in the fire log, start no session, and list `schedule_refused` once in `attention` with the executor named.
 
-| Executor | Accepted unattended | Notes |
-|---|---|---|
-| `claude` | `api_key`, `cloud`, `oauth_token`; `interactive_login` with warning `credential_may_expire` | A judge launched with `--bare` does not read `CLAUDE_CODE_OAUTH_TOKEN` (F18), so a schedule whose judges run `--bare` on this executor needs `api_key` or `cloud` for them, or is refused `judge_credential`; a cached `/login` may expire or be unreadable from a background job (P-SCH-2) |
-| `agent-sdk` | `api_key`, `cloud` | As [EAS §4](21-executor-agent-sdk.spec.md) |
-| `messages-api` | `api_key`, `cloud` | As [EMA §2.7](20-executor-messages-api.spec.md) |
-| `antigravity` | `api_key` (`GEMINI_API_KEY`) | `interactive_login` refused `credential_unattended` until P-SCH-3 confirms it |
+- GIVEN a schedule created with an API key in the profile WHEN the key is removed and the next slot comes due THEN the fire is `refused` with reason `credential` and no session starts
 
-At `add` and `edit`, the check resolves each executor and judge binding of the run and compares the kinds the profile provides with the table; at each fire the preflight does it again in the tick's environment. A missing credential at a fire is `refused` with reason `credential`, spends nothing, raises an attention item `schedule_refused` once until the next successful fire, and counts as a failure. A check never makes a model call (C13): it tests presence, form and, where the product offers one, a model-free account call.
+### TCK-B6 Judge credential
 
-### 2.5 Pipelines
+WHEN a `claude` schedule whose judges launch with `--bare` is added or edited and the profile holds only `CLAUDE_CODE_OAUTH_TOKEN` THE engine SHALL refuse it with exit 2 `judge_credential`, naming an API key, an `apiKeyHelper` or cloud credentials as the fix.
 
-A pipeline has its own clock and no tick. `schedule export <id> --for github-actions|gitlab-ci|crontab` prints a snippet the owner commits to the pipeline's configuration; the engine keeps nothing for it.
+- GIVEN a profile with only `CLAUDE_CODE_OAUTH_TOKEN` and `--bare` judges WHEN the schedule is added THEN it exits 2 `judge_credential`
 
-| Item | Rule |
-|---|---|
-| Timing | The rule as five-field cron in UTC. A calendar rule in a zone with daylight saving cannot be one UTC cron line; export refuses it (`export_needs_utc`) unless `--pin-offset` accepts today's offset, which the snippet states in a comment |
-| Command | `tempergraph run <workflow> …` with the schedule's options, `--run-cost-cap`, `--label`, and `--caller pipeline`; the request comes from a file in the repository, never inline |
-| Overlap | The snippet sets the system's own concurrency group so a new job waits for or skips a running one, matching `overlap` where the system can |
-| Caller | `pipeline`, host `ci:<system>` ([PRV-B7](85-caller-provenance.spec.md)), `origin: ci`, and `schedule: {schedule_id, declared: true}`: the tie to the schedule is the pipeline's word, not attested |
-| Credentials | Pipeline secrets; `api_key` or `cloud` only |
+### TCK-B7 Stale trigger
 
-### 2.6 The schedule skill
+WHEN `schedule list`, `status` or `attention` runs with active schedules and a `last_tick_at` older than three intervals THE engine SHALL show `trigger_stale` with the age and the `schedule trigger status` command, read-only verbs still writing nothing.
 
-`tempergraph:schedule` ships in the engine plugin ([SHL](19-plugin-shell.spec.md)). It is optional: every schedule can be made with the CLI and exact formats alone, with no model anywhere. The skill drives the verbs and holds no state of its own.
+- GIVEN active schedules and a heartbeat 20 minutes old under a 5-minute interval WHEN `status` runs THEN it shows `trigger_stale` and the store is unchanged
 
-| # | Step | Verbs |
-|---|---|---|
-| 1 | Find the workflow, request and inputs from the person's words, as the run driver does | `list`, `run --check` |
-| 2 | Translate the person's words into an exact format (`--at`, `--rrule`, `--every`, `--cron`, `--tz`), or pass their phrase unchanged with `--when` when it is in the word grammar; the engine, not the skill, computes the slots | — |
-| 3 | Show the engine's echo verbatim; ask about each `needs` reading in the person's terms | `schedule parse` |
-| 4 | State the run cost cap and, for a recurrence, propose a period budget from `stats --projection` ([CST §2.5](34-central-run-stats.spec.md)) | `stats` |
-| 5 | Ask for one yes on the echo, the caps and the policies, then save | `schedule add … --yes --relayed` |
-| 6 | Offer `schedule loop --detach` when `status` shows no live trigger, and name the optional adapters once | `schedule trigger status`, `schedule loop` |
+### TCK-B8 Engine update between ticks
 
-The skill never fires a run from Claude Code's own scheduled tasks or `/loop`: they live as long as a session or the desktop app, catch up only the latest slot, and cost a model turn per fire ([R-095](../research/R-095-scheduling-runs-prior-art-and-gaps.rsrch.md) F10, F11). A person may still ask a desktop task to call the skill; the schedule it makes is fired by the tick.
+WHEN an `update` switches engines ([UPD](60-engine-update.spec.md)) THE loop SHALL finish its tick and re-execute itself through the shim, so the next tick runs on the new engine with the same schedules, and an `os` entry SHALL be rewritten only if the shim path changed.
 
-**Who may create a schedule.** `add`, `edit`, `resume` and `fire` authorize unattended spend, so they need `decided_by: person` ([PRV §2.4](85-caller-provenance.spec.md)): a person at a terminal, or an agent with `--relayed` and a person turn in its host session within 10 minutes before the call (`turn_only` suffices; there is no pause word to name). Otherwise they are refused `schedule_not_by_person`. `pause`, `skip` and `remove` only lower spend and are accepted from any caller but `unknown`, recorded with their caller.
+- GIVEN a running loop WHEN `update` switches engines THEN the next tick reports the new engine version in `tick.json`
 
-### 2.7 What a fire leaves in the records
+### TCK-B9 Orchestration target
 
-**The scheduled-run ledger.** Every scheduled run on the machine is recorded in one place, whatever folder or repository its schedule was made in: `~/.tempergraph/schedules/runs.jsonl` in the home store ([LOS §2.2](33-local-observability-store.spec.md)), append-only, one row per fire, written by the tick and by `schedule fire` beside the schedule's own fire log.
+WHEN a schedule whose target is an orchestration fires THE tick SHALL run `orchestrate start` with the schedule's args, record the orchestration id as the fire's, settle the fire on later ticks from `orchestrate status`, and count a live orchestration as a live fire for `overlap`.
 
-| Field | Meaning |
-|---|---|
-| `fire_id`, `schedule_id`, `name`, `slot`, `fired_at` | The fire and its schedule ([SCH §2.6](83-schedules.spec.md)) |
-| `target` | Workflow name or orchestration file name; the target repository's path and folder name |
-| `created_from` | The folder and repository `schedule add` ran in |
-| `outcome` | `started`, `skipped` (with reason), `missed`, `refused` (with reason); updated by an `ended` row with exit, run outcome and cost (`reported`, `estimated`, `incomplete`) |
-| `thread_id`, `orchestration_id`, `state_root` | Where the run's own records live |
-| `trigger` | `loop`, `host`, `os` or `external` |
+- GIVEN a schedule targeting `release-train.orch.json` WHEN its slot fires THEN the fire records the orchestration id and a live orchestration makes the next slot `skipped` with `overlap`
 
-The ledger holds metadata only, like the fire log. It outlives the things it points at: a removed schedule, a pruned or deleted state root and a moved repository leave their rows, and `schedule runs` shows such a row as `records_gone` rather than dropping it. Only `store prune --schedules --older-than <days>` shortens it (default: kept). `schedule runs [--schedule <id>] [--repo <path>] [--workflow <w>] [--since <date>] [--outcome …] [--json]` reads it from any directory, read-only (C13); `--detail` adds each run's live status through its state root when that still exists. The stats rows ([OBS §2.4](15-observability-and-cost.spec.md)) carry `schedule_id`, so a sink gives the same view across machines ([CST](34-central-run-stats.spec.md)).
+### TCK-B10 Agent-made schedule
 
-**Elsewhere.**
+WHEN an agent session runs `schedule add … --yes` THE engine SHALL refuse it `schedule_not_by_person` without `--relayed`, and with `--relayed` and a person turn within the window save it with `created.caller` of kind `agent`, `decided_by: person`, `relay: turn_only`.
 
-| Where | What a scheduled run adds |
-|---|---|
-| Status document | `origin: schedule`; `schedule: {schedule_id, fire_id, slot}` beside `parent` ([DUR §2.2](09-durability-and-resume.spec.md)) |
-| `run_started` | `origin`, `schedule`, and the `caller` block of kind `scheduler` ([EVT §2.2](30-run-events.spec.md), [PRV §2.1](85-caller-provenance.spec.md)) |
-| Stats row and `run` sink row | `origin`, `schedule_id` (an HMAC in rows that leave the machine, as `repo_id`, [CST §2.4](34-central-run-stats.spec.md)) |
-| `report` | `--by schedule`: fires, outcomes, cost, skipped and missed counts per schedule |
-| `attention` | Pauses of scheduled runs with their schedule; and the schedule items `schedule_missed`, `schedule_paused`, `schedule_budget`, `schedule_refused` ([ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md)) |
-| Supervision | The fire is not a touch; the person's `add` and `edit` are counted once per schedule as `designed` setup, never per run ([SUP §2.2](86-supervision-metrics.spec.md)); supervision cost of the start is `measured_zero` ([SCO §2.3](87-supervision-cost.spec.md)) |
+- GIVEN a Claude Code session with a person turn 2 minutes earlier WHEN it runs `schedule add … --yes --relayed` THEN the schedule is saved with `decided_by: person`
 
-### 2.8 Probes
+### TCK-B11 Export refuses a moving offset
 
-| Probe | Fact | Rests on it | State |
-|---|---|---|---|
-| P-SCH-1 | A systemd user unit started by the `os` adapter runs while the user is logged out, with and without lingering, on a stock distribution | The `os` adapter on Linux | not run |
-| P-SCH-2 | A loop started by a LaunchAgent can read a Claude Code `/login` sign-in from the Keychain while the screen is locked, and after a restart before login | `interactive_login` warning on macOS | not run |
-| P-SCH-3 | Antigravity's cached sign-in works from a session home started by the loop or an `os` adapter (with P-AG-1) | `interactive_login` for `antigravity` | not run |
-| P-SCH-4 | A loop's sleep on Windows, macOS and Linux ends within one loop interval after the machine wakes (monotonic against wall clock) | `loop` timing after sleep | not run |
+WHEN `schedule export` is asked for a calendar rule in a zone with daylight saving THE engine SHALL exit 2 `export_needs_utc`, and with `--pin-offset` print the cron line for today's offset with a comment stating the local time it runs at in the other season.
 
-## 3. Behaviours
+- GIVEN `every weekday at 8:00` in `Europe/Warsaw` WHEN `schedule export digest --for github-actions --pin-offset` runs THEN it prints `0 7 * * 1-5` and a comment that the job runs at 09:00 local in summer
 
-**TCK-B1 The default trigger is portable.** Given a machine on macOS, Linux or Windows with no trigger, when the person runs `schedule loop --detach` twice, then one loop runs (the second call reports it and exits 0), it writes no OS entry, and `schedule trigger status` shows `loop`, its pid and `last_tick_at`; `schedule trigger install --os` run twice leaves exactly one autostart entry that names the shim and `schedule loop` only.
+### TCK-B12 Several triggers
 
-**TCK-B2 One tick at a time.** Given a tick holding the lock, when a second tick starts, then it exits 0 within one second without reading any schedule.
+WHEN a slot comes due and more than one trigger calls `schedule tick` THE engine SHALL start the slot once, a later tick finding it handled and exiting 0 without waiting.
 
-**TCK-B3 Missed while asleep.** Given a laptop asleep from 08:50 to 09:40 with a schedule due at 09:00, when it wakes, then the loop's sleep ends and it ticks at once (on every OS, whatever the trigger), the tick finds the 09:00 slot inside its window and starts it, and the run's `run_started` shows `slot` 09:00 and a start time of about 09:40.
+- GIVEN the loop running and an `external` cron also calling `schedule tick` every 5 minutes WHEN a slot comes due THEN it has one `started` event
 
-**TCK-B4 A pause reaches a person.** Given a scheduled run that pauses at 08:20 with nobody at the machine, when the run exits 3, then the `paused` lifecycle hook fires with the facts file ([CLI §2.2](17-engine-cli.spec.md)), `attention` lists the pause with `schedule digest` and the resume command, the monitor shows it, and nothing answers it but a person.
+### TCK-B13 One record of every scheduled run
 
-**TCK-B5 Credential missing at a fire.** Given a schedule created with an API key in the profile, when the key is removed and the next slot comes due, then the preflight refuses with reason `credential`, the fire log records `refused`, no session starts, and `attention` lists `schedule_refused` once with the executor named.
+WHEN the person runs `schedule runs` from any directory THE engine SHALL list every fire on the machine with its schedule, target repository, `created_from`, outcome and cost, including fires of removed schedules, and mark rows whose state root is gone `records_gone`.
 
-**TCK-B6 Judge credential.** Given a `claude` schedule whose profile holds only `CLAUDE_CODE_OAUTH_TOKEN` and whose judges launch with `--bare`, when it is added, then it is refused with `judge_credential`, naming an API key, an `apiKeyHelper` or cloud credentials as the fix.
+- GIVEN schedules made from `~/work/api`, `~/work/web` and the home folder, one since removed and the `web` state root deleted WHEN `schedule runs --since 2026-11-01` runs THEN every fire of all three appears and the `web` rows are marked `records_gone`
 
-**TCK-B7 Stale trigger.** Given active schedules and a `last_tick_at` older than three intervals, when `schedule list`, `status` or `attention` runs, then each shows `trigger_stale` with the age and the `schedule trigger status` command; read-only verbs still write nothing.
+### TCK-B14 Triggers
 
-**TCK-B7a Several triggers.** Given the loop running and an `external` cron also calling `schedule tick` every 5 minutes, when a slot comes due, then it starts once: the second tick waits on nothing, finds the slot handled and exits 0.
+WHEN something must call the tick THE engine SHALL make `tempergraph schedule tick` the one contract every trigger calls, idempotent and lock-guarded so it is safe at any frequency, from several triggers and after any gap, and offer four triggers: `loop` (default; `schedule loop [--detach]`, a portable engine process in the engine's interpreter that runs the tick, sleeps until the earlier of the next slot of any schedule and 60 s, and repeats, holding nothing in memory between ticks, one per user by lock `schedules/loop.lock`, ended by `schedule loop --stop`); `host` (the plugin's `SessionStart` hook starts `schedule loop --detach` when `schedule.loop_autostart` is on and none is running, [SHL](19-plugin-shell.spec.md)); `os` (`schedule trigger install --os` writes one per-user autostart entry that starts the loop at login and restarts it if it exits: a LaunchAgent on macOS, a systemd user unit on Linux, a Task Scheduler task on Windows, and where none exists a crontab line that runs `schedule tick` every 5 minutes; exit 2 `no_os_scheduler` when no per-user scheduler is usable, `loop` and `external` still working); and `external` (any scheduler the owner runs, such as cron, a CI schedule, a Kubernetes CronJob or a cloud routine, calls `schedule tick`); a late call only makes slots late, the catch-up rule deciding what fires ([SCH-B21](83-schedules.spec.md)).
 
-**TCK-B7b One record of every scheduled run.** Given schedules made from `~/work/api`, `~/work/web` and the home folder, one of them since removed and the `web` state root deleted, when the person runs `schedule runs --since 2026-11-01` from any directory, then every fire of all three appears with its schedule, target repository, `created_from`, outcome and cost, the `web` rows marked `records_gone`.
+- GIVEN a machine with no per-user scheduler WHEN `schedule trigger install --os` runs THEN it exits 2 `no_os_scheduler` and `schedule loop --detach` still works
 
-**TCK-B8 Engine update between ticks.** Given an `update` that switches engines ([UPD](60-engine-update.spec.md)), when the next tick runs, then a running loop finishes its tick and re-executes itself through the shim, so the next tick runs on the new engine with the same schedules; an `os` entry is rewritten only if the shim path changed.
+### TCK-B15 Adapters and trigger status
 
-**TCK-B9 Orchestration target.** Given a schedule whose target is `release-train.orch.json`, when its slot fires, then the tick runs `orchestrate start` with the schedule's args, records the orchestration id as the fire's, and on later ticks settles the fire from `orchestrate status`; a live orchestration is a live fire for `overlap`.
+WHEN a trigger is installed, checked or a schedule is added THE engine SHALL write adapter entries and hooks that run only the shim's absolute path with `schedule loop` or `schedule tick`, with no shell, no person-typed value and no environment value of their own ([SEC](14-security.spec.md)); make `install` idempotent and rewrite an entry whose shim path changed after `update` or that points at a missing shim, which `trigger status` reports `broken`; list in `schedule trigger status` every trigger seen (loop, hook, entries, external ticks from the heartbeat) with the last error; make `remove` delete what `install` wrote; and at `schedule add`, when no trigger is alive (no loop lock, no `os` entry, no heartbeat within three intervals), save the schedule with a warning that offers `schedule loop --detach` and names the optional adapters once.
 
-**TCK-B10 Agent-made schedule.** Given a Claude Code session that runs `schedule add … --yes` with no `--relayed`, when it is checked, then it is refused `schedule_not_by_person`; with `--relayed` and a person turn 2 minutes earlier, it is saved with `created.caller` of kind `agent`, `decided_by: person`, `relay: turn_only`.
+- GIVEN an `os` entry whose shim was deleted WHEN `schedule trigger status` runs THEN the entry is `broken`, and `install` rewrites it
 
-**TCK-B11 Export refuses a moving offset.** Given `every weekday at 8:00` in `Europe/Warsaw`, when `schedule export digest --for github-actions` runs, then it exits 2 `export_needs_utc`; with `--pin-offset` it prints `0 7 * * 1-5` and a comment that the job runs at 09:00 local in summer.
+### TCK-B16 The tick
 
-## 4. Error conditions
+WHEN `schedule tick` runs THE tick SHALL take `~/.tempergraph/schedules/tick.lock` without waiting and exit 0 if held; write the heartbeat `schedules/tick.json` with `last_tick_at`, engine version, trigger kind, interval and per executor the credential kinds its environment resolves (presence only); settle every `started` fire with no `ended` event from its thread's or orchestration's status, appending `ended` with exit, outcome and cost and updating the failure count ([SCH-B23](83-schedules.spec.md)); find each `active` schedule's slots passed since its last handled slot, in order of next slot, as UTC instants from the canonical When ([SCH-B20](83-schedules.spec.md)), applying `catch_up` and the window and recording `missed` ones; decide each slot by the schedule still `active`, overlap against live fires ([SCH-B22](83-schedules.spec.md)), the period budget ([SCH-B24](83-schedules.spec.md)) and the preflight `run --check` (or `orchestrate validate`) with the schedule's options and the credential check of TCK-B19, a refusal being a `refused` event and a failure with no spend; append `started` with the thread id, then launch `run` (or `orchestrate start`) detached in its own process group with the fire token, `--schedule <fire_id>` and a hand-off ticket carrying the rendered request and inputs ([SEC-B5](14-security.spec.md)), never waiting for the run; start at most 4 runs and spend at most 20 s per tick, leaving the rest oldest slot first for the next tick with `deferred` in the heartbeat; refuse a schedule whose repository was moved or deleted as `refused` (`repo_missing`); and release the lock and exit 0, an unhandled error being logged in the engine code log ([LOS](33-local-observability-store.spec.md)) and the heartbeat, an unwritable home store making the tick exit non-zero without starting anything.
 
-| Condition | Result |
-|---|---|
-| `trigger install --os` on a machine with no usable per-user scheduler | Exit 2 `no_os_scheduler`; the `loop` and `external` triggers still work |
-| No live trigger when a schedule is added | Saved; a warning names `schedule loop --detach` |
-| The trigger entry exists but points at a missing shim | `trigger status` reports `broken`; `install` rewrites it |
-| Fire token missing or wrong | Exit 2 `schedule_token_invalid`, nothing written |
-| `--schedule` given by hand without a token | Exit 2 `schedule_reserved` |
-| Credential kind not accepted for an executor | Exit 2 `credential_unattended` at `add`; `refused` at a fire |
-| Judge binding without a usable credential | Exit 2 `judge_credential` |
-| A schedule verb that authorizes spend without a person decider | Exit 2 `schedule_not_by_person` |
-| Tick exceeds 20 s | Remaining slots wait for the next tick; the heartbeat records `deferred` |
-| Home store unwritable | The tick exits non-zero without starting anything; `trigger status` shows the last error |
+- GIVEN six due slots WHEN one tick runs THEN four start, two wait for the next tick and the heartbeat records `deferred`
 
-## 5. Design notes
+### TCK-B17 Fire token and caller
 
-- **OS-agnostic core, optional adapters.** Every rule is in the tick and reads files only; the portable loop calls it the same way on every OS. OS schedulers differ in catch-up, sleep and logout behaviour ([R-095](../research/R-095-scheduling-runs-prior-art-and-gaps.rsrch.md) F12 to F16), so they are used, when the owner wants, only to start the loop at login; they never decide a slot ([ADR-0095](../adr/0095-a-model-free-tick-behind-os-agnostic-triggers.adr.md)).
-- **Supervisor and tick stay apart.** The supervisor lives as long as its orchestration; the tick lives for seconds. Merging them would make every orchestration a resident process or every tick a supervisor.
-- **Credentials are a capability.** A fire that would stall on a sign-in nobody can answer is refused before spend, like any undeclared capability (C15). The Claude Code CLI's `/login` is allowed with a warning because it often works on a desktop that stays signed in; the token made for scripts is the recommended path.
-- **Deadlines.** The tick is the scheduler that [FLX §2.3](74-flow-extensions.spec.md) assumed the owner would bring: a later slice may let it apply overdue deadlines with `resume --apply-deadline`, recorded with caller `scheduler`. Not in the first slice.
-- **Assumptions** (owner unavailable): a 60 s loop ceiling is enough to settle ended fires promptly; a 5-minute cron interval for the crontab fallback; four starts and 20 s per tick bound a burst after a long sleep; the 10-minute window for a relayed person turn matches the time a person takes to read an echo and say yes.
+WHEN a schedule is added and its fires start THE engine SHALL make a random fire token at `add`, store its SHA-256 as the entry's `token_digest`, pass the token to the run in `TEMPERGRAPH_SCHEDULE_TOKEN` with `--schedule <fire_id>` on argv, and have the run's caller classification ([PRV](85-caller-provenance.spec.md)) check the digest against the entry the fire id names and record caller kind `scheduler`, confidence `attested`, host `schedule`, with a `schedule` block `{schedule_id, fire_id, slot, created_by}` (`created_by` the entry's `created.caller` kind and decider); refuse a missing or wrong token with exit 2 `schedule_token_invalid` and `--schedule` given by hand without a token with exit 2 `schedule_reserved`, before anything is written; keep the token off argv, out of every record and out of every step session's environment ([EXI](10-executor-interface.spec.md)), as for the supervisor's token ([ORC-B17](45-orchestration.spec.md)); and classify an orchestration target's `orchestrate start` as `scheduler`, its children staying `orchestrator` with both `parent` and the orchestration's `schedule` in their status.
 
-## 6. Acceptance criteria
+- GIVEN a fire with a token whose digest does not match the entry WHEN the run starts THEN it exits 2 `schedule_token_invalid` and writes nothing
 
-- [ ] TCK-AC-1 The same tick test suite (fake clock, scripted runs) passes unchanged on macOS, Linux and Windows under the `loop` and under direct `schedule tick` calls; each `os` entry `install` writes holds only the shim path and `schedule loop` or `schedule tick` (golden files), and `remove` leaves no trace.
-- [ ] TCK-AC-2 With a fake clock, a tick that is killed at each step of §2.2 and run again never starts a slot twice and records every slot as exactly one of started, skipped, missed or refused.
-- [ ] TCK-AC-3 The tick starts no model session and no process other than the engine's `run` or `orchestrate start` (process audit).
-- [ ] TCK-AC-4 A scheduled run's `run_started.caller` is `scheduler` (`attested`) with the schedule block; the token appears in no record, argv or step environment (scan test).
-- [ ] TCK-AC-4a Every slot the tick handles yields exactly one ledger row (plus one `ended` row for a started fire), and removing a schedule, pruning a state root or `store prune` without `--schedules` deletes no ledger row.
-- [ ] TCK-AC-5 Each row of the credential tables has a fixture: accepted kinds pass, others are refused at `add` and at a fire with the stated reason and no spend.
-- [ ] TCK-AC-6 The skill's eval cases ([LIF §5](18-lifecycle-and-evals.spec.md)) cover a clear phrase, each `needs` row of [SCH §2.3.5](83-schedules.spec.md), the same schedule given in an exact format, a missing cost cap and an agent call without a person turn.
+### TCK-B18 Unattended credential kinds
+
+WHEN a fire needs credentials THE engine SHALL take them from the operator's credentials profile under `~/.tempergraph/config/` (the profile the executors already read, [ECC](11-executor-claude-code.spec.md), [EAG](12-executor-antigravity.spec.md)), never from a value in the trigger entry, a fire running in the trigger's environment with no shell profile, agent host or keychain prompt anyone can answer; and know the kinds `api_key` (an API key in the profile such as `ANTHROPIC_API_KEY` or `GEMINI_API_KEY`, or an `apiKeyHelper` command), `cloud` (Bedrock, Vertex or Foundry credentials resolvable without a person), `oauth_token` (a long-lived token made for scripts, such as Claude Code's `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token`, [R-095](../research/R-095-scheduling-runs-prior-art-and-gaps.rsrch.md) F18) and `interactive_login` (a person's sign-in cached by the product), each executor declaring the kinds it can use unattended as a capability (OVR-B17).
+
+- GIVEN a trigger entry WHEN it is read THEN it holds no credential value
+
+### TCK-B19 Credential check per executor
+
+WHEN a schedule is added or edited, and again at each fire in the tick's environment THE engine SHALL resolve each executor and judge binding of the run and accept for `claude` the kinds `api_key`, `cloud` and `oauth_token`, and `interactive_login` with warning `credential_may_expire`, a judge launched with `--bare` needing `api_key` or `cloud` (else `judge_credential`); for `agent-sdk` ([EAS](21-executor-agent-sdk.spec.md)) and `messages-api` ([EMA](20-executor-messages-api.spec.md)) `api_key` and `cloud`; for `antigravity` `api_key` (`GEMINI_API_KEY`), `interactive_login` refused `credential_unattended` until P-SCH-3 confirms it; refuse another kind with exit 2 `credential_unattended` at `add` and `refused` at a fire; treat a missing credential at a fire as TCK-B5, counting as a failure; and never make a model call (C13), testing presence, form and, where the product offers one, a model-free account call.
+
+- GIVEN an `antigravity` schedule with only a cached sign-in WHEN it is added THEN it exits 2 `credential_unattended`
+
+### TCK-B20 Pipeline export
+
+WHEN `schedule export <id> --for github-actions|gitlab-ci|crontab` runs THE engine SHALL print a snippet the owner commits to the pipeline's configuration and keep nothing for it, with the rule as five-field cron in UTC (TCK-B11 for a rule with a moving offset); the command `tempergraph run <workflow> …` with the schedule's options, `--run-cost-cap`, `--label` and `--caller pipeline`, the request read from a file in the repository, never inline; the system's own concurrency group so a new job waits for or skips a running one, matching `overlap` where the system can; caller `pipeline`, host `ci:<system>` ([PRV-B7](85-caller-provenance.spec.md)), `origin: ci` and `schedule: {schedule_id, declared: true}`, the tie being the pipeline's word, not attested; pipeline secrets of kind `api_key` or `cloud` only; and a run that pauses exiting 3 as any pipeline run, resuming elsewhere being deferred hosted-pipeline work.
+
+- GIVEN a UTC schedule WHEN it is exported for `gitlab-ci` THEN the snippet's command carries `--caller pipeline` and reads the request from a repository file
+
+### TCK-B21 The schedule skill
+
+WHEN the `tempergraph:schedule` skill runs THE skill SHALL drive the verbs and hold no state, every schedule remaining possible with the CLI and exact formats alone: find the workflow, request and inputs from the person's words as the run driver does (`list`, `run --check`); translate the words into an exact format (`--at`, `--rrule`, `--every`, `--cron`, `--tz`) or pass a phrase of the word grammar unchanged with `--when`, the engine computing the slots; show `schedule parse`'s echo verbatim and ask about each `needs` reading in the person's terms; state the run cost cap and, for a recurrence, propose a period budget from `stats --projection` ([CST](34-central-run-stats.spec.md)); ask for one yes on the echo, caps and policies and save with `schedule add … --yes --relayed`; offer `schedule loop --detach` when `schedule trigger status` shows no live trigger, naming the adapters once; and never fire a run from Claude Code's own scheduled tasks or `/loop` ([R-095](../research/R-095-scheduling-runs-prior-art-and-gaps.rsrch.md) F10, F11), a desktop task that calls the skill making a schedule the tick fires.
+
+- GIVEN the person asks for a run "every weekday at 8" WHEN the skill saves it THEN it called `schedule parse` and `schedule add … --yes --relayed`, and no Claude Code scheduled task exists
+
+### TCK-B22 Who may create a schedule
+
+WHEN `schedule add`, `edit`, `resume` or `fire` runs THE engine SHALL require `decided_by: person` ([PRV](85-caller-provenance.spec.md)), a person at a terminal or an agent with `--relayed` and a person turn in its host session within 10 minutes before the call (`turn_only` suffices), and refuse it otherwise with exit 2 `schedule_not_by_person`; and accept `pause`, `skip` and `remove`, which only lower spend, from any caller but `unknown`, recorded with their caller.
+
+- GIVEN an agent with no person turn in 30 minutes WHEN it runs `schedule pause digest` THEN it is accepted and recorded with caller kind `agent`
+
+### TCK-B23 Scheduled-run ledger
+
+WHEN a fire is handled by the tick or by `schedule fire` THE engine SHALL append one row to `~/.tempergraph/schedules/runs.jsonl` in the home store ([LOS-B10](33-local-observability-store.spec.md)), whatever folder or repository the schedule was made in, with `fire_id`, `schedule_id`, `name`, `slot`, `fired_at` ([SCH-B28](83-schedules.spec.md)); `target` (workflow or orchestration file name, the target repository's path and folder name); `created_from` (where `schedule add` ran); `outcome` (`started`, `skipped` with reason, `missed`, `refused` with reason), updated by an `ended` row with exit, run outcome and cost (`reported`, `estimated`, `incomplete`); `thread_id`, `orchestration_id` and `state_root`; and `trigger`; holding metadata only, keeping rows when their schedule, state root or repository is gone, shortened only by `store prune --schedules --older-than <days>` (default kept); and make `schedule runs [--schedule <id>] [--repo <path>] [--workflow <w>] [--since <date>] [--outcome …] [--json]` read it read-only from any directory (C13), `--detail` adding each run's live status through its state root when it exists.
+
+- GIVEN a removed schedule WHEN `store prune` runs without `--schedules` THEN its ledger rows remain
+
+### TCK-B24 What a scheduled run adds elsewhere
+
+WHEN a scheduled run is recorded THE engine SHALL write `origin: schedule` and `schedule: {schedule_id, fire_id, slot}` beside `parent` in the status document ([DUR](09-durability-and-resume.spec.md)); `origin`, `schedule` and the `caller` block of kind `scheduler` in `run_started` ([EVT](30-run-events.spec.md)); `origin` and `schedule_id` in the stats row and `run` sink row, as an HMAC in rows that leave the machine as for `repo_id` ([CST](34-central-run-stats.spec.md), [OBS](15-observability-and-cost.spec.md)); fires, outcomes, cost, skipped and missed counts per schedule in `report --by schedule`; in `attention` the pauses of scheduled runs with their schedule and the items `schedule_missed`, `schedule_paused`, `schedule_budget` and `schedule_refused` ([ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md)); and for supervision no touch for a fire, the person's `add` and `edit` counted once per schedule as `designed` setup ([SUP](86-supervision-metrics.spec.md)), and supervision cost of the start `measured_zero` ([SCO](87-supervision-cost.spec.md)).
+
+- GIVEN a scheduled run WHEN its stats row is sent to a sink THEN it carries `origin: schedule` and an HMAC of the `schedule_id`
+
+## Acceptance criteria
+
+- TCK-AC1 (TCK-B1, TCK-B14, TCK-B15): The same tick test suite (fake clock, scripted runs) passes unchanged on macOS, Linux and Windows under the `loop` and under direct `schedule tick` calls; each `os` entry `install` writes holds only the shim path and `schedule loop` or `schedule tick` (golden files), and `remove` leaves no trace
+- TCK-AC2 (TCK-B2, TCK-B3, TCK-B7, TCK-B8, TCK-B9, TCK-B12, TCK-B16): With a fake clock, a tick that is killed at each of its steps and run again never starts a slot twice and records every slot as exactly one of started, skipped, missed or refused
+- TCK-AC3 (TCK-B16, TCK-B21): The tick starts no model session and no process other than the engine's `run` or `orchestrate start` (process audit)
+- TCK-AC4 (TCK-B4, TCK-B17, TCK-B24): A scheduled run's `run_started.caller` is `scheduler` (`attested`) with the schedule block; the token appears in no record, argv or step environment (scan test)
+- TCK-AC5 (TCK-B13, TCK-B23): Every slot the tick handles yields exactly one ledger row (plus one `ended` row for a started fire), and removing a schedule, pruning a state root or `store prune` without `--schedules` deletes no ledger row
+- TCK-AC6 (TCK-B5, TCK-B6, TCK-B18, TCK-B19, TCK-B20): Each accepted and refused credential kind per executor has a fixture: accepted kinds pass, others are refused at `add` and at a fire with the stated reason and no spend
+- TCK-AC7 (TCK-B10, TCK-B11, TCK-B21, TCK-B22): The skill's eval cases ([LIF](18-lifecycle-and-evals.spec.md)) cover a clear phrase, each `needs` case of [SCH-B2](83-schedules.spec.md), the same schedule given in an exact format, a missing cost cap and an agent call without a person turn
+- TCK-AC8 (TCK-B3, TCK-B14, TCK-B19): Probes P-SCH-1 (a systemd user unit started by the `os` adapter runs while the user is logged out, with and without lingering), P-SCH-2 (a loop started by a LaunchAgent reads a Claude Code `/login` sign-in from the Keychain while the screen is locked and after a restart before login), P-SCH-3 (Antigravity's cached sign-in works from a session home started by the loop or an `os` adapter, with P-AG-1) and P-SCH-4 (a loop's sleep on Windows, macOS and Linux ends within one loop interval after the machine wakes) are recorded before the controls they gate are marked `LIVE-PROVEN`
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should the engine offer to enable lingering on Linux, or only name it? Naming it is assumed. | Owner, after P-SCH-1 |
-| May scheduled runs use the operator's Claude subscription through `setup-token`? The design allows it as the products document it; the Agent SDK question of [R-005](../research/R-005-claude-agent-sdk-executor.rsrch.md) is separate. | Owner |
-
-## References
-
-[SCH](83-schedules.spec.md) · [R-095](../research/R-095-scheduling-runs-prior-art-and-gaps.rsrch.md) · [ORC](45-orchestration.spec.md) · [PRV](85-caller-provenance.spec.md) · [SEC](14-security.spec.md) · [EXI](10-executor-interface.spec.md) · [UPD](60-engine-update.spec.md) · [SHL](19-plugin-shell.spec.md)
+- Should the engine offer to enable lingering on Linux, or only name it? Until answered: it names it. Owner: owner, after P-SCH-1.
+- May scheduled runs use the operator's Claude subscription through `setup-token`? Until answered: allowed as the products document it; the Agent SDK question of [R-005](../research/R-005-claude-agent-sdk-executor.rsrch.md) is separate. Owner: owner.
+- Not built yet: ticks, triggers and unattended fires are release 3 work with schedules (third-release plan R3-T5), first the portable loop and the `host` adapter, then the `os` adapter, orchestration targets and pipeline export; probes P-SCH-1 to P-SCH-4 have not run. Owner: engine owner.

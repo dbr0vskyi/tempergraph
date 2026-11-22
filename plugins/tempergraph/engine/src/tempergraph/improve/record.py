@@ -1,6 +1,6 @@
-"""Records on every exit, both modes, no model call (SIL §2.1, IMD §2.2, §2.3).
+"""Records on every exit, both modes, no model call (SIL-B8, IMD-B20, IMD-B21).
 
-Findings are metadata only (`runs/<workflow>/<task>/findings.json`, LOS §2.1). The evidence file
+Findings are metadata only (`runs/<workflow>/<task>/findings.json`, LOS-B7, LOS-B8, LOS-B9). The evidence file
 (`runs/<workflow>/<task>/evidence/record.json`) holds the request, the outputs and scrubbed feedback, stays on the
 machine, and is never opened by filing code.
 """
@@ -43,8 +43,8 @@ def prompt_path(root: Path, workflow: str, task_id: str, session_key: str) -> Pa
 
 
 def write_prompt(root: Path, workflow: str, task_id: str, session_key: str, text: str) -> None:
-    """A step session's rendered prompt, scrubbed, local only: the session review's intent (SRV §2.5)."""
-    with contextlib.suppress(OSError):  # contract C2
+    """A step session's rendered prompt, scrubbed, local only: the session review's intent (SRV-B17)."""
+    with contextlib.suppress(OSError):  # OVR-B4
         _write_private(prompt_path(root, workflow, task_id, session_key), clip(scrub(text), EVIDENCE_CHARS))
 
 
@@ -72,7 +72,7 @@ def unit_decls(spec: WorkflowSpec) -> dict[str, dict[str, Any]]:
                      "brief": clip(brief, 4000)}
     return out
 def read_evidence(root: Path, workflow: str, task_id: str) -> dict[str, Any]:
-    """A run's local evidence record, or {} when absent or unreadable (the proposer's reading set, PRP §5)."""
+    """A run's local evidence record, or {} when absent or unreadable (the proposer's reading set, PRP-B23)."""
     try:
         doc = json.loads(evidence_path(root, workflow, task_id).read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -153,7 +153,7 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
            and str(r.get("ts") or "") >= since and (not seg_start or str(r.get("ts") or "") <= seg_start)]
     found = causemod.derive(seg, ivs, row.get("grants") or ())
     decls = unit_decls(spec)
-    try:  # SRV §2.1, §2.2: digests first, their causes join the findings; never changes the exit (C2)
+    try:  # SRV-B11, SRV-B12: digests first, their causes join the findings; never changes the exit (OVR-B4)
         digests = digestmod.write_segment(root, spec.name, task_id, seg, decls)
         passed = {str(r.get("unit")): {"passed": not (r.get("blockers") or [])}  # the unit's last judgement
                   for r in seg if r.get("kind") == "judgement" and r.get("unit")}
@@ -161,7 +161,7 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
                                   units=decls, judged=passed)
     except Exception:  # noqa: BLE001
         digests = []
-    if int(row.get("exit_code") or 0) in FINAL_EXITS:  # the outcome lens's candidates (SIL §2.2, B3, B7)
+    if int(row.get("exit_code") or 0) in FINAL_EXITS:  # the outcome lens's candidates (SIL-B10, B3, B7)
         for c in (row.get("outcome") or {}).get("criteria") or ():
             if c.get("class") == "judge" and c.get("status") in OUTCOME_FAILED:
                 found.append({"unit": flow.OUTCOME_UNIT, "cause": f"outcome_unmet:{c.get('id')}", "count": 1,
@@ -183,7 +183,7 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
                       **({"executor_version": f["executor_version"]} if f.get("executor_version") else {}),
                       **({"lens": f["lens"]} if f.get("lens") else {}),
                       **({"rerun_of": rerun_of} if rerun_of else {})})
-    if lines:  # one document per thread; each segment appends its findings (SIL §2.1)
+    if lines:  # one document per thread; each segment appends its findings (SIL-B8)
         doc = {"schema_version": 1, "thread": thread,
                "findings": read_findings(root, spec.name, task_id) + lines}
         _write_private(findings_path(root, spec.name, task_id), json.dumps(doc, default=str))

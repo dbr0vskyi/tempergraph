@@ -1,4 +1,4 @@
-"""The output contract (PRM §2.3) and step values (VAL §2.1).
+"""The output contract (PRM-B11) and step values (VAL-B5, VAL-B6).
 
 A step ends with `ARTIFACT <key>: <value>` lines, or a `BLOCKED:` line, or an `UPSTREAM <unit>:` line.
 A claim to a target not offered is read as blocked.

@@ -22,7 +22,7 @@ We will give the orchestrator skill one blocking, model-free `orchestrate wait` 
 | Attention-only wait with a settle window (chosen) | Wakes equal pause batches plus the end; nothing to parse between | A person reading only the conversation sees no progress until a need; the monitor fills that |
 | Wake on every run's exit (the run driver's rule, applied per run) | No new verb | One wake per run and per pause; each wake after an idle spell re-writes the context into the cache |
 | Timed status checks | Simple | Wakes at fixed cost whether anything happened; cache rewrites after idle |
-| Lifecycle hooks into the conversation | Event-driven | Hooks are fire-and-forget commands ([CLI §2.2](../specs/17-engine-cli.spec.md)); they cannot wake a conversation without a host feature |
+| Lifecycle hooks into the conversation | Event-driven | Hooks are fire-and-forget commands ([HOK-B1 to HOK-B6](../specs/24-lifecycle-hooks.spec.md)); they cannot wake a conversation without a host feature |
 
 ## Decision rationale
 
@@ -39,9 +39,9 @@ We will give the orchestrator skill one blocking, model-free `orchestrate wait` 
 
 ## Consequences
 
-- Positive: the orchestrating session's cost scales with decisions, not with runs ([OSK-AC-2](../specs/46-orchestrator-skill.spec.md)).
+- Positive: the orchestrating session's cost scales with decisions, not with runs ([OSK-AC2](../specs/46-orchestrator-skill.spec.md)).
 - Negative: a failure under `skip_dependants` does not wake the skill until the end. Mitigation: a node can use `ask` to make a failure a need.
-- Risk: the background wait dies with the host. Mitigation: the orchestration goes on without it; the `orchestration_attention` hook ([ORC §2.8](../specs/45-orchestration.spec.md) N6) can notify a person, and the skill re-attaches from status.
+- Risk: the background wait dies with the host. Mitigation: the orchestration goes on without it; the `orchestration_attention` hook ([ORC-B17, ORC-B24, ORC-B26](../specs/45-orchestration.spec.md) N6) can notify a person, and the skill re-attaches from status.
 
 ## Revisit when
 

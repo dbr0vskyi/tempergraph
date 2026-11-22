@@ -1,4 +1,4 @@
-"""Interpreter lookup for the first install (UPD §2.7 step 1): `TEMPERGRAPH_PYTHON`, an activated
+"""Interpreter lookup for the first install (UPD-B18, UPD-B19 step 1): `TEMPERGRAPH_PYTHON`, an activated
 environment, then the 3.11+ names; never a bare `python` or an alias stub."""
 
 from __future__ import annotations

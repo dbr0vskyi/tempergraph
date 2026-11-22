@@ -1,4 +1,4 @@
-"""The CLI shim in `~/.tempergraph/bin/` and the `PATH` block (UPD §2.2, §2.7 step 4).
+"""The CLI shim in `~/.tempergraph/bin/` and the `PATH` block (UPD-B11, UPD-B12, UPD-B13, UPD-B18, UPD-B19 step 4).
 
 The shim is content-independent of the release: it reads `engines/current.json` and execs that
 environment's interpreter; with no complete environment it exits 127. `TEMPERGRAPH_PYTHON` overrides
@@ -14,7 +14,7 @@ MARKER = "# >>> tempergraph >>>"
 END = "# <<< tempergraph <<<"
 
 SHIM = r'''#!/bin/sh
-# tempergraph CLI shim (UPD §2.2): written by `tempergraph install`; reads engines/current.json.
+# tempergraph CLI shim (UPD-B11, UPD-B12, UPD-B13): written by `tempergraph install`; reads engines/current.json.
 home="${TEMPERGRAPH_HOME:-$HOME/.tempergraph}"
 if [ -n "$TEMPERGRAPH_PYTHON" ]; then
   exec "$TEMPERGRAPH_PYTHON" -m tempergraph "$@"

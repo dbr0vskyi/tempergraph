@@ -1,5 +1,5 @@
 """`update`: the plan, the install beside the current engine, the switch, rollback, `--prune-engines`, and
-registered workflows through an update (UPD §2.3 to §2.6, §2.8, UPD-B1 to B8, UPD-AC-1, AC-3, AC-4, AC-6, AC-7).
+registered workflows through an update (UPD-B14, UPD-B6, UPD-B17, UPD-B20 to UPD-B24, UPD-B1 to B8, UPD-AC1, AC-3, AC-4, AC-6, AC-7).
 No test installs from an index: the builder is a stand-in."""
 
 from __future__ import annotations
@@ -105,7 +105,7 @@ def pointer(name: str = "current") -> dict[str, Any]:
     return json.loads((home() / "engines" / f"{name}.json").read_text())
 
 
-# -- the plan and the report (UPD §2.3 step 2, §2.4) ----------------------------------------------------------
+# -- the plan and the report (UPD-B14, UPD-B6 step 2, UPD-B15) ----------------------------------------------------------
 
 
 def test_plan_decisions(installed: Path, tmp_path: Path) -> None:
@@ -119,7 +119,7 @@ def test_plan_decisions(installed: Path, tmp_path: Path) -> None:
 
 
 def test_check_is_read_only(installed: Path, tmp_path: Path) -> None:
-    """UPD-B6, UPD-AC-3."""
+    """UPD-B6, UPD-AC3."""
     engine = staged(tmp_path, "9.0.0")
     before = hash_tree(installed)
     b = UpdateBuilder("9.0.0")
@@ -138,7 +138,7 @@ def test_downgrade_and_no_engine_are_refused(installed: Path, tmp_path: Path) ->
 
 
 def test_every_line_kind_has_a_fixed_key_set(installed: Path, tmp_path: Path) -> None:
-    """UPD-AC-4."""
+    """UPD-AC4."""
     pkg = minimal_package(tmp_path / "src")
     reg.register(pkg, caps())
     root = tmp_path / "repo" / ".tempergraph"
@@ -183,7 +183,7 @@ def test_update_installs_beside_and_switches(installed: Path, tmp_path: Path) ->
 
 @pytest.mark.parametrize("fail", ["create", "install", "self_check"])
 def test_a_failed_install_changes_nothing(installed: Path, tmp_path: Path, fail: str) -> None:
-    """UPD-B1, UPD-AC-1."""
+    """UPD-B1, UPD-AC1."""
     before = hash_tree(installed)
     code, lines = run_update(engine=staged(tmp_path, "9.0.0"), builder=UpdateBuilder("9.0.0", fail=fail))
     assert code == 1 and lines[0]["state"] == "failed" and "nothing was switched" in lines[0]["says"]
@@ -261,7 +261,7 @@ def test_a_bad_requirement_never_reaches_the_installer(installed: Path, tmp_path
     assert {e["name"]: e for e in reg.read_entries()}["odd"]["state"] in ("pinned", "not_loaded")
 
 
-# -- rollback and prune (UPD-B5, UPD §2.6, AC-6) ------------------------------------------------------------------
+# -- rollback and prune (UPD-B5, UPD-B17, AC-6) ------------------------------------------------------------------
 
 
 def test_rollback_swaps_the_pointers(installed: Path, tmp_path: Path) -> None:
@@ -310,7 +310,7 @@ def test_rollback_is_refused_once_a_run_wrote_to_the_migrated_store(installed: P
 
 
 def test_prune_never_removes_a_kept_engine(installed: Path, tmp_path: Path) -> None:
-    """UPD-AC-6."""
+    """UPD-AC6."""
     eng = installed / "engines"
     for name in ("1.0.0-aaaaaaaaaaaa", "1.1.0-bbbbbbbbbbbb", "1.2.0-cccccccccccc", "1.3.0-dddddddddddd"):
         write(eng / name, ".complete", "x\n")

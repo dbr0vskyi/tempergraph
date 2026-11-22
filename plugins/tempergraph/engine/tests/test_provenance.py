@@ -1,4 +1,4 @@
-"""Caller provenance (PRV §2.3, §2.4, B1–B10, AC-1, AC-4, AC-5)."""
+"""Caller provenance (PRV-B13, PRV-B14, B1–B10, AC-1, AC-4, AC-5)."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ CC = {"CLAUDE_CODE_CHILD_SESSION": "1", "CLAUDE_CODE_SESSION_ID": "sess-1", "CLA
     ({}, False, "person", None, "unknown", "declared", "unknown"),  # row 7
 ])
 def test_classification_rows(env: dict[str, str], tty: bool, declared: str | None, app: str | None, kind: str,
-                             confidence: str, host: str) -> None:  # PRV-AC-1
+                             confidence: str, host: str) -> None:  # PRV-AC1
     b = classify(env, tty, declared=declared, caller_app=app)
     assert (b["kind"], b["confidence"], b["host"]) == (kind, confidence, host)
     if env.get("CLAUDECODE") and not env.get("CLAUDE_CODE_CHILD_SESSION"):
@@ -42,13 +42,13 @@ def test_classification_rows(env: dict[str, str], tty: bool, declared: str | Non
     ({"TEMPERGRAPH_SESSION_KEY": "draft-1"}, None, "engine_session_caller"),
     ({"TEMPERGRAPH_SUPERVISOR_TOKEN": "x"}, None, "supervisor_token_invalid"),
     ({"TEMPERGRAPH_SCHEDULE_TOKEN": "x"}, None, "schedule_token_invalid")])
-def test_refused_callers(env: dict[str, str], declared: str | None, code: str) -> None:  # PRV §4
+def test_refused_callers(env: dict[str, str], declared: str | None, code: str) -> None:  # PRV-B5, PRV-B18, PRV-B17, PRV-B14, PRV-B13, PRV-B19, PRV-B15
     with pytest.raises(CallerRefused) as exc:
         classify(env, True, declared=declared)
     assert exc.value.code == code
 
 
-def test_a_marker_never_gives_a_person() -> None:  # PRV-AC-4
+def test_a_marker_never_gives_a_person() -> None:  # PRV-AC4
     extras = [("CLAUDECODE", "1"), ("CI", "true"), ("GITHUB_ACTIONS", "true")]
     for n in range(len(extras) + 1):
         for combo in itertools.combinations(extras, n):

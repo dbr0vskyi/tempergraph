@@ -1,121 +1,129 @@
----
-title: Observability and cost
-type: component
-status: ready-for-implementation
-prefix: OBS
-adrs: [0009, 0012, 0018, 0021, 0023, 0025]
----
-
 # Observability and cost
 
-## 1. Overview
+## Purpose
 
-What a run leaves behind so a person or a later analysis can see what it did, what it cost and where the time went, without changing the run. This spec owns contracts C1 (every model call is an executor run, logged with its usage) and C2 (observability never changes a run or its exit code), and the cost rules that make four executors with different cost reporting comparable.
+What a run leaves behind so a person or a later analysis can see what it did, what it cost and where the time went, without changing the run. This spec owns two of the overview's contracts, that every model call is an executor run logged with its usage and that observability never changes a run or its exit code ([OVR](00-overview.spec.md)), and the cost rules that make four executors with different cost reporting comparable. The record envelope and observer record kinds are owned by [EVT](30-run-events.spec.md), where session logs live by [LOS](33-local-observability-store.spec.md), and export by [CST](34-central-run-stats.spec.md) and [TEL](35-telemetry-export.spec.md); design notes and the release 1 build notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-## 2. Contract
+## Behaviours
 
-### 2.1 Run log events
+### OBS-B1 Every call logged
 
-| Kind | Written when | Key fields |
-|---|---|---|
-| `task` | Start, and resume with inputs | scrubbed, clipped request |
-| `attempt_start` | Before every step or judge session | unit, item, attempt, kind, executor, alias and source, timeout and source |
-| `agent_run` | After every session | kind (`step`, `retry`, `judge`, `judge_reask`, `grouping`), `Usage`, tool call names, `cli_version`, `session_id`, isolation mode, outcome fields of `SessionResult`; `unknown_tools` (names the executor's view catalog does not map, [SIL-B4](16-self-improvement.spec.md)); `lessons_digest` on a step or retry whose unit has lessons ([LSN §2.2](42-workflow-lessons.spec.md)); `duration_s`, `tool_wall_share` and `slow_host` |
-| `attempt_interrupted` | On resume, for an unclosed start | |
-| `route` | A route or switch picks a target | unit, arm, `chosen_by` (`predicate`, `default`, `operator`, `rearm`), and for a switch `shadow`, `would_choose` and `signals`; for a step's route, `signals` holds the step values it read (at most 10, as SWM §2.1); for a complexity switch `zone`, `measures`, `rules_digest` and `rules_source` ([CMP](03-compiler-and-flow.spec.md), [SWM](79-measured-switches.spec.md), [CXR §2.7](94-complexity-routing.spec.md)) |
-| `audit_judge` | A sampled audit judge ran ([JDG](05-judge-and-verdict.spec.md)) | executor, alias, per-criterion agreement with the gate's judge, `Usage` |
-| `gate` | Gate routes | verdict, judgement view, confidence and source, guard status, view set |
-| `human` | Resume applied | decision, `caller` (kind, decider, relay; [PRV §2.5](85-caller-provenance.spec.md)), touch classes ([SUP §2.1](86-supervision-metrics.spec.md)), wait seconds, feedback id |
-| `map_items` | A map fans out | unit, item ids, count ([MAP](77-map-unit.spec.md)) |
-| `self_check` | A step ran its check preview | unit, item, attempt, result, finding counts, duration ([CHK §2.5](75-check-contract-and-command-runs.spec.md)) |
-| `finalize` | The finalizer returned, raised or timed out | outcome, reason, url, duration, manual step count ([FIN §2.3](78-finalizer-contract.spec.md)) |
-| `wait`, `auto_resume`, `engine_error` | As named | |
+WHEN any model session ends, a step, retry, judge, judge re-ask or grouping call THE engine SHALL write one `agent_run` record of that kind with its own `Usage`, the tool call names, `cli_version`, `session_id`, isolation mode, the outcome fields of `SessionResult`, `unknown_tools` (names the executor's view catalog does not map, [SIL](16-self-improvement.spec.md)), `lessons_digest` on a step or retry whose unit has lessons ([LSN](42-workflow-lessons.spec.md)), `duration_s`, `tool_wall_share` and `slow_host`; and count only `agent_run` records as model calls.
 
-### 2.2 Cost rules
+- GIVEN a judge re-ask WHEN it runs THEN it is an `agent_run` record of kind `judge_reask` with its own usage
+- GIVEN a run log with route, gate and agent_run records WHEN the analyzer counts model calls THEN only the agent_run records count
 
-| Rule | Detail |
-|---|---|
-| Unmeasured is never zero | Unknown fields are null |
-| Reported and estimated stay apart | `reported_cost_usd` from the executor; `estimated_cost_usd` from the engine's price table for every session with tokens; never summed into one figure |
-| Price table | Defaults per model family shipped with the engine; the operator's binding table overrides per model. Release 1 ships the first-party list prices of the generation the tier aliases resolve to, USD per million tokens as of 2026-11: haiku 0.10 in, 0.50 out; sonnet 2 in, 10 out, 0.10 cache read; opus 4 in, 20 out, 0.20 cache read. A family without a cache read price uses 0.1× input; cache writes are 1.25× input |
-| Completeness flag | A run's usage line ends `complete`, `estimated` (some sessions only estimated) or `incomplete` (some unmeasured) |
-| Executor comparison | Reports compare executors on estimated cost, the one figure all have, and show reported cost where present |
-| Per executor | `claude` and `agent-sdk` report a client-side estimate; `messages-api` and `antigravity` report tokens only, so their `reported_cost_usd` is null and the estimate is the figure. Cache read and write tokens are priced at their own rates |
-| Child spend | A self-improvement child's or sub-workflow's usage is joined to its parent's run line in reports, shown as a separate figure, never summed into the parent's own |
-| Supervision spend | What supervising sessions spent on a run outside the engine is a third figure, marginal and turn apart, with its own completeness ([SCO](87-supervision-cost.spec.md)); never summed into the run's cost |
+### OBS-B2 Mixed-executor run line
 
-### 2.3 Live progress file
+WHEN a run's usage line is printed THE engine SHALL show the reported total and the estimated total apart, never summed into one figure, and end the line `complete`, `estimated` (some sessions only estimated) or `incomplete` (some unmeasured).
 
-Per running session, at `sessions/<session_key>/live.json` ([LOS §2.1](33-local-observability-store.spec.md)): open tool with its input summary, last ten tool names with summaries, last text line (scrubbed, clipped), replaced atomically at most once a second by a writer thread fed from the normalized event stream. It is not a run-log record. The same writer appends the session's activity journal ([EVT §2.3](30-run-events.spec.md)).
+- GIVEN steps a and b on `antigravity` (reported null, estimated 0.31 and 0.44) and judge a on `claude` (reported 0.22, estimated 0.20) WHEN the run line is printed THEN it shows 0.22 reported (partial), 0.95 estimated and the flag `estimated`
 
-### 2.4 Reports
+### OBS-B3 Logging fails safely
 
+WHEN writing any record, ledger row, live file or report input fails THE engine SHALL end the run with the exit code it would have had and attempt one record of the failure.
 
-| Report | Content |
-|---|---|
-| First visit and repeats | The first visit is the first *started* attempt of a unit; a cut-off attempt counts with its partial usage. Each repeat names one cause |
-| Per arm | Cost and pass rate per route and switch arm |
-| Per criterion | Pass, fail and `UNVERIFIABLE` rates per criterion id, and **gate escapes**: a criterion passed at a gate and failed by a later gate or a person |
-| Prompt digests | The digest of each rendered template beside its rates, so a prompt change is visible |
-| Stalls and timeouts | `stalled` sessions as their own class; each timeout sorted into `hung` (no line for the idle limit), `slow_host` (host-speed preflight warned) or `model_silent` (lines arrived, no `result`) |
-| Loop signal | Record-only: the same tool and input repeated five times in a row in one session; it never stops a session |
-| Stats | `stats` ([CLI](17-engine-cli.spec.md)): one row per run with user, workflow, ticket, executor, cost figures and outcome, kept per month on the operator's machine; nothing is sent anywhere unless the operator configures a sink ([CST](34-central-run-stats.spec.md)) |
+- GIVEN a full disk when the ledger row is written WHEN the run ends THEN its exit code is the one it would have had and one record of the failure is attempted
 
-## 3. Behaviours
+### OBS-B4 Session metrics
 
-**OBS-B1 Every call logged.** Given a judge re-ask, when it runs, then it is an `agent_run` record of kind `judge_reask` with its own usage.
+WHEN a session finishes THE engine SHALL compute turns, peak context, turns above 200k context, tokens before the first write and files read again from normalized events, numbers only, and record null for a metric an executor's stream cannot yield.
 
-**OBS-B2 Mixed-executor run.** Given a run with three steps on `antigravity` and their judges on `claude`, when its usage line is printed, then it shows the reported total (judges only), the estimated total (all sessions) and the flag `estimated`.
+- GIVEN a stream that carries no context size WHEN its metrics are recorded THEN peak context is null, not 0
 
-| Session | Executor | Reported | Estimated |
-|---|---|---|---|
-| step a | antigravity | null | 0.31 |
-| judge a | claude | 0.22 | 0.20 |
-| step b | antigravity | null | 0.44 |
-| **Run line** | | 0.22 (partial) | 0.95 · `estimated` |
+### OBS-B5 Time profile
 
-**OBS-B3 Logging fails safely.** Given a full disk when the ledger row is written, when the run ends, then its exit code is the one it would have had and one record of the failure is attempted.
+WHEN a session's events with receive times end THE engine SHALL attribute wall time to the model and to each tool name and shell program word, and keep no command, path or output.
 
-**OBS-B4 Session metrics.** Given a finished session, when recorded, then turns, peak context, turns above 200k context, tokens before the first write and files read again are computed from normalized events, numbers only; a metric an executor's stream cannot yield is null.
+- GIVEN a session that ran `pytest` twice through the shell tool WHEN profiled THEN the time is counted under the program word `pytest` and no argument is kept
 
-**OBS-B5 Time profile.** Given a session's events with receive times, when it ends, then wall time is attributed to the model and to each tool name and shell program word; no command, path or output is kept.
+### OBS-B6 Timeouts sorted
 
-**OBS-B6 Timeout sorted.** Given three timed-out sessions, when the report runs, then each gets one class.
+WHEN the report reads a timed-out session THE report SHALL give it one class: `slow_host` when the host-speed warning was set (the session timed out with at least 60% of its wall time inside tool calls), else `hung` when the last line was at least the idle limit old at the kill, else `model_silent` when lines arrived and no `result` did.
 
-| Last line age at kill | Host-speed warning | Class |
-|---|---|---|
-| ≥ idle limit | no | `hung` |
-| any | yes | `slow_host` |
-| < idle limit, no `result` | no | `model_silent` |
+- GIVEN three timed-out sessions, one with no line for the idle limit, one with the host-speed warning and one with lines but no result WHEN the report runs THEN they are `hung`, `slow_host` and `model_silent`
 
-## 4. Error conditions
+### OBS-B7 Run log record kinds
 
-| Condition | Result |
-|---|---|
-| A price missing for a model | Estimate null for that session; the run line is `incomplete` |
-| An unknown event kind in a log | Skipped by every reader |
+WHEN a run reaches each of these points THE engine SHALL write the record named: `task` at start and at a resume with inputs (scrubbed, clipped request); `attempt_start` before every step or judge session (unit, item, attempt, kind, executor, alias and source, timeout and source, `prompt_digest`); `attempt_interrupted` on resume for an unclosed start; `route` when a route or switch picks a target; `audit_judge` when a sampled audit judge ran ([JDG](05-judge-and-verdict.spec.md)); `gate` when a gate routes (verdict, judgement view, confidence and source, guard status, view set); `human` when a resume is applied; `map_items` when a map fans out ([MAP](77-map-unit.spec.md)); `self_check` when a step ran its check preview ([CHK](75-check-contract-and-command-runs.spec.md)); `answers` when an ask took answers; `finalize` when the finalizer returned, raised or timed out ([FIN](78-finalizer-contract.spec.md)); and `wait`, `auto_resume` and `engine_error` as named. Every reader SHALL skip a record kind it does not know.
 
-## 5. Design notes
+- GIVEN a log line of an unknown kind WHEN any reader folds the log THEN the line is skipped and the rest is read
 
-- Antigravity and the Messages API report no cost; Claude Code and the Agent SDK report a client-side estimate. One engine price table gives every executor a comparable estimate without trusting any as billing truth ([ADR-0012](../adr/0012-cost-when-executor-reports-tokens-only.adr.md)).
-- The live file and metrics come from normalized events, so they work the same on every executor ([ADR-0009](../adr/0009-normalized-session-event-stream.adr.md)).
-- Self-improvement children log to their own run logs; a daily cap sums them, and reports join them to the parent's line as a separate figure.
-- Export is off by default. An operator may configure sinks of metadata-only rows and OTLP telemetry ([CST](34-central-run-stats.spec.md), [TEL](35-telemetry-export.spec.md)); content never leaves the machine.
-- Release 1 build ([T7 plan](../plans/t7-observability.plan.md) T7.4): `report [30d|7d|24h|all] [--by unit|executor|version] [--json]` and `stats` read the run logs and the home stats rows. Deviations: a timeout is sorted into `hung` (stalled), `slow_host` (the `agent_run` record's `slow_host`, set when the session timed out with at least 60% of its wall time inside tool calls) or `model_silent`; each unit row adds `agent_s`, the sum of its sessions' `duration_s`; the time profile counts the activity journal's `duration_s` per tool name and program word. A repeat's cause is the `entered_from` of its visit (`back:<unit>`, `proceed`) or `retry: judge` / `retry: check` from the gate that sent it back. `attempt_start` carries `prompt_digest` (the first 16 hex of the SHA-256 of the rendered prompt), and `report` lists each step prompt's digest per unit with its sessions, threads, repeat rate, timeouts and cost (`prompts`). The run overlay is `graph <workflow> --overlay <thread> [--format mermaid|md|json]` (`observe/overlay.py`): per unit its visits, sessions, repeats, gate verdicts and money, and each routing edge with the times it was taken (`retry`, `back`, `proceed`); routes into a human node are counted in JSON but not drawn. `--format svg` is not built. The per-user stats row is written at each `run_exit` from the run log by `observe.rows.run_row`, the one function the sink copy will also use (T10.1); its supervision fields are copied from the segment's `supervision` record (T7.5), and `user` is the repository's git `user.name`, kept on this machine only.
-- Observer record kinds added for live followers (`run_started`, `unit_entered`, `session_opened`, `check`, `judgement`, `budget`, `pause`, `stop_requested`, `run_exit`) and the record envelope are owned by [EVT](30-run-events.spec.md); where the session logs live is owned by [LOS](33-local-observability-store.spec.md).
-- **As built (R2-T7).** Record kinds added: `answers` (an ask took answers: unit, the names answered, the names still open, whether the check passed, the caller; never the values) and `self_check` (§2.1). `run_exit` carries `degraded: true` after a fallback, and a `pause` record `deadline_at` when the unit has a deadline.
+### OBS-B8 Route record
 
-## 6. Acceptance criteria
+WHEN a route or switch picks a target THE engine SHALL record the unit, the arm and `chosen_by` (`predicate`, `default`, `operator` or `rearm`); for a switch also `shadow`, `would_choose` and `signals`; for a step's route the step values it read in `signals` (at most 10, as [SWM](79-measured-switches.spec.md)); and for a complexity switch `zone`, `measures`, `rules_digest` and `rules_source` ([CMP](03-compiler-and-flow.spec.md), [CXR-B7](94-complexity-routing.spec.md)).
 
-- [ ] OBS-AC-1 A failure injected into each recording step leaves the run and its exit code unchanged.
-- [ ] OBS-AC-2 No record anywhere shows a cost of 0 for an unmeasured session.
-- [ ] OBS-AC-3 The cost report reproduces a hand-computed fixture of mixed-executor sessions exactly.
-- [ ] OBS-AC-4 The analyzer counts only `agent_run` records as model calls.
-- [ ] OBS-AC-5 Each report row of §2.4 reproduces a hand-computed fixture, including a cut-off first attempt and a gate escape.
+- GIVEN a complexity switch that picks its detailed arm WHEN the route record is written THEN it carries the zone, the measures and the rules digest
+
+### OBS-B9 Human and audit records
+
+WHEN a resume is applied THE engine SHALL record in `human` the decision, `caller` (kind, decider, relay; [PRV](85-caller-provenance.spec.md)), touch classes ([SUP](86-supervision-metrics.spec.md)), wait seconds and the feedback id; WHEN a sampled audit judge runs it SHALL record in `audit_judge` the executor, alias, per-criterion agreement with the gate's judge and `Usage`; and WHEN an ask takes answers it SHALL record the unit, the names answered, the names still open, whether the check passed and the caller, never the values.
+
+- GIVEN an ask answered in part WHEN the `answers` record is written THEN it lists the answered and open names and holds no answer value
+
+### OBS-B10 Unmeasured is never zero
+
+WHEN a usage field is not measured THE engine SHALL record it as null in every record, line and report, never 0; and WHEN a model has no price SHALL leave that session's estimate null and mark the run line `incomplete`.
+
+- GIVEN a session on a model missing from the price table WHEN the run line is printed THEN that session's estimate is null and the line ends `incomplete`
+
+### OBS-B11 Reported and estimated cost
+
+WHEN a session has tokens THE engine SHALL compute `estimated_cost_usd` from its price table and keep `reported_cost_usd` from the executor beside it: `claude` and `agent-sdk` report a client-side estimate, `messages-api` and `antigravity` report tokens only so their reported figure is null; and reports SHALL compare executors on the estimated figure and show the reported one where present.
+
+- GIVEN a `messages-api` session with tokens WHEN recorded THEN `reported_cost_usd` is null and `estimated_cost_usd` is set
+
+### OBS-B12 Price table
+
+WHEN the estimate is computed THE engine SHALL use the defaults per model family shipped with the engine, overridden per model by the operator's binding table; the release 1 defaults are the first-party list prices of the generation the tier aliases resolve to, USD per million tokens as of 2026-11: haiku 0.10 in and 0.50 out; sonnet 2 in, 10 out and 0.10 cache read; opus 4 in, 20 out and 0.20 cache read; a family without a cache read price uses 0.1× input, cache writes are 1.25× input, and cache tokens are priced at their own rates.
+
+- GIVEN a sonnet session of 1M input and 100k output tokens and no binding override WHEN estimated THEN the estimate is 3.00 USD
+
+### OBS-B13 Child and supervision spend apart
+
+WHEN a run has self-improvement children or sub-workflows THE reports SHALL join their usage to the parent's run line as a separate figure, never summed into the parent's own, a daily cap summing the children; and WHEN supervising sessions spent on a run outside the engine they SHALL show that as a third figure, marginal and turn apart, with its own completeness ([SCO](87-supervision-cost.spec.md)), never summed into the run's cost.
+
+- GIVEN a run whose self-improvement child cost 0.40 WHEN the report shows the parent's line THEN 0.40 is shown as child spend beside, not inside, the parent's cost
+
+### OBS-B14 Live progress file
+
+WHEN a session is running THE engine SHALL keep `sessions/<session_key>/live.json` ([LOS](33-local-observability-store.spec.md)) with the open tool and its input summary, the last ten tool names with summaries and the last text line (scrubbed, clipped), replaced atomically at most once a second by a writer thread fed from the normalized event stream, not a run-log record; the same writer SHALL append the session's activity journal ([EVT](30-run-events.spec.md)).
+
+- GIVEN a session emitting ten tool calls in one second WHEN the live file is read THEN it was replaced at most once in that second and lists the last ten tools
+
+### OBS-B15 Model-free reports
+
+WHEN an operator runs `report [30d|7d|24h|all] [--by unit|executor|version] [--json]` THE engine SHALL read the ledger and logs only, use no model and show: cost per unit with `agent_s`, the sum of its sessions' `duration_s`; first visits against repeats, the first visit being the first started attempt of a unit and a cut-off attempt counting with its partial usage, each repeat naming one cause (the visit's `entered_from`, `back:<unit>` or `proceed`, or `retry: judge` or `retry: check` from the gate that sent it back); cost and pass rate per route and switch arm; pass, fail and `UNVERIFIABLE` rates per criterion id with gate escapes (a criterion passed at a gate and failed by a later gate or a person); each step prompt's digest per unit (the first 16 hex of the SHA-256 of the rendered prompt) with its sessions, threads, repeat rate, timeouts and cost; stalled sessions as their own class and timeouts sorted as OBS-B6; the time profile of OBS-B5 from the activity journals; and judges against steps, per executor and per workflow version.
+
+- GIVEN a unit whose first attempt was cut off and whose second passed WHEN the report runs THEN the first visit carries the cut-off attempt's partial usage and the repeat names its cause
+- GIVEN a criterion passed at a gate and failed at a later gate WHEN the report runs THEN it is counted as a gate escape
+
+### OBS-B16 Loop signal
+
+WHEN one session repeats the same tool with the same input five times in a row THE report SHALL list it as a loop signal, record-only, and never stop the session.
+
+- GIVEN a session that called Read on one file five times running WHEN the report runs THEN the loop list names that session and the session was not stopped
+
+### OBS-B17 Run overlay
+
+WHEN an operator runs `graph <workflow> --overlay <thread> [--format mermaid|md|json]` THE engine SHALL draw on the workflow diagram, per unit, its visits, sessions, repeats, gate verdicts and money, and each routing edge with the times it was taken (`retry`, `back`, `proceed`), counts and words only; routes into a human node SHALL be counted in JSON and not drawn.
+
+- GIVEN a thread whose unit was retried twice WHEN the overlay is drawn as md THEN that unit's retry edge shows 2
+
+### OBS-B18 Stats rows
+
+WHEN a run segment exits THE engine SHALL write one stats row per run with user, workflow, ticket, executor, cost figures and outcome, kept per month on the operator's machine by `observe.rows.run_row`, the one function the sink copy also uses; copy its supervision fields from the segment's `supervision` record; take `user` from the repository's git `user.name`, kept on this machine only; and send nothing anywhere unless the operator configures a sink ([CST](34-central-run-stats.spec.md)); `stats` ([CLI](17-engine-cli.spec.md)) reads these rows.
+
+- GIVEN no configured sink WHEN a run exits THEN its row is written under the home stats folder and no network call is made
+
+## Acceptance criteria
+
+- OBS-AC1 (OBS-B3): A failure injected into each recording step leaves the run and its exit code unchanged
+- OBS-AC2 (OBS-B2, OBS-B10, OBS-B11): No record anywhere shows a cost of 0 for an unmeasured session
+- OBS-AC3 (OBS-B2, OBS-B11, OBS-B12, OBS-B13): The cost report reproduces a hand-computed fixture of mixed-executor sessions exactly
+- OBS-AC4 (OBS-B1, OBS-B7, OBS-B8, OBS-B9): The analyzer counts only `agent_run` records as model calls, and each record kind is written with its fields by a fixture run
+- OBS-AC5 (OBS-B4, OBS-B5, OBS-B6, OBS-B14, OBS-B15, OBS-B16, OBS-B17, OBS-B18): Each report row reproduces a hand-computed fixture, including a cut-off first attempt and a gate escape
 
 ## Open questions
 
-None.
-
-## References
-
+- Not built yet: `graph --overlay --format svg`. Owner: engine owner.

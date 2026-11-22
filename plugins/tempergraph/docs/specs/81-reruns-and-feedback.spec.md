@@ -1,191 +1,141 @@
----
-title: Reruns, rewinds and feedback
-type: component
-status: ready-for-implementation
-prefix: RRN
-adrs: [0073, 0074, 0072]
----
-
 # Reruns, rewinds and feedback
 
-## 1. Overview
+## Purpose
 
-Every way a person can make a run do work again, and every way their words reach the work. The engine already retries by budget, re-runs infra failures, re-opens stopped runs and takes a person's `retry` or `back` with feedback at a pause ([BUD](08-budgets-and-failures.spec.md), [HUM](07-gate-and-human.spec.md), [DUR](09-durability-and-resume.spec.md)). This spec adds three things ([R-070](../research/R-070-config-overrides-and-reruns-gaps.rsrch.md)):
+Every way a person can make a run do work again, and every way their words reach the work. The engine already retries by budget, re-runs infra failures, re-opens stopped runs and takes a person's `retry` or `back` with feedback at a pause ([BUD](08-budgets-and-failures.spec.md), [HUM](07-gate-and-human.spec.md), [DUR](09-durability-and-resume.spec.md)). This spec adds feedback everywhere a person resumes, given once or as a lasting ruling that every later attempt of the units it names, and their judges, are shown until it is revoked ([ADR-0074](../adr/0074-feedback-can-be-a-lasting-ruling.adr.md)); rewind, a person's decision that sends a live thread back to any unit it has completed; and rerun, a new thread forked from any earlier thread at the checkpoint before a chosen unit, keeping every earlier verdict and linked to its source ([ADR-0073](../adr/0073-rewind-on-the-thread-rerun-as-a-linked-fork.adr.md), [R-070](../research/R-070-config-overrides-and-reruns-gaps.rsrch.md)). Settings may change at every one of these points ([RST-B26](80-run-settings-and-overrides.spec.md)). Every retry, rewind and rerun starts a fresh session, spends nothing before the restarted unit's first session, and refuses before it writes ([CLI-B17](17-engine-cli.spec.md)). People answering runs, orchestration and the improvement loop depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-- **Feedback everywhere a person resumes**, given once or as a lasting **ruling** that every later attempt of the units it names, and their judges, are shown until it is revoked ([ADR-0074](../adr/0074-feedback-can-be-a-lasting-ruling.adr.md)).
-- **Rewind**: a person's decision that sends a live thread back to any unit it has completed, not only to the gate's declared back targets.
-- **Rerun**: a new thread forked from any earlier thread, finished ones included, at the checkpoint before a chosen unit, keeping every earlier verdict and linked to its source ([ADR-0073](../adr/0073-rewind-on-the-thread-rerun-as-a-linked-fork.adr.md)).
+## Behaviours
 
-Settings may change at every one of these points ([RST §2.6](80-run-settings-and-overrides.spec.md)).
+### RRN-B12 Every way to run again
 
-## 2. Contract
+WHEN work is done again THE engine SHALL keep each way to its owner: an automatic retry by budget, an infra rerun by counter at the same attempt number and rung, a trip back to a declared back target ([BUD-B4](08-budgets-and-failures.spec.md)) and an automatic re-open as the person's retry given in advance ([BUD-B6](08-budgets-and-failures.spec.md)), all on the same thread; a person's `retry` or `back:<unit>` at a pause or stop ([HUM-B12](07-gate-and-human.spec.md)), continuing an unfinished thread at its pending nodes ([DUR-B9](09-durability-and-resume.spec.md)) and one map item, slot or member addressed `unit.item` ([HUM-B3](07-gate-and-human.spec.md)), on the same thread; and, owned here, `rewind:<unit>` on the same thread to any completed unit on the path, `rerun --from <unit>` and `rerun --from start` on a new linked thread, and an orchestration node's rerun by a person ([ORC](45-orchestration.spec.md)), the supervisor re-opening only for infrastructure.
 
-```python
-def resume(workflow: str, thread_id: str, decision: Decision | None, inputs: dict[str, str],
-           feedback: Feedback | None, options: RunOptions) -> ExitCode: ...
-def rerun(workflow: str, source_thread: str, start_at: UnitRef | Literal["start"],
-          feedback: Feedback | None, options: RunOptions) -> ExitCode: ...
-```
+- GIVEN a finished thread WHEN a person wants work done again THEN only `rerun` is accepted
 
-`Feedback`, `Ruling` and `UnitRef` are defined in [CON §2.12](01-contracts.spec.md).
+### RRN-B13 The resume and rerun calls
 
-### 2.1 Every way to run again
+WHEN a person resumes or reruns THE engine SHALL take `resume(workflow, thread_id, decision, inputs, feedback, options)` and `rerun(workflow, source_thread, start_at, feedback, options)`, `start_at` a `UnitRef` or `start` ([RST-B16](80-run-settings-and-overrides.spec.md)), and `Feedback` as `text_ref` (a pointer into the local evidence file, never the text), `chars`, `ruling` (bool) and `applies_to` (a list of `UnitRef` for a ruling, empty meaning the unit given at and every later unit).
 
-| Way | Who | Thread | Starts at | Owner |
-|---|---|---|---|---|
-| Automatic retry | Engine, by budget | same | the unit's step | [BUD](08-budgets-and-failures.spec.md) |
-| Infra rerun | Engine, by counter | same | the same attempt number and rung | [BUD](08-budgets-and-failures.spec.md) |
-| Trip back | Engine, by route, claim or attribution | same | a declared back target | [BUD-B4](08-budgets-and-failures.spec.md) |
-| Automatic re-open | Engine, as the person's retry given in advance | same | the stopped unit | [BUD-B6](08-budgets-and-failures.spec.md) |
-| `retry`, `back:<unit>` at a pause or a stop | Person | same | the paused unit, or a declared back target | [HUM §2.2](07-gate-and-human.spec.md) |
-| Continue an unfinished thread | Person | same | the pending nodes | [DUR §2.1](09-durability-and-resume.spec.md) |
-| One map item, slot or member | Person, addressed by `unit.item` | same | that item | [HUM-B3](07-gate-and-human.spec.md) |
-| `rewind:<unit>` | Person | same | any completed unit on the path (§2.3) | this spec |
-| `rerun --from <unit>` | Person | new, linked | the checkpoint before that unit (§2.4) | this spec |
-| `rerun --from start` | Person | new, linked | the first unit, with the source's resolved input | this spec |
-| Orchestration node re-open or rerun | Supervisor (infra only) or person | per the node | per the engine verbs | [ORC](45-orchestration.spec.md), §2.6 |
+- GIVEN feedback WHEN recorded THEN records carry its id and length only
 
-### 2.2 Feedback
+### RRN-B14 Feedback
 
-Given with `--feedback <text>` or `--feedback-file <path>` (at most 8 000 characters), on `resume` and `rerun`. The text is stored in the run's local evidence file, scrubbed in every record, and never placed on argv ([SEC §2.3](14-security.spec.md)); records carry its id and length only.
+WHEN `resume` or `rerun` takes `--feedback <text>` or `--feedback-file <path>` (at most 8,000 characters) THE engine SHALL store the text in the run's local evidence file, scrub it in every record and never place it on argv ([SEC-B8](14-security.spec.md)); give it on `proceed` to the next unit's first attempt as "Notes from a person", and at a breakpoint ([FLX-B10](74-flow-extensions.spec.md)) to the unit about to run and its judge; on `retry` to the retried step and its judge; on `back:<unit>` or `rewind:<unit>` to that unit's visit reason and its judge's engine blocker that every point is addressed; on `stop` to the ledger's intervention row as the stop's cause (local evidence only); with no decision on an `unfinished` thread to the pending unit's next attempt and its judge; on `rerun --from <unit>` to that unit's visit reason in the new thread; and refuse it with exit 2 alongside `event:` or `answer:`, whose value is the input.
 
-| Resume with | Feedback goes to |
-|---|---|
-| `proceed` | The next unit on the path, as "Notes from a person", on its first attempt |
-| `proceed` at a breakpoint ([FLX §2.5](74-flow-extensions.spec.md)) | The unit about to run, on its first attempt, and its judge |
-| `retry` | The retried step and its judge (unchanged) |
-| `back:<unit>`, `rewind:<unit>` | That unit's visit reason (unchanged for `back`) and its judge's engine blocker that every point is addressed |
-| `stop` | The ledger's intervention row as the stop's cause (local evidence only) |
-| No decision, `unfinished` thread | The pending unit's next attempt and its judge |
-| `rerun --from <unit>` | That unit's visit reason in the new thread |
-| `event:`, `answer:` | Refused (exit 2): the value or the answer is the input |
+- GIVEN feedback over 8,000 characters WHEN resumed THEN it exits 2
 
-`--ruling` makes the same text a ruling (below) instead of one-time feedback.
+### RRN-B2 One-time feedback stays one-time
 
-| `Ruling` behaviour | Rule |
-|---|---|
-| Applies to | The unit it was given at and every later unit on the path, or the units named with `--ruling-for <unit>[,<unit>…]` |
-| Shown to | Every attempt of each unit it applies to, under "Rulings from a person" ([PRM §2.1](04-prompt-rendering.spec.md)); each such unit's judge as direction that wins over a reference, with one engine blocker per attempt: the output follows every ruling ([JDG §2.1](05-judge-and-verdict.spec.md)) |
-| Survives | Retries, trips back, rewinds, resumes and engine moves ([MIG](62-state-and-run-migration.spec.md)); copied into a rerun unless `--drop-rulings` |
-| Ends | `resume --revoke-ruling <id>`, recorded; never by the engine |
-| Limits | At most 10 active rulings and 16 000 characters together per thread; beyond that the resume is refused with exit 2 naming the oldest |
-| A blocker the judge marks `no_change` against a ruling | Escalates: the ruling and the work conflict, and a person decides ([JDG §2.2](05-judge-and-verdict.spec.md)) |
+WHEN feedback is given without `--ruling` THE engine SHALL show it only where RRN-B14 says.
 
-### 2.3 Rewind
+- GIVEN `retry --feedback "rename the flag"` WHEN the retry passes and `code` later runs THEN `code` never sees the text
 
-`rewind:<unit>` is a decision ([CON §2.9](01-contracts.spec.md)) accepted on a `paused`, `stopped` or `unfinished` thread.
+### RRN-B3 Proceed with a note
 
-| Rule | Detail |
-|---|---|
-| Target | A unit that completed on the thread's current path before the pending or stopped unit: a top-level unit, a parallel block or branch, a map unit, or `unit.item` for one item |
-| Effect | As a trip back ([BUD-B4](08-budgets-and-failures.spec.md)): the target's and every later unit's verdicts, judgements and artifacts on the path are cleared, files in the workspace are untouched, the target gets a fresh retry budget and starts its ladder at rung 1 |
-| A pending pause | Closed as answered by the rewind; the intervention row records `rewind` |
-| Budgets | No loop budget is charged; a person's rewind counts against the human cap like a retry |
-| Units with external effects | If a cleared unit produced a `pull_request`, `tracker_issue` or `wiki_page` artifact, or ran a script with `side_effects: external`, the resume is refused with exit 2 listing them unless `--accept-external` is given; the effects are never undone by the engine |
-| Rulings | Kept |
+WHEN a person proceeds with feedback THE engine SHALL keep the verdict PROCEED, show the note to the next unit's first attempt and charge no retry.
 
-`back:<unit>` keeps its meaning: the gate's own vocabulary, limited to declared targets, resetting that pair's loop budget.
+- GIVEN an approval pause after `plan` WHEN resumed `proceed --feedback "phase 3 is optional"` THEN `expand`'s first attempt shows the note and no retry is charged
 
-### 2.4 Rerun
+### RRN-B4 Feedback on an unfinished thread
 
-`rerun <workflow> <thread> --from <unit>[.<item>] | --from start [options]` starts a new thread from a source thread in any state but `none` and `running`.
+WHEN an unfinished thread is resumed with feedback and no decision THE engine SHALL show it to the pending unit's first attempt and its judge, and refuse a decision on that thread with exit 2.
 
-| Rule | Detail |
-|---|---|
-| New thread | `<workflow>/<task_id>~r<n>` (`n` one above the source's highest rerun), or `--task-id <id>`; refused (exit 2) if it exists ([CON §2.9](01-contracts.spec.md)) |
-| Fork point | The source's checkpoint just before the step node of `<unit>` on its last visit, found in the thread's checkpoint history; `start` is the checkpoint before the first unit. The new thread is written from that checkpoint's values; the source's history is not changed |
-| Kept | The resolved input (never resolved again, so no question is asked twice); the verdicts, judgements, artifacts, answers and event values of every unit before the fork point; the source's settings snapshot ([RST §2.6](80-run-settings-and-overrides.spec.md)), then the rerun's own `--set`, `--unset`, `--profile`; rulings unless `--drop-rulings` |
-| Cleared | `<unit>` and everything after it on the path, as a trip back |
-| Workflow version | The current content, checked against the source's by the tests of [MIG §2.5](62-state-and-run-migration.spec.md) with `<unit>` as the pending unit; a failed test refuses with exit 2 |
-| Workspace, worktree workflow | A new worktree on a new branch `<branch>-r<n>` (named by [WTR §2.4](82-worktree-mode.spec.md); `~` is not allowed in a ref) from the source branch's tip (default, `--workspace current`), or from the commit recorded when the source entered `<unit>` (`--workspace at-unit`; refused if none is recorded). `--same-branch` reuses the source's branch, only when the source is `finished`; the source is then marked `superseded_by` (in its `lineage.json`), and the rerun takes over the source's kept worktree, re-attached when it is gone |
-| Workspace, in place | Files as they are now; the start prints one warning saying so |
-| External effects | As for rewind: units after the fork point with external effects in the source need `--accept-external` |
-| Budgets | Fresh: retry, loop, human cap, attempt allowance; the run cost cap counts the new thread only |
-| Records | `run_started` with `origin: rerun` and `rerun_of {thread, unit, checkpoint_id, workflow_version}`; the source's run folder gains `lineage.json` listing its reruns ([LOS §2.1](33-local-observability-store.spec.md)); status rows show `rerun_of`, `reruns` and `superseded_by` |
+- GIVEN a thread drained before `code` WHEN `resume --feedback "use the existing retry helper"` runs THEN `code`'s first attempt and its judge show it, and `--decision proceed` is refused
 
-`rerun --check` resolves the fork point, the workspace plan, the settings and the external-effects list, prints them and creates nothing (contract C13).
+### RRN-B15 Rulings
 
-### 2.5 Thread state against action
+WHEN `--ruling` makes feedback a ruling (`Ruling`: `id`, `feedback`, `given_at`, `by` and `at`, optional `revoked_at` and `revoked_by`, kept in state under its own reducer and never cleared by a trip back) THE engine SHALL apply it to the unit it was given at and every later unit, or the units named by `--ruling-for <unit>[,<unit>…]`; show it to every attempt of each such unit under "Rulings from a person" ([PRM-B6](04-prompt-rendering.spec.md)) and to each one's judge as direction that wins over a reference, with one engine blocker per attempt that the output follows every ruling ([JDG](05-judge-and-verdict.spec.md)); keep it across retries, trips back, rewinds, resumes and engine moves ([MIG](62-state-and-run-migration.spec.md)) and copy it into a rerun unless `--drop-rulings`; end it only by `resume --revoke-ruling <id>`, recorded, never by the engine, an unknown id exiting 2; refuse beyond 10 active rulings or 16,000 characters together per thread with exit 2 naming the oldest; and escalate when the judge marks the ruling's blocker `no_change`, since the ruling and the work conflict.
 
-| State | `retry` / `back` | `rewind` | feedback, no decision | `--set` alone | `rerun` from it |
-|---|---|---|---|---|---|
-| `paused` | yes | yes | refused (a pause needs a decision) | with a decision | yes |
-| `stopped` | yes | yes | refused | with a decision | yes |
-| `unfinished` | refused | yes | yes | yes | yes |
-| `finished` | refused | refused | refused | refused | yes |
-| `running` | refused | refused | refused | refused | refused |
-| `none` | refused | refused | refused | refused | refused |
+- GIVEN 10 active rulings WHEN an eleventh is given THEN it exits 2 naming the oldest
 
-### 2.6 Orchestrations
+### RRN-B1 A ruling reaches later judges
 
-`orchestrate answer` passes `--feedback`, `--ruling` and `--set` through to `resume`. `orchestrate rerun <id> <node> [--item i] --from <unit> [options]` runs `rerun` on the node's thread, points the node at the new thread, appends a `rerun` event with `by: person` and leaves the old thread as history; the supervisor never reruns on its own (C16).
+WHEN a ruling is given THE engine SHALL show it to every later attempt of the units it applies to and their judges.
 
-## 3. Behaviours
+- GIVEN `retry --ruling --feedback "Keep the public API unchanged"` at `plan` WHEN `plan`, `expand` and `code` later run THEN each attempt shows it, each judge grades its blocker, and a `code` retry two visits later still shows it
 
-**RRN-B1 A ruling reaches later judges.** Given a run paused at `plan` where a person resumes with `retry --ruling --feedback "Keep the public API unchanged"`, when `plan`, `expand` and `code` later run, then each of their attempts shows the ruling, each of their judges grades the engine blocker for it, and a `code` retry two visits later still shows it.
+### RRN-B11 Revoke a ruling
 
-**RRN-B2 One-time feedback stays one-time.** Given `retry --feedback "rename the flag"` without `--ruling`, when the retry passes and `code` later runs, then `code` never sees the text.
+WHEN a ruling is revoked THE engine SHALL show it to no later attempt or judge and record the revocation with who made it.
 
-**RRN-B3 Proceed with a note.** Given an approval pause after `plan`, when the person resumes `proceed --feedback "phase 3 is optional"`, then the recorded verdict stays PROCEED, `expand`'s first attempt shows the note, and no retry is charged.
+- GIVEN an active ruling `r2` WHEN `resume --decision retry --revoke-ruling r2` runs THEN the next attempt does not show it, its judge has no blocker for it, and the run log records who revoked it
 
-**RRN-B4 Feedback on an unfinished thread.** Given a thread drained by `stop --drain` before `code` started, when `resume --feedback "use the existing retry helper"` runs, then `code`'s first attempt and its judge show it; a `--decision proceed` on the same thread is refused with exit 2.
+### RRN-B16 Rewind
 
-**RRN-B5 Rewind past the declared targets.** Given a run paused at `release` whose gate lists `back_targets: [code]`, when a person resumes `rewind:plan --feedback "the plan missed the migration"`, then `plan`, `expand`, `code` and `release` are cleared, `plan` starts at rung 1 with the feedback as its visit reason, no loop budget is charged, and the human cap rises by one.
+WHEN `rewind:<unit>` ([CON-B12](01-contracts.spec.md)) is given on a `paused`, `stopped` or `unfinished` thread THE engine SHALL accept as target a unit completed on the current path before the pending or stopped unit (a top-level unit, a parallel block or branch, a map unit, or `unit.item`), refusing another with exit 2 naming the completed units; clear the target's and every later unit's verdicts, judgements and artifacts on the path as a trip back ([BUD-B4](08-budgets-and-failures.spec.md)), leaving the workspace's files, with a fresh retry budget for the target starting its ladder at rung 1; close a pending pause as answered by the rewind with `rewind` in the intervention row; charge no loop budget and count it against the human cap like a retry; refuse with exit 2 listing them, unless `--accept-external`, when a cleared unit produced a `pull_request`, `tracker_issue` or `wiki_page` artifact or ran a script with `side_effects: external`, never undoing the effects; and keep rulings, `back:<unit>` keeping its meaning as the gate's own declared targets that reset that pair's loop budget.
 
-**RRN-B6 External effects need consent.** Given a finished run whose `release` step opened a pull request, when `rerun --from code` is given without `--accept-external`, then it exits 2 listing `release: pull_request`; with it, the new thread runs and its finalizer follows the workflow's own rule for an existing pull request.
+- GIVEN `rewind` to a unit not completed on the current path WHEN resumed THEN it exits 2 naming the completed units
 
-**RRN-B7 Rerun keeps earlier verdicts.** Given a finished thread `temperspec/PROJ-12`, when `rerun temperspec PROJ-12 --from code --set code.model=large --feedback "handle the empty list"` runs, then a thread `temperspec/PROJ-12~r1` starts at `code` with triage, discovery, plan and expand kept as passed (no session and no judge runs for them), `code` uses `large`, the feedback is the visit reason, and both threads' status rows show the link.
+### RRN-B5 Rewind past the declared targets
 
-| Unit | Source thread | Rerun thread |
-|---|---|---|
-| triage, discovery, plan, expand | passed | kept, not run |
-| code | passed | runs, fresh budget |
-| release | passed | runs after code passes |
-| finalizer | ran | runs |
+WHEN a person rewinds to a unit the gate does not list as a back target THE engine SHALL clear it and every later unit and restart it.
 
-**RRN-B8 Rerun from start reuses the input.** Given a source whose request resolved after the person answered two `needs` questions, when `rerun --from start` runs, then no question is asked and the resolved input is identical (digest equal).
+- GIVEN a pause at `release` with `back_targets: [code]` WHEN resumed `rewind:plan --feedback "the plan missed the migration"` THEN `plan`, `expand`, `code` and `release` are cleared, `plan` starts at rung 1 with the feedback as its visit reason, no loop budget is charged and the human cap rises by one
 
-**RRN-B9 Rerun refuses a broken fork.** Given the workflow removed the unit `discovery` since the source ran, when `rerun --from code` runs, then it exits 2 with the MIG break `units behind` naming `discovery`, and nothing is created.
+### RRN-B17 Rerun
 
-**RRN-B10 Rerun with only settings changed.** Given `rerun --from code --set code.model=small` with no feedback, when self-improvement reads the pair, then the rerun is recorded as an experiment on the source, not as a person's rejection of it ([FBK](41-feedback-and-judge-reliability.spec.md)); a rerun of a finished source with feedback is a candidate outcome signal "reworked" for the source's gates from `<unit>` on, never a label by itself.
+WHEN `rerun <workflow> <thread> --from <unit>[.<item>] | --from start [options]` runs from a source in any state but `none` and `running` (else exit 2) THE engine SHALL name the new thread `<workflow>/<task_id>~r<n>` (`n` one above the source's highest rerun) or `--task-id <id>`, refused if it exists; fork at the source's checkpoint just before the step node of `<unit>` on its last visit (`start` the checkpoint before the first unit), writing the new thread from its values and leaving the source's history unchanged; keep the resolved input (never resolved again), the verdicts, judgements, artifacts, answers and event values of every unit before the fork point, the source's settings snapshot then the rerun's own `--set`, `--unset` and `--profile`, and rulings unless `--drop-rulings`; clear `<unit>` and everything after it as a trip back; check the current content against the source's by the tests of [MIG-B15](62-state-and-run-migration.spec.md) with `<unit>` pending, refusing a failed test with exit 2; require `--accept-external` as for rewind; give fresh retry, loop, human-cap and attempt budgets, the run cost cap counting the new thread only; record `run_started` with `origin: rerun` and `rerun_of {thread, unit, checkpoint_id, workflow_version}`, add `lineage.json` listing reruns to the source's run folder ([LOS-B7](33-local-observability-store.spec.md)) and show `rerun_of`, `reruns` and `superseded_by` on status rows; and with `rerun --check` print the fork point, workspace plan, settings and external-effects list and create nothing (OVR-B15).
 
-**RRN-B11 Revoke a ruling.** Given an active ruling `r2`, when `resume --decision retry --revoke-ruling r2` runs, then the next attempt does not show it, its judge has no blocker for it, and the run log records the revocation with who made it.
+- GIVEN `rerun` from a `running` thread WHEN run THEN it exits 2
 
-## 4. Error conditions
+### RRN-B18 Rerun workspace
 
-| Condition | Result |
-|---|---|
-| `rewind` to a unit not completed on the current path | Exit 2, naming the completed units |
-| `rewind` or `rerun` across external effects without `--accept-external` | Exit 2, listing unit and artifact kind |
-| `rerun` from a `running` or `none` thread | Exit 2 |
-| `rerun --workspace at-unit` with no recorded commit for the unit | Exit 2, suggesting `--workspace current` |
-| `--same-branch` on a source that is not `finished` | Exit 2 `same_branch_not_finished`, nothing created |
-| Feedback over 8 000 characters; rulings over their limits | Exit 2 |
-| `--revoke-ruling` with an unknown id | Exit 2 |
-| Feedback with `event:` or `answer:` | Exit 2 |
+WHEN a rerun of a worktree workflow starts THE engine SHALL make a new worktree on a new branch `<branch>-r<n>` ([WTR](82-worktree-mode.spec.md); `~` is not allowed in a ref) from the source branch's tip (`--workspace current`, the default) or from the commit recorded when the source entered `<unit>` (`--workspace at-unit`, exit 2 suggesting `current` when none is recorded); with `--same-branch`, only on a `finished` source (else exit 2 `same_branch_not_finished`, nothing created), reuse the source's branch, mark the source `superseded_by` in its `lineage.json` and take over its kept worktree, re-attached when gone; and for an in-place workflow use the files as they are now, printing one warning.
 
-## 5. Design notes
+- GIVEN `--same-branch` on a stopped source WHEN rerun THEN it exits 2 `same_branch_not_finished`
 
-- **Same thread for a correction, a new thread for a do-over.** A rewind keeps one run's story in one thread while it is still live. A finished thread's finalizer has run, its stats row and its improvement record exist, and a pull request may be open; reopening it would rewrite what was reported. A rerun leaves it as it was and links to it, as Temporal's reset starts a new run and keeps the old history, and as Argo's resubmit makes a new workflow ([R-070](../research/R-070-config-overrides-and-reruns-gaps.rsrch.md) F20; [ADR-0073](../adr/0073-rewind-on-the-thread-rerun-as-a-linked-fork.adr.md)).
-- **LangGraph does the forking.** The checkpointer keeps each thread's history; reading the checkpoint before a unit and writing its values to a new thread id is the public time-travel mechanism, so no engine-owned history is needed ([ADR-0002](../adr/0002-langgraph-graph-runtime.adr.md)).
-- **Fresh sessions stay the rule.** Every retry, rewind and rerun starts a fresh session; continuing an agent's own conversation is an open question.
-- Rewind and rerun spend nothing before the first session of the restarted unit, and refuse before they write ([CLI §4](17-engine-cli.spec.md)).
+### RRN-B6 External effects need consent
 
-## 6. Acceptance criteria
+WHEN a rewind or rerun would clear a unit with external effects THE engine SHALL refuse without `--accept-external`, listing each unit and kind.
 
-- [ ] RRN-AC-1 Every row of §2.2's feedback table and of §2.5 is tested, including refusals that write nothing.
-- [ ] RRN-AC-2 A ruling given at unit 1 of a five-unit fixture appears in every later prompt and judge brief across a retry, a trip back, a rewind and a resume, and in none after its revocation.
-- [ ] RRN-AC-3 A rerun from unit k of a finished fixture starts no session for units before k and leaves the source checkpoint byte-for-byte unchanged.
-- [ ] RRN-AC-4 `rerun --check` and `rerun` agree on every refusal in a corpus of sources.
-- [ ] RRN-AC-5 Every refusal for external effects names each unit and kind; no rewind or rerun crosses one without `--accept-external`.
-- [ ] RRN-AC-6 Feedback and ruling text appears in no argv, ledger row, stats row, finding or published artifact (canary test, [SEC-B2](14-security.spec.md)).
+- GIVEN a finished run whose `release` opened a pull request WHEN `rerun --from code` runs without `--accept-external` THEN it exits 2 listing `release: pull_request`, and with it the new thread runs and its finalizer follows the workflow's own rule for an existing pull request
+
+### RRN-B7 Rerun keeps earlier verdicts
+
+WHEN a rerun starts at a unit THE engine SHALL run no session and no judge for the units before it and link both threads.
+
+- GIVEN a finished thread `wf/PROJ-12` WHEN `rerun wf PROJ-12 --from code --set code.model=large --feedback "handle the empty list"` runs THEN `wf/PROJ-12~r1` starts at `code` with triage, discovery, plan and expand kept as passed, `code` uses `large` with the feedback as its visit reason, `release` and the finalizer run after it, and both status rows show the link
+
+### RRN-B8 Rerun from start reuses the input
+
+WHEN `rerun --from start` runs THE engine SHALL ask no question and use the source's resolved input.
+
+- GIVEN a source whose request resolved after two answered `needs` questions WHEN `rerun --from start` runs THEN no question is asked and the input digest is equal
+
+### RRN-B9 Rerun refuses a broken fork
+
+WHEN the workflow changed so the fork fails a MIG test THE engine SHALL exit 2 with the break and create nothing.
+
+- GIVEN `discovery` removed since the source ran WHEN `rerun --from code` runs THEN it exits 2 with the break `units behind` naming `discovery`
+
+### RRN-B10 Rerun with only settings changed
+
+WHEN self-improvement reads a rerun and its source THE loop SHALL record a rerun with only settings changed as an experiment on the source, not a person's rejection ([FBK](41-feedback-and-judge-reliability.spec.md)), and a rerun of a finished source with feedback as a candidate outcome signal "reworked" for the source's gates from `<unit>` on, never a label by itself.
+
+- GIVEN `rerun --from code --set code.model=small` with no feedback WHEN read THEN it is recorded as an experiment
+
+### RRN-B19 Thread state against action
+
+WHEN a person acts on a thread THE engine SHALL accept on `paused` and `stopped` `retry`, `back`, `rewind`, `--set` with a decision and `rerun`, refusing feedback with no decision; on `unfinished` `rewind`, feedback with no decision, `--set` alone and `rerun`, refusing `retry` and `back`; on `finished` only `rerun`; and on `running` and `none` nothing.
+
+- GIVEN a `finished` thread WHEN `rewind:plan` is given THEN it exits 2 and nothing is written
+
+### RRN-B20 Orchestrations
+
+WHEN `orchestrate answer` resumes a node THE engine SHALL pass `--feedback`, `--ruling` and `--set` through to `resume`, and `orchestrate rerun <id> <node> [--item i] --from <unit> [options]` SHALL run `rerun` on the node's thread, point the node at the new thread, append a `rerun` event with `by: person` and keep the old thread as history, the supervisor never rerunning on its own (C16).
+
+- GIVEN `orchestrate rerun` on a node WHEN run THEN the node points at the new thread and a `rerun` event records `by: person`
+
+## Acceptance criteria
+
+- RRN-AC1 (RRN-B14, RRN-B19, RRN-B2, RRN-B3, RRN-B4, RRN-B13): Every case of RRN-B14 and RRN-B19 is tested, including refusals that write nothing
+- RRN-AC2 (RRN-B15, RRN-B1, RRN-B11): A ruling given at unit 1 of a five-unit fixture appears in every later prompt and judge brief across a retry, a trip back, a rewind and a resume, and in none after its revocation
+- RRN-AC3 (RRN-B17, RRN-B7, RRN-B8, RRN-B12): A rerun from unit k of a finished fixture starts no session for units before k and leaves the source checkpoint byte-for-byte unchanged
+- RRN-AC4 (RRN-B17, RRN-B9, RRN-B18): `rerun --check` and `rerun` agree on every refusal in a corpus of sources
+- RRN-AC5 (RRN-B6, RRN-B16, RRN-B5): Every refusal for external effects names each unit and kind; no rewind or rerun crosses one without `--accept-external`
+- RRN-AC6 (RRN-B14, RRN-B10, RRN-B20): Feedback and ruling text appears in no argv, ledger row, stats row, finding or published artifact (canary test, [SEC-B2](14-security.spec.md))
 
 ## Open questions
 
-| Question | Owner | Release 1 default |
-|---|---|---|
-| Should a retry continue the previous session, with the feedback as the next turn, where the executor declares session resume? Cheaper and keeps context, but breaks the fresh-session rule and differs across executors. Needs a paired measurement. | Owner | No: a fresh session |
-| Should an agent caller (`--as-agent`) be allowed to give rulings, or only one-time feedback? First release allows both and records the caller. | Owner | Both, recorded |
-
-## References
-
+- Should a retry continue the previous session, with the feedback as the next turn, where the executor declares session resume? Cheaper and keeps context, but breaks the fresh-session rule and differs across executors; needs a paired measurement. Until answered: a fresh session. Owner: owner.
+- Should an agent caller (`--as-agent`) be allowed to give rulings, or only one-time feedback? Until answered: both, with the caller recorded. Owner: owner.

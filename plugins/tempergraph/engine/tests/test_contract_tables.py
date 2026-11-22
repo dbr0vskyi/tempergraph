@@ -1,4 +1,4 @@
-"""Generated-table drift tests: CON §2.9 exit codes equal the engine constants (CON-AC-6, CLI-AC-4)."""
+"""Generated-table drift tests: CON-B13 exit codes equal the engine constants (CON-AC6, CLI-AC4)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from .conftest import DOCS
 
 def test_exit_codes_match_contracts_spec() -> None:
     text = (DOCS / "specs" / "01-contracts.spec.md").read_text(encoding="utf-8")
-    row = next(line for line in text.splitlines() if line.startswith("| `ExitCode` |"))
+    row = text.split("### CON-B13 ", 1)[1].split("\n- ", 1)[0]
     documented = {int(n) for n in re.findall(r"`(\d+)`", row)}
     assert documented == {int(c) for c in ExitCode}
 
@@ -31,27 +31,24 @@ def _cli_spec() -> str:
     return (DOCS / "specs" / "17-engine-cli.spec.md").read_text(encoding="utf-8")
 
 
-def _verb_rows(text: str) -> list[str]:
-    body = text.split("## 2. Contract", 1)[1].split("### 2.1", 1)[0]
-    return [ln.split(" | ")[0] for ln in body.splitlines() if ln.startswith("| `")]
+def _verb_words(text: str) -> set[str]:
+    """The verb words of CLI-B7's statement."""
+    body = text.split("### CLI-B7 ", 1)[1].split("\n- ", 1)[0]
+    return set(re.findall(r"`([a-z][a-z-]*)`", body))
 
 
-def test_reserved_verbs_match_the_verb_table() -> None:  # CLI-AC-3, CLI §5
+def test_reserved_verbs_match_the_verb_list() -> None:  # CLI-AC3
     from tempergraph.cli.main import VERBS
 
-    documented = {re.match(r"[a-z-]+", span).group(0) for cell in _verb_rows(_cli_spec())  # type: ignore[union-attr]
-                  for span in re.findall(r"`([a-z][^`]*)`", cell) if re.match(r"[a-z-]+", span)}
-    assert documented == set(VERBS) - {"help"}
+    assert _verb_words(_cli_spec()) == set(VERBS)
 
 
-def test_every_built_option_is_documented() -> None:  # CLI §5: options drift
+def test_every_built_option_is_documented() -> None:  # CLI-AC7: options drift
     import argparse
 
     from tempergraph.cli.main import _parser
 
-    text = _cli_spec()
-    rst = (DOCS / "specs" / "80-run-settings-and-overrides.spec.md").read_text(encoding="utf-8")
-    prv = (DOCS / "specs" / "85-caller-provenance.spec.md").read_text(encoding="utf-8")
+    text = "".join(p.read_text(encoding="utf-8") for p in sorted((DOCS / "specs").glob("*.spec.md")))
     missing: list[str] = []
     seen = 0
 
@@ -64,7 +61,7 @@ def test_every_built_option_is_documented() -> None:  # CLI §5: options drift
             for opt in act.option_strings:
                 if opt.startswith("--") and opt != "--help":
                     seen += 1
-                    if opt not in text + rst + prv:
+                    if opt not in text:
                         missing.append(f"{name} {opt}")
 
     walk(_parser(), "")

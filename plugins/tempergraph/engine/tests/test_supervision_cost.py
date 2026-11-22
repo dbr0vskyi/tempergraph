@@ -1,5 +1,5 @@
-"""T7.6: the supervision journal, the Claude Code hooks, attribution and closing (SCO §2, SCO-B1, B2, B5..B8,
-SCO-AC-1..5). P-SUP-3 (the live Claude Code payloads) is not run: the hook payloads here are the documented shape."""
+"""T7.6: the supervision journal, the Claude Code hooks, attribution and closing (SCO-B9 to SCO-B17, SCO-B1, B2, B5..B8,
+SCO-AC1..5). P-SUP-3 (the live Claude Code payloads) is not run: the hook payloads here are the documented shape."""
 
 from __future__ import annotations
 
@@ -76,7 +76,7 @@ def test_b1_categories_and_both_figures(repo: Path) -> None:  # SCO-B1, B2, AC-1
     assert f["observations"] == 1
 
 
-def test_journal_close_report_and_sink(repo: Path, tmp_path: Path, monkeypatch: Any) -> None:  # SCO §2.5, AC-1
+def test_journal_close_report_and_sink(repo: Path, tmp_path: Path, monkeypatch: Any) -> None:  # SCO-B15, AC-1
     monkeypatch.setenv("TEMPERGRAPH_FLUSHER", "off")
     from .test_sinks import machine
 
@@ -96,7 +96,7 @@ def test_journal_close_report_and_sink(repo: Path, tmp_path: Path, monkeypatch: 
     assert line["marginal"] == shown["marginal"] and line["turn"] == shown["turn"]  # one attribution function
     assert cli(repo, None, "supervision", "close")[1]["closed"] == []  # nothing new: no second line
     a = sup.report(root, None)["total"]
-    # the stand-in reports its cost and estimates none, so the share stays null (SUP §2.2)
+    # the stand-in reports its cost and estimates none, so the share stays null (SUP-B10)
     assert a["supervision_cost_per_run"]["measured"] == 1 and a["supervision_share"]["measured"] == 0
     rec: dict[str, Any] = {}
     sup._join(rec, line, 0.30)
@@ -111,7 +111,7 @@ def test_journal_close_report_and_sink(repo: Path, tmp_path: Path, monkeypatch: 
     assert "S1" not in rows.read_text() and row["sessions"][0]["session_hash"] != line["sessions"][0]["session_hash"]
 
 
-def test_open_session_does_not_close(repo: Path) -> None:  # SCO §2.5
+def test_open_session_does_not_close(repo: Path) -> None:  # SCO-B15
     go(repo, standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge()]), task="T-1")
     entries = [e for e in b1() if e["entry"] != "end"]
     sco.append(home_path(), "claude-code", "S1", entries)
@@ -144,7 +144,7 @@ def test_other_work_and_helpers() -> None:  # SCO-B7, B8
     assert code_doc["sessions"] == []  # nothing written: attribute is pure
 
 
-def test_log_refuses_free_text(repo: Path, monkeypatch: Any) -> None:  # SCO §4
+def test_log_refuses_free_text(repo: Path, monkeypatch: Any) -> None:  # SCO-B16, SCO-B11, SCO-B10
     bad = [{"entry": "person_turn", "at": at(1), "names": ["proceed"], "prompt": "free text"},
            {"entry": "usage", "at": at(1), "input_tokens": -1, "tool_use_ids": []},
            {"entry": "engine_call", "at": at(1), "verb": "rm -rf", "targets": [], "mutating": False,
@@ -180,7 +180,7 @@ def _transcript(path: Path) -> None:
     path.write_text("\n".join(x if isinstance(x, str) else json.dumps(x) for x in lines) + "\n")
 
 
-def test_hooks_keep_no_text(repo: Path, tmp_path: Path, monkeypatch: Any) -> None:  # SCO-AC-3, SHL §2.2
+def test_hooks_keep_no_text(repo: Path, tmp_path: Path, monkeypatch: Any) -> None:  # SCO-AC3, SHL-B14, SHL-B15
     monkeypatch.setenv("TEMPERGRAPH_FLUSHER", "off")
     go(repo, standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge()]), task="T-1")
     transcript = tmp_path / "t.jsonl"
@@ -214,7 +214,7 @@ def test_engine_sessions_write_nothing(repo: Path, tmp_path: Path, monkeypatch: 
 
 
 @pytest.mark.parametrize("kind", ["session", "person_turn", "engine_call", "usage", "end"])
-def test_hook_failure_is_safe(repo: Path, tmp_path: Path, monkeypatch: Any, kind: str) -> None:  # SCO-AC-4
+def test_hook_failure_is_safe(repo: Path, tmp_path: Path, monkeypatch: Any, kind: str) -> None:  # SCO-AC4
     transcript = tmp_path / "t.jsonl"
     _transcript(transcript)
     real = sco.append
@@ -235,7 +235,7 @@ def test_hook_failure_is_safe(repo: Path, tmp_path: Path, monkeypatch: Any, kind
     assert cli(repo, None, "supervision", "hook", "Stop")[0] == 0
 
 
-def test_read_only_verbs_leave_the_journal(repo: Path, monkeypatch: Any) -> None:  # SCO-AC-2, CLI-AC-1
+def test_read_only_verbs_leave_the_journal(repo: Path, monkeypatch: Any) -> None:  # SCO-AC2, CLI-AC1
     go(repo, standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge()]), task="T-1")
     sco.append(home_path(), "claude-code", "S1", [e for e in b1() if e["entry"] != "end"])
     home, root = home_path(), state_root_path(repo)
@@ -249,7 +249,7 @@ def test_read_only_verbs_leave_the_journal(repo: Path, monkeypatch: Any) -> None
     assert cli(repo, None, "supervision", "show")[0] == 2
 
 
-def test_plugin_hooks_never_block() -> None:  # SHL §2.2, SCO-AC-4
+def test_plugin_hooks_never_block() -> None:  # SHL-B14, SHL-B15, SCO-AC4
     from .conftest import ENGINE_ROOT
 
     doc = json.loads((ENGINE_ROOT.parent / "hooks" / "hooks.json").read_text())

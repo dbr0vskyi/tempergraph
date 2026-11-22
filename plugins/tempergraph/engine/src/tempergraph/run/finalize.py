@@ -1,4 +1,4 @@
-"""The finalizer contract (FIN §2): one call after the last pass, no model, never the request text."""
+"""The finalizer contract (FIN-B6 to FIN-B10): one call after the last pass, no model, never the request text."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ class FinalizerContext:
     open_warnings: int
     degraded: bool
     run_options: Mapping[str, Any]
-    git: checkmod.GitFacts | None  # None outside a git repository (WSP §2.4)
+    git: checkmod.GitFacts | None  # None outside a git repository (WSP-B15 to WSP-B18)
     allow: tuple[str, ...] = ()
     main: Path | None = None
     out_dir: Path | None = None

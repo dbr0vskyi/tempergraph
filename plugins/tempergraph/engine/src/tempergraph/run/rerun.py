@@ -1,4 +1,4 @@
-"""`rerun`: a new thread forked from an earlier one, linked to its source (RRN §2.4; ADR-0073).
+"""`rerun`: a new thread forked from an earlier one, linked to its source (RRN-B17, RRN-B18; ADR-0073).
 
 The fork is LangGraph's time travel: the source's checkpoint just before the unit's step node on its last
 visit is copied to the new thread id, and the unit and everything after it are cleared as a trip back. The
@@ -88,7 +88,7 @@ def external_effects(spec: WorkflowSpec, units: list[str], values: Mapping[str, 
 
 
 def cleared_units(spec: WorkflowSpec, unit: str, values: Mapping[str, Any]) -> list[str]:
-    """`unit` and every later unit on the thread's path (RRN §2.3, §2.4)."""
+    """`unit` and every later unit on the thread's path (RRN-B16, RRN-B17, RRN-B18)."""
     order = flow.effective_order(spec)
     path = list(((values.get("run") or {}).get("path") or {}).get("units") or [])
     later = order[order.index(unit):] if unit in order else [unit]
@@ -127,7 +127,7 @@ def rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registry
           feedback: str | None = None, settings: RunSettings | None = None, task_id: str | None = None,
           workspace_from: str = "current", same_branch: bool = False, drop_rulings: bool = False,
           accept_external: bool = False, check: bool = False) -> RunOutcome | dict[str, Any]:
-    """RRN §2.4. With `check`, returns the plan document and creates nothing (contract C13)."""
+    """RRN-B17, RRN-B18. With `check`, returns the plan document and creates nothing (OVR-B15)."""
     settings = dataclasses.replace(settings or RunSettings(), origin="rerun")
     out = _rerun(spec, source_task, target, registry, start_at=start_at, feedback=feedback, settings=settings,
                  task_id=task_id, workspace_from=workspace_from, same_branch=same_branch, drop_rulings=drop_rulings,
@@ -161,7 +161,7 @@ def _rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registr
     latest = _latest(spec, root, src)
     path = list(((latest.get("run") or {}).get("path") or {}).get("units") or [])
     behind = [u for u in path if u not in with_outcome(spec).units]  # the compiled outcome unit is ours
-    if behind:  # MIG §2.5 with `start_at` as the pending unit
+    if behind:  # MIG-B15 with `start_at` as the pending unit
         return _refuse("units_behind", f"units behind: {', '.join(behind)} are no longer in the workflow", tid=src)
     first = flow.effective_order(spec)[0]
     cleared = cleared_units(spec, first if start_at == "start" else start_at, latest)
@@ -194,7 +194,7 @@ def _rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registr
     src_ws = latest.get("workspace") or {}
     try:
         plan = _workspace_plan(run_spec, target, src_ws, new_task, n, workspace_from, root, src, start_at, rv)
-        if same_branch and plan.mode == "worktree":  # the source's branch and worktree (RRN §2.4)
+        if same_branch and plan.mode == "worktree":  # the source's branch and worktree (RRN-B17, RRN-B18)
             plan = dataclasses.replace(plan, branch=str(src_ws.get("branch") or plan.branch),
                                        path=Path(str(src_ws.get("path") or plan.path)),
                                        base_commit=str(src_ws.get("last_head") or plan.base_commit))
@@ -246,7 +246,7 @@ def _rerun(spec: WorkflowSpec, source_task: str, target: Path, registry: Registr
                           dict(tup.checkpoint.get("channel_versions") or {}))
                 cw.graph.update_state(cw.config(new), writes, as_node=fork.writer)
         _lineage(root, spec, source_task, new, start_at, superseded=same_branch)
-        Ledger(path=root / "ledger.jsonl").append({  # the rerun is a steer touch on its source (SUP §2.2)
+        Ledger(path=root / "ledger.jsonl").append({  # the rerun is a steer touch on its source (SUP-B10)
             "kind": "intervention", "id": uuid.uuid4().hex, "thread_id": src, "workflow": spec.name,
             "workflow_version": spec.version, **join_keys(root, settings),
             "unit": start_at, "caller": dict(settings.caller), "touches": [{"class": "steer", "action": "rerun"}],
@@ -292,7 +292,7 @@ def _writes(spec: WorkflowSpec, fork: Fork, start_at: str, cleared: list[str], f
         w["pause"] = {u: None for u in (v.get("pause") or {})}
         w["feedback"] = {u: None for u in (v.get("feedback") or {})}
         w["route"] = {u: None for u in cleared if u != start_at}
-    w["counters"] = {u: None for u in spec.units}  # fresh retry, loop and human budgets (RRN §2.4)
+    w["counters"] = {u: None for u in spec.units}  # fresh retry, loop and human budgets (RRN-B17, RRN-B18)
     if drop_rulings:
         w["rulings"] = {rid: None for rid in (v.get("rulings") or {})}
 
@@ -303,7 +303,7 @@ def _writes(spec: WorkflowSpec, fork: Fork, start_at: str, cleared: list[str], f
 
 def _workspace_plan(spec: WorkflowSpec, target: Path, src_ws: Mapping[str, Any], new_task: str, n: int,
                     workspace_from: str, root: Path, src: str, start_at: str, rv: Mapping[str, Any]) -> Any:
-    """RRN §2.4 Workspace: a new branch `<branch>-r<n>` from the source branch's tip or its commit at the unit."""
+    """RRN-B17, RRN-B18 Workspace: a new branch `<branch>-r<n>` from the source branch's tip or its commit at the unit."""
     plan = resolve_workspace(spec, target, "worktree" if src_ws.get("mode") == "worktree" else "in_place",
                              task_id=new_task, prefix=str(rv["worktree.branch_prefix"]))
     if plan.mode != "worktree":

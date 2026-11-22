@@ -1,105 +1,65 @@
----
-title: Step values and template keys
-type: component
-status: ready-for-implementation
-prefix: VAL
-adrs: [0003, 0004]
----
-
 # Step values and template keys
 
-## 1. Overview
+## Purpose
 
-Steps hand work on as files ([PRM §5](04-prompt-rendering.spec.md)), but a workflow also needs short **values**: a route, a gap list, a release-track mark, a story line, a tests-passed claim. temperspec hands four such values to the run from its first step and routes on two of them ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T13, T14). This spec adds the `value` artifact kind and lists the **template keys** a prompt may name: the engine keys, the declared inputs, and the pointers of earlier artifacts. A template never receives an earlier artifact's content; it receives where it is or, for a value, the value itself.
+Steps hand work on as files ([PRM-B14](04-prompt-rendering.spec.md)), but a workflow also needs short values: a route, a gap list, a release-track mark, a story line, a tests-passed claim, handed on from a first step and routed on ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T13, T14). This spec adds the `value` artifact kind and lists the template keys a prompt may name: the engine keys, the declared inputs, and the pointers of earlier artifacts. A template never receives an earlier artifact's content; it receives where it is or, for a value, the value itself, and the step reads what the pointer names with its own tools. A value is a claim like any other step output: the engine only parses and bounds it, and a check ties it to the evidence. Workflow authors, the prompt renderer and the prompt audit ([PRA](58-prompt-audit.spec.md)) depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-## 2. Contract
+## Behaviours
 
-### 2.1 The `value` artifact kind
+### VAL-B5 The value artifact kind
 
-| Field of a `produces` entry | Kind | Meaning |
-|---|---|---|
-| `kind` | `value` | One line of text, set by the step's `ARTIFACT <key>: <text>` line ([PRM §2.3](04-prompt-rendering.spec.md)) or by a script's result ([SCR](70-script-units-and-hybrid-steps.spec.md)) |
-| `choices` | list of strings, optional | Allowed values, compared after trimming and lower-casing |
-| `pattern` | regular expression, optional | Full-match rule for the trimmed value |
-| `max_chars` | int, default 500 | Longer text is clipped and recorded |
-| `optional` | bool, default false | A missing optional value is not a failure of the built-in output contract |
+WHEN a `produces` entry declares kind `value` THE engine SHALL take one line of text, set by the step's `ARTIFACT <key>: <text>` line ([PRM-B11](04-prompt-rendering.spec.md)) or by a script's result ([SCR](70-script-units-and-hybrid-steps.spec.md)), scrubbed before it is stored, with optional `choices` (allowed values compared after trimming and lower-casing), optional `pattern` (a full-match rule for the trimmed value), `max_chars` (default 500; longer text clipped with `value_clipped` on the step record) and `optional` (default false; a missing optional value is not a failure of the built-in output contract), a `produces` entry being either an `ArtifactKind` name or this entry, and `choices` with `pattern`, or an invalid pattern, a validation error.
 
-A `produces` map entry is either an `ArtifactKind` name, as today, or this table's entry. Values are scrubbed before they are stored.
+- GIVEN `choices` and `pattern` both set WHEN validated THEN it is refused
 
-| Step output | Stored as | Recorded on the step record |
-|---|---|---|
-| `ARTIFACT route: plan` with `choices: [plan, discovery]` | `values.route = "plan"` | — |
-| `ARTIFACT route: Plan ` | `"plan"` | — |
-| `ARTIFACT route: maybe` | absent | `value_invalid: route` |
-| no line for a required value | absent | `value_missing: route` |
+### VAL-B6 Storing a value
 
-An absent value is read as absent by every reader; it is never defaulted by the engine. A switch whose predicate finds it absent may take its default arm ([CMP §2.2](03-compiler-and-flow.spec.md)), and a check decides whether absence fails the step.
+WHEN a step's output is read for a value THE engine SHALL store the trimmed, lower-cased match of `choices` (`ARTIFACT route: plan` and `ARTIFACT route: Plan ` both give `values.route = "plan"` for `choices: [plan, discovery]`), record `value_invalid: <key>` and store nothing for a value outside the rule, record `value_missing: <key>` for a required value with no line, and never default an absent value, which every reader reads as absent, a switch whose predicate finds it absent free to take its default arm ([CMP-B10](03-compiler-and-flow.spec.md)) and a check deciding whether absence fails the step.
 
-### 2.2 Where values are read
+- GIVEN `ARTIFACT route: maybe` with `choices: [plan, discovery]` WHEN read THEN no value is stored and the step records `value_invalid: route`
+- GIVEN no line for a required value WHEN read THEN the step records `value_missing: route`
 
-| Reader | How |
-|---|---|
-| Route and switch predicates | `state.values[unit][key]` |
-| Checks | `ctx.values` ([CHK §2.1](75-check-contract-and-command-runs.spec.md)) |
-| Templates | `{key}` renders the value (§2.3) |
-| Judges | A `references` or `subject` entry naming a value key shows it as one quoted line |
-| Finalizer | `FinalizerContext.values` ([FIN](78-finalizer-contract.spec.md)) |
-| People and tools | The `facts` verb, the status and detail documents |
+### VAL-B7 Where values are read
 
-Values live in a per-unit state channel (contract C7); a trip back to or past a unit clears its values with its other artifacts ([BUD-B4](08-budgets-and-failures.spec.md)). A map item's values are keyed by item ([MAP](77-map-unit.spec.md)).
+WHEN a value is read THE engine SHALL give it to route and switch predicates as `state.values[unit][key]`, to checks as `ctx.values` ([CHK](75-check-contract-and-command-runs.spec.md)), to templates as `{key}`, to judges as one quoted line for a `references` or `subject` entry naming it, to the finalizer as `FinalizerContext.values` ([FIN](78-finalizer-contract.spec.md)), and to people and tools through `facts` and the status and detail documents; keep values in a per-unit state channel (OVR-B9) cleared with the unit's other artifacts by a trip back to or past it ([BUD-B4](08-budgets-and-failures.spec.md)); and key a map item's values by item ([MAP](77-map-unit.spec.md)).
 
-### 2.3 Template keys
+- GIVEN a trip back past a unit WHEN its values are read THEN they are absent
 
-A template field `{name}` ([CON §2.2](01-contracts.spec.md)) names one of these, in this order of lookup:
+### VAL-B8 Template keys
 
-| Kind | Keys | Renders |
-|---|---|---|
-| Engine key | `task_id`, `thread_id`, `workflow`, `unit`, `attempt`, `visit`, `branch`, `base`, `workdir`, `run_label` | The run's value; `workdir` is the absolute workspace path |
-| Item key (map items only) | `item_id`, `item_index`, `item_count`, `item` | The item's id, 1-based index, the count, and the item's text (≤ 4,000 chars) |
-| Input | A declared input name; a workflow that declares no parameters has the one input `request` | The resolved value, as today; `request` is the whole start request |
-| Setting | `settings.<name>`, as the run settings design defines it | The resolved setting |
-| Earlier artifact | A key a unit before this one produces | A `file` key: its path relative to `workdir`; `url`, `wiki_page`, `tracker_issue`, `pull_request`: its URL or id; `value`: the value |
+WHEN a template field `{name}` ([CON-B8](01-contracts.spec.md)) is rendered THE renderer SHALL look it up in this order: an engine key (`task_id`, `thread_id`, `workflow`, `unit`, `attempt`, `visit`, `branch`, `base`, `workdir` as the absolute workspace path, `run_label`); an item key in map items only (`item_id`, `item_index` 1-based, `item_count`, and `item`, the item's text up to 4,000 characters); a declared input (a workflow with no parameters has the one input `request`, the whole start request); a setting `settings.<name>` ([RST](80-run-settings-and-overrides.spec.md)); and an earlier artifact a unit before this one produces (a `file` key renders its path relative to `workdir`; `url`, `wiki_page`, `tracker_issue` and `pull_request` their URL or id; `value` the value); render nothing else, no file content, judge text or fact; and SHALL refuse at validation a field naming none of these, an input or artifact named like an engine or item key (`reserved-key`), and an item key outside a map.
 
-Engine and item keys are reserved: an input or artifact may not use one of those names. Nothing else renders: no file content, no judge text, no fact.
+- GIVEN an input named `workdir` WHEN validated THEN it is refused `reserved-key`
+- GIVEN `{item_id}` in a template outside a map WHEN validated THEN it is refused
 
-## 3. Behaviours
+### VAL-B1 Route on a value
 
-**VAL-B1 Route on a value.** Given a triage step that produces `gaps` and `route` (`choices: [plan, discovery]`) and a switch whose predicate reads `route`, when triage ends with `ARTIFACT route: plan`, then the switch takes `plan` and its `route` record names the value; when triage writes `ARTIFACT route: unclear`, then `route` is absent, the predicate faults, and the switch takes its default arm, `discovery`.
+WHEN a switch's predicate reads a value THE engine SHALL take the arm the value names and record it on the `route` record, and take the default arm when the value is absent.
 
-**VAL-B2 The code step finds the plan.** Given a plan step that produces `plan` (kind `file`) and a code step whose template says `Implement {plan} for {task_id}`, when the code step is rendered, then the fields render as `docs/plans/billing.plan.md` and `PROJ-12`, and the plan's content is not in the prompt.
+- GIVEN a triage step producing `route` (`choices: [plan, discovery]`) WHEN it writes `ARTIFACT route: plan` THEN the switch takes `plan` and its `route` record names the value
+- GIVEN `ARTIFACT route: unclear` WHEN the switch runs THEN `route` is absent, the predicate faults and the switch takes its default arm `discovery`
 
-**VAL-B3 A value from a skipped unit.** Given a release step whose template names `{discovery_note}`, produced only by a unit a route can skip, when the workflow is validated, then it warns `template-key-not-on-every-path`; when the run skipped discovery, the field renders as the missing marker and is recorded ([CON §2.2](01-contracts.spec.md)).
+### VAL-B2 The code step finds the plan
 
-**VAL-B4 Item keys.** Given a sequential map over three phases whose step template names `{item_id}` and `{item}`, when item 2 is rendered, then they render the second phase's id and text, and `{item_count}` renders 3.
+WHEN a template names an earlier `file` artifact THE renderer SHALL render its path, never its content.
 
-## 4. Error conditions
+- GIVEN a plan step producing `plan` (kind `file`) and a template `Implement {plan} for {task_id}` WHEN rendered THEN it reads `Implement docs/plans/billing.plan.md for PROJ-12` and the plan's content is not in the prompt
 
-| Condition | Result |
-|---|---|
-| A field naming nothing in §2.3 | Validation error (as today) |
-| An input or artifact named like an engine or item key | Validation error `reserved-key` |
-| An item key in a template outside a map | Validation error |
-| An earlier-artifact field not produced on every path into the step | Validation warning; the marker at run time if absent |
-| `choices` and `pattern` both set, or an invalid pattern | Validation error |
-| A value line longer than `max_chars` | Clipped; `value_clipped` on the step record |
+### VAL-B3 A value from a skipped unit
 
-## 5. Design notes
+WHEN a template names an artifact not produced on every path into the step THE engine SHALL warn `template-key-not-on-every-path` at validation and, when the run skipped its producer, render the missing marker and record it ([CON-B8](01-contracts.spec.md)).
 
-- A value is an artifact, not a new channel of trust: the step's word for a value is a claim like any other, which is why a check ties temperspec's route to its gap list. The engine only parses and bounds it.
-- Pointers, not content, keep the rule that the engine pastes no earlier artifact into a prompt ([PRM §5](04-prompt-rendering.spec.md)); the step reads what the pointer names with its own tools.
-- The grammar stays the plain `{name}` field (plus the run settings design's `settings.<name>`); no other dotted path or expression is added, so templates stay checkable by the same validation and prompt audit ([PRA](58-prompt-audit.spec.md)).
+- GIVEN `{discovery_note}` produced only by a unit a route can skip WHEN validated THEN it warns, and WHEN the run skipped it THEN the marker renders and is recorded
 
-## 6. Acceptance criteria
+### VAL-B4 Item keys
 
-- [ ] VAL-AC-1 Every row of the §2.1 output table and of §4 has a fixture test.
-- [ ] VAL-AC-2 A rendered prompt never contains the content of an earlier `file` artifact (canary test).
-- [ ] VAL-AC-3 VAL-B1 holds offline with scripted steps, for both the valid and the invalid value.
-- [ ] VAL-AC-4 The list of engine and item keys in §2.3 equals the engine's constants (generated-table drift test).
+WHEN a map item's template is rendered THE renderer SHALL render the item keys of that item.
 
-## Open questions
+- GIVEN a sequential map over three phases naming `{item_id}` and `{item}` WHEN item 2 is rendered THEN they render the second phase's id and text and `{item_count}` renders 3
 
-None.
+## Acceptance criteria
 
-## References
-
-[CON §2.1, §2.2](01-contracts.spec.md) · [PRM](04-prompt-rendering.spec.md) · [CMP](03-compiler-and-flow.spec.md) · [R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md)
+- VAL-AC1 (VAL-B5, VAL-B6, VAL-B8): Every scenario of VAL-B5, VAL-B6 and VAL-B8 has a fixture test
+- VAL-AC2 (VAL-B2, VAL-B7): A rendered prompt never contains the content of an earlier `file` artifact (canary test)
+- VAL-AC3 (VAL-B1): VAL-B1 holds offline with scripted steps, for both the valid and the invalid value
+- VAL-AC4 (VAL-B8, VAL-B3, VAL-B4): The list of engine and item keys in VAL-B8 equals the engine's constants (generated-table drift test)

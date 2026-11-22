@@ -11,7 +11,7 @@ Numbers 0130 and 0131 are held by the pull-request gate research, in review.
 
 ## Context
 
-[CMP §2.2](../specs/03-compiler-and-flow.spec.md) lists a sub-workflow unit in one row: a registered workflow compiled as a subgraph under the parent's checkpointer, at most three deep, never recursive. The first real workflow asks for one: its repository setup should be a workflow of its own, run alone or inside the delivery run ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F2, F3). Before it can be built, one choice decides most of the rest: is the child a part of the parent's run, or a run of its own that the parent starts and waits for?
+[CMP-B10 to CMP-B16](../specs/03-compiler-and-flow.spec.md) lists a sub-workflow unit in one row: a registered workflow compiled as a subgraph under the parent's checkpointer, at most three deep, never recursive. The first real workflow asks for one: its repository setup should be a workflow of its own, run alone or inside the delivery run ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F2, F3). Before it can be built, one choice decides most of the rest: is the child a part of the parent's run, or a run of its own that the parent starts and waits for?
 
 ## Decision
 
@@ -44,5 +44,5 @@ We will run a child as a subgraph inside the parent's run: one thread, one check
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | The repository setup and delivery runs share one worktree; a child that needs its own would be a writer branch, not a sub-workflow. | SWF §2.2 |
-| A2 | A child's measures should count runs inside a parent only when its promotion window says so, since a parent shapes the child's inputs. | SWF §2.4, PRO |
+| A1 | The repository setup and delivery runs share one worktree; a child that needs its own would be a writer branch, not a sub-workflow. | SWF-B8 |
+| A2 | A child's measures should count runs inside a parent only when its promotion window says so, since a parent shapes the child's inputs. | SWF-B9, PRO |

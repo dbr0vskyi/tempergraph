@@ -32,7 +32,7 @@ def test_package_loads_and_passes_its_generated_tests(root: Path, tmp_path: Path
     declared = json.loads((root / "tempergraph.json").read_text())["name"]
     assert spec.name == declared and spec.outcome is not None
     record = json.loads((root / "authoring.json").read_text())
-    decided = {d.get("subject") for d in record.get("decisions") or []}  # an accepted gap is a decision (AUT §2.5)
+    decided = {d.get("subject") for d in record.get("decisions") or []}  # an accepted gap is a decision (AUT-B22)
     assert all(c.covered or c.criterion in decided for c in coverage(spec.outcome, spec)), "SCF rung 5"
     for test in selftest.NAMES:
         work = tmp_path / test

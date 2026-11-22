@@ -1,9 +1,9 @@
-"""The run detail document (RDD §2): one thread in full, built on demand, never stored.
+"""The run detail document (RDD-B7 to RDD-B15): one thread in full, built on demand, never stored.
 
 Sources, all opened read-only: the diagram model, the run log, the checkpoint (through the status row and
 an observer graph) and each running session's live file. It calls no model and creates nothing (contract
 C13). Text is scrubbed and clipped; paths are local. Facts the run has not recorded are left out or null,
-never zero (CON §2.10).
+never zero (CON-B14, CON-B1, CON-B15).
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ def _text(v: Any, limit: int = TEXT_CLIP) -> str | None:
 
 
 def _entered_from(value: Any, units: Mapping[str, Any]) -> str:
-    """The run log's `entered_from`, in the words of EVT §2.2 (a bare unit name is a trip back from it)."""
+    """The run log's `entered_from`, in the words of EVT-B10 to EVT-B16 (a bare unit name is a trip back from it)."""
     v = str(value or "start")
     if v in ENTERED_WORDS or ":" in v:
         return v
@@ -294,7 +294,7 @@ class _Fold:
 
 
 def _read_live(path: Path, now: datetime) -> dict[str, Any] | None:
-    """The live block of RDD §2.2; a file mid-replace is never read partially (writes are atomic)."""
+    """The live block of RDD-B12; a file mid-replace is never read partially (writes are atomic)."""
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -395,7 +395,7 @@ def _snapshot(root: Path, spec: WorkflowSpec, tid: str) -> Snapshot:
 
 def detail(root: Path, spec: WorkflowSpec, tid: str, *, unit: str | None = None, with_live: bool = True,
            now: datetime | None = None) -> dict[str, Any] | None:
-    """`status --detail <selector> --json` (RDD §2). None when `unit` names no unit of the workflow."""
+    """`status --detail <selector> --json` (RDD-B7 to RDD-B15). None when `unit` names no unit of the workflow."""
     now = now or datetime.now(UTC)
     _, task = split_thread(tid)
     model = diagram_model(spec)
@@ -408,7 +408,7 @@ def detail(root: Path, spec: WorkflowSpec, tid: str, *, unit: str | None = None,
     truncated: list[str] = []
     try:
         recs = records(log) if log.exists() else None
-    except Exception:  # noqa: BLE001 - RDD §4
+    except Exception:  # noqa: BLE001 - RDD-B16, RDD-B8, RDD-B12
         recs = None
     if recs is None:
         truncated.append("run_log_unreadable")
@@ -486,7 +486,7 @@ def detail(root: Path, spec: WorkflowSpec, tid: str, *, unit: str | None = None,
 
 def _add_evidence(unit: dict[str, Any], judged: Mapping[str, Any], folder: Path | None = None) -> None:
     """Evidence and fix lines per judged attempt from `evidence/judgements/<unit>/<visit>.<attempt>.json`;
-    the unit's last judged attempt falls back to the checkpoint's local judgement (RDD §2.1)."""
+    the unit's last judged attempt falls back to the checkpoint's local judgement (RDD-B7 to RDD-B11, RDD-B13, RDD-B15)."""
     last = next((a for v in reversed(unit["visits"]) for a in reversed(v["attempts"]) if a.get("judge")), None)
     for v in unit["visits"]:
         for a in v["attempts"]:
@@ -607,7 +607,7 @@ def _segment_cost(recs: list[dict[str, Any]], since: Any) -> float | None:
 
 
 def cut(doc: dict[str, Any], limit: int = MAX_BYTES) -> dict[str, Any]:
-    """RDD §2.1: above `limit` bytes drop `events_tail`, then the attempt detail of passed units."""
+    """RDD-B7 to RDD-B11, RDD-B13, RDD-B15: above `limit` bytes drop `events_tail`, then the attempt detail of passed units."""
     def size() -> int:
         return len(json.dumps(doc, ensure_ascii=False, default=str).encode("utf-8"))
 
@@ -627,7 +627,7 @@ def cut(doc: dict[str, Any], limit: int = MAX_BYTES) -> dict[str, Any]:
 
 
 def _closed_cost(root: Path, tid: str) -> dict[str, Any] | None:
-    """SCO §2.5's closed figures for the thread, when its supervision has closed; else the record's null."""
+    """SCO-B15's closed figures for the thread, when its supervision has closed; else the record's null."""
     from tempergraph.observe.supervision_cost import closed_for
 
     line = closed_for(root).get(tid)

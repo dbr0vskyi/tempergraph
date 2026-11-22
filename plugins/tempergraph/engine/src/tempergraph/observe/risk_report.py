@@ -1,4 +1,4 @@
-"""`report --risk <workflow>`: judge attempts per gate and risk level (JRK §2.5). Figures only.
+"""`report --risk <workflow>`: judge attempts per gate and risk level (JRK-B10). Figures only.
 
 Reads the run logs: a `judge_risk` record names the level that graded an attempt, the gate's decision on the
 same attempt gives PROCEED (no blocker) or RETRY, and the judge's sessions give its cost. In shadow mode the same figures
@@ -34,7 +34,7 @@ def _records(root: Path, workflow: str) -> Iterator[list[dict[str, Any]]]:
 
 
 def _usd(m: dict[str, Any]) -> float | None:
-    """Reported money when every session reported it, else the estimate; never a sum of the two (OBS §2.2)."""
+    """Reported money when every session reported it, else the estimate; never a sum of the two (OBS-B10 to OBS-B13)."""
     if m["sessions"] and m["reported_sessions"] == m["sessions"]:
         return float(m["reported_usd"])
     if m["sessions"] and m["estimated_sessions"] == m["sessions"]:

@@ -1,4 +1,4 @@
-"""The outcome file and each gate's criteria from it (OUT §2.1–2.3, §4; PKG §2.3 step 5).
+"""The outcome file and each gate's criteria from it (OUT-B8 to OUT-B14, OUT-B22; PKG-B15, PKG-B16, PKG-B17 step 5).
 
 Reading is model-free and read-only. The outcome gate, sign-off and the outcome record are T5.8.2 and T5.8.3.
 """
@@ -58,7 +58,7 @@ def _criterion(raw: Any, where: str, out: list[Finding]) -> Criterion | None:
 
 
 def parse_outcome(data: Any) -> OutcomeSpec | list[Finding]:
-    """OUT §2.1 and the file-only rows of OUT §4."""
+    """OUT-B8, OUT-B9 and the file-only rows of OUT-B22."""
     out: list[Finding] = []
     if not isinstance(data, Mapping) or data.get("schema_version") != 1:
         return [Finding(code="outcome-missing", unit=None, message="outcome.json is not a version 1 object")]
@@ -109,13 +109,13 @@ def read_outcome(package_path: Path) -> OutcomeSpec | list[Finding]:
 
 
 def gate_criteria(outcome: OutcomeSpec, unit: str) -> list[Criterion]:
-    """The unit's intermediate criteria, `mechanical` set for `check` ones (OUT-AC-2)."""
+    """The unit's intermediate criteria, `mechanical` set for `check` ones (OUT-AC2)."""
     io = outcome.intermediate.get(unit)
     return list(io.criteria) if io else []
 
 
 def check_against(outcome: OutcomeSpec, spec: WorkflowSpec) -> list[Finding]:
-    """The unit rows of OUT §4: an intermediate outcome for an unknown unit, or a model step with none."""
+    """The unit rows of OUT-B22: an intermediate outcome for an unknown unit, or a model step with none."""
     out: list[Finding] = []
     for unit in outcome.intermediate:
         if unit not in spec.units:
@@ -127,12 +127,12 @@ def check_against(outcome: OutcomeSpec, spec: WorkflowSpec) -> list[Finding]:
         found = spec.units.get(name)
         if found is not None and found.gate.check is None and any(c.verified_by == "check" for c in io.criteria):
             out.append(Finding(code="mechanical-without-check", unit=name,
-                               message="a `check` criterion needs the unit's gate to have a check (CHK §4)"))
+                               message="a `check` criterion needs the unit's gate to have a check (CHK-B15, CHK-B14, CHK-B10, CHK-B17)"))
     return out
 
 
 # ---------------------------------------------------------------------------------------------
-# The outcome gate (OUT §2.4)
+# The outcome gate (OUT-B15, OUT-B16, OUT-B17)
 
 OUTCOME_STANCE = "The request and the deliverables are the truth; everything a step said is a claim to verify."
 _TIER = {"small": 1, "haiku": 1, "medium": 2, "sonnet": 2, "large": 3, "opus": 3}
@@ -144,7 +144,7 @@ def _strongest_judge_model(spec: WorkflowSpec) -> str | None:
 
 
 def outcome_unit(spec: WorkflowSpec) -> UnitSpec | None:
-    """The reserved `outcome` unit compiled from `outcome.json` with no declaration (PKG §2.7, OUT §2.4)."""
+    """The reserved `outcome` unit compiled from `outcome.json` with no declaration (PKG-B25, OUT-B15, OUT-B16, OUT-B17)."""
     o = spec.outcome
     if o is None or not o.final:
         return None
@@ -156,7 +156,7 @@ def outcome_unit(spec: WorkflowSpec) -> UnitSpec | None:
     jcfg = dict(o.judge or {})
     made = deliverable_producers(spec)
     every = _on_every_path(spec)
-    # a deliverable some path does not produce is an optional reference for the outcome judge (OUT §2.4)
+    # a deliverable some path does not produce is an optional reference for the outcome judge (OUT-B15, OUT-B16, OUT-B17)
     refs: dict[str, Literal["required", "optional"]] = {
         str(d.get("key")): "required" if not made.get(str(d.get("key"))) or set(made[str(d.get("key"))]) & every
         else "optional" for d in o.deliverables if d.get("key")}
@@ -218,7 +218,7 @@ def outcome_check(ctx: Any) -> CheckResult:
     for d in deliverables:
         key, kind = str(d.get("key") or ""), str(d.get("kind") or "file")
         made_by = producers.get(key) or []
-        if made_by and path and not path & set(made_by):  # OUT §2.4: required only on a path that produces it
+        if made_by and path and not path & set(made_by):  # OUT-B15, OUT-B16, OUT-B17: required only on a path that produces it
             off_path += 1
             continue
         present = key in arts or key in vals
@@ -242,7 +242,7 @@ def outcome_check(ctx: Any) -> CheckResult:
 
 
 def derived_back(spec: WorkflowSpec, failing: list[str], path: list[str]) -> str | None:
-    """OUT §2.4: the earliest unit on the path whose criterion serves a failing final criterion."""
+    """OUT-B15, OUT-B16, OUT-B17: the earliest unit on the path whose criterion serves a failing final criterion."""
     o = spec.outcome
     if o is None:
         return None

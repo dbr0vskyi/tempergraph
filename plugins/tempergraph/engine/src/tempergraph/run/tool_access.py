@@ -1,4 +1,4 @@
-"""Which tools an attempt could not reach, their refusal class and the grant that fixes each (RST §2.8, TSA §2.2).
+"""Which tools an attempt could not reach, their refusal class and the grant that fixes each (RST-B28, RST-B29, RST-B30, TSA-B7).
 
 Release 1 classifies from the refused tool's name only: a denied event carries no input summary, so a refused
 shell call is `unclassified` and the pause offers `retry` with feedback rather than an `--allow-command`.

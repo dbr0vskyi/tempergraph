@@ -1,104 +1,95 @@
----
-title: Budgets, failures and timeouts
-type: component
-status: ready-for-implementation
-prefix: BUD
-adrs: [0004, 0006, 0021, 0070]
----
-
 # Budgets, failures and timeouts
 
-## 1. Overview
+## Purpose
 
-Every way a run can repeat has a counter with a default, and the **cause** of a failure decides which counter it spends: the model's failure costs a retry, the machine's an infra try, a person's direction the human cap. Budgets are decided in the gate node, which stays pure. Timeouts are engine-owned and resolved per step and per judge, so they behave the same on every executor. Every default below is a run setting an operator may override per run, per unit or per machine within the catalog's ranges ([RST §2.2](80-run-settings-and-overrides.spec.md)).
+Every way a run can repeat has a counter with a default, and the cause of a failure decides which counter it spends: the model's failure costs a retry, the machine's an infra try, a person's direction the human cap. Budgets are decided in the gate node, which stays pure. Timeouts are engine-owned and resolved per step and per judge, so they behave the same on every executor. Every default is a run setting an operator may override per run, per unit or per machine within the catalog's ranges ([RST-B18](80-run-settings-and-overrides.spec.md)). The gate, pauses ([HUM](07-gate-and-human.spec.md)), executors ([EXI](10-executor-interface.spec.md)) and ladders ([LAD](92-effort-ladder-and-model-escalation.spec.md)) depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-## 2. Contract
+## Behaviours
 
-| Counter | Spent by | Default | When spent |
-|---|---|---|---|
-| Retry budget (per visit) | Check FAIL, judge RETRY, failed step, engine timeout or stall | 2 retries | Gate `on_budget_spent`: `stop` (exit 5) or `ask` (pause) |
-| Loop budget (per unit, target) | Route, upstream claim or attribution sending the run back | 1 trip | Same stop-or-ask setting |
-| Human cap | A person's retry | 100 | Resume refused (exit 2) |
-| Infra tries (in a row) | `infra_cause` set on a step or judge session | 3 (max 10), backoff 10, 20, 40 s up to 300 s | Run ends with an infra exit (5); never a pause |
-| Attempt cap (per invocation) | Any step attempt | 15 | Clean stop; a resume gets a fresh allowance |
-| Run cost cap (`run_cost_cap_usd`) | Every session's cost, reported where present else estimated, children included | none | Checked before each attempt starts: a run at or over the cap drains cleanly with exit 5 reason `cost_cap`; re-openable after the operator raises it with `resume --set run.run_cost_cap_usd=…` ([RST §2.6](80-run-settings-and-overrides.spec.md)) |
+### BUD-B1 Cause picks the counter
 
-### 2.1 Timeout resolution
+WHEN a session ends with an `infra_cause` in `spawn_failed`, `prompt_not_delivered`, `no_output`, `no_result`, `broken_pipe`, `connection`, `out_of_memory`, `request_timed_out` or `throttled`, or a step times out with at least 60% of wall time in tool calls (`slow_host`) THE gate SHALL spend an infra try, leave the retry budget unchanged and rerun the attempt on the same ladder rung after the backoff; and SHALL spend the retry budget on any other `timed_out`, a `stalled` session and `error_kind` `cap_reached`, `turn_cap` or `model`.
 
-Step: the operator layers of [RST §2.3](80-run-settings-and-overrides.spec.md) (flags per unit then per run, profiles, project and user overrides), the step's `timeout_s`, workflow default, project and user defaults, engine default (600 s). Judge: the same operator layers on the judge scopes only, the gate's judge `timeout_s`, workflow default, project and user defaults, engine default (600 s); a judge never reads a step's value. Council members, the chair, contest slots and scripts resolve on their own scopes the same way. `idle_s` follows the same order. Every record carries the number and its source layer.
+- GIVEN a step attempt that ends with `broken_pipe` WHEN the gate decides THEN the retry budget is unchanged and the infra counter rises
 
-### 2.2 Cause to counter
+### BUD-B2 Same rules on every executor
 
-| Executor result | Counter |
-|---|---|
-| `infra_cause` ∈ {`spawn_failed`, `prompt_not_delivered`, `no_output`, `no_result`, `broken_pipe`, `connection`, `out_of_memory`, `request_timed_out`, `throttled`} | infra tries |
-| `timed_out` with ≥ 60% of wall time in tool calls (step only) | infra tries (`slow_host`) |
-| `timed_out` otherwise, `stalled` | retry budget |
-| `error_kind` `cap_reached`, `turn_cap`, `model` | retry budget |
-| `error_kind` `auth` | none: escalate at once; no retry can fix it |
-| `error_kind` `refused` | none: escalate with the refusal recorded; the same prompt would be refused again |
-| Judge RETRY whose every unmet blocker is `no_change` | none: escalate ([JDG](05-judge-and-verdict.spec.md)) |
-| Check FAIL marked environmental | none: escalate with no judge and no new attempt |
-| A failed or blocked attempt whose session recorded a `denied` event or lacked a declared tool at start | none: escalate with cause `tool_access`; the payload offers the grants that fix it ([RST §2.8](80-run-settings-and-overrides.spec.md)) |
+WHEN the same failure shape occurs on any executor THE engine SHALL spend the same counter, classifying no result, throttling and its executor signals as infra, a turn cap, a cost cap and a stall as retry, and auth and refusal as escalate.
 
-### 2.3 Concurrent sessions under one cap (release 3)
+- GIVEN a stream that ends with no result (`claude` no `result`, `agent-sdk` no `ResultMessage`, `messages-api` worker with no `result` line, `antigravity` `init` with no `result`) WHEN classified THEN each spends an infra try
+- GIVEN a turn cap (`error_max_turns` on `claude` and `agent-sdk`, the engine turn count on `messages-api`) or a cost cap (`--max-budget-usd` end per P-CC-3, `error_max_budget_usd`, the engine estimate) WHEN classified THEN each spends the retry budget
+- GIVEN throttling (retry category `rate_limit`, `AssistantMessage.error = rate_limit`, HTTP 429 with `retry-after` or 529, per P-AG-7 on `antigravity`) WHEN classified THEN each spends an infra try
+- GIVEN an auth failure (`authentication_failed`, HTTP 401, 403 or 402, `result.error.type` per P-AG-7) or a `messages-api` `stop_reason = refusal` WHEN classified THEN each escalates
 
-When sessions of one run can be in flight together (parallel branches, a parallel map, contest slots, council members), the check before each attempt counts what is already in flight: a session that starts **reserves** its own per-session cap, or where none is set the projection of its unit from the stats ([CST](34-central-run-stats.spec.md)), or with no stats the run's remaining cap divided by the number of sessions that may run at once, and the reservation becomes the session's real cost when it ends. An attempt whose reservation would take the run over its cap waits for a running session to end, and starts no session when nothing is running; then the run drains with `cost_cap` as above. Release 2's parallel read-only branches check spend only, so two branches may start together just under the cap and end above it by at most one session's cost each ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F5).
+### BUD-B3 Visit budgets
 
-## 3. Behaviours
+WHEN a unit entered by a back-edge fails THE engine SHALL count its retry budget from the later of the visit's start and the last human retry, attempt numbers rising across visits.
 
-**BUD-B1 Cause picks the counter.** Given a step attempt that ends with `broken_pipe`, when the gate decides, then the retry budget is unchanged, the infra counter rises, and the attempt reruns on the same ladder rung after the backoff.
+- GIVEN a unit's second visit after a human retry WHEN it fails twice THEN its budget counts from the human retry
 
-**BUD-B2 Same rules on every executor.** Given the same failure shape on each executor, when classified, then the counter spent is the same.
+### BUD-B4 Trip back clears
 
-| Failure | claude | agent-sdk | messages-api | antigravity | Counter |
-|---|---|---|---|---|---|
-| No result | stream ends with no `result` | no `ResultMessage` | worker ends with no `result` line | `init` seen, no `result` | infra |
-| Turn cap | `subtype = error_max_turns` | `subtype = error_max_turns` | engine turn count | n/a (no turn cap) | retry |
-| Cost cap | `--max-budget-usd` end (P-CC-3) | `subtype = error_max_budget_usd` | engine estimate between responses | n/a | retry |
-| Throttled | last retry category `rate_limit` | `AssistantMessage.error = rate_limit` | 429 with `retry-after`, 529 | per P-AG-7 | infra |
-| Stall | engine idle kill | engine idle kill | engine idle kill | engine idle kill | retry |
-| Auth | `api_retry` category `authentication_failed` | `error = authentication_failed` | 401, 403, 402 | `result.error.type` per P-AG-7 | escalate |
-| Refusal | n/a | n/a | `stop_reason = refusal` | n/a | escalate |
+WHEN a BACK from one unit to an earlier one is applied THE engine SHALL delete from state the verdicts, judgements and artifacts of the target and every unit after it on the path, leaving workspace files untouched, and give the target's prompt and judge the reason under their own heading.
 
-**BUD-B3 Visit budgets.** Given a unit entered by a back-edge, when it fails, then its retry budget counts from the later of the visit's start and the last human retry; attempt numbers keep rising across visits.
+- GIVEN BACK from `c` to `a` WHEN it is applied THEN `a`, `b` and `c` have no verdicts in state and `a`'s prompt carries the reason
 
-**BUD-B4 Trip back clears.** Given BACK from unit c to unit a, when it is applied, then the verdicts, judgements and artifacts of a and every unit after it on the path are deleted from state (files in the workspace are untouched), and a's prompt and judge carry the reason under their own heading.
+### BUD-B5 Slow is not failed
 
-**BUD-B5 Slow is not failed.** Given an attempt that used 0.85 of its limit and passed, when recorded, then it is flagged slow; it spends nothing.
+WHEN an attempt that used at least 0.85 of its limit passes THE engine SHALL flag it slow and spend nothing.
 
-**BUD-B6 Automatic re-open.** Given the operator enabled automatic re-open with N = 2, when a run ends with spent retries, a step timeout or an infra failure and exactly one top-level unit stopped, then the engine re-opens it at most twice as that person's retry given in advance; it never answers a pause or undoes a stop.
+- GIVEN an attempt that used 0.85 of its limit and passed WHEN recorded THEN it is flagged slow
 
-**BUD-B7 One alias per step.** Given a step with `model: small` and retry budget 3, when four attempts and an infra rerun run, then every one uses `small` and the judge uses the alias CON §2.4 gives it; no retry changes the model. Release 1's retry-count list in `model` is refused (`model-ladder-retired`) and rewritten by rule ([LAD §2.8](92-effort-ladder-and-model-escalation.spec.md)); what raises effort or the model is LAD's evidence-gated ladder and one-step escalation ([ADR-0121](../adr/0121-ladders-climb-only-on-trusted-substantive-evidence.adr.md)).
+### BUD-B6 Automatic re-open
 
-## 4. Error conditions
+WHEN the operator enabled automatic re-open with N and a run ends with spent retries, a step timeout or an infra failure with exactly one top-level unit stopped THE engine SHALL re-open it at most N times per thread as that person's retry given in advance, recorded as ledger rows with cause `auto_reopen` and caller kind `engine`, a person's retry not resetting the count, and never answer a pause, undo a stop or re-open a `cost_cap` drain.
 
-| Condition | Result |
-|---|---|
-| Infra tries spent | Exit 5 with reason `infra`; re-openable |
-| Retry budget spent, gate `stop` | Exit 5; re-openable by a person's retry |
-| Retry budget spent, gate `ask` | Exit 3 with a budget payload |
+- GIVEN `run.auto_reopen` 2 WHEN a run ends on spent retries three times THEN it is re-opened twice and then stays stopped
 
-## 5. Design notes
+### BUD-B7 One alias per step
 
-- The idle watchdog is executor-neutral because it reads normalized events ([EXI](10-executor-interface.spec.md)); Antigravity has no turn cap, so the engine's limits are its only bounds ([R-003](../research/R-003-executor-capability-matrix.rsrch.md)).
-- Text is never classified, except the one exact-equality match each executor spec lists.
-- The run cost cap reads the same figure the run line shows, so an operator sees why a run drained. A per-session cap (`cost_cap_usd`) still applies inside each session where the executor declares it.
+WHEN a step's attempts and infra reruns run THE engine SHALL use the step's one alias for every attempt and the judge's alias by the judge order ([CON-B3](01-contracts.spec.md)), no retry changing the model; refuse release 1's retry-count list in `model` with `model-ladder-retired`, rewritten by rule ([LAD-B18](92-effort-ladder-and-model-escalation.spec.md)); and leave raising effort or the model to LAD's evidence-gated ladder and one-step escalation ([ADR-0121](../adr/0121-ladders-climb-only-on-trusted-substantive-evidence.adr.md)).
 
-## 6. Acceptance criteria
+- GIVEN `model: small` and retry budget 3 WHEN four attempts and an infra rerun run THEN every one uses `small`
 
-- [ ] BUD-AC-1 Each row of §2.2 is tested on every executor's fixtures.
-- [ ] BUD-AC-2 Every loop in a run has a counter with a default; a test drives each to its limit.
-- [ ] BUD-AC-3 An infra failure never produces a pause.
-- [ ] BUD-AC-4 Every step and judge record carries its timeout and source layer.
+### BUD-B8 Counters
+
+WHEN a run repeats THE engine SHALL keep the retry budget per visit (check FAIL, judge RETRY, failed step, engine timeout or stall; default 2), the loop budget per unit and target (a route, upstream claim or attribution sending the run back; default 1), both ending at the gate's `on_budget_spent` (`stop` with exit 5, re-openable by a person's retry, or `ask` with exit 3 and a budget payload); the human cap (a person's retry; default 100, a resume beyond it refused with exit 2); infra tries in a row (default 3, at most 10, backoff 10, 20, 40 s up to 300 s, ending with exit 5 reason `infra`, re-openable, never a pause); and the attempt cap per invocation (default 15, a clean stop, a resume getting a fresh allowance, the chain length recorded on the status row).
+
+- GIVEN infra tries spent WHEN the run ends THEN it exits 5 with reason `infra` and no pause
+
+### BUD-B9 Run cost cap
+
+WHEN `run_cost_cap_usd` is set THE engine SHALL check before each attempt starts the run's spend, every session's reported cost where present else estimated, children included, and drain a run at or over the cap cleanly with exit 5 reason `cost_cap`, re-openable after the operator raises it with `resume --set run.run_cost_cap_usd=…` ([RST-B26](80-run-settings-and-overrides.spec.md)), the figure being the one the run line shows, and a per-session `cost_cap_usd` still applying inside each session where the executor declares it.
+
+- GIVEN a cap of 5 USD and 5.10 USD spent WHEN the next attempt would start THEN the run drains with exit 5 `cost_cap`
+
+### BUD-B10 Timeout resolution
+
+WHEN a timeout is resolved THE engine SHALL take a step's from the operator layers ([RST-B22](80-run-settings-and-overrides.spec.md): flags per unit then per run, profiles, project and user overrides), the step's `timeout_s`, the workflow default, project and user defaults and the engine default 600 s; a judge's from the same operator layers on the judge scopes only, the gate's judge `timeout_s`, the workflow, project and user defaults and 600 s, never a step's value; council members, the chair, contest slots and scripts on their own scopes the same way; `idle_s` in the same order; and record on every step and judge record the number and its source layer.
+
+- GIVEN a step `timeout_s` of 1800 and no judge timeout WHEN the judge resolves THEN it gets 600 s from the engine default, recorded as such
+
+### BUD-B11 Causes that escalate at once
+
+WHEN a session ends with `error_kind` `auth` or `refused`, a judge RETRY whose every unmet blocker is `no_change` ([JDG-B8](05-judge-and-verdict.spec.md)), a check FAIL marked environmental, or a failed or blocked attempt whose session recorded a `denied` event or lacked a declared tool at start THE engine SHALL spend no counter and escalate at once: auth because no retry can fix it, a refusal with the refusal recorded, an environmental FAIL with no judge and no new attempt, and the tool case with cause `tool_access` and a payload offering the grants that fix it ([RST-B28](80-run-settings-and-overrides.spec.md)).
+
+- GIVEN a step whose session recorded a `denied` event WHEN the gate decides THEN the run pauses with cause `tool_access` and the payload lists the grants
+
+### BUD-B12 Concurrent sessions under one cap
+
+WHEN sessions of one run can be in flight together (parallel branches, a parallel map, contest slots, council members) THE engine SHALL count what is in flight in the check before each attempt, a starting session reserving its per-session cap, or the projection of its unit from the stats ([CST](34-central-run-stats.spec.md)), or the run's remaining cap divided by the sessions that may run at once, the reservation becoming its real cost when it ends; make an attempt whose reservation would cross the cap wait for a running session, and start none when nothing is running, then drain with `cost_cap`.
+
+- GIVEN two parallel branches whose reservations together cross the cap WHEN both are due THEN one starts and the other waits
+
+## Acceptance criteria
+
+- BUD-AC1 (BUD-B1, BUD-B2, BUD-B11): Each cause rule is tested on every executor's fixtures
+- BUD-AC2 (BUD-B3, BUD-B4, BUD-B6, BUD-B7, BUD-B8, BUD-B9, BUD-B12): Every loop in a run has a counter with a default; a test drives each to its limit
+- BUD-AC3 (BUD-B1, BUD-B8): An infra failure never produces a pause
+- BUD-AC4 (BUD-B5, BUD-B10): Every step and judge record carries its timeout and source layer
 
 ## Open questions
 
-| Question | Owner | Release 1 default |
-|---|---|---|
-| Should a `throttled` session wait longer than the standard backoff? Needs a live concurrency measurement per executor. | Operator | No: the standard 10, 20, 40 s backoff |
-| Do repeated resumes of one thread (a resume chain) each get a fresh attempt allowance without bound, or should a thread carry a lifetime cap? First release keeps the per-invocation cap and records the chain length on the status row. | Engine owner | The per-invocation cap of 15 only |
-| Does `run.auto_reopen` count per segment or per thread? Assumed per thread: every automatic re-open of the thread counts toward N (ledger rows with cause `auto_reopen`, caller kind `engine`), and a person's retry does not reset it. A `cost_cap` drain and a person's stop are never re-opened. | Engine owner | Per thread |
-
-## References
-
+- Should a `throttled` session wait longer than the standard backoff? Until answered: no, the standard 10, 20, 40 s backoff; it needs a live concurrency measurement per executor. Owner: operator.
+- Do repeated resumes of one thread each get a fresh attempt allowance without bound, or should a thread carry a lifetime cap? Until answered: the per-invocation cap of 15 only, with the chain length on the status row. Owner: engine owner.
+- Not built yet: reservations for concurrent sessions (BUD-B12) are release 3 work; release 2's parallel read-only branches check spend only, so two branches may start together just under the cap and end above it by at most one session's cost each ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F5). Owner: engine owner.

@@ -34,7 +34,7 @@ We will compile each unit into four nodes: **step** (runs the session), **judge*
 
 ## Consequences
 
-- Positive: pauses are cheap and correct; a gate is pure and safe to re-run (contract C5).
+- Positive: pauses are cheap and correct; a gate is pure and safe to re-run (OVR-B7).
 - Negative: per-unit state channels and reducers are needed so parallel units do not collide.
 - Risk: someone adds logging before the interrupt. Mitigation: a source test asserts the interrupt is first.
 

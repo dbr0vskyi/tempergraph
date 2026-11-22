@@ -26,10 +26,10 @@ task_id: first-release-t12
 
 Status pass: SIL and IMD move to `ready-for-implementation` with release 1 defaults recorded in their Open questions; FBK, JCL and PRP move to `ready-for-implementation` with their release 1 build recorded in §5.
 
-Release 1 defaults and assumptions (recorded in SIL §5 and Open questions, EVT §2.2 `finding_recorded`):
-- Findings live in `runs/<workflow>/<task>/findings.json` and evidence in `runs/<workflow>/<task>/evidence/record.json`, as LOS §2.1 lays out; both owner-only, and only the recorder names the evidence file (source test).
+Release 1 defaults and assumptions (recorded in SIL-B17, SIL-B18 and Open questions, EVT-B10 to EVT-B16 `finding_recorded`):
+- Findings live in `runs/<workflow>/<task>/findings.json` and evidence in `runs/<workflow>/<task>/evidence/record.json`, as LOS-B7, LOS-B8, LOS-B9 lays out; both owner-only, and only the recorder names the evidence file (source test).
 - A **final exit** is an exit that is not a pause (exit 0, 4 or 5). Findings are recorded at every exit; lenses decide only at final exits.
-- Cause codes and their classes, sides and fixed remedies are one table in `improve/causes.py`; each threshold is a parameter record with provenance `default_no_data` (IMD §2.5).
+- Cause codes and their classes, sides and fixed remedies are one table in `improve/causes.py`; each threshold is a parameter record with provenance `default_no_data` (IMD-B23).
 
 ## 1. Requirements
 
@@ -45,24 +45,24 @@ Release 1 defaults and assumptions (recorded in SIL §5 and Open questions, EVT 
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 12.1.1 | `engine/tests/test_improve.py` | Cause derivation from fixture run logs and ledger rows (each row of the cause table), fault sides (engine, workflow, `executor:<name>`, host), retry burst and `judge_blocked:<id>`, `blocked_without_check`, `grant_missing` and `grant_unused`, `agent_decided:<cause>`; findings and evidence on every exit; the publish boundary source test; lens triggers in dev and stable mode; the cost rules on a window | SIL §2, IMD §2.5 | yes | P1 | ✓ | 2026-11-20 |
-| 12.1.2 | `engine/src/tempergraph/improve/causes.py` | The cause table (code, class `fault`/`infra`/`designed`, side, fixed remedy), `derive(run_log, ledger_rows, thread)` with no model call | SIL §2.3, §2.4 | | P1 | ✓ | 2026-11-20 |
-| 12.1.3 | `engine/src/tempergraph/improve/record.py`, `run/runner.py` | `record_exit`: findings (metadata only, IMD-R1 keys, fingerprint by side, workflow, leading cause and step), the evidence file, the `finding_recorded` event as a run-log record; called best-effort after every `run_exit` | SIL §2.1, IMD §2.2, §2.3 | | P1 | ✓ | 2026-11-20 |
-| 12.1.4 | `engine/src/tempergraph/improve/lenses.py`, `improve/params.py` | Which lenses fire at a final exit (dev and stable triggers), the outcome lens read from the outcome record, the model-free cost rules over a 30-day window of one version, the per-gate quality scorecard; parameters with provenance | SIL §2.2, IMD §2.5 | | P1 | ✓ | 2026-11-20 |
+| 12.1.1 | `engine/tests/test_improve.py` | Cause derivation from fixture run logs and ledger rows (each row of the cause table), fault sides (engine, workflow, `executor:<name>`, host), retry burst and `judge_blocked:<id>`, `blocked_without_check`, `grant_missing` and `grant_unused`, `agent_decided:<cause>`; findings and evidence on every exit; the publish boundary source test; lens triggers in dev and stable mode; the cost rules on a window | SIL-B8, SIL-B10, SIL-B11, SIL-B12, IMD-B23 | yes | P1 | ✓ | 2026-11-20 |
+| 12.1.2 | `engine/src/tempergraph/improve/causes.py` | The cause table (code, class `fault`/`infra`/`designed`, side, fixed remedy), `derive(run_log, ledger_rows, thread)` with no model call | SIL-B11, SIL-B12 to SIL-B16 | | P1 | ✓ | 2026-11-20 |
+| 12.1.3 | `engine/src/tempergraph/improve/record.py`, `run/runner.py` | `record_exit`: findings (metadata only, IMD-B5 keys, fingerprint by side, workflow, leading cause and step), the evidence file, the `finding_recorded` event as a run-log record; called best-effort after every `run_exit` | SIL-B8, IMD-B20, IMD-B21 | | P1 | ✓ | 2026-11-20 |
+| 12.1.4 | `engine/src/tempergraph/improve/lenses.py`, `improve/params.py` | Which lenses fire at a final exit (dev and stable triggers), the outcome lens read from the outcome record, the model-free cost rules over a 30-day window of one version, the per-gate quality scorecard; parameters with provenance | SIL-B10, IMD-B23 | | P1 | ✓ | 2026-11-20 |
 | 12.1.5 | `engine/src/tempergraph/improve/child.py` | The loop as a built-in workflow started detached through a hand-off ticket after a final exit (friction and outcome steps and judges on a mid-tier alias, 1800 s); uses T7's `tempergraph.detach` launch site; release 1 shape recorded in SIL Open questions; outcome-lens candidates (`outcome_unmet:<criterion>`) file through `calibration.has_score` and the pattern rule | SIL-B1, B2, B3, B6, B7, §5 | yes | P1 | ✓ | 2026-11-20 |
 
 ### T12.2 Filing and measurement
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 12.2.1 | `engine/src/tempergraph/improve/filing.py` | De-duplication by fingerprint (search retried once, then file anyway), the pattern rule (3 runs, 3 requests, 30 days; one engine fault is enough), `uncalibrated` stays local, host findings never filed, dry run, an outbox for an unreachable code host; `improve/codehost.py` (`gh` client, a sanctioned launch site, SEC §2.2); executor causes carry the CLI version and `unknown_tool_name` comes from the view catalog | SIL-B2, B3, B4, B6, B7, §4 | yes | P1 | ✓ | 2026-11-20 |
+| 12.2.1 | `engine/src/tempergraph/improve/filing.py` | De-duplication by fingerprint (search retried once, then file anyway), the pattern rule (3 runs, 3 requests, 30 days; one engine fault is enough), `uncalibrated` stays local, host findings never filed, dry run, an outbox for an unreachable code host; `improve/codehost.py` (`gh` client, a sanctioned launch site, SEC-B7); executor causes carry the CLI version and `unknown_tool_name` comes from the view catalog | SIL-B2, B3, B4, B6, B7, §4 | yes | P1 | ✓ | 2026-11-20 |
 | 12.2.2 | `engine/src/tempergraph/improve/measure.py` | The model-free comparison of two versions (cost per run and unit, repeat share, gate pass rate, outcome mix); one comment, or a reopen after a regression (`measure.quality_drop`) | SIL-B5, C14 | yes | P1 | ✓ | 2026-11-20 |
 
 ### T12.7 Lessons
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 12.7.1 | `engine/src/tempergraph/improve/lessons.py`, `model/validate.py`, `render/prompt.py`, `run/nodes.py` | Per-step lessons files, validation (budget, literal floor, unknown unit, malformed), the step-only block after the tools block, `lessons_digest` on the step's `agent_run`, the §2.3 delta rules for the proposal classifier | LSN, PRM §2.1 | yes | P2 | ✓ | 2026-11-20 |
+| 12.7.1 | `engine/src/tempergraph/improve/lessons.py`, `model/validate.py`, `render/prompt.py`, `run/nodes.py` | Per-step lessons files, validation (budget, literal floor, unknown unit, malformed), the step-only block after the tools block, `lessons_digest` on the step's `agent_run`, the §2.3 delta rules for the proposal classifier | LSN, PRM-B6 | yes | P2 | ✓ | 2026-11-20 |
 
 ### T12.3 Labels and judge reliability
 
@@ -70,53 +70,53 @@ Built in the thread "Build judge calibration and proposals".
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 12.3.1 | `engine/src/tempergraph/improve/reliability.py`, `observe/labels.py`, `run/judging.py`, `run/nodes.py` | Derived labels (`approval`, `override`, `pushback`, `audit`, `rerun`) at every exit with deterministic ids; `brief_digest` and `criteria_digest` on the `judgement` record so the binding is complete | FBK §2.1, §2.2, EVT §2.2 | yes | P1 | ✓ | 2026-11-20 |
-| 12.3.2 | `engine/src/tempergraph/improve/reliability.py`, `improve/params.py` | Figures and grade per gate and binding (FBK-B3 order), live score from JCL's state, `labels queue` and `labels grades` | FBK §2.3, §2.4, JCL §2.5 | yes | P1 | ✓ | 2026-11-20 |
-| 12.3.3 | `engine/src/tempergraph/improve/reliability.py`, `improve/causes.py`, `run/runner.py` | Binding-shift watch as `binding_shift` findings; `after_exit` adds labels and shifts to `finding_recorded` | FBK §2.5, EVT §2.2 | yes | P1 | ✓ | 2026-11-20 |
+| 12.3.1 | `engine/src/tempergraph/improve/reliability.py`, `observe/labels.py`, `run/judging.py`, `run/nodes.py` | Derived labels (`approval`, `override`, `pushback`, `audit`, `rerun`) at every exit with deterministic ids; `brief_digest` and `criteria_digest` on the `judgement` record so the binding is complete | FBK-B8, FBK-B9, EVT-B10 to EVT-B16 | yes | P1 | ✓ | 2026-11-20 |
+| 12.3.2 | `engine/src/tempergraph/improve/reliability.py`, `improve/params.py` | Figures and grade per gate and binding (FBK-B3 order), live score from JCL's state, `labels queue` and `labels grades` | FBK-B11, FBK-B12, FBK-B13, JCL-B17 | yes | P1 | ✓ | 2026-11-20 |
+| 12.3.3 | `engine/src/tempergraph/improve/reliability.py`, `improve/causes.py`, `run/runner.py` | Binding-shift watch as `binding_shift` findings; `after_exit` adds labels and shifts to `finding_recorded` | FBK-B14, EVT-B10 to EVT-B16 | yes | P1 | ✓ | 2026-11-20 |
 
 ### T12.4 Judge calibration
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 12.4.1 | `engine/src/tempergraph/improve/calibration.py` | Cases and fixtures under the package's `evals/calibration/`, tune and holdout (`mark_tune` has no inverse), `evals label`, templated variants with no model call | JCL §2.1 to §2.3 | yes | P1 | ✓ | 2026-11-20 |
-| 12.4.2 | `engine/src/tempergraph/improve/calibration.py`, `cli/improve.py` | `evals score` (the gate's judge on scratch copies, repeats, cap), figures with Wilson bounds, the bar and `evals bar`, the acceptance state per binding | JCL §2.4, §2.5, §2.6 | yes | P1 | ✓ | 2026-11-20 |
-| 12.4.3 | `engine/src/tempergraph/package/readiness.py`, `run/outcome_trust.py`, `run/outcome_record.py`, `author/verify.py`, `audit/definition.py`, `cli/outcome.py` | `accepted_for` and `has_score` as the default readers of readiness, stable mode, outcome trust and corrected rates | JCL §2.5, LIF §2.2, OUT §2.2.1 | yes | P1 | ✓ | 2026-11-20 |
+| 12.4.1 | `engine/src/tempergraph/improve/calibration.py` | Cases and fixtures under the package's `evals/calibration/`, tune and holdout (`mark_tune` has no inverse), `evals label`, templated variants with no model call | JCL-B9, JCL-B10, JCL-B14 | yes | P1 | ✓ | 2026-11-20 |
+| 12.4.2 | `engine/src/tempergraph/improve/calibration.py`, `cli/improve.py` | `evals score` (the gate's judge on scratch copies, repeats, cap), figures with Wilson bounds, the bar and `evals bar`, the acceptance state per binding | JCL-B16, JCL-B17, JCL-B14, JCL-B18 | yes | P1 | ✓ | 2026-11-20 |
+| 12.4.3 | `engine/src/tempergraph/package/readiness.py`, `run/outcome_trust.py`, `run/outcome_record.py`, `author/verify.py`, `audit/definition.py`, `cli/outcome.py` | `accepted_for` and `has_score` as the default readers of readiness, stable mode, outcome trust and corrected rates | JCL-B17, LIF-B13, OUT-B11 | yes | P1 | ✓ | 2026-11-20 |
 
 ### T12.5 Proposals and the proposer
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 12.5.1 | `engine/src/tempergraph/improve/proposals.py` | Clusters and backlog with twins folded, proposal records, the classifier on parsed workflows, weakening person-only, literal check, `engine_side`, `stale_base`, `outside_package`, `invalid`, `no_change` | PRP §2.2 to §2.4, B1 to B3, B10, LSN §2.3 | yes | P1 | ✓ | 2026-11-20 |
-| 12.5.2 | `engine/src/tempergraph/improve/proposals.py`, `improve/codehost.py` | The proposer (step session on `improve/<id>` in its own worktree, engine check, independent judge); `open` pushes only that branch and opens a draft, no merge method on any host | PRP §2.1, B4, B8, PRP-AC-2 | yes | P1 | ✓ | 2026-11-20 |
+| 12.5.1 | `engine/src/tempergraph/improve/proposals.py` | Clusters and backlog with twins folded, proposal records, the classifier on parsed workflows, weakening person-only, literal check, `engine_side`, `stale_base`, `outside_package`, `invalid`, `no_change` | PRP-B12, PRP-B14, PRP-B15, B1 to B3, B10, LSN-B9 | yes | P1 | ✓ | 2026-11-20 |
+| 12.5.2 | `engine/src/tempergraph/improve/proposals.py`, `improve/codehost.py` | The proposer (step session on `improve/<id>` in its own worktree, engine check, independent judge); `open` pushes only that branch and opens a draft, no merge method on any host | PRP-B11, B4, B8, PRP-AC2 | yes | P1 | ✓ | 2026-11-20 |
 
 ### T12.6 Case sets and trials
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 12.6.1 | `engine/src/tempergraph/improve/trials.py`, `workspace.py`, `settings.py`, `run/runner.py` | Case sets, in-sample cases apart, child runs one at a time (`origin: trial`, dry run, worktree on `ref:<case base>`), sign test, guards, caps, A/A noise floor, grader trials on label agreement | PRP §2.5, §2.6, B5 to B7, WTR §2.5 | yes | P1 | ✓ | 2026-11-20 |
-| 12.6.2 | `engine/src/tempergraph/cli/improve.py`, `cli/main.py`, `constants.py`, `data/release.json` | `improve backlog\|propose\|trial\|aa\|open\|show`, schemas `proposal` and `trial` | PRP §2.7, CLI | yes | P1 | ✓ | 2026-11-20 |
+| 12.6.1 | `engine/src/tempergraph/improve/trials.py`, `workspace.py`, `settings.py`, `run/runner.py` | Case sets, in-sample cases apart, child runs one at a time (`origin: trial`, dry run, worktree on `ref:<case base>`), sign test, guards, caps, A/A noise floor, grader trials on label agreement | PRP-B17, PRP-B18, PRP-B19, PRP-B20, B5 to B7, WTR-B21 | yes | P1 | ✓ | 2026-11-20 |
+| 12.6.2 | `engine/src/tempergraph/cli/improve.py`, `cli/main.py`, `constants.py`, `data/release.json` | `improve backlog\|propose\|trial\|aa\|open\|show`, schemas `proposal` and `trial` | PRP-B4, PRP-B12, PRP-B18, PRP-B21, PRP-B8, PRP-B22, CLI | yes | P1 | ✓ | 2026-11-20 |
 
-Not built in release 1 (recorded in PRP §5): PRP-B9 (needs the merge to be seen; `pr_state` is not derived), the loop starting the proposer or a trial on its own at autonomy `propose` or `trial` (waits on T12.8's daily cap), the `label_recorded`, `proposal_state`, `trial_progress` and `binding_shift` events (IMD §2.3).
+Not built in release 1 (recorded in PRP-B23): PRP-B9 (needs the merge to be seen; `pr_state` is not derived), the loop starting the proposer or a trial on its own at autonomy `propose` or `trial` (waits on T12.8's daily cap), the `label_recorded`, `proposal_state`, `trial_progress` and `binding_shift` events (IMD-B21).
 
 ### T12.8 Stable mode, loop report, outcome proposals
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 12.8.1 | `engine/src/tempergraph/improve/autonomy.py`, `improve/child.py`, `improve/params.py` | Stable mode's daily cap over the loop's own spend (judges and the review skipped, records kept); autonomy `record` files nothing; at `propose` and `trial` the loop proposes, trials and opens a draft pull request on its own within the cap | SIL §4, PRP §2.1, PRP-B8 | yes | P1 | ✓ | 2026-11-20 |
-| 12.8.2 | `engine/src/tempergraph/improve/loop_report.py`, `cli/observe_cli.py` | `report --loop`: funnel, loop spend, label coverage, parameters with provenance; code-host figures not derived in release 1 | IMD §2.4, §2.5 | yes | P2 | ✓ | 2026-11-20 |
-| 12.8.3 | — | Outcome proposals: `outcome_unmet:<criterion>` clusters take the 12.8.1 path; OUT-AC-6 holds since the outcome lens starts no judge of its own | OUT-AC-6, PRP §5 | yes | P2 | ✓ | 2026-11-20 |
-| 12.8.4 | live, owner's machine | A stable workflow at autonomy `trial` end to end, [live-checks](live-checks.plan.md) L-17 to L-19 | PRP §6 | | P2 | ○ | |
+| 12.8.1 | `engine/src/tempergraph/improve/autonomy.py`, `improve/child.py`, `improve/params.py` | Stable mode's daily cap over the loop's own spend (judges and the review skipped, records kept); autonomy `record` files nothing; at `propose` and `trial` the loop proposes, trials and opens a draft pull request on its own within the cap | SIL-B19, SIL-B20, PRP-B11, PRP-B8 | yes | P1 | ✓ | 2026-11-20 |
+| 12.8.2 | `engine/src/tempergraph/improve/loop_report.py`, `cli/observe_cli.py` | `report --loop`: funnel, loop spend, label coverage, parameters with provenance; code-host figures not derived in release 1 | IMD-B22, IMD-B23 | yes | P2 | ✓ | 2026-11-20 |
+| 12.8.3 | — | Outcome proposals: `outcome_unmet:<criterion>` clusters take the 12.8.1 path; OUT-AC6 holds since the outcome lens starts no judge of its own | OUT-AC6, PRP-B23 | yes | P2 | ✓ | 2026-11-20 |
+| 12.8.4 | live, owner's machine | A stable workflow at autonomy `trial` end to end, [live-checks](live-checks.plan.md) L-17 to L-19 | PRP-AC1 | | P2 | ○ | |
 
 ### T12.9 Session digest and dev-mode review
 
-[SRV](../specs/44-session-review.spec.md) as scoped in the [release plan](first-release.plan.md) T12.9 (I-92 to I-94); release 1 assumptions are in SRV §5. Stable-mode plans are release 2 (X2-26).
+[SRV](../specs/44-session-review.spec.md) as scoped in the [release plan](first-release.plan.md) T12.9 (I-92 to I-94); release 1 assumptions are in R-150 SRV. Stable-mode plans are release 2 (X2-26).
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 12.9.1 | `engine/src/tempergraph/improve/digest.py`, `improve/record.py`, `improve/causes.py`, `improve/params.py`, `run/nodes.py` | The model-free digest of every session at every exit (`sessions/<key>/digest.json`) and its §2.2 cause codes joined to the findings; the step's scrubbed prompt kept in `evidence/prompts/`; the judge's changed paths on its `agent_run` | SRV §2.1, §2.2, LOS §2.1 | yes | P1 | ✓ | 2026-11-20 |
-| 12.9.2 | `engine/src/tempergraph/improve/review.py`, `contracts.py`, `executors/claude.py` | The plan (`full` in dev, probation and trials; `signals` deferred), the condensed datamarked view, the tool-less reviewer launch, the citation check, `loop.jsonl` records and the local evidence | SRV §2.3, §2.5 to §2.8, SEC §2.2 | yes | P1 | ✓ | 2026-11-20 |
-| 12.9.3 | `engine/src/tempergraph/improve/child.py`, `run/runner.py`, `settings.py` | `session_review` on the workflow and as a run setting that only lowers; the hand-off ticket carries the review depth, unit declarations and run cost; the child reviews after filing | SRV §2.3, RST §2.2, SIL §5 | yes | P1 | ✓ | 2026-11-20 |
-| 12.9.4 | `engine/src/tempergraph/cli/improve_review.py`, `cli/main.py` | `improve review <selector>`, `improve review show`, `improve review summary` | SRV §2.9, CLI §2 | yes | P2 | ✓ | 2026-11-20 |
+| 12.9.1 | `engine/src/tempergraph/improve/digest.py`, `improve/record.py`, `improve/causes.py`, `improve/params.py`, `run/nodes.py` | The model-free digest of every session at every exit (`sessions/<key>/digest.json`) and its §2.2 cause codes joined to the findings; the step's scrubbed prompt kept in `evidence/prompts/`; the judge's changed paths on its `agent_run` | SRV-B11, SRV-B12, LOS-B7, LOS-B8, LOS-B9 | yes | P1 | ✓ | 2026-11-20 |
+| 12.9.2 | `engine/src/tempergraph/improve/review.py`, `contracts.py`, `executors/claude.py` | The plan (`full` in dev, probation and trials; `signals` deferred), the condensed datamarked view, the tool-less reviewer launch, the citation check, `loop.jsonl` records and the local evidence | SRV-B13, SRV-B14, SRV-B15, SRV-B17, SRV-B22, SEC-B7 | yes | P1 | ✓ | 2026-11-20 |
+| 12.9.3 | `engine/src/tempergraph/improve/child.py`, `run/runner.py`, `settings.py` | `session_review` on the workflow and as a run setting that only lowers; the hand-off ticket carries the review depth, unit declarations and run cost; the child reviews after filing | SRV-B13, SRV-B14, SRV-B15, RST-B18, RST-B19, RST-B20, RST-B21, SIL-B17, SIL-B18 | yes | P1 | ✓ | 2026-11-20 |
+| 12.9.4 | `engine/src/tempergraph/cli/improve_review.py`, `cli/main.py` | `improve review <selector>`, `improve review show`, `improve review summary` | SRV-B23, CLI-B7, CLI-B8, CLI-B14 | yes | P2 | ✓ | 2026-11-20 |
 
 ## 3. Verification
 

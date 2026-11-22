@@ -39,7 +39,7 @@ We will support native Windows in release 2 by the rules of [WIN](../specs/97-wi
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| W1 | Native Windows is wanted, not only WSL. | WIN §2.2 |
+| W1 | Native Windows is wanted, not only WSL. | WIN-B8 |
 
 ## Revisit when
 

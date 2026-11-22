@@ -49,7 +49,7 @@ def test_rendered_to_the_step_only_with_digest(repo: Path, tmp_path: Path) -> No
     tagged = {(r["session_key"].split(".")[0], r.get("session_kind")) for r in runs if r.get("lessons_digest") == want}
     assert want and tagged == {("draft", "step")}, [(r["session_key"], r.get("session_kind")) for r in runs]
 
-def test_budget_literal_unknown_unit_malformed(tmp_path: Path) -> None:  # LSN-B2, §4, AC-2
+def test_budget_literal_unknown_unit_malformed(tmp_path: Path) -> None:  # LSN-B2, LSN-B6, LSN-B7, AC-2
     assert codes(package(tmp_path / "a", "draft", [entry(n, f"Rule number {chr(97 + n)} holds.")
                                                   for n in range(1, 14)])) == ["lessons-budget"]
     spec = package(tmp_path / "b", "draft", [entry(1, "Check RN-1423 first."), entry(2, "See https://x.example."),
@@ -67,7 +67,7 @@ def test_budget_literal_unknown_unit_malformed(tmp_path: Path) -> None:  # LSN-B
     assert codes(package(tmp_path / "f", "draft", [entry(1)])) == []
 
 
-def test_delta_only_and_criterion_restated() -> None:  # LSN-B3, §2.3
+def test_delta_only_and_criterion_restated() -> None:  # LSN-B3, LSN-B9
     old = [entry(n, f"Rule {chr(97 + n)} applies here.") for n in range(1, 6)]
     rewrite = [dict(e, text=e["text"] + " Always.") for e in old]
     assert lessons.classify_change(old, rewrite, []) == "lessons_rewrite"

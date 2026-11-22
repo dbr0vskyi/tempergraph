@@ -1,10 +1,10 @@
-"""`report --supervision` (SUP §2.4): touches, levels, waits and supervision cost per workflow, read-only.
+"""`report --supervision` (SUP-B12): touches, levels, waits and supervision cost per workflow, read-only.
 
-Read from each thread's last `supervision` record (SUP §2.2, written before every `run_exit` for the thread so
+Read from each thread's last `supervision` record (SUP-B10, written before every `run_exit` for the thread so
 far) and, for `--by unit`, from the ledger's intervention rows. A run is a thread. Runs whose origin or caller
-app is `evals` are left out of every figure (SUP-AC-4). A figure over fewer than 5 runs is marked `thin`.
+app is `evals` are left out of every figure (SUP-AC4). A figure over fewer than 5 runs is marked `thin`.
 Supervision cost, its share and observations come from SCO's closed ledger lines (T7.6): until a thread's
-supervision closes, it counts as not measured, never as zero (SUP-AC-5). `promote-check` will read :func:`aggregate` too (SUP-AC-3).
+supervision closes, it counts as not measured, never as zero (SUP-AC5). `promote-check` will read :func:`aggregate` too (SUP-AC3).
 """
 
 from __future__ import annotations
@@ -85,7 +85,7 @@ def runs(root: Path, since: datetime | None = None) -> list[Run]:
 
 
 def _join(rec: dict[str, Any], line: dict[str, Any] | None, run_usd: float | None) -> None:
-    """SCO's closed figures on the thread's record (SUP §2.2): cost, share and observations; absent stays null."""
+    """SCO's closed figures on the thread's record (SUP-B10): cost, share and observations; absent stays null."""
     if line is None:
         return
     rec["supervision_cost"] = {k: line.get(k) for k in ("marginal", "turn", "completeness")}
@@ -97,7 +97,7 @@ def _join(rec: dict[str, Any], line: dict[str, Any] | None, run_usd: float | Non
 
 
 def _person_waits(root: Path) -> dict[str, list[tuple[str, float]]]:
-    """Each thread's person waits by pause kind, from the ledger's intervention rows (SUP §2.4)."""
+    """Each thread's person waits by pause kind, from the ledger's intervention rows (SUP-B12)."""
     out: dict[str, list[tuple[str, float]]] = defaultdict(list)
     try:
         lines = (root / "ledger.jsonl").read_text(encoding="utf-8").splitlines()
@@ -156,7 +156,7 @@ def _cost(rec: dict[str, Any]) -> float | None:
 
 
 def aggregate(rs: list[Run]) -> dict[str, Any]:
-    """Every §2.4 figure over one group of runs."""
+    """Every SUP-B12 figure over one group of runs."""
     n = len(rs)
     by_level: dict[str, int] = defaultdict(int)
     by_level_by: dict[str, int] = defaultdict(int)

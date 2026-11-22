@@ -1,4 +1,4 @@
-"""`outcome show` and `outcome candidates` (CLI §2, OUT §2.5, §2.6); read-only, model-free (contract C13)."""
+"""`outcome show` and `outcome candidates` (CLI-B7, CLI-B8, CLI-B14, OUT-B18, OUT-B19, OUT-B20, OUT-B21); read-only, model-free (OVR-B15)."""
 
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ def _definition(spec: Any) -> dict[str, Any]:
 
     o = spec.outcome
     root = spec.package_root
-    accepted = accepted_for(spec)  # JCL §2.5
+    accepted = accepted_for(spec)  # JCL-B17
     final = [{"id": c.id, "severity": c.severity, "verified_by": c.verified_by or "none",
               "trust": trust(c, "outcome", root, accepted)} for c in o.final]
     inter = [{"unit": u, "id": c.id, "verified_by": c.verified_by or "none", "serves": list(c.serves),

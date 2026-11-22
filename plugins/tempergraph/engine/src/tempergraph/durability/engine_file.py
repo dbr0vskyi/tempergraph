@@ -1,5 +1,5 @@
 """What a thread records about engines and workflow versions, and what happens to it at its next resume
-(MIG §2.1, §2.4, §2.5). The rule: move at the resume boundary, pin only on a break (ADR-0056).
+(MIG-B8, MIG-B12, MIG-B13, MIG-B14, MIG-B15). The rule: move at the resume boundary, pin only on a break (ADR-0056).
 
 `engine.json` sits beside the thread's run log. The decisions here are pure functions over that document, the
 release record and the kept engines, so every row of MIG's tables is a test without a second engine installed.
@@ -29,7 +29,7 @@ def path(root: Path, workflow: str, task_id: str) -> Path:
 
 
 def read(root: Path, workflow: str, task_id: str) -> dict[str, Any]:
-    """A thread from before this record reads as started on an unknown engine, not pinned (MIG §4)."""
+    """A thread from before this record reads as started on an unknown engine, not pinned (MIG-B16, MIG-B12, MIG-B10, MIG-B15)."""
     try:
         doc = json.loads(path(root, workflow, task_id).read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -75,7 +75,7 @@ def record(root: Path, spec: WorkflowSpec, task_id: str, *, content_version: str
            resumed: bool = False) -> dict[str, Any] | None:
     """One history entry for this process. Returns `moved_from` (the engine and workflow version of the
     previous process) when either differs from this one's, else None. A resumed thread with no engine file
-    was started by a release before this file existed (MIG §4): `started_on` is unknown, never this engine,
+    was started by a release before this file existed (MIG-B16, MIG-B12, MIG-B10, MIG-B15): `started_on` is unknown, never this engine,
     and `moved_from` says so."""
     doc = read(root, spec.name, task_id)
     eng = this_engine()
@@ -113,7 +113,7 @@ def unpin(root: Path, workflow: str, task_id: str) -> None:
 
 def decide(doc: Mapping[str, Any], *, resumes: Sequence[int], kept: Mapping[str, Sequence[int]],
            current: str | None = None) -> tuple[str, str | None]:
-    """MIG §2.4: `("dispatch", engine)` for a pinned thread, `("move", None)` when this engine resumes the
+    """MIG-B12, MIG-B13, MIG-B14: `("dispatch", engine)` for a pinned thread, `("move", None)` when this engine resumes the
     thread's checkpoint format, `("pin", engine)` to the newest kept engine that does, else
     `("refuse", message)`. `kept` maps each kept engine folder to the formats it resumes."""
     pinned = doc.get("pinned")
@@ -166,7 +166,7 @@ def resumes() -> list[int]:
 
 def at_resume(root: Path, workflow: str, task_id: str, home: Path | None = None, *, write: bool = True
               ) -> tuple[str, str | None]:
-    """MIG §2.4 for this process: `("move", None)`, `("dispatch", engine folder)` or `("refuse", message)`.
+    """MIG-B12, MIG-B13, MIG-B14 for this process: `("move", None)`, `("dispatch", engine folder)` or `("refuse", message)`.
     A format break writes the pin first; a refusal writes nothing."""
     from tempergraph.store.layout import home_path
 
@@ -202,7 +202,7 @@ def try_unpin(root: Path, workflow: str, task_id: str) -> str | None:
     return None
 
 
-# -- a workflow changed under a thread (MIG §2.5) -----------------------------------------------------------------
+# -- a workflow changed under a thread (MIG-B15) -----------------------------------------------------------------
 
 
 def _reads(spec: WorkflowSpec, unit: str) -> set[str]:
@@ -222,7 +222,7 @@ def _reads(spec: WorkflowSpec, unit: str) -> set[str]:
 
 def breaks(prev: Mapping[str, Any], spec: WorkflowSpec, values: Mapping[str, Any], pending: Sequence[str]
            ) -> list[str]:
-    """The four tests of MIG §2.5 against the units of the previous process (`prev` is its history entry).
+    """The four tests of MIG-B15 against the units of the previous process (`prev` is its history entry).
     An empty list means the thread may resume on the new content."""
     from tempergraph.model import flow
 

@@ -1,4 +1,4 @@
-"""`tempergraph upgrade <workflow>` and its alias `upgrade-check <workflow> [--stamp]` (WUP §2.1, VER §2.5).
+"""`tempergraph upgrade <workflow>` and its alias `upgrade-check <workflow> [--stamp]` (WUP-B10, WUP-B11, WUP-B12, WUP-B13, VER-B16).
 
 `--check` plans only: read-only and model-free. Without it the verb runs the phases of `package/upgrade.py` on
 a branch of the workflow's source. The paired trial (`--trial`, V8) is not built in this release."""
@@ -56,7 +56,7 @@ def cmd_upgrade(env: Any, a: argparse.Namespace) -> int:
         from tempergraph.improve.codehost import GhCodeHost
 
         host = (getattr(env, "code_host", None) or GhCodeHost)()
-    caller = env.caller(a)  # a mutating call: its caller is classified before any write (PRV §2.3)
+    caller = env.caller(a)  # a mutating call: its caller is classified before any write (PRV-B13)
     assist = getattr(env, "upgrade_assist", None)
     if assist is None and not a.no_assist:
         from tempergraph.builtin import upgrade as builtin

@@ -1,4 +1,4 @@
-"""The run driver and project bootstrap skills (SHL §2, SHL-AC-1; T9.1).
+"""The run driver and project bootstrap skills (SHL-B5, SHL-AC1; T9.1).
 
 The bootstrap helper is run in throwaway repositories and its status and the exact ignore-file bytes are
 checked; the run driver's verbs and options are checked against the built CLI.
@@ -82,7 +82,7 @@ def skill_text(name: str) -> str:
 
 
 @pytest.mark.parametrize("name", ["run", "bootstrap"])
-def test_skill_shape(name: str) -> None:  # SHL §5: a core plus references read on demand
+def test_skill_shape(name: str) -> None:  # SHL-B7, SHL-B8, SHL-B11: a core plus references read on demand
     text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
     head = re.match(r"^---\nname: (\S+)\ndescription: (.+)\n---\n", text)
     assert head and head.group(1) == name and len(head.group(2)) <= 1024
@@ -90,7 +90,7 @@ def test_skill_shape(name: str) -> None:  # SHL §5: a core plus references read
         assert (SKILLS / name / ref).exists(), ref
 
 
-def test_run_driver_names_built_verbs_and_options_only() -> None:  # SHL-AC-1, SHL-B2
+def test_run_driver_names_built_verbs_and_options_only() -> None:  # SHL-AC1, SHL-B2
     text = skill_text("run")
     parser = _parser()
     sub = next(a for a in parser._actions if isinstance(getattr(a, "choices", None), dict))

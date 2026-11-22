@@ -1,4 +1,4 @@
-"""The check worker and check results (CHK §2.4, §2.6, §4)."""
+"""The check worker and check results (CHK-B14, CHK-B16, CHK-B15, CHK-B10, CHK-B17)."""
 
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ def test_worker_returns_the_result(tmp_path: Path) -> None:
 
 def test_raising_check_is_a_workflow_fault(tmp_path: Path) -> None:
     res, notes = run_in_worker(gate(raising), ctx(tmp_path))
-    assert res.result == "FAIL" and not res.environmental and "RuntimeError" in res.evidence  # CHK §4
+    assert res.result == "FAIL" and not res.environmental and "RuntimeError" in res.evidence  # CHK-B15, CHK-B14, CHK-B10, CHK-B17
     assert "bug in the check" not in res.evidence  # the exception type only
 
 
@@ -89,7 +89,7 @@ def counting(ctx: Any) -> CheckResult:
     return CheckResult(result="PASS" if r.finished else "FAIL", evidence=f"reused={r.reused}")
 
 
-def test_command_runs_are_reused_while_the_tree_is_unchanged(repo: Path) -> None:  # CHK §2.3 Reuse
+def test_command_runs_are_reused_while_the_tree_is_unchanged(repo: Path) -> None:  # CHK-B12, CHK-B13 Reuse
     (repo / "notes.md").write_text("one")
     store = repo / ".tempergraph" / "command_runs.jsonl"
 

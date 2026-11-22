@@ -13,7 +13,7 @@ The owner wants to "enter the run and go inside, check which shell it's running"
 
 ## Decision
 
-We will add `input_summary` to the normalized `tool_started` event (one line, pattern-scrubbed, clipped to 200 characters, built per capability) and keep a per-session append-only activity journal of normalized events with receive times ([EVT §2.3](../specs/30-run-events.spec.md), [EVT §2.5](../specs/30-run-events.spec.md)). Summaries appear only in the activity journal, the live progress file and the local detail document; no run-log record, ledger row, stats or sink row, export, finding or filed text carries them. An operator setting turns summaries off.
+We will add `input_summary` to the normalized `tool_started` event (one line, pattern-scrubbed, clipped to 200 characters, built per capability) and keep a per-session append-only activity journal of normalized events with receive times ([EVT-B17, EVT-B18, EVT-B7, EVT-B19](../specs/30-run-events.spec.md), [EVT-B21](../specs/30-run-events.spec.md)). Summaries appear only in the activity journal, the live progress file and the local detail document; no run-log record, ledger row, stats or sink row, export, finding or filed text carries them. An operator setting turns summaries off.
 
 ## Options considered
 
@@ -37,7 +37,7 @@ We will add `input_summary` to the normalized `tool_started` event (one line, pa
 
 - Positive: the monitor shows the open command and its elapsed time, the last ten calls and a full call history per session.
 - Negative: the person at the screen sees commands a step ran; on a shared screen that may matter. Mitigation: `observe.tool_inputs = off`, and a monitor setting that hides summaries ([monitor MDD](../../../tempergraph-monitor/docs/specs/04-drill-down.spec.md)).
-- Risk: a secret shape the scrubber misses. Mitigation: summaries never leave the machine; the canary test covers every shared record ([EVT-AC-4](../specs/30-run-events.spec.md)).
+- Risk: a secret shape the scrubber misses. Mitigation: summaries never leave the machine; the canary test covers every shared record ([EVT-AC4](../specs/30-run-events.spec.md)).
 
 ## Assumptions
 

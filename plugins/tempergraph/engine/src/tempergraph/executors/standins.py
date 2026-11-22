@@ -46,7 +46,7 @@ def answer(text: str, *, tools: Iterable[str] = (), cost: float | None = 0.01, s
 
 @dataclass(kw_only=True)
 class ScriptedExecutor:
-    scripted: ClassVar[bool] = True  # makes no model call; a live suite's guard reads this (EVS §4)
+    scripted: ClassVar[bool] = True  # makes no model call; a live suite's guard reads this (EVS-B13, EVS-B12, EVS-B14)
     caps: Capabilities
     steps: list[Reply] = field(default_factory=list)
     judges: list[Reply] = field(default_factory=list)

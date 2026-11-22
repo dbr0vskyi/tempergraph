@@ -104,7 +104,7 @@ def _changed(workdir: Path) -> list[str]:
 
 
 def item_check(ctx: Any) -> CheckResult:
-    """UWF §2.4: scope, load and validate, proof, fixtures. The first that fails is reported alone, because
+    """UWF-B12, UWF-B13: scope, load and validate, proof, fixtures. The first that fails is reported alone, because
     each later one needs the earlier to hold."""
     from tempergraph.executors.capabilities import DECLARED
     from tempergraph.model.validate import validate
@@ -199,7 +199,7 @@ def is_upgrade(spec: WorkflowSpec) -> bool:
     return spec.builtin == FLAG
 
 
-# -- the assist step of `tempergraph upgrade` (WUP §2.5) --------------------------------------------------------
+# -- the assist step of `tempergraph upgrade` (WUP-B18) --------------------------------------------------------
 
 
 def write_inputs(a: Any) -> None:

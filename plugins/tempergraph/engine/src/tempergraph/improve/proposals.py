@@ -1,10 +1,10 @@
-"""Clusters and the ranked backlog, proposals, change classes and the proposer (PRP §2.1 to §2.4, B1 to B4,
+"""Clusters and the ranked backlog, proposals, change classes and the proposer (PRP-B11, PRP-B14, PRP-B15, B1 to B4,
 B8, B10; plan T12.5).
 
 Records live under the state root: `improve/proposals/<proposal_id>.json` (metadata, the patch and the
 classes). A proposal's patch only ever touches workflow package files; the engine classifies it from the
 parsed workflow before and after, never from the diff text, and nothing here merges a pull request or pushes
-a default branch (PRP-AC-2): `open` pushes only the proposal's own `improve/<id>` branch and asks the code
+a default branch (PRP-AC2): `open` pushes only the proposal's own `improve/<id>` branch and asks the code
 host for a draft.
 """
 
@@ -35,7 +35,7 @@ SIDE = {"prompt": "producer", "lessons": "producer", "limits": "producer", "mode
         "outcome": "grader", "weakening": "grader"}
 STATES = ("drafted", "refused", "trialling", "shown_better", "not_shown", "regressed", "aborted", "opened",
           "merged", "closed")
-LADDER = {"none": 0, None: 0, "person": 1, "judge": 2, "check": 3}  # OUT §2.6, upward only
+LADDER = {"none": 0, None: 0, "person": 1, "judge": 2, "check": 3}  # OUT-B20, OUT-B21, upward only
 
 
 class ProposalError(ValueError):
@@ -70,7 +70,7 @@ def _ts(text: Any) -> datetime | None:
     return d if d.tzinfo else d.replace(tzinfo=UTC)
 
 
-# -- autonomy (PRP §2.1) -------------------------------------------------------------------------------------
+# -- autonomy (PRP-B11) -------------------------------------------------------------------------------------
 
 def autonomy(spec: WorkflowSpec, machine: str | None = None) -> str:
     """The declared level (`improvement.autonomy` in the package's `tempergraph.json`, default `file`),
@@ -89,7 +89,7 @@ def autonomy(spec: WorkflowSpec, machine: str | None = None) -> str:
     return declared
 
 
-# -- clusters and backlog (PRP §2.2) -------------------------------------------------------------------------
+# -- clusters and backlog (PRP-B12) -------------------------------------------------------------------------
 
 def _findings(root: Path, workflow: str) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
@@ -143,7 +143,7 @@ def _issues(root: Path, workflow: str, threads: Iterable[str], fps: set[str]) ->
 
 def clusters(root: Path, workflow: str, now: datetime | None = None) -> list[dict[str, Any]]:
     """Fault findings grouped and ranked by `repeat_cost_usd + label_value × label_weight`, twins folded
-    under the side attributed first (PRP §2.2). From the local ledger; the shared store is release 2."""
+    under the side attributed first (PRP-B12). From the local ledger; the shared store is release 2."""
     from tempergraph.improve.reliability import read_labels
 
     now = now or datetime.now(UTC)
@@ -193,7 +193,7 @@ def cluster(root: Path, workflow: str, cluster_id: str) -> dict[str, Any]:
     raise ProposalError(f"no cluster {cluster_id!r} for {workflow}; `improve backlog {workflow}` lists them")
 
 
-# -- change classes (PRP §2.4) -------------------------------------------------------------------------------
+# -- change classes (PRP-B14, PRP-B15) -------------------------------------------------------------------------------
 
 def _text(spec: WorkflowSpec, src: Any) -> str:
     from tempergraph.model.text import load_text
@@ -258,7 +258,7 @@ class Classified:
 
 
 def classify(before: WorkflowSpec, after: WorkflowSpec) -> Classified:
-    """PRP §2.4 from the two parsed workflows (PRP-AC-1): a reformatted or reordered file changes nothing."""
+    """PRP-B14, PRP-B15 from the two parsed workflows (PRP-AC1): a reformatted or reordered file changes nothing."""
     classes: set[str] = set()
     details: list[dict[str, Any]] = []
     added: list[str] = []
@@ -341,7 +341,7 @@ def classify(before: WorkflowSpec, after: WorkflowSpec) -> Classified:
 
 def _request_shingles(root: Path, workflow: str, threads: Iterable[str]) -> set[str]:
     """Four-word spans of the member runs' requests, from their local evidence (the proposer's reading set,
-    PRP §5), so a patch that copies a run's words is refused `literal`."""
+    PRP-B23), so a patch that copies a run's words is refused `literal`."""
     from tempergraph.improve.record import read_evidence
 
     out: set[str] = set()
@@ -396,7 +396,7 @@ def apply_patch(package: Path, patch: str, dest: Path) -> Path:
 
 def package_digest(package: Path) -> str:
     """The package files a proposal reads, minus `evals/` (case sets and calibration move on their own,
-    outside the content digest as in PKG-AC-7), caches and git metadata."""
+    outside the content digest as in PKG-AC7), caches and git metadata."""
     h = hashlib.sha256()
     for p in sorted(package.rglob("*")):
         rel = p.relative_to(package)
@@ -406,7 +406,7 @@ def package_digest(package: Path) -> str:
     return h.hexdigest()[:16]
 
 
-# -- proposal records (PRP §2.3) -----------------------------------------------------------------------------
+# -- proposal records (PRP-B13) -----------------------------------------------------------------------------
 
 def proposals_dir(root: Path) -> Path:
     return root / "improve" / "proposals"
@@ -653,7 +653,7 @@ def open_pr(root: Path, spec: WorkflowSpec, proposal_id: str, host: Any, *, push
         url = host.create_draft_pr(repo, branch, base, f"[loop] {spec.name}: {str(rec.get('rule'))[:80]}",
                                    report_body(rec, trial), list(rec.get("labels") or []) + ["tempergraph-loop"])
     except CodeHostError as exc:
-        return {**rec, "open_error": str(exc)}  # PRP §4: stays shown_better; `open` can be rerun
+        return {**rec, "open_error": str(exc)}  # PRP-B16, PRP-B17, PRP-B20, PRP-B7, PRP-B8: stays shown_better; `open` can be rerun
     rec.update(state="opened", pull_request=url, opened_at=now_iso())
     save(root, rec)
     return rec

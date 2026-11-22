@@ -1,4 +1,4 @@
-"""The gate node's decision and the human node's decisions (HUM §2, BUD §2, BUD-B3, B4; CMP routing).
+"""The gate node's decision and the human node's decisions (HUM-B2, BUD-B8, BUD-B9, BUD-B3, B4; CMP routing).
 
 `decide` is pure: it reads the unit's attempt record, its judge outcome and its counters, and returns the
 state write that routes the run. It never pauses; a pause is the human node's.
@@ -23,7 +23,7 @@ HUMAN_CAP = 100
 def clear_from(spec: WorkflowSpec, unit: str, state: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """BUD-B4: delete verdicts, judgements, artifacts, values and facts of ``unit`` and every later unit.
 
-    Every later unit that already ran gets a new visit, so its next entry is recorded as one (EVT §2.2)."""
+    Every later unit that already ran gets a new visit, so its next entry is recorded as one (EVT-B10 to EVT-B16)."""
     order = flow.effective_order(spec)
     block = unit if unit in spec.units and spec.units[unit].kind == "parallel" else flow.block_of(spec, unit)
     first = min((order.index(b) for b in spec.units[block].branches if b in order), default=None) if block else None
@@ -56,7 +56,7 @@ def route_view(unit: str, state: Mapping[str, Any]) -> RouteView:
 
 
 def pick(spec: WorkflowSpec, unit: str, state: Mapping[str, Any]) -> dict[str, Any] | None:
-    """CMP §2.2: the forward target a step's route, a route unit or a switch picks, as the `route` record's
+    """CMP-B10 to CMP-B16: the forward target a step's route, a route unit or a switch picks, as the `route` record's
     fields; None when the unit routes by `order`. A route fault raises `RouteFault`; a switch fault takes the
     default arm. A switch's pick is reused within a visit (`sticky: visit`) or for the run (`sticky: run`)."""
     u = spec.units[unit]
@@ -85,7 +85,7 @@ COMPLEXITY_FIELDS = ("zone", "measures", "rules_digest", "rules_source", "rules_
 
 
 def _signals(raw: Any) -> tuple[dict[str, Any], int]:
-    """SWM §2.1: at most 10 names to numbers or strings of at most 60 characters; the rest is clipped and counted."""
+    """SWM-B4: at most 10 names to numbers or strings of at most 60 characters; the rest is clipped and counted."""
     if not isinstance(raw, Mapping):
         return {}, 0
     out: dict[str, Any] = {}
@@ -103,7 +103,7 @@ def _signals(raw: Any) -> tuple[dict[str, Any], int]:
 
 
 def _switch_pick(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], view: RouteView) -> dict[str, Any]:
-    """A switch's pick with what the predicate would choose (SWM §2.2). The operator's arm wins in either mode
+    """A switch's pick with what the predicate would choose (SWM-B5). The operator's arm wins in either mode
     (CMP-B7); shadow mode and any predicate fault take the default; a re-armed pick is never made again."""
     u = spec.units[unit]
     sw = u.switch
@@ -116,7 +116,7 @@ def _switch_pick(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], view: 
     signals: dict[str, Any] = {}
     clipped = 0
     measured: dict[str, Any] = {}
-    if sw.complexity is not None:  # CXR §2.4: the step node evaluated the rules once; the gate reads the result
+    if sw.complexity is not None:  # CXR-B10, CXR-B1: the step node evaluated the rules once; the gate reads the result
         measured = dict(((state.get("attempts") or {}).get(unit) or {}).get("complexity") or {})
         would = measured.get("arm") if measured.get("arm") in sw.arms else None
         if would is None:
@@ -154,7 +154,7 @@ def _switch_pick(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], view: 
 
 
 def arm_overrides(spec: WorkflowSpec, unit: str, state: Mapping[str, Any]) -> tuple[dict[str, Any], str]:
-    """SWM §2.3: the override values of the arm in force that names `unit`, and their layer `arm:<switch>.<arm>`."""
+    """SWM-B6: the override values of the arm in force that names `unit`, and their layer `arm:<switch>.<arm>`."""
     for name, other in spec.units.items():
         sw = other.switch
         if sw is None or not sw.arm_overrides:
@@ -167,7 +167,7 @@ def arm_overrides(spec: WorkflowSpec, unit: str, state: Mapping[str, Any]) -> tu
 
 
 def _rearm(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], cause: str) -> tuple[str, Any] | None:
-    """The switch and re-arm entry that apply to `unit` ending on `cause`, once per switch and run (SWM §2.4)."""
+    """The switch and re-arm entry that apply to `unit` ending on `cause`, once per switch and run (SWM-B7)."""
     for name, other in spec.units.items():
         sw = other.switch
         stored = (state.get("route") or {}).get(name) or {}
@@ -206,11 +206,11 @@ def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: 
     rubric = [{"n": i, "id": c.id, "text": c.text, "severity": c.severity} for i, c in enumerate(u.gate.criteria, 1)]
     ws = state.get("workspace") or {}
     del s
-    item = ((state.get("attempts") or {}).get(unit) or {}).get("item")  # a map's item in hand (MAP §2.2)
+    item = ((state.get("attempts") or {}).get(unit) or {}).get("item")  # a map's item in hand (MAP-B8, MAP-B9, MAP-B10)
     out = {"kind": kind, "unit": unit, "item": item, "reason": reason, "artifacts": arts, "rubric": rubric,
            "blockers": blockers or [], "decisions": words, "workspace": ws.get("path"),
            "resume": resume_command(spec, task_id, words)}
-    if kind == "input":  # ASK §2.3: each question with its kind, choices, default and whether it is answered
+    if kind == "input":  # ASK-B8: each question with its kind, choices, default and whether it is answered
         qs = list(((state.get("attempts") or {}).get(unit) or {}).get("questions") or [])
         out["questions"] = [{**q, "answered": False} for q in qs]
         out["context"] = list(u.ask.context) if u.ask else []
@@ -222,13 +222,13 @@ def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: 
         out["decisions"] = [f"event:{u.wait.event}=<value>", "stop"]
         out["resume"] = f"tempergraph resume {spec.name} {task_id} --decision event:{u.wait.event}=<value>"
     dl = flow.deadline_of(spec, unit)
-    if dl is not None and kind in ("input", "event_wait"):  # FLX §2.3: overdue once this time has passed
+    if dl is not None and kind in ("input", "event_wait"):  # FLX-B8: overdue once this time has passed
         out["deadline_at"] = (datetime.now(UTC) + timedelta(seconds=dl[0])).isoformat(timespec="seconds")
         out["on_deadline"] = dl[1]
-    if reason == "tool_access":  # each refused or missing name and what fixes it (RST §2.8)
+    if reason == "tool_access":  # each refused or missing name and what fixes it (RST-B28, RST-B29, RST-B30)
         out["tool_access"] = list((((state.get("attempts") or {}).get(unit) or {}).get("tool_access")) or [])
     if kind == "approval" and u.extra.get("sign_off"):
-        out["sign_off"] = list(u.extra["sign_off"])  # person criteria to sign (OUT §2.4, OUT-B4)
+        out["sign_off"] = list(u.extra["sign_off"])  # person criteria to sign (OUT-B15, OUT-B16, OUT-B17, OUT-B4)
     return out
 
 
@@ -250,7 +250,7 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
         return _merge(route("ESCALATE", s.escalate[0], kind=kind, **extra), {"pause": {unit: payload}})
 
     def rearm(cause: str) -> dict[str, Any] | None:
-        """A trip back to the entry of the safer arm in place of the gate's own policy (SWM §2.4)."""
+        """A trip back to the entry of the safer arm in place of the gate's own policy (SWM-B7)."""
         found = _rearm(spec, unit, state, cause)
         if found is None:
             return None
@@ -258,7 +258,7 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
         sw = spec.units[name].switch
         assert sw is not None
         if sw.complexity is not None and cause == "budget_spent" and laddermod.classify(att, judged).evidence is None:
-            return None  # CXR §2.5: a budget spent on held causes keeps the gate's own policy
+            return None  # CXR-B4, CXR-B11, CXR-B7: a budget spent on held causes keeps the gate's own policy
         entry = sw.arms[r.to]
         prior = ((state.get("route") or {}).get(name) or {}).get("pick") or {}
         visits = (state.get("visits") or {}).get(entry) or {}
@@ -274,7 +274,7 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
                                           "entered_from": f"rearm:{unit}"}}})
 
     def fallback(reason: str) -> dict[str, Any]:
-        """FLX §2.4: forward to the fallback target with the reason; the failed unit's artifacts are kept."""
+        """FLX-B9: forward to the fallback target with the reason; the failed unit's artifacts are kept."""
         node = flow.fallback_node(spec, unit)
         assert node is not None and g.fallback is not None
         why = "; ".join(b.get("problem", "") for b in judged.get("blockers") or [] if b.get("problem"))
@@ -305,7 +305,7 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
         return to_human("input", "input")
     if u.kind == "wait":
         return to_human("event_wait", "event_wait")
-    if att.get("map_fault"):  # the list could not be used: stop before any item (MAP §2.2 row 1, MAP-B5)
+    if att.get("map_fault"):  # the list could not be used: stop before any item (MAP-B8, MAP-B9, MAP-B10 row 1, MAP-B5)
         return _merge(route("STOP", s.stop[0]), {"run": {"stopped": {"reason": "map", "unit": unit,
                                                                      "detail": att.get("map_fault")}}})
     if att.get("infra_spent"):
@@ -314,12 +314,12 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
     cause = att.get("escalate")
     if cause in ESCALATE_CAUSES:
         return to_human("escalation", str(cause))
-    if att.get("timed_out") and not att.get("slow_host"):  # a step timeout re-arms at once (SWM §2.4)
+    if att.get("timed_out") and not att.get("slow_host"):  # a step timeout re-arms at once (SWM-B7)
         w = rearm("timeout")
         if w is not None:
             return w
     verdict = judged.get("verdict", str(Verdict.ESCALATE))
-    if verdict == Verdict.RETRY and att.get("escalated"):  # LAD §2.4: a failed escalated attempt ends it
+    if verdict == Verdict.RETRY and att.get("escalated"):  # LAD-B12: a failed escalated attempt ends it
         return spent("escalation")
     if verdict == Verdict.RETRY and g.on_fail == "fallback" and g.fallback:  # a hard failure, no retry
         return fallback("failed")
@@ -340,7 +340,7 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
             shown = {k: v for k, v in step.items() if k not in ("trail", "escalated")}
             if esc is not None:
                 shown["escalation"] = esc
-            if esc and esc["take"] == "offer":  # LAD §2.4: a person chooses; no retry is spent yet
+            if esc and esc["take"] == "offer":  # LAD-B12: a person chooses; no retry is spent yet
                 counters["retries"] = retries
                 counters["ladder"]["offer"] = {k: esc[k] for k in ("to", "effort", "criteria")}
                 w = to_human("budget", "escalation_offer", ladder=shown)
@@ -367,7 +367,7 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
                        "visits": {target: {"visit": int(visits.get("visit", 1)) + 1, "reason": reason, "from": unit,
                                            "entered_from": f"back:{unit}"}}})
     if verdict == Verdict.PROCEED:
-        try:  # the route is picked before any approval pause (CMP §2.2)
+        try:  # the route is picked before any approval pause (CMP-B10 to CMP-B16)
             p = pick(spec, unit, state)
         except RouteFault as exc:
             return _merge(route("STOP", s.stop[0]), {"run": {"stopped": {"reason": "route", "unit": unit,
@@ -376,7 +376,7 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
         if g.approval:
             return to_human("approval", "approval", **extra)
         nxt = mapping.advance(spec, unit, state)
-        if nxt is not None:  # a map's next item runs the unit's own step node again (MAP §2.2)
+        if nxt is not None:  # a map's next item runs the unit's own step node again (MAP-B8, MAP-B9, MAP-B10)
             return _merge(route("NEXT", s.retry[0], item=att.get("item")), nxt)
         return _merge(route("PROCEED", flow.entry_node(spec, p["target"]) if p else s.proceed[0], **extra),
                       mapping.passed_write(spec, unit, state))
@@ -384,7 +384,7 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
 
 
 # ---------------------------------------------------------------------------------------------
-# Human decisions (HUM §2.2)
+# Human decisions (HUM-B12)
 
 
 class DecisionRefused(ValueError):
@@ -393,7 +393,7 @@ class DecisionRefused(ValueError):
 
 def check_decision(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], d: Decision, *,
                    human_cap: int = HUMAN_CAP) -> None:
-    """HUM §4: refuse before anything is written."""
+    """HUM-B13: refuse before anything is written."""
     g = spec.units[unit].gate
     path = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
     u = spec.units[unit]
@@ -437,7 +437,7 @@ RULINGS_CHARS = 16_000
 
 
 def active_rulings(spec: WorkflowSpec, state: Mapping[str, Any], unit: str) -> list[str]:
-    """RRN §2.2: rulings in force for `unit`: named by `applies_to`, else given at it or an earlier unit."""
+    """RRN-B14, RRN-B15: rulings in force for `unit`: named by `applies_to`, else given at it or an earlier unit."""
     order = flow.effective_order(spec)
     out = []
     for r in (state.get("rulings") or {}).values():
@@ -455,7 +455,7 @@ def active_rulings(spec: WorkflowSpec, state: Mapping[str, Any], unit: str) -> l
 
 
 def decision_target(spec: WorkflowSpec, unit: str, d: Decision) -> str:
-    """The unit a decision's feedback reaches (RRN §2.2)."""
+    """The unit a decision's feedback reaches (RRN-B14, RRN-B15)."""
     if d.word == "proceed":
         nxt = flow.successors(spec, unit).proceed[0]
         return nxt.rsplit(".", 1)[0] if nxt.endswith(".step") else unit
@@ -465,7 +465,7 @@ def decision_target(spec: WorkflowSpec, unit: str, d: Decision) -> str:
 
 
 def check_rulings(state: Mapping[str, Any], new_text: str | None, revoke: Sequence[str]) -> None:
-    """RRN §4: unknown revoke ids, and the limits of 10 active rulings and 16 000 characters."""
+    """RRN-B16, RRN-B17, RRN-B18, RRN-B14, RRN-B15: unknown revoke ids, and the limits of 10 active rulings and 16 000 characters."""
     rulings = {k: v for k, v in (state.get("rulings") or {}).items() if isinstance(v, dict)}
     for rid in revoke:
         if rid not in rulings or rulings[rid].get("revoked_at"):
@@ -481,7 +481,7 @@ def check_rulings(state: Mapping[str, Any], new_text: str | None, revoke: Sequen
 
 
 def ruling_writes(state: Mapping[str, Any], payload: Mapping[str, Any], given_at: str) -> dict[str, Any]:
-    """The `rulings` channel write of one resume: a new ruling and any revocations (CON §2.12 `Ruling`)."""
+    """The `rulings` channel write of one resume: a new ruling and any revocations (RST (moved) `Ruling`)."""
     now = datetime.now(UTC).isoformat(timespec="seconds")
     w: dict[str, Any] = {rid: {"revoked_at": now, "revoked_by": payload.get("caller")}
                          for rid in payload.get("revoke") or []}
@@ -494,7 +494,7 @@ def ruling_writes(state: Mapping[str, Any], payload: Mapping[str, Any], given_at
 
 
 def apply_deadline(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str) -> dict[str, Any]:
-    """FLX §2.3: what `resume --apply-deadline` does to an overdue wait or ask."""
+    """FLX-B8: what `resume --apply-deadline` does to an overdue wait or ask."""
     dl = flow.deadline_of(spec, unit)
     assert dl is not None
     s = flow.successors(spec, unit)
@@ -547,7 +547,7 @@ def _apply(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payload: Map
         nxt_unit = nxt.rsplit(".", 1)[0] if nxt.endswith(".step") else None
         if one_time and nxt_unit:
             w["feedback"] = {nxt_unit: {"text": one_time, "as": "notes"}}
-        if payload.get("answers") is not None:  # ASK §2.1: the answers file is the unit's one artifact
+        if payload.get("answers") is not None:  # ASK-B5, ASK-B6: the answers file is the unit's one artifact
             w["artifacts"] = {unit: {"answers": str(payload.get("answers_path") or "")}}
             w["values"] = {unit: {str(k): ", ".join(map(str, v)) if isinstance(v, list) else str(v)
                                   for k, v in dict(payload["answers"]).items()}}
@@ -563,7 +563,7 @@ def _apply(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payload: Map
             return _merge(route("RETRY", s.retry[0]), {"counters": {unit: counters}},
                           {"feedback": {unit: {"text": one_time, "as": "feedback"}}} if one_time else {})
         counters.update(retries=0, human=int(counters.get("human", 0)) + 1, infra=0)
-        # a person's retry starts the visit at rung 0 (LAD §2.3); an escalation of this visit stays spent (E9)
+        # a person's retry starts the visit at rung 0 (LAD-B11); an escalation of this visit stays spent (E9)
         counters["ladder"] = {"visit": held.get("visit"), "item": held.get("item"), "rung": 0,
                               "escalated": True} if held.get("escalated") else None
         w = _merge(route("RETRY", s.retry[0]), {"counters": {unit: counters}})

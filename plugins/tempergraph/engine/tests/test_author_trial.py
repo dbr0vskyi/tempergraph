@@ -1,4 +1,4 @@
-"""`author verify` rungs 8 and 9, `author trial` and `author grade` (SCF §2.5, §2.7; SCF-B6, B8, AC-5 to AC-7).
+"""`author verify` rungs 8 and 9, `author trial` and `author grade` (SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22, SCF-B11, SCF-B13, SCF-B15, SCF-B16, SCF-B17; SCF-B6, B8, AC-5 to AC-7).
 
 Stand-in executors only: the judge stand-in answers each seed and trial judgement from a script."""
 
@@ -22,7 +22,7 @@ from tempergraph.executors.standins import standin
 from .fixtures.packages import write
 from .test_scaffold import GOOD_NOTES, outcome, session
 
-SIGNALS = ({}, True)  # a person at a terminal (PRV §2.3)
+SIGNALS = ({}, True)  # a person at a terminal (PRV-B13)
 
 
 def seeded() -> dict[str, Any]:
@@ -107,7 +107,7 @@ def states(doc: dict[str, Any]) -> dict[str, str]:
 
 
 def test_seeds_graded_as_expected_pass_with_judge_sessions_only(pkg: Path, repo: Path) -> None:
-    """Rung 8 passes; only judge sessions start (SCF-AC-5); the ladder goes on to stamp."""
+    """Rung 8 passes; only judge sessions start (SCF-AC5); the ladder goes on to stamp."""
     reg = registry([], seed_answers())
     code, doc, _ = cli(repo, reg, "author", "verify", str(pkg), "--judge-seeds", "--json")
     assert code == 0, json.dumps([r for r in doc["rungs"] if r["state"] != "passed"], indent=1)
@@ -124,7 +124,7 @@ def test_seeds_graded_as_expected_pass_with_judge_sessions_only(pkg: Path, repo:
 
 def test_a_seed_states_its_own_expectation_without_a_label(pkg: Path, repo: Path) -> None:
     """A synthetic seed with no label is graded against its `seed` block; a block for another criterion is not
-    an expectation, so the seed stays `seed-unlabelled` (SCF §2.5)."""
+    an expectation, so the seed stays `seed-unlabelled` (SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22)."""
     for gate, sid, cid, exp in (("draft", "draft-good", "rn-faithful", "MET"), ("draft", "draft-bad", "rn-faithful", "UNMET"),
                                 ("outcome", "out-good", "rn-complete", "MET"), ("outcome", "out-bad", "rn-complete", "UNMET")):
         write(pkg / "evals" / "calibration" / gate / sid, "case.json", {
@@ -145,7 +145,7 @@ def test_a_seed_states_its_own_expectation_without_a_label(pkg: Path, repo: Path
 
 
 def test_an_unclear_scale_flips_and_fails_rung_8(pkg: Path, repo: Path) -> None:
-    """SCF-B8 / SCF-AC-7: the unmet seed graded PARTIAL once and UNMET once names rn-faithful; no stamp."""
+    """SCF-B8 / SCF-AC7: the unmet seed graded PARTIAL once and UNMET once names rn-faithful; no stamp."""
     reg = registry([], seed_answers(("PARTIAL", "UNMET")))
     code, doc, _ = cli(repo, reg, "author", "verify", str(pkg), "--judge-seeds", "--json")
     assert code == 2
@@ -157,7 +157,7 @@ def test_an_unclear_scale_flips_and_fails_rung_8(pkg: Path, repo: Path) -> None:
 
 
 def test_a_rerun_regrades_only_the_seeds_that_failed(pkg: Path, repo: Path) -> None:
-    """SCF §2.5: a stray grading fails rung 8; the rerun starts sessions for that seed only, because the other
+    """SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22: a stray grading fails rung 8; the rerun starts sessions for that seed only, because the other
     seeds' passes still hold (same gate, judge binding, files and expectation). An edit to a seed regrades it."""
     code, doc, _ = cli(repo, registry([], seed_answers(("PARTIAL", "UNMET"))), "author", "verify", str(pkg),
                        "--judge-seeds", "--json")
@@ -262,7 +262,7 @@ def test_trial_verbs_need_a_trial(pkg: Path, repo: Path) -> None:
 
 
 def test_seeds_move_to_tune_only_after_an_edit(pkg: Path, repo: Path) -> None:
-    """JCL §2.1.1: a seed a failing rung 8 showed stays `holdout` until the gate's criteria or brief change;
+    """JCL-B11: a seed a failing rung 8 showed stays `holdout` until the gate's criteria or brief change;
     the next rung 8 then moves it to `tune` for good."""
     case = pkg / "evals" / "calibration" / "draft" / "draft-bad" / "case.json"
     cli(repo, registry([], seed_answers(("PARTIAL", "UNMET"))), "author", "verify", str(pkg), "--judge-seeds")

@@ -1,4 +1,4 @@
-"""Stages of a run, `promote-check` and the promotion stamp (PRO §2.1 to §2.4, PRO-AC-1 to AC-4, AC-6)."""
+"""Stages of a run, `promote-check` and the promotion stamp (PRO-B7, PRO-B4, PRO-B10, PRO-AC1 to AC-4, AC-6)."""
 
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ def run(root: Path, task: str, *, wf: str = "demo", version: str = "0.1.0", cont
         log.write("agent_run", unit="draft", attempt=i, session_kind="step" if i == 1 else "retry", executor="claude",
                   usage={"estimated_cost_usd": cost}, **({"ladder": {"rung": 1}} if climbed and i > 1 else {}))
         log.write("gate", unit="draft", verdict=v)
-    for _ in range(escapes):  # a criterion that passed a gate and was later found unmet (OBS §2.4)
+    for _ in range(escapes):  # a criterion that passed a gate and was later found unmet (OBS-B15)
         log.write("judgement", unit="draft", statuses=[{"id": "c1", "status": "MET"}])
         log.write("gate", unit="draft", verdict="PROCEED")
         log.write("judgement", unit="draft", statuses=[{"id": "c1", "status": "UNMET"}])
@@ -86,7 +86,7 @@ def cli(cwd: Path, *argv: str, catalog: Catalog | None = None, signals: Any = PE
         return code, text, err.getvalue()
 
 
-# -- PRO §2.3: the criteria ---------------------------------------------------------------------------------------
+# -- PRO-B9: the criteria ---------------------------------------------------------------------------------------
 
 
 def test_every_row_met(repo: Path) -> None:
@@ -117,7 +117,7 @@ FAILING: list[tuple[str, dict[str, Any], str]] = [
 
 @pytest.mark.parametrize(("pid", "change", "verdict"), FAILING, ids=[f"{p}-{v}-{i}" for i, (p, _, v) in enumerate(FAILING)])
 def test_each_criterion_fails_alone(repo: Path, pid: str, change: dict[str, Any], verdict: str) -> None:
-    """PRO-AC-3: a fixture where the criterion alone fails; its row names the number and the bar."""
+    """PRO-AC3: a fixture where the criterion alone fails; its row names the number and the bar."""
     root = state_root_path(repo)
     change = dict(change)
     window_of(root, change.pop("n", 10), **change)
@@ -157,13 +157,13 @@ def test_a_run_without_a_supervision_record_is_unmeasured(repo: Path) -> None:
 
 
 def test_no_run_means_every_measured_row_is_unmeasured(repo: Path) -> None:
-    """PRO §4."""
+    """PRO-B6, PRO-B10, PRO-B9."""
     rep = pro.check(checked(), state_root_path(repo), to="local-stable")
     assert rep.exit_code == 6
     assert {c["verdict"] for c in rep.criteria} == {"unmeasured", "reported"}
 
 
-# -- PRO §2.2: the window ------------------------------------------------------------------------------------------
+# -- PRO-B8: the window ------------------------------------------------------------------------------------------
 
 
 def test_window_takes_the_last_finished_runs_of_this_version(repo: Path) -> None:
@@ -223,7 +223,7 @@ def test_a_climbed_attempt_is_seen_and_stays_out_of_the_yield(repo: Path) -> Non
 
 
 def test_verb_is_read_only_and_exits_by_the_verdict(repo: Path) -> None:
-    """PRO-AC-2 (contract C13): without `--stamp` nothing is created or changed."""
+    """PRO-AC2 (OVR-B15): without `--stamp` nothing is created or changed."""
     root = state_root_path(repo)
     cat = Catalog(specs={"demo": checked()})
     window_of(root, 9)
@@ -240,7 +240,7 @@ def test_verb_is_read_only_and_exits_by_the_verdict(repo: Path) -> None:
 
 
 def test_pipeline_is_not_in_this_release(repo: Path) -> None:
-    """PRO-AC-6."""
+    """PRO-AC6."""
     cat = Catalog(specs={"demo": checked()})
     code, _, err = cli(repo, "promote-check", "demo", "--to", "pipeline", catalog=cat)
     assert code == 2 and "not_in_release" in err
@@ -252,7 +252,7 @@ def test_pipeline_is_not_in_this_release(repo: Path) -> None:
     assert code == 2 and "not_in_release" in err
 
 
-# -- PRO §2.4: the stamp --------------------------------------------------------------------------------------------
+# -- PRO-B10: the stamp --------------------------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -294,7 +294,7 @@ def test_stamp_needs_a_person_and_a_source_package(package: tuple[Path, Any, Pat
         pro.stamp(spec, rep, {"kind": "pipeline", "decided_by": "pipeline"})
     with pytest.raises(pro.PromotionRefused, match="only a workflow package"):
         pro.stamp(checked(), rep, {"kind": "person", "decided_by": "person"})
-    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "cfg"))  # PRO §4: an installed copy
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "cfg"))  # PRO-B6, PRO-B10, PRO-B9: an installed copy
     installed = tmp_path / "cfg" / "plugins" / "cache" / "release-notes"
     with pytest.raises(pro.PromotionRefused, match="installed copy"):
         pro.stamp(dataclasses.replace(spec, package_root=installed), rep, {"kind": "person", "decided_by": "person"})
@@ -302,7 +302,7 @@ def test_stamp_needs_a_person_and_a_source_package(package: tuple[Path, Any, Pat
 
 
 def test_a_content_change_voids_the_stamp(package: tuple[Path, Any, Path]) -> None:
-    """PRO-AC-4, PRO-B4: the new version is unstamped and its window starts empty."""
+    """PRO-AC4, PRO-B4: the new version is unstamped and its window starts empty."""
     pkg, spec, root = package
     pro.stamp(spec, pro.check(spec, root, to="local-stable"), {"kind": "person", "decided_by": "person"})
     (pkg / "README.md").write_text("# release-notes\n\nA new readme.\n")  # outside the content digest
@@ -316,14 +316,14 @@ def test_a_content_change_voids_the_stamp(package: tuple[Path, Any, Path]) -> No
 
 
 def test_an_unreadable_stamp_file_is_no_stamp(package: tuple[Path, Any, Path]) -> None:
-    """PRO §4."""
+    """PRO-B6, PRO-B10, PRO-B9."""
     pkg, spec, root = package
     (pkg / "promotion.json").write_text("{not json")
     assert not pro.stamped(spec, "local-stable")
     assert "unreadable" in pro.check(spec, root, to="local-stable").window["stamp"]["warning"]
 
 
-# -- PRO §2.1: the stage of a run ------------------------------------------------------------------------------------
+# -- PRO-B7, PRO-B4: the stage of a run ------------------------------------------------------------------------------------
 
 
 def test_stage_of_a_run() -> None:
@@ -333,7 +333,7 @@ def test_stage_of_a_run() -> None:
 
 
 def test_a_run_records_its_stage(repo: Path) -> None:
-    """PRO §2.1: the stage is on `settings_resolved` and the ledger row; a pipeline caller runs unpromoted."""
+    """PRO-B7, PRO-B4: the stage is on `settings_resolved` and the ledger row; a pipeline caller runs unpromoted."""
     from tempergraph.run.events import records
 
     from .test_cli import cli as run_cli

@@ -1,4 +1,4 @@
-"""The self-check a new engine environment runs (UPD §2.3 step 4): its version and an import check of every
+"""The self-check a new engine environment runs (UPD-B14, UPD-B6 step 4): its version and an import check of every
 executor module; no probe, no model. Prints one JSON document."""
 
 from __future__ import annotations

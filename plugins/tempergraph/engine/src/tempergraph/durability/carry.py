@@ -1,7 +1,7 @@
-"""A run's state carried on its own branch (CAR §2): the carried subset, the state branch, the lease.
+"""A run's state carried on its own branch (CAR-B5): the carried subset, the state branch, the lease.
 
 The engine writes the state branch with git plumbing only, so no checkout, index or work branch is touched.
-A push or a deletion that fails never changes a run's exit (contract C2): the thread's carry record says what
+A push or a deletion that fails never changes a run's exit (OVR-B4): the thread's carry record says what
 is left to do, and `carry push` or `carry drop` finishes it.
 """
 
@@ -54,7 +54,7 @@ def branch_name(workflow: str, task_id: str) -> str:
 
 
 def remote_of(repo: Path, remote: str | None = None) -> str:
-    """CAR §2.1: `--remote`, else the work branch's upstream remote, else `origin`; none is a refusal."""
+    """CAR-B6: `--remote`, else the work branch's upstream remote, else `origin`; none is a refusal."""
     remotes = gitmod.git(["remote"], repo, check=False).split()
     if remote:
         if remote not in remotes:
@@ -96,7 +96,7 @@ def is_on(root: Path, workflow: str, task_id: str) -> bool:
     return bool(marker(root, workflow, task_id).get("on"))
 
 
-# -- what is carried (CAR §2.2) ----------------------------------------------------------------------------------
+# -- what is carried (CAR-B7, CAR-B2) ----------------------------------------------------------------------------------
 
 
 def _carried_run_file(rel: PurePosixPath) -> bool:
@@ -157,7 +157,7 @@ def _ledger_rows(root: Path, tid: str) -> list[str]:
 
 
 def _workspace(root: Path, workflow: str, task_id: str, repo: Path) -> dict[str, Any]:
-    """The workspace of the thread with the branch and base; the path is left to the root rule (WTR §2.2)."""
+    """The workspace of the thread with the branch and base; the path is left to the root rule (WTR-B18)."""
     from tempergraph.run.events import records
 
     rec: dict[str, Any] = {}
@@ -205,7 +205,7 @@ def collect(root: Path, repo: Path, workflow: str, task_id: str, *, workflow_ver
     return files
 
 
-# -- the state branch (CAR §2.1) ---------------------------------------------------------------------------------
+# -- the state branch (CAR-B6) ---------------------------------------------------------------------------------
 
 
 def _tree(repo: Path, files: Mapping[str, Path]) -> str:
@@ -292,7 +292,7 @@ def push(root: Path, repo: Path, workflow: str, task_id: str, *, remote: str | N
          workflow_version: str | None = None, lease: Mapping[str, Any] | None = None,
          machine: str | None = None, force: bool = False) -> Pushed:
     """One new commit on the state branch, pushed. Refused when the remote holds a newer state or another
-    machine's lease; a non-fast-forward rejection keeps the local state and pushes nothing (CAR §2.4)."""
+    machine's lease; a non-fast-forward rejection keeps the local state and pushes nothing (CAR-B9, CAR-B4)."""
     from tempergraph.run.log import last_seq
 
     remote = remote_of(repo, remote or marker(root, workflow, task_id).get("remote"))
@@ -328,7 +328,7 @@ def push(root: Path, repo: Path, workflow: str, task_id: str, *, remote: str | N
 
 
 def drop(root: Path, repo: Path, workflow: str, task_id: str, *, remote: str | None = None) -> dict[str, Any]:
-    """Delete the state branch locally and on the remote (CAR §2.3)."""
+    """Delete the state branch locally and on the remote (CAR-B8, CAR-B3)."""
     remote = remote_of(repo, remote or marker(root, workflow, task_id).get("remote"))
     branch = branch_name(workflow, task_id)
     try:
@@ -346,7 +346,7 @@ def drop(root: Path, repo: Path, workflow: str, task_id: str, *, remote: str | N
     return {"branch": branch, "remote": remote, "deleted": True, "was_on_remote": on_remote}
 
 
-# -- pull (CAR §2.3, §2.5) ----------------------------------------------------------------------------------------
+# -- pull (CAR-B8, CAR-B3, CAR-B10) ----------------------------------------------------------------------------------------
 
 
 def _read_tree(repo: Path, commit: str, into: Path) -> dict[str, Path]:
@@ -368,7 +368,7 @@ def _read_tree(repo: Path, commit: str, into: Path) -> dict[str, Path]:
 
 def checks(repo: Path, remote: str, manifest: Mapping[str, Any], files: Mapping[str, Path], *,
            current_version: str | None, force: bool = False) -> None:
-    """CAR §2.5: each row refuses before anything is imported."""
+    """CAR-B10: each row refuses before anything is imported."""
     from tempergraph.release import release
 
     listed = dict(manifest.get("files") or {})
@@ -434,7 +434,7 @@ def pull(root: Path, repo: Path, workflow: str, task_id: str, *, remote: str | N
          current_version: str | None, machine: str | None = None, force: bool = False,
          caller: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Fetch the state branch, check it and import the thread; a held lease of another machine refuses
-    unless forced, and a forced pull is recorded as a `steer` touch (CAR §2.4)."""
+    unless forced, and a forced pull is recorded as a `steer` touch (CAR-B9, CAR-B4)."""
     from tempergraph.run.log import Ledger, last_seq
     from tempergraph.store.layout import ensure_state_root
 
@@ -496,7 +496,7 @@ def pull(root: Path, repo: Path, workflow: str, task_id: str, *, remote: str | N
                if ws.get("mode") == "in_place" else {})}
 
 
-# -- the run's hooks (CAR §2.3, §2.4) -----------------------------------------------------------------------------
+# -- the run's hooks (CAR-B8, CAR-B3, CAR-B9, CAR-B4) -----------------------------------------------------------------------------
 
 
 def lease_of(machine: str | None) -> dict[str, Any]:
@@ -518,7 +518,7 @@ def before_resume(root: Path, repo: Path, workflow: str, task_id: str, *, workfl
 
 
 def relocate(root: Path, repo: Path, workflow: str, task_id: str, ws: Mapping[str, Any]) -> dict[str, Any]:
-    """After a pull, the workspace record's path under this machine's root rule (WTR §2.2)."""
+    """After a pull, the workspace record's path under this machine's root rule (WTR-B18)."""
     if not marker(root, workflow, task_id).get("relocate"):
         return dict(ws)
     from tempergraph.workspace import flat_name, sibling_root
@@ -532,7 +532,7 @@ def relocate(root: Path, repo: Path, workflow: str, task_id: str, ws: Mapping[st
 def after_exit(root: Path, repo: Path, workflow: str, task_id: str, *, exit_code: int,
                workflow_version: str | None, machine: str | None) -> str | None:
     """A finished thread deletes its state branch; any other exit pushes the new state and clears the lease.
-    Returns a warning when the remote could not be reached or refused; never raises (contract C2)."""
+    Returns a warning when the remote could not be reached or refused; never raises (OVR-B4)."""
     if not is_on(root, workflow, task_id):
         return None
     try:

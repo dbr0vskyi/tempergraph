@@ -1,4 +1,4 @@
-"""The CLI core verbs end to end on stand-ins (CLI-B1–B5, CLI-AC-1, AC-3, AC-4; milestone M1)."""
+"""The CLI core verbs end to end on stand-ins (CLI-B1–B5, CLI-AC1, AC-3, AC-4; milestone M1)."""
 
 from __future__ import annotations
 
@@ -80,7 +80,7 @@ def test_check_creates_nothing(repo: Path) -> None:
 
 
 def test_check_and_run_refuse_alike(repo: Path) -> None:
-    no_judge = standin("antigravity")  # cannot restrict judge tools: preflight refuses (CLI-AC-2)
+    no_judge = standin("antigravity")  # cannot restrict judge tools: preflight refuses (CLI-AC2)
     code, doc, _ = cli(repo, no_judge, "run", "demo", "x", "--check")
     assert code == ExitCode.USAGE and doc["status"] == "error" and doc["refusals"]
     code, _, err = cli(repo, no_judge, "run", "demo", "x")
@@ -98,7 +98,7 @@ def test_same_request_same_thread() -> None:
                                   ["run", "missing", "x"], ["run", "demo", "x", "--bogus"]])
 def test_usage_refusals_exit_2(repo: Path, argv: list[str]) -> None:
     code, _, err = cli(repo, happy(), *argv)
-    assert code == ExitCode.USAGE and err  # CLI-AC-3, CLI §4
+    assert code == ExitCode.USAGE and err  # CLI-AC3, CLI-B17, CLI-B18, CLI-B19
 
 
 def test_read_only_verbs_leave_the_root_unchanged(repo: Path) -> None:
@@ -108,7 +108,7 @@ def test_read_only_verbs_leave_the_root_unchanged(repo: Path) -> None:
                  ["graph", "demo"], ["graph", "demo", "--format", "json"], ["worktree", "list"]):
         code, _, err = cli(repo, happy(), *argv)
         assert code == 0, (argv, err)
-    assert hash_tree(repo / ".tempergraph") == before  # CLI-AC-1
+    assert hash_tree(repo / ".tempergraph") == before  # CLI-AC1
 
 
 def test_stop_needs_a_live_run(repo: Path) -> None:
@@ -131,7 +131,7 @@ def test_executors_lists_live_facts_as_not_run(repo: Path) -> None:
 def test_exit_codes_match_the_contract() -> None:
     con = (Path(__file__).resolve().parents[2] / "docs" / "specs" / "01-contracts.spec.md").read_text()
     for code in ExitCode:
-        assert f"`{int(code)}`" in con  # CLI-AC-4
+        assert f"`{int(code)}`" in con  # CLI-AC4
 
 
 def test_reserved_words_cover_every_spec_verb() -> None:
@@ -187,7 +187,7 @@ def test_registered_package_loads_and_runs(repo: Path, tmp_path: Path, monkeypat
     assert code == ExitCode.INTERNAL and "not_loaded" in err
 
 
-def test_pause_before_and_dry_run(repo: Path) -> None:  # CLI §2.1, FLX §2.5, §2.6
+def test_pause_before_and_dry_run(repo: Path) -> None:  # ROP-B1 to ROP-B13, FLX-B10, FLX-B11
     for argv in (["--check"], []):
         code, _, err = cli(repo, happy(), "run", "demo", "notes", "--task-id", "D-1", "--pause-before", "nowhere",
                            *argv)

@@ -1,4 +1,4 @@
-"""The engine's check helpers, `tempergraph.api.checks` (SCF §2.4): the primitives a scaffolded check uses for
+"""The engine's check helpers, `tempergraph.api.checks` (SCF-B14, SCF-B15, SCF-B16, SCF-B17): the primitives a scaffolded check uses for
 a `check` criterion. Each returns one `CheckFinding` naming the criterion id; `result` combines them. Pure
 over the workspace (CHK: no write, no model)."""
 
@@ -34,7 +34,7 @@ def _text(ctx: Any, key: str) -> str | None:
 
 
 def _f(ok: bool, criterion: str, place: str, message: str, fix: str = "") -> CheckFinding:
-    # every stock helper checks the shape of the output, never its substance (LAD §2.2)
+    # every stock helper checks the shape of the output, never its substance (LAD-B10)
     return CheckFinding(status="pass" if ok else "fail", criterion=criterion, place=place,
                         message=message if not ok else "", fix=fix if not ok else "", kind="output_contract")
 

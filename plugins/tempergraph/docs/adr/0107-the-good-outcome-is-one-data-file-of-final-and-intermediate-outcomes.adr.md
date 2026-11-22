@@ -13,7 +13,7 @@ The concept's first line is "start from a definition of a good outcome", but cri
 
 ## Decision
 
-We will keep the good outcome in `outcome.json`: a statement, deliverables, final criteria, one intermediate outcome per unit with its criteria, and for each criterion `verified_by` (`check`, `judge`, `person`, `none` with a reason), its source and the final criteria it serves. Gates get their criteria from it at load. Details: [OUT §2.1 to §2.3](../specs/90-run-outcome.spec.md).
+We will keep the good outcome in `outcome.json`: a statement, deliverables, final criteria, one intermediate outcome per unit with its criteria, and for each criterion `verified_by` (`check`, `judge`, `person`, `none` with a reason), its source and the final criteria it serves. Gates get their criteria from it at load. Details: [OUT-B8, OUT-B9, OUT-B13, OUT-B14](../specs/90-run-outcome.spec.md).
 
 ## Options considered
 
@@ -36,7 +36,7 @@ We will keep the good outcome in `outcome.json`: a statement, deliverables, fina
 
 - Positive: every criterion has a verifier class, so the unverified part of a workflow is a number.
 - Negative: older packages with inline criteria keep loading; a criterion id may not be in both places.
-- Risk: `serves` links rot. Mitigation: validation and coverage (OUT §2.3, §4).
+- Risk: `serves` links rot. Mitigation: validation and coverage (OUT-B13, OUT-B14, OUT-B22).
 
 ## Assumptions
 

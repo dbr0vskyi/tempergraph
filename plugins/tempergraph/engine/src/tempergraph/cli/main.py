@@ -1,7 +1,7 @@
-"""The engine CLI's release 1 core verbs (CLI §2, §4; milestone M1).
+"""The engine CLI's release 1 core verbs (CLI-B7, CLI-B8, CLI-B14, CLI-B17, CLI-B18, CLI-B19; milestone M1).
 
-Exit codes are the caller contract (CON §2.9, ADR-0015). Read-only verbs create nothing and call no model
-(contract C13). Machine output is JSON with `schema_version`; a run's one-line outcome goes to stderr.
+Exit codes are the caller contract (CON-B12, CON-B13, ADR-0015). Read-only verbs create nothing and call no model
+(OVR-B15). Machine output is JSON with `schema_version`; a run's one-line outcome goes to stderr.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ from tempergraph.contracts import WorkflowSpec, thread_id
 from tempergraph.executors.registry import Registry, default_registry
 from tempergraph.store.layout import ROOT_VAR
 
-# Every verb word of CLI §2, reserved so it is never read as a workflow or a request (CLI-B2, AC-3).
+# Every verb word of CLI-B7, CLI-B8, CLI-B14, reserved so it is never read as a workflow or a request (CLI-B2, AC-3).
 VERBS = ("attention", "audit", "author", "batch", "blueprint", "carry", "config", "evals", "events", "executors", "facts",
          "graph", "hooks", "improve", "install", "label", "labels", "list", "literals", "logs", "orchestrate",
          "outcome", "promote-check", "report", "rerun", "resume", "run", "scaffold", "schedule", "self-check",
@@ -52,7 +52,7 @@ class _Parser(argparse.ArgumentParser):
 
 def _parser() -> _Parser:
     p = _Parser(prog="tempergraph", description="Tempered rails for AI workflows")
-    p.add_argument("--state-root", metavar="DIR", help="outside a git repository: the state root to use (WSP §2.4)")
+    p.add_argument("--state-root", metavar="DIR", help="outside a git repository: the state root to use (WSP-B15 to WSP-B18)")
     sub = p.add_subparsers(dest="verb", parser_class=_Parser)
 
     run = sub.add_parser("run", help="resolve, preflight and start a workflow")
@@ -68,24 +68,24 @@ def _parser() -> _Parser:
     res.add_argument("thread")
     res.add_argument("--decision", action="append", default=[],
                      help="one decision; repeat only for an ask's answer:<name>=<value>")
-    res.add_argument("--answers", metavar="FILE", help="a JSON map of an ask's answers (ASK §2.3)")
+    res.add_argument("--answers", metavar="FILE", help="a JSON map of an ask's answers (ASK-B8)")
     res.add_argument("--apply-deadline", action="store_true",
-                     help="apply the overdue deadline of a wait or an ask (FLX §2.3)")
+                     help="apply the overdue deadline of a wait or an ask (FLX-B8)")
     res.add_argument("--unit", help="which pending gate the decision answers, when there are several (HUM-B3)")
     res.add_argument("--unpin", action="store_true",
-                     help="clear the thread's engine pin when this engine can resume it (MIG §2.4)")
+                     help="clear the thread's engine pin when this engine can resume it (MIG-B12, MIG-B13, MIG-B14)")
     res.add_argument("--escalate", action="store_true",
-                     help="take the offered one-step model escalation for the next attempt (LAD §2.4)")
+                     help="take the offered one-step model escalation for the next attempt (LAD-B12)")
     fb = res.add_mutually_exclusive_group()
     fb.add_argument("--feedback")
     fb.add_argument("--feedback-file")
-    res.add_argument("--ruling", action="store_true", help="the feedback is a lasting ruling (RRN §2.2)")
+    res.add_argument("--ruling", action="store_true", help="the feedback is a lasting ruling (RRN-B14, RRN-B15)")
     res.add_argument("--ruling-for", metavar="UNITS", help="comma-separated units the ruling applies to")
     res.add_argument("--revoke-ruling", action="append", default=[], metavar="ID")
     res.add_argument("--accept-external", action="store_true")
     _run_options(res, start=False)
 
-    rr = sub.add_parser("rerun", help="a new thread forked from an earlier one, linked to it (RRN §2.4)")
+    rr = sub.add_parser("rerun", help="a new thread forked from an earlier one, linked to it (RRN-B17, RRN-B18)")
     rr.add_argument("workflow")
     rr.add_argument("thread")
     rr.add_argument("--from", dest="start_at", required=True, metavar="UNIT|start")
@@ -109,7 +109,7 @@ def _parser() -> _Parser:
     st.add_argument("--unit", help="with --detail: one unit in full")
     st.add_argument("--no-live", action="store_true", help="with --detail: leave out the live session blocks")
     st.add_argument("--json", action="store_true", help="machine output (the default for status)")
-    st.add_argument("--all-roots", action="store_true", help="every state root of the machine index (CST §2.1)")
+    st.add_argument("--all-roots", action="store_true", help="every state root of the machine index (CST-B8)")
     ev = sub.add_parser("events", help="a thread's run-log records in seq order (EVT)")
     ev.add_argument("selector")
     ev.add_argument("--since", type=int, metavar="SEQ")
@@ -122,9 +122,9 @@ def _parser() -> _Parser:
     va.add_argument("workflow")
     ex = sub.add_parser("executors", help="registered executors and their capabilities")
     ex.add_argument("--probe", action="store_true")
-    sc = sub.add_parser("self-check", help="a step's preview of its gate's check (CHK §2.5)")
+    sc = sub.add_parser("self-check", help="a step's preview of its gate's check (CHK-B17)")
     sc.add_argument("ticket")
-    hk = sub.add_parser("hooks", help="run lifecycle hooks (CLI §2.2)")
+    hk = sub.add_parser("hooks", help="run lifecycle hooks (HOK-B1 to HOK-B6)")
     hks = hk.add_subparsers(dest="action", required=True)
     hka = hks.add_parser("add", help="register a command for an event: hooks add <event> -- <argv…>")
     hka.add_argument("event")
@@ -140,7 +140,7 @@ def _parser() -> _Parser:
     gr = sub.add_parser("graph", help="the workflow diagram")
     gr.add_argument("workflow")
     gr.add_argument("--format", choices=("mermaid", "md", "json"), default="mermaid")
-    gr.add_argument("--overlay", metavar="THREAD", help="a thread's counts on the diagram (OBS §2.4); read-only")
+    gr.add_argument("--overlay", metavar="THREAD", help="a thread's counts on the diagram (OBS-B15); read-only")
     wa = sub.add_parser("wait", help="block until a thread's outcome")
     wa.add_argument("selector")
     wa.add_argument("--timeout", type=float, default=3600.0)
@@ -162,7 +162,7 @@ def _parser() -> _Parser:
     ca.add_argument("--force", action="store_true")
     ca.add_argument("--json", action="store_true")
     _caller_options(ca)
-    co = sub.add_parser("config", help="resolved run settings and the settings files (RST §2.9)")
+    co = sub.add_parser("config", help="resolved run settings and the settings files (RST-B31)")
     csub = co.add_subparsers(dest="action", parser_class=_Parser)
     cs = csub.add_parser("show")
     cs.add_argument("workflow")
@@ -197,7 +197,7 @@ def _settings_options(p: argparse.ArgumentParser, resume: bool = False) -> None:
         p.add_argument("--reload-settings", action="store_true")
 
 
-# Named run options that are spellings of `--set` (CLI §2.1): option dest -> key, or a `<unit>=<value>` pair.
+# Named run options that are spellings of `--set` (ROP-B1 to ROP-B13): option dest -> key, or a `<unit>=<value>` pair.
 SPELLINGS = {"executor": "steps.executor", "judge_executor": "judges.executor", "model": "steps.model",
              "judge_model": "judges.model", "timeout": "steps.timeout_s", "judge_timeout": "judges.timeout_s",
              "idle": "steps.idle_s", "run_cost_cap": "run.run_cost_cap_usd", "worktree_root": "run.worktree.root",
@@ -207,7 +207,7 @@ PER_UNIT = {"step_executor": "executor", "step_model": "model"}
 
 
 def _caller_options(p: argparse.ArgumentParser) -> None:
-    """PRV §2.6: run options, never settings; each call is classified on its own."""
+    """PRV-B18: run options, never settings; each call is classified on its own."""
     p.add_argument("--caller", choices=("person", "agent", "pipeline", "orchestrator", "scheduler", "engine"))
     p.add_argument("--as-agent", action="store_true")
     p.add_argument("--caller-app")
@@ -254,12 +254,12 @@ class Env:
     out: IO[str]
     err: IO[str]
     run_settings: Callable[..., Any] | None = None  # tests pass a factory to replace the backoff sleep
-    signals: tuple[Mapping[str, str], bool] | None = None  # (environment, terminal); tests stub them (PRV-AC-1)
+    signals: tuple[Mapping[str, str], bool] | None = None  # (environment, terminal); tests stub them (PRV-AC1)
     hand_over: Callable[[Path, list[str]], int] | None = None  # tests replace the pinned engine's launch
-    argv: tuple[str, ...] = ()  # this process's own arguments, handed unchanged to a pinned engine (MIG §2.4)
+    argv: tuple[str, ...] = ()  # this process's own arguments, handed unchanged to a pinned engine (MIG-B12, MIG-B13, MIG-B14)
 
     def caller(self, a: argparse.Namespace) -> dict[str, Any]:
-        """PRV §2.3, once per mutating call, before any write; read-only verbs never call this."""
+        """PRV-B13, once per mutating call, before any write; read-only verbs never call this."""
         from tempergraph.provenance import CallerRefused, classify
 
         env, tty = self.signals or (os.environ, sys.stdin.isatty() and sys.stdout.isatty())
@@ -302,7 +302,7 @@ def _inputs(pairs: Sequence[str]) -> dict[str, str]:
 
 
 def _flags(env: Env, a: argparse.Namespace) -> dict[str, Any]:
-    """`--settings`, then `--set`, then the named spellings: every one lands on the flag layer (RST §2.3)."""
+    """`--settings`, then `--set`, then the named spellings: every one lands on the flag layer (RST-B22, RST-B23)."""
     from tempergraph.settings import parse_value
 
     flags: dict[str, Any] = {}
@@ -332,7 +332,7 @@ def _flags(env: Env, a: argparse.Namespace) -> dict[str, Any]:
     for unit in getattr(a, "approve", None) or []:
         flags[f"{unit}.approve"] = True
     for opt, pairs in (("grant", getattr(a, "grant", None)), ("allow-command", getattr(a, "allow_command", None))):
-        for pair in pairs or []:  # a person's tool grant for this run (RST §2.8)
+        for pair in pairs or []:  # a person's tool grant for this run (RST-B28, RST-B29, RST-B30)
             unit, sep, v = pair.partition("=")
             if not sep or not unit or not v:
                 raise UsageError(f"--{opt} {pair!r}: expected <unit>=<value>")
@@ -363,7 +363,7 @@ def _settings(env: Env, a: argparse.Namespace, mutating: bool = True) -> Any:
         fields["escalate"] = True
     if getattr(a, "carry", False):
         fields["carry"] = True
-    if getattr(a, "pause_before", None):  # FLX §2.5
+    if getattr(a, "pause_before", None):  # FLX-B10
         fields["pause_before"] = tuple(a.pause_before)
     if hasattr(a, "unset"):
         fields.update(unset=tuple(a.unset), reload_settings=a.reload_settings)
@@ -407,7 +407,7 @@ def cmd_run(env: Env, a: argparse.Namespace) -> int:
         raise UsageError(f"{a.request[0]!r} is a reserved verb and cannot start a request (CLI-B2)")
     if spec.builtin:  # UWF-B5: a built-in workflow is started by its own verb
         raise UsageError(f"{spec.name} is started by `tempergraph {spec.name} <workflow>`, not by `run`")
-    for name in a.pause_before:  # FLX §2.6: refused before spend, by `--check` too
+    for name in a.pause_before:  # FLX-B11: refused before spend, by `--check` too
         if name not in spec.units:
             raise UsageError(f"breakpoint_unknown: --pause-before {name}: the workflow has no such unit")
     try:
@@ -421,7 +421,7 @@ def cmd_run(env: Env, a: argparse.Namespace) -> int:
             doc.update(task_id=res.task_id, thread_id=thread_id(spec.name, res.task_id))
             try:
                 settled = settle_start(spec, _settings(env, a, mutating=False), _root_or_none(env))
-            except SettingsRefused as exc:  # the same refusals `run` gives (CLI-AC-2, RST-B9)
+            except SettingsRefused as exc:  # the same refusals `run` gives (CLI-AC2, RST-B9)
                 doc.update(status="error", refusals=[{"code": f.code, "unit": f.unit, "message": f.message}
                                                      for f in exc.findings], warnings=[])
                 _emit(env, doc)
@@ -461,7 +461,7 @@ def cmd_resume(env: Env, a: argparse.Namespace) -> int:
     if code is not None:
         return code
     answers: dict[str, Any] = {}
-    if a.answers:  # ASK §2.3: a JSON map of answers
+    if a.answers:  # ASK-B8: a JSON map of answers
         try:
             doc = json.loads((env.cwd / a.answers).read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
@@ -482,7 +482,7 @@ def cmd_resume(env: Env, a: argparse.Namespace) -> int:
                                    unit=a.unit)
     out = resume(spec, task, env.cwd, env.registry, decision=words[0] if words else None, feedback=feedback,
                  settings=settings)
-    if out.exit_code == ExitCode.FINISHED:  # MIG §2.4: a pin ends with its thread
+    if out.exit_code == ExitCode.FINISHED:  # MIG-B12, MIG-B13, MIG-B14: a pin ends with its thread
         from tempergraph.durability import engine_file
 
         root = _root_or_none(env)
@@ -492,7 +492,7 @@ def cmd_resume(env: Env, a: argparse.Namespace) -> int:
 
 
 def _pinned_engine(env: Env, spec: WorkflowSpec, task: str, a: argparse.Namespace) -> int | None:
-    """MIG §2.4, before anything else: None when this engine resumes the thread, else the exit code of the
+    """MIG-B12, MIG-B13, MIG-B14, before anything else: None when this engine resumes the thread, else the exit code of the
     pinned engine that did, or 2 with the reason."""
     from tempergraph.durability import engine_file
     from tempergraph.install import environment, launch
@@ -535,7 +535,7 @@ def cmd_rerun(env: Env, a: argparse.Namespace) -> int:
     if isinstance(out, dict):
         _emit(env, out)
         return 0
-    if a.check:  # `rerun --check` refuses as `rerun` does, and prints one document (RRN-AC-4)
+    if a.check:  # `rerun --check` refuses as `rerun` does, and prints one document (RRN-AC4)
         _emit(env, {"schema_version": 1, "status": "error", "reason": out.reason, "message": out.message,
                     "refusals": out.refusals or [out.message]})
         return int(out.exit_code)
@@ -552,7 +552,7 @@ def _root(env: Env) -> Path:
 
 
 def _needs_git(env: Env, what: str) -> None:
-    """WSP §2.4: a verb that works on branches or worktrees is refused outside a git repository."""
+    """WSP-B15 to WSP-B18: a verb that works on branches or worktrees is refused outside a git repository."""
     from tempergraph.store.layout import outside_git
 
     if outside_git(env.cwd):
@@ -619,7 +619,7 @@ def cmd_status(env: Env, a: argparse.Namespace) -> int:
 
     lines = warnings(home_path())
     if lines:
-        doc["warnings"] = lines  # CST §2.3: a sink failing for 7 days
+        doc["warnings"] = lines  # CST-B10, CST-B12, CST-B13: a sink failing for 7 days
     _emit(env, doc)
     return 0
 
@@ -691,14 +691,14 @@ def cmd_executors(env: Env, a: argparse.Namespace) -> int:
             pr = ex.probe()
             row["probe"] = {"ok": pr.ok, "reason": pr.reason, "version": pr.version, "path": pr.path,
                             "facts": dict(pr.facts)}
-        row["compat"] = executor_compat.row(name, row["probe"]["version"] if a.probe else caps.version)  # LIF-AC-4
+        row["compat"] = executor_compat.row(name, row["probe"]["version"] if a.probe else caps.version)  # LIF-AC4
         rows.append(row)
     _emit(env, {"schema_version": 1, "executors": rows})
     return 0
 
 
 def cmd_self_check(env: Env, a: argparse.Namespace) -> int:
-    """CHK §2.5: the one verb a step session may call; it changes no state."""
+    """CHK-B17: the one verb a step session may call; it changes no state."""
     from tempergraph.run import selfcheck
 
     root = _root_or_none(env)
@@ -709,7 +709,7 @@ def cmd_self_check(env: Env, a: argparse.Namespace) -> int:
 
 
 def cmd_hooks(env: Env, a: argparse.Namespace) -> int:
-    """CLI §2.2: the operator's registry of lifecycle hooks; add and remove write, list and test do not."""
+    """HOK-B1 to HOK-B6: the operator's registry of lifecycle hooks; add and remove write, list and test do not."""
     from tempergraph.observe import hooks
 
     root = _root(env)
@@ -792,7 +792,7 @@ def cmd_stop(env: Env, a: argparse.Namespace) -> int:
 
 
 def cmd_carry(env: Env, a: argparse.Namespace) -> int:
-    """CAR §2: `carry push|pull|status|drop <workflow> <thread>`."""
+    """CAR-B5: `carry push|pull|status|drop <workflow> <thread>`."""
     from tempergraph import identity
     from tempergraph.durability import carry
     from tempergraph.durability.lock import is_held
@@ -864,7 +864,7 @@ def cmd_worktree(env: Env, a: argparse.Namespace) -> int:
 
 
 def cmd_config(env: Env, a: argparse.Namespace) -> int:
-    """RST §2.9: read-only, model-free; `show` calls the same resolver a start or resume does (RST-B9)."""
+    """RST-B31: read-only, model-free; `show` calls the same resolver a start or resume does (RST-B9)."""
     import fnmatch
 
     from tempergraph import settings as rst
@@ -1005,7 +1005,7 @@ def main(argv: Sequence[str] | None = None, *, catalog: Catalog | None = None, r
         return int(ExitCode.INTERNAL)
     except SystemExit as exc:  # --help
         return int(exc.code or 0) if isinstance(exc.code, int) else 0
-    except Exception as exc:  # noqa: BLE001 - CLI §4: exit 1 after an engine-error record
+    except Exception as exc:  # noqa: BLE001 - CLI-B17, CLI-B18, CLI-B19: exit 1 after an engine-error record
         _engine_error(exc)
         err.write(f"tempergraph: internal error ({type(exc).__name__})\n")
         return int(ExitCode.INTERNAL)
@@ -1017,7 +1017,7 @@ def main(argv: Sequence[str] | None = None, *, catalog: Catalog | None = None, r
 
 
 def _engine_error(exc: BaseException) -> None:
-    """The engine-error record in the engine code log (LOS §2.3); best effort (contract C2)."""
+    """The engine-error record in the engine code log (LOS-B13); best effort (OVR-B4)."""
     try:
         logging.getLogger("tempergraph").error("engine_error", exc_info=exc)
     except Exception:  # noqa: BLE001

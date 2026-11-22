@@ -1,4 +1,4 @@
-"""`evals score|bar|label` (JCL §2.6), `labels queue|grades` (FBK §2.3, §2.4) and the `improve` verbs (PRP §2.7).
+"""`evals score|bar|label` (JCL-B14, JCL-B18), `labels queue|grades` (FBK-B11, FBK-B12, FBK-B13) and the `improve` verbs (PRP-B4, PRP-B12, PRP-B18, PRP-B21, PRP-B8, PRP-B22).
 
 Only `evals score`, `improve propose` (without `--patch`), `improve trial` and `improve aa` start sessions;
 every other verb here is model-free.
@@ -38,12 +38,12 @@ def add_parsers(sub: Any, parser_class: type[argparse.ArgumentParser]) -> None:
     sc.add_argument("--variants", default="persuasive_account,out_of_reach",
                     help="comma-separated kinds, or none")
     sc.add_argument("--cap", type=float, default=None, metavar="USD")
-    sc.add_argument("--level", help="score the judge of this risk level (JRK §2.4)")
+    sc.add_argument("--level", help="score the judge of this risk level (JRK-B9, JRK-B5)")
     sc.add_argument("--json", action="store_true")
     ba = esub.add_parser("bar", help="each gate's acceptance state, figures and failing rules")
     ba.add_argument("workflow", nargs="?")
     ba.add_argument("--json", action="store_true")
-    ru = esub.add_parser("run", help="run the eval suites of one kind and record the results (EVS §2.7)")
+    ru = esub.add_parser("run", help="run the eval suites of one kind and record the results (EVS-B17, EVS-B18)")
     ru.add_argument("workflow")
     ru.add_argument("--kind", required=True, choices=("check", "judge", "step", "workflow"))
     ru.add_argument("--role", choices=("regression", "capability"))
@@ -86,7 +86,7 @@ def add_parsers(sub: Any, parser_class: type[argparse.ArgumentParser]) -> None:
     gr = lsub.add_parser("grades")
     gr.add_argument("workflow")
     gr.add_argument("--json", action="store_true")
-    im = sub.add_parser("improve", help="clusters, proposals and paired trials (PRP §2.7)")
+    im = sub.add_parser("improve", help="clusters, proposals and paired trials (PRP-B4, PRP-B12, PRP-B18, PRP-B21, PRP-B8, PRP-B22)")
     isub = im.add_subparsers(dest="action", parser_class=parser_class)
     bl = isub.add_parser("backlog")
     bl.add_argument("workflow", nargs="?")
@@ -115,7 +115,7 @@ def add_parsers(sub: Any, parser_class: type[argparse.ArgumentParser]) -> None:
     sh.add_argument("record", metavar="PROPOSAL|TRIAL")
     from tempergraph.cli.improve_review import add_review_parser
 
-    add_review_parser(isub)  # SRV §2.9
+    add_review_parser(isub)  # SRV-B23
 
 
 def _usage(msg: str) -> Exception:
@@ -125,7 +125,7 @@ def _usage(msg: str) -> Exception:
 
 
 def _suites(env: Any, a: argparse.Namespace) -> int:
-    """`evals run|report|grade` (EVS §2.7). Only `run` on a live kind makes a model call."""
+    """`evals run|report|grade` (EVS-B17, EVS-B18). Only `run` on a live kind makes a model call."""
     from tempergraph.cli.main import _emit, _root, _spec
     from tempergraph.improve import calibration as cal
     from tempergraph.improve import suites
@@ -358,7 +358,7 @@ def cmd_improve(env: Any, a: argparse.Namespace) -> int:
         if a.action == "trial":
             from tempergraph.store.layout import outside_git
 
-            if outside_git(env.cwd):  # a trial runs its arms in worktrees (WSP §2.4)
+            if outside_git(env.cwd):  # a trial runs its arms in worktrees (WSP-B15 to WSP-B18)
                 raise _usage("needs_git: a trial needs a git repository")
             rec = prp.load_proposal(root, a.proposal)
             spec = _spec(env, str(rec["workflow"]))
@@ -407,7 +407,7 @@ COMMANDS = {"evals": cmd_evals, "labels": cmd_labels, "improve": cmd_improve}
 
 
 def cmd_promote_check(env: Any, a: argparse.Namespace) -> int:
-    """PRO §2: read-only without `--stamp`; exit 0 when every criterion is met, 6 when any is not."""
+    """PRO-B6: read-only without `--stamp`; exit 0 when every criterion is met, 6 when any is not."""
     from tempergraph.cli.main import _emit, _root, _spec
     from tempergraph.improve import promotion as pro
     from tempergraph.provenance import decide

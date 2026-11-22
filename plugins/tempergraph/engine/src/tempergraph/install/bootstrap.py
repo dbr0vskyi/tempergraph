@@ -1,4 +1,4 @@
-"""`install` (UPD §2.7): run by the plugin's launcher with the first real Python 3.11+, or through the shim.
+"""`install` (UPD-B18, UPD-B19): run by the plugin's launcher with the first real Python 3.11+, or through the shim.
 
 The launcher accepts `install` and `update` (`install/update.py`). Steps: 1 Python, 2 home, 3 engine (update steps 3 and 4 into the first environment, then
 `current.json`), 4 shim and `PATH` block, 5 registry (created, then reconciled inside the new environment),

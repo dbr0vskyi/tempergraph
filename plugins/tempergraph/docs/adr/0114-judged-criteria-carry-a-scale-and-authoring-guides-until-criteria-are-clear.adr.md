@@ -14,10 +14,10 @@ The owner wrote on 2026-11-20: "We need also to check if judges define clear cri
 ## Decision
 
 We will:
-- require every judged criterion to carry a **scale**: what `met`, `partial` and `unmet` look like for that criterion, the evidence `met` needs, when N/A applies, and seed fixtures for at least one passing and one failing grade ([OUT §2.2.1](../specs/90-run-outcome.spec.md));
-- run a model-free **criteria lint** and an outcome **sufficiency check** during authoring, and keep a phase open until they pass ([AUT §2.4.1](../specs/89-workflow-authoring.spec.md));
+- require every judged criterion to carry a **scale**: what `met`, `partial` and `unmet` look like for that criterion, the evidence `met` needs, when N/A applies, and seed fixtures for at least one passing and one failing grade ([OUT-B11](../specs/90-run-outcome.spec.md));
+- run a model-free **criteria lint** and an outcome **sufficiency check** during authoring, and keep a phase open until they pass ([AUT-B19, AUT-B20, AUT-B21](../specs/89-workflow-authoring.spec.md));
 - answer every lint finding with a fixed **guidance ladder**: clarifying questions, examples of criteria for the task kind, a contrast pair, a graded draft, then a recorded decision;
-- check, before the first trial, that each judge grades its seeds as expected twice in a row ([SCF §2.5](../specs/91-blueprint-and-scaffold.spec.md) rung 8).
+- check, before the first trial, that each judge grades its seeds as expected twice in a row ([SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22](../specs/91-blueprint-and-scaffold.spec.md) rung 8).
 
 ## Options considered
 

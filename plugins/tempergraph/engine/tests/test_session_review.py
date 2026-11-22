@@ -1,4 +1,4 @@
-"""Session digests, causes and the session review (SRV §2, SRV-B1 to B4, B6, B8, B9, SRV-AC-1 to AC-6; T12.9)."""
+"""Session digests, causes and the session review (SRV-B11 to SRV-B23, SRV-B1 to B4, B6, B8, B9, SRV-AC1 to AC-6; T12.9)."""
 
 from __future__ import annotations
 
@@ -160,7 +160,7 @@ def test_dev_plan_reads_every_session_within_the_cap() -> None:  # SRV-B3
     assert {t["reason"] for t in p["targets"]} == {"dev"}
 
 
-def test_stable_signals_plan_is_release_2() -> None:  # SRV-B4, release 1 shape (SRV §5)
+def test_stable_signals_plan_is_release_2() -> None:  # SRV-B4, release 1 shape (R-150 SRV)
     ds = [{"session_key": "draft.1.step", "kind": "step", "capture": "full", "turns": 3}]
     p = review.plan({"review": "signals", "mode": "stable"}, ds)
     assert p["depth"] == "none" and p["targets"] == [] and p["deferred"] == "signals_release_2"
@@ -248,7 +248,7 @@ def test_dry_run_spends_nothing(tmp_path: Path) -> None:
     assert out["plan"]["depth"] == "full" and out["plan"]["estimate_tokens"] > 0 and not ex.calls
 
 
-def test_reviewer_launch_has_no_tools() -> None:  # SRV-AC-6, SEC §2.2
+def test_reviewer_launch_has_no_tools() -> None:  # SRV-AC6, SEC-B7
     argv = judge_argv(ViewSet(tool_less=True), "sonnet", isolated=False)
     i = argv.index("--tools")
     assert argv[i + 1] == "" and "--strict-mcp-config" in argv and "--allowedTools" not in argv
@@ -256,7 +256,7 @@ def test_reviewer_launch_has_no_tools() -> None:  # SRV-AC-6, SEC §2.2
     assert "--bare" in judge_argv(ViewSet(tool_less=True), None, isolated=True)
 
 
-def test_review_folder_boundary() -> None:  # SRV-AC-4
+def test_review_folder_boundary() -> None:  # SRV-AC4
     rx = re.compile(r"""["']evidence["']\s*\)?\s*/\s*["']review["']|evidence/review""")
     for f in SRC.rglob("*.py"):
         if f.name not in ("review.py", "proposals.py"):
@@ -280,7 +280,7 @@ def test_a_dev_run_hands_off_a_review(repo: Path, monkeypatch: pytest.MonkeyPatc
     assert "review_planned" in [r["kind"] for r in log] and out["results"] == []
 
 
-def test_improve_review_cli(repo: Path) -> None:  # SRV §2.9
+def test_improve_review_cli(repo: Path) -> None:  # SRV-B23
     from .test_cli import cli
 
     ex = standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge()])

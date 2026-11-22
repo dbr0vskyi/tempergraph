@@ -9,11 +9,11 @@
 
 ## Context
 
-The owner asked whether the engine needs "more interfaces, hooks, events" for the monitor and other plugins. Lifecycle hooks today fire on four events as detached commands with a facts file ([CLI §2.2](../specs/17-engine-cli.spec.md)). That suits a tracker integration, but an exporter that turns every record into a span would start a process per record. Contract C2 forbids anything that can change a run; contract C3 and the launch rules forbid run text on argv ([SEC](../specs/14-security.spec.md)).
+The owner asked whether the engine needs "more interfaces, hooks, events" for the monitor and other plugins. Lifecycle hooks today fire on four events as detached commands with a facts file ([HOK-B1 to HOK-B6](../specs/24-lifecycle-hooks.spec.md)). That suits a tracker integration, but an exporter that turns every record into a span would start a process per record. OVR-B4 forbids anything that can change a run; OVR-B5 and the launch rules forbid run text on argv ([SEC](../specs/14-security.spec.md)).
 
 ## Decision
 
-We will add a `RunObserver` protocol, loaded from the `tempergraph.observers` entry-point group and enabled by name in operator config only, that receives every run-log record and activity line after it is written, each observer on its own thread behind a bounded, dropping queue, disabled for the segment on its first exception ([EVT §2.6](../specs/30-run-events.spec.md)). We will widen lifecycle hook events to `started`, `unit_entered`, `gate_verdict`, `paused`, `resumed`, `stop_requested`, `stalled`, `finished` and `failed`, unchanged in how they run.
+We will add a `RunObserver` protocol, loaded from the `tempergraph.observers` entry-point group and enabled by name in operator config only, that receives every run-log record and activity line after it is written, each observer on its own thread behind a bounded, dropping queue, disabled for the segment on its first exception ([EVT-B22, EVT-B23, EVT-B24](../specs/30-run-events.spec.md)). We will widen lifecycle hook events to `started`, `unit_entered`, `gate_verdict`, `paused`, `resumed`, `stop_requested`, `stalled`, `finished` and `failed`, unchanged in how they run.
 
 ## Options considered
 

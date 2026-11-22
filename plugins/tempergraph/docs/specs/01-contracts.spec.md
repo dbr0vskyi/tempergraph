@@ -1,380 +1,113 @@
----
-title: Shared contracts
-type: contracts
-status: ready-for-implementation
-prefix: CON
-adrs: [0003, 0005, 0006, 0008, 0009, 0012, 0015, 0018, 0062, 0070, 0073, 0074, 0075, 0078]
----
-
 # Shared contracts
 
-## 1. Overview
+## Purpose
 
-The only definition of a type two or more component specs share; they name a section here and restate nothing. Types are field tables and signatures without bodies. Every persisted document listed is versioned and read by tolerant readers (§2.10).
+The workflow declaration every workflow package writes and the engine reads ([ADR-0003](../adr/0003-workflows-as-data.adr.md)), the template grammar, input and routing declarations, model aliases, tool capabilities, the run and thread values and exit codes every caller reads, and the rules every persisted document follows. Workflow authors, the builders of `tempergraph.api`, every component spec and every caller of the CLI depend on these exact names. What a session request, result and judgement hold is [25 Session contract](25-session-contract.spec.md). Neutral tool and model names keep a workflow portable across executors at the cost of one mapping table per executor ([ADR-0006](../adr/0006-executors-as-capability-adapters.adr.md), [ADR-0008](../adr/0008-portable-model-aliases.adr.md)).
 
-## 2. Contract
+## Behaviours
 
-### 2.1 Workflow specification
+### CON-B4 Workflow fields
 
-A workflow is data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The engine reads it through the registry and never names one.
+WHEN a workflow is loaded THE engine SHALL read these fields of `WorkflowSpec`: `name` (a slug unique in the manifest), `order` (the default forward order of unit names), `units` (name to `UnitSpec`), `flow` (unit to `FlowSpec`, where a pass goes when not next in `order`), `input` (CON-B8), `workspace` (`auto`, `in_place` or `worktree`, default `auto`, [WTR-B18](82-worktree-mode.spec.md)), `worktree` (include patterns, setup commands and submodules, [WTR-B19](82-worktree-mode.spec.md)), `finalizer` and `finalizer_outcomes` (required with a finalizer, [FIN-B8](78-finalizer-contract.spec.md)), `default_executor`, `model_profile` (CON-B3), `issue_repository` (`owner/name`, required), `routing` (CON-B9), `improvement_mode` (`dev` or `stable`), `daily_cap_usd` ([SIL-B19, SIL-B20](16-self-improvement.spec.md)), `session_review` (`auto`, `full`, `signals` or `off`, [SRV-B13, SRV-B14, SRV-B15](44-session-review.spec.md)), `verified_engine`, `command_resolver` ([WFM](02-workflow-model.spec.md)), `run_cost_cap_usd` ([BUD](08-budgets-and-failures.spec.md)), `version` (semver, default `0.0.0`, [VER-B14, VER-B15](61-version-metadata.spec.md)), `requires_engine` (a range that only warns, [VER-B2, VER-B5](61-version-metadata.spec.md)), `upgrade` ([VER-B14, VER-B15](61-version-metadata.spec.md)), `settings` and `profiles` ([RST-B25](80-run-settings-and-overrides.spec.md)), `outcome` (read from `outcome.json` at load, [OUT](90-run-outcome.spec.md)), `allow_commands` (the workflow-wide allow-list, [WFM-B8, WFM-B9, WFM-B10, WFM-B11](02-workflow-model.spec.md)), and the engine-set `builtin` and `package_root`.
 
-| Type | Field | Kind | Meaning |
-|---|---|---|---|
-| `WorkflowSpec` | `name` | slug | Unique in the manifest. |
-| | `order` | list of unit names | The default forward order. |
-| | `units` | map name → `UnitSpec` | Steps and flow units. |
-| | `flow` | map unit → `FlowSpec` | Where a pass goes when it is not the next in `order`. |
-| | `input` | `InputDeclaration` | How a run starts (§2.3). |
-| | `workspace` | `auto` \| `in_place` \| `worktree`, default `auto` | Default workspace mode ([WTR §2.2](82-worktree-mode.spec.md)). |
-| | `worktree` | `WorktreeDecl`, optional | Include patterns, setup commands, submodules for a new worktree ([WTR §2.3](82-worktree-mode.spec.md)). |
-| | `finalizer` | callable ref, optional | Runs once after the last pass; no model; never changes the exit code ([FIN](78-finalizer-contract.spec.md)). |
-| | `finalizer_outcomes` | list of slugs, required with `finalizer` | The outcomes the finalizer may report ([FIN §2.3](78-finalizer-contract.spec.md)). |
-| | `default_executor` | executor name | Used when a step names none. |
-| | `model_profile` | `ModelProfile` | Default aliases per step and judge (§2.4). |
-| | `issue_repository` | `owner/name` | Required. Gets its improvement issues. |
-| | `routing` | `RoutingMetadata` | Description, when to use, kind. |
-| | `improvement_mode` | `dev` \| `stable` | Self-improvement mode. |
-| | `daily_cap_usd` | float, optional | [SIL §4](16-self-improvement.spec.md). |
-| | `session_review` | `auto` \| `full` \| `signals` \| `off` | [SRV §2.3](44-session-review.spec.md). |
-| | `verified_engine` | version string, optional | The engine release last stamped against. |
-| | `command_resolver` | callable ref, optional | Maps a declared command prefix to the argv a check or the tool host runs ([WFM](02-workflow-model.spec.md)). |
-| | `run_cost_cap_usd` | float, optional | Spend cap per run, children too ([BUD](08-budgets-and-failures.spec.md)). |
-| | `version` | semver, default `0.0.0` | The owner's release of the workflow; with the content digest it forms `workflow_version` ([VER §2.4](61-version-metadata.spec.md)). |
-| | `requires_engine` | version range, optional | Engine releases it works with; warns only ([VER §2.7](61-version-metadata.spec.md)). |
-| | `upgrade` | `UpgradePolicy`, optional | What a workflow upgrade may touch ([VER §2.4](61-version-metadata.spec.md)). |
-| | `settings` | map name → `SettingDecl`, optional | Typed workflow switches an operator may override ([RST §2.5](80-run-settings-and-overrides.spec.md)). |
-| | `profiles` | map name → map `SettingKey` → value, optional | Named bundles of settings ([RST §2.5](80-run-settings-and-overrides.spec.md)). |
-| | `outcome` | `OutcomeSpec` (§2.14) | Read from `outcome.json` at load; gates take criteria from it ([OUT](90-run-outcome.spec.md), [PKG §2.3](88-workflow-package.spec.md)). |
-| | `allow_commands` | list of command prefixes | The workflow-wide allow-list ([WFM §2.1](02-workflow-model.spec.md)). |
-| | `builtin`, `package_root` | bool or name; path | Engine-set: `true` for self-improvement ([WFM §2](02-workflow-model.spec.md)), a name for another built-in ([UWF](64-upgrade-workflow.spec.md)); the package folder text refs resolve in. |
-| `UnitSpec` | `kind` | `step` \| `route` \| `switch` \| `parallel` \| `map` \| `subworkflow` \| `wait` \| `script` \| `council` \| `contest` \| `ask` | Owners: [CMP §2.2](03-compiler-and-flow.spec.md), [FLX](74-flow-extensions.spec.md) (flow); [SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md). |
-| | `step` | `StepSpec`, for kind `step`, `map` and `contest` | |
-| | `script`, `council`, `contest`, `ask`, `map` | `ScriptSpec`, `CouncilSpec`, `ContestSpec`, `AskSpec`, `MapSpec`, for their kind | Defined in the owning spec ([MAP](77-map-unit.spec.md) for `MapSpec`). |
-| | `gate` | `GateSpec` | Required for every kind. A `wait` or `ask` gate holds only checks; a `script` gate the built-in check and an optional judge; a `route` or `switch` gate may be empty. |
-| | `route`, `route_targets`, `switch` | callable ref, targets; `SwitchSpec` | A route unit's select function, or a step's route after a pass; a switch's `predicate`, `arms`, `default`, `sticky` ([CMP §2.2](03-compiler-and-flow.spec.md)). |
-| `StepSpec` | `executor` | executor name, optional | Falls back to `default_executor`. |
-| | `prompt` | inline text \| file ref \| `default` | Template; grammar in §2.2; `default` per [PRM §2.1](04-prompt-rendering.spec.md). |
-| | `tools` | list of `ToolCapability` (§2.5) | Declared tools. |
-| | `commands` | list of command prefixes | Within the workflow-wide allow-list. |
-| | `produces` | map key → `ArtifactKind` | `file`, `url`, `wiki_page`, `tracker_issue`, `pull_request`, `value` (one line, with optional `choices` and `pattern`, [VAL §2.1](76-step-values-and-template-keys.spec.md)). |
-| | `model` | alias \| list of up to 8 aliases (ladder) \| item function ref | |
-| | `timeout_s`, `idle_s` | positive int, optional | |
-| | `session_options` | `SessionOptions` (§2.6), optional | |
-| | `before`, `after` | list of `ScriptSpec`, optional | Hybrid step: model-free scripts in the same attempt, around the session ([SCR](70-script-units-and-hybrid-steps.spec.md)). |
-| | `self_check` | bool, default false | The step may run its gate's check from inside its attempt ([CHK §2.5](75-check-contract-and-command-runs.spec.md)). |
-| | `summary` | text ≤ 60 chars | For diagrams. |
-| | `subagent_model` | alias, optional | The model of the subagents the step starts, where its executor hosts them ([RST §2.2](80-run-settings-and-overrides.spec.md)). |
-| `GateSpec` | `check` | callable ref, optional | Model-free, writes no state; `(ctx: CheckContext) -> CheckResult` ([CHK](75-check-contract-and-command-runs.spec.md)). |
-| | `check_timeout_s` | positive int, default 1800 | Wall limit of the whole check ([CHK §2.6](75-check-contract-and-command-runs.spec.md)). |
-| | `judge` | `JudgeSpec` | Required on model steps. |
-| | `criteria` | list of `Criterion` | At least one when a judge is present; filled from the unit's intermediate outcome ([OUT §2.3](90-run-outcome.spec.md)). |
-| | `on_fail` | `retry` \| `stop` \| `fallback` | Hard-failure policy. |
-| | `on_budget_spent` | `stop` \| `ask` \| `fallback` | |
-| | `fallback` | forward unit name or `finalizer`, optional | Where `fallback` goes; the run is marked degraded ([FLX §2.4](74-flow-extensions.spec.md)). |
-| | `approval` | bool | Pause for sign-off after a pass. |
-| | `back_targets` | list of unit names | Earlier units a failure may send the run to. |
-| | `loop_budget` | int ≥ 0, default 1 | Trips per (unit, target). |
-| | `retry_budget` | int ≥ 0, default 2 | Retries per visit. |
-| `JudgeSpec` | `stance`, `brief` | text | Stance first; brief holds repository specifics only. |
-| | `references` | list of artifact keys, each `required` or `optional` | The bar. |
-| | `subject` | artifact keys | What is graded. |
-| | `executor`, `model`, `timeout_s`, `idle_s`, `session_options` | optional | Resolved on the judge's own layer. |
-| | `tools` | list of `ToolCapability` | May only narrow the derived view set. |
-| `Criterion` | `text` | text | Shown to the step and the judge. |
-| | `check_method` | text | Shown to the judge only. |
-| | `severity` | `blocker` \| `warning` | |
-| | `id` | slug, optional | Echoed by the judge. |
-| | `unverified_system` | text, optional | A system the author knowingly leaves unread. |
-| | `no_change_policy` | `escalate` \| `retry`, default `escalate` | What a blocker the judge marks `no_change` does (§2.8, [JDG](05-judge-and-verdict.spec.md)). |
-| | `mechanical` | bool, default false | The gate's check verifies it; a check FAIL costs no judge, and the judge takes the check's finding as given ([CHK-B1, B2](75-check-contract-and-command-runs.spec.md)). |
+- GIVEN a workflow with no `issue_repository` WHEN it is loaded THEN validation fails
+- GIVEN a workflow with no `version` WHEN its `workflow_version` is formed THEN it uses `0.0.0` with the content digest
+- GIVEN a `finalizer` with no `finalizer_outcomes` WHEN it is loaded THEN validation fails
 
-### 2.2 Template grammar
+### CON-B5 Unit fields
 
-A template holds literal text, `{{` `}}` for literal braces, and plain fields `{name}`: a key of [VAL §2.3](76-step-values-and-template-keys.spec.md) (engine, item, input, earlier artifact) or `settings.<name>` for a declared setting ([RST §2.5](80-run-settings-and-overrides.spec.md)). Nothing else between braces is valid. At run time a field without a value renders as the marker `⟨missing:name⟩`, recorded on the step record.
+WHEN a unit is declared THE engine SHALL read `kind` (`step`, `route`, `switch`, `parallel`, `map`, `subworkflow`, `wait`, `script`, `council`, `contest` or `ask`; owners [CMP-B10 to CMP-B16](03-compiler-and-flow.spec.md), [FLX](74-flow-extensions.spec.md), [SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md), [MAP](77-map-unit.spec.md)), `step` (for `step`, `map` and `contest`), the kind's own spec field (`script`, `council`, `contest`, `ask`, `map`), `gate` (required for every kind), and `route`, `route_targets` or `switch` (`predicate`, `arms`, `default`, `sticky`).
 
-### 2.3 Input and routing declarations
+- GIVEN a unit of kind `wait` WHEN its gate declares a judge THEN validation fails, because a `wait` or `ask` gate holds only checks
+- GIVEN a `script` unit WHEN its gate is read THEN it holds the built-in check and an optional judge
+- GIVEN a `route` unit with an empty gate WHEN it is loaded THEN it is valid
 
-| Type | Field | Meaning |
-|---|---|---|
-| `InputDeclaration` | `kind` | `any` \| `tracker_key` \| `file` \| `text` \| `resolver` |
-| | `parameters` | list of `{name, meaning, example, when_asked}` |
-| | `examples` | 2–3 whole start requests that must resolve |
-| | `prerequisites` | plain sentences, shown, never checked |
-| | `resolver` | callable ref; read-only, model-free |
-| `ResolveResult` | `status` | `ok` \| `needs` \| `error` |
-| | `task_id` | stable id; names thread, branch, log and lock |
-| | `questions` | on `needs`: list of `{name, question, choices?}` |
-| `RoutingMetadata` | `description` | one line starting with a verb |
-| | `when_to_use` | 2–4 sentences ending in "Not for: …" |
-| | `task_kind` | `ticket` \| `prompt` \| `symptom` \| `repository` \| `findings` |
+### CON-B6 Step fields
 
-### 2.4 Models
+WHEN a step is declared THE engine SHALL read `executor` (falling back to `default_executor`), `prompt` (inline text, a file ref or `default`, [PRM-B6](04-prompt-rendering.spec.md)), `tools` (CON-B11), `commands` (prefixes within the allow-list), `produces` (key to artifact kind: `file`, `url`, `wiki_page`, `tracker_issue`, `pull_request` or `value`, a one-line value with optional `choices` and `pattern`, [VAL-B5, VAL-B6](76-step-values-and-template-keys.spec.md)), `model` (one alias or an item function ref, [LAD](92-effort-ladder-and-model-escalation.spec.md)), `timeout_s` and `idle_s` (positive ints), `session_options` ([SSN](25-session-contract.spec.md)), `before` and `after` (model-free scripts around the session, [SCR](70-script-units-and-hybrid-steps.spec.md)), `self_check` (default false, [CHK-B17](75-check-contract-and-command-runs.spec.md)), `summary` (at most 60 characters, for diagrams) and `subagent_model` ([RST-B18, RST-B19, RST-B20, RST-B21](80-run-settings-and-overrides.spec.md)).
 
-- **Alias grammar.** `inherit`, an engine-neutral tier `small` \| `medium` \| `large`, or an executor-qualified alias `<executor>:<name>` (for example `claude:opus`, `antigravity:gemini-pro`). Never a deployment id. Binding is per executor ([ADR-0008](../adr/0008-portable-model-aliases.adr.md)).
-- **`ModelProfile`**: map from step name and from `judge:<step name>` to an alias or a ladder.
-- **Resolution order for a step attempt:** the operator layers of [RST §2.3](80-run-settings-and-overrides.spec.md), an arm in force that names the step, the step's model (one alias; an escalated attempt: [LAD](92-effort-ladder-and-model-escalation.spec.md)), workflow default, project and user defaults, `inherit`.
-- **Resolution order for a judge:** the same operator layers on the judge scopes only (`judge:<unit>`, then `judges`), the gate's judge model, the step's model, workflow default, project and user defaults, `inherit`.
-- Every record carries the alias, its source layer and the executor that bound it.
+- GIVEN a step with no `executor` WHEN it is bound THEN it runs on the workflow's `default_executor`
+- GIVEN `produces: {verdict: value}` with `choices: [yes, no]` WHEN the step writes `maybe` THEN the output check fails
 
-### 2.5 Tool capabilities
+### CON-B7 Gate, judge and criterion fields
 
-Workflow data declares tools by engine-neutral capability name. Each executor maps a name to its own tools (§ in each executor spec). The view catalog is keyed by `(executor, tool name)`.
+WHEN a gate is declared THE engine SHALL read `check` (a model-free callable that writes no state, `(ctx: CheckContext) -> CheckResult`, [CHK](75-check-contract-and-command-runs.spec.md)), `check_timeout_s` (default 1800), `judge` (required on model steps), `criteria` (at least one when a judge is present, filled from the unit's intermediate outcome, [OUT-B13, OUT-B14](90-run-outcome.spec.md)), `on_fail` (`retry`, `stop` or `fallback`), `on_budget_spent` (`stop`, `ask` or `fallback`), `fallback` ([FLX-B9](74-flow-extensions.spec.md)), `approval`, `back_targets`, `loop_budget` (default 1) and `retry_budget` (default 2); a judge's `stance`, `brief`, `references` (each `required` or `optional`), `subject`, `executor`, `model`, `timeout_s`, `idle_s`, `session_options` and `tools` (which may only narrow the derived views); and a criterion's `text`, `check_method` (shown to the judge only), `severity` (`blocker` or `warning`), `id`, `unverified_system`, `no_change_policy` (`escalate` or `retry`, default `escalate`) and `mechanical` (default false: when true the check verifies it, a check FAIL costs no judge and the judge takes the check's finding as given, [CHK-B1, B2](75-check-contract-and-command-runs.spec.md)).
 
-| Capability | Read-only | Meaning |
-|---|---|---|
-| `read` | yes | Read a file in the workspace. |
-| `search` | yes | Search file contents. |
-| `list` | yes | List or glob paths. |
-| `edit` | no | Change an existing file. |
-| `write` | no | Create or overwrite a file. |
-| `shell` | no | Run a declared command prefix. |
-| `web_fetch` | yes | Fetch a URL. |
-| `web_search` | yes | Search the web. |
-| `subagent` | inherits | Start a sub-session; inherits the caller's restriction. |
-| `mcp:<server>/<tool>` | per catalog | One MCP tool; classified by the engine catalog, never by name pattern. |
-| `skill:<plugin>:<name>` | no | One skill of an installed plugin, named by plugin path; adds no tool of its own ([ADR-0078](../adr/0078-skills-are-a-declared-tool-capability.adr.md)). |
+- GIVEN a model step whose gate has no judge WHEN it is validated THEN it fails
+- GIVEN a gate with no `retry_budget` WHEN it retries THEN it allows 2 retries per visit
+- GIVEN a judge whose `tools` add a capability the derived view set lacks WHEN it is validated THEN it fails
 
-### 2.6 Executor protocol
+### CON-B8 Template grammar
 
-```python
-class Executor(Protocol):
-    name: str                              # constant: "claude", "agent-sdk", "messages-api", "antigravity"
-    def capabilities(self) -> Capabilities: ...
-    def probe(self) -> ProbeReport: ...    # read-only, model-free; version and facts
-    def run_step(self, req: SessionRequest, sink: EventSink) -> SessionResult: ...
-    def run_judge(self, req: SessionRequest, views: ViewSet, sink: EventSink) -> SessionResult: ...
-```
+WHEN a template is validated THE engine SHALL accept only literal text, `{{` and `}}` for literal braces, and plain fields `{name}` naming a key of [VAL-B8](76-step-values-and-template-keys.spec.md) or `settings.<name>` for a declared setting ([RST-B25](80-run-settings-and-overrides.spec.md)), and refuse any other text between braces with exit 2.
 
-Neither run method raises for a session failure; failure is a field of the result.
+- GIVEN `{task_id}` WHEN rendered THEN the run's task id replaces it
+- GIVEN `{a.b()}` WHEN the workflow is validated THEN it is invalid and the command exits 2
+- GIVEN a field with no value at run time WHEN rendered THEN it renders as `⟨missing:name⟩` and the step record lists it
 
-| Type | Field | Meaning |
-|---|---|---|
-| `SessionRequest` | `kind` | `step` \| `retry` \| `judge` \| `judge_reask` \| `grouping` \| `member` \| `member_reask` \| `chair` (council sessions, [CNL](71-council-unit.spec.md)); executors treat the last three as step sessions with read-only tools |
-| | `prompt` | rendered text; delivered off argv |
-| | `workdir` | absolute workspace path from state |
-| | `alias` | resolved alias (§2.4) |
-| | `tools` | declared `ToolCapability` list (step) |
-| | `commands` | declared command prefixes (step) |
-| | `timeout_s`, `idle_s` | resolved limits and their sources |
-| | `options` | `SessionOptions` |
-| | `credentials_profile` | judge-only profile name, optional |
-| `SessionOptions` | `effort` | `low` \| `medium` \| `high` \| `xhigh` (release 2) \| `max`, optional |
-| | `cost_cap_usd` | float, optional |
-| | `fallback_alias` | alias, optional; never for a judge |
-| | `turn_cap` | int, optional |
-| `Capabilities` | `binds_aliases` | set of aliases this executor can bind |
-| | `families` | map alias → model family label (for example `anthropic`, `google`); read by council diversity checks |
-| | `prompt_off_argv`, `streams_events`, `reports_actions`, `reports_tokens`, `reports_cost` | bool |
-| | `enforces_step_tools`, `restricts_judge_tools`, `step_allow_rules`, `judge_mcp`, `isolates_user_config`, `fresh_session` | bool |
-| | `hosts_authoring_surface` | bool; the session loads instruction files, skills and agents ([ADR-0016](../adr/0016-portable-authoring-surface.adr.md)) |
-| | `session_options` | set of supported option names |
-| | `tool_map` | map `ToolCapability` → executor tool names |
-| | `version` | version string seen by `probe`: the CLI's, or for a library executor the library's plus any bundled CLI's |
-| `SessionResult` | `ok` | bool |
-| | `text` | final answer text |
-| | `session_id` | executor's id |
-| | `usage` | `Usage` |
-| | `tool_calls` | list of `{name, ok, subagent: bool}` in call order |
-| | `timed_out`, `stalled`, `partial` | bool |
-| | `infra_cause` | `InfraCause` \| null |
-| | `error_kind` | `model` \| `refused` \| `cap_reached` \| `turn_cap` \| `denied` \| `auth` \| `unknown` \| null; `refused` is a typed model refusal (a stop reason, never text) |
-| | `applied_options` | names of options actually applied |
-| | `cli_version` | string; same meaning as `Capabilities.version` |
-| `Usage` | `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, `thinking_tokens` | int \| null |
-| | `reported_cost_usd` | float \| null; never 0 when unknown |
-| | `estimated_cost_usd` | float \| null; engine price table, kept apart |
-| | `by_model` | map model name → partial `Usage` |
-| | `turns`, `peak_context_tokens` | int \| null |
-| `InfraCause` | enum | `spawn_failed`, `prompt_not_delivered`, `no_output`, `no_result`, `broken_pipe`, `connection`, `out_of_memory`, `request_timed_out`, `slow_host`, `throttled` |
+### CON-B9 Input and routing declarations
 
-### 2.7 Normalized session events
+WHEN a workflow declares how a run starts THE engine SHALL read `input` with `kind` (`any`, `tracker_key`, `file`, `text` or `resolver`), `parameters` (each `{name, meaning, example, when_asked}`), `examples` (2 to 3 whole requests that must resolve), `prerequisites` (shown, never checked) and `resolver` (read-only, model-free, returning `status` `ok`, `needs` or `error`, a stable `task_id` that names the thread, branch, log and lock, and on `needs` its `questions` as `{name, question, choices?}`), and `routing` with `description` (one line starting with a verb), `when_to_use` (2 to 4 sentences ending in "Not for: …") and `task_kind` (`ticket`, `prompt`, `symptom`, `repository` or `findings`).
 
-Every executor translates its CLI's stream into these events and pushes them to the `EventSink` ([ADR-0009](../adr/0009-normalized-session-event-stream.adr.md)).
+- GIVEN an example request that does not resolve WHEN the workflow is validated THEN it fails
+- GIVEN a resolver that answers `needs` WHEN `run --check` runs THEN it prints the resolver's questions with their choices
 
-| Event | Fields |
-|---|---|
-| `session_started` | `session_id`, `model`, `cli_version`, `tools` (as listed by the CLI) |
-| `model_delta` | `chars` (count only) |
-| `tool_started` | `name`, `subagent: bool`, `call_id`, `input_summary?` (scrubbed, clipped one-line summary of the input; local records only, [EVT §2.5](30-run-events.spec.md)) |
-| `tool_finished` | `call_id`, `ok`, `error_kind?` |
-| `text` | `last_line` (scrubbed, clipped to 200 chars) |
-| `retrying` | `category` (from the CLI's retry event, if any) |
-| `denied` | `name` (a refused or soft-denied tool) |
-| `result` | `ok`, `usage` |
+### CON-B3 Model aliases and their resolution
 
-### 2.8 Judgement and verdict
+WHEN a step or judge model is resolved THE engine SHALL accept only `inherit`, a tier `small`, `medium` or `large`, or an executor-qualified alias `<executor>:<name>` (never a deployment id), take a `model_profile` entry per step name and per `judge:<step name>`, resolve a step attempt by the operator layers of [RST-B22, RST-B23](80-run-settings-and-overrides.spec.md), an arm in force that names the step, the step's model, the workflow default, project and user defaults, then `inherit`, resolve a judge by the same operator layers on judge scopes only (`judge:<unit>`, then `judges`), the gate's judge model, the step's model, the workflow default, project and user defaults, then `inherit`, and record the alias, its source layer and the executor that bound it.
 
-The judgement block is the last fenced JSON block of the judge's answer.
+- GIVEN a step with model `large` on executor `antigravity` WHEN the alias is resolved THEN the executor's binding table maps `large` to its configured slug and the record shows `alias=large, bound_by=antigravity`
+- GIVEN an alias no executor binds WHEN the run is preflighted THEN it exits 2 before spend
+- GIVEN `--judge-model small` and a gate judge model `medium` WHEN the judge is resolved THEN it runs on `small` with source `flag`
 
-| Field | Kind | Meaning |
-|---|---|---|
-| `criteria[]` | `{n, id?, status, evidence, place, fix, defect_in?, no_change?}` | `status` ∈ `MET`, `PARTIAL`, `UNMET`, `N/A`, `UNVERIFIABLE`. `defect_in` names an earlier artifact key. `no_change` (bool): the step's own output cannot fix it (a missing source, a person's decision, an outside system). |
-| `coverage` | `{requirements, traced, orphans}` | ints |
-| `gap` | bool | A source is missing or the task is unclear. |
-| `confidence` | float in [0,1] | Anchors: 0.95 verified, 0.85 checked, 0.7 partly inferred, 0.5 contested. |
-| `summary` | one line | |
+### CON-B11 Tool capabilities
 
-`Verdict` ∈ `PROCEED`, `RETRY`, `BACK`, `ESCALATE`, `STOP`. Only the engine derives it ([JDG](05-judge-and-verdict.spec.md)). A confidence value carries `source` ∈ `judge`, `engine_placeholder`.
+WHEN workflow data declares tools THE engine SHALL take only the capability names `read`, `search`, `list`, `web_fetch` and `web_search` (read-only), `edit`, `write` and `shell` (a declared command prefix), `subagent` (inheriting its caller's restriction), `mcp:<server>/<tool>` (classified by the engine catalog, never by name pattern) and `skill:<plugin>:<name>` (adds no tool of its own, [ADR-0078](../adr/0078-skills-are-a-declared-tool-capability.adr.md)), and map each name to an executor's tools by that executor's `tool_map`, the view catalog being keyed by executor and tool name.
 
-`CheckResult` is `result` ∈ `PASS`, `MAYBE`, `FAIL`, with `evidence` (bounded text), `environmental: bool`, `untracked_only: bool`, `findings` (list of `CheckFinding`), `facts` (map of at most 20 slugs to strings ≤ 200 chars) and `runs` (the check's command runs, added by the engine). A `CheckFinding` is `{criterion?, status, place, fix, message, kind}` with `status` ∈ `pass`, `maybe`, `fail`, `n_a` and `kind` ∈ `substance`, `output_contract`, `other` (default; release 2, LAD §2.2). Rules: [CHK §2.4](75-check-contract-and-command-runs.spec.md).
+- GIVEN a step that declares `edit` on an executor whose `tool_map` lacks it WHEN the run is preflighted THEN it exits 2 before spend
+- GIVEN a workflow that names only neutral aliases and `read`, `search`, `list`, `edit`, `write` and `shell` WHEN it is validated against each executor THEN it is valid on all four
 
-### 2.9 Runs, threads and exit codes
+### CON-B12 Thread states and decisions
 
-| Type | Values |
-|---|---|
-| `ThreadState` | `none`, `running` (lock held), `paused`, `unfinished`, `stopped`, `finished` |
-| `Decision` | `proceed`, `retry`, `back:<unit>`, `rewind:<unit>` (a person's return to any completed unit, [RRN §2.3](81-reruns-and-feedback.spec.md)), `stop`, `event:<name>=<value>`, `answer:<name>=<value>` (an ask, or a council's no-decision pause, [ASK §2.3](73-ask-unit.spec.md)) |
-| `ExitCode` | `0` finished · `1` internal error · `2` usage or preflight refusal, nothing spent or created · `3` paused for a person · `4` stopped · `5` budget spent or infra failure · `6` an advisory verb found issues (`audit --fail-on`, [AUD](55-workflow-audit.spec.md)) · `127` engine not installed (shim) |
+WHEN a thread's state or a person's decision is written THE engine SHALL use only the thread states `none`, `running` (lock held), `paused`, `unfinished`, `stopped` and `finished`, the decisions `proceed`, `retry`, `back:<unit>`, `rewind:<unit>` ([RRN-B16](81-reruns-and-feedback.spec.md)), `stop`, `event:<name>=<value>` and `answer:<name>=<value>` ([ASK-B8](73-ask-unit.spec.md)), and the thread id `<workflow>/<task_id>`.
 
-`thread_id = <workflow>/<task_id>`. A fresh start on a thread whose state is not `none` is refused with exit 2 ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)).
+- GIVEN a thread whose state is not `none` WHEN a fresh `run` names it THEN the run is refused with exit 2 ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md))
+- GIVEN `resume --decision rewind:plan` WHEN `plan` is a completed unit THEN the thread rewinds to it
 
-### 2.10 Persisted documents
+### CON-B13 Exit codes
 
-| Document | Owner spec | Shape |
-|---|---|---|
-| Run log | [OBS](15-observability-and-cost.spec.md) | JSON lines, one event per line, `schema` key on the first line |
-| Status document | [DUR](09-durability-and-resume.spec.md) | JSON, `schema_version`, one row per thread |
-| Findings | [SIL](16-self-improvement.spec.md) | JSON, metadata only |
-| Ledger | [SIL](16-self-improvement.spec.md) | JSON lines, names, counts, hashes |
-| Catalog | [CLI](17-engine-cli.spec.md) | JSON, `schema_version`, one row per workflow |
-| Diagram model | [LIF](18-lifecycle-and-evals.spec.md) | JSON with digest |
-| Detail document | [RDD](31-run-detail-document.spec.md) | JSON, `schema_version`, one thread; built on demand, never stored |
-| Activity journal | [EVT](30-run-events.spec.md) | JSON lines per session |
-| Store manifest, machine index | [LOS](33-local-observability-store.spec.md), [CST](34-central-run-stats.spec.md) | JSON, `schema_version` |
-| Sink rows (`run`, `heartbeat`, `session`) | [CST](34-central-run-stats.spec.md) | JSON lines and one JSON file, `schema_version` per row |
-| Labels | [FBK](41-feedback-and-judge-reliability.spec.md) | JSON lines, metadata only |
-| Proposals, trials, case sets | [PRP](40-improvement-proposals.spec.md) | JSON, `schema_version`, metadata only (the patch lives on its branch) |
-| Lessons file | [LSN](42-workflow-lessons.spec.md) | JSON in the workflow package, `schema_version` |
-| Loop parameters | [IMD](43-improvement-data.spec.md) | JSON, one record per named threshold with provenance |
-| Audit report | [AUD](55-workflow-audit.spec.md) | JSON, `schema_version`, printed only, never stored |
-| Engine release record, compatibility changelog | [VER](61-version-metadata.spec.md) | JSON in the engine package, `schema_version` |
-| Stamp record, workflow change notes | [VER](61-version-metadata.spec.md) | JSON in the workflow package, `schema_version` |
-| Engine pointers (`current.json`, `previous.json`), workflow registry (`registry.json`) | [UPD](60-engine-update.spec.md) | JSON in the home folder, `schema_version` |
-| Thread engine file | [MIG](62-state-and-run-migration.spec.md) | JSON per thread, `schema_version` |
-| Upgrade plan, baseline, report | [WUP](63-workflow-upgrade.spec.md) | JSON per upgrade, `schema_version` |
-| Settings files (`settings.json`, project and user) | [RST](80-run-settings-and-overrides.spec.md) | JSON, `schema_version` |
-| Rerun lineage (`lineage.json` per source run) | [RRN](81-reruns-and-feedback.spec.md) | JSON, `schema_version` |
-| `tempergraph.json`, `outcome.json`, `authoring.json`, `blueprint.json` | [PKG §2.1](88-workflow-package.spec.md) | JSON in the workflow package, `schema_version` |
+WHEN the engine CLI exits THE engine CLI SHALL exit with `0` finished, `1` internal error, `2` usage or preflight refusal with nothing spent or created, `3` paused for a person, `4` stopped, `5` budget spent or infra failure, `6` an advisory verb found issues (`audit --fail-on`, [AUD](55-workflow-audit.spec.md)), or `127` engine not installed (the shim).
 
-Every reader ignores unknown keys and reads a missing key as "not recorded", never as zero. Renaming, removing or reinterpreting a key bumps the schema version.
+- GIVEN a run that pauses at an approval WHEN the process ends THEN it exits 3
+- GIVEN a run whose infra tries are spent WHEN it ends THEN it exits 5
 
-### 2.11 Audit findings
+### CON-B14 Persisted documents are versioned
 
-Shared by [AUD](55-workflow-audit.spec.md), [ARC](56-audit-rule-catalog.spec.md), [TSA](57-tool-surface-audit.spec.md) and [PRA](58-prompt-audit.spec.md).
+WHEN the engine writes a persisted document THE engine SHALL write its schema version: the run log as JSON lines with a `schema` key on the first line ([OBS](15-observability-and-cost.spec.md)); and `schema_version` in the status document ([DUR](09-durability-and-resume.spec.md)), the catalog ([CLI](17-engine-cli.spec.md)), the detail document ([RDD](31-run-detail-document.spec.md)), the store manifest and machine index ([LOS](33-local-observability-store.spec.md), [CST](34-central-run-stats.spec.md)), every sink row, proposals, trials and case sets ([PRP](40-improvement-proposals.spec.md)), the lessons file ([LSN](42-workflow-lessons.spec.md)), the audit report ([AUD](55-workflow-audit.spec.md)), the engine release record, changelog, stamp record and change notes ([VER](61-version-metadata.spec.md)), the engine pointers and workflow registry ([UPD](60-engine-update.spec.md)), the thread engine file ([MIG](62-state-and-run-migration.spec.md)), upgrade plans, baselines and reports ([WUP](63-workflow-upgrade.spec.md)), settings files ([RST](80-run-settings-and-overrides.spec.md)), rerun lineage ([RRN](81-reruns-and-feedback.spec.md)) and the package files `tempergraph.json`, `outcome.json`, `authoring.json` and `blueprint.json` ([PKG-B11, PKG-B12](88-workflow-package.spec.md)).
 
-| Type | Field | Meaning |
-|---|---|---|
-| `AuditFinding` | `rule`, `owner` | Catalog id and `audit`, or `<owner>:<code>` and its owner |
-| | `layer` | `definition` \| `host` \| `history` |
-| | `severity`, `confidence` | `error` \| `warning` \| `info`; `high` \| `medium` \| `low` |
-| | `cause` | Cause code from the self-improvement list ([SIL §2.3](16-self-improvement.spec.md)) |
-| | `unit`, `item`, `session` | Where; `session` is `step` or `judge` |
-| | `statement` | One line, no run text |
-| | `evidence` | Numbers with their `n`, field paths, tool and rule names; never request or output text |
-| | `remedy`, `widening` | The rule's fixed remedy; `widening` true when it adds a grant |
-| | `location` | Package file and field path, line where known |
-| | `ignored` | null, or `{reason, until?}` |
-| `AuditReport` | `schema_version`, `workflow`, `version`, `engine_version` | |
-| | `layers_run`, `layers_skipped`, `rules_skipped` | Skipped entries carry a reason and, for samples, `n` and `min_n` |
-| | `findings[]`, `hot_spots[]`, `owned[]`, `summary` | Per [AUD §2.2](55-workflow-audit.spec.md) |
+- GIVEN any persisted document of that list WHEN it is written THEN its schema version is present
+- GIVEN findings, the ledger and labels ([SIL](16-self-improvement.spec.md), [FBK](41-feedback-and-judge-reliability.spec.md)) WHEN they are written THEN they hold metadata only: names, counts and hashes
 
-### 2.12 Run settings, run options and feedback
+### CON-B1 Tolerant read
 
-Shared by [RST](80-run-settings-and-overrides.spec.md), [RRN](81-reruns-and-feedback.spec.md), [DUR](09-durability-and-resume.spec.md), [CLI](17-engine-cli.spec.md) and [ORC](45-orchestration.spec.md).
+WHEN a reader meets an unknown key or record kind THE reader SHALL ignore it, and read a missing key as "not recorded", never as zero.
 
-| Type | Field | Meaning |
-|---|---|---|
-| `SettingKey` | string | `<scope>.<name>` from the catalog of [RST §2.2](80-run-settings-and-overrides.spec.md) |
-| `SettingDecl` | `kind`, `default`, `choices?`, `min?`, `max?`, `meaning` | A workflow-declared setting ([RST §2.5](80-run-settings-and-overrides.spec.md)) |
-| `RunOptions` | `settings` | Snapshot: layer → `SettingKey` → `{value, ref, via?}` for the flag, profile and file layers ([RST §2.6](80-run-settings-and-overrides.spec.md)) |
-| | `profiles` | Profile names in the order given |
-| | `alias`, `label`, `parent`, `schedule`, `origin`, `pause_before`, `dry_run` | The run options that are not settings ([CLI §2.1](17-engine-cli.spec.md)) |
-| | `caller` | The `Caller` of the call that started or resumed the thread (§2.13); classified per call, never snapshot |
-| | `rerun_of` | `{thread, unit, checkpoint_id, workflow_version}` for a rerun, else null |
-| `ResolvedSettings` | `rows` | Per session scope and key: value, winning layer, `ref`, shadowed layers |
-| | `digest` | SHA-256 of the canonical table; `text` values enter as their digests |
-| `UnitRef` | string | `<unit>`, `<unit>.<item>` or `<unit>/<child unit>` |
-| `Feedback` | `text_ref` | Pointer into the local evidence file, never the text |
-| | `chars` | Length |
-| | `ruling` | bool |
-| | `applies_to` | list of `UnitRef`, for a ruling; empty means the unit given at and every later unit |
-| `Ruling` | `id`, `feedback`, `given_at` (unit), `by` (`Caller`), `at`, `revoked_at?`, `revoked_by?` (`Caller`) | Kept in state under its own reducer; never cleared by a trip back |
+- GIVEN a run log line with an unknown event kind WHEN the analyzer reads it THEN it skips the line and counts it under `unknown_kinds`
+- GIVEN a status row with no `cost` key WHEN a report reads it THEN the cost is shown as not recorded, not as 0
 
-### 2.13 Callers and supervision
+### CON-B15 A newer major schema is refused
 
-Shared by PRV, SUP, SCO, HUM, EVT, CST, FBK and ORC ([PRV](85-caller-provenance.spec.md) owns the classification).
+WHEN a reader meets a document with a newer major schema version THE reader SHALL exit with its own refusal and write nothing; renaming, removing or reinterpreting a key bumps the schema version.
 
-| Type | Field | Meaning |
-|---|---|---|
-| `CallerKind` | enum | `person`, `agent`, `orchestrator`, `scheduler`, `pipeline`, `engine`, `unknown` ([PRV §2.1](85-caller-provenance.spec.md)) |
-| `Caller` | `kind`, `confidence` (`attested`, `marked`, `observed`, `declared`, `none`) | Classified by [PRV §2.3](85-caller-provenance.spec.md) |
-| | `decided_by` (`CallerKind`), `relay` (`direct`, `turn_named`, `turn_only`, `claimed`, `none`) | For deciding calls ([PRV §2.4](85-caller-provenance.spec.md)); null otherwise |
-| | `host`, `host_session`, `caller_app`, `parent`, `schedule`, `trace_id`, `evidence[]`, `call_id` | [PRV §2.5](85-caller-provenance.spec.md); `host_session` is hashed in anything that leaves the machine |
-| `TouchClass` | enum | `designed`, `rescue`, `steer`, `engine` ([SUP §2.1](86-supervision-metrics.spec.md)) |
-| `SupervisionLevel` | enum | `observer`, `approver`, `consultant`, `collaborator`, `operator` ([SUP §2.3](86-supervision-metrics.spec.md)) |
-| `SupervisionRecord` | per [SUP §2.2](86-supervision-metrics.spec.md) | One per thread; the ledger row's `supervision{}` |
-| `SupervisionCost` | `marginal`, `turn`, `sessions[]`, `completeness` | [SCO §2.5](87-supervision-cost.spec.md); completeness adds `measured_zero` and `none_known` to the run cost flags |
+- GIVEN a status document of schema version 3 and a reader of version 2 WHEN it is read THEN the reader refuses and the state root is unchanged
 
-### 2.14 Workflow packages and outcomes
+## Acceptance criteria
 
-Shared by PKG, OUT, AUT and SCF.
-
-| Type | Fields | Owner of the rules |
-|---|---|---|
-| `PackageManifest` | `schema_version`, `name`, `entry`, `workflow_api`, `docs`, `surfaces?` | [PKG §2.2](88-workflow-package.spec.md) |
-| `RouteView` | `unit`, `visit`, `values`, `facts`, `artifact_keys` (present keys only), `settings`; read-only | [PKG §2.4](88-workflow-package.spec.md) |
-| `RawRequest` | `args` (list of str), `inputs` (map), `main_checkout` (read-only path) | [PKG §2.4](88-workflow-package.spec.md) |
-| `OutcomeSpec` | `schema_version`, `revision`, `statement`, `deliverables[]`, `final[]`, `intermediate` (unit → `{statement, criteria[]}`), `judge?`, `check?`, `assumptions[]`, `revisions[]` | [OUT §2.1](90-run-outcome.spec.md) |
-| `OutcomeCriterion` | A `Criterion` (§2.1, `id` required) plus `verified_by` (`check` \| `judge` \| `person` \| `none`), `verifier` (with a judge's `scale`), `source`, `serves[]` | [OUT §2.1, §2.2](90-run-outcome.spec.md) |
-| `Trust` | `deterministic`, `calibrated`, `uncalibrated`, `human`, `unverified`; computed, never stored | [OUT §2.3](90-run-outcome.spec.md) |
-| `OutcomeRecord` | `revision`, `verdict` (`met`, `met_with_open`, `unmet`, `needs_person`, `not_reached`), `criteria[]`, `intermediate[]`, `later[]`; the ledger row's `outcome{}` | [OUT §2.5](90-run-outcome.spec.md) |
-| `OutcomeRevision` | `revision`, `at`, `by` (`Caller`), `origin`, `changes[]` (each `strengthening` \| `weakening` \| `neutral`), `evidence[]` | [OUT §2.6](90-run-outcome.spec.md) |
-
-## 3. Behaviours
-
-**CON-B1 Tolerant read.** Given a run log line with an unknown event kind, when the analyzer reads it, then it skips the line and counts it under `unknown_kinds`.
-
-**CON-B2 Unknown cost.** Given a `SessionResult` whose executor reported tokens but no cost, when it is recorded, then `reported_cost_usd` is null and `estimated_cost_usd` is computed from the price table.
-
-| Executor | Tokens reported | Cost reported | `reported_cost_usd` | `estimated_cost_usd` |
-|---|---|---|---|---|
-| claude | yes | 0.42 | 0.42 | from table |
-| agent-sdk | yes | 0.40 | 0.40 | from table |
-| messages-api | yes | — | null | from table |
-| antigravity | yes | — | null | from table |
-| any | — | — | null | null |
-
-**CON-B3 Alias tiers.** Given a step with model `large` on executor `antigravity`, when the alias is resolved, then the executor's binding table maps `large` to its configured slug and the record shows `alias=large, bound_by=antigravity`.
-
-## 4. Error conditions
-
-| Condition | Where detected | Result |
-|---|---|---|
-| A field outside the template grammar | Validation | Workflow invalid; exit 2 |
-| An alias no executor binds | Preflight | Exit 2 before spend |
-| A tool capability the executor's `tool_map` lacks | Preflight | Exit 2 before spend |
-| A session option outside `Capabilities.session_options` | Preflight | Exit 2 (`effort` only warns) |
-| A document with a newer major schema | Reader | Distinct reader exit, nothing written |
-
-## 5. Design notes
-
-- Neutral tool and model names keep a workflow portable across the four executors; the cost is a mapping table per executor ([ADR-0006](../adr/0006-executors-as-capability-adapters.adr.md), [ADR-0008](../adr/0008-portable-model-aliases.adr.md)).
-- `reported_cost_usd` and `estimated_cost_usd` are never summed into one figure ([ADR-0012](../adr/0012-cost-when-executor-reports-tokens-only.adr.md)).
-- The exit-code table is the contract for every caller and skill ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md)).
-
-## 6. Acceptance criteria
-
-- [ ] CON-AC-1 Every type named by two or more specs is defined here and only here.
-- [ ] CON-AC-2 A rendered template contains no unrendered field; a missing value renders as the marker and is recorded.
-- [ ] CON-AC-3 No persisted document records unknown usage as 0.
-- [ ] CON-AC-4 Every persisted document carries a schema version and its readers pass a test with an unknown key and an unknown event kind.
-- [ ] CON-AC-5 A workflow that names only neutral aliases and the capabilities `read`, `search`, `list`, `edit`, `write` and `shell` validates against all four executors' binding and tool tables.
-- [ ] CON-AC-6 The exit-code table here equals the engine's constants, checked by a generated-table drift test.
-
-## Open questions
-
-| Question | Owner | Release 1 default |
-|---|---|---|
-
-## References
-
+- CON-AC1 (CON-B4, CON-B5, CON-B6, CON-B7): Every field these behaviours name is accepted by the builders of `tempergraph.api`, and a field outside them is refused at load
+- CON-AC2 (CON-B8): A rendered template contains no unrendered field, and a missing value renders as the marker and is recorded
+- CON-AC3 (CON-B1): No persisted document records unknown usage as 0
+- CON-AC4 (CON-B14, CON-B1, CON-B15): Every persisted document carries a schema version, its readers pass a test with an unknown key and an unknown record kind, and a newer major version is refused
+- CON-AC5 (CON-B3, CON-B11): A workflow that names only neutral aliases and the capabilities `read`, `search`, `list`, `edit`, `write` and `shell` validates against all four executors' binding and tool tables
+- CON-AC6 (CON-B13): The exit codes in CON-B13 equal the engine's constants, checked by a drift test
+- CON-AC7 (CON-B9): A workflow whose input examples do not resolve fails validation, and a `needs` answer carries its questions
+- CON-AC8 (CON-B12): A fresh `run` on a thread not in state `none` exits 2, and every recorded state and decision is one CON-B12 names

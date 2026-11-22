@@ -42,8 +42,8 @@ We will commit release 2 to the scope below, planned in the [second-release plan
 | Deliverables required per path, a repository-level command declaration, `GitFacts.pushed` set ([R-130](../research/R-130-release-two-readiness-and-gaps.rsrch.md) F5) | 2 | New, asked by the first authored workflow, stated for any workflow |
 | Lifecycle hooks, wider hook events | 2 | — |
 | In-process observers | 3 | Moved from 2 by the owner on 2026-11-21 |
-| Schedules, release 2 slice ([SCH §5](../specs/83-schedules.spec.md), [TCK](../specs/84-schedule-ticks-and-unattended-fires.spec.md)); worktree extras ([WTR](../specs/82-worktree-mode.spec.md)); session review in stable mode ([SRV](../specs/44-session-review.spec.md)) | 3 | Moved from 2 by the owner on 2026-11-21 |
-| State root outside git ([WSP §2.4](../specs/13-workspace-and-concurrency.spec.md), [ADR-0127](0127-outside-git-the-state-root-is-found-by-walk-up-and-the-guard-hashes-files.adr.md)) | 2 | Researched in [R-131](../research/R-131-running-outside-a-git-repository.rsrch.md) |
+| Schedules, release 2 slice ([R-150 SCH](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md), [TCK](../specs/84-schedule-ticks-and-unattended-fires.spec.md)); worktree extras ([WTR](../specs/82-worktree-mode.spec.md)); session review in stable mode ([SRV](../specs/44-session-review.spec.md)) | 3 | Moved from 2 by the owner on 2026-11-21 |
+| State root outside git ([WSP-B15 to WSP-B18](../specs/13-workspace-and-concurrency.spec.md), [ADR-0127](0127-outside-git-the-state-root-is-found-by-walk-up-and-the-guard-hashes-files.adr.md)) | 2 | Researched in [R-131](../research/R-131-running-outside-a-git-repository.rsrch.md) |
 | Native Windows ([WIN](../specs/97-windows-support.spec.md), [ADR-0128](0128-windows-is-supported-natively-with-job-objects-and-probes-before-judges.adr.md)) | 3 | Moved from 2 by the owner on 2026-11-21: its probes need a Windows machine. Designed in [R-132](../research/R-132-running-on-windows.rsrch.md) |
 | Orchestration, council, contest, writer branches, parallel map, sub-workflows, other executors, the rest of schedules | 3 | — |
 

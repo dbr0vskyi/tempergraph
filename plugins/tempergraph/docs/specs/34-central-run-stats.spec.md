@@ -1,141 +1,118 @@
----
-title: Central run stats
-type: component
-status: review
-prefix: CST
-adrs: [0012, 0025]
----
-
 # Central run stats
 
-## 1. Overview
+## Purpose
 
-How run numbers from every repository and every machine end up in one place a person can read, without a tempergraph server. Three layers: a **machine index** of state roots, so one machine's runs are listed together; **sinks**, opt-in destinations to which each machine pushes metadata-only rows; a **fleet copy** in each machine's home folder, `~/.tempergraph/fleet/`, into which every machine pulls the rows of all the others, so global stats and metrics sit in the same `.tempergraph` folder on every machine; and an **aggregate reader**, `stats`, that totals them. A sink carries numbers, names from fixed lists and hashes, never request text, outputs, commands or paths (contract C9). Pushing is best effort and never changes a run (contract C2). With no sink configured, nothing leaves the machine, as before ([OBS §2.4](15-observability-and-cost.spec.md)).
+How run numbers from every repository and every machine end up in one place a person can read, without a tempergraph server: a machine index of state roots, so one machine's runs are listed together; sinks, opt-in destinations to which each machine pushes metadata-only rows; a fleet copy in each machine's home folder, `~/.tempergraph/fleet/`, into which every machine pulls the rows of all the others; and an aggregate reader, `stats`, that totals them. A folder every machine can write is enough for a small team, and one writer per file is what makes a synced folder safe ([ADR-0025](../adr/0025-cross-machine-stats-through-opt-in-sinks.adr.md)). A sink carries numbers, names from fixed lists and hashes, never request text, outputs, commands or paths (OVR-B11); hashing by default means a shared sink shows "repo 3f2a…" until the operator opts into names. Pushing is best effort and never changes a run (OVR-B4). With no sink configured nothing leaves the machine ([OBS](15-observability-and-cost.spec.md)). A sink is the aggregate the improvement data names ([IMD](43-improvement-data.spec.md)); what crosses follows IMD and CST-B11, whichever is stricter. Operators, teams sharing a sink, the orchestration supervisor and the monitor depend on these rows; release 1 build notes are kept in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-## 2. Contract
+## Behaviours
 
-### 2.1 Machine index
+### CST-B8 Machine index
 
-`~/.tempergraph/index.json` ([LOS §2.2](33-local-observability-store.spec.md)), schema version 1: one entry per state root seen by a run on this machine, with path, repository name, `repo_id` (§2.4), `first_seen` and `last_run_at`. Written at `run_started` under a lock, best effort. `status --all-roots` and `stats` read it; an entry whose path is gone is shown as `missing`, never removed by a reader.
+WHEN a run starts THE engine SHALL write, best effort, one entry per state root seen on this machine in `~/.tempergraph/index.json` ([LOS-B10](33-local-observability-store.spec.md), schema version 1) with path, repository name, `repo_id`, `first_seen` and `last_run_at`, under a lock taken with exclusive create, skipping the update and recording it when the lock is not had in 2 s; `status --all-roots`, `attention --all-roots` and `stats` read it and show an entry whose path is gone as `missing`, never removing it.
 
-### 2.2 Rows
+- GIVEN an index entry whose folder was deleted WHEN `status --all-roots` runs THEN it shows `missing` and the entry stays
 
-| Row | Written | Fields |
-|---|---|---|
-| `run` | At every `run_exit` ([EVT §2.2](30-run-events.spec.md)), built by the same function as the stats row and the ledger row so the figures cannot drift | `row_id` (UUID), `schema_version`, `machine_id`, `user` (§2.4), `repo_id`, `workflow`, `workflow_version`, `thread_hash`, `segment`, `alias`, `ticket`, `origin`, `parent` (orchestration id and node, hashed like `thread_hash`), `schedule_id` (hashed the same way, [TCK §2.7](84-schedule-ticks-and-unattended-fires.spec.md)), executors and models used, exit code and reason, `units_run`, `repeats` by cause, `gate_verdicts` counts, `escapes`, tokens by kind, `reported_cost_usd`, `estimated_cost_usd`, completeness flag, `wall_s`, `agent_s`, `person_wait_s`; supervision: `touches_undesigned`, `touches_by_decider`, `agent_own_rescues`, `level`, `level_by`, `callers_unknown` ([SUP §2.2](86-supervision-metrics.spec.md)) |
-| `heartbeat` | Every 60 s while any thread on the machine is alive, and once when the last one exits; one file replaced atomically | `machine_id`, `label`, `at`, live threads: `repo_id`, `workflow`, `alias`, `state`, current unit, attempt, `estimated_cost_usd` so far, `waiting_for_person_s`, `waiting_on` (`person` or the host of the supervising session that last called) |
-| `supervision` | When a thread's supervision cost closes ([SCO §2.5](87-supervision-cost.spec.md)) | `row_id`, `thread_hash`, `workflow`, `workflow_version`, marginal and turn tokens and estimated cost by category, hashed host sessions and their hosts and models, reported session figures, completeness |
-| `session` (opt-in, `include: [session]`) | At every `agent_run` | `row_id`, `thread_hash`, `unit`, `kind`, executor, alias, model, tokens, costs, `duration_s`, `outcome`, `tool_calls` count, per-capability counts |
+### CST-B9 Rows
 
-Row field names follow the stats rows already kept per user, so one reader serves both.
+WHEN a row is built THE engine SHALL build a `run` row at every `run_exit` ([EVT-B15](30-run-events.spec.md)) by the same function as the stats row and the ledger row, with `row_id` (UUID), `schema_version`, `machine_id`, `user`, `repo_id`, `workflow`, `workflow_version`, `thread_hash`, `segment`, `alias`, `ticket`, `origin`, `parent` and `schedule_id` (hashed like `thread_hash`, [TCK](84-schedule-ticks-and-unattended-fires.spec.md)), executors and models used, exit code and reason, `units_run`, `repeats` by cause, `gate_verdicts` counts, `escapes`, tokens by kind, `reported_cost_usd`, `estimated_cost_usd`, completeness flag, `wall_s`, `agent_s`, `person_wait_s` and the supervision fields `touches_undesigned`, `touches_by_decider`, `agent_own_rescues`, `level`, `level_by` and `callers_unknown` ([SUP](86-supervision-metrics.spec.md)); a `heartbeat` (one file replaced atomically, at `run_started`, `pause` and `run_exit` and at most every 60 s while a thread is alive) with `machine_id`, `label`, `at` and the running and paused threads (`repo_id`, `workflow`, `alias`, `state`, current unit, attempt, `estimated_cost_usd` so far, `waiting_for_person_s`, `waiting_on`); a `supervision` row when a thread's supervision cost closes ([SCO](87-supervision-cost.spec.md)) with `row_id`, `thread_hash`, `workflow`, `workflow_version`, marginal and turn tokens and estimated cost by category, hashed host sessions with their hosts and models, reported session figures and completeness; and, opt-in, a `session` row per `agent_run` with `row_id`, `thread_hash`, `unit`, `kind`, executor, alias, model, tokens, costs, `duration_s`, `outcome` and `tool_calls` count; field names follow the per-user stats rows so one reader serves both.
 
-### 2.3 Sinks
+- GIVEN a run exit WHEN its `run` row and stats row are compared THEN their figures are equal
 
-Configured in user or state-root config as a list; none by default.
+### CST-B10 Sinks configured
 
-| Field | Meaning |
-|---|---|
-| `name` | Operator's name for it |
-| `kind` | `directory`; `otlp` is designed but deferred ([TEL](35-telemetry-export.spec.md), [ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md)) |
-| `path` (directory) | A folder every machine can write: a synced folder, a network share, a mounted bucket |
-| `include` | Subset of `run`, `heartbeat`, `supervision`, `session`; default all four ([ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md)) |
-| `user` | `name`, `hash` (default) or `none` |
-| `repo` | `name`, `hash` (default) |
+WHEN sinks are configured in `config/sinks.json` of the home folder or the state root (`{"schema_version": 1, "sinks": [...]}`, none by default, a state-root entry replacing the home entry of the same name) THE engine SHALL read each sink's `name` (a slug), `kind` (`directory`; `otlp` is designed and deferred, [TEL](35-telemetry-export.spec.md), [ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md)), `path` (a folder every machine can write), `include` (a subset of `run`, `heartbeat`, `supervision`, `session`, default the first three, `session` only when named), `user` (`name`, `hash` by default, or `none`) and `repo` (`name` or `hash` by default), and refuse two sinks with one name in the `stats` verbs and skip them in a run.
 
-**Delivery.** A row is first appended to `~/.tempergraph/outbox/<sink>.jsonl`, then flushed by a detached flusher started at `run_exit` and by `stats flush`. Flushing appends to the sink and removes the row from the outbox only after the sink write returns; a row may be delivered twice and readers de-duplicate by `row_id`. A sink that fails keeps its outbox; after 7 days of failures `status` shows one warning line.
+- GIVEN two sinks named `team` WHEN `stats` runs THEN it exits 2
 
-**Sync to the home folder.** Every flush, and `stats sync`, also pulls: for a directory sink it copies new bytes of every other machine's files into `~/.tempergraph/fleet/<sink>/machines/` (append-only files by offset, `heartbeat.json` whole), adds this machine's own rows, de-duplicates by `row_id` and rebuilds `rollup/<YYYY-MM>.json` ([LOS §2.2](33-local-observability-store.spec.md)). A machine that is offline keeps its last copy and says when it was synced. An `otlp` sink is push-only: its fleet copy holds this machine's rows alone, and global numbers come from the backend. The fleet copy is a cache: deleting it loses nothing the sink does not hold.
+### CST-B11 Identity and privacy
 
-**Directory sink layout.** Each machine writes only inside its own folder, so a synced folder never sees two writers on one file:
+WHEN a row is delivered to a sink THE engine SHALL identify the machine by the random UUID of `machine.json` (never a host name, MAC or serial), hash with one secret key per sink shared by every machine writing to it (kept in `<path>/sink.json`, created owner-only where the share allows by the first machine that writes, and the same key for the request digests of [IMD-B16](43-improvement-data.spec.md)), set `user` to the HMAC-SHA256 of the operator's git `user.email` (or the git user name only when the operator sets `name`), `repo_id` to the HMAC of the origin URL with scheme, credentials and `.git` removed (or `folder:<name>` without an origin), `thread_hash` to the HMAC of the thread id, keep `ticket` only with `sink.tickets = true`, keep `alias` only when it matches `[a-z0-9-]{1,40}`, and drop every free-text field, the row's `label` included; the local stats row keeps `thread_id`, `repo` and `state_root` in plain text because it never leaves the machine.
 
-```text
-<path>/
-  machines/<machine_id>/
-    machine.json                 label, engine version, first_seen
-    runs/<YYYY-MM>.jsonl         run rows
-    sessions/<YYYY-MM>.jsonl     session rows, if included
-    heartbeat.json               replaced atomically
-```
+- GIVEN alias `fix canary now` WHEN a row is delivered THEN the alias is dropped
+- GIVEN task id `PROJ-1-canary` WHEN a row is delivered THEN only `thread_hash` carries it, and `ticket` only with `sink.tickets`
 
-### 2.4 Identity and privacy
+### CST-B12 Delivery through the outbox
 
-| Item | Rule |
-|---|---|
-| `machine_id` | Random UUID from `machine.json`; never a host name, MAC or serial |
-| Sink key | One secret key per sink, shared by every machine that writes to it, so a hash matches across machines: a directory sink keeps it in `<path>/sink.json`, created by the first machine that writes (owner-only where the share allows); an `otlp` sink reads it from the operator's config. The same key serves the request digests of [IMD-R12](43-improvement-data.spec.md) |
-| `user` | `hash` = HMAC-SHA256 of the operator's git `user.email` with the sink key; `name` = the git user name, only when the operator sets it |
-| `repo_id` | `hash` = HMAC of the normalized origin URL with the sink key; `name` = the repository's folder name |
-| `thread_hash` | HMAC of the thread id; a task id can hold a ticket or a branch name |
-| `ticket` | Kept only when the operator sets `sink.tickets = true` |
-| Free text | None: `alias` is kept only if it matches `[a-z0-9-]{1,40}`, else dropped |
+WHEN a row is due for a sink THE engine SHALL append a reference to the local row (`row_id`, month, state root, never the row) to `~/.tempergraph/outbox/<sink>.jsonl`, and a detached flusher started at `run_exit` (or `TEMPERGRAPH_FLUSHER=inline|off`), or `stats flush`, SHALL build the sink row with the key at delivery, append it inside `machines/<machine_id>/` only (`machine.json` with label, engine version and `first_seen`, `runs/<YYYY-MM>.jsonl`, `sessions/<YYYY-MM>.jsonl`, `supervision/<YYYY-MM>.jsonl`, `heartbeat.json` replaced atomically), remove the reference only after the write returns, treat a missing sink path as `unreachable` creating nothing there, and keep a failing sink's outbox, `status` showing one warning line after 7 days of failures.
 
-### 2.5 Aggregate reader
+- GIVEN a sink path that does not exist WHEN the flusher runs THEN nothing is created there and the outbox is kept
 
-```text
-stats [--source <sink> | --local] [--sync] [--month YYYY-MM | --since <date>] [--by machine|user|repo|workflow|version|executor|model|ticket|exit|month|parent|schedule|level|decider|host] [--projection] [--live] [--json]
-```
+### CST-B13 Sync to the home folder
 
-`--projection` adds, per workflow (and version with `--by version`), the median and 90th percentile of estimated cost per finished run and the sample size; the orchestration supervisor reads it for its projected cost ([ORC §2.8](45-orchestration.spec.md) N7). A projection over fewer than 5 runs is shown with its count and marked `thin`.
+WHEN a flush or `stats sync` runs for a directory sink THE engine SHALL copy new bytes of every other machine's files into `~/.tempergraph/fleet/<sink>/machines/` (append-only files by offset, `heartbeat.json` whole), add this machine's own rows, de-duplicate by `row_id`, rebuild `rollup/<YYYY-MM>.json` and record the sync in `synced.json`; an offline machine keeps its last copy and says when it was synced, and the fleet copy is a cache whose deletion loses nothing the sink holds.
 
-With no `--source`, `stats` reads the home folder: this machine's rows plus the fleet copy of every configured directory sink, so global numbers need no access to the shared folder at read time. `--local` reads this machine's rows only; `--source` reads the sink folder directly; `--sync` pulls first.
+- GIVEN the fleet copy deleted WHEN `stats sync` runs THEN it is rebuilt from the sink
 
-Read-only, model-free (contract C13); `stats sync` writes the fleet copy only. `--live` reads the heartbeats and lists live runs on every machine, marking a heartbeat older than 5 minutes `stale`. Totals keep reported and estimated cost apart and show the completeness flag ([ADR-0012](../adr/0012-cost-when-executor-reports-tokens-only.adr.md)); a total with any incomplete row is a lower bound and says so.
+### CST-B14 Aggregate reader
 
-## 3. Behaviours
+WHEN `stats [--source <sink> | --local] [--sync] [--month YYYY-MM | --since <date>] [--by machine|user|repo|workflow|version|executor|model|ticket|exit|month|parent|schedule|level|decider|host] [--projection] [--live] [--json]` runs THE engine SHALL read, read-only and model-free (OVR-B15), the home folder (this machine's rows plus the fleet copy of every directory sink) with no `--source`, this machine only with `--local`, the sink folder directly with `--source`, pulling first with `--sync`; keep reported and estimated cost apart with the completeness flag, a total with any incomplete row being a lower bound that says so ([ADR-0012](../adr/0012-cost-when-executor-reports-tokens-only.adr.md)); group `--by machine` by label and the first 8 characters of `machine_id`; and drop a repeated `row_id`, skip and count under `unknown_schema` a row of a newer major schema, and keep twice and list in `duplicate_row_ids` with a warning a repeated `row_id` whose content differs.
 
-**CST-B1 Nothing leaves by default.** Given no sink configured, when a run ends, then the outbox is empty and no network or file write happens outside the state root and `~/.tempergraph/`.
+- GIVEN a fixture with every row delivered twice WHEN totalled THEN each run counts once
+- GIVEN two rows with one `row_id` and different exit codes WHEN read THEN both are shown and listed in `duplicate_row_ids`
 
-**CST-B2 Two machines, one folder.** Given machines A and B both configured with the same directory sink, when each finishes 3 runs, then `stats --source team --by machine` on either shows 3 runs for each, with cost totals equal to the sum of their local stats rows.
+### CST-B15 Projection
 
-**CST-B3 Offline machine.** Given a laptop whose sink folder is unreachable for two days, when it reconnects and a run ends, then the flusher delivers every outbox row once in order, and a reader counts each run once.
+WHEN `stats --projection` runs THE engine SHALL add per workflow (and version with `--by version`) the median and 90th percentile of estimated cost per finished run, falling back to the reported cost for a run with no estimate, with the sample size, marking a projection over fewer than 5 runs `thin`; the orchestration supervisor reads it ([ORC](45-orchestration.spec.md)).
 
-**CST-B4 Live across machines.** Given a run paused for a person on machine B for 40 minutes, when `stats --source team --live` runs on machine A, then it lists the run with its workflow, alias, state `paused` and waiting time, and no repository name if the sink hashes names.
+- GIVEN 3 finished runs of a workflow WHEN projected THEN the projection is marked `thin` with count 3
 
-**CST-B5 No text.** Given the canary test ([SEC-B2](14-security.spec.md)) with a sink of every kind and `include` of all rows, when runs complete, then no sink file, outbox row or export contains the canary.
+### CST-B16 Live view
 
-| Field planted with the canary | Appears in rows as |
-|---|---|
-| request text | — |
-| alias `fix canary now` | dropped (not a slug) |
-| task id `PROJ-1-canary` | `thread_hash` only; `ticket` only with `sink.tickets` |
-| tool input `echo canary` | — |
+WHEN `stats --live` runs THE engine SHALL list live runs on every machine from the heartbeats, mark a beat `stale` when it is older than 5 minutes and lists a running thread (a paused thread has no process to beat for it), and add the beat's age to a paused wait.
 
-**CST-B7 Global numbers at home.** Given machines A and B sharing a directory sink and A offline since its last sync an hour ago, when `stats --by machine` runs on A, then it reads `~/.tempergraph/fleet/team/`, shows both machines up to that sync, and marks B's figures `synced 1 h ago`; after A reconnects and syncs, B's newer runs appear with no sink read at query time.
+- GIVEN a beat 6 minutes old listing only paused threads WHEN read THEN it is not stale
 
-**CST-B6 Sink failure is safe.** Given a sink whose write raises, when a run ends, then the exit code is the one it would have had and the row stays in the outbox.
+### CST-B1 Nothing leaves by default
 
-## 4. Error conditions
+WHEN a run ends with no sink configured THE engine SHALL leave the outbox empty and write nothing outside the state root and `~/.tempergraph/`.
 
-| Condition | Result |
-|---|---|
-| Two sinks with one name | Config refused at preflight, exit 2 |
-| A row with a newer major schema in a sink | Skipped by the reader and counted under `unknown_schema` |
-| A machine folder written by two machines (copied `machine.json`) | Reader warns on duplicate `row_id`s with different content and shows both |
-| Index lock not acquired in 2 s | Index not updated this run, recorded |
+- GIVEN no sink WHEN a run ends THEN no file is created outside the state root and home folder
 
-## 5. Design notes
+### CST-B2 Two machines, one folder
 
-- No tempergraph server: a folder every machine can write is enough for a small team and needs no service to run or secure; an OTLP sink covers teams that already run a telemetry backend ([ADR-0025](../adr/0025-cross-machine-stats-through-opt-in-sinks.adr.md)).
-- One writer per file is what makes a synced folder safe; appends from two machines to one file are what break it.
-- Hashing by default means a shared sink shows "repo 3f2a…" until the operator opts into names; that is the price of being able to share it widely.
-- A sink is the aggregate the self-improvement loop's data requirements name ([IMD](43-improvement-data.spec.md)): the `run` and `session` rows carry the identifiers of IMD-R1, and the loop's own record kinds may be written to a sink beside them by the same outbox; what crosses follows IMD §2.2 and this spec's §2.4, whichever is stricter.
-- Release 1 build ([T7 plan](../plans/t7-observability.plan.md) T7.4): the machine index is written at `run_started` under an `index.json.lock` taken with exclusive create (2 s wait, then skipped), with `repo_id` null until §2.4's key lands with the sinks (T10.1); `status --all-roots` and `attention --all-roots` read it and mark a gone path `missing`. The local `run` row is appended to `~/.tempergraph/stats/<YYYY-MM>.jsonl` at every `run_exit`; it keeps `thread_id`, `repo` and `state_root` in plain text because it never leaves the machine, and the sink copy hashes them (§2.4). `--projection` falls back to the reported cost when a run has no estimate. Readers drop a repeated `row_id` and count rows of an unknown `schema_version` instead of failing (CST-AC-3).
-- Release 1 build ([T10 plan](../plans/t10-monitor.plan.md) T10.1): sinks are listed in `config/sinks.json` (`{"schema_version": 1, "sinks": [...]}`) of the home folder or the state root; an entry in the state root replaces the home entry of the same name, and a sink `name` is a slug. Assumptions and deviations: the outbox holds a reference to the local row (`row_id`, month, state root), never the row, so it carries no names, and the flusher builds the sink row with the key at delivery; a sink path that does not exist is `unreachable` and nothing is created there (an unmounted share stays untouched); `repo_id` hashes the origin URL with scheme, credentials and `.git` removed, or `folder:<name>` without an origin; the row's `label` (free text) is dropped. The heartbeat is written at `run_started`, `pause` and `run_exit` and at most every 60 s from the run log's writer, and lists paused threads as well as running ones; `--live` marks a beat `stale` only when it lists a running thread, since a paused thread has no process to beat for it, and adds the beat's age to a paused wait. `--by machine` groups by label and the first 8 characters of `machine_id`, because two machines can share a host name. `TEMPERGRAPH_FLUSHER=inline|off` replaces the detached flusher, for tests and for hosts that forbid detached children. The `supervision` row (T7.6) is kept locally in `~/.tempergraph/supervision/rows/<YYYY-MM>.jsonl` and delivered to `machines/<id>/supervision/<YYYY-MM>.jsonl` with the thread id and each host session hashed by the sink key; the fleet copy does not copy it yet. The `session` row is built at each `run_exit` from the segment's `agent_run` records, kept in `~/.tempergraph/stats/sessions/<YYYY-MM>.jsonl` and delivered to `machines/<id>/sessions/` with the thread hashed; it goes only to a sink whose `include` names `session`, taking the §2.2 table's opt-in over §2.3's "default all four" (the default `include` is `run`, `heartbeat`, `supervision`); per-capability counts are not built. A repeated `row_id` whose kind, machine, workflow, segment, exit code or end time differ is kept twice and listed in `stats`' `duplicate_row_ids` with a warning on standard error (§4). The `otlp` kind is not built; two sinks with one name are refused by the `stats` verbs and skipped by a run rather than at preflight.
-- The heartbeat makes the sink a monitoring surface, not only a ledger: a person sees what is running and waiting across machines.
+WHEN machines A and B, both configured with the same directory sink, each finish 3 runs THE engine SHALL show, by `stats --source team --by machine` on either, 3 runs for each with cost totals equal to the sum of their local stats rows.
 
-## 6. Acceptance criteria
+- GIVEN 3 runs on each of A and B WHEN `stats --source team --by machine` runs THEN each shows 3 runs
 
-- [ ] CST-AC-1 CST-B1 to CST-B6 pass with two simulated machines (two home folders) writing to one temporary folder.
-- [ ] CST-AC-2 Cost totals from `stats --source` equal the sum of the local stats rows of each machine for a fixture month.
-- [ ] CST-AC-3 Readers de-duplicate a fixture with every row delivered twice.
-- [ ] CST-AC-4 A test with no sink configured asserts no file is created outside the state root and home folder.
+### CST-B3 Offline machine
+
+WHEN a laptop whose sink folder was unreachable for two days reconnects and a run ends THE flusher SHALL deliver every outbox row once in order, and a reader SHALL count each run once.
+
+- GIVEN two days of queued rows WHEN delivered THEN each run is counted once
+
+### CST-B4 Live across machines
+
+WHEN `stats --source team --live` runs on machine A while a run has been paused for a person on machine B for 40 minutes THE engine SHALL list the run with its workflow, alias, state `paused` and waiting time, and no repository name when the sink hashes names.
+
+- GIVEN a hashing sink WHEN the live run is listed THEN no repository name appears
+
+### CST-B5 No text
+
+WHEN runs complete under the canary test ([SEC-B2](14-security.spec.md)) with a sink of every kind and every row included THE engine SHALL keep the canary out of every sink file, outbox row and export.
+
+- GIVEN request text or a tool input `echo canary` WHEN rows are delivered THEN neither appears
+
+### CST-B7 Global numbers at home
+
+WHEN `stats --by machine` runs on machine A, offline since its last sync an hour ago, while A and B share a directory sink THE engine SHALL read `~/.tempergraph/fleet/team/`, show both machines up to that sync and mark B's figures `synced 1 h ago`, and after A reconnects and syncs show B's newer runs with no sink read at query time.
+
+- GIVEN A offline for an hour WHEN `stats --by machine` runs THEN B's figures are marked `synced 1 h ago`
+
+### CST-B6 Sink failure is safe
+
+WHEN a sink's write raises at a run's end THE engine SHALL keep the exit code the run would have had and the row in the outbox.
+
+- GIVEN a raising sink WHEN a run ends THEN its exit code is unchanged and the row stays queued
+
+## Acceptance criteria
+
+- CST-AC1 (CST-B1, CST-B2, CST-B3, CST-B4, CST-B5, CST-B6, CST-B7, CST-B11, CST-B12, CST-B13): The behaviours pass with two simulated machines (two home folders) writing to one temporary folder
+- CST-AC2 (CST-B9, CST-B14): Cost totals from `stats --source` equal the sum of the local stats rows of each machine for a fixture month
+- CST-AC3 (CST-B14): Readers de-duplicate a fixture with every row delivered twice
+- CST-AC4 (CST-B1): A test with no sink configured asserts no file is created outside the state root and home folder
+- CST-AC5 (CST-B8, CST-B10, CST-B15, CST-B16): The index marks a gone path `missing`, a duplicate sink name is refused, a thin projection is marked, and a stale beat is marked only when it lists a running thread
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Is a shared folder enough for the owner's machines, or is there a backend the owner already runs (which would make OTLP the main sink)? | Owner |
-| Should a team sink also accept rows from CI runners, whose `machine_id` changes every job? The design suggests a fixed `machine.json` in the CI cache. | Owner |
-
-## References
-
+- Is a shared folder enough for the owner's machines, or is there a backend the owner already runs (which would make OTLP the main sink)? Owner: owner.
+- Should a team sink also accept rows from CI runners, whose `machine_id` changes every job? The design suggests a fixed `machine.json` in the CI cache. Owner: owner.

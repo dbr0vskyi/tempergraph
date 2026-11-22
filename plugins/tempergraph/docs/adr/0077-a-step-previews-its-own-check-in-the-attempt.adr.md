@@ -13,7 +13,7 @@ When a step's output fails its deterministic check, the next attempt is a fresh 
 
 ## Decision
 
-We will let a step declare `self_check: true`. The engine then grants it one command, `tempergraph self-check <ticket>`, which runs the unit's own check on the current workspace and prints the findings, without a judge, a state write or a budget change, at most three times an attempt. The gate's real check still runs after the session; its command runs can reuse the preview's on an unchanged tree ([CHK §2.5](../specs/75-check-contract-and-command-runs.spec.md)). No session is resumed.
+We will let a step declare `self_check: true`. The engine then grants it one command, `tempergraph self-check <ticket>`, which runs the unit's own check on the current workspace and prints the findings, without a judge, a state write or a budget change, at most three times an attempt. The gate's real check still runs after the session; its command runs can reuse the preview's on an unchanged tree ([CHK-B17](../specs/75-check-contract-and-command-runs.spec.md)). No session is resumed.
 
 ## Options considered
 
@@ -37,7 +37,7 @@ We will let a step declare `self_check: true`. The engine then grants it one com
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| K1 | Structural findings (place and fix) are enough for a session to repair without the check's source. | CHK §2.5 |
+| K1 | Structural findings (place and fix) are enough for a session to repair without the check's source. | CHK-B17 |
 | K2 | A narrow allow rule for one engine command is accepted by each executor's permission layer, as for any declared prefix. | ECC, EAS, EAG, THS tool maps |
 
 ## Consequences

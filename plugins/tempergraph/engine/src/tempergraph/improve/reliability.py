@@ -1,8 +1,8 @@
 """Labels derived from runs, judge reliability per binding, the labelling queue and the binding-shift watch
-(FBK §2.2 to §2.5; plan T12.3).
+(FBK-B9, FBK-B14; plan T12.3).
 
 Model-free and metadata only: a label is ids, enums, a verdict, a confidence and the judge binding, never
-request, output or feedback text (FBK-AC-3). The `explicit` kind is written by `label` (observe/labels.py);
+request, output or feedback text (FBK-AC3). The `explicit` kind is written by `label` (observe/labels.py);
 every other kind is derived here from the run log and the ledger, at each exit, with a deterministic id so a
 second derivation of the same judgement writes nothing new.
 
@@ -29,7 +29,7 @@ from tempergraph.store.layout import now_iso, run_dir
 BINDING_FIELDS = ("executor", "executor_version", "alias", "model_slug", "brief_digest", "criteria_digest")
 EXECUTOR_FIELDS = frozenset({"executor", "executor_version", "alias", "model_slug"})
 BLOCKS = frozenset({"RETRY", "BACK", "ESCALATE"})
-ANCHORS = (1.0, 0.75, 0.5, 0.25)  # CON §2.8
+ANCHORS = (1.0, 0.75, 0.5, 0.25)  # SSN-B8, SSN-B9, SSN-B10
 GRADES = ("unmeasured", "unreliable", "reliable")
 
 
@@ -70,7 +70,7 @@ def _source(caller: Mapping[str, Any] | None) -> str:
     return "person" if (caller or {}).get("decided_by") == "person" else "agent"  # FBK-B2
 
 
-# -- derivation (FBK §2.2) -----------------------------------------------------------------------------------
+# -- derivation (FBK-B9) -----------------------------------------------------------------------------------
 
 @dataclass(kw_only=True)
 class _Gate:
@@ -109,7 +109,7 @@ def _row(thread: str, recs: Sequence[Mapping[str, Any]], g: _Gate, kind: str, va
 
 def derive(recs: Sequence[Mapping[str, Any]], thread: str, *, keys: Mapping[str, Any] | None = None,
            earlier: Callable[[str], Sequence[Mapping[str, Any]]] | None = None) -> list[dict[str, Any]]:
-    """Every §2.2 kind but `explicit` and `pr_state`, from one thread's run log, with no model call.
+    """Every FBK-B9 kind but `explicit` and `pr_state`, from one thread's run log, with no model call.
 
     ``earlier(thread)`` reads another thread's run log, for the `rerun` kind (the source thread's last PROCEED).
     """
@@ -193,7 +193,7 @@ def record_labels(root: Path, workflow: str, task_id: str, keys: Mapping[str, An
     return new
 
 
-# -- reliability (FBK §2.3) ----------------------------------------------------------------------------------
+# -- reliability (FBK-B11, FBK-B12) ----------------------------------------------------------------------------------
 
 @dataclass(kw_only=True)
 class Figures:
@@ -214,7 +214,7 @@ class Figures:
 
 
 def _latest(rows: Iterable[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
-    """FBK §4: two labels of one kind for one judgement (and criterion): the later wins."""
+    """FBK-B10: two labels of one kind for one judgement (and criterion): the later wins."""
     by: dict[tuple[Any, ...], Mapping[str, Any]] = {}
     for r in sorted(rows, key=lambda r: str(r.get("at") or "")):
         by[(r.get("thread"), r.get("gate_record"), r.get("label_kind"), r.get("criterion_id"))] = r
@@ -232,7 +232,7 @@ def figures(labels: Iterable[Mapping[str, Any]], gate: str, binding: Mapping[str
         if r.get("unit") != gate or binding_key(r.get("binding")) != key:
             continue
         if r.get("gate_record") is None:
-            fig.orphan_labels += 1  # FBK §4: kept, never in a figure
+            fig.orphan_labels += 1  # FBK-B10: kept, never in a figure
             continue
         at = _ts(r.get("at"))
         if r.get("source") not in ("person", "fact") or at is None or at < since:
@@ -264,7 +264,7 @@ def figures(labels: Iterable[Mapping[str, Any]], gate: str, binding: Mapping[str
 
 
 def grade(fig: Figures, live_score_passing: bool, now: datetime | None = None) -> tuple[str, list[str]]:
-    """FBK §2.3. Too few labels is checked first, then the two `unreliable` rules, then the remaining
+    """FBK-B11, FBK-B12. Too few labels is checked first, then the two `unreliable` rules, then the remaining
     `unmeasured` rules (recency, known-bad evidence, a passing live score), so a judge shown to pass bad work
     is `unreliable` even before its live score exists (the FBK-B3 table)."""
     now = now or datetime.now(UTC)
@@ -344,7 +344,7 @@ def grade_of(root: Path, workflow: str, gate: str, live: Callable[[str, Mapping[
     return report(root, workflow, [gate], live)[0]["grade"]
 
 
-# -- labelling queue (FBK §2.4) ------------------------------------------------------------------------------
+# -- labelling queue (FBK-B13) ------------------------------------------------------------------------------
 
 def queue(root: Path, workflow: str, grades: Mapping[str, str], *, seed: int = 0) -> list[dict[str, Any]]:
     """Gate judgements a person should label, most informative first; read-only."""
@@ -376,7 +376,7 @@ def queue(root: Path, workflow: str, grades: Mapping[str, str], *, seed: int = 0
     return [r for t in tiers for r in t]
 
 
-# -- binding-shift watch (FBK §2.5) --------------------------------------------------------------------------
+# -- binding-shift watch (FBK-B14) --------------------------------------------------------------------------
 
 def _rate(rows: Sequence[Mapping[str, Any]], pred: Callable[[Mapping[str, Any]], bool]) -> float:
     return sum(1 for r in rows if pred(r)) / len(rows) if rows else 0.0
@@ -416,7 +416,7 @@ def shifts(root: Path, workflow: str) -> list[dict[str, Any]]:
 
 
 def record_shifts(root: Path, workflow: str, keys: Mapping[str, Any]) -> list[dict[str, Any]]:
-    """Writes each new shift as a finding of the thread that completed the comparison (FBK §2.5): it enters
+    """Writes each new shift as a finding of the thread that completed the comparison (FBK-B14): it enters
     the friction lens like any finding and is never a route or a pause."""
     from tempergraph.docs import write_json
     from tempergraph.improve.record import findings_path, fingerprint, read_findings

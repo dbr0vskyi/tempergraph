@@ -1,6 +1,6 @@
-"""`tempergraph workflows list|register|unregister|reinstall` (UPD §2.8, CLI §2).
+"""`tempergraph workflows list|register|unregister|reinstall` (UPD-B20 to UPD-B24, CLI-B7, CLI-B8, CLI-B14).
 
-`list` and `register --check` are read-only and call no model (C13). Output is JSON with `schema_version`.
+`list` and `register --check` are read-only and call no model (OVR-B15). Output is JSON with `schema_version`.
 Exit codes: 0 done, 2 a refusal (nothing written), 1 an engine error.
 """
 

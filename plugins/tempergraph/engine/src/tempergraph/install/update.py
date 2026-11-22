@@ -1,4 +1,4 @@
-"""`update` (UPD §2.3 to §2.6): the plan, the install beside the current engine, the switch, rollback and
+"""`update` (UPD-B14, UPD-B6, UPD-B17): the plan, the install beside the current engine, the switch, rollback and
 `--prune-engines`. Deterministic, no model. Like `install`, this module imports only the standard library and
 the stdlib-only engine modules; registered workflows are reinstalled and checked inside the new environment.
 
@@ -58,7 +58,7 @@ def source_release(engine: Path) -> dict[str, Any]:
 
 
 def find_source() -> Path | None:
-    """UPD §2.3 step 1: the staged engine of the plugin copy that invoked the verb; no option names a path.
+    """UPD-B14, UPD-B6 step 1: the staged engine of the plugin copy that invoked the verb; no option names a path.
     Through the shim, the plugin copy is the one Claude Code names in `CLAUDE_PLUGIN_ROOT`."""
     here = envmod.staged_engine()
     if here is not None:
@@ -69,7 +69,7 @@ def find_source() -> Path | None:
 
 
 def index_roots(home: Path) -> list[Path]:
-    """The state roots of the machine index (CST §2.1) that still exist."""
+    """The state roots of the machine index (CST-B8) that still exist."""
     doc = _read(home / "index.json")
     got = doc.get("roots")
     roots = got if isinstance(got, list) else []
@@ -77,7 +77,7 @@ def index_roots(home: Path) -> list[Path]:
 
 
 def live_processes(roots: Sequence[Path]) -> list[dict[str, Any]]:
-    """Each live run with the engine its lock names (MIG §2.1); a lock is live while its holder file is."""
+    """Each live run with the engine its lock names (MIG-B8); a lock is live while its holder file is."""
     out = []
     for root in roots:
         for holder in sorted((root / "locks").glob("*/*.holder.json")) if (root / "locks").is_dir() else []:
@@ -102,7 +102,7 @@ def _alive(pid: int) -> bool:
 
 
 def thread_pins(roots: Sequence[Path]) -> list[dict[str, Any]]:
-    """Threads pinned to an engine (MIG §2.4), from each thread's `engine.json`."""
+    """Threads pinned to an engine (MIG-B12, MIG-B13, MIG-B14), from each thread's `engine.json`."""
     out = []
     for root in roots:
         for f in sorted((root / "runs").glob("*/*/engine.json")) if (root / "runs").is_dir() else []:
@@ -129,7 +129,7 @@ def store_layouts(home: Path, roots: Sequence[Path]) -> list[dict[str, Any]]:
 
 
 def plan(home: Path, engine: Path | None) -> dict[str, Any]:
-    """UPD §2.3 step 2: what an update would do; reads only."""
+    """UPD-B14, UPD-B6 step 2: what an update would do; reads only."""
     cur = envmod.current(home)
     if engine is None:
         return {"decision": "no_source", "current": cur}
@@ -168,7 +168,7 @@ ENGINE_SAYS = {
 
 
 def _plan_lines(p: dict[str, Any], installed: bool = False) -> list[dict[str, Any]]:
-    """UPD §2.4: one line per kind, each with a fixed key set."""
+    """UPD-B15: one line per kind, each with a fixed key set."""
     cur, target = p.get("current") or {}, p.get("target") or {}
     says = ENGINE_SAYS[p["decision"]].format(cur=cur.get("engine_version"), new=target.get("engine_version"))
     if installed:
@@ -226,7 +226,7 @@ def _report(out: IO[str], lines: list[dict[str, Any]], as_json: bool) -> None:
 
 
 def kept_engines(home: Path, roots: Sequence[Path]) -> dict[str, str]:
-    """UPD §2.2: the environments `--prune-engines` never removes, each with why."""
+    """UPD-B11, UPD-B12, UPD-B13: the environments `--prune-engines` never removes, each with why."""
     eng = envmod.engines_dir(home)
     kept: dict[str, str] = {}
     for name in ("current", "previous"):
@@ -261,7 +261,7 @@ def prune(home: Path, *, dry_run: bool = False) -> list[dict[str, Any]]:
 
 
 def rollback(home: Path, *, restore_backups: bool = False, dry_run: bool = False) -> tuple[int, list[dict[str, Any]]]:
-    """UPD §2.6: swap `current.json` and `previous.json`, unless a store's layout is one the previous engine
+    """UPD-B17: swap `current.json` and `previous.json`, unless a store's layout is one the previous engine
     cannot read; `--restore-backups` restores each such store's pre-migration backup when nothing ran since."""
     from tempergraph.store import migrate
 

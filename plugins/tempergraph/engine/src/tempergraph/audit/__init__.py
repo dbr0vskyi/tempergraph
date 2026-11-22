@@ -1,4 +1,4 @@
-"""`tempergraph audit` (AUD, ARC, PRA): advisory, read-only, model-free (contract C13).
+"""`tempergraph audit` (AUD, ARC, PRA): advisory, read-only, model-free (OVR-B15).
 
 Release 1 runs the `definition` and `host` layers and the prompt audit; the `history` layer (X2-9) and the
 tool-surface audit (TSA, X2-10) are release 2, so their rules are listed as skipped, never as passed.
@@ -69,7 +69,7 @@ def _owned(found: list[Finding]) -> list[AuditFinding]:
         out.append(AuditFinding(rule=f"{owner}:{f.code}", layer="definition", severity=f.severity,
                                 confidence=CONFIDENCE.get(f.code, "high"), unit=f.unit, owner=owner,
                                 statement=message or f.message, location=loc,
-                                remedy="See the owning check's rule" + (" (LIF §2.1)" if lint else " (WFM §2.2)")))
+                                remedy="See the owning check's rule" + (" (LIF-B12)" if lint else " (WFM-B12)")))
     return out
 
 
@@ -87,13 +87,13 @@ def _readiness(spec: WorkflowSpec, already: set[str | None]) -> list[AuditFindin
                                 + (f" ({'; '.join(g.findings)})" if g.findings else ""),
                                 evidence={"criteria": g.criteria, "blockers": g.blockers,
                                           "calibration_cases": g.calibration_cases, "acceptance": g.acceptance},
-                                remedy="Fix the criteria the report names; calibrate the judge (LIF §2.2, JCL)"))
+                                remedy="Fix the criteria the report names; calibrate the judge (LIF-B13, JCL)"))
     return out
 
 
 def audit(spec: WorkflowSpec, layers: set[Layer], ctx: AuditContext, *, manifest: Any = None,
           stamp: dict[str, Any] | None = None) -> AuditReport:
-    """AUD §2.1: pure over its inputs, apart from the host layer's read-only probes."""
+    """AUD-B11, AUD-B6, AUD-B9: pure over its inputs, apart from the host layer's read-only probes."""
     rep = AuditReport(workflow=spec.name, version=spec.version, engine_version=ENGINE_VERSION,
                       window_days=ctx.window_days, show_all=ctx.show_all)
     found = validate(spec, ctx.caps)
@@ -148,7 +148,7 @@ _NOT_BUILT = {
 
 
 def _guarded(rep: AuditReport, layer: str, fn: Callable[[], list[AuditFinding]]) -> list[AuditFinding]:
-    """AUD §4: a rule that raises is skipped with reason `rule error`; the report continues."""
+    """AUD-B15, AUD-B9, AUD-B2: a rule that raises is skipped with reason `rule error`; the report continues."""
     try:
         return fn()
     except Exception as exc:  # noqa: BLE001
@@ -173,7 +173,7 @@ def _narrow(spec: WorkflowSpec, findings: list[AuditFinding], ctx: AuditContext)
 
 
 def _dedupe(findings: list[AuditFinding]) -> list[AuditFinding]:
-    """One finding per (rule, unit, item) (AUD §2.3)."""
+    """One finding per (rule, unit, item) (AUD-B7, AUD-B12)."""
     seen: set[tuple[Any, ...]] = set()
     out = []
     for f in findings:
@@ -192,7 +192,7 @@ def _owned_counts(owned: list[AuditFinding]) -> list[dict[str, Any]]:
 
 
 def audit_layers(given: list[str] | None) -> set[Layer]:
-    """`--layer` given: those; otherwise every layer whose inputs exist (AUD §2.1)."""
+    """`--layer` given: those; otherwise every layer whose inputs exist (AUD-B11, AUD-B6, AUD-B9)."""
     return set(given) if given else {"definition", "host", "history"}  # type: ignore[arg-type]
 
 

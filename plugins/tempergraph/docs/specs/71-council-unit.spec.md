@@ -1,149 +1,121 @@
----
-title: Council unit
-type: component
-status: review
-prefix: CNL
-adrs: [0062, 0063]
----
-
 # Council unit
 
-## 1. Overview
+## Purpose
 
-A **council** puts one question to several model sessions, its **members**, and combines what they say into one artifact: a synthesis written by a **chair**, a decision tallied by the engine from votes, or a ranking aggregated from peer ranks. It suits questions with no single checkable answer where several perspectives help: a design choice, a risk call, a go or no-go, a review through several lenses. Members answer blind first; deliberation rounds are opt-in and anonymized; every outcome is derived by rule; and the council's output goes to the gate's one independent judge like any step's ([ADR-0063](../adr/0063-council-is-a-gated-step-with-engine-tallied-outcomes.adr.md), [R-061](../research/R-061-councils-debate-and-voting.rsrch.md)). A council is a step, never a judge.
+A council puts one question to several model sessions, its members, and combines what they say into one artifact: a synthesis written by a chair, a decision tallied by the engine from votes, or a ranking aggregated from peer ranks. It suits questions with no single checkable answer where several perspectives help: a design choice, a risk call, a go or no-go, a review through several lenses. Members answer blind first; deliberation rounds are opt-in and anonymized; every outcome is derived by rule; and the council's output goes to the gate's one independent judge like any step's ([ADR-0063](../adr/0063-council-is-a-gated-step-with-engine-tallied-outcomes.adr.md), [ADR-0062](../adr/0062-new-node-kinds-keep-the-gated-unit.adr.md), [R-061](../research/R-061-councils-debate-and-voting.rsrch.md)). A council is a step, never a judge, and any executor can host its members, chair and judge. Workflow authors and the compiler depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-## 2. Contract
+## Behaviours
 
-### 2.1 Declaration
+### CNL-B9 Declaration
 
-| Type | Field | Kind | Meaning |
-|---|---|---|---|
-| `UnitSpec` (CON §2.1) | `council` | `CouncilSpec`, for kind `council` | |
-| `CouncilSpec` | `question` | template (CON §2.2) | The brief every member gets; the inputs and references are the same for all. |
-| | `members` | list of 2–7 `MemberSpec` | |
-| | `mode` | `synthesize` \| `vote` \| `rank` | §2.3 |
-| | `options` | list of slugs, or an artifact key of a list | `vote` only: what members choose among (2–10). |
-| | `rule` | `majority` \| `supermajority` \| `unanimous` \| `plurality`, default `majority` | `vote` only. `supermajority` is at least two thirds of valid ballots. |
-| | `rounds` | int 0–3, default 0 | Deliberation rounds after the blind round 0. |
-| | `anonymize` | bool, default true | Peers are shown as `Member A`, `Member B`… in an order fixed per attempt and recorded. |
-| | `chair` | `ChairSpec`, required for `synthesize`, optional otherwise | |
-| | `quorum` | int, default all members | Valid answers a round needs to count. |
-| | `on_no_decision` | `escalate` \| `retry` \| `stop`, default `escalate` | §2.4 |
-| | `retry_scope` | `all` \| `chair`, default `all` | `chair` keeps the members' final positions and re-runs only the chair (`synthesize`, `rank`). |
-| | `cost_cap_usd` | float, optional | Per attempt; the remaining sessions of the attempt are drained when reached. |
-| `MemberSpec` | `name` | slug | Unique in the council. |
-| | `executor`, `model` | executor name, alias (CON §2.4) | Resolved per member on the step layer. |
-| | `stance` | text ≤ 400 chars | The member's lens or role ("security reviewer", "argue against the change"). |
-| | `tools` | read-only `ToolCapability` list | Never `edit`, `write`, `shell` or a writing MCP tool. |
-| | `timeout_s`, `idle_s` | positive int, optional | |
-| `ChairSpec` | `executor`, `model`, `prompt` | optional | The chair sees the question, every member's final answer under its label, and the tally if any. |
+WHEN a unit of kind `council` is declared THE engine SHALL read its `council` field ([CON](01-contracts.spec.md)) as `CouncilSpec`: `question` (a template, the brief every member gets with the same inputs and references), `members` (2 to 7 `MemberSpec`), `mode` (`synthesize`, `vote` or `rank`), `options` (`vote` only: 2 to 10 slugs, or an artifact key of a list), `rule` (`vote` only: `majority`, `supermajority` of at least two thirds of valid ballots, `unanimous` or `plurality`, default `majority`), `rounds` (0 to 3 deliberation rounds after the blind round 0, default 0), `anonymize` (default true: peers shown as `Member A`, `Member B` in an order fixed per attempt and recorded), `chair` (`ChairSpec` of optional `executor`, `model` and `prompt`, required for `synthesize`), `quorum` (valid answers a round needs, default all members), `on_no_decision` (`escalate`, `retry` or `stop`, default `escalate`), `retry_scope` (`all`, or `chair` keeping members' final positions in `synthesize` and `rank`) and `cost_cap_usd` (per attempt); each `MemberSpec` having a unique slug `name`, `executor` and `model` resolved on the step layer, a `stance` of at most 400 characters, read-only `tools` (never `edit`, `write`, `shell` or a writing MCP tool), and optional `timeout_s` and `idle_s`.
 
-The council produces three artifacts, keyed by the unit: `decision` (the chair's answer, or for a chairless `vote` or `rank` the engine-written outcome), `positions` (each member's final answer and its round history, under labels) and `tally` (`vote` and `rank`: the counts, the rule and the outcome).
+- GIVEN a council with a member granted `edit` WHEN validated THEN it is refused
 
-### 2.2 Member answer block
+### CNL-B10 Produced artifacts
 
-A member's answer is free text ending in one fenced JSON block, which the engine parses, like a judgement block (CON §2.8).
+WHEN a council attempt ends THE engine SHALL produce, keyed by the unit, `decision` (the chair's answer, or for a chairless `vote` or `rank` the engine-written outcome), `positions` (each member's final answer and its round history, under labels) and `tally` (`vote` and `rank`: the counts, the rule and the outcome).
 
-| Field | Modes | Meaning |
-|---|---|---|
-| `position` | all | One line: the member's answer. |
-| `choice` | `vote` | One of `options`, or `abstain`. |
-| `ranking` | `rank`, from round 0's ranking pass | Peer labels best first; the member's own label is never listed. |
-| `confidence` | all | Float in [0,1]. |
-| `changed`, `why_changed` | rounds ≥ 1 | Whether the position moved since the last round, and why. |
-| `dissent` | rounds ≥ 1, chair | Where the author still disagrees with the others; empty only if it does not. |
+- GIVEN a chairless `vote` council WHEN it ends THEN `decision` is the engine-written outcome
 
-A block that does not parse is re-asked once; a second failure is a **spoiled** answer and counts against the quorum.
+### CNL-B11 Member answer block
 
-### 2.3 Modes and outcome
+WHEN a member answers THE engine SHALL parse the fenced JSON block that ends its free text, like a judgement block ([CON](01-contracts.spec.md)), with `position` (one line), `choice` (`vote`: one of `options` or `abstain`), `ranking` (`rank`: peer labels best first, never its own), `confidence` (in [0,1]), `changed` and `why_changed` (rounds 1 and later), and `dissent` (rounds 1 and later and the chair: where the author still disagrees, empty only if it does not), re-ask once on a block that does not parse and count a second failure as a spoiled answer against the quorum.
 
-| Mode | Sessions per attempt (n members, r rounds) | Outcome by |
-|---|---|---|
-| `synthesize` | n × (r + 1) + 1 chair | The chair's answer; its `dissent` section is required when any member's final position differs |
-| `vote` | n × (r + 1) (+ 1 if a chair writes the rationale) | Engine tally of final-round `choice`s by `rule`; abstentions and spoiled ballots do not count as votes |
-| `rank` | n × (r + 1) + n ranking passes (+ 1 chair) | Engine Borda count over peer rankings (k−1 points for first of k); ties broken by mean member confidence, then label order |
+- GIVEN a block that fails to parse twice WHEN the round closes THEN the answer is spoiled and counts against the quorum
 
-### 2.4 No decision
+### CNL-B1 Blind first round
 
-A `vote` whose rule is not met, a quorum not reached, or a `rank` with an exact tie after both breaks has outcome `no_decision`. With `on_no_decision: escalate` the gate pauses with kind `escalation`, shows `positions` and `tally`, and accepts `answer:decision=<option>` from a person ([ASK §2.3](73-ask-unit.spec.md) decision grammar), recorded as `chosen_by = person`. `retry` charges the retry budget and runs the council again; `stop` stops.
+WHEN round 0 runs THE engine SHALL give each member the question and its own stance and no other member's text, label, executor or model.
 
-### 2.5 Compilation
+- GIVEN a council of three members WHEN round 0 runs THEN no prompt contains another member's text
 
-The council's step node is a subgraph: one member node dispatch per (round, member), an engine-owned round barrier that waits for every member's answer, failure or spoil, a pure tally node, and the chair node. Each member session is checkpointed on its own, so a crash resumes only unfinished sessions. The judge, gate and human nodes are the unit's usual ones ([CMP §2.1](03-compiler-and-flow.spec.md)). Members run in the run's worktree read-only, fingerprinted before and after like parallel branches ([WSP §2.1](13-workspace-and-concurrency.spec.md)); a member that changed the workspace fails.
+### CNL-B2 Anonymized rounds
 
-Session kinds: `member`, `member_reask`, `chair` (CON §2.6); session keys `<unit>.<attempt>.member.<name>.<round>`, `<unit>.<attempt>.chair`.
+WHEN a deliberation round runs with `anonymize: true` THE engine SHALL show each member the others' previous answers as `Member A`, `Member B` (its own omitted) in the order recorded for the attempt, and require `changed`, `why_changed` and `dissent`.
 
-### 2.6 What is refused
+- GIVEN `rounds: 1` WHEN round 1 runs THEN each member sees the others' round-0 answers under labels and must fill `changed`, `why_changed` and `dissent`
 
-| Refused before a run (`error`) |
-|---|
-| Fewer than 2 or more than 7 members; two members with one name |
-| A member tool that is not read-only by the engine catalog ([GRD](06-independence-guard.spec.md)) |
-| `synthesize` without a chair; `vote` without options or with fewer than 2; `options` from an artifact no earlier unit produces |
-| `rule` or `options` outside `vote`; `retry_scope: chair` with `vote` |
-| A council in a map item or a parallel branch whose block is a writer |
-| No judge on the council's gate (contract C4 applies to model work) |
+### CNL-B12 Modes and outcome
 
-Warnings: every member bound to one model family (audit `council-one-family`); `rule: majority` with an even member count; `rounds > 0` with `anonymize: false`.
+WHEN a council's outcome is derived THE engine SHALL derive it as follows: for `synthesize` (n × (r + 1) member sessions and 1 chair), take the chair's answer, its dissent section required when any member's final position differs and its absence a retryable built-in check FAIL; for `vote` (n × (r + 1), plus 1 if a chair writes the rationale), tally final-round `choice`s by `rule`, abstentions and spoiled ballots not counting as votes; and for `rank` (n × (r + 1) plus n ranking passes, plus 1 chair), take a Borda count over peer rankings (k−1 points for first of k), ties broken by mean member confidence then label order; and record per round how many members changed position.
 
-## 3. Behaviours
+- GIVEN a chair answer without dissent while positions differ WHEN checked THEN the built-in check fails and the attempt may retry
 
-**CNL-B1 Blind first round.** Given a council of three members, when round 0 runs, then each member's prompt contains the question and its stance and no other member's text, label, executor or model.
+### CNL-B3 Tally by rule
 
-**CNL-B2 Anonymized rounds.** Given `rounds: 1` and `anonymize: true`, when round 1 runs, then each member sees the others' round-0 answers as `Member A`, `Member B` (its own omitted), in the order recorded for the attempt, and must fill `changed`, `why_changed` and `dissent`.
+WHEN a `vote` council's final ballots are counted THE engine SHALL write `tally` and the outcome, no model reading the ballots to decide.
 
-**CNL-B3 Tally by rule.** Given a `vote` council of five members with options `ship`, `hold`, when the final ballots are counted, then the engine writes `tally` and the outcome; no model reads the ballots to decide.
+- GIVEN options `ship`, `hold` and 3 ship, 2 hold under `majority` WHEN tallied THEN the outcome is `ship`
+- GIVEN 3 ship, 2 hold under `supermajority` WHEN tallied THEN the outcome is `no_decision`
+- GIVEN 2 ship, 2 hold, 1 spoiled, quorum 4, under `majority` WHEN tallied THEN the outcome is `no_decision` (tie)
+- GIVEN 2 ship, 1 hold, 2 abstain under `plurality` WHEN tallied THEN the outcome is `ship`
+- GIVEN 4 ship, 1 spoiled, quorum 5, under `majority` WHEN tallied THEN the outcome is `no_decision` (quorum)
 
-| Ballots | Rule | Outcome |
-|---|---|---|
-| 3 ship, 2 hold | majority | ship |
-| 3 ship, 2 hold | supermajority | no_decision |
-| 2 ship, 2 hold, 1 spoiled, quorum 4 | majority | no_decision (tie) |
-| 2 ship, 1 hold, 2 abstain | plurality | ship |
-| 4 ship, 1 spoiled, quorum 5 | majority | no_decision (quorum) |
+### CNL-B13 No decision
 
-**CNL-B4 Judge grades the council.** Given a `synthesize` council, when its gate runs, then the judge's subject is `decision` and its references include `positions`, so a criterion such as "the decision states every dissent" is gradable; the judge session is fresh, read-only and none of the members.
+WHEN a `vote` misses its rule, a round misses its quorum, or a `rank` ties exactly after both breaks THE engine SHALL give outcome `no_decision` and, with `on_no_decision: escalate`, pause with kind `escalation` showing `positions` and `tally` and accept `answer:decision=<option>` from a person ([ASK](73-ask-unit.spec.md) decision grammar), recorded as `chosen_by = person`; with `retry` charge the retry budget and run the council again; with `stop` stop.
 
-**CNL-B5 Route on a decision.** Given a council followed by a switch whose predicate reads `tally.outcome`, when the gate passes, then the switch picks the arm by that value with no model call ([CMP §2.2](03-compiler-and-flow.spec.md)).
+- GIVEN `no_decision` and `escalate` WHEN a person answers `answer:decision=hold` THEN the decision is `hold` with `chosen_by = person`
 
-**CNL-B6 Mixed executors.** Given members on `claude`, `antigravity` and `messages-api`, when preflight runs, then each member's alias and tools are checked against its own executor and any gap refuses the start with exit 2; the chair and the judge are resolved on their own layers.
+### CNL-B14 Compilation
 
-**CNL-B7 Chair-only retry.** Given `retry_scope: chair` and a judge RETRY whose unmet blockers concern the synthesis, when the retry runs, then only the chair session runs, with the judge's notes, and the members' recorded positions are reused.
+WHEN a council compiles THE compiler SHALL make its step node a subgraph of one member node dispatch per round and member, an engine-owned round barrier that waits for every member's answer, failure or spoil, a pure tally node and the chair node, checkpoint each member session on its own so a crash resumes only unfinished sessions, use the unit's usual judge, gate and human nodes ([CMP-B9](03-compiler-and-flow.spec.md)), use session kinds `member`, `member_reask` and `chair` with keys `<unit>.<attempt>.member.<name>.<round>` and `<unit>.<attempt>.chair`, and run members in the run's worktree read-only, fingerprinted before and after like parallel branches ([WSP-B11](13-workspace-and-concurrency.spec.md)), a member that changed the workspace failing with the written paths reported.
 
-**CNL-B8 Cost cap.** Given `cost_cap_usd: 2` and members whose reported cost reaches 2 during round 1, when the cap is reached, then no new member session starts, running ones finish, and the attempt ends `cap_reached` ([BUD](08-budgets-and-failures.spec.md)).
+- GIVEN a crash after two of three round-0 members finish WHEN resumed THEN one member session runs
 
-## 4. Error conditions
+### CNL-B15 Member failures
 
-| Type | Result |
-|---|---|
-| A member session fails (infra) | Counted as missing for the round; the round still closes; below quorum → `no_decision` |
-| Every member fails on infra | Infra failure of the attempt ([BUD](08-budgets-and-failures.spec.md)), never a pause |
-| A member writes to the workspace | Member failed; the write is reported with paths |
-| Chair answer has no dissent section when positions differ | Built-in check FAIL, retryable |
+WHEN a member session fails on infrastructure THE engine SHALL count it missing for the round and still close the round, below quorum giving `no_decision`, and when every member fails on infrastructure end the attempt as an infra failure ([BUD](08-budgets-and-failures.spec.md)), never a pause.
 
-## 5. Design notes
+- GIVEN every member failing on infrastructure WHEN the round closes THEN the attempt is an infra failure and no pause is raised
 
-- Round 0 blind and rounds opt-in follow R-061 K2 and K4: most of the benefit of debate comes from independent answers combined, and rounds invite conformity.
-- Members ask for dissent explicitly because withheld dissent removes the gain of discussion (R-061 K5).
-- The engine records per round how many members changed position, so the audit can show whether rounds pay ([ARC](56-audit-rule-catalog.spec.md) `council-rounds-no-gain`).
-- Judge panels stay deferred ([JCL §5](50-judge-calibration.spec.md)); a council feeds one calibratable judge.
-- Any of the four executors can host members, chairs and the judge; nothing in a council needs a capability a plain step does not.
+### CNL-B16 What is refused
 
-## 6. Acceptance criteria
+WHEN a workflow with a council is validated THE engine SHALL refuse with an `error` fewer than 2 or more than 7 members or two with one name; a member tool the engine catalog does not hold read-only ([GRD](06-independence-guard.spec.md)); `synthesize` without a chair; `vote` without options or with fewer than 2; `options` from an artifact no earlier unit produces; `rule` or `options` outside `vote`; `retry_scope: chair` with `vote`; a council in a map item or in a parallel branch whose block is a writer; and no judge on the council's gate (OVR-B6); and SHALL warn on every member bound to one model family (audit `council-one-family`), `rule: majority` with an even member count, and `rounds > 0` with `anonymize: false`.
 
-- [ ] CNL-AC-1 Every row of §2.6 has a fixture workflow that fails validation with its own finding code.
-- [ ] CNL-AC-2 A source test shows no model call in the tally or Borda code.
-- [ ] CNL-AC-3 Every row of the CNL-B3 table holds offline with scripted members.
-- [ ] CNL-AC-4 A crash after two of three round-0 members finish resumes with one member session, not three.
-- [ ] CNL-AC-5 No round-0 prompt contains another member's text (prompt-capture test).
-- [ ] CNL-AC-6 The run detail shows members, rounds, changes per round, the tally and the outcome ([RDD](31-run-detail-document.spec.md)).
+- GIVEN `synthesize` without a chair WHEN validated THEN it is refused with its own finding code
+
+### CNL-B4 Judge grades the council
+
+WHEN a council's gate runs THE gate SHALL judge `decision` as the subject with `positions` among the references, in a fresh read-only judge session that is none of the members.
+
+- GIVEN a `synthesize` council WHEN its gate runs THEN a criterion such as "the decision states every dissent" is gradable
+
+### CNL-B5 Route on a decision
+
+WHEN a switch after a council reads `tally.outcome` THE engine SHALL pick the arm by that value with no model call ([CMP-B10](03-compiler-and-flow.spec.md)).
+
+- GIVEN a switch on `tally.outcome` WHEN the gate passes THEN the arm is picked with no model call
+
+### CNL-B6 Mixed executors
+
+WHEN a council's members name different executors THE preflight SHALL check each member's alias and tools against its own executor, refuse any gap with exit 2, and resolve the chair and the judge on their own layers.
+
+- GIVEN members on `claude`, `antigravity` and `messages-api` WHEN preflighted THEN each is checked against its own executor
+
+### CNL-B7 Chair-only retry
+
+WHEN a judge RETRY's unmet blockers concern the synthesis under `retry_scope: chair` THE engine SHALL run only the chair session, with the judge's notes, reusing the members' recorded positions.
+
+- GIVEN `retry_scope: chair` and a RETRY WHEN the retry runs THEN only the chair session runs
+
+### CNL-B8 Cost cap
+
+WHEN the members' reported cost reaches `cost_cap_usd` during an attempt THE engine SHALL start no new member session, let running ones finish, and end the attempt `cap_reached` ([BUD](08-budgets-and-failures.spec.md)).
+
+- GIVEN `cost_cap_usd: 2` reached during round 1 WHEN capped THEN no new session starts and the attempt ends `cap_reached`
+
+## Acceptance criteria
+
+- CNL-AC1 (CNL-B16, CNL-B9): Every refusal of CNL-B16 has a fixture workflow that fails validation with its own finding code
+- CNL-AC2 (CNL-B3, CNL-B12, CNL-B5): A source test shows no model call in the tally or Borda code
+- CNL-AC3 (CNL-B3, CNL-B13, CNL-B11, CNL-B15): Every scenario of CNL-B3 holds offline with scripted members
+- CNL-AC4 (CNL-B14): A crash after two of three round-0 members finish resumes with one member session, not three
+- CNL-AC5 (CNL-B1, CNL-B2): No round-0 prompt contains another member's text (prompt-capture test)
+- CNL-AC6 (CNL-B10, CNL-B12): The run detail shows members, rounds, changes per round, the tally and the outcome ([RDD](31-run-detail-document.spec.md))
+- CNL-AC7 (CNL-B4, CNL-B6, CNL-B7, CNL-B8): Fixtures cover the judge's subject and references, a mixed-executor preflight refusal, a chair-only retry and a cost cap mid-round
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should a person's `answer:decision` at a no-decision pause count as a label for calibrating the council's judge? | Owner, with [FBK](41-feedback-and-judge-reliability.spec.md) |
-
-## References
-
-[CON](01-contracts.spec.md) · [CMP](03-compiler-and-flow.spec.md) · [JDG](05-judge-and-verdict.spec.md) · [ADR-0063](../adr/0063-council-is-a-gated-step-with-engine-tallied-outcomes.adr.md) · [R-061](../research/R-061-councils-debate-and-voting.rsrch.md)
+- Should a person's `answer:decision` at a no-decision pause count as a label for calibrating the council's judge? Owner: owner, with [FBK](41-feedback-and-judge-reliability.spec.md).

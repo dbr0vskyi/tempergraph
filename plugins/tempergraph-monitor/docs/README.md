@@ -21,7 +21,7 @@ Read in this order: the [overview](specs/00-overview.spec.md), the [data sources
 
 ## Shared types
 
-The monitor defines no engine type. Every document it reads is defined by the engine: the status document ([DUR §2.2](../../tempergraph/docs/specs/09-durability-and-resume.spec.md)), the detail document ([RDD](../../tempergraph/docs/specs/31-run-detail-document.spec.md)), run-log records and the activity journal ([EVT](../../tempergraph/docs/specs/30-run-events.spec.md)), the store layout ([LOS](../../tempergraph/docs/specs/33-local-observability-store.spec.md)), stats and heartbeats ([CST](../../tempergraph/docs/specs/34-central-run-stats.spec.md)) and the orchestration status document ([ORC §2.7](../../tempergraph/docs/specs/45-orchestration.spec.md)). The mod's own state shapes live in its type contract when code exists.
+The monitor defines no engine type. Every document it reads is defined by the engine: the status document ([DUR-B11](../../tempergraph/docs/specs/09-durability-and-resume.spec.md)), the detail document ([RDD](../../tempergraph/docs/specs/31-run-detail-document.spec.md)), run-log records and the activity journal ([EVT](../../tempergraph/docs/specs/30-run-events.spec.md)), the store layout ([LOS](../../tempergraph/docs/specs/33-local-observability-store.spec.md)), stats and heartbeats ([CST](../../tempergraph/docs/specs/34-central-run-stats.spec.md)) and the orchestration status document ([ORC-B25](../../tempergraph/docs/specs/45-orchestration.spec.md)). The mod's own state shapes live in its type contract when code exists.
 
 ## Status
 

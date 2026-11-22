@@ -1,4 +1,4 @@
-"""Prompt lint (LIF-AC-6): each planted defect is found once, and the clean fixtures raise nothing."""
+"""Prompt lint (LIF-AC6): each planted defect is found once, and the clean fixtures raise nothing."""
 
 from __future__ import annotations
 

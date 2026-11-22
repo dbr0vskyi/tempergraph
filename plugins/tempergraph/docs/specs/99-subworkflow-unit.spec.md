@@ -1,110 +1,77 @@
----
-title: Sub-workflow unit
-type: component
-status: review
-prefix: SWF
-adrs: [0133, 0040, 0062]
----
-
 # Sub-workflow unit
 
-## 1. Overview
+## Purpose
 
-A **sub-workflow unit** runs another registered workflow, the **child**, as one unit of a parent workflow. [CMP §2.2](03-compiler-and-flow.spec.md) states the shape in one row (a registered workflow compiled as a subgraph under the parent's checkpointer, depth at most three, no recursion) and [FLX §2.2](74-flow-extensions.spec.md) maps one over items; this spec fills in what that row leaves open: which version of the child runs, what it reads and gives back, where its records, spend, pauses, outcome and findings go ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F3, [ADR-0133](../adr/0133-a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md)).
+A sub-workflow unit runs another registered workflow, the child, as one unit of a parent workflow. The compiler states the shape (a registered workflow compiled as a subgraph under the parent's checkpointer, depth at most three, no recursion, [CMP](03-compiler-and-flow.spec.md)) and flow extensions map one over items ([FLX-B7](74-flow-extensions.spec.md)); this spec fills in which version of the child runs, what it reads and gives back, and where its records, spend, pauses, outcome and findings go ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F3, [ADR-0133](../adr/0133-a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md)). The first asker is a delivery workflow whose repository setup should be a workflow of its own, used alone or inside the delivery run; the design names no workflow ([ADR-0129](../adr/0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md)), and any registered workflow can be a child. Workflow authors, status, carrying ([CAR](96-run-state-on-a-branch.spec.md)), the monitor and the improvement loop depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-The first asker is a delivery workflow whose repository setup should be a workflow of its own, used alone or inside the delivery run. The design names no workflow ([ADR-0129](../adr/0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md)): any registered workflow can be a child.
+## Behaviours
 
-## 2. Contract
+### SWF-B1 A child as a unit
 
-```python
-Subworkflow(workflow="repo-setup", requires=">=0.3,<1",
-            inputs={"request": "request", "scope": "triage.scope"},   # child input <- parent request or artifact
-            produces=["overview", "setup_note"],                       # child artifact keys the parent sees
-            gate=Gate(check=..., judge=...), summary="Set up the repository")
-```
+WHEN a run reaches a sub-workflow unit THE engine SHALL run the child's units in the parent's workspace with records marked `child: <unit>`, run the child's outcome gate on its final criteria, run the parent's gate for the unit on what `produces` exposes, and let the parent's later units read `{<unit>.<key>}`.
 
-### 2.1 Declaration
+- GIVEN a parent `deliver` with `setup = Subworkflow(workflow="repo-setup", produces=["overview"])` WHEN the run reaches `setup` THEN the child runs in the parent's worktree, its outcome gate grades its final criteria, and the next parent unit reads `{setup.overview}`
 
-| Field | Kind | Meaning |
-|---|---|---|
-| `workflow` | workflow name | A registered workflow; resolved from the registry at run start ([PKG §2.3](88-workflow-package.spec.md)) |
-| `requires` | version range, optional | The child versions the parent was written for; outside it, validation fails `subworkflow-version` |
-| `inputs` | map child parameter → `request` \| `<unit>.<key>` \| a literal in quotes | Every required input parameter of the child must be mapped (`subworkflow-input-missing`) |
-| `produces` | list of the child's artifact or value keys | What the parent's later units, its gate and its outcome see, under the unit's name. Empty means the child's deliverables ([OUT §2.1](90-run-outcome.spec.md)) |
-| `gate` | as any unit | Grades what `produces` exposes against the parent's intermediate criteria for this unit |
+### SWF-B2 A child pause
 
-The child may hold no sub-workflow deeper than the limit of three, never the parent (directly or not), and never a built-in workflow with `builtin` set ([UWF](64-upgrade-workflow.spec.md)).
+WHEN a child unit pauses (approval, escalation, ask, wait) THE engine SHALL pause the parent with the child's payload, its `unit` reading `<unit>/<child unit>`, and `resume --decision …` SHALL answer it as any pause ([CMP-B17](03-compiler-and-flow.spec.md)), no parent unit after the sub-workflow starting before.
 
-### 2.2 Where the child runs
+- GIVEN the child's `survey` gate needs approval WHEN it pauses THEN `status` shows the parent paused at `setup/survey` and `resume deliver <task> --decision proceed` releases it
 
-| Concern | Rule |
-|---|---|
-| Version | The child's `workflow_version` at run start is recorded in `run_started.children` and in the thread's engine file ([MIG §2.1](62-state-and-run-migration.spec.md)); a resume finds a changed child as it finds a changed parent (MIG §2.5), per child |
-| Graph and state | A LangGraph subgraph under the parent's checkpointer and thread, checkpoint namespace `<unit>` (and `<unit>[<item>]` in a map) |
-| Workspace | The parent's workspace: the run worktree, or the item's writer worktree in a writing map. The child's own `run.workspace` is ignored and noted once |
-| Run log | The parent's `run.jsonl`; every record the child writes carries `child: <unit>` and its own `unit`. Session keys are `<unit>/<child unit>.<attempt>.<kind>`, so they never repeat a parent key |
-| Settings | The child's declared defaults, under every layer of the parent's run; a flag reaches a child unit as `<unit>/<child unit>.<key>` ([RST §2.3](80-run-settings-and-overrides.spec.md)) |
-| Spend | Counts against the parent's run cost cap and daily cap; reports show it as the unit's child figure, not summed into the parent's own steps ([OBS §2.2](15-observability-and-cost.spec.md)) |
-| Finalizer | The child's finalizer never runs; the parent's finalizer owns every side effect. A child that declares one is warned once at validation (`subworkflow-finalizer-skipped`) |
-| Outcome | The child's outcome gate runs as the child's last unit and grades the child's final criteria; its outcome record is kept under the parent's as `children[<unit>]` ([OUT §2.5](90-run-outcome.spec.md)). Then the parent's gate for the unit runs |
+### SWF-B3 A changed child under a paused parent
 
-### 2.3 Gates, pauses and trips back
+WHEN a parent paused inside a child resumes after the child's version changed THE engine SHALL apply the change-under-a-thread rules ([MIG-B15](62-state-and-run-migration.spec.md)) to the child's units, per child, with one `workflow_changed` record naming `child: <unit>`.
 
-| Event in the child | Effect |
-|---|---|
-| A child gate retries or goes back | Within the child, by the child's own budgets |
-| A child pause (approval, escalation, ask, wait) | The parent pauses with the child's payload; `unit` reads `<unit>/<child unit>` and `resume --decision …` answers it as any pause (CMP §4) |
-| A child judge's `defect_in` or `UPSTREAM` names a key the parent mapped into `inputs` | The child ends `upstream`; the parent's gate for the unit routes back to the parent unit that made that key, if that unit is in its `back_targets`, else it asks a person |
-| The child's outcome verdict is `unmet` or `needs_person` | The unit's gate fails with the child's failing final criteria as blockers |
+- GIVEN a parent paused inside `setup` on child `0.3.0+aaa` WHEN the child is upgraded to `0.3.1+bbb` and the parent resumes THEN one `workflow_changed` record names `child: setup`
 
-### 2.4 Learning and measurement
+### SWF-B4 One cap
 
-| Concern | Rule |
-|---|---|
-| Calibration | A child's judges keep the child's own bindings and cases: they grade the child's criteria ([JCL](50-judge-calibration.spec.md)) |
-| Findings | The loop files a finding about a child unit to the child workflow, `sides: [workflow]`, `workflow: <child>`, with the parent named ([SIL](16-self-improvement.spec.md)) |
-| Stats | The child's outcome record counts in the child's measures with `origin: subworkflow:<parent>`; promotion bars of the child count those runs only when the child's own window says so ([PRO §2.3](95-promotion-check.spec.md)) |
-| Upgrade | A parent's `upgrade` reads the child's change notes ([VER §2.6](61-version-metadata.spec.md), [WUP-B6](63-workflow-upgrade.spec.md)) |
+WHEN a child attempt would start at or over the parent's run cost cap THE engine SHALL drain the run with exit 5 reason `cost_cap` as for a parent attempt ([BUD](08-budgets-and-failures.spec.md)), the child's spend counting against the parent's run and daily caps and shown on its own line in reports, never summed into the parent's own steps ([OBS](15-observability-and-cost.spec.md)).
 
-## 3. Behaviours
+- GIVEN a parent cap of 5 USD with 4 USD spent WHEN a child attempt would cross it THEN the run drains with exit 5 `cost_cap` and the report shows the child's spend apart
 
-**SWF-B1 A child as a unit.** Given a parent `deliver` with unit `setup = Subworkflow(workflow="repo-setup", produces=["overview"])`, when the run reaches `setup`, then the child's units run in the parent's worktree with records marked `child: setup`, the child's outcome gate grades its final criteria, the parent's gate for `setup` grades `overview`, and the parent's next unit reads `{setup.overview}`.
+### SWF-B5 Upstream defect
 
-**SWF-B2 A child pause.** Given the child's `survey` gate needs approval, when it pauses, then `status` shows the parent paused at `setup/survey`, and `resume deliver <task> --decision proceed` releases it; no parent unit after `setup` started.
+WHEN a child judge's `defect_in` or `UPSTREAM` names a key the parent mapped into `inputs` THE engine SHALL end the child `upstream` and route the parent's gate for the unit back to the parent unit that made that key when it is in `back_targets`, else ask a person; and a child outcome verdict of `unmet` or `needs_person` SHALL fail the unit's gate with the child's failing final criteria as blockers, child gate retries and trips back staying within the child's own budgets.
 
-**SWF-B3 A changed child under a paused parent.** Given the parent paused inside `setup` on child version `0.3.0+aaa`, when the child is upgraded to `0.3.1+bbb` and the parent resumes, then MIG §2.5's rules apply to the child's units and one `workflow_changed` record names `child: setup`.
+- GIVEN `inputs={"scope": "triage.scope"}` and a child judge that puts a defect in `scope` WHEN the child ends THEN the parent's `setup` gate sends the run back to `triage` with the child's reason, once
 
-**SWF-B4 One cap.** Given a parent cap of 5 USD with 4 USD spent, when a child attempt would start at or over the cap, then the run drains with exit 5 reason `cost_cap` as for a parent attempt ([BUD §2](08-budgets-and-failures.spec.md)), and the report shows the child's spend on its own line.
+### SWF-B6 Refusals
 
-**SWF-B5 Upstream defect.** Given `inputs={"scope": "triage.scope"}` and a child judge that puts a defect in `scope`, when the child ends, then the parent's `setup` gate sends the run back to `triage` with the child's reason, once.
+WHEN a sub-workflow unit is validated THE engine SHALL refuse, with no spend, a child that names the parent directly or not (`subworkflow-recursive`), a nesting deeper than three (`subworkflow-depth`), an unmapped required input (`subworkflow-input-missing`), a child version outside `requires` (`subworkflow-version`), a child that is not registered or does not load (`subworkflow-unknown`, naming the child), a key in `produces` the child declares no producer for (`subworkflow-produces`), a child that needs git under a parent outside git (`needs_git`, [WSP-B15](13-workspace-and-concurrency.spec.md)), and a built-in workflow with `builtin` set as a child ([UWF](64-upgrade-workflow.spec.md)).
 
-**SWF-B6 Refusals.** Given a child that names the parent, a child below the depth limit of three, an unmapped required input, or a child outside `requires`, when validation runs, then it fails with `subworkflow-recursive`, `subworkflow-depth`, `subworkflow-input-missing` or `subworkflow-version`, with no spend.
+- GIVEN a child that names the parent WHEN validation runs THEN it fails `subworkflow-recursive` with no spend
 
-## 4. Error conditions
+### SWF-B7 Declaration
 
-| Condition | Result |
-|---|---|
-| The child is not registered, or does not load | Validation error `subworkflow-unknown`; the catalog names the child |
-| The child is removed while the parent is paused inside it | The resume refuses with exit 2 naming the child; `workflows register` restores it |
-| A key in `produces` the child never makes | Validation error `subworkflow-produces` when the child declares no producer for it; at run time a missing key fails the unit's gate check as a missing artifact |
-| The child needs git and the parent runs outside git | Validation error `needs_git` naming the child ([WSP §2.4](13-workspace-and-concurrency.spec.md)) |
+WHEN a workflow declares `Subworkflow(workflow=…, requires=…, inputs=…, produces=…, gate=…, summary=…)` THE engine SHALL resolve `workflow` from the registry at run start ([PKG-B15](88-workflow-package.spec.md)); read `requires` as the child version range the parent was written for; read `inputs` as child parameter to `request`, `<unit>.<key>` or a quoted literal; read `produces` as the child artifact or value keys the parent's later units, gate and outcome see under the unit's name, empty meaning the child's deliverables ([OUT-B8](90-run-outcome.spec.md)); grade with `gate` what `produces` exposes against the parent's intermediate criteria for the unit; and at run time fail the unit's gate check as a missing artifact for a `produces` key the child did not make.
 
-## 5. Design notes
+- GIVEN `produces=["overview"]` and a child run that made no `overview` WHEN the unit's gate checks THEN it fails as a missing artifact
 
-- A subgraph in the parent's thread keeps one checkpoint, one lock, one log and one cap per run, so `status`, `stop`, carrying ([CAR](96-run-state-on-a-branch.spec.md)) and the monitor need nothing new. A separate child run per unit (the batch shape) was rejected: two threads to resume, two caps, and a parent that cannot pause on the child's question ([ADR-0133](../adr/0133-a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md)).
-- The child's finalizer is skipped because the parent's finalizer is the one place a run leaves a trace outside its branch ([FIN](78-finalizer-contract.spec.md)).
-- The child keeps its own calibration and findings so that the same workflow, run alone or inside a parent, learns in one place.
+### SWF-B8 Where the child runs
 
-## 6. Acceptance criteria
+WHEN a child runs THE engine SHALL record its `workflow_version` at run start in `run_started.children` and the thread's engine file ([MIG-B8](62-state-and-run-migration.spec.md)); compile it as a LangGraph subgraph under the parent's checkpointer and thread, checkpoint namespace `<unit>` (`<unit>[<item>]` in a map); run it in the parent's workspace (the run worktree, or the item's writer worktree in a writing map), ignoring the child's own `run.workspace` with one note; write its records to the parent's `run.jsonl`, each carrying `child: <unit>` and its own `unit`, session keys being `<unit>/<child unit>.<attempt>.<kind>`; apply the child's declared defaults under every layer of the parent's run, a flag reaching a child unit as `<unit>/<child unit>.<key>` ([RST-B22](80-run-settings-and-overrides.spec.md)); never run the child's finalizer, warning once at validation `subworkflow-finalizer-skipped` for a child that declares one; keep the child's outcome record under the parent's as `children[<unit>]` ([OUT-B18](90-run-outcome.spec.md)); and refuse with exit 2 naming the child a resume whose child was removed while the parent was paused inside it, `workflows register` restoring it.
 
-- [ ] SWF-AC-1 SWF-B1 to SWF-B6 hold offline on stand-ins with an engine fixture parent and child, neither a shipped workflow.
-- [ ] SWF-AC-2 A parent run with a child leaves one `run.jsonl`, one checkpoint thread and one ledger row; every child record carries `child`.
-- [ ] SWF-AC-3 A carried parent paused inside its child resumes on a second state root ([CAR-AC-1](96-run-state-on-a-branch.spec.md)).
+- GIVEN a parent run with a child WHEN it ends THEN it left one `run.jsonl`, one checkpoint thread and one ledger row, every child record carrying `child`
+
+### SWF-B9 Learning and measurement
+
+WHEN a child's work is learned from and measured THE engine SHALL keep the child's judges on the child's own bindings and cases ([JCL](50-judge-calibration.spec.md)); file a finding about a child unit to the child workflow with `sides: [workflow]`, `workflow: <child>` and the parent named ([SIL](16-self-improvement.spec.md)); count the child's outcome record in the child's measures with `origin: subworkflow:<parent>`, in the child's promotion window only when that window says so ([PRO](95-promotion-check.spec.md)); and let a parent's `upgrade` read the child's change notes ([VER-B17](61-version-metadata.spec.md), [WUP-B6](63-workflow-upgrade.spec.md)).
+
+- GIVEN a child unit's friction finding WHEN the loop files it THEN it is filed to the child workflow with the parent named
+
+### SWF-B10 The child's finalizer and outcome gate stay its own
+
+WHEN a sub-workflow is the parent's last unit THE engine SHALL never run the child's finalizer from the parent, whose own finalizer can call the same code, and never skip the child's outcome gate when the parent's gate grades the same criteria, because the child's outcome record is what the child's measures read (ADR-0133, accepted 2026-11-22).
+
+- GIVEN a parent whose last unit is a child with a finalizer and whose final gate grades the child's criteria WHEN the run ends THEN the child's outcome gate ran, the child's finalizer did not, and the parent's finalizer ran once
+
+## Acceptance criteria
+
+- SWF-AC1 (SWF-B1, SWF-B2, SWF-B3, SWF-B4, SWF-B5, SWF-B6, SWF-B7, SWF-B9, SWF-B10): SWF-B1 to SWF-B6 hold offline on stand-ins with an engine fixture parent and child, neither a shipped workflow
+- SWF-AC2 (SWF-B8): A parent run with a child leaves one `run.jsonl`, one checkpoint thread and one ledger row; every child record carries `child`
+- SWF-AC3 (SWF-B8): A carried parent paused inside its child resumes on a second state root ([CAR-AC1](96-run-state-on-a-branch.spec.md))
 
 ## Open questions
 
-None. Closed with the owner's acceptance of ADR-0133 on 2026-11-22: a parent never runs the child's finalizer, even when the child is its last unit (the parent's finalizer can call the same code), and the child's outcome gate is never skipped (its outcome record is what the child's measures read).
-
-## References
-
-[CMP](03-compiler-and-flow.spec.md) · [FLX](74-flow-extensions.spec.md) · [MIG](62-state-and-run-migration.spec.md) · [OUT](90-run-outcome.spec.md) · [BUD](08-budgets-and-failures.spec.md) · [PKG](88-workflow-package.spec.md) · [R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md)
+- Not built yet: sub-workflows are release 3 work (third-release plan R3-T2). Owner: engine owner.

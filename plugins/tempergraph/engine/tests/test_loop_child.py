@@ -107,7 +107,7 @@ def test_no_ticket_without_a_fault_and_off_switch(repo: Path, monkeypatch: pytes
     assert go(repo, ex, task="L-8").exit_code is ExitCode.FINISHED and len(tickets()) == n
 
 
-def test_detached_site_is_constant() -> None:  # SEC §2.2
+def test_detached_site_is_constant() -> None:  # SEC-B7
     assert detach.DETACHED["tempergraph.improve.child"] == (("drain",),)
     assert child.main(["other"]) == 2
 

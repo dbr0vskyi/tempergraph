@@ -1,4 +1,4 @@
-"""Sinks for run rows and heartbeats (CST §2.3, §2.4), the fleet copy at home, and the readers (CST §2.5).
+"""Sinks for run rows and heartbeats (CST-B10, CST-B12, CST-B13, CST-B11), the fleet copy at home, and the readers (CST-B14, CST-B15, CST-B16).
 
 Nothing leaves the machine unless the operator lists a sink in `config/sinks.json` of the home folder or the
 state root (CST-B1). A run's exit appends a *reference* to its local stats row to each sink's outbox; the
@@ -34,14 +34,14 @@ from tempergraph.store.layout import now_iso
 
 SINKS_FILE = "sinks.json"
 ROW_KINDS = ("run", "heartbeat", "supervision", "session")
-DEFAULT_KINDS = ("run", "heartbeat", "supervision")  # `session` rows are opt-in (CST §2.2)
+DEFAULT_KINDS = ("run", "heartbeat", "supervision")  # `session` rows are opt-in (CST-B9)
 SLUG = re.compile(r"^[a-z0-9-]{1,40}$")
 WORD = re.compile(r"^[a-z0-9_:-]{1,40}$")
 STALE_S = 300
 FAILING_WARN_S = 7 * 86_400
 HEARTBEAT_S = 60.0
 ROLLUP_BY = ("machine", "user", "repo", "workflow", "executor", "model")
-# Fields copied as they are from a local `run` row: numbers, booleans and engine words only (CST §2.2).
+# Fields copied as they are from a local `run` row: numbers, booleans and engine words only (CST-B9).
 COPY = ("row_id", "kind", "schema_version", "machine_id", "workflow", "workflow_version", "segment", "executors",
         "models", "exit_code", "reason", "units_run", "repeats", "gate_verdicts", "escapes", "tokens", "sessions",
         "reported_sessions", "estimated_sessions", "unmeasured_sessions", "reported_cost_usd", "estimated_cost_usd",
@@ -50,7 +50,7 @@ COPY = ("row_id", "kind", "schema_version", "machine_id", "workflow", "workflow_
 
 
 class SinkConfigError(ValueError):
-    """A `sinks.json` the engine refuses (CST §4): exit 2 from the `stats` verbs."""
+    """A `sinks.json` the engine refuses (CST-B10, CST-B14, CST-B8): exit 2 from the `stats` verbs."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -120,7 +120,7 @@ def find(home: Path, name: str, state_root: Path | None = None) -> Sink | None:
     return next((s for s in load(home, state_root) if s.name == name), None)
 
 
-# -- identity (CST §2.4) ---------------------------------------------------------------------------------------
+# -- identity (CST-B11) ---------------------------------------------------------------------------------------
 
 
 def sink_key(sink: Sink) -> bytes | None:
@@ -203,7 +203,7 @@ def _repo_id(sink: Sink, key: bytes, who: _Who) -> str | None:
 
 
 def sink_row(row: dict[str, Any], sink: Sink, key: bytes) -> dict[str, Any]:
-    """The row a sink receives from a local `run` row: hashed names, no free text (CST §2.4, CST-B5)."""
+    """The row a sink receives from a local `run` row: hashed names, no free text (CST-B11, CST-B5)."""
     who = _who(row.get("state_root"))
     out = {k: row.get(k) for k in COPY}
     out["thread_hash"] = digest(key, str(row.get("thread_id")))
@@ -304,7 +304,7 @@ def enqueue_sessions(home: Path, sessions: list[dict[str, Any]], log: Path, mont
 
 
 def session_row(row: dict[str, Any], key: bytes) -> dict[str, Any]:
-    """The `session` row a sink receives: the thread hashed, no text (CST §2.2, §2.4)."""
+    """The `session` row a sink receives: the thread hashed, no text (CST-B9, CST-B11)."""
     out = {k: row.get(k) for k in ("row_id", "kind", "schema_version", "machine_id", "workflow", "workflow_version",
                                    "segment", "unit", "session_kind", "executor", "model", "tokens",
                                    "reported_cost_usd", "estimated_cost_usd", "duration_s", "slow_host", "outcome",
@@ -342,7 +342,7 @@ def _kept_rows(home: Path, kind: str, month: str, cache: dict[str, dict[str, dic
 
 
 def supervision_row(row: dict[str, Any], key: bytes) -> dict[str, Any]:
-    """The `supervision` row a sink receives (CST §2.2, SCO §2.7): figures and hashed ids only."""
+    """The `supervision` row a sink receives (CST-B9, SCO-B17): figures and hashed ids only."""
     out = {k: row.get(k) for k in ("row_id", "kind", "schema_version", "workflow", "closed_at", "marginal", "turn",
                                    "completeness")}
     out["machine_id"] = row.get("machine_id")
@@ -437,7 +437,7 @@ def _read_state(path: Path) -> dict[str, Any]:
 
 
 def flush(home: Path, state_root: Path | None = None) -> dict[str, Any]:
-    """`stats flush` and the detached flusher: deliver every outbox, in order, then sync (CST §2.3)."""
+    """`stats flush` and the detached flusher: deliver every outbox, in order, then sync (CST-B10, CST-B12, CST-B13)."""
     results = []
     names = sorted(p.stem for p in (home / "outbox").glob("*.jsonl")) if (home / "outbox").is_dir() else []
     for name in names:
@@ -449,7 +449,7 @@ def flush(home: Path, state_root: Path | None = None) -> dict[str, Any]:
 
 
 def warnings(home: Path, now: float | None = None) -> list[str]:
-    """One line per sink failing for 7 days or more (CST §2.3), for `status`."""
+    """One line per sink failing for 7 days or more (CST-B10, CST-B12, CST-B13), for `status`."""
     now = time.time() if now is None else now
     out = []
     folder = home / "outbox"
@@ -470,7 +470,7 @@ def _ts(text: Any) -> float | None:
         return None
 
 
-# -- heartbeat (CST §2.2) --------------------------------------------------------------------------------------
+# -- heartbeat (CST-B9) --------------------------------------------------------------------------------------
 
 
 def _live_threads(home: Path, now: float) -> list[dict[str, Any]]:
@@ -571,7 +571,7 @@ def on_record(log: Path, kind: str) -> None:
             write_heartbeats(home, root)
 
 
-# -- sync and the fleet copy (CST §2.3, LOS §2.2) --------------------------------------------------------------
+# -- sync and the fleet copy (CST-B10, CST-B12, CST-B13, LOS-B10, LOS-B11) --------------------------------------------------------------
 
 
 def _copy_new_bytes(src: Path, dst: Path, offset: int) -> int:
@@ -620,7 +620,7 @@ def _sync_one(home: Path, sink: Sink) -> dict[str, Any]:
     me = str(_machine(home).get("machine_id") or "unknown")
     key = sink_key(sink)
     pending: list[dict[str, Any]] = []
-    if key is not None:  # this machine's rows still in the outbox (CST §2.3 "adds this machine's own rows")
+    if key is not None:  # this machine's rows still in the outbox (CST-B10, CST-B12, CST-B13 "adds this machine's own rows")
         cache: dict[str, dict[str, dict[str, Any]]] = {}
         for e in _read_jsonl(outbox(home, sink.name)):
             local = _local_rows(home, str(e.get("month")), cache).get(str(e.get("row_id")))
@@ -663,11 +663,11 @@ def _rollup(dst: Path) -> None:
 
 
 def sync(home: Path, state_root: Path | None = None) -> dict[str, Any]:
-    """`stats sync`: pull every directory sink into the fleet copy; writes the fleet copy only (CST §2.5)."""
+    """`stats sync`: pull every directory sink into the fleet copy; writes the fleet copy only (CST-B14, CST-B15, CST-B16)."""
     return {"schema_version": 1, "sinks": [_sync_one(home, s) for s in load(home, state_root)]}
 
 
-# -- readers (CST §2.5) ----------------------------------------------------------------------------------------
+# -- readers (CST-B14, CST-B15, CST-B16) ----------------------------------------------------------------------------------------
 
 
 def _machine_labels(folders: Iterable[Path]) -> dict[str, str]:

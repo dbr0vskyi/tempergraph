@@ -13,7 +13,7 @@ Calibrating a judge by hand means writing cases, running the judge, and sharpeni
 
 ## Decision
 
-We will mark every gold case `holdout` when written and `tune` the first time it is shown to anyone editing that gate's brief, stance or criteria, with no way back. The acceptance bar is computed on holdout cases only ([JCL §2.1.1](../specs/50-judge-calibration.spec.md)).
+We will mark every gold case `holdout` when written and `tune` the first time it is shown to anyone editing that gate's brief, stance or criteria, with no way back. The acceptance bar is computed on holdout cases only ([JCL-B11](../specs/50-judge-calibration.spec.md)).
 
 ## Options considered
 

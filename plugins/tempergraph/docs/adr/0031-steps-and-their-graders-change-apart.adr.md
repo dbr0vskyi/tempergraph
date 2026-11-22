@@ -13,7 +13,7 @@ Once the loop proposes changes ([ADR-0030](0030-improvement-closes-through-measu
 
 ## Decision
 
-We will classify every proposal from the parsed workflow into **producer** classes (prompt, lessons, limits, model, flow) and **grader** classes (brief, criterion, check, judge model). A proposal may touch one side only. Producer proposals are scored on trial runs; grader proposals are scored on human labels and calibration cases with no step session. A **weakening** (a criterion removed, a severity lowered, a check that passes where it failed, a widened judge view, a budget raised above twice) can only be authored by a person, and its pull request is labelled ([PRP §2.4](../specs/40-improvement-proposals.spec.md)).
+We will classify every proposal from the parsed workflow into **producer** classes (prompt, lessons, limits, model, flow) and **grader** classes (brief, criterion, check, judge model). A proposal may touch one side only. Producer proposals are scored on trial runs; grader proposals are scored on human labels and calibration cases with no step session. A **weakening** (a criterion removed, a severity lowered, a check that passes where it failed, a widened judge view, a budget raised above twice) can only be authored by a person, and its pull request is labelled ([PRP-B14, PRP-B15](../specs/40-improvement-proposals.spec.md)).
 
 ## Options considered
 

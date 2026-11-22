@@ -1,4 +1,4 @@
-"""`AuditFinding` and `AuditReport` (CON §2.11, AUD §2.2 to §2.4): ordering, the quiet default view,
+"""`AuditFinding` and `AuditReport` (AUD (moved), AUD-B12, AUD-B13, AUD-B14): ordering, the quiet default view,
 ignores, the summary, `--fail-on`, and the text, JSON and SARIF forms."""
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ class AuditFinding:
         return self.rule, self.unit, self.item
 
     def shown(self) -> bool:
-        """The default view (AUD §2.3): error or warning, high or medium confidence, not ignored."""
+        """The default view (AUD-B7, AUD-B12): error or warning, high or medium confidence, not ignored."""
         return (self.ignored is None and self.severity in ("error", "warning")
                 and self.confidence in ("high", "medium"))
 
@@ -64,8 +64,8 @@ class Ignore:
 
 
 def parse_ignores(raw: Any) -> tuple[list[Ignore], list[str]]:
-    """`audit.ignore` of `tempergraph.json` (AUD §2.4): the ignores, and the problems that validation
-    refuses (AUD-AC-7: a missing reason; a bad date or shape)."""
+    """`audit.ignore` of `tempergraph.json` (AUD-B14): the ignores, and the problems that validation
+    refuses (AUD-AC7: a missing reason; a bad date or shape)."""
     out: list[Ignore] = []
     problems: list[str] = []
     if raw is None:
@@ -105,7 +105,7 @@ def apply_ignores(findings: list[AuditFinding], ignores: list[Ignore], today: dt
                 location={"file": "tempergraph.json", "field": "audit.ignore"}))
             continue
         if ig.lapsed(today):
-            continue  # AUD-AC-7: a lapsed `until` shows the finding again
+            continue  # AUD-AC7: a lapsed `until` shows the finding again
         for f in findings:
             if f.ignored is None and ig.matches(f) and not (f.rule.startswith("validate:") and f.severity == "error"):
                 f.ignored = {"reason": ig.reason, **({"until": ig.until.isoformat()} if ig.until else {})}
@@ -113,7 +113,7 @@ def apply_ignores(findings: list[AuditFinding], ignores: list[Ignore], today: dt
 
 
 def order(findings: list[AuditFinding], unit_order: tuple[str, ...]) -> list[AuditFinding]:
-    """Validation errors lead (AUD-B2); then severity, confidence, the rule's rank, unit order (AUD §2.2)."""
+    """Validation errors lead (AUD-B2); then severity, confidence, the rule's rank, unit order (AUD-B12, AUD-B13)."""
     pos = {u: i for i, u in enumerate(unit_order)}
 
     def key(f: AuditFinding) -> tuple[Any, ...]:
@@ -162,7 +162,7 @@ class AuditReport:
                                          f"{shown[0].statement}") if shown else None}
 
     def exit_code(self, fail_on: str) -> int:
-        """AUD-AC-5: 6 exactly when a non-ignored finding is at or above the level, else 0."""
+        """AUD-AC5: 6 exactly when a non-ignored finding is at or above the level, else 0."""
         if fail_on == "never":
             return 0
         top = SEVERITY_RANK[fail_on]

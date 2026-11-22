@@ -34,7 +34,7 @@ We will keep an orchestration's state as its file (intent), an append-only event
 
 ## Assumptions
 
-- Reading the status of up to 50 threads per pass is cheap enough; the run lifecycle stream requested from the observability design ([ORC §2.8](../specs/45-orchestration.spec.md) N2) makes it cheaper.
+- Reading the status of up to 50 threads per pass is cheap enough; the run lifecycle stream requested from the observability design ([ORC-B17, ORC-B24, ORC-B26](../specs/45-orchestration.spec.md) N2) makes it cheaper.
 
 ## Consequences
 

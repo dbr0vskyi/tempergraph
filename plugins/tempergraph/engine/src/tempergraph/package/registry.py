@@ -1,4 +1,4 @@
-"""The home workflow registry, `registry.json` (UPD §2.8, ADR-0060), and the `workflows` verbs' logic.
+"""The home workflow registry, `registry.json` (UPD-B20 to UPD-B24, ADR-0060), and the `workflows` verbs' logic.
 
 The registry lives in the home folder, outside every engine environment. No verb but `unregister` removes
 an entry; a path that disappeared keeps its entry as `missing`. Loading and validation call no model.
@@ -103,7 +103,7 @@ def check_package(path: Path, caps: Mapping[str, Capabilities], entry: dict[str,
     if (e.get("kind") == "plugin" and last_version == loaded.spec.version and last_wv
             and last_wv != loaded.workflow_version):
         findings.append(Finding("version-not-bumped", None, f"content changed under version {last_version}; "
-                                "the plugin cache is keyed by the version string (VER §2.4)", "warning"))
+                                "the plugin cache is keyed by the version string (VER-B14, VER-B15)", "warning"))
     e.update(version=loaded.spec.version, workflow_version=loaded.workflow_version,
              requirements_digest=requirements_digest(deps))
     e.pop("reason", None)
@@ -123,7 +123,7 @@ def check_package(path: Path, caps: Mapping[str, Capabilities], entry: dict[str,
 
 def register(path: Path, caps: Mapping[str, Capabilities], *, check_only: bool = False,
              home: Path | None = None) -> Checked:
-    """`workflows register <path> [--check]`: a local source that loads and validates (UPD §2.8)."""
+    """`workflows register <path> [--check]`: a local source that loads and validates (UPD-B20 to UPD-B24)."""
     root = path.expanduser().resolve()
     if root.is_relative_to(plugin_cache().resolve()):
         raise RegistryRefusal("plugin-cache-path", f"{root} is in Claude Code's plugin cache; installed workflow "
@@ -163,7 +163,7 @@ def live_threads(name: str, state_roots: list[Path]) -> list[str]:
 
 
 def unregister(name: str, state_roots: list[Path], *, home: Path | None = None) -> dict[str, Any]:
-    """Remove the entry only, never files; refused while a thread of it is live (UPD §2.8)."""
+    """Remove the entry only, never files; refused while a thread of it is live (UPD-B20 to UPD-B24)."""
     entries = read_entries(home)
     entry = next((e for e in entries if e["name"] == name), None)
     if entry is None:
@@ -179,7 +179,7 @@ def reinstall(names: list[str] | None, caps: Mapping[str, Capabilities], *, home
               path_of: Callable[[dict[str, Any]], Path] | None = None, installer: Installer | None = None,
               engine: str | None = None) -> list[Checked]:
     """Dependencies into the current environment (pending before T8.2), then load and validate; clears a pin
-    that no longer applies (UPD §2.8)."""
+    that no longer applies (UPD-B20 to UPD-B24)."""
     entries = read_entries(home)
     chosen = entries if names is None else [e for e in entries if e["name"] in names]
     unknown = set(names or ()) - {str(e["name"]) for e in entries}
@@ -203,7 +203,7 @@ Installer = Callable[[str, list[str]], str | None]  # (workflow name, requiremen
 
 
 def install_dependencies(got: Checked, installer: Installer | None, engine: str) -> str | None:
-    """UPD §2.8: the package's declared requirements, through the dependency gate, into this environment.
+    """UPD-B20 to UPD-B24: the package's declared requirements, through the dependency gate, into this environment.
     Returns the reason they are not installed, or None. Without an installer nothing is installed and an
     entry that declares requirements stays `dependencies: pending`."""
     from tempergraph.package.manifest import gate_dependencies
@@ -259,7 +259,7 @@ def after_update(caps: Mapping[str, Capabilities], *, previous: str | None, engi
                  installer: Installer | None = None, cache: Path | None = None,
                  home: Path | None = None) -> list[Checked]:
     """`update` step 6 inside the new environment: reconcile the registry, install every entry's
-    dependencies, load and validate each, and pin what broke. No entry is ever removed (UPD-AC-7)."""
+    dependencies, load and validate each, and pin what broke. No entry is ever removed (UPD-AC7)."""
     before = {str(e.get("name")): e.get("state") for e in read_entries(home)}
     reconcile(caps, cache=cache, home=home)
     out: list[Checked] = []
@@ -306,7 +306,7 @@ def cached_plugins(cache: Path | None = None) -> dict[str, Path]:
 def reconcile(caps: Mapping[str, Capabilities], *, cache: Path | None = None,
               home: Path | None = None) -> list[Checked]:
     """Repoint `plugin` entries to their current cache folder, register newly installed workflow plugins,
-    mark a vanished one `missing`, never delete one (UPD §2.8, PKG-B1)."""
+    mark a vanished one `missing`, never delete one (UPD-B20 to UPD-B24, PKG-B1)."""
     entries = read_entries(home)
     found = cached_plugins(cache)
     by_plugin = {str(e.get("plugin")): e for e in entries if e.get("kind") == "plugin"}

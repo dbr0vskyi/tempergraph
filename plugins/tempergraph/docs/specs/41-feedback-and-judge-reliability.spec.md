@@ -1,138 +1,108 @@
----
-title: Feedback labels and judge reliability
-type: component
-status: ready-for-implementation
-prefix: FBK
-adrs: [0031, 0033, 0005, 0021]
----
-
 # Feedback labels and judge reliability
 
-## 1. Overview
+## Purpose
 
-Every signal of the self-improvement loop rests on judges, and a judge is only as good as its agreement with what people and later facts say ([R-030 F2](../research/R-030-self-improving-agent-systems.rsrch.md)). This spec turns the ground truth that already arrives after a run (an approval answer, a pull request merged or closed, a re-run, a person sending passed work back, an audit judge that disagreed) into one **label** record joined to the run, gate and criterion it speaks about. From labels it grades each judge binding `reliable`, `unmeasured` or `unreliable`, which licenses or blocks judge grades in filing ([SIL](16-self-improvement.spec.md)), the quality lens and trials ([PRP](40-improvement-proposals.spec.md)). It also watches for a quality shift when an executor, model or brief changes.
+Every signal of the self-improvement loop rests on judges, and a judge is only as good as its agreement with what people and later facts say ([R-030](../research/R-030-self-improving-agent-systems.rsrch.md) F2). This spec turns the ground truth that already arrives after a run (an approval answer, a pull request merged or closed, a re-run, a person sending passed work back, an audit judge that disagreed) into one label record joined to the run, gate and criterion it speaks about. From labels it grades each judge binding `reliable`, `unmeasured` or `unreliable`, which licenses or blocks judge grades in filing ([SIL](16-self-improvement.spec.md)), the quality lens and trials ([PRP](40-improvement-proposals.spec.md)), and it watches for a quality shift when an executor, model or brief changes. A grade is per binding because a judge moved to another model is a different judge. Labels are facts the engine already sees; the only new human effort is the optional queue, ordered so the most informative judgements come first (R-030 F6). Thresholds have no data behind them and are recorded as parameters with that provenance ([IMD](43-improvement-data.spec.md)). The loop, trials, harvest and the monitor depend on these labels and grades.
 
-## 2. Contract
+## Behaviours
 
-### 2.1 Label
+### FBK-B8 Label record
 
-| Field | Kind | Meaning |
-|---|---|---|
-| `label_id` | id | |
-| `thread`, `run_id`, `unit`, `attempt` | | What the label is about |
-| `gate_record` | id, optional | The gate judgement it confirms or contradicts |
-| `criterion_id` | id, optional | When the label names one criterion |
-| `kind` | §2.2 | |
-| `value` | `agree` \| `disagree` \| `neutral` | Relative to the judgement: `disagree` means the judge's PROCEED or MET was wrong, or its block was wrong |
-| `source` | `person` \| `agent` \| `fact` | From the answer's decider ([PRV §2.4](85-caller-provenance.spec.md)): `person` only when `decided_by` is `person`; `agent` for an agent's own answer, `unknown` callers and relays without host evidence ([HUM](07-gate-and-human.spec.md)) |
-| `origin` | `run` (default), `authoring_trial`, `sign_off` | Where the label was given: a production run, the first trial of an authored workflow ([SCF §2.5](91-blueprint-and-scaffold.spec.md)), or a person's per-criterion sign-off ([OUT §2.2](90-run-outcome.spec.md)) |
-| `at`, `observed_after_s` | | When, and how long after the gate |
-| `binding` | `{executor, executor_version, alias, model_slug, brief_digest, criteria_digest}` | The judge binding that produced the judgement |
+WHEN a label is written THE engine SHALL append a `kind: label` row to the state root's `ledger.jsonl` with a deterministic `label_id`, `thread`, `run_id`, `unit`, `attempt`, optional `gate_record` (the gate record's `seq`) and `gate_verdict`, optional `criterion_id`, `label_kind`, `value` (`agree`, `disagree` or `neutral`, relative to the judgement), `source` (`person` only when the answer's `decided_by` is a person, [PRV](85-caller-provenance.spec.md); `agent` for an agent's own answer and for unknown callers and relays without host evidence, [HUM](07-gate-and-human.spec.md); `fact` for a derived fact), `origin` (`run` by default, `authoring_trial` for the first trial of an authored workflow, [SCF](91-blueprint-and-scaffold.spec.md), or `sign_off` for a per-criterion sign-off, [OUT](90-run-outcome.spec.md)), `at`, `observed_after_s`, `binding` (`executor`, `executor_version`, `alias`, `model_slug`, and `brief_digest` and `criteria_digest` from the gate's `judgement` record), the judgement's `confidence` and `confidence_source`, the improvement-data identifiers and the caller block, metadata only, a person's typed reason staying in the local evidence file referenced by id ([SEC](14-security.spec.md)).
 
-Metadata only: no request, output or feedback text ([SEC](14-security.spec.md)). A person's typed reason stays in the local evidence file and is referenced by id.
+- GIVEN a label with a typed reason WHEN the ledger row is read THEN it holds the reason's id and not its text
 
-### 2.2 Label kinds and how each is derived
+### FBK-B9 Label kinds
 
-| Kind | Derived from | `value` |
-|---|---|---|
-| `approval` | Answer at a final approval pause: accepted / declined / reworked | accepted → `agree` with the last gate; declined or reworked → `disagree` |
-| `pr_state` | Pull request merged or closed, read on request or by the shared store | merged → `agree`; closed unmerged → `disagree`; open after 30 days → `neutral` |
-| `rerun` | A new run of the same task key within 14 days | `disagree` with the earlier run's last PROCEED |
-| `pushback` | A person's retry or back at the next pause after a PROCEED (a gate escape, [OBS](15-observability-and-cost.spec.md)) | `disagree` with that PROCEED, per criterion where the person named one |
-| `audit` | An `audit_judge` record (JDG-B7) | per criterion: same status → `agree`, MET against UNMET → `disagree` |
-| `explicit` | `label <thread> <gate> [--criterion id] --value agree\|disagree` by a person, or the monitor's equivalent | as given |
-| `override` | A person's proceed on an ESCALATE whose check ran and passed | `disagree` with the escalation |
+WHEN a run exits THE engine SHALL derive, from the run log and the ledger, `approval` (an answer at a final approval pause: accepted `agree` with the last gate, declined or reworked `disagree`), `rerun` (a new run of the same task key within 14 days, `disagree` with the earlier run's last PROCEED), `pushback` (a person's retry or back at the next pause after a PROCEED, a gate escape, `disagree` with it per named criterion), `audit` (an `audit_judge` record: per criterion the same status `agree`, MET against UNMET `disagree`, counted apart and never alone making a judge `reliable`) and `override` (a person's proceed on an ESCALATE whose check ran and passed, `disagree`), a second derivation of one judgement writing nothing; and `explicit` from `label <thread> <unit> --value agree|disagree [--criterion id] [--attempt n]`.
 
-`audit` labels measure judge consistency, not correctness; they are counted apart and never alone make a judge `reliable`.
+- GIVEN a run derived twice WHEN labels are counted THEN each judgement has one label per kind
 
-### 2.3 Reliability per judge binding
+### FBK-B1 Labels without a model
 
-Computed per gate and binding over a 90-day window, from labels with `source` `person` or `fact` only.
+WHEN a run whose final approval was answered "reworked" is recorded THE engine SHALL write one `approval` label `disagree` against the last gate, with no model call and no text.
 
-| Figure | Definition |
-|---|---|
-| `n` | Labels with value `agree` or `disagree` |
-| `false_pass_rate` | `disagree` labels on PROCEED judgements ÷ labels on PROCEED judgements |
-| `false_block_rate` | `disagree` labels on RETRY, BACK or ESCALATE ÷ labels on those |
-| `audit_agreement` | Share of criteria with the same status in `audit` labels |
-| `confidence_bands` | `false_pass_rate` per confidence anchor of [CON §2.8](01-contracts.spec.md), judge-sourced values only |
+- GIVEN an approval answered "reworked" WHEN recorded THEN one `disagree` label exists and no model was called
 
-| Grade | Rule |
-|---|---|
-| `unmeasured` | `n` < 20; or no label in the last 30 days; or fewer than 5 labelled judgements where the work was known bad (a `disagree` label on a PROCEED, or an `agree` label on a block); or no current live score of the binding on calibration cases that include known-bad cases ([LIF](18-lifecycle-and-evals.spec.md) live judge scoring) |
-| `unreliable` | `false_pass_rate` > 0.15, or `audit_agreement` < 0.8 with at least 30 audited criteria |
-| `reliable` | otherwise: enough labels, known-bad evidence, a passing live score, and neither `unreliable` rule |
+### FBK-B10 Label errors
 
-A `false_pass_rate` of 0 with no known-bad evidence says only that people accepted everything; judges are known to be agreeable, so it never grades `reliable` on its own ([R-030 F5](../research/R-030-self-improving-agent-systems.rsrch.md)).
+WHEN a label names a gate record that does not exist, or two labels of one kind speak about one judgement THE engine SHALL keep the label with `gate_record` null counted under `orphan_labels` and in no figure, or let the later one win while keeping both.
 
-A binding change (any field of `binding`) starts a new binding with no labels; the previous binding's grade is shown beside it, never inherited.
+- GIVEN a label naming a missing gate record WHEN figures are computed THEN it is in `orphan_labels` only
 
-### 2.4 Labelling queue
+### FBK-B11 Reliability figures
 
-`labels queue [workflow]` lists gate judgements a person should label, in this order: gate escapes without a label, audit disagreements, judge-sourced confidence at or below 0.5, PROCEEDs of a binding that is `unmeasured`, then a 5% random sample of PROCEEDs. Each row carries the exact `label` command. The queue is a read-only verb; the monitor plugin may render it.
+WHEN reliability is computed per gate and binding over a 90-day window from labels with `source` `person` or `fact` only THE engine SHALL compute `n` (labels valued `agree` or `disagree`), `false_pass_rate` (`disagree` on PROCEED judgements over labels on PROCEED), `false_block_rate` (`disagree` on RETRY, BACK or ESCALATE over labels on those), `audit_agreement` (share of criteria with the same status in `audit` labels) and `confidence_bands` (`false_pass_rate` per confidence anchor of [SSN](25-session-contract.spec.md), judge-sourced values only).
 
-### 2.5 Binding-shift watch
+- GIVEN 30 labels on PROCEED of which 3 disagree WHEN computed THEN `false_pass_rate` is 0.10
 
-| Trigger | Comparison | Finding |
-|---|---|---|
-| A gate's binding changes (executor version, model slug, brief or criteria digest) | The first 10 judgements of the new binding against the last 30 of the old: pass rate, UNVERIFIABLE rate, mean turns | A difference above 20 points in pass rate, or 15 points in UNVERIFIABLE rate, is finding `binding_shift`, attributed to `executor:<name>` when only executor or model fields changed, otherwise to `workflow` |
+### FBK-B2 Agent answers do not grade judges
 
-The finding is recorded and enters the friction lens like any finding; it is never a route or a pause.
+WHEN labels are derived from a pause answered by an agent on its own (declared, or seen by its host marker) THE engine SHALL give the label `source=agent` and exclude it from every reliability figure.
 
-## 3. Behaviours
+- GIVEN an agent's own answer WHEN figures are computed THEN they are unchanged
 
-**FBK-B1 Labels without a model.** Given a run whose final approval was answered "reworked", when the run is recorded, then one `approval` label `disagree` is written against the last gate, with no model call and no text.
+### FBK-B12 Grade rule
 
-**FBK-B2 Agent answers do not grade judges.** Given a pause answered by an agent on its own (declared, or seen by its host marker), when labels are derived, then the label has `source=agent` and is excluded from every §2.3 figure.
+WHEN a binding is graded THE engine SHALL apply in order: `n` below 20 gives `unmeasured`; `false_pass_rate` above 0.15, or `audit_agreement` below 0.8 with at least 30 audited criteria, gives `unreliable`; no label in the last 30 days, fewer than 5 labelled judgements where the work was known bad (a `disagree` on a PROCEED or an `agree` on a block), or no live score `accepted` or `provisional` on a case set with known-bad cases ([JCL](50-judge-calibration.spec.md)) gives `unmeasured`; otherwise `reliable`; so a `false_pass_rate` of 0 with no known-bad evidence never grades `reliable` on its own (R-030 F5).
 
-**FBK-B3 Reliability grades.** Given four bindings, when the report runs, then each gets one grade.
+- GIVEN `n` 40, false pass rate 0.0 and no known-bad label WHEN graded THEN it is `unmeasured`
 
-| n | false_pass_rate | audit_agreement (criteria) | Grade |
-|---|---|---|---|
-| 12 | 0.0 | — | `unmeasured` |
-| 40 | 0.10 | 0.85 (60) | `reliable` (7 known-bad labels, live score passing) |
-| 40 | 0.0 | 0.95 (60) | `unmeasured` (every result accepted: no known-bad evidence) |
-| 40 | 0.20 | 0.90 (60) | `unreliable` |
-| 40 | 0.05 | 0.70 (45) | `unreliable` |
+### FBK-B3 Reliability grades
 
-**FBK-B4 A new model starts unmeasured.** Given a reliable judge whose alias is rebound to another model slug, when the next judgement is recorded, then its binding is new and graded `unmeasured`; trials that target that gate's grades are refused until it is measured, and the old grade is shown as history.
+WHEN the report runs over fixture bindings THE engine SHALL give each one grade by FBK-B12.
 
-**FBK-B5 Quality lens unlocks per gate.** Given a gate whose current binding is `reliable`, when the quality lens of [SIL](16-self-improvement.spec.md) runs, then that gate's scorecard rows may trigger filing; rows of other gates are reported only.
+- GIVEN `n` 12 and false pass rate 0.0 WHEN graded THEN it is `unmeasured`
+- GIVEN `n` 40, false pass rate 0.10, audit agreement 0.85 over 60 criteria, 7 known-bad labels and a passing live score WHEN graded THEN it is `reliable`
+- GIVEN `n` 40, false pass rate 0.20, audit agreement 0.90 over 60 WHEN graded THEN it is `unreliable`
+- GIVEN `n` 40, false pass rate 0.05, audit agreement 0.70 over 45 WHEN graded THEN it is `unreliable`
 
-**FBK-B6 Harvest from labels.** Given a `disagree` label from a person on a PROCEED, when `evals harvest` lists candidates ([LIF](18-lifecycle-and-evals.spec.md)), then the attempt appears as a calibration-case candidate with the person's value as the suggested expectation.
+### FBK-B4 A new model starts unmeasured
 
-**FBK-B7 Binding shift is visible.** Given a gate on `antigravity` whose pass rate was 70% over its last 30 judgements and 40% over the first 10 after a CLI update with no workflow change, when the watch runs, then finding `binding_shift` is recorded against `executor:antigravity` with both versions.
+WHEN any field of a judge's binding changes, such as its alias rebound to another model slug THE engine SHALL start a new binding with no labels graded `unmeasured`, refuse trials that target that gate's grades until it is measured, and show the old grade beside it as history, never inherited.
 
-## 4. Error conditions
+- GIVEN a reliable judge rebound to another model WHEN its next judgement is recorded THEN the binding is `unmeasured` and the old grade is shown as history
 
-| Condition | Result |
-|---|---|
-| A label names a gate record that does not exist | Label kept with `gate_record` null and counted under `orphan_labels`; never in a figure |
-| The code host cannot be read for `pr_state` | No label; retried at the next read |
-| Two labels of the same kind for one judgement | The later one wins; both kept |
+### FBK-B5 Quality lens unlocks per gate
 
-## 5. Design notes
+WHEN the quality lens of [SIL](16-self-improvement.spec.md) runs THE engine SHALL let only gates whose current binding is `reliable` trigger filing from their scorecard rows, reporting the rows of other gates only.
 
-- Labels are cheap facts the engine already sees; the only new human effort is the optional queue, ordered so the most informative judgements come first ([R-030 F6](../research/R-030-self-improving-agent-systems.rsrch.md)).
-- The thresholds (20 labels, 0.15, 0.8, 90 days, the shift margins) have no data behind them and are recorded as parameters with that provenance ([IMD](43-improvement-data.spec.md)).
-- Confidence is studied here, against labels, rather than used as a filing floor; the open question on the 0.75 floor in SIL is answered from `confidence_bands` once labels exist.
-- Release 1 build ([T7 plan](../plans/t7-observability.plan.md) T7.5): only the `explicit` kind, through `label <thread> <unit> --value agree|disagree [--criterion id] [--attempt n]`. The row goes to the state root's `ledger.jsonl` as `kind: label` (the label's own kind is the field `label_kind`, since `kind` names the ledger row's kind) with `gate_record` (the gate record's `seq`), `gate_verdict`, the IMD-R1 fields and the caller block; `source` is `person` only when the caller's decider is a person. The binding's `brief_digest` and `criteria_digest` come from the gate's `judgement` record ([EVT](30-run-events.spec.md)), and each label row also carries the judgement's `confidence` and `confidence_source`.
-- Release 1 build (plan T12.3, `improve/reliability.py`): `approval`, `override`, `pushback`, `audit` and `rerun` labels are derived at every exit from the run log and the ledger with a deterministic `label_id`, so a second derivation of one judgement writes nothing. `pr_state` is not derived, because no run records the pull request it led to; harvest (FBK-B6) is release 2. The grade applies its rules in this order: `n` < 20 gives `unmeasured`; then the two `unreliable` rules; then the other `unmeasured` rules (recency, known-bad count, live score); else `reliable`. The live score is JCL's state for the binding: `accepted` or `provisional` on a case set with known-bad cases ([JCL §2.5](50-judge-calibration.spec.md)), which answers this spec's first open question for release 1 without merging the two states. `labels grades <workflow>` prints the figures and grade per gate and binding; `labels queue <workflow>` the §2.4 queue, its 5% sample seeded per day. A binding shift is a `binding_shift` row in the run's `findings.json`. Labels and shifts an exit adds ride on that exit's `finding_recorded` event (`labels`); `label_recorded` and `binding_shift` are not separate events in release 1 ([IMD §2.3](43-improvement-data.spec.md)). All thresholds are `improve/params.py` rows (`labels.*`, `reliability.*`, `shift.*`).
+- GIVEN a gate whose binding is `unmeasured` WHEN the lens runs THEN its rows are reported and file nothing
 
-## 6. Acceptance criteria
+### FBK-B13 Grades and queue verbs
 
-- [ ] FBK-AC-1 Every row of the §2.2 table is derived from a fixture run log with no model call.
-- [ ] FBK-AC-2 Every row of the FBK-B3 table is reproduced by the grading function.
-- [ ] FBK-AC-3 No label record contains request, output or feedback text (canary test).
-- [ ] FBK-AC-4 Agent-sourced labels change no reliability figure.
-- [ ] FBK-AC-5 A binding change resets the grade to `unmeasured` in a fixture.
+WHEN `labels grades <workflow>` or `labels queue <workflow>` runs THE engine SHALL print, read-only, the figures and grade per gate and binding, or the gate judgements a person should label in this order (gate escapes without a label, audit disagreements, judge-sourced confidence at or below 0.5, PROCEEDs of an `unmeasured` binding, then a 5 % random sample of PROCEEDs seeded per day), each row carrying the exact `label` command; the monitor may render the queue.
+
+- GIVEN a gate escape and an audit disagreement WHEN the queue is listed THEN the escape comes first with its `label` command
+
+### FBK-B6 Harvest from labels
+
+WHEN `evals harvest` lists candidates ([LIF-B14](18-lifecycle-and-evals.spec.md)) after a person's `disagree` label on a PROCEED THE engine SHALL list the attempt as a calibration-case candidate with the person's value as the suggested expectation.
+
+- GIVEN a person's `disagree` on a PROCEED WHEN harvest runs THEN the attempt is a candidate expecting `UNMET`
+
+### FBK-B14 Binding-shift watch
+
+WHEN a gate's binding changes (executor version, model slug, brief or criteria digest) THE engine SHALL compare the first 10 judgements of the new binding with the last 30 of the old on pass rate, UNVERIFIABLE rate and mean turns, and record a `binding_shift` finding in the run's `findings.json` when pass rate differs by more than 20 points or UNVERIFIABLE rate by more than 15, attributed to `executor:<name>` when only executor or model fields changed and to `workflow` otherwise, entering the friction lens like any finding and never a route or a pause; labels and shifts an exit adds ride on its `finding_recorded` event ([EVT-B14](30-run-events.spec.md)).
+
+- GIVEN only the brief digest changed and a 25-point drop WHEN watched THEN `binding_shift` is attributed to `workflow`
+
+### FBK-B7 Binding shift is visible
+
+WHEN the watch runs for a gate on `antigravity` whose pass rate was 70 % over its last 30 judgements and 40 % over the first 10 after a CLI update with no workflow change THE engine SHALL record `binding_shift` against `executor:antigravity` with both versions.
+
+- GIVEN a 30-point drop after a CLI update WHEN watched THEN `binding_shift` names `executor:antigravity` and both versions
+
+## Acceptance criteria
+
+- FBK-AC1 (FBK-B9, FBK-B1): Every derived label kind is produced from a fixture run log with no model call
+- FBK-AC2 (FBK-B3, FBK-B11, FBK-B12): Every scenario of FBK-B3 is reproduced by the grading function
+- FBK-AC3 (FBK-B8): No label record contains request, output or feedback text, by a canary test
+- FBK-AC4 (FBK-B2): Agent-sourced labels change no reliability figure
+- FBK-AC5 (FBK-B4): A binding change resets the grade to `unmeasured` in a fixture
+- FBK-AC6 (FBK-B5, FBK-B6, FBK-B10, FBK-B13, FBK-B14, FBK-B7): Fixtures cover the per-gate quality lens, harvest from labels, orphan and repeated labels, the queue order and the binding-shift watch
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should the grade also read the offline gold-set calibration state per binding being designed in the eval and judge work (spec 50), so that `reliable` needs that state to be `accepted`? Assumed yes once that spec lands; until then the live score above stands in. | Owner, with the eval and judge design |
-
-## References
-
-[JDG](05-judge-and-verdict.spec.md) · [HUM](07-gate-and-human.spec.md) · [OBS](15-observability-and-cost.spec.md) · [SIL](16-self-improvement.spec.md) · [LIF](18-lifecycle-and-evals.spec.md) · [PRP](40-improvement-proposals.spec.md) · [IMD](43-improvement-data.spec.md)
+- Should the grade also read the offline gold-set calibration state per binding, so that `reliable` needs that state `accepted`? Until answered: JCL's `accepted` or `provisional` on known-bad cases stands in. Owner: owner, with the eval and judge design.
+- Should `pr_state` labels (merged `agree`, closed unmerged `disagree`, open after 30 days `neutral`) be read by the shared store's collector for every machine, or only on request? Until answered: not derived, because no run records the pull request it led to. Owner: owner, with the run-monitor design.

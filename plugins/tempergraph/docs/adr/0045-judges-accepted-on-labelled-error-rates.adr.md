@@ -13,7 +13,7 @@ Every gate rests on one LLM judge, and nobody has measured how often a judge is 
 
 ## Decision
 
-We will accept a judge binding for a gate only on a reviewed, class-balanced gold set, on two rates computed per criterion finding: the **catch rate** on known-bad findings and the **clean rate** on known-good findings, each judged on its Wilson 95% lower bound, plus bars on the flip rate under repeats and on robustness variants ([JCL §2.4](../specs/50-judge-calibration.spec.md)). Labels come only from people and facts; another judge never supplies one. Acceptance licenses trust elsewhere and never changes a verdict.
+We will accept a judge binding for a gate only on a reviewed, class-balanced gold set, on two rates computed per criterion finding: the **catch rate** on known-bad findings and the **clean rate** on known-good findings, each judged on its Wilson 95% lower bound, plus bars on the flip rate under repeats and on robustness variants ([JCL-B16](../specs/50-judge-calibration.spec.md)). Labels come only from people and facts; another judge never supplies one. Acceptance licenses trust elsewhere and never changes a verdict.
 
 ## Options considered
 

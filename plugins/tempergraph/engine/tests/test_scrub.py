@@ -1,4 +1,4 @@
-"""The scrubber (SEC §2.3) and the canary helper later tracks reuse (SEC-B2)."""
+"""The scrubber (SEC-B8 to SEC-B11) and the canary helper later tracks reuse (SEC-B2)."""
 
 from __future__ import annotations
 

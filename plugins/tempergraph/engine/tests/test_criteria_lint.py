@@ -1,4 +1,4 @@
-"""Criteria lint and the sufficiency check (AUT §2.4.1, §2.8; AUT-AC-7 first half, AUT-B9)."""
+"""Criteria lint and the sufficiency check (AUT-B19, AUT-B20, AUT-B21, AUT-B12, AUT-B15, AUT-B24, AUT-B25; AUT-AC7 first half, AUT-B9)."""
 
 from __future__ import annotations
 

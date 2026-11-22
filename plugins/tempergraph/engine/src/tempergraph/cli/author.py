@@ -1,5 +1,5 @@
-"""`blueprint check|draw|compare` and `literals` (SCF §2.1 to §2.3, §2.6). Model-free and read-only;
-output is JSON (draw prints its format). A failed check exits 2 (CON §2.9)."""
+"""`blueprint check|draw|compare` and `literals` (SCF-B9, SCF-B11, SCF-B13, SCF-B23). Model-free and read-only;
+output is JSON (draw prints its format). A failed check exits 2 (CON-B12, CON-B13)."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ def add_parsers(sub: Any) -> None:
     st.add_argument("name")
     st.add_argument("paths", nargs="*")
     st.add_argument("--from", dest="from_", action="append", choices=("solution", "sources", "chat"), default=None)
-    st.add_argument("--revise", action="store_true", help="revise an existing workflow's outcome (AUT §2.7)")
+    st.add_argument("--revise", action="store_true", help="revise an existing workflow's outcome (AUT-B25)")
     it = asub.add_parser("intake")
     it.add_argument("id")
     it.add_argument("paths", nargs="+")
@@ -191,7 +191,7 @@ def cmd_scaffold(env: Any, a: argparse.Namespace) -> int:
         env.err.write(f"tempergraph: {exc}\n")
         _emit(env, {"schema_version": 1, "ok": False, "refused": exc.code, "message": str(exc)})
         return int(ExitCode.USAGE)
-    record = folder / "authoring.json"  # the session is finished once scaffolded (AUT §4: one open per name)
+    record = folder / "authoring.json"  # the session is finished once scaffolded (AUT-B15, AUT-B17, AUT-B24, AUT-B12: one open per name)
     try:
         doc = json.loads(record.read_text(encoding="utf-8"))
         doc["scaffolded"] = {"out": str(_path(env, a.out)), "at": now_iso()}
@@ -211,7 +211,7 @@ def _package(env: Any, workflow: str) -> Path | None:
 
 
 def cmd_author(env: Any, a: argparse.Namespace) -> int:
-    """`author verify|trial|grade <workflow>` (SCF §2.5) and the session verbs (AUT §2.1)."""
+    """`author verify|trial|grade <workflow>` (SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22) and the session verbs (AUT-B11, AUT-B12)."""
     from tempergraph.author.verify import verify
     from tempergraph.cli.audit import _probe
 
@@ -310,7 +310,7 @@ def _trial_verb(env: Any, a: argparse.Namespace) -> int:
 
 
 def _session_verb(env: Any, a: argparse.Namespace) -> int:
-    """AUT §2.1 and §2.8: the session verbs; each writes only its session folder (AUT-AC-4)."""
+    """AUT-B11, AUT-B12, AUT-B15, AUT-B19, AUT-B24, AUT-B25: the session verbs; each writes only its session folder (AUT-AC4)."""
     from tempergraph.author import session as ses
     from tempergraph.store.layout import NotInRepository, state_root_path
 

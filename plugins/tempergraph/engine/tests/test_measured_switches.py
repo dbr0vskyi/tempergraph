@@ -1,4 +1,4 @@
-"""Measured switches: shadow mode, arm overrides, re-arming and the operator's arm (SWM-AC-1 to AC-3, CMP-B7)."""
+"""Measured switches: shadow mode, arm overrides, re-arming and the operator's arm (SWM-AC1 to AC-3, CMP-B7)."""
 
 from __future__ import annotations
 
@@ -83,7 +83,7 @@ def code_requests(ex: Any) -> list[Any]:
     return [c.request for c in ex.calls if c.kind == "step" and c.request.session_key.startswith("code")]
 
 
-def test_shadow_records_the_pick_and_takes_the_default(repo: Path) -> None:  # SWM-B1, SWM-AC-2
+def test_shadow_records_the_pick_and_takes_the_default(repo: Path) -> None:  # SWM-B1, SWM-AC2
     out, _ = go(repo, wf(mode="shadow"), 3, [judge(), judge(), judge()])
     assert out.exit_code is ExitCode.FINISHED, out.message
     assert entered(repo) == ["triage", "phases", "code"]
@@ -93,7 +93,7 @@ def test_shadow_records_the_pick_and_takes_the_default(repo: Path) -> None:  # S
 
 
 @pytest.mark.parametrize("predicate", [small_plan, big_plan, boom, chatty])
-def test_shadow_always_takes_the_default(repo: Path, predicate: Any) -> None:  # SWM-AC-2, SWM §4
+def test_shadow_always_takes_the_default(repo: Path, predicate: Any) -> None:  # SWM-AC2, SWM-B4, SWM-B5
     out, _ = go(repo, wf(predicate, mode="shadow"), 3, [judge(), judge(), judge()])
     assert out.exit_code is ExitCode.FINISHED and entered(repo) == ["triage", "phases", "code"]
     (r,) = recs(repo, "route")
@@ -105,7 +105,7 @@ def test_shadow_always_takes_the_default(repo: Path, predicate: Any) -> None:  #
         assert r["signals_clipped"] == 14
 
 
-def test_an_arm_override_applies_only_while_its_arm_is_in_force(repo: Path) -> None:  # SWM-B2, SWM-AC-3
+def test_an_arm_override_applies_only_while_its_arm_is_in_force(repo: Path) -> None:  # SWM-B2, SWM-AC3
     out, ex = go(repo, wf(), 2, [judge(), judge()])
     assert out.exit_code is ExitCode.FINISHED and entered(repo) == ["triage", "code"]
     assert code_requests(ex)[0].timeout_s == 5400
@@ -121,7 +121,7 @@ def test_an_operator_value_beats_an_arm_override(repo: Path) -> None:  # SWM-B2
     assert out.exit_code is ExitCode.FINISHED and code_requests(ex)[0].timeout_s == 7200
 
 
-def test_an_arm_override_sets_model_idle_and_effort(repo: Path) -> None:  # SWM §2.3
+def test_an_arm_override_sets_model_idle_and_effort(repo: Path) -> None:  # SWM-B6
     spec = wf(arm_overrides={"single": {"code": {"model": "large", "idle_s": 900, "effort": "high"}}})
     out, ex = go(repo, spec, 2, [judge(), judge()])
     req = code_requests(ex)[0]
@@ -194,7 +194,7 @@ def test_resolution_marks_what_an_operator_set() -> None:
     ({"rearm": [Rearm(from_arm="single", to="per_phase", units=["code"], on=["verdict"])]}, "switch-rearm-invalid"),
     ({"mode": "dry"}, "switch-invalid"),
 ])
-def test_validation(fields: dict[str, Any], code: str) -> None:  # SWM §4
+def test_validation(fields: dict[str, Any], code: str) -> None:  # SWM-B4, SWM-B5
     base: dict[str, Any] = {"arm_overrides": {}, "rearm": []}
     base.update(fields)
     mode = base.pop("mode", "route")

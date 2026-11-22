@@ -1,7 +1,7 @@
-"""Retirement of release 1's retry-count model list (LAD §2.8). Pure, model-free.
+"""Retirement of release 1's retry-count model list (LAD-B18). Pure, model-free.
 
 A list of aliases in a step's `model` is refused from release 2. The transform here rewrites it by rule; what no
-rule can decide becomes an owner item of the workflow upgrade (WUP §2.3).
+rule can decide becomes an owner item of the workflow upgrade (WUP-B15, WUP-B16).
 """
 
 from __future__ import annotations

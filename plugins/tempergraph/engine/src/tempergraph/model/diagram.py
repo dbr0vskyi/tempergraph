@@ -1,5 +1,5 @@
-"""The diagram model (LIF §2): versioned JSON with a digest, generated from the spec, verified against the
-compiled graph (CMP-B6, CMP-AC-4). Renderers are pure; digests, not bytes, are compared (LIF-B3).
+"""The diagram model (LIF-B7 to LIF-B16): versioned JSON with a digest, generated from the spec, verified against the
+compiled graph (CMP-B6, CMP-AC4). Renderers are pure; digests, not bytes, are compared (LIF-B3).
 """
 
 from __future__ import annotations
@@ -72,7 +72,7 @@ def to_mermaid(model: dict[str, Any]) -> str:
     for u in model["units"]:
         label = u["name"] + (f"<br/>{u['summary']}" if u["summary"] else "") + (" ✋" if u["approval"] else "")
         o = (ov.get("units") or {}).get(u["name"])
-        if o:  # the run overlay (OBS §2.4): counts and engine words only
+        if o:  # the run overlay (OBS-B15): counts and engine words only
             verdicts = ", ".join(f"{k} {v}" for k, v in o["verdicts"].items())
             label += f"<br/>visits {o['visits']} · sessions {o['sessions']}" + (f" · {verdicts}" if verdicts else "")
         lines.append(f'  {ids[u["name"]]}["{label}"]')

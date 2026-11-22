@@ -1,186 +1,105 @@
----
-title: Claude Code executor
-type: component
-status: ready-for-implementation
-prefix: ECC
-adrs: [0006, 0007, 0008, 0010, 0012]
----
-
 # Claude Code executor
 
-## 1. Overview
+## Purpose
 
-The `claude` executor runs each step attempt and each judge run as one headless Claude Code session: `claude -p` with the prompt on stdin and a `stream-json` event stream on stdout. It implements the [executor interface](10-executor-interface.spec.md) and maps the engine's neutral contracts ([CON](01-contracts.spec.md)) to Claude Code's flags. Facts about the CLI come from [R-001](../research/R-001-claude-code-cli-headless.rsrch.md). This executor is the default **judge executor**: it can hold a session to an exact read-only tool set by absence.
+The `claude` executor runs each step attempt and each judge run as one headless Claude Code session: `claude -p` with the prompt on stdin and a `stream-json` event stream on stdout. It implements the executor interface ([EXI](10-executor-interface.spec.md)) and maps the engine's neutral contracts ([CON](01-contracts.spec.md)) to Claude Code's flags; facts about the CLI come from [R-001](../research/R-001-claude-code-cli-headless.rsrch.md). It is the default judge executor, because it can hold a session to an exact read-only tool set by absence ([ADR-0010](../adr/0010-judge-isolation-per-executor.adr.md)). The runner, the judge ([JDG](05-judge-and-verdict.spec.md)), the guard ([GRD](06-independence-guard.spec.md)), packages ([PKG](88-workflow-package.spec.md)) and worktrees ([WTR](82-worktree-mode.spec.md)) depend on it; design notes and the probe history are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-## 2. Contract
+## Behaviours
 
-### 2.1 Declared capabilities
+### ECC-B1 Declared shell
 
-| Capability | Value | Basis |
-|---|---|---|
-| `binds_aliases` | `small`, `medium`, `large`, `inherit`, every `claude:<name>` in the binding table | [R-001 F10, F11](../research/R-001-claude-code-cli-headless.rsrch.md) |
-| `prompt_off_argv`, `streams_events`, `reports_actions`, `reports_tokens`, `reports_cost` | true | F2–F4, F8, F18 |
-| `enforces_step_tools`, `step_allow_rules`, `judge_mcp`, `fresh_session` | true | F12, F13, F15, F20 |
-| `restricts_judge_tools` | true | F12, F14, F15; the plugin-tool gap is closed by `--bare` once P-CC-1 passes, else by the guard |
-| `isolates_user_config` | true when P-CC-1 passes, else false | F16, F17 |
-| `session_options` | `effort`, `cost_cap_usd`, `fallback_alias`, `turn_cap` | F9, F10 |
+WHEN a step that declares `shell` with command prefixes launches in the engine's own worktree THE executor SHALL put one `Bash(<prefix> *)` rule per prefix in `--allowedTools`, use permission mode `acceptEdits`, and name no absolute path in any rule.
 
-### 2.2 Tool map
+- GIVEN `shell` with prefixes `pytest` and `git status` WHEN the step launches in the engine's worktree THEN `--allowedTools` holds `Bash(pytest *)` and `Bash(git status *)` and the mode is `acceptEdits`
 
-| Capability | Claude Code tool | Allow rule when declared |
-|---|---|---|
-| `read` | `Read` | `Read` |
-| `search` | `Grep` | `Grep` |
-| `list` | `Glob` | `Glob` |
-| `edit` | `Edit` | `Edit(./**)` in the engine's own worktree only |
-| `write` | `Write` | `Write(./**)` in the engine's own worktree only |
-| `shell` | `Bash` | `Bash(<prefix> *)` per declared command prefix |
-| `web_fetch` | `WebFetch` | `WebFetch` |
-| `web_search` | `WebSearch` | `WebSearch` |
-| `subagent` | `Agent` (reported as `Task` by older releases) | `Agent` |
-| `mcp:<s>/<t>` | `mcp__<s>__<t>` | `mcp__<s>__<t>` |
-| `skill:<p>:<n>` | `Skill` | `Skill(<p>:<n>)` once P-CC-8 confirms it, else `Skill`, with the called name checked in the tool record ([ADR-0078](../adr/0078-skills-are-a-declared-tool-capability.adr.md)) |
+### ECC-B2 Tool names and rules stay apart
 
-### 2.3 Step launch
+WHEN argv is built for any launch THE executor SHALL put tool names only in `--tools` or `--disallowedTools` and permission rules only in `--allowedTools`.
 
-Argv is assembled from the constants below; bracketed parts are added only when their condition holds. Values in angle brackets come from the binding table or from engine-checked numbers, never from typed text.
+- GIVEN any step or judge launch WHEN its argv is read THEN no rule appears in `--tools` and no bare tool list in `--allowedTools`
 
-```text
-claude -p --output-format stream-json --verbose
-       --permission-mode <acceptEdits in engine worktree | default in place>
-       --permission-prompts none                       [CLI supports it, per probe]
-       --model <bound model>                           [alias is not inherit]
-       --allowedTools <rules from §2.2>                [step declares tools]
-       --tools <mapped built-ins>                      [operator enabled enforcement]
-       --disallowedTools EnterWorktree,ExitWorktree    [always; the run's worktree is the engine's, WTR §2.9]
-       --strict-mcp-config --mcp-config <engine file>  [enforcement and an MCP tool declared]
-       --effort <level> | --max-budget-usd <n> | --fallback-model <bound> | --max-turns <n>   [option set]
-```
+### ECC-B3 Judge view
 
-Environment overlay: `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1` unless the host already sets it; `CLAUDE_CODE_SUBAGENT_MODEL=<bound model>` unless the step names a subagent alias. Prompt: UTF-8 on stdin, then stdin closes.
+WHEN a judge launches with MCP views THE executor SHALL set `--tools` to the mapped built-in views, list in a private MCP config one filtering proxy per MCP view server offering only the viewed tools, and use mode `dontAsk`.
 
-### 2.4 Judge launch
+- GIVEN a view set `read`, `search`, `list` and `mcp:tracker/get_issue` WHEN the judge launches THEN `--tools` is `Read,Grep,Glob`, the private config lists one proxy in front of `tracker` offering only `get_issue`, and the mode is `dontAsk`
 
-```text
-claude -p --output-format stream-json --verbose
-       --bare                                         [P-CC-1 passed]
-       --setting-sources ""                           [P-CC-1 not passed]
-       --model <bound judge model>
-       --tools <Read,Grep,Glob plus built-in views>
-       --disallowedTools "mcp__*"                     [no MCP view]
-       --strict-mcp-config --mcp-config <private file: filtering proxy per MCP view>   [MCP views]
-       --permission-mode dontAsk
-       --allowedTools <view rules, plus read-only command rules when opted in>
-```
+### ECC-B4 Reported cost
 
-Never sent to a judge: `--fallback-model`, `--resume`, `--continue`, a write tool, a step's allow rules. Judge-only credentials are laid over the environment from the operator's credentials profile.
+WHEN a `result` event carries `total_cost_usd` THE executor SHALL record it as `reported_cost_usd` and store the engine's own estimate beside it, never summed.
 
-### 2.5 Stream mapping
+- GIVEN `total_cost_usd = 1.73` WHEN usage is recorded THEN `reported_cost_usd` is 1.73 and the estimate is kept apart
 
-| CLI event | Normalized event ([CON §2.7](01-contracts.spec.md)) |
-|---|---|
-| `system` / `init` | `session_started` (session id, model, tools, plus `mcp_server_errors`, `plugin_errors` kept as counts) |
-| `assistant` content block `tool_use` | `tool_started` (`name`, `subagent` = `parent_tool_use_id` is set) |
-| `user` content block `tool_result` | `tool_finished` (`ok` = not `is_error`) |
-| `stream_event` text delta | `model_delta` (count only) |
-| `assistant` text block | `text` (last line, scrubbed) |
-| `system` / `api_retry` | `retrying` (`category` = the event's `error` value) |
-| `system` / `permission_denied` | `denied` |
-| `result` | `result` with `total_cost_usd` → `reported_cost_usd`, `usage`, `modelUsage` → `by_model`, `num_turns` → `turns`, `session_id` |
+### ECC-B5 Exact timeout text
 
-### 2.6 Failure classification
+WHEN a non-success `result.result` is classified THE executor SHALL give `request_timed_out` (infra) only when it equals `Request timed out` exactly, any other text being `error_kind = model`.
 
-| Observed (structured) | `infra_cause` / `error_kind` |
-|---|---|
-| Spawn raised with a resource errno | `spawn_failed` |
-| Write to stdin raised broken pipe | `broken_pipe` |
-| Process ended, no stdout line | `no_output` |
-| Stream ended without a `result` event | `no_result` |
-| `result.subtype` is not `success` and `result.result == "Request timed out"` exactly | `request_timed_out` |
-| Last `retrying` category is `rate_limit` or `overloaded` and no `result` | `throttled` |
-| `result.subtype == "error_max_turns"` | `error_kind = turn_cap` |
-| Session ended by `--max-budget-usd`: `result.subtype == "error_max_budget_usd"` until P-CC-3 sets the shape | `error_kind = cap_reached` |
-| Last `retrying` category is `connection_error` or `network_error` and no `result` | `connection` |
-| Process killed by `SIGKILL` the launcher did not send, and no `result` | `out_of_memory` |
-| `retrying` category `authentication_failed` | `error_kind = auth` |
-| `result.is_error` otherwise | `error_kind = model` |
+- GIVEN `Request timed out` WHEN classified THEN it is `request_timed_out`
+- GIVEN `Request timed out.` or `The request timed out` WHEN classified THEN it is `error_kind = model`
 
-### 2.7 Probes
+### ECC-B6 Declared capabilities
 
-Each probe is run by the owner against the pinned CLI version with an isolated config folder; its result is written into this table with the date and version. Until a row says `confirmed`, no control rests on it.
+WHEN the executor declares its capabilities THE executor SHALL declare `binds_aliases` (`small`, `medium`, `large`, `inherit` and every `claude:<name>` of the binding table, R-001 F10, F11); `prompt_off_argv`, `streams_events`, `reports_actions`, `reports_tokens` and `reports_cost` true (F2 to F4, F8, F18); `enforces_step_tools`, `step_allow_rules`, `judge_mcp` and `fresh_session` true (F12, F13, F15, F20); `restricts_judge_tools` true (F12, F14, F15, the plugin-tool gap closed by `--bare` once P-CC-1 passes, else by the guard); `isolates_user_config` true only when P-CC-1 passes; and `session_options` `effort`, `cost_cap_usd`, `fallback_alias` and `turn_cap` (F9, F10).
 
-| Id | Fact to confirm | Used by | Result |
-|---|---|---|---|
-| P-CC-1 | `--bare` removes tools registered by user-level plugins and hooks from a headless session, and the gateway credentials still work. Plugins the CLI build carries itself (source `@builtin` in `system/init`) stay listed and are not user configuration. Seen on 2.1.330 in the cloud container (2026-11-21): with a plugin installed at user scope, `system/init` under `--bare` still listed it, with the session's tools unchanged; `isolates_user_config` stays `false` | `isolates_user_config`, judge launch | not run |
-| P-CC-2 | `--tools Read,Grep,Glob` plus `--disallowedTools "mcp__*"` leaves exactly those tools in `system/init` | `restricts_judge_tools` | not run |
-| P-CC-3 | The stream shape when `--max-budget-usd` ends a session | `cap_reached` classification | not run |
-| P-CC-4 | Precedence of `CLAUDE_CODE_SUBAGENT_MODEL` against an agent call's own model | subagent alias | not run |
-| P-CC-5 | A prompt on stdin with `-p` and no positional prompt is accepted on the pinned version | `prompt_off_argv` | not run |
-| P-CC-6 | `dontAsk` refuses an unlisted call without a prompt and emits `permission_denied` | judge launch | not run |
-| P-CC-7 | Whether an engine-launched session keeps a native transcript under its isolation flags, and at which path | transcript locator ([EVT §2.4](30-run-events.spec.md)) | not run |
-| P-CC-8 | A `Skill(<plugin>:<name>)` allow rule admits only that skill in a headless session, and the tool record names the skill called | `skill:` capability | not run |
-| P-CC-9 | `claude -p --plugin-dir <package root>` loads the workflow plugin's skills and agents in a headless step session (listed in `system/init`), together with the isolation flags of a step launch | workflow skills and agents on step sessions ([PKG §2.6](88-workflow-package.spec.md)) | not run |
+- GIVEN P-CC-1 not confirmed WHEN `executors --json` runs THEN `isolates_user_config` is false
 
-**Model-free checks on 2.1.329** (2026-11-20, argument parsing only, in the engine's cloud build container, not the owner's machine). `--help` lists the permission modes `acceptEdits`, `auto`, `bypassPermissions`, `manual`, `dontAsk` and `plan`; `default` is no longer listed but is still accepted. `--max-turns` is accepted though not listed. `--permission-prompts` takes `host` or `none`. `-p` with an empty stdin and no positional prompt fails with "Input must be provided either through stdin or as a prompt argument", which shows stdin is read as the prompt but does not confirm P-CC-5. `auth status` prints JSON with `loggedIn`. The probe reads the flags from `--help`, so `--permission-prompts none` is sent only when listed. No live probe was run: a nested session in that container inherits the host session's environment, so its result would not stand for the owner's machine.
+### ECC-B7 Tool map
 
-### 2.8 Step reach inside a host session (release 3)
+WHEN a capability is mapped THE executor SHALL map `read` to `Read`, `search` to `Grep`, `list` to `Glob`, `web_fetch` to `WebFetch` and `web_search` to `WebSearch` with rules of the same name; `edit` and `write` to `Edit` and `Write` with `Edit(./**)` and `Write(./**)` in the engine's own worktree only; `shell` to `Bash` as ECC-B1; `subagent` to `Agent` (reported as `Task` by older releases); `mcp:<s>/<t>` to `mcp__<s>__<t>`; and `skill:<p>:<n>` to `Skill` with the rule `Skill(<p>:<n>)` once P-CC-8 confirms it, else `Skill` with the called name checked in the tool record ([ADR-0078](../adr/0078-skills-are-a-declared-tool-capability.adr.md)).
 
-A live run on 2.1.330 from inside a Claude Code session showed a step offered the host's own tools and its additional directories; one step read a file outside the workspace ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F4). The allow rules held, but reach was wider than the declaration. Release 3 closes it:
+- GIVEN a step declaring `edit` that runs in place WHEN it launches THEN no `Edit(./**)` rule is sent
 
-| Rule | Detail |
-|---|---|
-| Host variables | The launcher drops from a step's and a judge's environment every variable the host session sets for its own children (the `CLAUDE_CODE_*` and `CLAUDECODE` names, additional-directory and session variables), keeping only the overlay of §2.3 and the credentials the probe needs |
-| Tool list | `--tools` with the mapped built-ins is sent on every step launch, not only under the operator's enforcement setting, so a host's tools are never offered |
-| Directories | No `--add-dir` is sent; a step reaches only its workspace and the engine's scratch folder |
-| Probe P-CC-10 | A step launched from inside a host session lists in `system/init` only the tools of its `--tools`, and a read outside the workspace is refused |
-| Probe P-CC-11 | `--bare` drops user-scope plugins from `system/init` on the pinned version (2.1.330 still listed them, so `isolates_user_config` stays false) |
+### ECC-B8 Step launch
 
-## 3. Behaviours
+WHEN a step launches THE executor SHALL assemble argv only from constants, binding-table values and engine-checked numbers, never from typed text: `claude -p --output-format stream-json --verbose`; `--permission-mode` `acceptEdits` in the engine's worktree, else `default`; `--permission-prompts none` when the CLI lists it; `--model <bound model>` unless the alias is `inherit`; `--allowedTools` with the ECC-B7 rules when the step declares tools; `--tools` with the mapped built-ins under the operator's enforcement setting; always `--disallowedTools EnterWorktree,ExitWorktree`, the run's worktree being the engine's ([WTR-B25](82-worktree-mode.spec.md)); `--strict-mcp-config --mcp-config <engine file>` under enforcement with an MCP tool declared; `--plugin-dir <package root>` for a workflow plugin's skills and agents ([PKG-B23](88-workflow-package.spec.md)); and `--effort`, `--max-budget-usd`, `--fallback-model` or `--max-turns` when that option is set.
 
-**ECC-B1 Declared shell.** Given a step that declares `shell` with command prefixes `pytest` and `git status`, when it launches in the engine's own worktree, then `--allowedTools` holds `Bash(pytest *)` and `Bash(git status *)`, the permission mode is `acceptEdits`, and no rule names an absolute path.
+- GIVEN a step with `effort: high` and alias `inherit` WHEN it launches THEN argv holds `--effort high` and no `--model`
 
-**ECC-B2 Tool names and rules stay apart.** Given any launch, when argv is built, then tool names go only to `--tools` or `--disallowedTools` and permission rules only to `--allowedTools`.
+### ECC-B9 Step environment and prompt
 
-**ECC-B3 Judge view.** Given a judge whose view set is `read`, `search`, `list` and `mcp:tracker/get_issue`, when it launches, then `--tools` is `Read,Grep,Glob`, the private MCP config lists one server, the filtering proxy in front of `tracker`, which offers only `get_issue`, and the mode is `dontAsk`.
+WHEN a step session starts THE executor SHALL overlay `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1` unless the host already sets it and `CLAUDE_CODE_SUBAGENT_MODEL=<bound model>` unless the step names a subagent alias, write the prompt as UTF-8 on stdin, then close stdin, and never use a resumed session for a retry.
 
-**ECC-B4 Reported cost.** Given a `result` event with `total_cost_usd = 1.73`, when usage is recorded, then `reported_cost_usd = 1.73` and the engine's own estimate is stored beside it, never summed.
+- GIVEN any step launch WHEN its argv is scanned THEN the prompt is not on it
 
-**ECC-B5 Exact timeout text.** Given `result.result` is "Request timed out." with a trailing period, when the cause is classified, then it is not `request_timed_out`, because only exact equality counts.
+### ECC-B10 Judge launch
 
-| `result.result` | Class |
-|---|---|
-| `Request timed out` | `request_timed_out` (infra) |
-| `Request timed out.` | `error_kind = model` |
-| `The request timed out` | `error_kind = model` |
+WHEN a judge launches THE executor SHALL send `claude -p --output-format stream-json --verbose`; `--bare` when P-CC-1 passed, else `--setting-sources ""`; `--model <bound judge model>`; `--tools` with `Read,Grep,Glob` plus the built-in views; `--disallowedTools "mcp__*"` when there is no MCP view, else the strict private MCP config of ECC-B3; `--permission-mode dontAsk`; and `--allowedTools` with the view rules plus read-only command rules when opted in; lay judge-only credentials from the operator's credentials profile over the environment; and never send a judge `--fallback-model`, `--resume`, `--continue`, a write tool or a step's allow rules.
 
-## 4. Error conditions
+- GIVEN any judge launch WHEN its argv is read THEN it holds no write tool, no step rule, no `--fallback-model` and no `--resume`
 
-| Type | Handling |
-|---|---|
-| `claude` not on the engine's resolved PATH | Probe fails; exit 2 at preflight |
-| `claude auth status` reports signed out and no gateway variables are set | Probe fails; exit 2 |
-| A `system/init` reporting `mcp_server_errors` for a judge view server | The view is recorded as deferred; the dependent criterion renders as out of reach |
-| An unknown event type in the stream | Skipped and counted; never fails the session |
+### ECC-B11 Stream mapping
 
-## 5. Design notes
+WHEN stream lines arrive THE executor SHALL map `system`/`init` to `session_started` (session id, model, tools, and `mcp_server_errors` and `plugin_errors` as counts); an `assistant` `tool_use` block to `tool_started` (`name`, `subagent` when `parent_tool_use_id` is set); a `user` `tool_result` block to `tool_finished` (`ok` when not `is_error`); a `stream_event` text delta to `model_delta` (count only); an `assistant` text block to `text` (last line, scrubbed); `system`/`api_retry` to `retrying` (`category` the event's `error`); `system`/`permission_denied` to `denied`; and `result` to `result` (`total_cost_usd` as `reported_cost_usd`, `usage`, `modelUsage` as `by_model`, `num_turns` as `turns`, `session_id`), as normalized events ([SSN-B7](25-session-contract.spec.md)); and skip and count an unknown event type, never failing the session.
 
-- The permission mode is always passed explicitly because the `-p` default has changed between releases ([R-001 F14](../research/R-001-claude-code-cli-headless.rsrch.md)).
-- A resumed session is never used for a retry: a fresh session told the last report was measured cheaper ([R-001 F20](../research/R-001-claude-code-cli-headless.rsrch.md)).
+- GIVEN a recorded step stream from 2.1.330 WHEN it is mapped THEN every event normalizes and an unknown type is counted, not fatal
 
-## 6. Acceptance criteria
+### ECC-B12 Failure classification
 
-- [ ] ECC-AC-1 Argv for every launch shape is built from constants and the binding table only (source-scan and planted-canary tests).
-- [ ] ECC-AC-2 Each row of §2.5 is covered by a recorded-stream fixture that yields the normalized event.
-- [ ] ECC-AC-3 Each row of §2.6 is covered by a fixture and classified without reading prose beyond the one exact match.
-- [ ] ECC-AC-4 A judge launch never contains a write tool, a step allow rule, `--fallback-model` or `--resume`.
-- [ ] ECC-AC-5 The probe table is filled for the pinned CLI version before the executor is marked live-proven.
+WHEN a session ends THE executor SHALL classify from structured facts only, besides the one exact match of ECC-B5: a spawn that raised with a resource errno as `spawn_failed`; a stdin write that raised broken pipe as `broken_pipe`; a process that ended with no stdout line as `no_output`; a stream that ended without `result` as `no_result`; a last `retrying` category `rate_limit` or `overloaded` with no `result` as `throttled`; `connection_error` or `network_error` with no `result` as `connection`; a `SIGKILL` the launcher did not send with no `result` as `out_of_memory`; `result.subtype` `error_max_turns` as `error_kind = turn_cap`; a session ended by `--max-budget-usd` (`error_max_budget_usd` until P-CC-3 sets the shape) as `cap_reached`; a `retrying` category `authentication_failed` as `auth`; and any other `result.is_error` as `model`.
+
+- GIVEN a stream whose last `api_retry` is `rate_limit` and no `result` WHEN classified THEN it is `throttled`
+
+### ECC-B13 Probe and preflight
+
+WHEN the executor is probed THE executor SHALL fail the probe with exit 2 at preflight when `claude` is not on the engine's resolved `PATH`, or `claude auth status` reports signed out with no gateway variables set; read `--permission-prompts` and other flags from `--help`, sending them only when listed; record a judge view server that `system/init` reports in `mcp_server_errors` as deferred, its criterion rendered out of reach; and rest no control on a live probe until its result is recorded `confirmed` with date and pinned CLI version: P-CC-1 (`--bare` removes user-level plugins and hooks while gateway credentials work, `@builtin` plugins staying listed), P-CC-2 (`--tools Read,Grep,Glob` with `--disallowedTools "mcp__*"` leaves exactly those tools), P-CC-3 (the stream shape at `--max-budget-usd`), P-CC-4 (precedence of `CLAUDE_CODE_SUBAGENT_MODEL` against an agent call's own model), P-CC-5 (a prompt on stdin with no positional prompt is accepted), P-CC-6 (`dontAsk` refuses an unlisted call and emits `permission_denied`), P-CC-7 (whether a session keeps a native transcript under the isolation flags, and where, [EVT-B20](30-run-events.spec.md)), P-CC-8 (a `Skill(<plugin>:<name>)` rule admits only that skill and the record names it) and P-CC-9 (`--plugin-dir` loads a workflow plugin's skills and agents with a step's isolation flags).
+
+- GIVEN a signed-out `claude` and no gateway variables WHEN preflight runs THEN it exits 2
+
+### ECC-B14 Step reach inside a host session
+
+WHEN a step or judge launches from inside a Claude Code host session THE launcher SHALL drop from its environment every variable the host sets for its own children (the `CLAUDE_CODE_*` and `CLAUDECODE` names, additional-directory and session variables), keeping only the ECC-B9 overlay and the credentials the probe needs; send `--tools` with the mapped built-ins on every step launch, so a host's tools are never offered; and send no `--add-dir`, a step reaching only its workspace and the engine's scratch folder; P-CC-10 (a step launched inside a host lists only its `--tools` and a read outside the workspace is refused) and P-CC-11 (`--bare` drops user-scope plugins on the pinned version) confirming it.
+
+- GIVEN a step launched from inside a host session WHEN its `system/init` is read THEN it lists only the tools of its `--tools`
+
+## Acceptance criteria
+
+- ECC-AC1 (ECC-B1, ECC-B2, ECC-B7, ECC-B8, ECC-B9): Argv for every launch shape is built from constants and the binding table only (source-scan and planted-canary tests)
+- ECC-AC2 (ECC-B4, ECC-B11): Each stream mapping is covered by a recorded-stream fixture that yields the normalized event
+- ECC-AC3 (ECC-B5, ECC-B12): Each failure classification is covered by a fixture and classified without reading prose beyond the one exact match
+- ECC-AC4 (ECC-B3, ECC-B10): A judge launch never contains a write tool, a step allow rule, `--fallback-model` or `--resume`
+- ECC-AC5 (ECC-B6, ECC-B13, ECC-B14): The probe results are recorded for the pinned CLI version before the executor is marked live-proven
 
 ## Open questions
 
-| Question | Owner | Release 1 default |
-|---|---|---|
-| Use `--input-format stream-json` for the prompt instead of plain stdin, to share framing with the Antigravity executor? Decide after P-CC-5. | Executor implementer | Plain UTF-8 on stdin, then stdin closes |
-
-## References
-
-[EXI](10-executor-interface.spec.md) · [R-001](../research/R-001-claude-code-cli-headless.rsrch.md) · [R-003](../research/R-003-executor-capability-matrix.rsrch.md) · [GRD](06-independence-guard.spec.md)
+- Use `--input-format stream-json` for the prompt instead of plain stdin, to share framing with the Antigravity executor? Until answered: plain UTF-8 on stdin, then stdin closes; decided after P-CC-5. Owner: executor implementer.
+- Not built yet: the host-session reach rules (ECC-B14) are release 3 work (R-140 F4); probes P-CC-1 to P-CC-11 have not been confirmed on the owner's machine. Owner: engine owner.

@@ -1,244 +1,186 @@
----
-title: Orchestration of runs
-type: component
-status: review
-prefix: ORC
-adrs: [0035, 0036, 0037, 0038, 0039, 0070, 0073]
----
-
 # Orchestration of runs
 
-## 1. Overview
+## Purpose
 
-An **orchestration** is a graph of tempergraph runs: which workflow runs on what, in what order, how many at once, what a failure does to the runs after it, and where a person must sign off between waves. It is the run-level counterpart of a workflow: a workflow is a graph of steps inside one run, an orchestration is a graph of runs. Like a workflow it is **data**, validated before any spend and executed by the engine, not by a conversation ([ADR-0035](../adr/0035-orchestration-is-data-run-by-a-model-free-supervisor.adr.md)).
+An orchestration is a graph of tempergraph runs: which workflow runs on what, in what order, how many at once, what a failure does to the runs after it, and where a person must sign off between waves. A workflow is a graph of steps inside one run; an orchestration is a graph of runs. Like a workflow it is data, validated before any spend and executed by the engine, not by a conversation ([ADR-0035](../adr/0035-orchestration-is-data-run-by-a-model-free-supervisor.adr.md)): orchestration driven by hand from a conversation adds cost on top of run cost, most of it from being woken and re-reading context. A model-free engine process, the supervisor, starts each run through the engine's own `run` verb, watches it through the status document, keeps independent runs moving while one waits for a person, and stops starting new runs when a cap or a failure policy says so; it never calls a model and never answers a gate (OVR-B18). The file holds intent, each run's status holds truth, and the event log holds history ([ADR-0036](../adr/0036-orchestration-state-is-a-file-and-an-event-log.adr.md)); `wait` wakes the orchestrating session once per batch of attention ([ADR-0037](../adr/0037-attention-batched-waking-of-the-orchestrating-session.adr.md)); `batch` is a one-node orchestration ([ADR-0038](../adr/0038-batch-is-a-one-node-orchestration.adr.md)); pauses stay with the person and failures follow node policy ([ADR-0039](../adr/0039-pauses-stay-with-the-person-failures-follow-node-policy.adr.md)). The model is borrowed from Claude Code's dynamic workflows and departs from it where runs pause for people, cost real money per rerun and leave branches, so identity is by node id and nothing is replayed ([R-035](../research/R-035-dynamic-workflows-as-orchestration-model.rsrch.md)). The [orchestrator skill](46-orchestrator-skill.spec.md) writes the file with the person, starts it and walks the person through each pause; the monitor shows it read-only; design notes and assumptions are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md). It ships in a later release ([ADR-0132](../adr/0132-release-three-is-workflows-that-compose-run-in-parallel-and-grade-in-the-pipeline.adr.md)).
 
-A model-free engine process, the **supervisor**, starts each run through the engine's own `run` verb, watches it through the status document, keeps independent runs moving while one waits for a person, and stops starting new runs when a cap or a failure policy says so. It never calls a model and never answers a gate (contract C16). The [orchestrator skill](46-orchestrator-skill.spec.md) writes the file with the person, starts it and walks the person through each pause; the `tempergraph-monitor` plugin shows it read-only.
+## Behaviours
 
-The model is borrowed from Claude Code's dynamic workflows (labels, phases, barriers, per-item pipelines, live drill-down, size warning, saved templates) and departs from it where tempergraph runs differ: runs pause for people, cost real money per rerun and leave branches, so identity is by node id, not by position, and nothing is replayed ([R-035](../research/R-035-dynamic-workflows-as-orchestration-model.rsrch.md)). The existing `batch` verb becomes a one-node orchestration ([ADR-0038](../adr/0038-batch-is-a-one-node-orchestration.adr.md)).
+### ORC-B18 Orchestration, nodes and threads
 
-## 2. Contract
+WHEN an orchestration starts THE engine SHALL give it an `orchestration_id` of `<name>-<yyyymmdd>-<4 hex>`, keep its file and event log under `<state root>/orchestrations/<orchestration_id>/`, run at most one supervisor for it under an OS file lock (a second refused with exit 2 naming the holder), and name each node's run thread `<workflow>/o-<orchestration_id>-<node>[-<item>]`, so a re-run finds it by name; a node is a `run`, a `map` (one run per target) or an `approval` (a pause owned by the orchestration), becomes ready when every node of its `after` list has finished, and its `phase` is display only.
 
-### 2.1 Concepts
+- GIVEN a second supervisor for one orchestration WHEN started THEN it exits 2 naming the lock holder
 
-| Concept | Definition |
-|---|---|
-| Orchestration | One orchestration file plus its event log, under `<state root>/orchestrations/<orchestration_id>/`. |
-| `orchestration_id` | `<name>-<yyyymmdd>-<4 hex>`, fixed at start; the name is a slug from the file. |
-| Node | One unit of the graph: a `run`, a `map` (one run per target) or an `approval` (a pause owned by the orchestration). |
-| Edge | `after: [node ids]`: the node becomes ready when every listed node has `finished`. |
-| Phase | A display group of nodes (`phase: "<title>"`); it has no effect on scheduling. |
-| Supervisor | A detached engine process that executes one orchestration; at most one per orchestration (an OS file lock). |
-| Node thread | The run a node starts: `thread_id = <workflow>/o-<orchestration_id>-<node>[-<item>]`, so a re-run finds it by name. |
-| Attention | A node state a person must act on: a paused run, an approval node, a failed node whose policy asks, or a lost supervisor. |
+### ORC-B19 Orchestration file
 
-### 2.2 Orchestration file (schema version 1)
+WHEN an orchestration file (schema version 1, `<name>.orch.json` when saved as a template) is read THE engine SHALL read `schema_version`, `name` (a slug) and `description` (at most 200 characters), `params` (`{name, meaning, example}`, taken by `{param}` fields in `inputs` and `targets` with the template grammar of [CON-B8](01-contracts.spec.md)), `k` (1 to 16, default 3, runs in flight at once), optional `cost_cap_usd`, `mode` (`attended`; `unattended` refused as reserved), and `nodes` (at least one, at most 50 runs after expansion), every value a constant, a checked number or a scrubbed string so nothing typed reaches a launch ([SEC](14-security.spec.md)).
 
-JSON, named `<name>.orch.json` when saved as a template. Every value is a constant, a checked number or a scrubbed string; nothing in the file reaches a launch as typed text ([SEC](14-security.spec.md)).
+- GIVEN `mode: unattended` WHEN validated THEN it exits 2, reserved
 
-| Field | Kind | Meaning |
-|---|---|---|
-| `schema_version` | int | `1` |
-| `name`, `description` | slug, text ≤ 200 | Shown in status, monitor and reports. |
-| `params` | list of `{name, meaning, example}` | Declared arguments of a template; `{param}` fields in `inputs` and `targets` take them (template grammar of [CON §2.2](01-contracts.spec.md)). |
-| `k` | int 1–16, default 3 | Runs in flight at once across the orchestration. |
-| `cost_cap_usd` | float, optional | Aggregate cap over every node's run cost, children included. |
-| `mode` | `attended` | `unattended` is reserved and refused until a delegation policy exists ([ADR-0039](../adr/0039-pauses-stay-with-the-person-failures-follow-node-policy.adr.md)). |
-| `nodes` | list of `NodeSpec` | At least one; at most 50 runs after expansion. |
+### ORC-B20 Node fields
 
-| `NodeSpec` field | Kind | Meaning |
-|---|---|---|
-| `id` | slug | Unique in the file; never reused for a different node. |
-| `kind` | `run` \| `map` \| `approval` | |
-| `label`, `phase` | text ≤ 40 | Display only. |
-| `after` | list of node ids | Dependencies; the graph must be acyclic. |
-| `workflow` | registered workflow name | For `run` and `map`. |
-| `repo` | absolute path, optional | Another local git repository whose state root the run uses; default the orchestration's. |
-| `inputs` | map name → literal \| `{param}` \| `{from: <node>, artifact: <key>}` | The run's declared inputs; a `from` value is read from the finished upstream run's artifacts by key through `facts`. |
-| `options` | map `SettingKey` → value, plus `profiles` | Any key of the settings catalog ([RST §2.2](80-run-settings-and-overrides.spec.md)), applied on the `flag` layer with `via: orchestration` and validated by `orchestrate validate`. Options that hand gates to an agent (`--as-agent`) are refused. |
-| `targets` | list of strings, for `map` | One run per target. |
-| `targets_from` | `{node, artifact}`, for `map` | A JSON file artifact of an upstream run holding an array of strings; expanded when that node finishes. |
-| `max_items` | int 1–50, for `map` | Required with `targets_from`; more items fail the expansion. |
-| `k` | int, for `map`, optional | Per-map limit, within the orchestration's `k`. |
-| `on_failure` | `skip_dependants` (default) \| `continue` \| `halt` \| `ask` | What a failed run does to the rest (§2.5). |
-| `reopen_infra` | int 0–3, default 0 | Re-opens of a run that ended on an infra cause, given in advance. |
-| `exclusive` | list of resource names | No two nodes sharing a name run at the same time (for example a version field or an id counter). |
-| `question`, `artifacts` | text, list of `{node, artifact}`, for `approval` | What the person signs off and what to look at. |
+WHEN a node is read THE engine SHALL read `id` (a slug unique in the file, never reused for another node), `kind`, `label` and `phase` (at most 40 characters), `after` (acyclic), `workflow` (registered), optional `repo` (another local git repository with an engine state root, whose state root the run uses), `inputs` (name to literal, `{param}` or `{from: <node>, artifact: <key>}` read from the finished upstream run through `facts`), `options` (any settings key, [RST](80-run-settings-and-overrides.spec.md), plus `profiles`, applied on the `flag` layer with `via: orchestration`, `--as-agent` refused), for a map `targets` or `targets_from` (`{node, artifact}`, a JSON array of strings expanded when that node finishes) with `max_items` (1 to 50, required with `targets_from`) and optional `k`, `on_failure` (`skip_dependants` by default, `continue`, `halt`, `ask`), `reopen_infra` (0 to 3, default 0), `exclusive` (resource names no two nodes hold at once) and for an approval `question` and `artifacts` (`{node, artifact}`).
 
-### 2.3 Node states
+- GIVEN a node `repo` that is not a git repository with a state root WHEN validated THEN it exits 2
 
-| State | Meaning | Comes from |
-|---|---|---|
-| `waiting` | An `after` node is not yet finished | Plan |
-| `ready` | All dependencies finished; waiting for a slot or an `exclusive` resource | Supervisor |
-| `running` | The node thread is `running` | Run status |
-| `paused` | The node thread is `paused` (exit 3); attention | Run status |
-| `approval` | An approval node is waiting for a person; attention | Supervisor |
-| `finished` | Exit 0; for a map, every item finished | Run status |
-| `failed` | Exit 4 or 5 after any re-opens; carries the run's reason | Run status |
-| `skipped` | A dependency failed under `skip_dependants`, or was cancelled | Supervisor |
-| `cancelled` | Removed by an edit before it started, or by a stop | Edit, stop |
-| `lost` | The thread is `unfinished` with no live lock and no exit was seen | Lock probe |
+### ORC-B1 Refuse before spend
 
-A node's state is derived from its thread's status every time; the event log records transitions but never overrides the run's own status ([ADR-0036](../adr/0036-orchestration-state-is-a-file-and-an-event-log.adr.md)). A map node's state is the worst of its items' (`paused` before `failed` before `running`), with counts per state.
+WHEN an orchestration file is validated or started THE engine SHALL check with no model call the schema, an acyclic graph, every workflow's registration, every `after`, `from` and `targets_from` reference, the 50-run limit, the `mode` and a `run --check` of every node whose inputs are all literals or params, exit 2 at the first miss naming the node, and create nothing on `start`.
 
-### 2.4 Event log
+- GIVEN a cycle `a → b → a` WHEN validated THEN it exits 2 naming the cycle
+- GIVEN a `from` artifact key the upstream workflow does not declare in `produces` WHEN validated THEN it exits 2
+- GIVEN a node whose `run --check` says `needs` WHEN validated THEN it exits 2 with the questions, so the skill asks the person
+- GIVEN 4 maps of 20 targets WHEN validated THEN it exits 2, over 50 runs
 
-Append-only JSON lines beside the file, one per transition, each with `seq`, `at`, `kind`, `node`, `item` and metadata only (no run text):
+### ORC-B2 Plan before approval
 
-`planned`, `started` (with thread id), `state` (from, to, reason), `expanded` (map items), `reopened`, `answered` (node, decision word, by `person`), `edited` (diff summary), `cost_cap`, `stopping`, `supervisor_started`, `supervisor_lost`, `finished` (outcome).
+WHEN `orchestrate plan <file> [--format md|mermaid|json]` runs on a valid file THE engine SHALL print, writing and spending nothing, the engine-drawn graph (never by model), phases, a node table with workflow, inputs, dependencies and policy, the run count (a `targets_from` map shown as "up to `max_items`"), the projected cost range from `stats --projection` ([CST-B15](34-central-run-stats.spec.md)) or "not known", a thin projection shown as such, the cap, and a warning when the run count exceeds 10 or the projected high end exceeds the cap.
 
-### 2.5 Failure policy
+- GIVEN 12 runs planned WHEN `orchestrate plan` runs THEN it warns about the run count
 
-| `on_failure` | Effect of a `failed` node |
-|---|---|
-| `skip_dependants` | Every node that depends on it, directly or not, becomes `skipped`; independent nodes go on |
-| `continue` | Dependants are released as if it finished; a `from` input it should have given makes the dependant `failed` with reason `input_missing` |
-| `halt` | No new node starts; running nodes go on to their own end; the outcome is `halted` |
-| `ask` | The node is `failed` and attention; dependants wait until the person picks skip, continue or halt for it |
+### ORC-B21 Node states
 
-Before a policy applies, a run that ended with exit 5 on an infra cause ([BUD §2.2](08-budgets-and-failures.spec.md)) is re-opened with `resume` up to `reopen_infra` times. A run that spent a quality budget, stopped at a gate or hit a cost cap is never re-opened by the supervisor.
+WHEN a node's state is read THE engine SHALL derive it from its thread's status every time, never from the event log: `waiting` (an `after` node not finished), `ready` (waiting for a slot or an `exclusive` resource), `running`, `paused` (exit 3, attention), `approval` (attention), `finished` (exit 0; for a map every item), `failed` (exit 4 or 5 after any re-opens, with the run's reason), `skipped`, `cancelled` (removed by an edit before it started, or by a stop) and `lost` (the thread `unfinished` with no live lock and no exit seen), a map's state being the worst of its items' (`paused` before `failed` before `running`) with counts per state.
 
-### 2.6 Verbs
+- GIVEN a map with one paused and one failed item WHEN read THEN the map is `paused`
 
-| Verb | Does | Writes | Spends |
-|---|---|---|---|
-| `orchestrate validate <file> [--arg k=v…]` | Schema, graph, and `run --check` of every node whose inputs are known | no | no |
-| `orchestrate plan <file> [--format md\|mermaid\|json]` | Validation plus the drawn graph, phases, node table, projected cost and warnings | no | no |
-| `orchestrate start <file> [--arg k=v…]` | Validate, write the orchestration folder, start the supervisor detached; prints the id | yes | yes |
-| `orchestrate status [id] [--json]` | Orchestration status document (§2.7) | no | no |
-| `orchestrate wait <id> [--timeout s] [--settle s]` | Block until attention changes or the orchestration ends | no | no |
-| `orchestrate answer <id> <node> [--item i] --decision … [--feedback …] [--ruling] [--set k=v] [--relayed]` | Resume that node's paused run, sign an approval, or pick the policy of an `ask` failure; feedback, rulings and settings pass through to `resume` ([RRN §2.6](81-reruns-and-feedback.spec.md)) | yes | yes |
-| `orchestrate rerun <id> <node> [--item i] --from <unit> [rerun options]` | Rerun the node's thread from a unit and point the node at the new thread ([RRN §2.6](81-reruns-and-feedback.spec.md)) | yes | yes |
-| `orchestrate edit <id> <patch file>` | Add nodes, cancel unstarted nodes, change `k` or the cap | yes | no |
-| `orchestrate stop <id> [--node n] [--now]` | Stop starting nodes; drain or stop running runs (ORC-B10) | yes | no |
-| `orchestrate resume <id>` | Start a supervisor for an orchestration whose supervisor is gone | yes | yes |
-| `orchestrate list` | Orchestrations under the state root with outcome and cost | no | no |
-| `orchestrate report <id>` | Cost per node and phase, time, pauses and who answered (caller kind and decider), failures with causes, and supervision: touches per node, the orchestrating sessions' cost and its share of the runs' cost ([SUP §2.5](86-supervision-metrics.spec.md), [SCO](87-supervision-cost.spec.md)) | no | no |
+### ORC-B22 Event log
 
-`orchestrate wait` exits 0 (all nodes finished), 3 (attention: the document lists what), 4 (stopped by a person), 5 (ended `finished_with_failures`, `halted`, `cost_cap` or `supervisor_lost`), 2 (unknown id). `start` exits 0 once the supervisor runs, 2 on any refusal with nothing created. The meanings are those of [CON §2.9](01-contracts.spec.md).
+WHEN a transition happens THE supervisor SHALL append one JSON line beside the file with `seq`, `at`, `kind`, `node`, `item` and metadata only, of kind `planned`, `started` (with thread id), `state` (from, to, reason), `expanded`, `reopened`, `answered` (node, decision word, caller), `edited` (diff summary), `cost_cap`, `stopping`, `supervisor_started`, `supervisor_lost` or `finished` (outcome), and when the write fails note it once on standard error and go on scheduling, status falling back to run status (OVR-B4).
 
-### 2.7 Orchestration status document (schema version 1)
+- GIVEN an event log write that fails WHEN the next node is due THEN it starts and status reads from run status
 
-The one document the skill and the monitor read about an orchestration. Read-only to produce: it opens the file, the event log and each node's run status, and writes nothing.
+### ORC-B3 Scheduling
 
-| Field | Meaning |
-|---|---|
-| `schema_version`, `orchestration_id`, `name`, `description` | |
-| `state` | `running`, `attention`, `finished`, `finished_with_failures`, `halted`, `stopped`, `cost_cap`, `supervisor_lost` |
-| `supervisor` | `alive` from the lock probe, `started_at`, `restarts` |
-| `k`, `in_flight` | Limit and runs in flight |
-| `counts` | Nodes and map items per node state |
-| `cost` | `reported`, `estimated`, `incomplete` summed over node runs, plus `cap` and `projected` |
-| `phases` | Titles in first-use order, each with its node ids |
-| `nodes` | Per node: `id`, `kind`, `label`, `phase`, `after`, `state`, `reason`, `workflow`, `thread_id`, `alias`, `repo`, `started_at`, `ended_at`, `exit`, `cost`, `attempt_in_flight` (copied from the run's status), `pending_gates` (copied, with each decision's `orchestrate answer` command), and for a map `items` with per-item state and thread id |
-| `attention` | Ordered list of `{node, item, kind, since}`, oldest first |
-| `events_path` | Local path of the event log |
+WHEN a slot is free and nodes are ready THE supervisor SHALL start them in file order, never more than `k` runs at once across all nodes and map items, never two nodes sharing an `exclusive` name together, record `started` before the child process starts, take no slot for an approval node, run each child in its own process group so the supervisor's exit or kill never ends it, and mark a node whose run is refused at start `failed` with reason `refused` and the run's message.
 
-Readers follow [CON §2.10](01-contracts.spec.md): unknown keys are ignored, a missing key is "not recorded".
+- GIVEN `k = 3` and five ready nodes WHEN scheduled THEN three run and two stay `ready`
 
-### 2.8 Needs from the engine
+### ORC-B4 Data between runs
 
-What the supervisor needs from the rest of the engine. Rows marked **requested** are requirements on the observability and run-data design written in parallel, which has taken them as stated; its specs are named by number and prefix until both sets are merged. The supervisor works without them through the fallback named.
+WHEN node `plan` has `inputs: {spec: {from: design, artifact: spec_path}}` and `design` finishes THE supervisor SHALL read `spec_path` through `facts` of `design`'s thread ([CLI-B5](17-engine-cli.spec.md)) and pass it as a declared input of the new run, and fail `plan` with reason `input_missing` before any spend when the key is missing or the upstream run is deleted or unreadable.
 
-| # | Need | Owner | Fallback until it exists |
-|---|---|---|---|
-| N1 | Run option `--parent <orchestration_id>/<node>[/<item>]`, stored with the run options and shown as `parent` in the status document, the run log's first line, the ledger and the `stats` row; `origin` value `orchestration` | [DUR §2.2](09-durability-and-resume.spec.md) (added); the `run_started` run-log record and the stats `run` row: **requested**, taken by spec 30 (EVT) and spec 34 (CST); the ledger row ([SIL](16-self-improvement.spec.md)): open | Thread id prefix `o-<id>-` |
-| N2 | A per-run lifecycle event stream (append-only, ordered, versioned): started, attempt started, gate verdict, paused, resumed, finished, failed, cost so far | **Requested**, taken by spec 30 (EVT): every run-log record carries `seq` and `segment`; `gate`, `pause` and `run_exit` carry `cost_so_far`; `events <selector> --since <seq> --follow --json` tails them read-only | One `wait` per running child ([DUR-B5](09-durability-and-resume.spec.md)) |
-| N3 | `stop <selector> [--drain\|--now]` for one run: drain (no new attempt or unit, thread ends `unfinished`, exit 4) or now (tree-kill the open session; resume treats it as a cut-off attempt, [DUR-B2](09-durability-and-resume.spec.md)) | Spec 32 (RCT §2) owns it; [CLI §2](17-engine-cli.spec.md) lists the verb | None: `orchestrate stop` only stops starting nodes |
-| N4 | `facts --json` lists each pending gate's payload: kind, decisions, artifacts, the resume argv; and artifacts by key with resolved paths | [CLI-B5](17-engine-cli.spec.md) | — (already designed) |
-| N5 | A run started by the supervisor runs in its own process group; the supervisor's exit or kill never ends it | This spec | — |
-| N6 | Orchestration hook events `orchestration_attention` and `orchestration_finished`, so a notifier can reach a person when no conversation is open | [CLI §2.2](17-engine-cli.spec.md) (added) | The skill's `wait` |
-| N7 | Projected cost per workflow from past runs: median and 90th percentile of estimated cost per run, with the sample size | **Requested**, taken by spec 34 (CST §2.5): `stats --projection`, marked `thin` under 5 finished runs; `plan` shows a thin projection as such | `projected` not recorded |
-| N8 | The monitor's drill-down from an orchestration node into the run, its steps, attempts and the live session (open tool, shell command) | **Requested**, taken by the monitor design: an orchestration view built from §2.7 | Node row only |
+- GIVEN `design` finished without `spec_path` WHEN `plan` is due THEN it fails `input_missing` and nothing is spent
 
-## 3. Behaviours
+### ORC-B5 Pauses do not stop the graph
 
-**ORC-B1 Refuse before spend.** Given an orchestration file, when it is validated or started, then the schema, an acyclic graph, every workflow's registration, every `after`, `from` and `targets_from` reference, the 50-run limit, the `mode` and a `run --check` of every node whose inputs are all literals or params are checked with no model call; the first miss exits 2 naming the node, and `start` creates nothing.
+WHEN one of three running nodes pauses THE supervisor SHALL make its node `paused` and attention, hold its dependants, and keep the other runs and every node not depending on it starting and finishing.
 
-| Fault | Result |
-|---|---|
-| Cycle `a → b → a` | exit 2, the cycle named |
-| `from` an artifact key the upstream workflow does not declare in `produces` | exit 2 |
-| A node's `run --check` says `needs` | exit 2 with the questions, so the skill asks the person |
-| `mode: unattended` | exit 2, reserved |
-| 4 maps of 20 targets | exit 2, over 50 runs |
+- GIVEN one paused node of three WHEN the supervisor runs THEN the other two go on
 
-**ORC-B2 Plan before approval.** Given a valid file, when `orchestrate plan` runs, then it prints the graph (engine-drawn, never by model), phases, a node table with workflow, inputs, dependencies and policy, the run count (a `targets_from` map shown as "up to `max_items`"), the projected cost range from N7 or "not known", the cap, and a warning when the run count exceeds 10 or the projected high end exceeds the cap.
+### ORC-B6 Answering a node
 
-**ORC-B3 Scheduling.** Given ready nodes, when a slot is free, then the supervisor starts them in file order, never more than `k` runs at once across all nodes and map items, never two nodes sharing an `exclusive` name together, and records `started` before the child process starts. An approval node takes no slot.
+WHEN `orchestrate answer <id> <node> [--item i] --decision … [--feedback …] [--ruling] [--set k=v] [--relayed]` runs on a paused node THE engine SHALL run `resume` of that node's thread with that decision, passing feedback, rulings and settings through ([RRN](81-reruns-and-feedback.spec.md)), append an `answered` event carrying the answer's caller ([PRV](85-caller-provenance.spec.md)) and make the node `running`, refuse with exit 2 `answer_not_by_person` an answer whose decider is not a person (an agent's own answer, a relay without a person turn, an `unknown` caller), and refuse with exit 2 a decision the run's gate does not offer ([HUM](07-gate-and-human.spec.md)).
 
-**ORC-B4 Data between runs.** Given node `plan` with `inputs: {spec: {from: design, artifact: spec_path}}`, when `design` finishes, then the supervisor reads `spec_path` through `facts` of `design`'s thread and passes it as a declared input of the new run; if the key is missing, `plan` fails with reason `input_missing` before any spend.
+- GIVEN an agent's own answer WHEN `orchestrate answer` runs THEN it exits 2 `answer_not_by_person`
 
-**ORC-B5 Pauses do not stop the graph.** Given three running nodes, when one run pauses, then its node becomes `paused` and attention, its dependants wait, and the other two runs and every node not depending on it go on starting and finishing.
+### ORC-B7 Approval nodes
 
-**ORC-B6 Answering a node.** Given a paused node, when `orchestrate answer <id> <node> --decision retry --feedback …` runs, then the engine's `resume` of that node's thread is run with that decision, an `answered` event carrying the answer's `Caller` is appended ([PRV §2.5](85-caller-provenance.spec.md)), and the node becomes `running`. An answer whose decider is not a person (an agent's own answer, a relay without a person turn, an `unknown` caller) is refused with exit 2 `answer_not_by_person`, since every pause stays with a person ([ADR-0039](../adr/0039-pauses-stay-with-the-person-failures-follow-node-policy.adr.md)); a person can always answer at a terminal. A decision the run's gate does not offer is refused with exit 2, as `resume` refuses it ([HUM §2.2](07-gate-and-human.spec.md)).
+WHEN the nodes before an approval node finish THE supervisor SHALL show its question and listed artifacts and wait, release its dependants on `--decision proceed`, end the orchestration `stopped` on `--decision stop`, and accept no other decision.
 
-**ORC-B7 Approval nodes.** Given an approval node after a map, when the map finishes, then the node shows its question and the listed artifacts and waits; `--decision proceed` releases its dependants and `--decision stop` ends the orchestration `stopped`; no other decision is accepted.
+- GIVEN an approval node WHEN answered `retry` THEN it is refused
 
-**ORC-B8 Failures by policy.** Given node `b` after `a` and node `c` independent, when `a` fails, then the rows hold:
+### ORC-B23 Failure policy
 
-| `a.on_failure` | `b` | `c` | Outcome when the rest ends |
-|---|---|---|---|
-| `skip_dependants` | skipped | runs | `finished_with_failures` |
-| `continue` | runs (or fails `input_missing`) | runs | `finished_with_failures` |
-| `halt` | never starts | runs only if already running | `halted` |
-| `ask` | waits for the person | runs | as picked |
+WHEN a node fails THE supervisor SHALL first re-open a run that ended with exit 5 on an infra cause ([BUD](08-budgets-and-failures.spec.md)) with `resume` up to `reopen_infra` times, never re-opening one that spent a quality budget, stopped at a gate or hit a cost cap, then apply `on_failure`: `skip_dependants` skips every direct and indirect dependant while independent nodes go on; `continue` releases dependants as if it finished, a missing `from` input failing a dependant with `input_missing`; `halt` starts no new node while running nodes go to their own end, the outcome `halted`; and `ask` makes it attention while dependants wait for the person to pick skip, continue or halt.
 
-**ORC-B9 Infra re-open.** Given `reopen_infra: 1` and a run that exits 5 with an infra cause, when the supervisor sees it, then it resumes the thread once, records `reopened`, and applies `on_failure` only if the re-opened run fails again. A run that exits 5 with reason `cost_cap` or a spent retry budget is not re-opened.
+- GIVEN `on_failure: ask` WHEN a node fails THEN its dependants wait for the person's pick
 
-**ORC-B10 Stop.** Given a running orchestration, when `orchestrate stop` runs, then no node starts again, unstarted nodes become `cancelled`, running runs are drained with `stop` (N3) and their threads stay resumable, paused runs stay paused, and the outcome is `stopped`; with `--now` each run's open session is stopped at once. `--node` applies the same to one node.
+### ORC-B8 Failures by policy
 
-**ORC-B11 Cost cap.** Given `cost_cap_usd: 40`, when the summed cost of the node runs (reported where present, else estimated) reaches 40, then no node starts again, running runs go on to their own end, a `cost_cap` event is written and the outcome is `cost_cap`; an edit that raises the cap and `orchestrate resume` continue it. A node's own `--run-cost-cap` still applies to its run.
+WHEN node `a` fails, with `b` after it and `c` independent THE supervisor SHALL apply ORC-B23 with these outcomes.
 
-**ORC-B12 Supervisor loss and resume.** Given a supervisor killed while two runs are live, when `orchestrate resume <id>` runs, then the new supervisor takes the lock, reads each node's state from its thread status (live runs are re-attached through the lock probe, finished ones are not restarted), appends `supervisor_started`, and goes on. `orchestrate wait` on an orchestration whose supervisor lock is free and whose outcome is not written exits 5 with `supervisor_lost`.
+- GIVEN `skip_dependants` WHEN `a` fails THEN `b` is skipped, `c` runs, and the outcome is `finished_with_failures`
+- GIVEN `continue` WHEN `a` fails THEN `b` runs or fails `input_missing`, `c` runs, and the outcome is `finished_with_failures`
+- GIVEN `halt` WHEN `a` fails THEN `b` never starts, `c` runs only if already running, and the outcome is `halted`
+- GIVEN `ask` WHEN `a` fails THEN `b` waits for the person, `c` runs, and the outcome is as picked
 
-**ORC-B13 Re-run skips by identity.** Given a file started once, when the same file is started again under the same `orchestration_id` with `orchestrate resume`, then a node whose thread exists is never started afresh; it is taken in its current state. Reordering nodes in the file changes nothing that ran.
+### ORC-B9 Infra re-open
 
-**ORC-B17 The supervisor's mark.** Given a supervisor that starts a node's run, when it launches the engine, then it passes `--parent` and a random per-orchestration token in `TEMPERGRAPH_SUPERVISOR_TOKEN` whose SHA-256 it keeps in the orchestration's state file; the run records caller `orchestrator` (`attested`), and its supervision cost is `measured_zero` ([PRV §2.2](85-caller-provenance.spec.md), [SCO §2.3](87-supervision-cost.spec.md)). The token is never on argv, in a record or in a step session's environment ([EXI §2.3](10-executor-interface.spec.md)).
+WHEN a run with `reopen_infra: 1` exits 5 with an infra cause THE supervisor SHALL resume the thread once, record `reopened`, and apply `on_failure` only if the re-opened run fails again, never re-opening a run that exited 5 with `cost_cap` or a spent retry budget.
 
-**ORC-B14 Edits while running.** Given a running orchestration, when an edit adds a node after a finished one, cancels a `waiting` node, or lowers `k`, then it applies at the next scheduling pass and an `edited` event records it; an edit that changes a node that has started, removes a started node, or creates a cycle is refused with exit 2 and nothing changes.
+- GIVEN a run that exits 5 on `cost_cap` WHEN seen THEN it is not re-opened
 
-**ORC-B15 Dynamic map.** Given `targets_from: {node: triage, artifact: items}` and `max_items: 8`, when `triage` finishes and its artifact holds 5 strings, then 5 runs are planned (`expanded` event) and scheduled; with 9 strings or a non-array the map node fails with reason `expansion_failed` and no item starts.
+### ORC-B10 Stop
 
-**ORC-B16 Wait coalesces.** Given two runs that pause 20 s apart, when `orchestrate wait --settle 30` is waiting, then it returns once, exit 3, with both in `attention`; it never returns for a step verdict, a cost update or a node that started or finished while attention is unchanged, except when the whole orchestration ends.
+WHEN `orchestrate stop <id> [--node n] [--now]` runs THE engine SHALL start no node again, make unstarted nodes `cancelled`, drain running runs with `stop` ([RCT](32-run-control.spec.md)) so their threads stay resumable, leave paused runs paused, end the outcome `stopped`, stop each run's open session at once with `--now`, and apply the same to one node with `--node`.
 
-## 4. Error conditions
+- GIVEN `orchestrate stop` WHEN run THEN running threads end `unfinished` and resumable
 
-| Condition | Result |
-|---|---|
-| A second supervisor for the same orchestration | Refused, exit 2; the lock holder is named |
-| A node's run is refused at start (exit 2) though validation passed | Node `failed` with reason `refused` and the run's message; policy applies |
-| Upstream run deleted or unreadable | Dependants `failed` with reason `input_missing` |
-| `repo` is not a git repository with an engine state root | Exit 2 at validation |
-| Event log write fails | Recorded once on stderr; scheduling goes on; status falls back to run status (contract C2) |
+### ORC-B11 Cost cap
 
-## 5. Design notes
+WHEN the summed cost of the node runs (reported where present, else estimated) reaches `cost_cap_usd` THE supervisor SHALL start no node again, let running runs go on to their own end, write a `cost_cap` event and end the outcome `cost_cap`, an edit that raises the cap with `orchestrate resume` continuing it, and each node's own `--run-cost-cap` still applying to its run.
 
-- **Truth from runs.** The file holds intent; each run's status holds truth; the event log holds history. A crash of any one never makes another wrong ([ADR-0036](../adr/0036-orchestration-state-is-a-file-and-an-event-log.adr.md)).
-- **No LangGraph graph for the supervisor.** Its state is a set of independent child processes with their own checkpoints and many pauses at once; one interrupt per gate and one graph per process (C6, C11) fit runs, not a supervisor of runs.
-- **One wake per batch of attention.** `wait` returns only when a person is needed, after a settle window, so the skill's session is woken as rarely as the graph allows ([ADR-0037](../adr/0037-attention-batched-waking-of-the-orchestrating-session.adr.md)).
-- **Shared resources.** `exclusive` names stop concurrent runs from colliding on counters and version fields (R-035 B3). Engine-managed claims (a reserved slice of an id range per run) and deterministic integration of branches with a judged conflict step are deferred; an integration step is a workflow node today ([R-006](../research/R-006-planned-work-coverage.rsrch.md) open question).
-- **Attention across the state root.** The engine-wide `tempergraph attention` verb ([ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md)) lists every item waiting on a person under the state root; a paused node's run appears there with its `parent`, and an approval node or `ask` failure appears as an orchestration item, so a person who uses only that verb misses nothing. `orchestrate wait` stays the skill's per-orchestration wake. This spec closes gap G13 of [R-011](../research/R-011-design-gap-review.rsrch.md).
-- **Scheduled orchestrations.** A schedule may target a saved `*.orch.json` ([SCH](83-schedules.spec.md)); the schedule tick runs `orchestrate start` and exits, and this spec's supervisor runs the orchestration as usual. The tick and the supervisor are separate model-free processes (contracts C16 and C18, [ADR-0095](../adr/0095-a-model-free-tick-behind-os-agnostic-triggers.adr.md)); the status document carries the orchestration's `schedule` beside each node's `parent`.
-- **Several repositories, one machine.** A node may run in another local repository; its run uses that repository's state root, and the orchestration's folder stays in the home state root. Several machines, CI hosts and a hosted runner are out of scope for the first release.
-- **Assumptions** (owner unavailable): K defaults to 3 as for batches; 50 runs per orchestration matches the batch limit; the settle window defaults to 30 s; an orchestration runs on one machine; templates are saved by the skill under `tempergraph/orchestrations/` in the repository, a path the owner may change.
+- GIVEN `cost_cap_usd: 40` reached WHEN the next node is due THEN it does not start and the outcome is `cost_cap`
 
-## 6. Acceptance criteria
+### ORC-B12 Supervisor loss and resume
 
-- [ ] ORC-AC-1 Every row of ORC-B1's table exits 2 and leaves the state root unchanged (hash test).
-- [ ] ORC-AC-2 With scripted runs, a 6-node graph with one pause, one infra failure and one quality failure reaches the outcome each ORC-B8 row states, with `k` never exceeded and no `exclusive` pair overlapping.
-- [ ] ORC-AC-3 Killing the supervisor at each event kind and running `orchestrate resume` never starts a node's thread twice and ends in the same outcome as an uninterrupted run.
-- [ ] ORC-AC-4 The supervisor and every read-only verb start no model session (process audit in tests); status and wait write nothing.
-- [ ] ORC-AC-5 `orchestrate wait` returns once for pauses arriving within the settle window and never for a change that leaves attention unchanged.
-- [ ] ORC-AC-6 `batch <workflow> <targets…> -k N` and the equivalent one-node map orchestration start the same threads and produce the same report.
-- [ ] ORC-AC-7 No event log line and no status field carries run text beyond labels, ids, decision words and scrubbed reasons.
+WHEN `orchestrate resume <id>` runs after its supervisor was killed while runs were live THE engine SHALL take the lock, read each node's state from its thread status (re-attaching live runs through the lock probe, restarting no finished one), append `supervisor_started` and go on, and `orchestrate wait` on an orchestration whose supervisor lock is free and whose outcome is not written SHALL exit 5 with `supervisor_lost`.
+
+- GIVEN a killed supervisor and no resume WHEN `orchestrate wait` runs THEN it exits 5 with `supervisor_lost`
+
+### ORC-B13 Re-run skips by identity
+
+WHEN the same file is started again under the same `orchestration_id` with `orchestrate resume` THE engine SHALL never start afresh a node whose thread exists, taking it in its current state, so reordering nodes changes nothing that ran.
+
+- GIVEN nodes reordered in the file WHEN resumed THEN no finished node runs again
+
+### ORC-B17 The supervisor's mark
+
+WHEN the supervisor starts a node's run THE supervisor SHALL pass `--parent <orchestration_id>/<node>[/<item>]` (shown as `parent` in the status document, `run_started`, the ledger and the stats row, with `origin` `orchestration`) and a random per-orchestration token in `TEMPERGRAPH_SUPERVISOR_TOKEN` whose SHA-256 it keeps in the orchestration's state file, so the run records caller `orchestrator` (`attested`) with supervision cost `measured_zero` ([PRV](85-caller-provenance.spec.md), [SCO](87-supervision-cost.spec.md)), the token never being on argv, in a record or in a step session's environment ([EXI](10-executor-interface.spec.md)).
+
+- GIVEN a node's run WHEN its step session's environment is read THEN it holds no supervisor token
+
+### ORC-B14 Edits while running
+
+WHEN `orchestrate edit <id> <patch file>` adds a node after a finished one, cancels a `waiting` node, or changes `k` or the cap THE engine SHALL apply it at the next scheduling pass and record an `edited` event, and refuse with exit 2, changing nothing, an edit that changes or removes a started node or creates a cycle.
+
+- GIVEN an edit that removes a started node WHEN applied THEN it exits 2 and nothing changes
+
+### ORC-B15 Dynamic map
+
+WHEN the upstream node of a map with `targets_from` and `max_items: 8` finishes THE supervisor SHALL plan one run per string of the artifact with an `expanded` event, and fail the map with reason `expansion_failed`, starting no item, when it holds more than `max_items` strings or is not an array.
+
+- GIVEN 5 strings WHEN expanded THEN 5 runs are planned
+- GIVEN 9 strings or a non-array WHEN expanded THEN the map fails `expansion_failed`
+
+### ORC-B24 Status, wait and other verbs
+
+WHEN `orchestrate status [id] [--json]`, `orchestrate wait <id> [--timeout s] [--settle s]`, `orchestrate start`, `orchestrate validate`, `orchestrate rerun <id> <node> [--item i] --from <unit>`, `orchestrate list` or `orchestrate report <id>` runs THE engine SHALL print the status document of ORC-B25 writing nothing; block until attention changes or the orchestration ends, exiting 0 when every node finished, 3 on attention, 4 when stopped by a person, 5 on `finished_with_failures`, `halted`, `cost_cap` or `supervisor_lost`, and 2 for an unknown id ([CON-B12](01-contracts.spec.md)); validate, write the folder and start the supervisor detached, printing the id and exiting 0 once it runs, or 2 with nothing created; validate only; rerun the node's thread from a unit and point the node at the new thread ([RRN](81-reruns-and-feedback.spec.md)); list orchestrations under the state root with outcome and cost; or report cost per node and phase, time, pauses with who answered (caller kind and decider), failures with causes, and supervision (touches per node, the orchestrating sessions' cost and its share of the runs' cost, [SUP](86-supervision-metrics.spec.md)).
+
+- GIVEN an unknown id WHEN `orchestrate wait` runs THEN it exits 2
+
+### ORC-B25 Status document
+
+WHEN the orchestration status document (schema version 1) is built THE engine SHALL read the file, the event log and each node's run status, writing nothing, and give `schema_version`, `orchestration_id`, `name`, `description`, `state` (`running`, `attention`, `finished`, `finished_with_failures`, `halted`, `stopped`, `cost_cap`, `supervisor_lost`), `supervisor` (`alive` from the lock probe, `started_at`, `restarts`), `k`, `in_flight`, `counts` per node state, `cost` (`reported`, `estimated`, `incomplete`, `cap`, `projected`), `phases` in first-use order with their node ids, `nodes` (`id`, `kind`, `label`, `phase`, `after`, `state`, `reason`, `workflow`, `thread_id`, `alias`, `repo`, `started_at`, `ended_at`, `exit`, `cost`, the run's `attempt_in_flight` and `pending_gates` with each decision's `orchestrate answer` command, and for a map `items` with state and thread id), `attention` (`{node, item, kind, since}`, oldest first), the orchestration's `schedule` when a schedule started it, and `events_path`, readers ignoring unknown keys ([CON-B1](01-contracts.spec.md)).
+
+- GIVEN a paused node WHEN the document is built THEN its `pending_gates` carry the exact `orchestrate answer` commands
+
+### ORC-B16 Wait coalesces
+
+WHEN two runs pause 20 s apart while `orchestrate wait --settle 30` waits THE engine SHALL return once with exit 3 and both in `attention`, and never return for a step verdict, a cost update or a node that started or finished while attention is unchanged, except when the whole orchestration ends.
+
+- GIVEN two pauses 20 s apart WHEN waiting with a 30 s settle THEN it returns once
+
+### ORC-B26 Attention and hooks across the state root
+
+WHEN an orchestration node needs a person THE engine SHALL list a paused node's run in `tempergraph attention` with its `parent` and an approval node or `ask` failure as an orchestration item ([ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md)), and fire the lifecycle hook events `orchestration_attention` and `orchestration_finished` ([HOK](24-lifecycle-hooks.spec.md)) so a notifier can reach a person when no conversation is open.
+
+- GIVEN an approval node waiting WHEN `tempergraph attention` runs THEN it lists the orchestration item
+
+## Acceptance criteria
+
+- ORC-AC1 (ORC-B1, ORC-B19, ORC-B20): Every scenario of ORC-B1 exits 2 and leaves the state root unchanged, by a hash test
+- ORC-AC2 (ORC-B3, ORC-B5, ORC-B8, ORC-B9, ORC-B23, ORC-B21): With scripted runs, a 6-node graph with one pause, one infra failure and one quality failure reaches the outcome each ORC-B8 scenario states, with `k` never exceeded and no `exclusive` pair overlapping
+- ORC-AC3 (ORC-B12, ORC-B13, ORC-B18): Killing the supervisor at each event kind and running `orchestrate resume` never starts a node's thread twice and ends in the same outcome as an uninterrupted run
+- ORC-AC4 (ORC-B2, ORC-B24, ORC-B25): The supervisor and every read-only verb start no model session, by a process audit in tests; status and wait write nothing
+- ORC-AC5 (ORC-B16): `orchestrate wait` returns once for pauses arriving within the settle window and never for a change that leaves attention unchanged
+- ORC-AC6 (ORC-B3): `batch <workflow> <targets…> -k N` and the equivalent one-node map orchestration start the same threads and produce the same report
+- ORC-AC7 (ORC-B22, ORC-B17): No event log line and no status field carries run text beyond labels, ids, decision words and scrubbed reasons, and the supervisor token appears in no record
+- ORC-AC8 (ORC-B4, ORC-B6, ORC-B7, ORC-B10, ORC-B11, ORC-B14, ORC-B15, ORC-B26): Fixtures cover data between runs, answers by and not by a person, approval nodes, stop, the cost cap, edits, dynamic maps and attention items
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should an orchestration be able to span machines (a shared state store), or stay local with per-machine stats rolled up later? Local is assumed. | Owner, with the observability design |
-| Should integration (merging node branches into one pull request) become an engine node kind rather than a workflow node? | Owner ([R-006](../research/R-006-planned-work-coverage.rsrch.md)) |
-
-## References
-
+- Should an orchestration be able to span machines (a shared state store), or stay local with per-machine stats rolled up later? Until answered: local. Owner: owner, with the observability design.
+- Should integration (merging node branches into one pull request) become an engine node kind rather than a workflow node? Owner: owner ([R-006](../research/R-006-planned-work-coverage.rsrch.md)).

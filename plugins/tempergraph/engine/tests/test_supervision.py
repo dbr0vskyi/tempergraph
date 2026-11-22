@@ -1,4 +1,4 @@
-"""The supervision record (SUP §2.2, §2.3, SUP-B1, B2, B3)."""
+"""The supervision record (SUP-B10, SUP-B11, SUP-B1, B2, B3)."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def build(tmp_path: Path, *rows: dict[str, Any], units: tuple[str, ...] = ("draf
     ([row("review", "rescue"), row("review", "steer", by="agent")], "collaborator", "mixed"),
     ([row("draft", "rescue"), row("review", "steer")], "operator", "person"),
 ])
-def test_level_rules(tmp_path: Path, rows: list[dict[str, Any]], level: str, level_by: str) -> None:  # SUP §2.3
+def test_level_rules(tmp_path: Path, rows: list[dict[str, Any]], level: str, level_by: str) -> None:  # SUP-B11
     rec = build(tmp_path, *rows)
     assert (rec["level"], rec["level_by"]) == (level, level_by)
     assert rec["supervision_cost"] is None and rec["observations"] is None  # unmeasured is never zero

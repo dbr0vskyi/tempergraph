@@ -13,7 +13,7 @@ The owner asked for a command that updates the engine, one part of which is upda
 
 ## Decision
 
-We will install every engine release into its own environment folder under `~/.tempergraph/engines/`, verify it there, and make it current by replacing one pointer file atomically ([UPD §2.2](../specs/60-engine-update.spec.md)). The shim lives in `~/.tempergraph/bin/` and reads the pointer. The previous release stays as `previous` for rollback; a release a live process or a pinned thread uses is kept until neither needs it; others are removed only by `update --prune-engines`.
+We will install every engine release into its own environment folder under `~/.tempergraph/engines/`, verify it there, and make it current by replacing one pointer file atomically ([UPD-B11, UPD-B12, UPD-B13](../specs/60-engine-update.spec.md)). The shim lives in `~/.tempergraph/bin/` and reads the pointer. The previous release stays as `previous` for rollback; a release a live process or a pinned thread uses is kept until neither needs it; others are removed only by `update --prune-engines`.
 
 ## Options considered
 
@@ -37,9 +37,9 @@ We will install every engine release into its own environment folder under `~/.t
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | "Update the CLI installation" means the shim, the managed environment and the optional executor packages, not the executor CLIs (`claude`, `agy`), which their own installers update and the executor compatibility table only checks. | UPD §2.1 |
-| A2 | A few hundred MB per kept environment is acceptable on a developer machine; CI images build one environment and skip this layout. | UPD §2.2, §2.5 |
-| A3 | Moving the shim out of the plugin cache is acceptable; the installer skill writes the `PATH` block once to `~/.tempergraph/bin/`. | UPD §2.2, SHL |
+| A1 | "Update the CLI installation" means the shim, the managed environment and the optional executor packages, not the executor CLIs (`claude`, `agy`), which their own installers update and the executor compatibility table only checks. | UPD-B10 |
+| A2 | A few hundred MB per kept environment is acceptable on a developer machine; CI images build one environment and skip this layout. | UPD-B11, UPD-B12, UPD-B13, UPD-B16 |
+| A3 | Moving the shim out of the plugin cache is acceptable; the installer skill writes the `PATH` block once to `~/.tempergraph/bin/`. | UPD-B11, UPD-B12, UPD-B13, SHL |
 
 ## Consequences
 

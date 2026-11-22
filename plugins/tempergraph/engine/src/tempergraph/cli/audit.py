@@ -1,4 +1,4 @@
-"""`tempergraph audit <workflow>` and `audit prompts <workflow>` (AUD §2.1, PRA §2.4).
+"""`tempergraph audit <workflow>` and `audit prompts <workflow>` (AUD-B11, AUD-B6, AUD-B9, PRA-B11).
 
 Advisory: exit 0 whatever is found, 6 with `--fail-on` when a finding not ignored is at or above the level,
 2 for an unknown workflow or option. Output goes to stdout only; nothing is written (AUD-B6).
@@ -36,7 +36,7 @@ def _probe(env: Any) -> Any:
     def probe(name: str) -> str | None:
         try:
             got = env.registry.get(name).probe()
-        except Exception:  # noqa: BLE001 - an unknown or failing executor skips the rule (AUD §4)
+        except Exception:  # noqa: BLE001 - an unknown or failing executor skips the rule (AUD-B15, AUD-B9, AUD-B2)
             return None
         return got.version if got.ok and got.version else None
 
@@ -64,7 +64,7 @@ def cmd_audit(env: Any, a: argparse.Namespace) -> int:
     if got is None:
         env.err.write(f"tempergraph: unknown workflow {name!r}; `tempergraph workflows list` shows them\n")
         return int(ExitCode.USAGE)
-    if isinstance(got, AuditReport):  # not loaded: one finding, the manifest row only (AUD §4)
+    if isinstance(got, AuditReport):  # not loaded: one finding, the manifest row only (AUD-B15, AUD-B9, AUD-B2)
         env.out.write(render(got, a.format))
         return got.exit_code(a.fail_on)
     spec, manifest, stamp = got
@@ -110,6 +110,6 @@ def _not_loaded(name: str, reason: str) -> AuditReport:
                           for layer in ("definition", "host", "history")]
     rep.findings = [AuditFinding(rule="validate:not_loaded", layer="definition", severity="error",
                                  confidence="high", owner="validate", statement=reason,
-                                 remedy="Fix what stops the package loading (PKG §4)",
+                                 remedy="Fix what stops the package loading (PKG-B11, PKG-B13, PKG-B14, PKG-B17, PKG-B18, PKG-B19, PKG-B20, PKG-B23)",
                                  location={"file": "tempergraph.json"})]
     return rep

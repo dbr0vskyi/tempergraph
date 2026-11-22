@@ -27,7 +27,7 @@ export const WRITING_VERBS = ['run', 'resume', 'stop', 'batch', 'rerun', 'store'
 const THREAD = /^[A-Za-z0-9_][A-Za-z0-9_.-]*\/[A-Za-z0-9_][A-Za-z0-9_.:-]*$/
 const UNIT = /^[A-Za-z_][A-Za-z0-9_-]*$/
 
-/** `stats` writes only as `stats flush`, `stats sync` and `--sync` (engine CST §2.5); the monitor never asks for those. */
+/** `stats` writes only as `stats flush`, `stats sync` and `--sync` (engine CST-B14, CST-B15, CST-B16); the monitor never asks for those. */
 const STATS_WRITES = ['flush', 'sync', '--sync']
 const SINK = /^[a-z0-9-]{1,40}$/
 

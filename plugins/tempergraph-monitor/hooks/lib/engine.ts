@@ -1,6 +1,6 @@
 // The engine documents the monitor reads, as far as it reads them (MOV §5: the engine owns every document).
-// Status rows: engine DUR §2.2. Detail document: engine RDD §2.1. Run-log records: engine EVT §2.1–§2.2.
-// Every reader here skips what it does not know (engine contract C12) and treats a missing figure as
+// Status rows: engine DUR-B11. Detail document: engine RDD-B7 to RDD-B11, RDD-B13, RDD-B15. Run-log records: engine EVT-B8, EVT-B9, EVT-B10 to EVT-B16.
+// Every reader here skips what it does not know (engine OVR-B14) and treats a missing figure as
 // "not recorded", never as zero (monitor contract M4).
 
 export const KNOWN_SCHEMA = { status: 1, detail: 1, run_log: 1 } as const
@@ -30,7 +30,7 @@ export type StatusRow = {
   workspace?: { mode?: string; path?: string; branch?: string; state?: string }
   executors?: Record<string, string>
   log_path?: string
-  state_root?: string // with `--all-roots` (engine CST §2.1)
+  state_root?: string // with `--all-roots` (engine CST-B8)
 }
 
 export type StatusDoc = { schema_version: number; generated_at?: string; threads: StatusRow[];
@@ -164,7 +164,7 @@ export function isReadable(doc: { schema_version?: unknown } | null | undefined,
   return typeof v === 'number' && v <= KNOWN_SCHEMA[kind]
 }
 
-/** SCO §2.5's closed figures for a thread, as the detail document carries them (null until it closes). */
+/** SCO-B15's closed figures for a thread, as the detail document carries them (null until it closes). */
 export type SupervisionFigure = { tokens?: Record<string, number>; estimated_usd?: number | null }
 export type SupervisionCost = {
   marginal?: { by_category?: Record<string, SupervisionFigure>; total?: SupervisionFigure } | null

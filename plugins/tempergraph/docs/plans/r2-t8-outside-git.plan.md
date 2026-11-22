@@ -15,11 +15,11 @@ specs: [plugins/tempergraph/docs/specs/13-workspace-and-concurrency.spec.md, plu
 
 | Id | Criterion | Requirement | Spec |
 |---|---|---|---|
-| R1 | AC 1 | The state root outside git: declared, walk-up, start dir; never the home folder | WSP §2.4 |
-| R2 | AC 2 | `in_place` only | WSP §2.4, WTR §2.2 |
-| R3 | AC 3 | The manifest fingerprint | WSP §2.4, GRD |
-| R4 | AC 4 | No `GitFacts`; changed paths from the manifest | CHK §2.1 |
-| R5 | AC 5 | `needs_git` refusals before spend | WSP §2.4 |
+| R1 | AC 1 | The state root outside git: declared, walk-up, start dir; never the home folder | WSP-B15 to WSP-B18 |
+| R2 | AC 2 | `in_place` only | WSP-B15 to WSP-B18, WTR-B18 |
+| R3 | AC 3 | The manifest fingerprint | WSP-B15 to WSP-B18, GRD |
+| R4 | AC 4 | No `GitFacts`; changed paths from the manifest | CHK-B10 |
+| R5 | AC 5 | `needs_git` refusals before spend | WSP-B15 to WSP-B18 |
 
 ## 2. Phases
 
@@ -30,7 +30,7 @@ Weight: light
 
 | Row | Kind | File | Proves | Change |
 |---|---|---|---|---|
-| 1.1 | test | `plugins/tempergraph/engine/tests/test_outside_git.py` | WSP-AC-5 | The root rule, a run in a plain folder, the manifest catching a judge's write, a check without git facts, every refusal |
+| 1.1 | test | `plugins/tempergraph/engine/tests/test_outside_git.py` | WSP-AC5 | The root rule, a run in a plain folder, the manifest catching a judge's write, a check without git facts, every refusal |
 | 1.2 | code | `plugins/tempergraph/engine/src/tempergraph/store/layout.py` | | The state root outside git |
 | 1.3 | code | `plugins/tempergraph/engine/src/tempergraph/store/manifest.py` | | The manifest, its fingerprint and changed paths |
 | 1.4 | code | `plugins/tempergraph/engine/src/tempergraph/git.py` | | The fingerprint falls back to the manifest |

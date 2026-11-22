@@ -13,7 +13,7 @@ This note answers both. It reads "judges" in the owner's message as the judge mo
 
 | # | Source | Type | Where |
 |---|---|---|---|
-| S4 | This design: JCL binding and acceptance states, FBK grades per binding, BUD §2.2 cause table, JDG-B1 and B8, CHK findings and facts, RST judge scopes, CON §2.4 judge resolution | Design set | [specs](../specs/00-overview.spec.md) |
+| S4 | This design: JCL binding and acceptance states, FBK grades per binding, BUD-B1, BUD-B11 cause table, JDG-B1 and B8, CHK findings and facts, RST judge scopes, CON-B3 judge resolution | Design set | [specs](../specs/00-overview.spec.md) |
 | S5 | [R-045](R-045-evaluating-llm-judges-public-practice.rsrch.md) F2: judges pass bad work more often than they fail good work, so catch and clean rates are measured apart | Design set (public practice) | research/ |
 | S6 | Chen, Zaharia and Zou, *FrugalGPT* (TMLR 2024): an LLM cascade sends a query to a cheaper model first and escalates only when a learned scorer rejects the answer; the scorer's quality bounds the cascade's | Paper | [arXiv 2305.05176](https://arxiv.org/pdf/2305.05176) |
 | S7 | Ong et al., *RouteLLM* (ICLR 2025): routers between a strong and a weak model trained on preference data; routers are evaluated on held-out benchmarks for cost against quality | Paper | [arXiv 2406.18665](https://arxiv.org/abs/2406.18665v4) |
@@ -29,7 +29,7 @@ This note answers both. It reads "judges" in the owner's message as the judge mo
 
 ### F2 A judge's alias is part of what calibration measured `confirmed`
 
-- JCL's `binding` is `{executor, executor_version, alias, model_slug, brief_digest, criteria_digest, sampling}`; any change makes an `accepted` state `stale` (S4, JCL-AC-3). FBK grades per binding (S4).
+- JCL's `binding` is `{executor, executor_version, alias, model_slug, brief_digest, criteria_digest, sampling}`; any change makes an `accepted` state `stale` (S4, JCL-AC3). FBK grades per binding (S4).
 - So a judge whose model varies by risk is **several judges**, one per level, and each needs its own score. A level nobody scored is an unmeasured judge, whatever its tier.
 
 ### F3 A cascade is only as good as the signal that triggers it `supported`
@@ -39,7 +39,7 @@ This note answers both. It reads "judges" in the owner's message as the judge mo
 
 ### F4 Most failure causes are not fixed by a stronger session `confirmed`
 
-From BUD §2.2 and R-120 (S4, S9):
+From BUD-B1, BUD-B11 and R-120 (S4, S9):
 
 | Cause | Would more effort or a stronger model fix it? |
 |---|---|
@@ -55,7 +55,7 @@ From BUD §2.2 and R-120 (S4, S9):
 ### F5 Risk signals exist without a model `confirmed`
 
 - Checks already return **facts** (engine-run command results, file facts) and findings (S4, CHK). The engine knows the attempt's diff (files, lines, paths) in the run worktree, the inputs, the item of a map and the declared settings.
-- temperspec's lesson is that a route must not rest on the producing model's own word: the check ties the route to evidence (S3). The same applies to risk: a step that could lower its own judge's tier by what it writes would grade itself by proxy (contract C4).
+- temperspec's lesson is that a route must not rest on the producing model's own word: the check ties the route to evidence (S3). The same applies to risk: a step that could lower its own judge's tier by what it writes would grade itself by proxy (OVR-B6).
 
 ### F6 Simple routing beats clever routing until measured `supported`
 

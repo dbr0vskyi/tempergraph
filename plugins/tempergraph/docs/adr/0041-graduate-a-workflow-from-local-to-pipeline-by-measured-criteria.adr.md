@@ -11,7 +11,7 @@
 
 The owner stated the intended lifecycle of a workflow on 2026-11-19. You first run it and self-improve it locally. Once it reaches a level of autonomy and quality, with fewer pauses for a person, you move it to the pipeline. The executor-agnostic design is what makes that move possible.
 
-The design has pieces of this but no path. `improvement_mode` is `dev` or `stable`, and stable mode needs every gate graded `ready` ([LIF-B6](../specs/18-lifecycle-and-evals.spec.md)). The Agent SDK and Messages API executors need no interactive sign-in, so they suit CI ([SHL](../specs/19-plugin-shell.spec.md)). The run origin `ci` exists ([DUR §2.2](../specs/09-durability-and-resume.spec.md)). What is missing:
+The design has pieces of this but no path. `improvement_mode` is `dev` or `stable`, and stable mode needs every gate graded `ready` ([LIF-B6](../specs/18-lifecycle-and-evals.spec.md)). The Agent SDK and Messages API executors need no interactive sign-in, so they suit CI ([SHL](../specs/19-plugin-shell.spec.md)). The run origin `ci` exists ([DUR-B11](../specs/09-durability-and-resume.spec.md)). What is missing:
 
 - the criteria that say a workflow is ready to leave the laptop;
 - a check that measures them;
@@ -40,7 +40,7 @@ A model-free verb `tempergraph promote-check <workflow> --to <stage> [--executor
 
 In the pipeline:
 
-- A run never answers its own pause. A pause still exits 3. The pipeline job ends there, and the question reaches a person through `attention` ([ADR-0040](0040-take-script-steps-attention-and-composition-from-archon.adr.md)), a hook or an adapter. The run resumes where its state lives. Contract C6 and the rule that only a person decides a pause hold. A delegation policy stays out of scope.
+- A run never answers its own pause. A pause still exits 3. The pipeline job ends there, and the question reaches a person through `attention` ([ADR-0040](0040-take-script-steps-attention-and-composition-from-archon.adr.md)), a hook or an adapter. The run resumes where its state lives. OVR-B8 and the rule that only a person decides a pause hold. A delegation policy stays out of scope.
 - Self-improvement records are written. Filing follows the workflow's own settings, so the pipeline still feeds the loop that improved the workflow.
 - After every pipeline run, `promote-check` re-reads the same criteria over a sliding window. When a criterion fails, the status row and the next `attention` listing show the workflow as **regressed** with the failing number. The engine never demotes a workflow on its own or stops a pipeline. A person decides, using the evidence.
 

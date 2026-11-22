@@ -19,7 +19,7 @@ task_id: first-release-t10
 | Field | Value |
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T10, phases T10.2 to T10.4, built after T7.1 and T7.2 in the same pass (thread "Build run events and detail view") |
-| Specs | [MOV](../../../tempergraph-monitor/docs/specs/00-overview.spec.md), [MDS](../../../tempergraph-monitor/docs/specs/01-data-sources.spec.md), [MBA](../../../tempergraph-monitor/docs/specs/02-band-status-and-alerts.spec.md), [MRV](../../../tempergraph-monitor/docs/specs/03-run-view.spec.md), [MDD](../../../tempergraph-monitor/docs/specs/04-drill-down.spec.md); engine documents from [EVT](../specs/30-run-events.spec.md), [RDD](../specs/31-run-detail-document.spec.md) and [DUR §2.2](../specs/09-durability-and-resume.spec.md) |
+| Specs | [MOV](../../../tempergraph-monitor/docs/specs/00-overview.spec.md), [MDS](../../../tempergraph-monitor/docs/specs/01-data-sources.spec.md), [MBA](../../../tempergraph-monitor/docs/specs/02-band-status-and-alerts.spec.md), [MRV](../../../tempergraph-monitor/docs/specs/03-run-view.spec.md), [MDD](../../../tempergraph-monitor/docs/specs/04-drill-down.spec.md); engine documents from [EVT](../specs/30-run-events.spec.md), [RDD](../specs/31-run-detail-document.spec.md) and [DUR-B11](../specs/09-durability-and-resume.spec.md) |
 | Decisions | [MADR-0001](../../../tempergraph-monitor/docs/adr/0001-a-claude-code-mod-that-observes.adr.md), [MADR-0002](../../../tempergraph-monitor/docs/adr/0002-poll-files-and-read-only-verbs.adr.md), [MADR-0004](../../../tempergraph-monitor/docs/adr/0004-borrow-the-workflows-view-and-add-gates.adr.md), [MADR-0006](../../../tempergraph-monitor/docs/adr/0006-one-pane-many-levels.adr.md) |
 | Mod API | The types of Claude Code 2.1.329, the build this pass was written against ([R-001](../../../tempergraph-monitor/docs/research/R-001-claude-code-mods.rsrch.md)) |
 
@@ -87,21 +87,21 @@ The monitor defines no engine type. `hooks/lib/engine.ts` types the documents as
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 10.1.1 | `observe/rows.py` | The machine index at `run_started` (built in T7.4) | CST §2.1 | yes | P1 | ✓ | 2026-11-20 |
-| 10.1.2 | `observe/sinks.py` | `config/sinks.json` in the home folder and the state root (a state root's entry replaces the home one of the same name); two sinks with one name, an unknown field value or the `otlp` kind refused with exit 2 | CST §2.3, §4 | yes | P1 | ✓ | 2026-11-20 |
-| 10.1.3 | `observe/sinks.py` | The sink key in `<path>/sink.json`, made by the first writer; HMAC of thread id, origin URL, git `user.email`, parent and schedule; `ticket`, names and alias only as configured | CST §2.4, B5 | yes | P1 | ✓ | 2026-11-20 |
-| 10.1.4 | `observe/sinks.py`, `observe/rows.py`, `detach.py` | The outbox at `run_exit` (a reference to the local row), the detached flusher, in-order delivery that keeps the outbox on failure, the 7-day `status` warning | CST §2.3, B3, B6 | yes | P1 | ✓ | 2026-11-20 |
-| 10.1.5 | `observe/sinks.py`, `run/log.py` | The heartbeat: at `run_started`, `pause`, `run_exit` and at most every 60 s, running and paused threads of the indexed roots | CST §2.2, B4 | yes | P1 | ✓ | 2026-11-20 |
-| 10.1.6 | `observe/sinks.py`, `cli/observe_cli.py` | `stats sync` and the fleet copy (bytes by offset, whole heartbeat and machine files, this machine's pending rows, `rollup/<YYYY-MM>.json`, `synced.json`); `stats` reads it by default, `--local`, `--source`, `--sync`, `--live` with `stale` | CST §2.3, §2.5, B2, B7, AC-1–AC-4 | yes | P1 | ✓ | 2026-11-20 |
-| 10.1.7 | `observe/sinks.py` | `supervision` rows (T7.6) and opt-in `session` rows, one per `agent_run`, with the thread hashed | CST §2.2 | yes | P2 | ✓ | 2026-11-20 |
-| 10.1.8 | `observe/sinks.py` | A duplicate `row_id` with different content is kept twice, listed in `duplicate_row_ids` and warned on standard error | CST §4 | yes | P3 | ✓ | 2026-11-20 |
+| 10.1.1 | `observe/rows.py` | The machine index at `run_started` (built in T7.4) | CST-B8 | yes | P1 | ✓ | 2026-11-20 |
+| 10.1.2 | `observe/sinks.py` | `config/sinks.json` in the home folder and the state root (a state root's entry replaces the home one of the same name); two sinks with one name, an unknown field value or the `otlp` kind refused with exit 2 | CST-B10, CST-B12, CST-B13, CST-B14, CST-B8 | yes | P1 | ✓ | 2026-11-20 |
+| 10.1.3 | `observe/sinks.py` | The sink key in `<path>/sink.json`, made by the first writer; HMAC of thread id, origin URL, git `user.email`, parent and schedule; `ticket`, names and alias only as configured | CST-B11, B5 | yes | P1 | ✓ | 2026-11-20 |
+| 10.1.4 | `observe/sinks.py`, `observe/rows.py`, `detach.py` | The outbox at `run_exit` (a reference to the local row), the detached flusher, in-order delivery that keeps the outbox on failure, the 7-day `status` warning | CST-B10, CST-B12, CST-B13, B3, B6 | yes | P1 | ✓ | 2026-11-20 |
+| 10.1.5 | `observe/sinks.py`, `run/log.py` | The heartbeat: at `run_started`, `pause`, `run_exit` and at most every 60 s, running and paused threads of the indexed roots | CST-B9, B4 | yes | P1 | ✓ | 2026-11-20 |
+| 10.1.6 | `observe/sinks.py`, `cli/observe_cli.py` | `stats sync` and the fleet copy (bytes by offset, whole heartbeat and machine files, this machine's pending rows, `rollup/<YYYY-MM>.json`, `synced.json`); `stats` reads it by default, `--local`, `--source`, `--sync`, `--live` with `stale` | CST-B10, CST-B12, CST-B13, CST-B14, CST-B15, CST-B16, B2, B7, AC-1–AC-4 | yes | P1 | ✓ | 2026-11-20 |
+| 10.1.7 | `observe/sinks.py` | `supervision` rows (T7.6) and opt-in `session` rows, one per `agent_run`, with the thread hashed | CST-B9 | yes | P2 | ✓ | 2026-11-20 |
+| 10.1.8 | `observe/sinks.py` | A duplicate `row_id` with different content is kept twice, listed in `duplicate_row_ids` and warned on standard error | CST-B10, CST-B14, CST-B8 | yes | P3 | ✓ | 2026-11-20 |
 
 `tests/test_sinks.py` simulates two machines as two home folders writing to one temporary folder.
 
 ## 3. Hand-off notes
 
 - The mod API rules met while building, from `claude plugin validate` on 2.1.329: a function that takes `$` is declared at the top of the hooks module, and an atom's reference spells the plugin and key as string literals. Session tests load only code files, so `make_fixtures.py` also writes the fixtures as `tests/fixtures/documents.ts`.
-- The session view reads the live block of the detail document (RDD §2.2), refreshed every 2 s with the document, rather than `live.json` every 1 s; MDS §5 says so.
+- The session view reads the live block of the detail document (RDD-B12), refreshed every 2 s with the document, rather than `live.json` every 1 s; MDS §5 says so.
 - The monitor writes nothing but its own `$.state` and `$.store` (contract M1); the one `$.process.run` call is behind the read-only guard, which a bun test checks in the source.
 
 ## 4. Verification

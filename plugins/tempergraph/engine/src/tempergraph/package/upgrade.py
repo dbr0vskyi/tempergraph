@@ -1,5 +1,5 @@
 """`tempergraph upgrade <workflow>` beyond `--check`: baseline, plan, transforms on a branch, verification and
-the finish (WUP §2.2 to §2.7). Model-free; the assisted and owner items go to a caller-given assist step
+the finish (WUP-B14, WUP-B7, WUP-B20, WUP-B21). Model-free; the assisted and owner items go to a caller-given assist step
 (the built-in upgrade workflow, UWF), which is the only part that may start a session.
 
 Nothing here touches the person's checkout: the changes are commits on `tempergraph/upgrade/<workflow>/<engine>`
@@ -113,7 +113,7 @@ class Assist:
 AssistFn = Callable[[Assist], Mapping[str, Any]]
 
 
-# -- where it works (WUP §2.2) ----------------------------------------------------------------------------------
+# -- where it works (WUP-B14, WUP-B7) ----------------------------------------------------------------------------------
 
 
 @dataclass(kw_only=True)
@@ -154,7 +154,7 @@ def _dirty(place: Place) -> list[str]:
     return [ln[3:] for ln in out.splitlines() if ln.strip()]
 
 
-# -- baseline and plan (WUP §2.3) -------------------------------------------------------------------------------
+# -- baseline and plan (WUP-B15, WUP-B16) -------------------------------------------------------------------------------
 
 
 def _finding_key(f: Finding) -> str:
@@ -212,11 +212,11 @@ def plan(lp: LoadedPackage, entries: Sequence[Mapping[str, Any]], codes: set[str
     return items, untouched, notes
 
 
-# -- transforms (WUP §2.4) --------------------------------------------------------------------------------------
+# -- transforms (WUP-B17) --------------------------------------------------------------------------------------
 
 
 def _outside(place: Place) -> list[str]:
-    """Changed paths of the worktree that lie outside the package folder (WUP §2.2 scope)."""
+    """Changed paths of the worktree that lie outside the package folder (WUP-B14, WUP-B7 scope)."""
     out = gitmod.git(["status", "--porcelain=v1", "--untracked-files=all"], place.worktree)
     paths = [ln[3:].split(" -> ")[-1].strip('"') for ln in out.splitlines() if ln.strip()]
     prefix = place.rel + "/" if place.rel else ""
@@ -292,7 +292,7 @@ def apply_transforms(place: Place, rep: Report, entries: Mapping[str, Mapping[st
                                   ask=f"{o.get('question')} (it was {o.get('was')})"))
 
 
-# -- verification (WUP §2.6) ------------------------------------------------------------------------------------
+# -- verification (WUP-B19) ------------------------------------------------------------------------------------
 
 
 def _reconcile(rep: Report, entries: Mapping[str, Mapping[str, Any]], pkg: Path,
@@ -388,7 +388,7 @@ def verify(place: Place, rep: Report, base: Mapping[str, Any], entries: Mapping[
     return load_package(pkg)
 
 
-# -- finish (WUP §2.7) ------------------------------------------------------------------------------------------
+# -- finish (WUP-B20, WUP-B21) ------------------------------------------------------------------------------------------
 
 
 def propose(rep: Report, base: Mapping[str, Any], lp: LoadedPackage, classes: Sequence[str] = ()) -> dict[str, Any]:

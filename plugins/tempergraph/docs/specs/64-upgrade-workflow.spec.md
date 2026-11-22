@@ -1,125 +1,100 @@
----
-title: Built-in upgrade workflow
-type: component
-status: review
-prefix: UWF
-adrs: [0058, 0005, 0031]
----
-
 # Built-in upgrade workflow
 
-## 1. Overview
+## Purpose
 
-The model-assisted part of a workflow upgrade ([WUP §2.5](63-workflow-upgrade.spec.md)) is itself a tempergraph workflow, shipped with the engine like the self-improvement workflow ([SIL](16-self-improvement.spec.md)). It takes the items of one upgrade plan that no transform can do, edits the workflow package on the upgrade branch, and is held to the engine's own rails: every edit is a step session followed by a deterministic check and an independent judge, the engine derives the verdict, budgets bound retries, and every question only the owner can answer is a pause for the owner ([ADR-0058](../adr/0058-upgrade-by-transforms-first-and-a-gated-model-workflow-for-the-rest.adr.md)).
+The model-assisted part of a workflow upgrade ([WUP-B18](63-workflow-upgrade.spec.md)) is itself a tempergraph workflow, shipped with the engine like the self-improvement workflow ([SIL](16-self-improvement.spec.md)). It takes the items of one upgrade plan that no transform can do, edits the workflow package on the upgrade branch, and is held to the engine's own rails: every edit is a step session followed by a deterministic check and an independent judge, the engine derives the verdict, budgets bound retries, and every question only the owner can answer is a pause for the owner ([ADR-0058](../adr/0058-upgrade-by-transforms-first-and-a-gated-model-workflow-for-the-rest.adr.md), [ADR-0005](../adr/0005-independent-judge-engine-verdict.adr.md)). It never verifies the whole upgrade, never stamps and never opens a pull request; those stay with the model-free verb ([WUP-B19](63-workflow-upgrade.spec.md)). Steps and their gates change apart ([ADR-0031](../adr/0031-steps-and-their-graders-change-apart.adr.md)): the model may touch a gate's text only through an owner item. Workflow owners upgrading a package and the `upgrade` verb depend on it; design and build notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-It never verifies the whole upgrade, never stamps and never opens a pull request; those stay with the model-free verb ([WUP §2.6](63-workflow-upgrade.spec.md)).
+## Behaviours
 
-## 2. Contract
+### UWF-B6 Registration
 
-### 2.1 Registration and input
+WHEN the catalog is built THE engine SHALL find the upgrade workflow by its spec's `builtin` field set to `upgrade` (self-improvement's is `true`), never by its name, add it after every package so none can shadow it ([WFM](02-workflow-model.spec.md)), exempt it from the issue-repository rule and hide it from `workflows list`.
 
-| Rule | Value |
-|---|---|
-| Found by | A flag on its spec (`builtin: upgrade`), not by its name; registered after every package so none can shadow it ([WFM](02-workflow-model.spec.md)) |
-| Started by | `upgrade` only, with `origin: upgrade` ([DUR §2.2](09-durability-and-resume.spec.md)); a direct `run` is refused with exit 2 |
-| Input | `upgrade_id`; a model-free input resolver reads `plan.json` and `baseline.json` ([WUP §2.2](63-workflow-upgrade.spec.md)) and produces two list artifacts, `owner_items` and `assisted_items` |
-| Workspace | The upgrade branch's worktree; edits limited to the package folder |
-| Executor and models | `UpgradePolicy.executor` ([VER §2.4](61-version-metadata.spec.md)), default `claude`; step model `large`, judge model `medium`; overridable by the verb's `--executor` |
-| Cost | Run cost cap from the verb's `--cap`, default $10 ([BUD](08-budgets-and-failures.spec.md)) |
+- GIVEN a package that declares a workflow named `upgrade` WHEN the catalog is built THEN the built-in is still the one the verb starts
 
-### 2.2 Units
+### UWF-B5 Direct start refused
 
-```mermaid
-flowchart LR
-  R[resolve plan<br/>no model] --> O[map: draft_answer<br/>per owner item]
-  O --> A[map: adjust<br/>per assisted item]
-  A --> E[end: the verb verifies]
-```
+WHEN `tempergraph run upgrade …` is typed by a person THE engine SHALL exit 2 naming `tempergraph upgrade <workflow>`, since only the `upgrade` verb starts it, with `origin: upgrade` ([DUR-B11](09-durability-and-resume.spec.md)).
 
-| Unit | Kind | Per | Does | Gate |
-|---|---|---|---|---|
-| `draft_answer` | map, sequential | owner item | Reads the entry and the package and drafts the smallest change that would answer the owner's question, with the question, the choices, and what each choice would change; writes the draft change on the branch | §2.4 check and judge, then `approval: true`: the owner proceeds (the draft is the answer), retries with feedback (a new draft), or stops (the item is skipped, with the feedback as reason) |
-| `adjust` | map, sequential | assisted item | Makes the edit the entry's instruction asks for at each hit | §2.4 check and judge; no approval |
+- GIVEN `tempergraph run upgrade …` WHEN it is checked THEN it exits 2 and names `tempergraph upgrade <workflow>`
 
-Owner items run first because an owner's answer can change what an assisted edit must do. Both maps are sequential, so edits on one branch never race ([CMP](03-compiler-and-flow.spec.md)).
+### UWF-B7 Input, workspace and limits
 
-### 2.3 What a step is told and may use
+WHEN the verb starts the workflow THE workflow SHALL take `upgrade_id`, read `plan.json` and `baseline.json` ([WUP-B14](63-workflow-upgrade.spec.md)) in a model-free script unit that produces the list artifacts `owner_items` and `assisted_items` and refuses with exit 2 a `plan.json` that is missing or of another engine version; run in place in the upgrade branch's worktree, which an in-place run started inside a linked worktree keeps ([WTR](82-worktree-mode.spec.md)), with edits limited to the package folder and its inputs and results in `.tempergraph-upgrade/` under the worktree, which the upgrade removes before it commits; use the executor of `UpgradePolicy.executor` ([VER-B14](61-version-metadata.spec.md)), default `claude`, or the verb's `--executor`, with step model `large` and judge model `medium`; and take the run cost cap from the verb's `--cap`, default $10 ([BUD](08-budgets-and-failures.spec.md)), exiting 5 when it is spent with finished items left on the branch.
 
-| Part | Content |
-|---|---|
-| Template | The entry's `note`, its `assisted` instruction or `owner` question ([VER §2.3.3](61-version-metadata.spec.md)), the item's hits with file and field path, the list of `protected` paths, and the workflow's own criteria text for the units the hits sit in, so the intent of the gate the change touches is in view |
-| Subject files | The files the hits name, read through tools, not pasted |
-| Tools | `read`, `search`, `list`, `edit`, `write`; `shell` with a command allow-list of the engine's read-only verbs (`validate`, `upgrade --check`, `audit --layer definition`) and the package's own check-fixture command ([EVS](51-eval-suites.spec.md)) |
-| Never | Network tools; a path outside the package; editing a `protected` path in `adjust` (such an item was turned into an owner item by the plan, [WUP §2.3](63-workflow-upgrade.spec.md)) |
-| Output | The edit on the branch and a short change note per hit: what was changed and why, which the report quotes |
+- GIVEN a `plan.json` of another engine version WHEN the input is read THEN it exits 2
 
-### 2.4 Gate of each item
+### UWF-B8 Units and order
 
-The check runs first; the judge runs only when it passes ([JDG](05-judge-and-verdict.spec.md)).
+WHEN the workflow runs THE workflow SHALL run, after the script unit, a sequential map `draft_answer` over the owner items and then a sequential map `adjust` over the assisted items, ending for the verb to verify, owner items first because an owner's answer can change what an assisted edit must do, and both maps sequential so edits on one branch never race ([CMP](03-compiler-and-flow.spec.md)).
 
-| Check (deterministic) | Fails when |
-|---|---|
-| Scope | The diff of this attempt touches a file outside the package, or, in `adjust`, a `protected` path |
-| Proof | The item's detect rules still hit, or a `proof` code of its entry is still raised ([VER §2.3](61-version-metadata.spec.md)) |
-| Fixtures | A changed check or resolver fails its must-pass or must-fail fixtures |
+- GIVEN one owner item and one assisted item WHEN the run is read THEN `draft_answer` finished before `adjust` started
 
-| Criterion (judge) | Severity |
-|---|---|
-| The edit does what the entry's instruction asks at every hit, and nothing that only the owner should decide | blocker |
-| Behaviour the entry does not concern is unchanged: no rewording, reformatting or extra edits outside the hits' need | blocker |
-| No criterion, check or judge view is weakened, and no rubric or bar is invented ([PRP §2.4](40-improvement-proposals.spec.md) `weakening`) | blocker |
-| The diff is the smallest that meets the instruction | warning |
+### UWF-B9 Draft an answer for the owner
 
-The judge reads the diff, the entry's note and instruction, and the files before the edit, in a read-only view on an executor that declares `restricts_judge_tools` ([GRD](06-independence-guard.spec.md), [ADR-0013](../adr/0013-cross-executor-judging.adr.md)). Retry budget 2 per item; when it is spent, `on_budget_spent: ask` pauses for the person, who may retry with feedback, proceed (the item is left for a hand edit, and the verb's verification will name it), or stop.
+WHEN `draft_answer` runs for an owner item THE step SHALL read the entry and the package, draft the smallest change that would answer the owner's question with the question, the choices and what each would change, and write the draft on the branch, its gate the checks and judge of UWF-B12 followed by `approval: true`.
 
-## 3. Behaviours
+- GIVEN an owner item WHEN its draft passes the gate THEN the run pauses at the approval
 
-**UWF-B1 An assisted edit is gated.** Given an `adjust` item whose instruction says a check must now read `state.attempts[-1]` instead of `state.last_output`, when the step edits `checks/coverage.py`, then the check re-runs the entry's `symbol` rule and the check's fixtures; only when both pass does the judge grade the edit, and the engine derives the verdict.
+### UWF-B3 The owner's answer is the owner's
 
-**UWF-B2 Out-of-scope edit is retried.** Given an attempt that also reformats an unrelated template, when the judge grades it, then the second blocker is `UNMET`, the verdict is `RETRY`, and the next attempt is told the criterion and the place.
+WHEN the owner decides at a `draft_answer` approval THE workflow SHALL mark the item `answered` by person on proceed (the draft is the answer), keep it `pending` with a new draft on retry with feedback, and mark it `skipped` by person on stop with the feedback as reason.
 
-**UWF-B3 The owner's answer is the owner's.** Given an owner item asking for the repository that receives the workflow's issues, when `draft_answer` drafts `issue_repository` from the package's git remote, then the run pauses at the approval with the question, the draft and its effect; the value stays on the branch only if the owner proceeds.
+- GIVEN an owner item asking for the repository that receives the workflow's issues and a draft of `issue_repository` from the git remote WHEN it pauses THEN the question, draft and effect are shown, and the value stays only if the owner proceeds
+- GIVEN retry with feedback WHEN decided THEN the item is `pending` with a new draft
+- GIVEN stop WHEN decided THEN the item is `skipped` with the feedback as reason
 
-| Owner's decision at the approval | Item state | `by` |
-|---|---|---|
-| proceed | `answered` | person |
-| retry with feedback | `pending`, a new draft | — |
-| stop | `skipped`, reason from the feedback | person |
+### UWF-B10 Adjust an assisted item
 
-**UWF-B4 A protected path stays the owner's.** Given an assisted entry whose hit is a criterion text (protected by default), when the plan runs, then the item is an owner item, so the model's change to it reaches the branch only through the owner's approval.
+WHEN `adjust` runs for an assisted item THE step SHALL make the edit the entry's instruction asks for at each hit, gated by UWF-B12 with no approval.
 
-**UWF-B5 Direct start refused.** Given `tempergraph run upgrade …` typed by a person, when it is checked, then it exits 2 and names `tempergraph upgrade <workflow>`.
+- GIVEN an assisted item WHEN its edit passes the gate THEN the item is `done` by model
 
-## 4. Error conditions
+### UWF-B11 What a step is told and may use
 
-| Condition | Result |
-|---|---|
-| `plan.json` missing or of another engine version | Input resolver refuses; exit 2 |
-| A step session fails for infrastructure | As any run: exit 5 after its policy; the verb reports items left `pending` |
-| The cap is spent | Exit 5; finished items stay on the branch |
-| No executor declares `restricts_judge_tools` for the judge | Preflight exit 2, as for any workflow ([EXI](10-executor-interface.spec.md)) |
+WHEN a step of the workflow is prompted THE workflow SHALL give it the entry's `note`, its `assisted` instruction or `owner` question ([VER-B12](61-version-metadata.spec.md)), the item's hits with file and field path, the `protected` paths and the workflow's own criteria text for the units the hits sit in; let it read the subject files through tools, not pasted; grant `read`, `search`, `list`, `edit`, `write` and `shell` limited to `validate`, `upgrade --check`, `audit --layer definition` and the package's own check-fixture command ([EVS](51-eval-suites.spec.md)); grant no network tool, no path outside the package and, in `adjust`, no `protected` path (such an item became an owner item in the plan, [WUP-B16](63-workflow-upgrade.spec.md)); and take as output the edit and a short change note per hit, what was changed and why, which the report quotes.
 
-## 5. Design notes
+- GIVEN an `adjust` step WHEN its tools are read THEN no network tool is granted
 
-- Running the model's part as a workflow is the engine's own thesis applied to itself: a model edit is a step, an independent judge grades it, a rule decides ([ADR-0005](../adr/0005-independent-judge-engine-verdict.adr.md)). It also makes the upgrade visible to `status`, the monitor and the cost reports with no new mechanism.
-- Steps and their gates change apart ([ADR-0031](../adr/0031-steps-and-their-graders-change-apart.adr.md)): the model may touch a gate's text only through an owner item, so a grader is never loosened by the session it would grade.
-- Like every workflow, this one is evaluated: its check and step suites ([EVS](51-eval-suites.spec.md)) hold fixture packages with planted upgrade items, and its judge is calibrated before the workflow is `stable` ([JCL](50-judge-calibration.spec.md)).
-- **As built (R2-T6.4).** `builtin/upgrade.py` builds the workflow: a script unit that reads the open items, then one map that drafts an answer for each owner item and one that makes each model item's edit, each graded by the four checks of §2.4 and then the judge. The flag is the spec's `builtin` field, whose value is now `true` (self-improvement) or a name (`upgrade`); a built-in is exempt from the issue-repository rule, is added to the catalog after every package, is hidden from `workflows list`, and `run` refuses it by name. It runs in place inside the upgrade's worktree: an in-place run started inside a linked worktree stays in that worktree ([WTR](82-worktree-mode.spec.md)). Its inputs and results travel in `.tempergraph-upgrade/` under the worktree, which the upgrade removes before it commits.
+### UWF-B12 Gate of each item
 
-## 6. Acceptance criteria
+WHEN an item's attempt is graded THE gate SHALL run the checks first and the judge only when they pass ([JDG](05-judge-and-verdict.spec.md)): scope (the attempt's diff touches no file outside the package and, in `adjust`, no `protected` path), load and validate (the package loads and validation has no `error` the baseline lacks), proof (the item's detect rules no longer hit and no `proof` code of its entry is raised, [VER-B9](61-version-metadata.spec.md)) and fixtures (a changed check or resolver passes its must-pass and must-fail fixtures); then judge the blockers that the edit does what the entry's instruction asks at every hit and nothing only the owner should decide, that behaviour the entry does not concern is unchanged (no rewording, reformatting or extra edits), and that no criterion, check or judge view is weakened and no rubric or bar is invented ([PRP-B14](40-improvement-proposals.spec.md) `weakening`), and the warning that the diff is the smallest that meets the instruction; the judge reading the diff, the entry's note and instruction and the files before the edit in a read-only view on an executor that declares `restricts_judge_tools` ([GRD](06-independence-guard.spec.md), [ADR-0013](../adr/0013-cross-executor-judging.adr.md)), preflight exiting 2 when none does ([EXI](10-executor-interface.spec.md)).
 
-- [x] UWF-AC-1 The workflow validates under the engine that ships it and is found by its flag, not its name (source-scan test).
-- [x] UWF-AC-2 Each check of §2.4 has a fixture attempt that fails it alone.
-- [x] UWF-AC-3 Every row of UWF-B3's table is a test with a scripted executor.
-- [x] UWF-AC-4 No attempt of the workflow can write outside the package folder (file-system guard with scripted executors).
-- [ ] UWF-AC-5 The workflow's step suite upgrades each planted item of its fixture packages, and its judge's gold set reaches the acceptance bar of [JCL](50-judge-calibration.spec.md) before it is marked `stable`.
+- GIVEN an attempt whose diff touches a file outside the package WHEN graded THEN the scope check fails and no judge runs
+
+### UWF-B1 An assisted edit is gated
+
+WHEN an `adjust` step edits a check THE gate SHALL re-run the entry's detect rule and the check's fixtures, the judge grading only when both pass and the engine deriving the verdict.
+
+- GIVEN an instruction that a check must read `state.attempts[-1]` instead of `state.last_output` WHEN the step edits `checks/coverage.py` THEN the `symbol` rule and the fixtures run first and the judge grades only when both pass
+
+### UWF-B2 Out-of-scope edit is retried
+
+WHEN the judge finds behaviour the entry does not concern changed THE gate SHALL grade that blocker `UNMET` and retry, telling the next attempt the criterion and the place.
+
+- GIVEN an attempt that also reformats an unrelated template WHEN judged THEN the second blocker is `UNMET`, the verdict is `RETRY` and the next attempt is told the criterion and the place
+
+### UWF-B13 Retries and failures
+
+WHEN an item's retry budget of 2 is spent THE gate SHALL pause for the person under `on_budget_spent: ask`, who may retry with feedback, proceed (the item is left for a hand edit, which the verb's verification names) or stop, and a step session failing for infrastructure SHALL end as any run, exit 5 after its policy with the items not finished left `pending`.
+
+- GIVEN two failed retries of one item WHEN the budget is spent THEN the run pauses for the person
+
+### UWF-B4 A protected path stays the owner's
+
+WHEN the plan finds an assisted entry whose hit is a protected path, such as a criterion text THE engine SHALL make it an owner item, so the model's change reaches the branch only through the owner's approval.
+
+- GIVEN an assisted entry hitting a criterion text WHEN planned THEN it is an owner item
+
+## Acceptance criteria
+
+- UWF-AC1 (UWF-B6, UWF-B5, UWF-B7): The workflow validates under the engine that ships it and is found by its flag, not its name (source-scan test), and a direct run is refused
+- UWF-AC2 (UWF-B12, UWF-B1, UWF-B2): Each check of UWF-B12 has a fixture attempt that fails it alone
+- UWF-AC3 (UWF-B3, UWF-B9, UWF-B8): Every scenario of UWF-B3 is a test with a scripted executor
+- UWF-AC4 (UWF-B11, UWF-B4, UWF-B10): No attempt of the workflow can write outside the package folder (file-system guard with scripted executors)
+- UWF-AC5 (UWF-B13): The workflow's step suite upgrades each planted item of its fixture packages, and its judge's gold set reaches the acceptance bar of [JCL](50-judge-calibration.spec.md) before it is marked `stable`
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should items of one entry that hit many files be grouped into one `adjust` item per file, as public practice does per file ([R-056](../research/R-056-automated-and-model-assisted-migrations.rsrch.md) M4), or kept per entry? The design keeps one item per entry and hit set; measure on the first breaking release. | Implementer |
-
-## References
-
-[WUP](63-workflow-upgrade.spec.md) · [VER](61-version-metadata.spec.md) · [JDG](05-judge-and-verdict.spec.md) · [HUM](07-gate-and-human.spec.md) · [SIL](16-self-improvement.spec.md) · [R-056](../research/R-056-automated-and-model-assisted-migrations.rsrch.md)
+- Should items of one entry that hit many files be grouped into one `adjust` item per file, as public practice does per file ([R-056](../research/R-056-automated-and-model-assisted-migrations.rsrch.md) M4), or kept per entry? Until answered: one item per entry and hit set; measure on the first breaking release. Owner: implementer.
+- Not met yet: UWF-AC5 needs the step suite's planted fixture packages and a labelled gold set. Owner: engine owner.

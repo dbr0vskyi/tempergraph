@@ -1,4 +1,4 @@
-"""The release-notes workflow: one judged step and the outcome gate (the engine's minimal package, PKG §2.7).
+"""The release-notes workflow: one judged step and the outcome gate (the engine's minimal package, PKG-B25).
 
 The step may run `git describe` and `git log` only; the checks run the same two commands and hand the
 change list to the judges, which read files only (live check L-25, 2026-11-21)."""

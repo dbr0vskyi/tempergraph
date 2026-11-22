@@ -1,4 +1,4 @@
-"""Private import names for workflow packages (PKG §2.3 step 3, PKG-B3).
+"""Private import names for workflow packages (PKG-B15, PKG-B16, PKG-B17 step 3, PKG-B3).
 
 A package's entry module, the folder ``workflow/<module>/``, is imported as ``tgwf_<name>`` (the workflow name
 with ``-`` as ``_``), so two packages that both hold a ``checks`` module never collide. The package's own
@@ -6,7 +6,7 @@ modules import each other relatively; their callables are recorded as ``tgwf_<na
 
 A meta-path finder maps each private name to its folder. The engine process registers a package when it
 loads it; a child process (the check worker) gets the same map in its context document and calls
-:func:`install` before it imports a callable by reference (CHK §2.6).
+:func:`install` before it imports a callable by reference (CHK-B16).
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ def register(name: str, folder: Path) -> None:
 
 
 def import_entry(workflow: str, folder: Path) -> ModuleType:
-    """Import afresh: a load always reads the package's current source (PKG §2.3). No bytecode is written
+    """Import afresh: a load always reads the package's current source (PKG-B15, PKG-B16, PKG-B17). No bytecode is written
     into the package, so loading (and `audit`, AUD-B6) leaves it byte-for-byte unchanged."""
     name = private_name(workflow)
     register(name, folder)

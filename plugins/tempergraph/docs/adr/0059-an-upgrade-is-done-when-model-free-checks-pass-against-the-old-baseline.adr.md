@@ -13,7 +13,7 @@ The owner's upgrade command needs a definition of "verified", and suggested vali
 
 ## Decision
 
-We will take a baseline of the unchanged workflow under the running engine (validation, audit definition and host, model-free regression suites, shape, parse) and accept an upgrade only when, in order ([WUP §2.6](../specs/63-workflow-upgrade.spec.md)): it loads; validation has no error and no new warning; every applied entry's proof is clear; the audit has no new finding at warning or above; change classification shows no weakening the owner did not answer and no model edit of a protected path; the regression suites that passed still pass and failing ones fail no more; the diagram is regenerated; and, when asked, a paired trial does not regress. The stamp is written only then.
+We will take a baseline of the unchanged workflow under the running engine (validation, audit definition and host, model-free regression suites, shape, parse) and accept an upgrade only when, in order ([WUP-B19](../specs/63-workflow-upgrade.spec.md)): it loads; validation has no error and no new warning; every applied entry's proof is clear; the audit has no new finding at warning or above; change classification shows no weakening the owner did not answer and no model edit of a protected path; the regression suites that passed still pass and failing ones fail no more; the diagram is regenerated; and, when asked, a paired trial does not regress. The stamp is written only then.
 
 ## Options considered
 
@@ -37,8 +37,8 @@ We will take a baseline of the unchanged workflow under the running engine (vali
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | "Verified through validate and audit" includes the model-free suites and the change classification, since both exist and cost nothing. | WUP §2.6 |
-| A2 | Audit findings are matched by rule id and location; a moved finding counts as new. | WUP §2.6 V4 |
+| A1 | "Verified through validate and audit" includes the model-free suites and the change classification, since both exist and cost nothing. | WUP-B19 |
+| A2 | Audit findings are matched by rule id and location; a moved finding counts as new. | WUP-B19 V4 |
 
 ## Consequences
 

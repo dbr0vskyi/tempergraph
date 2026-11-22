@@ -1,4 +1,4 @@
-"""`upgrade --check [--stamp]` and `upgrade-check [--stamp]` in release 1 (WUP §2.1, §2.6; VER §2.5).
+"""`upgrade --check [--stamp]` and `upgrade-check [--stamp]` in release 1 (WUP-B10, WUP-B11, WUP-B12, WUP-B13, WUP-B19; VER-B16).
 
 Release 1 builds the check and the stamp only; the transforms, the upgrade workflow, the branch and the pull
 request are release 3 (ADR-0090). `--check` runs WUP phases 1 to 3 (locate, baseline, plan) read-only.
@@ -6,7 +6,7 @@ request are release 3 (ADR-0090). `--check` runs WUP phases 1 to 3 (locate, base
 package. V4 runs the audit's definition layer and fails on a finding at warning or above that the last
 stamp's `audit` list lacks (a first stamp records the list). V6 (model-free suites) reports `skipped` until
 eval suites (release 2) exist. V7 regenerates `diagram/` with the stamp, because the diagram is generated
-and never typed (PKG §2.1).
+and never typed (PKG-B11, PKG-B12).
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ def read_stamp(root: Path) -> dict[str, Any] | None:
 
 
 def _audit_keys(lp: Any, caps: Mapping[str, Capabilities]) -> list[str]:
-    """V4 (WUP §2.6): the definition layer's findings at warning or above, by rule and location. The host
+    """V4 (WUP-B19): the definition layer's findings at warning or above, by rule and location. The host
     layer is left out: it describes this machine, not the package."""
     from tempergraph.audit import AuditContext, audit
 
@@ -50,7 +50,7 @@ def _audit_keys(lp: Any, caps: Mapping[str, Capabilities]) -> list[str]:
 
 
 def tool_set(spec: WorkflowSpec) -> dict[str, list[str]]:
-    """Per executor, the tool names the steps and judges were checked against (VER §2.5 `tool_set`)."""
+    """Per executor, the tool names the steps and judges were checked against (VER-B16 `tool_set`)."""
     out: dict[str, set[str]] = {}
     for u in spec.units.values():
         ex = (u.step.executor if u.step else None) or spec.default_executor
@@ -110,11 +110,11 @@ def _outcome_revision(lp: Any) -> int:
 
 def check(path: Path, caps: Mapping[str, Capabilities], *, stamp: bool = False,
           fail_on_pending: bool = False, accept_revision: bool = False) -> StampReport:
-    """`accept_revision` is `author verify`'s rung 10 (SCF §2.5): an outcome revision newer than the last
-    stamp's is the owner's re-approval, so V4 records the audit list anew instead of comparing (WUP §2.6)."""
+    """`accept_revision` is `author verify`'s rung 10 (SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22): an outcome revision newer than the last
+    stamp's is the owner's re-approval, so V4 records the audit list anew instead of comparing (WUP-B19)."""
     root = path.resolve()
     rep = StampReport(workflow=root.name)
-    if root.is_relative_to(plugin_cache().resolve()):  # WUP §2.2: phase 1 locate
+    if root.is_relative_to(plugin_cache().resolve()):  # WUP-B14, WUP-B7: phase 1 locate
         rep.refused, rep.exit_code = "upgrade the workflow's source; this is an installed copy", 2
         return rep
     try:
@@ -188,7 +188,7 @@ def check(path: Path, caps: Mapping[str, Capabilities], *, stamp: bool = False,
 
 def _entries_applied(prior: Mapping[str, Any] | None, new_ids: Sequence[str],
                      by: Mapping[str, str] | None = None) -> list[dict[str, str]]:
-    """VER §2.5: the entries handled over the package's life. A restamp keeps what the prior stamp held, with
+    """VER-B16: the entries handled over the package's life. A restamp keeps what the prior stamp held, with
     its `by`, and adds the entries met since; a restamp of a package already current adds nothing."""
     out: list[dict[str, str]] = []
     seen: set[str] = set()

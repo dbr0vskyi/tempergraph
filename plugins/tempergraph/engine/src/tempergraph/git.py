@@ -1,4 +1,4 @@
-"""The git reader: a sanctioned launch site (SEC §2.2) for `git` with constant arguments.
+"""The git reader: a sanctioned launch site (SEC-B7) for `git` with constant arguments.
 
 Refs travel on stdin where git accepts them; callers pass only constants and refs checked by
 :func:`is_safe_ref` (SEC-B4).
@@ -86,7 +86,7 @@ def main_checkout(start: Path) -> Path | None:
 class Fingerprint:
     head: str
     status: str
-    manifest: bool = False  # outside git: `status` is the workspace manifest's digest (WSP §2.4)
+    manifest: bool = False  # outside git: `status` is the workspace manifest's digest (WSP-B15 to WSP-B18)
 
     @property
     def dirty(self) -> bool | None:
@@ -95,7 +95,7 @@ class Fingerprint:
 
 
 def fingerprint(workdir: Path) -> Fingerprint:
-    if toplevel(workdir) is None:  # outside git the guard compares manifests of the files (WSP §2.4)
+    if toplevel(workdir) is None:  # outside git the guard compares manifests of the files (WSP-B15 to WSP-B18)
         from tempergraph.store import manifest
 
         return Fingerprint("", manifest.status(workdir), manifest=True)
@@ -116,7 +116,7 @@ def branch(workdir: Path) -> str:
 
 
 def pushed(workdir: Path, name: str) -> bool:
-    """CHK §2.1: the branch exists on any configured remote, by its remote-tracking refs; no network."""
+    """CHK-B10: the branch exists on any configured remote, by its remote-tracking refs; no network."""
     if not name or not is_safe_ref(name):
         return False
     try:

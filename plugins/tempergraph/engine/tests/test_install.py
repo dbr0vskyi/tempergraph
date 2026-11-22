@@ -1,5 +1,5 @@
-"""First install (UPD §2.7), engine environments and the shim (UPD §2.2), the release record (VER §2.2),
-and registry reconcile from Claude Code's plugin cache (UPD §2.8, PKG-B1). No test installs from an index:
+"""First install (UPD-B18, UPD-B19), engine environments and the shim (UPD-B11, UPD-B12, UPD-B13), the release record (VER-B8),
+and registry reconcile from Claude Code's plugin cache (UPD-B20 to UPD-B24, PKG-B1). No test installs from an index:
 the environment builder is a stand-in that links the test interpreter."""
 
 from __future__ import annotations
@@ -80,7 +80,7 @@ def run_install(tmp_path: Path, *argv: str, builder: Any = None) -> tuple[int, l
     return code, [json.loads(line) for line in out.getvalue().splitlines()]
 
 
-# -- VER §2.2 release record ---------------------------------------------------------------------------------
+# -- VER-B8 release record ---------------------------------------------------------------------------------
 
 
 def test_release_record_matches_constants() -> None:
@@ -89,11 +89,11 @@ def test_release_record_matches_constants() -> None:
         constants.ENGINE_VERSION, constants.WORKFLOW_API, constants.LOADS_WORKFLOW_API_FROM, constants.STORE_LAYOUT)
     assert rel["schemas"] == constants.SCHEMA
     plugin = json.loads((PLUGIN_ROOT / ".claude-plugin" / "plugin.json").read_text())
-    assert plugin["version"] == rel["engine_version"]  # VER §2.1 / UPD §2.5 version parity
+    assert plugin["version"] == rel["engine_version"]  # VER-B7 / UPD-B16 version parity
 
 
 def test_bootstrap_loads_no_compiled_library() -> None:
-    """UPD §2.7: the bootstrap imports the standard library and stdlib-only engine modules only."""
+    """UPD-B18, UPD-B19: the bootstrap imports the standard library and stdlib-only engine modules only."""
     code = ("import sys; import tempergraph.install.bootstrap; "
             "std = set(sys.stdlib_module_names) | {'tempergraph', '__main__', '_virtualenv', 'sitecustomize', 'usercustomize'}; "
             "print(sorted({m.split('.')[0] for m in sys.modules} - std))")
@@ -112,7 +112,7 @@ def test_bootstrap_loads_no_compiled_library() -> None:
     assert [m for m in loaded if not allowed(m)] == []
 
 
-# -- UPD §2.7 first install -------------------------------------------------------------------------------------
+# -- UPD-B18, UPD-B19 first install -------------------------------------------------------------------------------------
 
 
 def test_first_install_then_already_current(tmp_path: Path) -> None:
@@ -210,7 +210,7 @@ def test_install_through_the_cli(tmp_path: Path, repo: Path) -> None:
     assert json.loads(out.getvalue().splitlines()[0])["kind"] == "engine"
 
 
-# -- UPD §2.8 reconcile, PKG-B1 ---------------------------------------------------------------------------------------
+# -- UPD-B20 to UPD-B24 reconcile, PKG-B1 ---------------------------------------------------------------------------------------
 
 
 def caps() -> dict[str, Any]:

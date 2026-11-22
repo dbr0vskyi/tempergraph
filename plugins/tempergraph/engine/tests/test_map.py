@@ -1,4 +1,4 @@
-"""The sequential map: one fresh session per item, each gated on its own (MAP-AC-1 to AC-4, VAL-B4)."""
+"""The sequential map: one fresh session per item, each gated on its own (MAP-AC1 to AC-4, VAL-B4)."""
 
 from __future__ import annotations
 
@@ -92,7 +92,7 @@ def keys(ex: Any, kind: str = "step") -> list[str]:
     return [c.request.session_key for c in ex.calls if c.kind == kind]
 
 
-def test_one_session_per_item_each_gated_on_its_own(repo: Path) -> None:  # MAP-B1 and its table, MAP-AC-3
+def test_one_session_per_item_each_gated_on_its_own(repo: Path) -> None:  # MAP-B1 and its table, MAP-AC3
     spec = mapped(check=p2_fails_once)
     steps = [planner(THREE), item_ok(), item_ok(), item_ok(), item_ok(), item_ok()]
     out, ex = run(repo, spec, steps, [judge(), judge(), judge(), judge(FAIL), judge(FAIL)])
@@ -111,7 +111,7 @@ def test_one_session_per_item_each_gated_on_its_own(repo: Path) -> None:  # MAP-
     assert "Do p2 (2/3): Second phase" in prompt
 
 
-def test_items_keep_their_own_artifacts_and_facts(repo: Path) -> None:  # MAP §2.2
+def test_items_keep_their_own_artifacts_and_facts(repo: Path) -> None:  # MAP-B8, MAP-B9, MAP-B10
     spec = mapped(check=p2_fails_once)
     steps = [planner(THREE[:2]), item_ok("one"), item_ok("bad"), item_ok("two"), answer("Joined.")]
     out, _ = run(repo, spec, steps, [judge(), judge(), judge(), judge()])
@@ -132,7 +132,7 @@ def test_an_empty_list_runs_the_whole_artifact_as_one_item(repo: Path) -> None: 
     assert "No phase heading here." in [c for c in ex.calls if c.kind == "step"][1].request.prompt
 
 
-def test_an_empty_list_stops_or_skips(repo: Path) -> None:  # MAP §2.1 on_empty
+def test_an_empty_list_stops_or_skips(repo: Path) -> None:  # MAP-B7 on_empty
     out, ex = run(repo, mapped(extract=no_phases), [planner("x")], [judge()])
     assert out.exit_code is ExitCode.STOPPED and out.reason == "map" and keys(ex) == ["plan.1.step"]
     out, ex = run(repo, mapped(extract=no_phases, on_empty="skip"), [planner("x"), answer("Joined.")],
@@ -153,7 +153,7 @@ def test_a_trip_back_reruns_every_item(repo: Path) -> None:  # MAP-B3
     assert [r["ids"] for r in recs(repo, "map_items")] == [["p1", "p2"], ["p1", "p3"]]
 
 
-def test_a_drained_run_resumes_at_the_pending_item(repo: Path) -> None:  # MAP-B4, MAP-AC-3
+def test_a_drained_run_resumes_at_the_pending_item(repo: Path) -> None:  # MAP-B4, MAP-AC3
     spec = mapped()
     out, ex = run(repo, spec, [planner(THREE), item_ok(), item_ok()], [judge(), judge(), judge()],
                   flags={"run.attempt_cap": 3})
@@ -183,7 +183,7 @@ def test_too_many_items_stop_before_any_item(repo: Path) -> None:  # MAP-B5
     (["a"], raising, "map_extract_raised"),
 ])
 def test_a_list_that_cannot_be_used_stops_the_run(repo: Path, items: Any, extract: Any, error: str) -> None:
-    out, ex = run(repo, mapped(extract=extract), [planner(items)], [judge()])  # MAP §2.2 row 1, §4
+    out, ex = run(repo, mapped(extract=extract), [planner(items)], [judge()])  # MAP-B8, MAP-B9, MAP-B10 row 1, MAP-B8, MAP-B10, MAP-B9
     assert out.exit_code is ExitCode.STOPPED and out.reason == "map"
     assert recs(repo, "map_items")[0]["error"] == error and keys(ex) == ["plan.1.step"]
     if extract is raising:
@@ -199,7 +199,7 @@ def test_a_person_stops_or_retries_one_item(repo: Path) -> None:  # MAP-B6 for t
     assert done.exit_code is ExitCode.STOPPED and ex2.calls == []
 
 
-def test_a_person_passes_one_item_and_the_next_runs(repo: Path) -> None:  # MAP §2.2 rows 4 and 5
+def test_a_person_passes_one_item_and_the_next_runs(repo: Path) -> None:  # MAP-B8, MAP-B9, MAP-B10 rows 4 and 5
     spec = mapped(retry_budget=0)
     out, _ = run(repo, spec, [planner(THREE), item_ok(), item_ok()], [judge(), judge(), judge(FAIL)])
     ex2 = standin("claude", steps=[item_ok(), answer("Joined.")], judges=[judge(), judge()])
@@ -208,7 +208,7 @@ def test_a_person_passes_one_item_and_the_next_runs(repo: Path) -> None:  # MAP 
     assert keys(ex2) == ["phase.p3.1.step", "join.1.step"]
 
 
-def test_each_item_sees_the_commits_before_it(repo: Path) -> None:  # MAP-AC-4
+def test_each_item_sees_the_commits_before_it(repo: Path) -> None:  # MAP-AC4
     seen: dict[str, list[str]] = {}
 
     def worker(req: SessionRequest) -> SessionResult:
@@ -226,7 +226,7 @@ def test_each_item_sees_the_commits_before_it(repo: Path) -> None:  # MAP-AC-4
     assert seen == {"p1": [], "p2": ["done-p1"], "p3": ["done-p1", "done-p2"]}
 
 
-def test_item_model_picks_among_declared_aliases(repo: Path) -> None:  # MAP §2.1, §4
+def test_item_model_picks_among_declared_aliases(repo: Path) -> None:  # MAP-B7, MAP-B8, MAP-B10, MAP-B9
     spec = mapped(item_model=by_item, models=["small", "medium"])
     out, ex = run(repo, spec, [planner(THREE), item_ok(), item_ok()], [judge(), judge(), judge()])
     assert [c.request.alias for c in ex.calls if c.kind == "step"][1:] == ["small", "medium"]
@@ -244,7 +244,7 @@ def test_item_model_picks_among_declared_aliases(repo: Path) -> None:  # MAP §2
     (lambda: mapped(item_model=by_item), "map-invalid"),
     (lambda: mapped(item_model=by_item, models=["huge"]), "alias-unbound"),
 ])
-def test_validation(build: Any, code: str) -> None:  # MAP-AC-2
+def test_validation(build: Any, code: str) -> None:  # MAP-AC2
     found = [f.code for f in errors(validate(build(), {"claude": DECLARED["claude"]}))]
     assert code in found, found
 

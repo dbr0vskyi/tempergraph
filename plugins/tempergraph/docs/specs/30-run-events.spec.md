@@ -1,178 +1,175 @@
----
-title: Run events for observers
-type: component
-status: ready-for-implementation
-prefix: EVT
-adrs: [0009, 0022, 0023, 0027]
----
-
 # Run events for observers
 
-## 1. Overview
+## Purpose
 
-What the engine writes and emits while a run is live, so an observer (the `tempergraph-monitor` mod, an exporter, a tracker plugin, a script) can follow it without reading the checkpoint and without changing it. Three things are defined here: the observer record kinds added to the run log, the per-session **activity journal**, and the two ways to subscribe (the `events` verb and the in-process observer interface, plus the widened lifecycle hook events). Everything here is best effort and never changes a run or its exit code (contract C2, owned by [OBS](15-observability-and-cost.spec.md)). The record kinds of [OBS §2.1](15-observability-and-cost.spec.md) stay where they are; this spec adds kinds and fields, never renames.
+What the engine writes and emits while a run is live, so an observer (the `tempergraph-monitor` mod, an exporter, a tracker plugin, a script) can follow it without reading the checkpoint and without changing it: the observer record kinds added to the run log, the per-session activity journal, and the ways to subscribe (the `events` verb, the in-process observer interface and the widened lifecycle hook events). Everything here is best effort and never changes a run or its exit code (OVR-B4, owned by [OBS](15-observability-and-cost.spec.md)). The record kinds of [OBS](15-observability-and-cost.spec.md) stay where they are; this spec adds kinds and fields, never renames. Observers read append-only files and read-only verbs, with no socket and no daemon ([ADR-0022](../adr/0022-observers-read-files-not-sockets.adr.md)); shell commands stay local and scrubbed ([ADR-0023](../adr/0023-local-activity-journal-with-tool-input-summaries.adr.md)); observers and hook events follow [ADR-0027](../adr/0027-in-process-observers-and-wider-hook-events.adr.md). The monitor, exporters, central stats, tracker plugins and the detail document depend on these records ([R-021](../research/R-021-observer-needs-against-engine-documents.rsrch.md)).
 
-## 2. Contract
+## Behaviours
 
-### 2.1 Common record envelope
+### EVT-B8 Common record envelope
 
-Every run-log record, old kinds and new, carries these keys. Adding them keeps the run log's schema version ([CON §2.10](01-contracts.spec.md)).
+WHEN any run-log record is written, old kinds and new THE writer SHALL give it `seq` (per thread, strictly increasing across resumes), `ts` (RFC 3339 UTC write time), `kind`, `thread_id`, `segment` (0 for the start, one more per resume), `unit`, `item` and `attempt` (null when the record has no unit) and `session_key` (`<unit>[.<item>].<attempt>.<kind>[.<n>]`, such as `plan.2.judge` or `code.p3.1.judge_reask.2`, the stable name of one session's folder, [LOS](33-local-observability-store.spec.md)), keeping the run log's schema version ([CON-B14](01-contracts.spec.md)), filling `unit` and `attempt` from a named `session_key`, and writing a field named `kind` as `session_kind` on `session_opened` and `pause_kind` on `pause`.
 
-| Key | Type | Meaning |
-|---|---|---|
-| `seq` | int | Per-thread, strictly increasing across resumes; the first record of a resume continues from the last committed `seq` |
-| `ts` | RFC 3339 UTC | Write time |
-| `kind` | string | Record kind |
-| `thread_id`, `segment` | string, int | `segment` counts process lifetimes of the thread: 0 for the start, +1 per resume |
-| `unit`, `item`, `attempt` | string?, string?, int? | Where in the graph, when the record belongs to a unit |
-| `session_key` | string? | `<unit>[.<item>].<attempt>.<kind>[.<n>]`, e.g. `plan.2.judge` or `code.p3.1.judge_reask.2`; stable name of one session's folder ([LOS](33-local-observability-store.spec.md)) |
+- GIVEN a record naming `session_key` `plan.2.judge` and no unit WHEN written THEN its `unit` is `plan` and `attempt` 2
 
-The optional keys are present on every record, null when the record has no unit. A record that names a `session_key` and leaves `unit` or `attempt` out gets them from the key. The writer finds its `segment` from the log itself: one more than the last `run_started`'s, or 0 for a new thread, so every writer in one process agrees. A last line cut off by a dead process is ended before the next record, and `seq` continues from the last whole record. A field named `kind` in §2.2 is written as `session_kind` (on `session_opened`) or `pause_kind` (on `pause`), because `kind` is the record kind.
+### EVT-B9 Segment and sequence from the log
 
-### 2.2 Observer record kinds (additive)
+WHEN a writer starts THE writer SHALL find its `segment` from the log itself (one more than the last `run_started`'s, or 0 for a new thread), end a last line cut off by a dead process before the next record, and continue `seq` from the last whole record.
 
-| Kind | Written when | Key fields |
-|---|---|---|
-| `run_started` | After the lock and before the first unit, on start and each resume | `origin`, `parent` (orchestration id, node and item, when an orchestration started the run, [ORC](45-orchestration.spec.md)), `schedule` (schedule id, fire id and slot, when a schedule started it, [TCK §2.7](84-schedule-ticks-and-unattended-fires.spec.md)), `alias`, `label`, `workflow_version` ([VER §2.4](61-version-metadata.spec.md)), `plan_digest` (the diagram model's), `executors` planned per unit; `engine_version`, `shape_digest` and `moved_from` when the engine or the workflow changed since the last process ([MIG §2.1](62-state-and-run-migration.spec.md)); `settings_digest`, `profiles`, `overridden_keys` ([RST §2.7](80-run-settings-and-overrides.spec.md)); `rerun_of` for a rerun ([RRN §2.4](81-reruns-and-feedback.spec.md)); `dry_run` when the run was started with `--dry-run` ([CLI §2.1](17-engine-cli.spec.md)); `caller`, the `Caller` of the call that started or resumed the segment ([PRV §2.5](85-caller-provenance.spec.md)); `capture_lowered` (the capture items the operator turned off, [LOS §2.6](33-local-observability-store.spec.md)) and `observers` with `observers_missing` when the operator config names observers (§2.6); `content_version`, the workflow version with its content digest ([VER §2.4](61-version-metadata.spec.md)) |
-| `settings_resolved` | Right after `run_started`, on start, each resume and a rerun | `settings_digest`, `rows[]` of `{key, value, layer, ref, shadowed[]}`, `changed_keys` ([RST §2.7](80-run-settings-and-overrides.spec.md)); `caller` when `changed_keys` is not empty; `stage`, and `unpromoted_pipeline: true` for a pipeline caller without a stamp ([PRO §2.1](95-promotion-check.spec.md)) |
-| `workflow_changed` | Once, after `settings_resolved`, on a resume whose workflow version differs from the last process's and passes the tests of [MIG §2.5](62-state-and-run-migration.spec.md) | `from_version`, `to_version`, `units[]` (the units of the earlier version whose prompts, gates or limits changed) |
-| `unit_entered` | A unit's step node is entered (also each visit after a trip back) | `visit`, `entered_from` (`start`, `proceed`, `retry`, `back:<unit>`, `rewind:<unit>`, `rerun`, `resume`); `head_commit` and `dirty` of the workspace when it is a git checkout, so a rerun can start from it ([RRN §2.4](81-reruns-and-feedback.spec.md)) |
-| `session_opened` | The executor's `session_started` event arrives | `kind` (step, retry, judge, judge_reask, grouping, member, member_reask, chair), executor, alias, bound model, `session_id`, `transcript` (§2.4), `pgid` (process group id on POSIX, null elsewhere) |
-| `check` | A deterministic check finishes | `result` (`PASS`, `MAYBE`, `FAIL`), `environmental`, `untracked_only`, `duration_s`, `output_path` (local), `evidence` clipped to 200 chars, scrubbed |
-| `judgement` | A judgement block is parsed, before the gate derives the verdict | per criterion `{n, id?, status}` (no evidence text), `met`, `total`, `blockers` (criterion ids), `confidence` and its source, `gap`; `brief_digest` and `criteria_digest` of the judge binding ([FBK §2.1](41-feedback-and-judge-reliability.spec.md), [JCL §2.3](50-judge-calibration.spec.md)) |
-| `ladder_decision` | A gate chose the rung of a unit's next attempt (release 2, [LAD §2.7](92-effort-ladder-and-model-escalation.spec.md)) | unit, item, attempt, `rung`, `effort`, `alias`, `source`, `evidence` (kind and criterion ids), `held_by`, `offered` |
-| `judge_risk` | A judge with a risk rule resolved its level (release 2, [JRK §2.5](93-judge-model-by-risk.spec.md)) | unit, item, attempt, `level`, `would_choose`, `signals`, `chosen_by`, `alias`, `effort`, `fault` |
-| `budget` | A budget counter is charged ([BUD](08-budgets-and-failures.spec.md)) | counter name, used, limit, cause |
-| `pause` | A gate interrupts for a person | pause kind, `reason`, `question` (clipped, scrubbed), artifact keys to review, decision words, resume command, `tool_access[]` of `{name, capability, class}` for cause `tool_access` |
-| `script` | A script of a script unit or a hybrid step ends ([SCR](70-script-units-and-hybrid-steps.spec.md)) | unit, name, phase (`unit`, `before`, `after`), command prefix (null for a callable), exit code, `duration_s`, `cached`, `environmental` |
-| `council_round` | A council round's barrier closes ([CNL](71-council-unit.spec.md)) | round, members answered, spoiled, missing, `changed` count, label order |
-| `finding_recorded` | After every `run_exit`, best effort | Cause codes and fault sides of the segment's findings, their count, and at a final exit the lenses that fire (`mode`, `friction`, `outcome.fire`, `outcome.needs_judge`, `cost`, the per-gate `quality` scorecard), and `labels` (`{labels, shifts}`: label rows and `binding_shift` findings this exit added, [FBK §2.2, §2.5](41-feedback-and-judge-reliability.spec.md)) ([SIL §2.1, §2.2](16-self-improvement.spec.md), IMD §2.3) |
-| `outcome` | At a `run_exit` whose segment reached the outcome gate | The thread's `OutcomeRecord` so far: `revision`, `verdict`, `criteria[]` (id, class, severity, trust, status, grader), `intermediate[]`, `later[]`; the latest one is the thread's record, and the `run_segment` ledger row carries it as `outcome{}` (`not_reached` before the gate) ([OUT §2.5](90-run-outcome.spec.md)) |
-| `council_tally` | A council's outcome is derived | mode, rule, counts per option or Borda points, outcome (`<option>`, `no_decision`), `chosen_by` |
-| `contest_pick` | A contest's pick runs ([CTS](72-contest-unit.spec.md)) | per slot: check result, derived verdict, rank keys, cost; winner |
-| `workspace` | The run's workspace is prepared, reused, attached, changed by a person between segments, released, removed or kept, or a foreign worktree appears during a session ([WTR §2.6, §2.10](82-worktree-mode.spec.md)) | `action` (`prepared`, `reused`, `attached`, `external_change`, `released`, `removed`, `kept`, `foreign`), `mode`, `resolved_by`, `branch`, `base_commit`, `reason`, counts; a path only in the local run log |
-| `grant` | A tool grant or allowed command takes effect, on start, resume or rerun, or is removed ([RST §2.8](80-run-settings-and-overrides.spec.md)) | `unit`, `capability` or `prefix`, `action` (`given`, `removed`), `answers` (the refusal class and `seq` of the pause it fixes, if any), `by` (the `Caller`), `via` |
-| `ruling` | A ruling is given or revoked ([RRN §2.2](81-reruns-and-feedback.spec.md)) | `id`, `action` (`given`, `revoked`), `given_at`, `applies_to`, `by` (the `Caller`), `chars`; never the text |
-| `stop_requested` | A stop request is picked up ([RCT](32-run-control.spec.md)) | mode (`drain`, `now`), requested by (the `Caller` of the `stop` call, [PRV §2.5](85-caller-provenance.spec.md)) |
-| `supervision` | At every `run_exit`, just before it | The thread's supervision record so far: touches by class and decider, waits, level and `level_by` ([SUP §2.2](86-supervision-metrics.spec.md)); cost fields null until closed ([SCO §2.5](87-supervision-cost.spec.md)) |
-| `run_exit` | The process ends the segment | exit code, reason word, cost figures and completeness flag |
+- GIVEN a log whose last line was cut off WHEN the next record is written THEN the cut line is ended and `seq` follows the last whole record
 
-The existing `gate` record gains the optional keys `route_target` and `judgement_seq` (the `seq` of its `judgement`). The existing `attempt_start` gains `session_key` and `prompt_digest` (the first 16 hex of the SHA-256 of the rendered prompt, [OBS §2.4](15-observability-and-cost.spec.md)); `agent_run` gains `duration_s`, `tool_wall_share` and `slow_host`. The `gate`, `pause` and `run_exit` records carry `cost_so_far` (`reported`, `estimated`, completeness flag for the thread so far), so a follower such as the orchestration supervisor reads spend without building the detail document.
+### EVT-B2 Sequence across resume
 
-### 2.3 Activity journal
+WHEN a thread whose segment 0 ended at `seq` 812 with a pause is resumed THE writer SHALL write `run_started` as the first record of segment 1 with `seq` 813 and `segment` 1.
 
-One JSON-lines file per session at `sessions/<session_key>/activity.jsonl` in the run's folder ([LOS §2.1](33-local-observability-store.spec.md)), written by the same writer that feeds the live progress file, from the normalized events ([CON §2.7](01-contracts.spec.md)). The writer buffers lines and appends them at most once a second, on the `result` event and at session end; in-process observers get each line after it is appended (§2.6).
+- GIVEN segment 0 ending at `seq` 812 WHEN resumed THEN the first record is `run_started` with `seq` 813 and `segment` 1
 
-| Field | Meaning |
-|---|---|
-| `t` | Receive time from the launcher, seconds since session spawn (float) |
-| `n` | Per-session line number |
-| `ev` | Normalized event name |
-| event fields | As in CON §2.7, plus `capability` and `input_summary` on `tool_started` (§2.5) and `duration_s` on `tool_finished` |
+### EVT-B10 Run started
 
-A `resources` line is added every 10 s while the session runs (POSIX): CPU seconds and peak resident memory summed over the session's process group, and the number of processes in it, from a read-only process listing with constant argv; numbers only. The time profile and the detail document read it ([OBS](15-observability-and-cost.spec.md), [RDD](31-run-detail-document.spec.md)).
+WHEN a process has taken the lock and before the first unit, on start and each resume THE engine SHALL write `run_started` with `origin`; `parent` (orchestration id, node and item, [ORC](45-orchestration.spec.md)) and `schedule` (schedule id, fire id and slot, [TCK](84-schedule-ticks-and-unattended-fires.spec.md)) when one started the run; `alias`, `label`, `workflow_version` and `content_version` (the version with its content digest, [VER](61-version-metadata.spec.md)); `plan_digest` (the diagram model's); `executors` planned per unit; `engine_version`, `shape_digest` and `moved_from` when the engine or workflow changed since the last process ([MIG](62-state-and-run-migration.spec.md)); `settings_digest`, `profiles` and `overridden_keys` ([RST](80-run-settings-and-overrides.spec.md)); `rerun_of` for a rerun ([RRN](81-reruns-and-feedback.spec.md)); `dry_run` for `--dry-run`; `caller`, the caller of the call that started or resumed the segment ([PRV](85-caller-provenance.spec.md)); `capture_lowered` ([LOS](33-local-observability-store.spec.md)); and `observers` with `observers_missing` when the operator config names observers.
 
-Rules: append-only, flushed at most once a second and at session end; local only; capped at 20 000 lines or 8 MB per session, after which `model_delta` lines are dropped first, then `text` lines, and a final `truncated` line counts what was dropped. The cap is applied as the journal grows, so tool lines are never the ones dropped: past half the cap `model_delta` lines are dropped, past three quarters `text` lines too, past 95 % every line but `tool_started` and `tool_finished`, and the last line is kept for `truncated`. The journal is not a run-log record and is never read by the analyzer for cost.
+- GIVEN a run started by a schedule WHEN `run_started` is read THEN it carries the schedule id, fire id and slot
 
-The live progress file of the same session holds `open_tool` (name, capability, input summary, `started_at`), `recent` (the last ten finished calls with name, input summary, `ok` and `duration_s`), `last_text`, `tokens_so_far`, `turns_so_far`, `pgid` and `last_event_at`; it is removed at session end ([LOS §2.1](33-local-observability-store.spec.md)). The detail document turns its times into the ages of [RDD §2.2](31-run-detail-document.spec.md).
+### EVT-B11 Settings and workflow changes
 
-### 2.4 Transcript locator
+WHEN `run_started` has been written on start, each resume and a rerun THE engine SHALL write `settings_resolved` with `settings_digest`, `rows[]` of `{key, value, layer, ref, shadowed[]}` and `changed_keys`, `caller` when `changed_keys` is not empty, and `stage` with `unpromoted_pipeline: true` for a pipeline caller without a stamp ([PRO](95-promotion-check.spec.md)); and once after it, on a resume whose workflow version differs from the last process's and passes the migration tests ([MIG](62-state-and-run-migration.spec.md)), `workflow_changed` with `from_version`, `to_version` and `units[]` (the units whose prompts, gates or limits changed).
 
-`transcript` on `session_opened` says where the session's full record is: `{engine: <path of raw.jsonl>, native: <path or null>, native_kind}`. `engine` is always the engine's own copy of the raw stream ([ADR-0009](../adr/0009-normalized-session-event-stream.adr.md), [LOS](33-local-observability-store.spec.md)). `native` is the executor's own transcript when the executor declares one and its path is known: `claude` and `agent-sdk` (Claude Code's session store, by session id; probe P-CC-7 / P-AS-4), else null.
+- GIVEN a resume on a changed workflow version WHEN records are written THEN `workflow_changed` follows `settings_resolved` once
 
-### 2.5 Tool input summaries
+### EVT-B12 Units, sessions, checks and judgements
 
-`tool_started` gains `input_summary`: one line, scrubbed by the pattern scrubber ([SEC §2.3](14-security.spec.md)), clipped to 200 characters, built by the executor's translator from the tool's input.
+WHEN a unit's step node is entered (each visit, a trip back included), an executor's `session_started` event arrives, a deterministic check finishes, or a judgement block is parsed before the gate derives the verdict THE engine SHALL write `unit_entered` (`visit`, `entered_from` one of `start`, `proceed`, `retry`, `back:<unit>`, `rewind:<unit>`, `rerun`, `resume`, and `head_commit` and `dirty` for a git workspace); `session_opened` (session kind one of step, retry, judge, judge_reask, grouping, member, member_reask, chair, executor, alias, bound model, `session_id`, `transcript`, `pgid` on POSIX else null); `check` (`result` `PASS`, `MAYBE` or `FAIL`, `environmental`, `untracked_only`, `duration_s`, local `output_path`, `evidence` clipped to 200 characters and scrubbed); and `judgement` (per criterion `{n, id?, status}` with no evidence text, `met`, `total`, `blockers`, `confidence` and its source, `gap`, and the binding's `brief_digest` and `criteria_digest`, [FBK](41-feedback-and-judge-reliability.spec.md), [JCL](50-judge-calibration.spec.md)).
 
-| Capability ([CON §2.5](01-contracts.spec.md)) | Summary |
-|---|---|
-| `shell` | The command line as given to the shell; the working directory relative to the workspace if not the workspace itself, when the tool's input names one (Claude Code's `Bash` input has no working directory, so its summary is the command alone) |
-| `read`, `edit`, `write`, `list` | The path relative to the workspace; a path outside it reads `<outside workspace>` |
-| `search` | The pattern, clipped |
-| `web_fetch` | The URL's host only |
-| `web_search` | `query` (the word, never the query text) |
-| `subagent` | The subagent type name |
-| MCP tool | Server and tool name only |
-| Unknown | null |
+- GIVEN a judgement with evidence text WHEN its record is written THEN it holds statuses and ids and no evidence
 
-An operator may set `observe.tool_inputs = off` in the operator config: summaries are then null everywhere. Summaries live only in the activity journal and the live progress file; no run-log record, ledger row, stats row, finding, export or filed text carries them.
+### EVT-B13 Ladders, risk, budgets, pauses and scripts
 
-### 2.6 Subscribing
+WHEN a gate chooses the rung of a unit's next attempt ([LAD](92-effort-ladder-and-model-escalation.spec.md)), a judge with a risk rule resolves its level ([JRK](93-judge-model-by-risk.spec.md)), a budget counter is charged ([BUD](08-budgets-and-failures.spec.md)), a gate interrupts for a person, a script of a script unit or hybrid step ends ([SCR](70-script-units-and-hybrid-steps.spec.md)), or a council round's barrier closes ([CNL](71-council-unit.spec.md)) THE engine SHALL write `ladder_decision` (unit, item, attempt, `rung`, `effort`, `alias`, `source`, `evidence` kind and criterion ids, `held_by`, `offered`); `judge_risk` (unit, item, attempt, `level`, `would_choose`, `signals`, `chosen_by`, `alias`, `effort`, `fault`); `budget` (counter name, used, limit, cause); `pause` (pause kind, `reason`, `question` clipped and scrubbed, artifact keys to review, decision words, resume command, and `tool_access[]` of `{name, capability, class}` for cause `tool_access`); `script` (unit, name, phase `unit`, `before` or `after`, command prefix or null for a callable, exit code, `duration_s`, `cached`, `environmental`); and `council_round` (round, members answered, spoiled, missing, `changed` count, label order).
 
-```python
-class RunObserver(Protocol):
-    name: str
-    def on_record(self, record: dict) -> None: ...        # every run-log record, after it is written
-    def on_activity(self, session_key: str, line: dict) -> None: ...   # every activity line, after it is written
+- GIVEN a pause for cause `tool_access` WHEN its record is written THEN it carries `tool_access[]` with name, capability and class
 
-def register_observers(entry_point_group: str = "tempergraph.observers") -> list[RunObserver]: ...
-```
+### EVT-B14 Findings and outcome
 
-| Way | For | Rule |
-|---|---|---|
-| `events <selector> [--since <seq>] [--follow] [--activity <session_key>] [--json]` | Any reader: the monitor, a script | Read-only, model-free (contract C13); prints records in `seq` order; `--follow` ends when the segment's `run_exit` is read and no lock is held |
-| In-process observer | Exporters ([TEL](35-telemetry-export.spec.md)) and sinks ([CST](34-central-run-stats.spec.md)) | Enabled by name in the operator config only; each runs on its own thread behind a bounded queue (1 000 items); a full queue drops and counts; an exception disables that observer for the segment and is recorded once, as an `engine_error` record of scope `observer` written by the run's own writer at its next record |
-| Lifecycle hook ([CLI §2.2](17-engine-cli.spec.md)) | Commands such as a tracker plugin | Run events widened to `started`, `unit_entered`, `gate_verdict`, `paused`, `resumed`, `stop_requested`, `stalled`, `finished`, `failed`; orchestration events are [ORC](45-orchestration.spec.md)'s and schedule events [SCH](83-schedules.spec.md)'s; detached, ticketed, with a facts file only |
+WHEN a `run_exit` has been written THE engine SHALL write, best effort, `finding_recorded` (cause codes and fault sides of the segment's findings and their count, at a final exit the lenses that fire, `mode`, `friction`, `outcome.fire`, `outcome.needs_judge`, `cost`, the per-gate `quality` scorecard, and `labels` with the label rows and `binding_shift` findings this exit added, [FBK](41-feedback-and-judge-reliability.spec.md), [SIL](16-self-improvement.spec.md)), and, when the segment reached the outcome gate, `outcome` with the thread's outcome record so far (`revision`, `verdict`, `criteria[]` with id, class, severity, trust, status and grader, `intermediate[]`, `later[]`), the latest one being the thread's record and the `run_segment` ledger row carrying it as `outcome{}`, `not_reached` before the gate ([OUT](90-run-outcome.spec.md)).
 
-Release 1 ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md)): the `events` verb and the observer interface ship; no observer is enabled unless the `observers` list of the operator's `observe` settings names it ([RST §2.4](80-run-settings-and-overrides.spec.md)), and lifecycle hooks are release 2. As built (R2-T7): a hook event is read off the run log's own record (`run_started` of segment 0 is `started`, of a later segment `resumed`; `unit_entered`; `gate` is `gate_verdict`; `pause` is `paused`; `stop_requested`; `run_exit` with code 0 is `finished`, with 3 nothing, with any other `failed`), and the facts file holds the record's ids, enums and numbers only: event, workflow, thread, `seq`, `ts`, `segment`, unit, item, attempt, token, verdict, route target, pause kind, exit code and reason.
+- GIVEN a segment that never reached the outcome gate WHEN its ledger row is written THEN `outcome` reads `not_reached`
 
-## 3. Behaviours
+### EVT-B15 Councils, contests, workspaces, grants, rulings, stops and exits
 
-**EVT-B1 A session is visible while it runs.** Given a step session on `claude` that has been running for 40 s, when an observer reads the run log, then it finds a `session_opened` record with the session id and the transcript locator, and the activity journal has a line for every tool call so far.
+WHEN a council's outcome is derived, a contest's pick runs ([CTS](72-contest-unit.spec.md)), the run's workspace is prepared, reused, attached, changed by a person between segments, released, removed or kept, or a foreign worktree appears ([WTR](82-worktree-mode.spec.md)), a tool grant or allowed command takes effect or is removed ([RST](80-run-settings-and-overrides.spec.md)), a ruling is given or revoked ([RRN](81-reruns-and-feedback.spec.md)), a stop request is picked up ([RCT](32-run-control.spec.md)), a `run_exit` is about to be written, or the process ends the segment THE engine SHALL write `council_tally` (mode, rule, counts per option or Borda points, outcome `<option>` or `no_decision`, `chosen_by`); `contest_pick` (per slot check result, derived verdict, rank keys, cost; winner); `workspace` (`action` one of `prepared`, `reused`, `attached`, `external_change`, `released`, `removed`, `kept`, `foreign`, `mode`, `resolved_by`, `branch`, `base_commit`, `reason`, counts, and a path only in the local run log); `grant` (`unit`, `capability` or `prefix`, `action` `given` or `removed`, `answers` with the refusal class and `seq` of the pause it fixes, `by`, `via`); `ruling` (`id`, `action` `given` or `revoked`, `given_at`, `applies_to`, `by`, `chars`, never the text); `stop_requested` (mode `drain` or `now`, requested by the caller of `stop`); `supervision` (touches by class and decider, waits, level and `level_by`, cost fields null until closed, [SUP](86-supervision-metrics.spec.md), [SCO](87-supervision-cost.spec.md)); and `run_exit` (exit code, reason word, cost figures and completeness flag).
 
-**EVT-B2 Sequence across resume.** Given a thread whose segment 0 ended at `seq` 812 with a pause, when it is resumed, then the first record of segment 1 is `run_started` with `seq` 813 and `segment` 1.
+- GIVEN a ruling given WHEN its record is written THEN it holds the character count and not the text
 
-**EVT-B3 Follow from an offset.** Given `events auth-fix --since 500 --follow`, when the run writes records 501 to 640 and exits 3, then the verb prints exactly 501 to 640 and exits 0 once the lock is free.
+### EVT-B16 Keys added to existing records
 
-**EVT-B4 Shell summary.** Given a step that runs `pytest -q tests/api` in `<workspace>/svc`, when the tool starts, then the activity line is `tool_started` with name `Bash`, capability `shell` and `input_summary` `pytest -q tests/api (in svc)`.
+WHEN a `gate`, `attempt_start`, `agent_run`, `pause` or `run_exit` record is written THE engine SHALL add to `gate` the optional `route_target` and `judgement_seq` (the `seq` of its `judgement`), to `attempt_start` `session_key` and `prompt_digest` (the first 16 hex of the SHA-256 of the rendered prompt, [OBS](15-observability-and-cost.spec.md)), to `agent_run` `duration_s`, `tool_wall_share` and `slow_host`, and to `gate`, `pause` and `run_exit` `cost_so_far` (`reported`, `estimated` and the completeness flag for the thread so far), so a follower reads spend without building the detail document.
 
-| Raw input | `input_summary` |
-|---|---|
-| `export TOKEN=sk-ant-abc… && make test` | `export TOKEN=[redacted] && make test` (the scrubber's marker, [SEC §2.3](14-security.spec.md)) |
-| `cat /etc/passwd` (read tool) | `<outside workspace>` |
-| 600-character heredoc | first 199 characters and `…` |
+- GIVEN a `gate` record after a judgement WHEN read THEN its `judgement_seq` is the `seq` of that judgement
 
-**EVT-B5 Observer failure is contained.** Given an in-process observer that raises on its third record, when the run continues, then the observer is disabled for the segment, one `engine_error` record of scope `observer` is written, and the run's exit code is unchanged.
+### EVT-B17 Activity journal
 
-**EVT-B6 Hidden inputs.** Given `observe.tool_inputs = off`, when any session runs, then every `input_summary` is null and the live progress file shows tool names only.
+WHEN a session runs THE writer that feeds the live progress file SHALL write the session's activity journal at `sessions/<session_key>/activity.jsonl` in the run's folder ([LOS](33-local-observability-store.spec.md)) from the normalized events ([SSN-B7](25-session-contract.spec.md)), one line per event with `t` (receive time in seconds since spawn), `n` (per-session line number), `ev` (the event name) and the event's fields, plus `capability` and `input_summary` on `tool_started` and `duration_s` on `tool_finished`, append-only, local only, buffered and appended at most once a second, on the `result` event and at session end, never read by the analyzer for cost; in-process observers get each line after it is appended.
 
-**EVT-B7 Journal cap.** Given a session that emits 30 000 events, when it ends, then its journal holds at most 20 000 lines, every `tool_started` and `tool_finished` is kept, and the last line is `truncated` with counts per dropped event name.
+- GIVEN a session with three tool calls WHEN its journal is read THEN it holds a `tool_started` and a `tool_finished` line for each
 
-## 4. Error conditions
+### EVT-B1 A session is visible while it runs
 
-| Condition | Result |
-|---|---|
-| Activity journal write fails | Journal disabled for that session, one `engine_error` record; the session and the live file go on |
-| The ledger row or the exit file cannot be written (a full disk) | The exit code is unchanged; one `engine_error` record of scope `ledger` or `exit_file` is attempted ([OBS-B3](15-observability-and-cost.spec.md)) |
-| Recording the loop's findings fails | The exit code is unchanged; one `engine_error` record of scope `improve` ([SIL-B1](16-self-improvement.spec.md)) |
-| A reader meets an unknown kind or field | Skipped (contract C12) |
-| `events` on a selector with no run log | Exit 2, nothing created |
-| An observer named in config is not installed | Warning at preflight, recorded; the run starts |
+WHEN an observer reads the run log of a step session on `claude` that has run for 40 s THE engine SHALL have written a `session_opened` record with the session id and the transcript locator, and an activity line for every tool call so far.
 
-## 5. Design notes
+- GIVEN a session running for 40 s WHEN an observer reads the run log THEN `session_opened` and every tool call so far are there
 
-- Observers read append-only files and read-only verbs; there is no socket and no daemon, so an observer can start after the run, survive the engine dying, and never hold anything the run waits on ([ADR-0022](../adr/0022-observers-read-files-not-sockets.adr.md)).
-- The live progress file stays the cheap "now" view; the activity journal is the "so far" view. Both come from one writer thread, so the stream pump never waits on disk ([ADR-0009](../adr/0009-normalized-session-event-stream.adr.md)).
-- Shell commands are the most useful and the most sensitive field; they stay local and scrubbed, and can be switched off ([ADR-0023](../adr/0023-local-activity-journal-with-tool-input-summaries.adr.md)).
-- Observer and hook widening follow [ADR-0027](../adr/0027-in-process-observers-and-wider-hook-events.adr.md); the engine still ships no hook and no exporter enabled by default.
-- The `judgement` record and the `gate` record linked to it by `judgement_seq` together hold what [IMD-R3](43-improvement-data.spec.md) asks of a gate; the loop's events of IMD-R11 reach observers through the same `on_record` path and hook events.
-- The `judgement` record carries statuses and ids, never evidence text; evidence is in the local evidence file and is shown by the detail document from there ([RDD](31-run-detail-document.spec.md)).
+### EVT-B18 Resource lines
 
-## 6. Acceptance criteria
+WHEN a session runs on POSIX THE writer SHALL add a `resources` line every 10 s with CPU seconds and peak resident memory summed over the session's process group and the number of processes in it, from a read-only process listing with constant argv, numbers only, for the time profile and the detail document ([OBS](15-observability-and-cost.spec.md), [RDD](31-run-detail-document.spec.md)).
 
-- [ ] EVT-AC-1 A scripted-executor run writes every kind of §2.2 with the envelope of §2.1, and an old reader of the run log passes the same fixture.
-- [ ] EVT-AC-2 `seq` is strictly increasing over a fixture thread with three resumes and a cut-off attempt.
-- [ ] EVT-AC-3 Each row of EVT-B4's table is reproduced by the translator test of every executor that declares `reports_actions`.
-- [ ] EVT-AC-4 The canary test of [SEC-B2](14-security.spec.md) finds the canary in no record of §2.2, and finds a planted tool input only in activity journals and live files.
-- [ ] EVT-AC-5 A failure injected into each observer path leaves the run and its exit code unchanged.
-- [ ] EVT-AC-6 `events --follow` on a live fixture run prints every record once, in order, and creates nothing.
+- GIVEN a session running 35 s on POSIX WHEN its journal is read THEN it holds three `resources` lines
+
+### EVT-B7 Journal cap
+
+WHEN a session's journal grows THE writer SHALL cap it at 20 000 lines or 8 MB, dropping `model_delta` lines past half the cap, `text` lines too past three quarters, and every line but `tool_started` and `tool_finished` past 95 %, keeping the last line for a `truncated` line that counts what was dropped per event name.
+
+- GIVEN a session that emits 30 000 events WHEN it ends THEN its journal holds at most 20 000 lines, every tool line is kept and the last line is `truncated`
+
+### EVT-B19 Live progress file
+
+WHEN a session runs THE writer SHALL keep its live progress file with `open_tool` (name, capability, input summary, `started_at`), `recent` (the last ten finished calls with name, input summary, `ok` and `duration_s`), `last_text`, `tokens_so_far`, `turns_so_far`, `pgid` and `last_event_at`, and remove it at session end ([LOS](33-local-observability-store.spec.md)); the detail document turns its times into ages ([RDD](31-run-detail-document.spec.md)).
+
+- GIVEN a session that ended WHEN its folder is read THEN no live progress file remains
+
+### EVT-B20 Transcript locator
+
+WHEN `session_opened` is written THE engine SHALL set `transcript` to `{engine, native, native_kind}`, `engine` always being the engine's own copy of the raw stream ([ADR-0009](../adr/0009-normalized-session-event-stream.adr.md)) and `native` the executor's own transcript when the executor declares one and its path is known (`claude` and `agent-sdk`, Claude Code's session store by session id, probes P-CC-7 and P-AS-4), else null.
+
+- GIVEN a session on an executor with no native transcript WHEN `session_opened` is read THEN `native` is null
+
+### EVT-B21 Tool input summaries
+
+WHEN a tool starts THE executor's translator SHALL build `input_summary` as one line, scrubbed ([SEC-B8](14-security.spec.md)) and clipped to 200 characters: for `shell` the command line, with the working directory relative to the workspace when the input names one other than the workspace (Claude Code's `Bash` names none); for `read`, `edit`, `write` and `list` the path relative to the workspace, or `<outside workspace>`; for `search` the pattern; for `web_fetch` the URL's host only; for `web_search` the word `query`, never the query text; for `subagent` the type name; for an MCP tool server and tool name only; and null for an unknown tool; summaries live only in the activity journal and the live progress file, never in a run-log record, ledger row, stats row, finding, export or filed text.
+
+- GIVEN a `web_fetch` of `https://example.com/a?b=c` WHEN summarized THEN the summary is `example.com`
+
+### EVT-B4 Shell summary
+
+WHEN a step runs `pytest -q tests/api` in `<workspace>/svc` THE translator SHALL write `tool_started` with name `Bash`, capability `shell` and `input_summary` `pytest -q tests/api (in svc)`.
+
+- GIVEN `export TOKEN=sk-ant-abc… && make test` WHEN summarized THEN it reads `export TOKEN=[redacted] && make test`
+- GIVEN `cat /etc/passwd` by the read tool WHEN summarized THEN it reads `<outside workspace>`
+- GIVEN a 600-character heredoc WHEN summarized THEN it holds the first 199 characters and `…`
+
+### EVT-B6 Hidden inputs
+
+WHEN `observe.tool_inputs = off` is set in the operator config THE engine SHALL make every `input_summary` null, so the live progress file shows tool names only.
+
+- GIVEN `observe.tool_inputs = off` WHEN any session runs THEN every `input_summary` is null
+
+### EVT-B22 The events verb
+
+WHEN `events <selector> [--since <seq>] [--follow] [--activity <session_key>] [--json]` runs THE engine SHALL print the records in `seq` order, read-only and model-free (OVR-B15), end `--follow` when the segment's `run_exit` is read and no lock is held, and exit 2 creating nothing on a selector with no run log.
+
+- GIVEN a selector with no run log WHEN `events` runs THEN it exits 2 and nothing is created
+
+### EVT-B3 Follow from an offset
+
+WHEN `events auth-fix --since 500 --follow` runs while the run writes records 501 to 640 and exits 3 THE engine SHALL print exactly 501 to 640 and exit 0 once the lock is free.
+
+- GIVEN records 501 to 640 then exit 3 WHEN followed from 500 THEN exactly those records print and the verb exits 0
+
+### EVT-B23 In-process observers
+
+WHEN the operator config's `observe.observers` names in-process observers (exporters such as [TEL](35-telemetry-export.spec.md) and sinks such as [CST](34-central-run-stats.spec.md)), each getting every run-log record and every activity line after it is written THE engine SHALL load only the named ones from the observers entry-point group, run each on its own thread behind a bounded queue of 1 000 items, drop and count when the queue is full, warn at preflight and record it when a named observer is not installed and still start the run, and enable none by default ([RST](80-run-settings-and-overrides.spec.md)).
+
+- GIVEN a config naming an observer that is not installed WHEN preflighted THEN a warning is recorded and the run starts
+
+### EVT-B5 Observer failure is contained
+
+WHEN an in-process observer raises THE engine SHALL disable it for the segment, have the run's own writer write one `engine_error` record of scope `observer` at its next record, and leave the run's exit code unchanged.
+
+- GIVEN an observer that raises on its third record WHEN the run continues THEN one `engine_error` of scope `observer` is written and the exit code is unchanged
+
+### EVT-B24 Lifecycle hook events
+
+WHEN a run-log record is written and lifecycle hooks are registered ([HOK](24-lifecycle-hooks.spec.md)) THE engine SHALL read the hook event off the record (`run_started` of segment 0 is `started`, of a later segment `resumed`; `unit_entered`; `gate` is `gate_verdict`; `pause` is `paused`; `stop_requested`; `run_exit` with code 0 `finished`, with 3 nothing, with any other `failed`; and `stalled`), start the hook detached and ticketed, and give it a facts file of the record's ids, enums and numbers only: event, workflow, thread, `seq`, `ts`, `segment`, unit, item, attempt, token, verdict, route target, pause kind, exit code and reason; orchestration events are [ORC](45-orchestration.spec.md)'s and schedule events [SCH](83-schedules.spec.md)'s.
+
+- GIVEN a `run_exit` with code 3 WHEN hooks are read off it THEN no hook event fires
+
+### EVT-B25 Write failures never change a run
+
+WHEN the activity journal cannot be written, the ledger row or the exit file cannot be written, or recording the loop's findings fails THE engine SHALL disable the journal for that session while the session and live file go on, attempt one `engine_error` record of scope `ledger` or `exit_file` ([OBS-B3](15-observability-and-cost.spec.md)), or write one of scope `improve` ([SIL-B1](16-self-improvement.spec.md)), leaving the exit code unchanged, and a reader SHALL skip an unknown kind or field (OVR-B14).
+
+- GIVEN a full disk when the ledger row is written WHEN the run exits THEN its exit code is unchanged
+
+## Acceptance criteria
+
+- EVT-AC1 (EVT-B8, EVT-B10, EVT-B11, EVT-B12, EVT-B13, EVT-B14, EVT-B15, EVT-B16): A scripted-executor run writes every record kind with the common envelope, and an old reader of the run log passes the same fixture
+- EVT-AC2 (EVT-B2, EVT-B9): `seq` is strictly increasing over a fixture thread with three resumes and a cut-off attempt
+- EVT-AC3 (EVT-B4, EVT-B21): Each scenario of EVT-B4 is reproduced by the translator test of every executor that declares `reports_actions`
+- EVT-AC4 (EVT-B21, EVT-B6, EVT-B12): The canary test of [SEC-B2](14-security.spec.md) finds the canary in no record kind, and finds a planted tool input only in activity journals and live files
+- EVT-AC5 (EVT-B5, EVT-B23, EVT-B25): A failure injected into each observer and write path leaves the run and its exit code unchanged
+- EVT-AC6 (EVT-B3, EVT-B22): `events --follow` on a live fixture run prints every record once, in order, and creates nothing
+- EVT-AC7 (EVT-B1, EVT-B17, EVT-B18, EVT-B7, EVT-B19, EVT-B20): A live fixture session shows its `session_opened`, journal lines, resource lines and live file while it runs, and a 30 000-event session is capped as EVT-B7 says
+- EVT-AC8 (EVT-B24): Each hook event is read off its record, and a hook's facts file holds only the listed fields
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Probe P-CC-7 / P-AS-4: does a `claude -p` session started by the engine keep a native transcript, and at which path, when the engine passes its isolation flags? Until run, `native` is null. | Executor implementer |
-| Should `input_summary` for `edit` carry a changed-line count? Release 1 default: no; deferred until the monitor shows a need. | Monitor owner |
-
-## References
-
+- Probe P-CC-7 and P-AS-4: does a `claude -p` session started by the engine keep a native transcript, and at which path, when the engine passes its isolation flags? Until run, `native` is null. Owner: executor implementer.
+- Should `input_summary` for `edit` carry a changed-line count? Release 1 default: no; deferred until the monitor shows a need. Owner: monitor owner.

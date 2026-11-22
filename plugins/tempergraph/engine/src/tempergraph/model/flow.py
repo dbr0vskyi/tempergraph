@@ -1,4 +1,4 @@
-"""Where each unit can go: the one answer the compiler, validation and the diagram share (CMP §2).
+"""Where each unit can go: the one answer the compiler, validation and the diagram share (CMP-B8).
 
 ``successors`` lists, per routing token, the target nodes. Node names come from ``node_names``.
 """
@@ -11,7 +11,7 @@ from tempergraph.contracts import WorkflowSpec
 
 FINALIZER = "finalizer"
 END = "__end__"
-OUTCOME_UNIT = "outcome"  # reserved (OUT §2.4, CMP §2.2)
+OUTCOME_UNIT = "outcome"  # reserved (OUT-B15, OUT-B16, OUT-B17, CMP-B10 to CMP-B16)
 
 TOKENS = ("PROCEED", "RETRY", "BACK", "ESCALATE", "STOP")
 
@@ -45,7 +45,7 @@ def done_node(branch: str) -> str:
 
 
 def block_of(spec: WorkflowSpec, unit: str) -> str | None:
-    """The parallel block (its join unit) that `unit` is a branch of, if any (CMP §2.2)."""
+    """The parallel block (its join unit) that `unit` is a branch of, if any (CMP-B10 to CMP-B16)."""
     for name, u in spec.units.items():
         if u.kind == "parallel" and unit in u.branches:
             return name
@@ -76,7 +76,7 @@ class SuccessorSet:
     back: list[str] = field(default_factory=list)
     escalate: list[str] = field(default_factory=list)
     stop: list[str] = field(default_factory=list)
-    rewind: list[str] = field(default_factory=list)  # human node only (RRN §2.3)
+    rewind: list[str] = field(default_factory=list)  # human node only (RRN-B16)
 
     def by_token(self) -> dict[str, list[str]]:
         return {"PROCEED": self.proceed, "RETRY": self.retry, "BACK": self.back, "ESCALATE": self.escalate,
@@ -111,7 +111,7 @@ def proceed_targets(spec: WorkflowSpec, unit: str) -> list[str]:
 
 
 def through_outcome(spec: WorkflowSpec, target: str) -> str:
-    """Every path to the finalizer passes the outcome gate (OUT §2.4)."""
+    """Every path to the finalizer passes the outcome gate (OUT-B15, OUT-B16, OUT-B17)."""
     if target == FINALIZER and OUTCOME_UNIT in effective_order(spec):
         return OUTCOME_UNIT
     return target
@@ -124,7 +124,7 @@ def back_targets(spec: WorkflowSpec, unit: str) -> list[str]:
 
 
 def outcome_back_targets(spec: WorkflowSpec) -> list[str]:
-    """Derived from `serves` links: units whose intermediate criteria serve a final criterion (OUT §2.4)."""
+    """Derived from `serves` links: units whose intermediate criteria serve a final criterion (OUT-B15, OUT-B16, OUT-B17)."""
     if spec.outcome is None:
         return []
     finals = {c.id for c in spec.outcome.final}
@@ -164,7 +164,7 @@ def human_targets(spec: WorkflowSpec, unit: str) -> list[str]:
 
 
 def rearm_targets(spec: WorkflowSpec, unit: str) -> list[str]:
-    """Entry nodes a re-arm can send `unit`'s gate to: the entry of arm `to` of every entry listing it (SWM §2.4)."""
+    """Entry nodes a re-arm can send `unit`'s gate to: the entry of arm `to` of every entry listing it (SWM-B7)."""
     out: list[str] = []
     for u in spec.units.values():
         sw = u.switch
@@ -189,13 +189,13 @@ def arm_units(spec: WorkflowSpec, entry: str) -> set[str]:
 
 
 def fallback_node(spec: WorkflowSpec, unit: str) -> str | None:
-    """The node a gate's fallback target leads to (FLX §2.4); the finalizer is reached through the outcome gate."""
+    """The node a gate's fallback target leads to (FLX-B9); the finalizer is reached through the outcome gate."""
     fb = spec.units[unit].gate.fallback if unit in spec.units else None
     return entry_node(spec, through_outcome(spec, fb)) if fb else None
 
 
 def deadline_of(spec: WorkflowSpec, unit: str) -> tuple[int, str] | None:
-    """`(deadline_s, on_deadline)` of a wait or an ask that declares a deadline (FLX §2.3)."""
+    """`(deadline_s, on_deadline)` of a wait or an ask that declares a deadline (FLX-B8)."""
     u = spec.units.get(unit)
     d = (u.ask or u.wait) if u is not None else None
     return (int(d.deadline_s), str(d.on_deadline)) if d is not None and d.deadline_s else None

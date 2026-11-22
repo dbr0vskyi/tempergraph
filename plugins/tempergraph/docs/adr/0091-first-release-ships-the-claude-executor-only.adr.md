@@ -17,10 +17,10 @@ We will ship **`claude`** as the only registered executor in release 1 and relea
 
 In release 1:
 
-1. The executor interface is built in full: registry, capability declarations, preflight refusals (contract C15), the shared launcher, judge executor selection, the normalized stream and the conformance suite ([EXI](../specs/10-executor-interface.spec.md)).
-2. The conformance suite runs against a recorded stand-in of `claude` and against **scripted stand-ins that carry the declared capability sets of all four executors**, so cross-executor judging, estimate-only cost, missing caps and every refusal path are tested before the second adapter exists. The four tool maps and capability tables ship as test data, so CON-AC-5 and WFM-AC-5 pass against them and are re-run when each adapter ships.
+1. The executor interface is built in full: registry, capability declarations, preflight refusals (OVR-B17), the shared launcher, judge executor selection, the normalized stream and the conformance suite ([EXI](../specs/10-executor-interface.spec.md)).
+2. The conformance suite runs against a recorded stand-in of `claude` and against **scripted stand-ins that carry the declared capability sets of all four executors**, so cross-executor judging, estimate-only cost, missing caps and every refusal path are tested before the second adapter exists. The four tool maps and capability tables ship as test data, so CON-AC5 and WFM-AC5 pass against them and are re-run when each adapter ships.
 3. `claude` declares `judge_mcp = false` until the judge's filtering MCP proxy ships in release 2; a judge view of an MCP server is then deferred and its criterion renders out of reach, the path [GRD-B5](../specs/06-independence-guard.spec.md) already specifies.
-4. A workflow naming another executor is refused at preflight with exit 2, `unknown executor`, as today ([EXI §4](../specs/10-executor-interface.spec.md)).
+4. A workflow naming another executor is refused at preflight with exit 2, `unknown executor`, as today ([EXI-B1, EXI-B6](../specs/10-executor-interface.spec.md)).
 
 ## Options considered
 
@@ -44,7 +44,7 @@ In release 1:
 
 - Positive: release 1 needs only P-CC-2, P-CC-5 and P-CC-6 as hard probes; the shell, supervision hooks and the monitor share the executor's host.
 - Negative: the four-executor requirement is met in release 3; a team without Claude Code cannot use release 1.
-- Risk: the interface drifts toward Claude Code's shape. Mitigation: the stand-ins with the other three capability sets are in the conformance suite from the first phase, and the source-scan rule EXI-AC-1 keeps concrete executors out of the core.
+- Risk: the interface drifts toward Claude Code's shape. Mitigation: the stand-ins with the other three capability sets are in the conformance suite from the first phase, and the source-scan rule EXI-AC1 keeps concrete executors out of the core.
 
 ## Assumptions
 

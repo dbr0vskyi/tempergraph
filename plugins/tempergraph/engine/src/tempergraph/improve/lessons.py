@@ -1,7 +1,7 @@
 """Per-step lessons: the file, its validation, the rendered block and its digest (LSN; ADR-0032).
 
 A lessons file is workflow content (`lessons/<unit>.json` in the package). Runs read it and never write it;
-it changes only through a `lessons` proposal, whose delta rules are `classify_change` (LSN §2.3).
+it changes only through a `lessons` proposal, whose delta rules are `classify_change` (LSN-B9).
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ CRITERION_OVERLAP = 0.8
 ID_RE = re.compile(r"^L-[1-9][0-9]*$")
 SOURCE_RE = re.compile(r"^(person|proposal:[A-Za-z0-9_.:-]+)$")
 
-# The literal floor of SCF §2.3 applied to one sentence: a ticket id, a URL, an e-mail, a path, a number from a
+# The literal floor of SCF-B13 applied to one sentence: a ticket id, a URL, an e-mail, a path, a number from a
 # run (three or more digits), a quote (four or more words in quotation marks).
 LITERALS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("ticket_id", re.compile(r"\b[A-Z][A-Z0-9]+-[0-9]+\b")),
@@ -55,7 +55,7 @@ def literals(text: str) -> list[str]:
 
 
 def check(doc: Any, unit: str, units: Sequence[str]) -> list[tuple[str, str]]:
-    """Validation findings `(code, message)` for one lessons document (LSN §2.1, §4, LSN-B2)."""
+    """Validation findings `(code, message)` for one lessons document (LSN-B6, LSN-B7, LSN-B2)."""
     where = f"lessons/{unit}.json"
     if unit not in units:
         return [("lessons-unknown-unit", f"{where}: the workflow declares no unit {unit!r}")]
@@ -150,7 +150,7 @@ def overlap(a: str, b: str) -> float:
 
 def classify_change(old: Sequence[Mapping[str, Any]], new: Sequence[Mapping[str, Any]],
                     criteria: Sequence[str]) -> str | None:
-    """LSN §2.3 for a `lessons` proposal: None when allowed, else the refusal code."""
+    """LSN-B9 for a `lessons` proposal: None when allowed, else the refusal code."""
     before = {str(e.get("id")): e for e in old}
     after = {str(e.get("id")): e for e in new}
     if [i for i in after if i in before] != [i for i in before if i in after]:

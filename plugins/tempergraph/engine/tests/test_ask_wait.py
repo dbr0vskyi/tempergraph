@@ -1,4 +1,4 @@
-"""Ask units, event waits and their deadlines (ASK §2, HUM-B4, FLX §2.3)."""
+"""Ask units, event waits and their deadlines (ASK-B5 to ASK-B9, HUM-B4, FLX-B8)."""
 
 from __future__ import annotations
 
@@ -98,7 +98,7 @@ def test_an_ask_pauses_with_its_questions_and_no_session(repo: Path) -> None:
     assert "answer:<name>=<value>" in out.payload["resume"] and e.calls == []
 
 
-def test_typed_answers_follow_the_table(repo: Path) -> None:  # ASK-B1, ASK-AC-1
+def test_typed_answers_follow_the_table(repo: Path) -> None:  # ASK-B1, ASK-AC1
     spec = asking_wf()
     begin(repo, spec)
     bad = again(repo, spec, answers={"env": "dev"})
@@ -196,7 +196,7 @@ def test_every_answer_kind_is_validated() -> None:
         raise AssertionError((kind, raw))
 
 
-def test_partial_answers_survive_a_new_process_and_show_in_status(repo: Path) -> None:  # ASK-AC-2, ASK-B4
+def test_partial_answers_survive_a_new_process_and_show_in_status(repo: Path) -> None:  # ASK-AC2, ASK-B4
     spec = asking_wf()
     begin(repo, spec)
     again(repo, spec, answers={"env": "staging"})
@@ -208,7 +208,7 @@ def test_partial_answers_survive_a_new_process_and_show_in_status(repo: Path) ->
     assert answers_file(repo)["answers"]["env"] == "staging"
 
 
-def test_validation_refuses_a_malformed_ask() -> None:  # ASK-AC-3 for the placements this release has
+def test_validation_refuses_a_malformed_ask() -> None:  # ASK-AC3 for the placements this release has
     def codes(unit: Any, order: list[str] | None = None) -> set[str]:
         units = {"details": unit, "plan": plan_step()}
         spec = named(Workflow(order=order or ["details", "plan"], units=units, issue_repository="acme/x",
@@ -310,7 +310,7 @@ def test_a_deadline_can_stop_or_go_forward(repo: Path) -> None:
     assert [r["unit"] for r in recs(repo, "unit_entered", "A-2")] == ["signoff", "manual"]
 
 
-def test_apply_deadline_without_a_deadline_is_refused(repo: Path) -> None:  # FLX §4
+def test_apply_deadline_without_a_deadline_is_refused(repo: Path) -> None:  # FLX-B6, FLX-B8
     spec = waiting_wf()
     begin(repo, spec)
     out = again(repo, spec, apply_deadline=True)

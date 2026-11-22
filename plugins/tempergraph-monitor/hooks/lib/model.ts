@@ -399,7 +399,7 @@ export function unitRowText(r: UnitRow): string {
 }
 
 /** MRV §2.4 touch strip: one mark per touch, `<class letter>·<decider>`. */
-/** The run's supervision level (SUP §2.3) as the run view shows it: `consultant by agent`, `approver (agent)`. */
+/** The run's supervision level (SUP-B11) as the run view shows it: `consultant by agent`, `approver (agent)`. */
 export function levelText(d: DetailDoc): string | null {
   const s = d.supervision
   if (!s?.level) return null

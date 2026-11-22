@@ -43,7 +43,7 @@ We will let a gate declare a **risk rule**: a pure, model-free function of engin
 | # | Assumption | Where it matters |
 |---|---|---|
 | J1 | "Judges" in the owner's release 2 ask means judge model by risk; calibration and labels are already in release 1. | Scope |
-| J2 | Two or three levels are enough. | JRK §2.1 |
+| J2 | Two or three levels are enough. | JRK-B6 |
 
 ## Revisit when
 

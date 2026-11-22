@@ -1,5 +1,5 @@
-"""Structure of the plugin's shell skills (SHL §6, T9.2.6): frontmatter, links, no shipped workflow named
-(SHL-AC-1), and every engine verb and option a skill tells the model to run exists in the CLI."""
+"""Structure of the plugin's shell skills (SHL-AC1, T9.2.6): frontmatter, links, no shipped workflow named
+(SHL-AC1), and every engine verb and option a skill tells the model to run exists in the CLI."""
 
 from __future__ import annotations
 
@@ -44,14 +44,14 @@ def test_frontmatter_links_and_size(skill: Path) -> None:
     fields = dict(line.split(": ", 1) for line in front.group(1).splitlines())
     assert set(fields) <= {"name", "description", "allowed-tools"}
     assert fields["name"] == skill.parent.name and 20 < len(fields["description"]) <= 1024
-    assert len(text.splitlines()) < 500  # a core under 500 lines, references read on demand (SHL §5)
+    assert len(text.splitlines()) < 500  # a core under 500 lines, references read on demand (SHL-B7, SHL-B8, SHL-B11)
     for f in _files(skill):
         for target in re.findall(r"\]\(([^)#:]+)\)", f.read_text(encoding="utf-8")):
             assert (f.parent / target).exists(), f"{f.relative_to(PLUGIN)} links {target}"
 
 
 @pytest.mark.parametrize("skill", SKILLS, ids=[p.parent.name for p in SKILLS])
-def test_no_shipped_workflow_is_named(skill: Path) -> None:  # SHL-AC-1
+def test_no_shipped_workflow_is_named(skill: Path) -> None:  # SHL-AC1
     for f in _files(skill):
         text = f.read_text(encoding="utf-8")
         assert not [w for w in SHIPPED_WORKFLOW_NAMES if w in text], f
@@ -79,7 +79,7 @@ READ_ONLY = re.compile(r"^(Read|Grep|Glob|Bash\((git (status|log|diff)|ls|cat|gr
 
 
 def test_troubleshooter_grant_is_read_only() -> None:
-    """SHL §2.3: the troubleshooter's `allowed-tools` holds read rules only, and its text forbids the one flag a
+    """SHL-B5, SHL-B12, SHL-B13: the troubleshooter's `allowed-tools` holds read rules only, and its text forbids the one flag a
     prefix cannot exclude."""
     text = (PLUGIN / "skills" / "troubleshoot" / "SKILL.md").read_text(encoding="utf-8")
     grant = re.search(r"^allowed-tools: (.+)$", text, re.M)
@@ -90,7 +90,7 @@ def test_troubleshooter_grant_is_read_only() -> None:
 
 
 def test_install_skill_runs_only_its_fixed_commands() -> None:
-    """LSK-AC-3, structurally: every command the install skill names is the launcher's or the shim's."""
+    """LSK-AC3, structurally: every command the install skill names is the launcher's or the shim's."""
     text = (PLUGIN / "skills" / "install" / "SKILL.md").read_text(encoding="utf-8")
     commands = re.findall(r"`(<plugin>/bin/tempergraph [^`]+|<shim> [^`]+|tempergraph [^`]+)`", text)
     allowed = ("<plugin>/bin/tempergraph install", "<shim> workflows list", "<shim> executors --probe",

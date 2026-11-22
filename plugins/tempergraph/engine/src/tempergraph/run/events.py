@@ -1,8 +1,8 @@
 """Reading run events: the run log in `seq` order, the activity journal, `--follow`, narrator lines and the
-in-process observers (EVT §2.1–§2.3, §2.6; ADR-0022, ADR-0027).
+in-process observers (EVT-B8, EVT-B9, EVT-B10 to EVT-B16, EVT-B17, EVT-B18, EVT-B7, EVT-B19, EVT-B22, EVT-B23, EVT-B24; ADR-0022, ADR-0027).
 
-Readers here create nothing and call no model (contract C13); they skip unknown kinds and fields (C12).
-Observers never change a run or its exit code (contract C2, EVT-B5).
+Readers here create nothing and call no model (OVR-B15); they skip unknown kinds and fields (OVR-B14).
+Observers never change a run or its exit code (OVR-B4, EVT-B5).
 """
 
 from __future__ import annotations
@@ -58,7 +58,7 @@ def records(path: Path, since: int | None = None) -> list[dict[str, Any]]:
 def follow(path: Path, held: Callable[[], bool], since: int | None = None, *, poll_s: float = 0.25,
            timeout_s: float | None = None, sleep: Callable[[float], None] = time.sleep) -> Iterator[dict[str, Any]]:
     """Records after `since` as they are written; ends once the newest segment's `run_exit` is read and no
-    lock is held (EVT §2.6, EVT-B3). Each record is yielded once."""
+    lock is held (EVT-B22, EVT-B23, EVT-B24, EVT-B3). Each record is yielded once."""
     offset, last, ended = 0, since, False
     start = time.monotonic()
     while True:
@@ -129,7 +129,7 @@ def route_unit(node: Any) -> str | None:
 
 
 def narrate(r: Mapping[str, Any]) -> str:
-    """One line for a run-log record, as a monitor's narrator shows it (RDD §2.1 `events_tail`)."""
+    """One line for a run-log record, as a monitor's narrator shows it (RDD-B7 to RDD-B11, RDD-B13, RDD-B15 `events_tail`)."""
     kind = str(r.get("kind"))
     where = r.get("unit") or ""
     if r.get("item"):
@@ -172,7 +172,7 @@ def tail(recs: list[dict[str, Any]], n: int = 20) -> list[str]:
     return [narrate(r) for r in recs if r.get("kind") in NARRATED][-n:]
 
 
-# -- in-process observers (EVT §2.6) ----------------------------------------------------------------
+# -- in-process observers (EVT-B22, EVT-B23, EVT-B24) ----------------------------------------------------------------
 
 
 @runtime_checkable
@@ -187,7 +187,7 @@ class RunObserver(Protocol):
 def register_observers(entry_point_group: str = "tempergraph.observers",
                        names: tuple[str, ...] | None = None) -> tuple[list[RunObserver], list[str]]:
     """Observers installed under the entry-point group; only those named (operator config) are loaded.
-    Returns the observers and the names that are not installed (a preflight warning, EVT §4)."""
+    Returns the observers and the names that are not installed (a preflight warning, EVT-B25)."""
     wanted = set(names or ())
     found: dict[str, RunObserver] = {}
     for ep in entry_points(group=entry_point_group):

@@ -1,9 +1,9 @@
-"""`report --loop`: the loop's own figures over a window, per workflow (IMD §2.4; plan T12.8).
+"""`report --loop`: the loop's own figures over a window, per workflow (IMD-B22; plan T12.8).
 
 Read-only and model-free, from this state root: findings, the `loop.jsonl` records of each thread, the ledger's
 `loop` rows, and the proposal and trial records. Release 1 reads no issue or pull request state from the code
 host, so issue precision, time to fix, held after release and estimated saving print as not derived, with the
-reason, never as zero (IMD §5). Every parameter that decides a figure is printed with its provenance (IMD §2.5).
+reason, never as zero (IMD-B22). Every parameter that decides a figure is printed with its provenance (IMD-B23).
 """
 
 from __future__ import annotations
@@ -107,7 +107,7 @@ def workflow_figures(root: Path, workflow: str, since: datetime | None) -> dict[
 
 def report(root: Path, workflows: Sequence[str], since: datetime | None,
            coverage: Callable[[str], Sequence[str]] | None = None) -> dict[str, Any]:
-    """Every figure of IMD §2.4 per workflow; `coverage(workflow)` gives each judged gate's reliability grade."""
+    """Every figure of IMD-B22 per workflow; `coverage(workflow)` gives each judged gate's reliability grade."""
     out = []
     for w in workflows:
         fig = workflow_figures(root, w, since)

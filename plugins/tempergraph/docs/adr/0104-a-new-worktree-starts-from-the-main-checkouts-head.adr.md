@@ -13,7 +13,7 @@ No document said which commit a new run worktree starts from. Claude Code's `--w
 
 ## Decision
 
-We will start from the main checkout's `HEAD` commit by default, recording the branch it was on as the pull request base, and offer `default_branch` (fetched, falling back to the local copy) and `ref:<name>` (any branch, tag or commit) through `run.worktree.base` ([WTR §2.5](../specs/82-worktree-mode.spec.md)).
+We will start from the main checkout's `HEAD` commit by default, recording the branch it was on as the pull request base, and offer `default_branch` (fetched, falling back to the local copy) and `ref:<name>` (any branch, tag or commit) through `run.worktree.base` ([WTR-B21](../specs/82-worktree-mode.spec.md)).
 
 ## Options considered
 
@@ -35,7 +35,7 @@ We will start from the main checkout's `HEAD` commit by default, recording the b
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | A person who starts a run from a feature branch wants the run built on it, and its pull request aimed at it. | WTR §2.5 |
+| A1 | A person who starts a run from a feature branch wants the run built on it, and its pull request aimed at it. | WTR-B21 |
 
 ## Consequences
 

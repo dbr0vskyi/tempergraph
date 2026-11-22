@@ -1,5 +1,5 @@
-"""Registry, judge executor selection and the preflight refusals (EXI §2.1, §2.4, EXI-B1, B10, B12;
-EXI-AC-2, AC-8)."""
+"""Registry, judge executor selection and the preflight refusals (EXI-B16, EXI-B17, EXI-B24, EXI-B1, B10, B12;
+EXI-AC2, AC-8)."""
 
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ def test_clean_workflow_passes(repo: Path) -> None:
     rep = preflight_of(two_step(), reg("claude"))
     assert rep.ok, rep.refusals
     assert rep.judges == {"draft": "claude", "review": "claude"}
-    assert hash_tree(repo) == before  # nothing created (EXI-AC-2)
+    assert hash_tree(repo) == before  # nothing created (EXI-AC2)
 
 
 def preflight_of(spec: Any, registry: Registry, **kw: Any) -> Any:
@@ -98,7 +98,7 @@ def test_cross_executor_judge_and_none() -> None:
     spec = two_step(default_executor="antigravity")
     rep = preflight_of(spec, reg("claude", "antigravity"))
     assert rep.ok, rep.refusals
-    assert rep.judges == {"draft": "claude", "review": "claude"}  # EXI-AC-8
+    assert rep.judges == {"draft": "claude", "review": "claude"}  # EXI-AC8
     assert "judge-executor-none" in codes(preflight_of(spec, reg("antigravity")))
 
 

@@ -13,7 +13,7 @@ The owner asked for a schedule command that runs a workflow once or regularly, a
 
 ## Decision
 
-We will put **every scheduling rule in one deterministic, model-free routine, the tick** (`tempergraph schedule tick`): it reads the engine's files, finds due slots, applies catch-up, overlap and budget, preflights, starts each due run through the engine's own `run` or `orchestrate start`, and exits. It is idempotent and lock-guarded, so it is safe from any number of callers at any frequency. It calls no model and answers no gate (contract C18).
+We will put **every scheduling rule in one deterministic, model-free routine, the tick** (`tempergraph schedule tick`): it reads the engine's files, finds due slots, applies catch-up, overlap and budget, preflights, starts each due run through the engine's own `run` or `orchestrate start`, and exits. It is idempotent and lock-guarded, so it is safe from any number of callers at any frequency. It calls no model and answers no gate (OVR-B20).
 
 What calls the tick is a **trigger**, and triggers carry no rule:
 

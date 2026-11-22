@@ -13,7 +13,7 @@ A thread may sit paused for days ([DUR](../specs/09-durability-and-resume.spec.m
 
 ## Decision
 
-We will store the flag, profile and file layers' resolved values in the thread's `RunOptions` at start and reapply them on each resume. A resume changes them only by `--set`, `--unset`, `--profile` or `--reload-settings`. The workflow layers follow the workflow content the thread resumes on, as [MIG §2.5](../specs/62-state-and-run-migration.spec.md) already decides. Each segment's `settings_resolved` record lists what changed. How a changed budget meets a counter already spent is fixed per key ([RST §2.6](../specs/80-run-settings-and-overrides.spec.md)).
+We will store the flag, profile and file layers' resolved values in the thread's `RunOptions` at start and reapply them on each resume. A resume changes them only by `--set`, `--unset`, `--profile` or `--reload-settings`. The workflow layers follow the workflow content the thread resumes on, as [MIG-B15](../specs/62-state-and-run-migration.spec.md) already decides. Each segment's `settings_resolved` record lists what changed. How a changed budget meets a counter already spent is fixed per key ([RST-B26](../specs/80-run-settings-and-overrides.spec.md)).
 
 ## Options considered
 
@@ -35,7 +35,7 @@ We will store the flag, profile and file layers' resolved values in the thread's
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | Operators edit files for future runs more often than to steer a paused one. | RST §2.6 |
+| A1 | Operators edit files for future runs more often than to steer a paused one. | RST-B26 |
 
 ## Consequences
 

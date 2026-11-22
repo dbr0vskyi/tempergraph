@@ -1,9 +1,9 @@
-"""What is where in a package, and the digests over it (PKG §2 `package_files`, VER §2.4, PKG-AC-7).
+"""What is where in a package, and the digests over it (PKG-B13, PKG-B15 `package_files`, VER-B14, VER-B15, PKG-AC7).
 
 `content_digest` covers what a run runs: the spec's canonical JSON, `outcome.json`, every template, brief,
 lessons file, skill and agent file, every Python source under `workflow/` and the `dependencies` of its
 `pyproject.toml`. It never covers `docs/`, `diagram/`, `evals/`, `authoring.json`, `README.md` or `tests/`.
-`docs_digest` covers `docs/` only (PKG §2.5).
+`docs_digest` covers `docs/` only (PKG-B21, PKG-B22).
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from typing import Any
 
 from tempergraph.contracts import CallableRef, WorkflowSpec
 
-# Folders and files whose content is part of what runs (VER §2.4).
+# Folders and files whose content is part of what runs (VER-B14, VER-B15).
 CONTENT_DIRS = ("prompts", "judges", "lessons", "skills", "agents")
 CONTENT_FILES = ("outcome.json",)
 SKIP_PARTS = frozenset({"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache"})

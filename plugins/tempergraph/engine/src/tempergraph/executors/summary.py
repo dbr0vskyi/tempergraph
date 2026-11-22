@@ -1,6 +1,6 @@
-"""Tool input summaries for the activity journal (EVT §2.5).
+"""Tool input summaries for the activity journal (EVT-B21).
 
-One line, scrubbed by the pattern scrubber (SEC §2.3), clipped to 200 characters, built by an executor's
+One line, scrubbed by the pattern scrubber (SEC-B8 to SEC-B11), clipped to 200 characters, built by an executor's
 translator from the tool's input. Summaries live only in the activity journal and the live progress file;
 no run-log record, ledger row, stats row, finding, export or filed text carries them.
 """
@@ -76,7 +76,7 @@ def _mcp_name(tool_name: str) -> str:
 
 def input_summary(capability: str | None, tool_name: str, data: Mapping[str, Any] | None,
                   workspace: Path | None = None) -> str | None:
-    """EVT §2.5's table; None for an unknown capability."""
+    """EVT-B21's table; None for an unknown capability."""
     data = data if isinstance(data, Mapping) else {}
     text: str | None
     if capability == "shell":

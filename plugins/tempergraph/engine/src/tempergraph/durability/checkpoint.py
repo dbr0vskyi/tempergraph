@@ -1,4 +1,4 @@
-"""The per-workflow SQLite checkpoint and thread classification (DUR §2, §2.1, DUR-B3, DUR-B4).
+"""The per-workflow SQLite checkpoint and thread classification (DUR-B9, DUR-B11, DUR-B3, DUR-B4).
 
 Writers open the store with a 60 s busy wait and retry creating an empty store for 30 s. Observers open
 it read-only and create nothing: with no write-ahead log present (no writer has it open) the file is
@@ -107,7 +107,7 @@ def snapshot(cw: CompiledWorkflow, thread_id: str) -> Snapshot:
 
 
 def classify_snapshot(snap: Snapshot, lock_held: bool) -> ThreadState:
-    """DUR §2.1: a held lock reads `running` over any checkpoint state (DUR §5)."""
+    """DUR-B9: a held lock reads `running` over any checkpoint state (ADR-0014)."""
     if lock_held:
         return ThreadState.RUNNING
     if not snap.exists:

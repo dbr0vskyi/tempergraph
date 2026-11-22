@@ -1,4 +1,4 @@
-"""Stages of a run, the promotion check and the promotion stamp (PRO §2.1 to §2.4). Model-free.
+"""Stages of a run, the promotion check and the promotion stamp (PRO-B7, PRO-B4, PRO-B10). Model-free.
 
 The check reads the functions the reports read (`report`, `report --supervision`, `evals bar`, `evals report`),
 so a number never differs between two verbs. Release 2 measures and stamps `local-stable`; `pipeline` is
@@ -33,20 +33,20 @@ class PromotionRefused(ValueError):
 
 
 def stage_of(spec: WorkflowSpec, caller: Mapping[str, Any] | None = None) -> tuple[str, bool]:
-    """PRO §2.1: the stage of a run, and whether a pipeline caller runs it unpromoted. No run has stage
+    """PRO-B7, PRO-B4: the stage of a run, and whether a pipeline caller runs it unpromoted. No run has stage
     `pipeline` in this release, so a pipeline caller always runs at the local stage."""
     stage = "local-stable" if spec.improvement_mode == "stable" else "local-dev"
     return stage, (caller or {}).get("kind") == "pipeline"
 
 
 def bars(stage: str) -> dict[str, float]:
-    """The stage's bars, from the one engine config file (PRO §2.3)."""
+    """The stage's bars, from the one engine config file (PRO-B9)."""
     doc = json.loads(resources.files("tempergraph.data").joinpath(PROMOTION).read_text(encoding="utf-8"))
     return {str(k): float(v) for k, v in doc["stages"][stage].items()}
 
 
 def current_version(spec: WorkflowSpec) -> str:
-    """The workflow version with its content digest (VER §2.4) for a package, else the declared version."""
+    """The workflow version with its content digest (VER-B14, VER-B15) for a package, else the declared version."""
     if spec.package_root is None:
         return spec.version
     from tempergraph.package.loader import load_package
@@ -70,7 +70,7 @@ def _escapes(t: Any) -> int:
 
 def window(root: Path, spec: WorkflowSpec, version: str, size: int, *, restart_on_escape: bool = False
            ) -> list[WindowRun]:
-    """PRO §2.2: the last `size` finished runs of this workflow version, oldest first. Trial, scenario, eval
+    """PRO-B8: the last `size` finished runs of this workflow version, oldest first. Trial, scenario, eval
     and dry runs and reruns of a trial are left out. With `restart_on_escape` (a stage whose escape bar is 0)
     the window starts after the last run that held a gate escape."""
     from tempergraph.observe import report
@@ -105,7 +105,7 @@ def window(root: Path, spec: WorkflowSpec, version: str, size: int, *, restart_o
 
 
 def _row(pid: str, name: str, value: Any, bar: Any, met: bool | None, *, detail: str = "") -> dict[str, Any]:
-    """`met` None is a reported row; a missing value is `unmeasured`, which is not met (PRO §2.3)."""
+    """`met` None is a reported row; a missing value is `unmeasured`, which is not met (PRO-B9)."""
     verdict = "reported" if met is None else "unmeasured" if value is None else "met" if met else "not_met"
     return {"id": pid, "criterion": name, "value": value, "bar": bar, "verdict": verdict,
             **({"detail": detail} if detail else {})}
@@ -120,7 +120,7 @@ def _at_least(v: float | None, bar: float) -> bool:
 
 
 def _supervision(root: Path, ids: set[str], b: Mapping[str, float]) -> list[dict[str, Any]]:
-    """P5: the rows of SUP §2.7 over the window, from `report --supervision`'s own aggregate."""
+    """P5: the rows of SUP-B17 over the window, from `report --supervision`'s own aggregate."""
     from tempergraph.observe import supervision_report as sr
 
     rs = [r for r in sr.runs(root) if r.thread_id in ids]
@@ -161,7 +161,7 @@ def _supervision(root: Path, ids: set[str], b: Mapping[str, float]) -> list[dict
 
 
 def _judges(spec: WorkflowSpec, root: Path) -> dict[str, Any]:
-    """P4: every judged gate's binding `accepted`, each routed risk level included (JRK §2.4)."""
+    """P4: every judged gate's binding `accepted`, each routed risk level included (JRK-B9, JRK-B5)."""
     from tempergraph.improve import calibration as cal
 
     bad: list[str] = []
@@ -189,7 +189,7 @@ def _p90(xs: Sequence[float]) -> float | None:
 
 
 def _escalations(root: Path, spec: WorkflowSpec, ids: set[str]) -> dict[str, dict[str, Any]]:
-    """P9: escalated attempts per unit in the window, from the escalation record (LAD §2.7)."""
+    """P9: escalated attempts per unit in the window, from the escalation record (LAD-B16, LAD-B17)."""
     from tempergraph.improve.calibration import wilson_lb
 
     by: dict[str, list[bool]] = defaultdict(list)
@@ -266,7 +266,7 @@ class Report:
 
 def check(spec: WorkflowSpec, root: Path, *, to: str, executor: str | None = None, size: int | None = None
           ) -> Report:
-    """PRO §2.3: every criterion's number, bar and verdict for the target stage. Reads only."""
+    """PRO-B9: every criterion's number, bar and verdict for the target stage. Reads only."""
     from tempergraph.improve import record, suites
     from tempergraph.improve.trials import run_cost
     from tempergraph.observe import report as rep
@@ -345,7 +345,7 @@ def _doc(root: Path) -> tuple[dict[str, Any], bool]:
 
 
 def read_stamps(root: Path | None, version: str) -> dict[str, Any]:
-    """Each stage's stamp and whether it stands: a stamp of another workflow version is void (PRO §2.4)."""
+    """Each stage's stamp and whether it stands: a stamp of another workflow version is void (PRO-B10)."""
     if root is None:
         return {}
     doc, ok = _doc(root)
@@ -366,7 +366,7 @@ def stamped(spec: WorkflowSpec, stage: str) -> bool:
 
 def stamp(spec: WorkflowSpec, rep: Report, caller: Mapping[str, Any]) -> Report:
     """`--stamp`: writes the stage's entry only when every criterion is met, for a person, into a package
-    that is not an installed copy (PRO §2.4, §4). A void entry of another stage is dropped."""
+    that is not an installed copy (PRO-B10, PRO-B6, PRO-B9). A void entry of another stage is dropped."""
     from tempergraph.docs import write_json
     from tempergraph.package.registry import plugin_cache
     from tempergraph.store.layout import now_iso

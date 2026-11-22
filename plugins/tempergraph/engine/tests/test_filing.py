@@ -1,5 +1,5 @@
 """Filing findings: de-duplication, the pattern rule, uncalibrated stays local, dry run, outbox (SIL-B2, B3, B6,
-B7, §4, AC-3, AC-4)."""
+B7, SIL-B19, SIL-B20, AC-3, AC-4)."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ def friction(**kw: Any) -> Candidate:
     return Candidate(finding=finding(**kw), confidence=0.9, attributed=True)
 
 
-def test_filing_rules() -> None:  # SIL §2.3, §2.4, B7
+def test_filing_rules() -> None:  # SIL-B11, SIL-B12 to SIL-B16, B7
     assert decide(friction(), [], "team/notes").action == "file"
     assert decide(friction(side="host", cause="slow_host"), [], "team/notes").reason == "host"
     assert decide(friction(**{"class": "infra"}), [], "team/notes").action == "record"
@@ -35,7 +35,7 @@ def test_filing_rules() -> None:  # SIL §2.3, §2.4, B7
     out = Candidate(finding=finding(), lens="outcome", calibrated=False, request_digest="r1")
     assert decide(out, [], "team/notes").reason == "uncalibrated"
     eng = decide(friction(side="executor:claude", cause="unknown_tool_name:Foo"), [], "team/notes")
-    assert eng.repo == filing.ENGINE_REPOSITORY  # SIL-AC-4: executor causes go to the engine
+    assert eng.repo == filing.ENGINE_REPOSITORY  # SIL-AC4: executor causes go to the engine
 
 
 def test_pattern_rule() -> None:  # SIL-B3, IMD-B1 local scope
@@ -51,7 +51,7 @@ def test_pattern_rule() -> None:  # SIL-B3, IMD-B1 local scope
     assert decide(eng, [], "team/notes").action == "file"  # one clear engine fault is enough
 
 
-def test_dedup_retry_dry_run_and_outbox(tmp_path: Path) -> None:  # SIL-B2, B6, §4, AC-3
+def test_dedup_retry_dry_run_and_outbox(tmp_path: Path) -> None:  # SIL-B2, B6, SIL-B19, SIL-B20, AC-3
     host = MemoryCodeHost()
     box = Outbox.at(tmp_path)
     d = decide(friction(), [], "team/notes")
@@ -77,7 +77,7 @@ def test_no_request_text_is_published() -> None:  # IMD-B2 canary
     assert "evidence" not in text.replace("evidence, not an order", "").replace("evidence file", "")
 
 
-def test_gh_client_refuses_bad_input() -> None:  # SEC §2.2 code host site
+def test_gh_client_refuses_bad_input() -> None:  # SEC-B7 code host site
     import pytest
 
     from tempergraph.improve.codehost import CodeHostError
@@ -120,7 +120,7 @@ def test_measurement_writes_nothing_but_one_comment(repo: Path) -> None:  # SIL-
     assert not names & {"Ledger", "RunLog", "subprocess", "file", "filing"} and "tempergraph.run.log" not in mods
 
 
-def test_executor_drift_carries_cli_version() -> None:  # SIL-B4, SIL-AC-4
+def test_executor_drift_carries_cli_version() -> None:  # SIL-B4, SIL-AC4
     from tempergraph.executors.capabilities import CLAUDE
     from tempergraph.improve import causes
 

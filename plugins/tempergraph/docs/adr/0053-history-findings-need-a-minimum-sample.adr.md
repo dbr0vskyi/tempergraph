@@ -36,7 +36,7 @@ We will give every history rule a **minimum sample** (`min_n`, in runs, visits o
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| H1 | A workflow version identity exists on each run record (the ledger row), so the window can be one version. | AUD §2.1 |
+| H1 | A workflow version identity exists on each run record (the ledger row), so the window can be one version. | AUD-B11, AUD-B6, AUD-B9 |
 | H2 | The minimum samples (mostly 5 runs, 10 for unused grants, 20 attempts for infra share) are defaults with no data, revisited after the first 20 runs of a real workflow. | ARC, TSA |
 
 ## Consequences

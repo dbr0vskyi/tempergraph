@@ -1,208 +1,166 @@
----
-title: Improvement proposals and trials
-type: component
-status: ready-for-implementation
-prefix: PRP
-adrs: [0030, 0031, 0034, 0003, 0005, 0080]
----
-
 # Improvement proposals and trials
 
-## 1. Overview
+## Purpose
 
-The second half of the self-improvement loop. [SIL](16-self-improvement.spec.md) turns runs into findings and issues; this spec turns a cluster of findings into a **proposal** (a typed, small change to one workflow package), measures it in a **trial** (the current and the proposed version on the same fixed cases), and hands the result to a person as a draft pull request. The loop never merges, never changes engine code and never changes a step together with the gate that grades it ([ADR-0030](../adr/0030-improvement-closes-through-measured-proposals.adr.md), [ADR-0031](../adr/0031-steps-and-their-graders-change-apart.adr.md)). The background is [R-030](../research/R-030-self-improving-agent-systems.rsrch.md) and [R-031](../research/R-031-self-improvement-gap-analysis.rsrch.md).
+The second half of the self-improvement loop. [SIL](16-self-improvement.spec.md) turns runs into findings and issues; this spec turns a cluster of findings into a proposal (a typed, small change to one workflow package), measures it in a trial (the current and the proposed version on the same fixed cases), and hands the result to a person as a draft pull request. The loop never merges, never changes engine code and never changes a step together with the gate that grades it ([ADR-0030](../adr/0030-improvement-closes-through-measured-proposals.adr.md), [ADR-0031](../adr/0031-steps-and-their-graders-change-apart.adr.md)); trials and the post-release comparison write no code, and only the proposer writes, workflow data on its own branch (OVR-B16). The path is: findings, ranked clusters, a proposer patch on a branch, the class check, a paired trial decided by rule ([ADR-0034](../adr/0034-paired-trial-on-a-fixed-case-set.adr.md)), a draft pull request, a person's merge, and a post-release watch. The background is [R-030](../research/R-030-self-improving-agent-systems.rsrch.md) and [R-031](../research/R-031-self-improvement-gap-analysis.rsrch.md); defaults without data behind them are recorded as parameters with that provenance ([IMD](43-improvement-data.spec.md)). Workflow owners and the people who review the loop's pull requests depend on it.
 
-```mermaid
-flowchart LR
-  F[Findings and issues<br/>SIL] --> C[Clusters, ranked]
-  C -->|person picks, or autonomy=propose| P[Proposer workflow<br/>patch on a branch]
-  P --> K{Class check<br/>one side, no weakening}
-  K -->|refused| R[Recorded, not proposed]
-  K --> T[Trial: A and B<br/>on the case set]
-  T --> D[Decision by rule<br/>ADR-0034]
-  D --> PR[Draft pull request<br/>with trial report]
-  PR -->|a person merges| V[New workflow version]
-  V --> W[Post-release watch<br/>SIL-B5]
-```
+## Behaviours
 
-## 2. Contract
+### PRP-B11 Autonomy level
 
-### 2.1 Autonomy level
+WHEN a workflow declares `improvement.autonomy` in its `tempergraph.json` THE engine SHALL read one of `record` (findings, evidence and ledger rows only), `file` (also file and comment on issues, the default), `propose` (also run the proposer and open a draft pull request without a trial) and `trial` (also run trials under the trial caps), let a machine lower it and never raise it (`TEMPERGRAPH_AUTONOMY`), show it in `improve backlog`, offer no level that merges, and let a person start the proposer or a trial at any level with the verbs.
 
-Declared per workflow as `improvement.autonomy`, overridable down (never up) per machine.
+- GIVEN a workflow at `trial` and `TEMPERGRAPH_AUTONOMY=file` WHEN the loop runs THEN it files issues and proposes nothing
 
-| Level | The loop may | Default |
-|---|---|---|
-| `record` | Write findings, evidence and ledger rows only | |
-| `file` | Also file and comment on issues ([SIL](16-self-improvement.spec.md)) | yes |
-| `propose` | Also run the proposer on a cluster and open a draft pull request without a trial | |
-| `trial` | Also run trials, under the workflow's `improvement.trial_cap_usd` per trial and a monthly cap | |
+### PRP-B12 Clusters and the ranked backlog
 
-There is no level that merges. A person can start the proposer or a trial on any workflow at any level with the verbs in §2.7.
+WHEN `improve backlog [workflow]` runs THE engine SHALL list clusters, read-only, each with `cluster_id` (a digest of side, workflow, unit and leading cause, or of unit and criterion id for judge-sent-back retries), member `findings[]` and `issues[]`, `runs`, `distinct_requests` and `machines` (from the shared store when present, else the local ledger, [IMD](43-improvement-data.spec.md)), `repeat_cost_usd` (estimated cost of repeats whose cause is in the cluster, 30-day window), `label_weight` (negative human labels joined to its gates, [FBK](41-feedback-and-judge-reliability.spec.md)), `review_weight` (kept, corroborated session-review observations, [SRV](44-session-review.spec.md), shown and not scored until it has data), `score` (`repeat_cost_usd + label_value × label_weight`, `label_value` $5 by default) in order, and `twin_of`, a cluster with a twin on the other side shown once under the side the friction judge attributed first with the twin linked.
 
-### 2.2 Clusters and the ranked backlog
+- GIVEN an engine-side and a workflow-side cluster with the same unit and cause WHEN the backlog is listed THEN one is shown with the other linked
 
-| Field | Meaning |
-|---|---|
-| `cluster_id` | Digest of side, workflow, unit and leading cause, or of unit and criterion id for judge-sent-back retries |
-| `findings[]`, `issues[]` | Members, by id |
-| `runs`, `distinct_requests`, `machines` | Counts, from the shared store when present, else the local ledger ([IMD](43-improvement-data.spec.md)) |
-| `repeat_cost_usd` | Estimated cost of repeats whose recorded cause is in the cluster, 30-day window |
-| `label_weight` | Count of negative human labels joined to the cluster's gates ([FBK](41-feedback-and-judge-reliability.spec.md)) |
-| `review_weight` | Count of kept, corroborated session-review observations joined to the cluster's findings ([SRV §2.8](44-session-review.spec.md)); shown, not in `score` until it has data |
-| `score` | `repeat_cost_usd + label_value × label_weight`, then ordered; `label_value` defaults to $5 |
-| `twin_of` | A cluster on the other side (engine or workflow) with the same unit and cause |
+### PRP-B13 Proposal record
 
-A cluster with `twin_of` set is shown once, under the side the friction judge attributed first; the twin is linked, not listed again.
+WHEN a proposal is recorded THE engine SHALL write `improve/proposals/<id>.json` under the state root with `proposal_id`, `workflow`, `base_version`, `base_digest`, one `cluster_id`, `author` (`person`, `proposer` or `loop`), `patch` (a unified diff over the workflow package), `classes[]` computed by the engine and never taken from the author, `side` (`producer` or `grader`) from the classes, `rule` (one sentence of the general rule, with no id, URL, number or quote), `state` (`drafted`, `refused`, `trialling`, `shown_better`, `not_shown`, `regressed`, `aborted`, `opened`, `merged`, `closed`) and `refusal` when refused.
 
-### 2.3 Proposal
+- GIVEN a person's patch WHEN recorded THEN its classes are computed by the engine
 
-| Field | Kind | Meaning |
-|---|---|---|
-| `proposal_id` | id | |
-| `workflow`, `base_version`, `base_digest` | | The package the patch applies to |
-| `cluster_id` | id | The problem it answers; one cluster per proposal |
-| `author` | `person` \| `proposer` | Who wrote the patch |
-| `patch` | unified diff over the workflow package | Never a path outside the package |
-| `classes[]` | set of §2.4 classes | Computed by the engine from the patch, never taken from the author |
-| `side` | `producer` \| `grader` | From the classes |
-| `rule` | one sentence | The general rule the change states; no id, URL, number or quote |
-| `state` | `drafted`, `refused`, `trialling`, `shown_better`, `not_shown`, `regressed`, `aborted`, `opened`, `merged`, `closed` | |
-| `refusal` | reason code, when refused | |
+### PRP-B14 Change classes
 
-### 2.4 Change classes
+WHEN a patch is classified THE engine SHALL load the workflow before and after it from a scratch copy and compare them by meaning, so a reformatted or reordered file is classified by what changed and a patch with no change in meaning is refused `no_change`: producer classes `prompt` (a step's template text or tools block), `lessons` ([LSN](42-workflow-lessons.spec.md)), `limits` (timeout, retry budget or idle limit), `model` (alias or executor), `tools` (declared tools, MCP tools, skills or command prefixes) and `flow` (a route arm, a split into passes, a new unit); grader classes `brief`, `criterion` (text, a new criterion, a method), `check` (code or declared commands), `judge_model`, `outcome` (the outcome file, a verifier moved up the ladder with its evidence, [OUT](90-run-outcome.spec.md)) and `weakening` (a criterion removed, a severity lowered from blocker, a verifier moved down the ladder, a check that passes on a fixture where it failed before, a judge view set widened, or a budget raised above 2×).
 
-The engine classifies a patch by comparing the parsed workflow before and after, not by reading the diff text.
+- GIVEN a weakening hidden in a reordered file WHEN classified THEN `weakening` is set
 
-| Class | Side | What changed |
-|---|---|---|
-| `prompt` | producer | A step's template text or tools block |
-| `lessons` | producer | Entries of a step's lessons ([LSN](42-workflow-lessons.spec.md)) |
-| `limits` | producer | A step's timeout, retry budget or idle limit |
-| `model` | producer | A step's alias or executor |
-| `tools` | producer | A step's declared tools, MCP tools, skills or command prefixes. A widening `tools` patch drafted from `grant_missing` findings declares exactly the grants people gave and used, names the runs they came from, and is always opened for a person's review, never trialled alone ([ADR-0080](../adr/0080-a-person-may-grant-a-step-tools-for-a-run.adr.md)); a judge view widened from `views.add` grants is class `weakening` |
-| `flow` | producer | A route arm, a split of one step into passes, a new unit |
-| `brief` | grader | A judge brief or stance |
-| `criterion` | grader | Criterion text, a new criterion, a criterion's method |
-| `check` | grader | A deterministic check's code or its declared commands |
-| `judge_model` | grader | A judge's alias or executor |
-| `outcome` | grader | The outcome file: statement, final or intermediate criteria, `serves`, a verifier moved up the ladder with its evidence ([OUT §2.6](90-run-outcome.spec.md)) |
-| `weakening` | grader | A criterion removed; a severity lowered from blocker; a verifier moved down the ladder of [OUT §2.6](90-run-outcome.spec.md); a check that passes on a fixture where it failed before; a judge view set widened; a budget raised above 2× |
+### PRP-B15 Widening tools from grants
 
-### 2.5 Case set
+WHEN a `tools` patch is drafted from `grant_missing` findings THE proposer SHALL declare exactly the grants people gave and used, name the runs they came from, and have it opened for a person's review, never trialled alone; a judge view widened from `views.add` grants is class `weakening` ([ADR-0080](../adr/0080-a-person-may-grant-a-step-tools-for-a-run.adr.md)).
 
-Each workflow package may hold a case set: `schema_version` and one entry per case.
+- GIVEN a judge view widened from grants WHEN classified THEN it is `weakening`
 
-| Field | Meaning |
-|---|---|
-| `case_id` | Stable id |
-| `base` | A commit of the target repository, or a fixture folder in the package |
-| `request` | The start input, scrubbed |
-| `expected_scope` | One line a person wrote |
-| `origin` | `authored` or `harvested:<run id>` |
-| `reviewed_by` | A person; harvested cases without it are not used |
+### PRP-B1 One side only
 
-A case harvested from a run that is a member of the proposal's cluster is **in-sample** for that proposal.
+WHEN a patch that edits a step's template and the same step's criterion text is classified THE engine SHALL find classes `prompt` and `criterion` on different sides and refuse the proposal with `mixed_sides`, trialling nothing.
 
-### 2.6 Trial
+- GIVEN a proposer patch with classes `prompt` and `check` WHEN classified THEN it is refused `mixed_sides`
+- GIVEN a proposer patch with classes `prompt` and `lessons` WHEN classified THEN it is drafted
 
-| Field | Meaning |
-|---|---|
-| `trial_id`, `proposal_id`, `case_set_digest` | |
-| `arms` | `A` (base version) and `B` (patched version), each run as a dry-run batch child per case, in its own worktree at the case's base ([WSP](13-workspace-and-concurrency.spec.md)); in release 1, before `batch` exists, cases run one at a time as engine child runs ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md) S4) |
-| `target_metric` | One of `first_pass_yield(unit)`, `gate_pass(unit)`, `criterion_met(unit, id)`, `run_cost`, `outcome_met`, `label_agreement(gate)` |
-| `guards[]` | Metrics that must not worsen beyond a margin: by default run cost +15%, outcome met −1 case, any deterministic check pass rate −1 case, gate escapes +1 |
-| `pairs[]` | Per case: A value, B value, `win` \| `loss` \| `tie`, in-sample flag |
-| `noise_floor` | Share of differing pairs in the case set's last A/A run, or `unknown` |
-| `decision` | Per [ADR-0034](../adr/0034-paired-trial-on-a-fixed-case-set.adr.md): `shown_better`, `not_shown`, `regressed`, `aborted` |
-| `spend` | Reported and estimated cost of both arms, apart ([OBS](15-observability-and-cost.spec.md)) |
+### PRP-B2 Weakening is person-only
 
-Decision rule, on out-of-sample non-tied pairs only: `shown_better` when wins reach the one-sided sign-test p ≤ 0.05 count of [R-031 F3](../research/R-031-self-improvement-gap-analysis.rsrch.md) and every guard holds; `regressed` when losses reach that count or any guard fails; otherwise `not_shown`. Fewer than 8 out-of-sample non-tied pairs is `not_shown` with reason `too_few_pairs`. A noise floor above 0.5 adds the warning `noisy_case_set`.
+WHEN a patch that lowers a criterion from blocker to warning is classified THE engine SHALL set `weakening`, refuse it with `weakening` from `author=proposer`, and from `author=person` keep it, trial it only on grader metrics, and label the pull request `weakens-gate` with the before and after severity.
 
-A trial whose target metric is a judge grade (`gate_pass`, `criterion_met`, `outcome_met`) needs that judge graded `reliable` by [FBK](41-feedback-and-judge-reliability.spec.md); otherwise the trial is refused before spend.
+- GIVEN a proposer patch with `criterion` and `weakening` WHEN classified THEN it is refused `weakening`
+- GIVEN a person's patch with `criterion` and `weakening` WHEN classified THEN it is drafted and labelled
 
-### 2.7 Verbs
+### PRP-B3 No request literals
 
-| Verb | Does | Writes | Spends |
-|---|---|---|---|
-| `improve backlog [workflow]` | Clusters, ranked, with twins folded | no | no |
-| `improve propose <cluster> [--patch <file>]` | Runs the proposer workflow, or records a person's patch, then classifies | branch, proposal record | proposer only |
-| `improve trial <proposal> [--cases <set>] [--cap <usd>]` | Runs both arms and decides | trial record, batch folders | yes |
-| `improve aa <workflow> [--cases <set>]` | Runs the case set twice on the current version and records the noise floor | trial record | yes |
-| `improve open <proposal>` | Opens the draft pull request with the trial report | pull request | no |
-| `improve show <proposal\|trial>` | One record, read-only | no | no |
+WHEN a patch adds a ticket id, a URL or a run's request words to a prompt or lesson THE engine SHALL fail the literals check of prompt lint ([LIF](18-lifecycle-and-evals.spec.md)) and refuse the proposal with `literal`.
 
-## 3. Behaviours
+- GIVEN a lesson naming `PROJ-123` WHEN classified THEN it is refused `literal`
 
-**PRP-B1 One side only.** Given a proposer patch that edits a step's template and the same step's criterion text, when it is classified, then the classes are `prompt` and `criterion`, the sides differ, and the proposal is `refused` with `mixed_sides`; nothing is trialled.
+### PRP-B16 Other refusals
 
-**PRP-B2 Weakening is person-only.** Given a patch that lowers a criterion from blocker to warning, when classified, then `weakening` is set. From `author=proposer` it is `refused` with `weakening`. From `author=person` it is kept, can be trialled only on grader metrics, and the pull request is labelled `weakens-gate` with the before and after severity.
+WHEN a patch touches a path outside the package, does not apply to `base_digest` or the package changed since the proposal (`evals/` being outside that digest), or yields a workflow that fails validation THE engine SHALL refuse it `outside_package`, `stale_base` (the proposer may rerun on the new version) or `invalid` with the validation output.
 
-| Author | Classes | Result |
-|---|---|---|
-| proposer | `prompt` | drafted |
-| proposer | `prompt`, `lessons` | drafted (one side) |
-| proposer | `prompt`, `check` | refused `mixed_sides` |
-| proposer | `criterion`, `weakening` | refused `weakening` |
-| person | `criterion`, `weakening` | drafted, labelled |
+- GIVEN a patch over a stale base WHEN classified THEN it is refused `stale_base`
 
-**PRP-B3 No request literals.** Given a patch that adds a ticket id, a URL or a run's request words to a prompt or lesson, when classified, then the literals check of prompt lint ([LIF](18-lifecycle-and-evals.spec.md)) fails and the proposal is `refused` with `literal`.
+### PRP-B4 Proposer is gated like any workflow
 
-**PRP-B4 Proposer is gated like any workflow.** Given the proposer workflow, when it runs, then its patch step works in its own worktree on a branch `improve/<proposal_id>`, its check applies the patch, validates the workflow and runs the class check, and an independent judge grades whether the change addresses the cluster's cause and states a general rule; it never writes outside the workflow package and never pushes the default branch.
+WHEN `improve propose <cluster> [--patch <file>]` runs THE engine SHALL record a person's patch, or run the proposer (a fixed engine program: a step session in its own worktree on branch `improve/<proposal_id>` that reads the cluster's cause codes, per-criterion statuses and fixes, its member runs' local evidence and kept session-review observations, datamarked as untrusted ([SRV](44-session-review.spec.md)), then the engine's class check applying the patch and validating the workflow, then an independent judge grading whether the change addresses the cause and states a general rule, refusing `judge_not_met` otherwise), never writing outside the package and never pushing the default branch.
 
-**PRP-B5 Grader proposals are scored on labels.** Given a proposal of side `grader` (say a sharper criterion text), when trialled, then the arms are the judge alone on the gate's calibration cases and labelled past attempts ([LIF](18-lifecycle-and-evals.spec.md) live scoring), the target metric is `label_agreement(gate)`, and no step session runs.
+- GIVEN a proposer patch the judge finds off the cluster's cause WHEN proposed THEN it is refused `judge_not_met`
 
-**PRP-B6 Trial on paired cases.** Given 14 out-of-sample cases with target `first_pass_yield(plan)`, when the trial ends with 9 wins, 1 loss and 4 ties and every guard holds, then 10 pairs are non-tied, 9 wins meets the p ≤ 0.05 count for 10, and the decision is `shown_better`.
+### PRP-B10 Engine side stays an issue
 
-| Wins | Losses | Ties | Guards | Decision |
-|---|---|---|---|---|
-| 9 | 1 | 4 | hold | `shown_better` |
-| 7 | 3 | 4 | hold | `not_shown` |
-| 9 | 1 | 4 | cost +22% | `regressed` |
-| 4 | 1 | 9 | hold | `not_shown` (`too_few_pairs`) |
+WHEN `improve propose` is asked for a cluster on side `engine` or `executor:<name>` THE engine SHALL refuse it with `engine_side`, drafting no engine code.
 
-**PRP-B7 Cap stops a trial cleanly.** Given a trial cap of $200, when both arms' estimated spend reaches it, then no further case starts, running children finish, the decision is `aborted` and the pairs so far are kept.
+- GIVEN an engine-side cluster WHEN proposed THEN it is refused `engine_side`
 
-**PRP-B8 Draft pull request, never a merge.** Given a proposal `shown_better` on a workflow at autonomy `trial`, when the trial ends, then a draft pull request is opened against the workflow's repository with the trial report (pairs as counts, metrics, spend, noise floor, classes, the rule sentence), linked to the cluster's issues; nothing is merged, and the issues stay open until a person merges.
+### PRP-B17 Case set
 
-**PRP-B9 Measured after release.** Given a merged proposal, when the first 10 final exits of the new version are recorded, then the post-release comparison of SIL-B5 runs on the trial's target and guards; a guard worse than its margin reopens the issues and records `regressed_after_release` on the proposal.
+WHEN a trial reads a workflow package's case set THE engine SHALL read `schema_version` and per case `case_id` (or `id`), `base` (a commit of the target repository or a fixture folder in the package), `request` (scrubbed), `expected_scope` (one line a person wrote), `origin` (`authored` or `harvested:<run id>`) and `reviewed_by`, use no harvested case without `reviewed_by`, mark a case harvested from a run in the proposal's cluster in-sample, and refuse a trial before spend with exit 2 when no reviewed case exists.
 
-**PRP-B10 Engine side stays an issue.** Given a cluster on side `engine` or `executor:<name>`, when `improve propose` is asked for it, then it is refused with `engine_side`; the loop drafts no engine code.
+- GIVEN a case set whose only cases are unreviewed harvests WHEN a trial is asked THEN it exits 2 and spends nothing
 
-## 4. Error conditions
+### PRP-B18 Trial record and arms
 
-| Condition | Result |
-|---|---|
-| Patch does not apply to `base_digest` | `refused` `stale_base`; the proposer may rerun on the new version |
-| Patched workflow fails validation | `refused` `invalid` with the validation output |
-| No case set, or none reviewed | Trial refused before spend, exit 2 |
-| Judge-graded target with an unreliable judge | Trial refused before spend, exit 2 |
-| Monthly trial cap reached | Trial refused before spend, exit 2; the backlog shows it |
-| Code host unreachable at `open` | Proposal stays `shown_better`; `open` can be rerun |
+WHEN `improve trial <proposal> [--cases <set>] [--cap <usd>]` runs THE engine SHALL write `improve/trials/<id>.json` with `trial_id`, `proposal_id`, `case_set_digest`, arms `A` (base) and `B` (patched) each run per case one at a time as an engine child run with `origin: trial`, `--dry-run` and an engine worktree at the case's base ([WTR](82-worktree-mode.spec.md)), `target_metric` (one of `first_pass_yield(unit)`, `gate_pass(unit)`, `criterion_met(unit, id)`, `run_cost`, `outcome_met`, `label_agreement(gate)`), `guards[]` (by default run cost +15 %, outcome met −1 case, any check pass rate −1 case, gate escapes +1), `pairs[]` (A value, B value, `win`, `loss` or `tie`, in-sample flag), `noise_floor` (the share of differing pairs in the last A/A run, or `unknown`), `decision` and `spend` (reported and estimated apart), log each session's spend like any run joined to no workflow run's cost line, and stop a case at its first pause as a tie.
 
-## 5. Design notes
+- GIVEN a case that reaches a pause WHEN trialled THEN it stops and counts as a tie
 
-- The proposer is reflective in the sense of [R-030 F3](../research/R-030-self-improving-agent-systems.rsrch.md): it reads the cluster's cause codes, per-criterion statuses and fixes, the local evidence of its member runs and the kept session-review observations and notes of those runs, datamarked as untrusted ([SRV §5](44-session-review.spec.md)), and proposes one small delta. A search over many candidates is not in the first release; a later one may keep several drafts per cluster and trial the best two.
-- The engine classifies from the parsed workflow, so a proposer cannot hide a weakening in a reformatted file.
-- C14 still holds: trials and the post-release comparison write no code; only the proposer writes, and only workflow data on its own branch.
-- Release 1 build (plans T12.5 and T12.6, `improve/proposals.py`, `improve/trials.py`, `cli/improve.py`). Proposal records are `improve/proposals/<id>.json` and trial records `improve/trials/<id>.json` under the state root (schemas `proposal` and `trial`). The classifier loads the workflow before and after the patch from a scratch copy, so a reformatted or reordered file is classified by meaning: no semantic change is refused `no_change`. Further refusals beyond §4: `outside_package` (a path leaves the package), `stale_base` (the patch does not apply, or the package changed since the proposal; `evals/` is outside that digest), `invalid` (the patched workflow fails validation), `judge_not_met` (the proposer's independent judge). The outcome file's criteria are class `outcome`. A check weakened only through its fixture data is not detected. The proposer is a fixed engine program rather than a packaged workflow: a step session in its own worktree on `improve/<id>`, the engine's class check, then an independent judge session; `open` pushes only that branch and asks the code host (the person's `gh` sign-in) for a draft pull request labelled `weakens-gate` when it weakens. The autonomy level is `improvement.autonomy` in the package's `tempergraph.json`, lowered per machine by `TEMPERGRAPH_AUTONOMY`, and shown by `improve backlog`; the loop starts the proposer or a trial on its own only in stable mode, inside its daily cap ([SIL §4](16-self-improvement.spec.md), plan T12.8, `improve/autonomy.py`): at `propose` it runs the proposer on the top-ranked workflow-side cluster this run's findings belong to and opens a draft pull request; at `trial` it trials that proposal under the lower of the trial cap and the day's room, and opens a draft pull request only on `shown_better` (PRP-B8). It makes one proposal per workflow per day, skips a cluster with a live proposal and a day with less than `autonomy.min_room_usd` ($5) left, and records `author: loop`, `loop_proposed`, `loop_trialled`, `loop_opened` and `loop_skipped`. At `record` the child files nothing. Outcome proposals (I-91) take the same path: an `outcome_unmet:<criterion>` finding is a workflow-side fault, so its cluster is proposed on like any other. In dev mode the loop proposes nothing on its own. Trial cases run one at a time (no `batch`), each arm an engine child run with `origin: trial`, `--dry-run`, an engine worktree and `run.worktree.base = ref:<case base>` ([WTR §2.5](82-worktree-mode.spec.md)); a case set entry's id may be written `case_id` or `id`. A grader proposal runs `trial_grader`: the judge alone on the gate's calibration cases, scored as `label_agreement(gate)`. PRP-B9 waits on the merge being seen, since `pr_state` is not derived in release 1 ([FBK](41-feedback-and-judge-reliability.spec.md)); `regressed_after_release` is not recorded yet. `proposal_state` and `trial_progress` are not emitted as events; the records are the source. Caps are `trial.cap_usd` ($200) and `trial.monthly_cap_usd` ($500), overridable per workflow with `improvement.trial_cap_usd` and `improvement.monthly_trial_cap_usd`.
-- Defaults (label value $5, guard margins, the monthly cap, 10 runs after release) have no data behind them and are recorded as parameters with that provenance ([IMD](43-improvement-data.spec.md)).
+### PRP-B19 Decision rule
 
-## 6. Acceptance criteria
+WHEN a trial decides THE engine SHALL count out-of-sample non-tied pairs only, deciding `shown_better` when wins reach the one-sided sign-test p ≤ 0.05 count ([R-031](../research/R-031-self-improvement-gap-analysis.rsrch.md) F3) and every guard holds, `regressed` when losses reach that count or any guard fails, and `not_shown` otherwise, with reason `too_few_pairs` under 8 such pairs, adding the warning `noisy_case_set` for a noise floor above 0.5 and reporting in-sample pairs without counting them.
 
-- [ ] PRP-AC-1 Every row of the PRP-B2 table is reproduced by the classifier on fixture patches, including a weakening hidden in a reordered file.
-- [ ] PRP-AC-2 No code path merges a pull request or pushes a default branch; a source test fails if one calls a merge.
-- [ ] PRP-AC-3 Every row of the PRP-B6 table is reproduced by the decision function.
-- [ ] PRP-AC-4 A trial on a judge-graded target with an unreliable judge spends nothing.
-- [ ] PRP-AC-5 In-sample pairs are reported and never counted in the decision.
-- [ ] PRP-AC-6 A trial's spend is logged per session like any run and joined to no workflow run's own cost line.
+- GIVEN a noise floor of 0.6 WHEN decided THEN the trial carries `noisy_case_set`
+
+### PRP-B6 Trial on paired cases
+
+WHEN a trial on 14 out-of-sample cases with target `first_pass_yield(plan)` ends THE engine SHALL decide by PRP-B19.
+
+- GIVEN 9 wins, 1 loss, 4 ties and guards holding WHEN decided THEN it is `shown_better`
+- GIVEN 7 wins, 3 losses, 4 ties and guards holding WHEN decided THEN it is `not_shown`
+- GIVEN 9 wins, 1 loss, 4 ties and cost +22 % WHEN decided THEN it is `regressed`
+- GIVEN 4 wins, 1 loss, 9 ties WHEN decided THEN it is `not_shown` with `too_few_pairs`
+
+### PRP-B5 Grader proposals are scored on labels
+
+WHEN a proposal of side `grader` is trialled THE engine SHALL run the judge alone on the gate's calibration cases and labelled past attempts ([LIF-B15](18-lifecycle-and-evals.spec.md)) with target `label_agreement(gate)`, running no step session.
+
+- GIVEN a sharper criterion text WHEN trialled THEN no step session runs
+
+### PRP-B20 Judge-graded targets need a reliable judge
+
+WHEN a trial's target is a judge grade (`gate_pass`, `criterion_met`, `outcome_met`) and that judge is not graded `reliable` by [FBK](41-feedback-and-judge-reliability.spec.md) THE engine SHALL refuse the trial before spend with exit 2.
+
+- GIVEN an unreliable judge on a `gate_pass` target WHEN a trial is asked THEN it exits 2 and spends nothing
+
+### PRP-B7 Cap stops a trial cleanly
+
+WHEN both arms' estimated spend reaches the trial cap (`trial.cap_usd`, $200, per workflow `improvement.trial_cap_usd`) THE engine SHALL start no further case, let running children finish, decide `aborted` and keep the pairs so far, and refuse a trial before spend with exit 2 once the monthly cap (`trial.monthly_cap_usd`, $500, per workflow `improvement.monthly_trial_cap_usd`) is reached, the backlog showing it.
+
+- GIVEN a $200 cap reached WHEN the next case is due THEN it does not start and the decision is `aborted`
+
+### PRP-B21 A/A runs
+
+WHEN `improve aa <workflow> [--cases <set>]` runs THE engine SHALL run the case set twice on the current version and record the noise floor in a trial record.
+
+- GIVEN 2 of 14 pairs differing in an A/A run WHEN recorded THEN the noise floor is 2/14
+
+### PRP-B8 Draft pull request, never a merge
+
+WHEN `improve open <proposal>` runs, or a trial ends `shown_better` at autonomy `trial` THE engine SHALL push only the proposal's branch and ask the code host (the person's `gh` sign-in) for a draft pull request with the trial report (pairs as counts, metrics, spend, noise floor, classes, the rule sentence) linked to the cluster's issues, labelled `weakens-gate` when it weakens, merge nothing, leave the issues open until a person merges, and keep the proposal `shown_better` so `open` can be rerun when the code host is unreachable.
+
+- GIVEN an unreachable code host WHEN `improve open` runs THEN the proposal stays `shown_better`
+
+### PRP-B22 Show a record
+
+WHEN `improve show <proposal|trial>` runs THE engine SHALL print the one record, read-only.
+
+- GIVEN a trial id WHEN shown THEN nothing is written
+
+### PRP-B23 The loop's own proposals
+
+WHEN the loop child runs in stable mode within its daily cap ([SIL](16-self-improvement.spec.md)) THE loop SHALL at `propose` run the proposer on the top-ranked workflow-side cluster this run's findings belong to (an `outcome_unmet:<criterion>` cluster included) and open a draft pull request, at `trial` trial that proposal under the lower of the trial cap and the day's room and open a pull request only on `shown_better`, make one proposal per workflow per day, skip a cluster with a live proposal and a day with less than `autonomy.min_room_usd` ($5) left, record `author: loop` with `loop_proposed`, `loop_trialled`, `loop_opened` or `loop_skipped`, and propose nothing in dev mode or at `record`.
+
+- GIVEN dev mode WHEN the loop runs THEN it proposes nothing
+
+### PRP-B9 Measured after release
+
+WHEN the first 10 final exits of a merged proposal's new version are recorded THE engine SHALL run the post-release comparison of [SIL-B5](16-self-improvement.spec.md) on the trial's target and guards, and on a guard worse than its margin reopen the issues and record `regressed_after_release` on the proposal.
+
+- GIVEN a merged proposal whose run cost rose 30 % over 10 exits WHEN compared THEN the issues reopen and `regressed_after_release` is recorded
+
+## Acceptance criteria
+
+- PRP-AC1 (PRP-B1, PRP-B2, PRP-B14): Every scenario of PRP-B1 and PRP-B2 is reproduced by the classifier on fixture patches, including a weakening hidden in a reordered file
+- PRP-AC2 (PRP-B8, PRP-B4): No code path merges a pull request or pushes a default branch; a source test fails if one calls a merge
+- PRP-AC3 (PRP-B6, PRP-B19): Every scenario of PRP-B6 is reproduced by the decision function
+- PRP-AC4 (PRP-B20, PRP-B17, PRP-B7): A trial on a judge-graded target with an unreliable judge, with no reviewed case, or past the monthly cap spends nothing
+- PRP-AC5 (PRP-B19, PRP-B17): In-sample pairs are reported and never counted in the decision
+- PRP-AC6 (PRP-B18): A trial's spend is logged per session like any run and joined to no workflow run's own cost line
+- PRP-AC7 (PRP-B3, PRP-B10, PRP-B11, PRP-B12, PRP-B13, PRP-B15, PRP-B16, PRP-B21, PRP-B22, PRP-B23, PRP-B5, PRP-B9): Fixtures cover each refusal, the autonomy levels, the backlog's ranking and twins, an A/A run, a grader trial, the loop's own proposals and the post-release watch
 
 ## Open questions
 
-| Question | Owner |
-|---|---|
-| Should `propose` become the default autonomy once the first workflow has a reviewed case set? Assumed no: `file` stays the default until the owner decides. | Owner |
-
-## References
-
-[SIL](16-self-improvement.spec.md) · [FBK](41-feedback-and-judge-reliability.spec.md) · [LSN](42-workflow-lessons.spec.md) · [IMD](43-improvement-data.spec.md) · [LIF](18-lifecycle-and-evals.spec.md) · [WSP](13-workspace-and-concurrency.spec.md) · [R-030](../research/R-030-self-improving-agent-systems.rsrch.md) · [R-031](../research/R-031-self-improvement-gap-analysis.rsrch.md)
+- Should `propose` become the default autonomy once the first workflow has a reviewed case set? Until answered: `file` stays the default. Owner: owner.
+- May a trial apply a case's recorded answer at a pause? Until answered: a case stops at the first pause and counts as a tie. Owner: owner.
+- PRP-B9 waits on the merge being seen, since `pr_state` is not derived in release 1 ([FBK](41-feedback-and-judge-reliability.spec.md)); `regressed_after_release` is not recorded yet. Owner: engine owner.

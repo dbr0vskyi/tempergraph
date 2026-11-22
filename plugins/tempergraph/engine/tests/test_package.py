@@ -1,4 +1,4 @@
-"""Workflow packages (PKG-AC-1 to AC-7, PKG-B2 to B7, B9): loading, rules, digests and the docs check."""
+"""Workflow packages (PKG-AC1 to AC-7, PKG-B2 to B7, B9): loading, rules, digests and the docs check."""
 
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ def pkg(tmp_path: Path) -> Path:
     return minimal_package(tmp_path / "p")
 
 
-# -- PKG-AC-1 the minimal package --------------------------------------------------------------------
+# -- PKG-AC1 the minimal package --------------------------------------------------------------------
 
 
 def test_minimal_package_loads_validates_compiles_and_runs(pkg: Path, repo: Path) -> None:
@@ -74,12 +74,12 @@ def test_minimal_package_loads_validates_compiles_and_runs(pkg: Path, repo: Path
     out = start(spec, "R-1", {"request": "v1.2"}, repo, registry(ex), NO_SLEEP)
     assert out.exit_code is ExitCode.FINISHED, out.message
     step = next(c for c in ex.calls if c.kind == "step")
-    assert step.request.plugin_dir == pkg.resolve()  # PKG §2.6: step sessions get the plugin
+    assert step.request.plugin_dir == pkg.resolve()  # PKG-B23, PKG-B24: step sessions get the plugin
     assert "Write release notes for v1.2" in step.request.prompt  # text("prompts/draft.md")
 
 
 def test_minimal_package_gates_take_criteria_from_outcome(tmp_path: Path) -> None:
-    """PKG §2.3 step 5, OUT-B1: the draft gate's criteria come from outcome.json."""
+    """PKG-B15, PKG-B16, PKG-B17 step 5, OUT-B1: the draft gate's criteria come from outcome.json."""
     lp = load_package(minimal_package(tmp_path))
     gate = lp.spec.units["draft"].gate
     assert [(c.id, c.mechanical) for c in gate.criteria] == [("rn-sections", True), ("rn-faithful", False)]
@@ -104,7 +104,7 @@ def test_minimal_package_passes_claude_plugin_validate(pkg: Path) -> None:
     assert got.returncode == 0, got.stdout + got.stderr
 
 
-# -- PKG-AC-2 every refusal has its own code ----------------------------------------------------------
+# -- PKG-AC2 every refusal has its own code ----------------------------------------------------------
 
 
 @pytest.mark.parametrize(("part", "code"), [
@@ -299,7 +299,7 @@ def test_level_behind_warns_with_breaking_entries(pkg: Path, tmp_path: Path, mon
     assert not [f for f in load_package(pkg, engine_api=3, loads_from=2).findings if f.code == "workflow_api_behind"]
 
 
-# -- PKG-AC-3 / PKG-B3 two packages with the same module names ----------------------------------------
+# -- PKG-AC3 / PKG-B3 two packages with the same module names ----------------------------------------
 
 
 def _other_checks(word: str) -> str:
@@ -339,7 +339,7 @@ def test_reload_after_new_version_drops_old_modules(tmp_path: Path) -> None:
     assert a.root != b.root
 
 
-# -- PKG-AC-4 / PKG-B2 builders -------------------------------------------------------------------------
+# -- PKG-AC4 / PKG-B2 builders -------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(("arg", "word"), [('version="0.3.0"', "version"), ('name="x"', "name"),
@@ -359,7 +359,7 @@ def test_name_and_version_come_from_manifests(tmp_path: Path) -> None:
     assert not isinstance(m, list) and m.name == "notes-x" and m.entry == "notes_x:workflow"
 
 
-# -- PKG-AC-5 judges never load the plugin ----------------------------------------------------------------
+# -- PKG-AC5 judges never load the plugin ----------------------------------------------------------------
 
 
 def test_judge_sessions_never_get_the_plugin(pkg: Path, repo: Path) -> None:
@@ -381,7 +381,7 @@ def test_judge_sessions_never_get_the_plugin(pkg: Path, repo: Path) -> None:
         assert "--plugin-dir" not in argv and ("--bare" in argv or "--setting-sources" in argv)
 
 
-# -- PKG-AC-6 / PKG-B9 the docs check ------------------------------------------------------------------------
+# -- PKG-AC6 / PKG-B9 the docs check ------------------------------------------------------------------------
 
 
 def drift(pkg: Path, mode: str = "dev") -> list[Finding]:
@@ -421,7 +421,7 @@ def test_docs_drift_is_a_validation_warning(pkg: Path) -> None:
     assert "docs-drift" in codes(found, "warning") and "docs-drift" not in codes(found, "error")
 
 
-# -- PKG-AC-7 the content digest ---------------------------------------------------------------------------------
+# -- PKG-AC7 the content digest ---------------------------------------------------------------------------------
 
 
 def _digest(pkg: Path) -> str:

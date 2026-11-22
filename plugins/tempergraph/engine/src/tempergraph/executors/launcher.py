@@ -1,9 +1,9 @@
-"""The session launcher: the one place a model session's process is started (EXI §2.3, SEC §2.2).
+"""The session launcher: the one place a model session's process is started (EXI-B2, EXI-B20, EXI-B21, EXI-B22, EXI-B23, EXI-B15, SEC-B7).
 
 It owns what the engine must not delegate to a CLI: list argv, the prompt on stdin written right after
 spawn (EXI-B2), the wall-clock timeout (EXI-B3), the idle watchdog (EXI-B4), the process tree's lifetime
-(EXI-B5), the stop contract (EXI-B15), the prompt-gap record (EXI-B13), the caller variables (PRV §4)
-and the raw stream files under the session folder (LOS §2.1). It also runs the executors' model-free
+(EXI-B5), the stop contract (EXI-B15), the prompt-gap record (EXI-B13), the caller variables (PRV-B5, PRV-B18, PRV-B17, PRV-B14, PRV-B13, PRV-B19, PRV-B15)
+and the raw stream files under the session folder (LOS-B7, LOS-B8, LOS-B9). It also runs the executors' model-free
 probes and the host-speed timing (EXI-B14), so every executor launch stays at this one site.
 """
 
@@ -136,7 +136,7 @@ PS_ARGV = ("ps", "-A", "-o", "pgid=,rss=,time=")  # constant argv: no field of t
 
 
 def process_listing() -> str:
-    """The read-only process listing behind a session's `resources` line (EVT §2.3); empty on failure."""
+    """The read-only process listing behind a session's `resources` line (EVT-B17, EVT-B18, EVT-B7, EVT-B19); empty on failure."""
     try:
         return subprocess.run(list(PS_ARGV), capture_output=True, text=True, timeout=5, check=False).stdout
     except (OSError, subprocess.SubprocessError):
@@ -151,7 +151,7 @@ def launch(spec: LaunchSpec, parse_line: Callable[[bytes], list[Event]], sink: E
     try:
         t0 = clock()
         try:
-            proc = subprocess.Popen(  # noqa: S603 - list argv from executor constants (SEC §2.1)
+            proc = subprocess.Popen(  # noqa: S603 - list argv from executor constants (SEC-B5, SEC-B6)
                 spec.argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=err, cwd=spec.workdir,
                 env=session_env(spec.env_overlay, spec.session_key), **_popen_kwargs())  # type: ignore[call-overload]
         except OSError as exc:
@@ -159,7 +159,7 @@ def launch(spec: LaunchSpec, parse_line: Callable[[bytes], list[Event]], sink: E
             return out
         assert proc.stdin is not None and proc.stdout is not None
         stdin, stdout = proc.stdin, proc.stdout
-        started = getattr(sink, "process_started", None)  # the group id, for `resources` lines (EVT §2.3)
+        started = getattr(sink, "process_started", None)  # the group id, for `resources` lines (EVT-B17, EVT-B18, EVT-B7, EVT-B19)
         if os.name == "posix" and callable(started):
             with contextlib.suppress(Exception):
                 started(proc.pid)

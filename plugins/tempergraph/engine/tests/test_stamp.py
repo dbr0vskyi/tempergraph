@@ -1,5 +1,5 @@
 """The changelog, compatibility, `upgrade --check --stamp` and the executor compatibility table
-(VER §2.3, §2.5, §2.7, VER-B2 to B5, AC-2, AC-6; WUP §2.1, §2.6; LIF-AC-4 data)."""
+(VER-B9, VER-B16, VER-B2, VER-B5, VER-B2 to B5, AC-2, AC-6; WUP-B10, WUP-B11, WUP-B12, WUP-B13, WUP-B19; LIF-AC4 data)."""
 
 from __future__ import annotations
 
@@ -47,18 +47,18 @@ def changelogs(folder: Path, files: dict[str, list[dict[str, Any]]]) -> Path:
     return folder
 
 
-# -- VER §2.3, AC-2, AC-6 -------------------------------------------------------------------------------------
+# -- VER-B9, AC-2, AC-6 -------------------------------------------------------------------------------------
 
 
 def test_shipped_changelog_exists_and_validates() -> None:
     files = dict((f"{v[0]}.{v[1]}.{v[2]}", p) for v, p in changelog.releases())
-    assert ENGINE_VERSION in files  # VER-AC-6: a release ships its changelog file
+    assert ENGINE_VERSION in files  # VER-AC6: a release ships its changelog file
     for p in files.values():
         for e in json.loads(p.read_text())["entries"]:
             assert changelog.entry_problems(e) == [], e["id"]
 
 
-def test_the_release_retires_the_model_list_with_its_transform() -> None:  # LAD-AC-6
+def test_the_release_retires_the_model_list_with_its_transform() -> None:  # LAD-AC6
     files = dict((f"{v[0]}.{v[1]}.{v[2]}", p) for v, p in changelog.releases())
     entries = json.loads(files[ENGINE_VERSION].read_text())["entries"]
     (retired,) = [e for e in entries if "model-ladder-retired" in e["proof"]]
@@ -145,7 +145,7 @@ def test_upgrade_check_then_stamp(tmp_path: Path, repo: Path) -> None:
     assert stamp["workflow_version"] == cat.packages["release-notes"].workflow_version  # stamp.json is not content
 
 
-def test_restamp_of_a_current_package_keeps_its_entries(tmp_path: Path, repo: Path) -> None:  # VER §2.5
+def test_restamp_of_a_current_package_keeps_its_entries(tmp_path: Path, repo: Path) -> None:  # VER-B16
     pkg = minimal_package(tmp_path)
     code, _, err = cli(repo, "upgrade-check", str(pkg), "--stamp")
     assert code == 0, err
@@ -189,7 +189,7 @@ def test_installed_copy_and_later_release_refusals(tmp_path: Path, repo: Path, m
     assert code == 2 and "unknown workflow" in err
 
 
-# -- LIF-AC-4 table data (preflight and `executors` read it through `executor_compat`) ---------------------------------
+# -- LIF-AC4 table data (preflight and `executors` read it through `executor_compat`) ---------------------------------
 
 
 def test_executor_compatibility_table() -> None:
@@ -202,7 +202,7 @@ def test_executor_compatibility_table() -> None:
 
 
 def test_preflight_warns_and_executors_shows_the_row(repo: Path) -> None:
-    """LIF-AC-4: read by preflight and shown by `executors`."""
+    """LIF-AC4: read by preflight and shown by `executors`."""
     from tempergraph.contracts import ProbeReport
     from tempergraph.executors.preflight import preflight
     from tempergraph.executors.registry import Registry

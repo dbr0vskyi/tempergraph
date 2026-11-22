@@ -1,4 +1,4 @@
-"""Versioned documents and tolerant readers (CON §2.10, contract C12).
+"""Versioned documents and tolerant readers (CON-B14, CON-B1, CON-B15, OVR-B14).
 
 Every reader ignores unknown keys and reads a missing key as "not recorded", never as zero. A document
 with a newer major schema is refused with :class:`NewerSchema`; the caller turns that into its own exit.

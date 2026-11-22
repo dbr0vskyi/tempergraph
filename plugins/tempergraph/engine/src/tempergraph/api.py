@@ -1,6 +1,6 @@
-"""The public declaration interface (PKG §2.4, ADR-0106): the only engine module a workflow imports.
+"""The public declaration interface (PKG-B19, PKG-B20, ADR-0106): the only engine module a workflow imports.
 
-Each builder produces one CON §2.1 type and takes the same field names as keyword arguments; an unknown
+Each builder produces one CON-B4, CON-B5, CON-B6, CON-B7 type and takes the same field names as keyword arguments; an unknown
 argument is a ``TypeError`` at build time. ``name`` and ``version`` come from the package manifests and
 are refused as arguments (PKG-B2). Kinds outside the running release build, and are refused at validation
 with ``not_in_release`` (ADR-0090).
@@ -13,7 +13,7 @@ import inspect
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
-from tempergraph import check_helpers as checks  # `tempergraph.api.checks` (SCF §2.4)
+from tempergraph import check_helpers as checks  # `tempergraph.api.checks` (SCF-B14 to SCF-B17)
 from tempergraph.contracts import (
     AskQuestion,
     AskSpec,
@@ -75,7 +75,7 @@ def _opt_ref(func: Callable[..., Any] | None) -> CallableRef | None:
 
 
 def text(path: str) -> TextRef:
-    """A template or brief file inside the package (PKG §2.4)."""
+    """A template or brief file inside the package (PKG-B19, PKG-B20)."""
     return TextRef(path=path)
 
 
@@ -111,7 +111,7 @@ def Judge(*, file: str | None = None, stance: str = "", brief: str = "",  # noqa
           tools: Iterable[str] | None = None, effort: str | None = None,
           session_options: SessionOptions | None = None, sizing: str = "",
           risk: RiskSpec | None = None) -> JudgeSpec:
-    """`sizing` is one sentence on why `model` and `effort` fit what this judge must read (SCF §2.1.1)."""
+    """`sizing` is one sentence on why `model` and `effort` fit what this judge must read (SCF-B10)."""
     refs = dict(references) if isinstance(references, Mapping) else {k: "required" for k in references}
     if effort is not None:
         if session_options is not None and session_options.effort is not None:
@@ -124,7 +124,7 @@ def Judge(*, file: str | None = None, stance: str = "", brief: str = "",  # noqa
 
 
 def Level(name: str, *, model: str | None = None, effort: str | None = None) -> RiskLevel:  # noqa: N802
-    """One level of a judge (JRK §2.1). The first level takes no model: it is the gate's own judge."""
+    """One level of a judge (JRK-B6). The first level takes no model: it is the gate's own judge."""
     return RiskLevel(name=name, model=model, effort=effort)
 
 
@@ -176,8 +176,8 @@ def Step(*, gate: GateSpec, prompt: str | TextRef = "default", executor: str | N
          subagent_model: str | None = None, route: Callable[..., Any] | None = None,
          route_targets: Iterable[str] = (), effort: str | None = None, effort_ladder: Iterable[str] = (),
          escalation: EscalationSpec | None = None, sizing: str = "") -> UnitSpec:
-    """`effort` is the fixed effort; `effort_ladder` and `escalation` are the evidence-gated ladder (LAD §2.1).
-    `sizing` is one sentence on why `model` and the effort fit the step's work (SCF §2.1.1)."""
+    """`effort` is the fixed effort; `effort_ladder` and `escalation` are the evidence-gated ladder (LAD-B9).
+    `sizing` is one sentence on why `model` and the effort fit the step's work (SCF-B10)."""
     m: str | tuple[str, ...] | None = model if model is None or isinstance(model, str) else tuple(model)
     if effort is not None:
         if session_options is not None and session_options.effort is not None:
@@ -192,12 +192,12 @@ def Step(*, gate: GateSpec, prompt: str | TextRef = "default", executor: str | N
 
 
 def Route(*, select: Callable[..., Any], targets: Iterable[str], gate: GateSpec | None = None) -> UnitSpec:  # noqa: N802
-    """A route unit: a pure function of state picks one static forward target or the finalizer (CMP §2.2)."""
+    """A route unit: a pure function of state picks one static forward target or the finalizer (CMP-B10 to CMP-B16)."""
     return UnitSpec(kind="route", gate=gate or GateSpec(), route=callable_ref(select), route_targets=tuple(targets))
 
 
 def Rearm(*, from_arm: str, to: str, units: Iterable[str], on: Iterable[str] = ("budget_spent",)) -> RearmSpec:  # noqa: N802
-    """SWM §2.4: move a run from arm `from_arm` to the entry of arm `to` when a listed unit ends on `on`."""
+    """SWM-B7: move a run from arm `from_arm` to the entry of arm `to` when a listed unit ends on `on`."""
     return RearmSpec(from_arm=from_arm, to=to, units=tuple(units), on=tuple(on))
 
 
@@ -205,8 +205,8 @@ def Switch(*, predicate: Callable[..., Any], arms: Mapping[str, str], default: s
            gate: GateSpec | None = None, mode: str = "route",
            arm_overrides: Mapping[str, Mapping[str, Mapping[str, Any]]] | None = None,
            rearm: Iterable[RearmSpec] = ()) -> UnitSpec:
-    """A switch: a pure predicate picks one arm, the default on a fault (CMP §2.2). `mode="shadow"` records
-    the pick and takes the default; `arm_overrides` and `rearm` are SWM §2.3 and §2.4."""
+    """A switch: a pure predicate picks one arm, the default on a fault (CMP-B10 to CMP-B16). `mode="shadow"` records
+    the pick and takes the default; `arm_overrides` and `rearm` are SWM-B6, SWM-B7."""
     sw = SwitchSpec(predicate=callable_ref(predicate), arms=dict(arms), default=default, sticky=sticky,  # type: ignore[arg-type]
                     mode=mode,  # type: ignore[arg-type]
                     arm_overrides={a: {u: dict(v) for u, v in units.items()}
@@ -215,7 +215,7 @@ def Switch(*, predicate: Callable[..., Any], arms: Mapping[str, str], default: s
     return UnitSpec(kind="switch", gate=gate or GateSpec(), switch=sw)
 
 
-class stock:  # noqa: N801 - a namespace of the stock measures (CXR §2.3)
+class stock:  # noqa: N801 - a namespace of the stock measures (CXR-B9)
     """Stock measures for `Measure(name, stock.<measure>(...))`."""
 
     @staticmethod
@@ -244,14 +244,14 @@ class stock:  # noqa: N801 - a namespace of the stock measures (CXR §2.3)
 
 
 def Measure(name: str, source: tuple[str, ...] | Callable[..., Any]) -> MeasureSpec:  # noqa: N802
-    """One measure of a complexity switch: a stock measure or a pure, model-free callable (CXR §2.1)."""
+    """One measure of a complexity switch: a stock measure or a pure, model-free callable (CXR-B7)."""
     if callable(source):
         return MeasureSpec(name=name, call=callable_ref(source))
     return MeasureSpec(name=name, stock=tuple(str(x) for x in source))
 
 
 def Escalation(*, to: str, stages: Mapping[str, str] | None = None, effort: str | None = None) -> EscalationSpec:  # noqa: N802
-    """One attempt on the tier above the step's alias, on a repeated trusted blocker only (LAD §2.4)."""
+    """One attempt on the tier above the step's alias, on a repeated trusted blocker only (LAD-B12)."""
     return EscalationSpec(to=to, stages=dict(stages or {}), effort=effort)
 
 
@@ -285,7 +285,7 @@ def Map(*, items_from: tuple[str, str] | Sequence[str], step: UnitSpec, extract:
         max_items: int = 20, on_empty: str = "stop", mode: str = "sequential", concurrency: int = 3,
         item_model: Callable[..., Any] | None = None, models: Iterable[str] = ()) -> UnitSpec:
     """A map: `step` (built with `Step`) runs once per item of the list at `items_from` (`(unit, key)`), each
-    item gated on its own by the step's gate (MAP §2.1). Release 2 builds the sequential mode."""
+    item gated on its own by the step's gate (MAP-B7). Release 2 builds the sequential mode."""
     if step.kind != "step" or step.step is None:
         raise TypeError("Map(step=...) takes a unit built with Step()")
     if step.route is not None:
@@ -306,7 +306,7 @@ def Question(name: str, text: str, *, kind: str = "text", choices: Iterable[str]
 def Ask(*, questions: Iterable[AskQuestion] = (), questions_from: str | None = None,  # noqa: N802
         context: Iterable[str] = (), check: Callable[..., Any] | None = None, deadline_s: int | None = None,
         on_deadline: str = "escalate", gate: GateSpec | None = None) -> UnitSpec:
-    """An ask unit: pauses for a person's typed answers and stores them as the `answers` artifact (ASK §2)."""
+    """An ask unit: pauses for a person's typed answers and stores them as the `answers` artifact (ASK-B5 to ASK-B9)."""
     return UnitSpec(kind="ask", gate=gate or GateSpec(), ask=AskSpec(
         questions=tuple(questions), questions_from=questions_from, context=tuple(context), check=_opt_ref(check),
         deadline_s=deadline_s, on_deadline=on_deadline))
@@ -321,7 +321,7 @@ def Wait(*, event: str, check: Callable[..., Any], deadline_s: int | None = None
 
 def Parallel(*, branches: Iterable[str], gate: GateSpec | None = None) -> UnitSpec:  # noqa: N802
     """A parallel block's join: `branches` names two or more read-only units that run at once; the unit runs
-    nothing itself and passes when every branch has passed (CMP §2.2)."""
+    nothing itself and passes when every branch has passed (CMP-B10 to CMP-B16)."""
     return UnitSpec(kind="parallel", gate=gate or GateSpec(), branches=tuple(branches))
 
 
@@ -333,7 +333,7 @@ _WORKFLOW_FIELDS = {f for f in WorkflowSpec.__dataclass_fields__} - {"name", "ve
 
 
 def Workflow(*, order: Iterable[str], units: Mapping[str, UnitSpec], **fields: Any) -> WorkflowSpec:  # noqa: N802
-    """Build a `WorkflowSpec`. `name` and `version` come from the manifests (PKG §2.2, PKG-B2)."""
+    """Build a `WorkflowSpec`. `name` and `version` come from the manifests (PKG-B13, PKG-B2)."""
     for banned in ("name", "version"):
         if banned in fields:
             raise TypeError(f"Workflow() got an unexpected keyword argument '{banned}' "

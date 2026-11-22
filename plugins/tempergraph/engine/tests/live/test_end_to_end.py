@@ -1,7 +1,7 @@
 """Live end to end (first-release plan T11.2, M1; SRV live): one capped run of a two-step workflow on the real
 `claude` executor, then the loop child inline, so the session digest and the session review read real logs.
 
-Skipped unless TEMPERGRAPH_LIVE=1. The run is capped at 2 USD and the review at its own SRV §2.7 cap.
+Skipped unless TEMPERGRAPH_LIVE=1. The run is capped at 2 USD and the review at its own SRV-B21 cap.
 """
 
 from __future__ import annotations

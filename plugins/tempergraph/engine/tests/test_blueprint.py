@@ -1,4 +1,4 @@
-"""Blueprint check, draw and compare, and the literal check (SCF §2.1 to §2.3; plan T8.6)."""
+"""Blueprint check, draw and compare, and the literal check (SCF-B9, SCF-B11, SCF-B13; plan T8.6)."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def codes(found: list[Any]) -> list[str]:
     return [f.code for f in found]
 
 
-# -- blueprint check (SCF §2.1, §4, SCF-AC-1) -------------------------------------------------------------------
+# -- blueprint check (SCF-B9, SCF-B11, SCF-B10, SCF-B14, SCF-B20, SCF-B21, SCF-AC1) -------------------------------------------------------------------
 
 
 def test_minimal_blueprint_checks_clean() -> None:
@@ -90,7 +90,7 @@ def test_reference_nobody_produces() -> None:
      "blueprint-invalid"),
     (lambda d: d.update(name="release-notes-tgraph"), "blueprint-invalid"),  # ADR-0120: suffix is the plugin's
     (lambda d: d["units"][0].update(summary="x" * 61), "summary-too-long"),
-    (lambda d: d["units"][0].pop("sizing"), "sizing-missing"),  # SCF §2.1.1: stated for every step
+    (lambda d: d["units"][0].pop("sizing"), "sizing-missing"),  # SCF-B10: stated for every step
     (lambda d: d["units"][0].pop("judge_sizing"), "sizing-missing"),  # and for every judge
     (lambda d: d["units"][0]["sizing"].update(model="inherit"), "sizing-invalid"),
     (lambda d: d["units"][0]["sizing"].update(model="huge"), "sizing-invalid"),
@@ -165,7 +165,7 @@ def test_draw_lists_unverified_or_none() -> None:
     assert "- rn-tone on outcome: taste (risk: low)" in text
 
 
-# -- compare (SCF §2.5 rung 2, SCF-AC-3) -------------------------------------------------------------------------
+# -- compare (SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22 rung 2, SCF-AC3) -------------------------------------------------------------------------
 
 
 def test_compare_clean_then_drift(tmp_path: Path) -> None:
@@ -214,7 +214,7 @@ def test_compare_reports_each_field(tmp_path: Path, edit: str, fld: str) -> None
     assert got & {"produces", "gate.check", "on_budget_spent"}
 
 
-# -- literals (SCF §2.3, SCF-B5) ---------------------------------------------------------------------------------
+# -- literals (SCF-B13, SCF-B5) ---------------------------------------------------------------------------------
 
 
 def test_literal_in_a_brief_then_recorded(tmp_path: Path) -> None:
@@ -270,7 +270,7 @@ def shapes() -> dict[str, Any]:
                  "merged": {"wait": {"event": "merged"}}}}
 
 
-def test_release_two_shapes_check_clean() -> None:  # SCF §2.1: parallel, map, ask and wait
+def test_release_two_shapes_check_clean() -> None:  # SCF-B9, SCF-B11: parallel, map, ask and wait
     bp = bpm.parse(shapes())
     assert isinstance(bp, bpm.Blueprint)
     assert bpm.check(bp, CAPS) == []  # `b` of the second branch is produced on every path into `plan`

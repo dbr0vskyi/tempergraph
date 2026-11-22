@@ -1,11 +1,11 @@
-"""Lifecycle hooks (CLI §2.2, EVT §2.6): an operator's command run on a run event.
+"""Lifecycle hooks (HOK-B1 to HOK-B6, EVT-B22, EVT-B23, EVT-B24): an operator's command run on a run event.
 
 The registry is `<state root>/config/hooks.json`, written only by `hooks add` and `hooks remove`. When the
 run log writes a record that maps to an event with a registered hook, the writer leaves a facts file (ids,
 enums and numbers only, never run text) in the thread's `hooks/` folder and a hand-off ticket under the home,
-then starts `python -m tempergraph.observe.hooks drain` through the detached child launcher (SEC §2.2). The
+then starts `python -m tempergraph.observe.hooks drain` through the detached child launcher (SEC-B7). The
 child re-validates the ticket, takes the argv from the registry, never from the ticket, and runs it with the
-facts file's path in its environment. A hook's failure is recorded and never changes the run (contract C2).
+facts file's path in its environment. A hook's failure is recorded and never changes the run (OVR-B4).
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ LATER_EVENTS = ("stalled", "orchestration_attention", "orchestration_finished", 
 FILE = "hooks.json"
 MAX_HOOKS, MAX_WORDS, MAX_WORD = 20, 32, 500
 TIMEOUT_S = 60.0
-# the record fields a facts file may carry, all ids, enums or numbers (SEC §2.1)
+# the record fields a facts file may carry, all ids, enums or numbers (SEC-B5, SEC-B6)
 FACT_FIELDS = ("seq", "ts", "segment", "unit", "item", "attempt", "token", "verdict", "route_target", "pause_kind",
                "exit_code", "reason", "degraded", "mode", "origin", "visit")
 _SLUG_CHARS = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-")
@@ -166,13 +166,13 @@ def run_hook(root: Path, hook: Mapping[str, Any], facts_file: Path, out_path: Pa
         return {"hook": hook["id"], "event": hook["event"], "exit_code": got.exit_code, "timed_out": got.timed_out,
                 "duration_s": round(got.duration_s, 3), "error": got.extra.get("error"),
                 "ok": got.exit_code == 0 and not got.timed_out, "log": out_path.name}
-    except Exception as exc:  # noqa: BLE001 - a hook never changes anything (C2)
+    except Exception as exc:  # noqa: BLE001 - a hook never changes anything (OVR-B4)
         return {"hook": hook["id"], "event": hook["event"], "exit_code": None, "timed_out": False,
                 "duration_s": 0.0, "error": type(exc).__name__, "ok": False, "log": out_path.name}
 
 
 def process(t: Mapping[str, Any]) -> dict[str, Any]:
-    """One ticket, every value checked again: the argv is the registry's, the paths are derived (SEC §2.1)."""
+    """One ticket, every value checked again: the argv is the registry's, the paths are derived (SEC-B5, SEC-B6)."""
     root = Path(str(t.get("root") or ""))
     event, seq = t.get("event"), t.get("seq")
     if not (root.is_absolute() and config_path(root).is_file() and event in RUN_EVENTS and isinstance(seq, int)

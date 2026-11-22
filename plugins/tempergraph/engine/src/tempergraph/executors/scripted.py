@@ -1,5 +1,5 @@
 """A registry holding one scripted stand-in, for the engine's own model-free runs (the generated stand-in run
-of a scaffolded package, SCF §2.4). Engine code outside this package reaches the stand-ins only here."""
+of a scaffolded package, SCF-B14, SCF-B15, SCF-B16, SCF-B17). Engine code outside this package reaches the stand-ins only here."""
 
 from __future__ import annotations
 

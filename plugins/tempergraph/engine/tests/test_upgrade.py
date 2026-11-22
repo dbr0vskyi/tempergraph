@@ -1,5 +1,5 @@
 """`upgrade` beyond `--check`: transforms on a branch, verification, the finish and the record
-(WUP §2.2 to §2.7, WUP-B2, B7, B8, B9, WUP-AC-2, AC-3, AC-5, AC-6; milestone N4 on a retired model list)."""
+(WUP-B14, WUP-B7, WUP-B20, WUP-B21, WUP-B2, B7, B8, B9, WUP-AC2, AC-3, AC-5, AC-6; milestone N4 on a retired model list)."""
 
 from __future__ import annotations
 
@@ -119,7 +119,7 @@ def test_the_owner_chooses_what_no_rule_can(repo: Path, tmp_path: Path) -> None:
     owner = next(i for i in again.items if i.action == "owner")
     assert (owner.state, owner.by) == ("answered", "person")
     assert again.shares["done"] == 3 and again.shares["person"] == 1 and again.shares["transform"] == 2
-    assert sum(again.shares[k] for k in ("transform", "model", "person")) == again.shares["done"]  # WUP-AC-6
+    assert sum(again.shares[k] for k in ("transform", "model", "person")) == again.shares["done"]  # WUP-AC6
 
 
 def weaken(rep: up.Report) -> None:
@@ -142,7 +142,7 @@ def failing(pkg: Path, folder: Path, rep: up.Report, check: str) -> up.Report:
     return again
 
 
-def test_v1_fails_alone(repo: Path, tmp_path: Path) -> None:  # WUP-AC-3
+def test_v1_fails_alone(repo: Path, tmp_path: Path) -> None:  # WUP-AC3
     pkg, folder, rep = clean_upgrade(repo, tmp_path)
     decl = branch_pkg(rep) / "workflow" / "release_notes" / "__init__.py"
     decl.write_text(decl.read_text() + "\nraise RuntimeError('broken')\n")
@@ -218,7 +218,7 @@ def test_refusals_write_nothing(repo: Path, tmp_path: Path, monkeypatch: pytest.
 
 
 def test_a_transform_never_leaves_the_package(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    pkg, folder = source(repo, tmp_path, entries={"0.1.0": [TOOL]})  # WUP-AC-5
+    pkg, folder = source(repo, tmp_path, entries={"0.1.0": [TOOL]})  # WUP-AC5
 
     def stray(root: Path, migrate: Any) -> transforms.Result:
         (root.parent / "README.md").write_text("rewritten by a transform\n")
@@ -231,7 +231,7 @@ def test_a_transform_never_leaves_the_package(repo: Path, tmp_path: Path, monkey
     assert first.state == "failed" and "outside the package" in first.reason
     assert (Path(rep.worktree) / "README.md").read_text() == "scratch\n" and not (Path(rep.worktree) / "stray.txt").exists()
     rest = rep.items[1]
-    assert (rest.item_id, rest.action, rest.state) == ("E0.1.0-1/rest", "manual", "pending")  # WUP §2.4, --no-assist
+    assert (rest.item_id, rest.action, rest.state) == ("E0.1.0-1/rest", "manual", "pending")  # WUP-B17, --no-assist
     assert rep.exit_code == 4 and rep.commits == [] and rep.warnings == []
     monkeypatch.undo()
     prompt = branch_pkg(rep) / "prompts" / "draft.md"
@@ -240,7 +240,7 @@ def test_a_transform_never_leaves_the_package(repo: Path, tmp_path: Path, monkey
     assert again.exit_code == 0 and (again.items[1].state, again.items[1].by) == ("done", "person")
 
 
-def test_assisted_items_go_to_the_assist_step(repo: Path, tmp_path: Path) -> None:  # WUP §2.5, AC-6
+def test_assisted_items_go_to_the_assist_step(repo: Path, tmp_path: Path) -> None:  # WUP-B18, AC-6
     pkg, folder = source(repo, tmp_path, model='["small", "medium", "large"]', prompt="As of TODAY.\n",
                          entries={"0.2.0": [MODEL_LIST, BRIEF]})
     seen: list[up.Assist] = []
@@ -268,7 +268,7 @@ def test_assisted_items_go_to_the_assist_step(repo: Path, tmp_path: Path) -> Non
     assert again.proposed["level"] == "minor" and again.assist["cost_usd"] == 0.9
 
 
-def test_a_draft_pull_request_carries_the_report(repo: Path, tmp_path: Path) -> None:  # WUP §2.7
+def test_a_draft_pull_request_carries_the_report(repo: Path, tmp_path: Path) -> None:  # WUP-B20, WUP-B21
     pkg, folder = source(repo, tmp_path)
     remote = tmp_path / "remote.git"
     git(tmp_path, "init", "-q", "--bare", str(remote))
@@ -290,7 +290,7 @@ def test_the_verb(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     code = main(["upgrade", str(pkg), "--format", "text"], registry=default_registry(), cwd=repo, out=out, err=err,
                 signals=({}, True))
     assert code == 0, err.getvalue()
-    text = out.getvalue()  # WUP §4: an error the workflow had before is not counted against V2; the report leads with it
+    text = out.getvalue()  # WUP-B11, WUP-B17, WUP-B15, WUP-B18, WUP-B21: an error the workflow had before is not counted against V2; the report leads with it
     assert text.splitlines()[1].startswith("  before the upgrade: model-ladder-retired")
     assert "V2 validation: passed" in text and "upgrade release-notes: engine unstamped" in text
     # the shipped changelog retires the model list (a breaking entry), so the proposal is a minor version

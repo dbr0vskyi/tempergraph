@@ -1,105 +1,134 @@
----
-title: Workspace and concurrency
-type: component
-status: ready-for-implementation
-prefix: WSP
-adrs: [0014, 0100]
----
-
 # Workspace and concurrency
 
-## 1. Overview
+## Purpose
 
-Where a run's files live, how runs and writing units stay apart, and how many runs one machine drives. State lives outside the workspace; the workspace is disposable, the branch is not. The worktree itself (the `run.workspace` parameter, roots, bases, names, lifecycle, cleanup, executor pointing and the `worktree` verb) is [WTR](82-worktree-mode.spec.md). This spec owns contracts C10 (paths resolve inside the workspace; the state root is the main checkout) and C11 (one graph per process).
+Where a run's files live, how runs and writing units stay apart, and how many runs one machine drives. State lives outside the workspace: the workspace is disposable, the branch is not. Paths resolve inside the workspace, the state root is the main checkout, and there is one graph per process, so N runs are N processes sharing one checkpoint database per workflow ([ADR-0014](../adr/0014-sqlite-checkpointer.adr.md)). The worktree itself (the `run.workspace` parameter, roots, bases, names, lifecycle, cleanup, executor pointing and the `worktree` verb) is [WTR](82-worktree-mode.spec.md). Operators, workflow authors and every component that stores files depend on these rules.
 
-## 2. Contract
+## Behaviours
 
-| Concept | Definition |
-|---|---|
-| State root | `<main checkout>/.tempergraph/`, found from git's common directory, whatever directory the engine starts in; outside git, §2.4. Holds checkpoints, run logs, locks, the ledger, batch folders, every session's logs, the engine's code log and executor scratch (session homes, private MCP configs), in the layout of [LOS §2.1](33-local-observability-store.spec.md). Gitignored. |
-| Workspace | The main checkout (`in_place`) or an engine-owned git worktree on its own branch, chosen by `run.workspace` (`auto` by default), fixed for the run and stored in state as a `WorkspaceRecord` ([WTR §2.2, §2.4, §2.8](82-worktree-mode.spec.md)). |
-| Writer worktree | A sibling worktree for a writer branch or writing map item, cut from the run's branch after a checkpoint commit, named by the suffix rule of [WTR §2.4](82-worktree-mode.spec.md). |
-| Run lock | Per-thread OS file lock under the state root. |
+### WSP-B8 The state root
 
-```python
-def state_root(start_dir: Path) -> Path: ...
-def prepare_workspace(thread: str, plan: WorkspacePlan, decl: WorktreeDecl) -> WorkspaceRecord: ...   # WTR §2
-def merge_writers(run_branch: str, writers: list[str]) -> MergeResult: ...   # --no-ff, declared order
-```
+WHEN the engine starts inside a git repository THE engine SHALL use `<main checkout>/.tempergraph/`, found from git's common directory whatever directory it starts in, as the gitignored state root holding checkpoints, run logs, locks, the ledger, batch folders, every session's logs, the engine's code log and executor scratch in the layout of [LOS-B7, LOS-B8, LOS-B9](33-local-observability-store.spec.md), and ignore `--state-root` and `TEMPERGRAPH_STATE_ROOT`.
 
-### 2.1 Shapes
+- GIVEN the engine started in a nested worktree WHEN it resolves the state root THEN it is the main checkout's `.tempergraph/`
+- GIVEN `TEMPERGRAPH_STATE_ROOT=/tmp/s` inside a repository WHEN a run starts THEN the main checkout's `.tempergraph/` is used
 
-| Shape | Where it works | Kept apart or joined by |
-|---|---|---|
-| Parallel branch (default) | Run worktree, read-only | Head and status fingerprint before and after; a branch that changed it fails |
-| Writer branch, writing map item | Own worktree | Merged without fast-forward at the join; a conflict resets the run branch and ends the step blocked with the conflicting paths, no model call |
-| Sequential map | Run worktree, one item at a time | Nothing to merge; item k sees what earlier items left |
-| Batch child | Own process and worktree | No join; one report from the children's logs |
+### WSP-B9 Workspace and run lock
 
-### 2.2 Batch files
+WHEN a run starts THE engine SHALL fix its workspace for the run, the main checkout (`in_place`) or an engine-owned git worktree on its own branch chosen by `run.workspace` (`auto` by default) and stored in state ([WTR-B18, WTR-B20, WTR-B24](82-worktree-mode.spec.md)), and hold a per-thread OS file lock under the state root while it runs.
 
-A batch is started from a **batch file**: JSON with `schema_version`, the workflow, K, and one entry per target (request, optional alias and label). The parent writes an append-only **batch event file** beside it, one JSON line per child event (`started`, `paused`, `finished`, `failed`, `throttled`), so a crashed parent can be re-run with the same file and skips targets whose thread already exists, and a monitor can follow the batch without reading checkpoints. A batch is a one-node map orchestration: its file and event file are the orchestration file and event log of [ORC](45-orchestration.spec.md) ([ADR-0038](../adr/0038-batch-is-a-one-node-orchestration.adr.md)).
+- GIVEN `run.workspace auto` and a workflow that writes files WHEN the run starts THEN it runs in its own worktree on its own branch
 
-### 2.3 Import roots
+### WSP-B1 Resume after worktree deletion
 
-A workflow may declare `import_roots`: paths, relative to the workspace, that a check or a declared Python command puts first on its module path. In a worktree they resolve inside that worktree, so a test run there imports the branch's code and not the main checkout's or the engine's.
+WHEN a paused run whose worktree was deleted resumes THE engine SHALL re-attach a worktree to the run's branch and continue, the state never having been in the worktree.
 
-### 2.4 Outside a git repository (release 2)
+- GIVEN a paused run whose worktree folder was removed WHEN it resumes THEN a worktree on the same branch exists and the next unit runs
 
-A folder that is not inside a git repository may hold runs ([R-131](../research/R-131-running-outside-a-git-repository.rsrch.md), [ADR-0127](../adr/0127-outside-git-the-state-root-is-found-by-walk-up-and-the-guard-hashes-files.adr.md)). Inside a repository the rules above always apply.
+### WSP-B2 Bootstrap of a worktree
 
-| Rule | Outside git |
-|---|---|
-| State root | `--state-root` or `TEMPERGRAPH_STATE_ROOT`, else the nearest folder from the start dir upward holding `.tempergraph/manifest.json`, else `<start dir>/.tempergraph/`; never the home folder itself |
-| Workspace | `in_place` only: `auto` resolves to it, `worktree` is refused with exit 2. A workflow that declares `workspace: none` runs in `<state root>/work/<workflow>/<task_id>/`, kept for the thread's life |
-| Guard fingerprint | A manifest of `(path, size, mtime_ns)` of every file under the workspace except the state root, with a SHA-256 of each file whose size or time changed; more than 20,000 files and a read-only branch or judge to guard is a refusal at start |
-| `GitFacts` | `None` in the check context ([CHK §2.1](75-check-contract-and-command-runs.spec.md)); `changed_paths` comes from the manifest |
-| Refused at validation, with finding `needs_git` | Writer branches, worktree trials (PRP), finalizer push or draft pull request, `--carry` ([CAR](96-run-state-on-a-branch.spec.md)), git-based risk or complexity measures ([JRK](93-judge-model-by-risk.spec.md), [CXR](94-complexity-routing.spec.md)) |
+WHEN a worktree is created for a workflow whose `worktree.include` names untracked local files and setup commands ([WTR-B19](82-worktree-mode.spec.md)) THE engine SHALL copy those files and run the commands with list argv, and remove the new worktree and branch when the bootstrap fails.
 
-## 3. Behaviours
+- GIVEN `include: [".env.test"]` WHEN the worktree is made THEN `.env.test` is in it
+- GIVEN a setup command that exits 1 WHEN the worktree is made THEN the worktree and its branch are gone
 
-**WSP-B1 Resume after worktree deletion.** Given a paused run whose worktree was deleted, when it resumes, then the engine re-attaches a worktree to the run's branch and continues; the state was never in the worktree.
+### WSP-B3 Interpreter in a worktree
 
-**WSP-B2 Bootstrap of a worktree.** Given a workflow `worktree.include` list ([WTR §2.3](82-worktree-mode.spec.md)) naming untracked local files and setup commands, when a worktree is created, then those files are copied and the commands run with list argv; a failed bootstrap removes the new worktree and branch.
+WHEN a declared command that starts with `python` runs in a worktree THE engine SHALL resolve `python` to the workspace's virtual environment, else the main checkout's, else the engine's, never from PATH.
 
-**WSP-B3 Interpreter in a worktree.** Given a step whose declared command starts with `python`, when it runs in a worktree, then `python` resolves to the workspace's virtual environment, else the main checkout's, else the engine's, never PATH.
+- GIVEN a worktree with `.venv` WHEN `python -m pytest` runs THEN the worktree's `.venv` interpreter runs it
 
-**WSP-B4 Batch.** Given a batch of 10 targets with K = 3, when it runs, then at most 3 child processes run at once (K ≤ 16, at most 50 runs), each in its own worktree; every paused child is listed with its exact resume command; the batch parent runs no graph.
+### WSP-B10 Import roots
 
-**WSP-B5 Executor scratch stays in the state root.** Given a judge on any executor that needs a private config (an MCP config, an Antigravity session home, a worker request document), when it is created, then it lives under the state root's scratch folder with owner-only permissions and is removed after the session, never in the operating system's temp folder, which a sandboxed child may not read.
+WHEN a workflow declares `import_roots` THE engine SHALL put those paths, relative to the workspace, first on the module path of a check or a declared Python command, so a test run in a worktree imports the branch's code and not the main checkout's or the engine's.
 
-**WSP-B6 Writes in place.** Given a workflow that writes files, when it is started with `run.workspace in_place`, then it runs in the checkout and the start carries the warning `in_place_writes` ([WTR §2.2](82-worktree-mode.spec.md)); writer branches, which need their own worktrees, are release 3.
+- GIVEN `import_roots: [src]` in a worktree WHEN a check imports the package THEN it imports the worktree's `src`
 
-**WSP-B7 Batch re-run skips done targets.** Given a batch file of 10 targets whose parent crashed after 6 children started, when the same file is run again, then the 6 existing threads are not started afresh (each is listed with its state and resume command) and the 4 others start.
+### WSP-B11 Shapes of parallel work
 
-## 4. Error conditions
+WHEN units work in parallel THE engine SHALL run a parallel branch read-only in the run worktree, failing one whose head or status fingerprint changed; a writer branch or writing map item in its own sibling worktree cut from the run's branch after a checkpoint commit ([WTR-B20](82-worktree-mode.spec.md)) and merged without fast-forward in declared order at the join; a sequential map one item at a time in the run worktree, item k seeing what earlier items left; and a batch child in its own process and worktree with no join.
 
-| Condition | Result |
-|---|---|
-| Two planned batch runs whose names collide after flattening | Batch refused (exit 2) |
-| Merge conflict at a join | Run branch reset; step blocked; person decides |
-| Not inside a git repository, workflow needs worktrees | Exit 2; `auto` resolves to `in_place` when the workflow has no writers ([WTR §2.2](82-worktree-mode.spec.md)); the other rules of §2.4 |
+- GIVEN a parallel branch that edits a file WHEN it ends THEN it fails
+- GIVEN a sequential map of three items WHEN item 2 runs THEN it sees item 1's files
 
-## 5. Design notes
+### WSP-B12 A merge conflict at a join
 
-- One graph per process: branches of a fork are threads of one graph, so run-log and console writes hold locks; N runs are N processes sharing one checkpoint database per workflow ([ADR-0014](../adr/0014-sqlite-checkpointer.adr.md)).
-- The default concurrency of three is a guess for every executor: no gateway's or API organization's concurrent-session or rate limit was measured. It is marked projected. On `messages-api` and `agent-sdk` a 429 with `retry-after` is `throttled` (infra), and a batch whose children report `throttled` twice lowers its concurrency by one for the rest of the batch, recorded.
-- A merge is textual; two branches that merge cleanly but contradict each other are caught only by the join's judge or a check.
-- Cleanup is never automatic unless a run sets `run.worktree.cleanup: on_finish`, which removes only clean worktrees; `worktree list` and `worktree prune` cover the rest; branches are never deleted ([WTR §2.7](82-worktree-mode.spec.md)).
-- **As built (R2-T7).** Parallel branches run on LangGraph's own threads in one workspace and may not write it; the run log's writer takes a lock, and a state write asked for while several nodes are pending is deferred to the segment's end.
-- **As built (R2-T8).** `store/layout.py` resolves the state root and `store/manifest.py` holds the manifest. A declared root is the state root folder itself, taken from `--state-root <dir>` (a global option, before the verb) or `TEMPERGRAPH_STATE_ROOT`; inside a repository both are ignored. The walk upward skips the home folder, and a start whose root would be the home folder is refused `not_git` with the way out. The fingerprint outside git is one line, the file count and a SHA-256 over every file's path, size and `mtime_ns`; the state root, declared or not, is left out. The thread's first manifest is kept as `runs/<workflow>/<thread>/manifest.json`, and a check's `changed_paths` is every path added, removed or with another size or time since then; a single file's SHA-256 (`manifest.file_hash`) is there for reports and is not part of the fingerprint. The start is refused `workspace_too_large` above 20,000 files when the workflow has a judge. `needs_git` refuses, before anything is created: `--carry`, a stock risk rule on changed paths or lines, the `changed_paths` measure, and the verbs `carry` and `improve trial`; `upgrade` refuses outside a repository by its own rule. Not built: `workspace: none`, which the contract does not have yet; and a finalizer's push cannot be refused ahead, since a finalizer declares nothing, so outside git it receives `git = None`. `unit_entered` carries `head_commit: ""` and `dirty: null` outside git.
+WHEN merging writer branches at a join conflicts THE engine SHALL reset the run branch and end the step blocked with the conflicting paths, with no model call, for a person to decide.
 
-## 6. Acceptance criteria
+- GIVEN two writer branches that change the same line WHEN the join merges them THEN the run branch is as before the merge and the step is blocked listing that path
 
-- [ ] WSP-AC-1 The state root resolves to the main checkout from any worktree (test with nested worktrees).
-- [ ] WSP-AC-2 A test session fails if any test leaves state in the real state root.
-- [ ] WSP-AC-3 Each shape of §2.1 is tested with real git worktrees and scripted executors.
-- [ ] WSP-AC-4 No executor scratch file outlives its session on any exit path.
-- [x] WSP-AC-5 Outside git: the state root rule, the `in_place` rule, the manifest fingerprint catching a write by a read-only session, and every `needs_git` refusal of §2.4 hold on fixtures in a plain folder.
+### WSP-B4 Batch
 
-## Open questions
+WHEN a batch runs THE engine SHALL run at most K child processes at once (K at most 16, at most 50 runs), each in its own worktree, list every paused child with its exact resume command, and run no graph in the batch parent; a batch is a one-node map orchestration ([ORC](45-orchestration.spec.md), [ADR-0038](../adr/0038-batch-is-a-one-node-orchestration.adr.md)).
 
-None.
+- GIVEN 10 targets and K = 3 WHEN the batch runs THEN no more than 3 children run at any moment
+- GIVEN two planned batch runs whose names collide after flattening WHEN the batch starts THEN it is refused with exit 2
 
-## References
+### WSP-B13 Batch files
 
+WHEN a batch is started THE engine SHALL read a batch file (JSON with `schema_version`, the workflow, K and one entry per target with its request and optional alias and label) and write beside it an append-only batch event file with one JSON line per child event (`started`, `paused`, `finished`, `failed`, `throttled`).
+
+- GIVEN a running batch WHEN a child pauses THEN a `paused` line is appended to the event file
+
+### WSP-B7 Batch re-run skips done targets
+
+WHEN a batch file is run again THE engine SHALL not start afresh a target whose thread exists, listing it with its state and resume command, and start the others.
+
+- GIVEN a batch of 10 whose parent crashed after 6 children started WHEN the same file is run again THEN the 6 are listed and only the 4 others start
+
+### WSP-B14 Throttled batches slow down
+
+WHEN a batch's children report `throttled` twice THE engine SHALL lower the batch's concurrency by one for the rest of the batch and record it.
+
+- GIVEN K = 3 and two `throttled` children WHEN the next child would start THEN at most 2 run at once and the change is recorded
+
+### WSP-B5 Executor scratch stays in the state root
+
+WHEN a session needs a private config (an MCP config, an Antigravity session home, a worker request document) THE engine SHALL create it under the state root's scratch folder with owner-only permissions and remove it after the session, never in the operating system's temp folder, which a sandboxed child may not read.
+
+- GIVEN a judge with a private MCP config WHEN it ends on any exit path THEN the config file is gone
+
+### WSP-B6 Writes in place
+
+WHEN a workflow that writes files is started with `run.workspace in_place` THE engine SHALL run it in the checkout with the warning `in_place_writes` on the start ([WTR-B18](82-worktree-mode.spec.md)).
+
+- GIVEN a writing workflow and `--in-place` WHEN it starts THEN the start carries `in_place_writes`
+
+### WSP-B15 The state root outside git
+
+WHEN the engine starts in a folder outside any git repository THE engine SHALL take the state root from `--state-root` (a global option before the verb) or `TEMPERGRAPH_STATE_ROOT`, else the nearest folder upward holding `.tempergraph/manifest.json`, skipping the home folder, else `<start dir>/.tempergraph/`, and refuse `not_git` a start whose root would be the home folder itself ([R-131](../research/R-131-running-outside-a-git-repository.rsrch.md), [ADR-0127](../adr/0127-outside-git-the-state-root-is-found-by-walk-up-and-the-guard-hashes-files.adr.md)).
+
+- GIVEN `~/notes/a/b` and a manifest in `~/notes/.tempergraph/` WHEN the engine starts in `b` THEN the state root is `~/notes/.tempergraph/`
+- GIVEN a start in the home folder with no declared root WHEN it runs THEN it is refused `not_git`
+
+### WSP-B16 Workspace outside git
+
+WHEN a run starts outside git THE engine SHALL run it `in_place` (`auto` resolves to it and `worktree` is refused with exit 2), and run a workflow that declares `workspace: none` in `<state root>/work/<workflow>/<task_id>/`, kept for the thread's life.
+
+- GIVEN `--worktree` outside git WHEN the run starts THEN it exits 2
+
+### WSP-B17 The guard fingerprint outside git
+
+WHEN a run outside git needs a workspace fingerprint THE engine SHALL take the file count and a SHA-256 over every file's path, size and `mtime_ns`, leaving out the state root, keep the thread's first manifest as `runs/<workflow>/<thread>/manifest.json`, give a check `changed_paths` as every path added, removed or with another size or time since then and `git` as none ([CHK-B10](75-check-contract-and-command-runs.spec.md)), write `head_commit: ""` and `dirty: null` on `unit_entered`, and refuse the start `workspace_too_large` above 20,000 files when the workflow has a judge.
+
+- GIVEN a read-only judge that writes a file outside git WHEN the guard compares fingerprints THEN the write is caught
+- GIVEN 25,000 files and a workflow with a judge WHEN the run starts THEN it is refused `workspace_too_large`
+
+### WSP-B18 What needs git
+
+WHEN a workflow or a verb needs git outside a repository THE engine SHALL refuse it with finding `needs_git` before anything is created: writer branches, worktree trials (`improve trial`, PRP), a finalizer's push or draft pull request, `--carry` and the verb `carry` ([CAR](96-run-state-on-a-branch.spec.md)), and a stock risk or complexity rule on changed paths or lines ([JRK](93-judge-model-by-risk.spec.md), [CXR](94-complexity-routing.spec.md)).
+
+- GIVEN `run --carry` outside git WHEN it starts THEN it is refused `needs_git` and no thread exists
+- GIVEN a workflow with a writer branch outside git WHEN it is validated THEN it fails with `needs_git`
+
+## Acceptance criteria
+
+- WSP-AC1 (WSP-B8): The state root resolves to the main checkout from any worktree, by a test with nested worktrees
+- WSP-AC2 (WSP-B8): A test session fails if any test leaves state in the real state root
+- WSP-AC3 (WSP-B11, WSP-B12): Each shape of WSP-B11 is tested with real git worktrees and scripted executors
+- WSP-AC4 (WSP-B5): No executor scratch file outlives its session on any exit path
+- WSP-AC5 (WSP-B15, WSP-B16, WSP-B17, WSP-B18): Outside git, the state root rule, the `in_place` rule, the fingerprint catching a write by a read-only session, and every `needs_git` refusal hold on fixtures in a plain folder
+- WSP-AC6 (WSP-B1, WSP-B9): A paused run whose worktree was deleted resumes on its branch
+- WSP-AC7 (WSP-B2, WSP-B3, WSP-B10): A worktree bootstrap copies the listed files, a failed one leaves no worktree or branch, and `python` and imports resolve inside the worktree
+- WSP-AC8 (WSP-B4, WSP-B13, WSP-B7, WSP-B14): A batch never runs more than K children, writes its event lines, skips existing threads on a re-run, and lowers K after two throttled children
+- WSP-AC9 (WSP-B6): An in-place start of a writing workflow carries `in_place_writes`

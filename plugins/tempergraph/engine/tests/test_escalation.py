@@ -1,4 +1,4 @@
-"""One-step model escalation: E1 to E9, stages, the offer and `resume --escalate` (LAD-AC-3, AC-5, LAD-B4 to B7)."""
+"""One-step model escalation: E1 to E9, stages, the offer and `resume --escalate` (LAD-AC3, AC-5, LAD-B4 to B7)."""
 
 from __future__ import annotations
 
@@ -87,10 +87,10 @@ def test_escalation_on_a_repeated_blocker(repo: Path) -> None:  # LAD-B4
     # a failed escalated attempt ends the escalation: the gate's own policy at once
     assert out.exit_code is ExitCode.PAUSED and out.payload["kind"] == "budget"
     assert out.payload["reason"] == "escalation"
-    assert [c.request.alias for c in ex.calls if c.kind == "judge"] == ["large"] * 4  # LAD-AC-4: judges stay fixed
+    assert [c.request.alias for c in ex.calls if c.kind == "judge"] == ["large"] * 4  # LAD-AC4: judges stay fixed
 
 
-def test_an_escalated_attempt_that_passes_ends_the_visit(repo: Path) -> None:  # LAD §2.4
+def test_an_escalated_attempt_that_passes_ends_the_visit(repo: Path) -> None:  # LAD-B12
     out, ex = go(repo, wf(), [C2, C2, C2, MET])
     assert out.exit_code is ExitCode.FINISHED, out.message
     assert ran(ex)[-1] == ("large", "xhigh")
@@ -124,7 +124,7 @@ def lone(repo: Path, spec: WorkflowSpec, **kw: Any) -> tuple[list[str], Any]:
                                                        "escalation": Escalation(to="large", stages={"local-dev": "auto"})}},
      "E4"),  # a provisional judge moves the effort ladder in local-dev, never the model
 ])
-def test_each_condition_alone_blocks_the_escalation(repo: Path, change: dict[str, Any], why: str) -> None:  # LAD-AC-3
+def test_each_condition_alone_blocks_the_escalation(repo: Path, change: dict[str, Any], why: str) -> None:  # LAD-AC3
     spec = wf(**change.pop("spec", {}))
     aliases, held_by = lone(repo, spec, **change)
     assert aliases == ["medium"] * 4 and held_by == why
@@ -138,7 +138,7 @@ def test_a_cost_cap_that_cannot_cover_the_attempt_blocks_the_escalation(repo: Pa
     assert [a for a, _ in ran(ex)] == ["medium"] * 4 and held(repo)[-1] == "E6"
 
 
-def test_an_unmeasured_estimate_blocks_the_escalation(repo: Path) -> None:  # LAD §4 row 3
+def test_an_unmeasured_estimate_blocks_the_escalation(repo: Path) -> None:  # LAD-B14 row 3
     ex = standin("claude", steps=[dataclasses.replace(OK, usage=dataclasses.replace(OK.usage, input_tokens=None,
                                                                                   output_tokens=None))] * 4,
                  judges=[judge(C2), judge(C2), judge(C2), judge(MET)])
@@ -202,7 +202,7 @@ def test_an_offer_pauses_and_a_person_takes_it(repo: Path, mode: str, stages: di
     assert (last["source"], last["taken_by"]) == ("escalation:+1", "person")
 
 
-def test_a_resume_without_escalate_retries_on_the_base_tier(repo: Path) -> None:  # LAD §2.4
+def test_a_resume_without_escalate_retries_on_the_base_tier(repo: Path) -> None:  # LAD-B12
     spec = wf(mode="dev")
     out, ex = go(repo, spec, [C2, C2, C2])
     assert out.payload["reason"] == "escalation_offer"
@@ -224,7 +224,7 @@ def codes(spec: WorkflowSpec) -> set[str]:
     return {f.code for f in validate(spec, DECLARED) if f.severity == "error"}
 
 
-def test_validation() -> None:  # LAD §2.1, §2.6
+def test_validation() -> None:  # LAD-B9, LAD-B14
     assert codes(wf()) == set()
     assert codes(wf(model="small", escalation=Escalation(to="medium"))) == set()
     for bad in ({"model": "small"}, {"model": "large"}, {"model": "claude:opus"}, {"model": "inherit"},
@@ -241,7 +241,7 @@ def test_validation() -> None:  # LAD §2.1, §2.6
     ([], False), ([True] * 4, False), ([True] * 5, True), ([True] * 5 + [False] * 5, False),
     ([True] * 9 + [False], True),
 ])
-def test_the_escalation_record(tmp_path: Path, rows: list[bool], want: bool) -> None:  # LAD §2.5, §2.7
+def test_the_escalation_record(tmp_path: Path, rows: list[bool], want: bool) -> None:  # LAD-B13, LAD-B16, LAD-B17
     for passed in rows:
         ladder.record_escalation(tmp_path, workflow="demo", version="0.1.0", unit="work", thread="demo/x",
                                  passed=passed, judge_state="accepted", to="large")
@@ -250,11 +250,11 @@ def test_the_escalation_record(tmp_path: Path, rows: list[bool], want: bool) -> 
     ladder.record_escalation(tmp_path, workflow="demo", version="0.2.0", unit="work", thread="demo/x", passed=True,
                              judge_state="accepted", to="large")  # another version
     assert ladder.record_met(tmp_path, "demo", "0.1.0", "work") is want
-    (tmp_path / "ledger.jsonl").write_text("{not json\n")  # LAD §4: an unreadable record is not met
+    (tmp_path / "ledger.jsonl").write_text("{not json\n")  # LAD-B14: an unreadable record is not met
     assert ladder.record_met(tmp_path, "demo", "0.1.0", "work") is False
 
 
-def test_the_report_shows_climbed_attempts_apart(repo: Path) -> None:  # LAD-AC-5
+def test_the_report_shows_climbed_attempts_apart(repo: Path) -> None:  # LAD-AC5
     go(repo, wf(), [C2, C2, C2, MET])
     go(repo, wf(escalation=None, effort_ladder=(), effort="high"), [MET], task="E-2")
     doc = rep.report(state_root_path(repo), None)

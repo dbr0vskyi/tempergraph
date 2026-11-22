@@ -1,4 +1,4 @@
-"""The intake inventory (AUT §2.3, §2.8; AUT-AC-2, AUT-B1)."""
+"""The intake inventory (AUT-B14, AUT-B15, AUT-B12, AUT-B19, AUT-B24, AUT-B25; AUT-AC2, AUT-B1)."""
 
 from __future__ import annotations
 
@@ -49,7 +49,7 @@ def test_every_row_is_detected_and_no_text_is_recorded(tmp_path: Path) -> None:
     assert {"pytest", "ruff", "mypy", "eslint", "markdownlint", "npm run test", "make test"} <= commands
     record = json.dumps({"sources": [s.to_json() for s in sources],
                          "candidates": [c.to_json() for s in sources for c in s.candidates]})
-    for text in REPO.values():  # AUT-AC-2: no source line of any length worth a name is in the record
+    for text in REPO.values():  # AUT-AC2: no source line of any length worth a name is in the record
         for line in text.splitlines():
             line = line.strip(" -#*[]0123456789.")
             if len(line) > 12:

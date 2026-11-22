@@ -1,258 +1,188 @@
----
-title: Worktree mode
-type: component
-status: ready-for-implementation
-prefix: WTR
-adrs: [0100, 0101, 0102, 0103, 0104, 0070]
----
-
 # Worktree mode
 
-## 1. Overview
-
-A run works either **in place**, in the person's checkout, or in its own **git worktree** on its own branch, which the engine creates, records, re-attaches and, only when asked, removes, using git directly on every executor. One setting chooses it, `run.workspace`, with the values `auto`, `worktree` and `in_place`, spelled `--workspace`, `--worktree` and `--in-place`; a few `run.worktree.*` keys say where the worktree lives, which commit it starts from, how its branch is named and whether it is removed after a finished run. All are keys of the settings catalog ([RST §2.2](80-run-settings-and-overrides.spec.md)), so a flag, a profile, a project or user file and the workflow set them in the usual order, and the thread snapshots them.
-
-This spec owns the person-facing parameter, the worktree's lifecycle, its names, how each executor is pointed at it, and how an executor's own worktree feature is kept from creating a second tree. [WSP](13-workspace-and-concurrency.spec.md) keeps the state root, the shapes of parallel work, batches and import roots. Findings and sources: [R-100](../research/R-100-native-worktrees-and-executor-worktree-features.rsrch.md).
-
-The engine owns the run's worktree; an executor's native worktree is never used for a run ([ADR-0100](../adr/0100-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md)). Worktrees are optional: a workflow that only reads files or writes outside the repository (a wiki page, a tracker issue) runs in place under `auto` ([ADR-0101](../adr/0101-one-workspace-setting-with-an-auto-default.adr.md)).
+## Purpose
 
-## 2. Contract
-
-```python
-def resolve_workspace(spec: WorkflowSpec, settings: ResolvedSettings, target: Path) -> WorkspacePlan: ...   # pure, model-free
-def prepare_workspace(thread: str, plan: WorkspacePlan, decl: WorktreeDecl) -> WorkspaceRecord: ...
-def attach_workspace(record: WorkspaceRecord) -> WorkspaceRecord: ...      # on resume
-def release_workspace(record: WorkspaceRecord, cleanup: str) -> WorkspaceRecord: ...   # after the finalizer
-def scan_foreign_worktrees(record: WorkspaceRecord, before: list[str]) -> list[ForeignWorktree]: ...
-```
+A run works either in place, in the person's checkout, or in its own git worktree on its own branch, which the engine creates, records, re-attaches and, only when asked, removes, using git directly on every executor. One setting chooses it, `run.workspace`, with a few `run.worktree.*` keys for where the worktree lives, which commit it starts from, how its branch is named and whether it is removed after a finished run; all are keys of the settings catalog ([RST-B20](80-run-settings-and-overrides.spec.md), [RST-B21](80-run-settings-and-overrides.spec.md)), so a flag, a profile, a project or user file and the workflow set them in the usual order and the thread snapshots them. This spec owns the person-facing parameter, the worktree's lifecycle, its names, how each executor is pointed at it, and how an executor's own worktree feature is kept from creating a second tree; [WSP](13-workspace-and-concurrency.spec.md) keeps the state root, the shapes of parallel work, batches and import roots ([R-100](../research/R-100-native-worktrees-and-executor-worktree-features.rsrch.md)). The engine owns the run's worktree and never uses an executor's native one ([ADR-0100](../adr/0100-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md)); worktrees are optional, and a workflow that only reads files or writes outside the repository runs in place under `auto` ([ADR-0101](../adr/0101-one-workspace-setting-with-an-auto-default.adr.md)); worktrees sit beside the repository with derived names ([ADR-0102](../adr/0102-worktrees-beside-the-repository-with-derived-ref-safe-names.adr.md)), start from the main checkout's `HEAD` ([ADR-0104](../adr/0104-a-new-worktree-starts-from-the-main-checkouts-head.adr.md)) and are removed only on request, clean, keeping the branch ([ADR-0103](../adr/0103-worktree-removal-is-opt-in-clean-only-and-keeps-the-branch.adr.md)). Operators, every executor and the finalizer depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-### 2.1 Settings
+## Behaviours
 
-| Key | Value | Engine default | Meaning |
-|---|---|---|---|
-| `run.workspace` | `auto` \| `worktree` \| `in_place` | the workflow's `workspace`, else `auto` | §2.2 |
-| `run.worktree.root` | `sibling` \| `in_repo` \| `path:<absolute path>` | `sibling` | Where run worktrees are created (§2.4) |
-| `run.worktree.base` | `head` \| `default_branch` \| `ref:<ref name>` | the workflow's `worktree.base`, else `head` | The commit a new run worktree starts from (§2.5) |
-| `run.worktree.branch_prefix` | 1–3 ref-safe components joined by `/` | `tg` | First part of every engine branch (§2.4) |
-| `run.worktree.cleanup` | `never` \| `on_finish` | the workflow's `worktree.cleanup`, else `never` | Whether a finished run's clean worktree is removed (§2.7) |
-| `run.worktree.read_worktreeinclude` | bool | `true` | Also copy what the repository's `.worktreeinclude` names (§2.3) |
-
-| Flag on `run`, `rerun`, `batch`, `run --check` | Key |
-|---|---|
-| `--workspace auto\|worktree\|in_place` | `run.workspace` |
-| `--worktree` / `--in-place` | `run.workspace=worktree` / `run.workspace=in_place` |
-| `--worktree-root <sibling\|in_repo\|path:…>` | `run.worktree.root` |
-| `--worktree-base <head\|default_branch\|ref:…>` | `run.worktree.base` |
-| `--worktree-cleanup <never\|on_finish>` | `run.worktree.cleanup` |
+### WTR-B17 Settings and flags
 
-Every key is fixed at the start: `resume` refuses `--set` of `run.workspace`, `run.worktree.root`, `run.worktree.base` and `run.worktree.branch_prefix` with exit 2 (`fixed_at_start`), because the record already names a path and a branch. `run.worktree.cleanup` may change at resume. A rerun resolves its own values (§2.6).
-
-### 2.2 Resolving `auto`
-
-| Target | Workflow | Resolves to | `resolved_by` |
-|---|---|---|---|
-| Not a git checkout | any | `in_place` | `not_git` |
-| git checkout | has a writer branch, a writing map item or a writing contest ([WSP §2.1](13-workspace-and-concurrency.spec.md)) | `worktree` | `writers` |
-| git checkout | a step, script or hybrid script declares `edit`, `write` or `shell`, or a script has `side_effects: workspace`, the default ([SCR](70-script-units-and-hybrid-steps.spec.md)) | `worktree` | `writes_files` |
-| git checkout | none of the above | `in_place` | `read_only` |
+WHEN a run's workspace is set THE engine SHALL read `run.workspace` (`auto`, `worktree` or `in_place`, default the workflow's `workspace` else `auto`), `run.worktree.root` (`sibling`, `in_repo` or `path:<absolute path>`, default `sibling`), `run.worktree.base` (`head`, `default_branch` or `ref:<ref name>`, default the workflow's `worktree.base` else `head`), `run.worktree.branch_prefix` (1 to 3 ref-safe components joined by `/`, default `tg`), `run.worktree.cleanup` (`never` or `on_finish`, default the workflow's `worktree.cleanup` else `never`) and `run.worktree.read_worktreeinclude` (default `true`); take on `run`, `rerun`, `batch` and `run --check` the flags `--workspace auto|worktree|in_place`, `--worktree` and `--in-place`, `--worktree-root`, `--worktree-base` and `--worktree-cleanup`; fix every key at the start, refusing at `resume` a `--set` of `run.workspace`, `run.worktree.root`, `run.worktree.base` or `run.worktree.branch_prefix` with exit 2 `fixed_at_start` because the record already names a path and branch, `run.worktree.cleanup` alone changeable at resume; and let a rerun resolve its own values.
 
-An explicit `worktree` on a target that is not a git checkout, or with a bare repository, is refused with exit 2 before spend. An explicit `in_place` on a workflow with writers is refused with exit 2 ([WSP-B6](13-workspace-and-concurrency.spec.md)). An explicit `in_place` on a workflow that writes files is allowed, with one warning, and the executors keep their in-place permission modes ([ECC §2.3](11-executor-claude-code.spec.md), [EAS §2.4](21-executor-agent-sdk.spec.md)).
+- GIVEN a paused worktree run WHEN `resume --set run.worktree.cleanup=on_finish` is given THEN it is accepted and recorded
 
-### 2.3 Workflow declaration
+### WTR-B15 Fixed at start
 
-`WorkflowSpec` gains one optional field ([CON §2.1](01-contracts.spec.md)):
+WHEN a resume sets a key fixed at start THE engine SHALL refuse it.
 
-| `WorktreeDecl` field | Kind | Meaning |
-|---|---|---|
-| `include` | list of gitignore-style patterns, ≤ 50 | Untracked or ignored local files copied from the main checkout into a new worktree (environment files, local settings) |
-| `setup` | list of argv lists, ≤ 10 | Commands run in the new worktree, in order, with the command runner of [CHK §2.3](75-check-contract-and-command-runs.spec.md), each covered by the workflow's allow-list |
-| `submodules` | `auto` \| `skip` | `auto`: when `.gitmodules` exists, `git submodule update --init --recursive` runs before `setup` |
-| `setup_timeout_s` | int 10–3600, default 600 | Limit for the whole bootstrap |
-| `base` | as `run.worktree.base`, optional | The workflow's default base, on the `workflow:default` layer ([RST §2.3](80-run-settings-and-overrides.spec.md)) |
-| `cleanup` | as `run.worktree.cleanup`, optional | The workflow's default cleanup, on the same layer |
+- GIVEN a paused worktree run WHEN `resume --set run.worktree.base=default_branch` is given THEN it exits 2 `fixed_at_start`
 
-The workflow's `workspace` field and these two fields are defaults: a flag, a profile or a settings file overrides them in the order of RST §2.3. A workflow sets no root or branch prefix, which belong to the machine and the repository.
+### WTR-B18 Resolving auto
 
-With `run.worktree.read_worktreeinclude`, the patterns of the main checkout's `.worktreeinclude` file (the Claude Code convention, [R-100](../research/R-100-native-worktrees-and-executor-worktree-features.rsrch.md) F3.2) are added to `include`. From either source only files that git reports as untracked or ignored are copied, never a tracked file, never a path outside the main checkout, never a link, and never anything under the state root or `.git`.
+WHEN `run.workspace` is `auto` THE function `resolve_workspace(spec, settings, target) -> WorkspacePlan`, pure and model-free, SHALL resolve it to `in_place` with `resolved_by: not_git` when the target is not a git checkout; to `worktree` with `writers` when the workflow has a writer branch, a writing map item or a writing contest ([WSP-B11](13-workspace-and-concurrency.spec.md)); to `worktree` with `writes_files` when a step, script or hybrid script declares `edit`, `write` or `shell` or a script has `side_effects: workspace`, the default ([SCR](70-script-units-and-hybrid-steps.spec.md)); and otherwise to `in_place` with `read_only`; and SHALL refuse with exit 2 before spend an explicit `worktree` on a target that is not a git checkout or is bare, and an explicit `in_place` on a workflow with writers ([WSP-B6](13-workspace-and-concurrency.spec.md)), allowing an explicit `in_place` on a workflow that writes files with one warning, the executors keeping their in-place permission modes ([ECC](11-executor-claude-code.spec.md), [EAS-B8](21-executor-agent-sdk.spec.md)).
 
-### 2.4 Locations and names
+- GIVEN a fixture workflow and target for each case WHEN resolved THEN no git write and no model call happen
 
-| Item | Rule |
-|---|---|
-| Flat name | `<workflow>--<task_id>`, where each part has every character outside `[A-Za-z0-9._-]` and every `..` replaced by `-`, runs of `-` collapsed to one, a leading `.` or `-` and a trailing `.` dropped, and a trailing `.lock` written `-lock`; at most 80 characters in all; a longer name is cut to 71 and gets `-` plus the first 8 hex digits of the SHA-256 of the full thread id. Two threads whose flat names collide are refused (the batch rule of [WSP §4](13-workspace-and-concurrency.spec.md), now for every start) |
-| `sibling` root | `<parent of main checkout>/<main checkout's folder name>.worktrees/` |
-| `in_repo` root | `<main checkout>/.claude/worktrees/`, Claude Code's location; the engine prefixes the folder `tg-` and adds the root to `.git/info/exclude` when git does not already ignore it, never to a tracked file |
-| `path:` root | An absolute path that is not inside the main checkout's tracked tree, the state root or `.git`; created with owner-only permissions if missing |
-| Run worktree | `<root>/<flat name>` |
-| Run branch | `<branch_prefix>/<workflow>/<task part>`, where the task part is the flat form of `task_id` (so `/` becomes `-`); checked with `git check-ref-format --branch` before use |
-| Writer, slot, item | Worktree `<run worktree>--w-<branch>`, `--s-<slot>`, `--i-<item>`; branch `<run branch>--w-<branch>` and so on. A suffix, never a child path: a ref cannot also be a folder of refs ([R-100](../research/R-100-native-worktrees-and-executor-worktree-features.rsrch.md) F1.6) |
-| Rerun | Thread `<workflow>/<task_id>~r<n>` keeps its spelling; its flat name and branch carry `-r<n>`, since `~` is not allowed in a ref ([RRN §2.4](81-reruns-and-feedback.spec.md)) |
+### WTR-B1 Auto on a coding workflow
 
-Names are derived, never typed: no option sets a path or branch name directly, so no text reaches git's argv unchecked ([SEC](14-security.spec.md)). Every git call puts `--end-of-options` before a ref or path.
+WHEN a workflow whose steps write files runs in a git checkout with no workspace option THE engine SHALL run it in a worktree and leave the person's checkout untouched.
 
-### 2.5 Base
+- GIVEN a `code` step declaring `edit` and `shell` WHEN `run` starts THEN the record reads `mode: worktree`, `resolved_by: writes_files`, the path is `<parent>/<repo>.worktrees/<workflow>--<task_id>` and the branch `tg/<workflow>/<task_id>`
 
-| `run.worktree.base` | The new run worktree starts at | `base_branch` (the pull request base, [FIN §2.1](78-finalizer-contract.spec.md) `base`) |
-|---|---|---|
-| `head` | The main checkout's `HEAD` commit at the start | The branch the main checkout is on; the remote's default branch when `HEAD` is detached |
-| `default_branch` | `origin`'s default branch after `git fetch origin <that branch>` (30 s limit); if the fetch fails, the local copy, with a warning and `base_fetch: failed` | That branch |
-| `ref:<name>` | The commit `<name>` resolves to (a local branch, a remote-tracking branch, a tag or a commit id), checked with `git rev-parse --verify` | `<name>` without a remote prefix, when it names a branch; else the default branch |
+### WTR-B2 Auto on a document workflow
 
-A main checkout with uncommitted changes under `head` gives one warning with the count of changed paths: they are not in the worktree. An orchestration that starts a node's run from an earlier node's branch sets `ref:<that branch>` in the node's options ([ORC](45-orchestration.spec.md)); an eval or trial case sets `ref:<case base>` ([EVS](51-eval-suites.spec.md)).
+WHEN a workflow whose steps only read and write outside the repository runs THE engine SHALL run it in place.
 
-### 2.6 Lifecycle
+- GIVEN steps declaring only `read`, `search` and an MCP tool that writes a wiki page WHEN run in a git checkout THEN it runs in place with `resolved_by: read_only`
+- GIVEN the same WHEN run in a folder that is not a git checkout THEN it runs in place with `resolved_by: not_git`
 
-| Moment | Engine does | Records |
-|---|---|---|
-| `run --check` | Resolves §2.2 to §2.5, checks the root is writable, the branch does not exist, the base resolves, setup commands are allowed; creates nothing (C13) | Prints the plan |
-| Start | After the preflight and the thread lock, under a short repository lock: `git worktree add -b <branch> <path> <base commit>`, then `git worktree lock --reason "tempergraph <thread>"`, then bootstrap (§2.3). A failed bootstrap removes the new worktree and branch ([WSP-B2](13-workspace-and-concurrency.spec.md)) and exits 2 | `WorkspaceRecord` in state (§2.8); `workspace` run-log record, action `prepared` |
-| Each unit | Works in the record's path; `unit_entered` carries `head_commit` and `dirty` ([EVT §2.2](30-run-events.spec.md)) | |
-| Pause, stop, failure, crash | Nothing: the worktree, its lock and its branch stay; the pause payload names the worktree path so a person can open it | |
-| Resume | Re-reads the record. Path present on the branch: reused. Path gone: `git worktree prune`, then `git worktree add <path> <branch>` and a new lock, then bootstrap again ([WSP-B1](13-workspace-and-concurrency.spec.md)). Commits or uncommitted changes made by a person since the segment ended are kept and recorded | `workspace` action `reused`, `attached` or `external_change` (commit count, changed-path count) |
-| Rewind | Nothing: files are untouched ([RRN §2.3](81-reruns-and-feedback.spec.md)) | |
-| Rerun | A new thread resolves its own settings from the source's snapshot and its own flags; on a worktree workflow it gets a new worktree and branch per [RRN §2.4](81-reruns-and-feedback.spec.md), named by §2.4 | `prepared` on the new thread |
-| Finish | The finalizer runs with `workdir` = the run worktree, so a push of the run branch happens from it ([FIN](78-finalizer-contract.spec.md)); then `release_workspace` unlocks the worktree and applies `run.worktree.cleanup` (§2.7) | `workspace` action `released`, then `removed` or `kept` with the reason |
+### WTR-B3 Explicit worktree without git
 
-### 2.7 Cleanup
+WHEN `run --worktree` is given on a folder that is not a git checkout THE engine SHALL refuse the start with exit 2 before spend, naming the folder and the setting's source.
 
-| Setting or verb | Removes | Never removes |
-|---|---|---|
-| `cleanup: never` (default) | Nothing | — |
-| `cleanup: on_finish` | After a finished run's finalizer returns (any outcome but `error`), each of the run's worktrees (run, writer, slot, item) that is clean (`git status --porcelain` empty), has no submodules and is not locked by anyone else, by `git worktree remove` without `--force` | A dirty worktree, one with submodules, a branch, anything of a run that did not finish |
-| `worktree prune` | What the list marks `removable`, with `--apply`; without it, only lists | Ditto, plus any worktree of a thread that is `running` |
+- GIVEN a plain folder WHEN `run --worktree` is given THEN it exits 2 naming the folder and the source
 
-Engine branches are never deleted by the engine ([ADR-0103](../adr/0103-worktree-removal-is-opt-in-clean-only-and-keeps-the-branch.adr.md)): unpushed commits stay reachable, and `git branch -d` is the person's act.
+### WTR-B19 Workflow declaration
 
-### 2.8 Records
+WHEN a workflow declares `worktree` (`WorktreeDecl`, an optional `WorkflowSpec` field, [CON-B4](01-contracts.spec.md)) THE engine SHALL read `include` (at most 50 gitignore-style patterns of untracked or ignored local files copied from the main checkout, such as environment files), `setup` (at most 10 argv lists run in order in the new worktree with the command runner of [CHK-B12](75-check-contract-and-command-runs.spec.md), each covered by the allow-list), `submodules` (`auto` runs `git submodule update --init --recursive` before `setup` when `.gitmodules` exists; `skip`), `setup_timeout_s` (10 to 3600, default 600, for the whole bootstrap), and `base` and `cleanup` as defaults on the `workflow:default` layer ([RST-B22](80-run-settings-and-overrides.spec.md)), a workflow setting no root or branch prefix; add with `read_worktreeinclude` the patterns of the main checkout's `.worktreeinclude`; and copy from either source only files git reports untracked or ignored, never a tracked file, a path outside the main checkout, a link, or anything under the state root or `.git`.
 
-| `WorkspaceRecord` field | Meaning |
-|---|---|
-| `mode` | `in_place` \| `worktree` |
-| `requested`, `resolved_by` | The setting's value and layer, and the §2.2 row for `auto` |
-| `path` | Absolute path of the run's workspace |
-| `root_kind` | `sibling` \| `in_repo` \| `path` |
-| `branch`, `base_ref`, `base_commit`, `base_branch` | §2.4, §2.5 |
-| `children` | Writer, slot and item worktrees: `{name, path, branch, state}` |
-| `state` | `active` \| `released` \| `removed` |
-| `bootstrap` | Included file count, setup command results (exit code, duration), submodule step |
+- GIVEN an `include` pattern matching a tracked file WHEN bootstrapped THEN that file is not copied
 
-`facts`, the status document and the run detail document show `mode`, `path`, `branch` and `state` ([RDD](31-run-detail-document.spec.md)); a stats or ledger row carries `mode` and `resolved_by` only, never a path ([CON §2.10](01-contracts.spec.md)).
+### WTR-B20 Locations and names
 
-### 2.9 Executors
+WHEN a worktree is placed THE engine SHALL derive the flat name `<workflow>--<task_id>`, each part's characters outside `[A-Za-z0-9._-]` and every `..` replaced by `-`, runs of `-` collapsed, a leading `.` or `-` and a trailing `.` dropped and a trailing `.lock` written `-lock`, at most 80 characters (a longer name cut to 71 plus `-` and the first 8 hex digits of the SHA-256 of the thread id), refusing two threads whose flat names collide (`name_collision`, [WSP-B16](13-workspace-and-concurrency.spec.md)); put it under the `sibling` root `<parent of main checkout>/<main checkout's folder name>.worktrees/`, the `in_repo` root `<main checkout>/.claude/worktrees/` (folder prefixed `tg-`, the root added to `.git/info/exclude` when git does not already ignore it, never to a tracked file) or a `path:` root (absolute, not inside the main checkout's tracked tree, the state root or `.git`, created owner-only if missing), refusing an unwritable or misplaced root with exit 2 before spend; name the run branch `<branch_prefix>/<workflow>/<task part>`, the task part the flat form of `task_id`, checked with `git check-ref-format --branch`; name writer, slot and item worktrees and branches with the suffixes `--w-<branch>`, `--s-<slot>` and `--i-<item>`, never a child path, since a ref cannot also be a folder of refs; give a rerun's flat name and branch `-r<n>` ([RRN-B18](81-reruns-and-feedback.spec.md)); and derive every name, no option setting a path or branch directly, with `--end-of-options` before every ref or path given to git ([SEC](14-security.spec.md)).
 
-The workspace path is `SessionRequest.workdir` ([CON §2.6](01-contracts.spec.md)) for every step, judge, check, script and finalizer of the run; a writer's step and judge get the writer's path.
+- GIVEN an 81-character task id WHEN named THEN the branch passes `git check-ref-format --branch` and no writer branch has the run branch as a path prefix
 
-| Executor | Pointed at the worktree by | Its own worktree feature |
-|---|---|---|
-| `claude` | Child process working directory; `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1`; `--permission-mode acceptEdits` only when `workdir` is the path of an engine `WorkspaceRecord` ([ECC §2.3](11-executor-claude-code.spec.md)) | `--worktree` / `-w` is never on argv (argv is constants, C3). Step launches add `EnterWorktree` and `ExitWorktree` to `--disallowedTools` (P-WTR-1); judges have neither under `--tools` |
-| `agent-sdk` | `cwd = workdir` ([EAS §2.4](21-executor-agent-sdk.spec.md)) | `disallowed_tools` adds `EnterWorktree` and `ExitWorktree`; the gatekeeper hook denies an `Agent` call that asks for worktree isolation (P-WTR-3); `extra_args` never carries `worktree` |
-| `messages-api` | The tool host's `workdir`; "known workspaces" are the state root's `WorkspaceRecord` paths ([EMA §2.3](20-executor-messages-api.spec.md), [THS §2.2](22-tool-host.spec.md)) | None |
-| `antigravity` | Working directory and `--add-dir <workdir>`; `init.cwd` must equal it ([EAG §2.4](12-executor-antigravity.spec.md)) | The App's worktrees are not used; the isolated config home keeps App settings out. A repository with `extensions.worktreeConfig` set gets a preflight warning for `antigravity` sessions until P-WTR-4 passes |
+### WTR-B4 Names are ref-safe
 
-### 2.10 Foreign worktrees
+WHEN a task id holds characters a ref refuses THE engine SHALL write its branch part in flat form.
 
-Before and after every step session the engine reads `git worktree list --porcelain`. A worktree that appears during the session and is not in the record (for example a Claude Code subagent with `isolation: worktree`, P-WTR-2) is a **foreign worktree**: a `workspace` record with action `foreign` (path relative to the repository's parent, branch, `session_key`), a warning on the attempt, and a `foreign_worktrees` fact the check and the judge can read. The engine never removes, merges or reads it; the step's work counts only if it is in the run's workspace.
+- GIVEN task id `PROJ-12: fix login` WHEN a worktree run starts THEN the branch is `tg/<workflow>/PROJ-12-fix-login`, and its rerun's `tg/<workflow>/PROJ-12-fix-login-r1`
+- GIVEN task ids `PROJ-12`, `a/b`, `x..y`, `.hidden` and `feat.lock` WHEN named THEN the parts are `PROJ-12`, `a-b`, `x-y`, `hidden` and `feat-lock`
 
-### 2.11 The `worktree` verb
+### WTR-B21 Base
 
-| Verb | Does | Writes |
-|---|---|---|
-| `worktree list [--all] [--json]` | Every engine worktree of this repository from the records and `git worktree list`: thread, thread state, path, branch, ahead and behind its base, dirty count, lock, and `removable` (thread not running, worktree clean, no submodules). `--all` adds foreign worktrees and git worktrees no record owns | no |
-| `worktree path <thread>` | Prints the thread's workspace path, for `cd "$(tempergraph worktree path …)"` | no |
-| `worktree prune [--thread <t>] [--finished] [--older-than <days>] [--apply]` | Lists the removable worktrees the selectors match; with `--apply` removes them per §2.7, then `git worktree prune` | with `--apply` |
+WHEN a new run worktree's start commit is chosen THE engine SHALL start it, for `head`, at the main checkout's `HEAD` commit with `base_branch` the branch it is on (the remote's default branch when detached), warning once with the count of uncommitted changed paths not in the worktree; for `default_branch`, at `origin`'s default branch after `git fetch origin <that branch>` within 30 s, falling back to the local copy with a warning and `base_fetch: failed`; and for `ref:<name>`, at the commit `<name>` resolves to by `git rev-parse --verify` (a local or remote-tracking branch, a tag or a commit id), with `base_branch` `<name>` without a remote prefix when it names a branch, else the default branch, an unresolvable or ill-formed ref refused with exit 2 before spend; `base_branch` being the pull request base the finalizer reads ([FIN-B6](78-finalizer-contract.spec.md)), and an orchestration node started from an earlier node's branch or an eval or trial case setting `ref:` ([ORC](45-orchestration.spec.md), [EVS](51-eval-suites.spec.md)).
 
-`list` and `path` are read-only (C13). `prune --apply` is a mutating verb and records its caller ([PRV](85-caller-provenance.spec.md)).
+- GIVEN `ref:nosuch` WHEN the run starts THEN it exits 2 before spend
 
-## 3. Behaviours
+### WTR-B6 Base head with a dirty checkout
 
-**WTR-B1 Auto on a coding workflow.** Given a git checkout and a workflow whose `code` step declares `edit` and `shell`, when `run` starts with no workspace option, then the record reads `mode: worktree`, `resolved_by: writes_files`, the path is `<parent>/<repo>.worktrees/<workflow>--<task_id>`, the branch is `tg/<workflow>/<task_id>`, and the person's checkout is untouched.
+WHEN a run starts with `base: head` and the main checkout has changes THE engine SHALL start at the checkout's commit and warn with the count.
 
-**WTR-B2 Auto on a document workflow.** Given a workflow whose steps declare only `read`, `search` and an MCP tool that writes a wiki page, when it runs in a git checkout, then it runs in place with `resolved_by: read_only`; in a folder that is not a git checkout it runs in place with `resolved_by: not_git`.
+- GIVEN a checkout on `main` with 3 changed files WHEN a run starts THEN the worktree starts at `main`'s commit, one warning names 3 paths and `base_branch` is `main`
 
-**WTR-B3 Explicit worktree without git.** Given a folder that is not a git checkout, when `run --worktree` is given, then the start is refused with exit 2 before spend, naming the folder and the setting's source.
+### WTR-B7 Base default branch offline
 
-**WTR-B4 Names are ref-safe.** Given task id `PROJ-12: fix login`, when a worktree run starts, then the branch is `tg/<workflow>/PROJ-12-fix-login` and passes `git check-ref-format --branch`; a rerun of it uses `tg/<workflow>/PROJ-12-fix-login-r1`.
+WHEN `default_branch` cannot be fetched THE engine SHALL start from the local copy and record the failure.
 
-| Task id | Branch part |
-|---|---|
-| `PROJ-12` | `PROJ-12` |
-| `a/b` | `a-b` |
-| `x..y` | `x-y` |
-| `.hidden` | `hidden` |
-| `feat.lock` | `feat-lock` |
+- GIVEN no network and `--worktree-base default_branch` WHEN the run starts THEN the fetch fails within 30 s, the worktree starts at local `main` and the record holds `base_fetch: failed`
 
-**WTR-B5 Branch exists.** Given a branch `tg/temperspec/PROJ-12` from an earlier thread, when a fresh run with the same task id starts, then it is refused with exit 2 by the fresh-run rule ([DUR-B1](09-durability-and-resume.spec.md)) if the thread exists, or with `branch_exists` naming the branch if only the branch does; nothing is created.
+### WTR-B22 Lifecycle
 
-**WTR-B6 Base head with a dirty checkout.** Given a main checkout on `main` with 3 changed files, when a run starts with `base: head`, then the worktree starts at `main`'s commit, one warning says 3 changed paths are not in the worktree, and `base_branch` is `main`.
+WHEN a worktree run moves through its life THE engine SHALL at `run --check` resolve the plan, check the root is writable, the branch does not exist, the base resolves and setup commands are allowed, and print the plan creating nothing (C13); at start, after preflight and the thread lock and under a short repository lock, run `prepare_workspace`: `git worktree add -b <branch> <path> <base commit>`, `git worktree lock --reason "tempergraph <thread>"` and the bootstrap, a failed copy, submodule step, setup command or limit removing the new worktree and branch ([WSP-B2](13-workspace-and-concurrency.spec.md)) and exiting 2 with the failing step, recording a `workspace` record `prepared`; at each unit work in the record's path, `unit_entered` carrying `head_commit` and `dirty` ([EVT](30-run-events.spec.md)); at a pause, stop, failure or crash leave worktree, lock and branch, the pause payload naming the path; at resume run `attach_workspace`, reusing a present path on the branch (`reused`), or after `git worktree prune` adding it again with a new lock and bootstrap (`attached`, [WSP-B1](13-workspace-and-concurrency.spec.md)), keeping and recording a person's commits and changes since the segment (`external_change` with commit and changed-path counts), exiting 2 offering `rerun --from start` when the run branch is missing and naming the other checkout when the branch is checked out elsewhere; at a rewind touch no file ([RRN-B16](81-reruns-and-feedback.spec.md)); at a rerun prepare a new worktree and branch ([RRN-B18](81-reruns-and-feedback.spec.md)); and at finish run the finalizer with `workdir` the run worktree, then `release_workspace` unlocking it and applying cleanup, recording `released` and then `removed` or `kept` with the reason; an in-place run started inside a linked worktree working in that worktree, not the main checkout.
 
-**WTR-B7 Base default branch offline.** Given no network, when `--worktree-base default_branch` is given, then the fetch fails within 30 s, the worktree starts at the local `main`, and the record holds `base_fetch: failed`.
+- GIVEN a failing setup command WHEN the run starts THEN the new worktree and branch are removed and it exits 2 naming the step
 
-**WTR-B8 Person edits a paused run.** Given a run paused at `code` whose person commits one fix in the run worktree, when it resumes with `retry`, then the commit is kept, a `workspace` record `external_change` shows 1 commit, and the next attempt sees the fix.
+### WTR-B5 Branch exists
 
-**WTR-B9 Worktree deleted while paused.** Given a paused run whose worktree folder a person deleted, when it resumes, then the engine prunes git's stale entry, attaches a new worktree at the same path on the run branch, locks it, bootstraps it and continues (`attached`).
+WHEN a fresh run's branch already exists THE engine SHALL refuse it with exit 2 by the fresh-run rule ([DUR-B1](09-durability-and-resume.spec.md)) if the thread exists, or with `branch_exists` naming the branch if only the branch does, creating nothing.
 
-**WTR-B10 Branch checked out elsewhere.** Given a paused run whose branch the person checked out in the main checkout, when it resumes and the worktree folder is gone, then the resume is refused with exit 2 naming the other checkout; nothing is forced.
+- GIVEN a branch `tg/wf/PROJ-12` from an earlier thread WHEN a fresh run with that task id starts THEN it exits 2 and nothing is created
 
-**WTR-B11 Cleanup on finish.** Given `cleanup: on_finish` and a finished run whose finalizer pushed the branch, when the run ends, then the clean run worktree is removed, the branch stays, and `worktree list` no longer shows it; given one untracked file left in it, the worktree is kept and the record says `kept: dirty`.
+### WTR-B8 Person edits a paused run
 
-**WTR-B12 No executor worktree.** Given a `claude` step, when it launches, then argv holds no `--worktree` or `-w`, `--disallowedTools` holds `EnterWorktree` and `ExitWorktree`, and the child's working directory is the run worktree.
+WHEN a person commits in a paused run's worktree THE engine SHALL keep the commit on resume and record it.
 
-**WTR-B13 Foreign worktree.** Given a step whose subagent created `.claude/worktrees/agent-x` during its session, when the session ends, then a `workspace` record `foreign` names it, the attempt carries a warning, and the engine leaves it in place.
+- GIVEN a run paused at `code` and one commit by a person WHEN resumed with `retry` THEN the commit is kept, `external_change` shows 1 commit and the next attempt sees the fix
 
-**WTR-B14 Parallel runs.** Given three runs of one workflow on three task ids started at once, when they prepare their workspaces, then each gets its own worktree and branch, and the repository lock serializes only the `git worktree add` calls.
+### WTR-B9 Worktree deleted while paused
 
-**WTR-B15 Fixed at start.** Given a paused worktree run, when `resume --set run.worktree.base=default_branch` is given, then it is refused with exit 2 (`fixed_at_start`); `resume --set run.worktree.cleanup=on_finish` is accepted and recorded.
+WHEN a paused run's worktree folder is gone at resume THE engine SHALL prune git's stale entry, attach a new worktree at the same path on the run branch, lock and bootstrap it and continue.
 
-**WTR-B16 Prune keeps work.** Given four engine worktrees (one running, one finished and clean, one finished and dirty, one paused and clean), when `worktree prune --apply` runs, then only the finished clean one and the paused clean one are removed, the paused thread can still resume (WTR-B9), and no branch is deleted.
+- GIVEN a deleted worktree folder WHEN resumed THEN it is `attached` at the same path and the run continues
 
-## 4. Error conditions
+### WTR-B10 Branch checked out elsewhere
 
-| Condition | Result |
-|---|---|
-| `worktree` explicit, target not a git checkout or a bare repository | Exit 2 before spend |
-| `in_place` explicit, workflow has writers | Exit 2 ([WSP-B6](13-workspace-and-concurrency.spec.md)) |
-| Root not writable, or a `path:` root inside the main checkout, the state root or `.git` | Exit 2 before spend |
-| Branch exists with no thread; flat names of two threads collide | Exit 2, `branch_exists` / `name_collision` |
-| `ref:` base does not resolve, or fails `check-ref-format` | Exit 2 before spend |
-| Bootstrap fails (copy, submodules, a setup command, its limit) | New worktree and branch removed; exit 2 with the failing step |
-| Resume: run branch missing | Exit 2; the message offers `rerun --from start` |
-| Resume: branch checked out in another worktree | Exit 2 naming it |
-| `resume --set` of a key fixed at start | Exit 2, `fixed_at_start` |
-| Removal refused by git | Worktree kept, `kept` with git's reason; never retried with `--force` |
+WHEN a paused run's branch is checked out in another worktree and its folder is gone THE engine SHALL refuse the resume with exit 2 naming the other checkout and force nothing.
 
-## 5. Design notes
+- GIVEN the branch checked out in the main checkout WHEN resumed THEN it exits 2 naming that checkout
 
-- Why the engine and not the executor: gates, checks, judges and the finalizer run in the engine and need one tree for the whole run, at a base the engine picks; Claude Code's `--worktree` is per session, starts from the default branch, is never removed under `-p` and is left locked; Antigravity's is an App feature; the Messages API has none ([ADR-0100](../adr/0100-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md)).
-- `auto` keeps worktrees optional for non-coding workflows while making the safe choice the default for workflows that change files ([ADR-0101](../adr/0101-one-workspace-setting-with-an-auto-default.adr.md)). A workflow author who wants a fixed mode declares `workspace: worktree` or `in_place`.
-- `head` as the default base keeps a run offline-safe and starts it from what the person sees; `default_branch` matches Claude Code's `fresh` ([ADR-0104](../adr/0104-a-new-worktree-starts-from-the-main-checkouts-head.adr.md)).
-- The engine's lock with a reason keeps `git worktree prune` and other tools' sweeps from dropping the admin data of a paused run's worktree.
-- Release split, for the first-release thread: `auto`/`worktree`/`in_place`, the `sibling` root, `head` base, names, start, resume and re-attach, executor pointing and the two disallowed tools, `worktree list`, `path` and the `ref:` base (for trial and eval cases, PRP and plan T12.6) are first-release; `in_repo` and `path:` roots, the `default_branch` base, `cleanup: on_finish`, `prune --apply`, foreign-worktree scans and `.worktreeinclude` follow. Writer, slot and item worktrees arrive with the units that need them.
-- **As built (R2-T6.4).** An in-place run started from inside a linked worktree works in that worktree, not in the repository's main checkout; the built-in upgrade workflow depends on it ([UWF](64-upgrade-workflow.spec.md)).
+### WTR-B14 Parallel runs
 
-## 6. Acceptance criteria
+WHEN several runs of one workflow start at once THE engine SHALL give each its own worktree and branch, the repository lock serializing only the `git worktree add` calls.
 
-- [ ] WTR-AC-1 `resolve_workspace` returns each row of §2.2 for a fixture workflow and target, with no git write and no model call.
-- [ ] WTR-AC-2 Every name of §2.4, including WTR-B4's table and an 81-character task id, passes `git check-ref-format --branch`, and no writer branch has the run branch as a path prefix.
-- [ ] WTR-AC-3 WTR-B5 to WTR-B11 and WTR-B14 to WTR-B16 pass against real git worktrees with scripted executors.
-- [ ] WTR-AC-4 For each of the four executors, a scripted session records the working directory it was given, and it equals `WorkspaceRecord.path`; the `claude` and `agent-sdk` launches carry the two disallowed tools.
-- [ ] WTR-AC-5 No code path calls `git worktree remove --force`, `git branch -D` or `git branch -d`.
-- [ ] WTR-AC-6 `run --check`, `worktree list` and `worktree path` create nothing (test compares the repository's refs, worktree list and file tree before and after).
-- [ ] WTR-AC-7 Probes P-WTR-1 to P-WTR-4 are recorded in the probe table below before the linked controls are marked `LIVE-PROVEN`.
+- GIVEN three runs on three task ids started at once WHEN they prepare THEN each has its own worktree and branch
 
-### Probes
+### WTR-B23 Cleanup
 
-| Id | What | Gates | Result |
-|---|---|---|---|
-| P-WTR-1 | `claude -p --disallowedTools EnterWorktree,ExitWorktree` leaves neither tool in `system/init` | WTR-B12 | not run |
-| P-WTR-2 | A subagent with `isolation: worktree` under `claude -p` creates a worktree, and where | §2.10 | not run |
-| P-WTR-3 | The `Agent` tool input field that asks for worktree isolation, as a `PreToolUse` hook sees it | §2.9 `agent-sdk` | not run |
-| P-WTR-4 | `agy -p` in a worktree of a repository with `extensions.worktreeConfig` | §2.9 `antigravity` | not run |
+WHEN cleanup applies THE engine SHALL remove nothing under `cleanup: never`; under `cleanup: on_finish`, after a finished run's finalizer returns any outcome but `error`, remove each of the run's worktrees (run, writer, slot, item) that is clean (`git status --porcelain` empty), has no submodules and is locked by no one else, by `git worktree remove` without `--force`, keeping a dirty one, one with submodules and anything of a run that did not finish; keep a worktree git refuses to remove, recorded `kept` with git's reason, never retried with `--force`; and never delete an engine branch, `git branch -d` being the person's act.
+
+- GIVEN any code path WHEN scanned THEN none calls `git worktree remove --force`, `git branch -D` or `git branch -d`
+
+### WTR-B11 Cleanup on finish
+
+WHEN a finished run with `cleanup: on_finish` ends THE engine SHALL remove its clean worktree, keep the branch, and keep a dirty worktree.
+
+- GIVEN a finalizer that pushed the branch WHEN the run ends THEN the clean worktree is removed, the branch stays and `worktree list` no longer shows it
+- GIVEN one untracked file left WHEN the run ends THEN the worktree is kept with `kept: dirty`
+
+### WTR-B24 Records
+
+WHEN a workspace is prepared THE engine SHALL keep in state a `WorkspaceRecord` of `mode` (`in_place` or `worktree`), `requested` and `resolved_by` (the setting's value and layer, and the auto case), `path`, `root_kind` (`sibling`, `in_repo` or `path`), `branch`, `base_ref`, `base_commit` and `base_branch`, `children` (writer, slot and item worktrees as `{name, path, branch, state}`), `state` (`active`, `released` or `removed`) and `bootstrap` (included file count, setup results with exit code and duration, submodule step); show `mode`, `path`, `branch` and `state` in `facts`, the status document and the run detail document ([RDD](31-run-detail-document.spec.md)); and put `mode` and `resolved_by` only, never a path, on a stats or ledger row ([CON-B14](01-contracts.spec.md)).
+
+- GIVEN a worktree run WHEN its stats row is read THEN it holds no path
+
+### WTR-B25 Executors
+
+WHEN a session of a run starts THE engine SHALL give every step, judge, check, script and finalizer the workspace path as `SessionRequest.workdir` ([SSN](25-session-contract.spec.md)), a writer's step and judge the writer's path; point `claude` at it by the child's working directory, `CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR=1` and `--permission-mode acceptEdits` only when `workdir` is an engine `WorkspaceRecord`'s path ([ECC](11-executor-claude-code.spec.md)), never putting `--worktree` or `-w` on argv (C3), adding `EnterWorktree` and `ExitWorktree` to a step's `--disallowedTools` (P-WTR-1) and leaving both out of a judge's `--tools`; `agent-sdk` by `cwd = workdir` ([EAS-B8](21-executor-agent-sdk.spec.md)), `disallowed_tools` adding both tools, the gatekeeper hook denying an `Agent` call that asks for worktree isolation (P-WTR-3) and `extra_args` never carrying `worktree`; `messages-api` by the tool host's `workdir`, its known workspaces being the state root's `WorkspaceRecord` paths ([EMA-B8](20-executor-messages-api.spec.md), [THS-B7](22-tool-host.spec.md)); and `antigravity` by its working directory and `--add-dir <workdir>` with `init.cwd` equal to it ([EAG-B12](12-executor-antigravity.spec.md)), the App's worktrees unused and a repository with `extensions.worktreeConfig` getting a preflight warning until P-WTR-4 passes.
+
+- GIVEN a scripted session per executor WHEN run THEN the working directory it records equals `WorkspaceRecord.path`
+
+### WTR-B12 No executor worktree
+
+WHEN a `claude` step launches THE engine SHALL keep `--worktree` and `-w` off argv, put `EnterWorktree` and `ExitWorktree` in `--disallowedTools`, and set the child's working directory to the run worktree.
+
+- GIVEN a `claude` step WHEN it launches THEN argv holds neither flag and `--disallowedTools` holds both tools
+
+### WTR-B26 Foreign worktrees
+
+WHEN a step session starts and ends THE engine SHALL read `git worktree list --porcelain` before and after through `scan_foreign_worktrees`, and record a worktree that appeared and is not in the record (such as a subagent's with `isolation: worktree`, P-WTR-2) as a `workspace` record `foreign` with its path relative to the repository's parent, branch and `session_key`, a warning on the attempt and a `foreign_worktrees` fact the check and the judge can read, never removing, merging or reading it, the step's work counting only in the run's workspace.
+
+- GIVEN no worktree appearing during a session WHEN it ends THEN no `foreign` record is written
+
+### WTR-B13 Foreign worktree
+
+WHEN a subagent creates a worktree during a session THE engine SHALL record it and leave it in place.
+
+- GIVEN `.claude/worktrees/agent-x` created during a session WHEN the session ends THEN a `foreign` record names it, the attempt carries a warning and it stays
+
+### WTR-B27 The worktree verb
+
+WHEN `worktree list [--all] [--json]`, `worktree path <thread>` or `worktree prune [--thread <t>] [--finished] [--older-than <days>] [--apply]` runs THE engine SHALL list every engine worktree of this repository from the records and `git worktree list` (thread, thread state, path, branch, ahead and behind its base, dirty count, lock, and `removable` when the thread is not running, the worktree is clean and has no submodules), `--all` adding foreign worktrees and git worktrees no record owns; print the thread's workspace path, for `cd "$(tempergraph worktree path …)"`; or list the removable worktrees the selectors match and with `--apply` remove them by the cleanup rule then run `git worktree prune`, never one of a `running` thread; `list` and `path` writing nothing (C13), and `prune --apply` recording its caller ([PRV](85-caller-provenance.spec.md)).
+
+- GIVEN `run --check`, `worktree list` and `worktree path` WHEN run THEN the repository's refs, worktree list and file tree are unchanged
+
+### WTR-B16 Prune keeps work
+
+WHEN `worktree prune --apply` runs THE engine SHALL remove only removable worktrees and no branch.
+
+- GIVEN four worktrees (running, finished and clean, finished and dirty, paused and clean) WHEN `prune --apply` runs THEN only the finished clean and paused clean ones are removed, the paused thread can still resume, and no branch is deleted
+
+## Acceptance criteria
+
+- WTR-AC1 (WTR-B18, WTR-B1, WTR-B2, WTR-B3): `resolve_workspace` returns each case of WTR-B18 for a fixture workflow and target, with no git write and no model call
+- WTR-AC2 (WTR-B20, WTR-B4): Every name of WTR-B20, including WTR-B4's cases and an 81-character task id, passes `git check-ref-format --branch`, and no writer branch has the run branch as a path prefix
+- WTR-AC3 (WTR-B5, WTR-B6, WTR-B7, WTR-B8, WTR-B9, WTR-B10, WTR-B11, WTR-B14, WTR-B15, WTR-B16, WTR-B17, WTR-B19, WTR-B21, WTR-B22): WTR-B5 to WTR-B11 and WTR-B14 to WTR-B16 pass against real git worktrees with scripted executors
+- WTR-AC4 (WTR-B25, WTR-B12, WTR-B24): For each of the four executors, a scripted session records the working directory it was given, and it equals `WorkspaceRecord.path`; the `claude` and `agent-sdk` launches carry the two disallowed tools
+- WTR-AC5 (WTR-B23): No code path calls `git worktree remove --force`, `git branch -D` or `git branch -d`
+- WTR-AC6 (WTR-B27): `run --check`, `worktree list` and `worktree path` create nothing (test compares the repository's refs, worktree list and file tree before and after)
+- WTR-AC7 (WTR-B26, WTR-B13, WTR-B25): Probes P-WTR-1 (`claude -p --disallowedTools EnterWorktree,ExitWorktree` leaves neither tool in `system/init`), P-WTR-2 (a subagent with `isolation: worktree` under `claude -p` creates a worktree, and where), P-WTR-3 (the `Agent` tool input field that asks for worktree isolation, as a `PreToolUse` hook sees it) and P-WTR-4 (`agy -p` in a worktree of a repository with `extensions.worktreeConfig`) are recorded before the controls they gate are marked `LIVE-PROVEN`
 
 ## Open questions
 
-| Question | Owner | Release 1 default |
-|---|---|---|
-| Should a merged writer branch be deleted at the join? The design keeps every branch. | Owner | Keep (no writer branches in release 1) |
-
-## References
-
+- Should `cleanup: on_finish` become the default once removal has run live for a release? Until answered: `never`. Owner: owner.
+- Should a merged writer branch be deleted at the join? Until answered: keep every branch. Owner: owner.
+- Not built yet: the `in_repo` and `path:` roots, the `default_branch` base, `cleanup: on_finish`, `prune --apply` and foreign-worktree scans are release 3 and refused `setting_not_in_release`; writer, slot and item worktrees arrive with the units that need them; probes P-WTR-1 to P-WTR-4 have not run. Owner: engine owner.

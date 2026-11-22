@@ -13,7 +13,7 @@ ADR-0041 decided measured stages and a `promote-check` verb, but no spec existed
 
 ## Decision
 
-We will specify `promote-check` as [PRO](../specs/95-promotion-check.spec.md): every run carries a stage derived from its caller, the workflow's mode and a `promotion.json` stamp for its exact version; criteria (ADR-0041's, SUP §2.7's, and new ones for escalation coverage, ladder use, switch arms and unattended credentials) are read model-free from the run store; `--stamp` writes only when all are met; any version change voids the stamp. **Release 2** builds the stage model and `--to local-stable`. The `pipeline` stage, `--to pipeline`, the regressed watch and pipeline runs are designed now and built with pipelines in a later release, refused meanwhile with `not_in_release`.
+We will specify `promote-check` as [PRO](../specs/95-promotion-check.spec.md): every run carries a stage derived from its caller, the workflow's mode and a `promotion.json` stamp for its exact version; criteria (ADR-0041's, SUP-B17's, and new ones for escalation coverage, ladder use, switch arms and unattended credentials) are read model-free from the run store; `--stamp` writes only when all are met; any version change voids the stamp. **Release 2** builds the stage model and `--to local-stable`. The `pipeline` stage, `--to pipeline`, the regressed watch and pipeline runs are designed now and built with pipelines in a later release, refused meanwhile with `not_in_release`.
 
 ## Options considered
 
@@ -40,8 +40,8 @@ We will specify `promote-check` as [PRO](../specs/95-promotion-check.spec.md): e
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| P1 | When pipelines arrive, a pipeline run's state travels by CAR's state branch or a hosted store. | PRO §2.6 |
-| P2 | Thresholds are defaults without data, revisited after 20 runs of one workflow. | PRO §2.3 |
+| P1 | When pipelines arrive, a pipeline run's state travels by CAR's state branch or a hosted store. | PRO-B11 |
+| P2 | Thresholds are defaults without data, revisited after 20 runs of one workflow. | PRO-B9 |
 
 ## Revisit when
 

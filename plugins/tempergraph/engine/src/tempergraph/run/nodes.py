@@ -1,7 +1,7 @@
 """The node bodies the compiler wires into the graph (CMP `UnitNodes`): step, judge, gate, human, finalizer.
 
-The step and judge nodes are the only places a model session starts (contract C1); the gate is pure;
-the human node's interrupt is the compiler's. Budgets follow BUD §2.2: the cause picks the counter.
+The step and judge nodes are the only places a model session starts (OVR-B3); the gate is pure;
+the human node's interrupt is the compiler's. Budgets follow BUD-B1, BUD-B11: the cause picks the counter.
 """
 
 from __future__ import annotations
@@ -94,15 +94,15 @@ class RunContext:
     attempt_cap: int = ATTEMPT_CAP
     infra_tries: int = INFRA_TRIES
     backoff_max_s: int = 300
-    settings: Mapping[str, Any] = field(default_factory=dict)  # workflow-declared settings (RST §2.5)
-    capture: Capture = field(default_factory=Capture)  # the operator's capture level (LOS §2.6)
+    settings: Mapping[str, Any] = field(default_factory=dict)  # workflow-declared settings (RST-B25)
+    capture: Capture = field(default_factory=Capture)  # the operator's capture level (LOS-B17)
     main_checkout: Path | None = None
     attempts_started: int = 0
     origin: str = "cli"
-    stage: str = "local-dev"  # PRO §2.1
-    judge_state: Callable[[str], str] | None = None  # a gate's judge binding state (JCL §2.5); None reads it
-    escalation_record: Callable[[str], bool] | None = None  # LAD §2.5; None reads the ledger
-    self_check_limit: int = 3  # CHK §2.5
+    stage: str = "local-dev"  # PRO-B7, PRO-B4
+    judge_state: Callable[[str], str] | None = None  # a gate's judge binding state (JCL-B17); None reads it
+    escalation_record: Callable[[str], bool] | None = None  # LAD-B13; None reads the ledger
+    self_check_limit: int = 3  # CHK-B17
 
     @property
     def thread(self) -> str:
@@ -159,7 +159,7 @@ class EngineNodes:
                  ) -> tuple[SessionResult, list]:
         """One session with infra tries and backoff outside the retry budget (BUD-B1, JDG-B5)."""
         results: list[SessionResult] = []
-        if req.kind in ("step", "retry"):  # the rendered prompt, kept local for the session review (SRV §2.5)
+        if req.kind in ("step", "retry"):  # the rendered prompt, kept local for the session review (SRV-B17)
             from tempergraph.improve.record import write_prompt
 
             write_prompt(self.ctx.state_root, self.ctx.spec.name, self.ctx.task_id, req.session_key, req.prompt)
@@ -176,7 +176,7 @@ class EngineNodes:
                     res = ex.run_judge(req, judge_views, sink)
             finally:
                 sink.close()
-                if not self.ctx.capture.raw and req.session_dir is not None:  # `observe.raw = off` (LOS §2.6)
+                if not self.ctx.capture.raw and req.session_dir is not None:  # `observe.raw = off` (LOS-B17)
                     with contextlib.suppress(OSError):
                         (req.session_dir / "raw.jsonl").unlink(missing_ok=True)
             if res.usage.estimated_cost_usd is None:
@@ -245,22 +245,22 @@ class EngineNodes:
         first = entered or prev.get("item") != iid
         attempt = int(item["attempt"]) if item else int(prev.get("attempt", 0)) + 1
         self.ctx.attempts_started += 1
-        ov, layer = gatemod.arm_overrides(spec, unit, state)  # below the operator layers (SWM §2.3, RST §2.3)
+        ov, layer = gatemod.arm_overrides(spec, unit, state)  # below the operator layers (SWM-B6, RST-B22, RST-B23)
         ov = {k: v for k, v in ov.items() if k in ("model", "timeout_s", "idle_s", "effort")
               and k not in (u.extra.get("operator_set") or ())}
         sources = {k: layer for k in ov}
-        # one alias per attempt: release 1's retry-count list is retired (LAD §2.8) and validation refuses it
+        # one alias per attempt: release 1's retry-count list is retired (LAD-B18) and validation refuses it
         alias = (_aliases(ov.get("model")) or _aliases(st.model) or _aliases(spec.model_profile.get(unit)) or ["inherit"])[0]
         full_ov, _ = gatemod.arm_overrides(spec, unit, state)
         rungs, pinned = laddermod.rungs_of(u, full_ov)
         rung = laddermod.held_rung(counters, visit, iid) if rungs and not pinned else 0
         climb: dict[str, Any] | None = None
-        if rungs and not pinned:  # the effort of this attempt is its rung's (LAD §2.1); a pin switches it off
+        if rungs and not pinned:  # the effort of this attempt is its rung's (LAD-B9); a pin switches it off
             ov["effort"] = rungs[rung]
             sources["effort"] = f"ladder:effort[{rung}]"
         held = counters.get("ladder") or {}
         up = held.get("escalate") if held.get("visit") == visit and held.get("item") == iid and not first else None
-        if up:  # LAD §2.4: one attempt on the tier above, at the escalation's effort
+        if up:  # LAD-B12: one attempt on the tier above, at the escalation's effort
             alias = str(up["to"])
             sources["model"] = "escalation:+1"
             if up.get("effort"):
@@ -271,7 +271,7 @@ class EngineNodes:
                 chosen = str(u.map.item_model.resolve()(MapItem(id=item["id"], text=item["text"])))
             except Exception as exc:  # noqa: BLE001 - a workflow fault, recorded
                 chosen = f"<{type(exc).__name__}>"
-            if chosen not in u.map.models:  # MAP §4: the attempt fails before launch
+            if chosen not in u.map.models:  # MAP-B8, MAP-B10, MAP-B9: the attempt fails before launch
                 self.ctx.log.write("engine_error", unit=unit, item=iid, error="item_model",
                                    detail=f"{chosen!r} is not one of {list(u.map.models)}")
                 record: dict[str, Any] = {
@@ -283,11 +283,11 @@ class EngineNodes:
         ex = self.ctx.registry.get(st.executor or spec.default_executor)
         caps = ex.capabilities()
         fields = self._fields(unit, state, attempt, visit, workdir)
-        if item:  # VAL §2.3 item keys
+        if item:  # VAL-B8 item keys
             fields.update(item_id=item["id"], item_index=str(item["index"]), item_count=str(item["count"]),
                           item=item["text"])
         failed, env, hybrid = self._scripts(st.before, unit, attempt, "before", state, workdir)
-        fields.update(hybrid)  # a `before` script's keys are the session's to read (SCR §2.1)
+        fields.update(hybrid)  # a `before` script's keys are the session's to read (SCR-B5)
         if failed is not None:
             return self._script_failed(unit, state, attempt, visit, failed, env, path_units, first, hybrid)
         judged = (state.get("judgements") or {}).get(unit) or {}
@@ -311,11 +311,11 @@ class EngineNodes:
             feedback=str(fb.get("text") or "") if fb.get("as") == "feedback" else "",
             rulings=tuple(gatemod.active_rulings(spec, state, unit)),
             upstream_targets=tuple(u.gate.back_targets))
-        commands = expand_commands(st.commands, workdir)  # `@repository`: what the repository declares (CHK §2.2)
+        commands = expand_commands(st.commands, workdir)  # `@repository`: what the repository declares (CHK-B11)
         shown = u if commands == tuple(st.commands) else dataclasses.replace(
             u, step=dataclasses.replace(st, commands=commands))
         ticket: str | None = None
-        if st.self_check and u.gate.check is not None:  # CHK §2.5: a ticket for this attempt only
+        if st.self_check and u.gate.check is not None:  # CHK-B17: a ticket for this attempt only
             from tempergraph.run import selfcheck
 
             ticket = selfcheck.issue(
@@ -351,7 +351,7 @@ class EngineNodes:
             res, results = self._session(ex, req, lessons_digest=lessonsmod.digest(lessons_text),
                                          extra=extra or None)
         finally:
-            if ticket is not None:  # the ticket ends with its attempt; one record a preview (CHK §2.5 Record)
+            if ticket is not None:  # the ticket ends with its attempt; one record a preview (CHK-B17 Record)
                 from tempergraph.run import selfcheck
 
                 for call in selfcheck.close(self.ctx.state_root, ticket):
@@ -368,7 +368,7 @@ class EngineNodes:
         if res.error_kind in ("auth", "refused"):
             escalate = res.error_kind
         elif reach and (not res.ok or parsed.blocked):
-            escalate = "tool_access"  # no retry spent; the pause offers the grants (BUD §2.2, RST §2.8)
+            escalate = "tool_access"  # no retry spent; the pause offers the grants (BUD-B1, BUD-B11, RST-B28, RST-B29, RST-B30)
         elif parsed.blocked:
             escalate = "blocked"
         elif parsed.upstream:
@@ -388,13 +388,13 @@ class EngineNodes:
         esc_spec = laddermod.escalation_of(u, full_ov)
         if up:
             record.update(escalated=True, escalated_to=alias)
-        elif esc_spec is not None:  # E6: what this attempt's tokens would cost one tier up (OBS §2.2 prices)
+        elif esc_spec is not None:  # E6: what this attempt's tokens would cost one tier up (OBS-B10 to OBS-B13 prices)
             priced = estimate(res.usage, laddermod.TIER_FAMILY.get(laddermod.tier(esc_spec.to)))
             usages = [*(prev.get("up_estimates") or [])] if not first else []
             record["up_estimates"] = [*usages, priced][-5:]
         if record["slow_host"]:
             record.update(infra_cause="slow_host", infra_spent=False)
-        if res.ok and before != after and flow.block_of(spec, unit):  # WSP §2.1: a branch is read-only
+        if res.ok and before != after and flow.block_of(spec, unit):  # WSP-B11, WSP-B12: a branch is read-only
             record.update(ok=False, error_kind="branch_changed_the_workspace")
         if after_failed is not None:
             record.update(ok=False, error_kind=f"script_failed:{after_failed}",
@@ -406,7 +406,7 @@ class EngineNodes:
             run["path"] = {"units": path_units + [unit]}
         arts: dict[str, Any] = {**hybrid, **parsed.artifacts}
         vals: dict[str, Any] = dict(parsed.values)
-        if iid:  # an item's keys are kept as `<key>[<item id>]`; the plain key is the item in hand (MAP §2.2)
+        if iid:  # an item's keys are kept as `<key>[<item id>]`; the plain key is the item in hand (MAP-B8, MAP-B9, MAP-B10)
             arts.update({mapping.item_key(k, iid): v for k, v in list(arts.items())})
             vals.update({mapping.item_key(k, iid): v for k, v in list(vals.items())})
             return {"attempts": {unit: record}, "artifacts": {unit: arts} if arts else {},
@@ -416,7 +416,7 @@ class EngineNodes:
 
     def _map_item(self, unit: str, state: Mapping[str, Any], visit: int, workdir: Path, prev: Mapping[str, Any],
                   path_units: list[str]) -> tuple[dict[str, Any] | None, dict[str, Any], dict[str, Any] | None]:
-        """Fan-out at the start of a visit, then the item in hand (MAP §2.2). Returns a finished state write
+        """Fan-out at the start of a visit, then the item in hand (MAP-B8, MAP-B9, MAP-B10). Returns a finished state write
         when the list stops or skips the map, else the `maps` record and the item with its attempt number."""
         m = mapping.record(state, unit)
         run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
@@ -445,7 +445,7 @@ class EngineNodes:
 
     def _script_failed(self, unit: str, state: Mapping[str, Any], attempt: int, visit: int, name: str, env: bool,
                        path_units: list[str], first: bool, arts: dict[str, str]) -> dict[str, Any]:
-        """A failed `before` script fails the attempt with no session (SCR §2.2)."""
+        """A failed `before` script fails the attempt with no session (SCR-B7, SCR-B2)."""
         record = {"attempt": attempt, "visit": visit, "ok": False, "text": "", "issues": [], "tools": [],
                   "session_id": None, "error_kind": f"script_failed:{name}", "infra_spent": False, "check": None,
                   "escalate": "environmental" if env else None, "timed_out": False}
@@ -474,7 +474,7 @@ class EngineNodes:
 
     def _run_script(self, sc: ScriptSpec, unit: str, attempt: int, phase: str, state: Mapping[str, Any],
                     workdir: Path) -> tuple[bool, bool, dict[str, str]]:
-        """One script through the command runner or its callable (SCR §2.1); returns ok, environmental, artifacts."""
+        """One script through the command runner or its callable (SCR-B5); returns ok, environmental, artifacts."""
         t0 = time.monotonic()
         artifacts: dict[str, str] = {}
         ok, env, exit_code = True, False, None
@@ -525,14 +525,14 @@ class EngineNodes:
         return {"attempts": {unit: record}, "artifacts": {unit: artifacts or None}, "run": run}
 
     def _flow_unit(self, unit: str, state: RunState) -> dict[str, Any]:
-        """A route or switch unit runs no session: its pick is made in the gate node (CMP §2.2)."""
+        """A route or switch unit runs no session: its pick is made in the gate node (CMP-B10 to CMP-B16)."""
         visit = int(((state.get("visits") or {}).get(unit) or {}).get("visit", 1))
         record: dict[str, Any] = {"attempt": 1, "visit": visit, "ok": True, "text": "", "escalate": None,
                                   "infra_spent": False, "check": None, "flow": True}
         sw = self.ctx.spec.units[unit].switch
         if sw is not None and sw.complexity is not None:
             prev = ((state.get("attempts") or {}).get(unit) or {}).get("complexity")
-            record["complexity"] = prev or self._complexity(unit, state)  # once per run (CXR §2.1)
+            record["complexity"] = prev or self._complexity(unit, state)  # once per run (CXR-B7)
         path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
         run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
         return {"attempts": {unit: record}, "run": run}
@@ -552,7 +552,7 @@ class EngineNodes:
         return {"attempts": {unit: record}, "run": run}
 
     def _person_unit(self, unit: str, state: RunState) -> dict[str, Any]:
-        """An ask or a wait runs nothing: its step node records the entry and the human node pauses (CMP §2.2).
+        """An ask or a wait runs nothing: its step node records the entry and the human node pauses (CMP-B10 to CMP-B16).
         An ask reads its questions here, once per visit, and starts the visit with no answers (ASK-B2)."""
         from tempergraph.run import asking
 
@@ -580,14 +580,14 @@ class EngineNodes:
 
     def _escalation_facts(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any],
                           write: Mapping[str, Any]) -> dict[str, Any]:
-        """What the gate cannot read from state for E1, E6 and E7 (LAD §2.4): the stage, whether the escalation
+        """What the gate cannot read from state for E1, E6 and E7 (LAD-B12): the stage, whether the escalation
         record is met, the median estimate of one attempt on the tier above and what the run cost cap leaves."""
         ctx = self.ctx
         met = ctx.escalation_record or (lambda u: laddermod.record_met(ctx.state_root, ctx.spec.name,
                                                                          ctx.spec.version, u))
         try:
             record_met = bool(met(unit))
-        except Exception:  # noqa: BLE001 - LAD §4: a record that cannot be read is not met
+        except Exception:  # noqa: BLE001 - LAD-B14: a record that cannot be read is not met
             record_met = False
         known = sorted(float(x) for x in att.get("up_estimates") or [] if isinstance(x, int | float))
         estimate_usd = known[len(known) // 2] if known and len(known) == len(att.get("up_estimates") or []) else None
@@ -605,7 +605,7 @@ class EngineNodes:
         return self.ctx.judge_state
 
     def _complexity(self, unit: str, state: Mapping[str, Any]) -> dict[str, Any]:
-        """CXR §2.3 and §2.4: the measures, the rules in force and the zone, evaluated in the switch's step node."""
+        """CXR-B9, CXR-B10, CXR-B1: the measures, the rules in force and the zone, evaluated in the switch's step node."""
         ctx = self.ctx
         workdir = self._workdir(state)
         maps = (dict, Mapping)
@@ -622,7 +622,7 @@ class EngineNodes:
     # -- judge -----------------------------------------------------------------------------------
 
     def _outcome_step(self, unit: str, state: RunState) -> dict[str, Any]:
-        """OUT §2.4: no session; the subject is final state, recorded for the judge and the record."""
+        """OUT-B15, OUT-B16, OUT-B17: no session; the subject is final state, recorded for the judge and the record."""
         prev = (state.get("attempts") or {}).get(unit) or {}
         visit = int(((state.get("visits") or {}).get(unit) or {}).get("visit", 1))
         attempt = int(prev.get("attempt", 0)) + 1
@@ -645,7 +645,7 @@ class EngineNodes:
         return w
 
     def _route_outcome(self, unit: str, state: RunState, w: dict[str, Any]) -> dict[str, Any]:
-        """A failing outcome gate goes back to the earliest serving unit on the path, else escalates (OUT §2.4)."""
+        """A failing outcome gate goes back to the earliest serving unit on the path, else escalates (OUT-B15, OUT-B16, OUT-B17)."""
         from tempergraph.run.outcome import derived_back
 
         j = dict((w.get("judgements") or {}).get(unit) or {})
@@ -669,7 +669,7 @@ class EngineNodes:
         att = dict((state.get("attempts") or {}).get(unit) or {})
         if att.get("map_fault"):
             return {"judgements": {unit: {"verdict": str(Verdict.ESCALATE), "reason": "map_fault"}}}
-        if u.kind in ("ask", "wait"):  # no model and no judge: the person's input is the bar (ASK §1, WFM-B4)
+        if u.kind in ("ask", "wait"):  # no model and no judge: the person's input is the bar (ASK, WFM-B4)
             return {"judgements": {unit: {"verdict": str(Verdict.ESCALATE), "reason": u.kind}}}
         if att.get("map_skip"):
             return {"judgements": {unit: {"verdict": str(Verdict.PROCEED), "reason": "map_empty"}}}
@@ -717,7 +717,7 @@ class EngineNodes:
             level = (write["judgements"][unit].get("risk") or {}).get("level")  # a level is its own binding
             g_names = [lv.name for lv in g.judge.risk.levels] if g.judge.risk is not None else []
             raised = level in g_names[1:]
-            # the gate reads trust from the judgement (LAD §2.2)
+            # the gate reads trust from the judgement (LAD-B10)
             state_of = self._judge_state()(f"{unit}@{level}" if raised else unit)
             write["judgements"][unit].update(judge_state=state_of, trusted=laddermod.trusted(state_of, self.ctx.stage))
             if u.step.escalation is not None or gatemod.arm_overrides(spec, unit, state)[0].get("escalation"):
@@ -730,7 +730,7 @@ class EngineNodes:
 
     def _judge_claim(self, unit: str, state: RunState, att: dict[str, Any]) -> dict[str, Any]:
         """A step's upstream claim is judged on its own against one criterion: confirmed goes BACK, refuted
-        retries, undecided asks a person (BUD §2.1, HUM §2.1). No check runs: the step produced nothing to check."""
+        retries, undecided asks a person (BUD-B10, HUM-B7 to HUM-B11). No check runs: the step produced nothing to check."""
         target, defect = (str(x) for x in att["upstream"])
         j = self._judge_session(unit, state, att, None, self._workdir(state), claim=(target, defect))
         cost = j.pop("_cost", None)
@@ -784,7 +784,7 @@ class EngineNodes:
     def _check_settings(self, u: UnitSpec) -> dict[str, Any]:
         o = self.ctx.spec.outcome
         if not u.extra.get("outcome") or o is None:
-            return dict(self.ctx.settings)  # the workflow-declared settings a check reads (RST §2.5)
+            return dict(self.ctx.settings)  # the workflow-declared settings a check reads (RST-B25)
         from tempergraph.run.outcome import deliverable_producers
 
         return {**self.ctx.settings, "deliverables": [dict(d) for d in o.deliverables],
@@ -801,7 +801,7 @@ class EngineNodes:
         j = g.judge
         if claim:  # one engine criterion replaces the gate's own; the subject is the claimed unit's output
             g = dataclasses.replace(g, criteria=(claim_criterion(*claim),))
-        else:  # OUT §2.2: a judge grades no criterion a person signs or nobody verifies
+        else:  # OUT-B10, OUT-B12: a judge grades no criterion a person signs or nobody verifies
             g = judged(g)
         step_ex = st.executor or spec.default_executor
         judge_name = self.ctx.judges.get(unit) or self.ctx.registry.judge_executor(step_ex, j.executor,
@@ -839,12 +839,12 @@ class EngineNodes:
             feedback=str(((state.get("feedback") or {}).get(unit) or {}).get("text") or ""),
             rulings=tuple(gatemod.active_rulings(spec, state, unit)),
             visit_reason=str(((state.get("visits") or {}).get(unit) or {}).get("reason") or "")))
-        alias = j.model or "inherit"  # resolved on the judge chain alone (RST §2.3, CON §2.4)
+        alias = j.model or "inherit"  # resolved on the judge chain alone (RST-B22, RST-B23, CON-B3)
         attempt = int(att.get("attempt", 1))
         iid = att.get("item")
         jopts = j.session_options or SessionOptions()
         risk = self._risk(unit, state, att, cres, workdir, j) if j.risk is not None else None
-        if risk is not None:  # JRK §2.3: the level's alias and effort for this attempt; a pin keeps its own
+        if risk is not None:  # JRK-B8: the level's alias and effort for this attempt; a pin keeps its own
             alias = risk.pop("model") or alias
             effort = risk.pop("effort")
             if effort:
@@ -857,7 +857,7 @@ class EngineNodes:
                              options=jopts,
                              session_dir=session_dir(self.ctx.state_root, spec.name, self.ctx.task_id, key))
         before = gitmod.fingerprint(workdir)
-        changed = list(gitmod.changed_paths(workdir))[:200]  # the digest's `changed_read` (SRV §2.1)
+        changed = list(gitmod.changed_paths(workdir))[:200]  # the digest's `changed_read` (SRV-B11)
         res, results = self._session(ex, req, views, extra={"changed_paths": changed})
         all_results = list(results)
         out: dict[str, Any] = {"judge_executor": judge_name, "alias": alias, "views": list(views.tools)}
@@ -916,7 +916,7 @@ class EngineNodes:
 
     def _risk(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], cres: CheckResult | None,
               workdir: Path, j: Any) -> dict[str, Any]:
-        """JRK §2.2, §2.3: the rule on model-free facts of the attempt, then the level that grades it."""
+        """JRK-B7, JRK-B8: the rule on model-free facts of the attempt, then the level that grades it."""
         from tempergraph.contracts import RiskContext
         from tempergraph.run import risk as riskmod
 
@@ -940,7 +940,7 @@ class EngineNodes:
                                producer_rank=riskmod.rank(att.get("alias")) if escalated else None)
 
     def _keep_evidence(self, unit: str, att: Mapping[str, Any], blockers: list[dict[str, Any]]) -> None:
-        """One judgement's evidence and fix lines per attempt, scrubbed and local only (LOS §2.1, RDD §2.1)."""
+        """One judgement's evidence and fix lines per attempt, scrubbed and local only (LOS-B7, LOS-B8, LOS-B9, RDD-B7 to RDD-B11, RDD-B13, RDD-B15)."""
         if not blockers:
             return
         from tempergraph.docs import write_json
@@ -962,17 +962,17 @@ class EngineNodes:
     def gate(self, unit: str, state: RunState) -> dict[str, Any]:
         w = gatemod.decide(self.ctx.spec, unit, state, self.ctx.task_id)
         if (state.get("feedback") or {}).get(unit):
-            w.setdefault("feedback", {})[unit] = None  # one-time: seen by the attempt and its judge (RRN §2.2)
+            w.setdefault("feedback", {})[unit] = None  # one-time: seen by the attempt and its judge (RRN-B14, RRN-B15)
         r = w["route"][unit]
         so_far = cost_so_far((state.get("run") or {}).get("cost"))
         self.ctx.log.write("gate", unit=unit, item=((state.get("attempts") or {}).get(unit) or {}).get("item"),
                            verdict=((state.get("judgements") or {}).get(unit) or {}).get("verdict"),
                            token=r["token"], route_target=r["node"], cost_so_far=so_far)
         self._budget_records(unit, state, w)
-        if r.get("ladder"):  # LAD §2.7: every gate that chose the next attempt's rung
+        if r.get("ladder"):  # LAD-B16, LAD-B17: every gate that chose the next attempt's rung
             self.ctx.log.write("ladder_decision", unit=unit, **r["ladder"])
         att = (state.get("attempts") or {}).get(unit) or {}
-        if att.get("escalated"):  # LAD §2.7: the escalation record
+        if att.get("escalated"):  # LAD-B16, LAD-B17: the escalation record
             laddermod.record_escalation(
                 self.ctx.state_root, workflow=self.ctx.spec.name, version=self.ctx.spec.version, unit=unit,
                 thread=self.ctx.thread, passed=r["token"] in ("PROCEED", "NEXT"), to=str(att.get("escalated_to")),
@@ -997,7 +997,7 @@ class EngineNodes:
         return w
 
     def _budget_records(self, unit: str, state: RunState, w: Mapping[str, Any]) -> None:
-        """EVT §2.2 `budget`: one record per counter this gate charged, with its limit and cause."""
+        """EVT-B10 to EVT-B16 `budget`: one record per counter this gate charged, with its limit and cause."""
         g = self.ctx.spec.units[unit].gate
         before = (state.get("counters") or {}).get(unit) or {}
         after = (w.get("counters") or {}).get(unit) or {}
@@ -1017,7 +1017,7 @@ class EngineNodes:
         self.ctx.log.write("human", unit=unit, decision=payload.get("decision"), caller=payload.get("caller"),
                            feedback=bool(payload.get("feedback")) and not payload.get("ruling"))
         p = (w.get("pause") or {}).get(unit)
-        if p:  # an applied deadline turned the pause into an escalation (FLX §2.3)
+        if p:  # an applied deadline turned the pause into an escalation (FLX-B8)
             self.ctx.log.write("pause", unit=unit, item=p.get("item"), pause_kind=p["kind"], decisions=p["decisions"],
                                resume=p["resume"], reason=p.get("reason"),
                                cost_so_far=cost_so_far((state.get("run") or {}).get("cost")))
@@ -1032,7 +1032,7 @@ class EngineNodes:
 
 
 def _entered_from(state: Mapping[str, Any], unit: str) -> str:
-    """EVT §2.2 `entered_from`: `start`, `proceed`, `back:<unit>`, `rewind:<unit>` or `resume`."""
+    """EVT-B10 to EVT-B16 `entered_from`: `start`, `proceed`, `back:<unit>`, `rewind:<unit>` or `resume`."""
     v = (state.get("visits") or {}).get(unit) or {}
     if v.get("entered_from"):
         return str(v["entered_from"])

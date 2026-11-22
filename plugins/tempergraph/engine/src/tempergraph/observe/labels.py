@@ -1,9 +1,9 @@
-"""`label <thread> <gate> [--criterion id] --value agree|disagree` (FBK §2.1, §2.2 `explicit`).
+"""`label <thread> <gate> [--criterion id] --value agree|disagree` (FBK-B8, FBK-B9 `explicit`).
 
 One `label` record appended to the state root's ledger: what it is about, its value, its source from the
-caller's decider (PRV §2.4) and the judge binding that made the judgement. Metadata only: the verb takes no
-text, so no request, output or feedback text can reach a label (FBK-AC-3, IMD-AC-1). The derived kinds of
-§2.2 and `labels queue` are `improve/reliability.py` (T12.3).
+caller's decider (PRV-B14) and the judge binding that made the judgement. Metadata only: the verb takes no
+text, so no request, output or feedback text can reach a label (FBK-AC3, IMD-AC1). The derived kinds of
+FBK-B9 and `labels queue` are `improve/reliability.py` (T12.3).
 """
 
 from __future__ import annotations
@@ -31,8 +31,8 @@ def _ts(text: Any) -> float | None:
 
 
 def binding(recs: list[dict[str, Any]], unit: str, attempt: Any, before_seq: int | None = None) -> dict[str, Any]:
-    """FBK §2.1 `binding` from the judge session that made the judgement and its `judgement` record (which
-    carries the brief and criteria digests, EVT §2.2); a field not recorded is null."""
+    """FBK-B8 `binding` from the judge session that made the judgement and its `judgement` record (which
+    carries the brief and criteria digests, EVT-B10 to EVT-B16); a field not recorded is null."""
     judge = next((r for r in reversed(recs) if r.get("kind") == "agent_run" and r.get("unit") == unit
                   and r.get("attempt") == attempt and r.get("session_kind") == "judge"), None) or {}
     judged = next((r for r in reversed(recs) if r.get("kind") == "judgement" and r.get("unit") == unit
@@ -82,7 +82,7 @@ def label(root: Path, thread: str, gate: str, value: str, caller: dict[str, Any]
     from tempergraph.git import main_checkout
 
     machine = identity.machine_id(home_path())
-    repo = identity.repo_id(main_checkout(root.parent))  # the ledger's join keys (IMD-R1), as the runner writes them
+    repo = identity.repo_id(main_checkout(root.parent))  # the ledger's join keys (IMD-B5), as the runner writes them
     return {"kind": "label", "schema_version": 1, "label_id": uuid.uuid4().hex, "thread": thread,
             "run_id": f"{thread}#{g.get('segment')}", "workflow": workflow,
             "workflow_version": started.get("workflow_version"), "machine": machine, "repo": repo,

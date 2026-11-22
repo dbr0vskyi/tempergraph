@@ -1,4 +1,4 @@
-"""The `claude` executor (ECC-B1 to B5, ECC-AC-1 to AC-4; SEC-B1)."""
+"""The `claude` executor (ECC-B1 to B5, ECC-AC1 to AC-4; SEC-B1)."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def flag(argv: list[str], name: str) -> str | None:
     return argv[argv.index(name) + 1] if name in argv else None
 
 
-# -- argv (ECC §2.3, §2.4) ----------------------------------------------------------------------
+# -- argv (ECC-B8, ECC-B9, ECC-B10) ----------------------------------------------------------------------
 
 
 def test_declared_shell_in_engine_worktree(tmp_path: Path) -> None:
@@ -82,7 +82,7 @@ def test_judge_launch_is_read_only(tmp_path: Path) -> None:
     assert flag(argv, "--disallowedTools") == "mcp__*"
     assert flag(argv, "--setting-sources") == ""
     for bad in ("Write", "Edit", "Bash", "--fallback-model", "--resume", "--continue", "acceptEdits"):
-        assert all(bad not in a for a in argv)  # ECC-AC-4
+        assert all(bad not in a for a in argv)  # ECC-AC4
     assert "--bare" in judge_argv(ViewSet(), None, isolated=True)
 
 
@@ -117,7 +117,7 @@ def test_binding_file(tmp_path: Path) -> None:
     assert BindingTable().for_executor("claude").model("large") == "opus"
 
 
-# -- stream mapping (ECC §2.5, ECC-AC-2) --------------------------------------------------------
+# -- stream mapping (ECC-B11, ECC-AC2) --------------------------------------------------------
 
 
 def events_of(*msgs: dict) -> list:
@@ -163,7 +163,7 @@ def test_result_permission_denials() -> None:
     assert [(e.kind, e.data.get("name")) for e in evs] == [("denied", "Write"), ("result", None)]
 
 
-# -- failure classification (ECC §2.6, ECC-AC-3) ------------------------------------------------
+# -- failure classification (ECC-B12, ECC-AC3) ------------------------------------------------
 
 
 def raw_of(*msgs: dict, **kw: object) -> tuple[RawOutcome, object]:

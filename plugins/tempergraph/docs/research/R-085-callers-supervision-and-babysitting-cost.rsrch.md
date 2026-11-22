@@ -31,14 +31,14 @@ The work was done standalone, without questions to the owner; assumptions are re
 
 | # | Finding | Confidence |
 |---|---|---|
-| D1 | The intervention row of every accepted resume records who resumed: `person`, `auto_reopen`, `event`, `deadline`, `rewind`, or `agent` "when the caller declares itself one" ([HUM-B6](../specs/07-gate-and-human.spec.md)). The only agent signal is the self-declared `--as-agent` flag ([CLI §2.1](../specs/17-engine-cli.spec.md)). An agent that omits it is recorded as a person. | confirmed (S2) |
-| D2 | `stop --as-agent` is recorded on `stop_requested` ([RCT-B5](../specs/32-run-control.spec.md)); rulings record `by` ([CON §2.12](../specs/01-contracts.spec.md)); labels from an `--as-agent` answer get `source=agent` and are kept out of judge figures ([FBK-B2](../specs/41-feedback-and-judge-reliability.spec.md)); a declared agent cannot widen tools ([RST §2.8](../specs/80-run-settings-and-overrides.spec.md)). Each rests on D1's flag. | confirmed (S2) |
-| D3 | Run origin (`cli`, `skill`, `batch`, `orchestration`, `ci`, …) is recorded once per thread ([DUR §2.2](../specs/09-durability-and-resume.spec.md)), and `parent` names the orchestration node ([EVT §2.2](../specs/30-run-events.spec.md)). Origin says how the thread started, not who made each later call. | confirmed (S2) |
+| D1 | The intervention row of every accepted resume records who resumed: `person`, `auto_reopen`, `event`, `deadline`, `rewind`, or `agent` "when the caller declares itself one" ([HUM-B6](../specs/07-gate-and-human.spec.md)). The only agent signal is the self-declared `--as-agent` flag ([ROP-B1 to ROP-B13](../specs/23-run-options.spec.md)). An agent that omits it is recorded as a person. | confirmed (S2) |
+| D2 | `stop --as-agent` is recorded on `stop_requested` ([RCT-B5](../specs/32-run-control.spec.md)); rulings record `by` ([RST (moved)](../specs/01-contracts.spec.md)); labels from an `--as-agent` answer get `source=agent` and are kept out of judge figures ([FBK-B2](../specs/41-feedback-and-judge-reliability.spec.md)); a declared agent cannot widen tools ([RST-B28, RST-B29, RST-B30](../specs/80-run-settings-and-overrides.spec.md)). Each rests on D1's flag. | confirmed (S2) |
+| D3 | Run origin (`cli`, `skill`, `batch`, `orchestration`, `ci`, …) is recorded once per thread ([DUR-B11](../specs/09-durability-and-resume.spec.md)), and `parent` names the orchestration node ([EVT-B10 to EVT-B16](../specs/30-run-events.spec.md)). Origin says how the thread started, not who made each later call. | confirmed (S2) |
 | D4 | The orchestration supervisor is model-free and answers no gate (C16); every pause in an orchestration is answered by a person through `orchestrate answer`, recorded `by: person` ([ADR-0039](../adr/0039-pauses-stay-with-the-person-failures-follow-node-policy.adr.md)). The skill passes the person's word, but the engine cannot tell whether the word came from the person. | confirmed (S2) |
-| D5 | The cross-machine run row carries `wall_s`, `agent_s` and `person_wait_s`; the heartbeat and the detail document carry `waiting_for_person_s` ([CST §2.2](../specs/34-central-run-stats.spec.md), [RDD §2.3](../specs/31-run-detail-document.spec.md)). There is no count of touches by kind, no agent-intervention count, no supervision cost. | confirmed (S2) |
-| D6 | ADR-0041's promotion criteria count "person interventions per run (escalations and budget pauses, not approvals)" and the audit has `interventions-per-run` over 1.0 ([ARC §2.6](../specs/56-audit-rule-catalog.spec.md)). Both count person interventions only, so a run babysat by an agent looks autonomous. | confirmed (S2) |
-| D7 | OSK-AC-4 asks that the orchestrating session's own cost be at most 3% of the runs' cost on a live orchestration, but no document says how that cost is measured. ADR-0037 cuts wakes; nothing records what a wake costs. | confirmed (S2) |
-| D8 | Contract C13: read-only verbs (`status`, `events`, `facts`, `wait`, `logs`, `attention`) create nothing. The engine therefore cannot count an agent's polling from inside those verbs. | confirmed (S2) |
+| D5 | The cross-machine run row carries `wall_s`, `agent_s` and `person_wait_s`; the heartbeat and the detail document carry `waiting_for_person_s` ([CST-B9](../specs/34-central-run-stats.spec.md), [RDD-B14](../specs/31-run-detail-document.spec.md)). There is no count of touches by kind, no agent-intervention count, no supervision cost. | confirmed (S2) |
+| D6 | ADR-0041's promotion criteria count "person interventions per run (escalations and budget pauses, not approvals)" and the audit has `interventions-per-run` over 1.0 ([ARC-B12](../specs/56-audit-rule-catalog.spec.md)). Both count person interventions only, so a run babysat by an agent looks autonomous. | confirmed (S2) |
+| D7 | OSK-AC4 asks that the orchestrating session's own cost be at most 3% of the runs' cost on a live orchestration, but no document says how that cost is measured. ADR-0037 cuts wakes; nothing records what a wake costs. | confirmed (S2) |
+| D8 | OVR-B15: read-only verbs (`status`, `events`, `facts`, `wait`, `logs`, `attention`) create nothing. The engine therefore cannot count an agent's polling from inside those verbs. | confirmed (S2) |
 
 ### Part 2: what babysitting costs and hides
 
@@ -87,23 +87,23 @@ The work was done standalone, without questions to the owner; assumptions are re
 
 | Ask | Before | After |
 |---|---|---|
-| Tell a direct person from an agent | `--as-agent` only, self-declared (D1) | Caller kinds and the signal ladder ([PRV §2.1–2.3](../specs/85-caller-provenance.spec.md)) |
-| Tell the orchestrator or a pipeline | Origin per thread (D3) | Per call: supervisor token, CI markers ([PRV §2.2](../specs/85-caller-provenance.spec.md)) |
-| Relayed decision against the agent's own | Not possible | Decider with turn evidence ([PRV §2.4](../specs/85-caller-provenance.spec.md)) |
-| Every intervention attributed | Resume, stop, ruling, grant (partly) | Every mutating call writes a `caller` block ([PRV §2.5](../specs/85-caller-provenance.spec.md)) |
-| Human touches: counts and time | `person_wait_s` only (D5) | Touch counts by kind and decider, latency per pause ([SUP §2.2](../specs/86-supervision-metrics.spec.md)) |
-| Agent interventions | Counted apart in reports (HUM-AC-4) | Counted per kind; agent's own decisions on undesigned pauses as a rate ([SUP §2.2](../specs/86-supervision-metrics.spec.md)) |
+| Tell a direct person from an agent | `--as-agent` only, self-declared (D1) | Caller kinds and the signal ladder ([PRV-B11, PRV-B12, PRV-B13](../specs/85-caller-provenance.spec.md)) |
+| Tell the orchestrator or a pipeline | Origin per thread (D3) | Per call: supervisor token, CI markers ([PRV-B12](../specs/85-caller-provenance.spec.md)) |
+| Relayed decision against the agent's own | Not possible | Decider with turn evidence ([PRV-B14](../specs/85-caller-provenance.spec.md)) |
+| Every intervention attributed | Resume, stop, ruling, grant (partly) | Every mutating call writes a `caller` block ([PRV-B16, PRV-B17](../specs/85-caller-provenance.spec.md)) |
+| Human touches: counts and time | `person_wait_s` only (D5) | Touch counts by kind and decider, latency per pause ([SUP-B10](../specs/86-supervision-metrics.spec.md)) |
+| Agent interventions | Counted apart in reports (HUM-AC4) | Counted per kind; agent's own decisions on undesigned pauses as a rate ([SUP-B10](../specs/86-supervision-metrics.spec.md)) |
 | Babysitting cost | Not measured (D7) | Supervision journal, attribution, two figures, share of run cost ([SCO](../specs/87-supervision-cost.spec.md)) |
-| Across four executors and hosts | — | Per-host sources table ([SCO §2.3](../specs/87-supervision-cost.spec.md)) |
-| Run log, ledger, stats, monitor | Partial (D5) | `caller` blocks, ledger `supervision{}`, CST `supervision` row, RDD and monitor blocks ([SUP §2.5](../specs/86-supervision-metrics.spec.md)) |
-| Audit, evals, improvement loop | Person rate only (D6) | Rules on the agent's own decisions, polling and cost share; eval runs answered by fixtures; loop causes `agent_decided:<cause>` ([SUP §2.6](../specs/86-supervision-metrics.spec.md)) |
-| Promotion | Person interventions (D6) | Supervision criteria ([SUP §2.7](../specs/86-supervision-metrics.spec.md), ADR-0089) |
+| Across four executors and hosts | — | Per-host sources table ([SCO-B12](../specs/87-supervision-cost.spec.md)) |
+| Run log, ledger, stats, monitor | Partial (D5) | `caller` blocks, ledger `supervision{}`, CST `supervision` row, RDD and monitor blocks ([SUP-B13](../specs/86-supervision-metrics.spec.md)) |
+| Audit, evals, improvement loop | Person rate only (D6) | Rules on the agent's own decisions, polling and cost share; eval runs answered by fixtures; loop causes `agent_decided:<cause>` ([SUP-B14, SUP-B15, SUP-B16](../specs/86-supervision-metrics.spec.md)) |
+| Promotion | Person interventions (D6) | Supervision criteria ([SUP-B17](../specs/86-supervision-metrics.spec.md), ADR-0089) |
 
 ## Open questions
 
 | Question | Owner | Settles it |
 |---|---|---|
-| Is `CLAUDE_CODE_SESSION_ID` present in a Bash tool child of every Claude Code surface (CLI, IDE, desktop, cloud), and in the children of an Agent SDK session? | Implementer | Probe P-SUP-1 ([PRV §5](../specs/85-caller-provenance.spec.md)) |
+| Is `CLAUDE_CODE_SESSION_ID` present in a Bash tool child of every Claude Code surface (CLI, IDE, desktop, cloud), and in the children of an Agent SDK session? | Implementer | Probe P-SUP-1 ([R-150 PRV](R-150-rationale-carried-from-the-engine-specs.rsrch.md)) |
 | Does `UserPromptSubmit` input carry the prompt text, so the decision-word check can run locally? | Implementer | Probe P-SUP-2 |
 | Does `PostToolUse` input carry the command and the response size for `Bash`? | Implementer | Probe P-SUP-3 |
 | Does Antigravity mark its children or offer hooks with a session id, so an `agy` session supervising a run can be classified and costed? Until then it is `unknown` and `unmeasured`. | Implementer | Probe P-SUP-5 |

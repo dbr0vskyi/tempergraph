@@ -1,4 +1,4 @@
-"""The structural judge readiness report and the stable-mode rule (LIF §2, LIF-B6)."""
+"""The structural judge readiness report and the stable-mode rule (LIF-B7 to LIF-B16, LIF-B6)."""
 
 from __future__ import annotations
 

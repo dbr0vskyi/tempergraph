@@ -1,4 +1,4 @@
-"""Run aliases (DUR §2.2 `alias`, DUR-B8): a short name unique among live threads.
+"""Run aliases (DUR-B11 `alias`, DUR-B8): a short name unique among live threads.
 
 The table is `<state root>/runs/aliases.json`: alias -> thread ids, latest last. A finished thread frees
 its alias; a lookup of a name whose threads are all finished returns the latest one.

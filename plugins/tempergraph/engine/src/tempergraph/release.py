@@ -1,4 +1,4 @@
-"""The engine release record, `release.json` (VER §2.2); plain data in the package, stdlib only."""
+"""The engine release record, `release.json` (VER-B8); plain data in the package, stdlib only."""
 
 from __future__ import annotations
 

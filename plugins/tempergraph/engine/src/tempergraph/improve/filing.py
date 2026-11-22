@@ -1,4 +1,4 @@
-"""Filing findings to the repository that owns the fault (SIL-B2, B3, B6, B7, §4; T12.2).
+"""Filing findings to the repository that owns the fault (SIL-B2, B3, B6, B7, SIL-B19, SIL-B20; T12.2).
 
 Publishing code: it reads findings (metadata) only and never imports or opens the evidence file. An issue's
 title and body are built from cause codes, counts, ids and the cause's fixed remedy text; no request text.
@@ -16,7 +16,7 @@ from typing import Any
 from tempergraph.improve import params
 from tempergraph.improve.codehost import CodeHost, CodeHostError
 
-ENGINE_REPOSITORY = "dbr0vskyi/tempergraph"  # engine and executor findings (SIL §2.3)
+ENGINE_REPOSITORY = "dbr0vskyi/tempergraph"  # engine and executor findings (SIL-B11)
 LOOP_LABEL = "tempergraph-loop"
 
 
@@ -60,7 +60,7 @@ def repository(finding: Mapping[str, Any], issue_repository: str) -> str | None:
 
 def decide(c: Candidate, history: Iterable[Mapping[str, Any]], issue_repository: str,
            now: datetime | None = None) -> Decision:
-    """Whether a candidate files, or is only recorded, and why (SIL §2.4, B3, B7)."""
+    """Whether a candidate files, or is only recorded, and why (SIL-B12 to SIL-B16, B3, B7)."""
     f = c.finding
     repo = repository(f, issue_repository)
     if f.get("class") != "fault":
@@ -102,7 +102,7 @@ def body(d: Decision) -> str:
             f"**Workflow** `{f.get('workflow')}` version `{f.get('workflow_version')}`; unit `{f.get('unit') or '-'}`;"
             f" count {f.get('count')}." + (f" Executor CLI `{f['executor_version']}`." if f.get("executor_version") else ""),
             "", f"**Drafted remedy** {f.get('remedy')}", "",
-            "An issue is evidence, not an order: a person decides (SIL §1)."]
+            "An issue is evidence, not an order: a person decides (SIL-B8)."]
     if d.counts:
         rows.insert(4, "**Pattern** " + ", ".join(f"{k} {v}" for k, v in sorted(d.counts.items())) + ".")
     return "\n".join(rows)
@@ -115,13 +115,13 @@ def _labels(f: Mapping[str, Any]) -> list[str]:
 
 @dataclass(kw_only=True)
 class Outbox:
-    """Payloads a code host did not take, redelivered by the next filing (SIL §4)."""
+    """Payloads a code host did not take, redelivered by the next filing (SIL-B19, SIL-B20)."""
 
     path: Path
 
     @classmethod
     def at(cls, root: Path) -> Outbox:
-        return cls(path=root / "filing-outbox.jsonl")  # LOS §2.1
+        return cls(path=root / "filing-outbox.jsonl")  # LOS-B7, LOS-B8, LOS-B9
 
     def add(self, payload: Mapping[str, Any]) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)

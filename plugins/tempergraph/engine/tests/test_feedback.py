@@ -1,4 +1,4 @@
-"""Feedback and lasting rulings on resume (RRN §2.2, RRN-B1, B2, B4, B11, AC-2, AC-6)."""
+"""Feedback and lasting rulings on resume (RRN-B14, RRN-B15, RRN-B1, B2, B4, B11, AC-2, AC-6)."""
 
 from __future__ import annotations
 
@@ -93,7 +93,7 @@ def test_revoke_a_ruling(repo: Path) -> None:  # RRN-B11
     assert revoked["action"] == "revoked" and revoked["id"] == "r1" and revoked["by"]["kind"] == "person"
 
 
-def test_refusals_write_nothing(repo: Path) -> None:  # RRN §4
+def test_refusals_write_nothing(repo: Path) -> None:  # RRN-B16, RRN-B17, RRN-B18, RRN-B14, RRN-B15
     from .conftest import hash_tree
 
     seen = Seen()

@@ -1,6 +1,6 @@
-"""`report` (OBS §2.4): read-only, model-free cost and friction reports over a state root's run logs.
+"""`report` (OBS-B15): read-only, model-free cost and friction reports over a state root's run logs.
 
-Every figure keeps reported and estimated money apart and says when a part is unmeasured (OBS §2.2): a total is a
+Every figure keeps reported and estimated money apart and says when a part is unmeasured (OBS-B10 to OBS-B13): a total is a
 pair of sums with session counts, never one number. Activity journals feed the time profile and the loop signal.
 """
 
@@ -23,7 +23,7 @@ LOOP_REPEAT = 5
 
 @dataclass(kw_only=True)
 class Money:
-    """Reported and estimated money apart, with how many sessions each covers (OBS §2.2)."""
+    """Reported and estimated money apart, with how many sessions each covers (OBS-B10 to OBS-B13)."""
 
     reported: float = 0.0
     estimated: float = 0.0
@@ -77,7 +77,7 @@ class Session:
     duration_s: float | None = None
     slow_host: bool = False
     prompt_digest: str | None = None
-    climbed: bool = False  # ran above rung 0 or on an escalated alias (LAD §2.7)
+    climbed: bool = False  # ran above rung 0 or on an escalated alias (LAD-B16, LAD-B17)
     escalated: bool = False
 
 
@@ -93,7 +93,7 @@ class Thread:
     routes: list[dict[str, Any]] = field(default_factory=list)
     humans: list[dict[str, Any]] = field(default_factory=list)
     exit: dict[str, Any] | None = None
-    outcome: dict[str, Any] | None = None  # the latest `outcome` record (OUT §2.5)
+    outcome: dict[str, Any] | None = None  # the latest `outcome` record (OUT-B18, OUT-B19)
     folder: Path | None = None
 
 
@@ -228,7 +228,7 @@ def _group(sessions: list[Session], key: Any) -> dict[str, dict[str, Any]]:
 
 
 def by_unit(ts: list[Thread]) -> list[dict[str, Any]]:
-    """First visit against repeats, each repeat with one cause (OBS §2.4); per workflow and unit."""
+    """First visit against repeats, each repeat with one cause (OBS-B15); per workflow and unit."""
     rows: dict[tuple[str, str], list[Session]] = defaultdict(list)
     for t in ts:
         for s in t.sessions:
@@ -245,7 +245,7 @@ def by_unit(ts: list[Thread]) -> list[dict[str, Any]]:
 
 
 def prompts(ts: list[Thread]) -> list[dict[str, Any]]:
-    """Each rendered step prompt's digest beside its rates, so a prompt change shows (OBS §2.4)."""
+    """Each rendered step prompt's digest beside its rates, so a prompt change shows (OBS-B15)."""
     rows: dict[tuple[str, str, str], list[Session]] = defaultdict(list)
     for t in ts:
         for s in t.sessions:
@@ -261,7 +261,7 @@ def prompts(ts: list[Thread]) -> list[dict[str, Any]]:
 
 
 def criteria(ts: list[Thread]) -> list[dict[str, Any]]:
-    """Pass, fail and UNVERIFIABLE counts per criterion id, and gate escapes (OBS §2.4)."""
+    """Pass, fail and UNVERIFIABLE counts per criterion id, and gate escapes (OBS-B15)."""
     counts: dict[tuple[str, str], dict[str, int]] = defaultdict(lambda: defaultdict(int))
     escapes: dict[tuple[str, str], int] = defaultdict(int)
     for t in ts:
@@ -281,7 +281,7 @@ def criteria(ts: list[Thread]) -> list[dict[str, Any]]:
 
 
 def arms(ts: list[Thread]) -> list[dict[str, Any]]:
-    """Counts per route and switch arm, and per gate verdict (OBS §2.4 per arm)."""
+    """Counts per route and switch arm, and per gate verdict (OBS-B15 per arm)."""
     route: dict[tuple[str, str, str], int] = defaultdict(int)
     for t in ts:
         for r in t.routes:
@@ -293,7 +293,7 @@ def arms(ts: list[Thread]) -> list[dict[str, Any]]:
 
 def ladder(ts: list[Thread]) -> list[dict[str, Any]]:
     """Per workflow version: rung-0 attempts and climbed attempts apart, the runs that held an escalated
-    attempt, and first-pass yield, which a climbed attempt can never enter (LAD §2.7, LAD-AC-5)."""
+    attempt, and first-pass yield, which a climbed attempt can never enter (LAD-B16, LAD-B17, LAD-AC5)."""
     by: dict[tuple[str, str], list[Thread]] = defaultdict(list)
     for t in ts:
         by[(t.workflow, str(t.version or "?"))].append(t)
@@ -342,7 +342,7 @@ def _journal(folder: Path, key: str | None) -> list[dict[str, Any]]:
 
 
 def profile_and_loops(ts: list[Thread]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Wall time per tool name and shell program word, and the loop signal (OBS-B5, §2.4); numbers and names only."""
+    """Wall time per tool name and shell program word, and the loop signal (OBS-B5, OBS-B15); numbers and names only."""
     tool_s: dict[str, float] = defaultdict(float)
     word_s: dict[str, float] = defaultdict(float)
     loops = []

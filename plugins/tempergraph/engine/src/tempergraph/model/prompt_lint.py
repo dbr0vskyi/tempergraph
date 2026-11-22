@@ -1,9 +1,9 @@
-"""Prompt lint (LIF §2, LIF-AC-6): model-free, text-style rules over templates, judge briefs and stances,
+"""Prompt lint (LIF-B7 to LIF-B16, LIF-AC6): model-free, text-style rules over templates, judge briefs and stances,
 and the skills and agents a package ships. Part of `validate` (warnings) and shown by `audit` (PRA
 `prompt-lint`). The name reader, :func:`names`, is the one the prompt audit and the tool-surface audit
-reuse (PRA-AC-3).
+reuse (PRA-AC3).
 
-Rules and codes (LIF §2.1): `lint-vague-word`, `lint-self-grading`, `lint-rule-branching`,
+Rules and codes (LIF-B12): `lint-vague-word`, `lint-self-grading`, `lint-rule-branching`,
 `lint-human-wait`, `lint-accepting-brief`, `lint-tool-name-foreign`, `lint-ref-missing`, `lint-oversized`.
 """
 
@@ -72,7 +72,7 @@ def _tool_names() -> dict[str, set[str]]:
 
 
 def names(text: str) -> Names:
-    """Everything a model-facing text names: skills, agents, package files, tool names (PRA §2.2)."""
+    """Everything a model-facing text names: skills, agents, package files, tool names (PRA-B6)."""
     tools = _tool_names()
     skills = [a or b for a, b in SKILL_REF.findall(text)]
     return Names(skills=tuple(dict.fromkeys(skills)), agents=tuple(dict.fromkeys(AGENT_REF.findall(text))),

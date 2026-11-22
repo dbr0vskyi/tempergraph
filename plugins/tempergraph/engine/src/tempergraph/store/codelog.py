@@ -1,6 +1,6 @@
-"""The engine code log (LOS §2.3): JSON lines, one file per process per day, scrubbed.
+"""The engine code log (LOS-B13): JSON lines, one file per process per day, scrubbed.
 
-Read-only verbs log only to standard error (contract C13): they never call :func:`attach`.
+Read-only verbs log only to standard error (OVR-B15): they never call :func:`attach`.
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ class JsonLineHandler(logging.Handler):
                 os.write(fd, (json.dumps(line) + "\n").encode())
             finally:
                 os.close(fd)
-        except Exception:  # best effort, contract C2
+        except Exception:  # best effort, OVR-B4
             pass
 
 

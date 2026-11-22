@@ -36,7 +36,7 @@ We will add the capability `skill:<plugin>:<name>`. It is not read-only (a skill
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| K1 | Claude Code's headless permission layer can allow the skill tool; whether a per-skill rule is accepted is probe P-CC-8. Until it passes, the claude executor allows the skill tool and the after-the-fact tool record checks the skill name. | [ECC §2.2](../specs/11-executor-claude-code.spec.md) |
+| K1 | Claude Code's headless permission layer can allow the skill tool; whether a per-skill rule is accepted is probe P-CC-8. Until it passes, the claude executor allows the skill tool and the after-the-fact tool record checks the skill name. | [ECC-B7](../specs/11-executor-claude-code.spec.md) |
 | K2 | The Agent SDK exposes skills like Claude Code when the step's setting sources include the workflow plugin. | [EAS](../specs/21-executor-agent-sdk.spec.md) |
 
 ## Consequences

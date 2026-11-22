@@ -1,172 +1,127 @@
----
-title: Local observability store
-type: component
-status: ready-for-implementation
-prefix: LOS
-adrs: [0009, 0014, 0024]
----
-
 # Local observability store
 
-## 1. Overview
+## Purpose
 
-Everything a repository's runs leave on the machine lives in one folder, the state root `<main checkout>/.tempergraph/` ([WSP](13-workspace-and-concurrency.spec.md)), in a fixed layout: checkpoints, run logs, the full log of every agent session on every executor, the engine's own code log, deterministic check output, hook output, batch files, the ledger and scratch. A per-user home folder, `~/.tempergraph/`, holds what spans repositories on one machine. This spec owns both layouts, the manifest that versions them, the engine's code log, retention and the `logs` and `store` verbs. Writing any of it is best effort (contract C2) and nothing here is published (contract C9).
+Everything a repository's runs leave on the machine lives in one folder, the state root `<main checkout>/.tempergraph/` ([WSP](13-workspace-and-concurrency.spec.md)), in a fixed layout: checkpoints, run logs, the full log of every agent session on every executor, the engine's own code log, deterministic check output, hook output, batch files, the ledger and scratch. A per-user home folder, `~/.tempergraph/`, holds what spans repositories on one machine. This spec owns both layouts, the manifest that versions them, the engine's code log, retention and the `logs` and `store` verbs. One known layout means the monitor, the troubleshooter skill and a person with a shell all find a session's full log by its `session_key`, whichever executor ran it ([ADR-0024](../adr/0024-one-local-store-layout-with-a-manifest.adr.md)). Writing any of it is best effort (OVR-B4) and nothing here is published (OVR-B11). Retention is never automatic: a person decides what history to drop. Every observer, the troubleshooter and the self-improvement loop depend on this layout; release 1 deviations are kept in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
-## 2. Contract
+## Behaviours
 
-### 2.1 State root layout (layout version 1)
+### LOS-B7 State root top level
 
-```text
-.tempergraph/
-  manifest.json                     layout version, engine version that created it, created_at
-  .gitignore                        "*" so the folder never enters a commit, whatever the repository's own ignore file says
-  config/                           operator config: hooks, observers, sinks, price overrides, observe.* settings, settings.json [RST §2.4]
-  checkpoints/<workflow>.sqlite     [DUR]
-  locks/<workflow>/<task_id>.lock   [DUR]
-  runs/<workflow>/<task_id>/
-    run.jsonl                       run log [OBS], with the envelope of [EVT §2.1]
-    evidence/                       request, outputs, feedback; review/<session_key>.json from the session reviewer;
-                                    prompts/<session_key>.txt, a step's scrubbed prompt for the review; local only [SEC §2.3, SRV §2.8]
-    findings.json                   [SIL]
-    loop.jsonl                      the loop child's records for this thread: judged sessions, filing results [SIL §5]
-    engine.json                     engines and workflow versions each process ran on; a pin [MIG §2.1]
-    control/stop.json               only while a stop is pending [RCT]
-    exit.json                       the last segment's exit code and reason word, rewritten at each segment's end [DUR-B5]
-    lineage.json                    reruns made from this thread [RRN §2.4]
-    sessions/<session_key>/
-      meta.json                     executor, cli_version, session_id, transcript locator, pgid, started_at, ended_at
-      raw.jsonl                     every line the executor's stream produced, with receive time; the session's full log
-      activity.jsonl                normalized events [EVT §2.3]
-      digest.json                   model-free session digest: names, counts, keyed digests [SRV §2.1]
-      live.json                     live progress file [OBS §2.3]; removed at session end
-      stderr.log                    the child's standard error
-      tools.jsonl                   messages-api only: each tool the engine's tool host ran, exit code, duration [THS]
-      output/                       messages-api only: clipped command output per tool call, local
-    checks/<unit>/<attempt>/
-      <n>.out                       the n-th command the check ran: standard output and error together (release 1; see §5)
-    hooks/<event>-<seq>.<hook>.log  a lifecycle hook's output; beside it <event>-<seq>.facts.json and results.jsonl
-    answers/<unit>.json             an ask unit's answers [ASK §2.3]
-  batches/<batch_id>/               batch file and batch event file [WSP §2.2]
-  ledger.jsonl                      [SIL]
-  filing-outbox.jsonl               issue payloads a code host refused, redelivered by the next filing [SIL §4]
-  backups/layout-<N>-<ts>/          files a breaking layout step moved or rewrote [MIG §2.2]
-  upgrades/<upgrade_id>/            plan, baseline and report of a workflow upgrade [WUP §2.2]
-  authoring/<session_id>/          authoring.json, draft outcome.json and blueprint.json, saved sources; local only [AUT §2.1]
-  engine/<YYYY-MM-DD>-<pid>.jsonl   engine code log (§2.3)
-  scratch/                          executor scratch, owner-only, removed per session [WSP-B5]
-```
+WHEN a state root (layout version 1) is created THE engine SHALL lay out `manifest.json` (layout version, the engine version that created it, `created_at`), `.gitignore` holding `*`, `config/` (operator config: hooks, observers, sinks, price overrides, `observe.*` settings and `settings.json`, [RST](80-run-settings-and-overrides.spec.md)), `checkpoints/<workflow>.sqlite` and `locks/<workflow>/<task_id>.lock` ([DUR](09-durability-and-resume.spec.md)), `runs/<workflow>/<task_id>/`, `batches/<batch_id>/` (batch file and batch event file, [WSP](13-workspace-and-concurrency.spec.md)), `ledger.jsonl` and `filing-outbox.jsonl` (issue payloads a code host refused, [SIL](16-self-improvement.spec.md)), `backups/layout-<N>-<ts>/` ([MIG](62-state-and-run-migration.spec.md)), `upgrades/<upgrade_id>/` ([WUP](63-workflow-upgrade.spec.md)), `authoring/<session_id>/` (local only, [AUT](89-workflow-authoring.spec.md)), `engine/<YYYY-MM-DD>-<pid>.jsonl` (the code log) and `scratch/` (owner-only, removed per session, [WSP-B5](13-workspace-and-concurrency.spec.md)), all created owner-only (0700 for folders, 0600 for files on POSIX).
 
-The folder and everything under it is created owner-only (0700 for folders, 0600 for files on POSIX).
+- GIVEN a new state root on POSIX WHEN its files are listed THEN folders are 0700 and files 0600
 
-### 2.2 Home layout (`TEMPERGRAPH_HOME`, default `~/.tempergraph/`)
+### LOS-B8 Run folder
 
-```text
-~/.tempergraph/
-  manifest.json
-  bin/                              the CLI shim and Windows wrapper [UPD §2.2]
-  engines/                          one environment per installed release, current.json, previous.json [UPD §2.2]
-  registry.json                     registered workflows, their dependencies and pins [UPD §2.8]
-  machine.json                      machine_id (random UUID made once), label (operator-set, default the host name), created_at
-  index.json                        known state roots: path, repository name, first_seen, last_run_at [CST §2.1]
-  stats/<YYYY-MM>.jsonl             per-user stats rows [OBS §2.4], one per thread exit
-  config/                           user-level sinks (`sinks.json`) and defaults (`settings.json`); a state root's config overrides it
-  outbox/<sink>.jsonl, .state.json  rows waiting for a sink and the sink's failure state [CST §2.3]
-  improve/tickets/                  loop hand-off tickets waiting for the detached loop child [SIL §5]
-  supervision/<host>/<session>.jsonl  supervision journal of one host session [SCO §2.2]
-  schedules/<schedule_id>/          entry.json (owner-only) and fires.jsonl of one schedule [SCH §2.2]
-  schedules/tick.json, tick.lock    the tick's heartbeat and lock [TCK §2.2]
-  schedules/runs.jsonl              every scheduled run on this machine, whatever folder it was set up in [TCK §2.7]
-  fleet/<sink>/                     merged copy of every machine's rows from that sink [CST §2.3]
-    machines/<machine_id>/          same shape as the sink's machine folder, this machine's included
-    rollup/<YYYY-MM>.json           totals by machine, user, repo, workflow, executor, model; rebuilt by each sync
-    synced.json                     last sync time and row counts per machine
-```
+WHEN a thread runs THE engine SHALL keep in `runs/<workflow>/<task_id>/` the run log `run.jsonl` ([OBS](15-observability-and-cost.spec.md), with the envelope of [EVT-B8](30-run-events.spec.md)); `evidence/` (request, outputs, feedback, `review/<session_key>.json` from the session reviewer and `prompts/<session_key>.txt`, a step's scrubbed prompt for the review; local only, [SEC-B9](14-security.spec.md), [SRV](44-session-review.spec.md)); `findings.json`; `loop.jsonl` (the loop child's records for the thread); `engine.json` (engines and workflow versions each process ran on, [MIG](62-state-and-run-migration.spec.md)); `control/stop.json` only while a stop is pending ([RCT](32-run-control.spec.md)); `exit.json` (the last segment's exit code and reason word, [DUR-B5](09-durability-and-resume.spec.md)); `lineage.json` ([RRN](81-reruns-and-feedback.spec.md)); `sessions/<session_key>/`; `checks/<unit>/<attempt>/<n>.out` (the n-th command a check ran, standard output and error together); `hooks/<event>-<seq>.<hook>.log` with `<event>-<seq>.facts.json` and `results.jsonl` beside it; and `answers/<unit>.json` ([ASK](73-ask-unit.spec.md)).
 
-Both folders carry the same name, `.tempergraph`, and the same `manifest.json` shape with `kind: state_root` or `kind: home`, so one reader and one person's habit serve both: the per-repository folder holds everything about that repository's runs, the home folder holds what spans repositories and machines.
+- GIVEN a check that ran two commands WHEN its folder is read THEN it holds `1.out` and `2.out`
 
-### 2.3 Engine code log
+### LOS-B9 Session folder
 
-The engine's own Python logging, as JSON lines, one file per process per day:
+WHEN a session opens THE engine SHALL keep in `sessions/<session_key>/` `meta.json` (executor, `cli_version`, `session_id`, transcript locator, `pgid`, `started_at`, written at open and completed with `ended_at` at close), `raw.jsonl` (every line the executor's stream produced, the session's full log), `activity.jsonl` ([EVT-B17](30-run-events.spec.md)), `digest.json` (the model-free session digest, [SRV](44-session-review.spec.md)), `live.json` (removed at session end), `stderr.log`, and for `messages-api` only `tools.jsonl` (each tool the tool host ran, exit code, duration, [THS](22-tool-host.spec.md)) and `output/` (clipped command output per tool call).
 
-| Field | Meaning |
-|---|---|
-| `ts`, `level`, `logger`, `pid` | |
-| `thread_id`, `seq` | The thread and the last run-log `seq` when the line was written, when inside a run |
-| `msg` | Scrubbed message; exception lines carry the type and a scrubbed traceback |
+- GIVEN a closed session WHEN its `meta.json` is read THEN it holds `ended_at`
 
-Default level `INFO`; `--log-level` or `TEMPERGRAPH_LOG_LEVEL` changes it. Worker processes ([ADR-0019](../adr/0019-in-process-executors-run-in-a-worker-process.adr.md)) write to the same folder under their own pid and tag `worker: sdk|api`. Read-only verbs log only to standard error, never to this folder (contract C13).
+### LOS-B1 One folder per session
 
-### 2.4 Verbs
+WHEN a run ends with a unit whose step was retried once and whose judge re-asked once THE engine SHALL have written five session folders, `code.1.step`, `code.1.judge`, `code.2.retry`, `code.2.judge` and `code.2.judge_reask.1`, each with `meta.json` and `raw.jsonl`.
 
-| Verb | Does | Writes | Spends |
-|---|---|---|---|
-| `logs <selector> [--session <key>] [--kind run\|raw\|activity\|stderr\|check\|hook\|engine] [--follow] [--json]` | Prints one log of a run; with no `--kind`, lists the run's files with kinds and sizes. `raw`, `activity` and `stderr` need `--session <session_key>`; `check` takes `--session <unit>[.<attempt>]`; `engine` prints the code-log lines of this thread; `--follow` takes one file and ends when the thread's lock is free | no | no |
-| `store usage [--json]` | Size per thread, per kind and in total; threads past the retention rule; the 2 GB warning | no | no |
-| `store prune [--older-than <days>] [--keep-failed\|--no-keep-failed] [--dry-run] [--json]` | Removes session logs, check output and hook logs of finished threads, evidence past 90 days and engine-log files past 14; stopped and failed threads are kept unless `--no-keep-failed`; a paused or running thread is never touched; `--dry-run` prints what would go | yes | no |
-| `store export <selector> <path.tar.gz>` | Packs one run's folder for a person to share by hand, after a scrub pass over every text file; binary files are left out, and the archive must be written outside the state root | the archive only | no |
+- GIVEN one retry and one re-ask WHEN the run ends THEN `sessions/` holds those five folders
 
-### 2.5 Retention
+### LOS-B2 Full session log on every executor
 
-Nothing is removed automatically. The rule `store usage` checks and `store prune` applies by default:
+WHEN a session on any of the four executors ends THE engine SHALL have its `raw.jsonl` hold every stream line (stream-json lines for `claude` and `antigravity`, the worker's typed message records for `agent-sdk` and `messages-api`) verbatim, receive times being in the activity journal's `t`, so `stats` can reproduce the session's usage from it.
 
-| Item | Kept for |
-|---|---|
-| `raw.jsonl`, `activity.jsonl`, `stderr.log`, `output/`, `checks/*/*.log`, `hooks/` | 30 days after the thread finished; a thread that ended stopped or failed is kept until `--keep-failed` is dropped |
-| Supervision journals | 90 days after the session ended; closed figures stay in the ledger |
-| Evidence | 90 days after the thread finished, operator-configurable ([IMD-R10](43-improvement-data.spec.md)); its records stay readable |
-| `run.jsonl`, `meta.json`, `result.json`, findings, `digest.json` | Until the thread is pruned whole by the operator, and at least 400 days ([IMD-R10](43-improvement-data.spec.md)) |
-| Checkpoints, ledger, stats, `fleet/` | Never pruned by `store`; `fleet/` is a copy and can be deleted and rebuilt by `stats sync` |
-| `engine/` | 14 days |
+- GIVEN a finished `claude` session WHEN its `raw.jsonl` is parsed as stream-json THEN every line parses and the usage matches
 
-`store usage` adds one warning line when the state root passes 2 GB. Release 1 gives the warning there rather than in `status`, which the monitor calls every few seconds and which must stay cheap; `observe.warn_size_gb` waits for the settings catalog (RST, T6.2).
+### LOS-B3 Check output kept
 
-### 2.6 Capture level
+WHEN a check that runs the test suite fails THE engine SHALL keep the suite's output in the check's command output file (capped at 16 MB, head and tail kept), its result in the `check` record and the checkpoint, and the `check` record pointing at it.
 
-The default is full local capture ([ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md)): every item of §2.1 is written for every session on every executor, including `raw.jsonl`, the activity journal with tool input summaries and resource samples, check and hook output and the engine code log at `INFO`. An operator may lower it per item in config (`observe.raw = off`, `observe.tool_inputs = off`, `observe.check_output = off`); lowering is recorded once per run in the run log, so a reader knows what is missing and why. These keys sit in the `observe` map of the operator's `settings.json` ([RST §2.4](80-run-settings-and-overrides.spec.md)), with `observers`, the observer names to enable ([EVT §2.6](30-run-events.spec.md)); the project file wins per key. Release 1: `raw` off removes the session's `raw.jsonl` when the session ends, and `check_output` off removes a check's command output files after the check; `run_started` carries `capture_lowered`.
+- GIVEN a failing test suite WHEN the gate routes THEN its output is in `checks/code/1/1.out` and the `check` record points at it
 
-## 3. Behaviours
+### LOS-B4 Ignored by git
 
-**LOS-B1 One folder per session.** Given a unit whose step was retried once and whose judge re-asked once, when the run ends, then `sessions/` holds five folders, `code.1.step`, `code.1.judge`, `code.2.retry`, `code.2.judge` and `code.2.judge_reask.1` for the re-ask, each with `meta.json` and `raw.jsonl`.
+WHEN a run starts in a repository whose own ignore file lacks the state root THE engine SHALL leave `git status` showing nothing under `.tempergraph/`, because the folder carries its own `.gitignore`; that file is not the root ignore rule of [SHL-B8](19-plugin-shell.spec.md).
 
-**LOS-B2 Full session log on every executor.** Given one session on each of the four executors, when each ends, then its `raw.jsonl` holds every stream line (stream-json lines for `claude` and `antigravity`, the worker's typed message records for `agent-sdk` and `messages-api`), each with its receive time, and `stats` can reproduce the session's usage from it.
+- GIVEN a repository with no ignore rule for the state root WHEN a run starts THEN `git status` shows nothing under `.tempergraph/`
 
-**LOS-B3 Check output kept.** Given a check that runs the test suite and fails, when the gate routes, then `checks/code.1/stdout.log` holds the suite's output (capped at 16 MB, the head and tail kept), and the `check` record points at it.
+### LOS-B10 Home layout
 
-**LOS-B4 Ignored by git.** Given a repository whose own ignore file lacks the state root, when a run starts, then `git status` still shows nothing under `.tempergraph/`, because the folder carries its own `.gitignore`.
+WHEN the home folder (`TEMPERGRAPH_HOME`, default `~/.tempergraph/`) is used THE engine SHALL lay out `manifest.json`; `bin/` (the CLI shim and Windows wrapper) and `engines/` (one environment per installed release, `current.json`, `previous.json`, [UPD](60-engine-update.spec.md)); `registry.json` (registered workflows, dependencies and pins); `machine.json` (`machine_id`, a random UUID made once, `label`, default the host name, `created_at`); `index.json` (known state roots with path, repository name, `first_seen`, `last_run_at`, [CST](34-central-run-stats.spec.md)); `stats/<YYYY-MM>.jsonl` (one row per thread exit, [OBS](15-observability-and-cost.spec.md)); `config/` (user-level `sinks.json` and `settings.json`, a state root's config overriding it); `outbox/<sink>.jsonl` and `.state.json`; `improve/tickets/` ([SIL](16-self-improvement.spec.md)); `supervision/<host>/<session>.jsonl` ([SCO](87-supervision-cost.spec.md)); `schedules/<schedule_id>/` (owner-only `entry.json` and `fires.jsonl`, [SCH](83-schedules.spec.md)), `schedules/tick.json`, `tick.lock` and `schedules/runs.jsonl` ([TCK](84-schedule-ticks-and-unattended-fires.spec.md)); and `fleet/<sink>/` with `machines/<machine_id>/`, `rollup/<YYYY-MM>.json` and `synced.json` ([CST](34-central-run-stats.spec.md)).
 
-**LOS-B5 Prune keeps the record.** Given a thread finished 40 days ago, when `store prune` runs, then its session logs and check output are gone, its run log, metadata, findings and checkpoint remain, and `status --detail` still builds with `transcript` paths marked `pruned`.
+- GIVEN a first run on a machine WHEN `machine.json` is read twice later THEN `machine_id` is the same
 
-**LOS-B6 Index is best effort.** Given a read-only home folder, when a run starts, then the run starts, `index.json` is not updated, and one engine-log warning is written.
+### LOS-B11 One manifest shape
 
-## 4. Error conditions
+WHEN either folder's `manifest.json` is written THE engine SHALL use the same shape with `kind: state_root` or `kind: home`, so one reader serves both.
 
-| Condition | Result |
-|---|---|
-| `manifest.json` names a newer layout | Read-only verbs work by tolerant read; a run refuses with exit 2 naming the needed engine version |
-| `manifest.json` missing in an existing state root | Written as layout 1 at the next run; old flat files are read where they are |
-| Disk full while writing a session log | That log stops, one record of the failure; the session goes on ([OBS-B3](15-observability-and-cost.spec.md)) |
-| `store prune` on a running thread | Refused for that thread, others pruned |
+- GIVEN both folders WHEN their manifests are read THEN they differ only in `kind` and values
 
-## 5. Design notes
+### LOS-B12 Manifest versions
 
-- One known layout means the monitor, the troubleshooter skill and a person with a shell all find a session's full log by its `session_key`, without knowing which executor ran it ([ADR-0024](../adr/0024-one-local-store-layout-with-a-manifest.adr.md)).
-- `raw.jsonl` is the engine's own copy; an executor's native transcript, when there is one, is only linked ([EVT §2.4](30-run-events.spec.md)). This matters because the judge sessions run with isolation flags that may turn the native store off.
-- Command output is the bulkiest data; it gets the shortest life and its own cap.
-- Release 1 build ([T7 plan](../plans/t7-observability.plan.md) T7.3): `meta.json` is written when a session opens and completed when it closes. Deviations: `raw.jsonl` holds the executor's stream lines verbatim, without a receive time on each line, so a stream-json reader can parse it as it is; receive times are in the activity journal's `t`. A check's commands write `checks/<unit>/<attempt>/<n>.out`, standard output and error together, and its result lives in the `check` record and the checkpoint rather than a `result.json`; `logs --kind check` reads that layout. The capture level of §2.6 is read once the settings catalog lands (T6.2); until then every item is captured. Supervision journals are pruned with SCO (T7.6).
-- Retention is never automatic, as worktree cleanup is not ([WSP](13-workspace-and-concurrency.spec.md)): a person decides what history to drop.
+WHEN a `manifest.json` names a newer layout, or an existing state root has none THE engine SHALL serve read-only verbs by tolerant read and refuse a run with exit 2 naming the needed engine version, or write it as layout 1 at the next run and read old flat files where they are.
 
-## 6. Acceptance criteria
+- GIVEN a manifest naming layout 2 WHEN a run starts THEN it exits 2 naming the needed engine version
 
-- [ ] LOS-AC-1 A fixture run on each executor produces exactly the layout of §2.1 (tree comparison), with owner-only modes on POSIX.
-- [ ] LOS-AC-2 `logs`, `store usage` and `store prune --dry-run` leave the state root unchanged (hash test).
-- [ ] LOS-AC-3 `store export` of a canary run contains no canary string.
-- [ ] LOS-AC-4 A failure injected into every write of this spec leaves the run's exit code unchanged.
+### LOS-B6 Index is best effort
+
+WHEN a run starts with a read-only home folder THE engine SHALL start the run, leave `index.json` unchanged and write one engine-log warning.
+
+- GIVEN a read-only home WHEN a run starts THEN it starts and one warning is logged
+
+### LOS-B13 Engine code log
+
+WHEN the engine logs THE engine SHALL write JSON lines, one file per process per day, with `ts`, `level`, `logger`, `pid`, `thread_id` and `seq` (the thread and its last run-log `seq`, inside a run) and a scrubbed `msg` (exception lines carrying the type and a scrubbed traceback), at `INFO` unless `--log-level` or `TEMPERGRAPH_LOG_LEVEL` changes it, worker processes writing under their own pid tagged `worker: sdk` or `worker: api` ([ADR-0019](../adr/0019-in-process-executors-run-in-a-worker-process.adr.md)), and read-only verbs logging only to standard error (OVR-B15).
+
+- GIVEN `status` run with `--log-level DEBUG` WHEN it ends THEN nothing was written under `engine/`
+
+### LOS-B14 The logs verb
+
+WHEN `logs <selector> [--session <key>] [--kind run|raw|activity|stderr|check|hook|engine] [--follow] [--json]` runs THE engine SHALL print one log of the run, writing and spending nothing: with no `--kind` list the run's files with kinds and sizes; `raw`, `activity` and `stderr` need `--session <session_key>`, `check` takes `--session <unit>[.<attempt>]`, `engine` prints the thread's code-log lines, and `--follow` takes one file and ends when the thread's lock is free.
+
+- GIVEN `logs auth-fix --kind raw` without `--session` WHEN run THEN it exits 2
+
+### LOS-B15 The store verbs
+
+WHEN `store usage`, `store prune` or `store export` runs THE engine SHALL for `store usage [--json]` print the size per thread, per kind and in total, the threads past the retention rule, and one warning line past 2 GB, writing nothing; for `store prune [--older-than <days>] [--keep-failed|--no-keep-failed] [--dry-run] [--json]` apply the retention rule, never touch a paused or running thread while pruning the others, and print without removing for `--dry-run`; and for `store export <selector> <path.tar.gz>` pack one run's folder after a scrub pass over every text file, leaving binary files out, refusing a path inside the state root.
+
+- GIVEN `store prune` while one thread runs WHEN it runs THEN that thread is untouched and the others are pruned
+
+### LOS-B16 Retention rule
+
+WHEN `store usage` checks or `store prune` applies the retention rule THE engine SHALL keep `raw.jsonl`, `activity.jsonl`, `stderr.log`, `output/`, check output and `hooks/` for 30 days after the thread finished (a stopped or failed thread kept unless `--no-keep-failed`), supervision journals for 90 days after the session ended, evidence for 90 days after the thread finished (operator-configurable, [IMD-B14](43-improvement-data.spec.md)), `run.jsonl`, `meta.json`, findings and `digest.json` until the operator prunes the thread whole and at least 400 days, `engine/` for 14 days, and never prune checkpoints, the ledger, stats or `fleet/` (a copy `stats sync` rebuilds); nothing is removed automatically.
+
+- GIVEN a failed thread finished 40 days ago WHEN `store prune` runs THEN its session logs stay
+
+### LOS-B5 Prune keeps the record
+
+WHEN `store prune` runs over a thread finished 40 days ago THE engine SHALL remove its session logs and check output, keep its run log, metadata, findings and checkpoint, and let `status --detail` still build with `transcript` paths marked `pruned`.
+
+- GIVEN a thread finished 40 days ago WHEN pruned THEN `status --detail` builds with paths marked `pruned`
+
+### LOS-B17 Capture level
+
+WHEN a session runs THE engine SHALL capture every item of the layout on every executor by default ([ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md)), and let the operator lower it per item in the `observe` map of `settings.json` (`observe.raw = off` removing the session's `raw.jsonl` at session end, `observe.tool_inputs = off`, `observe.check_output = off` removing a check's output files after the check), the project file winning per key ([RST](80-run-settings-and-overrides.spec.md)), recording the lowering once per run as `capture_lowered` on `run_started`.
+
+- GIVEN `observe.raw = off` WHEN a session ends THEN its `raw.jsonl` is gone and `run_started` lists `raw` in `capture_lowered`
+
+### LOS-B18 Write failures stay local
+
+WHEN the disk fills while a session log is written THE engine SHALL stop that log, write one record of the failure, and let the session go on ([OBS-B3](15-observability-and-cost.spec.md)).
+
+- GIVEN a full disk during a session WHEN `raw.jsonl` fails THEN the session goes on and one failure record is written
+
+## Acceptance criteria
+
+- LOS-AC1 (LOS-B7, LOS-B8, LOS-B9, LOS-B10, LOS-B11, LOS-B1, LOS-B2): A fixture run on each executor produces exactly the stated layout, by tree comparison, with owner-only modes on POSIX
+- LOS-AC2 (LOS-B14, LOS-B15, LOS-B13): `logs`, `store usage` and `store prune --dry-run` leave the state root unchanged, by a hash test
+- LOS-AC3 (LOS-B15): `store export` of a canary run contains no canary string
+- LOS-AC4 (LOS-B18, LOS-B6): A failure injected into every write of this spec leaves the run's exit code unchanged
+- LOS-AC5 (LOS-B3, LOS-B4, LOS-B5, LOS-B12, LOS-B16, LOS-B17): Fixtures of a failing check, a repository without an ignore rule, a 40-day-old thread, a newer manifest and each lowered capture item give the stated results
 
 ## Open questions
 
-| Question | Owner | Release 1 default |
-|---|---|---|
-| Should the state root move out of the main checkout for repositories on network drives? | Owner | The state root stays `<main checkout>/.tempergraph/` per [WSP](13-workspace-and-concurrency.spec.md); a state root outside git is release 2 (plan X2-24) |
-
-## References
-
+- Should the state root move out of the main checkout for repositories on network drives? Until answered: it stays `<main checkout>/.tempergraph/` per [WSP](13-workspace-and-concurrency.spec.md); a state root outside git is release 2. Owner: owner.

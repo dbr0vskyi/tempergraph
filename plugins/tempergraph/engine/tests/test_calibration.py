@@ -1,4 +1,4 @@
-"""Judge calibration: gold cases, variants, the score, the bar and the acceptance state (JCL-AC-1 to AC-8,
+"""Judge calibration: gold cases, variants, the score, the bar and the acceptance state (JCL-AC1 to AC-8,
 JCL-B1 to B8, EVS-B5's corrected rate)."""
 
 from __future__ import annotations
@@ -87,7 +87,7 @@ def judge_ex(n: int = 400, **kw: Any) -> Any:
     return standin("claude", judges=[oracle(**kw)] * n)
 
 
-def test_wilson_bar_rows() -> None:  # JCL-AC-1, JCL-B2
+def test_wilson_bar_rows() -> None:  # JCL-AC1, JCL-B2
     for x, n, lb, holds in ((19, 20, 0.76, True), (18, 20, 0.70, False), (37, 40, 0.80, True),
                             (12, 12, 0.76, False)):
         assert round(cal.wilson_lb(x, n), 2) == lb
@@ -101,7 +101,7 @@ def test_wilson_bar_rows() -> None:  # JCL-AC-1, JCL-B2
         {**fig, "known_bad": 12, "known_bad_cases": 12}, 3, ["persuasive_account", "out_of_reach"])[0])
 
 
-def test_an_accepted_judge_turns_stale_on_any_change(tmp_path: Path) -> None:  # JCL-AC-3, JCL-B3
+def test_an_accepted_judge_turns_stale_on_any_change(tmp_path: Path) -> None:  # JCL-AC3, JCL-B3
     spec = spec_at(tmp_path)
     gold(spec)
     rec = cal.score(spec, "review", judge_ex())
@@ -120,7 +120,7 @@ def test_an_accepted_judge_turns_stale_on_any_change(tmp_path: Path) -> None:  #
     assert not cal.has_score(spec, "review")
 
 
-def test_a_discarded_judgement_is_a_fail_in_the_count(tmp_path: Path) -> None:  # JCL-AC-2, JCL-B1
+def test_a_discarded_judgement_is_a_fail_in_the_count(tmp_path: Path) -> None:  # JCL-AC2, JCL-B1
     spec = spec_at(tmp_path)
     make_case(spec, "good-0", False)
     make_case(spec, "bad-0", True)
@@ -133,7 +133,7 @@ def test_a_discarded_judgement_is_a_fail_in_the_count(tmp_path: Path) -> None:  
     assert rec["figures"]["clean_rate"] == 0.0 and rec["figures"]["known_good"] == 3
 
 
-def test_tuning_consumes_cases(tmp_path: Path) -> None:  # JCL-AC-4, JCL-B4
+def test_tuning_consumes_cases(tmp_path: Path) -> None:  # JCL-AC4, JCL-B4
     spec = spec_at(tmp_path)
     gold(spec)
     cal.score(spec, "review", judge_ex())
@@ -151,13 +151,13 @@ def test_tuning_consumes_cases(tmp_path: Path) -> None:  # JCL-AC-4, JCL-B4
     assert cal.mark_tune(tmp_path, "review", ["bad-0"], by="author") == []
 
 
-def test_no_code_path_returns_a_case_to_holdout() -> None:  # JCL-AC-4 source test
+def test_no_code_path_returns_a_case_to_holdout() -> None:  # JCL-AC4 source test
     hits = [p for p in SRC.rglob("*.py") if re.search(r"\.split\s*=\s*[\"']holdout", p.read_text())
             or re.search(r"[\"']split[\"']\s*:\s*[\"']holdout", p.read_text())]
     assert hits == []
 
 
-def test_variants_are_templated_and_reproducible(tmp_path: Path) -> None:  # JCL-AC-5
+def test_variants_are_templated_and_reproducible(tmp_path: Path) -> None:  # JCL-AC5
     spec = spec_at(tmp_path)
     make_case(spec, "bad-0", True)
     g, _, _ = cal.gate_spec(spec, "review")
@@ -186,7 +186,7 @@ def test_persuasion_and_out_of_reach_fail_the_bar(tmp_path: Path) -> None:  # JC
     assert st.state == "below_bar" and any("out_of_reach_ok" in f for f in st.failing)
 
 
-def test_production_contradicts_and_synthetic_is_provisional(tmp_path: Path) -> None:  # JCL-B7, §2.5
+def test_production_contradicts_and_synthetic_is_provisional(tmp_path: Path) -> None:  # JCL-B7, JCL-B17
     spec = spec_at(tmp_path)
     gold(spec, provenance="synthetic")
     cal.score(spec, "review", judge_ex())
@@ -217,7 +217,7 @@ def test_the_outcome_judge_with_four_synthetic_cases_is_below_bar(tmp_path: Path
     assert st.state == "below_bar" and not cal.has_score(spec, "outcome")  # SIL-B7 keeps outcome uncalibrated
 
 
-def test_a_score_record_holds_no_model_text(tmp_path: Path) -> None:  # JCL-AC-6
+def test_a_score_record_holds_no_model_text(tmp_path: Path) -> None:  # JCL-AC6
     spec = spec_at(tmp_path)
     make_case(spec, "bad-0", True, request=f"BAD {CANARY}")
     cal.score(spec, "review", judge_ex(), repeats=1)
@@ -225,7 +225,7 @@ def test_a_score_record_holds_no_model_text(tmp_path: Path) -> None:  # JCL-AC-6
     assert CANARY not in text and "Graded." not in text and "notes.md:1" not in text
 
 
-def test_readers_need_the_state_they_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # JCL-AC-7
+def test_readers_need_the_state_they_name(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # JCL-AC7
     spec = spec_at(tmp_path)
     c = crit("o1")
     c = dataclasses.replace(c, verified_by="judge")
@@ -246,14 +246,14 @@ def test_corrected_rate() -> None:  # EVS-B5
     assert cal.corrected(0.80, st) == {"raw": 0.8, "corrected": 0.8235, "label": "corrected", "state": "accepted"}
     assert cal.corrected(0.80, dataclasses.replace(st, state="stale"))["label"] == "uncorrected (stale)"
     assert cal.corrected(0.80, dataclasses.replace(st, state="provisional"))["label"] == "corrected"
-    for name in ("unscored", "below_bar", "contradicted"):  # EVS-AC-2: every label of the §2.5 table
+    for name in ("unscored", "below_bar", "contradicted"):  # EVS-AC2: every label of the EVS-B15 table
         got = cal.corrected(0.80, dataclasses.replace(st, state=name, score=None))
         assert got == {"raw": 0.8, "label": f"uncorrected ({name})", "state": name}
     weak = dataclasses.replace(st, score={"figures": {"catch_rate": 0.6, "clean_rate": 0.55}})
     assert cal.corrected(0.80, weak) == {"raw": 0.8, "label": "uncorrectable", "state": "accepted"}
 
 
-def test_a_cap_keeps_the_score_partial_and_out_of_the_state(tmp_path: Path) -> None:  # JCL §4
+def test_a_cap_keeps_the_score_partial_and_out_of_the_state(tmp_path: Path) -> None:  # JCL-B9, JCL-B12, JCL-B14
     spec = spec_at(tmp_path)
     gold(spec)
     rec = cal.score(spec, "review", judge_ex(), cap_usd=0.05)
@@ -261,7 +261,7 @@ def test_a_cap_keeps_the_score_partial_and_out_of_the_state(tmp_path: Path) -> N
     assert cal.state(spec, "review").state == "unscored"
 
 
-def test_an_executor_that_cannot_hold_the_view_set_is_refused(tmp_path: Path) -> None:  # JCL §4
+def test_an_executor_that_cannot_hold_the_view_set_is_refused(tmp_path: Path) -> None:  # JCL-B9, JCL-B12, JCL-B14
     spec = spec_at(tmp_path)
     make_case(spec, "bad-0", True)
     ex = standin("antigravity", judges=[oracle()])
@@ -270,7 +270,7 @@ def test_an_executor_that_cannot_hold_the_view_set_is_refused(tmp_path: Path) ->
     assert ex.calls == []
 
 
-def test_stale_labels_and_invalid_cases_are_not_scored(tmp_path: Path) -> None:  # JCL §2.1.2, §4
+def test_stale_labels_and_invalid_cases_are_not_scored(tmp_path: Path) -> None:  # JCL-B12, JCL-B9, JCL-B14
     spec = spec_at(tmp_path)
     make_case(spec, "bad-0", True)
     make_case(spec, "cand", True, label=False)
@@ -285,7 +285,7 @@ def test_stale_labels_and_invalid_cases_are_not_scored(tmp_path: Path) -> None: 
     assert {s["case"]: s["why"] for s in skipped} == {"cand": "candidate", "odd": "invalid"}
 
 
-def test_evals_bar_and_label_make_no_model_call(tmp_path: Path, repo: Path) -> None:  # JCL-AC-8, §2.6
+def test_evals_bar_and_label_make_no_model_call(tmp_path: Path, repo: Path) -> None:  # JCL-AC8, JCL-B14, JCL-B18
     from tempergraph.catalog import Catalog
     from tempergraph.cli.main import main
 

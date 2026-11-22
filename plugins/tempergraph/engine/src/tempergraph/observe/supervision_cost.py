@@ -2,9 +2,9 @@
 closing a thread's figures, and the `supervision hook|log|close|show` verbs.
 
 The journal is `~/.tempergraph/supervision/<host>/<host_session>.jsonl`: numbers, names from fixed lists, ids and
-times only (SCO §2.2, §2.7). It is written by the plugin's Claude Code hooks through `supervision hook <event>`
-and by `supervision log`; read-only verbs never write it (contract C13, ADR-0087). A hook never changes, delays
-past 2 s or refuses the host call it observed (C2), and writes nothing inside the engine's own sessions
+times only (SCO-B10, SCO-B11, SCO-B17). It is written by the plugin's Claude Code hooks through `supervision hook <event>`
+and by `supervision log`; read-only verbs never write it (OVR-B15, ADR-0087). A hook never changes, delays
+past 2 s or refuses the host call it observed (OVR-B4), and writes nothing inside the engine's own sessions
 (`TEMPERGRAPH_SESSION_KEY`, SCO-B6). Two figures per thread, never summed: marginal and turn (ADR-0088). Unmeasured
 is never zero.
 """
@@ -125,7 +125,7 @@ def _check(kind: str, value: Any, rule: str) -> bool:
 
 
 def validate(entry: Mapping[str, Any]) -> dict[str, Any]:
-    """Fixed fields, numbers in range, no free text beyond ids (SCO §2.6, §4); raises EntryRefused."""
+    """Fixed fields, numbers in range, no free text beyond ids (SCO-B16, SCO-B11, SCO-B10); raises EntryRefused."""
     kind = entry.get("entry")
     if kind not in FIELDS:
         raise EntryRefused(f"unknown entry {kind!r}")
@@ -192,7 +192,7 @@ def journals(home: Path) -> list[tuple[str, str, Path]]:
     return [(p.parent.name, p.stem, p) for p in sorted(base.glob("*/*.jsonl"))]
 
 
-# -- the Claude Code hooks (SHL §2.2) --------------------------------------------------------------------------
+# -- the Claude Code hooks (SHL-B14, SHL-B15) --------------------------------------------------------------------------
 
 
 def _verb(words: list[str]) -> str:
@@ -283,7 +283,7 @@ def _engine_words(command: str) -> list[str] | None:
 
 
 def _names(prompt: str, root: Path | None) -> list[str]:
-    """PRV §2.4.1: the decision words of open pauses that occur as whole words in the prompt; no text kept."""
+    """PRV-B15: the decision words of open pauses that occur as whole words in the prompt; no text kept."""
     if root is None or not prompt:
         return []
     words: set[str] = set()
@@ -358,7 +358,7 @@ def _transcript_usage(path: Path, offset: int) -> tuple[list[dict[str, Any]], in
 
 def hook(event: str, payload: Mapping[str, Any], env: Mapping[str, str] | None = None,
          home: Path | None = None) -> int:
-    """One Claude Code hook event; returns the entries written. Never raises (C2)."""
+    """One Claude Code hook event; returns the entries written. Never raises (OVR-B4)."""
     try:
         return _hook(event, payload, env, home)
     except Exception:  # noqa: BLE001 - the host call is never changed by the journal
@@ -436,7 +436,7 @@ def _hook(event: str, payload: Mapping[str, Any], env: Mapping[str, str] | None,
     return n
 
 
-# -- attribution (SCO §2.4) ------------------------------------------------------------------------------------
+# -- attribution (SCO-B13, SCO-B14) ------------------------------------------------------------------------------------
 
 
 def _ts(v: Any) -> float:
@@ -493,7 +493,7 @@ class ThreadCost:
 
 def attribute(sessions: Mapping[tuple[str, str], list[dict[str, Any]]], wake_idle_s: float = WAKE_IDLE_S
               ) -> tuple[dict[str, ThreadCost], dict[tuple[str, str], dict[str, Any]]]:
-    """The one attribution function (SCO-AC-1): per thread its categories and figures, per session its `other`."""
+    """The one attribution function (SCO-AC1): per thread its categories and figures, per session its `other`."""
     threads: dict[str, ThreadCost] = defaultdict(ThreadCost)
     per_session: dict[tuple[str, str], dict[str, Any]] = {}
     for key, entries in sessions.items():
@@ -550,7 +550,7 @@ def attribute(sessions: Mapping[tuple[str, str], list[dict[str, Any]]], wake_idl
                             tc.counted.add((key, mkey(m)))
                             tc.turn[cat].add(m, m.get("model") or model)
                             used.add(mkey(m))
-        # rewake: the first message after an idle gap that follows a background call's end (SCO §2.4)
+        # rewake: the first message after an idle gap that follows a background call's end (SCO-B13, SCO-B14)
         bg = [c for c in calls if c.get("background")]
         for prev, m in zip(msgs, msgs[1:], strict=False):
             gap = _ts(m.get("at")) - _ts(prev.get("at"))
@@ -601,7 +601,7 @@ def _hash(text: str) -> str:
 
 
 def figures(tc: ThreadCost | None, sessions: Mapping[tuple[str, str], dict[str, Any]]) -> dict[str, Any]:
-    """SCO §2.5's cost fields of one thread."""
+    """SCO-B15's cost fields of one thread."""
     if tc is None or not tc.sessions:
         return {"marginal": None, "turn": None, "sessions": [], "completeness": "none_known", "calls": {},
                 "observations": None}
@@ -623,7 +623,7 @@ def load(home: Path, session: str | None = None) -> dict[tuple[str, str], list[d
     return {(h, s): read(p) for h, s, p in journals(home) if session is None or s == session}
 
 
-# -- closing (SCO §2.5) ----------------------------------------------------------------------------------------
+# -- closing (SCO-B15) ----------------------------------------------------------------------------------------
 
 
 def _find_thread(home: Path, tid: str) -> Path | None:
@@ -666,7 +666,7 @@ def close(home: Path | None = None, *, session: str | None = None, now: float | 
         if session is not None and not any(s == session for _, s in tc.sessions):
             continue
         root = _find_thread(home, tid)
-        if root is None:  # SCO §4: kept, attributed if the thread appears later
+        if root is None:  # SCO-B16, SCO-B11, SCO-B10: kept, attributed if the thread appears later
             continue
         wf, _, task = tid.partition("/")
         if is_held(lock_path(root, wf, task)):
@@ -691,7 +691,7 @@ def close(home: Path | None = None, *, session: str | None = None, now: float | 
 
 
 def _enqueue(home: Path, root: Path, line: dict[str, Any]) -> None:
-    """The `supervision` row for each sink that takes it (CST §2.2): kept locally, referenced from the outbox."""
+    """The `supervision` row for each sink that takes it (CST-B9): kept locally, referenced from the outbox."""
     from tempergraph.docs import append_jsonl
     from tempergraph.observe import sinks
 
@@ -716,7 +716,7 @@ def closed_for(root: Path) -> dict[str, dict[str, Any]]:
     return _closed(root)
 
 
-# -- show (SCO §2.6) -------------------------------------------------------------------------------------------
+# -- show (SCO-B16) -------------------------------------------------------------------------------------------
 
 
 def show(home: Path, *, thread: str | None = None, session: str | None = None) -> dict[str, Any]:
@@ -732,7 +732,7 @@ def show(home: Path, *, thread: str | None = None, session: str | None = None) -
     pairs: dict[str, set[str]] = defaultdict(set)
     for h, s in sessions:
         pairs[s].add(h)
-    out["shared_session_ids"] = sorted(s for s, hs in pairs.items() if len(hs) > 1)  # SCO §4
+    out["shared_session_ids"] = sorted(s for s, hs in pairs.items() if len(hs) > 1)  # SCO-B16, SCO-B11, SCO-B10
     return out
 
 

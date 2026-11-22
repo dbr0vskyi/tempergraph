@@ -1,7 +1,7 @@
-"""Four nodes per unit, one finalizer node, static edges for every target (CMP §2, ADR-0004).
+"""Four nodes per unit, one finalizer node, static edges for every target (CMP-B8, ADR-0004).
 
 The node bodies come from the gate funnel through :class:`UnitNodes`; this module owns only the graph
-shape and the human node's ``interrupt``, which is its first statement (HUM-AC-1). LangGraph is imported
+shape and the human node's ``interrupt``, which is its first statement (HUM-AC1). LangGraph is imported
 only here and in the durability package.
 """
 
@@ -74,7 +74,7 @@ def compile_workflow(spec: WorkflowSpec, nodes: UnitNodes, checkpointer: BaseChe
         g.add_conditional_edges(human, _router(unit, human_targets), {t: _end(t) for t in human_targets})
         edges += [(human, t) for t in human_targets]
 
-    for join in order:  # CMP §2.2: a parallel block forks to every branch and joins on every pass
+    for join in order:  # CMP-B10 to CMP-B16: a parallel block forks to every branch and joins on every pass
         u = spec.units.get(join)
         if u is None or u.kind != "parallel":
             continue

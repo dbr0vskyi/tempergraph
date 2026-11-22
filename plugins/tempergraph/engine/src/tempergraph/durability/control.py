@@ -1,4 +1,4 @@
-"""Run control: the stop request file (RCT §2, RCT-B3, RCT §4).
+"""Run control: the stop request file (RCT-B6, RCT-B7, RCT-B3, RCT-B8, RCT-B9, RCT-B10).
 
 The `stop` verb writes `runs/<workflow>/<task_id>/control/stop.json`; the engine holding the thread's
 lock picks it up between records and at least once a second while a session runs, removes it and acts.
@@ -38,7 +38,7 @@ def request_stop(state_root: Path, workflow: str, task_id: str, mode: StopMode =
     path = stop_file(state_root, workflow, task_id)
     current = _read(path)
     if current is not None and current[0] == "now":
-        return "now"  # the stronger mode wins (RCT §4)
+        return "now"  # the stronger mode wins (RCT-B8, RCT-B9, RCT-B10)
     write_json(path, {"schema_version": 1, "mode": mode, "requested_at": now_iso(), "caller": caller or {}})
     return mode
 

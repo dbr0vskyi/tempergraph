@@ -1,7 +1,7 @@
-"""`author verify <workflow>` (SCF §2.5): the ladder that checks an authored workflow, in order, stopping at the
+"""`author verify <workflow>` (SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22): the ladder that checks an authored workflow, in order, stopping at the
 first failing rung. Rungs 1 to 7 and 10 are model-free. Rung 8 grades the judged criteria's seeds with judge
 sessions only, and rung 9 starts one consented, capped trial run (`author/trial.py`); both run only when asked,
-and the person's yes on the stated cost is what the flag carries (SCF §2.7)."""
+and the person's yes on the stated cost is what the flag carries (SCF-B11, SCF-B13, SCF-B15, SCF-B16, SCF-B17, SCF-B18, SCF-B19, SCF-B20, SCF-B22)."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ class VerifyReport:
     seeds: list[dict[str, Any]] = field(default_factory=list)  # rung 8: {gate, criterion, seed, expected, got}
     trial: dict[str, Any] | None = None  # rung 9: the trial record kept in `authoring.json`
     usage: dict[str, Any] = field(default_factory=lambda: {"judge_sessions": 0, "cost_usd": 0.0})
-    seeds_shown: dict[str, dict[str, str]] | None = None  # rung 8: seeds the author saw, by gate (JCL §2.1.1)
+    seeds_shown: dict[str, dict[str, str]] | None = None  # rung 8: seeds the author saw, by gate (JCL-B11)
     tuned: list[str] = field(default_factory=list)  # rung 8: seeds moved to `tune` after an edit
     seeds_passed: dict[str, dict[str, str]] | None = None  # rung 8: seeds graded as expected, by gate, with key
     carried: list[str] = field(default_factory=list)  # rung 8: seeds whose earlier pass still holds
@@ -55,7 +55,7 @@ class VerifyReport:
         if self.ok:
             return 0
         waiting = not self.refused and all(r.state in ("passed", "skipped", "waiting") for r in self.rungs)
-        return 3 if waiting else 2  # 3: the trial paused for the person (CON §2.9)
+        return 3 if waiting else 2  # 3: the trial paused for the person (CON-B12, CON-B13)
 
     def to_json(self) -> dict[str, Any]:
         return {"schema_version": 1, "workflow": self.workflow, "ok": self.ok, "refused": self.refused,
@@ -75,7 +75,7 @@ def _json(path: Path) -> Any:
 
 
 def _decided(authoring: Any) -> set[str]:
-    """Subjects (criterion or unit ids) of the decisions recorded in `authoring.json` (AUT §2.5)."""
+    """Subjects (criterion or unit ids) of the decisions recorded in `authoring.json` (AUT-B22)."""
     if not isinstance(authoring, dict):
         return set()
     return {str(d.get("subject")) for d in authoring.get("decisions") or [] if isinstance(d, dict)
@@ -94,11 +94,11 @@ def _load(root: Path, caps: Mapping[str, Capabilities], rung: Rung) -> Any:
         return None
     for f in validate(lp.spec, caps):
         if f.severity == "error":
-            rung.findings.append(_row(f.code, f.unit, f.message, "fix the workflow declaration (WFM, OUT §4)"))
+            rung.findings.append(_row(f.code, f.unit, f.message, "fix the workflow declaration (WFM, OUT-B22)"))
     from tempergraph.author.criteria_lint import lint, package_doc
 
     doc = package_doc(root)
-    for lf in lint(doc) if doc is not None else []:  # AUT §2.4.1 at the severities of AUT §2.8
+    for lf in lint(doc) if doc is not None else []:  # AUT-B19, AUT-B20, AUT-B21 at the severities of AUT-B12, AUT-B15, AUT-B19, AUT-B24, AUT-B25
         if lf.severity("check") == "error":
             rung.findings.append(_row(lf.code, lf.unit, lf.message, lf.guidance))
     return lp
@@ -143,7 +143,7 @@ def _coverage(spec: WorkflowSpec, decided: set[str], rung: Rung) -> None:
     from tempergraph.run.outcome_trust import coverage, trust
 
     if spec.outcome is None:
-        rung.findings.append(_row("outcome-missing", None, "the workflow has no outcome (OUT §2.1)",
+        rung.findings.append(_row("outcome-missing", None, "the workflow has no outcome (OUT-B8, OUT-B9)",
                                   "author the outcome first"))
         return
     for cov in coverage(spec.outcome, spec):
@@ -162,7 +162,7 @@ def _coverage(spec: WorkflowSpec, decided: set[str], rung: Rung) -> None:
         if c.severity == "blocker" and trust(c, unit, spec.package_root, accepted) == "unverified" and c.id not in decided:
             rung.findings.append(_row("blocker-unverified", None if unit == "outcome" else unit,
                                       f"blocker {c.id} is verified by nobody",
-                                      "verify it, or record the `none` as a decision (AUT §2.4)"))
+                                      "verify it, or record the `none` as a decision (AUT-B16, AUT-B17, AUT-B18)"))
 
 
 def _audit(spec: WorkflowSpec, lp: Any, caps: Mapping[str, Capabilities], target: Path,

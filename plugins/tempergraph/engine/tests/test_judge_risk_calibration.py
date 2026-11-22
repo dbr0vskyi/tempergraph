@@ -1,5 +1,5 @@
 """Calibration per judge risk level: a binding, a score and a state per level, staleness of one level, stable
-mode and the trust a ladder reads (JRK-AC-4, JRK-B5, JRK §2.4)."""
+mode and the trust a ladder reads (JRK-AC4, JRK-B5, JRK-B9, JRK-B5)."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ def leveled(root: Path, mode: str = "route", **code: Any) -> Any:
     return spec_at(root, model="medium", risk=risk(mode, **code))
 
 
-def test_each_level_is_a_binding_with_its_own_score_and_state(tmp_path: Path) -> None:  # JRK-AC-4
+def test_each_level_is_a_binding_with_its_own_score_and_state(tmp_path: Path) -> None:  # JRK-AC4
     spec = leveled(tmp_path)
     gold(spec)
     assert cal.levels(spec, "review") == ["base", "code"] and cal.levels(spec, "draft") == []
@@ -54,7 +54,7 @@ def test_each_level_is_a_binding_with_its_own_score_and_state(tmp_path: Path) ->
     assert [s.level for s in cal.states(spec) if s.gate == "review"] == [None]
 
 
-def test_a_change_to_one_level_makes_only_that_level_stale(tmp_path: Path) -> None:  # JRK-AC-4
+def test_a_change_to_one_level_makes_only_that_level_stale(tmp_path: Path) -> None:  # JRK-AC4
     spec = leveled(tmp_path)
     gold(spec)
     cal.score(spec, "review", judge_ex())
@@ -95,7 +95,7 @@ def test_stable_needs_every_routed_level(tmp_path: Path, mode: str, score_code: 
         assert "tempergraph evals score demo review --level code" in hit[0].message
 
 
-def test_the_trust_of_an_attempt_is_its_level_s(tmp_path: Path) -> None:  # JRK §2.3, LAD §2.2
+def test_the_trust_of_an_attempt_is_its_level_s(tmp_path: Path) -> None:  # JRK-B8, LAD-B10
     spec = leveled(tmp_path)
     gold(spec)
     cal.score(spec, "review", judge_ex())
@@ -103,7 +103,7 @@ def test_the_trust_of_an_attempt_is_its_level_s(tmp_path: Path) -> None:  # JRK 
     assert (name("review"), name("review@base"), name("review@code")) == ("accepted", "accepted", "unscored")
 
 
-def test_evals_bar_and_score_per_level(tmp_path: Path, repo: Path) -> None:  # JRK §2.4
+def test_evals_bar_and_score_per_level(tmp_path: Path, repo: Path) -> None:  # JRK-B9, JRK-B5
     spec = leveled(tmp_path)
     gold(spec)
     reg = Registry()

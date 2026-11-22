@@ -1,7 +1,7 @@
-"""Observability verbs of the CLI kept apart from the core verbs: `logs` and `store` (LOS §2.4).
+"""Observability verbs of the CLI kept apart from the core verbs: `logs` and `store` (LOS-B14, LOS-B15).
 
 `cli/main.py` adds these parsers and commands; every helper it shares (the environment, selectors, output) is
-taken from there, so the verbs follow the same exit codes and output rules (CLI §4).
+taken from there, so the verbs follow the same exit codes and output rules (CLI-B17, CLI-B18, CLI-B19).
 """
 
 from __future__ import annotations
@@ -35,15 +35,15 @@ def add_parsers(sub: Any) -> None:
     ex = ssub.add_parser("export")
     ex.add_argument("selector")
     ex.add_argument("path")
-    rp = sub.add_parser("report", help="cost and friction reports over this state root's runs (OBS §2.4)")
+    rp = sub.add_parser("report", help="cost and friction reports over this state root's runs (OBS-B15)")
     rp.add_argument("window", nargs="?", default="30d", help="7d, 24h, 30d (the default) or all")
     rp.add_argument("--by", choices=("unit", "executor", "version", "workflow", "host", "level"), default=None)
-    rp.add_argument("--supervision", action="store_true", help="touches, levels, waits and supervision cost (SUP §2.4)")
-    rp.add_argument("--loop", action="store_true", help="the self-improvement loop's own figures (IMD §2.4)")
-    rp.add_argument("--switch", metavar="WORKFLOW/SWITCH", help="finished runs per arm and zone (CXR §2.7)")
-    rp.add_argument("--risk", metavar="WORKFLOW", help="judge attempts per gate and risk level (JRK §2.5)")
+    rp.add_argument("--supervision", action="store_true", help="touches, levels, waits and supervision cost (SUP-B12)")
+    rp.add_argument("--loop", action="store_true", help="the self-improvement loop's own figures (IMD-B22)")
+    rp.add_argument("--switch", metavar="WORKFLOW/SWITCH", help="finished runs per arm and zone (CXR-B13)")
+    rp.add_argument("--risk", metavar="WORKFLOW", help="judge attempts per gate and risk level (JRK-B10)")
     rp.add_argument("--json", action="store_true")
-    lb = sub.add_parser("label", help="a person's label on a gate judgement (FBK §2.2 explicit)")
+    lb = sub.add_parser("label", help="a person's label on a gate judgement (FBK-B9 explicit)")
     lb.add_argument("selector")
     lb.add_argument("gate", metavar="UNIT")
     lb.add_argument("--value", required=True, choices=("agree", "disagree"))
@@ -54,7 +54,7 @@ def add_parsers(sub: Any) -> None:
     lb.add_argument("--caller-app")
     lb.add_argument("--relayed", action="store_true")
     lb.add_argument("--json", action="store_true")
-    sa = sub.add_parser("stats", help="per-user monthly run rows, and across machines from a sink (CST §2.5)")
+    sa = sub.add_parser("stats", help="per-user monthly run rows, and across machines from a sink (CST-B14, CST-B15, CST-B16)")
     sa.add_argument("action", nargs="?", choices=("flush", "sync"))
     src = sa.add_mutually_exclusive_group()
     src.add_argument("--source", metavar="SINK")
@@ -67,15 +67,15 @@ def add_parsers(sub: Any) -> None:
     sa.add_argument("--projection", action="store_true")
     sa.add_argument("--live", action="store_true")
     sa.add_argument("--json", action="store_true")
-    sv = sub.add_parser("supervision", help="the supervision journal and the cost of supervising runs (SCO §2.6)")
+    sv = sub.add_parser("supervision", help="the supervision journal and the cost of supervising runs (SCO-B16)")
     svs = sv.add_subparsers(dest="action")
-    hk = svs.add_parser("hook", help="one host hook event read from standard input; always exit 0 (SHL §2.2)")
+    hk = svs.add_parser("hook", help="one host hook event read from standard input; always exit 0 (SHL-B14, SHL-B15)")
     hk.add_argument("event")
     lo = svs.add_parser("log", help="journal entries read as JSON lines from standard input")
     lo.add_argument("--host", required=True)
     lo.add_argument("--session", required=True)
     lo.add_argument("--caller-app")
-    cl = svs.add_parser("close", help="close the threads whose supervising sessions have ended (SCO §2.5)")
+    cl = svs.add_parser("close", help="close the threads whose supervising sessions have ended (SCO-B15)")
     cl.add_argument("--session")
     sh = svs.add_parser("show", help="a thread's or a session's supervision (read-only)")
     sh.add_argument("selector", nargs="?")
@@ -169,7 +169,7 @@ def cmd_store(env: Any, a: argparse.Namespace) -> int:
 
 
 def roots(env: Any, all_roots: bool) -> list[Path]:
-    """This repository's state root, or every root of the machine index (`--all-roots`, CST §2.1)."""
+    """This repository's state root, or every root of the machine index (`--all-roots`, CST-B8)."""
     from tempergraph.cli.main import _root
     from tempergraph.observe.rows import index_roots
 
@@ -382,7 +382,7 @@ def _here(env: Any) -> Path | None:
 
 
 def cmd_label(env: Any, a: argparse.Namespace) -> int:
-    """The one writing verb of this module: one metadata-only `label` row in the ledger (FBK §2.1)."""
+    """The one writing verb of this module: one metadata-only `label` row in the ledger (FBK-B8)."""
     from tempergraph.cli.main import UsageError, _emit, _one, _root
     from tempergraph.docs import append_jsonl
     from tempergraph.observe.labels import LabelRefused, label
@@ -433,7 +433,7 @@ def cmd_supervision(env: Any, a: argparse.Namespace) -> int:
     from tempergraph.observe import supervision_cost as sco
     from tempergraph.store.layout import ensure_home, home_path
 
-    if a.action == "hook":  # never changes, delays or refuses the host call (C2): exit 0 whatever happens
+    if a.action == "hook":  # never changes, delays or refuses the host call (OVR-B4): exit 0 whatever happens
         try:
             raw = sys.stdin.read(4 * 1024 * 1024)
             payload = json.loads(raw) if raw.strip() else {}

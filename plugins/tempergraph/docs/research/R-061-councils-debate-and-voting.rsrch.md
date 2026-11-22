@@ -35,7 +35,7 @@ The papers' later sections were read partly through extracted summaries; numbers
 1. The default council has **no debate rounds**: members answer independently and blind, and the outcome is a vote or a synthesis (K2, K7). Rounds are opt-in, capped at three, and their value is measured per workflow by the audit (K2, K3).
 2. When rounds run, peers are shown **anonymized** (K1, K4), and every member must state where it still disagrees and whether it changed its position and why (K5). The engine records changes per round, so conformity is visible.
 3. Members should differ in **model family or stance**; a council whose members bind to one family is flagged (K3, K6).
-4. A vote is **tallied by the engine** by a declared rule, never by a model; a tie or a missed rule is a pause for a person, not a guess (K2; contract C4's rule that the engine derives outcomes).
+4. A vote is **tallied by the engine** by a declared rule, never by a model; a tie or a missed rule is a pause for a person, not a guess (K2; OVR-B6's rule that the engine derives outcomes).
 5. A council's output is graded by the gate's **one independent judge**, like any step. The council does not replace calibrated judging (K6; [ADR-0045](../adr/0045-judges-accepted-on-labelled-error-rates.adr.md)).
 
 ## Open questions

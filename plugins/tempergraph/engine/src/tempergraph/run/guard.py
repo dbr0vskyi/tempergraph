@@ -1,6 +1,6 @@
-"""Judge view sets and the after-the-fact guard (GRD §2, GRD-B1–B5).
+"""Judge view sets and the after-the-fact guard (GRD-B1, GRD-B8, GRD-B1–B5).
 
-The view catalog is keyed by full executor tool name; nothing is inferred from a name pattern (GRD-AC-1).
+The view catalog is keyed by full executor tool name; nothing is inferred from a name pattern (GRD-AC1).
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ def view_set(step: StepSpec, step_calls: Sequence[ToolCall], judge_caps: Capabil
     if judge_tools is not None:
         caps = [c for c in caps if c in judge_tools]
         caps = caps or list(BASE_VIEWS)
-    caps += [g for g in granted if g not in caps]  # a person's read-only view grant (RST §2.8)
+    caps += [g for g in granted if g not in caps]  # a person's read-only view grant (RST-B28, RST-B29, RST-B30)
     names: list[str] = []
     for c in caps:
         names.extend(tool_names(judge_caps, c))

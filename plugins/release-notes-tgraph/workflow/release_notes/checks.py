@@ -1,7 +1,7 @@
 """The model-free checks: the draft gate's four headings, and for both gates the changes since the last tag.
 
 A judge reads files only; it cannot run git. So each check lists the changes since the last tag in its
-evidence, which the engine hands the judge as the check's evidence (JDG §2.1). The list is the truth the
+evidence, which the engine hands the judge as the check's evidence (JDG-B11, JDG-B12). The list is the truth the
 judge compares the notes with; the check itself never fails on it.
 """
 

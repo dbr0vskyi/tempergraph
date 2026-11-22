@@ -1,7 +1,7 @@
-"""`blueprint compare <workflow>` and rung 2 of `author verify` (SCF §2.5): the built spec against the approved
+"""`blueprint compare <workflow>` and rung 2 of `author verify` (SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22): the built spec against the approved
 blueprint. Compared: names, order, artifacts and reads, checks, judges, sign-offs, failure and approval
 policy, back and route targets, switch arms, map lists, parallel branches, wait events, and the outcome digest. Not compared: summaries, models,
-criteria texts and prompts (SCF-AC-3). Each difference is said in words, with the two fixes."""
+criteria texts and prompts (SCF-AC3). Each difference is said in words, with the two fixes."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ def _reads(spec: WorkflowSpec, u: UnitSpec, produced: set[str]) -> list[str]:
     if u.script is not None:
         return sorted(set(u.script.inputs) & produced)
     if u.ask is not None:
-        return sorted(set(u.ask.context) & produced)  # ASK §2.1: what the person is shown
+        return sorted(set(u.ask.context) & produced)  # ASK-B5, ASK-B6: what the person is shown
     if u.step is None or u.step.prompt == "default":
         return []
     try:
@@ -50,7 +50,7 @@ def _produces(u: UnitSpec) -> list[str]:
     if u.script is not None:
         return sorted(u.script.produces)
     if u.ask is not None:
-        return ["answers"]  # ASK §2.1: the unit's one artifact
+        return ["answers"]  # ASK-B5, ASK-B6: the unit's one artifact
     return []
 
 

@@ -1,4 +1,4 @@
-"""The docs check of a package's docs half, `docs-drift` (PKG §2.5, PKG-B9, PKG-AC-6).
+"""The docs check of a package's docs half, `docs-drift` (PKG-B21, PKG-B22, PKG-B9, PKG-AC6).
 
 Criterion text lives only in `outcome.json`; the docs name each criterion by id as an acceptance criterion
 (`- [ ] <id> <text>`) in the spec of its unit, or the overview for a final criterion. The check compares ids

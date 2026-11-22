@@ -1,4 +1,4 @@
-"""Measurement of a shipped fix: two workflow versions compared, model-free (SIL-B5, contract C14).
+"""Measurement of a shipped fix: two workflow versions compared, model-free (SIL-B5, OVR-B16).
 
 It writes no file, ledger row or code and launches nothing; its only writes go through the code host given to
 it: one comment, and before it one reopen when quality fell (more than `measure.quality_drop` points).

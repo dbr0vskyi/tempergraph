@@ -1,4 +1,4 @@
-"""`report --switch <workflow>/<switch>`: finished runs per arm and zone (CXR §2.7, SWM §2.2). Figures only.
+"""`report --switch <workflow>/<switch>`: finished runs per arm and zone (CXR-B13, SWM-B5). Figures only.
 
 Re-armed runs are shown apart and never enter a cell's figures; a cell under five runs is marked.
 """
@@ -27,7 +27,7 @@ def _seconds(t: Thread) -> float | None:
 
 
 def _usd(m: dict[str, Any]) -> float | None:
-    """Reported money when every session reported it, else the estimate; never a sum of the two (OBS §2.2)."""
+    """Reported money when every session reported it, else the estimate; never a sum of the two (OBS-B10 to OBS-B13)."""
     if m["sessions"] and m["reported_sessions"] == m["sessions"]:
         return float(m["reported_usd"])
     if m["sessions"] and m["estimated_sessions"] == m["sessions"]:

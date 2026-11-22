@@ -1,7 +1,7 @@
-"""The loop child: judged lenses after a final exit, then filing (SIL-B1, §2.2, §5; T12.1.5).
+"""The loop child: judged lenses after a final exit, then filing (SIL-B1, SIL-B10, SIL-B17, SIL-B18; T12.1.5).
 
 The run's exit writes a hand-off ticket (ids, enums and paths only, never request text) under the home and
-starts `python -m tempergraph.improve.child drain` through the detached child launcher (SEC §2.2). The child
+starts `python -m tempergraph.improve.child drain` through the detached child launcher (SEC-B7). The child
 claims each ticket, runs the friction judge over the findings' metadata, decides each candidate with the filing
 rules and files. Its failure never reaches the parent: the parent has exited and its exit code is written.
 
@@ -56,7 +56,7 @@ def tickets_dir(home: Path) -> Path:
 
 
 def loop_log(root: Path, workflow: str, task_id: str) -> Path:
-    return run_dir(root, workflow, task_id) / "loop.jsonl"  # LOS §2.1
+    return run_dir(root, workflow, task_id) / "loop.jsonl"  # LOS-B7, LOS-B8, LOS-B9
 
 
 def alias_of(t: Mapping[str, Any]) -> str:
@@ -73,7 +73,7 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
              run_cost_usd: float = 0.0, trial: bool = False, daily_cap_usd: float | None = None,
              loop_model: str | None = None) -> Path | None:
     """Writes the ticket when a judged lens fired at this final exit and there is a fault to judge, when the
-    outcome lens has candidates, or when the session review (SRV §2.3) has a depth other than none."""
+    outcome lens has candidates, or when the session review (SRV-B13, SRV-B14, SRV-B15) has a depth other than none."""
     from tempergraph.improve import proposals as prp
     from tempergraph.improve import review
     from tempergraph.improve.calibration import has_score
@@ -82,7 +82,7 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
     lenses = summary.get("lenses") or {}
     friction = bool(lenses.get("friction")) and bool(summary.get("fault_fingerprints"))
     outcome = bool(summary.get("outcome_fingerprints"))  # graded by the outcome gate's own judge: no new session
-    final = "lenses" in summary  # a final exit (SIL §2.1)
+    final = "lenses" in summary  # a final exit (SIL-B8)
     prob = review.probation(root, spec.name, spec.version)
     depth = review.effective(spec.session_review, operator_review, spec.improvement_mode, prob, trial) \
         if final else "off"
@@ -209,7 +209,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
                        "lenses": t.get("lenses"), "findings": len(mine)})
     judged: dict[str, dict[str, Any]] = {}
     cost = {"reported": 0.0, "estimated_only": 0.0}
-    left = autonomy.room(t, root)  # SIL §4: stable mode's daily cap skips the judges; records are still written
+    left = autonomy.room(t, root)  # SIL-B19, SIL-B20: stable mode's daily cap skips the judges; records are still written
     capped = left is not None and left <= 0
     if capped:
         append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "judges", "reason": "daily_cap"})
@@ -241,25 +241,25 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
                                       attributed=bool(j and j["attributed"]), request_digest=f.get("request_digest")))
     history = _history(root, wf, thread)
     decisions = [filing.decide(c, history, str(t.get("issue_repository") or "")) for c in cands]
-    if t.get("autonomy") == "record":  # PRP §2.1: findings, evidence and ledger rows only
+    if t.get("autonomy") == "record":  # PRP-B11: findings, evidence and ledger rows only
         results = [{"op": "recorded", "fingerprint": d.candidate.finding.get("fingerprint"), "reason": "autonomy_record"}
                    for d in decisions]
     else:
         results = filing.file(decisions, host, filing.Outbox.at(root), dry_run=bool(t.get("dry_run")))
-    for r in results:  # IMD §2.3 loop events, ids and enums only
+    for r in results:  # IMD-B21 loop events, ids and enums only
         kind = {"filed": "issue_filed", "commented": "issue_commented"}.get(str(r.get("op")), "loop_result")
         append_jsonl(log, {"ts": now_iso(), "kind": kind, **r})
-    if str(t.get("review") or "off") != "off" and not capped:  # SRV §2.3: after filing; its results never file (SRV-B7)
+    if str(t.get("review") or "off") != "off" and not capped:  # SRV-B13, SRV-B14, SRV-B15: after filing; its results never file (SRV-B7)
         try:
             from tempergraph.improve import review
 
             rv = review.run(t, registry, reason=str(t.get("review_reason") or "dev"))
             cost["reported"] += rv["cost"]["reported"]
             cost["estimated_only"] += rv["cost"]["estimated_only"]
-        except Exception as exc:  # noqa: BLE001 - the review is best effort (SRV §4)
+        except Exception as exc:  # noqa: BLE001 - the review is best effort (SRV-B1, SRV-B20, SRV-B21, SRV-B22, SRV-B18)
             append_jsonl(log, {"ts": now_iso(), "kind": "review_failed", "error": type(exc).__name__})
     acted: dict[str, Any] = {}
-    try:  # PRP §2.1: the loop's own proposal and trial, after its judges and within the day's room
+    try:  # PRP-B11: the loop's own proposal and trial, after its judges and within the day's room
         acted = autonomy.act(t, registry, host, log)
     except Exception as exc:  # noqa: BLE001 - best effort (SIL-B1)
         append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "propose", "reason": "error",

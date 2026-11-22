@@ -1,4 +1,4 @@
-"""The outcome file and gate criteria (OUT §2.1, §4, OUT-B1, OUT-AC-1, OUT-AC-2)."""
+"""The outcome file and gate criteria (OUT-B8, OUT-B9, OUT-B22, OUT-B1, OUT-AC1, OUT-AC2)."""
 
 from __future__ import annotations
 
@@ -65,7 +65,7 @@ def broken(path: str, value: Any) -> dict[str, Any]:
 ])
 def test_file_errors_have_their_own_code(data: dict[str, Any], code: str) -> None:
     out = parse_outcome(data)
-    assert isinstance(out, list) and code in {f.code for f in out}  # OUT-AC-1
+    assert isinstance(out, list) and code in {f.code for f in out}  # OUT-AC1
 
 
 def test_unit_errors_have_their_own_code() -> None:

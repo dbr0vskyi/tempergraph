@@ -13,7 +13,7 @@ The owner's lifecycle is to improve a workflow locally until it needs less human
 
 ## Decision
 
-We will measure supervision on every decider ([SUP](../specs/86-supervision-metrics.spec.md)): each touch is classed `designed` (approvals, asks, event values), `rescue` (escalations and budget pauses) or `steer` (rewinds, reruns, grants, overrides, stops, rulings, breakpoints), with its caller and decider; each run gets a supervision level on the five-role scale (observer, approver, consultant, collaborator, operator) and who acted. For promotion, ADR-0041's "person interventions per run" row is replaced by the rows of [SUP §2.7](../specs/86-supervision-metrics.spec.md): undesigned touches by anyone, the unattended rate, the agent's own rescue share, the supervision cost share, and two data-quality rows; missing data is `unmeasured`, which is not met. In the improvement loop each agent's own rescue is a finding (`agent_decided:<pause cause>`) clustered across runs, so a pause an agent keeps waving through becomes a workflow issue whose remedy is a check. Evals may assert a level ceiling per scenario.
+We will measure supervision on every decider ([SUP](../specs/86-supervision-metrics.spec.md)): each touch is classed `designed` (approvals, asks, event values), `rescue` (escalations and budget pauses) or `steer` (rewinds, reruns, grants, overrides, stops, rulings, breakpoints), with its caller and decider; each run gets a supervision level on the five-role scale (observer, approver, consultant, collaborator, operator) and who acted. For promotion, ADR-0041's "person interventions per run" row is replaced by the rows of [SUP-B17](../specs/86-supervision-metrics.spec.md): undesigned touches by anyone, the unattended rate, the agent's own rescue share, the supervision cost share, and two data-quality rows; missing data is `unmeasured`, which is not met. In the improvement loop each agent's own rescue is a finding (`agent_decided:<pause cause>`) clustered across runs, so a pause an agent keeps waving through becomes a workflow issue whose remedy is a check. Evals may assert a level ceiling per scenario.
 
 ## Options considered
 
@@ -37,9 +37,9 @@ We will measure supervision on every decider ([SUP](../specs/86-supervision-metr
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| E1 | In the pipeline stage nobody babysits a run; a pause reaches a person through `attention` ([ADR-0040](0040-take-script-steps-attention-and-composition-from-archon.adr.md)). | SUP §2.7 |
-| E2 | The thresholds are defaults chosen without data, revisited after the first 20 runs of one workflow version. | SUP §2.7 |
-| E3 | `promote-check` gets its own spec later; until then ADR-0041 and SUP §2.7 together define its criteria. | SUP §2.7 |
+| E1 | In the pipeline stage nobody babysits a run; a pause reaches a person through `attention` ([ADR-0040](0040-take-script-steps-attention-and-composition-from-archon.adr.md)). | SUP-B17 |
+| E2 | The thresholds are defaults chosen without data, revisited after the first 20 runs of one workflow version. | SUP-B17 |
+| E3 | `promote-check` gets its own spec later; until then ADR-0041 and SUP-B17 together define its criteria. | SUP-B17 |
 
 ## Consequences
 

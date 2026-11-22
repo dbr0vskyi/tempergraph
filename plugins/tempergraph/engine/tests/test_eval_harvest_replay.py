@@ -1,4 +1,4 @@
-"""Harvest of judge misses and replay of judges on kept cases (LIF §2 harvest and replay, LIF-AC-5)."""
+"""Harvest of judge misses and replay of judges on kept cases (LIF-B7 to LIF-B16 harvest and replay, LIF-AC5)."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ def label(root: Path, thread: str, value: str, verdict: str = "PROCEED", kind: s
                                          "source": "person", "request": CANARY})
 
 
-def test_a_miss_becomes_a_local_candidate_without_request_text(tmp_path: Path) -> None:  # LIF-AC-5
+def test_a_miss_becomes_a_local_candidate_without_request_text(tmp_path: Path) -> None:  # LIF-AC5
     pkg, root = tmp_path / "pkg", tmp_path / "state"
     spec = spec_at(pkg)
     label(root, "demo/T-1", "disagree", criterion="c2")
@@ -47,7 +47,7 @@ def test_a_miss_becomes_a_local_candidate_without_request_text(tmp_path: Path) -
     assert [r["new"] for r in hv.harvest(root, spec, "review")] == [False, False]  # idempotent
 
 
-def test_replay_compares_with_the_recorded_score(tmp_path: Path) -> None:  # LIF §2 replay
+def test_replay_compares_with_the_recorded_score(tmp_path: Path) -> None:  # LIF-B7 to LIF-B16 replay
     pkg, root = tmp_path / "pkg", tmp_path / "state"
     spec = spec_at(pkg)
     gold(spec, bad=2, good=2)

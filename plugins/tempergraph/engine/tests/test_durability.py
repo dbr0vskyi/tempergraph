@@ -1,5 +1,5 @@
-"""Checkpoints, thread states, the lock, aliases, status and wait (DUR §2.1, §2.2, DUR-B3–B5, B8;
-DUR-AC-1, AC-2, AC-3)."""
+"""Checkpoints, thread states, the lock, aliases, status and wait (DUR-B9, DUR-B11, DUR-B3–B5, B8;
+DUR-AC1, AC-2, AC-3)."""
 
 from __future__ import annotations
 
@@ -79,7 +79,7 @@ def test_observers_create_nothing(root: Path) -> None:
     before = hash_tree(root)
     doc = status(root, {spec.name: spec})
     wait(root, spec, f"{spec.name}/fin", 1)
-    assert hash_tree(root) == before  # DUR-AC-3
+    assert hash_tree(root) == before  # DUR-AC3
     states = {r["thread_id"].split("/")[1]: r["state"] for r in doc["threads"]}
     assert states == {"fin": "finished", "pause": "paused"}
     paused = next(r for r in doc["threads"] if r["state"] == "paused")
@@ -117,7 +117,7 @@ def test_sixteen_writers_lose_nothing(root: Path) -> None:
         assert p.exitcode == 0
     with open_readonly(path) as saver:
         assert saver is not None
-        assert len(thread_ids(saver)) == 16  # DUR-AC-2
+        assert len(thread_ids(saver)) == 16  # DUR-AC2
     assert all(classify(root, two_step(), f"w{n}") is ThreadState.FINISHED for n in range(16))
 
 

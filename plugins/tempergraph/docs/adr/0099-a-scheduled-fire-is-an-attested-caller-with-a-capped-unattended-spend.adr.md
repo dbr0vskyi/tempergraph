@@ -21,7 +21,7 @@ We will:
 4. Refuse **widening grants** in a schedule, as in settings files.
 5. Keep **every pause with a person**: a scheduled run that pauses waits, is listed in `attention`, fires the `paused` hook, and skips the schedule's next slots under `overlap: skip`.
 6. Count a fire as **no supervision touch**; the person's setup counts once per schedule.
-7. Record **every scheduled run on the machine in one ledger** in the home store, whatever folder the schedule was made in, kept when the schedule, the repository or its state root goes away ([TCK §2.7](../specs/84-schedule-ticks-and-unattended-fires.spec.md)), so unattended work can always be checked later.
+7. Record **every scheduled run on the machine in one ledger** in the home store, whatever folder the schedule was made in, kept when the schedule, the repository or its state root goes away ([TCK-B23, TCK-B24](../specs/84-schedule-ticks-and-unattended-fires.spec.md)), so unattended work can always be checked later.
 
 ## Options considered
 
@@ -44,7 +44,7 @@ We will:
 
 - Positive: `report --by schedule`, supervision levels and promotion criteria see scheduled runs as what they are: designed once, run unattended, answered by a person when needed.
 - Negative: readers of the `caller` block gain a kind. Mitigation: tolerant readers (C12); `scheduler` sorts with `orchestrator` as an attested machine caller.
-- Risk: a token leak lets a same-user process pose as the scheduler. Mitigation: provenance is accounting, not a security boundary (PRV §1); the entry is owner-only.
+- Risk: a token leak lets a same-user process pose as the scheduler. Mitigation: provenance is accounting, not a security boundary (PRV); the entry is owner-only.
 
 ## Revisit when
 

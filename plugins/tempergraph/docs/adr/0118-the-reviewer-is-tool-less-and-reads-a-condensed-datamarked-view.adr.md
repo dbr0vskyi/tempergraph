@@ -9,11 +9,11 @@
 
 ## Context
 
-A session log holds the request, file contents, web pages and tool output: all of it can carry instructions aimed at the next model that reads it ([R-110](../research/R-110-reading-session-logs-for-self-improvement.rsrch.md) P7). Session content must never leave the machine except to the model provider that produced it, and nothing from it may cross the publish boundary ([SEC §2.3](../specs/14-security.spec.md), IMD-R6). A gate judge must never see the producer's transcript (B3). Raw streams are large, dominated by tool output (B4, P6).
+A session log holds the request, file contents, web pages and tool output: all of it can carry instructions aimed at the next model that reads it ([R-110](../research/R-110-reading-session-logs-for-self-improvement.rsrch.md) P7). Session content must never leave the machine except to the model provider that produced it, and nothing from it may cross the publish boundary ([SEC-B8 to SEC-B11](../specs/14-security.spec.md), IMD-B10). A gate judge must never see the producer's transcript (B3). Raw streams are large, dominated by tool output (B4, P6).
 
 ## Decision
 
-We will have the reviewer read only a view the engine builds ([SRV §2.5, §2.6](../specs/44-session-review.spec.md)): a header of declarations, the step's prompt or the judge's brief, one line per turn with clipped assistant text, tool names, input summaries, status, sizes and clipped error tails, and the digest; tool outputs left out; every part scrubbed; untrusted parts datamarked and fenced by a random per-review boundary; capped in tokens. The reviewer runs with no tools, no setting sources and no MCP servers, on an executor of the same provider as the session unless the operator allows another. Its output is a fixed block of enum categories, turn numbers, change classes and an anchored confidence; its one-sentence notes stay local. The engine checks every citation against the digest before it keeps an observation. The reviewer is never a gate judge, never runs inside the run it reads, and nothing it writes enters a step prompt or a judge view.
+We will have the reviewer read only a view the engine builds ([SRV-B17, SRV-B18, SRV-B19, SRV-B20](../specs/44-session-review.spec.md)): a header of declarations, the step's prompt or the judge's brief, one line per turn with clipped assistant text, tool names, input summaries, status, sizes and clipped error tails, and the digest; tool outputs left out; every part scrubbed; untrusted parts datamarked and fenced by a random per-review boundary; capped in tokens. The reviewer runs with no tools, no setting sources and no MCP servers, on an executor of the same provider as the session unless the operator allows another. Its output is a fixed block of enum categories, turn numbers, change classes and an anchored confidence; its one-sentence notes stay local. The engine checks every citation against the digest before it keeps an observation. The reviewer is never a gate judge, never runs inside the run it reads, and nothing it writes enters a step prompt or a judge view.
 
 ## Options considered
 
@@ -44,5 +44,5 @@ We will have the reviewer read only a view the engine builds ([SRV §2.5, §2.6]
 
 | Id | Assumption | Where it binds |
 |---|---|---|
-| A1 | Sending a session's own content to a second session of the same provider is within that provider's terms and the owner's privacy expectations | SRV §2.6 |
-| A2 | `claude -p` can be started with no tools and no setting sources, as judges already are ([ECC](../specs/11-executor-claude-code.spec.md)) | SRV-AC-6 |
+| A1 | Sending a session's own content to a second session of the same provider is within that provider's terms and the owner's privacy expectations | SRV-B18, SRV-B19, SRV-B20 |
+| A2 | `claude -p` can be started with no tools and no setting sources, as judges already are ([ECC](../specs/11-executor-claude-code.spec.md)) | SRV-AC6 |

@@ -1,5 +1,5 @@
-"""T7.5 read side: supervision fields on the stats row (SUP §2.5, AC-2), `report --supervision` (SUP §2.4,
-SUP-B5, AC-3's report half, AC-4, AC-5), the detail block, and `label` (FBK §2.2 explicit, FBK-AC-3)."""
+"""T7.5 read side: supervision fields on the stats row (SUP-B13, AC-2), `report --supervision` (SUP-B12,
+SUP-B5, AC-3's report half, AC-4, AC-5), the detail block, and `label` (FBK-B9 explicit, FBK-AC3)."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ def thread(root: Path, task: str, rec: dict[str, Any], *, origin: str = "cli", v
                            rec, {"kind": "run_exit", "exit_code": 0}])
 
 
-def test_aggregates_per_workflow(repo: Path) -> None:  # SUP §2.4
+def test_aggregates_per_workflow(repo: Path) -> None:  # SUP-B12
     root = state_root_path(repo)
     thread(root, "T-1", record("observer"))
     thread(root, "T-2", record("approver"))
@@ -46,7 +46,7 @@ def test_aggregates_per_workflow(repo: Path) -> None:  # SUP §2.4
                                relayed={"claimed": 1, "turn_named": 1}))
     thread(root, "T-4", record("collaborator", rescue={"person": 1}, steer={"person": 1}, level_by="person",
                                wait=600.0, unknown=1))
-    thread(root, "T-5", record("observer"), origin="evals")  # never in a production figure (SUP-AC-4)
+    thread(root, "T-5", record("observer"), origin="evals")  # never in a production figure (SUP-AC4)
     doc = sup.report(root, None)
     a = doc["total"]
     assert a["runs"] == 4 and a["thin"] is True
@@ -80,7 +80,7 @@ def test_agent_rescue_reaches_stats_row_and_report(repo: Path) -> None:  # SUP-B
     assert code == 0, err
     rows = [json.loads(x) for p in sorted((home_path() / "stats").glob("*.jsonl")) for x in p.read_text().splitlines()]
     last = rows[-1]
-    # one undesigned touch on one of the two units reached: half of them, so `operator` (SUP §2.3)
+    # one undesigned touch on one of the two units reached: half of them, so `operator` (SUP-B11)
     assert (last["level"], last["level_by"], last["agent_own_rescues"]) == ("operator", "agent", 1)
     assert last["touches_undesigned"] == 1 and last["touches_by_decider"] == {"agent": 1}
     ledger = [json.loads(x) for x in (state_root_path(repo) / "ledger.jsonl").read_text().splitlines()]
@@ -107,7 +107,7 @@ def test_sink_row_carries_the_same_touch_figures(repo: Path, tmp_path: Path, mon
     assert (row["level"], row["touches_undesigned"], row["level_by"]) == ("observer", 0, "none")
 
 
-def test_label_is_metadata_only(repo: Path) -> None:  # FBK §2.1, FBK-AC-3, IMD-AC-1
+def test_label_is_metadata_only(repo: Path) -> None:  # FBK-B8, FBK-AC3, IMD-AC1
     seen = Seen()
     paused(repo, "L-1", seen)
     code, doc, err = cli(repo, None, "label", "demo/L-1", "draft", "--value", "disagree", "--json")
@@ -126,7 +126,7 @@ def test_label_is_metadata_only(repo: Path) -> None:  # FBK §2.1, FBK-AC-3, IMD
     assert cli(repo, None, "label", "demo/L-1", "draft", "--value", "maybe")[0] == 2
 
 
-def test_no_planted_text_crosses_to_the_aggregate(repo: Path, tmp_path: Path, monkeypatch: Any) -> None:  # IMD-AC-1
+def test_no_planted_text_crosses_to_the_aggregate(repo: Path, tmp_path: Path, monkeypatch: Any) -> None:  # IMD-AC1
     monkeypatch.setenv("TEMPERGRAPH_FLUSHER", "inline")
     team = tmp_path / "share"
     team.mkdir()
@@ -146,7 +146,7 @@ def test_no_planted_text_crosses_to_the_aggregate(repo: Path, tmp_path: Path, mo
     assert labels and all(CANARY not in x.replace(f"demo/PROJ-{CANARY}", "") for x in labels)
 
 
-def test_person_waits_per_pause_kind(repo: Path) -> None:  # SUP §2.4 "Wait on people ... per pause kind"
+def test_person_waits_per_pause_kind(repo: Path) -> None:  # SUP-B12 "Wait on people ... per pause kind"
     root = state_root_path(repo)
     thread(root, "T-1", record("collaborator"))
     rows = [{"kind": "intervention", "thread_id": "demo/T-1", "pause_kind": "escalation", "wait_s": 60.0,

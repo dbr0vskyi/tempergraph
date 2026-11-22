@@ -13,7 +13,7 @@ A judge must be read-only: it reads the workspace and allowed views but cannot c
 
 ## Decision
 
-We will make judge isolation a capability each executor declares (`restricts_judge_tools`), backed by named probes. A capability that rests on an unconfirmed fact is declared **false** until its probe result is recorded for the installed CLI version. Preflight refuses a gated step whose judge executor does not declare it (contract C15). The guard runs on every judge session regardless, as a second line.
+We will make judge isolation a capability each executor declares (`restricts_judge_tools`), backed by named probes. A capability that rests on an unconfirmed fact is declared **false** until its probe result is recorded for the installed CLI version. Preflight refuses a gated step whose judge executor does not declare it (OVR-B17). The guard runs on every judge session regardless, as a second line.
 
 ## Options considered
 

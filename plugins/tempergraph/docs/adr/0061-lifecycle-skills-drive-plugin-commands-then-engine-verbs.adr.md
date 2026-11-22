@@ -9,7 +9,7 @@
 
 ## Context
 
-The owner wants a person to say "update tempergraph" to their agent and have it handle the marketplace, the plugin updates, the CLI reinstall, and the reinstall and update of workflows, including workflows in their own repositories. They also asked for an install command with a skill. The engine cannot update the plugin that carries it: Claude Code does, through `claude plugin marketplace update` and `claude plugin update`, and the engine verb must then run from the new plugin copy ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U1 to U4, [UPD §2.3](../specs/60-engine-update.spec.md)). The shell's rule is that a skill drives the engine and never decides ([SHL](../specs/19-plugin-shell.spec.md)).
+The owner wants a person to say "update tempergraph" to their agent and have it handle the marketplace, the plugin updates, the CLI reinstall, and the reinstall and update of workflows, including workflows in their own repositories. They also asked for an install command with a skill. The engine cannot update the plugin that carries it: Claude Code does, through `claude plugin marketplace update` and `claude plugin update`, and the engine verb must then run from the new plugin copy ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U1 to U4, [UPD-B14, UPD-B6](../specs/60-engine-update.spec.md)). The shell's rule is that a skill drives the engine and never decides ([SHL](../specs/19-plugin-shell.spec.md)).
 
 ## Decision
 
@@ -37,9 +37,9 @@ We will ship three skills ([LSK](../specs/65-lifecycle-skills.spec.md)): `instal
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | "Clue reinstall" in the request means the tempergraph CLI (the shim and the environment). The Claude Code CLI's own version is checked and reported, and the person updates it. | LSK §2.4 step 8 |
-| A2 | "Workflow reinstall and update if users have repos of some" means re-registering local workflow sources and offering the upgrade on them. Pulling or committing in those repositories stays the person's job. | LSK §2.4 step 7 |
-| A3 | The person's agent may run `claude plugin …` commands through its shell tool, subject to the agent's own permission prompts. | LSK §2.4 |
+| A1 | "Clue reinstall" in the request means the tempergraph CLI (the shim and the environment). The Claude Code CLI's own version is checked and reported, and the person updates it. | LSK-B11, LSK-B12 step 8 |
+| A2 | "Workflow reinstall and update if users have repos of some" means re-registering local workflow sources and offering the upgrade on them. Pulling or committing in those repositories stays the person's job. | LSK-B11, LSK-B12 step 7 |
+| A3 | The person's agent may run `claude plugin …` commands through its shell tool, subject to the agent's own permission prompts. | LSK-B11, LSK-B12 |
 
 ## Consequences
 

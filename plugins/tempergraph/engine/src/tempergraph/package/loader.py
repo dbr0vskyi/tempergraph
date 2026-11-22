@@ -1,9 +1,9 @@
-"""Loading a workflow package (PKG §2.3): read-only, calls no model (C13).
+"""Loading a workflow package (PKG-B15, PKG-B16, PKG-B17): read-only, calls no model (OVR-B15).
 
 Steps: 1 manifests, 2 interface level, then the dependency gate and the source scan before any import,
 3 import under the private name, 4 build, 5 attach `outcome.json`, 6 validation (WFM `validate`, whose
 last step is :func:`package_findings`). The Python half is imported from the package folder, never
-installed (PKG §2.3).
+installed (PKG-B15, PKG-B16, PKG-B17).
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ from tempergraph.package.scan import scan
 
 
 class PackageNotLoaded(Exception):
-    """`not_loaded: <reason>` (PKG §2.3, §4); `findings` carry the codes behind it."""
+    """`not_loaded: <reason>` (PKG-B15, PKG-B16, PKG-B17, PKG-B11, PKG-B13, PKG-B14, PKG-B18, PKG-B19, PKG-B20, PKG-B23); `findings` carry the codes behind it."""
 
     def __init__(self, reason: str, detail: str = "", findings: list[Finding] | None = None,
                  remedy: str = "") -> None:
@@ -59,14 +59,14 @@ class LoadedPackage:
     content_digest: str
     docs_digest: str
     findings: list[Finding] = field(default_factory=list)  # load-time findings (scan, pyproject, outcome)
-    outcome_pending: bool = False  # PKG §2.3 step 5 waits on OUT's reader (plan T5.8.1)
+    outcome_pending: bool = False  # PKG-B15, PKG-B16, PKG-B17 step 5 waits on OUT's reader (plan T5.8.1)
 
     @property
     def workflow_version(self) -> str:
         return workflow_version(self.spec.version, self.content_digest)
 
 
-# The workflow version with its content digest, by package root, as of the last load in this process (VER §2.4).
+# The workflow version with its content digest, by package root, as of the last load in this process (VER-B14, VER-B15).
 _VERSIONS: dict[Path, str] = {}
 
 
@@ -83,12 +83,12 @@ def full_version(spec: WorkflowSpec) -> str:
     return _VERSIONS.get(root, spec.version)
 
 
-# Load-time findings by package root, so the one validation function reports them (WFM-AC-2).
+# Load-time findings by package root, so the one validation function reports them (WFM-AC2).
 _LOAD_FINDINGS: dict[Path, list[Finding]] = {}
 
 
 def _detail(exc: BaseException) -> str:
-    """WFM §4: an exception's type only, unless an engine builder raised it (its text names the field)."""
+    """WFM-B7: an exception's type only, unless an engine builder raised it (its text names the field)."""
     frames = traceback.extract_tb(exc.__traceback__)
     if isinstance(exc, TypeError) and frames and frames[-1].filename.endswith(("tempergraph/api.py",)):
         return f"TypeError: {exc}"
@@ -96,7 +96,7 @@ def _detail(exc: BaseException) -> str:
 
 
 def _stamp_engine(root: Path) -> str | None:
-    """`verified_engine` mirrors the stamp's `engine_version` (VER §2.5)."""
+    """`verified_engine` mirrors the stamp's `engine_version` (VER-B16)."""
     try:
         doc = json.loads((root / "stamp.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -128,7 +128,7 @@ def _behind(api: int, engine_api: int) -> list[Finding]:
 
 
 def _attach_outcome(spec: WorkflowSpec, root: Path) -> tuple[WorkflowSpec, list[Finding], bool]:
-    """Step 5: read `outcome.json` and fill each gate's criteria (OUT §2.3). Pending until OUT's reader exists."""
+    """Step 5: read `outcome.json` and fill each gate's criteria (OUT-B13, OUT-B14). Pending until OUT's reader exists."""
     try:
         outcome_mod: Any = importlib.import_module("tempergraph.run.outcome")
         read_outcome = outcome_mod.read_outcome
@@ -176,7 +176,7 @@ def load_package(package_path: Path, *, engine_api: int = WORKFLOW_API,
     findings += scanned
     try:
         module = importer.import_entry(m.engine.name, entry_dir)
-    except Exception as exc:  # noqa: BLE001 - WFM §4: the exception type only
+    except Exception as exc:  # noqa: BLE001 - WFM-B7: the exception type only
         raise PackageNotLoaded("import", type(exc).__name__) from exc
     builder = getattr(module, m.function, None)
     if builder is None or not callable(builder):
@@ -202,7 +202,7 @@ def load_package(package_path: Path, *, engine_api: int = WORKFLOW_API,
 
 
 def load(package_path: Path) -> WorkflowSpec:
-    """The PKG §2 contract (WFM §2 `load()`)."""
+    """The PKG-B13, PKG-B15 contract (WFM-B7 `load()`)."""
     return load_package(package_path).spec
 
 
@@ -229,11 +229,11 @@ def package_findings(spec: WorkflowSpec, mode: Literal["dev", "stable"] | None =
     out += stable_findings(spec)
     from tempergraph.author.criteria_lint import lint, package_doc
 
-    doc = package_doc(root)  # AUT §2.8: in validation every criteria lint code is a warning
+    doc = package_doc(root)  # AUT-B12, AUT-B15, AUT-B19, AUT-B24, AUT-B25: in validation every criteria lint code is a warning
     out += [Finding(f.code, f.unit, f.message, "warning") for f in (lint(doc) if doc is not None else [])]
     from tempergraph.audit.report import parse_ignores
 
-    out += [Finding("audit-ignore-invalid", None, f"tempergraph.json: {p}")  # AUD-AC-7
+    out += [Finding("audit-ignore-invalid", None, f"tempergraph.json: {p}")  # AUD-AC7
             for p in parse_ignores(got.engine.audit.get("ignore"))[1]]
     seen: set[tuple[str, str | None, str]] = set()
     unique = []

@@ -13,7 +13,7 @@ The owner's direction (2026-11-20): creating a workflow produces a Claude plugin
 
 ## Decision
 
-We will make a workflow package one folder that is a valid Claude Code plugin and holds, beside the plugin parts, an engine manifest `tempergraph.json`, the good outcome `outcome.json`, a Python half under `workflow/` with a `pyproject.toml` whose dependencies the engine installs, and a docs half under `docs/`. The engine imports the Python half from the folder and never installs it as a distribution. The layout is [PKG §2.1](../specs/88-workflow-package.spec.md).
+We will make a workflow package one folder that is a valid Claude Code plugin and holds, beside the plugin parts, an engine manifest `tempergraph.json`, the good outcome `outcome.json`, a Python half under `workflow/` with a `pyproject.toml` whose dependencies the engine installs, and a docs half under `docs/`. The engine imports the Python half from the folder and never installs it as a distribution. The layout is [PKG-B11, PKG-B12](../specs/88-workflow-package.spec.md).
 
 ## Options considered
 
@@ -35,7 +35,7 @@ We will make a workflow package one folder that is a valid Claude Code plugin an
 
 ## Consequences
 
-- Positive: a workflow is installed, versioned, audited and upgraded as one thing; the registry already repoints by version folder ([UPD §2.8](../specs/60-engine-update.spec.md)).
+- Positive: a workflow is installed, versioned, audited and upgraded as one thing; the registry already repoints by version folder ([UPD-B20 to UPD-B24](../specs/60-engine-update.spec.md)).
 - Negative: a workflow's own Python imports go through the engine's loader rules, not plain `sys.path`.
 - Risk: claude.ai and Cowork do not install a plugin with `bin/` (R-105 A2). Mitigation: a workflow ships no `bin/`.
 

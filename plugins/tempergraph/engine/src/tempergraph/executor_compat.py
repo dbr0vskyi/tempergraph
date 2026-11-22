@@ -1,4 +1,4 @@
-"""The executor compatibility table (LIF §2, LIF-AC-4): per executor, the versions its probe facts or contract
+"""The executor compatibility table (LIF-B7 to LIF-B16, LIF-AC4): per executor, the versions its probe facts or contract
 tests were recorded for. Outside the range: a warning, and capabilities are projected (EAG-B7)."""
 
 from __future__ import annotations

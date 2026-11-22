@@ -38,7 +38,7 @@ We will drive the Messages API with an engine-owned manual loop and a minimal **
 - Positive: `restricts_judge_tools`, `enforces_step_tools` and `isolates_user_config` are true by construction and tested by contract tests, not probes.
 - Positive: cost and turn caps are enforced between responses with exact usage, unlike on Antigravity.
 - Negative: models may work less well with engine-defined tools than with the tools they were trained on. Mitigation: tool names and schemas follow the common read, search, edit shape; calibration sets measure judges on this executor before a gate relies on it.
-- Risk: the tool host becomes a second agent harness that grows. Mitigation: its scope is fixed to the ten capability names of [CON §2.5](../specs/01-contracts.spec.md); a step that needs more runs on another executor.
+- Risk: the tool host becomes a second agent harness that grows. Mitigation: its scope is fixed to the ten capability names of [CON-B11](../specs/01-contracts.spec.md); a step that needs more runs on another executor.
 
 ## Revisit when
 

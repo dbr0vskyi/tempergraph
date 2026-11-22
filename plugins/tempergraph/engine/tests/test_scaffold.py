@@ -1,4 +1,4 @@
-"""Scaffold, `--update`, the check helpers and the generated tests (SCF §2.4; plan T8.6)."""
+"""Scaffold, `--update`, the check helpers and the generated tests (SCF-B14, SCF-B15, SCF-B16, SCF-B17; plan T8.6)."""
 
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ def pkg(tmp_path: Path) -> Path:
 
 
 def test_minimal_workflow_scaffolds_and_its_generated_tests_pass(pkg: Path, tmp_path: Path) -> None:
-    """SCF-B3 / SCF-AC-2: the package of PKG §2.7 is written and its own generated tests pass."""
+    """SCF-B3 / SCF-AC2: the package of PKG-B25 is written and its own generated tests pass."""
     for rel in (".claude-plugin/plugin.json", "tempergraph.json", "outcome.json", "blueprint.json", "authoring.json",
                 "workflow/pyproject.toml", "workflow/release_notes/__init__.py", "workflow/release_notes/checks.py",
                 "prompts/draft.md", "judges/draft.md", "evals/cases.json", "evals/checks/draft/must-pass/notes.md",
@@ -75,7 +75,7 @@ def test_minimal_workflow_scaffolds_and_its_generated_tests_pass(pkg: Path, tmp_
     lp = load_package(pkg)
     draft = lp.spec.units["draft"]
     assert draft.gate.check is not None
-    # SCF §2.1.1: the blueprint's sizing becomes the step's and the judge's model, effort and reason
+    # SCF-B10: the blueprint's sizing becomes the step's and the judge's model, effort and reason
     assert draft.step is not None and draft.gate.judge is not None
     assert (draft.step.model, draft.step.session_options.effort) == ("medium", "medium")  # type: ignore[union-attr]
     assert draft.step.sizing == "One document written from a short list of changes"
@@ -159,7 +159,7 @@ def test_update_keeps_person_edits(pkg: Path, tmp_path: Path) -> None:
 
 
 def test_update_never_changes_an_edited_file(pkg: Path, tmp_path: Path) -> None:
-    """SCF-AC-4 as a property test over random edits (docs specs keep their prose; only their acceptance
+    """SCF-AC4 as a property test over random edits (docs specs keep their prose; only their acceptance
     section is data)."""
     rng = random.Random(20261120)
     candidates = sorted(p.relative_to(pkg).as_posix() for p in pkg.rglob("*") if p.is_file()
@@ -221,7 +221,7 @@ def _states(doc: dict[str, Any]) -> dict[str, str]:
 
 
 def test_author_verify_passes_the_minimal_workflow(pkg: Path, tmp_path: Path) -> None:
-    """SCF-B3 / SCF-AC-2: rungs 1 to 7 pass with no edit; rung 10 stamps; 8 and 9 were not asked."""
+    """SCF-B3 / SCF-AC2: rungs 1 to 7 pass with no edit; rung 10 stamps; 8 and 9 were not asked."""
     from tempergraph.package import registry as reg_mod
 
     code, doc, reg = _verify(pkg, tmp_path)
@@ -234,7 +234,7 @@ def test_author_verify_passes_the_minimal_workflow(pkg: Path, tmp_path: Path) ->
     assert any(e["name"] == "release-notes" for e in reg_mod.read_entries())
     rec = json.loads((pkg / "authoring.json").read_text())
     assert rec["verify"]["ok"] is True and rec["verify"]["rungs"]["stamp"] == "passed"
-    assert reg.get("claude").calls == []  # type: ignore[attr-defined]  # SCF-AC-5: no executor session
+    assert reg.get("claude").calls == []  # type: ignore[attr-defined]  # SCF-AC5: no executor session
 
 
 def test_author_verify_stops_at_the_comparison(pkg: Path, tmp_path: Path) -> None:
@@ -253,7 +253,7 @@ def test_author_verify_stops_at_the_comparison(pkg: Path, tmp_path: Path) -> Non
 
 def test_author_verify_seeds_need_seeds_and_trial_a_case(pkg: Path, tmp_path: Path) -> None:
     """Rung 8 on a package with no seeds fails `criterion-no-seed` before any session; rungs 1 to 7 still ran
-    and nothing is stamped. `--trial` without a case is refused (SCF §2.7; more in test_author_trial.py)."""
+    and nothing is stamped. `--trial` without a case is refused (SCF-B11, SCF-B13, SCF-B15, SCF-B16, SCF-B17, SCF-B18, SCF-B19, SCF-B20, SCF-B22; more in test_author_trial.py)."""
     code, doc, reg = _verify(pkg, tmp_path, "--judge-seeds")
     assert code == 2
     states = _states(doc)
@@ -266,7 +266,7 @@ def test_author_verify_seeds_need_seeds_and_trial_a_case(pkg: Path, tmp_path: Pa
 
 def test_verify_coverage_rung_and_decisions(pkg: Path) -> None:
     """Rung 5: without check fixtures nothing is trusted, so the final criteria are uncovered; a recorded
-    decision on a criterion clears it (SCF §2.5, AUT §2.5)."""
+    decision on a criterion clears it (SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22, AUT-B22)."""
     import shutil
 
     from tempergraph.author.verify import Rung, _coverage
@@ -284,7 +284,7 @@ def test_verify_coverage_rung_and_decisions(pkg: Path) -> None:
 
 
 def test_diagram_currency_by_digest(pkg: Path, tmp_path: Path) -> None:
-    """LIF-B3 / LIF-AC-2: a CRLF checkout of the committed diagram still passes; a shape change fails."""
+    """LIF-B3 / LIF-AC2: a CRLF checkout of the committed diagram still passes; a shape change fails."""
     for rel in ("diagram/model.json", "diagram/workflow.md"):
         p = pkg / rel
         p.write_bytes(p.read_bytes().replace(b"\n", b"\r\n"))
@@ -298,7 +298,7 @@ def test_diagram_currency_by_digest(pkg: Path, tmp_path: Path) -> None:
 
 def test_standin_scenario_names_every_executor(pkg: Path, tmp_path: Path) -> None:
     """LIF-B4, release 1: the stand-in run plays `claude`, the reference; a step on an executor of a later
-    release is reported by name instead of passing silently (SCF §2.7)."""
+    release is reported by name instead of passing silently (SCF-B11, SCF-B13, SCF-B15, SCF-B16, SCF-B17, SCF-B18, SCF-B19, SCF-B20, SCF-B22)."""
     assert selftest.run("standin_run", pkg, tmp_path / "a") == []
     decl = pkg / "workflow/release_notes/__init__.py"
     text = decl.read_text()
@@ -309,7 +309,7 @@ def test_standin_scenario_names_every_executor(pkg: Path, tmp_path: Path) -> Non
 
 
 def test_verify_rung_1_runs_the_criteria_lint(pkg: Path, tmp_path: Path) -> None:
-    """SCF §2.5 rung 1 with AUT §2.4.1: a vague final criterion fails the ladder before the comparison."""
+    """SCF-B18, SCF-B19, SCF-B20, SCF-B21, SCF-B22 rung 1 with AUT-B19, AUT-B20, AUT-B21: a vague final criterion fails the ladder before the comparison."""
     o = json.loads((pkg / "outcome.json").read_text())
     o["final"][0]["text"] = "The notes are good"
     (pkg / "outcome.json").write_text(json.dumps(o))
@@ -319,7 +319,7 @@ def test_verify_rung_1_runs_the_criteria_lint(pkg: Path, tmp_path: Path) -> None
     assert "criterion-vague" in {f["code"] for f in doc["rungs"][0]["findings"]}
 
 
-def test_release_two_shapes_scaffold_and_compare_clean(tmp_path: Path) -> None:  # SCF §2.1: map, ask and wait
+def test_release_two_shapes_scaffold_and_compare_clean(tmp_path: Path) -> None:  # SCF-B9, SCF-B11: map, ask and wait
     from tempergraph.author.blueprint import parse
     from tempergraph.author.compare import compare
 

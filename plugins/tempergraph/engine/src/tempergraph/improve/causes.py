@@ -1,4 +1,4 @@
-"""Cause codes from run-log names and numbers only, each classed and given a side (SIL §2.3, §2.4).
+"""Cause codes from run-log names and numbers only, each classed and given a side (SIL-B11, SIL-B12 to SIL-B16).
 
 No model call and no text: a cause is derived from record kinds, enums, counts and criterion ids. A code may
 carry one `:<detail>` part (a refusal class, a criterion id, an infra cause, a pause cause).
@@ -93,7 +93,7 @@ CAUSES: dict[str, Cause] = {
 
 
 def cause_of(code: str) -> Cause:
-    if code == "timeout:slow_host":  # SRV §2.2: the slow-host shape joins SIL's host side
+    if code == "timeout:slow_host":  # SRV-B12: the slow-host shape joins SIL's host side
         return Cause(klass="infra", side="host", remedy="Recorded only: the session timed out on a slow host")
     return CAUSES.get(code.split(":", 1)[0], Cause(klass="fault", side="engine", remedy="Unclassified cause"))
 
@@ -106,7 +106,7 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
            grants: Iterable[Mapping[str, Any]] = ()) -> list[dict[str, Any]]:
     """Causes of one segment: `{unit, cause, count, executor?}` with no text."""
     out: dict[tuple[str, str, str], int] = {}
-    versions: dict[tuple[str, str, str], str] = {}  # executor causes carry the CLI version (SIL-AC-4)
+    versions: dict[tuple[str, str, str], str] = {}  # executor causes carry the CLI version (SIL-AC4)
 
     def add(unit: str, code: str, executor: str = "", version: str = "") -> None:
         key = (unit, code, executor)

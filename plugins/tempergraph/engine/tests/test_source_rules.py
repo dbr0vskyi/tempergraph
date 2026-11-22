@@ -1,9 +1,9 @@
 """Source-scan rules every later track relies on.
 
 - LangGraph is imported only by the compiler and durability packages (R-011 U4, plan T1.1).
-- Process launches happen only at sanctioned sites (SEC-AC-1).
-- No module outside the executor package imports a concrete executor (EXI-AC-1).
-- No engine source file names a shipped workflow (WFM-AC-4, contract C8).
+- Process launches happen only at sanctioned sites (SEC-AC1).
+- No module outside the executor package imports a concrete executor (EXI-AC1).
+- No engine source file names a shipped workflow (WFM-AC4, OVR-B10).
 """
 
 from __future__ import annotations

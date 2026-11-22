@@ -13,7 +13,7 @@ The owner asked for an orchestrator skill that manages many tempergraph runs the
 
 ## Decision
 
-We will describe an orchestration as a versioned data file (nodes, `after` edges, maps, approval nodes, `k`, caps, failure policies) that the engine validates before any spend and executes in a detached **supervisor** process that calls no model and never answers a gate. The orchestrator skill writes the file with the person and reacts only to the supervisor's attention signal. The supervisor starts and resumes runs only through the engine's own verbs. This is contract C16, owned by [ORC](../specs/45-orchestration.spec.md).
+We will describe an orchestration as a versioned data file (nodes, `after` edges, maps, approval nodes, `k`, caps, failure policies) that the engine validates before any spend and executes in a detached **supervisor** process that calls no model and never answers a gate. The orchestrator skill writes the file with the person and reacts only to the supervisor's attention signal. The supervisor starts and resumes runs only through the engine's own verbs. This is OVR-B18, owned by [ORC](../specs/45-orchestration.spec.md).
 
 ## Options considered
 

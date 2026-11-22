@@ -1,8 +1,8 @@
-"""The machine index (CST §2.1), the per-user stats rows (OBS §2.4, CST §2.2 `run`) and their readers.
+"""The machine index (CST-B8), the per-user stats rows (OBS-B15, CST-B9 `run`) and their readers.
 
 Rows are written from the run log at each `run_exit`, by :func:`on_run_exit`, which the run log's writer calls
 after the record is on disk; the index is touched at `run_started` by :func:`on_run_started`. Both are best
-effort and never change a run (contract C2). `stats` and `attention` only read (contract C13).
+effort and never change a run (OVR-B4). `stats` and `attention` only read (OVR-B15).
 """
 
 from __future__ import annotations
@@ -72,7 +72,7 @@ def read_index(home: Path | None = None) -> list[dict[str, Any]]:
 
 
 def touch_index(state_root: Path, home: Path | None = None, now: str | None = None) -> bool:
-    """Adds or refreshes this state root in `~/.tempergraph/index.json` under a lock (CST §2.1, LOS-B6)."""
+    """Adds or refreshes this state root in `~/.tempergraph/index.json` under a lock (CST-B8, LOS-B6)."""
     home = ensure_home(home)
     path = home / "index.json"
     stamp = now or now_iso()
@@ -125,7 +125,7 @@ def _ts(text: Any) -> float | None:
 
 
 def run_row(log: Path, recs: Iterable[dict[str, Any]], segment: int | None = None) -> dict[str, Any] | None:
-    """The `run` row of one segment of a thread, from its run log (CST §2.2, OBS §2.4); numbers and names only."""
+    """The `run` row of one segment of a thread, from its run log (CST-B9, OBS-B15); numbers and names only."""
     root, workflow, task = _parts(log)
     started: dict[str, Any] | None = None
     exit_: dict[str, Any] | None = None
@@ -203,14 +203,14 @@ def run_row(log: Path, recs: Iterable[dict[str, Any]], segment: int | None = Non
         "reported_cost_usd": round(rep, 6) if n_rep else None, "estimated_cost_usd": round(est, 6) if n_est else None,
         "completeness": completeness, "wall_s": round(t1 - t0, 3) if t0 is not None and t1 is not None else None,
         "agent_s": round(agent_s, 3) if agent_s else None, "person_wait_s": round(wait_s, 3) if wait_s else None,
-        # copied from the segment's supervision record, the builder the ledger row uses too (SUP-AC-2)
+        # copied from the segment's supervision record, the builder the ledger row uses too (SUP-AC2)
         **_supervision_fields(sup),
         "ended_at": exit_.get("ts"),
     }
 
 
 def session_rows(log: Path, recs: Iterable[dict[str, Any]], run: dict[str, Any]) -> list[dict[str, Any]]:
-    """The `session` rows of one segment, one per `agent_run` (CST §2.2): numbers and engine words only."""
+    """The `session` rows of one segment, one per `agent_run` (CST-B9): numbers and engine words only."""
     out = []
     for r in recs:
         if r.get("kind") != "agent_run" or r.get("segment") != run.get("segment"):
@@ -251,7 +251,7 @@ def stats_path(home: Path, month: str) -> Path:
 
 
 def on_run_started(log: Path) -> None:
-    """Called by the run log's writer after `run_started`: the machine index (CST §2.1); best effort."""
+    """Called by the run log's writer after `run_started`: the machine index (CST-B8); best effort."""
     try:
         touch_index(_parts(log)[0])
     except Exception:  # noqa: BLE001 - C2, LOS-B6
@@ -261,7 +261,7 @@ def on_run_started(log: Path) -> None:
 
 
 def on_run_exit(log: Path, segment: int | None) -> None:
-    """Called by the run log's writer after `run_exit`: the stats row and the outbox rows; best effort (C2)."""
+    """Called by the run log's writer after `run_exit`: the stats row and the outbox rows; best effort (OVR-B4)."""
     try:
         from tempergraph.run.events import records
 
@@ -276,7 +276,7 @@ def on_run_exit(log: Path, segment: int | None) -> None:
             append_jsonl(home / "stats" / "sessions" / f"{month}.jsonl", srow)
         from tempergraph.observe import sinks, supervision_cost
 
-        with contextlib.suppress(Exception):  # SCO §2.5: the next writing process closes what has ended
+        with contextlib.suppress(Exception):  # SCO-B15: the next writing process closes what has ended
             supervision_cost.close(home)
         if sinks.enqueue(home, row, log) + sinks.enqueue_sessions(home, sessions, log, month):
             sinks.start_flusher(home)
@@ -293,9 +293,9 @@ SAME = ("kind", "machine_id", "workflow", "segment", "exit_code", "ended_at")  #
 
 
 def read_rows(paths: Iterable[Path], conflicts: list[str] | None = None) -> tuple[list[dict[str, Any]], int]:
-    """Rows from JSON-lines files, de-duplicated by `row_id` (CST-AC-3); a newer major schema is skipped. A
+    """Rows from JSON-lines files, de-duplicated by `row_id` (CST-AC3); a newer major schema is skipped. A
     repeated `row_id` whose content differs (a copied `machine.json` or stats file) is kept twice and its id
-    added to `conflicts` (CST §4)."""
+    added to `conflicts` (CST-B10, CST-B14, CST-B8)."""
     seen: dict[str, tuple[Any, ...]] = {}
     out: list[dict[str, Any]] = []
     unknown = 0
@@ -352,7 +352,7 @@ def _key(r: dict[str, Any], by: str) -> str:
 
 
 def totals(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    """Run count, thread count, and reported and estimated cost apart with the completeness flag (CST §2.5)."""
+    """Run count, thread count, and reported and estimated cost apart with the completeness flag (CST-B14, CST-B15, CST-B16)."""
     rep = [r["reported_cost_usd"] for r in rows if isinstance(r.get("reported_cost_usd"), int | float)]
     est = [r["estimated_cost_usd"] for r in rows if isinstance(r.get("estimated_cost_usd"), int | float)]
     incomplete = any(r.get("completeness") == "incomplete" for r in rows)
@@ -372,7 +372,7 @@ def _count(xs: Iterable[str]) -> dict[str, int]:
 
 
 def projection(rows: list[dict[str, Any]], by_version: bool = False) -> list[dict[str, Any]]:
-    """Median and 90th percentile of estimated cost per finished run, per workflow (CST §2.5); `thin` under 5."""
+    """Median and 90th percentile of estimated cost per finished run, per workflow (CST-B14, CST-B15, CST-B16); `thin` under 5."""
     per: dict[str, dict[str, float]] = defaultdict(dict)
     finished: set[str] = set()
     for r in rows:

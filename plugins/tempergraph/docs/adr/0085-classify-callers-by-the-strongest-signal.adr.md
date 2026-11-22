@@ -15,7 +15,7 @@ Claude Code marks the processes its tools start, without the model's help: `CLAU
 
 ## Decision
 
-We will classify every mutating call into one of `person`, `agent`, `orchestrator`, `pipeline`, `engine` or `unknown`, by the first matching signal of a fixed ladder: an engine-issued supervisor token, the engine's own act, a host marker, a CI marker without a terminal, the caller's declaration of `agent` or `pipeline`, a terminal, and otherwise `unknown` ([PRV §2.3](../specs/85-caller-provenance.spec.md)). A declaration can move a caller toward "not a person" but never over a host marker: `--caller person` from a marked agent is refused, and carrying a person's decision has its own path ([ADR-0086](0086-a-relayed-decision-counts-as-a-persons-only-with-host-turn-evidence.adr.md)). Every mutating call writes one `caller` block with the kind, the confidence and the signals seen ([PRV §2.5](../specs/85-caller-provenance.spec.md)); read-only verbs read none of it. `--as-agent` stays as a spelling of `--caller agent`.
+We will classify every mutating call into one of `person`, `agent`, `orchestrator`, `pipeline`, `engine` or `unknown`, by the first matching signal of a fixed ladder: an engine-issued supervisor token, the engine's own act, a host marker, a CI marker without a terminal, the caller's declaration of `agent` or `pipeline`, a terminal, and otherwise `unknown` ([PRV-B13](../specs/85-caller-provenance.spec.md)). A declaration can move a caller toward "not a person" but never over a host marker: `--caller person` from a marked agent is refused, and carrying a person's decision has its own path ([ADR-0086](0086-a-relayed-decision-counts-as-a-persons-only-with-host-turn-evidence.adr.md)). Every mutating call writes one `caller` block with the kind, the confidence and the signals seen ([PRV-B16, PRV-B17](../specs/85-caller-provenance.spec.md)); read-only verbs read none of it. `--as-agent` stays as a spelling of `--caller agent`.
 
 ## Options considered
 
@@ -40,9 +40,9 @@ We will classify every mutating call into one of `person`, `agent`, `orchestrato
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | Provenance is accounting, not security: the operator controls every process on the machine, and the design defends against careless agents, not against the operator. | PRV §1 |
-| A2 | Claude Code's child markers stay stable enough to key a host profile on; a change is caught by probe P-SUP-1 and shows callers as `unknown`, never as people. | PRV §2.7 |
-| A3 | Applications on the Agent SDK or the Messages API that drive the engine are honest enough to declare themselves; an undeclared one is `unknown`. | PRV §2.7 |
+| A1 | Provenance is accounting, not security: the operator controls every process on the machine, and the design defends against careless agents, not against the operator. | PRV |
+| A2 | Claude Code's child markers stay stable enough to key a host profile on; a change is caught by probe P-SUP-1 and shows callers as `unknown`, never as people. | PRV-B20 |
+| A3 | Applications on the Agent SDK or the Messages API that drive the engine are honest enough to declare themselves; an undeclared one is `unknown`. | PRV-B20 |
 
 ## Consequences
 

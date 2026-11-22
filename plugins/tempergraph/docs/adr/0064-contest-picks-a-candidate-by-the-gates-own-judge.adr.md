@@ -42,8 +42,8 @@ We will add a unit kind **`contest`** ([CTS](../specs/72-contest-unit.spec.md)):
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| T1 | A judge's per-candidate verdict and counts are good enough to rank candidates; ties fall to cost and order, not to a model. | CTS §3 |
-| T2 | Losing candidates' work is not needed after the run; their records stay in the run log. | CTS §2, WSP |
+| T1 | A judge's per-candidate verdict and counts are good enough to rank candidates; ties fall to cost and order, not to a model. | CTS-B1 to CTS-B5 |
+| T2 | Losing candidates' work is not needed after the run; their records stay in the run log. | CTS-B6 to CTS-B10, WSP |
 
 ## Consequences
 

@@ -1,4 +1,4 @@
-"""The judge prompt, the judgement block and verdict derivation (JDG §2.1, §2.2; CON §2.8; contract C4).
+"""The judge prompt, the judgement block and verdict derivation (JDG-B11, JDG-B12, JDG-B13; SSN-B8, SSN-B9, SSN-B10; OVR-B6).
 
 The engine derives the verdict by rule; a verdict the judge writes is ignored. A judging failure never
 passes.
@@ -51,7 +51,7 @@ CLAIM_CRITERION_ID = "upstream-claim"
 
 
 def claim_criterion(target: str, defect: str) -> Criterion:
-    """The one criterion a step's upstream claim is judged against (BUD §2.1): MET confirms the claim."""
+    """The one criterion a step's upstream claim is judged against (BUD-B10): MET confirms the claim."""
     return Criterion(
         id=CLAIM_CRITERION_ID, no_change_policy="retry",
         text=(f"The step claims a defect in the output of the earlier unit `{target}` that it cannot work around. "
@@ -81,14 +81,14 @@ class JudgeInputs:
 
 
 def brief_digest(stance: str, brief: str) -> str:
-    """FBK §2.1, JCL §2.3 binding field: the judge's stance and brief as the judge reads them."""
+    """FBK-B8, JCL-B14 binding field: the judge's stance and brief as the judge reads them."""
     import hashlib
 
     return hashlib.sha256(json.dumps([stance.strip(), brief.strip()]).encode()).hexdigest()[:16]
 
 
 def judged(g: Any) -> Any:
-    """The gate as its judge sees it (OUT §2.2): without the criteria a person signs or nobody verifies, which
+    """The gate as its judge sees it (OUT-B10, OUT-B12): without the criteria a person signs or nobody verifies, which
     go to the approval payload or the outcome record. A gate with nothing else keeps its criteria."""
     import dataclasses
 
@@ -97,7 +97,7 @@ def judged(g: Any) -> Any:
 
 
 def criteria_digest(criteria: Sequence[Criterion]) -> str:
-    """FBK §2.1, JCL §2.1 binding field: the criterion texts, check methods and severities a judge grades."""
+    """FBK-B8, JCL-B9, JCL-B10 binding field: the criterion texts, check methods and severities a judge grades."""
     import hashlib
 
     rows = [[c.id, c.text, c.check_method, c.severity] for c in criteria]
@@ -109,7 +109,7 @@ def _criterion_line(i: int, c: Criterion, check: CheckResult | None) -> str:
     if c.check_method:
         line += f"\n   How to check: {c.check_method}"
     scale = (c.verifier or {}).get("scale") if c.verified_by == "judge" else None
-    if isinstance(scale, Mapping):  # OUT §2.2.1: what each status means for this criterion
+    if isinstance(scale, Mapping):  # OUT-B11: what each status means for this criterion
         for word, label in (("met", "MET means"), ("partial", "PARTIAL means"), ("unmet", "UNMET means"),
                             ("evidence", "Cite for MET"), ("n_a", "N/A only when")):
             if scale.get(word):
@@ -151,7 +151,7 @@ def render_judge(inp: JudgeInputs) -> str:
         fb = ["## Direction from a person (wins over a reference)"]
         fb += [inp.feedback] if inp.feedback else []
         fb += [f"- Ruling: {r}" for r in inp.rulings]
-        if inp.rulings:  # one engine blocker per attempt (RRN §2.2, JDG §2.1)
+        if inp.rulings:  # one engine blocker per attempt (RRN-B14, RRN-B15, JDG-B11, JDG-B12)
             fb.append("Grade one more blocker, `ruling`: the output follows every ruling above. A blocker you "
                       "cannot fix without breaking a ruling is `no_change`.")
         parts.append("\n".join(fb))
@@ -232,7 +232,7 @@ class Outcome:
 
 def derive(judgement: Judgement | None, gate: GateSpec, check: CheckResult | None,
            back_units: Mapping[str, str] | None = None) -> Outcome:
-    """JDG §2.2. ``back_units``: artifact key -> producing unit, for the allowed back targets on this path."""
+    """JDG-B13. ``back_units``: artifact key -> producing unit, for the allowed back targets on this path."""
     if judgement is None:
         return Outcome(verdict=Verdict.ESCALATE, gap=True, confidence=0.0, confidence_source="engine_placeholder",
                        reason="unparsed")

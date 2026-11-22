@@ -13,7 +13,7 @@
 
 ## Decision
 
-We will declare a workflow with typed builders from the one public module `tempergraph.api`, each producing one contract type and refusing unknown arguments. Callables are passed as module-level functions and recorded by reference. Prompts, briefs and stances live in files referenced by path; criteria live in `outcome.json` ([ADR-0107](0107-the-good-outcome-is-one-data-file-of-final-and-intermediate-outcomes.adr.md)). Details: [PKG §2.4](../specs/88-workflow-package.spec.md).
+We will declare a workflow with typed builders from the one public module `tempergraph.api`, each producing one contract type and refusing unknown arguments. Callables are passed as module-level functions and recorded by reference. Prompts, briefs and stances live in files referenced by path; criteria live in `outcome.json` ([ADR-0107](0107-the-good-outcome-is-one-data-file-of-final-and-intermediate-outcomes.adr.md)). Details: [PKG-B19, PKG-B20](../specs/88-workflow-package.spec.md).
 
 ## Options considered
 
@@ -36,7 +36,7 @@ We will declare a workflow with typed builders from the one public module `tempe
 
 - Positive: the scaffold writes ordinary Python a person can read; transforms run on the parsed spec and the syntax tree.
 - Negative: a non-Python reader of a package must load it through the engine (`list`, `validate --json`).
-- Risk: builder signatures become a compatibility surface. Mitigation: they are surface `declaration` in the changelog ([VER §2.3.1](../specs/61-version-metadata.spec.md)).
+- Risk: builder signatures become a compatibility surface. Mitigation: they are surface `declaration` in the changelog ([VER-B10](../specs/61-version-metadata.spec.md)).
 
 ## Assumptions
 

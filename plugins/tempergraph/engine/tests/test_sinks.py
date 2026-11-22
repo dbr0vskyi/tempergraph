@@ -1,4 +1,4 @@
-"""T10.1: the directory sink, outbox, flush and sync, the fleet copy, `stats --source|--live` (CST §2.3–§2.5)."""
+"""T10.1: the directory sink, outbox, flush and sync, the fleet copy, `stats --source|--live` (CST-B10, CST-B12, CST-B13, CST-B11, CST-B14, CST-B15, CST-B16)."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ def files_under(folder: Path) -> list[Path]:
     return sorted(p for p in folder.rglob("*") if p.is_file()) if folder.exists() else []
 
 
-def test_nothing_leaves_by_default(repo: Path, tmp_path: Path) -> None:  # CST-B1, CST-AC-4
+def test_nothing_leaves_by_default(repo: Path, tmp_path: Path) -> None:  # CST-B1, CST-AC4
     outside = tmp_path / "outside"
     outside.mkdir()
     finished(repo, "T-1")
@@ -181,7 +181,7 @@ def test_fleet_copy_serves_global_numbers(repo: Path, tmp_path: Path,
     assert cli(repo, None, "stats", "sync")[1]["sinks"][0]["reachable"] is False
 
 
-def test_config_errors_exit_2(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # CST §4
+def test_config_errors_exit_2(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # CST-B10, CST-B14, CST-B8
     home = machine(monkeypatch, tmp_path, "a", None)
     (home / "config").mkdir(parents=True)
     dup = {"name": "team", "kind": "directory", "path": str(tmp_path)}
@@ -210,7 +210,7 @@ def test_normalize_origin() -> None:
         assert sinks.normalize_origin(url) == "github.com/Acme/Repo"
 
 
-def test_detached_flusher_delivers(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # CST §2.3
+def test_detached_flusher_delivers(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # CST-B10, CST-B12, CST-B13
     import time
 
     from tempergraph import detach

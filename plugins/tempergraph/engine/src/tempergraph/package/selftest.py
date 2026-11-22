@@ -1,4 +1,4 @@
-"""The generated tests of a scaffolded package (SCF §2.4), as engine functions: the package's own
+"""The generated tests of a scaffolded package (SCF-B14, SCF-B15, SCF-B16, SCF-B17), as engine functions: the package's own
 `tests/test_<module>_generated.py` calls them, and `author verify` rung 4 calls them in process, so both
 give the same answer. Each returns the problems found; an empty list passes. Model-free."""
 
@@ -89,7 +89,7 @@ def _artifacts(spec: WorkflowSpec, unit: str, files: list[Path], base: Path) -> 
 
 
 def fixture_runs(root: Path, tmp: Path, spec: WorkflowSpec | None = None) -> list[dict[str, Any]]:
-    """Every check fixture run with LF and with CRLF line endings (EVS §2.2): `{unit, which, fixture, crlf,
+    """Every check fixture run with LF and with CRLF line endings (EVS-B9, EVS-B2, EVS-B10): `{unit, which, fixture, crlf,
     result, named, evidence}`, where `named` says the findings name one of the check's criteria. A unit whose
     check lacks a must-pass or a must-fail fixture gives one row with `missing`."""
     from tempergraph.run.checks import CheckContext, run_check
@@ -131,7 +131,7 @@ def fixture_runs(root: Path, tmp: Path, spec: WorkflowSpec | None = None) -> lis
 
 def check_fixtures(root: Path, tmp: Path) -> list[str]:
     """Every check passes its must-pass and fails its must-fail fixtures, naming a criterion id; each fixture
-    also with CRLF line endings (EVS §2.2)."""
+    also with CRLF line endings (EVS-B9, EVS-B2, EVS-B10)."""
     out = []
     for r in fixture_runs(root, tmp):
         name = r["unit"]
@@ -184,7 +184,7 @@ def standin_script(ctx: Any) -> dict[str, str]:  # pragma: no cover - replaced p
 
 def standin_run(root: Path, tmp: Path) -> list[str]:
     """A scripted executor stands in for each step and judge and for the outcome judge, and a stand-in for each
-    script unit; the run reaches the finalizer (SCF §2.4). Step and script stand-ins write the unit's must-pass
+    script unit; the run reaches the finalizer (SCF-B14, SCF-B15, SCF-B16, SCF-B17). Step and script stand-ins write the unit's must-pass
     fixtures as its files and give a value its first choice; an approval is answered `proceed`."""
     import dataclasses
 
@@ -239,7 +239,7 @@ def standin_run(root: Path, tmp: Path) -> list[str]:
         if u.gate.judge is not None:
             judges.append(verdict(len(u.gate.criteria), f"j-{name}"))  # the judge rows every criterion
     if spec.outcome is not None and any(c.verified_by == "judge" for c in spec.outcome.final):
-        # the outcome judge rows every graded criterion, the checked ones too (OUT §2.4)
+        # the outcome judge rows every graded criterion, the checked ones too (OUT-B15, OUT-B16, OUT-B17)
         judges.append(verdict(sum(1 for c in spec.outcome.final if c.verified_by in ("judge", "check")),
                               "j-outcome"))
     r = scripted_registry("claude", steps, judges)

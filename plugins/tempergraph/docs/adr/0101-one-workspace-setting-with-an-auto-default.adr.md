@@ -13,7 +13,7 @@ The workspace mode was a workflow field and a run setting with two values, `in_p
 
 ## Decision
 
-We will keep one key, `run.workspace`, with a third value `auto` that is the engine default and the default of `WorkflowSpec.workspace`. `auto` resolves before spend, purely from the target and the workflow: not a git checkout gives `in_place`; writers or any declared file-writing tool or local-effect script give `worktree`; otherwise `in_place` ([WTR §2.2](../specs/82-worktree-mode.spec.md)). The few details of a worktree are sibling keys under `run.worktree.*`. The flags are `--workspace`, `--worktree` and `--in-place`. Every key but cleanup is fixed at the start.
+We will keep one key, `run.workspace`, with a third value `auto` that is the engine default and the default of `WorkflowSpec.workspace`. `auto` resolves before spend, purely from the target and the workflow: not a git checkout gives `in_place`; writers or any declared file-writing tool or local-effect script give `worktree`; otherwise `in_place` ([WTR-B18](../specs/82-worktree-mode.spec.md)). The few details of a worktree are sibling keys under `run.worktree.*`. The flags are `--workspace`, `--worktree` and `--in-place`. Every key but cleanup is fixed at the start.
 
 ## Options considered
 
@@ -36,8 +36,8 @@ We will keep one key, `run.workspace`, with a third value `auto` that is the eng
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | A declared `edit`, `write` or `shell` capability is a good enough sign that a workflow changes files in the repository. A shell-only step that never writes still gets a worktree, which costs a little disk and nothing else. | WTR §2.2 |
-| A2 | The base, root and branch cannot change after the start, because the record names a path and a branch that later units and the finalizer use. | WTR §2.1 |
+| A1 | A declared `edit`, `write` or `shell` capability is a good enough sign that a workflow changes files in the repository. A shell-only step that never writes still gets a worktree, which costs a little disk and nothing else. | WTR-B18 |
+| A2 | The base, root and branch cannot change after the start, because the record names a path and a branch that later units and the finalizer use. | WTR-B17 |
 
 ## Consequences
 

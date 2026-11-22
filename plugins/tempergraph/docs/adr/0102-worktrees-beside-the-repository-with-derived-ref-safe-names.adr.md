@@ -13,7 +13,7 @@ The design said a run worktree sits "beside the repository" on branch `tg/<workf
 
 ## Decision
 
-We will place run worktrees under `<parent>/<repo>.worktrees/` by default, offer `in_repo` (`.claude/worktrees/tg-…`, excluded through `.git/info/exclude`) and an absolute `path:` root, and derive every folder and branch name from the thread id by one flattening rule checked with `git check-ref-format`. Writer, slot and item names add a suffix (`--w-<name>`) rather than a child path, and reruns use `-r<n>` ([WTR §2.4](../specs/82-worktree-mode.spec.md)). No option sets a path or branch name directly.
+We will place run worktrees under `<parent>/<repo>.worktrees/` by default, offer `in_repo` (`.claude/worktrees/tg-…`, excluded through `.git/info/exclude`) and an absolute `path:` root, and derive every folder and branch name from the thread id by one flattening rule checked with `git check-ref-format`. Writer, slot and item names add a suffix (`--w-<name>`) rather than a child path, and reruns use `-r<n>` ([WTR-B20](../specs/82-worktree-mode.spec.md)). No option sets a path or branch name directly.
 
 ## Options considered
 
@@ -21,7 +21,7 @@ We will place run worktrees under `<parent>/<repo>.worktrees/` by default, offer
 |---|---|---|
 | Sibling folder by default, two opt-in roots, derived names (chosen) | Repo-wide tools see no duplicate tree; works where only the project folder is writable; no typed text reaches git | Three roots to test |
 | Inside the repository by default | One folder to find | Indexers and searches see a second copy  |
-| Under the state root | Already gitignored | The tool host refuses writes inside the state root ([THS §2.2](../specs/22-tool-host.spec.md)) |
+| Under the state root | Already gitignored | The tool host refuses writes inside the state root ([THS-B7](../specs/22-tool-host.spec.md)) |
 | Let the person name the branch | Familiar | Typed text on git's argv; collisions; names that git refuses |
 
 ## Decision rationale
@@ -36,8 +36,8 @@ We will place run worktrees under `<parent>/<repo>.worktrees/` by default, offer
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | The parent folder of the main checkout is usually writable by the person. When it is not, `--worktree-root in_repo` or `path:` is the remedy, named in the refusal. | WTR §4 |
-| A2 | Changing the rerun branch suffix from `~r<n>` to `-r<n>` breaks nothing, since no code exists. | RRN §2.4 |
+| A1 | The parent folder of the main checkout is usually writable by the person. When it is not, `--worktree-root in_repo` or `path:` is the remedy, named in the refusal. | WTR-B18, WTR-B20, WTR-B21, WTR-B22, WTR-B17, WTR-B23 |
+| A2 | Changing the rerun branch suffix from `~r<n>` to `-r<n>` breaks nothing, since no code exists. | RRN-B17, RRN-B18 |
 
 ## Consequences
 

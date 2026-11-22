@@ -1,100 +1,121 @@
----
-title: Lifecycle and evals
-type: component
-status: ready-for-implementation
-prefix: LIF
-adrs: [0003, 0007, 0018, 0021]
----
-
 # Lifecycle and evals
 
-## 1. Overview
+## Purpose
 
-The model-free tooling around the runtime: how the engine and its workflows are installed, upgraded, checked against each other and against the executors' CLIs and libraries, drawn and tested. Decisions are made by content and data, never by a version string or prose.
+The model-free tooling around the runtime: how the engine and its workflows are installed, upgraded, checked against each other and against the executors' CLIs and libraries, drawn and tested. Decisions are made by content and data, never by a version string or prose. Every executor changes between releases, so their versions are part of compatibility ([ADR-0007](../adr/0007-two-first-class-executors.adr.md), [ADR-0018](../adr/0018-add-messages-api-and-agent-sdk-executors.adr.md)). Operators, workflow authors and the `update`, `upgrade`, `validate` and `evals` verbs depend on these rules; install and update in full are [UPD](60-engine-update.spec.md), the changelog and stamp [VER](61-version-metadata.spec.md), suites [EVS](51-eval-suites.spec.md) and judge scores [JCL](50-judge-calibration.spec.md).
 
-## 2. Contract
+## Behaviours
 
-| Capability | Rule |
-|---|---|
-| Install | One managed Python 3.11+ virtual environment per machine, outside the plugin cache; the CLI on PATH through a shim |
-| Update | The `update` verb installs from the invoked package's staged copy with constants-only argv, into a new environment beside the current one, and switches atomically; currency is a hash of the engine's source files; it refuses a downgrade ([UPD](60-engine-update.spec.md)); runs and stores in flight follow [MIG](62-state-and-run-migration.spec.md) |
-| Manifest reconcile | Repoints stale entries, registers installed workflow packages, never deletes an entry |
-| Compatibility changelog | Typed data per engine release: audience, kind, surface, typed detect rules, one migrate action, proof ([VER §2.3](61-version-metadata.spec.md)) |
-| Workflow stamp | The engine release a workflow was last verified against, with its stamp record; written only by `upgrade --stamp` (or `upgrade-check --stamp`) after every check of [WUP §2.6](63-workflow-upgrade.spec.md) passes |
-| Executor compatibility | A table per executor: the version range its probe facts or contract tests were recorded for (the CLI for `claude` and `antigravity`; the SDK package and its bundled CLI for `agent-sdk`; the client library and API version header for `messages-api`); outside it, a warning and projected capabilities ([EAG-B7](12-executor-antigravity.spec.md)). Kept in `tempergraph/data/executor_compat.json`; preflight warns `executor-version-untested`. Release 1 records `claude` 2.1.329 only, from the model-free argument checks of [ECC §2.7](11-executor-claude-code.spec.md) |
-| Diagram model | Versioned JSON with a digest, generated from the spec and verified against the compiled graph; renderers are pure |
-| Evals | Deterministic scenarios (shell assert, no model) and rubric scenarios (input and rubric; pass only from a recorded score whose digests match) |
-| Judge readiness report | Per gate: criteria without method or without a complete scale ([OUT §2.2.1](90-run-outcome.spec.md)), criteria lint findings ([AUT §2.4.1](89-workflow-authoring.spec.md)), vague words, severity balance, calibration cases, last score per judge executor and its acceptance state ([JCL §2.5](50-judge-calibration.spec.md)); grades `ready` (structure clean and the judge `accepted`), `needs cases`, `needs work` |
-| Harvest | `evals harvest <gate>` turns a recorded judge miss (a gate escape, a person's pushback, an audit disagreement) into a calibration case: subject paths, the criterion and the expected status; local only, scrubbed, reviewed by a person before it is committed |
-| Live judge scoring | `evals score <gate> --executor <name>` runs the gate's judge on its calibration cases against a fixed subject and records the score per judge binding (executor, version, alias, model slug, digests), so a judge moved to another executor or model is scored before a gate relies on it; repeats, variants, figures and the bar are in [JCL](50-judge-calibration.spec.md) |
-| Check, step and workflow suites | Must-pass and must-fail check fixtures, step trials and whole-workflow cases with regression and capability roles; live suites opt-in and capped ([EVS](51-eval-suites.spec.md)) |
-| Replay batch | `evals replay <workflow>` reruns the judges of past cases (kept subjects, no step session) and reports agreement with the recorded verdicts; spends judge calls only |
-| Prompt lint | A model-free check over templates, judge briefs and skills: vague words, self-grading requests, rule-like branching, tool names that are not the step's mapped names, instructions to ask or wait for a person in an unattended step, briefs that tell the judge to accept the step's word about a system it cannot read, references to skills, agents, files or tools that do not exist, and model-facing files or table cells over a size limit; part of `validate`, and shown by `audit` ([AUD](55-workflow-audit.spec.md)) |
-| Update output | `update --json` prints one JSON object per line, one thing per line (step, result, path), so a skill reads it without parsing prose |
+### LIF-B7 Install
 
-### 2.1 Prompt lint rules
+WHEN the engine is installed THE installer SHALL create one managed Python 3.11+ virtual environment per machine, outside the plugin cache, and put the CLI on PATH through a shim, and stop with how to install Python when no Python 3.11+ is found or only an alias stub.
 
-Model-free, over each step template, judge stance and brief, and each skill and agent file the package ships; a file shared by several units is reported once. Findings are `validate` warnings with file and line; the name reader (skills, agents, package files, tool names) is the one [PRA](58-prompt-audit.spec.md) and [TSA](57-tool-surface-audit.spec.md) reuse.
+- GIVEN a machine with Python 3.10 only WHEN the installer runs THEN it stops and says how to install Python 3.11+
 
-| Code | Reads | Fires when |
-|---|---|---|
-| `lint-vague-word` | template, judge | A fixed list of vague words ("properly", "as needed", "etc.", "robust", …) |
-| `lint-self-grading` | template | The step is asked to rate, score or confirm its own work |
-| `lint-rule-branching` | template | Two or more if/otherwise rules: logic for a route or switch |
-| `lint-human-wait` | template | The step is told to ask, wait for or check with a person |
-| `lint-accepting-brief` | judge | The brief tells the judge to trust the step's word, claim or summary |
-| `lint-tool-name-foreign` | template | A backticked tool name of another executor's map, not of the step's |
-| `lint-ref-missing` | all | A named skill, agent or package file (`prompts/`, `judges/`, `skills/`, `agents/`, `lessons/`) the package lacks; without a package, nothing is resolved |
-| `lint-oversized` | all | A template or brief over 32,000 characters, a skill or agent over 40,000, a table cell over 2,000 |
+### LIF-B1 Same version, different code
 
-### 2.2 Judge readiness, release 1
+WHEN `update` decides whether the engine is current THE engine SHALL compare a hash of the engine's source files, installing from the invoked package's staged copy with constants-only argv into a new environment beside the current one, switching atomically, and refusing a downgrade ([UPD](60-engine-update.spec.md)); runs and stores in flight follow [MIG](62-state-and-run-migration.spec.md).
 
-The structural part runs over each judged gate and the outcome gate. It finds a judged criterion with no `check_method`, a judge criterion whose scale lacks `met`, `unmet` or `evidence` (or `partial`, for a blocker), vague words from §2.1's list in a criterion, and a gate with no judged blocker. Each gate also reports its count of calibration cases (`evals/calibration/<gate>/`). Criteria lint findings on the package's `outcome.json` ([AUT §2.4.1](89-workflow-authoring.spec.md)) are listed per gate; each grades the gate `needs work`, except `criterion-no-seed`, which is shown but left to calibration. Judge scores arrive with [JCL](50-judge-calibration.spec.md) (plan T12), so until then no binding is `accepted` and no gate grades `ready`. A `stable` workflow is therefore refused with `gate-not-ready` (LIF-B6) until its judges are accepted.
+- GIVEN an installed engine with the same version string as the plugin but different source WHEN `update` runs THEN it reinstalls
+- GIVEN an interrupted package installer WHEN `update` ends THEN it exits 1 and nothing is stamped
 
-### 2.3 Scenarios and diagram currency, release 1
+### LIF-B8 Update output
 
-The deterministic scenario of a package is the stand-in run of its generated tests ([SCF §2.7](91-blueprint-and-scaffold.spec.md), `tempergraph.package.selftest`): a scripted `claude`, the reference executor, plays every step and judge, and the run must finish. Release 1 has no other executor, so a step that names one is reported by name ("executors […] are not in release 1") rather than passed (LIF-B4); stand-ins for each named executor join with those executors. Shell-assert scenarios and rubric scenarios are the eval suites of [EVS](51-eval-suites.spec.md), release 2. Diagram currency (`diagram_current`) compares the digest in `diagram/model.json` with the spec's, over nodes and edges only, so a CRLF checkout passes and a unit added or an edge moved fails (LIF-B3).
+WHEN `update --json` runs THE engine SHALL print one JSON object per line, one step, result or path per line.
 
-## 3. Behaviours
+- GIVEN `update --json` WHEN a skill reads it THEN every line parses as one object
 
-**LIF-B1 Same version, different code.** Given an installed engine with the same version string as the plugin but different source, when `update` runs, then it reinstalls, because the hash differs.
+### LIF-B9 Manifest reconcile
 
-**LIF-B2 Stamp only when clean.** Given a workflow whose detect rules match code a breaking release changed, when `upgrade-check --stamp` runs, then it prints each hit with its changelog entry and writes no stamp.
+WHEN the manifest is reconciled THE engine SHALL repoint stale entries and register installed workflow packages, reporting an entry that points at a missing folder and never deleting an entry.
 
-**LIF-B3 Diagram currency by digest.** Given a committed diagram after a CRLF checkout, when the currency test runs, then it passes, because digests, not bytes, are compared.
+- GIVEN an entry whose folder was removed WHEN reconcile runs THEN it is reported and still in the manifest
 
-**LIF-B4 Executor conformance in the eval set.** Given a workflow package, when its evals run, then its scenarios run against scripted stand-ins of every executor the workflow names, plus `claude` as the reference, so a workflow that only works on one is visible before a live run.
+### LIF-B2 Stamp only when clean
 
-**LIF-B5 Rubric score goes stale.** Given a rubric scenario scored last week, when its judge brief changes or its judge alias is bound to another model, then the scenario reads `stale` and is manual until re-scored.
+WHEN `upgrade --stamp` or `upgrade-check --stamp` runs THE engine SHALL write the workflow stamp (the engine release it was last verified against, with its stamp record) only after every check of [WUP-B19](63-workflow-upgrade.spec.md) passes, matching the workflow against the typed compatibility changelog ([VER-B9](61-version-metadata.spec.md)).
 
-**LIF-B6 Stable mode needs ready gates.** Given a workflow declaring `stable`, when validated, then every gate must grade `ready` in the readiness report for the judge binding it will run on, which needs that binding `accepted` under [JCL](50-judge-calibration.spec.md); otherwise validation refuses it.
+- GIVEN a workflow whose detect rules match code a breaking release changed WHEN `upgrade-check --stamp` runs THEN it prints each hit with its changelog entry and writes no stamp
 
-## 4. Error conditions
+### LIF-B10 Executor compatibility
 
-| Condition | Result |
-|---|---|
-| No Python 3.11+ found, or an alias stub | Installer stops and says how to install one |
-| Package installer interrupted | Exit 1, nothing stamped |
-| A manifest entry pointing at a missing folder | Reported; nothing removed |
+WHEN preflight reads an executor's version THE engine SHALL compare it with the range in `tempergraph/data/executor_compat.json` that its probe facts or contract tests were recorded for (the CLI for `claude` and `antigravity`, the SDK package and its bundled CLI for `agent-sdk`, the client library and API version header for `messages-api`), warn `executor-version-untested` and report projected capabilities outside it ([EAG-B7](12-executor-antigravity.spec.md)), and show the table in `executors`.
 
-## 5. Design notes
+- GIVEN `claude` 2.1.330 and a table recording 2.1.329 only WHEN a run is preflighted THEN it warns `executor-version-untested`
 
-- Every executor changes between releases (Claude's `-p` permission default; `agy`'s permission matching and self-update; the Agent SDK's bundled CLI; the Messages API's tool and parameter versions), so their versions are part of compatibility, not an afterthought ([ADR-0007](../adr/0007-two-first-class-executors.adr.md), [ADR-0018](../adr/0018-add-messages-api-and-agent-sdk-executors.adr.md)).
-- Skills are evaluated with Claude Code's plugin eval; no harness for Antigravity skills is assumed.
-- As built (R2-T4): `evals harvest <workflow> <gate>` writes one candidate per judged attempt a recorded label disagreed with, under `evals/harvest/<gate>/<case_id>/case.json` in the state root: the origin (thread, attempt, label ids), the suggested expected status per criterion (`UNMET` where the gate proceeded, `MET` where it blocked), the unit's produced keys and the run's workspace. It holds no request text and no label; a person copies it into the package and labels it. `evals replay <workflow>` reruns each judged gate's judge once on every reviewed case of its latest complete score and reports the share of equal statuses and verdicts and each changed status; records are `evals/replays.jsonl`.
+### LIF-B11 Diagram model
 
-## 6. Acceptance criteria
+WHEN the diagram model is generated THE engine SHALL write versioned JSON with a digest generated from the spec and verified against the compiled graph, rendered by pure renderers.
 
-- [ ] LIF-AC-1 `update` decides currency by content hash (test with equal versions, different files).
-- [ ] LIF-AC-2 The diagram-currency test fails on a shape change and passes on a line-ending change.
-- [ ] LIF-AC-3 A rubric scenario passes only from a score whose digests match.
-- [ ] LIF-AC-4 The executor compatibility table is read by preflight and shown by `executors`.
-- [x] LIF-AC-5 A harvested case contains no request text and is never written outside the state root until a person commits it.
-- [ ] LIF-AC-6 Prompt lint finds each planted defect of its fixture set and nothing in the shipped workflows.
+- GIVEN a workflow WHEN `graph` runs twice THEN both outputs are equal
 
-## Open questions
+### LIF-B3 Diagram currency by digest
 
-None.
+WHEN the diagram currency check (`diagram_current`) runs THE engine SHALL compare the digest in `diagram/model.json` with the spec's over nodes and edges only.
 
-## References
+- GIVEN a committed diagram after a CRLF checkout WHEN the check runs THEN it passes
+- GIVEN a unit added or an edge moved WHEN the check runs THEN it fails
 
+### LIF-B12 Prompt lint
+
+WHEN `validate` runs THE engine SHALL lint each step template, judge stance and brief, and each skill and agent file the package ships, once per file, with no model, and report each finding as a warning with file and line: `lint-vague-word` (a fixed list such as "properly", "as needed", "etc.", "robust" in a template or judge), `lint-self-grading` (the step asked to rate, score or confirm its own work), `lint-rule-branching` (two or more if/otherwise rules), `lint-human-wait` (the step told to ask, wait for or check with a person), `lint-accepting-brief` (the brief tells the judge to trust the step's word, claim or summary), `lint-tool-name-foreign` (a backticked tool name of another executor's map), `lint-ref-missing` (a named skill, agent or package file under `prompts/`, `judges/`, `skills/`, `agents/` or `lessons/` the package lacks) and `lint-oversized` (a template or brief over 32,000 characters, a skill or agent over 40,000, a table cell over 2,000); `audit` shows the same findings ([AUD](55-workflow-audit.spec.md)), and [PRA](58-prompt-audit.spec.md) and [TSA](57-tool-surface-audit.spec.md) reuse the name reader.
+
+- GIVEN a template saying "rate your own work from 1 to 5" WHEN `validate` runs THEN it warns `lint-self-grading` with file and line
+- GIVEN a template naming `` `view_file` `` on a `claude` step WHEN linted THEN it warns `lint-tool-name-foreign`
+
+### LIF-B13 Judge readiness report
+
+WHEN judge readiness is reported THE engine SHALL list, per judged gate and the outcome gate, a judged criterion with no `check_method`, a judge criterion whose scale lacks `met`, `unmet` or `evidence` (or `partial` for a blocker, [OUT-B11](90-run-outcome.spec.md)), vague words in a criterion, a gate with no judged blocker, criteria lint findings on `outcome.json` ([AUT-B19, AUT-B20, AUT-B21](89-workflow-authoring.spec.md)), the count of calibration cases under `evals/calibration/<gate>/`, and the last score per judge executor with its acceptance state ([JCL-B17](50-judge-calibration.spec.md)), and grade the gate `ready` (structure clean and the judge `accepted`), `needs cases` or `needs work`; a criteria lint finding grades it `needs work`, except `criterion-no-seed`, which is shown and left to calibration.
+
+- GIVEN a gate whose judge criterion has no `check_method` WHEN reported THEN the gate grades `needs work`
+- GIVEN a clean gate whose judge has no score WHEN reported THEN it does not grade `ready`
+
+### LIF-B6 Stable mode needs ready gates
+
+WHEN a workflow declaring `stable` is validated THE engine SHALL refuse it with `gate-not-ready` unless every gate grades `ready` for the judge binding it will run on, which needs that binding `accepted` under [JCL](50-judge-calibration.spec.md).
+
+- GIVEN a `stable` workflow with one gate graded `needs cases` WHEN validated THEN it is refused with `gate-not-ready`
+
+### LIF-B4 Executor conformance in the eval set
+
+WHEN a package's deterministic scenario runs THE engine SHALL run its generated tests on stand-ins ([SCF-B11, SCF-B13, SCF-B15, SCF-B16, SCF-B17, SCF-B18, SCF-B19, SCF-B20, SCF-B22](91-blueprint-and-scaffold.spec.md)): a scripted `claude` as the reference plays every step and judge and the run must finish, and a step naming an executor without a stand-in is reported by name ("executors […] are not in release 1") rather than passed.
+
+- GIVEN a package whose step names `antigravity` WHEN its scenario runs THEN the report names `antigravity` as not in this release
+
+### LIF-B5 Rubric score goes stale
+
+WHEN a rubric scenario's judge brief changes or its judge alias is bound to another model THE engine SHALL read the scenario as `stale` and manual until it is re-scored, a rubric scenario passing only from a recorded score whose digests match.
+
+- GIVEN a rubric scenario scored last week WHEN its brief changes THEN it reads `stale`
+
+### LIF-B14 Harvest
+
+WHEN `evals harvest <workflow> <gate>` runs THE engine SHALL write one candidate per judged attempt a recorded label disagreed with (a gate escape, a person's pushback, an audit disagreement) under `evals/harvest/<gate>/<case_id>/case.json` in the state root, holding the origin (thread, attempt, label ids), the suggested expected status per criterion (`UNMET` where the gate proceeded, `MET` where it blocked), the unit's produced keys and the run's workspace, and no request text and no label, for a person to copy into the package and label.
+
+- GIVEN two labels that disagreed with a gate WHEN harvest runs THEN two candidates exist under the state root and none in the package
+
+### LIF-B15 Live judge scoring
+
+WHEN `evals score <gate> --executor <name>` runs THE engine SHALL run the gate's judge on its calibration cases against a fixed subject and record the score per judge binding (executor, version, alias, model slug, digests), so a judge moved to another executor or model is scored before a gate relies on it ([JCL](50-judge-calibration.spec.md)).
+
+- GIVEN a judge moved from `sonnet` to `haiku` WHEN readiness is reported THEN the `haiku` binding has no score until `evals score` runs for it
+
+### LIF-B16 Replay
+
+WHEN `evals replay <workflow>` runs THE engine SHALL rerun each judged gate's judge once on every reviewed case of its latest complete score, with kept subjects and no step session, and report the share of equal statuses and verdicts and each changed status in `evals/replays.jsonl`.
+
+- GIVEN a replay of 10 cases with one changed status WHEN it ends THEN the report shows 90% equal and names the changed case
+
+## Acceptance criteria
+
+- LIF-AC1 (LIF-B1): `update` decides currency by content hash, by a test with equal versions and different files
+- LIF-AC2 (LIF-B3, LIF-B11): The diagram-currency test fails on a shape change and passes on a line-ending change
+- LIF-AC3 (LIF-B5): A rubric scenario passes only from a score whose digests match
+- LIF-AC4 (LIF-B10): The executor compatibility table is read by preflight and shown by `executors`
+- LIF-AC5 (LIF-B14): A harvested case contains no request text and is never written outside the state root until a person commits it
+- LIF-AC6 (LIF-B12): Prompt lint finds each planted defect of its fixture set and nothing in the shipped workflows
+- LIF-AC7 (LIF-B2): A stamp is written only after every upgrade check passes
+- LIF-AC8 (LIF-B13, LIF-B6): Each readiness finding of LIF-B13 is produced by a fixture gate, and a `stable` workflow with a gate not `ready` is refused
+- LIF-AC9 (LIF-B4): A package scenario finishes on the reference stand-in and names each executor without one
+- LIF-AC10 (LIF-B7, LIF-B8, LIF-B9): The installer stops without Python 3.11+, `update --json` prints one object per line, and reconcile never deletes an entry
+- LIF-AC11 (LIF-B15, LIF-B16): A score is recorded per judge binding, and a replay reports agreement and each changed status

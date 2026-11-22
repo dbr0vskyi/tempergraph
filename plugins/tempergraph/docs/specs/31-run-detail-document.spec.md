@@ -1,113 +1,111 @@
----
-title: Run detail document
-type: component
-status: ready-for-implementation
-prefix: RDD
-adrs: [0022, 0023]
----
-
 # Run detail document
 
-## 1. Overview
+## Purpose
 
+One versioned JSON document that describes a single thread in full: the declared plan, every visit and attempt of every unit, each attempt's step session, check, judge and gate, the sessions with their transcript and activity locations, the pause in front of a person, cost, and derived health. It is what a monitor draws when a person "enters" a run. It is built on demand by `status --detail <selector> --json` from the diagram model, the run log and the checkpoint opened read-only; it is never stored, calls no model and creates nothing (OVR-B15), so it never disagrees with the run log ([ADR-0022](../adr/0022-observers-read-files-not-sockets.adr.md)). The one-row-per-thread status document stays owned by [DUR](09-durability-and-resume.spec.md); this spec owns its detail form. The newer unit kinds add no section: scripts are attempts with no session, council members and chairs are sessions of the step with their round, contest slots are items, and an ask's questions are the pause's payload. The monitor and anyone drilling into a run depend on it; `health` fields are hints for a person, and nothing in the engine acts on them.
 
-## 2. Contract
+## Behaviours
 
-```python
-def detail(selector: Selector, unit: str | None = None, with_live: bool = True) -> DetailDocument: ...
-```
+### RDD-B7 Document blocks
 
-### 2.1 Document (schema version 1)
+WHEN the detail document (schema version 1) is built THE engine SHALL write `schema_version`, `generated_at`, `run` (every field of the thread's status row plus `segment`, `last_seq`, local `run_dir` and `plan_digest`), `plan`, `units[]`, `pause`, `budgets` (each counter's used and limit, and the run cost cap with what is left of it), `health`, `supervision` (touches in time order with class, action, caller kind, decider, relay and wait seconds, the supervising host sessions seen so far, the level so far, and supervision cost so far with its completeness, [SUP](86-supervision-metrics.spec.md), [SCO](87-supervision-cost.spec.md)) and `events_tail` (the last 20 run-log records of kinds `unit_entered`, `check`, `gate`, `route`, `pause`, `human`, `budget` and `stop_requested`, one line each).
 
-| Block | Fields |
-|---|---|
-| `schema_version`, `generated_at` | |
-| `run` | Every field of the status document row for the thread, plus `segment`, `last_seq`, `run_dir` (local path), `plan_digest` |
-| `plan` | Units in graph order, then the finalizer: `name`, `kind` (`step`, `map`, `fork`, `join`, `switch`, `human`, `sub_workflow`, `finalizer`), `gated`, declared executor and judge executor, alias, `edges` (`{target, on}`: the unit a verdict or arm takes, `human` for a pause, `end` for a stop; a person's decision words are on `pause`), `items` count for map and fork |
-| `units[]` | Per unit: `state` (`not_reached`, `running`, `passed`, `failed`, `paused`, `skipped`), `visits[]`, `cost` (`reported`, `estimated`, `figure` as the run line counts it, `completeness`), `duration_s`, `share` (fraction of the run's cost figure) |
-| `visits[]` | `visit`, `entered_from` (EVT §2.2's words; a bare unit name in the run log reads as `back:<unit>`), `attempts[]` |
-| `attempts[]` | `attempt`, `item`, `started_at`, `ended_at`, `step` (session), `check` (result, duration, `output_path`, clipped evidence), `judge` (session, verdict inputs: per-criterion `{n, id, status}`, `met`, `total`, `blockers` with clipped evidence and fix from the local evidence file, `confidence` and source), `gate` (verdict, route target, guard status), `repeat_cause` (on an attempt its gate sent round again: `blocker:<id>`, `check:FAIL` or `retry`), `scripts` for a script unit or a hybrid step's scripts |
-| `sessions[]` (inside step and judge) | `session_key`, `kind`, executor, alias, model, `session_id`, `transcript`, `activity_path`, `live_path`, `usage`, `tool_calls` count, `outcome` (`ok`, `timed_out`, `stalled`, `partial`, `infra_cause`, `error_kind`), and when live, `live` (§2.2) |
-| `pause` | When paused: unit, kind, `question`, artifact keys with local paths (null for a value), decision words, exact resume commands, `waiting_since`, `waiting_s` |
-| `budgets` | Each counter: used, limit; run cost cap and what is left of it |
-| `health` | §2.3 |
-| `supervision` | Touches in time order (class, action, caller kind, decider, relay, wait seconds), the supervising host sessions seen so far, the level so far, and supervision cost so far with its completeness ([SUP §2.5](86-supervision-metrics.spec.md), [SCO](87-supervision-cost.spec.md)) |
-| `events_tail` | The last 20 run-log records of kinds `unit_entered`, `check`, `gate`, `route`, `pause`, `human`, `budget`, `stop_requested`, rendered as one line each (the "narrator" lines of a monitor) |
+- GIVEN any thread WHEN its detail is built THEN every block is present, empty where nothing happened
 
-A run-log record is placed by its envelope: `attempt_start` opens the attempt its `session_key` names, and a `check`, `judgement` or `gate` record of a unit belongs to that unit's open attempt. Release 1 keeps a unit's last judgement, with its evidence and fix lines, in the checkpoint, so those lines are shown for the last judged attempt of each unit; earlier attempts show blocker ids only until the `evidence/` folder holds one judgement per attempt ([LOS §2.1](33-local-observability-store.spec.md)).
+### RDD-B8 Plan block
 
-Text fields are scrubbed and clipped to 200 characters; evidence and fix lines are clipped to 400. Paths are local. A document larger than 1 MB is cut by dropping `events_tail`, then attempt detail of passed units, and says so in `truncated`; `--unit <name>` returns one unit in full, and `--no-live` builds it without the live blocks.
+WHEN `plan` is built THE engine SHALL list the units in graph order, then the finalizer, each with `name`, `kind` (`step`, `map`, `fork`, `join`, `switch`, `human`, `sub_workflow`, `finalizer`), `gated`, declared executor and judge executor, alias, `edges` of `{target, on}` (the unit a verdict or arm takes, `human` for a pause, `end` for a stop) and `items` for map and fork, and when the diagram model's digest differs from the run's `plan_digest`, build it from the run's own records with `plan_stale = true`.
 
-### 2.2 Live block of a running session
+- GIVEN a diagram model whose digest differs from the run's WHEN the detail is built THEN `plan_stale` is true
 
-Read from the live progress file and the activity journal ([EVT §2.3](30-run-events.spec.md)) when `with_live`:
+### RDD-B1 Plan before any run
 
-| Field | Meaning |
-|---|---|
-| `open_tool` | name, capability, `input_summary`, elapsed seconds |
-| `recent[]` | Last 10 finished tool calls: name, `input_summary`, `ok`, `duration_s` |
-| `last_text` | Last text line, scrubbed, clipped |
-| `tokens_so_far`, `turns_so_far` | From the stream, null if not reported yet |
-| `pgid` | Process group id (POSIX), for a read-only process listing by an observer |
-| `last_event_age_s` | Seconds since the session's last normalized event |
+WHEN the detail is built for a thread that has reached unit 2 of 5 THE engine SHALL list all five units in `plan` in graph order with units 3 to 5 `not_reached`.
 
-### 2.3 Health
+- GIVEN a thread at unit 2 of 5 WHEN the detail is built THEN units 3 to 5 are `not_reached`
 
-| Field | Rule |
-|---|---|
-| `alive` | From the lock probe ([DUR](09-durability-and-resume.spec.md)) |
-| `silent_s` | Seconds since the newest run-log record or activity line of the segment |
-| `suspect_stall` | `alive` and the open session's `last_event_age_s` ≥ 80 % of its idle limit |
-| `orphaned` | Not `alive`, state `running` in the checkpoint's last view, and no `run_exit` for the segment: the process died |
-| `waiting_for_person_s` | Seconds since the open `pause` record |
-| `burn_usd_per_h` | Estimated cost of the segment divided by its wall time |
-| `cap_eta_min` | Minutes until the run cost cap at the current burn, null without a cap |
+### RDD-B9 Units, visits and attempts
 
-## 3. Behaviours
+WHEN `units[]` is built THE engine SHALL give each unit `state` (`not_reached`, `running`, `passed`, `failed`, `paused`, `skipped`), `visits[]`, `cost` (`reported`, `estimated`, `figure` as the run line counts it, `completeness`), `duration_s` and `share` of the run's cost figure; each visit `visit`, `entered_from` (the words of [EVT-B12](30-run-events.spec.md), a bare unit name in the run log reading as `back:<unit>`) and `attempts[]`; and each attempt `attempt`, `item`, `started_at`, `ended_at`, `step` (session), `check` (result, duration, `output_path`, clipped evidence), `judge` (session and verdict inputs: per criterion `{n, id, status}`, `met`, `total`, `blockers` with clipped evidence and fix from the local evidence file, `confidence` and source), `gate` (verdict, route target, guard status), `repeat_cause` on an attempt its gate sent round again (`blocker:<id>`, `check:FAIL` or `retry`) and `scripts` for a script unit or a hybrid step.
 
-**RDD-B1 Plan before any run.** Given a thread that has reached unit 2 of 5, when the detail is built, then `plan` lists all five units in graph order and units 3 to 5 are `not_reached`.
+- GIVEN a run log naming `entered_from = plan` WHEN read THEN the visit reads `back:plan`
 
-**RDD-B2 Retry history.** Given a unit whose first attempt was sent back by its judge and whose second passed, when the detail is built, then that unit has one visit with two attempts: the first with gate `RETRY`, its blockers and `repeat_cause = blocker:<id>`, the second with gate `PROCEED`.
+### RDD-B10 Records placed by their envelope
 
-| Attempt | Check | Judge met/total | Blockers | Gate |
-|---|---|---|---|---|
-| 1 | PASS | 4/6 | c3, c5 | RETRY |
-| 2 | PASS | 6/6 | — | PROCEED |
+WHEN a run-log record is placed THE engine SHALL open the attempt an `attempt_start` record's `session_key` names and put a unit's `check`, `judgement` or `gate` record in that unit's open attempt, showing evidence and fix lines for the last judged attempt of each unit (kept in the checkpoint) and blocker ids only for earlier attempts until the evidence folder holds one judgement per attempt ([LOS](33-local-observability-store.spec.md)).
 
-**RDD-B3 Trip back.** Given a gate that routed `back:plan` from `code`, when the detail is built, then `plan` has a second visit with `entered_from = back:code`, and `code`'s first visit ends with gate `BACK` and route target `plan`.
+- GIVEN a unit judged twice WHEN the detail is built THEN the second attempt shows evidence and the first blocker ids only
 
-**RDD-B4 Live session.** Given a running judge session whose open tool is `Grep` for 12 s, when the detail is built with live data, then the judge's session has `live.open_tool = {name: Grep, capability: search, elapsed: 12}` and `recent` holds up to ten earlier calls.
+### RDD-B2 Retry history
 
-**RDD-B5 Orphan.** Given a thread whose process was killed by the host without a `run_exit`, when the detail is built, then `health.orphaned` is true and `pause` is absent; the resume command the status document shows applies ([DUR-B2](09-durability-and-resume.spec.md)).
+WHEN the detail is built for a unit whose first attempt was sent back by its judge and whose second passed THE engine SHALL show one visit with two attempts, the first with gate `RETRY`, its blockers and `repeat_cause = blocker:<id>`, the second with gate `PROCEED`.
 
-**RDD-B6 Read-only.** Given a live run, when the detail is built 100 times, then the state root's file hashes and sizes are those the run itself wrote, and the run's timing records show no wait on the reader.
+- GIVEN attempt 1 with check PASS, judge 4/6, blockers c3 and c5 and gate RETRY, and attempt 2 with PASS, 6/6 and PROCEED WHEN the detail is built THEN both attempts show those values in one visit
 
-## 4. Error conditions
+### RDD-B3 Trip back
 
-| Condition | Result |
-|---|---|
-| Run log unreadable or missing | `units` empty, `truncated = run_log_unreadable`; exit 0 with the status fields still filled |
-| Diagram model digest differs from the run's `plan_digest` | `plan` built from the run's own records, `plan_stale = true` |
-| Live file mid-replace | The previous complete read is used; never a partial JSON |
-| Unknown thread | Exit 2 |
+WHEN the detail is built after a gate routed `back:plan` from `code` THE engine SHALL give `plan` a second visit with `entered_from = back:code`, and end `code`'s first visit with gate `BACK` and route target `plan`.
 
-## 5. Design notes
+- GIVEN a route `back:plan` from `code` WHEN the detail is built THEN `plan` has a second visit entered from `back:code`
 
-- Built on demand rather than stored, so it never disagrees with the run log and the reader needs no write ([ADR-0022](../adr/0022-observers-read-files-not-sockets.adr.md)).
-- Evidence and fix texts come from the local evidence file and appear only in this local document, never in a published one ([SEC §2.3](14-security.spec.md)).
-- `health` fields are hints for a person, not decisions: nothing in the engine acts on them.
-- The newer unit kinds add no new section: scripts are attempts with no session, council members and chairs are sessions of the step with their round, contest slots are items, and an ask's questions are the pause's payload ([SCR](70-script-units-and-hybrid-steps.spec.md), [CNL](71-council-unit.spec.md), [CTS](72-contest-unit.spec.md), [ASK](73-ask-unit.spec.md)).
+### RDD-B11 Sessions
 
-## 6. Acceptance criteria
+WHEN a step or judge session is shown THE engine SHALL give it `session_key`, `kind`, executor, alias, model, `session_id`, `transcript`, `activity_path`, `live_path`, `usage`, `tool_calls` count, `outcome` (`ok`, `timed_out`, `stalled`, `partial`, `infra_cause`, `error_kind`) and, when live, the live block.
 
-- [ ] RDD-AC-1 A fixture run with a retry, a trip back, a map of three items and a pause reproduces a hand-written expected document.
-- [ ] RDD-AC-2 Building the detail leaves the state root unchanged (hash test) and takes under 300 ms for a 5 000-record run log on the reference machine.
-- [ ] RDD-AC-3 Every text field is scrubbed (canary test) and within its clip length.
-- [ ] RDD-AC-4 The 1 MB cut drops blocks in the order of §2.1 and says so.
+- GIVEN a finished session WHEN shown THEN it has no live block
 
-## Open questions
+### RDD-B12 Live block
 
-None.
+WHEN the detail is built with live data THE engine SHALL read from the live progress file and the activity journal ([EVT-B19](30-run-events.spec.md)) `open_tool` (name, capability, `input_summary`, elapsed seconds), `recent[]` (the last 10 finished calls with name, `input_summary`, `ok`, `duration_s`), `last_text` (scrubbed, clipped), `tokens_so_far` and `turns_so_far` (null until reported), `pgid` (POSIX), and `last_event_age_s`, using the previous complete read when the live file is mid-replace and never a partial JSON.
 
-## References
+- GIVEN a live file being replaced WHEN read THEN the previous complete read is used
 
+### RDD-B4 Live session
+
+WHEN the detail is built with live data for a running judge whose open tool has been `Grep` for 12 s THE engine SHALL set `live.open_tool = {name: Grep, capability: search, elapsed: 12}` with up to ten earlier calls in `recent`.
+
+- GIVEN `Grep` open for 12 s WHEN the detail is built THEN `open_tool` shows it with elapsed 12
+
+### RDD-B13 Pause block
+
+WHEN the thread is paused THE engine SHALL give `pause` the unit, kind, `question`, artifact keys with local paths (null for a value), decision words, exact resume commands, `waiting_since` and `waiting_s`.
+
+- GIVEN a paused thread WHEN the detail is built THEN `pause` holds the exact resume commands
+
+### RDD-B14 Health
+
+WHEN `health` is built THE engine SHALL set `alive` from the lock probe ([DUR](09-durability-and-resume.spec.md)), `silent_s` since the segment's newest run-log record or activity line, `suspect_stall` when alive and the open session's `last_event_age_s` is at least 80 % of its idle limit, `orphaned` when not alive with state `running` in the checkpoint's last view and no `run_exit` for the segment, `waiting_for_person_s` since the open `pause` record, `burn_usd_per_h` as the segment's estimated cost over its wall time, and `cap_eta_min` until the run cost cap at that burn (null without a cap).
+
+- GIVEN a live session silent for 85 % of its idle limit WHEN health is built THEN `suspect_stall` is true
+
+### RDD-B5 Orphan
+
+WHEN the detail is built for a thread whose process was killed without a `run_exit` THE engine SHALL set `health.orphaned` true, leave `pause` absent, and let the status document's resume command apply ([DUR-B2](09-durability-and-resume.spec.md)).
+
+- GIVEN a killed process with no `run_exit` WHEN the detail is built THEN `orphaned` is true
+
+### RDD-B15 Text, paths and size
+
+WHEN text is put in the document THE engine SHALL scrub it and clip it to 200 characters (evidence and fix lines to 400, from the local evidence file and only in this local document, [SEC-B9](14-security.spec.md)), keep paths local, and cut a document over 1 MB by dropping `events_tail`, then the attempt detail of passed units, saying so in `truncated`; `--unit <name>` returns one unit in full and `--no-live` builds it without live blocks.
+
+- GIVEN a document over 1 MB WHEN built THEN `events_tail` is dropped first and `truncated` says so
+
+### RDD-B16 Errors
+
+WHEN the run log is unreadable or missing, or the thread is unknown THE engine SHALL return `units` empty with `truncated = run_log_unreadable` and exit 0 with the status fields filled, or exit 2 for an unknown thread.
+
+- GIVEN an unknown thread WHEN the detail is asked THEN it exits 2
+
+### RDD-B6 Read-only
+
+WHEN the detail of a live run is built 100 times THE engine SHALL leave the state root's file hashes and sizes as the run itself wrote them, with no wait on the reader in the run's timing records.
+
+- GIVEN a live run WHEN the detail is built 100 times THEN the state root is as the run wrote it
+
+## Acceptance criteria
+
+- RDD-AC1 (RDD-B1, RDD-B2, RDD-B3, RDD-B7, RDD-B8, RDD-B9, RDD-B10, RDD-B11, RDD-B13): A fixture run with a retry, a trip back, a map of three items and a pause reproduces a hand-written expected document
+- RDD-AC2 (RDD-B6): Building the detail leaves the state root unchanged, by a hash test, and takes under 300 ms for a 5 000-record run log on the reference machine
+- RDD-AC3 (RDD-B15): Every text field is scrubbed, by a canary test, and within its clip length
+- RDD-AC4 (RDD-B15): The 1 MB cut drops blocks in the stated order and says so
+- RDD-AC5 (RDD-B4, RDD-B5, RDD-B12, RDD-B14, RDD-B16): Fixtures of a live session, a killed process, a live file mid-replace, an unreadable run log and an unknown thread give the stated blocks and exit codes

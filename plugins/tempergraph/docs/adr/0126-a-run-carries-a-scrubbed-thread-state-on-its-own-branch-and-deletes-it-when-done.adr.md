@@ -28,7 +28,7 @@ We will let a person turn on **carrying** for a run ([CAR](../specs/96-run-state
 
 | Criterion | Whole folder | Chosen | Subset on work branch | Hosted store |
 |---|---|---|---|---|
-| Contract C9 and LOS "local only" marks | no | yes | yes | yes |
+| OVR-B11 and LOS "local only" marks | no | yes | yes | yes |
 | No trace after the finish | no | yes | only after squash and branch deletion | yes |
 | Available in release 2 | yes | yes | yes | no |
 | Pull request diff free of state | no | yes | no | yes |
@@ -43,8 +43,8 @@ We will let a person turn on **carrying** for a run ([CAR](../specs/96-run-state
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| T1 | The owner's "push to branch" is met by a dedicated state branch; the work-branch variant is the alternative put to the owner on 2026-11-20. | CAR §2.1 |
-| T2 | Repositories that carry state are private. | CAR §1 |
+| T1 | The owner's "push to branch" is met by a dedicated state branch; the work-branch variant is the alternative put to the owner on 2026-11-20. | CAR-B6 |
+| T2 | Repositories that carry state are private. | CAR |
 
 ## Revisit when
 

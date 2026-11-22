@@ -1,4 +1,4 @@
-"""Stable mode's daily cap and the loop's own proposals and trials (SIL §4, PRP §2.1, PRP-B8; plan T12.8)."""
+"""Stable mode's daily cap and the loop's own proposals and trials (SIL-B19, SIL-B20, PRP-B11, PRP-B8; plan T12.8)."""
 
 from __future__ import annotations
 
@@ -74,7 +74,7 @@ def stable_ticket(repo: Path, task: str, monkeypatch: pytest.MonkeyPatch, **extr
     return t
 
 
-def test_daily_cap_skips_the_judges_and_records(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL §4
+def test_daily_cap_skips_the_judges_and_records(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-B19, SIL-B20
     stable_ticket(repo, "A-1", monkeypatch)
     root = repo / ".tempergraph"
     ledger(root, {"kind": "loop", "workflow": "demo", "cost": {"reported": 50.0}})
@@ -86,7 +86,7 @@ def test_daily_cap_skips_the_judges_and_records(repo: Path, monkeypatch: pytest.
         r for r in log if r["kind"] == "loop_skipped").items()
 
 
-def test_autonomy_record_files_nothing(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # PRP §2.1
+def test_autonomy_record_files_nothing(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # PRP-B11
     stable_ticket(repo, "A-2", monkeypatch, autonomy="record")
     host = MemoryCodeHost(down=True)  # any call would raise
     (out,) = child.drain(registry=registry(standin("claude", judges=[judge_says(0.9)])), host=lambda: host)
@@ -122,7 +122,7 @@ def _fake(monkeypatch: pytest.MonkeyPatch, decision: str | None) -> list[str]:
 @pytest.mark.parametrize(("level", "decision", "prs"), [("propose", None, 1), ("trial", "shown_better", 1),
                                                          ("trial", "not_shown", 0)])
 def test_propose_and_trial_levels(repo: Path, monkeypatch: pytest.MonkeyPatch, level: str, decision: str | None,
-                                  prs: int) -> None:  # PRP §2.1, PRP-B8
+                                  prs: int) -> None:  # PRP-B11, PRP-B8
     stable_ticket(repo, f"A-{level}-{decision}", monkeypatch, autonomy=level, package_root=str(repo))
     t = json.loads(tickets()[0].read_text())
     opened = _fake(monkeypatch, decision)
@@ -138,7 +138,7 @@ def test_propose_and_trial_levels(repo: Path, monkeypatch: pytest.MonkeyPatch, l
     assert autonomy.day_spend(root, "demo") >= 1.0
 
 
-def test_report_loop(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # IMD §2.4, IMD-AC-4 shape
+def test_report_loop(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # IMD-B22, IMD-AC4 shape
     from tempergraph.improve import loop_report
 
     from .test_cli import cli
@@ -163,7 +163,7 @@ def test_report_loop(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # IM
     assert code == 0 and "loop report" in out and "not derived" in out
 
 
-def test_outcome_lens_starts_no_judge_of_its_own(tmp_path: Path) -> None:  # OUT-AC-6
+def test_outcome_lens_starts_no_judge_of_its_own(tmp_path: Path) -> None:  # OUT-AC6
     from tempergraph.improve.record import findings_path
     from tempergraph.run.log import Ledger
 

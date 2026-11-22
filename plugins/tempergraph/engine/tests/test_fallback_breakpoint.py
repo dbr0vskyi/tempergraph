@@ -1,4 +1,4 @@
-"""A gate's fallback target and operator breakpoints (FLX §2.4, §2.5, §2.6)."""
+"""A gate's fallback target and operator breakpoints (FLX-B9, FLX-B10, FLX-B11)."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ def go(repo: Path, spec: Any, ex: Any, task: str = "F-1", **kw: Any) -> Any:
 # -- fallback -------------------------------------------------------------------------------------------
 
 
-def test_a_spent_budget_takes_the_fallback_and_the_run_is_degraded(repo: Path) -> None:  # FLX-B4, FLX-AC-4
+def test_a_spent_budget_takes_the_fallback_and_the_run_is_degraded(repo: Path) -> None:  # FLX-B4, FLX-AC4
     spec = wf(retry_budget=2, on_budget_spent="fallback", fallback="manual_brief")
     ex = standin("claude", steps=[WORK] * 4, judges=[FAIL, FAIL, FAIL, PASS])
     out = go(repo, spec, ex)
@@ -93,7 +93,7 @@ def test_on_fail_stop_stops_at_the_first_failure(repo: Path) -> None:
     assert [c.kind for c in ex.calls] == ["step", "judge"]
 
 
-def test_the_fallback_refusals(repo: Path) -> None:  # FLX §2.6, FLX-AC-1
+def test_the_fallback_refusals(repo: Path) -> None:  # FLX-B11, FLX-AC1
     def codes(**gate: Any) -> set[str]:
         return {f.code for f in errors(validate(wf(**gate), CAPS))}
 
@@ -108,7 +108,7 @@ def test_the_fallback_refusals(repo: Path) -> None:  # FLX §2.6, FLX-AC-1
 # -- breakpoints ----------------------------------------------------------------------------------------
 
 
-def test_a_breakpoint_pauses_before_a_unit_with_no_session(repo: Path) -> None:  # FLX-B5, FLX-AC-3
+def test_a_breakpoint_pauses_before_a_unit_with_no_session(repo: Path) -> None:  # FLX-B5, FLX-AC3
     spec = wf()
     ex = standin("claude", steps=[WORK] * 3, judges=[PASS] * 3)
     out = go(repo, spec, ex, pause_before=("build",))
@@ -151,7 +151,7 @@ def test_two_breakpoints_and_one_on_a_resume(repo: Path) -> None:
     assert entered(repo) == ["plan", "build"]
 
 
-def test_a_breakpoint_on_an_unknown_unit_is_refused_before_spend(repo: Path) -> None:  # FLX §2.6
+def test_a_breakpoint_on_an_unknown_unit_is_refused_before_spend(repo: Path) -> None:  # FLX-B11
     ex = standin("claude", steps=[WORK], judges=[PASS])
     out = go(repo, wf(), ex, pause_before=("nowhere",))
     assert out.exit_code is ExitCode.USAGE and out.reason == "breakpoint_unknown" and ex.calls == []

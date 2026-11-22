@@ -24,8 +24,8 @@ We will commit release 3 to the scope below, planned in the [third-release plan]
 | Sub-workflow units ([SWF](../specs/99-subworkflow-unit.spec.md), [ADR-0133](0133-a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md)) | 3 | New spec |
 | Writer branches, the concurrent map mode ([FLX](../specs/74-flow-extensions.spec.md), [MAP](../specs/77-map-unit.spec.md)) | 3 | — |
 | Council and contest units ([CNL](../specs/71-council-unit.spec.md), [CTS](../specs/72-contest-unit.spec.md)) | 3 | — |
-| A cap that reserves for sessions in flight ([BUD §2.3](../specs/08-budgets-and-failures.spec.md)) | 3 | New: needed by every row above |
-| A step reaches only what it declares inside a host session ([ECC §2.8](../specs/11-executor-claude-code.spec.md)) | 3 | New: found by L-29 |
+| A cap that reserves for sessions in flight ([BUD-B12](../specs/08-budgets-and-failures.spec.md)) | 3 | New: needed by every row above |
+| A step reaches only what it declares inside a host session ([ECC-B14](../specs/11-executor-claude-code.spec.md)) | 3 | New: found by L-29 |
 | Schedules and unattended fires ([SCH](../specs/83-schedules.spec.md), [TCK](../specs/84-schedule-ticks-and-unattended-fires.spec.md)) | 3 | The release 2 slice and the rest together |
 | CI pipelines: the `pipeline` stage, `promote-check --to pipeline`, the regressed watch ([PRO](../specs/95-promotion-check.spec.md)) | 3 | — |
 | The pull-request gate (R-135; ADR-0130, ADR-0131 and spec 98 when accepted) | 3 | New, the owner's ask; its first slice does not wait for pipeline runs |

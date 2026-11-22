@@ -1,7 +1,7 @@
-"""Declared capability sets of the four designed executors (EXI §2, ECC §2.1, EAS, EMA, EAG §2.1).
+"""Declared capability sets of the four designed executors (EXI-B16 to EXI-B24, ECC-B6, EAS, EMA, EAG-B8).
 
 Release 1 registers `claude` only (ADR-0091); the other three sets are declarations used by the scripted
-stand-ins and the conformance suite, so CON-AC-5 and WFM-AC-5 hold against all four before their
+stand-ins and the conformance suite, so CON-AC5 and WFM-AC5 hold against all four before their
 adapters ship. A capability resting on an unrun probe is declared false (ADR-0010).
 """
 
@@ -25,9 +25,9 @@ CLAUDE = Capabilities(
     enforces_step_tools=True, step_allow_rules=True, fresh_session=True,
     restricts_judge_tools=True,
     judge_mcp=False,  # ADR-0091 item 3: no filtering MCP proxy before release 2
-    isolates_user_config=False,  # true once P-CC-1 is confirmed (ECC §2.1)
+    isolates_user_config=False,  # true once P-CC-1 is confirmed (ECC-B6)
     hosts_authoring_surface=True,
-    efforts_uncertain=frozenset({"xhigh", "max"}),  # until live probe P-LAD-1 (LAD §2.6)
+    efforts_uncertain=frozenset({"xhigh", "max"}),  # until live probe P-LAD-1 (LAD-B14)
     session_options=frozenset({"effort", "cost_cap_usd", "fallback_alias", "turn_cap"}),
     tool_map=_CLAUDE_TOOLS,
 )
@@ -39,7 +39,7 @@ AGENT_SDK = Capabilities(
     prompt_off_argv=True, streams_events=True, reports_actions=True, reports_tokens=True, reports_cost=True,
     fresh_session=True, enforces_step_tools=True, step_allow_rules=True, judge_mcp=True,
     restricts_judge_tools=True, isolates_user_config=False, hosts_authoring_surface=True,
-    efforts_uncertain=frozenset({"xhigh", "max"}),  # until live probe P-LAD-1 (LAD §2.6)
+    efforts_uncertain=frozenset({"xhigh", "max"}),  # until live probe P-LAD-1 (LAD-B14)
     session_options=frozenset({"effort", "cost_cap_usd", "fallback_alias", "turn_cap"}),
     tool_map=dict(_CLAUDE_TOOLS),
 )

@@ -43,8 +43,8 @@ We will add a **complexity switch**: a measured switch whose predicate the engin
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| X1 | "Other parameters" means anything a model-free measure can read: inputs, settings, labels, facts, the stage, an operator's pick. | CXR §2.3 |
-| X2 | Two or three arms cover the need. | CXR §2.1 |
+| X1 | "Other parameters" means anything a model-free measure can read: inputs, settings, labels, facts, the stage, an operator's pick. | CXR-B9 |
+| X2 | Two or three arms cover the need. | CXR-B7 |
 
 ## Revisit when
 

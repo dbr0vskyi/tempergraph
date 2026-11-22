@@ -43,15 +43,15 @@ We will define the metadata in [VER](../specs/61-version-metadata.spec.md):
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| A1 | Semantic versions for both sides, and a PEP 440 range form for `requires_engine`. | VER §2.4 |
-| A2 | A workflow's `version` equals its plugin's `plugin.json` version, because Claude Code keys its cache by that string. | VER §2.1 |
-| A3 | Criteria, check sources and judge stances are protected from model edits by default. | VER §2.4, UWF |
+| A1 | Semantic versions for both sides, and a PEP 440 range form for `requires_engine`. | VER-B14, VER-B15 |
+| A2 | A workflow's `version` equals its plugin's `plugin.json` version, because Claude Code keys its cache by that string. | VER-B7 |
+| A3 | Criteria, check sources and judge stances are protected from model edits by default. | VER-B14, VER-B15, UWF |
 
 ## Consequences
 
 - Positive: the upgrade can plan, act and prove by data; reports and proposals get a version id.
 - Negative: every engine release must write typed entries and tests for its transforms.
-- Risk: an entry's detect rules miss a location. Mitigation: validation and the audit run after the upgrade (V2, V4 of [WUP §2.6](../specs/63-workflow-upgrade.spec.md)); text rules remain as a low-confidence fallback.
+- Risk: an entry's detect rules miss a location. Mitigation: validation and the audit run after the upgrade (V2, V4 of [WUP-B19](../specs/63-workflow-upgrade.spec.md)); text rules remain as a low-confidence fallback.
 
 ## Revisit when
 
