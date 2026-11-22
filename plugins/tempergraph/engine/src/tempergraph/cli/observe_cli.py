@@ -406,16 +406,18 @@ def cmd_label(env: Any, a: argparse.Namespace) -> int:
 
 def cmd_attention(env: Any, a: argparse.Namespace) -> int:
     from tempergraph.cli.main import _emit
-    from tempergraph.observe.attention import attention, line
+    from tempergraph.observe.attention import attention, line, loop_line
 
     doc = attention(roots(env, a.all_roots), env.catalog.specs)
     if a.json:
         _emit(env, doc)
-    elif not doc["items"]:
+        return 0
+    if not doc["items"] and not doc["loop"]:
         env.out.write("Nothing is waiting on a person.\n")
-    else:
-        for i in doc["items"]:
-            env.out.write(line(i) + "\n")
+    for i in doc["items"]:
+        env.out.write(line(i) + "\n")
+    for s in doc["loop"]:  # CLI-B20: the loop's summaries after the items, never among them
+        env.out.write(loop_line(s) + "\n")
     return 0
 
 

@@ -48,16 +48,42 @@ def items(state_root: Path, specs: Mapping[str, WorkflowSpec], now: float | None
     return out
 
 
+def loop_summaries(state_root: Path) -> list[dict[str, Any]]:
+    """CLI-B20: for each workflow, its newest `loop_summary` when it holds a finding or an observation. Reads only."""
+    from tempergraph.improve import loop_summary
+
+    out: list[dict[str, Any]] = []
+    base = state_root / "runs"
+    for wdir in sorted(base.iterdir()) if base.is_dir() else ():
+        s = loop_summary.newest(state_root, wdir.name) if wdir.is_dir() else None
+        if s is None or not (s.get("recorded") or s.get("top")):
+            continue
+        thread = str(s.get("thread") or "")
+        out.append({"workflow": wdir.name, "thread": thread, "at": s.get("ts"), "recorded": int(s.get("recorded") or 0),
+                    "filed": int(s.get("filed") or 0), "top": list(s.get("top") or []),
+                    "command": f"tempergraph improve review show {thread}", "state_root": str(state_root)})
+    return out
+
+
 def attention(roots: list[Path], specs: Mapping[str, WorkflowSpec], now: float | None = None) -> dict[str, Any]:
     found: list[dict[str, Any]] = []
+    loop: list[dict[str, Any]] = []
     missing = []
     for root in roots:
         if not root.is_dir():
             missing.append(str(root))
             continue
         found += items(root, specs, now)
+        loop += loop_summaries(root)
     found.sort(key=lambda i: (i["waiting_since"] is None, i["waiting_since"] or ""))
-    return {"schema_version": 1, "items": found, "missing_roots": missing}
+    loop.sort(key=lambda s: str(s.get("at") or ""), reverse=True)  # newest first
+    return {"schema_version": 1, "items": found, "loop": loop, "missing_roots": missing}
+
+
+def loop_line(s: dict[str, Any]) -> str:
+    """The text form of one summary: the counts, then each observation, then the command (no note text)."""
+    rows = "".join(f"\n        {o.get('category')}  {o.get('unit')}  {o.get('confidence')}" for o in s.get("top") or [])
+    return f"  loop  {s['thread']}: {s['recorded']} recorded, {s['filed']} filed{rows}\n        {s['command']}"
 
 
 def line(i: dict[str, Any]) -> str:

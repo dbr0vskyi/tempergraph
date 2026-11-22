@@ -210,7 +210,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     wf, task, thread = str(t["workflow"]), str(t["task_id"]), str(t["thread"])
     log = loop_log(root, wf, task)
     mine = _latest(read_findings(root, wf, task), set(t.get("fingerprints") or ()))
-    faults = [f for f in mine if f.get("class") == "fault" and f.get("lens") != "outcome"]
+    faults = [f for f in mine if f.get("class") == "fault" and f.get("lens") not in ("outcome", "review")]
     append_jsonl(log, {"ts": now_iso(), "kind": "loop_started", "ticket": t.get("ticket_id"),
                        "lenses": t.get("lenses"), "findings": len(mine)})
     judged: dict[str, dict[str, Any]] = {}
@@ -236,6 +236,8 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
                            "session_id": res.session_id})
     cands: list[filing.Candidate] = []
     for f in mine:
+        if f.get("lens") == "review":  # SRV-B28: a finding made of review observations never files, in any run
+            continue
         if f.get("lens") == "outcome":  # SIL-B7: files only once the outcome gate's judge is `accepted` (JCL)
             cands.append(filing.Candidate(finding=f, lens="outcome", calibrated=bool(t.get("outcome_calibrated")),
                                           request_digest=f.get("request_digest")))
@@ -270,6 +272,12 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     except Exception as exc:  # noqa: BLE001 - best effort (SIL-B1)
         append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "propose", "reason": "error",
                            "error": type(exc).__name__})
+    try:  # SIL-B22: one summary per ticket for `attention` and the detail document; never stops the loop
+        from tempergraph.improve import loop_summary
+
+        append_jsonl(log, loop_summary.build(root, wf, task, results))
+    except Exception:  # noqa: BLE001 - best effort (SIL-B1)
+        pass
     Ledger(path=root / "ledger.jsonl").append({"kind": "loop", "thread_id": thread, "workflow": wf,
                                                "workflow_version": t.get("workflow_version"), "cost": cost,
                                                "ops": sorted({str(r.get("op")) for r in results})})
