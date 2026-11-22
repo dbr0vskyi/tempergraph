@@ -163,4 +163,4 @@ WHEN the first 10 final exits of a merged proposal's new version are recorded TH
 
 - Should `propose` become the default autonomy once the first workflow has a reviewed case set? Until answered: `file` stays the default. Owner: owner.
 - May a trial apply a case's recorded answer at a pause? Until answered: a case stops at the first pause and counts as a tie. Owner: owner.
-- PRP-B9 waits on the merge being seen, since `pr_state` is not derived in release 1 ([FBK](41-feedback-and-judge-reliability.spec.md)); `regressed_after_release` is not recorded yet. Owner: engine owner.
+- Not built yet: PRP-B9 waits on the merge being seen, since `pr_state` is not derived in release 1 ([FBK](41-feedback-and-judge-reliability.spec.md)); `regressed_after_release` is not recorded yet. Owner: engine owner.
