@@ -59,6 +59,8 @@ def _outcome(produces: tuple[str, ...]) -> dict[str, Any]:
                        "check_method": "Read the result"}]}
 
 
+# SWF-AC1: this helper builds the parents and children the tests of SWF-AC1 run on (test_subworkflow_validate.py,
+# test_subworkflow_inputs.py, test_outside_git.py): each refusal of SWF-B6 is proved against a package it writes.
 def register_workflow(home: Path, parent: Path, name: str, *, version: str = "0.3.1", inputs: Iterable[str] = (),
                       produces: Iterable[str] = (), children: Mapping[str, Mapping[str, Any]] | None = None,
                       needs_git: bool = False, broken: bool = False) -> Path:
