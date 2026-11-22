@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | proposed |
+| Status | accepted (owner, 2026-11-22) |
 | Date | 2026-11-22 |
 | Authors | Claude (release 3 preparation for the owner) |
 | Supersedes | The release 3 rows of [ADR-0090](0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md) and [ADR-0125](0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md) named below |

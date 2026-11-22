@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | proposed |
+| Status | accepted (owner, 2026-11-22) |
 | Date | 2026-11-22 |
 | Authors | Claude (release 3 preparation for the owner) |
 | Supersedes | — |

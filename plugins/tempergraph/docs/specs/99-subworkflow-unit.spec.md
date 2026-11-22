@@ -60,14 +60,18 @@ WHEN a child's work is learned from and measured THE engine SHALL keep the child
 
 - GIVEN a child unit's friction finding WHEN the loop files it THEN it is filed to the child workflow with the parent named
 
+### SWF-B10 The child's finalizer and outcome gate stay its own
+
+WHEN a sub-workflow is the parent's last unit THE engine SHALL never run the child's finalizer from the parent, whose own finalizer can call the same code, and never skip the child's outcome gate when the parent's gate grades the same criteria, because the child's outcome record is what the child's measures read (ADR-0133, accepted 2026-11-22).
+
+- GIVEN a parent whose last unit is a child with a finalizer and whose final gate grades the child's criteria WHEN the run ends THEN the child's outcome gate ran, the child's finalizer did not, and the parent's finalizer ran once
+
 ## Acceptance criteria
 
-- SWF-AC1 (SWF-B1, SWF-B2, SWF-B3, SWF-B4, SWF-B5, SWF-B6, SWF-B7, SWF-B9): SWF-B1 to SWF-B6 hold offline on stand-ins with an engine fixture parent and child, neither a shipped workflow
+- SWF-AC1 (SWF-B1, SWF-B2, SWF-B3, SWF-B4, SWF-B5, SWF-B6, SWF-B7, SWF-B9, SWF-B10): SWF-B1 to SWF-B6 hold offline on stand-ins with an engine fixture parent and child, neither a shipped workflow
 - SWF-AC2 (SWF-B8): A parent run with a child leaves one `run.jsonl`, one checkpoint thread and one ledger row; every child record carries `child`
 - SWF-AC3 (SWF-B8): A carried parent paused inside its child resumes on a second state root ([CAR-AC1](96-run-state-on-a-branch.spec.md))
 
 ## Open questions
 
-- Should a parent be able to run the child's finalizer when the child is the parent's last unit? Until answered: no, the parent's finalizer can call the same code. Owner: owner.
-- Should the child's outcome gate be skippable when the parent's gate grades the same criteria? Until answered: no, the child's outcome record is what its measures read. Owner: implementer.
 - Not built yet: sub-workflows are release 3 work (third-release plan R3-T2). Owner: engine owner.
