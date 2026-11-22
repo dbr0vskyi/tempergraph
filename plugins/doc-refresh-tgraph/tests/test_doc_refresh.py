@@ -141,7 +141,8 @@ def test_doc_refresh_hands_the_judges_the_changed_sections(repo: Path) -> None:
     out = start(SPEC, "D-5", {"request": REQUEST}, repo, registry(ex), NO_SLEEP)
     assert out.exit_code is ExitCode.FINISHED, out.message
     by_unit = {c["unit"]: c["evidence"] for c in records(repo, "D-5", "check")}
-    assert "changed since the run's base" in by_unit["draft"] and ": Install" in by_unit["draft"]
-    assert ": Install" in by_unit["outcome"] and "Sections removed: none" in by_unit["outcome"]
+    assert "Sections changed: Install" in by_unit["draft"]
+    assert "Sections changed: Install" in by_unit["outcome"]
     prompts = [c.request.prompt for c in ex.calls if c.kind == "judge"]
-    assert prompts and all("changed since the run's base" in p for p in prompts)
+    assert len(prompts) == 2 and all("Sections changed: Install" in p for p in prompts)
+    assert all("byte-for-byte the same as at the base: (top), Guide, Use\nSections added: none" in p for p in prompts)

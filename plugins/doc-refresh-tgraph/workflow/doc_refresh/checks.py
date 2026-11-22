@@ -41,11 +41,11 @@ def sections(text):
     for line in text.splitlines():
         m = HEADING.match(line)
         if m:
-            out[name] = "\n".join(body).strip()
+            out[name] = "\n".join(body)
             name, body = m.group(1), []
         else:
             body.append(line)
-    out[name] = "\n".join(body).strip()
+    out[name] = "\n".join(body)
     return out
 
 
@@ -71,9 +71,14 @@ def section_evidence(ctx):
         after = ctx.read_text(path)
     except (OSError, PermissionError):
         return ""
-    changed, added, removed = section_changes(before or str(got.tail or ""), after)
-    return "\n".join([f"Sections of {path} changed since the run's base {base[:12]}: {', '.join(changed) or 'none'}",
-                      f"Sections added: {', '.join(added) or 'none'}", f"Sections removed: {', '.join(removed) or 'none'}"])
+    before = before or str(got.tail or "")
+    changed, added, removed = section_changes(before, after)
+    same = [k for k in sections(after) if k not in changed and k not in added]
+    return "\n".join([
+        f"The check compared {path} with its text at the run's base {base[:12]} (git show), section by section:",
+        f"Sections changed: {', '.join(changed) or 'none'}",
+        f"Sections byte-for-byte the same as at the base: {', '.join(same) or 'none'}",
+        f"Sections added: {', '.join(added) or 'none'}", f"Sections removed: {', '.join(removed) or 'none'}"])
 
 
 def outcome_check(ctx):
