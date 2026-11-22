@@ -8,9 +8,10 @@ One versioned JSON document that describes a single thread in full: the declared
 
 ### RDD-B7 Document blocks
 
-WHEN the detail document (schema version 1) is built THE engine SHALL write `schema_version`, `generated_at`, `run` (every field of the thread's status row plus `segment`, `last_seq`, local `run_dir` and `plan_digest`), `plan`, `units[]`, `pause`, `budgets` (each counter's used and limit, and the run cost cap with what is left of it), `health`, `supervision` (touches in time order with class, action, caller kind, decider, relay and wait seconds, the supervising host sessions seen so far, the level so far, and supervision cost so far with its completeness, [SUP](86-supervision-metrics.spec.md), [SCO](87-supervision-cost.spec.md)) and `events_tail` (the last 20 run-log records of kinds `unit_entered`, `check`, `gate`, `route`, `pause`, `human`, `budget` and `stop_requested`, one line each).
+WHEN the detail document (schema version 1) is built THE engine SHALL write `schema_version`, `generated_at`, `run` (every field of the thread's status row plus `segment`, `last_seq`, local `run_dir` and `plan_digest`), `plan`, `units[]`, `pause`, `budgets` (each counter's used and limit, and the run cost cap with what is left of it), `health`, `supervision` (touches in time order with class, action, caller kind, decider, relay and wait seconds, the supervising host sessions seen so far, the level so far, and supervision cost so far with its completeness, [SUP](86-supervision-metrics.spec.md), [SCO](87-supervision-cost.spec.md)), `loop` (the thread's newest `loop_summary` record, [SIL-B22](16-self-improvement.spec.md), `null` until a loop child has ended) and `events_tail` (the last 20 run-log records of kinds `unit_entered`, `check`, `gate`, `route`, `pause`, `human`, `budget` and `stop_requested`, one line each).
 
 - GIVEN any thread WHEN its detail is built THEN every block is present, empty where nothing happened
+- GIVEN a thread whose loop child has ended WHEN its detail is built THEN `loop` holds the counts of findings recorded and filed and at most three observations as category, unit and confidence, and no note text
 
 ### RDD-B8 Plan block
 
@@ -109,3 +110,4 @@ WHEN the detail of a live run is built 100 times THE engine SHALL leave the stat
 - RDD-AC3 (RDD-B15): Every text field is scrubbed, by a canary test, and within its clip length
 - RDD-AC4 (RDD-B15): The 1 MB cut drops blocks in the stated order and says so
 - RDD-AC5 (RDD-B4, RDD-B5, RDD-B12, RDD-B14, RDD-B16): Fixtures of a live session, a killed process, a live file mid-replace, an unreadable run log and an unknown thread give the stated blocks and exit codes
+- RDD-AC6 (RDD-B7): The detail of a fixture thread whose loop child has ended holds `loop` with the counts and at most three observations and no note text, and `loop` is `null` for a thread with no loop child

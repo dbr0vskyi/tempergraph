@@ -407,8 +407,13 @@ class EngineNodes:
             escalate = "blocked"
         elif parsed.upstream:
             escalate = "upstream"
+        prior = prev.get("check") if retry else None  # BUD-B16: the previous attempt's failing check, same visit and item
+        prior_failing = {"findings": [{k: f.get(k) for k in ("criterion", "place", "message")}
+                                      for f in prior.get("findings") or [] if f.get("status") == "fail"],
+                         "evidence": str(prior.get("evidence") or "")} \
+            if isinstance(prior, Mapping) and prior.get("result") == "FAIL" and not prior.get("environmental") else None
         record = {
-            "item": iid,
+            "item": iid, "prior_failing": prior_failing,
             "attempt": attempt, "visit": visit, "ok": res.ok, "text": clip(scrub(res.text), 8000), "blocked": parsed.blocked, "upstream": parsed.upstream,
             "issues": parsed.issues, "infra_cause": str(res.infra_cause) if res.infra_cause else None,
             "infra_spent": res.infra_cause is not None, "timed_out": res.timed_out, "stalled": res.stalled,
@@ -737,6 +742,11 @@ class EngineNodes:
             if cres.environmental:
                 att["escalate"] = "environmental"
                 write["judgements"] = {unit: {"verdict": str(Verdict.ESCALATE), "reason": "environmental"}}
+            elif self._repeats(att, cres):  # BUD-B16: the same failure again although files changed: no retry helps
+                att["escalate"] = "check_repeat"
+                att["repeated"] = checkmod.failing(cres)
+                att["repeated_evidence"] = cres.evidence
+                write["judgements"] = {unit: {"verdict": str(Verdict.ESCALATE), "reason": "check_repeat"}}
             else:
                 write["judgements"] = {unit: {"verdict": str(Verdict.RETRY), "reason": "check_fail", "blockers": [
                     {"criterion": f.criterion or "check", "place": f.place, "problem": f.message, "fix": f.fix}
@@ -761,6 +771,15 @@ class EngineNodes:
             att["infra_cause"] = "judge_infra"
         return {**write, "run": {"cost": write["judgements"][unit].pop("_cost")}} if "_cost" in write["judgements"][
             unit] else write
+
+    @staticmethod
+    def _repeats(att: Mapping[str, Any], cres: CheckResult) -> bool:
+        """BUD-B16: this failing check equals the previous attempt's, and this attempt's step changed files."""
+        prior = att.get("prior_failing")
+        if not prior or not att.get("changed"):
+            return False
+        return checkmod.repeat_key(prior.get("findings") or [], str(prior.get("evidence") or "")) \
+            == checkmod.repeat_key(checkmod.failing(cres), cres.evidence)
 
     def _judge_claim(self, unit: str, state: RunState, att: dict[str, Any]) -> dict[str, Any]:
         """A step's upstream claim is judged on its own against one criterion: confirmed goes BACK, refuted

@@ -16,7 +16,7 @@ from tempergraph.run import ladder as laddermod
 from tempergraph.run import mapping
 
 ESCALATE_CAUSES = frozenset({"auth", "refused", "tool_access", "environmental", "blocked", "upstream",
-                             "workflow_fault"})
+                             "workflow_fault", "check_repeat"})
 HUMAN_CAP = 100
 
 
@@ -227,6 +227,11 @@ def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: 
         out["on_deadline"] = dl[1]
     if reason == "tool_access":  # each refused or missing name and what fixes it (RST-B28, RST-B29, RST-B30)
         out["tool_access"] = list((((state.get("attempts") or {}).get(unit) or {}).get("tool_access")) or [])
+    if reason == "check_repeat":  # BUD-B16: the failing findings the check returned twice in a row
+        held = (state.get("attempts") or {}).get(unit) or {}
+        out["repeated"] = list(held.get("repeated") or [])
+        if not out["repeated"]:  # a check with no findings repeats on its evidence text
+            out["repeated_evidence"] = str(held.get("repeated_evidence") or "")[:400]
     if kind == "approval" and u.extra.get("sign_off"):
         out["sign_off"] = list(u.extra["sign_off"])  # person criteria to sign (OUT-B15, OUT-B16, OUT-B17, OUT-B4)
     return out

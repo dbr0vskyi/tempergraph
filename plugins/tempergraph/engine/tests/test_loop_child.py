@@ -15,6 +15,7 @@ from tempergraph.constants import ExitCode
 from tempergraph.executors.standins import answer, standin
 from tempergraph.improve import child, filing
 from tempergraph.improve.codehost import MemoryCodeHost
+from tempergraph.improve.record import read_findings
 from tempergraph.store.layout import home_path
 
 from .fixtures.workflows import two_step
@@ -63,6 +64,11 @@ def test_ticket_then_judged_filing(repo: Path, monkeypatch: pytest.MonkeyPatch) 
     log = [json.loads(ln) for ln in child.loop_log(root, "demo", "L-1").read_text().splitlines()]
     assert [r["kind"] for r in log][:2] == ["loop_started", "loop_judged"] and "issue_filed" in [r["kind"] for r in log]
     assert any(r.get("kind") == "loop" for r in map(json.loads, (root / "ledger.jsonl").read_text().splitlines()))
+    summary = [r for r in log if r["kind"] == "loop_summary"]  # SIL-AC14: one, written when the child ends
+    assert len(summary) == 1 and log[-1] is summary[0]
+    assert summary[0]["recorded"] == len(read_findings(root, "demo", "L-1"))
+    assert summary[0]["filed"] == len([r for r in out["results"] if r["op"] in ("filed", "commented")]) == 1
+    assert summary[0]["top"] == [] and summary[0]["thread"] == "demo/L-1"
     blocked_run(repo, "L-2", monkeypatch)  # the same cause again: a comment, never a second issue
     d2 = json.loads(tickets()[0].read_text())
     d2["issue_repository"] = spec_repo

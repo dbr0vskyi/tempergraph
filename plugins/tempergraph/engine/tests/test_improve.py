@@ -53,6 +53,25 @@ def test_classes_and_sides() -> None:  # SIL-B11
     assert causes.cause_of("judge_unparsed").side == "engine"
 
 
+def test_a_check_repeat_pause_is_its_own_cause() -> None:  # SIL-AC15
+    got = causes.derive([{"kind": "pause", "unit": "a", "pause_kind": "escalation", "reason": "check_repeat"}])
+    assert [f["cause"] for f in got if f["unit"] == "a"] == ["check_repeat"]  # not `escalation:check_repeat`
+    c = causes.cause_of("check_repeat")
+    assert c.klass == "fault" and c.side == "workflow" and c.remedy
+
+
+def test_the_exit_of_a_check_repeat_run_records_the_finding(repo: Path) -> None:  # SIL-AC15
+    from .test_check_repeat import same_finding, spec_of, steps, writes
+
+    ex = standin("claude", steps=steps(writes("r1.txt"), writes("r2.txt")))
+    assert go(repo, ex, spec_of(same_finding), task="I-9").exit_code is ExitCode.PAUSED
+    rec = [r for r in records(repo, "I-9") if r["kind"] == "finding_recorded"][-1]
+    assert "check_repeat" in rec["causes"] and "workflow" in rec["sides"]
+    (f,) = [x for x in found(repo, "I-9") if x["cause"] == "check_repeat"]
+    assert f["unit"] == "draft" and f["class"] == "fault" and f["side"] == "workflow" and f["remedy"]
+    assert "notes.md" not in findings_path(repo / ".tempergraph", "demo", "I-9").read_text()  # no evidence text
+
+
 def test_retry_burst_agent_rescues_pushback_and_grants() -> None:  # SIL-B12 to SIL-B16
     recs = [{"kind": "unit_entered", "unit": "a"}] + [
         {"kind": "attempt_start", "session_key": f"a.{n}.retry", "session_kind": "retry"} for n in (2, 3, 4)]

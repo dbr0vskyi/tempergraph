@@ -962,6 +962,7 @@ export const detailPaused = {
     "designed_by": null,
     "cost": null
   },
+  "loop": null,
   "events_tail": [
     "5 2026-11-21T18:29:42.229Z entered draft (visit 1, from start)",
     "9 2026-11-21T18:29:42.380Z check draft: PASS",

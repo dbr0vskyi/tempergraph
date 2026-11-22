@@ -11,7 +11,7 @@ import json
 import re
 import shutil
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -218,6 +218,20 @@ def run_check(gate: GateSpec, ctx: CheckContext) -> tuple[CheckResult, list[str]
         return CheckResult(result="FAIL", evidence="check returned no CheckResult"), ["check_result_invalid"]
     res.runs = [r.to_json() for r in ctx.runs]
     return normalise(res)
+
+
+def failing(res: CheckResult) -> list[dict[str, str]]:
+    """BUD-B16: the failing findings of a check result, as the rows a pause payload shows."""
+    return [{"criterion": f.criterion or "", "place": f.place or "", "message": f.message or "", "fix": f.fix or ""}
+            for f in res.findings if f.status == "fail"]
+
+
+def repeat_key(findings: Sequence[Mapping[str, Any]], evidence: str) -> tuple[Any, ...]:
+    """BUD-B16: what two failures must share to be the same: the failing findings by criterion, place and message,
+    or the scrubbed evidence text when the check returned no finding."""
+    rows = sorted((str(f.get("criterion") or ""), str(f.get("place") or ""), str(f.get("message") or ""))
+                  for f in findings)
+    return ("findings", tuple(rows)) if rows else ("evidence", str(evidence or "").strip())
 
 
 def to_json(res: CheckResult) -> dict[str, Any]:

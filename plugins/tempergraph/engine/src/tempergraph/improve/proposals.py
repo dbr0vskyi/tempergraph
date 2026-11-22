@@ -171,6 +171,7 @@ def clusters(root: Path, workflow: str, now: datetime | None = None) -> list[dic
                                                                      if f.get("request_digest")}),
                     "machines": len({f.get("machine") for f in members if f.get("machine")}),
                     "repeat_cost_usd": cost, "label_weight": weight,
+                    "review_weight": sum(int(f.get("review_weight") or 0) for f in members),  # SRV-B27
                     "score": round(cost + params.value("proposals.label_value") * weight, 6), "twin_of": None})
     by_twin: dict[tuple[Any, Any], list[dict[str, Any]]] = {}
     for c in out:

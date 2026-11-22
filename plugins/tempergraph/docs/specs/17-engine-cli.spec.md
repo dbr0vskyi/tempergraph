@@ -44,7 +44,7 @@ WHEN `facts <selector> [--json]` is given THE engine CLI SHALL print the run's s
 
 ### CLI-B6 One list of what waits on a person
 
-WHEN `attention [--all-roots] [--json]` is given THE engine CLI SHALL print every item waiting on a person, oldest first, each with the thread, workflow, unit and item, pause kind, age, a one-line reason and the exact command that answers it, reading only status documents and orchestration status documents, and create nothing ([ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md)).
+WHEN `attention [--all-roots] [--json]` is given THE engine CLI SHALL print every item waiting on a person, oldest first, each with the thread, workflow, unit and item, pause kind, age, a one-line reason and the exact command that answers it, reading only status documents and orchestration status documents for the items (CLI-B20 adds the loop summaries), and create nothing ([ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md)).
 
 - GIVEN three paused threads (an approval, an escalation and an orchestration's paused node) WHEN `attention` runs THEN it prints three items, oldest first, each with a command that `resume` or `orchestrate answer` accepts
 - GIVEN `--all-roots` WHEN `attention` runs THEN it reads every state root in the machine index ([CST-B8](34-central-run-stats.spec.md)), schedule items included ([TCK-B23, TCK-B24](84-schedule-ticks-and-unattended-fires.spec.md))
@@ -134,6 +134,15 @@ WHEN an exception reaches the top of the engine CLI THE engine CLI SHALL write a
 
 - GIVEN a verb that raises an unexpected error WHEN it ends THEN the engine log holds the error record and the exit code is 1
 
+### CLI-B20 The loop's findings beside what waits
+
+WHEN `attention` is given and a workflow's newest `loop_summary` record ([SIL-B22](16-self-improvement.spec.md)) holds at least one recorded finding or kept observation THE engine CLI SHALL print that summary after the items, one block per workflow, newest first, with the thread, the counts of findings recorded and filed, the observations as `category`, `unit` and `confidence`, and the command `tempergraph improve review show <thread>`, and in `--json` as `loop[]` beside `items`, never as an item waiting on a person.
+
+- GIVEN a thread whose loop child ended with 3 findings recorded, none filed and two kept observations WHEN `attention` runs THEN after the items it shows that thread, 3 recorded, 0 filed, the two observations as category, unit and confidence and no note text
+- GIVEN two threads of one workflow whose loop children ended one after the other WHEN `attention` runs THEN it shows the later thread's summary only for that workflow, and `status <thread> --detail` of the earlier thread still shows its own
+- GIVEN `--json` WHEN `attention` runs THEN the document holds `loop[]` beside `items` and no summary is among `items`
+- GIVEN a workflow whose newest summary holds no finding and no observation WHEN `attention` runs THEN it shows nothing for that workflow
+
 ## Acceptance criteria
 
 - CLI-AC1 (CLI-B8, CLI-B5, CLI-B6): Every read-only verb leaves a fixture state root's hash unchanged and starts no process except the read-only probes of `executors --probe`
@@ -145,3 +154,8 @@ WHEN an exception reaches the top of the engine CLI THE engine CLI SHALL write a
 - CLI-AC7 (CLI-B9, CLI-B10, CLI-B11, CLI-B12, CLI-B13, CLI-B14): Every long option the built CLI accepts is named in the engine's specs
 - CLI-AC8 (CLI-B15): The JSON output of every verb that has `--json` carries `schema_version`
 - CLI-AC9 (CLI-B16): A mutating verb's first record carries a caller block, and a read-only verb writes none
+- CLI-AC10 (CLI-B20): After a fixture loop child has ended, `attention` shows the summary of the newest loop child of each workflow with its counts and at most three observations and no note text, carries it as `loop[]` and not as an item in `--json`, and leaves the state root unchanged
+
+## Open questions
+
+- Should a person be able to dismiss a loop summary in `attention`? Until answered: no, a summary stays until a later loop child of the same workflow ends. Owner: owner.
