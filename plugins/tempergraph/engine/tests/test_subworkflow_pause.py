@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import dataclasses
+import json
 from pathlib import Path
 from typing import Any
 
@@ -10,8 +12,9 @@ import pytest
 from tempergraph.constants import ExitCode
 from tempergraph.durability.status import status
 from tempergraph.executors.standins import ScriptedExecutor, standin
+from tempergraph.run import asking
 from tempergraph.run.runner import resume
-from tempergraph.store.layout import state_root_path
+from tempergraph.store.layout import run_dir, state_root_path
 
 from .fixtures.subworkflows import home_dir, register_workflow, remove_registry
 from .test_run import DRAFT, REVIEW, judge
@@ -82,3 +85,52 @@ def test_a_child_removed_under_the_pause_is_refused_naming_it_and_register_resto
     register_workflow(home_dir(), tmp_path / "pkgs", "child", produces=["overview"], approval=True)  # `workflows register`
     ex = standin("claude", steps=[REVIEW], judges=[judge(), judge()])
     assert answer(repo, ex, "proceed").exit_code is ExitCode.FINISHED
+
+
+# -- a child's ask and wait: pauses of the child's own units, answered through the parent ------------------
+
+
+def _person_child(tmp_path: Path, repo: Path, person: str) -> tuple[Path, ScriptedExecutor]:
+    """A parent run paused at the first unit of its child, which waits for a person (`ask` or `wait`); the child's
+    `work` and every parent unit after the sub-workflow have not started."""
+    register_workflow(home_dir(), tmp_path / "pkgs", "child", produces=["overview"], person=person)
+    ex = standin("claude", steps=[DRAFT], judges=[judge()])
+    out = go(repo, ex, parent())
+    assert out.exit_code is ExitCode.PAUSED, (out.message, out.payload)
+    assert keys(ex) == ["draft.1.step", "draft.1.judge"]  # nothing of the child, nothing after it
+    return repo, ex
+
+
+def _more(repo: Path, ex: ScriptedExecutor, **settings: Any) -> Any:
+    return resume(parent(), "T-1", repo, registry(ex), settings=dataclasses.replace(NO_SLEEP, **settings))
+
+
+def test_a_child_ask_pauses_the_parent_with_its_questions_and_answers_release_it(tmp_path: Path, repo: Path) -> None:  # SWF-AC1, AC 3
+    repo, ex = _person_child(tmp_path, repo, "ask")
+    pause = [r for r in records(repo) if r["kind"] == "pause"][-1]
+    assert pause["child"] == "setup" and pause["unit"] == "details" and pause["pause_kind"] == "input"
+    row = status(state_root_path(repo), {"deliver": parent()})["threads"][0]
+    assert row["state"] == "paused" and [g["unit"] for g in row["pending_gates"]] == ["setup/details"]
+    refused = resume(parent(), "T-1", repo, registry(ex), decision="proceed", settings=NO_SLEEP)  # the set is not complete
+    assert refused.exit_code is ExitCode.USAGE and "ticket" in refused.message
+    assert _more(repo, ex, answers={"colour": "red"}).exit_code is ExitCode.USAGE  # a name the child's list does not hold
+    after = standin("claude", steps=[WORK, REVIEW], judges=[judge(), judge(), judge()])
+    done = _more(repo, after, answers={"ticket": "PRJ-7"})
+    assert done.exit_code is ExitCode.FINISHED, (done.message, done.payload)
+    assert keys(after)[0] == "setup/work.1.step" and keys(after)[-2:] == ["review.1.step", "review.1.judge"]
+    stored = json.loads(asking.answers_path(run_dir(state_root_path(repo), "deliver", "T-1"), "details").read_text())
+    assert stored["complete"] is True and stored["answers"] == {"ticket": "PRJ-7"}
+
+
+def test_a_child_wait_pauses_the_parent_and_only_its_event_releases_it(tmp_path: Path, repo: Path) -> None:  # SWF-AC1, AC 3
+    repo, ex = _person_child(tmp_path, repo, "wait")
+    pause = [r for r in records(repo) if r["kind"] == "pause"][-1]
+    assert pause["child"] == "setup" and pause["unit"] == "signoff" and pause["pause_kind"] == "event_wait"
+    row = status(state_root_path(repo), {"deliver": parent()})["threads"][0]
+    assert [g["unit"] for g in row["pending_gates"]] == ["setup/signoff"]
+    for word in ("proceed", "retry", "event:approved=maybe", "event:merged=yes"):
+        assert answer(repo, ex, word).exit_code is ExitCode.USAGE, word  # a wait is not passable by word
+    after = standin("claude", steps=[WORK, REVIEW], judges=[judge(), judge(), judge()])
+    done = answer(repo, after, "event:approved=yes")
+    assert done.exit_code is ExitCode.FINISHED, (done.message, done.payload)
+    assert keys(after)[0] == "setup/work.1.step" and keys(after)[-2:] == ["review.1.step", "review.1.judge"]

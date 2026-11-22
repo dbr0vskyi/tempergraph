@@ -32,7 +32,7 @@ def home_dir() -> Path:
 
 def _declaration(inputs: tuple[str, ...], produces: tuple[str, ...], children: Mapping[str, Mapping[str, Any]],
                  needs_git: bool, broken: bool, *, finalizer: bool, approval: bool, workspace: str | None,
-                 defaults: bool) -> str:
+                 defaults: bool, person: str | None = None) -> str:
     names = inputs or ("request",)
     prompt = "Work on " + " and ".join("{" + n + "}" for n in names)
     risk = (', risk=Risk(levels=[Level("base"), Level("high", model="large")], when=[When("high", paths=["src/**"])])'
@@ -46,8 +46,10 @@ def _declaration(inputs: tuple[str, ...], produces: tuple[str, ...], children: M
     if defaults:
         extra += "settings={'depth': SettingDecl(kind='int', default=2, min=1, max=9)}, "
     gate_args = "approval=True, " if approval else ""
+    first = {"ask": ("details", "    units['details'] = Ask(questions=[Question('ticket', 'Which ticket?')])"),
+             "wait": ("signoff", "    units['signoff'] = Wait(event='approved', check=signed)")}.get(person or "")
     lines = [
-        "from tempergraph.api import Criterion, FinalizerResult, Gate, Input, Judge, Level, Param, Risk, Routing, SettingDecl, Step, Subworkflow, When, Workflow",
+        "from tempergraph.api import Ask, Criterion, FinalizerResult, Gate, Input, Judge, Level, Param, Question, Risk, Routing, SettingDecl, Step, Subworkflow, Wait, When, Workflow",
         *(["raise RuntimeError('a package that does not import')"] if broken else []),
         "",
         "",
@@ -56,13 +58,18 @@ def _declaration(inputs: tuple[str, ...], produces: tuple[str, ...], children: M
         "    return FinalizerResult(outcome='done')",
         "",
         "",
+        "def signed(value):",
+        "    return value in ('yes', 'no')",
+        "",
+        "",
         "def workflow():",
         "    units = {}",
+        *([first[1]] if first else []),
         f"    units['work'] = Step(prompt={prompt!r}, tools=['read', 'write'], produces={dict.fromkeys(produces, 'file')!r},",
         f"                         gate=Gate({gate_args}judge=Judge(stance='Verify.'{risk}),",
         "                                   criteria=[Criterion(id='c-work', text='The work is done', check_method='Read the result')]))",
         *(f"    units[{n!r}] = Subworkflow(**{dict(kw)!r})" for n, kw in children.items()),
-        f"    return Workflow(order={['work', *children]!r}, units=units, routing=Routing(description='A fixture workflow'),",
+        f"    return Workflow(order={[*([first[0]] if first else []), 'work', *children]!r}, units=units, routing=Routing(description='A fixture workflow'),",
         f"                    {params}{extra}issue_repository='acme/fixture')",
         "",
     ]
@@ -83,7 +90,8 @@ def _outcome(produces: tuple[str, ...]) -> dict[str, Any]:
 def register_workflow(home: Path, parent: Path, name: str, *, version: str = "0.3.1", inputs: Iterable[str] = (),
                       produces: Iterable[str] = (), children: Mapping[str, Mapping[str, Any]] | None = None,
                       needs_git: bool = False, broken: bool = False, finalizer: bool = False, approval: bool = False,
-                      workspace: str | None = None, defaults: bool = False, deliverables: bool = True) -> Path:
+                      workspace: str | None = None, defaults: bool = False, deliverables: bool = True,
+                      person: str | None = None) -> Path:
     """Write the fixture package `name` under `parent` and enter it in the registry of `home`; return its root.
 
     One step unit `work` produces the keys in `produces` (the outcome lists them as deliverables unless
@@ -92,7 +100,8 @@ def register_workflow(home: Path, parent: Path, name: str, *, version: str = "0.
     `request`). `needs_git` adds a stock risk rule on changed paths. `broken` makes the package fail to import.
     `finalizer` gives the workflow a finalizer that writes `FINALIZER_MARK` in the workspace. `approval` makes the
     `work` gate pause for a person. `workspace` is the workflow's own `run.workspace` default. `defaults` declares the
-    setting `depth` (default 2). A test scripts the sessions: the `work` step ends with `ARTIFACT <key>: <file>` lines
+    setting `depth` (default 2). `person` puts a unit before `work` that waits for a person: `ask` is an `Ask` unit
+    `details` with the question `ticket`, `wait` a `Wait` unit `signoff` for the event `approved` (`yes` or `no`). A test scripts the sessions: the `work` step ends with `ARTIFACT <key>: <file>` lines
     for the keys it makes, and a judge answers with a verdict block."""
     kids = dict(children or {})
     root = parent / name
@@ -104,7 +113,8 @@ def register_workflow(home: Path, parent: Path, name: str, *, version: str = "0.
     write(root, "tempergraph.json", {"schema_version": 1, "name": name, "entry": f"{mod}:workflow",
                                      "workflow_api": 1, "docs": "provisional"})
     write(root, f"workflow/{mod}/__init__.py", _declaration(ins, keys, kids, needs_git, broken, finalizer=finalizer,
-                                                           approval=approval, workspace=workspace, defaults=defaults))
+                                                           approval=approval, workspace=workspace, defaults=defaults,
+                                                           person=person))
     package_parts(root, name, outcome=_outcome(keys if deliverables else ()))
     entries = [e for e in registry.read_entries(home) if e["name"] != name]
     registry.write_entries([*entries, {"name": name, "kind": "local", "path": str(root), "version": version}], home)
