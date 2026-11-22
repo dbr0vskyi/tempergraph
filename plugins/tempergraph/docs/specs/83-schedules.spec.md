@@ -173,7 +173,7 @@ WHEN a schedule's events happen THE engine SHALL append JSON lines to its fire l
 
 ## Acceptance criteria
 
-- SCH-AC1 (SCH-B15, SCH-B16, SCH-B17, SCH-B18, SCH-B2): Every exact format, phrase and ambiguity case has a fixture giving its canonical form, echo sentence and next three slots for a fixed "now" and zone; the echo sentence is generated from the canonical form only (re-parse of its rule equals the stored rule)
+- SCH-AC1 (SCH-B16, SCH-B17, SCH-B18, SCH-B2): Every exact format, phrase and ambiguity case has a fixture giving its canonical form, echo sentence and next three slots for a fixed "now" and zone; the echo sentence is generated from the canonical form only (re-parse of its rule equals the stored rule)
 - SCH-AC2 (SCH-B20, SCH-B3): For 5,000 random rules of the stored subset in 20 zones, the engine's slots over two years equal `dateutil.rrule` with `zoneinfo`, including every gap and overlap of those years
 - SCH-AC4 (SCH-B27, SCH-B13): `parse`, `list`, `show` and `history` leave the home store unchanged (hash test) and start no process
 - SCH-AC5 (SCH-B21, SCH-B22, SCH-B23, SCH-B24, SCH-B5, SCH-B6, SCH-B7, SCH-B8, SCH-B9, SCH-B11, SCH-B26): With scripted runs and a fake clock, SCH-B5 to SCH-B9 give the stated fire-log events, and no slot ever has two `started` events across 1,000 runs of two concurrent ticks
