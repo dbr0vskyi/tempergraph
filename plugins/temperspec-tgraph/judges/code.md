@@ -15,4 +15,5 @@ Read the plan, then each edited spec, then the changed code and tests. A run in 
 - Scope: each path the code step changed should be named by a task row or by the report's deviations. The changed paths in the check evidence are counted from the run's base, so they also hold what earlier steps wrote: the run's own notes under `docs/tasks/`, the plan, and the specs and research notes the hand-off lists. Those need no row.
 - When the code is right and the fault is in the plan or in a spec, name that earlier output as the place of the defect, so the run goes back there.
 - Cite a path and a line for every MET. Without evidence, grade PARTIAL. If you cannot check something, say so; do not guess.
+- An open question that the hand-off lists, or that a later note carries on, does not block planning: the discovery step ends blocked on one that does. It is neither a defect nor something out of your reach, so it changes no grade and you leave `gap` false for it; the pull request lists it for the owner. Set `gap` only when a file or fact you need to grade a criterion is out of reach.
 - Grade only the criteria listed. Style and naming are not defects.

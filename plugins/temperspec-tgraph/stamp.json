@@ -2,8 +2,8 @@
   "schema_version": 1,
   "engine_version": "0.2.0",
   "workflow_api": 1,
-  "workflow_version": "0.1.0+3567135efe27",
-  "docs_digest": "d369b3820aa9b525c5890c3c78fc6a9f082a40bba4a96a3e3bb7094e0c9f64d2",
+  "workflow_version": "0.1.0+546c9bf883b0",
+  "docs_digest": "6c00ba216faddd3eaca068c5b2890cdbf75bb3d1997b165208df38bd9233be44",
   "shape_digest": "e8a7c2f9bebb39f807cc94d32fec0964038f63ed828d224ba1375909d5930942",
   "entries_applied": [
     {
@@ -86,10 +86,10 @@
     "validate:criterion-overlap|||",
     "validate:template-key-not-on-every-path|code||"
   ],
-  "outcome_revision": 6,
+  "outcome_revision": 7,
   "baseline": {
     "error": 0,
-    "warning": 11
+    "warning": 10
   },
-  "stamped_at": "2026-11-22T17:38:17.552Z"
+  "stamped_at": "2026-11-22T23:04:54.798Z"
 }

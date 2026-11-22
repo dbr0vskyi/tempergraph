@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 6,
+  "revision": 7,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -63,8 +63,8 @@
       "id": "ts-traced",
       "severity": "blocker",
       "verified_by": "check",
-      "text": "Every acceptance criterion of each spec the run edited is named by at least one test that is not skipped",
-      "check_method": "Search the test folders for each criterion id and read the lines above it for a skip mark; N/A when the run delivers documents only",
+      "text": "Every acceptance criterion the run added or reworded in a spec, and every criterion that proves a behaviour the run added or changed, is named by at least one test that is not skipped",
+      "check_method": "Compare each edited spec with its version at the run's base: the criteria added or reworded, and those proving a behaviour block that changed; search the test folders for each id and read the lines above it for a skip mark; every criterion when there is no base; N/A when the run delivers documents only",
       "source": "created",
       "verifier": {
         "check": "tgwf_temperspec.checks:outcome_check"
@@ -1148,6 +1148,12 @@
       "origin": "authored",
       "at": "2026-11-22T18:30:00.000Z",
       "note": "criteria about how the run works (narrow reading, the reading list, commands run once, a reused gate result) are checked model-free from the package's prompts and the gate's own command runs instead of asked of a judge, which sees neither (backlog B30); ts-code-once narrowed to what the prompt says; the short discovery visit `discovery_short` with criteria ts-dsh-* (decision record 0003, backlog B21)"
+    },
+    {
+      "revision": 7,
+      "origin": "authored",
+      "at": "2026-11-22T23:30:00.000Z",
+      "note": "ts-traced asks for tests of the criteria a run added or changed, and of old criteria whose behaviour it changed, never of every criterion of an edited spec (backlog B22); ts-spec-links reads the edited specs only, as its text says"
     }
   ]
 }

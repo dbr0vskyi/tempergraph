@@ -25,6 +25,7 @@ The format of the triage note is in `task-notes.rule.md`, and the folders and na
 
 ## Limits
 
+- This step has no shell: read, search and list files with the file tools (read, grep, glob), never `ls`, `cat`, `wc` or `python -c`.
 - Write the triage note and no other file. Do not write or edit a spec, a plan or code.
 - Do not run git. The engine commits your file when you finish.
 - Read by path and by search inside this working directory only.

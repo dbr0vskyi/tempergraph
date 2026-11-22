@@ -22,7 +22,7 @@ Units:
 - [ ] ts-spec-form Every spec the run edited passes the spec rule's structure check
 - [ ] ts-spec-cap No spec the run edited is over 400 lines
 - [ ] ts-spec-links Every id that a spec the run edited links to resolves to exactly one definition
-- [ ] ts-traced Every acceptance criterion of each spec the run edited is named by at least one test that is not skipped
+- [ ] ts-traced Every acceptance criterion the run added or reworded in a spec, and every criterion that proves a behaviour the run added or changed, is named by at least one test that is not skipped
 - [ ] ts-verify Every verification command the plan lists exits 0 on the branch head
 - [ ] ts-collateral No spec file is edited without a change to a behaviour or an acceptance criterion
 - [ ] ts-spec-sync No behaviour in a spec the run edited contradicts a behaviour in a spec it links to

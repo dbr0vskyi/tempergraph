@@ -837,16 +837,36 @@ def _docs_only(ctx: Any) -> bool:
     return _value(ctx, "route") == "discovery-only"
 
 
+def _at_base(ctx: Any, path: str) -> str | None:
+    """The file as it was at the run's base commit; None with no base, or when the run created the file."""
+    base = ctx.git.base
+    if not base:
+        return None
+    run = ctx.run(f"git show {base}:{path}")
+    if run.not_started or run.exit_code != 0:
+        return None
+    try:
+        return Path(run.output_path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+
+
 def _traced(ctx: Any, specs: list[str], files: list[str]) -> list[CheckFinding]:
+    """ts-traced: each criterion the run added or reworded in an edited spec, and each old one that proves a
+    behaviour the run added or changed, is named by a test that runs. A spec edited only to add a link or a line
+    elsewhere asks nothing of its old criteria (B22); with no base to compare, every criterion counts."""
     wanted: dict[str, str] = {}
     described = set(_setup_specs(ctx))  # specs of existing behaviour: their tests get ids as tasks touch them
     for path in specs:
         if path in described:
             continue
-        spec = fmt.parse_spec(_read_path(ctx, path) or "")
-        wanted.update({cid: path for cid in spec.criteria})
+        now = _read_path(ctx, path) or ""
+        before = _at_base(ctx, path)
+        ids = set(fmt.parse_spec(now).criteria) if before is None else fmt.changed_criteria(before, now)
+        wanted.update({cid: path for cid in sorted(ids)})
     if not wanted:
-        return [_find("n_a", "ts-traced", message="no edited spec defines an acceptance criterion")]
+        return [_find("n_a", "ts-traced", message="the run added or changed no acceptance criterion and no "
+                      "behaviour an old criterion proves")]
     tests = [f for f in files if _is_test(f) and not f.endswith(".md")]
     seen: set[str] = set()
     skipped: set[str] = set()
@@ -895,8 +915,10 @@ def outcome_check(ctx: Any) -> Any:
     """ts-committed, ts-spec-form, ts-spec-cap, ts-spec-links, ts-traced, ts-verify, ts-collateral."""
     found = [_committed(ctx, "ts-committed")]
     found += _spec_form(ctx, "ts-spec-form", "ts-spec-cap")
-    found += _links(ctx, "ts-spec-links")
     specs, _ = _edited_specs(ctx)
+    # Only the edited specs: a task note or a plan names ids the task retired on purpose, and is history.
+    found += _links(ctx, "ts-spec-links", specs) if specs else [
+        _find("n_a", "ts-spec-links", message="the run edited no spec")]
     if _docs_only(ctx):
         found += [_find("n_a", c, message="the run delivers documents only") for c in ("ts-traced", "ts-verify")]
     else:
