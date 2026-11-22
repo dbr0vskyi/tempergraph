@@ -6,8 +6,8 @@ their default and the R-050 finding they come from (ARC-AC3). Rules owned by ano
 rendered; the audit calls that component (ARC-AC4, ADR-0054).
 
 `built` names the release that builds the rule. Release 1 builds the `definition` and `host` layers and
-the prompt audit (ADR-0090, plan item I-62); the `history` layer is release 2 (X2-9) and the tool-surface
-audit of TSA is release 2 (X2-10). A rule not built here is listed as skipped, never as passed (AUD-B1).
+the prompt audit (ADR-0090, plan item I-62); release 3 builds the `history` layer and the tool-surface
+audit of TSA (R3-T8.3). A rule not built here is listed as skipped, never as passed (AUD-B1).
 """
 
 from __future__ import annotations
@@ -48,6 +48,41 @@ PARAMS: dict[str, Param] = {p.name: p for p in (
     Param(name="skill_chars", default=40_000, source="earlier runs"),
     Param(name="cell_chars", default=2_000, source="earlier runs"),
     Param(name="probe_budget_s", default=30, source="AUD-B11, AUD-B6, AUD-B9"),
+    # history rules of C1, C2 and C3 (ARC-B9 to ARC-B11)
+    Param(name="loop_min_retries", default=5, source="R-050 F1.2 (a burst needs at least 5 RETRYs)"),
+    Param(name="loop_lead_share", default=0.5, source="R-050 F1.2 (one criterion leads half the RETRYs)"),
+    Param(name="loop_repeat_share", default=0.2, source="R-050 F1.2 (repeats are a fifth of spend)"),
+    Param(name="first_pass_floor", default=0.5, source="R-050 F1.2 (yield 29% to 62%)"),
+    Param(name="min_visits", default=5, source="ARC-B9 (min_n 5 visits)"),
+    Param(name="fallback_share", default=0.3, source="R-061 K3 (revisited with the first 10 visits)"),
+    Param(name="infra_share", default=0.1, source="R-050 F2.6"),
+    Param(name="infra_min_attempts", default=20, source="R-050 F2.6"),
+    Param(name="timeout_fit_ratio", default=1.25, source="R-050 F3.4"),
+    Param(name="timeout_recommend_ratio", default=1.5, source="R-050 F3.4"),
+    Param(name="timeout_loose_ratio", default=4, source="R-050 F3.4"),
+    Param(name="timeout_share", default=0.2, source="R-050 F3.2"),
+    Param(name="slow_tool_share", default=0.6, source="R-050 F3.7"),
+    Param(name="min_passing_attempts", default=5, source="R-050 F3.4"),
+    # history rules of C5 to C8 (ARC-B12 to ARC-B15)
+    Param(name="empty_pause_share", default=0.5, source="R-050 F5.3"),
+    Param(name="min_pauses", default=4, source="R-050 F5.3"),
+    Param(name="interventions_per_run", default=1.0, source="R-050 F5.3 (SUP undesigned touches)"),
+    Param(name="agent_rescue_share", default=0.3, source="R-050 F5.3 (PRV caller provenance)"),
+    Param(name="min_rescues", default=5, source="R-050 F5.3"),
+    Param(name="min_measured_runs", default=5, source="R-050 F5.3 (SCO measured supervision cost)"),
+    Param(name="supervision_share", default=0.1, source="R-050 F5.3 (SCO supervision cost)"),
+    Param(name="polling_observations", default=20, source="R-050 F5.3 (ADR-0037 batched waking)"),
+    Param(name="rewake_share", default=0.5, source="R-050 F5.3 (ADR-0037 batched waking)"),
+    Param(name="unknown_caller_share", default=0.2, source="R-050 F5.3 (PRV caller provenance)"),
+    Param(name="min_touches", default=10, source="R-050 F5.3 (PRV caller provenance)"),
+    Param(name="context_peak_tokens", default=150_000, source="R-050 F6.3"),
+    Param(name="min_attempts", default=5, source="R-050 F6.3"),
+    Param(name="escape_rate", default=0.1, source="OUT-B18 (R-050 F7.1)"),
+    Param(name="min_graded_runs", default=10, source="OUT-B18 (R-050 F7.1)"),
+    Param(name="council_gain_floor", default=0.05, source="R-061 K2"),
+    Param(name="council_conformity_share", default=0.8, source="R-061 K4"),
+    Param(name="contest_lowest_slot_share", default=0.9, source="R-061 K6"),
+    Param(name="min_picks", default=10, source="R-061 K2, K4, K6 (revisited with the first 10 visits)"),
 )}
 
 
@@ -64,6 +99,7 @@ class Rule:
     remedy: str = ""
     built: int = 1  # the release that builds it
     spec: str = "ARC"
+    widening: bool = False  # the remedy adds a grant (a command or a tool): marked for a person to decide (TSA-B13)
 
     @property
     def rank(self) -> tuple[int, int]:
@@ -71,13 +107,14 @@ class Rule:
 
 
 def _r(id: str, layer: Layer, family: str, sev: str, cause: str, remedy: str, *, owner: str = "audit",
-       min_n: int | None = None, built: int | None = None, spec: str = "ARC") -> Rule:
+       min_n: int | None = None, built: int | None = None, spec: str = "ARC", widening: bool = False) -> Rule:
     s, _, c = sev.partition("/")
     if layer == "history" and min_n is None:
         min_n = 1  # ARC-AC1: every history rule has a minimum sample; "any run" where ARC names none
     return Rule(id=id, layer=layer, family=family, cause=cause, severity=s.strip(),  # type: ignore[arg-type]
                 confidence=(c.strip() or s.strip()), owner=owner, min_n=min_n,  # type: ignore[arg-type]
-                remedy=remedy, built=built if built is not None else (2 if layer == "history" else 1), spec=spec)
+                remedy=remedy, built=built if built is not None else (3 if layer == "history" else 1), spec=spec,
+                widening=widening)
 
 
 OWN = "per owner"
@@ -139,6 +176,54 @@ RULES: tuple[Rule, ...] = (
     _r("limit-far-above-p90", "history", "C3", "info / medium", "timeout_loose", "Lower the limit", min_n=5),
     _r("request-timed-out", "history", "C3", "warning / high", "request_timed_out",
        "Write the long output in parts (F3.3)", min_n=1),
+    # C4 tool surface (TSA-B9 to TSA-B12): the rules of the tool surface audit; a `widening` remedy adds a grant
+    _r("judge-exposed-tool", "history", "C4", "error / high", "judge_exposed",
+       "Remove the source: disable the plugin's tool in headless sessions, or narrow the judge's setting sources (F4.5)",
+       min_n=1, spec="TSA"),
+    _r("judge-ambient-tool", "host", "C4", "warning / medium", "judge_exposed",
+       "Disable that plugin tool or user MCP server in headless sessions, or narrow the judge's setting sources (F4.5)",
+       spec="TSA"),
+    _r("judge-view-missing", "definition", "C4", OWN, "", "owner: WFM-B12", owner="validate", spec="TSA"),
+    _r("mcp-tool-not-in-catalog", "definition", "C4", "warning / high", "unknown_tool_name",
+       "Run the unit on an executor whose judge can view that MCP tool, or declare a tool the view catalog classifies; "
+       "its judge gets no view (F4.6)", spec="TSA"),
+    _r("needed-not-granted", "definition", "C4", OWN, "", "owner: WFM-B12", owner="validate", spec="TSA"),
+    _r("artifact-needs-write", "definition", "C4", "error / high", "grant_missing",
+       "Declare a tool that can write the artifact: `shell` with the command prefix, or an MCP write tool (F4.4)",
+       spec="TSA", widening=True),
+    _r("shell-without-commands", "definition", "C4", "error / high", "grant_missing",
+       "Declare the command prefixes the step runs in `commands`; `shell` with none runs nothing", spec="TSA",
+       widening=True),
+    _r("dir-change-in-commands", "definition", "C4", "error / high", "dir_change",
+       "Remove the directory change; name the directory to the command, as in `git -C <dir>` (F4.2: 58 of 59 refused)",
+       spec="TSA"),
+    _r("shell-for-read-likely", "definition", "C4", "warning / medium", "shell_for_read",
+       "Tell the step to read and search with the file tools, not shell programs (F4.1)", spec="TSA"),
+    _r("path-outside-workspace", "definition", "C4", "warning / medium", "outside_workspace",
+       "Use paths inside the workspace; a path outside it is refused (F4.2)", spec="TSA"),
+    _r("granted-not-needed", "definition", "C4", "info / low", "over_grant",
+       "Remove the capability from the step's `tools` if nothing needs it (F4.9)", spec="TSA"),
+    _r("not-enforced", "definition", "C4", "info / high", "not_enforced",
+       "Run with `--enforce-tools` or `--strict-permissions`, or bind the unit to an executor that enforces its grant",
+       spec="TSA"),
+    _r("granted-never-used", "history", "C4", "warning / high", "over_grant",
+       "Remove the tool or MCP server from the step's declared tools (F4.9)", min_n=10, spec="TSA"),
+    _r("undeclared-calls", "history", "C4", "warning / high", "undeclared_tool",
+       "Declare the tool the step keeps calling, or tell the step not to call it (F4.3)", min_n=5, spec="TSA",
+       widening=True),
+    _r("refusals-by-class", "history", "C4", "warning / high", "tool_access",
+       "Per class: use the file tools; name the directory explicitly (`git -C <dir>`); use workspace paths; declare "
+       "the command; declare the tool", min_n=5, spec="TSA"),
+    _r("granted-at-run", "history", "C4", "warning / high", "grant_missing",
+       "Declare the grant in the package so every run has it (RST)", min_n=2, spec="TSA", widening=True),
+    _r("skill-name-clash", "host", "C4", "warning / high", "skill_clash",
+       "Name the skill or agent by plugin path (F4.8)", spec="TSA"),
+    _r("mcp-server-not-configured", "host", "C4", "error / high", "environment_missing",
+       "Configure the MCP server in your own configuration, or remove its declaration", spec="TSA"),
+    _r("declared-tool-stale", "host", "C4", "warning / high", "unknown_tool_name",
+       "Declare the tool by the name the compatibility table gives", spec="TSA"),
+    _r("tool-set-drift", "host", "C4", "warning / medium", "unknown_tool_name",
+       "Read what the executor or MCP server exposes now, then stamp again (SIL-B4)", spec="TSA"),
     # C5 pauses (ARC-B12)
     _r("every-retry-asks", "definition", "C5", "warning / high", "ask_without_budget",
        "Give one retry, or `on_budget_spent: stop`; every RETRY pauses for a person"),

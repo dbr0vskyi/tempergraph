@@ -103,8 +103,8 @@ def test_catalog_records_are_complete() -> None:
 
 def test_every_family_has_a_rule_and_params_name_their_source() -> None:
     families = {r.family for r in cat.RULES}
-    assert {f"C{i}" for i in range(1, 8)} - {"C4"} <= families  # C4 is TSA's (ARC-B14), release 2
-    assert "C8" in families
+    assert {f"C{i}" for i in range(1, 9)} <= families  # C4 is TSA's tool surface rules (ARC-B14), built in release 3
+    assert {r.spec for r in cat.RULES if r.family == "C4"} == {"TSA"}
     for p in cat.PARAMS.values():
         assert p.default > 0 and p.source, p.name
 
@@ -345,10 +345,10 @@ def test_definition_only_before_first_run(tmp_path: Path) -> None:
     """AUD-B1: history is skipped with its reason and its rules are listed as skipped, never passed."""
     rep = audit(wf({"draft": clean_step()}), {"definition", "host", "history"}, ctx(tmp_path))
     assert rep.layers_run == ["definition", "host"]
-    assert {"layer": "history", "reason": "not in this release (release 3)"} in rep.layers_skipped
+    assert {"layer": "history", "reason": "no runs in window"} in rep.layers_skipped
     history = {r.id for r in cat.RULES if r.layer == "history"}
     assert history <= {s["rule"] for s in rep.rules_skipped}
-    assert all("min_n" in s for s in rep.rules_skipped if s["rule"] in history)
+    assert all("min_n" in s and s["reason"] == "no runs in window" for s in rep.rules_skipped if s["rule"] in history)
 
 
 def test_validation_error_leads(tmp_path: Path) -> None:
@@ -468,9 +468,16 @@ def test_audit_is_read_only_and_model_free(tmp_path: Path, repo: Path) -> None:
     reg = Registry()
     reg.register(ex)
     state = repo / ".tempergraph"
+    from .test_audit_history import many
+
+    many(state, 3, workflow="release-notes", attempts=[{"calls": [{"name": "Read"}], "judge": {}}])  # synthetic runs
     before = (hash_tree(root), hash_tree(repo), hash_tree(state))
+    assert before[2], "the state root holds run records"
     for argv in (["audit", str(root)], ["audit", str(root), "--format", "json", "--all"],
-                 ["audit", "prompts", str(root)]):
+                 ["audit", "prompts", str(root)], ["audit", str(root), "--layer", "history"],
+                 ["audit", "tools", str(root)], ["audit", str(root), "--window", "7", "--version", "all"],
+                 ["audit", str(root), "--layer", "history", "--window", "36500", "--version", "all", "--all"],
+                 ["audit", "tools", str(root), "--executor", "antigravity", "--window", "36500", "--version", "all"]):
         out = io.StringIO()
         assert main(argv, registry=reg, cwd=repo, out=out, err=io.StringIO()) == 0
     assert (hash_tree(root), hash_tree(repo), hash_tree(state)) == before
@@ -487,11 +494,42 @@ def test_audit_prompts_rows(tmp_path: Path) -> None:
     rows = {r["file"]: r for r in json.loads(out.getvalue())["files"]}
     assert rows["prompts/draft.md"]["used_by"] == ["draft:step"]
     assert rows["judges/draft.md"]["used_by"] == ["draft:judge"]
-    assert rows["prompts/draft.md"]["changed"].startswith("not recorded")
+    assert rows["prompts/draft.md"]["changed"] == "not recorded"  # no runs: never zero (PRA-B11)
+
+
+def _prompts_rows(root: Path, repo: Path) -> dict[str, Any]:
+    reg = Registry()
+    reg.register(standin("claude"))
+    out = io.StringIO()
+    argv = ["audit", "prompts", str(root), "--layer", "definition", "--window", "36500", "--version", "all"]
+    assert main(argv, registry=reg, cwd=repo, out=out, err=io.StringIO()) == 0
+    return {r["file"]: r for r in json.loads(out.getvalue())["files"]}
+
+
+def test_audit_prompts_reads_changed_from_history(tmp_path: Path, repo: Path) -> None:
+    """PRA-AC5 (PRA-B11): a run in which a prompt file's digest changed gives `changed` the count read from history,
+    with the first-pass yield before and after; a file whose unit has no history reads `not recorded`."""
+    from .test_audit_history import write_run
+
+    root = minimal_package(tmp_path / "src")
+    state = repo / ".tempergraph"
+    runs = [("t000", 3, "d0", [{"prompt_digest": "d0", "verdict": "RETRY", "blockers": ["c"]}, {"prompt_digest": "d0"}]),
+            ("t001", 2, "d1", [{"prompt_digest": "d1"}]), ("t002", 1, "d1", [{"prompt_digest": "d1"}])]
+    for task, days, _, attempts in runs:
+        write_run(state, task, workflow="release-notes", days_ago=days, attempts=attempts)
+    changed = _prompts_rows(root, repo)["prompts/draft.md"]["changed"]
+    assert changed["changes"] == 1 and changed["version"] == "1"
+    assert (changed["first_pass_before"], changed["first_pass_after"]) == (0.0, 1.0)
+    assert _prompts_rows(root, repo)["judges/draft.md"]["changed"]["changes"] == 0  # the brief never changed
+    for p in (state / "runs").rglob("*"):
+        if p.is_file():
+            p.unlink()
+    write_run(state, "t000", workflow="release-notes", unit="elsewhere")  # runs, but none of the unit `draft`
+    assert _prompts_rows(root, repo)["prompts/draft.md"]["changed"] == "not recorded"
 
 
 @pytest.mark.parametrize(("argv", "code"), [
-    (["audit", "tools", "{root}"], 2), (["audit", "{root}", "--layer", "history"], 2),
+    (["audit", "tools", "{root}", "--executor", "no-such-executor"], 2),
     (["audit", "no-such-workflow"], 2), (["audit", "{root}", "--target", "nowhere"], 2),
 ])
 def test_refusals(tmp_path: Path, argv: list[str], code: int) -> None:
