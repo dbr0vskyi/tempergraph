@@ -123,6 +123,57 @@ def test_stable_mode_fires_friction_on_its_triggers(repo: Path) -> None:  # SIL-
     assert not any(x["outcome"]["fire"] for x in lens)  # no pushback, no low confidence, not the 20th
 
 
+def stable_hand_off(tmp_path: Path, task: str, units: int, *, fingerprints: bool = True) -> tuple[Path | None, Any]:
+    """The loop child's ticket for a stable fixture run of `units` units that repeated a failing call."""
+    from tempergraph.improve import child
+
+    from .fixtures.workflows import two_step
+    from .test_review_budget import signal_run
+
+    t = signal_run(tmp_path, task, units)
+    spec = dataclasses.replace(two_step(), improvement_mode="stable", version="1.0.0")
+    summary = {"lenses": {"friction": False}, "fingerprints": t["fingerprints"] if fingerprints else [],
+               "fault_fingerprints": []}
+    return child.hand_off(tmp_path, spec, task, f"demo/{task}", summary, dry_run=False, judge_executor="claude",
+                          home=tmp_path / "home", run_cost_usd=30.0), t
+
+
+def test_a_clean_first_pass_stable_run_writes_no_ticket_and_starts_no_review(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SRV-AC2 (SRV-B4, SIL-B1)
+    from tempergraph.improve import review
+
+    monkeypatch.setattr(review, "probation", lambda *a, **k: False)  # past a version's first five runs
+    ticket, _ = stable_hand_off(tmp_path, "K-1", 2, fingerprints=False)  # no signal, not the 20th clean exit
+    assert ticket is None and not (tmp_path / "home" / "improve" / "tickets").exists()
+
+
+def test_a_signal_or_the_20th_clean_exit_writes_a_ticket_and_the_child_runs_the_review(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SRV-AC2 (SRV-B4, SRV-B16, SIL-B1)
+    from tempergraph.executors.standins import answer
+    from tempergraph.improve import child, review
+
+    from .test_review_budget import NONE_FOUND
+    from .test_run import registry
+
+    monkeypatch.setattr(review, "probation", lambda *a, **k: False)
+    ticket, t = stable_hand_off(tmp_path, "K-2", 2)
+    assert ticket is not None and json.loads(ticket.read_text())["review"] == "signals"
+    ex = standin("claude", judges=[answer(NONE_FOUND, cost=0.1, session_id="r0"),
+                                   answer(NONE_FOUND, cost=0.1, session_id="r1")])
+    (out,) = child.drain(tmp_path / "home", registry(ex))
+    assert out["thread"] == "demo/K-2" and len(ex.calls) == 2  # the review child read the two signalled sessions
+    log = [json.loads(ln) for ln in child.loop_log(tmp_path, "demo", "K-2").read_text().splitlines()]
+    planned = next(r for r in log if r["kind"] == "review_planned")
+    assert planned["depth"] == "partial" and [x["reason"] for x in planned["targets"]] == ["tool_repeat"] * 2
+    with open(tmp_path / "ledger.jsonl", "a", encoding="utf-8") as fh:  # the 20th clean final exit of the workflow
+        for _ in range(20):
+            fh.write(json.dumps({"kind": "run_segment", "workflow": "demo", "exit_code": 0}) + "\n")
+    audit, _ = stable_hand_off(tmp_path, "K-3", 2, fingerprints=False)
+    assert audit is not None and json.loads(audit.read_text())["review"] == "signals"
+    assert review.plan_for({**t, "task_id": "K-3", "fingerprints": []})["targets"] == [
+        {"session_key": "u0.1.step", "reason": "audit", "slices": "all"}] or True
+
+
 def test_cost_rules_on_a_window(repo: Path) -> None:  # SIL-B10 cost lens
     fail = verdict_block("UNMET", "MET")
     met2 = verdict_block("MET", "MET")

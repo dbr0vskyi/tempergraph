@@ -49,10 +49,9 @@ from tempergraph.workspace import (
     WorkspaceRecord,
     WorkspaceRefused,
     attach_workspace,
-    flat_name,
+    place,
     prepare_workspace,
     resolve_workspace,
-    sibling_root,
 )
 
 EXTERNAL_KINDS = frozenset({"pull_request", "tracker_issue", "wiki_page"})
@@ -305,7 +304,8 @@ def _workspace_plan(spec: WorkflowSpec, target: Path, src_ws: Mapping[str, Any],
                     workspace_from: str, root: Path, src: str, start_at: str, rv: Mapping[str, Any]) -> Any:
     """RRN-B17, RRN-B18 Workspace: a new branch `<branch>-r<n>` from the source branch's tip or its commit at the unit."""
     plan = resolve_workspace(spec, target, "worktree" if src_ws.get("mode") == "worktree" else "in_place",
-                             task_id=new_task, prefix=str(rv["worktree.branch_prefix"]))
+                             task_id=new_task, prefix=str(rv["worktree.branch_prefix"]),
+                             root=str(rv.get("worktree.root") or "sibling"))
     if plan.mode != "worktree":
         return dataclasses.replace(plan, warnings=(*plan.warnings, "in_place_rerun: the rerun starts from the "
                                                                     "files as they are now"))
@@ -324,8 +324,9 @@ def _workspace_plan(spec: WorkflowSpec, target: Path, src_ws: Mapping[str, Any],
     new_branch = f"{branch}-r{n or 1}" if branch else plan.branch
     if not is_safe_ref(new_branch):
         raise WorkspaceRefused("branch_invalid", f"derived branch {new_branch!r} is not a valid ref")
-    path = sibling_root(plan.main) / flat_name(spec.name, new_task) if plan.main else plan.path
-    return dataclasses.replace(plan, branch=new_branch, base_commit=base, path=path)
+    path, kind = (place(plan.main, str(rv.get("worktree.root") or "sibling"), spec.name, new_task)
+                  if plan.main else (plan.path, plan.root_kind))
+    return dataclasses.replace(plan, branch=new_branch, base_commit=base, path=path, root_kind=kind)
 
 
 def _lineage(root: Path, spec: WorkflowSpec, source_task: str, new: str, start_at: str, *,

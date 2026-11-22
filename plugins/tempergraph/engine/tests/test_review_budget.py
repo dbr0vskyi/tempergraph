@@ -100,3 +100,73 @@ def test_a_failed_review_counts_at_what_it_cost(tmp_path: Path) -> None:  # SRV-
     keys = [t["session_key"] for t in out["plan"]["targets"]]
     assert out["failed"] == [keys[0]]  # 0.40 + 0.40 spent
     assert out["done"] == [] and skipped(out) == keys[1:]  # 0.80 spent and no review reported: the view price decides
+
+
+# -- stable mode: the caps of a `signals` plan (SRV-B21, SIL-B20) ---------------------------------------------
+
+
+def signal_run(root: Path, task: str, n: int, cost: float = 30.0) -> dict[str, Any]:
+    """A stable fixture run of `n` units, each with a session that repeated one failing call and the finding for it."""
+    from tempergraph.improve.record import append_findings
+
+    rd = run_dir(root, "demo", task)
+    lines, found = [], []
+    for i in range(n):
+        key = f"u{i}.1.step"
+        session(root, task, key, [bash("make", ok=False, out="No such file")] * 4)
+        r = rec(key)
+        lines.append(json.dumps(r))
+        d = digest.build(rd / "sessions" / key, r, {"tools": ["shell"]})
+        (rd / "sessions" / key / "digest.json").write_text(json.dumps(d))
+        found.append({"kind": "finding", "unit": f"u{i}", "cause": "tool_repeat", "class": "fault", "side": "workflow",
+                      "workflow": "demo", "workflow_version": "1.0.0", "fingerprint": f"f{i}"})
+    (rd / "run.jsonl").write_text("\n".join(lines) + "\n")
+    append_findings(root, "demo", task, f"demo/{task}", found)
+    t = run_ticket(root, task, cost)
+    return {**t, "review": "signals", "mode": "stable", "workflow_version": "1.0.0",
+            "fingerprints": [f["fingerprint"] for f in found]}
+
+
+def loop_spent(root: Path, usd: float) -> None:
+    from datetime import UTC, datetime
+
+    with open(root / "ledger.jsonl", "a", encoding="utf-8") as fh:
+        fh.write(json.dumps({"kind": "loop", "workflow": "demo", "ts": datetime.now(UTC).isoformat(),
+                             "cost": {"reported": usd, "estimated_only": 0.0}}) + "\n")
+
+
+def test_the_stable_cap_is_the_lowest_of_the_share_the_run_cap_and_the_days_room(tmp_path: Path) -> None:
+    # SRV-AC9 (SRV-B21, SIL-B20)
+    t = signal_run(tmp_path, "C-1", 1, cost=30.0)
+    assert review.plan_for(t)["cap_usd"] == 2.0  # a tenth of 30 is 3: the $2 per-run cap is lower
+    assert review.plan_for({**t, "run_cost_usd": 5.0})["cap_usd"] == 0.5  # a tenth of the run's cost
+    loop_spent(tmp_path, 49.2)  # the day's room under the $50 daily cap shrinks to 0.80
+    assert review.plan_for(t)["cap_usd"] == 0.8
+    assert review.plan_for(t, room=0.3)["cap_usd"] == 0.3  # the loop child passes what its own judges left over
+    loop_spent(tmp_path, 5.0)
+    assert review.plan_for(t)["cap_usd"] == 0.0  # no room left
+    assert review.plan({**t, "mode": "dev", "review": "full"}, [], room=0.1)["cap_usd"] == 5.0  # dev mode: no room
+
+
+def test_a_signals_plan_reads_at_most_three_sessions_and_skips_the_rest_in_order(tmp_path: Path) -> None:
+    # SRV-AC9 (SRV-B21, SRV-B24)
+    t = signal_run(tmp_path, "C-2", 5)
+    p = review.plan_for(t)
+    assert [x["session_key"] for x in p["targets"]] == ["u4.1.step", "u3.1.step", "u2.1.step"]  # later first
+    assert [(s["session_key"], s["reason"]) for s in p["skipped"]] == [("u1.1.step", "budget"), ("u0.1.step", "budget")]
+    assert p["depth"] == "partial" and p["cap_usd"] == 2.0
+
+
+def test_a_review_stops_mid_plan_when_the_money_runs_out_and_skips_the_rest_as_budget(tmp_path: Path) -> None:
+    # SRV-AC9 (SRV-B21, SRV-B25)
+    t = signal_run(tmp_path, "C-3", 5)
+    ex = reviewer(0.10, 5)
+    out = review.run(t, registry(ex), room=0.25)  # the day leaves 0.25: two reviews at 0.10, the third would pass it
+    keys = [x["session_key"] for x in out["plan"]["targets"]]
+    assert out["plan"]["cap_usd"] == 0.25 and keys == ["u4.1.step", "u3.1.step", "u2.1.step"]
+    assert out["done"] == keys[:2] and len(ex.calls) == 2
+    assert [s["session_key"] for s in out["plan"]["skipped"] if s["reason"] == "budget"] == [
+        "u1.1.step", "u0.1.step", "u2.1.step"]  # the two the count cap left out, then the third the money did
+    assert set(out["done"]).isdisjoint(skipped(out))
+    log = [json.loads(ln) for ln in (run_dir(tmp_path, "demo", "C-3") / "loop.jsonl").read_text().splitlines()]
+    assert next(r for r in log if r["kind"] == "review_planned")["depth"] == "partial"

@@ -37,7 +37,7 @@ task_id: third-release
 | Order | Cap and reach first, because every parallel shape relies on them | R-140 F4, F5 |
 | Plan shape | Tracks and phases only; each track's expanded plan is written when its specs are ready (EC-2) | As in release 2 |
 
-**Status: In progress.** R3-T1.1, R3-T1.2 and R3-T8.3 are built (2026-11-22). EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
+**Status: In progress.** R3-T1.1, R3-T1.2, R3-T8.2, R3-T8.3 and I3-15 are built (2026-11-22). EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
 
 ## 1. Requirements analysis
 
@@ -172,6 +172,10 @@ Goal: whichever of `block`, judge reasons and GitLab the owner accepts.
 
 #### R3-T8.1 Script cache, audit judge, judge MCP views
 #### R3-T8.2 Observers, worktree extras, session review in stable mode
+Goal: EVT-B23 observers with a preflight warning for a missing one, the `in_repo` and `path:` worktree roots, the `default_branch` base, `cleanup: on_finish`, `worktree prune` and foreign-worktree scans (spec 82), and `signals` review plans with saturation and the stable caps (spec 44), with no model call in any test.
+
+Status: built. EVT-AC5 in `plugins/tempergraph/engine/tests/test_events.py`, `test_run_log.py` and `test_preflight.py`; WTR-AC1, WTR-AC3, WTR-AC5 and WTR-AC6 in `test_workspace.py`, `test_worktree_cleanup.py`, `test_worktree_prune.py`, `test_rerun.py`, `test_carry.py`, `test_cli.py` and `test_run.py`; SRV-AC2 and SRV-AC9 in `test_session_review.py`, `test_review_budget.py` and `test_improve.py`, all under `plugins/tempergraph/engine/tests/`; writer, slot and item worktrees, probes P-WTR-1 to P-WTR-4, and corroborated filing (spec 44's Not built yet line) remain.
+
 #### R3-T8.3 Audit history and tool surface audit
 Status: built. The `history` layer and `audit tools` (AUD-B1, AUD-B3, AUD-B5, AUD-B10 to AUD-B12; ARC-B7, ARC-B9 to ARC-B15; TSA-B1 to TSA-B13; PRA-B11 `changed`), proved by AUD-AC1 to AUD-AC3, ARC-AC1, ARC-AC4, ARC-AC5, TSA-AC1 to TSA-AC6, PRA-AC3 and PRA-AC5 in `plugins/tempergraph/engine/tests/test_audit_history.py`, `test_audit_history_rules.py`, `test_audit_history_rules_more.py`, `test_audit_surface.py`, `test_audit_tools.py`, `test_audit_tools_verb.py` and `test_audit.py`; the council and contest definition rules (`council-one-family`, `council-even-majority`, `contest-identical-slots`), the post-release watch that `prompt-change-moved-gate` renders and the host probe that lists plugin tools for `judge-ambient-tool` are left.
 

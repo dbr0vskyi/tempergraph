@@ -521,10 +521,20 @@ def relocate(root: Path, repo: Path, workflow: str, task_id: str, ws: Mapping[st
     """After a pull, the workspace record's path under this machine's root rule (WTR-B18)."""
     if not marker(root, workflow, task_id).get("relocate"):
         return dict(ws)
-    from tempergraph.workspace import flat_name, sibling_root
+    from tempergraph.workspace import WorkspaceRefused, place
 
     main = gitmod.main_checkout(repo) or repo
-    path = main if ws.get("mode") == "in_place" else sibling_root(main) / flat_name(workflow, task_id)
+    if ws.get("mode") == "in_place":
+        path = main
+    else:  # the thread's own root: `in_repo` under this checkout, a `path:` root as recorded, else the sibling root
+        kind = str(ws.get("root_kind") or "sibling")
+        recorded = Path(str(ws.get("path") or "")).parent
+        setting = "in_repo" if kind == "in_repo" else f"path:{recorded}" if kind == "path" and recorded.is_absolute() \
+            else "sibling"
+        try:
+            path = place(main, setting, workflow, task_id)[0]
+        except WorkspaceRefused:  # a recorded root this machine cannot use: the sibling root
+            path = place(main, "sibling", workflow, task_id)[0]
     set_marker(root, workflow, task_id, relocate=False)
     return {**ws, "path": str(path), "last_head": ""}
 

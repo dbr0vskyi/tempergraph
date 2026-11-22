@@ -42,7 +42,7 @@ def test_budget_records_name_each_charged_counter(repo: Path) -> None:  # EVT-B1
     assert got == [("draft", "retries", 1, 2), ("review", "loops:draft", 1, 1)]
 
 
-def test_operator_capture_level_and_observers(repo: Path) -> None:  # LOS-B17, EVT-B21, EVT-B6, EVT-B22, EVT-B23, EVT-B24
+def test_operator_capture_level_and_observers(repo: Path) -> None:  # EVT-AC5, LOS-B17, EVT-B21, EVT-B6, EVT-B22, EVT-B23, EVT-B24
     import os
 
     from tempergraph.store.layout import run_dir, state_root_path
@@ -56,7 +56,9 @@ def test_operator_capture_level_and_observers(repo: Path) -> None:  # LOS-B17, E
         (req.session_dir / "raw.jsonl").write_text('{"type": "result"}\n')  # as the launcher would
         return DRAFT
 
-    go(repo, standin("claude", steps=[step, REVIEW], judges=[judge(), judge()]))
+    out = go(repo, standin("claude", steps=[step, REVIEW], judges=[judge(), judge()]))
+    assert out.exit_code is ExitCode.FINISHED  # EVT-AC5: a missing observer never stops the run
+    assert any(w.startswith("observer-missing:") and "not-installed" in w for w in out.warnings)  # a preflight warning
     started = next(r for r in records(repo) if r["kind"] == "run_started")
     assert started["capture_lowered"] == ["raw", "tool_inputs"]
     assert started["observers"] == ["not-installed"] and started["observers_missing"] == ["not-installed"]

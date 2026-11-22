@@ -166,10 +166,175 @@ def test_dev_plan_reads_every_session_within_the_cap() -> None:  # SRV-B3
     assert len(big["targets"]) == 20 and not big["skipped"]  # a `full` plan has no count cap (SRV-B21)
 
 
-def test_stable_signals_plan_is_release_2() -> None:  # SRV-B4, release 1 shape (R-150 SRV)
-    ds = [{"session_key": "draft.1.step", "kind": "step", "capture": "full", "turns": 3}]
-    p = review.plan({"review": "signals", "mode": "stable"}, ds)
-    assert p["depth"] == "none" and p["targets"] == [] and p["deferred"] == "signals_release_2"
+def d(key: str, turns: int = 60, **kw: Any) -> dict[str, Any]:
+    unit, _, kind = digest.parse_key(key)
+    return {"session_key": key, "kind": kind, "unit": unit, "capture": "full", "turns": turns, **kw}
+
+
+STABLE = {"review": "signals", "mode": "stable", "workflow": "demo"}
+
+
+def test_auto_is_signals_in_stable_mode_and_the_operator_only_lowers() -> None:  # SRV-AC2 (SRV-B13, SRV-B4)
+    assert review.resolve("auto", "stable", False) == "signals"
+    assert review.effective("auto", None, "stable", False) == "signals"
+    assert review.effective("auto", "off", "stable", False) == "off"  # lowered per machine
+    assert review.effective("signals", "full", "stable", False) == "signals"  # never raised
+    assert review.effective("auto", "full", "stable", False) == "signals"
+    assert review.plan({"review": "off", "mode": "stable"}, [d("draft.1.step")])["depth"] == "none"
+
+
+def test_a_clean_first_pass_stable_run_plans_none_and_spends_nothing() -> None:  # SRV-AC2 (SRV-B4, SRV-B16)
+    ds = [d("draft.1.step"), d("draft.1.judge", 10), d("review.1.step"), d("review.1.judge", 10)]
+    p = review.plan(STABLE, ds, signals=[], clean_exits=7)
+    assert p["depth"] == "none" and p["targets"] == [] and p["skipped"] == [] and p["estimate_tokens"] == 0
+    assert "deferred" not in p and p["setting"] == "signals"
+
+
+def test_a_signal_reads_only_its_slices_of_the_sessions_it_names() -> None:  # SRV-AC2 (SRV-B16)
+    ds = [d("plan.1.step"), d("code.1.step", repeats=[{"first_turn": 20, "last_turn": 22}]), d("code.1.judge", 12),
+          d("review.1.step")]
+    p = review.plan(STABLE, ds, signals=[{"unit": "code", "cause": "tool_repeat"}], clean_exits=3)
+    assert p["depth"] == "partial"
+    assert p["targets"] == [{"session_key": "code.1.step", "reason": "tool_repeat", "slices": [[15, 27]]}]  # no other
+
+
+def test_a_retry_burst_reads_each_attempts_last_40_turns_and_the_judge_turns_citing_the_criterion() -> None:
+    # SRV-AC2 (SRV-B4, SRV-B16)
+    cites = {"code.1.judge": [3], "code.2.judge": [2, 3], "code.3.judge": []}
+
+    def turns(key: str) -> list[digest.Turn]:
+        return [digest.Turn(n=n, text="C2 is not met" if n in cites.get(key, []) else "reading") for n in range(1, 9)]
+
+    sigs = [{"unit": "code", "cause": "retry_burst"}, {"unit": "code", "cause": "judge_blocked:C2"}]
+    ds = [d("code.1.step", 60), d("code.2.retry", 50), d("code.2.judge", 8), d("plan.1.step")]
+    p = review.plan(STABLE, ds, signals=sigs, clean_exits=3, turns=turns)
+    assert {t["session_key"]: t["slices"] for t in p["targets"]} == {
+        "code.1.step": [[21, 60]], "code.2.retry": [[11, 50]], "code.2.judge": [[2, 3]]}  # `plan` is never read
+    assert p["depth"] == "partial" and {t["reason"] for t in p["targets"]} == {"retry_burst", "judge_blocked:C2"}
+    many = [d("code.1.step", 60), d("code.1.judge", 8), d("code.2.retry", 50), d("code.2.judge", 8),
+            d("code.3.retry", 30), d("code.3.judge", 8)]
+    big = review.plan(STABLE, many, signals=sigs, clean_exits=3, turns=turns)  # a judge that never cites C2 is not read
+    assert [t["session_key"] for t in big["targets"]] == ["code.3.retry", "code.2.judge", "code.2.retry"]
+    assert big["skipped"] == [{"session_key": "code.1.judge", "reason": "budget"},  # `review.max_sessions.signals` 3
+                              {"session_key": "code.1.step", "reason": "budget"}]
+
+
+@pytest.mark.parametrize(("cause", "ds", "want"), [
+    ("retries_spent", [d("code.1.step", 60), d("code.1.judge", 30), d("code.2.retry", 50), d("code.2.judge", 45)],
+     {"code.2.retry": [[11, 50]], "code.2.judge": [[6, 45]]}),  # the last attempt and its judge, last 40 each
+    ("timeout:hung", [d("code.1.step", 50), d("code.2.retry", 70, end={"state": "timed_out"})],
+     {"code.2.retry": [[31, 70]]}),
+    ("idle_burn", [d("code.1.step", 50, idle_spans=[{"first_turn": 8, "last_turn": 19}]), d("code.1.judge", 5)],
+     {"code.1.step": [[8, 19]]}),
+    ("judge_unread_pass", [d("code.1.step", 50), d("code.1.judge", 12)], {"code.1.judge": "all"}),
+    ("agent_decided:escalation", [d("code.1.step", 50), d("code.1.judge", 12), d("plan.1.step")],
+     {"code.1.step": [[11, 50]], "code.1.judge": [[1, 12]]}),
+    ("pushback", [d("plan.1.step"), d("code.1.step", 30), d("code.1.judge", 9)], {"code.1.step": [[1, 30]]}),
+])
+def test_each_signal_reads_its_own_slices(cause: str, ds: list[dict[str, Any]], want: dict[str, Any]) -> None:
+    # SRV-AC2 (SRV-B16)
+    p = review.plan(STABLE, ds, signals=[{"unit": "code", "cause": cause}], clean_exits=3)
+    assert {t["session_key"]: t["slices"] for t in p["targets"]} == want
+
+
+def test_a_slow_host_timeout_and_unreadable_sessions_are_skipped() -> None:  # SRV-AC2 (SRV-B16, SRV-B9)
+    slow = review.plan(STABLE, [d("code.1.step", 50, end={"state": "timed_out"})],
+                       signals=[{"unit": "code", "cause": "timeout:slow_host"}], clean_exits=3)
+    assert slow["depth"] == "none" and slow["skipped"] == [{"session_key": "code.1.step", "reason": "infra_only"}]
+    gone = review.plan(STABLE, [d("code.1.step", 50, capture="pruned", repeats=[{"first_turn": 3, "last_turn": 5}])],
+                       signals=[{"unit": "code", "cause": "tool_repeat"}], clean_exits=3)
+    assert gone["depth"] == "none" and gone["skipped"] == [{"session_key": "code.1.step", "reason": "pruned"}]
+
+
+def test_the_audit_reads_one_step_session_of_one_unit_round_robin_every_20th_clean_exit() -> None:
+    # SRV-AC2 (SRV-B16)
+    ds = [d("draft.1.step"), d("draft.1.judge", 10), d("review.1.step"), d("review.1.judge", 10)]
+    first = review.plan(STABLE, ds, signals=[], clean_exits=20)
+    assert first["depth"] == "partial"
+    assert first["targets"] == [{"session_key": "draft.1.step", "reason": "audit", "slices": "all"}]
+    second = review.plan(STABLE, ds, signals=[], clean_exits=40)
+    assert [t["session_key"] for t in second["targets"]] == ["review.1.step"]
+    assert [t["session_key"] for t in review.plan(STABLE, ds, signals=[], clean_exits=60)["targets"]] == \
+        ["draft.1.step"]  # round and round
+    for n in (1, 19, 21, 39):
+        assert review.plan(STABLE, ds, signals=[], clean_exits=n)["depth"] == "none"
+
+
+def test_signal_targets_keep_the_priority_order_with_the_audit_last() -> None:  # SRV-AC2, SRV-AC8 (SRV-B24)
+    ds = [d("draft.1.step", repeats=[{"first_turn": 9, "last_turn": 11}]), d("plan.1.step"), d("code.1.step"),
+          d("code.2.retry", repeats=[{"first_turn": 9, "last_turn": 11}]), d("review.1.step")]
+    p = review.plan(STABLE, ds, signals=[{"unit": "draft", "cause": "tool_repeat"},
+                                         {"unit": "code", "cause": "tool_repeat"}],
+                    clean_exits=80, trouble=["code"])
+    assert [(t["session_key"], t["reason"]) for t in p["targets"]] == [
+        ("code.2.retry", "tool_repeat"),  # the unit whose gate failed first, the later session before the earlier
+        ("draft.1.step", "tool_repeat"), ("review.1.step", "audit")]  # cost and audit last
+
+
+def test_a_stable_signals_run_reads_its_fixture_run_with_no_model_call(tmp_path: Path) -> None:
+    # SRV-AC2 (SRV-B4, SRV-B16)
+    from tempergraph.improve.record import append_findings
+
+    fixture_run(tmp_path, "S-1")
+    append_findings(tmp_path, "demo", "S-1", "demo/S-1", [
+        {"kind": "finding", "unit": "draft", "cause": "tool_repeat", "class": "fault", "side": "workflow",
+         "workflow": "demo", "workflow_version": "0.0.0", "fingerprint": "f1"}])
+    t = {**ticket(tmp_path, "S-1"), "review": "signals", "mode": "stable", "fingerprints": ["f1"]}
+    ex = standin("claude")
+    out = review.run(t, registry(ex), dry_run=True)
+    assert out["plan"]["depth"] == "partial" and not ex.calls
+    (target,) = out["plan"]["targets"]
+    assert target["session_key"] == "draft.1.step" and target["reason"] == "tool_repeat"
+    assert target["slices"] == [[1, 4]]  # 4 turns in all, the repeats at turns 2 to 4, 5 either side, cut to the session
+    quiet = review.run({**t, "fingerprints": []}, registry(ex), dry_run=True)
+    assert quiet["plan"]["depth"] == "none" and quiet["plan"]["targets"] == [] and not ex.calls
+
+
+# -- SRV-B5: saturation --------------------------------------------------------------------------------------
+
+
+def corroborated(root: Path, task: str, weight: int, version: str = "2.0.0", cause: str = "tool_repeat") -> None:
+    from tempergraph.improve.record import append_findings
+
+    append_findings(root, "demo", task, f"demo/{task}", [
+        {"kind": "finding", "unit": "code", "cause": cause, "class": "fault", "side": "workflow", "workflow": "demo",
+         "workflow_version": version, "fingerprint": f"fp-{task}", "review_weight": weight}])
+
+
+def saturation_plan(root: Path, version: str, cause: str = "tool_repeat") -> dict[str, Any]:
+    ds = [d("code.1.step", repeats=[{"first_turn": 20, "last_turn": 22}])]
+    t = {**STABLE, "state_root": str(root), "workflow_version": version, "task_id": "now"}
+    return review.plan(t, ds, signals=[{"unit": "code", "cause": cause}], clean_exits=3)
+
+
+def test_a_saturated_cluster_is_skipped_until_the_version_changes(tmp_path: Path) -> None:  # SRV-AC2 (SRV-B5)
+    corroborated(tmp_path, "A-1", 2)
+    corroborated(tmp_path, "A-2", 1)  # three corroborated observations on the current version
+    p = saturation_plan(tmp_path, "2.0.0")
+    assert p["depth"] == "none" and p["targets"] == []
+    assert p["skipped"] == [{"session_key": "code.1.step", "reason": "saturated", "signal": "tool_repeat"}]
+    new = saturation_plan(tmp_path, "3.0.0")  # after a new version it reads again
+    assert new["depth"] == "partial" and [t["session_key"] for t in new["targets"]] == ["code.1.step"]
+
+
+def test_two_corroborated_observations_do_not_saturate(tmp_path: Path) -> None:  # SRV-AC2 (SRV-B5)
+    corroborated(tmp_path, "A-1", 2)
+    p = saturation_plan(tmp_path, "2.0.0")
+    assert p["depth"] == "partial" and p["skipped"] == []
+    corroborated(tmp_path, "A-3", 5, cause="idle_burn")  # another cause's cluster is another cluster
+    assert saturation_plan(tmp_path, "2.0.0")["depth"] == "partial"
+
+
+def test_a_saturated_signal_does_not_block_another_signal_on_the_session(tmp_path: Path) -> None:
+    # SRV-AC2 (SRV-B5): saturation reads nothing for that signal only
+    corroborated(tmp_path, "A-1", 3)
+    ds = [d("code.1.step", 60, repeats=[{"first_turn": 20, "last_turn": 22}],
+            idle_spans=[{"first_turn": 40, "last_turn": 50}])]
+    t = {**STABLE, "state_root": str(tmp_path), "workflow_version": "2.0.0", "task_id": "now"}
+    p = review.plan(t, ds, signals=[{"unit": "code", "cause": "tool_repeat"}, {"unit": "code", "cause": "idle_burn"}],
+                    clean_exits=3)
+    assert p["targets"] == [{"session_key": "code.1.step", "reason": "idle_burn", "slices": [[40, 50]]}]
+    assert p["skipped"] == [{"session_key": "code.1.step", "reason": "saturated", "signal": "tool_repeat"}]
 
 
 # -- SRV-B6, AC-3: the citation check ------------------------------------------------------------------------
@@ -300,3 +465,11 @@ def test_improve_review_cli(repo: Path) -> None:  # SRV-B23
     code, doc, _ = cli(repo, None, "improve", "review", "summary", "demo", "--json")
     assert code == 0 and doc["rows"] == [] and doc["corroboration_rate"] is None
     assert cli(repo, None, "improve", "review", "show", "--json")[0] == 2
+
+
+def test_the_review_cli_docstring_does_not_call_signals_plans_release_2() -> None:  # SRV-AC2
+    text = (SRC / "cli" / "improve_review.py").read_text(encoding="utf-8")
+    doc = text.split('"""')[1]
+    assert "signals" in doc  # the docstring still names the plan, only the stale claim is gone
+    assert "release 2" not in doc.split("signals")[1].split(")")[0]
+    assert "X2-26" not in doc
