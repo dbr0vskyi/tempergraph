@@ -153,7 +153,7 @@ Written in the package only by `upgrade --stamp` after every check of [WUP §2.6
 | `schema_version` | `1` |
 | `engine_version`, `workflow_api` | The engine stamped against |
 | `workflow_version` | The workflow's version and content digest at the stamp |
-| `entries_applied[]` | Changelog entry ids handled, each with `by` ∈ `transform`, `model`, `person`, `none` |
+| `entries_applied[]` | Changelog entry ids handled over the package's life, each with `by` ∈ `transform`, `model`, `person`, `none`. A restamp keeps the prior stamp's entries and their `by` and adds the entries met since; a restamp of a package already current adds none (live check L-26) |
 | `docs_digest`, `shape_digest` | The docs half's digest ([PKG §2.5](88-workflow-package.spec.md)) and the diagram's, at the stamp |
 | `baseline` | Counts of validation and audit findings by severity at the stamp |
 | `stamped_at` | |
