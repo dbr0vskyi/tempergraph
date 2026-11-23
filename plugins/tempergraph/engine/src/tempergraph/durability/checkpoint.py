@@ -94,6 +94,14 @@ class Snapshot:
     interrupt_ids: dict[str, str] = field(default_factory=dict)  # interrupt id -> unit, for a resume by unit
 
 
+def _gate_node(task: str, payload: Any) -> str:
+    """The node a pause belongs to. A pause raised inside a sub-workflow's child (SWF-B2) is raised from the sub-workflow
+    unit's step node, a subgraph of it; its payload names the child's unit as `<unit>/<child unit>`, and the pause is that
+    unit's gate, so it reads as `<unit>/<child unit>.human` like a pause of the parent's own."""
+    unit = str(payload.get("unit") or "") if isinstance(payload, dict) else ""
+    return f"{unit}.human" if task.endswith(".step") and "/" in unit else task
+
+
 def snapshot(cw: CompiledWorkflow, thread_id: str) -> Snapshot:
     try:
         st = cw.graph.get_state(cw.config(thread_id))
@@ -101,8 +109,9 @@ def snapshot(cw: CompiledWorkflow, thread_id: str) -> Snapshot:
         return Snapshot(exists=False)
     if not st.values:
         return Snapshot(exists=False)
-    ints = tuple((t.name, i.value) for t in st.tasks for i in t.interrupts)
-    ids = {str(getattr(i, "id", "")): t.name.rsplit(".", 1)[0] for t in st.tasks for i in t.interrupts}
+    ints = tuple((_gate_node(t.name, i.value), i.value) for t in st.tasks for i in t.interrupts)
+    ids = {str(getattr(i, "id", "")): _gate_node(t.name, i.value).rsplit(".", 1)[0] for t in st.tasks
+           for i in t.interrupts}
     return Snapshot(exists=True, next=tuple(st.next), interrupts=ints, values=dict(st.values), interrupt_ids=ids)
 
 

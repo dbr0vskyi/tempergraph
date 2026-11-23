@@ -122,7 +122,10 @@ def _scrubbed(data: bytes, rel: str, hits: dict[str, int]) -> bytes:
 
 
 def _thread_checkpoint(src: Path, tid: str, dest: Path) -> None:
-    """Only this thread's rows of the workflow's checkpoint store, in a store of the same shape."""
+    """Only this thread's rows of the workflow's checkpoint store, in a store of the same shape.
+
+    A row is chosen by its thread alone, so the checkpoint namespaces of a sub-workflow child, which runs under the
+    parent's thread (SWF-B8), travel with the parent's own rows (CAR-B1)."""
     from langgraph.checkpoint.sqlite import SqliteSaver
 
     out = sqlite3.connect(str(dest))
@@ -399,6 +402,7 @@ def checks(repo: Path, remote: str, manifest: Mapping[str, Any], files: Mapping[
 
 
 def _import_checkpoint(src: Path, dest: Path, tid: str) -> None:
+    """Replace this thread's rows in `dest` by the carried ones, a sub-workflow child's namespaces included."""
     from tempergraph.durability.checkpoint import open_saver
 
     saver = open_saver(dest)

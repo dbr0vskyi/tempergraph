@@ -6,6 +6,7 @@ written as ``None`` is removed, which is how a trip back clears artifacts, value
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Annotated, Any, TypedDict
 
 
@@ -57,6 +58,38 @@ def merge_run(old: dict[str, Any] | None, new: dict[str, Any] | None) -> dict[st
 
 def replace(old: Any, new: Any) -> Any:
     return new if new is not None else old
+
+
+# A sub-workflow's child (SWF-B1, SWF-B8) runs on a run state of its own: the same channels, keyed by the child's own
+# unit names, so a child `work` never meets the parent's `work`. The parent sees only what its unit exposes.
+
+
+def child_input(parent: Mapping[str, Any], inputs: Mapping[str, str], options: Mapping[str, Any] | None = None
+                ) -> dict[str, Any]:
+    """The first state of a child: the parent's task and workspace, the inputs the unit mapped, the operator layers as
+    the child reads them (for a child of its own), and the parent's cost so far, so one run cost cap holds across both
+    (SWF-B4)."""
+    req = parent.get("request") or {}
+    out: dict[str, Any] = {"request": {"task_id": req.get("task_id"), "inputs": dict(inputs)},
+                           "workspace": dict(parent.get("workspace") or {})}
+    run: dict[str, Any] = {}
+    cost = (parent.get("run") or {}).get("cost")
+    if cost:
+        run["cost"] = {k: v for k, v in cost.items() if k != "_base"}
+    if options:
+        run["options"] = dict(options)
+    if run:
+        out["run"] = run
+    return out
+
+
+def flat(channel: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Every unit's keys of one channel as one mapping, a later unit's key replacing an earlier one's."""
+    out: dict[str, Any] = {}
+    for vals in (channel or {}).values():
+        if isinstance(vals, dict):
+            out.update(vals)
+    return out
 
 
 class RunState(TypedDict, total=False):

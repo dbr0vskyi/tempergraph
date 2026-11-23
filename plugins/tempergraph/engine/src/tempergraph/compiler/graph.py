@@ -11,6 +11,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
@@ -27,7 +28,7 @@ class UnknownRoutingToken(Exception):
 
 
 class UnitNodes(Protocol):
-    def step(self, unit: str, state: RunState) -> dict[str, Any]: ...
+    def step(self, unit: str, state: RunState, config: Any = None) -> dict[str, Any]: ...
     def judge(self, unit: str, state: RunState) -> dict[str, Any]: ...
     def gate(self, unit: str, state: RunState) -> dict[str, Any]: ...
     def human(self, unit: str, state: RunState, decision: Any) -> dict[str, Any]: ...
@@ -59,7 +60,10 @@ def compile_workflow(spec: WorkflowSpec, nodes: UnitNodes, checkpointer: BaseChe
 
     for unit in order:
         step, judge, gate, human = flow.node_names(unit)
-        g.add_node(step, _bind1(nodes.step, unit, post))
+        if unit in spec.units and spec.units[unit].kind == "subworkflow":  # SWF-B8: the child is a subgraph of this node
+            g.add_node(step, _subgraph_node(nodes, unit, post))
+        else:
+            g.add_node(step, _bind1(nodes.step, unit, post))
         g.add_node(judge, _bind1(nodes.judge, unit, post))
         g.add_node(gate, _bind1(nodes.gate, unit, post))
         g.add_node(human, _human_node(nodes, unit, post))
@@ -107,6 +111,19 @@ def _bind1(fn: Callable[[str, RunState], dict[str, Any]], unit: str,
         return post(fn(unit, state))
 
     node.__name__ = f"{fn.__name__}_{unit}"
+    return node
+
+
+def _subgraph_node(nodes: UnitNodes, unit: str, post: Callable[[dict[str, Any]], dict[str, Any]]
+                   ) -> Callable[[RunState, RunnableConfig], dict[str, Any]]:
+    """The step node of a sub-workflow unit (SWF-B8): it invokes the child's own graph with this node's config, so the
+    child is a subgraph under the parent's checkpointer and thread, its checkpoint namespace nested in this node's;
+    a pause inside the child is a pause of this node. It hands back only what the unit exposes."""
+
+    def node(state: RunState, config: RunnableConfig) -> dict[str, Any]:
+        return post(nodes.step(unit, state, config))
+
+    node.__name__ = f"step_{unit}"
     return node
 
 

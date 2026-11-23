@@ -29,8 +29,10 @@ DETECT_KINDS = frozenset({"field", "symbol", "template_key", "tool_ref", "findin
 MIGRATE = frozenset({"transform", "assisted", "owner", "none"})
 TRANSFORMS = {"rename_field": "spec_field", "set_field": "spec_field", "drop_field": "spec_field",
               "rename_symbol": "declaration", "rename_template_key": "template", "rename_tool": "tool_name",
-              "map_capability": "capability", "model_list_to_escalation": "spec_field"}
+              "map_capability": "capability", "model_list_to_escalation": "spec_field",
+              "rename_produced_key": "spec_field"}
 TYPED = ("field", "symbol", "template_key", "tool_ref", "finding")
+CHILD_SURFACES = frozenset({"spec_field", "declaration"})  # VER-B17: what another workflow can depend on of a child
 
 
 def semver(v: str) -> tuple[int, int, int]:
@@ -88,6 +90,59 @@ def entries_between(stamp: str | None, engine: str = ENGINE_VERSION,
         if (lo is None or v > lo) and v <= hi:
             doc = json.loads(path.read_text(encoding="utf-8"))
             out += [dict(e) for e in doc.get("entries") or [] if isinstance(e, Mapping)]
+    return out
+
+
+def child_notes(root: Path, until: str | None = None, skip: Iterable[str] = ()) -> list[dict[str, Any]]:
+    """VER-B17: a workflow's own `changes/<version>.json` in the changelog's shape, read for a parent: the entries up
+    to and including version `until`, oldest first, with `audience: workflow` and a surface a parent can depend on
+    (`CHILD_SURFACES`). An entry that is not an entry of VER-B9 (`entry_problems`), and an entry id in `skip` (already
+    applied by the parent), is left out; an unreadable file reads as no notes."""
+    out: list[dict[str, Any]] = []
+    hi = semver(until) if until else None
+    for v, path in releases(root / "changes"):
+        if hi is not None and v > hi:
+            continue
+        try:
+            doc = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        for e in doc.get("entries") or [] if isinstance(doc, Mapping) else []:
+            if (isinstance(e, Mapping) and not entry_problems(e) and e.get("audience") == "workflow"
+                    and e.get("surface") in CHILD_SURFACES and str(e["id"]) not in set(skip)):
+                out.append(dict(e))
+    return out
+
+
+def _for_unit(value: Any, unit: str) -> Any:
+    """A child's note cannot know what a parent calls the unit that runs it: `<unit>` in a rule or a parameter is the name."""
+    if isinstance(value, str):
+        return value.replace("<unit>", unit)
+    if isinstance(value, Mapping):
+        return {k: _for_unit(v, unit) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_for_unit(v, unit) for v in value]
+    return value
+
+
+def children_entries(spec: WorkflowSpec, stamp: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
+    """SWF-B9, VER-B17, WUP-B6: for each sub-workflow unit of `spec`, the change notes of the child it runs (from the
+    child's registered package, up to the child's current version) that the parent's stamp has not applied, as
+    entries of the parent's plan. An entry's id is `<unit>:<id>`, so two children's notes never meet, and `<unit>` in
+    its rules and parameters is the parent's unit name. A child that is not registered has no notes to read here:
+    validation speaks of it."""
+    from tempergraph.model import subworkflow
+
+    applied = {str(e.get("id")) for e in (stamp or {}).get("entries_applied") or [] if isinstance(e, Mapping)}
+    out: list[dict[str, Any]] = []
+    for unit in subworkflow.units_of(spec):
+        rec = spec.units[unit].subworkflow
+        got = subworkflow.read_child(rec.workflow) if rec is not None else None
+        if not isinstance(got, subworkflow.Child) or got.spec.package_root is None:
+            continue
+        for e in child_notes(Path(got.spec.package_root), got.version,
+                             skip={i.partition(":")[2] for i in applied if i.startswith(f"{unit}:")}):
+            out.append({**_for_unit(e, unit), "id": f"{unit}:{e['id']}", "child": got.name, "unit": unit})
     return out
 
 
@@ -177,6 +232,7 @@ def compatibility(spec: WorkflowSpec, root: Path, stamp: Mapping[str, Any] | Non
     """VER-B2, VER-B5: `current`, `stamp_behind`, `needs_upgrade`, `out_of_range`, `unstamped`, with the hits."""
     stamped = str(stamp.get("engine_version")) if stamp else None
     entries = [e for e in entries_between(stamped, engine, folder) if e.get("audience") == "workflow"]
+    entries += children_entries(spec, stamp)  # SWF-B9: the notes of every sub-workflow the workflow runs (VER-B17)
     hits = {str(e["id"]): detect(e, spec, root, finding_codes) for e in entries}
     breaking = [e["id"] for e in entries if e.get("breaking") and hits.get(str(e["id"]))]
     if spec.requires_engine and not _in_range(engine, spec.requires_engine):

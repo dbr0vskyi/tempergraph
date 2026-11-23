@@ -124,7 +124,7 @@ def test_codes_are_distinct_per_fixture() -> None:
     assert len({c for c, _ in CASES}) == len(CASES)
 
 
-LATER = ["Council", "Contest", "Subworkflow"]
+LATER = ["Council", "Contest"]
 
 
 @pytest.mark.parametrize("builder", LATER)
@@ -146,6 +146,14 @@ def test_scr_ac1_script_cache_is_built_and_its_own_refusals_hold() -> None:  # S
     no_inputs = Script(run=["pytest"], cache="thread", side_effects="none")
     assert "script-cache-side-effects" in codes(_step(two_step(), "draft", before=(no_inputs,)))
     assert "not_in_release" not in codes(_step(two_step(), "draft", before=(effects, no_inputs)))
+
+
+def test_subworkflow_kind_is_not_refused_as_not_in_release() -> None:  # SWF-AC1
+    spec = two_step()
+    units = dict(spec.units)
+    units["setup"] = api.Subworkflow(workflow="child")
+    spec = dataclasses.replace(spec, units=units, order=(*spec.order, "setup"))
+    assert "not_in_release" not in {f.code for f in validate(spec, CLAUDE_ONLY)}
 
 
 def test_later_fields_not_in_release() -> None:

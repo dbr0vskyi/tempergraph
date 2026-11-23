@@ -181,13 +181,15 @@ def prompt(findings: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str,
     counts: dict[str, dict[str, int]] = {}
     blockers: dict[str, set[str]] = {}
     for r in records[start:]:
-        unit = str(r.get("unit") or "-")
+        unit = f"{r['child']}/{r.get('unit') or '-'}" if r.get("child") else str(r.get("unit") or "-")  # SWF-B9
         k = str(r.get("kind") or "")
         counts.setdefault(unit, {})[k] = counts.get(unit, {}).get(k, 0) + 1
         for cid in r.get("blockers") or () if k == "judgement" else ():
             blockers.setdefault(unit, set()).add(str(cid))
     rows = [f"- `{f.get('fingerprint')}` cause `{f.get('cause')}` class {f.get('class')} side `{f.get('side')}` "
-            f"unit `{f.get('unit') or '-'}` count {f.get('count')}" for f in findings]
+            f"unit `{(f['child'] + '/') if f.get('child') else ''}{f.get('unit') or '-'}` count {f.get('count')}"
+            + (f" (a child of `{f.get('parent')}`: workflow `{f.get('workflow')}`)" if f.get("child") else "")
+            for f in findings]
     seg = [f"- `{u}`: " + ", ".join(f"{k} {n}" for k, n in sorted(c.items()))
            + (f"; blocked on {', '.join(sorted(blockers[u]))}" if u in blockers else "") for u, c in counts.items()]
     return BRIEF + "\n\n## Findings\n" + "\n".join(rows) + "\n\n## The segment's records\n" + "\n".join(seg) + "\n"

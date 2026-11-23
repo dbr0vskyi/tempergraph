@@ -881,9 +881,11 @@ def state(spec: WorkflowSpec, gate: str, *, observed: Mapping[str, Any] | None =
 
 
 def states(spec: WorkflowSpec, state_root: Path | None = None, home: Path | None = None,
-           every_level: bool = False) -> list[State]:
+           every_level: bool = False, child: str | None = None) -> list[State]:
     """Every judged gate's state; with a state root, the observed binding and FBK's grade are read too. With
-    `every_level`, a gate whose judge has risk levels gets one more state per level above its own."""
+    `every_level`, a gate whose judge has risk levels gets one more state per level above its own. `child` is the
+    sub-workflow unit path of a child's spec (SWF-B9): the observed binding and the grade are read from the gates of
+    that child alone, never from a parent's gate of the same name; the cases come from the spec's own package."""
     out = []
     for gate in judged_gates(spec):
         observed = None
@@ -891,12 +893,12 @@ def states(spec: WorkflowSpec, state_root: Path | None = None, home: Path | None
         if state_root is not None:
             from tempergraph.improve import reliability
 
-            js = [j for j in reliability.judgements(state_root, spec.name) if j["unit"] == gate]
+            js = [j for j in reliability.judgements(state_root, spec.name, child) if j["unit"] == gate]
             observed = js[-1]["binding"] if js else None
 
             def grade(g: str, b: Mapping[str, Any]) -> str:
                 live = lambda gg, bb: passing(spec, gg)  # noqa: E731
-                return reliability.report(state_root, spec.name, [g], live)[0]["grade"]
+                return reliability.report(state_root, spec.name, [g], live, child=child)[0]["grade"]
 
         out.append(state(spec, gate, observed=observed, production_grade=grade, home=home))
         if every_level:
@@ -934,40 +936,44 @@ def passing(spec: WorkflowSpec, gate: str) -> bool:
     return s.state in ("accepted", "provisional") and bool((s.score or {}).get("figures", {}).get("known_bad"))
 
 
-def has_score(spec: WorkflowSpec, gate: str, state_root: Path | None = None) -> bool:
+def has_score(spec: WorkflowSpec, gate: str, state_root: Path | None = None, child: str | None = None) -> bool:
     """The seam for filing (SIL-B7, `Candidate.calibrated`): the gate's judge is `accepted`."""
     try:
-        return _state_of(spec, gate, state_root) == "accepted" and not unaccepted_levels(spec, gate)
+        named = _state_of(spec, gate, state_root) if child is None else _state_of(spec, gate, state_root, child)
+        return named == "accepted" and not unaccepted_levels(spec, gate)
     except (CalibrationError, OSError, ValueError):  # a reader never fails on a broken case file
         return False
 
 
-def _state_of(spec: WorkflowSpec, gate: str, state_root: Path | None) -> str:
+def _state_of(spec: WorkflowSpec, gate: str, state_root: Path | None, child: str | None = None) -> str:
     if state_root is None:
         return state(spec, gate).state
-    return next((s.state for s in states(spec, state_root) if s.gate == gate), "unscored")
+    return next((s.state for s in states(spec, state_root, child=child) if s.gate == gate), "unscored")
 
 
-def accepted_for(spec: WorkflowSpec, state_root: Path | None = None) -> Callable[[str], bool]:
+def accepted_for(spec: WorkflowSpec, state_root: Path | None = None, child: str | None = None
+                 ) -> Callable[[str], bool]:
     """`accepted(gate)` for package/readiness.readiness and run/outcome_trust.trust (JCL-B17 readers)."""
     cache: dict[str, bool] = {}
 
     def accepted(gate: str) -> bool:
         if gate not in cache:
-            cache[gate] = has_score(spec, gate, state_root)
+            cache[gate] = has_score(spec, gate, state_root, child)
         return cache[gate]
 
     return accepted
 
 
-def state_name_for(spec: WorkflowSpec, state_root: Path | None = None) -> Callable[[str], str]:
-    """`name(gate)` for the judge's own binding, `name("<gate>@<level>")` for a risk level above it."""
+def state_name_for(spec: WorkflowSpec, state_root: Path | None = None, child: str | None = None
+                   ) -> Callable[[str], str]:
+    """`name(gate)` for the judge's own binding, `name("<gate>@<level>")` for a risk level above it. `child` is the
+    sub-workflow unit path when `spec` is a child's (SWF-B9): its judgements and grade are the child's own."""
     def name(gate: str) -> str:
         gate, _, level = gate.partition("@")
         try:
             if level and _base_level(spec, gate, level):
                 return state(spec, gate, level=level).state
-            return _state_of(spec, gate, state_root)
+            return _state_of(spec, gate, state_root) if child is None else _state_of(spec, gate, state_root, child)
         except (CalibrationError, OSError, ValueError):
             return "unscored"
 

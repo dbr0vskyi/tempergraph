@@ -354,6 +354,21 @@ def parse_key(spec: WorkflowSpec, raw: str) -> Key:
     return key
 
 
+def child_scope(spec: WorkflowSpec, raw: str) -> tuple[WorkflowSpec, str]:
+    """SWF-B8: a flag reaches a unit of a sub-workflow's child as `<unit>/<child unit>.<key>` (and a setting of the child as
+    `<unit>/settings.<name>`). Returns the spec the key belongs to and the key as that spec reads it."""
+    unit, slash, rest = raw.partition("/")
+    held = spec.units.get(unit)
+    if not slash or held is None or held.subworkflow is None:
+        return spec, raw
+    from tempergraph.model import subworkflow
+
+    got = subworkflow.read_child(held.subworkflow.workflow)
+    if not isinstance(got, subworkflow.Child):
+        raise SettingError("unknown_setting", f"{raw}: the child {held.subworkflow.workflow!r} cannot be read")
+    return child_scope(got.spec, rest)
+
+
 def _unit_exists(spec: WorkflowSpec, unit: str, raw: str) -> None:
     if unit not in spec.units:
         raise SettingError("unknown_setting", f"{raw}: no unit {unit!r}" + _nearest(unit, spec.units))
@@ -579,8 +594,9 @@ def validate_layers(spec: WorkflowSpec, layers: Mapping[str, Mapping[str, Mappin
     for layer in OPERATOR_LAYERS:
         for raw, cell in (layers.get(layer) or {}).items():
             try:
-                key = parse_key(spec, raw)
-                _value(spec, key, cell.get("value"))
+                scope, name = child_scope(spec, raw)
+                key = parse_key(scope, name)
+                _value(scope, key, cell.get("value"))
             except SettingError as exc:
                 out.append(Finding(code=exc.code, unit=None, message=f"{layer} {cell.get('ref', raw)}: {exc}"))
     return out

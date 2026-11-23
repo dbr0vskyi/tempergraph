@@ -15,13 +15,14 @@ from tempergraph.cli.main import main
 from tempergraph.constants import ENGINE_VERSION
 from tempergraph.executors.registry import default_registry
 from tempergraph.improve.codehost import MemoryCodeHost
-from tempergraph.package import transforms
+from tempergraph.package import changelog, transforms
 from tempergraph.package import upgrade as up
 from tempergraph.package.loader import load_package
+from tempergraph.store.layout import state_root_path
 
 from .conftest import hash_tree
 from .fixtures.packages import DECLARATION, minimal_package, write
-from .test_stamp import caps, changelogs
+from .test_stamp import caps, changelogs, cli
 
 ENGINE = "0.2.0"
 MODEL_LIST = {"id": "E0.2.0-1", "audience": "workflow", "kind": "tightened", "breaking": True,
@@ -67,6 +68,31 @@ def branch_pkg(rep: up.Report) -> Path:
     return Path(rep.worktree) / "release-notes"
 
 
+def test_check_and_upgrade_check_print_one_plan_and_write_nothing(
+        repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # WUP-AC1, WUP-B1
+    pkg, folder = source(repo, tmp_path, entries={"0.1.0": [TOOL, UNUSED]})
+    monkeypatch.setattr(changelog, "CHANGELOG_DIR", folder)
+    state = state_root_path(repo)
+
+    def snapshot() -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
+        return hash_tree(pkg), hash_tree(state), hash_tree(repo / ".git")
+
+    before = snapshot()
+    plans = []
+    for argv in (("upgrade", str(pkg), "--check"), ("upgrade-check", str(pkg))):
+        code, doc, err = cli(repo, *argv)
+        assert code == 0, err
+        plans.append(doc)
+        assert snapshot() == before  # the source, the state root and the package are what they were
+    assert plans[0] == plans[1]
+    (item,) = [p for p in plans[0]["pending"] if p["item_id"] == "E0.1.0-1"]  # one item per hit, with its action
+    assert item["hits"][0]["where"] == "prompts/draft.md:2" and item["hits"][0]["rule"] == "read-tool"
+    assert {"E0.1.0-1", "E0.1.0-2"} <= set(plans[0]["compatibility"]["entries"])
+    assert [p["item_id"] for p in plans[0]["pending"]] == ["E0.1.0-1"]  # the entry with no hit has no item
+    assert "E0.1.0-2" in plans[0]["not_touched"] and "E0.1.0-1" not in plans[0]["not_touched"]  # WUP-B1
+    assert git(repo, "status", "--porcelain") == ""
+
+
 def test_transforms_only_no_session(repo: Path, tmp_path: Path) -> None:  # WUP-B2, B9, AC-2, AC-5, N4
     pkg, folder = source(repo, tmp_path)
     before = hash_tree(pkg)
@@ -105,7 +131,7 @@ def test_transforms_only_no_session(repo: Path, tmp_path: Path) -> None:  # WUP-
     assert rep.baseline_errors and "model-ladder-retired" in rep.baseline_errors[0]  # known before any change
 
 
-def test_the_owner_chooses_what_no_rule_can(repo: Path, tmp_path: Path) -> None:
+def test_the_owner_chooses_what_no_rule_can(repo: Path, tmp_path: Path) -> None:  # WUP-AC7, WUP-B4: an owner pause
     pkg, folder = source(repo, tmp_path, model='["small", "medium", "large"]')
     rep = run(pkg, folder, stamp=True)
     assert rep.exit_code == 4 and rep.stamp is None and not (branch_pkg(rep) / "stamp.json").exists()
@@ -170,14 +196,14 @@ def test_v4_fails_alone(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert "judge-exposed-tool" in failing(pkg, folder, rep, "V4 audit").checks[-1].evidence
 
 
-def test_v5_fails_alone(repo: Path, tmp_path: Path) -> None:  # WUP-B8: a weakening needs the owner
+def test_v5_fails_alone(repo: Path, tmp_path: Path) -> None:  # WUP-AC4, WUP-B8: a weakening needs the owner
     pkg, folder, rep = clean_upgrade(repo, tmp_path)
     weaken(rep)
     got = failing(pkg, folder, rep, "V5 change classes")
     assert "weakening" in got.checks[-1].evidence and "weakening" in got.classes
 
 
-def test_v5_passes_a_weakening_the_owner_answered(repo: Path, tmp_path: Path) -> None:
+def test_v5_passes_a_weakening_the_owner_answered(repo: Path, tmp_path: Path) -> None:  # WUP-AC4, WUP-B8
     pkg, folder = source(repo, tmp_path, model='["small", "large"]')
     rep = run(pkg, folder)
     assert rep.exit_code == 4
@@ -218,6 +244,7 @@ def test_refusals_write_nothing(repo: Path, tmp_path: Path, monkeypatch: pytest.
 
 
 def test_a_transform_never_leaves_the_package(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # WUP-AC7 (WUP-B18: `--no-assist` leaves the rest manual)
     pkg, folder = source(repo, tmp_path, entries={"0.1.0": [TOOL]})  # WUP-AC5
 
     def stray(root: Path, migrate: Any) -> transforms.Result:
@@ -240,7 +267,7 @@ def test_a_transform_never_leaves_the_package(repo: Path, tmp_path: Path, monkey
     assert again.exit_code == 0 and (again.items[1].state, again.items[1].by) == ("done", "person")
 
 
-def test_assisted_items_go_to_the_assist_step(repo: Path, tmp_path: Path) -> None:  # WUP-B18, AC-6
+def test_assisted_items_go_to_the_assist_step(repo: Path, tmp_path: Path) -> None:  # WUP-AC7, WUP-B3, WUP-B18, AC-6
     pkg, folder = source(repo, tmp_path, model='["small", "medium", "large"]', prompt="As of TODAY.\n",
                          entries={"0.2.0": [MODEL_LIST, BRIEF]})
     seen: list[up.Assist] = []

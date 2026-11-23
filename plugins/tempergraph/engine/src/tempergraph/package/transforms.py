@@ -308,6 +308,48 @@ def rename_template_key(root: Path, *, old: str, new: str) -> Result:
     return _finish(root, mods, res)
 
 
+def _unit_calls(m: _Module, unit: str, builder: str) -> list[ast.Call]:
+    """The calls of `builder` that declare the unit named `unit`: a dict entry `"<unit>": Builder(...)`, or an
+    assignment to `units["<unit>"]` or to a name `<unit>`."""
+    out: list[ast.Call] = []
+    for node in ast.walk(m.tree):
+        if isinstance(node, ast.Dict):
+            out += [v for k, v in zip(node.keys, node.values, strict=True) if isinstance(k, ast.Constant)
+                    and k.value == unit and isinstance(v, ast.Call) and m.builder(v) == builder]
+        elif isinstance(node, ast.Assign) and isinstance(node.value, ast.Call) and m.builder(node.value) == builder:
+            for t in node.targets:
+                if (isinstance(t, ast.Subscript) and isinstance(t.slice, ast.Constant) and t.slice.value == unit) \
+                        or (isinstance(t, ast.Name) and t.id == unit):
+                    out.append(node.value)
+    return out
+
+
+def rename_produced_key(root: Path, *, unit: str, old: str, new: str) -> Result:
+    """A sub-workflow child renamed a key it produces (SWF-B9, WUP-B6): the parent's reference `<unit>.<old>` becomes
+    `<unit>.<new>` in templates, briefs and inline prompt text (`{<unit>.<old>}`), as a whole string in a declaration
+    (an `inputs` source), and in the `produces` of the parent's `Subworkflow` unit of that name. Another unit's key of
+    the same name, and another key that only begins with `old`, stay."""
+    ref = f"{unit}.{old}"
+    pat = re.compile(r"\{" + re.escape(ref) + r"(?=[}:.\[!])")
+    res = Result()
+    _rewrite_text(root, lambda t: pat.sub("{" + f"{unit}.{new}", t), res)
+    mods = _modules(root)
+    for m in mods:
+        for node in _strings(m):
+            start, end = m.span(node)
+            if isinstance(node.value, str) and pat.search(node.value):
+                m.replace(start, end, pat.sub("{" + f"{unit}.{new}", m.src[start:end].decode("utf-8")))
+            elif node.value == ref:
+                m.replace(start, end, m.src[start:end].decode("utf-8").replace(ref, f"{unit}.{new}"))
+        for call in _unit_calls(m, unit, "Subworkflow"):
+            kw = _keyword(call, "produces")
+            for node in _strings(m, [kw.value] if kw is not None else []):
+                if node.value == old:
+                    start, end = m.span(node)
+                    m.replace(start, end, m.src[start:end].decode("utf-8").replace(old, new))
+    return _finish(root, mods, res)
+
+
 def rename_tool(root: Path, *, executor: str, old: str, new: str) -> Result:
     """Rewrites an executor's tool name where it stands alone: a whole string in a declaration, a whole word
     in model-facing text. `executor` names whose tool it is and is recorded with the entry; the hits decide
@@ -413,9 +455,11 @@ TRANSFORMS: dict[str, Callable[..., Result]] = {
     "rename_field": rename_field, "set_field": set_field, "drop_field": drop_field,
     "rename_symbol": rename_symbol, "rename_template_key": rename_template_key, "rename_tool": rename_tool,
     "map_capability": map_capability, "model_list_to_escalation": model_list_to_escalation,
+    "rename_produced_key": rename_produced_key,
 }
 PARAMETERS = {"rename_field": {"from": "old", "to": "new"}, "rename_symbol": {"from": "old", "to": "new"},
               "rename_template_key": {"from": "old", "to": "new"}, "map_capability": {"from": "old", "to": "new"},
+              "rename_produced_key": {"unit": "unit", "from": "old", "to": "new"},
               "rename_tool": {"from": "old", "to": "new", "executor": "executor"},
               "set_field": {"path": "path", "value": "value"}, "drop_field": {"path": "path", "default": "default"},
               "model_list_to_escalation": {}}

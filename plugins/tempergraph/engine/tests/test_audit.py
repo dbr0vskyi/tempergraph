@@ -579,7 +579,7 @@ def test_stamp_v4_fails_on_a_new_finding(tmp_path: Path, repo: Path) -> None:
 
 
 def test_stamp_v4_records_anew_on_a_newer_outcome_revision(tmp_path: Path, repo: Path) -> None:
-    """WUP-B19 V4: at `author verify`, an outcome revision newer than the stamped one records the audit
+    """WUP-AC7 (WUP-B13, authoring's re-approval exception), WUP-B19 V4: at `author verify`, an outcome revision newer than the stamped one records the audit
     list anew; the same revision still blocks, and so does `upgrade-check --stamp` at any revision."""
     from tempergraph.package.stamp import check, read_stamp
 
