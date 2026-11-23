@@ -33,7 +33,7 @@ def test_ac_4_spec_11_names_the_proxys_live_check_beside_the_probes_item() -> No
     items = [ln for ln in section(spec, "## Open questions").splitlines() if ln.startswith("- ")]
     proxy = [ln for ln in items if ln.startswith("- Not built yet") and "proxy" in ln]
     assert len(proxy) == 1 and "dontAsk" in proxy[0] and "Owner: engine owner" in proxy[0]
-    assert any(ln.startswith("- Not built yet: probes P-CC-1 to P-CC-11") for ln in items)  # that item stays
+    assert any(ln.startswith("- Not built yet: probes P-CC-1 to P-CC-12") for ln in items)  # that item stays
 
 
 def test_ac_4_third_release_plan_records_r3_t8_1_as_built() -> None:

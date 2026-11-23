@@ -55,7 +55,7 @@ WHEN a capability is mapped THE executor SHALL map `read` to `Read` with the rul
 
 ### ECC-B8 Step launch
 
-WHEN a step launches THE executor SHALL assemble argv only from constants, binding-table values and engine-checked numbers, never from typed text: `claude -p --output-format stream-json --verbose`; `--permission-mode` `acceptEdits` in the engine's worktree, else `default`; `--permission-prompts none` when the CLI lists it; `--model <bound model>` unless the alias is `inherit`; `--allowedTools` with the ECC-B7 rules when the step declares tools; `--tools` with the built-ins mapped from the step's declared tools on every launch, whether or not the operator's enforcement setting is on, the shell tool added when the step is granted the check preview command ([CHK-B17](75-check-contract-and-command-runs.spec.md)); always `--disallowedTools EnterWorktree,ExitWorktree`, the run's worktree being the engine's ([WTR-B25](82-worktree-mode.spec.md)); `--strict-mcp-config --mcp-config <engine file>` under enforcement with an MCP tool declared; `--plugin-dir <package root>` for a workflow plugin's skills and agents ([PKG-B23](88-workflow-package.spec.md)); and `--effort`, `--max-budget-usd`, `--fallback-model` or `--max-turns` when that option is set.
+WHEN a step launches THE executor SHALL assemble argv only from constants, binding-table values and engine-checked numbers, never from typed text: `claude -p --output-format stream-json --verbose`; `--permission-mode` `acceptEdits` in the engine's worktree, else `default`; `--permission-prompts none` when the CLI lists it; `--model <bound model>` unless the alias is `inherit`; `--allowedTools` with the ECC-B7 rules when the step declares tools; `--tools` with the built-ins mapped from the step's declared tools on every launch, whether or not the operator's enforcement setting is on, the shell tool added when the step is granted the check preview command ([CHK-B17](75-check-contract-and-command-runs.spec.md)); always `--disallowedTools EnterWorktree,ExitWorktree`, the run's worktree being the engine's ([WTR-B25](82-worktree-mode.spec.md)); `--strict-mcp-config --mcp-config <engine file>` under enforcement with an MCP tool declared; `--setting-sources project` and the plugin folders of ECC-B16; and `--effort`, `--max-budget-usd`, `--fallback-model` or `--max-turns` when that option is set.
 
 - GIVEN a step with `effort: high` and alias `inherit` WHEN it launches THEN argv holds `--effort high` and no `--model`
 - GIVEN a step declaring `read` and `shell` with prefix `pytest` and the enforcement setting off WHEN it launches THEN `--tools` is `Read,Bash`
@@ -105,6 +105,14 @@ WHEN a step session, a retry of it or a judge session launches THE executor SHAL
 - GIVEN a retry of a step declaring `read` WHEN it launches THEN `--tools` is `Read`
 - GIVEN any step or judge launch WHEN its argv is read THEN it holds no `--add-dir`
 
+### ECC-B16 Steps are isolated from user-scope configuration
+
+WHEN a step session or a retry of it launches THE executor SHALL load no user-scope setting, plugin, skill or hook of the machine it runs on, only the repository's project settings, and SHALL pass by path the workflow plugin ([PKG-B23](88-workflow-package.spec.md)) and each plugin that plugin's manifest names under `dependencies` that is found beside it, as a sibling folder of that name or as the newest version folder of that name in Claude Code's plugin cache; a dependency found nowhere is left out.
+
+- GIVEN a machine with a plugin installed at user scope WHEN a step launches THEN its `system/init` lists neither that plugin nor its skills
+- GIVEN a workflow plugin whose manifest depends on `tempergraph` and a `tempergraph` plugin folder beside it WHEN a step launches THEN both plugins are passed by path and listed in its `system/init`
+- GIVEN a workflow plugin with a dependency found in no folder beside it WHEN a step launches THEN only the workflow plugin is passed by path and the launch goes ahead
+
 ### ECC-B15 A judge view server with no working proxy is out of reach
 
 WHEN a judge view names an MCP server that is not in the operator's own MCP configuration, that the operator's configuration defines by a URL, or whose filtering proxy fails to start THE executor SHALL report that server's views as deferred for the attempt, so that the engine renders the artifact out of reach ([GRD-B5](06-independence-guard.spec.md)).
@@ -124,9 +132,10 @@ WHEN a judge view names an MCP server that is not in the operator's own MCP conf
 - ECC-AC7 (ECC-B3, ECC-B10): Against stand-in MCP servers, a judge launch whose view set holds `mcp:<server>/<tool>` views has `--tools` of the mapped built-in views only, `--strict-mcp-config` with a private `--mcp-config` that lists exactly one filtering proxy per viewed server, mode `dontAsk` and no `--disallowedTools "mcp__*"`, and each proxy offers only the viewed tools of its server when asked to list its tools
 - ECC-AC8 (ECC-B15): Against stand-in MCP servers, a judge view of a server that exits at start, of a server missing from the operator's MCP configuration and of a server that configuration defines by a URL is each recorded as deferred for the attempt, no tool of that server is in the judge's session and the judge prompt names the artifact out of reach (a scripted judge that follows the prompt grades its criterion UNVERIFIABLE, never MET)
 - ECC-AC9 (ECC-B6): `executors --json` declares `judge_mcp` true for `claude`
+- ECC-AC10 (ECC-B16): Argv of a step and a retry launch holds `--setting-sources project` and one `--plugin-dir` for the workflow plugin and for each dependency found beside it, none for a dependency found nowhere; and live, with a plugin installed at user scope, a step's `system/init` lists the workflow plugin and its dependency and not the user-scope plugin
 
 ## Open questions
 
 - Use `--input-format stream-json` for the prompt instead of plain stdin, to share framing with the Antigravity executor? Until answered: plain UTF-8 on stdin, then stdin closes; decided after P-CC-5. Owner: executor implementer.
-- Not built yet: probes P-CC-1 to P-CC-11 have not been confirmed on the owner's machine. Owner: engine owner.
+- Not built yet: probes P-CC-1 to P-CC-12 have not been confirmed on the owner's machine. Owner: engine owner.
 - Not built yet: the filtering proxy of ECC-B3 has run live on 2.1.330 only against the suite's stand-in server (live row L-33: only the viewed tool listed, a proxied call ran under `dontAsk` with no prompt, a server that cannot start or is missing deferred before the launch); no live run against a real tracker or wiki server and no whole workflow run grading the deferred criterion has been made. Owner: engine owner.
