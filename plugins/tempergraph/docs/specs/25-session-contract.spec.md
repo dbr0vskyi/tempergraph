@@ -83,6 +83,14 @@ WHEN a check returns THE engine SHALL read `result` (`PASS`, `MAYBE` or `FAIL`),
 
 - GIVEN a finding with no `kind` WHEN it is read THEN its kind is `other`
 
+### SSN-B11 A spent usage allowance
+
+WHEN a session ends THE executor SHALL return `usage_limit`, true only when the session ended not ok and the executor's structured facts say the account's usage allowance is spent, and `usage_limit_resets_at`, the instant that allowance resets when those facts give one and null otherwise.
+
+- GIVEN a session that ends not ok after its executor reported a spent allowance resetting at 2026-11-22T03:10:00Z WHEN it returns THEN `usage_limit` is true and `usage_limit_resets_at` is that instant
+- GIVEN a spent allowance reported with no reset instant WHEN the session returns THEN `usage_limit` is true and `usage_limit_resets_at` is null
+- GIVEN a session that ends ok, or fails with no report of a spent allowance WHEN it returns THEN `usage_limit` is false and `usage_limit_resets_at` is null
+
 ## Acceptance criteria
 
 - SSN-AC1 (SSN-B1): A conformance fixture of every executor returns a failed result, never an exception, for each failure shape
@@ -92,3 +100,4 @@ WHEN a check returns THE engine SHALL read `result` (`PASS`, `MAYBE` or `FAIL`),
 - SSN-AC5 (SSN-B7): Every executor's recorded fixture stream normalizes to the events of SSN-B7 only, with no model text in `model_delta`
 - SSN-AC6 (SSN-B8, SSN-B9): A judgement is read from the last fenced block, and the verdict comes from the engine whatever the block holds
 - SSN-AC7 (SSN-B10): A check result is read with the fields of SSN-B10, and `runs` is added by the engine
+- SSN-AC8 (SSN-B11): Every executor's conformance fixture returns `usage_limit` false and a null `usage_limit_resets_at` unless its stream reports a spent allowance, and a stand-in executor that reports one returns it true with the reported instant

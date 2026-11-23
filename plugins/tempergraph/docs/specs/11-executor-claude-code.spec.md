@@ -86,6 +86,14 @@ WHEN a session ends THE executor SHALL classify from structured facts only, besi
 
 - GIVEN a stream whose last `api_retry` is `rate_limit` and no `result` WHEN classified THEN it is `throttled`
 
+### ECC-B17 A rejected rate limit report is a spent usage allowance
+
+WHEN a `claude` session ends not ok and the last `rate_limit_event` of its stream has `rate_limit_info.status` `rejected` THE executor SHALL return `usage_limit` true and `usage_limit_resets_at` ([SSN-B11](25-session-contract.spec.md)) as the event's `resetsAt` read as epoch seconds, null when the event has no `resetsAt` or its `errorCode` is `credits_required`, leaving `infra_cause` and `error_kind` as ECC-B12 gives them.
+
+- GIVEN a stream that ends with an error `result` after a `rate_limit_event` of status `rejected` and `resetsAt` 1795317000 WHEN classified THEN `usage_limit` is true and `usage_limit_resets_at` is 2026-11-22T03:10:00Z
+- GIVEN a `rejected` event with `errorCode` `credits_required` WHEN classified THEN `usage_limit` is true and `usage_limit_resets_at` is null
+- GIVEN a stream that ends with an error `result` and whose `rate_limit_event`s all have status `allowed` or `allowed_warning` WHEN classified THEN `usage_limit` is false and `infra_cause` and `error_kind` are what ECC-B12 gives
+
 ### ECC-B13 Probe and preflight
 
 WHEN the executor is probed THE executor SHALL fail the probe with exit 2 at preflight when `claude` is not on the engine's resolved `PATH`, or `claude auth status` reports signed out with no gateway variables set; read `--permission-prompts` and other flags from `--help`, sending them only when listed; record a judge view server that `system/init` reports in `mcp_server_errors` as deferred, its criterion rendered out of reach; and rest no control on a live probe until its result is recorded `confirmed` with date and pinned CLI version: P-CC-1 (`--bare` removes user-level plugins and hooks while gateway credentials work, `@builtin` plugins staying listed), P-CC-2 (`--tools Read,Grep,Glob` with `--disallowedTools "mcp__*"` leaves exactly those tools), P-CC-3 (the stream shape at `--max-budget-usd`), P-CC-4 (precedence of `CLAUDE_CODE_SUBAGENT_MODEL` against an agent call's own model), P-CC-5 (a prompt on stdin with no positional prompt is accepted), P-CC-6 (`dontAsk` refuses an unlisted call and emits `permission_denied`), P-CC-7 (whether a session keeps a native transcript under the isolation flags, and where, [EVT-B20](30-run-events.spec.md)), P-CC-8 (a `Skill(<plugin>:<name>)` rule admits only that skill and the record names it) and P-CC-9 (`--plugin-dir` loads a workflow plugin's skills and agents with a step's isolation flags).
@@ -133,9 +141,11 @@ WHEN a judge view names an MCP server that is not in the operator's own MCP conf
 - ECC-AC8 (ECC-B15): Against stand-in MCP servers, a judge view of a server that exits at start, of a server missing from the operator's MCP configuration and of a server that configuration defines by a URL is each recorded as deferred for the attempt, no tool of that server is in the judge's session and the judge prompt names the artifact out of reach (a scripted judge that follows the prompt grades its criterion UNVERIFIABLE, never MET)
 - ECC-AC9 (ECC-B6): `executors --json` declares `judge_mcp` true for `claude`
 - ECC-AC10 (ECC-B16): Argv of a step and a retry launch holds `--setting-sources project` and one `--plugin-dir` for the workflow plugin and for each dependency found beside it, none for a dependency found nowhere; and live, with a plugin installed at user scope, a step's `system/init` lists the workflow plugin and its dependency and not the user-scope plugin
+- ECC-AC11 (ECC-B17): Recorded-stream fixtures give `usage_limit` true with the instant read as epoch seconds for a `rejected` event, true with a null instant for `credits_required` and false for `allowed` events, each with `infra_cause` and `error_kind` as ECC-B12 gives them
 
 ## Open questions
 
 - Use `--input-format stream-json` for the prompt instead of plain stdin, to share framing with the Antigravity executor? Until answered: plain UTF-8 on stdin, then stdin closes; decided after P-CC-5. Owner: executor implementer.
 - Not built yet: probes P-CC-1 to P-CC-12 have not been confirmed on the owner's machine. Owner: engine owner.
+- Does a rejected `rate_limit_event` carry `resetsAt` in epoch seconds, as the `allowed` events of the recorded 2.1.330 streams do? Until answered: read as seconds, from the Agent SDK reference and those recordings, since no recorded stream holds a rejection ([the research note](../research/what-a-claude-session-reports-when-its-usage-allowance-is-spent.rsrch.md)); a value that is really milliseconds then reads as a reset far ahead, which the loop does not wait for. Owner: engine owner.
 - Not built yet: the filtering proxy of ECC-B3 has run live on 2.1.330 only against the suite's stand-in server (live row L-33: only the viewed tool listed, a proxied call ran under `dontAsk` with no prompt, a server that cannot start or is missing deferred before the launch); no live run against a real tracker or wiki server and no whole workflow run grading the deferred criterion has been made. Owner: engine owner.
