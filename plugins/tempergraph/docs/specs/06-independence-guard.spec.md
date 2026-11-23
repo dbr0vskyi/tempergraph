@@ -49,6 +49,7 @@ WHEN `validate` runs THE engine SHALL list per step which views are deferred on 
 WHEN read views are looked up THE engine SHALL use a constant table per executor keyed by full tool name, no entry inferred from a name pattern or an MCP hint, mapping `edit`, `write` and workspace `shell` to `Read`, `Grep`, `Glob` on `claude` and `agent-sdk` (which shares Claude Code's rows), `read_file`, `search_files`, `list_files` on `messages-api` and `view_file`, `grep_search`, `list_dir`, `find_by_name` on `antigravity`; a tracker create or update tool to its `get_issue` read view, a wiki update tool to its `get_page` read view (on `messages-api` through the tool host, on `antigravity` per P-AG-6); and a `pull_request` artifact to read-only GitHub commands, opt-in, on each; add newer tracker and wiki tool names beside the old ones, never renaming, so a workflow pinned to an older server keeps its views; and map a generic write tool that can write to several systems to the union of their read views marked `partial`, its criterion MET only if every system it may have changed is in the view set; workflow data narrowing a view set and never widening it.
 
 - GIVEN a generic tracker tool that can update two systems WHEN its views are looked up THEN both read views are listed and marked `partial`
+- GIVEN a step that declares an MCP tool the catalog does not list WHEN its judge's view set is built THEN the set holds no view of that tool and the tool is recorded as deferred
 
 ### GRD-B8 Enforcement layers
 
@@ -69,6 +70,7 @@ WHEN a judgement is guarded THE engine SHALL record in the run log the view set 
 - GRD-AC3 (GRD-B9): A discarded judgement never routes PROCEED
 - GRD-AC4 (GRD-B9): The run log records, per judgement, the view set used and the guard status
 - GRD-AC5 (GRD-B2): A planted subagent call in a judge stream is detected on the stream fixtures of every executor that maps `subagent`
+- GRD-AC6 (GRD-B1, GRD-B7): A step that declares an MCP write tool the view catalog lists gives its judge that tool's read view and never the write tool itself, and a declared MCP tool the catalog does not list gives its judge no view and is recorded as deferred
 
 ## Open questions
 

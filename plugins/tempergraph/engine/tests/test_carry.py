@@ -301,6 +301,25 @@ def test_pull_of_an_unregistered_workflow_is_refused(world: World) -> None:
 # -- CAR-B5, CAR-B8, CAR-B11, CAR-B6 -----------------------------------------------------------------------------------------------------
 
 
+def test_a_carried_worktree_is_restored_under_the_threads_root(repo: Path, tmp_path: Path) -> None:
+    # WTR-AC1 (WTR-B20): after a pull the recorded path is rebuilt under the thread's own root
+    root = state_root_path(repo)
+    elsewhere = tmp_path / "elsewhere"
+    old = tmp_path / "other-machine" / "wts" / "demo--t1"
+    cases = (("sibling", old, repo.parent / "repo.worktrees" / "demo--t1"),
+             ("in_repo", old, repo / ".claude" / "worktrees" / "tg-demo--t1"),
+             ("path", elsewhere / "demo--t1", elsewhere / "demo--t1"))
+    for kind, recorded, expected in cases:
+        carry.set_marker(root, "demo", "t1", relocate=True)
+        ws = {"mode": "worktree", "root_kind": kind, "path": str(recorded), "branch": "tg/demo/t1", "last_head": "x"}
+        got = carry.relocate(root, repo, "demo", "t1", ws)
+        assert got["path"] == str(expected) and got["last_head"] == "" and got["root_kind"] == kind
+        assert carry.marker(root, "demo", "t1")["relocate"] is False
+    carry.set_marker(root, "demo", "t1", relocate=True)  # a recorded root inside this checkout falls back
+    bad = {"mode": "worktree", "root_kind": "path", "path": str(repo / "inside" / "demo--t1"), "branch": "b"}
+    assert carry.relocate(root, repo, "demo", "t1", bad)["path"] == str(repo.parent / "repo.worktrees" / "demo--t1")
+
+
 def test_carry_needs_a_remote(repo: Path) -> None:
     ex = standin("claude", steps=[DRAFT], judges=[judge()])
     code, _, err = cli(repo, ex, "run", "demo", "notes", "--task-id", "t1", "--carry")

@@ -58,6 +58,22 @@ def test_rerun_keeps_earlier_verdicts(repo: Path) -> None:  # RRN-B7, AC-3
     assert code == 0  # the next rerun id is r2
 
 
+def test_a_rerun_keeps_the_threads_worktree_root(repo: Path, tmp_path: Path) -> None:  # WTR-AC1 (WTR-B20, WTR-B17)
+    elsewhere = tmp_path / "elsewhere"
+    for task, root, where in (("R-7", "in_repo", repo / ".claude" / "worktrees"), ("R-8", f"path:{elsewhere}", elsewhere)):
+        code, _, err = cli(repo, happy(), "run", "demo", "notes", "--task-id", task, "--worktree-root", root)
+        assert code == 0, err
+        first = records(repo, task, "workspace")[0]
+        assert Path(first["path"]).parent == where
+        code, _, err = cli(repo, happy(), "rerun", "demo", task, "--from", "review")
+        assert code == 0, err
+        again = records(repo, f"{task}~r1", "workspace")[0]
+        assert Path(again["path"]).parent == where  # not the sibling root
+        assert Path(again["path"]).is_dir()
+        sibling = repo.parent / f"{repo.name}.worktrees"
+        assert not sibling.exists() or not any(p.name.endswith(f"{task}-r1") for p in sibling.iterdir())
+
+
 def test_rerun_from_start_reuses_the_input(repo: Path) -> None:  # RRN-B8
     finished(repo, "R-2")
     seen = Seen()

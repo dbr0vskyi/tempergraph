@@ -80,3 +80,8 @@ PARAMS = {p.name: p for p in (
 
 def value(name: str) -> float:
     return PARAMS[name].value
+
+
+def max_sessions(depth: str) -> int:
+    """SRV-B21: `review.max_sessions.<depth>`, the sessions a review of that depth may read in one run."""
+    return int(PARAMS[f"review.max_sessions.{depth}"].value)

@@ -30,7 +30,7 @@ Plan: `{plan}`
 - If the plan conflicts with the code base or with a spec, do not work around it: say that the plan (or the discovery output it rests on) is at fault, with the row and the conflict.
 - If a verification command already fails before your first change, note the failing tests under Deviations and do not count them against your rows; do not repair unrelated failures.
 - Do not run `git commit`, `git push` or `gh`. The engine commits your files when you finish, and only the last stage publishes.
-- Use plain single commands from the repository root; `cd <folder> && <command>` is the one allowed chain. Stay inside this working directory.
+- Use plain single commands from the repository root; `cd <folder> && <command>` is the one allowed chain. Stay inside this working directory. The shell runs only the workflow's verification commands and read-only git, one per call, for example `python -m pytest tests/test_config.py`, `cd sub/pkg && python3 -m pytest tests/test_x.py -q`, `ruff check src tests`, `mypy`, `git status` or `git diff`. It refuses pipes, `;`, a second `&&`, redirections such as `2>&1`, `env` or variable prefixes, inline `python -c`, and listing or reading commands such as `ls`, `cat`, `wc` or `grep`: read, search and list files with the file tools instead.
 - Report results as what you saw. Do not say the work passes: the gate runs the verification itself.
 
 ## What to hand over

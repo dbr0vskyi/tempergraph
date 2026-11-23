@@ -308,7 +308,9 @@ def Question(name: str, text: str, *, kind: str = "text", choices: Iterable[str]
 def Ask(*, questions: Iterable[AskQuestion] = (), questions_from: str | None = None,  # noqa: N802
         context: Iterable[str] = (), check: Callable[..., Any] | None = None, deadline_s: int | None = None,
         on_deadline: str = "escalate", gate: GateSpec | None = None) -> UnitSpec:
-    """An ask unit: pauses for a person's typed answers and stores them as the `answers` artifact (ASK-B5 to ASK-B9)."""
+    """An ask unit: pauses for a person's typed answers and stores them as the `answers` artifact (ASK-B5 to
+    ASK-B13). `on_deadline` is `escalate`, `stop`, `defaults` (each unanswered question takes its default) or a
+    forward unit."""
     return UnitSpec(kind="ask", gate=gate or GateSpec(), ask=AskSpec(
         questions=tuple(questions), questions_from=questions_from, context=tuple(context), check=_opt_ref(check),
         deadline_s=deadline_s, on_deadline=on_deadline))

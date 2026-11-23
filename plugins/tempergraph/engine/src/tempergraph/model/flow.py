@@ -202,9 +202,9 @@ def deadline_of(spec: WorkflowSpec, unit: str) -> tuple[int, str] | None:
 
 
 def deadline_node(spec: WorkflowSpec, unit: str) -> str | None:
-    """The forward unit's node when `on_deadline` names one."""
+    """The forward unit's node when `on_deadline` names one; `escalate`, `stop` and `defaults` are words."""
     d = deadline_of(spec, unit)
-    if d is None or d[1] in ("escalate", "stop"):
+    if d is None or d[1] in ("escalate", "stop", "defaults"):
         return None
     return entry_node(spec, through_outcome(spec, d[1]))
 
@@ -234,7 +234,7 @@ def reachable_units(spec: WorkflowSpec) -> set[str]:
         fb = spec.units[u].gate.fallback if u in spec.units else None
         dl = deadline_of(spec, u)
         todo.extend(proceed_targets(spec, u) + back_targets(spec, u) + ([fb] if fb else [])
-                    + ([dl[1]] if dl and dl[1] not in ("escalate", "stop") else []))
+                    + ([dl[1]] if dl and dl[1] not in ("escalate", "stop", "defaults") else []))
     return seen
 
 

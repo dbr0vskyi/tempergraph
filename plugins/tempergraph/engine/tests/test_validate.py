@@ -105,7 +105,19 @@ CASES: list[tuple[str, Callable[[], WorkflowSpec]]] = [
 @pytest.mark.parametrize("code,build", CASES, ids=[c for c, _ in CASES])
 def test_each_refusal_has_its_code(code: str, build: Callable[[], WorkflowSpec]) -> None:
     executors = CLAUDE_ONLY if code == "executor-unknown" else ALL
+    if code == "judge-view-unavailable":  # ECC-AC9: `claude` declares `judge_mcp` now, so the finding needs an executor that does not
+        executors = NO_JUDGE_MCP
     assert code in codes(build(), executors)
+
+
+NO_JUDGE_MCP = {"claude": dataclasses.replace(CLAUDE, judge_mcp=False)}
+
+
+def test_ecc_ac9_a_wiki_page_artifact_is_readable_by_a_claude_judge() -> None:
+    spec = _step(two_step(), "draft", produces={"page": "wiki_page"})
+    assert "judge-view-unavailable" not in codes(spec, CLAUDE_ONLY)  # `claude` declares `judge_mcp`
+    assert "judge-view-unavailable" not in codes(spec, ALL)
+    assert "judge-view-unavailable" in codes(spec, NO_JUDGE_MCP)  # still a finding where `judge_mcp` is false
 
 
 def test_codes_are_distinct_per_fixture() -> None:
@@ -125,6 +137,17 @@ def test_later_kinds_not_in_release(builder: str) -> None:
     assert found and any("release" in f.message for f in found)
 
 
+def test_scr_ac1_script_cache_is_built_and_its_own_refusals_hold() -> None:  # SCR-AC1
+    ok = Script(run=["pytest"], cache="thread", side_effects="none", inputs=["x"])
+    assert codes(_step(two_step(), "draft", before=(ok,))) == set()  # no `not_in_release` for `cache: thread`
+    assert codes(_step(two_step(), "draft", after=(ok,))) == set()
+    effects = Script(run=["pytest"], cache="thread", side_effects="workspace", inputs=["x"])
+    assert "script-cache-side-effects" in codes(_step(two_step(), "draft", before=(effects,)))  # SCR-B6
+    no_inputs = Script(run=["pytest"], cache="thread", side_effects="none")
+    assert "script-cache-side-effects" in codes(_step(two_step(), "draft", before=(no_inputs,)))
+    assert "not_in_release" not in codes(_step(two_step(), "draft", before=(effects, no_inputs)))
+
+
 def test_subworkflow_kind_is_not_refused_as_not_in_release() -> None:  # SWF-AC1
     spec = two_step()
     units = dict(spec.units)
@@ -134,7 +157,8 @@ def test_subworkflow_kind_is_not_refused_as_not_in_release() -> None:  # SWF-AC1
 
 
 def test_later_fields_not_in_release() -> None:
-    spec = _step(two_step(), "draft", before=(Script(run=["pytest"], cache="thread", side_effects="none", inputs=["x"]),))
+    spec = _step(two_step(), "draft")
+    spec = _unit(spec, "draft", extra={"council_seats": 3})
     assert "not_in_release" in codes(spec)
 
 

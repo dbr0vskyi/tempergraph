@@ -150,9 +150,18 @@ def _parser() -> _Parser:
     _caller_options(so)
     wt = sub.add_parser("worktree", help="run worktrees")
     wsub = wt.add_subparsers(dest="action", parser_class=_Parser)
-    wsub.add_parser("list")
+    wl = wsub.add_parser("list")
+    wl.add_argument("--all", action="store_true", help="also foreign worktrees and git worktrees no record owns")
+    wl.add_argument("--json", action="store_true")
     wp = wsub.add_parser("path")
     wp.add_argument("thread")
+    wr = wsub.add_parser("prune", help="list removable run worktrees; --apply removes them, clean ones only")
+    wr.add_argument("--thread", metavar="THREAD")
+    wr.add_argument("--finished", action="store_true")
+    wr.add_argument("--older-than", type=float, metavar="DAYS")
+    wr.add_argument("--apply", action="store_true")
+    wr.add_argument("--json", action="store_true")
+    _caller_options(wr)
     observe_cli.add_parsers(sub)
     ca = sub.add_parser("carry", help="a run's state on its own branch: push, pull, status, drop (CAR)")
     ca.add_argument("action", choices=("push", "pull", "status", "drop"))
@@ -203,7 +212,8 @@ SPELLINGS = {"executor": "steps.executor", "judge_executor": "judges.executor", 
              "judge_model": "judges.model", "timeout": "steps.timeout_s", "judge_timeout": "judges.timeout_s",
              "idle": "steps.idle_s", "run_cost_cap": "run.run_cost_cap_usd", "worktree_root": "run.worktree.root",
              "worktree_base": "run.worktree.base", "worktree_cleanup": "run.worktree.cleanup",
-             "auto_reopen": "run.auto_reopen", "daily_cap": "run.daily_cap_usd"}
+             "auto_reopen": "run.auto_reopen", "daily_cap": "run.daily_cap_usd", "audit_rate": "run.audit_rate",
+             "audit_executor": "run.audit_executor"}
 PER_UNIT = {"step_executor": "executor", "step_model": "model"}
 
 
@@ -217,7 +227,7 @@ def _caller_options(p: argparse.ArgumentParser) -> None:
 
 def _spellings(p: argparse.ArgumentParser) -> None:
     for opt in ("executor", "judge-executor", "model", "judge-model", "timeout", "judge-timeout", "idle",
-                "run-cost-cap", "daily-cap", "auto-reopen"):
+                "run-cost-cap", "daily-cap", "auto-reopen", "audit-rate", "audit-executor"):
         p.add_argument(f"--{opt}")
     p.add_argument("--step-executor", action="append", default=[], metavar="STEP=NAME")
     p.add_argument("--step-model", action="append", default=[], metavar="STEP=ALIAS")
@@ -896,10 +906,18 @@ def _stop_caller(env: Env, a: argparse.Namespace) -> dict[str, Any]:
 
 
 def cmd_worktree(env: Env, a: argparse.Namespace) -> int:
-    from tempergraph.workspace import list_worktrees, worktree_path
+    from tempergraph.workspace import list_worktrees, prune_apply, prune_plan, worktree_path
 
     if a.action == "list":
-        _emit(env, {"schema_version": 1, "worktrees": list_worktrees(env.cwd)})
+        _emit(env, {"schema_version": 1, "worktrees": list_worktrees(env.cwd, all=bool(a.all))})
+        return 0
+    if a.action == "prune":  # WTR-B27, WTR-B16: without --apply it only lists; with it, clean ones go, no branch
+        rows = prune_plan(env.cwd, thread=a.thread, finished=bool(a.finished), older_than=a.older_than)
+        if not a.apply:
+            _emit(env, {"schema_version": 1, "removable": rows})
+            return 0
+        caller = env.caller(a)  # PRV: the call that changed the repository's worktrees records who made it
+        _emit(env, {"schema_version": 1, "removed": prune_apply(env.cwd, rows), "caller": caller})
         return 0
     if a.action == "path":
         p = worktree_path(env.cwd, a.thread)
@@ -907,7 +925,7 @@ def cmd_worktree(env: Env, a: argparse.Namespace) -> int:
             raise UsageError(f"no run worktree for {a.thread}")
         env.out.write(f"{p}\n")
         return 0
-    raise UsageError("worktree needs list or path")
+    raise UsageError("worktree needs list, path or prune")
 
 
 def cmd_config(env: Env, a: argparse.Namespace) -> int:

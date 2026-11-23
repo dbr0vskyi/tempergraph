@@ -2,19 +2,29 @@
 
 Advisory: exit 0 whatever is found, 6 with `--fail-on` when a finding not ignored is at or above the level,
 2 for an unknown workflow or option. Output goes to stdout only; nothing is written (AUD-B6).
-`audit tools` (TSA) and `--layer history` are release 3 and refused with `not_in_release`.
+`--layer history` reads the workflow's local run records in `--window` days and `--version` (read-only); a bare
+`audit` reads them when the history layer is asked for by default and runs it when runs exist (AUD-B1, AUD-B11).
+`audit tools <workflow> [--executor <name>] [--step <unit>]` prints the tool surface matrix of TSA instead of
+findings, from the surface the audit builds once; `--fail-on` counts the tool findings (TSA-B8, TSA-B5).
+`audit prompts` reads `changed` from the same history facts (PRA-B11).
 """
 
 from __future__ import annotations
 
 import argparse
+import datetime as dt
+import json
 from pathlib import Path
 from typing import Any
 
 from tempergraph.audit import AuditContext, audit, audit_layers
+from tempergraph.audit.catalog import BY_ID
+from tempergraph.audit.history import HistoryFacts, read_history
 from tempergraph.audit.prompts import prompt_rows
 from tempergraph.audit.report import AuditFinding, AuditReport, render
+from tempergraph.audit.tools import matrix, render_matrix
 from tempergraph.constants import ENGINE_VERSION, ExitCode
+from tempergraph.executors.capabilities import DECLARED
 
 
 def add_parsers(sub: Any) -> None:
@@ -45,15 +55,11 @@ def _probe(env: Any) -> Any:
 
 def cmd_audit(env: Any, a: argparse.Namespace) -> int:
     view, name = ("findings", a.first) if a.second is None else (a.first, a.second)
-    if view == "tools":
-        env.err.write("tempergraph: audit tools (the tool surface audit, TSA) is not_in_release (release 3)\n")
+    if view not in ("findings", "prompts", "tools"):
+        env.err.write(f"tempergraph: audit takes a workflow, or prompts or tools then a workflow; got {view!r}\n")
         return int(ExitCode.USAGE)
-    if view not in ("findings", "prompts"):
-        env.err.write(f"tempergraph: audit takes a workflow, or prompts <workflow>; got {view!r}\n")
-        return int(ExitCode.USAGE)
-    if a.layer and "history" in a.layer:
-        env.err.write("tempergraph: audit --layer history is not_in_release (release 3); this release audits the "
-                      "definition and host layers\n")
+    if view == "tools" and a.executor and a.executor not in DECLARED and a.executor not in env.registry.available():
+        env.err.write(f"tempergraph: unknown executor {a.executor!r} for audit tools\n")
         return int(ExitCode.USAGE)
     target = Path(a.target) if a.target else env.cwd
     target = target if target.is_absolute() else env.cwd / target
@@ -69,17 +75,59 @@ def cmd_audit(env: Any, a: argparse.Namespace) -> int:
         return got.exit_code(a.fail_on)
     spec, manifest, stamp = got
     caps = {n: env.registry.get(n).capabilities() for n in env.registry.available()}
+    layers = audit_layers(a.layer)
+    facts = _history(env, spec, a) if "history" in layers or view != "findings" else None
+    tools = view == "tools"
     ctx = AuditContext(target=target, caps=caps, probe=_probe(env), window_days=a.window, version=a.version,
-                       executor=a.executor, steps=tuple(a.step), show_all=a.show_all)
-    rep = audit(spec, audit_layers(a.layer), ctx, manifest=manifest, stamp=stamp)
+                       executor=None if tools else a.executor, steps=tuple(a.step), show_all=a.show_all, history=facts,
+                       tool_executor=a.executor if tools else None, mcp_servers=_operator_mcp)
+    rep = audit(spec, layers, ctx, manifest=manifest, stamp=stamp)
+    if tools:
+        return _tools(env, a, spec, rep)
     if view == "prompts":
-        import json
-
-        env.out.write(json.dumps({"schema_version": 1, "workflow": spec.name, "files": prompt_rows(spec, rep)},
+        env.out.write(json.dumps({"schema_version": 1, "workflow": spec.name, "files": prompt_rows(spec, rep, facts)},
                                  indent=2) + "\n")
         return 0
     env.out.write(render(rep, a.format))
     return rep.exit_code(a.fail_on)
+
+
+def _tools(env: Any, a: argparse.Namespace, spec: Any, rep: AuditReport) -> int:
+    """TSA-B8, TSA-B5: the matrix from the surface the audit built once, the history rules listed as skipped, and the
+    exit code of `--fail-on` over the tool findings only."""
+    c4 = [f for f in rep.findings if f.rule in BY_ID and BY_ID[f.rule].family == "C4"]
+    rows = matrix(rep.surface, c4) if rep.surface is not None else []
+    if a.step:
+        rows = [r for r in rows if r["unit"] in set(a.step)]
+    skipped = [s for s in rep.rules_skipped if s["rule"] in BY_ID and BY_ID[s["rule"]].layer == "history"]
+    extra = {"workflow": spec.name, "executor": a.executor, "history": bool(rep.surface and rep.surface.history),
+             "rules_skipped": skipped}
+    env.out.write(render_matrix(rows, "json" if a.format == "json" else "text", extra=extra))
+    rep.findings = c4
+    return rep.exit_code(a.fail_on)
+
+
+def _operator_mcp() -> set[str] | None:
+    """The MCP servers of the operator's own configuration (`~/.claude.json`); a project file is never read (TSA-B12)."""
+    try:
+        doc = json.loads((Path.home() / ".claude.json").read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return set()
+    except (OSError, ValueError):
+        return None
+    servers = doc.get("mcpServers") if isinstance(doc, dict) else None
+    return set(servers) if isinstance(servers, dict) else set()
+
+
+def _history(env: Any, spec: Any, a: argparse.Namespace) -> HistoryFacts | None:
+    """The facts of the workflow's runs in the window and version; none outside a state root (AUD-B11, AUD-B15)."""
+    from tempergraph.store.layout import NotInRepository, state_root_path
+
+    try:
+        root = state_root_path(env.cwd)
+    except NotInRepository:
+        return None
+    return read_history(root, spec.name, a.version, a.window, dt.date.today(), current=spec.version)
 
 
 def _workflow(env: Any, name: str) -> tuple[Any, Any, dict[str, Any] | None] | AuditReport | None:

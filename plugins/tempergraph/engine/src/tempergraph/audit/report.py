@@ -129,7 +129,8 @@ def order(findings: list[AuditFinding], unit_order: tuple[str, ...]) -> list[Aud
 
 # An owned finding sorts at its catalog row.
 _OWNED_AS = {"prompt-lint": "prompt-lint", "readiness": "judge-not-ready", "validate": "template-grammar",
-             "executor-compat": "executor-outside-tested-range"}
+             "executor-compat": "executor-outside-tested-range", "cost-lens": "cost-lens-rules",
+             "SIL": "engine-fault-open"}
 
 
 @dataclass(kw_only=True)
@@ -141,9 +142,11 @@ class AuditReport:
     layers_skipped: list[dict[str, Any]] = field(default_factory=list)
     rules_skipped: list[dict[str, Any]] = field(default_factory=list)
     findings: list[AuditFinding] = field(default_factory=list)
-    hot_spots: list[dict[str, Any]] = field(default_factory=list)  # history only (release 2)
+    hot_spots: list[dict[str, Any]] = field(default_factory=list)  # history only: one per unit with findings
     owned: list[dict[str, Any]] = field(default_factory=list)
     runs: int = 0
+    unreadable_runs: int = 0  # run logs left out as unreadable (AUD-B12, AUD-B15)
+    surface: Any = None  # the session surface the tool rules read, shared with `audit tools`; never serialized
     window_days: int = 30
     show_all: bool = False
 
@@ -172,7 +175,7 @@ class AuditReport:
         return {"schema_version": SCHEMA["audit_report"], "workflow": self.workflow, "version": self.version,
                 "engine_version": self.engine_version, "layers_run": self.layers_run,
                 "layers_skipped": self.layers_skipped, "rules_skipped": self.rules_skipped,
-                "window_days": self.window_days, "runs": self.runs,
+                "window_days": self.window_days, "runs": self.runs, "unreadable_runs": self.unreadable_runs,
                 "findings": [f.to_json() for f in self.visible()], "hot_spots": self.hot_spots,
                 "owned": self.owned, "summary": self.summary()}
 
@@ -180,7 +183,12 @@ class AuditReport:
         s = self.summary()
         lines = [f"audit {self.workflow} {self.version} (engine {self.engine_version})",
                  f"layers: {', '.join(self.layers_run) or 'none'}"
-                 + "".join(f"; {d['layer']} skipped: {d['reason']}" for d in self.layers_skipped), ""]
+                 + "".join(f"; {d['layer']} skipped: {d['reason']}" for d in self.layers_skipped),
+                 f"{self.runs} runs read, {self.unreadable_runs} runs unreadable (last {self.window_days} days)", ""]
+        for h in self.hot_spots:
+            lines.append(f"hot spot {h['unit']}: {h['findings']} findings, leading {h['leading_rule']}")
+        if self.hot_spots:
+            lines.append("")
         for f in self.visible():
             mark = " [ignored]" if f.ignored else ""
             lines.append(f"{f.rule}  {f.severity}/{f.confidence}  {f.unit or '-'}{mark}")
@@ -188,7 +196,7 @@ class AuditReport:
             if f.evidence:
                 lines.append("  evidence: " + ", ".join(f"{k}={v}" for k, v in f.evidence.items()))
             if f.remedy:
-                lines.append(f"  remedy: {f.remedy}")
+                lines.append(f"  remedy: {f.remedy}" + (" [widens]" if f.widening else ""))
             if f.location:
                 where = f.location.get("file", "")
                 if f.location.get("line"):
@@ -216,6 +224,8 @@ class AuditReport:
         for f in self.visible():
             res: dict[str, Any] = {"ruleId": f.rule, "level": SARIF_LEVEL.get(f.severity, "note"),
                                    "message": {"text": f.statement}}
+            if f.widening:
+                res["properties"] = {"widening": True}
             if f.location.get("file"):
                 phys: dict[str, Any] = {"artifactLocation": {"uri": f.location["file"]}}
                 if f.location.get("line"):

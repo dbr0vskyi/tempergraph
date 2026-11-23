@@ -431,3 +431,43 @@ def test_workspace_records(repo: Path) -> None:  # EVT-B10 to EVT-B16 `workspace
     assert ws[0]["mode"] == "worktree" and ws[0]["branch"] == "tg/demo/W-1" and ws[0]["path"]
     ledger = (state_root_path(repo) / "ledger.jsonl").read_text()
     assert ws[0]["path"] not in ledger  # the path stays in the local run log
+
+
+def _thread_values(repo: Path, task: str) -> dict[str, Any]:
+    from tempergraph.durability.checkpoint import observer_graph, open_readonly, snapshot
+    from tempergraph.run.outcome import with_outcome
+
+    with open_readonly(state_root_path(repo) / "checkpoints" / "demo.sqlite") as saver:
+        assert saver is not None
+        return dict(snapshot(observer_graph(with_outcome(two_step()), saver), f"demo/{task}").values)
+
+
+def test_a_worktree_that_appears_during_a_session_is_recorded_and_left(repo: Path, tmp_path: Path) -> None:
+    # WTR-AC6 (WTR-B26, WTR-B13): a `foreign` record, an attempt warning and a `foreign_worktrees` fact; nothing removed
+    import subprocess
+
+    made = tmp_path / "agent-x"
+
+    def subagent(req: Any) -> Any:
+        subprocess.run(["git", "worktree", "add", "-q", "-b", "agent-x", str(made), "HEAD"], cwd=req.workdir,
+                       check=True, capture_output=True)
+        return DRAFT
+
+    ex = standin("claude", steps=[subagent, REVIEW], judges=[judge(), judge()])
+    assert go(repo, ex, task="F-1").exit_code is ExitCode.FINISHED
+    foreign = [r for r in records(repo, "F-1") if r["kind"] == "workspace" and r["action"] == "foreign"]
+    assert len(foreign) == 1
+    assert foreign[0]["path"] == "agent-x" and foreign[0]["branch"] == "agent-x"  # relative to the repository's parent
+    assert foreign[0]["session_key"].startswith("draft") and foreign[0]["unit"] == "draft"
+    assert made.is_dir() and "agent-x" in subprocess.run(["git", "worktree", "list"], cwd=repo, capture_output=True,
+                                                         text=True).stdout  # never removed
+    values = _thread_values(repo, "F-1")
+    assert values["attempts"]["draft"]["warnings"] == ["foreign_worktree: agent-x"]
+    assert values["facts"]["draft"]["foreign_worktrees"] == ["agent-x"]  # the check and the judge can read it
+
+
+def test_no_foreign_record_when_no_worktree_appears(repo: Path) -> None:  # WTR-AC6 (WTR-B26)
+    ex = standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge()])
+    assert go(repo, ex, task="F-2").exit_code is ExitCode.FINISHED
+    assert [r for r in records(repo, "F-2") if r["kind"] == "workspace" and r["action"] == "foreign"] == []
+    assert "warnings" not in _thread_values(repo, "F-2")["attempts"]["draft"]

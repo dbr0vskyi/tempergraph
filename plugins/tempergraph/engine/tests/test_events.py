@@ -4,6 +4,7 @@ tool input summaries, the `events` verb and in-process observers."""
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 from pathlib import Path
@@ -274,7 +275,7 @@ def test_tool_inputs_only_in_journals_and_live_files(tmp_path: Path) -> None:
         assert CANARY not in text
 
 
-# -- in-process observers (EVT-B22, EVT-B23, EVT-B24, B5, AC-5) -----------------------------------------------------------------
+# -- in-process observers (EVT-B22, EVT-B23, EVT-B24, EVT-B5, EVT-AC5) -----------------------------------------------------------------
 
 
 class Recorder:
@@ -311,6 +312,7 @@ def _with_observers(monkeypatch: pytest.MonkeyPatch, observers_: list[Any]) -> l
 
 @pytest.mark.parametrize("which", ["record", "activity"])
 def test_a_failing_observer_leaves_the_run_unchanged(repo: Path, monkeypatch: pytest.MonkeyPatch, which: str) -> None:
+    # EVT-AC5 (EVT-B5)
     broken = Recorder("broken", fail_at=3) if which == "record" else Recorder("broken", fail_activity=True)
     good = Recorder("good")
     hubs = _with_observers(monkeypatch, [broken, good])
@@ -326,7 +328,7 @@ def test_a_failing_observer_leaves_the_run_unchanged(repo: Path, monkeypatch: py
         [r["seq"] for r in good.seen if r["kind"] != "engine_error"][:3])
 
 
-def test_a_full_queue_drops_and_counts() -> None:
+def test_a_full_queue_drops_and_counts() -> None:  # EVT-AC5 (EVT-B23: a queue of 1 000)
     gate = threading.Event()
 
     class Slow(Recorder):
@@ -341,9 +343,96 @@ def test_a_full_queue_drops_and_counts() -> None:
     assert stats["slow"]["dropped"] >= 49 and not stats["slow"]["disabled"]
 
 
-def test_register_observers_reports_missing_names() -> None:
+def test_register_observers_reports_missing_names() -> None:  # EVT-AC5
     found, missing = evmod.register_observers(names=("not-installed",))
     assert found == [] and missing == ["not-installed"]
+
+
+class Threaded(Recorder):
+    """Notes the name of the thread each call runs on."""
+
+    def __init__(self, name: str = "rec", fail_at: int | None = None) -> None:
+        super().__init__(name, fail_at=fail_at)
+        self.threads: set[str] = set()
+
+    def on_record(self, record: dict[str, Any]) -> None:
+        self.threads.add(threading.current_thread().name)
+        super().on_record(record)
+
+    def on_activity(self, session_key: str, line: dict[str, Any]) -> None:
+        self.threads.add(threading.current_thread().name)
+        super().on_activity(session_key, line)
+
+
+class FakeEntryPoint:
+    def __init__(self, name: str, obj: Any) -> None:
+        self.name = name
+        self.obj = obj
+
+    def load(self) -> Any:
+        return self.obj
+
+
+def _install(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, installed: dict[str, Any], named: list[str]) -> list[str]:
+    """Register fixture observers under the entry-point group and name some of them in the operator config."""
+    groups: list[str] = []
+
+    def fake(group: str) -> list[FakeEntryPoint]:
+        groups.append(group)
+        return [FakeEntryPoint(n, o) for n, o in installed.items()] if group == "tempergraph.observers" else []
+
+    monkeypatch.setattr(evmod, "entry_points", fake)
+    cfg = Path(os.environ["TEMPERGRAPH_HOME"]) / "config"
+    cfg.mkdir(parents=True, exist_ok=True)
+    (cfg / "settings.json").write_text(json.dumps({"schema_version": 1, "observe": {"observers": named}}))
+    return groups
+
+
+def _wait(cond: Any, timeout_s: float = 10.0) -> bool:
+    end = time.monotonic() + timeout_s
+    while time.monotonic() < end:
+        if cond():
+            return True
+        time.sleep(0.02)
+    return bool(cond())
+
+
+def test_observers_load_from_the_entry_point_group_and_see_every_line(repo: Path, tmp_path: Path,
+                                                                     monkeypatch: pytest.MonkeyPatch) -> None:
+    # EVT-AC5 (EVT-B23): loaded only from the group, only the named ones, each on its own thread
+    named, other = Threaded("named"), Threaded("other")
+    groups = _install(monkeypatch, tmp_path, {"named": named, "other": other}, ["named"])
+    assert go(repo, standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge()])).exit_code is ExitCode.FINISHED
+    assert set(groups) == {"tempergraph.observers"}
+    sessions = log_path(repo).parent / "sessions"
+    journal = sum(len(p.read_text().splitlines()) for p in sessions.glob("*/activity.jsonl"))
+    assert journal > 0
+    _wait(lambda: len(named.lines) == journal)
+    assert len(named.lines) == journal  # every activity line, after it was written
+    assert _wait(lambda: any(r["kind"] == "run_exit" for r in named.seen)), [r["kind"] for r in named.seen]
+    logged = records(log_path(repo))
+    first = next(r["seq"] for r in logged if r["kind"] == "run_started")
+    last = next(r["seq"] for r in logged if r["kind"] == "run_exit")
+    inside = [r["seq"] for r in logged if first <= r["seq"] <= last]  # what the segment's own writer wrote
+    assert len(inside) > 5
+    assert _wait(lambda: set(inside) <= {r["seq"] for r in named.seen})  # every record, after it was written
+    assert {r["seq"] for r in named.seen} <= {r["seq"] for r in logged}
+    assert other.seen == [] and other.lines == []  # not named: not loaded
+    assert named.threads and all(t == "observer-named" for t in named.threads)
+    assert threading.current_thread().name not in named.threads
+
+
+def test_a_raising_observer_is_contained_and_recorded_once(repo: Path, tmp_path: Path,
+                                                           monkeypatch: pytest.MonkeyPatch) -> None:
+    # EVT-AC5 (EVT-B5, EVT-B25): disabled for the segment, one engine_error of scope observer, the exit unchanged
+    broken, good = Threaded("broken", fail_at=3), Threaded("good")
+    _install(monkeypatch, tmp_path, {"broken": broken, "good": good}, ["broken", "good"])
+    out = go(repo, standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge()]))
+    assert out.exit_code is ExitCode.FINISHED
+    assert _wait(lambda: any(r["kind"] == "run_exit" for r in good.seen))
+    errors = [r for r in records(log_path(repo)) if r["kind"] == "engine_error" and r.get("scope") == "observer"]
+    assert len(errors) == 1 and errors[0]["observer"] == "broken"
+    assert len([r for r in broken.seen if r["kind"] != "engine_error"]) == 3  # nothing after the third
 
 
 # -- the events verb (EVT-B22, EVT-B23, EVT-B24, B3, AC-6, EVT-B25) --------------------------------------------------------------------

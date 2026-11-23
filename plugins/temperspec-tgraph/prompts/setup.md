@@ -19,6 +19,7 @@ Task id: {task_id}
 
 ## Limits
 
+- This step has no shell: read, search and list files with the file tools (read, grep, glob), never `ls`, `cat`, `wc` or `python -c`.
 - Write only what you have read in the code. A behaviour you did not see in the code or in a test is not written; a part you could not read in the time you have goes under Not covered.
 - Describe the present. Do not write behaviours the task asks for: later steps of this run do that.
 - Prefer few behaviours that matter to many that restate the code. No internal names.

@@ -11,4 +11,5 @@ Read the triage note, then the hand-off, then each spec that defines a behaviour
 - Judge meaning, not wording. Two sentences that say the same thing in different words agree.
 - Structure, ids, the reading list's files and the commit are checked before you and are given as check findings; take them as given.
 - Cite the gap row, the spec path and the behaviour id or a quote for every MET. Without evidence, grade PARTIAL.
+- An open question that the hand-off lists, or that a later note carries on, does not block planning: the discovery step ends blocked on one that does. It is neither a defect nor something out of your reach, so it changes no grade and you leave `gap` false for it; the pull request lists it for the owner. Set `gap` only when a file or fact you need to grade a criterion is out of reach.
 - Grade only the criteria listed.
