@@ -24,6 +24,12 @@ PLATFORMS = {"launchagent": ("darwin", lambda name: None), "systemd": ("linux", 
              "taskscheduler": ("win32", lambda name: None), "crontab": ("linux", lambda name: "/usr/bin/crontab" if name == "crontab" else None)}
 
 
+def golden_text(name: str) -> str:
+    """A golden file, without the line that names the criterion it proves (TCK-AC1)."""
+    lines = (GOLDEN / name).read_text(encoding="utf-8").splitlines(keepends=True)
+    return "".join(line for line in lines if "TCK-AC1" not in line)
+
+
 @pytest.fixture(autouse=True)
 def _env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(schedule_cli, "CLOCK", lambda: NOW)
@@ -41,7 +47,7 @@ def user(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 @pytest.mark.parametrize(("kind", "golden", "shim"), CASES)
 def test_tck_ac1_each_entry_equals_its_golden_file_and_holds_only_the_shim_and_the_verb(kind: str, golden: str, shim: str) -> None:
     text = triggers.render(kind, Path(shim))
-    assert text == (GOLDEN / golden).read_text(encoding="utf-8")
+    assert text == golden_text(golden)
     verb = "schedule tick" if kind == "crontab" else "schedule loop"
     assert shim in text and text.count("schedule") >= 1
     for banned in ("sh -c", "/bin/sh", "bash", "cmd /c", "Environment", "TEMPERGRAPH_", "$", "`", "&&", "|"):
@@ -58,7 +64,7 @@ def test_tck_ac1_install_writes_the_entry_for_the_platform_and_twice_leaves_one(
     first = triggers.install(home, platform=platform, user_home=user, which=which)
     assert first["kind"] == kind and first["written"] is True
     path = Path(first["path"])
-    wanted = (GOLDEN / golden).read_text(encoding="utf-8")
+    wanted = golden_text(golden)
     assert path.read_text(encoding="utf-8").replace(str(triggers.shim_for(home, platform)), shim) == wanted
     before = hash_tree(user) | hash_tree(home)
     again = triggers.install(home, platform=platform, user_home=user, which=which)

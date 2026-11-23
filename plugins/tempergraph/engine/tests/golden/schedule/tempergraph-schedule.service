@@ -1,3 +1,4 @@
+# TCK-AC1 golden file: the tests drop this line before they compare
 [Unit]
 Description=tempergraph schedule loop
 

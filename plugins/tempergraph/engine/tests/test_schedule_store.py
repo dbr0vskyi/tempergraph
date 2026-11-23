@@ -57,14 +57,14 @@ def test_sch_ac8_the_entry_holds_every_field_of_sch_b14() -> None:
     assert e["next_slot"] == "2026-11-23T08:00:00Z"  # derived: readers trust the fire log over it
 
 
-def test_tck_ac4_build_entry_keeps_a_given_digest_and_the_checked_executors() -> None:
+def test_tck_ac4_build_entry_keeps_a_given_digest_and_the_checked_executors() -> None:  # TCK-AC4
     digest = "ab" * 32
     checked = [{"executor": "claude", "kinds": ["api_key"], "result": "ok"}]
     e = entry(token_digest=digest, executors_checked=checked)
     assert e["token_digest"] == digest and e["executors_checked"] == checked
 
 
-def test_tck_ac4_the_token_file_is_beside_the_entry_and_owner_only() -> None:
+def test_tck_ac4_the_token_file_is_beside_the_entry_and_owner_only() -> None:  # TCK-AC4
     from tempergraph.schedule import token
 
     path = store.token_path("digest-1a2b")

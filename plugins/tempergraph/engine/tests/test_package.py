@@ -33,7 +33,7 @@ def writes_notes(req: Any) -> Any:
     return DRAFT
 
 
-def test_tck_ac1_the_session_start_hook_also_starts_the_loop_only_through_the_autostart_check() -> None:
+def test_tck_ac1_the_session_start_hook_also_starts_the_loop_only_through_the_autostart_check() -> None:  # TCK-AC1
     from .conftest import ENGINE_ROOT
 
     doc = json.loads((ENGINE_ROOT.parent / "hooks" / "hooks.json").read_text(encoding="utf-8"))
