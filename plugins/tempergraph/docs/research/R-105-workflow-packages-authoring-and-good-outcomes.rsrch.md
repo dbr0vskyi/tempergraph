@@ -10,6 +10,7 @@ and, a minute later:
 
 > The workflow plugin should also have specs in the same way as the engine. Going further we will improve the format and rules based on temperspec, which is not created yet.
 
+This note answers four questions: (1) what the current Claude Code plugin format allows a workflow package to be, and how its parts reach the four executors; (2) what public practice says about defining outcomes and criteria and finding verifications for them; (3) what an authoring path needs and what the design already decided; (4) which gaps remain and which document closes each. The work was done standalone, without questions to the owner; assumptions are recorded in the decision records [ADR-0105](../adr/0105-a-workflow-package-is-one-claude-plugin-with-a-python-part-and-a-docs-set.adr.md) to [ADR-0114](../adr/0114-judged-criteria-carry-a-scale-and-authoring-guides-until-criteria-are-clear.adr.md).
 
 ## Sources consulted
 

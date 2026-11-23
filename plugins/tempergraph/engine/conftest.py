@@ -1,7 +1,7 @@
 """The project's own pytest configuration: how many worker processes the suite runs on (TST-B1 to TST-B3).
 
 `python -m pytest` in this folder spreads its tests over one worker per processor, at most four (an earlier
-ran the suite on four workers, never `auto`). `-n 0` runs one process; any other `-n`, `--dist` or `--tx` the
+engine ran its suite on four workers, never `auto`). `-n 0` runs one process; any other `-n`, `--dist` or `--tx` the
 caller gives is left alone. When `pytest-xdist` is missing (or switched off with `-p no:xdist`) the suite runs in
 one process and says which package to install, so no option is ever unknown.
 """

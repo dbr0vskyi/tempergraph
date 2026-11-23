@@ -1,4 +1,4 @@
-# R-095 Scheduling runs: what the design and the reference have, how schedulers behave, and what unattended fires need
+# R-095 Scheduling runs: what the design has, how schedulers behave, and what unattended fires need
 
 ## Problem statement
 
@@ -29,7 +29,7 @@ The work was done standalone, without questions to the owner; assumptions are re
 
 ## Key findings
 
-### What the design and the reference already have
+### A model-free tick, and what the design already has
 
 | # | Finding | Confidence |
 |---|---|---|

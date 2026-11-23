@@ -2,8 +2,9 @@
 
 ## Problem statement
 
-The owner asked on 2026-11-20 which node (unit) types the engine has in this design against what the reference had, said the engine should support what LangGraph supports, and asked for higher-level nodes "like a council node etc". This note answers three questions:
+The owner asked on 2026-11-20 which node (unit) types the engine has in this design, said the engine should support what LangGraph supports, and asked for higher-level nodes "like a council node etc". This note answers three questions:
 
+1. Which unit kinds and flow primitives does this design have, and which shapes does it leave out?
 2. Which of LangGraph's current graph capabilities does the design cover, which are missing, and which does it leave out on purpose, and why?
 3. Which higher-level node kinds fit a verification-first engine that runs on four executors?
 
@@ -27,6 +28,7 @@ Council-specific sources (debate, voting, conformity) are in [R-061](R-061-counc
 
 ## Key findings
 
+### Unit kinds in this design
 
 | # | Finding | Confidence |
 |---|---|---|
@@ -59,6 +61,7 @@ LangGraph's latest documented release line is 1.2 (1.2.0 on 2026-05-12; the inte
 | L14 | Subgraph as a node; per-invocation, per-thread or stateless subgraph checkpoints (S8) | Sub-workflow under the parent's checkpointer, depth three | covered (per-invocation only, on purpose) | confirmed |
 | L15 | `RetryPolicy` re-running a node on exceptions, at-least-once (S6) | RETRY is a gate edge with a budget; infra failures follow BUD | excluded for model and judge nodes (a re-run node would re-spend a session and break C5); BUD keeps its own infra handling | confirmed |
 | L16 | `CachePolicy` on a node keyed by input (S4, summary only) | None | added for model-free script units only, per thread ([SCR](../specs/70-script-units-and-hybrid-steps.spec.md)); excluded for steps and judges | supported |
+| L17 | `defer=True`: run a node when nothing else is pending (S4, summary only) | Engine-owned AND-join, because a deferred node cannot tell a stopped branch from a finished one (S3) | excluded | confirmed |
 | L18 | Per-node `timeout` with run and idle limits, async nodes only (S6, 1.2) | Session `timeout_s` and `idle_s` enforced by the executor layer | covered (a mechanism LangGraph's timeout may implement, not a design change) | confirmed |
 | L19 | Node `error_handler` after retries, may return a `Command` to a fallback node (S6, 1.2) | `on_fail: retry\|stop`; `on_budget_spent: stop\|ask` | added: a declared fallback target ([FLX](../specs/74-flow-extensions.spec.md)) | confirmed |
 | L20 | Graceful drain between supersteps (`RunControl.request_drain`, 1.2) (S6) | Drain requested by the scheduling node (CMP-B5) and the `stop` verb ([RCT](../specs/32-run-control.spec.md)) | covered; 1.2's drain is a candidate mechanism | confirmed |

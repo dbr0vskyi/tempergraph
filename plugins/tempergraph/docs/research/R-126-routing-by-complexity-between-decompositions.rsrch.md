@@ -21,7 +21,7 @@ The engine already has the parts: a switch with a pure predicate and a default a
 
 Per-phase code cost 130% of one session on small plans, with all single-session code gates passing first time in the paired runs (S1). Later single-session samples were mixed: several missed the first code gate, and one long session timed out (S3). The two shapes trade cost for reliability, and the crossover depends on size.
 
-### F2 The reference decides by measures it can count, and fails safe `confirmed`
+### F2 A route decides by measures it can count, and fails safe `inferred`
 
 - The planned code-mode rule reads two counts from the expanded plan (phases, rows) and compares them with thresholds in a rules file, with a repository override (S3).
 - Triage writes a size class with a reason, but the route itself is tied by a **check** to a fact the check can verify (the gap list), "so the model cannot choose plan to save work" (S2).
@@ -79,6 +79,7 @@ What a release 2 design needs, on top of SWM and MAP:
 ## Conclusions
 
 1. The engine has the switch, shadow mode, overrides, re-arming and the map; complexity routing needs measures, a threshold rule as data, a failsafe, an arm contract and a route report on top of them.
+2. Predict from counted measures and fall back once from simple to detailed. Neither alone suits a mix where most tasks are complex but some are trivial.
 3. Complexity can be read before planning and after planning; both points use the same rules.
 4. A model's assessment of complexity counts only as a check fact.
 5. Decomposing is tried before a stronger model, after the effort ladder.

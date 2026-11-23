@@ -19,7 +19,7 @@ Read on 2026-11-19. Several flags carry minimum-version notes; the executor must
 
 | # | Finding | Confidence |
 |---|---|---|
-| F1 | `-p` / `--print` runs one non-interactive turn and exits; exit 0 on success, non-zero on failure. An invalid flag errors on stderr before the run starts; a failure inside the run (for example missing auth) is printed as the result. | confirmed (docs) |
+| F1 | `-p` / `--print` runs one non-interactive turn and exits; exit 0 on success, non-zero on failure. An invalid flag errors on stderr before the run starts; a failure inside the run (for example missing auth) is printed as the result. | confirmed |
 | F2 | The prompt may be piped on stdin (capped at 10 MB), and stdin alone, never argv, can carry every prompt. The CLI waits about 3 s for stdin data and then exits with an error. | supported (observed; docs show stdin as data, not the sole prompt) |
 | F3 | `--output-format` takes `text`, `json` or `stream-json` (newline-delimited events). `--input-format` takes `text` or `stream-json`. Every documented `stream-json` example passes `--verbose`. | confirmed |
 | F4 | The last `stream-json` line is a `result` event with the final text, cost, session id and permission denials (`permission_denials`). Denials also appear as `permission_denied` system events. Messages from subagents carry `parent_tool_use_id`. | confirmed |
@@ -34,7 +34,7 @@ Read on 2026-11-19. Several flags carry minimum-version notes; the executor must
 | F8 | Cost is reported per session (`total_cost_usd`, with a per-model breakdown). Both figures are client-side estimates. On `--resume` the reported cost is the whole conversation's total. | confirmed |
 | F9 | `--max-turns N` ends the session with an error at the limit. `--max-budget-usd` caps spend (subagents included) in print mode; enforcement needs a recent CLI. | confirmed |
 | F10 | `--model` accepts an alias (`sonnet`, `opus`, `haiku`, `fable`) or a full name; `--fallback-model` takes an ordered list; `--effort` takes `low`, `medium`, `high`, `xhigh`, `max` (availability depends on the model). | confirmed |
-| F11 | On a model gateway (Amazon Bedrock and similar) an alias must be bound to a deployment id per machine; an alias the gateway refuses fails inside the child, not at start. | supported |
+| F11 | On a model gateway (Amazon Bedrock and similar) an alias must be bound to a deployment id per machine; an alias the gateway refuses fails inside the child, not at start. | supported (earlier runs) |
 
 ### Tools, permissions and isolation
 
@@ -46,7 +46,7 @@ Read on 2026-11-19. Several flags carry minimum-version notes; the executor must
 | F15 | `--mcp-config` loads servers from files or JSON strings; `--strict-mcp-config` uses only those. Invalid entries are skipped and reported in `system/init`. | confirmed |
 | F16 | `--bare` skips discovery of hooks, skills, commands, subagents, plugins, MCP servers, memory and CLAUDE.md; it needs an API key or an `apiKeyHelper`, and is meant for scripted calls. `--settings` takes a file or JSON; `--setting-sources` selects which setting layers load. | supported (bare: docs; `--setting-sources`: flag listed, text not read) |
 | F17 | A tool registered by a user-level plugin can reach a judge despite a built-in tool list and a strict MCP config; the guard then voids a complete verdict. `--bare` would plausibly close this. | supported (observed failure; the `--bare` remedy is inferred) |
-| F18 | The CLI reports tool calls under their full names in the stream, including subagent calls, so an after-the-fact guard can compare names exactly. | supported |
+| F18 | The CLI reports tool calls under their full names in the stream, including subagent calls, so an after-the-fact guard can compare names exactly. | supported (earlier runs) |
 | F19 | Each shell call starts in the project directory only when a host switch is set (`CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR`); a `cd` before `git` is refused by the CLI's own guard regardless of rules. | supported (observed) |
 
 ### Sessions and lifetime
@@ -54,8 +54,8 @@ Read on 2026-11-19. Several flags carry minimum-version notes; the executor must
 | # | Finding | Confidence |
 |---|---|---|
 | F20 | Every run gets a session id; `--resume <id>` continues it. A resumed retry carries the whole conversation so far, so it costs more than a fresh session told the last report. | supported (session ids and resume: docs; the cost comparison is inferred) |
-| F21 | A stalled model request is re-sent by the CLI for about 52 minutes and then ends as a success-typed error whose text is exactly "Request timed out". | supported |
-| F22 | A child left running after its parent dies keeps spending and writing; the process tree must be tied to the parent (job object or process group). | supported |
+| F21 | A stalled model request is re-sent by the CLI for about 52 minutes and then ends as a success-typed error whose text is exactly "Request timed out". | supported (earlier runs) |
+| F22 | A child left running after its parent dies keeps spending and writing; the process tree must be tied to the parent (job object or process group). | supported (earlier runs) |
 
 ## Conclusions
 

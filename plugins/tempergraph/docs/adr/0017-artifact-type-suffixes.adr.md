@@ -13,6 +13,7 @@ The owner asked that SDD artifacts use type suffixes (`*.spec.md`, `*.adr.md`, `
 
 ## Decision
 
+We will name every artifact written for tempergraph `<name>.<type>.md`, with the types and folders in the [docs README](../README.md#file-naming): `.spec.md`, `.adr.md`, `.rsrch.md` in use, and `.plan.md`, `.task.md`, `.triage.md`, `.rule.md` reserved. Folder indexes stay `README.md`. temperspec's rule files will take this table as their path scopes.
 
 ## Options considered
 

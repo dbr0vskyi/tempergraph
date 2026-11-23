@@ -20,6 +20,7 @@ We will install every engine release into its own environment folder under `~/.t
 | Option | Pros | Cons |
 |---|---|---|
 | Side-by-side environments and an atomic pointer (chosen) | A failed install changes nothing; rollback is a switch; running processes keep their files; Windows locks never meet the installer; pins of [ADR-0056](0056-threads-move-to-the-new-engine-at-resume-unless-a-release-pins-them.adr.md) have somewhere to run | Disk for two or more environments (a few hundred MB each with the extras); one more folder to explain |
+| In-place upgrade of one environment | Simplest; least disk | Half-installed environments; Windows locks; a live run's imports can change under it; no rollback |
 | Refuse to update while any run is live | Keeps in-place safe | A paused thread or a long orchestration blocks every update for days; a person must drain runs across every repository |
 | Leave installation to a package manager (pip, uv tool, pipx) | Familiar; less engine code | One environment per tool, replaced in place; no pinning of old threads; the plugin channel ships a staged copy, not an index release |
 

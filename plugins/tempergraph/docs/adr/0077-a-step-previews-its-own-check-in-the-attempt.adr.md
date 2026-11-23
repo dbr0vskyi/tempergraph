@@ -22,7 +22,7 @@ We will let a step declare `self_check: true`. The engine then grants it one com
 | Preview command (chosen) | Same session, no resume, no judge; executor-neutral; the check is the gate's own code | Needs a command grant; a step may game the check (it already sees criteria texts, and the judge still runs) |
 | Resume the session with the failing findings | No tool needed | Measured dearer; executor-specific (no resume on two executors); a judge-free repair loop the engine must bound |
 | The workflow ships its own lint as a declared command | No engine work | A second copy of the check that drifts from the gate's |
-| Nothing | Simplest | The repeats the reference measured |
+| Nothing | Simplest | Every structural miss costs a whole attempt |
 
 ## Decision rationale
 

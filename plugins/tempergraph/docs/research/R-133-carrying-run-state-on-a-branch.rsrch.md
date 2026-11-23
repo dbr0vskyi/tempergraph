@@ -16,7 +16,7 @@ The questions: what of the state root a resume on another machine needs, what mu
 
 ## Key findings
 
-### F1 The reference planned exactly this, for CI `confirmed`
+### F1 A CI path needs the same carrying `inferred`
 
 A run in CI pauses on one runner and resumes on another, so a CI path saves a paused run's state on its branch, resumes it from there, and fails a required check while a branch still carries run state. It needs two engine changes: re-derive a worktree path recorded on another machine, and keep run state out of diff statistics.
 

@@ -2,6 +2,7 @@
 
 ## Problem statement
 
+Release 1 targets macOS and Linux ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md) S3). Release 2 lists Windows ([R-130](R-130-release-two-readiness-and-gaps.rsrch.md) G2), and the owner asked on 2026-11-20 for research on it. The questions: which Windows failure modes the engine must answer, what the Claude Code CLI needs there, what in tempergraph's design and code is POSIX-only today, and what each needs on Windows.
 
 ## Sources consulted
 
@@ -16,6 +17,7 @@
 
 ## Key findings
 
+### F1 Known Windows failure modes, and the rules that answer them `inferred`
 
 On Windows a session's process tree outlives the engine unless a job object ties it to the engine. A command line is capped near 32,000 characters. Appends from several processes to one file lose lines unless each append takes a short byte lock, and threads writing one log corrupt its lines unless each record is locked. A timeout that ends only the first process leaves its children holding its pipes, and a hard kill gives exit 1 with no output. CRLF checkouts break byte comparison of text files. A running program that loads a compiled library locks the file, so pip cannot replace it. A saturated host times attempts out. Each is answered by a rule tempergraph already has or must keep: job objects, prompt on stdin, locked appends, locked log records, whole-tree kills, digests instead of byte comparison, an updater that loads no compiled library.
 
@@ -46,6 +48,7 @@ Native Windows is supported from Windows 10 1809. With Git for Windows the Bash 
 
 ## Conclusions
 
+1. Windows support is a set of bounded changes, most of them answers to known failure modes (F1): job objects, a `.cmd` shim, ACLs, replace retries, digests over normalized newlines, a PowerShell speed probe, long-path checks and UTF-8 output.
 2. Native Windows is the target; WSL is Linux and needs nothing new.
 3. Three facts about the CLI on Windows need live probes before any judge runs there, because judge isolation rests on them.
 4. Until those probes pass, preflight on Windows should refuse judge sessions it cannot prove restricted, by OVR-B17.

@@ -27,6 +27,7 @@ We will add `tempergraph upgrade <workflow>` ([WUP](../specs/63-workflow-upgrade
 | Option | Pros | Cons |
 |---|---|---|
 | Transforms, then a gated built-in workflow (chosen) | Spends only where judgement is needed; every model edit is checked and independently judged; owner questions stay pauses; visible in status and cost | A built-in workflow to maintain and calibrate |
+| Keep detect-and-explain only | No spend; edits nothing | Not what the owner asked; a person makes every edit by hand |
 | One unstructured model session edits the package | Least engine work | Self-graded; no deterministic check per edit; drifts into unrelated edits, a measured failure mode (M8) |
 | Model edits everything, transforms unused | One path | Spends on renames a rule does exactly; less reproducible |
 

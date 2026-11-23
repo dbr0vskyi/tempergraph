@@ -23,7 +23,7 @@ temperspec needs nothing of its own to get a pipeline report: every one of its n
 | `ts-spec-sync` | judge | the changed specs and the specs they link to | Code and spec alignment |
 | `ts-accepted` | judge | the triage note's acceptance criteria, the diff, the test results and `ts-traced`'s findings as evidence | Task completion |
 
-**Plan completion** is one more line the package's check can add as a fact without a new criterion: the plan's row marks and status (plan format, [plan format note](plan-format-against-reference.rsrch.md)), counted as done, open and dropped rows. It is shown, not graded, since an open row is allowed when the plan says why.
+**Plan completion** is one more line the package's check can add as a fact without a new criterion: the plan's row marks and status (plan format, [plan format note](plan-format-review.rsrch.md)), counted as done, open and dropped rows. It is shown, not graded, since an open row is allowed when the plan says why.
 
 ## 3. The report a reviewer would see
 

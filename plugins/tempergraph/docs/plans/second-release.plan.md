@@ -36,7 +36,7 @@ task_id: second-release
 | Platforms | macOS, Linux; folders outside git. Native Windows is release 3 (owner, 2026-11-21) | [ADR-0127](../adr/0127-outside-git-the-state-root-is-found-by-walk-up-and-the-guard-hashes-files.adr.md), [ADR-0128](../adr/0128-windows-is-supported-natively-with-job-objects-and-probes-before-judges.adr.md) |
 | Ladders | Evidence-gated effort ladder; one model step, last resort; the release 1 model list retired by a transform | Owner: "I don't want to increase model or efforts on any failure" ([ADR-0121](../adr/0121-ladders-climb-only-on-trusted-substantive-evidence.adr.md)) |
 | Order | Switches, maps and ladders first, because CXR, UWF and PRO build on them | R-130 F1 |
-| Plan shape | Tracks and phases only; each track's expanded plan is written when its specs pass status (EC-2) | temperspec 3.6 |
+| Plan shape | Tracks and phases only; each track's expanded plan is written when its specs pass status (EC-2) | A track's rows are written only against specs that passed |
 
 **Status: Built; the owner's own live checks pending.** Tracks R2-T1 to R2-T9 are built and pass offline (engine `0.2.0`), and every live check a cloud container can run passed on 2026-11-22 ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F1); what each track left open is in its code report under `tasks/` and in the status column of [plans/README.md](README.md). The owner approved this plan on 2026-11-21 with a trim (§1.3): EC-1 is met. The build follows the plan, task-note and test-first rules of the delivery workflow's rule files; each phase has a plan under `plans/r2-*.plan.md` and a report under `tasks/`. Live checks stay pending on the owner's machine and are never faked.
 

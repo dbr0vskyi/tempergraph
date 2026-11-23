@@ -20,6 +20,7 @@ We will run each case of a reviewed case set on the current and the proposed ver
 | Option | Pros | Cons |
 |---|---|---|
 | Paired sign test on a fixed set (chosen) | Distribution-free; pairs cancel case difficulty; exact at small n; easy to explain in a pull request | Low power: only large effects show |
+| Compare means of unpaired recent runs | No case set needed | Measures issue mix |
 | Bootstrap intervals or Bayesian comparison | Uses magnitudes | Harder to read; still needs the same pairs; little gain at n ≤ 20 |
 | Judge-scored preference between A and B outputs | Cheap signal per pair | Judge biases (position, verbosity); grades an unmeasured judge |
 

@@ -103,4 +103,5 @@ Re-run on 2026-11-20 at the owner's request, over `main` with PR 15 (worktree mo
 
 | Question | Owner |
 |---|---|
+| Accept "proven on earlier runs and guard-backed" as a basis for `restricts_judge_tools` on `claude` until P-CC-2 and P-CC-6 are recorded, or wait for the probes (X6)? The plan waits for the probes; they are cheap. | Owner |
 | May each track's first phase move its specs to `ready-for-implementation` on the recorded defaults, or does the owner want to review each spec first? The plan assumes the former. | Owner |

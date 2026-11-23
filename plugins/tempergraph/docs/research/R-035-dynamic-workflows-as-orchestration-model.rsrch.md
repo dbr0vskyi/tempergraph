@@ -52,12 +52,12 @@ Read on 2026-11-19. Where the official page and a blog or article disagree, the 
 
 | # | Finding | Confidence |
 |---|---|---|
-| B1 | One orchestrating session over five days (92 h, 1,372 calls) cost about $130, and its 19 helper agents about $147, $135 of it for merges: roughly 15 to 18% on top of about $1.5K of run cost. | supported |
-| B2 | 270 notifications woke that session; 148 calls came after five idle minutes and re-wrote its 117K-token context into the cache, about 62% of its own cost. | supported |
-| B3 | Parallel runs took the same new ids and version bumps: 33 conflict operations and 28 hand version bumps. | supported |
-| B4 | With the person away, the orchestrating session answered all 16 pauses; 13 were verify-and-continue, 3 were real decisions about intent, and one plan was resumed with proceed after its judge failed to start. | supported |
-| B5 | The accepted batch design keeps **intent** in a versioned file and **truth** in the engine's status, with an append-only event file, and re-attaches to live runs through the lock probe. | supported |
-| B6 | Three live runs in worktrees looked alike in the monitor; a person matched thread ids to worktrees from memory. | supported |
+| B1 | One orchestrating session over five days (92 h, 1,372 calls) cost about $130, and its 19 helper agents about $147, $135 of it for merges: roughly 15 to 18% on top of about $1.5K of run cost. | supported (earlier runs, one session; only 12 of 30 runs fully priced) |
+| B2 | 270 notifications woke that session; 148 calls came after five idle minutes and re-wrote its 117K-token context into the cache, about 62% of its own cost. | supported (earlier runs) |
+| B3 | Parallel runs took the same new ids and version bumps: 33 conflict operations and 28 hand version bumps. | supported (earlier runs) |
+| B4 | With the person away, the orchestrating session answered all 16 pauses; 13 were verify-and-continue, 3 were real decisions about intent, and one plan was resumed with proceed after its judge failed to start. | supported (earlier runs) |
+| B5 | The accepted batch design keeps **intent** in a versioned file and **truth** in the engine's status, with an append-only event file, and re-attaches to live runs through the lock probe. | supported (earlier runs) |
+| B6 | Three live runs in worktrees looked alike in the monitor; a person matched thread ids to worktrees from memory. | supported (earlier runs) |
 
 ## Conclusions
 

@@ -19,6 +19,7 @@ We will add a planned capability to the specs when it is a contract, a record or
 
 | Option | Pros | Cons |
 |---|---|---|
+| Fixed rules: add contracts and records, defer what needs data (chosen) | Retrofits are avoided where they are costly; deferrals carry reasons | Some designed items wait |
 | Add everything planned | Complete | Specs would assert behaviour that rests on unrun probes and unmeasured judges, against the honesty rule |
 | Add nothing; keep the planned list as reference | Small specs | Records, verbs and fields get added after data already exists, a costly retrofit |
 

@@ -18,6 +18,7 @@ Status words: **covered** (in the design before this check), **added** (written 
 
 ### Judge reach, tool scope and security
 
+| Planned capability | Status | Where |
 |---|---|---|---|
 | Judges must not reach plugin-registered tools | DESIGNED | covered | [ECC](../specs/11-executor-claude-code.spec.md) `--bare` (P-CC-1), [EAS](../specs/21-executor-agent-sdk.spec.md) P-AS-1, [GRD](../specs/06-independence-guard.spec.md) guard; [EMA](../specs/20-executor-messages-api.spec.md) by construction |
 | A command resolver so gates work outside Python | BUILT | added | [WFM](../specs/02-workflow-model.spec.md) `command_resolver`, [CON-B4, CON-B5, CON-B6, CON-B7](../specs/01-contracts.spec.md) |
@@ -30,6 +31,7 @@ Status words: **covered** (in the design before this check), **added** (written 
 
 ### Live confirmation, unattended runs, run time
 
+| Planned capability | Status | Where |
 |---|---|---|---|
 | Run fake-only capabilities once on the real binary | BUILT, AWAITING LIVE CHECK | covered | Probe tables in [ECC](../specs/11-executor-claude-code.spec.md), [EAG](../specs/12-executor-antigravity.spec.md), [EAS](../specs/21-executor-agent-sdk.spec.md); readiness flags in the [docs README](../README.md) |
 | Open questions only the CLI and gateway settle | PLANNED | covered (subagent model P-CC-4, concurrency, flags); added (resume chains) | [BUD](../specs/08-budgets-and-failures.spec.md) |
@@ -51,6 +53,7 @@ Status words: **covered** (in the design before this check), **added** (written 
 
 ### Cost, judge reliability, self-improvement
 
+| Planned capability | Status | Where |
 |---|---|---|---|
 | Switch unit with overrides and a route record | PARTLY BUILT | covered (switch); added (override, record) | [CMP](../specs/03-compiler-and-flow.spec.md) |
 | Code mode from plan size; low-effort phase watch | DESIGNED | n/a (temperspec's own routing) | temperspec |
@@ -81,6 +84,7 @@ Status words: **covered** (in the design before this check), **added** (written 
 
 ### Tracking, run UX, hygiene, workflow-side
 
+| Planned capability | Status | Where |
 |---|---|---|---|
 | A read-only facts verb | DESIGNED | added | [CLI](../specs/17-engine-cli.spec.md) `facts` |
 | Run lifecycle hooks | DESIGNED | added | [CLI-B7, CLI-B8, CLI-B14](../specs/17-engine-cli.spec.md), [SEC](../specs/14-security.spec.md) |

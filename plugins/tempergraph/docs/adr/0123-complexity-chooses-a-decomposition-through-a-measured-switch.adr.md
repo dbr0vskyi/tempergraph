@@ -22,7 +22,7 @@ We will add a **complexity switch**: a measured switch whose predicate the engin
 | A plain switch with a hand-written predicate (SWM today) | Already designed | Each workflow reinvents measures, margins and failsafes; nothing reportable by zone |
 | **Measures plus a rules file, failsafe to detailed, one-way re-arm (chosen)** | Deterministic, reportable, movable by measured proposals | Thresholds are guesses until runs exist |
 | Always try simple first, decompose on failure (ADaPT style) | No prediction to get wrong | Most temperspec tasks are complex, so most runs pay one failed attempt |
-| A model step picks the shape | Reads nuance | The step can pick the cheap path for itself (temperspec 7.4) |
+| A model step picks the shape | Reads nuance | The step can pick the cheap path for itself |
 
 ## Decision rationale
 

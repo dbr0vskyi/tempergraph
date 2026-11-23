@@ -32,7 +32,7 @@ We will define the metadata in [VER](../specs/61-version-metadata.spec.md):
 
 ## Decision rationale
 
-| Criterion | Typed metadata | Baseline changelog | Prose notes | Code migrations only |
+| Criterion | Typed metadata | Untyped changelog | Prose notes | Code migrations only |
 |---|---|---|---|---|
 | Plan without a model | yes | yes | no | yes |
 | Tells transform from judgement from owner | yes | no | no | partly |

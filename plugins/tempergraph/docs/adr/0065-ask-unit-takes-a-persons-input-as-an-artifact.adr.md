@@ -9,7 +9,7 @@
 
 ## Context
 
-LangGraph's main human-in-the-loop use of `interrupt()` is to ask a person for input the graph then uses ([R-060](../research/R-060-node-types-against-langgraph.rsrch.md) L11). The design lets a person supply input only at the start (`ResolveResult.needs`) or decide at a pause. Delivery-pipeline workflows need mid-run input: answers to a discovery step's open questions, a choice of option, a value only a person knows. Today an author would wire a `wait` unit and an event value, which carries one value and no prompt.
+LangGraph's main human-in-the-loop use of `interrupt` is to ask a person for input the graph then uses ([R-060](../research/R-060-node-types-against-langgraph.rsrch.md) L11). The design lets a person supply input only at the start (`ResolveResult.needs`) or decide at a pause. Delivery-pipeline workflows need mid-run input: answers to a discovery step's open questions, a choice of option, a value only a person knows. Today an author would wire a `wait` unit and an event value, which carries one value and no prompt.
 
 ## Decision
 

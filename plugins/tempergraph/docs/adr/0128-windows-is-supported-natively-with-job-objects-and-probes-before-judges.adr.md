@@ -9,6 +9,7 @@
 
 ## Context
 
+Claude Code runs natively on Windows 10 1809+, using Git Bash when installed and PowerShell otherwise ([R-132](../research/R-132-running-on-windows.rsrch.md) F2). Windows needs its own process and file rules: job objects that end a whole process tree, a prompt on stdin, and locked appends. Release 1 has partial Windows code: `msvcrt` locks and `taskkill /T` on a hard stop (F3). The owner asked for Windows research on 2026-11-20.
 
 ## Decision
 

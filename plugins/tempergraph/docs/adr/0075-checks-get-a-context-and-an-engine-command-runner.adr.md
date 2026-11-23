@@ -9,7 +9,7 @@
 
 ## Context
 
-Every gate starts with a deterministic check, and the design leans on it: a FAIL costs no judge, and the judge reads the check's evidence rather than the step's claim. Yet what a check receives, what it may do and how it runs a command were never specified ([R-011](../research/R-011-design-gap-review.rsrch.md) U1). temperspec's code gate runs the plan's own verification commands under a time budget, kills hung process trees, treats a killed run as "not finished" rather than failed, reuses a result on an unchanged tree, records a commit the release gate later measures from, and names the criterion, place and change of each failure ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T24 to T31). Each of those was an observed failure or a measured cost in the reference.
+Every gate starts with a deterministic check, and the design leans on it: a FAIL costs no judge, and the judge reads the check's evidence rather than the step's claim. Yet what a check receives, what it may do and how it runs a command were never specified ([R-011](../research/R-011-design-gap-review.rsrch.md) U1). temperspec's code gate runs the plan's own verification commands under a time budget, kills hung process trees, treats a killed run as "not finished" rather than failed, reuses a result on an unchanged tree, records a commit the release gate later measures from, and names the criterion, place and change of each failure ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T24 to T31). Each of those guards against a failure or a cost that such a gate otherwise meets.
 
 ## Decision
 
@@ -20,7 +20,7 @@ We will give a check a typed **context** (workspace, main checkout, request, art
 | Option | Pros | Cons |
 |---|---|---|
 | Context plus engine runner, worker process (chosen) | One audited launch site; timeouts and kills the engine enforces; reuse and evidence the same for every workflow; findings feed the retry and the audit | A new launch site and a process per check |
-| Leave checks as free callables | No engine work | Every workflow re-solves process trees, pipes held open by children, path leaks in evidence; the gate and the plan check can disagree, as they did in the reference |
+| Leave checks as free callables | No engine work | Every workflow re-solves process trees, pipes held open by children, path leaks in evidence; the gate and the plan check can disagree |
 | Checks run only declared script units before the judge | Reuses SCR | A check needs results the script cannot judge (exit meaning, not-finished, facts); doubles the declarations |
 | Run checks in-process with a cooperative deadline | No process start | A check whose own code hangs cannot be stopped |
 

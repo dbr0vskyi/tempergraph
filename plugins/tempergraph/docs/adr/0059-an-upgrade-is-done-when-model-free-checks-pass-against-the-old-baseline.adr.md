@@ -20,7 +20,7 @@ We will take a baseline of the unchanged workflow under the running engine (vali
 | Option | Pros | Cons |
 |---|---|---|
 | Model-free checks against the own baseline (chosen) | Pre-existing problems do not block; new ones do; free and repeatable; reuses validate, audit, PRP classes and EVS | Does not prove behaviour unchanged |
-| The changelog's checks only (baseline stamp) | Simple | A model edit that adds findings or weakens a gate is stamped |
+| The changelog's checks only | Simple | A model edit that adds findings or weakens a gate is stamped |
 | Absolute checks (zero findings, all suites green) | Strict | Blocks every upgrade of a workflow that had findings before |
 | A paired trial always | Measures behaviour | Spends on every upgrade, even transform-only ones; needs a case set |
 

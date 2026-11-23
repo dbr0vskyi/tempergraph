@@ -65,6 +65,7 @@ From [05-judge-and-verdict.spec.md](../specs/05-judge-and-verdict.spec.md).
 From [06-independence-guard.spec.md](../specs/06-independence-guard.spec.md).
 
 - Absent beats denied: where an executor can, a write tool is not in the session at all. On `messages-api` the engine offers the tools, so absence is a fact of the request, tested by contract. Antigravity cannot remove tools by flag, so it sits on the rule and guard layers until probes confirm the absence layer (ADR-0010, ADR-0011).
+- The open edge of a judge calling a plugin-registered tool is closed on Claude Code by `--bare` once P-CC-1 passes; the guard remains the backstop and still voids such a verdict.
 - The guard does not depend on any executor's permission layer.
 
 ### F6 HUM Gate and human nodes `supported`
@@ -78,6 +79,7 @@ From [07-gate-and-human.spec.md](../specs/07-gate-and-human.spec.md).
 
 From [08-budgets-and-failures.spec.md](../specs/08-budgets-and-failures.spec.md).
 
+- Infra failures outside the retry budget, and never a pause: if a failed judge paused the gate, a person's proceed could pass a step no judge had seen.
 - The idle watchdog is executor-neutral because it reads normalized events (EXI); Antigravity has no turn cap, so the engine's limits are its only bounds (R-003).
 - Text is never classified, except the one exact-equality match each executor spec lists.
 - The run cost cap reads the same figure the run line shows, so an operator sees why a run drained.
@@ -166,6 +168,7 @@ From [16-self-improvement.spec.md](../specs/16-self-improvement.spec.md).
 
 From [18-lifecycle-and-evals.spec.md](../specs/18-lifecycle-and-evals.spec.md).
 
+- A cached plugin copy whose version did not move is never refreshed; a repository check fails a package that changed without a version bump.
 - Skills are evaluated with Claude Code's plugin eval; no harness for Antigravity skills is assumed.
 - Release 1 records `claude` 2.1.329 only in the executor compatibility table, from the model-free argument checks of the Claude Code executor spec. The package's stand-in run is `tempergraph.package.selftest`.
 - Judge scores arrived with JCL (plan T12); until a binding is `accepted` no gate grades `ready`, so a `stable` workflow is refused until its judges are accepted.
@@ -354,7 +357,6 @@ From [63-workflow-upgrade.spec.md](../specs/63-workflow-upgrade.spec.md).
 
 - Real breaks need the owner's answers (R-056 M10), so this design keeps those answers the owner's (owner items, protected paths, V5) and uses a model only where public practice shows it does most of the edits under deterministic validation (M3 to M5) (ADR-0058).
 - The model work is a tempergraph workflow, not a loose session, so it inherits the engine's own rails: an independent judge, a deterministic check first, budgets, pauses and records (UWF).
-- "Done" is relative to the baseline, because a workflow that already had findings must not be blocked by them and must not gain new ones (ADR-0059).
 - The shares by transform, model and person in every report are the measurement R-056's open question asks for.
 - Release history: release 1 built `upgrade --check` and `upgrade-check [--stamp]` only; phases 4 to 7 came in release 2 (ADR-0125, moved from release 3 by the owner on 2026-11-20). As built (R2-T6.3): `package/upgrade.py` holds phases 1 to 7 and `cli/upgrade.py` the verb.
 
@@ -444,6 +446,7 @@ From [76-step-values-and-template-keys.spec.md](../specs/76-step-values-and-temp
 
 From [77-map-unit.spec.md](../specs/77-map-unit.spec.md).
 
+- Per-item gates rather than one gate over all items, because a narrow judge per item is cheap and immediate, and one wide judgement belongs to the join.
 - A sequential map is not a bounded self-route nor a branch per item: a route cannot target its own unit, and a branch per item would need a worktree and a merge per item.
 - The list is read once per visit so a step cannot change the plan under the map mid-visit; changing it takes a trip back.
 - As built (R2-T1.2, sequential mode): items run through the unit's own four nodes, one at a time, with a `maps` state channel. As built (R3-T3.2, concurrent mode): the unit's own step node reads the list and sends up to `concurrency` items at a time to item nodes, each item keeping its attempt, judgement, feedback, counters, route and pause under its slot `<unit>.<item id>`; a writing map's items each run in their own worktree and are merged in list order, and the map's check runs once on the merged result.
@@ -654,6 +657,7 @@ From [96-run-state-on-a-branch.spec.md](../specs/96-run-state-on-a-branch.spec.m
 
 From [97-windows-support.spec.md](../specs/97-windows-support.spec.md).
 
+- Most rules answer known Windows failure modes (R-132 F1); the job object replaces release 1's `taskkill /T`, which cannot act when the engine dies first.
 - Refusing judges until the probes pass follows contract C15: a capability not shown is a refusal, never a silent downgrade.
 - The owner question "native Windows, or WSL only?" was settled as native, with WSL as Linux (ADR-0128). Windows moved from release 2 to release 3 (second-release plan I2-22, third-release plan I3-13).
 

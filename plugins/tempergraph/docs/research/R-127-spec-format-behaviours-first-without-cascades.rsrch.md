@@ -2,11 +2,12 @@
 
 ## Problem statement
 
-In the discussion of temperspec's principles (2026-11-21) the owner said a run's result is rejected when specs are not in sync with each other, when a spec is incomplete, or when the code is not aligned with the specs. On the format they added: "the behaviors should be main part of them, secondary is acceptance criteria for sure, other parts under a question", that documentation took 30% of spend in the reference, and that they had seen "only 2 specs been modified but other 10 were changed just to propagate change log or version". The cascade must be avoided.
+In the discussion of temperspec's principles (2026-11-21) the owner said a run's result is rejected when specs are not in sync with each other, when a spec is incomplete, or when the code is not aligned with the specs. On the format they added: "the behaviors should be main part of them, secondary is acceptance criteria for sure, other parts under a question", that documentation takes a large share of spend, and that a change to a few specs can edit many others only to propagate a change log or version. The cascade must be avoided.
 
 This note answers:
 
-1. What does the reference say about spec format, documentation cost and cascades, and what did it measure?
+1. What causes a spec cascade, and which rules remove it?
+2. How does this repository's own spec set, written under those rules, behave on cascade measures?
 3. What do public spec formats put first, and how do they keep a change local?
 4. What format and rules should temperspec's spec rule start from?
 
@@ -24,7 +25,7 @@ Research only. No spec, rule or code changes with this note. The proposal is inp
 
 ## Key findings
 
-### F1 The reference measured the cascade and names its causes `confirmed`
+### F1 A spec cascade comes from bookkeeping, and rules can remove it `inferred`
 
 | Measure (S1) | Value |
 |---|---|
@@ -35,7 +36,6 @@ Research only. No spec, rule or code changes with this note. The proposal is inp
 | Growth of the engine's own specs in 15 days | 153 KB to 2.7 MB, test names 18% of the bytes |
 | Documentation drift among review findings in one large session | 208 of 433; keeping docs in sync took 30% of that session's spend |
 
-Its fix, four of five slices built: no per-spec version, date or change log; ids scoped to the work item; a generated index; status derived from a generated proof matrix; links by id; a row says what the system does now. Still open in the reference: where proof lives once test names leave the spec, and whether a row keeps a maturity mark (S1 14 F).
 
 Note that the 30% is the cost of keeping documents in sync in one session, not the share of documentation in every run.
 
@@ -53,10 +53,11 @@ Note that the 30% is the cost of keeping documents in sync in one session, not t
 Reading:
 
 - **Behaviours are not the main part today.** Contract tables are more than half of the text; behaviours and acceptance criteria together are a fifth.
+- **The version and changelog cascade is gone** (about 6% bookkeeping lines), because the updating rule already bans those notes.
 - **A structural cascade remains.** Most commits touch several specs and more than half of the file edits are tiny. The causes visible in the history: the hand-kept spec index in the overview, the one contracts spec every shared type must go through (it sits at its size limit), the `adrs` and `status` header fields, references lines, and cross-links by section number.
 - Limits of the measurement: these commits are design work that added whole features, where touching several specs is partly real; the line classifier is a set of regular expressions; nothing here was re-run.
 
-A second cascade showed up during this work: **sequence numbers collide across parallel branches.** The note R-125 of this thread and another thread's note took the same number, and one was renumbered. The reference measured the same thing for decision records (20 to 35% of spec edits were a renumber at merge).
+A second cascade showed up during this work: **sequence numbers collide across parallel branches.** The note R-125 of this thread and another thread's note took the same number, and one was renumbered.
 
 ### F3 Public formats put behaviour first and keep everything else out of the spec `supported`
 
@@ -116,6 +117,7 @@ C7 is the one that turns the owner's concern into something a gate can hold: the
 | Specs are not in sync with each other | Every linked id resolves; no id or type defined twice; no open question in a spec the change relies on | No behaviour in the specs the change edited contradicts a behaviour in the specs they link. The judge reads that set, not the whole folder |
 | Code is not aligned with the specs | Every acceptance criterion of an edited spec is named by at least one test (the test carries the id); those tests pass in the gate's own run; the proof matrix is generated from this | The change does what each edited behaviour says, and nothing a spec forbids |
 
+The proof matrix answers F1's question of where proof lives: in the tests, which carry criterion ids, and the matrix is generated, never written.
 
 ### Direct edit or delta
 
@@ -131,7 +133,7 @@ Recommendation: start with direct edit and C7, because it needs only a check and
 
 ## Conclusions
 
-1. The reference measured the cascade (79 to 86% of edited spec files collateral) and fixed most of it by banning version notes, change logs and test lists in specs.
+1. Bookkeeping lines in specs (versions, change logs, test lists) cause a cascade, and banning them removes that part of it (F1).
 2. This repository's specs, written under those rules, have almost no bookkeeping lines but still fan out: 69% of spec commits touch more than one spec and 56% of file edits are four lines or fewer. The causes are structural: a hand-kept index, a central contracts file, header fields, back-links and links by section number.
 3. Behaviours are 15% of this repository's spec text and acceptance criteria 4.5%; contract tables are 56%. The owner's "behaviours first" is a real change of format, not a restatement.
 4. Public formats agree on behaviour statements with scenarios as the body, design and plan elsewhere, and no version or change log in the spec.

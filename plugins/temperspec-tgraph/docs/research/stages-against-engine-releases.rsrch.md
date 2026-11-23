@@ -77,4 +77,4 @@ None. The owner ruled on 2026-11-22: temperspec is used for the development of t
 
 ## 5. Sources
 
-The package's backlog (now GitHub issues), [next features](next-features.rsrch.md), [comparison](sdd-tools-comparison.rsrch.md) §10 and [plan format note](plan-format-against-reference.rsrch.md); the engine's specs ASK, MAP, FLX, LAD, CXR, CHK, OUT and BUD at `main` (`a278807`); the engine's R-140, ADR-0132, ADR-0133, SWF and third-release plan as proposed on 2026-11-22; R-135 and the package's pull-request report note as proposed on 2026-11-21.
+The package's backlog (now GitHub issues), [next features](next-features.rsrch.md), [comparison](sdd-tools-comparison.rsrch.md) §10 and [plan format note](plan-format-review.rsrch.md); the engine's specs ASK, MAP, FLX, LAD, CXR, CHK, OUT and BUD at `main` (`a278807`); the engine's R-140, ADR-0132, ADR-0133, SWF and third-release plan as proposed on 2026-11-22; R-135 and the package's pull-request report note as proposed on 2026-11-21.

@@ -51,6 +51,7 @@ On 2026-11-20 the owner asked for two commands: one that updates the engine, inc
 
 ### Choices against a simpler rule
 
+| # | Simpler rule | This design | Confidence |
 |---|---|---|---|
 | D1 | "No automatic rewrite, on purpose" : the engine checks, the person edits. | Deterministic transforms and a model draft the edits on a branch; a person still reviews and merges, and questions only the owner can answer stay pauses. The owner asked for it, and public practice measures a large share of migration edits done by a model under deterministic validation ([R-056](R-056-automated-and-model-assisted-migrations.rsrch.md) M5). | confirmed (owner's request), the gain `supported` |
 | D2 | The compatibility comparison "never refuses a run". | Kept: the engine range and the stamp only warn; a run refuses only when validation fails, which a tightening release causes by content. | confirmed |

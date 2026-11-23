@@ -2,8 +2,9 @@
 
 ## Problem statement
 
-The owner asked on 2026-11-20 to go through the temperspec reference and verify that the engine design holds everything a temperspec workflow will need. temperspec is the spec-driven delivery workflow (task → triage → discovery → plan → expand → phase × N → code → release → draft pull request) that will run on tempergraph as a workflow package. This note answers:
+The owner asked on 2026-11-20 to verify that the engine design holds everything a temperspec workflow will need. temperspec is the spec-driven delivery workflow (task → triage → discovery → plan → expand → phase × N → code → release → draft pull request) that will run on tempergraph as a workflow package. This note answers:
 
+1. What does temperspec require of the engine?
 2. For each need, where does the engine design (specs 00 to 74 on `main`) cover it, and what is missing or only partly covered?
 3. Which needs belong to temperspec itself, and which to the parallel thread on configuration overrides and reruns?
 

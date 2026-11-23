@@ -61,7 +61,7 @@ Since 2026-11-22 the engine's specs follow temperspec's [spec rule](../../temper
 
 ## Decision rules
 
-Taken from the temperspec reference (artifact 3.4):
+Taken from temperspec's decision-record rule:
 
 - One decision per record, in `adr/NNNN-short-title.adr.md`, numbered above the folder's highest.
 - Header: status (`proposed`, `accepted`, `rejected`, `deprecated`, `superseded`), date, authors, supersedes.
@@ -71,7 +71,7 @@ Taken from the temperspec reference (artifact 3.4):
 
 ## Research rules
 
-Taken from the temperspec reference (artifact 3.3):
+Taken from temperspec's research-note rule:
 
 - Sections: problem statement, **Sources consulted** (source, type, where), **Key findings** each with a confidence mark, **Conclusions** (assertions only), **Open questions**.
 - Confidence marks: `confirmed` (several sources), `supported` (one source), `inferred`, `uncertain`.

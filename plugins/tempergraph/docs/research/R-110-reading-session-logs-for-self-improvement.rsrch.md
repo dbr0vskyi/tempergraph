@@ -2,6 +2,7 @@
 
 ## Problem statement
 
+The self-improvement loop ([SIL](../specs/16-self-improvement.spec.md)) reads run-log records, the ledger and findings. It never reads what a session actually did: the local `raw.jsonl` and `activity.jsonl` of each step and judge session ([LOS-B7, LOS-B8, LOS-B9](../specs/33-local-observability-store.spec.md), [EVT-B17, EVT-B18, EVT-B7, EVT-B19](../specs/30-run-events.spec.md)). The owner asked in which cases reading those session logs would make self-improvement better, and proposed several conditional parts: for newly created or dev-mode workflows, read the sessions to check that prompts and agents work efficiently and as intended; in stable mode, read sessions only when signals call for it, fully or in part. This note collects the principles and observations that bear on reading sessions and why, what the current design already records, public practice, and an analysis of where reading helps, where it does not, and what it costs. The design it leads to is [SRV](../specs/44-session-review.spec.md) and [ADR-0116](../adr/0116-session-logs-are-read-model-free-first-and-by-a-model-only-on-a-plan.adr.md) to [ADR-0119](../adr/0119-review-observations-are-candidates-corroborated-before-they-file.adr.md).
 
 ## Sources consulted
 

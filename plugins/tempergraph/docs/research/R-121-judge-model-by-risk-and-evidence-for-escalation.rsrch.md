@@ -7,7 +7,7 @@ On 2026-11-20 the owner put "judges and ladders" into release 2, with one hard c
 1. **Judge model by risk.** The judge's model and effort chosen by risk is named as a later use of the switch's choice layer ([R-120](R-120-effort-ladders-and-one-step-model-escalation.rsrch.md) F1), with no design. What would choose it, from what signals, and how does it stay calibrated?
 2. **What counts as evidence.** R-120 says the effort ladder climbs on "a judge RETRY with an unmet blocker" or "a non-environmental check FAIL". For the owner's "not on any failure", each of those must be narrowed until a climb happens only when a stronger session is the likely fix and the signal that says so is itself trusted.
 
-This note answers both. It reads "judges" in the owner's message as the judge model by risk, the only judge item of the reference that had no design; judge calibration and labels are already built in release 1 ([JCL](../specs/50-judge-calibration.spec.md), [FBK](../specs/41-feedback-and-judge-reliability.spec.md)).
+This note answers both. It reads "judges" in the owner's message as the judge model by risk, the only judge item that had no design; judge calibration and labels are already built in release 1 ([JCL](../specs/50-judge-calibration.spec.md), [FBK](../specs/41-feedback-and-judge-reliability.spec.md)).
 
 ## Sources consulted
 
@@ -22,7 +22,7 @@ This note answers both. It reads "judges" in the owner's message as the judge mo
 
 ## Key findings
 
-### F1 The reference names judge-by-risk but never designs it `confirmed`
+### F1 Judge-by-risk is named but never designed `supported`
 
 - A judge model by risk is listed among later uses of the switch (S9). Per-arm options and judge options could reuse the same choice, record and override layer without a graph edge. Nothing says what risk is or how it is read.
 - temperspec has a fixed version of it: one judge (code) is on the stronger tier because of what it judges, and calibration may move a judge up when it passes known-bad work (S2). The trigger in both cases is the **kind of work** or a **measurement**, never the outcome of one attempt.
@@ -90,7 +90,7 @@ Narrowing R-120's two triggers with F3 and F4:
 
 ## Conclusions
 
-1. The reference has judge-by-risk as a named later use and fixed per-kind judge tiers; nothing chooses a judge from the outcome of one attempt.
+1. Judge-by-risk is a named later use and judge tiers are fixed per kind of work; nothing chooses a judge from the outcome of one attempt.
 2. A judge whose alias varies is several judges; each level must be calibrated on its own.
 3. A risk rule fits the engine as a pure gate function over check facts and the diff, raising only, faulting to the highest level, with a shadow mode.
 4. A climb is justified only by a parsed, trusted, substantive signal on an attempt that ended normally. A model escalation needs the same trusted judged blocker twice at the top effort rung.

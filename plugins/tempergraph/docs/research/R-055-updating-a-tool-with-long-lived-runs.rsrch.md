@@ -66,3 +66,4 @@ The uv and pipx pages were seen only as search results; nothing below rests on t
 | Question | Owner |
 |---|---|
 | Does `claude plugin update --json` report the old and new version in a form a skill can read? The design uses only the plugin's own manifest, read from disk. | Implementer (probe on the first release) |
+| Is a plugin-level minimum Claude Code version needed for the shell skills? None was found (U6); the skills decide from what the engine answers. | Owner |

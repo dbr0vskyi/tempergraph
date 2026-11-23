@@ -35,11 +35,11 @@ Each cause family is weighed on four axes: share of **spend**, share of **person
 |---|---|---|
 | F1.1 | Repeats (a step or judge running again) are **45% of spend**; by shape 51%, 48%, 44% and 34% across profiles. Half of repeat cost is a judge sending work back: 49% judge blocker, 16% a person, 12% back to an earlier step, 10% a failed check. | confirmed (earlier runs) |
 | F1.2 | Splitting an oversized step is the strongest lever measured: first-pass yield rose from 29% to **62%** when the plan was written in two passes; the plan gate passed first time in 14 of 15 runs against 5 of 52 before. Cheaper judges moved repeats less. | confirmed |
-| F1.3 | The expand step retried in 38 of the latest 40 runs; over 15 runs its judge cost at least $69.55, **79.4% of it repeats**. Reading sets failed three attempts in four recorded runs: missing line ranges, files the plan itself creates, a 58.6 KB file named whole. | supported (temperspec 3.7, 13) |
-| F1.4 | A criterion a person had already ruled on, or whose own fix said "no change needed", kept blocking: **six attempts and two human retries** on one gap. | supported (temperspec 13, 14 C) |
+| F1.3 | A step that expands a plan into reading sets retries on the shape of its own output: missing line ranges, files the plan itself creates, a large file named whole. Most of its judge's cost is then repeats. | inferred |
+| F1.4 | A criterion a person has already ruled on, or whose own fix says "no change needed", keeps blocking: every attempt and every human retry fails on the same gap. | inferred |
 | F1.5 | A request cut at 4,000 characters hid a criterion in its tail; the step failed **three times** on it. | supported (earlier runs) |
-| F1.6 | A check and a judge disagreed on a figure (CRLF line endings counted twice), so the judge **failed every attempt**. | supported (temperspec 13) |
-| F1.7 | Rule-like branching written as judge prose makes a verdict depend on how a long sentence is read. | supported (design reasoning, temperspec 14 C) |
+| F1.6 | When a check and a judge compute one figure differently (CRLF line endings counted twice, for example), the judge fails every attempt. | inferred |
+| F1.7 | Rule-like branching written as judge prose makes a verdict depend on how a long sentence is read. | inferred (design reasoning) |
 | F1.8 | Retry counts mix "improved after feedback" with "the machine failed": in one window 15 retries were judge-driven and all later passed, about 11 were infrastructure or verification. | supported (earlier runs) |
 
 **Detectable.** Statically: a step whose gate carries many blockers or whose step produces several large artifacts (F1.2), a blocker with `no_change_policy: retry` (F1.4), a blocker on an `unverified_system` (always UNVERIFIABLE), rule-like branching in a brief (already a WFM warning). From history only: which criterion leads the RETRY verdicts of a gate, first-pass yield per gate, RETRYs whose unmet blockers were all `no_change`, a rendered `⟨missing:…⟩` marker, and repeated identical check evidence.
@@ -67,7 +67,7 @@ Each cause family is weighed on four axes: share of **spend**, share of **person
 | F3.3 | A stalled request is re-sent for about **52 minutes**, then ends as a success-typed "Request timed out" at $2.5 to $10 and 48 to 81 turns; **19 of 122** plan steps stalled. The cause was one write of the whole plan, the largest response of a run (87.6 KB). | confirmed |
 | F3.4 | One global timeout fit nothing: a healthy step took 495 s against a 300 s rule; a judge was killed at 600 s after 47 tool calls; friction judges were cut at 180 s on 31 to 47 KB inputs; a judge timed out in 2 of 6 runs. | confirmed |
 | F3.5 | No step declares an idle limit, so the built watchdog is off; at a 7,200 s limit a hung session can hold a run for **3 × 7,200 s = 6 hours** before the timeout exit. | supported |
-| F3.6 | Timeouts are set "about the 90th percentile of the same work"; a few are reasoned, not measured. | supported (temperspec 13) |
+| F3.6 | A timeout fits best near the 90th percentile of the same work; one set by reasoning alone is a guess. | inferred |
 | F3.7 | Of 19 profiled timeouts, 12 spent more than half their time in Bash; one session's 41 git calls took 67 s each on a loaded host: slow, not hung. | supported |
 
 **Detectable.** Statically: a step or judge that relies on the engine default, an idle limit at or above its wall limit (does nothing), the worst-case hold time of a unit and of the whole order from `timeout_s × (retry_budget + 1)` plus infra tries. History: timeouts below the passing p90, attempts that end at their limit, tool share of timed-out attempts, request-timeout records and the largest response per step.
@@ -79,11 +79,11 @@ Each cause family is weighed on four axes: share of **spend**, share of **person
 | F4.1 | Of **190 refusals** on one machine (68 exits, two workflows): 43% shell used to read or search where file tools exist, 18% git after a directory change, 11% a path outside the worktree, 19% a real command the step needs, 9% an undeclared tool. **72% needed no new permission.** | supported (earlier runs) |
 | F4.2 | "Change directory, then run": **58 of 59** git calls from a subfolder were refused; git with an explicit directory 0 of 121. | confirmed |
 | F4.3 | **43 undeclared-tool cases** in 14 days (rate 0.75 per run): a task-stop tool in discovery and release; a shell in triage and expand, which do not declare one. | confirmed |
-| F4.4 | The first live run stalled about 300 s on an interactive permission prompt, then the tracker tool was not granted and triage escalated in a loop. | supported (temperspec 13) |
+| F4.4 | A headless run can stall on an interactive permission prompt, and a step denied a tool it needs (the issue tracker in triage, for example) escalates in a loop. | inferred |
 | F4.5 | A judge called a tool a user-level plugin registered (the run monitor's status tool) once; the guard voided a complete verdict and the run paused at **$24.37**. The call happened once in four judge passes. | supported |
 | F4.6 | A step declaring the newer tracker and wiki tool names got no judge view for them, so dependent criteria became UNVERIFIABLE and a person checked instead. | supported |
 | F4.7 | A command rule written into the tool-name flag silently removed the shell: sessions ran with no shell at all. | supported (engine-built arguments now) |
-| F4.8 | Skills and agents preloaded by bare name: a same-named skill of another installed plugin can load instead. | supported (temperspec 14 D) |
+| F4.8 | Skills and agents preloaded by bare name: a same-named skill of another installed plugin can load instead. | inferred |
 | F4.9 | Every loaded MCP server costs startup time and context and widens reach. | supported (earlier runs) |
 | F4.10 | The delivery workflow needed about ten releases to reach few refusals by writing the same lines into six prompts; other workflows repeat the cycle. | supported |
 
@@ -105,7 +105,7 @@ Each cause family is weighed on four axes: share of **spend**, share of **person
 |---|---|---|
 | F6.1 | Discovery and plan, with their judges, take **61%** of money; code 22%. | confirmed |
 | F6.2 | Judges are large: **39%** of a release-page run; one verify judge ran 95 to 96 turns at about $2.1 to $2.2 and timed out in 2 of 6 runs. | confirmed |
-| F6.3 | The code step's median peak context is 150 thousand tokens and **65%** of its cost is in turns above 200 thousand. | supported (temperspec 13) |
+| F6.3 | A long code session's cost concentrates in its late turns, when the context is largest. | inferred |
 | F6.4 | The small model found 5 of 19 known findings of a cross-file review and none of the 10 that need another file; the large one found 18 of 19 at about 5.6 times the cost. | confirmed |
 | F6.5 | Per-phase code cost 130% of one session on small plans; a long single session can time out. | supported |
 | F6.6 | The cost lens's eight model-free rules (repeat share, retries after a deterministic check, a recurring blocker, judge against step cost, an expensive model on a step whose judge never blocked it, an unpriced gate) exist and run after every N exits. | supported (earlier runs) |
@@ -118,7 +118,7 @@ Each cause family is weighed on four axes: share of **spend**, share of **person
 |---|---|---|
 | F7.1 | One bad field turned off every field: placeholders reached the model as literal text and nothing said so. | confirmed (now refused by validation) |
 | F7.2 | A review found references to a skill, an agent, a prompt file and two tool names that do not exist; skills of 695 to 2,037 lines with one table cell of 8,291 characters. | supported (earlier runs) |
-| F7.3 | A skill's text that says "ask the person" or "wait for review" stalls an unattended run. | supported (temperspec 13, design reasoning) |
+| F7.3 | A skill's text that says "ask the person" or "wait for review" stalls an unattended run. | inferred (design reasoning) |
 | F7.4 | A brief that tells the judge to accept what the step says about a system the judge cannot read cancels independence. | supported (design reasoning) |
 
 **Detectable.** Statically. The template grammar is validation's ([WFM](../specs/02-workflow-model.spec.md)); the text rules are prompt lint's ([LIF](../specs/18-lifecycle-and-evals.spec.md)). F7.2 to F7.4 are not yet in prompt lint's list.
@@ -162,3 +162,4 @@ An audit that prints every possible finding repeats N1. It must rank, show a def
 
 ## References
 
+[R-051](R-051-prior-art-for-workflow-audits.rsrch.md)

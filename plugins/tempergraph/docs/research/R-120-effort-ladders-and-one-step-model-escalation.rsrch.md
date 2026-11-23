@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The owner asked on 2026-11-20 what the reference says about switching models dynamically in different contexts. After reading the first findings, the owner narrowed the question: "We could have model ladder only for +1 level but we should have very strict and specific criteria per environment. Most likely I would implement effort ladder. We don't need implement it but rather research."
+The owner asked on 2026-11-20 about switching models dynamically in different contexts. After reading the first findings, the owner narrowed the question: "We could have model ladder only for +1 level but we should have very strict and specific criteria per environment. Most likely I would implement effort ladder. We don't need implement it but rather research."
 
 This note is read as four questions:
 
@@ -26,7 +26,7 @@ This is research only. No spec, decision record or code changes with this note. 
 
 ## Key findings
 
-### F1 The reference has fixed tiers, one retry ladder and no context router `confirmed`
+### F1 Tiers are fixed per step, with one retry ladder and no context router `confirmed`
 
 - Every temperspec step has a fixed tier chosen by how hard its work is. Triage, expand, the phases and the code join run on Sonnet. Discovery and the plan's design pass run on Opus. The release step runs on Haiku. Judges run on Sonnet, except the code judge, which runs on Opus so that code is judged by a stronger model than the one that wrote it (S5, 7 and 8).
 - The **model ladder** is the only switch inside a run. It holds up to eight aliases, and attempt n of the current budget uses the n-th alias, with the last one repeating. A person's retry, an automatic re-open or a trip back starts again at the first alias. An infra attempt or a cut-off one reruns the same alias. An operator pin overrides the ladder. The judge takes the ladder's last alias, so it is never weaker than the alias the step ends on (S6, S7).
@@ -34,11 +34,12 @@ This is research only. No spec, decision record or code changes with this note. 
 - A ladder wastes an attempt whenever the cheap rung fails, so its benefit has to be measured before it is relied on.
 - The planned items that choose by context are a switch whose arms carry their own model, effort and timeout; a model per mapped item, read from the item; and a judge's model chosen "by risk", named only as a later use (S2). None of them changes the model **because an attempt failed**.
 
-### F2 The reference has no effort ladder, but it has measured evidence on effort `confirmed`
+### F2 Effort is one value per scope, with no ladder `supported`
 
 - Effort is a session option, resolved in the order models are. An effort the executor cannot apply is a warning, not a refusal (S1).
 - "Effort and turn count move cost more than the model does", from one runaway attempt that cost about $24 (S1, `MEASURED`).
 - temperspec runs its phase step on Sonnet at **low** effort (`PARTLY BUILT`). The early quality watch found that phase-by-phase code with low-effort phases passed the first code gate in 0 of 3 runs, confounded by defects in the plans. The planned remedy is to report first-try pass rates by arm and to revert the low-effort default if it stays below the others after five or more samples (S2, S5 14 b).
+- Nothing in the design changes effort between attempts (F3).
 
 ### F3 What this design and the code have today `confirmed`
 
@@ -133,7 +134,7 @@ If "environment" means the binding environment instead (see the problem statemen
 
 ## Conclusions
 
-1. The reference has fixed tiers per step, one retry ladder that climbs on any counted retry, and planned context choices (arms, items, judge by risk). It has no effort ladder and no cause-gated escalation.
+1. The design has fixed tiers per step, one retry ladder that climbs on any counted retry, and context choices (arms, items, judge by risk). It has no effort ladder and no cause-gated escalation.
 2. Release 1 already builds the model ladder, a single effort per scope, the overload fallback and calibrated judge bindings that include effort.
 3. An effort ladder fits the engine with the fewest new rules. Its strictness comes from the existing cause table: it climbs on a judge blocker or a non-environmental check failure, and holds the rung on timeouts, stalls, caps, infra and tool access.
 4. An effort ladder never reaches a judge, starts from an explicit level, checks every rung at preflight, records its rung, and needs `xhigh` added to the effort enum.

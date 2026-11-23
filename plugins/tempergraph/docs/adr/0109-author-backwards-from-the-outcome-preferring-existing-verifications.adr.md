@@ -20,6 +20,7 @@ We will run one interview after intake, whatever the entry path: final outcome f
 | Option | Pros | Cons |
 |---|---|---|
 | Outcome first, backwards, fixed search order (chosen) | Steps exist because an outcome needs them; existing verifications are reused; gaps are explicit | The person answers outcome questions before seeing steps |
+| Process first: the process, then steps, then criteria per step | Familiar to people with a runbook | Criteria fitted to steps; no run-level bar; nothing for the chat path |
 | Generate the workflow from a description, then ask for criteria | Fast first draft | Criteria rationalize what was generated |
 
 ## Decision rationale

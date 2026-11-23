@@ -27,7 +27,7 @@ We will write a self-contained design set under `plugins/tempergraph/docs/` (spe
 
 | Criterion | A | B | C |
 |---|---|---|---|
-| Uses the reference as asked | yes | partly | — |
+| Covers the README's intended capabilities | yes | partly | — |
 | Meets the two-executor requirement with evidence | yes | weakly | — |
 | Risk of re-learning known failures | low | high | — |
 | Can start now | yes | yes | no |

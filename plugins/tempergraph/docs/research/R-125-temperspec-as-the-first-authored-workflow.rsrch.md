@@ -8,7 +8,7 @@ The last sentence is read as: temperspec is produced by tempergraph's own author
 
 This note answers:
 
-1. What is temperspec's pipeline in the reference, in the terms the engine uses?
+1. What is temperspec's pipeline, in the terms the engine uses?
 2. How does each part map onto what release 1 has on `main` (code, not only specs)?
 3. What does not fit release 1, and does a useful first version fit without engine work?
 4. What good outcome should it be authored against, and who verifies each criterion?
@@ -32,7 +32,7 @@ This is research for a discussion. Nothing is scaffolded and no spec, decision r
 
 ## Key findings
 
-### F1 The pipeline in the reference `confirmed`
+### F1 temperspec's pipeline `confirmed`
 
 | Step | Tier | Produces | Check (model-free) | Judge | When spent | Back to |
 |---|---|---|---|---|---|---|
@@ -45,17 +45,19 @@ This is research for a discussion. Nothing is scaffolded and no spec, decision r
 | release (skipped when no release track) | Haiku | Version bumps, changelog, status marks | Release rows marked, commit past the code gate's, release commands | Sonnet, 3 blockers | ask | code |
 | final stage | no model | Pushed branch, draft pull request | — | — | never raises | — |
 
-Around the steps the reference ships **43 judged criteria**, **48 labelled calibration cases**, **3 agents**, **17 skills** and **6 rule files plus a machine-readable spec rules file** (S1 §4 to §6, §8). The rule files are where the method's artifact formats live, one home per artifact: the plan rule, spec rule, decision rule, documentation rule, workflow orientation and the story template. The owner's naming rule (`*.spec.md`, `*.adr.md`, `*.plan.md`, `*.rsrch.md`, [ADR-0017](../adr/0017-artifact-type-suffixes.adr.md)) belongs in those rules once temperspec owns them ([ADR-0113](../adr/0113-the-workflow-docs-set-is-provisional-until-temperspec-owns-it.adr.md)).
+Around the steps the method defines **43 judged criteria**, **48 labelled calibration cases**, **3 agents**, **17 skills** and **6 rule files plus a machine-readable spec rules file**. The rule files are where the method's artifact formats live, one home per artifact: the plan rule, spec rule, decision rule, documentation rule, workflow orientation and the story template. The owner's naming rule (`*.spec.md`, `*.adr.md`, `*.plan.md`, `*.rsrch.md`, [ADR-0017](../adr/0017-artifact-type-suffixes.adr.md)) belongs in those rules once temperspec owns them ([ADR-0113](../adr/0113-the-workflow-docs-set-is-provisional-until-temperspec-owns-it.adr.md)).
 
 A person is asked only when a budget is spent on plan, expand, phase, code or release, when a step ends blocked, when every blocker needs no change or a person's ruling, or on an environment mark. An approval pause after a chosen step is opt-in (S1 §7.5, §11).
 
-### F2 The reference describes temperspec; it does not contain it `confirmed`
+### F2 The method fixes temperspec's structure, not its text `inferred`
 
 The method fixes every artifact's structure, each gate's check list, criteria **counts** and themes, and the rules each rule file enforces. It does **not** fix the prompt texts, the 43 criteria's wording, the 48 calibration cases, the rule files or the skills' text. Those have to be written.
 
 Consequences:
 
 - The authoring entry path is `sources`, not `solution` ([AUT-B13](../specs/89-workflow-authoring.spec.md)): the inventory finds checklists and rules, not a runnable thing.
+- The nearest thing to a working rule set is this repository's own docs set. [docs/README.md](../README.md) already states file naming, spec and decision-record form, and the plans follow the method's plan shape (Section 0, requirements, tracks). It is the best source for intake.
+- Criteria wording is the owner's call during the interview. The method's themes are candidates, not confirmed criteria; the authoring skill never invents a rubric the person did not confirm ([AUT-B16, AUT-B17, AUT-B18](../specs/89-workflow-authoring.spec.md)).
 
 ### F3 R-075's rows against the code and the release boundary `confirmed` (code read, not run)
 
@@ -73,23 +75,25 @@ R-075 found 17 gap rows and closed them in specs 75 to 79 and ADR-0075 to 0079. 
 | Sequential map over plan phases (T43, T44, T50) | MAP | **No**, release 2 (X2-15) | `api.Map` is refused with `not_in_release` |
 | Code-mode router: shadow mode, arm overrides (T46) | SWM | **No**, release 2 (X2-16) | Only a plain switch with `--arm` |
 | A step previews its own check (T38) | ADR-0077 | **No**, release 2 (X2-18) | `self_check` is refused |
+| Judge reads the tracker through a remote server (T37) | GRD, ECC | **No**, release 2 (X2-20) | `judge_mcp = false`; the judge marks the quote unverifiable, which is also the method's default |
 
 Everything R-075 marked covered that temperspec's line needs is in the release 1 feature list: steps, routes from a step, back targets with loop budgets, approval, budgets by cause, the independent judge, worktree per run, effort per step, model aliases (`small`, `medium`, `large` bind to Haiku, Sonnet, Opus on `claude`), package skills on step sessions through `--plugin-dir`.
 
 ### F4 An upstream claim pauses for a person; it does not send the run back `confirmed` (code read)
 
-In the reference a step's upstream claim ("the plan conflicts with the tooling") sends the run back by itself, once per edge (S1 §7.6). In the code:
+In the method a step's upstream claim ("the plan conflicts with the tooling") sends the run back by itself, once per edge. In the code:
 
 - `render/output.py` accepts `UPSTREAM <unit>:` for any unit in the gate's `back_targets`. It does not check that the target ran or was route-skipped, so it is more permissive than [PRM-B11](../specs/04-prompt-rendering.spec.md).
 - `run/nodes.py` turns an accepted claim into `escalate = "upstream"`, and `run/gate.py` sends every escalation cause to a person. No judge confirms the claim and no automatic trip back follows.
 - A **judge's** attribution (`back_to`) does route back automatically within the loop budget (`run/gate.py`).
 
-So trips back driven by the judge work as in the reference; trips back driven by a step's own claim cost one pause, where the person picks `back`. That is safe and usable for a first version, but it is a difference from the reference and from what [HUM-B7 to HUM-B11](../specs/07-gate-and-human.spec.md) implies ("an upstream claim the judge could not confirm" escalates). It should be either built or recorded as release 1 behaviour in the spec. This is a small engine item, not a blocker.
+So trips back driven by the judge work as in the method; trips back driven by a step's own claim cost one pause, where the person picks `back`. That is safe and usable for a first version, but it is a difference from the method and from what [HUM-B7 to HUM-B11](../specs/07-gate-and-human.spec.md) implies ("an upstream claim the judge could not confirm" escalates). It should be either built or recorded as release 1 behaviour in the spec. This is a small engine item, not a blocker.
 
 **Since fixed (2026-11-21, on the owner's ruling to reduce pauses):** a claim is now judged on its own against one criterion; confirmed goes back, refuted retries the step, undecided asks a person ([JDG-B9](../specs/05-judge-and-verdict.spec.md)).
 
-### F5 The outcome gate adds a grader the reference does not have `confirmed`
+### F5 The outcome gate adds a grader the method does not have `confirmed`
 
+Every authored workflow gets a final `outcome` unit before the finalizer, judged by default on the strongest model any step judge uses ([OUT-B15, OUT-B16, OUT-B17](../specs/90-run-outcome.spec.md)). For temperspec that is a second Opus read of the change, right after the Opus code judge. The method's rule is that no criterion is judged twice. The outcome file therefore has to split the work: final criteria are mostly `check`, and the one judged final criterion is taken out of the code gate rather than repeated in it (see the proposed outcome).
 
 ### F6 What needs a live `claude` `confirmed`
 
@@ -108,22 +112,23 @@ The interview itself is led by the `tempergraph:author` skill in a Claude Code s
 
 ### A first version that fits release 1
 
-The reference already has the mode that fits: the **single-session code mode**, which "leaves the phase fork out and runs the code step once for the whole plan" (S1 §11). On small plans it was also the cheaper mode: per-phase code cost 111 to 149% of one session (S1 §0, §7.3).
+The method already has the mode that fits: the **single-session code mode**, which leaves the phase fork out and runs the code step once for the whole plan. On small plans it is also the cheaper mode: one session reads the plan and the code once, where per-phase code reads them again in every phase.
 
-| Part of the reference | First version on release 1 | Loses |
+| Part of the method | First version on release 1 | Loses |
 |---|---|---|
-| triage, discovery, plan, expand, their gates and routes | As in the reference | Nothing |
-| phase × N and its narrow judge | Left out; `code` builds the whole plan in one session | A failed phase reruns the whole code step; large plans (the reference saw 150k-token sessions) cost more. The phase gate's two criteria move into the code gate |
-| code gate running the plan's commands | As in the reference, through `ctx.resolve` and `ctx.run` with reuse | Nothing |
-| release step and route | As in the reference, or deferred (owner's choice, Q4) | — |
+| triage, discovery, plan, expand, their gates and routes | As in the method | Nothing |
+| phase × N and its narrow judge | Left out; `code` builds the whole plan in one session | A failed phase reruns the whole code step; large plans cost more. The phase gate's two criteria move into the code gate |
+| code gate running the plan's commands | As in the method, through `ctx.resolve` and `ctx.run` with reuse | Nothing |
+| release step and route | As in the method, or deferred (owner's choice, Q4) | — |
 | final stage | A finalizer: push, open or reuse a draft pull request, never raise | Nothing; tested against a local bare remote until a live run |
-| Expand previewing its own check | Not available; a failed expand check costs a new attempt | The saving the reference only planned |
+| Expand previewing its own check | Not available; a failed expand check costs a new attempt | The saving a preview would bring |
 | Code-mode router | Not available and not needed without the map | Nothing yet |
+| Triage judge reading the tracker | Unverifiable path, as the method's default | Nothing against the method's default |
 | Upstream claims | One pause per claim (F4) | An automatic trip back |
 | 17 skills and 3 agents | Only the skills a step declares as a tool (codebase discovery, spec authoring, decision records, test fixing) and the bootstrap | The interactive twins; they add nothing to a headless run |
 | 48 calibration cases | The seeds `author verify` requires: at least one met and one unmet or partial per judged criterion | Calibration depth; grows from real runs and labels |
 
-**Conclusion: a useful first temperspec fits inside release 1 with no engine work first.** The sequential map is the only large piece missing, and the reference itself measured that its saving is unconfirmed on small plans. Release 2's map then adds per-phase code as a change to an existing, measured workflow, which is what the self-improvement loop is for.
+**Conclusion: a useful first temperspec fits inside release 1 with no engine work first.** The sequential map is the only large piece missing, and its saving on small plans is unconfirmed. Release 2's map then adds per-phase code as a change to an existing, measured workflow, which is what the self-improvement loop is for.
 
 ### Proposed good outcome (draft for the interview, not confirmed)
 
@@ -157,9 +162,11 @@ Trust at the start: every judged criterion is `uncalibrated` until its seeds are
 
 ### Models and effort
 
+The method's tiers map directly: triage and expand `medium`, discovery and plan `large`, release `small`, judges `medium` except the code judge `large`. Release 1 has one effort per step and a model ladder on retries; the effort ladder and the one-step escalation of R-120 are research only and unmeasured on this engine (R-120 conclusion 7). Proposal: start with the method's fixed tiers and no ladder, so the first runs give a clean baseline that R-120's ideas can later be trialled against.
 
 ### One workflow or several
 
+Release 1 has no sub-workflows (X3-7) and no orchestrator (X3-1), so "several" would mean separate workflows a person chains by hand. That breaks the two things the method's value rests on: trips back across steps, which cannot cross a workflow boundary, and files handing over inside one run. **Recommendation: one workflow, `temperspec`, in one package.** Repository setup (vendoring the rule files) stays a skill in the same package. A split into composed workflows is worth revisiting when sub-workflows exist.
 
 ### How the authoring path would run
 
@@ -174,11 +181,12 @@ Risks to name early: the content volume (seven prompts, seven judge briefs, abou
 
 ## Conclusions
 
-1. temperspec in the reference is seven gated steps, two skip routes, a per-phase map with a join, five once-only trips back and a model-free publishing stage, backed by 43 criteria, rule files and skills. The reference describes these; their text must be written.
+1. temperspec is seven gated steps, two skip routes, a per-phase map with a join, five once-only trips back and a model-free publishing stage, backed by 43 criteria, rule files and skills. The method fixes their structure; their text must be written.
 2. Release 1 on `main` covers the whole line except the sequential map, measured switches, the in-attempt check preview and tracker access for judges, all release 2.
+3. A first version fits release 1 with no engine work, by using the method's own single-session code mode.
 4. One engine difference surfaced: a step's upstream claim pauses for a person instead of sending the run back (F4). Decide whether to build it or record it.
 5. The outcome gate would judge the change twice unless the final judged criterion is moved out of the code gate (F5).
-6. Recommended shape: one workflow in `temperspec-tgraph`, authored from `sources`, fixed model tiers as in the reference.
+6. Recommended shape: one workflow in `temperspec-tgraph`, authored from `sources`, fixed model tiers as in the method.
 7. Authoring up to and including `author verify` rungs 1 to 7 is model-free and can proceed now; judge seeds, the trial and any real run wait for the owner's machine and are never faked.
 
 ## Open questions
@@ -190,7 +198,7 @@ Risks to name early: the content volume (seven prompts, seven judge briefs, abou
 | Q3 | Which repository is the first target: this one (its docs already follow the method), or another? This also sets what the rule files are derived from and where the loop files issues | Owner |
 | Q4 | Is the release step in the first version, or deferred? | Owner |
 | Q5 | Are the rule files written from this repository's docs README and the method's structure, or does the owner have rule files and prompts to bring in as sources? | Owner |
-| Q6 | Model access: the Claude subscription sign-in, or a cloud provider as in the reference (Amazon Bedrock)? | Owner |
+| Q6 | Model access: the Claude subscription sign-in, or a cloud provider such as Amazon Bedrock? | Owner |
 | Q7 | Is the work tracker part of the first version (a tracker key as a start form), or task files and plain requests only? | Owner |
 | Q8 | Should the upstream-claim trip back (F4) be built in the engine before the first trial, or recorded as release 1 behaviour? | Owner |
 | Q9 | Should the approval pause after the code gate be on by default while the workflow is in `dev`? | Owner |

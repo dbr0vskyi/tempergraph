@@ -18,6 +18,7 @@
 
 | # | Gap | Evidence | Mark | Closed by |
 |---|---|---|---|---|
+| G1 | The loop is open after filing: no candidate change, no measurement against the same work. A drafted remedy is prose. | SIL-B12 to SIL-B16: a person decides every change, and the loop opens no pull request | `confirmed` | [PRP](../specs/40-improvement-proposals.spec.md) |
 | G2 | No fixed case set for comparing workflow versions. LIF's `evals replay` re-runs judges only; a set of whole past runs to replay is not in the design. | LIF-B7 to LIF-B16; figures per version move with the mix of work each version ran on | `confirmed` | [PRP](../specs/40-improvement-proposals.spec.md) trial over a case set |
 | G3 | Human ground truth is scattered (approval answers, pull-request state, re-runs, feedback, audit disagreements) and read ad hoc. Judge reliability is never computed against it, so the quality lens is deferred with no path out. | SIL-B10 quality row; JDG-B7 records agreement only | `confirmed` | [FBK](../specs/41-feedback-and-judge-reliability.spec.md) |
 | G4 | Nothing stops a fix from weakening the gate that found the fault (drop a criterion, lower a severity, widen a check's pass). This is the gaming failure of R-030 F5. | A person check written as advice stops nothing | `inferred` | [PRP](../specs/40-improvement-proposals.spec.md) change classes, [ADR-0031](../adr/0031-steps-and-their-graders-change-apart.adr.md) |
