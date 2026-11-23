@@ -175,3 +175,29 @@ def test_p_cc_10_host_session_reach(tmp_path: Path) -> None:  # P-CC-10 (ECC-B7,
                                                               _result(raw).get("permission_denials") or []])
     assert sorted(_init(raw).get("tools") or []) == ["Glob", "Grep", "Read"]
     assert "outside-7731" not in res.text
+
+
+def test_p_cc_12_step_isolated_from_user_scope_plugins(tmp_path: Path) -> None:  # P-CC-12, ECC-AC10 live (ECC-B16)
+    # a step given a workflow plugin that depends on `tempergraph` lists those two plugins and no user-scope plugin;
+    # run it with a plugin installed at user scope to see the isolation (live row L-42)
+    from tempergraph.contracts import EventSink
+    from tempergraph.executors.binding import BindingTable
+    from tempergraph.executors.claude import ClaudeExecutor
+
+    plugins = next(p for p in Path(__file__).resolve().parents if (p / "tempergraph" / ".claude-plugin").is_dir())
+    workflow = next(p for p in sorted(plugins.glob("*-tgraph")) if (p / "tempergraph.json").is_file())
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (tmp_path / "s").mkdir()
+    req = SessionRequest(kind="step", prompt="Reply with the word ok.", workdir=ws, alias="small",
+                         session_key="probe.1.step", tools=("read",), timeout_s=240, session_dir=tmp_path / "s",
+                         options=SessionOptions(cost_cap_usd=0.10), plugin_dir=workflow)
+    ex = ClaudeExecutor(bindings=BindingTable())
+    assert ex.probe().ok
+    ex.run_step(req, EventSink())
+    raw = [json.loads(ln) for ln in (tmp_path / "s" / "raw.jsonl").read_text().splitlines() if ln.startswith("{")]
+    init = _init(raw)
+    names = sorted(p.get("name") for p in init.get("plugins") or [] if p.get("source") != "builtin"
+                   and not str(p.get("path", "")).startswith("@builtin") and not str(p.get("name", "")).startswith("cc-plugin"))
+    print("init.plugins", names, "skills", [s for s in init.get("skills") or [] if ":" in s])
+    assert names == sorted([workflow.name, "tempergraph"])

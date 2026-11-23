@@ -112,9 +112,10 @@ def step_argv(req: SessionRequest, model: str | None, fallback: str | None, flag
     if model is not None:
         argv += ["--model", model]
     rules = allow_rules(req.tools, req.commands, req.in_engine_worktree)
-    if req.plugin_dir is not None and "read" in req.tools:
-        # ECC-B7: the workflow plugin's own files stay readable; `//` marks an absolute path in a rule
-        rules.append(f"Read(/{Path(req.plugin_dir).resolve().as_posix()}/**)")
+    plugins = plugin_dirs(Path(req.plugin_dir)) if req.plugin_dir is not None else []
+    if "read" in req.tools:
+        # ECC-B7: the workflow plugin's own files, and its dependencies', stay readable; `//` marks an absolute path
+        rules += [f"Read(/{d.resolve().as_posix()}/**)" for d in plugins]
     if rules:
         argv += ["--allowedTools", ",".join(rules)]
     # ECC-B8, ECC-B14: every step launch names its built-in tools, so a host's tools are never offered
@@ -136,9 +137,51 @@ def step_argv(req: SessionRequest, model: str | None, fallback: str | None, flag
     if o.turn_cap is not None:
         argv += ["--max-turns", str(int(o.turn_cap))]
         applied.append("turn_cap")
-    if req.plugin_dir is not None:
-        argv += ["--plugin-dir", str(req.plugin_dir)]
+    # ECC-B16: no user-scope plugin, skill, hook or setting reaches a step; only the repository's settings load, and
+    # the workflow plugin comes in by path with the plugins it depends on (they would come from user scope otherwise)
+    argv += ["--setting-sources", STEP_SETTING_SOURCES]
+    for d in plugins:
+        argv += ["--plugin-dir", str(d)]
     return argv, tuple(applied)
+
+
+STEP_SETTING_SOURCES = "project"
+
+
+def plugin_dirs(root: Path) -> list[Path]:
+    """ECC-B16: the workflow plugin's root, then each plugin its `.claude-plugin/plugin.json` names under
+    `dependencies` that is found beside it: a sibling folder of that name (a marketplace checkout) or, in Claude Code's
+    plugin cache, the newest version folder of that name. A dependency found nowhere is left out."""
+    out = [root]
+    try:
+        deps = json.loads((root / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")).get("dependencies")
+    except (OSError, ValueError, AttributeError):
+        return out
+    for dep in deps if isinstance(deps, list) else []:
+        name = (dep.get("name") if isinstance(dep, dict) else dep) or ""
+        name = str(name).split("@", 1)[0]
+        if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,63}", name):
+            continue
+        found = _plugin_named(root.parent / name, name) or _newest_version(root.parent.parent / name, name)
+        if found is not None and found.resolve() not in {d.resolve() for d in out}:
+            out.append(found)
+    return out
+
+
+def _plugin_named(folder: Path, name: str) -> Path | None:
+    try:
+        held = json.loads((folder / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return folder if isinstance(held, dict) and held.get("name") == name else None
+
+
+def _newest_version(folder: Path, name: str) -> Path | None:
+    try:
+        kids = sorted((k for k in folder.iterdir() if k.is_dir()), key=lambda k: k.stat().st_mtime, reverse=True)
+    except OSError:
+        return None
+    return next((k for k in kids if _plugin_named(k, name) is not None), None)
 
 
 def judge_argv(views: ViewSet, model: str | None, *, isolated: bool, mcp_config: Path | None = None) -> list[str]:
@@ -427,5 +470,5 @@ class ClaudeExecutor:
 
 
 # Live probe facts of ECC-B13 and their recorded state; none has run on a signed-in host yet (T0.1).
-LIVE_FACTS: dict[str, str] = {f"P-CC-{i}": "not run" for i in range(1, 12)}
+LIVE_FACTS: dict[str, str] = {f"P-CC-{i}": "not run" for i in range(1, 13)}
 ClaudeExecutor.live_facts = LIVE_FACTS  # type: ignore[attr-defined]  # read by `executors` (CLI-B3)

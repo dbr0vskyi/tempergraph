@@ -416,10 +416,61 @@ def test_ecc_ac6_host_working_dir_setting_is_kept(tmp_path: Path, monkeypatch: p
 def test_task_ac5_live_probes_p_cc_10_and_p_cc_11_are_listed_not_run() -> None:
     # AC 5 of the task (ECC-B14, CLI-B3): the executors listing carries P-CC-10 and P-CC-11 as not run
     facts = ClaudeExecutor.live_facts  # type: ignore[attr-defined]
-    assert facts["P-CC-10"] == "not run" and facts["P-CC-11"] == "not run"
+    assert facts["P-CC-10"] == "not run" and facts["P-CC-11"] == "not run" and facts["P-CC-12"] == "not run"
     assert set(facts.values()) == {"not run"}
 
 
 def test_unbound_alias_returns_a_result(tmp_path: Path) -> None:
     res = ClaudeExecutor(bindings=BindingTable()).run_step(req(tmp_path, alias="claude:none"), EventSink())
     assert not res.ok and res.error_kind == "unknown"
+
+
+def _plugin(folder: Path, name: str, deps: list[object] | None = None) -> Path:
+    (folder / ".claude-plugin").mkdir(parents=True)
+    body: dict[str, object] = {"name": name, "version": "0.1.0"}
+    if deps is not None:
+        body["dependencies"] = deps
+    (folder / ".claude-plugin" / "plugin.json").write_text(json.dumps(body))
+    return folder
+
+
+def plugin_flags(argv: list[str]) -> list[str]:
+    return [argv[i + 1] for i, a in enumerate(argv) if a == "--plugin-dir"]
+
+
+def test_ecc_ac10_a_step_and_a_retry_load_only_project_settings(tmp_path: Path) -> None:  # ECC-AC10 (ECC-B16)
+    for kind, key in (("step", "draft.1.step"), ("retry", "draft.2.retry")):
+        argv, _ = step_argv(req(tmp_path, kind=kind, session_key=key), "sonnet", None, FLAGS)
+        assert flag(argv, "--setting-sources") == "project" and argv.count("--setting-sources") == 1
+        assert plugin_flags(argv) == []
+
+
+def test_ecc_ac10_the_workflow_plugin_brings_its_dependency_found_beside_it(tmp_path: Path) -> None:  # ECC-AC10 (ECC-B16)
+    plugins = tmp_path / "plugins"
+    wf = _plugin(plugins / "notes-tgraph", "notes-tgraph", ["engine-plug"])
+    dep = _plugin(plugins / "engine-plug", "engine-plug")
+    argv, _ = step_argv(req(tmp_path, tools=("read",), plugin_dir=wf), "sonnet", None, FLAGS)
+    assert plugin_flags(argv) == [str(wf), str(dep)]
+    rules = (flag(argv, "--allowedTools") or "").split(",")
+    assert f"Read(/{dep.resolve().as_posix()}/**)" in rules  # its skills may read their own files too (ECC-B7)
+
+
+def test_ecc_ac10_a_dependency_in_the_plugin_cache_is_its_newest_version(tmp_path: Path) -> None:  # ECC-AC10 (ECC-B16)
+    import os
+
+    cache = tmp_path / "cache" / "market"
+    wf = _plugin(cache / "notes-tgraph" / "0.1.0", "notes-tgraph", [{"name": "engine-plug@market"}])
+    old = _plugin(cache / "engine-plug" / "0.1.0", "engine-plug")
+    new = _plugin(cache / "engine-plug" / "0.2.0", "engine-plug")
+    os.utime(old, (1, 1))
+    argv, _ = step_argv(req(tmp_path, plugin_dir=wf), "sonnet", None, FLAGS)
+    assert plugin_flags(argv) == [str(wf), str(new)]
+
+
+def test_ecc_ac10_a_dependency_found_nowhere_is_left_out(tmp_path: Path) -> None:  # ECC-AC10 (ECC-B16)
+    wf = _plugin(tmp_path / "plugins" / "notes-tgraph", "notes-tgraph", ["missing", "../escape", 7])
+    argv, _ = step_argv(req(tmp_path, plugin_dir=wf), "sonnet", None, FLAGS)
+    assert plugin_flags(argv) == [str(wf)] and flag(argv, "--setting-sources") == "project"
+    bare = tmp_path / "bare"  # no manifest at all: the plugin alone
+    argv, _ = step_argv(req(tmp_path, plugin_dir=bare), "sonnet", None, FLAGS)
+    assert plugin_flags(argv) == [str(bare)]
