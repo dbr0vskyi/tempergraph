@@ -83,9 +83,10 @@ def _commit() -> Any:
     return Script(call=commit_step, name="commit", side_effects="workspace", summary="Commit the step's files")
 
 
-def _judge(unit: str, references: Any) -> Any:
+def _judge(unit: str, references: Any, timeout_s: int | None = None) -> Any:
     effort, why = SIZING[unit][1]
-    return Judge(file=f"judges/{unit}.md", references=references, model=MODEL, effort=effort, sizing=why)
+    return Judge(file=f"judges/{unit}.md", references=references, model=MODEL, effort=effort, sizing=why,
+                 timeout_s=timeout_s)
 
 
 def workflow() -> Any:
@@ -153,8 +154,10 @@ def workflow() -> Any:
                 produces={"code_report": "file", "tests_passed": Value(choices=["yes", "no"])},
                 after=[_commit()],
                 gate=Gate(check=code_check, check_timeout_s=1800,
+                          # A read of up to 50 source files (the reading budget of the check evidence) may not fit
+                          # the engine's default judge time of 600 s, and a judge timeout escalates (JDG-B4).
                           judge=_judge("code", {"code_report": "required", "triage_note": "required",
-                                                "plan": "optional"}),
+                                                "plan": "optional"}, timeout_s=1800),
                           back_targets=["plan", "discovery", "triage"])),
         },
         finalizer=finalize,

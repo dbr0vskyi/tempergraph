@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 7,
+  "revision": 8,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -12,7 +12,7 @@
   "check": "tgwf_temperspec.checks:outcome_check",
   "judge": {
     "model": "medium",
-    "stance": "The task's acceptance criteria and the files on the run's branch are the truth; everything a step said is a claim to verify. Judge meaning, not wording."
+    "stance": "The task's acceptance criteria and the files on the run's branch are the truth; everything a step said is a claim to verify. Judge meaning, not wording. Behind every MET, quote the line you relied on, with its path and line number. Grade a criterion PARTIAL, not MET, when its only evidence is lines a search printed. When you searched and then read the file around the line, quote the line from the file you read."
   },
   "final": [
     {
@@ -1111,6 +1111,7 @@
     "Specs written by the setup step describe behaviour that exists already, so the outcome gate does not ask for a test that names each of their acceptance criteria; a task that later touches such a behaviour adds the id to its test.",
     "Repository setup is a conditional first step of this workflow because release 1 of the engine has no sub-workflows; it moves into one when the engine has them.",
     "The quick lane's limits (3 acceptance criteria, 2 code files, 200 changed lines) are first values with no run behind them; the share of quick runs sent back to triage is the measure to tune them by.",
+    "The code judge's reading budget (one file per 50 changed source lines, a floor of 10 files and a ceiling of 50) is made of first values with no run behind them; the share of code gates whose judge grades an alignment criterion UNVERIFIABLE for files beyond the budget is the measure to tune them by.",
     "A test carries its criterion as text (the spec's id, or `AC <n>`); the check finds the text and a skip mark near it, and does not prove that the named test is the one the command ran."
   ],
   "revisions": [
@@ -1154,6 +1155,12 @@
       "origin": "authored",
       "at": "2026-11-22T23:30:00.000Z",
       "note": "ts-traced asks for tests of the criteria a run added or changed, and of old criteria whose behaviour it changed, never of every criterion of an edited spec (backlog B22); ts-spec-links reads the edited specs only, as its text says"
+    },
+    {
+      "revision": 8,
+      "origin": "authored",
+      "at": "2026-11-23T12:00:00.000Z",
+      "note": "the code gate's evidence states the changed source lines, a reading budget and the changed source files, and the code judge reads them before it grades alignment; every judge brief and the outcome judge's stance ask for the quoted line behind a MET and grade PARTIAL when the only evidence is search lines (issues 112 and 113, spec judge-reading)"
     }
   ]
 }

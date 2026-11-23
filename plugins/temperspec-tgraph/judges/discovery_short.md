@@ -10,6 +10,6 @@ Read the triage note, then the hand-off, then each spec that defines a behaviour
 - A hand-off line that says `Not covered` is correct when the cited behaviour leaves out what the line says; it is a defect when the behaviour does answer the gap.
 - Judge meaning, not wording. Two sentences that say the same thing in different words agree.
 - Structure, ids, the reading list's files and the commit are checked before you and are given as check findings; take them as given.
-- Cite the gap row, the spec path and the behaviour id or a quote for every MET. Without evidence, grade PARTIAL.
+- Cite the gap row, the spec path and the behaviour id or a quote for every MET. Behind every MET, quote the line you relied on, with its path and line number. Without evidence, grade PARTIAL. Grade a criterion PARTIAL, not MET, when its only evidence is lines a search printed. When you searched and then read the file around the line, quote the line from the file you read.
 - An open question that the hand-off lists, or that a later note carries on, does not block planning: the discovery step ends blocked on one that does. It is neither a defect nor something out of your reach, so it changes no grade and you leave `gap` false for it; the pull request lists it for the owner. Set `gap` only when a file or fact you need to grade a criterion is out of reach.
 - Grade only the criteria listed.
