@@ -176,6 +176,22 @@ def _related(ctx: Any, specs: list[str], index: dict[str, list[str]], plan: fmt.
     return out
 
 
+CONTEXT_FILES = ("CLAUDE.md", "AGENTS.md")
+_BLOCK = re.compile(re.escape(fmt.CONTEXT_START) + r".*?" + re.escape(fmt.CONTEXT_END), re.S)
+
+
+def _block_only(ctx: Any, path: str) -> bool:
+    """Whether the project-context file differs from the run's base only in the temperspec block, which the
+    workflow's prepare script writes before any step (so no plan row names it)."""
+    now = _read_path(ctx, path)
+    if now is None:
+        return False
+    before = _at_base(ctx, path) if ctx.git.base else None
+    def bare(text: str) -> str:
+        return " ".join(_BLOCK.sub("", text).split())
+    return bare(before or "") == bare(now)
+
+
 def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
             links: list[str] | None = None) -> Any:
     """The result, with the facts a read-only judge cannot get by itself as its evidence."""
@@ -183,8 +199,12 @@ def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
     specs, _ = _edited_specs(ctx)
     lines = [bad or f"{len(found)} checked"]
     changed = [p for p in ctx.git.changed_paths if not p.startswith(".claude/rules/")]
+    prepared = [p for p in changed if p in CONTEXT_FILES and _block_only(ctx, p)]
+    changed = [p for p in changed if p not in prepared]
     if changed:
         lines.append("Changed paths since the run's base: " + ", ".join(changed[:120]))
+    if prepared:
+        lines.append("Written by prepare (the temperspec block only, no step's change): " + ", ".join(prepared))
     if specs:
         lines.append("Edited specs: " + ", ".join(specs))
         related = _related(ctx, specs, _spec_index(ctx, _walk(ctx)), plan)

@@ -975,3 +975,22 @@ def test_the_prompts_name_the_shell_command_shapes() -> None:  # B24
         unit = SPEC.units[name]
         assert unit.step is not None and "shell" not in unit.step.tools, name
         assert "This step has no shell" in (ROOT / "prompts" / f"{name}.md").read_text(encoding="utf-8"), name
+
+
+# -- the block prepare writes is not a change the code step must account for (B19 family) ---------------------
+
+
+def test_the_context_block_prepare_wrote_is_listed_apart_from_the_changed_paths(repo: Path) -> None:
+    (repo / "CLAUDE.md").write_text("# Project\n\nRun the tests with pytest.\n")
+    _git(repo, "add", "-A")
+    _git(repo, "-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "-m", "base")
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    routing.write_context(repo)  # what prepare does before any step
+    git = GitFacts(base=base, changed_paths=("CLAUDE.md", "src/a.py"))
+    res = checks._result(_context("code", repo, {}, git=git), [])
+    assert "Changed paths since the run's base: src/a.py" in res.evidence
+    assert "Written by prepare (the temperspec block only, no step's change): CLAUDE.md" in res.evidence
+    (repo / "CLAUDE.md").write_text((repo / "CLAUDE.md").read_text() + "\nA line a step added.\n")
+    res = checks._result(_context("code", repo, {}, git=git), [])
+    assert "Changed paths since the run's base: CLAUDE.md, src/a.py" in res.evidence  # a step's edit counts
+    assert "Written by prepare" in (ROOT / "judges" / "code.md").read_text()
