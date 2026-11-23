@@ -124,6 +124,40 @@ def _ts(text: Any) -> float | None:
         return None
 
 
+def _schedule_id(block: Any) -> str | None:
+    """The schedule a run belongs to: from the `schedule` block of `run_started` (TCK-B24), or a bare id."""
+    if isinstance(block, dict):
+        return str(block["schedule_id"]) if block.get("schedule_id") else None
+    return str(block) if block else None
+
+
+def schedule_report(home: Path | None = None) -> dict[str, Any]:
+    """`report --by schedule` (TCK-B24): per schedule its fires, outcomes, cost, skipped and missed counts, read from the
+    fire logs (`ended` rows carry each run's cost), and the totals of those figures. Read-only."""
+    from tempergraph.schedule import store
+
+    groups: dict[str, dict[str, Any]] = {}
+    for entry in store.list_entries(home):
+        sid = str(entry["schedule_id"])
+        log = store.read_log(sid, home)
+        ended = {str(e["fire_id"]): e for e in log if e.get("kind") == "ended"}
+        started = [e for e in log if e.get("kind") == "started"]
+        cost = [float((ended[str(e["fire_id"])].get("cost") or {}).get("estimated") or 0.0)
+                for e in started if str(e.get("fire_id")) in ended]
+        groups[sid] = {"fires": len(started), "ended": len(ended),
+                       "outcomes": dict(sorted(_count(str(e.get("outcome")) for e in ended.values()).items())),
+                       "exits": dict(sorted(_count(str(e.get("exit")) for e in ended.values()).items())),
+                       "estimated_usd": round(sum(cost), 6),
+                       "incomplete": any((e.get("cost") or {}).get("incomplete") for e in ended.values()),
+                       "skipped": sum(1 for e in log if e.get("kind") == "skipped"),
+                       "missed": sum(1 for e in log if e.get("kind") == "missed"),
+                       "refused": sum(1 for e in log if e.get("kind") == "refused")}
+    keys = ("fires", "ended", "estimated_usd", "skipped", "missed", "refused")
+    total = {k: round(sum(g[k] for g in groups.values()), 6) for k in keys}
+    total["incomplete"] = any(g["incomplete"] for g in groups.values())
+    return {"schema_version": 1, "by": "schedule", "groups": groups, "totals": total}
+
+
 def run_row(log: Path, recs: Iterable[dict[str, Any]], segment: int | None = None) -> dict[str, Any] | None:
     """The `run` row of one segment of a thread, from its run log (CST-B9, OBS-B15); numbers and names only."""
     root, workflow, task = _parts(log)
@@ -195,7 +229,7 @@ def run_row(log: Path, recs: Iterable[dict[str, Any]], segment: int | None = Non
         "workflow_version": (started or {}).get("workflow_version"), "thread_id": f"{workflow}/{task}",
         "segment": exit_.get("segment"), "alias": (started or {}).get("alias"), "label": (started or {}).get("label"),
         "origin": (started or {}).get("origin"), "parent": (started or {}).get("parent"),
-        "schedule_id": (started or {}).get("schedule"), "ticket": task,
+        "schedule_id": _schedule_id((started or {}).get("schedule")), "ticket": task,
         "executors": sorted(executors), "models": sorted(models),
         "exit_code": exit_.get("exit_code"), "reason": exit_.get("reason"), "units_run": len(units),
         "repeats": dict(repeats), "gate_verdicts": dict(verdicts), "escapes": None, "tokens": tokens,

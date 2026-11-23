@@ -1,0 +1,2 @@
+# TCK-AC1 golden file: the tests drop this line before they compare
+*/5 * * * * /home/user/.tempergraph/bin/tempergraph schedule tick  # tempergraph-schedule

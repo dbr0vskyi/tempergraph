@@ -585,6 +585,7 @@ class Capabilities:
     efforts_uncertain: frozenset[str] = frozenset()  # declared, not yet shown by a live probe (LAD-B14)
     tool_map: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
     version: str = ""
+    unattended_credentials: frozenset[str] = frozenset()  # kinds it uses with nobody present (TCK-B18, TCK-B19)
 
     def maps(self, capability: str) -> bool:
         if capability in self.tool_map:
