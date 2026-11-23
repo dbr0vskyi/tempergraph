@@ -117,6 +117,192 @@ def test_fixture_reproduces_the_expected_document(repo: Path) -> None:  # RDD-AC
     assert doc["health"]["waiting_for_person_s"] is not None
 
 
+def contest_thread(repo: Path, write: Any, task: str = "T-1") -> dict[str, Any]:
+    """The detail of a contest thread whose run log is written by hand: a real run makes the thread, `write(log)` its records."""
+    from .test_contest_run import BySlot, contest_spec
+    from .test_contest_run import go as go_contest
+
+    spec = contest_spec(slots=3, then=False)
+    assert go_contest(repo, spec, BySlot(), task=task).exit_code is ExitCode.FINISHED
+    root = state_root_path(repo)
+    path = run_dir(root, "demo", task) / "run.jsonl"
+    path.unlink()
+    log = RunLog(path)
+    log.write("unit_entered", unit="pick", visit=1, entered_from="start")
+    write(log)
+    doc = detail(root, spec, f"demo/{task}")
+    assert doc is not None
+    return doc
+
+
+def session(log: RunLog, slot: str, kind: str, cost: float, n: int = 1, start: bool = True) -> None:
+    key = f"pick.{slot}.{n}.{kind}"
+    if start:
+        log.write("attempt_start", session_key=key, kind=kind, executor="claude", alias="small", timeout_s=600)
+    else:
+        log.write("agent_run", session_key=key, kind=kind, executor="claude", usage={"reported_cost_usd": cost}, ok=True,
+                  tools=["Read"])
+
+
+def graded(log: RunLog, slot: str, n: int = 1, check: str = "PASS", met: int = 1, conf: float = 0.85) -> None:
+    log.write("check", unit="pick", item=slot, attempt=n, result=check, environmental=False, evidence=f"{slot} {check}")
+    if check == "PASS":
+        log.write("judgement", unit="pick", item=slot, attempt=n, statuses=[{"n": i, "id": f"c{i}", "status": "MET"}
+                                                                            for i in range(1, met + 1)],
+                  blockers=[], confidence=conf, confidence_source="judge", guard="ok")
+
+
+def the_slots(doc: dict[str, Any]) -> list[dict[str, Any]]:
+    (unit,) = [u for u in doc["units"] if u["name"] == "pick"]
+    return [a for v in unit["visits"] for a in v["attempts"]]
+
+
+def interleaved(log: RunLog) -> None:
+    """The scenario of CTS-B1: three slots at once, their records written interleaved (`s2` and `s1` end before `s3`)."""
+    for slot in ("s1", "s2", "s3"):
+        session(log, slot, "step", 0)
+    session(log, "s2", "step", 0.20, start=False)
+    graded(log, "s2", met=6)
+    session(log, "s1", "step", 0.15, start=False)
+    session(log, "s3", "step", 0.30, start=False)
+    for slot in ("s3", "s1", "s2"):
+        session(log, slot, "judge", 0)
+    graded(log, "s3", met=6)
+    graded(log, "s1", met=5)
+    session(log, "s2", "judge", 0.20, start=False)
+    session(log, "s3", "judge", 0.25, start=False)
+    session(log, "s1", "judge", 0.15, start=False)
+    log.write("contest", unit="pick", visit=1, attempt=1, winner=2, slots=[
+        {"slot": 1, "name": "s1", "attempt": 1, "check": "PASS", "verdict": "RETRY", "cost": 0.30,
+         "keys": {"unmet_warnings": 0, "met": 5, "confidence": 0.85}},
+        {"slot": 2, "name": "s2", "attempt": 1, "check": "PASS", "verdict": "PROCEED", "cost": 0.40,
+         "keys": {"unmet_warnings": 1, "met": 6, "confidence": 0.85}},
+        {"slot": 3, "name": "s3", "attempt": 1, "check": "PASS", "verdict": "PROCEED", "cost": 0.55,
+         "keys": {"unmet_warnings": 1, "met": 6, "confidence": 0.85}}])
+    log.write("gate", unit="pick", item=None, verdict="PROCEED", token="PROCEED", route_target="finalizer")
+
+
+def test_interleaved_slots_each_hold_only_their_own_records_RDD_AC9(repo: Path) -> None:  # RDD-AC9 (RDD-B19, RDD-B10)
+    slots = the_slots(contest_thread(repo, interleaved))
+    assert [(a["item"], a["attempt"]) for a in slots] == [("s1", 1), ("s2", 1), ("s3", 1)]  # in the declared order
+    s1, s2, s3 = slots
+    assert [x["session_key"] for x in s2["step"]["sessions"]] == ["pick.s2.1.step"]  # its own sessions only
+    assert [x["session_key"] for x in s2["judge"]["sessions"]] == ["pick.s2.1.judge"]
+    assert s2["check"]["result"] == "PASS" and s2["check"]["evidence"] == "s2 PASS"  # its own check
+    assert (s2["judge"]["met"], s1["judge"]["met"], s3["judge"]["met"]) == (6, 5, 6)  # and its own judgement
+    assert s2["verdict"] == "PROCEED" and s2["keys"] == {"unmet_warnings": 1, "met": 6, "confidence": 0.85}
+    assert s1["verdict"] == "RETRY" and s1["keys"]["met"] == 5
+    assert s2["cost"]["figure"] == 0.40 and s1["cost"]["figure"] == 0.30 and s3["cost"]["figure"] == 0.55  # as a unit's
+    assert s2["cost"]["completeness"] == "complete" and not any(a["skipped"] for a in slots)
+    assert s2["gate"]["verdict"] == "PROCEED"  # the unit's gate record, which names no item, is on the winner's entry
+    assert s1["gate"] is None and s3["gate"] is None
+
+
+def test_a_slot_put_out_by_its_check_has_no_verdict_and_no_judge_RDD_AC9(repo: Path) -> None:  # RDD-AC9 (RDD-B19)
+    def write(log: RunLog) -> None:
+        for slot in ("s1", "s2", "s3"):
+            session(log, slot, "step", 0)
+            session(log, slot, "step", 0.1, start=False)
+        graded(log, "s2", check="FAIL")
+        graded(log, "s1")
+        graded(log, "s3")
+        for slot in ("s1", "s3"):
+            session(log, slot, "judge", 0)
+            session(log, slot, "judge", 0.1, start=False)
+        log.write("contest", unit="pick", visit=1, attempt=1, winner=1, slots=[
+            {"slot": 1, "name": "s1", "attempt": 1, "check": "PASS", "verdict": "PROCEED", "cost": 0.2,
+             "keys": {"unmet_warnings": 0, "met": 1, "confidence": 0.85}},
+            {"slot": 2, "name": "s2", "attempt": 1, "check": "FAIL", "verdict": None, "keys": None, "cost": 0.1},
+            {"slot": 3, "name": "s3", "attempt": 1, "check": "PASS", "verdict": "PROCEED", "cost": 0.2,
+             "keys": {"unmet_warnings": 0, "met": 1, "confidence": 0.85}}])
+
+    s1, s2, s3 = the_slots(contest_thread(repo, write))
+    assert (s2["check"]["result"], s2["judge"], s2["verdict"], s2["keys"]) == ("FAIL", None, None, None)
+    assert s2["cost"]["figure"] == 0.1 and s1["judge"]["met"] == 1 and s3["judge"]["met"] == 1
+    assert (s1["winner"], s2["winner"], s3["winner"]) == (True, False, False)
+
+
+def test_a_slot_the_cost_cap_kept_from_starting_is_shown_skipped_RDD_AC9(repo: Path) -> None:  # RDD-AC9 (RDD-B19)
+    def write(log: RunLog) -> None:
+        for slot in ("s1", "s2"):
+            session(log, slot, "step", 0)
+            session(log, slot, "step", 0.30, start=False)
+            graded(log, slot)
+            session(log, slot, "judge", 0)
+            session(log, slot, "judge", 0.01, start=False)
+        log.write("contest", unit="pick", visit=1, attempt=1, winner=1, slots=[
+            {"slot": 1, "name": "s1", "attempt": 1, "check": "PASS", "verdict": "PROCEED", "cost": 0.31,
+             "keys": {"unmet_warnings": 0, "met": 1, "confidence": 0.85}},
+            {"slot": 2, "name": "s2", "attempt": 1, "check": "PASS", "verdict": "PROCEED", "cost": 0.31,
+             "keys": {"unmet_warnings": 0, "met": 1, "confidence": 0.85}},
+            {"slot": 3, "name": "s3", "skipped": True}])
+
+    s1, s2, s3 = the_slots(contest_thread(repo, write))
+    assert s3["item"] == "s3" and s3["skipped"] is True and s3["step"] is None and s3["judge"] is None
+    assert s3["verdict"] is None and s3["keys"] is None and s3["cost"]["figure"] == 0.0  # no session, no cost
+    assert not s1["skipped"] and not s2["skipped"] and s3["winner"] is False
+
+
+def test_the_winner_is_marked_true_on_the_kept_slot_and_false_on_the_others_RDD_AC10(repo: Path) -> None:  # RDD-AC10 (RDD-B20)
+    s1, s2, s3 = the_slots(contest_thread(repo, interleaved))
+    assert (s1["winner"], s2["winner"], s3["winner"]) == (False, True, False)
+
+
+def test_the_winner_is_null_while_the_pick_has_not_run_and_when_it_kept_none_RDD_AC10(repo: Path) -> None:  # RDD-AC10 (RDD-B20)
+    def running(log: RunLog) -> None:  # three slots still running: no pick yet
+        for slot in ("s1", "s2", "s3"):
+            session(log, slot, "step", 0)
+
+    slots = the_slots(contest_thread(repo, running))
+    assert [a["winner"] for a in slots] == [None, None, None] and [a["verdict"] for a in slots] == [None] * 3
+
+    def none_kept(log: RunLog) -> None:  # every check failed: the pick kept none
+        for slot in ("s1", "s2", "s3"):
+            session(log, slot, "step", 0)
+            session(log, slot, "step", 0.1, start=False)
+            graded(log, slot, check="FAIL")
+        log.write("contest", unit="pick", visit=1, attempt=1, winner=None, slots=[
+            {"slot": i, "name": f"s{i}", "attempt": 1, "check": "FAIL", "verdict": None, "keys": None, "cost": 0.1}
+            for i in (1, 2, 3)])
+
+    slots = the_slots(contest_thread(repo, none_kept, "T-2"))
+    assert [a["winner"] for a in slots] == [None, None, None] and [a["check"]["result"] for a in slots] == ["FAIL"] * 3
+
+
+def test_each_attempt_of_a_contest_under_all_carries_a_winner_of_its_own_RDD_AC10(repo: Path) -> None:  # RDD-AC10 (RDD-B20)
+    def write(log: RunLog) -> None:
+        for n, winner in ((1, 2), (2, 1)):
+            for slot in ("s1", "s2"):
+                session(log, slot, "step" if n == 1 else "retry", 0, n=n)
+                session(log, slot, "step" if n == 1 else "retry", 0.1, n=n, start=False)
+                graded(log, slot, n=n)
+            log.write("contest", unit="pick", visit=1, attempt=n, winner=winner, slots=[
+                {"slot": i, "name": f"s{i}", "attempt": n, "check": "PASS", "verdict": "PROCEED", "cost": 0.1,
+                 "keys": {"unmet_warnings": 0, "met": 1, "confidence": 0.85}} for i in (1, 2)])
+
+    slots = the_slots(contest_thread(repo, write))
+    assert [(a["item"], a["attempt"], a["winner"]) for a in slots] == [
+        ("s1", 1, False), ("s2", 1, True), ("s1", 2, True), ("s2", 2, False)]  # round by round, slots in declared order
+
+
+def test_a_real_contest_run_shows_every_slot_the_skipped_one_and_the_winner_RDD_AC9(repo: Path) -> None:  # RDD-AC9, RDD-AC10
+    from .test_contest_run import BOTH_MET, ONE_WARNING, BySlot, contest_spec
+    from .test_contest_run import go as go_contest
+
+    spec = contest_spec(slots=3, concurrency=1, cost_cap_usd=0.4, then=False)
+    ex = BySlot(step_cost=0.30, judges={"s1": [ONE_WARNING], "s2": [BOTH_MET]})
+    assert go_contest(repo, spec, ex).exit_code is ExitCode.FINISHED
+    doc = detail(state_root_path(repo), spec, "demo/C-1")
+    assert doc is not None
+    slots = the_slots(doc)
+    assert [(a["item"], a["skipped"]) for a in slots] == [("s1", False), ("s2", False), ("s3", True)]
+    assert [a["winner"] for a in slots] == [False, True, False]  # `s2` has no unmet warning
+    assert [a["verdict"] for a in slots] == ["PROCEED", "PROCEED", None]
+    assert slots[0]["keys"] == {"unmet_warnings": 1, "met": 1, "confidence": 0.8}
+    assert slots[1]["cost"]["figure"] == 0.31 and slots[2]["cost"]["figure"] == 0.0 and slots[2]["step"] is None
+    assert slots[1]["gate"]["verdict"] == "PROCEED" and next(u for u in doc["units"] if u["name"] == "pick")["state"] == "passed"
+
+
 def test_plan_before_units_are_reached(repo: Path) -> None:  # RDD-B1
     ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("UNVERIFIABLE"))])
     assert go(repo, ex).exit_code is ExitCode.PAUSED

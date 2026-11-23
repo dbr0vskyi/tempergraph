@@ -1013,6 +1013,14 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                     return got
                 extra = got
                 d = d or Decision(word="proceed")
+            elif settings.answers and dspec.units[dunit].kind == "council":  # CNL-B13: `answer:decision=<option>`
+                if d is not None and d.word != "proceed":
+                    return _refuse("decision_refused", "a council's pause takes answer:decision=<option> alone", tid=tid)
+                try:
+                    extra = {"council_decision": gatemod.check_council_answer(dspec, dunit, dvalues, settings.answers)}
+                except gatemod.DecisionRefused as exc:
+                    return _refuse("decision_refused", str(exc), tid=tid)
+                d = Decision(word="proceed")
             elif d is None:
                 return _refuse("decision_missing", f"{tid} is paused at {', '.join(gates)}; pass --decision",
                                tid=tid)

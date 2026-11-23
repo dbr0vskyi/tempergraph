@@ -27,13 +27,14 @@ WHEN the detail is built for a thread that has reached unit 2 of 5 THE engine SH
 
 ### RDD-B9 Units, visits and attempts
 
-WHEN `units[]` is built THE engine SHALL give each unit `state` (`not_reached`, `running`, `passed`, `failed`, `paused`, `skipped`), `visits[]`, `cost` (`reported`, `estimated`, `figure` as the run line counts it, `completeness`), `duration_s` and `share` of the run's cost figure; each visit `visit`, `entered_from` (the words of [EVT-B12](30-run-events.spec.md), a bare unit name in the run log reading as `back:<unit>`) and `attempts[]`; and each attempt `attempt`, `item`, `started_at`, `ended_at`, `step` (session), `check` (result, duration, `output_path`, clipped evidence), `judge` (session and verdict inputs: per criterion `{n, id, status}`, `met`, `total`, `blockers` with clipped evidence and fix from the local evidence file, `confidence` and source), `gate` (verdict, route target, guard status), `repeat_cause` on an attempt its gate sent round again (`blocker:<id>`, `check:FAIL` or `retry`) and `scripts` for a script unit or a hybrid step.
+WHEN `units[]` is built THE engine SHALL give each unit `state` (`not_reached`, `running`, `passed`, `failed`, `paused`, `skipped`), `visits[]`, `cost` (`reported`, `estimated`, `figure` as the run line counts it, `completeness`), `duration_s` and `share` of the run's cost figure; each visit `visit`, `entered_from` (the words of [EVT-B12](30-run-events.spec.md), a bare unit name in the run log reading as `back:<unit>`) and `attempts[]`; and each attempt `attempt`, `item`, `started_at`, `ended_at`, `step` (session), `check` (result, duration, `output_path`, clipped evidence), `judge` (session and verdict inputs: per criterion `{n, id, status}`, `met`, `total`, `blockers` with clipped evidence and fix from the local evidence file, `confidence` and source), `gate` (verdict, route target, guard status), `repeat_cause` on an attempt its gate sent round again (`blocker:<id>`, `check:FAIL` or `retry`), `scripts` for a script unit or a hybrid step and `council` for a council unit (`members`, the member names in the attempt's label order; `rounds[]`, per round its `round` and the counts `answered`, `spoiled`, `missing` and `changed` that [EVT-B13](30-run-events.spec.md) records; and `tally` and `outcome` as [EVT-B15](30-run-events.spec.md) records them), the unit's member, member re-ask and chair sessions standing in `step` with a `session_key` that names the member and the round.
 
 - GIVEN a run log naming `entered_from = plan` WHEN read THEN the visit reads `back:plan`
+- GIVEN a `vote` council of three members that ran round 0 and round 1 WHEN the detail is built THEN the attempt's `step` lists the six member sessions by key and its `council` shows the three members, two rounds with their `changed` counts, the `tally` and the `outcome`
 
 ### RDD-B10 Records placed by their envelope
 
-WHEN a run-log record is placed THE engine SHALL open the attempt an `attempt_start` record's `session_key` names and put a unit's `check`, `judgement` or `gate` record in that unit's open attempt, showing evidence and fix lines for the last judged attempt of each unit (kept in the checkpoint) and blocker ids only for earlier attempts until the evidence folder holds one judgement per attempt ([LOS](33-local-observability-store.spec.md)).
+WHEN a run-log record is placed THE engine SHALL open the attempt an `attempt_start` record's `session_key` names and put a unit's `check`, `judgement` or `gate` record in the open attempt of the `item` it names, or in the unit's open attempt when it names none, showing evidence and fix lines for the last judged attempt of each unit (kept in the checkpoint) and blocker ids only for earlier attempts until the evidence folder holds one judgement per attempt ([LOS](33-local-observability-store.spec.md)).
 
 - GIVEN a unit judged twice WHEN the detail is built THEN the second attempt shows evidence and the first blocker ids only
 
@@ -48,6 +49,24 @@ WHEN the detail is built for a unit whose first attempt was sent back by its jud
 WHEN the detail is built after a gate routed `back:plan` from `code` THE engine SHALL give `plan` a second visit with `entered_from = back:code`, and end `code`'s first visit with gate `BACK` and route target `plan`.
 
 - GIVEN a route `back:plan` from `code` WHEN the detail is built THEN `plan` has a second visit entered from `back:code`
+
+### RDD-B19 Contest slots
+
+WHEN the detail is built for a contest unit THE engine SHALL show every slot of each attempt as an entry of the visit's `attempts` whose `item` is the slot's name, in the order the slots are declared, holding that slot's own `step`, `check`, `judge`, `verdict` (its derived verdict), `keys` (`unmet_warnings`, `met` and `confidence`, as the pick compared them) and `cost` (as a unit's), place each record by the `item` it names, and set `skipped` true on a slot the attempt's cost cap kept from starting.
+
+- GIVEN the three slots of the scenario of [CTS-B1](72-contest-unit.spec.md) WHEN the detail is built THEN the visit's `attempts` hold items `s1`, `s2` and `s3` in that order, and `s2` holds check PASS, `verdict` PROCEED, `keys` of 1 unmet warning, 6 met and confidence 0.85, and `cost` 0.40
+- GIVEN `s1` and `s2` that ran at once and whose `check` and `judgement` records were written interleaved WHEN the detail is built THEN each holds only its own records
+- GIVEN a slot whose check FAILs WHEN the detail is built THEN its entry shows check FAIL, no `judge` session, `verdict` null and `keys` null
+- GIVEN an attempt whose cost cap kept `s3` from starting WHEN the detail is built THEN `s3` shows `skipped` true and no session
+
+### RDD-B20 Contest winner
+
+WHEN the detail is built for a contest unit THE engine SHALL set `winner` true on the slot the attempt's pick kept and false on every other slot of that attempt, and `winner` null on every slot of an attempt whose pick has not run or kept none.
+
+- GIVEN the three slots of the scenario of CTS-B1 and the pick that kept `s2` WHEN the detail is built THEN `winner` is true on `s2` and false on `s1` and `s3`
+- GIVEN three slots that are still running WHEN the detail is built THEN `winner` is null on each
+- GIVEN every slot's check failing WHEN the detail is built THEN `winner` is null on each
+- GIVEN `retry_scope: all` and a second attempt whose pick kept `s1` WHEN the detail is built THEN `winner` is true on `s1` of the second attempt and the first attempt's marks are as they were
 
 ### RDD-B11 Sessions
 
@@ -111,3 +130,5 @@ WHEN the detail of a live run is built 100 times THE engine SHALL leave the stat
 - RDD-AC4 (RDD-B15): The 1 MB cut drops blocks in the stated order and says so
 - RDD-AC5 (RDD-B4, RDD-B5, RDD-B12, RDD-B14, RDD-B16): Fixtures of a live session, a killed process, a live file mid-replace, an unreadable run log and an unknown thread give the stated blocks and exit codes
 - RDD-AC6 (RDD-B7): The detail of a fixture thread whose loop child has ended holds `loop` with the counts and at most three observations and no note text, and `loop` is `null` for a thread with no loop child
+- RDD-AC9 (RDD-B19, RDD-B10): The detail of a fixture contest of three slots that ran at once, with their records written interleaved and one slot failing its check, shows one entry per slot named by the slot, each holding its own check result, sessions and cost, the slots that passed their check also a verdict and keys, the failed slot a null verdict and null keys, and in a second fixture a slot the attempt's cost cap kept from starting shown with `skipped` true
+- RDD-AC10 (RDD-B20): In the detail of that fixture `winner` is true on the slot the pick kept and false on the others, `winner` is null on every slot of a contest still running and of one whose every check failed, and each attempt of a contest under `retry_scope: all` carries a winner of its own

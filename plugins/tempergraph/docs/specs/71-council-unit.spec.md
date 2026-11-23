@@ -10,6 +10,7 @@ A council puts one question to several model sessions, its members, and combines
 
 WHEN a unit of kind `council` is declared THE engine SHALL read its `council` field ([CON](01-contracts.spec.md)) as `CouncilSpec`: `question` (a template, the brief every member gets with the same inputs and references), `members` (2 to 7 `MemberSpec`), `mode` (`synthesize`, `vote` or `rank`), `options` (`vote` only: 2 to 10 slugs, or an artifact key of a list), `rule` (`vote` only: `majority`, `supermajority` of at least two thirds of valid ballots, `unanimous` or `plurality`, default `majority`), `rounds` (0 to 3 deliberation rounds after the blind round 0, default 0), `anonymize` (default true: peers shown as `Member A`, `Member B` in an order fixed per attempt and recorded), `chair` (`ChairSpec` of optional `executor`, `model` and `prompt`, required for `synthesize`), `quorum` (valid answers a round needs, default all members), `on_no_decision` (`escalate`, `retry` or `stop`, default `escalate`), `retry_scope` (`all`, or `chair` keeping members' final positions in `synthesize` and `rank`) and `cost_cap_usd` (per attempt); each `MemberSpec` having a unique slug `name`, `executor` and `model` resolved on the step layer, a `stance` of at most 400 characters, read-only `tools` (never `edit`, `write`, `shell` or a writing MCP tool), and optional `timeout_s` and `idle_s`.
 
+- GIVEN a `synthesize` council of two members with a chair, a question and a judged gate WHEN validated THEN it validates with no `error` finding
 - GIVEN a council with a member granted `edit` WHEN validated THEN it is refused
 
 ### CNL-B10 Produced artifacts
@@ -108,13 +109,13 @@ WHEN the members' reported cost reaches `cost_cap_usd` during an attempt THE eng
 
 ## Acceptance criteria
 
-- CNL-AC1 (CNL-B16, CNL-B9): Every refusal of CNL-B16 has a fixture workflow that fails validation with its own finding code
+- CNL-AC1 (CNL-B16, CNL-B9): A well-formed council validates with no `error` finding, and every refusal of CNL-B16 has a fixture workflow that fails validation with its own finding code
 - CNL-AC2 (CNL-B3, CNL-B12, CNL-B5): A source test shows no model call in the tally or Borda code
 - CNL-AC3 (CNL-B3, CNL-B13, CNL-B11, CNL-B15): Every scenario of CNL-B3 holds offline with scripted members
 - CNL-AC4 (CNL-B14): A crash after two of three round-0 members finish resumes with one member session, not three
 - CNL-AC5 (CNL-B1, CNL-B2): No round-0 prompt contains another member's text (prompt-capture test)
 - CNL-AC6 (CNL-B10, CNL-B12): The run detail shows members, rounds, changes per round, the tally and the outcome ([RDD](31-run-detail-document.spec.md))
-- CNL-AC7 (CNL-B4, CNL-B6, CNL-B7, CNL-B8): Fixtures cover the judge's subject and references, a mixed-executor preflight refusal, a chair-only retry and a cost cap mid-round
+- CNL-AC7 (CNL-B4, CNL-B6, CNL-B7, CNL-B8): Fixtures cover the judge's subject and references, a mixed-executor preflight refusal, a chair-only retry and a cost cap mid-round, both the council's own `cost_cap_usd` and the run's cost cap through the reservations of [BUD-AC13](08-budgets-and-failures.spec.md) and BUD-AC14
 
 ## Open questions
 

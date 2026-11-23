@@ -16,6 +16,8 @@ from tempergraph.contracts import SessionOptions, SessionRequest, SessionResult
 from tempergraph.run.reserve import Ledger
 from tempergraph.store.layout import run_dir, state_root_path
 
+from .test_contest_run import BySlot, contest_spec
+from .test_contest_run import go as go_contest
 from .test_map import THREE
 from .test_map_concurrent import ByItem, concurrent
 from .test_map_concurrent import go as go_map
@@ -291,16 +293,97 @@ def test_no_item_starts_when_the_reserved_spend_would_cross_the_cap_BUD_AC9(repo
     assert not ex.sessions.get("phase.p1") and not ex.sessions.get("phase.p2")
 
 
-def test_ac_5_the_not_built_line_names_only_contests_and_councils() -> None:  # AC 5, BUD-AC9
-    """Reservations are built for parallel branches, writer branches included, and for the items of a concurrent map;
-    the spec 08 line names what is not."""
+class CostedSlots(BySlot):
+    """`BySlot` where the first slot step to start blocks until the log shows a slot waiting for its reservation, and each
+    step session costs `step_cost`, a judge 0.01."""
+
+    def __init__(self, repo: Path, *, wait: bool = True, step_cost: float = 0.4) -> None:
+        super().__init__(step_cost=step_cost, judge_cost=0.01)
+        self.repo, self.wait = repo, wait
+        self.begun: list[str] = []
+        self.first = threading.Lock()
+
+    def run_step(self, req: SessionRequest, sink: Any) -> SessionResult:
+        with self.first:
+            self.begun.append(req.session_key)
+            lead = len(self.begun) == 1
+        end = time.monotonic() + 10
+        while self.wait and lead and time.monotonic() < end and not self._waiting():
+            time.sleep(0.02)
+        return super().run_step(req, sink)
+
+    def _waiting(self) -> bool:
+        p = run_dir(state_root_path(self.repo), "demo", "C-1") / "run.jsonl"
+        try:
+            return any(json.loads(ln).get("kind") == "reservation" and json.loads(ln).get("action") == "waiting"
+                       for ln in p.read_text().splitlines())
+        except (OSError, ValueError):
+            return False
+
+
+def slot_spec(cap: float, session_cap: float | None = 0.8, concurrency: int = 2) -> Any:
+    """A contest of three read-only slots, `concurrency` at once, each slot step with a per-session cost cap, under `cap`."""
+    base = contest_spec(slots=3, concurrency=concurrency, then=False, run_cost_cap_usd=cap)
+    pick = base.units["pick"]
+    step = dataclasses.replace(pick.step, session_options=SessionOptions(cost_cap_usd=session_cap))
+    return dataclasses.replace(base, units={"pick": dataclasses.replace(pick, step=step)})
+
+
+def slot_rows(repo: Path) -> list[dict[str, Any]]:
+    p = run_dir(state_root_path(repo), "demo", "C-1").joinpath("run.jsonl")
+    return [json.loads(ln) for ln in p.read_text().splitlines()]
+
+
+def test_contest_slots_take_reservations_from_the_one_ledger_BUD_AC11(repo: Path) -> None:  # BUD-AC11 (BUD-B12, BUD-B13, BUD-B14)
+    ex = CostedSlots(repo, step_cost=0.2)
+    out = go_contest(repo, slot_spec(1.5), ex)  # two slots reserve 0.80 each; the second would cross 1.50 with the first held
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    rows = slot_rows(repo)
+    reserve = [r for r in rows if r["kind"] == "reservation"]
+    waits = [r for r in reserve if r["action"] == "waiting" and r["session_key"].endswith(".step")]
+    (wait,) = waits  # the slot that waited, once
+    (lead,) = [r["session_key"] for r in rows if r["kind"] == "attempt_start" and r["session_key"].endswith(".step")
+               and r["session_key"] != wait["session_key"]][:1]
+    assert wait["waiting_for"] == [lead]  # the running slot's session
+    ended = next(r for r in rows if r["kind"] == "agent_run" and r["session_key"] == lead)
+    held = next(r for r in reserve if r["action"] == "held" and r["session_key"] == wait["session_key"])
+    assert held["seq"] > ended["seq"] and held["spent_usd"] > wait["spent_usd"]  # after that session's `agent_run`
+    for r in reserve:
+        if r["action"] == "held":  # no `held` record of the run adds up to more than the cap
+            assert round(r["spent_usd"] + r["in_flight_usd"] + r["reserved_usd"], 6) <= r["cap_usd"], r
+    assert {r["session_key"].split(".")[1] for r in reserve if r["action"] == "held"} == {"s1", "s2", "s3"}
+
+
+def test_a_slot_session_without_a_cap_of_its_own_reserves_a_share_of_the_cap_BUD_AC11(repo: Path) -> None:  # BUD-AC11 (BUD-B12)
+    ex = CostedSlots(repo, wait=False, step_cost=0.1)
+    out = go_contest(repo, slot_spec(10.0, session_cap=None, concurrency=2), ex)
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    held = [r for r in slot_rows(repo) if r["kind"] == "reservation" and r["action"] == "held"]
+    assert held and all(r["source"] == "share" for r in held)
+    first = min(held, key=lambda r: r["seq"])
+    assert first["reserved_usd"] == round((10.0 - first["spent_usd"]) / 2, 6)  # the cap left over the lower of 2 and 3
+
+
+def test_a_slot_whose_reservation_cannot_fit_is_refused_BUD_AC11(repo: Path) -> None:  # BUD-AC11 (BUD-B12, BUD-B15)
+    ex = CostedSlots(repo, wait=False)
+    out = go_contest(repo, slot_spec(0.5), ex)  # a slot reserves 0.80, which does not fit under 0.50 with nothing held
+    assert out.exit_code is ExitCode.BUDGET_OR_INFRA and out.reason == "cost_cap", out.message
+    rows = slot_rows(repo)
+    assert [r for r in rows if r["kind"] == "reservation" and r["action"] == "refused"]
+    assert not [r for r in rows if r["kind"] == "attempt_start"]
+
+
+def test_ac_5_the_not_built_line_names_neither_councils_nor_contests() -> None:  # AC 5, BUD-AC9, BUD-AC11, BUD-AC12
+    """Reservations are built for parallel branches, writer branches included, for the items of a concurrent map, for
+    the slots of a contest and for the member and chair sessions of a council; the spec 08 line names what is not."""
     root = next(p for p in Path(__file__).resolve().parents if (p / "plugins" / "tempergraph" / "docs").is_dir())
     docs = root / "plugins" / "tempergraph" / "docs"
     lines = [ln for ln in (docs / "specs" / "08-budgets-and-failures.spec.md").read_text().splitlines()
              if ln.startswith("- Not built yet")]
     assert len(lines) == 1
     line = lines[0].lower()
-    assert all(w in line for w in ("contests", "councils", "projection", "bud-b12", "bud-b15"))
+    assert all(w in line for w in ("projection", "bud-b12", "bud-b15", "contest", "council"))
+    assert "not built for" not in line and "maps" not in line  # councils and contests reserve too (BUD-AC11, BUD-AC12)
     assert "maps" not in line  # the items of a concurrent map reserve too
     assert "check spend only" not in line
     assert "read-only branches" not in line  # a writer branch reserves too

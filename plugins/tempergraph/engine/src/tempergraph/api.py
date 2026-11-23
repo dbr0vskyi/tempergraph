@@ -19,9 +19,12 @@ from tempergraph.contracts import (
     AskQuestion,
     AskSpec,
     CallableRef,
+    ChairSpec,
     CheckFinding,
     CheckResult,
     ComplexitySpec,
+    ContestSpec,
+    CouncilSpec,
     Criterion,
     EscalationSpec,
     GateSpec,
@@ -29,6 +32,7 @@ from tempergraph.contracts import (
     JudgeSpec,
     MapSpec,
     MeasureSpec,
+    MemberSpec,
     ProducesKind,
     RearmSpec,
     ResolveResult,
@@ -40,6 +44,7 @@ from tempergraph.contracts import (
     ScriptSpec,
     SessionOptions,
     SettingDecl,
+    SlotSpec,
     StepSpec,
     SubworkflowSpec,
     SwitchSpec,
@@ -56,7 +61,7 @@ from tempergraph.run.finalize import FinalizerContext, FinalizerResult
 __all__ = [
     "CheckFinding", "CheckResult", "Criterion", "FinalizerContext", "FinalizerResult", "Gate", "Input", "Judge", "Param", "ResolveResult", "Route",
     "ComplexitySwitch", "Escalation", "Level", "Measure", "Risk", "When", "stock", "Rearm", "RouteView", "Routing", "Script", "SessionOptions", "Setting", "Step", "Switch", "Value", "Workflow",
-    "WorktreeDecl", "checks", "text", "Parallel", "Question", "Map", "Ask", "Wait", "Council", "Contest", "Subworkflow",
+    "WorktreeDecl", "checks", "text", "Parallel", "Question", "Map", "Ask", "Wait", "Council", "Member", "Chair", "Contest", "Slot", "Subworkflow",
 ]
 
 
@@ -288,7 +293,7 @@ def Map(*, items_from: tuple[str, str] | Sequence[str], step: UnitSpec, extract:
         item_model: Callable[..., Any] | None = None, models: Iterable[str] = ()) -> UnitSpec:
     """A map: `step` (built with `Step`) runs once per item of the list at `items_from` (`(unit, key)`), each
     item gated on its own by the step's gate (MAP-B7). Release 2 builds the sequential mode."""
-    if step.kind != "step" or step.step is None:
+    if step.kind not in ("step", "contest") or step.step is None:  # a contest as the item is built, then refused (CTS-B10)
         raise TypeError("Map(step=...) takes a unit built with Step()")
     if step.route is not None:
         raise TypeError("a map's step takes no route")
@@ -296,7 +301,7 @@ def Map(*, items_from: tuple[str, str] | Sequence[str], step: UnitSpec, extract:
     m = MapSpec(items_from=(str(unit), str(key)), extract=_opt_ref(extract), max_items=max_items,
                 on_empty=on_empty, mode=mode, concurrency=concurrency,  # type: ignore[arg-type]
                 item_model=_opt_ref(item_model), models=tuple(models))
-    return UnitSpec(kind="map", gate=step.gate, step=step.step, map=m)
+    return UnitSpec(kind="map", gate=step.gate, step=step.step, map=m, contest=step.contest)
 
 
 def Question(name: str, text: str, *, kind: str = "text", choices: Iterable[str] = (), required: bool = True,  # noqa: N802
@@ -329,8 +334,54 @@ def Parallel(*, branches: Iterable[str], gate: GateSpec | None = None) -> UnitSp
     return UnitSpec(kind="parallel", gate=gate or GateSpec(), branches=tuple(branches))
 
 
-Council = _later("council")
-Contest = _later("contest")
+def Slot(name: str, *, executor: str | None = None, model: str | None = None,  # noqa: N802
+         prompt_variant: str | None = None) -> SlotSpec:
+    """One candidate slot of a contest (CTS-B6): a slug `name`, and optional `executor`, `model` and `prompt_variant`
+    overrides that apply to that slot's step only."""
+    return SlotSpec(name=name, executor=executor, model=model, prompt_variant=prompt_variant)
+
+
+def Contest(*, step: UnitSpec, slots: int | Iterable[SlotSpec] = 3, writes: bool = False,  # noqa: N802
+            retry_scope: str = "best", concurrency: int = 3, cost_cap_usd: float | None = None) -> UnitSpec:
+    """A contest: `step` (built with `Step`) runs in 2 to 5 slots, each graded by the step's own gate, and the best
+    candidate by the engine's fixed rule is kept (CTS-B6, CTS-B7). `slots` is a count or a list of `Slot`s."""
+    if step.kind != "step" or step.step is None:
+        raise TypeError("Contest(step=...) takes a unit built with Step()")
+    if step.route is not None:
+        raise TypeError("a contest's step takes no route")
+    held: int | tuple[SlotSpec, ...] = slots if isinstance(slots, int) else tuple(slots)
+    c = ContestSpec(slots=held, writes=writes, retry_scope=retry_scope,  # type: ignore[arg-type]
+                    concurrency=concurrency, cost_cap_usd=cost_cap_usd)
+    return UnitSpec(kind="contest", gate=step.gate, step=step.step, contest=c)
+
+
+def Member(*, name: str, executor: str | None = None, model: str | None = None, stance: str = "",  # noqa: N802
+           tools: Iterable[str] = (), timeout_s: int | None = None, idle_s: int | None = None) -> MemberSpec:
+    """One member of a council (CNL-B9): a unique slug `name`, its own `stance` (up to 400 characters) and read-only
+    `tools`; its `executor` and `model` resolve on the step layer when unset."""
+    return MemberSpec(name=name, executor=executor, model=model, stance=stance, tools=tuple(tools),
+                      timeout_s=timeout_s, idle_s=idle_s)
+
+
+def Chair(*, executor: str | None = None, model: str | None = None, prompt: str = "") -> ChairSpec:  # noqa: N802
+    """The chair of a council (CNL-B9): it writes the synthesis (or a vote's rationale) from the members' final positions."""
+    return ChairSpec(executor=executor, model=model, prompt=prompt)
+
+
+def Council(*, question: str | TextRef, members: Iterable[MemberSpec], mode: str = "synthesize",  # noqa: N802
+            options: Iterable[str] | str | None = None, rule: str | None = None, rounds: int = 0,
+            anonymize: bool = True, chair: ChairSpec | None = None, quorum: int | None = None,
+            on_no_decision: str = "escalate", retry_scope: str = "all", cost_cap_usd: float | None = None,
+            gate: GateSpec | None = None) -> UnitSpec:
+    """A council unit (CNL-B9): `members` answer `question` blind, `rounds` deliberation rounds follow, and the outcome
+    is a chair's synthesis (`synthesize`), a tally of votes by `rule` (`vote`) or a Borda count of peer rankings
+    (`rank`). `options` (a `vote`'s slugs, or an artifact key of a list) and `rule` belong to `vote` only."""
+    spec = CouncilSpec(question=question, members=tuple(members), mode=mode,  # type: ignore[arg-type]
+                       options=options if options is None or isinstance(options, str) else tuple(options),
+                       rule=rule, rounds=rounds, anonymize=anonymize, chair=chair, quorum=quorum,  # type: ignore[arg-type]
+                       on_no_decision=on_no_decision, retry_scope=retry_scope,  # type: ignore[arg-type]
+                       cost_cap_usd=cost_cap_usd)
+    return UnitSpec(kind="council", gate=gate or GateSpec(), council=spec)
 
 _INPUT_REF_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$")
 

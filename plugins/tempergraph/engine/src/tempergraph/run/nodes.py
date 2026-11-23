@@ -13,12 +13,13 @@ import os
 import threading
 import time
 from collections.abc import Callable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from tempergraph import git as gitmod
-from tempergraph.compiler.state import Move, RunState
+from tempergraph.compiler.state import Move, RunState, fold, item_view, own_keys, slot_writes
 from tempergraph.contracts import (
     CheckResult,
     Executor,
@@ -28,6 +29,7 @@ from tempergraph.contracts import (
     SessionOptions,
     SessionRequest,
     SessionResult,
+    SlotSpec,
     StepSpec,
     UnitSpec,
     Verdict,
@@ -44,6 +46,7 @@ from tempergraph.render.prompt import AttemptContext, Blocker, render_step
 from tempergraph.run import audit as auditmod
 from tempergraph.run import checks as checkmod
 from tempergraph.run import complexity, mapping, reserve, scriptcache, tool_access
+from tempergraph.run import contest as contestmod
 from tempergraph.run import gate as gatemod
 from tempergraph.run import ladder as laddermod
 from tempergraph.run.check_worker import run_in_worker
@@ -56,6 +59,8 @@ from tempergraph.run.judging import (
     Unparsed,
     brief_digest,
     claim_criterion,
+    council_dissent_blocker,
+    council_inputs,
     criteria_digest,
     derive,
     judged,
@@ -168,8 +173,9 @@ class EngineNodes:
         """The workspace record's child for `unit` when `unit` is a writer branch of a parallel block, or for the item in
         hand when `unit` is a concurrent map whose step writes (its child is addressed by the item's slot)."""
         held = mapping.item_in_hand(state)
-        if held is not None:
-            return self._child_of(state, held["slot"]) if flow.writer_map(self.ctx.spec, unit) else None
+        if held is not None:  # an item of a writing map or a slot of a writing contest: its child is its slot's
+            writes = flow.writer_map(self.ctx.spec, unit) or flow.writer_contest(self.ctx.spec, unit)
+            return self._child_of(state, held["slot"]) if writes else None
         block = flow.block_of(self.ctx.spec, unit)
         if block is None or unit not in flow.writer_branches(self.ctx.spec, block):
             return None
@@ -278,20 +284,35 @@ class EngineNodes:
         if cap is not None and CostTotals.from_json((state.get("run") or {}).get("cost")).figure() >= cap:
             raise Drain("cost_cap")
 
-    def _hold(self, unit: str, state: Mapping[str, Any]) -> dict[str, Any] | None:
-        """What a session of `unit` needs to take a reservation (BUD-B12): only a branch of a parallel block or an item of a
-        concurrent map, in a run with a cost cap. Other units run one session at a time and keep the BUD-B9 check."""
+    def _council_boundary(self, state: Mapping[str, Any], accrued: float) -> None:
+        """The check made before an attempt (BUD-B9), for a council session that runs alone: the chair, once the members have
+        spent what this attempt's state does not hold yet."""
+        reason = self.ctx.drain_requested()
+        if reason:
+            raise Drain(reason)
+        cap = self.ctx.spec.run_cost_cap_usd
+        if cap is not None and CostTotals.from_json((state.get("run") or {}).get("cost")).figure() + accrued >= cap:
+            raise Drain("cost_cap")
+
+    def _hold(self, unit: str, state: Mapping[str, Any], width: int | None = None) -> dict[str, Any] | None:
+        """What a session of `unit` needs to take a reservation (BUD-B12): a branch of a parallel block, an item of a
+        concurrent map, or a member or chair session of a council (its `width` is the members of the round, 1 for a session
+        that runs alone), in a run with a cost cap. Other units run one session at a time and keep the BUD-B9 check."""
         spec = self.ctx.spec
         cap = spec.run_cost_cap_usd
         block = flow.block_of(spec, unit)
         held = mapping.item_in_hand(state)
-        if cap is None or (block is None and held is None):
+        if cap is None or (block is None and held is None and width is None):
             return None
-        if held is not None:  # an item of a concurrent map: the items that may run at once share the cap (BUD-B12)
+        if width is None and held is not None and spec.units[unit].contest is not None:  # a slot of a contest: the
+            c = spec.units[unit].contest  # slots that may run at once share the cap, the lower of `concurrency` and the
+            assert c is not None  # slot count (BUD-B12)
+            width = min(c.concurrency, max(len(flow.slot_names(spec, unit)), 1))
+        elif width is None and held is not None:  # an item of a concurrent map: the items that may run at once share the cap
             m = spec.units[unit].map
             assert m is not None
             width = min(m.concurrency, max(len(mapping.record(state, unit).get("items") or []), 1))
-        else:
+        elif width is None:
             assert block is not None
             width = len(spec.units[block].branches)
         totals = CostTotals.from_json((state.get("run") or {}).get("cost"))
@@ -369,6 +390,28 @@ class EngineNodes:
             totals.add(r.usage)
         return {**totals.to_json(), "_base": base}
 
+    # -- council (CNL-B13 to CNL-B15): the nodes of the subgraph that is a council's step node --------------------
+
+    def council_open(self, unit: str, state: Mapping[str, Any]) -> Any:
+        from tempergraph.run import council_run
+
+        return council_run.open_run(self, unit, state)
+
+    def council_member(self, run: Any, name: str, stage: int) -> None:
+        run.member(name, stage)
+
+    def council_close(self, run: Any, stage: int) -> int:
+        return int(run.close(stage))
+
+    def council_tally(self, run: Any) -> None:
+        run.tally_now()
+
+    def council_chair(self, run: Any) -> None:
+        run.chair_now()
+
+    def council_finish(self, run: Any) -> dict[str, Any]:
+        return dict(run.finish())
+
     # -- step ------------------------------------------------------------------------------------
 
     def _skey(self, unit: str, attempt: int, kind: str, item: str | None = None) -> str:
@@ -390,6 +433,8 @@ class EngineNodes:
             return self._person_unit(unit, state)
         if u.kind == "parallel":
             return self._join_unit(unit, state)
+        if u.kind == "contest" and mapping.item_in_hand(state) is None:  # CTS-B6: the slots run from the unit's own node
+            return self._contest_step(unit, state)
         if u.extra.get("outcome"):
             return self._outcome_step(unit, state)
         st = u.step
@@ -407,8 +452,8 @@ class EngineNodes:
                                entered_from=_entered_from(state, unit))
         item: dict[str, Any] | None = None
         maps: dict[str, Any] = {}
-        if u.map is not None and sent is not None:  # the item the node was sent, its own attempt count
-            m, item = self._concurrent_item(unit, state, sent["id"])
+        if (u.map is not None or u.contest is not None) and sent is not None:  # the item or slot the node was sent
+            m, item = self._concurrent_item(unit, state, sent["id"])  # its own attempt count
             maps = {unit: m}
         elif u.map is not None:  # the list is read once per visit; the item in hand is the first not passed
             done, m, item = self._map_item(unit, state, visit, workdir, prev, path_units)
@@ -455,7 +500,11 @@ class EngineNodes:
                           "check": None, "escalate": "workflow_fault", "timed_out": False}
                 return {"attempts": {unit: record}, "maps": maps}
             alias = chosen
-        ex = self.ctx.registry.get(st.executor or spec.default_executor)
+        slot_spec = self._slot_spec(unit, iid) if u.contest is not None else None  # CTS-B6: this slot's own overrides
+        if slot_spec is not None and slot_spec.model and not up and "model" not in (u.extra.get("operator_set") or ()):
+            alias = slot_spec.model
+        ex = self.ctx.registry.get((slot_spec.executor if slot_spec is not None else None) or st.executor
+                                   or spec.default_executor)
         caps = ex.capabilities()
         fields = self._fields(unit, state, attempt, visit, workdir)
         if item:  # VAL-B8 item keys
@@ -499,9 +548,12 @@ class EngineNodes:
                                     sub="-preview"), thread=self.ctx.thread, limit=self.ctx.self_check_limit)
             ctx = dataclasses.replace(ctx, self_check=selfcheck.command(ticket))
         rendered = render_step(unit, shown, ctx, caps)
+        prompt = rendered.text
+        if slot_spec is not None and slot_spec.prompt_variant:  # CTS-B6: appended under its fixed heading
+            prompt += "\n\n## Approach for this attempt\n" + slot_spec.prompt_variant.strip() + "\n"
         key = self._skey(unit, attempt, "retry" if retry else "step", item=iid)
         req = SessionRequest(
-            kind="retry" if retry else "step", prompt=rendered.text, workdir=workdir, alias=alias, session_key=key,
+            kind="retry" if retry else "step", prompt=prompt, workdir=workdir, alias=alias, session_key=key,
             tools=tuple(st.tools), commands=(*commands, *([ctx.self_check] if ctx.self_check else [])),
             timeout_s=ov.get("timeout_s") or st.timeout_s or DEFAULT_TIMEOUT_S,
             idle_s=ov.get("idle_s") or st.idle_s,
@@ -577,6 +629,11 @@ class EngineNodes:
             record["up_estimates"] = [*usages, priced][-5:]
         if foreign:
             record.update(foreign_worktrees=foreign, warnings=[f"foreign_worktree: {rel}" for rel in foreign])
+        if u.contest is not None:  # the slot's own step cost: the attempt's cost cap and the pick read it (CTS-B6, CTS-B7)
+            spent = CostTotals()
+            for r in results:
+                spent.add(r.usage)
+            record["cost_usd"] = spent.figure()
         if record["slow_host"]:
             record.update(infra_cause="slow_host", infra_spent=False)
         if res.ok and before != after and (flow.block_of(spec, unit) or sent is not None) \
@@ -611,6 +668,230 @@ class EngineNodes:
         at = next(i for i, it in enumerate(items, start=1) if it["id"] == iid)
         n = int(m.get(f"n:{iid}", 0)) + 1
         return {f"n:{iid}": n}, {**items[at - 1], "index": at, "count": len(items), "attempt": n}
+
+    # -- the contest (CTS-B6 to CTS-B10) ----------------------------------------------------------
+
+    def _slot_spec(self, unit: str, name: str | None) -> SlotSpec | None:
+        c = self.ctx.spec.units[unit].contest
+        if c is None or isinstance(c.slots, int):
+            return None
+        return next((s for s in c.slots if s.name == name), None)
+
+    @staticmethod
+    def _slot_view(state: Mapping[str, Any], unit: str, name: str) -> Any:
+        """The state a slot's step or judge reads: the slot's own record in the place the unit's would be, and a person's
+        feedback for the unit, which no slot of its own holds."""
+        view = item_view(state, unit, name)
+        own = (state.get("feedback") or {}).get(unit)
+        if own and unit not in (view.get("feedback") or {}):
+            view["feedback"] = {**(view.get("feedback") or {}), unit: own}
+        return view
+
+    def _each(self, names: Sequence[str], width: int, work: Callable[[str], None]) -> None:
+        """Run `work` for each name, up to `width` at once and the next as one ends; the first failure is raised once every
+        started name has ended."""
+        with ThreadPoolExecutor(max_workers=max(1, min(width, len(names) or 1)), thread_name_prefix="slot") as pool:
+            futures = [pool.submit(work, n) for n in names]
+        for f in futures:
+            f.result()
+
+    def _contest_step(self, unit: str, state: RunState) -> dict[str, Any]:
+        """CTS-B6, CTS-B8: the step node of a contest. Its slots run the unit's step each in the state of its own, up to
+        `concurrency` at once, and an unstarted slot is skipped once the attempt's cost has reached `cost_cap_usd`. A
+        visit's first entry runs every slot; a retry runs the slots the retry scope names (CTS-B8). The grading and the
+        pick are the judge node's."""
+        spec = self.ctx.spec
+        u = spec.units[unit]
+        c = u.contest
+        assert c is not None
+        names = list(flow.slot_names(spec, unit))
+        visit = int(((state.get("visits") or {}).get(unit) or {}).get("visit", 1))
+        prev = (state.get("attempts") or {}).get(unit) or {}
+        workdir = self._workdir(state)
+        path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
+        run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
+        m = mapping.record(state, unit)
+        writes: dict[str, Any] = {}
+        if m.get("visit") != visit:  # a new visit: every slot runs, nothing of an earlier visit stands
+            if prev.get("visit") != visit:
+                fp = gitmod.fingerprint(workdir)
+                self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=fp.dirty,
+                                   entered_from=_entered_from(state, unit))
+            stale = {k: None for k in m if k.startswith("st:") or k in ("pick", "single", "round", "skipped")}
+            writes["maps"] = {unit: {"visit": visit, "items": [{"id": n, "text": ""} for n in names], "passed": [],
+                                     **stale}}
+            running = names
+            if flow.writer_contest(spec, unit):  # WSP-B19, WSP-B11: the checkpoint, then one worktree per slot
+                writes["workspace"] = self._enter_writer_contest(unit, state, names)
+        else:  # a retry of this visit (CTS-B8)
+            if flow.writer_contest(spec, unit):  # a second attempt would meet the first attempt's slot branches
+                self.ctx.log.write("engine_error", unit=unit, error="workspace_refused",
+                                   detail="name_collision: a second attempt of a writer contest meets the slot branches "
+                                          "of the first")
+                raise Drain("workspace_refused")
+            running = contestmod.retry_slots(names, m.get("single"))  # `best` after a retry: one step (CTS-B8, CTS-B4)
+        self._boundary(state)
+        attempt = int(prev.get("attempt", 0)) + 1
+        start = fold(dict(state), writes)
+        cap = c.cost_cap_usd
+        lock = threading.Lock()
+        done: dict[str, dict[str, Any]] = {}
+        skipped: list[str] = []
+        spent = 0.0
+
+        def work(name: str) -> None:
+            nonlocal spent
+            with lock:
+                if cap is not None and spent >= cap:  # CTS-B6: the attempt's cost has reached the cap
+                    skipped.append(name)
+                    return
+            body = self.step(unit, self._slot_view(start, unit, name))
+            got = (body.get("attempts") or {}).get(unit) or {}
+            with lock:
+                spent += float(got.get("cost_usd") or 0.0)
+                done[name] = slot_writes(body, unit, name)
+
+        self._each(running, c.concurrency, work)
+        out: dict[str, Any] = fold({}, writes)
+        for name in running:
+            if name in done:
+                out = fold(out, done[name])
+        base = {"attempt": attempt, "visit": visit, "ok": True, "text": "", "issues": [], "tools": [],
+                "session_id": None, "escalate": None, "infra_spent": False, "check": None, "item": None,
+                "timed_out": False, "contest": True}
+        round_ = {"round": running, "skipped": [n for n in running if n in skipped], "attempt": attempt}
+        return fold(out, {"attempts": {unit: base}, "run": run, "maps": {unit: round_}})
+
+    def _enter_writer_contest(self, unit: str, state: Mapping[str, Any], names: Sequence[str]) -> dict[str, Any]:
+        """WSP-B19, WSP-B11: entering a writing contest commits the run worktree's uncommitted changes on the run's branch,
+        then cuts one worktree per slot from that commit. A cut that fails ends the segment at this boundary (engine_error
+        `workspace_refused`) with nothing left behind."""
+        ws = dict(state.get("workspace") or {})
+        try:
+            if ws.get("mode") != "worktree":
+                raise WorkspaceRefused("needs_worktree", f"writing contest {unit}: the run has no worktree")
+            rec = WorkspaceRecord.from_json(ws)
+            run_path = Path(rec.path)
+            gitmod.commit_all(run_path, f"tempergraph: checkpoint before {unit}")
+            rec = cut_writers(rec, self.ctx.thread, [mapping.slot(unit, n) for n in names], self.ctx.spec.worktree,
+                              self.ctx.state_root, read_include=self.ctx.read_worktreeinclude, kind="s")
+            rec.last_head = gitmod.head(run_path)
+        except (WorkspaceRefused, gitmod.GitError) as exc:
+            word = exc.word if isinstance(exc, WorkspaceRefused) else "git_failed"
+            self.ctx.log.write("engine_error", unit=unit, error="workspace_refused", detail=f"{word}: {exc}")
+            raise Drain("workspace_refused") from None
+        return rec.to_json()
+
+    def _contest_judge(self, unit: str, state: RunState) -> dict[str, Any]:
+        """CTS-B7, CTS-B2, CTS-B3, CTS-B9: the judge node of a contest. Each slot that ran is graded alone, on a view of its
+        own: its check first, and a judge session only for a slot whose check passed, holding that slot's artifacts
+        only. The slots that were not put out are ordered by the fixed rule (`run/contest.py`); the winner's artifacts
+        and verdict become the unit's, and a `contest` record says so."""
+        spec = self.ctx.spec
+        u = spec.units[unit]
+        c = u.contest
+        assert c is not None
+        names = list(flow.slot_names(spec, unit))
+        m = mapping.record(state, unit)
+        visit = int(((state.get("visits") or {}).get(unit) or {}).get("visit", 1))
+        unit_att = dict((state.get("attempts") or {}).get(unit) or {})
+        attempt = int(unit_att.get("attempt", 1))
+        skipped = [n for n in names if n in (m.get("skipped") or [])]
+        ran = [n for n in names if n in (m.get("round") or []) and n not in skipped]
+        before = CostTotals.from_json((state.get("run") or {}).get("cost")).figure()
+        lock = threading.Lock()
+        bodies: dict[str, dict[str, Any]] = {}
+
+        def grade(name: str) -> None:
+            body = self._judge(unit, self._slot_view(state, unit, name))
+            with lock:
+                bodies[name] = body
+
+        self._each(ran, c.concurrency, grade)
+        out: dict[str, Any] = {}
+        judged: dict[str, dict[str, Any]] = {}
+        atts: dict[str, dict[str, Any]] = {}
+        costs: dict[str, float] = {}
+        for name in ran:
+            body = bodies[name]
+            out = fold(out, slot_writes(body, unit, name))
+            judged[name] = dict((body.get("judgements") or {}).get(unit) or {})
+            held = (state.get("attempts") or {}).get(mapping.slot(unit, name)) or {}
+            atts[name] = {**held, **((body.get("attempts") or {}).get(unit) or {})}
+            cost = (body.get("run") or {}).get("cost")
+            mine = CostTotals.from_json(cost).figure() - before if cost else 0.0
+            costs[name] = round(float(atts[name].get("cost_usd") or 0.0) + max(mine, 0.0), 6)
+        infra = {n for n in ran if atts[n].get("infra_spent") or judged[n].get("infra_spent")}
+        out_for = {n: (n in infra or (atts[n].get("check") or {}).get("result") == "FAIL"
+                       or judged[n].get("reason") in ("step_failed", "output_contract")) for n in ran}
+        cands = [contestmod.Candidate(slot=n, order=names.index(n), verdict=str(judged[n].get("verdict")),
+                                      cost=costs[n], **{k: v for k, v in contestmod.keys_of(judged[n]).items()})
+                 for n in ran if not out_for[n]]
+        winner = contestmod.pick(cands)
+        rows = []
+        for n in names:
+            if n in skipped:
+                rows.append(contestmod.slot_row(names.index(n) + 1, n, skipped=True))
+            elif n in ran:
+                gone = out_for[n]
+                rows.append(contestmod.slot_row(
+                    names.index(n) + 1, n, attempt=atts[n].get("attempt"),
+                    check=(atts[n].get("check") or {}).get("result"), verdict=None if gone else judged[n].get("verdict"),
+                    keys=None if gone else contestmod.keys_of(judged[n]), cost=costs[n]))
+        place = names.index(winner.slot) + 1 if winner is not None else None
+        self.ctx.log.write("contest", unit=unit, visit=visit, attempt=attempt, winner=place, slots=rows)
+        live = [n for n in ran if n not in infra]
+        chosen = winner.slot if winner is not None else None
+        if chosen is None:  # CTS-B9: every slot was put out; the first slot's FAIL is the unit's check result
+            chosen = next((n for n in live if (atts[n].get("check") or {}).get("result") == "FAIL"), None) or (
+                live[0] if live else (ran[0] if ran else None))
+        verdict_att: dict[str, Any] = {**unit_att, "contest": True, "winner": winner.slot if winner else None,
+                                       "item": None, "attempt": attempt, "visit": visit}
+        if chosen is None:  # nothing ran: no slot started (cannot happen: the first slot always starts)
+            unit_j: dict[str, Any] = {"verdict": str(Verdict.ESCALATE), "reason": "contest_no_slot"}
+        elif winner is None and not live:  # CTS-B9: every slot failed on infrastructure
+            verdict_att.update({k: v for k, v in atts[chosen].items() if k not in ("item", "attempt", "visit")})
+            verdict_att.update(infra_spent=True, ok=False, item=None)
+            unit_j = {"verdict": str(Verdict.ESCALATE), "reason": "infra", "confidence": 1.0,
+                      "confidence_source": "engine_placeholder"}
+        else:
+            verdict_att.update({k: v for k, v in atts[chosen].items() if k not in ("item", "attempt", "visit")})
+            verdict_att["item"] = None
+            unit_j = {**judged[chosen], "winner": winner.slot if winner else None}
+        extra: dict[str, Any] = {}
+        if flow.writer_contest(spec, unit) and winner is not None:  # CTS-B5, CTS-B7: only the winner's worktree is merged
+            merged, found = self._merge_children(state, [(mapping.slot(unit, winner.slot), winner.slot,
+                                                          f"Merge contest slot {winner.slot} of {unit}")])
+            verdict_att.update(found)
+            if merged is None:  # CTS-B9: a failed winner merge is a writer join conflict, the run branch put back
+                unit_j = {"verdict": str(Verdict.ESCALATE), "reason": "merge_conflict", "confidence": 1.0,
+                          "confidence_source": "engine_placeholder", "blockers": [
+                              {"criterion": "writer-branches", "place": p, "problem": f"conflicting change in {p}",
+                               "fix": f"decide which change of contest slot {winner.slot} or the run's branch stays"}
+                              for p in found.get("conflicts") or []] or [
+                              {"criterion": "writer-branches",
+                               "problem": str(found.get("merge_error") or "the merge failed")}]}
+            else:  # the other slots' worktrees are discarded and their records kept
+                won = mapping.slot(unit, winner.slot)
+                merged["children"] = [{**ch, "state": "discarded"} if str(ch.get("unit")).startswith(f"{unit}.")
+                                      and ch.get("unit") != won else ch for ch in merged.get("children") or []]
+                extra["workspace"] = merged
+        writes: dict[str, Any] = {**out, **extra}
+        writes = fold(writes, {"attempts": {unit: verdict_att}, "judgements": {unit: unit_j},
+                               "maps": {unit: {"pick": {"winner": winner.slot if winner else None,
+                                                        "verdict": unit_j.get("verdict"),
+                                                        "order": [x.slot for x in contestmod.ordered(cands)],
+                                                        "attempt": attempt},
+                                               "round": None, "skipped": None}}})
+        if chosen is not None and winner is not None:  # the plain keys are the winner's (CTS-B7)
+            for chan in ("artifacts", "values", "facts"):
+                loose: Mapping[str, Any] = state
+                was: Mapping[str, Any] = (loose.get(chan) or {}).get(unit) or {}
+                now: Mapping[str, Any] = (out.get(chan) or {}).get(unit) or {}
+                plain = own_keys({**was, **now}, winner.slot)
+                if plain:
+                    writes = fold(writes, {chan: {unit: plain}})
+        return writes
 
     def _map_item(self, unit: str, state: Mapping[str, Any], visit: int, workdir: Path, prev: Mapping[str, Any],
                   path_units: list[str]) -> tuple[dict[str, Any] | None, dict[str, Any], dict[str, Any] | None]:
@@ -1020,6 +1301,8 @@ class EngineNodes:
         return {"attempts": {unit: record}, "run": run}
 
     def judge(self, unit: str, state: RunState) -> dict[str, Any]:
+        if self.ctx.spec.units[unit].kind == "contest" and mapping.item_in_hand(state) is None:
+            return self._contest_judge(unit, state)  # CTS-B7: every slot graded alone, then the pick
         w = self._judge(unit, state)
         if self.ctx.spec.units[unit].extra.get("outcome"):
             w = self._route_outcome(unit, state, w)
@@ -1058,6 +1341,9 @@ class EngineNodes:
             return {"judgements": {unit: {"verdict": str(Verdict.PROCEED), "reason": "map_items_passed"}}}
         if u.kind == "subworkflow" and (done := self._child_verdict(unit, att)) is not None:
             return done
+        if att.get("council_stop"):  # CNL-B13: no decision with `on_no_decision: stop`; the gate stops the run
+            return {"judgements": {unit: {"verdict": str(Verdict.ESCALATE), "reason": "no_decision", "confidence": 1.0,
+                                          "confidence_source": "engine_placeholder"}}}
         if (att.get("escalate") == "upstream" and att.get("upstream") and att.get("ok") and g.judge is not None
                 and not att.get("infra_spent")):
             return self._judge_claim(unit, state, att)
@@ -1074,13 +1360,18 @@ class EngineNodes:
                 placeholder["blockers"] = list(att.get("map_findings") or [])
             return {"judgements": {unit: placeholder}}
         if not att.get("ok"):
+            problem = att.get("error_kind") or ("timed out" if att.get("timed_out") else "the step failed")
+            if att.get("written"):  # WSP-B11, CNL-B14: a read-only member wrote to the workspace; its paths are reported
+                problem += ": " + ", ".join(str(p) for p in att["written"])
             return {"judgements": {unit: {"verdict": str(Verdict.RETRY), "reason": "step_failed", "blockers": [
-                {"criterion": "step", "problem": att.get("error_kind") or ("timed out" if att.get("timed_out")
-                                                                            else "the step failed")}]}}}
+                {"criterion": "step", "problem": problem}]}}}
         bad = [i for i in att.get("issues") or [] if i.startswith(("value_missing", "value_invalid"))]
         if bad:
             return {"judgements": {unit: {"verdict": str(Verdict.RETRY), "reason": "output_contract", "blockers": [
                 {"criterion": "output", "problem": i} for i in bad]}}}
+        if att.get("dissent_missing"):  # CNL-B12: the built-in check; its failure is retryable
+            return {"judgements": {unit: {"verdict": str(Verdict.RETRY), "reason": "council_dissent",
+                                          "blockers": [council_dissent_blocker(unit)]}}}
         workdir = self._workdir(state, unit)
         cres, notes = self._check(unit, state, att, workdir)
         att["check"] = checkmod.to_json(cres)
@@ -1271,6 +1562,8 @@ class EngineNodes:
         subject_unit = claim[0] if claim else unit
         arts = (state.get("artifacts") or {}).get(subject_unit) or {}
         vals = (state.get("values") or {}).get(subject_unit) or {}
+        if u.contest is not None and att.get("item"):  # CTS-B3: one candidate's artifacts, no other slot's
+            arts, vals = own_keys(arts, str(att["item"])), own_keys(vals, str(att["item"]))
         refs: dict[str, str] = {}
         for ref in j.references:
             for chan in ("artifacts", "values"):
@@ -1282,9 +1575,14 @@ class EngineNodes:
             if ref not in refs and ref != "request" and ref in inputs:
                 refs[ref] = str(inputs[ref])
         req_text = str(inputs.get("request", ""))
+        subject = {**{k: str(v) for k, v in arts.items()}, **{k: str(v) for k, v in vals.items()}}
+        if u.kind == "council":  # CNL-B4: the judge grades `decision`, with `positions` among its references
+            subject, more = council_inputs(vals)
+            for k, v in more.items():
+                refs.setdefault(k, v)
         prompt = render_judge(JudgeInputs(
             gate=g, stance=stance, brief=brief, request=req_text, references=refs,
-            subject={**{k: str(v) for k, v in arts.items()}, **{k: str(v) for k, v in vals.items()}},
+            subject=subject,
             out_of_reach=[d.capability for d in views.deferred], check=cres, step_account=str(att.get("text") or ""),
             workspace_facts={"branch": gitmod.branch(workdir), "changed": len(gitmod.changed_paths(workdir))},
             feedback=str(((state.get("feedback") or {}).get(unit) or {}).get("text") or ""),
@@ -1512,6 +1810,12 @@ class EngineNodes:
         w = gatemod.apply_decision(self.ctx.spec, unit, state, payload)
         self.ctx.log.write("human", unit=unit, decision=payload.get("decision"), caller=payload.get("caller"),
                            feedback=bool(payload.get("feedback")) and not payload.get("ruling"))
+        if payload.get("council_decision") is not None:  # CNL-B13, EVT-B15: the person's answer is the council's outcome
+            held = (state.get("attempts") or {}).get(unit) or {}
+            tally = held.get("council", {}).get("tally") or {}
+            self.ctx.log.write("council_tally", unit=unit, attempt=held.get("attempt"), mode=tally.get("mode"),
+                               rule=tally.get("rule"), counts=tally.get("counts"),
+                               outcome=str(payload["council_decision"]), chosen_by="person")
         p = (w.get("pause") or {}).get(unit)
         if p:  # an applied deadline turned the pause into an escalation (FLX-B8)
             self.ctx.log.write("pause", unit=unit, item=p.get("item"), pause_kind=p["kind"], decisions=p["decisions"],

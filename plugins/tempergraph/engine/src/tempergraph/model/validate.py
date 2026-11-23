@@ -52,12 +52,15 @@ class Finding:
 
 
 # Kinds, primitives and fields this release does not build, with the release that adds them (ADR-0090).
-LATER_KINDS: dict[str, int] = {
-    "council": 3, "contest": 3,
-}
+LATER_KINDS: dict[str, int] = {}
+# The artifacts a council produces, keyed by the unit (CNL-B10); the judge reads `decision` and `positions` (CNL-B4).
+COUNCIL_ARTIFACTS = ("decision", "positions", "tally")
+COUNCIL_MODES = ("synthesize", "vote", "rank")
+COUNCIL_RULES = ("majority", "supermajority", "unanimous", "plurality")
+STANCE_MAX = 400
 MODEL_KINDS = frozenset({"step"})
 # Keys the settings resolution writes into a unit's `extra` (RST `effective_spec`), never a workflow's own field.
-RESOLVED_EXTRA = frozenset({"operator_set", "arm", "judge_operator_set"})
+RESOLVED_EXTRA = frozenset({"operator_set", "arm", "judge_operator_set", "session_cost_cap_usd"})
 ISSUE_REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 READ_VIEW_KINDS = frozenset({"file", "url", "value"})  # what a claude judge can read without MCP views
@@ -244,6 +247,8 @@ class _Validator:
                 self.err("parallel-join-before-branch", name, f"the join {name!r} comes before its branch {b!r}")
             if bu.kind not in ("step", "script"):
                 self.err("parallel-branch-kind", b, f"a branch is a step or a script unit, not a `{bu.kind}`")
+            if bu.kind == "contest":  # CTS-B10: its own code beside the general one
+                self.err("contest-in-branch", b, f"{b!r} is a contest, which a parallel branch cannot be")
             if bu.gate.back_targets or bu.gate.fallback or bu.route is not None or b in self.spec.flow:
                 self.err("parallel-branch-flow", b, "a branch takes no back target, fallback, route or `next`: "
                                                     "its pass goes to the join")
@@ -275,6 +280,104 @@ class _Validator:
             self.warn("subworkflow-finalizer-skipped", name,
                       f"unit {name!r}: child {child.name!r} declares a finalizer, which never runs from a parent; the "
                       "parent's own finalizer can call the same code")
+
+    def _council(self, name: str, u: UnitSpec) -> None:
+        """CNL-B9, CNL-B16: the refusals of one council unit, each with its own finding code, and its three warnings."""
+        s = self.spec
+        c = u.council
+        if c is None:
+            self.err("council-missing", name, "a council unit needs its council fields")
+            return
+        block = flow.block_of(s, name)
+        if block is not None and flow.writer_branches(s, block):  # WSP-B11: a branch of a writer block works in a worktree of its own
+            self.err("council-in-writer-block", name, f"{name!r} is a branch of {block!r}, a block with a writer branch")
+        if not 2 <= len(c.members) <= 7:
+            self.err("council-members-count", name, f"a council has 2 to 7 members, not {len(c.members)}")
+        names = [m.name for m in c.members]
+        for dup in sorted({n for n in names if names.count(n) > 1}):
+            self.err("council-member-duplicate", name, f"two members are named {dup!r}")
+        for m in c.members:
+            if not SLUG_RE.match(m.name):
+                self.err("council-member-name-invalid", name, f"member name {m.name!r} is not a slug")
+            if len(m.stance) > STANCE_MAX:
+                self.err("council-stance-too-long", name, f"member {m.name!r}: a stance holds at most {STANCE_MAX} characters")
+            for label, val in (("timeout_s", m.timeout_s), ("idle_s", m.idle_s)):
+                if val is not None and (isinstance(val, bool) or not isinstance(val, int) or val <= 0):
+                    self.err("timeout-invalid", name, f"member {m.name!r}: `{label}` must be a positive integer")
+            for tool in m.tools:  # GRD: the engine's catalog holds no MCP tool read-only, so any MCP tool is refused
+                if tool not in READ_ONLY_CAPABILITIES:
+                    self.err("council-member-tool-not-read-only", name,
+                             f"member {m.name!r}: tool {tool!r} is outside the read-only catalog")
+        self._council_options(name, c)
+        if not isinstance(c.rounds, int) or isinstance(c.rounds, bool) or not 0 <= c.rounds <= 3:
+            self.err("council-rounds-invalid", name, "`rounds` is an integer from 0 to 3")
+        if c.quorum is not None and (isinstance(c.quorum, bool) or not isinstance(c.quorum, int)
+                                     or not 1 <= c.quorum <= max(len(c.members), 1)):
+            self.err("council-quorum-invalid", name, "`quorum` is an integer from 1 to the member count")
+        if c.on_no_decision not in ("escalate", "retry", "stop"):
+            self.err("council-no-decision-invalid", name, "`on_no_decision` is escalate, retry or stop")
+        if c.retry_scope not in ("all", "chair"):
+            self.err("council-retry-scope-invalid", name, "`retry_scope` is all or chair")
+        elif c.retry_scope == "chair" and c.mode == "vote":
+            self.err("council-retry-scope-vote", name, "`retry_scope: chair` keeps final positions for `synthesize` and `rank`, not `vote`")
+        if c.cost_cap_usd is not None and not c.cost_cap_usd > 0:
+            self.err("cost-cap-invalid", name, "`cost_cap_usd` must be positive")
+        if c.mode == "synthesize" and c.chair is None:
+            self.err("council-chair-missing", name, "a `synthesize` council needs a chair")
+        if u.gate.judge is None:  # OVR-B6: a council is a step; its gate has the one independent judge
+            self.err("council-judge-missing", name, "a council's gate needs a judge")
+        if not u.gate.criteria:
+            self.err("criteria-missing", name, "a judged gate needs at least one criterion")
+        self._template(name, c.question)
+        self._council_sessions(name, u, c)
+        if u.gate.judge is not None:
+            self._judge(name, u, s.default_executor)
+        if c.mode == "vote" and (c.rule or "majority") == "majority" and len(c.members) % 2 == 0:
+            self.warn("council-even-majority", name, f"{name!r}: `rule: majority` with {len(c.members)} members can tie")
+        if c.rounds > 0 and not c.anonymize:
+            self.warn("council-anonymize-off", name, f"{name!r}: deliberation rounds with `anonymize: false` name the authors")
+
+    def _council_options(self, name: str, c: Any) -> None:
+        if c.mode not in COUNCIL_MODES:
+            self.err("council-mode-invalid", name, f"`mode` is one of {list(COUNCIL_MODES)}")
+        if c.mode != "vote":
+            if c.rule is not None:
+                self.err("council-rule-outside-vote", name, "`rule` belongs to a `vote` council")
+            if c.options is not None:
+                self.err("council-options-outside-vote", name, "`options` belongs to a `vote` council")
+            return
+        if c.rule is not None and c.rule not in COUNCIL_RULES:
+            self.err("council-rule-invalid", name, f"`rule` is one of {list(COUNCIL_RULES)}")
+        opts = c.options
+        if opts is None or (not isinstance(opts, str) and len(opts) < 2):
+            self.err("council-options-missing", name, "a `vote` council needs `options`: 2 to 10 slugs or a list artifact")
+        elif isinstance(opts, str):
+            if opts not in self._keys_before(name):
+                self.err("council-options-unknown", name, f"`options` names {opts!r}, which no earlier unit produces")
+        elif len(opts) > 10 or len(set(opts)) != len(opts) or not all(SLUG_RE.match(str(o)) for o in opts):
+            self.err("council-options-invalid", name, "`options` are 2 to 10 distinct slugs")
+
+    def _council_sessions(self, name: str, u: UnitSpec, c: Any) -> None:
+        """The executor, alias and tools of each member and of the chair, and the one-family warning (CNL-B16, ARC-B15)."""
+        s = self.spec
+        families: list[str | None] = []
+        for who, ex_name, alias, tools in [(f"member {m.name!r}", m.executor, m.model, m.tools) for m in c.members] + (
+                [("the chair", c.chair.executor, c.chair.model, ())] if c.chair is not None else []):
+            executor = ex_name or s.default_executor
+            caps = self.executors.get(executor)
+            if caps is None:
+                self.err("executor-unknown", name, f"{who}: unknown executor {executor!r}")
+                families.append(None)
+                continue
+            if alias:
+                self._alias(name, alias, caps)
+            for tool in tools:
+                if tool in READ_ONLY_CAPABILITIES and not caps.maps(tool):
+                    self.err("tool-unmapped", name, f"{who}: executor {executor!r} maps no tool for {tool!r}")
+            if who != "the chair":
+                families.append(caps.families.get(alias or "inherit"))
+        if len(families) >= 2 and None not in families and len(set(families)) == 1:
+            self.warn("council-one-family", name, f"{name!r}: every member runs on the {families[0]!r} model family")
 
     def _exposed(self, unit: str, owner: str, key: str) -> bool:
         """SWF-B12: `{<owner>.<key>}` read by `unit` names a key a sub-workflow unit earlier in the order exposes."""
@@ -324,6 +427,10 @@ class _Validator:
                 if d is not None:
                     self.err("deadline-misplaced", name, f"`{label}` fields, deadlines included, go on a "
                                                          f"`{label}` unit, not a `{u.kind}`")
+        if u.council is not None and u.kind == "map":  # CNL-B16: a map item runs one session, never a council
+            self.err("council-in-map-item", name, f"{name!r} is a map whose item would be a council")
+        elif u.council is not None and u.kind != "council":
+            self.err("council-misplaced", name, f"`council` fields go on a `council` unit, not a `{u.kind}`")
         mechanical = [c for c in g.criteria if c.mechanical]
         if mechanical and g.check is None:
             self.err("mechanical-without-check", name, "a `mechanical` criterion needs a gate check")
@@ -332,12 +439,19 @@ class _Validator:
         elif u.kind == "map":
             self._step(name, u)
             self._map(name, u)
+            if u.contest is not None:
+                self._contest(name, u)
+        elif u.kind == "contest":
+            self._step(name, u)
+            self._contest(name, u)
         elif u.kind == "script":
             self._script_unit(name, u)
         elif u.kind == "parallel":
             self._parallel(name, u)
         elif u.kind == "subworkflow":
             self._subworkflow(name, u)
+        elif u.kind == "council":
+            self._council(name, u)
         elif u.kind == "ask":
             self._ask(name, u)
         elif u.kind == "wait":
@@ -408,6 +522,52 @@ class _Validator:
         if caps is not None:
             for alias in m.models:
                 self._alias(name, alias, caps)
+
+    def _contest(self, name: str, u: UnitSpec) -> None:
+        """CTS-B6, CTS-B10: the refusals of one contest, each with a finding code of its own, and the one warning."""
+        c = u.contest
+        s = self.spec
+        if c is None:
+            self.err("contest-invalid", name, "a contest unit needs its contest fields")
+            return
+        slots = c.slots
+        if isinstance(slots, bool) or not isinstance(slots, (int, tuple, list)):
+            self.err("contest-slot-count", name, "`slots` is a count from 2 to 5 or a list of slots")
+            return
+        count = slots if isinstance(slots, int) else len(slots)
+        if not 2 <= count <= 5:
+            self.err("contest-slot-count", name, f"a contest has 2 to 5 slots, not {count}")
+        if not isinstance(slots, int):
+            names = [sl.name for sl in slots]
+            if len(set(names)) != len(names):
+                self.err("contest-slot-duplicate", name, "two slots of a contest share one name")
+            for sl in slots:
+                if not SLUG_RE.match(sl.name):
+                    self.err("contest-slot-name", name, f"slot name {sl.name!r} is not a slug")
+        if isinstance(c.concurrency, bool) or not isinstance(c.concurrency, int) or not 1 <= c.concurrency <= 5:
+            self.err("contest-concurrency", name, "`concurrency` must be an integer from 1 to 5")
+        if c.cost_cap_usd is not None and (isinstance(c.cost_cap_usd, bool) or not isinstance(c.cost_cap_usd, (int, float))
+                                           or not c.cost_cap_usd > 0):
+            self.err("contest-cost-cap", name, "`cost_cap_usd` must be a number above 0")
+        if c.retry_scope not in ("best", "all"):
+            self.err("contest-retry-scope", name, f"`retry_scope` is `best` or `all`, not {c.retry_scope!r}")
+        if c.writes and s.workspace == "in_place":  # WSP-B11, WFM-B8: a writer slot needs a worktree of its own
+            self.err("contest-writer-in-place", name, f"{name!r} is a contest of `writes: true`, which needs a worktree "
+                     "for each slot; a workflow that declares `workspace: in_place` has none (WSP-B11)")
+        if flow.in_map_item(s, name):
+            self.err("contest-in-map-item", name, f"{name!r} is a contest inside a map item, which a contest cannot be")
+            if c.writes and u.map is not None and u.map.mode == "sequential":
+                self.err("contest-writer-sequential-map", name,
+                         f"{name!r} writes inside a sequential map, which has no worktree for a slot")
+        if flow.in_branch(s, name):
+            self.err("contest-in-branch", name, f"{name!r} is a contest and a branch of a parallel block")
+        if u.gate.judge is None:
+            self.err("contest-judge-missing", name, "a contest picks by its gate's judge: the gate needs a judge")
+        if u.route is not None or u.switch is not None:
+            self.err("contest-invalid", name, "a contest takes no route")
+        if identical_slots(s, name):
+            self.warn("contest-identical-slots", name, f"every slot of {name!r} shares executor, model and prompt: "
+                      "vary model, executor or `prompt_variant`")
 
     def _measured_switch(self, name: str, sw: SwitchSpec) -> None:
         """SWM-B4, SWM-B5: the mode, every arm override and every re-arm entry."""
@@ -591,7 +751,7 @@ class _Validator:
             self.err("step-missing", name, "a step unit needs its step fields")
             return
         g = u.gate
-        if g.judge is None:
+        if g.judge is None and u.kind != "contest":  # a contest refuses it with its own code (CTS-B10)
             self.err("judge-missing", name, "a model step's gate needs a judge")
         if not g.criteria:
             self.err("criteria-missing", name, "a judged gate needs at least one criterion")
@@ -710,8 +870,9 @@ class _Validator:
                     self._alias(unit, lv.model, target)
             if j.risk.rule is not None:
                 self._callable(unit, j.risk.rule, "risk rule")
-        produces = u.step.produces if u.step else {}
-        subject = j.subject or tuple(produces)
+        produces: Mapping[str, Any] = u.step.produces if u.step else (
+            {k: "value" for k in COUNCIL_ARTIFACTS} if u.kind == "council" else {})
+        subject = j.subject or (("decision",) if u.kind == "council" else tuple(produces))  # CNL-B4
         unverified = any(c.unverified_system for c in g.criteria)
         judge_caps = caps if (caps is not None and caps.restricts_judge_tools) else self.executors.get("claude")
         for key in subject:
@@ -875,6 +1036,22 @@ class _Validator:
                     self.err("finalizer-outcomes-invalid", None, f"finalizer outcome {o!r} is not a slug")
 
 
+def identical_slots(spec: WorkflowSpec, unit: str) -> bool:
+    """CTS-B10, ARC-B15: every slot of the contest `unit` shares executor, model and prompt. The validation warning and
+    the audit's `contest-identical-slots` both ask this one question; a slot count runs the base step unchanged."""
+    u = spec.units.get(unit)
+    if u is None or u.contest is None:
+        return False
+    slots = u.contest.slots
+    if isinstance(slots, bool) or not isinstance(slots, (int, tuple, list)):
+        return False
+    if isinstance(slots, int):
+        return slots >= 2
+    if len(slots) < 2:
+        return False
+    return len({(sl.executor, sl.model, sl.prompt_variant) for sl in slots}) == 1
+
+
 def _aliases(model: str | tuple[str, ...] | None) -> list[str]:
     if model is None:
         return []
@@ -893,6 +1070,8 @@ def _produced(u: UnitSpec) -> set[str]:
         keys |= set(u.script.produces)
     if u.kind == "ask":
         keys.add("answers")  # ASK-B5, ASK-B6: the unit's one artifact
+    if u.kind == "council":
+        keys |= set(COUNCIL_ARTIFACTS)  # CNL-B10
     return keys
 
 

@@ -90,6 +90,8 @@ WHEN sessions of one run can be in flight together (parallel branches, a paralle
 
 - GIVEN two parallel branches whose reservations together cross the cap WHEN both are due THEN one starts and the other waits
 - GIVEN a cap of 5.00 USD, 1.00 USD spent and a concurrent map of three items that each reserve 2.50 USD WHEN the items are due THEN one starts and the other two wait for a running item
+- GIVEN a cap of 5.00 USD, 1.00 USD spent and a contest of three slots with `concurrency` 3 that each reserve 2.50 USD WHEN the slots are due THEN one starts and the other two wait for a running slot
+- GIVEN a cap of 5.00 USD, 1.00 USD spent and a council of three members whose sessions each reserve 2.50 USD WHEN round 0 is due THEN one member session starts and the other two wait for a running member session
 
 ### BUD-B13 Reservations are in the run log
 
@@ -98,6 +100,8 @@ WHEN a session of a run with a cost cap takes its reservation (BUD-B12) THE engi
 - GIVEN a cap of 5.00 USD, 1.00 USD spent, nothing running and a branch with a per-session cost cap of 2.50 USD WHEN its session is due THEN a `reservation` record with `action` `held`, `reserved_usd` 2.50, `source` `session_cap`, `spent_usd` 1.00, `in_flight_usd` 0 and `cap_usd` 5.00 comes before that session's `attempt_start` record
 - GIVEN a cap of 5.00 USD, 1.00 USD spent, two parallel branches and no per-session cap or projection WHEN both are due THEN each branch's `held` record has `source` `share` and `reserved_usd` 2.00, the remaining 4.00 USD divided by the 2 branches
 - GIVEN two parallel branches whose reservations fit together under the cap WHEN both are due THEN each has a `held` record and no `reservation` record has `action` `waiting`
+- GIVEN a cap of 5.00 USD, 1.00 USD spent, a contest of three slots with `concurrency` 2 and no per-session cap or projection WHEN its slots are due THEN the two slots that start each have a `held` record with `source` `share` and `reserved_usd` 2.00, the remaining 4.00 USD divided by the 2 slots that may run at once
+- GIVEN a cap of 7.00 USD, 1.00 USD spent, a council of three members and no per-session cap or projection WHEN round 0 is due THEN each member's `held` record has `source` `share` and `reserved_usd` 2.00, the remaining 6.00 USD divided by the 3 members
 
 ### BUD-B14 A wait is in the run log
 
@@ -112,6 +116,7 @@ WHEN a session's reservation would take spend plus reservations over the run cos
 
 - GIVEN a cap of 5.00 USD, 3.00 USD spent, nothing running and a branch that reserves 2.50 USD WHEN its session is due THEN its `reservation` record has `action` `refused`, no session of the branch starts and the `run_exit` record that follows carries exit code 5 and reason `cost_cap`
 - GIVEN a cap of 5.00 USD, 1.00 USD spent, a running session that holds 2.50 USD and a branch waiting to reserve 2.50 USD WHEN the running session ends with a real cost of 2.40 USD THEN the branch's `reservation` record has `action` `refused`, after its `waiting` record, and the run drains with `cost_cap`
+- GIVEN a cap of 5.00 USD, 1.00 USD spent and a council of two members whose sessions each reserve 2.50 USD WHEN the first member's session ends with a real cost of 2.40 USD while the second waits THEN the second member's `reservation` record has `action` `refused`, after its `waiting` record, no further session of the council starts and the run drains with `cost_cap`
 
 ## Acceptance criteria
 
@@ -124,10 +129,14 @@ WHEN a session's reservation would take spend plus reservations over the run cos
 - BUD-AC7 (BUD-B15): A fixture run whose next reservation does not fit while nothing is running writes a `reservation` record with `action` `refused` before the `run_exit` record, which carries exit code 5 and reason `cost_cap`
 - BUD-AC8 (BUD-B16): A fixture check that fails with the same finding on two attempts in a row, the second attempt's step having changed a file, pauses the run with kind `escalation` and cause `check_repeat` and starts no third attempt, while a fixture check that fails with a different finding on the second attempt, or whose second step changed no file, is retried as BUD-B8 says
 - BUD-AC9 (BUD-B12, BUD-B14): A fixture run of a concurrent map whose items' reservations together cross the cap writes, for an item that waited, one `waiting` record that lists a running item's `session_key` in `waiting_for` and, after that session's `agent_run` record, a `held` record, and no `held` record of the run has `spent_usd`, `in_flight_usd` and `reserved_usd` adding up to more than `cap_usd`
+- BUD-AC11 (BUD-B12, BUD-B13, BUD-B14): A fixture run of a contest whose slots' reservations together cross the cap writes, for a slot that waited, one `waiting` record that lists a running slot's `session_key` in `waiting_for` and, after that session's `agent_run` record, a `held` record, and no `held` record of the run has `spent_usd`, `in_flight_usd` and `reserved_usd` adding up to more than `cap_usd`; and with `concurrency` 2 and no per-session cap the `held` records of the two slots that start have `source` `share` and a `reserved_usd` of the remaining cap divided by 2
+- BUD-AC12 (BUD-B13): A fixture run of a council whose members have no per-session cost cap writes, before each member's first `attempt_start` record, a `reservation` record with `action` `held` and `source` `share` whose `reserved_usd` is the run's remaining cap divided by the number of members
+- BUD-AC13 (BUD-B12, BUD-B14): A fixture run of a council whose members' reservations together cross the cap writes, for a member that waited, one `waiting` record that lists a running member's `session_key` in `waiting_for` and, after that session's `agent_run` record, a `held` record, and no `held` record of the run has `spent_usd`, `in_flight_usd` and `reserved_usd` adding up to more than `cap_usd`
+- BUD-AC14 (BUD-B15): A fixture run of a council whose next member reservation does not fit while no member session is running writes a `reservation` record with `action` `refused` before the `run_exit` record, which carries exit code 5 and reason `cost_cap`, and starts no later session of the council
 
 ## Open questions
 
 - Should a `throttled` session wait longer than the standard backoff? Until answered: no, the standard 10, 20, 40 s backoff; it needs a live concurrency measurement per executor. Owner: operator.
 - Do repeated resumes of one thread each get a fresh attempt allowance without bound, or should a thread carry a lifetime cap? Until answered: the per-invocation cap of 15 only, with the chain length on the status row. Owner: engine owner.
 - Should the comparison of BUD-B16 ignore durations and temporary paths in a check's message? Until answered: no, the scrubbed text must be identical, so a check whose message carries a changing duration never repeats and the check's author keeps its messages stable; a repeat is never taken from a failure that changed. Owner: engine owner.
-- Not built yet: the reservations of BUD-B12 to BUD-B15 are built for a run's parallel branches, writer branches included, and for the items of a concurrent map; they are not built for contests and councils (release 3, track R3-T4 of the third-release plan), which reuse them when they run sessions at once. The `projection` source is not taken, because the central run stats hold no per-unit projection ([CST-B15](34-central-run-stats.spec.md) projects per workflow); a reservation is the per-session cap or the share ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F5). Owner: engine owner.
+- Not built yet: the reservations of BUD-B12 to BUD-B15 are built for a run's parallel branches, writer branches included, for the items of a concurrent map, for the slots of a contest and for the member and chair sessions of a council. The `projection` source is not taken, because the central run stats hold no per-unit projection ([CST-B15](34-central-run-stats.spec.md) projects per workflow); a reservation is the per-session cap or the share ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F5). Owner: engine owner.

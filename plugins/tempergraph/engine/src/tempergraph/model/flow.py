@@ -95,6 +95,45 @@ def has_writer_map(spec: WorkflowSpec) -> bool:
     return any(writer_map(spec, name) for name in spec.units)
 
 
+def is_contest(spec: WorkflowSpec, unit: str) -> bool:
+    """`unit` is a contest: its slots are items that run the unit's step (CTS-B6)."""
+    u = spec.units.get(unit)
+    return u is not None and u.kind == "contest" and u.contest is not None
+
+
+def writer_contest(spec: WorkflowSpec, unit: str) -> bool:
+    """`unit` is a contest of `writes: true`: each slot works in its own worktree and only the winner is merged (CTS-B5,
+    CTS-B7, WSP-B11)."""
+    u = spec.units.get(unit)
+    return is_contest(spec, unit) and u is not None and u.contest is not None and bool(u.contest.writes)
+
+
+def has_writer_contest(spec: WorkflowSpec) -> bool:
+    return any(writer_contest(spec, name) for name in spec.units)
+
+
+def slot_names(spec: WorkflowSpec, unit: str) -> tuple[str, ...]:
+    """The slot names of a contest, in declared order: `s1` to `sN` for a count (CTS-B6); empty for a unit that is none."""
+    u = spec.units.get(unit)
+    if u is None or u.contest is None:
+        return ()
+    slots = u.contest.slots
+    if isinstance(slots, tuple | list):
+        return tuple(s.name for s in slots)
+    return tuple(f"s{n}" for n in range(1, slots + 1)) if isinstance(slots, int) and slots > 0 else ()
+
+
+def in_map_item(spec: WorkflowSpec, unit: str) -> bool:
+    """A contest that sits in a map item: the unit is a map whose item step is a contest (CTS-B10)."""
+    u = spec.units.get(unit)
+    return u is not None and u.contest is not None and (u.kind == "map" or u.map is not None)
+
+
+def in_branch(spec: WorkflowSpec, unit: str) -> bool:
+    """`unit` is a branch of a parallel block (CTS-B10 refuses a contest there)."""
+    return block_of(spec, unit) is not None
+
+
 def entry_node(spec: WorkflowSpec, target: str) -> str:
     """The node that enters `target`: a parallel block, named by its join or by a branch, is entered at its
     fork, which starts every branch."""

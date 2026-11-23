@@ -330,6 +330,27 @@ class MapSpec:
     models: tuple[str, ...] = ()  # the aliases `item_model` may choose among
 
 
+@dataclass(frozen=True, kw_only=True)
+class SlotSpec:
+    """CTS-B6: one candidate slot of a contest; each override applies to that slot's step only."""
+
+    name: str
+    executor: str | None = None
+    model: str | None = None
+    prompt_variant: str | None = None  # appended to the base prompt under "Approach for this attempt"
+
+
+@dataclass(frozen=True, kw_only=True)
+class ContestSpec:
+    """CTS-B6. The step and the gate every slot runs are the unit's own `step` and `gate`."""
+
+    slots: int | tuple[SlotSpec, ...] = 3  # an int runs the base step unchanged in `s1` to `sN`
+    writes: bool = False
+    retry_scope: Literal["best", "all"] = "best"
+    concurrency: int = 3
+    cost_cap_usd: float | None = None  # per attempt; unstarted slots are skipped once it is reached
+
+
 AnswerKind = Literal["text", "choice", "choices", "number", "bool", "file", "url"]
 
 
@@ -379,9 +400,50 @@ class SubworkflowSpec:
 
 
 @dataclass(frozen=True, kw_only=True)
+class MemberSpec:
+    """CNL-B9: one member of a council. Its `executor` and `model` resolve on the step layer when unset."""
+
+    name: str
+    executor: str | None = None
+    model: str | None = None
+    stance: str = ""  # at most 400 characters
+    tools: tuple[str, ...] = ()  # read-only capabilities only
+    timeout_s: int | None = None
+    idle_s: int | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class ChairSpec:
+    """CNL-B9: the chair of a council, required for `synthesize`."""
+
+    executor: str | None = None
+    model: str | None = None
+    prompt: str = ""
+
+
+@dataclass(frozen=True, kw_only=True)
+class CouncilSpec:
+    """CNL-B9: a council's own fields. `rule` and `options` belong to `vote` only; `rule` None reads as `majority`."""
+
+    question: TextSource
+    members: tuple[MemberSpec, ...]
+    mode: Literal["synthesize", "vote", "rank"] = "synthesize"
+    options: tuple[str, ...] | str | None = None  # slugs, or the key of a list artifact an earlier unit produces
+    rule: Literal["majority", "supermajority", "unanimous", "plurality"] | None = None
+    rounds: int = 0
+    anonymize: bool = True
+    chair: ChairSpec | None = None
+    quorum: int | None = None  # None: every member
+    on_no_decision: Literal["escalate", "retry", "stop"] = "escalate"
+    retry_scope: Literal["all", "chair"] = "all"
+    cost_cap_usd: float | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
 class UnitSpec:
     kind: UnitKind
     gate: GateSpec
+    council: CouncilSpec | None = None
     ask: AskSpec | None = None
     wait: WaitSpec | None = None
     branches: tuple[str, ...] = ()  # a parallel block's branch units; the unit itself is the join (CMP-B10 to CMP-B16)
@@ -393,6 +455,7 @@ class UnitSpec:
     switch: SwitchSpec | None = None
     subworkflow: SubworkflowSpec | None = None
     extra: Mapping[str, Any] = field(default_factory=dict)  # fields of kinds not in this release
+    contest: ContestSpec | None = None
 
 
 @dataclass(frozen=True, kw_only=True)

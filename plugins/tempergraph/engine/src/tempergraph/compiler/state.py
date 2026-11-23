@@ -80,6 +80,13 @@ def replace(old: Any, new: Any) -> Any:
     return new if new is not None else old
 
 
+def council_answers(state: Mapping[str, Any], unit: str) -> dict[str, Any]:
+    """The members' answers a council attempt left in the state (`council` channel), as written: `stages` (a list of
+    `{member name: answer}` per round) and `ranks` (a ranking pass's answers); empty when the unit has none."""
+    held = (state.get("council") or {}).get(unit)
+    return dict(held) if isinstance(held, dict) else {}
+
+
 # A sub-workflow's child (SWF-B1, SWF-B8) runs on a run state of its own: the same channels, keyed by the child's own
 # unit names, so a child `work` never meets the parent's `work`. The parent sees only what its unit exposes.
 
@@ -127,7 +134,8 @@ SLOT_CHANNELS = ("attempts", "judgements", "feedback", "counters", "route", "pau
 
 
 def slot(unit: str, item: str) -> str:
-    """`<unit>.<item id>`: how an item of a concurrent map is addressed (an item id holds no dot)."""
+    """`<unit>.<item id>`: how an item of a concurrent map, or a slot of a contest, is addressed (an item id holds no dot;
+    a slot name is a slug, which holds none either)."""
     return f"{unit}.{item}"
 
 
@@ -156,6 +164,13 @@ def slot_writes(writes: Mapping[str, Any], unit: str, item: str) -> dict[str, An
         if isinstance(got, dict) and unit in got:
             out[channel] = {(at if k == unit else k): v for k, v in got.items()}
     return out
+
+
+def own_keys(held: Mapping[str, Any] | None, item: str) -> dict[str, Any]:
+    """One item's keys of a unit's artifacts, values or facts as plain keys: `<key>[<item>]` read as `<key>`. A contest's
+    judge sees these only, so one slot's judge holds no other slot's artifact (CTS-B3)."""
+    tail = f"[{item}]"
+    return {k[: -len(tail)]: v for k, v in (held or {}).items() if k.endswith(tail)}
 
 
 def item_end(unit: str, item: str, token: str, node: str) -> dict[str, Any]:
@@ -206,6 +221,9 @@ class RunState(TypedDict, total=False):
     counters: Annotated[dict[str, Any], merge_units]  # unit -> budget counters
     visits: Annotated[dict[str, Any], merge_units]  # unit -> {visit, reason, from}
     maps: Annotated[dict[str, Any], merge_maps]  # map unit -> {visit, items, passed, n:<id>, st:<id>} (MAP-B8 to MAP-B10)
+    # council unit -> {attempt, labels, stages, ranks}: each member's answer of every round and its ranking, as a council
+    # attempt ended (CNL-B7, CNL-B10, CNL-B14). Written once by the unit's step node, which is the one writer of a unit's key.
+    council: Annotated[dict[str, Any], merge_units]
     rulings: Annotated[dict[str, Any], merge_units]  # id -> ruling (own reducer, never cleared by a trip back)
     finalized: Annotated[dict[str, Any], replace]
     run: Annotated[dict[str, Any], merge_run]  # run-level facts: {"stopped": {...}, "path": [...]}

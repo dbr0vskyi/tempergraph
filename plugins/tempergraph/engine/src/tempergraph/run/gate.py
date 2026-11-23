@@ -6,17 +6,19 @@ state write that routes the run. It never pauses; a pause is the human node's.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from tempergraph.contracts import Decision, RouteView, UnitSpec, Verdict, WorkflowSpec
 from tempergraph.model import flow
+from tempergraph.run import contest as contestmod
 from tempergraph.run import ladder as laddermod
 from tempergraph.run import mapping
 
 ESCALATE_CAUSES = frozenset({"auth", "refused", "tool_access", "environmental", "blocked", "upstream",
-                             "workflow_fault", "check_repeat", "merge_conflict", "map_check"})
+                             "workflow_fault", "check_repeat", "merge_conflict", "map_check", "no_decision"})
 HUMAN_CAP = 100
 
 
@@ -191,6 +193,60 @@ def _merge(*writes: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
+def contest_retry(spec: WorkflowSpec, unit: str, state: Mapping[str, Any]) -> dict[str, Any]:
+    """CTS-B8, CTS-B4: the state write that goes with a RETRY of a contest. Under `retry_scope: best` the winner's slot alone
+    runs again and the contest is a single step for the rest of the visit, however many slots were RETRY (the retry
+    budget is charged once, by the gate, as for any unit); under `all` every slot runs again. Nothing for other units."""
+    if not flow.is_contest(spec, unit):
+        return {}
+    return contestmod.retry_write(unit, spec.units[unit].contest.retry_scope,  # type: ignore[union-attr]
+                                  (mapping.record(state, unit).get("pick") or {}).get("winner"))
+
+
+def _json_or(raw: Any) -> Any:
+    try:
+        return json.loads(str(raw))
+    except ValueError:
+        return raw
+
+
+def council_options(state: Mapping[str, Any], unit: str) -> list[str]:
+    """What a person may answer at a council's no-decision pause: a `vote`'s options, a `rank`'s labels; a `synthesize`
+    council takes any text (CNL-B13)."""
+    held = ((state.get("attempts") or {}).get(unit) or {}).get("council") or {}
+    if held.get("mode") == "rank":
+        return sorted(str(v) for v in (held.get("labels") or {}).values())
+    return [str(o) for o in held.get("options") or ()]
+
+
+def check_council_answer(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], answers: Mapping[str, Any]) -> str:
+    """CNL-B13, ASK-B8: `answer:decision=<option>` at a council's no-decision pause. Returns the chosen decision, or
+    refuses before anything is written."""
+    u = spec.units[unit]
+    pause = (state.get("pause") or {}).get(unit) or {}
+    if u.kind != "council" or pause.get("reason") != "no_decision":
+        raise DecisionRefused("answer: is only accepted at an ask, or at a council's no-decision pause")
+    extra = sorted(k for k in answers if k != "decision")
+    if extra:
+        raise DecisionRefused(f"a council's pause takes answer:decision=<option>, not {', '.join(extra)}")
+    value = str(answers.get("decision") or "").strip()
+    options = council_options(state, unit)
+    if not value or (options and value not in options):
+        raise DecisionRefused(f"answer:decision={value or ''}: pick one of {', '.join(options) or 'a non-empty decision'}")
+    return value
+
+
+def retry_scope(u: UnitSpec, att: Mapping[str, Any]) -> str | None:
+    """CNL-B7: `chair` when this gate's RETRY of a council with `retry_scope: chair` reruns only the chair, which needs
+    the members' final positions of an attempt that reached an outcome; None for every other retry (so the step node
+    reads the scope from the route and a stale one is deleted)."""
+    c = u.council
+    held = att.get("council") or {}
+    if c is None or c.retry_scope != "chair" or c.mode == "vote" or c.chair is None:
+        return None
+    return "chair" if held.get("outcome") not in (None, "no_decision") else None
+
+
 def resume_command(spec: WorkflowSpec, task_id: str, decisions: list[str], unit: str | None = None) -> str:
     named = f" --unit {unit}" if unit else ""  # a pause of one item of a concurrent map is answered by `<unit>.<item>`
     return f"tempergraph resume {spec.name} {task_id}{named} --decision <{'|'.join(decisions)}>"
@@ -214,6 +270,8 @@ def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: 
            "resume": resume_command(spec, task_id, words, at)}
     if at:
         out["slot"] = at
+    if u.kind == "contest":  # CTS-B7: the pause is about the winner's candidate, whose verdict is the unit's
+        out["winner"] = (mapping.record(state, unit).get("pick") or {}).get("winner")
     if kind == "input":  # ASK-B8: each question with its kind, choices, default and whether it is answered
         qs = list(((state.get("attempts") or {}).get(unit) or {}).get("questions") or [])
         out["questions"] = [{**q, "answered": False} for q in qs]
@@ -229,6 +287,13 @@ def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: 
     if dl is not None and kind in ("input", "event_wait"):  # FLX-B8: overdue once this time has passed
         out["deadline_at"] = (datetime.now(UTC) + timedelta(seconds=dl[0])).isoformat(timespec="seconds")
         out["on_deadline"] = dl[1]
+    if reason == "no_decision" and u.kind == "council":  # CNL-B13: the pause shows what the members said and how it was counted
+        held = (state.get("values") or {}).get(unit) or {}
+        out["positions"] = _json_or(held.get("positions"))
+        out["tally"] = _json_or(held.get("tally"))
+        out["decisions"] = ["answer:decision=<option>", "retry", "stop"]
+        out["options"] = council_options(state, unit)
+        out["resume"] = f"tempergraph resume {spec.name} {task_id} --decision answer:decision=<option>"
     if reason == "tool_access":  # each refused or missing name and what fixes it (RST-B28, RST-B29, RST-B30)
         out["tool_access"] = list((((state.get("attempts") or {}).get(unit) or {}).get("tool_access")) or [])
     if reason == "check_repeat":  # BUD-B16: the failing findings the check returned twice in a row
@@ -320,6 +385,9 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
     if att.get("infra_spent"):
         return _merge(route("STOP", s.stop[0]), {"run": {"stopped": {"reason": "infra", "unit": unit,
                                                                      "detail": att.get("infra_cause")}}})
+    if att.get("council_stop"):  # CNL-B13: no decision with `on_no_decision: stop`
+        return _merge(route("STOP", s.stop[0]), {"run": {"stopped": {"reason": "no_decision", "unit": unit,
+                                                                     "detail": "on_no_decision: stop"}}})
     cause = att.get("escalate")
     if cause in ESCALATE_CAUSES:
         return to_human("escalation", str(cause))
@@ -340,8 +408,10 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
             counters["retries"] = retries + 1
             ov = arm_overrides(spec, unit, state)[0]
             step = laddermod.decide(u, att, judged, counters, ov)
+            scope = retry_scope(u, att)  # CNL-B7: every unmet blocker of a council's gate concerns `decision`
             if step is None:
-                return _merge(route("RETRY", s.retry[0]), {"counters": {unit: counters}})
+                return _merge(route("RETRY", s.retry[0], scope=scope), {"counters": {unit: counters}},
+                              contest_retry(spec, unit, state))
             counters["ladder"] = {k: step[k] for k in ("visit", "item", "rung", "evidence", "held_by", "trail",
                                                        "escalated")}
             esc = laddermod.escalation(u, step, judged, retry_left=True, overrides=ov,
@@ -359,7 +429,8 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
             if esc and esc["take"] == "auto":
                 counters["ladder"].update(escalate={"to": esc["to"], "effort": esc["effort"], "taken_by": "auto"},
                                           escalated=True)
-            return _merge(route("RETRY", s.retry[0], ladder=shown), {"counters": {unit: counters}})
+            return _merge(route("RETRY", s.retry[0], ladder=shown), {"counters": {unit: counters}},
+                          contest_retry(spec, unit, state))
         return spent("retry_budget")
     if verdict == Verdict.BACK:
         target = judged.get("back_to")
@@ -552,7 +623,7 @@ def _apply(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payload: Map
     counters = dict((state.get("counters") or {}).get(unit) or {})
 
     def route(token: str, node: str) -> dict[str, Any]:
-        return {"route": {unit: {"token": token, "node": node, "by": "person"}}, "pause": {unit: None}}
+        return {"route": {unit: {"token": token, "node": node, "by": "person", "scope": None}}, "pause": {unit: None}}
 
     if d.word == "proceed":
         held = ((state.get("attempts") or {}).get(unit) or {}).get("item")
@@ -569,6 +640,11 @@ def _apply(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payload: Map
         nxt_unit = nxt.rsplit(".", 1)[0] if nxt.endswith(".step") else None
         if one_time and nxt_unit:
             w["feedback"] = {nxt_unit: {"text": one_time, "as": "notes"}}
+        if payload.get("council_decision") is not None:  # CNL-B13: a person's answer is the council's decision
+            chosen = str(payload["council_decision"])
+            held = _json_or(((state.get("values") or {}).get(unit) or {}).get("tally"))
+            tally = {**(held if isinstance(held, dict) else {}), "outcome": chosen, "chosen_by": "person"}
+            w["values"] = {unit: {"decision": chosen, "tally": json.dumps(tally, sort_keys=True), "tally.outcome": chosen}}
         if payload.get("answers") is not None:  # ASK-B5, ASK-B6: the answers file is the unit's one artifact
             w["artifacts"] = {unit: {"answers": str(payload.get("answers_path") or "")}}
             w["values"] = {unit: {str(k): ", ".join(map(str, v)) if isinstance(v, list) else str(v)

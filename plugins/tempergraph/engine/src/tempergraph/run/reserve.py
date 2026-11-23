@@ -1,10 +1,13 @@
-"""Reservations for the sessions that run at once: the branches of a parallel block, writer branches included, and the
-items of a concurrent map (BUD-B12 to BUD-B15).
+"""Reservations for the sessions that run at once: the branches of a parallel block, writer branches included, the
+items of a concurrent map, the slots of a contest and the member and chair sessions of a council, their step and judge
+sessions alike (BUD-B12 to BUD-B15).
 
-A thread-safe ledger of what each running session holds. A branch's or an item's cost reaches the run state only when
-its superstep ends, so the cost check cannot see a sibling; the ledger counts what is in flight, and adds the real cost
-of sessions that ended in the same superstep, which the state a sibling read at its start does not hold. The width a
-caller gives `share` is the number of branches of the block, or the items of the map that may run at once.
+A thread-safe ledger of what each running session holds. A branch's, an item's, a slot's or a member's cost reaches the
+run state only when its superstep or its node (or its council attempt) ends, so the cost check cannot see a sibling; the
+ledger counts what is in flight, and adds the real cost of sessions that ended under the same snapshot of the state, which
+the state a sibling read at its start does not hold. The width a caller gives `share` is the number of branches of the
+block, the items of the map or the slots of the contest that may run at once (the lower of `concurrency` and the number
+of items or slots), or the members of the round; a session that runs alone has width 1.
 """
 
 from __future__ import annotations
@@ -18,7 +21,7 @@ Write = Callable[..., object]
 
 
 def share(cap_usd: float, spent_usd: float, width: int) -> tuple[float, str]:
-    """The run's remaining cap divided by the number of branches (BUD-B12, third tier)."""
+    """The run's remaining cap divided by the number of branches, items or slots that may run at once (BUD-B12, third tier)."""
     return round((cap_usd - spent_usd) / max(width, 1), 6), "share"
 
 
@@ -47,6 +50,7 @@ class Ledger:
             while True:
                 spent = round(spent_usd + self.ended.get(snapshot, 0.0), 6)
                 reserved, source = amount(spent)
+                reserved = max(reserved, 0.0)  # a share of a remainder below zero is nothing to reserve, never a credit
                 in_flight = round(sum(self.held.values()), 6)
                 figures = {"reserved_usd": reserved, "source": source, "spent_usd": spent,
                            "in_flight_usd": in_flight, "cap_usd": cap_usd}
@@ -65,6 +69,13 @@ class Ledger:
                 reason = drain()
                 if reason:
                     return reason
+
+    def add_ended(self, snapshot: int, usd: float) -> None:
+        """A session of this snapshot ended before this process (a council member that a rerun found kept): its real cost
+        counts as spent for the sessions that follow."""
+        with self._cond:
+            self.ended[snapshot] = round(self.ended.get(snapshot, 0.0) + usd, 6)
+            self._cond.notify_all()
 
     def release(self, key: str, *, snapshot: int, real_usd: float) -> None:
         """A session ended: its reservation is replaced by its real cost."""

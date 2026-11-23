@@ -39,8 +39,9 @@ from tempergraph.contracts import (
 from tempergraph.model.validate import LATER_KINDS, SLUG_RE, Finding, validate
 from tempergraph.package.manifest import name_problem
 
-# The authoring blueprint states no sub-workflow (SCF-B9), though the engine builds the kind.
-BLUEPRINT_LATER_KINDS: dict[str, int] = {**LATER_KINDS, "subworkflow": 3}
+# The authoring blueprint states no sub-workflow, no contest and no council (SCF-B9): it cannot state slots or members,
+# though the engine builds these kinds, so a blueprint keeps its `not_in_release` refusal of them.
+BLUEPRINT_LATER_KINDS: dict[str, int] = {**LATER_KINDS, "subworkflow": 3, "contest": 3, "council": 3}
 BLUEPRINT_FILE = "blueprint.json"
 TOP_KEYS = frozenset({"schema_version", "name", "units", "flow", "outcome_ref", "input"})
 UNIT_KEYS = frozenset({"name", "kind", "summary", "produces", "reads", "gate", "on_fail", "on_budget_spent",
