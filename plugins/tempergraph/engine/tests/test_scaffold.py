@@ -284,7 +284,8 @@ def test_verify_coverage_rung_and_decisions(pkg: Path) -> None:
 
 
 def test_diagram_currency_by_digest(pkg: Path, tmp_path: Path) -> None:
-    """LIF-B3 / LIF-AC2: a CRLF checkout of the committed diagram still passes; a shape change fails."""
+    """LIF-B3 / LIF-AC2 / CMP-AC4: a CRLF checkout of the committed diagram still passes; a shape change makes the
+    committed diagram differ from the compiled graph and fails."""
     for rel in ("diagram/model.json", "diagram/workflow.md"):
         p = pkg / rel
         p.write_bytes(p.read_bytes().replace(b"\n", b"\r\n"))

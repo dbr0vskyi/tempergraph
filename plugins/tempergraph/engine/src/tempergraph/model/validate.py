@@ -228,7 +228,8 @@ class _Validator:
         return self._earlier_keys(name)["any"]
 
     def _parallel(self, name: str, u: UnitSpec) -> None:
-        """CMP-B10 to CMP-B16, WFM-B7: two or more read-only branches directly before their join."""
+        """CMP-B10 to CMP-B16, WFM-B7, WFM-B8: two or more branches directly before their join; a branch that declares
+        `write` or `edit` works in its own worktree, which `workspace: in_place` has none of."""
         order = list(self.spec.order)
         if len(u.branches) < 2 or len(set(u.branches)) != len(u.branches):
             self.err("parallel-branches", name, "a parallel block needs two or more distinct branches")
@@ -246,9 +247,6 @@ class _Validator:
             if bu.gate.back_targets or bu.gate.fallback or bu.route is not None or b in self.spec.flow:
                 self.err("parallel-branch-flow", b, "a branch takes no back target, fallback, route or `next`: "
                                                     "its pass goes to the join")
-            if bu.step is not None and {"write", "edit"} & set(bu.step.tools):
-                self.err("parallel-writer-branch", b, "a branch is read-only in this release; writer branches "
-                                                      "that merge at the join come later (WSP-B11, WSP-B12)")
             others = [n for n, o in self.spec.units.items() if n != name and o.kind == "parallel" and b in o.branches]
             if others:
                 self.err("parallel-branch-shared", b, f"{b!r} is a branch of {name!r} and of {others[0]!r}")
@@ -256,6 +254,10 @@ class _Validator:
         if placed and sorted(placed) != list(range(at - len(placed), at)):
             self.err("parallel-branches-not-adjacent", name, "a block's branches are the units directly before "
                                                              "its join in `order`")
+        writers = flow.writer_branches(self.spec, name)
+        if writers and self.spec.workspace == "in_place":  # WFM-B8: a writer branch has its own worktree
+            self.err("parallel-writer-in-place", writers[0], f"{writers[0]!r} declares `write` or `edit`, which needs its "
+                     "own worktree; a workflow that declares `workspace: in_place` has none (WSP-B11)")
         if u.gate.judge is not None or u.gate.criteria or u.gate.check is not None or u.gate.approval:
             self.err("parallel-join-gate", name, "the join is engine-owned in this release: it takes no check, "
                                                  "judge, criteria or approval")

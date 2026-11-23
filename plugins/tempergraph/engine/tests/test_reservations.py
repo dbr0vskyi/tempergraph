@@ -1,4 +1,4 @@
-"""Reservations for the sessions of parallel read-only branches (BUD-B12 to BUD-B15, OBS-B7).
+"""Reservations for the sessions of parallel branches (BUD-B12 to BUD-B15, OBS-B7).
 
 Each test carries, in a comment, the task criteria (r3-t1-1b) it proves."""
 
@@ -207,6 +207,7 @@ def test_a_waiting_branch_is_refused_when_the_running_session_costs_too_much_BUD
 
 
 def test_ac_5_the_not_built_line_names_only_maps_contests_and_councils() -> None:  # AC 5
+    """Reservations are built for parallel branches, writer branches included; the spec 08 line names what is not."""
     root = next(p for p in Path(__file__).resolve().parents if (p / "plugins" / "tempergraph" / "docs").is_dir())
     docs = root / "plugins" / "tempergraph" / "docs"
     lines = [ln for ln in (docs / "specs" / "08-budgets-and-failures.spec.md").read_text().splitlines()
@@ -215,6 +216,7 @@ def test_ac_5_the_not_built_line_names_only_maps_contests_and_councils() -> None
     line = lines[0].lower()
     assert all(w in line for w in ("maps", "contests", "councils", "projection", "bud-b12", "bud-b15"))
     assert "check spend only" not in line
-    plan = (docs / "plans" / "third-release.plan.md").read_text()
+    assert "read-only branches" not in line  # a writer branch reserves too
+    plan =(docs / "plans" / "third-release.plan.md").read_text()
     section = plan.split("#### R3-T1.1 Reservations", 1)[1].split("\n####", 1)[0]
     assert "Status: built" in section

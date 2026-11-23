@@ -92,7 +92,7 @@ def keys(ex: Any, kind: str = "step") -> list[str]:
     return [c.request.session_key for c in ex.calls if c.kind == kind]
 
 
-def test_one_session_per_item_each_gated_on_its_own(repo: Path) -> None:  # MAP-B1 and its table, MAP-AC3
+def test_one_session_per_item_each_gated_on_its_own(repo: Path) -> None:  # MAP-B1 and its table, MAP-AC3, CMP-AC3 (CMP-B14 map)
     spec = mapped(check=p2_fails_once)
     steps = [planner(THREE), item_ok(), item_ok(), item_ok(), item_ok(), item_ok()]
     out, ex = run(repo, spec, steps, [judge(), judge(), judge(), judge(FAIL), judge(FAIL)])

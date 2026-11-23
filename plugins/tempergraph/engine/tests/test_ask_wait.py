@@ -289,7 +289,7 @@ def test_defaults_deadline_stops_an_ask_whose_list_lacks_a_default(repo: Path) -
 # -- the wait unit --------------------------------------------------------------------------------------
 
 
-def test_a_wait_is_not_passable_by_word(repo: Path) -> None:  # HUM-B4
+def test_a_wait_is_not_passable_by_word(repo: Path) -> None:  # HUM-B4, CMP-AC3 (CMP-B14 wait)
     spec = waiting_wf()
     e = ex()
     out = begin(repo, spec, e)

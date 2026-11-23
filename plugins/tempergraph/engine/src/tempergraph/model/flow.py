@@ -52,6 +52,23 @@ def block_of(spec: WorkflowSpec, unit: str) -> str | None:
     return None
 
 
+WRITER_TOOLS = frozenset({"write", "edit"})  # `shell` alone makes no writer branch (WSP-B11)
+
+
+def writer_branches(spec: WorkflowSpec, block: str) -> tuple[str, ...]:
+    """The branches of the parallel block `block` that declare `write` or `edit`, in the order its parallel unit names
+    them (WSP-B11); empty for a block of read-only branches or a unit that is no block."""
+    u = spec.units.get(block)
+    if u is None or u.kind != "parallel":
+        return ()
+    return tuple(b for b in u.branches
+                 if (bu := spec.units.get(b)) is not None and bu.step is not None and WRITER_TOOLS & set(bu.step.tools))
+
+
+def has_writer_branch(spec: WorkflowSpec) -> bool:
+    return any(writer_branches(spec, name) for name in spec.units)
+
+
 def entry_node(spec: WorkflowSpec, target: str) -> str:
     """The node that enters `target`: a parallel block, named by its join or by a branch, is entered at its
     fork, which starts every branch."""

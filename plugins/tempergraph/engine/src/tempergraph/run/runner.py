@@ -326,7 +326,8 @@ def _context(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, s
                      escalation_record=settings.escalation_record,
                      stage=_stage(spec, settings)[0], self_check_limit=int(rv.get("self_check_limit") or 3),
                      audit_rate=float(rv.get("audit_rate") or 0.0), audit_executor=rv.get("audit_executor") or None,
-                     audit_seed=settings.audit_seed)
+                     audit_seed=settings.audit_seed,
+                     read_worktreeinclude=bool(rv.get("worktree.read_worktreeinclude", True)))
     if settings.sleep is not None:
         ctx.sleep = settings.sleep
     return ctx
@@ -642,7 +643,7 @@ def needs_git(spec: WorkflowSpec, settings: RunSettings) -> list[str]:
     out: list[str] = []
     if settings.carry:
         out.append("--carry (run state on a branch)")
-    out += subworkflow.unit_reasons(spec)
+    out += subworkflow.unit_reasons(spec)  # the risk rule, the `changed_paths` measure and each writer branch (WSP-B18)
     out += subworkflow.needs_git(spec)  # SWF-B6: a child, or a child of a child, that needs git
     return out
 

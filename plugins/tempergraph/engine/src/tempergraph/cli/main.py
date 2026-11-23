@@ -448,7 +448,8 @@ def cmd_run(env: Env, a: argparse.Namespace) -> int:
                 from tempergraph.model import subworkflow
                 from tempergraph.store.layout import outside_git
 
-                needs = subworkflow.needs_git(settled.spec) if outside_git(env.cwd) else []
+                needs = (subworkflow.unit_reasons(settled.spec) + subworkflow.needs_git(settled.spec)  # WSP-B18
+                         if outside_git(env.cwd) else [])
                 if needs:
                     doc["refusals"] = [{"code": "needs_git", "unit": None, "message": f"outside a git repository this "
                                                                                        f"run cannot use {n}"} for n in needs]
