@@ -14,7 +14,9 @@ from tempergraph.constants import ExitCode
 from tempergraph.contracts import CheckFinding, SessionRequest, SessionResult
 
 from .test_map_concurrent import FOUR, ByItem, concurrent, go
-from .test_writer_branches import git, subjects, worktrees_root
+from .test_writer_branches import Writers as BlockWriters
+from .test_writer_branches import block_wf, git, subjects, worktrees_root
+from .test_writer_branches import go as go_block
 
 RUN = "tg/demo/M-1"
 TWO = [{"id": "p1", "text": "First"}, {"id": "p2", "text": "Second"}]
@@ -197,6 +199,33 @@ def test_a_failing_joined_check_blocks_the_map_and_is_not_retried(repo: Path) ->
     assert len(git(repo, "log", "--merges", "--format=%H", RUN).split()) == 2  # the run branch still holds both merges
     assert len(ex.calls) == 6 and ex.calls[-1][0] == "judge"  # no item and no model session after the check
     assert not [c for c in ex.calls if c[1] == "join"]  # and the next unit never runs
+
+
+def test_every_shape_of_parallel_work_runs_on_real_worktrees(repo: Path) -> None:  # WSP-AC3 (WSP-B11, WSP-B12)
+    """The shapes of WSP-B11 with real git worktrees and scripted executors: a block of a writer branch and a read-only
+    branch, a concurrent map whose items write, and one whose items are read-only. Writers work in sibling worktrees
+    and merge into the run branch; the read-only ones work in the run worktree."""
+    root = worktrees_root(repo)
+    block = BlockWriters({"security": {"sec.txt": "s\n"}})  # `security` writes, `perf` is read-only
+    out = go_block(repo, block_wf(), block, "S-1")
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    assert block.workdirs[("step", "security")] == root / "demo--S-1--w-security"  # the writer: a sibling worktree
+    assert block.workdirs[("step", "perf")] == root / "demo--S-1"  # the read-only branch: the run worktree
+    assert "sec.txt" in git(repo, "ls-tree", "-r", "--name-only", "tg/demo/S-1").split()  # merged at the join
+
+    writes = Writes(TWO, {"p1": {"one.txt": "1\n"}, "p2": {"two.txt": "2\n"}})  # a map whose items write
+    out = go(repo, writing(), writes, "S-2")
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    for item in ("p1", "p2"):
+        assert writes.workdirs[("step", item)] == root / f"demo--S-2--i-{item}"  # each item: a sibling worktree
+    assert {"one.txt", "two.txt"} <= set(git(repo, "ls-tree", "-r", "--name-only", "tg/demo/S-2").split())
+
+    reads = Writes(TWO, {})  # a map whose items are read-only
+    out = go(repo, concurrent(concurrency=2), reads, "S-3")
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    for item in ("p1", "p2"):
+        assert reads.workdirs[("step", item)] == root / "demo--S-3"  # the run worktree
+    assert not [p for p in root.glob("demo--S-3--*")]  # no sibling worktree was cut
 
 
 def recs_of(repo: Path, kind: str) -> list[dict[str, Any]]:

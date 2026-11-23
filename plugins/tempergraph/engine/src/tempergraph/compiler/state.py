@@ -31,6 +31,24 @@ def merge_units(old: dict[str, Any] | None, new: dict[str, Any] | None) -> dict[
     return out
 
 
+def merge_maps(old: dict[str, Any] | None, new: dict[str, Any] | None) -> dict[str, Any]:
+    """The reducer of the `maps` channel (MAP-B9, MAP-B10, CMP-AC9): `merge_units`, safe for two items of a concurrent map
+    ending in one superstep. Each item writes keys of its own (`n:<id>`, `st:<id>`), which merge by item id, and the
+    ids that passed are a union; a write that carries a list (it starts a visit, or rewrites the record whole) is
+    taken as it is, so a new visit forgets the passed ids of the last."""
+    out: dict[str, Any] = dict(old or {})
+    for unit, val in (new or {}).items():
+        held = out.get(unit)
+        if isinstance(val, dict) and isinstance(held, dict) and "items" not in val and isinstance(val.get("passed"), list):
+            union = list(dict.fromkeys(list(held.get("passed") or []) + val["passed"]))
+            out.update(merge_units({unit: held}, {unit: {**val, "passed": union}}))
+        else:
+            out.update(merge_units({unit: held} if unit in out else {}, {unit: val}))
+            if val is None:
+                out.pop(unit, None)
+    return out
+
+
 def merge_run(old: dict[str, Any] | None, new: dict[str, Any] | None) -> dict[str, Any]:
     """`merge_units` for the run-level facts, safe for two branches of a parallel block writing in one superstep:
     the path's units are a union in arrival order, and a cost total is added as the delta its writer made on
@@ -187,7 +205,7 @@ class RunState(TypedDict, total=False):
     feedback: Annotated[dict[str, Any], merge_units]  # unit -> one-time feedback for the next attempt
     counters: Annotated[dict[str, Any], merge_units]  # unit -> budget counters
     visits: Annotated[dict[str, Any], merge_units]  # unit -> {visit, reason, from}
-    maps: Annotated[dict[str, Any], merge_units]  # map unit -> {visit, items, passed, attempts} (MAP-B8, MAP-B9, MAP-B10)
+    maps: Annotated[dict[str, Any], merge_maps]  # map unit -> {visit, items, passed, n:<id>, st:<id>} (MAP-B8 to MAP-B10)
     rulings: Annotated[dict[str, Any], merge_units]  # id -> ruling (own reducer, never cleared by a trip back)
     finalized: Annotated[dict[str, Any], replace]
     run: Annotated[dict[str, Any], merge_run]  # run-level facts: {"stopped": {...}, "path": [...]}
