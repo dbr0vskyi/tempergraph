@@ -72,20 +72,23 @@ UNKNOWN = {"engine_version": None, "engine": "unknown"}
 
 
 def record(root: Path, spec: WorkflowSpec, task_id: str, *, content_version: str, shape_digest: str,
-           resumed: bool = False) -> dict[str, Any] | None:
+           resumed: bool = False, children: Mapping[str, Mapping[str, Any]] | None = None) -> dict[str, Any] | None:
     """One history entry for this process. Returns `moved_from` (the engine and workflow version of the
     previous process) when either differs from this one's, else None. A resumed thread with no engine file
     was started by a release before this file existed (MIG-B16, MIG-B12, MIG-B10, MIG-B15): `started_on` is unknown, never this engine,
-    and `moved_from` says so."""
+    and `moved_from` says so. `children` is each sub-workflow unit's child as this process runs it: its workflow, its
+    content version and its unit digests (SWF-B8), read back by the resume check (SWF-B3)."""
     doc = read(root, spec.name, task_id)
     eng = this_engine()
     prev = last(doc)
     legacy = resumed and not doc.get("history")
     entry = {**eng, "workflow_version": content_version, "shape_digest": shape_digest,
-             "checkpoint_format": int(prev.get("checkpoint_format") or checkpoint_format()), "units": unit_digests(spec), "started_at": now_iso()}
+             "checkpoint_format": int(prev.get("checkpoint_format") or checkpoint_format()), "units": unit_digests(spec),
+             **({"children": {u: dict(c) for u, c in children.items()}} if children else {}), "started_at": now_iso()}
     hist = [*(doc.get("history") or []), entry][-HISTORY_KEPT:]
     for old in hist[:-1]:  # only the latest entry needs the per-unit digests
         old.pop("units", None)
+        old.pop("children", None)
     started = doc.get("started_on") or (dict(UNKNOWN) if legacy else eng if not prev else None)
     new = {"schema_version": 1, "started_on": started,
            "last_on": eng, "pinned": doc.get("pinned"), "history": hist}

@@ -39,6 +39,8 @@ from tempergraph.contracts import (
 from tempergraph.model.validate import LATER_KINDS, SLUG_RE, Finding, validate
 from tempergraph.package.manifest import name_problem
 
+# The authoring blueprint states no sub-workflow (SCF-B9), though the engine builds the kind.
+BLUEPRINT_LATER_KINDS: dict[str, int] = {**LATER_KINDS, "subworkflow": 3}
 BLUEPRINT_FILE = "blueprint.json"
 TOP_KEYS = frozenset({"schema_version", "name", "units", "flow", "outcome_ref", "input"})
 UNIT_KEYS = frozenset({"name", "kind", "summary", "produces", "reads", "gate", "on_fail", "on_budget_spent",
@@ -187,8 +189,8 @@ def parse(data: Any) -> Blueprint | list[Finding]:
             out.append(_f("blueprint-invalid", uname, f"{at}.name {u.get('name')!r} is not a slug"))
             continue
         kind = u.get("kind", "step")
-        if kind in LATER_KINDS:
-            out.append(_f("not_in_release", uname, f"{at}.kind {kind!r} is built in release {LATER_KINDS[kind]}"))
+        if kind in BLUEPRINT_LATER_KINDS:
+            out.append(_f("not_in_release", uname, f"{at}.kind {kind!r} is built in release {BLUEPRINT_LATER_KINDS[kind]}"))
         elif kind not in RELEASE_KINDS:
             out.append(_f("blueprint-invalid", uname, f"{at}.kind {kind!r} is not a unit kind"))
         if kind == "ask" and list(u.get("produces") or ["answers"]) != ["answers"]:

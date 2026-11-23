@@ -16,6 +16,7 @@ from tempergraph.contracts import WorkflowSpec
 from tempergraph.model import flow
 from tempergraph.run.outcome_trust import trust
 
+CHILD_ORIGIN = "subworkflow:"  # SWF-B9: the origin of a child's outcome record from inside a parent, `subworkflow:<parent>`
 PASSED = frozenset({"MET", "n_a", "signed"})
 FAILED = frozenset({"UNMET", "PARTIAL", "declined"})
 
@@ -41,8 +42,11 @@ def _status(raw: Any) -> str:
     return "n_a" if s == "N/A" else s
 
 
-def build(spec: WorkflowSpec, values: Mapping[str, Any], log_path: Path) -> dict[str, Any] | None:
-    """The `OutcomeRecord` of a thread so far; None for a workflow with no final criteria."""
+def build(spec: WorkflowSpec, values: Mapping[str, Any], log_path: Path, child: str | None = None
+          ) -> dict[str, Any] | None:
+    """The `OutcomeRecord` of a thread so far; None for a workflow with no final criteria. `child` names the
+    sub-workflow unit whose child `spec` and `values` are, so only that child's records of the log are read (SWF-B8); a
+    parent's record keeps the record of each child that ran as `children[<unit>]` (OUT-B18)."""
     o = spec.outcome
     if o is None or not o.final:
         return None
@@ -51,7 +55,8 @@ def build(spec: WorkflowSpec, values: Mapping[str, Any], log_path: Path) -> dict
     att = (values.get("attempts") or {}).get(unit) or {}
     statuses = {s["id"]: _status(s.get("status")) for s in (judged or {}).get("statuses") or [] if s.get("id")}
     check_failed = ((att.get("check") or {}).get("result")) == "FAIL"
-    humans = [r for r in _jsonl(log_path) if r.get("kind") == "human" and r.get("unit") == unit]
+    humans = [r for r in _jsonl(log_path) if r.get("kind") == "human" and r.get("unit") == unit
+              and r.get("child") == child]
     reached = bool(att) or judged is not None
     from tempergraph.improve.calibration import accepted_for
 
@@ -81,8 +86,15 @@ def build(spec: WorkflowSpec, values: Mapping[str, Any], log_path: Path) -> dict
         for c in io.criteria:
             if c.id in got:
                 intermediate.append({"unit": name, "id": c.id, "status": got[c.id]})
-    return {"revision": o.revision, "verdict": verdict(criteria, reached), "criteria": criteria,
-            "intermediate": intermediate, "later": []}
+    record: dict[str, Any] = {"revision": o.revision, "verdict": verdict(criteria, reached), "criteria": criteria,
+                              "intermediate": intermediate, "later": []}
+    if child is not None:  # SWF-B9: a child's record from inside a parent says so (`spec` carries the parent's name there)
+        record["origin"] = f"{CHILD_ORIGIN}{spec.name}"
+    kids = {name: c["outcome"] for name, c in ((values.get("run") or {}).get("children") or {}).items()
+            if isinstance(c, Mapping) and c.get("outcome")}
+    if kids:
+        record["children"] = kids
+    return record
 
 
 def verdict(criteria: Iterable[Mapping[str, Any]], reached: bool = True) -> str:
@@ -106,11 +118,17 @@ def verdict(criteria: Iterable[Mapping[str, Any]], reached: bool = True) -> str:
 
 
 def _latest(rows: Iterable[Mapping[str, Any]], workflow: str) -> dict[str, dict[str, Any]]:
-    """The last `run_segment` row of each thread of the workflow that carries an outcome."""
+    """The last `run_segment` row of each thread of the workflow that carries an outcome, and the last
+    `child_outcome` row of each sub-workflow unit of a parent's thread that ran the workflow as its child (SWF-B9),
+    keyed `<thread>#<unit>`."""
     out: dict[str, dict[str, Any]] = {}
     for r in rows:
-        if r.get("kind") == "run_segment" and r.get("workflow") == workflow and r.get("outcome"):
+        if r.get("workflow") != workflow or not r.get("outcome"):
+            continue
+        if r.get("kind") == "run_segment":
             out[str(r.get("thread_id"))] = dict(r)
+        elif r.get("kind") == "child_outcome":
+            out[f"{r.get('thread_id')}#{r.get('child')}"] = dict(r)
     return out
 
 
@@ -139,7 +157,7 @@ def measures(spec: WorkflowSpec, ledger: Path, since: str | None = None) -> dict
     for rev, runs in sorted(by_rev.items()):
         graded = [(t, o) for t, o in runs if o.get("verdict") != "not_reached"]
         met = [(t, o) for t, o in graded if o.get("verdict") in ("met", "met_with_open")]
-        escapes = [t for t, _ in met if t in reruns]
+        escapes = [t for t, _ in met if t.partition("#")[0] in reruns]
         not_verified = [t for t, o in graded if any(c.get("status") == "not_verified" for c in o.get("criteria", []))]
         weak = sorted({c["id"] for _, o in graded for c in o.get("criteria", [])
                        if c.get("severity") == "blocker" and c.get("trust") in ("unverified", "uncalibrated")})
@@ -191,7 +209,8 @@ def candidates(spec: WorkflowSpec, ledger: Path, since: str | None = None) -> di
     for unit, ts in sorted(rulings.items()):
         if len(ts) >= 3:
             add("recurring_ruling", ts, unit=unit)
-    esc = [t for t, o in graded.items() if o.get("verdict") in ("met", "met_with_open") and t in reruns]
+    esc = [t for t, o in graded.items() if o.get("verdict") in ("met", "met_with_open")
+           and t.partition("#")[0] in reruns]
     if esc:
         add("escape", esc)
     final = spec.outcome.final if spec.outcome else ()

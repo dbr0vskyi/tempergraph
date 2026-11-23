@@ -434,6 +434,15 @@ def cmd_run(env: Env, a: argparse.Namespace) -> int:
                        judges=rep.judges, settings_digest=settled.resolved.digest)
             if rep.refusals:
                 doc["status"] = "error"
+            else:  # the refusal `run` gives after validation: a child that needs git
+                from tempergraph.model import subworkflow
+                from tempergraph.store.layout import outside_git
+
+                needs = subworkflow.needs_git(settled.spec) if outside_git(env.cwd) else []
+                if needs:
+                    doc["refusals"] = [{"code": "needs_git", "unit": None, "message": f"outside a git repository this "
+                                                                                       f"run cannot use {n}"} for n in needs]
+                    doc["status"] = "error"
         elif res.status == "needs":
             doc["questions"] = [{"name": q.name, "question": q.question, "choices": list(q.choices or [])}
                                 for q in res.questions]

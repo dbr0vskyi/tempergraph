@@ -156,6 +156,49 @@ def test_model_list_to_escalation(pkg: Path) -> None:
     assert all("escalation.to" in o["question"] for o in got.owner)
 
 
+PARENT = '''
+from tempergraph.api import Gate, Judge, Step, Subworkflow, Workflow
+
+
+def workflow():
+    return Workflow(
+        order=["verify", "draft"],
+        units={
+            "verify": Subworkflow(workflow="child", produces=["report", "extra"]),  # keeps this comment
+            "other": Subworkflow(workflow="child", produces=["report"]),
+            "draft": Step(prompt="Write from {verify.report} and {verify.reporter} not {other.report}",
+                          tools=["read"], gate=Gate(judge=Judge(stance="Check {verify.report!s}."))),
+        },
+    )
+'''
+
+
+def test_rename_produced_key(tmp_path: Path) -> None:  # SWF-AC1, AC 4
+    root = tmp_path / "parent"
+    (root / "workflow").mkdir(parents=True)
+    (root / "prompts").mkdir()
+    (root / "docs").mkdir()
+    (root / "workflow" / "__init__.py").write_bytes(PARENT.lstrip().encode())
+    (root / "prompts" / "draft.md").write_text("Use {verify.report} for {request}. {other.report} and {verify.reports}.\n")
+    (root / "docs" / "note.md").write_text("The key {verify.report} is described here.\n")
+    got = twice(root, {"transform": "rename_produced_key",
+                       "params": {"unit": "verify", "from": "report", "to": "summary"}})
+    assert got.changed == ["prompts/draft.md", "workflow/__init__.py"]  # and `twice` showed a second run changes nothing
+    text = code(root)
+    assert 'Subworkflow(workflow="child", produces=["summary", "extra"]),  # keeps this comment' in text
+    assert 'produces=["report"]),' in text  # another unit's own key stays
+    assert 'prompt="Write from {verify.summary} and {verify.reporter} not {other.report}"' in text
+    assert 'stance="Check {verify.summary!s}."' in text
+    assert (root / "prompts" / "draft.md").read_text() == (
+        "Use {verify.summary} for {request}. {other.report} and {verify.reports}.\n")  # `reports` is another key
+    assert "{verify.report}" in (root / "docs" / "note.md").read_text()  # the package's documents are not model-facing
+
+
+def test_rename_produced_key_refuses_a_parameter_it_has_not(pkg: Path) -> None:  # SWF-AC1, AC 4
+    with pytest.raises(tf.TransformError, match="no parameter"):
+        tf.apply(pkg, {"transform": "rename_produced_key", "params": {"path": "x"}})
+
+
 def test_line_endings_and_other_files_stay(pkg: Path) -> None:
     path = pkg / "workflow" / "__init__.py"
     path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))

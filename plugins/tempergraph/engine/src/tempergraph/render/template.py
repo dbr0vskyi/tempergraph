@@ -1,8 +1,8 @@
 """The template grammar of CON-B8.
 
 Literal text, doubled braces for literal braces, and plain fields ``{name}`` where ``name`` is an engine
-key, a declared input, an earlier artifact key, or ``settings.<name>``. Nothing else between braces is
-valid. A field without a value renders as the visible marker ``⟨missing:name⟩``.
+key, a declared input, an earlier artifact key, ``settings.<name>``, or ``<unit>.<key>`` (a sub-workflow
+unit's exposed key, SWF-B12). Nothing else between braces is valid. A field without a value renders as the visible marker ``⟨missing:name⟩``.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 from tempergraph.constants import MISSING_MARKER
 
-FIELD_RE = re.compile(r"^(?:settings\.)?[A-Za-z_][A-Za-z0-9_]*$")
+FIELD_RE = re.compile(r"^(?:[A-Za-z_][A-Za-z0-9_]*\.)?[A-Za-z_][A-Za-z0-9_]*$")  # `name`, or one dotted pair
 
 
 class TemplateError(ValueError):

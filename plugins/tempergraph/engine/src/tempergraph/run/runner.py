@@ -39,11 +39,11 @@ from tempergraph.executors.launcher import StopRequest
 from tempergraph.executors.preflight import preflight
 from tempergraph.executors.registry import Registry
 from tempergraph.git import main_checkout
-from tempergraph.model import flow
+from tempergraph.model import flow, subworkflow
 from tempergraph.model.diagram import diagram_model
 from tempergraph.model.validate import Finding
 from tempergraph.run import gate as gatemod
-from tempergraph.run import outcome_record, supervision
+from tempergraph.run import outcome_record, subrun, supervision
 from tempergraph.run.log import CostTotals, Ledger, RunLog, cost_so_far, last_record
 from tempergraph.run.nodes import Drain, EngineNodes, RunContext
 from tempergraph.run.outcome import with_outcome
@@ -277,6 +277,26 @@ def _content_version(spec: WorkflowSpec) -> str:
     return full_version(spec)
 
 
+def children_of(spec: WorkflowSpec, above: str = "", depth: int = 0) -> dict[str, dict[str, Any]]:
+    """SWF-B8: each sub-workflow unit's child as the registry gives it now, keyed by the unit's path (`<unit>`, or
+    `<unit>/<unit>` for a child of a child): its name, version, content version, units and spec. A child that cannot be
+    read is left out; validation and the resume check speak of it."""
+    out: dict[str, dict[str, Any]] = {}
+    if depth > subworkflow.MAX_DEPTH:
+        return out
+    for unit in subworkflow.units_of(spec):
+        rec = spec.units[unit].subworkflow
+        assert rec is not None
+        got = subworkflow.read_child(rec.workflow)
+        if not isinstance(got, subworkflow.Child):
+            continue
+        key = f"{above}{unit}"
+        out[key] = {"workflow": got.name, "workflow_version": got.version, "content_version": _content_version(got.spec),
+                    "units": enginefile.unit_digests(got.spec), "spec": got.spec}
+        out.update(children_of(got.spec, f"{key}/", depth + 1))
+    return out
+
+
 def _stage(spec: WorkflowSpec, settings: RunSettings) -> tuple[str, bool]:
     from tempergraph.improve.promotion import stage_of
 
@@ -346,14 +366,19 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         meta = (((cw.graph.get_state(cfg).values or {}).get("run") or {}).get("meta") or {})
         shape = diagram_model(spec)["digest"]
         was = enginefile.last(enginefile.read(root, spec.name, task_id))
+        kids = children_of(spec)  # SWF-B8: each child as it is registered now
         try:  # MIG-B8: the thread's engine record; never changes the run (OVR-B4)
             moved = enginefile.record(root, spec, task_id, content_version=_content_version(spec),
-                                      shape_digest=shape, resumed=bool(meta))
+                                      shape_digest=shape, resumed=bool(meta),
+                                      children={u: {"workflow": c["workflow"], "workflow_version": c["content_version"],
+                                                    "units": c["units"]} for u, c in kids.items()})
         except OSError:
             moved = None
         log.write("run_started", origin=settings.origin, caller=dict(settings.caller),
                   alias=aliases.alias_of(root, tid), label=settings.label or meta.get("label"),
                   engine_version=ENGINE_VERSION, shape_digest=shape, **({"moved_from": moved} if moved else {}),
+                  **({"children": {u: {k: c[k] for k in ("workflow", "workflow_version", "content_version")}
+                                   for u, c in kids.items()}} if kids else {}),
                   workflow_version=spec.version, content_version=_content_version(spec), plan_digest=shape,
                   executors={"steps": dict(executors or {}), "judges": dict(judges)},
                   settings_digest=settled.resolved.digest, profiles=list(settled.options.profiles),
@@ -372,6 +397,11 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         if moved and moved.get("workflow_version") and moved["workflow_version"] != _content_version(spec):  # MIG-B15
             log.write("workflow_changed", from_version=moved.get("workflow_version"),
                       to_version=_content_version(spec), units=enginefile.changed_units(was, spec))
+        for unit, now in kids.items():  # SWF-B3: one record per child whose version changed under a paused parent
+            held = (was.get("children") or {}).get(unit) or {}
+            if held.get("workflow_version") and held["workflow_version"] != now["content_version"]:
+                log.write("workflow_changed", child=unit, from_version=held["workflow_version"],
+                          to_version=now["content_version"], units=enginefile.changed_units(held, now["spec"]))
         if workspace:
             workspace_record(log, workspace)
         for r in ruling_records:
@@ -393,6 +423,9 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         if outcome.exit_code is ExitCode.FINISHED and (final.get("workspace") or {}).get("state") == "released":
             workspace_record(log, final["workspace"])
         cost = CostTotals.from_json((final.get("run") or {}).get("cost"))
+        inside = subrun.pending_cost(cw, tid)  # SWF-B4: a child stopped or paused in has not handed its spend back
+        if inside is not None and inside.sessions > cost.sessions:
+            cost = inside
         orec = outcome_record.build(spec, final, log.path)
         if orec is not None and orec["verdict"] != "not_reached":
             log.write("outcome", **orec)  # OUT-B18, OUT-B19; a thread's latest `outcome` record is its record
@@ -418,6 +451,14 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                        "overridden_keys": rst.overridden_keys(settled.resolved),
                        "grants": _grants_used(spec, registry, settled, final),
                        "supervision": sup, **({"outcome": orec} if orec is not None else {})})
+        for unit, kid in ((final.get("run") or {}).get("children") or {}).items():
+            # SWF-B9: the outcome record of a child that ran inside this thread counts in the child's own measures. It is
+            # no run segment of the child and no folder of its own: the thread, the log and the `run_segment` row are the parent's
+            if isinstance(kid, Mapping) and kid.get("outcome"):
+                ledger.append({"kind": "child_outcome", "thread_id": tid, "workflow": kid.get("workflow"),
+                               "workflow_version": kid.get("version"), "parent": spec.name, "child": unit,
+                               **join_keys(root, settings), "origin": f"{outcome_record.CHILD_ORIGIN}{spec.name}",
+                               "outcome": kid["outcome"]})
         if ledger.failures:
             log.write("engine_error", scope="ledger", error="write_failed")
         try:  # SIL-B8: every exit is recorded, no model call; never changes the exit (OVR-B4)
@@ -572,13 +613,8 @@ def needs_git(spec: WorkflowSpec, settings: RunSettings) -> list[str]:
     out: list[str] = []
     if settings.carry:
         out.append("--carry (run state on a branch)")
-    for name, u in spec.units.items():
-        risk = u.gate.judge.risk if u.gate is not None and u.gate.judge is not None else None
-        if risk is not None and any(w.paths or w.min_lines is not None for w in risk.when):
-            out.append(f"the risk rule of {name} (changed paths or lines)")
-        cx = u.switch.complexity if u.switch is not None else None
-        if cx is not None and any(m.stock[:1] == ("changed_paths",) for m in cx.measures):
-            out.append(f"the `changed_paths` measure of {name}")
+    out += subworkflow.unit_reasons(spec)
+    out += subworkflow.needs_git(spec)  # SWF-B6: a child, or a child of a child, that needs git
     return out
 
 
@@ -798,9 +834,16 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
             cw = compile_workflow(with_outcome(declared), _Inert(), saver)
             snap = snapshot(cw, tid)
             values = snap.values
+            kids = subrun.child_states(cw, tid)  # SWF-B2, SWF-B3: the state of a child this thread is inside of
         finally:
             saver.conn.close()
         was = enginefile.last(enginefile.read(root, spec.name, task_id))
+        gone = _child_gone(declared, snap, kids, tid)  # SWF-B8: a child removed while the parent was paused inside it
+        if gone is not None:
+            return gone
+        changed = _child_changed(declared, was, snap, kids, tid)  # SWF-B3: the change rules, applied to the child's units
+        if changed is not None:
+            return changed
         if was.get("units") and was.get("workflow_version") != _content_version(declared):  # MIG-B15
             pending = [n.rsplit(".", 1)[0] for n, _ in snap.interrupts] or \
                 [n.rsplit(".", 1)[0] for n in snap.next if n.rsplit(".", 1)[0] in was["units"]]
@@ -881,6 +924,14 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                 return _refuse("unit_unknown", f"{tid} is not paused at {settings.unit}", tid=tid)
             unit = settings.unit or next(iter(gates))
             pause = gates[unit]
+            dspec, dunit, dvalues = spec, unit, values  # what the decision is checked against: the child's, inside a child
+            if "/" in unit:  # SWF-B2: a child's pause is answered as any pause, against the child's gate and state
+                found = subrun.locate(spec, unit, settled.snapshot_json())
+                held = _child_values(kids, unit)
+                if found is None or held is None:
+                    return _refuse("child_unreadable", f"{tid}: the pause at {unit} belongs to a child that cannot be "
+                                                       "read", tid=tid)
+                (dspec, dunit), dvalues = found, held
             kind = str(pause.get("kind") or "escalation")
             touch = (unit, kind, str(pause.get("reason") or ""))
             extra: dict[str, Any] = {}
@@ -898,7 +949,7 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                 d = Decision(word="proceed")  # only for the intervention row's shape; the node applies the deadline
                 first_input = resume_input({"decision": "deadline", **human_payload})
             elif kind == "input":
-                got = _answers_step(spec, task_id, root, unit, values, d, settings)
+                got = _answers_step(dspec, task_id, root, dunit, dvalues, d, settings)
                 if isinstance(got, RunOutcome):
                     if got.exit_code is ExitCode.PAUSED:  # accepted, still asking: the graph does not move
                         intervention(root, spec, task_id, touch, Decision(word="answer", name="", value=""),
@@ -912,7 +963,7 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                                tid=tid)
             if row_decision is None:
                 try:
-                    gatemod.check_decision(spec, unit, values, d, human_cap=human_cap)
+                    gatemod.check_decision(dspec, dunit, dvalues, d, human_cap=human_cap)
                 except gatemod.DecisionRefused as exc:
                     return _refuse("decision_refused", str(exc), tid=tid)
                 payload_in = {"decision": str(d), **human_payload, **extra}
@@ -995,6 +1046,59 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
         lock.release()
 
 
+def _inside(spec: WorkflowSpec, snap: Any, kids: Mapping[str, Any]) -> list[str]:
+    """The sub-workflow units a thread is inside of: paused at a gate of their child (`<unit>/<child unit>`), or waiting at
+    their step with the child's state kept."""
+    out = [n.split("/", 1)[0] for n, _ in snap.interrupts if "/" in n]
+    out += [n.rsplit(".", 1)[0] for n in snap.next if n.endswith(".step") and kids
+            and n.rsplit(".", 1)[0] in subworkflow.units_of(spec)]
+    return list(dict.fromkeys(out))
+
+
+def _child_values(kids: Mapping[str, Mapping[str, Any]], path: str) -> dict[str, Any] | None:
+    """The kept state of the child a pause at `path` (`<unit>/<child unit>`) is in."""
+    for values in kids.values():
+        if any(isinstance(p, Mapping) and p.get("unit") == path for p in (values.get("pause") or {}).values()):
+            return dict(values)
+    return None
+
+
+def _child_gone(spec: WorkflowSpec, snap: Any, kids: Mapping[str, Any], tid: str) -> RunOutcome | None:
+    """SWF-B8: a resume whose child was removed while the parent was paused inside it is refused with exit 2 naming the
+    child; `workflows register` restores it."""
+    for unit in _inside(spec, snap, kids):
+        rec = spec.units[unit].subworkflow if unit in spec.units else None
+        if rec is not None and not isinstance(subworkflow.read_child(rec.workflow), subworkflow.Child):
+            return _refuse("child_removed", f"{tid} is paused inside the child {rec.workflow!r} (unit {unit!r}), which is "
+                                            f"no longer registered; run `tempergraph workflows register` for {rec.workflow!r} "
+                                            "to restore it, then resume", tid=tid)
+    return None
+
+
+def _child_changed(spec: WorkflowSpec, was: Mapping[str, Any], snap: Any, kids: Mapping[str, Any], tid: str
+                   ) -> RunOutcome | None:
+    """SWF-B3: the change-under-a-thread rules (MIG-B15) applied, per child, to the units of a child whose version
+    changed while the parent was paused inside it."""
+    options = ((snap.values.get("run") or {}).get("options") or {})
+    for unit in _inside(spec, snap, kids):
+        rec = spec.units[unit].subworkflow if unit in spec.units else None
+        held = (was.get("children") or {}).get(unit) or {}
+        got = subworkflow.read_child(rec.workflow) if rec is not None else None
+        if not isinstance(got, subworkflow.Child) or not held.get("units"):
+            continue
+        if held.get("workflow_version") == _content_version(got.spec):
+            continue
+        cspec, _ = subrun.applied(spec, got, subrun.child_options(unit, options))
+        pending = [n.split("/", 1)[1].rsplit(".", 1)[0] for n, _ in snap.interrupts if n.startswith(f"{unit}/")]
+        cvalues = next((dict(v) for v in kids.values()), {})
+        broken = enginefile.breaks(held, cspec, cvalues, pending)
+        if broken:
+            return _refuse("workflow_changed", f"{tid} cannot resume: the child {rec.workflow if rec else unit!r} changed "
+                           f"to {_content_version(got.spec)}: {'; '.join(broken)}. Reinstall the version it ran on "
+                           f"({held.get('workflow_version')}) and resume, or start a new thread", broken, tid=tid)
+    return None
+
+
 RESCUE_PAUSES = frozenset({"escalation", "budget", "tool_access"})
 
 
@@ -1071,7 +1175,9 @@ def intervention(root: Path, spec: WorkflowSpec, task_id: str, touch: tuple[str,
                  decision: str | None = None) -> dict[str, Any]:
     """HUM-B6: one metadata-only ledger row per accepted resume, appended before the graph runs."""
     unit, kind, reason = touch
-    pause = last_record(run_dir(root, spec.name, task_id) / "run.jsonl", "pause", unit=unit)
+    owner, _, inner = unit.rpartition("/")  # a child's pause reads `<unit>/<child unit>` (SWF-B2)
+    pause = last_record(run_dir(root, spec.name, task_id) / "run.jsonl", "pause", unit=inner,
+                        **({"child": owner} if owner else {}))
     wait_s = None
     engine = settings.caller.get("kind") == "engine"  # an automatic re-open waits on no one (SUP-B9)
     if pause and pause.get("ts") and not engine:

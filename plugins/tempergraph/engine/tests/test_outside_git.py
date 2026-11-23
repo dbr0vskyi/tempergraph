@@ -19,6 +19,7 @@ from tempergraph.store import manifest
 from tempergraph.store.layout import NotInRepository, home_path, run_dir, state_root_path
 from tempergraph.workspace import WorkspaceRefused, resolve_workspace
 
+from .fixtures.subworkflows import home_dir, parent_spec, register_workflow
 from .fixtures.workflows import two_step
 from .test_cli import cli, happy
 from .test_run import DRAFT, MET, REVIEW, judge, records, registry
@@ -200,3 +201,34 @@ def test_what_needs_git_is_named_and_refused_before_spend(plain: Path) -> None:
     for verb in (["carry", "status", "demo", "T-1"], ["improve", "trial", "p-1"]):
         code, _, err = cli(plain, None, *verb)
         assert code == ExitCode.USAGE and "needs_git" in err, verb
+
+
+# -- a child that needs git (SWF-B6, SWF-AC1) -----------------------------------------------------------------
+
+
+def test_a_child_that_needs_git_is_named_with_its_rule(tmp_path: Path) -> None:  # SWF-AC1, AC 2
+    register_workflow(home_dir(), tmp_path / "pkgs", "risky", needs_git=True)
+    got = needs_git(parent_spec("deliver", workflow="risky", inputs={"request": "request"}), NO_SLEEP)
+    assert len(got) == 1 and "risky" in got[0] and "risk rule" in got[0]
+
+
+def test_a_child_of_a_child_that_needs_git_is_named_too(tmp_path: Path) -> None:  # SWF-AC1, AC 2
+    register_workflow(home_dir(), tmp_path / "pkgs", "inner", needs_git=True)
+    register_workflow(home_dir(), tmp_path / "pkgs", "outer",
+                      children={"next": {"workflow": "inner", "inputs": {"request": "request"}}})
+    got = needs_git(parent_spec("deliver", workflow="outer", inputs={"request": "request"}), NO_SLEEP)
+    assert len(got) == 1 and "inner" in got[0]
+
+
+def test_children_that_need_no_git_add_nothing(tmp_path: Path) -> None:  # SWF-AC1, AC 2
+    register_workflow(home_dir(), tmp_path / "pkgs", "calm")
+    assert needs_git(parent_spec("deliver", workflow="calm", inputs={"request": "request"}), NO_SLEEP) == []
+
+
+def test_a_start_outside_git_is_refused_for_a_child_that_needs_git(tmp_path: Path, plain: Path) -> None:  # SWF-AC1, AC 2
+    register_workflow(home_dir(), tmp_path / "pkgs", "risky", needs_git=True)
+    ex = happy()
+    out = start(parent_spec("deliver", workflow="risky", inputs={"request": "request"}), "T-1", {"request": "x"}, plain,
+                registry(ex), NO_SLEEP)
+    assert out.exit_code is ExitCode.USAGE and out.reason == "needs_git" and "risky" in out.message
+    assert not (plain / ".tempergraph").exists() and ex.calls == []
