@@ -83,7 +83,11 @@ def compile_workflow(spec: WorkflowSpec, nodes: UnitNodes, checkpointer: BaseChe
         if u is None or u.kind != "parallel":
             continue
         fork = flow.fork_node(join)
-        g.add_node(fork, _passthrough(fork))
+        enter = getattr(nodes, "fork", None)  # WSP-B19, WSP-B11: a block with a writer branch is entered by the engine
+        if enter is not None and flow.writer_branches(spec, join):
+            g.add_node(fork, _bind1(enter, join, post))
+        else:
+            g.add_node(fork, _passthrough(fork))
         names.append(fork)
         dones = []
         for b in u.branches:

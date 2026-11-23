@@ -126,6 +126,58 @@ def pushed(workdir: Path, name: str) -> bool:
     return any(r.split("/", 3)[-1] == name for r in refs.splitlines() if r.count("/") >= 3)
 
 
+def head(workdir: Path) -> str:
+    """The commit `HEAD` names in `workdir`; empty when there is none."""
+    return git(["rev-parse", "--verify", "--quiet", "HEAD"], workdir, check=False).strip()
+
+
+def _identity(workdir: Path) -> list[str]:
+    """The engine's own commit identity, used only where the repository configures none."""
+    if git(["config", "user.email"], workdir, check=False).strip():
+        return ["-c", "commit.gpgsign=false"]
+    return ["-c", "commit.gpgsign=false", "-c", "user.name=tempergraph", "-c", "user.email=tempergraph@localhost.invalid"]
+
+
+def commit_all(workdir: Path, message: str) -> str:
+    """WSP-B19: commit every uncommitted change in `workdir`, new files included, outside the state root. Returns the
+    new commit, or an empty string when there was nothing to commit (no commit is made)."""
+    git(["add", "-A", "--", ".", ":(exclude).tempergraph"], workdir)
+    if not git(["status", "--porcelain=v1", "--untracked-files=no"], workdir).strip():
+        return ""
+    git([*_identity(workdir), "commit", "--no-verify", "--quiet", "-m", message], workdir)
+    return head(workdir)
+
+
+def merge_no_ff(workdir: Path, ref: str, message: str) -> list[str]:
+    """WSP-B11, WSP-B12: merge the branch `ref` into the branch checked out in `workdir` without fast-forward. Returns
+    the conflicting paths, empty when the merge went through (a merge in progress is left for the caller to end)."""
+    try:
+        git([*_identity(workdir), "merge", "--no-ff", "--no-edit", "-m", message, "--end-of-options", ref], workdir)
+    except GitError:
+        paths = conflicted_paths(workdir)
+        if not paths:
+            raise
+        return paths
+    return []
+
+
+def conflicted_paths(workdir: Path) -> list[str]:
+    """The paths a merge in progress left unmerged, sorted."""
+    return sorted(p for p in git(["diff", "--name-only", "--diff-filter=U"], workdir, check=False).splitlines() if p)
+
+
+def merge_abort(workdir: Path) -> None:
+    git(["merge", "--abort"], workdir, check=False)
+
+
+def reset_hard(workdir: Path, commit: str) -> None:
+    """Put the branch checked out in `workdir`, its index and its files back at `commit`, a full commit id (`reset`
+    takes no `--end-of-options` before its commit, and a hex id cannot be read as an option)."""
+    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", commit):
+        raise GitError("git reset: not a full commit id")
+    git(["reset", "--hard", "--quiet", commit], workdir)
+
+
 def changed_paths(workdir: Path, base: str | None = None, limit: int = 500) -> list[str]:
     paths: list[str] = []
     try:

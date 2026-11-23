@@ -74,9 +74,9 @@ WHEN a parallel block's branches run THE engine SHALL fire the engine-owned join
 
 ### CMP-B13 Parallel blocks
 
-WHEN a unit of kind `parallel` names its branches, which stand just before it in `order` THE compiler SHALL add `<join>.fork` and one `<branch>.done` node per branch, run the branches as read-only steps, fail a branch that changes the workspace with `branch_changed_the_workspace`, give the join no check or judge, merge branch state by reducers (path union, cost by delta), and on a trip back to the block clear and run every branch again.
+WHEN a unit of kind `parallel` names its branches, which stand just before it in `order` THE compiler SHALL add `<join>.fork` and one `<branch>.done` node per branch, run a branch that declares neither `write` nor `edit` as a read-only step and fail one that changes the workspace with `branch_changed_the_workspace`, run a branch that declares one in its own worktree ([WSP-B11](13-workspace-and-concurrency.spec.md)), give the join no check or judge, merge branch state by reducers (path union, cost by delta), and on a trip back to the block clear and run every branch again.
 
-- GIVEN a branch that edits a file WHEN it ends THEN it fails with `branch_changed_the_workspace`
+- GIVEN a branch that declares neither `write` nor `edit` and changes a file WHEN it ends THEN it fails with `branch_changed_the_workspace`
 - GIVEN a trip back into the block WHEN it runs again THEN both branches run again
 
 ### CMP-B14 Maps, sub-workflows and waits

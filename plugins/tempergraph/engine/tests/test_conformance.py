@@ -151,12 +151,14 @@ CAUSE_SCENARIOS: dict[InfraCause, dict[str, Any]] = {
 
 
 def test_every_executor_cause_has_a_scenario() -> None:
+    # BUD-AC1: every cause rule an executor assigns has a fixture scenario, run on every executor below
     assert set(CAUSE_SCENARIOS) == set(EXECUTOR_CAUSES)
 
 
 @CAPS
 @pytest.mark.parametrize("cause", EXECUTOR_CAUSES, ids=str)
 def test_no_raise_on_every_infra_cause(name: str, cause: InfraCause, tmp_path: Path) -> None:
+    # BUD-AC1: each cause rule is tested on every executor's fixtures (this runs every cause on every executor)
     case = CAUSE_SCENARIOS[cause]
     ex = CliStandin(DECLARED[name], scenario(tmp_path, case.get("sc", {})), argv0=case.get("argv0"))
     res = ex.run_step(request(tmp_path, prompt=case.get("prompt", CANARY)), EventSink())  # never raises (EXI-B6)

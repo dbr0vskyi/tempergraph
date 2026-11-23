@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from tempergraph.contracts import UnitSpec, WorkflowSpec
+from tempergraph.model import flow
 from tempergraph.model.text import input_names
 from tempergraph.model.validate import _produced
 
@@ -186,6 +187,8 @@ def unit_reasons(spec: WorkflowSpec, where: str = "") -> list[str]:
         risk = u.gate.judge.risk if u.gate is not None and u.gate.judge is not None else None
         if risk is not None and any(w.paths or w.min_lines is not None for w in risk.when):
             out.append(f"the risk rule of {where}{name} (changed paths or lines)")
+        out += [f"the writer branch {where}{b} of block {where}{name} (its own worktree, merged at the join)"
+                for b in flow.writer_branches(spec, name)]
         cx = u.switch.complexity if u.switch is not None else None
         if cx is not None and any(m.stock[:1] == ("changed_paths",) for m in cx.measures):
             out.append(f"the `changed_paths` measure of {where}{name}")

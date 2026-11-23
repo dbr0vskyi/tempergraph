@@ -16,7 +16,7 @@ from tempergraph.run import ladder as laddermod
 from tempergraph.run import mapping
 
 ESCALATE_CAUSES = frozenset({"auth", "refused", "tool_access", "environmental", "blocked", "upstream",
-                             "workflow_fault", "check_repeat"})
+                             "workflow_fault", "check_repeat", "merge_conflict"})
 HUMAN_CAP = 100
 
 

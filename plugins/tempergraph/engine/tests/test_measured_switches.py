@@ -159,7 +159,10 @@ def test_the_safer_arm_never_re_arms(repo: Path) -> None:  # SWM-B3, row 4
     assert [r["chosen_by"] for r in recs(repo, "route")] == ["predicate"]
 
 
-def test_an_operator_picks_the_arm(repo: Path) -> None:  # CMP-B7
+def test_an_operator_picks_the_arm(repo: Path) -> None:  # CMP-B7, CMP-AC7
+    out, ex = go(repo, wf(big_plan), 0, [], task="S-3", flags={"code_mode.arm": "nowhere"})  # an arm the switch lacks
+    assert out.exit_code is ExitCode.USAGE and ex.calls == []  # exit 2 before any session, so before spend
+    assert not run_dir(state_root_path(repo), "demo", "S-3").exists()
     out, _ = go(repo, wf(big_plan), 2, [judge(), judge()], flags={"code_mode.arm": "single"})
     assert out.exit_code is ExitCode.FINISHED and entered(repo) == ["triage", "code"]
     (r,) = recs(repo, "route")

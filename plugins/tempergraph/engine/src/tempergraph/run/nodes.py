@@ -67,7 +67,7 @@ from tempergraph.run.log import CostTotals, RunLog, cost_so_far, estimate, sessi
 from tempergraph.security.scrub import clip, scrub
 from tempergraph.settings import Capture
 from tempergraph.store.layout import session_dir, session_key
-from tempergraph.workspace import scan_foreign_worktrees
+from tempergraph.workspace import WorkspaceRecord, WorkspaceRefused, cut_writers, scan_foreign_worktrees
 
 ATTEMPT_CAP = 15
 INFRA_TRIES = 3
@@ -113,6 +113,7 @@ class RunContext:
     audit_seed: int | None = None  # a test hook that fixes the audit draw
     child: str | None = None  # SWF-B8: the sub-workflow unit whose child this context runs; None for the run's own spec
     parent_thread: str = ""  # a child's context keeps the parent's thread
+    read_worktreeinclude: bool = True  # `run.worktree.read_worktreeinclude`, for the writer worktrees (WSP-B2)
 
     @property
     def thread(self) -> str:
@@ -155,8 +156,23 @@ class EngineNodes:
                     w.get(ch, val) if ch in w else val
         return w
 
-    def _workdir(self, state: Mapping[str, Any]) -> Path:
+    def _workdir(self, state: Mapping[str, Any], unit: str | None = None) -> Path:
+        """The run's worktree; a writer branch's own worktree for the step, judge, check and script of `unit`
+        (WSP-B11, WTR-B25)."""
+        child = self._writer_child(state, unit) if unit is not None else None
+        if child is not None:
+            return Path(str(child["path"]))
         return Path((state.get("workspace") or {}).get("path") or self.ctx.state_root.parent)
+
+    def _writer_child(self, state: Mapping[str, Any], unit: str) -> Mapping[str, Any] | None:
+        """The workspace record's child for `unit` when `unit` is a writer branch of a parallel block."""
+        block = flow.block_of(self.ctx.spec, unit)
+        if block is None or unit not in flow.writer_branches(self.ctx.spec, block):
+            return None
+        for child in (state.get("workspace") or {}).get("children") or []:
+            if child.get("unit") == unit:
+                return child
+        return None
 
     def _in_worktree(self, state: Mapping[str, Any]) -> bool:
         return (state.get("workspace") or {}).get("mode") == "worktree"
@@ -184,6 +200,53 @@ class EngineNodes:
             self.ctx.log.write("workspace", action="foreign", unit=unit, item=iid, mode="worktree", path=rel,
                                branch=br or None, session_key=key)
         return out
+
+    def fork(self, join: str, state: RunState) -> dict[str, Any]:
+        """WSP-B19, WSP-B11: entering a block that has a writer branch commits the run worktree's uncommitted changes on
+        the run's branch, then cuts one worktree per writer branch from that commit. A cut that fails ends the segment
+        at this boundary (engine_error `workspace_refused`) with nothing left behind."""
+        writers = flow.writer_branches(self.ctx.spec, join)
+        ws = dict(state.get("workspace") or {})
+        try:
+            if ws.get("mode") != "worktree":
+                raise WorkspaceRefused("needs_worktree", f"writer branch {writers[0]}: the run has no worktree")
+            rec = WorkspaceRecord.from_json(ws)
+            run_path = Path(rec.path)
+            gitmod.commit_all(run_path, f"tempergraph: checkpoint before {join}")
+            rec = cut_writers(rec, self.ctx.thread, writers, self.ctx.spec.worktree, self.ctx.state_root,
+                              read_include=self.ctx.read_worktreeinclude)
+            rec.last_head = gitmod.head(run_path)
+        except (WorkspaceRefused, gitmod.GitError) as exc:
+            word = exc.word if isinstance(exc, WorkspaceRefused) else "git_failed"
+            self.ctx.log.write("engine_error", unit=join, error="workspace_refused", detail=f"{word}: {exc}")
+            raise Drain("workspace_refused") from None
+        return {"workspace": rec.to_json()}
+
+    def _merge_writers(self, join: str, state: Mapping[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+        """WSP-B11, WSP-B12: merge each writer branch into the run branch without fast-forward, in the order the
+        parallel unit names them. A conflict (or a merge git refuses) puts the run branch back at the commit it held
+        before the first merge. Returns the new workspace record, or None with what the attempt records."""
+        rec = WorkspaceRecord.from_json(dict(state.get("workspace") or {}))
+        run_path = Path(rec.path)
+        children = {str(c.get("unit")): c for c in rec.children}
+        before = gitmod.head(run_path)
+        for unit in flow.writer_branches(self.ctx.spec, join):
+            child = children.get(unit)
+            if child is None:
+                continue
+            try:
+                gitmod.commit_all(Path(str(child["path"])), f"tempergraph: work of {unit}")  # what the session left
+                paths = gitmod.merge_no_ff(run_path, str(child["branch"]), f"Merge writer branch {unit} of {join}")
+                failure = ""
+            except gitmod.GitError as exc:
+                paths, failure = [], str(exc)
+            if paths or failure:
+                gitmod.merge_abort(run_path)
+                gitmod.reset_hard(run_path, before)
+                return None, {"escalate": "merge_conflict", "conflicts": paths, "conflict_branch": unit,
+                              "merge_error": failure}
+        rec.last_head = gitmod.head(run_path)
+        return rec.to_json(), {}
 
     def _boundary(self, state: Mapping[str, Any]) -> None:
         reason = self.ctx.drain_requested()
@@ -308,7 +371,7 @@ class EngineNodes:
         visit = int(((state.get("visits") or {}).get(unit) or {}).get("visit", 1))
         counters = (state.get("counters") or {}).get(unit) or {}
         entered = prev.get("visit") != visit
-        workdir = self._workdir(state)
+        workdir = self._workdir(state, unit)
         path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
         if entered:
             fp = gitmod.fingerprint(workdir)
@@ -485,7 +548,8 @@ class EngineNodes:
             record.update(foreign_worktrees=foreign, warnings=[f"foreign_worktree: {rel}" for rel in foreign])
         if record["slow_host"]:
             record.update(infra_cause="slow_host", infra_spent=False)
-        if res.ok and before != after and flow.block_of(spec, unit):  # WSP-B11, WSP-B12: a branch is read-only
+        if res.ok and before != after and flow.block_of(spec, unit) and self._writer_child(state, unit) is None:
+            # WSP-B11: a read-only branch changes nothing in the run worktree; a writer's fingerprint is its own
             record.update(ok=False, error_kind="branch_changed_the_workspace")
         if after_failed is not None:
             record.update(ok=False, error_kind=f"script_failed:{after_failed}",
@@ -654,7 +718,7 @@ class EngineNodes:
         assert sc is not None
         prev = (state.get("attempts") or {}).get(unit) or {}
         attempt = int(prev.get("attempt", 0)) + 1
-        ok, env, artifacts = self._run_script(sc, unit, attempt, "unit", state, self._workdir(state))
+        ok, env, artifacts = self._run_script(sc, unit, attempt, "unit", state, self._workdir(state, unit))
         record = {"attempt": attempt, "visit": 1, "ok": ok, "text": "", "escalate": "environmental" if env else None,
                   "infra_spent": False, "check": None, "script": True}
         path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
@@ -682,11 +746,17 @@ class EngineNodes:
             fp = gitmod.fingerprint(self._workdir(state))
             self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=fp.dirty,
                                entered_from="join", branches=list(self.ctx.spec.units[unit].branches))
-        record = {"attempt": int(prev.get("attempt", 0)) + 1, "visit": visit, "ok": True, "text": "",
-                  "escalate": None, "infra_spent": False, "check": None, "join": True}
+        record: dict[str, Any] = {"attempt": int(prev.get("attempt", 0)) + 1, "visit": visit, "ok": True, "text": "",
+                                  "escalate": None, "infra_spent": False, "check": None, "join": True}
         path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
         run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
-        return {"attempts": {unit: record}, "run": run}
+        out: dict[str, Any] = {"attempts": {unit: record}, "run": run}
+        if flow.writer_branches(self.ctx.spec, unit):  # no model session starts for a join, merged or not
+            merged, found = self._merge_writers(unit, state)
+            record.update(found)
+            if merged is not None:
+                out["workspace"] = merged
+        return out
 
     def _person_unit(self, unit: str, state: RunState) -> dict[str, Any]:
         """An ask or a wait runs nothing: its step node records the entry and the human node pauses (CMP-B10 to CMP-B16).
@@ -820,8 +890,15 @@ class EngineNodes:
                 and not att.get("infra_spent")):
             return self._judge_claim(unit, state, att)
         if att.get("infra_spent") or att.get("escalate"):
-            return {"judgements": {unit: {"verdict": str(Verdict.ESCALATE), "reason": att.get("escalate") or "infra",
-                                          "confidence": 1.0, "confidence_source": "engine_placeholder"}}}
+            placeholder: dict[str, Any] = {"verdict": str(Verdict.ESCALATE), "reason": att.get("escalate") or "infra",
+                                           "confidence": 1.0, "confidence_source": "engine_placeholder"}
+            if att.get("escalate") == "merge_conflict":  # WSP-B12: the pause lists the conflicting paths
+                placeholder["blockers"] = [
+                    {"criterion": "writer-branches", "place": p, "problem": f"conflicting change in {p}",
+                     "fix": f"decide which change of writer branch {att.get('conflict_branch')} or the run's branch stays"}
+                    for p in att.get("conflicts") or []] or [
+                    {"criterion": "writer-branches", "problem": str(att.get("merge_error") or "the join failed")}]
+            return {"judgements": {unit: placeholder}}
         if not att.get("ok"):
             return {"judgements": {unit: {"verdict": str(Verdict.RETRY), "reason": "step_failed", "blockers": [
                 {"criterion": "step", "problem": att.get("error_kind") or ("timed out" if att.get("timed_out")
@@ -830,7 +907,7 @@ class EngineNodes:
         if bad:
             return {"judgements": {unit: {"verdict": str(Verdict.RETRY), "reason": "output_contract", "blockers": [
                 {"criterion": "output", "problem": i} for i in bad]}}}
-        workdir = self._workdir(state)
+        workdir = self._workdir(state, unit)
         cres, notes = self._check(unit, state, att, workdir)
         att["check"] = checkmod.to_json(cres)
         iid = att.get("item")
@@ -912,7 +989,7 @@ class EngineNodes:
         """A step's upstream claim is judged on its own against one criterion: confirmed goes BACK, refuted
         retries, undecided asks a person (BUD-B10, HUM-B7 to HUM-B11). No check runs: the step produced nothing to check."""
         target, defect = (str(x) for x in att["upstream"])
-        j = self._judge_session(unit, state, att, None, self._workdir(state), claim=(target, defect))
+        j = self._judge_session(unit, state, att, None, self._workdir(state, unit), claim=(target, defect))
         cost = j.pop("_cost", None)
         verdict = j.get("verdict")
         if j.get("infra_spent"):

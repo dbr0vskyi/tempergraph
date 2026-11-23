@@ -78,7 +78,7 @@ def test_fresh_start_on_existing_thread_is_refused(repo: Path) -> None:
     assert again.exit_code is ExitCode.USAGE and "resume" in again.message  # DUR-B1
 
 
-def test_retry_carries_the_blockers(repo: Path) -> None:
+def test_retry_carries_the_blockers(repo: Path) -> None:  # CMP-AC3 (CMP-B1)
     ex = standin("claude", steps=[DRAFT, DRAFT, REVIEW], judges=[judge(verdict_block("UNMET")), judge(), judge()])
     assert go(repo, ex).exit_code is ExitCode.FINISHED
     retry = ex.calls[2]
@@ -168,13 +168,27 @@ def test_one_reask_then_escalate(repo: Path) -> None:
     assert [c.request.kind for c in ex.calls] == ["step", "judge", "judge_reask"]  # JDG-AC3
 
 
-def test_back_to_an_earlier_unit(repo: Path) -> None:
+def test_back_to_an_earlier_unit(repo: Path) -> None:  # CMP-AC3 (CMP-B12)
     ex = standin("claude", steps=[DRAFT, REVIEW, DRAFT, REVIEW],
                  judges=[judge(), judge(verdict_block("UNMET", defect_in="notes")), judge(), judge()])
     assert go(repo, ex).exit_code is ExitCode.FINISHED
     assert [c.kind for c in ex.calls] == ["step", "judge"] * 4
     revisit = ex.calls[4].request.prompt
     assert "Why this unit runs again" in revisit and "sent back by `review`" in revisit
+
+
+def test_a_run_at_its_attempt_cap_stops_cleanly_before_the_next_attempt(repo: Path) -> None:  # CMP-AC8 (CMP-B5)
+    ex = standin("claude", steps=[DRAFT], judges=[judge()])
+    out = go(repo, ex, flags={"run.attempt_cap": 1})
+    assert out.exit_code is ExitCode.STOPPED and out.reason == "attempt_cap", out.message
+    assert [c.kind for c in ex.calls] == ["step", "judge"]  # the draft attempt ran; the review attempt never started
+    recs = records(repo)
+    assert [r["unit"] for r in recs if r["kind"] == "attempt_start" and r["session_kind"] == "step"] == ["draft"]
+    (exit_rec,) = [r for r in recs if r["kind"] == "run_exit"]
+    assert exit_rec["reason"] == "attempt_cap"  # a clean stop, no engine error
+    assert not [r for r in recs if r["kind"] == "engine_error"]
+    ex.steps, ex.judges = [REVIEW], [judge()]
+    assert resume(two_step(), "T-1", repo, registry(ex), settings=NO_SLEEP).exit_code is ExitCode.FINISHED  # fresh allowance
 
 
 CLAIM = answer("The notes name no version\nUPSTREAM draft: notes.md names no version", session_id="s-claim")
@@ -293,7 +307,7 @@ def with_outcome_spec(final_by: str = "judge") -> Any:
     return dataclasses.replace(spec, units=units)
 
 
-def test_outcome_gate_runs_before_the_finalizer(repo: Path) -> None:
+def test_outcome_gate_runs_before_the_finalizer(repo: Path) -> None:  # CMP-AC3 (CMP-B15)
     spec = with_outcome_spec()
     met2 = verdict_block("MET", "MET")
     ex = standin("claude", steps=[DRAFT, REVIEW], judges=[judge(met2), judge(MET), judge(MET, sid="o")])

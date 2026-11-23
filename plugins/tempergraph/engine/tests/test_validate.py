@@ -4,15 +4,19 @@ from __future__ import annotations
 
 import dataclasses
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import pytest
 
 from tempergraph import api
 from tempergraph.api import Criterion, Gate, Judge, Script, SessionOptions, Step, Value
+from tempergraph.constants import ExitCode
 from tempergraph.contracts import FlowSpec, WorkflowSpec
 from tempergraph.executors.capabilities import CLAUDE, DECLARED
+from tempergraph.executors.standins import standin
 from tempergraph.model.validate import errors, validate
+from tempergraph.run.runner import RunSettings, resume
 
 from .fixtures.workflows import crit, two_step
 
@@ -26,6 +30,39 @@ def codes(spec: WorkflowSpec, executors: dict = CLAUDE_ONLY) -> set[str]:
 
 def test_valid_two_step() -> None:
     assert errors(validate(two_step(), CLAUDE_ONLY)) == []
+
+
+def test_every_entry_point_calls_the_same_validate(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """WFM-AC2 (WFM-B2, WFM-B7): the catalog, start, resume, the pre-start check and the upgrade check all reach
+    the one `validate`: the catalog and the upgrade check bind the very function, and start, resume and
+    `run --check` go through the preflight, which is counted here."""
+    from tempergraph.executors import preflight as pre
+    from tempergraph.model import validate as validate_module
+    from tempergraph.package import registry as catalog
+    from tempergraph.package import upgrade
+
+    from .test_cli import cli, happy
+    from .test_run import DRAFT, REVIEW, go, judge, verdict_block
+    from .test_run import registry as registry_of
+
+    for module in (catalog, pre, upgrade):
+        assert module.validate is validate_module.validate, module.__name__
+    seen: list[str] = []
+
+    def counted(spec: WorkflowSpec, executors: Any) -> Any:
+        seen.append(spec.name)
+        return validate_module.validate(spec, executors)
+
+    monkeypatch.setattr(pre, "validate", counted)
+    ex = standin("claude", steps=[DRAFT], judges=[judge(verdict_block("UNVERIFIABLE"))])
+    assert go(repo, ex, task="V-1").exit_code is ExitCode.PAUSED  # start
+    assert seen == ["demo"]
+    ex.steps, ex.judges = [REVIEW], [judge()]
+    assert resume(two_step(), "V-1", repo, registry_of(ex), decision="proceed",
+                  settings=RunSettings(sleep=lambda s: None)).exit_code is ExitCode.FINISHED  # resume
+    assert seen == ["demo", "demo"]
+    code, doc, _ = cli(repo, happy(), "run", "demo", "Release notes", "--check")  # the pre-start check
+    assert code == 0 and doc["status"] == "ok" and seen == ["demo", "demo", "demo"]
 
 
 def _unit(spec: WorkflowSpec, name: str, **changes: Any) -> WorkflowSpec:
