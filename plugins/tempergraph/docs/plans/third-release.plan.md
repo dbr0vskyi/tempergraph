@@ -37,7 +37,7 @@ task_id: third-release
 | Order | Cap and reach first, because every parallel shape relies on them | R-140 F4, F5 |
 | Plan shape | Tracks and phases only; each track's expanded plan is written when its specs are ready (EC-2) | As in release 2 |
 
-**Status: In progress.** R3-T1.1 and R3-T1.2 are built (2026-11-22). R3-T2.3 and with it track R3-T2 are built (2026-11-22). R3-T5.1 and R3-T5.2, and with them track R3-T5, are built (2026-11-23). EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
+**Status: In progress.** R3-T1.1 and R3-T1.2 are built (2026-11-22). R3-T2.3 and with it track R3-T2 are built (2026-11-22). R3-T5.1 and R3-T5.2 are built (2026-11-23), and with them track R3-T5. EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
 
 ## 1. Requirements analysis
 

@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 
-from tempergraph.render.template import render
+from tempergraph.render.template import TemplateError, render
 from tempergraph.schedule.model import (
     Rule,
     When,
@@ -106,6 +106,9 @@ def fire_keys(entry: dict[str, Any], slot: datetime, log: Sequence[dict[str, Any
 def render_fire_text(text: str, keys: dict[str, str]) -> str:
     """Render the fire keys in a request, an input or an argument by the template grammar (CON-B8). The grammar's
     field names have no dot, so `{fire.date}` is read as the field `fire_date`; any other `{fire.x}` is invalid."""
+    for m in re.finditer(r"(?<!\{)\{fire\.([A-Za-z0-9_]+)\}(?!\})", text):
+        if m.group(1) not in FIRE_KEYS:  # the grammar reads any dotted pair (SWF-B12): a mistyped fire key is refused here
+            raise TemplateError(f"unknown fire key fire.{m.group(1)}", m.start())
     translated = re.sub(r"(?<!\{)\{fire\.(" + "|".join(FIRE_KEYS) + r")\}(?!\})", r"{fire_\1}", text)
     out, _ = render(translated, {k.replace(".", "_"): v for k, v in keys.items()})
     return out
