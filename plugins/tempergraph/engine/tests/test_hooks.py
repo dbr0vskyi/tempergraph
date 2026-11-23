@@ -44,6 +44,33 @@ def test_add_refusals_write_nothing(repo: Path, argv: list[str]) -> None:
     assert not hooks.config_path(state_root_path(repo)).exists()
 
 
+def test_tck_ac4_schedule_paused_is_a_run_event_the_hook_accepts_and_the_others_stay_later(repo: Path) -> None:
+    assert "schedule_paused" in hooks.RUN_EVENTS and "schedule_paused" not in hooks.LATER_EVENTS
+    assert set(hooks.LATER_EVENTS) == {"stalled", "orchestration_attention", "orchestration_finished", "schedule_fired",
+                                       "schedule_missed", "schedule_refused"}
+    code, doc, _ = cli(repo, None, "hooks", "add", "schedule_paused", "--", *WRITE)
+    assert code == ExitCode.FINISHED and doc["added"]["event"] == "schedule_paused"
+    assert "schedule_paused" in out(cli(repo, None, "hooks", "list"))["events"]
+    for later in hooks.LATER_EVENTS:
+        assert cli(repo, None, "hooks", "add", later, "--", "true")[0] == ExitCode.USAGE
+
+
+def test_tck_ac4_a_schedule_event_writes_a_facts_file_with_ids_and_numbers_only(repo: Path,
+                                                                                 monkeypatch: pytest.MonkeyPatch) -> None:
+    started: list[tuple] = []
+    monkeypatch.setattr(detach, "start", lambda m, w, h: started.append((m, *w)) or True)
+    root = state_root_path(repo)
+    cli(repo, None, "hooks", "add", "schedule_paused", "--", sys.executable, "-c", "pass")
+    assert hooks.on_schedule_event(root, "schedule_paused", "demo", "digest-1a2b",
+                                   {"cause": "exit 5", "failures": 3, "thread": "demo/s-1", "note": "free text"})
+    facts = json.loads((root / "runs" / "demo" / "schedule-digest-1a2b" / "hooks" / "schedule_paused-1.facts.json").read_text())
+    assert facts == {"schema_version": 1, "event": "schedule_paused", "workflow": "demo", "task_id": "schedule-digest-1a2b",
+                     "schedule_id": "digest-1a2b", "cause": "exit 5", "thread": "demo/s-1", "failures": 3}  # no `note`
+    assert started == [("tempergraph.observe.hooks", "drain")]
+    (ticket,) = list(hooks.tickets_dir(home_path()).glob("*.json"))
+    assert hooks.process(json.loads(ticket.read_text()))["ok"] is True  # the registry's argv runs with the facts file
+
+
 def test_events_of_records() -> None:
     assert hooks.event_of({"kind": "run_started", "segment": 0}) == "started"
     assert hooks.event_of({"kind": "run_started", "segment": 2}) == "resumed"

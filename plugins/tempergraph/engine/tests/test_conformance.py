@@ -175,6 +175,13 @@ def test_cost_reported_only_where_declared(name: str, tmp_path: Path) -> None:
 
 
 @CAPS
+def test_tck_ac6_each_declared_set_names_the_credential_kinds_it_can_use_unattended(name: str) -> None:
+    kinds = DECLARED[name].unattended_credentials
+    assert kinds and kinds <= {"api_key", "cloud", "oauth_token", "interactive_login"}
+    assert "api_key" in kinds  # every executor can run unattended on a key in the operator's profile (TCK-B18)
+
+
+@CAPS
 def test_scripted_standin_carries_the_declared_set(name: str, tmp_path: Path) -> None:
     ex = standin(name, steps=[answer("done", tools=["x"], cost=0.2)])
     sink = EventSink()

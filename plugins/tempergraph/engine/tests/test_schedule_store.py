@@ -51,10 +51,31 @@ def test_sch_ac8_the_entry_holds_every_field_of_sch_b14() -> None:
                 "last_fire"):
         assert key in e, key
     assert e["schema_version"] == 1 and e["state"] == "active"
-    assert e["executors_checked"] == [] and e["token_digest"] is None  # R3-T5.2 fills them
+    assert e["executors_checked"] == [] and e["token_digest"] is None  # unset until `add` gives them (TCK-B17, TCK-B19)
     assert e["edited"] is None and e["last_fire"] is None
     assert len(str(e["description"])) <= 200 and e["max_live"] == 1 and e["pause_after_failures"] == 3
     assert e["next_slot"] == "2026-11-23T08:00:00Z"  # derived: readers trust the fire log over it
+
+
+def test_tck_ac4_build_entry_keeps_a_given_digest_and_the_checked_executors() -> None:
+    digest = "ab" * 32
+    checked = [{"executor": "claude", "kinds": ["api_key"], "result": "ok"}]
+    e = entry(token_digest=digest, executors_checked=checked)
+    assert e["token_digest"] == digest and e["executors_checked"] == checked
+
+
+def test_tck_ac4_the_token_file_is_beside_the_entry_and_owner_only() -> None:
+    from tempergraph.schedule import token
+
+    path = store.token_path("digest-1a2b")
+    assert path == store.entry_path("digest-1a2b").parent / "token" and path.parent == home_path() / "schedules" / "digest-1a2b"
+    secret = token.make_token()
+    assert len(secret) >= 32 and token.digest(secret) == token.digest(secret) and len(token.digest(secret)) == 64
+    written = token.write_token("digest-1a2b", secret)
+    assert written == path and token.read_token("digest-1a2b") == secret
+    if os.name == "posix":
+        assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    assert token.read_token("nobody-0000") is None
 
 
 def test_sch_ac8_the_write_is_atomic(monkeypatch: pytest.MonkeyPatch) -> None:

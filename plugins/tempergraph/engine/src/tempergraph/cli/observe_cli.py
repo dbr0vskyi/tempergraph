@@ -30,6 +30,8 @@ def add_parsers(sub: Any) -> None:
     pr.add_argument("--older-than", type=float, default=30.0, metavar="DAYS")
     pr.add_argument("--keep-failed", action=argparse.BooleanOptionalAction, default=True,
                     help="keep the logs of stopped or failed threads (the default); --no-keep-failed prunes them")
+    pr.add_argument("--schedules", action="store_true",
+                    help="also drop scheduled-run ledger rows older than --older-than days (TCK-B23); kept without it")
     pr.add_argument("--dry-run", action="store_true")
     pr.add_argument("--json", action="store_true")
     ex = ssub.add_parser("export")
@@ -37,7 +39,7 @@ def add_parsers(sub: Any) -> None:
     ex.add_argument("path")
     rp = sub.add_parser("report", help="cost and friction reports over this state root's runs (OBS-B15)")
     rp.add_argument("window", nargs="?", default="30d", help="7d, 24h, 30d (the default) or all")
-    rp.add_argument("--by", choices=("unit", "executor", "version", "workflow", "host", "level"), default=None)
+    rp.add_argument("--by", choices=("unit", "executor", "version", "workflow", "host", "level", "schedule"), default=None)
     rp.add_argument("--supervision", action="store_true", help="touches, levels, waits and supervision cost (SUP-B12)")
     rp.add_argument("--loop", action="store_true", help="the self-improvement loop's own figures (IMD-B22)")
     rp.add_argument("--switch", metavar="WORKFLOW/SWITCH", help="finished runs per arm and zone (CXR-B13)")
@@ -150,6 +152,12 @@ def cmd_store(env: Any, a: argparse.Namespace) -> int:
                                "removed" if not a.dry_run else "would_remove":
                                [str(p.relative_to(root)) for p in plan.remove],
                                "refused": plan.refused, "kept_failed": plan.kept_failed, "failed": failed}
+        if a.schedules:  # TCK-B23: the one thing that shortens the machine-wide ledger
+            from tempergraph.cli import schedule_cli
+            from tempergraph.schedule import ledger
+
+            pruned["ledger_fires_removed" if not a.dry_run else "ledger_fires_would_remove"] = ledger.prune(
+                a.older_than, schedule_cli.CLOCK(), dry_run=a.dry_run)
         if a.json or a.dry_run:
             _emit(env, pruned)
         else:
@@ -257,6 +265,7 @@ def _switch_report(env: Any, a: argparse.Namespace, since: Any) -> int:
 def cmd_report(env: Any, a: argparse.Namespace) -> int:
     from tempergraph.cli.main import UsageError, _emit, _root
     from tempergraph.observe import report as rep
+    from tempergraph.observe import rows
 
     try:
         since = rep.window(a.window)
@@ -279,6 +288,19 @@ def cmd_report(env: Any, a: argparse.Namespace) -> int:
             _emit(env, sdoc)
         else:
             env.out.write(sup.text(sdoc))
+        return 0
+    if a.by == "schedule":  # TCK-B24: from the schedules' fire logs, machine-wide, read-only
+        sdoc = rows.schedule_report()
+        if a.json:
+            _emit(env, sdoc)
+        else:
+            for sid, g in sdoc["groups"].items():
+                env.out.write(f"{sid}\tfires {g['fires']}\tended {g['ended']}\toutcomes {g['outcomes']}\t"
+                              f"${g['estimated_usd']:.2f}{' (lower bound)' if g['incomplete'] else ''}\t"
+                              f"skipped {g['skipped']}\tmissed {g['missed']}\trefused {g['refused']}\n")
+            t = sdoc["totals"]
+            env.out.write(f"total\tfires {t['fires']}\tended {t['ended']}\t${t['estimated_usd']:.2f}\tskipped {t['skipped']}"
+                          f"\tmissed {t['missed']}\trefused {t['refused']}\n")
         return 0
     by = a.by or "unit"
     if by not in ("unit", "executor", "version"):
@@ -405,17 +427,20 @@ def cmd_label(env: Any, a: argparse.Namespace) -> int:
 
 
 def cmd_attention(env: Any, a: argparse.Namespace) -> int:
+    from tempergraph.cli import schedule_cli
     from tempergraph.cli.main import _emit
-    from tempergraph.observe.attention import attention, line, loop_line
+    from tempergraph.observe.attention import attention, line, loop_line, stale_line
 
-    doc = attention(roots(env, a.all_roots), env.catalog.specs)
+    doc = attention(roots(env, a.all_roots), env.catalog.specs, schedule_cli.CLOCK().timestamp())
     if a.json:
         _emit(env, doc)
         return 0
-    if not doc["items"] and not doc["loop"]:
+    if not doc["items"] and not doc["loop"] and "trigger_stale" not in doc:
         env.out.write("Nothing is waiting on a person.\n")
     for i in doc["items"]:
         env.out.write(line(i) + "\n")
+    if "trigger_stale" in doc:  # TCK-B7
+        env.out.write(stale_line(doc["trigger_stale"]) + "\n")
     for s in doc["loop"]:  # CLI-B20: the loop's summaries after the items, never among them
         env.out.write(loop_line(s) + "\n")
     return 0

@@ -30,6 +30,7 @@ CLAUDE = Capabilities(
     efforts_uncertain=frozenset({"xhigh", "max"}),  # until live probe P-LAD-1 (LAD-B14)
     session_options=frozenset({"effort", "cost_cap_usd", "fallback_alias", "turn_cap"}),
     tool_map=_CLAUDE_TOOLS,
+    unattended_credentials=frozenset({"api_key", "cloud", "oauth_token", "interactive_login"}),  # TCK-B19
 )
 
 AGENT_SDK = Capabilities(
@@ -42,6 +43,7 @@ AGENT_SDK = Capabilities(
     efforts_uncertain=frozenset({"xhigh", "max"}),  # until live probe P-LAD-1 (LAD-B14)
     session_options=frozenset({"effort", "cost_cap_usd", "fallback_alias", "turn_cap"}),
     tool_map=dict(_CLAUDE_TOOLS),
+    unattended_credentials=frozenset({"api_key", "cloud"}),  # TCK-B19
 )
 
 MESSAGES_API = Capabilities(
@@ -57,6 +59,7 @@ MESSAGES_API = Capabilities(
         "write": ("write_file",), "shell": ("run_command",), "web_fetch": ("web_fetch",),
         "web_search": ("web_search",), "mcp:*": ("mcp__{server}__{tool}",),
     },
+    unattended_credentials=frozenset({"api_key", "cloud"}),  # TCK-B19
 )
 
 ANTIGRAVITY = Capabilities(
@@ -74,6 +77,7 @@ ANTIGRAVITY = Capabilities(
         "shell": ("run_command",), "web_fetch": ("read_url_content",), "web_search": ("search_web",),
         "subagent": ("invoke_subagent",), "mcp:*": ("mcp({server}/{tool})",),
     },
+    unattended_credentials=frozenset({"api_key"}),  # `interactive_login` is refused until P-SCH-3 confirms it (TCK-B19)
 )
 
 DECLARED: dict[str, Capabilities] = {c.name: c for c in (CLAUDE, AGENT_SDK, MESSAGES_API, ANTIGRAVITY)}

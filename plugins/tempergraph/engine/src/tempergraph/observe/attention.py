@@ -1,7 +1,8 @@
 """`attention` (CLI-B6, AC-5): everything waiting on a person, oldest first, with the command that answers it.
 
-Built from the status document of each state root and the last `pause` record of each paused thread; reads only
-and calls no model (OVR-B15). Orchestration and schedule items join when those features ship (release 2).
+Built from the status document of each state root and the last `pause` record of each paused thread, and from the
+schedules of the home store (the items of TCK-B24 and `trigger_stale`, TCK-B7); reads only and calls no model (OVR-B15).
+Orchestration items join with orchestration (release 4).
 """
 
 from __future__ import annotations
@@ -44,7 +45,78 @@ def items(state_root: Path, specs: Mapping[str, WorkflowSpec], now: float | None
                         "unit": g.get("unit"), "item": g.get("item"), "kind": g.get("kind"),
                         "waiting_since": p.get("ts"), "age_s": round(now - since, 1) if since else None,
                         "reason": reason, "decisions": p.get("decisions"), "command": g.get("resume"),
-                        "state_root": str(state_root)})
+                        "state_root": str(state_root),
+                        **({"schedule": row["schedule"]} if row.get("schedule") else {})})  # TCK-B4: a scheduled run's pause
+    return out
+
+
+STALE_INTERVALS = 3  # TCK-B7: a heartbeat older than this many tick intervals is stale
+BLOCKING_AT = 3  # SCH-B22: overlap skips behind one unfinished fire
+
+
+def _item(kind: str, sid: str, reason: str, command: str, at: Any, now: float, **extra: Any) -> dict[str, Any]:
+    since = _since(at)
+    return {"thread_id": None, "workflow": None, "alias": None, "unit": None, "item": None, "kind": kind,
+            "schedule_id": sid, "waiting_since": at, "age_s": round(now - since, 1) if since else None, "reason": reason,
+            "decisions": None, "command": command, "state_root": None, **extra}
+
+
+def _last(log: list[dict[str, Any]], kind: str, reason: str | None = None) -> dict[str, Any] | None:
+    return next((e for e in reversed(log) if e.get("kind") == kind and (reason is None or e.get("reason") == reason)), None)
+
+
+def trigger_stale(home: Path | None = None, now: float | None = None) -> dict[str, Any] | None:
+    """TCK-B7: active schedules and a `last_tick_at` older than three intervals; reads only."""
+    from tempergraph.schedule import store, tick
+
+    now = datetime.now(UTC).timestamp() if now is None else now
+    beat = tick.read_heartbeat(home)
+    if not beat or not any(e.get("state") == "active" for e in store.list_entries(home)):
+        return None
+    last = _since(beat.get("last_tick_at"))
+    interval = int(beat.get("interval_s") or 60)
+    if last is None or now - last <= STALE_INTERVALS * interval:
+        return None
+    return {"kind": "trigger_stale", "age_s": round(now - last, 1), "interval_s": interval, "last_tick_at": beat.get("last_tick_at"),
+            "command": "tempergraph schedule trigger status"}
+
+
+def schedule_items(home: Path | None = None, now: float | None = None) -> list[dict[str, Any]]:
+    """TCK-B24: `schedule_missed`, `schedule_paused`, `schedule_budget`, `schedule_refused` and `blocking_schedule`,
+    read from the schedules' entries and fire logs; each names its schedule and the command that answers it."""
+    from tempergraph.schedule import store
+
+    now = datetime.now(UTC).timestamp() if now is None else now
+    out: list[dict[str, Any]] = []
+    for entry in store.list_entries(home):
+        sid, state = str(entry["schedule_id"]), entry.get("state")
+        if state == "removed":
+            continue
+        log = store.read_log(sid, home)
+        if state == "paused" and (p := _last(log, "paused", "failures")):
+            out.append(_item("schedule_paused", sid, f"paused after {p.get('failures')} failures",
+                             f"tempergraph schedule resume {sid}", p.get("at"), now))
+        if (entry.get("when") or {}).get("kind") == "once" and (m := _last(log, "missed")):
+            out.append(_item("schedule_missed", sid, f"the one-time slot {m.get('slot')} passed unstarted",
+                             f"tempergraph schedule fire {sid}", m.get("at"), now))
+        if b := _last(log, "skipped", "budget"):
+            out.append(_item("schedule_budget", sid, f"the {(entry.get('budget') or {}).get('period')} budget is spent",
+                             f"tempergraph schedule edit {sid} --budget <period>:<usd>", b.get("at"), now))
+        handled = [e for e in log if e.get("kind") in ("started", "skipped", "missed", "refused")]
+        if handled and handled[-1].get("kind") == "refused":
+            r = handled[-1]
+            who = f" ({r['executor']})" if r.get("executor") else ""
+            out.append(_item("schedule_refused", sid, f"{r.get('reason')}{who}: {r.get('message') or 'the fire was refused'}",
+                             f"tempergraph schedule show {sid}", r.get("at"), now, executor=r.get("executor")))
+        ended = {e.get("fire_id") for e in log if e.get("kind") == "ended"}
+        open_fire = next((e for e in reversed(log) if e.get("kind") == "started" and e.get("fire_id") not in ended), None)
+        if open_fire is not None:
+            n = sum(1 for e in log if e.get("kind") == "skipped" and e.get("reason") == "overlap"
+                    and str(e.get("at") or "") >= str(open_fire.get("at") or ""))
+            if n >= BLOCKING_AT:
+                out.append(_item("blocking_schedule", sid, f"{n} slots were skipped behind {open_fire.get('thread')}",
+                                 f"tempergraph status {open_fire.get('thread')}", open_fire.get("at"), now,
+                                 blocking_schedule=n))
     return out
 
 
@@ -65,7 +137,8 @@ def loop_summaries(state_root: Path) -> list[dict[str, Any]]:
     return out
 
 
-def attention(roots: list[Path], specs: Mapping[str, WorkflowSpec], now: float | None = None) -> dict[str, Any]:
+def attention(roots: list[Path], specs: Mapping[str, WorkflowSpec], now: float | None = None,
+              home: Path | None = None) -> dict[str, Any]:
     found: list[dict[str, Any]] = []
     loop: list[dict[str, Any]] = []
     missing = []
@@ -75,9 +148,14 @@ def attention(roots: list[Path], specs: Mapping[str, WorkflowSpec], now: float |
             continue
         found += items(root, specs, now)
         loop += loop_summaries(root)
+    found += schedule_items(home, now)
     found.sort(key=lambda i: (i["waiting_since"] is None, i["waiting_since"] or ""))
     loop.sort(key=lambda s: str(s.get("at") or ""), reverse=True)  # newest first
-    return {"schema_version": 1, "items": found, "loop": loop, "missing_roots": missing}
+    doc: dict[str, Any] = {"schema_version": 1, "items": found, "loop": loop, "missing_roots": missing}
+    stale = trigger_stale(home, now)
+    if stale:
+        doc["trigger_stale"] = stale  # TCK-B7
+    return doc
 
 
 def loop_line(s: dict[str, Any]) -> str:
@@ -86,9 +164,17 @@ def loop_line(s: dict[str, Any]) -> str:
     return f"  loop  {s['thread']}: {s['recorded']} recorded, {s['filed']} filed{rows}\n        {s['command']}"
 
 
+def stale_line(s: dict[str, Any]) -> str:
+    return (f"  trigger_stale  no tick for {int(s['age_s'] // 60)}m (interval {s['interval_s']}s)\n"
+            f"        {s['command']}")
+
+
 def line(i: dict[str, Any]) -> str:
     age = i.get("age_s")
     when = "?" if age is None else f"{int(age // 3600)}h{int(age % 3600 // 60):02d}m" if age >= 3600 \
         else f"{int(age // 60)}m"
+    if i.get("schedule_id") and not i.get("unit"):  # a schedule item (TCK-B24)
+        return f"{when:>6}  {i['kind']}  {i['schedule_id']}: {i['reason']}\n        {i['command']}"
     where = f"{i['unit']}" + (f"[{i['item']}]" if i.get("item") else "")
-    return f"{when:>6}  {i.get('alias') or i['thread_id']}  {where}  {i['kind']}: {i['reason']}\n        {i['command']}"
+    sched = f"  (schedule {i['schedule']['schedule_id']})" if i.get("schedule") else ""
+    return f"{when:>6}  {i.get('alias') or i['thread_id']}  {where}  {i['kind']}: {i['reason']}{sched}\n        {i['command']}"

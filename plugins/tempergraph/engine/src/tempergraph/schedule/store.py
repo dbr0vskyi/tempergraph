@@ -28,6 +28,7 @@ MAX_ID = 64
 MAX_SCHEDULES = 64
 LOG_KINDS = ("created", "edited", "paused", "resumed", "due", "started", "skipped", "queued", "missed", "refused",
              "ended", "removed")
+CHECK_KEYS = frozenset({"executor", "role", "kinds", "result", "may_expire", "reason"})  # a row of `executors_checked`
 TEXT_KEYS = frozenset({"request", "inputs", "input", "feedback", "args"})  # never in a fire-log line (SCH-B28)
 
 
@@ -37,6 +38,11 @@ def schedules_root(home: Path | None = None) -> Path:
 
 def entry_path(schedule_id: str, home: Path | None = None) -> Path:
     return schedules_root(home) / schedule_id / "entry.json"
+
+
+def token_path(schedule_id: str, home: Path | None = None) -> Path:
+    """The fire token's private file, beside the entry (TCK-B17)."""
+    return schedules_root(home) / schedule_id / "token"
 
 
 def log_path(schedule_id: str, home: Path | None = None) -> Path:
@@ -64,10 +70,11 @@ def _iso(at: datetime) -> str:
 
 def build_entry(*, schedule_id: str, name: str, target: dict[str, Any], when: dict[str, Any], options: dict[str, Any],
                 run_cost_cap_usd: float, budget: dict[str, Any] | None, catch_up: str, catch_up_window_s: int,
-                overlap: str, max_live: int, pause_after_failures: int, created: dict[str, Any], now: datetime
+                overlap: str, max_live: int, pause_after_failures: int, created: dict[str, Any], now: datetime,
+                token_digest: str | None = None, executors_checked: list[dict[str, Any]] | None = None
                 ) -> dict[str, Any]:
-    """Every field of SCH-B14; `executors_checked` empty and `token_digest` null until the credential check and the
-    fire token exist (TCK)."""
+    """Every field of SCH-B14; `token_digest` (TCK-B17) and `executors_checked` (TCK-B19) are what `add` gives it, and
+    empty or null when it gives none. No credential value is ever kept here, only kinds."""
     request = str(target.get("request") or "")
     first = next_slots(When.from_doc(when), floor_minute(now), 1)
     return {
@@ -75,8 +82,8 @@ def build_entry(*, schedule_id: str, name: str, target: dict[str, Any], when: di
         "description": scrub(request)[:200], "state": "active", "target": target, "when": when, "options": options,
         "run_cost_cap_usd": run_cost_cap_usd, "budget": budget, "catch_up": catch_up,
         "catch_up_window_s": catch_up_window_s, "overlap": overlap, "max_live": max_live,
-        "pause_after_failures": pause_after_failures, "executors_checked": [], "created": created, "edited": None,
-        "token_digest": None, "next_slot": _iso(first[0].utc) if first else None, "last_fire": None,
+        "pause_after_failures": pause_after_failures, "executors_checked": list(executors_checked or []),
+        "created": created, "edited": None, "token_digest": token_digest, "next_slot": _iso(first[0].utc) if first else None, "last_fire": None,
     }
 
 
@@ -86,6 +93,8 @@ def write_entry(entry: dict[str, Any], home: Path | None = None) -> Path:
     path = entry_path(str(entry["schedule_id"]), home)
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(path.parent, 0o700)
+    entry = dict(entry, executors_checked=[{k: v for k, v in c.items() if k in CHECK_KEYS}  # kinds, never a credential value
+                                           for c in entry.get("executors_checked") or []])
     write_json(path, entry)
     return path
 

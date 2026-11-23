@@ -33,6 +33,18 @@ def writes_notes(req: Any) -> Any:
     return DRAFT
 
 
+def test_tck_ac1_the_session_start_hook_also_starts_the_loop_only_through_the_autostart_check() -> None:
+    from .conftest import ENGINE_ROOT
+
+    doc = json.loads((ENGINE_ROOT.parent / "hooks" / "hooks.json").read_text(encoding="utf-8"))
+    commands = [h for g in doc["hooks"]["SessionStart"] for h in g["hooks"]]
+    assert [h["command"] for h in commands] == [
+        "tempergraph supervision hook SessionStart >/dev/null 2>&1 || true",
+        "tempergraph schedule loop --if-autostart >/dev/null 2>&1 || true"]  # the host adapter: exit 0 on any failure
+    assert all(h["type"] == "command" and h["timeout"] <= 2 for h in commands)  # within the same 2 s timeout
+    assert "schedule loop --detach" not in json.dumps(doc)  # the hook itself never starts a loop unconditionally
+
+
 def caps() -> dict[str, Any]:
     reg = default_registry()
     return {n: reg.get(n).capabilities() for n in reg.available()}

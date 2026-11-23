@@ -37,7 +37,7 @@ task_id: third-release
 | Order | Cap and reach first, because every parallel shape relies on them | R-140 F4, F5 |
 | Plan shape | Tracks and phases only; each track's expanded plan is written when its specs are ready (EC-2) | As in release 2 |
 
-**Status: In progress.** R3-T1.1, R3-T1.2 and R3-T5.1 are built (2026-11-22). EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
+**Status: In progress.** R3-T1.1, R3-T1.2, R3-T5.1 and R3-T5.2 are built (2026-11-22). EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
 
 ## 1. Requirements analysis
 
@@ -156,6 +156,8 @@ Status: built. The exact formats (`--at`, `--rrule`, `--every`, `--cron`), the w
 
 #### R3-T5.2 Ticks and unattended fires
 Goal: TCK, with unattended credentials.
+
+Status: built. The tick (`schedule tick`: the lock, the heartbeat, settling, the decisions of R3-T5.1, at most 4 runs and 20 s, the hand-off ticket and `deferred`), `schedule fire`, `schedule runs` and the machine-wide ledger, the fire token and caller kind `scheduler`, the credential check at `add`, `edit` and each fire, the refusal of a caller that is not a person, `origin: schedule` in the run's records, `report --by schedule`, the attention items and `trigger_stale`, the `schedule_paused` hook event, the portable loop with the `host` and `os` adapters, `schedule export` and the `tempergraph:schedule` skill, proved by TCK-AC1 to TCK-AC7, SCH-AC5 and SCH-AC7 in `plugins/tempergraph/engine/tests/test_schedule_*.py`; orchestration targets wait for release 4 (ADR-0132) and P-SCH-1 to P-SCH-4 are left (`live-checks.plan.md`).
 
 ### R3-T6 Pipelines
 

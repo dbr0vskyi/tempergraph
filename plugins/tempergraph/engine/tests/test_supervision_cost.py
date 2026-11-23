@@ -257,5 +257,8 @@ def test_plugin_hooks_never_block() -> None:  # SHL-B14, SHL-B15, SCO-AC4
     for event, groups in doc["hooks"].items():
         for g in groups:
             for h in g["hooks"]:
-                assert h["command"] == f"tempergraph supervision hook {event} >/dev/null 2>&1 || true"
+                if h["command"] == "tempergraph schedule loop --if-autostart >/dev/null 2>&1 || true":
+                    assert event == "SessionStart"  # TCK-B14: the `host` adapter, on the one event it belongs to
+                else:
+                    assert h["command"] == f"tempergraph supervision hook {event} >/dev/null 2>&1 || true"
                 assert h["timeout"] <= 2

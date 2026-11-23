@@ -4,6 +4,7 @@ SCH-B27, SCH-B33; SCH-AC3, SCH-AC4, SCH-AC6, SCH-AC12) and the engine naming no 
 from __future__ import annotations
 
 import random
+import re
 import subprocess
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
@@ -142,7 +143,7 @@ def test_sch_ac3_each_value_gives_the_canonical_form_of_its_phrase_twin(repo: Pa
 def test_sch_ac3_a_saved_exact_schedule_has_the_echo_of_its_word_grammar_twin(repo: Path) -> None:
     digest = Catalog(specs={"digest": named(two_step(), "digest")})
     code, doc, err = sched(repo, "add", "digest", "daily digest", "--rrule", WEEKDAYS, "--tz", WARSAW, "--run-cost-cap", "3",
-                           "--yes", "--json", signals=NO_TTY, catalog=digest)  # SCH-B19: exit 0, saved, from a script
+                           "--yes", "--json", catalog=digest)  # SCH-B19: exit 0 and saved, never asking
     assert code == 0 and doc["status"] == "saved", err
     _, twin, _ = sched(repo, "parse", "every weekday at 8:00", "--tz", WARSAW, "--json")
     assert doc["echo"]["sentence"] == twin["sentence"] == "At 08:00, Monday to Friday."
@@ -157,7 +158,7 @@ def test_sch_ac3_a_phrase_with_no_terminal_and_no_yes_exits_3_with_the_echo_and_
     assert doc["questions"][0]["name"] == "confirm"
     assert home_hash() == before
     code, doc, _ = sched(repo, "add", "demo", "open bugs", "--when", "every weekday at 8:00", "--tz", WARSAW,
-                         "--run-cost-cap", "3", "--yes", "--json", signals=NO_TTY)
+                         "--run-cost-cap", "3", "--yes", "--json")
     assert code == 0 and doc["status"] == "saved"
     assert store.read_entry(doc["schedule_id"])["when"]["phrase"] == "every weekday at 8:00"
 
@@ -280,17 +281,19 @@ def test_sch_ac6_add_writes_the_entry_with_its_caller_and_the_created_event(repo
     assert e["target"] == {"kind": "workflow", "workflow": "demo", "repo": str(repo), "request": "daily digest", "inputs": {}}
     assert e["run_cost_cap_usd"] == 3.0 and e["budget"] == {"period": "month", "cap_usd": 20.0}
     assert (e["catch_up"], e["max_live"], e["pause_after_failures"], e["overlap"]) == ("none", 2, 5, "skip")
-    assert e["executors_checked"] == [] and e["token_digest"] is None and e["state"] == "active"
+    assert re.fullmatch(r"[0-9a-f]{64}", e["token_digest"]) and e["state"] == "active"  # TCK-B17: the SHA-256 of the fire token
+    assert e["executors_checked"] and all({"executor", "kinds", "result"} <= set(c) for c in e["executors_checked"])  # TCK-B19
     assert e["created"]["caller"]["kind"] == "person" and e["created"]["from"] == "schedule add"
     assert e["options"]["flag"]["run.run_cost_cap_usd"]["via"] == "schedule"
     (created,) = store.read_log(sid)
     assert created["kind"] == "created" and created["caller"]["kind"] == "person" and created["seq"] == 1
     assert "daily digest" not in (home_path() / "schedules" / sid / "fires.jsonl").read_text(encoding="utf-8")  # SCH-AC8
-    code, doc, _ = add(repo, "--name", "Nightly Digest", signals=NO_TTY)
-    assert doc["schedule_id"].startswith("nightly-digest-") and store.read_entry(doc["schedule_id"])["created"]["caller"][
-        "kind"] == "unknown"  # no terminal and no declaration: the caller is not claimed to be a person
-    code, doc, _ = add(repo, "--as-agent", signals=NO_TTY)
-    assert store.read_entry(doc["schedule_id"])["created"]["caller"]["kind"] == "agent"
+    code, doc, _ = add(repo, "--name", "Nightly Digest")
+    assert doc["schedule_id"].startswith("nightly-digest-")
+    code, _, err = add(repo, "--name", "Nightly Digest", signals=NO_TTY)  # TCK-B22: no terminal and no declaration is no person
+    assert code == 2 and "schedule_not_by_person" in err
+    code, _, err = add(repo, "--as-agent", signals=NO_TTY)
+    assert code == 2 and "schedule_not_by_person" in err
 
 
 def test_sch_ac6_edit_records_both_forms_and_the_caller_and_keeps_past_fires(repo: Path) -> None:
@@ -465,21 +468,42 @@ def test_sch_ac6_at_most_64_schedules(repo: Path) -> None:
 # --- SCH-AC12: the verbs of the next phase are refused ------------------------------------------------------------
 
 
-@pytest.mark.parametrize("argv", [["fire", "digest"], ["fire", "digest", "--yes"], ["tick"], ["loop"], ["loop", "--detach"],
-                                  ["loop", "--stop"], ["trigger", "install"], ["trigger", "status"], ["trigger", "remove"],
-                                  ["runs"], ["export", "digest", "--for", "github-actions"],
-                                  ["add", "--orchestration", "release-train.orch.json", "--when", "every weekday at 8:00",
-                                   "--yes"]])
-def test_sch_ac12_the_verbs_of_the_next_phase_are_refused_not_in_release(repo: Path, monkeypatch: pytest.MonkeyPatch,
-                                                                          argv: list[str]) -> None:
+def test_sch_ac12_only_add_orchestration_is_refused_not_in_release_and_writes_nothing(repo: Path,
+                                                                                      monkeypatch: pytest.MonkeyPatch) -> None:
     sid = saved(repo)
     before, repo_before = home_hash(), hash_tree(repo)
     no_process(monkeypatch)
-    code, _, err = sched(repo, *argv)
-    assert code == 2 and "not_in_release" in err, err
-    verb = argv[0] if argv[0] != "add" else "add --orchestration"
-    assert f"schedule {verb}" in err  # the refusal names the verb
+    code, _, err = sched(repo, "add", "--orchestration", "release-train.orch.json", "--when", "every weekday at 8:00", "--yes")
+    assert code == 2 and "not_in_release" in err and "schedule add --orchestration" in err, err  # ADR-0132: release 4
     assert home_hash() == before and hash_tree(repo) == repo_before and sid  # written nothing, started nothing
+    assert not hasattr(schedule_cli, "NOT_IN_RELEASE")  # every other verb is built
+
+
+def test_sch_ac12_tick_runs_one_tick_and_prints_a_one_line_summary(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from tempergraph.schedule import launch
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-x")  # a fire needs a credential in the tick's own environment (TCK-B19)
+    sid = saved(repo, rule="FREQ=DAILY;BYHOUR=8;BYMINUTE=0")  # 08:00 in Warsaw: 07:00 UTC in November
+    monkeypatch.setattr(schedule_cli, "CLOCK", lambda: NOW + timedelta(days=1, hours=-1, minutes=-29, seconds=-30))  # 07:01 UTC
+    launched: list[str] = []
+    monkeypatch.setattr(launch, "launch_run", lambda entry, start, **kw: launched.append(start["fire_id"]) or True)
+    code, out, err = sched(repo, "tick")
+    assert code == 0 and out.count("\n") == 1 and out.startswith("tick: started 1"), (out, err)
+    assert launched == [f"{sid}@20261124T0700Z"]
+    code, doc, _ = sched(repo, "tick", "--json")  # the slot is handled: nothing more starts
+    assert code == 0 and doc["started"] == [] and doc["summary"].startswith("tick:") and doc["locked"] is False
+    assert launched == [f"{sid}@20261124T0700Z"]
+
+
+def test_sch_ac12_loop_detach_and_stop_have_exit_codes(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from tempergraph import detach
+
+    monkeypatch.setattr(detach, "start_loop", lambda home, shim=None: True)
+    assert sched(repo, "loop", "--detach")[0] == 0 and sched(repo, "loop", "--stop")[0] == 0  # each exits 0
+    monkeypatch.setattr(detach, "start_loop", lambda home, shim=None: False)
+    code, _, err = sched(repo, "loop", "--detach")
+    assert code == 2 and "loop_not_started" in err  # a start that failed is a refusal
+    assert sched(repo, "loop", "--detach", "--stop")[0] == 2  # the two modes exclude each other
 
 
 def test_sch_ac12_a_bare_schedule_is_a_usage_error(repo: Path) -> None:
