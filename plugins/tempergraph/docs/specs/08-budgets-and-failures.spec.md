@@ -89,6 +89,7 @@ WHEN a unit's check fails on two attempts in a row of one visit and item with th
 WHEN sessions of one run can be in flight together (parallel branches, a parallel map, contest slots, council members) THE engine SHALL count what is in flight in the check before each attempt, a starting session reserving its per-session cap, or the projection of its unit from the stats ([CST](34-central-run-stats.spec.md)), or the run's remaining cap divided by the sessions that may run at once, the reservation becoming its real cost when it ends; make an attempt whose reservation would cross the cap wait for a running session, and start none when nothing is running, then drain with `cost_cap`.
 
 - GIVEN two parallel branches whose reservations together cross the cap WHEN both are due THEN one starts and the other waits
+- GIVEN a cap of 5.00 USD, 1.00 USD spent and a concurrent map of three items that each reserve 2.50 USD WHEN the items are due THEN one starts and the other two wait for a running item
 
 ### BUD-B13 Reservations are in the run log
 
@@ -122,6 +123,7 @@ WHEN a session's reservation would take spend plus reservations over the run cos
 - BUD-AC6 (BUD-B14): A fixture run of two parallel branches whose reservations together cross the cap writes, for the branch that waited, one `waiting` record that lists the other branch's `session_key` in `waiting_for` and, after that session's `agent_run` record, a `held` record
 - BUD-AC7 (BUD-B15): A fixture run whose next reservation does not fit while nothing is running writes a `reservation` record with `action` `refused` before the `run_exit` record, which carries exit code 5 and reason `cost_cap`
 - BUD-AC8 (BUD-B16): A fixture check that fails with the same finding on two attempts in a row, the second attempt's step having changed a file, pauses the run with kind `escalation` and cause `check_repeat` and starts no third attempt, while a fixture check that fails with a different finding on the second attempt, or whose second step changed no file, is retried as BUD-B8 says
+- BUD-AC9 (BUD-B12, BUD-B14): A fixture run of a concurrent map whose items' reservations together cross the cap writes, for an item that waited, one `waiting` record that lists a running item's `session_key` in `waiting_for` and, after that session's `agent_run` record, a `held` record, and no `held` record of the run has `spent_usd`, `in_flight_usd` and `reserved_usd` adding up to more than `cap_usd`
 
 ## Open questions
 
