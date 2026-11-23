@@ -52,7 +52,7 @@ def parent(repo: Path, tmp_path: Path, *, reference: str = "report", notes: Any 
 
 
 def test_the_parents_check_lists_the_childs_renamed_key_at_the_parents_reference(
-        repo: Path, tmp_path: Path) -> None:  # SWF-AC1, AC 4
+        repo: Path, tmp_path: Path) -> None:  # SWF-AC1, AC 4, WUP-AC7 (WUP-B6, WUP-B16: a sub-workflow's rename)
     pkg = parent(repo, tmp_path)
     before = hash_tree(pkg)
     code, doc, err = cli(repo, "upgrade", str(pkg), "--check")

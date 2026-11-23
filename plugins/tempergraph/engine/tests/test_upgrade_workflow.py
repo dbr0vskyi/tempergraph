@@ -90,6 +90,7 @@ def failed(got: Any) -> list[str]:
 
 
 def test_the_item_check_passes_a_clean_edit(branch: SimpleNamespace) -> None:
+    # WUP-AC7 (WUP-B3, WUP-B15): an assisted edit gated by its rules and a judge
     ctx = json.loads((branch.work / uwf.ITEMS_DIR / "context.json").read_text())
     assert ctx["package"] == "release-notes" and sorted(ctx["items"]) == ["E0-2-0-1-owner-1", "E0-2-0-2"]
     assert json.loads((branch.work / uwf.ITEMS_DIR / "assisted_items.json").read_text())[0]["id"] == "E0-2-0-2"
@@ -169,6 +170,7 @@ def started(repo: Path, tmp_path: Path, ex: Any) -> tuple[Path, Path, up.Report,
 
 
 def test_the_owner_proceeds_and_the_model_adjusts(repo: Path, tmp_path: Path) -> None:
+    # WUP-AC7 (WUP-B3, WUP-B4, WUP-B15): an owner pause and an assisted edit gated by a judge
     ex = standin("claude", steps=[edits(escalate)], judges=[judge(MET)])
     pkg, folder, rep, assist = started(repo, tmp_path, ex)
     before = hash_tree(pkg)
