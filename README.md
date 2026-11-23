@@ -264,7 +264,7 @@ The project is designed spec-first: acceptance criteria rank above specs and dec
 - Advanced node types: contests, sub-workflows and the rest of LangGraph's shapes as workflow data.
 - Scheduled runs, Windows, and writing steps side by side in their own worktrees.
 
-**temperspec**, the first large workflow built on the engine, is built as its own package ([`temperspec-tgraph`](plugins/temperspec-tgraph/README.md)); the features it still wants are in its [backlog](plugins/temperspec-tgraph/docs/plans/backlog.plan.md).
+**temperspec**, the first large workflow built on the engine, is built as its own package ([`temperspec-tgraph`](plugins/temperspec-tgraph/README.md)); the features it still wants are [issues labelled `area: temperspec`](https://github.com/dbr0vskyi/tempergraph/issues?q=is%3Aissue+is%3Aopen+label%3A%22area%3A+temperspec%22). To contribute, start at [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

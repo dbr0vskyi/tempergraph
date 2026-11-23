@@ -1,6 +1,6 @@
 # Live checks for release 1
 
-The one list of everything release 1 still has to confirm on the owner's machine against a signed-in Claude Code (first-release plan T11.2). The offline suite covers the same code on stand-ins. A live result is written into the results table only from a run on the machine. It is never inferred, and a failure is kept as a finding. When a row passes, the spec row it names moves from `not run` to its result and the CLI version, in the same pull request.
+The one list of everything release 1 still has to confirm on the owner's machine against a signed-in Claude Code (first-release plan T11.2). The offline suite covers the same code on stand-ins. A live result is written into the results table only from a run on the machine. It is never inferred, and a failure is kept as a finding. When a row passes, the spec row it names moves from `not run` to its result and the CLI version, in the same pull request. This file is the runbook and the record of results; which rows are still open is tracked by [issues labelled `type: live-check`](https://github.com/dbr0vskyi/tempergraph/issues?q=is%3Aissue+is%3Aopen+label%3A%22type%3A+live-check%22).
 
 ## 1. Before you start
 

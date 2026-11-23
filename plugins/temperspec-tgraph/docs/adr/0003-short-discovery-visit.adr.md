@@ -4,7 +4,7 @@ Status: accepted, built (backlog row B21, 2026-11-22), to be confirmed by the ow
 
 ## Context
 
-Triage lists a gap in doubt ([task-notes rule](../../rules/task-notes.rule.md)), so a task whose behaviour a spec already states still reaches discovery, and discovery runs at `max` ([0002](0002-model-and-effort-per-unit.adr.md)). Run r3-t1-1b spent 16 minutes and about 4 USD there on a behaviour that was already specified ([backlog B21](../plans/backlog.plan.md), [R-160](../../../tempergraph/docs/research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md)). `max` stays right for a gap no spec answers, since nothing downstream rechecks what discovery finds. This record adds a visit to the table of 0002 and replaces none of its rows.
+Triage lists a gap in doubt ([task-notes rule](../../rules/task-notes.rule.md)), so a task whose behaviour a spec already states still reaches discovery, and discovery runs at `max` ([0002](0002-model-and-effort-per-unit.adr.md)). Run r3-t1-1b spent 16 minutes and about 4 USD there on a behaviour that was already specified (backlog B21, built in the `speedup-runs` run, [R-160](../../../tempergraph/docs/research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md)). `max` stays right for a gap no spec answers, since nothing downstream rechecks what discovery finds. This record adds a visit to the table of 0002 and replaces none of its rows.
 
 The task `speedup-runs` asks that triage mark a gap a spec already answers, that discovery for a task with only such gaps be short (a lower effort and a reading limit), and that the choice use the engine's existing means of choosing a unit's sizing or arm by a run fact. What the engine offers, read in its specs and in the package:
 
