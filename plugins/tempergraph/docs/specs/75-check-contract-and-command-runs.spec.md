@@ -26,10 +26,12 @@ WHEN `run` starts a resolved command through the engine's check launch site ([SE
 
 ### CHK-B13 Reuse of command runs
 
-WHEN `run` is called with `reuse=True` THE engine SHALL return an earlier run in this thread with the same key, marked `reused: true`, the key a digest of argv, resolved program path, `head`, the status listing and the content digest of changed and untracked files outside the state root, and SHALL never store a run with `finished: false` or an exit code in the prefix's `no_reuse_exit_codes`.
+WHEN `run` is called with `reuse=True` THE engine SHALL return an earlier run in this thread with the same key, marked `reused: true`, the key a digest of argv, working folder, resolved program path and the content of the tree, and SHALL never store a run with `finished: false` or an exit code in the prefix's `no_reuse_exit_codes`; the content of the tree is every file git tracks and every untracked file git does not ignore (every file, outside a git repository), outside the state root, each by path, bytes and executable bit, so that no commit, index or status listing is part of the key ([decision](../adr/a-stored-command-run-is-keyed-on-the-trees-content.adr.md)).
 
 - GIVEN an earlier run that exited 0 or 1 WHEN the key matches THEN it is reused
 - GIVEN an earlier run that exited 4 listed in `no_reuse_exit_codes`, or was killed at the limit WHEN the key matches THEN it was not stored and runs again
+- GIVEN an earlier run made while files were not yet committed WHEN those files are committed with no other change and the same command runs with `reuse=True` THEN the earlier run is reused
+- GIVEN an earlier run WHEN a tracked file changes, or an untracked file that git does not ignore is added or removed, and the same command runs with `reuse=True` THEN it runs again
 
 ### CHK-B14 What a check returns
 
@@ -123,6 +125,7 @@ WHEN a gate's check runs on the same workspace in workflows whose steps use diff
 - CHK-AC5 (CHK-B1, CHK-B2, CHK-B3, CHK-B14): A FAIL with findings renders every finding's criterion, place and fix in the retry prompt, and starts no judge session
 - CHK-AC6 (CHK-B17, CHK-B7): `self-check` writes no state, verdict, fact or budget change (state digest before and after), and its runs are reused by the gate's check on an unchanged tree
 - CHK-AC7 (CHK-B6, CHK-B10, CHK-B14): Facts survive a resume and are cleared by a trip back exactly as artifacts are
+- CHK-AC8 (CHK-B13, CHK-B17): A command run by the check preview while a step's files are not yet committed is reused by the gate's check once those files are committed with no other change, and runs again at the gate when one file changed after the preview (a scratch git repository, offline)
 
 ## Open questions
 
