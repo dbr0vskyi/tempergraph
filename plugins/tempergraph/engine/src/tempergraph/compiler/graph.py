@@ -14,9 +14,9 @@ from typing import Any, Protocol
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
-from langgraph.types import interrupt
+from langgraph.types import Command, Send, interrupt
 
-from tempergraph.compiler.state import RunState
+from tempergraph.compiler.state import ITEM, RunState, fold, item_end, item_view, slot, slot_writes
 from tempergraph.contracts import WorkflowSpec
 from tempergraph.model import flow
 
@@ -60,15 +60,31 @@ def compile_workflow(spec: WorkflowSpec, nodes: UnitNodes, checkpointer: BaseChe
 
     for unit in order:
         step, judge, gate, human = flow.node_names(unit)
+        fan_out = flow.concurrent_map(spec, unit)  # MAP-B9: the items of a concurrent map run at once
+        item_nodes = {kind: flow.item_node(unit, kind) for kind in flow.ITEM_KINDS}
         if unit in spec.units and spec.units[unit].kind == "subworkflow":  # SWF-B8: the child is a subgraph of this node
             g.add_node(step, _subgraph_node(nodes, unit, post))
+        elif fan_out:  # this node reads the list and sends the items; it names where it may send them
+            g.add_node(step, _map_node(nodes, unit, post), destinations=tuple(dict.fromkeys(
+                (judge, item_nodes["step"], item_nodes["human"], *_goes(spec, unit)))))
         else:
             g.add_node(step, _bind1(nodes.step, unit, post))
         g.add_node(judge, _bind1(nodes.judge, unit, post))
         g.add_node(gate, _bind1(nodes.gate, unit, post))
         g.add_node(human, _human_node(nodes, unit, post))
         names += [step, judge, gate, human]
-        g.add_edge(step, judge)
+        if fan_out:  # the unit's own step node goes to its judge by itself, once every item has passed
+            for kind in flow.ITEM_KINDS:
+                dest = {"step": (item_nodes["judge"],), "judge": (item_nodes["gate"],),
+                        "gate": (item_nodes["step"], step), "human": (item_nodes["step"], step)}[kind]
+                g.add_node(item_nodes[kind], _item_node(nodes, unit, kind, post), destinations=dest)
+                names.append(item_nodes[kind])
+            edges += [(step, item_nodes["step"]), (step, item_nodes["human"]), (item_nodes["step"], item_nodes["judge"]),
+                      (item_nodes["judge"], item_nodes["gate"]), (item_nodes["gate"], item_nodes["step"]),
+                      (item_nodes["gate"], step), (item_nodes["human"], item_nodes["step"]),
+                      (item_nodes["human"], step)]
+        else:
+            g.add_edge(step, judge)
         g.add_edge(judge, gate)
         edges += [(step, judge), (judge, gate)]
         gate_targets = flow.gate_targets(spec, unit)
@@ -136,6 +152,67 @@ def _passthrough(name: str) -> Callable[[RunState], dict[str, Any]]:
         return {}
 
     node.__name__ = name.replace(".", "_")
+    return node
+
+
+def _goes(spec: WorkflowSpec, unit: str) -> tuple[str, ...]:
+    """Where a concurrent map can go once an item has stopped it: where a gate or a person's decision can send a unit."""
+    return tuple(_end(t) for t in flow.gate_targets(spec, unit) + flow.human_targets(spec, unit))
+
+
+def _map_node(nodes: Any, unit: str, post: Callable[[dict[str, Any]], dict[str, Any]]
+              ) -> Callable[[RunState], Command[Any]]:
+    """The step node of a concurrent map (MAP-B9, MAP-B10): the node's own body says what the map does next (its `Move`),
+    and this node sends the items it names, each with a state of its own, or goes where it says, or waits."""
+
+    def node(state: RunState) -> Command[Any]:
+        move = nodes.map_move(unit, state)
+        writes = post(move.writes)
+        goto: list[Any] = []
+        if move.items:
+            after = fold(state, writes)
+            target = flow.item_node(unit, move.kind)
+            goto = [Send(target, {**after, ITEM: {"unit": unit, "id": i, "slot": slot(unit, i)}}) for i in move.items]
+        elif move.goto:
+            goto = [_end(move.goto)]
+        return Command(update=writes, goto=goto)
+
+    node.__name__ = f"step_{unit}"
+    return node
+
+
+def _item_node(nodes: Any, unit: str, kind: str, post: Callable[[dict[str, Any]], dict[str, Any]]
+               ) -> Callable[[dict[str, Any]], Command[Any]]:
+    """One node of an item of a concurrent map (MAP-B9, CMP-B14): the unit's own step, judge, gate or human body runs on
+    the item's view of the state, its writes are kept under the item's slot, and the next node of the same item is sent
+    the state as it reads after them. An item that has passed, waits for a person or has stopped the map goes back to the
+    unit's step node, which decides what the map does next."""
+
+    def node(sent: dict[str, Any]) -> Command[Any]:
+        held = sent[ITEM]
+        decision = interrupt((sent.get("pause") or {}).get(held["slot"])) if kind == "human" else None  # HUM-AC1
+        iid = held["id"]
+        view = item_view(sent, unit, iid)
+        if kind == "step":
+            body = nodes.step(unit, view)
+        elif kind == "judge":
+            body = nodes.judge(unit, view)
+        elif kind == "gate":
+            body = nodes.gate(unit, view)
+        else:
+            body = nodes.human(unit, view, decision)
+        writes = slot_writes(post(body), unit, iid)
+        if kind in ("step", "judge"):
+            after = {**fold(sent, writes), ITEM: held}
+            return Command(update=writes, goto=Send(flow.item_node(unit, "judge" if kind == "step" else "gate"), after))
+        route = (writes.get("route") or {}).get(slot(unit, iid)) or {}
+        token = str(route.get("token"))
+        writes = fold(writes, item_end(unit, iid, token, str(route.get("node"))))  # the two writes, composed
+        if token == "RETRY":  # a retry reruns this item alone
+            return Command(update=writes, goto=Send(flow.item_node(unit, "step"), {**fold(sent, writes), ITEM: held}))
+        return Command(update=writes, goto=flow.step_node(unit))
+
+    node.__name__ = f"item_{kind}_{unit}"
     return node
 
 

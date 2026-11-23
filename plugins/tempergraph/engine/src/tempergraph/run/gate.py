@@ -16,7 +16,7 @@ from tempergraph.run import ladder as laddermod
 from tempergraph.run import mapping
 
 ESCALATE_CAUSES = frozenset({"auth", "refused", "tool_access", "environmental", "blocked", "upstream",
-                             "workflow_fault", "check_repeat", "merge_conflict"})
+                             "workflow_fault", "check_repeat", "merge_conflict", "map_check"})
 HUMAN_CAP = 100
 
 
@@ -191,8 +191,9 @@ def _merge(*writes: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
-def resume_command(spec: WorkflowSpec, task_id: str, decisions: list[str]) -> str:
-    return f"tempergraph resume {spec.name} {task_id} --decision <{'|'.join(decisions)}>"
+def resume_command(spec: WorkflowSpec, task_id: str, decisions: list[str], unit: str | None = None) -> str:
+    named = f" --unit {unit}" if unit else ""  # a pause of one item of a concurrent map is answered by `<unit>.<item>`
+    return f"tempergraph resume {spec.name} {task_id}{named} --decision <{'|'.join(decisions)}>"
 
 
 def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: Mapping[str, Any],
@@ -207,9 +208,12 @@ def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: 
     ws = state.get("workspace") or {}
     del s
     item = ((state.get("attempts") or {}).get(unit) or {}).get("item")  # a map's item in hand (MAP-B8, MAP-B9, MAP-B10)
+    at = (mapping.item_in_hand(state) or {}).get("slot")  # an item of a concurrent map: its pause is addressed by slot
     out = {"kind": kind, "unit": unit, "item": item, "reason": reason, "artifacts": arts, "rubric": rubric,
            "blockers": blockers or [], "decisions": words, "workspace": ws.get("path"),
-           "resume": resume_command(spec, task_id, words)}
+           "resume": resume_command(spec, task_id, words, at)}
+    if at:
+        out["slot"] = at
     if kind == "input":  # ASK-B8: each question with its kind, choices, default and whether it is answered
         qs = list(((state.get("attempts") or {}).get(unit) or {}).get("questions") or [])
         out["questions"] = [{**q, "answered": False} for q in qs]
@@ -378,7 +382,11 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
             return _merge(route("STOP", s.stop[0]), {"run": {"stopped": {"reason": "route", "unit": unit,
                                                                          "detail": str(exc)}}})
         extra = {"pick": p} if p else {}
-        if g.approval:
+        if mapping.concurrent(spec, unit) and att.get("item"):  # an item of a concurrent map has passed (MAP-B10)
+            if g.approval:
+                return to_human("approval", "approval", **extra)
+            return _merge(route("NEXT", s.retry[0], item=att.get("item")), mapping.passed_item_write(unit, att["item"]))
+        if g.approval and not att.get("map_done"):  # a concurrent map's approval was given item by item
             return to_human("approval", "approval", **extra)
         nxt = mapping.advance(spec, unit, state)
         if nxt is not None:  # a map's next item runs the unit's own step node again (MAP-B8, MAP-B9, MAP-B10)
@@ -547,6 +555,9 @@ def _apply(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], payload: Map
         return {"route": {unit: {"token": token, "node": node, "by": "person"}}, "pause": {unit: None}}
 
     if d.word == "proceed":
+        held = ((state.get("attempts") or {}).get(unit) or {}).get("item")
+        if mapping.concurrent(spec, unit) and held:  # a person passed one item of a concurrent map: that item alone
+            return _merge(route("NEXT", s.retry[0]), mapping.passed_item_write(unit, held))
         more = mapping.advance(spec, unit, state)
         if more is not None:  # a person passed one item of a map; the next item runs
             return _merge(route("NEXT", s.retry[0]), more)

@@ -190,4 +190,4 @@ WHEN `worktree prune --apply` runs THE engine SHALL remove only removable worktr
 
 - Should `cleanup: on_finish` become the default once removal has run live for a release? Until answered: `never`. Owner: owner.
 - Should a merged writer branch be deleted at the join? Until answered: keep every branch. Owner: owner.
-- Not built yet: slot and item worktrees arrive with the units that need them; probes P-WTR-1 to P-WTR-4 have not run. Owner: engine owner.
+- Not built yet: slot worktrees arrive with the unit that needs them, the contest; probes P-WTR-1 to P-WTR-4 have not run. Owner: engine owner.

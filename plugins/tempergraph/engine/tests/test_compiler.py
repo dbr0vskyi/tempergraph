@@ -173,6 +173,25 @@ def test_every_state_channel_has_a_two_writer_reducer() -> None:
     assert merge_run({"path": {"units": ["a"]}}, {"path": {"units": ["b"]}})["path"]["units"] == ["a", "b"]
 
 
+def test_a_map_compiles_to_the_units_four_nodes_and_a_concurrent_map_adds_its_item_nodes() -> None:  # CMP-AC3 (CMP-B14 map)
+    from .test_map import mapped
+
+    seq = mapped()
+    conc = mapped(mode="concurrent", concurrency=2)
+    a = compile_workflow(seq, Scripted(seq, {}), None)
+    b = compile_workflow(conc, Scripted(conc, {}), None)
+    unit_nodes = [n for unit in seq.order for n in flow.node_names(unit)] + [flow.FINALIZER]
+    assert sorted(a.nodes) == sorted(unit_nodes)  # a sequential map: the unit's four nodes and no item node
+    items = [flow.item_node("phase", kind) for kind in ("step", "judge", "gate", "human")]
+    assert sorted(b.nodes) == sorted(unit_nodes + items)  # a concurrent map adds only its item fan-out
+    assert not [e for e in a.edges if "item_" in e[0] + e[1]]
+    assert {e for e in b.edges} - {e for e in a.edges} == {
+        ("phase.step", "phase.item_step"), ("phase.step", "phase.item_human"),
+        ("phase.item_step", "phase.item_judge"), ("phase.item_judge", "phase.item_gate"),
+        ("phase.item_gate", "phase.item_step"), ("phase.item_gate", "phase.step"),
+        ("phase.item_human", "phase.item_step"), ("phase.item_human", "phase.step")}
+
+
 def test_reducer_deletes() -> None:
     old = {"a": {"x": 1, "y": 2}, "b": {"z": 3}}
     assert merge_units(old, {"a": {"x": None}, "b": None}) == {"a": {"y": 2}}

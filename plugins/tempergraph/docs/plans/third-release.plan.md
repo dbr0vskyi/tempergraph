@@ -37,7 +37,7 @@ task_id: third-release
 | Order | Cap and reach first, because every parallel shape relies on them | R-140 F4, F5 |
 | Plan shape | Tracks and phases only; each track's expanded plan is written when its specs are ready (EC-2) | As in release 2 |
 
-**Status: In progress.** R3-T1.1, R3-T1.2, R3-T8.1 to R3-T8.3 and I3-15 are built (2026-11-22). R3-T2.3 and with it track R3-T2 are built (2026-11-22). R3-T3.1 is built (2026-11-23). EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
+**Status: In progress.** R3-T1.1, R3-T1.2, R3-T8.1 to R3-T8.3 and I3-15 are built (2026-11-22). R3-T2.3 and with it track R3-T2 are built (2026-11-22). R3-T3.1 and R3-T3.2 are built (2026-11-23), and with them track R3-T3. EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
 
 ## 1. Requirements analysis
 
@@ -142,10 +142,12 @@ Status: built. SWF-B9 (a child's judges on its own bindings and calibration case
 #### R3-T3.1 Writer branches
 Goal: FLX's writer branch rows, each with its worktree and the merge after.
 
-Status: built. WSP-B11, WSP-B12 and WSP-B19 with WTR-B20 to WTR-B27 for a parallel branch that declares `write` or `edit` (it validates, resolves the run to a worktree, runs in its own sibling worktree cut after a checkpoint commit, and is merged without fast-forward at the join, a conflict resetting the run branch and blocking the join), proved by WFM-AC7, WSP-AC5, WSP-AC10 to WSP-AC15, WTR-AC1, WTR-AC5 and WTR-AC8 to WTR-AC11 in `plugins/tempergraph/engine/tests/test_writer_branches.py`, `test_parallel.py`, `test_workspace.py` and `test_outside_git.py`; the writing map's item worktrees stay with R3-T3.2.
+Status: built. WSP-B11, WSP-B12 and WSP-B19 with WTR-B20 to WTR-B27 for a parallel branch that declares `write` or `edit` (it validates, resolves the run to a worktree, runs in its own sibling worktree cut after a checkpoint commit, and is merged without fast-forward at the join, a conflict resetting the run branch and blocking the join), proved by WFM-AC7, WSP-AC5, WSP-AC10 to WSP-AC15, WTR-AC1, WTR-AC5 and WTR-AC8 to WTR-AC11 in `plugins/tempergraph/engine/tests/test_writer_branches.py`, `test_parallel.py`, `test_workspace.py` and `test_outside_git.py`; the item worktrees of a writing map came with R3-T3.2.
 
 #### R3-T3.2 Concurrent map
 Goal: MAP's concurrent mode, the item worktrees of a writing map, and verification after the merge.
+
+Status: built. MAP-B7, MAP-B9, MAP-B10, MAP-B6, MAP-B11, MAP-B12 and MAP-B13 for a map with `mode: concurrent` (it validates with `concurrency` 1 to 10 and is refused for a writing step in an `in_place` workflow; up to `concurrency` items run at once, read-only in the run's worktree or, for a writing step, each in its own sibling worktree cut after a checkpoint commit; the items are merged without fast-forward in list order, a conflict resetting the run branch and blocking the map; the gate's check runs once on the merged result; a spent item pauses addressed by unit and item; items take reservations from the one ledger), proved by MAP-AC2, MAP-AC5 to MAP-AC9, WSP-AC16 to WSP-AC20, WTR-AC12 and BUD-AC9 in `plugins/tempergraph/engine/tests/test_map.py`, `test_map_concurrent.py`, `test_map_concurrent_writers.py`, `test_map_concurrent_pauses.py` and `test_reservations.py`.
 
 ### R3-T4 Council and contest
 

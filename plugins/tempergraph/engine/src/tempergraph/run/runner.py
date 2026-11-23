@@ -954,7 +954,7 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
         elif state is ThreadState.PAUSED:
             gates: dict[str, dict[str, Any]] = {n.rsplit(".", 1)[0]: (p if isinstance(p, dict) else {})
                                                 for n, p in snap.interrupts}
-            if len(gates) > 1 and settings.unit not in gates:  # HUM-B3: each gate is answered by unit
+            if len(gates) > 1 and settings.unit is None:  # HUM-B3: each gate is answered by unit
                 lines = [f"{u}: tempergraph resume {spec.name} {task_id} --unit {u} --decision "
                          f"<{'|'.join(p.get('decisions') or [])}>" for u, p in gates.items()]
                 return _refuse("unit_missing", f"{tid} has {len(gates)} pending gates; name one with --unit",
@@ -964,7 +964,11 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
             unit = settings.unit or next(iter(gates))
             pause = gates[unit]
             dspec, dunit, dvalues = spec, unit, values  # what the decision is checked against: the child's, inside a child
-            if "/" in unit:  # SWF-B2: a child's pause is answered as any pause, against the child's gate and state
+            if unit not in spec.units and pause.get("slot") == unit:  # MAP-B6: one item of a concurrent map, by its slot
+                from tempergraph.run import mapping
+
+                dunit, dvalues = str(pause["unit"]), mapping.item_view(values, str(pause["unit"]), str(pause["item"]))
+            elif "/" in unit:  # SWF-B2: a child's pause is answered as any pause, against the child's gate and state
                 found = subrun.locate(spec, unit, settled.snapshot_json())
                 held = _child_values(kids, unit)
                 if found is None or held is None:
