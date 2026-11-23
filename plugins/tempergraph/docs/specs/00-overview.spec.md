@@ -201,9 +201,9 @@ WHEN a persisted document is written or read THE engine SHALL carry its schema v
 
 ### OVR-B15 Read-only verbs call no model
 
-WHEN input resolution or a read-only verb runs THE engine SHALL call no model and create nothing ([CLI](17-engine-cli.spec.md)).
+WHEN input resolution or a read-only verb runs THE engine SHALL call no model and create nothing but the hand-off of a lost runner ([CLI](17-engine-cli.spec.md), [SIL-B26](16-self-improvement.spec.md)).
 
-- GIVEN `status` on a state root WHEN it runs THEN no session starts and no file is created
+- GIVEN `status` on a state root with no lost runner WHEN it runs THEN no session starts and no file is created
 
 ### OVR-B16 Measurement never writes code
 

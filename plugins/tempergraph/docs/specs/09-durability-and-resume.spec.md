@@ -41,7 +41,7 @@ WHEN a process asks for a thread's lock held by another process THE engine SHALL
 
 ### DUR-B4 Observer creates nothing
 
-WHEN `status` or `wait` runs THE engine SHALL open the checkpoint read-only, probe the lock without creating it and for an instant only, and write no file: with no write-ahead log beside the store the store opens `immutable`, and with one `mode=ro`.
+WHEN `status` or `wait` runs THE engine SHALL open the checkpoint read-only, probe the lock without creating it and for an instant only, and write no file, except what `status` hands to the loop for a lost runner ([SIL-B26](16-self-improvement.spec.md)): with no write-ahead log beside the store the store opens `immutable`, and with one `mode=ro`.
 
 - GIVEN a live run WHEN `status` runs THEN the state root's file hashes are unchanged
 
