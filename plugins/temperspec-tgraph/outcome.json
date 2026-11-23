@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 8,
+  "revision": 9,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -946,8 +946,8 @@
           "id": "ts-code-verify",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "Every verification command the plan lists exits 0 when the gate runs it",
-          "check_method": "Run each command through the engine's command runner with the test budget",
+          "text": "Every verification command the plan lists exits 0 when the gate runs it, whatever the step reported about its own run",
+          "check_method": "Run each command through the engine's command runner with the test budget, whatever the step reported in tests_passed",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:code_check"
@@ -1152,6 +1152,83 @@
             "check": "tgwf_temperspec.checks:code_check"
           },
           "severity": "warning"
+        },
+        {
+          "id": "ts-code-base",
+          "verified_by": "check",
+          "text": "A verification command that fails at the gate and fails with the same non-zero exit code at the run's base commit makes the code check return an environmental result, so the gate escalates with no retry and no judge (CHK-B18, CHK-B14)",
+          "check_method": "Read the gate's own run of each failing command and its run at the base commit: the same non-zero exit code at both marks the check result environmental",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "blocker"
+        },
+        {
+          "id": "ts-code-touch",
+          "verified_by": "check",
+          "text": "A verification command that fails at the gate and fails with a different non-zero exit code at the run's base commit makes the check environmental when no path the run changed (written from the repository root or from the folder the command ran in) appears in the last lines the command printed at the gate, and fails the check, so the code step retries, when one does",
+          "check_method": "Read the gate's run and the base run of each failing command, and look for each changed path, from the root and from the command's folder, in the last lines the command printed at the gate",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "blocker"
+        },
+        {
+          "id": "ts-code-passes",
+          "verified_by": "check",
+          "text": "A verification command that exits 0 at the run's base commit and fails at the gate fails the check, so the code step retries",
+          "check_method": "Read the base run of each command that failed at the gate: exit 0 there is a failing finding the step can fix, never an environmental result",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "blocker"
+        },
+        {
+          "id": "ts-code-nobase",
+          "verified_by": "check",
+          "text": "A verification command that fails at the gate and was not compared with the run's base commit (the run has no base commit, the command could not start there, or the command did not finish at the gate or at the base) fails the check, so the code step retries, and the evidence says it was not compared",
+          "check_method": "Read the gate's run and the base run of each failing command: a missing base commit, a base run that did not start or finish, or a gate run that did not finish is a failing finding that says it was not compared",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "blocker"
+        },
+        {
+          "id": "ts-code-mixed",
+          "verified_by": "check",
+          "text": "When a verification command is judged environmental and another finding of the code check also fails, the check fails so that the code step retries with only the findings it can fix listed, and its evidence still names the environmental command",
+          "check_method": "Read the code check's findings and evidence: an environmental command is not a failing finding when another finding fails, and its line still leads the evidence",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "blocker"
+        },
+        {
+          "id": "ts-code-evidence",
+          "verified_by": "check",
+          "text": "The code check's evidence names each verification command that failed at the gate with its exit code at the gate and at the run's base commit, and the reason it was judged environmental, caused by the change or not compared",
+          "check_method": "Read the evidence and the findings of the code check: each failing command has one line with the command, both exit codes and the reason",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "warning"
+        },
+        {
+          "id": "ts-code-spend",
+          "verified_by": "check",
+          "text": "A verification command that exits 0 at the gate is never run at the run's base commit, and one that fails is run there at most once per visit of the code step, however many attempts the visit takes (CHK-B20)",
+          "check_method": "Read the gate's own command runs: no base run of a command that exited 0, and a base run asked for with reuse so that a retry of the visit takes it from the recorded result",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "warning"
         }
       ]
     }
@@ -1217,6 +1294,12 @@
       "origin": "authored",
       "at": "2026-11-23T12:00:00.000Z",
       "note": "issue 114: the discovery check measures every spec against the spec budget of 400 lines and 30,720 bytes and sends an over-budget spec back for a split by capability (ts-dis-budget, ts-dis-over); the structure check reads an id a split moved as defined in the spec it moved to, and a split-off spec may name ids of the spec it was split from (ts-spec-moved, ts-spec-parent)"
+    },
+    {
+      "revision": 9,
+      "origin": "authored",
+      "at": "2026-11-23T22:50:00.000Z",
+      "note": "the code gate compares a verification command that fails with the run's base commit: a failure that was there before the change, or that no changed file touches, escalates as environmental instead of spending a retry (issue 111)"
     }
   ]
 }

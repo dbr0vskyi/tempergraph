@@ -270,10 +270,11 @@ def _criteria() -> dict[str, tuple[str, dict[str, Any]]]:
     return out
 
 
-def test_the_criteria_file_is_at_revision_8_with_its_entry() -> None:  # AC 1, AC 2, ts-dis-budget, ts-spec-moved
+def test_the_criteria_file_has_the_revision_entry_for_the_change() -> None:  # AC 1, AC 2, ts-dis-budget, ts-spec-moved
     o = json.loads((ROOT / "outcome.json").read_text(encoding="utf-8"))
-    assert o["revision"] == 8
-    assert o["revisions"][-1]["revision"] == 8 and "114" in o["revisions"][-1]["note"]
+    entry = next(r for r in o["revisions"] if "issue 114" in r.get("note", ""))
+    assert entry["revision"] >= 8
+    assert o["revision"] == o["revisions"][-1]["revision"] >= entry["revision"]
     assert any("30,720" in a and "ts-spec-cap" in a for a in o["assumptions"])
 
 
