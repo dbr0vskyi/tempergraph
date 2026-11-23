@@ -89,6 +89,7 @@ def test_check_and_upgrade_check_print_one_plan_and_write_nothing(
     assert item["hits"][0]["where"] == "prompts/draft.md:2" and item["hits"][0]["rule"] == "read-tool"
     assert {"E0.1.0-1", "E0.1.0-2"} <= set(plans[0]["compatibility"]["entries"])
     assert [p["item_id"] for p in plans[0]["pending"]] == ["E0.1.0-1"]  # the entry with no hit has no item
+    assert "E0.1.0-2" in plans[0]["not_touched"] and "E0.1.0-1" not in plans[0]["not_touched"]  # WUP-B1
     assert git(repo, "status", "--porcelain") == ""
 
 

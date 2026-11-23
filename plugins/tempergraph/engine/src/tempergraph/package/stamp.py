@@ -81,6 +81,7 @@ class StampReport:
     exit_code: int = 0
     compat: dict[str, Any] = field(default_factory=dict)
     pending: list[dict[str, Any]] = field(default_factory=list)
+    not_touched: list[str] = field(default_factory=list)  # WUP-B1: entries in range with no hit
     checks: list[Verification] = field(default_factory=list)
     findings: list[Finding] = field(default_factory=list)
     stamp: dict[str, Any] | None = None
@@ -88,7 +89,7 @@ class StampReport:
 
     def to_json(self) -> dict[str, Any]:
         return {"schema_version": 1, "workflow": self.workflow, "exit_code": self.exit_code, "refused": self.refused,
-                "compatibility": self.compat, "pending": self.pending,
+                "compatibility": self.compat, "pending": self.pending, "not_touched": self.not_touched,
                 "verification": [v.__dict__ for v in self.checks],
                 "findings": [{"severity": f.severity, "code": f.code, "unit": f.unit, "message": f.message}
                              for f in self.findings],
@@ -130,6 +131,7 @@ def check(path: Path, caps: Mapping[str, Capabilities], *, stamp: bool = False,
     prior = read_stamp(root)
     rep.compat = compatibility(lp.spec, root, prior, finding_codes={f.code for f in found})
     rep.pending = [{"item_id": eid, "hits": hits} for eid, hits in rep.compat["hits"].items()]
+    rep.not_touched = [str(e) for e in rep.compat.get("entries") or [] if e not in rep.compat["hits"]]
     if not stamp:
         rep.exit_code = 6 if fail_on_pending and rep.pending else 0
         return rep
