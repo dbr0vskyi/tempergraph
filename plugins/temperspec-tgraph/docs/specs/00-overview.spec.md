@@ -16,6 +16,8 @@ Units:
 - [expand](07-expand.spec.md): Write task rows and verification for a complex plan
 - [code](08-code.spec.md): Build the plan test first in one session
 
+Beside the units: [judge reading](judge-reading.spec.md), what each judge is told to read and to cite before it grades.
+
 ## 6. Acceptance criteria
 
 - [ ] ts-committed Every file the run changed is committed on the run's own branch
