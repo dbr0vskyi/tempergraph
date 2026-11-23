@@ -82,6 +82,7 @@ class CommandRun:
     timed_out: bool = False
     not_started: bool = False
     reused: bool = False
+    at_base: bool = False  # CHK-B18: run in a checkout of the run's base commit
     duration_s: float = 0.0
     output_path: str = ""
     tail: str = ""
@@ -90,7 +91,7 @@ class CommandRun:
     def to_json(self) -> dict[str, object]:
         return {"argv": list(self.argv), "program_path": self.program_path, "exit_code": self.exit_code,
                 "finished": self.finished, "timed_out": self.timed_out, "not_started": self.not_started,
-                "reused": self.reused, "duration_s": round(self.duration_s, 3), "output_path": self.output_path,
+                "reused": self.reused, "at_base": self.at_base, "duration_s": round(self.duration_s, 3), "output_path": self.output_path,
                 "tail": self.tail}
 
 

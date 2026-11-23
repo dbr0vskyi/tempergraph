@@ -10,6 +10,7 @@ import hashlib
 import json
 import re
 import shutil
+import tempfile
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
@@ -87,6 +88,10 @@ class CheckContext:
     runs: list[CommandRun] = field(default_factory=list)
     reuse_store: Path | None = None  # the thread's stored command runs (CHK-B12, CHK-B13 Reuse)
     no_reuse_exit_codes: Mapping[str, tuple[int, ...]] = field(default_factory=dict)  # per allow-list prefix
+    base_dir: Path | None = None  # where a run at the base makes its checkout (CHK-B18); a temporary folder when None
+    base_checkout: Path | None = field(default=None, init=False)  # the checkout this context made, until `cleanup`
+    _base_workdir: Path | None = field(default=None, init=False, repr=False)
+    _own_dir: Path | None = field(default=None, init=False, repr=False)
 
     @property
     def deadline_s(self) -> float:
@@ -103,12 +108,15 @@ class CheckContext:
         return resolve_command(self.allow, text, self.workdir)
 
     def run(self, cmd: ResolvedCommand | str, timeout_s: float | None = None, reuse: bool = False,
-            min_start_s: float = 0) -> CommandRun:
+            min_start_s: float = 0, at_base: bool = False) -> CommandRun:
         if isinstance(cmd, str):
             got = self.resolve(cmd)
             if isinstance(got, CommandRefusal):
-                return CommandRun(argv=(clip(scrub(cmd), 200),), not_started=True, extra={"refused": got.reason})
+                return CommandRun(argv=(clip(scrub(cmd), 200),), not_started=True, at_base=at_base,
+                                  extra={"refused": got.reason})
             cmd = got
+        if at_base:
+            return self._run_at_base(cmd, timeout_s, reuse, min_start_s)
         left = self.deadline_s
         if left < min_start_s or left <= 0:
             r = CommandRun(argv=cmd.argv, not_started=True)
@@ -128,6 +136,73 @@ class CheckContext:
             _store(self.reuse_store, key, r)
         return r
 
+    def _run_at_base(self, cmd: ResolvedCommand, timeout_s: float | None, reuse: bool, min_start_s: float
+                     ) -> CommandRun:
+        """CHK-B18 to CHK-B20: the command in a clean checkout of `git.base`, reused within one visit."""
+        base = self.git.base if self.git is not None else ""
+        left = self.deadline_s
+        if left < min_start_s or left <= 0 or not gitmod.is_commit_id(base):
+            return self._added(CommandRun(argv=cmd.argv, not_started=True, at_base=True))
+        key = base_reuse_key(cmd, self.workdir, base, self.unit, self.visit) \
+            if reuse and self.reuse_store is not None else None
+        if key is not None:
+            hit = _stored(self.reuse_store, key, at_base=True)
+            if hit is not None:
+                return self._added(hit)
+        try:
+            if cmd.cwd and not gitmod.folder_in_commit(self.workdir, base, cmd.cwd):
+                return self._added(CommandRun(argv=cmd.argv, not_started=True, at_base=True))
+            where = self._checkout(base)
+        except (gitmod.GitError, OSError):
+            return self._added(CommandRun(argv=cmd.argv, not_started=True, at_base=True))
+        out_dir = self.out_dir or (self.workdir / ".tempergraph-check")
+        limit = min(timeout_s, left) if timeout_s else left
+        r = run_command(cmd, where, out_dir / f"{len(self.runs) + 1}.out", limit, main=self.main_checkout)
+        r.at_base = True
+        for path in {str(self.workdir), str(self.workdir.resolve())}:  # a command at the base can print either folder
+            r.tail, r.program_path = r.tail.replace(path, "<workdir>"), r.program_path.replace(path, "<workdir>")
+        self._added(r)
+        if key is not None and r.finished and r.exit_code not in self.no_reuse_exit_codes.get(cmd.prefix, ()):
+            _store(self.reuse_store, key, r, at_base=True)
+        return r
+
+    def _added(self, run: CommandRun) -> CommandRun:
+        self.runs.append(run)
+        return run
+
+    def _checkout(self, base: str) -> Path:
+        """The folder of the workspace in the checkout of `base`, made once per context (CHK-B18)."""
+        if self._base_workdir is None:
+            if self.base_dir is None:
+                self._own_dir = Path(tempfile.mkdtemp(prefix="tempergraph-base-"))
+            root = self._own_dir or self.base_dir
+            assert root is not None
+            root.mkdir(parents=True, exist_ok=True, mode=0o700)
+            dest = root / "base"
+            try:
+                self._base_workdir = gitmod.base_checkout(self.workdir, base, dest)
+            except gitmod.GitError:
+                shutil.rmtree(dest, ignore_errors=True)
+                raise
+            self.base_checkout = dest
+        return self._base_workdir
+
+    def cleanup(self) -> None:
+        """CHK-B21: remove the base checkout this context made, and the folder it made for it."""
+        if self.base_checkout is not None:
+            shutil.rmtree(self.base_checkout, ignore_errors=True)
+        if self._own_dir is not None:
+            shutil.rmtree(self._own_dir, ignore_errors=True)
+        self.base_checkout = self._base_workdir = self._own_dir = None
+
+
+def base_reuse_key(cmd: ResolvedCommand, workdir: Path, base: str, unit: str, visit: int) -> str:
+    """CHK-B20: argv, resolved program, the command's folder, the base commit, the unit and the visit; never the
+    workspace's head, status or files."""
+    prog = shutil.which(cmd.argv[0]) if cmd.argv else None
+    raw = json.dumps(["at_base", list(cmd.argv), cmd.cwd, prog, base, unit, visit])
+    return hashlib.sha256(raw.encode()).hexdigest()
+
 
 def reuse_key(cmd: ResolvedCommand, workdir: Path) -> str:
     """CHK-B12, CHK-B13: argv, resolved program, `head`, the status listing and the content of changed files."""
@@ -146,7 +221,7 @@ def reuse_key(cmd: ResolvedCommand, workdir: Path) -> str:
     return h.hexdigest()
 
 
-def _stored(store: Path | None, key: str) -> CommandRun | None:
+def _stored(store: Path | None, key: str, at_base: bool = False) -> CommandRun | None:
     if store is None:
         return None
     try:
@@ -158,22 +233,22 @@ def _stored(store: Path | None, key: str) -> CommandRun | None:
             row = json.loads(ln)
         except ValueError:
             continue
-        if row.get("key") == key:
+        if row.get("key") == key and bool(row.get("at_base")) == at_base:  # a base key never matches a workspace run
             r = row["run"]
             return CommandRun(argv=tuple(r.get("argv") or ()), program_path=str(r.get("program_path") or ""),
-                              exit_code=r.get("exit_code"), finished=True, reused=True,
+                              exit_code=r.get("exit_code"), finished=True, reused=True, at_base=at_base,
                               duration_s=float(r.get("duration_s") or 0), output_path=str(r.get("output_path") or ""),
                               tail=str(r.get("tail") or ""))
     return None
 
 
-def _store(store: Path | None, key: str, run: CommandRun) -> None:
+def _store(store: Path | None, key: str, run: CommandRun, at_base: bool = False) -> None:
     if store is None:
         return
     try:
         store.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         with open(store, "a", encoding="utf-8") as fh:
-            fh.write(json.dumps({"key": key, "run": run.to_json()}) + "\n")
+            fh.write(json.dumps({"key": key, "at_base": at_base, "run": run.to_json()}) + "\n")
     except OSError:
         pass  # a lost store entry only costs a rerun of the command
 
@@ -209,15 +284,18 @@ def run_check(gate: GateSpec, ctx: CheckContext) -> tuple[CheckResult, list[str]
     ctx.deadline_at = time.monotonic() + gate.check_timeout_s
     fn = gate.check.resolve()
     try:
-        res = fn(ctx)
-    except Exception as exc:  # noqa: BLE001 - a check's own failure is a result
-        # CHK-B15, CHK-B14, CHK-B10, CHK-B17: a raising check is a workflow fault, not an environmental one; a retry is spent
-        return CheckResult(result="FAIL", evidence=f"check raised {type(exc).__name__}"), [
-            f"check_raised: {type(exc).__name__}"]
-    if not isinstance(res, CheckResult):
-        return CheckResult(result="FAIL", evidence="check returned no CheckResult"), ["check_result_invalid"]
-    res.runs = [r.to_json() for r in ctx.runs]
-    return normalise(res)
+        try:
+            res = fn(ctx)
+        except Exception as exc:  # noqa: BLE001 - a check's own failure is a result
+            # CHK-B15, CHK-B14, CHK-B10, CHK-B17: a raising check is a workflow fault, not an environmental one; a retry is spent
+            return CheckResult(result="FAIL", evidence=f"check raised {type(exc).__name__}"), [
+                f"check_raised: {type(exc).__name__}"]
+        if not isinstance(res, CheckResult):
+            return CheckResult(result="FAIL", evidence="check returned no CheckResult"), ["check_result_invalid"]
+        res.runs = [r.to_json() for r in ctx.runs]
+        return normalise(res)
+    finally:
+        ctx.cleanup()  # CHK-B21: the base checkout is removed whether the check returned or raised
 
 
 def failing(res: CheckResult) -> list[dict[str, str]]:

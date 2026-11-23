@@ -9,7 +9,9 @@ the limit (`check_timeout_s` plus WORKER_GRACE_S) ends the worker and its whole 
 from __future__ import annotations
 
 import json
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +39,7 @@ def context_doc(gate: GateSpec, ctx: checkmod.CheckContext) -> dict[str, Any]:
             "criteria": list(ctx.criteria), "allow": list(ctx.allow),
             "out_dir": str(ctx.out_dir) if ctx.out_dir else None,
             "reuse_store": str(ctx.reuse_store) if ctx.reuse_store else None,
+            "base_dir": str(ctx.base_dir) if ctx.base_dir else None,
             "no_reuse_exit_codes": {k: list(v) for k, v in ctx.no_reuse_exit_codes.items()},
             "changed_paths": list(ctx.changed_paths),
             "git": None if g is None else {
@@ -59,6 +62,7 @@ def _context_from(doc: dict[str, Any]) -> checkmod.CheckContext:
         settings=c.get("settings") or {}, criteria=tuple(c.get("criteria") or ()), allow=tuple(c.get("allow") or ()),
         out_dir=Path(c["out_dir"]) if c.get("out_dir") else None,
         reuse_store=Path(c["reuse_store"]) if c.get("reuse_store") else None,
+        base_dir=Path(c["base_dir"]) if c.get("base_dir") else None,
         no_reuse_exit_codes={k: tuple(v) for k, v in (c.get("no_reuse_exit_codes") or {}).items()},
         git=None if g is None else checkmod.GitFacts(
             branch=g.get("branch", ""), base=g.get("base", ""), head=g.get("head", ""),
@@ -113,8 +117,18 @@ def run_in_worker(gate: GateSpec, ctx: checkmod.CheckContext, *, python: str | N
 def run_doc(doc: dict[str, Any], workdir: Path, timeout_s: int, key: str, *, python: str | None = None
             ) -> tuple[CheckResult, list[str]]:
     """One worker run of a context document; the check preview sends a stored one (CHK-B17)."""
+    base_dir = tempfile.mkdtemp(prefix="tempergraph-base-")  # CHK-B21: outside the workspace, removed below
+    try:
+        return _run_doc(doc, base_dir, workdir, timeout_s, key, python)
+    finally:
+        shutil.rmtree(base_dir, ignore_errors=True)  # a worker ended at its limit leaves no checkout
+
+
+def _run_doc(doc: dict[str, Any], base_dir: str, workdir: Path, timeout_s: int, key: str, python: str | None
+             ) -> tuple[CheckResult, list[str]]:
     from tempergraph.executors.launcher import LaunchSpec, launch
 
+    doc = {**doc, "context": {**doc["context"], "base_dir": base_dir}}
     payload = json.dumps(doc, default=str).encode()
     spec = LaunchSpec(argv=[python or sys.executable, "-m", "tempergraph.run.check_worker"], stdin_payload=payload,
                       workdir=workdir, timeout_s=timeout_s + WORKER_GRACE_S,

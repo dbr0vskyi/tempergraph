@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import re
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -194,8 +195,12 @@ def _block_only(ctx: Any, path: str) -> bool:
 
 def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
             links: list[str] | None = None) -> Any:
-    """The result, with the facts a read-only judge cannot get by itself as its evidence."""
-    bad = "; ".join(f"{f.criterion}: {f.message}" for f in found if f.status == "fail")
+    """The result, with the facts a read-only judge cannot get by itself as its evidence. A command judged
+    environmental leads the evidence, and the result is marked environmental when no other finding fails."""
+    lead = [f"{f.criterion}: {f.message}" for f in found if isinstance(f, _Environmental)]
+    bad = "; ".join(lead + [f"{f.criterion}: {f.message}" for f in found
+                            if f.status == "fail" and not isinstance(f, _Environmental)])
+    environmental = bool(lead) and not any(f.status == "fail" and not isinstance(f, _Environmental) for f in found)
     specs, _ = _edited_specs(ctx)
     lines = [bad or f"{len(found)} checked"]
     changed = [p for p in ctx.git.changed_paths if not p.startswith(".claude/rules/")]
@@ -213,7 +218,9 @@ def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
         lines.append("Related specs: " + ", ".join(plan.specs[:40]))
     if links:
         lines.append("Criterion tests: " + "; ".join(links[:40]))
-    return checks.result(found, evidence="\n".join(lines))
+    res = checks.result(found, evidence="\n".join(lines))
+    res.environmental = environmental
+    return res
 
 
 def _setup_specs(ctx: Any) -> list[str]:
@@ -763,7 +770,62 @@ def _lane(ctx: Any, criterion: str) -> list[CheckFinding]:
     return found or [_ok(criterion)]
 
 
-def _verify(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
+@dataclass(frozen=True, kw_only=True)
+class _Environmental(CheckFinding):
+    """A command that fails at the gate for a reason the code step cannot fix: it fails the same at the run's base,
+    or no file the run changed is named in its output (ts-code-base, ts-code-touch)."""
+
+
+FIX_COMMAND = "fix the code or the test until the command exits 0"
+
+
+def _named_in(tail: str, path: str) -> bool:
+    return re.search(r"(?<![\w.-])" + re.escape(path) + r"(?![\w-])", tail) is not None
+
+
+def _touches(ctx: Any, cmd: str, tail: str) -> str | None:
+    """The first path the run changed that the command's last lines name, written from the repository root or from
+    the folder the command ran in (ts-code-touch)."""
+    folder = re.match(r"^cd\s+(\S+)\s*&&", cmd)
+    prefix = folder.group(1).strip("/") + "/" if folder else ""
+    for path in ctx.git.changed_paths:
+        if _named_in(tail, path) or (prefix and path.startswith(prefix) and _named_in(tail, path[len(prefix):])):
+            return str(path)
+    return None
+
+
+def _compared(ctx: Any, cmd: str, run: Any, criterion: str) -> CheckFinding:
+    """A command that finished with a non-zero exit at the gate, compared with the run's base commit. The base run
+    is asked for with reuse, so it is made once per visit (ts-code-spend, CHK-B20)."""
+    place = cmd[:80]
+    there = "none"
+    why = "not compared: the run has no base commit"
+    verdict = "fail"
+    if ctx.git.base:
+        base = ctx.run(cmd, reuse=True, at_base=True, min_start_s=run.duration_s)
+        there = "none" if base.exit_code is None else str(base.exit_code)
+        if base.not_started:
+            why = "not compared: the command could not start at the base commit"
+        elif base.timed_out or not base.finished:
+            why = "not compared: the command did not finish at the base commit"
+        elif base.exit_code == 0:
+            why = "caused by the change: the command exits 0 at the base commit"
+        elif base.exit_code == run.exit_code:
+            why, verdict = "environmental: it fails the same at the base commit", "environmental"
+        elif (named := _touches(ctx, cmd, str(run.tail or ""))) is not None:
+            why = f"caused by the change: its output names the changed file {named}"
+        else:
+            why, verdict = "environmental: its output names no file the run changed", "environmental"
+    tail = " ".join(str(run.tail or "").split())[-120:]
+    message = f"`{cmd[:60]}` exit {run.exit_code} at the gate, {there} at the base: {why}"
+    if verdict == "environmental":
+        return _Environmental(status="fail", criterion=criterion, place=place, message=message)
+    return _find("fail", criterion, place, f"{message}: {tail}", FIX_COMMAND)
+
+
+def _verify(ctx: Any, plan: fmt.Plan, criterion: str, compare: bool = False) -> list[CheckFinding]:
+    """Run each verification command. With `compare` (the code gate), a command that fails is run once at the run's
+    base commit, and a failure that was there before the change is environmental (ts-code-base to ts-code-spend)."""
     found = _commands(ctx, plan, criterion)
     if found:
         return found
@@ -771,10 +833,12 @@ def _verify(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
         run = ctx.run(cmd, reuse=True)
         if run.not_started:
             found.append(_find("fail", criterion, cmd[:80], "the command did not start (refused, or out of time)"))
+        elif compare and run.finished and run.exit_code not in (0, None):
+            found.append(_compared(ctx, cmd, run, criterion))
         elif run.timed_out or not run.finished or run.exit_code != 0:
             tail = " ".join(str(run.tail or "").split())[-120:]
-            found.append(_find("fail", criterion, cmd[:80], f"exit {run.exit_code}: {tail}",
-                               "fix the code or the test until the command exits 0"))
+            note = "not compared with the base commit: it did not finish at the gate; " if compare else ""
+            found.append(_find("fail", criterion, cmd[:80], f"{note}exit {run.exit_code}: {tail}", FIX_COMMAND))
     return found or [_ok(criterion)]
 
 
@@ -784,7 +848,7 @@ def _reuse(ctx: Any, criterion: str) -> CheckFinding:
     says how many were reused; a command asked for twice in one gate run with no reuse is the failure."""
     if ctx.reuse_store is None:
         return _find("n_a", criterion, message="no store of earlier command runs (the gate runs outside a run)")
-    runs = [r for r in ctx.runs if not r.not_started]
+    runs = [r for r in ctx.runs if not r.not_started and not r.at_base]  # a run at the base is not a second start
     started: set[tuple[str, ...]] = set()
     for r in runs:
         if r.reused:
@@ -799,11 +863,13 @@ def _reuse(ctx: Any, criterion: str) -> CheckFinding:
 
 def code_check(ctx: Any) -> Any:
     """ts-code-rows, ts-code-changed, ts-code-verify, ts-code-reuse, ts-code-proof, ts-code-lane, ts-code-once,
-    ts-code-commit.
+    ts-code-commit, ts-code-base, ts-code-touch, ts-code-passes, ts-code-nobase, ts-code-mixed, ts-code-evidence,
+    ts-code-spend.
 
     The marks come first: a plan with a row not marked completed goes back to the code step at once, with no
     command run. Marks are claims, so a marked plan is then verified as before, and each marked row's file must
-    be among the paths the run changed."""
+    be among the paths the run changed. Every verification command is run here whatever the step reported; one that
+    fails is run once at the run's base commit, and a failure that was there before the change escalates."""
     plan, path = _plan(ctx)
     if plan is None:
         return checks.result([_find("fail", "ts-code-rows", path, "the plan cannot be read")])
@@ -837,15 +903,15 @@ def code_check(ctx: Any) -> Any:
         found += [_find("fail", "ts-code-changed", r.file, f"row `{r.id}` is marked completed but its file did not "
                         "change in the run", "make the row's change, or clear its mark and say why")
                   for r in plan.rows if r.file and r.file not in changed][:10] or [_ok("ts-code-changed", path)]
-    if _value(ctx, "tests_passed") == "no":
-        found.append(_find("fail", "ts-code-verify", "tests_passed", "the step itself reports failing tests",
-                           "make the plan's verification pass"))
-    else:
-        found += _verify(ctx, plan, "ts-code-verify")
+    found += _verify(ctx, plan, "ts-code-verify", compare=True)
     found.append(_reuse(ctx, "ts-code-reuse"))
     proof, links = _proof(ctx, plan, "ts-code-proof")
     found += proof + _lane(ctx, "ts-code-lane") + _prompt_says("ts-code-once")
     found.append(_committed(ctx, "ts-code-commit"))
+    if any(f.status == "fail" and not isinstance(f, _Environmental) for f in found):
+        # ts-code-mixed: the step retries, so the retry lists only what it can fix; the environmental command stays
+        # in the evidence
+        found = [replace(f, status="maybe") if isinstance(f, _Environmental) else f for f in found]
     return _result(ctx, found, plan, links)
 
 
