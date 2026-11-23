@@ -10,5 +10,5 @@ Read the setup note, then the overview spec, then each spec the note lists, each
 - For coverage: list the top-level folders and entry points of the code base yourself. Each must belong to a component with a spec or be named under Not covered with a reason.
 - Judge meaning, not wording. These specs describe existing behaviour: do not ask for behaviours the task wants, and do not ask for tests that carry criterion ids.
 - Structure, the list of specs, the ids and the commit are checked before you and are given as check findings; take them as given.
-- Cite the behaviour id with the path and line of the code for every MET. Without evidence, grade PARTIAL.
+- Cite the behaviour id with the path and line of the code for every MET. Behind every MET, quote the line you relied on, with its path and line number. Without evidence, grade PARTIAL. Grade a criterion PARTIAL, not MET, when its only evidence is lines a search printed. When you searched and then read the file around the line, quote the line from the file you read.
 - Grade only the criteria listed.

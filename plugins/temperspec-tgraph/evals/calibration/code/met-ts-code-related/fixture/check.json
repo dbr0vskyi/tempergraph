@@ -1,5 +1,5 @@
 {
   "result": "PASS",
   "findings": [],
-  "evidence": "3 checked\nChanged paths since the run's base: README.md, docs/plans/TASK-7.plan.md, docs/research/TASK-7-exit-codes.rsrch.md, docs/specs/config-file.spec.md, docs/tasks/TASK-7.handoff.md, docs/tasks/TASK-7.report.md, docs/tasks/TASK-7.triage.md, src/tool/config.py, src/tool/main.py, tests/test_config.py\nEdited specs: docs/specs/config-file.spec.md\nRelated specs: docs/specs/cli.spec.md"
+  "evidence": "3 checked\nChanged source lines: 55. Reading budget: 10 files (one per 50 lines, floor 10, ceiling 50).\nChanged source files (path lines), most lines first: src/tool/main.py 22; src/tool/config.py 17; tests/test_config.py 16\nChanged paths since the run's base: README.md, docs/plans/TASK-7.plan.md, docs/research/TASK-7-exit-codes.rsrch.md, docs/specs/config-file.spec.md, docs/tasks/TASK-7.handoff.md, docs/tasks/TASK-7.report.md, docs/tasks/TASK-7.triage.md, src/tool/config.py, src/tool/main.py, tests/test_config.py\nEdited specs: docs/specs/config-file.spec.md\nRelated specs: docs/specs/cli.spec.md"
 }

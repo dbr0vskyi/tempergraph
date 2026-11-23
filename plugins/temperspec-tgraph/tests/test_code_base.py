@@ -62,12 +62,21 @@ class _Ctx(CheckContext):
 
     def run(self, cmd: str, **kw: Any) -> Any:  # type: ignore[override]
         at_base = bool(kw.get("at_base"))
-        self.calls.append((cmd, at_base))
+        if not cmd.startswith(READING_DIFF):  # the judge-reading count is not a plan command
+            self.calls.append((cmd, at_base))
         got = self.script.get((cmd, at_base))
         if got is None:
             return super().run(cmd, **kw)
         self.runs.append(got)
         return got
+
+
+READING_DIFF = "git diff --numstat"
+
+
+def _plan_runs(res: Any) -> list[dict[str, Any]]:
+    """The command runs of the plan's commands, without the reading budget's own git count (judge-reading)."""
+    return [r for r in res.runs if "--numstat" not in str(r.get("argv", r.get("command", "")))]
 
 
 def _ctx(root: Path, base: str | None, *, script: dict[tuple[str, bool], CommandRun] | None = None,
@@ -108,7 +117,7 @@ def test_a_command_that_fails_the_same_at_the_base_is_environmental(tmp_path: Pa
     first = res.evidence.splitlines()[0]
     assert first.startswith(f"ts-code-verify: `{ABSENT}` exit 128 at the gate, 128 at the base: environmental"), first
     assert ctx.calls == [(ABSENT, False), (ABSENT, True)]  # the command ran at the gate, then once at the base
-    assert [(r["exit_code"], r["at_base"]) for r in res.runs] == [(128, False), (128, True)]
+    assert [(r["exit_code"], r["at_base"]) for r in _plan_runs(res)] == [(128, False), (128, True)]
     assert not (tmp_path / "repo" / "absent.txt").exists() and _git(root, "status", "--porcelain") == ""
 
 
@@ -218,12 +227,12 @@ def test_a_failing_command_is_run_at_the_base_once_per_visit(tmp_path: Path) -> 
         res, _ = run_check(GATE, ctx)
         assert res.environmental
         assert [f.status for f in res.findings if f.criterion == "ts-code-reuse"] == ["pass"], res.evidence
-        answers.append([(r["at_base"], r["reused"]) for r in res.runs])
+        answers.append([(r["at_base"], r["reused"]) for r in _plan_runs(res)])
     assert answers == [[(False, False), (True, False)], [(False, True), (True, True)]]  # started once at the base
     later = _ctx(root, base, store=store)
     later.visit = 2
     res, _ = run_check(GATE, later)
-    assert [(r["at_base"], r["reused"]) for r in res.runs][1] == (True, False)  # the next visit asks again
+    assert [(r["at_base"], r["reused"]) for r in _plan_runs(res)][1] == (True, False)  # the next visit asks again
 
 
 def test_the_outcome_gate_asks_for_no_run_at_the_base(tmp_path: Path) -> None:

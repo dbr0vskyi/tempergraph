@@ -238,16 +238,69 @@ def _block_only(ctx: Any, path: str) -> bool:
     return bare(before or "") == bare(now)
 
 
+# The code judge's reading budget (judge-reading spec, JRD-B2): one source file to read for every 50 changed source
+# lines, rounded up, within a floor and a ceiling. First values with no run behind them (outcome.json, assumptions).
+LINES_PER_FILE = 50
+READING_FLOOR = 10
+READING_CEILING = 50
+
+
+def reading_budget(lines: int) -> int:
+    """Files the code judge reads for `lines` changed source lines."""
+    return min(READING_CEILING, max(READING_FLOOR, -(-lines // LINES_PER_FILE)))
+
+
+def _source_lines(ctx: Any, sources: list[str]) -> dict[str, int] | None:
+    """Lines added plus removed since the run's base, per changed source file; None with no base or when git fails."""
+    if not ctx.git.base:
+        return None
+    run = ctx.run(f"git diff --numstat --no-renames {ctx.git.base}", reuse=True)
+    if run.not_started or run.exit_code != 0:
+        return None
+    try:
+        text = Path(run.output_path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    counts: dict[str, int] = {}
+    for row in text.splitlines():
+        added, _, rest = row.partition("\t")
+        removed, _, path = rest.partition("\t")
+        if path in sources:
+            counts[path] = (int(added) if added.isdigit() else 0) + (int(removed) if removed.isdigit() else 0)
+    return counts
+
+
+def _reading_lines(ctx: Any) -> list[str]:
+    """The evidence lines the code judge reads from: the changed source lines, the reading budget and the changed
+    source files, the file with the most changed lines first (JRD-B1, JRD-B2)."""
+    sources = [p for p in ctx.git.changed_paths if not p.startswith(".claude/rules/") and not p.endswith(".md")]
+    counts = _source_lines(ctx, sources)
+    rule = f"one per {LINES_PER_FILE} lines, floor {READING_FLOOR}, ceiling {READING_CEILING}"
+    if counts is None:
+        why = "no base commit to compare with, or git diff failed"
+        return [f"Changed source lines: not counted ({why}). Reading budget: {READING_FLOOR} files (the floor).",
+                f"{SOURCE_FILES} (no counts): " + ("; ".join(sources) if sources else "none, the change has no source file")]
+    total = sum(counts.values())
+    ordered = sorted(sources, key=lambda p: (-counts.get(p, 0), p))
+    listed = "; ".join(f"{p} {counts.get(p, 0)}" for p in ordered) or "none, the change has no source file"
+    return [f"Changed source lines: {total}. Reading budget: {reading_budget(total)} files ({rule}).",
+            f"{SOURCE_FILES} (path lines), most lines first: {listed}"]
+
+
+SOURCE_FILES = "Changed source files"
+
+
 def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
-            links: list[str] | None = None) -> Any:
+            links: list[str] | None = None, reading: list[str] | None = None) -> Any:
     """The result, with the facts a read-only judge cannot get by itself as its evidence. A command judged
-    environmental leads the evidence, and the result is marked environmental when no other finding fails."""
+    environmental leads the evidence, and the result is marked environmental when no other finding fails. `reading` is the lines a
+    judge that reads the changed code needs (`_reading_lines`): the changed source lines, its budget and the files."""
     lead = [f"{f.criterion}: {f.message}" for f in found if isinstance(f, _Environmental)]
     bad = "; ".join(lead + [f"{f.criterion}: {f.message}" for f in found
                             if f.status == "fail" and not isinstance(f, _Environmental)])
     environmental = bool(lead) and not any(f.status == "fail" and not isinstance(f, _Environmental) for f in found)
     specs, _ = _edited_specs(ctx)
-    lines = [bad or f"{len(found)} checked"]
+    lines = [bad or f"{len(found)} checked"] + (reading or [])
     changed = [p for p in ctx.git.changed_paths if not p.startswith(".claude/rules/")]
     prepared = [p for p in changed if p in CONTEXT_FILES and _block_only(ctx, p)]
     changed = [p for p in changed if p not in prepared]
@@ -942,6 +995,7 @@ def code_check(ctx: Any) -> Any:
                         "change in the run", "make the row's change, or clear its mark and say why")
                   for r in plan.rows if r.file and r.file not in changed][:10] or [_ok("ts-code-changed", path)]
     found += _verify(ctx, plan, "ts-code-verify", compare=True)
+    reading = _reading_lines(ctx)  # its git run is reused on an unchanged tree, and counted by the line below
     found.append(_reuse(ctx, "ts-code-reuse"))
     proof, links = _proof(ctx, plan, "ts-code-proof")
     found += proof + _lane(ctx, "ts-code-lane") + _prompt_says("ts-code-once")
@@ -950,7 +1004,7 @@ def code_check(ctx: Any) -> Any:
         # ts-code-mixed: the step retries, so the retry lists only what it can fix; the environmental command stays
         # in the evidence
         found = [replace(f, status="maybe") if isinstance(f, _Environmental) else f for f in found]
-    return _result(ctx, found, plan, links)
+    return _result(ctx, found, plan, links, reading=reading)
 
 
 # ---------------------------------------------------------------------------------------------
