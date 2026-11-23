@@ -117,6 +117,22 @@ def _spec_index(ctx: Any, files: list[str]) -> dict[str, list[str]]:
     return index
 
 
+def _definitions(ctx: Any, docs: list[str]) -> dict[str, list[str]]:
+    """Id -> the spec files that define it, over every spec of the repository, the overview wherever it is, and
+    the specs among `docs` even inside a skipped folder."""
+    index = _spec_index(ctx, _walk(ctx))
+    overview = checks.artifact_path(ctx, "overview")
+    if overview and not overview.endswith(".spec.md"):  # the overview is a spec wherever it is
+        for own in fmt.defined_ids(_read_path(ctx, overview) or ""):
+            index.setdefault(own, []).append(overview)
+    for path in docs:
+        if path.endswith(".spec.md"):
+            for own in fmt.defined_ids(_read_path(ctx, path) or ""):  # a changed spec inside a skipped folder counts
+                if path not in index.get(own, []):
+                    index.setdefault(own, []).append(path)
+    return index
+
+
 def _changed_docs(ctx: Any) -> list[str]:
     """Documents the run changed: the git facts, plus the hand-off's own list (the only source in a fixture)."""
     paths = [p for p in ctx.git.changed_paths if p.endswith(".md") and not (set(Path(p).parts) & SKIP_DIRS)
@@ -139,15 +155,40 @@ def _edited_specs(ctx: Any) -> tuple[list[str], list[str]]:
     return have, [p for p in gone if p not in ctx.git.changed_paths]  # a deleted spec is in the git facts only
 
 
-def _spec_form(ctx: Any, criterion: str, cap_criterion: str | None = None) -> list[CheckFinding]:
-    """The spec rule's structure check on every edited spec; the line cap under `cap_criterion` if given."""
+def _over_budget(ctx: Any, path: str, lines: int) -> list[str]:
+    """What of the spec budget the file is over: its lines, its bytes on disk (not its characters)."""
+    out: list[str] = []
+    if lines > fmt.SPEC_CAP_LINES:
+        out.append(f"{lines:,} lines, over the budget of {fmt.SPEC_CAP_LINES:,}")
+    try:
+        size = (Path(ctx.workdir) / path).stat().st_size
+    except OSError:
+        size = 0
+    if size > fmt.SPEC_CAP_BYTES:
+        out.append(f"{size:,} bytes, over the budget of {fmt.SPEC_CAP_BYTES:,}")
+    return out
+
+
+def _spec_form(ctx: Any, criterion: str, cap_criterion: str | None = None,
+               budget_criterion: str | None = None) -> list[CheckFinding]:
+    """The spec rule's structure check on every edited spec; the line cap under `cap_criterion` if given.
+
+    With `budget_criterion` the size is measured instead against the spec budget (lines and bytes), and an
+    overrun is one finding per spec under `ts-dis-over`, never under `criterion`."""
     have, gone = _edited_specs(ctx)
     found = [_find("fail", criterion, p, "the hand-off lists this spec but the file does not exist",
                    "write the spec or drop it from the list") for p in gone]
     over: list[CheckFinding] = []
+    index = _definitions(ctx, have) if have else {}
     for path in have:
-        spec = fmt.parse_spec(_read_path(ctx, path) or "")
-        if spec.lines > fmt.SPEC_CAP_LINES:
+        # An id a split moved is defined in another file; the parser reads it there, whatever the run's history.
+        elsewhere = {i: [f for f in files if f != path] for i, files in index.items() if any(f != path for f in files)}
+        spec = fmt.parse_spec(_read_path(ctx, path) or "", elsewhere)
+        if budget_criterion:
+            figures = _over_budget(ctx, path, spec.lines)
+            if figures:
+                over.append(_find("fail", "ts-dis-over", path, "; ".join(figures), "split the spec by capability"))
+        elif spec.lines > fmt.SPEC_CAP_LINES:
             over.append(_find("fail", cap_criterion or criterion, path,
                               f"{spec.lines} lines, over the cap of {fmt.SPEC_CAP_LINES}",
                               "split the spec by capability, or compress it"))
@@ -157,7 +198,11 @@ def _spec_form(ctx: Any, criterion: str, cap_criterion: str | None = None) -> li
         found += [_find("fail", criterion, f"{path}:{line}", message, fix) for line, message, fix in spec.problems[:8]]
     if not any(f.status == "fail" for f in found):
         found.append(_ok(criterion) if have else _find("n_a", criterion, message="the run edited no spec"))
-    if cap_criterion:
+    if budget_criterion:
+        found += over or ([_ok(budget_criterion), _ok("ts-dis-over")] if have else [
+            _find("n_a", budget_criterion, message="the run edited no spec"),
+            _find("n_a", "ts-dis-over", message="the run edited no spec")])
+    elif cap_criterion:
         found += over or [_ok(cap_criterion)]
     else:
         found += over
@@ -231,18 +276,10 @@ def _links(ctx: Any, criterion: str, docs: list[str] | None = None) -> list[Chec
     docs = [p for p in (_changed_docs(ctx) if docs is None else docs) if _read_path(ctx, p) is not None]
     if not docs:
         return [_find("n_a", criterion, message="the run changed no document")]
-    index = _spec_index(ctx, _walk(ctx))
-    overview = checks.artifact_path(ctx, "overview")
-    if overview and not overview.endswith(".spec.md"):  # the overview is a spec wherever it is
-        for own in fmt.defined_ids(_read_path(ctx, overview) or ""):
-            index.setdefault(own, []).append(overview)
+    index = _definitions(ctx, docs)
     found: list[CheckFinding] = []
     for path in docs:
         text = _read_path(ctx, path) or ""
-        if path.endswith(".spec.md"):
-            for own in fmt.defined_ids(text):  # a changed spec inside a skipped folder still counts
-                if path not in index.get(own, []):
-                    index.setdefault(own, []).append(path)
         for ref in sorted(fmt.linked_ids(text)):
             homes = index.get(ref, [])
             if not homes:
@@ -401,14 +438,15 @@ def _names(ctx: Any, criterion: str) -> list[CheckFinding]:
 
 
 def discovery_check(ctx: Any) -> Any:
-    """ts-dis-form, ts-dis-names, ts-dis-links, ts-dis-reading, ts-dis-narrow, ts-dis-commit."""
+    """ts-dis-form, ts-dis-budget, ts-dis-over, ts-dis-names, ts-dis-links, ts-dis-reading, ts-dis-narrow,
+    ts-dis-commit."""
     text, path = _read(ctx, "handoff")
     if text is None:
         return checks.result([_find("fail", "ts-dis-form", path, "the hand-off cannot be read",
                                     "write the hand-off and name its path")])
     found = [_find("fail", "ts-dis-form", path, f"hand-off section `## {h}` is missing or out of order",
                    f"add `## {h}`") for h in fmt.headings_missing(text, fmt.HANDOFF_HEADINGS) if h != READING]
-    found += _spec_form(ctx, "ts-dis-form")
+    found += _spec_form(ctx, "ts-dis-form", budget_criterion="ts-dis-budget")
     found += _names(ctx, "ts-dis-names")
     found += _links(ctx, "ts-dis-links")
     found += _reading(ctx, text, path)
