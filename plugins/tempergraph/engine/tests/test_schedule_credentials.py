@@ -73,6 +73,13 @@ def test_tck_ac6_claude_accepts_interactive_login_with_the_may_expire_warning() 
     assert r.refusal is None and r.warnings == ["credential_may_expire"] and r.checked[0]["may_expire"] is True
 
 
+def test_tck_ac6_no_credential_at_add_is_saved_with_a_warning_and_refused_at_a_fire() -> None:
+    # TCK-AC6, TCK-B19: found by the live fire in the cloud container, whose host-managed sign-in no kind names
+    r = check("claude", "step", set())
+    assert r.refusal is None and r.warnings == ["credential_none"] and r.checked[0]["result"] == "none"
+    assert credentials.WARNING_TEXT["credential_none"]
+
+
 @pytest.mark.parametrize("kinds", [{"oauth_token"}, {"interactive_login"}, {"oauth_token", "interactive_login"}])
 def test_tck_b6_a_bare_judge_needs_api_key_or_cloud_else_judge_credential(kinds: set[str]) -> None:
     r = check("claude", "judge", kinds, bare=True)

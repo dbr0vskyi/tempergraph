@@ -246,6 +246,7 @@ def _now() -> datetime:
     return CLOCK()
 
 
+LOOP_START_WAIT_S = 5.0  # TCK-B1: how long `loop --detach` waits for its child to take the lock
 PERSON_WINDOW = timedelta(minutes=10)  # TCK-B22: a person turn this recent carries an agent's `--relayed` call
 
 
@@ -582,6 +583,11 @@ def cmd_loop(env: Any, a: argparse.Namespace) -> int:
             return 0
         if not detach.start_loop(home):
             raise ScheduleError("loop_not_started", "the loop could not be started")
+        # TCK-B1: wait until the child holds the lock, so a second call right after this one reports it instead of
+        # starting another child (found live: two quick calls both said "loop started")
+        deadline = time.monotonic() + LOOP_START_WAIT_S
+        while loop.running(home) is None and time.monotonic() < deadline:
+            time.sleep(0.1)
         env.out.write("loop started\n")
         return 0
     edges = loop.Edges(clock=_now, monotonic=time.monotonic, sleeper=time.sleep,
@@ -851,7 +857,7 @@ def cmd_add(env: Any, a: argparse.Namespace) -> int:
     store.append_event(sid, "created", now=now, caller=caller, when=parsed.when.to_doc(), target=spec.name,
                        err=env.err)
     for w in verdict.warnings:
-        env.err.write(f"tempergraph: schedule add: warning {w}: a signed-in session can end; fires then refuse\n")
+        env.err.write(f"tempergraph: schedule add: warning {w}: {credentials.WARNING_TEXT[w]}\n")
     warning = _trigger_warning(now)  # TCK-B15: saved all the same
     if warning:
         env.err.write(f"tempergraph: schedule add: warning trigger_none: {warning}\n")
@@ -955,7 +961,7 @@ def cmd_edit(env: Any, a: argparse.Namespace) -> int:
     store.append_event(sid, "edited", now=now, caller=caller, changed=changed, old=old.to_doc(), new=echo_when.to_doc(),
                        err=env.err)
     for w in verdict.warnings:
-        env.err.write(f"tempergraph: schedule edit: warning {w}: a signed-in session can end; fires then refuse\n")
+        env.err.write(f"tempergraph: schedule edit: warning {w}: {credentials.WARNING_TEXT[w]}\n")
     if a.json:
         _emit(env, {"schema_version": SCHEMA, "status": "saved", "schedule_id": sid, "changed": changed,
                     "echo": echo.to_doc(), "warnings": verdict.warnings})

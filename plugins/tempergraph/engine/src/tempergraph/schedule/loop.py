@@ -116,6 +116,7 @@ def run_loop(home: Path, e: Edges, *, max_ticks: int | None = None) -> int:
     marker = store.schedules_root(home) / STOP
     marker.unlink(missing_ok=True)
     ticks = 0
+    _info(home, e.clock(), ticks)  # the pid is known from the moment the lock is held
     try:
         while True:
             e.tick()

@@ -39,6 +39,13 @@ class Check:
     refusal: tuple[str, str] | None = None  # (code, message), the first refusal
 
 
+WARNING_TEXT = {
+    "credential_may_expire": "a signed-in session can end; fires then refuse",
+    "credential_none": "no credential this check can see; every fire is refused `credential` until the profile or the "
+                       "environment holds one",
+}
+
+
 def read_profile(home: Path | None = None, name: str = PROFILE) -> dict[str, str]:
     """`name=value` lines of the credentials profile (as the claude executor reads a judge's), or nothing."""
     from tempergraph.store.layout import home_path
@@ -141,6 +148,8 @@ def check(bindings: Sequence[Mapping[str, Any]], held: Mapping[str, frozenset[st
             row["result"] = "none"
             if at_fire:
                 problem = ("credential", f"{executor}: no credential in the profile or the environment; add {FIX}")
+            elif "credential_none" not in out.warnings:  # saved all the same; every fire refuses until one is added
+                out.warnings.append("credential_none")
         elif not usable:
             problem = ("credential_unattended", f"{executor}: {', '.join(sorted(kinds))} cannot be used unattended; "
                                                 f"it takes {', '.join(sorted(caps.unattended_credentials))}")
