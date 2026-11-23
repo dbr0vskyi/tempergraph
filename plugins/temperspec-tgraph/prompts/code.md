@@ -19,9 +19,9 @@ Plan: `{plan}`
 3. For a test row, write the test first and see it fail for the right reason. The test carries the id its row names under Proves, in its name or in a comment on it: the spec's id (`SES-AC1`), or `AC <n>` of the task. A test that carries a criterion is never skipped.
 4. For a code row, make the smallest change in the named file that makes the phase's tests pass.
 5. For a docs row, edit the named document. A spec is edited only where the plan says a behaviour or a criterion changes.
-6. After each phase, run only the test files that the phase's rows name, never the whole suite and never the plan's full verification commands. Fix what fails in your change. Never weaken, skip or delete a test to make a test pass. Then mark each row of the phase whose change is in its file: `✓ <today's date as YYYY-MM-DD>` in its Completed cell.
-7. When every row is done, run each verification command of the plan once, after the last phase and before you write the report (in the quick lane, the note's `Verify` commands once, after the last criterion), and set the plan's `status` to `completed`. The gate checks the marks first and sends an unfinished plan straight back; then it checks every marked row's file and runs the commands itself.
-8. Write the code report to `docs/tasks/{task_id}.report.md`: what each verification command gave, and every deviation from the plan, including each row you could not mark and why. In the quick lane the report also has its Rows table, one line per acceptance criterion.
+6. After each phase, run only the test files that the phase's rows name, as plain commands, never the whole suite and never the plan's full verification commands. Fix what fails in your change. Never weaken, skip or delete a test to make a test pass. Then mark each row of the phase whose change is in its file: `✓ <today's date as YYYY-MM-DD>` in its Completed cell.
+7. When every row is done, set the plan's `status` to `completed` and write the code report to `docs/tasks/{task_id}.report.md`: name each verification command and say what the phases' own test runs showed, and list every deviation from the plan, including each row you could not mark and why. The result of the final run (step 8) is the gate's evidence; the report does not wait for it. In the quick lane the report also has its Rows table, one line per acceptance criterion. The gate checks the marks first and sends an unfinished plan straight back; then it checks every marked row's file and runs the commands itself.
+8. Run each verification command of the plan once, after the last phase, with the plan marked completed and the code report written (in the quick lane, run the note's `Verify` commands once, after the last criterion and the report). Make that one run through the preview command that the engine names under "Check your work before you end": call it once, when nothing is left to change; the phases' own test runs stay plain commands. Change no file after that run: the gate reuses the preview's result only while the tree's content is the same, and a changed file makes it run every command again. Fix what the preview lists as failing, then call it once more.
 
 ## Limits
 
@@ -37,4 +37,4 @@ Plan: `{plan}`
 
 - `code_report`: the path of the code report.
 
-- `tests_passed`: `yes` when every verification command exited 0 on your last run, otherwise `no`.
+- `tests_passed`: `yes` when every verification command exited 0 on your last run through the preview, otherwise `no`.

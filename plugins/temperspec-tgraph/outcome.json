@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 8,
+  "revision": 9,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -1134,8 +1134,8 @@
         {
           "id": "ts-code-once",
           "verified_by": "check",
-          "text": "The code prompt tells the session to run only the test files a phase's rows name after that phase, and each verification command of the plan once, after the last phase and before it writes the report (in the quick lane, the note's `Verify` commands once, after the last criterion)",
-          "check_method": "Read the code prompt file of the package for the two instructions, phrase by phrase",
+          "text": "The code prompt tells the session to run only the test files a phase's rows name after that phase, and each verification command of the plan once, after the last phase, with the plan marked completed and the code report written, and to change no file after that run (in the quick lane, the note's `Verify` commands once, after the last criterion and the report, with no file changed after that run)",
+          "check_method": "Read the code prompt file of the package for the instructions, phrase by phrase",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:code_check"
@@ -1147,6 +1147,61 @@
           "verified_by": "check",
           "text": "The code gate runs a verification command only when no result of that command is recorded for the same tree, so a retry or a later visit of the code step on an unchanged tree runs nothing again (CHK-B13)",
           "check_method": "Read the gate's own command runs: each verification command asked for with reuse, none started twice on one tree, and the count taken from a recorded result",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "warning"
+        },
+        {
+          "id": "ts-code-preview",
+          "verified_by": "check",
+          "text": "The code step declares the engine's check preview, and its prompt tells the session to make its one run of each verification command of the plan through that preview",
+          "check_method": "Read the code prompt file of the package for the instruction, phrase by phrase; the step's declaration is read by the package's tests",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "warning"
+        },
+        {
+          "id": "ts-code-previewed",
+          "verified_by": "check",
+          "text": "A preview of the code gate's check, run after the last phase with the plan marked completed, runs each verification command of the plan (in the quick lane, the note's `Verify` commands) and lists each one that fails with its exit code, and reports no failure for the code report the session has not handed over yet or for the commit that follows the session",
+          "check_method": "The gate cannot see the session's own run: it records n_a, and the package's tests prove the preview branch of the check",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "warning"
+        },
+        {
+          "id": "ts-code-session",
+          "verified_by": "check",
+          "text": "The code gate does not run a verification command again when the session ran it through the check preview on the same tree content, though the session's files were committed after that run (CHK-B13)",
+          "check_method": "The gate cannot see the session's own run: it records n_a, and the package's tests prove the reuse across the commit",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "warning"
+        },
+        {
+          "id": "ts-code-rerun",
+          "verified_by": "check",
+          "text": "The code gate runs a verification command again when any file of the tree changed after the session's run of it (CHK-B13)",
+          "check_method": "The gate cannot see the session's own run: it records n_a, and the package's tests prove the new run after a change",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "warning"
+        },
+        {
+          "id": "ts-code-evidence",
+          "verified_by": "check",
+          "text": "The code gate's evidence names each verification command of the plan that the gate ran or reused, with the word `reused` or `run`",
+          "check_method": "Read the gate's own command runs: one evidence line per verification command, `reused` for a stored result and `run` for a started command",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:code_check"
@@ -1168,7 +1223,8 @@
     "Repository setup is a conditional first step of this workflow because release 1 of the engine has no sub-workflows; it moves into one when the engine has them.",
     "The quick lane's limits (3 acceptance criteria, 2 code files, 200 changed lines) are first values with no run behind them; the share of quick runs sent back to triage is the measure to tune them by.",
     "A test carries its criterion as text (the spec's id, or `AC <n>`); the check finds the text and a skip mark near it, and does not prove that the named test is the one the command ran.",
-    "The spec budget is fixed at 400 lines and 30,720 bytes for every repository, with no setting; it is measured once, at discovery (ts-dis-budget), while ts-spec-cap at the outcome gate counts lines only."
+    "The spec budget is fixed at 400 lines and 30,720 bytes for every repository, with no setting; it is measured once, at discovery (ts-dis-budget), while ts-spec-cap at the outcome gate counts lines only.",
+    "The code gate cannot see the session's own run of the verification commands through the check preview, so it records n_a for ts-code-previewed, ts-code-session and ts-code-rerun; the package's tests prove them. ts-code-preview is read from the prompt and ts-code-evidence from the gate's own command runs."
   ],
   "revisions": [
     {
@@ -1217,6 +1273,12 @@
       "origin": "authored",
       "at": "2026-11-23T12:00:00.000Z",
       "note": "issue 114: the discovery check measures every spec against the spec budget of 400 lines and 30,720 bytes and sends an over-budget spec back for a split by capability (ts-dis-budget, ts-dis-over); the structure check reads an id a split moved as defined in the spec it moved to, and a split-off spec may name ids of the spec it was split from (ts-spec-moved, ts-spec-parent)"
+    },
+    {
+      "revision": 9,
+      "origin": "authored",
+      "at": "2026-11-23T18:00:00.000Z",
+      "note": "issue 126: the code session makes its one run of the verification commands through the engine's check preview after the plan is marked and the report written, the engine's reuse key names the tree's content so the gate reuses that run after the commit, and the gate's evidence says for each command whether it was reused or run (ts-code-once edited; ts-code-preview, ts-code-previewed, ts-code-session, ts-code-rerun, ts-code-evidence added)"
     }
   ]
 }

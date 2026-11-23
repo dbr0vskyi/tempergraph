@@ -270,11 +270,22 @@ def _criteria() -> dict[str, tuple[str, dict[str, Any]]]:
     return out
 
 
-def test_the_criteria_file_is_at_revision_8_with_its_entry() -> None:  # AC 1, AC 2, ts-dis-budget, ts-spec-moved
+def test_the_criteria_file_is_at_revision_9_with_its_entry() -> None:  # AC 5, ts-code-evidence, ts-dis-budget, ts-spec-moved
     o = json.loads((ROOT / "outcome.json").read_text(encoding="utf-8"))
-    assert o["revision"] == 8
-    assert o["revisions"][-1]["revision"] == 8 and "114" in o["revisions"][-1]["note"]
+    assert o["revision"] == 9
+    assert o["revisions"][-1]["revision"] == 9 and "126" in o["revisions"][-1]["note"]
+    assert any(r["revision"] == 8 and "114" in r["note"] for r in o["revisions"])  # the earlier entry is still there
     assert any("30,720" in a and "ts-spec-cap" in a for a in o["assumptions"])
+
+
+@pytest.mark.parametrize("cid", ["ts-code-once", "ts-code-preview", "ts-code-previewed", "ts-code-session",
+                                 "ts-code-rerun", "ts-code-evidence"])
+def test_each_code_criterion_of_the_run_is_a_warning_checked_by_the_gate_with_the_text_of_its_spec_row(
+        cid: str) -> None:  # AC 1, AC 2, AC 3, AC 4, AC 5, ts-code-once, ts-code-preview, ts-code-evidence
+    where, row = _criteria()[cid]
+    assert where == "code" and row["text"] == _rows("08-code.spec.md")[cid]
+    assert row["severity"] == "warning" and row["verified_by"] == "check"
+    assert row["verifier"]["check"] == "tgwf_temperspec.checks:code_check"
 
 
 @pytest.mark.parametrize("cid, unit, spec, verifier", [

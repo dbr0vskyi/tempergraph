@@ -72,9 +72,15 @@ PROMPT_SAYS: dict[str, tuple[str, tuple[str, ...]]] = {
                                     "open another file only for what the list does not answer")),
     "ts-code-once": ("code.md", ("after each phase, run only the test files that the phase's rows name",
                                  "never the whole suite",
-                                 "run each verification command of the plan once, after the last phase and before "
-                                 "you write the report",
-                                 "in the quick lane, the note's `verify` commands once, after the last criterion")),
+                                 "run each verification command of the plan once, after the last phase, with the "
+                                 "plan marked completed and the code report written",
+                                 "change no file after that run",
+                                 "in the quick lane, run the note's `verify` commands once, after the last criterion "
+                                 "and the report")),
+    "ts-code-preview": ("code.md", ("make that one run through the preview command that the engine names under "
+                                    "\"check your work before you end\"",
+                                    "call it once, when nothing is left to change",
+                                    "the phases' own test runs stay plain commands")),
     "ts-dsh-limit": ("discovery_short.md", ("read at most 10 files",)),
 }
 
@@ -238,11 +244,12 @@ def _block_only(ctx: Any, path: str) -> bool:
 
 
 def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
-            links: list[str] | None = None) -> Any:
-    """The result, with the facts a read-only judge cannot get by itself as its evidence."""
+            links: list[str] | None = None, *, commands: list[str] | None = None) -> Any:
+    """The result, with the facts a read-only judge cannot get by itself as its evidence. `commands` are the lines
+    that say how each verification command was answered: first, because a preview prints only the start."""
     bad = "; ".join(f"{f.criterion}: {f.message}" for f in found if f.status == "fail")
     specs, _ = _edited_specs(ctx)
-    lines = [bad or f"{len(found)} checked"]
+    lines = [*(commands or []), bad or f"{len(found)} checked"]
     changed = [p for p in ctx.git.changed_paths if not p.startswith(".claude/rules/")]
     prepared = [p for p in changed if p in CONTEXT_FILES and _block_only(ctx, p)]
     changed = [p for p in changed if p not in prepared]
@@ -801,19 +808,38 @@ def _lane(ctx: Any, criterion: str) -> list[CheckFinding]:
     return found or [_ok(criterion)]
 
 
-def _verify(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
+def _run_commands(ctx: Any, plan: fmt.Plan, criterion: str) -> tuple[list[CheckFinding], list[str]]:
+    """The findings of the plan's verification commands and one evidence line per command: `reused` for a stored
+    result, `run` for a started command, `not run` for one that did not start (ts-code-evidence)."""
     found = _commands(ctx, plan, criterion)
     if found:
-        return found
+        return found, [f"`{cmd}`: not run" for cmd in plan.commands]
+    lines: list[str] = []
     for cmd in plan.commands:
         run = ctx.run(cmd, reuse=True)
         if run.not_started:
+            lines.append(f"`{cmd}`: not run")
             found.append(_find("fail", criterion, cmd[:80], "the command did not start (refused, or out of time)"))
-        elif run.timed_out or not run.finished or run.exit_code != 0:
+            continue
+        lines.append(f"`{cmd}`: {'reused' if run.reused else 'run'}")
+        if run.timed_out or not run.finished or run.exit_code != 0:
             tail = " ".join(str(run.tail or "").split())[-120:]
             found.append(_find("fail", criterion, cmd[:80], f"exit {run.exit_code}: {tail}",
                                "fix the code or the test until the command exits 0"))
-    return found or [_ok(criterion)]
+    return found or [_ok(criterion)], lines
+
+
+def _verify(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
+    return _run_commands(ctx, plan, criterion)[0]
+
+
+def _evidence(lines: list[str], criterion: str) -> CheckFinding:
+    """ts-code-evidence: the gate's own answer for each verification command, counted from its lines."""
+    if not lines:
+        return _find("n_a", criterion, message="no verification command was run by this gate")
+    reused = sum(1 for ln in lines if ln.endswith(": reused"))
+    ran = sum(1 for ln in lines if ln.endswith(": run"))
+    return _find("pass", criterion, message=f"{reused} of {len(lines)} verification commands were reused, {ran} run")
 
 
 def _reuse(ctx: Any, criterion: str) -> CheckFinding:
@@ -837,11 +863,16 @@ def _reuse(ctx: Any, criterion: str) -> CheckFinding:
 
 def code_check(ctx: Any) -> Any:
     """ts-code-rows, ts-code-changed, ts-code-verify, ts-code-reuse, ts-code-proof, ts-code-lane, ts-code-once,
-    ts-code-commit.
+    ts-code-preview, ts-code-previewed, ts-code-session, ts-code-rerun, ts-code-evidence, ts-code-commit.
 
     The marks come first: a plan with a row not marked completed goes back to the code step at once, with no
     command run. Marks are claims, so a marked plan is then verified as before, and each marked row's file must
-    be among the paths the run changed."""
+    be among the paths the run changed.
+
+    In a preview (the session's own call of the check, before its report is handed over and before the commit
+    that follows it) the marks still come first, and the commands run; the report is not read for failures and
+    the uncommitted tree is no failure. The gate cannot see that run, so ts-code-previewed, ts-code-session and
+    ts-code-rerun are recorded n_a: the package's tests prove them."""
     plan, path = _plan(ctx)
     if plan is None:
         return checks.result([_find("fail", "ts-code-rows", path, "the plan cannot be read")])
@@ -849,23 +880,24 @@ def code_check(ctx: Any) -> Any:
     quick = _quick(ctx) is not None
     found: list[CheckFinding] = []
     if report is None:
-        found.append(_find("fail", "ts-code-rows", report_path, "the code report cannot be read",
-                           "write the report and name its path"))
+        if not ctx.preview:
+            found.append(_find("fail", "ts-code-rows", report_path, "the code report cannot be read",
+                               "write the report and name its path"))
     else:
         wanted = fmt.QUICK_REPORT_HEADINGS if quick else fmt.REPORT_HEADINGS
         found += [_find("fail", "ts-code-rows", report_path, f"section `## {h}` is missing or out of order",
-                        f"add `## {h}`") for h in fmt.headings_missing(report, wanted)]
+                        f"add `## {h}`") for h in fmt.headings_missing(report, wanted) if not ctx.preview]
     if not plan.rows:
         found.append(_find("fail", "ts-code-rows", path, "the plan has no task row"))
     elif quick:  # no plan to mark: the report's rows, one per acceptance criterion
         status = fmt.parse_report(report or "")
         found += [_find("fail", "ts-code-rows", report_path, f"row `{r.id}` is not marked `done` in the report",
                         "finish the row, or say which earlier output makes it impossible")
-                  for r in plan.rows if status.get(r.id) != "done"][:10]
+                  for r in plan.rows if status.get(r.id) != "done" and not ctx.preview][:10]
     else:
         found += _marks(plan, "ts-code-rows", path, done=True)
     if any(f.status == "fail" for f in found):  # the cheap return: nothing is run on an unfinished plan
-        return _result(ctx, found + [_committed(ctx, "ts-code-commit")], plan)
+        return _result(ctx, found + ([] if ctx.preview else [_committed(ctx, "ts-code-commit")]), plan)
     found.append(_ok("ts-code-rows", report_path if quick else path))
     if quick or not ctx.git.base:
         found.append(_find("n_a", "ts-code-changed", message="the quick lane has no plan to mark" if quick else
@@ -875,16 +907,22 @@ def code_check(ctx: Any) -> Any:
         found += [_find("fail", "ts-code-changed", r.file, f"row `{r.id}` is marked completed but its file did not "
                         "change in the run", "make the row's change, or clear its mark and say why")
                   for r in plan.rows if r.file and r.file not in changed][:10] or [_ok("ts-code-changed", path)]
+    lines: list[str] = []
     if _value(ctx, "tests_passed") == "no":
         found.append(_find("fail", "ts-code-verify", "tests_passed", "the step itself reports failing tests",
                            "make the plan's verification pass"))
     else:
-        found += _verify(ctx, plan, "ts-code-verify")
+        verified, lines = _run_commands(ctx, plan, "ts-code-verify")
+        found += verified
     found.append(_reuse(ctx, "ts-code-reuse"))
     proof, links = _proof(ctx, plan, "ts-code-proof")
-    found += proof + _lane(ctx, "ts-code-lane") + _prompt_says("ts-code-once")
-    found.append(_committed(ctx, "ts-code-commit"))
-    return _result(ctx, found, plan, links)
+    found += proof + _lane(ctx, "ts-code-lane") + _prompt_says("ts-code-once") + _prompt_says("ts-code-preview")
+    found.append(_evidence(lines, "ts-code-evidence"))
+    found += [_find("n_a", cid, message="the session's own run is not visible to the gate; the package's tests "
+                    "prove it") for cid in ("ts-code-previewed", "ts-code-session", "ts-code-rerun")]
+    if not ctx.preview:
+        found.append(_committed(ctx, "ts-code-commit"))
+    return _result(ctx, found, plan, links, commands=lines)
 
 
 # ---------------------------------------------------------------------------------------------
