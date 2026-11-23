@@ -161,7 +161,8 @@ def definition_audit(spec: Any, tmp: Path, caps: Any = None) -> Any:
     return audit(spec, {"definition"}, ctx(tmp, **({"caps": caps} if caps else {})))
 
 
-def test_ac_7_the_council_one_family_rule_runs_and_raises_on_members_of_one_family(tmp_path: Path) -> None:  # AC 7 (ARC-B15)
+def test_cnl_ac7_the_council_one_family_rule_runs_and_raises_on_members_of_one_family(tmp_path: Path) -> None:
+    """CNL-AC7 (ARC-B15): the `council-one-family` rule runs on a council and raises when its members share a family."""
     rep = definition_audit(council_definition(), tmp_path)
     (f,) = [f for f in rep.findings if f.rule == "council-one-family"]
     assert (f.unit, f.severity, f.layer) == ("decide", "warning", "definition")
@@ -175,7 +176,8 @@ def test_ac_7_the_council_one_family_rule_runs_and_raises_on_members_of_one_fami
     assert "council-one-family" not in {f.rule for f in rep.findings}  # another family: quiet
 
 
-def test_ac_7_the_council_even_majority_rule_runs_and_raises_on_an_even_majority_vote(tmp_path: Path) -> None:  # AC 7 (ARC-B15)
+def test_cnl_ac7_the_council_even_majority_rule_runs_and_raises_on_an_even_majority_vote(tmp_path: Path) -> None:
+    """CNL-AC7 (ARC-B15): the `council-even-majority` rule runs on a council and raises on an even-sized majority vote."""
     from tempergraph.api import Member
 
     base: dict[str, Any] = {"mode": "vote", "options": ["ship", "hold"]}
