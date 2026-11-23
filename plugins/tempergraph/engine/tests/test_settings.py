@@ -396,3 +396,89 @@ def test_an_operator_moves_a_wait_or_ask_deadline() -> None:  # RST-B18, RST-B19
     assert eff.units["signoff"].wait.deadline_s == 60 and eff.units["signoff"].wait.on_deadline == "stop"  # type: ignore[union-attr]
     _, refused = go(sp, {"plan.deadline_s": 60})
     assert [f.code for f in refused] == ["setting_not_for_kind"]
+
+
+def contested(**fields: Any) -> WorkflowSpec:
+    from .test_contest_run import contest_spec
+
+    return contest_spec(slots=3, concurrency=3, cost_cap_usd=1.0, **fields)
+
+
+def test_rst_ac1_a_contests_two_keys_are_accepted_from_every_layer() -> None:  # RST-AC1 (RST-B19), CTS-AC6
+    sp = contested()
+    res, findings = go(sp)
+    assert findings == [] and res.values["pick.concurrency"] == 3  # the unit's own declared values
+    assert res.values["pick.attempt_cost_cap_usd"] == 1.0
+    assert row(res, "pick.concurrency")["layer"] == "workflow:unit"
+    res, findings = go(sp, {"pick.concurrency": 1, "pick.attempt_cost_cap_usd": 0.4})
+    assert findings == [] and (row(res, "pick.concurrency")["layer"], row(res, "pick.attempt_cost_cap_usd")["layer"]) == (
+        "flag", "flag")  # a flag resolves over what the unit declares
+    assert (res.values["pick.concurrency"], res.values["pick.attempt_cost_cap_usd"]) == (1, 0.4)
+    project = ConfigFiles(project={"schema_version": 1, "overrides": [{"workflow": "demo", "set": {
+        "pick.concurrency": 2, "pick.attempt_cost_cap_usd": 0.7}}]}, project_path=Path("/p/settings.json"))
+    res, findings = go(sp, files=project)
+    assert findings == [] and row(res, "pick.concurrency")["layer"] == "project:overrides"
+    assert (res.values["pick.concurrency"], res.values["pick.attempt_cost_cap_usd"]) == (2, 0.7)
+    from .test_contest_run import contest_spec
+
+    user = ConfigFiles(user={"schema_version": 1, "overrides": [{"workflow": "demo", "set": {
+        "pick.attempt_cost_cap_usd": 0.9, "pick.concurrency": 4}}]}, user_path=Path("/u/settings.json"))
+    res, findings = go(contest_spec(slots=3), files=user)  # no declared cap: the user's value is the cap
+    assert findings == [] and res.values["pick.attempt_cost_cap_usd"] == 0.9 and res.values["pick.concurrency"] == 4
+    assert row(res, "pick.attempt_cost_cap_usd")["layer"] == "user:overrides"
+    profile = ConfigFiles(user={"schema_version": 1, "profiles": {"fast": {"pick.concurrency": 2}}},
+                          user_path=Path("/u/settings.json"))
+    res, findings = go(sp, profiles=("fast",), files=profile)
+    assert findings == [] and res.values["pick.concurrency"] == 2 and row(res, "pick.concurrency")["layer"] == "profile"
+
+
+def test_rst_ac1_the_resolved_values_reach_the_contest_the_run_executes() -> None:  # RST-AC1 (RST-B19), CTS-AC6
+    sp = contested()
+    res, _ = go(sp, {"pick.concurrency": 1, "pick.attempt_cost_cap_usd": 0.4})
+    eff = effective_spec(sp, res)
+    c = eff.units["pick"].contest
+    assert c is not None and (c.concurrency, c.cost_cap_usd) == (1, 0.4)
+    assert sp.units["pick"].contest.concurrency == 3 and sp.units["pick"].contest.cost_cap_usd == 1.0  # type: ignore[union-attr]
+    plain, _ = go(sp)
+    kept = effective_spec(sp, plain).units["pick"].contest
+    assert kept is not None and (kept.concurrency, kept.cost_cap_usd) == (3, 1.0)
+
+
+@pytest.mark.parametrize(("key", "value"), [("draft.concurrency", 2), ("draft.attempt_cost_cap_usd", 0.5),
+                                            ("steps.concurrency", 2), ("run.concurrency", 2),
+                                            ("judge:draft.concurrency", 2)])
+def test_rst_ac1_the_two_keys_are_refused_on_any_other_kind_of_unit(key: str, value: Any) -> None:  # RST-AC1 (RST-B19)
+    _, findings = go(spec(), {key: value})
+    assert [f.code for f in findings] == ["setting_not_for_kind"], findings
+
+
+def test_rst_ac1_concurrency_stays_refused_on_a_map() -> None:  # RST-AC1 (RST-B19)
+    from .test_map_concurrent import concurrent
+
+    _, findings = go(concurrent(concurrency=2), {"phase.concurrency": 1})
+    assert [f.code for f in findings] == ["setting_not_for_kind"], findings
+
+
+@pytest.mark.parametrize(("key", "value"), [("pick.concurrency", 6), ("pick.concurrency", 0), ("pick.concurrency", -1),
+                                            ("pick.attempt_cost_cap_usd", 0), ("pick.attempt_cost_cap_usd", -1.5),
+                                            ("pick.attempt_cost_cap_usd", "x")])
+def test_rst_ac1_an_out_of_range_value_is_refused(key: str, value: Any) -> None:  # RST-AC1 (RST-B19)
+    _, findings = go(contested(), {key: value})
+    assert [f.code for f in findings] == ["setting_value"], findings
+
+
+def test_a_slot_scope_key_stays_refused_and_its_message_no_longer_says_release_3() -> None:  # RST-AC1 (RST-B17, RST-B18)
+    _, findings = go(contested(), {"pick.slot:s1.model": "small"})
+    assert [f.code for f in findings] == ["setting_not_for_kind"], findings
+    assert "release 3" not in findings[0].message and "slot" in findings[0].message
+
+
+def test_rst_ac2_a_contests_base_step_takes_the_unit_and_steps_keys() -> None:  # RST-AC2 (RST-B2, RST-B17, RST-B23)
+    sp = contested()
+    res, findings = go(sp, {"steps.model": "small", "pick.timeout_s": 900, "pick.retry_budget": 1})
+    assert findings == []
+    eff = effective_spec(sp, res)
+    unit = eff.units["pick"]
+    assert unit.step is not None and unit.step.model == "small" and unit.step.timeout_s == 900
+    assert unit.gate.retry_budget == 1 and unit.contest is not None and unit.contest.concurrency == 3
+    assert "model" in (unit.extra.get("operator_set") or ())  # an operator's model is no slot's to override

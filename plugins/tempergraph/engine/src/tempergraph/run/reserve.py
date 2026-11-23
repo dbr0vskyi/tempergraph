@@ -1,10 +1,11 @@
-"""Reservations for the sessions that run at once: the branches of a parallel block, writer branches included, and the
-items of a concurrent map (BUD-B12 to BUD-B15).
+"""Reservations for the sessions that run at once: the branches of a parallel block, writer branches included, the
+items of a concurrent map and the slots of a contest, their step and judge sessions alike (BUD-B12 to BUD-B15).
 
-A thread-safe ledger of what each running session holds. A branch's or an item's cost reaches the run state only when
-its superstep ends, so the cost check cannot see a sibling; the ledger counts what is in flight, and adds the real cost
-of sessions that ended in the same superstep, which the state a sibling read at its start does not hold. The width a
-caller gives `share` is the number of branches of the block, or the items of the map that may run at once.
+A thread-safe ledger of what each running session holds. A branch's, an item's or a slot's cost reaches the run state only
+when its superstep or its node ends, so the cost check cannot see a sibling; the ledger counts what is in flight, and
+adds the real cost of sessions that ended under the same snapshot of the state, which the state a sibling read at its
+start does not hold. The width a caller gives `share` is the number of branches of the block, the items of the map or the
+slots of the contest that may run at once: the lower of `concurrency` and the number of items or slots.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ Write = Callable[..., object]
 
 
 def share(cap_usd: float, spent_usd: float, width: int) -> tuple[float, str]:
-    """The run's remaining cap divided by the number of branches (BUD-B12, third tier)."""
+    """The run's remaining cap divided by the number of branches, items or slots that may run at once (BUD-B12, third tier)."""
     return round((cap_usd - spent_usd) / max(width, 1), 6), "share"
 
 

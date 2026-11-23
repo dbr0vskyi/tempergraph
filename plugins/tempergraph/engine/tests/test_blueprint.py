@@ -101,6 +101,7 @@ def test_reference_nobody_produces() -> None:
     (lambda d: d.update(colour="blue"), "unknown_key"),
     (lambda d: d["units"][0].update(kind="council"), "not_in_release"),
     (lambda d: d["units"][0].update(kind="subworkflow"), "not_in_release"),  # SCF-B9: the blueprint states no sub-workflow (AC 1)
+    (lambda d: d["units"][0].update(kind="contest"), "not_in_release"),  # SCF-B9: it cannot state slots, so it refuses a contest (CTS-AC1)
     (lambda d: d.update(flow={"plan": {"parallel": ["a", "b"]}}), "blueprint-invalid"),  # a shape on a step
     (lambda d: d["units"][1].update(kind="map"), "blueprint-invalid"),  # a map states what it runs over
     (lambda d: d["units"][0].update(kind="ask", produces=["plan"]), "blueprint-invalid"),

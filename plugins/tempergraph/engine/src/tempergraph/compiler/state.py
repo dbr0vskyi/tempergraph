@@ -127,7 +127,8 @@ SLOT_CHANNELS = ("attempts", "judgements", "feedback", "counters", "route", "pau
 
 
 def slot(unit: str, item: str) -> str:
-    """`<unit>.<item id>`: how an item of a concurrent map is addressed (an item id holds no dot)."""
+    """`<unit>.<item id>`: how an item of a concurrent map, or a slot of a contest, is addressed (an item id holds no dot;
+    a slot name is a slug, which holds none either)."""
     return f"{unit}.{item}"
 
 
@@ -156,6 +157,13 @@ def slot_writes(writes: Mapping[str, Any], unit: str, item: str) -> dict[str, An
         if isinstance(got, dict) and unit in got:
             out[channel] = {(at if k == unit else k): v for k, v in got.items()}
     return out
+
+
+def own_keys(held: Mapping[str, Any] | None, item: str) -> dict[str, Any]:
+    """One item's keys of a unit's artifacts, values or facts as plain keys: `<key>[<item>]` read as `<key>`. A contest's
+    judge sees these only, so one slot's judge holds no other slot's artifact (CTS-B3)."""
+    tail = f"[{item}]"
+    return {k[: -len(tail)]: v for k, v in (held or {}).items() if k.endswith(tail)}
 
 
 def item_end(unit: str, item: str, token: str, node: str) -> dict[str, Any]:

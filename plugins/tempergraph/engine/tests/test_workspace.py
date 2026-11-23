@@ -133,6 +133,32 @@ def test_worktree_lifecycle(repo: Path) -> None:
     assert done.state == "released" and wt.exists()  # never removed in release 1
 
 
+def test_slot_worktrees_are_cut_after_a_checkpoint_and_named_by_their_slot(repo: Path) -> None:  # CTS-AC4 (CTS-B5, WTR-B20)
+    root = ensure_state_root(state_root_path(repo))
+    plan = resolve_workspace(two_step(), repo, task_id="T-5")
+    rec = prepare_workspace("demo/T-5", plan, WorktreeDecl(), root)
+    run_path = Path(rec.path)
+    (run_path / "early.txt").write_text("left by an earlier unit\n")
+    from tempergraph import git as gitmod
+
+    gitmod.commit_all(run_path, "tempergraph: checkpoint before pick")  # the checkpoint a contest takes when entered
+    checkpoint = gitmod.head(run_path)
+    rec = cut_writers(rec, "demo/T-5", ["pick.s1", "pick.s2"], None, root, kind="s")
+    assert [c["unit"] for c in rec.children] == ["pick.s1", "pick.s2"]
+    assert [Path(c["path"]).name for c in rec.children] == ["demo--T-5--s-s1", "demo--T-5--s-s2"]  # `--s-<slot>`
+    assert [c["branch"] for c in rec.children] == ["tg/demo/T-5--s-s1", "tg/demo/T-5--s-s2"]
+    for c in rec.children:
+        assert gitmod.head(Path(c["path"])) == checkpoint  # cut after the checkpoint: it holds `early.txt`
+        assert (Path(c["path"]) / "early.txt").exists()
+    with pytest.raises(WorkspaceRefused) as err:  # a second cut would meet the slots' branches: refused, never overwritten
+        cut_writers(rec, "demo/T-5", ["pick.s1"], None, root, kind="s")
+    assert err.value.word == "name_collision"
+    assert [Path(c["path"]).name for c in rec.children] == ["demo--T-5--s-s1", "demo--T-5--s-s2"]  # nothing removed
+    kept = cut_writers(rec, "demo/T-5", ["lint"], None, root)  # the other kinds keep their names and their reuse
+    assert Path(kept.children[-1]["path"]).name == "demo--T-5--w-lint"
+    assert cut_writers(kept, "demo/T-5", ["lint"], None, root).children == kept.children
+
+
 def test_failed_bootstrap_removes_worktree_and_branch(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # WTR-AC5 (WTR-B22, WTR-B23): the rollback needs no `--force`, `branch -D` or `branch -d`
     seen: list[list[str]] = []

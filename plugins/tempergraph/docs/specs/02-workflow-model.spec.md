@@ -83,7 +83,7 @@ WHEN a workflow is validated THE engine SHALL only warn when a prompt names a to
 
 ### WFM-B13 Wait and parallel fields
 
-WHEN `wait` and `parallel` units are declared THE engine SHALL read a wait's `event` (a slug), `check` (callable ref), `deadline_s` and `on_deadline`, and a parallel unit's `branches` (two or more unit names), with `ask`, `wait` and `parallel` in the release, `council` and `contest` refused `not_in_release`, and `subworkflow` read as [SWF-B7](99-subworkflow-unit.spec.md) reads it.
+WHEN `wait` and `parallel` units are declared THE engine SHALL read a wait's `event` (a slug), `check` (callable ref), `deadline_s` and `on_deadline`, and a parallel unit's `branches` (two or more unit names), with `ask`, `wait` and `parallel` in the release, `council` refused `not_in_release`, and `subworkflow` and `contest` read as [SWF-B7](99-subworkflow-unit.spec.md) and [CTS-B6](72-contest-unit.spec.md) read them.
 
 - GIVEN a parallel unit with one branch WHEN it validates THEN it is refused `parallel-branches`
 

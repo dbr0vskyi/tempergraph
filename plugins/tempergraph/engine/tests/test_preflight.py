@@ -146,6 +146,33 @@ def test_ecc_ac9_mcp_judge_views_are_deferred_where_judge_mcp_is_false() -> None
     assert "judge-view-deferred" in [w.code for w in rep.warnings]
 
 
+def _contest_spec(*slots: Any, tools: tuple[str, ...] = ("read",)) -> Any:
+    from tempergraph.api import Contest, Routing, Workflow
+
+    from .fixtures.workflows import named
+
+    step = Step(prompt="Draft {request}", tools=list(tools),
+                gate=Gate(judge=Judge(stance="V."), criteria=[crit("c-slot")]))
+    return named(Workflow(order=["pick"], units={"pick": Contest(step=step, slots=list(slots))},
+                          issue_repository="acme/x", routing=Routing(description="Best of two")))
+
+
+def test_a_contest_slot_override_that_cannot_bind_or_map_is_refused() -> None:  # CTS-AC1 (CTS-B10)
+    from tempergraph.api import Slot
+
+    registry = reg("claude", "messages-api")
+    ok = _contest_spec(Slot("a", executor="messages-api", model="large"), Slot("b", model="small"))
+    rep = preflight_of(ok, registry)
+    assert rep.ok, rep.refusals  # slots that bind and map pass
+    unbound = _contest_spec(Slot("a", executor="messages-api", model="messages-api:deep"), Slot("b", model="small"))
+    assert "contest-slot-alias-unbound" in codes(preflight_of(unbound, registry))  # the alias is no executor's
+    unmapped = _contest_spec(Slot("a", executor="messages-api"), Slot("b"), tools=("read", "subagent"))
+    assert "contest-slot-tool-unmapped" in codes(preflight_of(unmapped, registry))  # `messages-api` maps no `subagent`
+    unknown = _contest_spec(Slot("a", executor="antigravity"), Slot("b", model="small"))
+    assert "contest-slot-executor-unknown" in codes(preflight_of(unknown, registry))
+    assert preflight_of(ok, registry).step_executors == {"pick": "claude"}
+
+
 def test_missing_observers_are_preflight_warnings() -> None:  # EVT-AC5 (EVT-B23): one warning per missing name
     from tempergraph.executors.preflight import observer_warnings
 

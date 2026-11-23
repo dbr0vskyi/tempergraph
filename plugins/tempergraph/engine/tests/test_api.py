@@ -45,3 +45,26 @@ def test_callable_recorded_by_reference() -> None:
 def test_built_spec_has_no_identity_until_loaded() -> None:
     wf = Workflow(order=["a"], units=_units(), issue_repository="a/b", routing=Routing(description="Do it"))
     assert wf.name == "" and wf.version == "0.0.0"
+
+
+def test_contest_and_slot_are_real_builders() -> None:  # CTS-AC1 (CTS-B6, PKG-B19)
+    from tempergraph import api
+    from tempergraph.contracts import ContestSpec, SlotSpec
+    from tempergraph.model.validate import errors, validate
+
+    from .test_contest_validate import CLAUDE_ONLY, base_step, workflow
+
+    assert api.Contest.__name__ == "Contest" and "not_in_release" not in (api.Contest.__doc__ or "")
+    u = api.Contest(step=base_step(), slots=[api.Slot("a", executor="claude", model="small", prompt_variant="Go"),
+                                             api.Slot("b")], writes=False, retry_scope="all", concurrency=2,
+                    cost_cap_usd=0.75)
+    assert u.kind == "contest" and isinstance(u.contest, ContestSpec) and u.step is not None
+    assert u.contest.slots == (SlotSpec(name="a", executor="claude", model="small", prompt_variant="Go"),
+                               SlotSpec(name="b"))
+    assert (u.contest.retry_scope, u.contest.concurrency, u.contest.cost_cap_usd) == ("all", 2, 0.75)
+    assert api.Contest(step=base_step(), slots=4).contest.slots == 4  # type: ignore[union-attr]
+    assert errors(validate(workflow(u), CLAUDE_ONLY)) == []
+    with pytest.raises(TypeError):
+        api.Contest(step=api.Contest(step=base_step()))  # takes a unit built with Step()
+    with pytest.raises(TypeError):
+        api.Contest(step=base_step(), slotz=2)  # type: ignore[call-arg]

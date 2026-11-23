@@ -196,11 +196,24 @@ def council_conformity(spec: WorkflowSpec, facts: HistoryFacts) -> list[AuditFin
     return out
 
 
+def _place(value: Any) -> int | None:
+    """A place in a `contest` record (EVT-B15): an integer counted from 1, as the engine writes it; None for any other."""
+    try:
+        return int(value) if value is not None and not isinstance(value, bool) else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _picked_among_many(record: Any) -> bool:
+    """A `contest` record that picked among slots: two or more (a retry that ran the winner's slot alone is no pick)."""
+    return len(record.get("slots") or []) >= 2
+
+
 def contest_no_gain(spec: WorkflowSpec, facts: HistoryFacts) -> list[AuditFinding]:
     out = []
     for unit in dict.fromkeys(str(c.get("unit")) for c in facts.contests):
-        picks = [c for c in facts.contests if str(c.get("unit")) == unit and c.get("slots")]
-        lowest = sum(1 for c in picks if c.get("winner") == min(int(s["slot"]) for s in c["slots"]))
+        picks = [c for c in facts.contests if str(c.get("unit")) == unit and _picked_among_many(c)]
+        lowest = sum(1 for c in picks if _place(c.get("winner")) == min(_place(s.get("slot")) or 0 for s in c["slots"]))
         if len(picks) >= P["min_picks"] and lowest / len(picks) >= P["contest_lowest_slot_share"]:
             out.append(finding("contest-no-gain", facts, unit, f"the lowest-numbered slot of {unit} won {lowest} of "
                                f"{len(picks)} picks", evidence={"picks": len(picks), "lowest_slot_wins": lowest,
@@ -221,5 +234,5 @@ HISTORY_C5_C8: dict[str, Rule] = {
 SAMPLE_N: dict[str, Callable[[HistoryFacts], int]] = {
     "council-rounds-no-gain": lambda f: sum(len(v) for v in _councils(f).values()),
     "council-conformity": lambda f: sum(len(_later(c)) for v in _councils(f).values() for c in v),
-    "contest-no-gain": lambda f: sum(1 for c in f.contests if c.get("slots")),
+    "contest-no-gain": lambda f: sum(1 for c in f.contests if _picked_among_many(c)),
 }

@@ -39,12 +39,15 @@ def diagram_model(spec: WorkflowSpec) -> dict[str, Any]:
             for b in u.branches:
                 nodes.append(flow.done_node(b))
                 edges += [[fork, flow.step_node(b), "fork"], [flow.done_node(b), step, "join"]]
-        units.append({
+        entry: dict[str, Any] = {
             "name": unit,
             "kind": u.kind if u is not None else "outcome",
             "summary": (u.step.summary if u is not None and u.step is not None else "") if u else "outcome gate",
             "approval": bool(u.gate.approval) if u is not None else False,
-        })
+        }
+        if flow.is_contest(spec, unit):  # CMP-B16: a contest is one unit, drawn with its slot count
+            entry["slots"] = len(flow.slot_names(spec, unit))
+        units.append(entry)
     nodes.append(flow.FINALIZER)
     edges.append([flow.FINALIZER, flow.END, "next"])
     edges.append(["__start__", flow.entry_node(spec, order[0]), "next"])
@@ -71,6 +74,8 @@ def to_mermaid(model: dict[str, Any]) -> str:
     ov = model.get("overlay") or {}
     for u in model["units"]:
         label = u["name"] + (f"<br/>{u['summary']}" if u["summary"] else "") + (" ✋" if u["approval"] else "")
+        if u.get("slots"):  # a contest: its slot count beside the unit's name (CMP-B16)
+            label += f"<br/>{u['slots']} slots"
         o = (ov.get("units") or {}).get(u["name"])
         if o:  # the run overlay (OBS-B15): counts and engine words only
             verdicts = ", ".join(f"{k} {v}" for k, v in o["verdicts"].items())

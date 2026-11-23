@@ -161,7 +161,7 @@ def test_codes_are_distinct_per_fixture() -> None:
     assert len({c for c, _ in CASES}) == len(CASES)
 
 
-LATER = ["Council", "Contest"]
+LATER = ["Council"]
 
 
 @pytest.mark.parametrize("builder", LATER)
@@ -172,6 +172,17 @@ def test_later_kinds_not_in_release(builder: str) -> None:
     spec = dataclasses.replace(spec, units=units, order=(*spec.order, "later"))
     found = [f for f in validate(spec, CLAUDE_ONLY) if f.code == "not_in_release"]
     assert found and any("release" in f.message for f in found)
+
+
+def test_a_well_formed_contest_is_not_refused_as_not_in_release() -> None:  # CTS-AC1 (CTS-B6)
+    spec = two_step()
+    step = Step(prompt="Alternative {request}", tools=["read"], produces={"alt": Value()},
+                gate=Gate(judge=Judge(stance="V."), criteria=[crit("c-alt")]))
+    units = {**spec.units, "later": api.Contest(step=step, slots=[api.Slot("a", model="small"),
+                                                                  api.Slot("b", model="large")])}
+    spec = dataclasses.replace(spec, units=units, order=(*spec.order, "later"))
+    assert not [f for f in validate(spec, CLAUDE_ONLY) if f.code == "not_in_release"]
+    assert codes(spec) == set()
 
 
 def test_scr_ac1_script_cache_is_built_and_its_own_refusals_hold() -> None:  # SCR-AC1

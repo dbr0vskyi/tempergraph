@@ -330,6 +330,27 @@ class MapSpec:
     models: tuple[str, ...] = ()  # the aliases `item_model` may choose among
 
 
+@dataclass(frozen=True, kw_only=True)
+class SlotSpec:
+    """CTS-B6: one candidate slot of a contest; each override applies to that slot's step only."""
+
+    name: str
+    executor: str | None = None
+    model: str | None = None
+    prompt_variant: str | None = None  # appended to the base prompt under "Approach for this attempt"
+
+
+@dataclass(frozen=True, kw_only=True)
+class ContestSpec:
+    """CTS-B6. The step and the gate every slot runs are the unit's own `step` and `gate`."""
+
+    slots: int | tuple[SlotSpec, ...] = 3  # an int runs the base step unchanged in `s1` to `sN`
+    writes: bool = False
+    retry_scope: Literal["best", "all"] = "best"
+    concurrency: int = 3
+    cost_cap_usd: float | None = None  # per attempt; unstarted slots are skipped once it is reached
+
+
 AnswerKind = Literal["text", "choice", "choices", "number", "bool", "file", "url"]
 
 
@@ -393,6 +414,7 @@ class UnitSpec:
     switch: SwitchSpec | None = None
     subworkflow: SubworkflowSpec | None = None
     extra: Mapping[str, Any] = field(default_factory=dict)  # fields of kinds not in this release
+    contest: ContestSpec | None = None
 
 
 @dataclass(frozen=True, kw_only=True)

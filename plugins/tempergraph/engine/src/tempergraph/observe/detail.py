@@ -121,6 +121,7 @@ class _Fold:
         self.units: dict[str, dict[str, Any]] = {}
         self.sessions: dict[str, dict[str, Any]] = {}
         self.current: dict[str, dict[str, Any]] = {}  # unit -> its open attempt
+        self._round: dict[str, int] = {}  # contest unit -> the picks recorded so far
         self.budgets: dict[str, dict[str, Any]] = {}
         self.touches: list[dict[str, Any]] = []
         self.pause: dict[str, Any] | None = None
@@ -139,18 +140,38 @@ class _Fold:
             u["visits"].append({"visit": 1, "entered_from": entered_from, "attempts": []})
         return u["visits"][-1]
 
+    def _contest(self, unit: str) -> bool:
+        u = self.units_spec.get(unit)
+        return u is not None and getattr(u, "kind", None) == "contest"
+
+    def _entry(self, unit: str, number: Any, item: Any, ts: Any) -> dict[str, Any]:
+        att: dict[str, Any] = {"attempt": number, "item": item, "started_at": ts, "ended_at": None, "step": None,
+                               "check": None, "judge": None, "gate": None, "repeat_cause": None}
+        if self._contest(unit):  # RDD-B19, RDD-B20: a slot's verdict, keys, `skipped` and `winner` come with the pick
+            att.update(verdict=None, keys=None, skipped=False, winner=None)
+        return att
+
     def _attempt(self, unit: str, number: Any, item: Any, ts: Any) -> dict[str, Any]:
         visit = self._visit(unit)
         for a in visit["attempts"]:
             if a["attempt"] == number and a["item"] == item:
                 return a
-        att: dict[str, Any] = {"attempt": number, "item": item, "started_at": ts, "ended_at": None, "step": None,
-                               "check": None, "judge": None, "gate": None, "repeat_cause": None}
+        att = self._entry(unit, number, item, ts)
         visit["attempts"].append(att)
         self.current[unit] = att
         return att
 
-    def _open(self, unit: str) -> dict[str, Any] | None:
+    def _open(self, unit: str, item: Any = None, attempt: Any = None) -> dict[str, Any] | None:
+        """RDD-B10: the attempt a record belongs to: the one of the `item` it names (and its `attempt` when it names one),
+        else the unit's open attempt; interleaved slots or items of a unit keep their own records."""
+        held = self.units.get(unit)
+        if item is not None and held and held["visits"]:
+            mine = [a for a in held["visits"][-1]["attempts"] if a["item"] == item]
+            if attempt is not None:
+                exact = [a for a in mine if a["attempt"] == attempt]
+                mine = exact or mine
+            if mine:
+                return mine[-1]
         return self.current.get(unit)
 
     def feed(self, r: Mapping[str, Any]) -> None:
@@ -230,15 +251,44 @@ class _Fold:
         att.setdefault("scripts", []).append({k: r.get(k) for k in (
             "name", "phase", "exit_code", "duration_s", "cached", "environmental")})
 
+    def _on_contest(self, r: Mapping[str, Any], unit: str | None) -> None:
+        """EVT-B15, RDD-B19, RDD-B20: a pick. Each slot it names gets its verdict and keys, and `winner` true on the slot the
+        pick kept and false on the others, null when it kept none; a slot the cost cap kept from starting is an entry of its
+        own with `skipped` true. The pick's entries are one round, the order the slots are declared in."""
+        if not unit or not self._contest(unit):
+            return
+        self._round[unit] = self._round.get(unit, 0) + 1
+        place = r.get("winner") if isinstance(r.get("winner"), int) else None
+        visit = self._visit(unit)
+        entries: list[dict[str, Any]] = []
+        for row in r.get("slots") or []:
+            if not isinstance(row, Mapping):
+                continue
+            name = row.get("name")
+            if row.get("skipped"):
+                entry = self._entry(unit, None, name, r.get("ts"))
+                entry["skipped"] = True
+                visit["attempts"].append(entry)
+            else:
+                entry = self._attempt(unit, row.get("attempt"), name, r.get("ts"))
+                entry["verdict"] = row.get("verdict")
+                entry["keys"] = dict(row["keys"]) if isinstance(row.get("keys"), Mapping) else None
+            entry["winner"] = None if place is None else row.get("slot") == place
+            entry["_round"] = self._round[unit]
+            entries.append(entry)
+        kept = next((e for e in entries if e["winner"]), None) or (entries[0] if entries else None)
+        if kept is not None:
+            self.current[unit] = kept  # the unit's own gate record, which names no item, lands on the winner's entry
+
     def _on_check(self, r: Mapping[str, Any], unit: str | None) -> None:
-        att = self._open(unit) if unit else None
+        att = self._open(unit, r.get("item"), r.get("attempt")) if unit else None
         if att is not None:
             att["check"] = {"result": r.get("result"), "environmental": r.get("environmental"),
                             "duration_s": r.get("duration_s"), "output_path": r.get("output_path"),
                             "evidence": _text(r.get("evidence"), EVIDENCE_CLIP)}
 
     def _on_judgement(self, r: Mapping[str, Any], unit: str | None) -> None:
-        att = self._open(unit) if unit else None
+        att = self._open(unit, r.get("item"), r.get("attempt")) if unit else None
         if att is None:
             return
         statuses = [{"n": s.get("n"), "id": s.get("id"), "status": s.get("status")}
@@ -252,7 +302,7 @@ class _Fold:
                             guard=r.get("guard"))
 
     def _on_gate(self, r: Mapping[str, Any], unit: str | None) -> None:
-        att = self._open(unit) if unit else None
+        att = self._open(unit, r.get("item")) if unit else None
         if att is None:
             return
         verdict = r.get("verdict") or r.get("token")
@@ -356,10 +406,13 @@ def _sessions_of(unit: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
-def _state(name: str, unit: dict[str, Any] | None, row: Mapping[str, Any], current: str | None) -> str:
+def _state(name: str, unit: dict[str, Any] | None, row: Mapping[str, Any], current: str | None,
+           contest: bool = False) -> str:
     if name in {g.get("unit") for g in row.get("pending_gates") or []}:
         return "paused"
-    last = next((a for v in reversed((unit or {}).get("visits") or []) for a in reversed(v["attempts"])), None)
+    attempts = [a for v in reversed((unit or {}).get("visits") or []) for a in reversed(v["attempts"])]
+    last = next((a for a in attempts if a.get("gate")), None) if contest else None  # the unit's gate record, on one entry
+    last = last or next(iter(attempts), None)
     if last is None:
         return "skipped" if row.get("state") == "finished" else "not_reached"
     verdict = (last.get("gate") or {}).get("verdict")
@@ -435,10 +488,18 @@ def detail(root: Path, spec: WorkflowSpec, tid: str, *, unit: str | None = None,
         durations = [d for v in u["visits"] for a in v["attempts"]
                      for d in [_secs(a.get("started_at"), a.get("ended_at"))] if d is not None]
         visits = []
+        contest = fold._contest(name)
+        slots = flow.slot_names(spec, name) if contest else ()
         for v in u["visits"]:
             attempts = []
-            for a in v["attempts"]:
-                out = dict(a)
+            held = v["attempts"]
+            if contest:  # RDD-B19: each pick's slots in the order they are declared; slots whose pick has not run, last
+                held = sorted(held, key=lambda a: (a.get("_round") or 10**9,
+                                                   slots.index(a["item"]) if a.get("item") in slots else len(slots)))
+            for a in held:
+                out = {k: x for k, x in a.items() if k != "_round"}
+                if contest:
+                    out["cost"] = _unit_cost([s for part in ("step", "judge") for s in (a.get(part) or {}).get("sessions") or []])
                 for part in ("step", "judge"):
                     if out.get(part):
                         out[part] = {**out[part], "sessions": [
@@ -449,7 +510,7 @@ def detail(root: Path, spec: WorkflowSpec, tid: str, *, unit: str | None = None,
                             for s in out[part].get("sessions") or []]}
                 attempts.append(out)
             visits.append({**v, "attempts": attempts})
-        entry = {"name": name, "state": _state(name, u, row, current), "visits": visits, "cost": cost,
+        entry = {"name": name, "state": _state(name, u, row, current, contest), "visits": visits, "cost": cost,
                  "duration_s": round(sum(durations), 3) if durations else None, "share": None}
         per_unit.append((entry, cost))
         units_out.append(entry)
