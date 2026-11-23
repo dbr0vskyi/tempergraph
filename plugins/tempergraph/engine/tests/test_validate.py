@@ -174,6 +174,20 @@ def test_later_kinds_not_in_release(builder: str) -> None:
     assert found and any("release" in f.message for f in found)
 
 
+def test_wfm_ac6_a_contest_is_refused_not_in_release_and_a_council_is_not() -> None:  # WFM-AC6 (WFM-B10, WFM-B13)
+    def with_unit(unit: Any) -> WorkflowSpec:
+        spec = two_step()
+        return dataclasses.replace(spec, units={**spec.units, "later": unit}, order=(*spec.order, "later"))
+
+    contest = with_unit(api.Contest(branches=["a", "b"]))
+    assert any(f.code == "not_in_release" for f in validate(contest, CLAUDE_ONLY))
+    judged = Gate(judge=Judge(stance="Verify.", references=["positions"]), criteria=[crit("c-dec")])
+    council = with_unit(api.Council(question="Which design?", members=[api.Member(name="a", stance="x"),
+                                                                       api.Member(name="b", stance="y")],
+                                    chair=api.Chair(), gate=judged))
+    assert "not_in_release" not in {f.code for f in validate(council, CLAUDE_ONLY)}
+
+
 def test_scr_ac1_script_cache_is_built_and_its_own_refusals_hold() -> None:  # SCR-AC1
     ok = Script(run=["pytest"], cache="thread", side_effects="none", inputs=["x"])
     assert codes(_step(two_step(), "draft", before=(ok,))) == set()  # no `not_in_release` for `cache: thread`
