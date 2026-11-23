@@ -1,0 +1,37 @@
+name: Live check
+description: A check or probe that must run against a signed-in executor (and sometimes on a specific machine).
+labels: ["type: live-check", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A live result is recorded only from a real run. It is never inferred, and a failure is kept as a finding.
+        The runbook and the results table live in the package's `docs/plans/live-checks.plan.md`; this issue tracks that the row is still open.
+  - type: input
+    id: row
+    attributes:
+      label: Row or probe id
+      placeholder: "L-17, P-SCH-2"
+    validations: {required: true}
+  - type: textarea
+    id: how
+    attributes:
+      label: How to run it
+      description: The command or steps, or a link to the runbook row.
+    validations: {required: true}
+  - type: textarea
+    id: pass
+    attributes:
+      label: A pass looks like
+    validations: {required: true}
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where it can run
+      options: [cloud container, owner's machine, Windows machine, macOS machine, Linux with systemd]
+    validations: {required: true}
+  - type: textarea
+    id: updates
+    attributes:
+      label: Then update
+      description: Spec rows and docs that change once it passes.

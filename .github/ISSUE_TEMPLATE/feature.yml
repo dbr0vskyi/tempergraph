@@ -1,0 +1,57 @@
+name: Feature
+description: New behaviour for the engine, a workflow package or the monitor. Stated in a spec before it is built.
+labels: ["type: feature", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One issue is one buildable change. If it needs more than one temperspec run, say so under Effort and split it into sub-issues before starting.
+        The engine names no workflow (ADR-0129): an engine feature asked for by a workflow is written as a general capability.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What the change does, in one or two sentences.
+    validations: {required: true}
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What it gives, and the evidence (a run, a finding, a research note, the owner's ask).
+    validations: {required: true}
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: Observable acceptance criteria. Name spec ids (e.g. SWF-AC3) when they exist.
+      placeholder: "- [ ] ..."
+    validations: {required: true}
+  - type: textarea
+    id: source
+    attributes:
+      label: Specs and sources
+      description: Specs, decision records and research notes to read first, as repository paths.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options: [engine, self-improvement, temperspec, monitor, examples, repo]
+    validations: {required: true}
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Suggested priority
+      description: Triage sets the label. P0 broken now, P1 next up, P2 planned, P3 wanted.
+      options: [P0, P1, P2, P3]
+  - type: dropdown
+    id: effort
+    attributes:
+      label: Suggested effort
+      description: XS under an hour; S one session; M one temperspec run; L two or three runs; XL a track (split it).
+      options: [XS, S, M, L, XL]
+  - type: textarea
+    id: depends
+    attributes:
+      label: Depends on
+      description: Issues or owner decisions this waits for (`#12`, "owner answers R-135 Q2").

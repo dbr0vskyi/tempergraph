@@ -1,0 +1,52 @@
+# The label set of this repository: the one source of truth for names, colours and meaning.
+# CONTRIBUTING.md explains how each axis is used. Every issue carries one `type:`, at least one
+# `area:`, one `priority:` and one `effort:` label once triaged; `needs-triage` marks one that does not yet.
+# GitHub creates a missing label with a grey colour when an issue first uses it. The colours below are
+# applied by the "Sync labels" workflow on every change to this file on main, or by `.github/sync-labels.sh` with a signed-in `gh`.
+
+# type: what kind of work
+- {name: "type: feature",    color: "1d76db", description: "New behaviour, stated in a spec first"}
+- {name: "type: bug",        color: "d73a4a", description: "Behaviour that contradicts a spec or acceptance criterion"}
+- {name: "type: debt",       color: "c5def5", description: "Cleanup, missing tests or docs that drifted; no new behaviour"}
+- {name: "type: live-check", color: "fbca04", description: "A check or probe against a signed-in executor; never faked"}
+- {name: "type: research",   color: "d4c5f9", description: "A question to answer in a research note or decision record"}
+- {name: "type: release",    color: "0e8a16", description: "Release files, version bump, released_at stamp"}
+- {name: "type: docs",       color: "0075ca", description: "Guides, READMEs, contributor docs"}
+
+# area: where the change lands (one or more)
+- {name: "area: engine",           color: "5319e7", description: "plugins/tempergraph (the engine)"}
+- {name: "area: self-improvement", color: "7057ff", description: "The engine's improvement loop: lenses, review, filing, proposals, trials"}
+- {name: "area: temperspec",       color: "006b75", description: "plugins/temperspec-tgraph (the delivery workflow)"}
+- {name: "area: monitor",          color: "bfdadc", description: "plugins/tempergraph-monitor (the Claude mod)"}
+- {name: "area: examples",         color: "c2e0c6", description: "release-notes-tgraph, doc-refresh-tgraph"}
+- {name: "area: repo",             color: "ededed", description: "Repository setup, CI, contributor process"}
+
+# priority: when it should be picked up
+- {name: "priority: P0", color: "b60205", description: "Broken or unsafe now; drop other work"}
+- {name: "priority: P1", color: "d93f0b", description: "Next up: blocks a release or the owner asked for it"}
+- {name: "priority: P2", color: "e99695", description: "Planned for the current or next release"}
+- {name: "priority: P3", color: "f9d0c4", description: "Wanted, no date"}
+
+# effort: the size of the change, measured the way this repo works
+- {name: "effort: XS", color: "f1f8ff", description: "Under an hour by hand; no temperspec run"}
+- {name: "effort: S",  color: "dbedff", description: "One working session; under about 5 USD of model spend"}
+- {name: "effort: M",  color: "c8e1ff", description: "One temperspec run (about 10 to 25 USD)"}
+- {name: "effort: L",  color: "79b8ff", description: "Two or three runs or a multi-phase plan"}
+- {name: "effort: XL", color: "2188ff", description: "A whole track; split into sub-issues before starting"}
+
+# release: which engine release it belongs to
+- {name: "release: 3",     color: "0e8a16", description: "Engine release 3 (ADR-0132)"}
+- {name: "release: 4",     color: "5cb85c", description: "Engine release 4 (other executors, orchestration)"}
+- {name: "release: later", color: "a2eeef", description: "No release chosen"}
+
+# needs / state
+- {name: "needs-triage",          color: "ffffff", description: "No priority or effort yet"}
+- {name: "needs: owner-decision", color: "b60205", description: "Waits on the owner's answer; the issue states the question and a default"}
+- {name: "needs: owner-machine",  color: "e4e669", description: "Must run on the owner's own machine (Windows, desktop, signed-in gh, ...)"}
+- {name: "needs: spec",           color: "fef2c0", description: "Write or change the spec before any code"}
+- {name: "blocked",               color: "000000", description: "Waits on another issue, named in the body"}
+- {name: "in progress",           color: "0052cc", description: "Claimed: a person or agent is working on it (see the claim comment)"}
+- {name: "good first issue",      color: "7057ff", description: "Small, well-bounded, good for a first contribution"}
+
+# filed by the engine itself
+- {name: "tempergraph-loop", color: "5319e7", description: "Filed by the self-improvement loop (fingerprint in the body)"}
