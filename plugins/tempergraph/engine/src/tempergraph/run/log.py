@@ -9,7 +9,7 @@ import json
 import os
 import threading
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -210,6 +210,47 @@ class RunLog:
                 rows.on_run_exit(self.path, segment)
         except Exception:  # noqa: BLE001
             self.failures += 1
+
+
+class ChildLog(RunLog):
+    """SWF-B8: the writer a child's nodes use. Every record goes to the parent's `run.jsonl`, carrying `child: <unit>`
+    and the child's own `unit`; a session key reads `<unit>/<child unit>.<attempt>.<kind>`, and the child's own part of it
+    names the record's unit, item and attempt. Everything else is the parent's log: it holds no state of its own, so any
+    attribute of a log that is not set here is read from the parent."""
+
+    def __init__(self, parent: RunLog, unit: str) -> None:  # the parent's `__init__` is not called: it would reopen the file
+        self.parent = parent
+        self.unit = unit
+
+    def write(self, record: str, /, **fields: Any) -> int:
+        fields.setdefault("child", self.unit)
+        key = fields.get("session_key")
+        if key and fields.get("unit") is None:
+            prefix = f"{self.unit}/"
+            unit, item, attempt = split_session_key(str(key)[len(prefix):] if str(key).startswith(prefix) else str(key))
+            for k, v in (("unit", unit), ("item", item), ("attempt", attempt)):
+                if fields.get(k) is None:
+                    fields[k] = v
+        return self.parent.write(record, **fields)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.parent, name)
+
+
+def split_costs(records: Iterable[Mapping[str, Any]]) -> dict[str | None, dict[str, Any]]:
+    """SWF-B4: the money of the `agent_run` records by the sub-workflow unit that spent it, `None` for the run's own
+    steps. A child's spend counts in the run total and the daily total, and is never summed into the parent's own."""
+    out: dict[str | None, dict[str, Any]] = {}
+    for r in records:
+        if r.get("kind") != "agent_run":
+            continue
+        row = out.setdefault(r.get("child"), {"reported": 0.0, "estimated": 0.0, "sessions": 0})
+        usage = r.get("usage") or {}
+        row["sessions"] += 1
+        for k, field_ in (("reported", "reported_cost_usd"), ("estimated", "estimated_cost_usd")):
+            if isinstance(usage.get(field_), int | float):
+                row[k] += float(usage[field_])
+    return out
 
 
 def _end_cut_line(path: Path) -> None:

@@ -114,6 +114,8 @@ def fold(recs: Iterable[dict[str, Any]], folder: Path | None = None) -> Thread |
             t = Thread(thread_id=tid, workflow=tid.split("/", 1)[0], version=None, started_at=r.get("ts"),
                        folder=folder)
         unit = r.get("unit")
+        if unit and r.get("child"):  # SWF-B4: a child's unit is its own line, `<unit>/<child unit>`, never the parent's own
+            unit = f"{r['child']}/{unit}"
         if kind == "run_started":
             t.version = r.get("workflow_version") or t.version
             t.started_at = t.started_at or r.get("ts")

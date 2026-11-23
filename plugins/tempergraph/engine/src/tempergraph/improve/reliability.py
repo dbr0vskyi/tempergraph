@@ -86,9 +86,11 @@ def _gates(recs: Sequence[Mapping[str, Any]]) -> list[_Gate]:
             continue
         seq = int(g.get("seq") or 0)
         unit = g["unit"]
+        child = g.get("child")  # SWF-B9: a child's gate of one name is not its parent's
         judged = next((dict(r) for r in reversed(recs) if r.get("kind") == "judgement" and r.get("unit") == unit
-                       and int(r.get("seq") or 0) < seq), {})
+                       and r.get("child") == child and int(r.get("seq") or 0) < seq), {})
         starts = [r for r in recs if r.get("kind") == "attempt_start" and r.get("unit") == unit
+                  and r.get("child") == child
                   and r.get("session_kind") in ("step", "retry") and int(r.get("seq") or 0) < seq]
         out.append(_Gate(rec=dict(g), judged=judged, attempt=starts[-1].get("attempt") if starts else None))
     return out
@@ -97,13 +99,15 @@ def _gates(recs: Sequence[Mapping[str, Any]]) -> list[_Gate]:
 def _row(thread: str, recs: Sequence[Mapping[str, Any]], g: _Gate, kind: str, value: str, source: str, at: Any,
          keys: Mapping[str, Any], *, criterion: str | None = None, extra: str = "") -> dict[str, Any]:
     t0, t1 = _ts(g.rec.get("ts")), _ts(at)
-    return {"kind": "label", "schema_version": 1,
+    child = g.rec.get("child")
+    return {"kind": "label", "schema_version": 1, **({"child": child} if child else {}),
             "label_id": _label_id(thread, g.rec.get("seq"), kind, criterion, extra), "thread": thread,
             "run_id": f"{thread}#{g.rec.get('segment')}", **keys, "unit": g.rec.get("unit"), "attempt": g.attempt,
             "gate_record": g.rec.get("seq"), "gate_verdict": g.rec.get("verdict"), "criterion_id": criterion,
             "label_kind": kind, "value": value, "source": source, "origin": "run", "at": at,
             "observed_after_s": round((t1 - t0).total_seconds(), 1) if t0 and t1 else None,
-            "binding": binding_of([dict(r) for r in recs], str(g.rec.get("unit")), g.attempt, g.rec.get("seq")),
+            "binding": binding_of([dict(r) for r in recs if r.get("child") == child], str(g.rec.get("unit")), g.attempt,
+                                  g.rec.get("seq")),
             "confidence": g.judged.get("confidence"), "confidence_source": g.judged.get("confidence_source")}
 
 
@@ -222,14 +226,14 @@ def _latest(rows: Iterable[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
 
 
 def figures(labels: Iterable[Mapping[str, Any]], gate: str, binding: Mapping[str, Any],
-            now: datetime | None = None) -> Figures:
+            now: datetime | None = None, child: str | None = None) -> Figures:
     now = now or datetime.now(UTC)
     since = now - timedelta(days=int(params.value("reliability.window_days")))
     key = binding_key(binding)
     fig = Figures(gate=gate, binding=dict(binding))
     rows = []
     for r in labels:
-        if r.get("unit") != gate or binding_key(r.get("binding")) != key:
+        if r.get("unit") != gate or r.get("child") != child or binding_key(r.get("binding")) != key:
             continue
         if r.get("gate_record") is None:
             fig.orphan_labels += 1  # FBK-B10: kept, never in a figure
@@ -288,23 +292,25 @@ def grade(fig: Figures, live_score_passing: bool, now: datetime | None = None) -
     return ("unmeasured", why) if why else ("reliable", [])
 
 
-def judgements(root: Path, workflow: str) -> list[dict[str, Any]]:
+def judgements(root: Path, workflow: str, child: str | None = None) -> list[dict[str, Any]]:
     """Every gate judgement of a workflow's threads, oldest first: unit, verdict, binding, ts and the counts
-    the binding-shift watch compares."""
+    the binding-shift watch compares. `child` is the sub-workflow unit path whose gates are read (SWF-B9); none reads the
+    workflow's own, so a child's gate and a parent's gate of one name are never mixed."""
     out: list[dict[str, Any]] = []
     base = root / "runs" / workflow
     if not base.is_dir():
         return out
     for task in sorted(p.name for p in base.iterdir() if p.is_dir()):
         recs = records(run_dir(root, workflow, task) / "run.jsonl")
-        for g in _gates(recs):
-            judge: Mapping[str, Any] = next((r for r in reversed(recs) if r.get("kind") == "agent_run"
+        mine = [r for r in recs if r.get("child") == child]
+        for g in (x for x in _gates(recs) if x.rec.get("child") == child):
+            judge: Mapping[str, Any] = next((r for r in reversed(mine) if r.get("kind") == "agent_run"
                                              and r.get("unit") == g.rec["unit"]
                           and r.get("session_kind") == "judge" and int(r.get("seq") or 0) < int(g.rec.get("seq") or 0)),
                          {})
             out.append({"thread": f"{workflow}/{task}", "unit": g.rec["unit"], "seq": g.rec.get("seq"),
                         "ts": g.rec.get("ts"), "verdict": g.rec.get("verdict"),
-                        "binding": binding_of(recs, g.rec["unit"], g.attempt, g.rec.get("seq")),
+                        "binding": binding_of(mine, g.rec["unit"], g.attempt, g.rec.get("seq")),
                         "unverifiable": any(s.get("status") == "UNVERIFIABLE" for s in g.judged.get("statuses") or []),
                         "turns": ((judge.get("usage") or {}).get("turns")), "confidence": g.judged.get("confidence"),
                         "confidence_source": g.judged.get("confidence_source")})
@@ -313,12 +319,13 @@ def judgements(root: Path, workflow: str) -> list[dict[str, Any]]:
 
 
 def report(root: Path, workflow: str, gates: Sequence[str], live: Callable[[str, Mapping[str, Any]], bool],
-           now: datetime | None = None) -> list[dict[str, Any]]:
+           now: datetime | None = None, child: str | None = None) -> list[dict[str, Any]]:
     """Each gate's current binding (its latest judgement's), its grade and figures, and earlier bindings'
     grades as history, never inherited (FBK-B4). ``live(gate, binding)`` answers whether the binding has a
-    passing live score (JCL `accepted` or `provisional`)."""
+    passing live score (JCL `accepted` or `provisional`). `child` names the sub-workflow unit path whose gates
+    are read (SWF-B9); none reads the workflow's own."""
     labs = read_labels(root, workflow)
-    js = judgements(root, workflow)
+    js = judgements(root, workflow, child)
     out = []
     for gate in gates:
         mine = [j for j in js if j["unit"] == gate]
@@ -330,18 +337,19 @@ def report(root: Path, workflow: str, gates: Sequence[str], live: Callable[[str,
         row: dict[str, Any] = {"gate": gate, "binding": current, "grade": "unmeasured", "why": ["no judgement yet"],
                                "figures": None, "history": []}
         if current is not None:
-            fig = figures(labs, gate, current, now)
+            fig = figures(labs, gate, current, now, child)
             row["grade"], row["why"] = grade(fig, live(gate, current), now)
             row["figures"] = fig.to_json()
         for b in bindings[:-1]:
-            fig = figures(labs, gate, b, now)
+            fig = figures(labs, gate, b, now, child)
             row["history"].append({"binding": b, "grade": grade(fig, live(gate, b), now)[0]})
         out.append(row)
     return out
 
 
-def grade_of(root: Path, workflow: str, gate: str, live: Callable[[str, Mapping[str, Any]], bool]) -> str:
-    return report(root, workflow, [gate], live)[0]["grade"]
+def grade_of(root: Path, workflow: str, gate: str, live: Callable[[str, Mapping[str, Any]], bool],
+             child: str | None = None) -> str:
+    return report(root, workflow, [gate], live, child=child)[0]["grade"]
 
 
 # -- labelling queue (FBK-B13) ------------------------------------------------------------------------------

@@ -113,26 +113,31 @@ def _unit(session_key: str) -> str:
 
 def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping[str, Any]] = (),
            grants: Iterable[Mapping[str, Any]] = ()) -> list[dict[str, Any]]:
-    """Causes of one segment: `{unit, cause, count, executor?}` with no text."""
-    out: dict[tuple[str, str, str], int] = {}
-    versions: dict[tuple[str, str, str], str] = {}  # executor causes carry the CLI version (SIL-AC4)
+    """Causes of one segment: `{unit, cause, count, executor?, child?}` with no text. A record of a sub-workflow
+    child's unit carries `child` (the unit's path), so a child's unit and a parent's unit of one name keep their own
+    causes (SWF-B9)."""
+    out: dict[tuple[str, str, str, str], int] = {}
+    versions: dict[tuple[str, str, str, str], str] = {}  # executor causes carry the CLI version (SIL-AC4)
+    child = ""  # the path of the child the record being read belongs to; empty for the run's own units
 
     def add(unit: str, code: str, executor: str = "", version: str = "") -> None:
-        key = (unit, code, executor)
+        key = (child, unit, code, executor)
         out[key] = out.get(key, 0) + 1
         if version:
             versions[key] = version
 
-    retries: dict[str, int] = {}
-    checks: dict[str, Mapping[str, Any]] = {}
+    retries: dict[tuple[str, str], int] = {}
+    checks: dict[tuple[str, str], Mapping[str, Any]] = {}
     for r in records:
         kind = r.get("kind")
+        child = str(r.get("child") or "")
         unit = str(r.get("unit") or _unit(str(r.get("session_key") or "")))
+        own = (child, unit)
         if kind == "unit_entered":
-            retries[unit] = 0
+            retries[own] = 0
         elif kind == "attempt_start" and r.get("session_kind") == "retry":
-            retries[unit] = retries.get(unit, 0) + 1
-            if retries[unit] == int(params.value("retry_burst.min_retries")):
+            retries[own] = retries.get(own, 0) + 1
+            if retries[own] == int(params.value("retry_burst.min_retries")):
                 add(unit, "retry_burst")
         elif kind == "agent_run":
             if r.get("infra_cause"):
@@ -146,7 +151,7 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
                 add(unit, f"unknown_tool_name:{name}", str(r.get("executor") or ""),
                     str(r.get("cli_version") or ""))
         elif kind == "check":
-            checks[unit] = r
+            checks[own] = r
             if r.get("result") == "FAIL" and not r.get("environmental"):
                 add(unit, f"check_fail:{unit}")
         elif kind == "judgement":
@@ -168,7 +173,7 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
             elif pk == "approval":
                 add(unit, "approval")
             elif reason == "blocked":
-                c = checks.get(unit)
+                c = checks.get(own)
                 empty = c is None or not str(c.get("evidence") or "").strip()
                 add(unit, "blocked_without_check" if empty else "blocked")
             elif reason in ("unresolved_gap", "gap"):
@@ -191,6 +196,7 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
                 add("", "person_stop")
             elif reason == "cost_cap":
                 add("", "cost_cap")
+    child = ""  # an intervention or a grant belongs to the run's own unit of that name
     for iv in interventions:
         c = iv.get("caller") or {}
         rescue = any(t.get("class") == "rescue" for t in iv.get("touches") or [])
@@ -203,6 +209,7 @@ def derive(records: Sequence[Mapping[str, Any]], interventions: Iterable[Mapping
     for g in grants:
         add(str(g.get("unit") or ""), f"grant_missing:{g.get('capability') or g.get('prefix')}" if g.get("used")
             else f"grant_unused:{g.get('capability') or g.get('prefix')}")
-    return [{"unit": u, "cause": code, "count": n, **({"executor": ex} if ex else {}),
-             **({"executor_version": versions[(u, code, ex)]} if (u, code, ex) in versions else {})}
-            for (u, code, ex), n in out.items()]
+    return [{"unit": u, "cause": code, "count": n, **({"child": ch} if ch else {}),
+             **({"executor": ex} if ex else {}),
+             **({"executor_version": versions[(ch, u, code, ex)]} if (ch, u, code, ex) in versions else {})}
+            for (ch, u, code, ex), n in out.items()]

@@ -21,6 +21,7 @@ from tempergraph.contracts import STAGES, WorkflowSpec
 PROMOTION = "promotion.json"
 BUILT = ("local-stable",)  # the targets this release measures and stamps
 EXCLUDED_ORIGINS = frozenset({"trial", "scenario", "evals"})
+CHILD_ORIGIN = "subworkflow:"  # SWF-B9: a child's records from inside a parent (`subworkflow:<parent>`) never enter its window
 STAMP_CALLERS = frozenset({"person"})  # who may decide a stamp; a pipeline caller arrives with pipelines
 FINAL_EXITS = frozenset({0, 4, 5})
 FAULT_SIDES = ("engine", "executor")
@@ -70,8 +71,9 @@ def _escapes(t: Any) -> int:
 
 def window(root: Path, spec: WorkflowSpec, version: str, size: int, *, restart_on_escape: bool = False
            ) -> list[WindowRun]:
-    """PRO-B8: the last `size` finished runs of this workflow version, oldest first. Trial, scenario, eval
-    and dry runs and reruns of a trial are left out. With `restart_on_escape` (a stage whose escape bar is 0)
+    """PRO-B8: the last `size` finished runs of this workflow version, oldest first. Only the workflow's own runs
+    count: its records from inside a parent are the parent's thread, never a run of its own (SWF-B9). Trial,
+    scenario, eval and dry runs and reruns of a trial are left out. With `restart_on_escape` (a stage whose escape bar is 0)
     the window starts after the last run that held a gate escape."""
     from tempergraph.observe import report
     from tempergraph.run.events import records as read_records
@@ -86,7 +88,8 @@ def window(root: Path, spec: WorkflowSpec, version: str, size: int, *, restart_o
             continue
         first = starts[0]
         rerun = first.get("rerun_of") or {}
-        if any(s.get("origin") in EXCLUDED_ORIGINS or s.get("dry_run") for s in starts) \
+        if any(s.get("origin") in EXCLUDED_ORIGINS or str(s.get("origin") or "").startswith(CHILD_ORIGIN)
+               or s.get("dry_run") for s in starts) \
                 or (isinstance(rerun, Mapping) and rerun.get("origin") == "trial"):
             continue
         ran = next((s.get("content_version") for s in reversed(starts) if s.get("content_version")), None) \

@@ -37,7 +37,7 @@ task_id: third-release
 | Order | Cap and reach first, because every parallel shape relies on them | R-140 F4, F5 |
 | Plan shape | Tracks and phases only; each track's expanded plan is written when its specs are ready (EC-2) | As in release 2 |
 
-**Status: In progress.** R3-T1.1, R3-T1.2, R3-T5.1 and R3-T5.2 are built (2026-11-22). EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
+**Status: In progress.** R3-T1.1 and R3-T1.2 are built (2026-11-22). R3-T2.3 and with it track R3-T2 are built (2026-11-22). R3-T5.1 and R3-T5.2, and with them track R3-T5, are built (2026-11-23). EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
 
 ## 1. Requirements analysis
 
@@ -125,11 +125,17 @@ Status: built. ECC-B14 for a step, a retry and a judge launch (host names droppe
 #### R3-T2.1 Declaration and validation
 Goal: SWF-B7, SWF-B6, SWF-B8, SWF-B6.
 
+Status: built. SWF-B6, SWF-B7 and SWF-B12 (a declared sub-workflow unit, every refusal of a bad child before spend, and `{<unit>.<key>}` in a template), proved by SWF-AC1 and SWF-AC5 in `plugins/tempergraph/engine/tests/test_subworkflow_validate.py`, `test_subworkflow_inputs.py` and `test_subworkflow_template.py`.
+
 #### R3-T2.2 Running a child
 Goal: SWF-B8, SWF-B2, SWF-B5, SWF-B1 to B5, SWF-AC1 and AC-2.
 
+Status: built. SWF-B1 to SWF-B5, SWF-B8 and SWF-B10 (a child run as one unit in the parent's workspace, thread and cap; its pause, its changed or removed version under a paused parent, its spend, its upstream defect and its verdict at the unit's gate; its records, version and outcome record in the parent's; its finalizer never run and its outcome gate always run, with the `subworkflow-finalizer-skipped` warning), proved by SWF-AC1 and SWF-AC2 in `plugins/tempergraph/engine/tests/test_subworkflow_run.py`, `test_subworkflow_record.py`, `test_subworkflow_pause.py`, `test_subworkflow_cap.py` and `test_subworkflow_gate.py`.
+
 #### R3-T2.3 Measures and carrying
 Goal: SWF-B9, SWF-AC3.
+
+Status: built. SWF-B9 (a child's judges on its own bindings and calibration cases, its findings filed to the child workflow with the parent named, its outcome record counted in its measures with `origin: subworkflow:<parent>` and kept out of its promotion window, and a parent's `upgrade` reading its change notes) and SWF-B8's carrying (a carried parent paused inside its child resumes on a second state root and finishes), proved by SWF-AC1 and SWF-AC3 in `plugins/tempergraph/engine/tests/test_subworkflow_judges.py`, `test_subworkflow_findings.py`, `test_subworkflow_measures.py`, `test_subworkflow_upgrade.py` and `test_subworkflow_carry.py`.
 
 ### R3-T3 Writer branches and the concurrent map
 

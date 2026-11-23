@@ -23,7 +23,7 @@ from tempergraph.docs import write_json
 from tempergraph.model.diagram import diagram_model, to_mermaid
 from tempergraph.model.validate import Finding, validate
 from tempergraph.package import transforms
-from tempergraph.package.changelog import detect, entries_between, semver
+from tempergraph.package.changelog import children_entries, detect, entries_between, semver
 from tempergraph.package.inventory import canonical
 from tempergraph.package.loader import LoadedPackage, PackageNotLoaded, load_package
 from tempergraph.package.registry import plugin_cache
@@ -511,6 +511,10 @@ def upgrade(path: Path, caps: Mapping[str, Capabilities], *, no_assist: bool = F
         return rep
     rep.upgrade_id, rep.branch, rep.worktree = place.upgrade_id, place.branch, str(place.worktree)
     all_entries = [e for e in entries_between(None, engine, folder) if e.get("audience") == "workflow"]
+    # SWF-B9, VER-B17, WUP-B16: the change notes of each sub-workflow the workflow runs, read from the child's registered
+    # package (those the stamp has not applied), join the engine's entries in the plan
+    kids = children_entries(src.spec, read_stamp(root))
+    all_entries += kids
     by_id = {str(e["id"]): e for e in all_entries}
     if continue_id is not None:
         saved = _load_json(place.record / "report.json")
@@ -537,7 +541,7 @@ def upgrade(path: Path, caps: Mapping[str, Capabilities], *, no_assist: bool = F
         base = baseline(src, caps)  # phase 2, on the unchanged package
         rep.baseline_errors = [f"{f['code']} {f['unit'] or ''}: {f['message']}".strip() for f in base["validation"]
                                if f["severity"] == "error"]
-        between = [e for e in entries_between(rep.from_engine, engine, folder) if e.get("audience") == "workflow"]
+        between = [e for e in entries_between(rep.from_engine, engine, folder) if e.get("audience") == "workflow"] + kids
         codes = {str(f["code"]) for f in base["validation"]}
         rep.items, rep.not_touched, rep.notes = plan(src, between, codes, no_assist=no_assist)  # phase 3
         ensure_state_root(state_root_path(place.repo))

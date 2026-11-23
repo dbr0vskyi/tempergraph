@@ -112,7 +112,7 @@ def test_codes_are_distinct_per_fixture() -> None:
     assert len({c for c, _ in CASES}) == len(CASES)
 
 
-LATER = ["Council", "Contest", "Subworkflow"]
+LATER = ["Council", "Contest"]
 
 
 @pytest.mark.parametrize("builder", LATER)
@@ -123,6 +123,14 @@ def test_later_kinds_not_in_release(builder: str) -> None:
     spec = dataclasses.replace(spec, units=units, order=(*spec.order, "later"))
     found = [f for f in validate(spec, CLAUDE_ONLY) if f.code == "not_in_release"]
     assert found and any("release" in f.message for f in found)
+
+
+def test_subworkflow_kind_is_not_refused_as_not_in_release() -> None:  # SWF-AC1
+    spec = two_step()
+    units = dict(spec.units)
+    units["setup"] = api.Subworkflow(workflow="child")
+    spec = dataclasses.replace(spec, units=units, order=(*spec.order, "setup"))
+    assert "not_in_release" not in {f.code for f in validate(spec, CLAUDE_ONLY)}
 
 
 def test_later_fields_not_in_release() -> None:
