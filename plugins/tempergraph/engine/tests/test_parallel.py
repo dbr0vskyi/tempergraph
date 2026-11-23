@@ -94,7 +94,7 @@ def test_both_branches_run_and_the_join_fires_once(repo: Path) -> None:
     assert exit_rec["cost"]["counters"]["sessions"] == 8  # four steps and four judges, none lost at the fork
 
 
-def test_the_join_waits_for_a_retrying_branch(repo: Path) -> None:  # CMP-B4
+def test_the_join_waits_for_a_retrying_branch(repo: Path) -> None:  # CMP-B4, CMP-AC3
     ex = ByUnit(judges={"perf": [FAIL, MET]})
     out = go(repo, wf(), ex)
     assert out.exit_code is ExitCode.FINISHED, out.message
@@ -141,7 +141,7 @@ def test_two_pending_gates_are_answered_by_unit(repo: Path) -> None:  # HUM-B3
     assert done.exit_code is ExitCode.FINISHED and steps(ex)[-1] == "report", done.message
 
 
-def test_a_trip_back_to_the_block_runs_every_branch_again(repo: Path) -> None:
+def test_a_trip_back_to_the_block_runs_every_branch_again(repo: Path) -> None:  # CMP-AC3 (CMP-B13)
     spec = wf()
     units = {**spec.units, "report": step("Report", back_targets=["reviews"])}
     spec = dataclasses.replace(spec, units=units)

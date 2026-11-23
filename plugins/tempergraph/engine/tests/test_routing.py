@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from tempergraph.api import Gate, Judge, Route, Routing, Step, Switch, Value, Workflow
 from tempergraph.constants import ExitCode
 from tempergraph.executors.standins import answer, standin
@@ -40,7 +42,7 @@ def units_entered(repo: Path, task: str = "R-1") -> list[str]:
     return [r["unit"] for r in recs(repo, "unit_entered", task)]
 
 
-def test_a_step_route_picks_its_target(repo: Path) -> None:
+def test_a_step_route_picks_its_target(repo: Path) -> None:  # CMP-AC3 (CMP-B10)
     out = go(repo, routed(), [mode("light")], [judge()])
     assert out.exit_code is ExitCode.FINISHED and units_entered(repo) == ["draft"]  # light goes to the finalizer
     (r,) = recs(repo, "route")
@@ -58,7 +60,7 @@ def nowhere(view: Any) -> str:
     return "deep"
 
 
-def test_a_route_fault_stops_and_never_falls_back(repo: Path) -> None:  # CMP-B3
+def test_a_route_fault_stops_and_never_falls_back(repo: Path) -> None:  # CMP-B3, CMP-AC3
     for i, fn in enumerate((boom, nowhere)):
         spec = routed()
         d = spec.units["draft"]
@@ -69,6 +71,27 @@ def test_a_route_fault_stops_and_never_falls_back(repo: Path) -> None:  # CMP-B3
         assert "review" not in units_entered(repo, f"F-{i}")
 
 
+def test_a_gate_token_with_no_edge_ends_the_run_with_exit_1_and_an_engine_error(
+        repo: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:  # CMP-AC10 (CMP-B18)
+    from tempergraph.run import gate as gate_mod
+
+    from .test_cli import cli
+
+    real = gate_mod.decide
+
+    def decide_to_nowhere(spec: Any, unit: str, state: Any, task_id: str, *a: Any, **kw: Any) -> Any:
+        w = real(spec, unit, state, task_id, *a, **kw)
+        w["route"][unit] = {**w["route"][unit], "token": "SKIP", "node": "nowhere.step"}  # a token no edge carries
+        return w
+
+    monkeypatch.setattr(gate_mod, "decide", decide_to_nowhere)
+    ex = standin("claude", steps=[PLAIN], judges=[judge()])
+    with caplog.at_level("ERROR", logger="tempergraph"):
+        code, _, err = cli(repo, ex, "run", "demo", "notes", "--task-id", "E-1")
+    assert code == ExitCode.INTERNAL and "internal error" in err
+    assert [r for r in caplog.records if r.name == "tempergraph" and r.getMessage() == "engine_error"]
+
+
 def test_a_route_unit_runs_no_session(repo: Path) -> None:
     ex = standin("claude", steps=[PLAIN], judges=[judge()])
     out = start(single_route(), "U-1", {"request": "x"}, repo, registry(ex), NO_SLEEP)
@@ -77,7 +100,7 @@ def test_a_route_unit_runs_no_session(repo: Path) -> None:
     assert recs(repo, "route", "U-1")[0]["unit"] == "r"
 
 
-def test_a_switch_takes_its_arm_or_the_default(repo: Path) -> None:
+def test_a_switch_takes_its_arm_or_the_default(repo: Path) -> None:  # CMP-AC3 (CMP-B11)
     out = go(repo, switched(), [mode("light")], [judge()])
     assert out.exit_code is ExitCode.FINISHED and units_entered(repo) == ["triage"]
     assert recs(repo, "route")[0]["chosen_by"] == "predicate"

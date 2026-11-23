@@ -110,7 +110,7 @@ def test_child_inputs_read_the_request_an_earlier_unit_and_a_literal(tmp_path: P
     assert REQUEST_TEXT in prompt and "notes.md" in prompt and "v9-literal" in prompt
 
 
-def test_the_childs_gate_and_retries_are_its_own(repo: Path, child: Path) -> None:  # SWF-AC1, AC 1
+def test_the_childs_gate_and_retries_are_its_own(repo: Path, child: Path) -> None:  # SWF-AC1, AC 1, CMP-AC3 (CMP-B14 sub-workflow)
     ex = standin("claude", steps=[DRAFT, WORK, WORK, REVIEW],
                  judges=[judge(), judge(UNMET), judge(), judge(), judge()])
     out = go(repo, ex, parent())

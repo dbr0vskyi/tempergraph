@@ -230,7 +230,7 @@ def test_validation_refuses_a_malformed_ask() -> None:  # ASK-AC3 for the placem
 # -- the wait unit --------------------------------------------------------------------------------------
 
 
-def test_a_wait_is_not_passable_by_word(repo: Path) -> None:  # HUM-B4
+def test_a_wait_is_not_passable_by_word(repo: Path) -> None:  # HUM-B4, CMP-AC3 (CMP-B14 wait)
     spec = waiting_wf()
     e = ex()
     out = begin(repo, spec, e)
