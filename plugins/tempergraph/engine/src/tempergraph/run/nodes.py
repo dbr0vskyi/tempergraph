@@ -59,6 +59,8 @@ from tempergraph.run.judging import (
     Unparsed,
     brief_digest,
     claim_criterion,
+    council_dissent_blocker,
+    council_inputs,
     criteria_digest,
     derive,
     judged,
@@ -282,24 +284,35 @@ class EngineNodes:
         if cap is not None and CostTotals.from_json((state.get("run") or {}).get("cost")).figure() >= cap:
             raise Drain("cost_cap")
 
-    def _hold(self, unit: str, state: Mapping[str, Any]) -> dict[str, Any] | None:
-        """What a session of `unit` needs to take a reservation (BUD-B12): only a branch of a parallel block or an item of a
-        concurrent map, in a run with a cost cap. Other units run one session at a time and keep the BUD-B9 check."""
+    def _council_boundary(self, state: Mapping[str, Any], accrued: float) -> None:
+        """The check made before an attempt (BUD-B9), for a council session that runs alone: the chair, once the members have
+        spent what this attempt's state does not hold yet."""
+        reason = self.ctx.drain_requested()
+        if reason:
+            raise Drain(reason)
+        cap = self.ctx.spec.run_cost_cap_usd
+        if cap is not None and CostTotals.from_json((state.get("run") or {}).get("cost")).figure() + accrued >= cap:
+            raise Drain("cost_cap")
+
+    def _hold(self, unit: str, state: Mapping[str, Any], width: int | None = None) -> dict[str, Any] | None:
+        """What a session of `unit` needs to take a reservation (BUD-B12): a branch of a parallel block, an item of a
+        concurrent map, or a member or chair session of a council (its `width` is the members of the round, 1 for a session
+        that runs alone), in a run with a cost cap. Other units run one session at a time and keep the BUD-B9 check."""
         spec = self.ctx.spec
         cap = spec.run_cost_cap_usd
         block = flow.block_of(spec, unit)
         held = mapping.item_in_hand(state)
-        if cap is None or (block is None and held is None):
+        if cap is None or (block is None and held is None and width is None):
             return None
-        if held is not None and spec.units[unit].contest is not None:  # a slot of a contest: the slots that may run at once
-            c = spec.units[unit].contest  # share the cap, the lower of `concurrency` and the slot count (BUD-B12)
-            assert c is not None
+        if width is None and held is not None and spec.units[unit].contest is not None:  # a slot of a contest: the
+            c = spec.units[unit].contest  # slots that may run at once share the cap, the lower of `concurrency` and the
+            assert c is not None  # slot count (BUD-B12)
             width = min(c.concurrency, max(len(flow.slot_names(spec, unit)), 1))
-        elif held is not None:  # an item of a concurrent map: the items that may run at once share the cap (BUD-B12)
+        elif width is None and held is not None:  # an item of a concurrent map: the items that may run at once share the cap
             m = spec.units[unit].map
             assert m is not None
             width = min(m.concurrency, max(len(mapping.record(state, unit).get("items") or []), 1))
-        else:
+        elif width is None:
             assert block is not None
             width = len(spec.units[block].branches)
         totals = CostTotals.from_json((state.get("run") or {}).get("cost"))
@@ -376,6 +389,28 @@ class EngineNodes:
         for r in results:
             totals.add(r.usage)
         return {**totals.to_json(), "_base": base}
+
+    # -- council (CNL-B13 to CNL-B15): the nodes of the subgraph that is a council's step node --------------------
+
+    def council_open(self, unit: str, state: Mapping[str, Any]) -> Any:
+        from tempergraph.run import council_run
+
+        return council_run.open_run(self, unit, state)
+
+    def council_member(self, run: Any, name: str, stage: int) -> None:
+        run.member(name, stage)
+
+    def council_close(self, run: Any, stage: int) -> int:
+        return int(run.close(stage))
+
+    def council_tally(self, run: Any) -> None:
+        run.tally_now()
+
+    def council_chair(self, run: Any) -> None:
+        run.chair_now()
+
+    def council_finish(self, run: Any) -> dict[str, Any]:
+        return dict(run.finish())
 
     # -- step ------------------------------------------------------------------------------------
 
@@ -1306,6 +1341,9 @@ class EngineNodes:
             return {"judgements": {unit: {"verdict": str(Verdict.PROCEED), "reason": "map_items_passed"}}}
         if u.kind == "subworkflow" and (done := self._child_verdict(unit, att)) is not None:
             return done
+        if att.get("council_stop"):  # CNL-B13: no decision with `on_no_decision: stop`; the gate stops the run
+            return {"judgements": {unit: {"verdict": str(Verdict.ESCALATE), "reason": "no_decision", "confidence": 1.0,
+                                          "confidence_source": "engine_placeholder"}}}
         if (att.get("escalate") == "upstream" and att.get("upstream") and att.get("ok") and g.judge is not None
                 and not att.get("infra_spent")):
             return self._judge_claim(unit, state, att)
@@ -1322,13 +1360,18 @@ class EngineNodes:
                 placeholder["blockers"] = list(att.get("map_findings") or [])
             return {"judgements": {unit: placeholder}}
         if not att.get("ok"):
+            problem = att.get("error_kind") or ("timed out" if att.get("timed_out") else "the step failed")
+            if att.get("written"):  # WSP-B11, CNL-B14: a read-only member wrote to the workspace; its paths are reported
+                problem += ": " + ", ".join(str(p) for p in att["written"])
             return {"judgements": {unit: {"verdict": str(Verdict.RETRY), "reason": "step_failed", "blockers": [
-                {"criterion": "step", "problem": att.get("error_kind") or ("timed out" if att.get("timed_out")
-                                                                            else "the step failed")}]}}}
+                {"criterion": "step", "problem": problem}]}}}
         bad = [i for i in att.get("issues") or [] if i.startswith(("value_missing", "value_invalid"))]
         if bad:
             return {"judgements": {unit: {"verdict": str(Verdict.RETRY), "reason": "output_contract", "blockers": [
                 {"criterion": "output", "problem": i} for i in bad]}}}
+        if att.get("dissent_missing"):  # CNL-B12: the built-in check; its failure is retryable
+            return {"judgements": {unit: {"verdict": str(Verdict.RETRY), "reason": "council_dissent",
+                                          "blockers": [council_dissent_blocker(unit)]}}}
         workdir = self._workdir(state, unit)
         cres, notes = self._check(unit, state, att, workdir)
         att["check"] = checkmod.to_json(cres)
@@ -1532,9 +1575,14 @@ class EngineNodes:
             if ref not in refs and ref != "request" and ref in inputs:
                 refs[ref] = str(inputs[ref])
         req_text = str(inputs.get("request", ""))
+        subject = {**{k: str(v) for k, v in arts.items()}, **{k: str(v) for k, v in vals.items()}}
+        if u.kind == "council":  # CNL-B4: the judge grades `decision`, with `positions` among its references
+            subject, more = council_inputs(vals)
+            for k, v in more.items():
+                refs.setdefault(k, v)
         prompt = render_judge(JudgeInputs(
             gate=g, stance=stance, brief=brief, request=req_text, references=refs,
-            subject={**{k: str(v) for k, v in arts.items()}, **{k: str(v) for k, v in vals.items()}},
+            subject=subject,
             out_of_reach=[d.capability for d in views.deferred], check=cres, step_account=str(att.get("text") or ""),
             workspace_facts={"branch": gitmod.branch(workdir), "changed": len(gitmod.changed_paths(workdir))},
             feedback=str(((state.get("feedback") or {}).get(unit) or {}).get("text") or ""),
@@ -1762,6 +1810,12 @@ class EngineNodes:
         w = gatemod.apply_decision(self.ctx.spec, unit, state, payload)
         self.ctx.log.write("human", unit=unit, decision=payload.get("decision"), caller=payload.get("caller"),
                            feedback=bool(payload.get("feedback")) and not payload.get("ruling"))
+        if payload.get("council_decision") is not None:  # CNL-B13, EVT-B15: the person's answer is the council's outcome
+            held = (state.get("attempts") or {}).get(unit) or {}
+            tally = held.get("council", {}).get("tally") or {}
+            self.ctx.log.write("council_tally", unit=unit, attempt=held.get("attempt"), mode=tally.get("mode"),
+                               rule=tally.get("rule"), counts=tally.get("counts"),
+                               outcome=str(payload["council_decision"]), chosen_by="person")
         p = (w.get("pause") or {}).get(unit)
         if p:  # an applied deadline turned the pause into an escalation (FLX-B8)
             self.ctx.log.write("pause", unit=unit, item=p.get("item"), pause_kind=p["kind"], decisions=p["decisions"],

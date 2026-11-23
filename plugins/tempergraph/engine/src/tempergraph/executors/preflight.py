@@ -12,7 +12,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
 from tempergraph import executor_compat
-from tempergraph.contracts import Deferred, ProbeReport, UnitSpec, WorkflowSpec
+from tempergraph.contracts import Deferred, JudgeSpec, ProbeReport, UnitSpec, WorkflowSpec
 from tempergraph.executors.registry import NoJudgeExecutor, Registry, UnknownExecutor
 from tempergraph.model.validate import Finding, validate
 
@@ -97,9 +97,59 @@ def preflight(spec: WorkflowSpec, registry: Registry, *, judge_override: str | N
             rep.refusals.append(Finding("executor-probe-failed", unit, f"executor {name!r}: {p.reason}"))
         return p.ok
 
+    def judge_of(unit: str, ex: str, j: JudgeSpec, tools: Sequence[str]) -> None:
+        """The judge of a unit's gate on its own layer: its executor, its alias and the MCP views it cannot reach."""
+        try:
+            judge_ex = registry.judge_executor(ex, j.executor, judge_override)
+        except (NoJudgeExecutor, UnknownExecutor) as exc:
+            rep.refusals.append(Finding("judge-executor-none", unit, str(exc)))
+            return
+        if not probe(judge_ex, unit):
+            return
+        jc = caps[judge_ex]
+        if not (jc.restricts_judge_tools and jc.prompt_off_argv):
+            rep.refusals.append(Finding("judge-executor-unrestricted", unit,
+                                        f"judge executor {judge_ex!r} cannot hold a judge to read-only tools"))
+            return
+        rep.judges[unit] = judge_ex
+        if j.model and j.model not in jc.binds_aliases:
+            rep.refusals.append(Finding("alias-unbound", unit, f"judge executor {judge_ex!r} binds no {j.model!r}"))
+        mcp = [t for t in tools if t.startswith("mcp:")]
+        if mcp and not jc.judge_mcp:
+            rep.deferred[unit] = [Deferred(capability=t, reason="judge_mcp") for t in mcp]
+            rep.warnings.append(Finding("judge-view-deferred", unit,
+                                        f"judge views of {', '.join(mcp)} are out of reach on {judge_ex!r}",
+                                        "warning"))
+
+    def council(unit: str, u: UnitSpec) -> None:
+        """CNL-B6: each member's alias and tools are checked against its own executor (validation reports a tool the
+        executor maps no name for, this adds the probe, the binding table and enforcement), the chair on its own layer
+        and the judge on the gate's; a gap is a refusal, and the run starts nothing."""
+        c = u.council
+        assert c is not None
+        sessions = [(f"member {m.name!r}", f"{unit}.member:{m.name}", m.executor, m.model, m.tools) for m in c.members]
+        if c.chair is not None:
+            sessions.append(("the chair", f"{unit}.chair", c.chair.executor, c.chair.model, ()))
+        for who, key, named, alias, tools in sessions:
+            ex = named or spec.default_executor
+            rep.step_executors[key] = ex
+            if ex not in caps or not probe(ex, unit):
+                continue
+            cap = caps[ex]
+            if alias and alias.startswith(ex + ":") and alias not in cap.binds_aliases:
+                rep.refusals.append(Finding("alias-unbound", unit, f"{who}: the binding table has no {alias!r}"))
+            if tools and (enforce_tools or strict_permissions) and not cap.enforces_step_tools:
+                rep.refusals.append(Finding("enforcement-unsupported", unit,
+                                            f"{who}: executor {ex!r} cannot enforce the member's declared tools"))
+        if u.gate.judge is not None:
+            judge_of(unit, spec.default_executor, u.gate.judge, ())
+
     for unit in spec.order:
         u = spec.units[unit]
         st = u.step
+        if u.kind == "council" and u.council is not None:
+            council(unit, u)
+            continue
         if u.kind not in ("step", "map", "contest") or st is None:
             continue
         ex = st.executor or spec.default_executor
@@ -118,28 +168,6 @@ def preflight(spec: WorkflowSpec, registry: Registry, *, judge_override: str | N
         if any(t.startswith("skill:") for t in st.tools) and not c.hosts_authoring_surface:
             rep.warnings.append(Finding("authoring-surface-missing", unit,
                                         f"executor {ex!r} loads no skills", "warning"))
-        j = u.gate.judge
-        if j is None:
-            continue
-        try:
-            judge_ex = registry.judge_executor(ex, j.executor, judge_override)
-        except (NoJudgeExecutor, UnknownExecutor) as exc:
-            rep.refusals.append(Finding("judge-executor-none", unit, str(exc)))
-            continue
-        if not probe(judge_ex, unit):
-            continue
-        jc = caps[judge_ex]
-        if not (jc.restricts_judge_tools and jc.prompt_off_argv):
-            rep.refusals.append(Finding("judge-executor-unrestricted", unit,
-                                        f"judge executor {judge_ex!r} cannot hold a judge to read-only tools"))
-            continue
-        rep.judges[unit] = judge_ex
-        if j.model and j.model not in jc.binds_aliases:
-            rep.refusals.append(Finding("alias-unbound", unit, f"judge executor {judge_ex!r} binds no {j.model!r}"))
-        mcp = [t for t in st.tools if t.startswith("mcp:")]
-        if mcp and not jc.judge_mcp:
-            rep.deferred[unit] = [Deferred(capability=t, reason="judge_mcp") for t in mcp]
-            rep.warnings.append(Finding("judge-view-deferred", unit,
-                                        f"judge views of {', '.join(mcp)} are out of reach on {judge_ex!r}",
-                                        "warning"))
+        if u.gate.judge is not None:
+            judge_of(unit, ex, u.gate.judge, st.tools)
     return rep

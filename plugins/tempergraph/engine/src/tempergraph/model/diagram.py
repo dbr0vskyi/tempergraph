@@ -39,10 +39,14 @@ def diagram_model(spec: WorkflowSpec) -> dict[str, Any]:
             for b in u.branches:
                 nodes.append(flow.done_node(b))
                 edges += [[fork, flow.step_node(b), "fork"], [flow.done_node(b), step, "join"]]
+        if u is not None and u.council is not None:  # CMP-B16: a council is one box of the unit's four nodes, its mode named, no member count
+            summary = f"{u.council.mode} council"
+        else:
+            summary = (u.step.summary if u is not None and u.step is not None else "") if u else "outcome gate"
         entry: dict[str, Any] = {
             "name": unit,
             "kind": u.kind if u is not None else "outcome",
-            "summary": (u.step.summary if u is not None and u.step is not None else "") if u else "outcome gate",
+            "summary": summary,
             "approval": bool(u.gate.approval) if u is not None else False,
         }
         if flow.is_contest(spec, unit):  # CMP-B16: a contest is one unit, drawn with its slot count

@@ -261,7 +261,7 @@ The project is designed spec-first: acceptance criteria rank above specs and dec
 
 - More executors: the Antigravity CLI, the Claude Agent SDK and the Anthropic Messages API, with refusal before spend when an executor can't enforce what a workflow asks.
 - Orchestration: many runs planned as a graph of runs and supervised without a model.
-- Advanced node types: councils, contests, sub-workflows and the rest of LangGraph's shapes as workflow data.
+- Advanced node types: contests, sub-workflows and the rest of LangGraph's shapes as workflow data.
 - Scheduled runs, Windows, and writing steps side by side in their own worktrees.
 
 **temperspec**, the first large workflow built on the engine, is built as its own package ([`temperspec-tgraph`](plugins/temperspec-tgraph/README.md)); the features it still wants are in its [backlog](plugins/temperspec-tgraph/docs/plans/backlog.plan.md).

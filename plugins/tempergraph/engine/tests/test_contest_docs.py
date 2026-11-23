@@ -22,7 +22,7 @@ def not_built_line(spec: str) -> str:
 
 
 def test_contest_is_in_no_not_in_release_list_of_the_source() -> None:  # AC 6
-    assert "contest" not in validate.LATER_KINDS and "council" in validate.LATER_KINDS  # the council is still to come
+    assert "contest" not in validate.LATER_KINDS
     assert "contest" not in " ".join(settings.NOT_IN_RELEASE.values()).lower()
     assert settings.NOT_IN_RELEASE == {}
     assert errors(validate.validate(workflow(contest_unit()), CLAUDE_ONLY)) == []
@@ -34,8 +34,7 @@ def test_contest_is_in_no_not_in_release_list_of_the_source() -> None:  # AC 6
 
 
 def test_no_not_built_yet_line_of_a_spec_names_the_contest() -> None:  # AC 6
-    assert "contest" not in not_built_line("55-workflow-audit.spec.md")  # only the council's definition rules are left
-    assert "council" in not_built_line("55-workflow-audit.spec.md")
+    assert "contest" not in not_built_line("55-workflow-audit.spec.md")
     assert "contest" not in not_built_line("82-worktree-mode.spec.md")
     assert "contests" not in not_built_line("08-budgets-and-failures.spec.md")
     assert "contest" not in " ".join(ln for ln in (DOCS / "specs" / "72-contest-unit.spec.md").read_text(
@@ -51,6 +50,6 @@ def test_the_rationale_bullet_of_f39_says_the_contest_is_built() -> None:  # AC 
 
 def test_the_release_3_plan_records_the_contest_as_built() -> None:  # AC 6
     plan = (DOCS / "plans" / "third-release.plan.md").read_text(encoding="utf-8")
-    assert "R3-T4.2 is built" in plan.split("**Status: In progress.**", 1)[1].split("\n", 1)[0]
+    assert "R3-T4.1 and R3-T4.2 are built" in plan.split("**Status: In progress.**", 1)[1].split("\n", 1)[0]
     section = plan.split("#### R3-T4.2 Contest", 1)[1].split("\n### ", 1)[0]
     assert "Status: built" in section and "CTS-AC1 to CTS-AC6" in section

@@ -48,6 +48,21 @@ This line is an example and not valid JSON: {criteria: [n: 1, status: MET]}"""
 
 
 CLAIM_CRITERION_ID = "upstream-claim"
+COUNCIL_DISSENT_ID = "council-dissent"
+
+
+def council_inputs(values: Mapping[str, Any]) -> tuple[dict[str, str], dict[str, str]]:
+    """CNL-B4: what a council's judge is given. The subject is `decision` alone, and `positions` (each member's final
+    answer and its rounds, under labels) is among its references. Returns the subject and the references to add."""
+    return ({"decision": str(values.get("decision", ""))}, {"positions": str(values.get("positions", ""))})
+
+
+def council_dissent_blocker(unit: str) -> dict[str, str]:
+    """CNL-B12: the blocker of the built-in, retryable check that a `synthesize` chair's answer names the dissent when
+    the members' final positions differ."""
+    return {"criterion": COUNCIL_DISSENT_ID, "place": unit,
+            "problem": "the chair's answer names no dissent although the members' final positions differ",
+            "fix": "name where the members still disagree in the dissent of the answer block"}
 
 
 def claim_criterion(target: str, defect: str) -> Criterion:

@@ -39,7 +39,7 @@ def test_it_is_quiet_when_one_slot_differs_in_model_executor_or_prompt(tmp_path:
 def test_it_is_no_longer_listed_among_the_skipped_rules(tmp_path: Path) -> None:  # ARC-AC2 (ARC-B15)
     rep = run(contested([Slot("a"), Slot("b", model="large")]), tmp_path)
     assert "contest-identical-slots" not in {s["rule"] for s in rep.rules_skipped}
-    assert {"council-one-family", "council-even-majority"} <= {s["rule"] for s in rep.rules_skipped}  # the council's stay
+    assert not {"council-one-family", "council-even-majority"} & {s["rule"] for s in rep.rules_skipped}  # built too
 
 
 def test_the_audit_and_validation_ask_one_question(tmp_path: Path) -> None:  # ARC-AC2 (ARC-B15, CTS-B10)

@@ -34,9 +34,8 @@ def test_spec_77_does_not_call_the_concurrent_mode_unbuilt() -> None:  # MAP-AC1
 def test_the_not_built_lines_of_specs_08_and_82_name_only_what_is_left() -> None:  # BUD-AC9, WTR-AC12
     line_08 = next(ln for ln in (DOCS / "specs" / "08-budgets-and-failures.spec.md").read_text(encoding="utf-8")
                    .splitlines() if ln.startswith("- Not built yet")).lower()
-    assert all(w in line_08 for w in ("councils", "projection", "bud-b12", "bud-b15"))
-    assert "not built for councils" in line_08 and "not built for contests" not in line_08
-    assert "maps" not in line_08
+    assert all(w in line_08 for w in ("projection", "bud-b12", "bud-b15", "contest", "council"))
+    assert "not built for" not in line_08 and "maps" not in line_08  # councils and contests reserve too (BUD-AC11, BUD-AC12)
     line_82 = next(ln for ln in (DOCS / "specs" / "82-worktree-mode.spec.md").read_text(encoding="utf-8").splitlines()
                    if ln.startswith("- Not built yet")).lower()
     assert "slot" not in line_82 and "item" not in line_82 and "contest" not in line_82  # BUD-AC9, WTR-AC12
@@ -62,7 +61,7 @@ def test_the_release_3_plan_records_the_contest_as_built() -> None:  # AC 6 (CTS
     plan = (DOCS / "plans" / "third-release.plan.md").read_text(encoding="utf-8")
     t4 = plan.split("### R3-T4 Council and contest", 1)[1].split("\n### ", 1)[0]
     contest = t4.split("#### R3-T4.2 Contest", 1)[1]
-    assert "Status: built" in contest and "Status: built" not in t4.split("#### R3-T4.2", 1)[0]  # the council is not
-    assert "R3-T4.2 is built" in plan.split("**Status: In progress.**", 1)[1].split("\n", 1)[0]
+    assert "Status: built" in contest and "Status: built" in t4.split("#### R3-T4.2", 1)[0]  # the council too
+    assert "R3-T4.1 and R3-T4.2 are built" in plan.split("**Status: In progress.**", 1)[1].split("\n", 1)[0]
     reservations = plan.split("#### R3-T1.1 Reservations", 1)[1].split("\n####", 1)[0]
-    assert "(councils) remain" in reservations and "maps, contests" not in reservations
+    assert "councils" not in reservations and "maps, contests" not in reservations

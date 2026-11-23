@@ -173,6 +173,72 @@ def test_a_contest_slot_override_that_cannot_bind_or_map_is_refused() -> None:  
     assert preflight_of(ok, registry).step_executors == {"pick": "claude"}
 
 
+def council_of(*members: Any, chair: Any = None, judge: Any = None) -> Any:
+    from tempergraph.api import Chair, Council
+
+    unit = Council(question="Which design?", members=members, chair=chair or Chair(),
+                   gate=Gate(judge=judge or Judge(stance="V."), criteria=[crit("c-dec")]))
+    base = two_step()
+    return dataclasses.replace(base, units={"decide": unit, **base.units}, order=("decide", *base.order))
+
+
+def test_cnl_ac7_a_mixed_executor_council_checks_each_member_against_its_own_executor() -> None:  # CNL-AC7 (CNL-B6)
+    from tempergraph.api import Member
+
+    spec = council_of(Member(name="a", executor="claude", tools=["read", "search"]),
+                      Member(name="b", executor="antigravity", tools=["read", "list"]),
+                      Member(name="c", executor="messages-api", model="small", tools=["read", "web_fetch"]))
+    rep = preflight_of(spec, reg("claude", "antigravity", "messages-api"))
+    assert rep.ok, rep.refusals
+    assert {k: v for k, v in rep.step_executors.items() if k.startswith("decide.")} == {
+        "decide.member:a": "claude", "decide.member:b": "antigravity", "decide.member:c": "messages-api",
+        "decide.chair": "claude"}
+    assert rep.judges["decide"] == "claude"  # the judge resolves on the gate's layer, none of the members' executors
+
+
+def test_cnl_ac7_a_gap_in_one_members_executor_is_refused_and_the_others_are_not() -> None:  # CNL-AC7 (CNL-B6, EXI-B1)
+    from tempergraph.api import Member
+
+    r = reg("claude")
+    bare = standin("messages-api")
+    bare.caps = dataclasses.replace(bare.caps, tool_map={"read": ("read_file",)})  # no `search` on this executor
+    r.register(bare)
+    spec = council_of(Member(name="a", executor="claude", tools=["read", "search"]),
+                      Member(name="b", executor="messages-api", tools=["read", "search"]))
+    rep = preflight_of(spec, r)
+    gaps = [f for f in rep.refusals if f.code == "tool-unmapped"]
+    assert len(gaps) == 1 and "'b'" in gaps[0].message and "messages-api" in gaps[0].message  # exit 2 at the start
+
+
+def test_cnl_ac7_a_qualified_alias_of_a_members_executor_must_be_in_its_binding_table() -> None:  # CNL-AC7 (CNL-B6)
+    from tempergraph.api import Member
+
+    spec = council_of(Member(name="a"), Member(name="b", executor="antigravity", model="antigravity:deep"))
+    got = [f for f in preflight_of(spec, reg("claude", "antigravity")).refusals if f.code == "alias-unbound"]
+    assert len(got) == 1 and "'b'" in got[0].message
+
+
+def test_cnl_ac7_a_council_is_not_skipped_by_the_preflight() -> None:  # CNL-AC7 (CNL-B6)
+    from tempergraph.api import Member
+
+    spec = council_of(Member(name="a"), Member(name="b", executor="antigravity"))
+    down = reg("claude", "antigravity", antigravity=ProbeReport(ok=False, reason="signed_out"))
+    rep = preflight_of(spec, down)
+    assert [f.unit for f in rep.refusals if f.code == "executor-probe-failed"] == ["decide"]
+    assert "executor-unknown" in codes(preflight_of(spec, reg("claude")))  # a member on an executor nobody registered
+
+
+def test_cnl_ac7_the_chair_and_the_judge_resolve_on_their_own_layers() -> None:  # CNL-AC7 (CNL-B6)
+    from tempergraph.api import Chair, Member
+
+    spec = council_of(Member(name="a"), Member(name="b"), chair=Chair(executor="antigravity"),
+                      judge=Judge(stance="V.", executor="messages-api"))
+    rep = preflight_of(spec, reg("claude", "antigravity", "messages-api"))
+    assert rep.ok, rep.refusals
+    assert rep.step_executors["decide.chair"] == "antigravity" and rep.step_executors["decide.member:a"] == "claude"
+    assert rep.judges["decide"] == "messages-api"
+
+
 def test_missing_observers_are_preflight_warnings() -> None:  # EVT-AC5 (EVT-B23): one warning per missing name
     from tempergraph.executors.preflight import observer_warnings
 

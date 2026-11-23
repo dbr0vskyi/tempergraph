@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any, Protocol, TypedDict
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver
@@ -68,6 +68,8 @@ def compile_workflow(spec: WorkflowSpec, nodes: UnitNodes, checkpointer: BaseChe
         item_nodes = {kind: flow.item_node(unit, kind) for kind in flow.ITEM_KINDS}
         if unit in spec.units and spec.units[unit].kind == "subworkflow":  # SWF-B8: the child is a subgraph of this node
             g.add_node(step, _subgraph_node(nodes, unit, post))
+        elif unit in spec.units and spec.units[unit].kind == "council":  # CNL-B14, ADR-0062: its sessions are a subgraph
+            g.add_node(step, _council_node(nodes, unit, post))
         elif fan_out:  # this node reads the list and sends the items; it names where it may send them
             g.add_node(step, _map_node(nodes, unit, post), destinations=tuple(dict.fromkeys(
                 (judge, item_nodes["step"], item_nodes["human"], *_goes(spec, unit)))))
@@ -146,6 +148,68 @@ def _subgraph_node(nodes: UnitNodes, unit: str, post: Callable[[dict[str, Any]],
 
     def node(state: RunState, config: RunnableConfig) -> dict[str, Any]:
         return post(nodes.step(unit, state, config))
+
+    node.__name__ = f"step_{unit}"
+    return node
+
+
+class _CouncilState(TypedDict, total=False):
+    """The state of a council's subgraph: the attempt's run (a plain object, never checkpointed), the stage in hand and,
+    on a `Send` to a member node, the member's name."""
+
+    parent: Any
+    run: Any
+    stage: int
+    who: str
+    out: dict[str, Any]
+
+
+def _council_node(nodes: Any, unit: str, post: Callable[[dict[str, Any]], dict[str, Any]]
+                  ) -> Callable[[RunState], dict[str, Any]]:
+    """The step node of a council unit (CNL-B14, ADR-0062): a subgraph of one member node per round and member (a `Send`
+    each), the engine-owned barrier that waits for every member's answer, failure or spoil before the next round, a pure
+    tally node and the chair node. The unit's usual judge, gate and human nodes follow in the parent graph. Each member
+    session is kept on its own as it ends (`run.council_run`), so the subgraph itself takes no checkpointer: a rerun of
+    the attempt finds the sessions that ended and runs only the others."""
+
+    def fan(s: _CouncilState) -> Any:
+        names = s["run"].dispatch(int(s["stage"]))
+        if not names:
+            return "tally"
+        return [Send("member", {"run": s["run"], "stage": s["stage"], "who": n}) for n in names]
+
+    def member(s: _CouncilState) -> dict[str, Any]:
+        nodes.council_member(s["run"], s["who"], int(s["stage"]))
+        return {}
+
+    def barrier(s: _CouncilState) -> dict[str, Any]:
+        return {"stage": nodes.council_close(s["run"], int(s["stage"]))}
+
+    def tally(s: _CouncilState) -> dict[str, Any]:
+        nodes.council_tally(s["run"])
+        return {}
+
+    def chair(s: _CouncilState) -> dict[str, Any]:
+        nodes.council_chair(s["run"])
+        return {"out": nodes.council_finish(s["run"])}
+
+    sub: Any = StateGraph(_CouncilState)
+    sub.add_node("open", lambda s: {"run": nodes.council_open(unit, s["parent"]), "stage": 0})
+    sub.add_node("member", member)
+    sub.add_node("barrier", barrier)
+    sub.add_node("tally", tally)
+    sub.add_node("chair", chair)
+    sub.add_edge(START, "open")
+    sub.add_conditional_edges("open", fan, ["member", "tally"])
+    sub.add_edge("member", "barrier")
+    sub.add_conditional_edges("barrier", fan, ["member", "tally"])
+    sub.add_edge("tally", "chair")
+    sub.add_edge("chair", END)
+    graph = sub.compile(checkpointer=False)
+
+    def node(state: RunState) -> dict[str, Any]:
+        got = graph.invoke({"parent": state}, {"recursion_limit": 100})
+        return post(got["out"])
 
     node.__name__ = f"step_{unit}"
     return node
