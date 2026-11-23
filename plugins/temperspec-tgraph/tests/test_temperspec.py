@@ -843,7 +843,7 @@ def test_the_gate_runs_the_commands_again_when_a_file_changed_after_the_previews
 
 
 def test_the_gates_evidence_says_for_each_command_whether_it_was_reused_or_run(
-        repo: Path, tmp_path_factory: pytest.TempPathFactory) -> None:  # AC 5, ts-code-evidence
+        repo: Path, tmp_path_factory: pytest.TempPathFactory) -> None:  # AC 5, ts-code-ran
     store = tmp_path_factory.mktemp("store") / "command_runs.jsonl"
     base = _git(repo, "rev-parse", "HEAD").strip()
     _copy(DONE, repo)
@@ -852,8 +852,8 @@ def test_the_gates_evidence_says_for_each_command_whether_it_was_reused_or_run(
     assert first.evidence.splitlines()[0] == "`git --version`: run", first.evidence
     assert second.evidence.splitlines()[0] == "`git --version`: reused", second.evidence
     assert first.evidence.index("`git --version`") < first.evidence.index("Changed paths since the run's base")
-    assert next(f.message for f in first.findings if f.criterion == "ts-code-evidence").startswith("0 of 1")
-    assert next(f.message for f in second.findings if f.criterion == "ts-code-evidence").startswith("1 of 1")
+    assert next(f.message for f in first.findings if f.criterion == "ts-code-ran").startswith("0 of 1")
+    assert next(f.message for f in second.findings if f.criterion == "ts-code-ran").startswith("1 of 1")
     # a command the allow list refuses is not started, and says so
     plan = tmp_path_factory.mktemp("refused") / "work"
     ctx = _code_ctx(plan, DONE)
@@ -877,7 +877,7 @@ def test_the_gates_evidence_says_for_each_command_whether_it_was_reused_or_run(
 
 PROCESS = {"ts-dis-narrow": "discovery", "ts-plan-reading": "plan", "ts-code-once": "code", "ts-code-reuse": "code",
            "ts-code-preview": "code", "ts-code-previewed": "code", "ts-code-session": "code", "ts-code-rerun": "code",
-           "ts-code-evidence": "code"}  # AC 2, AC 3, AC 4, AC 5
+           "ts-code-ran": "code"}  # AC 2, AC 3, AC 4, AC 5
 # Words that put a criterion on what a judge cannot open: the step's prompt, its session or the gate's runs.
 UNSEEN = re.compile(r"\b(prompts?|sessions?|command runs?|reused|run once|runs once)\b", re.I)
 
@@ -922,7 +922,7 @@ def test_the_code_gate_names_its_process_criteria_on_a_finished_plan(tmp_path: P
     res, _ = run_check(SPEC.units["code"].gate, _code_ctx(tmp_path, DONE))
     assert _named(res, "ts-code-once") == ["pass"], res.evidence
     assert _named(res, "ts-code-reuse") == ["n_a"]  # no store outside a run
-    assert _named(res, "ts-code-preview") == ["pass"] and _named(res, "ts-code-evidence") == ["pass"]  # AC 2, AC 5
+    assert _named(res, "ts-code-preview") == ["pass"] and _named(res, "ts-code-ran") == ["pass"]  # AC 2, AC 5
     for cid in ("ts-code-previewed", "ts-code-session", "ts-code-rerun"):  # the session's own run is not visible here
         assert _named(res, cid) == ["n_a"], cid
         assert "tests prove" in next(f.message for f in res.findings if f.criterion == cid), cid

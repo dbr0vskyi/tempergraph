@@ -15,7 +15,7 @@ The task that raised this states the goal: the key must name the tree's content 
 
 ## Decision
 
-We will take option A and key a stored command run on the content of the tree: every file git tracks and every untracked file git does not ignore (every file, outside a git repository), outside the state root, each by its path, its bytes and its executable bit. The commit, the index and the status listing are no part of the key. A caller still chooses, call by call, whether to ask for reuse. The behaviour is [CHK-B13](../specs/75-check-contract-and-command-runs.spec.md), proved together with the preview by CHK-AC8 of the same spec.
+We will take option A and key a stored command run on the content of the tree: every file git tracks and every untracked file git does not ignore (every file, outside a git repository), outside the state root, each by its path, its bytes and its executable bit. The commit, the index and the status listing are no part of the key. A caller still chooses, call by call, whether to ask for reuse. The behaviour is [CHK-B13](../specs/75-check-contract-and-command-runs.spec.md), proved together with the preview by CHK-AC12 of the same spec.
 
 ## Options considered
 
@@ -34,7 +34,7 @@ For: the key is unchanged. Against: the engine does not know which script commit
 ## Consequences
 
 - Reuse survives a commit, an amend, a reset and a checkout of the same content, and a retry that undoes its edits finds the earlier run. A changed byte, a changed executable bit, and a file added or removed outside git's ignore rules each make the key differ.
-- CHK-B5 holds as written: "nothing in the tree changed" now means the same content, and its two scenarios are unchanged. CHK-AC6 holds as written, and its "unchanged tree" now includes a commit in between, which CHK-AC8 proves.
+- CHK-B5 holds as written: "nothing in the tree changed" now means the same content, and its two scenarios are unchanged. CHK-AC6 holds as written, and its "unchanged tree" now includes a commit in between, which CHK-AC12 proves.
 - Reuse still rests on ADR-0075's assumption that a command's result depends on the tree's content and on nothing else. A command whose result depends on history (a log, or a diff against another commit) is answered from the earlier run when the content is the same. The commit in the old key was a weak guard against that. The caller that passes `reuse=True` chooses its commands, and ADR-0075's mitigation stands: a workflow passes `reuse=False` for a command that reads elsewhere.
 - Files git ignores stay outside the key, as before. A command that reads one (a virtual environment, a build output) can be answered from an earlier run.
 - Outside a git repository, git prints nothing, so the old key held no file content and every call after the first was a hit. The new key covers every file under the workspace outside the state root, so a changed file runs again.

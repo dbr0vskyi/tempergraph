@@ -125,7 +125,7 @@ WHEN a gate's check runs on the same workspace in workflows whose steps use diff
 - CHK-AC5 (CHK-B1, CHK-B2, CHK-B3, CHK-B14): A FAIL with findings renders every finding's criterion, place and fix in the retry prompt, and starts no judge session
 - CHK-AC6 (CHK-B17, CHK-B7): `self-check` writes no state, verdict, fact or budget change (state digest before and after), and its runs are reused by the gate's check on an unchanged tree
 - CHK-AC7 (CHK-B6, CHK-B10, CHK-B14): Facts survive a resume and are cleared by a trip back exactly as artifacts are
-- CHK-AC8 (CHK-B13, CHK-B17): A command run by the check preview while a step's files are not yet committed is reused by the gate's check once those files are committed with no other change, and runs again at the gate when one file changed after the preview (a scratch git repository, offline)
+- CHK-AC12 (CHK-B13, CHK-B17): A command run by the check preview while a step's files are not yet committed is reused by the gate's check once those files are committed with no other change, and runs again at the gate when one file changed after the preview (a scratch git repository, offline)
 
 ## Open questions
 

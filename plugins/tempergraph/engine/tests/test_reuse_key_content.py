@@ -1,4 +1,4 @@
-"""The reuse key of a command run names the tree's content, not its history (CHK-B13, CHK-AC1, CHK-AC8, CHK-B17).
+"""The reuse key of a command run names the tree's content, not its history (CHK-B13, CHK-AC1, CHK-AC12, CHK-B17).
 
 Part one: `reuse_key` on a scratch git repository and on a folder outside git. Part two: a step whose check preview
 ran a command before an `after` script committed the step's files, and a gate check that runs the same command with
@@ -206,7 +206,7 @@ def gate_evidence(repo: Path, change: str | None) -> tuple[PreviewThenChange, st
 
 
 def test_a_preview_run_before_the_commit_is_reused_by_the_gate_after_it(repo: Path) -> None:
-    # CHK-AC8, CHK-B13, CHK-B17, AC 3
+    # CHK-AC12, CHK-B13, CHK-B17, AC 3
     ex, evidence = gate_evidence(repo, None)
     assert "preview=False reused=True" in evidence
     assert ex.workdir is not None
@@ -216,7 +216,7 @@ def test_a_preview_run_before_the_commit_is_reused_by_the_gate_after_it(repo: Pa
 
 
 def test_a_file_changed_after_the_preview_runs_the_command_again_at_the_gate(repo: Path) -> None:
-    # CHK-AC8, CHK-B13, AC 4
+    # CHK-AC12, CHK-B13, AC 4
     for n, change in enumerate(("edit", "add")):
         sub = repo.parent / f"case{n}"
         sub.mkdir()

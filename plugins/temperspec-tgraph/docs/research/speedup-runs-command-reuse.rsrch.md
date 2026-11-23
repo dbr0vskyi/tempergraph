@@ -34,7 +34,7 @@ Every check context of a run is built with the same store file, `runs/<workflow>
 
 ### F4 A commit leaves the key, and a changed file gets a new key `confirmed`
 
-The engine runs a step's `after` scripts only after a session that ended `ok` (SCR-B2; `nodes.py` lines 397-398), and the check runs after that. The commit script returns without committing when nothing is staged (`routing.py` lines 127-142), so a retry that changes nothing leaves the tree as it was and its key matches (CHK-B5 states this for a judge-only failure). A retry that edits a file changes the tree's content, the key differs, and the commands run again, as they must. A commit of the same content leaves the key as it was, because the key holds no `HEAD` (CHK-B13, CHK-AC8; it held `HEAD` before issue 126, and then a commit moved it).
+The engine runs a step's `after` scripts only after a session that ended `ok` (SCR-B2; `nodes.py` lines 397-398), and the check runs after that. The commit script returns without committing when nothing is staged (`routing.py` lines 127-142), so a retry that changes nothing leaves the tree as it was and its key matches (CHK-B5 states this for a judge-only failure). A retry that edits a file changes the tree's content, the key differs, and the commands run again, as they must. A commit of the same content leaves the key as it was, because the key holds no `HEAD` (CHK-B13, CHK-AC12; it held `HEAD` before issue 126, and then a commit moved it).
 
 ### F5 Only the engine's own runs are recorded `confirmed`
 
@@ -42,7 +42,7 @@ The store is written only by `CheckContext.run` (`checks.py`; no other writer in
 
 ### F6 A preview gives the code gate a run to reuse across the commit `confirmed`
 
-A step that declares `self_check: true` gets a preview whose command runs are stored for reuse, and the gate reuses them on an unchanged tree (CHK-B17, CHK-AC6). On the code step a commit comes between (F4): the workflow's commit script, an `after` script of the step, commits the session's files before the gate's check. With the key as it was, the gate saw a new `HEAD` and a clean status where the preview saw the old `HEAD` and a dirty one, and the keys differed. With the key naming the tree's content they are equal when no file changed, and the gate takes the preview's run (CHK-AC8, proved offline in `tests/test_reuse_key_content.py`; the package's tests prove the same on the code gate). A file changed after the preview, or added, changes the key, and the gate runs the command again.
+A step that declares `self_check: true` gets a preview whose command runs are stored for reuse, and the gate reuses them on an unchanged tree (CHK-B17, CHK-AC6). On the code step a commit comes between (F4): the workflow's commit script, an `after` script of the step, commits the session's files before the gate's check. With the key as it was, the gate saw a new `HEAD` and a clean status where the preview saw the old `HEAD` and a dirty one, and the keys differed. With the key naming the tree's content they are equal when no file changed, and the gate takes the preview's run (CHK-AC12, proved offline in `tests/test_reuse_key_content.py`; the package's tests prove the same on the code gate). A file changed after the preview, or added, changes the key, and the gate runs the command again.
 
 ### F7 Reuse is tested at the check-context level only `confirmed`
 

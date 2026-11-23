@@ -810,7 +810,7 @@ def _lane(ctx: Any, criterion: str) -> list[CheckFinding]:
 
 def _run_commands(ctx: Any, plan: fmt.Plan, criterion: str) -> tuple[list[CheckFinding], list[str]]:
     """The findings of the plan's verification commands and one evidence line per command: `reused` for a stored
-    result, `run` for a started command, `not run` for one that did not start (ts-code-evidence)."""
+    result, `run` for a started command, `not run` for one that did not start (ts-code-ran)."""
     found = _commands(ctx, plan, criterion)
     if found:
         return found, [f"`{cmd}`: not run" for cmd in plan.commands]
@@ -834,7 +834,7 @@ def _verify(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
 
 
 def _evidence(lines: list[str], criterion: str) -> CheckFinding:
-    """ts-code-evidence: the gate's own answer for each verification command, counted from its lines."""
+    """ts-code-ran: the gate's own answer for each verification command, counted from its lines."""
     if not lines:
         return _find("n_a", criterion, message="no verification command was run by this gate")
     reused = sum(1 for ln in lines if ln.endswith(": reused"))
@@ -863,7 +863,7 @@ def _reuse(ctx: Any, criterion: str) -> CheckFinding:
 
 def code_check(ctx: Any) -> Any:
     """ts-code-rows, ts-code-changed, ts-code-verify, ts-code-reuse, ts-code-proof, ts-code-lane, ts-code-once,
-    ts-code-preview, ts-code-previewed, ts-code-session, ts-code-rerun, ts-code-evidence, ts-code-commit.
+    ts-code-preview, ts-code-previewed, ts-code-session, ts-code-rerun, ts-code-ran, ts-code-commit.
 
     The marks come first: a plan with a row not marked completed goes back to the code step at once, with no
     command run. Marks are claims, so a marked plan is then verified as before, and each marked row's file must
@@ -917,7 +917,7 @@ def code_check(ctx: Any) -> Any:
     found.append(_reuse(ctx, "ts-code-reuse"))
     proof, links = _proof(ctx, plan, "ts-code-proof")
     found += proof + _lane(ctx, "ts-code-lane") + _prompt_says("ts-code-once") + _prompt_says("ts-code-preview")
-    found.append(_evidence(lines, "ts-code-evidence"))
+    found.append(_evidence(lines, "ts-code-ran"))
     found += [_find("n_a", cid, message="the session's own run is not visible to the gate; the package's tests "
                     "prove it") for cid in ("ts-code-previewed", "ts-code-session", "ts-code-rerun")]
     if not ctx.preview:

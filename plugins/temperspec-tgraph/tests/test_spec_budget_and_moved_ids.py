@@ -270,7 +270,7 @@ def _criteria() -> dict[str, tuple[str, dict[str, Any]]]:
     return out
 
 
-def test_the_criteria_file_is_at_revision_9_with_its_entry() -> None:  # AC 5, ts-code-evidence, ts-dis-budget, ts-spec-moved
+def test_the_criteria_file_is_at_revision_9_with_its_entry() -> None:  # AC 5, ts-code-ran, ts-dis-budget, ts-spec-moved
     o = json.loads((ROOT / "outcome.json").read_text(encoding="utf-8"))
     assert o["revision"] == 9
     assert o["revisions"][-1]["revision"] == 9 and "126" in o["revisions"][-1]["note"]
@@ -279,9 +279,9 @@ def test_the_criteria_file_is_at_revision_9_with_its_entry() -> None:  # AC 5, t
 
 
 @pytest.mark.parametrize("cid", ["ts-code-once", "ts-code-preview", "ts-code-previewed", "ts-code-session",
-                                 "ts-code-rerun", "ts-code-evidence"])
+                                 "ts-code-rerun", "ts-code-ran"])
 def test_each_code_criterion_of_the_run_is_a_warning_checked_by_the_gate_with_the_text_of_its_spec_row(
-        cid: str) -> None:  # AC 1, AC 2, AC 3, AC 4, AC 5, ts-code-once, ts-code-preview, ts-code-evidence
+        cid: str) -> None:  # AC 1, AC 2, AC 3, AC 4, AC 5, ts-code-once, ts-code-preview, ts-code-ran
     where, row = _criteria()[cid]
     assert where == "code" and row["text"] == _rows("08-code.spec.md")[cid]
     assert row["severity"] == "warning" and row["verified_by"] == "check"
