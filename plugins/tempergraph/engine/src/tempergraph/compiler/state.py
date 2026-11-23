@@ -94,7 +94,9 @@ def flat(channel: Mapping[str, Any] | None) -> dict[str, Any]:
 
 class RunState(TypedDict, total=False):
     request: Annotated[dict[str, Any], replace]  # {task_id, inputs, text_ref, chars}
-    workspace: Annotated[dict[str, Any], replace]  # WorkspaceRecord
+    # WorkspaceRecord, writer worktrees included (its `children`). Written by the fork and by the join, each alone in
+    # its superstep, never by a branch node, so `replace` is the reducer CMP-AC9 asks of every channel.
+    workspace: Annotated[dict[str, Any], replace]
     artifacts: Annotated[dict[str, Any], merge_units]  # unit -> key -> pointer
     values: Annotated[dict[str, Any], merge_units]  # unit -> key -> value
     facts: Annotated[dict[str, Any], merge_units]  # unit -> key -> str
