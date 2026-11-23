@@ -67,7 +67,7 @@ WHEN a workflow is validated THE engine SHALL refuse an executor name not regist
 
 WHEN a workflow is validated THE engine SHALL refuse a non-positive or non-integer timeout, a malformed or missing `issue_repository`, a ladder longer than eight, a declared setting whose default is outside its kind, choices or range, a profile naming a key outside the settings catalog or a value outside its range ([RST-B32](80-run-settings-and-overrides.spec.md)); a missing routing description or a start example that does not resolve; and a unit kind, flow primitive or field the running release does not build, with `not_in_release` naming it and the release that adds it on the catalog, a start and the pre-start check alike ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md)).
 
-- GIVEN a `council` unit WHEN the workflow validates THEN it is refused `not_in_release` naming the release that adds it
+- GIVEN a unit that declares a field the running release does not build WHEN the workflow validates THEN it is refused `not_in_release` naming the field
 
 ### WFM-B11 Refusals owned elsewhere
 
@@ -83,7 +83,7 @@ WHEN a workflow is validated THE engine SHALL only warn when a prompt names a to
 
 ### WFM-B13 Wait and parallel fields
 
-WHEN `wait` and `parallel` units are declared THE engine SHALL read a wait's `event` (a slug), `check` (callable ref), `deadline_s` and `on_deadline`, and a parallel unit's `branches` (two or more unit names), with `ask`, `wait` and `parallel` in the release, `council` and `contest` refused `not_in_release`, and `subworkflow` read as [SWF-B7](99-subworkflow-unit.spec.md) reads it.
+WHEN `wait` and `parallel` units are declared THE engine SHALL read a wait's `event` (a slug), `check` (callable ref), `deadline_s` and `on_deadline`, and a parallel unit's `branches` (two or more unit names), with `ask`, `wait` and `parallel` in the release, `council` read as [CNL-B9](71-council-unit.spec.md) reads it, `contest` refused `not_in_release`, and `subworkflow` read as [SWF-B7](99-subworkflow-unit.spec.md) reads it.
 
 - GIVEN a parallel unit with one branch WHEN it validates THEN it is refused `parallel-branches`
 
