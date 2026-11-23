@@ -171,6 +171,9 @@ def _base(v: Any) -> None:
 
 
 RUN = frozenset({"run"})
+SCHEDULE_DEFAULTS: dict[str, bool] = {"loop_autostart": False}
+"""The `schedule` map of the user settings file (TCK-B14): machine-wide, never a run layer, off by default.
+`loop_autostart` lets the plugin's `SessionStart` hook start `schedule loop --detach` when no loop runs."""
 CATALOG: dict[str, Entry] = {
     "executor": Entry(SESSION, _slug),
     "model": Entry(SESSION, _one_alias, "inherit"),
@@ -464,6 +467,21 @@ def capture(files: ConfigFiles) -> Capture:
     names = got.get("observers")
     obs = tuple(str(n) for n in names if isinstance(n, str)) if isinstance(names, list) else ()
     return Capture(raw=on("raw"), tool_inputs=on("tool_inputs"), check_output=on("check_output"), observers=obs)
+
+
+def schedule_settings(home: Path) -> dict[str, bool]:
+    """`schedule.*` of the user settings file only (a project file cannot start a process at login); a missing file, an
+    unknown key or a value that is not a boolean leaves the default."""
+    out = dict(SCHEDULE_DEFAULTS)
+    try:
+        doc = json.loads((home / "config" / SETTINGS_FILE).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return out
+    given = doc.get("schedule") if isinstance(doc, Mapping) else None
+    for key in SCHEDULE_DEFAULTS:
+        if isinstance(given, Mapping) and isinstance(given.get(key), bool):
+            out[key] = bool(given[key])
+    return out
 
 
 def config_paths(state_root: Path | None, home: Path) -> tuple[Path | None, Path]:

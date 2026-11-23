@@ -8,6 +8,11 @@
             "type": "command",
             "command": "tempergraph supervision hook SessionStart >/dev/null 2>&1 || true",
             "timeout": 2
+          },
+          {
+            "type": "command",
+            "command": "tempergraph schedule loop --if-autostart >/dev/null 2>&1 || true",
+            "timeout": 2
           }
         ]
       }

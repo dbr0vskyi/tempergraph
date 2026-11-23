@@ -1,0 +1,10 @@
+# TCK-AC1 golden file: the tests drop this line before they compare
+[Unit]
+Description=tempergraph schedule loop
+
+[Service]
+ExecStart="/home/user/.tempergraph/bin/tempergraph" schedule loop
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

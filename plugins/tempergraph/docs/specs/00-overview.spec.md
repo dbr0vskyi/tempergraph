@@ -54,6 +54,7 @@ The component specs, each owning what follows its name:
 - [23-run-options.spec.md](23-run-options.spec.md) ROP: run options.
 - [24-lifecycle-hooks.spec.md](24-lifecycle-hooks.spec.md) HOK: lifecycle hooks.
 - [25-session-contract.spec.md](25-session-contract.spec.md) SSN: the session contract.
+- [26-schedule-timing-formats.spec.md](26-schedule-timing-formats.spec.md) STM: the exact timing formats of a schedule (`--at`, `--rrule`, `--every`, `--cron`) and their refusals, split from SCH.
 - [30-run-events.spec.md](30-run-events.spec.md) EVT: record envelope, observer record kinds, activity journal, `events`, hook events.
 - [31-run-detail-document.spec.md](31-run-detail-document.spec.md) RDD: one thread in full, for the monitor and people.
 - [32-run-control.spec.md](32-run-control.spec.md) RCT: the `stop` verb.

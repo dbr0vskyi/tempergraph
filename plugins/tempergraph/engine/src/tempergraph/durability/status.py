@@ -169,6 +169,9 @@ def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     for key in RUN_FIELDS:
         if key in run:
             r[key] = run[key]
+    sched = (run.get("meta") or {}).get("schedule")  # TCK-B24: a scheduled run's fire, beside `parent`
+    if sched and "schedule" not in r:
+        r["origin"], r["schedule"] = "schedule", dict(sched)
     if run.get("degraded"):  # FLX-AC4: a run that took a fallback is never shown without it
         r["degraded"] = True
         r["degraded_unit"] = (run["degraded"] or {}).get("unit")
