@@ -113,6 +113,7 @@ class RunSettings:
     apply_deadline: bool = False  # `resume --apply-deadline` (FLX-B8)
     pause_before: tuple[str, ...] = ()  # `--pause-before <unit>`: operator breakpoints of this segment (FLX-B10)
     unit: str | None = None  # `resume --unit`: which of several pending gates the decision answers (HUM-B3)
+    schedule: Mapping[str, Any] | None = None  # a scheduled run's `{schedule_id, fire_id, slot}` (TCK-B24)
     audit_seed: int | None = None  # a test hook: mixed into the audit judge's draw so a test's sampling is stable (JDG-B7)
 
     def all_flags(self) -> dict[str, Any]:
@@ -393,7 +394,9 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                                                     "units": c["units"]} for u, c in kids.items()})
         except OSError:
             moved = None
-        log.write("run_started", origin=settings.origin, caller=dict(settings.caller),
+        sched = settings.schedule or meta.get("schedule")  # TCK-B24: the fire this thread is, kept across resumes
+        log.write("run_started", origin=("schedule" if sched else settings.origin), caller=dict(settings.caller),
+                  **({"schedule": dict(sched)} if sched else {}),
                   alias=aliases.alias_of(root, tid), label=settings.label or meta.get("label"),
                   engine_version=ENGINE_VERSION, shape_digest=shape, **({"moved_from": moved} if moved else {}),
                   **({"children": {u: {k: c[k] for k in ("workflow", "workflow_version", "content_version")}
@@ -468,6 +471,7 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
                        "workflow_version": spec.version, **join_keys(root, settings),
                        "exit_code": int(outcome.exit_code), "reason": outcome.reason,
                        "cost": cost.to_json(), "origin": settings.origin, "stage": _stage(spec, settings)[0],
+                       **({"schedule_id": settings.schedule["schedule_id"]} if settings.schedule else {}),
                        "settings_digest": settled.resolved.digest, **deg,
                        "overridden_keys": rst.overridden_keys(settled.resolved),
                        "grants": _grants_used(spec, registry, settled, final),
@@ -725,6 +729,7 @@ def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: 
             "task", chars=sum(len(v) for v in inputs.values()), request=clip(scrub(inputs.get("request", "")), 200))
         initial = {"request": {"task_id": task_id, "inputs": dict(inputs)}, "workspace": rec.to_json(),
                    "run": {"meta": {"origin": settings.origin, "label": clip(scrub(settings.label or ""), 80) or None,
+                                    **({"schedule": dict(settings.schedule)} if settings.schedule else {}),
                                     **({"dry_run": True} if settings.dry_run else {})},
                            "options": settled.snapshot_json()}}
         out = _drive(spec, task_id, root, registry, settings, rep.judges, initial, settled,

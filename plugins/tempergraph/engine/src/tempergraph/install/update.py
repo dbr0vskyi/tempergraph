@@ -350,6 +350,9 @@ def update(argv: Sequence[str], *, home: Path | None = None, builder: envmod.Bui
     old = Path(str(p["current"]["path"])).name
     envmod.switch(home, inst, extras=extras, release_doc=rel)  # 6
     shim.write_shim(home)
+    from tempergraph.schedule import triggers
+
+    triggers.refresh(home)  # TCK-B8: an `os` entry is rewritten only if the shim path changed; nothing when none exists
     rec = b.reconcile(inst.env, previous=old)
     lines = _plan_lines(p, installed=True)
     if rec.get("error"):

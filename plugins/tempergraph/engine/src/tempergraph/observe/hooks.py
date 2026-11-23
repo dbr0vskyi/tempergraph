@@ -22,9 +22,9 @@ from tempergraph.docs import append_jsonl, write_json
 from tempergraph.store.layout import home_path, now_iso
 
 RUN_EVENTS = ("started", "unit_entered", "gate_verdict", "paused", "resumed", "stop_requested", "finished",
-              "failed")
+              "failed", "schedule_paused")  # `schedule_paused`: failures paused a schedule (TCK-B24, SCH-B23)
 LATER_EVENTS = ("stalled", "orchestration_attention", "orchestration_finished", "schedule_fired",
-                "schedule_missed", "schedule_refused", "schedule_paused")
+                "schedule_missed", "schedule_refused")
 FILE = "hooks.json"
 MAX_HOOKS, MAX_WORDS, MAX_WORD = 20, 32, 500
 TIMEOUT_S = 60.0
@@ -148,6 +148,37 @@ def on_record(log: Path, rec: Mapping[str, Any]) -> bool:
     from tempergraph import detach
 
     return detach.start("tempergraph.observe.hooks", ("drain",), home)
+
+
+def on_schedule_event(root: Path, event: str, workflow: str, schedule_id: str, extra: Mapping[str, Any]) -> bool:
+    """A schedule-level hook event (`schedule_paused`): the facts file beside the schedule's runs in the target
+    repository's state root, a ticket for each hook registered there, then the one drain child. Raises nothing."""
+    try:
+        mine = [h for h in load(root) if h["event"] == event]
+        if not mine:
+            return False
+        task_id = f"schedule-{schedule_id}"
+        folder = root / "runs" / workflow / task_id / "hooks"
+        folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+        seq = len(list(folder.glob(f"{event}-*.facts.json"))) + 1
+        doc: dict[str, Any] = {"schema_version": 1, "event": event, "workflow": workflow, "task_id": task_id,
+                               "schedule_id": schedule_id}
+        for k in ("cause", "thread", "failures"):
+            v = extra.get(k)
+            if isinstance(v, bool | int | float) or (isinstance(v, str) and len(v) <= 200):
+                doc[k] = v
+        write_json(folder / f"{event}-{seq}.facts.json", doc)
+        home = home_path()
+        tickets_dir(home).mkdir(parents=True, exist_ok=True, mode=0o700)
+        for h in mine:
+            write_json(tickets_dir(home) / f"{uuid.uuid4().hex}.json",
+                       {"schema_version": 1, "root": str(root), "workflow": workflow, "task_id": task_id,
+                        "event": event, "seq": seq, "hook": h["id"]})
+        from tempergraph import detach
+
+        return detach.start("tempergraph.observe.hooks", ("drain",), home)
+    except Exception:  # noqa: BLE001 - a hook never changes a tick (OVR-B4)
+        return False
 
 
 def _slug(text: Any) -> bool:

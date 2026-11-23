@@ -34,7 +34,7 @@ Triage proposes the quick lane and writes a short Change section that stands in 
 
 ### What "done" means is fixed before coding
 
-The plan ends with a proof table: for each acceptance criterion of the task, the test file that will prove it and the command that runs it. The code gate runs the commands itself, and checks that a test in the named file carries the criterion (the spec's id, or `AC <n>`) and is not skipped. The outcome gate applies the same rule to every acceptance criterion of an edited spec.
+The plan ends with a proof table: for each acceptance criterion of the task, the test file that will prove it and the command that runs it. The code gate runs the commands itself, and checks that a test in the named file carries the criterion (the spec's id, or `AC <n>`) and is not skipped. The outcome gate applies the same rule to each acceptance criterion a run added or reworded in a spec, and to each old criterion that proves a behaviour the run changed; a spec edited only to add a link asks nothing of its old criteria.
 
 ### The pull request says what to read
 

@@ -22,7 +22,7 @@ from tempergraph.catalog import Catalog, PackageNotLoaded, from_registry, resolv
 from tempergraph.cli import audit as audit_cli
 from tempergraph.cli import author as author_cli
 from tempergraph.cli import install as install_cli
-from tempergraph.cli import observe_cli
+from tempergraph.cli import observe_cli, schedule_cli
 from tempergraph.cli import upgrade as upgrade_cli
 from tempergraph.cli import workflows as workflows_cli
 from tempergraph.constants import SCHEMA, ExitCode
@@ -185,6 +185,7 @@ def _parser() -> _Parser:
     csub.add_parser("paths")
     workflows_cli.add_parsers(sub)
     audit_cli.add_parsers(sub)
+    schedule_cli.add_parsers(sub)
     author_cli.add_parsers(sub)
     install_cli.add_parsers(sub)
     upgrade_cli.add_parsers(sub)
@@ -240,6 +241,7 @@ def _spellings(p: argparse.ArgumentParser) -> None:
 def _run_options(p: argparse.ArgumentParser, start: bool = True) -> None:
     _spellings(p)
     _caller_options(p)
+    p.add_argument("--schedule", metavar="FIRE_ID", help="reserved to the schedule tick: needs its fire token (TCK-B17)")
     p.add_argument("--json", action="store_true")
     p.add_argument("--carry", action="store_true", help="carry this thread's state on its own branch (CAR)")
     _settings_options(p, resume=not start)
@@ -271,11 +273,16 @@ class Env:
     def caller(self, a: argparse.Namespace) -> dict[str, Any]:
         """PRV-B13, once per mutating call, before any write; read-only verbs never call this."""
         from tempergraph.provenance import CallerRefused, classify
+        from tempergraph.schedule.token import entry_for_fire
 
+        known = getattr(a, "caller_block", None)
+        if known:  # a scheduled run classifies its caller once, before it reads its hand-off ticket (TCK-B17)
+            return dict(known)
         env, tty = self.signals or (os.environ, sys.stdin.isatty() and sys.stdout.isatty())
         declared = getattr(a, "caller", None) or ("agent" if getattr(a, "as_agent", False) else None)
         try:
-            return classify(env, tty, declared=declared, caller_app=getattr(a, "caller_app", None))
+            return classify(env, tty, declared=declared, caller_app=getattr(a, "caller_app", None),
+                            schedule=getattr(a, "schedule", None), entry_for_fire=entry_for_fire)
         except CallerRefused as exc:
             raise UsageError(f"{exc.code}: {exc}") from exc
 
@@ -364,9 +371,14 @@ def _flags(env: Env, a: argparse.Namespace) -> dict[str, Any]:
 def _settings(env: Env, a: argparse.Namespace, mutating: bool = True) -> Any:
     from tempergraph.run.runner import RunSettings
 
-    fields: dict[str, Any] = {"flags": _flags(env, a), "caller": env.caller(a) if mutating else {},
+    caller = env.caller(a) if mutating else {}
+    fields: dict[str, Any] = {"flags": {**(getattr(a, "ticket_flags", None) or {}), **_flags(env, a)},
+                              "caller": caller,
                               "relayed": bool(getattr(a, "relayed", False)),
                               "profiles": tuple(a.profile) if getattr(a, "profile", None) is not None else None}
+    if getattr(a, "schedule", None) and caller.get("kind") == "scheduler":  # TCK-B24: every start path writes the fire
+        block = caller["schedule"]
+        fields.update(origin="schedule", schedule={k: block[k] for k in ("schedule_id", "fire_id", "slot")})
     if hasattr(a, "alias"):
         fields.update(alias=a.alias, label=a.label, dry_run=bool(getattr(a, "dry_run", False)))
     if getattr(a, "escalate", False):
@@ -401,10 +413,30 @@ def _report(env: Env, out: Any, as_json: bool) -> int:
     return int(out.exit_code)
 
 
+def _scheduled(env: Env, a: argparse.Namespace) -> None:
+    """TCK-B17: a scheduled run checks its fire token before anything is written, then takes its request, inputs,
+    options and label from the hand-off ticket the tick left (SEC-B6) and removes the ticket. The token leaves this
+    process's environment so no step session inherits it."""
+    from tempergraph.schedule import launch, token
+
+    a.caller_block = env.caller(a)  # exit 2 `schedule_token_invalid` or `schedule_reserved` here
+    os.environ.pop(token.ENV_VAR, None)
+    ticket = launch.read_ticket(str(a.schedule))
+    if ticket is None:
+        raise UsageError("schedule_ticket_invalid: the fire's hand-off ticket is missing or malformed")
+    a.request = str(ticket["request"]).split()
+    a.input = [f"{k}={v}" for k, v in ticket["inputs"].items()]
+    a.label = ticket["label"]
+    a.ticket_flags = dict(ticket["flags"])
+    a.profile = list(ticket["profiles"]) or None
+
+
 def cmd_run(env: Env, a: argparse.Namespace) -> int:
     from tempergraph.executors.preflight import preflight
     from tempergraph.run.runner import SettingsRefused, settle_start, start
 
+    if getattr(a, "schedule", None) and not a.check:
+        _scheduled(env, a)
     try:
         spec = _spec(env, a.workflow)
     except PackageNotLoaded as exc:
@@ -640,6 +672,12 @@ def cmd_status(env: Env, a: argparse.Namespace) -> int:
     lines = warnings(home_path())
     if lines:
         doc["warnings"] = lines  # CST-B10, CST-B12, CST-B13: a sink failing for 7 days
+    from tempergraph.cli.schedule_cli import CLOCK
+    from tempergraph.observe.attention import trigger_stale
+
+    stale = trigger_stale(home_path(), CLOCK().timestamp())  # TCK-B7: read-only, shown only when a heartbeat is old
+    if stale:
+        doc["trigger_stale"] = stale
     _emit(env, doc)
     return 0
 
@@ -980,6 +1018,7 @@ COMMANDS: dict[str, Callable[[Env, argparse.Namespace], int]] = {
     "executors": cmd_executors, "events": cmd_events, "facts": cmd_facts, "self-check": cmd_self_check, "hooks": cmd_hooks, "graph": cmd_graph, "wait": cmd_wait,
     "stop": cmd_stop, "carry": cmd_carry, "worktree": cmd_worktree, "config": cmd_config, "rerun": cmd_rerun, "outcome": cmd_outcome,
     **observe_cli.COMMANDS,
+    **schedule_cli.COMMANDS,
     "workflows": workflows_cli.cmd_workflows,
     "audit": audit_cli.cmd_audit,
     "blueprint": author_cli.cmd_blueprint,

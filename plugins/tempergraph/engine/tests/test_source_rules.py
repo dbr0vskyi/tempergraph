@@ -71,6 +71,18 @@ def test_launch_sites_sanctioned() -> None:
     assert bad == [], bad
 
 
+def test_sec_ac1_the_schedule_tick_starts_processes_only_through_the_detach_launcher() -> None:
+    """TCK-B16: the tick's `run` goes through the one sanctioned detached-child launcher, with no launch site of its own."""
+    schedule = [(n, t) for n, _, t in modules() if n.startswith("tempergraph.schedule") or n == "tempergraph.cli.schedule_cli"]
+    assert {n for n, _ in schedule} >= {"tempergraph.schedule.tick", "tempergraph.schedule.launch"}
+    for name, tree in schedule:
+        assert name not in SANCTIONED_SITES, name
+        assert not any(i == "subprocess" or i.startswith("subprocess.") for i in imported(tree)), name
+    launch_tree = next(t for n, t in schedule if n == "tempergraph.schedule.launch")
+    assert "tempergraph.detach" in imported(launch_tree) or "tempergraph.detach.start_run" in imported(launch_tree)
+    assert "tempergraph.detach" in SANCTIONED_SITES
+
+
 def test_sanctioned_sites_exist() -> None:
     names = {name for name, _, _ in modules()}
     missing = [s for s in SANCTIONED_SITES if s not in names]

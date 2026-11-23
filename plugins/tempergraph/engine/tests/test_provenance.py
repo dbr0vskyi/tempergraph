@@ -48,6 +48,31 @@ def test_refused_callers(env: dict[str, str], declared: str | None, code: str) -
     assert exc.value.code == code
 
 
+def test_a_schedule_token_with_a_matching_entry_is_the_scheduler() -> None:  # TCK-AC4, TCK-B17
+    import hashlib
+
+    entry = {"schedule_id": "digest-1a2b", "token_digest": hashlib.sha256(b"s3cret").hexdigest(),
+             "created": {"caller": {"kind": "person", "decided_by": "person"}}}
+    seen: list[str] = []
+
+    def lookup(fire_id: str) -> dict[str, Any] | None:
+        seen.append(fire_id)
+        return entry if fire_id.startswith("digest-1a2b@") else None
+
+    fire = "digest-1a2b@20261124T0800Z"
+    b = classify({"TEMPERGRAPH_SCHEDULE_TOKEN": "s3cret"}, False, schedule=fire, entry_for_fire=lookup)
+    assert (b["kind"], b["confidence"], b["host"], seen) == ("scheduler", "attested", "schedule", [fire])
+    assert b["schedule"] == {"schedule_id": "digest-1a2b", "fire_id": fire, "slot": "2026-11-24T08:00:00Z",
+                             "created_by": {"kind": "person", "decided_by": "person"}}
+    for env, name in (({"TEMPERGRAPH_SCHEDULE_TOKEN": "nope"}, fire), ({"TEMPERGRAPH_SCHEDULE_TOKEN": "s3cret"}, "x@20261124T0800Z")):
+        with pytest.raises(CallerRefused) as exc:
+            classify(env, False, schedule=name, entry_for_fire=lookup)
+        assert exc.value.code == "schedule_token_invalid"
+    with pytest.raises(CallerRefused) as exc:  # with no lookup the old refusal holds
+        classify({"TEMPERGRAPH_SCHEDULE_TOKEN": "s3cret"}, False, schedule=fire)
+    assert exc.value.code == "schedule_token_invalid"
+
+
 def test_a_marker_never_gives_a_person() -> None:  # PRV-AC4
     extras = [("CLAUDECODE", "1"), ("CI", "true"), ("GITHUB_ACTIONS", "true")]
     for n in range(len(extras) + 1):

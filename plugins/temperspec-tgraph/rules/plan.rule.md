@@ -78,6 +78,7 @@ A plan is a working document for one task, not a spec: it carries its status and
 - A phase is one unit of work with one goal. Its heading is `### Phase <n>: <name>`, followed by a `Goal:` line and a `Weight:` line.
 - A task row is one logical change in one exact file. Columns: `Row` (an id unique in the plan, such as `1.2`), `Kind` (`test`, `code`, `docs` or `chore`), `Req` (the requirement ids it serves, such as `R1` or `R1, R3`), `File`, `Proves`, `Change`, `Completed` (empty until the code step marks it).
 - Every row names at least one requirement of the plan, and names none that the plan does not have.
+- A pipe inside a cell, as in a type union, is written `\|` (`X \| None`); the checks read it as part of the cell.
 - A `Change` cell says the whole change. Words that cut it down (a stub, a placeholder, "for now", a later task) are read by the plan judge: cut scope only when the task says so, and then say why in the hand-off.
 - Before writing a row that changes a type, a signature or the order of fields, search the tests for code that pins it (constructs it by position, compares its fields, checks its signature). Each test it would break gets a row; if none, say so in the row's Change cell.
 - Test first: in every phase, a `code` row comes after a `test` row of that phase. A `test` row names in `Proves` the acceptance criterion it proves: the spec's id (`SES-AC1`), or `AC <n>` of the task when no spec criterion fits.

@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -33,8 +33,38 @@ def _set(env: Mapping[str, str], name: str) -> bool:
     return bool(env.get(name))
 
 
+def _scheduler(env: Mapping[str, str], schedule: str | None,
+               entry_for_fire: Callable[[str], Mapping[str, Any] | None] | None) -> dict[str, Any]:
+    """TCK-B17: the fire token against the digest of the entry the fire id names, before anything is written."""
+    import hashlib
+    import hmac
+
+    token = env.get("TEMPERGRAPH_SCHEDULE_TOKEN") or ""
+    if schedule and not token:
+        raise CallerRefused("schedule_reserved", "--schedule belongs to the scheduler's fires: it needs the fire token")
+    entry = entry_for_fire(schedule) if (schedule and entry_for_fire is not None) else None
+    wanted = str((entry or {}).get("token_digest") or "")
+    if not (schedule and entry and wanted and hmac.compare_digest(hashlib.sha256(token.encode("utf-8")).hexdigest(), wanted)):
+        raise CallerRefused("schedule_token_invalid", "no schedule entry on this machine matches the token")
+    sid, _, when = str(schedule).partition("@")
+    try:
+        slot = datetime.strptime(when.removeprefix("manual-"),
+                                 "%Y%m%dT%H%M%SZ" if when.startswith("manual-") else "%Y%m%dT%H%MZ")
+    except ValueError:
+        raise CallerRefused("schedule_token_invalid", "the fire id names no slot") from None
+    made = (entry.get("created") or {}).get("caller") or {}
+    trace = (env.get("TRACEPARENT") or "").split("-")
+    return {"kind": "scheduler", "confidence": "attested", "decided_by": None, "relay": None, "host": "schedule",
+            "host_session": None, "caller_app": None, "parent": None,
+            "schedule": {"schedule_id": sid, "fire_id": schedule, "slot": slot.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                         "created_by": {"kind": made.get("kind"), "decided_by": made.get("decided_by")}},
+            "trace_id": trace[1] if len(trace) >= 3 and len(trace[1]) == 32 else None,
+            "evidence": [{"signal": "S7", "value": "token_attested"}], "call_id": uuid.uuid4().hex}
+
+
 def classify(env: Mapping[str, str], tty: bool, *, declared: str | None = None, caller_app: str | None = None,
-             schedule: str | None = None, parent: str | None = None) -> dict[str, Any]:
+             schedule: str | None = None, parent: str | None = None,
+             entry_for_fire: Callable[[str], Mapping[str, Any] | None] | None = None) -> dict[str, Any]:
     """PRV-B13: the first matching row decides; `evidence` keeps every signal seen."""
     if env.get("TEMPERGRAPH_SESSION_KEY"):
         raise CallerRefused("engine_session_caller", "a step never drives the engine (PRV-B5, PRV-B18, PRV-B17, PRV-B14, PRV-B13, PRV-B19, PRV-B15)")
@@ -42,7 +72,7 @@ def classify(env: Mapping[str, str], tty: bool, *, declared: str | None = None, 
         # release 1 has no orchestrations, so no supervisor digest can match (ORC is release 3)
         raise CallerRefused("supervisor_token_invalid", "no orchestration on this machine issued that token")
     if env.get("TEMPERGRAPH_SCHEDULE_TOKEN") or schedule:
-        raise CallerRefused("schedule_token_invalid", "no schedule entry on this machine matches (SCH is release 3)")
+        return _scheduler(env, schedule, entry_for_fire)
     declared = declared or env.get("TEMPERGRAPH_CALLER") or None
     caller_app = caller_app or env.get("TEMPERGRAPH_CALLER_APP") or None
     if declared in RESERVED:

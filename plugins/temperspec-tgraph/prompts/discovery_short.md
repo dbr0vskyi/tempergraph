@@ -23,6 +23,7 @@ The task:
 
 ## Limits
 
+- This step has no shell: read, search and list files with the file tools (read, grep, glob), never `ls`, `cat`, `wc` or `python -c`.
 - Write the hand-off only. Do not write or edit a spec, a decision record, a research note, code, tests or a plan, even to fix a small mistake: say `Not covered` and let the full discovery do it.
 - Never settle by a guess what only a person can decide: a gap that needs a decision is `Not covered`.
 - Do not run git. The engine commits your file when you finish.

@@ -215,7 +215,7 @@ def sink_row(row: dict[str, Any], sink: Sink, key: bytes) -> dict[str, Any]:
     out["alias"] = alias if isinstance(alias, str) and SLUG.match(alias) else None
     origin = row.get("origin")
     out["origin"] = origin if isinstance(origin, str) and WORD.match(origin) else None
-    for f in ("parent", "schedule_id"):
+    for f in ("parent", "schedule_id"):  # TCK-B24: a scheduled run's `origin` goes as a word, its schedule id as an HMAC
         out[f] = digest(key, str(row[f])) if row.get(f) else None
     return out
 

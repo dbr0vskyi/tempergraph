@@ -102,7 +102,23 @@ def build(ledger: Path, run_log: Path, thread: str, units_reached: Sequence[str]
         "level": level, "level_by": level_by}
     if level == "approver" and designed_by == {"agent"}:
         rec["designed_by"] = "agent"
+    if starts and (starts[0].get("caller") or {}).get("kind") == "scheduler":
+        rec["start_cost"] = "measured_zero"  # TCK-B24: a fire's start asks no one for anything; its supervision cost is zero
     return rec
+
+
+def schedule_setup(log: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """TCK-B24 (SUP): the person's `add` and `edit` of one schedule are one `designed` setup touch, counted once and by
+    the decider of the `add`; a fire counts no touch (`started` events add nothing) and its start costs `measured_zero`."""
+    made = next((e for e in log if e.get("kind") == "created"), None)
+    c = (made or {}).get("caller") or {}
+    by = str(c.get("decided_by") or c.get("kind") or "unknown")
+    by = by if by in DECIDERS else "unknown"
+    designed = {d: 0 for d in DECIDERS}
+    if made is not None:
+        designed[by] = 1
+    return {"touches": {"designed": designed, "rescue": {d: 0 for d in DECIDERS}, "steer": {d: 0 for d in DECIDERS}},
+            "fire_touches": 0, "fires": sum(1 for e in log if e.get("kind") == "started"), "start_cost": "measured_zero"}
 
 
 def path_units(values: Mapping[str, Any]) -> list[str]:
