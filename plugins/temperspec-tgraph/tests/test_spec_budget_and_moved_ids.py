@@ -270,12 +270,23 @@ def _criteria() -> dict[str, tuple[str, dict[str, Any]]]:
     return out
 
 
-def test_the_criteria_file_has_the_revision_entry_for_the_change() -> None:  # AC 1, AC 2, ts-dis-budget, ts-spec-moved
+def test_the_criteria_file_has_the_revision_entries_for_the_change() -> None:  # AC 1, AC 2, AC 5, ts-code-ran, ts-dis-budget, ts-spec-moved
     o = json.loads((ROOT / "outcome.json").read_text(encoding="utf-8"))
-    entry = next(r for r in o["revisions"] if "issue 114" in r.get("note", ""))
-    assert entry["revision"] >= 8
-    assert o["revision"] == o["revisions"][-1]["revision"] >= entry["revision"]
+    for issue in ("issue 114", "issue 126"):
+        entry = next(r for r in o["revisions"] if issue in r.get("note", ""))
+        assert entry["revision"] >= 8, issue
+    assert o["revision"] == o["revisions"][-1]["revision"]
     assert any("30,720" in a and "ts-spec-cap" in a for a in o["assumptions"])
+
+
+@pytest.mark.parametrize("cid", ["ts-code-once", "ts-code-preview", "ts-code-previewed", "ts-code-session",
+                                 "ts-code-rerun", "ts-code-ran"])
+def test_each_code_criterion_of_the_run_is_a_warning_checked_by_the_gate_with_the_text_of_its_spec_row(
+        cid: str) -> None:  # AC 1, AC 2, AC 3, AC 4, AC 5, ts-code-once, ts-code-preview, ts-code-ran
+    where, row = _criteria()[cid]
+    assert where == "code" and row["text"] == _rows("08-code.spec.md")[cid]
+    assert row["severity"] == "warning" and row["verified_by"] == "check"
+    assert row["verifier"]["check"] == "tgwf_temperspec.checks:code_check"
 
 
 @pytest.mark.parametrize("cid, unit, spec, verifier", [

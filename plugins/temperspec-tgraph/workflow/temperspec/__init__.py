@@ -152,7 +152,7 @@ def workflow() -> Any:
                 prompt=text("prompts/code.md"), summary="Build the plan test first in one session",
                 **_sized("code"), tools=[*READ, "edit", "write", "shell"], commands=VERIFY, timeout_s=5400,
                 produces={"code_report": "file", "tests_passed": Value(choices=["yes", "no"])},
-                after=[_commit()],
+                after=[_commit()], self_check=True,
                 gate=Gate(check=code_check, check_timeout_s=1800,
                           # A read of up to 50 source files (the reading budget of the check evidence) may not fit
                           # the engine's default judge time of 600 s, and a judge timeout escalates (JDG-B4).

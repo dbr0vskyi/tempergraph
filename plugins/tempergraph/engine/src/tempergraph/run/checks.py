@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import shutil
 import tempfile
@@ -205,20 +206,40 @@ def base_reuse_key(cmd: ResolvedCommand, workdir: Path, base: str, unit: str, vi
 
 
 def reuse_key(cmd: ResolvedCommand, workdir: Path) -> str:
-    """CHK-B12, CHK-B13: argv, resolved program, `head`, the status listing and the content of changed files."""
-    raw = gitmod.git(["status", "--porcelain=v1", "-uall", "-z"], workdir, check=False)
-    entries = [e for e in raw.split("\0") if e[3:] and not e[3:].startswith(".tempergraph")]  # not the state root
+    """CHK-B12, CHK-B13: argv, working folder, resolved program and the content of the tree, no history.
+
+    The tree is every file git tracks and every untracked file git does not ignore (every file outside a git
+    repository), outside the state root, each by path, bytes and executable bit, read once. A commit of unchanged
+    content leaves the key as it was; a tracked file removed from the tree is left out.
+    """
     h = hashlib.sha256()
     prog = shutil.which(cmd.argv[0]) if cmd.argv else None
-    head = gitmod.git(["rev-parse", "HEAD"], workdir, check=False).strip()
-    h.update(json.dumps([list(cmd.argv), cmd.cwd, prog, head, entries]).encode())
-    for entry in entries:
-        path = entry[3:]
+    h.update(json.dumps([list(cmd.argv), cmd.cwd, prog]).encode())
+    for path in sorted(_tree_files(workdir)):
         f = workdir / path
-        h.update(path.encode() + b"\0")
-        if f.is_file():
-            h.update(hashlib.sha256(f.read_bytes()).digest())
+        try:
+            if not f.is_file():
+                continue
+            mode = f.stat().st_mode
+            body = hashlib.sha256(f.read_bytes()).digest()
+        except OSError:
+            continue  # gone or unreadable while the key is made: not part of the tree
+        h.update(path.encode() + b"\0" + (b"x" if mode & 0o111 else b"-") + body)
     return h.hexdigest()
+
+
+def _tree_files(workdir: Path) -> list[str]:
+    """The paths of the tree under `workdir`, relative to it and outside the state root (CHK-B13)."""
+    if gitmod.toplevel(workdir) is not None:
+        raw = gitmod.git(["ls-files", "-z", "--cached", "--others", "--exclude-standard"], workdir, check=False)
+        paths = {p for p in raw.split("\0") if p}
+    else:
+        paths = set()
+        for folder, dirs, files in os.walk(workdir):
+            dirs[:] = [d for d in dirs if d != ".git"]
+            rel = Path(folder).relative_to(workdir)
+            paths.update(str(rel / name) if rel.parts else name for name in files)
+    return [p for p in paths if not p.startswith(".tempergraph")]  # not the state root
 
 
 def _stored(store: Path | None, key: str, at_base: bool = False) -> CommandRun | None:

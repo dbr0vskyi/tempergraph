@@ -697,12 +697,37 @@ def test_words_that_cut_scope_are_a_maybe_for_the_plan_judge(tmp_path: Path) -> 
 # -- one full run per code visit, and a result the gate already holds is not run again -------------------------
 
 
-def test_the_code_prompt_runs_a_phases_test_files_and_the_full_commands_once() -> None:  # AC 2, ts-code-once
-    text = " ".join((ROOT / "prompts" / "code.md").read_text(encoding="utf-8").split())
+def _code_prompt() -> str:
+    return " ".join((ROOT / "prompts" / "code.md").read_text(encoding="utf-8").split())
+
+
+def test_the_code_prompt_runs_a_phases_test_files_and_the_full_commands_once() -> None:  # AC 1, ts-code-once
+    text = _code_prompt()
     assert "After each phase, run only the test files that the phase's rows name" in text
     assert "never the whole suite" in text
-    assert "run each verification command of the plan once, after the last phase and before you write the report" in text
-    assert "in the quick lane, the note's `Verify` commands once, after the last criterion" in text
+    low = text.lower()  # the gate's own check reads the prompt case-insensitively
+    assert ("run each verification command of the plan once, after the last phase, with the plan marked completed "
+            "and the code report written") in low
+    assert "change no file after that run" in low
+    assert "in the quick lane, run the note's `verify` commands once, after the last criterion and the report" in low
+    assert "before you write the report" not in text  # the report comes before the final run now
+    for phrase in checks.PROMPT_SAYS["ts-code-once"][1]:
+        assert phrase in text.lower(), phrase
+
+
+def test_the_code_step_declares_the_preview_and_its_prompt_runs_the_commands_through_it() -> None:
+    # AC 2, ts-code-preview (CHK-B17)
+    step = SPEC.units["code"].step
+    assert step is not None and step.self_check is True
+    assert all(SPEC.units[u].step.self_check is False for u in SPEC.order  # type: ignore[union-attr]
+               if u != "code" and SPEC.units[u].kind == "step")
+    text = _code_prompt()
+    assert ('make that one run through the preview command that the engine names under "check your work before you '
+            'end"') in text.lower()
+    assert "call it once, when nothing is left to change" in text
+    assert "the phases' own test runs stay plain commands" in text
+    for phrase in checks.PROMPT_SAYS["ts-code-preview"][1]:
+        assert phrase in text.lower(), phrase
 
 
 def test_a_second_gate_run_on_an_unchanged_tree_runs_no_verification_command(
@@ -732,9 +757,127 @@ def test_a_second_gate_run_on_an_unchanged_tree_runs_no_verification_command(
     assert third and all(r["reused"] is False for r in third)
 
 
+# -- the session's one run goes through the preview; the gate reuses it after the commit ----------------------
+
+
+def _preview_ctx(work: Path, fixture: Path, git: GitFacts | None = None, store: Path | None = None) -> _Counting:
+    ctx = _code_ctx(work, fixture, git, store)
+    ctx.preview = True
+    return ctx
+
+
+def _commit_all(repo: Path, message: str = "the code step") -> None:
+    _git(repo, "add", "-A")
+    _git(repo, "-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "-m", message)
+
+
+def test_a_preview_of_the_code_gate_runs_the_commands_and_reports_no_pending_report_or_commit(
+        tmp_path: Path) -> None:  # AC 2, ts-code-previewed (CHK-B17, CHK-B10)
+    dirty = GitFacts(clean=False)  # the session's files are not committed yet
+    ctx = _preview_ctx(tmp_path / "a", DONE, dirty)
+    (tmp_path / "a" / "code_report.md").unlink()  # the report is not handed over yet
+    res, _ = run_check(SPEC.units["code"].gate, ctx)
+    assert ctx.ran == ["git --version"], ctx.ran
+    assert not [f for f in res.findings if f.status == "fail"], res.evidence
+    assert _named(res, "ts-code-verify") == ["pass"] and _named(res, "ts-code-commit") == []
+    plain = _code_ctx(tmp_path / "b", DONE, dirty)  # the same tree as the gate's own check still fails both
+    (tmp_path / "b" / "code_report.md").unlink()
+    res, _ = run_check(SPEC.units["code"].gate, plain)
+    assert _named(res, "ts-code-rows") == ["fail"] and _named(res, "ts-code-commit") == ["fail"]
+    assert plain.ran == []
+    quick = _quick_ctx(tmp_path / "c", ())  # the quick lane: its rows are read from the report, not yet written
+    quick.git = GitFacts(clean=False)
+    quick.preview = True
+    (tmp_path / "c" / "code_report.md").unlink()
+    res, _ = run_check(SPEC.units["code"].gate, quick)
+    assert [r["argv"] for r in res.runs][:1] == [["git", "--version"]], res.evidence  # the note's `Verify` command
+    assert not [f for f in res.findings if f.criterion in ("ts-code-rows", "ts-code-commit") and f.status == "fail"]
+
+
+def test_a_preview_on_an_unfinished_plan_runs_no_command(tmp_path: Path) -> None:  # AC 2, ts-code-previewed
+    ctx = _preview_ctx(tmp_path, ROOT / "evals" / "checks" / "code" / "must-fail" / "open-row", GitFacts(clean=False))
+    res, _ = run_check(SPEC.units["code"].gate, ctx)
+    assert ctx.ran == [] and _named(res, "ts-code-rows") == ["fail"]  # the marks still come first
+
+
+def _previewed_then_committed(repo: Path, store: Path) -> str:
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _copy(DONE, repo)
+    ctx = _preview_ctx(repo, DONE, git_facts(repo, base), store)  # the session's run, files not committed yet
+    res, _ = run_check(SPEC.units["code"].gate, ctx)
+    assert _named(res, "ts-code-verify") == ["pass"] and ctx.runs and all(not r.reused for r in ctx.runs), res.evidence
+    _commit_all(repo)  # the workflow's commit script runs after the session
+    return base
+
+
+def _gate_after(repo: Path, store: Path, base: str) -> Any:
+    ctx = _code_ctx(repo, DONE, git_facts(repo, base), store)
+    res, _ = run_check(SPEC.units["code"].gate, ctx)
+    return res
+
+
+def test_the_gate_takes_the_previews_runs_though_the_files_were_committed_after_them(
+        repo: Path, tmp_path_factory: pytest.TempPathFactory) -> None:  # AC 3, ts-code-session (CHK-B13)
+    store = tmp_path_factory.mktemp("store") / "command_runs.jsonl"
+    base = _previewed_then_committed(repo, store)
+    res = _gate_after(repo, store, base)
+    assert res.runs and all(r["reused"] is True for r in res.runs), res.evidence  # none started again
+    assert _named(res, "ts-code-verify") == ["pass"] and _named(res, "ts-code-reuse") == ["pass"], res.evidence
+    message = next(f.message for f in res.findings if f.criterion == "ts-code-reuse")
+    assert message.startswith(f"{len(res.runs)} of {len(res.runs)} ")
+
+
+@pytest.mark.parametrize("change", ["tracked", "untracked"])
+def test_the_gate_runs_the_commands_again_when_a_file_changed_after_the_previews_run(
+        change: str, repo: Path, tmp_path_factory: pytest.TempPathFactory) -> None:  # AC 4, ts-code-rerun (CHK-B13)
+    store = tmp_path_factory.mktemp("store") / "command_runs.jsonl"
+    (repo / "notes.txt").write_text("tracked before the run\n")  # a file the fixture does not rewrite
+    _commit_all(repo, "notes")
+    base = _previewed_then_committed(repo, store)
+    if change == "tracked":
+        (repo / "notes.txt").write_text("changed after the run\n")
+    else:
+        (repo / "late.txt").write_text("added after the run\n")
+    res = _gate_after(repo, store, base)
+    assert res.runs and all(r["reused"] is False for r in res.runs), res.evidence
+
+
+def test_the_gates_evidence_says_for_each_command_whether_it_was_reused_or_run(
+        repo: Path, tmp_path_factory: pytest.TempPathFactory) -> None:  # AC 5, ts-code-ran
+    store = tmp_path_factory.mktemp("store") / "command_runs.jsonl"
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    _copy(DONE, repo)
+    _commit_all(repo)
+    first, second = _gate_after(repo, store, base), _gate_after(repo, store, base)
+    assert first.evidence.splitlines()[0] == "`git --version`: run", first.evidence
+    assert second.evidence.splitlines()[0] == "`git --version`: reused", second.evidence
+    assert first.evidence.index("`git --version`") < first.evidence.index("Changed paths since the run's base")
+    assert next(f.message for f in first.findings if f.criterion == "ts-code-ran").startswith("0 of 1")
+    assert next(f.message for f in second.findings if f.criterion == "ts-code-ran").startswith("1 of 1")
+    # a command the allow list refuses is not started, and says so
+    plan = tmp_path_factory.mktemp("refused") / "work"
+    ctx = _code_ctx(plan, DONE)
+    phases = plan / "phases.md"
+    phases.write_text(phases.read_text().replace("- `git --version`\n", "- `git --version`\n- `node test.js`\n", 1))
+    res, _ = run_check(SPEC.units["code"].gate, ctx)
+    assert res.evidence.splitlines()[:2] == ["`git --version`: not run", "`node test.js`: not run"], res.evidence
+    assert ctx.ran == []
+    # the preview prints 2,000 characters of the evidence: the command lines come first, whatever the paths
+    long_paths = tuple(f"src/package/module_{n:03d}/a_long_file_name_{n:03d}.py" for n in range(200))
+    wide = _preview_ctx(tmp_path_factory.mktemp("wide") / "work", DONE, GitFacts(clean=False, changed_paths=long_paths))
+    res, _ = run_check(SPEC.units["code"].gate, wide)
+    assert "`git --version`: run" in res.evidence[:2000] and len(res.evidence) > 2000
+    # the outcome gate's own use of `_verify` keeps returning findings
+    found = checks._verify(_code_ctx(tmp_path_factory.mktemp("plain") / "work", DONE), fmt.Plan(commands=["git --version"]),
+                           "ts-verify")
+    assert [(f.status, f.criterion) for f in found] == [("pass", "ts-verify")]
+
+
 # -- criteria about how the run works are checked, never judged (B30) ---------------------------------------
 
-PROCESS = {"ts-dis-narrow": "discovery", "ts-plan-reading": "plan", "ts-code-once": "code", "ts-code-reuse": "code"}
+PROCESS = {"ts-dis-narrow": "discovery", "ts-plan-reading": "plan", "ts-code-once": "code", "ts-code-reuse": "code",
+           "ts-code-preview": "code", "ts-code-previewed": "code", "ts-code-session": "code", "ts-code-rerun": "code",
+           "ts-code-ran": "code"}  # AC 2, AC 3, AC 4, AC 5
 # Words that put a criterion on what a judge cannot open: the step's prompt, its session or the gate's runs.
 UNSEEN = re.compile(r"\b(prompts?|sessions?|command runs?|reused|run once|runs once)\b", re.I)
 
@@ -766,7 +909,12 @@ def test_a_prompt_that_drops_an_instruction_fails_its_gate_check(tmp_path: Path,
     got = checks._prompt_says("ts-plan-reading")
     assert [f.status for f in got] == ["fail"] and "open another file only" in got[0].message
     assert all(f.status == "pass" for f in checks._prompt_says("ts-code-once"))
-    (prompts / "code.md").unlink()
+    assert all(f.status == "pass" for f in checks._prompt_says("ts-code-preview"))
+    code = prompts / "code.md"
+    code.write_text(code.read_text().replace("the phases' own test runs stay plain commands", "run what you like"))
+    dropped = checks._prompt_says("ts-code-preview")  # AC 2, ts-code-preview
+    assert [f.status for f in dropped] == ["fail"] and "stay plain commands" in dropped[0].message
+    code.unlink()
     assert [f.status for f in checks._prompt_says("ts-code-once")] == ["fail"]
 
 
@@ -774,6 +922,10 @@ def test_the_code_gate_names_its_process_criteria_on_a_finished_plan(tmp_path: P
     res, _ = run_check(SPEC.units["code"].gate, _code_ctx(tmp_path, DONE))
     assert _named(res, "ts-code-once") == ["pass"], res.evidence
     assert _named(res, "ts-code-reuse") == ["n_a"]  # no store outside a run
+    assert _named(res, "ts-code-preview") == ["pass"] and _named(res, "ts-code-ran") == ["pass"]  # AC 2, AC 5
+    for cid in ("ts-code-previewed", "ts-code-session", "ts-code-rerun"):  # the session's own run is not visible here
+        assert _named(res, cid) == ["n_a"], cid
+        assert "tests prove" in next(f.message for f in res.findings if f.criterion == cid), cid
 
 
 def _named_list(found: list[Any]) -> list[str]:

@@ -26,10 +26,12 @@ WHEN `run` starts a resolved command through the engine's check launch site ([SE
 
 ### CHK-B13 Reuse of command runs
 
-WHEN `run` is called with `reuse=True` THE engine SHALL return an earlier run in this thread with the same key, marked `reused: true`, the key a digest of argv, resolved program path, `head`, the status listing and the content digest of changed and untracked files outside the state root, and SHALL never store a run with `finished: false` or an exit code in the prefix's `no_reuse_exit_codes`.
+WHEN `run` is called with `reuse=True` THE engine SHALL return an earlier run in this thread with the same key, marked `reused: true`, the key a digest of argv, working folder, resolved program path and the content of the tree, and SHALL never store a run with `finished: false` or an exit code in the prefix's `no_reuse_exit_codes`; the content of the tree is every file git tracks and every untracked file git does not ignore (every file, outside a git repository), outside the state root, each by path, bytes and executable bit, so that no commit, index or status listing is part of the key ([decision](../adr/a-stored-command-run-is-keyed-on-the-trees-content.adr.md)).
 
 - GIVEN an earlier run that exited 0 or 1 WHEN the key matches THEN it is reused
 - GIVEN an earlier run that exited 4 listed in `no_reuse_exit_codes`, or was killed at the limit WHEN the key matches THEN it was not stored and runs again
+- GIVEN an earlier run made while files were not yet committed WHEN those files are committed with no other change and the same command runs with `reuse=True` THEN the earlier run is reused
+- GIVEN an earlier run WHEN a tracked file changes, or an untracked file that git does not ignore is added or removed, and the same command runs with `reuse=True` THEN it runs again
 
 ### CHK-B18 A command run at the base
 
@@ -158,6 +160,7 @@ WHEN a gate's check runs on the same workspace in workflows whose steps use diff
 - CHK-AC9 (CHK-B20): A command asked for at the base in two attempts of one visit starts once and the second run is `reused: true` although the workspace changed between them; it starts again in the next visit and after a run killed at the limit
 - CHK-AC10 (CHK-B21): After a check that ran a command at the base returns, and after one whose worker was ended at its limit, the base checkout's folder is gone and the scratch repository's worktree list, branch list and status are as before
 - CHK-AC11 (CHK-B14): A check FAIL marked `environmental` whose `runs` hold a workspace run and a run `at_base: true` escalates with no judge and no retry, and the check record holds its evidence and both runs
+- CHK-AC12 (CHK-B13, CHK-B17): A command run by the check preview while a step's files are not yet committed is reused by the gate's check once those files are committed with no other change, and runs again at the gate when one file changed after the preview (a scratch git repository, offline)
 
 ## Open questions
 
