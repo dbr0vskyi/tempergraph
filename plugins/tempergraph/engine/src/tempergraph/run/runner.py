@@ -36,7 +36,7 @@ from tempergraph.durability.control import StopWatcher, take_stop
 from tempergraph.durability.lock import LockHeld, RunLock, is_held
 from tempergraph.durability.status import breakpoint_at, classify
 from tempergraph.executors.launcher import StopRequest
-from tempergraph.executors.preflight import preflight
+from tempergraph.executors.preflight import observer_warnings, preflight
 from tempergraph.executors.registry import Registry
 from tempergraph.git import main_checkout
 from tempergraph.model import flow, subworkflow
@@ -113,6 +113,7 @@ class RunSettings:
     apply_deadline: bool = False  # `resume --apply-deadline` (FLX-B8)
     pause_before: tuple[str, ...] = ()  # `--pause-before <unit>`: operator breakpoints of this segment (FLX-B10)
     unit: str | None = None  # `resume --unit`: which of several pending gates the decision answers (HUM-B3)
+    audit_seed: int | None = None  # a test hook: mixed into the audit judge's draw so a test's sampling is stable (JDG-B7)
 
     def all_flags(self) -> dict[str, Any]:
         """The named run options are spellings of `--set` (ROP-B1 to ROP-B13)."""
@@ -323,7 +324,9 @@ def _context(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, s
                      infra_tries=max(1, int(rv["infra_tries"])), backoff_max_s=int(rv["infra_backoff_max_s"]),
                      settings=rst.workflow_settings(settled.resolved), origin=settings.origin, judge_state=settings.judge_state,
                      escalation_record=settings.escalation_record,
-                     stage=_stage(spec, settings)[0], self_check_limit=int(rv.get("self_check_limit") or 3))
+                     stage=_stage(spec, settings)[0], self_check_limit=int(rv.get("self_check_limit") or 3),
+                     audit_rate=float(rv.get("audit_rate") or 0.0), audit_executor=rv.get("audit_executor") or None,
+                     audit_seed=settings.audit_seed)
     if settings.sleep is not None:
         ctx.sleep = settings.sleep
     return ctx
@@ -337,6 +340,21 @@ def _observers(cap: rst.Capture) -> tuple[Any, list[str]]:
 
     found, missing = register_observers(names=cap.observers)
     return (ObserverHub(found) if found else None), missing
+
+
+FIXED_AT_START = frozenset({"run.workspace", "run.worktree.root", "run.worktree.base", "run.worktree.branch_prefix"})
+
+
+def _observer_warnings(root: Path, settings: RunSettings) -> list[Finding]:
+    """EVT-B23: the observers the operator config names that are not installed, as preflight warnings. Reads the
+    entry-point names only; the observers themselves are loaded once, per segment, by `_observers`."""
+    cap = rst.capture(rst.load_files(root, settings.home or home_path()))
+    if not cap.observers:
+        return []
+    from tempergraph.run import events as evmod
+
+    installed = {ep.name for ep in evmod.entry_points(group="tempergraph.observers")}
+    return observer_warnings(sorted(set(cap.observers) - installed))
 
 
 def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, settings: RunSettings,
@@ -414,13 +432,15 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
             box["w"] = watcher
             try:
                 cw.graph.invoke(first_input, cfg, **({"interrupt_before": stops} if stops else {}))
-                outcome = _settle(cw, cfg, spec, task_id, root, stops, log)
+                outcome = _settle(cw, cfg, spec, task_id, root, stops, log,
+                                  cleanup=str(settled.run.get("worktree.cleanup") or "never"))
             except Drain as d:
                 code = ExitCode.BUDGET_OR_INFRA if d.reason == "cost_cap" else ExitCode.STOPPED
                 outcome = RunOutcome(exit_code=code, reason=d.reason, thread_id=tid,
                                      message=f"{tid} stopped at a boundary ({d.reason}); resume continues it")
         final = cw.graph.get_state(cfg).values or {}
-        if outcome.exit_code is ExitCode.FINISHED and (final.get("workspace") or {}).get("state") == "released":
+        if outcome.exit_code is ExitCode.FINISHED and (final.get("workspace") or {}).get("state") in (
+                "released", "removed"):
             workspace_record(log, final["workspace"])
         cost = CostTotals.from_json((final.get("run") or {}).get("cost"))
         inside = subrun.pending_cost(cw, tid)  # SWF-B4: a child stopped or paused in has not handed its spend back
@@ -540,6 +560,15 @@ def workspace_record(log: RunLog, ws: Mapping[str, Any]) -> None:
     """
     boot = ws.get("bootstrap") or {}
     counts = {k: boot[k] for k in ("external_commits", "external_changed") if k in boot}
+    if ws.get("cleanup"):  # WTR-B22: `released`, then `removed` or `kept` with the reason, one per worktree
+        log.write("workspace", action="released", mode=ws.get("mode"), resolved_by=ws.get("resolved_by"),
+                  branch=ws.get("branch") or None, base_commit=ws.get("base_commit") or None,
+                  reason=ws.get("requested"), counts=counts, path=ws.get("path"))
+        for c in ws["cleanup"]:
+            log.write("workspace", action=c["result"], mode=ws.get("mode"), resolved_by=ws.get("resolved_by"),
+                      branch=ws.get("branch") or None, base_commit=ws.get("base_commit") or None,
+                      reason=c.get("reason") or None, counts=counts, path=c.get("path"))
+        return
     log.write("workspace", action=ws.get("action") or "prepared", mode=ws.get("mode"),
               resolved_by=ws.get("resolved_by"), branch=ws.get("branch") or None,
               base_commit=ws.get("base_commit") or None, reason=ws.get("requested"), counts=counts,
@@ -551,7 +580,7 @@ def breakpoint_file(root: Path, workflow: str, task_id: str) -> Path:
 
 
 def _settle(cw: Any, cfg: Mapping[str, Any], spec: WorkflowSpec, task_id: str, root: Path,
-            stops: Sequence[str] = (), log: RunLog | None = None) -> RunOutcome:
+            stops: Sequence[str] = (), log: RunLog | None = None, cleanup: str = "never") -> RunOutcome:
     snap = snapshot(cw, cfg["configurable"]["thread_id"])
     state = classify_snapshot(snap, lock_held=False)
     tid = cfg["configurable"]["thread_id"]
@@ -577,10 +606,10 @@ def _settle(cw: Any, cfg: Mapping[str, Any], spec: WorkflowSpec, task_id: str, r
                           payload=payload, message=f"{tid} is waiting for a person")
     if state is ThreadState.FINISHED:
         ws = snap.values.get("workspace") or {}
-        if ws:
-            rec = release_workspace(WorkspaceRecord.from_json(ws))
-            cw.graph.update_state(cfg, {"workspace": rec.to_json()}, as_node=flow.FINALIZER)
         fin = snap.values.get("finalized") or {}
+        if ws:  # WTR-B22, WTR-B23: unlock, and under `cleanup: on_finish` remove what is clean (never on `error`)
+            rec = release_workspace(WorkspaceRecord.from_json(ws), cleanup, root, outcome=str(fin.get("outcome", "")))
+            cw.graph.update_state(cfg, {"workspace": rec.to_json()}, as_node=flow.FINALIZER)
         return RunOutcome(exit_code=ExitCode.FINISHED, reason=str(fin.get("outcome", "finished")),
                           message=f"{tid} finished")
     stopped = (snap.values.get("run") or {}).get("stopped") or {}
@@ -641,6 +670,7 @@ def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: 
     spec = settled.spec
     rep = preflight(spec, registry, enforce_tools=bool(rv["enforce_tools"]),
                     strict_permissions=bool(rv["strict_permissions"]))
+    rep.warnings.extend(_observer_warnings(root, settings))  # EVT-B23: a missing observer warns, the run starts
     if not rep.ok:
         first = rep.refusals[0]
         return _refuse(first.code, f"{first.unit or spec.name}: {first.message}",
@@ -648,7 +678,8 @@ def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: 
     spec = with_outcome(spec)
     try:
         plan = resolve_workspace(spec, target, rv["workspace"], task_id=task_id,
-                                 prefix=str(rv["worktree.branch_prefix"]), base=str(rv.get("worktree.base") or "head"))
+                                 prefix=str(rv["worktree.branch_prefix"]), base=str(rv.get("worktree.base") or "head"),
+                                 root=str(rv.get("worktree.root") or "sibling"))
     except WorkspaceRefused as exc:
         return _refuse(exc.word, str(exc), tid=tid)
     if plan.main is None:  # WSP-B15 to WSP-B18: what needs git is refused before anything is created
@@ -697,7 +728,9 @@ def _start(spec: WorkflowSpec, task_id: str, inputs: Mapping[str, str], target: 
                            "options": settled.snapshot_json()}}
         out = _drive(spec, task_id, root, registry, settings, rep.judges, initial, settled,
                      executors=rep.step_executors, workspace=rec.to_json())
-        out.warnings = list(plan.warnings) + [f"{w.code}: {w.message}" for w in rep.warnings]
+        fetch = ([f"base_fetch: failed; the worktree starts from the local copy of {rec.base_branch}"]
+                 if rec.base_fetch == "failed" else [])  # WTR-B21, WTR-B7
+        out.warnings = list(plan.warnings) + fetch + [f"{w.code}: {w.message}" for w in rep.warnings]
         return _carry_exit(root, spec, task_id, settings, out)
     finally:
         lock.release()
@@ -869,12 +902,17 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                 if settings.caller and not provenance.may_widen(settings.caller):  # LAD-B6, PRV-B21, PRV-B22
                     return _refuse("escalate_needs_person",
                                    "--escalate is a person's choice: run it at a terminal, or relay it", tid=tid)
+            fixed = [k for k in settings.all_flags() if k in FIXED_AT_START]
+            if fixed:  # WTR-B15, WTR-B17: the record already names a path and a branch; only the cleanup may change
+                raise SettingsRefused([Finding(code="fixed_at_start", unit=None, message=(
+                    f"{fixed[0]} is fixed at the start of a thread; only run.worktree.cleanup changes at resume"))])
             settled = settle_resume(declared, settings, root, values)
         except SettingsRefused as exc:
             return _refuse_settings(exc, tid)
         rv = settled.run
         rep = preflight(settled.spec, registry, enforce_tools=bool(rv["enforce_tools"]),
                         strict_permissions=bool(rv["strict_permissions"]))
+        rep.warnings.extend(_observer_warnings(root, settings))
         if not rep.ok:
             first = rep.refusals[0]
             return _refuse(first.code, f"{first.unit or spec.name}: {first.message}", tid=tid)
@@ -947,7 +985,14 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                                    + (f"; its deadline is {due}" if due else ""), tid=tid)
                 row_decision = "deadline"
                 d = Decision(word="proceed")  # only for the intervention row's shape; the node applies the deadline
-                first_input = resume_input({"decision": "deadline", **human_payload})
+                if kind == "input" and (flow.deadline_of(spec, unit) or (0, ""))[1] == "defaults":  # ASK-B10
+                    got = _deadline_answers(spec, task_id, root, unit, values, settings)
+                    if isinstance(got, RunOutcome):  # the check refused the defaults: the ask stays open
+                        intervention(root, spec, task_id, touch, d, feedback, settings, settled, decision="deadline")
+                        got.thread_id = tid
+                        return got
+                    extra = got
+                first_input = resume_input({"decision": "deadline", **human_payload, **extra})
             elif kind == "input":
                 got = _answers_step(dspec, task_id, root, dunit, dvalues, d, settings)
                 if isinstance(got, RunOutcome):
@@ -1167,6 +1212,35 @@ def _answers_step(spec: WorkflowSpec, task_id: str, root: Path, unit: str, value
         return RunOutcome(exit_code=ExitCode.PAUSED, reason="input", payload=payload,
                           message=f"{tid}: answers kept; {unit} {why}")
     asking.store(path, unit, final, done=True)
+    return {"answers": final, "answers_path": str(path)}
+
+
+def _deadline_answers(spec: WorkflowSpec, task_id: str, root: Path, unit: str, values: Mapping[str, Any],
+                      settings: RunSettings) -> dict[str, Any] | RunOutcome:
+    """ASK-B10, ASK-B11: complete an overdue ask from its defaults and run the author's check as for a person's
+    answers. A pass returns the human node's extra payload; a refusal keeps only the given answers (exit 3)."""
+    from tempergraph.run import asking
+
+    tid = thread_id(spec.name, task_id)
+    u = spec.units[unit]
+    assert u.ask is not None
+    qs = [asking.of_json(q) for q in ((values.get("attempts") or {}).get(unit) or {}).get("questions") or []]
+    path = asking.answers_path(run_dir(root, spec.name, task_id), unit)
+    given = asking.load(path)
+    took = asking.defaulted(qs, given)
+    final = asking.complete(qs, given)
+    problems = asking.check_problems(u.ask, final)
+    RunLog(run_dir(root, spec.name, task_id) / "run.jsonl").write(
+        "answers", unit=unit, answered=[], missing=[], check_passed=not problems, caller=dict(settings.caller))
+    if problems:
+        asking.store(path, unit, given, done=False)
+        payload = {"kind": "input", "unit": unit, "questions": asking.shown(qs, given), "missing": [],
+                   "check_problems": problems,
+                   "resume": f"tempergraph resume {spec.name} {task_id} --decision answer:<name>=<value>"}
+        return RunOutcome(exit_code=ExitCode.PAUSED, reason="input", payload=payload,
+                          message=f"{tid}: the deadline's defaults were refused; {unit} the answers check: "
+                                  f"{'; '.join(problems)}")
+    asking.store(path, unit, final, done=True, defaulted=took)
     return {"answers": final, "answers_path": str(path)}
 
 

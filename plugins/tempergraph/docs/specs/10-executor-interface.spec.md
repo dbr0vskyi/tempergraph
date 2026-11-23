@@ -37,7 +37,7 @@ WHEN a start, resume, batch or check is preflighted THE engine SHALL check, with
 
 WHEN preflight finds `effort` outside `session_options`, or a step whose template names a skill, agent or instruction file on an executor without `hosts_authoring_surface`, or a judge MCP view on an executor without `judge_mcp` THE engine SHALL record a warning, or for the MCP view defer it and render its criterion as out of reach, and let the run start.
 
-- GIVEN a judge view of MCP server `jira` on `claude` WHEN preflighted THEN the view is deferred and recorded, and the criterion renders as out of reach
+- GIVEN a judge view of MCP server `jira` and a judge executor that declares `judge_mcp` false WHEN preflighted THEN the view is deferred and recorded, and the criterion renders as out of reach
 
 ### EXI-B2 Prompt delivery
 
@@ -185,4 +185,4 @@ WHEN a start is preflighted THE engine SHALL time one interpreter spawn and a wa
 ## Open questions
 
 - Should a running tool's CPU and IO growth count as activity for the idle watchdog ? Deferred until stalls are classified on real runs. Owner: engine owner. Until answered: only stream lines count, with the 900 s floor while a tool is open.
-- May a step's filtered tool set include remote MCP servers? It rests on probe facts not yet run on any executor ([ADR-0021](../adr/0021-scope-of-planned-work.adr.md)). Owner: engine owner. Until answered: no; `judge_mcp` is false on `claude`, so MCP judge views are deferred and recorded.
+- May a step's filtered tool set include remote MCP servers? It rests on probe facts not yet run on any executor ([ADR-0021](../adr/0021-scope-of-planned-work.adr.md)). Owner: engine owner. Until answered: no; a judge's view of a remote MCP server is deferred and recorded ([ECC-B15](11-executor-claude-code.spec.md)).

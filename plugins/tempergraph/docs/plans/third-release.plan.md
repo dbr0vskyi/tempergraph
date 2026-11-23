@@ -37,7 +37,7 @@ task_id: third-release
 | Order | Cap and reach first, because every parallel shape relies on them | R-140 F4, F5 |
 | Plan shape | Tracks and phases only; each track's expanded plan is written when its specs are ready (EC-2) | As in release 2 |
 
-**Status: In progress.** R3-T1.1 and R3-T1.2 are built (2026-11-22). R3-T2.3 and with it track R3-T2 are built (2026-11-22). EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
+**Status: In progress.** R3-T1.1, R3-T1.2, R3-T8.1 to R3-T8.3 and I3-15 are built (2026-11-22). R3-T2.3 and with it track R3-T2 are built (2026-11-22). EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2).
 
 ## 1. Requirements analysis
 
@@ -70,7 +70,7 @@ Every item release 3 ships. Items not built are refused with `not_in_release`, n
 | I3-12 | The audit history layer and the tool surface audit | AUD, ARC, TSA | R3-T8 | moved from release 2 |
 | I3-13 | Native Windows | WIN | R3-T9 | moved from release 2 |
 | I3-14 | A complexity switch in an example workflow | CXR | R3-T10 | moved from R2-T9.1 |
-| I3-15 | `on_deadline: defaults` for ask units: each unanswered question takes its default and the unit proceeds with a complete `answers` artifact (if the owner agrees) | FLX-B8, ASK | R3-T8 | new, asked by the first real workflow |
+| I3-15 | `on_deadline: defaults` for ask units: each unanswered question takes its default and the unit proceeds with a complete `answers` artifact | FLX-B8, ASK | R3-T8 | new, asked by the first real workflow. Status: built. FLX-B8, FLX-B11 and ASK-B10 to ASK-B13, proved by FLX-AC5 to FLX-AC7 and ASK-AC5 to ASK-AC8 in `plugins/tempergraph/engine/tests/test_ask_wait.py` |
 
 ### 1.3 Excluded
 
@@ -177,8 +177,16 @@ Goal: whichever of `block`, judge reasons and GitLab the owner accepts.
 ### R3-T8 Moved from release 2
 
 #### R3-T8.1 Script cache, audit judge, judge MCP views
+
+Status: built. SCR-B9 and SCR-B3 (the script cache for a script unit and a step's `before` and `after` script), proved by SCR-AC4 in `plugins/tempergraph/engine/tests/test_script_cache.py`; JDG-B7 (the sampled audit judge, `audit_rate` and `audit_executor`), proved by JDG-AC7 and ROP-AC1 in `plugins/tempergraph/engine/tests/test_audit_judge.py`; ECC-B3, ECC-B10 and ECC-B15 (the judge view catalog, the filtering proxy with its private configuration, and deferral of a view with no working proxy), proved by GRD-AC6, ECC-AC7, ECC-AC8 and ECC-AC9 in `plugins/tempergraph/engine/tests/test_view_catalog.py`, `test_mcp_proxy.py` and `test_judge_mcp_deferral.py`; the live check of the proxy against the pinned CLI is left (the owner's row in `live-checks.plan.md`).
+
 #### R3-T8.2 Observers, worktree extras, session review in stable mode
+Goal: EVT-B23 observers with a preflight warning for a missing one, the `in_repo` and `path:` worktree roots, the `default_branch` base, `cleanup: on_finish`, `worktree prune` and foreign-worktree scans (spec 82), and `signals` review plans with saturation and the stable caps (spec 44), with no model call in any test.
+
+Status: built. EVT-AC5 in `plugins/tempergraph/engine/tests/test_events.py`, `test_run_log.py` and `test_preflight.py`; WTR-AC1, WTR-AC3, WTR-AC5 and WTR-AC6 in `test_workspace.py`, `test_worktree_cleanup.py`, `test_worktree_prune.py`, `test_rerun.py`, `test_carry.py`, `test_cli.py` and `test_run.py`; SRV-AC2 and SRV-AC9 in `test_session_review.py`, `test_review_budget.py` and `test_improve.py`, all under `plugins/tempergraph/engine/tests/`; writer, slot and item worktrees, probes P-WTR-1 to P-WTR-4, and corroborated filing (spec 44's Not built yet line) remain.
+
 #### R3-T8.3 Audit history and tool surface audit
+Status: built. The `history` layer and `audit tools` (AUD-B1, AUD-B3, AUD-B5, AUD-B10 to AUD-B12; ARC-B7, ARC-B9 to ARC-B15; TSA-B1 to TSA-B13; PRA-B11 `changed`), proved by AUD-AC1 to AUD-AC3, ARC-AC1, ARC-AC4, ARC-AC5, TSA-AC1 to TSA-AC6, PRA-AC3 and PRA-AC5 in `plugins/tempergraph/engine/tests/test_audit_history.py`, `test_audit_history_rules.py`, `test_audit_history_rules_more.py`, `test_audit_surface.py`, `test_audit_tools.py`, `test_audit_tools_verb.py` and `test_audit.py`; the council and contest definition rules (`council-one-family`, `council-even-majority`, `contest-identical-slots`), the post-release watch that `prompt-change-moved-gate` renders and the host probe that lists plugin tools for `judge-ambient-tool` are left.
 
 ### R3-T9 Windows
 

@@ -20,7 +20,7 @@ from tempergraph.run.runner import RunSettings
 from .conftest import hash_tree
 from .fixtures.packages import package_parts
 from .fixtures.workflows import two_step
-from .test_run import DRAFT, REVIEW, judge, verdict_block
+from .test_run import DRAFT, REVIEW, judge, records, verdict_block
 
 
 def settings(**kw: Any) -> RunSettings:
@@ -109,6 +109,24 @@ def test_read_only_verbs_leave_the_root_unchanged(repo: Path) -> None:
         code, _, err = cli(repo, happy(), *argv)
         assert code == 0, (argv, err)
     assert hash_tree(repo / ".tempergraph") == before  # CLI-AC1
+
+
+def test_worktree_prune_records_its_caller_only_when_it_applies(repo: Path) -> None:  # WTR-AC6 (WTR-B27)
+    cc = ({"CLAUDECODE": "1"}, False)  # an agent inside a Claude Code session
+    code, _, err = cli(repo, happy(), "run", "demo", "notes", "--task-id", "T-9")
+    assert code == 0, err
+    wt = Path(next(r for r in records(repo, "T-9") if r["kind"] == "workspace")["path"])
+    code, doc, err = cli(repo, None, "worktree", "prune", "--finished")  # a listing: not a mutation
+    assert code == 0, err
+    assert [r["thread"] for r in doc["removable"]] == ["demo/T-9"] and "caller" not in doc and wt.exists()
+    code, doc, err = cli(repo, None, "worktree", "list", "--all", "--json")
+    assert code == 0 and [r["thread"] for r in doc["worktrees"]] == ["demo/T-9"], err
+    code, doc, err = cli(repo, None, "worktree", "prune", "--finished", "--apply", "--caller", "agent", signals=cc)
+    assert code == 0, err
+    assert [r["result"] for r in doc["removed"]] == ["removed"] and not wt.exists()
+    assert doc["caller"]["kind"] == "agent" and doc["caller"]["call_id"]
+    code, doc, err = cli(repo, None, "worktree", "prune", "--apply")  # a person at a terminal, nothing left to remove
+    assert code == 0 and doc["removed"] == [] and doc["caller"]["kind"] == "person"
 
 
 def test_stop_needs_a_live_run(repo: Path) -> None:

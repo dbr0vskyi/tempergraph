@@ -30,6 +30,7 @@ from tempergraph.contracts import (
     ViewSet,
 )
 from tempergraph.executors import binding as binding_mod
+from tempergraph.executors import mcpconfig
 from tempergraph.executors.capabilities import CLAUDE, tool_names
 from tempergraph.executors.launcher import LaunchSpec, RawOutcome, StopRequest, launch, run_probe
 from tempergraph.executors.session import Summary, build_result, killed_by_os, process_cause, summarize
@@ -140,7 +141,9 @@ def step_argv(req: SessionRequest, model: str | None, fallback: str | None, flag
     return argv, tuple(applied)
 
 
-def judge_argv(views: ViewSet, model: str | None, *, isolated: bool) -> list[str]:
+def judge_argv(views: ViewSet, model: str | None, *, isolated: bool, mcp_config: Path | None = None) -> list[str]:
+    """ECC-B10. With MCP views and a private config (ECC-B3), `--tools` still holds the built-in views only and the
+    MCP views are admitted by name from the strict config; without a config the judge gets no MCP tool at all."""
     argv = [BINARY, *BASE_ARGV]
     argv += ["--bare"] if isolated else ["--setting-sources", ""]
     if model is not None:
@@ -149,6 +152,10 @@ def judge_argv(views: ViewSet, model: str | None, *, isolated: bool) -> list[str
         return argv + ["--tools", "", "--strict-mcp-config", "--disallowedTools", "mcp__*",
                        "--permission-mode", "dontAsk"]
     tools = [t for t in views.tools if not t.startswith("mcp__")] or list(JUDGE_TOOLS)
+    mcp = [t for t in views.tools if t.startswith("mcp__")]
+    if mcp_config is not None and mcp:
+        return argv + ["--tools", ",".join(tools), "--strict-mcp-config", "--mcp-config", str(mcp_config),
+                       "--permission-mode", "dontAsk", "--allowedTools", ",".join([*tools, *mcp])]
     argv += ["--tools", ",".join(tools), "--disallowedTools", "mcp__*", "--permission-mode", "dontAsk",
              "--allowedTools", ",".join(tools)]
     return argv
@@ -378,9 +385,27 @@ class ClaudeExecutor:
             model = self.binding.model(req.alias)
         except binding_mod.BindingError:
             return SessionResult(ok=False, error_kind="unknown")
-        argv = judge_argv(views, model, isolated=CLAUDE.isolates_user_config)
         env = _credentials(req.credentials_profile, self._home)
-        return self._run(req, argv, (), env, sink, idle_s=None)  # judges never get an idle limit (EXI-B4)
+        viewed = mcpconfig.viewed_servers(views.tools)
+        servers = mcpconfig.operator_servers(req.workdir) if viewed else {}
+        usable = {s: t for s, t in viewed.items() if mcpconfig.classify(s, servers) == "proxiable"}
+        base = mcpconfig.scratch_base(req.session_dir) if usable else None
+        if not usable or base is None:  # no proxy can be given: the launch is the read-only one, with no MCP tool
+            argv = judge_argv(views, model, isolated=CLAUDE.isolates_user_config)
+            return self._run(req, argv, (), env, sink, idle_s=None)  # judges never get an idle limit (EXI-B4)
+        offered = [t for t in views.tools if not t.startswith("mcp__")]
+        offered += [f"mcp__{s}__{t}" for s, tools in usable.items() for t in tools]
+        with mcpconfig.private_config(usable, servers, base) as cfg:  # removed on every exit path (SEC-B12)
+            argv = judge_argv(replace(views, tools=tuple(offered)), model, isolated=CLAUDE.isolates_user_config,
+                              mcp_config=cfg)
+            res = self._run(req, argv, (), env, sink, idle_s=None)
+        # the path of the private configuration is in no record the engine keeps (SEC-B12)
+        res.argv = tuple("<private>" if i and res.argv[i - 1] == "--mcp-config" else a for i, a in enumerate(res.argv))
+        return res
+
+    def unreachable_views(self, views: ViewSet, workdir: Path) -> dict[str, str]:
+        """ECC-B15: each viewed MCP server with no working proxy, with its reason; checked before the judge prompt."""
+        return mcpconfig.unreachable(views.tools, workdir)
 
     def _run(self, req: SessionRequest, argv: list[str], applied: tuple[str, ...], env: dict[str, str],
              sink: EventSink, *, idle_s: int | None) -> SessionResult:

@@ -26,6 +26,9 @@ The one list of features found useful and not built yet. A feature enters here w
 | B24 | The step prompts give the allowed command shapes as examples, so sessions stop trying pipes, `;` chains and `env` prefixes, and read-only steps stop calling the shell | Fewer refused calls; the session review saw them in every code session | [R-160](../../../tempergraph/docs/research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md), run r3-t1-1b, 2026-11-22 F2 |
 | B28 | The code gate reuses the session's own last run of the plan's commands: the session runs them through the engine's check preview, and the reuse key names the tree's content so that it survives the engine's commit | A clean code visit pays the full suite once instead of twice (session, then gate) | [command reuse note](../research/speedup-runs-command-reuse.rsrch.md), open question; run speedup-runs, 2026-11-22 |
 | B29 | A plan row that adds a unit checks first what a new unit costs the package: the engine's stand-in run, the docs self-test, eval fixtures, the diagram and the stamp | The plan does not promise a step the code step cannot add with the files the rows name | Code report of run speedup-runs, deviation 6, 2026-11-22 |
+| B18 | A passed deadline answers every open question of the conversation with its default and the run goes on | The run's conversation answers its own questions on a passed deadline with no person present; the engine has `on_deadline: defaults` for ask units since its release 3 item I3-15 | [stages F2](../research/stages-against-engine-releases.rsrch.md) |
+| B40 | The plan, report and note tables read a cell with an escaped pipe (`X \| None`, legal Markdown) as two cells | A row whose change text holds a type union is no longer read as marked completed, which made the expand check fail three times in a row | engine runs r3-t8-1 to r3-t8-4, 2026-11-22 |
+| B41 | A judge that finds no blocker and only open questions the hand-off marks as not blocking planning lets the run go on, with the questions listed in the pull request description | Three of four runs paused at discovery, and again at plan or code, as `unresolved_gap` with an empty blocker list | engine runs r3-t8-1 to r3-t8-4, 2026-11-22 |
 
 ## Waiting for the engine
 
@@ -37,7 +40,6 @@ The one list of features found useful and not built yet. A feature enters here w
 | B13 | Several independent answers to a hard choice, then a pick or a vote | Contest and council units (engine release 3), and a measured gain | [next features §3, case D](../research/next-features.rsrch.md) |
 | B14 | A scheduled drift audit: a judge compares specs with the code and files what it finds | Schedules (engine, designed) | [next features §5, row 4](../research/next-features.rsrch.md) |
 | B15 | A trust report on the pull request: the engine's pull-request gate grades the final criteria in CI and posts task completion, plan completion and code-to-spec alignment | The engine's pull-request gate (proposed in its research note R-135, release not set) | [pull request report](../research/pull-request-report.rsrch.md) |
-| B18 | A passed deadline answers every open question of the conversation with its default and the run goes on | An `on_deadline` choice that fills unanswered questions with their defaults (asked of the engine as a general capability; its release 3 plan, item I3-15) | [stages F2](../research/stages-against-engine-releases.rsrch.md) |
 
 ## To tune once runs exist
 

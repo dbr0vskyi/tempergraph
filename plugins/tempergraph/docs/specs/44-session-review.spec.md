@@ -63,9 +63,10 @@ WHEN a run of a `dev` workflow with `session_review: auto`, 2 units and one retr
 
 ### SRV-B16 Signals and what they read
 
-WHEN a `signals` plan is made THE engine SHALL read a session only when a signal holds, merging the slices of several: `retry_burst` or `judge_blocked:<id>` on a unit reads each attempt's last 40 turns in the visit and each judge's turns that read or cite `<id>`; spent retries or a stop at a gate reads the last attempt and its judge, last 40 turns each; `timeout:<shape>` other than `slow_host`, or `stalled`, reads the last 40 turns and the open call; `tool_access:<class>`, `tool_repeat` or refused calls read 10 turns around each; `idle_burn`, `context_bloat` or `retry_same_path` read the idle span, the 20 turns before the first write, or the repeated part; cost or time above the version's p90 reads the costliest session's first and last 20 turns and its largest idle span; a `rescue` touch or `agent_decided:<cause>` ([SUP](86-supervision-metrics.spec.md)) reads the paused unit's sessions' last 40 turns; a pushback, negative label or outcome miss ([FBK](41-feedback-and-judge-reliability.spec.md), [OUT](90-run-outcome.spec.md)) reads the final step's last 40 turns and all of the outcome judge; `judge_unread_pass` or a judge pass at confidence at most 0.5 reads the judge whole; `unknown_tool_name:<name>` reads 10 turns around each call; and in stable mode an audit reads one step session of one unit, round-robin, on every 20th clean final exit; until stable-mode plans are built, a `signals` plan records `depth: none` with `deferred`.
+WHEN a `signals` plan is made THE engine SHALL read a session only when a signal holds, merging the slices of several: `retry_burst` or `judge_blocked:<id>` on a unit reads each attempt's last 40 turns in the visit and each judge's turns that read or cite `<id>`; spent retries or a stop at a gate reads the last attempt and its judge, last 40 turns each; `timeout:<shape>` other than `slow_host`, or `stalled`, reads the last 40 turns and the open call; `tool_access:<class>`, `tool_repeat` or refused calls read 10 turns around each; `idle_burn`, `context_bloat` or `retry_same_path` read the idle span, the 20 turns before the first write, or the repeated part; cost or time above the version's p90 reads the costliest session's first and last 20 turns and its largest idle span; a `rescue` touch or `agent_decided:<cause>` ([SUP](86-supervision-metrics.spec.md)) reads the paused unit's sessions' last 40 turns; a pushback, negative label or outcome miss ([FBK](41-feedback-and-judge-reliability.spec.md), [OUT](90-run-outcome.spec.md)) reads the final step's last 40 turns and all of the outcome judge; `judge_unread_pass` or a judge pass at confidence at most 0.5 reads the judge whole; `unknown_tool_name:<name>` reads 10 turns around each call; and in stable mode an audit reads one step session of one unit, round-robin, on every 20th clean final exit, the plan recording `depth: partial` when a signal or the audit gives it a target and `depth: none` when none does.
 
 - GIVEN a timeout of shape `slow_host` WHEN planned THEN it is `skipped: infra_only`
+- GIVEN a stable run whose only signal is `tool_repeat` in one session of unit `code` WHEN a `signals` plan is made THEN the plan is `partial`, its one target is that session with slices of 10 turns around each repeated call, and no other session is read
 
 ### SRV-B4 Stable mode reads only what a signal names
 
@@ -137,7 +138,7 @@ WHEN a review runs THE engine SHALL record the plan and results in `loop.jsonl` 
 
 ### SRV-B7 Corroboration files; a review alone does not
 
-WHEN filing runs THE engine SHALL add `review:<category>` and `review_weight` to a model-free finding of the same unit that corroborates a kept observation, put the category word and no note text in its issue body, and file or comment nothing from a kept observation that no finding corroborates, which stays in the local report; until stable-mode plans are built, review results never file.
+WHEN filing runs THE engine SHALL add `review:<category>` and `review_weight` to a model-free finding of the same unit that corroborates a kept observation, put the category word and no note text in its issue body, and file or comment nothing from a kept observation that no finding corroborates, which stays in the local report.
 
 - GIVEN a kept `prompt_misread` on `plan` and no finding on `plan` WHEN filing runs THEN no issue or comment is made
 - GIVEN a `tool_thrash` observation on a unit whose findings carry `tool_repeat` WHEN filing runs THEN that finding's issue body gains `tool_thrash` and no note text
@@ -186,7 +187,7 @@ WHEN `improve review <selector> [--session <key>…] [--full] [--dry-run] [--jso
 ## Acceptance criteria
 
 - SRV-AC1 (SRV-B11, SRV-B12, SRV-B1, SRV-B2): Fixture sessions reproduce every digest cause, and the digest of a canary session holds no canary string and no path in clear
-- SRV-AC2 (SRV-B3, SRV-B4, SRV-B5, SRV-B9, SRV-B13, SRV-B14, SRV-B15, SRV-B16, SRV-B21): Fixture runs reproduce the plans of SRV-B3, SRV-B4 and SRV-B5, including `skipped` reasons, with no model call
+- SRV-AC2 (SRV-B3, SRV-B4, SRV-B5, SRV-B9, SRV-B13, SRV-B14, SRV-B15, SRV-B16, SRV-B21): Fixture runs reproduce the plans of SRV-B3, SRV-B4 and SRV-B5, the slices each signal of SRV-B16 reads and the stable-mode money caps of SRV-B21, including `skipped` reasons, with no model call
 - SRV-AC3 (SRV-B6, SRV-B19, SRV-B20): The citation check reproduces SRV-B6 and rejects a remedy class from the other side of the producer and grader split
 - SRV-AC4 (SRV-B22): A source test fails if any module other than the review writer, the review report and the proposer names the review evidence folder
 - SRV-AC5 (SRV-B7, SRV-B8, SRV-B10, SRV-B17): A canary planted in a tool output and the request appears in no issue, comment, finding, ledger row, loop record or step or judge prompt after a review
@@ -204,3 +205,4 @@ WHEN `improve review <selector> [--session <key>…] [--full] [--dry-run] [--jso
 - Is the condensed view a fair proxy of the raw session? Measured at the first live dev-mode review; until then the cap is 60 000 tokens. Owner: engine owner.
 - May review categories file on their own once the reviewer has a calibration score ([JCL](50-judge-calibration.spec.md)) on a gold set of reviewed sessions? Until answered: no, corroboration only. Owner: owner.
 - Should a `full` plan keep a count cap as a backstop against a run with very many sessions? Until answered: no count cap in `full`, only the money caps of SRV-B21. Owner: engine owner.
+- Not built yet: the corroboration of a model-free finding by a kept observation and the filing that follows it (SRV-B7, [SIL-B16](16-self-improvement.spec.md)), so no review result files and only a `review_repeat` finding (SRV-B26, SRV-B27) corroborates; the proposer's reading of kept observations (SRV-B10, [PRP-B4](40-improvement-proposals.spec.md)). Owner: engine owner.

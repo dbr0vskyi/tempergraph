@@ -79,7 +79,8 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
              run_cost_usd: float = 0.0, trial: bool = False, daily_cap_usd: float | None = None,
              loop_model: str | None = None, loop_effort: str | None = None) -> Path | None:
     """Writes the ticket when a judged lens fired at this final exit and there is a fault to judge, when the
-    outcome lens has candidates, or when the session review (SRV-B13, SRV-B14, SRV-B15) has a depth other than none."""
+    outcome lens has candidates, or when the session review (SRV-B13, SRV-B14, SRV-B15) has a depth other than none;
+    a `signals` review whose plan has no depth (a clean first-pass stable run) writes none (SIL-B1, SRV-B4)."""
     from tempergraph.improve import proposals as prp
     from tempergraph.improve import review
     from tempergraph.improve.calibration import has_score
@@ -94,6 +95,17 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
         if final else "off"
     reason = "trial" if trial else "probation" if prob and spec.improvement_mode != "dev" else \
         "dev" if spec.improvement_mode == "dev" else "signal"
+    if depth == "signals":  # SIL-B1, SRV-B4: a `signals` plan with no depth is no review, so it starts no child
+        try:
+            probe = review.plan_for(
+                {"state_root": str(root), "workflow": spec.name, "task_id": task_id, "workflow_version": spec.version,
+                 "review": "signals", "mode": spec.improvement_mode, "run_cost_usd": float(run_cost_usd or 0.0),
+                 "fingerprints": list(summary.get("fingerprints") or []),
+                 "daily_cap_usd": autonomy.daily_cap(spec.improvement_mode, daily_cap_usd)}, reason=reason)
+            if probe["depth"] == "none":
+                depth = "off"
+        except Exception:  # noqa: BLE001 - the loop is best effort: when the plan cannot be made, keep the setting
+            pass
     if not (friction or outcome) and depth == "off":
         return None
     tid = uuid.uuid4().hex[:16]
@@ -263,7 +275,9 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
         try:
             from tempergraph.improve import review
 
-            rv = review.run(t, registry, reason=str(t.get("review_reason") or "dev"))
+            spent = cost["reported"] + cost["estimated_only"]  # the judges above came out of the day's room too
+            rv = review.run(t, registry, reason=str(t.get("review_reason") or "dev"),
+                            room=None if left is None else round(left - spent, 6))  # SRV-B21, SIL-B20
             cost["reported"] += rv["cost"]["reported"]
             cost["estimated_only"] += rv["cost"]["estimated_only"]
         except Exception as exc:  # noqa: BLE001 - the review is best effort (SRV-B1, SRV-B20, SRV-B21, SRV-B22, SRV-B18)

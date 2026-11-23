@@ -132,11 +132,6 @@ class _Validator:
                          f"unit kind {u.kind!r} is built in release {LATER_KINDS[u.kind]}, not release {RELEASE}")
             if u.step is not None and u.step.self_check and u.gate.check is None:
                 self.err("self-check-without-check", name, "`self_check` needs a gate check to preview (CHK-B15, CHK-B14, CHK-B10, CHK-B17)")
-            for sc in (u.step.before + u.step.after) if u.step else ():
-                if sc.cache != "off":
-                    self.err("not_in_release", name, f"the script cache is built in release 3, not release {RELEASE}")
-            if u.script is not None and u.script.cache != "off":
-                self.err("not_in_release", name, f"the script cache is built in release 3, not release {RELEASE}")
             later = sorted(k for k in u.extra if k not in RESOLVED_EXTRA)
             if later:
                 self.err("not_in_release", name, f"fields {later} are not built in release {RELEASE}")
@@ -176,9 +171,11 @@ class _Validator:
             return
         if not isinstance(deadline_s, int) or deadline_s <= 0:
             self.err("deadline-invalid", name, "`deadline_s` must be a positive integer")
-        if on_deadline not in ("escalate", "stop") and not self._forward(name, on_deadline, finalizer=True):
+        if on_deadline not in ("escalate", "stop", "defaults") and not self._forward(name, on_deadline,
+                                                                                    finalizer=True):
             self.err("deadline-target-not-forward", name,
-                     f"`on_deadline` is `escalate`, `stop` or a unit after {name!r}, not {on_deadline!r}")
+                     f"`on_deadline` is `escalate`, `stop`, `defaults` (an ask only) or a unit after {name!r}, "
+                     f"not {on_deadline!r}")
 
     def _person_gate(self, name: str, u: UnitSpec) -> None:
         g = u.gate
@@ -209,6 +206,9 @@ class _Validator:
         if a.check is not None:
             self._callable(name, a.check, "check")
         self._deadline(name, a.deadline_s, a.on_deadline)
+        if a.on_deadline == "defaults" and a.questions:  # FLX-B11: with or without `deadline_s`
+            for problem in asking.defaults_problems(a.questions):
+                self.err("deadline-defaults-incomplete", name, problem)
 
     def _wait(self, name: str, u: UnitSpec) -> None:
         w = u.wait
@@ -220,6 +220,9 @@ class _Validator:
             self.err("wait-invalid", name, f"event name {w.event!r} is not a slug")
         self._callable(name, w.check, "check")
         self._deadline(name, w.deadline_s, w.on_deadline)
+        if w.on_deadline == "defaults":
+            self.err("deadline-defaults-not-ask", name, "`on_deadline: defaults` fills an ask's questions; a wait "
+                                                        "has none")
 
     def _keys_before(self, name: str) -> set[str]:
         return self._earlier_keys(name)["any"]

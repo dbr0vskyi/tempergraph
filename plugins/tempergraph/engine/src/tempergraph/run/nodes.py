@@ -9,9 +9,10 @@ from __future__ import annotations
 import contextlib
 import dataclasses
 import hashlib
+import os
 import threading
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -30,6 +31,7 @@ from tempergraph.contracts import (
     StepSpec,
     UnitSpec,
     Verdict,
+    ViewSet,
     WorkflowSpec,
 )
 from tempergraph.executors.launcher import StopRequest
@@ -39,8 +41,9 @@ from tempergraph.model import flow
 from tempergraph.model.text import load_text, split_judge_file
 from tempergraph.render.output import parse_output
 from tempergraph.render.prompt import AttemptContext, Blocker, render_step
+from tempergraph.run import audit as auditmod
 from tempergraph.run import checks as checkmod
-from tempergraph.run import complexity, mapping, reserve, tool_access
+from tempergraph.run import complexity, mapping, reserve, scriptcache, tool_access
 from tempergraph.run import gate as gatemod
 from tempergraph.run import ladder as laddermod
 from tempergraph.run.check_worker import run_in_worker
@@ -64,6 +67,7 @@ from tempergraph.run.log import CostTotals, RunLog, cost_so_far, estimate, sessi
 from tempergraph.security.scrub import clip, scrub
 from tempergraph.settings import Capture
 from tempergraph.store.layout import session_dir, session_key
+from tempergraph.workspace import scan_foreign_worktrees
 
 ATTEMPT_CAP = 15
 INFRA_TRIES = 3
@@ -104,6 +108,9 @@ class RunContext:
     judge_state: Callable[[str], str] | None = None  # a gate's judge binding state (JCL-B17); None reads it
     escalation_record: Callable[[str], bool] | None = None  # LAD-B13; None reads the ledger
     self_check_limit: int = 3  # CHK-B17
+    audit_rate: float = 0.0  # JDG-B7: the chance that a judged gate is audited by a second judge
+    audit_executor: str | None = None  # JDG-B7: the executor of the audit judge; None is the gate's judge executor
+    audit_seed: int | None = None  # a test hook that fixes the audit draw
     child: str | None = None  # SWF-B8: the sub-workflow unit whose child this context runs; None for the run's own spec
     parent_thread: str = ""  # a child's context keeps the parent's thread
 
@@ -127,6 +134,7 @@ class EngineNodes:
     def __init__(self, ctx: RunContext) -> None:
         self._deferred: list[dict[str, Any]] = []
         self._deferred_lock = threading.Lock()
+        self._audits: dict[tuple[str, str | None], dict[str, Any]] = {}  # audit results waiting for their gate record
         self.ledger = reserve.Ledger()  # what each running session of a parallel block holds (BUD-B12)
         self.ctx = ctx
 
@@ -152,6 +160,30 @@ class EngineNodes:
 
     def _in_worktree(self, state: Mapping[str, Any]) -> bool:
         return (state.get("workspace") or {}).get("mode") == "worktree"
+
+    @staticmethod
+    def _workspace_paths(state: Mapping[str, Any]) -> list[str]:
+        ws = state.get("workspace") or {}
+        return [str(p) for p in (ws.get("path"), *(c.get("path") for c in ws.get("children") or [])) if p]
+
+    def _foreign_worktrees(self, unit: str, iid: str | None, key: str, known: Sequence[str],
+                           before: Mapping[str, str]) -> list[str]:
+        """WTR-B26, WTR-B13: a worktree that appeared during a step session and is not in the run's record (a
+        subagent's, P-WTR-2) is recorded as a `workspace` record `foreign` with its path relative to the
+        repository's parent, its branch and the session key. Nothing is removed, merged or read. Returns the
+        relative paths."""
+        main = self.ctx.main_checkout
+        if main is None:
+            return []
+        out: list[str] = []
+        for path, br in scan_foreign_worktrees(main, known).items():
+            if path in before:
+                continue
+            rel = os.path.relpath(path, main.parent)
+            out.append(rel)
+            self.ctx.log.write("workspace", action="foreign", unit=unit, item=iid, mode="worktree", path=rel,
+                               branch=br or None, session_key=key)
+        return out
 
     def _boundary(self, state: Mapping[str, Any]) -> None:
         reason = self.ctx.drain_requested()
@@ -396,6 +428,8 @@ class EngineNodes:
         if climb:
             extra["ladder"] = climb
         before = gitmod.fingerprint(workdir)
+        known = self._workspace_paths(state)
+        worktrees_before = scan_foreign_worktrees(self.ctx.main_checkout, known) if self.ctx.main_checkout else {}
         try:
             res, results = self._session(ex, req, lessons_digest=lessonsmod.digest(lessons_text),
                                          extra=extra or None, hold=self._hold(unit, state))
@@ -407,6 +441,7 @@ class EngineNodes:
                     self.ctx.log.write("self_check", unit=unit, item=iid, attempt=attempt, result=call.get("result"),
                                        findings=call.get("findings"), duration_s=call.get("duration_s"))
         after = gitmod.fingerprint(workdir)
+        foreign = self._foreign_worktrees(unit, iid, key, known, worktrees_before)  # WTR-B26: recorded, never touched
         parsed = parse_output(res.text, st.produces, tuple(u.gate.back_targets))
         after_failed, after_env = None, False
         if res.ok and st.after:
@@ -446,6 +481,8 @@ class EngineNodes:
             priced = estimate(res.usage, laddermod.TIER_FAMILY.get(laddermod.tier(esc_spec.to)))
             usages = [*(prev.get("up_estimates") or [])] if not first else []
             record["up_estimates"] = [*usages, priced][-5:]
+        if foreign:
+            record.update(foreign_worktrees=foreign, warnings=[f"foreign_worktree: {rel}" for rel in foreign])
         if record["slow_host"]:
             record.update(infra_cause="slow_host", infra_spent=False)
         if res.ok and before != after and flow.block_of(spec, unit):  # WSP-B11, WSP-B12: a branch is read-only
@@ -460,13 +497,14 @@ class EngineNodes:
             run["path"] = {"units": path_units + [unit]}
         arts: dict[str, Any] = {**hybrid, **parsed.artifacts}
         vals: dict[str, Any] = dict(parsed.values)
+        seen = {"facts": {unit: {"foreign_worktrees": foreign}}} if foreign else {}  # the check and the judge read it
         if iid:  # an item's keys are kept as `<key>[<item id>]`; the plain key is the item in hand (MAP-B8, MAP-B9, MAP-B10)
             arts.update({mapping.item_key(k, iid): v for k, v in list(arts.items())})
             vals.update({mapping.item_key(k, iid): v for k, v in list(vals.items())})
             return {"attempts": {unit: record}, "artifacts": {unit: arts} if arts else {},
-                    "values": {unit: vals} if vals else {}, "run": run, "maps": maps}
+                    "values": {unit: vals} if vals else {}, "run": run, "maps": maps, **seen}
         return {"attempts": {unit: record}, "artifacts": {unit: arts or None},
-                "values": {unit: vals or None}, "run": run}  # feedback is cleared at the gate
+                "values": {unit: vals or None}, "run": run, **seen}  # feedback is cleared at the gate
 
     def _map_item(self, unit: str, state: Mapping[str, Any], visit: int, workdir: Path, prev: Mapping[str, Any],
                   path_units: list[str]) -> tuple[dict[str, Any] | None, dict[str, Any], dict[str, Any] | None]:
@@ -536,6 +574,20 @@ class EngineNodes:
         artifacts: dict[str, str] = {}
         ok, env, exit_code = True, False, None
         name = sc.name or (sc.run[0] if sc.run else unit)
+        cache_key, cache_error = None, None
+        folder = self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "cache"
+        if sc.cache == "thread":  # SCR-B9: a hit restores the recorded files and result and runs nothing
+            try:
+                cache_key = self._script_key(sc, unit, state, workdir)
+                hit = scriptcache.lookup(folder, cache_key, workdir)
+            except (scriptcache.CacheError, OSError) as exc:  # an unreadable cache is a logged miss
+                cache_key, hit, cache_error = None, None, type(exc).__name__
+            if hit is not None:
+                self.ctx.log.write("script", unit=unit, name=name, phase=phase, exit_code=hit.exit_code,
+                                   command_prefix=sc.run[0] if sc.run else None,
+                                   duration_s=round(time.monotonic() - t0, 3), environmental=False, cached=True,
+                                   cache="hit")
+                return True, False, {k: str(v) for k, v in hit.artifacts.items()}
         if sc.run:
             tag = unit if phase == "unit" else f"{unit}.{phase}.{name}"
             out = self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "scripts" / tag / f"{attempt}.out"
@@ -554,9 +606,37 @@ class EngineNodes:
             except Exception as exc:  # noqa: BLE001
                 ok, env = False, True
                 self.ctx.log.write("engine_error", unit=unit, error=type(exc).__name__)
+        if cache_key is not None and ok and not env and all(k in artifacts for k in sc.produces):
+            try:  # only a run that finished and succeeded is recorded
+                scriptcache.store(folder, cache_key, scriptcache.Result(
+                    exit_code=exit_code, artifacts=artifacts,
+                    kinds={k: v if isinstance(v, str) else "value" for k, v in sc.produces.items()}), workdir)
+            except scriptcache.CacheError as exc:
+                cache_error = str(exc)
+        extra: dict[str, Any] = {"cache": "miss"} if sc.cache == "thread" else {}
+        if cache_error:
+            extra["cache_error"] = cache_error
         self.ctx.log.write("script", unit=unit, name=name, phase=phase, exit_code=exit_code,
-                           command_prefix=sc.run[0] if sc.run else None, duration_s=round(time.monotonic() - t0, 3), environmental=env, cached=False)
+                           command_prefix=sc.run[0] if sc.run else None, duration_s=round(time.monotonic() - t0, 3),
+                           environmental=env, cached=False, **extra)
         return ok, env, artifacts
+
+    def _script_key(self, sc: ScriptSpec, unit: str, state: Mapping[str, Any], workdir: Path) -> str:
+        """SCR-B9: the digest of the argv or callable reference, the workflow's content digest, the arguments and
+        each declared input's content digest. The files this unit's earlier visits produced are not part of the
+        workspace input: a restore puts them back."""
+        from tempergraph.package.loader import full_version
+
+        known: dict[str, str] = {k: str(v) for k, v in ((state.get("request") or {}).get("inputs") or {}).items()}
+        for chan in ("artifacts", "values"):
+            for vals in (state.get(chan) or {}).values():
+                if isinstance(vals, dict):
+                    known.update({k: str(v) for k, v in vals.items() if v is not None})
+        own = {str(v) for v in ((state.get("artifacts") or {}).get(unit) or {}).values() if v is not None}
+        inputs = {n: scriptcache.input_digest(n, workdir, self.ctx.state_root, known, own) for n in sc.inputs}
+        return scriptcache.key(argv=(sc.run[0],) if sc.run else (), reference=sc.call.ref if sc.call else None,
+                               workflow=full_version(self.ctx.spec), arguments=tuple(sc.run[1:]) if sc.run else (),
+                               inputs=inputs)
 
     def _scripts(self, scripts: tuple[ScriptSpec, ...], unit: str, attempt: int, phase: str,
                  state: Mapping[str, Any], workdir: Path) -> tuple[str | None, bool, dict[str, str]]:
@@ -628,7 +708,10 @@ class EngineNodes:
             with contextlib.suppress(OSError):
                 asking.answers_path(folder, unit).unlink()
             try:
-                record["questions"] = [asking.to_json(q) for q in asking.questions(u.ask, state, workdir)]
+                listed = asking.questions(u.ask, state, workdir)
+                if u.ask.on_deadline == "defaults" and (gaps := asking.defaults_problems(listed)):  # ASK-B13
+                    raise asking.AskFault(gaps[0])
+                record["questions"] = [asking.to_json(q) for q in listed]
             except asking.AskFault as exc:
                 record.update(ok=False, ask_fault=str(exc))
         path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
@@ -752,6 +835,8 @@ class EngineNodes:
         att["check"] = checkmod.to_json(cres)
         iid = att.get("item")
         facts: dict[str, Any] = dict(cres.facts or {})
+        if att.get("foreign_worktrees"):  # WTR-B26: the step's fact outlives the check's own facts
+            facts["foreign_worktrees"] = att["foreign_worktrees"]
         if iid:
             facts.update({mapping.item_key(k, str(iid)): v for k, v in list(facts.items())})
         write: dict[str, Any] = {"attempts": {unit: att},
@@ -886,6 +971,25 @@ class EngineNodes:
                 "deliverable_producers": deliverable_producers(self.ctx.spec),
                 "outcome_check": o.check.ref if o.check else None}
 
+    @staticmethod
+    def _reachable_views(ex: Any, views: ViewSet, workdir: Path) -> ViewSet:
+        """ECC-B15: an MCP view whose server has no working proxy on this executor (not in the operator's
+        configuration, defined by a URL, or exits at start) is deferred for the attempt and its tools are dropped from
+        the judge's views, so the prompt names the artifact out of reach and no tool of that server is offered."""
+        check = getattr(ex, "unreachable_views", None)  # an executor that fronts MCP servers itself has it
+        if check is None or not any(t.startswith("mcp__") for t in views.tools):
+            return views
+        down: Mapping[str, str] = check(views, workdir)
+        if not down:
+            return views
+        from tempergraph.contracts import Deferred
+        from tempergraph.executors import mcpconfig
+
+        lost = [Deferred(capability=f"mcp:{server}/{tool}", reason=f"mcp_{down[server]}")
+                for server, tools in mcpconfig.viewed_servers(views.tools).items() if server in down for tool in tools]
+        keep = tuple(t for t in views.tools if not (t.startswith("mcp__") and t.split("__", 2)[1] in down))
+        return dataclasses.replace(views, tools=keep, deferred=(*views.deferred, *lost))
+
     def _judge_session(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], cres: CheckResult | None,
                        workdir: Path, claim: tuple[str, str] | None = None) -> dict[str, Any]:
         spec = self.ctx.spec
@@ -907,6 +1011,7 @@ class EngineNodes:
 
         views = view_set(st, [ToolCall(name=t) for t in att.get("tools") or []], caps, j.tools,
                          granted=tuple(u.extra.get("views_add") or ()))
+        views = self._reachable_views(ex, views, workdir)  # ECC-B15: before the prompt names what is out of reach
         stance, brief = j.stance, j.brief
         if j.file:
             from tempergraph.contracts import TextRef
@@ -1003,12 +1108,53 @@ class EngineNodes:
             confidence_source=outcome.confidence_source, gap=outcome.gap, guard=gr.status, views=list(views.tools),
             judge_executor=judge_name, brief_digest=brief_digest(stance, brief),
             criteria_digest=criteria_digest(g.criteria), **({"claim": claim[0]} if claim else {}),
+            **({"deferred": [{"capability": d.capability, "reason": d.reason} for d in views.deferred]}
+               if views.deferred else {}),
             **({"level": risk["level"]} if risk is not None else {}))
         self._keep_evidence(unit, att, outcome.blockers)
         out.update(outcome.to_json())
         out["guard"] = gr.status
-        out["_cost"] = self._cost(state, all_results)
+        out["_cost"] = self._cost(state, all_results)  # the audit judge's cost is in no counter (JDG-B7)
+        if claim is None and judgement is not None and self._audit_drawn(unit, iid, attempt):
+            self._audit_judgement(unit, iid, attempt, ex, req, views, g, cres, state, att, workdir)
         return out
+
+    # -- the sampled audit judge (JDG-B7) ---------------------------------------------------------------
+
+    def _audit_drawn(self, unit: str, iid: str | None, attempt: int) -> bool:
+        return auditmod.sampled(self.ctx.audit_rate, seed=self.ctx.audit_seed, thread=self.ctx.thread, unit=unit,
+                                item=iid, attempt=attempt)
+
+    def _audit_judgement(self, unit: str, iid: str | None, attempt: int, judge_ex: Executor, req: SessionRequest,
+                         views: Any, g: Any, cres: CheckResult | None, state: Mapping[str, Any],
+                         att: Mapping[str, Any], workdir: Path) -> None:
+        """A second judge on the same prompt and views, on the audit executor when one is set, under its own
+        session key. The result waits for the gate record of this attempt, which it must follow; no verdict,
+        route, counter or budget reads it, and any failure of the audit leaves no trace but its session log."""
+        try:
+            name = self.ctx.audit_executor or judge_ex.name
+            ex = judge_ex if name == judge_ex.name else self.ctx.registry.get(name)
+            key = session_key(unit, attempt, "audit", item=iid)
+            areq = dataclasses.replace(req, session_key=key, session_dir=session_dir(
+                self.ctx.state_root, self.ctx.spec.name, self.ctx.task_id, key))
+            caps = ex.capabilities()
+            mode = (state.get("workspace") or {}).get("mode", "in_place")
+
+            def session(r: SessionRequest) -> tuple[SessionResult, list[SessionResult]]:
+                return self._session(ex, r, views)  # no reservation: an audit holds none of a cap
+
+            before = gitmod.fingerprint(workdir)
+
+            def discarded(res: SessionResult) -> bool:
+                return guard(views, res.tool_calls, before, gitmod.fingerprint(workdir), workspace_mode=mode,
+                             step_session_id=att.get("session_id"), judge_session_id=res.session_id,
+                             reports_actions=caps.reports_actions).status == "discarded"
+
+            found = auditmod.run(session, areq, gate=g, check=cres, executor=name, discarded=discarded)
+        except Exception:  # noqa: BLE001 - an audit that cannot run changes nothing
+            return
+        if found is not None:
+            self._audits[(unit, iid)] = {"item": iid, "attempt": attempt, **found.fields()}
 
     def _risk(self, unit: str, state: Mapping[str, Any], att: Mapping[str, Any], cres: CheckResult | None,
               workdir: Path, j: Any) -> dict[str, Any]:
@@ -1064,6 +1210,9 @@ class EngineNodes:
         self.ctx.log.write("gate", unit=unit, item=((state.get("attempts") or {}).get(unit) or {}).get("item"),
                            verdict=((state.get("judgements") or {}).get(unit) or {}).get("verdict"),
                            token=r["token"], route_target=r["node"], cost_so_far=so_far)
+        done = self._audits.pop((unit, ((state.get("attempts") or {}).get(unit) or {}).get("item")), None)
+        if done is not None:  # JDG-B7: the audit record follows the gate of the judgement it audits
+            self.ctx.log.write("audit_judge", unit=unit, **done)
         self._budget_records(unit, state, w)
         if r.get("ladder"):  # LAD-B16, LAD-B17: every gate that chose the next attempt's rung
             self.ctx.log.write("ladder_decision", unit=unit, **r["ladder"])

@@ -24,7 +24,7 @@ CLAUDE = Capabilities(
     prompt_off_argv=True, streams_events=True, reports_actions=True, reports_tokens=True, reports_cost=True,
     enforces_step_tools=True, step_allow_rules=True, fresh_session=True,
     restricts_judge_tools=True,
-    judge_mcp=False,  # ADR-0091 item 3: no filtering MCP proxy before release 2
+    judge_mcp=True,  # the engine's filtering MCP proxy fronts a local server (ECC-B3); ADR a-judge-reaches-an-mcp-server-only-through-the-engines-filtering-proxy
     isolates_user_config=False,  # true once P-CC-1 is confirmed (ECC-B6)
     hosts_authoring_surface=True,
     efforts_uncertain=frozenset({"xhigh", "max"}),  # until live probe P-LAD-1 (LAD-B14)

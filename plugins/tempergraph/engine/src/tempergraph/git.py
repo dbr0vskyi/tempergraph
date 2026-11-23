@@ -31,11 +31,11 @@ def _env() -> dict[str, str]:
     return env
 
 
-def git(args: list[str], cwd: Path, *, check: bool = True, stdin: str | None = None) -> str:
-    """Run git with list argv, no shell. Raises GitError when ``check`` and git fails."""
+def git(args: list[str], cwd: Path, *, check: bool = True, stdin: str | None = None, timeout_s: float = 120) -> str:
+    """Run git with list argv, no shell. Raises GitError when ``check`` and git fails, or on a timeout."""
     try:
         proc = subprocess.run(
-            ["git", *args], cwd=cwd, input=stdin, capture_output=True, text=True, env=_env(), timeout=120
+            ["git", *args], cwd=cwd, input=stdin, capture_output=True, text=True, env=_env(), timeout=timeout_s
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise GitError(f"git {args[0] if args else ''}: {type(exc).__name__}") from None

@@ -51,8 +51,6 @@ REF_PART = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$")
 
 # Keys of the catalog whose feature is not in this release (ADR-0090, ADR-0125): refused rather than silently ignored.
 NOT_IN_RELEASE = {
-    "audit_rate": "the audit judge (JDG-B7) is release 3",
-    "audit_executor": "the audit judge (JDG-B7) is release 3",
     "attempt_cost_cap_usd": "council and contest units are release 3",
     "concurrency": "contest units are release 3",
 }
@@ -156,20 +154,20 @@ class Entry:
     release1: Callable[[Any], None] | None = None  # refuses a value whose feature is a later release
 
 
-def _only(name: str, *ok: str) -> Callable[[Any], None]:
-    def check(v: Any) -> None:
-        if v not in ok:
-            raise SettingError("setting_not_in_release", f"{name} {v!r} is release 3 (worktree extras, ADR-0125); this release takes "
-                                                         f"{', '.join(ok)}")
-    return check
+def _root(v: Any) -> None:
+    """WTR-B17: `sibling`, `in_repo` or `path:<absolute path>`."""
+    if v in ("sibling", "in_repo"):
+        return
+    if isinstance(v, str) and v.startswith("path:") and Path(v[5:]).is_absolute():
+        return
+    raise SettingError("setting_value", f"worktree.root {v!r} is not sibling, in_repo or path:<absolute path>")
 
 
 def _base(v: Any) -> None:
-    """WTR-B21: `head` and `ref:<name>` (trial cases); `default_branch` is release 3 (ADR-0125)."""
-    if v == "head" or (isinstance(v, str) and v.startswith("ref:") and len(v) > 4):
+    """WTR-B17, WTR-B21: `head`, `default_branch` or `ref:<name>`."""
+    if v in ("head", "default_branch") or (isinstance(v, str) and v.startswith("ref:") and len(v) > 4):
         return
-    raise SettingError("setting_not_in_release", f"worktree.base {v!r} is release 3 (worktree extras, ADR-0125); this release takes head "
-                                                 "or ref:<name>")
+    raise SettingError("setting_value", f"worktree.base {v!r} is not head, default_branch or ref:<name>")
 
 
 RUN = frozenset({"run"})
@@ -199,10 +197,10 @@ CATALOG: dict[str, Entry] = {
     "auto_reopen": Entry(RUN, _int(0, 10), 0),
     "workspace": Entry(RUN, _choice("auto", "in_place", "worktree"), "auto"),
     "session_review": Entry(RUN, _choice("auto", "full", "signals", "off"), "auto"),  # lowers only (SRV-B13, SRV-B14, SRV-B15)
-    "worktree.root": Entry(RUN, str, "sibling", _only("worktree.root", "sibling")),
+    "worktree.root": Entry(RUN, str, "sibling", _root),
     "worktree.base": Entry(RUN, str, "head", _base),
     "worktree.branch_prefix": Entry(RUN, _prefix, "tg"),
-    "worktree.cleanup": Entry(RUN, _choice("never", "on_finish"), "never", _only("worktree.cleanup", "never")),
+    "worktree.cleanup": Entry(RUN, _choice("never", "on_finish"), "never"),
     "worktree.read_worktreeinclude": Entry(RUN, _bool, True),
     "enforce_tools": Entry(RUN, _true, False),
     "strict_permissions": Entry(RUN, _true, False),
@@ -237,8 +235,9 @@ def _caps(v: Any, *, read_only: bool) -> tuple[str, ...]:
         if not (c in CAPABILITIES or MCP_CAP.match(c) or SKILL_CAP.match(c)):
             raise SettingError("unknown-capability", f"{c!r} is not a tool capability (CON-B11)")
         if read_only and c.startswith("mcp:"):
-            raise SettingError("judge-view-unclassified", f"{c!r}: release 1 has no read-only MCP catalog; a judge "
-                                                          "sees an MCP tool only as the derived view of its step's")
+            raise SettingError("judge-view-unclassified", f"{c!r}: a judge sees an MCP tool only through the "
+                                                          "engine's view catalog, as the read view of its step's tool; "
+                                                          "a grant cannot add one")
         if read_only and c not in READ_ONLY:
             raise SettingError("judge-view-not-read-only", f"{c!r}: a judge takes read-only views only")
     return tuple(out)
