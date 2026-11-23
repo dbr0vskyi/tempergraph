@@ -291,16 +291,17 @@ def test_no_item_starts_when_the_reserved_spend_would_cross_the_cap_BUD_AC9(repo
     assert not ex.sessions.get("phase.p1") and not ex.sessions.get("phase.p2")
 
 
-def test_ac_5_the_not_built_line_names_only_contests_and_councils() -> None:  # AC 5, BUD-AC9
-    """Reservations are built for parallel branches, writer branches included, and for the items of a concurrent map;
-    the spec 08 line names what is not."""
+def test_ac_5_the_not_built_line_names_only_contests() -> None:  # AC 5, BUD-AC9, BUD-AC12
+    """Reservations are built for parallel branches, writer branches included, for the items of a concurrent map and for
+    the member and chair sessions of a council; the spec 08 line names what is not."""
     root = next(p for p in Path(__file__).resolve().parents if (p / "plugins" / "tempergraph" / "docs").is_dir())
     docs = root / "plugins" / "tempergraph" / "docs"
     lines = [ln for ln in (docs / "specs" / "08-budgets-and-failures.spec.md").read_text().splitlines()
              if ln.startswith("- Not built yet")]
     assert len(lines) == 1
     line = lines[0].lower()
-    assert all(w in line for w in ("contests", "councils", "projection", "bud-b12", "bud-b15"))
+    assert all(w in line for w in ("contests", "projection", "bud-b12", "bud-b15"))
+    assert "councils" not in line and "council" in line  # a council's member and chair sessions reserve too
     assert "maps" not in line  # the items of a concurrent map reserve too
     assert "check spend only" not in line
     assert "read-only branches" not in line  # a writer branch reserves too

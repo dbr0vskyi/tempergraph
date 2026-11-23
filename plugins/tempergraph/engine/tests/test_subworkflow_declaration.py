@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from tempergraph.api import Council, Gate, Judge, Subworkflow
+from tempergraph.api import Contest, Gate, Judge, Subworkflow
 from tempergraph.contracts import GateSpec, SubworkflowSpec, UnitSpec
 from tempergraph.package.inventory import canonical
 
@@ -57,4 +57,4 @@ def test_equal_declarations_have_equal_canonical_forms() -> None:  # SWF-AC1, AC
 
 
 def test_the_other_later_kinds_still_build_as_placeholders() -> None:  # SWF-AC1, AC 1
-    assert Council(branches=["a", "b"]).kind == "council"
+    assert Contest(branches=["a", "b"]).kind == "contest"  # CNL-AC1: the council is built and takes typed fields

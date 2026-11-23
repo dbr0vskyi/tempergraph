@@ -1,7 +1,8 @@
 """The history rules of C5 to C8 (ARC-B12 to ARC-B15) and the rendered owned rules (ARC-B1, ARC-AC4): each raised by a
 fixture of synthetic run records and quiet on a clean one (AUD-AC1, ARC-AC1), with the catalog's severity,
 confidence, cause and remedy, and skipped with `n=<n> of <min>` below its minimum sample (AUD-AC3). The council and
-contest rules read synthetic records shaped by CNL-B10, CNL-B2, CNL-B12 and CTS-B7; their units are not built yet."""
+contest rules read synthetic records shaped by CNL-B10, CNL-B2, CNL-B12 and CTS-B7; the council is built (its two
+definition rules run, below) and the contest is not."""
 
 from __future__ import annotations
 
@@ -139,6 +140,54 @@ def test_contest_evidence_names_the_winner(tmp_path: Path) -> None:
     """ARC-B15: the lowest-numbered slot won every pick."""
     _, fs = found(tmp_path, "contest-no-gain", 10, CASES["contest-no-gain"][0])
     assert (fs[0].evidence["picks"], fs[0].evidence["lowest_slot_wins"], fs[0].evidence["slots"]) == (10, 10, 3)
+
+
+def council_definition(**fields: Any) -> Any:
+    from tempergraph.api import Chair, Council, Gate, Member
+
+    from .test_audit import crit, judge
+
+    members = fields.pop("members", [Member(name="a"), Member(name="b")])
+    unit = Council(question="Which design?", members=members, chair=Chair(),
+                   gate=Gate(judge=judge(), criteria=[crit("c1")]), **fields)
+    return wf({"decide": unit})
+
+
+def definition_audit(spec: Any, tmp: Path, caps: Any = None) -> Any:
+    from tempergraph.audit import audit
+
+    from .test_audit import ctx
+
+    return audit(spec, {"definition"}, ctx(tmp, **({"caps": caps} if caps else {})))
+
+
+def test_ac_7_the_council_one_family_rule_runs_and_raises_on_members_of_one_family(tmp_path: Path) -> None:  # AC 7 (ARC-B15)
+    rep = definition_audit(council_definition(), tmp_path)
+    (f,) = [f for f in rep.findings if f.rule == "council-one-family"]
+    assert (f.unit, f.severity, f.layer) == ("decide", "warning", "definition")
+    assert f.evidence == {"family": "anthropic", "members": 2}
+    assert "council-one-family" not in {s["rule"] for s in rep.rules_skipped}  # it ran: not skipped
+    from tempergraph.api import Member
+    from tempergraph.executors.capabilities import ANTIGRAVITY, CLAUDE
+
+    mixed = council_definition(members=[Member(name="a"), Member(name="b", executor="antigravity")])
+    rep = definition_audit(mixed, tmp_path, {"claude": CLAUDE, "antigravity": ANTIGRAVITY})
+    assert "council-one-family" not in {f.rule for f in rep.findings}  # another family: quiet
+
+
+def test_ac_7_the_council_even_majority_rule_runs_and_raises_on_an_even_majority_vote(tmp_path: Path) -> None:  # AC 7 (ARC-B15)
+    from tempergraph.api import Member
+
+    base: dict[str, Any] = {"mode": "vote", "options": ["ship", "hold"]}
+    rep = definition_audit(council_definition(**base), tmp_path)
+    (f,) = [f for f in rep.findings if f.rule == "council-even-majority"]
+    assert (f.unit, f.severity) == ("decide", "info") and f.evidence == {"members": 2}
+    assert "council-even-majority" not in {s["rule"] for s in rep.rules_skipped}
+    odd = council_definition(members=[Member(name=n) for n in "abc"], **base)
+    assert "council-even-majority" not in {f.rule for f in definition_audit(odd, tmp_path).findings}
+    plural = council_definition(rule="plurality", **base)
+    assert "council-even-majority" not in {f.rule for f in definition_audit(plural, tmp_path).findings}
+    assert "contest-identical-slots" in {s["rule"] for s in rep.rules_skipped}  # the contest is still not built
 
 
 def test_interventions_are_split_by_class_and_decider(tmp_path: Path) -> None:

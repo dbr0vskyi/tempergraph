@@ -218,6 +218,28 @@ class _Fold:
                           "partial": r.get("partial"), "infra_cause": r.get("infra_cause"),
                           "error_kind": r.get("error_kind")})
 
+    def _council(self, r: Mapping[str, Any], unit: str | None) -> dict[str, Any] | None:
+        """The `council` field of the attempt a council record names: it exists on a council attempt only (RDD-B9)."""
+        if not unit or r.get("attempt") is None:
+            return None
+        att = self._attempt(unit, r.get("attempt"), None, r.get("ts"))
+        return att.setdefault("council", {"members": [], "rounds": [], "tally": None, "outcome": None})
+
+    def _on_council_round(self, r: Mapping[str, Any], unit: str | None) -> None:
+        c = self._council(r, unit)
+        if c is None:
+            return
+        c["members"] = [str(m) for m in r.get("labels") or c["members"]]
+        c["rounds"] = [x for x in c["rounds"] if x["round"] != r.get("round")] + [
+            {k: r.get(k) for k in ("round", "answered", "spoiled", "missing", "changed")}]
+
+    def _on_council_tally(self, r: Mapping[str, Any], unit: str | None) -> None:
+        c = self._council(r, unit)
+        if c is None:
+            return
+        c["tally"] = {k: r.get(k) for k in ("mode", "rule", "counts", "chosen_by")}
+        c["outcome"] = r.get("outcome")
+
     def _on_script(self, r: Mapping[str, Any], unit: str | None) -> None:
         if not unit:
             return

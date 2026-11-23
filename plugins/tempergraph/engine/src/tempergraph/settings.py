@@ -41,6 +41,8 @@ LAYERS = ("flag", "profile", "project:overrides", "user:overrides", "workflow:un
 OPERATOR_LAYERS = ("flag", "profile", "project:overrides", "user:overrides", "project:defaults", "user:defaults")
 
 SESSION_KINDS = ("step", "map")  # unit kinds whose `step` runs model sessions (a map runs its step per item)
+# What the `steps` scope sets for the member and chair sessions of a council (CNL-B9, BUD-B12): never a `<unit>.` key.
+COUNCIL_STEP_KEYS = ("session_cost_cap_usd", "model", "executor")
 SESSION = frozenset({"steps", "judges", "unit", "judge"})
 STEP_SIDE = frozenset({"steps", "unit"})
 JUDGE_SIDE = frozenset({"judges", "judge"})
@@ -723,6 +725,8 @@ def targets(spec: WorkflowSpec) -> list[tuple[str, str, list[str]]]:
             if u.kind in SESSION_KINDS and e.scopes & STEP_SIDE:
                 out.append((f"{unit}.{name}", name, [f"{unit}.{name}", f"steps.{name}"] if "steps" in e.scopes
                             else [f"{unit}.{name}"]))
+            if u.kind == "council" and name in COUNCIL_STEP_KEYS:  # CNL-B9: members and chair sit on the step layer
+                out.append((f"{unit}.{name}", name, [f"steps.{name}"]))  # `council` is no SESSION_KIND: no `<unit>.` key
             if u.kind == "script" and name == "timeout_s":
                 out.append((f"{unit}.timeout_s", "timeout_s", [f"{unit}.timeout_s"]))
             if u.gate.judge is not None and e.scopes & JUDGE_SIDE:
@@ -830,6 +834,18 @@ def effective_spec(spec: WorkflowSpec, res: ResolvedSettings) -> WorkflowSpec:
             operator = tuple(k for k in ("model", "timeout_s", "idle_s", "effort")
                              if layer_of.get(f"{name}.{k}") in LAYERS[:4])
             u = dataclasses.replace(u, step=st, extra={**u.extra, "operator_set": operator} if operator else u.extra)
+        if u.kind == "council" and u.council is not None:  # a member or chair that declares none takes the step layer's
+            model, executor = _model(v.get(f"{name}.model")), v.get(f"{name}.executor")
+            alias = model if isinstance(model, str) or model is None else model[0]
+            cc = u.council
+            u = dataclasses.replace(u, council=dataclasses.replace(
+                cc, members=tuple(dataclasses.replace(m, model=m.model or alias, executor=m.executor or executor)
+                                  for m in cc.members),
+                chair=dataclasses.replace(cc.chair, model=cc.chair.model or alias,
+                                          executor=cc.chair.executor or executor) if cc.chair else None))
+            cap = v.get(f"{name}.session_cost_cap_usd")
+            if cap is not None:
+                u = dataclasses.replace(u, extra={**u.extra, "session_cost_cap_usd": float(cap)})
         if u.switch is not None and v.get(f"{name}.arm"):
             u = dataclasses.replace(u, extra={**u.extra, "arm": v.get(f"{name}.arm")})  # CMP-B7
         deadline = v.get(f"{name}.deadline_s")

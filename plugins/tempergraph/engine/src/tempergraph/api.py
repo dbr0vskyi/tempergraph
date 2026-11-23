@@ -19,9 +19,11 @@ from tempergraph.contracts import (
     AskQuestion,
     AskSpec,
     CallableRef,
+    ChairSpec,
     CheckFinding,
     CheckResult,
     ComplexitySpec,
+    CouncilSpec,
     Criterion,
     EscalationSpec,
     GateSpec,
@@ -29,6 +31,7 @@ from tempergraph.contracts import (
     JudgeSpec,
     MapSpec,
     MeasureSpec,
+    MemberSpec,
     ProducesKind,
     RearmSpec,
     ResolveResult,
@@ -56,7 +59,7 @@ from tempergraph.run.finalize import FinalizerContext, FinalizerResult
 __all__ = [
     "CheckFinding", "CheckResult", "Criterion", "FinalizerContext", "FinalizerResult", "Gate", "Input", "Judge", "Param", "ResolveResult", "Route",
     "ComplexitySwitch", "Escalation", "Level", "Measure", "Risk", "When", "stock", "Rearm", "RouteView", "Routing", "Script", "SessionOptions", "Setting", "Step", "Switch", "Value", "Workflow",
-    "WorktreeDecl", "checks", "text", "Parallel", "Question", "Map", "Ask", "Wait", "Council", "Contest", "Subworkflow",
+    "WorktreeDecl", "checks", "text", "Parallel", "Question", "Map", "Ask", "Wait", "Council", "Member", "Chair", "Contest", "Subworkflow",
 ]
 
 
@@ -329,8 +332,36 @@ def Parallel(*, branches: Iterable[str], gate: GateSpec | None = None) -> UnitSp
     return UnitSpec(kind="parallel", gate=gate or GateSpec(), branches=tuple(branches))
 
 
-Council = _later("council")
 Contest = _later("contest")
+
+
+def Member(*, name: str, executor: str | None = None, model: str | None = None, stance: str = "",  # noqa: N802
+           tools: Iterable[str] = (), timeout_s: int | None = None, idle_s: int | None = None) -> MemberSpec:
+    """One member of a council (CNL-B9): a unique slug `name`, its own `stance` (up to 400 characters) and read-only
+    `tools`; its `executor` and `model` resolve on the step layer when unset."""
+    return MemberSpec(name=name, executor=executor, model=model, stance=stance, tools=tuple(tools),
+                      timeout_s=timeout_s, idle_s=idle_s)
+
+
+def Chair(*, executor: str | None = None, model: str | None = None, prompt: str = "") -> ChairSpec:  # noqa: N802
+    """The chair of a council (CNL-B9): it writes the synthesis (or a vote's rationale) from the members' final positions."""
+    return ChairSpec(executor=executor, model=model, prompt=prompt)
+
+
+def Council(*, question: str | TextRef, members: Iterable[MemberSpec], mode: str = "synthesize",  # noqa: N802
+            options: Iterable[str] | str | None = None, rule: str | None = None, rounds: int = 0,
+            anonymize: bool = True, chair: ChairSpec | None = None, quorum: int | None = None,
+            on_no_decision: str = "escalate", retry_scope: str = "all", cost_cap_usd: float | None = None,
+            gate: GateSpec | None = None) -> UnitSpec:
+    """A council unit (CNL-B9): `members` answer `question` blind, `rounds` deliberation rounds follow, and the outcome
+    is a chair's synthesis (`synthesize`), a tally of votes by `rule` (`vote`) or a Borda count of peer rankings
+    (`rank`). `options` (a `vote`'s slugs, or an artifact key of a list) and `rule` belong to `vote` only."""
+    spec = CouncilSpec(question=question, members=tuple(members), mode=mode,  # type: ignore[arg-type]
+                       options=options if options is None or isinstance(options, str) else tuple(options),
+                       rule=rule, rounds=rounds, anonymize=anonymize, chair=chair, quorum=quorum,  # type: ignore[arg-type]
+                       on_no_decision=on_no_decision, retry_scope=retry_scope,  # type: ignore[arg-type]
+                       cost_cap_usd=cost_cap_usd)
+    return UnitSpec(kind="council", gate=gate or GateSpec(), council=spec)
 
 _INPUT_REF_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$")
 

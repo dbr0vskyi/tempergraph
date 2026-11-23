@@ -117,6 +117,41 @@ def test_a_workflows_own_worktree_base_is_not_refused() -> None:  # WTR-AC3 (WTR
     assert res.values["run.worktree.base"] == "default_branch" and res.values["run.worktree.cleanup"] == "on_finish"
 
 
+def council_spec() -> WorkflowSpec:
+    from tempergraph.api import Chair, Council, Gate, Judge, Member
+
+    from .fixtures.workflows import crit
+
+    s = spec()
+    unit = Council(question="Which design?", members=[Member(name="a", model="large"), Member(name="b")],
+                   chair=Chair(), gate=Gate(judge=Judge(stance="V."), criteria=[crit("c1")]))
+    return dataclasses.replace(s, units={"decide": unit, **s.units}, order=("decide", *s.order))
+
+
+def test_the_steps_scope_reaches_member_and_chair_sessions() -> None:  # CNL-AC1 (CNL-B9, RST-B22)
+    flags = {"steps.session_cost_cap_usd": 0.5, "steps.model": "small", "steps.executor": "claude"}
+    res, findings = go(council_spec(), flags)
+    assert findings == [], findings
+    eff = effective_spec(council_spec(), res).units["decide"]
+    assert eff.council is not None and eff.council.chair is not None
+    assert [m.model for m in eff.council.members] == ["large", "small"]  # a member's own model is kept
+    assert all(m.executor == "claude" for m in eff.council.members) and eff.council.chair.model == "small"
+    assert eff.extra["session_cost_cap_usd"] == 0.5
+    plain = effective_spec(council_spec(), go(council_spec())[0]).units["decide"]
+    assert plain.extra.get("session_cost_cap_usd") is None  # nothing is set by default
+
+
+@pytest.mark.parametrize("key", ["decide.model", "decide.session_cost_cap_usd", "decide.executor"])
+def test_a_unit_key_on_a_council_is_still_refused(key: str) -> None:  # CNL-AC1 (CNL-B9, RST-B10)
+    _, findings = go(council_spec(), {key: "small" if key.endswith("model") else "claude" if "executor" in key else 1.0})
+    assert [f.code for f in findings] == ["setting_not_for_kind"], findings
+
+
+def test_the_council_key_scopes_stay_refused() -> None:  # CNL-AC1 (RST-B10)
+    _, findings = go(council_spec(), {"decide.member:a.model": "small"})
+    assert [f.code for f in findings] == ["setting_not_for_kind"]
+
+
 def test_grd_ac6_an_mcp_view_grant_stays_refused_and_its_message_names_the_catalog() -> None:  # GRD-AC6, RST-B28
     _, findings = go(spec(), {"judge:draft.views.add": "mcp:tracker/get_issue"})
     assert [f.code for f in findings] == ["judge-view-unclassified"]

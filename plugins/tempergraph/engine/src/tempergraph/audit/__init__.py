@@ -136,7 +136,7 @@ def audit(spec: WorkflowSpec, layers: set[Layer], ctx: AuditContext, *, manifest
     tools = _tools(spec, ctx, rep, run, manifest, decl, stamp)  # the session surface, built once per audit
     if "definition" in run:
         findings += _guarded(rep, "definition", lambda: Definition(spec, decl, dict(getattr(manifest, "surfaces", {})
-                                                                                   or {})).run())
+                                                                                   or {}), ctx.caps).run())
         if tools is not None:
             findings += _guarded(rep, "tools definition", tools.definition)
     if "host" in run:
@@ -172,8 +172,6 @@ def audit(spec: WorkflowSpec, layers: set[Layer], ctx: AuditContext, *, manifest
 
 _NOT_BUILT = {  # definition rules whose unit kinds the engine does not build yet (ARC-B15)
     "unbounded-wait": "kind not in release 1 (wait and ask are release 2)",
-    "council-one-family": "the council unit is not built yet",
-    "council-even-majority": "the council unit is not built yet",
     "contest-identical-slots": "the contest unit is not built yet",
 }
 

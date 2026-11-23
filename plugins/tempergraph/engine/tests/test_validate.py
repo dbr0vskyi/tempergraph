@@ -161,7 +161,7 @@ def test_codes_are_distinct_per_fixture() -> None:
     assert len({c for c, _ in CASES}) == len(CASES)
 
 
-LATER = ["Council", "Contest"]
+LATER = ["Contest"]  # the council is built (CNL-AC1); the contest is not
 
 
 @pytest.mark.parametrize("builder", LATER)

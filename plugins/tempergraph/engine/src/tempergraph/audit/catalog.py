@@ -261,7 +261,7 @@ RULES: tuple[Rule, ...] = (
     _r("outcome-escapes", "history", "C7", "warning / medium", "outcome_escape",
        "Revise the outcome: `outcome candidates`, then revise mode", min_n=10),
     _r("engine-fault-open", "history", "C8", "info / high", "", "owner: SIL", owner="SIL"),
-    # ARC-B15 newer unit kinds: their kinds are refused in release 1 by validation, so these are not built
+    # ARC-B15 newer unit kinds: the council is built in release 3 and its two definition rules run; the contest's do not yet
     _r("council-one-family", "definition", "C1", "warning / medium", "council_monoculture",
        "Put at least one member on another family", built=3),
     _r("council-even-majority", "definition", "C5", "info / high", "tie_prone", "Use an odd count", built=3),

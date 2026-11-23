@@ -394,7 +394,7 @@ From [71-council-unit.spec.md](../specs/71-council-unit.spec.md).
 - Members are asked for dissent explicitly because withheld dissent removes the gain of discussion (R-061 K5).
 - The engine records per round how many members changed position, so the audit can show whether rounds pay (ARC `council-rounds-no-gain`).
 - Judge panels stay deferred (JCL); a council feeds one calibratable judge.
-- Not built: councils are release 3 work (third-release plan I3-6, R3-T4); validation already knows the kind.
+- Built: the council (third-release plan I3-6, R3-T4.1). The contest is release 3 work (R3-T4.2); validation already knows its kind.
 
 ### F39 CTS Contest unit `supported`
 
@@ -615,7 +615,7 @@ From [93-judge-model-by-risk.spec.md](../specs/93-judge-model-by-risk.spec.md).
 - Why: temperspec judges code on a stronger model than the one that wrote it, by a fixed rule; JRK makes the rule data, per attempt, as a general capability (ADR-0129 keeps the workflow out of the spec).
 - Only up: a cheaper judge for "low-risk" work is the agreeable-judge hazard in a new form (R-045 F2).
 - A risk rule is a cost bet like a switch (SWM), so it has the same shadow mode, and moving a threshold is a `judge_model` proposal of class `grader` measured by a trial (PRP). The rule shares the switch's choice, record and override layer, but makes no graph edge.
-- `risk` on a council member, chair, contest slot or the audit judge cannot be declared: those units are not built, and their specs fix their bindings.
+- `risk` on a council member, chair, contest slot or the audit judge cannot be declared: a council's members and chair are built and have no `risk` field, contest slots are not built, and their specs fix their bindings.
 - Stock `when` rules answered the open question "should the engine ship stock rules (paths by glob, lines changed) so a workflow declares only thresholds?": yes; a workflow may still write its own `rule`.
 - As built (R2-T3): `run/risk.py` runs the rule under a one-second guard and resolves the level in the judge node; the builder gives `Risk`, `Level` and `When`; per-level reliability grades from R2-T4.
 

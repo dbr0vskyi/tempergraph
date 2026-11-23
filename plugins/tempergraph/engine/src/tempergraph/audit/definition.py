@@ -4,13 +4,13 @@ Pure over the spec and the package files; no host, no history, no model (OVR-B15
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
 from typing import Any
 
 from tempergraph.audit.catalog import PARAMS, rule
 from tempergraph.audit.report import AuditFinding
-from tempergraph.contracts import Criterion, JudgeSpec, TextRef, UnitSpec, WorkflowSpec
+from tempergraph.contracts import Capabilities, Criterion, JudgeSpec, TextRef, UnitSpec, WorkflowSpec
 from tempergraph.model.prompt_lint import TICKED
 from tempergraph.model.text import TextUnreadable, load_text
 
@@ -42,10 +42,12 @@ Add = Callable[..., None]
 
 
 class Definition:
-    def __init__(self, spec: WorkflowSpec, decl_file: str, surfaces: dict[str, Any]) -> None:
+    def __init__(self, spec: WorkflowSpec, decl_file: str, surfaces: dict[str, Any],
+                 caps: Mapping[str, Capabilities] | None = None) -> None:
         self.spec = spec
         self.decl = decl_file  # the package file that declares the units, for locations
         self.surfaces = surfaces
+        self.caps = caps or {}  # the executors' capability sets, for the family of a member's alias
         self.found: list[AuditFinding] = []
 
     def add(self, rule_id: str, unit: str | None, statement: str, *, item: str | None = None,
@@ -171,6 +173,28 @@ class Definition:
             self.add("approval-on-most-gates", None, f"approval is set on {len(approvals)} of {len(gates)} gates",
                      evidence={"approvals": len(approvals), "gates": len(gates), "units": approvals})
 
+    # -- ARC-B15 council definition rules ------------------------------------------------------------------
+    def families(self, u: UnitSpec) -> list[str | None]:
+        """The model family of each member of a council: its alias on its own executor, `inherit` when it names none."""
+        out: list[str | None] = []
+        for m in u.council.members if u.council else ():
+            caps = self.caps.get(m.executor or self.spec.default_executor)
+            out.append(caps.families.get(m.model or "inherit") if caps is not None else None)
+        return out
+
+    def councils(self) -> None:
+        for name, u in self.units():
+            c = u.council
+            if c is None:
+                continue
+            fams = self.families(u)
+            if len(fams) >= 2 and None not in fams and len(set(fams)) == 1:
+                self.add("council-one-family", name, f"every member of {name} runs on the {fams[0]!r} model family",
+                         evidence={"family": fams[0], "members": len(fams)}, field=f"units.{name}.council.members")
+            if c.mode == "vote" and (c.rule or "majority") == "majority" and len(c.members) % 2 == 0:
+                self.add("council-even-majority", name, f"{name} votes by majority with {len(c.members)} members, so a "
+                         "tie is possible", evidence={"members": len(c.members)}, field=f"units.{name}.council.members")
+
     # -- C6 ---------------------------------------------------------------------------------------------
     @staticmethod
     def _tier(model: object) -> str:
@@ -292,7 +316,7 @@ class Definition:
                          evidence={"trust": cov.trust, "missing_units": cov.missing_units})
 
     def run(self) -> list[AuditFinding]:
-        for part in (self.c1, self.c3, self.c5, self.c6, self.prompts, self.outcome):
+        for part in (self.c1, self.c3, self.c5, self.councils, self.c6, self.prompts, self.outcome):
             part()
         return self.found
 
