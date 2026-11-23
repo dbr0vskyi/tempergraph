@@ -8,9 +8,12 @@ A contest runs the same step in 2 to 5 candidate slots, grades each candidate wi
 
 ### CTS-B6 Declaration
 
-WHEN a unit of kind `contest` is declared THE engine SHALL read its base `step` (`StepSpec`) and its `contest` field ([CON](01-contracts.spec.md)) as `ContestSpec`: `slots` (2 to 5, an int running the base step unchanged in that many slots, or a list of `SlotSpec` with a slug `name`, optional `executor` and `model` overrides and an optional `prompt_variant` template appended to the base prompt under the fixed heading "Approach for this attempt"), `writes` (default false; slots that change files run in writer worktrees, [WSP-B11](13-workspace-and-concurrency.spec.md)), `retry_scope` (`best` or `all`, default `best`), `concurrency` (default 3) and `cost_cap_usd` (per attempt, unstarted slots skipped when reached); and treat slots like map items, item ids the slot names (`s1` to `sN` for an int), session keys `<unit>.<slot>.<attempt>.<kind>`, each slot with its own check and judge records.
+WHEN a unit of kind `contest` is declared THE engine SHALL read its base `step` (`StepSpec`) and its `contest` field ([CON](01-contracts.spec.md)) as `ContestSpec`: `slots` (2 to 5, an int running the base step unchanged in that many slots, or a list of `SlotSpec` with a slug `name`, optional `executor` and `model` overrides and an optional `prompt_variant` template appended to the base prompt under the fixed heading "Approach for this attempt"), `writes` (default false; slots that change files run in writer worktrees, [WSP-B11](13-workspace-and-concurrency.spec.md)), `retry_scope` (`best` or `all`, default `best`), `concurrency` (1 to 5, default 3) and `cost_cap_usd` (per attempt, unstarted slots skipped when reached), a run setting the last two as `concurrency` and `attempt_cost_cap_usd` ([RST-B19](80-run-settings-and-overrides.spec.md)); and treat slots like map items, item ids the slot names (`s1` to `sN` for an int), session keys `<unit>.<slot>.<attempt>.<kind>`, each slot with its own check and judge records.
 
 - GIVEN `slots: 3` WHEN the contest runs THEN its items are `s1`, `s2` and `s3`
+- GIVEN `slots: 3` and `concurrency: 2` WHEN the contest runs THEN two slots run at once and the third starts when one of them ends
+- GIVEN `slots: 3`, `concurrency: 1`, `cost_cap_usd: 0.40` and slot sessions that each cost 0.30 WHEN the contest runs THEN `s1` and `s2` run and `s3` never starts
+- GIVEN a contest declaring `concurrency: 3` and `cost_cap_usd: 1.00` WHEN a run sets its `concurrency` to 1 and its `attempt_cost_cap_usd` to 0.40 THEN the slots run one at a time and none starts once the attempt's cost has reached 0.40
 
 ### CTS-B7 Pick rule
 
@@ -62,9 +65,11 @@ WHEN a `writes: true` contest picks THE engine SHALL merge only the winner's wor
 
 ### CTS-B10 What is refused
 
-WHEN a workflow with a contest is validated THE engine SHALL refuse with an `error` fewer than 2 or more than 5 slots or two with one name; `writes: true` in a workflow without worktrees or in a sequential map; a contest inside a map item or a parallel branch; no judge on the gate; and a slot override whose executor cannot bind the alias or map the tools (preflight, [EXI](10-executor-interface.spec.md)); warn `contest-identical-slots` when every slot shares executor, model and prompt; and show at preflight the projected cost range from the stats projection ([CST](34-central-run-stats.spec.md)).
+WHEN a workflow with a contest is validated THE engine SHALL refuse with an `error` fewer than 2 or more than 5 slots or two with one name; a `concurrency` outside 1 to 5 or a `cost_cap_usd` of 0 or less; `writes: true` in a workflow without worktrees or in a sequential map; a contest inside a map item or a parallel branch; no judge on the gate; and a slot override whose executor cannot bind the alias or map the tools (preflight, [EXI](10-executor-interface.spec.md)); warn `contest-identical-slots` when every slot shares executor, model and prompt; and show at preflight the projected cost range from the stats projection ([CST](34-central-run-stats.spec.md)).
 
 - GIVEN a contest inside a map item WHEN validated THEN it is refused with its own finding code
+- GIVEN a contest declaring `concurrency: 6` WHEN validated THEN it is refused with its own finding code
+- GIVEN a contest declaring `cost_cap_usd: 0` WHEN validated THEN it is refused with its own finding code
 
 ## Acceptance criteria
 
@@ -72,3 +77,9 @@ WHEN a workflow with a contest is validated THE engine SHALL refuse with an `err
 - CTS-AC2 (CTS-B1, CTS-B7, CTS-B2): The scenario of CTS-B1 holds offline, and the pick code calls no model (source scan)
 - CTS-AC3 (CTS-B3): A judge's prompt for one slot contains no other slot's text (prompt capture)
 - CTS-AC4 (CTS-B7, CTS-B8, CTS-B4, CTS-B5, CTS-B9): The run detail shows every slot with its check, verdict, keys and cost and marks the winner ([RDD](31-run-detail-document.spec.md)), and fixtures cover both retry scopes, a writer merge and each failure of CTS-B9
+- CTS-AC5 (CTS-B6): A contest of three slots with `concurrency` 2 runs two slots at once and never a third, and with `concurrency` 1, `cost_cap_usd` 0.40 and slot sessions that each cost 0.30 starts `s1` and `s2` and never `s3` (stand-in sessions that log when each starts and ends)
+- CTS-AC6 (CTS-B6): A contest that declares `concurrency` 3 and `cost_cap_usd` 1.00, run with `--set` giving its `concurrency` 1 and its `attempt_cost_cap_usd` 0.40, resolves both from the `flag` layer, runs its slots one at a time and starts none once the attempt's cost has reached 0.40
+
+## Open questions
+
+- What should preflight show for a contest's projected cost range, the last clause of CTS-B10? The central run stats hold one projection per workflow and none per unit ([CST-B15](34-central-run-stats.spec.md)), so what the slots add to a workflow's range cannot be read from them. Options: the workflow's own median and 90th percentile with the slot count beside them; or the slot count times the base step's per-session cost cap where one is declared. Until answered: preflight shows no range for a contest. Owner: engine owner.

@@ -90,6 +90,7 @@ WHEN sessions of one run can be in flight together (parallel branches, a paralle
 
 - GIVEN two parallel branches whose reservations together cross the cap WHEN both are due THEN one starts and the other waits
 - GIVEN a cap of 5.00 USD, 1.00 USD spent and a concurrent map of three items that each reserve 2.50 USD WHEN the items are due THEN one starts and the other two wait for a running item
+- GIVEN a cap of 5.00 USD, 1.00 USD spent and a contest of three slots with `concurrency` 3 that each reserve 2.50 USD WHEN the slots are due THEN one starts and the other two wait for a running slot
 
 ### BUD-B13 Reservations are in the run log
 
@@ -98,6 +99,7 @@ WHEN a session of a run with a cost cap takes its reservation (BUD-B12) THE engi
 - GIVEN a cap of 5.00 USD, 1.00 USD spent, nothing running and a branch with a per-session cost cap of 2.50 USD WHEN its session is due THEN a `reservation` record with `action` `held`, `reserved_usd` 2.50, `source` `session_cap`, `spent_usd` 1.00, `in_flight_usd` 0 and `cap_usd` 5.00 comes before that session's `attempt_start` record
 - GIVEN a cap of 5.00 USD, 1.00 USD spent, two parallel branches and no per-session cap or projection WHEN both are due THEN each branch's `held` record has `source` `share` and `reserved_usd` 2.00, the remaining 4.00 USD divided by the 2 branches
 - GIVEN two parallel branches whose reservations fit together under the cap WHEN both are due THEN each has a `held` record and no `reservation` record has `action` `waiting`
+- GIVEN a cap of 5.00 USD, 1.00 USD spent, a contest of three slots with `concurrency` 2 and no per-session cap or projection WHEN its slots are due THEN the two slots that start each have a `held` record with `source` `share` and `reserved_usd` 2.00, the remaining 4.00 USD divided by the 2 slots that may run at once
 
 ### BUD-B14 A wait is in the run log
 
@@ -124,6 +126,7 @@ WHEN a session's reservation would take spend plus reservations over the run cos
 - BUD-AC7 (BUD-B15): A fixture run whose next reservation does not fit while nothing is running writes a `reservation` record with `action` `refused` before the `run_exit` record, which carries exit code 5 and reason `cost_cap`
 - BUD-AC8 (BUD-B16): A fixture check that fails with the same finding on two attempts in a row, the second attempt's step having changed a file, pauses the run with kind `escalation` and cause `check_repeat` and starts no third attempt, while a fixture check that fails with a different finding on the second attempt, or whose second step changed no file, is retried as BUD-B8 says
 - BUD-AC9 (BUD-B12, BUD-B14): A fixture run of a concurrent map whose items' reservations together cross the cap writes, for an item that waited, one `waiting` record that lists a running item's `session_key` in `waiting_for` and, after that session's `agent_run` record, a `held` record, and no `held` record of the run has `spent_usd`, `in_flight_usd` and `reserved_usd` adding up to more than `cap_usd`
+- BUD-AC11 (BUD-B12, BUD-B13, BUD-B14): A fixture run of a contest whose slots' reservations together cross the cap writes, for a slot that waited, one `waiting` record that lists a running slot's `session_key` in `waiting_for` and, after that session's `agent_run` record, a `held` record, and no `held` record of the run has `spent_usd`, `in_flight_usd` and `reserved_usd` adding up to more than `cap_usd`; and with `concurrency` 2 and no per-session cap the `held` records of the two slots that start have `source` `share` and a `reserved_usd` of the remaining cap divided by 2
 
 ## Open questions
 
