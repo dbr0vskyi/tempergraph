@@ -6,6 +6,8 @@ Tempering a workflow means running it, measuring where it struggles, and changin
 
 After every run, with no model call, the engine records findings: which gates failed, what was retried, where a person had to step in, and what it cost. When a run ends with friction, a background job judges those findings and files one de-duplicated issue per cause in the workflow's issue repository (set by `issue_repository` in the declaration, filed through a signed-in `gh`). A cause that repeats becomes a comment on its issue, never a second issue. Issues never contain your request text.
 
+Two ends that have no exit of their own are handed to the same job. A thread you stop while it is paused (`resume --decision stop`, at a gate or before a unit named by `--pause-before`) is recorded as an exit with code 4, and the job also judges the findings of the thread's earlier pauses that no earlier job judged. A thread whose runner was killed, crashed or cut off by a timeout writes no exit; the next `tempergraph status`, `stop` or `attention` that looks at it records it as an exit with code 5 and reason `runner_lost` and hands it over, once per thread, when its newest record is at most 7 days old. The thread stays resumable, and `status --detail` still shows it as orphaned.
+
 A workflow in `dev` mode has no daily limit on this spending. In `stable` mode the loop stops at a daily cap, $50 by default, set by `daily_cap_usd` in the workflow or `--daily-cap` on a run.
 
 ## 1. Label judgements

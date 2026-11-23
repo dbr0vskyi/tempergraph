@@ -129,13 +129,19 @@ def test_a_breakpoint_pauses_before_a_unit_with_no_session(repo: Path) -> None: 
                                                                               "action": "breakpoint"}]
 
 
-def test_a_breakpoint_before_the_first_unit_and_a_stop(repo: Path) -> None:
+def test_a_breakpoint_before_the_first_unit_and_a_stop(repo: Path) -> None:  # SIL-AC16
     spec = wf()
     ex = standin("claude", steps=[WORK] * 3, judges=[PASS] * 3)
     out = go(repo, spec, ex, pause_before=("plan",))
     assert out.exit_code is ExitCode.PAUSED and ex.calls == [] and recs(repo, "attempt") == []
+    segments = [x for x in ledger_rows(state_root_path(repo)) if x.get("kind") == "run_segment"]
+    recorded = len(recs(repo, "finding_recorded"))
     stop = resume(spec, "F-1", repo, registry(ex), decision="stop", settings=NO_SLEEP)
     assert stop.exit_code is ExitCode.STOPPED and ex.calls == []
+    assert stop.message == "demo/F-1 stopped before plan; resume continues it"
+    added = [x for x in ledger_rows(state_root_path(repo)) if x.get("kind") == "run_segment"][len(segments):]
+    assert [(x["thread_id"], x["exit_code"], x["reason"]) for x in added] == [("demo/F-1", 4, "person")]
+    assert len(recs(repo, "finding_recorded")) == recorded + 1
     assert row(state_root_path(repo), spec, "demo/F-1")["state"] == "unfinished"
     done = resume(spec, "F-1", repo, registry(ex), settings=NO_SLEEP)  # a later resume continues it
     assert done.exit_code is ExitCode.FINISHED, done.message

@@ -8,9 +8,10 @@ allowed-tools: Read, Grep, Glob, Bash(git status:*), Bash(git log:*), Bash(git d
 
 You gather evidence, rank hypotheses and tell the person what to run next. **You fix nothing.**
 
-## Read-only, always
+## Read-only, with one exception
 
 - Never write, commit, push, check out, reset, install, migrate, delete, start, resume or stop anything. Never run `tempergraph upgrade-check` with `--stamp`.
+- The one exception is not yours to prevent: when `tempergraph status` finds a thread whose runner was killed or timed out and left no exit, the engine records it (a `runner_lost` ledger row, findings and a hand-off ticket) and may start the improvement loop for it, once per thread; that loop spends. Say so in the report when `status` showed an orphaned thread.
 - The only output is your report, plus one file if the person names it.
 - A hypothesis that only a mutating action can confirm is described for the person to run. A read that no rule above allows is not run: name it in the report, with what it would show.
 - Report environment variables by presence and shape only. Never print a secret, a token or a credential.
@@ -20,7 +21,7 @@ You gather evidence, rank hypotheses and tell the person what to run next. **You
 
 1. **Restate** the problem in one sentence, and what working would look like.
 2. **Gather**, scoped to the problem:
-   - `tempergraph status` and `tempergraph facts <thread>` for the run's state, exit code, reason and next step
+   - `tempergraph status` and `tempergraph facts <thread>` for the run's state, exit code, reason and next step (`status` records a lost runner once, see above)
    - the run folder `.tempergraph/runs/<workflow>/<thread>/`: `run.jsonl` (one record per line, oldest first) and `sessions/<unit>.<attempt>.<kind>/`
    - a held lock under `.tempergraph/locks/<workflow>/` means the thread is still running somewhere
    - `git status`, `git log` and `git diff` where the workflow changes code; `tempergraph worktree list` when it runs in a worktree

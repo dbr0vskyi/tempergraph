@@ -77,7 +77,7 @@ def mode() -> str:
 def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary: Mapping[str, Any], *,
              dry_run: bool, judge_executor: str, home: Path | None = None, operator_review: str | None = None,
              run_cost_usd: float = 0.0, trial: bool = False, daily_cap_usd: float | None = None,
-             loop_model: str | None = None, loop_effort: str | None = None) -> Path | None:
+             loop_model: str | None = None, loop_effort: str | None = None, trigger: str | None = None) -> Path | None:
     """Writes the ticket when a judged lens fired at this final exit and there is a fault to judge, when the
     outcome lens has candidates, or when the session review (SRV-B13, SRV-B14, SRV-B15) has a depth other than none;
     a `signals` review whose plan has no depth (a clean first-pass stable run) writes none (SIL-B1, SRV-B4)."""
@@ -119,11 +119,34 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
               "units": unit_decls(spec) if depth != "off" else {},
               "autonomy": prp.autonomy(spec, os.environ.get("TEMPERGRAPH_AUTONOMY")),
               "daily_cap_usd": autonomy.daily_cap(spec.improvement_mode, daily_cap_usd),
-              "alias": loop_model or ALIAS, "effort": loop_effort or EFFORT,
+              "alias": loop_model or ALIAS, "effort": loop_effort or EFFORT, "trigger": trigger,
               "package_root": str(spec.package_root) if spec.package_root else None}
     path = tickets_dir(home or home_path()) / f"{tid}.json"
     write_json(path, ticket)
     return path
+
+
+def started_for(root: Path, workflow: str, task_id: str, thread: str, trigger: str, home: Path | None = None) -> bool:
+    """SIL-B28: a loop for this thread and trigger exists: a ticket waiting or claimed, or a `loop_started` record."""
+    folder = tickets_dir(home or home_path())
+    for path in [*folder.glob("*.json"), *folder.glob("*.claimed")] if folder.is_dir() else ():
+        try:
+            t = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(t, dict) and t.get("thread") == thread and t.get("trigger") == trigger \
+                and str(t.get("state_root")) == str(root):
+            return True
+    try:
+        lines = loop_log(root, workflow, task_id).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return False
+    for ln in lines:
+        with contextlib.suppress(ValueError):
+            r = json.loads(ln)
+            if isinstance(r, dict) and r.get("kind") == "loop_started" and r.get("trigger") == trigger:
+                return True
+    return False
 
 
 def launch(home: Path | None = None) -> bool:
@@ -226,7 +249,8 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     mine = _latest(read_findings(root, wf, task), set(t.get("fingerprints") or ()))
     faults = [f for f in mine if f.get("class") == "fault" and f.get("lens") not in ("outcome", "review")]
     append_jsonl(log, {"ts": now_iso(), "kind": "loop_started", "ticket": t.get("ticket_id"),
-                       "lenses": t.get("lenses"), "findings": len(mine)})
+                       "lenses": t.get("lenses"), "findings": len(mine), "trigger": t.get("trigger"),
+                       "fingerprints": sorted(t.get("fingerprints") or ())})
     judged: dict[str, dict[str, Any]] = {}
     cost = {"reported": 0.0, "estimated_only": 0.0}
     left = autonomy.room(t, root)  # SIL-B19, SIL-B20: stable mode's daily cap skips the judges; records are still written

@@ -161,7 +161,7 @@ def test_machine_index_and_all_roots(repo: Path, tmp_path: Path) -> None:  # CST
     assert rows.read_index()[1]["path"] == str(gone.resolve())  # a reader never removes an entry
 
 
-def test_attention_lists_each_pause_once_oldest_first(repo: Path) -> None:  # CLI-B6, AC-5
+def test_attention_lists_each_pause_once_oldest_first(repo: Path) -> None:  # CLI-B6, CLI-AC5
     paused_run(repo, "T-1")
     paused_run(repo, "T-2")
     root = state_root_path(repo)
@@ -175,6 +175,11 @@ def test_attention_lists_each_pause_once_oldest_first(repo: Path) -> None:  # CL
     assert first["age_s"] is not None and first["decisions"] == ["proceed", "retry", "back:draft", "stop"]
     code, text, _ = cli(repo, None, "attention")
     assert code == 0 and "tempergraph resume demo T-2" in str(text)
+    # the resume command of the first item is accepted by `resume`: its `stop` decision is not a usage exit
+    assert first["command"].startswith("tempergraph resume demo T-1 --decision ")
+    code, _, err = cli(repo, standin("claude", steps=[], judges=[]), "resume", "demo", "T-1",
+                       "--decision", first["decisions"][-1])
+    assert first["decisions"][-1] == "stop" and code == 4, err
 
 
 def test_status_row_settings_and_stale(repo: Path) -> None:  # RST-B27

@@ -166,12 +166,44 @@ def evidence(values: Mapping[str, Any]) -> dict[str, Any]:
             "feedback": [clip(scrub(t), 8000) for t in fb]}
 
 
+def _when(ts: Any) -> datetime | None:
+    try:
+        got = datetime.fromisoformat(str(ts))
+    except ValueError:
+        return None
+    return got if got.tzinfo else got.replace(tzinfo=UTC)
+
+
+def unjudged_pause_findings(root: Path, workflow: str, task_id: str, thread: str) -> list[dict[str, Any]]:
+    """SIL-B25: the findings of the thread's segments that ended in a pause (exit 3) and that no loop of the thread
+    judged: no `loop_started` record of the thread's loop log names their fingerprint at or after they were made."""
+    from tempergraph.improve import child
+
+    held = [f for f in read_findings(root, workflow, task_id) if f.get("segment_exit") == 3
+            and str(f.get("thread")) == thread]
+    if not held:
+        return []
+    started = [(_when(r.get("ts")), set(r.get("fingerprints") or ())) for r in _jsonl(child.loop_log(root, workflow, task_id))
+               if r.get("kind") == "loop_started"]
+    out = []
+    for f in held:
+        made = _when(f.get("at"))
+        covered = any(fps and f.get("fingerprint") in fps and (made is None or ts is None or ts >= made)
+                      for ts, fps in started)
+        if not covered:
+            out.append(f)
+    return out
+
+
 def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, values: Mapping[str, Any],
-                row: Mapping[str, Any]) -> dict[str, Any]:
-    """Findings and evidence of the segment that just ended; the lenses at a final exit. Returns the summary."""
+                row: Mapping[str, Any], seg: Sequence[Mapping[str, Any]] | None = None) -> dict[str, Any]:
+    """Findings and evidence of the segment that just ended; the lenses at a final exit. Returns the summary.
+
+    `seg` is the records the exit covers when they are not the last segment's (SIL-B24: a stop before a unit has
+    no segment of its own)."""
     thread = str(row.get("thread_id"))
     records = _jsonl(log_path)
-    seg = segment(records)
+    seg = segment(records) if seg is None else list(seg)
     seg_start = str((seg[0] if seg else {}).get("ts") or "")
     ledger = _jsonl(root / "ledger.jsonl")
     exits = [str(r.get("ts")) for r in ledger if r.get("kind") == "run_segment" and r.get("thread_id") == thread]
@@ -213,6 +245,8 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
                       **({"executor_version": f["executor_version"]} if f.get("executor_version") else {}),
                       **({"lens": f["lens"]} if f.get("lens") else {}),
                       **({"rerun_of": rerun_of} if rerun_of else {})})
+    stop = int(row.get("exit_code") or 0) == 4 and row.get("reason") == "person"
+    earlier = unjudged_pause_findings(root, spec.name, task_id, thread) if stop else []  # SIL-B25
     append_findings(root, spec.name, task_id, thread, lines)  # one document per thread; each segment appends (SIL-B8)
     _write_private(evidence_path(root, spec.name, task_id), json.dumps(evidence(values), default=str))
     summary: dict[str, Any] = {"digests": len(digests), "causes": sorted({x["cause"] for x in lines}),
@@ -223,7 +257,12 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
                                                              if x["class"] == "fault" and x.get("lens") != "outcome"}),
                                "outcome_fingerprints": sorted({x["fingerprint"] for x in lines
                                                                if x.get("lens") == "outcome"})}
+    covered = [x for x in earlier if x.get("lens") not in ("outcome", "review")]  # their lines are already written
+    if covered:
+        summary["fingerprints"] = sorted({*summary["fingerprints"], *(str(x["fingerprint"]) for x in covered)})
+        summary["fault_fingerprints"] = sorted({*summary["fault_fingerprints"],
+                                                *(str(x["fingerprint"]) for x in covered if x.get("class") == "fault")})
     if int(row.get("exit_code") or 0) in FINAL_EXITS:
-        summary["lenses"] = lenses.decide(spec, root, thread, [x for x in lines if x.get("lens") != "outcome"],
-                                          row, seg)
+        summary["lenses"] = lenses.decide(spec, root, thread,
+                                          [x for x in lines if x.get("lens") != "outcome"] + covered, row, seg)
     return summary
