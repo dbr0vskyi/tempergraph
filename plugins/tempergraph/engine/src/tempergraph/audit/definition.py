@@ -11,8 +11,10 @@ from typing import Any
 from tempergraph.audit.catalog import PARAMS, rule
 from tempergraph.audit.report import AuditFinding
 from tempergraph.contracts import Criterion, JudgeSpec, TextRef, UnitSpec, WorkflowSpec
+from tempergraph.model import flow
 from tempergraph.model.prompt_lint import TICKED
 from tempergraph.model.text import TextUnreadable, load_text
+from tempergraph.model.validate import identical_slots
 
 P = {k: v.default for k, v in PARAMS.items()}
 FACT_CRITERION = re.compile(
@@ -193,6 +195,10 @@ class Definition:
     def c6(self) -> None:
         tiers: list[str] = []
         for name, u in self.units():
+            if identical_slots(self.spec, name):  # ARC-B15, CTS-B10: the one condition validation warns on as well
+                self.add("contest-identical-slots", name, f"every slot of {name} shares executor, model and prompt, so "
+                         "the contest buys only sampling variance", evidence={"slots": len(flow.slot_names(self.spec, name))},
+                         field=f"units.{name}.contest.slots")
             j: JudgeSpec | None = u.gate.judge
             if u.step is not None:
                 self._sizing(name, "step", u.step.model or self.spec.model_profile.get(name), u.step.session_options,

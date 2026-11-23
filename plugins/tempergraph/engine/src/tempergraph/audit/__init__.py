@@ -174,7 +174,6 @@ _NOT_BUILT = {  # definition rules whose unit kinds the engine does not build ye
     "unbounded-wait": "kind not in release 1 (wait and ask are release 2)",
     "council-one-family": "the council unit is not built yet",
     "council-even-majority": "the council unit is not built yet",
-    "contest-identical-slots": "the contest unit is not built yet",
 }
 
 

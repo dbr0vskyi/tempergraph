@@ -12,6 +12,7 @@ from typing import Any
 
 from tempergraph.contracts import Decision, RouteView, UnitSpec, Verdict, WorkflowSpec
 from tempergraph.model import flow
+from tempergraph.run import contest as contestmod
 from tempergraph.run import ladder as laddermod
 from tempergraph.run import mapping
 
@@ -191,6 +192,16 @@ def _merge(*writes: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
+def contest_retry(spec: WorkflowSpec, unit: str, state: Mapping[str, Any]) -> dict[str, Any]:
+    """CTS-B8, CTS-B4: the state write that goes with a RETRY of a contest. Under `retry_scope: best` the winner's slot alone
+    runs again and the contest is a single step for the rest of the visit, however many slots were RETRY (the retry
+    budget is charged once, by the gate, as for any unit); under `all` every slot runs again. Nothing for other units."""
+    if not flow.is_contest(spec, unit):
+        return {}
+    return contestmod.retry_write(unit, spec.units[unit].contest.retry_scope,  # type: ignore[union-attr]
+                                  (mapping.record(state, unit).get("pick") or {}).get("winner"))
+
+
 def resume_command(spec: WorkflowSpec, task_id: str, decisions: list[str], unit: str | None = None) -> str:
     named = f" --unit {unit}" if unit else ""  # a pause of one item of a concurrent map is answered by `<unit>.<item>`
     return f"tempergraph resume {spec.name} {task_id}{named} --decision <{'|'.join(decisions)}>"
@@ -214,6 +225,8 @@ def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: 
            "resume": resume_command(spec, task_id, words, at)}
     if at:
         out["slot"] = at
+    if u.kind == "contest":  # CTS-B7: the pause is about the winner's candidate, whose verdict is the unit's
+        out["winner"] = (mapping.record(state, unit).get("pick") or {}).get("winner")
     if kind == "input":  # ASK-B8: each question with its kind, choices, default and whether it is answered
         qs = list(((state.get("attempts") or {}).get(unit) or {}).get("questions") or [])
         out["questions"] = [{**q, "answered": False} for q in qs]
@@ -341,7 +354,7 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
             ov = arm_overrides(spec, unit, state)[0]
             step = laddermod.decide(u, att, judged, counters, ov)
             if step is None:
-                return _merge(route("RETRY", s.retry[0]), {"counters": {unit: counters}})
+                return _merge(route("RETRY", s.retry[0]), {"counters": {unit: counters}}, contest_retry(spec, unit, state))
             counters["ladder"] = {k: step[k] for k in ("visit", "item", "rung", "evidence", "held_by", "trail",
                                                        "escalated")}
             esc = laddermod.escalation(u, step, judged, retry_left=True, overrides=ov,
@@ -359,7 +372,8 @@ def decide(spec: WorkflowSpec, unit: str, state: Mapping[str, Any], task_id: str
             if esc and esc["take"] == "auto":
                 counters["ladder"].update(escalate={"to": esc["to"], "effort": esc["effort"], "taken_by": "auto"},
                                           escalated=True)
-            return _merge(route("RETRY", s.retry[0], ladder=shown), {"counters": {unit: counters}})
+            return _merge(route("RETRY", s.retry[0], ladder=shown), {"counters": {unit: counters}},
+                          contest_retry(spec, unit, state))
         return spent("retry_budget")
     if verdict == Verdict.BACK:
         target = judged.get("back_to")

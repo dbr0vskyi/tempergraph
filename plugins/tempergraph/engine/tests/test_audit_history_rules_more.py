@@ -1,7 +1,8 @@
 """The history rules of C5 to C8 (ARC-B12 to ARC-B15) and the rendered owned rules (ARC-B1, ARC-AC4): each raised by a
 fixture of synthetic run records and quiet on a clean one (AUD-AC1, ARC-AC1), with the catalog's severity,
-confidence, cause and remedy, and skipped with `n=<n> of <min>` below its minimum sample (AUD-AC3). The council and
-contest rules read synthetic records shaped by CNL-B10, CNL-B2, CNL-B12 and CTS-B7; their units are not built yet."""
+confidence, cause and remedy, and skipped with `n=<n> of <min>` below its minimum sample (AUD-AC3). The council rules
+read synthetic records shaped by CNL-B10, CNL-B2 and CNL-B12, whose unit is not built yet; the contest rule reads
+synthetic records shaped by CTS-B7 and the `contest` record the engine writes (EVT-B15)."""
 
 from __future__ import annotations
 
@@ -139,6 +140,33 @@ def test_contest_evidence_names_the_winner(tmp_path: Path) -> None:
     """ARC-B15: the lowest-numbered slot won every pick."""
     _, fs = found(tmp_path, "contest-no-gain", 10, CASES["contest-no-gain"][0])
     assert (fs[0].evidence["picks"], fs[0].evidence["lowest_slot_wins"], fs[0].evidence["slots"]) == (10, 10, 3)
+
+
+def engine_contest(winner: int | None, *, slots: int = 3) -> dict[str, Any]:
+    """The `contest` record the engine writes (EVT-B15): places counted from 1, the slot names, check, verdict, keys, cost."""
+    return {"kind": "contest", "unit": "pick", "visit": 1, "attempt": 1, "winner": winner, "slots": [
+        {"slot": n, "name": f"s{n}", "attempt": 1, "check": "PASS", "verdict": "PROCEED", "cost": 0.3,
+         "keys": {"unmet_warnings": 0, "met": 2, "confidence": 0.8}} for n in range(1, slots + 1)]}
+
+
+def test_contest_no_gain_reads_the_record_the_engine_writes(tmp_path: Path) -> None:  # ARC-AC2 (ARC-B15, EVT-B15)
+    """`slot` and `winner` are the integer places of a real run's record, not the slots' names."""
+    _, fs = found(tmp_path, "contest-no-gain", 10, uniform(extra=[engine_contest(1)]))
+    assert fs and (fs[0].evidence["picks"], fs[0].evidence["lowest_slot_wins"], fs[0].evidence["slots"]) == (10, 10, 3)
+    rep, quiet = found(tmp_path, "contest-no-gain", 10, lambda root, n: each(
+        root, n, lambda i: {"extra": [engine_contest(i % 3 + 1)]}))
+    assert quiet == [] and "contest-no-gain" not in {s["rule"] for s in rep.rules_skipped}
+
+
+def test_contest_no_gain_counts_no_record_of_a_pick_with_no_winner_for_the_lowest_slot(tmp_path: Path) -> None:  # ARC-AC2 (ARC-B15)
+    _, fs = found(tmp_path, "contest-no-gain", 10, uniform(extra=[engine_contest(None)]))
+    assert fs == []  # every check failed: no slot won, the lowest-numbered one least of all
+
+
+def test_a_retry_that_ran_one_slot_alone_is_no_pick_for_contest_no_gain(tmp_path: Path) -> None:  # ARC-AC2 (ARC-B15, CTS-B8)
+    rep, fs = found(tmp_path, "contest-no-gain", 10, uniform(extra=[engine_contest(1, slots=1)]))
+    assert fs == []
+    assert next(s for s in rep.rules_skipped if s["rule"] == "contest-no-gain")["reason"] == "n=0 of 10"
 
 
 def test_interventions_are_split_by_class_and_decider(tmp_path: Path) -> None:

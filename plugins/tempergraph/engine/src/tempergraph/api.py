@@ -22,6 +22,7 @@ from tempergraph.contracts import (
     CheckFinding,
     CheckResult,
     ComplexitySpec,
+    ContestSpec,
     Criterion,
     EscalationSpec,
     GateSpec,
@@ -40,6 +41,7 @@ from tempergraph.contracts import (
     ScriptSpec,
     SessionOptions,
     SettingDecl,
+    SlotSpec,
     StepSpec,
     SubworkflowSpec,
     SwitchSpec,
@@ -56,7 +58,7 @@ from tempergraph.run.finalize import FinalizerContext, FinalizerResult
 __all__ = [
     "CheckFinding", "CheckResult", "Criterion", "FinalizerContext", "FinalizerResult", "Gate", "Input", "Judge", "Param", "ResolveResult", "Route",
     "ComplexitySwitch", "Escalation", "Level", "Measure", "Risk", "When", "stock", "Rearm", "RouteView", "Routing", "Script", "SessionOptions", "Setting", "Step", "Switch", "Value", "Workflow",
-    "WorktreeDecl", "checks", "text", "Parallel", "Question", "Map", "Ask", "Wait", "Council", "Contest", "Subworkflow",
+    "WorktreeDecl", "checks", "text", "Parallel", "Question", "Map", "Ask", "Wait", "Council", "Contest", "Slot", "Subworkflow",
 ]
 
 
@@ -288,7 +290,7 @@ def Map(*, items_from: tuple[str, str] | Sequence[str], step: UnitSpec, extract:
         item_model: Callable[..., Any] | None = None, models: Iterable[str] = ()) -> UnitSpec:
     """A map: `step` (built with `Step`) runs once per item of the list at `items_from` (`(unit, key)`), each
     item gated on its own by the step's gate (MAP-B7). Release 2 builds the sequential mode."""
-    if step.kind != "step" or step.step is None:
+    if step.kind not in ("step", "contest") or step.step is None:  # a contest as the item is built, then refused (CTS-B10)
         raise TypeError("Map(step=...) takes a unit built with Step()")
     if step.route is not None:
         raise TypeError("a map's step takes no route")
@@ -296,7 +298,7 @@ def Map(*, items_from: tuple[str, str] | Sequence[str], step: UnitSpec, extract:
     m = MapSpec(items_from=(str(unit), str(key)), extract=_opt_ref(extract), max_items=max_items,
                 on_empty=on_empty, mode=mode, concurrency=concurrency,  # type: ignore[arg-type]
                 item_model=_opt_ref(item_model), models=tuple(models))
-    return UnitSpec(kind="map", gate=step.gate, step=step.step, map=m)
+    return UnitSpec(kind="map", gate=step.gate, step=step.step, map=m, contest=step.contest)
 
 
 def Question(name: str, text: str, *, kind: str = "text", choices: Iterable[str] = (), required: bool = True,  # noqa: N802
@@ -330,7 +332,27 @@ def Parallel(*, branches: Iterable[str], gate: GateSpec | None = None) -> UnitSp
 
 
 Council = _later("council")
-Contest = _later("contest")
+
+
+def Slot(name: str, *, executor: str | None = None, model: str | None = None,  # noqa: N802
+         prompt_variant: str | None = None) -> SlotSpec:
+    """One candidate slot of a contest (CTS-B6): a slug `name`, and optional `executor`, `model` and `prompt_variant`
+    overrides that apply to that slot's step only."""
+    return SlotSpec(name=name, executor=executor, model=model, prompt_variant=prompt_variant)
+
+
+def Contest(*, step: UnitSpec, slots: int | Iterable[SlotSpec] = 3, writes: bool = False,  # noqa: N802
+            retry_scope: str = "best", concurrency: int = 3, cost_cap_usd: float | None = None) -> UnitSpec:
+    """A contest: `step` (built with `Step`) runs in 2 to 5 slots, each graded by the step's own gate, and the best
+    candidate by the engine's fixed rule is kept (CTS-B6, CTS-B7). `slots` is a count or a list of `Slot`s."""
+    if step.kind != "step" or step.step is None:
+        raise TypeError("Contest(step=...) takes a unit built with Step()")
+    if step.route is not None:
+        raise TypeError("a contest's step takes no route")
+    held: int | tuple[SlotSpec, ...] = slots if isinstance(slots, int) else tuple(slots)
+    c = ContestSpec(slots=held, writes=writes, retry_scope=retry_scope,  # type: ignore[arg-type]
+                    concurrency=concurrency, cost_cap_usd=cost_cap_usd)
+    return UnitSpec(kind="contest", gate=step.gate, step=step.step, contest=c)
 
 _INPUT_REF_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_]*$")
 

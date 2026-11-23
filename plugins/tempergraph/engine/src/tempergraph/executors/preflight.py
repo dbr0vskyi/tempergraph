@@ -8,11 +8,11 @@ judge executor selection (EXI-B24), tool enforcement (EXI-B12) and deferred judg
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
 from tempergraph import executor_compat
-from tempergraph.contracts import Deferred, ProbeReport, WorkflowSpec
+from tempergraph.contracts import Deferred, ProbeReport, UnitSpec, WorkflowSpec
 from tempergraph.executors.registry import NoJudgeExecutor, Registry, UnknownExecutor
 from tempergraph.model.validate import Finding, validate
 
@@ -50,6 +50,31 @@ def _aliases(value: object) -> list[str]:
     return [str(v) for v in value]  # type: ignore[attr-defined]
 
 
+def _slot_overrides(rep: PreflightReport, caps: dict, probe: Callable[[str, str], bool], unit: str, u: UnitSpec,
+                    base: str) -> None:
+    """CTS-B10: a slot override whose executor cannot bind its model alias or map the step's tools is refused, each with a
+    code of its own; an executor that is not registered is refused as well."""
+    assert u.contest is not None and u.step is not None and not isinstance(u.contest.slots, int)
+    for slot in u.contest.slots:
+        name = slot.executor or base
+        if name not in caps:
+            rep.refusals.append(Finding("contest-slot-executor-unknown", unit,
+                                        f"slot {slot.name!r} of {unit!r} names executor {name!r}, which is not registered"))
+            continue
+        if slot.executor is not None and not probe(name, unit):
+            continue
+        c = caps[name]
+        if slot.model and slot.model != "inherit":
+            alias = slot.model
+            if alias not in c.binds_aliases:
+                rep.refusals.append(Finding("contest-slot-alias-unbound", unit,
+                                            f"slot {slot.name!r} of {unit!r}: executor {name!r} binds no {alias!r}"))
+        for tool in u.step.tools:
+            if not c.maps(tool):
+                rep.refusals.append(Finding("contest-slot-tool-unmapped", unit,
+                                            f"slot {slot.name!r} of {unit!r}: executor {name!r} maps no tool for {tool!r}"))
+
+
 def preflight(spec: WorkflowSpec, registry: Registry, *, judge_override: str | None = None,
               enforce_tools: bool = False, strict_permissions: bool = False) -> PreflightReport:
     rep = PreflightReport()
@@ -75,10 +100,12 @@ def preflight(spec: WorkflowSpec, registry: Registry, *, judge_override: str | N
     for unit in spec.order:
         u = spec.units[unit]
         st = u.step
-        if u.kind not in ("step", "map") or st is None:
+        if u.kind not in ("step", "map", "contest") or st is None:
             continue
         ex = st.executor or spec.default_executor
         rep.step_executors[unit] = ex
+        if u.contest is not None and not isinstance(u.contest.slots, int):
+            _slot_overrides(rep, caps, probe, unit, u, ex)  # CTS-B10: each slot's own executor and model
         if ex not in caps or not probe(ex, unit):
             continue
         c = caps[ex]

@@ -3,6 +3,10 @@
 The node bodies come from the gate funnel through :class:`UnitNodes`; this module owns only the graph
 shape and the human node's ``interrupt``, which is its first statement (HUM-AC1). LangGraph is imported
 only here and in the durability package.
+
+A contest is a unit like any other here (CMP-B16, CMP-AC6): its four nodes, and no node per slot. Its slots are the
+items of its own step node, which runs them up to `concurrency` at once and writes each under its slot (`item_view`,
+`slot_writes`); its judge node grades them and picks. Only a concurrent map fans out through `Send` nodes.
 """
 
 from __future__ import annotations

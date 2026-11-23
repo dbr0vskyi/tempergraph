@@ -53,7 +53,7 @@ class Finding:
 
 # Kinds, primitives and fields this release does not build, with the release that adds them (ADR-0090).
 LATER_KINDS: dict[str, int] = {
-    "council": 3, "contest": 3,
+    "council": 3,
 }
 MODEL_KINDS = frozenset({"step"})
 # Keys the settings resolution writes into a unit's `extra` (RST `effective_spec`), never a workflow's own field.
@@ -244,6 +244,8 @@ class _Validator:
                 self.err("parallel-join-before-branch", name, f"the join {name!r} comes before its branch {b!r}")
             if bu.kind not in ("step", "script"):
                 self.err("parallel-branch-kind", b, f"a branch is a step or a script unit, not a `{bu.kind}`")
+            if bu.kind == "contest":  # CTS-B10: its own code beside the general one
+                self.err("contest-in-branch", b, f"{b!r} is a contest, which a parallel branch cannot be")
             if bu.gate.back_targets or bu.gate.fallback or bu.route is not None or b in self.spec.flow:
                 self.err("parallel-branch-flow", b, "a branch takes no back target, fallback, route or `next`: "
                                                     "its pass goes to the join")
@@ -332,6 +334,11 @@ class _Validator:
         elif u.kind == "map":
             self._step(name, u)
             self._map(name, u)
+            if u.contest is not None:
+                self._contest(name, u)
+        elif u.kind == "contest":
+            self._step(name, u)
+            self._contest(name, u)
         elif u.kind == "script":
             self._script_unit(name, u)
         elif u.kind == "parallel":
@@ -408,6 +415,52 @@ class _Validator:
         if caps is not None:
             for alias in m.models:
                 self._alias(name, alias, caps)
+
+    def _contest(self, name: str, u: UnitSpec) -> None:
+        """CTS-B6, CTS-B10: the refusals of one contest, each with a finding code of its own, and the one warning."""
+        c = u.contest
+        s = self.spec
+        if c is None:
+            self.err("contest-invalid", name, "a contest unit needs its contest fields")
+            return
+        slots = c.slots
+        if isinstance(slots, bool) or not isinstance(slots, (int, tuple, list)):
+            self.err("contest-slot-count", name, "`slots` is a count from 2 to 5 or a list of slots")
+            return
+        count = slots if isinstance(slots, int) else len(slots)
+        if not 2 <= count <= 5:
+            self.err("contest-slot-count", name, f"a contest has 2 to 5 slots, not {count}")
+        if not isinstance(slots, int):
+            names = [sl.name for sl in slots]
+            if len(set(names)) != len(names):
+                self.err("contest-slot-duplicate", name, "two slots of a contest share one name")
+            for sl in slots:
+                if not SLUG_RE.match(sl.name):
+                    self.err("contest-slot-name", name, f"slot name {sl.name!r} is not a slug")
+        if isinstance(c.concurrency, bool) or not isinstance(c.concurrency, int) or not 1 <= c.concurrency <= 5:
+            self.err("contest-concurrency", name, "`concurrency` must be an integer from 1 to 5")
+        if c.cost_cap_usd is not None and (isinstance(c.cost_cap_usd, bool) or not isinstance(c.cost_cap_usd, (int, float))
+                                           or not c.cost_cap_usd > 0):
+            self.err("contest-cost-cap", name, "`cost_cap_usd` must be a number above 0")
+        if c.retry_scope not in ("best", "all"):
+            self.err("contest-retry-scope", name, f"`retry_scope` is `best` or `all`, not {c.retry_scope!r}")
+        if c.writes and s.workspace == "in_place":  # WSP-B11, WFM-B8: a writer slot needs a worktree of its own
+            self.err("contest-writer-in-place", name, f"{name!r} is a contest of `writes: true`, which needs a worktree "
+                     "for each slot; a workflow that declares `workspace: in_place` has none (WSP-B11)")
+        if flow.in_map_item(s, name):
+            self.err("contest-in-map-item", name, f"{name!r} is a contest inside a map item, which a contest cannot be")
+            if c.writes and u.map is not None and u.map.mode == "sequential":
+                self.err("contest-writer-sequential-map", name,
+                         f"{name!r} writes inside a sequential map, which has no worktree for a slot")
+        if flow.in_branch(s, name):
+            self.err("contest-in-branch", name, f"{name!r} is a contest and a branch of a parallel block")
+        if u.gate.judge is None:
+            self.err("contest-judge-missing", name, "a contest picks by its gate's judge: the gate needs a judge")
+        if u.route is not None or u.switch is not None:
+            self.err("contest-invalid", name, "a contest takes no route")
+        if identical_slots(s, name):
+            self.warn("contest-identical-slots", name, f"every slot of {name!r} shares executor, model and prompt: "
+                      "vary model, executor or `prompt_variant`")
 
     def _measured_switch(self, name: str, sw: SwitchSpec) -> None:
         """SWM-B4, SWM-B5: the mode, every arm override and every re-arm entry."""
@@ -591,7 +644,7 @@ class _Validator:
             self.err("step-missing", name, "a step unit needs its step fields")
             return
         g = u.gate
-        if g.judge is None:
+        if g.judge is None and u.kind != "contest":  # a contest refuses it with its own code (CTS-B10)
             self.err("judge-missing", name, "a model step's gate needs a judge")
         if not g.criteria:
             self.err("criteria-missing", name, "a judged gate needs at least one criterion")
@@ -873,6 +926,22 @@ class _Validator:
             for o in s.finalizer_outcomes:
                 if not SLUG_RE.match(o):
                     self.err("finalizer-outcomes-invalid", None, f"finalizer outcome {o!r} is not a slug")
+
+
+def identical_slots(spec: WorkflowSpec, unit: str) -> bool:
+    """CTS-B10, ARC-B15: every slot of the contest `unit` shares executor, model and prompt. The validation warning and
+    the audit's `contest-identical-slots` both ask this one question; a slot count runs the base step unchanged."""
+    u = spec.units.get(unit)
+    if u is None or u.contest is None:
+        return False
+    slots = u.contest.slots
+    if isinstance(slots, bool) or not isinstance(slots, (int, tuple, list)):
+        return False
+    if isinstance(slots, int):
+        return slots >= 2
+    if len(slots) < 2:
+        return False
+    return len({(sl.executor, sl.model, sl.prompt_variant) for sl in slots}) == 1
 
 
 def _aliases(model: str | tuple[str, ...] | None) -> list[str]:

@@ -40,7 +40,7 @@ LAYERS = ("flag", "profile", "project:overrides", "user:overrides", "workflow:un
           "project:defaults", "user:defaults", "engine")
 OPERATOR_LAYERS = ("flag", "profile", "project:overrides", "user:overrides", "project:defaults", "user:defaults")
 
-SESSION_KINDS = ("step", "map")  # unit kinds whose `step` runs model sessions (a map runs its step per item)
+SESSION_KINDS = ("step", "map", "contest")  # unit kinds whose `step` runs model sessions (per item, per slot)
 SESSION = frozenset({"steps", "judges", "unit", "judge"})
 STEP_SIDE = frozenset({"steps", "unit"})
 JUDGE_SIDE = frozenset({"judges", "judge"})
@@ -50,10 +50,11 @@ SLUG = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 REF_PART = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$")
 
 # Keys of the catalog whose feature is not in this release (ADR-0090, ADR-0125): refused rather than silently ignored.
-NOT_IN_RELEASE = {
-    "attempt_cost_cap_usd": "council and contest units are release 3",
-    "concurrency": "contest units are release 3",
-}
+# None now: the keys of a unit kind that is built are in KIND_ONLY.
+NOT_IN_RELEASE: dict[str, str] = {}
+# Keys that only one kind of unit takes (RST-B19): refused on a unit of any other kind (`setting_not_for_kind`). A council
+# adds its own kind to `attempt_cost_cap_usd` when it is built.
+KIND_ONLY: dict[str, tuple[str, ...]] = {"attempt_cost_cap_usd": ("contest",), "concurrency": ("contest",)}
 # Keys whose effect is not built yet on this branch, with the plan row that builds it.
 NOT_BUILT: dict[str, str] = {}
 WIDENING = frozenset({"tools.add", "commands.add", "views.add"})  # RST-B28, RST-B29, RST-B30, T6.3
@@ -317,8 +318,9 @@ def parse_key(spec: WorkflowSpec, raw: str) -> Key:
         sub = re.match(r"^(member|chair|slot)(:[^.]*)?\.", rest)
         if sub:
             _unit_exists(spec, unit, raw)
-            raise SettingError("setting_not_for_kind", f"{raw}: {unit} is a {spec.units[unit].kind}, not a council "
-                                                       "or contest (those are release 3)")
+            raise SettingError("setting_not_for_kind", f"{raw}: {unit} is a {spec.units[unit].kind}; a member of a "
+                                                       "council or a slot of a contest takes no key of its own, set "
+                                                       "the unit's")
         if m:
             key = Key("script", m.group(3), unit=unit, script=(m.group(1), int(m.group(2))))
         else:
@@ -347,6 +349,10 @@ def parse_key(spec: WorkflowSpec, raw: str) -> Key:
         elif name == "deadline_s":
             if u.kind not in ("ask", "wait"):
                 raise SettingError("setting_not_for_kind", f"{raw}: {key.unit} is a {u.kind}, not a wait or ask unit")
+        elif name in KIND_ONLY:
+            if u.kind not in KIND_ONLY[name]:
+                raise SettingError("setting_not_for_kind", f"{raw}: {key.unit} is a {u.kind}, not a "
+                                                           f"{' or '.join(KIND_ONLY[name])} unit")
         elif key.scope == "unit" and not (u.kind in SESSION_KINDS or (u.kind == "script" and name == "timeout_s")):
             raise SettingError("setting_not_for_kind", f"{raw}: {key.unit} is a {u.kind}")
         if key.scope == "script":
@@ -669,6 +675,9 @@ def _workflow_values(spec: WorkflowSpec) -> dict[str, dict[str, dict[str, Any]]]
                     if sc.timeout_s != 600:
                         put(unit_l, f"{name}.{phase}:{i}.timeout_s", sc.timeout_s, f"units.{name}.{phase}[{i - 1}]")
             put(dflt, f"{name}.model", spec.model_profile.get(name), f"model_profile.{name}")
+        if u.kind == "contest" and u.contest is not None:  # CTS-B6, RST-B19: what the contest declares is its own layer
+            put(unit_l, f"{name}.concurrency", u.contest.concurrency, f"units.{name}.contest.concurrency")
+            put(unit_l, f"{name}.attempt_cost_cap_usd", u.contest.cost_cap_usd, f"units.{name}.contest.cost_cap_usd")
         if u.kind == "script" and u.script is not None and u.script.timeout_s != 600:
             put(unit_l, f"{name}.timeout_s", u.script.timeout_s, f"units.{name}.script.timeout_s")
         j = g.judge
@@ -711,6 +720,10 @@ def targets(spec: WorkflowSpec) -> list[tuple[str, str, list[str]]]:
     for unit, u in spec.units.items():
         for name, e in CATALOG.items():
             if name in NOT_IN_RELEASE or name in NOT_BUILT:
+                continue
+            if name in KIND_ONLY:  # a key of one kind of unit is read for units of that kind only (RST-B19)
+                if u.kind in KIND_ONLY[name]:
+                    out.append((f"{unit}.{name}", name, [f"{unit}.{name}"]))
                 continue
             if name == "arm":
                 if u.switch is not None:
@@ -832,6 +845,11 @@ def effective_spec(spec: WorkflowSpec, res: ResolvedSettings) -> WorkflowSpec:
             u = dataclasses.replace(u, step=st, extra={**u.extra, "operator_set": operator} if operator else u.extra)
         if u.switch is not None and v.get(f"{name}.arm"):
             u = dataclasses.replace(u, extra={**u.extra, "arm": v.get(f"{name}.arm")})  # CMP-B7
+        if u.kind == "contest" and u.contest is not None:  # CTS-B6, RST-B19: the resolved values win over the declared
+            cap = v.get(f"{name}.attempt_cost_cap_usd")
+            u = dataclasses.replace(u, contest=dataclasses.replace(
+                u.contest, concurrency=int(v.get(f"{name}.concurrency") or u.contest.concurrency),
+                cost_cap_usd=float(cap) if cap is not None else u.contest.cost_cap_usd))
         deadline = v.get(f"{name}.deadline_s")
         if deadline and u.ask is not None:  # FLX-B8: an operator may move a declared or default deadline
             u = dataclasses.replace(u, ask=dataclasses.replace(u.ask, deadline_s=int(deadline)))
