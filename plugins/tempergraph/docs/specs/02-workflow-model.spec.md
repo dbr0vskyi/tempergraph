@@ -51,9 +51,11 @@ WHEN workflows are listed or started THE engine SHALL offer `load(package_path) 
 
 ### WFM-B8 Structure and flow refusals
 
-WHEN a workflow is validated THE engine SHALL refuse an empty `order`, a unit `order` does not know, a step with no gate, a model step whose gate has no judge or no criterion (`wait`, `ask` and `script` units excepted), a judge reference not produced on every path into the step unless declared optional (a parallel branch's output counting as produced on every path past its join), a unit named `outcome`; a target outside `order`, a backward target the gate does not list, an unreachable unit or finalizer, a parallel block with fewer than two branches or a join before a branch (`parallel-branches`, `parallel-branch-unknown`, `parallel-join-before-branch`, `parallel-branch-kind`, `parallel-branch-flow`, `parallel-writer-branch`, `parallel-branch-shared`, `parallel-branches-not-adjacent`, `parallel-join-gate`), a sub-workflow that is unregistered, recursive or nested deeper than three ([SWF-B6](99-subworkflow-unit.spec.md)), and a writer branch or writing map item in a workflow without worktrees.
+WHEN a workflow is validated THE engine SHALL refuse an empty `order`, a unit `order` does not know, a step with no gate, a model step whose gate has no judge or no criterion (`wait`, `ask` and `script` units excepted), a judge reference not produced on every path into the step unless declared optional (a parallel branch's output counting as produced on every path past its join), a unit named `outcome`; a target outside `order`, a backward target the gate does not list, an unreachable unit or finalizer, a parallel block with fewer than two branches or a join before a branch (`parallel-branches`, `parallel-branch-unknown`, `parallel-join-before-branch`, `parallel-branch-kind`, `parallel-branch-flow`, `parallel-branch-shared`, `parallel-branches-not-adjacent`, `parallel-join-gate`), a sub-workflow that is unregistered, recursive or nested deeper than three ([SWF-B6](99-subworkflow-unit.spec.md)), and a writer branch ([WSP-B11](13-workspace-and-concurrency.spec.md)) or writing map item in a workflow without worktrees (one that declares `workspace: in_place`).
 
 - GIVEN a backward target the gate does not list WHEN the workflow validates THEN it is refused
+- GIVEN a parallel branch that declares `edit` in a workflow that declares `workspace: in_place` WHEN the workflow validates THEN it is refused
+- GIVEN a parallel branch that declares `edit` in a workflow that declares no `workspace` WHEN the workflow validates THEN it validates
 
 ### WFM-B9 Executor, judge, tool and prompt refusals
 
@@ -93,3 +95,4 @@ WHEN `wait` and `parallel` units are declared THE engine SHALL read a wait's `ev
 - WFM-AC4 (WFM-B7): No engine source file, engine skill or engine test names a workflow package of the repository or its workflow; the scans take the names from the packages found, never from a typed list
 - WFM-AC5 (WFM-B3, WFM-B5, WFM-B6, WFM-B12): A workflow using only tiers and capability names validates against all four shipped executors, and each warning has a fixture that warns and does not refuse outside `stable`
 - WFM-AC6 (WFM-B10): A fixture workflow using each kind, primitive and field outside the running release fails validation with `not_in_release`, on the catalog, a start and the pre-start check alike
+- WFM-AC7 (WFM-B8): A workflow whose parallel branch declares `write` or `edit` validates with no error finding, and the same workflow declaring `workspace: in_place` is refused with its own finding code

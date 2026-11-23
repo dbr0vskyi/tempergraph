@@ -46,10 +46,20 @@ WHEN a workflow declares `import_roots` THE engine SHALL put those paths, relati
 
 ### WSP-B11 Shapes of parallel work
 
-WHEN units work in parallel THE engine SHALL run a parallel branch read-only in the run worktree, failing one whose head or status fingerprint changed; a writer branch or writing map item in its own sibling worktree cut from the run's branch after a checkpoint commit ([WTR-B20](82-worktree-mode.spec.md)) and merged without fast-forward in declared order at the join; a sequential map one item at a time in the run worktree, item k seeing what earlier items left; and a batch child in its own process and worktree with no join.
+WHEN units work in parallel THE engine SHALL run a parallel branch that declares neither `write` nor `edit` read-only in the run worktree, failing one whose head or status fingerprint changed; a writer branch (a parallel branch that declares `write` or `edit`) or writing map item in its own sibling worktree cut from the run's branch after a checkpoint commit ([WTR-B20](82-worktree-mode.spec.md), WSP-B19 for a block) and merged without fast-forward in declared order at the join, a block's branches in the order its parallel unit names them; a sequential map one item at a time in the run worktree, item k seeing what earlier items left; and a batch child in its own process and worktree with no join.
 
-- GIVEN a parallel branch that edits a file WHEN it ends THEN it fails
+- GIVEN a parallel branch that declares neither `write` nor `edit` and changes a file in the run worktree WHEN it ends THEN it fails
 - GIVEN a sequential map of three items WHEN item 2 runs THEN it sees item 1's files
+- GIVEN two writer branches that each write one file WHEN the join merges them THEN the run branch holds both files and one merge commit per writer branch, in the order the parallel unit names them
+- GIVEN a block of a writer branch and a read-only branch that changes nothing WHEN it runs THEN the read-only branch passes in the run worktree while the writer works in its own sibling worktree
+
+### WSP-B19 The checkpoint before a writer branch starts
+
+WHEN a parallel block that has a writer branch is entered THE engine SHALL commit the run worktree's uncommitted changes, new files included, on the run's branch before any branch of the block starts.
+
+- GIVEN a file an earlier unit left uncommitted WHEN a block with a writer branch is entered THEN the run's branch holds a commit with that file before any branch of the block starts, and each writer worktree holds the file
+- GIVEN a run worktree with no uncommitted change WHEN a block with a writer branch is entered THEN the run's branch gets no new commit
+- GIVEN a block of read-only branches only WHEN it is entered THEN the run's branch gets no new commit
 
 ### WSP-B12 A merge conflict at a join
 
@@ -132,3 +142,9 @@ WHEN a workflow or a verb needs git outside a repository THE engine SHALL refuse
 - WSP-AC7 (WSP-B2, WSP-B3, WSP-B10): A worktree bootstrap copies the listed files, a failed one leaves no worktree or branch, and `python` and imports resolve inside the worktree
 - WSP-AC8 (WSP-B4, WSP-B13, WSP-B7, WSP-B14): A batch never runs more than K children, writes its event lines, skips existing threads on a re-run, and lowers K after two throttled children
 - WSP-AC9 (WSP-B6): An in-place start of a writing workflow carries `in_place_writes`
+- WSP-AC10 (WSP-B11): In a block of two writer branches, each writer branch works on its own branch in its own sibling worktree, never the run worktree, and each of those branches starts at the head the run's branch held before the block's first session
+- WSP-AC11 (WSP-B11): After a block of two writer branches that each write one file passes, the run branch holds both files and one merge commit per writer branch, each with the writer's branch as second parent, in the order the parallel unit names its branches
+- WSP-AC12 (WSP-B11): In a block of a writer branch and a read-only branch, the read-only branch's step runs in the run worktree, passes when it changes nothing and fails with `branch_changed_the_workspace` when it changes a file
+- WSP-AC13 (WSP-B19): A file an earlier unit left uncommitted is in a commit on the run's branch before any session of a block with a writer branch starts, and is in each writer worktree
+- WSP-AC14 (WSP-B19): A block of read-only branches adds no commit to the run's branch
+- WSP-AC15 (WSP-B12): Two writer branches that change one line leave the run's branch at the commit it held before the join's first merge, end the join's step blocked with the pause listing that path, and start no model session for the join
