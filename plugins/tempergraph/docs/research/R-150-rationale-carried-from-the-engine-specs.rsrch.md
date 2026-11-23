@@ -446,7 +446,7 @@ From [77-map-unit.spec.md](../specs/77-map-unit.spec.md).
 
 - A sequential map is not a bounded self-route nor a branch per item: a route cannot target its own unit, and a branch per item would need a worktree and a merge per item.
 - The list is read once per visit so a step cannot change the plan under the map mid-visit; changing it takes a trip back.
-- As built (R2-T1.2, sequential mode): items run through the unit's own four nodes, one at a time, with a `maps` state channel. The concurrent mode is refused `not_in_release` with the parallel map (release 3).
+- As built (R2-T1.2, sequential mode): items run through the unit's own four nodes, one at a time, with a `maps` state channel. As built (R3-T3.2, concurrent mode): the unit's own step node reads the list and sends up to `concurrency` items at a time to item nodes, each item keeping its attempt, judgement, feedback, counters, route and pause under its slot `<unit>.<item id>`; a writing map's items each run in their own worktree and are merged in list order, and the map's check runs once on the merged result.
 - temperspec measured per-item work dearer on small plans and routes between a map arm and a single-session arm (SWM, CXR); that measurement is the workflow's, not the engine's.
 
 ### F45 FIN Finalizer contract `supported`

@@ -1,8 +1,10 @@
-"""Reservations for the sessions of parallel read-only branches (BUD-B12 to BUD-B15).
+"""Reservations for the sessions that run at once: the branches of a parallel block, writer branches included, and the
+items of a concurrent map (BUD-B12 to BUD-B15).
 
-A thread-safe ledger of what each running session holds. A branch's cost reaches the run state only when its
-superstep ends, so the cost check cannot see a sibling branch; the ledger counts what is in flight, and adds the
-real cost of sessions that ended in the same superstep, which the state a sibling read at its start does not hold.
+A thread-safe ledger of what each running session holds. A branch's or an item's cost reaches the run state only when
+its superstep ends, so the cost check cannot see a sibling; the ledger counts what is in flight, and adds the real cost
+of sessions that ended in the same superstep, which the state a sibling read at its start does not hold. The width a
+caller gives `share` is the number of branches of the block, or the items of the map that may run at once.
 """
 
 from __future__ import annotations

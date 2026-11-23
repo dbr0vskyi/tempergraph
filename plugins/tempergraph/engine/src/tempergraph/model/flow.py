@@ -24,6 +24,15 @@ def step_node(unit: str) -> str:
     return node_names(unit)[0]
 
 
+ITEM_KINDS = ("step", "judge", "gate", "human")
+
+
+def item_node(unit: str, kind: str) -> str:
+    """The node every item of a concurrent map passes through for `kind` (MAP-B9): one static node per kind, an item
+    reaching it by a `Send` that carries its id."""
+    return f"{unit}.item_{kind}"
+
+
 def effective_order(spec: WorkflowSpec) -> tuple[str, ...]:
     """The units in order, with the reserved outcome gate last when the workflow has an outcome."""
     order = tuple(spec.order)
@@ -67,6 +76,23 @@ def writer_branches(spec: WorkflowSpec, block: str) -> tuple[str, ...]:
 
 def has_writer_branch(spec: WorkflowSpec) -> bool:
     return any(writer_branches(spec, name) for name in spec.units)
+
+
+def concurrent_map(spec: WorkflowSpec, unit: str) -> bool:
+    """`unit` is a map of `mode: concurrent` (MAP-B7, MAP-B9)."""
+    u = spec.units.get(unit)
+    return u is not None and u.kind == "map" and u.map is not None and u.map.mode == "concurrent"
+
+
+def writer_map(spec: WorkflowSpec, unit: str) -> bool:
+    """`unit` is a concurrent map whose step declares `write` or `edit`: each item works in its own worktree and the
+    items are merged when all have passed (WSP-B11, MAP-B12)."""
+    u = spec.units.get(unit)
+    return concurrent_map(spec, unit) and u is not None and u.step is not None and bool(WRITER_TOOLS & set(u.step.tools))
+
+
+def has_writer_map(spec: WorkflowSpec) -> bool:
+    return any(writer_map(spec, name) for name in spec.units)
 
 
 def entry_node(spec: WorkflowSpec, target: str) -> str:

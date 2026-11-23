@@ -97,8 +97,12 @@ class Snapshot:
 def _gate_node(task: str, payload: Any) -> str:
     """The node a pause belongs to. A pause raised inside a sub-workflow's child (SWF-B2) is raised from the sub-workflow
     unit's step node, a subgraph of it; its payload names the child's unit as `<unit>/<child unit>`, and the pause is that
-    unit's gate, so it reads as `<unit>/<child unit>.human` like a pause of the parent's own."""
+    unit's gate, so it reads as `<unit>/<child unit>.human` like a pause of the parent's own. A pause of one item of a
+    concurrent map is raised from the map's item node; its payload names the item's slot, and the pause is that slot's
+    gate, `<unit>.<item id>.human` (MAP-B6)."""
     unit = str(payload.get("unit") or "") if isinstance(payload, dict) else ""
+    if isinstance(payload, dict) and payload.get("slot") and task.endswith(".item_human"):
+        return f"{payload['slot']}.human"
     return f"{unit}.human" if task.endswith(".step") and "/" in unit else task
 
 
@@ -131,11 +135,14 @@ def classify_snapshot(snap: Snapshot, lock_held: bool) -> ThreadState:
 
 
 def update_values(cw: CompiledWorkflow, config: Any, update: Any) -> bool:
-    """A state write outside any node. False when several nodes are pending and LangGraph cannot attribute it;
-    the caller then hands it to the first node that runs."""
+    """A state write outside any node. False when several tasks are pending (of several nodes, or of one node sent
+    several times, as the items of a concurrent map are) and the write cannot be attributed; the caller then hands it
+    to the first node that runs."""
     from langgraph.errors import InvalidUpdateError
 
     try:
+        if len(cw.graph.get_state(config).tasks) > 1:
+            return False
         cw.graph.update_state(config, update)
     except InvalidUpdateError:
         return False
