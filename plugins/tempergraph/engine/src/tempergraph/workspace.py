@@ -23,6 +23,7 @@ from typing import Any, Literal
 from tempergraph.contracts import WorkflowSpec, WorktreeDecl
 from tempergraph.durability.lock import LockHeld, RunLock
 from tempergraph.git import GitError, branch, git, is_safe_ref, main_checkout, toplevel
+from tempergraph.model import flow
 
 Mode = Literal["in_place", "worktree"]
 WRITE_TOOLS = frozenset({"edit", "write", "shell"})
@@ -139,9 +140,13 @@ def resolve_workspace(spec: WorkflowSpec, target: Path, requested: str | None = 
             raise WorkspaceRefused("not_git", "a worktree run needs a git checkout")
         return WorkspacePlan(mode="in_place", requested=req, resolved_by="not_git", main=None, path=target)
     writes = writes_files(spec)
+    writers = flow.has_writer_branch(spec)
+    if writers and req == "in_place":  # WTR-B18: a writer branch needs its own worktree
+        raise WorkspaceRefused("writers_need_worktree", "an explicit in_place run cannot hold a writer branch; a "
+                                                        "parallel branch that declares `write` or `edit` needs a worktree")
     if req == "auto":
-        mode: Mode = "worktree" if writes else "in_place"
-        by = "writes_files" if writes else "read_only"
+        mode: Mode = "worktree" if writes or writers else "in_place"
+        by = "writers" if writers else "writes_files" if writes else "read_only"
     else:
         mode, by = ("worktree" if req == "worktree" else "in_place"), "requested"
     warnings: list[str] = []
@@ -260,9 +265,61 @@ def prepare_workspace(thread: str, plan: WorkspacePlan, decl: WorktreeDecl | Non
 
 
 def _remove_new(main: Path, path: Path, br: str) -> None:
+    """WSP-B2: take back a worktree and branch this start just made, which no one has used. It never calls
+    `git worktree remove --force` or `git branch -D` (WTR-B23): the folder goes, git forgets it, the new ref is dropped."""
     git(["worktree", "unlock", "--end-of-options", str(path)], main, check=False)
-    git(["worktree", "remove", "--force", "--end-of-options", str(path)], main, check=False)
-    git(["branch", "-D", "--end-of-options", br], main, check=False)
+    shutil.rmtree(path, ignore_errors=True)
+    git(["worktree", "prune"], main, check=False)
+    git(["update-ref", "-d", "--end-of-options", f"refs/heads/{br}"], main, check=False)
+
+
+def writer_names(run_path: Path, run_branch_name: str, unit: str, thread: str) -> tuple[str, str]:
+    """WTR-B20: the flat name and branch of a writer branch's worktree, the suffix `--w-<branch>` on the run's own,
+    never a child path of the run branch."""
+    part = "--w-" + flat_part(unit)[:24]
+    name = run_path.name + part
+    if len(name) > MAX_FLAT:
+        digest = hashlib.sha256(f"{thread}/w-{unit}".encode()).hexdigest()[:8]
+        name = run_path.name[: MAX_FLAT - len(part) - 9] + "-" + digest + part
+    return name, run_branch_name + part
+
+
+def cut_writers(rec: WorkspaceRecord, thread: str, units: Sequence[str], decl: WorktreeDecl | None, state_root: Path,
+                run_command: RunCommand | None = None, *, read_include: bool = True) -> WorkspaceRecord:
+    """WSP-B11, WSP-B19: one sibling worktree and branch per writer branch, cut from the run branch's head, locked
+    and bootstrapped, each appended to `rec.children`. A unit that already has one is reused. A failure removes what
+    this call made and raises `WorkspaceRefused` naming the writer branch."""
+    main = main_checkout(state_root.parent) or state_root.parent
+    run_path = Path(rec.path)
+    made: list[tuple[Path, str]] = []
+    children = list(rec.children)
+    try:
+        for unit in units:
+            if any(c.get("unit") == unit and Path(str(c.get("path"))).exists() for c in children):
+                continue
+            name, br = writer_names(run_path, rec.branch, unit, thread)
+            path = run_path.parent / name
+            if _branch_exists(main, br) or path.exists():
+                raise WorkspaceRefused("name_collision", f"writer branch {unit}: {br} or {path} already exists")
+            lock = _repo_lock(state_root)
+            try:
+                base = git(["rev-parse", "--verify", "--end-of-options", f"refs/heads/{rec.branch}"], main).strip()
+                path.parent.mkdir(parents=True, exist_ok=True)
+                git(["worktree", "add", "-b", br, "--end-of-options", str(path), base], main)
+                made.append((path, br))
+                git(["worktree", "lock", "--reason", LOCK_REASON + thread, "--end-of-options", str(path)], main)
+            finally:
+                lock.release()
+            bootstrap(main, path, decl, run_command, read_include=read_include)
+            children = [c for c in children if c.get("unit") != unit]
+            children.append({"unit": unit, "name": name, "path": str(path), "branch": br, "state": "active"})
+    except (WorkspaceRefused, GitError) as exc:
+        for path, br in made:
+            _remove_new(main, path, br)
+        word = exc.word if isinstance(exc, WorkspaceRefused) else "worktree_failed"
+        raise WorkspaceRefused(word, f"writer branch {unit}: {exc}") from None
+    rec.children = children
+    return rec
 
 
 def bootstrap(main: Path, path: Path, decl: WorktreeDecl | None, run_command: RunCommand | None, *,
@@ -351,6 +408,10 @@ def release_workspace(rec: WorkspaceRecord, cleanup: str = "never", state_root: 
     """After the finalizer: unlock. This release keeps every worktree (`cleanup: on_finish` is release 3)."""
     if rec.mode == "worktree" and Path(rec.path).exists():
         git(["worktree", "unlock", "--end-of-options", rec.path], Path(rec.path), check=False)
+    for child in rec.children:  # WTR-B23: a writer worktree is released with its run, and kept with it
+        if Path(str(child.get("path"))).exists():
+            git(["worktree", "unlock", "--end-of-options", str(child["path"])], Path(str(child["path"])), check=False)
+        child["state"] = "released"
     rec.state = "released"
     rec.action = "kept" if cleanup == "never" else "kept_cleanup_later"
     return rec
@@ -372,19 +433,23 @@ def list_worktrees(start: Path) -> list[dict[str, Any]]:
             reason = str(cur.get("locked", ""))
             if reason.startswith(LOCK_REASON):
                 path = Path(cur["worktree"])
-                rows.append({"thread": reason[len(LOCK_REASON):], "path": str(path),
-                             "branch": str(cur.get("branch", "")).removeprefix("refs/heads/"),
-                             "exists": path.exists(), "locked": True})
+                row: dict[str, Any] = {"thread": reason[len(LOCK_REASON):], "path": str(path),
+                                       "branch": str(cur.get("branch", "")).removeprefix("refs/heads/"),
+                                       "exists": path.exists(), "locked": True}
+                if "--w-" in path.name.split("--", 1)[-1]:  # WTR-B20: `<workflow>--<task>--w-<branch>`, a writer's
+                    row["writer"] = path.name.rsplit("--w-", 1)[1]
+                rows.append(row)
             cur = {}
             continue
         key, _, value = line.partition(" ")
         cur[key] = value
-    return rows
+    return sorted(rows, key=lambda r: "writer" in r)  # a run's own worktree first, its writers after it
 
 
 def worktree_path(start: Path, thread: str) -> Path | None:
+    """WTR-B27: the run's own worktree, never one of its writers'."""
     for r in list_worktrees(start):
-        if r["thread"] == thread:
+        if r["thread"] == thread and "writer" not in r:
             return Path(r["path"])
     return None
 

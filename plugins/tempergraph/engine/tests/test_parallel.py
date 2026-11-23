@@ -1,4 +1,4 @@
-"""Parallel read-only branches and their engine-owned join (CMP-B10 to CMP-B16, CMP-B4, HUM-B3, WSP-B11, WSP-B12)."""
+"""Parallel branches and their engine-owned join (CMP-B10 to CMP-B16, CMP-B4, HUM-B3, WSP-B11, WSP-B12)."""
 
 from __future__ import annotations
 
@@ -163,9 +163,11 @@ def test_the_block_refusals() -> None:  # WFM-B7
             units["reviews"] = change["join"]
         if "security" in change:
             units["security"] = change["security"]
+        if "perf" in change:
+            units["perf"] = change["perf"]
         if "order" in change:
             order = change["order"]
-        spec = dataclasses.replace(spec, units=units, order=tuple(order))
+        spec = dataclasses.replace(spec, units=units, order=tuple(order), workspace=change.get("workspace", "auto"))
         return {f.code for f in errors(validate(spec, CAPS))}
 
     assert not codes()
@@ -175,5 +177,12 @@ def test_the_block_refusals() -> None:  # WFM-B7
     assert "parallel-branches-not-adjacent" in codes(join=Parallel(branches=["plan", "perf"]))
     assert "parallel-branch-flow" in codes(security=step("S", back_targets=["plan"]))
     writer = Step(prompt="S", tools=["read", "write"], gate=Gate(judge=Judge(stance="V."), criteria=[crit("c")]))
-    assert "parallel-writer-branch" in codes(security=writer)
+    editor = Step(prompt="S", tools=["read", "edit"], gate=Gate(judge=Judge(stance="V."), criteria=[crit("c")]))
+    shell_only = Step(prompt="S", tools=["read", "shell"], gate=Gate(judge=Judge(stance="V."), criteria=[crit("c")]))
+    # AC 5, WFM-AC7: a branch that declares `write` or `edit` validates; the old `parallel-writer-branch` refusal is gone
+    assert not codes(security=writer) and not codes(perf=editor) and not codes(security=shell_only)
+    assert "parallel-writer-in-place" in codes(security=writer, workspace="in_place")
+    assert "parallel-writer-in-place" in codes(perf=editor, workspace="in_place")
+    assert "parallel-writer-in-place" not in codes(security=shell_only, workspace="in_place")  # `shell` is no writer
+    assert "parallel-writer-in-place" not in codes(security=writer, workspace="worktree")
     assert "parallel-join-gate" in codes(join=Parallel(branches=["security", "perf"], gate=Gate(approval=True)))

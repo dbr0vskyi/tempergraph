@@ -174,6 +174,8 @@ def test_no_code_path_merges() -> None:  # PRP-AC2
         for node in ast.walk(ast.parse(p.read_text())):
             if isinstance(node, ast.Constant) and isinstance(node.value, str) and (
                     node.value == "merge" or "/merge" in node.value or node.value.startswith("merge ")):
+                if p.name == "git.py" and node.value == "merge":
+                    continue  # the git launch site's local merge of writer branches at a join (WSP-B11), not a pull request's
                 hits.append(f"{p.name}: {node.value!r}")
     assert hits == []
     assert not any(hasattr(MemoryCodeHost, n) for n in ("merge", "merge_pr", "merge_pull_request"))

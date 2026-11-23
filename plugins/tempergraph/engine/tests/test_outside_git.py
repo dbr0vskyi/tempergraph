@@ -10,6 +10,7 @@ import pytest
 
 from tempergraph import git as gitmod
 from tempergraph.api import CheckResult, ComplexitySwitch, Level, Measure, Risk, When, stock
+from tempergraph.catalog import Catalog
 from tempergraph.constants import ExitCode
 from tempergraph.contracts import SessionRequest, SessionResult
 from tempergraph.executors.standins import answer, standin
@@ -22,6 +23,7 @@ from tempergraph.workspace import WorkspaceRefused, resolve_workspace
 from .fixtures.subworkflows import home_dir, parent_spec, register_workflow
 from .fixtures.workflows import two_step
 from .test_cli import cli, happy
+from .test_parallel import wf as parallel_wf
 from .test_run import DRAFT, MET, REVIEW, judge, records, registry
 
 NO_SLEEP = RunSettings(sleep=lambda s: None)
@@ -201,6 +203,35 @@ def test_what_needs_git_is_named_and_refused_before_spend(plain: Path) -> None:
     for verb in (["carry", "status", "demo", "T-1"], ["improve", "trial", "p-1"]):
         code, _, err = cli(plain, None, *verb)
         assert code == ExitCode.USAGE and "needs_git" in err, verb
+
+
+def writer_block(tools: tuple[str, ...]) -> Any:
+    """The parallel fixture whose branch `security` declares `tools`; `perf` stays read-only."""
+    spec = parallel_wf()
+    step = spec.units["security"]
+    assert step.step is not None
+    units = {**spec.units, "security": dataclasses.replace(step, step=dataclasses.replace(step.step, tools=tools))}
+    return dataclasses.replace(spec, units=units)
+
+
+def test_a_writer_branch_outside_git_is_refused_before_anything_is_created(plain: Path) -> None:  # WSP-AC5, AC 4
+    writer = writer_block(("read", "write"))
+    got = needs_git(writer, NO_SLEEP)
+    assert len(got) == 1 and "writer branch security" in got[0]
+    assert needs_git(writer_block(("read",)), NO_SLEEP) == [] and needs_git(writer_block(("read", "shell")), NO_SLEEP) == []
+    ex = happy()
+    out = start(writer, "T-1", {"request": "x"}, plain, registry(ex), NO_SLEEP)  # at a start
+    assert out.exit_code is ExitCode.USAGE and out.reason == "needs_git" and "writer branch security" in out.message
+    assert not (plain / ".tempergraph").exists() and ex.calls == []
+    assert [p.name for p in plain.iterdir()] == ["README.md"] and not (plain.parent / "plain.worktrees").exists()
+    catalog = Catalog(specs={"demo": writer})  # at the pre-start check
+    code, doc, _ = cli(plain, happy(), "run", "demo", "x", "--check", catalog=catalog)
+    assert code == ExitCode.USAGE and doc["status"] == "error"
+    assert [r["code"] for r in doc["refusals"]] == ["needs_git"] and "writer branch security" in doc["refusals"][0]["message"]
+    assert not (plain / ".tempergraph").exists()
+    ok = Catalog(specs={"demo": writer_block(("read",))})  # a read-only parallel workflow is not refused
+    code, doc, _ = cli(plain, happy(), "run", "demo", "x", "--check", catalog=ok)
+    assert code == 0 and doc["status"] == "ok"
 
 
 # -- a child that needs git (SWF-B6, SWF-AC1) -----------------------------------------------------------------
