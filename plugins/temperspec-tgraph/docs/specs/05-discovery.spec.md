@@ -9,6 +9,8 @@ Part of the [overview](00-overview.spec.md).
 ## 6. Acceptance criteria
 
 - [ ] ts-dis-form Every spec the discovery step wrote passes the spec rule's structure check
+- [ ] ts-dis-budget Every spec the discovery step wrote is within the repository's spec budget: at most 400 lines and at most 30 KB (30,720 bytes)
+- [ ] ts-dis-over A spec over the budget in lines or in bytes fails the discovery check, and the next discovery attempt is given a finding that names the spec and the figure that is over and says to split the spec by capability
 - [ ] ts-dis-names Every document the discovery step created carries its type suffix in its file name
 - [ ] ts-dis-links Every id that a document of the discovery step links to resolves to exactly one definition
 - [ ] ts-dis-commit Every file the discovery step changed is committed
