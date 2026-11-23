@@ -48,6 +48,7 @@ PARAMS = {p.name: p for p in (
     Param(name="review.run_cap_usd.stable", value=2, source="SRV-B21"),
     Param(name="review.probation_runs", value=5, source="SRV-B13, SRV-B14, SRV-B15"),
     Param(name="review.repeat_sessions", value=3, source="SRV-B26"),
+    Param(name="lost_runner.window_days", value=7, source="SIL-B26"),
     # FBK-B9, FBK-B14 (T12.3)
     Param(name="labels.rerun_days", value=14, source="FBK-B9"),
     Param(name="reliability.window_days", value=90, source="FBK-B11, FBK-B12"),

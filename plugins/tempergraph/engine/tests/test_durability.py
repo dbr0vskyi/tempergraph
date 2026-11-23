@@ -70,6 +70,21 @@ def test_paused_resume_continues(root: Path) -> None:
     assert classify(root, two_step(), "p") is ThreadState.FINISHED
 
 
+def test_status_function_writes_nothing_for_a_lost_runner(repo: Path) -> None:  # DUR-AC3, SIL-AC20
+    from tempergraph.observe.attention import items
+    from tempergraph.store.layout import state_root_path
+
+    from .test_lost_runner import kill, spec_of
+
+    kill(repo)  # no `run_exit`, lock free: a lost runner that only the verbs hand to the loop
+    state = state_root_path(repo)
+    before = hash_tree(state)
+    doc = status(state, {"demo": spec_of()})
+    items(state, {"demo": spec_of()})
+    assert hash_tree(state) == before
+    assert [r["state"] for r in doc["threads"]] == ["unfinished"]
+
+
 def test_observers_create_nothing(root: Path) -> None:
     spec = two_step()
     assert classify(root, spec, "nothing") is ThreadState.NONE

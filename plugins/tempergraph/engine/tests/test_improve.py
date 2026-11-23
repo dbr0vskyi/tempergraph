@@ -195,6 +195,12 @@ def test_every_threshold_is_a_parameter() -> None:  # IMD-AC3 for this track
         assert p.provenance in ("default_no_data", "fitted", "owner_decision") and p.source
 
 
+def test_lost_runner_window_is_a_parameter_record() -> None:  # IMD-AC3, SIL-B26
+    p = params.PARAMS["lost_runner.window_days"]
+    assert p.value == 7 and p.provenance == "default_no_data" and "SIL-B26" in p.source
+    assert params.value("lost_runner.window_days") == 7
+
+
 def test_publish_boundary() -> None:  # SIL-B8, SIL-B19, SIL-B20: only the recorder names the evidence file
     for f in (SRC / "improve").glob("*.py"):
         if f.name != "record.py":

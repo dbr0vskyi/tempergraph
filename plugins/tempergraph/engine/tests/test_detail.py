@@ -380,11 +380,13 @@ def test_stall_hint(repo: Path) -> None:
     assert doc is not None and doc["health"]["suspect_stall"] is True  # 9 s >= 80 % of 10 s
 
 
-def test_orphaned_thread(repo: Path) -> None:  # RDD-B5
+def test_orphaned_thread(repo: Path) -> None:  # RDD-B5, RDD-B6, SIL-AC20
     ex = standin("claude", steps=[DRAFT], judges=[])  # the judge call raises: the process dies mid-run
     with pytest.raises(AssertionError):
         go(repo, ex)
+    before = hash_tree(state_root_path(repo))
     doc = detail(state_root_path(repo), two_step(), "demo/T-1")
+    assert hash_tree(state_root_path(repo)) == before  # `detail()` hands nothing to the loop: only the verbs do
     assert doc is not None
     assert doc["health"]["orphaned"] is True and doc["pause"] is None
     assert doc["run"]["state"] in ("unfinished", "stopped")
