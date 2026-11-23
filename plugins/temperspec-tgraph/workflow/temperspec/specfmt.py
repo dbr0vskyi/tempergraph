@@ -124,6 +124,36 @@ class Spec:
     problems: list[tuple[int, str, str]] = field(default_factory=list)  # (line, message, fix)
 
 
+def behaviour_blocks(text: str) -> dict[str, str]:
+    """Behaviour id -> its block (heading, statement and scenarios), spacing normalised, so two versions of a
+    spec can be compared block by block."""
+    out: dict[str, list[str]] = {}
+    current: list[str] | None = None
+    for line in text.splitlines():
+        b = BEHAVIOUR_HEAD.match(line)
+        if b:
+            current = out.setdefault(b.group(1), [])
+        elif HEADING.match(line):
+            current = None
+        if current is not None and line.strip():
+            current.append(" ".join(line.split()))
+    return {k: "\n".join(v) for k, v in out.items()}
+
+
+def changed_criteria(before: str, after: str) -> set[str]:
+    """The criteria of `after` that a change from `before` concerns: each one added or reworded, and each old
+    one that proves a behaviour added or changed. Criteria the change leaves alone are not in the set."""
+    old, new = parse_spec(before), parse_spec(after)
+    old_b, new_b = behaviour_blocks(before), behaviour_blocks(after)
+    moved = {bid for bid, block in new_b.items() if old_b.get(bid) != block}
+    out = set()
+    for cid, crit in new.criteria.items():
+        was = old.criteria.get(cid)
+        if was is None or (was.text, was.proves) != (crit.text, crit.proves) or set(crit.proves) & moved:
+            out.add(cid)
+    return out
+
+
 def parse_spec(text: str) -> Spec:
     spec = Spec(legacy=bool(LEGACY.search(text)), lines=len(text.splitlines()))
     if spec.legacy:
@@ -349,7 +379,8 @@ def _cells(line: str) -> list[str] | None:
     m = TABLE_ROW.match(line)
     if not m:
         return None
-    cells = [c.strip() for c in m.group(1).split("|")]
+    # A pipe escaped as `\|` (Markdown's way to put one in a cell, as in a type union `X \| None`) stays in its cell.
+    cells = [c.strip().replace("\\|", "|") for c in re.split(r"(?<!\\)\|", m.group(1))]
     return None if all(re.fullmatch(r":?-+:?", c) for c in cells if c) else cells
 
 

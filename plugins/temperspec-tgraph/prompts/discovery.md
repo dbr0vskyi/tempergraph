@@ -28,6 +28,7 @@ The task:
 
 ## Limits
 
+- This step has no shell: read, search and list files with the file tools (read, grep, glob), never `ls`, `cat`, `wc` or `python -c`.
 - Write specs, decision records, research notes and the hand-off. Do not write code, configuration, tests or a plan.
 - Close the task's gaps and nothing more. Edit a spec only where a behaviour or an acceptance criterion changes; do not touch other specs to tidy them.
 - Never settle by a guess what only a person can decide. If such a question blocks planning, end blocked and state the question with its options.

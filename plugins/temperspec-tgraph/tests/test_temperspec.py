@@ -866,3 +866,131 @@ def test_the_short_prompt_states_the_reading_limit_and_reads_narrowly() -> None:
     assert checks.SHORT_READING_MAX == 10
     assert [f.status for f in checks._prompt_says("ts-dsh-limit")] == ["pass"]
     assert all(f.status == "pass" for f in checks._prompt_says("ts-dis-narrow"))  # both discovery prompts
+
+
+# -- the outcome gate asks only about what the run changed (B22, ts-spec-links) -------------------------------
+
+SPEC_V1 = """# Config file
+
+## Purpose
+
+The tool reads `tool.toml`.
+
+## Behaviours
+
+### CFG-B1 A missing config file is reported
+
+WHEN the tool starts and `tool.toml` does not exist THE tool SHALL print one line that names the file.
+
+- GIVEN no `tool.toml` WHEN the tool starts THEN one line names it
+
+### CFG-B2 A missing config file ends the run
+
+WHEN the tool starts and `tool.toml` does not exist THE tool SHALL exit with code 2.
+
+- GIVEN no `tool.toml` WHEN the tool starts THEN the exit code is 2
+
+## Acceptance criteria
+
+- CFG-AC1 (CFG-B1): Started with no `tool.toml`, the tool prints one line that names it
+- CFG-AC2 (CFG-B2): Started with no `tool.toml`, the tool exits with code 2
+"""
+
+
+def _edited(repo: Path, change: Any) -> Any:
+    spec = repo / "docs" / "specs" / "config-file.spec.md"
+    spec.parent.mkdir(parents=True, exist_ok=True)
+    spec.write_text(SPEC_V1)
+    _git(repo, "add", "-A")
+    _git(repo, "-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "-m", "base")
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    spec.write_text(change(SPEC_V1))
+    ctx = _context("outcome", repo, {}, git=GitFacts(base=base, changed_paths=("docs/specs/config-file.spec.md",)))
+    return checks._traced(ctx, ["docs/specs/config-file.spec.md"], [])
+
+
+def test_a_spec_edited_only_to_add_a_link_asks_no_test_of_its_old_criteria(repo: Path) -> None:  # B22
+    got = _edited(repo, lambda t: t.replace("reads `tool.toml`.", "reads `tool.toml` ([cli](cli.spec.md))."))
+    assert [f.status for f in got] == ["n_a"], got
+
+
+def test_the_outcome_gate_asks_tests_of_added_reworded_and_re_behaved_criteria(repo: Path) -> None:  # B22
+    def change(t: str) -> str:
+        t = t.replace("exit with code 2.", "exit with code 3.")  # CFG-B2 changed, so CFG-AC2 is asked again
+        return t + "- CFG-AC3 (CFG-B1): The line goes to standard error\n"
+    got = _edited(repo, change)
+    assert sorted(f.message.split()[0] for f in got if f.status == "fail") == ["CFG-AC2", "CFG-AC3"], got
+
+
+def test_without_a_base_every_criterion_of_an_edited_spec_is_asked(tmp_path: Path) -> None:  # B22
+    (tmp_path / "s.spec.md").write_text(SPEC_V1)
+    got = checks._traced(_context("outcome", tmp_path, {}), ["s.spec.md"], [])
+    assert sorted(f.message.split()[0] for f in got) == ["CFG-AC1", "CFG-AC2"]
+
+
+def test_spec_links_read_the_edited_specs_not_the_task_notes(tmp_path: Path) -> None:  # ts-spec-links
+    (tmp_path / "docs" / "specs").mkdir(parents=True)
+    (tmp_path / "docs" / "specs" / "config-file.spec.md").write_text(SPEC_V1)
+    (tmp_path / "docs" / "tasks").mkdir()
+    (tmp_path / "docs" / "tasks" / "T.handoff.md").write_text("Retired CFG-B9 and CFG-AC9 on purpose.\n")
+    git = GitFacts(changed_paths=("docs/specs/config-file.spec.md", "docs/tasks/T.handoff.md"))
+    ctx = _context("outcome", tmp_path, {}, git=git)
+    ctx.settings = {"deliverables": [], "outcome_check": SPEC.outcome.check.ref}  # type: ignore[union-attr]
+    res, _ = run_check(outcome_unit(SPEC).gate, ctx)  # type: ignore[union-attr]
+    assert _named(res, "ts-spec-links") == ["pass"], res.evidence
+
+
+# -- an escaped pipe stays in its table cell (B40) ------------------------------------------------------------
+
+
+def test_an_escaped_pipe_stays_in_its_cell() -> None:  # B40
+    text = (ROOT / "evals" / "checks" / "plan" / "must-pass" / "2-simple" / "plan.md").read_text()
+    row = "| 1.3 | code | R2 | `src/tool/config.py` | | Report the missing file and exit with code 2 | |"
+    assert row in text
+    plan = fmt.parse_plan(text.replace(row, row.replace("exit with code 2", "return `Path \\| None`")))
+    got = next(r for r in plan.rows if r.id == "1.3")
+    assert not got.completed and "`Path | None`" in got.change, got
+    assert fmt._cells("| a \\| b | c |") == ["a | b", "c"]
+
+
+# -- open questions that do not block planning do not pause the run (B41) -------------------------------------
+
+
+def test_judges_leave_gap_false_for_open_questions_that_do_not_block() -> None:  # B41
+    for name in ("discovery", "discovery_short", "plan", "expand", "code"):
+        text = " ".join((ROOT / "judges" / f"{name}.md").read_text(encoding="utf-8").split())
+        assert "does not block planning" in text and "leave `gap` false" in text, name
+        assert "Set `gap` only when a file or fact you need" in text, name
+
+
+# -- the prompts say which commands the shell takes (B24) -----------------------------------------------------
+
+
+def test_the_prompts_name_the_shell_command_shapes() -> None:  # B24
+    code = " ".join((ROOT / "prompts" / "code.md").read_text(encoding="utf-8").split())
+    for shape in ("`cd sub/pkg && python3 -m pytest tests/test_x.py -q`", "pipes, `;`, a second `&&`",
+                  "`2>&1`", "`env`", "inline `python -c`", "with the file tools instead"):
+        assert shape in code, shape
+    for name in ("triage", "discovery", "discovery_short", "plan", "expand", "setup"):
+        unit = SPEC.units[name]
+        assert unit.step is not None and "shell" not in unit.step.tools, name
+        assert "This step has no shell" in (ROOT / "prompts" / f"{name}.md").read_text(encoding="utf-8"), name
+
+
+# -- the block prepare writes is not a change the code step must account for (B19 family) ---------------------
+
+
+def test_the_context_block_prepare_wrote_is_listed_apart_from_the_changed_paths(repo: Path) -> None:
+    (repo / "CLAUDE.md").write_text("# Project\n\nRun the tests with pytest.\n")
+    _git(repo, "add", "-A")
+    _git(repo, "-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "-m", "base")
+    base = _git(repo, "rev-parse", "HEAD").strip()
+    routing.write_context(repo)  # what prepare does before any step
+    git = GitFacts(base=base, changed_paths=("CLAUDE.md", "src/a.py"))
+    res = checks._result(_context("code", repo, {}, git=git), [])
+    assert "Changed paths since the run's base: src/a.py" in res.evidence
+    assert "Written by prepare (the temperspec block only, no step's change): CLAUDE.md" in res.evidence
+    (repo / "CLAUDE.md").write_text((repo / "CLAUDE.md").read_text() + "\nA line a step added.\n")
+    res = checks._result(_context("code", repo, {}, git=git), [])
+    assert "Changed paths since the run's base: CLAUDE.md, src/a.py" in res.evidence  # a step's edit counts
+    assert "Written by prepare" in (ROOT / "judges" / "code.md").read_text()

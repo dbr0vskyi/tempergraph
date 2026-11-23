@@ -20,6 +20,7 @@ Plan: `{plan}`
 
 ## Limits
 
+- This step has no shell: read, search and list files with the file tools (read, grep, glob), never `ls`, `cat`, `wc` or `python -c`.
 - Edit only the task tables under the phases and the Verification section. Sections 0, 1 and 4, the phase names, goals and weights stay as they are, and the status stays `planned`.
 - If the design cannot be expanded as written (a phase cannot be done, a requirement has no place, a spec it rests on is wrong), do not repair it: say which earlier output is at fault and why.
 - Do not edit a spec or code.

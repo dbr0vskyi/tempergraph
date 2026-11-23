@@ -28,6 +28,7 @@ The task:
 
 ## Limits
 
+- This step has no shell: read, search and list files with the file tools (read, grep, glob), never `ls`, `cat`, `wc` or `python -c`.
 - Write the plan and no other file. Do not edit a spec, a decision record or code.
 - A plan adds no behaviour that no spec states.
 - Do not run git. The engine commits your file when you finish.
