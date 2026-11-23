@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 7,
+  "revision": 8,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -58,6 +58,34 @@
       "verifier": {
         "check": "tgwf_temperspec.checks:outcome_check"
       }
+    },
+    {
+      "id": "ts-spec-moved",
+      "severity": "blocker",
+      "verified_by": "check",
+      "text": "An acceptance criterion that a split left in a spec may name a behaviour the split moved to another spec, where it keeps its id: the spec rule's structure check reads the id as defined in the spec it moved to, in the run that made the split and in any later run",
+      "check_method": "Index the ids every spec of the repository defines; a criterion may name an id that exactly one other spec defines when the id's prefix is one its own spec defines; no use of the run's base commit",
+      "source": "created",
+      "verifier": {
+        "check": "tgwf_temperspec.checks:outcome_check"
+      },
+      "serves": [
+        "ts-spec-links"
+      ]
+    },
+    {
+      "id": "ts-spec-parent",
+      "severity": "blocker",
+      "verified_by": "check",
+      "text": "An acceptance criterion of a spec split from another may name an id of the spec it was split from: the spec rule's structure check reads the id as defined there, in the run that made the split and in any later run",
+      "check_method": "As ts-spec-moved: the split-off spec defines ids with the prefix of the spec it was split from next to its own, and its criteria may name the ids of either",
+      "source": "created",
+      "verifier": {
+        "check": "tgwf_temperspec.checks:outcome_check"
+      },
+      "serves": [
+        "ts-spec-links"
+      ]
     },
     {
       "id": "ts-traced",
@@ -476,7 +504,7 @@
           "severity": "blocker",
           "verified_by": "check",
           "text": "Every spec the discovery step wrote passes the spec rule's structure check",
-          "check_method": "As ts-spec-form, on the files this step changed",
+          "check_method": "As ts-spec-form, on the files this step changed; the size of a spec is not read here (ts-dis-budget)",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:discovery_check"
@@ -484,6 +512,34 @@
           "serves": [
             "ts-accepted",
             "ts-spec-form"
+          ]
+        },
+        {
+          "id": "ts-dis-budget",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every spec the discovery step wrote is within the repository's spec budget: at most 400 lines and at most 30 KB (30,720 bytes)",
+          "check_method": "Count the lines of each spec this step changed or the hand-off lists, the earlier layout included, and the bytes of its file; over means strictly more",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          },
+          "serves": [
+            "ts-spec-cap"
+          ]
+        },
+        {
+          "id": "ts-dis-over",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "A spec over the budget in lines or in bytes fails the discovery check, and the next discovery attempt is given a finding that names the spec and the figure that is over and says to split the spec by capability",
+          "check_method": "One fail finding per spec over, with its path, each figure over and the fix `split the spec by capability`; the engine's retry prompt carries each finding to the next attempt",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          },
+          "serves": [
+            "ts-spec-cap"
           ]
         },
         {
@@ -1111,7 +1167,8 @@
     "Specs written by the setup step describe behaviour that exists already, so the outcome gate does not ask for a test that names each of their acceptance criteria; a task that later touches such a behaviour adds the id to its test.",
     "Repository setup is a conditional first step of this workflow because release 1 of the engine has no sub-workflows; it moves into one when the engine has them.",
     "The quick lane's limits (3 acceptance criteria, 2 code files, 200 changed lines) are first values with no run behind them; the share of quick runs sent back to triage is the measure to tune them by.",
-    "A test carries its criterion as text (the spec's id, or `AC <n>`); the check finds the text and a skip mark near it, and does not prove that the named test is the one the command ran."
+    "A test carries its criterion as text (the spec's id, or `AC <n>`); the check finds the text and a skip mark near it, and does not prove that the named test is the one the command ran.",
+    "The spec budget is fixed at 400 lines and 30,720 bytes for every repository, with no setting; it is measured once, at discovery (ts-dis-budget), while ts-spec-cap at the outcome gate counts lines only."
   ],
   "revisions": [
     {
@@ -1154,6 +1211,12 @@
       "origin": "authored",
       "at": "2026-11-22T23:30:00.000Z",
       "note": "ts-traced asks for tests of the criteria a run added or changed, and of old criteria whose behaviour it changed, never of every criterion of an edited spec (backlog B22); ts-spec-links reads the edited specs only, as its text says"
+    },
+    {
+      "revision": 8,
+      "origin": "authored",
+      "at": "2026-11-23T12:00:00.000Z",
+      "note": "issue 114: the discovery check measures every spec against the spec budget of 400 lines and 30,720 bytes and sends an over-budget spec back for a split by capability (ts-dis-budget, ts-dis-over); the structure check reads an id a split moved as defined in the spec it moved to, and a split-off spec may name ids of the spec it was split from (ts-spec-moved, ts-spec-parent)"
     }
   ]
 }

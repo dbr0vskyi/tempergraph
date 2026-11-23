@@ -6,9 +6,12 @@ fails when a rule and this module disagree on a heading or a pattern."""
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
 SPEC_CAP_LINES = 400
+# The repository's spec budget is at most 400 lines and at most 30 KB; "over" means strictly more.
+SPEC_CAP_BYTES = 30 * 1024
 SPEC_HEADINGS = ("Purpose", "Behaviours", "Acceptance criteria")
 TRIAGE_HEADINGS = ("Task", "Acceptance criteria", "Existing documents", "Gaps", "Route")
 HANDOFF_HEADINGS = ("Problem", "Gaps closed", "Changed documents", "Decisions", "Open questions", "Reading list")
@@ -154,7 +157,15 @@ def changed_criteria(before: str, after: str) -> set[str]:
     return out
 
 
-def parse_spec(text: str) -> Spec:
+def _prefix(ident: str) -> str:
+    return ident.rsplit("-", 1)[0]
+
+
+def parse_spec(text: str, defined_elsewhere: Mapping[str, Sequence[str]] | None = None) -> Spec:
+    """Read a spec. `defined_elsewhere` maps an id to the other spec files that define it: a criterion may then
+    name an id that exactly one other file defines when the id's prefix is one this spec defines (an id a split
+    moved, or one of the spec it was split from). Without it every criterion names this spec's behaviours only."""
+    elsewhere = defined_elsewhere or {}
     spec = Spec(legacy=bool(LEGACY.search(text)), lines=len(text.splitlines()))
     if spec.legacy:
         return spec
@@ -203,11 +214,13 @@ def parse_spec(text: str) -> Spec:
         if bid not in proved:
             spec.problems.append((beh.line, f"{bid} is proved by no acceptance criterion",
                                   f"add a criterion that names {bid}"))
+    own_prefixes = {_prefix(i) for i in (*spec.behaviours, *spec.criteria)}
     for cid, crit in spec.criteria.items():
         for p in crit.proves:
-            if p not in spec.behaviours:
+            moved = len(elsewhere.get(p, ())) == 1 and _prefix(p) in own_prefixes
+            if p not in spec.behaviours and not moved:
                 spec.problems.append((crit.line, f"{cid} names {p}, which this spec does not define",
-                                      "name a behaviour of this spec"))
+                                      "name a behaviour of this spec or of the spec it was split from"))
         if not crit.proves:
             spec.problems.append((crit.line, f"{cid} names no behaviour", "add the behaviour id in brackets"))
     return spec

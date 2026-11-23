@@ -31,6 +31,7 @@ The task:
 - This step has no shell: read, search and list files with the file tools (read, grep, glob), never `ls`, `cat`, `wc` or `python -c`.
 - Write specs, decision records, research notes and the hand-off. Do not write code, configuration, tests or a plan.
 - Close the task's gaps and nothing more. Edit a spec only where a behaviour or an acceptance criterion changes; do not touch other specs to tidy them.
+- A spec has at most 400 lines and at most 30 KB (30,720 bytes); the gate fails a spec over either. A spec that would pass either is split by capability before the step ends. A behaviour moved by a split keeps its id: the split-off spec defines the moved ids with the old prefix next to its own, and a criterion of either spec may name ids of both.
 - Never settle by a guess what only a person can decide. If such a question blocks planning, end blocked and state the question with its options.
 - Do not run git. The engine commits your files when you finish.
 - Read and write inside this working directory only. Use the web only to read a public source a research note cites.

@@ -38,7 +38,7 @@ An `## Open questions` section may follow, only while a question is open. Remove
 
 ## Behaviours
 
-- The heading is `### <PREFIX>-B<n> <short name>`. The prefix is two to eight capital letters or digits, the same for the whole spec, and no other spec uses it.
+- The heading is `### <PREFIX>-B<n> <short name>`. The prefix is two to eight capital letters or digits, the same for the whole spec, and no other spec uses it, except that a behaviour moved by a split keeps its id: a spec split from another may define ids with the prefix of the spec it was split from, next to its own.
 - The first line under the heading is one sentence in the fixed pattern `WHEN <event> THE <capability> SHALL <result>`, with the three key words in capitals.
 - At least one scenario follows, each one list item: `- GIVEN <state> WHEN <event> THEN <result>`.
 - A behaviour states a result that someone outside the capability can observe. It names a file, a command, a field or a message only when someone outside depends on that exact name. It never names a class, a function, a module or a variable.
@@ -55,11 +55,12 @@ An `## Open questions` section may follow, only while a question is open. Remove
 ## Ids and links
 
 - An id is defined once in the whole repository and is never renumbered. A removed behaviour retires its id.
+- A behaviour moved by a split keeps its id. A criterion may name the id of a behaviour that moved to another spec, and a criterion of a spec split from another may name the ids of the spec it was split from; the structure check reads each id as defined in the one spec that defines it.
 - Another spec is referenced by a behaviour or criterion id, or by its file path. Never restate another spec's behaviour.
 
 ## Length
 
-A spec has at most 400 lines. A spec that would pass the cap is split by capability into two specs, or compressed: merge scenarios that prove the same thing, remove prose that restates a behaviour.
+A spec has at most 400 lines and at most 30 KB (30,720 bytes). A spec that would pass either is split by capability into two specs, or compressed: merge scenarios that prove the same thing, remove prose that restates a behaviour.
 
 ## Editing a spec
 
