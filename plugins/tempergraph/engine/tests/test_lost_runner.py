@@ -17,6 +17,7 @@ from tempergraph.api import CheckResult, callable_ref
 from tempergraph.catalog import Catalog
 from tempergraph.constants import ExitCode
 from tempergraph.contracts import CheckFinding
+from tempergraph.durability.control import stop_file
 from tempergraph.durability.lock import RunLock
 from tempergraph.executors.standins import answer, standin
 from tempergraph.improve import child
@@ -29,7 +30,7 @@ from tempergraph.store.layout import home_path, lock_path, run_dir, state_root_p
 from .conftest import hash_tree
 from .fixtures.workflows import two_step
 from .test_cli import cli
-from .test_run import DRAFT, REVIEW, go, judge, registry
+from .test_run import DRAFT, REVIEW, go, judge, registry, verdict_block
 
 NO_SLEEP = RunSettings(sleep=lambda s: None)
 
@@ -123,7 +124,7 @@ def test_status_hands_a_lost_runner_to_the_loop(repo: Path, monkeypatch: pytest.
 
 
 def test_attention_and_stop_find_the_same_lost_runner(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # SIL-AC21, AC 3
+    # SIL-AC21, RCT-AC5, AC 3
     loop_on(monkeypatch)
     kill(repo, "T-1")
     assert verb(repo, "status", "demo/T-1")[0] == 0
@@ -135,7 +136,7 @@ def test_attention_and_stop_find_the_same_lost_runner(repo: Path, monkeypatch: p
     kill(repo, "T-3")
     code, _, err = verb(repo, "stop", "demo/T-3")
     assert code == ExitCode.USAGE and "not running" in err  # RCT-B3
-    assert not (run_dir(state_root_path(repo), "demo", "T-3") / "control" / "stop.json").exists()
+    assert not stop_file(state_root_path(repo), "demo", "T-3").exists()  # no request file for a killed runner
     assert signature(repo, "T-3") == want
 
 
@@ -233,6 +234,22 @@ def test_a_later_final_exit_starts_its_own_loop(repo: Path, monkeypatch: pytest.
     got = tickets()
     assert len(got) == 2  # one for each end
     assert [t.get("trigger") for t in got].count("runner_lost") == 1
+
+
+def test_attention_lists_a_pause_once_beside_a_lost_runner(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # CLI-AC5, AC 1, AC 3
+    loop_on(monkeypatch)
+    ex = standin("claude", steps=[DRAFT, DRAFT, REVIEW], judges=[judge(), judge(verdict_block("UNVERIFIABLE"))])
+    assert go(repo, ex, spec_of(), task="T-1").exit_code is ExitCode.PAUSED
+    kill(repo, "T-2")
+    paused_dir = run_dir(state_root_path(repo), "demo", "T-1")
+    before = hash_tree(paused_dir)
+    code, doc, err = verb(repo, "attention", "--json")
+    assert code == 0, err
+    assert [i["thread_id"] for i in doc["items"]] == ["demo/T-1"]  # the pause once; a lost runner is no pause
+    assert hash_tree(paused_dir) == before  # the paused thread's run folder is unchanged
+    assert [(r["exit_code"], r["reason"]) for r in lost_rows(repo, "T-2")] == [(5, "runner_lost")]
+    assert lost_rows(repo, "T-1") == []
 
 
 def test_the_verbs_keep_their_results_when_the_hand_off_fails(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:

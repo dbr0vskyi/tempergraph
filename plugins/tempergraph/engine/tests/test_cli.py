@@ -129,10 +129,14 @@ def test_worktree_prune_records_its_caller_only_when_it_applies(repo: Path) -> N
     assert code == 0 and doc["removed"] == [] and doc["caller"]["kind"] == "person"
 
 
-def test_stop_needs_a_live_run(repo: Path) -> None:
+def test_stop_needs_a_live_run(repo: Path) -> None:  # RCT-AC5
+    from tempergraph.durability.control import stop_file
+    from tempergraph.store.layout import state_root_path
+
     cli(repo, happy(), "run", "demo", "notes", "--task-id", "T-4")
     code, _, err = cli(repo, None, "stop", "demo/T-4")
     assert code == ExitCode.USAGE and "not running" in err
+    assert not stop_file(state_root_path(repo), "demo", "T-4").exists()  # no request file is left
 
 
 def test_executors_lists_live_facts_as_not_run(repo: Path) -> None:
