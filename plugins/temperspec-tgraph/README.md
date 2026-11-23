@@ -40,7 +40,7 @@ The plan ends with a proof table: for each acceptance criterion of the task, the
 
 The last stage writes the description with no model: the task's acceptance criteria, the behaviours and criteria that changed in each spec, the decisions and open questions of discovery, and the deviations of the code report. The notes that steps hand to each other are listed by path as not needed for review.
 
-Per-phase coding is not built yet: a complex plan is still coded in one session. The engine has had the sequential map it needs since release 2 (`0.2.0`); splitting the code step by phase is backlog row B7.
+Per-phase coding is not built yet: a complex plan is still coded in one session. The engine has had the sequential map it needs since release 2 (`0.2.0`); splitting the code step by phase is [issue #122](https://github.com/dbr0vskyi/tempergraph/issues/122).
 
 ## Rule files
 
@@ -68,7 +68,7 @@ No real run has been made yet. The commands and pass criteria are in [docs/plans
 
 ## What comes next
 
-Features found useful and not built yet are in [docs/plans/backlog.plan.md](docs/plans/backlog.plan.md), each with what it waits for.
+Features found useful and not built yet are [GitHub issues labelled `area: temperspec`](https://github.com/dbr0vskyi/tempergraph/issues?q=is%3Aissue+is%3Aopen+label%3A%22area%3A+temperspec%22), each with what it waits for; see [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 ## What it asks of the engine
 

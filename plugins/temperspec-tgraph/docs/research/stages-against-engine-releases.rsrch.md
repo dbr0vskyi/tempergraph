@@ -5,7 +5,7 @@
 | Date | 2026-11-22 |
 | Asked by | The owner, 2026-11-21: once release 2 of the engine is finished, plan and prepare the further stages of temperspec (research, spec updates). Release 2 was reported finished on 2026-11-22 (the engine's R-140 F1, in review) |
 | Method | Every backlog row and every open question of the [overview spec](../specs/00-overview.spec.md) read against the engine as built at release 2 (its specs' "As built" notes and `model/validate.py`), and against release 3 as proposed in the engine's ADR-0132, R-140 and third-release plan (all in review on 2026-11-22). No live run was made for this note |
-| Status | Proposal. Its stages are planned in [next stages](../plans/next-stages.plan.md); nothing here is built |
+| Status | Proposal. Its stages were planned in the next-stages plan (removed 2026-11-23; its rows are now GitHub issues labelled `area: temperspec`) |
 
 ## 1. Summary
 
@@ -69,7 +69,7 @@ Two notes. ECC-B14 matters to temperspec more than to most workflows, because it
 
 ## 3. Recommendation
 
-Build in the order of the [next stages plan](../plans/next-stages.plan.md): evidence (S0), then what release 2 gives with no new shape (S1), then the new shapes of release 2 (S2), then release 3 (S3), then release 4 (S4). The migration of the engine's own specs to temperspec's format is work of its own, started on the owner's word of 2026-11-22.
+Build in the order of the next-stages plan (now the priority labels of the `area: temperspec` issues): evidence (S0), then what release 2 gives with no new shape (S1), then the new shapes of release 2 (S2), then release 3 (S3), then release 4 (S4). The migration of the engine's own specs to temperspec's format is work of its own, started on the owner's word of 2026-11-22.
 
 ## 4. Open questions
 
@@ -77,4 +77,4 @@ None. The owner ruled on 2026-11-22: temperspec is used for the development of t
 
 ## 5. Sources
 
-The package's [backlog](../plans/backlog.plan.md), [next features](next-features.rsrch.md), [comparison](sdd-tools-comparison.rsrch.md) §10 and [plan format note](plan-format-against-reference.rsrch.md); the engine's specs ASK, MAP, FLX, LAD, CXR, CHK, OUT and BUD at `main` (`a278807`); the engine's R-140, ADR-0132, ADR-0133, SWF and third-release plan as proposed on 2026-11-22; R-135 and the package's pull-request report note as proposed on 2026-11-21.
+The package's backlog (now GitHub issues), [next features](next-features.rsrch.md), [comparison](sdd-tools-comparison.rsrch.md) §10 and [plan format note](plan-format-against-reference.rsrch.md); the engine's specs ASK, MAP, FLX, LAD, CXR, CHK, OUT and BUD at `main` (`a278807`); the engine's R-140, ADR-0132, ADR-0133, SWF and third-release plan as proposed on 2026-11-22; R-135 and the package's pull-request report note as proposed on 2026-11-21.

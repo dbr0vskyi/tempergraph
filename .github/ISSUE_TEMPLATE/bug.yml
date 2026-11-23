@@ -1,0 +1,33 @@
+name: Bug
+description: Behaviour that contradicts a spec, an acceptance criterion or a guide.
+labels: ["type: bug", "needs-triage"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: The command, the engine version (`tempergraph --version`), the executor and CLI version, and what you saw.
+    validations: {required: true}
+  - type: textarea
+    id: expected
+    attributes:
+      label: What the spec says should happen
+      description: The spec id or guide section it contradicts.
+    validations: {required: true}
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: The smallest steps or fixture. Scrub prompts, outputs and paths from any run record you paste.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Log lines, run ids, `path:line` pointers. Never paste secrets or session tokens.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options: [engine, self-improvement, temperspec, monitor, examples, repo]
+    validations: {required: true}
