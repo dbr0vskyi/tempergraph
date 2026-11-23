@@ -13,6 +13,9 @@ On 2026-11-22 the owner ran release 3's first task (R3-T1.1, cost cap reservatio
 | S3 | `tempergraph improve backlog temperspec` after both runs | Finding clusters | the state root |
 | S4 | The hand-found list, written before the loop ran (thread "Build release three with temperspec") | Reviewer's notes | the run's pull request |
 | S5 | The review planner and its budget check | Code | `plugins/tempergraph/engine/src/tempergraph/improve/review.py` (`plan`, `run`) |
+| S6 | The loop records of eleven release 3 runs of the night of 2026-11-22 to 2026-11-23 (`r3-t2-1`, `r3-t2-1a`, `r3-t2-2`, `r3-t2-3`, `r3-t3-1`, `r3-t5-1`, `r3-t5-2`, `r3-t8-1` to `r3-t8-4`), read without starting any new review | Loop logs, review records, findings | each run's `loop.jsonl`, `findings.json`, `improve review show`, `improve backlog`, `attention` |
+| S7 | The defects found by hand in those runs (temperspec backlog rows B22, B23, B24, B40 to B44 and the B19 family) | Reviewers' notes | `plugins/temperspec-tgraph/docs/plans/backlog.plan.md` and its history |
+| S8 | The citation check | Code | `plugins/tempergraph/engine/src/tempergraph/improve/review.py` (`CATALOG`, `check`) |
 
 ## Key findings
 
@@ -49,6 +52,37 @@ The second code visit (commits after `2d8787a` on the run's branch `tg/temperspe
 
 The loop fixes (run `temperspec/loop-fixes`, SRV-B24 to SRV-B28, BUD-B16, SIL-B22, SIL-B23) were rerun over the sessions of `r3-t1-1b` with `tempergraph improve review`: all 18 sessions were read, the failed and later ones first, none skipped, for 0.80 USD at max effort. Three `review_repeat` findings reached `improve backlog` on their own: `instruction_ignored` on `code` and on `plan`, and `wasted_turns` on `code`. The sessions after the trip back were read this time but named its symptoms (context, rows marked one by one), not its cause (H4). H3, H5 and H6 stay out of sight of a session review. The rerun wrote into the thread's own state root although `--state-root` named another one.
 
+### F7 Overnight, the loop read 81 sessions in five of eleven runs and missed most hand-found defects by not running `confirmed`
+
+Across the eleven runs of S6 (about 131 USD of runs), the loop reviewed 81 sessions with none skipped by budget, in `r3-t2-1a`, `r3-t2-2`, `r3-t2-3`, `r3-t3-1` and `r3-t5-2`, for 3.47 USD reported (about 2.7% of the runs' spend, 0.49 to 0.95 USD a run against caps of 2.1 to 4.1 USD). In the other six it read nothing:
+
+| Run | Loop | Why |
+|---|---|---|
+| `r3-t5-1`, `r3-t8-1`, `r3-t8-2`, `r3-t8-3` | Never started | Left paused at a gate, or the runner was killed after a timeout; the loop starts only on a final exit |
+| `r3-t8-4` | Started, every review failed | All 16 targets (32 reviewer sessions, cost 0) ended with `429 usage_limit_reached`: four parallel runs had spent the account's five-hour allowance. `loop_summary` said `18 recorded, 0 filed` with an empty top list, and nothing said the reviews had failed |
+| `r3-t2-1` | One target, skipped | Stopped at triage; the review cap was a quarter of 0.05 USD, below the price of one review |
+
+Scored against S7 as F1 scores:
+
+| Hand-found defect | Loop result |
+|---|---|
+| Compound shell commands refused (B24) | Found, kept in every reviewed run |
+| A trip back to plan rewrote finished work (B23) | Found: `r3-t3-1`, `plan.3.step` "discarded the built state of phases 1-4" |
+| The code judge of a 2,100-line change read one file and escalated (B44) | Raised, then dropped: `judge_unread` at 0.9 on `code.2.judge` of `r3-t5-2`, rated `unsupported` by the citation check (F8) |
+| The outcome gate asked for every old criterion of an edited spec (B22) | Cause only: `check_fail:outcome`, `outcome_unmet:*` in `r3-t8-4` |
+| An escaped pipe in a table cell broke the expand check (B40) | Cause only: `check_fail:expand`, `retry_same_path` |
+| Judges paused on questions marked not blocking (B41) | Cause only: `gap_escalation`, `agent_decided:escalation` |
+| A spec over the budget, caught only at the code gate (B42); ids moved by the split (B43) | Missed: `r3-t5-1` had no loop |
+| The folders `prepare` writes into (B19 family) | Missed: no signal |
+
+Two found and one raised of nine, against two and two of six in F1. The difference is in which runs got a loop, not in how well a review reads. The loop also kept, in several runs each, things no reviewer had listed: plan rows marked with one edit per row (30 to 44 edits a code session; ten failed edits in a row in `r3-t5-2`), rule files a prompt names left unopened, expand rows naming files never opened, code written before its tests in five phases of `r3-t5-2`, verification commands run two or three times, and judges grading MET from grep lines (`judge_shallow` kept 19 times).
+
+The fixes of F6 held: no target was skipped by budget, the failed and later sessions were read first, and SRV-B26 recorded three `review_repeat` findings on its own (`instruction_ignored` on `code` and on `plan` in `r3-t3-1`, on `expand` in `r3-t2-3`). The loop summary reached `attention`. Nothing was filed, proposed or trialled, as SRV-B28 and the default autonomy `file` intend.
+
+### F8 The citation check drops judge observations that a person confirmed `confirmed`
+
+`check` (S8) keeps `judge_unread` and `judge_trusts_report` only when the judge read none of the changed files (`changed_read == 0`); the judge of `r3-t5-2` read one of many, so a correct observation at 0.9 was `unsupported`. `judge_shallow` allows only the remedies `brief` and `criterion`, so the same review's `judge_shallow` with remedy `judge_model` was dropped on its remedy class alone. All nine judge observations of `r3-t5-2` were dropped; in the other four runs 19 of 57 were kept.
+
 ## Conclusions
 
 - The loop can see what goes wrong inside sessions (H1, H2, F2) at a low cost: 0.66 USD for 13 sessions at max effort. It cannot see faults that sit in the environment or in files a step wrote outside its view (H5, H6), and it does not explain causes it only counts (H3, H4).
@@ -58,8 +92,9 @@ The loop fixes (run `temperspec/loop-fixes`, SRV-B24 to SRV-B28, BUD-B16, SIL-B2
   3. A one-paragraph loop summary in the run's exit output and in `attention`, naming the top observations, so a person sees them without asking (F4).
   4. An environment lens: a check FAIL whose evidence is the same before and after the step's change is classed environmental and named as such in the finding (H1, H6), and a write outside the declared folders is a finding (H5).
 - Each is a follow-up for the engine's self-improvement specs (SIL, SRV, PRP); none is built here.
+- Overnight (F7, F8), the loop's reach, not its reading, limited it: a run that never reaches a final exit gets no loop, a loop whose reviews all fail reports like one that found nothing, and the check drops the judge observations that matched the worst hand-found defect. The rows that follow are in the engine's [backlog](../plans/backlog.plan.md); what the reviews found about the workflow's steps is in the workflow's own backlog.
 
 ## Open questions
 
 - Should a dev review's budget be a share of the run's spend rather than a fixed figure? Until answered: the fixed cap, ordered by signal once change 1 is built. Owner: engine owner.
-- Is one run enough to file a cross-session observation, or should it wait for a second run? Until answered: wait for a second run, as filing rules do today. Owner: engine owner.
+- Is one run enough to file a cross-session observation, or should it wait for a second run? Until answered: wait for a second run, as filing rules do today. Owner: engine owner. Overnight the same category on the same unit (`instruction_ignored` on `code`) was kept in five runs and filed nowhere, which is evidence for a cross-run count (engine backlog E5).
