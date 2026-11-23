@@ -46,26 +46,30 @@ WHEN a workflow declares `import_roots` THE engine SHALL put those paths, relati
 
 ### WSP-B11 Shapes of parallel work
 
-WHEN units work in parallel THE engine SHALL run a parallel branch that declares neither `write` nor `edit` read-only in the run worktree, failing one whose head or status fingerprint changed; a writer branch (a parallel branch that declares `write` or `edit`) or writing map item in its own sibling worktree cut from the run's branch after a checkpoint commit ([WTR-B20](82-worktree-mode.spec.md), WSP-B19 for a block) and merged without fast-forward in declared order at the join, a block's branches in the order its parallel unit names them; a sequential map one item at a time in the run worktree, item k seeing what earlier items left; and a batch child in its own process and worktree with no join.
+WHEN units work in parallel THE engine SHALL run a parallel branch that declares neither `write` nor `edit`, or an item of a concurrent map whose step declares neither, read-only in the run worktree, failing one whose head or status fingerprint changed; a writer branch (a parallel branch that declares `write` or `edit`) or writing map item (an item of a concurrent map whose step declares `write` or `edit`) in its own sibling worktree cut from the run's branch after a checkpoint commit ([WTR-B20](82-worktree-mode.spec.md), WSP-B19) and merged without fast-forward in declared order at the join, a block's branches in the order its parallel unit names them and a map's items in the order of its list once every item has passed; a sequential map one item at a time in the run worktree, item k seeing what earlier items left; and a batch child in its own process and worktree with no join.
 
 - GIVEN a parallel branch that declares neither `write` nor `edit` and changes a file in the run worktree WHEN it ends THEN it fails
 - GIVEN a sequential map of three items WHEN item 2 runs THEN it sees item 1's files
 - GIVEN two writer branches that each write one file WHEN the join merges them THEN the run branch holds both files and one merge commit per writer branch, in the order the parallel unit names them
 - GIVEN a block of a writer branch and a read-only branch that changes nothing WHEN it runs THEN the read-only branch passes in the run worktree while the writer works in its own sibling worktree
+- GIVEN a concurrent map whose step declares neither `write` nor `edit` and an item that changes a file in the run worktree WHEN the item ends THEN it fails
+- GIVEN a concurrent map whose step declares `write` and whose list names p1, p2 and p3 WHEN the join merges the items THEN the run branch holds one merge commit per item in that order, whichever item ended first
 
-### WSP-B19 The checkpoint before a writer branch starts
+### WSP-B19 The checkpoint before writers start
 
-WHEN a parallel block that has a writer branch is entered THE engine SHALL commit the run worktree's uncommitted changes, new files included, on the run's branch before any branch of the block starts.
+WHEN a parallel block that has a writer branch, or a concurrent map whose step declares `write` or `edit`, is entered THE engine SHALL commit the run worktree's uncommitted changes, new files included, on the run's branch before any branch of the block or item of the map starts.
 
 - GIVEN a file an earlier unit left uncommitted WHEN a block with a writer branch is entered THEN the run's branch holds a commit with that file before any branch of the block starts, and each writer worktree holds the file
 - GIVEN a run worktree with no uncommitted change WHEN a block with a writer branch is entered THEN the run's branch gets no new commit
 - GIVEN a block of read-only branches only WHEN it is entered THEN the run's branch gets no new commit
+- GIVEN a file an earlier unit left uncommitted WHEN a concurrent map whose step declares `write` is entered THEN the run's branch holds a commit with that file before any item starts, and each item's worktree holds the file
 
 ### WSP-B12 A merge conflict at a join
 
-WHEN merging writer branches at a join conflicts THE engine SHALL reset the run branch and end the step blocked with the conflicting paths, with no model call, for a person to decide.
+WHEN merging writer branches at a join, or the items of a writing map once every item has passed, conflicts THE engine SHALL reset the run branch and end the step blocked with the conflicting paths, with no model call, for a person to decide.
 
 - GIVEN two writer branches that change the same line WHEN the join merges them THEN the run branch is as before the merge and the step is blocked listing that path
+- GIVEN two items of a concurrent map whose step declares `write` that change the same line WHEN the join merges them THEN the run branch is as before the merge and the map is blocked listing that path
 
 ### WSP-B4 Batch
 
@@ -148,3 +152,8 @@ WHEN a workflow or a verb needs git outside a repository THE engine SHALL refuse
 - WSP-AC13 (WSP-B19): A file an earlier unit left uncommitted is in a commit on the run's branch before any session of a block with a writer branch starts, and is in each writer worktree
 - WSP-AC14 (WSP-B19): A block of read-only branches adds no commit to the run's branch
 - WSP-AC15 (WSP-B12): Two writer branches that change one line leave the run's branch at the commit it held before the join's first merge, end the join's step blocked with the pause listing that path, and start no model session for the join
+- WSP-AC16 (WSP-B11): In a concurrent map of two items whose step declares `write`, each item works on its own branch in its own sibling worktree, never the run worktree, and each of those branches starts at the head the run's branch held before the map's first item session
+- WSP-AC17 (WSP-B11): After a concurrent map whose step declares `write` and whose items each write one file passes, the run branch holds every file and one merge commit per item, each with the item's branch as second parent, in the order of the map's list whichever item ended first
+- WSP-AC18 (WSP-B11): In a concurrent map whose step declares neither `write` nor `edit`, an item that changes a file in the run worktree fails with `branch_changed_the_workspace`
+- WSP-AC19 (WSP-B19): A file an earlier unit left uncommitted is in a commit on the run's branch before any item session of a concurrent map whose step declares `write` starts, and is in each item's worktree
+- WSP-AC20 (WSP-B12): Two items of a concurrent map whose step declares `write` that change one line leave the run's branch at the commit it held before the first merge, end the map blocked with the pause listing that path, and start no model session after the items have ended

@@ -1,8 +1,14 @@
 """The map unit's list and item bookkeeping (MAP-B8, MAP-B9, MAP-B10). Model-free.
 
-A map's items run through the unit's own four nodes, one item at a time. The `maps` state channel holds, per
-map unit, the list read at the start of the visit, the ids that passed and each item's attempt count. The
-attempt, judgement and counter channels of the unit hold the item in hand.
+A sequential map's items run through the unit's own four nodes, one item at a time. The `maps` state channel holds,
+per map unit, the list read at the start of the visit, the ids that passed and each item's attempt count; the attempt,
+judgement and counter channels of the unit hold the item in hand.
+
+A concurrent map's items run up to `concurrency` at once through the item nodes (`flow.item_node`), each addressed
+`<unit>.<item id>`: its attempt, judgement, feedback, counters, route and pause are kept under that slot, so no item
+reads or overwrites another's. Its `maps` record keeps, per item, the attempt count (`n:<id>`) and how the item stands
+(`st:<id>`: started, parked at a pause, passed or stopped), each under a key of its own so that items finishing in one
+superstep lose nothing, and the ids that passed once the map has finished.
 """
 
 from __future__ import annotations
@@ -13,7 +19,9 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from tempergraph.compiler.state import ITEM, item_view, slot, slot_writes  # noqa: F401 - the item's addressing, re-exported
 from tempergraph.contracts import ExtractContext, MapItem, MapSpec, WorkflowSpec
+from tempergraph.model import flow
 
 ITEM_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,39}$")
 ITEM_TEXT = 4_000
@@ -132,3 +140,44 @@ def passed_write(spec: WorkflowSpec, unit: str, state: Mapping[str, Any]) -> dic
         return {}
     m["passed"] = list(dict.fromkeys(list(m.get("passed") or []) + [item]))
     return {"maps": {unit: m}}
+
+
+# -- the concurrent map (MAP-B9, MAP-B10) ---------------------------------------------------------------------------
+
+STATES = ("started", "parked", "passed", "stopped")  # `st:<id>`; an item not started has none
+
+
+def concurrent(spec: WorkflowSpec, unit: str) -> bool:
+    return flow.concurrent_map(spec, unit)
+
+
+def item_in_hand(state: Mapping[str, Any]) -> dict[str, Any] | None:
+    """The item a concurrent map's node was sent, or None for the unit's own node."""
+    got = state.get(ITEM)
+    return dict(got) if isinstance(got, Mapping) else None
+
+
+def item_state(m: Mapping[str, Any], item: str) -> str | None:
+    return m.get(f"st:{item}")
+
+
+def passed_item(m: Mapping[str, Any], item: str) -> bool:
+    return item_state(m, item) == "passed"
+
+
+def pending_all(m: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Every item of the list that has not passed in this visit, in list order, with its 1-based index and the count."""
+    items = m.get("items") or []
+    return [{**it, "index": i, "count": len(items)} for i, it in enumerate(items, start=1)
+            if not passed_item(m, it["id"])]
+
+
+def with_state(m: Mapping[str, Any], state: str) -> list[str]:
+    """The ids of the items standing in `state` (`None` for an item not started yet), in list order."""
+    return [it["id"] for it in m.get("items") or [] if item_state(m, it["id"]) == state]
+
+
+def passed_item_write(unit: str, item: str) -> dict[str, Any]:
+    return {"maps": {unit: {f"st:{item}": "passed"}}}
+
+

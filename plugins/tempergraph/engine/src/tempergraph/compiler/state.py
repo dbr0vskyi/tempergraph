@@ -6,7 +6,9 @@ written as ``None`` is removed, which is how a trip back clears artifacts, value
 
 from __future__ import annotations
 
+import functools
 from collections.abc import Mapping
+from dataclasses import dataclass, field
 from typing import Annotated, Any, TypedDict
 
 
@@ -26,6 +28,24 @@ def merge_units(old: dict[str, Any] | None, new: dict[str, Any] | None) -> dict[
             out[unit] = merged
         else:
             out[unit] = val
+    return out
+
+
+def merge_maps(old: dict[str, Any] | None, new: dict[str, Any] | None) -> dict[str, Any]:
+    """The reducer of the `maps` channel (MAP-B9, MAP-B10, CMP-AC9): `merge_units`, safe for two items of a concurrent map
+    ending in one superstep. Each item writes keys of its own (`n:<id>`, `st:<id>`), which merge by item id, and the
+    ids that passed are a union; a write that carries a list (it starts a visit, or rewrites the record whole) is
+    taken as it is, so a new visit forgets the passed ids of the last."""
+    out: dict[str, Any] = dict(old or {})
+    for unit, val in (new or {}).items():
+        held = out.get(unit)
+        if isinstance(val, dict) and isinstance(held, dict) and "items" not in val and isinstance(val.get("passed"), list):
+            union = list(dict.fromkeys(list(held.get("passed") or []) + val["passed"]))
+            out.update(merge_units({unit: held}, {unit: {**val, "passed": union}}))
+        else:
+            out.update(merge_units({unit: held} if unit in out else {}, {unit: val}))
+            if val is None:
+                out.pop(unit, None)
     return out
 
 
@@ -92,6 +112,84 @@ def flat(channel: Mapping[str, Any] | None) -> dict[str, Any]:
     return out
 
 
+def fold(state: Mapping[str, Any], writes: Mapping[str, Any]) -> dict[str, Any]:
+    """`state` as it reads once `writes` are applied through each channel's own reducer: what a node of a concurrent
+    map's item hands to the next node of the same item (a `Send` carries a state of its own, not the channels)."""
+    out = dict(state)
+    for channel, value in writes.items():
+        reducer = _reducers().get(channel)
+        out[channel] = reducer(out.get(channel), value) if reducer is not None else value
+    return out
+
+
+ITEM = "__item"  # the key a node of a concurrent map's item finds in the state it is sent: `{unit, id, slot}`
+SLOT_CHANNELS = ("attempts", "judgements", "feedback", "counters", "route", "pause")  # an item's are keyed by its slot
+
+
+def slot(unit: str, item: str) -> str:
+    """`<unit>.<item id>`: how an item of a concurrent map is addressed (an item id holds no dot)."""
+    return f"{unit}.{item}"
+
+
+def item_view(state: Mapping[str, Any], unit: str, item: str) -> dict[str, Any]:
+    """`state` as an item's node reads it: the slot's own record in the place the unit's own would be, so the step,
+    judge, gate and human bodies run on an item as they run on a unit."""
+    at = slot(unit, item)
+    view = dict(state)
+    for channel in SLOT_CHANNELS:
+        held = dict(state.get(channel) or {})
+        if at in held:
+            held[unit] = held[at]
+        else:
+            held.pop(unit, None)
+        view[channel] = held
+    view[ITEM] = {"unit": unit, "id": item, "slot": at}
+    return view
+
+
+def slot_writes(writes: Mapping[str, Any], unit: str, item: str) -> dict[str, Any]:
+    """What a body wrote for the unit, moved to the item's slot so that items finishing in one superstep never share a key."""
+    out = dict(writes)
+    at = slot(unit, item)
+    for channel in SLOT_CHANNELS:
+        got = out.get(channel)
+        if isinstance(got, dict) and unit in got:
+            out[channel] = {(at if k == unit else k): v for k, v in got.items()}
+    return out
+
+
+def item_end(unit: str, item: str, token: str, node: str) -> dict[str, Any]:
+    """The `maps` write of an item's turn: it goes on (a retry), has passed, waits for a person (parked) or has stopped
+    the map, naming where the map then goes (a stop, a fallback or a person's rewind)."""
+    key = f"st:{item}"
+    if token == "RETRY":
+        return {"maps": {unit: {key: "started"}}}
+    if token in ("NEXT", "PROCEED"):
+        return {"maps": {unit: {key: "passed"}}}
+    if token == "ESCALATE":
+        return {"maps": {unit: {key: "parked"}}}
+    return {"maps": {unit: {key: "stopped", "exit": {"token": token, "node": node, "item": item}}}}
+
+
+@dataclass
+class Move:
+    """What a concurrent map's own step node does next: the state it writes, the items it sends to an item node (`kind`
+    is `step` or `human`), or the node it goes to; with none of these it waits for the items that are running."""
+
+    writes: dict[str, Any]
+    items: list[str] = field(default_factory=list)
+    kind: str = "step"
+    goto: str | None = None
+
+
+@functools.lru_cache(maxsize=1)
+def _reducers() -> dict[str, Any]:
+    from typing import get_type_hints
+
+    return {name: m for name, hint in get_type_hints(RunState, include_extras=True).items()
+            for m in getattr(hint, "__metadata__", ()) if callable(m)}
+
+
 class RunState(TypedDict, total=False):
     request: Annotated[dict[str, Any], replace]  # {task_id, inputs, text_ref, chars}
     # WorkspaceRecord, writer worktrees included (its `children`). Written by the fork and by the join, each alone in
@@ -107,7 +205,7 @@ class RunState(TypedDict, total=False):
     feedback: Annotated[dict[str, Any], merge_units]  # unit -> one-time feedback for the next attempt
     counters: Annotated[dict[str, Any], merge_units]  # unit -> budget counters
     visits: Annotated[dict[str, Any], merge_units]  # unit -> {visit, reason, from}
-    maps: Annotated[dict[str, Any], merge_units]  # map unit -> {visit, items, passed, attempts} (MAP-B8, MAP-B9, MAP-B10)
+    maps: Annotated[dict[str, Any], merge_maps]  # map unit -> {visit, items, passed, n:<id>, st:<id>} (MAP-B8 to MAP-B10)
     rulings: Annotated[dict[str, Any], merge_units]  # id -> ruling (own reducer, never cleared by a trip back)
     finalized: Annotated[dict[str, Any], replace]
     run: Annotated[dict[str, Any], merge_run]  # run-level facts: {"stopped": {...}, "path": [...]}

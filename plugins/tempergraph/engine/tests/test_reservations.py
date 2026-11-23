@@ -16,6 +16,9 @@ from tempergraph.contracts import SessionOptions, SessionRequest, SessionResult
 from tempergraph.run.reserve import Ledger
 from tempergraph.store.layout import run_dir, state_root_path
 
+from .test_map import THREE
+from .test_map_concurrent import ByItem, concurrent
+from .test_map_concurrent import go as go_map
 from .test_parallel import ByUnit, go, recs, steps, wf
 
 BRANCHES = ("security", "perf")
@@ -206,15 +209,99 @@ def test_a_waiting_branch_is_refused_when_the_running_session_costs_too_much_BUD
     assert (exit_rec["exit_code"], exit_rec["reason"]) == (5, "cost_cap")
 
 
-def test_ac_5_the_not_built_line_names_only_maps_contests_and_councils() -> None:  # AC 5
-    """Reservations are built for parallel branches, writer branches included; the spec 08 line names what is not."""
+class CostedItems(ByItem):
+    """`ByItem` with a cost per session: the plan step and its judge cost `plan` each, an item step `item`, an item judge
+    0.01. The first item step to start blocks until the log shows an item waiting for its reservation."""
+
+    def __init__(self, repo: Path, items: list[dict[str, str]], *, plan: float = 0.5, item: float = 0.4) -> None:
+        super().__init__(items)
+        self.repo, self.plan, self.item_cost = repo, plan, item
+        self.first = threading.Lock()
+        self.begun: list[str] = []
+
+    def run_step(self, req: SessionRequest, sink: Any) -> SessionResult:
+        unit, item = self.whose(req)
+        res = super().run_step(req, sink)
+        res.usage.reported_cost_usd = self.plan if unit == "plan" else self.item_cost
+        if unit == "phase":
+            with self.first:
+                self.begun.append(req.session_key)
+                lead = len(self.begun) == 1
+            end = time.monotonic() + 10
+            while lead and time.monotonic() < end and not self._waiting():
+                time.sleep(0.02)
+        return res
+
+    def run_judge(self, req: SessionRequest, views: Any, sink: Any) -> SessionResult:
+        unit, _ = self.whose(req)
+        res = super().run_judge(req, views, sink)
+        res.usage.reported_cost_usd = self.plan if unit == "plan" else 0.01
+        return res
+
+    def _waiting(self) -> bool:
+        p = run_dir(state_root_path(self.repo), "demo", "M-1") / "run.jsonl"
+        try:
+            return any(json.loads(ln).get("kind") == "reservation" and json.loads(ln).get("action") == "waiting"
+                       for ln in p.read_text().splitlines())
+        except (OSError, ValueError):
+            return False
+
+
+def item_spec(cap: float, session_cap: float = 2.5) -> Any:
+    """A concurrent map of read-only items, two at once, each item step with a per-session cost cap, under `cap`."""
+    base = concurrent(concurrency=2)
+    phase = base.units["phase"]
+    step = dataclasses.replace(phase.step, session_options=SessionOptions(cost_cap_usd=session_cap))
+    return dataclasses.replace(base, units={**base.units, "phase": dataclasses.replace(phase, step=step)},
+                               run_cost_cap_usd=cap)
+
+
+def item_records(repo: Path) -> list[dict[str, Any]]:
+    p = run_dir(state_root_path(repo), "demo", "M-1") / "run.jsonl"
+    return [json.loads(ln) for ln in p.read_text().splitlines()]
+
+
+def test_concurrent_items_take_reservations_from_the_one_ledger_BUD_AC9(repo: Path) -> None:  # BUD-AC9 (BUD-B12, BUD-B14), AC 5
+    ex = CostedItems(repo, THREE[:2])
+    out = go_map(repo, item_spec(5.0), ex)
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    rows = item_records(repo)
+    reserve = [r for r in rows if r["kind"] == "reservation"]
+    waits = [r for r in reserve if r["action"] == "waiting" and r["session_key"].endswith(".step")]
+    (wait,) = waits  # the item that waited, once
+    (lead,) = [r["session_key"] for r in rows if r["kind"] == "attempt_start" and r["session_key"].startswith("phase.")
+               and r["session_key"] != wait["session_key"] and r["session_key"].endswith(".step")][:1]
+    assert wait["waiting_for"] == [lead]  # the running item's session
+    ended = next(r for r in rows if r["kind"] == "agent_run" and r["session_key"] == lead)
+    held = next(r for r in reserve if r["action"] == "held" and r["session_key"] == wait["session_key"])
+    assert held["seq"] > ended["seq"] and held["spent_usd"] > wait["spent_usd"]  # after that session's `agent_run`
+    assert [r["session_key"] for r in waits] == [wait["session_key"]]  # and no second `waiting` record
+    for r in reserve:
+        if r["action"] == "held":  # no `held` record of the run adds up to more than the cap
+            assert round(r["spent_usd"] + r["in_flight_usd"] + r["reserved_usd"], 6) <= r["cap_usd"], r
+
+
+def test_no_item_starts_when_the_reserved_spend_would_cross_the_cap_BUD_AC9(repo: Path) -> None:  # BUD-AC9 (BUD-B12, BUD-B15), AC 5
+    ex = CostedItems(repo, THREE[:2])
+    out = go_map(repo, item_spec(3.0), ex)  # the plan spent 1.00; an item reserves 2.50, which does not fit under 3.00
+    assert out.exit_code is ExitCode.BUDGET_OR_INFRA and out.reason == "cost_cap", out.message
+    rows = item_records(repo)
+    assert [r for r in rows if r["kind"] == "reservation" and r["action"] == "refused"]
+    assert not [r for r in rows if r["kind"] == "attempt_start" and r["session_key"].startswith("phase.")]
+    assert not ex.sessions.get("phase.p1") and not ex.sessions.get("phase.p2")
+
+
+def test_ac_5_the_not_built_line_names_only_contests_and_councils() -> None:  # AC 5, BUD-AC9
+    """Reservations are built for parallel branches, writer branches included, and for the items of a concurrent map;
+    the spec 08 line names what is not."""
     root = next(p for p in Path(__file__).resolve().parents if (p / "plugins" / "tempergraph" / "docs").is_dir())
     docs = root / "plugins" / "tempergraph" / "docs"
     lines = [ln for ln in (docs / "specs" / "08-budgets-and-failures.spec.md").read_text().splitlines()
              if ln.startswith("- Not built yet")]
     assert len(lines) == 1
     line = lines[0].lower()
-    assert all(w in line for w in ("maps", "contests", "councils", "projection", "bud-b12", "bud-b15"))
+    assert all(w in line for w in ("contests", "councils", "projection", "bud-b12", "bud-b15"))
+    assert "maps" not in line  # the items of a concurrent map reserve too
     assert "check spend only" not in line
     assert "read-only branches" not in line  # a writer branch reserves too
     plan =(docs / "plans" / "third-release.plan.md").read_text()

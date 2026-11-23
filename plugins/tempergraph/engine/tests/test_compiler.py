@@ -13,7 +13,7 @@ from langgraph.types import Command
 
 from tempergraph.compiler import compile_workflow
 from tempergraph.compiler import graph as graph_module
-from tempergraph.compiler.state import RunState, merge_run, merge_units, replace
+from tempergraph.compiler.state import RunState, merge_maps, merge_run, merge_units, replace
 from tempergraph.model import flow
 from tempergraph.model.diagram import diagram_model, edge_set, to_mermaid
 
@@ -168,9 +168,42 @@ def test_every_state_channel_has_a_two_writer_reducer() -> None:
         reducers = [m for m in getattr(hint, "__metadata__", ()) if callable(m)]
         assert len(reducers) == 1, f"channel {channel} has no reducer"
         if reducers[0] not in (replace, merge_run):  # a unit-keyed channel: two branches' keys both survive
-            assert reducers[0] is merge_units, channel
+            assert reducers[0] is (merge_maps if channel == "maps" else merge_units), channel
             assert reducers[0]({"a": {"x": 1}}, {"b": {"y": 2}}) == {"a": {"x": 1}, "b": {"y": 2}}, channel
     assert merge_run({"path": {"units": ["a"]}}, {"path": {"units": ["b"]}})["path"]["units"] == ["a", "b"]
+
+
+def test_merge_maps_unions_passed_items_and_keeps_two_items_entries() -> None:  # CMP-AC9 (CMP-B17), MAP-AC5
+    """Two items of a concurrent map ending in one superstep both survive: the passed ids are a union, each item's own
+    entries (`n:<id>`, `st:<id>`) are kept, and a write that starts a visit anew replaces the list and the passed ids."""
+    held = {"phase": {"items": [{"id": "p1"}, {"id": "p2"}], "passed": ["p1"], "n:p1": 1, "st:p1": "passed"}}
+    one = merge_maps(held, {"phase": {"passed": ["p2"], "n:p2": 1, "st:p2": "passed"}})
+    assert one["phase"]["passed"] == ["p1", "p2"] and one["phase"]["n:p1"] == 1 and one["phase"]["st:p2"] == "passed"
+    two = merge_maps(merge_maps(held, {"phase": {"st:p2": "parked"}}), {"phase": {"passed": ["p2"], "n:p2": 2}})
+    assert two["phase"]["passed"] == ["p1", "p2"] and two["phase"]["st:p2"] == "parked" and two["phase"]["n:p2"] == 2
+    fresh = merge_maps(one, {"phase": {"visit": 2, "items": [{"id": "p1"}], "passed": []}})
+    assert fresh["phase"]["items"] == [{"id": "p1"}] and fresh["phase"]["passed"] == []  # a new visit forgets the old
+    assert merge_maps(one, {"phase": None}) == {}  # a trip back deletes the map's record
+    assert merge_maps(one, {"phase": {"st:p1": None}})["phase"].get("st:p1") is None
+
+
+def test_a_map_compiles_to_the_units_four_nodes_and_a_concurrent_map_adds_its_item_nodes() -> None:  # CMP-AC3 (CMP-B14 map)
+    from .test_map import mapped
+
+    seq = mapped()
+    conc = mapped(mode="concurrent", concurrency=2)
+    a = compile_workflow(seq, Scripted(seq, {}), None)
+    b = compile_workflow(conc, Scripted(conc, {}), None)
+    unit_nodes = [n for unit in seq.order for n in flow.node_names(unit)] + [flow.FINALIZER]
+    assert sorted(a.nodes) == sorted(unit_nodes)  # a sequential map: the unit's four nodes and no item node
+    items = [flow.item_node("phase", kind) for kind in ("step", "judge", "gate", "human")]
+    assert sorted(b.nodes) == sorted(unit_nodes + items)  # a concurrent map adds only its item fan-out
+    assert not [e for e in a.edges if "item_" in e[0] + e[1]]
+    assert {e for e in b.edges} - {e for e in a.edges} == {
+        ("phase.step", "phase.item_step"), ("phase.step", "phase.item_human"),
+        ("phase.item_step", "phase.item_judge"), ("phase.item_judge", "phase.item_gate"),
+        ("phase.item_gate", "phase.item_step"), ("phase.item_gate", "phase.step"),
+        ("phase.item_human", "phase.item_step"), ("phase.item_human", "phase.step")}
 
 
 def test_reducer_deletes() -> None:

@@ -1,4 +1,5 @@
-"""The sequential map: one fresh session per item, each gated on its own (MAP-AC1 to AC-4, VAL-B4)."""
+"""The sequential map's tests: one fresh session per item, each gated on its own (MAP-AC1 to AC-4, VAL-B4). The
+concurrent map's are in `test_map_concurrent*.py`."""
 
 from __future__ import annotations
 
@@ -238,7 +239,10 @@ def test_item_model_picks_among_declared_aliases(repo: Path) -> None:  # MAP-B7,
     (lambda: mapped(item_gate={"back_targets": ["plan"]}), "map-back-target"),
     (lambda: _reordered(), "map-items-unknown"),
     (lambda: _wrong_key(), "map-items-unknown"),
-    (lambda: mapped(mode="concurrent"), "not_in_release"),
+    (lambda: mapped(mode="concurrent", concurrency=0), "map-invalid"),
+    (lambda: mapped(mode="concurrent", concurrency=11), "map-invalid"),
+    (lambda: mapped(mode="concurrent", concurrency=2.5), "map-invalid"),  # a non-integer
+    (lambda: mapped(mode="sometimes"), "map-invalid"),
     (lambda: mapped(max_items=80), "map-invalid"),
     (lambda: mapped(on_empty="guess"), "map-invalid"),
     (lambda: mapped(item_model=by_item), "map-invalid"),
@@ -247,6 +251,31 @@ def test_item_model_picks_among_declared_aliases(repo: Path) -> None:  # MAP-B7,
 def test_validation(build: Any, code: str) -> None:  # MAP-AC2
     found = [f.code for f in errors(validate(build(), {"claude": DECLARED["claude"]}))]
     assert code in found, found
+
+
+def _concurrent(tools: list[str], workspace: str = "auto", concurrency: int = 3) -> WorkflowSpec:
+    """A concurrent map whose step declares `tools`, in a workflow that declares `workspace`."""
+    spec = mapped(mode="concurrent", concurrency=concurrency)
+    m = spec.units["phase"]
+    assert m.step is not None
+    changed = dataclasses.replace(m, step=dataclasses.replace(m.step, tools=tuple(tools)))
+    return dataclasses.replace(spec, units={**spec.units, "phase": changed}, workspace=workspace)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("concurrency", [1, 3, 10])
+def test_a_concurrent_map_validates(concurrency: int) -> None:  # MAP-AC2, MAP-AC5 (MAP-B7: the mode is built)
+    found = errors(validate(_concurrent(["read", "write"], concurrency=concurrency), {"claude": DECLARED["claude"]}))
+    assert found == [], found
+
+
+def test_a_writing_concurrent_map_in_place_is_refused() -> None:  # MAP-AC2 (MAP-B11), MAP-AC5
+    caps = {"claude": DECLARED["claude"]}
+    for tool in ("write", "edit"):
+        codes = [f.code for f in errors(validate(_concurrent(["read", tool], workspace="in_place"), caps))]
+        assert "map-writer-in-place" in codes, codes
+    assert errors(validate(_concurrent(["read"], workspace="auto"), caps)) == []
+    assert errors(validate(_concurrent(["read", "shell"], workspace="in_place"), caps)) == []  # `shell` is no writer
+    assert errors(validate(_concurrent(["read", "write"], workspace="worktree"), caps)) == []
 
 
 def _wrong_key() -> WorkflowSpec:

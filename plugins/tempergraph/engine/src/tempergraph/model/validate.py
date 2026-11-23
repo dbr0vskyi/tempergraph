@@ -366,14 +366,22 @@ class _Validator:
                 self.warn("criterion-no-check-method", name, f"criterion {c.id or c.text[:30]!r} has no check method")
 
     def _map(self, name: str, u: UnitSpec) -> None:
-        """MAP-B11 and the limits of MAP-B7; the concurrent mode is a later release."""
+        """MAP-B11 and the limits of MAP-B7: the mode, `concurrency` of a concurrent map, and a concurrent map whose
+        step writes in a workflow that has no worktrees."""
         m = u.map
         s = self.spec
         if m is None:
             self.err("map-invalid", name, "a map unit needs its map fields")
             return
-        if m.mode != "sequential":
-            self.err("not_in_release", name, f"map mode {m.mode!r} is built in release 3, not release {RELEASE}")
+        if m.mode not in ("sequential", "concurrent"):
+            self.err("map-invalid", name, f"map mode {m.mode!r} is not sequential or concurrent")
+        elif m.mode == "concurrent":
+            if isinstance(m.concurrency, bool) or not isinstance(m.concurrency, int) or not 1 <= m.concurrency <= 10:
+                self.err("map-invalid", name, "`concurrency` must be an integer from 1 to 10")
+            if flow.writer_map(s, name) and s.workspace == "in_place":  # MAP-B11, WFM-B8, WSP-B11
+                self.err("map-writer-in-place", name, f"{name!r} is a concurrent map whose step declares `write` or "
+                         "`edit`, which needs a worktree for each item; a workflow that declares `workspace: "
+                         "in_place` has none (WSP-B11)")
         if m.on_empty not in ("one_item", "stop", "skip"):
             self.err("map-invalid", name, f"on_empty {m.on_empty!r} is not one_item, stop or skip")
         if isinstance(m.max_items, bool) or not isinstance(m.max_items, int) or not 1 <= m.max_items <= 50:

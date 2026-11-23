@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from tempergraph import git as gitmod
-from tempergraph.compiler.state import RunState
+from tempergraph.compiler.state import Move, RunState
 from tempergraph.contracts import (
     CheckResult,
     Executor,
@@ -165,12 +165,20 @@ class EngineNodes:
         return Path((state.get("workspace") or {}).get("path") or self.ctx.state_root.parent)
 
     def _writer_child(self, state: Mapping[str, Any], unit: str) -> Mapping[str, Any] | None:
-        """The workspace record's child for `unit` when `unit` is a writer branch of a parallel block."""
+        """The workspace record's child for `unit` when `unit` is a writer branch of a parallel block, or for the item in
+        hand when `unit` is a concurrent map whose step writes (its child is addressed by the item's slot)."""
+        held = mapping.item_in_hand(state)
+        if held is not None:
+            return self._child_of(state, held["slot"]) if flow.writer_map(self.ctx.spec, unit) else None
         block = flow.block_of(self.ctx.spec, unit)
         if block is None or unit not in flow.writer_branches(self.ctx.spec, block):
             return None
+        return self._child_of(state, unit)
+
+    @staticmethod
+    def _child_of(state: Mapping[str, Any], name: str) -> Mapping[str, Any] | None:
         for child in (state.get("workspace") or {}).get("children") or []:
-            if child.get("unit") == unit:
+            if child.get("unit") == name:
                 return child
         return None
 
@@ -226,24 +234,36 @@ class EngineNodes:
         """WSP-B11, WSP-B12: merge each writer branch into the run branch without fast-forward, in the order the
         parallel unit names them. A conflict (or a merge git refuses) puts the run branch back at the commit it held
         before the first merge. Returns the new workspace record, or None with what the attempt records."""
+        return self._merge_children(state, [(u, u, f"Merge writer branch {u} of {join}")
+                                            for u in flow.writer_branches(self.ctx.spec, join)])
+
+    def _merge_items(self, unit: str, state: Mapping[str, Any], ids: Sequence[str]
+                     ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+        """WSP-B11, WSP-B12: the same merge for the items of a writing concurrent map, in the order of the list."""
+        return self._merge_children(state, [(mapping.slot(unit, i), i, f"Merge map item {i} of {unit}") for i in ids])
+
+    def _merge_children(self, state: Mapping[str, Any], order: Sequence[tuple[str, str, str]]
+                        ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+        """Merge the children of the workspace record named by `order` (the child's unit, the name it is told by, the
+        merge message), one after the other, without fast-forward."""
         rec = WorkspaceRecord.from_json(dict(state.get("workspace") or {}))
         run_path = Path(rec.path)
         children = {str(c.get("unit")): c for c in rec.children}
         before = gitmod.head(run_path)
-        for unit in flow.writer_branches(self.ctx.spec, join):
-            child = children.get(unit)
+        for key, label, message in order:
+            child = children.get(key)
             if child is None:
                 continue
             try:
-                gitmod.commit_all(Path(str(child["path"])), f"tempergraph: work of {unit}")  # what the session left
-                paths = gitmod.merge_no_ff(run_path, str(child["branch"]), f"Merge writer branch {unit} of {join}")
+                gitmod.commit_all(Path(str(child["path"])), f"tempergraph: work of {label}")  # what the session left
+                paths = gitmod.merge_no_ff(run_path, str(child["branch"]), message)
                 failure = ""
             except gitmod.GitError as exc:
                 paths, failure = [], str(exc)
             if paths or failure:
                 gitmod.merge_abort(run_path)
                 gitmod.reset_hard(run_path, before)
-                return None, {"escalate": "merge_conflict", "conflicts": paths, "conflict_branch": unit,
+                return None, {"escalate": "merge_conflict", "conflicts": paths, "conflict_branch": label,
                               "merge_error": failure}
         rec.last_head = gitmod.head(run_path)
         return rec.to_json(), {}
@@ -259,16 +279,23 @@ class EngineNodes:
             raise Drain("cost_cap")
 
     def _hold(self, unit: str, state: Mapping[str, Any]) -> dict[str, Any] | None:
-        """What a session of `unit` needs to take a reservation (BUD-B12): only a branch of a parallel block, in
-        a run with a cost cap. Units outside a block run one session at a time and keep the BUD-B9 check."""
+        """What a session of `unit` needs to take a reservation (BUD-B12): only a branch of a parallel block or an item of a
+        concurrent map, in a run with a cost cap. Other units run one session at a time and keep the BUD-B9 check."""
         spec = self.ctx.spec
         cap = spec.run_cost_cap_usd
         block = flow.block_of(spec, unit)
-        if cap is None or block is None:
+        held = mapping.item_in_hand(state)
+        if cap is None or (block is None and held is None):
             return None
+        if held is not None:  # an item of a concurrent map: the items that may run at once share the cap (BUD-B12)
+            m = spec.units[unit].map
+            assert m is not None
+            width = min(m.concurrency, max(len(mapping.record(state, unit).get("items") or []), 1))
+        else:
+            assert block is not None
+            width = len(spec.units[block].branches)
         totals = CostTotals.from_json((state.get("run") or {}).get("cost"))
-        return {"cap": float(cap), "width": len(spec.units[block].branches), "snapshot": totals.sessions,
-                "spent": totals.figure()}
+        return {"cap": float(cap), "width": width, "snapshot": totals.sessions, "spent": totals.figure()}
 
     def _session(self, ex: Executor, req: SessionRequest, judge_views: Any = None,
                  lessons_digest: str | None = None, extra: Mapping[str, Any] | None = None,
@@ -373,13 +400,17 @@ class EngineNodes:
         entered = prev.get("visit") != visit
         workdir = self._workdir(state, unit)
         path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
-        if entered:
+        sent = mapping.item_in_hand(state)  # an item of a concurrent map: the unit's own entry was logged by its step node
+        if entered and sent is None:
             fp = gitmod.fingerprint(workdir)
             self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=fp.dirty,
                                entered_from=_entered_from(state, unit))
         item: dict[str, Any] | None = None
         maps: dict[str, Any] = {}
-        if u.map is not None:  # the list is read once per visit; the item in hand is the first not passed
+        if u.map is not None and sent is not None:  # the item the node was sent, its own attempt count
+            m, item = self._concurrent_item(unit, state, sent["id"])
+            maps = {unit: m}
+        elif u.map is not None:  # the list is read once per visit; the item in hand is the first not passed
             done, m, item = self._map_item(unit, state, visit, workdir, prev, path_units)
             if done is not None:
                 return done
@@ -548,8 +579,9 @@ class EngineNodes:
             record.update(foreign_worktrees=foreign, warnings=[f"foreign_worktree: {rel}" for rel in foreign])
         if record["slow_host"]:
             record.update(infra_cause="slow_host", infra_spent=False)
-        if res.ok and before != after and flow.block_of(spec, unit) and self._writer_child(state, unit) is None:
-            # WSP-B11: a read-only branch changes nothing in the run worktree; a writer's fingerprint is its own
+        if res.ok and before != after and (flow.block_of(spec, unit) or sent is not None) \
+                and self._writer_child(state, unit) is None:
+            # WSP-B11: a read-only branch or item changes nothing in the run worktree; a writer's fingerprint is its own
             record.update(ok=False, error_kind="branch_changed_the_workspace")
         if after_failed is not None:
             record.update(ok=False, error_kind=f"script_failed:{after_failed}",
@@ -569,6 +601,16 @@ class EngineNodes:
                     "values": {unit: vals} if vals else {}, "run": run, "maps": maps, **seen}
         return {"attempts": {unit: record}, "artifacts": {unit: arts or None},
                 "values": {unit: vals or None}, "run": run, **seen}  # feedback is cleared at the gate
+
+    @staticmethod
+    def _concurrent_item(unit: str, state: Mapping[str, Any], iid: str) -> tuple[dict[str, Any], dict[str, Any]]:
+        """The item a concurrent map's node was sent: its `maps` write (its attempt count, which continues across
+        visits so session keys never repeat) and the item with its index and attempt (MAP-B9)."""
+        m = mapping.record(state, unit)
+        items = m.get("items") or []
+        at = next(i for i, it in enumerate(items, start=1) if it["id"] == iid)
+        n = int(m.get(f"n:{iid}", 0)) + 1
+        return {f"n:{iid}": n}, {**items[at - 1], "index": at, "count": len(items), "attempt": n}
 
     def _map_item(self, unit: str, state: Mapping[str, Any], visit: int, workdir: Path, prev: Mapping[str, Any],
                   path_units: list[str]) -> tuple[dict[str, Any] | None, dict[str, Any], dict[str, Any] | None]:
@@ -598,6 +640,134 @@ class EngineNodes:
         n = int((m.get("attempts") or {}).get(item["id"], 0)) + 1
         m["attempts"] = {**(m.get("attempts") or {}), item["id"]: n}
         return None, m, {**item, "attempt": n}
+
+    def map_move(self, unit: str, state: RunState) -> Move:
+        """MAP-B8 to MAP-B10, MAP-B12, MAP-B13: the step node of a concurrent map. It reads the list once per visit, sends
+        the next `concurrency` items that have not started to the item nodes, waits while items run, sends the items
+        that wait for a person to their pause once nothing else can run, and when every item has passed merges the
+        items of a writing map and runs the map's check once on the result, then goes on to the unit's judge."""
+        spec = self.ctx.spec
+        u = spec.units[unit]
+        assert u.map is not None
+        visit = int(((state.get("visits") or {}).get(unit) or {}).get("visit", 1))
+        prev = (state.get("attempts") or {}).get(unit) or {}
+        judge_node = flow.node_names(unit)[1]
+        workdir = self._workdir(state)
+        path_units = list(((state.get("run") or {}).get("path") or {}).get("units") or [])
+        run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
+        writes: dict[str, Any] = {}
+        m = mapping.record(state, unit)
+        if m.get("visit") != visit:  # a new visit: the list is read once, the items are all still to start
+            self._boundary(state)
+            if prev.get("visit") != visit:
+                fp = gitmod.fingerprint(workdir)
+                self.ctx.log.write("unit_entered", unit=unit, visit=visit, head_commit=fp.head, dirty=fp.dirty,
+                                   entered_from=_entered_from(state, unit))
+            base = {"attempt": int(prev.get("attempt", 0)) + 1, "visit": visit, "ok": True, "text": "", "issues": [],
+                    "tools": [], "session_id": None, "escalate": None, "infra_spent": False, "check": None,
+                    "item": None, "timed_out": False, "map_done": None, "map_skip": None, "map_fault": None}
+            try:
+                items = mapping.read_items(spec, unit, state, workdir)
+            except mapping.MapFault as exc:
+                self.ctx.log.write("map_items", unit=unit, visit=visit, count=exc.count, ids=[], error=exc.code,
+                                   detail=str(exc))
+                return Move({"attempts": {unit: {**base, "ok": False, "map_fault": f"{unit}: {exc}"}},
+                                     "run": run}, goto=judge_node)
+            self.ctx.log.write("map_items", unit=unit, visit=visit, count=len(items), ids=[i.id for i in items])
+            stale = {k: None for k in m if k.startswith("st:") or k == "exit"}  # nothing of an earlier visit stands
+            fresh = {"visit": visit, "items": [{"id": i.id, "text": i.text} for i in items], "passed": [],
+                     **{k: v for k, v in m.items() if k.startswith("n:")}}  # attempt numbers continue across visits
+            writes = {"attempts": {unit: base}, "maps": {unit: {**stale, **fresh}}, "run": run}
+            m = {**{k: v for k, v in m.items() if k not in stale}, **fresh}
+            if not items:  # `on_empty: skip` passes the map with no item
+                writes["attempts"][unit]["map_skip"] = True
+                return Move(writes, goto=judge_node)
+            if flow.writer_map(spec, unit):  # WSP-B19, WSP-B11: the checkpoint, then one worktree per item
+                writes["workspace"] = self._enter_writer_map(unit, state, [i.id for i in items])
+        standing = {it["id"]: mapping.item_state(m, it["id"]) for it in m["items"]}
+        if "started" in standing.values():  # items that run finish first, whatever the others wait for
+            return Move(writes)
+        if m.get("exit"):  # an item stopped the map, or a person's rewind or a fallback left it (MAP-B10)
+            return Move(writes, goto=str(m["exit"]["node"]))
+        fresh_ids = [i for i, s in standing.items() if s is None]
+        if fresh_ids:
+            self._boundary(state)
+            wave = fresh_ids[: u.map.concurrency]
+            for iid in wave:
+                at = mapping.slot(unit, iid)
+                for channel in ("attempts", "judgements", "feedback", "pause"):
+                    writes.setdefault(channel, {})[at] = None
+                writes.setdefault("counters", {})[at] = {"retries": 0, "infra": 0, "human": 0, "ladder": None,
+                                                         "loops": None}
+                writes.setdefault("maps", {}).setdefault(unit, {})[f"st:{iid}"] = "started"
+            return Move(writes, items=wave)
+        parked = [i for i, s in standing.items() if s == "parked"]
+        if parked:
+            self._boundary(state)
+            return Move(writes, items=parked, kind="human")
+        return self._map_finish(unit, state, m, writes, prev, visit, judge_node)
+
+    def _enter_writer_map(self, unit: str, state: Mapping[str, Any], ids: Sequence[str]) -> dict[str, Any]:
+        """WSP-B19, WSP-B11: entering a writing concurrent map commits the run worktree's uncommitted changes on the run's
+        branch, then cuts one worktree per item from that commit. A cut that fails ends the segment at this boundary
+        (engine_error `workspace_refused`) with nothing left behind."""
+        ws = dict(state.get("workspace") or {})
+        try:
+            if ws.get("mode") != "worktree":
+                raise WorkspaceRefused("needs_worktree", f"writing map {unit}: the run has no worktree")
+            rec = WorkspaceRecord.from_json(ws)
+            run_path = Path(rec.path)
+            gitmod.commit_all(run_path, f"tempergraph: checkpoint before {unit}")
+            rec = cut_writers(rec, self.ctx.thread, [mapping.slot(unit, i) for i in ids], self.ctx.spec.worktree,
+                              self.ctx.state_root, read_include=self.ctx.read_worktreeinclude, kind="i")
+            rec.last_head = gitmod.head(run_path)
+        except (WorkspaceRefused, gitmod.GitError) as exc:
+            word = exc.word if isinstance(exc, WorkspaceRefused) else "git_failed"
+            self.ctx.log.write("engine_error", unit=unit, error="workspace_refused", detail=f"{word}: {exc}")
+            raise Drain("workspace_refused") from None
+        return rec.to_json()
+
+    def _map_finish(self, unit: str, state: Mapping[str, Any], m: Mapping[str, Any], writes: dict[str, Any],
+                    prev: Mapping[str, Any], visit: int, judge_node: str) -> Move:
+        """Every item has passed (MAP-B10): the plain keys hold the last item of the list, the items of a writing map are
+        merged in the order of the list, and the gate's check runs once on the merged worktree (MAP-B12, MAP-B13). No
+        model session starts here: a merge conflict or a failing check ends the map blocked, for a person."""
+        spec = self.ctx.spec
+        u = spec.units[unit]
+        ids = [it["id"] for it in m["items"]]
+        att: dict[str, Any] = {"attempt": int(prev.get("attempt", 0)) + 1, "visit": visit, "ok": True, "text": "",
+                               "issues": [], "tools": [], "session_id": None, "escalate": None, "infra_spent": False,
+                               "check": None, "item": None, "timed_out": False, "map_done": True, "conflicts": None,
+                               "conflict_branch": None, "merge_error": None, "map_findings": None}
+        writes.setdefault("attempts", {})[unit] = {**(writes.get("attempts") or {}).get(unit, {}), **att}
+        writes.setdefault("maps", {}).setdefault(unit, {})["passed"] = ids
+        last = f"[{ids[-1]}]"
+        for channel in ("artifacts", "values", "facts"):  # the plain key holds the last item of the list (MAP-B9)
+            held = (state.get(channel) or {}).get(unit) or {}
+            plain = {k[: -len(last)]: v for k, v in held.items() if k.endswith(last)}
+            if plain:
+                writes.setdefault(channel, {})[unit] = plain
+        if not flow.writer_map(spec, unit):
+            return Move(writes, goto=judge_node)
+        merged, found = self._merge_items(unit, state, ids)
+        record = writes["attempts"][unit]
+        record.update(found)
+        if merged is None:  # WSP-B12: the run branch is back where it was; no model session runs
+            return Move(writes, goto=judge_node)
+        writes["workspace"] = merged
+        if u.gate.check is not None:  # MAP-B12: once, on the run's worktree, over the joined result, with no item
+            cres, notes = self._check(unit, state, {**record, "item": None}, Path(str(merged["path"])))
+            record["check"] = checkmod.to_json(cres)
+            self.ctx.log.write("check", unit=unit, item=None, attempt=None, result=cres.result,
+                               environmental=cres.environmental, evidence=clip(cres.evidence, 200), notes=notes)
+            if cres.facts:
+                writes.setdefault("facts", {}).setdefault(unit, {}).update(cres.facts)
+            if cres.result == "FAIL":  # MAP-B13: blocked, not retried, the merge kept
+                record["escalate"] = "map_check"
+                record["map_findings"] = [{"criterion": f.criterion or "check", "place": f.place, "problem": f.message,
+                                           "fix": f.fix} for f in cres.findings if f.status == "fail"] or [
+                    {"criterion": "check", "problem": "check FAIL"}]
+        return Move(writes, goto=judge_node)
 
     def _script_failed(self, unit: str, state: Mapping[str, Any], attempt: int, visit: int, name: str, env: bool,
                        path_units: list[str], first: bool, arts: dict[str, str]) -> dict[str, Any]:
@@ -884,6 +1054,8 @@ class EngineNodes:
             return {"judgements": {unit: {"verdict": str(Verdict.ESCALATE), "reason": u.kind}}}
         if att.get("map_skip"):
             return {"judgements": {unit: {"verdict": str(Verdict.PROCEED), "reason": "map_empty"}}}
+        if att.get("map_done") and not att.get("escalate"):  # MAP-B10: a concurrent map whose items all passed (and merged)
+            return {"judgements": {unit: {"verdict": str(Verdict.PROCEED), "reason": "map_items_passed"}}}
         if u.kind == "subworkflow" and (done := self._child_verdict(unit, att)) is not None:
             return done
         if (att.get("escalate") == "upstream" and att.get("upstream") and att.get("ok") and g.judge is not None
@@ -898,6 +1070,8 @@ class EngineNodes:
                      "fix": f"decide which change of writer branch {att.get('conflict_branch')} or the run's branch stays"}
                     for p in att.get("conflicts") or []] or [
                     {"criterion": "writer-branches", "problem": str(att.get("merge_error") or "the join failed")}]
+            if att.get("escalate") == "map_check":  # MAP-B13: the pause lists the joined check's failing findings
+                placeholder["blockers"] = list(att.get("map_findings") or [])
             return {"judgements": {unit: placeholder}}
         if not att.get("ok"):
             return {"judgements": {unit: {"verdict": str(Verdict.RETRY), "reason": "step_failed", "blockers": [
