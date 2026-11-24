@@ -400,7 +400,8 @@ def _history(root: Path, workflow: str, version: str | None, unit: str) -> list[
 def causes(digests: Sequence[Mapping[str, Any]], *, root: Path | None = None, workflow: str = "",
            version: str | None = None, units: Mapping[str, Mapping[str, Any]] | None = None,
            judged: Mapping[str, Mapping[str, Any]] | None = None) -> list[dict[str, Any]]:
-    """SRV-B12 cause codes from digest fields only: `{unit, cause, count}`."""
+    """SRV-B12 cause codes from digest fields only: `{unit, cause, count}`. `judged` carries, per unit, `passed`
+    (the last judgement had no blockers) and `gave` (the attempts that got a real judgement, SRV-B12, SRV-B31)."""
     out: dict[tuple[str, str], int] = {}
 
     def add(unit: str, code: str) -> None:
@@ -433,6 +434,11 @@ def causes(digests: Sequence[Mapping[str, Any]], *, root: Path | None = None, wo
             j = (judged or {}).get(unit) or {}
             if j.get("passed"):
                 add(unit, "judge_unread_pass")
+        if kind in JUDGE_KINDS and int(d.get("changed_total") or 0) > 0:  # SRV-B31: read some, but under the share
+            read, total = int(d.get("changed_read") or 0), int(d.get("changed_total") or 0)
+            gave = ((judged or {}).get(unit) or {}).get("gave") or ()
+            if 1 <= read < float(params.value("digest.judge_read_share")) * total and int(d.get("attempt") or 1) in gave:
+                add(unit, "judge_partial_read")
         if kind == "retry" and float(d.get("prior_overlap") or 0) >= float(params.value("digest.retry_overlap")):
             add(unit, "retry_same_path")
     if root is not None:

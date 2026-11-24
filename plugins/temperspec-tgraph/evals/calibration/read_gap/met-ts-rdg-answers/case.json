@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "case_id": "met-ts-rdg-answers",
+  "gate": "read_gap",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "tune",
+  "seed": {
+    "criterion_id": "ts-rdg-answers",
+    "expected": "MET",
+    "reason": "The findings answer G1: no spec covers the missing file, and each claim (CLI-B1, CLI-B2, main.py line 14, README line 3) is in the file named."
+  },
+  "tuned": {
+    "by": "author",
+    "at": "2026-11-24T10:00:00.000Z"
+  },
+  "producer_family": "unknown",
+  "criteria_digest": null,
+  "fixture_digest": null,
+  "reach": {}
+}

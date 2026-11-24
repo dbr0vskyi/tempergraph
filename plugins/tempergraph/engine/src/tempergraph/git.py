@@ -126,6 +126,21 @@ def pushed(workdir: Path, name: str) -> bool:
     return any(r.split("/", 3)[-1] == name for r in refs.splitlines() if r.count("/") >= 3)
 
 
+def branch_commit(workdir: Path, name: str) -> str:
+    """CHK-B22: the commit the branch `name` points to now: the local branch, else `origin`'s remote-tracking branch;
+    empty when no ref names it or the name is unsafe. No fetch and no network."""
+    if not name or not is_safe_ref(name):
+        return ""
+    for ref in (f"refs/heads/{name}", f"refs/remotes/origin/{name}"):
+        try:
+            found = git(["rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"], workdir, check=False).strip()
+        except GitError:
+            return ""
+        if found:
+            return found
+    return ""
+
+
 def head(workdir: Path) -> str:
     """The commit `HEAD` names in `workdir`; empty when there is none."""
     return git(["rev-parse", "--verify", "--quiet", "HEAD"], workdir, check=False).strip()
@@ -176,6 +191,44 @@ def reset_hard(workdir: Path, commit: str) -> None:
     if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", commit):
         raise GitError("git reset: not a full commit id")
     git(["reset", "--hard", "--quiet", commit], workdir)
+
+
+_COMMIT_ID = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
+
+
+def is_commit_id(text: str) -> bool:
+    """Whether `text` is a full commit id (a hex id cannot be read as an option or a ref name)."""
+    return bool(_COMMIT_ID.fullmatch(text))
+
+
+def prefix(workdir: Path) -> str:
+    """The folder of `workdir` inside its repository, `""` at the top, with no trailing slash."""
+    return git(["rev-parse", "--show-prefix"], workdir, check=False).strip().rstrip("/")
+
+
+def base_checkout(workdir: Path, commit: str, dest: Path) -> Path:
+    """CHK-B18: a clean checkout of `commit` of the repository that holds `workdir`, in the new folder `dest` outside
+    both that repository and its main checkout. It shares the repository's objects and records nothing in it: no
+    worktree entry, branch or ref. Returns the folder of `workdir` inside the checkout. Raises GitError when `commit`
+    is not a full commit id or cannot be checked out."""
+    if not is_commit_id(commit):
+        raise GitError("git checkout: not a full commit id")
+    top = toplevel(workdir)
+    if top is None:
+        raise GitError("git clone: not a repository")
+    git(["clone", "--shared", "--no-checkout", "--quiet", "--", str(top), str(dest)], dest.parent)
+    git(["checkout", "--quiet", "--detach", commit, "--"], dest)
+    return dest / prefix(workdir)
+
+
+def folder_in_commit(workdir: Path, commit: str, folder: str) -> bool:
+    """CHK-B19: whether `folder` (relative to `workdir`, as `cd` writes it) is a folder of `commit`."""
+    if not is_commit_id(commit):
+        return False
+    path = "/".join(p for p in (prefix(workdir), folder.strip("/")) if p and p != ".")
+    if not path:
+        return True
+    return git(["cat-file", "-t", f"{commit}:{path}"], workdir, check=False).strip() == "tree"
 
 
 def changed_paths(workdir: Path, base: str | None = None, limit: int = 500) -> list[str]:

@@ -1,7 +1,9 @@
 """The pull request's description: what the owner has to read, built from the run's files with no model.
 
-It lists the task's acceptance criteria, the behaviours and criteria that changed in each spec, the decisions
-and open questions of the hand-off, and the deviations of the code report. Everything else a run writes is a
+It lists the task's acceptance criteria, the owner decisions of the triage note with the default the run took for
+each (`Assumptions to confirm`, never clipped, present only when the note has an `Owner decisions` section), the
+behaviours and criteria that changed in each spec, the decisions and open questions of the hand-off, and the
+deviations of the code report. Everything else a run writes is a
 hand-over between steps and is named only by its path."""
 
 from __future__ import annotations
@@ -76,6 +78,18 @@ def _spec_changes(ctx: Any, path: str) -> list[str]:
     return out
 
 
+def _assumptions(note_text: str) -> list[str]:
+    """The owner decisions of the triage note as the defaults the run took, none clipped: nothing when the note has no
+    `Owner decisions` section (a run on `blocking`), one line when the section says `None`, else one item each."""
+    note = fmt.parse_triage(note_text)
+    if not note.owner_section:
+        return []
+    if not note.owners:
+        return ["- The run took no default: the triage note lists no owner decision."] if note.owner_none else []
+    return [f"- {e.gap}: {e.question or '(no question written)'} Default: {e.default_text or e.default or '(none)'}. "
+            f"If wrong: {e.cost or '(not stated)'}" for e in note.owners]
+
+
 def build(ctx: Any) -> str:
     """The description, as Markdown."""
     note_text, note_path = _text(ctx, "triage_note")
@@ -91,6 +105,8 @@ def build(ctx: Any) -> str:
 
     out = [f"## temperspec run `{ctx.task_id}`", "", f"Lane: {lane}.", "", "### Acceptance criteria of the task", ""]
     out += _section(note_text, "Acceptance criteria")[:MAX_LINES] or ["- (the triage note could not be read)"]
+    if assumed := _assumptions(note_text):
+        out += ["", "### Assumptions to confirm", ""] + assumed
     out += ["", "### Read these", ""]
     if specs or records:
         for path in specs:

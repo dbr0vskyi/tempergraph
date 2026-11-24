@@ -137,8 +137,16 @@ def _child_owner(spec: WorkflowSpec, path: Any, kids: Mapping[str, Any]) -> dict
 
     got = subworkflow.read_child(name)
     repo = got.spec.issue_repository if isinstance(got, subworkflow.Child) else None
+    labels = None  # ISS-B1: the child's own `improvement.issue_labels`; a bad or missing document gives none
+    if isinstance(got, subworkflow.Child) and got.spec.package_root is not None:
+        try:
+            doc = json.loads((got.spec.package_root / "tempergraph.json").read_text(encoding="utf-8"))
+            declared = (doc.get("improvement") or {}).get("issue_labels") if isinstance(doc, dict) else None
+            labels = declared if isinstance(declared, list) else None
+        except (OSError, ValueError, AttributeError):
+            labels = None
     return {"workflow": name, "workflow_version": held.get("workflow_version"), "parent": spec.name,
-            "child": str(path), "issue_repository": repo}
+            "child": str(path), "issue_repository": repo, "issue_labels": labels}
 
 
 def _side(code: str, executor: str | None) -> str:
@@ -166,12 +174,60 @@ def evidence(values: Mapping[str, Any]) -> dict[str, Any]:
             "feedback": [clip(scrub(t), 8000) for t in fb]}
 
 
+def _when(ts: Any) -> datetime | None:
+    try:
+        got = datetime.fromisoformat(str(ts))
+    except ValueError:
+        return None
+    return got if got.tzinfo else got.replace(tzinfo=UTC)
+
+
+def unjudged_pause_findings(root: Path, workflow: str, task_id: str, thread: str) -> list[dict[str, Any]]:
+    """SIL-B28: the findings of the thread's segments that ended in a pause (exit 3) and that no loop of the thread
+    judged: no `loop_started` record of the thread's loop log names their fingerprint at or after they were made."""
+    from tempergraph.improve import child
+
+    held = [f for f in read_findings(root, workflow, task_id) if f.get("segment_exit") == 3
+            and str(f.get("thread")) == thread]
+    if not held:
+        return []
+    started = [(_when(r.get("ts")), set(r.get("fingerprints") or ())) for r in _jsonl(child.loop_log(root, workflow, task_id))
+               if r.get("kind") == "loop_started"]
+    out = []
+    for f in held:
+        made = _when(f.get("at"))
+        covered = any(fps and f.get("fingerprint") in fps and (made is None or ts is None or ts >= made)
+                      for ts, fps in started)
+        if not covered:
+            out.append(f)
+    return out
+
+
+def judged_units(seg: Sequence[Mapping[str, Any]]) -> dict[str, dict[str, Any]]:
+    """SRV-B12, SRV-B31: per unit with a `judgement` record, `passed` (its last record has no blockers) and `gave`
+    (the attempts with a record whose `confidence_source` is not `engine_placeholder`: a real judgement)."""
+    passed: dict[str, bool] = {}
+    gave: dict[str, set[int]] = {}
+    for r in seg:
+        if r.get("kind") != "judgement" or not r.get("unit"):
+            continue
+        unit = str(r["unit"])
+        passed[unit] = not (r.get("blockers") or [])
+        held = gave.setdefault(unit, set())
+        if r.get("confidence_source") != "engine_placeholder":
+            held.add(int(r.get("attempt") or 1))
+    return {u: {"passed": passed[u], "gave": sorted(gave[u])} for u in passed}
+
+
 def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, values: Mapping[str, Any],
-                row: Mapping[str, Any]) -> dict[str, Any]:
-    """Findings and evidence of the segment that just ended; the lenses at a final exit. Returns the summary."""
+                row: Mapping[str, Any], seg: Sequence[Mapping[str, Any]] | None = None) -> dict[str, Any]:
+    """Findings and evidence of the segment that just ended; the lenses at a final exit. Returns the summary.
+
+    `seg` is the records the exit covers when they are not the last segment's (SIL-B27: a stop before a unit has
+    no segment of its own)."""
     thread = str(row.get("thread_id"))
     records = _jsonl(log_path)
-    seg = segment(records)
+    seg = segment(records) if seg is None else list(seg)
     seg_start = str((seg[0] if seg else {}).get("ts") or "")
     ledger = _jsonl(root / "ledger.jsonl")
     exits = [str(r.get("ts")) for r in ledger if r.get("kind") == "run_segment" and r.get("thread_id") == thread]
@@ -182,10 +238,8 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
     decls = unit_decls(spec)
     try:  # SRV-B11, SRV-B12: digests first, their causes join the findings; never changes the exit (OVR-B4)
         digests = digestmod.write_segment(root, spec.name, task_id, seg, decls)
-        passed = {str(r.get("unit")): {"passed": not (r.get("blockers") or [])}  # the unit's last judgement
-                  for r in seg if r.get("kind") == "judgement" and r.get("unit")}
         found += digestmod.causes(digests, root=root, workflow=spec.name, version=row.get("workflow_version"),
-                                  units=decls, judged=passed)
+                                  units=decls, judged=judged_units(seg))
     except Exception:  # noqa: BLE001
         digests = []
     if int(row.get("exit_code") or 0) in FINAL_EXITS:  # the outcome lens's candidates (SIL-B10, B3, B7)
@@ -213,6 +267,8 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
                       **({"executor_version": f["executor_version"]} if f.get("executor_version") else {}),
                       **({"lens": f["lens"]} if f.get("lens") else {}),
                       **({"rerun_of": rerun_of} if rerun_of else {})})
+    stop = int(row.get("exit_code") or 0) == 4 and row.get("reason") == "person"
+    earlier = unjudged_pause_findings(root, spec.name, task_id, thread) if stop else []  # SIL-B28
     append_findings(root, spec.name, task_id, thread, lines)  # one document per thread; each segment appends (SIL-B8)
     _write_private(evidence_path(root, spec.name, task_id), json.dumps(evidence(values), default=str))
     summary: dict[str, Any] = {"digests": len(digests), "causes": sorted({x["cause"] for x in lines}),
@@ -223,7 +279,12 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
                                                              if x["class"] == "fault" and x.get("lens") != "outcome"}),
                                "outcome_fingerprints": sorted({x["fingerprint"] for x in lines
                                                                if x.get("lens") == "outcome"})}
+    covered = [x for x in earlier if x.get("lens") not in ("outcome", "review")]  # their lines are already written
+    if covered:
+        summary["fingerprints"] = sorted({*summary["fingerprints"], *(str(x["fingerprint"]) for x in covered)})
+        summary["fault_fingerprints"] = sorted({*summary["fault_fingerprints"],
+                                                *(str(x["fingerprint"]) for x in covered if x.get("class") == "fault")})
     if int(row.get("exit_code") or 0) in FINAL_EXITS:
-        summary["lenses"] = lenses.decide(spec, root, thread, [x for x in lines if x.get("lens") != "outcome"],
-                                          row, seg)
+        summary["lenses"] = lenses.decide(spec, root, thread,
+                                          [x for x in lines if x.get("lens") != "outcome"] + covered, row, seg)
     return summary

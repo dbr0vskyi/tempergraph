@@ -4,13 +4,16 @@
 
 Every gap is closed by a spec, a decision record or a research note in the agreed format, committed
 
-Part of the [overview](00-overview.spec.md).
+Part of the [overview](00-overview.spec.md). A triage note that lists two or more gaps first gets one read-only reading session for each gap, and the step's one writing session then closes the gaps from their findings and writes the hand-off; the criteria below judge that session's output, and the reading sessions write no document ([parallel reading](parallel-reading.spec.md)).
 
 ## 6. Acceptance criteria
 
 - [ ] ts-dis-form Every spec the discovery step wrote passes the spec rule's structure check
+- [ ] ts-dis-budget Every spec the discovery step wrote is within the repository's spec budget: at most 400 lines and at most 30 KB (30,720 bytes)
+- [ ] ts-dis-over A spec over the budget in lines or in bytes fails the discovery check with a finding, carried to the next discovery attempt, that names the spec with its figure over the budget and says to split the spec by capability
 - [ ] ts-dis-names Every document the discovery step created carries its type suffix in its file name
 - [ ] ts-dis-links Every id that a document of the discovery step links to resolves to exactly one definition
+- [ ] ts-dis-ruleread Each rule file the discovery prompt names (spec.rule.md, decision.rule.md, research.rule.md, task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session
 - [ ] ts-dis-commit Every file the discovery step changed is committed
 - [ ] ts-dis-gaps Every gap in the triage note is closed by a document the hand-off names
 - [ ] ts-dis-behaviour Every behaviour the discovery step wrote states an observable result with no internal name

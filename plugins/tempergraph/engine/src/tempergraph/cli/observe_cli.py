@@ -431,7 +431,15 @@ def cmd_attention(env: Any, a: argparse.Namespace) -> int:
     from tempergraph.cli.main import _emit
     from tempergraph.observe.attention import attention, line, loop_line, stale_line
 
-    doc = attention(roots(env, a.all_roots), env.catalog.specs, schedule_cli.CLOCK().timestamp())
+    where = roots(env, a.all_roots)
+    try:  # SIL-B29, SIL-B32: a lost runner is handed to the loop first; a failure there changes nothing below
+        from tempergraph.improve import lost
+
+        for r in where:
+            lost.settle(r, env.catalog.specs, None, env.registry)
+    except Exception:  # noqa: BLE001
+        pass
+    doc = attention(where, env.catalog.specs, schedule_cli.CLOCK().timestamp())
     if a.json:
         _emit(env, doc)
         return 0

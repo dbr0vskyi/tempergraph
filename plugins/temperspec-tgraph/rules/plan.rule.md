@@ -76,13 +76,13 @@ A plan is a working document for one task, not a spec: it carries its status and
 ## Phases and task rows
 
 - A phase is one unit of work with one goal. Its heading is `### Phase <n>: <name>`, followed by a `Goal:` line and a `Weight:` line.
-- A task row is one logical change in one exact file. Columns: `Row` (an id unique in the plan, such as `1.2`), `Kind` (`test`, `code`, `docs` or `chore`), `Req` (the requirement ids it serves, such as `R1` or `R1, R3`), `File`, `Proves`, `Change`, `Completed` (empty until the code step marks it).
+- A task row is one logical change in one exact file. Columns: `Row` (an id unique in the plan, such as `1.2`), `Kind` (`test`, `code`, `docs` or `chore`), `Req` (the requirement ids it serves, such as `R1` or `R1, R3`), `File`, `Proves`, `Change`, `Completed` (empty until the code step marks it, or the mark kept from an earlier visit of the code step).
 - Every row names at least one requirement of the plan, and names none that the plan does not have.
 - A pipe inside a cell, as in a type union, is written `\|` (`X \| None`); the checks read it as part of the cell.
 - A `Change` cell says the whole change. Words that cut it down (a stub, a placeholder, "for now", a later task) are read by the plan judge: cut scope only when the task says so, and then say why in the hand-off.
 - Before writing a row that changes a type, a signature or the order of fields, search the tests for code that pins it (constructs it by position, compares its fields, checks its signature). Each test it would break gets a row; if none, say so in the row's Change cell.
 - Test first: in every phase, a `code` row comes after a `test` row of that phase. A `test` row names in `Proves` the acceptance criterion it proves: the spec's id (`SES-AC1`), or `AC <n>` of the task when no spec criterion fits.
-- A plan of complexity `simple` carries its task rows. A plan of complexity `complex` is written with phases, goals and weights only; the expand step adds the rows and the proof table without changing sections 0, 1 and 4 or any goal.
+- A plan of complexity `simple` carries its task rows. A plan of complexity `complex` is written with phases, goals and weights only; the expand step adds the rows and the proof table without changing sections 0, 1 and 4 or any goal. When a later gate sends the run back to the plan step (a trip back), the step edits the plan in place: it keeps the rows and marks that already exist, and the expand step fills only the rows that lack them.
 - Write a plan in parts: first every section with the phase headings, goals and weights and no rows, then one edit per phase that adds its table. No single write is over about 12 KB. A response that runs too long is cut off and retried for a long time.
 
 ## Complexity
@@ -115,7 +115,8 @@ Every document the change will make false, with the reason, or `None`. Each docu
 
 ## Status and marks
 
-- The plan and expand steps leave the status `planned` and every `Completed` cell empty.
+- The plan and expand steps leave the status `planned`. A new plan's rows start with their `Completed` cells empty. On a trip back, keep the Completed mark of each row you leave exactly as it was, and empty the Completed cell of each row you change or add (a row whose kind, requirement, file, proof or change you edit, and every new row).
 - The code step sets the status to `in-progress` when it starts. When a row's change is in its file and the phase's tests pass, it writes `✓ <date>` in that row's `Completed` cell, with the date of that day as `YYYY-MM-DD` (`✓ 2026-11-21`). When every row is marked, it sets the status to `completed`.
-- A mark is a claim. The code gate first checks that every row is marked and the plan is `completed`, and sends the run back to the code step at once when not, without running anything. A marked plan is then verified as if it had no marks: the file of each marked row must have changed in the run, the verification commands are run, and each criterion's test is read.
+- A mark is a claim. A plan handed over by the plan or expand step carries a mark only on a row that kept it: the mark needs a marking commit of the run (the earliest commit after the run's base commit, other than a plan or expand step's own, in which a row with that id carries that mark), the row must read the same as in that commit (kind, requirement, file, proof and change), and no later commit of the run may have changed the row's file. A mark with no such commit, on a changed row, or on a row whose file changed since, is refused.
+- In the code step, build only the rows whose Completed cell is empty and leave the mark of every other row as it is. The code gate first checks that every row is marked and the plan is `completed`, and sends the run back to the code step at once when not, without running anything. A marked plan is then verified as if it had no marks: the file of each marked row must have changed in the run, whichever visit of the code step changed it, the verification commands are run, and each criterion's test is read.
 - The code step changes nothing else in the plan. A row it could not do stays unmarked, and the code report says why.

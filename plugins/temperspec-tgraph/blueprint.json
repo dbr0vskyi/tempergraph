@@ -16,12 +16,46 @@
       "kind": "route"
     },
     {
+      "name": "list_components",
+      "kind": "script",
+      "summary": "List the component folders to read",
+      "produces": [
+        "component_list"
+      ]
+    },
+    {
+      "name": "read_component",
+      "kind": "map",
+      "summary": "Read one component folder; report findings",
+      "produces": [
+        "component_finding"
+      ],
+      "gate": {
+        "check": false,
+        "judge": true
+      },
+      "on_budget_spent": "stop",
+      "sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "It reads one folder's code and tests and writes nothing; the writing session confirms each claim"
+      },
+      "judge_sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "It reads one findings line against one folder, and the writing step's own check comes later"
+      }
+    },
+    {
       "name": "setup",
       "kind": "step",
       "summary": "Write the overview spec and one spec per component",
       "produces": [
         "overview",
         "setup_note"
+      ],
+      "reads": [
+        "component_finding"
       ],
       "gate": {
         "check": true,
@@ -93,6 +127,32 @@
       }
     },
     {
+      "name": "read_gap",
+      "kind": "map",
+      "summary": "Read one gap's documents and code; report findings",
+      "produces": [
+        "gap_finding"
+      ],
+      "reads": [
+        "triage_note"
+      ],
+      "gate": {
+        "check": false,
+        "judge": true
+      },
+      "on_budget_spent": "stop",
+      "sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "It reads one gap's documents and code and writes nothing; the writing session confirms each claim"
+      },
+      "judge_sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "It reads one findings line against one gap row, and the check of the writing step comes later"
+      }
+    },
+    {
       "name": "discovery",
       "kind": "step",
       "summary": "Close each gap with a spec, record or research note",
@@ -100,6 +160,7 @@
         "handoff"
       ],
       "reads": [
+        "gap_finding",
         "triage_note"
       ],
       "gate": {
@@ -146,6 +207,11 @@
         "effort": "high",
         "why": "It judges that the design covers every criterion and contradicts no spec it references"
       }
+    },
+    {
+      "name": "code_mode",
+      "kind": "switch",
+      "summary": "Pick one session or the expand step by the plan's size"
     },
     {
       "name": "expand",
@@ -207,28 +273,43 @@
         "effort": "high",
         "why": "It reads the diff, the report and the proof of every criterion, and a miss ships a defect"
       }
+    },
+    {
+      "name": "code_join",
+      "kind": "script",
+      "summary": "Where both arms meet after the code step"
     }
   ],
   "flow": {
     "setup_route": {
       "route": [
-        "setup",
+        "list_components",
         "triage"
       ]
+    },
+    "read_component": {
+      "map": {
+        "over": "list_components.component_list"
+      }
     },
     "triage": {
       "route": [
         "discovery_short",
-        "discovery",
+        "read_gap",
         "plan",
         "code"
       ]
     },
     "discovery_short": {
       "route": [
-        "discovery",
+        "read_gap",
         "plan"
       ]
+    },
+    "read_gap": {
+      "map": {
+        "over": "triage.triage_note"
+      }
     },
     "discovery": {
       "route": [
@@ -236,11 +317,14 @@
         "finalizer"
       ]
     },
-    "plan": {
-      "route": [
-        "expand",
-        "code"
-      ]
+    "code_mode": {
+      "switch": {
+        "arms": {
+          "single": "code",
+          "phases": "expand"
+        },
+        "default": "phases"
+      }
     }
   },
   "input": {

@@ -77,10 +77,22 @@ def mode() -> str:
     return os.environ.get("TEMPERGRAPH_LOOP", "detached")
 
 
+def declared_labels(spec: WorkflowSpec) -> list[Any] | None:
+    """ISS-B1: `improvement.issue_labels` of the workflow's `tempergraph.json`; none when absent or unreadable."""
+    if spec.package_root is None:
+        return None
+    try:
+        doc = json.loads((spec.package_root / "tempergraph.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    got = (doc.get("improvement") or {}).get("issue_labels") if isinstance(doc, dict) else None
+    return list(got) if isinstance(got, list) else None
+
+
 def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary: Mapping[str, Any], *,
              dry_run: bool, judge_executor: str, home: Path | None = None, operator_review: str | None = None,
              run_cost_usd: float = 0.0, trial: bool = False, daily_cap_usd: float | None = None,
-             loop_model: str | None = None, loop_effort: str | None = None) -> Path | None:
+             loop_model: str | None = None, loop_effort: str | None = None, trigger: str | None = None) -> Path | None:
     """Writes the ticket when a judged lens fired at this final exit and there is a fault to judge, when the
     outcome lens has candidates, or when the session review (SRV-B13, SRV-B14, SRV-B15) has a depth other than none;
     a `signals` review whose plan has no depth (a clean first-pass stable run) writes none (SIL-B1, SRV-B4)."""
@@ -122,11 +134,35 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
               "units": unit_decls(spec) if depth != "off" else {},
               "autonomy": prp.autonomy(spec, os.environ.get("TEMPERGRAPH_AUTONOMY")),
               "daily_cap_usd": autonomy.daily_cap(spec.improvement_mode, daily_cap_usd),
-              "alias": loop_model or ALIAS, "effort": loop_effort or EFFORT,
-              "package_root": str(spec.package_root) if spec.package_root else None}
+              "alias": loop_model or ALIAS, "effort": loop_effort or EFFORT, "trigger": trigger,
+              "package_root": str(spec.package_root) if spec.package_root else None,
+              "issue_labels": declared_labels(spec)}
     path = tickets_dir(home or home_path()) / f"{tid}.json"
     write_json(path, ticket)
     return path
+
+
+def started_for(root: Path, workflow: str, task_id: str, thread: str, trigger: str, home: Path | None = None) -> bool:
+    """SIL-B31: a loop for this thread and trigger exists: a ticket waiting or claimed, or a `loop_started` record."""
+    folder = tickets_dir(home or home_path())
+    for path in [*folder.glob("*.json"), *folder.glob("*.claimed")] if folder.is_dir() else ():
+        try:
+            t = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(t, dict) and t.get("thread") == thread and t.get("trigger") == trigger \
+                and str(t.get("state_root")) == str(root):
+            return True
+    try:
+        lines = loop_log(root, workflow, task_id).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return False
+    for ln in lines:
+        with contextlib.suppress(ValueError):
+            r = json.loads(ln)
+            if isinstance(r, dict) and r.get("kind") == "loop_started" and r.get("trigger") == trigger:
+                return True
+    return False
 
 
 def launch(home: Path | None = None) -> bool:
@@ -258,7 +294,8 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     mine = _latest(read_findings(root, wf, task), set(t.get("fingerprints") or ()))
     faults = [f for f in mine if f.get("class") == "fault" and f.get("lens") not in ("outcome", "review")]
     append_jsonl(log, {"ts": now_iso(), "kind": "loop_started", "ticket": t.get("ticket_id"),
-                       "lenses": t.get("lenses"), "findings": len(mine)})
+                       "lenses": t.get("lenses"), "findings": len(mine), "trigger": t.get("trigger"),
+                       "fingerprints": sorted(t.get("fingerprints") or ())})
     judged: dict[str, dict[str, Any]] = {}
     cost = {"reported": 0.0, "estimated_only": 0.0}
     left = autonomy.room(t, root)  # SIL-B19, SIL-B20: stable mode's daily cap skips the judges; records are still written
@@ -286,13 +323,14 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
             continue
         if f.get("lens") == "outcome":  # SIL-B7: files only once the outcome gate's judge is `accepted` (JCL)
             cands.append(filing.Candidate(finding=f, lens="outcome", calibrated=bool(t.get("outcome_calibrated")),
-                                          request_digest=f.get("request_digest")))
+                                          request_digest=f.get("request_digest"), issue_labels=t.get("issue_labels")))
             continue
         if not (t.get("lenses") or {}).get("friction"):  # a review-only ticket files no friction finding
             continue
         j = judged.get(str(f.get("fingerprint")))
         cands.append(filing.Candidate(finding=f, lens="friction", confidence=j["confidence"] if j else None,
-                                      attributed=bool(j and j["attributed"]), request_digest=f.get("request_digest")))
+                                      attributed=bool(j and j["attributed"]), request_digest=f.get("request_digest"),
+                                      issue_labels=t.get("issue_labels")))
     history = _history(root, wf, thread)
     decisions = [filing.decide(c, history, str(t.get("issue_repository") or "")) for c in cands]
     if t.get("autonomy") == "record":  # PRP-B11: findings, evidence and ledger rows only

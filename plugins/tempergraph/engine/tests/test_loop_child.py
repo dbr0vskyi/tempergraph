@@ -79,6 +79,18 @@ def test_ticket_then_judged_filing(repo: Path, monkeypatch: pytest.MonkeyPatch) 
     assert len(host.issues) == 1 and [r["op"] for r in out2["results"] if r["op"] != "recorded"] == ["commented"]
 
 
+def test_loop_started_names_the_fingerprints_it_covered(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # SIL-AC21, AC 1
+    blocked_run(repo, "L-6", monkeypatch)
+    (t,) = tickets()
+    fps = sorted(json.loads(t.read_text())["fingerprints"])
+    assert fps
+    child.drain(registry=registry(standin("claude", judges=[judge_says(0.9)])), host=lambda: MemoryCodeHost())
+    log = [json.loads(ln) for ln in child.loop_log(repo / ".tempergraph", "demo", "L-6").read_text().splitlines()]
+    (started,) = [r for r in log if r["kind"] == "loop_started"]
+    assert started["fingerprints"] == fps
+
+
 def test_low_confidence_or_unparsed_is_recorded(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     blocked_run(repo, "L-3", monkeypatch)
     host = MemoryCodeHost()

@@ -37,13 +37,15 @@ def command(ticket: str) -> str:
     return f"{COMMAND} {ticket}"
 
 
-def issue(state_root: Path, gate: GateSpec, ctx: checkmod.CheckContext, *, thread: str, limit: int) -> str:
-    """A ticket for one attempt of one unit; `close` ends it."""
+def issue(state_root: Path, gate: GateSpec, ctx: checkmod.CheckContext, *, thread: str, limit: int,
+          base_branch: str = "") -> str:
+    """A ticket for one attempt of one unit; `close` ends it. It holds the run's base branch so that a preview reads
+    that branch's head again when it runs (CHK-B22)."""
     ticket = secrets.token_hex(16)
     path = ticket_path(state_root, ticket)
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     write_json(path, {"schema_version": 1, "thread": thread, "unit": ctx.unit, "item": ctx.item,
-                      "attempt": ctx.attempt, "limit": int(limit), "calls": [],
+                      "attempt": ctx.attempt, "limit": int(limit), "calls": [], "base_branch": base_branch,
                       "doc": context_doc(gate, dataclasses.replace(ctx, preview=True))})
     return ticket
 
@@ -78,7 +80,7 @@ def run(state_root: Path, ticket: str, out: IO[str]) -> int:
     doc = t["doc"]
     c = doc["context"]
     workdir = Path(c["workdir"])
-    g = checkmod.git_facts(workdir, str((c.get("git") or {}).get("base") or ""))
+    g = checkmod.git_facts(workdir, str((c.get("git") or {}).get("base") or ""), str(t.get("base_branch") or ""))
     c["git"] = None if g is None else {
         "branch": g.branch, "base": g.base, "head": g.head, "base_head": g.base_head, "clean": g.clean,
         "pushed": g.pushed, "changed_paths": list(g.changed_paths),

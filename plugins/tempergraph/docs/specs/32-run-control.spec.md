@@ -36,10 +36,11 @@ WHEN a `now` stop is requested THE engine SHALL run the stop contract on the ope
 
 ### RCT-B3 Not live
 
-WHEN `stop` names a thread whose lock is not held THE engine CLI SHALL exit 2 and write nothing.
+WHEN `stop` names a thread whose lock is not held THE engine CLI SHALL exit 2 and write nothing, except the hand-off of a lost runner ([SIL-B29](runs-without-a-final-exit.spec.md)).
 
 - GIVEN a finished thread WHEN `stop` names it THEN the command exits 2 and no request file exists
 - GIVEN a thread paused for a person WHEN `stop` names it THEN the message names `resume` and the decision words instead
+- GIVEN a thread whose runner was killed WHEN `stop` names it THEN the command exits 2 and no request file exists
 
 ### RCT-B4 Batch
 

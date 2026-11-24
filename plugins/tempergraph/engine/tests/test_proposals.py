@@ -231,6 +231,27 @@ def test_open_pushes_its_branch_and_opens_a_draft(repo: Path, pkg: Path, tmp_pat
     assert prp.load_proposal(root, rec2["proposal_id"])["state"] == "drafted"
 
 
+def test_open_writes_closes_for_the_clusters_issues_of_its_repository(repo: Path, pkg: Path) -> None:
+    # PRP-AC8, PRP-B24; task AC 1
+    root = state_root_path(repo)
+    spec = load(pkg)
+    assert spec.issue_repository == "acme/release-notes"
+    mine = "https://example.test/acme/release-notes/issues/7"
+    other = "https://example.test/dbr0vskyi/tempergraph/issues/3"
+    cluster = {**CLUSTER, "issues": [mine, other]}
+    rec = prp.propose(root, spec, cluster, proposer_ex({"prompts/draft.md": PROMPT}))
+    host = MemoryCodeHost()
+    out = prp.open_pr(root, spec, rec["proposal_id"], host, push=False)
+    body = host.pulls[0]["body"]
+    assert out["state"] == "opened" and body.count("Closes #7") == 1 and "Closes #3" not in body
+    assert f"Refs {mine}" in body and f"Refs {other}" in body and "Not trialled" in body  # links and report stay
+    plain = prp.propose(root, spec, CLUSTER, proposer_ex({"prompts/draft.md": PROMPT}))  # a cluster with no issue
+    prp.open_pr(root, spec, plain["proposal_id"], host, push=False)
+    assert "Closes" not in host.pulls[1]["body"]
+    assert "Closes #7" not in prp.report_body(rec, None)  # no repository named: no `Closes` line (PRP-B24)
+    assert "Closes #7" in prp.report_body(rec, None, repo="acme/release-notes")
+
+
 # -- trials ---------------------------------------------------------------------------------------------------
 
 def pairs(w: int, lo: int, t: int, in_sample: int = 0) -> list[dict[str, Any]]:

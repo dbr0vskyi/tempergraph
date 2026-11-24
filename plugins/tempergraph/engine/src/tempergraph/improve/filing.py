@@ -18,6 +18,7 @@ from tempergraph.improve.codehost import CodeHost, CodeHostError
 
 ENGINE_REPOSITORY = "dbr0vskyi/tempergraph"  # engine and executor findings (SIL-B11)
 LOOP_LABEL = "tempergraph-loop"
+DEFAULT_LABELS = [LOOP_LABEL, "needs-triage"]  # ISS-B1: the engine's own `issue_labels`
 
 
 def marker(fp: str) -> str:
@@ -38,6 +39,7 @@ class Candidate:
     attributed: bool = False  # the judge attributed the fault to this side
     calibrated: bool = False  # the outcome judge has a calibration score for this gate
     request_digest: str | None = None
+    issue_labels: Sequence[str] | None = None  # the workflow's `improvement.issue_labels` (ISS-B1)
 
 
 @dataclass(kw_only=True)
@@ -97,24 +99,47 @@ def title(f: Mapping[str, Any]) -> str:
     return f"[loop] {f.get('workflow')}: {f.get('cause')}{where}"[:200]
 
 
-def body(d: Decision) -> str:
+def body(d: Decision, regression_of: int | None = None) -> str:
+    """ISS-B2: the hidden line, then Summary, Evidence, Fingerprint and Suggested remedy; ISS-B4: a closed issue
+    the finding may be a regression of is named in the Summary."""
     f = d.candidate.finding
-    parent = ([f"**Parent** `{f.get('parent')}` ran this workflow as its sub-workflow unit `{f.get('child')}`."]
-              if f.get("child") and f.get("parent") else [])  # SWF-B9
-    rows = [_marker_line(str(f.get("fingerprint"))), "",
-            f"**Cause** `{f.get('cause')}` ({f.get('class')}, side `{f.get('side')}`), lens {d.candidate.lens}.",
-            f"**Workflow** `{f.get('workflow')}` version `{f.get('workflow_version')}`; unit `{f.get('unit') or '-'}`;"
-            f" count {f.get('count')}." + (f" Executor CLI `{f['executor_version']}`." if f.get("executor_version") else ""),
-            *parent, "", f"**Drafted remedy** {f.get('remedy')}", "",
-            "An issue is evidence, not an order: a person decides (SIL-B8)."]
+    fp = str(f.get("fingerprint"))
+    summary = [f"**Cause** `{f.get('cause')}` ({f.get('class')}, side `{f.get('side')}`), lens {d.candidate.lens}.",
+               f"**Workflow** `{f.get('workflow')}`; unit `{f.get('unit') or '-'}`."]
+    if f.get("child") and f.get("parent"):  # SWF-B9
+        summary.append(f"**Parent** `{f.get('parent')}` ran this workflow as its sub-workflow unit `{f.get('child')}`.")
+    if regression_of is not None:
+        summary.append(f"Possible regression of #{int(regression_of)}: that issue was closed as completed and this "
+                       "cause came back. A person decides.")
+    figures = [f"Workflow version `{f.get('workflow_version')}`; count {f.get('count')}."
+               + (f" Executor CLI `{f['executor_version']}`." if f.get("executor_version") else "")]
     if d.counts:
-        rows.insert(4 + len(parent), "**Pattern** " + ", ".join(f"{k} {v}" for k, v in sorted(d.counts.items())) + ".")
+        figures.append("**Pattern** " + ", ".join(f"{k} {v}" for k, v in sorted(d.counts.items())) + ".")
+    rows = [_marker_line(fp), "", "## Summary", *summary, "", "## Evidence", *figures, "", "## Fingerprint",
+            f"`{fp}`", "", "## Suggested remedy", f"{f.get('remedy')}", "",
+            "An issue is evidence, not an order: a person decides (SIL-B8)."]
     return "\n".join(rows)
 
 
-def _labels(f: Mapping[str, Any]) -> list[str]:
+def _names(value: Any) -> list[str] | None:
+    """A declared label list, or none when it is not a non-empty list of names (ISS-B1)."""
+    if isinstance(value, list | tuple) and value and all(isinstance(v, str) and v.strip() for v in value):
+        return [v.strip() for v in value]
+    return None
+
+
+def _labels(f: Mapping[str, Any], declared: Any = None) -> list[str]:
+    """ISS-B1: the list of `issue_labels` (the workflow's for its own workflow-side finding, the child's for a
+    child's, else the default), `tempergraph-loop` when it omits it, and the side label."""
     side = str(f.get("side") or "")
-    return [LOOP_LABEL, side] if side.startswith("executor:") else [LOOP_LABEL, f"side:{side}"]
+    base: list[str] | None = None
+    if side == "workflow":
+        base = _names(f.get("issue_labels")) if f.get("child") else _names(declared)
+    out: list[str] = []
+    for name in [*(base or DEFAULT_LABELS), LOOP_LABEL, side if side.startswith("executor:") else f"side:{side}"]:
+        if name not in out:
+            out.append(name)
+    return out
 
 
 @dataclass(kw_only=True)
@@ -147,10 +172,35 @@ def _deliver(host: CodeHost, p: Mapping[str, Any]) -> str:
     return host.create(p["repo"], p["title"], p["body"], list(p.get("labels") or []))
 
 
-def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_run: bool = False
-         ) -> list[dict[str, Any]]:
-    """SIL-B2: comment on an open match of the fingerprint, else file; a dry run makes no call (SIL-B6)."""
+def _closed_at(issue: Mapping[str, Any]) -> datetime:
+    try:
+        at = datetime.fromisoformat(str(issue.get("closed_at") or "").replace("Z", "+00:00"))
+    except ValueError:
+        return datetime.min.replace(tzinfo=UTC)  # an unreadable time sorts oldest and never mutes
+    return at if at.tzinfo else at.replace(tzinfo=UTC)
+
+
+def _latest_close(host: CodeHost, repo: str, fp: str) -> tuple[Mapping[str, Any] | None, bool]:
+    """ISS-B3 to ISS-B6: the closed issue of the fingerprint that closed most recently, read with one retry; the
+    flag says the read failed twice."""
+    for attempt in (1, 2):
+        try:
+            hits = host.closed(repo, marker(fp))
+        except CodeHostError:
+            if attempt == 2:
+                return None, True
+            continue
+        mine = [h for h in hits if _marker_line(fp) in str(h.get("body") or "").splitlines()]
+        return (max(mine, key=_closed_at) if mine else None), False
+    return None, True
+
+
+def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_run: bool = False,
+         now: datetime | None = None) -> list[dict[str, Any]]:
+    """SIL-B2: comment on an open match of the fingerprint, else read the latest close (ISS-B3 to ISS-B6: not
+    planned mutes, completed links a possible regression) and file; a dry run makes no call (SIL-B6)."""
     results: list[dict[str, Any]] = []
+    now = now or datetime.now(UTC)
     if not dry_run:
         for p in outbox.take():
             try:
@@ -168,21 +218,36 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
             continue
         note = None
         match = None
+        searched = False
         for attempt in (1, 2):
             try:
                 hits = host.search(d.repo, marker(fp))
                 match = next((h for h in hits if _marker_line(fp) in str(h.get("body") or "").splitlines()), None)
+                searched = True
                 break
             except CodeHostError:
                 if attempt == 2:
                     note = "search_failed"  # retried once, then files anyway and says why
+        regression: int | None = None
+        if match is None and searched:  # an open issue always wins; only then do closed ones count
+            last, failed = _latest_close(host, d.repo, fp)
+            if failed:
+                note = "closed_search_failed"  # files with no link and no mute (ISS-B6)
+            elif last is not None:
+                reason = str(last.get("state_reason") or "")
+                days = float(params.value("mute.days"))
+                if reason == "not_planned" and now - _closed_at(last) < timedelta(days=days):
+                    results.append({"op": "muted", "url": last.get("url"), "fingerprint": fp})  # ISS-B3
+                    continue
+                if reason == "completed" and last.get("number") is not None:
+                    regression = int(last["number"])  # ISS-B4
         if match is not None:
             p = {"op": "comment", "repo": d.repo, "number": int(match["number"]), "fingerprint": fp,
                  "body": f"Seen again: `{f.get('cause')}`, count {f.get('count')}."
                          + (" Pattern: " + ", ".join(f"{k} {v}" for k, v in sorted(d.counts.items())) + "."
                             if d.counts else "")}
         else:
-            p = {"op": "create", "repo": d.repo, "title": title(f), "body": body(d), "labels": _labels(f),
+            p = {"op": "create", "repo": d.repo, "title": title(f), "body": body(d, regression), "labels": _labels(f, d.candidate.issue_labels),
                  "fingerprint": fp}
         try:
             url = _deliver(host, p)

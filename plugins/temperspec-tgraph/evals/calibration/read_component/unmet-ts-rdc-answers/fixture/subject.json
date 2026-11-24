@@ -1,0 +1,1 @@
+{"component_finding": "src/tool: src/tool/main.py (lines 10-16) is a web server that serves `/health` on port 8080 (line 14) and reads its settings from environment variables; nothing outside the folder depends on it."}

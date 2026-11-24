@@ -1,18 +1,33 @@
 {
   "schema_version": 1,
-  "revision": 7,
+  "revision": 17,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
       "key": "triage_note",
       "kind": "file",
       "where": "the task's triage note, in the run's branch"
+    },
+    {
+      "key": "handoff",
+      "kind": "file",
+      "where": "the discovery hand-off, in the run's branch"
+    },
+    {
+      "key": "plan",
+      "kind": "file",
+      "where": "the plan, in the run's branch"
+    },
+    {
+      "key": "code_report",
+      "kind": "file",
+      "where": "the code report, in the run's branch"
     }
   ],
   "check": "tgwf_temperspec.checks:outcome_check",
   "judge": {
     "model": "medium",
-    "stance": "The task's acceptance criteria and the files on the run's branch are the truth; everything a step said is a claim to verify. Judge meaning, not wording."
+    "stance": "The task's acceptance criteria and the files on the run's branch are the truth; everything a step said is a claim to verify. Judge meaning, not wording. Behind every MET, quote the line you relied on, with its path and line number. Grade a criterion PARTIAL, not MET, when its only evidence is lines a search printed. When you searched and then read the file around the line, quote the line from the file you read. A criterion the gate's check verified is graded from the check's finding: quote that finding from the evidence as the line behind its MET, and never grade it UNVERIFIABLE because you cannot run the check yourself."
   },
   "final": [
     {
@@ -54,6 +69,45 @@
       "verified_by": "check",
       "text": "Every id that a spec the run edited links to resolves to exactly one definition",
       "check_method": "Collect the ids each edited spec links; search the docs folders for each id's definition; fail on none or on more than one",
+      "source": "created",
+      "verifier": {
+        "check": "tgwf_temperspec.checks:outcome_check"
+      }
+    },
+    {
+      "id": "ts-spec-moved",
+      "severity": "blocker",
+      "verified_by": "check",
+      "text": "An acceptance criterion that a split left in a spec may name a behaviour the split moved to another spec, where it keeps its id: the spec rule's structure check reads the id as defined in the spec it moved to, in the run that made the split and in any later run",
+      "check_method": "Index the ids every spec of the repository defines; a criterion may name an id that exactly one other spec defines when the id's prefix is one its own spec defines; no use of the run's base commit",
+      "source": "created",
+      "verifier": {
+        "check": "tgwf_temperspec.checks:outcome_check"
+      },
+      "serves": [
+        "ts-spec-links"
+      ]
+    },
+    {
+      "id": "ts-spec-parent",
+      "severity": "blocker",
+      "verified_by": "check",
+      "text": "An acceptance criterion of a spec split from another may name an id of the spec it was split from: the spec rule's structure check reads the id as defined there, in the run that made the split and in any later run",
+      "check_method": "As ts-spec-moved: the split-off spec defines ids with the prefix of the spec it was split from next to its own, and its criteria may name the ids of either",
+      "source": "created",
+      "verifier": {
+        "check": "tgwf_temperspec.checks:outcome_check"
+      },
+      "serves": [
+        "ts-spec-links"
+      ]
+    },
+    {
+      "id": "ts-spec-fresh",
+      "severity": "blocker",
+      "verified_by": "check",
+      "text": "No spec the run edited has changed on the base branch since the run started",
+      "check_method": "Compare each edited spec at the run's base commit with the same spec at the head of the base branch (`git.base_head`); fail, naming the spec, when the head holds commits the base commit lacks and the spec reads differently at the two; N/A for a run with no base branch and for a run that edited no spec",
       "source": "created",
       "verifier": {
         "check": "tgwf_temperspec.checks:outcome_check"
@@ -140,6 +194,53 @@
     }
   ],
   "intermediate": {
+    "read_component": {
+      "statement": "The findings of the reading of one component folder say what the folder holds, or state what was searched, and name the files they rest on",
+      "criteria": [
+        {
+          "id": "ts-rdc-answers",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "The findings (`component_finding`) of a component folder's reading say what the folder holds and what someone outside depends on, or state what was searched",
+          "check_method": "Open each file the findings name at its line ranges or ids, and compare it with what the findings claim",
+          "source": "created",
+          "verifier": {
+            "references": [],
+            "scale": {
+              "met": "the findings say what the folder holds and what someone outside depends on, each claim is in the file it names, or they state what was searched in the folder when nothing was found",
+              "partial": "the findings cover part of the folder, or a claim is in its file with a different meaning",
+              "unmet": "the findings describe another folder, claim what the named file does not hold, or say nothing about the folder",
+              "evidence": "the path and line of each claim checked, and the quote that confirms or refutes it",
+          "seeds": ["met-ts-rdc-answers", "unmet-ts-rdc-answers"]
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-rdc-cited",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "The findings (`component_finding`) name each file they rest on with its line ranges or ids",
+          "check_method": "Read the findings line for the files it names and their line ranges or ids",
+          "source": "created",
+          "verifier": {
+            "references": [],
+            "scale": {
+              "met": "every claim of the findings names its file with the line ranges or ids it rests on, or the findings say what was searched",
+              "partial": "some claims name a file and others name none",
+              "unmet": "the findings name no file and say nothing about what was searched",
+              "evidence": "the claim, and the file and range or id it names",
+          "seeds": ["met-ts-rdc-cited", "unmet-ts-rdc-cited"]
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        }
+      ]
+    },
     "setup": {
       "statement": "A repository with no overview spec gets one, and one spec per component, that describe the code as it is",
       "criteria": [
@@ -183,6 +284,17 @@
             "ts-spec-links",
             "ts-spec-sync"
           ]
+        },
+        {
+          "id": "ts-set-ruleread",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each rule file the setup prompt names (spec.rule.md, task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
+          "check_method": "Read the session record the engine gives the check: a read call without an error whose target ends in the rule file's name; a search or a failed read does not count",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:setup_check"
+          }
         },
         {
           "id": "ts-set-commit",
@@ -275,6 +387,17 @@
           ]
         },
         {
+          "id": "ts-tri-ruleread",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each rule file the triage prompt names (task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
+          "check_method": "Read the session record the engine gives the check: a read call without an error whose target ends in the rule file's name; a search or a failed read does not count",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:triage_check"
+          }
+        },
+        {
           "id": "ts-tri-commit",
           "severity": "blocker",
           "verified_by": "check",
@@ -347,6 +470,17 @@
           "verified_by": "check",
           "text": "Every gap row that says `Covered by` names a behaviour id and the id of a criterion that names that behaviour, both of one spec and each defined exactly once",
           "check_method": "Read each `Covered by` mark, then look the two ids up in the specs and read the criterion's brackets",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:triage_check"
+          }
+        },
+        {
+          "id": "ts-tri-owner",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "With the conversation setting `never`, the triage note says for every gap row whether the gap is findable or an owner decision, and its `Owner decisions` section gives each owner decision a question, two to four options, a default that is one of them and what a wrong default costs, or says `None`",
+          "check_method": "When the conversation value is `never`, read the sort at the end of each gap row and each entry of the `Owner decisions` section: its question, its options, its default and its cost",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:triage_check"
@@ -430,6 +564,17 @@
           }
         },
         {
+          "id": "ts-dsh-ruleread",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each rule file the short discovery prompt names (task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
+          "check_method": "Read the session record the engine gives the check: a read call without an error whose target ends in the rule file's name; a search or a failed read does not count",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_short_check"
+          }
+        },
+        {
           "id": "ts-dsh-commit",
           "severity": "blocker",
           "verified_by": "check",
@@ -468,6 +613,57 @@
         }
       ]
     },
+    "read_gap": {
+      "statement": "The findings of the reading of one gap answer the gap, or state what was searched, and name the files they rest on",
+      "criteria": [
+        {
+          "id": "ts-rdg-answers",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "The findings of a gap's reading answer the gap, or state what was searched",
+          "check_method": "Read the gap row in the triage note, then open each file the findings name at its line ranges or ids",
+          "source": "created",
+          "verifier": {
+            "references": [
+              "triage_note"
+            ],
+            "scale": {
+              "met": "the findings say what the named files hold about the gap and each claim is in its file, or they state what was searched for the gap's subject when nothing was found",
+              "partial": "the findings answer part of the gap, or a claim is in its file with a different meaning",
+              "unmet": "the findings answer another gap, claim what the named file does not hold, or say nothing about the gap",
+              "evidence": "the gap row, the path and line of each claim checked, and the quote that confirms or refutes it",
+          "seeds": ["met-ts-rdg-answers", "unmet-ts-rdg-answers"]
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-rdg-cited",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "The findings name each file they rest on with its line ranges or ids",
+          "check_method": "Read the findings line for the files it names and their line ranges or ids",
+          "source": "created",
+          "verifier": {
+            "references": [
+              "triage_note"
+            ],
+            "scale": {
+              "met": "every claim of the findings names its file with the line ranges or ids it rests on, or the findings say what was searched",
+              "partial": "some claims name a file and others name none",
+              "unmet": "the findings name no file and say nothing about what was searched",
+              "evidence": "the claim, and the file and range or id it names",
+          "seeds": ["met-ts-rdg-cited", "unmet-ts-rdg-cited"]
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        }
+      ]
+    },
     "discovery": {
       "statement": "Every gap is closed by a spec, a decision record or a research note in the agreed format, committed",
       "criteria": [
@@ -476,7 +672,7 @@
           "severity": "blocker",
           "verified_by": "check",
           "text": "Every spec the discovery step wrote passes the spec rule's structure check",
-          "check_method": "As ts-spec-form, on the files this step changed",
+          "check_method": "As ts-spec-form, on the files this step changed; the size of a spec is not read here (ts-dis-budget)",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:discovery_check"
@@ -484,6 +680,34 @@
           "serves": [
             "ts-accepted",
             "ts-spec-form"
+          ]
+        },
+        {
+          "id": "ts-dis-budget",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every spec the discovery step wrote is within the repository's spec budget: at most 400 lines and at most 30 KB (30,720 bytes)",
+          "check_method": "Count the lines of each spec this step changed or the hand-off lists, the earlier layout included, and the bytes of its file; over means strictly more",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          },
+          "serves": [
+            "ts-spec-cap"
+          ]
+        },
+        {
+          "id": "ts-dis-over",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "A spec over the budget in lines or in bytes fails the discovery check with a finding, carried to the next discovery attempt, that names the spec with its figure over the budget and says to split the spec by capability",
+          "check_method": "One fail finding per spec over, with its path, each figure over and the fix `split the spec by capability`; the engine's retry prompt carries each finding to the next attempt",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          },
+          "serves": [
+            "ts-spec-cap"
           ]
         },
         {
@@ -511,6 +735,17 @@
             "ts-spec-links",
             "ts-spec-sync"
           ]
+        },
+        {
+          "id": "ts-dis-ruleread",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each rule file the discovery prompt names (spec.rule.md, decision.rule.md, research.rule.md, task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
+          "check_method": "Read the session record the engine gives the check: a read call without an error whose target ends in the rule file's name; a search or a failed read does not count",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          }
         },
         {
           "id": "ts-dis-commit",
@@ -632,8 +867,8 @@
           "id": "ts-plan-form",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "The plan has each section the plan rule requires, with the status `planned` and no row marked completed",
-          "check_method": "Read the plan's headings, its hand-off section, its front matter status and the Completed cell of each row against the rule",
+          "text": "The plan has each section the plan rule requires, with the status `planned` and a completed mark only on a row that kept its mark through a trip back (KMK-B1 to KMK-B4)",
+          "check_method": "Read the plan's headings, its hand-off section, its front matter status and the Completed cell of each row against the rule; for each marked row read the run's history (git log and git show from the base commit) for a marking commit of the run in which the row reads the same, and for a later commit that changed the row's file",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:plan_check"
@@ -685,6 +920,17 @@
           "verified_by": "check",
           "text": "No requirement or task row says it does less than asked (a stub, a placeholder, for now, a later task)",
           "check_method": "Search the requirement statements and the rows' Change cells for words that cut scope; a hit is a maybe for the judge, never a fail",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:plan_check"
+          }
+        },
+        {
+          "id": "ts-plan-ruleread",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each rule file the plan prompt names (plan.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
+          "check_method": "Read the session record the engine gives the check: a read call without an error whose target ends in the rule file's name; a search or a failed read does not count",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:plan_check"
@@ -750,8 +996,8 @@
           "id": "ts-exp-rows",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "Every phase of the plan has at least one task row, none marked completed, and the plan's status is still `planned`",
-          "check_method": "Read the plan's phase headings, task tables, Completed cells and front matter status",
+          "text": "Every phase of the plan has at least one task row, a completed mark only on a row that kept its mark through a trip back (KMK-B1 to KMK-B4), and the plan's status is still `planned`",
+          "check_method": "Read the plan's phase headings, task tables, Completed cells and front matter status; for each marked row read the run's history (git log and git show from the base commit) for a marking commit of the run in which the row reads the same, and for a later commit that changed the row's file",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:expand_check"
@@ -808,6 +1054,28 @@
           "verified_by": "check",
           "text": "No task row says it does less than asked (a stub, a placeholder, for now, a later task)",
           "check_method": "Search the requirement statements and the rows' Change cells for words that cut scope; a hit is a maybe for the judge, never a fail",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:expand_check"
+          }
+        },
+        {
+          "id": "ts-exp-ruleread",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each rule file the expand prompt names (plan.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
+          "check_method": "Read the session record the engine gives the check: a read call without an error whose target ends in the rule file's name; a search or a failed read does not count",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:expand_check"
+          }
+        },
+        {
+          "id": "ts-exp-opened",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "A task row that names a file that exists in the repository has that file opened by the session with the read tool",
+          "check_method": "Read the session record the engine gives the check: each existing file a task row names has a read call without an error on its path; a file that does not exist is not asked for",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:expand_check"
@@ -876,7 +1144,7 @@
           "id": "ts-code-changed",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "The file of every task row marked completed changed in the run",
+          "text": "The file of every task row marked completed changed in the run, whichever visit of the code step changed it (KMK-B8)",
           "check_method": "Compare each marked row's file with the paths the run changed since its base commit; N/A without a base commit or in the quick lane",
           "source": "created",
           "verifier": {
@@ -890,8 +1158,8 @@
           "id": "ts-code-verify",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "Every verification command the plan lists exits 0 when the gate runs it",
-          "check_method": "Run each command through the engine's command runner with the test budget",
+          "text": "Every verification command the plan lists exits 0 when the gate runs it, whatever the step reported about its own run",
+          "check_method": "Run each command through the engine's command runner with the test budget, whatever the step reported in tests_passed",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:code_check"
@@ -931,10 +1199,32 @@
           ]
         },
         {
+          "id": "ts-code-ruleread",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each rule file the code prompt names (task-notes.rule.md, plan.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
+          "check_method": "Read the session record the engine gives the check: a read call without an error whose target ends in the rule file's name; a search or a failed read does not count",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          }
+        },
+        {
+          "id": "ts-code-order",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "A phase's source files are not changed before the phase's test files are first written",
+          "check_method": "Read the session record the engine gives the check: no edit or write call without an error on a code row's file of a phase comes before the first write of a test row's file of that phase",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          }
+        },
+        {
           "id": "ts-code-commit",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "Every file the code step changed is committed with no commit on a remote",
+          "text": "Every file the code step changed is committed",
           "check_method": "Read the git facts",
           "source": "created",
           "verifier": {
@@ -1078,8 +1368,8 @@
         {
           "id": "ts-code-once",
           "verified_by": "check",
-          "text": "The code prompt tells the session to run only the test files a phase's rows name after that phase, and each verification command of the plan once, after the last phase and before it writes the report (in the quick lane, the note's `Verify` commands once, after the last criterion)",
-          "check_method": "Read the code prompt file of the package for the two instructions, phrase by phrase",
+          "text": "The code prompt tells the session to run only the test files a phase's rows name after that phase, and each verification command of the plan once, after the last phase, with the plan marked completed and the code report written, and to change no file after that run (in the quick lane, the note's `Verify` commands once, after the last criterion and the report, with no file changed after that run)",
+          "check_method": "Read the code prompt file of the package for the instructions, phrase by phrase",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:code_check"
@@ -1096,22 +1386,159 @@
             "check": "tgwf_temperspec.checks:code_check"
           },
           "severity": "warning"
+        },
+        {
+          "id": "ts-code-base",
+          "verified_by": "check",
+          "text": "A verification command that fails at the gate and fails with the same non-zero exit code at the run's base commit makes the code check return an environmental result, so the gate escalates with no retry and no judge (CHK-B18, CHK-B14)",
+          "check_method": "Read the gate's own run of each failing command and its run at the base commit: the same non-zero exit code at both marks the check result environmental",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "blocker"
+        },
+        {
+          "id": "ts-code-touch",
+          "verified_by": "check",
+          "text": "A verification command that fails at the gate and fails with a different non-zero exit code at the run's base commit makes the check environmental when no path the run changed (written from the repository root or from the folder the command ran in) appears in the last lines the command printed at the gate, and fails the check, so the code step retries, when one does",
+          "check_method": "Read the gate's run and the base run of each failing command, and look for each changed path, from the root and from the command's folder, in the last lines the command printed at the gate",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "blocker"
+        },
+        {
+          "id": "ts-code-passes",
+          "verified_by": "check",
+          "text": "A verification command that exits 0 at the run's base commit and fails at the gate fails the check, so the code step retries",
+          "check_method": "Read the base run of each command that failed at the gate: exit 0 there is a failing finding the step can fix, never an environmental result",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "blocker"
+        },
+        {
+          "id": "ts-code-nobase",
+          "verified_by": "check",
+          "text": "A verification command that fails at the gate and was not compared with the run's base commit (the run has no base commit, the command could not start there, or the command did not finish at the gate or at the base) fails the check, so the code step retries with evidence saying the command was not compared",
+          "check_method": "Read the gate's run and the base run of each failing command: a missing base commit, a base run that did not start or finish, or a gate run that did not finish is a failing finding that says it was not compared",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "blocker"
+        },
+        {
+          "id": "ts-code-mixed",
+          "verified_by": "check",
+          "text": "When a verification command is judged environmental and another finding of the code check also fails, the check fails so that the code step retries with only the findings it can fix listed, while its evidence still names the environmental command",
+          "check_method": "Read the code check's findings and evidence: an environmental command is not a failing finding when another finding fails, and its line still leads the evidence",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "blocker"
+        },
+        {
+          "id": "ts-code-evidence",
+          "verified_by": "check",
+          "text": "The code check's evidence names each verification command that failed at the gate with its exit code at the gate and at the run's base commit, with the reason it was judged environmental, caused by the change or not compared",
+          "check_method": "Read the evidence and the findings of the code check: each failing command has one line with the command, both exit codes and the reason",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "warning"
+        },
+        {
+          "id": "ts-code-preview",
+          "verified_by": "check",
+          "text": "The engine's check preview is declared on the code step, and the code prompt tells the session to make its one run of each verification command of the plan through that preview",
+          "check_method": "Read the code prompt file of the package for the instruction, phrase by phrase; the step's declaration is read by the package's tests",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "warning"
+        },
+        {
+          "id": "ts-code-spend",
+          "verified_by": "check",
+          "text": "A verification command that exits 0 at the gate is never run at the run's base commit, and one that fails is run there at most once per visit of the code step, however many attempts the visit takes (CHK-B20)",
+          "check_method": "Read the gate's own command runs: no base run of a command that exited 0, and a base run asked for with reuse so that a retry of the visit takes it from the recorded result",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "warning"
+        },
+        {
+          "id": "ts-code-previewed",
+          "verified_by": "check",
+          "text": "A preview of the code gate's check, run after the last phase with the plan marked completed, runs each verification command of the plan (in the quick lane, the note's `Verify` commands) and lists each one that fails with its exit code, and reports no failure for the code report the session has not handed over yet or for the commit that follows the session",
+          "check_method": "The gate cannot see the session's own run: it records n_a, and the package's tests prove the preview branch of the check",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "warning"
+        },
+        {
+          "id": "ts-code-session",
+          "verified_by": "check",
+          "text": "The code gate does not run a verification command again when the session ran it through the check preview on the same tree content, though the session's files were committed after that run (CHK-B13)",
+          "check_method": "The gate cannot see the session's own run: it records n_a, and the package's tests prove the reuse across the commit",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "warning"
+        },
+        {
+          "id": "ts-code-rerun",
+          "verified_by": "check",
+          "text": "The code gate runs a verification command again when any file of the tree changed after the session's run of it (CHK-B13)",
+          "check_method": "The gate cannot see the session's own run: it records n_a, and the package's tests prove the new run after a change",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "warning"
+        },
+        {
+          "id": "ts-code-ran",
+          "verified_by": "check",
+          "text": "The code gate's evidence names each verification command of the plan that the gate ran or reused, with the word `reused` or `run`",
+          "check_method": "Read the gate's own command runs: one evidence line per verification command, `reused` for a stored result and `run` for a started command",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          },
+          "severity": "warning"
         }
       ]
     }
   },
   "assumptions": [
     "Per-phase coding waits for the engine's sequential map; until then a complex plan is coded in one session.",
-    "The plan, the code report and the discovery hand-off are not listed as deliverables because the engine requires every listed deliverable on every path, and a docs-only run or a run with no gaps does not produce them all.",
     "No step or judge uses the large model tier.",
     "Whether the code agrees with the specs by meaning is judged once, at the code gate (ts-code-aligned, ts-code-related), not again at the outcome gate.",
     "The release step and a work-tracker start are left out of the first version.",
     "Verification commands resolve against one fixed list (pytest, ruff, mypy and read-only git) because release 1 of the engine reads no per-repository command resolver; a repository with another toolchain adds its prefixes to the workflow's list.",
-    "Whether a commit is absent from every remote is not checked: the engine's git facts do not report it in release 1. Steps cannot push, and only the last stage does.",
+    "The outcome gate reports whether the run's branch is pushed and never grades it: the last stage pushes after the gate, and a branch an earlier run pushed is already pushed at the gate, so no gate fails a run for the push.",
     "Specs written by the setup step describe behaviour that exists already, so the outcome gate does not ask for a test that names each of their acceptance criteria; a task that later touches such a behaviour adds the id to its test.",
     "Repository setup is a conditional first step of this workflow because release 1 of the engine has no sub-workflows; it moves into one when the engine has them.",
     "The quick lane's limits (3 acceptance criteria, 2 code files, 200 changed lines) are first values with no run behind them; the share of quick runs sent back to triage is the measure to tune them by.",
-    "A test carries its criterion as text (the spec's id, or `AC <n>`); the check finds the text and a skip mark near it, and does not prove that the named test is the one the command ran."
+    "A test carries its criterion as text (the spec's id, or `AC <n>`); the check finds the text and a skip mark near it, and does not prove that the named test is the one the command ran.",
+    "The code judge's reading budget (one file per 50 changed source lines, a floor of 10 files and a ceiling of 50) is made of first values with no run behind them; the share of code gates whose judge grades an alignment criterion UNVERIFIABLE for files beyond the budget is the measure to tune them by.",
+    "The spec budget is fixed at 400 lines and 30,720 bytes for every repository, with no setting; it is measured once, at discovery (ts-dis-budget), while ts-spec-cap at the outcome gate counts lines only.",
+    "The code gate cannot see the session's own run of the verification commands through the check preview, so it records n_a for ts-code-previewed, ts-code-session and ts-code-rerun; the package's tests prove them. ts-code-preview is read from the prompt and ts-code-ran from the gate's own command runs.",
+    "No unit criterion serves ts-spec-fresh (OUT-B16), so a failed guard escalates the run at the outcome gate and is not sent back to discovery; a person starts the task again from the head of the base branch.",
+    "The triage check reads a missing conversation value as `blocking`: the engine's fixture rung gives a check no settings, so it runs each triage fixture as `blocking`, and the `never` cases of ts-tri-owner are proved by the package's tests.",
+    "Two subjects start reading sessions and three run at a time; both are first values with no measured run behind them, and the judges of one gate stay one, each reading gate having a judge of its own (spec parallel-reading, its open questions)."
   ],
   "revisions": [
     {
@@ -1154,6 +1581,66 @@
       "origin": "authored",
       "at": "2026-11-22T23:30:00.000Z",
       "note": "ts-traced asks for tests of the criteria a run added or changed, and of old criteria whose behaviour it changed, never of every criterion of an edited spec (backlog B22); ts-spec-links reads the edited specs only, as its text says"
+    },
+    {
+      "revision": 8,
+      "origin": "authored",
+      "at": "2026-11-23T12:00:00.000Z",
+      "note": "issue 114: the discovery check measures every spec against the spec budget of 400 lines and 30,720 bytes and sends an over-budget spec back for a split by capability (ts-dis-budget, ts-dis-over); the structure check reads an id a split moved as defined in the spec it moved to, and a split-off spec may name ids of the spec it was split from (ts-spec-moved, ts-spec-parent)"
+    },
+    {
+      "revision": 9,
+      "origin": "authored",
+      "at": "2026-11-23T22:50:00.000Z",
+      "note": "the code gate compares a verification command that fails with the run's base commit: a failure that was there before the change, or that no changed file touches, escalates as environmental instead of spending a retry (issue 111)"
+    },
+    {
+      "revision": 10,
+      "origin": "authored",
+      "at": "2026-11-23T23:10:00.000Z",
+      "note": "the code gate's evidence states the changed source lines, a reading budget and the changed source files, and the code judge reads them before it grades alignment; every judge brief and the outcome judge's stance ask for the quoted line behind a MET and grade PARTIAL when the only evidence is search lines (issues 112 and 113, spec judge-reading)"
+    },
+    {
+      "revision": 11,
+      "origin": "authored",
+      "at": "2026-11-23T23:45:00.000Z",
+      "note": "issue 126: the code session makes its one run of the verification commands through the engine's check preview after the plan is marked and the report written, the engine's reuse key names the tree's content so the gate reuses that run after the commit, and the gate's evidence says for each command whether it was reused or run (ts-code-once edited; ts-code-preview, ts-code-previewed, ts-code-session, ts-code-rerun, ts-code-ran added)"
+    },
+    {
+      "revision": 12,
+      "origin": "authored",
+      "at": "2026-11-24T03:45:00.000Z",
+      "note": "issue 110: the hand-off, the plan and the code report are deliverables, each required only on a path that produces it, and the outcome check reports whether the run's branch is pushed (spec outcome-gate)"
+    },
+    {
+      "revision": 13,
+      "origin": "authored",
+      "at": "2026-11-24T03:50:00.000Z",
+      "note": "issue 125: a trip back to the plan step keeps the completed mark of a row it leaves as it was; the plan and expand checks accept a mark that a commit of the run wrote on a row that reads the same with its file unchanged since, and refuse any other (ts-plan-form, ts-exp-rows); the code step builds only the unmarked rows and the code check takes a kept row's file whichever visit changed it (ts-code-changed, spec kept-marks)"
+    },
+    {
+      "revision": 14,
+      "origin": "authored",
+      "at": "2026-11-24T04:45:00.000Z",
+      "note": "issues 118 and 124: the outcome check fails a spec the run edited when the base branch changed it since the run started (ts-spec-fresh), comparing the spec at the run's base commit with the head of the base branch that the engine gives every check"
+    },
+    {
+      "revision": 15,
+      "origin": "authored",
+      "at": "2026-11-24T08:00:00.000Z",
+      "note": "issue 129: a step's check reads the session record the engine gives it; each of the seven steps whose prompt names a rule file fails when the session never opened a rule file the repository holds (ts-set-ruleread, ts-tri-ruleread, ts-dsh-ruleread, ts-dis-ruleread, ts-plan-ruleread, ts-exp-ruleread, ts-code-ruleread), the expand check fails for a row whose existing file the session never opened (ts-exp-opened), and the code check fails when a phase's source was changed before its tests were first written (ts-code-order) (spec session-record-checks)"
+    },
+    {
+      "revision": 16,
+      "origin": "authored",
+      "at": "2026-11-24T06:00:00.000Z",
+      "note": "issue 117: the setting `conversation` (`never` or `blocking`); with `never` the triage note sorts each gap and lists each owner decision with its default, discovery goes on with the default, and the pull request lists the defaults as assumptions to confirm (ts-tri-owner added, spec conversation)"
+    },
+    {
+      "revision": 17,
+      "origin": "authored",
+      "at": "2026-11-24T12:00:00.000Z",
+      "note": "issue 132: the full discovery step starts one read-only reading session for each gap of two or more, three at a time, before its one writing session (read_gap with ts-rdg-answers and ts-rdg-cited, spec parallel-reading); the setup survey does the same for each component folder (list_components, read_component with ts-rdc-answers and ts-rdc-cited)"
     }
   ]
 }

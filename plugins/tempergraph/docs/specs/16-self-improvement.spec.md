@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A built-in program that reads every finished run's record, judges it with an independent judge, and files, comments on or only records a finding in the repository that owns the fault: the engine's or the workflow's. It is inside the engine so every run is analyzed without an optional install ([ADR-0003](../adr/0003-workflows-as-data.adr.md)); it runs as a detached child and never pauses. The loop closes through people: an issue is evidence, not an order, and a measurement call never writes code. It is the first half of the loop: clusters of its findings become measured proposals ([PRP](40-improvement-proposals.spec.md)), human ground truth becomes labels and judge grades ([FBK](41-feedback-and-judge-reliability.spec.md)), its data needs are [IMD](43-improvement-data.spec.md), and what it reads from sessions is [SRV](44-session-review.spec.md). Workflow owners, the engine's maintainers and operators who read the issues depend on it. Its thresholds are parameter records with provenance `default_no_data` ([IMD-B23](43-improvement-data.spec.md)), to be revisited with real runs.
+A built-in program that reads every finished run's record, judges it with an independent judge, and files, comments on or only records a finding in the repository that owns the fault: the engine's or the workflow's. It is inside the engine so every run is analyzed without an optional install ([ADR-0003](../adr/0003-workflows-as-data.adr.md)); it runs as a detached child and never pauses. The loop closes through people: an issue is evidence, not an order, and a measurement call never writes code. It is the first half of the loop: clusters of its findings become measured proposals ([PRP](40-improvement-proposals.spec.md)), human ground truth becomes labels and judge grades ([FBK](41-feedback-and-judge-reliability.spec.md)), its data needs are [IMD](43-improvement-data.spec.md), what it reads from sessions is [SRV](44-session-review.spec.md), and how its issues are labelled, written and read back is [ISS](loop-issues.spec.md). Workflow owners, the engine's maintainers and operators who read the issues depend on it. Its thresholds are parameter records with provenance `default_no_data` ([IMD-B23](43-improvement-data.spec.md)), to be revisited with real runs.
 
 ## Behaviours
 
@@ -184,7 +184,7 @@ WHEN the cost lens runs THE loop SHALL apply six rules, each a finding per unit 
 
 - SIL-AC1 (SIL-B8): Every exit writes findings, evidence and one ledger row, with no model call
 - SIL-AC2 (SIL-B8, SIL-B1): The canary test shows no request text in any issue, comment, ticket or ledger row
-- SIL-AC3 (SIL-B2, SIL-B18): A repeated cause produces one issue and comments, never a duplicate issue
+- SIL-AC3 (SIL-B2, SIL-B18): A repeated cause produces one open issue and comments, never a second open issue
 - SIL-AC4 (SIL-B4, SIL-B11): An executor-attributed cause is filed with the executor label and CLI version, never against the workflow
 - SIL-AC5 (SIL-B1, SIL-B17): A loop child that fails leaves the parent's exit code unchanged, and a child that runs writes its loop records and one `loop` ledger row
 - SIL-AC6 (SIL-B9, SIL-B10): Each lens runs on the exits its triggers name and on no others
@@ -204,3 +204,6 @@ WHEN the cost lens runs THE loop SHALL apply six rules, each a finding per unit 
 
 - Keep or drop the 0.75 confidence floor for filing a new friction issue? It may carry no signal; FBK's `confidence_bands` will give the data. Owner: owner. Until answered: kept, as parameter `friction.file_confidence`.
 - Is the loop a compiled built-in workflow? Release 1 runs it as a fixed engine program with one judged session per ticket, so it gets no gate of its own; the outcome lens reuses the calibrated outcome judge and files only while JCL holds that judge `accepted` and only by the pattern rule. Owner: engine owner.
+- Is 7 days the right window for a lost runner (`lost_runner.window_days`)? It keeps the first `status` after an upgrade from starting a loop for every old dead thread. Until answered: 7, as a parameter with provenance `default_no_data`. Owner: owner.
+- Is a lost runner a stable-mode signal of its own? SIL-B10 and [SRV-B16](44-session-review.spec.md) name the signals that fire the lenses in stable mode, and a lost runner is none. Until answered: it is not, so a stable-mode lost runner starts the loop only when its segment holds a signal. Owner: owner.
+- Should `resume` and `wait` also find a lost runner? Until answered: only `status`, `stop` and `attention` do (SIL-B29), so a thread resumed before any of them looked is not handed to the loop. Owner: owner.

@@ -7,6 +7,7 @@ every other verb here is model-free.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import os
 from typing import Any
 
@@ -365,6 +366,10 @@ def cmd_improve(env: Any, a: argparse.Namespace) -> int:
             judge = env.registry.get(a.executor or spec.default_executor) if rec.get("side") == "grader" else None
             out = trl.trial(root, spec, a.proposal, _arm_runner(env), target=a.target, cap_usd=a.cap,
                             judge_executor=judge)
+            from tempergraph.improve.codehost import CodeHostError
+
+            with contextlib.suppress(CodeHostError):  # PRP-B25: a host that is down leaves the comment in the outbox
+                trl.comment_result(root, out, _host(), autonomy=prp.autonomy(spec, os.environ.get("TEMPERGRAPH_AUTONOMY")))
             _out(env, a, out, f"trial {out['trial_id']}: {out['decision']}"
                  + (f" ({out['reason']})" if out.get("reason") else "")
                  + f", {out['counts']['wins']} wins {out['counts']['losses']} losses {out['counts']['ties']} ties")

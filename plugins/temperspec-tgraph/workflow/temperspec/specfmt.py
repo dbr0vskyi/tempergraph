@@ -6,9 +6,12 @@ fails when a rule and this module disagree on a heading or a pattern."""
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
 SPEC_CAP_LINES = 400
+# The repository's spec budget is at most 400 lines and at most 30 KB; "over" means strictly more.
+SPEC_CAP_BYTES = 30 * 1024
 SPEC_HEADINGS = ("Purpose", "Behaviours", "Acceptance criteria")
 TRIAGE_HEADINGS = ("Task", "Acceptance criteria", "Existing documents", "Gaps", "Route")
 HANDOFF_HEADINGS = ("Problem", "Gaps closed", "Changed documents", "Decisions", "Open questions", "Reading list")
@@ -54,6 +57,15 @@ LEGACY = re.compile(r"^##\s+\d+\.\s+(Overview|Contract)\b", re.M)
 GAP_ROW = re.compile(r"^\s*(?:[-*]|\|)\s*\**G\d+\b")
 COVERED_WORDS = re.compile(r"\bCovered by\b", re.I)
 COVERED = re.compile(rf"\b(?i:Covered by)\s+`?({ID}-B\d+)`?\s+and\s+`?({ID}-AC\d+)\b`?")
+# The conversation setting `never` (spec `conversation`): each gap row ends with its sort, and the section
+# `Owner decisions`, between Gaps and Route, holds one entry per owner decision. A note of a `blocking` run has neither.
+OWNER_HEADING = "Owner decisions"
+SORT_END = re.compile(r"\b(findable|owner decision)\W*$", re.I)
+GAP_ID = re.compile(r"\bG\d+\b")
+OWNER_ENTRY = re.compile(r"^\s*[-*]\s+\**(G\d+)\**\s*:\s*(.*?)\s*$")
+OWNER_ITEM = re.compile(r"^\s*(?:[-*]\s+)?\**(Options|Default|If wrong)\**\s*:\s*(.*?)\s*$", re.I)
+OPTION_LABEL = re.compile(r"(?:(?<=^)|(?<=[\s;,]))([a-z])\)\s+")
+OWNER_OPTIONS = (2, 4)
 READING_ITEM = re.compile(r"^\s*[-*]\s+`([^`]+)`\s*(.*)$")
 NUMBERED = re.compile(r"^\s*(\d+)[.)]\s+\S")
 TABLE_ROW = re.compile(r"^\s*\|(.+)\|\s*$")
@@ -154,7 +166,15 @@ def changed_criteria(before: str, after: str) -> set[str]:
     return out
 
 
-def parse_spec(text: str) -> Spec:
+def _prefix(ident: str) -> str:
+    return ident.rsplit("-", 1)[0]
+
+
+def parse_spec(text: str, defined_elsewhere: Mapping[str, Sequence[str]] | None = None) -> Spec:
+    """Read a spec. `defined_elsewhere` maps an id to the other spec files that define it: a criterion may then
+    name an id that exactly one other file defines when the id's prefix is one this spec defines (an id a split
+    moved, or one of the spec it was split from). Without it every criterion names this spec's behaviours only."""
+    elsewhere = defined_elsewhere or {}
     spec = Spec(legacy=bool(LEGACY.search(text)), lines=len(text.splitlines()))
     if spec.legacy:
         return spec
@@ -203,11 +223,13 @@ def parse_spec(text: str) -> Spec:
         if bid not in proved:
             spec.problems.append((beh.line, f"{bid} is proved by no acceptance criterion",
                                   f"add a criterion that names {bid}"))
+    own_prefixes = {_prefix(i) for i in (*spec.behaviours, *spec.criteria)}
     for cid, crit in spec.criteria.items():
         for p in crit.proves:
-            if p not in spec.behaviours:
+            moved = len(elsewhere.get(p, ())) == 1 and _prefix(p) in own_prefixes
+            if p not in spec.behaviours and not moved:
                 spec.problems.append((crit.line, f"{cid} names {p}, which this spec does not define",
-                                      "name a behaviour of this spec"))
+                                      "name a behaviour of this spec or of the spec it was split from"))
         if not crit.proves:
             spec.problems.append((crit.line, f"{cid} names no behaviour", "add the behaviour id in brackets"))
     return spec
@@ -224,6 +246,57 @@ def defined_ids(text: str) -> list[str]:
 
 def linked_ids(text: str) -> set[str]:
     return set(ANY_ID.findall(text))
+
+
+@dataclass
+class OwnerEntry:
+    """One entry of the `Owner decisions` section: the gap it answers, its question, its options as (label, text),
+    its default as written, and the cost of a wrong default."""
+
+    gap: str
+    question: str = ""
+    options: list[tuple[str, str]] = field(default_factory=list)
+    default: str = ""
+    cost: str = ""
+
+    @property
+    def default_text(self) -> str:
+        """The text of the option the default names (by its label, or by its words), else empty."""
+        want = self.default.strip().strip("`*").strip()
+        label = re.match(r"^\(?([a-z])\)?(?:[\s.:)-]|$)", want, re.I)
+        for lab, text in self.options:
+            if lab and label and lab == label.group(1).lower():
+                return text
+        for _, text in self.options:
+            if text and text.lower() == want.lower():
+                return text
+        return ""
+
+
+def _options(text: str) -> list[tuple[str, str]]:
+    """`a) 2; b) 1; c) 78` -> [("a", "2"), ("b", "1"), ("c", "78")]; without labels, the `;`-separated parts."""
+    marks = list(OPTION_LABEL.finditer(text))
+    if not marks:
+        return [("", p.strip()) for p in text.split(";") if p.strip()]
+    return [(m.group(1), text[m.end():(marks[i + 1].start() if i + 1 < len(marks) else len(text))].strip(" ;,"))
+            for i, m in enumerate(marks)]
+
+
+def _owner_entries(lines: list[str]) -> list[OwnerEntry]:
+    entries: list[OwnerEntry] = []
+    for line in lines:
+        head, item = OWNER_ENTRY.match(line), OWNER_ITEM.match(line)
+        if head:
+            entries.append(OwnerEntry(gap=head.group(1), question=head.group(2)))
+        elif item and entries:
+            key, value = item.group(1).lower(), item.group(2).strip()
+            if key == "options":
+                entries[-1].options = _options(value)
+            elif key == "default":
+                entries[-1].default = value
+            else:
+                entries[-1].cost = value
+    return entries
 
 
 @dataclass
@@ -244,6 +317,12 @@ class Triage:
     change_files: list[str] = field(default_factory=list)
     change_tests: list[str] = field(default_factory=list)
     change_commands: list[str] = field(default_factory=list)
+    # The conversation setting `never`: gap id -> `findable`, `owner decision` or empty (a row with no sort), whether the
+    # `Owner decisions` section exists, whether it says `None`, and its entries.
+    sorts: dict[str, str] = field(default_factory=dict)
+    owner_section: bool = False
+    owner_none: bool = False
+    owners: list[OwnerEntry] = field(default_factory=list)
 
 
 def _field(lines: list[str], name: str) -> str:
@@ -252,6 +331,12 @@ def _field(lines: list[str], name: str) -> str:
         if m:
             return m.group(1).strip().strip("`")
     return ""
+
+
+def gap_rows(text: str) -> list[str]:
+    """The lines of a triage note's Gaps section that open a gap row, unchanged and in order."""
+    low = {k.lower(): v for k, v in sections(text).items()}
+    return [ln for ln in low.get("gaps", []) if GAP_ROW.match(ln)]
 
 
 def parse_triage(text: str) -> Triage:
@@ -268,6 +353,14 @@ def parse_triage(text: str) -> Triage:
         if (c := COVERED.search(ln)):
             t.covered.append((c.group(1), c.group(2)))
     t.covered_rows = len(t.covered)
+    for ln in rows:
+        sort, gap = SORT_END.search(ln.rstrip()), GAP_ID.search(ln)
+        if gap:
+            t.sorts[gap.group(0)] = sort.group(1).lower() if sort else ("findable" if COVERED_WORDS.search(ln) else "")
+    owner = [ln for ln in low.get(OWNER_HEADING.lower(), []) if ln.strip()]
+    t.owner_section = OWNER_HEADING.lower() in low
+    t.owner_none = len(owner) == 1 and bool(re.fullmatch(r"\W*none\W*", owner[0], re.I))
+    t.owners = _owner_entries(owner)
     if t.gap_rows:
         t.gaps = "some"
     elif len(gaps) == 1 and re.fullmatch(r"\W*none\W*", gaps[0], re.I):
@@ -456,16 +549,29 @@ def link_problems(plan: Plan) -> list[str]:
     return list(dict.fromkeys(bad))
 
 
-def mark_problems(plan: Plan, done: bool) -> list[str]:
-    """The plan's status and the rows' Completed marks. Before code (`done` false) the plan is `planned` and no
-    row is marked; after code every row carries `✓ <date>` and the plan is `completed`."""
+def row_text(row: Row) -> str:
+    """What a row says, for comparing it with itself in an earlier commit (KMK-B1, KMK-B2): kind, requirements,
+    file, proof and change with whitespace collapsed; the phase heading and the Completed cell are left out."""
+    parts = (row.kind, " ".join(row.req), row.file, row.proves, row.change)
+    return "\x1f".join(" ".join(p.split()) for p in parts)
+
+
+def mark_problems(plan: Plan, done: bool, kept: dict[str, str] | None = None) -> list[str]:
+    """The plan's status and the rows' Completed marks. Before code (`done` false) the plan is `planned` and a row
+    is marked only when `kept` backs the mark: `kept` maps the id of each marked row to `""` (the run's history
+    backs it) or to the reason it does not; with `kept` `None`, or a marked row absent from it, no commit of the
+    run is known to have written the mark. After code every row carries `✓ <date>` and the plan is `completed`."""
     bad: list[str] = []
     if plan.status not in PLAN_STATUS:
         bad.append(f"the front matter has no `status: {'|'.join(PLAN_STATUS)}`")
     if not done:
         if plan.status in PLAN_STATUS and plan.status != "planned":
             bad.append(f"the plan's status is `{plan.status}` before any code is written; it is `planned`")
-        bad += [f"row `{r.id}` is already marked completed" for r in plan.rows if r.completed]
+        for r in plan.rows:
+            if r.completed:
+                reason = (kept or {}).get(r.id, "no commit of the run wrote this mark")
+                if reason:
+                    bad.append(f"row `{r.id}` is marked `{r.completed}` but {reason}")
         return bad
     if plan.status in PLAN_STATUS and plan.status != "completed":
         bad.append(f"the plan's status is `{plan.status}`, not `completed`")
@@ -485,12 +591,18 @@ def scope_cuts(plan: Plan) -> list[str]:
     return out
 
 
+def plan_facts(plan: Plan, reading_bytes: int = 0) -> dict[str, int]:
+    """CDM-B2: the seven numbers the plan rule's Complexity table measures, one for each sign. `reading_bytes` is
+    the size of the files and specs the rows name, which only the check can read."""
+    return {"phases": len(plan.phases), "rows": len(plan.rows),
+            "test_rows": sum(1 for r in plan.rows if r.kind == "test"),
+            "files": len({r.file for r in plan.rows if r.file}), "commands": len(plan.commands),
+            "reading_bytes": reading_bytes, "heavy_phases": len(plan.heavy)}
+
+
 def simple_overruns(plan: Plan, reading_bytes: int = 0) -> list[str]:
-    """Which measured signs of the plan are over the limit for `simple`."""
-    signs = {"phases": len(plan.phases), "rows": len(plan.rows),
-             "test_rows": sum(1 for r in plan.rows if r.kind == "test"),
-             "files": len({r.file for r in plan.rows if r.file}), "commands": len(plan.commands),
-             "reading_bytes": reading_bytes}
+    """Which measured signs of the plan are over the limit for `simple` (the numbers are `plan_facts`, CDM-B2)."""
+    signs = plan_facts(plan, reading_bytes)
     over = [f"{k} {signs[k]} > {limit}" for k, limit in SIMPLE_MAX.items() if signs[k] > limit]
     return over + [f"phase `{p}` is heavy ({sign or 'no sign named'})" for p, sign in plan.heavy.items()]
 

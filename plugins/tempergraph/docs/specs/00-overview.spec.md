@@ -110,6 +110,9 @@ The component specs, each owning what follows its name:
 - [97-windows-support.spec.md](97-windows-support.spec.md) WIN: platform rules.
 - [99-subworkflow-unit.spec.md](99-subworkflow-unit.spec.md) SWF: a child workflow as a unit.
 - [test-suite.spec.md](test-suite.spec.md) TST: the engine's own test run: workers, one-process runs, folders no test shares.
+- [loop-issues.spec.md](loop-issues.spec.md) ISS: the labels and body of the loop's issues, and what a closed issue changes.
+- [judge-read-share.spec.md](judge-read-share.spec.md) SRV (split from 44): the finding for a judge that read too small a share of the change.
+- [runs-without-a-final-exit.spec.md](runs-without-a-final-exit.spec.md) SIL (split from 16): a stop at a pause and a lost runner as final exits for the loop, recorded once.
 
 The monitor's own design set is [plugins/tempergraph-monitor/docs](../../../tempergraph-monitor/docs/specs/00-overview.spec.md). Assumptions made while the owner was unavailable are in [ADR-0001](../adr/0001-standalone-design-assumptions.adr.md); design notes and the origin of each spec block are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
 
@@ -201,9 +204,9 @@ WHEN a persisted document is written or read THE engine SHALL carry its schema v
 
 ### OVR-B15 Read-only verbs call no model
 
-WHEN input resolution or a read-only verb runs THE engine SHALL call no model and create nothing ([CLI](17-engine-cli.spec.md)).
+WHEN input resolution or a read-only verb runs THE engine SHALL call no model and create nothing but the hand-off of a lost runner ([CLI](17-engine-cli.spec.md), [SIL-B29](runs-without-a-final-exit.spec.md)).
 
-- GIVEN `status` on a state root WHEN it runs THEN no session starts and no file is created
+- GIVEN `status` on a state root with no lost runner WHEN it runs THEN no session starts and no file is created
 
 ### OVR-B16 Measurement never writes code
 

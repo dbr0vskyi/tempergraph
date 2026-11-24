@@ -50,7 +50,10 @@ catalog.
 ## Read-only questions
 
 `tempergraph status [<thread>]`, `tempergraph facts <thread>`, `tempergraph outcome show <workflow>`,
-`tempergraph config show <workflow>`, `tempergraph executors`, `tempergraph worktree list`. These spend nothing.
+`tempergraph config show <workflow>`, `tempergraph executors`, `tempergraph worktree list`. These start no
+session of their own. One case writes: when `tempergraph status` (like `stop` and `attention`) finds a thread whose
+runner was killed or timed out and left no exit, it records that thread as exit 5 with reason `runner_lost` and may
+start the improvement loop for it, once per thread; that loop spends. Its output and exit code are unchanged.
 
 `--dry-run` is not a preview: every step still runs and spends; only the issue filer stays quiet. Say so if
 the person asks for one.

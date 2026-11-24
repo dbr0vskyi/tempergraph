@@ -69,6 +69,7 @@ from tempergraph.run.judging import (
     render_judge,
 )
 from tempergraph.run.log import CostTotals, RunLog, cost_so_far, estimate, session_sink
+from tempergraph.run.session_record import read_session
 from tempergraph.security.scrub import clip, scrub
 from tempergraph.settings import Capture
 from tempergraph.store.layout import session_dir, session_key
@@ -545,7 +546,8 @@ class EngineNodes:
             ticket = selfcheck.issue(
                 self.ctx.state_root, u.gate,
                 self._check_context(unit, state, {"item": iid, "attempt": attempt, "visit": visit}, workdir,
-                                    sub="-preview"), thread=self.ctx.thread, limit=self.ctx.self_check_limit)
+                                    sub="-preview"), thread=self.ctx.thread, limit=self.ctx.self_check_limit,
+                base_branch=str((state.get("workspace") or {}).get("base_branch") or ""))
             ctx = dataclasses.replace(ctx, self_check=selfcheck.command(ticket))
         rendered = render_step(unit, shown, ctx, caps)
         prompt = rendered.text
@@ -609,7 +611,7 @@ class EngineNodes:
                          "evidence": str(prior.get("evidence") or "")} \
             if isinstance(prior, Mapping) and prior.get("result") == "FAIL" and not prior.get("environmental") else None
         record = {
-            "item": iid, "prior_failing": prior_failing,
+            "item": iid, "prior_failing": prior_failing, "session_key": key,  # the check reads this session's journal (CHK-B24)
             "attempt": attempt, "visit": visit, "ok": res.ok, "text": clip(scrub(res.text), 8000), "blocked": parsed.blocked, "upstream": parsed.upstream,
             "issues": parsed.issues, "infra_cause": str(res.infra_cause) if res.infra_cause else None,
             "infra_spent": res.infra_cause is not None, "timed_out": res.timed_out, "stalled": res.stalled,
@@ -1078,7 +1080,32 @@ class EngineNodes:
                     held = self.ctx.spec.units.get(owner)
                     if held is not None and held.kind == "subworkflow":  # SWF-B12: `{<unit>.<key>}`
                         out.update({f"{owner}.{k}": str(v) for k, v in vals.items()})
+        out.update(self._map_lines(unit, state))
         return out
+
+    def _map_lines(self, unit: str, state: Mapping[str, Any]) -> dict[str, str]:
+        """VAL-B9: a key the step of a map before this unit produces renders one line `<item id>: <value>` for each
+        item of the map's list that holds it, in list order, and `none` when no item does. An item's own template
+        keeps the plain key."""
+        order = list(self.ctx.spec.order)
+        if unit not in order:
+            return {}
+        lines: dict[str, str] = {}
+        for owner in order[: order.index(unit)]:
+            held = self.ctx.spec.units.get(owner)
+            if held is None or held.map is None or held.step is None:
+                continue
+            items = [str(it["id"]) for it in ((state.get("maps") or {}).get(owner) or {}).get("items") or []]
+            for key in held.step.produces:
+                found: list[str] = []
+                for item in items:
+                    for chan in ("artifacts", "values"):
+                        got = ((state.get(chan) or {}).get(owner) or {}).get(f"{key}[{item}]")
+                        if got is not None:
+                            found.append(f"{item}: {got}")
+                            break
+                lines[key] = "\n".join(found) or "none"
+        return lines
 
     # -- script units (SCR) ------------------------------------------------------------------------
 
@@ -1276,7 +1303,8 @@ class EngineNodes:
             facts={u: dict(f) for u, f in (state.get("facts") or {}).items() if isinstance(f, maps)},
             artifacts={u: dict(a) for u, a in (state.get("artifacts") or {}).items() if isinstance(a, maps)},
             settings=dict(ctx.settings), stage=ctx.stage, workdir=workdir,
-            git=checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or ""))
+            git=checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or "",
+                                   (state.get("workspace") or {}).get("base_branch") or ""))
         return complexity.evaluate(ctx.spec, unit, state, mctx, state_root=ctx.state_root, thread=ctx.thread,
                                    origin=ctx.origin,
                                    recent=complexity.explored_recent(ctx.state_root, ctx.spec.name, unit))
@@ -1475,6 +1503,10 @@ class EngineNodes:
                ) -> tuple[CheckResult, list[str]]:
         u = self.ctx.spec.units[unit]
         ctx = self._check_context(unit, state, att, workdir)
+        skey = att.get("session_key")
+        if isinstance(skey, str) and skey.rsplit(".", 1)[-1] in ("step", "retry"):  # CHK-B24: no other check has a record
+            calls = read_session(session_dir(self.ctx.state_root, self.ctx.spec.name, self.ctx.task_id, skey))
+            ctx.session = None if calls is None else tuple(calls)
         got = run_in_worker(u.gate, ctx)
         if not self.ctx.capture.check_output and ctx.out_dir is not None:  # `observe.check_output = off`
             for f in ctx.out_dir.glob("*.out"):
@@ -1486,7 +1518,8 @@ class EngineNodes:
                        sub: str = "") -> checkmod.CheckContext:
         u = self.ctx.spec.units[unit]
         facts = {k: v for k, v in (state.get("facts") or {}).items() if k != unit}
-        gfacts = checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or "")
+        gfacts = checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or "",
+                                    (state.get("workspace") or {}).get("base_branch") or "")
         return checkmod.CheckContext(
             changed_paths=checkmod.changed_paths(
                 workdir, gfacts, self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "manifest.json"),
@@ -1719,7 +1752,8 @@ class EngineNodes:
         escalated = bool(att.get("escalated"))
         rctx = RiskContext(
             unit=unit, item=att.get("item"), visit=int(att.get("visit", 1)), attempt=int(att.get("attempt", 1)),
-            git=riskmod.git_of(checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or ""),
+            git=riskmod.git_of(checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or "",
+                                                  (state.get("workspace") or {}).get("base_branch") or ""),
                                workdir),
             facts=facts, request=dict((state.get("request") or {}).get("inputs") or {}), settings=dict(ctx.settings),
             stage=ctx.stage, producer={"alias": att.get("alias"), "escalated": escalated,

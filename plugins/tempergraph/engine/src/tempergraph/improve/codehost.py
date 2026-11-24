@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 REPO = re.compile(r"^[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}$")
+MARKER = r"^[a-z0-9:=<>!\- ]{1,80}$"
 
 
 class CodeHostError(Exception):
@@ -24,6 +25,7 @@ class CodeHostError(Exception):
 
 class CodeHost(Protocol):
     def search(self, repo: str, marker: str) -> list[dict[str, Any]]: ...
+    def closed(self, repo: str, marker: str) -> list[dict[str, Any]]: ...
     def create(self, repo: str, title: str, body: str, labels: list[str]) -> str: ...
     def comment(self, repo: str, number: int, body: str) -> str: ...
     def reopen(self, repo: str, number: int) -> None: ...
@@ -70,11 +72,22 @@ class GhCodeHost:
         return json.loads(proc.stdout) if proc.stdout.strip() else None
 
     def search(self, repo: str, marker: str) -> list[dict[str, Any]]:
-        if not re.match(r"^[a-z0-9:=<>!\- ]{1,80}$", marker):
+        if not re.match(MARKER, marker):
             raise CodeHostError("marker is not a constant shape")
         got = self._gh(["issue", "list", "--repo", _check(repo), "--state", "open", "--limit", "50",
                         "--json", "number,body,url", "--search", f"\"{marker}\" in:body"])
         return list(got or [])
+
+    def closed(self, repo: str, marker: str) -> list[dict[str, Any]]:
+        """Closed issues holding the marker, with the close reason (`not_planned`, `completed`, `duplicate` or
+        empty) and the close time (ISS-B3 to ISS-B6)."""
+        if not re.match(MARKER, marker):
+            raise CodeHostError("marker is not a constant shape")
+        got = self._gh(["issue", "list", "--repo", _check(repo), "--state", "closed", "--limit", "50",
+                        "--json", "number,body,url,stateReason,closedAt", "--search", f"\"{marker}\" in:body"])
+        return [{"number": r.get("number"), "url": r.get("url"), "body": r.get("body") or "",
+                 "state_reason": str(r.get("stateReason") or "").lower(), "closed_at": r.get("closedAt") or ""}
+                for r in got or [] if isinstance(r, dict)]
 
     def create(self, repo: str, title: str, body: str, labels: list[str]) -> str:
         got = self._gh(["api", f"repos/{_check(repo)}/issues", "--method", "POST", "--input", "-"],
@@ -114,6 +127,7 @@ class MemoryCodeHost:
     comments: list[dict[str, Any]] = field(default_factory=list)
     pulls: list[dict[str, Any]] = field(default_factory=list)
     fail_search: int = 0
+    fail_closed: int = 0
     down: bool = False
 
     def search(self, repo: str, marker: str) -> list[dict[str, Any]]:
@@ -123,6 +137,22 @@ class MemoryCodeHost:
             self.fail_search -= 1
             raise CodeHostError("search failed")
         return [i for i in self.issues if i["repo"] == repo and i["state"] == "open" and marker in i["body"]]
+
+    def closed(self, repo: str, marker: str) -> list[dict[str, Any]]:
+        if self.down:
+            raise CodeHostError("unreachable")
+        if self.fail_closed:
+            self.fail_closed -= 1
+            raise CodeHostError("closed search failed")
+        return [{"number": i["number"], "url": i["url"], "body": i["body"], "state_reason": i.get("state_reason") or "",
+                 "closed_at": i.get("closed_at") or ""}
+                for i in self.issues if i["repo"] == repo and i["state"] == "closed" and marker in i["body"]]
+
+    def close(self, repo: str, number: int, reason: str, at: str) -> None:
+        """Closes an issue with a reason (`not_planned`, `completed`, `duplicate` or empty) at an ISO time."""
+        for i in self.issues:
+            if i["repo"] == repo and i["number"] == number:
+                i.update(state="closed", state_reason=reason, closed_at=at)
 
     def create(self, repo: str, title: str, body: str, labels: list[str]) -> str:
         if self.down:
@@ -141,7 +171,7 @@ class MemoryCodeHost:
     def reopen(self, repo: str, number: int) -> None:
         for i in self.issues:
             if i["repo"] == repo and i["number"] == number:
-                i["state"] = "open"
+                i.update(state="open", state_reason=None, closed_at=None)
 
     def default_branch(self, repo: str) -> str:
         if self.down:

@@ -180,6 +180,10 @@ def act(t: Mapping[str, Any], registry: Any, host: Any, log: Any, now: datetime 
     trl.save(root, tr)
     out["trial"] = tr.get("trial_id")
     note("loop_trialled", trial=tr.get("trial_id"), decision=tr.get("decision"), reason=tr.get("reason"))
+    try:  # PRP-B25: one result comment per issue of the cluster; its failure never stops the pull request
+        trl.comment_result(root, tr, host, autonomy=level)
+    except Exception as exc:  # noqa: BLE001 - best effort (SIL-B1)
+        note("loop_skipped", step="trial_comment", reason="error", error=type(exc).__name__)
     if tr.get("decision") == "shown_better":  # PRP-B8: a draft pull request, never a merge
         opened = prp.open_pr(root, spec, str(rec["proposal_id"]), host)
         out["pull_request"] = opened.get("pull_request")

@@ -497,10 +497,11 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
 
                 summary["labels"] = after_exit(root, spec.name, task_id, seg_row)  # FBK-B9, FBK-B14
                 log.write("finding_recorded", **summary)
-                _loop(root, spec, task_id, tid, summary, settings, registry, judges,
-                      operator_review=settled.run.get("session_review"), run_cost_usd=cost.reported + cost.estimated_only,
-                      daily_cap_usd=settled.run.get("daily_cap_usd"), loop_model=settled.run.get("loop_model"),
-                      loop_effort=settled.run.get("loop_effort"))
+                hand_to_loop(root, spec, task_id, tid, summary, settings, registry, judges,
+                             operator_review=settled.run.get("session_review"),
+                             run_cost_usd=cost.reported + cost.estimated_only,
+                             daily_cap_usd=settled.run.get("daily_cap_usd"), loop_model=settled.run.get("loop_model"),
+                             loop_effort=settled.run.get("loop_effort"))
         except Exception as exc:  # noqa: BLE001
             log.write("engine_error", scope="improve", error=type(exc).__name__)
         outcome.thread_id = tid
@@ -512,11 +513,12 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
             hub.close()
 
 
-def _loop(root: Path, spec: WorkflowSpec, task_id: str, tid: str, summary: Mapping[str, Any],
-          settings: RunSettings, registry: Registry, judges: Mapping[str, str], *,
-          operator_review: str | None = None, run_cost_usd: float = 0.0, daily_cap_usd: float | None = None,
-          loop_model: str | None = None, loop_effort: str | None = None) -> None:
-    """SIL-B1: hand the judged lenses to the detached loop child; `TEMPERGRAPH_LOOP=inline|off` for tests."""
+def hand_to_loop(root: Path, spec: WorkflowSpec, task_id: str, tid: str, summary: Mapping[str, Any],
+                 settings: RunSettings | None, registry: Registry, judges: Mapping[str, str], *,
+                 operator_review: str | None = None, run_cost_usd: float = 0.0, daily_cap_usd: float | None = None,
+                 loop_model: str | None = None, loop_effort: str | None = None, trigger: str | None = None) -> None:
+    """SIL-B1: hand the judged lenses to the detached loop child; `TEMPERGRAPH_LOOP=inline|off` for tests.
+    `settings` is None for an exit no run of this process made (SIL-B29): not a trial, `--dry-run` read from the log."""
     from tempergraph.improve import child
 
     if child.mode() == "off" or spec.builtin:
@@ -524,17 +526,72 @@ def _loop(root: Path, spec: WorkflowSpec, task_id: str, tid: str, summary: Mappi
     names = list(judges.values())
     executor = max(set(names), key=names.count) if names else spec.default_executor
     # `--dry-run` holds for the thread: any segment that started with it
-    dry = settings.dry_run or last_record(run_dir(root, spec.name, task_id) / "run.jsonl", "run_started",
-                                          dry_run=True) is not None
+    dry = (settings is not None and settings.dry_run) or last_record(
+        run_dir(root, spec.name, task_id) / "run.jsonl", "run_started", dry_run=True) is not None
     if child.hand_off(root, spec, task_id, tid, summary, dry_run=dry, judge_executor=executor,
                       operator_review=operator_review, run_cost_usd=run_cost_usd,
-                      trial=settings.origin == "trial", daily_cap_usd=daily_cap_usd, loop_model=loop_model,
-                      loop_effort=loop_effort) is None:
+                      trial=settings is not None and settings.origin == "trial", daily_cap_usd=daily_cap_usd,
+                      loop_model=loop_model, loop_effort=loop_effort, trigger=trigger) is None:
         return
     if child.mode() == "inline":
         child.drain(registry=registry)
     else:
         child.launch()
+
+
+def _record_stop(root: Path, spec: WorkflowSpec, task_id: str, log: RunLog, values: Mapping[str, Any],
+                 registry: Registry, settings: RunSettings, settled: Settled, judges: Mapping[str, str]) -> None:
+    """SIL-B27: a person's stop before a unit is an exit with code 4 and reason `person`: its ledger row, the records of
+    SIL-B8 and the hand-off to the loop. The stop has no segment of its own, so the records it covers are those written
+    after the paused segment's `run_exit` (the paused segment's findings were derived when it paused). Never changes
+    the stop's result (OVR-B4)."""
+    tid = thread_id(spec.name, task_id)
+    try:
+        cost = CostTotals.from_json((values.get("run") or {}).get("cost"))
+        ledger = Ledger(path=root / "ledger.jsonl")
+        ledger.append({"kind": "run_segment", "thread_id": tid, "workflow": spec.name,
+                       "workflow_version": spec.version, **join_keys(root, settings),
+                       "exit_code": int(ExitCode.STOPPED), "reason": "person",
+                       "cost": cost.to_json(), "origin": settings.origin, "stage": _stage(spec, settings)[0],
+                       **({"schedule_id": settings.schedule["schedule_id"]} if settings.schedule else {}),
+                       "settings_digest": settled.resolved.digest,
+                       "overridden_keys": rst.overridden_keys(settled.resolved),
+                       "grants": _grants_used(spec, registry, settled, values)})
+        if ledger.failures:
+            log.write("engine_error", scope="ledger", error="write_failed")
+        from tempergraph.improve.record import record_exit
+
+        records = _log_records(log.path)
+        after = max((i for i, r in enumerate(records) if r.get("kind") == "run_exit"), default=-1) + 1
+        seg_row = next((r for r in reversed(ledger_rows(root)) if r.get("kind") == "run_segment"
+                        and r.get("thread_id") == tid), None)
+        if seg_row is not None:
+            summary = record_exit(root, spec, task_id, log.path, values, seg_row, seg=records[after:])
+            from tempergraph.improve.reliability import after_exit
+
+            summary["labels"] = after_exit(root, spec.name, task_id, seg_row)
+            log.write("finding_recorded", **summary)
+            hand_to_loop(root, spec, task_id, tid, summary, settings, registry, judges,
+                         operator_review=settled.run.get("session_review"),
+                         run_cost_usd=cost.reported + cost.estimated_only,
+                         daily_cap_usd=settled.run.get("daily_cap_usd"), loop_model=settled.run.get("loop_model"),
+                         loop_effort=settled.run.get("loop_effort"))
+    except Exception as exc:  # noqa: BLE001
+        log.write("engine_error", scope="improve", error=type(exc).__name__)
+
+
+def _log_records(path: Path) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return out
+    for ln in lines:
+        with contextlib.suppress(ValueError):
+            r = json.loads(ln)
+            if isinstance(r, dict):
+                out.append(r)
+    return out
 
 
 def ledger_rows(root: Path) -> list[dict[str, Any]]:
@@ -948,11 +1005,12 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                 breakpoint_file(root, spec.name, task_id).unlink()
             if d.word == "stop":  # the segment ends; the thread stays unfinished and a resume continues it
                 intervention(root, spec, task_id, touch, d, feedback, settings, settled)
-                RunLog(run_dir(root, spec.name, task_id) / "run.jsonl").write(
-                    "human", unit=unit, decision="stop", caller=dict(settings.caller), feedback=False)
+                stop_log = RunLog(run_dir(root, spec.name, task_id) / "run.jsonl")
+                stop_log.write("human", unit=unit, decision="stop", caller=dict(settings.caller), feedback=False)
                 write_json(exit_file(root, spec.name, task_id), {"schema_version": 1,
                                                                   "exit_code": int(ExitCode.STOPPED),
                                                                   "reason": "person"})
+                _record_stop(root, spec, task_id, stop_log, values, registry, settings, settled, rep.judges)  # SIL-B27
                 return RunOutcome(exit_code=ExitCode.STOPPED, reason="person", thread_id=tid,
                                   message=f"{tid} stopped before {unit}; resume continues it")
             first_input, before, skip_bp = None, None, unit

@@ -27,7 +27,7 @@ WHEN a value is read THE engine SHALL give it to route and switch predicates as 
 
 ### VAL-B8 Template keys
 
-WHEN a template field `{name}` ([CON-B8](01-contracts.spec.md)) is rendered THE renderer SHALL look it up in this order: an engine key (`task_id`, `thread_id`, `workflow`, `unit`, `attempt`, `visit`, `branch`, `base`, `workdir` as the absolute workspace path, `run_label`); an item key in map items only (`item_id`, `item_index` 1-based, `item_count`, and `item`, the item's text up to 4,000 characters); a declared input (a workflow with no parameters has the one input `request`, the whole start request); a setting `settings.<name>` ([RST](80-run-settings-and-overrides.spec.md)); an earlier artifact a unit before this one produces (a `file` key renders its path relative to `workdir`; `url`, `wiki_page`, `tracker_issue` and `pull_request` their URL or id; `value` the value); and `<unit>.<key>`, a key a sub-workflow unit before this one exposes, rendered the same way ([SWF-B12](99-subworkflow-unit.spec.md)); render nothing else, no file content, judge text or fact; and SHALL refuse at validation a field naming none of these, an input or artifact named like an engine or item key (`reserved-key`), and an item key outside a map.
+WHEN a template field `{name}` ([CON-B8](01-contracts.spec.md)) is rendered THE renderer SHALL look it up in this order: an engine key (`task_id`, `thread_id`, `workflow`, `unit`, `attempt`, `visit`, `branch`, `base`, `workdir` as the absolute workspace path, `run_label`); an item key in map items only (`item_id`, `item_index` 1-based, `item_count`, and `item`, the item's text up to 4,000 characters); a declared input (a workflow with no parameters has the one input `request`, the whole start request); a setting `settings.<name>` ([RST](80-run-settings-and-overrides.spec.md)); an earlier artifact a unit before this one produces (a `file` key renders its path relative to `workdir`; `url`, `wiki_page`, `tracker_issue` and `pull_request` their URL or id; `value` the value; a key the step of a map before this one produces, as VAL-B9 says); and `<unit>.<key>`, a key a sub-workflow unit before this one exposes, rendered the same way ([SWF-B12](99-subworkflow-unit.spec.md)); render nothing else, no file content, judge text or fact; and SHALL refuse at validation a field naming none of these, an input or artifact named like an engine or item key (`reserved-key`), and an item key outside a map.
 
 - GIVEN an input named `workdir` WHEN validated THEN it is refused `reserved-key`
 - GIVEN `{item_id}` in a template outside a map WHEN validated THEN it is refused
@@ -57,9 +57,18 @@ WHEN a map item's template is rendered THE renderer SHALL render the item keys o
 
 - GIVEN a sequential map over three phases naming `{item_id}` and `{item}` WHEN item 2 is rendered THEN they render the second phase's id and text and `{item_count}` renders 3
 
+### VAL-B9 A map's values in a later template
+
+WHEN a template of a unit after a map names `{<key>}`, a key the map's step produces, THE renderer SHALL render one line `<item id>: <value>` for each item of the map's list that has a value for the key, in the order of the list whichever item ended first (a `file` key gives its path, as VAL-B8 does), or the word `none` when the map ran no item or no item has one.
+
+- GIVEN a map over items a, b and c whose step produced the value `note` for a and c only WHEN a later unit's template names `{note}` THEN it renders one line for a and one for c, in that order, each as `<item id>: <value>`
+- GIVEN a concurrent map over the list a, b whose item b ended before item a WHEN a later unit's template names `{note}` THEN the line of a comes before the line of b
+- GIVEN a map that ran no item under `on_empty: skip` WHEN a later unit's template names `{note}` THEN it renders `none` and the unit runs
+
 ## Acceptance criteria
 
 - VAL-AC1 (VAL-B5, VAL-B6, VAL-B8): Every scenario of VAL-B5, VAL-B6 and VAL-B8 has a fixture test
 - VAL-AC2 (VAL-B2, VAL-B7): A rendered prompt never contains the content of an earlier `file` artifact (canary test)
 - VAL-AC3 (VAL-B1): VAL-B1 holds offline with scripted steps, for both the valid and the invalid value
 - VAL-AC4 (VAL-B8, VAL-B3, VAL-B4): The list of engine and item keys in VAL-B8 equals the engine's constants (generated-table drift test)
+- VAL-AC5 (VAL-B9): Every scenario of VAL-B9 has a fixture test: the prompt of the unit after a sequential map and after a concurrent map lists the items' values in the order of the list, and a map that ran no item renders `none`

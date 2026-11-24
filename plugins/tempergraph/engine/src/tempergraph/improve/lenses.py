@@ -53,7 +53,11 @@ def _final_rows(root: Path, workflow: str, version: str | None) -> list[dict[str
 
 def decide(spec: WorkflowSpec, root: Path, thread: str, findings: Sequence[Mapping[str, Any]],
            row: Mapping[str, Any], seg: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    """SIL-B10 triggers for this final exit, in the workflow's improvement mode."""
+    """SIL-B10 triggers for this final exit, in the workflow's improvement mode.
+
+    `findings` are the segment's own findings and, at a person's stop of a paused thread, the unjudged findings
+    of the thread's earlier pauses (SIL-B28): a fault among them turns the friction lens on.
+    """
     mode = spec.improvement_mode
     faults = [f for f in findings if f.get("class") == "fault"]
     bases = {str(f["cause"]).split(":", 1)[0] for f in faults}

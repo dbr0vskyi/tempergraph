@@ -12,7 +12,7 @@ The task:
 
 ## Rules to follow
 
-`plan.rule.md` and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or already in your instructions when they are installed for the whole machine. Follow the plan rule exactly; this prompt does not repeat the format.
+`plan.rule.md` and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or where the project note in `CLAUDE.md` or `AGENTS.md` names them, or already in your instructions when they are installed for the whole machine. Open each rule file named here that this repository holds with the read tool; a search of a rule file is not opening it. A rule file installed for the whole machine is already in your instructions and lies outside this working directory: do not open it. Follow the plan rule exactly; this prompt does not repeat the format.
 
 ## Procedure
 
@@ -22,9 +22,9 @@ The task:
 4. Write the requirements, `R1`, `R2`, …: every numbered acceptance criterion of the triage note is named by at least one requirement, and every requirement follows from a behaviour or a criterion of a spec.
 5. Split the work into phases, each with one goal, and give each phase its weight.
 6. Measure the complexity against the limits in the plan rule and state it in the front matter.
-7. If the plan is `simple`, write the task rows of every phase, test rows first, each naming the requirements it serves, the verification commands, and the proof table: one row for each acceptance criterion of the task, with the test file that will prove it and the command that runs that test. Before a row that changes a type or a signature, search the tests for code that pins it and give each such test a row. If it is `complex`, write phases, goals and weights only, plus the verification commands; the expand step writes the rows.
+7. If the plan is `simple`, write the task rows of every phase, test rows first, each naming the requirements it serves, the verification commands, and the proof table: one row for each acceptance criterion of the task, with the test file that will prove it and the command that runs that test. Before a row that changes a type or a signature, search the tests for code that pins it and give each such test a row. If it is `complex`, write phases, goals and weights only, plus the verification commands; the expand step writes the rows. On a trip back, a `complex` plan that already has its rows keeps them and their marks: edit it in place.
 8. List every document the change will make false under Docs to update. In a `simple` plan each of them gets a `docs` row.
-9. Write the plan to `docs/plans/{task_id}.plan.md` with `status: planned` and every Completed cell empty. Write it in parts: first all sections with the phases and no rows, then one edit per phase that adds its table, each write under about 12 KB.
+9. Write the plan to `docs/plans/{task_id}.plan.md` (when the `plans/` folder beside the repository's specs, as the project note names it, differs from `docs/plans/`, write it there instead) with `status: planned`. The rows of a new plan start with their Completed cells empty. When the run has come back to this step and a plan already exists, edit that plan in place instead of rewriting it: keep the Completed mark of each row you leave exactly as it was, and empty the Completed cell of each row you change or add (a row whose kind, requirement, file, proof or change you edit, and every new row). Write it in parts: first all sections with the phases and no rows, then one edit per phase that adds its table, each write under about 12 KB.
 
 ## Limits
 

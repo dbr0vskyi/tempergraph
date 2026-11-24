@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import re
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -72,9 +73,15 @@ PROMPT_SAYS: dict[str, tuple[str, tuple[str, ...]]] = {
                                     "open another file only for what the list does not answer")),
     "ts-code-once": ("code.md", ("after each phase, run only the test files that the phase's rows name",
                                  "never the whole suite",
-                                 "run each verification command of the plan once, after the last phase and before "
-                                 "you write the report",
-                                 "in the quick lane, the note's `verify` commands once, after the last criterion")),
+                                 "run each verification command of the plan once, after the last phase, with the "
+                                 "plan marked completed and the code report written",
+                                 "change no file after that run",
+                                 "in the quick lane, run the note's `verify` commands once, after the last criterion "
+                                 "and the report")),
+    "ts-code-preview": ("code.md", ("make that one run through the preview command that the engine names under "
+                                    "\"check your work before you end\"",
+                                    "call it once, when nothing is left to change",
+                                    "the phases' own test runs stay plain commands")),
     "ts-dsh-limit": ("discovery_short.md", ("read at most 10 files",)),
 }
 
@@ -92,6 +99,127 @@ def _prompt_says(criterion: str) -> list[CheckFinding]:
         found += [_find("fail", criterion, f"prompts/{f.name}", f"the prompt does not say \"{p}\"",
                         "put the instruction back in the prompt") for p in phrases if p not in text]
     return found or [_ok(criterion, ", ".join(f"prompts/{f.name}" for f in files))]
+
+
+# What the session record shows (engine CHK-B24, CHK-B25; package SRC-B1 to SRC-B9). `ctx.session` is the calls the
+# attempt's session made: `{name, capability, target, ok}` each, in order, or None where there is no record. A finding
+# built from it names a rule file, a row, a path or a phase taken from the prompt and the plan, never a call's target.
+RULE_FOLDER = ".claude/rules/temperspec"
+RULE_NAME = re.compile(r"[\w-]+\.rule\.md")
+NO_RECORD = "there is no session record to read (a stand-in executor, the check preview or hidden tool inputs)"
+WRITES = ("edit", "write")
+
+
+def _record(ctx: Any) -> list[dict[str, Any]] | None:
+    """The calls of the attempt's session, or None when there is no record to trust: no `session` on the context, or
+    a read, edit or write call with no target (`observe.tool_inputs = off`) (SRC-B8)."""
+    session = getattr(ctx, "session", None)
+    if session is None:
+        return None
+    calls = [dict(c) for c in session if isinstance(c, dict) or hasattr(c, "keys")]
+    if any(c.get("capability") in ("read", *WRITES) and not c.get("target") for c in calls):
+        return None
+    return calls
+
+
+def _rule_names(unit: str) -> list[str]:
+    """The distinct rule files the unit's prompt names, in order of appearance (exact prompt file, so `discovery`
+    never reads `discovery_short.md`)."""
+    try:
+        text = (PROMPTS / f"{unit}.md").read_text(encoding="utf-8")
+    except OSError:
+        return []
+    return list(dict.fromkeys(RULE_NAME.findall(text)))
+
+
+def _target_is(call: dict[str, Any], name: str) -> bool:
+    return str(call.get("target") or "").replace("\\", "/").rstrip("/").rsplit("/", 1)[-1] == name
+
+
+def _opened(calls: list[dict[str, Any]], name: str) -> bool:
+    """A read call without an error whose target ends in the file's name; a search or a failed read is no opening."""
+    return any(c.get("capability") == "read" and c.get("ok") is True and _target_is(c, name) for c in calls)
+
+
+def _ruleread(ctx: Any, unit: str, criterion: str) -> list[CheckFinding]:
+    """The rule files the unit's prompt names and the repository holds are each opened with the read tool (SRC-B1)."""
+    held = [n for n in _rule_names(unit) if (Path(ctx.workdir) / RULE_FOLDER / n).is_file()]
+    if not held:
+        return [_find("n_a", criterion, message=f"the rule files are not in the repository (`{RULE_FOLDER}/`)")]
+    calls = _record(ctx)
+    if calls is None:
+        return [_find("n_a", criterion, message=NO_RECORD)]
+    found = [_find("fail", criterion, f"{RULE_FOLDER}/{n}", f"the session never opened `{n}` with the read tool",
+                   f"open `{RULE_FOLDER}/{n}` with the read tool, then follow it") for n in held
+             if not _opened(calls, n)]
+    return found or [_ok(criterion, ", ".join(held))]
+
+
+def _norm(path: str) -> str:
+    """A path as the record writes it: posix, no leading `./`."""
+    text = path.replace("\\", "/")
+    while text.startswith("./"):
+        text = text[2:]
+    return text
+
+
+def _phase_label(heading: str) -> str:
+    found = re.match(r"\s*Phase\s+(\d+)", heading, re.I)
+    return f"phase {found.group(1)}" if found else heading[:40]
+
+
+def _test_first(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
+    """ts-code-order: a phase's source files are not changed before its test files are first written (SRC-B6). A file
+    counts for the first phase that names it; a phase is measured only when the record writes a test file of the
+    phase; `docs` and `chore` rows count for no phase; a call that ended with an error is not a change."""
+    if _quick(ctx) is not None:
+        return [_find("n_a", criterion, message="the quick lane has no phases")]
+    calls = _record(ctx)
+    if calls is None:
+        return [_find("n_a", criterion, message=NO_RECORD)]
+    owner: dict[str, str] = {}
+    for row in plan.rows:
+        if row.kind in ("test", "code") and row.file:
+            owner.setdefault(_norm(row.file), row.phase)
+    changes = [(i, _norm(str(c.get("target") or ""))) for i, c in enumerate(calls)
+               if c.get("capability") in WRITES and c.get("ok") is True]
+    found: list[CheckFinding] = []
+    for phase in dict.fromkeys(r.phase for r in plan.rows):
+        tests = {_norm(r.file) for r in plan.rows if r.phase == phase and r.kind == "test" and r.file
+                 and owner.get(_norm(r.file)) == phase}
+        source = {_norm(r.file) for r in plan.rows if r.phase == phase and r.kind == "code" and r.file
+                  and owner.get(_norm(r.file)) == phase} - tests
+        written = [i for i, path in changes if path in tests]
+        if written and any(i < min(written) for i, path in changes if path in source):
+            found.append(_find("fail", criterion, _phase_label(phase),
+                               f"{_phase_label(phase)}: a source file of the phase was changed before its test file "
+                               "was first written", "write the phase's tests first, see them fail, then change the "
+                               "source"))
+    return found or [_ok(criterion)]
+
+
+def _opened_rows(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
+    """ts-exp-opened: each task row that names a file that exists in the repository has that file opened with the
+    read tool; two rows that name one unread file are both named (SRC-B5)."""
+    calls = _record(ctx)
+    if calls is None:
+        return [_find("n_a", criterion, message=NO_RECORD)]
+    seen = {_norm(str(c.get("target") or "")) for c in calls if c.get("capability") == "read" and c.get("ok") is True}
+    root = Path(ctx.workdir).resolve()
+    found: list[CheckFinding] = []
+    for row in plan.rows:
+        if not row.file:
+            continue
+        try:
+            target = (root / row.file).resolve()
+            exists = target.is_relative_to(root) and target.is_file()
+        except (OSError, ValueError):
+            exists = False
+        if exists and _norm(row.file) not in seen:
+            found.append(_find("fail", criterion, row.file, f"row `{row.id}` names `{row.file}`, which the session "
+                               "never opened with the read tool", "open the file with the read tool before you "
+                               "write the row"))
+    return found or [_ok(criterion)]
 
 
 def _walk(ctx: Any) -> list[str]:
@@ -117,6 +245,22 @@ def _spec_index(ctx: Any, files: list[str]) -> dict[str, list[str]]:
     return index
 
 
+def _definitions(ctx: Any, docs: list[str]) -> dict[str, list[str]]:
+    """Id -> the spec files that define it, over every spec of the repository, the overview wherever it is, and
+    the specs among `docs` even inside a skipped folder."""
+    index = _spec_index(ctx, _walk(ctx))
+    overview = checks.artifact_path(ctx, "overview")
+    if overview and not overview.endswith(".spec.md"):  # the overview is a spec wherever it is
+        for own in fmt.defined_ids(_read_path(ctx, overview) or ""):
+            index.setdefault(own, []).append(overview)
+    for path in docs:
+        if path.endswith(".spec.md"):
+            for own in fmt.defined_ids(_read_path(ctx, path) or ""):  # a changed spec inside a skipped folder counts
+                if path not in index.get(own, []):
+                    index.setdefault(own, []).append(path)
+    return index
+
+
 def _changed_docs(ctx: Any) -> list[str]:
     """Documents the run changed: the git facts, plus the hand-off's own list (the only source in a fixture)."""
     paths = [p for p in ctx.git.changed_paths if p.endswith(".md") and not (set(Path(p).parts) & SKIP_DIRS)
@@ -139,15 +283,40 @@ def _edited_specs(ctx: Any) -> tuple[list[str], list[str]]:
     return have, [p for p in gone if p not in ctx.git.changed_paths]  # a deleted spec is in the git facts only
 
 
-def _spec_form(ctx: Any, criterion: str, cap_criterion: str | None = None) -> list[CheckFinding]:
-    """The spec rule's structure check on every edited spec; the line cap under `cap_criterion` if given."""
+def _over_budget(ctx: Any, path: str, lines: int) -> list[str]:
+    """What of the spec budget the file is over: its lines, its bytes on disk (not its characters)."""
+    out: list[str] = []
+    if lines > fmt.SPEC_CAP_LINES:
+        out.append(f"{lines:,} lines, over the budget of {fmt.SPEC_CAP_LINES:,}")
+    try:
+        size = (Path(ctx.workdir) / path).stat().st_size
+    except OSError:
+        size = 0
+    if size > fmt.SPEC_CAP_BYTES:
+        out.append(f"{size:,} bytes, over the budget of {fmt.SPEC_CAP_BYTES:,}")
+    return out
+
+
+def _spec_form(ctx: Any, criterion: str, cap_criterion: str | None = None,
+               budget_criterion: str | None = None) -> list[CheckFinding]:
+    """The spec rule's structure check on every edited spec; the line cap under `cap_criterion` if given.
+
+    With `budget_criterion` the size is measured instead against the spec budget (lines and bytes), and an
+    overrun is one finding per spec under `ts-dis-over`, never under `criterion`."""
     have, gone = _edited_specs(ctx)
     found = [_find("fail", criterion, p, "the hand-off lists this spec but the file does not exist",
                    "write the spec or drop it from the list") for p in gone]
     over: list[CheckFinding] = []
+    index = _definitions(ctx, have) if have else {}
     for path in have:
-        spec = fmt.parse_spec(_read_path(ctx, path) or "")
-        if spec.lines > fmt.SPEC_CAP_LINES:
+        # An id a split moved is defined in another file; the parser reads it there, whatever the run's history.
+        elsewhere = {i: [f for f in files if f != path] for i, files in index.items() if any(f != path for f in files)}
+        spec = fmt.parse_spec(_read_path(ctx, path) or "", elsewhere)
+        if budget_criterion:
+            figures = _over_budget(ctx, path, spec.lines)
+            if figures:
+                over.append(_find("fail", "ts-dis-over", path, "; ".join(figures), "split the spec by capability"))
+        elif spec.lines > fmt.SPEC_CAP_LINES:
             over.append(_find("fail", cap_criterion or criterion, path,
                               f"{spec.lines} lines, over the cap of {fmt.SPEC_CAP_LINES}",
                               "split the spec by capability, or compress it"))
@@ -157,7 +326,11 @@ def _spec_form(ctx: Any, criterion: str, cap_criterion: str | None = None) -> li
         found += [_find("fail", criterion, f"{path}:{line}", message, fix) for line, message, fix in spec.problems[:8]]
     if not any(f.status == "fail" for f in found):
         found.append(_ok(criterion) if have else _find("n_a", criterion, message="the run edited no spec"))
-    if cap_criterion:
+    if budget_criterion:
+        found += over or ([_ok(budget_criterion), _ok("ts-dis-over")] if have else [
+            _find("n_a", budget_criterion, message="the run edited no spec"),
+            _find("n_a", "ts-dis-over", message="the run edited no spec")])
+    elif cap_criterion:
         found += over or [_ok(cap_criterion)]
     else:
         found += over
@@ -192,12 +365,75 @@ def _block_only(ctx: Any, path: str) -> bool:
     return bare(before or "") == bare(now)
 
 
+# The code judge's reading budget (judge-reading spec, JRD-B2): one source file to read for every 50 changed source
+# lines, rounded up, within a floor and a ceiling. First values with no run behind them (outcome.json, assumptions).
+LINES_PER_FILE = 50
+READING_FLOOR = 10
+READING_CEILING = 50
+
+
+def reading_budget(lines: int) -> int:
+    """Files the code judge reads for `lines` changed source lines."""
+    return min(READING_CEILING, max(READING_FLOOR, -(-lines // LINES_PER_FILE)))
+
+
+def _source_lines(ctx: Any, sources: list[str]) -> dict[str, int] | None:
+    """Lines added plus removed since the run's base, per changed source file; None with no base or when git fails."""
+    if not ctx.git.base:
+        return None
+    run = ctx.run(f"git diff --numstat --no-renames {ctx.git.base}", reuse=True)
+    if run.not_started or run.exit_code != 0:
+        return None
+    try:
+        text = Path(run.output_path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    counts: dict[str, int] = {}
+    for row in text.splitlines():
+        added, _, rest = row.partition("\t")
+        removed, _, path = rest.partition("\t")
+        if path in sources:
+            counts[path] = (int(added) if added.isdigit() else 0) + (int(removed) if removed.isdigit() else 0)
+    return counts
+
+
+def _reading_lines(ctx: Any) -> list[str]:
+    """The evidence lines the code judge reads from: the changed source lines, the reading budget and the changed
+    source files, the file with the most changed lines first (JRD-B1, JRD-B2)."""
+    sources = [p for p in ctx.git.changed_paths if not p.startswith(".claude/rules/") and not p.endswith(".md")]
+    counts = _source_lines(ctx, sources)
+    rule = f"one per {LINES_PER_FILE} lines, floor {READING_FLOOR}, ceiling {READING_CEILING}"
+    if counts is None:
+        why = "no base commit to compare with, or git diff failed"
+        return [f"Changed source lines: not counted ({why}). Reading budget: {READING_FLOOR} files (the floor).",
+                f"{SOURCE_FILES} (no counts): " + ("; ".join(sources) if sources else "none, the change has no source file")]
+    total = sum(counts.values())
+    ordered = sorted(sources, key=lambda p: (-counts.get(p, 0), p))
+    listed = "; ".join(f"{p} {counts.get(p, 0)}" for p in ordered) or "none, the change has no source file"
+    return [f"Changed source lines: {total}. Reading budget: {reading_budget(total)} files ({rule}).",
+            f"{SOURCE_FILES} (path lines), most lines first: {listed}"]
+
+
+SOURCE_FILES = "Changed source files"
+
+
 def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
-            links: list[str] | None = None) -> Any:
-    """The result, with the facts a read-only judge cannot get by itself as its evidence."""
-    bad = "; ".join(f"{f.criterion}: {f.message}" for f in found if f.status == "fail")
+            links: list[str] | None = None, reading: list[str] | None = None,
+            facts: list[str] | None = None, *, commands: list[str] | None = None) -> Any:
+    """The result, with the facts a read-only judge cannot get by itself as its evidence. A command judged
+    environmental leads the evidence, and the result is marked environmental when no other finding fails. `reading` is the lines a
+    judge that reads the changed code needs (`_reading_lines`): the changed source lines, its budget and the files.
+    `facts` is lines of plain evidence that follow the first line, never a finding (the outcome check's push line).
+    `commands` are the lines that say how each verification command was answered: first, because a preview prints
+    only the start."""
+    lead = [f"{f.criterion}: {f.message}" for f in found if isinstance(f, _Environmental)]
+    bad = "; ".join(lead + [f"{f.criterion}: {f.message}" for f in found
+                            if f.status == "fail" and not isinstance(f, _Environmental)])
+    environmental = bool(lead) and not any(f.status == "fail" and not isinstance(f, _Environmental) for f in found)
     specs, _ = _edited_specs(ctx)
-    lines = [bad or f"{len(found)} checked"]
+    head = [bad or f"{len(found)} checked"] + (facts or [])
+    # an environmental command leads (it escalates to a person); otherwise the command lines lead for a preview
+    lines = (head + [*(commands or [])] if lead else [*(commands or []), *head]) + (reading or [])
     changed = [p for p in ctx.git.changed_paths if not p.startswith(".claude/rules/")]
     prepared = [p for p in changed if p in CONTEXT_FILES and _block_only(ctx, p)]
     changed = [p for p in changed if p not in prepared]
@@ -213,7 +449,9 @@ def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
         lines.append("Related specs: " + ", ".join(plan.specs[:40]))
     if links:
         lines.append("Criterion tests: " + "; ".join(links[:40]))
-    return checks.result(found, evidence="\n".join(lines))
+    res = checks.result(found, evidence="\n".join(lines))
+    res.environmental = environmental
+    return res
 
 
 def _setup_specs(ctx: Any) -> list[str]:
@@ -231,18 +469,10 @@ def _links(ctx: Any, criterion: str, docs: list[str] | None = None) -> list[Chec
     docs = [p for p in (_changed_docs(ctx) if docs is None else docs) if _read_path(ctx, p) is not None]
     if not docs:
         return [_find("n_a", criterion, message="the run changed no document")]
-    index = _spec_index(ctx, _walk(ctx))
-    overview = checks.artifact_path(ctx, "overview")
-    if overview and not overview.endswith(".spec.md"):  # the overview is a spec wherever it is
-        for own in fmt.defined_ids(_read_path(ctx, overview) or ""):
-            index.setdefault(own, []).append(overview)
+    index = _definitions(ctx, docs)
     found: list[CheckFinding] = []
     for path in docs:
         text = _read_path(ctx, path) or ""
-        if path.endswith(".spec.md"):
-            for own in fmt.defined_ids(text):  # a changed spec inside a skipped folder still counts
-                if path not in index.get(own, []):
-                    index.setdefault(own, []).append(path)
         for ref in sorted(fmt.linked_ids(text)):
             homes = index.get(ref, [])
             if not homes:
@@ -259,7 +489,7 @@ def _links(ctx: Any, criterion: str, docs: list[str] | None = None) -> list[Chec
 
 
 def setup_check(ctx: Any) -> Any:
-    """ts-set-form, ts-set-listed, ts-set-links, ts-set-commit."""
+    """ts-set-form, ts-set-listed, ts-set-links, ts-set-ruleread, ts-set-commit."""
     note, note_path = _read(ctx, "setup_note")
     overview, overview_path = _read(ctx, "overview")
     if note is None or overview is None:
@@ -292,6 +522,7 @@ def setup_check(ctx: Any) -> Any:
         found.append(_ok("ts-set-form", overview_path))
     found += listed or [_ok("ts-set-listed", note_path)]
     found += _links(ctx, "ts-set-links", specs)
+    found += _ruleread(ctx, "setup", "ts-set-ruleread")
     found.append(_committed(ctx, "ts-set-commit"))
     return checks.result(found)
 
@@ -301,7 +532,7 @@ def setup_check(ctx: Any) -> Any:
 
 
 def triage_check(ctx: Any) -> Any:
-    """ts-tri-form, ts-tri-route, ts-tri-commit."""
+    """ts-tri-form, ts-tri-route, ts-tri-covered, ts-tri-ruleread, ts-tri-owner, ts-tri-commit."""
     text, path = _read(ctx, "triage_note")
     if text is None:
         return checks.result([_find("fail", "ts-tri-form", path, "the triage note cannot be read",
@@ -343,8 +574,58 @@ def triage_check(ctx: Any) -> Any:
     found += [_find("fail", "ts-tri-route", path, b, "make the route follow the gap list") for b in bad] or [
         _ok("ts-tri-route", path)]
     found += _covered(ctx, note, path)
+    found += _ruleread(ctx, "triage", "ts-tri-ruleread")
+    found += _owner(ctx, note, path)
     found.append(_committed(ctx, "ts-tri-commit"))
     return checks.result(found)
+
+
+def _owner(ctx: Any, note: fmt.Triage, path: str) -> list[CheckFinding]:
+    """ts-tri-owner: with the conversation value `never`, each gap row ends with its sort and the `Owner decisions`
+    section holds one complete entry for each owner-decision row and none for any other (spec `conversation`,
+    CONV-B4). With `blocking`, or no value given to the check, the note is not read for it."""
+    crit = "ts-tri-owner"
+    if (getattr(ctx, "settings", None) or {}).get("conversation") != "never":
+        return [_find("n_a", crit, path, "the conversation value is not `never`")]
+    bad: list[tuple[str, str, str]] = []  # (place, message, fix)
+    for gap, sort in note.sorts.items():
+        if not sort:
+            bad.append((gap, f"gap row {gap} ends neither `Findable` nor `Owner decision`",
+                        f"end row {gap} with `Findable` or `Owner decision`"))
+    if not note.owner_section:
+        bad.append((fmt.OWNER_HEADING, f"the section `## {fmt.OWNER_HEADING}` is missing",
+                    f"add `## {fmt.OWNER_HEADING}` between Gaps and Route, with an entry for each owner decision or `None`"))
+    else:
+        entered = {e.gap for e in note.owners}
+        for gap, sort in note.sorts.items():
+            if sort == "owner decision" and gap not in entered:
+                bad.append((gap, f"gap row {gap} says `Owner decision` but `{fmt.OWNER_HEADING}` has no entry for it",
+                            f"add `- {gap}: <question>` with its options, default and cost"))
+        low, high = fmt.OWNER_OPTIONS
+        for e in note.owners:
+            gap, fix = e.gap, f"complete the entry for {e.gap}"
+            if e.gap not in note.sorts:
+                bad.append((gap, f"entry {gap} answers no gap row", f"drop the entry or add the row {gap}"))
+                continue
+            if note.sorts[e.gap] == "findable":
+                bad.append((gap, f"entry {gap} is for a gap row that says `Findable`", "drop the entry"))
+                continue
+            n = len(e.options)
+            if not e.question:
+                bad.append((gap, f"entry {gap} has no question", fix))
+            if not low <= n <= high:
+                bad.append((gap, f"entry {gap} has {n} option{'s' if n != 1 else ''}, not two to four",
+                            f"give {gap} two to four options under `Options:`"))
+            if not e.default:
+                bad.append((gap, f"entry {gap} has no default", f"add `Default:` with the label of one option of {gap}"))
+            elif n and not e.default_text:
+                bad.append((gap, f"the default of entry {gap} (`{e.default}`) is not one of its options",
+                            f"name the label of one option of {gap}"))
+            if not e.cost:
+                bad.append((gap, f"entry {gap} has no cost", "add `If wrong:` with what a wrong default costs"))
+    if bad:
+        return [_find("fail", crit, place, message, fix) for place, message, fix in bad]
+    return [_ok(crit, path)]
 
 
 def _covered(ctx: Any, note: fmt.Triage, path: str) -> list[CheckFinding]:
@@ -401,18 +682,20 @@ def _names(ctx: Any, criterion: str) -> list[CheckFinding]:
 
 
 def discovery_check(ctx: Any) -> Any:
-    """ts-dis-form, ts-dis-names, ts-dis-links, ts-dis-reading, ts-dis-narrow, ts-dis-commit."""
+    """ts-dis-form, ts-dis-budget, ts-dis-over, ts-dis-names, ts-dis-links, ts-dis-reading, ts-dis-narrow,
+    ts-dis-ruleread, ts-dis-commit."""
     text, path = _read(ctx, "handoff")
     if text is None:
         return checks.result([_find("fail", "ts-dis-form", path, "the hand-off cannot be read",
                                     "write the hand-off and name its path")])
     found = [_find("fail", "ts-dis-form", path, f"hand-off section `## {h}` is missing or out of order",
                    f"add `## {h}`") for h in fmt.headings_missing(text, fmt.HANDOFF_HEADINGS) if h != READING]
-    found += _spec_form(ctx, "ts-dis-form")
+    found += _spec_form(ctx, "ts-dis-form", budget_criterion="ts-dis-budget")
     found += _names(ctx, "ts-dis-names")
     found += _links(ctx, "ts-dis-links")
     found += _reading(ctx, text, path)
     found += _prompt_says("ts-dis-narrow")
+    found += _ruleread(ctx, "discovery", "ts-dis-ruleread")
     found.append(_committed(ctx, "ts-dis-commit"))
     return _result(ctx, found)
 
@@ -423,7 +706,8 @@ NOT_COVERED = re.compile(r"\bnot covered\b", re.I)
 
 
 def discovery_short_check(ctx: Any) -> Any:
-    """ts-dsh-form, ts-dsh-cited, ts-dsh-only, ts-dsh-settled, ts-dsh-reading, ts-dsh-limit, ts-dsh-commit.
+    """ts-dsh-form, ts-dsh-cited, ts-dsh-only, ts-dsh-settled, ts-dsh-reading, ts-dsh-limit, ts-dsh-ruleread,
+    ts-dsh-commit.
 
     The short visit confirms what triage cited and designs nothing: its hand-off names every cited behaviour,
     lists no changed document, says `Not covered` for a gap the citation does not answer, and its `settled` value
@@ -473,6 +757,7 @@ def discovery_short_check(ctx: Any) -> Any:
                 f"of {SHORT_READING_MAX}", "keep the files the plan needs; a task that needs more is not short")]
         found += reading
     found += _prompt_says("ts-dsh-limit")
+    found += _ruleread(ctx, "discovery_short", "ts-dsh-ruleread")
     found.append(_committed(ctx, "ts-dsh-commit"))
     return _result(ctx, found)
 
@@ -522,10 +807,66 @@ def _links_of(plan: fmt.Plan, criterion: str, place: str) -> list[CheckFinding]:
                   "document a `docs` row") for b in fmt.link_problems(plan)[:10]] or [_ok(criterion, place)]
 
 
-def _marks(plan: fmt.Plan, criterion: str, place: str, done: bool) -> list[CheckFinding]:
+PLANNING_COMMIT = re.compile(r"^\w+(?:\([^)]*\))?!?:\s*(?:plan|expand) for\b")
+
+
+def _git_lines(ctx: Any, cmd: str) -> list[str] | None:
+    """The lines a read-only git command printed; None when it did not start or did not exit 0."""
+    run = ctx.run(cmd)
+    if run.not_started or run.exit_code != 0:
+        return None
+    try:
+        return Path(run.output_path).read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return None
+
+
+def _kept_marks(ctx: Any, plan: fmt.Plan, path: str) -> dict[str, str]:
+    """KMK-B1 to KMK-B4: for each marked row of the plan, `""` when the run's history backs its mark, else the
+    reason it does not. A commit of the run is one after the base commit. The marking commit of a row is the
+    earliest commit that is not a plan or expand step's own in which the row's id carries the mark the plan carries;
+    the mark stands when the row reads the same there and no later commit of the run changed the row's file."""
+    marked = [r for r in plan.rows if r.completed]
+    if not marked:
+        return {}
+    base = ctx.git.base if ctx.git is not None else ""
+    if not base:
+        return {r.id: "the run has no base commit to count its commits from, so no commit is known to have "
+                      "written the mark" for r in marked}
+    log = _git_lines(ctx, f"git log --format=%H%x09%s {base}..HEAD --reverse")
+    if log is None:
+        return {r.id: "the history of the run cannot be read" for r in marked}
+    commits = [c for line in log if (c := line.split("\t", 1)[0]) and not PLANNING_COMMIT.match(
+        line.split("\t", 1)[1] if "\t" in line else "")]
+    out: dict[str, str] = {}
+    pending = {r.id: r for r in marked}
+    touched: dict[str, set[str]] = {}
+    for commit in commits:
+        if not pending:
+            break
+        lines = _git_lines(ctx, f"git show {commit}:{path}")
+        if lines is None:
+            continue
+        then = {r.id: r for r in fmt.parse_plan("\n".join(lines)).rows}
+        for rid in [i for i in pending if i in then and then[i].completed == pending[i].completed]:
+            row = pending.pop(rid)
+            if fmt.row_text(then[rid]) != fmt.row_text(row):
+                out[rid] = "the row differs from the row in its marking commit"
+                continue
+            if commit not in touched:
+                names = _git_lines(ctx, f"git diff --name-only {commit}..HEAD")
+                touched[commit] = set(names) if names is not None else {row.file}
+            out[rid] = "the row's file changed after its marking commit" if row.file in touched[commit] else ""
+    out.update({rid: f"no commit of the run wrote the mark `{r.completed}` on this row" for rid, r in pending.items()})
+    return out
+
+
+def _marks(plan: fmt.Plan, criterion: str, place: str, done: bool, ctx: Any = None) -> list[CheckFinding]:
     fix = ("mark each row `✓ <date>` in its Completed cell when its change is in its file, and set `status: "
-           "completed`") if done else "leave Completed empty and the status `planned`: the code step marks them"
-    return [_find("fail", criterion, place, b, fix) for b in fmt.mark_problems(plan, done)[:10]]
+           "completed`") if done else ("keep the Completed mark of a row you leave exactly as it was, and empty the "
+                                       "Completed cell of a row you change or add; the status stays `planned`")
+    kept = None if done or ctx is None else _kept_marks(ctx, plan, place)
+    return [_find("fail", criterion, place, b, fix) for b in fmt.mark_problems(plan, done, kept)[:10]]
 
 
 def _scope(plan: fmt.Plan, criterion: str, place: str) -> list[CheckFinding]:
@@ -575,7 +916,9 @@ def _reading_bytes(ctx: Any, plan: fmt.Plan) -> int:
 
 
 def plan_check(ctx: Any) -> Any:
-    """ts-plan-form, ts-plan-trace, ts-plan-links, ts-plan-size, ts-plan-scope, ts-plan-reading, ts-plan-commit."""
+    """ts-plan-form, ts-plan-trace, ts-plan-links, ts-plan-size, ts-plan-scope, ts-plan-reading, ts-plan-ruleread,
+    ts-plan-commit. It also records the seven facts of the plan rule's Complexity table (CDM-B2), which the switch
+    `code_mode` reads."""
     text, path = _read(ctx, "plan")
     if text is None:
         return checks.result([_find("fail", "ts-plan-form", path, "the plan cannot be read",
@@ -593,7 +936,7 @@ def plan_check(ctx: Any) -> Any:
                            "state the complexity in the front matter"))
     if plan.complexity == "simple":  # a simple plan carries its task rows; a complex one gets them from expand
         found += _rows(ctx, plan, "ts-plan-form") + _commands(ctx, plan, "ts-plan-form")
-    found += _marks(plan, "ts-plan-form", path, done=False)
+    found += _marks(plan, "ts-plan-form", path, done=False, ctx=ctx)
     if not any(f.status == "fail" for f in found):
         found.append(_ok("ts-plan-form", path))
     if plan.complexity == "simple":
@@ -616,7 +959,8 @@ def plan_check(ctx: Any) -> Any:
         found += lost or [_ok("ts-plan-trace", path)]
 
     value = _value(ctx, "complexity")
-    over = fmt.simple_overruns(plan, _reading_bytes(ctx, plan))
+    reading = _reading_bytes(ctx, plan)
+    over = fmt.simple_overruns(plan, reading)
     bad = []
     if value is not None and plan.complexity and value != plan.complexity:
         bad.append(f"the complexity value `{value}` differs from the plan's `{plan.complexity}`")
@@ -631,12 +975,16 @@ def plan_check(ctx: Any) -> Any:
         _ok("ts-plan-size", path)]
     found += _scope(plan, "ts-plan-scope", path)
     found += _prompt_says("ts-plan-reading")
+    found += _ruleread(ctx, "plan", "ts-plan-ruleread")
     found.append(_committed(ctx, "ts-plan-commit"))
-    return _result(ctx, found, plan)
+    res = _result(ctx, found, plan)
+    res.facts = {k: str(v) for k, v in fmt.plan_facts(plan, reading).items()}  # CDM-B2
+    return res
 
 
 def expand_check(ctx: Any) -> Any:
-    """ts-exp-rows, ts-exp-tests, ts-exp-links, ts-exp-commands, ts-exp-scope, ts-exp-commit."""
+    """ts-exp-rows, ts-exp-tests, ts-exp-links, ts-exp-commands, ts-exp-scope, ts-exp-ruleread, ts-exp-opened,
+    ts-exp-commit."""
     text, path = _read(ctx, "phases")
     if text is None:
         return checks.result([_find("fail", "ts-exp-rows", path, "the expanded plan cannot be read",
@@ -647,7 +995,7 @@ def expand_check(ctx: Any) -> Any:
     if not plan.phases:
         empty = ["(none)"]
     rows = [_find("fail", "ts-exp-rows", f"{path}: {p}", "the phase has no task row", f"add a table `{ROW_TABLE}`")
-            for p in empty] + _marks(plan, "ts-exp-rows", path, done=False)
+            for p in empty] + _marks(plan, "ts-exp-rows", path, done=False, ctx=ctx)
     found += rows or [_ok("ts-exp-rows", path)]
     note_text, note_path = _read(ctx, "triage_note")
     tests = [_find("fail", "ts-exp-tests", path, b, "put the test row first and name its criterion") for b in bad[:8]]
@@ -661,6 +1009,8 @@ def expand_check(ctx: Any) -> Any:
     found += _links_of(plan, "ts-exp-links", path)
     found += _commands(ctx, plan, "ts-exp-commands") or [_ok("ts-exp-commands", path)]
     found += _scope(plan, "ts-exp-scope", path)
+    found += _ruleread(ctx, "expand", "ts-exp-ruleread")
+    found += _opened_rows(ctx, plan, "ts-exp-opened")
     found.append(_committed(ctx, "ts-exp-commit"))
     return checks.result(found)
 
@@ -763,19 +1113,96 @@ def _lane(ctx: Any, criterion: str) -> list[CheckFinding]:
     return found or [_ok(criterion)]
 
 
-def _verify(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
+@dataclass(frozen=True, kw_only=True)
+class _Environmental(CheckFinding):
+    """A command that fails at the gate for a reason the code step cannot fix: it fails the same at the run's base,
+    or no file the run changed is named in its output (ts-code-base, ts-code-touch)."""
+
+
+FIX_COMMAND = "fix the code or the test until the command exits 0"
+
+
+def _named_in(tail: str, path: str) -> bool:
+    return re.search(r"(?<![\w.-])" + re.escape(path) + r"(?![\w-])", tail) is not None
+
+
+def _touches(ctx: Any, cmd: str, tail: str) -> str | None:
+    """The first path the run changed that the command's last lines name, written from the repository root or from
+    the folder the command ran in (ts-code-touch)."""
+    folder = re.match(r"^cd\s+(\S+)\s*&&", cmd)
+    prefix = folder.group(1).strip("/") + "/" if folder else ""
+    for path in ctx.git.changed_paths:
+        if _named_in(tail, path) or (prefix and path.startswith(prefix) and _named_in(tail, path[len(prefix):])):
+            return str(path)
+    return None
+
+
+def _compared(ctx: Any, cmd: str, run: Any, criterion: str) -> CheckFinding:
+    """A command that finished with a non-zero exit at the gate, compared with the run's base commit. The base run
+    is asked for with reuse, so it is made once per visit (ts-code-spend, CHK-B20)."""
+    place = cmd[:80]
+    there = "none"
+    why = "not compared: the run has no base commit"
+    verdict = "fail"
+    if ctx.git.base:
+        base = ctx.run(cmd, reuse=True, at_base=True, min_start_s=run.duration_s)
+        there = "none" if base.exit_code is None else str(base.exit_code)
+        if base.not_started:
+            why = "not compared: the command could not start at the base commit"
+        elif base.timed_out or not base.finished:
+            why = "not compared: the command did not finish at the base commit"
+        elif base.exit_code == 0:
+            why = "caused by the change: the command exits 0 at the base commit"
+        elif base.exit_code == run.exit_code:
+            why, verdict = "environmental: it fails the same at the base commit", "environmental"
+        elif (named := _touches(ctx, cmd, str(run.tail or ""))) is not None:
+            why = f"caused by the change: its output names the changed file {named}"
+        else:
+            why, verdict = "environmental: its output names no file the run changed", "environmental"
+    tail = " ".join(str(run.tail or "").split())[-120:]
+    message = f"`{cmd[:60]}` exit {run.exit_code} at the gate, {there} at the base: {why}"
+    if verdict == "environmental":
+        return _Environmental(status="fail", criterion=criterion, place=place, message=message)
+    return _find("fail", criterion, place, f"{message}: {tail}", FIX_COMMAND)
+
+
+def _run_commands(ctx: Any, plan: fmt.Plan, criterion: str, compare: bool = False
+                  ) -> tuple[list[CheckFinding], list[str]]:
+    """The findings of the plan's verification commands and one evidence line per command: `reused` for a stored
+    result, `run` for a started command, `not run` for one that did not start (ts-code-ran). With `compare` (the code
+    gate), a command that fails is run once at the run's base commit, and a failure that was there before the change
+    is environmental (ts-code-base to ts-code-spend)."""
     found = _commands(ctx, plan, criterion)
     if found:
-        return found
+        return found, [f"`{cmd}`: not run" for cmd in plan.commands]
+    lines: list[str] = []
     for cmd in plan.commands:
         run = ctx.run(cmd, reuse=True)
         if run.not_started:
+            lines.append(f"`{cmd}`: not run")
             found.append(_find("fail", criterion, cmd[:80], "the command did not start (refused, or out of time)"))
+            continue
+        lines.append(f"`{cmd}`: {'reused' if run.reused else 'run'}")
+        if compare and run.finished and run.exit_code not in (0, None):
+            found.append(_compared(ctx, cmd, run, criterion))
         elif run.timed_out or not run.finished or run.exit_code != 0:
             tail = " ".join(str(run.tail or "").split())[-120:]
-            found.append(_find("fail", criterion, cmd[:80], f"exit {run.exit_code}: {tail}",
-                               "fix the code or the test until the command exits 0"))
-    return found or [_ok(criterion)]
+            note = "not compared with the base commit: it did not finish at the gate; " if compare else ""
+            found.append(_find("fail", criterion, cmd[:80], f"{note}exit {run.exit_code}: {tail}", FIX_COMMAND))
+    return found or [_ok(criterion)], lines
+
+
+def _verify(ctx: Any, plan: fmt.Plan, criterion: str, compare: bool = False) -> list[CheckFinding]:
+    return _run_commands(ctx, plan, criterion, compare)[0]
+
+
+def _evidence(lines: list[str], criterion: str) -> CheckFinding:
+    """ts-code-ran: the gate's own answer for each verification command, counted from its lines."""
+    if not lines:
+        return _find("n_a", criterion, message="no verification command was run by this gate")
+    reused = sum(1 for ln in lines if ln.endswith(": reused"))
+    ran = sum(1 for ln in lines if ln.endswith(": run"))
+    return _find("pass", criterion, message=f"{reused} of {len(lines)} verification commands were reused, {ran} run")
 
 
 def _reuse(ctx: Any, criterion: str) -> CheckFinding:
@@ -784,7 +1211,7 @@ def _reuse(ctx: Any, criterion: str) -> CheckFinding:
     says how many were reused; a command asked for twice in one gate run with no reuse is the failure."""
     if ctx.reuse_store is None:
         return _find("n_a", criterion, message="no store of earlier command runs (the gate runs outside a run)")
-    runs = [r for r in ctx.runs if not r.not_started]
+    runs = [r for r in ctx.runs if not r.not_started and not r.at_base]  # a run at the base is not a second start
     started: set[tuple[str, ...]] = set()
     for r in runs:
         if r.reused:
@@ -799,11 +1226,19 @@ def _reuse(ctx: Any, criterion: str) -> CheckFinding:
 
 def code_check(ctx: Any) -> Any:
     """ts-code-rows, ts-code-changed, ts-code-verify, ts-code-reuse, ts-code-proof, ts-code-lane, ts-code-once,
-    ts-code-commit.
+    ts-code-commit, ts-code-base, ts-code-touch, ts-code-passes, ts-code-nobase, ts-code-mixed, ts-code-evidence,
+    ts-code-spend, ts-code-preview, ts-code-previewed, ts-code-session, ts-code-rerun, ts-code-ran,
+    ts-code-ruleread, ts-code-order.
 
     The marks come first: a plan with a row not marked completed goes back to the code step at once, with no
     command run. Marks are claims, so a marked plan is then verified as before, and each marked row's file must
-    be among the paths the run changed."""
+    be among the paths the run changed. Every verification command is run here whatever the step reported; one that
+    fails is run once at the run's base commit, and a failure that was there before the change escalates.
+
+    In a preview (the session's own call of the check, before its report is handed over and before the commit
+    that follows it) the marks still come first, and the commands run; the report is not read for failures and
+    the uncommitted tree is no failure. The gate cannot see that run, so ts-code-previewed, ts-code-session and
+    ts-code-rerun are recorded n_a: the package's tests prove them."""
     plan, path = _plan(ctx)
     if plan is None:
         return checks.result([_find("fail", "ts-code-rows", path, "the plan cannot be read")])
@@ -811,23 +1246,24 @@ def code_check(ctx: Any) -> Any:
     quick = _quick(ctx) is not None
     found: list[CheckFinding] = []
     if report is None:
-        found.append(_find("fail", "ts-code-rows", report_path, "the code report cannot be read",
-                           "write the report and name its path"))
+        if not ctx.preview:
+            found.append(_find("fail", "ts-code-rows", report_path, "the code report cannot be read",
+                               "write the report and name its path"))
     else:
         wanted = fmt.QUICK_REPORT_HEADINGS if quick else fmt.REPORT_HEADINGS
         found += [_find("fail", "ts-code-rows", report_path, f"section `## {h}` is missing or out of order",
-                        f"add `## {h}`") for h in fmt.headings_missing(report, wanted)]
+                        f"add `## {h}`") for h in fmt.headings_missing(report, wanted) if not ctx.preview]
     if not plan.rows:
         found.append(_find("fail", "ts-code-rows", path, "the plan has no task row"))
     elif quick:  # no plan to mark: the report's rows, one per acceptance criterion
         status = fmt.parse_report(report or "")
         found += [_find("fail", "ts-code-rows", report_path, f"row `{r.id}` is not marked `done` in the report",
                         "finish the row, or say which earlier output makes it impossible")
-                  for r in plan.rows if status.get(r.id) != "done"][:10]
+                  for r in plan.rows if status.get(r.id) != "done" and not ctx.preview][:10]
     else:
         found += _marks(plan, "ts-code-rows", path, done=True)
     if any(f.status == "fail" for f in found):  # the cheap return: nothing is run on an unfinished plan
-        return _result(ctx, found + [_committed(ctx, "ts-code-commit")], plan)
+        return _result(ctx, found + ([] if ctx.preview else [_committed(ctx, "ts-code-commit")]), plan)
     found.append(_ok("ts-code-rows", report_path if quick else path))
     if quick or not ctx.git.base:
         found.append(_find("n_a", "ts-code-changed", message="the quick lane has no plan to mark" if quick else
@@ -837,16 +1273,24 @@ def code_check(ctx: Any) -> Any:
         found += [_find("fail", "ts-code-changed", r.file, f"row `{r.id}` is marked completed but its file did not "
                         "change in the run", "make the row's change, or clear its mark and say why")
                   for r in plan.rows if r.file and r.file not in changed][:10] or [_ok("ts-code-changed", path)]
-    if _value(ctx, "tests_passed") == "no":
-        found.append(_find("fail", "ts-code-verify", "tests_passed", "the step itself reports failing tests",
-                           "make the plan's verification pass"))
-    else:
-        found += _verify(ctx, plan, "ts-code-verify")
+    verified, lines = _run_commands(ctx, plan, "ts-code-verify", compare=True)
+    found += verified
+    reading = _reading_lines(ctx)  # its git run is reused on an unchanged tree, and counted by the line below
     found.append(_reuse(ctx, "ts-code-reuse"))
     proof, links = _proof(ctx, plan, "ts-code-proof")
-    found += proof + _lane(ctx, "ts-code-lane") + _prompt_says("ts-code-once")
-    found.append(_committed(ctx, "ts-code-commit"))
-    return _result(ctx, found, plan, links)
+    found += _test_first(ctx, plan, "ts-code-order")
+    found += proof + _lane(ctx, "ts-code-lane") + _prompt_says("ts-code-once") + _prompt_says("ts-code-preview")
+    found.append(_evidence(lines, "ts-code-ran"))
+    found += [_find("n_a", cid, message="the session's own run is not visible to the gate; the package's tests "
+                    "prove it") for cid in ("ts-code-previewed", "ts-code-session", "ts-code-rerun")]
+    found += _ruleread(ctx, "code", "ts-code-ruleread")
+    if not ctx.preview:
+        found.append(_committed(ctx, "ts-code-commit"))
+    if any(f.status == "fail" and not isinstance(f, _Environmental) for f in found):
+        # ts-code-mixed: the step retries, so the retry lists only what it can fix; the environmental command stays
+        # in the evidence
+        found = [replace(f, status="maybe") if isinstance(f, _Environmental) else f for f in found]
+    return _result(ctx, found, plan, links, reading=reading, commands=lines)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -857,18 +1301,47 @@ def _docs_only(ctx: Any) -> bool:
     return _value(ctx, "route") == "discovery-only"
 
 
-def _at_base(ctx: Any, path: str) -> str | None:
-    """The file as it was at the run's base commit; None with no base, or when the run created the file."""
-    base = ctx.git.base
-    if not base:
+def _at_ref(ctx: Any, ref: str, path: str) -> str | None:
+    """The file as it is at a commit; None when the commit has no such file or it cannot be read."""
+    if not ref:
         return None
-    run = ctx.run(f"git show {base}:{path}")
+    run = ctx.run(f"git show {ref}:{path}")
     if run.not_started or run.exit_code != 0:
         return None
     try:
         return Path(run.output_path).read_text(encoding="utf-8", errors="replace")
     except OSError:
         return None
+
+
+def _at_base(ctx: Any, path: str) -> str | None:
+    """The file as it was at the run's base commit; None with no base, or when the run created the file."""
+    return _at_ref(ctx, ctx.git.base, path)
+
+
+def _fresh(ctx: Any, specs: list[str]) -> list[CheckFinding]:
+    """ts-spec-fresh (SBS-B1 to SBS-B3): no spec the run edited reads differently at the base branch's head than at
+    the run's base commit, when the head holds commits the base commit lacks."""
+    base, head = ctx.git.base, ctx.git.base_head
+    if not base or not head:
+        return [_find("n_a", "ts-spec-fresh", message="the run has no base branch to compare with")]
+    if not specs:
+        return [_find("n_a", "ts-spec-fresh", message="the run edited no spec")]
+    run = ctx.run(f"git log --oneline -1 {base}..{head}")
+    if run.not_started or run.exit_code != 0:
+        return [_find("n_a", "ts-spec-fresh", message="the base branch's head could not be compared with the run's "
+                                                      "base commit")]
+    try:
+        moved = bool(Path(run.output_path).read_text(encoding="utf-8", errors="replace").strip())
+    except OSError:
+        moved = False
+    if not moved:
+        return [_ok("ts-spec-fresh")]
+    found = [_find("fail", "ts-spec-fresh", path,
+                   "the base branch changed this spec since the run started (it reads differently at its head than "
+                   "at the run's base commit)", "start the task again from the head of the base branch")
+             for path in specs if _at_ref(ctx, base, path) != _at_ref(ctx, head, path)]
+    return found or [_ok("ts-spec-fresh")]
 
 
 def _traced(ctx: Any, specs: list[str], files: list[str]) -> list[CheckFinding]:
@@ -932,13 +1405,14 @@ def _collateral(ctx: Any, specs: list[str]) -> list[CheckFinding]:
 
 
 def outcome_check(ctx: Any) -> Any:
-    """ts-committed, ts-spec-form, ts-spec-cap, ts-spec-links, ts-traced, ts-verify, ts-collateral."""
+    """ts-committed, ts-spec-form, ts-spec-cap, ts-spec-links, ts-spec-fresh, ts-traced, ts-verify, ts-collateral."""
     found = [_committed(ctx, "ts-committed")]
     found += _spec_form(ctx, "ts-spec-form", "ts-spec-cap")
     specs, _ = _edited_specs(ctx)
     # Only the edited specs: a task note or a plan names ids the task retired on purpose, and is history.
     found += _links(ctx, "ts-spec-links", specs) if specs else [
         _find("n_a", "ts-spec-links", message="the run edited no spec")]
+    found += _fresh(ctx, specs)
     if _docs_only(ctx):
         found += [_find("n_a", c, message="the run delivers documents only") for c in ("ts-traced", "ts-verify")]
     else:
@@ -947,4 +1421,5 @@ def outcome_check(ctx: Any) -> Any:
         found += _verify(ctx, plan, "ts-verify") if plan is not None else [
             _find("fail", "ts-verify", path, "the plan cannot be read")]
     found += _collateral(ctx, specs)
-    return _result(ctx, found, _plan(ctx)[0])
+    push = "The run's branch is pushed." if ctx.git.pushed else "The run's branch is not pushed."
+    return _result(ctx, found, _plan(ctx)[0], facts=[push])  # evidence only: a push never decides the result

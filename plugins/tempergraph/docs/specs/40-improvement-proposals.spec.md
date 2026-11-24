@@ -131,6 +131,25 @@ WHEN `improve open <proposal>` runs, or a trial ends `shown_better` at autonomy 
 
 - GIVEN an unreachable code host WHEN `improve open` runs THEN the proposal stays `shown_better`
 
+### PRP-B24 The pull request closes the cluster's issues
+
+WHEN the engine opens a proposal's draft pull request (PRP-B8) THE engine SHALL write `Closes #<n>` in its body for each issue of the proposal's cluster that is in the pull request's repository.
+
+- GIVEN a proposal whose cluster came from issue #12 of the pull request's repository WHEN `improve open` runs THEN the pull request's body holds `Closes #12`
+- GIVEN a cluster whose issues are #12 and #19 of that repository WHEN the pull request opens THEN the body holds `Closes #12` and `Closes #19`
+- GIVEN a cluster with no issue WHEN the pull request opens THEN the body holds no `Closes` line
+- GIVEN a proposal of the loop at autonomy `trial` whose trial ends `shown_better` WHEN its pull request opens THEN the body holds `Closes #<n>` for the cluster's issue
+
+### PRP-B25 A trial's result is one comment on the cluster's issue
+
+WHEN a trial of a proposal ends at autonomy `file` or above THE engine SHALL post its result as one comment on each issue of the proposal's cluster, in the agent comment format of `CONTRIBUTING.md` (section 5.1) with the marker `<!-- tg-agent: kind=result agent=loop -->`, holding the decision and the figures of the trial report of PRP-B8 and no run text.
+
+- GIVEN a trial that ends `shown_better` on a cluster whose issue is #12 WHEN it ends THEN issue #12 gains one comment that starts with the marker line, ends with the generated-by footer and names `shown_better`
+- GIVEN a trial that ends `not_shown`, `regressed` or `aborted` WHEN it ends THEN the issue gains one comment that names that decision
+- GIVEN a cluster of two issues WHEN a trial ends THEN each issue gains one comment
+- GIVEN autonomy `record` WHEN a trial ends THEN no comment is made
+- GIVEN a code host that cannot be reached WHEN a trial ends THEN the trial record keeps its decision and the comment waits in the outbox of [SIL-B19](16-self-improvement.spec.md) for the next filing
+
 ### PRP-B22 Show a record
 
 WHEN `improve show <proposal|trial>` runs THE engine SHALL print the one record, read-only.
@@ -158,9 +177,12 @@ WHEN the first 10 final exits of a merged proposal's new version are recorded TH
 - PRP-AC5 (PRP-B19, PRP-B17): In-sample pairs are reported and never counted in the decision
 - PRP-AC6 (PRP-B18): A trial's spend is logged per session like any run and joined to no workflow run's own cost line
 - PRP-AC7 (PRP-B3, PRP-B10, PRP-B11, PRP-B12, PRP-B13, PRP-B15, PRP-B16, PRP-B21, PRP-B22, PRP-B23, PRP-B5, PRP-B9): Fixtures cover each refusal, the autonomy levels, the backlog's ranking and twins, an A/A run, a grader trial, the loop's own proposals and the post-release watch
+- PRP-AC8 (PRP-B24): Against a fake code host, the body of the draft pull request of a proposal whose cluster has the issues #12 and #19 of the pull request's repository holds `Closes #12` and `Closes #19`, and the body of one whose cluster has no issue holds no `Closes` line
+- PRP-AC9 (PRP-B25): Against a fake code host, a trial that ends in each decision leaves one comment in the agent comment format on each issue of its cluster, a trial at autonomy `record` leaves none, and an unreachable code host leaves the comment in the outbox with the trial's decision unchanged
 
 ## Open questions
 
 - Should `propose` become the default autonomy once the first workflow has a reviewed case set? Until answered: `file` stays the default. Owner: owner.
 - May a trial apply a case's recorded answer at a pause? Until answered: a case stops at the first pause and counts as a tie. Owner: owner.
+- Should the loop's own proposals (PRP-B23) skip a cluster whose issues the owner closed as not planned ([ISS-B3](loop-issues.spec.md))? Until answered: no, PRP-B23 is unchanged, so at autonomy `propose` or `trial` a muted cluster can still get a draft pull request. Owner: owner.
 - Not built yet: PRP-B9 waits on the merge being seen, since `pr_state` is not derived in release 1 ([FBK](41-feedback-and-judge-reliability.spec.md)); `regressed_after_release` is not recorded yet. Owner: engine owner.

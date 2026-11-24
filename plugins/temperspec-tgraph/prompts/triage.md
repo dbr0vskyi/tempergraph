@@ -3,6 +3,7 @@
 You are the first step of a temperspec run. Read the task once, compare it with the documents the repository already holds, and write the triage note. Later steps start with no memory of this one: what is not in the note does not exist for them.
 
 Task id: {task_id}
+Conversation value for this run: {settings.conversation}
 
 The task:
 
@@ -10,7 +11,7 @@ The task:
 
 ## Rules to follow
 
-The format of the triage note is in `task-notes.rule.md`, and the folders and names of every document are in `documents.rule.md`. Both are in `.claude/rules/temperspec/` of this repository, or already in your instructions when they are installed for the whole machine. Follow them; this prompt does not repeat them.
+The format of the triage note is in `task-notes.rule.md`, and the folders and names of every document are in `documents.rule.md`. Both are in `.claude/rules/temperspec/` of this repository, or where the project note in `CLAUDE.md` or `AGENTS.md` names them, or already in your instructions when they are installed for the whole machine. Open each rule file named here that this repository holds with the read tool; a search of a rule file is not opening it. A rule file installed for the whole machine is already in your instructions and lies outside this working directory: do not open it. Follow them; this prompt does not repeat them.
 
 ## Procedure
 
@@ -18,10 +19,11 @@ The format of the triage note is in `task-notes.rule.md`, and the folders and na
 2. Copy every acceptance criterion the task states into the note, numbered. Do not add one, drop one or reword one so that its meaning shifts. If the task states no acceptance criterion at all, end blocked and say that the task needs its acceptance criteria.
 3. Find the documents that already cover the task: search the spec, decision record, research and plan folders for each concept the task names. Read what you find. List each under Existing documents with what it covers.
 4. For each concept the task needs, decide whether a spec covers it completely. A concept is covered only when a behaviour and an acceptance criterion in a spec state it. Otherwise it is a gap. Write one gap row per gap with its kind and the search that found nothing. In doubt, list the gap. When an existing spec already states the behaviour a gap asks for, still list the gap and end its row with `Covered by <behaviour id> and <criterion id>`: name only ids you have read in that spec, a behaviour and a criterion that names it. Never mark a gap covered that a spec states only in part.
+   Sort the gaps only when the value is `never` (the run is unattended); `task-notes.rule.md` shows the shape. End each gap row with `Findable` (the code, the documents or a public source answers it; a row that says `Covered by` is findable) or `Owner decision` (only the owner can answer it). Then write the section `## Owner decisions` between Gaps and Route: one entry for each `Owner decision` row, with the question, two to four options labelled `a)` to `d)` under `Options:`, a `Default:` that is one of the options (the option that changes the least of what exists and is cheapest to undo) and `If wrong:` with what a wrong default costs; or the single word `None` when no row is an owner decision. When the conversation value is `blocking`, sort no gap and write no such section.
 5. Decide what the run delivers: `docs` when the task asks only for documents, otherwise `code`.
 6. Set the route from the gaps and the delivery, as the rule says.
 7. Consider the quick lane only when there is no gap and the delivery is code. Read the code the task touches. The task is `quick` when all of this holds: no behaviour and no acceptance criterion of any spec has to change (a bug where the code disagrees with a spec qualifies, because the spec is already right); the task has at most three acceptance criteria; and the change fits in at most two code files plus their tests. Then write the `## Change` section the rule describes, with the code files, the test files and the repository's own command that runs those tests, and set the route to `quick`. In doubt, or when this run has come back to triage from a later step, choose `plan`.
-8. Write the note to `docs/tasks/{task_id}.triage.md` (use the repository's own docs folder if it keeps its specs elsewhere).
+8. Write the note to `docs/tasks/{task_id}.triage.md`. When the `tasks/` folder beside the repository's specs, as the project note names it, differs from `docs/tasks/`, write it there instead.
 
 ## Limits
 

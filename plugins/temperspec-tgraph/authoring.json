@@ -358,6 +358,30 @@
       ],
       "consequence": "Until rung 8 has run and the outcome judge is accepted, a contradiction between specs can pass the outcome gate on the judge's word alone; ts-dis-links (one definition per id) and ts-code-related (judged at the code gate) are the earlier lines of defence.",
       "decided_by": "agent, on the owner's approval of the blueprint and outcome on 2026-11-21; to be confirmed by the owner"
+    },
+    {
+      "id": "d2",
+      "phase": 4,
+      "subject": "read_gap and read_component",
+      "choice": "Each reading gate (read_gap and read_component) keeps one judge, because the engine asks every model step for one and a gate holds one (spec parallel-reading, PRL-B13 and PRL-B14); the judges of the gates of the seven steps are unchanged.",
+      "alternatives": [
+        "An engine capability that lets a read-only step go without a judge",
+        "A panel of judges for one gate"
+      ],
+      "consequence": "A visit with N reading sessions holds N more judge sessions, run beside their items; the open question about the judges of one gate stays open in the spec.",
+      "decided_by": "agent, on the task's acceptance criterion 3; to be confirmed by the owner"
+    },
+    {
+      "id": "d3",
+      "phase": 4,
+      "subject": "ts-accepted",
+      "choice": "Accept ts-accepted as judged at the outcome gate, with no deterministic check serving it on the two reading units (read_gap and read_component): each has one judge and no check, as the engine asks of a model step and as spec parallel-reading says; their criteria serve it at uncalibrated trust until their judge seeds are graded by a signed-in judge (author verify rung 8).",
+      "alternatives": [
+        "A check on each reading gate that serves ts-accepted, which could only count the characters of a findings line",
+        "No judge on the reading gates, which needs an engine capability the engine does not have"
+      ],
+      "consequence": "Until rung 8 has run, the findings of a reading session are graded on the judge's word alone; the writing session confirms each finding in the file it names before a document rests on it, and its own check and judge come after.",
+      "decided_by": "agent, on the task's acceptance criterion 5; to be confirmed by the owner"
     }
   ],
   "blueprint_digest": "f3cfde244d99f7aed0e6208d70084b9e6124a4ac60c072c79fc66ff67cb91322",
@@ -397,7 +421,7 @@
     "at": "2026-11-21T10:33:48.312Z"
   },
   "verify": {
-    "at": "2026-11-23T04:20:39.068Z",
+    "at": "2026-11-24T12:57:04.036Z",
     "ok": true,
     "rungs": {
       "load": "passed",
@@ -407,29 +431,93 @@
       "coverage": "passed",
       "audit": "passed",
       "register": "passed",
-      "judge_seeds": "skipped",
-      "trial": "skipped",
+      "judge_seeds": "passed",
+      "trial": "passed",
       "stamp": "passed"
     }
   },
   "seeds_shown": {
-    "expand": {
-      "met-ts-exp-design": "b5ab0f944790266974f4c739dc858ffeb7bcc145eb76d38710a7f31b3fccd7d9"
+    "read_component": {
+      "unmet-ts-rdc-cited": "5b357af8b2ccc8f2d785cb9125b5a74a6714d3883e4c35eb59686156542b3d41"
     },
-    "triage": {
-      "met-ts-tri-gaps": "c68440f732afdf194cb27866a1ae96ad799fd99dc38c01dfd2c9ff409156e882"
+    "read_gap": {
+      "unmet-ts-rdg-cited": "60eb44a07fedfa22aceb27221b556983c611ed307658e58f31e3b6dbc0b477e0"
     }
   },
   "trial": {
     "case": "missing-config",
-    "task": "trial-missing-config-6ed4",
-    "thread": "temperspec/trial-missing-config-6ed4",
-    "at": "2026-11-22T00:47:46.475Z",
+    "task": "trial-missing-config-c04f",
+    "thread": "temperspec/trial-missing-config-c04f",
+    "at": "2026-11-24T12:57:03.026Z",
     "exit_code": 0,
     "reason": "skipped",
-    "cap_usd": 12.231333,
+    "cap_usd": 15.0,
     "grades": {},
     "state": "ended",
     "verdict": "met"
+  },
+  "seeds_passed": {
+    "read_component": {
+      "met-ts-rdc-answers": "1af1482e3f8708140341eb504d1b9ca2a5c36ab571baa0971f5d11c123a86501",
+      "met-ts-rdc-cited": "2ae2a012b0583920fbce8ee386293063d75c20f9fb8e669c58fdeb3f33d9eca7",
+      "unmet-ts-rdc-answers": "1dd033692afb286aa08a98ec6f949099aa3d7fa97076c3f247aae60411035b66",
+      "unmet-ts-rdc-cited": "f670e1068466e735ac5db281d5338ad226bfdac4a41c33fab2f0d6018ff3f3e5"
+    },
+    "setup": {
+      "met-ts-set-cover": "ff4fea39a9e970e339945321cabcfc953b3d85ddf70037b4919aa85805353cbc",
+      "met-ts-set-true": "0e0870c5023d55a13a13af335b07fe5e69c8aa4fa020b87cf3db08eb092b57fe",
+      "unmet-ts-set-cover": "b1189be3983fc6acd0fbb7ac511af94f79dc185b2a54dfc9eee9aedf25185129",
+      "unmet-ts-set-true": "49165b543e67fe05b218aa9fae89b8a6f6092afb9d6d9d7be7abd9ec9119d6ae"
+    },
+    "triage": {
+      "met-ts-tri-criteria": "b8479964cc739cda0e79d0b86ceece09da041a1cfed9ae594368d32a8dc9b3a2",
+      "met-ts-tri-gaps": "5926274514ea73de3de18dc1a4a62a960991c91923034ae3a1d1d35eb438ccc8",
+      "unmet-ts-tri-criteria": "81175c0c9cb272ac110d69f32d4724f2eb0e0e0bacb2f9dd249e4c4d0e1b8a0c",
+      "unmet-ts-tri-gaps": "fe593f7e92eb39b1a172cf488bf194f51177481d43d238fe42cbf7250cee3250"
+    },
+    "discovery_short": {
+      "met-ts-dsh-answers": "f5a8366c712efefb6d3bcec46020ce4cba27c7f120d10cc1909a7e3b3ef5b268",
+      "unmet-ts-dsh-answers": "2bfdebd8780ff566498c2939f3ef59c10f5f7ef53bff1fad66e795fcfc9757cc"
+    },
+    "read_gap": {
+      "met-ts-rdg-answers": "3328eec2718e8664814ca252ab7c72d57526732249f47b8723549b5b1f5d1ff9",
+      "met-ts-rdg-cited": "3151c5125fb16ef46c14359a8dde6cd75c2dad58f57de098d9120d534e98b954",
+      "unmet-ts-rdg-answers": "09a9143d3cea1293e619a748568560b2fe29b6bf742bb39d769a8eae504edb6d",
+      "unmet-ts-rdg-cited": "9441d13d96a42c549cf650670cd0c1356426a17e0d41762f674047b11bf4c3e7"
+    },
+    "discovery": {
+      "met-ts-dis-behaviour": "deee4c8f6502c4e855e7a1e58ba5f01d00ee8af635f27d43e4f6efdefc81262e",
+      "met-ts-dis-gaps": "b84c54eeee1a646f6049c4b4a1790673adada494cc0796412643d8aab23e85cf",
+      "met-ts-dis-scope": "5997237b965d7f8aa82d597f22fa116f85eb1961617647d8be01908d8e832f3b",
+      "unmet-ts-dis-behaviour": "de756fe305ee78fd227a3813965abd5874d393741dfda6d2a8d9a5f43652a87a",
+      "unmet-ts-dis-gaps": "e75b3f64bc07984d6b545f18b6fef0f12dce40dc681c15324cf9936b67c65d3d",
+      "unmet-ts-dis-scope": "6d13ad4eb684ae139a5548e9f025abe737df7e253e56f84a8caf0be117f42a81"
+    },
+    "plan": {
+      "met-ts-plan-spec": "1bbe8de14ad773618d7457e27733bcc455812caaa9a48dbfccae98c90b756b80",
+      "unmet-ts-plan-spec": "cff2278b6ce28cc87a7e0d4d159dd839ac128db1f7dff7a38b0428fec636ac37"
+    },
+    "expand": {
+      "met-ts-exp-design": "733fabf4409e98258c1d29353a2555d165333144425c3afffb90f768bbe51fc5",
+      "unmet-ts-exp-design": "5489c8747651201607dfaf6e9ef82e084be961ec02cf1727abf0d63a82342b4a"
+    },
+    "code": {
+      "met-ts-code-aligned": "a3dd9c2c6b8cbcbde72e9d9b7e7980895b38d18dd3e7e99ec0ab995b83d8de17",
+      "met-ts-code-change": "e7adfc807df2214a525ce24e264cdeb3f5be53b46e4e22fe96a93d6950187ca2",
+      "met-ts-code-related": "c5e626064c185fe95d6b14f9f374e324c6beca68db26c24f6c4e701075e3b344",
+      "met-ts-code-scope": "0e17ba73172f1393ae8e8bb8988a30aed11ea137391d9206b077cc42081d5e8f",
+      "met-ts-code-tests": "e8b10b77ff9e6479d853f82edcec283058b67ccf473ae0c4527eeedc373d0637",
+      "unmet-ts-code-aligned": "c81709579bf26eb344f9bc001c03271f5a10cd1ab5cd208d1cdcd7c550cdd168",
+      "unmet-ts-code-change": "707f0f3c728d700b74ece9ff2ac77c5e32db50a9e92fb084f5db9b0f4569dba9",
+      "unmet-ts-code-related": "ad3858debf015b29e7d4d074acf38c300b61210aaa326b44651e4ddd3665ead1",
+      "unmet-ts-code-scope": "6f9cc7a54556ad1111de188d131752a46c7a7ee15df9dcd4fb8af6624199d1b8",
+      "unmet-ts-code-tests": "3b52a73a6ce157d77a5cf2363bffcf401e8f10858b7dfe68ed01f63f73f484d9"
+    },
+    "outcome": {
+      "met-ts-accepted": "44c44b4e3ea3a62d3fa9e71ce504b483b329f8050fcb8ed1cd30fe058c8ca60f",
+      "met-ts-spec-sync": "3d6dea0769b2dfe6649c9e12e30979e903dddca912e440f68d4b4d5c62557fa8",
+      "unmet-ts-accepted": "57387356c62c437a903736b9abe0d78750e22b46d3a1f56156fb530a6a96b4aa",
+      "unmet-ts-spec-sync": "8f4aabfe958dc636ed4bebbfff13628ea48c6276b6e5ee87194861aea7469e91"
+    }
   }
 }

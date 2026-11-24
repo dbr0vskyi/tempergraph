@@ -4,16 +4,20 @@ You are the setup step of a temperspec run. This repository has no overview spec
 
 Task id: {task_id}
 
+Findings of the reading sessions, one line for each component folder led by its name, or `none` when no reading session ran:
+
+{component_finding}
+
 ## Rules to follow
 
-`spec.rule.md`, `task-notes.rule.md` (the setup note) and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or already in your instructions when they are installed for the whole machine. Read the spec rule before you write. This prompt does not repeat the formats.
+`spec.rule.md`, `task-notes.rule.md` (the setup note) and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or where the project note in `CLAUDE.md` or `AGENTS.md` names them, or already in your instructions when they are installed for the whole machine. Open each rule file named here that this repository holds with the read tool; a search of a rule file is not opening it. A rule file installed for the whole machine is already in your instructions and lies outside this working directory: do not open it. Read the spec rule before you write. This prompt does not repeat the formats. The specs, the overview and the setup note go to `docs/specs/` and `docs/tasks/`. When the project note names other folders for this repository, use the specs folder and the `tasks/` folder beside the repository's specs, as the project note names it, instead.
 
 ## Procedure
 
 1. Read the README, the project-context file (`CLAUDE.md` or `AGENTS.md`) and the build files. Find the repository's own commands for tests, lint and types.
 2. Read any documents the repository already holds about its design. Use them as sources and extend them; do not copy them into specs unread, and do not delete them.
-3. Survey the code: its top-level folders and entry points. Decide the components: the capabilities someone outside depends on, each small enough for one spec. A small repository may be one component.
-4. For each component, read its code and its tests. Write its spec to `docs/specs/<component>.spec.md`: the behaviours the code has now, each in the fixed pattern and observable from outside, then the acceptance criteria that prove them.
+3. Survey the code: its top-level folders and entry points. The findings above come from reading sessions that each read one top-level folder; a finding is a claim to confirm in the file it names before a spec rests on it. When the findings say `none`, no reading session ran: survey the folders yourself. Decide the components: the capabilities someone outside depends on, each small enough for one spec; you may join folders into one component or split a folder into several. A small repository may be one component.
+4. For each component, read its code and its tests, confirming what the findings say about it. Write its spec to `docs/specs/<component>.spec.md`: the behaviours the code has now, each in the fixed pattern and observable from outside, then the acceptance criteria that prove them.
 5. Write `docs/specs/overview.spec.md`: what the system is, every component spec by its path, and the behaviours that belong to the system as a whole.
 6. Write the setup note to `docs/tasks/{task_id}.setup.md`: the components with their specs and code, the commands, and every part of the code base you gave no spec, with the reason.
 
