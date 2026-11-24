@@ -297,11 +297,12 @@ SOURCE_FILES = "Changed source files"
 
 
 def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
-            links: list[str] | None = None, reading: list[str] | None = None, *,
-            commands: list[str] | None = None) -> Any:
+            links: list[str] | None = None, reading: list[str] | None = None,
+            facts: list[str] | None = None, *, commands: list[str] | None = None) -> Any:
     """The result, with the facts a read-only judge cannot get by itself as its evidence. A command judged
     environmental leads the evidence, and the result is marked environmental when no other finding fails. `reading` is the lines a
     judge that reads the changed code needs (`_reading_lines`): the changed source lines, its budget and the files.
+    `facts` is lines of plain evidence that follow the first line, never a finding (the outcome check's push line).
     `commands` are the lines that say how each verification command was answered: first, because a preview prints
     only the start."""
     lead = [f"{f.criterion}: {f.message}" for f in found if isinstance(f, _Environmental)]
@@ -309,7 +310,7 @@ def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
                             if f.status == "fail" and not isinstance(f, _Environmental)])
     environmental = bool(lead) and not any(f.status == "fail" and not isinstance(f, _Environmental) for f in found)
     specs, _ = _edited_specs(ctx)
-    head = [bad or f"{len(found)} checked"]
+    head = [bad or f"{len(found)} checked"] + (facts or [])
     # an environmental command leads (it escalates to a person); otherwise the command lines lead for a preview
     lines = (head + [*(commands or [])] if lead else [*(commands or []), *head]) + (reading or [])
     changed = [p for p in ctx.git.changed_paths if not p.startswith(".claude/rules/")]
@@ -1147,4 +1148,5 @@ def outcome_check(ctx: Any) -> Any:
         found += _verify(ctx, plan, "ts-verify") if plan is not None else [
             _find("fail", "ts-verify", path, "the plan cannot be read")]
     found += _collateral(ctx, specs)
-    return _result(ctx, found, _plan(ctx)[0])
+    push = "The run's branch is pushed." if ctx.git.pushed else "The run's branch is not pushed."
+    return _result(ctx, found, _plan(ctx)[0], facts=[push])  # evidence only: a push never decides the result
