@@ -70,27 +70,27 @@ def _missing(res: Any) -> set[str]:
 # -- a document is required on the path that writes it (OGT-B1) ------------------------------------------------
 
 
-def test_ogt_ac1_the_full_discovery_requires_its_handoff(tmp_path: Path) -> None:
+def test_ogt_ac1_the_full_discovery_requires_its_handoff(tmp_path: Path) -> None:  # OGT-AC1
     res = _run(tmp_path, ["triage", "discovery"], ["triage_note"])
     assert res.result == "FAIL" and "handoff" in _missing(res), res.evidence
 
 
-def test_ogt_ac2_the_short_visit_requires_its_handoff(tmp_path: Path) -> None:
+def test_ogt_ac2_the_short_visit_requires_its_handoff(tmp_path: Path) -> None:  # OGT-AC2
     res = _run(tmp_path, ["triage", "discovery_short"], ["triage_note"])
     assert res.result == "FAIL" and "handoff" in _missing(res), res.evidence
 
 
-def test_ogt_ac3_the_plan_step_requires_its_plan(tmp_path: Path) -> None:
+def test_ogt_ac3_the_plan_step_requires_its_plan(tmp_path: Path) -> None:  # OGT-AC3
     res = _run(tmp_path, ["triage", "plan"], ["triage_note"])
     assert res.result == "FAIL" and "plan" in _missing(res), res.evidence
 
 
-def test_ogt_ac4_the_code_step_requires_its_code_report(tmp_path: Path) -> None:
+def test_ogt_ac4_the_code_step_requires_its_code_report(tmp_path: Path) -> None:  # OGT-AC4
     res = _run(tmp_path, ["triage", "code"], ["triage_note"])
     assert res.result == "FAIL" and "code_report" in _missing(res), res.evidence
 
 
-def test_ogt_ac5_a_run_of_every_step_with_every_document_is_missing_none(tmp_path: Path) -> None:  # AC 4
+def test_ogt_ac5_a_run_of_every_step_with_every_document_is_missing_none(tmp_path: Path) -> None:  # OGT-AC5, AC 4
     res = _run(tmp_path, ALL_STEPS, ["triage_note", "handoff", "plan", "code_report"])
     assert _missing(res) == set(), res.evidence
     assert "deliverables present" in res.evidence and "4 of 4" in res.evidence, res.evidence
@@ -99,19 +99,19 @@ def test_ogt_ac5_a_run_of_every_step_with_every_document_is_missing_none(tmp_pat
 # -- a document of a step the run did not take is not required (OGT-B2) ----------------------------------------
 
 
-def test_ogt_ac6_the_quick_lane_needs_no_handoff_and_no_plan(tmp_path: Path) -> None:
+def test_ogt_ac6_the_quick_lane_needs_no_handoff_and_no_plan(tmp_path: Path) -> None:  # OGT-AC6
     res = _run(tmp_path, ["triage", "code"], ["triage_note", "code_report"])
     assert not _missing(res) & {"handoff", "plan"}, res.evidence
     assert "2 not produced on this path" in res.evidence, res.evidence
 
 
-def test_ogt_ac7_a_run_with_no_gap_needs_no_handoff(tmp_path: Path) -> None:
+def test_ogt_ac7_a_run_with_no_gap_needs_no_handoff(tmp_path: Path) -> None:  # OGT-AC7
     res = _run(tmp_path, ["triage", "plan", "code"], ["triage_note", "plan", "code_report"])
     assert "handoff" not in _missing(res), res.evidence
     assert "1 not produced on this path" in res.evidence, res.evidence
 
 
-def test_ogt_ac8_a_docs_only_run_needs_no_plan_and_no_code_report(tmp_path: Path) -> None:
+def test_ogt_ac8_a_docs_only_run_needs_no_plan_and_no_code_report(tmp_path: Path) -> None:  # OGT-AC8
     res = _run(tmp_path, ["triage", "discovery"], ["triage_note", "handoff"],
                values={"triage": {"route": "discovery-only"}})
     assert not _missing(res) & {"plan", "code_report"}, res.evidence
@@ -130,7 +130,7 @@ def _brief(state: dict[str, dict[str, str]]) -> str:
     return render_judge(JudgeInputs(gate=GATE, stance="", brief="", request="the task", references=refs))
 
 
-def test_ogt_ac9_the_brief_of_a_run_that_wrote_every_document_names_all_four() -> None:
+def test_ogt_ac9_the_brief_of_a_run_that_wrote_every_document_names_all_four() -> None:  # OGT-AC9
     judge = GATE.judge
     assert judge is not None
     assert "triage_note" in judge.references
@@ -144,7 +144,7 @@ def test_ogt_ac9_the_brief_of_a_run_that_wrote_every_document_names_all_four() -
         assert f"### {key}" in prompt and path in prompt, key
 
 
-def test_ogt_ac10_the_brief_of_a_docs_only_run_names_the_triage_note_and_the_handoff_only() -> None:
+def test_ogt_ac10_the_brief_of_a_docs_only_run_names_the_triage_note_and_the_handoff_only() -> None:  # OGT-AC10
     state = {OWNER["triage_note"]: {"triage_note": DOCUMENTS["triage_note"]},
              OWNER["handoff"]: {"handoff": DOCUMENTS["handoff"]}}
     prompt = _brief(state)
@@ -199,13 +199,13 @@ def _assert_placed(evidence: str, push: str) -> None:
     assert at < next(i for i, ln in enumerate(lines) if ln.startswith(CHANGED_LINE)), evidence
 
 
-def test_ogt_ac11_the_evidence_says_the_branch_is_pushed(tmp_path: Path) -> None:  # AC 2
+def test_ogt_ac11_the_evidence_says_the_branch_is_pushed(tmp_path: Path) -> None:  # OGT-AC11, AC 2
     evidence = _push_run(tmp_path, True)
     assert "is pushed" in evidence and "not pushed" not in evidence, evidence
     _assert_placed(evidence, PUSHED)
 
 
-def test_ogt_ac12_the_evidence_says_the_branch_is_not_pushed(tmp_path: Path) -> None:  # AC 2
+def test_ogt_ac12_the_evidence_says_the_branch_is_not_pushed(tmp_path: Path) -> None:  # OGT-AC12, AC 2
     evidence = _push_run(tmp_path, False)
     assert NOT_PUSHED in evidence and PUSHED not in evidence, evidence
     _assert_placed(evidence, NOT_PUSHED)
@@ -219,7 +219,7 @@ def _git(cwd: Path, *args: str) -> str:
                           capture_output=True, text=True, check=True).stdout
 
 
-def test_ogt_ac13_the_result_is_the_same_with_the_branch_pushed_and_not_pushed(tmp_path: Path) -> None:  # AC 2
+def test_ogt_ac13_the_result_is_the_same_with_the_branch_pushed_or_not(tmp_path: Path) -> None:  # OGT-AC13, AC 2
     _git(tmp_path, "init", "-q", "-b", "main")
     (tmp_path / "README.txt").write_text("start\n")
     _git(tmp_path, "add", "-A")
