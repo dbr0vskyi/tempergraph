@@ -16,7 +16,7 @@ Units:
 - [expand](07-expand.spec.md): Write task rows and verification for a complex plan
 - [code](08-code.spec.md): Build the plan test first in one session
 
-Beside the units: [judge reading](judge-reading.spec.md), what each judge is told to read and to cite before it grades; [outcome gate](outcome-gate.spec.md), the documents the final gate requires of a run and what it reports about the push; [kept marks](kept-marks.spec.md), which completed marks of a plan survive a trip back to plan.
+Beside the units: [judge reading](judge-reading.spec.md), what each judge is told to read and to cite before it grades; [outcome gate](outcome-gate.spec.md), the documents the final gate requires of a run and what it reports about the push; [kept marks](kept-marks.spec.md), which completed marks of a plan survive a trip back to plan; [parallel reading](parallel-reading.spec.md), the read-only reading sessions that go before the writing session of discovery and of setup.
 
 ## 6. Acceptance criteria
 
