@@ -8,7 +8,7 @@ It reads the ledger and run logs as plain text and imports no writer (a source t
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +16,7 @@ from tempergraph.improve import params
 from tempergraph.improve.codehost import CodeHost
 
 QUALITY_DROP = params.value("measure.quality_drop")  # provenance default_no_data (5 points, release 1 default)
+GUARD_COST = params.value("trial.guard_cost")  # PRP-B9: the cost margin of the post-release comparison (15 %)
 
 
 def _rows(path: Path) -> list[dict[str, Any]]:
@@ -42,7 +43,13 @@ def _cost(row: Mapping[str, Any]) -> float:
 def figures(root: Path, workflow: str, version: str) -> dict[str, Any]:
     segs = [r for r in _rows(root / "ledger.jsonl") if r.get("kind") == "run_segment"
             and r.get("workflow") == workflow and r.get("workflow_version") == version]
-    threads: dict[str, list[dict[str, Any]]] = {}
+    return window_figures(root, workflow, version, segs)
+
+
+def window_figures(root: Path, workflow: str, label: str, segs: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """The figures of the given `run_segment` rows of one workflow, whatever version they ran (PRP-B9)."""
+    version = label
+    threads: dict[str, list[Mapping[str, Any]]] = {}
     for r in segs:
         threads.setdefault(str(r.get("thread_id")), []).append(r)
     n = len(threads)
@@ -79,6 +86,24 @@ def compare(root: Path, workflow: str, before: str, after: str) -> dict[str, Any
     return {"workflow": workflow, "before": a, "after": b, "saved_per_run": round(saved, 4) if saved is not None
             else None, "regressed": bool(drops), "dropped": drops,
             "param": {"name": "measure.quality_drop", "value": QUALITY_DROP, "provenance": "default_no_data"}}
+
+
+def compare_windows(root: Path, workflow: str, before_rows: Sequence[Mapping[str, Any]],
+                    after_rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """PRP-B9: two windows of `run_segment` rows compared. A measure is worse when cost per run rose by more than
+    `trial.guard_cost` of the before figure, or the gate pass rate or the met share of outcomes fell by more than
+    `measure.quality_drop`; a figure counts only when both windows have it. Repeat share is carried, never decides."""
+    a = window_figures(root, workflow, "before", before_rows)
+    b = window_figures(root, workflow, "after", after_rows)
+    worse = []
+    cost_a, cost_b = a["cost_per_run"], b["cost_per_run"]
+    if cost_a is not None and cost_b is not None and cost_a > 0 and cost_b - cost_a > cost_a * GUARD_COST:
+        worse.append("cost_per_run")
+    worse += [k for k in ("gate_pass_rate", "outcome_met_share")
+              if a[k] is not None and b[k] is not None and a[k] - b[k] > QUALITY_DROP]
+    return {"workflow": workflow, "before": a, "after": b, "worse": worse, "regressed": bool(worse),
+            "param": {"cost": {"name": "trial.guard_cost", "value": GUARD_COST},
+                      "quality": {"name": "measure.quality_drop", "value": QUALITY_DROP}}}
 
 
 def report(cmp: Mapping[str, Any], host: CodeHost, repo: str, issue: int) -> dict[str, Any]:
