@@ -8,9 +8,12 @@ Units:
 
 - [prepare](01-prepare.spec.md): Install rules and the project note; see if setup is due
 - [setup_route](02-setup_route.spec.md): a repository with no overview spec goes to setup
+- [list_components](11-list_components.spec.md): List the component folders to read
+- [read_component](12-read_component.spec.md): Read one component folder; report findings
 - [setup](03-setup.spec.md): Write the overview spec and one spec per component
 - [triage](04-triage.spec.md): Read the task, find the gaps, pick the route
 - [discovery_short](09-discovery_short.spec.md): Confirm the cited behaviours; write the hand-off
+- [read_gap](10-read_gap.spec.md): Read one gap's documents and code; report findings
 - [discovery](05-discovery.spec.md): Close each gap with a spec, record or research note
 - [plan](06-plan.spec.md): Design requirements and phases; state complexity
 - [code_mode](13-code_mode.spec.md): Pick one code session or the expand step from the plan check's facts
