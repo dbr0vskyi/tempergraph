@@ -104,7 +104,7 @@ def test_judge_unread_pass_and_retry_same_path(tmp_path: Path) -> None:
     assert "retry_same_path" in {c["cause"] for c in digest.causes([r])}
 
 
-def test_judge_partial_read_needs_a_judgement_and_a_small_share(tmp_path: Path) -> None:  # SRV-AC13 (AC 4, AC 5)
+def test_judge_partial_read_needs_a_judgement_and_a_small_share(tmp_path: Path) -> None:  # SRV-AC14 (AC 4, AC 5)
     def causes_of(task: str, read_n: int, total: int, *, attempt: int = 1, judged: Any = None, **kw: Any) -> set[str]:
         changed = [f"f{i}.md" for i in range(total)]
         key = f"draft.{attempt}.judge"
@@ -128,7 +128,7 @@ def test_judge_partial_read_needs_a_judgement_and_a_small_share(tmp_path: Path) 
     assert reask["changed_total"] == 0 and digest.causes([reask], judged=gave) == []
 
 
-def test_judged_units_marks_the_attempts_that_gave_a_judgement() -> None:  # SRV-AC13
+def test_judged_units_marks_the_attempts_that_gave_a_judgement() -> None:  # SRV-AC14
     def j(unit: str | None, source: str, blockers: list[str] | None = None, **kw: Any) -> dict[str, Any]:
         return {"kind": "judgement", "unit": unit, "confidence_source": source, "blockers": blockers or [], **kw}
 
@@ -406,7 +406,7 @@ def test_an_uncheckable_claim_counts_for_nothing() -> None:  # SRV-AC3 (SRV-B6, 
         == "unsupported"  # a grader class on a producer category
 
 
-def test_the_citation_check_keeps_a_judge_that_read_little() -> None:  # SRV-AC12 (AC 1, AC 2, AC 3)
+def test_the_citation_check_keeps_a_judge_that_read_little() -> None:  # SRV-AC13 (AC 1, AC 2, AC 3)
     def judged(cat: str, remedy: str, read_: int, total: int, kind: str = "judge") -> str:
         d = {"kind": kind, "changed_total": total, "changed_read": read_}
         return review.check({"category": cat, "turns": [1], "remedy_class": remedy}, d, [1])

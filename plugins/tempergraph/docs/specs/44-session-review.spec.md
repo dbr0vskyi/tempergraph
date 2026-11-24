@@ -24,7 +24,7 @@ WHEN findings are derived THE engine SHALL add from digest fields only: `tool_re
 
 - GIVEN a judge that passed every blocker having opened none of the changed paths WHEN findings are derived THEN they carry `judge_unread_pass`
 
-### SRV-B29 A judge graded after reading little of the change
+### SRV-B31 A judge graded after reading little of the change
 
 WHEN findings are derived for a judge that gave a judgement and, by its own record of paths opened and paths changed (SRV-B11), opened at least one changed path but under `digest.judge_read_share` (0.25, provenance `default_no_data`, [IMD-B23](43-improvement-data.spec.md)) of them THE engine SHALL add `judge_partial_read` (fault, workflow, as `judge_unread_pass`) with no model call, whatever the verdict.
 
@@ -109,7 +109,7 @@ WHEN a target is reviewed THE engine SHALL start one reviewer session per review
 
 ### SRV-B19 Category catalog
 
-WHEN an observation is read THE engine SHALL accept only these categories with their remedy classes and digest facts: `prompt_misread` (`prompt`, `lessons`; needs corroboration); `instruction_ignored` (`prompt`, `lessons`; cited turns exist); `skill_not_used` and `subagent_misused` (`prompt`, `tools`, `lessons`; `declared_unused[]` or `subagents{}`); `tool_thrash` (`prompt`, `tools`, `lessons`; a `repeats[]` entry overlapping the turns); `wasted_turns` (`prompt`, `lessons`, `flow`; an `idle_spans[]` entry or at least 10 cited read-only turns); `dead_end_repeated` (`prompt`, `lessons`, `brief`; `prior_overlap` at least 0.5); `context_bloat` (`flow`, `prompt`; `turns_over_200k` or `files_reread`); `environment_fault` (none, recorded as infra; an error class in the cited turns); `judge_unread` and `judge_trusts_report` (`brief`, `criterion`, `judge_model`; `changed_read` under the share of `changed_total` that SRV-B29 sets, `changed_total` above 0); `judge_shallow` (`brief`, `criterion`, `judge_model`; needs corroboration); and `request_ambiguous` (none, routed to the outcome lens); a step session's observation naming only producer classes and a judge's only grader classes ([ADR-0031](../adr/0031-steps-and-their-graders-change-apart.adr.md)).
+WHEN an observation is read THE engine SHALL accept only these categories with their remedy classes and digest facts: `prompt_misread` (`prompt`, `lessons`; needs corroboration); `instruction_ignored` (`prompt`, `lessons`; cited turns exist); `skill_not_used` and `subagent_misused` (`prompt`, `tools`, `lessons`; `declared_unused[]` or `subagents{}`); `tool_thrash` (`prompt`, `tools`, `lessons`; a `repeats[]` entry overlapping the turns); `wasted_turns` (`prompt`, `lessons`, `flow`; an `idle_spans[]` entry or at least 10 cited read-only turns); `dead_end_repeated` (`prompt`, `lessons`, `brief`; `prior_overlap` at least 0.5); `context_bloat` (`flow`, `prompt`; `turns_over_200k` or `files_reread`); `environment_fault` (none, recorded as infra; an error class in the cited turns); `judge_unread` and `judge_trusts_report` (`brief`, `criterion`, `judge_model`; `changed_read` under the share of `changed_total` that SRV-B31 sets, `changed_total` above 0); `judge_shallow` (`brief`, `criterion`, `judge_model`; needs corroboration); and `request_ambiguous` (none, routed to the outcome lens); a step session's observation naming only producer classes and a judge's only grader classes ([ADR-0031](../adr/0031-steps-and-their-graders-change-apart.adr.md)).
 
 - GIVEN a step session's observation naming `brief` WHEN checked THEN it is `unsupported`
 - GIVEN a judge that opened 1 of 12 changed paths WHEN its `judge_unread` observation naming `brief` is checked THEN it is `kept`
@@ -208,8 +208,8 @@ WHEN `improve review <selector> [--session <key>…] [--full] [--dry-run] [--jso
 - SRV-AC9 (SRV-B21, SRV-B25): A fixture review of 18 targets with 12 finished reviews reporting 0.66 USD together and a cap of 3.46 USD skips no target, and a fixture whose next estimate passes the cap skips that target and every later one as `skipped: budget`, so each skipped target ranks below every target reviewed
 - SRV-AC10 (SRV-B26, SRV-B27): Fixture review records that keep one category on one unit in three sessions give one finding with the unit, the category and the three session keys and no note text, listed by `improve backlog`, and show those observations `corroborated`, while two sessions give none
 - SRV-AC11 (SRV-B28): The finding of that fixture, recorded by one run and by two runs, files no issue and no comment
-- SRV-AC12 (SRV-B19, SRV-B20, SRV-B29): The citation check keeps `judge_unread` and `judge_trusts_report` of a judge that opened 1 of 12 changed paths or none, rates them `unsupported` for one that opened 3 of 12, and keeps `judge_shallow` naming `judge_model`
-- SRV-AC13 (SRV-B29): A fixture judge that gave a judgement after opening 1 of 10 changed paths yields `judge_partial_read` with no model call, and a judge that opened 3 of 12, one that opened none and one that timed out each yield none
+- SRV-AC13 (SRV-B19, SRV-B20, SRV-B31): The citation check keeps `judge_unread` and `judge_trusts_report` of a judge that opened 1 of 12 changed paths or none, rates them `unsupported` for one that opened 3 of 12, and keeps `judge_shallow` naming `judge_model`
+- SRV-AC14 (SRV-B31): A fixture judge that gave a judgement after opening 1 of 10 changed paths yields `judge_partial_read` with no model call, and a judge that opened 3 of 12, one that opened none and one that timed out each yield none
 
 ## Open questions
 

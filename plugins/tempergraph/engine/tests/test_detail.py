@@ -380,7 +380,7 @@ def test_stall_hint(repo: Path) -> None:
     assert doc is not None and doc["health"]["suspect_stall"] is True  # 9 s >= 80 % of 10 s
 
 
-def test_orphaned_thread(repo: Path) -> None:  # RDD-B5, RDD-B6, SIL-AC20
+def test_orphaned_thread(repo: Path) -> None:  # RDD-B5, RDD-B6, SIL-AC22
     ex = standin("claude", steps=[DRAFT], judges=[])  # the judge call raises: the process dies mid-run
     with pytest.raises(AssertionError):
         go(repo, ex)

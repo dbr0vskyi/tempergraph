@@ -183,7 +183,7 @@ def _when(ts: Any) -> datetime | None:
 
 
 def unjudged_pause_findings(root: Path, workflow: str, task_id: str, thread: str) -> list[dict[str, Any]]:
-    """SIL-B25: the findings of the thread's segments that ended in a pause (exit 3) and that no loop of the thread
+    """SIL-B28: the findings of the thread's segments that ended in a pause (exit 3) and that no loop of the thread
     judged: no `loop_started` record of the thread's loop log names their fingerprint at or after they were made."""
     from tempergraph.improve import child
 
@@ -204,7 +204,7 @@ def unjudged_pause_findings(root: Path, workflow: str, task_id: str, thread: str
 
 
 def judged_units(seg: Sequence[Mapping[str, Any]]) -> dict[str, dict[str, Any]]:
-    """SRV-B12, SRV-B29: per unit with a `judgement` record, `passed` (its last record has no blockers) and `gave`
+    """SRV-B12, SRV-B31: per unit with a `judgement` record, `passed` (its last record has no blockers) and `gave`
     (the attempts with a record whose `confidence_source` is not `engine_placeholder`: a real judgement)."""
     passed: dict[str, bool] = {}
     gave: dict[str, set[int]] = {}
@@ -223,7 +223,7 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
                 row: Mapping[str, Any], seg: Sequence[Mapping[str, Any]] | None = None) -> dict[str, Any]:
     """Findings and evidence of the segment that just ended; the lenses at a final exit. Returns the summary.
 
-    `seg` is the records the exit covers when they are not the last segment's (SIL-B24: a stop before a unit has
+    `seg` is the records the exit covers when they are not the last segment's (SIL-B27: a stop before a unit has
     no segment of its own)."""
     thread = str(row.get("thread_id"))
     records = _jsonl(log_path)
@@ -268,7 +268,7 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
                       **({"lens": f["lens"]} if f.get("lens") else {}),
                       **({"rerun_of": rerun_of} if rerun_of else {})})
     stop = int(row.get("exit_code") or 0) == 4 and row.get("reason") == "person"
-    earlier = unjudged_pause_findings(root, spec.name, task_id, thread) if stop else []  # SIL-B25
+    earlier = unjudged_pause_findings(root, spec.name, task_id, thread) if stop else []  # SIL-B28
     append_findings(root, spec.name, task_id, thread, lines)  # one document per thread; each segment appends (SIL-B8)
     _write_private(evidence_path(root, spec.name, task_id), json.dumps(evidence(values), default=str))
     summary: dict[str, Any] = {"digests": len(digests), "causes": sorted({x["cause"] for x in lines}),

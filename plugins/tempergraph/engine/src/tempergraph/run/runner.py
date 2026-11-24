@@ -518,7 +518,7 @@ def hand_to_loop(root: Path, spec: WorkflowSpec, task_id: str, tid: str, summary
                  operator_review: str | None = None, run_cost_usd: float = 0.0, daily_cap_usd: float | None = None,
                  loop_model: str | None = None, loop_effort: str | None = None, trigger: str | None = None) -> None:
     """SIL-B1: hand the judged lenses to the detached loop child; `TEMPERGRAPH_LOOP=inline|off` for tests.
-    `settings` is None for an exit no run of this process made (SIL-B26): not a trial, `--dry-run` read from the log."""
+    `settings` is None for an exit no run of this process made (SIL-B29): not a trial, `--dry-run` read from the log."""
     from tempergraph.improve import child
 
     if child.mode() == "off" or spec.builtin:
@@ -541,7 +541,7 @@ def hand_to_loop(root: Path, spec: WorkflowSpec, task_id: str, tid: str, summary
 
 def _record_stop(root: Path, spec: WorkflowSpec, task_id: str, log: RunLog, values: Mapping[str, Any],
                  registry: Registry, settings: RunSettings, settled: Settled, judges: Mapping[str, str]) -> None:
-    """SIL-B24: a person's stop before a unit is an exit with code 4 and reason `person`: its ledger row, the records of
+    """SIL-B27: a person's stop before a unit is an exit with code 4 and reason `person`: its ledger row, the records of
     SIL-B8 and the hand-off to the loop. The stop has no segment of its own, so the records it covers are those written
     after the paused segment's `run_exit` (the paused segment's findings were derived when it paused). Never changes
     the stop's result (OVR-B4)."""
@@ -1010,7 +1010,7 @@ def _resume(spec: WorkflowSpec, task_id: str, target: Path, registry: Registry, 
                 write_json(exit_file(root, spec.name, task_id), {"schema_version": 1,
                                                                   "exit_code": int(ExitCode.STOPPED),
                                                                   "reason": "person"})
-                _record_stop(root, spec, task_id, stop_log, values, registry, settings, settled, rep.judges)  # SIL-B24
+                _record_stop(root, spec, task_id, stop_log, values, registry, settings, settled, rep.judges)  # SIL-B27
                 return RunOutcome(exit_code=ExitCode.STOPPED, reason="person", thread_id=tid,
                                   message=f"{tid} stopped before {unit}; resume continues it")
             first_input, before, skip_bp = None, None, unit

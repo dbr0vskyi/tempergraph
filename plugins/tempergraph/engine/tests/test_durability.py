@@ -70,7 +70,7 @@ def test_paused_resume_continues(root: Path) -> None:
     assert classify(root, two_step(), "p") is ThreadState.FINISHED
 
 
-def test_status_function_writes_nothing_for_a_lost_runner(repo: Path) -> None:  # DUR-AC3, SIL-AC20
+def test_status_function_writes_nothing_for_a_lost_runner(repo: Path) -> None:  # DUR-AC3, SIL-AC22
     from tempergraph.observe.attention import items
     from tempergraph.store.layout import state_root_path
 

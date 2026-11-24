@@ -51,7 +51,7 @@ def test_classes_and_sides() -> None:  # SIL-B11
     assert causes.cause_of("unknown_tool_name:Foo").side == "executor"
     assert causes.cause_of("grant_unused:shell").klass == "designed"
     assert causes.cause_of("judge_unparsed").side == "engine"
-    partial = causes.cause_of("judge_partial_read")  # SRV-AC13: listed, a workflow fault like judge_unread_pass
+    partial = causes.cause_of("judge_partial_read")  # SRV-AC14: listed, a workflow fault like judge_unread_pass
     assert partial.klass == "fault" and partial.side == causes.cause_of("judge_unread_pass").side == "workflow"
     assert partial.remedy and partial.remedy != causes.cause_of("no_such_cause").remedy
 
@@ -198,15 +198,15 @@ def test_every_threshold_is_a_parameter() -> None:  # IMD-AC3 for this track
         assert p.provenance in ("default_no_data", "fitted", "owner_decision") and p.source
 
 
-def test_lost_runner_window_is_a_parameter_record() -> None:  # IMD-AC3, SIL-B26
+def test_lost_runner_window_is_a_parameter_record() -> None:  # IMD-AC3, SIL-B29
     p = params.PARAMS["lost_runner.window_days"]
-    assert p.value == 7 and p.provenance == "default_no_data" and "SIL-B26" in p.source
+    assert p.value == 7 and p.provenance == "default_no_data" and "SIL-B29" in p.source
     assert params.value("lost_runner.window_days") == 7
 
 
-def test_the_judge_read_share_is_a_parameter() -> None:  # SRV-AC12 (SRV-B29)
+def test_the_judge_read_share_is_a_parameter() -> None:  # SRV-AC13 (SRV-B31)
     p = params.PARAMS["digest.judge_read_share"]
-    assert p.value == 0.25 and p.provenance == "default_no_data" and "SRV-B29" in p.source
+    assert p.value == 0.25 and p.provenance == "default_no_data" and "SRV-B31" in p.source
     assert params.value("digest.judge_read_share") == 0.25
 
 

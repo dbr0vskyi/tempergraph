@@ -78,7 +78,7 @@ def test_ticket_then_judged_filing(repo: Path, monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_loop_started_names_the_fingerprints_it_covered(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # SIL-AC19, AC 1
+    # SIL-AC21, AC 1
     blocked_run(repo, "L-6", monkeypatch)
     (t,) = tickets()
     fps = sorted(json.loads(t.read_text())["fingerprints"])

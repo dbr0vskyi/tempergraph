@@ -1,4 +1,4 @@
-"""Read-only verbs call no model and create nothing but a lost runner's hand-off (OVR-B15, SIL-B26)."""
+"""Read-only verbs call no model and create nothing but a lost runner's hand-off (OVR-B15, SIL-B29)."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from .test_reports import paused_run
 # The owner specs' criteria of the contract: the CLI's (read-only verbs, attention), run control's (stop),
 # durability's (`status` writes nothing) and the loop's lost-runner criteria.
 OWNER_CRITERIA = ("CLI-AC1", "CLI-AC5", "RCT-AC5", "DUR-AC3",
-                  "SIL-AC20", "SIL-AC21", "SIL-AC22", "SIL-AC23", "SIL-AC24", "SIL-AC25", "SIL-AC26")
+                  "SIL-AC22", "SIL-AC23", "SIL-AC24", "SIL-AC25", "SIL-AC26", "SIL-AC27", "SIL-AC28")
 
 
 def test_verbs_on_a_state_root_with_no_lost_runner_start_nothing(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:

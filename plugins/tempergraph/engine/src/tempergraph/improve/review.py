@@ -532,7 +532,7 @@ def check(obs: Mapping[str, Any], d: Mapping[str, Any], view_turns: Sequence[int
     elif cat == "context_bloat":
         fact = int(d.get("turns_over_200k") or 0) > 0 or int(d.get("files_reread") or 0) > 0
     elif cat in ("judge_unread", "judge_trusts_report"):
-        total, read = int(d.get("changed_total") or 0), int(d.get("changed_read") or 0)  # SRV-B19, SRV-B29
+        total, read = int(d.get("changed_total") or 0), int(d.get("changed_read") or 0)  # SRV-B19, SRV-B31
         fact = judge and total > 0 and read < float(params.value("digest.judge_read_share")) * total
     elif cat == "environment_fault":
         fact = True  # the error class is checked by the caller against the view's turns

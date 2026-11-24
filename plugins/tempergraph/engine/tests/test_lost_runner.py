@@ -1,5 +1,5 @@
 """A runner lost without an exit is a final exit that `status`, `stop` and `attention` hand to the loop, once
-(SIL-B26 to SIL-B29)."""
+(SIL-B29 to SIL-B32)."""
 
 from __future__ import annotations
 
@@ -104,7 +104,7 @@ def drain_with_friction_judge() -> list[dict[str, Any]]:
 
 
 def test_status_hands_a_lost_runner_to_the_loop(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # SIL-AC20, AC 1, AC 3
+    # SIL-AC22, AC 1, AC 3
     loop_on(monkeypatch)
     kill(repo)
     assert lost_rows(repo) == [] and tickets() == []
@@ -124,7 +124,7 @@ def test_status_hands_a_lost_runner_to_the_loop(repo: Path, monkeypatch: pytest.
 
 
 def test_attention_and_stop_find_the_same_lost_runner(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # SIL-AC21, RCT-AC5, AC 3
+    # SIL-AC23, RCT-AC5, AC 3
     loop_on(monkeypatch)
     kill(repo, "T-1")
     assert verb(repo, "status", "demo/T-1")[0] == 0
@@ -141,7 +141,7 @@ def test_attention_and_stop_find_the_same_lost_runner(repo: Path, monkeypatch: p
 
 
 def test_a_lost_runner_older_than_the_window_changes_nothing(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # SIL-AC22, AC 3
+    # SIL-AC24, AC 3
     loop_on(monkeypatch)
     kill(repo)
     path = run_dir(state_root_path(repo), "demo", "T-1") / "run.jsonl"
@@ -156,7 +156,7 @@ def test_a_lost_runner_older_than_the_window_changes_nothing(repo: Path, monkeyp
 
 
 def test_a_lost_runner_is_recorded_once(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # SIL-AC23, AC 1, AC 3
+    # SIL-AC25, AC 1, AC 3
     loop_on(monkeypatch)
     kill(repo, "T-1")
     for _ in range(2):
@@ -198,7 +198,7 @@ def resumed_and_lost_again(repo: Path) -> None:
 
 
 def test_a_second_lost_segment_starts_no_second_loop(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # SIL-AC24, AC 1
+    # SIL-AC26, AC 1
     loop_on(monkeypatch)
     kill(repo)
     assert verb(repo, "status")[0] == 0
@@ -212,7 +212,7 @@ def test_a_second_lost_segment_starts_no_second_loop(repo: Path, monkeypatch: py
 
 
 def test_a_second_lost_segment_with_the_first_ticket_waiting(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # SIL-AC24, AC 1
+    # SIL-AC26, AC 1
     loop_on(monkeypatch)
     kill(repo)
     assert verb(repo, "status")[0] == 0
@@ -222,7 +222,7 @@ def test_a_second_lost_segment_with_the_first_ticket_waiting(repo: Path, monkeyp
 
 
 def test_a_later_final_exit_starts_its_own_loop(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # SIL-AC25, AC 1
+    # SIL-AC27, AC 1
     loop_on(monkeypatch)
     kill(repo)
     assert verb(repo, "status")[0] == 0
@@ -253,7 +253,7 @@ def test_attention_lists_a_pause_once_beside_a_lost_runner(repo: Path, monkeypat
 
 
 def test_the_verbs_keep_their_results_when_the_hand_off_fails(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # SIL-AC26, AC 3
+    # SIL-AC28, AC 3
     loop_on(monkeypatch)
     kill(repo)
     (state_root_path(repo) / "ledger.jsonl").mkdir()  # a ledger that cannot be written

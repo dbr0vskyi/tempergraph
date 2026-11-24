@@ -630,7 +630,7 @@ def _one(env: Env, selector: str) -> tuple[WorkflowSpec, str]:
 
 
 def _hand_over_lost(env: Env, roots: list[Path], selector: str | None = None) -> None:
-    """SIL-B26, SIL-B29: `status`, `stop` and `attention` hand a lost runner to the loop before they answer; whatever
+    """SIL-B29, SIL-B32: `status`, `stop` and `attention` hand a lost runner to the loop before they answer; whatever
     fails there never changes their output or exit code."""
     try:
         from tempergraph.improve import lost
@@ -659,7 +659,7 @@ def cmd_status(env: Env, a: argparse.Namespace) -> int:
         return 0
     if a.unit:
         raise UsageError("--unit needs --detail")
-    _hand_over_lost(env, [_root(env)], a.selector)  # SIL-B26: a lost runner is handed to the loop once
+    _hand_over_lost(env, [_root(env)], a.selector)  # SIL-B29: a lost runner is handed to the loop once
     if a.all_roots:
         from tempergraph.observe.rows import index_roots
 
@@ -853,7 +853,7 @@ def cmd_stop(env: Env, a: argparse.Namespace) -> int:
     from tempergraph.durability.control import NotLive, request_stop
 
     spec, tid = _one(env, a.selector)
-    _hand_over_lost(env, [_root(env)], tid)  # SIL-B26: a lost runner is found here and answered as "not running"
+    _hand_over_lost(env, [_root(env)], tid)  # SIL-B29: a lost runner is found here and answered as "not running"
     try:
         mode = request_stop(_root(env), spec.name, tid.split("/", 1)[1], "now" if a.now else "drain",
                             caller=_stop_caller(env, a))

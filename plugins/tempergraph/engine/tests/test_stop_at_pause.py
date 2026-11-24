@@ -1,4 +1,4 @@
-"""A person's stop of a paused thread is an exit the loop reads with the pauses before it (SIL-B24, SIL-B25)."""
+"""A person's stop of a paused thread is an exit the loop reads with the pauses before it (SIL-B27, SIL-B28)."""
 
 from __future__ import annotations
 
@@ -76,7 +76,7 @@ def recorded(repo: Path, task: str) -> list[dict[str, Any]]:
 
 
 def test_a_stop_at_a_gate_after_retries_spent_tickets_the_friction_lens(
-        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC17, SIL-AC16, AC 2
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC19, SIL-AC18, AC 2
     loop_on(monkeypatch)
     ex = paused_on_retries(repo, "P-1")
     assert tickets() == [] and [r["exit_code"] for r in segment_rows(repo, "P-1")] == [3]
@@ -95,7 +95,7 @@ def test_a_stop_at_a_gate_after_retries_spent_tickets_the_friction_lens(
 
 
 def test_stable_mode_stop_plans_a_partial_review_of_the_paused_unit(
-        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC18, AC 2
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC20, AC 2
     loop_on(monkeypatch)
     monkeypatch.setattr(review, "probation", lambda *a, **k: False)  # past a version's first five runs
     spec = no_retries(dataclasses.replace(two_step(), improvement_mode="stable"))
@@ -115,7 +115,7 @@ def test_stable_mode_stop_plans_a_partial_review_of_the_paused_unit(
 
 
 def test_a_second_stop_judges_the_second_pause_only(
-        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC19, AC 1
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC21, AC 1
     loop_on(monkeypatch)
     ex = paused_on_retries(repo, "P-3")
     assert stop(repo, "P-3", ex).exit_code is ExitCode.STOPPED

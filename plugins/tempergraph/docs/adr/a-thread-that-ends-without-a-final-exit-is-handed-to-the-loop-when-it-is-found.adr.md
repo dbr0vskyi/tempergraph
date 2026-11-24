@@ -16,7 +16,7 @@ The task's acceptance criteria say that a killed runner found by `status` gets i
 
 ## Decision
 
-We will hand every end of a thread that no runner reported as a final exit to the loop at the moment the engine finds it, and hand each such end over once (option A; the behaviours are [SIL-B24 to SIL-B29](../specs/16-self-improvement.spec.md)).
+We will hand every end of a thread that no runner reported as a final exit to the loop at the moment the engine finds it, and hand each such end over once (option A; the behaviours are [SIL-B27 to SIL-B32](../specs/16-self-improvement.spec.md)).
 
 - A person's stop of a paused thread is written as an exit with code 4 and reason `person` in both forms, and the loop of the stop treats the findings of the thread's earlier pauses that no loop judged as its own.
 - A runner gone without an exit is written as an exit with code 5 and reason `runner_lost` the first time `status`, `stop` or `attention` reads it, at most 7 days after its newest record, with no grace period. Killed, crashed and timed out are one case.

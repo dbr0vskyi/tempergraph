@@ -1,4 +1,4 @@
-"""A lost runner is a final exit (SIL-B26 to SIL-B29).
+"""A lost runner is a final exit (SIL-B29 to SIL-B32).
 
 A thread whose lock is free and whose newest segment started and wrote no `run_exit` lost its runner (killed,
 crashed or cut off by its caller's timeout: the engine cannot tell them apart, RDD-B14). `status`, `stop` and
@@ -49,7 +49,7 @@ def _lost(records: list[dict[str, Any]], now: datetime) -> dict[str, Any] | None
 
 
 def _recorded(rows: list[dict[str, Any]], tid: str, started: Mapping[str, Any]) -> bool:
-    """SIL-B27: the segment already has its `runner_lost` row: one at or after the segment's `run_started`."""
+    """SIL-B30: the segment already has its `runner_lost` row: one at or after the segment's `run_started`."""
     at = _when(started.get("ts"))
     return any(r.get("kind") == "run_segment" and r.get("thread_id") == tid and r.get("reason") == REASON
                and (at is None or (_when(r.get("ts")) or at) >= at) for r in rows)
@@ -97,7 +97,7 @@ def _settle_thread(root: Path, spec: WorkflowSpec, tid: str, registry: Registry)
 
         summary["labels"] = after_exit(root, spec.name, task, written)
         log.write("finding_recorded", **summary)
-        if child.started_for(root, spec.name, task, tid, REASON):  # SIL-B28: once per thread
+        if child.started_for(root, spec.name, task, tid, REASON):  # SIL-B31: once per thread
             return
         judges = (started.get("executors") or {}).get("judges") or {}
         runner.hand_to_loop(root, spec, task, tid, summary, None, registry, judges,
@@ -108,7 +108,7 @@ def _settle_thread(root: Path, spec: WorkflowSpec, tid: str, registry: Registry)
 
 def settle(root: Path, specs: Mapping[str, WorkflowSpec], selector: str | None = None,
            registry: Registry | None = None) -> None:
-    """Hands every lost runner of the selected threads to the loop; every failure is caught, per thread (SIL-B29)."""
+    """Hands every lost runner of the selected threads to the loop; every failure is caught, per thread (SIL-B32)."""
     with contextlib.suppress(Exception):
         found = select(root, specs, Selector(value=selector))
         for spec, tid in found:

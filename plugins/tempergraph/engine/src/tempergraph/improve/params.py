@@ -41,7 +41,7 @@ PARAMS = {p.name: p for p in (
     Param(name="digest.idle_minutes", value=10, source="SRV-B11"),
     Param(name="digest.retry_overlap", value=0.8, source="SRV-B12"),
     Param(name="digest.unused_runs", value=5, source="SRV-B12"),
-    Param(name="digest.judge_read_share", value=0.25, source="SRV-B29"),
+    Param(name="digest.judge_read_share", value=0.25, source="SRV-B31"),
     Param(name="review.max_input_tokens", value=60_000, source="SRV-B17"),
     Param(name="review.max_sessions.signals", value=3, source="SRV-B21"),
     Param(name="review.run_share.dev", value=0.25, source="SRV-B21"),
@@ -50,7 +50,7 @@ PARAMS = {p.name: p for p in (
     Param(name="review.run_cap_usd.stable", value=2, source="SRV-B21"),
     Param(name="review.probation_runs", value=5, source="SRV-B13, SRV-B14, SRV-B15"),
     Param(name="review.repeat_sessions", value=3, source="SRV-B26"),
-    Param(name="lost_runner.window_days", value=7, source="SIL-B26"),
+    Param(name="lost_runner.window_days", value=7, source="SIL-B29"),
     # FBK-B9, FBK-B14 (T12.3)
     Param(name="labels.rerun_days", value=14, source="FBK-B9"),
     Param(name="reliability.window_days", value=90, source="FBK-B11, FBK-B12"),

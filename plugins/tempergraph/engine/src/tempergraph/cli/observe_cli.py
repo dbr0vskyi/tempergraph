@@ -432,7 +432,7 @@ def cmd_attention(env: Any, a: argparse.Namespace) -> int:
     from tempergraph.observe.attention import attention, line, loop_line, stale_line
 
     where = roots(env, a.all_roots)
-    try:  # SIL-B26, SIL-B29: a lost runner is handed to the loop first; a failure there changes nothing below
+    try:  # SIL-B29, SIL-B32: a lost runner is handed to the loop first; a failure there changes nothing below
         from tempergraph.improve import lost
 
         for r in where:

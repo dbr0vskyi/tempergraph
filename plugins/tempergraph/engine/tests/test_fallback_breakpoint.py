@@ -129,7 +129,7 @@ def test_a_breakpoint_pauses_before_a_unit_with_no_session(repo: Path) -> None: 
                                                                               "action": "breakpoint"}]
 
 
-def test_a_breakpoint_before_the_first_unit_and_a_stop(repo: Path) -> None:  # SIL-AC16
+def test_a_breakpoint_before_the_first_unit_and_a_stop(repo: Path) -> None:  # SIL-AC18
     spec = wf()
     ex = standin("claude", steps=[WORK] * 3, judges=[PASS] * 3)
     out = go(repo, spec, ex, pause_before=("plan",))

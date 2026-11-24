@@ -140,7 +140,7 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
 
 
 def started_for(root: Path, workflow: str, task_id: str, thread: str, trigger: str, home: Path | None = None) -> bool:
-    """SIL-B28: a loop for this thread and trigger exists: a ticket waiting or claimed, or a `loop_started` record."""
+    """SIL-B31: a loop for this thread and trigger exists: a ticket waiting or claimed, or a `loop_started` record."""
     folder = tickets_dir(home or home_path())
     for path in [*folder.glob("*.json"), *folder.glob("*.claimed")] if folder.is_dir() else ():
         try:
