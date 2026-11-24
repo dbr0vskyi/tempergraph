@@ -2,7 +2,10 @@
 
 One `loop_summary` record per ticket in the thread's `loop.jsonl`: the findings the thread holds, the issues this
 child opened or commented on, and the three kept review observations with the highest confidence, as category, unit
-and confidence and never a note. `attention` and the detail document read it (CLI-B20, RDD-B7).
+and confidence and never a note, and `review_failed`, the reviews that ended failed counted by error class (SIL-B24):
+a review ended failed when the latest `review_done` or `review_failed` record of its session is `review_failed`, and
+a `review_failed` record naming no session counts as one review of class `error`. `attention` and the detail document
+read it (CLI-B20, RDD-B7).
 """
 
 from __future__ import annotations
@@ -12,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from tempergraph.improve import digest as digestmod
+from tempergraph.improve import review
 from tempergraph.improve.record import _jsonl, read_findings
 from tempergraph.store.layout import now_iso, run_dir
 
@@ -34,12 +38,22 @@ def _top(records: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
     return kept[:TOP]
 
 
+def _review_failed(records: Sequence[Mapping[str, Any]]) -> dict[str, int]:
+    """SIL-B24: the failed reviews by `error_class`; a record with no class counts as `error`."""
+    counts: dict[str, int] = {}
+    for r in review.failed_records(records):
+        cls = str(r.get("error_class") or "error") if r.get("session_key") else "error"
+        counts[cls] = counts.get(cls, 0) + 1
+    return counts
+
+
 def build(root: Path, workflow: str, task_id: str, results: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     """The `loop_summary` record of the child that has just handled the thread's ticket."""
     records = _jsonl(run_dir(root, workflow, task_id) / "loop.jsonl")
     return {"ts": now_iso(), "kind": "loop_summary", "thread": f"{workflow}/{task_id}",
             "recorded": len(read_findings(root, workflow, task_id)),
-            "filed": sum(1 for r in results if r.get("op") in FILED_OPS), "top": _top(records)}
+            "filed": sum(1 for r in results if r.get("op") in FILED_OPS), "top": _top(records),
+            "review_failed": _review_failed(records)}
 
 
 def thread_newest(root: Path, workflow: str, task_id: str) -> dict[str, Any] | None:

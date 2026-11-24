@@ -49,8 +49,8 @@ def test_the_ticket_carries_the_effort(tmp_path: Path) -> None:
 
 def test_every_review_session_is_asked_at_the_effort(tmp_path: Path) -> None:
     ex = Recorder()
-    block, _ = review._ask(ex, tmp_path, "wf", "T-1", "draft.1.step", "the view", {}, "medium", "high")
-    assert block is None  # the reply has no block, so the reviewer is asked twice
+    block, _, failure = review._ask(ex, tmp_path, "wf", "T-1", "draft.1.step", "the view", {}, "medium", "high")
+    assert block is None and failure is not None  # the reply has no block, so the reviewer is asked twice
     assert [r.options.effort for r in ex.requests] == ["high", "high"]
     assert all(r.alias == "medium" for r in ex.requests)
     ex = Recorder()

@@ -561,9 +561,13 @@ def _reviewer(registry: Registry, name: str, d: Mapping[str, Any], alias: str = 
 
 
 def run(t: Mapping[str, Any], registry: Registry, *, reason: str = "dev", keys: Sequence[str] = (),
-        force_full: bool = False, dry_run: bool = False, room: float | None = None) -> dict[str, Any]:
+        force_full: bool = False, dry_run: bool = False, room: float | None = None,
+        retry: bool = False) -> dict[str, Any]:
     """Plans and runs the review of one run; every result stays local (SRV-B22). `room` is what the day's cap
-    under SIL's daily cap still leaves the loop (stable mode), which the plan's `cap_usd` may not pass (SRV-B21)."""
+    under SIL's daily cap still leaves the loop (stable mode), which the plan's `cap_usd` may not pass (SRV-B21).
+    `retry` marks every record of the call (SIL-B25); `usage_limit` of the result lists the targets that ended failed
+    as `usage_limit` with the reset instant the session reported (SRV-B29)."""
+    mark = _retry_mark(retry)
     root = Path(str(t["state_root"]))
     wf, task = str(t["workflow"]), str(t["task_id"])
     digests = _run_digests(root, wf, task)
@@ -581,8 +585,9 @@ def run(t: Mapping[str, Any], registry: Registry, *, reason: str = "dev", keys: 
     p["estimate_tokens"] = sum(len(v[0]) // 4 for v in views.values())
     log = loop_log(root, wf, task)
     append_jsonl(log, {"ts": now_iso(), "kind": "review_planned", "reason": reason,
-                       **{k: v for k, v in p.items() if k != "setting"}, "setting": p["setting"]})
-    out: dict[str, Any] = {"plan": p, "done": [], "failed": [], "cost": {"reported": 0.0, "estimated_only": 0.0}}
+                       **{k: v for k, v in p.items() if k != "setting"}, "setting": p["setting"], **mark})
+    out: dict[str, Any] = {"plan": p, "done": [], "failed": [], "usage_limit": [],
+                           "cost": {"reported": 0.0, "estimated_only": 0.0}}
     if dry_run or p["depth"] == "none":
         return out
     over = False  # SRV-B25: once a review is refused for money, every later target is too
@@ -596,22 +601,30 @@ def run(t: Mapping[str, Any], registry: Registry, *, reason: str = "dev", keys: 
         over = over or (p["cap_usd"] is not None and spent + est > float(p["cap_usd"]))
         if over:
             p["skipped"].append({"session_key": key, "reason": "budget"})
-            append_jsonl(log, {"ts": now_iso(), "kind": "review_skipped", "session_key": key, "reason": "budget"})
+            append_jsonl(log, {"ts": now_iso(), "kind": "review_skipped", "session_key": key, "reason": "budget",
+                               **mark})
             continue
         ex = _reviewer(registry, str(t.get("executor") or "claude"), d, str(t.get("alias") or ALIAS))
         if ex is None:
-            append_jsonl(log, {"ts": now_iso(), "kind": "review_skipped", "session_key": key, "reason": "provider"})
+            append_jsonl(log, {"ts": now_iso(), "kind": "review_skipped", "session_key": key, "reason": "provider",
+                               **mark})
             continue
         judge = d.get("kind") in digestmod.JUDGE_KINDS
         prompt = prompt_for(text, token, judge)
-        block, cost = _ask(ex, root, wf, task, key, prompt, d, str(t.get("alias") or ALIAS),
-                           str(t.get("effort") or EFFORT))
+        block, cost, failure = _ask(ex, root, wf, task, key, prompt, d, str(t.get("alias") or ALIAS),
+                                    str(t.get("effort") or EFFORT), retry=retry)
         out["cost"]["reported"] += cost[0]
         out["cost"]["estimated_only"] += cost[1]
         paid = {"cost_usd": round(cost[0] + cost[1], 6), "reported": cost[1] == 0.0 and cost[0] > 0.0}
         if block is None:
+            failure = failure or {"error_class": "error"}
             out["failed"].append(key)
-            append_jsonl(log, {"ts": now_iso(), "kind": "review_failed", "session_key": key, **paid})
+            if failure["error_class"] == "usage_limit":
+                out["usage_limit"].append({"session_key": key, "resets_at": failure.get("resets_at")})
+            append_jsonl(log, {"ts": now_iso(), "kind": "review_failed", "session_key": key,
+                               "error_class": failure["error_class"],
+                               **({"resets_at": failure["resets_at"]} if failure.get("resets_at") is not None else {}),
+                               **paid, **mark})
             continue
         observations = []
         for o in block.get("observations") or []:
@@ -630,7 +643,7 @@ def run(t: Mapping[str, Any], registry: Registry, *, reason: str = "dev", keys: 
         public = [{k: v for k, v in o.items() if k != "note"} for o in observations]
         append_jsonl(log, {"ts": now_iso(), "kind": "review_done", "session_key": key, "observations": public,
                            "kept": sum(1 for o in observations if o["check"] == "kept"),
-                           "none_found": bool(block.get("none_found")), **paid})
+                           "none_found": bool(block.get("none_found")), **paid, **mark})
         out["done"].append(key)
     if out["done"]:  # SRV-B26: a category kept in several sessions of one unit is a finding; it never files (SRV-B28)
         repeat.record(root, wf, task, str(t.get("thread") or f"{wf}/{task}"))
@@ -659,11 +672,24 @@ def _blockers(root: Path, wf: str, task: str) -> dict[str, list[str]]:
     return out
 
 
+def _failure_class(res: Any) -> str:
+    """SRV-B29: `unparsed` for an ok session with no readable block, else the not-ok session's own cause."""
+    if res.ok:
+        return "unparsed"
+    for word in (getattr(res, "infra_cause", None), getattr(res, "error_kind", None)):
+        if word:
+            return str(word)
+    return next((w for w in ("timed_out", "stalled", "partial") if getattr(res, w, False)), "error")
+
+
 def _ask(ex: Any, root: Path, wf: str, task: str, key: str, prompt: str,
-         d: Mapping[str, Any], alias: str = ALIAS, effort: str = "max"
-         ) -> tuple[dict[str, Any] | None, tuple[float, float]]:
-    """One reviewer session with no tools; one re-ask when the block does not parse (SRV-B20)."""
+         d: Mapping[str, Any], alias: str = ALIAS, effort: str = "max", retry: bool = False
+         ) -> tuple[dict[str, Any] | None, tuple[float, float], dict[str, Any] | None]:
+    """One reviewer session with no tools; one re-ask when the block does not parse (SRV-B20), none when the session
+    reports a spent usage allowance (SRV-B30). The third value is None on success, else the failure: its
+    `error_class` (SRV-B29) and, for `usage_limit`, `resets_at` as reported."""
     rep = est = 0.0
+    failure: dict[str, Any] = {"error_class": "error"}
     for n in (1, 2):
         rkey = f"review.{key}.{n}"
         sdir = run_dir(root, wf, task) / "loop" / "sessions" / rkey
@@ -673,18 +699,44 @@ def _ask(ex: Any, root: Path, wf: str, task: str, key: str, prompt: str,
         try:
             res = ex.run_judge(req, ViewSet(tool_less=True), LiveSink(sdir))
         except Exception:  # noqa: BLE001 - one reviewer's failure never stops the plan (SRV-B1, SRV-B20, SRV-B21, SRV-B22, SRV-B18)
-            return None, (rep, est)
+            return None, (rep, est), {"error_class": "error"}
         if res.usage.reported_cost_usd is not None:
             rep += res.usage.reported_cost_usd
         else:
             est += float(res.usage.estimated_cost_usd or estimate(res.usage, res.model) or 0.0)
         append_jsonl(loop_log(root, wf, task), {"ts": now_iso(), "kind": "review_session", "session_key": rkey,
                                                 "reviewed": key, "ok": res.ok, "executor": ex.name,
-                                                "alias": alias, "effort": effort})
+                                                "alias": alias, "effort": effort, **_retry_mark(retry)})
+        if not res.ok and getattr(res, "usage_limit", False):  # SRV-B30: the allowance is spent, a re-ask cannot help
+            at = getattr(res, "usage_limit_resets_at", None)
+            return None, (rep, est), {"error_class": "usage_limit", "resets_at": at}
         block = parse(res.text) if res.ok else None
         if block is not None:
-            return block, (rep, est)
-    return None, (rep, est)
+            return block, (rep, est), None
+        failure = {"error_class": _failure_class(res)}
+    return None, (rep, est), failure
+
+
+def _retry_mark(retry: bool) -> dict[str, bool]:
+    """SIL-B25: every record of a retry carries `retry` true; the first attempt's records carry no such key."""
+    return {"retry": True} if retry else {}
+
+
+def failed_records(records: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    """SIL-B24: the `review_failed` records that are a session's latest word, in log order. A session whose latest
+    `review_done` or `review_failed` is `review_done` (a retry that worked) is not failed; a `review_failed` naming
+    no session stays as its own entry."""
+    latest: dict[str, tuple[int, dict[str, Any]]] = {}
+    keyless: list[tuple[int, dict[str, Any]]] = []
+    for i, r in enumerate(records):
+        if r.get("kind") not in ("review_done", "review_failed"):
+            continue
+        if r.get("session_key"):
+            latest[str(r["session_key"])] = (i, dict(r))
+        elif r.get("kind") == "review_failed":
+            keyless.append((i, dict(r)))
+    held = [*latest.values(), *keyless]
+    return [r for _, r in sorted(held, key=lambda p: p[0]) if r.get("kind") == "review_failed"]
 
 
 # -- the report ----------------------------------------------------------------------------------------------
@@ -711,7 +763,7 @@ def show(root: Path, workflow: str, task: str) -> dict[str, Any]:
                          "unsupported": sum(1 for o in doc.get("observations") or [] if o.get("check") != "kept"),
                          "conformance": doc.get("conformance") or [], "none_found": doc.get("none_found")})
     return {"schema_version": 1, "thread": f"{workflow}/{task}", "plan": planned[-1] if planned else None,
-            "sessions": sessions, "failed": [r.get("session_key") for r in recs if r.get("kind") == "review_failed"]}
+            "sessions": sessions, "failed": [r.get("session_key") for r in failed_records(recs)]}
 
 
 def summary(root: Path, workflow: str | None = None, version: str | None = None) -> dict[str, Any]:

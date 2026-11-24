@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from tempergraph.contracts import EventSink, InfraCause, SessionOptions, SessionRequest, ViewSet
+from tempergraph.contracts import EventSink, InfraCause, SessionOptions, SessionRequest, SessionResult, ViewSet
 from tempergraph.executors.binding import Binding, BindingError, BindingTable, load
 from tempergraph.executors.claude import (
     ClaudeExecutor,
@@ -290,6 +290,53 @@ def test_run_step_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     assert seen["argv"] == list(res.argv[1:])
     assert seen["env"]["CLAUDE_CODE_SUBAGENT_MODEL"] == "sonnet"
     assert (tmp_path / "s" / "raw.jsonl").exists()
+
+
+def _usage_limit_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *msgs: dict) -> SessionResult:
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    S.fake_claude(tmp_path, monkeypatch, {"lines": [S.init(), *msgs]})
+    ex = ClaudeExecutor(bindings=BindingTable())
+    return ex.run_step(req(tmp_path, tools=("read",), session_dir=tmp_path / "s"), EventSink())
+
+
+def _failed() -> dict:
+    return S.result("429 usage_limit_reached", subtype="error_during_execution", is_error=True)
+
+
+def test_ecc_ac11_ssn_ac8_a_rejected_report_is_a_spent_allowance(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    base = _usage_limit_run(tmp_path / "a", monkeypatch, _failed())
+    res = _usage_limit_run(tmp_path / "b", monkeypatch, S.rate_limit_event("rejected", 1795317000), _failed())
+    assert not res.ok and res.usage_limit is True and res.usage_limit_resets_at == 1795317000.0
+    assert isinstance(res.usage_limit_resets_at, float)
+    assert (res.infra_cause, res.error_kind) == (base.infra_cause, base.error_kind) == (None, "model")
+    assert base.usage_limit is False and base.usage_limit_resets_at is None
+
+
+def test_ecc_ac11_a_rejection_with_no_instant_or_credits_required_has_no_reset(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    none = _usage_limit_run(tmp_path / "a", monkeypatch, S.rate_limit_event("rejected"), _failed())
+    credits = _usage_limit_run(tmp_path / "b", monkeypatch,
+                               S.rate_limit_event("rejected", 1795317000, "credits_required"), _failed())
+    for res in (none, credits):
+        assert not res.ok and res.usage_limit is True and res.usage_limit_resets_at is None
+        assert res.error_kind == "model"
+
+
+def test_ecc_ac11_allowed_ok_or_no_event_is_no_spent_allowance(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    later_allowed = _usage_limit_run(tmp_path / "a", monkeypatch, S.rate_limit_event("rejected", 1795317000),
+                                     S.rate_limit_event("allowed", 1795317000), _failed())
+    warning = _usage_limit_run(tmp_path / "b", monkeypatch, S.rate_limit_event("allowed_warning", 1795317000),
+                               _failed())
+    ok_after = _usage_limit_run(tmp_path / "c", monkeypatch, S.rate_limit_event("rejected", 1795317000), S.result())
+    none = _usage_limit_run(tmp_path / "d", monkeypatch, _failed())
+    assert ok_after.ok
+    for res in (later_allowed, warning, ok_after, none):
+        assert res.usage_limit is False and res.usage_limit_resets_at is None
+
+
+def test_ssn_ac8_a_session_result_defaults_to_no_spent_allowance() -> None:  # SSN-B11
+    res = SessionResult(ok=False)
+    assert res.usage_limit is False and res.usage_limit_resets_at is None
 
 
 def test_run_judge_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

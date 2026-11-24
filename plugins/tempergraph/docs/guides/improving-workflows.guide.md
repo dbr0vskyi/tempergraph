@@ -51,7 +51,15 @@ To see how a run's sessions actually went, step by step:
 ```sh
 tempergraph improve review <workflow>/<task> --dry-run   # what the review would read, no spend
 tempergraph improve review <workflow>/<task>
+tempergraph improve review show <workflow>/<task>        # the reviews that failed, and why
 ```
+
+A review can fail, for example because the signed-in account has used up its allowance. A failed review is never silent:
+
+- `tempergraph improve review show <workflow>/<task>` lists the reviews that failed.
+- `tempergraph attention` shows a loop whose reviews failed, with the failed reviews counted by class (`usage_limit`, `unparsed`, and so on), even when the loop found nothing. A loop that read nothing is not shown as a loop that found nothing.
+- When a review failed on a usage limit and the reset the executor reported is within six hours, the background loop waits for the reset and runs that review once more. The retry is recorded, and the loop's summary is written after it.
+- A review that is not retried stays failed: when no reset time was reported, when the reset is more than six hours away, and always when you run `tempergraph improve review` yourself, which never waits. After the reset, run `tempergraph improve review <workflow>/<task>` again.
 
 ## 5. Revise the outcome
 

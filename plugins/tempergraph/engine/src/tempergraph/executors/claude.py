@@ -458,15 +458,43 @@ class ClaudeExecutor:
                           timeout_s=req.timeout_s, idle_s=idle_s, session_key=req.session_key,
                           env_overlay=env, env_drop=HOST_DROP_PREFIXES, env_keep=HOST_KEEP,
                           session_dir=req.session_dir, grace_s=self.grace_s)
-        raw = launch(spec, functools.partial(parse_line, workdir=req.workdir), sink, stop=self.stop)
+        # ECC-B17: the last `rate_limit_event` is kept beside the mapping, which still gives it no event (SSN-B7)
+        last_limit: dict[str, Any] = {}
+        mapper = functools.partial(parse_line, workdir=req.workdir)
+
+        def keep_limit(line: bytes) -> list[Event]:
+            try:
+                msg = json.loads(line)
+            except ValueError:
+                msg = None
+            if isinstance(msg, dict) and msg.get("type") == "rate_limit_event":
+                info = msg.get("rate_limit_info")
+                last_limit.clear()
+                last_limit.update(info if isinstance(info, dict) else {})
+            return mapper(line)
+
+        raw = launch(spec, keep_limit, sink, stop=self.stop)
         s = summarize(raw.events, raw.duration_s)
         infra, kind = classify(raw, s)
+        spent, resets_at = _spent_allowance(last_limit)
         version = self._probe.version if self._probe else ""
         for ev in raw.events:
             if ev.kind == "session_started" and ev.data.get("cli_version"):
                 version = str(ev.data["cli_version"])
         return build_result(raw, s, cli_version=version, argv=argv, applied=applied, infra=infra,
-                            error_kind=kind, ok=s.result is not None and bool(s.result.get("ok")))
+                            error_kind=kind, ok=s.result is not None and bool(s.result.get("ok")),
+                            usage_limit=spent, usage_limit_resets_at=resets_at)
+
+
+def _spent_allowance(info: Mapping[str, Any]) -> tuple[bool, float | None]:
+    """ECC-B17: a last `rate_limit_event` of status `rejected` says the allowance is spent; `resetsAt` is read as epoch
+    seconds (open question of the spec on the unit), null when absent, not a number or `credits_required`."""
+    if info.get("status") != "rejected":
+        return False, None
+    at = info.get("resetsAt")
+    if info.get("errorCode") == "credits_required" or isinstance(at, bool) or not isinstance(at, int | float):
+        return True, None
+    return True, float(at)
 
 
 # Live probe facts of ECC-B13 and their recorded state; none has run on a signed-in host yet (T0.1).
