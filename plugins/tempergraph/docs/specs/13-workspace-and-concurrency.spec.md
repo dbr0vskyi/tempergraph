@@ -130,10 +130,13 @@ WHEN a run outside git needs a workspace fingerprint THE engine SHALL take the f
 
 ### WSP-B18 What needs git
 
-WHEN a workflow or a verb needs git outside a repository THE engine SHALL refuse it with finding `needs_git` before anything is created: writer branches, worktree trials (`improve trial`, PRP), a finalizer's push or draft pull request, `--carry` and the verb `carry` ([CAR](96-run-state-on-a-branch.spec.md)), and a stock risk or complexity rule on changed paths or lines ([JRK](93-judge-model-by-risk.spec.md), [CXR](94-complexity-routing.spec.md)).
+WHEN a workflow or a verb needs git outside a repository THE engine SHALL refuse it with finding `needs_git` before anything is created: writer branches, a concurrent map whose step declares `write` or `edit` (a writing map, WSP-B11), worktree trials (`improve trial`, PRP), a finalizer's push or draft pull request, `--carry` and the verb `carry` ([CAR](96-run-state-on-a-branch.spec.md)), and a stock risk or complexity rule on changed paths or lines ([JRK](93-judge-model-by-risk.spec.md), [CXR](94-complexity-routing.spec.md)).
 
 - GIVEN `run --carry` outside git WHEN it starts THEN it is refused `needs_git` and no thread exists
 - GIVEN a workflow with a writer branch outside git WHEN it is validated THEN it fails with `needs_git`
+- GIVEN a workflow of a planning step followed by a concurrent map whose step declares `write` WHEN it starts outside git THEN it is refused `needs_git` naming the map, the planning step starts no session and nothing is created
+- GIVEN the same workflow WHEN `run --check` runs outside git THEN it reports `needs_git` naming the map
+- GIVEN a concurrent map whose step declares neither `write` nor `edit` WHEN a run starts outside git THEN it is not refused `needs_git` for the map
 
 ## Acceptance criteria
 
@@ -157,3 +160,6 @@ WHEN a workflow or a verb needs git outside a repository THE engine SHALL refuse
 - WSP-AC18 (WSP-B11): In a concurrent map whose step declares neither `write` nor `edit`, an item that changes a file in the run worktree fails with `branch_changed_the_workspace`
 - WSP-AC19 (WSP-B19): A file an earlier unit left uncommitted is in a commit on the run's branch before any item session of a concurrent map whose step declares `write` starts, and is in each item's worktree
 - WSP-AC20 (WSP-B12): Two items of a concurrent map whose step declares `write` that change one line leave the run's branch at the commit it held before the first merge, end the map blocked with the pause listing that path, and start no model session after the items have ended
+- WSP-AC21 (WSP-B18): Started outside git, a workflow of a step followed by a concurrent map whose step declares `write` or `edit` is refused `needs_git` naming the map, with no session started and nothing created
+- WSP-AC22 (WSP-B18): `run --check` outside git reports `needs_git` naming the map for that workflow
+- WSP-AC23 (WSP-B18): A concurrent map whose step declares neither `write` nor `edit` adds no `needs_git` refusal outside git
