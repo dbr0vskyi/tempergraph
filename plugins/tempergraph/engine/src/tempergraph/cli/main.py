@@ -50,6 +50,23 @@ class _Parser(argparse.ArgumentParser):
         raise UsageError(message)
 
 
+# The positionals that take any number of words (`nargs="*"`), by their destination.
+STAR_POSITIONALS = ("request", "paths")
+
+
+def _parse(given: list[str]) -> argparse.Namespace:
+    """Parse the command line the same way on every supported Python. Python 3.11's argparse fills a `*` positional
+    when it meets the first option and then refuses the positional words after that option
+    (`author start x --from sources templates`); 3.12 takes them. Those words join the positional here."""
+    a, extra = _parser().parse_known_args(given)
+    if extra:
+        target = next((n for n in STAR_POSITIONALS if isinstance(getattr(a, n, None), list)), None)
+        if target is None or any(w.startswith("-") for w in extra):
+            raise UsageError(f"unrecognized arguments: {' '.join(extra)}")
+        getattr(a, target).extend(extra)
+    return a
+
+
 def _parser() -> _Parser:
     p = _Parser(prog="tempergraph", description="Tempered rails for AI workflows")
     p.add_argument("--state-root", metavar="DIR", help="outside a git repository: the state root to use (WSP-B15 to WSP-B18)")
@@ -1064,7 +1081,7 @@ def main(argv: Sequence[str] | None = None, *, catalog: Catalog | None = None, r
     root_before = os.environ.get(ROOT_VAR)
     try:
         given = tuple(argv if argv is not None else sys.argv[1:])
-        a = _parser().parse_args(list(given))
+        a = _parse(list(given))
         if a.state_root:  # read by `state_root_path` outside git; inside a repository it changes nothing
             declared = Path(a.state_root).expanduser()
             os.environ[ROOT_VAR] = str((declared if declared.is_absolute() else (cwd or Path.cwd()) / declared).resolve())
