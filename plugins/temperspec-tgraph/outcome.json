@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 14,
+  "revision": 15,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -239,6 +239,17 @@
           ]
         },
         {
+          "id": "ts-set-ruleread",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each rule file the setup prompt names (spec.rule.md, task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
+          "check_method": "Read the session record the engine gives the check: a read call without an error whose target ends in the rule file's name; a search or a failed read does not count",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:setup_check"
+          }
+        },
+        {
           "id": "ts-set-commit",
           "severity": "blocker",
           "verified_by": "check",
@@ -327,6 +338,17 @@
           "serves": [
             "ts-accepted"
           ]
+        },
+        {
+          "id": "ts-tri-ruleread",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each rule file the triage prompt names (task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
+          "check_method": "Read the session record the engine gives the check: a read call without an error whose target ends in the rule file's name; a search or a failed read does not count",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:triage_check"
+          }
         },
         {
           "id": "ts-tri-commit",
@@ -484,6 +506,17 @@
           }
         },
         {
+          "id": "ts-dsh-ruleread",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each rule file the short discovery prompt names (task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
+          "check_method": "Read the session record the engine gives the check: a read call without an error whose target ends in the rule file's name; a search or a failed read does not count",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_short_check"
+          }
+        },
+        {
           "id": "ts-dsh-commit",
           "severity": "blocker",
           "verified_by": "check",
@@ -593,6 +626,17 @@
             "ts-spec-links",
             "ts-spec-sync"
           ]
+        },
+        {
+          "id": "ts-dis-ruleread",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each rule file the discovery prompt names (spec.rule.md, decision.rule.md, research.rule.md, task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
+          "check_method": "Read the session record the engine gives the check: a read call without an error whose target ends in the rule file's name; a search or a failed read does not count",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          }
         },
         {
           "id": "ts-dis-commit",
@@ -773,6 +817,17 @@
           }
         },
         {
+          "id": "ts-plan-ruleread",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each rule file the plan prompt names (plan.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
+          "check_method": "Read the session record the engine gives the check: a read call without an error whose target ends in the rule file's name; a search or a failed read does not count",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:plan_check"
+          }
+        },
+        {
           "id": "ts-plan-commit",
           "severity": "blocker",
           "verified_by": "check",
@@ -896,6 +951,28 @@
           }
         },
         {
+          "id": "ts-exp-ruleread",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each rule file the expand prompt names (plan.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
+          "check_method": "Read the session record the engine gives the check: a read call without an error whose target ends in the rule file's name; a search or a failed read does not count",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:expand_check"
+          }
+        },
+        {
+          "id": "ts-exp-opened",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "A task row that names a file that exists in the repository has that file opened by the session with the read tool",
+          "check_method": "Read the session record the engine gives the check: each existing file a task row names has a read call without an error on its path; a file that does not exist is not asked for",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:expand_check"
+          }
+        },
+        {
           "id": "ts-exp-commit",
           "severity": "blocker",
           "verified_by": "check",
@@ -1011,6 +1088,28 @@
           "serves": [
             "ts-accepted"
           ]
+        },
+        {
+          "id": "ts-code-ruleread",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Each rule file the code prompt names (task-notes.rule.md, plan.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
+          "check_method": "Read the session record the engine gives the check: a read call without an error whose target ends in the rule file's name; a search or a failed read does not count",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          }
+        },
+        {
+          "id": "ts-code-order",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "A phase's source files are not changed before the phase's test files are first written",
+          "check_method": "Read the session record the engine gives the check: no edit or write call without an error on a code row's file of a phase comes before the first write of a test row's file of that phase",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:code_check"
+          }
         },
         {
           "id": "ts-code-commit",
@@ -1413,6 +1512,12 @@
       "origin": "authored",
       "at": "2026-11-24T04:45:00.000Z",
       "note": "issues 118 and 124: the outcome check fails a spec the run edited when the base branch changed it since the run started (ts-spec-fresh), comparing the spec at the run's base commit with the head of the base branch that the engine gives every check"
+    },
+    {
+      "revision": 15,
+      "origin": "authored",
+      "at": "2026-11-24T08:00:00.000Z",
+      "note": "issue 129: a step's check reads the session record the engine gives it; each of the seven steps whose prompt names a rule file fails when the session never opened a rule file the repository holds (ts-set-ruleread, ts-tri-ruleread, ts-dsh-ruleread, ts-dis-ruleread, ts-plan-ruleread, ts-exp-ruleread, ts-code-ruleread), the expand check fails for a row whose existing file the session never opened (ts-exp-opened), and the code check fails when a phase's source was changed before its tests were first written (ts-code-order) (spec session-record-checks)"
     }
   ]
 }

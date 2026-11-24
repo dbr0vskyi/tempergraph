@@ -14,5 +14,6 @@ Part of the [overview](00-overview.spec.md). The route after triage chooses it w
 - [ ] ts-dsh-settled The `settled` value is `no` exactly when a line of `Gaps closed` says `Not covered`
 - [ ] ts-dsh-reading The hand-off of a settled short visit has a reading list of at most 10 items, each naming an existing file, the line ranges or ids that matter and one line on why
 - [ ] ts-dsh-limit The short visit's prompt tells the session to read at most 10 files
+- [ ] ts-dsh-ruleread Each rule file the short discovery prompt names (task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session
 - [ ] ts-dsh-commit Every file the short discovery step changed is committed
 - [ ] ts-dsh-answers Every behaviour a gap row cites answers that gap's question as the task's acceptance criteria need it, or the hand-off says `Not covered` for the gap

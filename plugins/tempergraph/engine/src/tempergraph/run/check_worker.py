@@ -37,6 +37,7 @@ def context_doc(gate: GateSpec, ctx: checkmod.CheckContext) -> dict[str, Any]:
             "main_checkout": str(ctx.main_checkout) if ctx.main_checkout else None,
             "artifacts": ctx.artifacts, "values": ctx.values, "facts": ctx.facts, "settings": ctx.settings,
             "criteria": list(ctx.criteria), "allow": list(ctx.allow),
+            "session": None if ctx.session is None else [dict(c) for c in ctx.session],  # CHK-B24, CHK-B25
             "out_dir": str(ctx.out_dir) if ctx.out_dir else None,
             "reuse_store": str(ctx.reuse_store) if ctx.reuse_store else None,
             "base_dir": str(ctx.base_dir) if ctx.base_dir else None,
@@ -53,7 +54,9 @@ def context_doc(gate: GateSpec, ctx: checkmod.CheckContext) -> dict[str, Any]:
 def _context_from(doc: dict[str, Any]) -> checkmod.CheckContext:
     c = doc["context"]
     g = c.get("git")
+    held = c.get("session")
     return checkmod.CheckContext(
+        session=tuple(dict(x) for x in held if isinstance(x, dict)) if isinstance(held, list) else None,
         changed_paths=tuple(c.get("changed_paths") or ()),
         unit=c["unit"], workdir=Path(c["workdir"]), request=c.get("request") or {}, item=c.get("item"),
         visit=int(c.get("visit", 1)), attempt=int(c.get("attempt", 1)), preview=bool(c.get("preview")),

@@ -16,7 +16,7 @@ Units:
 - [expand](07-expand.spec.md): Write task rows and verification for a complex plan
 - [code](08-code.spec.md): Build the plan test first in one session
 
-Beside the units: [judge reading](judge-reading.spec.md), what each judge is told to read and to cite before it grades; [outcome gate](outcome-gate.spec.md), the documents the final gate requires of a run and what it reports about the push; [kept marks](kept-marks.spec.md), which completed marks of a plan survive a trip back to plan; [project note](project-note.spec.md), the rule files and the project-context block that prepare puts in a repository; [runs side by side](side-by-side-runs.spec.md), what the outcome check does when the base branch has changed a spec the run edited.
+Beside the units: [judge reading](judge-reading.spec.md), what each judge is told to read and to cite before it grades; [outcome gate](outcome-gate.spec.md), the documents the final gate requires of a run and what it reports about the push; [kept marks](kept-marks.spec.md), which completed marks of a plan survive a trip back to plan; [project note](project-note.spec.md), the rule files and the project-context block that prepare puts in a repository; [runs side by side](side-by-side-runs.spec.md), what the outcome check does when the base branch has changed a spec the run edited; [session record checks](session-record-checks.spec.md), what the gates confirm from the record of a step's session: the rule files opened, the files the expand rows name opened, and each phase's tests written before its source.
 
 ## 6. Acceptance criteria
 

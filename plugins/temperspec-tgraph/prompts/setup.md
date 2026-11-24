@@ -6,7 +6,7 @@ Task id: {task_id}
 
 ## Rules to follow
 
-`spec.rule.md`, `task-notes.rule.md` (the setup note) and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or where the project note in `CLAUDE.md` or `AGENTS.md` names them, or already in your instructions when they are installed for the whole machine. Read the spec rule before you write. This prompt does not repeat the formats. The specs, the overview and the setup note go to `docs/specs/` and `docs/tasks/`. When the project note names other folders for this repository, use the specs folder and the `tasks/` folder beside the repository's specs, as the project note names it, instead.
+`spec.rule.md`, `task-notes.rule.md` (the setup note) and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or where the project note in `CLAUDE.md` or `AGENTS.md` names them, or already in your instructions when they are installed for the whole machine. Open each rule file named here with the read tool; a search of a rule file is not opening it. Read the spec rule before you write. This prompt does not repeat the formats. The specs, the overview and the setup note go to `docs/specs/` and `docs/tasks/`. When the project note names other folders for this repository, use the specs folder and the `tasks/` folder beside the repository's specs, as the project note names it, instead.
 
 ## Procedure
 

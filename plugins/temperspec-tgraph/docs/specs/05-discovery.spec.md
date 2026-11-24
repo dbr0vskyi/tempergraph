@@ -13,6 +13,7 @@ Part of the [overview](00-overview.spec.md).
 - [ ] ts-dis-over A spec over the budget in lines or in bytes fails the discovery check, and the next discovery attempt is given a finding that names the spec and the figure that is over and says to split the spec by capability
 - [ ] ts-dis-names Every document the discovery step created carries its type suffix in its file name
 - [ ] ts-dis-links Every id that a document of the discovery step links to resolves to exactly one definition
+- [ ] ts-dis-ruleread Each rule file the discovery prompt names (spec.rule.md, decision.rule.md, research.rule.md, task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session
 - [ ] ts-dis-commit Every file the discovery step changed is committed
 - [ ] ts-dis-gaps Every gap in the triage note is closed by a document the hand-off names
 - [ ] ts-dis-behaviour Every behaviour the discovery step wrote states an observable result with no internal name

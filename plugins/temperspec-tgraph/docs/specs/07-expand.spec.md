@@ -13,5 +13,7 @@ Part of the [overview](00-overview.spec.md).
 - [ ] ts-exp-links Every task row names a requirement of the plan, every requirement is named by a row, and every document under Docs to update is the file of a docs row
 - [ ] ts-exp-commands Every verification command in the plan resolves against the repository's allowed commands
 - [ ] ts-exp-scope No task row says it does less than asked (a stub, a placeholder, for now, a later task)
+- [ ] ts-exp-ruleread Each rule file the expand prompt names (plan.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session
+- [ ] ts-exp-opened A task row that names a file that exists in the repository has that file opened by the session with the read tool
 - [ ] ts-exp-commit Every file the expand step changed is committed
 - [ ] ts-exp-design Every task row implements a requirement of the plan with no change to the plan's design
