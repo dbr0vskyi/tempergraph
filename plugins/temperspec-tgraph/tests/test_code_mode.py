@@ -541,3 +541,38 @@ def test_the_readme_the_module_docstring_and_the_diagram_say_what_the_route_does
     diagram = (ROOT / "diagram" / "workflow.md").read_text(encoding="utf-8")
     assert "code_mode" in diagram and "code_join" in diagram
     assert "code_mode" in (importlib.import_module("tgwf_temperspec").__doc__ or "")
+
+
+LINK = re.compile(r"\]\((?P<target>[^)\s]+)\)")
+NEW_UNIT_SPECS = {"code_mode": "10-code_mode.spec.md", "code_join": "11-code_join.spec.md"}
+
+
+def test_every_unit_has_its_numbered_spec_the_overview_names_both_new_ones_and_every_link_resolves() -> None:
+    # AC 3 (CDM-B1)
+    from tempergraph.package.docs_check import docs_check
+
+    assert [f.message for f in docs_check(SPEC, ROOT, "stable")] == []
+    specs = ROOT / "docs" / "specs"
+    for unit in SPEC.order:
+        assert len(list(specs.glob(f"[0-9][0-9]-{unit}.spec.md"))) == 1, unit
+    for unit, name in NEW_UNIT_SPECS.items():
+        assert (specs / name).is_file(), unit
+    overview = (specs / "00-overview.spec.md").read_text(encoding="utf-8")
+    for name in NEW_UNIT_SPECS.values():
+        assert f"({name})" in overview
+    note = ROOT / "docs" / "tasks" / "i116.triage.md"
+    targets = [m.group("target").split("#", 1)[0] for m in LINK.finditer(note.read_text(encoding="utf-8"))]
+    assert targets
+    for target in targets:
+        assert not target.startswith("plugins/"), target
+        assert (note.parent / target).exists(), target
+
+
+@pytest.mark.parametrize("name", list(NEW_UNIT_SPECS.values()))
+def test_the_new_unit_specs_read_as_the_packages_other_unit_specs_do(name: str) -> None:
+    # AC 3 (CDM-B1)
+    text = (ROOT / "docs" / "specs" / name).read_text(encoding="utf-8")
+    parsed = fmt.parse_spec(text)
+    assert parsed.legacy and not parsed.problems
+    assert fmt.defined_ids(text) == []
+    assert "(00-overview.spec.md)" in text and "(code-mode.spec.md)" in text
