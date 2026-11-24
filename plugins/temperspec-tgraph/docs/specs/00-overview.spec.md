@@ -16,7 +16,7 @@ Units:
 - [expand](07-expand.spec.md): Write task rows and verification for a complex plan
 - [code](08-code.spec.md): Build the plan test first in one session
 
-Beside the units: [judge reading](judge-reading.spec.md), what each judge is told to read and to cite before it grades.
+Beside the units: [judge reading](judge-reading.spec.md), what each judge is told to read and to cite before it grades; [project note](project-note.spec.md), the rule files and the project-context block that prepare puts in a repository; [runs side by side](side-by-side-runs.spec.md), what the outcome check does when the base branch has changed a spec the run edited.
 
 ## 6. Acceptance criteria
 
@@ -26,6 +26,7 @@ Beside the units: [judge reading](judge-reading.spec.md), what each judge is tol
 - [ ] ts-spec-links Every id that a spec the run edited links to resolves to exactly one definition
 - [ ] ts-spec-moved An acceptance criterion that a split left in a spec may name a behaviour the split moved to another spec, where it keeps its id: the spec rule's structure check reads the id as defined in the spec it moved to, in the run that made the split and in any later run
 - [ ] ts-spec-parent An acceptance criterion of a spec split from another may name an id of the spec it was split from: the spec rule's structure check reads the id as defined there, in the run that made the split and in any later run
+- [ ] ts-spec-fresh No spec the run edited has changed on the base branch since the run started
 - [ ] ts-traced Every acceptance criterion the run added or reworded in a spec, and every criterion that proves a behaviour the run added or changed, is named by at least one test that is not skipped
 - [ ] ts-verify Every verification command the plan lists exits 0 on the branch head
 - [ ] ts-collateral No spec file is edited without a change to a behaviour or an acceptance criterion

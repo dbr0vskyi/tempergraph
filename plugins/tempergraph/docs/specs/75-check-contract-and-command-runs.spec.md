@@ -63,6 +63,14 @@ WHEN a check that ran a command at the base ends, whether it returned, raised or
 - GIVEN a check that ran a command at the base WHEN it returns THEN the checkout's folder is gone and the repository's worktree list, branch list and status are as before the check
 - GIVEN a check worker ended at its limit while a command ran at the base WHEN the engine records the FAIL THEN the checkout's folder is gone
 
+### CHK-B22 The base branch's head
+
+WHEN a check's context is built in a git repository THE engine SHALL set `git.base_head` to the commit the run's base branch ([WTR-B21, WTR-B24](82-worktree-mode.spec.md)) points to at that moment, read from the repository's own refs (its local branch, else its remote-tracking branch on `origin`, with no fetch), or to the empty string when the run has no base branch or no ref names it, so that a check can tell what the base branch has gained since the run's base commit (`git.base`).
+
+- GIVEN a worktree run started at commit A of `main` and a commit B added to `main` since WHEN a check runs THEN `git.base` is A and `git.base_head` is B
+- GIVEN a run in place, which has no base branch WHEN a check runs THEN `git.base_head` is empty
+- GIVEN a base branch `main` that exists only as `origin/main` at commit C WHEN a check runs THEN `git.base_head` is C
+
 ### CHK-B14 What a check returns
 
 WHEN a check returns ([SSN-B8](25-session-contract.spec.md)) THE engine SHALL take `result` (`PASS`, `MAYBE` or `FAIL`; with findings, the worse of `result` and the worst finding, a mismatch logged); `findings[]`, one per checked requirement with an optional `criterion` id (a finding naming an id the gate lacks kept without it), `status` (`pass`, `maybe`, `fail`, `n_a`, an `n_a` needing a `message` saying why the rule cannot apply here), `place` (path, path and line, or field), `fix` and `message` (one line each); `facts` (at most 20 slug keys with scrubbed values of at most 200 characters, extras dropped and values clipped with the count on the check record), stored for the unit and item on this visit and cleared with its artifacts by a trip back to or past it ([BUD-B4](08-budgets-and-failures.spec.md)); `runs[]`, added by the engine; `evidence`, bounded text for the judge; and `environmental` (the environment, not the work, failed: no interpreter, command refused, program missing, or a failure the check shows was there before the run's change, such as a command that fails the same at the run's base, CHK-B18), which escalates with no judge and no retry ([BUD](08-budgets-and-failures.spec.md)); and SHALL give facts to later checks as `ctx.facts`, to routes and switches, the finalizer ([FIN](78-finalizer-contract.spec.md)), the `facts` verb and the run detail document, never to a step prompt.
@@ -161,6 +169,7 @@ WHEN a gate's check runs on the same workspace in workflows whose steps use diff
 - CHK-AC10 (CHK-B21): After a check that ran a command at the base returns, and after one whose worker was ended at its limit, the base checkout's folder is gone and the scratch repository's worktree list, branch list and status are as before
 - CHK-AC11 (CHK-B14): A check FAIL marked `environmental` whose `runs` hold a workspace run and a run `at_base: true` escalates with no judge and no retry, and the check record holds its evidence and both runs
 - CHK-AC12 (CHK-B13, CHK-B17): A command run by the check preview while a step's files are not yet committed is reused by the gate's check once those files are committed with no other change, and runs again at the gate when one file changed after the preview (a scratch git repository, offline)
+- CHK-AC13 (CHK-B22): In a scratch git repository with a worktree run started at a commit of `main`, a commit added to `main` afterwards is `git.base_head` while `git.base` is still the starting commit; a run in place has an empty `git.base_head`; with only `origin/main` present it is that remote-tracking branch's commit (offline)
 
 ## Open questions
 
