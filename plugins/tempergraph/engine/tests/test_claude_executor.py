@@ -304,6 +304,7 @@ def _failed() -> dict:
 
 
 def test_ecc_ac11_ssn_ac8_a_rejected_report_is_a_spent_allowance(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # ECC-AC11, SSN-AC8 (ECC-B17, SSN-B11)
     base = _usage_limit_run(tmp_path / "a", monkeypatch, _failed())
     res = _usage_limit_run(tmp_path / "b", monkeypatch, S.rate_limit_event("rejected", 1795317000), _failed())
     assert not res.ok and res.usage_limit is True and res.usage_limit_resets_at == 1795317000.0
@@ -314,6 +315,7 @@ def test_ecc_ac11_ssn_ac8_a_rejected_report_is_a_spent_allowance(tmp_path: Path,
 
 def test_ecc_ac11_a_rejection_with_no_instant_or_credits_required_has_no_reset(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # ECC-AC11 (ECC-B17)
     none = _usage_limit_run(tmp_path / "a", monkeypatch, S.rate_limit_event("rejected"), _failed())
     credits = _usage_limit_run(tmp_path / "b", monkeypatch,
                                S.rate_limit_event("rejected", 1795317000, "credits_required"), _failed())
@@ -323,6 +325,7 @@ def test_ecc_ac11_a_rejection_with_no_instant_or_credits_required_has_no_reset(
 
 
 def test_ecc_ac11_allowed_ok_or_no_event_is_no_spent_allowance(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # ECC-AC11 (ECC-B17)
     later_allowed = _usage_limit_run(tmp_path / "a", monkeypatch, S.rate_limit_event("rejected", 1795317000),
                                      S.rate_limit_event("allowed", 1795317000), _failed())
     warning = _usage_limit_run(tmp_path / "b", monkeypatch, S.rate_limit_event("allowed_warning", 1795317000),
@@ -334,7 +337,7 @@ def test_ecc_ac11_allowed_ok_or_no_event_is_no_spent_allowance(tmp_path: Path, m
         assert res.usage_limit is False and res.usage_limit_resets_at is None
 
 
-def test_ssn_ac8_a_session_result_defaults_to_no_spent_allowance() -> None:  # SSN-B11
+def test_ssn_ac8_a_session_result_defaults_to_no_spent_allowance() -> None:  # SSN-AC8 (SSN-B11)
     res = SessionResult(ok=False)
     assert res.usage_limit is False and res.usage_limit_resets_at is None
 

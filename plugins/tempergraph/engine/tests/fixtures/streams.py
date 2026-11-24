@@ -44,7 +44,7 @@ def retry(category: str) -> dict[str, Any]:
 
 
 def rate_limit_event(status: str, resets_at: int | None = None, error_code: str | None = None) -> dict[str, Any]:
-    """A `rate_limit_event` line in the shape of the recorded one (ECC-B17)."""
+    """A `rate_limit_event` line in the shape of the recorded one (ECC-B17; used by the ECC-AC11 tests)."""
     info: dict[str, Any] = {"status": status}
     if resets_at is not None:
         info["resetsAt"] = resets_at
