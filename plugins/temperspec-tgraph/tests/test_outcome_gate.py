@@ -118,6 +118,14 @@ def test_ogt_ac8_a_docs_only_run_needs_no_plan_and_no_code_report(tmp_path: Path
     assert "2 not produced on this path" in res.evidence, res.evidence
 
 
+def test_the_deliverables_are_produced_by_the_units_of_their_path() -> None:  # AC 1, AC 4
+    producers = {key: sorted(units) for key, units in deliverable_producers(SPEC).items()}
+    keys = {str(d["key"]) for d in SPEC.outcome.deliverables}  # type: ignore[union-attr]
+    assert set(producers) == keys == {"triage_note", "handoff", "plan", "code_report"}, producers
+    assert producers == {"triage_note": ["triage"], "handoff": ["discovery", "discovery_short"],
+                         "plan": ["plan"], "code_report": ["code"]}
+
+
 # -- the outcome judge is shown the documents the run wrote (OGT-B3) -------------------------------------------
 
 
