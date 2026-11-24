@@ -228,7 +228,9 @@ def test_the_base_checkout_is_gone_after_a_worker_is_ended(base_repo: tuple[Path
     seen = tmp_path / "seen.txt"
     ctx = make(repo, tmp_path, base, base_dir=tmp_path / "bases")
     ctx.settings = {"seen": str(seen)}
-    res, notes = run_in_worker(gate(hangs_at_base, timeout=1), ctx)
+    # the worker imports the engine and makes the base checkout before it writes `seen`: under a loaded suite
+    # that takes more than a second, so the limit leaves room for it and still ends the 60 s sleep
+    res, notes = run_in_worker(gate(hangs_at_base, timeout=8), ctx)
     assert res.result == "FAIL" and res.environmental and notes == ["check_worker_limit"]
     folder, exists, code = seen.read_text().split()
     assert exists == "True" and code == "0" and folder != "None"  # the checkout was there while the worker ran

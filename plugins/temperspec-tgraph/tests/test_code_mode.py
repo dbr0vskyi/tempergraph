@@ -508,12 +508,13 @@ def _live_rows() -> tuple[list[list[str]], list[list[str]]]:
     return cells(rows), cells(results)
 
 
-def test_the_live_checks_hold_a_row_for_the_trial_run_of_missing_config_and_no_result_for_it() -> None:
+def test_the_live_checks_hold_a_row_for_the_trial_run_of_missing_config_and_only_results_from_a_run() -> None:
     # AC 4, CDM-AC18 (CDM-B11)
     rows, results = _live_rows()
     (row,) = [r for r in rows if r[0] == "TS-L3"]
     assert row[2].strip("`") == TRIAL
-    assert not [r for r in results if r[0].startswith("TS-L3")], "no result is invented"
+    for r in [r for r in results if r[0].startswith("TS-L3")]:  # a result names the trial run it came from
+        assert "trial-missing-config-" in r[-1] and "USD" in r[-1], "no result is invented"
 
 
 def test_the_pass_criterion_of_the_trial_row_names_the_gate_the_verdict_and_the_route_record() -> None:
