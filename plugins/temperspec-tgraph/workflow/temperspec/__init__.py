@@ -13,9 +13,12 @@ short visit `discovery_short` instead: it confirms the cited behaviours, writes 
 and hands a gap it finds not answered to the full `discovery` (decision record 0003). The full discovery starts
 with `read_gap`: one read-only reading session for each gap of two or more, three at a time on the engine's
 concurrent map, and then the one writing session `discovery`, briefed with their findings (spec parallel-reading).
-The code gate measures a quick change and sends a larger one back to `triage`, which then plans it. `plan` states the task's complexity; a complex plan gets its task rows
-from `expand`, a simple one already has them. `code` builds the whole plan in one session (per-phase coding
-waits for the engine's sequential map). The engine commits after every step and the last stage pushes.
+The code gate measures a quick change and sends a larger one back to `triage`, which then plans it. After `plan` the
+switch `code_mode` chooses: `single` goes straight to `code` when the facts the plan check records are inside the
+limits of `routing/code_mode.json`, and `phases` goes through `expand`, which writes the plan's task rows, otherwise
+or when the switch cannot decide; the operator names the arm with `--arm code_mode=<arm>`. `code` builds the whole
+plan in one session on either arm (per-phase coding waits for the engine's sequential map), and `code_join` is where
+both arms meet. The engine commits after every step and the last stage pushes.
 
 The setting `conversation` (`never` or `blocking`, default `blocking`) says how much a run may ask the owner: with
 `never` triage sorts each gap and takes a default for each owner decision, no step stops for one, and the pull
@@ -27,7 +30,22 @@ uses the large model tier. `discovery` thinks at the highest effort; its short v
 
 from typing import Any
 
-from tempergraph.api import Gate, Judge, Map, Route, Routing, Script, Setting, Step, Value, Workflow, text
+from tempergraph.api import (
+    ComplexitySwitch,
+    Gate,
+    Judge,
+    Map,
+    Measure,
+    Route,
+    Routing,
+    Script,
+    Setting,
+    Step,
+    Value,
+    Workflow,
+    stock,
+    text,
+)
 
 from . import specfmt
 from .checks import (
@@ -40,13 +58,13 @@ from .checks import (
     triage_check,
 )
 from .routing import (
+    code_join,
     commit_step,
     finalize,
     gap_items,
     list_components,
     prepare,
     route_discovery,
-    route_plan,
     route_setup,
     route_short,
     route_triage,
@@ -107,7 +125,8 @@ def _judge(unit: str, references: Any, timeout_s: int | None = None) -> Any:
 def workflow() -> Any:
     return Workflow(
         order=["prepare", "setup_route", "list_components", "read_component", "setup", "triage", "discovery_short",
-               "read_gap", "discovery", "plan", "expand", "code"],
+               "read_gap", "discovery", "plan", "code_mode",
+               "expand", "code", "code_join"],
         routing=Routing(
             description="Take a task from its acceptance criteria to specs, a plan, tested code and a draft "
                         "pull request",
@@ -179,9 +198,17 @@ def workflow() -> Any:
                 prompt=text("prompts/plan.md"), summary="Design requirements and phases; state complexity",
                 **_sized("plan"), tools=[*READ, "edit", "write"], timeout_s=1800,
                 produces={"plan": "file", "complexity": Value(choices=["complex", "simple"])},
-                after=[_commit()], route=route_plan, route_targets=["expand", "code"],
+                after=[_commit()],
                 gate=Gate(check=plan_check, judge=_judge("plan", ["plan", "triage_note"]),
                           back_targets=["discovery"])),
+            # CDM-B1 to CDM-B7: the route after the plan is the engine's complexity switch. `single` goes to the code
+            # step, `phases` (the safe arm) through the expand step first; the measures are the facts the plan check
+            # records, the limits are read from `routing/code_mode.json`, and both arms meet at `code_join`.
+            "code_mode": ComplexitySwitch(
+                arms={"single": "code", "phases": "expand"},
+                measures=[Measure(name, stock.fact("plan", name)) for name in (
+                    "phases", "rows", "test_rows", "files", "commands", "reading_bytes", "heavy_phases")],
+                joins_at="code_join", size="phases"),
             "expand": Step(
                 prompt=text("prompts/expand.md"), summary="Write task rows and verification for a complex plan",
                 **_sized("expand"), tools=[*READ, "edit", "write"], timeout_s=1800, produces={"phases": "file"},
@@ -199,6 +226,8 @@ def workflow() -> Any:
                           judge=_judge("code", {"code_report": "required", "triage_note": "required",
                                                 "plan": "optional"}, timeout_s=1800),
                           back_targets=["plan", "discovery", "triage"])),
+            "code_join": Script(call=code_join, name="code_join", side_effects="none",
+                                summary="Where both arms meet after the code step", gate=Gate()),
         },
         finalizer=finalize,
         finalizer_outcomes=["opened", "reused", "pushed", "skipped"],

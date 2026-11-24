@@ -314,8 +314,7 @@ def test_routes_follow_the_values() -> None:  # AC 4, PRL-AC1: the full discover
     assert routing.route_short(_view()) == "read_gap"
     assert routing.route_discovery(_view(route="discovery-only")) == "finalizer"
     assert routing.route_discovery(_view(route="discovery")) == "plan"
-    assert routing.route_plan(_view(complexity="complex")) == "expand"
-    assert routing.route_plan(_view(complexity="simple")) == "code"
+    assert not hasattr(routing, "route_plan")  # AC 1, CDM-AC1: the route after the plan is the switch `code_mode`
 
 
 def test_setup_runs_only_for_a_repository_with_no_overview_spec() -> None:  # AC 2, PRL-AC5

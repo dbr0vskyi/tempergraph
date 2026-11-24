@@ -917,7 +917,8 @@ def _reading_bytes(ctx: Any, plan: fmt.Plan) -> int:
 
 def plan_check(ctx: Any) -> Any:
     """ts-plan-form, ts-plan-trace, ts-plan-links, ts-plan-size, ts-plan-scope, ts-plan-reading, ts-plan-ruleread,
-    ts-plan-commit."""
+    ts-plan-commit. It also records the seven facts of the plan rule's Complexity table (CDM-B2), which the switch
+    `code_mode` reads."""
     text, path = _read(ctx, "plan")
     if text is None:
         return checks.result([_find("fail", "ts-plan-form", path, "the plan cannot be read",
@@ -958,7 +959,8 @@ def plan_check(ctx: Any) -> Any:
         found += lost or [_ok("ts-plan-trace", path)]
 
     value = _value(ctx, "complexity")
-    over = fmt.simple_overruns(plan, _reading_bytes(ctx, plan))
+    reading = _reading_bytes(ctx, plan)
+    over = fmt.simple_overruns(plan, reading)
     bad = []
     if value is not None and plan.complexity and value != plan.complexity:
         bad.append(f"the complexity value `{value}` differs from the plan's `{plan.complexity}`")
@@ -975,7 +977,9 @@ def plan_check(ctx: Any) -> Any:
     found += _prompt_says("ts-plan-reading")
     found += _ruleread(ctx, "plan", "ts-plan-ruleread")
     found.append(_committed(ctx, "ts-plan-commit"))
-    return _result(ctx, found, plan)
+    res = _result(ctx, found, plan)
+    res.facts = {k: str(v) for k, v in fmt.plan_facts(plan, reading).items()}  # CDM-B2
+    return res
 
 
 def expand_check(ctx: Any) -> Any:

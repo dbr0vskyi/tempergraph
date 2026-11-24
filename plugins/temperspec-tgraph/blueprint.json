@@ -209,6 +209,11 @@
       }
     },
     {
+      "name": "code_mode",
+      "kind": "switch",
+      "summary": "Pick one session or the expand step by the plan's size"
+    },
+    {
       "name": "expand",
       "kind": "step",
       "summary": "Write task rows and verification for a complex plan",
@@ -268,6 +273,11 @@
         "effort": "high",
         "why": "It reads the diff, the report and the proof of every criterion, and a miss ships a defect"
       }
+    },
+    {
+      "name": "code_join",
+      "kind": "script",
+      "summary": "Where both arms meet after the code step"
     }
   ],
   "flow": {
@@ -307,11 +317,14 @@
         "finalizer"
       ]
     },
-    "plan": {
-      "route": [
-        "expand",
-        "code"
-      ]
+    "code_mode": {
+      "switch": {
+        "arms": {
+          "single": "code",
+          "phases": "expand"
+        },
+        "default": "phases"
+      }
     }
   },
   "input": {

@@ -321,7 +321,9 @@ def _run(tmp_path: Path, ex: Stand, *, prepare: Any = ready, files: dict[str, st
     reg = Registry()
     reg.register(ex)
     try:
-        return start(_spec(prepare), TASK, {"request": "x"}, repo, reg, RunSettings(sleep=lambda s: None))
+        # the stand-in plan is simple, so the run takes the `single` arm of code_mode straight to code
+        settings = RunSettings(sleep=lambda s: None, flags={"code_mode.arm": "single"})
+        return start(_spec(prepare), TASK, {"request": "x"}, repo, reg, settings)
     except Stop:
         return None
 

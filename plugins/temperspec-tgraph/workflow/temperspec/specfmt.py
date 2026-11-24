@@ -591,12 +591,18 @@ def scope_cuts(plan: Plan) -> list[str]:
     return out
 
 
+def plan_facts(plan: Plan, reading_bytes: int = 0) -> dict[str, int]:
+    """CDM-B2: the seven numbers the plan rule's Complexity table measures, one for each sign. `reading_bytes` is
+    the size of the files and specs the rows name, which only the check can read."""
+    return {"phases": len(plan.phases), "rows": len(plan.rows),
+            "test_rows": sum(1 for r in plan.rows if r.kind == "test"),
+            "files": len({r.file for r in plan.rows if r.file}), "commands": len(plan.commands),
+            "reading_bytes": reading_bytes, "heavy_phases": len(plan.heavy)}
+
+
 def simple_overruns(plan: Plan, reading_bytes: int = 0) -> list[str]:
-    """Which measured signs of the plan are over the limit for `simple`."""
-    signs = {"phases": len(plan.phases), "rows": len(plan.rows),
-             "test_rows": sum(1 for r in plan.rows if r.kind == "test"),
-             "files": len({r.file for r in plan.rows if r.file}), "commands": len(plan.commands),
-             "reading_bytes": reading_bytes}
+    """Which measured signs of the plan are over the limit for `simple` (the numbers are `plan_facts`, CDM-B2)."""
+    signs = plan_facts(plan, reading_bytes)
     over = [f"{k} {signs[k]} > {limit}" for k, limit in SIMPLE_MAX.items() if signs[k] > limit]
     return over + [f"phase `{p}` is heavy ({sign or 'no sign named'})" for p, sign in plan.heavy.items()]
 

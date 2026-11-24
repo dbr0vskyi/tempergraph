@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "arms": {
+    "single": {
+      "when": {
+        "phases": {"max": 3},
+        "rows": {"max": 12},
+        "test_rows": {"max": 6},
+        "files": {"max": 10},
+        "commands": {"max": 3},
+        "reading_bytes": {"max": 200000},
+        "heavy_phases": {"max": 0}
+      }
+    }
+  }
+}

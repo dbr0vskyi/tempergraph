@@ -15,9 +15,9 @@ Start: `tempergraph run temperspec <request>`. The request is the task with its 
 | triage | The triage note: the task's acceptance criteria, the documents that exist, the gaps; under the conversation setting `never` also the sort of each gap (findable or owner decision) and the owner decisions with their defaults | A small fix that changes no spec goes straight to code (the quick lane); no gap goes to plan; a task whose every gap a spec already answers takes the short discovery visit; any other gap goes to discovery |
 | discovery_short | Only the hand-off: for each gap, the cited behaviour and how it answers the gap, or `Not covered`; a reading list of at most 10 files | Every gap answered goes to plan; a gap not covered goes on to the full discovery |
 | discovery | Specs, decision records, research notes and the hand-off, one per gap, written by one session after each gap has been read by its own read-only session, three at a time (none for fewer than two gaps, for the short visit, or for a return from a later gate); under `never` it goes on with the default of each owner decision instead of ending blocked | A docs-only run ends here; every other run goes to plan |
-| plan | The plan: requirements, phases, verification, and its complexity | A complex plan goes to expand; a simple one already has its task rows |
-| expand | The task rows of a complex plan | |
-| code | Tests first, then code, and the code report, in one session | |
+| plan | The plan: requirements, phases, verification, and its complexity | The switch `code_mode` chooses from the facts the plan check records: `single` goes to code, `phases` goes through expand first |
+| expand | The task rows of a plan that took the `phases` arm of `code_mode` | |
+| code | Tests first, then code, and the code report, in one session; both arms end in this one session | |
 | last stage | Pushes the branch and opens a draft pull request, or reuses the open one, with a description of what to read | |
 
 Each step is followed by a gate: a model-free check first, then a read-only judge. The engine commits after every step. A gate that finds the defect in an earlier step's output sends the run back there by itself. No step or judge uses the large model tier; discovery thinks at the highest effort, its short visit at `high`. A judge grades only what it can read in the step's output and references: criteria about how a step works (narrow reading, the reading list, commands run once, a reused gate result) are checked by the gate's model-free check, from the package's prompts and the gate's own command runs.
@@ -28,7 +28,7 @@ Each step is followed by a gate: a model-free check first, then a read-only judg
 |---|---|---|
 | quick | triage → code | A fix or small change that leaves every spec as it is: no gap, at most 3 acceptance criteria, at most 2 code files beside their tests |
 | standard | triage → (discovery or its short visit) → plan → code | A change of ordinary size |
-| full | triage → discovery → plan → expand → code | A complex plan |
+| full | triage → discovery → plan → expand → code | A plan over a limit of the plan rule's Complexity table |
 
 Triage proposes the quick lane and writes a short Change section that stands in for the plan. The code gate stays whole, and it measures the change afterwards: a spec or decision record edited, a file the note does not name, more than 2 code files or more than 200 changed lines sends the run back to triage, which then plans the task. A run never moves to a lighter lane.
 
@@ -45,6 +45,8 @@ The last stage writes the description with no model: the task's acceptance crite
 The conversation setting says how much a run may ask the owner. Start a run for a pipeline or overnight with `tempergraph run temperspec <request> --set settings.conversation=never`, or set `conversation` to `never` for the repository in the engine's settings files. With `never`, triage sorts each gap into a findable gap (the code, the documents or a public source can answer it) or an owner decision (only the owner can), and writes for each owner decision its question, two to four options, a default and the cost of a wrong default; the triage check refuses a note that leaves one out. Discovery then closes each owner decision on its default and records any other question it meets as `Until answered: <option>`, and no step or gate stops to ask. The owner reads the defaults in the pull request, under `Assumptions to confirm`. The values are `never` and `blocking`; `blocking` is the default and leaves the workflow as it was (triage sorts no gap, and discovery ends blocked on a question only a person can answer that blocks planning). `always` is not offered: a start with it is refused before the run spends anything.
 
 Per-phase coding is not built yet: a complex plan is still coded in one session. The engine has had the sequential map it needs since release 2 (`0.2.0`); splitting the code step by phase is [issue #122](https://github.com/dbr0vskyi/tempergraph/issues/122).
+
+What goes to expand is chosen by the engine's complexity switch `code_mode`, not by the plan's own word: after the plan passes its gate, the arm `single` (straight to code) is taken when every fact the plan check records is inside the limits of `routing/code_mode.json` (the plan rule's limits for a simple plan), and the arm `phases` (through expand first) otherwise or when the switch cannot decide. To name the arm yourself, start the run with `tempergraph run temperspec "<task>" --arm code_mode=<single|phases>`. A repository overrides the limits at `.tempergraph/routing/temperspec/code_mode.json`. `tempergraph report --switch temperspec/code_mode` shows the runs of each arm and zone, the operator's own choices apart from the switch's, and their cost per phase.
 
 ## Rule files
 
@@ -67,7 +69,7 @@ The `setup` skill installs or updates the rule files by hand, for the repository
 `tempergraph author verify plugins/temperspec-tgraph` passes its model-free rungs (1 to 7 and 10). Two rungs need a signed-in `claude` and have not run:
 
 - Rung 8, `--judge-seeds`: grades the 34 seed cases under `evals/calibration/` with the real judges. Until it passes, every judged criterion is at uncalibrated trust.
-- Rung 9, `--trial`: one capped trial run of a case from `evals/cases.json`.
+- Rung 9, `--trial`: one capped trial run of a case from `evals/cases.json`. The trial run that shows the route after the plan, the switch `code_mode` with its `route` record, is row TS-L3 of the live checks.
 
 No real run has been made yet. The commands and pass criteria are in [docs/plans/live-checks.plan.md](docs/plans/live-checks.plan.md).
 
