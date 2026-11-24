@@ -15,7 +15,7 @@ from tempergraph.contracts import ViewSet
 from tempergraph.executors.claude import judge_argv
 from tempergraph.executors.standins import answer, standin
 from tempergraph.improve import child, digest, review
-from tempergraph.improve.record import write_prompt
+from tempergraph.improve.record import judged_units, write_prompt
 from tempergraph.store.layout import home_path, run_dir
 
 from .fixtures.workflows import two_step
@@ -102,6 +102,51 @@ def test_judge_unread_pass_and_retry_same_path(tmp_path: Path) -> None:
     r = digest.build(session(tmp_path, "D-3", "draft.2.retry", [bash("make")]), rec("draft.2.retry"), prior=s)
     assert r["prior_overlap"] == 1.0
     assert "retry_same_path" in {c["cause"] for c in digest.causes([r])}
+
+
+def test_judge_partial_read_needs_a_judgement_and_a_small_share(tmp_path: Path) -> None:  # SRV-AC13 (AC 4, AC 5)
+    def causes_of(task: str, read_n: int, total: int, *, attempt: int = 1, judged: Any = None, **kw: Any) -> set[str]:
+        changed = [f"f{i}.md" for i in range(total)]
+        key = f"draft.{attempt}.judge"
+        j = digest.build(session(tmp_path, task, key, [read(p) for p in changed[:read_n]] or [read("other.md")]),
+                         rec(key, **kw), changed=changed)
+        assert j["changed_total"] == total and j["changed_read"] == read_n
+        return {c["cause"] for c in digest.causes([j], judged=judged)}
+
+    gave = {"draft": {"passed": False, "gave": [1]}}
+    assert causes_of("P-1", 1, 10, judged=gave) == {"judge_partial_read"}  # an escalating judge, no model call
+    assert causes_of("P-2", 1, 10, judged={"draft": {"passed": True, "gave": [1]}}) == {"judge_partial_read"}
+    assert causes_of("P-3", 3, 12, judged=gave) == set()  # exactly the share is not under it
+    assert causes_of("P-4", 0, 10, judged={"draft": {"passed": True, "gave": [1]}}) == {"judge_unread_pass"}
+    assert causes_of("P-5", 0, 10, judged=gave) == set()
+    timed = causes_of("P-6", 1, 10, judged={"draft": {"passed": False, "gave": []}}, timed_out=True, timeout_s=600)
+    assert "judge_partial_read" not in timed and "judge_unread_pass" not in timed  # only its timeout cause
+    assert causes_of("P-7", 1, 10) == set()  # no judgement known
+    assert causes_of("P-8", 1, 10, attempt=2, judged=gave) == set()  # the judgement was of attempt 1
+    assert causes_of("P-9", 1, 10, judged={"draft": {"passed": True}}) == set()  # `gave` absent
+    reask = digest.build(session(tmp_path, "P-10", "draft.1.judge", [read("f0.md")]), rec("draft.1.judge"))
+    assert reask["changed_total"] == 0 and digest.causes([reask], judged=gave) == []
+
+
+def test_judged_units_marks_the_attempts_that_gave_a_judgement() -> None:  # SRV-AC13
+    def j(unit: str | None, source: str, blockers: list[str] | None = None, **kw: Any) -> dict[str, Any]:
+        return {"kind": "judgement", "unit": unit, "confidence_source": source, "blockers": blockers or [], **kw}
+
+    got = judged_units([
+        j("a", "engine_placeholder"),
+        j("b", "judge", attempt=2),
+        j("c", "engine_placeholder", attempt=1, item="x"), j("c", "judge", attempt=1, item="y"),
+        j("d", "judge", ["c-1"], attempt=1), j("d", "judge", attempt=2),
+        j("e", "judge"),
+        j(None, "judge"),
+        {"kind": "check", "unit": "z"},
+    ])
+    assert got["a"] == {"passed": True, "gave": []}
+    assert got["b"] == {"passed": True, "gave": [2]}
+    assert got["c"]["gave"] == [1]
+    assert got["d"] == {"passed": True, "gave": [1, 2]}  # passed is that of the unit's last record
+    assert got["e"]["gave"] == [1]  # no attempt reads as attempt 1
+    assert set(got) == {"a", "b", "c", "d", "e"}
 
 
 def test_timeout_shape(tmp_path: Path) -> None:
@@ -353,6 +398,25 @@ def test_an_uncheckable_claim_counts_for_nothing() -> None:  # SRV-B6, AC-3
     assert review.check({"category": "judge_unread", "turns": [1], "remedy_class": "brief"}, jd, [1]) == "kept"
     assert review.check({"category": "judge_unread", "turns": [1], "remedy_class": "prompt"}, jd, [1]) \
         == "unsupported"  # producer side on a judge
+
+
+def test_the_citation_check_keeps_a_judge_that_read_little() -> None:  # SRV-AC12 (AC 1, AC 2, AC 3)
+    def judged(cat: str, remedy: str, read_: int, total: int, kind: str = "judge") -> str:
+        d = {"kind": kind, "changed_total": total, "changed_read": read_}
+        return review.check({"category": cat, "turns": [1], "remedy_class": remedy}, d, [1])
+
+    for cat in ("judge_unread", "judge_trusts_report"):
+        assert judged(cat, "brief", 1, 12) == "kept"  # AC 2: 1 of 12
+        assert judged(cat, "brief", 0, 12) == "kept"
+        assert judged(cat, "brief", 3, 12) == "unsupported"  # exactly the share is not under it
+        assert judged(cat, "brief", 11, 12) == "unsupported"
+        assert judged(cat, "brief", 0, 0) == "unsupported"  # nothing changed
+        assert judged(cat, "brief", 1, 12, kind="step") == "unsupported"
+        assert judged(cat, "prompt", 1, 12) == "unsupported"
+    for remedy in ("judge_model", "brief", "criterion"):  # AC 3
+        assert judged("judge_shallow", remedy, 5, 12) == "kept"
+    assert judged("judge_shallow", "prompt", 5, 12) == "unsupported"
+    assert judged("judge_shallow", "judge_model", 5, 12, kind="step") == "unsupported"
 
 
 # -- SRV-B8, AC-5, AC-6: injection, the canary and the launch ------------------------------------------------

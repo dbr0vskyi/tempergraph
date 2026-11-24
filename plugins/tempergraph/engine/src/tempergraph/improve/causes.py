@@ -69,6 +69,9 @@ CAUSES: dict[str, Cause] = {
     "timeout": Cause(klass="fault", side="workflow", remedy="The session timed out: see its shape and split the step"),
     "judge_unread_pass": Cause(klass="fault", side="workflow",
                                remedy="The judge passed without opening a changed path: tell it what to read"),
+    "judge_partial_read": Cause(klass="fault", side="workflow",
+                                remedy="The judge graded after opening only part of the change: "
+                                       "tell it what to read, or give it a stronger model"),
     "retry_same_path": Cause(klass="fault", side="workflow",
                              remedy="The retry repeated the previous attempt: give the step what it needs to change"),
     "binding_shift": Cause(klass="fault", side="workflow",

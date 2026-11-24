@@ -40,6 +40,7 @@ PARAMS = {p.name: p for p in (
     Param(name="digest.idle_minutes", value=10, source="SRV-B11"),
     Param(name="digest.retry_overlap", value=0.8, source="SRV-B12"),
     Param(name="digest.unused_runs", value=5, source="SRV-B12"),
+    Param(name="digest.judge_read_share", value=0.25, source="SRV-B29"),
     Param(name="review.max_input_tokens", value=60_000, source="SRV-B17"),
     Param(name="review.max_sessions.signals", value=3, source="SRV-B21"),
     Param(name="review.run_share.dev", value=0.25, source="SRV-B21"),

@@ -51,6 +51,9 @@ def test_classes_and_sides() -> None:  # SIL-B11
     assert causes.cause_of("unknown_tool_name:Foo").side == "executor"
     assert causes.cause_of("grant_unused:shell").klass == "designed"
     assert causes.cause_of("judge_unparsed").side == "engine"
+    partial = causes.cause_of("judge_partial_read")  # SRV-AC13: listed, a workflow fault like judge_unread_pass
+    assert partial.klass == "fault" and partial.side == causes.cause_of("judge_unread_pass").side == "workflow"
+    assert partial.remedy and partial.remedy != causes.cause_of("no_such_cause").remedy
 
 
 def test_a_check_repeat_pause_is_its_own_cause() -> None:  # SIL-AC15
@@ -193,6 +196,12 @@ def test_cost_rules_on_a_window(repo: Path) -> None:  # SIL-B10 cost lens
 def test_every_threshold_is_a_parameter() -> None:  # IMD-AC3 for this track
     for p in params.PARAMS.values():
         assert p.provenance in ("default_no_data", "fitted", "owner_decision") and p.source
+
+
+def test_the_judge_read_share_is_a_parameter() -> None:  # SRV-AC12 (SRV-B29)
+    p = params.PARAMS["digest.judge_read_share"]
+    assert p.value == 0.25 and p.provenance == "default_no_data" and "SRV-B29" in p.source
+    assert params.value("digest.judge_read_share") == 0.25
 
 
 def test_publish_boundary() -> None:  # SIL-B8, SIL-B19, SIL-B20: only the recorder names the evidence file
