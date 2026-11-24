@@ -178,3 +178,10 @@ def test_the_code_seeds_carry_the_new_evidence_and_the_outcome_record_says_so() 
     entry = next(r for r in outcome["revisions"] if "issues 112 and 113" in r.get("note", ""))
     assert entry["revision"] >= 8 and outcome["revision"] == outcome["revisions"][-1]["revision"] >= entry["revision"]
     assert any("one file per 50" in a and "first values" in a for a in outcome["assumptions"])
+
+
+@pytest.mark.parametrize("name", [*UNITS, "outcome stance"])
+def test_every_judge_text_grades_a_check_verified_criterion_from_its_finding(name: str) -> None:  # JRD-AC8
+    text = _texts()[name]
+    assert "a criterion the gate's check verified is graded from the check's finding" in text
+    assert "never grade it unverifiable because you cannot run the check yourself" in text

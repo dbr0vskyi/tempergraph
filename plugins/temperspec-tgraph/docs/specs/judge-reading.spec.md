@@ -50,6 +50,12 @@ WHEN a judge of the workflow is briefed THE workflow SHALL tell the judge to gra
 - GIVEN the brief of each of the seven step judges and the stance of the outcome judge WHEN each text is read THEN each tells the judge to grade PARTIAL, not MET, a criterion whose only evidence is lines a search printed
 - GIVEN a judge that found a line with a search and then read the file around that line WHEN it grades the criterion MET THEN it quotes that line from the file it read
 
+### JRD-B7 A criterion the check verified is graded from its finding
+
+WHEN a judge of the workflow is briefed THE workflow SHALL tell the judge to grade a criterion the gate's check verified from the check's finding, quoting that finding as the line behind its MET, and never to grade it UNVERIFIABLE because the judge cannot run the check.
+
+- GIVEN the brief of each of the seven step judges and the stance of the outcome judge WHEN each text is read THEN each says that a check-verified criterion is graded from the check's finding and is not UNVERIFIABLE for want of running it
+
 ## Acceptance criteria
 
 - JRD-AC1 (JRD-B1): The check evidence of the code gate for a change that touches source files of 120, 80 and 30 changed lines and one Markdown document lists exactly the three source files, in the order of 120, 80 and 30 lines, each with its count
@@ -59,3 +65,4 @@ WHEN a judge of the workflow is briefed THE workflow SHALL tell the judge to gra
 - JRD-AC5 (JRD-B4): The code judge's brief tells the judge to grade UNVERIFIABLE, naming the files it did not read, an alignment criterion that rests on a listed file beyond the reading budget
 - JRD-AC6 (JRD-B5): The brief of each of the seven step judges and the stance of the outcome judge asks for the quoted line, with its path and line number, behind every MET
 - JRD-AC7 (JRD-B6): The brief of each of the seven step judges and the stance of the outcome judge tells the judge to grade PARTIAL, not MET, a criterion whose only evidence is lines a search printed
+- JRD-AC8 (JRD-B7): The brief of each of the seven step judges and the stance of the outcome judge says that a criterion the gate's check verified is graded from the check's finding, quoted as the line behind its MET, and never UNVERIFIABLE because the judge cannot run the check

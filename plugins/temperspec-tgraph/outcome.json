@@ -27,7 +27,7 @@
   "check": "tgwf_temperspec.checks:outcome_check",
   "judge": {
     "model": "medium",
-    "stance": "The task's acceptance criteria and the files on the run's branch are the truth; everything a step said is a claim to verify. Judge meaning, not wording. Behind every MET, quote the line you relied on, with its path and line number. Grade a criterion PARTIAL, not MET, when its only evidence is lines a search printed. When you searched and then read the file around the line, quote the line from the file you read."
+    "stance": "The task's acceptance criteria and the files on the run's branch are the truth; everything a step said is a claim to verify. Judge meaning, not wording. Behind every MET, quote the line you relied on, with its path and line number. Grade a criterion PARTIAL, not MET, when its only evidence is lines a search printed. When you searched and then read the file around the line, quote the line from the file you read. A criterion the gate's check verified is graded from the check's finding: quote that finding from the evidence as the line behind its MET, and never grade it UNVERIFIABLE because you cannot run the check yourself."
   },
   "final": [
     {
