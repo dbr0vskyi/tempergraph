@@ -74,6 +74,18 @@ def mode() -> str:
     return os.environ.get("TEMPERGRAPH_LOOP", "detached")
 
 
+def declared_labels(spec: WorkflowSpec) -> list[Any] | None:
+    """ISS-B1: `improvement.issue_labels` of the workflow's `tempergraph.json`; none when absent or unreadable."""
+    if spec.package_root is None:
+        return None
+    try:
+        doc = json.loads((spec.package_root / "tempergraph.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    got = (doc.get("improvement") or {}).get("issue_labels") if isinstance(doc, dict) else None
+    return list(got) if isinstance(got, list) else None
+
+
 def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary: Mapping[str, Any], *,
              dry_run: bool, judge_executor: str, home: Path | None = None, operator_review: str | None = None,
              run_cost_usd: float = 0.0, trial: bool = False, daily_cap_usd: float | None = None,
@@ -120,7 +132,8 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
               "autonomy": prp.autonomy(spec, os.environ.get("TEMPERGRAPH_AUTONOMY")),
               "daily_cap_usd": autonomy.daily_cap(spec.improvement_mode, daily_cap_usd),
               "alias": loop_model or ALIAS, "effort": loop_effort or EFFORT, "trigger": trigger,
-              "package_root": str(spec.package_root) if spec.package_root else None}
+              "package_root": str(spec.package_root) if spec.package_root else None,
+              "issue_labels": declared_labels(spec)}
     path = tickets_dir(home or home_path()) / f"{tid}.json"
     write_json(path, ticket)
     return path
@@ -278,13 +291,14 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
             continue
         if f.get("lens") == "outcome":  # SIL-B7: files only once the outcome gate's judge is `accepted` (JCL)
             cands.append(filing.Candidate(finding=f, lens="outcome", calibrated=bool(t.get("outcome_calibrated")),
-                                          request_digest=f.get("request_digest")))
+                                          request_digest=f.get("request_digest"), issue_labels=t.get("issue_labels")))
             continue
         if not (t.get("lenses") or {}).get("friction"):  # a review-only ticket files no friction finding
             continue
         j = judged.get(str(f.get("fingerprint")))
         cands.append(filing.Candidate(finding=f, lens="friction", confidence=j["confidence"] if j else None,
-                                      attributed=bool(j and j["attributed"]), request_digest=f.get("request_digest")))
+                                      attributed=bool(j and j["attributed"]), request_digest=f.get("request_digest"),
+                                      issue_labels=t.get("issue_labels")))
     history = _history(root, wf, thread)
     decisions = [filing.decide(c, history, str(t.get("issue_repository") or "")) for c in cands]
     if t.get("autonomy") == "record":  # PRP-B11: findings, evidence and ledger rows only

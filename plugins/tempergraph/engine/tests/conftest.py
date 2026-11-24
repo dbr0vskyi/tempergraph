@@ -13,6 +13,13 @@ SRC = ENGINE_ROOT / "src" / "tempergraph"
 DOCS = ENGINE_ROOT.parent / "docs"
 REPO_ROOT = ENGINE_ROOT.parents[2]
 
+# The suite tests the `src` next to it, never another copy of the engine installed in the environment; child
+# processes the tests start find it the same way.
+_SRC_ROOT = str(ENGINE_ROOT / "src")
+if sys.path[:1] != [_SRC_ROOT]:
+    sys.path.insert(0, _SRC_ROOT)
+os.environ["PYTHONPATH"] = os.pathsep.join(p for p in (_SRC_ROOT, os.environ.get("PYTHONPATH", "")) if p)
+
 
 def workflow_packages() -> list[Path]:
     """The workflow packages next to the engine in this repository, found by their manifest. The engine's
