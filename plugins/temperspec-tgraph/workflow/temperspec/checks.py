@@ -632,10 +632,66 @@ def _links_of(plan: fmt.Plan, criterion: str, place: str) -> list[CheckFinding]:
                   "document a `docs` row") for b in fmt.link_problems(plan)[:10]] or [_ok(criterion, place)]
 
 
-def _marks(plan: fmt.Plan, criterion: str, place: str, done: bool) -> list[CheckFinding]:
+PLANNING_COMMIT = re.compile(r"^\w+(?:\([^)]*\))?!?:\s*(?:plan|expand) for\b")
+
+
+def _git_lines(ctx: Any, cmd: str) -> list[str] | None:
+    """The lines a read-only git command printed; None when it did not start or did not exit 0."""
+    run = ctx.run(cmd)
+    if run.not_started or run.exit_code != 0:
+        return None
+    try:
+        return Path(run.output_path).read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return None
+
+
+def _kept_marks(ctx: Any, plan: fmt.Plan, path: str) -> dict[str, str]:
+    """KMK-B1 to KMK-B4: for each marked row of the plan, `""` when the run's history backs its mark, else the
+    reason it does not. A commit of the run is one after the base commit. The marking commit of a row is the
+    earliest commit that is not a plan or expand step's own in which the row's id carries the mark the plan carries;
+    the mark stands when the row reads the same there and no later commit of the run changed the row's file."""
+    marked = [r for r in plan.rows if r.completed]
+    if not marked:
+        return {}
+    base = ctx.git.base if ctx.git is not None else ""
+    if not base:
+        return {r.id: "the run has no base commit to count its commits from, so no commit is known to have "
+                      "written the mark" for r in marked}
+    log = _git_lines(ctx, f"git log --format=%H%x09%s {base}..HEAD --reverse")
+    if log is None:
+        return {r.id: "the history of the run cannot be read" for r in marked}
+    commits = [c for line in log if (c := line.split("\t", 1)[0]) and not PLANNING_COMMIT.match(
+        line.split("\t", 1)[1] if "\t" in line else "")]
+    out: dict[str, str] = {}
+    pending = {r.id: r for r in marked}
+    touched: dict[str, set[str]] = {}
+    for commit in commits:
+        if not pending:
+            break
+        lines = _git_lines(ctx, f"git show {commit}:{path}")
+        if lines is None:
+            continue
+        then = {r.id: r for r in fmt.parse_plan("\n".join(lines)).rows}
+        for rid in [i for i in pending if i in then and then[i].completed == pending[i].completed]:
+            row = pending.pop(rid)
+            if fmt.row_text(then[rid]) != fmt.row_text(row):
+                out[rid] = "the row differs from the row in its marking commit"
+                continue
+            if commit not in touched:
+                names = _git_lines(ctx, f"git diff --name-only {commit}..HEAD")
+                touched[commit] = set(names) if names is not None else {row.file}
+            out[rid] = "the row's file changed after its marking commit" if row.file in touched[commit] else ""
+    out.update({rid: f"no commit of the run wrote the mark `{r.completed}` on this row" for rid, r in pending.items()})
+    return out
+
+
+def _marks(plan: fmt.Plan, criterion: str, place: str, done: bool, ctx: Any = None) -> list[CheckFinding]:
     fix = ("mark each row `✓ <date>` in its Completed cell when its change is in its file, and set `status: "
-           "completed`") if done else "leave Completed empty and the status `planned`: the code step marks them"
-    return [_find("fail", criterion, place, b, fix) for b in fmt.mark_problems(plan, done)[:10]]
+           "completed`") if done else ("keep the Completed mark of a row you leave exactly as it was, and empty the "
+                                       "Completed cell of a row you change or add; the status stays `planned`")
+    kept = None if done or ctx is None else _kept_marks(ctx, plan, place)
+    return [_find("fail", criterion, place, b, fix) for b in fmt.mark_problems(plan, done, kept)[:10]]
 
 
 def _scope(plan: fmt.Plan, criterion: str, place: str) -> list[CheckFinding]:
@@ -703,7 +759,7 @@ def plan_check(ctx: Any) -> Any:
                            "state the complexity in the front matter"))
     if plan.complexity == "simple":  # a simple plan carries its task rows; a complex one gets them from expand
         found += _rows(ctx, plan, "ts-plan-form") + _commands(ctx, plan, "ts-plan-form")
-    found += _marks(plan, "ts-plan-form", path, done=False)
+    found += _marks(plan, "ts-plan-form", path, done=False, ctx=ctx)
     if not any(f.status == "fail" for f in found):
         found.append(_ok("ts-plan-form", path))
     if plan.complexity == "simple":
@@ -757,7 +813,7 @@ def expand_check(ctx: Any) -> Any:
     if not plan.phases:
         empty = ["(none)"]
     rows = [_find("fail", "ts-exp-rows", f"{path}: {p}", "the phase has no task row", f"add a table `{ROW_TABLE}`")
-            for p in empty] + _marks(plan, "ts-exp-rows", path, done=False)
+            for p in empty] + _marks(plan, "ts-exp-rows", path, done=False, ctx=ctx)
     found += rows or [_ok("ts-exp-rows", path)]
     note_text, note_path = _read(ctx, "triage_note")
     tests = [_find("fail", "ts-exp-tests", path, b, "put the test row first and name its criterion") for b in bad[:8]]

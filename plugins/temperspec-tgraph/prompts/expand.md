@@ -13,7 +13,7 @@ Plan: `{plan}`
 
 1. Read the plan, then the specs its front matter names.
 2. For each phase, read the code the phase touches, by path, until you can name exact files.
-3. Write the phase's task table, one edit per phase, each under about 12 KB. One row is one logical change in one exact file, and names in its Req cell the requirements it serves; every requirement gets a row, and every document under Docs to update gets a `docs` row. A test row comes before the code row it covers and names the acceptance criterion it proves. Before a row that changes a type or a signature, search the tests for code that pins it and give each such test a row. Leave every Completed cell empty.
+3. Write the phase's task table, one edit per phase, each under about 12 KB. One row is one logical change in one exact file, and names in its Req cell the requirements it serves; every requirement gets a row, and every document under Docs to update gets a `docs` row. A test row comes before the code row it covers and names the acceptance criterion it proves. Before a row that changes a type or a signature, search the tests for code that pins it and give each such test a row. When the plan already has rows, keep the marked rows as they are and fill only the rows that lack them. Keep the Completed mark of each row you leave exactly as it was, and empty the Completed cell of each row you change or add (a row whose kind, requirement, file, proof or change you edit, and every new row); the rows of a new plan start with their Completed cells empty.
 4. Check the verification commands: each is a single plain command the repository documents. Correct or add commands so that the tests, the lint and the types of the changed code are covered.
 5. Write the proof table under the commands: one row for each acceptance criterion of the triage note, with the test file of the test row that proves it and the listed command that runs that test. What "done" means is fixed here, before any code exists.
 6. Save the plan at the same path.
@@ -21,7 +21,7 @@ Plan: `{plan}`
 ## Limits
 
 - This step has no shell: read, search and list files with the file tools (read, grep, glob), never `ls`, `cat`, `wc` or `python -c`.
-- Edit only the task tables under the phases and the Verification section. Sections 0, 1 and 4, the phase names, goals and weights stay as they are, and the status stays `planned`.
+- Edit only the task tables under the phases (the marks of the rows you keep stay as they are) and the Verification section. Sections 0, 1 and 4, the phase names, goals and weights stay as they are, and the status stays `planned`.
 - If the design cannot be expanded as written (a phase cannot be done, a requirement has no place, a spec it rests on is wrong), do not repair it: say which earlier output is at fault and why.
 - Do not edit a spec or code.
 - Do not run git. The engine commits your file when you finish.

@@ -469,16 +469,29 @@ def link_problems(plan: Plan) -> list[str]:
     return list(dict.fromkeys(bad))
 
 
-def mark_problems(plan: Plan, done: bool) -> list[str]:
-    """The plan's status and the rows' Completed marks. Before code (`done` false) the plan is `planned` and no
-    row is marked; after code every row carries `✓ <date>` and the plan is `completed`."""
+def row_text(row: Row) -> str:
+    """What a row says, for comparing it with itself in an earlier commit (KMK-B1, KMK-B2): kind, requirements,
+    file, proof and change with whitespace collapsed; the phase heading and the Completed cell are left out."""
+    parts = (row.kind, " ".join(row.req), row.file, row.proves, row.change)
+    return "\x1f".join(" ".join(p.split()) for p in parts)
+
+
+def mark_problems(plan: Plan, done: bool, kept: dict[str, str] | None = None) -> list[str]:
+    """The plan's status and the rows' Completed marks. Before code (`done` false) the plan is `planned` and a row
+    is marked only when `kept` backs the mark: `kept` maps the id of each marked row to `""` (the run's history
+    backs it) or to the reason it does not; with `kept` `None`, or a marked row absent from it, no commit of the
+    run is known to have written the mark. After code every row carries `✓ <date>` and the plan is `completed`."""
     bad: list[str] = []
     if plan.status not in PLAN_STATUS:
         bad.append(f"the front matter has no `status: {'|'.join(PLAN_STATUS)}`")
     if not done:
         if plan.status in PLAN_STATUS and plan.status != "planned":
             bad.append(f"the plan's status is `{plan.status}` before any code is written; it is `planned`")
-        bad += [f"row `{r.id}` is already marked completed" for r in plan.rows if r.completed]
+        for r in plan.rows:
+            if r.completed:
+                reason = (kept or {}).get(r.id, "no commit of the run wrote this mark")
+                if reason:
+                    bad.append(f"row `{r.id}` is marked `{r.completed}` but {reason}")
         return bad
     if plan.status in PLAN_STATUS and plan.status != "completed":
         bad.append(f"the plan's status is `{plan.status}`, not `completed`")
