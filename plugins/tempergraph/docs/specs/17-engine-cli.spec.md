@@ -136,12 +136,13 @@ WHEN an exception reaches the top of the engine CLI THE engine CLI SHALL write a
 
 ### CLI-B20 The loop's findings beside what waits
 
-WHEN `attention` is given and a workflow's newest `loop_summary` record ([SIL-B22](16-self-improvement.spec.md)) holds at least one recorded finding or kept observation THE engine CLI SHALL print that summary after the items, one block per workflow, newest first, with the thread, the counts of findings recorded and filed, the observations as `category`, `unit` and `confidence`, and the command `tempergraph improve review show <thread>`, and in `--json` as `loop[]` beside `items`, never as an item waiting on a person.
+WHEN `attention` is given and a workflow's newest `loop_summary` record ([SIL-B22](16-self-improvement.spec.md)) holds at least one recorded finding, kept observation or failed review ([SIL-B24](16-self-improvement.spec.md)) THE engine CLI SHALL print that summary after the items, one block per workflow, newest first, with the thread, the counts of findings recorded and filed, the failed reviews counted by error class, the observations as `category`, `unit` and `confidence`, and the command `tempergraph improve review show <thread>`, and in `--json` as `loop[]` beside `items`, with the failed-review counts as `review_failed`, never as an item waiting on a person.
 
 - GIVEN a thread whose loop child ended with 3 findings recorded, none filed and two kept observations WHEN `attention` runs THEN after the items it shows that thread, 3 recorded, 0 filed, the two observations as category, unit and confidence and no note text
 - GIVEN two threads of one workflow whose loop children ended one after the other WHEN `attention` runs THEN it shows the later thread's summary only for that workflow, and `status <thread> --detail` of the earlier thread still shows its own
 - GIVEN `--json` WHEN `attention` runs THEN the document holds `loop[]` beside `items` and no summary is among `items`
-- GIVEN a workflow whose newest summary holds no finding and no observation WHEN `attention` runs THEN it shows nothing for that workflow
+- GIVEN a workflow whose newest summary holds no finding, no observation and no failed review WHEN `attention` runs THEN it shows nothing for that workflow
+- GIVEN a thread whose loop child ended with no finding, no observation and 16 reviews failed as `usage_limit` WHEN `attention` runs THEN after the items it shows that thread with `usage_limit` 16 and the command, and with `--json` its `loop[]` entry holds `review_failed` with `usage_limit` 16
 
 ## Acceptance criteria
 
@@ -155,6 +156,7 @@ WHEN `attention` is given and a workflow's newest `loop_summary` record ([SIL-B2
 - CLI-AC8 (CLI-B15): The JSON output of every verb that has `--json` carries `schema_version`
 - CLI-AC9 (CLI-B16): A mutating verb's first record carries a caller block, and a read-only verb writes none
 - CLI-AC10 (CLI-B20): After a fixture loop child has ended, `attention` shows the summary of the newest loop child of each workflow with its counts and at most three observations and no note text, carries it as `loop[]` and not as an item in `--json`, and leaves the state root unchanged
+- CLI-AC11 (CLI-B20): After a fixture loop child that recorded no finding and no observation and whose reviews all failed as `usage_limit` has ended, `attention` shows its thread with the failed reviews counted by error class and `--json` carries `review_failed` in its `loop[]` entry, and a fixture summary with no finding, no observation and no failed review shows nothing
 
 ## Open questions
 

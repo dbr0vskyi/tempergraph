@@ -110,6 +110,21 @@ WHEN an observation is returned THE engine SHALL check model-free that its turns
 
 - GIVEN a block that fails to parse twice WHEN reviewed THEN `review_failed` is recorded and the next target runs
 
+### SRV-B29 A failed review names its error class
+
+WHEN a review ends failed THE engine SHALL write its `review_failed` record with `error_class` and, for `usage_limit`, `resets_at` as the session reported it, the class being `usage_limit` when its last reviewer session returned `usage_limit` true ([SSN-B11](25-session-contract.spec.md)), else that session's `infra_cause`, `error_kind`, `timed_out`, `stalled` or `partial` ([SSN-B5](25-session-contract.spec.md)), `unparsed` when the session was ok and its answer held no readable block after the re-ask of SRV-B20, and `error` when the review raised instead of finishing.
+
+- GIVEN a block that fails to parse twice WHEN the review ends THEN `review_failed` has `error_class` `unparsed`
+- GIVEN a reviewer session that times out WHEN the review ends THEN `error_class` is `timed_out`
+- GIVEN a reviewer session that returns `usage_limit` true with a reset at 2026-11-22T03:10:00Z WHEN the review ends THEN `error_class` is `usage_limit` and `resets_at` is that instant
+
+### SRV-B30 A usage limit ends the review at once
+
+WHEN a reviewer session returns `usage_limit` true THE engine SHALL end that review as `review_failed` without the re-ask of SRV-B20.
+
+- GIVEN 16 targets and an account whose allowance is spent WHEN the plan runs THEN `loop.jsonl` holds one `review_session` and one `review_failed` of class `usage_limit` for each target, 16 sessions in all
+- GIVEN a spent allowance reported with no reset instant WHEN the review ends THEN `review_failed` has class `usage_limit` and no `resets_at`
+
 ### SRV-B6 An uncheckable claim counts for nothing
 
 WHEN a `tool_thrash` observation citing turns 12 to 14 is checked where the digest has no repeat run THE engine SHALL keep it `unsupported` adding no weight.
@@ -197,6 +212,7 @@ WHEN `improve review <selector> [--session <key>…] [--full] [--dry-run] [--jso
 - SRV-AC9 (SRV-B21, SRV-B25): A fixture review of 18 targets with 12 finished reviews reporting 0.66 USD together and a cap of 3.46 USD skips no target, and a fixture whose next estimate passes the cap skips that target and every later one as `skipped: budget`, so each skipped target ranks below every target reviewed
 - SRV-AC10 (SRV-B26, SRV-B27): Fixture review records that keep one category on one unit in three sessions give one finding with the unit, the category and the three session keys and no note text, listed by `improve backlog`, and show those observations `corroborated`, while two sessions give none
 - SRV-AC11 (SRV-B28): The finding of that fixture, recorded by one run and by two runs, files no issue and no comment
+- SRV-AC12 (SRV-B29, SRV-B30): Fixture reviewer sessions that end each way of SRV-B29 leave a `review_failed` record with that class, and a fixture plan of 16 targets whose sessions return `usage_limit` true runs 16 reviewer sessions and records `resets_at` as reported
 
 ## Open questions
 

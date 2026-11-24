@@ -32,10 +32,16 @@ def summaries(root: Path, task: str) -> list[dict[str, Any]]:
 
 
 def write_summary(root: Path, task: str, ts: str, recorded: int, filed: int,
-                  top: list[tuple[str, str, float]]) -> None:
+                  top: list[tuple[str, str, float]], review_failed: dict[str, int] | None = None) -> None:
     append_jsonl(run_dir(root, "demo", task) / "loop.jsonl", {
         "ts": ts, "kind": "loop_summary", "thread": f"demo/{task}", "recorded": recorded, "filed": filed,
-        "top": [{"category": c, "unit": u, "confidence": f} for c, u, f in top]})
+        "top": [{"category": c, "unit": u, "confidence": f} for c, u, f in top],
+        **({} if review_failed is None else {"review_failed": review_failed})})
+
+
+def write_loop(root: Path, task: str, rows: list[dict[str, Any]]) -> None:
+    for r in rows:
+        append_jsonl(run_dir(root, "demo", task) / "loop.jsonl", {"ts": "2026-11-22T10:00:00Z", **r})
 
 
 def finished_run(repo: Path, task: str) -> None:
@@ -71,6 +77,68 @@ def test_filed_counts_the_issues_the_child_opened_or_commented_on(tmp_path: Path
 def test_a_loop_with_nothing_to_report_writes_zero_counts(tmp_path: Path) -> None:  # SIL-AC14
     s = loop_summary.build(tmp_path, "demo", "S-3", [])
     assert (s["recorded"], s["filed"], s["top"]) == (0, 0, [])
+
+
+def failed(key: str | None, cls: str | None) -> dict[str, Any]:
+    return {"kind": "review_failed", **({} if key is None else {"session_key": key}),
+            **({} if cls is None else {"error_class": cls})}
+
+
+def test_sil_ac16_a_summary_counts_the_failed_reviews_by_class(tmp_path: Path) -> None:  # SIL-AC16 (SIL-B24)
+    write_loop(tmp_path, "F-1", [failed("a.1.step", "usage_limit"), failed("b.1.step", "usage_limit"),
+                                 failed("c.1.step", "unparsed")])
+    assert loop_summary.build(tmp_path, "demo", "F-1", [])["review_failed"] == {"usage_limit": 2, "unparsed": 1}
+
+
+def test_sil_ac16_a_child_with_no_failed_review_has_an_empty_count(tmp_path: Path) -> None:  # SIL-AC16
+    assert loop_summary.build(tmp_path, "demo", "F-2", [])["review_failed"] == {}
+    write_loop(tmp_path, "F-2", [{"kind": "review_done", "session_key": "a.1.step"}])
+    assert loop_summary.build(tmp_path, "demo", "F-2", [])["review_failed"] == {}
+
+
+def test_sil_ac16_a_review_that_ended_done_on_its_retry_is_not_counted(tmp_path: Path) -> None:  # SIL-AC16
+    write_loop(tmp_path, "F-3", [failed("a.1.step", "usage_limit"), failed("b.1.step", "usage_limit"),
+                                 {"kind": "review_done", "session_key": "a.1.step", "retry": True},
+                                 {**failed("b.1.step", "timed_out"), "retry": True}])  # a second failure: the latest class
+    assert loop_summary.build(tmp_path, "demo", "F-3", [])["review_failed"] == {"timed_out": 1}
+
+
+def test_sil_ac16_a_failed_review_naming_no_session_counts_as_one_error(tmp_path: Path) -> None:  # SIL-AC16
+    write_loop(tmp_path, "F-4", [{"kind": "review_failed", "error": "RuntimeError"}, failed(None, None),
+                                 failed("a.1.step", None)])
+    assert loop_summary.build(tmp_path, "demo", "F-4", [])["review_failed"] == {"error": 3}
+
+
+def test_cli_ac11_a_loop_that_read_nothing_is_shown_with_its_failed_reviews(repo: Path) -> None:  # CLI-AC11
+    finished_run(repo, "A-6")
+    root = state_root_path(repo)
+    write_summary(root, "A-6", "2026-11-22T10:00:00Z", 0, 0, [], {"usage_limit": 16})
+    before = hash_tree(root)
+    code, doc, _ = cli(repo, None, "attention", "--json")
+    assert code == 0 and doc["items"] == [] and hash_tree(root) == before
+    (entry,) = doc["loop"]
+    assert entry["thread"] == "demo/A-6" and entry["recorded"] == 0 and entry["top"] == []
+    assert entry["review_failed"] == {"usage_limit": 16}
+    text = cli(repo, None, "attention")[1]
+    assert "Nothing is waiting" not in text and "usage_limit 16" in text
+    assert "tempergraph improve review show demo/A-6" in text
+
+
+def test_cli_ac11_a_summary_with_no_failed_review_shows_nothing(repo: Path) -> None:  # CLI-AC11, CLI-AC10
+    finished_run(repo, "A-7")
+    write_summary(state_root_path(repo), "A-7", "2026-11-22T10:00:00Z", 0, 0, [], {})
+    assert cli(repo, None, "attention", "--json")[1]["loop"] == []
+    finished_run(repo, "A-8")  # an older record has no `review_failed` key at all
+    write_summary(state_root_path(repo), "A-8", "2026-11-22T11:00:00Z", 0, 0, [])
+    code, doc, _ = cli(repo, None, "attention", "--json")
+    assert code == 0 and doc["loop"] == [] and "Nothing is waiting" in cli(repo, None, "attention")[1]
+
+
+def test_cli_ac11_the_summary_of_a_finding_carries_an_empty_failed_count(repo: Path) -> None:  # CLI-AC10
+    finished_run(repo, "A-9")
+    write_summary(state_root_path(repo), "A-9", "2026-11-22T10:00:00Z", 2, 0, [])
+    (entry,) = cli(repo, None, "attention", "--json")[1]["loop"]
+    assert entry["review_failed"] == {}
 
 
 def test_the_child_writes_one_summary_per_ticket(tmp_path: Path) -> None:  # SIL-AC14

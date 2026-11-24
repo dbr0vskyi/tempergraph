@@ -20,6 +20,7 @@ import json
 import os
 import re
 import sys
+import time
 import uuid
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
@@ -28,7 +29,7 @@ from typing import Any
 from tempergraph.contracts import SessionOptions, SessionRequest, ViewSet, WorkflowSpec
 from tempergraph.docs import append_jsonl, write_json
 from tempergraph.executors.registry import Registry, default_registry
-from tempergraph.improve import autonomy, filing
+from tempergraph.improve import autonomy, filing, params
 from tempergraph.improve.codehost import CodeHost, GhCodeHost
 from tempergraph.improve.record import read_findings
 from tempergraph.run.log import Ledger, LiveSink, estimate
@@ -37,6 +38,8 @@ from tempergraph.store.layout import home_path, now_iso, run_dir
 ALIAS = "medium"
 EFFORT = "max"  # the loop reads session logs: Sonnet thinks at its most (SIL-B17)
 TIMEOUT_S = 1800
+clock = time.time  # replaceable, so a test runs the wait of SIL-B25 on a fake clock
+sleep = time.sleep
 FENCE = re.compile(r"```(?:json)?\s*\n(.*?)\n```", re.S)
 BRIEF = """You review the friction of one workflow run for a self-improvement loop.
 
@@ -219,6 +222,35 @@ def _latest(findings: Sequence[Mapping[str, Any]], fps: set[str]) -> list[Mappin
     return list(by.values())
 
 
+def _retry_usage_limited(t: Mapping[str, Any], registry: Registry, log: Path, limited: Sequence[Mapping[str, Any]],
+                         cost: dict[str, float], left: float | None) -> None:
+    """SIL-B25, SIL-B26: wait for the latest reset reported within `review.retry_wait_hours` and run those reviews once
+    more, every record marked `retry`, within the money caps. Never waits in the foreground (`TEMPERGRAPH_LOOP=inline`)
+    or for an unknown or distant reset, and never runs a third time. A retry's failure is recorded and stops nothing."""
+    if mode() == "inline":
+        return
+    bound = clock() + float(params.value("review.retry_wait_hours")) * 3600
+    due = [e for e in limited if isinstance(e.get("resets_at"), int | float) and not isinstance(e.get("resets_at"), bool)
+           and float(e["resets_at"]) <= bound]
+    if not due:
+        return
+    try:
+        from tempergraph.improve import review
+
+        wait = max(float(e["resets_at"]) for e in due) - clock()
+        if wait > 0:
+            sleep(wait)
+        spent = cost["reported"] + cost["estimated_only"]
+        rv = review.run(t, registry, reason=str(t.get("review_reason") or "dev"),
+                        keys=[str(e["session_key"]) for e in due], force_full=True, retry=True,
+                        room=None if left is None else round(left - spent, 6))
+        cost["reported"] += rv["cost"]["reported"]
+        cost["estimated_only"] += rv["cost"]["estimated_only"]
+    except Exception as exc:  # noqa: BLE001 - best effort (SIL-B1); the failure is a review that raised (SRV-B29)
+        append_jsonl(log, {"ts": now_iso(), "kind": "review_failed", "error_class": "error",
+                           "error": type(exc).__name__, "retry": True})
+
+
 def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[str, Any]:
     root = Path(str(t["state_root"]))
     wf, task, thread = str(t["workflow"]), str(t["task_id"]), str(t["thread"])
@@ -271,6 +303,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     for r in results:  # IMD-B21 loop events, ids and enums only
         kind = {"filed": "issue_filed", "commented": "issue_commented"}.get(str(r.get("op")), "loop_result")
         append_jsonl(log, {"ts": now_iso(), "kind": kind, **r})
+    limited: list[dict[str, Any]] = []  # SIL-B25: the reviews that failed as `usage_limit`, with the reported reset
     if str(t.get("review") or "off") != "off" and not capped:  # SRV-B13, SRV-B14, SRV-B15: after filing; its results never file (SRV-B7)
         try:
             from tempergraph.improve import review
@@ -280,14 +313,17 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
                             room=None if left is None else round(left - spent, 6))  # SRV-B21, SIL-B20
             cost["reported"] += rv["cost"]["reported"]
             cost["estimated_only"] += rv["cost"]["estimated_only"]
+            limited = list(rv.get("usage_limit") or [])
         except Exception as exc:  # noqa: BLE001 - the review is best effort (SRV-B1, SRV-B20, SRV-B21, SRV-B22, SRV-B18)
-            append_jsonl(log, {"ts": now_iso(), "kind": "review_failed", "error": type(exc).__name__})
+            append_jsonl(log, {"ts": now_iso(), "kind": "review_failed", "error_class": "error",
+                               "error": type(exc).__name__})  # SRV-B29: names no session, counts as one review
     acted: dict[str, Any] = {}
     try:  # PRP-B11: the loop's own proposal and trial, after its judges and within the day's room
         acted = autonomy.act(t, registry, host, log)
     except Exception as exc:  # noqa: BLE001 - best effort (SIL-B1)
         append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "propose", "reason": "error",
                            "error": type(exc).__name__})
+    _retry_usage_limited(t, registry, log, limited, cost, left)  # SIL-B25, SIL-B26: once, before the summary
     try:  # SIL-B22: one summary per ticket for `attention` and the detail document; never stops the loop
         from tempergraph.improve import loop_summary
 

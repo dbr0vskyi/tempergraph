@@ -95,7 +95,9 @@ def run_update(*argv: str, engine: Path | None, builder: Any = None, **kw: Any) 
 
 
 @pytest.fixture
-def installed(tmp_path: Path) -> Path:
+def installed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    # `reconcile` registers every workflow plugin in Claude's plugin cache: point it at an empty folder, not the real one
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path / "claude-config"))
     code, _ = run_install(tmp_path)
     assert code == 0
     return home()

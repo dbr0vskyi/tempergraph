@@ -43,6 +43,16 @@ def retry(category: str) -> dict[str, Any]:
     return {"type": "system", "subtype": "api_retry", "attempt": 1, "error": category}
 
 
+def rate_limit_event(status: str, resets_at: int | None = None, error_code: str | None = None) -> dict[str, Any]:
+    """A `rate_limit_event` line in the shape of the recorded one (ECC-B17; used by the ECC-AC11 tests)."""
+    info: dict[str, Any] = {"status": status}
+    if resets_at is not None:
+        info["resetsAt"] = resets_at
+    if error_code is not None:
+        info["errorCode"] = error_code
+    return {"type": "rate_limit_event", "rate_limit_info": info, "session_id": "s-1"}
+
+
 def denied(name: str) -> dict[str, Any]:
     return {"type": "system", "subtype": "permission_denied", "tool_name": name}
 
