@@ -1,0 +1,43 @@
+# The offline suite, ruff and mypy of the engine on every pull request and on main (#85).
+# The suite also runs every workflow package's own tests (tests/test_workflow_packages.py).
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12"]
+    defaults:
+      run:
+        working-directory: plugins/tempergraph/engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: plugins/tempergraph/engine/pyproject.toml
+      # The suite makes scratch git repositories: give them an identity and never sign their commits.
+      - run: |
+          git config --global user.name "tempergraph CI"
+          git config --global user.email "ci@users.noreply.github.com"
+          git config --global commit.gpgsign false
+          git config --global init.defaultBranch main
+      - run: python -m pip install -e '.[dev]'
+      - run: python -m pytest
+      - run: ruff check src tests
+        if: success() || failure()
+      - run: mypy
+        if: success() || failure()
