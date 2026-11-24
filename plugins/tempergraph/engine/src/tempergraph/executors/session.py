@@ -85,14 +85,17 @@ def process_cause(raw: RawOutcome) -> InfraCause | None:
 
 
 def build_result(raw: RawOutcome, s: Summary, *, cli_version: str, argv: list[str], applied: tuple[str, ...],
-                 infra: InfraCause | None, error_kind: ErrorKind | None, ok: bool) -> SessionResult:
+                 infra: InfraCause | None, error_kind: ErrorKind | None, ok: bool, usage_limit: bool = False,
+                 usage_limit_resets_at: float | None = None) -> SessionResult:
     usage = s.result.get("usage") if s.result else None
     text = str(s.result.get("text") or "") if s.result else ""
     timed_out = raw.stop_reason == "timeout"
     stalled = raw.stop_reason == "idle"
     partial = raw.stop_reason is not None and (raw.killed or s.result is None)
+    built_ok = ok and infra is None and error_kind is None and not (timed_out or stalled or partial)
     return SessionResult(
-        ok=ok and infra is None and error_kind is None and not (timed_out or stalled or partial),
+        ok=built_ok, usage_limit=usage_limit and not built_ok,  # SSN-B11: never true for an ok session
+        usage_limit_resets_at=usage_limit_resets_at if usage_limit and not built_ok else None,
         text=text, session_id=s.session_id, usage=usage if isinstance(usage, Usage) else Usage(),
         tool_calls=s.tool_calls, timed_out=timed_out, stalled=stalled, partial=partial, infra_cause=infra,
         error_kind=error_kind, applied_options=applied, cli_version=cli_version, model=s.model, denied=s.denied,

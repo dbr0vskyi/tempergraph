@@ -712,6 +712,10 @@ class SessionResult:
     prompt_gap_s: float | None = None
     duration_s: float | None = None
     argv: tuple[str, ...] = ()  # the launch argv, for records and canary tests
+    # SSN-B11: true only when the session ended not ok and the executor's structured facts say the usage allowance is
+    # spent; the reset instant (epoch seconds) when those facts give one
+    usage_limit: bool = False
+    usage_limit_resets_at: float | None = None
 
 
 ProbeWord = Literal["ok", "missing", "signed_out", "version_unreadable", "probe_failed"]

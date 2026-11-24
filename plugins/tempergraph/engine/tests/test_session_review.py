@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 
 from tempergraph.constants import ExitCode
-from tempergraph.contracts import ViewSet
+from tempergraph.contracts import InfraCause, SessionResult, ViewSet
 from tempergraph.executors.claude import judge_argv
 from tempergraph.executors.standins import answer, standin
 from tempergraph.improve import child, digest, review
@@ -480,6 +480,102 @@ def test_an_unparsed_review_is_asked_once_more(tmp_path: Path) -> None:
     out = review.run(ticket(tmp_path, "R-2"), registry(ex))
     assert out["failed"] == ["draft.1.step"] and len(ex.calls) == 2
     assert review.run({**ticket(tmp_path, "R-2"), "review": "off"}, registry(ex))["plan"]["depth"] == "none"
+    (failed,) = [r for r in loop_records(tmp_path, "R-2") if r["kind"] == "review_failed"]
+    assert failed["error_class"] == "unparsed" and "resets_at" not in failed  # SRV-AC12 (SRV-B29)
+
+
+def loop_records(root: Path, task: str) -> list[dict[str, Any]]:
+    return [json.loads(ln) for ln in review.loop_log(root, "demo", task).read_text().splitlines()]
+
+
+def not_ok(**kw: Any) -> SessionResult:
+    return SessionResult(ok=False, **kw)
+
+
+class Raises:
+    """A reviewer executor whose judge raises instead of answering."""
+
+    name = "claude"
+
+    def run_judge(self, req: Any, views: Any, sink: Any) -> Any:
+        raise RuntimeError("boom")
+
+
+@pytest.mark.parametrize(("replies", "expected", "sessions"), [
+    ([not_ok(usage_limit=True, usage_limit_resets_at=1795317000.0, error_kind="model")], "usage_limit", 1),
+    ([not_ok(infra_cause=InfraCause.THROTTLED)] * 2, "throttled", 2),
+    ([not_ok(infra_cause=InfraCause.CONNECTION, error_kind="model")] * 2, "connection", 2),
+    ([not_ok(error_kind="model")] * 2, "model", 2),
+    ([not_ok(error_kind="auth")] * 2, "auth", 2),
+    ([not_ok(timed_out=True)] * 2, "timed_out", 2),
+    ([not_ok(stalled=True)] * 2, "stalled", 2),
+    ([not_ok(partial=True)] * 2, "partial", 2),
+    ([answer("no block"), answer("still none")], "unparsed", 2),
+    ([not_ok(timed_out=True), answer("no block")], "unparsed", 2),
+    ([answer("no block"), not_ok(timed_out=True)], "timed_out", 2),
+])
+def test_srv_ac12_a_failed_review_names_its_class(tmp_path: Path, replies: list[SessionResult], expected: str,
+                                                  sessions: int) -> None:  # SRV-AC12 (SRV-B29, SRV-B30)
+    fixture_run(tmp_path, "C-1")
+    ex = standin("claude", judges=list(replies))
+    out = review.run(ticket(tmp_path, "C-1"), registry(ex))
+    assert out["failed"] == ["draft.1.step"] and len(ex.calls) == sessions
+    (failed,) = [r for r in loop_records(tmp_path, "C-1") if r["kind"] == "review_failed"]
+    assert failed["error_class"] == expected
+
+
+def test_srv_ac12_a_review_that_raised_is_class_error(tmp_path: Path) -> None:  # SRV-AC12 (SRV-B29)
+    fixture_run(tmp_path, "C-2")
+    out = review.run(ticket(tmp_path, "C-2"), registry(Raises()))
+    assert out["failed"] == ["draft.1.step"]
+    (failed,) = [r for r in loop_records(tmp_path, "C-2") if r["kind"] == "review_failed"]
+    assert failed["error_class"] == "error"
+
+
+def test_srv_ac12_a_usage_limit_ends_the_review_at_once(tmp_path: Path) -> None:  # SRV-AC12 (SRV-B30)
+    fixture_run(tmp_path, "C-3")
+    ex = standin("claude", judges=[not_ok(usage_limit=True, usage_limit_resets_at=1795317000.0)])
+    out = review.run(ticket(tmp_path, "C-3"), registry(ex))
+    assert len(ex.calls) == 1  # no re-ask
+    recs = loop_records(tmp_path, "C-3")
+    assert [r["kind"] for r in recs].count("review_session") == 1
+    (failed,) = [r for r in recs if r["kind"] == "review_failed"]
+    assert failed["error_class"] == "usage_limit" and failed["resets_at"] == 1795317000.0
+    assert out["usage_limit"] == [{"session_key": "draft.1.step", "resets_at": 1795317000.0}]
+
+
+def test_srv_ac12_a_usage_limit_with_no_instant_has_no_resets_at(tmp_path: Path) -> None:  # SRV-AC12 (SRV-B30)
+    fixture_run(tmp_path, "C-4")
+    ex = standin("claude", judges=[not_ok(usage_limit=True)])
+    out = review.run(ticket(tmp_path, "C-4"), registry(ex))
+    (failed,) = [r for r in loop_records(tmp_path, "C-4") if r["kind"] == "review_failed"]
+    assert failed["error_class"] == "usage_limit" and failed.get("resets_at") is None
+    assert out["usage_limit"] == [{"session_key": "draft.1.step", "resets_at": None}]
+
+
+def test_srv_ac12_a_retry_flag_marks_every_record(tmp_path: Path) -> None:  # SRV-AC12 (SIL-B25: `retry`)
+    fixture_run(tmp_path, "C-5")
+    ex = standin("claude", judges=[not_ok(usage_limit=True, usage_limit_resets_at=5.0)])
+    review.run(ticket(tmp_path, "C-5"), registry(ex), retry=True)
+    recs = loop_records(tmp_path, "C-5")
+    assert {r["kind"] for r in recs} == {"review_planned", "review_session", "review_failed"}
+    assert all(r["retry"] is True for r in recs)
+
+
+def test_srv_ac12_show_lists_only_reviews_whose_latest_record_failed(tmp_path: Path) -> None:  # SRV-AC12 (SIL-B24)
+    fixture_run(tmp_path, "C-6")
+    log = review.loop_log(tmp_path, "demo", "C-6")
+    log.parent.mkdir(parents=True, exist_ok=True)
+    rows = [{"kind": "review_failed", "session_key": "a.1.step", "error_class": "usage_limit"},
+            {"kind": "review_done", "session_key": "a.1.step"},  # a retry that worked
+            {"kind": "review_done", "session_key": "b.1.step"},
+            {"kind": "review_failed", "session_key": "b.1.step", "error_class": "unparsed"},  # a later failure
+            {"kind": "review_failed", "session_key": "c.1.step", "error_class": "usage_limit"}]
+    log.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    assert review.show(tmp_path, "demo", "C-6")["failed"] == ["b.1.step", "c.1.step"]
+    assert [r["session_key"] for r in review.failed_records(rows)] == ["b.1.step", "c.1.step"]
+    assert review.failed_records([{"kind": "review_failed", "error_class": "error"}]) \
+        == [{"kind": "review_failed", "error_class": "error"}]  # no session key: kept as its own entry
 
 
 def test_dry_run_spends_nothing(tmp_path: Path) -> None:

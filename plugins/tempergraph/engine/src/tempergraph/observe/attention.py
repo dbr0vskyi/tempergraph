@@ -121,18 +121,21 @@ def schedule_items(home: Path | None = None, now: float | None = None) -> list[d
 
 
 def loop_summaries(state_root: Path) -> list[dict[str, Any]]:
-    """CLI-B20: for each workflow, its newest `loop_summary` when it holds a finding or an observation. Reads only."""
+    """CLI-B20: for each workflow, its newest `loop_summary` when it holds a finding, an observation or a failed review
+    (`review_failed`, the failed reviews by error class; `{}` in an older summary). Reads only."""
     from tempergraph.improve import loop_summary
 
     out: list[dict[str, Any]] = []
     base = state_root / "runs"
     for wdir in sorted(base.iterdir()) if base.is_dir() else ():
         s = loop_summary.newest(state_root, wdir.name) if wdir.is_dir() else None
-        if s is None or not (s.get("recorded") or s.get("top")):
+        held = s.get("review_failed") if s is not None else None
+        failed = {str(k): int(v) for k, v in held.items()} if isinstance(held, dict) else {}
+        if s is None or not (s.get("recorded") or s.get("top") or failed):
             continue
         thread = str(s.get("thread") or "")
         out.append({"workflow": wdir.name, "thread": thread, "at": s.get("ts"), "recorded": int(s.get("recorded") or 0),
-                    "filed": int(s.get("filed") or 0), "top": list(s.get("top") or []),
+                    "filed": int(s.get("filed") or 0), "top": list(s.get("top") or []), "review_failed": failed,
                     "command": f"tempergraph improve review show {thread}", "state_root": str(state_root)})
     return out
 
@@ -159,9 +162,13 @@ def attention(roots: list[Path], specs: Mapping[str, WorkflowSpec], now: float |
 
 
 def loop_line(s: dict[str, Any]) -> str:
-    """The text form of one summary: the counts, then each observation, then the command (no note text)."""
+    """The text form of one summary: the counts, the failed reviews by error class when any (`16 reviews failed:
+    usage_limit 16`), then each observation, then the command (no note text)."""
     rows = "".join(f"\n        {o.get('category')}  {o.get('unit')}  {o.get('confidence')}" for o in s.get("top") or [])
-    return f"  loop  {s['thread']}: {s['recorded']} recorded, {s['filed']} filed{rows}\n        {s['command']}"
+    failed = s.get("review_failed") or {}
+    lost = f", {sum(failed.values())} reviews failed: " + ", ".join(f"{k} {n}" for k, n in sorted(failed.items())) \
+        if failed else ""
+    return f"  loop  {s['thread']}: {s['recorded']} recorded, {s['filed']} filed{lost}{rows}\n        {s['command']}"
 
 
 def stale_line(s: dict[str, Any]) -> str:

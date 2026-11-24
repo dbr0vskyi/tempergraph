@@ -12,6 +12,7 @@ import pytest
 
 from tempergraph import detach
 from tempergraph.constants import ExitCode
+from tempergraph.contracts import SessionResult, Usage
 from tempergraph.executors.standins import answer, standin
 from tempergraph.improve import child, filing
 from tempergraph.improve.codehost import MemoryCodeHost
@@ -19,6 +20,7 @@ from tempergraph.improve.record import read_findings
 from tempergraph.store.layout import home_path
 
 from .fixtures.workflows import two_step
+from .test_review_budget import NONE_FOUND, build_run, run_ticket
 from .test_run import DRAFT, REVIEW, go, judge, registry, verdict_block
 
 
@@ -165,6 +167,184 @@ def test_outcome_lens_files_only_when_calibrated_and_patterned(tmp_path: Path) -
     assert [r["op"] for r in out["results"]] == ["filed"] and host.issues[0]["repo"] == "team/notes"
     out = child.process(outcome_ticket(root, 4, calibrated=True), reg, host)
     assert [r["op"] for r in out["results"]] == ["commented"] and len(host.issues) == 1
+
+
+# -- a review that fails is counted; a usage-limit failure is run again once (SIL-B24 to SIL-B26) --------------------
+
+
+class FakeClock:
+    """The child's clock and sleep: a sleep moves the clock and is kept; `forbid` makes any sleep fail the test."""
+
+    def __init__(self, forbid: bool = False) -> None:
+        self.now = 1_000_000.0
+        self.sleeps: list[float] = []
+        self.forbid = forbid
+
+    def time(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        assert not self.forbid, "the child must start no wait"
+        self.now += seconds
+
+
+def fake_clock(monkeypatch: pytest.MonkeyPatch, forbid: bool = False) -> FakeClock:
+    c = FakeClock(forbid)
+    monkeypatch.setattr(child, "clock", c.time)
+    monkeypatch.setattr(child, "sleep", c.sleep)
+    return c
+
+
+def retry_ticket(root: Path, task: str, run_cost: float = 4.0) -> dict[str, Any]:
+    t = run_ticket(root, task, run_cost)
+    return {**t, "thread": f"demo/{task}", "ticket_id": "t1", "fingerprints": [], "dry_run": False,
+            "lenses": {"friction": False, "outcome": False}, "issue_repository": "team/notes"}
+
+
+def spent(at: float | None, cost: float = 0.01) -> SessionResult:
+    return SessionResult(ok=False, usage=Usage(reported_cost_usd=cost), usage_limit=True, usage_limit_resets_at=at)
+
+
+def loop_rows(root: Path, task: str) -> list[dict[str, Any]]:
+    return [json.loads(ln) for ln in child.loop_log(root, "demo", task).read_text().splitlines()]
+
+
+def summary_of(root: Path, task: str) -> dict[str, Any]:
+    rows = loop_rows(root, task)
+    assert rows[-1]["kind"] == "loop_summary"  # written after the last retry
+    return rows[-1]
+
+
+def test_sil_ac16_a_review_that_raises_counts_as_one_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # SIL-AC16 (SIL-B24)
+    from tempergraph.improve import review
+
+    def boom(*a: Any, **k: Any) -> Any:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(review, "run", boom)
+    build_run(tmp_path, "E-1", 1)
+    child.process(retry_ticket(tmp_path, "E-1"), registry(standin("claude")), MemoryCodeHost())
+    rows = loop_rows(tmp_path, "E-1")
+    (failed,) = [r for r in rows if r["kind"] == "review_failed"]
+    assert "session_key" not in failed and failed["error_class"] == "error"
+    assert rows[-1]["kind"] == "loop_summary" and rows[-1]["review_failed"] == {"error": 1}
+
+
+def test_sil_ac17_a_usage_limit_is_waited_for_and_each_review_runs_once_more(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC17 (SIL-B25)
+    monkeypatch.setenv("TEMPERGRAPH_LOOP", "detached")
+    c = fake_clock(monkeypatch)
+    build_run(tmp_path, "W-1", 2)
+    started: list[float] = []
+
+    def retried(req: Any) -> SessionResult:
+        started.append(c.now)
+        return answer(NONE_FOUND, session_id="again")
+
+    ex = standin("claude", judges=[spent(c.now + 3600), spent(c.now + 7200), retried, retried])
+    out = child.process(retry_ticket(tmp_path, "W-1"), registry(ex), MemoryCodeHost())
+    assert c.sleeps == [7200.0] and started == [c.now, c.now] and c.now == 1_000_000.0 + 7200  # the later reset
+    rows = loop_rows(tmp_path, "W-1")
+    planned = [i for i, r in enumerate(rows) if r["kind"] == "review_planned"]
+    assert len(planned) == 2 and "retry" not in rows[planned[0]] and rows[planned[1]]["retry"] is True
+    order = [t["session_key"] for t in rows[planned[0]]["targets"]]
+    assert [r["session_key"] for r in rows if r["kind"] == "review_done"] == order  # plan order again
+    assert not any("retry" in r for r in rows[:planned[1]])  # the first attempt's records carry no mark
+    assert all(r.get("retry") is True for r in rows[planned[1]:-1])  # every record of the retry carries it
+    assert summary_of(tmp_path, "W-1")["review_failed"] == {}
+    (ledger,) = [r for r in map(json.loads, (tmp_path / "ledger.jsonl").read_text().splitlines())
+                 if r.get("kind") == "loop"]
+    assert round(ledger["cost"]["reported"], 6) == round(out["cost"]["reported"], 6) == 0.04  # the retry is in it
+
+
+def test_sil_ac17_a_retry_that_fails_again_is_not_run_a_third_time(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC17 (SIL-B25)
+    monkeypatch.setenv("TEMPERGRAPH_LOOP", "detached")
+    c = fake_clock(monkeypatch)
+    build_run(tmp_path, "W-2", 2)
+    ex = standin("claude", judges=[spent(c.now + 3600)] * 2 + [spent(c.now + 7200)] * 2)
+    child.process(retry_ticket(tmp_path, "W-2"), registry(ex), MemoryCodeHost())
+    assert len(ex.calls) == 4 and c.sleeps == [3600.0]  # one wait, one retry of each review
+    rows = loop_rows(tmp_path, "W-2")
+    again = [r for r in rows if r["kind"] == "review_failed" and r.get("retry") is True]
+    assert [r["error_class"] for r in again] == ["usage_limit"] * 2
+    assert summary_of(tmp_path, "W-2")["review_failed"] == {"usage_limit": 2}
+
+
+def test_sil_ac17_only_the_usage_limit_failure_within_the_bound_is_retried(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC17 (SIL-B25)
+    monkeypatch.setenv("TEMPERGRAPH_LOOP", "detached")
+    c = fake_clock(monkeypatch)
+    build_run(tmp_path, "W-3", 2)
+    ex = standin("claude", judges=[spent(c.now + 3600), answer("no block"), answer("no block"),
+                                   answer(NONE_FOUND, session_id="again")])
+    child.process(retry_ticket(tmp_path, "W-3"), registry(ex), MemoryCodeHost())
+    rows = loop_rows(tmp_path, "W-3")
+    first = [t["session_key"] for t in next(r for r in rows if r["kind"] == "review_planned")["targets"]][0]
+    assert len(ex.calls) == 4  # one session, two asks, one retry
+    assert [r["session_key"] for r in rows if r["kind"] == "review_done"] == [first]
+    assert summary_of(tmp_path, "W-3")["review_failed"] == {"unparsed": 1}
+
+
+def test_sil_ac17_a_retry_past_the_money_cap_is_skipped_and_stays_failed(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC17 (SIL-B25, SRV-B25)
+    monkeypatch.setenv("TEMPERGRAPH_LOOP", "detached")
+    c = fake_clock(monkeypatch)
+    build_run(tmp_path, "W-4", 2)  # a run cost of 4.0 gives a cap of 1.00 USD: two failed reviews spend all of it
+    ex = standin("claude", judges=[spent(c.now + 3600, 0.5), spent(c.now + 3600, 0.5)])
+    child.process(retry_ticket(tmp_path, "W-4"), registry(ex), MemoryCodeHost())
+    assert len(ex.calls) == 2
+    rows = loop_rows(tmp_path, "W-4")
+    skipped = [r for r in rows if r["kind"] == "review_skipped"]
+    assert [(r["reason"], r.get("retry")) for r in skipped] == [("budget", True)] * 2
+    assert summary_of(tmp_path, "W-4")["review_failed"] == {"usage_limit": 2}
+
+
+@pytest.mark.parametrize(("mode", "ahead"), [("detached", None), ("detached", 6 * 3600 + 60), ("inline", 2 * 3600)])
+def test_sil_ac17_a_limit_that_will_not_pass_soon_or_a_foreground_run_starts_no_wait(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mode: str, ahead: int | None) -> None:
+    # SIL-AC17 (SIL-B26)
+    monkeypatch.setenv("TEMPERGRAPH_LOOP", mode)
+    c = fake_clock(monkeypatch, forbid=True)
+    build_run(tmp_path, "N-1", 2)
+    at = None if ahead is None else c.now + ahead
+    ex = standin("claude", judges=[spent(at), spent(at)])
+    child.process(retry_ticket(tmp_path, "N-1"), registry(ex), MemoryCodeHost())
+    assert c.sleeps == [] and len(ex.calls) == 2
+    rows = loop_rows(tmp_path, "N-1")
+    assert not any(r.get("retry") for r in rows)
+    assert summary_of(tmp_path, "N-1")["review_failed"] == {"usage_limit": 2}
+
+
+def test_sil_ac17_a_reset_exactly_six_hours_ahead_is_waited_for(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC17 (SIL-B25)
+    monkeypatch.setenv("TEMPERGRAPH_LOOP", "detached")
+    c = fake_clock(monkeypatch)
+    build_run(tmp_path, "N-2", 1)
+    ex = standin("claude", judges=[spent(c.now + 6 * 3600), answer(NONE_FOUND, session_id="again")])
+    child.process(retry_ticket(tmp_path, "N-2"), registry(ex), MemoryCodeHost())
+    assert c.sleeps == [21600.0] and len(ex.calls) == 2
+    assert summary_of(tmp_path, "N-2")["review_failed"] == {}
+
+
+def test_sil_ac17_a_persons_review_waits_for_nothing(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC17 (SIL-B26)
+    from .test_cli import cli
+
+    c = fake_clock(monkeypatch, forbid=True)
+    ex = standin("claude", steps=[DRAFT, REVIEW], judges=[judge(), judge()])
+    assert go(repo, ex, spec=dataclasses.replace(two_step(), session_review="off"), task="P-1").exit_code \
+        is ExitCode.FINISHED
+    reviewer = standin("claude", judges=[spent(c.now + 3600)] * 8)
+    code, doc, _ = cli(repo, reviewer, "improve", "review", "demo/P-1", "--json")
+    keys = [t["session_key"] for t in doc["plan"]["targets"]]
+    assert code == 0 and keys and doc["failed"] == keys and len(reviewer.calls) == len(keys)  # once each, no re-ask
+    assert c.sleeps == []
+    rows = loop_rows(repo / ".tempergraph", "P-1")
+    assert {r["error_class"] for r in rows if r["kind"] == "review_failed"} == {"usage_limit"}
+    assert not any(r.get("retry") for r in rows)
 
 
 def test_hand_off_carries_calibration(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
