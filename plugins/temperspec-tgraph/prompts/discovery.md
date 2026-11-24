@@ -16,7 +16,7 @@ Findings of the reading sessions, one line for each gap led by its number, or `n
 
 ## Rules to follow
 
-`spec.rule.md`, `decision.rule.md`, `research.rule.md`, `task-notes.rule.md` and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or where the project note in `CLAUDE.md` or `AGENTS.md` names them, or already in your instructions when they are installed for the whole machine. Open each rule file named here with the read tool; a search of a rule file is not opening it. Read the rule of a document type before you write a document of that type. This prompt does not repeat the formats.
+`spec.rule.md`, `decision.rule.md`, `research.rule.md`, `task-notes.rule.md` and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or where the project note in `CLAUDE.md` or `AGENTS.md` names them, or already in your instructions when they are installed for the whole machine. Open each rule file named here that this repository holds with the read tool; a search of a rule file is not opening it. A rule file installed for the whole machine is already in your instructions and lies outside this working directory: do not open it. Read the rule of a document type before you write a document of that type. This prompt does not repeat the formats.
 
 ## Procedure
 
