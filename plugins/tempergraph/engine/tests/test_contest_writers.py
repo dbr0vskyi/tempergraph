@@ -4,6 +4,7 @@ the run branch (CTS-AC4; CTS-B5, CTS-B6, CTS-B7, CTS-B9, WSP-B11, WSP-B12, WSP-B
 from __future__ import annotations
 
 import dataclasses
+import json
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -122,11 +123,105 @@ def test_a_read_only_slot_that_changes_the_run_worktree_fails_CTS_AC4(repo: Path
     assert [b["problem"] for b in blockers] == ["branch_changed_the_workspace"]  # WSP-B11, as for a map item
 
 
-def test_a_second_attempt_of_a_writer_contest_ends_blocked_rather_than_overwrite_a_slot_branch_CTS_AC4(repo: Path) -> None:  # CTS-AC4
-    ex = Writes({"s1": "one\n", "s2": "two\n"}, judges={"s1": [BLOCKED, BOTH_MET], "s2": [BLOCKED, BOTH_MET]})
+class PerAttempt(Writes):
+    """`Writes` that writes `<slot> attempt <n>` (n counts the slot's own runs) and keeps every run's directory and head."""
+
+    def __init__(self, *a: Any, **kw: Any) -> None:
+        super().__init__(*a, **kw)
+        self.runs: list[tuple[str, Path, str]] = []  # (slot, working directory, head at the start), in order
+
+    def run_step(self, req: Any, sink: Any) -> Any:
+        slot = self.whose(req)
+        if slot in self.content:
+            n = 1 + sum(1 for s, _, _ in self.runs if s == slot)
+            self.content = {**self.content, slot: f"{slot} attempt {n}\n"}
+            self.runs.append((slot, Path(req.workdir), git(Path(req.workdir), "rev-parse", "HEAD").strip()))
+        return super().run_step(req, sink)
+
+
+def retried() -> PerAttempt:
+    return PerAttempt({"s1": "", "s2": ""}, judges={"s1": [BLOCKED, BOTH_MET], "s2": [BLOCKED, BOTH_MET]})
+
+
+def merges_of(repo: Path) -> list[list[str]]:
+    """The merge commits of the run branch, newest first: `[hash, first parent, second parent]`."""
+    return [ln.split() for ln in git(repo, "log", "--merges", "--format=%H %P", RUN).splitlines()]
+
+
+def test_a_retry_of_a_writer_contest_runs_in_fresh_worktrees_of_its_attempt_CTS_AC7(repo: Path) -> None:  # CTS-AC7 (CTS-B11, WSP-B19, WTR-AC14)
+    ex = retried()
+    out = go(repo, writing(), ex)  # the default scope: the winner's slot alone runs again
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    assert not [r for r in recs(repo, "engine_error") if r.get("error") == "workspace_refused"]
+    first, second = recs(repo, "contest")
+    (again,) = [s["name"] for s in second["slots"]]
+    assert again == first["slots"][first["winner"] - 1]["name"]
+    root = worktrees_root(repo)
+    assert sorted(s for s, _, _ in ex.runs[:2]) == ["s1", "s2"] and ex.runs[2][0] == again  # the slots of one attempt overlap
+    assert ex.runs[2][1] == root / f"demo--C-1--s2-{again}"  # fresh, named by its attempt
+    assert {s: d for s, d, _ in ex.runs[:2]} == {"s1": root / "demo--C-1--s-s1", "s2": root / "demo--C-1--s-s2"}  # CTS-B11
+    assert git(ex.runs[2][1], "rev-parse", "--abbrev-ref", "HEAD").strip() == f"{RUN}--s2-{again}"
+    merged_first = merges_of(repo)[-1][0]  # the first pick's merge: the head the retry's slot was cut from
+    assert ex.runs[2][2] == merged_first
+    for old in ("s1", "s2"):  # the first attempt's branches are left as they are
+        assert git(repo, "rev-parse", f"{RUN}--s-{old}").strip()
+        assert (root / f"demo--C-1--s-{old}").exists()
+
+
+def test_the_pick_of_a_later_attempt_merges_only_its_own_winner_CTS_AC11(repo: Path) -> None:  # CTS-AC11 (CTS-B13, CTS-B7)
+    ex = PerAttempt({"s1": "", "s2": ""}, judges={"s1": [BLOCKED, BOTH_MET], "s2": [BLOCKED, BOTH_MET]},
+                    costs={"s1": 0.3, "s2": 0.1})  # `s2` is the cheaper: the winner of both attempts
     out = go(repo, writing(), ex)
-    errors = [r for r in recs(repo, "engine_error") if r.get("error") == "workspace_refused"]
-    assert errors and "second attempt" in errors[0]["detail"], out.message  # the retry meets the first attempt's branches
-    assert out.exit_code is not ExitCode.FINISHED
-    assert git(repo, "rev-parse", f"{RUN}--s-s1").strip() and git(repo, "rev-parse", f"{RUN}--s-s2").strip()  # untouched
-    assert sum(1 for k in ex.sessions if k.startswith("step.")) == 2 and ex.sessions["step.s1"] == 1
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    merges = merges_of(repo)
+    assert [s for s in subjects(repo, RUN) if s.startswith("Merge contest slot")] == ["Merge contest slot s2 of pick"] * 2
+    assert git(repo, "rev-parse", f"{RUN}--s2-s2").strip() == merges[0][2]  # the second merge takes the second attempt's branch
+    assert git(repo, "rev-parse", f"{RUN}--s-s2").strip() == merges[1][2]
+    parents = {p for m in merges for p in m[2:]}
+    assert git(repo, "rev-parse", f"{RUN}--s-s1").strip() not in parents  # the losing slot's branch is never merged
+    assert git(repo, "show", f"{RUN}:a.py") == "s2 attempt 2\n"
+
+
+def test_a_retry_under_all_cuts_every_slot_in_fresh_worktrees_CTS_AC8(repo: Path) -> None:  # CTS-AC8 (CTS-B11, CTS-B8)
+    ex = retried()
+    out = go(repo, writing(retry_scope="all"), ex)
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    assert not [r for r in recs(repo, "engine_error") if r.get("error") == "workspace_refused"]
+    root = worktrees_root(repo)
+    assert sorted(s for s, _, _ in ex.runs) == ["s1", "s1", "s2", "s2"]
+    assert {s: d for s, d, _ in ex.runs[2:]} == {"s1": root / "demo--C-1--s2-s1", "s2": root / "demo--C-1--s2-s2"}
+    heads = {h for _, _, h in ex.runs[2:]}
+    assert heads == {merges_of(repo)[-1][0]}  # both cut at the head the second attempt began from
+    for slot in ("s1", "s2"):
+        assert git(repo, "rev-parse", f"{RUN}--s2-{slot}").strip()
+
+
+def test_the_first_run_after_a_back_is_a_later_attempt_with_fresh_worktrees_CTS_AC9(repo: Path) -> None:  # CTS-AC9 (CTS-B11)
+    rows = [{"n": 1, "status": "UNMET", "evidence": "the plan is wrong", "defect_in": "doc", "no_change": False},
+            {"n": 2, "status": "MET", "evidence": "x:1", "defect_in": None, "no_change": False}]
+    back = "R.\n```json\n" + json.dumps({"criteria": rows, "gap": False, "confidence": 0.8}) + "\n```"
+    ex = PerAttempt({"s1": "", "s2": ""}, judges={"s1": [back, BOTH_MET], "s2": [back, BOTH_MET]})
+    spec = writing(plan=True, gate={"back_targets": ["plan"]})
+    out = go(repo, spec, ex, flags={"plan.retry_budget": 2})
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    assert not [r for r in recs(repo, "engine_error") if r.get("error") == "workspace_refused"]
+    root = worktrees_root(repo)
+    assert {s: d for s, d, _ in ex.runs[:2]} == {"s1": root / "demo--C-1--s-s1", "s2": root / "demo--C-1--s-s2"}  # `--s-<slot>`
+    assert {s: d for s, d, _ in ex.runs[2:]} == {"s1": root / "demo--C-1--s2-s1", "s2": root / "demo--C-1--s2-s2"}  # attempt 2
+    assert len(recs(repo, "contest")) == 2
+
+
+def test_the_records_of_an_earlier_attempt_keep_their_state_CTS_AC10(repo: Path) -> None:  # CTS-AC10 (CTS-B12, WTR-B23)
+    ex = PerAttempt({"s1": "", "s2": ""}, judges={"s1": [BLOCKED, BOTH_MET], "s2": [BLOCKED, BOTH_MET]},
+                    costs={"s1": 0.3, "s2": 0.1})  # `s2` wins both picks
+    spec = writing()
+    out = go(repo, spec, ex)
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    children = thread_values(repo, spec, "C-1")["workspace"]["children"]
+    old = {c["unit"]: c for c in children if "visit" not in c}
+    new = {c["unit"]: c for c in children if c.get("visit") == 2}
+    assert set(old) == {"pick.s1", "pick.s2"} and set(new) == {"pick.s2"}  # the retry cut the winner's slot alone
+    assert (old["pick.s1"]["state"], old["pick.s2"]["state"]) == ("discarded", "active")  # as the first pick left them
+    assert new["pick.s2"]["state"] == "active"  # the second pick's winner
+    assert all(Path(c["path"]).exists() for c in children)  # nothing was deleted
+    assert old["pick.s2"]["path"] != new["pick.s2"]["path"] and old["pick.s2"]["branch"] != new["pick.s2"]["branch"]

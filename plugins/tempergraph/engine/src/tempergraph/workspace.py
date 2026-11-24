@@ -371,9 +371,11 @@ def writer_names(run_path: Path, run_branch_name: str, unit: str, thread: str, *
     `<unit>.<item id>`, and the suffix is `--i-<item id>` with the whole id (up to 40 characters, so two items whose
     ids share their first 24 characters get two names); from the map's second visit (`visit` above 1) the suffix is
     `--i<visit>-<item id>`, so no visit meets the names of another; with `kind="s"` it is a slot of a contest, named the
-    same way, and the suffix is `--s-<slot>`; a name over the limit shortens the run's part, not the suffix."""
+    same way, and the suffix is `--s-<slot>` for the first attempt and `--s<attempt>-<slot>` from the second (`visit`
+    above 1), so no attempt meets the names of another; a name over the limit shortens the run's part, not the
+    suffix."""
     label = unit.split(".", 1)[1] if kind in ("i", "s") and "." in unit else unit
-    tag = f"i{visit}" if kind == "i" and visit > 1 else kind
+    tag = f"{kind}{visit}" if kind in ("i", "s") and visit > 1 else kind
     part = f"--{tag}-" + flat_part(label)[: 40 if kind in ("i", "s") else 24]
     name = run_path.name + part
     if len(name) > MAX_FLAT:
@@ -388,9 +390,10 @@ def cut_writers(rec: WorkspaceRecord, thread: str, units: Sequence[str], decl: W
     """WSP-B11, WSP-B19: one sibling worktree and branch per writer branch (`kind="i"`: per item of a concurrent map,
     `kind="s"`: per slot of a contest, the child's unit being its slot), cut from the run branch's head, locked and
     bootstrapped, each appended to `rec.children`. A unit that already has one of the same `visit` is reused, except a
-    contest's slot: its branch is never cut over or reused, the cut is refused (`name_collision`). A child of a map's
-    visit above 1 is recorded with its `visit` (WTR-B20, MAP-B14): a first-visit child has no such key, and the children
-    of other visits stay in `rec.children`, untouched. A failure removes what this call made and raises
+    contest's slot: its branch is never cut over or reused, the cut is refused (`name_collision`) per slot and attempt.
+    A child of a map's visit or a contest's attempt above 1 (`visit`) is recorded with its `visit` and named
+    `--i<visit>-<item>` or `--s<visit>-<slot>` (WTR-B20, MAP-B14, CTS-B11): a first-visit child has no such key, and the
+    children of other visits stay in `rec.children`, untouched. A failure removes what this call made and raises
     `WorkspaceRefused` naming the writer branch, item or slot."""
     what = {"i": "map item", "s": "contest slot"}.get(kind, "writer branch")
     main = main_checkout(state_root.parent) or state_root.parent
