@@ -23,18 +23,22 @@ jobs:
       run:
         working-directory: plugins/tempergraph/engine
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
           cache: pip
           cache-dependency-path: plugins/tempergraph/engine/pyproject.toml
-      # The suite makes scratch git repositories: give them an identity and never sign their commits.
+      # The suite makes scratch git repositories: give them an identity, never sign their commits, and keep git's
+      # background maintenance out of them (a `maintenance.lock` appearing after a commit breaks the tests that
+      # compare a folder before and after a refused command).
       - run: |
           git config --global user.name "tempergraph CI"
           git config --global user.email "ci@users.noreply.github.com"
           git config --global commit.gpgsign false
           git config --global init.defaultBranch main
+          git config --global maintenance.auto false
+          git config --global gc.auto 0
       - run: python -m pip install -e '.[dev]'
       - run: python -m pytest
       - run: ruff check src tests
