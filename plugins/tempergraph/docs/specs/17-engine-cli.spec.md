@@ -44,7 +44,7 @@ WHEN `facts <selector> [--json]` is given THE engine CLI SHALL print the run's s
 
 ### CLI-B6 One list of what waits on a person
 
-WHEN `attention [--all-roots] [--json]` is given THE engine CLI SHALL print every item waiting on a person, oldest first, each with the thread, workflow, unit and item, pause kind, age, a one-line reason and the exact command that answers it, reading only status documents and orchestration status documents for the items (CLI-B20 adds the loop summaries), and create nothing but the hand-off of a lost runner ([SIL-B29](16-self-improvement.spec.md), [ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md)).
+WHEN `attention [--all-roots] [--json]` is given THE engine CLI SHALL print every item waiting on a person, oldest first, each with the thread, workflow, unit and item, pause kind, age, a one-line reason and the exact command that answers it, reading only status documents and orchestration status documents for the items (CLI-B20 adds the loop summaries), and create nothing but the hand-off of a lost runner ([SIL-B29](runs-without-a-final-exit.spec.md), [ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md)).
 
 - GIVEN three paused threads (an approval, an escalation and an orchestration's paused node) WHEN `attention` runs THEN it prints three items, oldest first, each with a command that `resume` or `orchestrate answer` accepts
 - GIVEN `--all-roots` WHEN `attention` runs THEN it reads every state root in the machine index ([CST-B8](34-central-run-stats.spec.md)), schedule items included ([TCK-B23, TCK-B24](84-schedule-ticks-and-unattended-fires.spec.md))
@@ -58,7 +58,7 @@ WHEN the engine CLI is called THE engine CLI SHALL accept exactly the verbs `run
 
 ### CLI-B8 Read-only verbs write nothing
 
-WHEN a verb this spec marks read-only runs THE engine CLI SHALL leave the state root unchanged and start no session, except that `status` and `attention` hand a lost runner to the loop ([SIL-B29](16-self-improvement.spec.md)); the read-only verbs are `run --check`, `rerun --check`, `config`, `status`, `events`, `logs`, `wait`, `attention`, `list`, `graph`, `report`, `validate`, `audit`, `executors`, `facts`, `stats` (but `stats flush` and `stats sync`), `outcome`, `upgrade --check` and `install --check` and `update --check`.
+WHEN a verb this spec marks read-only runs THE engine CLI SHALL leave the state root unchanged and start no session, except that `status` and `attention` hand a lost runner to the loop ([SIL-B29](runs-without-a-final-exit.spec.md)); the read-only verbs are `run --check`, `rerun --check`, `config`, `status`, `events`, `logs`, `wait`, `attention`, `list`, `graph`, `report`, `validate`, `audit`, `executors`, `facts`, `stats` (but `stats flush` and `stats sync`), `outcome`, `upgrade --check` and `install --check` and `update --check`.
 
 - GIVEN a fixture state root WHEN each read-only verb runs THEN the state root's hash is unchanged and no process starts except the read-only probes of `executors --probe`
 

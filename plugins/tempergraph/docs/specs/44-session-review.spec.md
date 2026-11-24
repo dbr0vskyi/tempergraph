@@ -24,15 +24,6 @@ WHEN findings are derived THE engine SHALL add from digest fields only: `tool_re
 
 - GIVEN a judge that passed every blocker having opened none of the changed paths WHEN findings are derived THEN they carry `judge_unread_pass`
 
-### SRV-B31 A judge graded after reading little of the change
-
-WHEN findings are derived for a judge that gave a judgement and, by its own record of paths opened and paths changed (SRV-B11), opened at least one changed path but under `digest.judge_read_share` (0.25, provenance `default_no_data`, [IMD-B23](43-improvement-data.spec.md)) of them THE engine SHALL add `judge_partial_read` (fault, workflow, as `judge_unread_pass`) with no model call, whatever the verdict.
-
-- GIVEN a judge that escalated after opening 1 of 10 changed paths WHEN findings are derived THEN they carry `judge_partial_read`
-- GIVEN a judge that gave a judgement after opening 3 of 12 changed paths WHEN findings are derived THEN they carry no `judge_partial_read`
-- GIVEN a judge that passed every blocker after opening none of 10 changed paths WHEN findings are derived THEN they carry `judge_unread_pass` and no `judge_partial_read`
-- GIVEN a judge that timed out after opening 1 of 10 changed paths WHEN findings are derived THEN they carry no `judge_partial_read`
-
 ### SRV-B2 Repeats become a cause
 
 WHEN the digest runs on a step session that called `Bash` with the same command digest four times, each failing with the same error class THE recorder SHALL write one `repeats[]` entry, and the unit's findings SHALL carry `tool_repeat`.
@@ -224,8 +215,6 @@ WHEN `improve review <selector> [--session <key>…] [--full] [--dry-run] [--jso
 - SRV-AC10 (SRV-B26, SRV-B27): Fixture review records that keep one category on one unit in three sessions give one finding with the unit, the category and the three session keys and no note text, listed by `improve backlog`, and show those observations `corroborated`, while two sessions give none
 - SRV-AC11 (SRV-B28): The finding of that fixture, recorded by one run and by two runs, files no issue and no comment
 - SRV-AC12 (SRV-B29, SRV-B30): Fixture reviewer sessions that end each way of SRV-B29 leave a `review_failed` record with that class, and a fixture plan of 16 targets whose sessions return `usage_limit` true runs 16 reviewer sessions and records `resets_at` as reported
-- SRV-AC13 (SRV-B19, SRV-B20, SRV-B31): The citation check keeps `judge_unread` and `judge_trusts_report` of a judge that opened 1 of 12 changed paths or none, rates them `unsupported` for one that opened 3 of 12, and keeps `judge_shallow` naming `judge_model`
-- SRV-AC14 (SRV-B31): A fixture judge that gave a judgement after opening 1 of 10 changed paths yields `judge_partial_read` with no model call, and a judge that opened 3 of 12, one that opened none and one that timed out each yield none
 
 ## Open questions
 
