@@ -137,8 +137,16 @@ def _child_owner(spec: WorkflowSpec, path: Any, kids: Mapping[str, Any]) -> dict
 
     got = subworkflow.read_child(name)
     repo = got.spec.issue_repository if isinstance(got, subworkflow.Child) else None
+    labels = None  # ISS-B1: the child's own `improvement.issue_labels`; a bad or missing document gives none
+    if isinstance(got, subworkflow.Child) and got.spec.package_root is not None:
+        try:
+            doc = json.loads((got.spec.package_root / "tempergraph.json").read_text(encoding="utf-8"))
+            declared = (doc.get("improvement") or {}).get("issue_labels") if isinstance(doc, dict) else None
+            labels = declared if isinstance(declared, list) else None
+        except (OSError, ValueError, AttributeError):
+            labels = None
     return {"workflow": name, "workflow_version": held.get("workflow_version"), "parent": spec.name,
-            "child": str(path), "issue_repository": repo}
+            "child": str(path), "issue_repository": repo, "issue_labels": labels}
 
 
 def _side(code: str, executor: str | None) -> str:

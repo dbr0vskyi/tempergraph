@@ -51,7 +51,7 @@ def test_pattern_rule() -> None:  # SIL-B3, IMD-B1 local scope
     assert decide(eng, [], "team/notes").action == "file"  # one clear engine fault is enough
 
 
-def test_dedup_retry_dry_run_and_outbox(tmp_path: Path) -> None:  # SIL-B2, B6, SIL-B19, SIL-B20, AC-3
+def test_dedup_retry_dry_run_and_outbox(tmp_path: Path) -> None:  # SIL-B2, B6, SIL-B19, SIL-B20, SIL-AC3
     host = MemoryCodeHost()
     box = Outbox.at(tmp_path)
     d = decide(friction(), [], "team/notes")

@@ -104,18 +104,18 @@ def test_the_loop_proposes_only_in_stable_mode_and_once_a_day(repo: Path, monkey
     assert reasons == ["no_package", "dry_run"]
 
 
-def _fake(monkeypatch: pytest.MonkeyPatch, decision: str | None) -> list[str]:
+def _fake(monkeypatch: pytest.MonkeyPatch, decision: str | None, issues: list[str] | None = None) -> list[str]:
     opened: list[str] = []
     monkeypatch.setattr("tempergraph.package.loader.load", lambda p: __import__(
         "tests.fixtures.workflows", fromlist=["two_step"]).two_step())
     monkeypatch.setattr(prp, "propose", lambda root, spec, cl, ex, **kw: {
-        "proposal_id": "p1", "state": "drafted", "workflow": "demo", "cluster": cl, "at": now_iso(),
-        "spend": {"reported": 1.0}})
+        "proposal_id": "p1", "state": "drafted", "workflow": "demo", "at": now_iso(), "spend": {"reported": 1.0},
+        "cluster": cl if issues is None else {**cl, "issues": issues}})
     monkeypatch.setattr(prp, "open_pr", lambda root, spec, pid, host: opened.append(pid) or {"pull_request": "u"})
     if decision is not None:
         monkeypatch.setattr(trl, "trial", lambda root, spec, pid, run_arm, **kw: {
             "trial_id": "t1", "decision": decision, "workflow": "demo", "at": now_iso(), "spend": {"total": 3.0},
-            "cap": kw.get("cap_usd")})
+            "cap": kw.get("cap_usd"), "proposal_id": pid})
     return opened
 
 
@@ -136,6 +136,51 @@ def test_propose_and_trial_levels(repo: Path, monkeypatch: pytest.MonkeyPatch, l
     assert autonomy.act(t, registry(standin("claude")), MemoryCodeHost(), root / "l.jsonl")["proposal"] is None
     assert "one_per_day" in (root / "l.jsonl").read_text()
     assert autonomy.day_spend(root, "demo") >= 1.0
+
+
+ISSUES = ["https://example.test/acme/notes/issues/7", "https://example.test/other/repo/issues/2"]
+
+
+@pytest.mark.parametrize(("level", "decision", "comments", "prs"), [("trial", "shown_better", 2, 1),
+                                                                    ("trial", "not_shown", 2, 0),
+                                                                    ("trial", "regressed", 2, 0),
+                                                                    ("propose", None, 0, 1)])
+def test_the_loops_own_trial_comments_on_its_issues(repo: Path, monkeypatch: pytest.MonkeyPatch, level: str,
+                                                    decision: str | None, comments: int, prs: int) -> None:
+    # PRP-AC9, PRP-AC8, PRP-B24, PRP-B25; task AC 1, AC 3
+    stable_ticket(repo, f"A-c-{level}-{decision}", monkeypatch, autonomy=level, package_root=str(repo))
+    t = json.loads(tickets()[0].read_text())
+    real = prp.open_pr
+    _fake(monkeypatch, decision, ISSUES)
+    monkeypatch.setattr(prp, "open_pr", lambda root, spec, pid, host: real(root, spec, pid, host, push=False))
+    host = MemoryCodeHost()
+    root = repo / ".tempergraph"
+    out = autonomy.act(t, registry(standin("claude")), host, root / "l.jsonl")
+    assert out["proposal"] == "p1" and len(host.comments) == comments and len(host.pulls) == prs
+    if comments:  # one result comment on each issue of the cluster, whatever the decision
+        assert [(c["repo"], c["number"]) for c in host.comments] == [("acme/notes", 7), ("other/repo", 2)]
+        assert all(c["body"].startswith("<!-- tg-agent: kind=result agent=loop -->") and decision in c["body"]
+                   for c in host.comments)
+    if prs:  # PRP-B24: `Closes` for the issue of the pull request's repository only
+        assert host.pulls[0]["body"].count("Closes #7") == 1 and "Closes #2" not in host.pulls[0]["body"]
+
+
+def test_a_failed_trial_comment_never_stops_the_pull_request(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # PRP-B25; task AC 1
+    stable_ticket(repo, "A-c-fail", monkeypatch, autonomy="trial", package_root=str(repo))
+    t = json.loads(tickets()[0].read_text())
+    opened = _fake(monkeypatch, "shown_better", ISSUES)
+
+    def boom(*a: Any, **k: Any) -> None:
+        raise RuntimeError("no")
+
+    monkeypatch.setattr(trl, "comment_result", boom)
+    root = repo / ".tempergraph"
+    out = autonomy.act(t, registry(standin("claude")), MemoryCodeHost(), root / "l.jsonl")
+    assert out["pull_request"] == "u" and opened == ["p1"]
+    notes = [json.loads(ln) for ln in (root / "l.jsonl").read_text().splitlines()]
+    assert {"kind": "loop_skipped", "step": "trial_comment"}.items() <= next(
+        n for n in notes if n.get("step") == "trial_comment").items()
 
 
 def test_report_loop(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # IMD-B22, IMD-AC4 shape

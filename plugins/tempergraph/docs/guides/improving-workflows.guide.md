@@ -6,6 +6,8 @@ Tempering a workflow means running it, measuring where it struggles, and changin
 
 After every run, with no model call, the engine records findings: which gates failed, what was retried, where a person had to step in, and what it cost. When a run ends with friction, a background job judges those findings and files one de-duplicated issue per cause in the workflow's issue repository (set by `issue_repository` in the declaration, filed through a signed-in `gh`). A cause that repeats becomes a comment on its issue, never a second issue. Issues never contain your request text.
 
+An issue carries the labels `tempergraph-loop` and `needs-triage` and a label for the side that owns the fault (`side:workflow`, `side:engine` or `executor:<name>`); a workflow that triages differently lists its own names under `improvement.issue_labels` in its `tempergraph.json` (a value that is not a list of names is ignored). Its body has four sections after a hidden fingerprint line: `## Summary`, `## Evidence`, `## Fingerprint` and `## Suggested remedy`. Your close reasons teach the loop. Close an issue as not planned, and the same cause opens no issue and no comment for 30 days (the finding is still recorded, as `muted`). Close it as completed, and if the cause comes back the loop opens a new issue whose Summary names the closed one as a possible regression. Reopen an issue to end a mute at once.
+
 Two ends that have no exit of their own are handed to the same job. A thread you stop while it is paused (`resume --decision stop`, at a gate or before a unit named by `--pause-before`) is recorded as an exit with code 4, and the job also judges the findings of the thread's earlier pauses that no earlier job judged. A thread whose runner was killed, crashed or cut off by a timeout writes no exit; the next `tempergraph status`, `stop` or `attention` that looks at it records it as an exit with code 5 and reason `runner_lost` and hands it over, once per thread, when its newest record is at most 7 days old. The thread stays resumable, and `status --detail` still shows it as orphaned.
 
 A workflow in `dev` mode has no daily limit on this spending. In `stable` mode the loop stops at a daily cap, $50 by default, set by `daily_cap_usd` in the workflow or `--daily-cap` on a run.
@@ -44,7 +46,7 @@ tempergraph improve show <proposal|trial>
 tempergraph improve open <proposal>                     # open the change for your review
 ```
 
-Each trial ends in a recorded result, so you open only changes that measurably help. After a change merges, the next runs are compared with the old version, and a quality drop reopens the issue.
+Each trial ends in a recorded result, so you open only changes that measurably help. An opened change writes `Closes #<n>` for each issue of its cluster that lives in the same repository, so merging it closes them, and a finished trial leaves one comment with its decision and figures on each of those issues (none when the machine's autonomy is `record`). After a change merges, the next runs are compared with the old version, and a quality drop reopens the issue.
 
 ## 4. Review sessions
 

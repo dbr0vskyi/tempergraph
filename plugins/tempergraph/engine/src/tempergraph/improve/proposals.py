@@ -605,15 +605,30 @@ def propose(root: Path, spec: WorkflowSpec, cl: Mapping[str, Any], executor: Any
 
 # -- opening (PRP-B8) ----------------------------------------------------------------------------------------
 
-def report_body(rec: Mapping[str, Any], trial: Mapping[str, Any] | None) -> str:
-    """The pull request text: counts, metrics, spend, the noise floor, classes and the rule; no run text."""
+ISSUE_URL = re.compile(r"^https?://[^/\s]+/([A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100})/issues/([0-9]{1,9})$")
+
+
+def issue_ref(url: Any) -> tuple[str, int] | None:
+    """`(owner/name, number)` of an issue URL of the loop's own records, none for any other text (PRP-B24)."""
+    m = ISSUE_URL.match(str(url))
+    return (m.group(1), int(m.group(2))) if m else None
+
+
+def report_body(rec: Mapping[str, Any], trial: Mapping[str, Any] | None, *, repo: str | None = None) -> str:
+    """The pull request text: counts, metrics, spend, the noise floor, classes and the rule; no run text. A
+    `Closes #<n>` line for each issue of the cluster that is in `repo` (PRP-B24)."""
     rows = ["Opened by the tempergraph self-improvement loop. A person decides; the loop never merges.", "",
             f"**Rule** {rec.get('rule')}", f"**Classes** {', '.join(rec.get('classes') or [])} "
             f"(side {rec.get('side')}); author {rec.get('author')}.",
             f"**Cluster** `{rec.get('cluster_id')}`: cause `{(rec.get('cluster') or {}).get('cause')}` at "
             f"`{(rec.get('cluster') or {}).get('unit')}`, {(rec.get('cluster') or {}).get('runs')} runs."]
+    closes: list[int] = []
     for url in (rec.get("cluster") or {}).get("issues") or []:
         rows.append(f"Refs {url}")
+        ref = issue_ref(url)
+        if repo and ref and ref[0] == repo and ref[1] not in closes:
+            closes.append(ref[1])
+    rows += [f"Closes #{n}" for n in closes]
     if "weakening" in (rec.get("classes") or []):
         rows.append("**Weakens a gate**: " + "; ".join(d["what"] for d in rec.get("details") or []
                                                        if d.get("class") == "weakening"))
@@ -662,7 +677,7 @@ def open_pr(root: Path, spec: WorkflowSpec, proposal_id: str, host: Any, *, push
     try:
         base = host.default_branch(repo)
         url = host.create_draft_pr(repo, branch, base, f"[loop] {spec.name}: {str(rec.get('rule'))[:80]}",
-                                   report_body(rec, trial), list(rec.get("labels") or []) + ["tempergraph-loop"])
+                                   report_body(rec, trial, repo=repo), list(rec.get("labels") or []) + ["tempergraph-loop"])
     except CodeHostError as exc:
         return {**rec, "open_error": str(exc)}  # PRP-B16, PRP-B17, PRP-B20, PRP-B7, PRP-B8: stays shown_better; `open` can be rerun
     rec.update(state="opened", pull_request=url, opened_at=now_iso())
