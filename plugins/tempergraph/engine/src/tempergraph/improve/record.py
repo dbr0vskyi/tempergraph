@@ -195,6 +195,22 @@ def unjudged_pause_findings(root: Path, workflow: str, task_id: str, thread: str
     return out
 
 
+def judged_units(seg: Sequence[Mapping[str, Any]]) -> dict[str, dict[str, Any]]:
+    """SRV-B12, SRV-B29: per unit with a `judgement` record, `passed` (its last record has no blockers) and `gave`
+    (the attempts with a record whose `confidence_source` is not `engine_placeholder`: a real judgement)."""
+    passed: dict[str, bool] = {}
+    gave: dict[str, set[int]] = {}
+    for r in seg:
+        if r.get("kind") != "judgement" or not r.get("unit"):
+            continue
+        unit = str(r["unit"])
+        passed[unit] = not (r.get("blockers") or [])
+        held = gave.setdefault(unit, set())
+        if r.get("confidence_source") != "engine_placeholder":
+            held.add(int(r.get("attempt") or 1))
+    return {u: {"passed": passed[u], "gave": sorted(gave[u])} for u in passed}
+
+
 def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, values: Mapping[str, Any],
                 row: Mapping[str, Any], seg: Sequence[Mapping[str, Any]] | None = None) -> dict[str, Any]:
     """Findings and evidence of the segment that just ended; the lenses at a final exit. Returns the summary.
@@ -214,10 +230,8 @@ def record_exit(root: Path, spec: WorkflowSpec, task_id: str, log_path: Path, va
     decls = unit_decls(spec)
     try:  # SRV-B11, SRV-B12: digests first, their causes join the findings; never changes the exit (OVR-B4)
         digests = digestmod.write_segment(root, spec.name, task_id, seg, decls)
-        passed = {str(r.get("unit")): {"passed": not (r.get("blockers") or [])}  # the unit's last judgement
-                  for r in seg if r.get("kind") == "judgement" and r.get("unit")}
         found += digestmod.causes(digests, root=root, workflow=spec.name, version=row.get("workflow_version"),
-                                  units=decls, judged=passed)
+                                  units=decls, judged=judged_units(seg))
     except Exception:  # noqa: BLE001
         digests = []
     if int(row.get("exit_code") or 0) in FINAL_EXITS:  # the outcome lens's candidates (SIL-B10, B3, B7)
