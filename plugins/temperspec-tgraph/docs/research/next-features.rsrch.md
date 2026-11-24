@@ -5,7 +5,7 @@
 | Date | 2026-11-21 |
 | Asked by | The owner, after the [comparison with other spec-driven development tools](sdd-tools-comparison.rsrch.md): how to design the conversation, how and when to support parallel work, how to route a small task, and which other features are promising |
 | Method | The comparison's findings, read against what the engine already has or has designed (its specs for ask units, maps, flow extensions, worktrees, complexity switches and ladders) |
-| Status | Proposal. Built since, on the owner's choice of 2026-11-21: the small-task route (§4) and features 1 to 3 of §5 (the criterion-to-test link in the reverse direction: the test carries the criterion, so a spec names no test file). The rest is not built |
+| Status | Proposal. Built since, on the owner's choice of 2026-11-21: the small-task route (§4) and features 1 to 3 of §5 (the criterion-to-test link in the reverse direction: the test carries the criterion, so a spec names no test file), and the conversation mode `never` of §2 (with `blocking` as the default; `always` is not declared). The rest is not built |
 
 ## 1. Summary
 

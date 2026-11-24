@@ -15,3 +15,4 @@ Part of the [overview](00-overview.spec.md).
 - [ ] ts-tri-criteria Every acceptance criterion in the triage note is stated by the task
 - [ ] ts-tri-gaps Every concept the task needs that no ready spec covers is listed as a gap
 - [ ] ts-tri-covered Every gap row that says `Covered by` names a behaviour id and the id of a criterion that names that behaviour, both of one spec and each defined exactly once
+- [ ] ts-tri-owner With the conversation setting `never`, the triage note says for every gap row whether the gap is findable or an owner decision, and its `Owner decisions` section gives each owner decision a question, two to four options, a default that is one of them and what a wrong default costs, or says `None`

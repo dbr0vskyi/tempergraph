@@ -12,9 +12,9 @@ Start: `tempergraph run temperspec <request>`. The request is the task with its 
 |---|---|---|
 | prepare | Nothing by a model: installs the rule files only when neither the repository (its own `.claude/rules/temperspec/`, or a folder that holds all six rule files) nor the machine has them, adds the temperspec note to `CLAUDE.md` (or `AGENTS.md`) unless that file already names where the specs are, and looks for an overview spec | No overview spec goes to setup; otherwise triage |
 | setup | Only in a repository without an overview spec: the overview spec, one spec per component, and the setup note listing what it covered and left out | |
-| triage | The triage note: the task's acceptance criteria, the documents that exist, the gaps | A small fix that changes no spec goes straight to code (the quick lane); no gap goes to plan; a task whose every gap a spec already answers takes the short discovery visit; any other gap goes to discovery |
+| triage | The triage note: the task's acceptance criteria, the documents that exist, the gaps; under the conversation setting `never` also the sort of each gap (findable or owner decision) and the owner decisions with their defaults | A small fix that changes no spec goes straight to code (the quick lane); no gap goes to plan; a task whose every gap a spec already answers takes the short discovery visit; any other gap goes to discovery |
 | discovery_short | Only the hand-off: for each gap, the cited behaviour and how it answers the gap, or `Not covered`; a reading list of at most 10 files | Every gap answered goes to plan; a gap not covered goes on to the full discovery |
-| discovery | Specs, decision records, research notes and the hand-off, one per gap | A docs-only run ends here; every other run goes to plan |
+| discovery | Specs, decision records, research notes and the hand-off, one per gap; under `never` it goes on with the default of each owner decision instead of ending blocked | A docs-only run ends here; every other run goes to plan |
 | plan | The plan: requirements, phases, verification, and its complexity | A complex plan goes to expand; a simple one already has its task rows |
 | expand | The task rows of a complex plan | |
 | code | Tests first, then code, and the code report, in one session | |
@@ -38,7 +38,11 @@ The plan ends with a proof table: for each acceptance criterion of the task, the
 
 ### The pull request says what to read
 
-The last stage writes the description with no model: the task's acceptance criteria, the behaviours and criteria that changed in each spec, the decisions and open questions of discovery, and the deviations of the code report. The notes that steps hand to each other are listed by path as not needed for review.
+The last stage writes the description with no model: the task's acceptance criteria, the behaviours and criteria that changed in each spec, the decisions and open questions of discovery, and the deviations of the code report. When the triage note has an `Owner decisions` section, the description lists each owner decision under `Assumptions to confirm` with its question, the default the run took and what a wrong default costs, or says that the run took no default. The notes that steps hand to each other are listed by path as not needed for review.
+
+### An unattended run
+
+The conversation setting says how much a run may ask the owner. Start a run for a pipeline or overnight with `tempergraph run temperspec <request> --set settings.conversation=never`, or set `conversation` to `never` for the repository in the engine's settings files. With `never`, triage sorts each gap into a findable gap (the code, the documents or a public source can answer it) or an owner decision (only the owner can), and writes for each owner decision its question, two to four options, a default and the cost of a wrong default; the triage check refuses a note that leaves one out. Discovery then closes each owner decision on its default and records any other question it meets as `Until answered: <option>`, and no step or gate stops to ask. The owner reads the defaults in the pull request, under `Assumptions to confirm`. The values are `never` and `blocking`; `blocking` is the default and leaves the workflow as it was (triage sorts no gap, and discovery ends blocked on a question only a person can answer that blocks planning). `always` is not offered: a start with it is refused before the run spends anything.
 
 Per-phase coding is not built yet: a complex plan is still coded in one session. The engine has had the sequential map it needs since release 2 (`0.2.0`); splitting the code step by phase is [issue #122](https://github.com/dbr0vskyi/tempergraph/issues/122).
 

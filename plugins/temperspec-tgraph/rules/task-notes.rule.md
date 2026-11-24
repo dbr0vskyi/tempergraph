@@ -76,6 +76,32 @@ A quick note ends with a Change section, which is the plan of the code step:
 - Each acceptance criterion is one row of the code report, with the id `AC <n>`, and is carried by a test in one of the `Tests` files.
 - Triage writes this note and nothing else.
 
+### Owner decisions (the conversation setting `never`)
+
+A run started with `--set settings.conversation=never` is unattended. Its note then does two more things; a run on `blocking`, the default, writes neither.
+
+- Each gap row ends with its sort: `Findable` when the code, the documents or a public source can answer the gap (a row that says `Covered by` is findable with no extra word), or `Owner decision` when only the owner can.
+- The section `## Owner decisions` sits between `Gaps` and `Route`. It holds the single word `None`, or one entry for each gap row that ends `Owner decision` and for no other.
+
+```markdown
+## Gaps
+
+- G1 spec gap: idle expiry. Searched `docs/specs/` for "idle", "expiry": nothing. Findable
+- G2 decision needed: the idle limit of a session. The task gives no number. Owner decision
+- G3 spec update: refusal wording. `docs/specs/session.spec.md` states it. Covered by SES-B1 and SES-AC1
+
+## Owner decisions
+
+- G2: How long may a session be idle before a request is refused?
+  - Options: a) 30 minutes; b) 15 minutes; c) 60 minutes
+  - Default: a
+  - If wrong: clients idle for longer than the real limit are signed out too early or too late
+```
+
+- An entry is `- G<n>: <question>` with three items under it: `Options:` (two to four options, each labelled `a)`, `b)`, … and separated by `;`), `Default:` (the label of one of the options) and `If wrong:` (what it costs if the default is wrong). The default is the option that changes the least of what exists and is cheapest to undo.
+- The triage check fails a note that leaves a gap row unsorted, has no `Owner decisions` section, has an owner-decision row with no entry or an entry for a findable row, or has an entry with no question, fewer than two or more than four options, no default, a default that is not one of its options, or no cost.
+- Triage still ends blocked on a task that states no acceptance criterion: nothing in it can take a default.
+
 ## Hand-off (`<task>.handoff.md`)
 
 ```markdown
@@ -110,7 +136,7 @@ Two or three sentences.
 - **Gaps closed** names, for every gap row of the triage note, the document that closes it. A gap that needs no document says why.
 - After a short discovery visit (every gap row of the triage note says `Covered by`), **Gaps closed** names, for every gap row, the cited behaviour id and how it answers the gap, or the id and `Not covered:` with what it leaves out; **Changed documents** is `- None`, and the reading list holds at most 10 items. A `Not covered` line sends the run to the full discovery.
 - **Changed documents** lists every document discovery created or edited, with its path in a code span, or `None`.
-- **Open questions** lists what only a person can decide, with the options. An open question that blocks planning ends the step blocked.
+- **Open questions** lists what only a person can decide, with the options. An open question that blocks planning ends the step blocked. Under the conversation setting `never` no step ends blocked on one: each open question carries the default the step took, written `Until answered: <option>`, and the pull request lists it with that default.
 - **Reading list** has one item for each file the plan will need: an existing file in a code span, the line ranges or ids that matter in brackets, a colon and one line on why. A hand-off with none is a finding, except in a run that ends after discovery. The plan starts from this list and opens another file only for what the list does not answer.
 
 ## Code report (`<task>.report.md`)

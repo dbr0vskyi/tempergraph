@@ -57,6 +57,15 @@ LEGACY = re.compile(r"^##\s+\d+\.\s+(Overview|Contract)\b", re.M)
 GAP_ROW = re.compile(r"^\s*(?:[-*]|\|)\s*\**G\d+\b")
 COVERED_WORDS = re.compile(r"\bCovered by\b", re.I)
 COVERED = re.compile(rf"\b(?i:Covered by)\s+`?({ID}-B\d+)`?\s+and\s+`?({ID}-AC\d+)\b`?")
+# The conversation setting `never` (spec `conversation`): each gap row ends with its sort, and the section
+# `Owner decisions`, between Gaps and Route, holds one entry per owner decision. A note of a `blocking` run has neither.
+OWNER_HEADING = "Owner decisions"
+SORT_END = re.compile(r"\b(findable|owner decision)\W*$", re.I)
+GAP_ID = re.compile(r"\bG\d+\b")
+OWNER_ENTRY = re.compile(r"^\s*[-*]\s+\**(G\d+)\**\s*:\s*(.*?)\s*$")
+OWNER_ITEM = re.compile(r"^\s*(?:[-*]\s+)?\**(Options|Default|If wrong)\**\s*:\s*(.*?)\s*$", re.I)
+OPTION_LABEL = re.compile(r"(?:(?<=^)|(?<=[\s;,]))([a-z])\)\s+")
+OWNER_OPTIONS = (2, 4)
 READING_ITEM = re.compile(r"^\s*[-*]\s+`([^`]+)`\s*(.*)$")
 NUMBERED = re.compile(r"^\s*(\d+)[.)]\s+\S")
 TABLE_ROW = re.compile(r"^\s*\|(.+)\|\s*$")
@@ -240,6 +249,57 @@ def linked_ids(text: str) -> set[str]:
 
 
 @dataclass
+class OwnerEntry:
+    """One entry of the `Owner decisions` section: the gap it answers, its question, its options as (label, text),
+    its default as written, and the cost of a wrong default."""
+
+    gap: str
+    question: str = ""
+    options: list[tuple[str, str]] = field(default_factory=list)
+    default: str = ""
+    cost: str = ""
+
+    @property
+    def default_text(self) -> str:
+        """The text of the option the default names (by its label, or by its words), else empty."""
+        want = self.default.strip().strip("`*").strip()
+        label = re.match(r"^\(?([a-z])\)?(?:[\s.:)-]|$)", want, re.I)
+        for lab, text in self.options:
+            if lab and label and lab == label.group(1).lower():
+                return text
+        for _, text in self.options:
+            if text and text.lower() == want.lower():
+                return text
+        return ""
+
+
+def _options(text: str) -> list[tuple[str, str]]:
+    """`a) 2; b) 1; c) 78` -> [("a", "2"), ("b", "1"), ("c", "78")]; without labels, the `;`-separated parts."""
+    marks = list(OPTION_LABEL.finditer(text))
+    if not marks:
+        return [("", p.strip()) for p in text.split(";") if p.strip()]
+    return [(m.group(1), text[m.end():(marks[i + 1].start() if i + 1 < len(marks) else len(text))].strip(" ;,"))
+            for i, m in enumerate(marks)]
+
+
+def _owner_entries(lines: list[str]) -> list[OwnerEntry]:
+    entries: list[OwnerEntry] = []
+    for line in lines:
+        head, item = OWNER_ENTRY.match(line), OWNER_ITEM.match(line)
+        if head:
+            entries.append(OwnerEntry(gap=head.group(1), question=head.group(2)))
+        elif item and entries:
+            key, value = item.group(1).lower(), item.group(2).strip()
+            if key == "options":
+                entries[-1].options = _options(value)
+            elif key == "default":
+                entries[-1].default = value
+            else:
+                entries[-1].cost = value
+    return entries
+
+
+@dataclass
 class Triage:
     criteria: list[int] = field(default_factory=list)
     deliver: str = ""
@@ -257,6 +317,12 @@ class Triage:
     change_files: list[str] = field(default_factory=list)
     change_tests: list[str] = field(default_factory=list)
     change_commands: list[str] = field(default_factory=list)
+    # The conversation setting `never`: gap id -> `findable`, `owner decision` or empty (a row with no sort), whether the
+    # `Owner decisions` section exists, whether it says `None`, and its entries.
+    sorts: dict[str, str] = field(default_factory=dict)
+    owner_section: bool = False
+    owner_none: bool = False
+    owners: list[OwnerEntry] = field(default_factory=list)
 
 
 def _field(lines: list[str], name: str) -> str:
@@ -281,6 +347,14 @@ def parse_triage(text: str) -> Triage:
         if (c := COVERED.search(ln)):
             t.covered.append((c.group(1), c.group(2)))
     t.covered_rows = len(t.covered)
+    for ln in rows:
+        sort, gap = SORT_END.search(ln.rstrip()), GAP_ID.search(ln)
+        if gap:
+            t.sorts[gap.group(0)] = sort.group(1).lower() if sort else ("findable" if COVERED_WORDS.search(ln) else "")
+    owner = [ln for ln in low.get(OWNER_HEADING.lower(), []) if ln.strip()]
+    t.owner_section = OWNER_HEADING.lower() in low
+    t.owner_none = len(owner) == 1 and bool(re.fullmatch(r"\W*none\W*", owner[0], re.I))
+    t.owners = _owner_entries(owner)
     if t.gap_rows:
         t.gaps = "some"
     elif len(gaps) == 1 and re.fullmatch(r"\W*none\W*", gaps[0], re.I):

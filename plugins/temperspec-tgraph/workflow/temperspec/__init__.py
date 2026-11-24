@@ -12,13 +12,17 @@ The code gate measures a quick change and sends a larger one back to `triage`, w
 from `expand`, a simple one already has them. `code` builds the whole plan in one session (per-phase coding
 waits for the engine's sequential map). The engine commits after every step and the last stage pushes.
 
+The setting `conversation` (`never` or `blocking`, default `blocking`) says how much a run may ask the owner: with
+`never` triage sorts each gap and takes a default for each owner decision, no step stops for one, and the pull
+request lists the defaults as assumptions to confirm (spec `conversation`).
+
 Every step and judge states its model tier, its effort and why (`SIZING` below; decision record 0002). No unit
 uses the large model tier. `discovery` thinks at the highest effort; its short visit, which designs nothing, at `high`.
 """
 
 from typing import Any
 
-from tempergraph.api import Gate, Judge, Route, Routing, Script, Step, Value, Workflow, text
+from tempergraph.api import Gate, Judge, Route, Routing, Script, Setting, Step, Value, Workflow, text
 
 from . import specfmt
 from .checks import (
@@ -99,6 +103,11 @@ def workflow() -> Any:
                         "the specs"),
         issue_repository="dbr0vskyi/tempergraph",
         allow_commands=ALLOW,
+        settings={"conversation": Setting(
+            kind="choice", default="blocking", choices=["never", "blocking"],
+            meaning="How much a run may ask the owner. `never` keeps the run unattended: triage sorts each gap and "
+                    "takes a default for each owner decision, no step stops for one, and the pull request lists the "
+                    "defaults as assumptions to confirm. `blocking` leaves the workflow as it is")},
         units={
             "prepare": Script(
                 call=prepare, summary="Install rules and the project note; see if setup is due",

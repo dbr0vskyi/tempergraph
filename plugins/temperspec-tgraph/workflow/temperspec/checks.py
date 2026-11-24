@@ -532,7 +532,7 @@ def setup_check(ctx: Any) -> Any:
 
 
 def triage_check(ctx: Any) -> Any:
-    """ts-tri-form, ts-tri-route, ts-tri-covered, ts-tri-ruleread, ts-tri-commit."""
+    """ts-tri-form, ts-tri-route, ts-tri-covered, ts-tri-ruleread, ts-tri-owner, ts-tri-commit."""
     text, path = _read(ctx, "triage_note")
     if text is None:
         return checks.result([_find("fail", "ts-tri-form", path, "the triage note cannot be read",
@@ -575,8 +575,57 @@ def triage_check(ctx: Any) -> Any:
         _ok("ts-tri-route", path)]
     found += _covered(ctx, note, path)
     found += _ruleread(ctx, "triage", "ts-tri-ruleread")
+    found += _owner(ctx, note, path)
     found.append(_committed(ctx, "ts-tri-commit"))
     return checks.result(found)
+
+
+def _owner(ctx: Any, note: fmt.Triage, path: str) -> list[CheckFinding]:
+    """ts-tri-owner: with the conversation value `never`, each gap row ends with its sort and the `Owner decisions`
+    section holds one complete entry for each owner-decision row and none for any other (spec `conversation`,
+    CONV-B4). With `blocking`, or no value given to the check, the note is not read for it."""
+    crit = "ts-tri-owner"
+    if (getattr(ctx, "settings", None) or {}).get("conversation") != "never":
+        return [_find("n_a", crit, path, "the conversation value is not `never`")]
+    bad: list[tuple[str, str, str]] = []  # (place, message, fix)
+    for gap, sort in note.sorts.items():
+        if not sort:
+            bad.append((gap, f"gap row {gap} ends neither `Findable` nor `Owner decision`",
+                        f"end row {gap} with `Findable` or `Owner decision`"))
+    if not note.owner_section:
+        bad.append((fmt.OWNER_HEADING, f"the section `## {fmt.OWNER_HEADING}` is missing",
+                    f"add `## {fmt.OWNER_HEADING}` between Gaps and Route, with an entry for each owner decision or `None`"))
+    else:
+        entered = {e.gap for e in note.owners}
+        for gap, sort in note.sorts.items():
+            if sort == "owner decision" and gap not in entered:
+                bad.append((gap, f"gap row {gap} says `Owner decision` but `{fmt.OWNER_HEADING}` has no entry for it",
+                            f"add `- {gap}: <question>` with its options, default and cost"))
+        low, high = fmt.OWNER_OPTIONS
+        for e in note.owners:
+            gap, fix = e.gap, f"complete the entry for {e.gap}"
+            if e.gap not in note.sorts:
+                bad.append((gap, f"entry {gap} answers no gap row", f"drop the entry or add the row {gap}"))
+                continue
+            if note.sorts[e.gap] == "findable":
+                bad.append((gap, f"entry {gap} is for a gap row that says `Findable`", "drop the entry"))
+                continue
+            n = len(e.options)
+            if not e.question:
+                bad.append((gap, f"entry {gap} has no question", fix))
+            if not low <= n <= high:
+                bad.append((gap, f"entry {gap} has {n} option{'s' if n != 1 else ''}, not two to four",
+                            f"give {gap} two to four options under `Options:`"))
+            if not e.default:
+                bad.append((gap, f"entry {gap} has no default", f"add `Default:` with the label of one option of {gap}"))
+            elif n and not e.default_text:
+                bad.append((gap, f"the default of entry {gap} (`{e.default}`) is not one of its options",
+                            f"name the label of one option of {gap}"))
+            if not e.cost:
+                bad.append((gap, f"entry {gap} has no cost", "add `If wrong:` with what a wrong default costs"))
+    if bad:
+        return [_find("fail", crit, place, message, fix) for place, message, fix in bad]
+    return [_ok(crit, path)]
 
 
 def _covered(ctx: Any, note: fmt.Triage, path: str) -> list[CheckFinding]:
