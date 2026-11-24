@@ -298,6 +298,34 @@ def test_the_latest_close_decides(tmp_path: Path) -> None:  # ISS-AC3; AC 1, AC 
     assert "#2" in host2.issues[2]["body"]
 
 
+def open_of_fingerprint(host: MemoryCodeHost) -> list[int]:
+    """The numbers of the issues of `FP` whose state is open."""
+    return [i["number"] for i in host.issues if i["state"] == "open" and filing.marker(FP) in i["body"]]
+
+
+def test_a_repeated_cause_keeps_one_open_issue(tmp_path: Path) -> None:  # SIL-AC3, SIL-B2, SIL-B18; AC 1, AC 3
+    host = MemoryCodeHost()
+    seen: list[int] = []
+
+    def step(**kw: Any) -> str:
+        op = filed(host, tmp_path, now=NOW, **kw)[0]["op"]
+        seen.append(len(open_of_fingerprint(host)))
+        return str(op)
+
+    # (a) the second and third occurrence comment on the one open issue
+    assert [step(), step(), step()] == ["filed", "commented", "commented"]
+    assert len(host.issues) == 1 and [c["number"] for c in host.comments] == [1, 1]
+    # (b) after a close as completed the new issue is the one open issue; a further occurrence comments on it
+    host.close(REPO, 1, "completed", ago(3))
+    assert step() == "filed" and len(host.issues) == 2 and open_of_fingerprint(host) == [2]
+    assert step() == "commented" and len(host.issues) == 2 and host.comments[-1]["number"] == 2
+    # (c) a close as not planned past the mute opens a new issue, again the only open one
+    host.close(REPO, 2, "not_planned", ago(40))
+    assert step() == "filed" and len(host.issues) == 3 and open_of_fingerprint(host) == [3]
+    assert step() == "commented" and len(host.issues) == 3
+    assert max(seen) == 1 and min(seen) == 1  # never two open issues, never none after an occurrence
+
+
 def test_the_mute_length_is_the_parameter_record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # ISS-AC3, IMD-AC3; AC 2, AC 3
     host = closed_issue(tmp_path, "not_planned", 10)
