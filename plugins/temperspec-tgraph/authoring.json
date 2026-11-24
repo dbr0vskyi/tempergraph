@@ -421,8 +421,8 @@
     "at": "2026-11-21T10:33:48.312Z"
   },
   "verify": {
-    "at": "2026-11-24T10:21:46.239Z",
-    "ok": false,
+    "at": "2026-11-24T12:57:04.036Z",
+    "ok": true,
     "rungs": {
       "load": "passed",
       "compare": "passed",
@@ -432,8 +432,8 @@
       "audit": "passed",
       "register": "passed",
       "judge_seeds": "passed",
-      "trial": "waiting",
-      "stamp": "skipped"
+      "trial": "passed",
+      "stamp": "passed"
     }
   },
   "seeds_shown": {
@@ -446,14 +446,15 @@
   },
   "trial": {
     "case": "missing-config",
-    "task": "trial-missing-config-70bc",
-    "thread": "temperspec/trial-missing-config-70bc",
-    "at": "2026-11-24T10:21:46.238Z",
-    "exit_code": 3,
-    "reason": "escalation",
+    "task": "trial-missing-config-c04f",
+    "thread": "temperspec/trial-missing-config-c04f",
+    "at": "2026-11-24T12:57:03.026Z",
+    "exit_code": 0,
+    "reason": "skipped",
     "cap_usd": 15.0,
     "grades": {},
-    "state": "paused"
+    "state": "ended",
+    "verdict": "met"
   },
   "seeds_passed": {
     "read_component": {
