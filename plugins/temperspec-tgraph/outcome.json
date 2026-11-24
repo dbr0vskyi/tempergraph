@@ -201,7 +201,7 @@
           "id": "ts-rdc-answers",
           "severity": "blocker",
           "verified_by": "judge",
-          "text": "The findings of a component folder's reading say what the folder holds and what someone outside depends on, or state what was searched",
+          "text": "The findings (`component_finding`) of a component folder's reading say what the folder holds and what someone outside depends on, or state what was searched",
           "check_method": "Open each file the findings name at its line ranges or ids, and compare it with what the findings claim",
           "source": "created",
           "verifier": {
@@ -221,7 +221,7 @@
           "id": "ts-rdc-cited",
           "severity": "blocker",
           "verified_by": "judge",
-          "text": "The findings name each file they rest on with its line ranges or ids",
+          "text": "The findings (`component_finding`) name each file they rest on with its line ranges or ids",
           "check_method": "Read the findings line for the files it names and their line ranges or ids",
           "source": "created",
           "verifier": {
@@ -696,7 +696,7 @@
           "id": "ts-dis-over",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "A spec over the budget in lines or in bytes fails the discovery check, and the next discovery attempt is given a finding that names the spec and the figure that is over and says to split the spec by capability",
+          "text": "A spec over the budget in lines or in bytes fails the discovery check with a finding, carried to the next discovery attempt, that names the spec with its figure over the budget and says to split the spec by capability",
           "check_method": "One fail finding per spec over, with its path, each figure over and the fix `split the spec by capability`; the engine's retry prompt carries each finding to the next attempt",
           "source": "created",
           "verifier": {
@@ -1419,7 +1419,7 @@
         {
           "id": "ts-code-nobase",
           "verified_by": "check",
-          "text": "A verification command that fails at the gate and was not compared with the run's base commit (the run has no base commit, the command could not start there, or the command did not finish at the gate or at the base) fails the check, so the code step retries, and the evidence says it was not compared",
+          "text": "A verification command that fails at the gate and was not compared with the run's base commit (the run has no base commit, the command could not start there, or the command did not finish at the gate or at the base) fails the check, so the code step retries with evidence saying the command was not compared",
           "check_method": "Read the gate's run and the base run of each failing command: a missing base commit, a base run that did not start or finish, or a gate run that did not finish is a failing finding that says it was not compared",
           "source": "created",
           "verifier": {
@@ -1430,7 +1430,7 @@
         {
           "id": "ts-code-mixed",
           "verified_by": "check",
-          "text": "When a verification command is judged environmental and another finding of the code check also fails, the check fails so that the code step retries with only the findings it can fix listed, and its evidence still names the environmental command",
+          "text": "When a verification command is judged environmental and another finding of the code check also fails, the check fails so that the code step retries with only the findings it can fix listed, while its evidence still names the environmental command",
           "check_method": "Read the code check's findings and evidence: an environmental command is not a failing finding when another finding fails, and its line still leads the evidence",
           "source": "created",
           "verifier": {
@@ -1441,7 +1441,7 @@
         {
           "id": "ts-code-evidence",
           "verified_by": "check",
-          "text": "The code check's evidence names each verification command that failed at the gate with its exit code at the gate and at the run's base commit, and the reason it was judged environmental, caused by the change or not compared",
+          "text": "The code check's evidence names each verification command that failed at the gate with its exit code at the gate and at the run's base commit, with the reason it was judged environmental, caused by the change or not compared",
           "check_method": "Read the evidence and the findings of the code check: each failing command has one line with the command, both exit codes and the reason",
           "source": "created",
           "verifier": {
@@ -1452,7 +1452,7 @@
         {
           "id": "ts-code-preview",
           "verified_by": "check",
-          "text": "The code step declares the engine's check preview, and its prompt tells the session to make its one run of each verification command of the plan through that preview",
+          "text": "The engine's check preview is declared on the code step, and the code prompt tells the session to make its one run of each verification command of the plan through that preview",
           "check_method": "Read the code prompt file of the package for the instruction, phrase by phrase; the step's declaration is read by the package's tests",
           "source": "created",
           "verifier": {

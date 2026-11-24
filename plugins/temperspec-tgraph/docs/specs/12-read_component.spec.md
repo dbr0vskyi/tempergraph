@@ -8,5 +8,5 @@ Part of the [overview](00-overview.spec.md). The [setup](03-setup.spec.md) step 
 
 ## 6. Acceptance criteria
 
-- [ ] ts-rdc-answers The findings of a component folder's reading say what the folder holds and what someone outside depends on, or state what was searched
-- [ ] ts-rdc-cited The findings name each file they rest on with its line ranges or ids
+- [ ] ts-rdc-answers The findings (`component_finding`) of a component folder's reading say what the folder holds and what someone outside depends on, or state what was searched
+- [ ] ts-rdc-cited The findings (`component_finding`) name each file they rest on with its line ranges or ids

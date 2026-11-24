@@ -10,7 +10,7 @@ Part of the [overview](00-overview.spec.md). A triage note that lists two or mor
 
 - [ ] ts-dis-form Every spec the discovery step wrote passes the spec rule's structure check
 - [ ] ts-dis-budget Every spec the discovery step wrote is within the repository's spec budget: at most 400 lines and at most 30 KB (30,720 bytes)
-- [ ] ts-dis-over A spec over the budget in lines or in bytes fails the discovery check, and the next discovery attempt is given a finding that names the spec and the figure that is over and says to split the spec by capability
+- [ ] ts-dis-over A spec over the budget in lines or in bytes fails the discovery check with a finding, carried to the next discovery attempt, that names the spec with its figure over the budget and says to split the spec by capability
 - [ ] ts-dis-names Every document the discovery step created carries its type suffix in its file name
 - [ ] ts-dis-links Every id that a document of the discovery step links to resolves to exactly one definition
 - [ ] ts-dis-ruleread Each rule file the discovery prompt names (spec.rule.md, decision.rule.md, research.rule.md, task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session
