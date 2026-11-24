@@ -72,13 +72,14 @@ from .routing import (
 
 MODEL = "medium"
 READ = ["read", "search", "list"]
-# What a plan may list as verification (VERIFY), and what the last stage runs on top. A check refuses
-# `git push` and `gh` in a plan. Release 1 of the engine reads no per-repository command resolver and its audit
-# wants every program here on PATH, so the list holds one toolchain; add a repository's own prefixes here.
-# Both spellings of the test runner are listed because a repository's CLAUDE.md writes either, and the engine
-# reads `cd <folder> && <command>` as the command run in that folder (CHK-B11), so a plan may copy them as written.
-VERIFY = ["pytest", "python -m pytest", "python3 -m pytest", "ruff check", "ruff format --check", "mypy",
-          "git --version", "git status", "git diff", "git log", "git show"]
+# What a plan may list as verification (VERIFY), and what the last stage runs on top. The toolchain commands are
+# the repository's own: `@repository` stands for the commands its `tempergraph.commands.json` declares (CHK-B11,
+# spec repository-commands), and `prepare` writes that file for a Python repository that has none. No toolchain
+# command is listed here; read-only git is allowed in every repository. A check refuses `git push` and `gh` in a
+# plan. The engine reads `cd <folder> && <command>` as the command run in that folder (CHK-B11), so a plan may
+# copy a command from a repository's CLAUDE.md as written.
+READ_ONLY_GIT = ["git --version", "git status", "git diff", "git log", "git show"]
+VERIFY = [*READ_ONLY_GIT, "@repository"]
 ALLOW = [*VERIFY, "git remote", "git push -u origin", "gh pr list", "gh pr create", "gh pr edit"]
 
 

@@ -283,3 +283,16 @@ def test_the_readme_and_the_setup_skill_state_what_prepare_does(path: Path) -> N
     text = _words(path)
     assert "holds all six rule files" in text
     assert "already names" in text and "unchanged" in text
+    assert "tempergraph.commands.json" in text  # AC 4: prepare also writes the commands file of a Python repository
+
+
+def test_the_documents_say_where_the_verification_commands_come_from() -> None:  # AC 4
+    readme = _words(ROOT / "README.md")
+    assert "`verify`" not in readme and "one fixed list" not in readme
+    limits =readme.split("limits of this version", 1)[1].split(" - no release step", 1)[0]
+    for said in ("`tempergraph.commands.json`", "read-only `git`", "`cd <folder> && <command>`"):
+        assert said in limits, said
+    assert "fixed list" not in _words(ROOT / "docs" / "specs" / OVERVIEW)
+    for path in (ROOT / "prompts" / "code.md", ROOT / "prompts" / "plan.md", ROOT / "prompts" / "expand.md",
+                 ROOT / "judges" / "code.md"):
+        assert "tempergraph.commands.json" in _words(path), path.name
