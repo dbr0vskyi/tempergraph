@@ -1,5 +1,5 @@
-"""The post-release comparison of a merged proposal and the regression record (PRP-B9, PRP-B29; PRP-AC12, PRP-AC13;
-task i9 AC 3, AC 4)."""
+"""The post-release comparison of a merged proposal and the regression record (PRP-B9, PRP-B29; PRP-AC7, PRP-AC12,
+PRP-AC13; task i9 AC 3, AC 4). PRP-AC7 lists the post-release watch (PRP-B9) among the proposal spec's fixtures."""
 
 from __future__ import annotations
 
@@ -91,7 +91,7 @@ def due(root: Path, host: MemoryCodeHost | None = None) -> list[dict[str, Any]]:
 
 # -- the figures of a window (row 3.3) -------------------------------------------------------------------------
 
-def test_window_figures_and_figures_agree(tmp_path: Path) -> None:  # PRP-AC12 (PRP-B9), task AC 3
+def test_window_figures_and_figures_agree(tmp_path: Path) -> None:  # PRP-AC7, PRP-AC12 (PRP-B9), task AC 3
     runs = Runs(tmp_path)
     runs.window(range(1, 4), BASE, 2.0)
     segs = [r for r in measure._rows(tmp_path / "ledger.jsonl")]
@@ -101,7 +101,7 @@ def test_window_figures_and_figures_agree(tmp_path: Path) -> None:  # PRP-AC12 (
 
 
 def test_a_missing_or_unchanged_figure_never_makes_a_measure_worse(tmp_path: Path) -> None:
-    # PRP-AC12 (PRP-B9), task AC 3
+    # PRP-AC7, PRP-AC12 (PRP-B9), task AC 3
     runs = Runs(tmp_path)
     runs.add(-1, BASE, 0.0, gates=(), outcome=None)  # a cost of zero, no gate, no outcome before
     runs.add(1, NEW, 9.0, gates=("BLOCK",), outcome="unmet")
@@ -114,7 +114,7 @@ def test_a_missing_or_unchanged_figure_never_makes_a_measure_worse(tmp_path: Pat
 # -- the comparison (row 3.4) ----------------------------------------------------------------------------------
 
 def test_a_cost_rise_of_30_percent_over_10_exits_records_regressed_after_release(tmp_path: Path) -> None:
-    # PRP-AC12 (PRP-B9), task AC 3
+    # PRP-AC7, PRP-AC12 (PRP-B9), task AC 3
     runs = Runs(tmp_path)
     ten_before(runs, 1.0)
     runs.window(range(1, 11), NEW, 1.3)
@@ -130,7 +130,7 @@ def test_a_cost_rise_of_30_percent_over_10_exits_records_regressed_after_release
 
 
 def test_a_gate_pass_rate_fall_of_7_points_records_regressed_after_release(tmp_path: Path) -> None:
-    # PRP-AC12 (PRP-B9), task AC 3
+    # PRP-AC7, PRP-AC12 (PRP-B9), task AC 3
     runs = Runs(tmp_path)
     ten_before(runs, 1.0, gates=("PROCEED",) * 10)
     for d in range(1, 11):  # 7 of the 100 gates after the merge are not first-try passes
@@ -142,7 +142,7 @@ def test_a_gate_pass_rate_fall_of_7_points_records_regressed_after_release(tmp_p
     assert reg["worse"] == ["gate_pass_rate"]
 
 
-def test_a_met_share_fall_records_regressed_after_release(tmp_path: Path) -> None:  # PRP-AC12 (PRP-B9), task AC 3
+def test_a_met_share_fall_records_regressed_after_release(tmp_path: Path) -> None:  # PRP-AC7, PRP-AC12 (PRP-B9), task AC 3
     runs = Runs(tmp_path)
     ten_before(runs)
     for d in range(1, 11):
@@ -153,7 +153,7 @@ def test_a_met_share_fall_records_regressed_after_release(tmp_path: Path) -> Non
 
 
 def test_a_cost_rise_of_5_percent_with_the_rest_held_records_held_after_release(tmp_path: Path) -> None:
-    # PRP-AC12 (PRP-B9), task AC 3
+    # PRP-AC7, PRP-AC12 (PRP-B9), task AC 3
     runs = Runs(tmp_path)
     ten_before(runs, 1.0)
     runs.window(range(1, 11), NEW, 1.05)
@@ -165,7 +165,7 @@ def test_a_cost_rise_of_5_percent_with_the_rest_held_records_held_after_release(
     assert held["before"]["cost_per_run"] == 1.0 and held["after"]["cost_per_run"] == 1.05 and held["at"]
 
 
-def test_9_exits_after_the_merge_compare_and_record_nothing(tmp_path: Path) -> None:  # PRP-AC12 (PRP-B9), task AC 3
+def test_9_exits_after_the_merge_compare_and_record_nothing(tmp_path: Path) -> None:  # PRP-AC7, PRP-AC12 (PRP-B9), task AC 3
     runs = Runs(tmp_path)
     ten_before(runs)
     runs.window(range(1, 10), NEW, 3.0)
@@ -175,7 +175,7 @@ def test_9_exits_after_the_merge_compare_and_record_nothing(tmp_path: Path) -> N
     assert "regressed_after_release" not in rec and "held_after_release" not in rec
 
 
-def test_10_exits_of_which_4_are_trial_runs_compare_nothing(tmp_path: Path) -> None:  # PRP-AC12 (PRP-B9), task AC 3
+def test_10_exits_of_which_4_are_trial_runs_compare_nothing(tmp_path: Path) -> None:  # PRP-AC7, PRP-AC12 (PRP-B9), task AC 3
     runs = Runs(tmp_path)
     ten_before(runs)
     runs.window(range(1, 7), NEW, 3.0)
@@ -186,7 +186,7 @@ def test_10_exits_of_which_4_are_trial_runs_compare_nothing(tmp_path: Path) -> N
 
 
 def test_dry_runs_child_records_and_other_exit_codes_are_not_real_exits(tmp_path: Path) -> None:
-    # PRP-AC12 (PRP-B9), task AC 3
+    # PRP-AC7, PRP-AC12 (PRP-B9), task AC 3
     runs = Runs(tmp_path)
     ten_before(runs)
     runs.window(range(1, 4), NEW, 3.0, dry_run=True)
@@ -199,7 +199,7 @@ def test_dry_runs_child_records_and_other_exit_codes_are_not_real_exits(tmp_path
     assert due(tmp_path) == []
 
 
-def test_exit_codes_4_and_5_are_final_exits(tmp_path: Path) -> None:  # PRP-AC12 (PRP-B9), task AC 3
+def test_exit_codes_4_and_5_are_final_exits(tmp_path: Path) -> None:  # PRP-AC7, PRP-AC12 (PRP-B9), task AC 3
     runs = Runs(tmp_path)
     for code in (0, 4, 5):
         runs.add(1, NEW, 1.0, exit_code=code)
@@ -207,7 +207,7 @@ def test_exit_codes_4_and_5_are_final_exits(tmp_path: Path) -> None:  # PRP-AC12
 
 
 def test_a_merge_seen_late_compares_the_first_10_exits_after_it(tmp_path: Path) -> None:
-    # PRP-AC12 (PRP-B9), task AC 3
+    # PRP-AC7, PRP-AC12 (PRP-B9), task AC 3
     runs = Runs(tmp_path)
     ten_before(runs, 1.0)
     runs.window(range(1, 11), NEW, 1.05)
@@ -217,7 +217,7 @@ def test_a_merge_seen_late_compares_the_first_10_exits_after_it(tmp_path: Path) 
     assert stored(tmp_path)["held_after_release"]["after"]["cost_per_run"] == 1.05
 
 
-def test_the_exits_before_the_merge_are_the_base_version_only(tmp_path: Path) -> None:  # PRP-AC12 (PRP-B9), task AC 3
+def test_the_exits_before_the_merge_are_the_base_version_only(tmp_path: Path) -> None:  # PRP-AC7, PRP-AC12 (PRP-B9), task AC 3
     runs = Runs(tmp_path)
     ten_before(runs, 1.0)
     runs.window(range(-20, -10), "0.9.0", 50.0)  # an older version: not the base
@@ -236,7 +236,7 @@ class Counting(MemoryCodeHost):
 
 
 def test_a_compared_proposal_is_not_compared_again_and_the_host_is_not_asked_again(tmp_path: Path) -> None:
-    # PRP-AC12 (PRP-B9), task AC 3
+    # PRP-AC7, PRP-AC12 (PRP-B9), task AC 3
     Counting.reopened = 0
     runs = Runs(tmp_path)
     ten_before(runs, 1.0)
@@ -253,7 +253,7 @@ def test_a_compared_proposal_is_not_compared_again_and_the_host_is_not_asked_aga
     assert due(tmp_path, host) == [] and Counting.reopened == 2  # a proposal holding either record is skipped
 
 
-def test_only_merged_proposals_with_a_merge_time_are_compared(tmp_path: Path) -> None:  # PRP-AC12 (PRP-B9), task AC 3
+def test_only_merged_proposals_with_a_merge_time_are_compared(tmp_path: Path) -> None:  # PRP-AC7, PRP-AC12 (PRP-B9), task AC 3
     runs = Runs(tmp_path)
     ten_before(runs)
     runs.window(range(1, 11), NEW, 3.0)
@@ -266,7 +266,7 @@ def test_only_merged_proposals_with_a_merge_time_are_compared(tmp_path: Path) ->
 # -- the reopen (rows 3.4, 3.5) ----------------------------------------------------------------------------------
 
 def test_a_regression_reopens_the_cluster_issues_of_the_pull_requests_repository(tmp_path: Path) -> None:
-    # PRP-AC13 (PRP-B29), task AC 3
+    # PRP-AC7, PRP-AC13 (PRP-B29), task AC 3
     runs = Runs(tmp_path)
     ten_before(runs, 1.0)
     runs.window(range(1, 11), NEW, 1.3)
@@ -277,7 +277,7 @@ def test_a_regression_reopens_the_cluster_issues_of_the_pull_requests_repository
     assert state == {("acme/notes", 12): "open", ("acme/notes", 19): "open", ("other/repo", 3): "closed"}
 
 
-def test_a_held_proposal_reopens_nothing(tmp_path: Path) -> None:  # PRP-AC13 (PRP-B29), task AC 3
+def test_a_held_proposal_reopens_nothing(tmp_path: Path) -> None:  # PRP-AC7, PRP-AC13 (PRP-B29), task AC 3
     runs = Runs(tmp_path)
     ten_before(runs, 1.0)
     runs.window(range(1, 11), NEW, 1.0)
@@ -288,7 +288,7 @@ def test_a_held_proposal_reopens_nothing(tmp_path: Path) -> None:  # PRP-AC13 (P
 
 
 def test_an_unreachable_host_keeps_the_record_and_queues_the_reopen(tmp_path: Path) -> None:
-    # PRP-AC13 (PRP-B29), task AC 3
+    # PRP-AC7, PRP-AC13 (PRP-B29), task AC 3
     runs = Runs(tmp_path)
     ten_before(runs, 1.0)
     runs.window(range(1, 11), NEW, 1.3)
@@ -306,7 +306,7 @@ def test_an_unreachable_host_keeps_the_record_and_queues_the_reopen(tmp_path: Pa
     assert filing.file([], up, filing.Outbox.at(tmp_path)) == []
 
 
-def test_a_reopen_the_host_still_cannot_take_stays_in_the_outbox(tmp_path: Path) -> None:  # PRP-AC13 (PRP-B29), task AC 3
+def test_a_reopen_the_host_still_cannot_take_stays_in_the_outbox(tmp_path: Path) -> None:  # PRP-AC7, PRP-AC13 (PRP-B29), task AC 3
     outbox = filing.Outbox.at(tmp_path)
     outbox.add({"op": "reopen", "repo": "acme/notes", "number": 12})
     assert filing.file([], issues_host(down=True), outbox) == []
@@ -316,7 +316,7 @@ def test_a_reopen_the_host_still_cannot_take_stays_in_the_outbox(tmp_path: Path)
 # -- the ticket (row 3.6) ------------------------------------------------------------------------------------------
 
 def test_a_watch_only_ticket_moves_the_proposal_and_compares_it_in_the_same_ticket(tmp_path: Path) -> None:
-    # PRP-AC10 (PRP-B27), PRP-AC12 (PRP-B9), task AC 3
+    # PRP-AC7, PRP-AC10 (PRP-B27), PRP-AC12 (PRP-B9), task AC 3
     runs = Runs(tmp_path)
     ten_before(runs, 1.0)
     runs.window(range(1, 11), NEW, 1.3)
@@ -335,7 +335,7 @@ def test_a_watch_only_ticket_moves_the_proposal_and_compares_it_in_the_same_tick
 
 
 def test_a_merged_proposal_is_compared_by_a_later_watch_only_ticket(tmp_path: Path) -> None:
-    # PRP-AC12 (PRP-B9), task AC 3
+    # PRP-AC7, PRP-AC12 (PRP-B9), task AC 3
     runs = Runs(tmp_path)
     ten_before(runs, 1.0)
     runs.window(range(1, 11), NEW, 1.0)
@@ -347,7 +347,7 @@ def test_a_merged_proposal_is_compared_by_a_later_watch_only_ticket(tmp_path: Pa
     assert hand(tmp_path) is None  # and now there is nothing left to watch
 
 
-def test_at_autonomy_record_nothing_is_compared(tmp_path: Path) -> None:  # PRP-AC12 (PRP-B9), task AC 3
+def test_at_autonomy_record_nothing_is_compared(tmp_path: Path) -> None:  # PRP-AC7, PRP-AC12 (PRP-B9), task AC 3
     runs = Runs(tmp_path)
     ten_before(runs, 1.0)
     runs.window(range(1, 11), NEW, 1.0)
