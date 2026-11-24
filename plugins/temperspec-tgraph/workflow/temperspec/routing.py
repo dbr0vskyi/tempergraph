@@ -25,7 +25,6 @@ CONTEXT_FILES = ("CLAUDE.md", "AGENTS.md")
 SKIP_DIRS = {".git", ".tempergraph", ".claude", "node_modules", ".venv", "venv", "evals", "fixtures"}
 DEFAULT_SPECS = "docs/specs/"
 BESIDE_SPECS = ("adr", "research", "plans", "tasks")
-MACHINE_RULES = "~/.claude/rules/temperspec/"
 SAFE_REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,200}$")
 URL = re.compile(r"https://\S+/pull/\d+")
 PLAIN_PATH = re.compile(r"^[A-Za-z0-9._/:\\-]+$")
@@ -142,8 +141,9 @@ def specs_folders(workdir: Path) -> list[str]:
 
 
 def rules_held(workdir: Path) -> str | None:
-    """PNR-B3, PNR-B4: where the rule files are, or None when nobody holds them: the repository's own rule folder, else
-    the first folder of the repository that holds every rule file temperspec ships, else the machine's."""
+    """PNR-B3, PNR-B4: where the repository holds the rule files, or None when it holds none: its own rule folder, else
+    the first folder of the repository that holds every rule file temperspec ships. The machine's rule folder does not
+    count: a step session cannot open a file outside its working directory."""
     root = Path(workdir)
     own = REPO_RULES.as_posix() + "/"
     if (root / REPO_RULES).is_dir():
@@ -152,7 +152,7 @@ def rules_held(workdir: Path) -> str | None:
     for path, files in _folders(root):
         if path and wanted <= set(files):
             return path
-    return MACHINE_RULES if (Path.home() / REPO_RULES).is_dir() else None
+    return None
 
 
 def templates_named(workdir: Path) -> bool:
@@ -173,7 +173,7 @@ def context_block(workdir: Path) -> str:
         "  - " + ", ".join(f"{kind} `{path}`" for kind, path in zip(kinds, [folder, *_beside(folder)], strict=True))
         for folder in specs_folders(workdir))
     held = rules_held(workdir) or REPO_RULES.as_posix() + "/"
-    where = f"`{held}`" + (" (installed for the whole machine)" if held == MACHINE_RULES else "")
+    where = f"`{held}`"
     templates = f"; fill-in templates generated from them are in `{specfmt.TEMPLATE_DIR}/`" if templates_named(
         workdir) else ""
     return f"""{specfmt.CONTEXT_START}
@@ -195,8 +195,8 @@ behaviour specs and a plan to tested code.
 
 
 def install_rules(ctx: Any) -> dict[str, str]:
-    """Put the rule files, and the templates generated from their examples, into the repository unless it, or
-    the whole machine, already holds the rule files (PNR-B3); a partial set installs the whole set."""
+    """Put the rule files, and the templates generated from their examples, into the repository unless the repository
+    already holds them (PNR-B3), whether or not the machine holds them (PNR-B7); a partial set installs the whole set."""
     if rules_held(Path(ctx.workdir)) is not None:
         return {}
     target = Path(ctx.workdir) / REPO_RULES
@@ -274,7 +274,8 @@ def write_commands(workdir: Path) -> bool:
 
 
 def prepare(ctx: Any) -> dict[str, str]:
-    """The first unit, with no session: install the rule files unless the repository or the machine holds them, keep
+    """The first unit, with no session: install the rule files unless the repository holds them (the machine's folder
+    does not count), keep
     the temperspec block in the project-context file unless it already says where the specs are, write the commands
     file of a Python repository that has none, commit what changed, and say whether the repository still needs its
     overview and specs."""

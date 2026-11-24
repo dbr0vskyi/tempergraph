@@ -143,11 +143,11 @@ def test_without_rule_files_in_the_repository_the_criterion_is_not_applicable(un
 
 @pytest.mark.parametrize("unit", UNITS)
 def test_the_prompts_tell_the_session_to_open_each_rule_file_with_the_read_tool(unit: str) -> None:
-    # AC 1, SRC-AC4 (SRC-B2)
+    # AC 1, AC 2, SRC-AC4, SRC-AC13 (SRC-B2, SRC-B10)
     text = " ".join((PROMPTS / f"{unit}.md").read_text(encoding="utf-8").split()).lower()
     assert "open each rule file named here that this repository holds with the read tool" in text
-    assert "a rule file installed for the whole machine is already in your instructions" in text
-    assert "outside this working directory: do not open it" in text  # a read there is refused (tool_access)
+    assert "whole machine" not in text and "already in your instructions" not in text  # the rule files are in the repository
+    assert "outside this working directory" not in text
     assert "a search of a rule file is not opening it" in text
     if unit == "discovery_short":
         assert "the rule files do not count in that limit of 10 files" in text
