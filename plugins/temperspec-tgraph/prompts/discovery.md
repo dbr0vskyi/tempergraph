@@ -4,6 +4,7 @@ You are the discovery step of a temperspec run. The triage note lists gaps: conc
 
 Task id: {task_id}
 Triage note: `{triage_note}`
+Conversation value for this run: {settings.conversation}
 
 The task:
 
@@ -20,7 +21,7 @@ The task:
 3. Close each gap with the document its kind asks for:
    - `spec gap`: a new spec, or new behaviours in the spec that owns the capability.
    - `spec update`: an edit to the behaviours and criteria that are wrong or missing, in place.
-   - `decision needed`: a decision record, when the task and the documents give enough to decide. A decision only a person can take is written as an open question in the hand-off, with the options.
+   - `decision needed`: a decision record, when the task and the documents give enough to decide. A decision only a person can take is written as an open question in the hand-off, with the options; when the value is `never`, it is closed on its default instead (see Limits).
    - `research needed`: a research note that answers the unknown from sources it cites.
 4. Write behaviours first, each in the fixed pattern, observable from outside, with no internal name. Then write the acceptance criteria that prove them. Every acceptance criterion of the task that a gap concerns must be provable from the behaviours you wrote.
 5. Check each spec you touched against the specs it links: no behaviour of yours may contradict a behaviour there. If one does, change yours, or change theirs when the task requires it and say so in the hand-off.
@@ -32,7 +33,9 @@ The task:
 - Write specs, decision records, research notes and the hand-off. Do not write code, configuration, tests or a plan.
 - Close the task's gaps and nothing more. Edit a spec only where a behaviour or an acceptance criterion changes; do not touch other specs to tidy them.
 - A spec has at most 400 lines and at most 30 KB (30,720 bytes); the gate fails a spec over either. A spec that would pass either is split by capability before the step ends. A behaviour moved by a split keeps its id: the split-off spec defines the moved ids with the old prefix next to its own, and a criterion of either spec may name ids of both.
-- Never settle by a guess what only a person can decide. If such a question blocks planning, end blocked and state the question with its options.
+- Never settle by a guess what only a person can decide, except as the next two lines say.
+- When the value is `never` (the run is unattended): close each owner decision of the triage note on its default, write the default's behaviour into the spec and leave no open question for it in the spec, and write no decision record for it. For a question only the owner can answer that the triage note does not list, take the option that changes the least of what exists, and list the question in the hand-off's open questions with its options and `Until answered: <option>`. Never end blocked on an owner decision. A task with no acceptance criterion still ends blocked in triage, before this step.
+- When the value is `blocking`: end blocked on a question only a person can answer that blocks planning, and state the question with its options.
 - Do not run git. The engine commits your files when you finish.
 - Read and write inside this working directory only. Use the web only to read a public source a research note cites.
 - Report what you did. Do not say the documents are correct: the gate decides.

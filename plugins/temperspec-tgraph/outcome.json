@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 14,
+  "revision": 15,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -401,6 +401,17 @@
           "verified_by": "check",
           "text": "Every gap row that says `Covered by` names a behaviour id and the id of a criterion that names that behaviour, both of one spec and each defined exactly once",
           "check_method": "Read each `Covered by` mark, then look the two ids up in the specs and read the criterion's brackets",
+          "source": "created",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:triage_check"
+          }
+        },
+        {
+          "id": "ts-tri-owner",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "With the conversation setting `never`, the triage note says for every gap row whether the gap is findable or an owner decision, and its `Owner decisions` section gives each owner decision a question, two to four options, a default that is one of them and what a wrong default costs, or says `None`",
+          "check_method": "When the conversation value is `never`, read the sort at the end of each gap row and each entry of the `Owner decisions` section: its question, its options, its default and its cost",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:triage_check"
@@ -1328,7 +1339,8 @@
     "The code judge's reading budget (one file per 50 changed source lines, a floor of 10 files and a ceiling of 50) is made of first values with no run behind them; the share of code gates whose judge grades an alignment criterion UNVERIFIABLE for files beyond the budget is the measure to tune them by.",
     "The spec budget is fixed at 400 lines and 30,720 bytes for every repository, with no setting; it is measured once, at discovery (ts-dis-budget), while ts-spec-cap at the outcome gate counts lines only.",
     "The code gate cannot see the session's own run of the verification commands through the check preview, so it records n_a for ts-code-previewed, ts-code-session and ts-code-rerun; the package's tests prove them. ts-code-preview is read from the prompt and ts-code-ran from the gate's own command runs.",
-    "No unit criterion serves ts-spec-fresh (OUT-B16), so a failed guard escalates the run at the outcome gate and is not sent back to discovery; a person starts the task again from the head of the base branch."
+    "No unit criterion serves ts-spec-fresh (OUT-B16), so a failed guard escalates the run at the outcome gate and is not sent back to discovery; a person starts the task again from the head of the base branch.",
+    "The triage check reads a missing conversation value as `blocking`: the engine's fixture rung gives a check no settings, so it runs each triage fixture as `blocking`, and the `never` cases of ts-tri-owner are proved by the package's tests."
   ],
   "revisions": [
     {
@@ -1413,6 +1425,12 @@
       "origin": "authored",
       "at": "2026-11-24T04:45:00.000Z",
       "note": "issues 118 and 124: the outcome check fails a spec the run edited when the base branch changed it since the run started (ts-spec-fresh), comparing the spec at the run's base commit with the head of the base branch that the engine gives every check"
+    },
+    {
+      "revision": 15,
+      "origin": "authored",
+      "at": "2026-11-24T06:00:00.000Z",
+      "note": "issue 117: the setting `conversation` (`never` or `blocking`); with `never` the triage note sorts each gap and lists each owner decision with its default, discovery goes on with the default, and the pull request lists the defaults as assumptions to confirm (ts-tri-owner added, spec conversation)"
     }
   ]
 }
