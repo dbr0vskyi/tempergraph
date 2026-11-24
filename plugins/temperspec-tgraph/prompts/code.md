@@ -10,7 +10,7 @@ Plan: `{plan}`
 
 ## Rules to follow
 
-`task-notes.rule.md` (the code report) and `plan.rule.md` are in `.claude/rules/temperspec/` of this repository, or already in your instructions when they are installed for the whole machine.
+`task-notes.rule.md` (the code report) and `plan.rule.md` are in `.claude/rules/temperspec/` of this repository, or already in your instructions when they are installed for the whole machine. Open each rule file named here with the read tool; a search of a rule file is not opening it.
 
 ## Procedure
 

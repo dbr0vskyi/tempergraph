@@ -101,6 +101,127 @@ def _prompt_says(criterion: str) -> list[CheckFinding]:
     return found or [_ok(criterion, ", ".join(f"prompts/{f.name}" for f in files))]
 
 
+# What the session record shows (engine CHK-B22, CHK-B23; package SRC-B1 to SRC-B9). `ctx.session` is the calls the
+# attempt's session made: `{name, capability, target, ok}` each, in order, or None where there is no record. A finding
+# built from it names a rule file, a row, a path or a phase taken from the prompt and the plan, never a call's target.
+RULE_FOLDER = ".claude/rules/temperspec"
+RULE_NAME = re.compile(r"[\w-]+\.rule\.md")
+NO_RECORD = "there is no session record to read (a stand-in executor, the check preview or hidden tool inputs)"
+WRITES = ("edit", "write")
+
+
+def _record(ctx: Any) -> list[dict[str, Any]] | None:
+    """The calls of the attempt's session, or None when there is no record to trust: no `session` on the context, or
+    a read, edit or write call with no target (`observe.tool_inputs = off`) (SRC-B8)."""
+    session = getattr(ctx, "session", None)
+    if session is None:
+        return None
+    calls = [dict(c) for c in session if isinstance(c, dict) or hasattr(c, "keys")]
+    if any(c.get("capability") in ("read", *WRITES) and not c.get("target") for c in calls):
+        return None
+    return calls
+
+
+def _rule_names(unit: str) -> list[str]:
+    """The distinct rule files the unit's prompt names, in order of appearance (exact prompt file, so `discovery`
+    never reads `discovery_short.md`)."""
+    try:
+        text = (PROMPTS / f"{unit}.md").read_text(encoding="utf-8")
+    except OSError:
+        return []
+    return list(dict.fromkeys(RULE_NAME.findall(text)))
+
+
+def _target_is(call: dict[str, Any], name: str) -> bool:
+    return str(call.get("target") or "").replace("\\", "/").rstrip("/").rsplit("/", 1)[-1] == name
+
+
+def _opened(calls: list[dict[str, Any]], name: str) -> bool:
+    """A read call without an error whose target ends in the file's name; a search or a failed read is no opening."""
+    return any(c.get("capability") == "read" and c.get("ok") is True and _target_is(c, name) for c in calls)
+
+
+def _ruleread(ctx: Any, unit: str, criterion: str) -> list[CheckFinding]:
+    """The rule files the unit's prompt names and the repository holds are each opened with the read tool (SRC-B1)."""
+    held = [n for n in _rule_names(unit) if (Path(ctx.workdir) / RULE_FOLDER / n).is_file()]
+    if not held:
+        return [_find("n_a", criterion, message=f"the rule files are not in the repository (`{RULE_FOLDER}/`)")]
+    calls = _record(ctx)
+    if calls is None:
+        return [_find("n_a", criterion, message=NO_RECORD)]
+    found = [_find("fail", criterion, f"{RULE_FOLDER}/{n}", f"the session never opened `{n}` with the read tool",
+                   f"open `{RULE_FOLDER}/{n}` with the read tool, then follow it") for n in held
+             if not _opened(calls, n)]
+    return found or [_ok(criterion, ", ".join(held))]
+
+
+def _norm(path: str) -> str:
+    """A path as the record writes it: posix, no leading `./`."""
+    text = path.replace("\\", "/")
+    while text.startswith("./"):
+        text = text[2:]
+    return text
+
+
+def _phase_label(heading: str) -> str:
+    found = re.match(r"\s*Phase\s+(\d+)", heading, re.I)
+    return f"phase {found.group(1)}" if found else heading[:40]
+
+
+def _test_first(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
+    """ts-code-order: a phase's source files are not changed before its test files are first written (SRC-B6). A file
+    counts for the first phase that names it; a phase is measured only when the record writes a test file of the
+    phase; `docs` and `chore` rows count for no phase; a call that ended with an error is not a change."""
+    if _quick(ctx) is not None:
+        return [_find("n_a", criterion, message="the quick lane has no phases")]
+    calls = _record(ctx)
+    if calls is None:
+        return [_find("n_a", criterion, message=NO_RECORD)]
+    owner: dict[str, str] = {}
+    for row in plan.rows:
+        if row.kind in ("test", "code") and row.file:
+            owner.setdefault(_norm(row.file), row.phase)
+    changes = [(i, _norm(str(c.get("target") or ""))) for i, c in enumerate(calls)
+               if c.get("capability") in WRITES and c.get("ok") is True]
+    found: list[CheckFinding] = []
+    for phase in dict.fromkeys(r.phase for r in plan.rows):
+        tests = {_norm(r.file) for r in plan.rows if r.phase == phase and r.kind == "test" and r.file
+                 and owner.get(_norm(r.file)) == phase}
+        source = {_norm(r.file) for r in plan.rows if r.phase == phase and r.kind == "code" and r.file
+                  and owner.get(_norm(r.file)) == phase} - tests
+        written = [i for i, path in changes if path in tests]
+        if written and any(i < min(written) for i, path in changes if path in source):
+            found.append(_find("fail", criterion, _phase_label(phase),
+                               f"{_phase_label(phase)}: a source file of the phase was changed before its test file "
+                               "was first written", "write the phase's tests first, see them fail, then change the "
+                               "source"))
+    return found or [_ok(criterion)]
+
+
+def _opened_rows(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
+    """ts-exp-opened: each task row that names a file that exists in the repository has that file opened with the
+    read tool; two rows that name one unread file are both named (SRC-B5)."""
+    calls = _record(ctx)
+    if calls is None:
+        return [_find("n_a", criterion, message=NO_RECORD)]
+    seen = {_norm(str(c.get("target") or "")) for c in calls if c.get("capability") == "read" and c.get("ok") is True}
+    root = Path(ctx.workdir).resolve()
+    found: list[CheckFinding] = []
+    for row in plan.rows:
+        if not row.file:
+            continue
+        try:
+            target = (root / row.file).resolve()
+            exists = target.is_relative_to(root) and target.is_file()
+        except (OSError, ValueError):
+            exists = False
+        if exists and _norm(row.file) not in seen:
+            found.append(_find("fail", criterion, row.file, f"row `{row.id}` names `{row.file}`, which the session "
+                               "never opened with the read tool", "open the file with the read tool before you "
+                               "write the row"))
+    return found or [_ok(criterion)]
+
+
 def _walk(ctx: Any) -> list[str]:
     """Repository files as posix paths, without the folders no document or test of the task lives in."""
     out: list[str] = []
@@ -368,7 +489,7 @@ def _links(ctx: Any, criterion: str, docs: list[str] | None = None) -> list[Chec
 
 
 def setup_check(ctx: Any) -> Any:
-    """ts-set-form, ts-set-listed, ts-set-links, ts-set-commit."""
+    """ts-set-form, ts-set-listed, ts-set-links, ts-set-ruleread, ts-set-commit."""
     note, note_path = _read(ctx, "setup_note")
     overview, overview_path = _read(ctx, "overview")
     if note is None or overview is None:
@@ -401,6 +522,7 @@ def setup_check(ctx: Any) -> Any:
         found.append(_ok("ts-set-form", overview_path))
     found += listed or [_ok("ts-set-listed", note_path)]
     found += _links(ctx, "ts-set-links", specs)
+    found += _ruleread(ctx, "setup", "ts-set-ruleread")
     found.append(_committed(ctx, "ts-set-commit"))
     return checks.result(found)
 
@@ -410,7 +532,7 @@ def setup_check(ctx: Any) -> Any:
 
 
 def triage_check(ctx: Any) -> Any:
-    """ts-tri-form, ts-tri-route, ts-tri-commit."""
+    """ts-tri-form, ts-tri-route, ts-tri-covered, ts-tri-ruleread, ts-tri-commit."""
     text, path = _read(ctx, "triage_note")
     if text is None:
         return checks.result([_find("fail", "ts-tri-form", path, "the triage note cannot be read",
@@ -452,6 +574,7 @@ def triage_check(ctx: Any) -> Any:
     found += [_find("fail", "ts-tri-route", path, b, "make the route follow the gap list") for b in bad] or [
         _ok("ts-tri-route", path)]
     found += _covered(ctx, note, path)
+    found += _ruleread(ctx, "triage", "ts-tri-ruleread")
     found.append(_committed(ctx, "ts-tri-commit"))
     return checks.result(found)
 
@@ -511,7 +634,7 @@ def _names(ctx: Any, criterion: str) -> list[CheckFinding]:
 
 def discovery_check(ctx: Any) -> Any:
     """ts-dis-form, ts-dis-budget, ts-dis-over, ts-dis-names, ts-dis-links, ts-dis-reading, ts-dis-narrow,
-    ts-dis-commit."""
+    ts-dis-ruleread, ts-dis-commit."""
     text, path = _read(ctx, "handoff")
     if text is None:
         return checks.result([_find("fail", "ts-dis-form", path, "the hand-off cannot be read",
@@ -523,6 +646,7 @@ def discovery_check(ctx: Any) -> Any:
     found += _links(ctx, "ts-dis-links")
     found += _reading(ctx, text, path)
     found += _prompt_says("ts-dis-narrow")
+    found += _ruleread(ctx, "discovery", "ts-dis-ruleread")
     found.append(_committed(ctx, "ts-dis-commit"))
     return _result(ctx, found)
 
@@ -533,7 +657,8 @@ NOT_COVERED = re.compile(r"\bnot covered\b", re.I)
 
 
 def discovery_short_check(ctx: Any) -> Any:
-    """ts-dsh-form, ts-dsh-cited, ts-dsh-only, ts-dsh-settled, ts-dsh-reading, ts-dsh-limit, ts-dsh-commit.
+    """ts-dsh-form, ts-dsh-cited, ts-dsh-only, ts-dsh-settled, ts-dsh-reading, ts-dsh-limit, ts-dsh-ruleread,
+    ts-dsh-commit.
 
     The short visit confirms what triage cited and designs nothing: its hand-off names every cited behaviour,
     lists no changed document, says `Not covered` for a gap the citation does not answer, and its `settled` value
@@ -583,6 +708,7 @@ def discovery_short_check(ctx: Any) -> Any:
                 f"of {SHORT_READING_MAX}", "keep the files the plan needs; a task that needs more is not short")]
         found += reading
     found += _prompt_says("ts-dsh-limit")
+    found += _ruleread(ctx, "discovery_short", "ts-dsh-ruleread")
     found.append(_committed(ctx, "ts-dsh-commit"))
     return _result(ctx, found)
 
@@ -685,7 +811,8 @@ def _reading_bytes(ctx: Any, plan: fmt.Plan) -> int:
 
 
 def plan_check(ctx: Any) -> Any:
-    """ts-plan-form, ts-plan-trace, ts-plan-links, ts-plan-size, ts-plan-scope, ts-plan-reading, ts-plan-commit."""
+    """ts-plan-form, ts-plan-trace, ts-plan-links, ts-plan-size, ts-plan-scope, ts-plan-reading, ts-plan-ruleread,
+    ts-plan-commit."""
     text, path = _read(ctx, "plan")
     if text is None:
         return checks.result([_find("fail", "ts-plan-form", path, "the plan cannot be read",
@@ -741,12 +868,14 @@ def plan_check(ctx: Any) -> Any:
         _ok("ts-plan-size", path)]
     found += _scope(plan, "ts-plan-scope", path)
     found += _prompt_says("ts-plan-reading")
+    found += _ruleread(ctx, "plan", "ts-plan-ruleread")
     found.append(_committed(ctx, "ts-plan-commit"))
     return _result(ctx, found, plan)
 
 
 def expand_check(ctx: Any) -> Any:
-    """ts-exp-rows, ts-exp-tests, ts-exp-links, ts-exp-commands, ts-exp-scope, ts-exp-commit."""
+    """ts-exp-rows, ts-exp-tests, ts-exp-links, ts-exp-commands, ts-exp-scope, ts-exp-ruleread, ts-exp-opened,
+    ts-exp-commit."""
     text, path = _read(ctx, "phases")
     if text is None:
         return checks.result([_find("fail", "ts-exp-rows", path, "the expanded plan cannot be read",
@@ -771,6 +900,8 @@ def expand_check(ctx: Any) -> Any:
     found += _links_of(plan, "ts-exp-links", path)
     found += _commands(ctx, plan, "ts-exp-commands") or [_ok("ts-exp-commands", path)]
     found += _scope(plan, "ts-exp-scope", path)
+    found += _ruleread(ctx, "expand", "ts-exp-ruleread")
+    found += _opened_rows(ctx, plan, "ts-exp-opened")
     found.append(_committed(ctx, "ts-exp-commit"))
     return checks.result(found)
 
@@ -987,7 +1118,8 @@ def _reuse(ctx: Any, criterion: str) -> CheckFinding:
 def code_check(ctx: Any) -> Any:
     """ts-code-rows, ts-code-changed, ts-code-verify, ts-code-reuse, ts-code-proof, ts-code-lane, ts-code-once,
     ts-code-commit, ts-code-base, ts-code-touch, ts-code-passes, ts-code-nobase, ts-code-mixed, ts-code-evidence,
-    ts-code-spend, ts-code-preview, ts-code-previewed, ts-code-session, ts-code-rerun, ts-code-ran.
+    ts-code-spend, ts-code-preview, ts-code-previewed, ts-code-session, ts-code-rerun, ts-code-ran,
+    ts-code-ruleread, ts-code-order.
 
     The marks come first: a plan with a row not marked completed goes back to the code step at once, with no
     command run. Marks are claims, so a marked plan is then verified as before, and each marked row's file must
@@ -1037,10 +1169,12 @@ def code_check(ctx: Any) -> Any:
     reading = _reading_lines(ctx)  # its git run is reused on an unchanged tree, and counted by the line below
     found.append(_reuse(ctx, "ts-code-reuse"))
     proof, links = _proof(ctx, plan, "ts-code-proof")
+    found += _test_first(ctx, plan, "ts-code-order")
     found += proof + _lane(ctx, "ts-code-lane") + _prompt_says("ts-code-once") + _prompt_says("ts-code-preview")
     found.append(_evidence(lines, "ts-code-ran"))
     found += [_find("n_a", cid, message="the session's own run is not visible to the gate; the package's tests "
                     "prove it") for cid in ("ts-code-previewed", "ts-code-session", "ts-code-rerun")]
+    found += _ruleread(ctx, "code", "ts-code-ruleread")
     if not ctx.preview:
         found.append(_committed(ctx, "ts-code-commit"))
     if any(f.status == "fail" and not isinstance(f, _Environmental) for f in found):

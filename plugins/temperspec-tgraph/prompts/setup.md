@@ -6,7 +6,7 @@ Task id: {task_id}
 
 ## Rules to follow
 
-`spec.rule.md`, `task-notes.rule.md` (the setup note) and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or already in your instructions when they are installed for the whole machine. Read the spec rule before you write. This prompt does not repeat the formats.
+`spec.rule.md`, `task-notes.rule.md` (the setup note) and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or already in your instructions when they are installed for the whole machine. Open each rule file named here with the read tool; a search of a rule file is not opening it. Read the spec rule before you write. This prompt does not repeat the formats.
 
 ## Procedure
 

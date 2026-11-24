@@ -7,12 +7,12 @@ Plan: `{plan}`
 
 ## Rules to follow
 
-`plan.rule.md` is in `.claude/rules/temperspec/` of this repository, or already in your instructions when it is installed for the whole machine. The row format, the test-first order and the form of verification commands are there.
+`plan.rule.md` is in `.claude/rules/temperspec/` of this repository, or already in your instructions when it is installed for the whole machine. Open each rule file named here with the read tool; a search of a rule file is not opening it. The row format, the test-first order and the form of verification commands are there.
 
 ## Procedure
 
 1. Read the plan, then the specs its front matter names.
-2. For each phase, read the code the phase touches, by path, until you can name exact files.
+2. For each phase, read the code the phase touches, by path, until you can name exact files. Open each file a task row names with the read tool before you write that row; a search of the file is not opening it.
 3. Write the phase's task table, one edit per phase, each under about 12 KB. One row is one logical change in one exact file, and names in its Req cell the requirements it serves; every requirement gets a row, and every document under Docs to update gets a `docs` row. A test row comes before the code row it covers and names the acceptance criterion it proves. Before a row that changes a type or a signature, search the tests for code that pins it and give each such test a row. Leave every Completed cell empty.
 4. Check the verification commands: each is a single plain command the repository documents. Correct or add commands so that the tests, the lint and the types of the changed code are covered.
 5. Write the proof table under the commands: one row for each acceptance criterion of the triage note, with the test file of the test row that proves it and the listed command that runs that test. What "done" means is fixed here, before any code exists.

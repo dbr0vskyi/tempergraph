@@ -11,7 +11,7 @@ The task:
 
 ## Rules to follow
 
-`task-notes.rule.md` and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or already in your instructions when they are installed for the whole machine. Read the hand-off part of `task-notes.rule.md` before you write it. This prompt does not repeat the format.
+`task-notes.rule.md` and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or already in your instructions when they are installed for the whole machine. Open each rule file named here with the read tool; a search of a rule file is not opening it. The rule files do not count in that limit of 10 files, which step 2 sets. Read the hand-off part of `task-notes.rule.md` before you write it. This prompt does not repeat the format.
 
 ## Procedure
 

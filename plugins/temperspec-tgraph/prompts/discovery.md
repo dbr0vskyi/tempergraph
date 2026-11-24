@@ -11,7 +11,7 @@ The task:
 
 ## Rules to follow
 
-`spec.rule.md`, `decision.rule.md`, `research.rule.md`, `task-notes.rule.md` and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or already in your instructions when they are installed for the whole machine. Read the rule of a document type before you write a document of that type. This prompt does not repeat the formats.
+`spec.rule.md`, `decision.rule.md`, `research.rule.md`, `task-notes.rule.md` and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or already in your instructions when they are installed for the whole machine. Open each rule file named here with the read tool; a search of a rule file is not opening it. Read the rule of a document type before you write a document of that type. This prompt does not repeat the formats.
 
 ## Procedure
 

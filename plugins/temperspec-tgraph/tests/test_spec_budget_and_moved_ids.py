@@ -272,11 +272,41 @@ def _criteria() -> dict[str, tuple[str, dict[str, Any]]]:
 
 def test_the_criteria_file_has_the_revision_entries_for_the_change() -> None:  # AC 1, AC 2, AC 5, ts-code-ran, ts-dis-budget, ts-spec-moved
     o = json.loads((ROOT / "outcome.json").read_text(encoding="utf-8"))
-    for issue in ("issue 114", "issue 126"):
+    for issue in ("issue 114", "issue 126", "issue 129"):
         entry = next(r for r in o["revisions"] if issue in r.get("note", ""))
-        assert entry["revision"] >= 8, issue
-    assert o["revision"] == o["revisions"][-1]["revision"]
+        assert entry["revision"] >= (13 if issue == "issue 129" else 8), issue
+    assert o["revision"] >= 13 and o["revision"] == o["revisions"][-1]["revision"]
     assert any("30,720" in a and "ts-spec-cap" in a for a in o["assumptions"])
+
+
+@pytest.mark.parametrize("cid, unit, verifier", [
+    ("ts-set-ruleread", "setup", "setup_check"), ("ts-tri-ruleread", "triage", "triage_check"),
+    ("ts-dsh-ruleread", "discovery_short", "discovery_short_check"),
+    ("ts-dis-ruleread", "discovery", "discovery_check"), ("ts-plan-ruleread", "plan", "plan_check"),
+    ("ts-exp-ruleread", "expand", "expand_check"), ("ts-code-ruleread", "code", "code_check"),
+])
+def test_each_rule_file_criterion_is_a_blocker_checked_by_its_gate_and_names_its_rule_files(
+        cid: str, unit: str, verifier: str) -> None:  # AC 1, SRC-B1
+    where, row = _criteria()[cid]
+    assert where == unit and row["severity"] == "blocker" and row["verified_by"] == "check"
+    assert row["verifier"]["check"] == f"tgwf_temperspec.checks:{verifier}"
+    names = checks._rule_names(unit)
+    assert names and all(n in row["text"] for n in names)
+
+
+@pytest.mark.parametrize("cid, unit, verifier, words", [
+    ("ts-exp-opened", "expand", "expand_check", ("task row", "file", "opened")),
+    ("ts-code-order", "code", "code_check", ("phase", "source", "test files", "first written")),
+])
+def test_the_expand_and_test_first_criteria_are_blockers_checked_by_their_gate(
+        cid: str, unit: str, verifier: str, words: tuple[str, ...]) -> None:  # AC 3, AC 4, SRC-B5, SRC-B6
+    where, row = _criteria()[cid]
+    assert where == unit and row["severity"] == "blocker" and row["verified_by"] == "check"
+    assert row["verifier"]["check"] == f"tgwf_temperspec.checks:{verifier}"
+    assert all(w in row["text"] for w in words)
+    o = json.loads((ROOT / "outcome.json").read_text(encoding="utf-8"))
+    note = o["revisions"][-1]["note"]
+    assert "ts-exp-opened" in note and "ts-code-order" in note
 
 
 @pytest.mark.parametrize("cid", ["ts-code-once", "ts-code-preview", "ts-code-previewed", "ts-code-session",

@@ -69,6 +69,7 @@ from tempergraph.run.judging import (
     render_judge,
 )
 from tempergraph.run.log import CostTotals, RunLog, cost_so_far, estimate, session_sink
+from tempergraph.run.session_record import read_session
 from tempergraph.security.scrub import clip, scrub
 from tempergraph.settings import Capture
 from tempergraph.store.layout import session_dir, session_key
@@ -609,7 +610,7 @@ class EngineNodes:
                          "evidence": str(prior.get("evidence") or "")} \
             if isinstance(prior, Mapping) and prior.get("result") == "FAIL" and not prior.get("environmental") else None
         record = {
-            "item": iid, "prior_failing": prior_failing,
+            "item": iid, "prior_failing": prior_failing, "session_key": key,  # the check reads this session's journal (CHK-B22)
             "attempt": attempt, "visit": visit, "ok": res.ok, "text": clip(scrub(res.text), 8000), "blocked": parsed.blocked, "upstream": parsed.upstream,
             "issues": parsed.issues, "infra_cause": str(res.infra_cause) if res.infra_cause else None,
             "infra_spent": res.infra_cause is not None, "timed_out": res.timed_out, "stalled": res.stalled,
@@ -1475,6 +1476,10 @@ class EngineNodes:
                ) -> tuple[CheckResult, list[str]]:
         u = self.ctx.spec.units[unit]
         ctx = self._check_context(unit, state, att, workdir)
+        skey = att.get("session_key")
+        if isinstance(skey, str) and skey.rsplit(".", 1)[-1] in ("step", "retry"):  # CHK-B22: no other check has a record
+            calls = read_session(session_dir(self.ctx.state_root, self.ctx.spec.name, self.ctx.task_id, skey))
+            ctx.session = None if calls is None else tuple(calls)
         got = run_in_worker(u.gate, ctx)
         if not self.ctx.capture.check_output and ctx.out_dir is not None:  # `observe.check_output = off`
             for f in ctx.out_dir.glob("*.out"):
