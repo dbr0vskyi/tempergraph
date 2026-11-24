@@ -22,7 +22,8 @@ SPEC = load_package(ROOT).spec
 checks = importlib.import_module("tgwf_temperspec.checks")
 
 SOURCE_LINE = "Changed source files"  # the evidence line that lists the changed source files
-UNITS = ("setup", "triage", "discovery_short", "discovery", "plan", "expand", "code")
+# AC 3, JRD-AC6, JRD-AC7: the judges of the two reading units join the seven step judges
+UNITS = ("setup", "triage", "discovery_short", "read_gap", "read_component", "discovery", "plan", "expand", "code")
 
 
 def _git(cwd: Path, *args: str) -> str:

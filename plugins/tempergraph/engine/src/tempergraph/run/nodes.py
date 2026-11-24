@@ -1078,7 +1078,32 @@ class EngineNodes:
                     held = self.ctx.spec.units.get(owner)
                     if held is not None and held.kind == "subworkflow":  # SWF-B12: `{<unit>.<key>}`
                         out.update({f"{owner}.{k}": str(v) for k, v in vals.items()})
+        out.update(self._map_lines(unit, state))
         return out
+
+    def _map_lines(self, unit: str, state: Mapping[str, Any]) -> dict[str, str]:
+        """VAL-B9: a key the step of a map before this unit produces renders one line `<item id>: <value>` for each
+        item of the map's list that holds it, in list order, and `none` when no item does. An item's own template
+        keeps the plain key."""
+        order = list(self.ctx.spec.order)
+        if unit not in order:
+            return {}
+        lines: dict[str, str] = {}
+        for owner in order[: order.index(unit)]:
+            held = self.ctx.spec.units.get(owner)
+            if held is None or held.map is None or held.step is None:
+                continue
+            items = [str(it["id"]) for it in ((state.get("maps") or {}).get(owner) or {}).get("items") or []]
+            for key in held.step.produces:
+                found: list[str] = []
+                for item in items:
+                    for chan in ("artifacts", "values"):
+                        got = ((state.get(chan) or {}).get(owner) or {}).get(f"{key}[{item}]")
+                        if got is not None:
+                            found.append(f"{item}: {got}")
+                            break
+                lines[key] = "\n".join(found) or "none"
+        return lines
 
     # -- script units (SCR) ------------------------------------------------------------------------
 

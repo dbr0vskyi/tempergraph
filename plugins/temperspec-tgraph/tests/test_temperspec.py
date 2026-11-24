@@ -301,27 +301,27 @@ def _view(**values: str) -> Any:
     return SimpleNamespace(values=values)
 
 
-def test_routes_follow_the_values() -> None:
+def test_routes_follow_the_values() -> None:  # AC 4, PRL-AC1: the full discovery is entered at `read_gap`
     assert routing.route_triage(_view(route="plan")) == "plan"
-    assert routing.route_triage(_view(route="discovery")) == "discovery"
+    assert routing.route_triage(_view(route="discovery")) == "read_gap"
     assert routing.route_triage(_view(route="quick")) == "code"
-    assert routing.route_triage(_view()) == "discovery"  # an unreadable route takes the longer path
+    assert routing.route_triage(_view()) == "read_gap"  # an unreadable route takes the longer path
     assert routing.route_triage(_view(route="discovery", covered="yes")) == "discovery_short"
-    assert routing.route_triage(_view(route="discovery", covered="no")) == "discovery"
-    assert routing.route_triage(_view(route="discovery-only", covered="yes")) == "discovery"  # docs are the goal
+    assert routing.route_triage(_view(route="discovery", covered="no")) == "read_gap"
+    assert routing.route_triage(_view(route="discovery-only", covered="yes")) == "read_gap"  # docs are the goal
     assert routing.route_short(_view(settled="yes")) == "plan"
-    assert routing.route_short(_view(settled="no")) == "discovery"
-    assert routing.route_short(_view()) == "discovery"
+    assert routing.route_short(_view(settled="no")) == "read_gap"
+    assert routing.route_short(_view()) == "read_gap"
     assert routing.route_discovery(_view(route="discovery-only")) == "finalizer"
     assert routing.route_discovery(_view(route="discovery")) == "plan"
     assert routing.route_plan(_view(complexity="complex")) == "expand"
     assert routing.route_plan(_view(complexity="simple")) == "code"
 
 
-def test_setup_runs_only_for_a_repository_with_no_overview_spec() -> None:
-    assert routing.route_setup(SimpleNamespace(artifact_keys=("setup_needed",))) == "setup"
+def test_setup_runs_only_for_a_repository_with_no_overview_spec() -> None:  # AC 2, PRL-AC5
+    assert routing.route_setup(SimpleNamespace(artifact_keys=("setup_needed",))) == "list_components"
     assert routing.route_setup(SimpleNamespace(artifact_keys=("setup_ready",))) == "triage"
-    assert SPEC.order[:4] == ("prepare", "setup_route", "setup", "triage")
+    assert SPEC.order[:6] == ("prepare", "setup_route", "list_components", "read_component", "setup", "triage")
 
 
 def _git(cwd: Path, *args: str) -> str:

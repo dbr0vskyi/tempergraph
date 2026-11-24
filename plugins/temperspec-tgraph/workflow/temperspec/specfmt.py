@@ -267,6 +267,12 @@ def _field(lines: list[str], name: str) -> str:
     return ""
 
 
+def gap_rows(text: str) -> list[str]:
+    """The lines of a triage note's Gaps section that open a gap row, unchanged and in order."""
+    low = {k.lower(): v for k, v in sections(text).items()}
+    return [ln for ln in low.get("gaps", []) if GAP_ROW.match(ln)]
+
+
 def parse_triage(text: str) -> Triage:
     sec = sections(text)
     low = {k.lower(): v for k, v in sec.items()}

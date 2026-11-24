@@ -358,6 +358,30 @@
       ],
       "consequence": "Until rung 8 has run and the outcome judge is accepted, a contradiction between specs can pass the outcome gate on the judge's word alone; ts-dis-links (one definition per id) and ts-code-related (judged at the code gate) are the earlier lines of defence.",
       "decided_by": "agent, on the owner's approval of the blueprint and outcome on 2026-11-21; to be confirmed by the owner"
+    },
+    {
+      "id": "d2",
+      "phase": 4,
+      "subject": "read_gap and read_component",
+      "choice": "Each reading gate (read_gap and read_component) keeps one judge, because the engine asks every model step for one and a gate holds one (spec parallel-reading, PRL-B13 and PRL-B14); the judges of the gates of the seven steps are unchanged.",
+      "alternatives": [
+        "An engine capability that lets a read-only step go without a judge",
+        "A panel of judges for one gate"
+      ],
+      "consequence": "A visit with N reading sessions holds N more judge sessions, run beside their items; the open question about the judges of one gate stays open in the spec.",
+      "decided_by": "agent, on the task's acceptance criterion 3; to be confirmed by the owner"
+    },
+    {
+      "id": "d3",
+      "phase": 4,
+      "subject": "ts-accepted",
+      "choice": "Accept ts-accepted as judged at the outcome gate, with no deterministic check serving it on the two reading units (read_gap and read_component): each has one judge and no check, as the engine asks of a model step and as spec parallel-reading says; their criteria serve it at uncalibrated trust until their judge seeds are graded by a signed-in judge (author verify rung 8).",
+      "alternatives": [
+        "A check on each reading gate that serves ts-accepted, which could only count the characters of a findings line",
+        "No judge on the reading gates, which needs an engine capability the engine does not have"
+      ],
+      "consequence": "Until rung 8 has run, the findings of a reading session are graded on the judge's word alone; the writing session confirms each finding in the file it names before a document rests on it, and its own check and judge come after.",
+      "decided_by": "agent, on the task's acceptance criterion 5; to be confirmed by the owner"
     }
   ],
   "blueprint_digest": "f3cfde244d99f7aed0e6208d70084b9e6124a4ac60c072c79fc66ff67cb91322",

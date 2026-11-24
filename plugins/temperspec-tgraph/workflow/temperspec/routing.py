@@ -3,6 +3,7 @@ context: no model, no request text."""
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shutil
@@ -46,23 +47,70 @@ PLAIN_PATH = re.compile(r"^[A-Za-z0-9._/:\\-]+$")
 
 
 def route_setup(view: Any) -> str:
-    """A repository with no overview spec is set up first; every other run starts at triage."""
-    return "setup" if "setup_needed" in view.artifact_keys else "triage"
+    """A repository with no overview spec is set up first, and its setup starts with `list_components`, which lists
+    the folders the reading sessions read before `setup` writes the specs; every other run starts at triage."""
+    return "list_components" if "setup_needed" in view.artifact_keys else "triage"
 
 
 def route_triage(view: Any) -> str:
     """A quick task goes straight to code; no gap goes to the plan; a task whose every gap a spec answers takes the
-    short visit; any other gap, and a docs-only task, goes to the full discovery."""
+    short visit; any other gap, and a docs-only task, goes to the full discovery, whose entry is `read_gap`: it
+    reads one gap at a time and is skipped, with no item, for a note of fewer than two gaps."""
     route = view.values.get("route")
     if route == "discovery" and view.values.get("covered") == "yes":
         return "discovery_short"
-    return {"quick": "code", "plan": "plan"}.get(route, "discovery")
+    return {"quick": "code", "plan": "plan"}.get(route, "read_gap")
 
 
 def route_short(view: Any) -> str:
     """A short visit that confirmed every gap goes to the plan; one that found a gap not answered hands it to the
-    full discovery. An unreadable value takes the longer path."""
-    return "plan" if view.values.get("settled") == "yes" else "discovery"
+    full discovery, whose entry is `read_gap` (skipped with no item for fewer than two gaps). An unreadable value
+    takes the longer path."""
+    return "plan" if view.values.get("settled") == "yes" else "read_gap"
+
+
+def gap_items(ctx: Any) -> list[dict[str, str]]:
+    """The items of `read_gap`: one for each gap row of the triage note, with the id `G<n>` of its first number
+    and the row as its text, in the order of the rows. A later row with a number already seen is dropped. Fewer
+    than two rows give no item, so no reading session starts (PRL-B2)."""
+    rows = specfmt.gap_rows(Path(ctx.artifact).read_text(encoding="utf-8", errors="replace"))
+    items: dict[str, str] = {}
+    for row in rows:
+        number = re.search(r"G\d+", row)
+        if number is not None and number.group(0) not in items:
+            items[number.group(0)] = row.strip()
+    return [{"id": gid, "text": text} for gid, text in items.items()] if len(items) >= 2 else []
+
+
+NOT_COMPONENTS = {"node_modules", ".venv", "venv", "vendor", "dist", "build", "target", "out", "__pycache__", "docs"}
+COMPONENT_LIST = Path(".tempergraph") / "component_list.json"
+
+
+def list_components(ctx: Any) -> dict[str, str]:
+    """The script unit before `read_component`: the top-level folders of the repository that are not hidden, not
+    a dependency, build-output or documentation folder, as the list the map reads, in alphabetical order. Fewer
+    than two folders give an empty list, so no reading session starts (PRL-B4, PRL-B5)."""
+    workdir = Path(ctx.workdir)
+    names = sorted(p.name for p in workdir.iterdir()
+                   if p.is_dir() and not p.name.startswith(".") and p.name not in NOT_COMPONENTS)
+    items: list[dict[str, str]] = []
+    used: set[str] = set()
+    for name in names if len(names) >= 2 else []:
+        base = re.sub(r"[^A-Za-z0-9_-]", "-", name)[:40]
+        if not base[:1].isalnum():
+            base = ("d" + base)[:40]
+        gid, n = base, 1
+        while gid in used:
+            n += 1
+            tail = f"-{n}"
+            gid = base[: 40 - len(tail)] + tail
+        used.add(gid)
+        items.append({"id": gid, "text": name})
+    target = workdir / COMPONENT_LIST
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(items, indent=2) + "\n", encoding="utf-8")
+    (target.parent / ".gitignore").write_text("*\n", encoding="utf-8")  # commit_step excludes the folder as well
+    return {"component_list": COMPONENT_LIST.as_posix()}
 
 
 def route_discovery(view: Any) -> str:
