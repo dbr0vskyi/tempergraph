@@ -385,7 +385,7 @@ def test_a_saturated_signal_does_not_block_another_signal_on_the_session(tmp_pat
 # -- SRV-B6, AC-3: the citation check ------------------------------------------------------------------------
 
 
-def test_an_uncheckable_claim_counts_for_nothing() -> None:  # SRV-B6, AC-3
+def test_an_uncheckable_claim_counts_for_nothing() -> None:  # SRV-AC3 (SRV-B6, SRV-B19, SRV-B20)
     step = {"kind": "step", "repeats": []}
     thrash = {"category": "tool_thrash", "turns": [12, 13, 14], "remedy_class": "prompt"}
     assert review.check(thrash, step, range(1, 20)) == "unsupported"
@@ -398,6 +398,12 @@ def test_an_uncheckable_claim_counts_for_nothing() -> None:  # SRV-B6, AC-3
     assert review.check({"category": "judge_unread", "turns": [1], "remedy_class": "brief"}, jd, [1]) == "kept"
     assert review.check({"category": "judge_unread", "turns": [1], "remedy_class": "prompt"}, jd, [1]) \
         == "unsupported"  # producer side on a judge
+    # the producer and grader split for the categories this change moves
+    assert review.check({"category": "judge_unread", "turns": [1], "remedy_class": "judge_model"}, jd, [1]) == "kept"
+    assert review.check({"category": "judge_shallow", "turns": [1], "remedy_class": "brief"}, step, [1]) \
+        == "unsupported"  # a grader class on a step session
+    assert review.check({**thrash, "remedy_class": "judge_model"}, rep, range(1, 20)) \
+        == "unsupported"  # a grader class on a producer category
 
 
 def test_the_citation_check_keeps_a_judge_that_read_little() -> None:  # SRV-AC12 (AC 1, AC 2, AC 3)
