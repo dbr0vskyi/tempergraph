@@ -9,7 +9,7 @@
       {
         "rule": "dir-change-in-commands",
         "unit": "code",
-        "reason": "The code step runs a repository's verification commands as its instructions write them, and `cd <folder> && <command>` is the one chain the workflow resolves (overview spec, constraints)."
+        "reason": "The code step runs a repository's verification commands as its instructions write them, and `cd <folder> && <command>` is the one chain the workflow resolves (RCM-B1 of docs/specs/repository-commands.spec.md)."
       }
     ]
   }

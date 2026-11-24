@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 17,
+  "revision": 18,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -1527,7 +1527,7 @@
     "No step or judge uses the large model tier.",
     "Whether the code agrees with the specs by meaning is judged once, at the code gate (ts-code-aligned, ts-code-related), not again at the outcome gate.",
     "The release step and a work-tracker start are left out of the first version.",
-    "Verification commands resolve against one fixed list (pytest, ruff, mypy and read-only git) because release 1 of the engine reads no per-repository command resolver; a repository with another toolchain adds its prefixes to the workflow's list.",
+    "Verification commands come from the repository's `tempergraph.commands.json` through the engine's `@repository` entry, with read-only git always allowed; prepare writes the Python commands there for a Python repository that has none.",
     "The outcome gate reports whether the run's branch is pushed and never grades it: the last stage pushes after the gate, and a branch an earlier run pushed is already pushed at the gate, so no gate fails a run for the push.",
     "Specs written by the setup step describe behaviour that exists already, so the outcome gate does not ask for a test that names each of their acceptance criteria; a task that later touches such a behaviour adds the id to its test.",
     "Repository setup is a conditional first step of this workflow because release 1 of the engine has no sub-workflows; it moves into one when the engine has them.",
@@ -1641,6 +1641,12 @@
       "origin": "authored",
       "at": "2026-11-24T12:00:00.000Z",
       "note": "issue 75: the full discovery step starts one read-only reading session for each gap of two or more, three at a time, before its one writing session (read_gap with ts-rdg-answers and ts-rdg-cited, spec parallel-reading); the setup survey does the same for each component folder (list_components, read_component with ts-rdc-answers and ts-rdc-cited)"
+    },
+    {
+      "revision": 18,
+      "origin": "authored",
+      "at": "2026-11-24T00:00:00.000Z",
+      "note": "the verification-commands assumption rewritten for the repository's commands file"
     }
   ]
 }

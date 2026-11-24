@@ -247,13 +247,41 @@ def write_context(workdir: Path) -> str:
     return target.name
 
 
+COMMANDS_FILE = "tempergraph.commands.json"
+PYTHON_PROJECT_FILES = ("pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", "Pipfile")
+PYTHON_COMMANDS = ["pytest", "python -m pytest", "python3 -m pytest", "ruff check", "ruff format --check", "mypy"]
+
+
+def commands_file_text() -> str:
+    """The text prepare writes as the repository's commands file (RCM-B6): the same bytes in every repository."""
+    return json.dumps({"schema_version": 1, "commands": PYTHON_COMMANDS}, indent=2) + "\n"
+
+
+def is_python(workdir: Path) -> bool:
+    """RCM-B6, RCM-B8: whether a Python project file is in the repository root or in a folder that is not a folder of
+    copies or fixtures."""
+    return any(name in files for _, files in _folders(workdir) for name in PYTHON_PROJECT_FILES)
+
+
+def write_commands(workdir: Path) -> bool:
+    """RCM-B6 to RCM-B8: write the Python commands file at the root of a Python repository that has none; an existing
+    file, valid or not, and a repository that is not Python are left as they are."""
+    target = Path(workdir) / COMMANDS_FILE
+    if target.exists() or target.is_symlink() or not is_python(workdir):
+        return False
+    target.write_text(commands_file_text(), encoding="utf-8")
+    return True
+
+
 def prepare(ctx: Any) -> dict[str, str]:
     """The first unit, with no session: install the rule files unless the repository or the machine holds them, keep
-    the temperspec block in the project-context file unless it already says where the specs are, commit what changed,
-    and say whether the repository still needs its overview and specs."""
+    the temperspec block in the project-context file unless it already says where the specs are, write the commands
+    file of a Python repository that has none, commit what changed, and say whether the repository still needs its
+    overview and specs."""
     workdir = Path(ctx.workdir)
     install_rules(ctx)
     write_context(workdir)
+    write_commands(workdir)
     commit_step(ctx)
     return {"setup_ready": "yes"} if has_overview(workdir) else {"setup_needed": "yes"}
 

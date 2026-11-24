@@ -18,7 +18,7 @@ The task:
 
 1. Read the triage note, then the hand-off if there is one, then every spec they name. Start from the hand-off's reading list: read the files and the line ranges or ids it names, and open another file only for what the list does not answer, saying in section 0 of the plan which extra file you opened and why. Read the decision records and research notes those specs link when the design depends on them.
 2. Stop early when a spec you need is missing, has an open question that the design depends on, or contradicts another spec. Do not plan around it: say that the discovery output is at fault, with the spec and the defect.
-3. Read the code the change touches, by path. Find the repository's own commands for tests, lint and types in its README, its contributor notes or its build files.
+3. Read the code the change touches, by path. Find the repository's own commands for tests, lint and types in its README, its contributor notes or its build files. Each verification command must start with a command the repository declares in `tempergraph.commands.json`, or be read-only `git`; the check refuses any other.
 4. Write the requirements, `R1`, `R2`, …: every numbered acceptance criterion of the triage note is named by at least one requirement, and every requirement follows from a behaviour or a criterion of a spec.
 5. Split the work into phases, each with one goal, and give each phase its weight.
 6. Measure the complexity against the limits in the plan rule and state it in the front matter.

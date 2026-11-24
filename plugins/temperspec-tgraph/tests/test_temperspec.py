@@ -940,6 +940,8 @@ def test_the_plan_check_takes_a_command_run_in_a_folder(command: str, tmp_path: 
     # B31, ts-plan-form, ts-exp-commands
     files = _copy(ROOT / "evals" / "checks" / "plan" / "must-pass" / "2-simple", tmp_path)
     (tmp_path / "sub" / "engine").mkdir(parents=True)
+    (tmp_path / "tempergraph.commands.json").write_text(json.dumps(
+        {"schema_version": 1, "commands": ["python -m pytest", "python3 -m pytest", "ruff check"]}))
     plan = tmp_path / "plan.md"
     plan.write_text(plan.read_text().replace("`git --version`", f"`{command}`"))
     artifacts = {OWNER[f.stem]: {f.stem: f.relative_to(tmp_path).as_posix()} for f in files if f.stem in OWNER}
@@ -948,14 +950,15 @@ def test_the_plan_check_takes_a_command_run_in_a_folder(command: str, tmp_path: 
 
 
 @pytest.mark.parametrize(("command", "said"), [
-    ("cd sub && node test.js", "start the command with a prefix the workflow allows"),
+    ("cd sub && node test.js", "tempergraph.commands.json"),
     ("cd sub && pytest | tee out", "the one chain allowed"),
     ("cd ../elsewhere && pytest", "inside the repository"),
     ("cd sub && git push -u origin main", "only the last stage"),
 ])
 def test_a_refused_command_is_told_how_to_write_it_without_dropping_the_cd(command: str, said: str,
                                                                           tmp_path: Path) -> None:  # B31
-    found = checks._commands(_context("plan", tmp_path, {}), fmt.Plan(commands=[command]), "ts-plan-form")
+    (tmp_path / "tempergraph.commands.json").write_text(json.dumps({"schema_version": 1, "commands": ["pytest"]}))
+    found =checks._commands(_context("plan", tmp_path, {}), fmt.Plan(commands=[command]), "ts-plan-form")
     assert len(found) == 1 and found[0].status == "fail", command
     assert said in found[0].message + " " + found[0].fix, (command, found[0])
     assert "no `&&` chain" not in found[0].fix

@@ -13,6 +13,7 @@ from typing import Any
 
 from tempergraph.api import CheckFinding, checks
 
+from . import routing
 from . import specfmt as fmt
 
 SKIP_DIRS = {".git", ".tempergraph", ".claude", "node_modules", ".venv", "venv", "__pycache__", "evals", "fixtures", "dist",
@@ -365,6 +366,15 @@ def _block_only(ctx: Any, path: str) -> bool:
     return bare(before or "") == bare(now)
 
 
+def _prepared_commands(ctx: Any) -> bool:
+    """Whether the commands file is the one prepare wrote and no step touched: the run's base commit has no such
+    file and it now holds exactly the text prepare writes (RCM-B9). A step's later edit makes it a changed path."""
+    if not ctx.git.base or routing.COMMANDS_FILE not in ctx.git.changed_paths:
+        return False
+    return _at_base(ctx, routing.COMMANDS_FILE) is None and _read_path(
+        ctx, routing.COMMANDS_FILE) == routing.commands_file_text()
+
+
 # The code judge's reading budget (judge-reading spec, JRD-B2): one source file to read for every 50 changed source
 # lines, rounded up, within a floor and a ceiling. First values with no run behind them (outcome.json, assumptions).
 LINES_PER_FILE = 50
@@ -401,6 +411,8 @@ def _reading_lines(ctx: Any) -> list[str]:
     """The evidence lines the code judge reads from: the changed source lines, the reading budget and the changed
     source files, the file with the most changed lines first (JRD-B1, JRD-B2)."""
     sources = [p for p in ctx.git.changed_paths if not p.startswith(".claude/rules/") and not p.endswith(".md")]
+    if _prepared_commands(ctx):
+        sources = [p for p in sources if p != routing.COMMANDS_FILE]
     counts = _source_lines(ctx, sources)
     rule = f"one per {LINES_PER_FILE} lines, floor {READING_FLOOR}, ceiling {READING_CEILING}"
     if counts is None:
@@ -436,11 +448,15 @@ def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
     lines = (head + [*(commands or [])] if lead else [*(commands or []), *head]) + (reading or [])
     changed = [p for p in ctx.git.changed_paths if not p.startswith(".claude/rules/")]
     prepared = [p for p in changed if p in CONTEXT_FILES and _block_only(ctx, p)]
-    changed = [p for p in changed if p not in prepared]
+    commands_file = [routing.COMMANDS_FILE] if _prepared_commands(ctx) else []
+    changed = [p for p in changed if p not in prepared and p not in commands_file]
     if changed:
         lines.append("Changed paths since the run's base: " + ", ".join(changed[:120]))
     if prepared:
         lines.append("Written by prepare (the temperspec block only, no step's change): " + ", ".join(prepared))
+    if commands_file:
+        lines.append("Written by prepare (the repository's commands file, as prepare wrote it, no step's change): "
+                     + routing.COMMANDS_FILE)
     if specs:
         lines.append("Edited specs: " + ", ".join(specs))
         related = _related(ctx, specs, _spec_index(ctx, _walk(ctx)), plan)
@@ -885,17 +901,20 @@ def _commands(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
         reason = "only the last stage pushes or opens a pull request" if bare.startswith(FINAL_ONLY) else getattr(
             ctx.resolve(cmd), "reason", None)
         if reason:
-            found.append(_find("fail", criterion, "3. Verification", f"`{cmd[:80]}` is not allowed: {reason}",
+            said = f"{reason} in {REPO_FILE}" if reason == "not declared" else reason
+            found.append(_find("fail", criterion, "3. Verification", f"`{cmd[:80]}` is not allowed: {said}",
                                COMMAND_FIX.get(reason, COMMAND_FIX[""])))
     return found
 
 
 # What to do about each refusal of the engine's resolver. `cd <folder> && <command>` is allowed as written: the
-# engine runs the command in that folder (CHK-B11), so the fix never tells a session to drop the `cd`.
-ALLOWED_SHAPES = ", ".join(f"`{c}`" for c in ("pytest", "python -m pytest", "python3 -m pytest", "ruff check", "mypy"))
+# engine runs the command in that folder (CHK-B11), so the fix never tells a session to drop the `cd`. The commands
+# a plan may list come from the repository's `tempergraph.commands.json` and read-only git (RCM-B1 to RCM-B3).
+REPO_FILE = "tempergraph.commands.json"
 COMMAND_FIX = {
-    "not declared": f"start the command with a prefix the workflow allows ({ALLOWED_SHAPES}, read-only `git`); "
-                    "`cd <folder> && <command>` runs it in a folder of the repository",
+    "not declared": f"start the command with a command the repository declares in `{REPO_FILE}` (add one there for "
+                    "another toolchain) or with read-only `git`; `cd <folder> && <command>` runs it in a folder of "
+                    "the repository",
     "shell metacharacter": "write one command per bullet, with no pipe, `;`, redirect or second `&&`; "
                            "`cd <folder> && <command>` is the one chain allowed",
     "change of directory outside the repository": "`cd` only to a folder inside the repository, by a relative path",
@@ -1093,8 +1112,9 @@ def _lane(ctx: Any, criterion: str) -> list[CheckFinding]:
         return [_find("n_a", criterion, message="the run is not in the quick lane")]
     fix = ("end the step with `UPSTREAM triage: the task is larger than the quick lane`, so triage plans it")
     described = set(_setup_specs(ctx))
+    prepared = {routing.COMMANDS_FILE} if _prepared_commands(ctx) else set()
     changed = [p for p in ctx.git.changed_paths if not p.startswith(IGNORED_BY_LANE)
-               and p not in ("CLAUDE.md", "AGENTS.md") and p not in described]
+               and p not in ("CLAUDE.md", "AGENTS.md") and p not in described and p not in prepared]
     found = [_find("fail", criterion, p, "the quick lane changed a spec or a decision record", fix)
              for p in changed if p.endswith((".spec.md", ".adr.md"))][:4]
     code = [p for p in changed if not p.endswith(".md") and not _is_test(p)]
