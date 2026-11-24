@@ -210,6 +210,78 @@ def test_the_proposer_works_on_its_own_branch(repo: Path, pkg: Path) -> None:  #
     assert rejected["refusal"] == "judge_not_met"
 
 
+def kept_evidence(root: Path, task: str, rows: list[tuple[str, str, str, str]]) -> None:
+    """A run's local review evidence: (session key, category, check, note) per observation."""
+    from tempergraph.improve import review
+
+    folder = review.review_dir(root, "release-notes", task)
+    folder.mkdir(parents=True, exist_ok=True)
+    for key in sorted({r[0] for r in rows}):
+        obs = [{"category": c, "turns": [2, 3], "remedy_class": "prompt", "confidence": 0.7, "check": k,
+                "corroborated": False, "note": n} for s, c, k, n in rows if s == key]
+        (folder / f"{key}.json").write_text(json.dumps({"schema_version": 1, "session_key": key, "view_chars": 1,
+                                                        "observations": obs, "conformance": [], "none_found": False}))
+
+
+def member_finding(root: Path, task: str, fp: str, **extra: Any) -> None:
+    from tempergraph.improve.record import append_findings
+
+    append_findings(root, "release-notes", task, f"release-notes/{task}", [{
+        "kind": "finding", "thread": f"release-notes/{task}", "workflow": "release-notes", "unit": "draft",
+        "cause": "review_repeat:tool_thrash", "class": "fault", "side": "workflow", "count": 3, "fingerprint": fp,
+        "at": "2026-11-24T00:00:00+00:00", **extra}])
+
+
+def spying_ex(seen: list[str]) -> Any:
+    def step(req: SessionRequest) -> SessionResult:
+        seen.append(req.prompt)
+        (req.workdir / "prompts" / "draft.md").write_text(PROMPT)
+        return answer(f"Changed the template.\nRULE: {RULE}")
+
+    return standin("claude", steps=[step], judges=[answer("```json\n" + json.dumps(
+        {"criteria": [{"n": 1, "status": "MET", "evidence": "diff:1"}, {"n": 2, "status": "MET", "evidence": "rule"}],
+         "gap": False, "confidence": 0.75}) + "\n```", tools=("Read",))])
+
+
+def test_the_proposer_reads_the_kept_observations_of_the_clusters_unit(repo: Path, pkg: Path) -> None:
+    # SRV-AC16 (SRV-B10, PRP-B4)
+    import re
+
+    root = state_root_path(repo)
+    kept_evidence(root, "W-1", [("draft.1.step", "tool_thrash", "kept", "NOTE-ONE repeats make"),
+                                ("plan.1.step", "prompt_misread", "kept", "NOTE-OTHER-UNIT"),
+                                ("draft.2.retry", "instruction_ignored", "unsupported", "NOTE-REJECTED")])
+    kept_evidence(root, "W-2", [("draft.1.step", "tool_thrash", "kept", "NOTE-TWO ignores the error"),
+                                ("draft.1.step", "prompt_misread", "kept", "NOTE-OTHER-CATEGORY")])
+    kept_evidence(root, "W-9", [("draft.1.step", "tool_thrash", "kept", "NOTE-OTHER-RUN")])
+    member_finding(root, "W-1", "fp1")  # a member of the cluster by the run it belongs to
+    member_finding(root, "W-3", "fp2", runs=["W-2", "W-3"])  # a member that names its runs
+    cluster = {**CLUSTER, "cause": "review_repeat:tool_thrash", "threads": ["release-notes/W-1", "release-notes/W-3"],
+               "findings": ["fp1", "fp2"]}
+    seen: list[str] = []
+    rec = prp.propose(root, load(pkg), cluster, spying_ex(seen))
+    assert rec["state"] == "drafted"
+    (prompt,) = seen
+    token = re.search(r"<<([0-9a-f]{16})>>", prompt).group(1)  # type: ignore[union-attr]
+    data = prompt.split(f"<<{token}>>\n")[1].split(f"<</{token}>>")[0]
+    assert all(ln.startswith("^") for ln in data.strip("\n").splitlines())  # datamarked
+    for held in ("NOTE-ONE repeats make", "NOTE-TWO ignores the error", "NOTE-OTHER-CATEGORY"):
+        assert held in data  # every category of the unit, notes included, from both member runs
+    for absent in ("NOTE-OTHER-UNIT", "NOTE-REJECTED", "NOTE-OTHER-RUN"):
+        assert absent not in prompt  # another unit, a rejected observation, a run that is no member
+    assert "never instructs" in prompt
+
+
+def test_a_cluster_with_no_review_evidence_gets_the_prompt_it_got_before(repo: Path, pkg: Path) -> None:
+    # SRV-AC16 (SRV-B10, PRP-B4)
+    root = state_root_path(repo)
+    member_finding(root, "W-5", "fp5")
+    seen: list[str] = []
+    prp.propose(root, load(pkg), {**CLUSTER, "threads": ["release-notes/W-5"], "findings": ["fp5"]}, spying_ex(seen))
+    assert seen == [prp.PROPOSER_BRIEF + "\n\n" + prp._brief({**CLUSTER, "threads": ["release-notes/W-5"],
+                                                             "findings": ["fp5"]})]
+
+
 def test_open_pushes_its_branch_and_opens_a_draft(repo: Path, pkg: Path, tmp_path: Path) -> None:  # PRP-B8
     remote = tmp_path / "remote.git"
     git(tmp_path, "init", "-q", "--bare", str(remote))
