@@ -544,7 +544,7 @@ def test_the_readme_the_module_docstring_and_the_diagram_say_what_the_route_does
 
 
 LINK = re.compile(r"\]\((?P<target>[^)\s]+)\)")
-NEW_UNIT_SPECS = {"code_mode": "10-code_mode.spec.md", "code_join": "11-code_join.spec.md"}
+NEW_UNIT_SPECS = {"code_mode": "13-code_mode.spec.md", "code_join": "14-code_join.spec.md"}
 
 
 def test_every_unit_has_its_numbered_spec_the_overview_names_both_new_ones_and_every_link_resolves() -> None:
