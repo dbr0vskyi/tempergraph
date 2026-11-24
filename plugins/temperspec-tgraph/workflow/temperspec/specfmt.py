@@ -62,7 +62,9 @@ COVERED = re.compile(rf"\b(?i:Covered by)\s+`?({ID}-B\d+)`?\s+and\s+`?({ID}-AC\d
 OWNER_HEADING = "Owner decisions"
 SORT_END = re.compile(r"\b(findable|owner decision)\W*$", re.I)
 GAP_ID = re.compile(r"\bG\d+\b")
-OWNER_ENTRY = re.compile(r"^\s*[-*]\s+\**(G\d+)\**\s*:\s*(.*?)\s*$")
+OWNER_ENTRY = re.compile(r"^\s*(?:[-*]\s+)?\**(G\d+)\**\s*:\s*(.*?)\s*$")
+# An option written on a line of its own under an empty `Options:` (`a) 30 minutes`, `- b) 15 minutes`).
+OWNER_OPTION_LINE = re.compile(r"^\s*(?:[-*]\s+)?\(?([a-z])\)\s+(.+?)\s*$")
 OWNER_ITEM = re.compile(r"^\s*(?:[-*]\s+)?\**(Options|Default|If wrong)\**\s*:\s*(.*?)\s*$", re.I)
 OPTION_LABEL = re.compile(r"(?:(?<=^)|(?<=[\s;,]))([a-z])\)\s+")
 OWNER_OPTIONS = (2, 4)
@@ -284,18 +286,24 @@ def _options(text: str) -> list[tuple[str, str]]:
 
 def _owner_entries(lines: list[str]) -> list[OwnerEntry]:
     entries: list[OwnerEntry] = []
+    listing = False  # under an `Options:` that holds no option: the options follow one per line
     for line in lines:
         head, item = OWNER_ENTRY.match(line), OWNER_ITEM.match(line)
+        option = OWNER_OPTION_LINE.match(line)
         if head:
             entries.append(OwnerEntry(gap=head.group(1), question=head.group(2)))
+            listing = False
         elif item and entries:
             key, value = item.group(1).lower(), item.group(2).strip()
+            listing = key == "options" and not value
             if key == "options":
                 entries[-1].options = _options(value)
             elif key == "default":
                 entries[-1].default = value
             else:
                 entries[-1].cost = value
+        elif listing and option and entries:
+            entries[-1].options.append((option.group(1).lower(), option.group(2).strip(" ;,")))
     return entries
 
 

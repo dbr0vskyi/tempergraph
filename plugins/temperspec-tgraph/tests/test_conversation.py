@@ -99,6 +99,21 @@ def test_the_task_notes_rule_example_of_the_sort_is_read_by_the_parser() -> None
           "two to four options", "`blocking`")
 
 
+def test_an_entry_with_its_options_one_per_line_is_read() -> None:  # CONV-AC2
+    """Seen in a real run (i6-8): the entry opened without a bullet and listed its options under an empty
+    `Options:`. The parser reads that shape too, so three triage attempts are not spent on layout."""
+    note = fmt.parse_triage("## Gaps\n\n- G3 decision needed: x. Searched: nothing. Owner decision\n\n"
+                            "## Owner decisions\n\nG3: May a repeat file alone?\nOptions:\n"
+                            "a) Propose only (the default).\nb) Propose and file.\n- c) Neither.\n"
+                            "Default: a)\nIf wrong: one spec edit.\n\n## Route\n\n- Deliver: code\n"
+                            "- Route: discovery\n")
+    assert len(note.owners) == 1
+    entry = note.owners[0]
+    assert entry.gap == "G3" and entry.question == "May a repeat file alone?"
+    assert [lab for lab, _ in entry.options] == ["a", "b", "c"]
+    assert entry.default_text == "Propose only (the default)." and entry.cost == "one spec edit."
+
+
 # -- phase 2: the triage check refuses an incomplete sort ---------------------------------------------------
 
 TRIAGE_CHECKS = ROOT / "evals" / "checks" / "triage"
