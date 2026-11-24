@@ -82,7 +82,7 @@ From S6 and S7:
 
 ### F6 What may be posted conflicts with the publish boundary as written `confirmed`
 
-SEC-B8 to SEC-B11 says pull-request text carries "names, counts, hashes and words from fixed lists only", and S2 keeps judge text out of the pull request because a judge's quotation of a secret or a local path could leak. The owner wants a report a reviewer can trust, which a table of statuses alone serves only partly.
+SEC-B8 to SEC-B11 says pull-request text carries "names, counts, hashes and words from fixed lists only", which keeps judge text out of the pull request because a judge's quotation of a secret or a local path could leak. The owner wants a report a reviewer can trust, which a table of statuses alone serves only partly.
 
 The boundary exists because local evidence (the request, feedback, transcripts) may hold private text. A pipeline judge never sees local evidence: everything it can quote is already in the repository or the pull request, visible to the same audience. What remains is a secret committed to the repository (the scrubber's job) and injected output (a link or markup the judge was told to write).
 

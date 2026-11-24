@@ -52,12 +52,12 @@ Read on 2026-11-19. Where the official page and a blog or article disagree, the 
 
 | # | Finding | Confidence |
 |---|---|---|
-| B1 | One orchestrating session over five days (92 h, 1,372 calls) cost about $130, and its 19 helper agents about $147, $135 of it for merges: roughly 15 to 18% on top of about $1.5K of run cost. | supported (earlier runs, one session; only 12 of 30 runs fully priced) |
-| B2 | 270 notifications woke that session; 148 calls came after five idle minutes and re-wrote its 117K-token context into the cache, about 62% of its own cost. | supported (earlier runs) |
-| B3 | Parallel runs took the same new ids and version bumps: 33 conflict operations and 28 hand version bumps. | supported (earlier runs) |
-| B4 | With the person away, the orchestrating session answered all 16 pauses; 13 were verify-and-continue, 3 were real decisions about intent, and one plan was resumed with proceed after its judge failed to start. | supported (earlier runs) |
-| B5 | The accepted batch design keeps **intent** in a versioned file and **truth** in the engine's status, with an append-only event file, and re-attaches to live runs through the lock probe. | supported (earlier runs) |
-| B6 | Three live runs in worktrees looked alike in the monitor; a person matched thread ids to worktrees from memory. | supported (earlier runs) |
+| B1 | An orchestrating session that lives for days is a cost on top of the runs it orchestrates, and the helper agents it starts, for merges for example, add their own. | inferred |
+| B2 | Every notification wakes the session. A call made after five idle minutes, when the prompt cache has expired, re-writes the whole context into the cache, so a session woken often pays mostly for re-reading its context, not for deciding. | inferred |
+| B3 | Parallel runs in one repository take the same next ids and make the same version bumps, and each collision is a conflict resolved by hand. | inferred |
+| B4 | With the person away, an orchestrating session can answer every pause itself, the few real decisions about intent among the verify-and-continue ones, and can resume with proceed a run whose judge failed to start. | inferred |
+| B5 | A batch can keep **intent** in a versioned file and **truth** in the engine's status, with an append-only event file, and re-attach to live runs through the lock probe. | inferred |
+| B6 | Live runs in worktrees look alike in a monitor that does not name the worktree; a person then matches thread ids to worktrees from memory. | inferred |
 
 ## Conclusions
 

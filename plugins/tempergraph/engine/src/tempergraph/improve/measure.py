@@ -15,7 +15,7 @@ from typing import Any
 from tempergraph.improve import params
 from tempergraph.improve.codehost import CodeHost
 
-QUALITY_DROP = params.value("measure.quality_drop")  # provenance default_no_data (5 points, from earlier runs)
+QUALITY_DROP = params.value("measure.quality_drop")  # provenance default_no_data (5 points, release 1 default)
 
 
 def _rows(path: Path) -> list[dict[str, Any]]:

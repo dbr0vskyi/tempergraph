@@ -99,7 +99,7 @@ From [11-executor-claude-code.spec.md](../specs/11-executor-claude-code.spec.md)
 
 - `--bare` is the cleanest answer to the open edge of a judge reaching a plugin-registered tool. It is gated on P-CC-1 because it changes authentication and loads nothing the user configured (ADR-0010).
 - The permission mode is always passed explicitly because the `-p` default has changed between releases (R-001 F14).
-- A resumed session is never used for a retry: a fresh session told the last report was measured cheaper (R-001 F20).
+- A resumed session is never used for a retry: a fresh session told the last report costs less than one that carries the whole conversation (R-001 F20).
 - P-CC-1 observation on 2.1.330 in the cloud container (2026-11-21): with a plugin installed at user scope, `system/init` under `--bare` still listed it, with the session's tools unchanged, so `isolates_user_config` stays false. Plugins the CLI build carries itself (source `@builtin`) stay listed and are not user configuration.
 - Model-free checks on 2.1.329 (2026-11-20, argument parsing only, in the engine's cloud build container): `--help` lists the permission modes `acceptEdits`, `auto`, `bypassPermissions`, `manual`, `dontAsk` and `plan`; `default` is no longer listed but is still accepted. `--max-turns` is accepted though not listed. `--permission-prompts` takes `host` or `none`. `-p` with an empty stdin and no positional prompt fails with "Input must be provided either through stdin or as a prompt argument", which shows stdin is read as the prompt but does not confirm P-CC-5. `auth status` prints JSON with `loggedIn`. No live probe was run there: a nested session inherits the host session's environment, so its result would not stand for the owner's machine.
 - Step reach inside a host session (ECC-B14) comes from a live run on 2.1.330 inside a Claude Code session: a step was offered the host's tools and additional directories and one step read a file outside the workspace (R-140 F4). The allow rules held, but reach was wider than the declaration.
@@ -357,6 +357,7 @@ From [63-workflow-upgrade.spec.md](../specs/63-workflow-upgrade.spec.md).
 
 - Real breaks need the owner's answers (R-056 M10), so this design keeps those answers the owner's (owner items, protected paths, V5) and uses a model only where public practice shows it does most of the edits under deterministic validation (M3 to M5) (ADR-0058).
 - The model work is a tempergraph workflow, not a loose session, so it inherits the engine's own rails: an independent judge, a deterministic check first, budgets, pauses and records (UWF).
+- "Done" is relative to the baseline, because a workflow that already had findings must not be blocked by them and must not gain new ones (ADR-0059).
 - The shares by transform, model and person in every report are the measurement R-056's open question asks for.
 - Release history: release 1 built `upgrade --check` and `upgrade-check [--stamp]` only; phases 4 to 7 came in release 2 (ADR-0125, moved from release 3 by the owner on 2026-11-20). As built (R2-T6.3): `package/upgrade.py` holds phases 1 to 7 and `cli/upgrade.py` the verb.
 
@@ -427,10 +428,10 @@ From [74-flow-extensions.spec.md](../specs/74-flow-extensions.spec.md).
 
 From [75-check-contract-and-command-runs.spec.md](../specs/75-check-contract-and-command-runs.spec.md).
 
-- One public resolution function, because a plan check and the gate once disagreed in a repository with another toolchain and the gate ran nothing. The engine owns the mechanics; the workflow owns the policy (ADR-0075). Which commands a workflow's gate runs, how it splits a suite and how it reads the plan are the workflow's design; nothing in CHK names a tool.
+- One public resolution function, because a plan check and a gate that resolve commands apart can disagree in a repository with another toolchain, and the gate then runs nothing. The engine owns the mechanics; the workflow owns the policy (ADR-0075). Which commands a workflow's gate runs, how it splits a suite and how it reads the plan are the workflow's design; nothing in CHK names a tool.
 - Reuse extends the per-thread cache idea of ADR-0067 to check commands: model-free, keyed by the tree, never a run that did not finish.
 - A check worker costs about one interpreter start per gate. It is the only way to bound a check whose own code hangs, and it keeps workflow code off the engine's main thread.
-- The preview is an engine command, not a resumed session: a resumed retry was measured dearer than a fresh one (R-001 F20), while a preview lets the session repair a structural miss before it ends at no judge cost (ADR-0077).
+- The preview is an engine command, not a resumed session: a resumed retry carries the whole conversation and costs more than a fresh one (R-001 F20), while a preview lets the session repair a structural miss before it ends at no judge cost (ADR-0077).
 - Live check L-29 (2026-11-22): the plain "no shell" line alone made a real session skip the preview, so the tools section names the one command it may run.
 - As built (R2-T7): `run/selfcheck.py` keeps the ticket file for the session's length; only the `claude` grant ships.
 
@@ -450,7 +451,7 @@ From [77-map-unit.spec.md](../specs/77-map-unit.spec.md).
 - A sequential map is not a bounded self-route nor a branch per item: a route cannot target its own unit, and a branch per item would need a worktree and a merge per item.
 - The list is read once per visit so a step cannot change the plan under the map mid-visit; changing it takes a trip back.
 - As built (R2-T1.2, sequential mode): items run through the unit's own four nodes, one at a time, with a `maps` state channel. As built (R3-T3.2, concurrent mode): the unit's own step node reads the list and sends up to `concurrency` items at a time to item nodes, each item keeping its attempt, judgement, feedback, counters, route and pause under its slot `<unit>.<item id>`; a writing map's items each run in their own worktree and are merged in list order, and the map's check runs once on the merged result.
-- temperspec measured per-item work dearer on small plans and routes between a map arm and a single-session arm (SWM, CXR); that measurement is the workflow's, not the engine's.
+- Per-item work costs more on small plans, so a delivery workflow may route between a map arm and a single-session arm (SWM, CXR); that choice is the workflow's, not the engine's.
 
 ### F45 FIN Finalizer contract `supported`
 

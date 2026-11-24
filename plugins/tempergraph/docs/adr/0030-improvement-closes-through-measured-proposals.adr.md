@@ -20,7 +20,7 @@ We will extend the loop from diagnosis to a **proposal**: one small, typed chang
 | Option | Pros | Cons |
 |---|---|---|
 | Measured proposals, person merges (chosen) | Closes the loop; every change carries evidence; a person stays the decider | Trials cost money; needs a case set per workflow |
-| Keep issues only | Cheapest; no new trust | The measured bottleneck stays; drafted remedies are prose nobody tested |
+| Keep issues only | Cheapest; no new trust | The bottleneck after the issue stays; drafted remedies are prose nobody tested |
 | Proposals without trials | Cheap | A reviewer cannot tell a fix from noise; figures per version move with the issue mix |
 | Automatic merge after a passing trial | Fastest | Small trials confirm only large effects (R-031 F3); a self-scored loop games its gates (R-030 F5); against "the loop closes through a person" |
 | Search over many candidates per cluster | Higher ceiling (GEPA, AFlow) | N times the trial cost; deferred until one-candidate trials show value |

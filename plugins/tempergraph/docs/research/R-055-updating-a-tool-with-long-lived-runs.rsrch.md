@@ -35,7 +35,7 @@ The uv and pipx pages were seen only as search results; nothing below rests on t
 |---|---|---|
 | U8 | A managed environment kept outside the plugin cache is not deleted by a plugin update (U4, U5), and only the engine's own update verb, code from the package invoked, changes it: it can install from a staged copy, decide currency by a content hash and refuse a downgrade. | inferred |
 | U9 | An updater that loads none of the engine's compiled libraries keeps Windows from locking them while the installer replaces them; an installer that replaces an environment in place and is killed part-way leaves it half-installed. | inferred |
-| U10 | Same-version-different-code happened: an installed copy was 18 files behind the repository under the same version string. | confirmed (earlier runs) |
+| U10 | Same version, different code: an installed copy can fall behind the repository under the same version string, because the cache is refreshed only on a version change (U3). | inferred |
 | U11 | Update output written as prose is ambiguous to a skill that parses it, and a skill that matches on its last line breaks when the wording changes; a machine-readable form removes both. | inferred |
 
 ### Work in flight

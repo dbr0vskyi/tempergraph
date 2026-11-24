@@ -19,7 +19,7 @@ We will keep one SQLite database per workflow under the state root `.tempergraph
 
 | Option | Pros | Cons |
 |---|---|---|
-| SQLite per workflow (chosen) | No server; measured under the expected load; easy to copy or delete | Single host; write contention beyond tens of writers |
+| SQLite per workflow (chosen) | No server; WAL and a busy timeout serve the expected load; easy to copy or delete | Single host; write contention beyond tens of writers |
 | One SQLite database for all workflows | One file | Unrelated workflows contend; deleting one workflow's state is harder |
 | Postgres | Multi-host, high concurrency | A server to run; heavy for a single-operator tool |
 | In-memory | Fast | No resume after exit, which pauses require |
@@ -30,7 +30,7 @@ We will keep one SQLite database per workflow under the state root `.tempergraph
 |---|---|---|---|---|
 | Resume after process exit | yes | yes | yes | no |
 | Setup | none | none | server | none |
-| Measured at expected load | yes | partly | — | — |
+| Serves the expected load | yes | partly | yes | no |
 | Multi-host | no | no | yes | no |
 
 ## Consequences

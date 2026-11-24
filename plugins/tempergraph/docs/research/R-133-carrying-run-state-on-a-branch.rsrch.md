@@ -26,7 +26,7 @@ From LOS-B7, LOS-B8, LOS-B9 (S3):
 
 | Needed to resume | Not needed, or must stay local |
 |---|---|
-| The thread's checkpoints and pending writes (copied out of `checkpoints/<workflow>.sqlite`, S2, S5) | Other threads' checkpoints in the same database |
+| The thread's checkpoints and pending writes (copied out of `checkpoints/<workflow>.sqlite`, which holds every thread of that workflow, S3, S5) | Other threads' checkpoints in the same database |
 | `runs/<workflow>/<task_id>/run.jsonl`, `findings.json`, `engine.json`, `lineage.json`, `exit.json` | `sessions/*/raw.jsonl`, `stderr.log`, `output/` and `evidence/prompts/` (full transcripts and prompts; marked local only) |
 | `evidence/` request, outputs and feedback files the checkpoint points to | `scratch/` (session homes, private MCP configs), `config/` (operator config, may hold sink credentials), `locks/` |
 | The thread's ledger rows, for reports on the other machine | `ledger.jsonl` of other threads, `authoring/`, `upgrades/`, `backups/`, `engine/` code logs |

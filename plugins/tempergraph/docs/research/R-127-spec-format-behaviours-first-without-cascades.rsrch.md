@@ -27,17 +27,9 @@ Research only. No spec, rule or code changes with this note. The proposal is inp
 
 ### F1 A spec cascade comes from bookkeeping, and rules can remove it `inferred`
 
-| Measure (S1) | Value |
-|---|---|
-| Commits that edit a spec and edit more than one | 81% |
-| Edited spec lines that were version, number, index, changelog or status bookkeeping | 55 to 67% |
-| Spec edits that were a renumber at merge | 20 to 35% |
-| Modified spec files that were collateral | 79 to 86% |
-| Growth of the engine's own specs in 15 days | 153 KB to 2.7 MB, test names 18% of the bytes |
-| Documentation drift among review findings in one large session | 208 of 433; keeping docs in sync took 30% of that session's spend |
+A change that touches one spec edits others when every spec carries lines a change must keep current: a version, a number, an index row, a change log, a status, a list of the tests that prove it. Numbers taken from a shared sequence are renumbered at merge, and test names kept in a spec make it grow with every test. Each such edit is collateral: the spec's behaviour did not change.
 
-
-Note that the 30% is the cost of keeping documents in sync in one session, not the share of documentation in every run.
+The rules that remove it: no per-spec version, date or change log; ids scoped to the work item; a generated index; status derived from a generated proof matrix; links by id; a row says what the system does now. Two questions follow: where proof lives once test names leave the spec, and whether a row keeps a maturity mark.
 
 ### F2 This repository's specs follow those rules, and still fan out `supported` (one measurement)
 

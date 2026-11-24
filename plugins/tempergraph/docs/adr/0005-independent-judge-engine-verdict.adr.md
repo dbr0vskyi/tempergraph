@@ -20,7 +20,7 @@ We will run a deterministic check first and, only when it does not fail, a fresh
 | Option | Pros | Cons |
 |---|---|---|
 | Check, then independent judge, verdict by rule (chosen) | Independent; cheap failures skip the judge; blockers cannot be averaged away | Two sessions per attempt |
-| Producer self-grades | One session | Not independent; measured failure |
+| Producer self-grades | One session | Not independent; wrong output that looks finished passes |
 | One structured-output call with evidence pasted | Cheap | The judge cannot read the code; large diffs do not fit; outside the executor layer |
 | Panel of voting judges | Reliability | N times the cost; deferred until one judge is calibrated |
 

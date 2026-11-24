@@ -20,7 +20,7 @@ We will give every history rule a **minimum sample** (`min_n`, in runs, visits o
 | Option | Pros | Cons |
 |---|---|---|
 | Minimum sample, n shown, passing-attempt p90 (chosen) | Honest about small data; limits follow what healthy work takes | Quiet on young workflows |
-| Report any rate | Says something from the first run | Two runs make a 100% rate; noise of the kind R-050 N1 warns about |
+| Report any rate | Says something from the first run | Two runs make a 100% rate; a signal nearly every run raises ranks nothing |
 | Statistical tests per rule (confidence intervals) | Principled | Heavy for a CLI report; few rules have enough runs for a test to mean anything early |
 | Limits from all attempts | More data | Timed-out attempts end at the old limit and pull the figure toward it |
 

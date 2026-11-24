@@ -47,7 +47,7 @@ Sources S7 to S9 were not re-fetched for this note, so findings that rest on the
 
 ### C. How agent evals are built
 
-**F10 Three grader kinds, in a fixed order of trust.** S4 names code graders (fast, objective, brittle to valid variations), model graders (flexible, non-deterministic, "require calibration with human graders") and human graders (the gold standard, used to calibrate the others). It recommends an explicit "unknown" exit for a model grader, and one isolated judge per dimension. tempergraph already has all three as check, judge and person, with UNVERIFIABLE as the unknown exit. `confirmed` (S4, S11)
+**F10 Three grader kinds, in a fixed order of trust.** S4 names code graders (fast, objective, brittle to valid variations), model graders (flexible, non-deterministic, "require calibration with human graders") and human graders (the gold standard, used to calibrate the others). It recommends an explicit "unknown" exit for a model grader, and one isolated judge per dimension. tempergraph already has all three as check, judge and person, with UNVERIFIABLE as the unknown exit. `supported` (S4; tempergraph's side from [JDG](../specs/05-judge-and-verdict.spec.md))
 
 **F11 Measure consistency with repeated trials: pass@k and pass^k.** pass@k is the chance that at least one of k trials succeeds; pass^k that all k succeed (S9, S4). A 75% per-trial rate gives pass^3 ≈ 42% (S4). For a gate that must behave the same on every run, the useful figure is pass^k for the producer and the flip rate for the judge (the share of criteria whose status differs between repeated judgements of one subject). `confirmed` (S4, S9)
 

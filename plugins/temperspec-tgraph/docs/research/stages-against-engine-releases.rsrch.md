@@ -40,7 +40,7 @@ The engine's MAP spec was written for this shape (expand writes the list, a phas
 1. **No line back from an item.** A map's gate refuses `back_targets` ([MAP-B11](../../../tempergraph/docs/specs/77-map-unit.spec.md)). The quick-lane guard (back to triage) and an upstream claim against the plan are therefore raised at the join, which runs the whole-change check (`ts-verify`, the changed-files limit) and holds the code judge's upstream line. A phase gate checks only its own rows.
 2. **The list.** `extract` reads the plan's phases with `specfmt.py`, one item per phase, at most 20 by MAP's default and 50 at most. The phase text carries its `Read:` and `Produces:` lists (plan-format note, B7 additions).
 3. **A commit per phase.** The engine's `after` script runs after each step attempt, so each item commits as each step does today, which is the owner's rule.
-4. **Simple plans keep one session.** The switch of F1 sends a simple plan to today's `code` unit. Per-phase code cost 130% of one session on small plans (the engine's R-126 F1), so the map arm is the complex one only.
+4. **Simple plans keep one session.** The switch of F1 sends a simple plan to today's `code` unit. Per-phase code costs more than one session on small plans (the engine's R-126 F1), so the map arm is the complex one only.
 
 B9 (a cheaper model per phase) rides on the same map: `item_model` picks among declared aliases per item, and the ladder ([LAD](../../../tempergraph/docs/specs/92-effort-ladder-and-model-escalation.spec.md)) climbs only on trusted evidence, which needs an accepted judge. So B9 waits for the phase judge's seeds to be graded live, as decision record 0002 already says for the code ladder.
 

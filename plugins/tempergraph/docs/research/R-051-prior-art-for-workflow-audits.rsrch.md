@@ -28,8 +28,8 @@ The zizmor pages were read in part verbatim and in part through a summary of the
 | P5 | Some zizmor audits are **configurable** (allow and deny lists, policies), and a few offer automatic fixes that edit files in place. | supported (docs) |
 | P6 | MCP-Scan checks MCP **tool descriptions** for poisoning and prompt injection, detects **changes after approval** ("rug pulls") by hashing tool descriptions, and looks for **cross-server references** where one server's description shadows another's tool. It connects to servers only when run and sends descriptions to a remote service. | supported (vendor post) |
 | P7 | dbt-project-evaluator groups its rules by area: modeling, testing, documentation, structure, performance, governance. Exceptions and thresholds are documented on its rules pages, which were not read. | supported (README); exceptions `uncertain` |
-| P8 | The engine's own troubleshooter is read-only by contract and enforced by narrow command rules; the symptom picks one reference to read; it ranks hypotheses with evidence for and against and names reads it could not run. | confirmed (earlier runs) |
-| P9 | The engine's validation refuses before spend and is the same function for the catalog, start, resume, pre-start check and upgrade check. | confirmed (earlier runs) |
+| P8 | The engine's own troubleshooter is read-only by contract and enforced by narrow command rules; the symptom picks one reference to read; it ranks hypotheses with evidence for and against and names reads it could not run. | supported (spec) |
+| P9 | The engine's validation refuses before spend and is the same function for the catalog, start, resume, pre-start check and upgrade check. | supported (spec) |
 
 ## Conclusions
 

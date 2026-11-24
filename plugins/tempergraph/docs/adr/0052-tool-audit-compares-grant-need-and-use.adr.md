@@ -9,7 +9,7 @@
 
 ## Context
 
-The owner named an audit of the tools defined for steps and judges as one thing the audit should do. Tool access is the cause family most catchable before a run: 72% of 190 refusals needed no new permission, 58 of 59 git calls after a directory change were refused, undeclared tools ran at 0.75 per run, and one plugin tool in a judge session voided a complete verdict ([R-050 C4](../research/R-050-why-runs-fail-stall-repeat-or-overspend.rsrch.md)). Validation already refuses some shapes and warns when a prompt names an undeclared tool ([WFM](../specs/02-workflow-model.spec.md)). What it cannot see is what the host adds to a session and what sessions really called.
+The owner named an audit of the tools defined for steps and judges as one thing the audit should do. Tool access is the cause family most catchable before a run: most refusals need no new permission, git calls after a directory change are refused, steps call undeclared tools, and one plugin tool in a judge session can void a complete verdict ([R-050 C4](../research/R-050-why-runs-fail-stall-repeat-or-overspend.rsrch.md)). Validation already refuses some shapes and warns when a prompt names an undeclared tool ([WFM](../specs/02-workflow-model.spec.md)). What it cannot see is what the host adds to a session and what sessions really called.
 
 ## Decision
 
@@ -42,7 +42,7 @@ We will audit tools as three views per session ([TSA](../specs/57-tool-surface-a
 
 ## Consequences
 
-- Positive: the judge exposure that cost $24.37 and a pause is visible from the first run that shows the tool, or before any run where the probe can list plugin tools; least privilege becomes measurable.
+- Positive: a judge exposure that voids a verdict is visible from the first run that shows the tool, or before any run where the probe can list plugin tools; least privilege becomes measurable.
 - Negative: the strongest rules wait for history and, for refusal classes, for the activity journal.
 - Risk: authors drop a tool the audit calls unused that a rare path needs. Mitigation: `granted-never-used` needs 10 runs and stays a warning.
 

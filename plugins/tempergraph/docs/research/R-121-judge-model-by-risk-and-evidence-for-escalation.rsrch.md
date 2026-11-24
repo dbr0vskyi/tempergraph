@@ -18,14 +18,14 @@ This note answers both. It reads "judges" in the owner's message as the judge mo
 | S6 | Chen, Zaharia and Zou, *FrugalGPT* (TMLR 2024): an LLM cascade sends a query to a cheaper model first and escalates only when a learned scorer rejects the answer; the scorer's quality bounds the cascade's | Paper | [arXiv 2305.05176](https://arxiv.org/pdf/2305.05176) |
 | S7 | Ong et al., *RouteLLM* (ICLR 2025): routers between a strong and a weak model trained on preference data; routers are evaluated on held-out benchmarks for cost against quality | Paper | [arXiv 2406.18665](https://arxiv.org/abs/2406.18665v4) |
 | S8 | Anthropic, *Building effective agents* (2024): routing classifies an input and sends it to a specialised follow-up, for example easy questions to smaller models; start with the simplest pattern and add complexity only when it measurably helps | Vendor guidance | [anthropic.com/engineering/building-effective-agents](https://anthropic.com/engineering/building-effective-agents) |
-| S9 | [R-120](R-120-effort-ladders-and-one-step-model-escalation.rsrch.md) F1 to F5: the ladder climbs on any counted retry today; the repeat-cost split (49% judge blocker, 16% a person, 12% trip back, 10% check failure); vendor guidance to re-run failures at higher effort | Design set | research/ |
+| S9 | [R-120](R-120-effort-ladders-and-one-step-model-escalation.rsrch.md) F1 to F5: the ladder climbs on any counted retry today; the causes of repeat cost; vendor guidance to re-run failures at higher effort | Design set | research/ |
 
 ## Key findings
 
 ### F1 Judge-by-risk is named but never designed `supported`
 
 - A judge model by risk is listed among later uses of the switch (S9). Per-arm options and judge options could reuse the same choice, record and override layer without a graph edge. Nothing says what risk is or how it is read.
-- temperspec has a fixed version of it: one judge (code) is on the stronger tier because of what it judges, and calibration may move a judge up when it passes known-bad work (S2). The trigger in both cases is the **kind of work** or a **measurement**, never the outcome of one attempt.
+- A fixed version of it exists: a judge can sit on a stronger tier because of what it judges (code), and calibration may move a judge up when it passes known-bad work (S4, S9). The trigger in both cases is the **kind of work** or a **measurement**, never the outcome of one attempt.
 
 ### F2 A judge's alias is part of what calibration measured `confirmed`
 
@@ -55,7 +55,7 @@ From BUD-B1, BUD-B11 and R-120 (S4, S9):
 ### F5 Risk signals exist without a model `confirmed`
 
 - Checks already return **facts** (engine-run command results, file facts) and findings (S4, CHK). The engine knows the attempt's diff (files, lines, paths) in the run worktree, the inputs, the item of a map and the declared settings.
-- temperspec's lesson is that a route must not rest on the producing model's own word: the check ties the route to evidence (S3). The same applies to risk: a step that could lower its own judge's tier by what it writes would grade itself by proxy (OVR-B6).
+- A route must not rest on the producing model's own word: a check ties the route to evidence, so the model cannot pick the cheaper route to save work. The same applies to risk: a step that could lower its own judge's tier by what it writes would grade itself by proxy (OVR-B6).
 
 ### F6 Simple routing beats clever routing until measured `supported`
 
@@ -70,7 +70,7 @@ A **risk rule** is a pure, model-free function the gate declares. It runs after 
 1. **Only up.** The lowest level is the gate's own judge. A rule can raise the judge, never lower it below the gate's alias or below the producer's tier for the attempt.
 2. **Every level calibrated.** Each level is its own binding with its own JCL state. Stable mode and promotion need every level `accepted`, as they need every gate today (F2).
 3. **No step claims.** The rule never reads the step's text or its unchecked values. A step value counts only once the check turned it into a fact (F5).
-4. **Fault means the highest level.** As temperspec's unreadable route takes the longer path (S3).
+4. **Fault means the highest level.** An unreadable route takes the longer path for the same reason.
 5. **Shadow first.** The rule may run in shadow, recording the level it would pick (F6).
 6. **Pinned by an operator.** An operator's judge model pins the level; recorded as such.
 

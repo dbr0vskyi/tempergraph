@@ -17,32 +17,20 @@ All read on 2026-11-19. Specs of pull request 4 are named in text rather than li
 
 ## Key findings
 
-### Where "no one grades the judges" is written
-
-
-| Where | Wording |
-|---|---|
-|, closing warning | "Judge reliability is not measured yet. There is no agreement figure between two judge runs, and confidence has not been compared with what happened next." |
-|, known unknowns | "How often a judge is wrong. The first measurement is planned." Also: "Judge reliability is argued from design and from synthetic cases. It is not measured." |
-| — | "No shipped judge has been scored", recorded as an observed failure: the harness was marked done but shipped a model-free runner. |
-| — | 48 labelled cases are "played offline … No set scores a live judge"; scoring is "a manual item per judge". |
-
-The measured lesson behind it: gates do reject (first-pass yield rose from 7% to 68%), so the judge is not a rubber stamp, but "that each rejection was right is not" measured, and the confidence value carried almost no information (0.80 was the commonest value; area under the curve 0.45 for the friction judge's own verdicts). `confirmed`
-
 ### What exists today
 
 | Concern | This design (`main`) | Parallel threads |
-|---|---|---|---|---|
-| Judge calibration cases | 1–3 good and 1–3 subtly wrong outputs per judged step; outcome judge: 4 synthetic scenarios | 48 labelled cases in 7 sets, offline only | Rubric scenarios bound to digests; readiness report counts cases ([LIF](../specs/18-lifecycle-and-evals.spec.md)) | — |
-| Scoring a judge live | Planned, with a repeat count | Planned, manual | `evals score <gate> --executor` per executor and alias; no repeat count | — |
-| What "a judge passes" means | Every good output MET, every wrong one flagged on the right criterion | — | Not defined | R-011 G7: proposes example floors (20 cases, agreement 0.85, false pass 0.05) |
-| Second judge | Planned, sampled, recorded only | — | `audit_judge`, recorded only (JDG-B7) | FBK: audit agreement below 0.8 marks a judge unreliable; counted apart from labels |
-| Labels from people and facts | Judge misses at the last pause, closed pull requests, re-runs (outcome judge only) | — | Harvest verb (LIF) | FBK: one label record from approvals, pull request state, re-runs, pushback, explicit labels; per-binding grades `reliable`, `unmeasured`, `unreliable`; a labelling queue; a binding-shift watch |
-| Confidence | Four anchors; engine placeholders marked | — | Anchors in [SSN-B8, SSN-B9, SSN-B10](../specs/25-session-contract.spec.md) | FBK: false-pass rate per anchor |
-| Prompt checks without a model | Planned prompt lint; a deterministic scenario that the prompt holds the scale | Mechanical criteria moved into checks | Prompt lint in `validate` | — |
-| Per-criterion and per-prompt rates | Planned | — | [OBS-B15](../specs/15-observability-and-cost.spec.md): per-criterion rates, gate escapes, prompt digests | — |
-| Workflow-version comparison | Replay set (full reruns, dry run) | — | `evals replay`: judges only over kept subjects | PRP: reviewed case sets, paired trials, A/A noise floor, sign test |
-| Skill evals | Claude Code plugin eval, by the owner | — | Named in R-150 LIF | — |
+|---|---|---|
+| Judge calibration cases | Rubric scenarios bound to digests; readiness report counts cases ([LIF](../specs/18-lifecycle-and-evals.spec.md)) | — |
+| Scoring a judge live | `evals score <gate> --executor` per executor and alias; no repeat count | — |
+| What "a judge passes" means | Not defined | R-011 G7: proposes example floors (20 cases, agreement 0.85, false pass 0.05) |
+| Second judge | `audit_judge`, recorded only (JDG-B7) | FBK: audit agreement below 0.8 marks a judge unreliable; counted apart from labels |
+| Labels from people and facts | Harvest verb (LIF) | FBK: one label record from approvals, pull request state, re-runs, pushback, explicit labels; per-binding grades `reliable`, `unmeasured`, `unreliable`; a labelling queue; a binding-shift watch |
+| Confidence | Anchors in [SSN-B8, SSN-B9, SSN-B10](../specs/25-session-contract.spec.md) | FBK: false-pass rate per anchor |
+| Prompt checks without a model | Prompt lint in `validate` | — |
+| Per-criterion and per-prompt rates | [OBS-B15](../specs/15-observability-and-cost.spec.md): per-criterion rates, gate escapes, prompt digests | — |
+| Workflow-version comparison | `evals replay`: judges only over kept subjects | PRP: reviewed case sets, paired trials, A/A noise floor, sign test |
+| Skill evals | Named in R-150 LIF | — |
 
 ### Gaps
 

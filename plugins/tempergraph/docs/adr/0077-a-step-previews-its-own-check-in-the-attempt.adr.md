@@ -20,7 +20,7 @@ We will let a step declare `self_check: true`. The engine then grants it one com
 | Option | Pros | Cons |
 |---|---|---|
 | Preview command (chosen) | Same session, no resume, no judge; executor-neutral; the check is the gate's own code | Needs a command grant; a step may game the check (it already sees criteria texts, and the judge still runs) |
-| Resume the session with the failing findings | No tool needed | Measured dearer; executor-specific (no resume on two executors); a judge-free repair loop the engine must bound |
+| Resume the session with the failing findings | No tool needed | Dearer, as it carries the whole conversation; executor-specific (no resume on two executors); a judge-free repair loop the engine must bound |
 | The workflow ships its own lint as a declared command | No engine work | A second copy of the check that drifts from the gate's |
 | Nothing | Simplest | Every structural miss costs a whole attempt |
 
@@ -30,7 +30,7 @@ We will let a step declare `self_check: true`. The engine then grants it one com
 |---|---|---|---|---|
 | Works on all four executors | yes | no | yes | yes |
 | Same rules as the gate | yes | yes | no | n/a |
-| Extra cost per failed check | one command run | resumed context (+24% measured) | one command run | a whole attempt |
+| Extra cost per failed check | one command run | resumed context | one command run | a whole attempt |
 | Judge independence | unchanged | unchanged | unchanged | unchanged |
 
 ## Assumptions

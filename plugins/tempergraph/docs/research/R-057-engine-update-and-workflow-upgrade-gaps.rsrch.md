@@ -53,8 +53,8 @@ On 2026-11-20 the owner asked for two commands: one that updates the engine, inc
 
 | # | Simpler rule | This design | Confidence |
 |---|---|---|---|
-| D1 | "No automatic rewrite, on purpose" : the engine checks, the person edits. | Deterministic transforms and a model draft the edits on a branch; a person still reviews and merges, and questions only the owner can answer stay pauses. The owner asked for it, and public practice measures a large share of migration edits done by a model under deterministic validation ([R-056](R-056-automated-and-model-assisted-migrations.rsrch.md) M5). | confirmed (owner's request), the gain `supported` |
-| D2 | The compatibility comparison "never refuses a run". | Kept: the engine range and the stamp only warn; a run refuses only when validation fails, which a tightening release causes by content. | confirmed |
+| D1 | No automatic rewrite: the engine checks, the person edits. | Deterministic transforms and a model draft the edits on a branch; a person still reviews and merges, and questions only the owner can answer stay pauses. The owner asked for it, and public practice measures a large share of migration edits done by a model under deterministic validation ([R-056](R-056-automated-and-model-assisted-migrations.rsrch.md) M5). | confirmed (owner's request), the gain `supported` |
+| D2 | The compatibility comparison never refuses a run. | The same: the engine range and the stamp only warn; a run refuses only when validation fails, which a tightening release causes by content. | confirmed |
 | D3 | One environment per machine. | One **current** environment per machine, with the previous one kept for rollback and for threads a release pins. | confirmed |
 
 ## Conclusions

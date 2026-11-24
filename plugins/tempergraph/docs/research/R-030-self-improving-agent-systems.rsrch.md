@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The owner asked how tempergraph's self-improvement should work end to end. The current loop ([SIL](../specs/16-self-improvement.spec.md), from) detects friction, outcome gaps and cost waste, and files de-duplicated issues that a person turns into a new workflow version. It stops at the issue: nothing drafts a testable change, nothing measures a change against the same work, and the judge that every signal rests on is itself unmeasured. This note surveys public work on systems that improve their own prompts, contexts, workflows or code, and states which mechanisms fit a framework whose promise is *tempered* rails: bounded, gated, reviewable.
+The owner asked how tempergraph's self-improvement should work end to end. The current loop ([SIL](../specs/16-self-improvement.spec.md)) detects friction, outcome gaps and cost waste, and files de-duplicated issues that a person turns into a new workflow version. It stops at the issue: nothing drafts a testable change, nothing measures a change against the same work, and the judge that every signal rests on is itself unmeasured. This note surveys public work on systems that improve their own prompts, contexts, workflows or code, and states which mechanisms fit a framework whose promise is *tempered* rails: bounded, gated, reviewable.
 
 ## Sources consulted
 
@@ -67,14 +67,7 @@ GEPA's selling point is rollout efficiency; AFlow and ADAS search spend many eva
 
 ### F8 Detection outruns triage
 
-| Fact | Mark |
-|---|---|
-| Flagging is not selecting: 89 of 90 runs flagged; of 137 filing records 22 opened issues, 58 commented, 53 recorded, 4 errored | `confirmed`  |
-| Judge confidence carried no signal for filing (AUC 0.45) | `supported`  |
-| A person chose issues, wrote briefs and merged; 36 of 52 release entries were delivered by a completed run | `supported`  |
-| 32 open loop-filed issues waited for an owner; most cite one run; six engine issues had a workflow twin | `supported`  |
-| Calibration sets are synthetic; no live stable-mode run | `confirmed`  |
-
+A loop that flags friction on almost every run, and leaves a person to choose the issues, write the briefs and merge, files findings faster than anyone delivers them. Flagging is not selecting, and a judge's confidence that no one has calibrated is no reason to file. The bottleneck of such a loop is *triage and delivery of findings*, not detection. `inferred`.
 
 ## Conclusions
 

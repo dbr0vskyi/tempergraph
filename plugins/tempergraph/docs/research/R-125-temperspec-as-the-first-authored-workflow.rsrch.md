@@ -2,9 +2,9 @@
 
 ## Problem statement
 
-The owner asked on 2026-11-20 whether the project is ready to create its first real workflow, and then: "Research how to create temperspec based on reference we have in staging. We would need to discuss details. But I want you to run through tempergraph."
+The owner asked on 2026-11-20 whether the project is ready to create its first real workflow, then asked for research on how to create temperspec, with the details to be discussed, and added: "But I want you to run through tempergraph."
 
-The last sentence is read as: temperspec is produced by tempergraph's own authoring path (an authoring session, the outcome file, the blueprint, `scaffold`, `author verify`), as a workflow package named `temperspec-tgraph` ([ADR-0120](../adr/0120-a-workflow-plugin-name-is-the-workflow-name-plus-tgraph.adr.md)), and then runs on the engine. It is not hand-built beside the engine. A second reading, "run temperspec's tasks through the engine once it exists", follows from the first and needs no separate plan.
+That sentence is read as: temperspec is produced by tempergraph's own authoring path (an authoring session, the outcome file, the blueprint, `scaffold`, `author verify`), as a workflow package named `temperspec-tgraph` ([ADR-0120](../adr/0120-a-workflow-plugin-name-is-the-workflow-name-plus-tgraph.adr.md)), and then runs on the engine. It is not hand-built beside the engine. A second reading, "run temperspec's tasks through the engine once it exists", follows from the first and needs no separate plan.
 
 This note answers:
 
@@ -47,7 +47,7 @@ This is research for a discussion. Nothing is scaffolded and no spec, decision r
 
 Around the steps the method defines **43 judged criteria**, **48 labelled calibration cases**, **3 agents**, **17 skills** and **6 rule files plus a machine-readable spec rules file**. The rule files are where the method's artifact formats live, one home per artifact: the plan rule, spec rule, decision rule, documentation rule, workflow orientation and the story template. The owner's naming rule (`*.spec.md`, `*.adr.md`, `*.plan.md`, `*.rsrch.md`, [ADR-0017](../adr/0017-artifact-type-suffixes.adr.md)) belongs in those rules once temperspec owns them ([ADR-0113](../adr/0113-the-workflow-docs-set-is-provisional-until-temperspec-owns-it.adr.md)).
 
-A person is asked only when a budget is spent on plan, expand, phase, code or release, when a step ends blocked, when every blocker needs no change or a person's ruling, or on an environment mark. An approval pause after a chosen step is opt-in (S1 §7.5, §11).
+A person is asked only when a budget is spent on plan, expand, phase, code or release, when a step ends blocked, when every blocker needs no change or a person's ruling, or on an environment mark. An approval pause after a chosen step is opt-in.
 
 ### F2 The method fixes temperspec's structure, not its text `inferred`
 

@@ -9,7 +9,7 @@
 
 ## Context
 
-temperspec measured per-phase code at 111 to 149% of one session on small plans, and found a whole-plan session risky on large ones. Its planned code-mode router needs "a generic conditional route in the engine with per-arm session options", a shadow mode that logs the signals and the would-be choice and routes nothing, and escalation from the single-session arm to per-phase; its triage and release skips are to become the same kind of named, recorded route ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T46). The engine's switch has arms, a default, an operator pick and a `route` record, but none of those three.
+For temperspec, per-phase code costs more than one session on a small plan, and a whole-plan session is risky on a large one. Its planned code-mode router needs "a generic conditional route in the engine with per-arm session options", a shadow mode that logs the signals and the would-be choice and routes nothing, and escalation from the single-session arm to per-phase; its triage and release skips are to become the same kind of named, recorded route ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T46). The engine's switch has arms, a default, an operator pick and a `route` record, but none of those three.
 
 ## Decision
 

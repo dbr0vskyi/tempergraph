@@ -17,17 +17,17 @@ The engine already has the parts: a switch with a pure predicate and a default a
 
 ## Key findings
 
-### F1 A detailed decomposition is not free, and on small tasks it loses `confirmed`
+### F1 A detailed decomposition is not free, and on small tasks it loses `inferred`
 
-Per-phase code cost 130% of one session on small plans, with all single-session code gates passing first time in the paired runs (S1). Later single-session samples were mixed: several missed the first code gate, and one long session timed out (S3). The two shapes trade cost for reliability, and the crossover depends on size.
+Code built phase by phase costs more than one session on a small plan, which one session can build whole. On a large plan a single session can miss its gate or time out. The two shapes trade cost for reliability, and the crossover depends on size.
 
 ### F2 A route decides by measures it can count, and fails safe `inferred`
 
-- The planned code-mode rule reads two counts from the expanded plan (phases, rows) and compares them with thresholds in a rules file, with a repository override (S3).
-- Triage writes a size class with a reason, but the route itself is tied by a **check** to a fact the check can verify (the gap list), "so the model cannot choose plan to save work" (S2).
-- Every fault takes the longer, safer path (S2, S3).
+- A code-mode rule can read two counts from the expanded plan (phases, rows) and compare them with thresholds in a rules file, with a repository override.
+- A triage step can write a size class with a reason, but the route itself is tied by a **check** to a fact the check can verify (a gap list), so the model cannot pick the cheaper route to save work.
+- Every fault takes the longer, safer path.
 
-### F3 Escalation runs one way, at one point `confirmed`
+### F3 Escalation runs one way, at one point `supported`
 
 Escalation goes only from one session to per phase, at one point: SWM's `rearm` on a spent budget or a timeout (S8). Nothing moves a run from the detailed shape back to the simple one.
 
@@ -37,8 +37,8 @@ ADaPT decomposes only after the executor fails, and recursively (S5). The vendor
 
 ### F5 A prediction alone is not enough, a fallback alone is wasteful `inferred`
 
-- Predict only: a wrong "simple" pick costs a failed long session and then a person (S3's timed-out session).
-- Fallback only (ADaPT style): every complex task pays for one failed simple attempt first. On temperspec's plans (3 to 15 phases, median 7, S1) most tasks are complex, so this pays the failure on most runs.
+- Predict only: a wrong "simple" pick costs a failed long session and then a person (F1).
+- Fallback only (ADaPT style): every complex task pays for one failed simple attempt first. Where most tasks are complex, this pays the failure on most runs.
 - Both: predict from counted measures, take the detailed shape in the margin, and re-arm once from simple to detailed when the simple shape spends its budget on trusted evidence.
 
 ### F6 Complexity can be read at two points `inferred`
@@ -54,7 +54,7 @@ A code-mode router is the second kind; skipping discovery for a small task is a 
 
 A unit after the switch reads artifact keys. If `direct` produces `change` and `planned` produces `plan` plus per-item `change[<id>]`, the join and the outcome gate would see different inputs per arm. A join that reads the same plan in both modes avoids this. A switch over decompositions therefore needs a declared **arm contract**: the keys every arm must produce for the units after it, and the same final gates. ADR-0071 already forbids an override from changing what verifies the work (S8).
 
-### F8 Measuring the choice needs size-adjusted figures and few mixed runs `confirmed`
+### F8 Measuring the choice needs size-adjusted figures and few mixed runs `inferred`
 
 Cost varies with task size, so a comparison of arms on size-adjusted cost needs far fewer samples per arm than one on raw cost. A run that re-armed must be reported apart, or it corrupts per-arm cost.
 

@@ -32,7 +32,7 @@ The audit owns only rules no one else owns: host checks, timeout fit and hold-ti
 |---|---|---|
 | Join and file nothing (chosen) | One answer per rule; no second filer; owners keep their logic | Depends on other components' outputs being callable |
 | Reimplement what it needs | Self-contained | Two copies of each rule drift; the same defect reported twice in different words |
-| Let the audit file issues | Findings reach the backlog without a person | A second filer repeats the duplicate-issue failure; static findings are predictions, not run evidence |
+| Let the audit file issues | Findings reach the backlog without a person | A second filer files duplicate issues; static findings are predictions, not run evidence |
 | Fold the audit into the self-improvement loop | One mechanism | The loop runs after runs and spends; an author needs the audit before the first run |
 
 ## Decision rationale

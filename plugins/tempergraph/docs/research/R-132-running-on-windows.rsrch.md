@@ -29,7 +29,7 @@ Native Windows is supported from Windows 10 1809. With Git for Windows the Bash 
 
 | Part | Today | Windows need |
 |---|---|---|
-| Session lifetime (EXI-B5) | Process group; Windows uses a new process group and `taskkill /T` on a hard stop | A job object with kill-on-close, so a crashed engine still ends its sessions (S1, S5) |
+| Session lifetime (EXI-B5) | Process group; Windows uses a new process group and `taskkill /T` on a hard stop | A job object with kill-on-close, so a crashed engine still ends its sessions (F1, S5) |
 | Run lock | `msvcrt.locking` on one byte | Works; locks are mandatory on Windows, so readers of the lock file must not expect to read it |
 | Owner-only files (LOS-B7, LOS-B8, LOS-B9) | `chmod 0700/0600`, skipped off POSIX | The user profile's default ACL is owner-only; a state root outside the profile needs an explicit ACL (`icacls`), or a warning |
 | Shim (UPD-B11, UPD-B12, UPD-B13) | `/bin/sh` script calling `<env>/bin/python` | A `tempergraph.cmd` calling `<env>\Scripts\python.exe`; `PATH` set in the user's environment registry key, not a shell profile |

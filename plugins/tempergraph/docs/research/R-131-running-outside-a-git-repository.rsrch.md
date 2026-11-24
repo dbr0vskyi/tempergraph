@@ -30,7 +30,7 @@ The questions: what in the engine depends on git, what each dependency is for, a
 
 Only the first two are needed to run at all; the rest are features a workflow uses or does not.
 
-### F2 Non-code workflows need only a folder and a fingerprint `supported`
+### F2 Non-code workflows need only a folder and a fingerprint `inferred`
 
 Non-code workflows write files into a folder (a dated meeting folder) or write outside the machine (a tracker story, a wiki page). None of them needs a branch, a worktree or a pull request. What they need is a place for run state and a way to tell whether a read-only session wrote something.
 

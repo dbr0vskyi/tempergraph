@@ -28,17 +28,17 @@ This is research only. No spec, decision record or code changes with this note. 
 
 ### F1 Tiers are fixed per step, with one retry ladder and no context router `confirmed`
 
-- Every temperspec step has a fixed tier chosen by how hard its work is. Triage, expand, the phases and the code join run on Sonnet. Discovery and the plan's design pass run on Opus. The release step runs on Haiku. Judges run on Sonnet, except the code judge, which runs on Opus so that code is judged by a stronger model than the one that wrote it (S5, 7 and 8).
+- A step's tier is fixed by how hard its work is, and a judge has its own alias, so code can be judged by a stronger model than the one that wrote it (S6).
 - The **model ladder** is the only switch inside a run. It holds up to eight aliases, and attempt n of the current budget uses the n-th alias, with the last one repeating. A person's retry, an automatic re-open or a trip back starts again at the first alias. An infra attempt or a cut-off one reruns the same alias. An operator pin overrides the ladder. The judge takes the ladder's last alias, so it is never weaker than the alias the step ends on (S6, S7).
 - The ladder climbs on **any** retry the budget counts. No rule ties it to the cause of the failure beyond infra and cut-offs (S6, S7).
 - A ladder wastes an attempt whenever the cheap rung fails, so its benefit has to be measured before it is relied on.
-- The planned items that choose by context are a switch whose arms carry their own model, effort and timeout; a model per mapped item, read from the item; and a judge's model chosen "by risk", named only as a later use (S2). None of them changes the model **because an attempt failed**.
+- The items that choose by context are a switch whose arms carry their own model, effort and timeout; a model per mapped item, read from the item; and a judge's model chosen "by risk", named only as a later use (S6). None of them changes the model **because an attempt failed**.
 
 ### F2 Effort is one value per scope, with no ladder `supported`
 
-- Effort is a session option, resolved in the order models are. An effort the executor cannot apply is a warning, not a refusal (S1).
-- "Effort and turn count move cost more than the model does", from one runaway attempt that cost about $24 (S1, `MEASURED`).
-- temperspec runs its phase step on Sonnet at **low** effort (`PARTLY BUILT`). The early quality watch found that phase-by-phase code with low-effort phases passed the first code gate in 0 of 3 runs, confounded by defects in the plans. The planned remedy is to report first-try pass rates by arm and to revert the low-effort default if it stays below the others after five or more samples (S2, S5 14 b).
+- Effort is a session option, resolved in the order models are. An effort the executor cannot apply is a warning, not a refusal (S6).
+- Effort and turn count move cost, not only the model; the vendor names effort as the first lever (F4).
+- A low-effort default on a step is a bet to watch: report first-try pass rates by arm, and revert the default if it stays below the others after five or more samples.
 - Nothing in the design changes effort between attempts (F3).
 
 ### F3 What this design and the code have today `confirmed`
@@ -73,7 +73,7 @@ These points come from one vendor source (S9), so they stay `supported`:
 
 - BUD-B1, BUD-B11 classifies every failure into a counter: infra, the retry budget, or an escalation with no retry. Judgements carry blocker criterion ids, and a check FAIL names its criterion (S6).
 - A judge blocker is the largest cause of repeat cost, ahead of a person, a trip back and a failed check ([R-050](R-050-why-runs-fail-stall-repeat-or-overspend.rsrch.md) F1.1).
-- Cut-off attempts are already kept on the same rung, because "the machine is not the model's fault" (S1, BUD-B1).
+- Cut-off attempts are already kept on the same rung, because "the machine is not the model's fault" (BUD-B1).
 - The ledger and run log record the alias and its source per attempt (RST, `settings_resolved`), so a rung that came from escalation can be told apart from a declared one.
 
 ## Analysis
@@ -86,7 +86,7 @@ Why it fits better than a model ladder (F2, F4):
 
 - One model means one binding. Retries share the model, its tool habits and its prompt behaviour, so a lesson or a prompt fix measured at one rung mostly carries to the next.
 - The vendor's measured pattern of low effort first and higher effort on a failure is exactly a retry-driven effort ladder (F4).
-- The judge is untouched. A judge's effort is part of its calibrated binding (F3), so an effort ladder must **never reach a judge**. This is the same rule as "the step overrides never reach a judge" (S5 11) and RST's "judges apart". There is no "judge on the last rung" question, since the judge's model does not change.
+- The judge is untouched. A judge's effort is part of its calibrated binding (F3), so an effort ladder must **never reach a judge**. This is the same rule as RST's "judges apart": step overrides never reach a judge. There is no "judge on the last rung" question, since the judge's model does not change.
 
 Rules it would need to fit the engine:
 
@@ -130,7 +130,7 @@ If "environment" means the binding environment instead (see the problem statemen
 - A model switch when the budget runs low. Budgets stop or pause a run (BUD-B8, BUD-B9). Switching down mid-run would make the producer weaker exactly when the work has already failed.
 - Automatic judge escalation after a failed calibration. A judge on a new model is a new, unmeasured judge (FBK-B4). Moving it, for example to a stronger model when calibration shows the current one passing known-bad work, stays a `judge_model` proposal that a trial measures (PRP).
 - An effort ladder or escalation on judges, members or slots: their binding is what calibration measures.
-- Escalation on throttling. That is `fallback_alias` within the session, and never on a judge (S1, RST).
+- Escalation on throttling. That is `fallback_alias` within the session, and never on a judge (RST-B17).
 
 ## Conclusions
 
