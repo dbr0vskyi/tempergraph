@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 10,
+  "revision": 11,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -688,8 +688,8 @@
           "id": "ts-plan-form",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "The plan has each section the plan rule requires, with the status `planned` and no row marked completed",
-          "check_method": "Read the plan's headings, its hand-off section, its front matter status and the Completed cell of each row against the rule",
+          "text": "The plan has each section the plan rule requires, with the status `planned` and a completed mark only on a row that kept its mark through a trip back (KMK-B1 to KMK-B4)",
+          "check_method": "Read the plan's headings, its hand-off section, its front matter status and the Completed cell of each row against the rule; for each marked row read the run's history (git log and git show from the base commit) for a marking commit of the run in which the row reads the same, and for a later commit that changed the row's file",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:plan_check"
@@ -806,8 +806,8 @@
           "id": "ts-exp-rows",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "Every phase of the plan has at least one task row, none marked completed, and the plan's status is still `planned`",
-          "check_method": "Read the plan's phase headings, task tables, Completed cells and front matter status",
+          "text": "Every phase of the plan has at least one task row, a completed mark only on a row that kept its mark through a trip back (KMK-B1 to KMK-B4), and the plan's status is still `planned`",
+          "check_method": "Read the plan's phase headings, task tables, Completed cells and front matter status; for each marked row read the run's history (git log and git show from the base commit) for a marking commit of the run in which the row reads the same, and for a later commit that changed the row's file",
           "source": "created",
           "verifier": {
             "check": "tgwf_temperspec.checks:expand_check"
@@ -932,7 +932,7 @@
           "id": "ts-code-changed",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "The file of every task row marked completed changed in the run",
+          "text": "The file of every task row marked completed changed in the run, whichever visit of the code step changed it (KMK-B8)",
           "check_method": "Compare each marked row's file with the paths the run changed since its base commit; N/A without a base commit or in the quick lane",
           "source": "created",
           "verifier": {
@@ -1307,6 +1307,12 @@
       "origin": "authored",
       "at": "2026-11-23T23:10:00.000Z",
       "note": "the code gate's evidence states the changed source lines, a reading budget and the changed source files, and the code judge reads them before it grades alignment; every judge brief and the outcome judge's stance ask for the quoted line behind a MET and grade PARTIAL when the only evidence is search lines (issues 112 and 113, spec judge-reading)"
+    },
+    {
+      "revision": 11,
+      "origin": "authored",
+      "at": "2026-11-24T12:00:00.000Z",
+      "note": "issue 125: a trip back to the plan step keeps the completed mark of a row it leaves as it was; the plan and expand checks accept a mark that a commit of the run wrote on a row that reads the same with its file unchanged since, and refuse any other (ts-plan-form, ts-exp-rows); the code step builds only the unmarked rows and the code check takes a kept row's file whichever visit changed it (ts-code-changed, spec kept-marks)"
     }
   ]
 }
