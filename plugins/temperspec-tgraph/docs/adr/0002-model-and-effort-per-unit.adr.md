@@ -4,7 +4,7 @@ Status: accepted, to be confirmed by the owner
 
 ## Decision
 
-Every step and every judge states its model tier, its effort and one sentence of why, in the workflow's declaration and in its blueprint, so no session runs at a default nobody chose (owner, 2026-11-21). The values below are a first assessment made without a run; the first measured runs may move them.
+Every step and every judge states its model tier, its effort and one sentence of why, in the workflow's declaration and in its blueprint, so no session runs at a default nobody chose (owner, 2026-11-21). The values below were a first assessment made without a run; the first measured runs (below, under Consequence) leave them as they are.
 
 | Unit | Step | Why | Judge | Why |
 |---|---|---|---|---|
@@ -25,3 +25,5 @@ One effort for the whole workflow, which pays for deep thinking where a step onl
 ## Consequence
 
 A run costs more than at the default effort on `setup`, `plan`, `code` and three judges, and less surprise comes from a changed default. Efforts `xhigh` and `max` are not yet shown by a live probe on every alias; `discovery` keeps `max` as before. The row `discovery_short` was added by [0003](0003-short-discovery-visit.adr.md), which replaces no row.
+
+The first measured sizing comes from six real runs on this repository (cloud container, `claude` 2.1.331, worktree mode, conversation `never`), each building one or two issues: runs `i17-18` (the TS-L2 real run, end to end with no pause: 9.25 USD, 58 minutes), `i16` (8.55), `i9` (9.17), `i106` (6.81), `i6-8` (13.38) and `i58` (19.24). `discovery` is the largest step in every one of them, 40 to 48 percent of the run (3.40 to 9.21 USD, 15 minutes or more of one session); `code` takes 0.63 to 2.45 USD, `plan` 0.51 to 2.31, `expand` 0.36 to 2.19, `triage` 0.29 to 0.58, each `read_gap` session under 0.30, and all judges together 0.83 to 2.42. Nothing in these runs shows that a step or judge needs more effort; `discovery` at `max` is the first place to look for a saving.
