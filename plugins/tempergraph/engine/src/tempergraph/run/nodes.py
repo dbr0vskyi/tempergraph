@@ -172,20 +172,23 @@ class EngineNodes:
 
     def _writer_child(self, state: Mapping[str, Any], unit: str) -> Mapping[str, Any] | None:
         """The workspace record's child for `unit` when `unit` is a writer branch of a parallel block, or for the item in
-        hand when `unit` is a concurrent map whose step writes (its child is addressed by the item's slot)."""
+        hand when `unit` is a concurrent map whose step writes (its child is addressed by the item's slot and the map's
+        visit, MAP-B14; a contest's slot and a block's writer branch are those of visit 1)."""
         held = mapping.item_in_hand(state)
         if held is not None:  # an item of a writing map or a slot of a writing contest: its child is its slot's
-            writes = flow.writer_map(self.ctx.spec, unit) or flow.writer_contest(self.ctx.spec, unit)
-            return self._child_of(state, held["slot"]) if writes else None
+            if flow.writer_map(self.ctx.spec, unit):
+                return self._child_of(state, held["slot"], int(mapping.record(state, unit).get("visit", 1)))
+            return self._child_of(state, held["slot"]) if flow.writer_contest(self.ctx.spec, unit) else None
         block = flow.block_of(self.ctx.spec, unit)
         if block is None or unit not in flow.writer_branches(self.ctx.spec, block):
             return None
         return self._child_of(state, unit)
 
     @staticmethod
-    def _child_of(state: Mapping[str, Any], name: str) -> Mapping[str, Any] | None:
+    def _child_of(state: Mapping[str, Any], name: str, visit: int = 1) -> Mapping[str, Any] | None:
+        """The child of the workspace record whose unit is `name` and whose visit (none recorded: the first) is `visit`."""
         for child in (state.get("workspace") or {}).get("children") or []:
-            if child.get("unit") == name:
+            if child.get("unit") == name and int(child.get("visit", 1)) == visit:
                 return child
         return None
 
@@ -244,18 +247,20 @@ class EngineNodes:
         return self._merge_children(state, [(u, u, f"Merge writer branch {u} of {join}")
                                             for u in flow.writer_branches(self.ctx.spec, join)])
 
-    def _merge_items(self, unit: str, state: Mapping[str, Any], ids: Sequence[str]
+    def _merge_items(self, unit: str, state: Mapping[str, Any], ids: Sequence[str], visit: int = 1
                      ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
-        """WSP-B11, WSP-B12: the same merge for the items of a writing concurrent map, in the order of the list."""
-        return self._merge_children(state, [(mapping.slot(unit, i), i, f"Merge map item {i} of {unit}") for i in ids])
+        """WSP-B11, WSP-B12: the same merge for the items of a writing concurrent map, in the order of the list; only the
+        children cut for `visit` are merged (MAP-B16)."""
+        return self._merge_children(state, [(mapping.slot(unit, i), i, f"Merge map item {i} of {unit}") for i in ids],
+                                    visit)
 
-    def _merge_children(self, state: Mapping[str, Any], order: Sequence[tuple[str, str, str]]
+    def _merge_children(self, state: Mapping[str, Any], order: Sequence[tuple[str, str, str]], visit: int = 1
                         ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
         """Merge the children of the workspace record named by `order` (the child's unit, the name it is told by, the
-        merge message), one after the other, without fast-forward."""
+        merge message), one after the other, without fast-forward. A child is matched by its unit and its `visit`."""
         rec = WorkspaceRecord.from_json(dict(state.get("workspace") or {}))
         run_path = Path(rec.path)
-        children = {str(c.get("unit")): c for c in rec.children}
+        children = {str(c.get("unit")): c for c in rec.children if int(c.get("visit", 1)) == visit}
         before = gitmod.head(run_path)
         for key, label, message in order:
             child = children.get(key)
@@ -966,7 +971,7 @@ class EngineNodes:
                 writes["attempts"][unit]["map_skip"] = True
                 return Move(writes, goto=judge_node)
             if flow.writer_map(spec, unit):  # WSP-B19, WSP-B11: the checkpoint, then one worktree per item
-                writes["workspace"] = self._enter_writer_map(unit, state, [i.id for i in items])
+                writes["workspace"] = self._enter_writer_map(unit, state, [i.id for i in items], visit)
         standing = {it["id"]: mapping.item_state(m, it["id"]) for it in m["items"]}
         if "started" in standing.values():  # items that run finish first, whatever the others wait for
             return Move(writes)
@@ -990,10 +995,12 @@ class EngineNodes:
             return Move(writes, items=parked, kind="human")
         return self._map_finish(unit, state, m, writes, prev, visit, judge_node)
 
-    def _enter_writer_map(self, unit: str, state: Mapping[str, Any], ids: Sequence[str]) -> dict[str, Any]:
+    def _enter_writer_map(self, unit: str, state: Mapping[str, Any], ids: Sequence[str], visit: int = 1
+                          ) -> dict[str, Any]:
         """WSP-B19, WSP-B11: entering a writing concurrent map commits the run worktree's uncommitted changes on the run's
-        branch, then cuts one worktree per item from that commit. A cut that fails ends the segment at this boundary
-        (engine_error `workspace_refused`) with nothing left behind."""
+        branch, then cuts one worktree per item from that commit, named for the map's `visit` (MAP-B14); the worktrees
+        of earlier visits stay. A cut that fails ends the segment at this boundary (engine_error `workspace_refused`)
+        with nothing left behind."""
         ws = dict(state.get("workspace") or {})
         try:
             if ws.get("mode") != "worktree":
@@ -1002,7 +1009,7 @@ class EngineNodes:
             run_path = Path(rec.path)
             gitmod.commit_all(run_path, f"tempergraph: checkpoint before {unit}")
             rec = cut_writers(rec, self.ctx.thread, [mapping.slot(unit, i) for i in ids], self.ctx.spec.worktree,
-                              self.ctx.state_root, read_include=self.ctx.read_worktreeinclude, kind="i")
+                              self.ctx.state_root, read_include=self.ctx.read_worktreeinclude, kind="i", visit=visit)
             rec.last_head = gitmod.head(run_path)
         except (WorkspaceRefused, gitmod.GitError) as exc:
             word = exc.word if isinstance(exc, WorkspaceRefused) else "git_failed"
@@ -1032,7 +1039,7 @@ class EngineNodes:
                 writes.setdefault(channel, {})[unit] = plain
         if not flow.writer_map(spec, unit):
             return Move(writes, goto=judge_node)
-        merged, found = self._merge_items(unit, state, ids)
+        merged, found = self._merge_items(unit, state, ids, visit)
         record = writes["attempts"][unit]
         record.update(found)
         if merged is None:  # WSP-B12: the run branch is back where it was; no model session runs

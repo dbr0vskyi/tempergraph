@@ -189,7 +189,9 @@ def unit_reasons(spec: WorkflowSpec, where: str = "") -> list[str]:
             out.append(f"the risk rule of {where}{name} (changed paths or lines)")
         out += [f"the writer branch {where}{b} of block {where}{name} (its own worktree, merged at the join)"
                 for b in flow.writer_branches(spec, name)]
-        cx = u.switch.complexity if u.switch is not None else None
+        if flow.writer_map(spec, name):
+            out.append(f"the writing concurrent map {where}{name} (each item in its own worktree, merged when all have passed)")
+        cx =u.switch.complexity if u.switch is not None else None
         if cx is not None and any(m.stock[:1] == ("changed_paths",) for m in cx.measures):
             out.append(f"the `changed_paths` measure of {where}{name}")
     return out

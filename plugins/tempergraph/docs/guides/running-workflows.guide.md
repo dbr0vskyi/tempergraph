@@ -121,7 +121,7 @@ Ask Claude: "why did my doc-refresh run fail?" The `troubleshoot` skill reads th
 
 ## Outside a git repository
 
-A plain folder can hold runs too. The state goes to `.tempergraph/` in the folder you start in, or the nearest one above it that already has one; `--state-root <dir>` (before the verb) or `TEMPERGRAPH_STATE_ROOT` names another place. Runs work in place only, and what needs git is refused before anything is spent: worktrees, `--carry`, trials, and rules that count changed lines.
+A plain folder can hold runs too. The state goes to `.tempergraph/` in the folder you start in, or the nearest one above it that already has one; `--state-root <dir>` (before the verb) or `TEMPERGRAPH_STATE_ROOT` names another place. Runs work in place only, and what needs git is refused before anything is spent: worktrees, `--carry`, trials, a concurrent map whose step writes (declares `write` or `edit`), and rules that count changed lines. A concurrent map that only reads still runs there.
 
 ## Be told when a run ends
 
