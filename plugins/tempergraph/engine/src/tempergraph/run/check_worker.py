@@ -37,7 +37,7 @@ def context_doc(gate: GateSpec, ctx: checkmod.CheckContext) -> dict[str, Any]:
             "main_checkout": str(ctx.main_checkout) if ctx.main_checkout else None,
             "artifacts": ctx.artifacts, "values": ctx.values, "facts": ctx.facts, "settings": ctx.settings,
             "criteria": list(ctx.criteria), "allow": list(ctx.allow),
-            "session": None if ctx.session is None else [dict(c) for c in ctx.session],  # CHK-B22, CHK-B23
+            "session": None if ctx.session is None else [dict(c) for c in ctx.session],  # CHK-B24, CHK-B25
             "out_dir": str(ctx.out_dir) if ctx.out_dir else None,
             "reuse_store": str(ctx.reuse_store) if ctx.reuse_store else None,
             "base_dir": str(ctx.base_dir) if ctx.base_dir else None,

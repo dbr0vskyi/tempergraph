@@ -12,7 +12,7 @@ What the package holds today, read in it:
 - The package's checks already read the package's own prompt files for what they say (`PROMPT_SAYS`, `workflow/temperspec/checks.py` lines 65-101).
 - A retry runs a fresh session that is told what was rejected and not resumed ([PRM-B5](../../../tempergraph/docs/specs/04-prompt-rendering.spec.md)), so a file opened in an earlier attempt tells the retry nothing.
 - The short discovery prompt limits the visit to 10 files (`prompts/discovery_short.md` line 19).
-- The engine now gives a check the attempt's tool calls, each with its capability (`read` for the read tool, `search` for a search) and target ([CHK-B22](../../../tempergraph/docs/specs/75-check-contract-and-command-runs.spec.md)), and none for a stand-in executor, a preview or hidden tool inputs ([CHK-B23](../../../tempergraph/docs/specs/75-check-contract-and-command-runs.spec.md)).
+- The engine now gives a check the attempt's tool calls, each with its capability (`read` for the read tool, `search` for a search) and target ([CHK-B24](../../../tempergraph/docs/specs/75-check-contract-and-command-runs.spec.md)), and none for a stand-in executor, a preview or hidden tool inputs ([CHK-B25](../../../tempergraph/docs/specs/75-check-contract-and-command-runs.spec.md)).
 
 ## Decision
 

@@ -1,4 +1,4 @@
-"""The calls a step session made, read from its activity journal for the attempt's check (CHK-B22, CHK-B23).
+"""The calls a step session made, read from its activity journal for the attempt's check (CHK-B24, CHK-B25).
 
 The record is `None` wherever it cannot be trusted: no journal, a journal with no call, a session whose
 executor reports tool names only (no capability on any call), and a journal that dropped a tool line. A
@@ -13,11 +13,11 @@ from typing import Any
 
 
 def read_session(session_dir: Path) -> list[dict[str, Any]] | None:
-    """The calls since the session last started, in call order: `{name, capability, target, ok}` each (CHK-B22).
+    """The calls since the session last started, in call order: `{name, capability, target, ok}` each (CHK-B24).
 
     `target` is the journal line's `input_summary` (null with `observe.tool_inputs = off`), `ok` is true only for
     a call that finished with `ok` true. Returns `None` for a missing or unreadable journal, no call, no call
-    with a capability, a `truncated` line that names a dropped tool line, and any line that cannot be read (CHK-B23).
+    with a capability, a `truncated` line that names a dropped tool line, and any line that cannot be read (CHK-B25).
     """
     try:
         text = (session_dir / "activity.jsonl").read_text(encoding="utf-8")

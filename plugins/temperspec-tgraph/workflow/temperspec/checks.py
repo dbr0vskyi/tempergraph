@@ -101,7 +101,7 @@ def _prompt_says(criterion: str) -> list[CheckFinding]:
     return found or [_ok(criterion, ", ".join(f"prompts/{f.name}" for f in files))]
 
 
-# What the session record shows (engine CHK-B22, CHK-B23; package SRC-B1 to SRC-B9). `ctx.session` is the calls the
+# What the session record shows (engine CHK-B24, CHK-B25; package SRC-B1 to SRC-B9). `ctx.session` is the calls the
 # attempt's session made: `{name, capability, target, ok}` each, in order, or None where there is no record. A finding
 # built from it names a rule file, a row, a path or a phase taken from the prompt and the plan, never a call's target.
 RULE_FOLDER = ".claude/rules/temperspec"

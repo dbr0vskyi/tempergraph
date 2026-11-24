@@ -1,4 +1,4 @@
-"""The session record a check reads (CHK-B22, CHK-B23, CHK-B9; CHK-AC13 to CHK-AC17, CHK-AC3).
+"""The session record a check reads (CHK-B24, CHK-B25, CHK-B9; CHK-AC14 to CHK-AC18, CHK-AC3).
 
 Every fixture here is an engine fixture: a one-step workflow whose gate check writes what it received to a file
 the test names (the check runs in the worker process), and an executor that pushes the tool events a real
@@ -127,7 +127,7 @@ READ, SEARCH, EDIT, WRITE = "read", "search", "edit", "write"
 
 
 def test_the_check_gets_the_calls_of_the_session_in_order(repo: Path, seen: Path) -> None:
-    # CHK-AC13, CHK-B22, CHK-B10, AC 5
+    # CHK-AC14, CHK-B24, CHK-B10, AC 5
     ex = Scripted([script([("Read", READ, "docs/a.md", True), ("Grep", SEARCH, "plan", True),
                            ("Edit", EDIT, "src/b.py", True), ("Write", WRITE, "tests/c.py", True)])])
     out = go(repo, ex)
@@ -142,7 +142,7 @@ def test_the_check_gets_the_calls_of_the_session_in_order(repo: Path, seen: Path
 
 def test_ok_false_the_retry_attempt_a_restart_and_an_unfinished_call(
         repo: Path, seen: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # CHK-AC14, CHK-B22, AC 5
+    # CHK-AC15, CHK-B24, AC 5
     monkeypatch.setenv(FAIL_FIRST_VAR, "1")
 
     def restarted(req: SessionRequest, sink: Any) -> SessionResult:
@@ -170,7 +170,7 @@ def _scan(root: Path, planted: str) -> set[str]:
 
 def test_tool_inputs_off_and_outside_workspace_and_where_the_record_goes(
         repo: Path, seen: Path, tmp_path: Path) -> None:
-    # CHK-AC15, CHK-B22, SEC-B2, AC 5
+    # CHK-AC16, CHK-B24, SEC-B2, AC 5
     planted = "PLANTED-TARGET-4471"
     ex = Scripted([script([("Read", READ, f"docs/{planted}.md", True), ("Read", READ, "<outside workspace>", True)])])
     assert go(repo, ex).exit_code is ExitCode.FINISHED
@@ -183,7 +183,7 @@ def test_tool_inputs_off_and_outside_workspace_and_where_the_record_goes(
                            for h in holders), holders  # never the run log, ledger, stats, exports, checkpoint
 
 
-def test_with_tool_inputs_off_every_target_is_null(repo: Path, seen: Path) -> None:  # CHK-AC15, CHK-B22, AC 5
+def test_with_tool_inputs_off_every_target_is_null(repo: Path, seen: Path) -> None:  # CHK-AC16, CHK-B24, AC 5
     cfg = Path(os.environ["TEMPERGRAPH_HOME"]) / "config"
     cfg.mkdir(parents=True, exist_ok=True)
     (cfg / "settings.json").write_text(json.dumps({"schema_version": 1, "observe": {"tool_inputs": "off"}}))
@@ -201,7 +201,7 @@ def _none_case(repo: Path, seen: Path, ex: Any, spec: Any = None) -> list[dict[s
     return lines(seen)
 
 
-def test_no_record_is_none_never_an_empty_list(repo: Path, seen: Path) -> None:  # CHK-AC16, CHK-B23, AC 5
+def test_no_record_is_none_never_an_empty_list(repo: Path, seen: Path) -> None:  # CHK-AC17, CHK-B25, AC 5
     # a stand-in that reports tool names only: no capability on any call
     names_only = standin("claude", steps=[answer("x", tools=("Read",), session_id="s")],
                          judges=[answer(MET, tools=("Read",), session_id="j")])
@@ -209,12 +209,12 @@ def test_no_record_is_none_never_an_empty_list(repo: Path, seen: Path) -> None: 
     assert [g["session"] for g in names_only_run] == [None]
 
 
-def test_a_session_with_no_call_has_no_record(repo: Path, seen: Path) -> None:  # CHK-AC16, CHK-B23, AC 5
+def test_a_session_with_no_call_has_no_record(repo: Path, seen: Path) -> None:  # CHK-AC17, CHK-B25, AC 5
     assert [g["session"] for g in _none_case(repo, seen, Scripted([script([])]))] == [None]
 
 
 def test_a_journal_that_dropped_a_tool_line_has_no_record(repo: Path, seen: Path) -> None:
-    # CHK-AC16, CHK-B23, AC 5: a journal capped small, so a `truncated` line names a dropped `tool_started`
+    # CHK-AC17, CHK-B25, AC 5: a journal capped small, so a `truncated` line names a dropped `tool_started`
     def capped(req: SessionRequest, sink: Any) -> SessionResult:
         started(sink)
         sink.max_lines = 4
@@ -227,7 +227,7 @@ def test_a_journal_that_dropped_a_tool_line_has_no_record(repo: Path, seen: Path
 
 
 def test_the_preview_has_no_record_and_the_gates_own_check_has(repo: Path, seen: Path) -> None:
-    # CHK-AC16, CHK-B23, AC 5
+    # CHK-AC17, CHK-B25, AC 5
     def previewing(req: SessionRequest, sink: Any) -> SessionResult:
         (ticket,) = set(re.findall(r"tempergraph self-check ([0-9a-f]{32})", req.prompt))
         started(sink)
@@ -242,7 +242,7 @@ def test_the_preview_has_no_record_and_the_gates_own_check_has(repo: Path, seen:
 
 def test_a_check_that_ignores_the_record_gets_the_same_context_on_every_executor(
         repo: Path, seen: Path) -> None:
-    # CHK-AC17, CHK-B9, AC 5
+    # CHK-AC18, CHK-B9, AC 5
     claude = Scripted([script([("Read", READ, "docs/a.md", True)])])
     assert go(repo, claude, wf()).exit_code is ExitCode.FINISHED
     other = Scripted([script([("Read", READ, "docs/a.md", True)])], name="antigravity")
