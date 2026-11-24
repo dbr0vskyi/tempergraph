@@ -7,7 +7,14 @@ from pathlib import Path
 
 import pytest
 
-from tempergraph.contracts import EventSink, InfraCause, SessionOptions, SessionRequest, SessionResult, ViewSet
+from tempergraph.contracts import (
+    EventSink,
+    InfraCause,
+    SessionOptions,
+    SessionRequest,
+    SessionResult,
+    ViewSet,
+)
 from tempergraph.executors.binding import Binding, BindingError, BindingTable, load
 from tempergraph.executors.claude import (
     ClaudeExecutor,
