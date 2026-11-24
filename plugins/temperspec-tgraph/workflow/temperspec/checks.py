@@ -291,16 +291,18 @@ SOURCE_FILES = "Changed source files"
 
 
 def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
-            links: list[str] | None = None, reading: list[str] | None = None) -> Any:
+            links: list[str] | None = None, reading: list[str] | None = None,
+            facts: list[str] | None = None) -> Any:
     """The result, with the facts a read-only judge cannot get by itself as its evidence. A command judged
     environmental leads the evidence, and the result is marked environmental when no other finding fails. `reading` is the lines a
-    judge that reads the changed code needs (`_reading_lines`): the changed source lines, its budget and the files."""
+    judge that reads the changed code needs (`_reading_lines`): the changed source lines, its budget and the files.
+    `facts` is lines of plain evidence that follow the first line, never a finding (the outcome check's push line)."""
     lead = [f"{f.criterion}: {f.message}" for f in found if isinstance(f, _Environmental)]
     bad = "; ".join(lead + [f"{f.criterion}: {f.message}" for f in found
                             if f.status == "fail" and not isinstance(f, _Environmental)])
     environmental = bool(lead) and not any(f.status == "fail" and not isinstance(f, _Environmental) for f in found)
     specs, _ = _edited_specs(ctx)
-    lines = [bad or f"{len(found)} checked"] + (reading or [])
+    lines = [bad or f"{len(found)} checked"] + (facts or []) + (reading or [])
     changed = [p for p in ctx.git.changed_paths if not p.startswith(".claude/rules/")]
     prepared = [p for p in changed if p in CONTEXT_FILES and _block_only(ctx, p)]
     changed = [p for p in changed if p not in prepared]
@@ -1105,4 +1107,5 @@ def outcome_check(ctx: Any) -> Any:
         found += _verify(ctx, plan, "ts-verify") if plan is not None else [
             _find("fail", "ts-verify", path, "the plan cannot be read")]
     found += _collateral(ctx, specs)
-    return _result(ctx, found, _plan(ctx)[0])
+    push = "The run's branch is pushed." if ctx.git.pushed else "The run's branch is not pushed."
+    return _result(ctx, found, _plan(ctx)[0], facts=[push])  # evidence only: a push never decides the result
