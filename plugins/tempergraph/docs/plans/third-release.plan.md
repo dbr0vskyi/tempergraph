@@ -37,7 +37,7 @@ task_id: third-release
 | Order | Cap and reach first, because every parallel shape relies on them | R-140 F4, F5 |
 | Plan shape | Tracks and phases only; each track's expanded plan is written when its specs are ready (EC-2) | As in release 2 |
 
-**Status: In progress.** R3-T1.1, R3-T1.2, R3-T8.1 to R3-T8.3 and I3-15 are built (2026-11-22). R3-T2.3 and with it track R3-T2 are built (2026-11-22). R3-T3.1 and R3-T3.2 are built (2026-11-23), and with them track R3-T3. R3-T4.1 and R3-T4.2 are built (2026-11-23), and with them track R3-T4. R3-T5.1 and R3-T5.2 are built (2026-11-23), and with them track R3-T5. EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2). What is left is tracked as GitHub issues labelled `release: 3` (2026-11-23): R3-T0 probes [#99](https://github.com/dbr0vskyi/tempergraph/issues/99), [#104](https://github.com/dbr0vskyi/tempergraph/issues/104), [#106](https://github.com/dbr0vskyi/tempergraph/issues/106), [#107](https://github.com/dbr0vskyi/tempergraph/issues/107); R3-T6 [#67](https://github.com/dbr0vskyi/tempergraph/issues/67); R3-T7 [#68](https://github.com/dbr0vskyi/tempergraph/issues/68) and [#69](https://github.com/dbr0vskyi/tempergraph/issues/69); R3-T9 [#70](https://github.com/dbr0vskyi/tempergraph/issues/70); R3-T10 [#71](https://github.com/dbr0vskyi/tempergraph/issues/71) and [#72](https://github.com/dbr0vskyi/tempergraph/issues/72); known gaps of built tracks [#73](https://github.com/dbr0vskyi/tempergraph/issues/73) to [#80](https://github.com/dbr0vskyi/tempergraph/issues/80).
+**Status: In progress.** R3-T1.1, R3-T1.2, R3-T8.1 to R3-T8.3 and I3-15 are built (2026-11-22). R3-T2.3 and with it track R3-T2 are built (2026-11-22). R3-T3.1 and R3-T3.2 are built (2026-11-23), and with them track R3-T3. R3-T4.1 and R3-T4.2 are built (2026-11-23), and with them track R3-T4. R3-T5.1 and R3-T5.2 are built (2026-11-23), and with them track R3-T5. EC-1 is met: the owner accepted ADR-0132 and ADR-0133 on 2026-11-22. Each track starts when its specs are ready (EC-2). What is left is tracked as GitHub issues labelled `release: 3` (2026-11-23): R3-T0 probes [#42](https://github.com/dbr0vskyi/tempergraph/issues/42), [#47](https://github.com/dbr0vskyi/tempergraph/issues/47), [#49](https://github.com/dbr0vskyi/tempergraph/issues/49), [#50](https://github.com/dbr0vskyi/tempergraph/issues/50); R3-T6 [#10](https://github.com/dbr0vskyi/tempergraph/issues/10); R3-T7 [#11](https://github.com/dbr0vskyi/tempergraph/issues/11) and [#12](https://github.com/dbr0vskyi/tempergraph/issues/12); R3-T9 [#13](https://github.com/dbr0vskyi/tempergraph/issues/13); R3-T10 [#14](https://github.com/dbr0vskyi/tempergraph/issues/14) and [#15](https://github.com/dbr0vskyi/tempergraph/issues/15); known gaps of built tracks [#16](https://github.com/dbr0vskyi/tempergraph/issues/16) to [#23](https://github.com/dbr0vskyi/tempergraph/issues/23).
 
 ## 1. Requirements analysis
 
@@ -175,15 +175,15 @@ Status: built. The tick (`schedule tick`: the lock, the heartbeat, settling, the
 ### R3-T6 Pipelines
 
 #### R3-T6.1 The pipeline stage
-Issue: [#67](https://github.com/dbr0vskyi/tempergraph/issues/67). Goal: `promote-check --to pipeline`, the regressed watch, PRO's pipeline rows.
+Issue: [#10](https://github.com/dbr0vskyi/tempergraph/issues/10). Goal: `promote-check --to pipeline`, the regressed watch, PRO's pipeline rows.
 
 ### R3-T7 Pull-request gate
 
 #### R3-T7.1 First slice
-Issue: [#68](https://github.com/dbr0vskyi/tempergraph/issues/68). Goal: GitHub Actions, `report` mode, statuses and `path:line` evidence, the receipt in the pull request's body, the generated file and `doctor` (R-135 recommendation).
+Issue: [#11](https://github.com/dbr0vskyi/tempergraph/issues/11). Goal: GitHub Actions, `report` mode, statuses and `path:line` evidence, the receipt in the pull request's body, the generated file and `doctor` (R-135 recommendation).
 
 #### R3-T7.2 After the owner's answers
-Issue: [#69](https://github.com/dbr0vskyi/tempergraph/issues/69). Goal: whichever of `block`, judge reasons and GitLab the owner accepts.
+Issue: [#12](https://github.com/dbr0vskyi/tempergraph/issues/12). Goal: whichever of `block`, judge reasons and GitLab the owner accepts.
 
 ### R3-T8 Moved from release 2
 
@@ -202,15 +202,15 @@ Status: built. The `history` layer and `audit tools` (AUD-B1, AUD-B3, AUD-B5, AU
 ### R3-T9 Windows
 
 #### R3-T9.1 Windows
-Issue: [#70](https://github.com/dbr0vskyi/tempergraph/issues/70) (probes [#107](https://github.com/dbr0vskyi/tempergraph/issues/107)). Goal: WIN's acceptance criteria, after EC-4.
+Issue: [#13](https://github.com/dbr0vskyi/tempergraph/issues/13) (probes [#50](https://github.com/dbr0vskyi/tempergraph/issues/50)). Goal: WIN's acceptance criteria, after EC-4.
 
 ### R3-T10 Release
 
 #### R3-T10.1 Examples and docs
-Issue: [#71](https://github.com/dbr0vskyi/tempergraph/issues/71). Goal: one example workflow gains a complexity switch; the guides cover sub-workflows, parallel work, schedules and the pull-request gate.
+Issue: [#14](https://github.com/dbr0vskyi/tempergraph/issues/14). Goal: one example workflow gains a complexity switch; the guides cover sub-workflows, parallel work, schedules and the pull-request gate.
 
 #### R3-T10.2 Release files
-Issue: [#72](https://github.com/dbr0vskyi/tempergraph/issues/72). Goal: the release record, the changelog, the version bump.
+Issue: [#15](https://github.com/dbr0vskyi/tempergraph/issues/15). Goal: the release record, the changelog, the version bump.
 
 ## 3. Risks
 

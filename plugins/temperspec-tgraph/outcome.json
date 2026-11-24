@@ -1586,61 +1586,61 @@
       "revision": 8,
       "origin": "authored",
       "at": "2026-11-23T12:00:00.000Z",
-      "note": "issue 114: the discovery check measures every spec against the spec budget of 400 lines and 30,720 bytes and sends an over-budget spec back for a split by capability (ts-dis-budget, ts-dis-over); the structure check reads an id a split moved as defined in the spec it moved to, and a split-off spec may name ids of the spec it was split from (ts-spec-moved, ts-spec-parent)"
+      "note": "issue 57: the discovery check measures every spec against the spec budget of 400 lines and 30,720 bytes and sends an over-budget spec back for a split by capability (ts-dis-budget, ts-dis-over); the structure check reads an id a split moved as defined in the spec it moved to, and a split-off spec may name ids of the spec it was split from (ts-spec-moved, ts-spec-parent)"
     },
     {
       "revision": 9,
       "origin": "authored",
       "at": "2026-11-23T22:50:00.000Z",
-      "note": "the code gate compares a verification command that fails with the run's base commit: a failure that was there before the change, or that no changed file touches, escalates as environmental instead of spending a retry (issue 111)"
+      "note": "the code gate compares a verification command that fails with the run's base commit: a failure that was there before the change, or that no changed file touches, escalates as environmental instead of spending a retry (issue 54)"
     },
     {
       "revision": 10,
       "origin": "authored",
       "at": "2026-11-23T23:10:00.000Z",
-      "note": "the code gate's evidence states the changed source lines, a reading budget and the changed source files, and the code judge reads them before it grades alignment; every judge brief and the outcome judge's stance ask for the quoted line behind a MET and grade PARTIAL when the only evidence is search lines (issues 112 and 113, spec judge-reading)"
+      "note": "the code gate's evidence states the changed source lines, a reading budget and the changed source files, and the code judge reads them before it grades alignment; every judge brief and the outcome judge's stance ask for the quoted line behind a MET and grade PARTIAL when the only evidence is search lines (issues 55 and 56, spec judge-reading)"
     },
     {
       "revision": 11,
       "origin": "authored",
       "at": "2026-11-23T23:45:00.000Z",
-      "note": "issue 126: the code session makes its one run of the verification commands through the engine's check preview after the plan is marked and the report written, the engine's reuse key names the tree's content so the gate reuses that run after the commit, and the gate's evidence says for each command whether it was reused or run (ts-code-once edited; ts-code-preview, ts-code-previewed, ts-code-session, ts-code-rerun, ts-code-ran added)"
+      "note": "issue 69: the code session makes its one run of the verification commands through the engine's check preview after the plan is marked and the report written, the engine's reuse key names the tree's content so the gate reuses that run after the commit, and the gate's evidence says for each command whether it was reused or run (ts-code-once edited; ts-code-preview, ts-code-previewed, ts-code-session, ts-code-rerun, ts-code-ran added)"
     },
     {
       "revision": 12,
       "origin": "authored",
       "at": "2026-11-24T03:45:00.000Z",
-      "note": "issue 110: the hand-off, the plan and the code report are deliverables, each required only on a path that produces it, and the outcome check reports whether the run's branch is pushed (spec outcome-gate)"
+      "note": "issue 53: the hand-off, the plan and the code report are deliverables, each required only on a path that produces it, and the outcome check reports whether the run's branch is pushed (spec outcome-gate)"
     },
     {
       "revision": 13,
       "origin": "authored",
       "at": "2026-11-24T03:50:00.000Z",
-      "note": "issue 125: a trip back to the plan step keeps the completed mark of a row it leaves as it was; the plan and expand checks accept a mark that a commit of the run wrote on a row that reads the same with its file unchanged since, and refuse any other (ts-plan-form, ts-exp-rows); the code step builds only the unmarked rows and the code check takes a kept row's file whichever visit changed it (ts-code-changed, spec kept-marks)"
+      "note": "issue 68: a trip back to the plan step keeps the completed mark of a row it leaves as it was; the plan and expand checks accept a mark that a commit of the run wrote on a row that reads the same with its file unchanged since, and refuse any other (ts-plan-form, ts-exp-rows); the code step builds only the unmarked rows and the code check takes a kept row's file whichever visit changed it (ts-code-changed, spec kept-marks)"
     },
     {
       "revision": 14,
       "origin": "authored",
       "at": "2026-11-24T04:45:00.000Z",
-      "note": "issues 118 and 124: the outcome check fails a spec the run edited when the base branch changed it since the run started (ts-spec-fresh), comparing the spec at the run's base commit with the head of the base branch that the engine gives every check"
+      "note": "issues 61 and 67: the outcome check fails a spec the run edited when the base branch changed it since the run started (ts-spec-fresh), comparing the spec at the run's base commit with the head of the base branch that the engine gives every check"
     },
     {
       "revision": 15,
       "origin": "authored",
       "at": "2026-11-24T08:00:00.000Z",
-      "note": "issue 129: a step's check reads the session record the engine gives it; each of the seven steps whose prompt names a rule file fails when the session never opened a rule file the repository holds (ts-set-ruleread, ts-tri-ruleread, ts-dsh-ruleread, ts-dis-ruleread, ts-plan-ruleread, ts-exp-ruleread, ts-code-ruleread), the expand check fails for a row whose existing file the session never opened (ts-exp-opened), and the code check fails when a phase's source was changed before its tests were first written (ts-code-order) (spec session-record-checks)"
+      "note": "issue 72: a step's check reads the session record the engine gives it; each of the seven steps whose prompt names a rule file fails when the session never opened a rule file the repository holds (ts-set-ruleread, ts-tri-ruleread, ts-dsh-ruleread, ts-dis-ruleread, ts-plan-ruleread, ts-exp-ruleread, ts-code-ruleread), the expand check fails for a row whose existing file the session never opened (ts-exp-opened), and the code check fails when a phase's source was changed before its tests were first written (ts-code-order) (spec session-record-checks)"
     },
     {
       "revision": 16,
       "origin": "authored",
       "at": "2026-11-24T06:00:00.000Z",
-      "note": "issue 117: the setting `conversation` (`never` or `blocking`); with `never` the triage note sorts each gap and lists each owner decision with its default, discovery goes on with the default, and the pull request lists the defaults as assumptions to confirm (ts-tri-owner added, spec conversation)"
+      "note": "issue 60: the setting `conversation` (`never` or `blocking`); with `never` the triage note sorts each gap and lists each owner decision with its default, discovery goes on with the default, and the pull request lists the defaults as assumptions to confirm (ts-tri-owner added, spec conversation)"
     },
     {
       "revision": 17,
       "origin": "authored",
       "at": "2026-11-24T12:00:00.000Z",
-      "note": "issue 132: the full discovery step starts one read-only reading session for each gap of two or more, three at a time, before its one writing session (read_gap with ts-rdg-answers and ts-rdg-cited, spec parallel-reading); the setup survey does the same for each component folder (list_components, read_component with ts-rdc-answers and ts-rdc-cited)"
+      "note": "issue 75: the full discovery step starts one read-only reading session for each gap of two or more, three at a time, before its one writing session (read_gap with ts-rdg-answers and ts-rdg-cited, spec parallel-reading); the setup survey does the same for each component folder (list_components, read_component with ts-rdc-answers and ts-rdc-cited)"
     }
   ]
 }

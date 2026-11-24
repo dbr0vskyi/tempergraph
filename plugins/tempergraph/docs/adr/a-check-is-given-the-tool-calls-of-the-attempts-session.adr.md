@@ -2,7 +2,7 @@
 
 ## Context
 
-A gate's check holds a step to what the session left in the workspace, but nothing in the context it receives says what the session did (CHK-B10, [spec](../specs/75-check-contract-and-command-runs.spec.md)). A workflow can need that: temperspec asks its checks to confirm that a session opened the rule file its prompt names, opened the files its plan rows name, and wrote a phase's tests before its source (issues 129 to 131, [triage note](../../../temperspec-tgraph/docs/tasks/i129.triage.md)). The engine names no workflow ([ADR-0129](0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md)), so the answer is a capability any check can use.
+A gate's check holds a step to what the session left in the workspace, but nothing in the context it receives says what the session did (CHK-B10, [spec](../specs/75-check-contract-and-command-runs.spec.md)). A workflow can need that: temperspec asks its checks to confirm that a session opened the rule file its prompt names, opened the files its plan rows name, and wrote a phase's tests before its source (issues 72 to 74, [triage note](../../../temperspec-tgraph/docs/tasks/i72.triage.md)). The engine names no workflow ([ADR-0129](0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md)), so the answer is a capability any check can use.
 
 What the code holds today, read in the engine:
 

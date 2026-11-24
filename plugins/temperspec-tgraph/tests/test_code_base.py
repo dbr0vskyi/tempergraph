@@ -265,7 +265,7 @@ def test_outcome_json_holds_the_criteria_of_the_code_spec() -> None:
         assert row["verified_by"] == "check" and row["check_method"].strip(), cid
         assert row["verifier"] == {"check": "tgwf_temperspec.checks:code_check"}, cid
     # The entry for this change, wherever later changes put the file's revision.
-    entry = next(r for r in doc["revisions"] if "issue 111" in r.get("note", ""))
+    entry = next(r for r in doc["revisions"] if "issue 54" in r.get("note", ""))
     assert entry["revision"] >= 8 and entry["origin"] == "authored"
     assert doc["revision"] == doc["revisions"][-1]["revision"] >= entry["revision"]
 

@@ -1,4 +1,4 @@
-"""The conversation setting (spec `conversation`, CONV-B1 to CONV-B7; task i117, `AC <n>` are the task's)."""
+"""The conversation setting (spec `conversation`, CONV-B1 to CONV-B7; task i60, `AC <n>` are the task's)."""
 
 from __future__ import annotations
 
@@ -340,7 +340,7 @@ ROW = "- [ ] ts-tri-owner "
 def test_the_criteria_file_holds_ts_tri_owner_with_the_text_of_its_spec_row() -> None:  # CONV-AC3, AC 1
     outcome = json.loads(_read("outcome.json"))
     assert outcome["revision"] == outcome["revisions"][-1]["revision"] >= 15
-    assert any("issue 117" in r.get("note", "") for r in outcome["revisions"])
+    assert any("issue 60" in r.get("note", "") for r in outcome["revisions"])
     crit = next(c for c in outcome["intermediate"]["triage"]["criteria"] if c["id"] == "ts-tri-owner")
     assert crit["severity"] == "blocker" and crit["verified_by"] == "check" and crit["check_method"].strip()
     assert crit["verifier"] == {"check": "tgwf_temperspec.checks:triage_check"}

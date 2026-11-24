@@ -1,4 +1,4 @@
-"""Task i114: the spec budget at the discovery gate (ts-dis-budget, ts-dis-over) and the ids a split moves
+"""Task i57: the spec budget at the discovery gate (ts-dis-budget, ts-dis-over) and the ids a split moves
 (ts-spec-moved, ts-spec-parent), with the criteria file, the discovery prompt and the spec rule that state them."""
 
 from __future__ import annotations
@@ -272,9 +272,9 @@ def _criteria() -> dict[str, tuple[str, dict[str, Any]]]:
 
 def test_the_criteria_file_has_the_revision_entries_for_the_change() -> None:  # AC 1, AC 2, AC 5, ts-code-ran, ts-dis-budget, ts-spec-moved
     o = json.loads((ROOT / "outcome.json").read_text(encoding="utf-8"))
-    for issue in ("issue 114", "issue 126", "issue 129"):
+    for issue in ("issue 57", "issue 69", "issue 72"):
         entry = next(r for r in o["revisions"] if issue in r.get("note", ""))
-        assert entry["revision"] >= (13 if issue == "issue 129" else 8), issue
+        assert entry["revision"] >= (13 if issue == "issue 72" else 8), issue
     assert o["revision"] >= 13 and o["revision"] == o["revisions"][-1]["revision"]
     assert any("30,720" in a and "ts-spec-cap" in a for a in o["assumptions"])
 
@@ -305,7 +305,7 @@ def test_the_expand_and_test_first_criteria_are_blockers_checked_by_their_gate(
     assert row["verifier"]["check"] == f"tgwf_temperspec.checks:{verifier}"
     assert all(w in row["text"] for w in words)
     o = json.loads((ROOT / "outcome.json").read_text(encoding="utf-8"))
-    note = next(r for r in o["revisions"] if "issue 129" in r.get("note", ""))["note"]
+    note = next(r for r in o["revisions"] if "issue 72" in r.get("note", ""))["note"]
     assert "ts-exp-opened" in note and "ts-code-order" in note
 
 

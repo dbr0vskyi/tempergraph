@@ -10,7 +10,7 @@ The owner raised a concern that "no one grades the judges". Every gate rests on 
 |---|---|---|
 | This design on `main` | Specs | [JDG](../specs/05-judge-and-verdict.spec.md), [LIF](../specs/18-lifecycle-and-evals.spec.md), [SIL](../specs/16-self-improvement.spec.md), [OBS](../specs/15-observability-and-cost.spec.md), [SSN-B8, SSN-B9, SSN-B10](../specs/25-session-contract.spec.md), [R-006](R-006-planned-work-coverage.rsrch.md) |
 | Design gap review, R-011 (gap G7, judge acceptance bar) | Research note, merged with pull request 3 | [R-011](R-011-design-gap-review.rsrch.md) |
-| Self-improvement design: specs 40 PRP (proposals, case sets, paired trials) and 41 FBK (feedback labels and judge reliability), ADR-0034 | Parallel thread, [pull request 4](https://github.com/dbr0vskyi/tempergraph/pull/4), unmerged | `specs/40-…`, `specs/41-…` on that branch |
+| Self-improvement design: specs 40 PRP (proposals, case sets, paired trials) and 41 FBK (feedback labels and judge reliability), ADR-0034 | Parallel thread, pull request 4, unmerged | `specs/40-…`, `specs/41-…` on that branch |
 | Public practice | Research note | [R-045](R-045-evaluating-llm-judges-public-practice.rsrch.md) |
 
 All read on 2026-11-19. Specs of pull request 4 are named in text rather than linked, because the links resolve only once those pull requests merge.

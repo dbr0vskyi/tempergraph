@@ -1,4 +1,4 @@
-"""Task i124: the outcome check's guard for a spec the base branch changed since the run started (`ts-spec-fresh`),
+"""Task i67: the outcome check's guard for a spec the base branch changed since the run started (`ts-spec-fresh`),
 with the criteria file that states it (SBS-B1 to SBS-B3, OUT-B16)."""
 
 from __future__ import annotations
@@ -216,7 +216,7 @@ def _outcome() -> dict[str, Any]:
 
 def test_the_criteria_file_has_the_revision_entry_that_cites_the_issues() -> None:  # AC 4, AC 5, ts-spec-fresh
     o = _outcome()
-    entry = next(r for r in o["revisions"] if "issues 118 and 124" in r.get("note", ""))
+    entry = next(r for r in o["revisions"] if "issues 61 and 67" in r.get("note", ""))
     assert entry["revision"] >= 12 and entry["origin"] == "authored"
     assert o["revision"] == o["revisions"][-1]["revision"] >= entry["revision"]
 
