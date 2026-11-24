@@ -405,7 +405,7 @@ From [72-contest-unit.spec.md](../specs/72-contest-unit.spec.md).
 
 - Using the gate's own judge per candidate means no new grader needs calibration (JCL); a pairwise judge was rejected for its position and length biases (R-045).
 - Costs grow with slots, so preflight shows the projected range from the stats projection (CST).
-- As built (R3-T4.2): `run/contest.py` holds the pick, a pure function over each slot's verdict and keys, and the `contest` record's rows; the unit's own step node runs the slots in a pool of `concurrency` threads, each on the item view of the state, and its judge node grades them and picks, so a contest compiles to the unit's four nodes. A writing contest cuts one `--s-<slot>` worktree per slot after a checkpoint commit and merges the winner only; a second attempt of a writing contest ends blocked, not overwriting a slot branch. Preflight shows no projected cost range for a contest until the owner answers the open question of the spec.
+- As built (R3-T4.2): `run/contest.py` holds the pick, a pure function over each slot's verdict and keys, and the `contest` record's rows; the unit's own step node runs the slots in a pool of `concurrency` threads, each on the item view of the state, and its judge node grades them and picks, so a contest compiles to the unit's four nodes. A writing contest cuts one `--s-<slot>` worktree per slot after a checkpoint commit and merges the winner only; an attempt after the first cuts fresh `--s<n>-<slot>` worktrees from the run branch's head, leaves the earlier attempts' slot branches as they are and merges its own winner only. Preflight shows no projected cost range for a contest until the owner answers the open question of the spec.
 
 ### F40 ASK Ask unit `supported`
 

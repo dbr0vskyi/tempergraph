@@ -159,6 +159,35 @@ def test_slot_worktrees_are_cut_after_a_checkpoint_and_named_by_their_slot(repo:
     assert cut_writers(kept, "demo/T-5", ["lint"], None, root).children == kept.children
 
 
+def test_a_later_attempts_slot_worktrees_are_named_by_their_attempt_and_the_first_stay_untouched(repo: Path) -> None:
+    # WTR-AC14 (WTR-B20, CTS-B11, CTS-B12)
+    from tempergraph import git as gitmod
+
+    root = ensure_state_root(state_root_path(repo))
+    plan = resolve_workspace(two_step(), repo, task_id="T-5")
+    rec = prepare_workspace("demo/T-5", plan, WorktreeDecl(), root)
+    gitmod.commit_all(Path(rec.path), "tempergraph: checkpoint before pick")
+    rec = cut_writers(rec, "demo/T-5", ["pick.s1", "pick.s2"], None, root, kind="s")
+    first = [dict(c) for c in rec.children]
+    assert all("visit" not in c for c in first)
+    run_path = Path(rec.path)
+    assert gitmod.head(run_path)
+    rec = cut_writers(rec, "demo/T-5", ["pick.s1", "pick.s2"], None, root, kind="s", visit=2)
+    assert rec.children[:2] == first  # the first attempt's records: names, branches, no `visit`, state `active`
+    assert all(c["state"] == "active" and Path(c["path"]).exists() for c in rec.children[:2])
+    later = rec.children[2:]
+    assert [c["unit"] for c in later] == ["pick.s1", "pick.s2"] and [c["visit"] for c in later] == [2, 2]
+    assert [Path(c["path"]).name for c in later] == ["demo--T-5--s2-s1", "demo--T-5--s2-s2"]
+    assert [c["branch"] for c in later] == ["tg/demo/T-5--s2-s1", "tg/demo/T-5--s2-s2"]
+    assert all(Path(c["path"]).exists() for c in later)
+    with pytest.raises(WorkspaceRefused) as err:  # one slot is cut once in one attempt
+        cut_writers(rec, "demo/T-5", ["pick.s1"], None, root, kind="s", visit=2)
+    assert err.value.word == "name_collision"
+    assert wsmod.writer_names(run_path, rec.branch, "pick.s1", "demo/T-5", kind="s")[0] == "demo--T-5--s-s1"
+    assert wsmod.writer_names(run_path, rec.branch, "m.a", "demo/T-5", kind="i", visit=2)[0] == "demo--T-5--i2-a"
+    assert wsmod.writer_names(run_path, rec.branch, "pick.s1", "demo/T-5", kind="s", visit=3)[1] == "tg/demo/T-5--s3-s1"
+
+
 def test_failed_bootstrap_removes_worktree_and_branch(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # WTR-AC5 (WTR-B22, WTR-B23): the rollback needs no `--force`, `branch -D` or `branch -d`
     seen: list[list[str]] = []
