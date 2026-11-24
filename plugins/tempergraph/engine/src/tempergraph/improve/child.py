@@ -121,7 +121,10 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
                 depth = "off"
         except Exception:  # noqa: BLE001 - the loop is best effort: when the plan cannot be made, keep the setting
             pass
-    if not (friction or outcome) and depth == "off":
+    level = prp.autonomy(spec, os.environ.get("TEMPERGRAPH_AUTONOMY"))
+    # PRP-B26: a final exit of a workflow with a proposal to watch reads its pull request, a clean exit included
+    watch = final and not dry_run and not trial and level != "record" and prp.watching(root, spec.name)
+    if not (friction or outcome) and depth == "off" and not watch:
         return None
     tid = uuid.uuid4().hex[:16]
     ticket = {"schema_version": 1, "ticket_id": tid, "thread": thread, "workflow": spec.name,
@@ -132,7 +135,7 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
               "outcome_calibrated": outcome and has_score(spec, "outcome", root), "at": now_iso(),
               "review": depth, "review_reason": reason, "run_cost_usd": round(float(run_cost_usd or 0.0), 6),
               "units": unit_decls(spec) if depth != "off" else {},
-              "autonomy": prp.autonomy(spec, os.environ.get("TEMPERGRAPH_AUTONOMY")),
+              "autonomy": level, "watch_only": not (friction or outcome) and depth == "off",
               "daily_cap_usd": autonomy.daily_cap(spec.improvement_mode, daily_cap_usd),
               "alias": loop_model or ALIAS, "effort": loop_effort or EFFORT, "trigger": trigger,
               "package_root": str(spec.package_root) if spec.package_root else None,
@@ -296,6 +299,25 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     append_jsonl(log, {"ts": now_iso(), "kind": "loop_started", "ticket": t.get("ticket_id"),
                        "lenses": t.get("lenses"), "findings": len(mine), "trigger": t.get("trigger"),
                        "fingerprints": sorted(t.get("fingerprints") or ())})
+    if t.get("autonomy") != "record" and not t.get("dry_run"):  # PRP-B26, PRP-B27, PRP-B28: best effort (SIL-B1)
+        try:
+            from tempergraph.improve import proposals as prp
+
+            prp.sync_pr_state(root, wf, host)
+        except Exception as exc:  # noqa: BLE001
+            append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "pr_state", "reason": "error",
+                               "error": type(exc).__name__})
+        try:  # PRP-B9: a proposal that has just become merged is compared in the same ticket
+            from tempergraph.improve import release
+
+            release.compare_due(root, wf, host, filing.Outbox.at(root))
+        except Exception as exc:  # noqa: BLE001
+            append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "release", "reason": "error",
+                               "error": type(exc).__name__})
+    if t.get("watch_only"):  # a read of the pull request and nothing else: no judge, review, filing or ledger row
+        return {"ticket": t.get("ticket_id"), "thread": thread, "results": [], "cost": {"reported": 0.0,
+                                                                                      "estimated_only": 0.0},
+                "acted": {}}
     judged: dict[str, dict[str, Any]] = {}
     cost = {"reported": 0.0, "estimated_only": 0.0}
     left = autonomy.room(t, root)  # SIL-B19, SIL-B20: stable mode's daily cap skips the judges; records are still written
