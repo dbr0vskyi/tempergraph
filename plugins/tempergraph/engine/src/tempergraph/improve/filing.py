@@ -40,6 +40,7 @@ class Candidate:
     calibrated: bool = False  # the outcome judge has a calibration score for this gate
     request_digest: str | None = None
     issue_labels: Sequence[str] | None = None  # the workflow's `improvement.issue_labels` (ISS-B1)
+    review_categories: frozenset[str] = frozenset()  # the review catalog's category codes, so a body names only those
 
 
 @dataclass(kw_only=True)
@@ -106,6 +107,9 @@ def body(d: Decision, regression_of: int | None = None) -> str:
     fp = str(f.get("fingerprint"))
     summary = [f"**Cause** `{f.get('cause')}` ({f.get('class')}, side `{f.get('side')}`), lens {d.candidate.lens}.",
                f"**Workflow** `{f.get('workflow')}`; unit `{f.get('unit') or '-'}`."]
+    category = str(f.get("review") or "").removeprefix("review:")
+    if category and category in d.candidate.review_categories:  # SRV-B7: the category code only, never a note
+        summary.append(f"A session review kept `review:{category}` on this unit in this run.")
     if f.get("child") and f.get("parent"):  # SWF-B9
         summary.append(f"**Parent** `{f.get('parent')}` ran this workflow as its sub-workflow unit `{f.get('child')}`.")
     if regression_of is not None:

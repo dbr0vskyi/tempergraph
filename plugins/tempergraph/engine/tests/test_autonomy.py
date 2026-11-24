@@ -224,3 +224,52 @@ def test_outcome_lens_starts_no_judge_of_its_own(tmp_path: Path) -> None:  # OUT
     loop_ex = standin("claude")  # no scripted judge: any loop session would fail here
     out = child.process(t, registry(loop_ex), MemoryCodeHost())
     assert not loop_ex.calls and [r["op"] for r in out["results"]] == ["recorded"]
+
+
+MISREAD = [("code.1.step", [("prompt_misread", "kept")])]
+
+
+def third_run(repo: Path, level: str) -> tuple[Path, dict[str, Any]]:
+    """Two earlier runs that kept `prompt_misread` on `code`, and a third whose review the loop child runs."""
+    from tempergraph.store.layout import state_root_path
+
+    from .test_review_repeat import build_code_run, write_reviews
+    from .test_session_review import ticket
+
+    root = state_root_path(repo)
+    for task in ("V-1", "V-2"):
+        write_reviews(root, task, MISREAD)
+    build_code_run(root, "V-3", keys=("code.1.step",))
+    t = {**ticket(root, "V-3"), "thread": "demo/V-3", "issue_repository": "team/notes", "ticket_id": "t3",
+         "fingerprints": [], "lenses": {"friction": False, "outcome": False}, "dry_run": False, "units": {},
+         "mode": "stable", "autonomy": level, "package_root": str(repo), "workflow_version": "0.0.0"}
+    return root, t
+
+
+def test_a_review_repeat_across_runs_is_proposed_on_at_propose(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # SRV-AC18 (SRV-B28, PRP-B23)
+    from .test_review_repeat import kept_block
+
+    root, t = third_run(repo, "propose")
+    opened = _fake(monkeypatch, None)
+    host = MemoryCodeHost()
+    out = child.process(t, registry(standin("claude", judges=[kept_block()])), host)
+    assert out["acted"]["proposal"] == "p1" and opened == ["p1"]
+    saved = prp.load_proposal(root, "p1")["cluster"]
+    assert saved["cause"] == "review_repeat:prompt_misread" and saved["unit"] == "code"
+    assert not host.issues and not host.comments and out["results"] == []
+
+
+def test_a_review_repeat_across_runs_is_only_listed_at_file(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # SRV-AC18 (SRV-B28, PRP-B23)
+    from .test_review_repeat import kept_block
+
+    root, t = third_run(repo, "file")
+    opened = _fake(monkeypatch, None)
+    host = MemoryCodeHost()
+    out = child.process(t, registry(standin("claude", judges=[kept_block()])), host)
+    assert out["acted"]["proposal"] is None and opened == []
+    assert not (root / "improve" / "proposals").exists()
+    assert not host.issues and not host.comments
+    (c,) = prp.clusters(root, "demo")  # what `improve backlog` lists
+    assert c["cause"] == "review_repeat:prompt_misread" and c["unit"] == "code"

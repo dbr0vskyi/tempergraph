@@ -1,8 +1,10 @@
-"""A review category kept in several sessions of one unit is a finding (SRV-B26, SRV-B27, SRV-B28).
+"""A review category kept in several sessions of one unit, or in several runs, is a finding (SRV-B26, SRV-B27,
+SRV-B28, SRV-B32).
 
-Read from the run's `review_done` records (category codes, session keys and check results only, never a note), so
-the finding carries no note text. It is a candidate for nothing: the loop child never files it (SRV-B28) and the
-review readers use it only to mark the kept observations of its own category on its own unit as corroborated.
+Read from the runs' `review_done` records (category codes, session keys and check results only, never a note), so
+the finding carries no note text. It is a candidate for nothing: the loop child never files it (SRV-B28), it goes
+to the proposer alone, and the review readers use it only to mark the kept observations of its own category on its
+own unit as corroborated.
 """
 
 from __future__ import annotations
@@ -50,27 +52,49 @@ def _weights(root: Path, workflow: str, task_id: str) -> dict[tuple[str, str], i
     return out
 
 
+def kept_runs(root: Path, workflow: str) -> dict[tuple[str, str], list[str]]:
+    """The runs of the workflow, in directory order, whose reviews kept each (unit, category): a run counts once
+    however many of its sessions kept the pair, and a rejected observation counts for nothing (SRV-B32)."""
+    base = root / "runs" / workflow
+    out: dict[tuple[str, str], list[str]] = {}
+    for d in sorted(base.iterdir()) if base.is_dir() else ():
+        for pair in kept_sessions(root, workflow, d.name):
+            out.setdefault(pair, []).append(d.name)
+    return out
+
+
 def record(root: Path, workflow: str, task_id: str, thread: str) -> list[dict[str, Any]]:
     """Appends one `review_repeat:<category>` finding per unit and category kept in at least
-    `review.repeat_sessions` distinct sessions and not yet recorded in the run; returns the new findings."""
+    `review.repeat_sessions` distinct sessions of the run (SRV-B26) or in at least `review.repeat_runs` runs of the
+    workflow, this run included (SRV-B32), and not yet recorded in the run; returns the new findings."""
     need = int(params.value("review.repeat_sessions"))
+    need_runs = int(params.value("review.repeat_runs"))
     existing = read_findings(root, workflow, task_id)
     done = {(str(f.get("unit")), str(f.get("cause"))) for f in existing}
     weights = _weights(root, workflow, task_id)
     carried = {k: existing[0][k] for k in CARRIED if existing and k in existing[0]}
     at = datetime.now(UTC).isoformat(timespec="seconds")
     lines: list[dict[str, Any]] = []
-    for (unit, category), sessions in kept_sessions(root, workflow, task_id).items():
+
+    def add(unit: str, category: str, count: int, held: dict[str, Any], weight: int) -> None:
         cause = PREFIX + category
-        if len(sessions) < need or (unit, cause) in done:
-            continue
         c = causemod.cause_of(cause)
-        side = c.side
+        done.add((unit, cause))
         lines.append({"kind": "finding", "thread": thread, "workflow": workflow, **carried, "segment_exit": None,
-                      "unit": unit, "cause": cause, "class": c.klass, "side": side, "count": len(sessions),
-                      "remedy": c.remedy, "fingerprint": fingerprint(side, workflow, cause, unit), "at": at,
-                      "lens": "review", "sessions": list(sessions), "review": f"review:{category}",
-                      "review_weight": weights.get((unit, category), len(sessions))})
+                      "unit": unit, "cause": cause, "class": c.klass, "side": c.side, "count": count,
+                      "remedy": c.remedy, "fingerprint": fingerprint(c.side, workflow, cause, unit), "at": at,
+                      "lens": "review", **held, "review": f"review:{category}", "review_weight": weight})
+
+    mine = kept_sessions(root, workflow, task_id)
+    for (unit, category), sessions in mine.items():
+        if len(sessions) >= need and (unit, PREFIX + category) not in done:
+            add(unit, category, len(sessions), {"sessions": list(sessions)},
+                weights.get((unit, category), len(sessions)))
+    across = kept_runs(root, workflow)
+    for (unit, category) in mine:  # SRV-B32: only a pair this run's reviews kept can be recorded by this run
+        runs = across.get((unit, category), [])
+        if task_id in runs and len(runs) >= need_runs and (unit, PREFIX + category) not in done:
+            add(unit, category, len(runs), {"runs": list(runs)}, weights.get((unit, category), 1))
     append_findings(root, workflow, task_id, thread, lines)
     return lines
 

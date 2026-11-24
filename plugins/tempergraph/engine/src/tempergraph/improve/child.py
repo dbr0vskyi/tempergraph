@@ -317,20 +317,38 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
         append_jsonl(log, {"ts": now_iso(), "kind": "loop_judged", "lens": "friction", "executor": ex.name,
                            "alias": alias_of(t), "effort": options_of(t).effort, "ok": res.ok, "parsed": bool(judged), "usage": dataclasses.asdict(res.usage),
                            "session_id": res.session_id})
+    limited: list[dict[str, Any]] = []  # SIL-B25: the reviews that failed as `usage_limit`, with the reported reset
+    categories: frozenset[str] = frozenset()
+    if str(t.get("review") or "off") != "off" and not capped:  # SRV-B13, SRV-B14, SRV-B15, SIL-B17: before deciding and filing
+        try:
+            from tempergraph.improve import review
+
+            categories = frozenset(review.CATALOG)
+            spent = cost["reported"] + cost["estimated_only"]  # the judges above came out of the day's room too
+            rv = review.run(t, registry, reason=str(t.get("review_reason") or "dev"),
+                            room=None if left is None else round(left - spent, 6))  # SRV-B21, SIL-B20
+            cost["reported"] += rv["cost"]["reported"]
+            cost["estimated_only"] += rv["cost"]["estimated_only"]
+            limited = list(rv.get("usage_limit") or [])
+        except Exception as exc:  # noqa: BLE001 - the review is best effort (SRV-B1, SRV-B20, SRV-B21, SRV-B22, SRV-B18)
+            append_jsonl(log, {"ts": now_iso(), "kind": "review_failed", "error_class": "error",
+                               "error": type(exc).__name__})  # SRV-B29: names no session, counts as one review
+        mine = _latest(read_findings(root, wf, task), set(t.get("fingerprints") or ()))  # SRV-B7: now corroborated
     cands: list[filing.Candidate] = []
     for f in mine:
         if f.get("lens") == "review":  # SRV-B28: a finding made of review observations never files, in any run
             continue
         if f.get("lens") == "outcome":  # SIL-B7: files only once the outcome gate's judge is `accepted` (JCL)
             cands.append(filing.Candidate(finding=f, lens="outcome", calibrated=bool(t.get("outcome_calibrated")),
-                                          request_digest=f.get("request_digest"), issue_labels=t.get("issue_labels")))
+                                          request_digest=f.get("request_digest"), issue_labels=t.get("issue_labels"),
+                                          review_categories=categories))
             continue
         if not (t.get("lenses") or {}).get("friction"):  # a review-only ticket files no friction finding
             continue
         j = judged.get(str(f.get("fingerprint")))
         cands.append(filing.Candidate(finding=f, lens="friction", confidence=j["confidence"] if j else None,
                                       attributed=bool(j and j["attributed"]), request_digest=f.get("request_digest"),
-                                      issue_labels=t.get("issue_labels")))
+                                      issue_labels=t.get("issue_labels"), review_categories=categories))
     history = _history(root, wf, thread)
     decisions = [filing.decide(c, history, str(t.get("issue_repository") or "")) for c in cands]
     if t.get("autonomy") == "record":  # PRP-B11: findings, evidence and ledger rows only
@@ -341,23 +359,12 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     for r in results:  # IMD-B21 loop events, ids and enums only
         kind = {"filed": "issue_filed", "commented": "issue_commented"}.get(str(r.get("op")), "loop_result")
         append_jsonl(log, {"ts": now_iso(), "kind": kind, **r})
-    limited: list[dict[str, Any]] = []  # SIL-B25: the reviews that failed as `usage_limit`, with the reported reset
-    if str(t.get("review") or "off") != "off" and not capped:  # SRV-B13, SRV-B14, SRV-B15: after filing; its results never file (SRV-B7)
-        try:
-            from tempergraph.improve import review
-
-            spent = cost["reported"] + cost["estimated_only"]  # the judges above came out of the day's room too
-            rv = review.run(t, registry, reason=str(t.get("review_reason") or "dev"),
-                            room=None if left is None else round(left - spent, 6))  # SRV-B21, SIL-B20
-            cost["reported"] += rv["cost"]["reported"]
-            cost["estimated_only"] += rv["cost"]["estimated_only"]
-            limited = list(rv.get("usage_limit") or [])
-        except Exception as exc:  # noqa: BLE001 - the review is best effort (SRV-B1, SRV-B20, SRV-B21, SRV-B22, SRV-B18)
-            append_jsonl(log, {"ts": now_iso(), "kind": "review_failed", "error_class": "error",
-                               "error": type(exc).__name__})  # SRV-B29: names no session, counts as one review
     acted: dict[str, Any] = {}
     try:  # PRP-B11: the loop's own proposal and trial, after its judges and within the day's room
-        acted = autonomy.act(t, registry, host, log)
+        repeats = [str(f["fingerprint"]) for f in read_findings(root, wf, task)  # SRV-B28: the review's own findings
+                   if f.get("lens") == "review" and f.get("class") == "fault" and f.get("fingerprint")]  # go to the proposer
+        acted = autonomy.act({**t, "fingerprints": sorted({*map(str, t.get("fingerprints") or ()), *repeats})},
+                             registry, host, log)
     except Exception as exc:  # noqa: BLE001 - best effort (SIL-B1)
         append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "propose", "reason": "error",
                            "error": type(exc).__name__})
