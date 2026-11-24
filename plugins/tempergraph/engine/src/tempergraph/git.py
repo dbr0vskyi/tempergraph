@@ -126,6 +126,21 @@ def pushed(workdir: Path, name: str) -> bool:
     return any(r.split("/", 3)[-1] == name for r in refs.splitlines() if r.count("/") >= 3)
 
 
+def branch_commit(workdir: Path, name: str) -> str:
+    """CHK-B22: the commit the branch `name` points to now: the local branch, else `origin`'s remote-tracking branch;
+    empty when no ref names it or the name is unsafe. No fetch and no network."""
+    if not name or not is_safe_ref(name):
+        return ""
+    for ref in (f"refs/heads/{name}", f"refs/remotes/origin/{name}"):
+        try:
+            found = git(["rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"], workdir, check=False).strip()
+        except GitError:
+            return ""
+        if found:
+            return found
+    return ""
+
+
 def head(workdir: Path) -> str:
     """The commit `HEAD` names in `workdir`; empty when there is none."""
     return git(["rev-parse", "--verify", "--quiet", "HEAD"], workdir, check=False).strip()

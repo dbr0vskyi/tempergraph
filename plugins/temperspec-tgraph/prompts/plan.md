@@ -12,7 +12,7 @@ The task:
 
 ## Rules to follow
 
-`plan.rule.md` and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or already in your instructions when they are installed for the whole machine. Follow the plan rule exactly; this prompt does not repeat the format.
+`plan.rule.md` and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or where the project note in `CLAUDE.md` or `AGENTS.md` names them, or already in your instructions when they are installed for the whole machine. Follow the plan rule exactly; this prompt does not repeat the format.
 
 ## Procedure
 
@@ -24,7 +24,7 @@ The task:
 6. Measure the complexity against the limits in the plan rule and state it in the front matter.
 7. If the plan is `simple`, write the task rows of every phase, test rows first, each naming the requirements it serves, the verification commands, and the proof table: one row for each acceptance criterion of the task, with the test file that will prove it and the command that runs that test. Before a row that changes a type or a signature, search the tests for code that pins it and give each such test a row. If it is `complex`, write phases, goals and weights only, plus the verification commands; the expand step writes the rows.
 8. List every document the change will make false under Docs to update. In a `simple` plan each of them gets a `docs` row.
-9. Write the plan to `docs/plans/{task_id}.plan.md` with `status: planned` and every Completed cell empty. Write it in parts: first all sections with the phases and no rows, then one edit per phase that adds its table, each write under about 12 KB.
+9. Write the plan to `docs/plans/{task_id}.plan.md` (when the `plans/` folder beside the repository's specs, as the project note names it, differs from `docs/plans/`, write it there instead) with `status: planned` and every Completed cell empty. Write it in parts: first all sections with the phases and no rows, then one edit per phase that adds its table, each write under about 12 KB.
 
 ## Limits
 
