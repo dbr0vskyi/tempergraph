@@ -1114,18 +1114,47 @@ def _docs_only(ctx: Any) -> bool:
     return _value(ctx, "route") == "discovery-only"
 
 
-def _at_base(ctx: Any, path: str) -> str | None:
-    """The file as it was at the run's base commit; None with no base, or when the run created the file."""
-    base = ctx.git.base
-    if not base:
+def _at_ref(ctx: Any, ref: str, path: str) -> str | None:
+    """The file as it is at a commit; None when the commit has no such file or it cannot be read."""
+    if not ref:
         return None
-    run = ctx.run(f"git show {base}:{path}")
+    run = ctx.run(f"git show {ref}:{path}")
     if run.not_started or run.exit_code != 0:
         return None
     try:
         return Path(run.output_path).read_text(encoding="utf-8", errors="replace")
     except OSError:
         return None
+
+
+def _at_base(ctx: Any, path: str) -> str | None:
+    """The file as it was at the run's base commit; None with no base, or when the run created the file."""
+    return _at_ref(ctx, ctx.git.base, path)
+
+
+def _fresh(ctx: Any, specs: list[str]) -> list[CheckFinding]:
+    """ts-spec-fresh (SBS-B1 to SBS-B3): no spec the run edited reads differently at the base branch's head than at
+    the run's base commit, when the head holds commits the base commit lacks."""
+    base, head = ctx.git.base, ctx.git.base_head
+    if not base or not head:
+        return [_find("n_a", "ts-spec-fresh", message="the run has no base branch to compare with")]
+    if not specs:
+        return [_find("n_a", "ts-spec-fresh", message="the run edited no spec")]
+    run = ctx.run(f"git log --oneline -1 {base}..{head}")
+    if run.not_started or run.exit_code != 0:
+        return [_find("n_a", "ts-spec-fresh", message="the base branch's head could not be compared with the run's "
+                                                      "base commit")]
+    try:
+        moved = bool(Path(run.output_path).read_text(encoding="utf-8", errors="replace").strip())
+    except OSError:
+        moved = False
+    if not moved:
+        return [_ok("ts-spec-fresh")]
+    found = [_find("fail", "ts-spec-fresh", path,
+                   "the base branch changed this spec since the run started (it reads differently at its head than "
+                   "at the run's base commit)", "start the task again from the head of the base branch")
+             for path in specs if _at_ref(ctx, base, path) != _at_ref(ctx, head, path)]
+    return found or [_ok("ts-spec-fresh")]
 
 
 def _traced(ctx: Any, specs: list[str], files: list[str]) -> list[CheckFinding]:
@@ -1189,13 +1218,14 @@ def _collateral(ctx: Any, specs: list[str]) -> list[CheckFinding]:
 
 
 def outcome_check(ctx: Any) -> Any:
-    """ts-committed, ts-spec-form, ts-spec-cap, ts-spec-links, ts-traced, ts-verify, ts-collateral."""
+    """ts-committed, ts-spec-form, ts-spec-cap, ts-spec-links, ts-spec-fresh, ts-traced, ts-verify, ts-collateral."""
     found = [_committed(ctx, "ts-committed")]
     found += _spec_form(ctx, "ts-spec-form", "ts-spec-cap")
     specs, _ = _edited_specs(ctx)
     # Only the edited specs: a task note or a plan names ids the task retired on purpose, and is history.
     found += _links(ctx, "ts-spec-links", specs) if specs else [
         _find("n_a", "ts-spec-links", message="the run edited no spec")]
+    found += _fresh(ctx, specs)
     if _docs_only(ctx):
         found += [_find("n_a", c, message="the run delivers documents only") for c in ("ts-traced", "ts-verify")]
     else:

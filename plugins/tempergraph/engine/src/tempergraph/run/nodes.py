@@ -545,7 +545,8 @@ class EngineNodes:
             ticket = selfcheck.issue(
                 self.ctx.state_root, u.gate,
                 self._check_context(unit, state, {"item": iid, "attempt": attempt, "visit": visit}, workdir,
-                                    sub="-preview"), thread=self.ctx.thread, limit=self.ctx.self_check_limit)
+                                    sub="-preview"), thread=self.ctx.thread, limit=self.ctx.self_check_limit,
+                base_branch=str((state.get("workspace") or {}).get("base_branch") or ""))
             ctx = dataclasses.replace(ctx, self_check=selfcheck.command(ticket))
         rendered = render_step(unit, shown, ctx, caps)
         prompt = rendered.text
@@ -1276,7 +1277,8 @@ class EngineNodes:
             facts={u: dict(f) for u, f in (state.get("facts") or {}).items() if isinstance(f, maps)},
             artifacts={u: dict(a) for u, a in (state.get("artifacts") or {}).items() if isinstance(a, maps)},
             settings=dict(ctx.settings), stage=ctx.stage, workdir=workdir,
-            git=checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or ""))
+            git=checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or "",
+                                   (state.get("workspace") or {}).get("base_branch") or ""))
         return complexity.evaluate(ctx.spec, unit, state, mctx, state_root=ctx.state_root, thread=ctx.thread,
                                    origin=ctx.origin,
                                    recent=complexity.explored_recent(ctx.state_root, ctx.spec.name, unit))
@@ -1486,7 +1488,8 @@ class EngineNodes:
                        sub: str = "") -> checkmod.CheckContext:
         u = self.ctx.spec.units[unit]
         facts = {k: v for k, v in (state.get("facts") or {}).items() if k != unit}
-        gfacts = checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or "")
+        gfacts = checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or "",
+                                    (state.get("workspace") or {}).get("base_branch") or "")
         return checkmod.CheckContext(
             changed_paths=checkmod.changed_paths(
                 workdir, gfacts, self.ctx.state_root / "runs" / self.ctx.spec.name / self.ctx.task_id / "manifest.json"),
@@ -1719,7 +1722,8 @@ class EngineNodes:
         escalated = bool(att.get("escalated"))
         rctx = RiskContext(
             unit=unit, item=att.get("item"), visit=int(att.get("visit", 1)), attempt=int(att.get("attempt", 1)),
-            git=riskmod.git_of(checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or ""),
+            git=riskmod.git_of(checkmod.git_facts(workdir, (state.get("workspace") or {}).get("base_commit") or "",
+                                                  (state.get("workspace") or {}).get("base_branch") or ""),
                                workdir),
             facts=facts, request=dict((state.get("request") or {}).get("inputs") or {}), settings=dict(ctx.settings),
             stage=ctx.stage, producer={"alias": att.get("alias"), "escalated": escalated,

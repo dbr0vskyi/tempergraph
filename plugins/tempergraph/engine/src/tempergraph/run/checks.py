@@ -41,13 +41,16 @@ class GitFacts:
     commits_since_base: tuple[str, ...] = ()
 
 
-def git_facts(workdir: Path, base: str = "") -> GitFacts | None:
-    """The workspace's git facts; None outside a git repository (WSP-B15 to WSP-B18)."""
+def git_facts(workdir: Path, base: str = "", base_branch: str = "") -> GitFacts | None:
+    """The workspace's git facts; None outside a git repository (WSP-B15 to WSP-B18). `base` is the run's base commit;
+    `base_head` is the commit the run's base branch `base_branch` points to now (local branch, else `origin`'s
+    remote-tracking branch, no fetch), empty for a run with no base branch or one that no ref names (CHK-B22)."""
     if gitmod.toplevel(workdir) is None:
         return None
     fp = gitmod.fingerprint(workdir)
     name = gitmod.branch(workdir)
-    return GitFacts(branch=name, base=base, head=fp.head, clean=not fp.status, pushed=gitmod.pushed(workdir, name),
+    return GitFacts(branch=name, base=base, head=fp.head, base_head=gitmod.branch_commit(workdir, base_branch),
+                    clean=not fp.status, pushed=gitmod.pushed(workdir, name),
                     changed_paths=tuple(gitmod.changed_paths(workdir, base or None)))
 
 

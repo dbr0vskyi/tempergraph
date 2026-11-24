@@ -11,7 +11,7 @@ The task:
 
 ## Rules to follow
 
-`spec.rule.md`, `decision.rule.md`, `research.rule.md`, `task-notes.rule.md` and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or already in your instructions when they are installed for the whole machine. Read the rule of a document type before you write a document of that type. This prompt does not repeat the formats.
+`spec.rule.md`, `decision.rule.md`, `research.rule.md`, `task-notes.rule.md` and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or where the project note in `CLAUDE.md` or `AGENTS.md` names them, or already in your instructions when they are installed for the whole machine. Read the rule of a document type before you write a document of that type. This prompt does not repeat the formats.
 
 ## Procedure
 
@@ -24,7 +24,7 @@ The task:
    - `research needed`: a research note that answers the unknown from sources it cites.
 4. Write behaviours first, each in the fixed pattern, observable from outside, with no internal name. Then write the acceptance criteria that prove them. Every acceptance criterion of the task that a gap concerns must be provable from the behaviours you wrote.
 5. Check each spec you touched against the specs it links: no behaviour of yours may contradict a behaviour there. If one does, change yours, or change theirs when the task requires it and say so in the hand-off.
-6. Write the hand-off to `docs/tasks/{task_id}.handoff.md`: for every gap row the document that closes it, and every document you created or edited. End it with a `## Reading list` section for the plan step, which starts from it: one item for each file the plan will need, an existing file in a code span, the line ranges or ids that matter in brackets, a colon, and one line on why. Add only files you read or searched while closing the gaps.
+6. Write the hand-off to `docs/tasks/{task_id}.handoff.md` (when the `tasks/` folder beside the repository's specs, as the project note names it, differs from `docs/tasks/`, write it there instead): for every gap row the document that closes it, and every document you created or edited. End it with a `## Reading list` section for the plan step, which starts from it: one item for each file the plan will need, an existing file in a code span, the line ranges or ids that matter in brackets, a colon, and one line on why. Add only files you read or searched while closing the gaps.
 
 ## Limits
 

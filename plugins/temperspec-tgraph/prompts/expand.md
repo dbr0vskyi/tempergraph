@@ -7,7 +7,7 @@ Plan: `{plan}`
 
 ## Rules to follow
 
-`plan.rule.md` is in `.claude/rules/temperspec/` of this repository, or already in your instructions when it is installed for the whole machine. The row format, the test-first order and the form of verification commands are there.
+`plan.rule.md` is in `.claude/rules/temperspec/` of this repository, or where the project note in `CLAUDE.md` or `AGENTS.md` names it, or already in your instructions when it is installed for the whole machine. The row format, the test-first order and the form of verification commands are there.
 
 ## Procedure
 

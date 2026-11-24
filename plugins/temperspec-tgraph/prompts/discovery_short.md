@@ -11,14 +11,14 @@ The task:
 
 ## Rules to follow
 
-`task-notes.rule.md` and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or already in your instructions when they are installed for the whole machine. Read the hand-off part of `task-notes.rule.md` before you write it. This prompt does not repeat the format.
+`task-notes.rule.md` and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or where the project note in `CLAUDE.md` or `AGENTS.md` names them, or already in your instructions when they are installed for the whole machine. Read the hand-off part of `task-notes.rule.md` before you write it. This prompt does not repeat the format.
 
 ## Procedure
 
 1. Read the triage note: the acceptance criteria and every gap row with the behaviour and criterion it cites.
 2. For each gap, open the spec that defines the cited behaviour and read that behaviour and its criterion. Read narrowly: search for ids and names with grep first, read the line ranges you need instead of whole files, and stop reading once each gap has its answer. Read at most 10 files in the whole visit; a gap that needs more is not covered.
 3. Decide for each gap whether the cited behaviour answers the gap's question as the task needs it: the event, the result and any limit the acceptance criteria name. Judge meaning, not wording.
-4. Write the hand-off to `docs/tasks/{task_id}.handoff.md`. Under `## Gaps closed`, one line per gap row: the gap id, the cited behaviour id and one line on how it answers the gap; or the gap id, the cited behaviour id and `Not covered:` with what the behaviour leaves out. Under `## Changed documents`, write `- None`. End it with a `## Reading list` section for the plan step, which starts from it: one item for each file the plan will need, an existing file in a code span, the line ranges or ids that matter in brackets, a colon, and one line on why. Add only files you read or searched. When a line says `Not covered`, the full discovery writes the reading list after you; leave yours as far as you got.
+4. Write the hand-off to `docs/tasks/{task_id}.handoff.md` (when the `tasks/` folder beside the repository's specs, as the project note names it, differs from `docs/tasks/`, write it there instead). Under `## Gaps closed`, one line per gap row: the gap id, the cited behaviour id and one line on how it answers the gap; or the gap id, the cited behaviour id and `Not covered:` with what the behaviour leaves out. Under `## Changed documents`, write `- None`. End it with a `## Reading list` section for the plan step, which starts from it: one item for each file the plan will need, an existing file in a code span, the line ranges or ids that matter in brackets, a colon, and one line on why. Add only files you read or searched. When a line says `Not covered`, the full discovery writes the reading list after you; leave yours as far as you got.
 5. Set `settled` to `yes` when every gap line says how its behaviour answers it, and to `no` when any line says `Not covered`. A `no` sends the run to the full discovery, which closes that gap with a document.
 
 ## Limits

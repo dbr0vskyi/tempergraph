@@ -21,22 +21,9 @@ REPO_RULES = Path(".claude") / "rules" / "temperspec"
 COMMIT_TYPE = {"code": "feat"}
 CONTEXT_FILES = ("CLAUDE.md", "AGENTS.md")
 SKIP_DIRS = {".git", ".tempergraph", ".claude", "node_modules", ".venv", "venv", "evals", "fixtures", "baseline"}
-CONTEXT_BLOCK = f"""{specfmt.CONTEXT_START}
-## temperspec
-
-This repository is developed with temperspec: a change goes from a task with acceptance criteria through
-behaviour specs and a plan to tested code.
-
-- Specs are in `docs/specs/` (`*.spec.md`), starting at the overview spec. Decision records are in `docs/adr/`,
-  research notes in `docs/research/`, plans in `docs/plans/`, task notes in `docs/tasks/`.
-- How each document is written: the rule files in `.claude/rules/temperspec/`; fill-in templates generated from
-  them are in `docs/templates/`.
-- When two sources disagree: the task's acceptance criteria, then specs and decision records, then the plan,
-  then the code. A code change that makes a spec false changes the spec in the same change.
-- A test that proves an acceptance criterion of a spec carries the criterion's id.
-- Start a run with `tempergraph run temperspec "<the task and its acceptance criteria>"`.
-{specfmt.CONTEXT_END}
-"""
+DEFAULT_SPECS = "docs/specs/"
+BESIDE_SPECS = ("adr", "research", "plans", "tasks")
+MACHINE_RULES = "~/.claude/rules/temperspec/"
 SAFE_REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,200}$")
 URL = re.compile(r"https://\S+/pull/\d+")
 PLAIN_PATH = re.compile(r"^[A-Za-z0-9._/:\\-]+$")
@@ -83,12 +70,86 @@ def _git(workdir: Path, *args: str) -> subprocess.CompletedProcess[str]:
                           stdin=subprocess.DEVNULL)
 
 
+def _folders(workdir: Path) -> list[tuple[str, list[str]]]:
+    """Every folder of the repository outside the folders of copies and fixtures, as (path from the repository root
+    with a closing `/`, `""` for the root; the names of its files), in path order."""
+    out: list[tuple[str, list[str]]] = []
+    root = Path(workdir)
+    for folder, dirs, files in os.walk(root):
+        dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS)
+        rel = Path(folder).relative_to(root).as_posix()
+        out.append(("" if rel == "." else rel + "/", files))
+    return sorted(out, key=lambda item: item[0])
+
+
+def specs_folders(workdir: Path) -> list[str]:
+    """PNR-B1: where the repository keeps its specs, in path order: the folder of each overview spec, else the
+    folders of its other specs, else `docs/specs/`."""
+    folders = _folders(workdir)
+    overviews = [path for path, files in folders if any(n.endswith("overview.spec.md") for n in files)]
+    others = [path for path, files in folders if any(n.endswith(".spec.md") for n in files)]
+    return overviews or others or [DEFAULT_SPECS]
+
+
+def rules_held(workdir: Path) -> str | None:
+    """PNR-B3, PNR-B4: where the rule files are, or None when nobody holds them: the repository's own rule folder, else
+    the first folder of the repository that holds every rule file temperspec ships, else the machine's."""
+    root = Path(workdir)
+    own = REPO_RULES.as_posix() + "/"
+    if (root / REPO_RULES).is_dir():
+        return own
+    wanted = {p.name for p in (PACKAGE / RULES).glob("*.rule.md")}
+    for path, files in _folders(root):
+        if path and wanted <= set(files):
+            return path
+    return MACHINE_RULES if (Path.home() / REPO_RULES).is_dir() else None
+
+
+def templates_named(workdir: Path) -> bool:
+    """PNR-B5: whether the fill-in templates folder holds templates."""
+    return any((Path(workdir) / specfmt.TEMPLATE_DIR).glob("*.template.md"))
+
+
+def _beside(folder: str) -> list[str]:
+    """The folders beside a specs folder (PNR-B2), named whether or not they exist."""
+    parent = folder.rstrip("/").rpartition("/")[0]
+    return [(parent + "/" if parent else "") + name + "/" for name in BESIDE_SPECS]
+
+
+def context_block(workdir: Path) -> str:
+    """The temperspec block of the project-context file, written from the repository's own layout (PNR-B1 to PNR-B5)."""
+    kinds = ("specs", "decision records", "research notes", "plans", "task notes")
+    lines = "\n".join(
+        "  - " + ", ".join(f"{kind} `{path}`" for kind, path in zip(kinds, [folder, *_beside(folder)], strict=True))
+        for folder in specs_folders(workdir))
+    held = rules_held(workdir) or REPO_RULES.as_posix() + "/"
+    where = f"`{held}`" + (" (installed for the whole machine)" if held == MACHINE_RULES else "")
+    templates = f"; fill-in templates generated from them are in `{specfmt.TEMPLATE_DIR}/`" if templates_named(
+        workdir) else ""
+    return f"""{specfmt.CONTEXT_START}
+## temperspec
+
+This repository is developed with temperspec: a change goes from a task with acceptance criteria through
+behaviour specs and a plan to tested code.
+
+- Specs (`*.spec.md`) start at the overview spec. Each docs directory belongs to its own part of the repository: a
+  change's documents go to the directories of the part it changes.
+{lines}
+- How each document is written: the rule files in {where}{templates}.
+- When two sources disagree: the task's acceptance criteria, then specs and decision records, then the plan,
+  then the code. A code change that makes a spec false changes the spec in the same change.
+- A test that proves an acceptance criterion of a spec carries the criterion's id.
+- Start a run with `tempergraph run temperspec "<the task and its acceptance criteria>"`.
+{specfmt.CONTEXT_END}
+"""
+
+
 def install_rules(ctx: Any) -> dict[str, str]:
     """Put the rule files, and the templates generated from their examples, into the repository unless it, or
-    the whole machine, has the rules."""
-    target = Path(ctx.workdir) / REPO_RULES
-    if target.is_dir() or (Path.home() / REPO_RULES).is_dir():
+    the whole machine, already holds the rule files (PNR-B3); a partial set installs the whole set."""
+    if rules_held(Path(ctx.workdir)) is not None:
         return {}
+    target = Path(ctx.workdir) / REPO_RULES
     target.mkdir(parents=True)
     templates = Path(ctx.workdir) / specfmt.TEMPLATE_DIR
     for src in sorted((PACKAGE / RULES).glob("*.rule.md")):
@@ -102,30 +163,44 @@ def install_rules(ctx: Any) -> dict[str, str]:
 
 def has_overview(workdir: Path) -> bool:
     """Whether the repository holds an overview spec (`overview.spec.md`, with or without a number prefix)."""
-    for _, dirs, files in os.walk(workdir):
-        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
-        if any(name.endswith("overview.spec.md") for name in files):
-            return True
+    return any(n.endswith("overview.spec.md") for _, files in _folders(workdir) for n in files)
+
+
+def _names_specs(text: str, workdir: Path) -> bool:
+    """PNR-B6: whether the text, leaving out any temperspec block, names by its whole path from the repository root a
+    specs folder or the folder that contains it (never the repository root). A path counts from a path boundary on
+    and up to one, or on into a longer path."""
+    own = re.sub(f"{re.escape(specfmt.CONTEXT_START)}.*?{re.escape(specfmt.CONTEXT_END)}", "", text, flags=re.S)
+    for folder in specs_folders(workdir):
+        parent = folder.rstrip("/").rpartition("/")[0]
+        for path in (folder.rstrip("/"), parent):
+            if path and re.search(rf"(?<![A-Za-z0-9._/-]){re.escape(path)}(?![A-Za-z0-9._-])", own):
+                return True
     return False
 
 
 def write_context(workdir: Path) -> str:
-    """Keep the temperspec block in the project-context file: added once, replaced in place afterwards."""
+    """Keep the temperspec block in the project-context file: added once, replaced in place afterwards, and not
+    written at all when the file, apart from any block, already names where the specs are (PNR-B6)."""
     target = next((workdir / n for n in CONTEXT_FILES if (workdir / n).is_file()), workdir / CONTEXT_FILES[0])
     text = target.read_text(encoding="utf-8") if target.is_file() else ""
+    if _names_specs(text, workdir):
+        return target.name
+    block = context_block(workdir)
     start, end = text.find(specfmt.CONTEXT_START), text.find(specfmt.CONTEXT_END)
     if start >= 0 and end > start:
-        new = text[:start] + CONTEXT_BLOCK.rstrip("\n") + text[end + len(specfmt.CONTEXT_END):]
+        new = text[:start] + block.rstrip("\n") + text[end + len(specfmt.CONTEXT_END):]
     else:
-        new = (text.rstrip("\n") + "\n\n" if text.strip() else "") + CONTEXT_BLOCK
+        new = (text.rstrip("\n") + "\n\n" if text.strip() else "") + block
     if new != text:
         target.write_text(new, encoding="utf-8")
     return target.name
 
 
 def prepare(ctx: Any) -> dict[str, str]:
-    """The first unit, with no session: install the rule files when missing, keep the temperspec block in the
-    project-context file, commit both, and say whether the repository still needs its overview and specs."""
+    """The first unit, with no session: install the rule files unless the repository or the machine holds them, keep
+    the temperspec block in the project-context file unless it already says where the specs are, commit what changed,
+    and say whether the repository still needs its overview and specs."""
     workdir = Path(ctx.workdir)
     install_rules(ctx)
     write_context(workdir)

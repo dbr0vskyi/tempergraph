@@ -10,7 +10,7 @@ The task:
 
 ## Rules to follow
 
-The format of the triage note is in `task-notes.rule.md`, and the folders and names of every document are in `documents.rule.md`. Both are in `.claude/rules/temperspec/` of this repository, or already in your instructions when they are installed for the whole machine. Follow them; this prompt does not repeat them.
+The format of the triage note is in `task-notes.rule.md`, and the folders and names of every document are in `documents.rule.md`. Both are in `.claude/rules/temperspec/` of this repository, or where the project note in `CLAUDE.md` or `AGENTS.md` names them, or already in your instructions when they are installed for the whole machine. Follow them; this prompt does not repeat them.
 
 ## Procedure
 
@@ -21,7 +21,7 @@ The format of the triage note is in `task-notes.rule.md`, and the folders and na
 5. Decide what the run delivers: `docs` when the task asks only for documents, otherwise `code`.
 6. Set the route from the gaps and the delivery, as the rule says.
 7. Consider the quick lane only when there is no gap and the delivery is code. Read the code the task touches. The task is `quick` when all of this holds: no behaviour and no acceptance criterion of any spec has to change (a bug where the code disagrees with a spec qualifies, because the spec is already right); the task has at most three acceptance criteria; and the change fits in at most two code files plus their tests. Then write the `## Change` section the rule describes, with the code files, the test files and the repository's own command that runs those tests, and set the route to `quick`. In doubt, or when this run has come back to triage from a later step, choose `plan`.
-8. Write the note to `docs/tasks/{task_id}.triage.md` (use the repository's own docs folder if it keeps its specs elsewhere).
+8. Write the note to `docs/tasks/{task_id}.triage.md`. When the `tasks/` folder beside the repository's specs, as the project note names it, differs from `docs/tasks/`, write it there instead.
 
 ## Limits
 
