@@ -19,15 +19,21 @@ WHEN the check of a step runs and the session record shows no opening of a rule 
 
 ### SRC-B2 The prompt tells the session to open the files it names
 
-WHEN a step's prompt names a rule file THE workflow SHALL have the prompt tell the session to open that file with the read tool, not by a search of it, when the repository holds it, and not to open a copy installed for the whole machine, which is already in the session's instructions and lies outside its working directory.
+WHEN a step's prompt names a rule file THE workflow SHALL have the prompt tell the session to open that file with the read tool, not by a search of it, when the repository holds it.
 
 - GIVEN the prompt of each of the seven steps WHEN it is read THEN it tells the session to open each rule file it names that the repository holds with the read tool and says that a search of a rule file is not opening it
-- GIVEN the prompt of each of the seven steps WHEN it is read THEN it tells the session not to open a rule file installed for the whole machine
 - GIVEN the short discovery prompt, which limits the visit to 10 files WHEN it is read THEN it says that the rule files it names do not count in that limit
+
+### SRC-B10 The prompt places the rule files in the repository
+
+WHEN a step's prompt names a rule file THE workflow SHALL have the prompt place that file in the repository, in its `.claude/rules/temperspec/` folder or where the project note names it, and nowhere else.
+
+- GIVEN the prompt of each of the seven steps WHEN it is read THEN it says the rule files it names are in `.claude/rules/temperspec/` of the repository or where the project note names them
+- GIVEN the prompt of each of the seven steps WHEN it is read THEN it says nothing of a rule file installed for the whole machine
 
 ### SRC-B3 A repository with none of the rule files asks for none
 
-WHEN the check of a step runs in a repository that holds none of the rule files the step's prompt names, their text being installed for the whole machine, THE step's check SHALL record the rule-file criterion not applicable, with a message that says the rule files are not in the repository.
+WHEN the check of a step runs in a repository whose `.claude/rules/temperspec/` folder holds none of the rule files the step's prompt names, THE step's check SHALL record the rule-file criterion not applicable, with a message that says the rule files are not in the repository.
 
 - GIVEN a repository with no `.claude/rules/temperspec/` folder WHEN the check of any of the seven steps runs THEN the rule-file criterion is not applicable and its message says the rule files are not in the repository
 
@@ -83,8 +89,9 @@ WHEN a check of this spec fails a criterion THE check SHALL name in its finding 
 - SRC-AC1 (SRC-B1): The check of each of the seven steps fails, naming a rule file that its prompt names and the repository holds, for a record that holds no opening of it, and does not fail for a record that holds one
 - SRC-AC2 (SRC-B1): A search of a rule file and a call on it that ended with an error do not count as opening it, an opening by another folder's path with the same file name does, and a rule file the repository does not hold is not asked for
 - SRC-AC3 (SRC-B1): The check after a retry attempt reads only the retry session's calls
-- SRC-AC4 (SRC-B2): The prompt of each of the seven steps tells the session to open each rule file it names that the repository holds with the read tool, says that a search of a rule file is not opening it and tells it not to open a rule file installed for the whole machine, and the short discovery prompt says that the rule files do not count in its limit of 10 files
-- SRC-AC5 (SRC-B3): With no rule file of its prompt in the repository, the check of each of the seven steps marks the rule-file criterion not applicable and its message says the rule files are not in the repository
+- SRC-AC4 (SRC-B2): The prompt of each of the seven steps tells the session to open each rule file it names that the repository holds with the read tool and says that a search of a rule file is not opening it, and the short discovery prompt says that the rule files do not count in its limit of 10 files
+- SRC-AC13 (SRC-B10): The prompt of each of the seven steps places the rule files it names in `.claude/rules/temperspec/` of the repository or where the project note names them, and says nothing of a rule file installed for the whole machine
+- SRC-AC5 (SRC-B3): With none of the rule files of its prompt in the repository's `.claude/rules/temperspec/` folder, the check of each of the seven steps marks the rule-file criterion not applicable and its message says the rule files are not in the repository
 - SRC-AC6 (SRC-B4): The expand prompt tells the session to open each file a task row names, with the read tool, before it writes the row
 - SRC-AC7 (SRC-B5): The expand check fails naming row `2.1` and `src/auth/session.py` for an existing file the record shows only searched, names both of two rows that name one unread file, and does not fail for a file that does not exist or a file the record shows opened
 - SRC-AC8 (SRC-B6): The code check fails naming phase 2 for a record that edits the phase's source file and then writes its test file, and does not fail for the reverse order
