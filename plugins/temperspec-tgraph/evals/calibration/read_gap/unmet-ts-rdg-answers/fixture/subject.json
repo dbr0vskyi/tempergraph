@@ -1,0 +1,1 @@
+{"gap_finding": "G1: docs/specs/cli.spec.md CLI-B2 (lines 15-19) already states that a missing config file prints the file name and exits with code 2, and src/tool/main.py lines 14-16 catch the missing file and return 2, so the gap is answered by the code as it is."}

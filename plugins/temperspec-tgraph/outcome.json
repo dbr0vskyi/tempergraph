@@ -210,7 +210,8 @@
               "met": "the findings say what the folder holds and what someone outside depends on, each claim is in the file it names, or they state what was searched in the folder when nothing was found",
               "partial": "the findings cover part of the folder, or a claim is in its file with a different meaning",
               "unmet": "the findings describe another folder, claim what the named file does not hold, or say nothing about the folder",
-              "evidence": "the path and line of each claim checked, and the quote that confirms or refutes it"
+              "evidence": "the path and line of each claim checked, and the quote that confirms or refutes it",
+          "seeds": ["met-ts-rdc-answers", "unmet-ts-rdc-answers"]
             }
           },
           "serves": [
@@ -230,7 +231,8 @@
               "met": "every claim of the findings names its file with the line ranges or ids it rests on, or the findings say what was searched",
               "partial": "some claims name a file and others name none",
               "unmet": "the findings name no file and say nothing about what was searched",
-              "evidence": "the claim, and the file and range or id it names"
+              "evidence": "the claim, and the file and range or id it names",
+          "seeds": ["met-ts-rdc-cited", "unmet-ts-rdc-cited"]
             }
           },
           "serves": [
@@ -629,7 +631,8 @@
               "met": "the findings say what the named files hold about the gap and each claim is in its file, or they state what was searched for the gap's subject when nothing was found",
               "partial": "the findings answer part of the gap, or a claim is in its file with a different meaning",
               "unmet": "the findings answer another gap, claim what the named file does not hold, or say nothing about the gap",
-              "evidence": "the gap row, the path and line of each claim checked, and the quote that confirms or refutes it"
+              "evidence": "the gap row, the path and line of each claim checked, and the quote that confirms or refutes it",
+          "seeds": ["met-ts-rdg-answers", "unmet-ts-rdg-answers"]
             }
           },
           "serves": [
@@ -651,7 +654,8 @@
               "met": "every claim of the findings names its file with the line ranges or ids it rests on, or the findings say what was searched",
               "partial": "some claims name a file and others name none",
               "unmet": "the findings name no file and say nothing about what was searched",
-              "evidence": "the claim, and the file and range or id it names"
+              "evidence": "the claim, and the file and range or id it names",
+          "seeds": ["met-ts-rdg-cited", "unmet-ts-rdg-cited"]
             }
           },
           "serves": [

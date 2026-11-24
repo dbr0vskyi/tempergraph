@@ -5,10 +5,18 @@
   "labels": [],
   "provenance": "synthetic",
   "state": "candidate",
-  "split": "holdout",
+  "split": "tune",
   "seed": {
     "criterion_id": "ts-tri-gaps",
     "expected": "MET",
     "reason": "No spec states what happens on a missing config file or which exit codes are in use; both are gap rows with their searches."
-  }
+  },
+  "tuned": {
+    "by": "author",
+    "at": "2026-11-24T09:29:32.248Z"
+  },
+  "producer_family": "unknown",
+  "criteria_digest": null,
+  "fixture_digest": null,
+  "reach": {}
 }

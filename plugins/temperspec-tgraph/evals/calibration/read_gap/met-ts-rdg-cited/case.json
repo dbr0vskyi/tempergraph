@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "case_id": "met-ts-rdg-cited",
+  "gate": "read_gap",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "tune",
+  "seed": {
+    "criterion_id": "ts-rdg-cited",
+    "expected": "MET",
+    "reason": "Every claim names its file with lines or ids, and the search is stated."
+  },
+  "tuned": {
+    "by": "author",
+    "at": "2026-11-24T10:00:00.000Z"
+  },
+  "producer_family": "unknown",
+  "criteria_digest": null,
+  "fixture_digest": null,
+  "reach": {}
+}

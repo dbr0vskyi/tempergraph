@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-ts-rdg-answers",
+  "gate": "read_gap",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-rdg-answers",
+    "expected": "UNMET",
+    "reason": "CLI-B2 says only \"above 0\" and main.py line 14 has no handling; the findings claim what the named files do not hold."
+  },
+  "tuned": {
+    "by": "author",
+    "at": "2026-11-24T10:00:00.000Z"
+  },
+  "producer_family": "unknown",
+  "criteria_digest": null,
+  "fixture_digest": null,
+  "reach": {}
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-ts-rdc-cited",
+  "gate": "read_component",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-rdc-cited",
+    "expected": "UNMET",
+    "reason": "The findings name no file, line or id and say nothing about what was searched."
+  },
+  "tuned": {
+    "by": "author",
+    "at": "2026-11-24T10:00:00.000Z"
+  },
+  "producer_family": "unknown",
+  "criteria_digest": null,
+  "fixture_digest": null,
+  "reach": {}
+}

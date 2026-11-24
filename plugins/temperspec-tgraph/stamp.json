@@ -2,7 +2,7 @@
   "schema_version": 1,
   "engine_version": "0.2.0",
   "workflow_api": 1,
-  "workflow_version": "0.1.0+c534a5621d1f",
+  "workflow_version": "0.1.0+30fb6dfb5846",
   "docs_digest": "6463d32114680441598230a57ca8786e878b89df7fd55a3e77579c2a073f7fe9",
   "shape_digest": "fc1e12d5f7e90828226d3d708d4da4e0369a9b47dd18dd8356df35522f1b44d2",
   "entries_applied": [
@@ -88,8 +88,6 @@
     "readiness:needs-work|outcome||",
     "readiness:needs-work|setup||",
     "readiness:needs-work|triage||",
-    "validate:criterion-no-seed|read_component||",
-    "validate:criterion-no-seed|read_gap||",
     "validate:criterion-overlap|code||",
     "validate:criterion-overlap|discovery||",
     "validate:criterion-overlap|expand||",
@@ -101,7 +99,7 @@
   "outcome_revision": 17,
   "baseline": {
     "error": 0,
-    "warning": 33
+    "warning": 29
   },
-  "stamped_at": "2026-11-24T09:26:29.596Z"
+  "stamped_at": "2026-11-24T10:17:08.688Z"
 }
