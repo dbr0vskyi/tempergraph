@@ -2,7 +2,7 @@
 
 ## Context
 
-A gate that retries a failure which was there before the change spends money that no code change can win back. One run retried its code gate four times, about 2 USD, on an environment fault, and another met 590 errors from its container's signing fault ([R-160](../research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) F1 and H1; issue 111). A workflow's check could not tell a failure the change made from one already there: it ran each verification command once, on the workspace, and failed on any non-zero exit.
+A gate that retries a failure which was there before the change spends money that no code change can win back. One run retried its code gate four times, about 2 USD, on an environment fault, and another met 590 errors from its container's signing fault ([R-160](../research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) F1 and H1; issue 54). A workflow's check could not tell a failure the change made from one already there: it ran each verification command once, on the workspace, and failed on any non-zero exit.
 
 To tell the two apart a check needs the same command's result on the run's base commit, and the engine gives it no way to get one. A command runs in `cwd` or `workdir` only (CHK-B12), and the reuse key is made of the workspace's head, status and changed files (CHK-B13). `git.base` names the commit ([WTR-B21](../specs/82-worktree-mode.spec.md)), but only a worktree run records one: an in-place run's workspace record carries no base commit (`workspace.py`, `prepare_workspace`).
 

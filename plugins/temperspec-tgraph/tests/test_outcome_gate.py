@@ -168,7 +168,7 @@ def test_the_outcome_record_lists_the_three_documents_and_the_overview_closes_it
     outcome = json.loads((ROOT / "outcome.json").read_text())
     assert [d["key"] for d in outcome["deliverables"]] == ["triage_note", "handoff", "plan", "code_report"]
     assert all(d["kind"] == "file" and d["where"] for d in outcome["deliverables"])
-    entry = next(r for r in outcome["revisions"] if "issue 110" in r.get("note", ""))
+    entry = next(r for r in outcome["revisions"] if "issue 53" in r.get("note", ""))
     assert entry["revision"] >= 11 and entry["origin"] == "authored"
     assert outcome["revision"] == outcome["revisions"][-1]["revision"] >= entry["revision"]
     assumptions = outcome["assumptions"]

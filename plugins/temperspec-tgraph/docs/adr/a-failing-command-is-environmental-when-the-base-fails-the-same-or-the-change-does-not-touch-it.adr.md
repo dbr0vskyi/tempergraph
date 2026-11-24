@@ -2,7 +2,7 @@
 
 ## Context
 
-The code check fails on any verification command that does not exit 0 and the gate retries the code step, which cannot help when the failure was there before the change. Run `r3-t1-1b` retried four times, about 2 USD, on an environment fault, and run `r3-t4-1b` met 590 errors from its container's signing fault ([R-160](../../../tempergraph/docs/research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) F1 and H1; issue 111).
+The code check fails on any verification command that does not exit 0 and the gate retries the code step, which cannot help when the failure was there before the change. Run `r3-t1-1b` retried four times, about 2 USD, on an environment fault, and run `r3-t4-1b` met 590 errors from its container's signing fault ([R-160](../../../tempergraph/docs/research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) F1 and H1; issue 54).
 
 What the code does today, read in `workflow/temperspec/checks.py` and `prompts/code.md`:
 

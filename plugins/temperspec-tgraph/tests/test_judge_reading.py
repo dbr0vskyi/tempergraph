@@ -176,7 +176,7 @@ def test_the_code_seeds_carry_the_new_evidence_and_the_outcome_record_says_so() 
         for prefix in ("Changed source lines:", "Reading budget:", SOURCE_LINE):
             assert prefix in evidence, (seed.name, prefix)
     outcome = json.loads((ROOT / "outcome.json").read_text())
-    entry = next(r for r in outcome["revisions"] if "issues 112 and 113" in r.get("note", ""))
+    entry = next(r for r in outcome["revisions"] if "issues 55 and 56" in r.get("note", ""))
     assert entry["revision"] >= 8 and outcome["revision"] == outcome["revisions"][-1]["revision"] >= entry["revision"]
     assert any("one file per 50" in a and "first values" in a for a in outcome["assumptions"])
 

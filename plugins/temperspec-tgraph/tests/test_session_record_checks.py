@@ -1,4 +1,4 @@
-"""Task i129: the checks of the temperspec steps read the session record the engine gives them (SRC-B1 to SRC-B9).
+"""Task i72: the checks of the temperspec steps read the session record the engine gives them (SRC-B1 to SRC-B9).
 
 A context here carries `ctx.session`, the calls the attempt's session made, as `{name, capability, target, ok}` dicts;
 every other test of the package builds its context without one and still passes (SRC-B8).

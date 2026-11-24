@@ -1,6 +1,6 @@
 # Live checks for temperspec
 
-What temperspec still has to confirm on the owner's machine against a signed-in Claude Code. The offline suite covers the same package on stand-ins. A result is written into the table only from a run on the machine. It is never inferred, and a failure is kept as a finding. The engine's own list is its [live checks](../../../tempergraph/docs/plans/live-checks.plan.md); its row L-26 points here. Open rows are tracked by issues labelled `type: live-check` and `area: temperspec` (https://github.com/dbr0vskyi/tempergraph/issues/108, https://github.com/dbr0vskyi/tempergraph/issues/109).
+What temperspec still has to confirm on the owner's machine against a signed-in Claude Code. The offline suite covers the same package on stand-ins. A result is written into the table only from a run on the machine. It is never inferred, and a failure is kept as a finding. The engine's own list is its [live checks](../../../tempergraph/docs/plans/live-checks.plan.md); its row L-26 points here. Open rows are tracked by issues labelled `type: live-check` and `area: temperspec` (https://github.com/dbr0vskyi/tempergraph/issues/51, https://github.com/dbr0vskyi/tempergraph/issues/52).
 
 ## Before you start
 

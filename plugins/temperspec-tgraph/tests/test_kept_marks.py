@@ -1,4 +1,4 @@
-"""Task i125: a trip back to plan keeps the completed marks of rows that did not change (kept-marks spec,
+"""Task i68: a trip back to plan keeps the completed marks of rows that did not change (kept-marks spec,
 KMK-B1 to KMK-B8): the plan and expand checks read the run's history, the code check takes a kept row, and the
 prompts, the plan rule and `outcome.json` say so. The file builds its own scratch repository."""
 
@@ -273,5 +273,5 @@ def test_outcome_json_states_the_kept_mark_criteria_and_revision_11() -> None:
             rows[cid]["text"], cid
         assert "history" in rows[cid]["check_method"], cid
     assert rows["ts-code-changed"]["text"].endswith("changed in the run, whichever visit of the code step changed it (KMK-B8)")
-    entry = next(r for r in outcome["revisions"] if "issue 125" in r.get("note", ""))
+    entry = next(r for r in outcome["revisions"] if "issue 68" in r.get("note", ""))
     assert entry["revision"] >= 11 and outcome["revision"] == outcome["revisions"][-1]["revision"] >= entry["revision"]

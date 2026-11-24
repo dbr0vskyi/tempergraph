@@ -561,7 +561,7 @@ def test_every_unit_has_its_numbered_spec_the_overview_names_both_new_ones_and_e
     overview = (specs / "00-overview.spec.md").read_text(encoding="utf-8")
     for name in NEW_UNIT_SPECS.values():
         assert f"({name})" in overview
-    note = ROOT / "docs" / "tasks" / "i116.triage.md"
+    note = ROOT / "docs" / "tasks" / "i59.triage.md"
     targets = [m.group("target").split("#", 1)[0] for m in LINK.finditer(note.read_text(encoding="utf-8"))]
     assert targets
     for target in targets:

@@ -26,7 +26,7 @@ Every check context of a run is built with the same store file, `runs/<workflow>
 
 ### F2 The key names the tree, not the attempt or the visit `confirmed`
 
-`reuse_key` hashes the command's argv and working folder, the resolved program and the content of the tree: every file git tracks and every untracked file git does not ignore (every file outside a git repository), outside the state root, each by path, bytes and executable bit, with no `HEAD` and no status listing (`checks.py`, issue 126; before it the key held `HEAD` and the status listing, which made a commit move it). Nothing in it names a unit, an attempt, a visit or a commit. A run is reused when the key matches and is stored only when it finished and its exit code is not listed as not reusable (`checks.py` lines 117-128). A finished failing run is stored too, so a failure on an unchanged tree is not run again either.
+`reuse_key` hashes the command's argv and working folder, the resolved program and the content of the tree: every file git tracks and every untracked file git does not ignore (every file outside a git repository), outside the state root, each by path, bytes and executable bit, with no `HEAD` and no status listing (`checks.py`, issue 69; before it the key held `HEAD` and the status listing, which made a commit move it). Nothing in it names a unit, an attempt, a visit or a commit. A run is reused when the key matches and is stored only when it finished and its exit code is not listed as not reusable (`checks.py` lines 117-128). A finished failing run is stored too, so a failure on an unchanged tree is not run again either.
 
 ### F3 The code gate and the outcome gate ask for reuse over the same commands `confirmed`
 
@@ -34,11 +34,11 @@ Every check context of a run is built with the same store file, `runs/<workflow>
 
 ### F4 A commit leaves the key, and a changed file gets a new key `confirmed`
 
-The engine runs a step's `after` scripts only after a session that ended `ok` (SCR-B2; `nodes.py` lines 397-398), and the check runs after that. The commit script returns without committing when nothing is staged (`routing.py` lines 127-142), so a retry that changes nothing leaves the tree as it was and its key matches (CHK-B5 states this for a judge-only failure). A retry that edits a file changes the tree's content, the key differs, and the commands run again, as they must. A commit of the same content leaves the key as it was, because the key holds no `HEAD` (CHK-B13, CHK-AC12; it held `HEAD` before issue 126, and then a commit moved it).
+The engine runs a step's `after` scripts only after a session that ended `ok` (SCR-B2; `nodes.py` lines 397-398), and the check runs after that. The commit script returns without committing when nothing is staged (`routing.py` lines 127-142), so a retry that changes nothing leaves the tree as it was and its key matches (CHK-B5 states this for a judge-only failure). A retry that edits a file changes the tree's content, the key differs, and the commands run again, as they must. A commit of the same content leaves the key as it was, because the key holds no `HEAD` (CHK-B13, CHK-AC12; it held `HEAD` before issue 69, and then a commit moved it).
 
 ### F5 Only the engine's own runs are recorded `confirmed`
 
-The store is written only by `CheckContext.run` (`checks.py`; no other writer in `plugins/tempergraph/engine/src`). A command the session runs in its own shell is not recorded. The code step now declares the check preview (`self_check=True`, `__init__.py`, issue 126), and a run the session makes through it is recorded.
+The store is written only by `CheckContext.run` (`checks.py`; no other writer in `plugins/tempergraph/engine/src`). A command the session runs in its own shell is not recorded. The code step now declares the check preview (`self_check=True`, `__init__.py`, issue 69), and a run the session makes through it is recorded.
 
 ### F6 A preview gives the code gate a run to reuse across the commit `confirmed`
 
@@ -57,6 +57,6 @@ A step that declares `self_check: true` gets a preview whose command runs are st
 
 ## Open questions
 
-- Answered by issue 126: the session's own end-of-visit run counts as the gate's result when it goes through the engine's preview and the tree's content is the same. The two things it took are built: the code step runs the plan's commands through the preview, and the reuse key holds the tree's content instead of `HEAD` and the status listing.
-- Open: what the content key costs on a large repository. The key reads each file of the tree once on every command that asks for reuse; the code report of issue 126 says that the step had no way to time it, so the figure is still to be taken (a run's `command_runs.jsonl` and the check's duration show it in the first runs).
+- Answered by issue 69: the session's own end-of-visit run counts as the gate's result when it goes through the engine's preview and the tree's content is the same. The two things it took are built: the code step runs the plan's commands through the preview, and the reuse key holds the tree's content instead of `HEAD` and the status listing.
+- Open: what the content key costs on a large repository. The key reads each file of the tree once on every command that asks for reuse; the code report of issue 69 says that the step had no way to time it, so the figure is still to be taken (a run's `command_runs.jsonl` and the check's duration show it in the first runs).
 - Open: whether a real session's preview run is reused by the gate (the resolved program is part of the key and is found on the `PATH` of the process that runs the check). The `reused` or `run` word in the code gate's evidence shows it in the first runs.

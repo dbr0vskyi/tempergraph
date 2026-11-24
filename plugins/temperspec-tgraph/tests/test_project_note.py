@@ -1,4 +1,4 @@
-"""Task i124: prepare writes the project note from the repository's real layout (PNR-B1 to PNR-B6), and the documents
+"""Task i67: prepare writes the project note from the repository's real layout (PNR-B1 to PNR-B6), and the documents
 that say where prepare puts the rule files and where a step writes its notes say so (README, setup skill, prompts)."""
 
 from __future__ import annotations

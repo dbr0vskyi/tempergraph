@@ -1,4 +1,4 @@
-"""The loop's issues end to end, against a fake code host (ISS-AC1 to ISS-AC6, PRP-AC8, PRP-AC9, IMD-AC3; task i58).
+"""The loop's issues end to end, against a fake code host (ISS-AC1 to ISS-AC6, PRP-AC8, PRP-AC9, IMD-AC3; task i1).
 
 Every test carries the criterion id of its spec and the task's `AC <n>`: AC 1 labels, body, mute, regression, `Closes`
 and trial comment; AC 2 the `mute.days` record and the close-reason table; AC 3 each test that drives the fake host;
@@ -444,7 +444,7 @@ def test_gh_closed_read_lowers_the_reason(monkeypatch: pytest.MonkeyPatch) -> No
 
 # -- phase 5: the documents say what is built -----------------------------------------------------------------
 
-def test_the_documents_say_what_is_built_and_l17_has_a_case_not_run() -> None:  # AC 4, task i58
+def test_the_documents_say_what_is_built_and_l17_has_a_case_not_run() -> None:  # AC 4, task i1
     from .conftest import DOCS, REPO_ROOT
 
     runbook = (DOCS / "plans" / "live-checks.plan.md").read_text(encoding="utf-8")
@@ -453,7 +453,7 @@ def test_the_documents_say_what_is_built_and_l17_has_a_case_not_run() -> None:  
     result = next(ln for ln in runbook.splitlines() if ln.startswith("| L-17 | 20"))
     assert "not planned" in result and "not run" in result
     contributing = (REPO_ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
-    assert "reads close reasons (#58)" not in contributing and "#58 tracks making the loop read" not in contributing
+    assert "reads close reasons (#1)" not in contributing and "#1 tracks making the loop read" not in contributing
     assert "needs-triage" in contributing.split("### 5.4", 1)[1] and "Closes #<n>" in contributing.split("### 5.4", 1)[1]
     guide = (DOCS / "guides" / "improving-workflows.guide.md").read_text(encoding="utf-8")
     for word in ("issue_labels", "## Summary", "not planned", "possible regression", "Closes #<n>"):
