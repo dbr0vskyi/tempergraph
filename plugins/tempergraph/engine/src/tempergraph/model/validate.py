@@ -110,6 +110,7 @@ class _Validator:
         if flow.OUTCOME_UNIT in s.units:
             self.err("reserved-unit-name", flow.OUTCOME_UNIT, "the unit name 'outcome' is reserved (OUT-B15, OUT-B16, OUT-B17)")
         self._release()
+        self._inputs()
         self._settings()
         self._routing()
         for name in s.order:
@@ -125,6 +126,12 @@ class _Validator:
             from tempergraph.package.loader import package_findings
 
             self.findings += package_findings(s)
+
+    def _inputs(self) -> None:
+        """VAL-B8: a declared input named like an engine or item key is refused."""
+        for param in self.spec.input.parameters:
+            if param.name in RESERVED_KEYS:
+                self.err("reserved-key", None, f"input {param.name!r} is a reserved template key")
 
     # -- release --------------------------------------------------------------------------------
     def _release(self) -> None:

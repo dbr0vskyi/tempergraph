@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 16,
+  "revision": 17,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -194,6 +194,51 @@
     }
   ],
   "intermediate": {
+    "read_component": {
+      "statement": "The findings of the reading of one component folder say what the folder holds, or state what was searched, and name the files they rest on",
+      "criteria": [
+        {
+          "id": "ts-rdc-answers",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "The findings of a component folder's reading say what the folder holds and what someone outside depends on, or state what was searched",
+          "check_method": "Open each file the findings name at its line ranges or ids, and compare it with what the findings claim",
+          "source": "created",
+          "verifier": {
+            "references": [],
+            "scale": {
+              "met": "the findings say what the folder holds and what someone outside depends on, each claim is in the file it names, or they state what was searched in the folder when nothing was found",
+              "partial": "the findings cover part of the folder, or a claim is in its file with a different meaning",
+              "unmet": "the findings describe another folder, claim what the named file does not hold, or say nothing about the folder",
+              "evidence": "the path and line of each claim checked, and the quote that confirms or refutes it"
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-rdc-cited",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "The findings name each file they rest on with its line ranges or ids",
+          "check_method": "Read the findings line for the files it names and their line ranges or ids",
+          "source": "created",
+          "verifier": {
+            "references": [],
+            "scale": {
+              "met": "every claim of the findings names its file with the line ranges or ids it rests on, or the findings say what was searched",
+              "partial": "some claims name a file and others name none",
+              "unmet": "the findings name no file and say nothing about what was searched",
+              "evidence": "the claim, and the file and range or id it names"
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        }
+      ]
+    },
     "setup": {
       "statement": "A repository with no overview spec gets one, and one spec per component, that describe the code as it is",
       "criteria": [
@@ -558,6 +603,55 @@
                 "met-ts-dsh-answers",
                 "unmet-ts-dsh-answers"
               ]
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        }
+      ]
+    },
+    "read_gap": {
+      "statement": "The findings of the reading of one gap answer the gap, or state what was searched, and name the files they rest on",
+      "criteria": [
+        {
+          "id": "ts-rdg-answers",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "The findings of a gap's reading answer the gap, or state what was searched",
+          "check_method": "Read the gap row in the triage note, then open each file the findings name at its line ranges or ids",
+          "source": "created",
+          "verifier": {
+            "references": [
+              "triage_note"
+            ],
+            "scale": {
+              "met": "the findings say what the named files hold about the gap and each claim is in its file, or they state what was searched for the gap's subject when nothing was found",
+              "partial": "the findings answer part of the gap, or a claim is in its file with a different meaning",
+              "unmet": "the findings answer another gap, claim what the named file does not hold, or say nothing about the gap",
+              "evidence": "the gap row, the path and line of each claim checked, and the quote that confirms or refutes it"
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-rdg-cited",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "The findings name each file they rest on with its line ranges or ids",
+          "check_method": "Read the findings line for the files it names and their line ranges or ids",
+          "source": "created",
+          "verifier": {
+            "references": [
+              "triage_note"
+            ],
+            "scale": {
+              "met": "every claim of the findings names its file with the line ranges or ids it rests on, or the findings say what was searched",
+              "partial": "some claims name a file and others name none",
+              "unmet": "the findings name no file and say nothing about what was searched",
+              "evidence": "the claim, and the file and range or id it names"
             }
           },
           "serves": [
@@ -1439,7 +1533,8 @@
     "The spec budget is fixed at 400 lines and 30,720 bytes for every repository, with no setting; it is measured once, at discovery (ts-dis-budget), while ts-spec-cap at the outcome gate counts lines only.",
     "The code gate cannot see the session's own run of the verification commands through the check preview, so it records n_a for ts-code-previewed, ts-code-session and ts-code-rerun; the package's tests prove them. ts-code-preview is read from the prompt and ts-code-ran from the gate's own command runs.",
     "No unit criterion serves ts-spec-fresh (OUT-B16), so a failed guard escalates the run at the outcome gate and is not sent back to discovery; a person starts the task again from the head of the base branch.",
-    "The triage check reads a missing conversation value as `blocking`: the engine's fixture rung gives a check no settings, so it runs each triage fixture as `blocking`, and the `never` cases of ts-tri-owner are proved by the package's tests."
+    "The triage check reads a missing conversation value as `blocking`: the engine's fixture rung gives a check no settings, so it runs each triage fixture as `blocking`, and the `never` cases of ts-tri-owner are proved by the package's tests.",
+    "Two subjects start reading sessions and three run at a time; both are first values with no measured run behind them, and the judges of one gate stay one, each reading gate having a judge of its own (spec parallel-reading, its open questions)."
   ],
   "revisions": [
     {
@@ -1536,6 +1631,12 @@
       "origin": "authored",
       "at": "2026-11-24T06:00:00.000Z",
       "note": "issue 117: the setting `conversation` (`never` or `blocking`); with `never` the triage note sorts each gap and lists each owner decision with its default, discovery goes on with the default, and the pull request lists the defaults as assumptions to confirm (ts-tri-owner added, spec conversation)"
+    },
+    {
+      "revision": 17,
+      "origin": "authored",
+      "at": "2026-11-24T12:00:00.000Z",
+      "note": "issue 132: the full discovery step starts one read-only reading session for each gap of two or more, three at a time, before its one writing session (read_gap with ts-rdg-answers and ts-rdg-cited, spec parallel-reading); the setup survey does the same for each component folder (list_components, read_component with ts-rdc-answers and ts-rdc-cited)"
     }
   ]
 }

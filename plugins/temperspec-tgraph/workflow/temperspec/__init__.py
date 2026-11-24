@@ -2,12 +2,17 @@
 
 `prepare` runs no session: it installs the rule files and the project note, and sends a repository that has
 no overview spec through `setup`, which writes the overview and one spec per component from the code as it is.
+Setup starts with its reading sessions: `list_components` lists the component folders and `read_component` reads
+each in a read-only session, three at a time, before `setup` writes the specs from their findings (spec
+parallel-reading).
 
 `triage` reads the task and routes it: a small fix that changes no spec goes straight to `code` (the quick
 lane), no gap in the specs goes to `plan`, any gap to `discovery`, and a docs-only task ends after `discovery`.
 A task whose every gap a spec already answers (the triage check has verified each `Covered by` mark) takes the
 short visit `discovery_short` instead: it confirms the cited behaviours, writes the hand-off and its reading list,
-and hands a gap it finds not answered to the full `discovery` (decision record 0003).
+and hands a gap it finds not answered to the full `discovery` (decision record 0003). The full discovery starts
+with `read_gap`: one read-only reading session for each gap of two or more, three at a time on the engine's
+concurrent map, and then the one writing session `discovery`, briefed with their findings (spec parallel-reading).
 The code gate measures a quick change and sends a larger one back to `triage`, which then plans it. `plan` states the task's complexity; a complex plan gets its task rows
 from `expand`, a simple one already has them. `code` builds the whole plan in one session (per-phase coding
 waits for the engine's sequential map). The engine commits after every step and the last stage pushes.
@@ -22,7 +27,7 @@ uses the large model tier. `discovery` thinks at the highest effort; its short v
 
 from typing import Any
 
-from tempergraph.api import Gate, Judge, Route, Routing, Script, Setting, Step, Value, Workflow, text
+from tempergraph.api import Gate, Judge, Map, Route, Routing, Script, Setting, Step, Value, Workflow, text
 
 from . import specfmt
 from .checks import (
@@ -37,6 +42,8 @@ from .checks import (
 from .routing import (
     commit_step,
     finalize,
+    gap_items,
+    list_components,
     prepare,
     route_discovery,
     route_plan,
@@ -61,12 +68,16 @@ ALLOW = [*VERIFY, "git remote", "git push -u origin", "gh pr list", "gh pr creat
 SIZING = {
     "setup": (("high", "It reads a whole repository once and writes the specs every later task trusts"),
              ("medium", "It compares each written spec with the code it describes, one file at a time")),
+    "read_component": (("medium", "It reads one folder's code and tests and writes nothing; the writing session confirms each claim"),
+                       ("medium", "It reads one findings line against one folder, and the writing step's own check comes later")),
     "triage": (("medium", "It reads one task and the spec index to sort gaps and pick a route; the check verifies the note's shape"),
               ("medium", "It reads one note against the task; the route it confirms is cheap to correct later")),
     "discovery_short": (("high", "It confirms that each behaviour triage cited answers its gap and lists the files the plan "
                                  "will need; it designs nothing, and the check verifies the cited ids"),
                         ("high", "A gap wrongly taken as answered costs a whole code session, so the verdict keeps the "
                                  "effort of the full visit's judge")),
+    "read_gap": (("medium", "It reads one gap's documents and code and writes nothing; the writing session confirms each claim"),
+                 ("medium", "It reads one findings line against one gap row, and the check of the writing step comes later")),
     "discovery": (("max", "It closes gaps by research and design, the deepest thinking in the workflow, and nothing downstream rechecks its facts"),
                  ("high", "It decides whether each gap is really closed across specs, records and research notes")),
     "plan": (("high", "It designs across specs and code, and a weak plan costs a whole code session"),
@@ -95,7 +106,8 @@ def _judge(unit: str, references: Any, timeout_s: int | None = None) -> Any:
 
 def workflow() -> Any:
     return Workflow(
-        order=["prepare", "setup_route", "setup", "triage", "discovery_short", "discovery", "plan", "expand", "code"],
+        order=["prepare", "setup_route", "list_components", "read_component", "setup", "triage", "discovery_short",
+               "read_gap", "discovery", "plan", "expand", "code"],
         routing=Routing(
             description="Take a task from its acceptance criteria to specs, a plan, tested code and a draft "
                         "pull request",
@@ -114,7 +126,18 @@ def workflow() -> Any:
                 side_effects="workspace", gate=Gate(),
                 produces={"setup_needed": Value(choices=["yes"], optional=True),
                           "setup_ready": Value(choices=["yes"], optional=True)}),
-            "setup_route": Route(select=route_setup, targets=["setup", "triage"]),
+            "setup_route": Route(select=route_setup, targets=["list_components", "triage"]),
+            "list_components": Script(
+                call=list_components, summary="List the component folders to read", side_effects="workspace",
+                gate=Gate(), produces={"component_list": "file"}),
+            "read_component": Map(
+                items_from=("list_components", "component_list"), mode="concurrent", concurrency=3,
+                on_empty="skip",
+                step=Step(
+                    prompt=text("prompts/read_component.md"), summary="Read one component folder; report findings",
+                    **_sized("read_component"), tools=READ, timeout_s=1200,
+                    produces={"component_finding": Value(max_chars=1500)},
+                    gate=Gate(judge=_judge("read_component", []), on_budget_spent="stop"))),
             "setup": Step(
                 prompt=text("prompts/setup.md"), summary="Write the overview spec and one spec per component",
                 **_sized("setup"), tools=[*READ, "edit", "write"], timeout_s=3600,
@@ -127,16 +150,24 @@ def workflow() -> Any:
                 produces={"triage_note": "file", "gaps": Value(choices=["some", "none"]),
                           "route": Value(choices=list(specfmt.ROUTES)),
                           "covered": Value(choices=["no", "yes"], optional=True)},
-                after=[_commit()], route=route_triage, route_targets=["discovery_short", "discovery", "plan", "code"],
+                after=[_commit()], route=route_triage, route_targets=["discovery_short", "read_gap", "plan", "code"],
                 gate=Gate(check=triage_check, judge=_judge("triage", ["triage_note"]), on_budget_spent="stop")),
             "discovery_short": Step(
                 prompt=text("prompts/discovery_short.md"),
                 summary="Confirm the cited behaviours; write the hand-off",
                 **_sized("discovery_short"), timeout_s=1200, tools=[*READ, "write"],
                 produces={"handoff": "file", "settled": Value(choices=["no", "yes"])},
-                after=[_commit()], route=route_short, route_targets=["discovery", "plan"],
+                after=[_commit()], route=route_short, route_targets=["read_gap", "plan"],
                 gate=Gate(check=discovery_short_check,
                           judge=_judge("discovery_short", ["handoff", "triage_note"]), on_budget_spent="stop")),
+            "read_gap": Map(
+                items_from=("triage", "triage_note"), extract=gap_items, mode="concurrent", concurrency=3,
+                on_empty="skip",
+                step=Step(
+                    prompt=text("prompts/read_gap.md"), summary="Read one gap's documents and code; report findings",
+                    **_sized("read_gap"), tools=[*READ, "web_search", "web_fetch"], timeout_s=1200,
+                    produces={"gap_finding": Value(max_chars=1500)},
+                    gate=Gate(judge=_judge("read_gap", ["triage_note"]), on_budget_spent="stop"))),
             "discovery": Step(
                 prompt=text("prompts/discovery.md"), summary="Close each gap with a spec, record or research note",
                 **_sized("discovery"), timeout_s=3600,

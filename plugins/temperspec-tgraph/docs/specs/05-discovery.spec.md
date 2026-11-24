@@ -4,7 +4,7 @@
 
 Every gap is closed by a spec, a decision record or a research note in the agreed format, committed
 
-Part of the [overview](00-overview.spec.md).
+Part of the [overview](00-overview.spec.md). A triage note that lists two or more gaps first gets one read-only reading session for each gap, and the step's one writing session then closes the gaps from their findings and writes the hand-off; the criteria below judge that session's output, and the reading sessions write no document ([parallel reading](parallel-reading.spec.md)).
 
 ## 6. Acceptance criteria
 

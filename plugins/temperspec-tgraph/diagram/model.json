@@ -15,6 +15,18 @@
       "approval": false
     },
     {
+      "name": "list_components",
+      "kind": "script",
+      "summary": "",
+      "approval": false
+    },
+    {
+      "name": "read_component",
+      "kind": "map",
+      "summary": "Read one component folder; report findings",
+      "approval": false
+    },
+    {
       "name": "setup",
       "kind": "step",
       "summary": "Write the overview spec and one spec per component",
@@ -30,6 +42,12 @@
       "name": "discovery_short",
       "kind": "step",
       "summary": "Confirm the cited behaviours; write the hand-off",
+      "approval": false
+    },
+    {
+      "name": "read_gap",
+      "kind": "map",
+      "summary": "Read one gap's documents and code; report findings",
       "approval": false
     },
     {
@@ -72,6 +90,14 @@
     "setup_route.judge",
     "setup_route.gate",
     "setup_route.human",
+    "list_components.step",
+    "list_components.judge",
+    "list_components.gate",
+    "list_components.human",
+    "read_component.step",
+    "read_component.judge",
+    "read_component.gate",
+    "read_component.human",
     "setup.step",
     "setup.judge",
     "setup.gate",
@@ -84,6 +110,10 @@
     "discovery_short.judge",
     "discovery_short.gate",
     "discovery_short.human",
+    "read_gap.step",
+    "read_gap.judge",
+    "read_gap.gate",
+    "read_gap.human",
     "discovery.step",
     "discovery.judge",
     "discovery.gate",
@@ -164,7 +194,7 @@
     ],
     [
       "setup_route.gate",
-      "setup.step",
+      "list_components.step",
       "PROCEED"
     ],
     [
@@ -189,7 +219,7 @@
     ],
     [
       "setup_route.human",
-      "setup.step",
+      "list_components.step",
       "decision"
     ],
     [
@@ -209,6 +239,121 @@
     ],
     [
       "setup_route.human",
+      "__end__",
+      "decision"
+    ],
+    [
+      "list_components.step",
+      "list_components.judge",
+      "next"
+    ],
+    [
+      "list_components.judge",
+      "list_components.gate",
+      "next"
+    ],
+    [
+      "list_components.gate",
+      "read_component.step",
+      "PROCEED"
+    ],
+    [
+      "list_components.gate",
+      "list_components.step",
+      "RETRY"
+    ],
+    [
+      "list_components.gate",
+      "list_components.human",
+      "ESCALATE"
+    ],
+    [
+      "list_components.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "list_components.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "list_components.human",
+      "list_components.step",
+      "decision"
+    ],
+    [
+      "list_components.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "list_components.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "list_components.human",
+      "__end__",
+      "decision"
+    ],
+    [
+      "read_component.step",
+      "read_component.judge",
+      "next"
+    ],
+    [
+      "read_component.judge",
+      "read_component.gate",
+      "next"
+    ],
+    [
+      "read_component.gate",
+      "setup.step",
+      "PROCEED"
+    ],
+    [
+      "read_component.gate",
+      "read_component.step",
+      "RETRY"
+    ],
+    [
+      "read_component.gate",
+      "read_component.human",
+      "ESCALATE"
+    ],
+    [
+      "read_component.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "read_component.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "read_component.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "read_component.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "read_component.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "read_component.human",
+      "list_components.step",
+      "decision"
+    ],
+    [
+      "read_component.human",
       "__end__",
       "decision"
     ],
@@ -264,6 +409,16 @@
     ],
     [
       "setup.human",
+      "list_components.step",
+      "decision"
+    ],
+    [
+      "setup.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "setup.human",
       "__end__",
       "decision"
     ],
@@ -284,7 +439,7 @@
     ],
     [
       "triage.gate",
-      "discovery.step",
+      "read_gap.step",
       "PROCEED"
     ],
     [
@@ -319,7 +474,7 @@
     ],
     [
       "triage.human",
-      "discovery.step",
+      "read_gap.step",
       "decision"
     ],
     [
@@ -349,6 +504,16 @@
     ],
     [
       "triage.human",
+      "list_components.step",
+      "decision"
+    ],
+    [
+      "triage.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "triage.human",
       "setup.step",
       "decision"
     ],
@@ -369,7 +534,7 @@
     ],
     [
       "discovery_short.gate",
-      "discovery.step",
+      "read_gap.step",
       "PROCEED"
     ],
     [
@@ -394,7 +559,7 @@
     ],
     [
       "discovery_short.human",
-      "discovery.step",
+      "read_gap.step",
       "decision"
     ],
     [
@@ -419,6 +584,16 @@
     ],
     [
       "discovery_short.human",
+      "list_components.step",
+      "decision"
+    ],
+    [
+      "discovery_short.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "discovery_short.human",
       "setup.step",
       "decision"
     ],
@@ -429,6 +604,86 @@
     ],
     [
       "discovery_short.human",
+      "__end__",
+      "decision"
+    ],
+    [
+      "read_gap.step",
+      "read_gap.judge",
+      "next"
+    ],
+    [
+      "read_gap.judge",
+      "read_gap.gate",
+      "next"
+    ],
+    [
+      "read_gap.gate",
+      "discovery.step",
+      "PROCEED"
+    ],
+    [
+      "read_gap.gate",
+      "read_gap.step",
+      "RETRY"
+    ],
+    [
+      "read_gap.gate",
+      "read_gap.human",
+      "ESCALATE"
+    ],
+    [
+      "read_gap.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "read_gap.human",
+      "discovery.step",
+      "decision"
+    ],
+    [
+      "read_gap.human",
+      "read_gap.step",
+      "decision"
+    ],
+    [
+      "read_gap.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "read_gap.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "read_gap.human",
+      "list_components.step",
+      "decision"
+    ],
+    [
+      "read_gap.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "read_gap.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "read_gap.human",
+      "triage.step",
+      "decision"
+    ],
+    [
+      "read_gap.human",
+      "discovery_short.step",
+      "decision"
+    ],
+    [
+      "read_gap.human",
       "__end__",
       "decision"
     ],
@@ -494,6 +749,16 @@
     ],
     [
       "discovery.human",
+      "list_components.step",
+      "decision"
+    ],
+    [
+      "discovery.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "discovery.human",
       "setup.step",
       "decision"
     ],
@@ -505,6 +770,11 @@
     [
       "discovery.human",
       "discovery_short.step",
+      "decision"
+    ],
+    [
+      "discovery.human",
+      "read_gap.step",
       "decision"
     ],
     [
@@ -584,6 +854,16 @@
     ],
     [
       "plan.human",
+      "list_components.step",
+      "decision"
+    ],
+    [
+      "plan.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "plan.human",
       "setup.step",
       "decision"
     ],
@@ -595,6 +875,11 @@
     [
       "plan.human",
       "discovery_short.step",
+      "decision"
+    ],
+    [
+      "plan.human",
+      "read_gap.step",
       "decision"
     ],
     [
@@ -674,6 +959,16 @@
     ],
     [
       "expand.human",
+      "list_components.step",
+      "decision"
+    ],
+    [
+      "expand.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "expand.human",
       "setup.step",
       "decision"
     ],
@@ -685,6 +980,11 @@
     [
       "expand.human",
       "discovery_short.step",
+      "decision"
+    ],
+    [
+      "expand.human",
+      "read_gap.step",
       "decision"
     ],
     [
@@ -774,12 +1074,27 @@
     ],
     [
       "code.human",
+      "list_components.step",
+      "decision"
+    ],
+    [
+      "code.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "code.human",
       "setup.step",
       "decision"
     ],
     [
       "code.human",
       "discovery_short.step",
+      "decision"
+    ],
+    [
+      "code.human",
+      "read_gap.step",
       "decision"
     ],
     [
@@ -814,6 +1129,11 @@
     ],
     [
       "outcome.gate",
+      "read_component.step",
+      "BACK"
+    ],
+    [
+      "outcome.gate",
       "setup.step",
       "BACK"
     ],
@@ -825,6 +1145,11 @@
     [
       "outcome.gate",
       "discovery_short.step",
+      "BACK"
+    ],
+    [
+      "outcome.gate",
+      "read_gap.step",
       "BACK"
     ],
     [
@@ -869,6 +1194,11 @@
     ],
     [
       "outcome.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
       "setup.step",
       "decision"
     ],
@@ -880,6 +1210,11 @@
     [
       "outcome.human",
       "discovery_short.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "read_gap.step",
       "decision"
     ],
     [
@@ -910,6 +1245,11 @@
     [
       "outcome.human",
       "setup_route.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "list_components.step",
       "decision"
     ],
     [
@@ -928,5 +1268,5 @@
       "next"
     ]
   ],
-  "digest": "e8a7c2f9bebb39f807cc94d32fec0964038f63ed828d224ba1375909d5930942"
+  "digest": "a1efb040a1c37f5483ec155ef9b8995773f6f1793c93f6982420f7bda82d8583"
 }

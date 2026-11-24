@@ -41,20 +41,20 @@ WHEN the evidence lists more source files than the reading budget covers THE cod
 
 WHEN a judge of the workflow is briefed THE workflow SHALL ask the judge to quote, behind every criterion it grades MET, the line it relied on, with its path and line number.
 
-- GIVEN the brief of each of the seven step judges and the stance of the outcome judge WHEN each text is read THEN each asks the judge to quote the line, with its path and line number, behind every MET
+- GIVEN the brief of each step judge, the judges of reading sessions included, and the stance of the outcome judge WHEN each text is read THEN each asks the judge to quote the line, with its path and line number, behind every MET
 
 ### JRD-B6 Search lines alone are PARTIAL
 
 WHEN a judge of the workflow is briefed THE workflow SHALL tell the judge to grade a criterion PARTIAL, not MET, when the only evidence it saw for the criterion is lines printed by a search.
 
-- GIVEN the brief of each of the seven step judges and the stance of the outcome judge WHEN each text is read THEN each tells the judge to grade PARTIAL, not MET, a criterion whose only evidence is lines a search printed
+- GIVEN the brief of each step judge, the judges of reading sessions included, and the stance of the outcome judge WHEN each text is read THEN each tells the judge to grade PARTIAL, not MET, a criterion whose only evidence is lines a search printed
 - GIVEN a judge that found a line with a search and then read the file around that line WHEN it grades the criterion MET THEN it quotes that line from the file it read
 
 ### JRD-B7 A criterion the check verified is graded from its finding
 
 WHEN a judge of the workflow is briefed THE workflow SHALL tell the judge to grade a criterion the gate's check verified from the check's finding, quoting that finding as the line behind its MET, and never to grade it UNVERIFIABLE because the judge cannot run the check.
 
-- GIVEN the brief of each of the seven step judges and the stance of the outcome judge WHEN each text is read THEN each says that a check-verified criterion is graded from the check's finding and is not UNVERIFIABLE for want of running it
+- GIVEN the brief of each step judge, the judges of reading sessions included, and the stance of the outcome judge WHEN each text is read THEN each says that a check-verified criterion is graded from the check's finding and is not UNVERIFIABLE for want of running it
 
 ## Acceptance criteria
 
@@ -63,6 +63,6 @@ WHEN a judge of the workflow is briefed THE workflow SHALL tell the judge to gra
 - JRD-AC3 (JRD-B2): The check evidence for changes of 120, 2,100, 2,101 and 5,000 changed source lines states reading budgets of 10, 42, 43 and 50 files
 - JRD-AC4 (JRD-B3): The code judge's brief tells the judge to read each source file the evidence lists (the file itself, not only search results from it), up to the reading budget, before it grades `ts-code-aligned` or `ts-code-related`
 - JRD-AC5 (JRD-B4): The code judge's brief tells the judge to grade UNVERIFIABLE, naming the files it did not read, an alignment criterion that rests on a listed file beyond the reading budget
-- JRD-AC6 (JRD-B5): The brief of each of the seven step judges and the stance of the outcome judge asks for the quoted line, with its path and line number, behind every MET
-- JRD-AC7 (JRD-B6): The brief of each of the seven step judges and the stance of the outcome judge tells the judge to grade PARTIAL, not MET, a criterion whose only evidence is lines a search printed
-- JRD-AC8 (JRD-B7): The brief of each of the seven step judges and the stance of the outcome judge says that a criterion the gate's check verified is graded from the check's finding, quoted as the line behind its MET, and never UNVERIFIABLE because the judge cannot run the check
+- JRD-AC6 (JRD-B5): The brief of each step judge, the judges of reading sessions included, and the stance of the outcome judge asks for the quoted line, with its path and line number, behind every MET
+- JRD-AC7 (JRD-B6): The brief of each step judge, the judges of reading sessions included, and the stance of the outcome judge tells the judge to grade PARTIAL, not MET, a criterion whose only evidence is lines a search printed
+- JRD-AC8 (JRD-B7): The brief of each step judge, the judges of reading sessions included, and the stance of the outcome judge says that a criterion the gate's check verified is graded from the check's finding, quoted as the line behind its MET, and never UNVERIFIABLE because the judge cannot run the check

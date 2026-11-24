@@ -10,6 +10,10 @@ The task:
 
 {request}
 
+Findings of the reading sessions, one line for each gap led by its number, or `none` when no reading session ran:
+
+{gap_finding}
+
 ## Rules to follow
 
 `spec.rule.md`, `decision.rule.md`, `research.rule.md`, `task-notes.rule.md` and `documents.rule.md` are in `.claude/rules/temperspec/` of this repository, or where the project note in `CLAUDE.md` or `AGENTS.md` names them, or already in your instructions when they are installed for the whole machine. Open each rule file named here with the read tool; a search of a rule file is not opening it. Read the rule of a document type before you write a document of that type. This prompt does not repeat the formats.
@@ -17,7 +21,7 @@ The task:
 ## Procedure
 
 1. Read the triage note: the acceptance criteria, the existing documents and every gap row.
-2. For each gap, read the existing documents the note names and the code the gap concerns. A claim about the code is a hypothesis until you have read it in the code. Read narrowly: search for ids and names with grep first, read the line ranges you need instead of whole files, and stop reading once each gap has its answer.
+2. For each gap, read the existing documents the note names and the code the gap concerns. A claim about the code is a hypothesis until you have read it in the code. Read narrowly: search for ids and names with grep first, read the line ranges you need instead of whole files, and stop reading once each gap has its answer. A finding is a claim to confirm in the file it names before a document rests on it. When the findings say `none`, no reading session ran: read each gap's documents and the code it concerns yourself.
 3. Close each gap with the document its kind asks for:
    - `spec gap`: a new spec, or new behaviours in the spec that owns the capability.
    - `spec update`: an edit to the behaviours and criteria that are wrong or missing, in place.

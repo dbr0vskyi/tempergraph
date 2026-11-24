@@ -11,10 +11,10 @@ Start: `tempergraph run temperspec <request>`. The request is the task with its 
 | Step | Writes | Then |
 |---|---|---|
 | prepare | Nothing by a model: installs the rule files only when neither the repository (its own `.claude/rules/temperspec/`, or a folder that holds all six rule files) nor the machine has them, adds the temperspec note to `CLAUDE.md` (or `AGENTS.md`) unless that file already names where the specs are, and looks for an overview spec | No overview spec goes to setup; otherwise triage |
-| setup | Only in a repository without an overview spec: the overview spec, one spec per component, and the setup note listing what it covered and left out | |
+| setup | Only in a repository without an overview spec: first each component folder is read by its own read-only session, three at a time (none for fewer than two folders), then one session writes the overview spec, one spec per component, and the setup note listing what it covered and left out | |
 | triage | The triage note: the task's acceptance criteria, the documents that exist, the gaps; under the conversation setting `never` also the sort of each gap (findable or owner decision) and the owner decisions with their defaults | A small fix that changes no spec goes straight to code (the quick lane); no gap goes to plan; a task whose every gap a spec already answers takes the short discovery visit; any other gap goes to discovery |
 | discovery_short | Only the hand-off: for each gap, the cited behaviour and how it answers the gap, or `Not covered`; a reading list of at most 10 files | Every gap answered goes to plan; a gap not covered goes on to the full discovery |
-| discovery | Specs, decision records, research notes and the hand-off, one per gap; under `never` it goes on with the default of each owner decision instead of ending blocked | A docs-only run ends here; every other run goes to plan |
+| discovery | Specs, decision records, research notes and the hand-off, one per gap, written by one session after each gap has been read by its own read-only session, three at a time (none for fewer than two gaps, for the short visit, or for a return from a later gate); under `never` it goes on with the default of each owner decision instead of ending blocked | A docs-only run ends here; every other run goes to plan |
 | plan | The plan: requirements, phases, verification, and its complexity | A complex plan goes to expand; a simple one already has its task rows |
 | expand | The task rows of a complex plan | |
 | code | Tests first, then code, and the code report, in one session | |
@@ -59,6 +59,7 @@ The `setup` skill installs or updates the rule files by hand, for the repository
 - Verification commands come from one fixed list: `pytest`, `python -m pytest`, `python3 -m pytest`, `ruff check`, `ruff format --check`, `mypy` and read-only `git`. A command may be written `cd <folder> && <command>`, as a repository's `CLAUDE.md` often writes it, and runs in that folder. Another toolchain is added to `VERIFY` in `workflow/temperspec/__init__.py`.
 - No release step and no start from a work tracker.
 - The quick lane's limits are first values with no run behind them. A test carries its criterion as text; the check does not prove that the named test is the one the command ran.
+- The writing sessions of discovery and setup are briefed with what the reading sessions found through the engine's [VAL-B9](../tempergraph/docs/specs/76-step-values-and-template-keys.spec.md): a later template that names a key a map's step produces gets one line for each item, in list order. The need is written here first (engine ADR-0129). Two subjects before reading sessions start, and three at a time, are first values with no measured run behind them. Each reading session has a judge session of its own, because the engine asks every model step for a judge; the judges of one gate stay one, and the open question is in [parallel-reading.spec.md](docs/specs/parallel-reading.spec.md).
 - The last stage needs a remote named `origin` and the `gh` command; without them the run still ends, with the branch and the steps to take by hand.
 
 ## State of verification
@@ -76,4 +77,4 @@ Features found useful and not built yet are [GitHub issues labelled `area: tempe
 
 ## What it asks of the engine
 
-temperspec uses the engine like any other workflow package: through `tempergraph.api`, its manifests and its settings. The engine names no workflow. When temperspec needs something the engine lacks, the need is written here under Limits first, and the engine change is made as a capability any workflow can use, stated in the engine's specs without temperspec (engine ADR-0129).
+temperspec uses the engine like any other workflow package: through `tempergraph.api`, its manifests and its settings. The engine names no workflow. When temperspec needs something the engine lacks, the need is written here under Limits first, and the engine change is made as a capability any workflow can use, stated in the engine's specs without temperspec (engine ADR-0129). The reading sessions of discovery and setup run on the engine's concurrent map, and the writing session reads their findings through the map's items in a later template (VAL-B9).

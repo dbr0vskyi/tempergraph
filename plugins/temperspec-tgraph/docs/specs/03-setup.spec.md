@@ -4,7 +4,7 @@
 
 A repository with no overview spec gets one, and one spec per component, that describe the code as it is
 
-Part of the [overview](00-overview.spec.md).
+Part of the [overview](00-overview.spec.md). A repository with two or more component folders first gets one read-only reading session for each, and the step's one writing session then writes the overview, the component specs and the setup note from their findings; the criteria below judge that session's output, and the reading sessions write no document ([parallel reading](parallel-reading.spec.md)).
 
 ## 6. Acceptance criteria
 
