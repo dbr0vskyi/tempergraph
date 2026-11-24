@@ -45,6 +45,12 @@
       "approval": false
     },
     {
+      "name": "code_mode",
+      "kind": "switch",
+      "summary": "",
+      "approval": false
+    },
+    {
       "name": "expand",
       "kind": "step",
       "summary": "Write task rows and verification for a complex plan",
@@ -54,6 +60,12 @@
       "name": "code",
       "kind": "step",
       "summary": "Build the plan test first in one session",
+      "approval": false
+    },
+    {
+      "name": "code_join",
+      "kind": "script",
+      "summary": "",
       "approval": false
     },
     {
@@ -92,6 +104,10 @@
     "plan.judge",
     "plan.gate",
     "plan.human",
+    "code_mode.step",
+    "code_mode.judge",
+    "code_mode.gate",
+    "code_mode.human",
     "expand.step",
     "expand.judge",
     "expand.gate",
@@ -100,6 +116,10 @@
     "code.judge",
     "code.gate",
     "code.human",
+    "code_join.step",
+    "code_join.judge",
+    "code_join.gate",
+    "code_join.human",
     "outcome.step",
     "outcome.judge",
     "outcome.gate",
@@ -524,12 +544,7 @@
     ],
     [
       "plan.gate",
-      "expand.step",
-      "PROCEED"
-    ],
-    [
-      "plan.gate",
-      "code.step",
+      "code_mode.step",
       "PROCEED"
     ],
     [
@@ -554,12 +569,7 @@
     ],
     [
       "plan.human",
-      "expand.step",
-      "decision"
-    ],
-    [
-      "plan.human",
-      "code.step",
+      "code_mode.step",
       "decision"
     ],
     [
@@ -599,6 +609,96 @@
     ],
     [
       "plan.human",
+      "__end__",
+      "decision"
+    ],
+    [
+      "code_mode.step",
+      "code_mode.judge",
+      "next"
+    ],
+    [
+      "code_mode.judge",
+      "code_mode.gate",
+      "next"
+    ],
+    [
+      "code_mode.gate",
+      "code.step",
+      "PROCEED"
+    ],
+    [
+      "code_mode.gate",
+      "expand.step",
+      "PROCEED"
+    ],
+    [
+      "code_mode.gate",
+      "code_mode.step",
+      "RETRY"
+    ],
+    [
+      "code_mode.gate",
+      "code_mode.human",
+      "ESCALATE"
+    ],
+    [
+      "code_mode.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "code_mode.human",
+      "code.step",
+      "decision"
+    ],
+    [
+      "code_mode.human",
+      "expand.step",
+      "decision"
+    ],
+    [
+      "code_mode.human",
+      "code_mode.step",
+      "decision"
+    ],
+    [
+      "code_mode.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "code_mode.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "code_mode.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "code_mode.human",
+      "triage.step",
+      "decision"
+    ],
+    [
+      "code_mode.human",
+      "discovery_short.step",
+      "decision"
+    ],
+    [
+      "code_mode.human",
+      "discovery.step",
+      "decision"
+    ],
+    [
+      "code_mode.human",
+      "plan.step",
+      "decision"
+    ],
+    [
+      "code_mode.human",
       "__end__",
       "decision"
     ],
@@ -689,6 +789,11 @@
     ],
     [
       "expand.human",
+      "code_mode.step",
+      "decision"
+    ],
+    [
+      "expand.human",
       "__end__",
       "decision"
     ],
@@ -704,7 +809,7 @@
     ],
     [
       "code.gate",
-      "outcome.step",
+      "code_join.step",
       "PROCEED"
     ],
     [
@@ -739,7 +844,7 @@
     ],
     [
       "code.human",
-      "outcome.step",
+      "code_join.step",
       "decision"
     ],
     [
@@ -784,11 +889,111 @@
     ],
     [
       "code.human",
+      "code_mode.step",
+      "decision"
+    ],
+    [
+      "code.human",
       "expand.step",
       "decision"
     ],
     [
       "code.human",
+      "__end__",
+      "decision"
+    ],
+    [
+      "code_join.step",
+      "code_join.judge",
+      "next"
+    ],
+    [
+      "code_join.judge",
+      "code_join.gate",
+      "next"
+    ],
+    [
+      "code_join.gate",
+      "outcome.step",
+      "PROCEED"
+    ],
+    [
+      "code_join.gate",
+      "code_join.step",
+      "RETRY"
+    ],
+    [
+      "code_join.gate",
+      "code_join.human",
+      "ESCALATE"
+    ],
+    [
+      "code_join.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "code_join.human",
+      "outcome.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
+      "code_join.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
+      "triage.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
+      "discovery_short.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
+      "discovery.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
+      "plan.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
+      "code_mode.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
+      "expand.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
+      "code.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
       "__end__",
       "decision"
     ],
@@ -910,6 +1115,16 @@
     [
       "outcome.human",
       "setup_route.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "code_mode.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "code_join.step",
       "decision"
     ],
     [
@@ -928,5 +1143,5 @@
       "next"
     ]
   ],
-  "digest": "e8a7c2f9bebb39f807cc94d32fec0964038f63ed828d224ba1375909d5930942"
+  "digest": "bae71c8dcc5019c619f6464dbda582cc18ea86b247306af79580d660fefe0bf2"
 }

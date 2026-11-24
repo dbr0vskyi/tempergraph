@@ -1,5 +1,6 @@
-"""The routes, the two engine-run scripts around a step, and the last stage. Plain functions of their
-context: no model, no request text."""
+"""The hand-written routes (the route after the plan is the engine's switch `code_mode`, not one of them), the
+scripts the engine runs around a step, and the last stage. Plain functions of their context: no model, no request
+text."""
 
 from __future__ import annotations
 
@@ -57,9 +58,10 @@ def route_discovery(view: Any) -> str:
     return "finalizer" if view.values.get("route") == "discovery-only" else "plan"
 
 
-def route_plan(view: Any) -> str:
-    """A complex plan gets its task rows from `expand`; a simple plan already has them."""
-    return "expand" if view.values.get("complexity") == "complex" else "code"
+def code_join(ctx: Any) -> dict[str, str]:
+    """The unit both arms of the switch `code_mode` reach after `code`: a model-free no-op. The engine's `joins_at`
+    may not be the entry of an arm, so the arms `single` (to `code`) and `phases` (to `expand`) meet here."""
+    return {}
 
 
 # -- scripts the engine runs around a step --------------------------------------------------------
