@@ -980,17 +980,25 @@ def plan_check(ctx: Any) -> Any:
     value = _value(ctx, "complexity")
     reading = _reading_bytes(ctx, plan)
     over = fmt.simple_overruns(plan, reading)
-    bad = []
+    # A complex plan carries no task rows, so the gate measures only its phases and weights: a plan whose reading set
+    # is too large for `simple` says so with a heavy phase (seen in run i16, where the plan flipped between the two).
+    heavy_hint = "mark the phase with the large reading set `Weight: heavy (large-context)` (rows are not measured)"
+    bad: list[tuple[str, str]] = []
     if value is not None and plan.complexity and value != plan.complexity:
-        bad.append(f"the complexity value `{value}` differs from the plan's `{plan.complexity}`")
+        bad.append((f"the complexity value `{value}` differs from the plan's `{plan.complexity}`",
+                    "state the complexity the signs give"))
     if plan.complexity == "simple" and over:
-        bad.append("the plan says `simple` but measures over the limit: " + "; ".join(over[:4]))
+        reading_only = any(o.startswith("reading_bytes") for o in over) and not plan.heavy
+        bad.append(("the plan says `simple` but measures over the limit: " + "; ".join(over[:4]),
+                    "state `complex`" + ("; " + heavy_hint if reading_only else "")))
     if plan.complexity == "complex" and not over:
-        bad.append("the plan says `complex` but no measured sign is over the limit for `simple`")
+        bad.append(("the plan says `complex` but no measured sign is over the limit for `simple`",
+                    "state `simple` and write the rows, or " + heavy_hint))
     for phase, sign in plan.heavy.items():
         if sign not in fmt.HEAVY_SIGNS:
-            bad.append(f"phase `{phase}` is heavy with no sign of {', '.join(fmt.HEAVY_SIGNS)}")
-    found += [_find("fail", "ts-plan-size", path, b, "state the complexity the signs give") for b in bad] or [
+            bad.append((f"phase `{phase}` is heavy with no sign of {', '.join(fmt.HEAVY_SIGNS)}",
+                        "state the complexity the signs give"))
+    found += [_find("fail", "ts-plan-size", path, b, fix) for b, fix in bad] or [
         _ok("ts-plan-size", path)]
     found += _scope(plan, "ts-plan-scope", path)
     found += _prompt_says("ts-plan-reading")

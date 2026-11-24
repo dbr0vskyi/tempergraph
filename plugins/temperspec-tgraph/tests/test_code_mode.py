@@ -577,3 +577,32 @@ def test_the_new_unit_specs_read_as_the_packages_other_unit_specs_do(name: str) 
     assert parsed.legacy and not parsed.problems
     assert fmt.defined_ids(text) == []
     assert "(00-overview.spec.md)" in text and "(code-mode.spec.md)" in text
+
+
+def _size_findings(work: Path) -> list[Any]:
+    artifacts = {"plan": {"plan": "plan.md"}, "triage": {"triage_note": "triage_note.md"}}
+    res, _ = run_check(SPEC.units["plan"].gate, _context("plan", work, artifacts))
+    return [f for f in res.findings if f.criterion == "ts-plan-size" and f.status == "fail"]
+
+
+def test_a_complex_plan_with_no_rows_is_told_to_mark_its_heavy_phase(tmp_path: Path) -> None:
+    # ts-plan-size; seen in run i16: a plan too large to read for `simple` flipped between `simple` and `complex`,
+    # because a complex plan has no rows and so measured nothing over the limit.
+    light = _plan([("Contest retry", "light", [])])
+    (tmp_path / "a").mkdir()
+    _written(tmp_path / "a", light)
+    found = _size_findings(tmp_path / "a")
+    assert found and "heavy (large-context)" in found[0].fix and "state `simple`" in found[0].fix
+    heavy = _plan([("Contest retry", "heavy (large-context)", [])])
+    (tmp_path / "b").mkdir()
+    _written(tmp_path / "b", heavy)
+    assert _size_findings(tmp_path / "b") == []
+
+
+def test_a_simple_plan_over_the_reading_limit_is_told_how_to_say_complex(tmp_path: Path) -> None:  # ts-plan-size
+    text = _plan([("Contest retry", "light", [("test", "tests/a.py"), ("code", "src/a.py")])]).replace(
+        "complexity: complex", "complexity: simple")
+    _written(tmp_path, text, {"src/a.py": 210_000, "tests/a.py": 10})
+    found = _size_findings(tmp_path)
+    assert found and "reading_bytes" in found[0].message
+    assert "state `complex`" in found[0].fix and "heavy (large-context)" in found[0].fix
