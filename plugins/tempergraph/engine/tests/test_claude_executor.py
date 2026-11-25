@@ -87,6 +87,7 @@ def test_judge_launch_is_read_only(tmp_path: Path) -> None:
     assert flag(argv, "--tools") == "Read,Grep,Glob"
     assert flag(argv, "--permission-mode") == "dontAsk"
     assert flag(argv, "--disallowedTools") == "mcp__*"
+    assert "--strict-mcp-config" in argv  # ECC-B18
     assert flag(argv, "--setting-sources") == ""
     for bad in ("Write", "Edit", "Bash", "--fallback-model", "--resume", "--continue", "acceptEdits"):
         assert all(bad not in a for a in argv)  # ECC-AC4
@@ -108,7 +109,7 @@ def test_ecc_ac7_judge_launch_with_mcp_views_is_strict_and_private(tmp_path: Pat
     # no private config path (no proxiable server): the launch is the read-only one of today
     plain = judge_argv(views, "opus", isolated=False)
     assert flag(plain, "--tools") == "Read,Grep,Glob" and flag(plain, "--disallowedTools") == "mcp__*"
-    assert "--mcp-config" not in plain
+    assert "--mcp-config" not in plain and "--strict-mcp-config" in plain
 
 
 def test_ecc_ac6_tools_sent_on_every_step_launch(tmp_path: Path) -> None:
@@ -141,9 +142,40 @@ def test_ecc_ac6_no_launch_sends_add_dir(tmp_path: Path) -> None:
 
 
 def test_step_env() -> None:
+    # ECC-AC15 (ECC-B9, ECC-B20): the account-connector switch is always off, whatever the host holds
+    off = {"ENABLE_CLAUDEAI_MCP_SERVERS": "false"}
     assert step_env("sonnet", host={}) == {"CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1",
-                                           "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"}
-    assert step_env(None, host={"CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "0"}) == {}
+                                           "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet", **off}
+    assert step_env(None, host={"CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "0"}) == off
+    assert step_env(None, host={"CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "0",
+                                "ENABLE_CLAUDEAI_MCP_SERVERS": "true"}) == off
+
+
+def test_ecc_ac12_a_step_and_a_retry_are_strict_and_name_a_config_only_with_an_mcp_tool(tmp_path: Path) -> None:
+    # ECC-AC12 (ECC-B8, ECC-B18)
+    cfg = tmp_path / "mcp.json"
+    for enforce in (False, True):
+        for tools, has_mcp in ((("read",), False), (("read", "mcp:tracker/get_issue"), True)):
+            for kind in ("step", "retry"):  # the second build is the retry: a fresh request
+                r = req(tmp_path, kind=kind, tools=tools, enforce_tools=enforce)
+                argv, _ = step_argv(r, "sonnet", None, FLAGS, cfg)
+                assert "--strict-mcp-config" in argv
+                if has_mcp:
+                    assert flag(argv, "--mcp-config") == str(cfg)
+                else:
+                    assert "--mcp-config" not in argv
+    argv, _ = step_argv(req(tmp_path, tools=("read", "mcp:tracker/get_issue")), "sonnet", None, FLAGS)
+    assert "--strict-mcp-config" in argv and "--mcp-config" not in argv  # no path given: strict, no config
+
+
+def test_ecc_ac13_a_judge_with_no_mcp_view_is_strict_and_denies_mcp_tools(tmp_path: Path) -> None:
+    # ECC-AC13 (ECC-B10, ECC-B18)
+    for views in (ViewSet(tools=("Read", "Grep", "Glob")), ViewSet(tools=("Read", "mcp__tracker__get_issue"))):
+        for isolated in (False, True):
+            argv = judge_argv(views, "opus", isolated=isolated)
+            assert "--strict-mcp-config" in argv
+            assert flag(argv, "--disallowedTools") == "mcp__*"
+            assert "--mcp-config" not in argv
 
 
 # -- binding table (SEC-B1) ---------------------------------------------------------------------
@@ -407,7 +439,8 @@ def _launch_three(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, host_extra: d
     path = S.fake_claude(tmp_path, monkeypatch, scenario)
     home = tmp_path / "home"
     (home / "config" / "credentials").mkdir(parents=True)
-    (home / "config" / "credentials" / "judge").write_text("CLAUDE_CODE_OAUTH_TOKEN=judge-token\n")
+    (home / "config" / "credentials" / "judge").write_text(
+        "CLAUDE_CODE_OAUTH_TOKEN=judge-token\nENABLE_CLAUDEAI_MCP_SERVERS=true\n")
     ex = ClaudeExecutor(bindings=BindingTable(), home=home)
     assert ex.probe().ok
     seen: list[dict[str, object]] = []
@@ -443,6 +476,14 @@ def test_ecc_ac6_step_retry_and_judge_reach_only_what_they_declare(tmp_path: Pat
         assert flag(one["argv"], "--allowedTools") == "Read(./**)"  # ECC-B7: no rule admits a path outside
     assert judge["env"]["CLAUDE_CODE_OAUTH_TOKEN"] == "judge-token"  # the credentials profile arrives
     assert "CLAUDE_CODE_SUBAGENT_MODEL" not in judge["env"]
+
+
+def test_ecc_ac15_every_session_environment_switches_the_account_servers_off(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # ECC-AC15 (ECC-B20): a host value and a judge profile value are both overridden
+    step, retry, judge = _launch_three(tmp_path, monkeypatch, {"ENABLE_CLAUDEAI_MCP_SERVERS": "true"})
+    for one in (step, retry, judge):
+        assert one["env"]["ENABLE_CLAUDEAI_MCP_SERVERS"] == "false"  # type: ignore[index]
 
 
 def test_ecc_ac6_read_search_list_rules_stay_in_the_workspace(tmp_path: Path) -> None:

@@ -1,6 +1,7 @@
 """The `claude` executor: one headless Claude Code session per step attempt or judge run (ECC).
 
-Argv is built from the constants of ECC-B8, ECC-B9, ECC-B10 and values from the binding table or engine-checked
+Argv is built from the constants of ECC-B8, ECC-B9, ECC-B10, ECC-B18 (every launch is strict about MCP servers) and
+ECC-B20 (the account's connectors are switched off in the environment) and values from the binding table or engine-checked
 numbers (ECC-AC1, SEC-B1). The prompt goes on stdin (EXI-B2). The stream is mapped by ECC-B11 and
 failures are classified by ECC-B12 from structured facts and one exact text match (ECC-B5).
 """
@@ -57,7 +58,9 @@ HOST_KEEP = ("CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR", "CLAUDE_CODE_USE_BEDROC
              "CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CONFIG_DIR")
 PROBED_FLAGS = ("--permission-prompts", "--bare", "--tools", "--setting-sources", "--max-budget-usd",
                 "--fallback-model", "--effort", "--plugin-dir", "--strict-mcp-config")
-_VERSION_RE = re.compile(r"(\d+\.\d+\.\d+)")
+MCP_CONNECTORS_VAR = "ENABLE_CLAUDEAI_MCP_SERVERS"  # ECC-B20: set to `false` on every step, retry and judge launch
+MCP_CONNECTORS_OFF = "false"
+_VERSION_RE =re.compile(r"(\d+\.\d+\.\d+)")
 _EFFORTS = frozenset({"low", "medium", "high", "xhigh", "max"})
 
 
@@ -121,8 +124,11 @@ def step_argv(req: SessionRequest, model: str | None, fallback: str | None, flag
     # ECC-B8, ECC-B14: every step launch names its built-in tools, so a host's tools are never offered
     argv += ["--tools", ",".join(_with_preview(builtin_tools(req.tools), req.commands))]
     argv += ["--disallowedTools", ALWAYS_DISALLOWED]
-    if req.enforce_tools and mcp_config is not None and any(t.startswith("mcp:") for t in req.tools):
-        argv += ["--strict-mcp-config", "--mcp-config", str(mcp_config)]
+    # ECC-B18: every step launch is strict, so no MCP server of the account, the user or the repository is offered;
+    # ECC-B8: a config is named only when the step declares an MCP tool
+    argv += ["--strict-mcp-config"]
+    if mcp_config is not None and any(t.startswith("mcp:") for t in req.tools):
+        argv += ["--mcp-config", str(mcp_config)]
     applied: list[str] = []
     o = req.options
     if o.effort in _EFFORTS:
@@ -199,7 +205,8 @@ def judge_argv(views: ViewSet, model: str | None, *, isolated: bool, mcp_config:
     if mcp_config is not None and mcp:
         return argv + ["--tools", ",".join(tools), "--strict-mcp-config", "--mcp-config", str(mcp_config),
                        "--permission-mode", "dontAsk", "--allowedTools", ",".join([*tools, *mcp])]
-    argv += ["--tools", ",".join(tools), "--disallowedTools", "mcp__*", "--permission-mode", "dontAsk",
+    argv += ["--tools", ",".join(tools), "--strict-mcp-config", "--disallowedTools", "mcp__*",
+             "--permission-mode", "dontAsk",
              "--allowedTools", ",".join(tools)]
     return argv
 
@@ -210,7 +217,7 @@ def _money(v: float) -> str:
 
 def step_env(model: str | None, host: Mapping[str, str] | None = None) -> dict[str, str]:
     host = os.environ if host is None else host
-    env: dict[str, str] = {}
+    env: dict[str, str] = {MCP_CONNECTORS_VAR: MCP_CONNECTORS_OFF}  # ECC-B20: no claude.ai connector, whatever the host
     if "CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR" not in host:
         env["CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR"] = "1"
     if model is not None:
@@ -428,7 +435,7 @@ class ClaudeExecutor:
             model = self.binding.model(req.alias)
         except binding_mod.BindingError:
             return SessionResult(ok=False, error_kind="unknown")
-        env = _credentials(req.credentials_profile, self._home)
+        env = {**_credentials(req.credentials_profile, self._home), MCP_CONNECTORS_VAR: MCP_CONNECTORS_OFF}  # ECC-B20
         viewed = mcpconfig.viewed_servers(views.tools)
         servers = mcpconfig.operator_servers(req.workdir) if viewed else {}
         usable = {s: t for s, t in viewed.items() if mcpconfig.classify(s, servers) == "proxiable"}
