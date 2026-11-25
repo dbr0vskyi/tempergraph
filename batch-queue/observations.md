@@ -84,6 +84,8 @@ Cost by session (reported USD): triage 1.02 + judge 0.08; three `read_gap` 0.56 
 
 - Finished runs keep their worktree: `run.worktree.cleanup` is `never` unless set, and the spec's open question (should `on_finish` be the default) waits on a live removal. `worktree prune --thread <t> --apply` removed the four finished and merged worktrees (i7, i71, i141, i141~r1) on its first live use here; each was clean and unlocked, the branches stayed.
 - `on_finish` removes at the run's exit, which is before a review of the diff and before a rerun; what the owner asked for is removal when the run's work is merged. A cleanup value such as `on_merge` (the branch is an ancestor of its base branch) would say that.
+- **i21 ended `met` for 14.12 USD, and its last stage reported `skipped`**: GitHub answered the push with "Internal Server Error", once, and the stage does not try a push again. A push refused by the remote with a server error is worth one more try after a wait before the run says its commits are local.
+- Touches of the operator on this one run: eight (re-open after the usage limit, phase gates of two visits, `expand` twice). With the stopgap variable set, its sessions cost far less each than i7's, and the run still cost more: the trips back and the retries of gates are now the larger share.
 
 ### i144 (2026-11-25): the outcome gate's trips back
 

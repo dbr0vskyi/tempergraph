@@ -38,12 +38,12 @@
       "issues": [
         21
       ],
-      "state": "running",
+      "state": "finished, under review",
       "thread": "temperspec/i21",
       "branch": "tg/temperspec/i21",
-      "cost_usd": null,
-      "exit": null,
-      "note": "request written after the flag probe"
+      "cost_usd": 14.12,
+      "exit": 0,
+      "note": "branch pushed by hand after GitHub 500; under review"
     },
     {
       "order": 2.2,
