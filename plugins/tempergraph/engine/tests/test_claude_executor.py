@@ -536,7 +536,7 @@ def test_ecc_ac14_a_step_without_an_mcp_tool_gets_no_config(tmp_path: Path, monk
 
 
 def test_ecc_ac18_no_scratch_folder_refuses_the_launch_and_starts_no_session(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC18 (ECC-B23)
     results, recs, seen_cfg, _ = _step_with_operator(
         tmp_path, monkeypatch, {"tracker": {"command": "t"}}, tools=("mcp:tracker/get_issue",),
         with_session_dir=False, times=1)
@@ -546,7 +546,7 @@ def test_ecc_ac18_no_scratch_folder_refuses_the_launch_and_starts_no_session(
 
 
 def test_ecc_ac18_an_undefined_server_refuses_a_step_and_a_retry_naming_each_server(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC18 (ECC-B23)
     results, recs, seen_cfg, _ = _step_with_operator(
         tmp_path, monkeypatch, {"other": {"command": "t"}}, tools=("mcp:tracker/get_issue",), times=2)
     for res in results:
@@ -560,7 +560,7 @@ def test_ecc_ac18_an_undefined_server_refuses_a_step_and_a_retry_naming_each_ser
 
 
 def test_ecc_ac18_a_defined_server_with_a_scratch_folder_starts_one_session(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC18 (ECC-B23)
     results, recs, seen_cfg, _ = _step_with_operator(
         tmp_path, monkeypatch, {"tracker": {"command": "t"}}, tools=("mcp:tracker/get_issue",), times=1)
     assert results[0].ok and recs[0]["argv"] and len(seen_cfg) == 1
