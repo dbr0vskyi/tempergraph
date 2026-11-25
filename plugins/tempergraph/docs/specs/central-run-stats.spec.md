@@ -10,7 +10,7 @@ How run numbers from every repository and every machine end up in one place a pe
 
 WHEN a run starts THE engine SHALL write, best effort, one entry per state root seen on this machine in `~/.tempergraph/index.json` ([LOS-B10](local-observability-store.spec.md), schema version 1) with path, repository name, `repo_id`, `first_seen` and `last_run_at`, under a lock taken with exclusive create, skipping the update and recording it when the lock is not had in 2 s; `status --all-roots`, `attention --all-roots` and `stats` read it and show an entry whose path is gone as `missing`.
 
-- GIVEN an index entry whose folder was deleted WHEN `status --all-roots` runs THEN it shows `missing` and the entry stays
+- GIVEN an index entry whose folder was deleted WHEN `status --all-roots` runs THEN it shows `missing` and the entry stays until `stats forget` removes it (CST-B17)
 
 ### CST-B17 Gone state roots leave the machine index
 
@@ -47,6 +47,28 @@ WHEN `stats forget` without `--check` does not get the index lock of CST-B8 in 2
 
 - GIVEN another process holding the index lock for longer than 2 s WHEN `stats forget` runs THEN it exits 2, says that the index is in use, and the index and the stats are as they were
 - GIVEN the same lock WHEN `stats forget --check` runs THEN it prints what it would remove
+
+### CST-B22 An entry leaves the index after its rows leave the stats
+
+WHEN `stats forget` fails before the rows of a gone root (CST-B18) have left the stats THE engine SHALL leave that root's entry in the machine index.
+
+- GIVEN a deleted root with rows in this month's stats and a stats file that cannot be replaced WHEN `stats forget` runs THEN it exits 1 ([CLI-B19](engine-cli.spec.md)) and the index still lists the root
+- GIVEN the same state with the stats file replaceable WHEN `stats forget` runs next THEN the root leaves the index and its rows leave the stats
+
+### CST-B23 A row appended while it runs is kept
+
+WHEN a row of a state root that has a folder is appended to the stats of the month while `stats forget` runs THE engine SHALL keep that row.
+
+- GIVEN `stats forget` running on this month's stats WHEN a run of a root with a folder appends a row to them before the verb ends THEN the row is in the stats when the verb ends
+- GIVEN the same stats also hold rows of a deleted root WHEN the verb ends THEN those rows are not in the stats
+
+### CST-B24 The verb takes no month
+
+WHEN `stats forget` is given `--month` THE engine SHALL refuse with exit 2 ([CON-B13](contracts.spec.md)), saying that the verb takes no month and changing no file.
+
+- GIVEN a deleted root with rows in this month's stats WHEN `stats forget` runs with `--month` naming this month THEN it exits 2, says that the verb takes no month, and the index and every stats file are as they were
+- GIVEN the same state WHEN `stats forget --check` runs with `--month` naming an earlier month THEN it exits 2 and prints no root
+- GIVEN the same state WHEN `stats forget` runs without `--month` THEN the root and its rows are removed
 
 ### CST-B9 Rows
 
@@ -152,6 +174,10 @@ WHEN a sink's write raises at a run's end THE engine SHALL keep the exit code th
 - CST-AC8 (CST-B18): `stats forget` leaves the stats of an earlier month as they were
 - CST-AC9 (CST-B19, CST-B20): `stats forget --check` on a fixture whose index lists a root without a folder that has rows in the current month's stats prints that root with its row count and leaves the index and every stats file byte for byte as they were, and `stats forget` then prints the same root and count
 - CST-AC10 (CST-B21): With the index lock held by another process for more than 2 s, `stats forget` exits 2, says that the index is in use and changes no file
+- CST-AC11 (CST-B22): With a stats file of the current month that `stats forget` cannot replace, the verb exits 1 and the index still lists the root whose rows that file holds
+- CST-AC12 (CST-B22): After that failure, with the file replaceable, `stats forget` removes the root from the index and its rows from the stats
+- CST-AC13 (CST-B23): A row of a root with a folder, appended to the current month's stats while `stats forget` runs, is in the stats when the verb ends
+- CST-AC14 (CST-B24): `stats forget` given `--month`, with or without `--check`, exits 2, says that the verb takes no month and leaves the index and every stats file as they were
 
 ## Open questions
 
