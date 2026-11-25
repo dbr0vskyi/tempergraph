@@ -117,12 +117,12 @@
       "issues": [
         141
       ],
-      "state": "rerun finished",
+      "state": "merged",
       "thread": "temperspec/i141",
       "branch": "tg/temperspec/i141",
       "cost_usd": 23.22,
       "exit": 0,
-      "note": "rerun temperspec/i141~r1, branch tg/temperspec/i141-r1, PR #147; under re-review"
+      "note": "merge e5b13e9e; follow-ups moved to i145"
     },
     {
       "order": 6.6,
