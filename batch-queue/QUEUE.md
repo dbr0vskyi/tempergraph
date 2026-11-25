@@ -40,7 +40,7 @@ State words: `queued`, `running`, `paused`, `merged`, `failed`, `skipped`.
 
 | # | Task id | Issue | What | State | Thread | Cost USD | Note |
 |---|---|---|---|---|---|---|---|
-| 1 | i71 | #71 (and #51) | Code step marks a phase's rows in one edit; the run is also the real run of TS-L2 with a signed-in `gh` | running | temperspec/i71 | | Paused twice at `prepare` on #139, resumed after the fix |
+| 1 | i71 | #71 (and #51) | Code step marks a phase's rows in one edit; the run is also the real run of TS-L2 with a signed-in `gh` | finished | temperspec/i71 | 11.06 | Outcome met; last stage `opened` draft pull request #146 (first real `opened`); paused twice at `prepare` (#139) and once at `code` (an edit under `.claude/` denied, synced by the operator); a sub-agent reviews the diff before the merge |
 | 2 | i7 | #7 | Review cap floor: one review of the most signalled session | merged | temperspec/i7 | 8.03 | Outcome met, 21 min, one pause (G3 answered with its default); last stage `pushed`, no pull request (#143) |
 | 2a | i21 | #21 | Step and judge sessions are offered no MCP server they do not declare (the account's connectors cost about 165k tokens a step session) | running | temperspec/i21 | | Biggest cost lever found; probe facts are in the request |
 | 2b | i144 | #144 | Package tests run directly write the real machine index and stats | running | temperspec/i144 | | Found in this batch |
@@ -48,7 +48,7 @@ State words: `queued`, `running`, `paused`, `merged`, `failed`, `skipped`.
 | 4 | i134b | #134 | Code step: the join and the quick lane get prompts of their own | queued | | | L: second of two runs |
 | 5 | i114 | #114, #117 | Loop findings: a judge that passes without opening a changed path; the phase check failing | queued | | | Triage the evidence first |
 | 6 | i123 | #123 | Loop reads the person's review of a run's pull request as a later outcome signal | queued | | | needs: spec; spec comes first in the run |
-| 6a | i141 | #141 | Monitor finds the engine at its default shim path when it is not on PATH | finished | temperspec/i141 | 11.64 | Outcome met, 30 min; last stage `pushed` (started before #143); a sub-agent reviews the diff before the merge |
+| 6a | i141 | #141 | Monitor finds the engine at its default shim path when it is not on PATH | rerun running | temperspec/i141, rerun temperspec/i141~r1 | 11.64 + rerun | First run: outcome met, 30 min, `pushed`. Independent review: do not merge (the walk over the places loops for ever when the option equals the home shim and every place fails). Rerun from `plan` with `tasks/i141.review.md` as feedback, branch `tg/temperspec/i141-r1` |
 | 6b | i145 | #142, #145 | Monitor: a sign of life in a live row; rows of other state roots named and folded | queued | | | After i141 (same files) |
 | 7 | i62 | #62 | Model-free drift check for pre-commit and CI | queued | | | |
 | 8 | i103 | #103 | Commits and the draft pull request name the run | queued | | | Writes the format directly (#94 not built) |

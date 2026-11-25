@@ -12,12 +12,12 @@
         71,
         51
       ],
-      "state": "running",
+      "state": "finished",
       "thread": "temperspec/i71",
       "branch": "tg/temperspec/i71",
-      "cost_usd": null,
-      "exit": null,
-      "note": ""
+      "cost_usd": 11.06,
+      "exit": 0,
+      "note": "opened PR #146; under review before merge"
     },
     {
       "order": 2,
@@ -117,12 +117,12 @@
       "issues": [
         141
       ],
-      "state": "finished",
+      "state": "rerun running",
       "thread": "temperspec/i141",
       "branch": "tg/temperspec/i141",
       "cost_usd": 11.64,
       "exit": 0,
-      "note": "pushed, not merged yet; under review"
+      "note": "review blocked the merge; rerun from plan, branch tg/temperspec/i141-r1, feedback tasks/i141.review.md"
     },
     {
       "order": 6.6,

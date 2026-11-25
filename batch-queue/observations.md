@@ -48,6 +48,16 @@ Cost by session (reported USD): triage 1.02 + judge 0.08; three `read_gap` 0.56 
 - **Package tests started from the package's folder use the real home** (#144). The engine's isolation fixture lives in the engine's `tests/conftest.py`; a package has none. i71's code sessions ran `cd plugins/temperspec-tgraph && python -m pytest tests/...`, and the operator ran `python -m pytest ../../temperspec-tgraph/tests` once from the engine folder: 106 pytest folders in the machine index, 110 test rows of 115 in the month's stats, 34 `temperspec/P-1` threads in `status --all-roots`. Cost reports of this machine are wrong until the entries are removed; no verb removes them.
 - **The monitor gives every run of another state root the same label** (#145): the word `repo` and a hash of the thread id only; nothing is folded.
 
+### i141 (2026-11-25): finished, outcome met, 11.64 USD, 30 minutes; then blocked by review
+
+- **Every gate passed and an independent reader found a blocking defect in three minutes.** The walk over the three places the engine may be in loops for ever when the option names the home shim and every place fails; the plan's own row said "without duplicates". Five smaller defects beside it (a rejected `process.run` is not handled, a state shape that changed without a new name, no second look after not-found, a shell probe where the host has an env call, two spec lines that disagree with the code). The code judge graded `ts-code-aligned` MET. This is what #124 (an independent reader of what a run delivered) describes; here the reader was a sub-agent given the diff, the criteria and nothing else, for about 120,000 tokens.
+- **The fix went back through the workflow**: `rerun --from plan --feedback-file` with the review as feedback. If this holds, "review the diff with a reader that has not seen the run, send what it finds back as a rerun" is a unit the workflow could own: a `review` gate after `code` whose judge reads only the diff and the criteria.
+- Three retries inside the run: two `read_gap` items and the plan. The mod's `bun` tests were edited and could not be run on this machine.
+
+### i71 (2026-11-25): finished, outcome met, 11.06 USD
+
+- **First real `opened`**: draft pull request #146, opened by the run's last stage after #143. The run was not hands-free: #139 at `prepare`, and the `.claude/` edit at `code`.
+
 ### Baseline suite on `main` (2026-11-25, Python 3.12, macOS)
 
 - 2944 passed, 19 skipped, 1 failed in 14 min 20 s on four workers. The failure is `test_a_run_on_workers_leaves_the_real_folders_as_they_were` (TST-AC7): it compares the real `~/.tempergraph` and the real state root before and after a nested run, and the engine update and two live runs wrote there meanwhile. It is skipped only for a suite a step session runs (`TEMPERGRAPH_SESSION_KEY`). **A gate that runs the suite itself gets no such variable**, so a code gate that has to run `python -m pytest` again (the tree changed after the session's preview) fails this test while its own run writes its log, and so does any suite a person runs beside a live run.
