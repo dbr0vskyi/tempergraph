@@ -6,14 +6,66 @@ import { PS_ARGV } from './session'
 
 export const ENGINE = 'tempergraph'
 
-/** The program run for engine verbs: `tempergraph` on PATH, or the `engine_path` setting (MAC §2.3). */
+/** The program run for engine verbs: the first place of MAC-B5 that did not exit 127, else the first to try. */
 let engine: string = ENGINE
+/** The accepted `engine_path` setting (MAC-B7), or null. */
+let setting: string | null = null
+/** The shim of the engine home as the probe answered (MAC-B6), or null while the probe has not run. */
+let home: string | null = null
+/** Whether a program can be run from the probe's answer: an absolute path, not the label alone. */
+let homeRuns = false
 
-/** Takes an absolute path to the shim, or empty for PATH; anything else is refused and PATH is kept. */
+const ABSOLUTE = /^(\/|[A-Za-z]:[\\/])[^\0\n]*$/
+
+/** The constant probe of the engine home (MAC-B6): prints `$TEMPERGRAPH_HOME`, else `$HOME/.tempergraph`; builds no engine verb. */
+export const HOME_ARGV = ['sh', '-c', 'printf %s "${TEMPERGRAPH_HOME:-$HOME/.tempergraph}"'] as const
+
+/** What the pane names when the probe gave no home folder. */
+export const HOME_LABEL = `~/.tempergraph/bin/${ENGINE}`
+
+/** Takes an absolute path to the shim, or empty for PATH; anything else is refused (MAC-B7). Starts a new lookup. */
 export function useEngine(path: string | undefined): string {
   const p = (path ?? '').trim()
-  engine = p && /^(\/|[A-Za-z]:[\\/])[^\0\n]*$/.test(p) && /(^|[\\/])tempergraph(\.exe|\.cmd)?$/.test(p) ? p : ENGINE
+  setting = p && ABSOLUTE.test(p) && /(^|[\\/])tempergraph(\.exe|\.cmd)?$/.test(p) ? p : null
+  home = null
+  homeRuns = false
+  engine = setting ?? ENGINE
   return engine
+}
+
+/** The shim of the engine home from the probe's answer: its folder, `/bin/tempergraph`; the label when it gave none. */
+export function homeShimPath(answer: string | null | undefined): string {
+  const folder = (answer ?? '').trim().replace(/[\\/]+$/, '')
+  return folder ? `${folder}/bin/${ENGINE}` : HOME_LABEL
+}
+
+/** Keeps the probe's answer for the session (the probe is asked once). */
+export function learnHome(answer: string | null | undefined): string {
+  home = homeShimPath(answer)
+  homeRuns = ABSOLUTE.test(home)
+  return home
+}
+
+/** Whether the probe has been answered. */
+export function homeKnown(): boolean {
+  return home !== null
+}
+
+/** The places that can be run, in the order of MAC-B5: the setting, `tempergraph` on PATH, the shim of the engine home. */
+export function enginePlaces(): string[] {
+  return [...(setting ? [setting] : []), ENGINE, ...(home !== null && homeRuns ? [home] : [])]
+}
+
+/** The places a failed lookup names to the person (MDS-B7). */
+export function lookedAt(): string[] {
+  return [...(setting ? [`engine_path setting: ${setting}`] : []), `PATH: ${ENGINE}`, `engine home: ${home ?? HOME_LABEL}`]
+}
+
+/** Makes one place the program of every verb built from here on; refuses a program that is not a place. */
+export function useProgram(program: string): boolean {
+  if (!enginePlaces().includes(program)) return false
+  engine = program
+  return true
 }
 
 /** Every verb the monitor may run. A verb that writes is never built (MDS-AC-2). */
@@ -58,9 +110,10 @@ export function detailArgv(threadId: string, unit?: string): readonly string[] {
   return [engine, 'status', threadId, '--detail', '--json', ...(unit ? ['--unit', unit] : [])]
 }
 
-/** An engine verb that only reads, or the constant `ps` listing of MDS §2.1; nothing else is run. */
+/** An engine verb that only reads, or the constant `ps` listing or engine-home probe of MDS §2.1; nothing else is run. */
 export function isReadOnly(argv: readonly string[]): boolean {
   if (argv.length === PS_ARGV.length && argv.every((a, i) => a === PS_ARGV[i])) return true
+  if (argv.length === HOME_ARGV.length && argv.every((a, i) => a === HOME_ARGV[i])) return true
   if (argv[0] !== engine || !(READ_ONLY_VERBS as readonly string[]).includes(argv[1] ?? '')) return false
   return argv[1] !== 'stats' || !argv.some(a => STATS_WRITES.includes(a))
 }

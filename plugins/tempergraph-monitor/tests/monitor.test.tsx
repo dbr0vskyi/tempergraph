@@ -30,7 +30,15 @@ async function settle(): Promise<void> {
   for (let i = 0; i < 20; i++) await new Promise(r => setTimeout(r, 5))
 }
 
-function engine(on: On, onRegister = () => {}) {
+type Reply = { exitCode: number; stdout: string }
+
+/** What the engine prints: the status document, or the detail and projection documents. */
+function fixtureReply(argv: readonly string[]): Reply {
+  const doc = argv.includes('--detail') ? detailPaused : argv.includes('--projection') ? statsProjection : status
+  return { exitCode: 0, stdout: JSON.stringify(doc) }
+}
+
+function engine(on: On, onRegister = () => {}, answer: (argv: readonly string[]) => Reply = fixtureReply) {
   on('command.register', () => {
     onRegister()
     return { value: { command: 'tg' } }
@@ -45,8 +53,8 @@ function engine(on: On, onRegister = () => {}) {
   on('fs.stat', () => ({ value: { kind: 'file', size: 0, mtimeMs: 0, isLink: false } }))
   on('process.run', (_, e) => {
     ran.push([...e.argv])
-    const doc = e.argv.includes('--detail') ? detailPaused : e.argv.includes('--projection') ? statsProjection : status
-    return { value: { exitCode: 0, stdout: JSON.stringify(doc), stderr: '', isStdoutTruncated: false,
+    const r = answer(e.argv)
+    return { value: { exitCode: r.exitCode, stdout: r.stdout, stderr: '', isStdoutTruncated: false,
       isStderrTruncated: false } }
   })
 }
@@ -152,3 +160,140 @@ test('with no fleet sink the fleet tab says how to set one up (MCF-B5)', async (
   expect((await ui.find({ type: 'Text', text: 'This month by machine' })) ?? null).not.toBeNull()
   await ui.unmount()
 })
+
+// -- finding the engine: the setting, then PATH, then the engine home (MAC-B5, MAC-B6, MAC-B7) ---------------------
+
+const SETTING = '/opt/tg/bin/tempergraph'
+const HOME = '/home/me/.tempergraph'
+const NOT_FOUND: Reply = { exitCode: 127, stdout: '' }
+
+const withSetting = (engine_path: string) => ({ options: { engine_path } })
+
+/** Every program exits 127 except `program` (the engine) and the one constant probe of the engine home. */
+function only(program: string, home = HOME) {
+  return (argv: readonly string[]): Reply =>
+    argv[0] === 'sh' ? { exitCode: 0, stdout: home } : argv[0] === program ? fixtureReply(argv) : NOT_FOUND
+}
+
+/** The engine verbs the monitor ran: not the `ps` listing and not the engine-home probe. */
+const verbs = () => ran.filter(a => a[0] !== 'ps' && a[0] !== 'sh')
+const probes = () => ran.filter(a => a[0] === 'sh')
+
+test('MAC-AC-4 AC 1 AC 3 AC 4: the program of the engine_path setting answers', withSetting(SETTING), async ($, on) => {
+  ran.length = 0
+  engine(on, () => {}, only(SETTING))
+  await $.session.start({ cwd: '/work/repo', surface: 'terminal', isInteractive: true })
+  await settle()
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect((await ui.find({ key: 'tg-band' }))?.text ?? '').toContain('⏸ repo/tg/demo/T-1')
+  await ui.unmount()
+  expect(verbs().length).toBeGreaterThan(0)
+  for (const argv of verbs()) expect(argv[0]).toBe(SETTING)
+  expect(probes()).toEqual([]) // the engine home is only asked after the setting and PATH exited 127
+})
+
+test('MAC-AC-4 AC 1 AC 3 AC 4: tempergraph on PATH answers after the setting exited 127', withSetting(SETTING), async ($, on) => {
+  ran.length = 0
+  engine(on, () => {}, only('tempergraph'))
+  await $.session.start({ cwd: '/work/repo', surface: 'terminal', isInteractive: true })
+  await settle()
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect((await ui.find({ key: 'tg-band' }))?.text ?? '').toContain('⏸ repo/tg/demo/T-1')
+  await ui.unmount()
+  expect(verbs()[0]).toEqual([SETTING, 'status', '--json'])
+  expect(verbs()[1]).toEqual(['tempergraph', 'status', '--json'])
+  expect(verbs().filter(a => a[0] === SETTING).length).toBe(1) // MAC-B5: the setting is not tried again
+  expect(verbs().filter(a => a[0] === 'tempergraph').length).toBeGreaterThan(1)
+  expect(probes()).toEqual([])
+})
+
+test('MAC-AC-4 MAC-AC-5 AC 1 AC 3 AC 4: the shim of the engine home answers and is kept for later verbs', withSetting(SETTING),
+  async ($, on) => {
+    ran.length = 0
+    const shim = `${HOME}/bin/tempergraph`
+    engine(on, () => {}, only(shim))
+    await $.session.start({ cwd: '/work/repo', surface: 'terminal', isInteractive: true })
+    await settle()
+    const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+    expect((await ui.find({ key: 'tg-band' }))?.text ?? '').toContain('⏸ repo/tg/demo/T-1')
+    await ui.unmount()
+    expect(verbs().slice(0, 3)).toEqual([[SETTING, 'status', '--json'], ['tempergraph', 'status', '--json'],
+      [shim, 'status', '--json']])
+    expect(verbs().length).toBeGreaterThan(3) // the projection verb of the same read went on
+    expect(verbs().filter(a => a[0] === SETTING).length).toBe(1)
+    expect(verbs().filter(a => a[0] === 'tempergraph').length).toBe(1)
+    expect(verbs().slice(3).every(a => a[0] === shim)).toBe(true)
+    expect(probes().length).toBe(1) // the home is asked once per session
+  })
+
+for (const [what, home] of [['TEMPERGRAPH_HOME set to a folder that holds the shim', '/srv/tg-home'],
+  ['TEMPERGRAPH_HOME unset, the shim in ~/.tempergraph/bin', HOME]] as const) {
+  test(`MAC-AC-6 AC 1: the engine home is read from ${what}`, async ($, on) => {
+    ran.length = 0
+    const shim = `${home}/bin/tempergraph`
+    engine(on, () => {}, only(shim, home))
+    await $.session.start({ cwd: '/work/repo', surface: 'terminal', isInteractive: true })
+    await settle()
+    const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+    expect((await ui.find({ key: 'tg-band' }))?.text ?? '').toContain('⏸ repo/tg/demo/T-1')
+    await ui.unmount()
+    expect(verbs()).toContainEqual([shim, 'status', '--json'])
+    expect(probes()[0]?.slice(0, 2)).toEqual(['sh', '-c'])
+  })
+}
+
+/** Every program exits 127; the probe of the engine home answers. */
+const nobody = (argv: readonly string[]): Reply => (argv[0] === 'sh' ? { exitCode: 0, stdout: HOME } : NOT_FOUND)
+
+test('MDS-AC-5 MDS-AC-6 AC 2 AC 4: no place holds the engine: each place once, then nothing, and the pane names them',
+  withSetting(SETTING), async ($, on) => {
+    ran.length = 0
+    const shim = `${HOME}/bin/tempergraph`
+    engine(on, () => {}, nobody)
+    await $.session.start({ cwd: '/work/repo', surface: 'terminal', isInteractive: true })
+    await settle()
+    expect(verbs()).toEqual([[SETTING, 'status', '--json'], ['tempergraph', 'status', '--json'], [shim, 'status', '--json']])
+    await settle()
+    expect(verbs().length).toBe(3) // polling stopped: no engine verb after the first lookup
+    const band = await $.ui.mount({ ...BAND, surface: 'terminal' })
+    expect((await band.find({ type: 'Text', text: 'tempergraph not found' })) ?? null).not.toBeNull()
+    await band.unmount()
+    const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+    expect((await ui.find({ type: 'Text', text: 'tempergraph is not installed here.' })) ?? null).not.toBeNull()
+    expect((await ui.find({ type: 'Text', text: new RegExp(SETTING) })) ?? null).not.toBeNull()
+    expect((await ui.find({ type: 'Text', text: /PATH/ })) ?? null).not.toBeNull()
+    expect((await ui.find({ type: 'Text', text: new RegExp(shim) })) ?? null).not.toBeNull()
+    await ui.unmount()
+  })
+
+test('MDS-AC-5 MDS-AC-6 AC 2 AC 4: with no setting the pane names PATH and the engine home, and no setting path', async ($, on) => {
+  ran.length = 0
+  const shim = `${HOME}/bin/tempergraph`
+  engine(on, () => {}, nobody)
+  await $.session.start({ cwd: '/work/repo', surface: 'terminal', isInteractive: true })
+  await settle()
+  expect(verbs()).toEqual([['tempergraph', 'status', '--json'], [shim, 'status', '--json']])
+  await settle()
+  expect(verbs().length).toBe(2)
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect((await ui.find({ type: 'Text', text: 'tempergraph is not installed here.' })) ?? null).not.toBeNull()
+  expect((await ui.find({ type: 'Text', text: /PATH/ })) ?? null).not.toBeNull()
+  expect((await ui.find({ type: 'Text', text: new RegExp(shim) })) ?? null).not.toBeNull()
+  expect((await ui.find({ type: 'Text', text: /engine_path/ })) ?? null).toBeNull()
+  await ui.unmount()
+})
+
+for (const setting of ['bin/tempergraph', '/usr/local/bin/other']) {
+  test(`MAC-AC-7 AC 1 AC 4: the engine_path setting ${setting} is not run`, withSetting(setting), async ($, on) => {
+    ran.length = 0
+    engine(on, () => {}, only('tempergraph'))
+    await $.session.start({ cwd: '/work/repo', surface: 'terminal', isInteractive: true })
+    await settle()
+    const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+    expect((await ui.find({ key: 'tg-band' }))?.text ?? '').toContain('⏸ repo/tg/demo/T-1')
+    await ui.unmount()
+    expect(ran.some(a => a[0] === setting)).toBe(false)
+    expect(verbs().length).toBeGreaterThan(0)
+    for (const argv of verbs()) expect(argv[0]).toBe('tempergraph')
+  })
+}

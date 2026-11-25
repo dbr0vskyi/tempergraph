@@ -24,8 +24,8 @@ import {
 import type { Filter, RunSummary } from './lib/model'
 import { callsFrom, callText, LOG_TAIL_BYTES, processTree, procText, PS_ARGV, tailLines } from './lib/session'
 import {
-  detailArgv, fleetArgv, isReadOnly, keepTail, nextRead, parseChunk, projectionArgv, RATES, statusArgv, statusEvery,
-  useEngine,
+  detailArgv, enginePlaces, fleetArgv, HOME_ARGV, homeKnown, isReadOnly, keepTail, learnHome, lookedAt, nextRead,
+  parseChunk, projectionArgv, RATES, statusArgv, statusEvery, useEngine, useProgram,
 } from './lib/sources'
 import type { TailState } from './lib/sources'
 
@@ -39,7 +39,7 @@ const runs = atom({ plugin: 'tempergraph-monitor', key: 'runs' } as const, [] as
 const view = atom({ plugin: 'tempergraph-monitor', key: 'view' } as const, { level: 'runs' } as MonitorView, { shape: SHAPE })
 const detail = atom({ plugin: 'tempergraph-monitor', key: 'detail' } as const, null as unknown, { shape: SHAPE })
 const engine = atom({ plugin: 'tempergraph-monitor', key: 'engine' } as const,
-  { installed: true, staleSince: null, error: null } as MonitorEngine, { shape: SHAPE })
+  { installed: true, staleSince: null, error: null, looked: [] } as MonitorEngine, { shape: SHAPE })
 const endedAgo = atom({ plugin: 'tempergraph-monitor', key: 'endedAgo' } as const, {} as Record<string, number>, { shape: SHAPE })
 const prefs = atom({ plugin: 'tempergraph-monitor', key: 'prefs' } as const,
   { filter: 'all', pinned: [] } as MonitorPrefs, { shape: SHAPE })
@@ -82,23 +82,51 @@ let lastExtra = 0
 let lastProjection = 0
 let lastFleet = 0
 let busy = false
+/** Set when every place of MAC-B5 exited 127: the engine is marked not installed and no engine verb is run (MDS-B6). */
+let notFound = false
 
-/** Runs a read-only engine verb or the constant `ps` listing; refuses any other argv (contract M1). */
+/** The place after `current` in the order of MAC-B5; the engine home is asked for once, only when PATH is the place that failed. */
+async function nextPlace($: $, current: string): Promise<string | null> {
+  if (!homeKnown() && enginePlaces().at(-1) === current) {
+    learnHome(await run($, HOME_ARGV).catch(() => null))
+  }
+  const places = enginePlaces()
+  const at = places.indexOf(current)
+  return at >= 0 && at + 1 < places.length ? places[at + 1]! : null
+}
+
+/**
+ * Runs a read-only engine verb, the constant `ps` listing or the engine-home probe; refuses any other argv (contract M1).
+ * An engine verb that exits 127 is run again through the next place of MAC-B5; the first place that does not exit 127
+ * stays the program of every later verb.
+ */
 async function run($: $, argv: readonly string[]): Promise<string | null> {
   if (!isReadOnly(argv)) throw new Error(`refused: ${argv.join(' ')}`)
-  const out = await $.process.run(argv, { timeoutMs: 20_000 })
-  if (out.exitCode === 127 && argv[0] !== PS_ARGV[0]) {
-    await update($, engine, e => ({ ...e, installed: false, error: 'tempergraph not found' }))
-    return null
-  }
-  if (out.exitCode !== 0) {
-    if (argv[0] !== PS_ARGV[0]) {
-      const now = await $.clock.now()
-      await update($, engine, e => ({ ...e, staleSince: e.staleSince ?? now, error: `exit ${out.exitCode}` }))
+  const isEngineVerb = argv[0] !== PS_ARGV[0] && argv[0] !== HOME_ARGV[0]
+  if (isEngineVerb && notFound) return null // every place exited 127: no engine verb is run again (MDS-B6)
+  for (;;) {
+    const out = await $.process.run(argv, { timeoutMs: 20_000 })
+    if (out.exitCode === 127 && isEngineVerb) {
+      const place = await nextPlace($, argv[0]!)
+      if (place === null || !useProgram(place)) {
+        notFound = true
+        const looked = lookedAt()
+        await update($, engine, e => ({ ...e, installed: false, error: 'tempergraph not found', looked }))
+        return null
+      }
+      argv = [place, ...argv.slice(1)]
+      if (!isReadOnly(argv)) throw new Error(`refused: ${argv.join(' ')}`)
+      continue
     }
-    return null
+    if (out.exitCode !== 0) {
+      if (isEngineVerb) {
+        const now = await $.clock.now()
+        await update($, engine, e => ({ ...e, staleSince: e.staleSince ?? now, error: `exit ${out.exitCode}` }))
+      }
+      return null
+    }
+    return out.stdout
   }
-  return out.stdout
 }
 
 async function verb<T>($: $, argv: readonly string[]): Promise<T | null> {
@@ -351,6 +379,7 @@ export const register: Register = (on, options) => {
   for (const m of [tails, records, details, health, logPaths]) m.clear()
   lastStatus = lastDetail = lastExtra = lastProjection = lastFleet = 0
   busy = false
+  notFound = false
 
   on('session.start', async ($, e, next) => {
     const started = await next(e)
@@ -426,6 +455,7 @@ export const register: Register = (on, options) => {
 
     if (!eng.installed) {
       return <Box flexDirection="column"><Text>tempergraph is not installed here.</Text>
+        {eng.looked.map(place => <Text dimColor>{`looked at ${place}`}</Text>)}
         <Text dimColor>The tempergraph plugin's install skill sets it up.</Text></Box>
     }
 

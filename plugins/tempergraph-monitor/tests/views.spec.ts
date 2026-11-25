@@ -10,7 +10,9 @@ import type { DetailDoc } from '../hooks/lib/engine'
 import { bandRow, shownRuns, nextFilter } from '../hooks/lib/model'
 import type { RunSummary } from '../hooks/lib/model'
 import { callsFrom, callText, processTree, procText, tailLines } from '../hooks/lib/session'
-import { isReadOnly, statusArgv, useEngine } from '../hooks/lib/sources'
+import {
+  enginePlaces, HOME_ARGV, homeShimPath, isReadOnly, learnHome, lookedAt, statusArgv, useEngine, useProgram,
+} from '../hooks/lib/sources'
 
 const dir = new URL('./fixtures/', import.meta.url).pathname
 const paused = (await Bun.file(dir + 'detail-paused.json').json()) as DetailDoc
@@ -151,5 +153,51 @@ describe('engine path setting (MAC §2.3)', () => {
     expect(useEngine('sh -c evil')).toBe('tempergraph')
     expect(useEngine('/usr/bin/python')).toBe('tempergraph')
     expect(useEngine('')).toBe('tempergraph')
+  })
+  test('MAC-AC-7 AC 1: a setting that is not the shim is taken as empty, so only PATH and the engine home are places', () => {
+    for (const bad of ['bin/tempergraph', '/usr/local/bin/other', 'sh -c evil']) {
+      useEngine(bad)
+      expect(enginePlaces()).toEqual(['tempergraph'])
+    }
+    useEngine('  /opt/tg/bin/tempergraph  ')
+    expect(enginePlaces()).toEqual(['/opt/tg/bin/tempergraph', 'tempergraph'])
+  })
+  test('MAC-AC-6 AC 1: the places are the setting, PATH, then the shim of the engine home', () => {
+    useEngine('/opt/tg/bin/tempergraph')
+    learnHome('/srv/tg-home/')
+    expect(enginePlaces()).toEqual(['/opt/tg/bin/tempergraph', 'tempergraph', '/srv/tg-home/bin/tempergraph'])
+    expect(lookedAt()).toEqual(['engine_path setting: /opt/tg/bin/tempergraph', 'PATH: tempergraph',
+      'engine home: /srv/tg-home/bin/tempergraph'])
+    useEngine('')
+    expect(enginePlaces()).toEqual(['tempergraph']) // a reload forgets the answered home
+    learnHome('/home/me/.tempergraph')
+    expect(enginePlaces()).toEqual(['tempergraph', '/home/me/.tempergraph/bin/tempergraph'])
+    expect(lookedAt()[0]).toBe('PATH: tempergraph')
+  })
+  test('MAC-AC-6 AC 1: the shim path of the engine home from a probe answer', () => {
+    expect(homeShimPath('/home/me/.tempergraph')).toBe('/home/me/.tempergraph/bin/tempergraph')
+    expect(homeShimPath('  /srv/tg-home/\n')).toBe('/srv/tg-home/bin/tempergraph')
+    expect(homeShimPath('')).toBe('~/.tempergraph/bin/tempergraph')
+    expect(homeShimPath(null)).toBe('~/.tempergraph/bin/tempergraph')
+    useEngine('')
+    learnHome('') // no usable answer: the label is named in the pane but no program is run
+    expect(enginePlaces()).toEqual(['tempergraph'])
+    expect(lookedAt()).toEqual(['PATH: tempergraph', 'engine home: ~/.tempergraph/bin/tempergraph'])
+  })
+  test('MAC-AC-6 AC 3: one place becomes the program of every verb, and only a place of the list can', () => {
+    useEngine('/opt/tg/bin/tempergraph')
+    learnHome('/srv/tg-home')
+    expect(useProgram('/srv/tg-home/bin/tempergraph')).toBe(true)
+    expect(statusArgv()[0]).toBe('/srv/tg-home/bin/tempergraph')
+    expect(isReadOnly(statusArgv())).toBe(true)
+    expect(isReadOnly(['tempergraph', 'status', '--json'])).toBe(false) // the old place is not the program any more
+    expect(useProgram('/usr/bin/evil')).toBe(false)
+    expect(statusArgv()[0]).toBe('/srv/tg-home/bin/tempergraph')
+    useEngine('')
+  })
+  test('MAC-AC-6 AC 1: the engine-home probe is one constant read-only argv; no other shell command is', () => {
+    expect(isReadOnly(HOME_ARGV)).toBe(true)
+    expect(isReadOnly(['sh', '-c', 'evil'])).toBe(false)
+    expect(isReadOnly([...HOME_ARGV, 'x'])).toBe(false)
   })
 })
