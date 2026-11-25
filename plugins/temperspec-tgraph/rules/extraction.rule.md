@@ -1,3 +1,10 @@
+---
+paths:
+  - "**/*.spec.md"
+  - "**/*.setup.md"
+  - "**/*.handoff.md"
+---
+
 # Extracting behaviours from existing code
 
 Code that no spec describes still holds rules that someone depends on. This rule says how a session finds them, decides which are behaviours and records where each came from. Setup follows it for every component, a reading session for its folder, discovery for an `existing behaviour` gap, and a person through the `extract` skill. The behaviours it yields follow `spec.rule.md`, including its `General rules, not cases`.
