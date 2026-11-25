@@ -43,6 +43,7 @@ State words: `queued`, `running`, `paused`, `merged`, `failed`, `skipped`.
 | 4 | i134b | #134 | Code step: the join and the quick lane get prompts of their own | queued | | | L: second of two runs |
 | 5 | i114 | #114, #117 | Loop findings: a judge that passes without opening a changed path; the phase check failing | queued | | | Triage the evidence first |
 | 6 | i123 | #123 | Loop reads the person's review of a run's pull request as a later outcome signal | queued | | | needs: spec; spec comes first in the run |
+| 6a | i141 | #141 | Monitor finds the engine at its default shim path when it is not on PATH | queued | | | Found in this batch; the mod's tests are TypeScript, so the run needs their command declared in `tempergraph.commands.json` first |
 | 7 | i62 | #62 | Model-free drift check for pre-commit and CI | queued | | | |
 | 8 | i103 | #103 | Commits and the draft pull request name the run | queued | | | Writes the format directly (#94 not built) |
 | 9 | i130 | #130 | Score setup's extraction on a fixture repository | queued | | | Needs one live setup run |

@@ -86,6 +86,19 @@
       "note": ""
     },
     {
+      "order": 6.5,
+      "task_id": "i141",
+      "issues": [
+        141
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": "found in this batch"
+    },
+    {
       "order": 7,
       "task_id": "i62",
       "issues": [
