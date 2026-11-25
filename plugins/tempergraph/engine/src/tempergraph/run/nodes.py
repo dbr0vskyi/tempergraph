@@ -1151,8 +1151,10 @@ class EngineNodes:
                                      else "", sc.produces).artifacts
         elif sc.call is not None:
             try:
-                got = sc.call.resolve()(checkmod.CheckContext(unit=unit, workdir=workdir,
-                                                              request=state.get("request") or {}))
+                got = sc.call.resolve()(checkmod.CheckContext(
+                    unit=unit, workdir=workdir, request=state.get("request") or {},
+                    artifacts=state.get("artifacts") or {}, values=state.get("values") or {},
+                    settings=dict(self.ctx.settings)))  # SCR-B5, RST-B25: what a check is given
                 artifacts = {str(k): str(v) for k, v in (got or {}).items()} if isinstance(got, dict) else {}
             except Exception as exc:  # noqa: BLE001
                 ok, env = False, True

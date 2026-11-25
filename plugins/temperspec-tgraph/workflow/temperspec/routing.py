@@ -42,12 +42,22 @@ def route_setup(view: Any) -> str:
 
 def route_triage(view: Any) -> str:
     """A quick task goes straight to code; no gap goes to the plan; a task whose every gap a spec answers takes the
-    short visit; any other gap, and a docs-only task, goes to the full discovery, whose entry is `read_gap`: it
-    reads one gap at a time and is skipped, with no item, for a note of fewer than two gaps."""
+    short visit; any other gap, and a docs-only task, goes to the full discovery, whose entry is `owner_questions`:
+    it lists what the owner is asked, `ask_route` sends a run with a question to the pause and any other to
+    `read_gap` (spec `owner-questions`, OWQ-B1, OWQ-B2)."""
     route = view.values.get("route")
     if route == "discovery" and view.values.get("covered") == "yes":
         return "discovery_short"
-    return {"quick": "code", "plan": "plan"}.get(route, "read_gap")
+    return {"quick": "code", "plan": "plan"}.get(route, "owner_questions")
+
+
+def route_ask(view: Any) -> str:
+    """A run whose list of questions holds one goes to the pause `ask_owner`; every other run goes on to the reading
+    sessions at `read_gap` with no pause (OWQ-B1, OWQ-B2). `owner_questions` leaves the key `empty` only when its list
+    holds no question, and a script's keys reach a route as artifact keys, as `setup_needed` does for `route_setup`;
+    a value `empty` of `yes` is read as well. A run with neither goes to the pause, whose own reader refuses a list
+    it cannot read, so a failed list is never skipped in silence."""
+    return "read_gap" if "empty" in view.artifact_keys or view.values.get("empty") == "yes" else "ask_owner"
 
 
 def route_short(view: Any) -> str:
@@ -158,6 +168,88 @@ def list_components(ctx: Any) -> dict[str, str]:
     target.write_text(json.dumps(items, indent=2) + "\n", encoding="utf-8")
     (target.parent / ".gitignore").write_text("*\n", encoding="utf-8")  # commit_step excludes the folder as well
     return {"component_list": COMPONENT_LIST.as_posix()}
+
+
+QUESTION_LIST = Path(".tempergraph") / "question_list.json"
+MAX_QUESTIONS = 20  # the engine's ask takes 1 to 20 questions (ASK-B5)
+MAX_WORDING = 500  # and a wording of at most 500 characters
+ASKING = ("blocking", "always")
+
+
+def _shorten(text: str, room: int) -> str:
+    return text if len(text) <= room else text[: max(room - 1, 0)].rstrip() + "…"
+
+
+def _wording(gap: str, question: str, options: list[tuple[str, str]]) -> str:
+    """OWQ-B3: the gap's id, the question and each option with its label, in the order of the note. Over 500
+    characters the options' own words are shortened, never a label; a question too long for even that is cut last."""
+    head = f"{gap}: {question}".strip()
+    texts = [t for _, t in options]
+
+    def built(ts: list[str], q: str) -> str:
+        return " ".join([q, *(f"{lab}) {t}".rstrip() for (lab, _), t in zip(options, ts, strict=True))])
+
+    out = built(texts, head)
+    while len(out) > MAX_WORDING and any(len(t) > 1 for t in texts):
+        longest = max(range(len(texts)), key=lambda i: len(texts[i]))
+        texts[longest] = _shorten(texts[longest], max(len(texts[longest]) - (len(out) - MAX_WORDING), 1))
+        out = built(texts, head)
+    if len(out) > MAX_WORDING:  # the labels and the gap id alone fill it: cut the question
+        room = MAX_WORDING - len(built(texts, f"{gap}: ").rstrip()) - 1
+        out = built(texts, f"{gap}: {_shorten(question, max(room, 1))}")
+    return out[:MAX_WORDING]
+
+
+def _labelled(options: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """An option written with no label takes `a`, `b`, … by its place."""
+    return [(lab or chr(ord("a") + i), text) for i, (lab, text) in enumerate(options)]
+
+
+def owner_questions(ctx: Any) -> dict[str, str]:
+    """The script unit after triage: the questions of the one pause, as JSON in the engine's `Question` shape
+    (OWQ-B2 to OWQ-B6). Each owner decision of the triage note is one `choice` question named by its gap's id in
+    lower case, with the labels of its options as choices, its default, and the gap, the question and the labelled
+    options as its wording; under `always` each gap row that says findable and does not say `Covered by` then gets a
+    question with the choices `right` and `wrong`. At most 20, the decisions first. `never` lists none. It says whether
+    the list holds no question by leaving the key `empty` (`yes`) only then, which `ask_route` reads."""
+    workdir = Path(ctx.workdir)
+    pointer = ((ctx.artifacts or {}).get("triage") or {}).get("triage_note")
+    try:
+        text = (workdir / str(pointer)).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        text = ""
+    conversation = (ctx.settings or {}).get("conversation")
+    questions: list[dict[str, Any]] = []
+    if text and conversation in ASKING:
+        note = specfmt.parse_triage(text)
+        seen: set[str] = set()
+        for entry in note.owners:
+            options = _labelled(entry.options)
+            name = entry.gap.lower()
+            if note.sorts.get(entry.gap) == "findable" or len(options) < 2 or name in seen:
+                continue
+            chosen = next((lab for lab, t in options if t == entry.default_text and t), options[0][0])
+            seen.add(name)
+            questions.append({"name": name, "text": _wording(entry.gap, entry.question, options), "kind": "choice",
+                              "choices": [lab for lab, _ in options], "required": True, "default": chosen})
+        if conversation == "always":
+            for row in specfmt.gap_rows(text):
+                gap = specfmt.GAP_ID.search(row)
+                if gap is None or gap.group(0).lower() in seen or note.sorts.get(gap.group(0)) != "findable" \
+                        or specfmt.COVERED_WORDS.search(row):
+                    continue
+                seen.add(gap.group(0).lower())
+                row_text = re.sub(r"^\W+", "", row.strip())
+                question = f"Is this reading of {gap.group(0)} right? {row_text}"
+                questions.append({"name": gap.group(0).lower(), "text": _shorten(question, MAX_WORDING),
+                                  "kind": "choice", "choices": ["right", "wrong"], "required": True,
+                                  "default": "right"})
+    questions = questions[:MAX_QUESTIONS]
+    target = workdir / QUESTION_LIST
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(questions, indent=2) + "\n", encoding="utf-8")
+    (target.parent / ".gitignore").write_text("*\n", encoding="utf-8")  # commit_step excludes the folder as well
+    return {"question_list": QUESTION_LIST.as_posix(), **({} if questions else {"empty": "yes"})}
 
 
 def route_discovery(view: Any) -> str:

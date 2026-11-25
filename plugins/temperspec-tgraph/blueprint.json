@@ -127,6 +127,29 @@
       }
     },
     {
+      "name": "owner_questions",
+      "kind": "script",
+      "summary": "List the owner's questions of the one pause",
+      "produces": [
+        "question_list",
+        "empty"
+      ]
+    },
+    {
+      "name": "ask_route",
+      "kind": "route"
+    },
+    {
+      "name": "ask_owner",
+      "kind": "ask",
+      "produces": [
+        "answers"
+      ],
+      "reads": [
+        "triage_note"
+      ]
+    },
+    {
       "name": "read_gap",
       "kind": "map",
       "summary": "Read one gap's documents and code; report findings",
@@ -160,6 +183,7 @@
         "handoff"
       ],
       "reads": [
+        "answers",
         "gap_finding",
         "triage_note"
       ],
@@ -322,7 +346,7 @@
     "triage": {
       "route": [
         "discovery_short",
-        "read_gap",
+        "owner_questions",
         "plan",
         "code"
       ]
@@ -331,6 +355,12 @@
       "route": [
         "read_gap",
         "plan"
+      ]
+    },
+    "ask_route": {
+      "route": [
+        "ask_owner",
+        "read_gap"
       ]
     },
     "read_gap": {
