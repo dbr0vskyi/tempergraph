@@ -118,5 +118,3 @@ Status words: **covered** (in the design before this check), **added** (written 
 |---|---|---|
 | Is a recurring scheduler (workflow and declared-program ticks) in scope for tempergraph's first release? | Owner | Designed on 2026-11-20 at the owner's request ([SCH](../specs/schedules.spec.md), [TCK](../specs/schedule-ticks-and-unattended-fires.spec.md)); the recommended slice for the release after the first is in research `rationale-carried-from-the-engine-specs` SCH. |
 | Should batch integration (merge, conflict judge, one pull request) be part of the engine or a workflow? | Owner | Decide with the self-improvement delivery batch, which is its first consumer. |
-</content>
-</invoke>

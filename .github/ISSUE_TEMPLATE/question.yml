@@ -1,0 +1,20 @@
+name: Question
+description: Ask how something works, or whether tempergraph fits what you want to do.
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the [guides](https://github.com/dbr0vskyi/tempergraph/blob/main/plugins/tempergraph/docs/guides/README.md) first; the design behind each behaviour is in the [specs](https://github.com/dbr0vskyi/tempergraph/blob/main/plugins/tempergraph/docs/specs/overview.spec.md).
+        A security problem never goes here: see SECURITY.md.
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What you want to know or do, and what you tried.
+    validations: {required: true}
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: The engine version (`tempergraph --version`), Claude Code version, operating system, and any command output. Scrub prompts, outputs, tokens and paths.

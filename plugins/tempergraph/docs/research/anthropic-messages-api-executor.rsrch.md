@@ -55,7 +55,3 @@ Read on 2026-11-19. The skill notes that the API changed shape several times in 
 |---|---|---|
 | Should long sessions use server-side compaction or context editing, both beta, or end at the context window? | Executor implementer | First release ends the session with a model error and records peak context; revisit with measured sessions. |
 | Does a judge on this executor grade as well as a judge on Claude Code, given a smaller tool set and no system prompt of Claude Code? | Engine owner | Calibration sets per gate, scored on both judge executors ([LIF](../specs/lifecycle-and-evals.spec.md)). |
-</content>
-</invoke>
-<invoke name="Bash">
-<parameter name="command">cd /home/user/tempergraph/plugins/tempergraph/docs/research && sed -i '1s/.*/# research `claude-agent-sdk-executor` Claude Agent SDK as an executor/' claude-agent-sdk-executor.rsrch.md && head -1 research `claude-agent-sdk-executor`*.md

@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Report a security problem privately
+    url: https://github.com/dbr0vskyi/tempergraph/security/advisories/new
+    about: Never in a public issue. See SECURITY.md.
   - name: How scope, labels and agent comments work here
     url: https://github.com/dbr0vskyi/tempergraph/blob/main/CONTRIBUTING.md
     about: Read this before opening or claiming an issue.

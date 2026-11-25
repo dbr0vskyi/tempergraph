@@ -52,8 +52,10 @@ def test_no_skip_reason_says_the_council_is_not_built() -> None:  # AC 7
 
 def test_the_readme_roadmap_no_longer_lists_councils_as_designed_not_built() -> None:  # AC 7
     text = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
-    line = next(ln for ln in text.splitlines() if ln.startswith("- Advanced node types"))
-    assert "councils" not in line and "contests" in line
+    not_built = text.split("**Designed, not built yet**", 1)[1].split("\n\n**", 1)[0]
+    assert "council" not in not_built.lower() and "contest" not in not_built.lower()
+    release_three = next(ln for ln in text.splitlines() if ln.startswith("**Release 3**"))
+    assert "council and contest units" in release_three
 
 
 def test_the_rationale_note_does_not_say_the_council_is_not_built() -> None:  # AC 7

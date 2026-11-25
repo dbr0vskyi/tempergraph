@@ -2,7 +2,7 @@
 
 ## Task
 
-Source: `/tmp/claude-0/-home-user/0d134045-b081-5216-a287-b7cfa7baa69a/scratchpad/loop-fixes.task.md`, from research note `plugins/tempergraph/docs/research/does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md` (F1 to F4). Make the improvement loop find by itself what a run reviewer finds: review targets in priority order, a budget decision from reported spend, a finding for a category kept repeatedly on one unit, a loop summary in `attention` and `status`, and an immediate escalation when a check fails with the same evidence twice. Documents live under `plugins/tempergraph/docs/`; the engine names no workflow package (ADR `the-engine-names-no-workflow`).
+Source: a task file (`loop-fixes.task.md`) kept outside the repository, from research note `plugins/tempergraph/docs/research/does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md` (F1 to F4). Make the improvement loop find by itself what a run reviewer finds: review targets in priority order, a budget decision from reported spend, a finding for a category kept repeatedly on one unit, a loop summary in `attention` and `status`, and an immediate escalation when a check fails with the same evidence twice. Documents live under `plugins/tempergraph/docs/`; the engine names no workflow package (ADR `the-engine-names-no-workflow`).
 
 ## Acceptance criteria
 
