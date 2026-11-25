@@ -284,6 +284,17 @@ def stats_path(home: Path, month: str) -> Path:
     return home / "stats" / f"{month}.jsonl"
 
 
+def append_stats_row(path: Path, row: dict[str, Any]) -> None:
+    """Append `row` to the stats file `path` under the lock beside it (`<month>.lock`).
+
+    The writers of the stats files and `stats forget` take this one lock, so a row appended while the verb replaces
+    the file is not lost (CST-B23). A writer that does not get the lock within :data:`INDEX_LOCK_S` appends anyway,
+    so a run's row is never dropped; such a writer is not protected from a rewrite."""
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with _locked(path):
+        append_jsonl(path, row)
+
+
 def on_run_started(log: Path) -> None:
     """Called by the run log's writer after `run_started`: the machine index (CST-B8); best effort."""
     try:
@@ -304,10 +315,10 @@ def on_run_exit(log: Path, segment: int | None) -> None:
             return
         home = ensure_home()
         month = str(row["ended_at"] or now_iso())[:7]
-        append_jsonl(stats_path(home, month), row)
+        append_stats_row(stats_path(home, month), row)
         sessions = session_rows(log, records(log), row)
         for srow in sessions:
-            append_jsonl(home / "stats" / "sessions" / f"{month}.jsonl", srow)
+            append_stats_row(home / "stats" / "sessions" / f"{month}.jsonl", srow)
         from tempergraph.observe import sinks, supervision_cost
 
         with contextlib.suppress(Exception):  # SCO-B15: the next writing process closes what has ended
