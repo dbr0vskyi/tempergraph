@@ -5,6 +5,8 @@ server of the operator's own MCP configuration: the user scope of `.claude.json`
 set for the workspace). A repository's own `.mcp.json` grants a judge nothing (SEC-B3). A server that is not there,
 one defined by a URL and one that does not start are out of reach for the attempt.
 
+A step's private configuration instead holds the servers it declares, as the operator defines them (ECC-B19).
+
 The private configuration holds the server's own environment values, so it lives in an owner-only folder under the
 state root's scratch folder, one per session, is removed on every exit path and is named in no log or error text.
 """
@@ -92,13 +94,30 @@ def _proxy_entry(entry: Mapping[str, Any], allowed: Sequence[str]) -> dict[str, 
     return {"command": sys.executable, "args": args, "env": env}
 
 
-def build_config(viewed: Mapping[str, Sequence[str]], servers: Mapping[str, Any]) -> dict[str, Any]:
-    """One proxy entry per viewed server, each offering only that server's viewed tools."""
+def declared_servers(tools: Iterable[str]) -> dict[str, tuple[str, ...]]:
+    """`mcp:<server>/<tool>` capabilities of a step grouped by server, in first-seen order; others are ignored."""
+    grouped: dict[str, list[str]] = {}
+    for cap in tools:
+        if not cap.startswith("mcp:"):
+            continue
+        server, sep, tool = cap[4:].partition("/")
+        if sep and server and tool:
+            grouped.setdefault(server, []).append(tool)
+    return {s: tuple(dict.fromkeys(t)) for s, t in grouped.items()}
+
+
+def build_config(viewed: Mapping[str, Sequence[str]], servers: Mapping[str, Any], *,
+                 direct: bool = False) -> dict[str, Any]:
+    """One proxy entry per viewed server, each offering only that server's viewed tools; with `direct` (a step,
+    ECC-B19) each entry is the operator's own definition of the server."""
+    if direct:
+        return {"mcpServers": {name: dict(servers[name]) for name in viewed}}
     return {"mcpServers": {name: _proxy_entry(servers[name], tools) for name, tools in viewed.items()}}
 
 
 @contextlib.contextmanager
-def private_config(viewed: Mapping[str, Sequence[str]], servers: Mapping[str, Any], base: Path) -> Iterator[Path]:
+def private_config(viewed: Mapping[str, Sequence[str]], servers: Mapping[str, Any], base: Path, *,
+                   direct: bool = False) -> Iterator[Path]:
     """Write the private strict configuration into a new owner-only folder under `base` and remove it on every exit."""
     base.mkdir(parents=True, exist_ok=True, mode=0o700)
     folder = Path(tempfile.mkdtemp(prefix="mcp-", dir=base))
@@ -107,7 +126,7 @@ def private_config(viewed: Mapping[str, Sequence[str]], servers: Mapping[str, An
         path = folder / CONFIG_NAME
         fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            json.dump(build_config(viewed, servers), fh)
+            json.dump(build_config(viewed, servers, direct=direct), fh)
         yield path
     finally:
         shutil.rmtree(folder, ignore_errors=True)

@@ -87,6 +87,7 @@ def test_judge_launch_is_read_only(tmp_path: Path) -> None:
     assert flag(argv, "--tools") == "Read,Grep,Glob"
     assert flag(argv, "--permission-mode") == "dontAsk"
     assert flag(argv, "--disallowedTools") == "mcp__*"
+    assert "--strict-mcp-config" in argv  # ECC-B18
     assert flag(argv, "--setting-sources") == ""
     for bad in ("Write", "Edit", "Bash", "--fallback-model", "--resume", "--continue", "acceptEdits"):
         assert all(bad not in a for a in argv)  # ECC-AC4
@@ -108,7 +109,7 @@ def test_ecc_ac7_judge_launch_with_mcp_views_is_strict_and_private(tmp_path: Pat
     # no private config path (no proxiable server): the launch is the read-only one of today
     plain = judge_argv(views, "opus", isolated=False)
     assert flag(plain, "--tools") == "Read,Grep,Glob" and flag(plain, "--disallowedTools") == "mcp__*"
-    assert "--mcp-config" not in plain
+    assert "--mcp-config" not in plain and "--strict-mcp-config" in plain
 
 
 def test_ecc_ac6_tools_sent_on_every_step_launch(tmp_path: Path) -> None:
@@ -141,9 +142,40 @@ def test_ecc_ac6_no_launch_sends_add_dir(tmp_path: Path) -> None:
 
 
 def test_step_env() -> None:
+    # ECC-AC15 (ECC-B9, ECC-B20): the account-connector switch is always off, whatever the host holds
+    off = {"ENABLE_CLAUDEAI_MCP_SERVERS": "false"}
     assert step_env("sonnet", host={}) == {"CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "1",
-                                           "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"}
-    assert step_env(None, host={"CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "0"}) == {}
+                                           "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet", **off}
+    assert step_env(None, host={"CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "0"}) == off
+    assert step_env(None, host={"CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR": "0",
+                                "ENABLE_CLAUDEAI_MCP_SERVERS": "true"}) == off
+
+
+def test_ecc_ac12_a_step_and_a_retry_are_strict_and_name_a_config_only_with_an_mcp_tool(tmp_path: Path) -> None:
+    # ECC-AC12 (ECC-B8, ECC-B18)
+    cfg = tmp_path / "mcp.json"
+    for enforce in (False, True):
+        for tools, has_mcp in ((("read",), False), (("read", "mcp:tracker/get_issue"), True)):
+            for kind in ("step", "retry"):  # the second build is the retry: a fresh request
+                r = req(tmp_path, kind=kind, tools=tools, enforce_tools=enforce)
+                argv, _ = step_argv(r, "sonnet", None, FLAGS, cfg)
+                assert "--strict-mcp-config" in argv
+                if has_mcp:
+                    assert flag(argv, "--mcp-config") == str(cfg)
+                else:
+                    assert "--mcp-config" not in argv
+    argv, _ = step_argv(req(tmp_path, tools=("read", "mcp:tracker/get_issue")), "sonnet", None, FLAGS)
+    assert "--strict-mcp-config" in argv and "--mcp-config" not in argv  # no path given: strict, no config
+
+
+def test_ecc_ac13_a_judge_with_no_mcp_view_is_strict_and_denies_mcp_tools(tmp_path: Path) -> None:
+    # ECC-AC13 (ECC-B10, ECC-B18)
+    for views in (ViewSet(tools=("Read", "Grep", "Glob")), ViewSet(tools=("Read", "mcp__tracker__get_issue"))):
+        for isolated in (False, True):
+            argv = judge_argv(views, "opus", isolated=isolated)
+            assert "--strict-mcp-config" in argv
+            assert flag(argv, "--disallowedTools") == "mcp__*"
+            assert "--mcp-config" not in argv
 
 
 # -- binding table (SEC-B1) ---------------------------------------------------------------------
@@ -386,6 +418,97 @@ def test_ecc_ac7_run_judge_with_mcp_views_through_the_stand_in(tmp_path: Path, m
     assert "--disallowedTools" not in argv
 
 
+def _step_with_operator(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, servers: dict[str, object], *,
+                        tools: tuple[str, ...], with_session_dir: bool = True, exit_code: int = 0,
+                        times: int = 2) -> tuple[list[SessionResult], list[dict[str, object]], list[object], Path]:
+    from tempergraph.executors import mcpconfig
+
+    home = tmp_path / "userhome"
+    home.mkdir()
+    (home / ".claude.json").write_text(json.dumps({"mcpServers": servers}))
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+    state = tmp_path / "state"
+    scratch = state / "scratch"
+    scratch.mkdir(parents=True)
+    seen_cfg: list[object] = []
+    original = mcpconfig.private_config
+
+    import contextlib
+
+    @contextlib.contextmanager
+    def watching(*a: object, **k: object):  # type: ignore[no-untyped-def]
+        with original(*a, **k) as path:  # type: ignore[arg-type]
+            seen_cfg.append((path, json.loads(path.read_text())))
+            yield path
+
+    monkeypatch.setattr(mcpconfig, "private_config", watching)
+    path = S.fake_claude(tmp_path, monkeypatch, {"lines": [S.init(), S.result()], "exit": exit_code})
+    ex = ClaudeExecutor(bindings=BindingTable())
+    results: list[SessionResult] = []
+    recs: list[dict[str, object]] = []
+    sdir = state / "runs" / "w" / "t" / "sessions" / "k" if with_session_dir else None
+    for i in range(times):
+        rec = tmp_path / f"rec{i}.json"
+        S.set_scenario(path, {"lines": [S.init(), S.result()], "exit": exit_code, "record": str(rec)})
+        kind = "step" if i == 0 else "retry"
+        results.append(ex.run_step(req(tmp_path, kind=kind, tools=tools, session_dir=sdir), EventSink()))
+        recs.append(json.loads(rec.read_text()))
+    return results, recs, seen_cfg, scratch
+
+
+def test_ecc_ac14_a_step_and_a_retry_get_a_private_config_of_the_declared_servers(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # ECC-AC14 (with ECC-AC12 through run_step)
+    tracker = {"command": "tracker-mcp", "args": ["-q"], "env": {"K": "v"}}
+    servers = {"tracker": tracker, "mailer": {"command": "mail-mcp"}}
+    results, recs, seen_cfg, scratch = _step_with_operator(
+        tmp_path, monkeypatch, servers, tools=("read", "mcp:tracker/get_issue", "mcp:wiki/get_page"))
+    assert len(seen_cfg) == 2
+    for res, rec, (path, content) in zip(results, recs, seen_cfg, strict=True):  # type: ignore[misc]
+        argv = rec["argv"]
+        assert "--strict-mcp-config" in argv and "--mcp-config" in argv  # type: ignore[operator]
+        assert content == {"mcpServers": {"tracker": tracker}}  # as defined; not wiki (undefined), not mailer
+        assert not Path(str(path)).exists() and not Path(str(path)).parent.exists()
+        assert flag(list(res.argv), "--mcp-config") == "<private>"
+        assert str(path) not in json.dumps(list(res.argv)) and Path(str(path)).parent.name not in json.dumps(list(res.argv))
+    assert list(scratch.iterdir()) == []
+
+
+def test_ecc_ac14_a_step_without_an_mcp_tool_gets_no_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # ECC-AC14
+    results, recs, seen_cfg, scratch = _step_with_operator(
+        tmp_path, monkeypatch, {"tracker": {"command": "t"}}, tools=("read",))
+    for rec in recs:
+        assert "--strict-mcp-config" in rec["argv"] and "--mcp-config" not in rec["argv"]  # type: ignore[operator]
+    assert seen_cfg == [] and list(scratch.iterdir()) == []
+    assert all("--mcp-config" not in r.argv for r in results)
+
+
+def test_ecc_ac14_no_session_folder_or_undefined_server_means_strict_with_no_config(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _, recs, seen_cfg, _ = _step_with_operator(
+        tmp_path, monkeypatch, {"tracker": {"command": "t"}}, tools=("mcp:tracker/get_issue",),
+        with_session_dir=False, times=1)
+    assert "--strict-mcp-config" in recs[0]["argv"] and "--mcp-config" not in recs[0]["argv"]  # type: ignore[operator]
+    assert seen_cfg == []
+
+
+def test_ecc_ac14_an_undefined_server_means_strict_with_no_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _, recs, seen_cfg, _ = _step_with_operator(
+        tmp_path, monkeypatch, {"other": {"command": "t"}}, tools=("mcp:tracker/get_issue",), times=1)
+    assert "--strict-mcp-config" in recs[0]["argv"] and "--mcp-config" not in recs[0]["argv"]  # type: ignore[operator]
+    assert seen_cfg == []
+
+
+def test_ecc_ac14_a_failed_step_launch_leaves_no_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    results, recs, seen_cfg, scratch = _step_with_operator(
+        tmp_path, monkeypatch, {"tracker": {"command": "t"}}, tools=("mcp:tracker/get_issue",), exit_code=1, times=1)
+    assert len(seen_cfg) == 1 and not Path(str(seen_cfg[0][0])).exists()  # type: ignore[index]
+    assert list(scratch.iterdir()) == []
+    assert flag(list(results[0].argv), "--mcp-config") == "<private>"
+
+
 HOST_SESSION = {
     "CLAUDECODE": "1", "CLAUDE_CODE_ENTRYPOINT": "cli", "CLAUDE_CODE_SESSION_ID": "host-session",
     "CLAUDE_CODE_CHILD_SESSION": "1", "CLAUDE_CODE_SUBAGENT_MODEL": "haiku", "CLAUDE_UNKNOWN_HOST_NAME": "x",
@@ -407,7 +530,8 @@ def _launch_three(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, host_extra: d
     path = S.fake_claude(tmp_path, monkeypatch, scenario)
     home = tmp_path / "home"
     (home / "config" / "credentials").mkdir(parents=True)
-    (home / "config" / "credentials" / "judge").write_text("CLAUDE_CODE_OAUTH_TOKEN=judge-token\n")
+    (home / "config" / "credentials" / "judge").write_text(
+        "CLAUDE_CODE_OAUTH_TOKEN=judge-token\nENABLE_CLAUDEAI_MCP_SERVERS=true\n")
     ex = ClaudeExecutor(bindings=BindingTable(), home=home)
     assert ex.probe().ok
     seen: list[dict[str, object]] = []
@@ -445,6 +569,14 @@ def test_ecc_ac6_step_retry_and_judge_reach_only_what_they_declare(tmp_path: Pat
     assert "CLAUDE_CODE_SUBAGENT_MODEL" not in judge["env"]
 
 
+def test_ecc_ac15_every_session_environment_switches_the_account_servers_off(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # ECC-AC15 (ECC-B20): a host value and a judge profile value are both overridden
+    step, retry, judge = _launch_three(tmp_path, monkeypatch, {"ENABLE_CLAUDEAI_MCP_SERVERS": "true"})
+    for one in (step, retry, judge):
+        assert one["env"]["ENABLE_CLAUDEAI_MCP_SERVERS"] == "false"  # type: ignore[index]
+
+
 def test_ecc_ac6_read_search_list_rules_stay_in_the_workspace(tmp_path: Path) -> None:
     # ECC-AC6 (ECC-B7, ECC-B14): read gets the workspace-scoped rule, search and list get none (P-CC-10)
     argv, _ = step_argv(req(tmp_path, tools=("read", "search", "list")), "sonnet", None, FLAGS)
@@ -474,7 +606,8 @@ def test_task_ac5_live_probes_p_cc_10_and_p_cc_11_are_listed_not_run() -> None:
     # AC 5 of the task (ECC-B14, CLI-B3): the executors listing carries P-CC-10 and P-CC-11 as not run
     facts = ClaudeExecutor.live_facts  # type: ignore[attr-defined]
     assert facts["P-CC-10"] == "not run" and facts["P-CC-11"] == "not run" and facts["P-CC-12"] == "not run"
-    assert set(facts.values()) == {"not run"}
+    assert facts["P-CC-13"] == "confirmed"  # AC 6 of task i21
+    assert all(v == "not run" for k, v in facts.items() if k != "P-CC-13")
 
 
 def test_unbound_alias_returns_a_result(tmp_path: Path) -> None:
