@@ -1363,8 +1363,8 @@
           "id": "ts-phs-scope",
           "severity": "blocker",
           "verified_by": "judge",
-          "text": "No file is changed that no row of the phase names, apart from the plan's marks and status",
-          "check_method": "Read the changed paths the check lists, and match each against the files of the phase's rows",
+          "text": "No file changed since the phase step was entered is a file that no row of the phase or of an earlier phase names, apart from the plan's marks and status",
+          "check_method": "Read the list of paths changed since the phase step was entered that the check gives, and match each against the files of the rows of the phase and of earlier phases; a path of the list of earlier steps' paths is not counted",
           "source": "interview",
           "verifier": {
             "references": [
@@ -1372,10 +1372,10 @@
               "triage_note"
             ],
             "scale": {
-              "met": "every changed file of the phase is the file of a row of the phase, or the plan itself",
-              "partial": "a changed file is outside the phase's rows but is a natural by-product of a row",
-              "unmet": "a file that no row of the phase names was changed",
-              "evidence": "per changed file: the row that names it",
+              "met": "every changed file of the first list (changed since the phase step was entered) is the file of a row of the phase or of an earlier phase, or the plan itself",
+              "partial": "a changed file of the first list is outside those rows but is a natural by-product of a row",
+              "unmet": "a file of the first list that no row of the phase or of an earlier phase names was changed",
+              "evidence": "per changed file of the first list: the row that names it",
               "seeds": [
                 "met-ts-phs-scope",
                 "unmet-ts-phs-scope"

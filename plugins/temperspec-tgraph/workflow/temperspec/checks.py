@@ -466,13 +466,15 @@ SOURCE_FILES = "Changed source files"
 
 def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
             links: list[str] | None = None, reading: list[str] | None = None,
-            facts: list[str] | None = None, *, commands: list[str] | None = None) -> Any:
+            facts: list[str] | None = None, *, commands: list[str] | None = None, step: str | None = None) -> Any:
     """The result, with the facts a read-only judge cannot get by itself as its evidence. A command judged
     environmental leads the evidence, and the result is marked environmental when no other finding fails. `reading` is the lines a
     judge that reads the changed code needs (`_reading_lines`): the changed source lines, its budget and the files.
     `facts` is lines of plain evidence that follow the first line, never a finding (the outcome check's push line).
     `commands` are the lines that say how each verification command was answered: first, because a preview prints
-    only the start."""
+    only the start. `step` is the step whose entry the changed paths count from (PHC-B16, PHC-B17, PHC-B19): the phase
+    check and, in a run that has a commit naming the step `phase`, the code gate hand two lists, the paths changed since
+    that step was entered and the paths only earlier steps changed with their steps; otherwise one line from the base."""
     lead = [f"{f.criterion}: {f.message}" for f in found if isinstance(f, _Environmental)]
     bad = "; ".join(lead + [f"{f.criterion}: {f.message}" for f in found
                             if f.status == "fail" and not isinstance(f, _Environmental)])
@@ -485,7 +487,15 @@ def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
     prepared = [p for p in changed if p in CONTEXT_FILES and _block_only(ctx, p)]
     commands_file = [routing.COMMANDS_FILE] if _prepared_commands(ctx) else []
     changed = [p for p in changed if p not in prepared and p not in commands_file]
-    if changed:
+    sorted_lists = step == "phase"
+    if step is not None and not sorted_lists:
+        sorted_lists = any(_step_of(s) == "phase" for _, s, _ in _history(ctx) or [])
+    if sorted_lists and step is not None:
+        mine, earlier = _sorted_paths(ctx, step, changed)
+        lines.append(f"Changed since the {step} step was entered: " + (", ".join(mine[:120]) or "none"))
+        lines.append("Changed only by earlier steps: " + (", ".join(
+            p + (f" ({', '.join(earlier[p])})" if earlier[p] else "") for p in sorted(earlier)[:120]) or "none"))
+    elif changed:
         lines.append("Changed paths since the run's base: " + ", ".join(changed[:120]))
     if prepared:
         lines.append("Written by prepare (the temperspec block only, no step's change): " + ", ".join(prepared))
@@ -1117,6 +1127,58 @@ def _kept_marks(ctx: Any, plan: fmt.Plan, path: str) -> dict[str, str]:
     return out
 
 
+STEP_COMMIT = re.compile(r"^\w+\(temperspec\)!?:\s*(\w+) for\b")
+
+
+def _step_of(subject: str) -> str:
+    """The step a commit's subject names (the form `commit_step` writes), `""` for a subject of another form."""
+    m = STEP_COMMIT.match(subject)
+    return m.group(1) if m else ""
+
+
+def _history(ctx: Any) -> list[tuple[str, str, list[str]]] | None:
+    """PHC-B16: the commits of `base..HEAD`, oldest first, as (hash, subject, paths); None when the history cannot be
+    read."""
+    base = ctx.git.base if ctx.git is not None else ""
+    if not base:
+        return None
+    lines = _git_lines(ctx, f"git log --name-only --format=%x01%H%x09%s {base}..HEAD --reverse")
+    if lines is None:
+        return None
+    out: list[tuple[str, str, list[str]]] = []
+    for line in lines:
+        if line.startswith("\x01"):
+            commit, _, subject = line[1:].partition("\t")
+            out.append((commit, subject, []))
+        elif line.strip() and out:
+            out[-1][2].append(line.strip())
+    return out
+
+
+def _sorted_paths(ctx: Any, step: str, changed: list[str]) -> tuple[list[str], dict[str, list[str]]]:
+    """PHC-B16, PHC-B17: the changed paths sorted in two. The step's entry is the newest commit of the run whose subject
+    does not name `step` (the base when there is none). The first list holds, in ascending order, the paths changed
+    since the entry; the second maps each other path to the steps of the commits that changed it, in commit order (a
+    commit naming no step adds none). When the history or the diff cannot be read the first list holds every path."""
+    history = _history(ctx)
+    if history is None:
+        return sorted(changed), {}
+    entry = max((i for i, (_, subject, _) in enumerate(history) if _step_of(subject) != step), default=-1)
+    diff = _git_lines(ctx, f"git diff --name-only {history[entry][0] if entry >= 0 else ctx.git.base}")
+    if diff is None:
+        return sorted(changed), {}
+    since = set(diff) | {p for _, _, paths in history[entry + 1:] for p in paths}
+    earlier: dict[str, list[str]] = {}
+    for _, subject, paths in history[:entry + 1]:
+        for p in dict.fromkeys(paths):
+            if p in changed and p not in since:
+                named = _step_of(subject)
+                steps = earlier.setdefault(p, [])
+                if named:
+                    steps.append(named)
+    return sorted(p for p in changed if p not in earlier), earlier
+
+
 def _marks(plan: fmt.Plan, criterion: str, place: str, done: bool, ctx: Any = None) -> list[CheckFinding]:
     fix = ("mark each row `✓ <date>` in its Completed cell when its change is in its file, and set `status: "
            "completed`") if done else ("keep the Completed mark of a row you leave exactly as it was, and empty the "
@@ -1572,7 +1634,9 @@ def code_check(ctx: Any) -> Any:
 def phase_check(ctx: Any) -> Any:
     """ts-phs-rows, ts-phs-changed, ts-phs-proof, ts-phs-order, ts-phs-commit: one attempt of one phase item, read on
     the rows of that phase only (PHC-B6 to PHC-B8). No finding names a row of another phase, and none names a step to go
-    back to: the checks of the whole change and the lines back stay with the code gate (PHC-B13, PHC-B14)."""
+    back to: the checks of the whole change and the lines back stay with the code gate (PHC-B13, PHC-B14). Its evidence
+    sorts the changed paths in two lists for the judge: those changed since the phase step was entered and those only
+    earlier steps changed, each with its steps (PHC-B16, PHC-B17)."""
     text, path = _read(ctx, "phases")
     if text is None:
         return checks.result([_find("fail", "ts-phs-rows", path, "the expanded plan cannot be read",
@@ -1608,7 +1672,7 @@ def phase_check(ctx: Any) -> Any:
     found += _proof(ctx, phase, "ts-phs-proof")[0]
     found += _test_first(ctx, phase, "ts-phs-order")
     found.append(_committed(ctx, "ts-phs-commit"))
-    return _result(ctx, found, phase)
+    return _result(ctx, found, phase, step="phase")
 
 
 # ---------------------------------------------------------------------------------------------
