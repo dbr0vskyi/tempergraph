@@ -59,13 +59,13 @@ def add_parsers(sub: Any) -> None:
     sa = sub.add_parser("stats", help="per-user monthly run rows, and across machines from a sink (CST-B14, CST-B15, CST-B16)")
     sa.add_argument("action", nargs="?", choices=("flush", "sync", "forget"))
     sa.add_argument("--check", action="store_true",
-                    help="with forget: print the state roots and rows it would remove and change nothing (CST-B17 to CST-B21)")
+                    help="with forget: print the state roots and rows it would remove and change nothing (CST-B17 to CST-B24)")
     src = sa.add_mutually_exclusive_group()
     src.add_argument("--source", metavar="SINK")
     src.add_argument("--local", action="store_true")
     sa.add_argument("--sync", action="store_true")
     when = sa.add_mutually_exclusive_group()
-    when.add_argument("--month", metavar="YYYY-MM")
+    when.add_argument("--month", metavar="YYYY-MM", help="the month to show; `stats forget` takes none (CST-B24)")
     when.add_argument("--since", metavar="YYYY-MM-DD")
     sa.add_argument("--by", choices=BY)
     sa.add_argument("--projection", action="store_true")
@@ -356,6 +356,8 @@ def cmd_stats(env: Any, a: argparse.Namespace) -> int:
     if a.action == "forget":
         from tempergraph.observe import forget
 
+        if a.month:
+            raise UsageError("stats forget takes no month; it works on the month in which it runs")
         try:
             _emit(env, forget.forget(home, a.check))
         except forget.IndexInUse as exc:

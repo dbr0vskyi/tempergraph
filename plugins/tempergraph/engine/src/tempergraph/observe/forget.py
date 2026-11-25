@@ -1,8 +1,10 @@
 """`stats forget`: state roots whose folder is gone leave the machine index and this month's stats rows
-(CST-B17 to CST-B21).
+(CST-B17 to CST-B24).
 
 The index is read and written only through :mod:`tempergraph.observe.rows` (its lock, `read_index`,
-`index_roots`, `stats_path`); this module decides what goes and rewrites the month's two stats files.
+`index_roots`, `stats_path`); this module decides what goes and rewrites the month's two stats files. The stats
+are rewritten before the index (CST-B22), and each file is replaced while the verb holds the lock that the
+engine's stats writers take (CST-B23).
 """
 
 from __future__ import annotations
@@ -15,8 +17,6 @@ from typing import Any
 
 from tempergraph.docs import write_json
 from tempergraph.observe import rows
-
-REWRITE_TRIES = 5
 
 
 class IndexInUse(Exception):
@@ -83,9 +83,13 @@ def _counts(home: Path, month: str, gone: list[str]) -> dict[str, int]:
 
 
 def _rewrite(path: Path, gone: set[str], keep: set[str]) -> None:
-    """Replace `path` by its kept lines through a temporary file; when a run appended a row since the read, the
-    rewrite is done again from the longer file, so no appended row is lost."""
-    for _ in range(REWRITE_TRIES):
+    """Replace `path` by its kept lines through a temporary file, holding the lock that the stats writers take
+    (:func:`rows.append_stats_row`) from the read to the replace, so a row a writer appends meanwhile waits and is
+    kept (CST-B23). Raises :class:`OSError` when the lock is not had or the replace fails. A writer that did not
+    get the lock is not protected."""
+    with rows._locked(path) as got:
+        if not got:
+            raise OSError(f"{path} is in use; try again")
         data = _read(path)
         if data is None:
             return
@@ -97,12 +101,9 @@ def _rewrite(path: Path, gone: set[str], keep: set[str]) -> None:
             with os.fdopen(fd, "wb") as fh:
                 fh.write(out)
             os.chmod(tmp, 0o600)
-            if path.stat().st_size == len(data):
-                os.replace(tmp, path)
-                return
+            os.replace(tmp, path)
         finally:
             Path(tmp).unlink(missing_ok=True)
-    raise OSError(f"{path} kept changing; try again")
 
 
 def _result(check: bool, month: str, counts: dict[str, int]) -> dict[str, Any]:
@@ -126,9 +127,9 @@ def forget(home: Path, check: bool) -> dict[str, Any]:
         counts = _counts(home, month, gone)
         if gone:
             drop = set(gone)
+            keep = _outbox_ids(home)
+            for path in _month_files(home, month):  # the stats first: a failure leaves every entry in the index
+                _rewrite(path, drop, keep)
             write_json(home / "index.json",
                        {"schema_version": 1, "roots": [r for r in rows.read_index(home) if str(r["path"]) not in drop]})
-            keep = _outbox_ids(home)
-            for path in _month_files(home, month):
-                _rewrite(path, drop, keep)
     return _result(False, month, counts)

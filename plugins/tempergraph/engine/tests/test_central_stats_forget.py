@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import json
+import os
+import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+
+import pytest
 
 from tempergraph.observe import rows
 from tempergraph.store.layout import home_path
@@ -141,3 +146,95 @@ def test_cst_ac10_an_index_in_use_is_refused_and_a_check_still_prints(repo: Path
     assert code == 0, err
     assert checked["roots"] == [{"state_root": str(s["gone"]), "rows": 5}]
     assert hash_tree(s["home"]) == before
+
+
+def _patch_replace(monkeypatch: pytest.MonkeyPatch, home: Path,
+                   act: Callable[[Path, str], None]) -> None:
+    """`os.replace` calls `act(target, source)` first when the target is a stats file (a `.jsonl` under the home
+    folder's `stats` folder) and is the real function otherwise and afterwards."""
+    real = os.replace
+
+    def replace(src: Any, dst: Any, *args: Any, **kwargs: Any) -> None:
+        target = Path(dst)
+        if target.suffix == ".jsonl" and (home / "stats") in target.parents:
+            act(target, str(src))
+        real(src, dst, *args, **kwargs)
+
+    monkeypatch.setattr(os, "replace", replace)
+
+
+def test_cst_ac11_a_stats_file_that_cannot_be_replaced_keeps_the_index_entry(
+        repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # CST-AC11, AC 3
+    s = seed(tmp_path)
+    index = (s["home"] / "index.json").read_bytes()
+    stats = {p: p.read_bytes() for p in (rows.stats_path(s["home"], s["month"]),
+                                         s["home"] / "stats" / "sessions" / f"{s['month']}.jsonl")}
+
+    def refuse(_target: Path, _src: str) -> None:
+        raise OSError("cannot replace")
+
+    _patch_replace(monkeypatch, s["home"], refuse)
+    code, _doc, _err = cli(repo, None, "stats", "forget")
+    assert code == 1
+    assert (s["home"] / "index.json").read_bytes() == index
+    assert {p: p.read_bytes() for p in stats} == stats
+
+
+def test_cst_ac12_the_next_run_removes_the_root_and_its_rows(
+        repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # CST-AC12, AC 3
+    s = seed(tmp_path)
+    failing = [True]
+
+    def refuse(_target: Path, _src: str) -> None:
+        if failing[0]:
+            raise OSError("cannot replace")
+
+    _patch_replace(monkeypatch, s["home"], refuse)
+    code, _doc, _err = cli(repo, None, "stats", "forget")
+    assert code == 1
+    failing[0] = False
+    code, _doc, err = cli(repo, None, "stats", "forget")
+    assert code == 0, err
+    index = json.loads((s["home"] / "index.json").read_text(encoding="utf-8"))
+    assert [r["path"] for r in index["roots"]] == [str(s["live"])]
+    assert _ids(rows.stats_path(s["home"], s["month"])) == {"run-live"}
+    assert _ids(s["home"] / "stats" / "sessions" / f"{s['month']}.jsonl") == {"ses-live"}
+
+
+def test_cst_ac13_a_row_appended_while_the_verb_runs_is_kept(
+        repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # CST-AC13, AC 3
+    s = seed(tmp_path)
+    appended = {"row_id": "run-appended", "kind": "run", "schema_version": 1, "state_root": str(s["live"])}
+    threads: list[threading.Thread] = []
+
+    def append_meanwhile(_target: Path, _src: str) -> None:
+        if threads:
+            return
+        thread = threading.Thread(
+            target=lambda: rows.append_stats_row(rows.stats_path(s["home"], s["month"]), appended))
+        threads.append(thread)
+        thread.start()
+        time.sleep(0.3)  # the writer is in flight while the verb holds the file
+
+    _patch_replace(monkeypatch, s["home"], append_meanwhile)
+    code, _doc, err = cli(repo, None, "stats", "forget")
+    assert code == 0, err
+    threads[0].join(timeout=10)
+    assert _ids(rows.stats_path(s["home"], s["month"])) == {"run-live", "run-appended"}  # none of the gone root's
+
+
+def test_cst_ac14_the_verb_takes_no_month(repo: Path, tmp_path: Path) -> None:  # CST-AC14, AC 3
+    s = seed(tmp_path)
+    before = hash_tree(s["home"])
+    code, doc, err = cli(repo, None, "stats", "forget", "--month", s["month"])
+    assert code == 2 and "takes no month" in err
+    assert not doc
+    assert hash_tree(s["home"]) == before
+    code, doc, err = cli(repo, None, "stats", "forget", "--check", "--month", OLD_MONTH)
+    assert code == 2 and "takes no month" in err
+    assert not doc  # no root printed
+    assert hash_tree(s["home"]) == before
+    code, doc, err = cli(repo, None, "stats", "forget")
+    assert code == 0, err
+    assert doc["roots"] == [{"state_root": str(s["gone"]), "rows": 5}]
+    assert _ids(rows.stats_path(s["home"], s["month"])) == {"run-live"}

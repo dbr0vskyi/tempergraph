@@ -6,7 +6,10 @@ they never nest again.
 
 from __future__ import annotations
 
+import ast
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -22,6 +25,7 @@ from .conftest import (
     is_nested,
     nested_env,
     nested_pytest,
+    outcome_counts,
     real_folders_snapshot,
     workflow_names,
 )
@@ -77,6 +81,10 @@ def test_a_run_on_workers_leaves_the_real_folders_as_they_were() -> None:  # TST
 # --- tests of any package: the engine's pytest plugin (TST-B7, TST-B8) -----------------------------------------
 
 PLUGIN = "tempergraph.pytest_plugin"
+"""The name the entry point is registered under: what `-p no:` takes (TST-B11)."""
+
+PLUGIN_MODULE = "tempergraph_pytest_plugin"
+"""The top-level module the entry point resolves to: it imports nothing of the engine package (TST-B12)."""
 
 HOMES = '''\
 import json
@@ -140,11 +148,29 @@ def seed_home(base: Path) -> Path:
     return home
 
 
-def package_pytest(cwd: Path, *args: str, fake_home: Path, record: Path | None = None,
-                   block: bool = False) -> subprocess.CompletedProcess[str]:
-    """`python -m pytest` in `cwd` as a package's own run: no home folder, loop variable or state root given, the
-    engine's `src` on `PYTHONPATH`, and `HOME` a seeded folder. The plugin is named with `-p` (an environment
-    installed before it existed has no entry point); `block` names it with `no:` instead."""
+def install_stand_in(site_dir: Path) -> Path:
+    """A stand-in for an installed engine: a folder holding only a `.dist-info` whose `entry_points.txt` is read
+    from the engine's `pyproject.toml`. `importlib.metadata` finds it as it finds a pip-installed distribution, so
+    the entry-point route itself is exercised with no network and no install. It does not cover the build of the
+    wheel. Returns `site_dir`."""
+    dist = site_dir / "tempergraph-0.0.0.dist-info"
+    if dist.exists():
+        return site_dir
+    dist.mkdir(parents=True)
+    (dist / "METADATA").write_text("Metadata-Version: 2.1\nName: tempergraph\nVersion: 0.0.0\n", encoding="utf-8")
+    doc = tomllib.loads((ENGINE_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    pairs = doc["project"]["entry-points"]["pytest11"]
+    (dist / "entry_points.txt").write_text(
+        "[pytest11]\n" + "".join(f"{name} = {target}\n" for name, target in pairs.items()), encoding="utf-8")
+    return site_dir
+
+
+def package_command(cwd: Path, *args: str, fake_home: Path, record: Path | None = None,
+                    block: bool = False) -> tuple[list[str], dict[str, str]]:
+    """The command and environment of `python -m pytest` in `cwd` as a package's own run in an environment where
+    the engine is installed: no home folder, loop variable or state root given, the engine's `src` and a stand-in
+    install on `PYTHONPATH`, and `HOME` a seeded folder. The plugin is named nowhere: the entry point loads it;
+    `block` names it with `no:`."""
     import site
 
     env = nested_env()
@@ -152,13 +178,20 @@ def package_pytest(cwd: Path, *args: str, fake_home: Path, record: Path | None =
         env.pop(var, None)
     env["HOME"] = str(fake_home)
     env["PYTHONUSERBASE"] = site.getuserbase()  # a changed HOME must not hide the user's installed packages
-    env["PYTHONPATH"] = str(ENGINE_ROOT / "src")
+    stand_in = install_stand_in(fake_home.parent / "site")
+    env["PYTHONPATH"] = os.pathsep.join([str(ENGINE_ROOT / "src"), str(stand_in)])
     if record is not None:
         env["TG_RECORD_DIR"] = str(record)
-    plugin = ["-p", f"no:{PLUGIN}"] if block else ["-p", PLUGIN]
-    return subprocess.run([sys.executable, "-m", "pytest", "-p", "no:cacheprovider", *plugin, *args], cwd=cwd,
-                          env=env, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=300,
-                          check=False)
+    plugin = ["-p", f"no:{PLUGIN}"] if block else []
+    return [sys.executable, "-m", "pytest", "-p", "no:cacheprovider", *plugin, *args], env
+
+
+def package_pytest(cwd: Path, *args: str, fake_home: Path, record: Path | None = None,
+                   block: bool = False) -> subprocess.CompletedProcess[str]:
+    """`python -m pytest` in `cwd` as a package's own run (`package_command`), run to its end."""
+    cmd, env = package_command(cwd, *args, fake_home=fake_home, record=record, block=block)
+    return subprocess.run(cmd, cwd=cwd, env=env, capture_output=True, text=True, stdin=subprocess.DEVNULL,
+                          timeout=300, check=False)
 
 
 def test_a_package_without_a_conftest_gets_a_home_folder_of_its_own(tmp_path: Path) -> None:  # TST-AC9, AC 1
@@ -223,10 +256,202 @@ def test_a_package_run_leaves_the_real_home_folder_as_it_was(tmp_path: Path) -> 
     assert hash_tree(home) != before
 
 
-def test_the_install_declares_the_plugin_under_the_pytest_entry_point() -> None:  # TST-AC9, TST-AC10
+ROUTE = '''\
+import json
+import os
+from pathlib import Path
+
+from tempergraph.store.layout import home_path
+
+
+def test_record():
+    row = {"home": str(home_path()), "loop": os.environ.get("TEMPERGRAPH_LOOP")}
+    Path(os.environ["TG_RECORD_DIR"], "route.json").write_text(json.dumps(row))
+'''
+
+
+def _route(package: Path, fake: Path, record: Path, *, block: bool = False) -> dict[str, str | None]:
+    run = package_pytest(package, fake_home=fake, record=record, block=block)
+    assert run.returncode == 0, run.stdout[-3000:] + run.stderr[-1000:]
+    return json.loads((record / "route.json").read_text())  # type: ignore[no-any-return]
+
+
+def test_the_entry_point_route_loads_the_plugin_in_an_installed_environment(tmp_path: Path) -> None:
+    # TST-AC15, AC 5, AC 2: no `-p` names the plugin; the entry point of the stand-in install loads it
+    if is_nested():
+        return
+    package = tmp_path / "package"
+    package.mkdir()
+    (package / "test_route.py").write_text(ROUTE, encoding="utf-8")
+    fake = seed_home(tmp_path)
+    record = tmp_path / "records"
+    record.mkdir()
+    seen = _route(package, fake, record)
+    home = Path(str(seen["home"])).resolve()
+    assert home != (fake / ".tempergraph").resolve()
+    assert home.is_relative_to(Path(tempfile.gettempdir()).resolve()) and not home.is_relative_to(fake.resolve())
+    assert seen["loop"] == "off"
+
+
+def test_blocking_the_plugin_switches_the_isolation_off(tmp_path: Path) -> None:  # TST-AC16, AC 5
+    if is_nested():
+        return
+    package = tmp_path / "package"
+    package.mkdir()
+    (package / "test_route.py").write_text(ROUTE, encoding="utf-8")
+    fake = seed_home(tmp_path)
+    blocked = tmp_path / "records-blocked"
+    blocked.mkdir()
+    seen = _route(package, fake, blocked, block=True)
+    assert Path(str(seen["home"])).resolve() == (fake / ".tempergraph").resolve()
+    assert seen["loop"] is None
+    again = tmp_path / "records-again"
+    again.mkdir()
+    seen = _route(package, fake, again)  # the same folder with no option is isolated again
+    assert Path(str(seen["home"])).resolve() != (fake / ".tempergraph").resolve()
+    assert seen["loop"] == "off"
+
+
+SCOPES = '''\
+import json
+import os
+from pathlib import Path
+
+import pytest
+
+from tempergraph.store.layout import home_path
+
+
+def _record(name):
+    row = {"home": str(home_path()), "loop": os.environ.get("TEMPERGRAPH_LOOP")}
+    Path(os.environ["TG_RECORD_DIR"], name + ".json").write_text(json.dumps(row))
+
+
+_record("import")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _session_scope():
+    _record("session")
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _module_scope():
+    _record("module")
+
+
+class TestScopes:
+    @pytest.fixture(scope="class", autouse=True)
+    def _class_scope(self):
+        _record("class")
+
+    def test_reads_its_own_home(self):
+        _record("test")
+'''
+
+
+def test_code_outside_the_tests_gets_a_session_home_and_the_loop_off(tmp_path: Path) -> None:
+    # TST-AC12, TST-AC14, AC 2
+    if is_nested():
+        return
+    package = tmp_path / "package"
+    package.mkdir()
+    (package / "test_scopes.py").write_text(SCOPES, encoding="utf-8")
+    fake = seed_home(tmp_path)
+    record = tmp_path / "records"
+    record.mkdir()
+    run = package_pytest(package, fake_home=fake, record=record)
+    assert run.returncode == 0, run.stdout[-3000:] + run.stderr[-1000:]
+    seen = {n: json.loads((record / f"{n}.json").read_text()) for n in ("import", "session", "module", "class", "test")}
+    real = (fake / ".tempergraph").resolve()
+    temp = Path(tempfile.gettempdir()).resolve()
+    for name, row in seen.items():
+        home = Path(row["home"]).resolve()
+        assert home != real and home.is_relative_to(temp) and not home.is_relative_to(fake.resolve()), name
+        assert row["loop"] == "off", name
+    for name in ("import", "session", "module", "class"):
+        assert seen["test"]["home"] != seen[name]["home"], name
+
+
+def test_two_runs_started_together_read_two_import_time_homes(tmp_path: Path) -> None:  # TST-AC13, AC 2
+    if is_nested():
+        return
+    package = tmp_path / "package"
+    package.mkdir()
+    (package / "test_scopes.py").write_text(SCOPES, encoding="utf-8")
+    fake = seed_home(tmp_path)
+    records = []
+    procs = []
+    for n in range(2):  # both start before either is waited for
+        record = tmp_path / f"records-{n}"
+        record.mkdir()
+        records.append(record)
+        cmd, env = package_command(package, fake_home=fake, record=record)
+        procs.append(subprocess.Popen(cmd, cwd=package, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                      text=True, stdin=subprocess.DEVNULL))
+    outputs = [p.communicate(timeout=300)[0] for p in procs]
+    for p, out in zip(procs, outputs):
+        assert p.returncode == 0, out[-3000:]
+    first, second = (json.loads((r / "import.json").read_text())["home"] for r in records)
+    assert first != second
+
+
+def other_copy(base: Path) -> Path:
+    """A folder standing for another installed copy of the engine: a `tempergraph` package that is not the
+    checkout's, its own copy of the plugin module, and the stand-in install that registers the entry point."""
+    folder = base / "other-copy"
+    (folder / "tempergraph").mkdir(parents=True)
+    (folder / "tempergraph" / "__init__.py").write_text("OTHER_COPY = True\n", encoding="utf-8")
+    shutil.copy(ENGINE_ROOT / "src" / f"{PLUGIN_MODULE}.py", folder / f"{PLUGIN_MODULE}.py")
+    return install_stand_in(folder)
+
+
+PROBE = "tests/test_suite_isolation.py::test_the_engine_comes_from_this_checkout"
+
+
+def test_the_engine_comes_from_this_checkout() -> None:  # TST-AC17, TST-AC18, AC 1 (the probe of the nested runs)
+    if not is_nested():
+        return
+    import tempergraph
+
+    assert Path(tempergraph.__file__).resolve().is_relative_to((ENGINE_ROOT / "src").resolve()), tempergraph.__file__
+    assert not hasattr(tempergraph, "OTHER_COPY")
+
+
+def test_a_run_in_one_process_tests_the_checkout_beside_another_installed_copy(tmp_path: Path) -> None:
+    # TST-AC17, AC 1
+    if is_nested():
+        return
+    copy = other_copy(tmp_path)
+    run = nested_pytest("-n", "0", "--trace-config", PROBE, env={"PYTHONPATH": str(copy)})
+    assert run.returncode == 0, run.stdout[-3000:] + run.stderr[-1000:]
+    assert outcome_counts(run.stdout) == {"passed": 1}, run.stdout[-1500:]
+    registered = [ln for ln in run.stdout.splitlines() if PLUGIN_MODULE in ln and "registered" in ln]
+    assert any(copy.name in ln for ln in registered), run.stdout[-3000:]  # the entry point was registered
+
+
+def test_a_run_on_workers_tests_the_checkout_beside_another_installed_copy(tmp_path: Path) -> None:
+    # TST-AC18, AC 1
+    if is_nested():
+        return
+    copy = other_copy(tmp_path)
+    run = nested_pytest("-n", "2", "--dist", "each", PROBE, env={"PYTHONPATH": str(copy)})
+    assert run.returncode == 0, run.stdout[-3000:] + run.stderr[-1000:]
+    assert outcome_counts(run.stdout) == {"passed": 2}, run.stdout[-1500:]
+
+
+def test_the_install_declares_the_plugin_under_the_pytest_entry_point() -> None:  # TST-AC15, AC 5
     doc = tomllib.loads((ENGINE_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    assert doc["project"]["entry-points"]["pytest11"] == {PLUGIN: PLUGIN}
-    assert (ENGINE_ROOT / "src" / "tempergraph" / "pytest_plugin.py").is_file()
+    assert doc["project"]["entry-points"]["pytest11"] == {PLUGIN: PLUGIN_MODULE}
+    src = ENGINE_ROOT / "src"
+    module = src / f"{PLUGIN_MODULE}.py"
+    assert module.is_file()
+    assert not (src / "tempergraph" / "pytest_plugin.py").exists()
+    for node in ast.walk(ast.parse(module.read_text(encoding="utf-8"))):  # loading it imports no engine code (TST-B12)
+        names = [a.name for a in node.names] if isinstance(node, ast.Import) else (
+            [node.module or ""] if isinstance(node, ast.ImportFrom) else [])
+        for name in names:
+            assert not name.startswith("tempergraph"), name
 
 
 def test_the_specs_state_the_isolation_and_the_verb_without_naming_a_workflow() -> None:  # AC 4
@@ -234,10 +459,13 @@ def test_the_specs_state_the_isolation_and_the_verb_without_naming_a_workflow() 
     suite = (specs / "test-suite.spec.md").read_text(encoding="utf-8")
     stats = (specs / "central-run-stats.spec.md").read_text(encoding="utf-8")
     cli = (specs / "engine-cli.spec.md").read_text(encoding="utf-8")
-    for ident in ("TST-B7", "TST-B8"):
-        assert f"### {ident} " in suite
-    for n in range(17, 22):
+    for n in range(7, 13):
+        assert f"### TST-B{n} " in suite
+    for n in range(17, 25):
         assert f"### CST-B{n} " in stats
+    assert "`-p no:tempergraph.pytest_plugin`" in suite
+    assert "where the engine is installed" in suite
+    assert "the entry stays until `stats forget` removes it (CST-B17)" in stats
     assert "`stats flush`, `stats sync` and `stats forget`" in cli
     names = workflow_names()
     assert names
