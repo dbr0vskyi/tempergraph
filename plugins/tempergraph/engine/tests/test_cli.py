@@ -139,7 +139,7 @@ def test_stop_needs_a_live_run(repo: Path) -> None:  # RCT-AC5
     assert not stop_file(state_root_path(repo), "demo", "T-4").exists()  # no request file is left
 
 
-def test_executors_lists_live_facts_as_not_run(repo: Path) -> None:
+def test_executors_lists_live_facts_with_their_state(repo: Path) -> None:
     from tempergraph.executors.claude import ClaudeExecutor
 
     reg = Registry()
@@ -147,7 +147,10 @@ def test_executors_lists_live_facts_as_not_run(repo: Path) -> None:
     out = io.StringIO()
     assert main(["executors"], catalog=Catalog(), registry=reg, cwd=repo, out=out, err=io.StringIO()) == 0
     row = json.loads(out.getvalue())["executors"][0]
-    assert row["name"] == "claude" and set(row["live_facts"].values()) == {"not run"}  # CLI-B3
+    facts = row["live_facts"]
+    assert row["name"] == "claude" and set(facts.values()) == {"confirmed", "not run"}  # CLI-B3, AC 6
+    assert facts["P-CC-13"] == "confirmed"
+    assert all(facts[f"P-CC-{i}"] == "not run" for i in range(1, 13))
 
 
 def test_exit_codes_match_the_contract() -> None:

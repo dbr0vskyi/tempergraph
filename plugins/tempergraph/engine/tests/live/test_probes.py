@@ -201,3 +201,38 @@ def test_p_cc_12_step_isolated_from_user_scope_plugins(tmp_path: Path) -> None: 
                    and not str(p.get("path", "")).startswith("@builtin") and not str(p.get("name", "")).startswith("cc-plugin"))
     print("init.plugins", names, "skills", [s for s in init.get("skills") or [] if ":" in s])
     assert names == sorted([workflow.name, "tempergraph"])
+
+
+def test_p_cc_13_step_and_judge_are_offered_no_account_connector(tmp_path: Path) -> None:  # P-CC-13 (ECC-B13, B18, B20)
+    # a step and a judge, each launched with the engine's own argv and environment, are offered no claude.ai
+    # connector: `system/init` lists no `mcp__claude_ai_` tool and no connector server (live row L-43)
+    from tempergraph.contracts import EventSink
+    from tempergraph.executors.binding import BindingTable
+    from tempergraph.executors.claude import ClaudeExecutor, step_env
+
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    (tmp_path / "s").mkdir()
+    req = SessionRequest(kind="step", prompt="Reply with the word ok.", workdir=ws, alias="small",
+                         session_key="probe.1.step", tools=("read",), timeout_s=240, session_dir=tmp_path / "s",
+                         options=SessionOptions(cost_cap_usd=0.10))
+    ex = ClaudeExecutor(bindings=BindingTable())
+    assert ex.probe().ok
+    ex.run_step(req, EventSink())
+    raw = [json.loads(ln) for ln in (tmp_path / "s" / "raw.jsonl").read_text().splitlines() if ln.startswith("{")]
+    step_init = _init(raw)
+
+    argv = judge_argv(ViewSet(tools=("Read",)), MODEL, isolated=False) + CAP
+    assert "--strict-mcp-config" in argv
+    env = {**{k: v for k, v in os.environ.items() if not k.startswith("CLAUDECODE")}, **step_env(MODEL)}
+    out = subprocess.run(argv, input="Reply with the word ready.", capture_output=True, text=True, cwd=tmp_path,
+                         timeout=240, env=env, check=False)
+    judge_init = _init([json.loads(ln) for ln in out.stdout.splitlines() if ln.startswith("{")])
+    for init in (step_init, judge_init):
+        tools = init.get("tools") or []
+        print("init.tools", tools, "mcp", init.get("mcp_servers"))
+        assert not [t for t in tools if str(t).startswith("mcp__claude_ai_")]
+        assert not [s for s in init.get("mcp_servers") or []
+                    if "claude" in str(s.get("name") if isinstance(s, dict) else s).lower()]
+    assert sorted(step_init.get("tools") or []) == ["Read"]
+    assert sorted(judge_init.get("tools") or []) == ["Read"]

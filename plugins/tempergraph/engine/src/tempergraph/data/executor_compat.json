@@ -5,7 +5,7 @@
       "component": "Claude Code CLI",
       "recorded": ["2.1.329"],
       "range": ">=2.1.329,<=2.1.329",
-      "facts": "model-free argument checks only (ECC-B13); P-CC-1 to P-CC-12 not yet run"
+      "facts": "model-free argument checks only (ECC-B13); P-CC-13 confirmed on 2.1.332; P-CC-1 to P-CC-12 not yet run"
     }
   }
 }

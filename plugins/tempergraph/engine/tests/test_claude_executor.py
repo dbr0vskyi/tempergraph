@@ -606,7 +606,8 @@ def test_task_ac5_live_probes_p_cc_10_and_p_cc_11_are_listed_not_run() -> None:
     # AC 5 of the task (ECC-B14, CLI-B3): the executors listing carries P-CC-10 and P-CC-11 as not run
     facts = ClaudeExecutor.live_facts  # type: ignore[attr-defined]
     assert facts["P-CC-10"] == "not run" and facts["P-CC-11"] == "not run" and facts["P-CC-12"] == "not run"
-    assert set(facts.values()) == {"not run"}
+    assert facts["P-CC-13"] == "confirmed"  # AC 6 of task i21
+    assert all(v == "not run" for k, v in facts.items() if k != "P-CC-13")
 
 
 def test_unbound_alias_returns_a_result(tmp_path: Path) -> None:

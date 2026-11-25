@@ -517,6 +517,7 @@ def _spent_allowance(info: Mapping[str, Any]) -> tuple[bool, float | None]:
     return True, float(at)
 
 
-# Live probe facts of ECC-B13 and their recorded state; none has run on a signed-in host yet (T0.1).
-LIVE_FACTS: dict[str, str] = {f"P-CC-{i}": "not run" for i in range(1, 13)}
+# Live probe facts of ECC-B13 and their recorded state: P-CC-13 was run by the operator on 2026-11-25 (live row L-43);
+# P-CC-1 to P-CC-12 have not been run on a signed-in host yet.
+LIVE_FACTS: dict[str, str] = {**{f"P-CC-{i}": "not run" for i in range(1, 13)}, "P-CC-13": "confirmed"}
 ClaudeExecutor.live_facts = LIVE_FACTS  # type: ignore[attr-defined]  # read by `executors` (CLI-B3)
