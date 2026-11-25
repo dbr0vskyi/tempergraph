@@ -49,14 +49,14 @@
       "order": 2.15,
       "task_id": "i21b",
       "issues": [
-        21
+        165
       ],
       "state": "queued",
       "thread": null,
       "branch": null,
       "cost_usd": null,
       "exit": null,
-      "note": "issue not filed yet (GitHub API error); must land before the PR is ready"
+      "note": "must land before the PR is ready"
     },
     {
       "order": 2.2,
@@ -64,12 +64,12 @@
       "issues": [
         144
       ],
-      "state": "second run running",
+      "state": "merged",
       "thread": "temperspec/i144",
       "branch": "tg/temperspec/i144",
-      "cost_usd": 9.69,
-      "exit": 4,
-      "note": "i144 stopped (#152), rerun crashed (#163); i144b runs on top of tg/temperspec/i144 with tasks/i144b.md; merge tg/temperspec/i144b only"
+      "cost_usd": 17.49,
+      "exit": 0,
+      "note": "merge 766e99de (i144 + i144b); follow-up #167; .venv not reinstalled"
     },
     {
       "order": 2.3,
@@ -78,12 +78,12 @@
         148,
         149
       ],
-      "state": "running",
+      "state": "stopped",
       "thread": "temperspec/i148",
       "branch": "tg/temperspec/i148",
-      "cost_usd": null,
-      "exit": null,
-      "note": "found in run i21"
+      "cost_usd": 12.09,
+      "exit": 4,
+      "note": "stopped_by_request after phase p1; branch pushed de5290b1; resume --decision retry"
     },
     {
       "order": 3,
@@ -131,12 +131,12 @@
       "issues": [
         123
       ],
-      "state": "running",
+      "state": "stopped",
       "thread": "temperspec/i123",
       "branch": "tg/temperspec/i123",
-      "cost_usd": null,
-      "exit": null,
-      "note": ""
+      "cost_usd": 24.15,
+      "exit": 4,
+      "note": "stopped_by_request; outcome BACK to plan on ts-traced (#151); branch pushed 96c4f980; resume --decision retry or review as it stands"
     },
     {
       "order": 6.5,
@@ -322,14 +322,14 @@
     }
   ],
   "todo_before_ready": [
-    "restamp temperspec (author verify, model-free rungs)",
-    "TS-L2 row and measured cost per step in the package docs (#51)",
-    "move or keep the runs' notes under repo-root docs/ (CONTRIBUTING asks for the package's docs/)",
-    "delete batch-queue/",
-    "clean pytest roots from ~/.tempergraph/index.json and stats (backup first)",
-    "close or let GitHub mark merged the runs' own draft pull requests (#146)",
-    "file the follow-up issue of #21 (text in scratch, summarised in tasks/i21b.md) and post the result comment on #21: GitHub's API failed at 15:54 UTC",
-    "run i21b, then the operator runs the live probe"
+    "run i21b (#165), then the operator's live probe",
+    "run i145 (monitor timeout regression of #141's fix)",
+    "finish or review i123 and i148",
+    "restamp temperspec",
+    "reinstall .venv from this branch, then stats forget (backup first)",
+    "decide where runs' notes live (#159)",
+    "TS-L2 row and cost per step (#51)",
+    "delete batch-queue/"
   ],
   "issues_filed": [
     139,
@@ -354,7 +354,13 @@
     160,
     161,
     162,
-    163
+    163,
+    165,
+    166,
+    167
   ],
-  "engine_build": "0.2.0-da9985a63404"
+  "engine_build": "0.2.0-da9985a63404",
+  "stopped_at": "2026-11-25 17:50 CET",
+  "ci_passed_on": "cf5d1bdb",
+  "live_runs": []
 }

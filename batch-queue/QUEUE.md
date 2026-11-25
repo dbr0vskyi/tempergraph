@@ -46,13 +46,13 @@ State words: `queued`, `running`, `paused`, `merged`, `failed`, `skipped`.
 | 1 | i71 | #71 (and #51) | Code step marks a phase's rows in one edit; the run is also the real run of TS-L2 with a signed-in `gh` | merged | temperspec/i71 | 11.06 | Outcome met; last stage `opened` draft pull request #146; not hands-free (#139 at `prepare`, a `.claude/` edit denied at `code`); review: no blocker, four small follow-ups listed on #71 |
 | 2 | i7 | #7 | Review cap floor: one review of the most signalled session | merged | temperspec/i7 | 8.03 | Outcome met, 21 min, one pause (G3 answered with its default); last stage `pushed`, no pull request (#143) |
 | 2a | i21 | #21 | Step and judge sessions are offered no MCP server they do not declare (the account's connectors cost about 165k tokens a step session) | merged | temperspec/i21 | 14.12 | Outcome met; review: launch paths correct, nothing blocking, five follow-ups (request `tasks/i21b.md`); installed as the local engine (build `0.2.0-da9985a63404`) |
-| 2a' | i21b | follow-up of #21 (issue to be filed: GitHub's API failed at 15:54 UTC; the text is in the request) | The MCP isolation's live probe measures the leak, and its runbook row records what was run | queued | | | Must land before the pull request is ready: the runbook says `passed` for a test that never ran |
-| 2b | i144, i144b | #144 | Package tests run directly write the real machine index and stats | second run running | temperspec/i144 (stopped), temperspec/i144b | 9.69 + second run | First run stopped at `attempt_cap`, could not resume (#152), and its rerun crashed at start (#163). Its branch (pushed, head `278e4aa3`) was reviewed as it stood: one blocker and seven smaller points. `i144b` is a new run on top of that branch (`--worktree-base ref:tg/temperspec/i144`) with the review as its task (`tasks/i144b.md`). Merge `tg/temperspec/i144b` only; do not reinstall the shared `.venv` before it |
-| 2c | i148 | #148, #149 | The gates of the phases arm stop pausing for a person: a phase's gate grades the phase's own changes; `ts-exp-opened` counts every session of the visit | running | temperspec/i148 | | First run on the engine build with #21, started without the stopgap variable |
+| 2a' | i21b | #165 | The MCP isolation's live probe measures the leak, and its runbook row records what was run | queued | | | Must land before the pull request is ready: the runbook says `passed` for a test that never ran |
+| 2b | i144, i144b | #144 | Package tests run directly write the real machine index and stats | merged | temperspec/i144 (stopped), temperspec/i144b | 9.69 + 7.80 | Merge `766e99de`. First run stopped at `attempt_cap` and could not resume (#152), its rerun crashed (#163); a review of its branch found a blocker; `i144b` ran on top of that branch with the review as its task (`opened` #164); re-review: merge with follow-ups (#167). The shared `.venv` is NOT reinstalled yet, so the plugin is not active on this machine |
+| 2c | i148 | #148, #149 | The gates of the phases arm stop pausing for a person: a phase's gate grades the phase's own changes; `ts-exp-opened` counts every session of the visit | stopped | temperspec/i148 | 12.09 so far | Stopped by request at 17:39 on 2026-11-25 after phase `p1` passed; branch pushed (head `de5290b1`), worktree kept. Continue: `tempergraph resume temperspec i148 --decision retry` |
 | 3 | i134a | #134 | Split the discovery gate (extract pass, write pass) | queued | | | L: first of two runs |
 | 4 | i134b | #134 | Code step: the join and the quick lane get prompts of their own | queued | | | L: second of two runs |
 | 5 | i114 | #114, #117 | Loop findings: a judge that passes without opening a changed path; the phase check failing | queued | | | Triage the evidence first |
-| 6 | i123 | #123 | Loop reads the person's review of a run's pull request as a later outcome signal | running | temperspec/i123 | | needs: spec; spec comes first in the run |
+| 6 | i123 | #123 | Loop reads the person's review of a run's pull request as a later outcome signal | stopped | temperspec/i123 | 24.15 so far | Stopped by request at 17:39 on 2026-11-25. Seven phases, code and join passed; the outcome gate sent it back to the plan (`ts-traced`: FIN-AC1, OUT-AC4, SIL-AC6, SIL-AC7 named by no test, #151) and the plan passed again. Branch pushed (head `96c4f980`), worktree kept. Continue: `tempergraph resume temperspec i123 --decision retry`, or review the branch as it stands |
 | 6a | i141 | #141 | Monitor finds the engine at its default shim path when it is not on PATH | merged | temperspec/i141, rerun temperspec/i141~r1 | 23.22 | Review blocked the first run; rerun from `plan` with the review as feedback fixed the blocker (`opened` #147); re-review: merge with follow-ups, which are in `tasks/i145.md` |
 | 6b | i145 | #142, #145 (and the rest of #141) | Monitor: a sign of life in a live row; rows of other state roots named and folded; the engine lookup recovers after not-found and a timeout | queued | | | Next in the monitor's files |
 | 7 | i62 | #62 | Model-free drift check for pre-commit and CI | queued | | | |
@@ -81,9 +81,29 @@ State words: `queued`, `running`, `paused`, `merged`, `failed`, `skipped`.
 - `i32.md` leaves out the literal "no engine test names a workflow package" (about 20 engine tests use `release-notes` as a fixture name); it could run as `docs only`.
 - `i130.md`, `i14.md`: the live setup run and the pull-request gate guide are left out.
 
-## GitHub writes that failed and are still owed (the API answered "Something went wrong" from 15:53 UTC, 2026-11-25)
+## Where the session stopped (2026-11-25, 17:50 local, at the owner's word; the pull request stays a draft)
 
-- File an issue for "a step session cannot delete a file" (observations, i144b) once the API answers.
-- File the follow-up issue of #21: its text is `tasks/i21b.issue.md` (title: "The MCP isolation's live probe proves nothing and its runbook row is recorded as passed without a run"; labels `type: bug`, `area: engine`, `priority: P1`, `effort: S`). Then put its number into the table row of `i21b`.
-- Result comment on #21 (merged as `d60ebaac`, outcome met, 14.12 USD, follow-ups in that new issue) and remove its `in progress` label.
-- Claim comment on #148 for run `temperspec:i148` (it also builds #149); assign and label both `in progress`.
+Nothing is running. Reported spend of the runs: about 117 USD (`tempergraph status`).
+
+| State | Items |
+|---|---|
+| Merged into this branch | i7 (#7), i71 (#71), i141 with its rerun (#141), i21 (#21), i144 with i144b (#144); by hand #139 and #143 |
+| Stopped, to continue | i123 (#123), i148 (#148, #149): the commands are in the table above; their worktrees and pushed branches are kept |
+| Queued with a request file | i21b (#165), i145 (#142, #145 and the rest of #141), i134a and i134b (#134), i62, i103, i104, i130, i32, i76, i136, i135, i22, i10 (first slice), i14 |
+| Queued without a request file | i114 (#114, #117): read the evidence of #148 and of the runs' `judge_unread_pass` findings first |
+| Filed today and not queued | #140, #150 to #163, #166, #167 (start with #150 and #153: each cost a run of today a trip back or a stop) |
+
+CI passed on `cf5d1bdb` (suite, ruff and mypy on Python 3.11 and 3.12), which holds every merge but the last (#144); the run on the head starts with the last push. Every push cancels the CI run before it, so leave about twenty minutes between pushes when a CI result is wanted.
+
+Before the pull request is ready:
+
+1. Run i21b (#165): the runbook must not say `passed` for a test that never ran. Then the operator runs the live probe.
+2. Run i145: the merged monitor fix marks the engine as not installed for the whole session after one timed-out verb.
+3. Finish or review i123 and i148.
+4. Restamp temperspec (`tempergraph author verify plugins/temperspec-tgraph`, model-free rungs): `stamp.json` is stale after #71, #143 and #139.
+5. Reinstall the shared environment from this branch (`uv pip install --python .venv/bin/python -e 'plugins/tempergraph/engine[dev]'`) so the test isolation of #144 is active, then clean the machine index: `tempergraph stats forget --check`, then without `--check` (106 pytest folders and about 1,260 rows; back up `~/.tempergraph/index.json` and `~/.tempergraph/stats/` first).
+6. Decide where the runs' notes live: they are at the repository root (`docs/plans/i*.plan.md`, `docs/tasks/i*`), where `CONTRIBUTING.md` asks for the owning package's `docs/` (#159).
+7. Write the TS-L2 row and the measured cost per step into temperspec's docs (#51).
+8. Delete this folder.
+
+Owner decisions taken by the agent, to confirm: #7 G3 (in stable mode the review-cap floor is limited to what the daily cap leaves).
