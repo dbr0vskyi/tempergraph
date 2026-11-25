@@ -36,7 +36,6 @@ WHEN a workflow lists the entry `@repository` ([CHK-B11](75-check-contract-and-c
 
 - GIVEN an allow-list of `git status` and `@repository`, a target with no `tempergraph.commands.json` and `git` as the only program on `PATH` WHEN `audit --layer host` runs THEN it reports no `check-program-missing`
 - GIVEN a step with the tool `shell` and the commands `git status` and `@repository`, an allow-list of the same two entries and `git` as the only program on `PATH` WHEN `audit --layer host` runs THEN no finding names `@repository`
-- GIVEN a package that passes rungs 1 to 5 of `author verify` and whose allow-list is `git status` and `@repository` WHEN `author verify` runs in a repository with no `tempergraph.commands.json` and with `git` on `PATH` THEN rung 6 passes ([SCF-B18](91-blueprint-and-scaffold.spec.md))
 
 ### AUD-B18 The programs of the target's declared commands are looked up
 
@@ -137,7 +136,6 @@ WHEN the definition and host layers are needed outside the verb THE engine SHALL
 - AUD-AC6 (AUD-B12, AUD-B13): The JSON report validates against its schema and carries `schema_version`; an old reader skips an unknown key
 - AUD-AC7 (AUD-B7, AUD-B14): An ignore without a reason is refused by validation; a lapsed `until` shows the finding again
 - AUD-AC8 (AUD-B17): A fixture workflow whose allow-list and a step's commands hold `git status` and `@repository`, audited with `git` as the only program on `PATH` and a target with no `tempergraph.commands.json`, raises no `check-program-missing` and no finding that names `@repository`
-- AUD-AC9 (AUD-B17): A package that passes rungs 1 to 5 of `author verify` and whose allow-list holds `git status` and `@repository` passes rung 6 in a repository with no `tempergraph.commands.json`
 - AUD-AC10 (AUD-B18): For a target whose `tempergraph.commands.json` declares `npm test` and `npm run lint`, the `host` layer reports one `check-program-missing` for `npm`, pointing at that file, when `npm` is not on `PATH` and none when it is; for a target whose file is not valid JSON it reports none
 - AUD-AC11 (AUD-B19): For a target whose `package.json` defines `scripts.test` and a workflow whose allow-list is `@repository`, the `host` layer reports no `toolchain-not-covered` when `tempergraph.commands.json` declares `npm test` and reports it, naming `package.json scripts.test`, when the file declares only `make check`
 

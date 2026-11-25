@@ -115,6 +115,7 @@ WHEN `scaffold --update` or `--update-docs` runs THE scaffold SHALL keep `scaffo
 WHEN `author verify <workflow>` runs on a package folder or a registered workflow THE engine SHALL run the rungs in order, stop at the first failing one with exit 2 and report each finding with `code`, `message` and `remedy`, `--json` printing `rungs[]` with `state` passed, failed, skipped, refused or waiting: 1 load and validate ([PKG-B15](88-workflow-package.spec.md), WFM, OUT's validation and the criteria lint at authoring severities, `criterion-no-seed` a warning here); 2 blueprint comparison (names, order, artifacts and reads, checks, judge references, sign-offs, failure and approval policy, back and route targets, map and wait parameters and the outcome digest, never summaries, models, criteria texts or prompts; an accepted difference recorded as a decision); 3 the literal check; 4 the generated tests on stand-ins; 5 coverage and trust ([OUT-B14](90-run-outcome.spec.md)), a final criterion or blocker settled by a decision whose `subject` or `criterion` is its id; 6 `audit --layer definition --layer host` ([AUD](55-workflow-audit.spec.md)) with no `error`; and 7 `workflows register <path> --check`, then `register` ([UPD-B20](60-engine-update.spec.md)).
 
 - GIVEN a package with an unrecorded literal WHEN `author verify` runs THEN rung 3 fails, exit 2, and rungs 4 to 10 are skipped
+- GIVEN a package whose allow-list holds `git status` and `@repository` and a repository with no `tempergraph.commands.json` WHEN `author verify` runs THEN rung 6 raises no finding for `@repository` ([AUD-B17](55-workflow-audit.spec.md))
 
 ### SCF-B19 Rung 8, judge seeds
 
@@ -155,6 +156,7 @@ WHEN the scaffold and check verbs run THE engine CLI SHALL offer `blueprint chec
 - SCF-AC5 (SCF-B5, SCF-B13, SCF-B23): No verb but `author verify --judge-seeds` or `--trial` starts an executor session, and `--judge-seeds` starts judge sessions only (stand-in counter test)
 - SCF-AC6 (SCF-B6, SCF-B20, SCF-B21, SCF-B22): A trial writes one label per judged criterion the person grades and never changes `improvement_mode`
 - SCF-AC7 (SCF-B8, SCF-B19): A seed fixture graded against its expected status, or flipping between the two runs, fails rung 8 naming the criterion
+- SCF-AC8 (SCF-B18): A package that passes rungs 1 to 5 and whose allow-list holds `git status` and `@repository` passes rung 6 in a repository with no `tempergraph.commands.json`
 
 ## Open questions
 

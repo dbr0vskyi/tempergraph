@@ -148,7 +148,7 @@ def merges_of(repo: Path) -> list[list[str]]:
     return [ln.split() for ln in git(repo, "log", "--merges", "--format=%H %P", RUN).splitlines()]
 
 
-def test_a_retry_of_a_writer_contest_runs_in_fresh_worktrees_of_its_attempt_CTS_AC7(repo: Path) -> None:  # CTS-AC7 (CTS-B11, WSP-B19, WTR-AC14)
+def test_a_retry_of_a_writer_contest_runs_in_fresh_worktrees_of_its_attempt_WSP_AC26(repo: Path) -> None:  # WSP-AC26 (WSP-B20, WSP-B19, WTR-AC14)
     ex = retried()
     out = go(repo, writing(), ex)  # the default scope: the winner's slot alone runs again
     assert out.exit_code is ExitCode.FINISHED, out.message
@@ -159,7 +159,7 @@ def test_a_retry_of_a_writer_contest_runs_in_fresh_worktrees_of_its_attempt_CTS_
     root = worktrees_root(repo)
     assert sorted(s for s, _, _ in ex.runs[:2]) == ["s1", "s2"] and ex.runs[2][0] == again  # the slots of one attempt overlap
     assert ex.runs[2][1] == root / f"demo--C-1--s2-{again}"  # fresh, named by its attempt
-    assert {s: d for s, d, _ in ex.runs[:2]} == {"s1": root / "demo--C-1--s-s1", "s2": root / "demo--C-1--s-s2"}  # CTS-B11
+    assert {s: d for s, d, _ in ex.runs[:2]} == {"s1": root / "demo--C-1--s-s1", "s2": root / "demo--C-1--s-s2"}  # WSP-B20
     assert git(ex.runs[2][1], "rev-parse", "--abbrev-ref", "HEAD").strip() == f"{RUN}--s2-{again}"
     merged_first = merges_of(repo)[-1][0]  # the first pick's merge: the head the retry's slot was cut from
     assert ex.runs[2][2] == merged_first
@@ -168,7 +168,7 @@ def test_a_retry_of_a_writer_contest_runs_in_fresh_worktrees_of_its_attempt_CTS_
         assert (root / f"demo--C-1--s-{old}").exists()
 
 
-def test_the_pick_of_a_later_attempt_merges_only_its_own_winner_CTS_AC11(repo: Path) -> None:  # CTS-AC11 (CTS-B13, CTS-B7)
+def test_the_pick_of_a_later_attempt_merges_only_its_own_winner_WSP_AC29(repo: Path) -> None:  # WSP-AC29 (WSP-B22, CTS-B7)
     ex = PerAttempt({"s1": "", "s2": ""}, judges={"s1": [BLOCKED, BOTH_MET], "s2": [BLOCKED, BOTH_MET]},
                     costs={"s1": 0.3, "s2": 0.1})  # `s2` is the cheaper: the winner of both attempts
     out = go(repo, writing(), ex)
@@ -182,7 +182,7 @@ def test_the_pick_of_a_later_attempt_merges_only_its_own_winner_CTS_AC11(repo: P
     assert git(repo, "show", f"{RUN}:a.py") == "s2 attempt 2\n"
 
 
-def test_a_retry_under_all_cuts_every_slot_in_fresh_worktrees_CTS_AC8(repo: Path) -> None:  # CTS-AC8 (CTS-B11, CTS-B8)
+def test_a_retry_under_all_cuts_every_slot_in_fresh_worktrees_WSP_AC27(repo: Path) -> None:  # WSP-AC27 (WSP-B20, CTS-B8)
     ex = retried()
     out = go(repo, writing(retry_scope="all"), ex)
     assert out.exit_code is ExitCode.FINISHED, out.message
@@ -196,7 +196,7 @@ def test_a_retry_under_all_cuts_every_slot_in_fresh_worktrees_CTS_AC8(repo: Path
         assert git(repo, "rev-parse", f"{RUN}--s2-{slot}").strip()
 
 
-def test_the_first_run_after_a_back_is_a_later_attempt_with_fresh_worktrees_CTS_AC9(repo: Path) -> None:  # CTS-AC9 (CTS-B11)
+def test_the_first_run_after_a_back_is_a_later_attempt_with_fresh_worktrees_WSP_AC27(repo: Path) -> None:  # WSP-AC27 (WSP-B20)
     rows = [{"n": 1, "status": "UNMET", "evidence": "the plan is wrong", "defect_in": "doc", "no_change": False},
             {"n": 2, "status": "MET", "evidence": "x:1", "defect_in": None, "no_change": False}]
     back = "R.\n```json\n" + json.dumps({"criteria": rows, "gap": False, "confidence": 0.8}) + "\n```"
@@ -211,7 +211,7 @@ def test_the_first_run_after_a_back_is_a_later_attempt_with_fresh_worktrees_CTS_
     assert len(recs(repo, "contest")) == 2
 
 
-def test_the_records_of_an_earlier_attempt_keep_their_state_CTS_AC10(repo: Path) -> None:  # CTS-AC10 (CTS-B12, WTR-B23)
+def test_the_records_of_an_earlier_attempt_keep_their_state_WSP_AC28(repo: Path) -> None:  # WSP-AC28 (WSP-B21, WTR-B23)
     ex = PerAttempt({"s1": "", "s2": ""}, judges={"s1": [BLOCKED, BOTH_MET], "s2": [BLOCKED, BOTH_MET]},
                     costs={"s1": 0.3, "s2": 0.1})  # `s2` wins both picks
     spec = writing()

@@ -173,7 +173,7 @@ class EngineNodes:
     def _writer_child(self, state: Mapping[str, Any], unit: str) -> Mapping[str, Any] | None:
         """The workspace record's child for `unit` when `unit` is a writer branch of a parallel block, or for the item in
         hand when `unit` is a concurrent map whose step writes (its child is addressed by the item's slot and the map's
-        visit, MAP-B14; a contest's slot is addressed by the slot and the contest's attempt, CTS-B11; a block's writer
+        visit, WSP-B20; a contest's slot is addressed by the slot and the contest's attempt, WSP-B20; a block's writer
         branch is that of visit 1)."""
         held = mapping.item_in_hand(state)
         if held is not None:  # an item of a writing map or a slot of a writing contest: its child is its slot's
@@ -253,7 +253,7 @@ class EngineNodes:
     def _merge_items(self, unit: str, state: Mapping[str, Any], ids: Sequence[str], visit: int = 1
                      ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
         """WSP-B11, WSP-B12: the same merge for the items of a writing concurrent map, in the order of the list; only the
-        children cut for `visit` are merged (MAP-B16)."""
+        children cut for `visit` are merged (WSP-B22)."""
         return self._merge_children(state, [(mapping.slot(unit, i), i, f"Merge map item {i} of {unit}") for i in ids],
                                     visit)
 
@@ -722,7 +722,7 @@ class EngineNodes:
         run = {"path": {"units": path_units + [unit]}} if unit not in path_units else {}
         m = mapping.record(state, unit)
         writes: dict[str, Any] = {}
-        attempt = int(prev.get("attempt", 0)) + 1  # the unit's attempt in hand: a slot's worktree is cut for it (CTS-B11)
+        attempt = int(prev.get("attempt", 0)) + 1  # the unit's attempt in hand: a slot's worktree is cut for it (WSP-B20)
         if m.get("visit") != visit:  # a new visit: every slot runs, nothing of an earlier visit stands
             if prev.get("visit") != visit:
                 fp = gitmod.fingerprint(workdir)
@@ -735,7 +735,7 @@ class EngineNodes:
         else:  # a retry of this visit (CTS-B8)
             running = contestmod.retry_slots(names, m.get("single"))  # `best` after a retry: one step (CTS-B8, CTS-B4)
             writes["maps"] = {unit: {"attempt": attempt}}
-        if flow.writer_contest(spec, unit):  # WSP-B19, WSP-B11, CTS-B11: the checkpoint, then a worktree per slot run
+        if flow.writer_contest(spec, unit):  # WSP-B19, WSP-B11, WSP-B20: the checkpoint, then a worktree per slot run
             writes["workspace"] = self._enter_writer_contest(unit, state, running, attempt)
         self._boundary(state)
         start = fold(dict(state), writes)
@@ -770,7 +770,7 @@ class EngineNodes:
 
     def _enter_writer_contest(self, unit: str, state: Mapping[str, Any], names: Sequence[str], attempt: int = 1
                               ) -> dict[str, Any]:
-        """WSP-B19, WSP-B11, CTS-B11: an attempt of a writing contest commits the run worktree's uncommitted changes on the
+        """WSP-B19, WSP-B11, WSP-B20: an attempt of a writing contest commits the run worktree's uncommitted changes on the
         run's branch, then cuts one worktree and branch per slot it runs (`names`) from that commit, named by the attempt
         (`--s-<slot>` for the first, `--s<attempt>-<slot>` after); the worktrees of earlier attempts are left as they are.
         A cut that fails ends the segment at this boundary (engine_error `workspace_refused`) with nothing left behind."""
@@ -879,7 +879,7 @@ class EngineNodes:
                               for p in found.get("conflicts") or []] or [
                               {"criterion": "writer-branches",
                                "problem": str(found.get("merge_error") or "the merge failed")}]}
-            else:  # the attempt's other slots' worktrees are discarded and their records kept; earlier attempts stand (CTS-B12)
+            else:  # the attempt's other slots' worktrees are discarded and their records kept; earlier attempts stand (WSP-B21)
                 won = mapping.slot(unit, winner.slot)
                 merged["children"] = [{**ch, "state": "discarded"} if str(ch.get("unit")).startswith(f"{unit}.")
                                       and ch.get("unit") != won and int(ch.get("visit", 1)) == attempt else ch
@@ -1000,7 +1000,7 @@ class EngineNodes:
     def _enter_writer_map(self, unit: str, state: Mapping[str, Any], ids: Sequence[str], visit: int = 1
                           ) -> dict[str, Any]:
         """WSP-B19, WSP-B11: entering a writing concurrent map commits the run worktree's uncommitted changes on the run's
-        branch, then cuts one worktree per item from that commit, named for the map's `visit` (MAP-B14); the worktrees
+        branch, then cuts one worktree per item from that commit, named for the map's `visit` (WSP-B20); the worktrees
         of earlier visits stay. A cut that fails ends the segment at this boundary (engine_error `workspace_refused`)
         with nothing left behind."""
         ws = dict(state.get("workspace") or {})
