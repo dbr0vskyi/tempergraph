@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "phase",
+  "visit": 1,
+  "attempt": 2,
+  "blockers": [
+    {
+      "criterion": "ts-phs-scope",
+      "evidence": "PARTIAL: Row files: tests/test_session_record_checks.py (2.1-2.5), workflow/temperspec/checks.py (2.6, 2.7), outcome.json (2.8), plan. Engine files belong to phase 1. Specs, i148.triage.md and i148.handoff.md are named by no phase 2 row and appear to come from earlier steps, but the evidence lists changes since the run's base and I could not attribute them to a step.",
+      "fix": "Confirm these paths were changed by earlier steps (the second list the task is adding)"
+    }
+  ]
+}
