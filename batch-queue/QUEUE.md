@@ -28,8 +28,9 @@ In a cloud session: `cd plugins/tempergraph/engine && python -m pip install -e '
 
 1. Exit 0: `git merge --no-ff tg/temperspec/<id>` into the batch branch, run the suite, ruff and mypy from `plugins/tempergraph/engine/`, push.
 2. Update the local engine and workflow from the batch branch: `plugins/tempergraph/bin/tempergraph update --json`, then `tempergraph workflows register plugins/temperspec-tgraph`.
-3. Post the `result` comment on the issue (cost, outcome), update the table and `state.json` here, add what the run showed to `observations.md`, commit and push.
-4. Exit 3 (pause): answer what the local docs answer; a low-confidence owner decision goes to the owner as a `question` comment and the run continues on its default.
+3. When all work for the run is done (reviewed, any rerun merged, the branch an ancestor of the batch branch), remove its worktree: `tempergraph worktree prune --thread <thread> --apply --as-agent` (the owner, 2026-11-25). The branch stays.
+4. Post the `result` comment on the issue (cost, outcome), update the table and `state.json` here, add what the run showed to `observations.md`, commit and push.
+5. Exit 3 (pause): answer what the local docs answer; a low-confidence owner decision goes to the owner as a `question` comment and the run continues on its default.
 
 ## Built by hand
 

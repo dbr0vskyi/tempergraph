@@ -78,6 +78,11 @@ Cost by session (reported USD): triage 1.02 + judge 0.08; three `read_gap` 0.56 
 - **After a trip back, `expand` spent its whole retry budget on `ts-exp-opened`.** The check counts only the files the current session opened. Each retry was a fresh session that opened the files the last finding named and not the rest, so the finding moved from one file to another three times, and the run paused on `retry_budget` with one file left. Remedies: count the files opened over all sessions of the visit, or name every missing file in one finding (the evidence was cut after the second), or let the retry prompt say that every row's file must be opened again.
 - The trip back also met `ts-plan-form` once: rows marked earlier whose file "changed after its marking commit", because a later phase had touched the same file.
 
+### Worktree cleanup (2026-11-25)
+
+- Finished runs keep their worktree: `run.worktree.cleanup` is `never` unless set, and the spec's open question (should `on_finish` be the default) waits on a live removal. `worktree prune --thread <t> --apply` removed the four finished and merged worktrees (i7, i71, i141, i141~r1) on its first live use here; each was clean and unlocked, the branches stayed.
+- `on_finish` removes at the run's exit, which is before a review of the diff and before a rerun; what the owner asked for is removal when the run's work is merged. A cleanup value such as `on_merge` (the branch is an ancestor of its base branch) would say that.
+
 ### Baseline suite on `main` (2026-11-25, Python 3.12, macOS)
 
 - 2944 passed, 19 skipped, 1 failed in 14 min 20 s on four workers. The failure is `test_a_run_on_workers_leaves_the_real_folders_as_they_were` (TST-AC7): it compares the real `~/.tempergraph` and the real state root before and after a nested run, and the engine update and two live runs wrote there meanwhile. It is skipped only for a suite a step session runs (`TEMPERGRAPH_SESSION_KEY`). **A gate that runs the suite itself gets no such variable**, so a code gate that has to run `python -m pytest` again (the tree changed after the session's preview) fails this test while its own run writes its log, and so does any suite a person runs beside a live run.
