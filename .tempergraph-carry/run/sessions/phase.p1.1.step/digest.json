@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "session_key": "phase.p1.1.step",
+  "kind": "step",
+  "unit": "phase",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 72,
+  "peak_context": 86569,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": 61739,
+  "files_reread": 4,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 11,
+      "failures": 1,
+      "refused": 0,
+      "duration_s": 0.348
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 9,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.32
+    },
+    "Bash": {
+      "capability": "shell",
+      "calls": 9,
+      "failures": 4,
+      "refused": 2,
+      "duration_s": 156.731
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 23,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.24
+    }
+  },
+  "declared_unused": [
+    "list",
+    "write"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [
+    {
+      "tool": "Edit",
+      "target": "3fc8a8c9065ac383",
+      "error_class": null,
+      "count": 4,
+      "first_turn": 25,
+      "last_turn": 28
+    },
+    {
+      "tool": "Edit",
+      "target": "3fc8a8c9065ac383",
+      "error_class": null,
+      "count": 4,
+      "first_turn": 51,
+      "last_turn": 54
+    },
+    {
+      "tool": "Edit",
+      "target": "5b7b68cf8846a73d",
+      "error_class": null,
+      "count": 7,
+      "first_turn": 65,
+      "last_turn": 71
+    }
+  ],
+  "idle_spans": [],
+  "shell_for_files": 1,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [
+    "4af473b824c974d7",
+    "59d5094d73c2cd0f",
+    "61b22558a7ba141e",
+    "abc6855958c15ba1",
+    "ce03eeae1cdc524f",
+    "ebf6f1fb7c421494",
+    "efacb3658813c20b"
+  ],
+  "_wrote": [
+    "0be576cddf2a7a6a",
+    "2ab1ce64c8278eed",
+    "4bf878f44c2ad463",
+    "5b3bace928fbe1cb",
+    "6fa3ae5054402faa",
+    "9013150a948d6226"
+  ]
+}
