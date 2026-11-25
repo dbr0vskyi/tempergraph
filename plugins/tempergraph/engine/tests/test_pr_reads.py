@@ -1,4 +1,4 @@
-"""PRP-AC11, AC 2: the code host clients read a pull request's reviews, comments and commits, read-only."""
+"""OUT-AC8, OUT-AC9, AC 2:the code host clients read a pull request's reviews, comments and commits, read-only."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ def _gh_with(answers: dict[str, str], seen: list[list[str]]) -> GhCodeHost:
     return host
 
 
-def test_prp_ac11_reviews_are_one_constant_get_with_state_and_author_kind() -> None:
+def test_out_ac8_out_ac9_reviews_are_one_constant_get_with_state_and_author_kind() -> None:
     seen: list[list[str]] = []
     raw = [
         {"state": "CHANGES_REQUESTED", "body": "fix it", "author_association": "OWNER",
@@ -53,7 +53,7 @@ def test_prp_ac11_reviews_are_one_constant_get_with_state_and_author_kind() -> N
     assert not any(a in ("POST", "PATCH", "PUT", "DELETE", "--input") for a in seen[0])
 
 
-def test_prp_ac11_review_comments_are_one_constant_get() -> None:
+def test_out_ac8_out_ac9_review_comments_are_one_constant_get() -> None:
     seen: list[list[str]] = []
     raw = [{"body": "nit", "path": "a.py", "author_association": "COLLABORATOR",
             "user": {"login": "ann", "type": "User"}},
@@ -65,7 +65,7 @@ def test_prp_ac11_review_comments_are_one_constant_get() -> None:
     assert "repos/acme/notes/pulls/7/comments" in seen[0]
 
 
-def test_prp_ac11_commits_hold_author_kind_and_changed_files() -> None:
+def test_out_ac8_out_ac9_out_ac11_commits_hold_author_kind_and_changed_files() -> None:
     # OUT-AC11: files are asked only for the commits after `after`
     seen: list[list[str]] = []
     other = "b" * 40
@@ -82,7 +82,7 @@ def test_prp_ac11_commits_hold_author_kind_and_changed_files() -> None:
     assert len(seen) == 2  # the list, and the one commit after `after`
 
 
-def test_prp_ac11_the_repository_and_the_sha_are_checked() -> None:
+def test_out_ac8_the_repository_and_the_sha_are_checked() -> None:
     seen: list[list[str]] = []
     host = _gh_with({"/commits": _lines([{"sha": "x; rm -rf", "author": None}])}, seen)
     for call in (lambda: host.pull_reviews("not a repo", 1), lambda: host.pull_comments("a/b/c", 1),
@@ -95,7 +95,7 @@ def test_prp_ac11_the_repository_and_the_sha_are_checked() -> None:
         host2.pull_commits("acme/notes", 1)
 
 
-def test_prp_ac11_a_missing_gh_and_an_unknown_shape_raise_code_host_error(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_out_ac8_a_missing_gh_and_an_unknown_shape_raise_code_host_error(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(codehost.shutil, "which", lambda _name: None)
     for call in (GhCodeHost().pull_reviews, GhCodeHost().pull_comments, GhCodeHost().pull_commits):
         with pytest.raises(CodeHostError):
@@ -108,7 +108,7 @@ def test_prp_ac11_a_missing_gh_and_an_unknown_shape_raise_code_host_error(monkey
         host.pull_comments("acme/notes", 1)
 
 
-def test_prp_ac11_the_memory_client_answers_from_its_lists_and_fails_when_down() -> None:
+def test_out_ac8_out_ac11_the_memory_client_answers_from_its_lists_and_fails_when_down() -> None:
     # OUT-AC11: the memory host records the shas whose files were asked
     review = {"state": "changes_requested", "author_kind": "person", "text": "t"}
     comment = {"author_kind": "person", "text": "c"}
