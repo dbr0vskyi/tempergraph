@@ -36,9 +36,8 @@ def test_docs_artifacts_are_named_by_a_slug() -> None:
             stem = p.name.split(".", 1)[0]
             if p.name == "README.md":
                 continue
-            if len(p.name) > 80 or not re.fullmatch(r"[A-Za-z0-9]+(-[a-z0-9]+)*", stem):
-                bad.append(p.name)
-            elif folder == "specs" and re.match(r"\d", stem):
+            numbered_spec = folder == "specs" and re.match(r"\d", stem) is not None
+            if len(p.name) > 80 or not re.fullmatch(r"[A-Za-z0-9]+(-[a-z0-9]+)*", stem) or numbered_spec:
                 bad.append(p.name)
     assert bad == []
 
