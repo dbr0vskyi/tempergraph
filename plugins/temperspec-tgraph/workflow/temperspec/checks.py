@@ -1393,9 +1393,20 @@ def _at_base(ctx: Any, path: str) -> str | None:
     return _at_ref(ctx, ctx.git.base, path)
 
 
+def _holds(ctx: Any, ref: str) -> bool:
+    """True when the run's branch already holds the commit (the run merged the base branch's head, SBS-B2)."""
+    run = ctx.run(f"git log --oneline -1 {ref} --not HEAD")
+    if run.not_started or run.exit_code != 0:
+        return False
+    try:
+        return not Path(run.output_path).read_text(encoding="utf-8", errors="replace").strip()
+    except OSError:
+        return False
+
+
 def _fresh(ctx: Any, specs: list[str]) -> list[CheckFinding]:
     """ts-spec-fresh (SBS-B1 to SBS-B3): no spec the run edited reads differently at the base branch's head than at
-    the run's base commit, when the head holds commits the base commit lacks."""
+    the run's base commit, when the head holds commits that neither the base commit nor the run's branch holds."""
     base, head = ctx.git.base, ctx.git.base_head
     if not base or not head:
         return [_find("n_a", "ts-spec-fresh", message="the run has no base branch to compare with")]
@@ -1409,7 +1420,7 @@ def _fresh(ctx: Any, specs: list[str]) -> list[CheckFinding]:
         moved = bool(Path(run.output_path).read_text(encoding="utf-8", errors="replace").strip())
     except OSError:
         moved = False
-    if not moved:
+    if not moved or _holds(ctx, head):
         return [_ok("ts-spec-fresh")]
     found = [_find("fail", "ts-spec-fresh", path,
                    "the base branch changed this spec since the run started (it reads differently at its head than "

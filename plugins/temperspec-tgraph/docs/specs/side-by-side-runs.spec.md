@@ -17,12 +17,13 @@ WHEN the base branch's head holds commits that the run's base commit lacks and a
 
 ### SBS-B2 A spec the base branch has not changed passes
 
-WHEN a spec the run edited reads the same at the base branch's head as at the run's base commit, or the base branch's head holds no commit that the run's base commit lacks, THE outcome check SHALL pass `ts-spec-fresh` for that spec.
+WHEN a spec the run edited reads the same at the base branch's head as at the run's base commit, or the base branch's head holds no commit that the run's base commit lacks, or the run's branch already holds the base branch's head (the run merged it and settled the spec itself), THE outcome check SHALL pass `ts-spec-fresh` for that spec.
 
 - GIVEN a spec the run edited and a base branch that has not moved since the run started WHEN the outcome check runs THEN `ts-spec-fresh` passes
 - GIVEN a base branch that has gained commits changing other files only WHEN the outcome check runs THEN `ts-spec-fresh` passes for the spec
 - GIVEN a base branch whose head is behind the run's base commit and holds an older text of the spec WHEN the outcome check runs THEN `ts-spec-fresh` passes for the spec
 - GIVEN a base branch that changed the spec and later restored its text WHEN the outcome check runs THEN `ts-spec-fresh` passes for the spec
+- GIVEN a base branch that changed the spec and a run that then merged the base branch's head into its own branch WHEN the outcome check runs THEN `ts-spec-fresh` passes for the spec
 
 ### SBS-B3 Nothing to compare is not applicable
 
@@ -37,3 +38,4 @@ WHEN the run has no base branch to compare with, or has edited no spec, THE outc
 - SBS-AC2 (SBS-B1): With two specs edited and only one changed on `main`, only that spec is named; a spec the run created at a path where `main` has since added one, and a spec `main` has since deleted, are each named
 - SBS-AC3 (SBS-B2): `ts-spec-fresh` passes for an edited spec when `main` has not moved, when `main` has gained commits that changed other files only, when the head of `main` is behind the run's base commit, and when `main` changed the spec and restored it
 - SBS-AC4 (SBS-B3): A run with no base branch and a run that edited no spec are each reported not applicable with their reason, and neither fails the outcome check
+- SBS-AC5 (SBS-B2): When `main` changed an edited spec and the run's branch then merged the head of `main`, `ts-spec-fresh` passes for that spec
