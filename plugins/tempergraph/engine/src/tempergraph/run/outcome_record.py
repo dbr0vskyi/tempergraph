@@ -132,6 +132,62 @@ def _latest(rows: Iterable[Mapping[str, Any]], workflow: str) -> dict[str, dict[
     return out
 
 
+def later_entries(rows: Iterable[Mapping[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    """The `later[]` entries a pull request read appended (`outcome_later` rows), joined to their thread (OUT-B24)."""
+    out: dict[str, list[dict[str, Any]]] = {}
+    for r in rows:
+        if r.get("kind") == "outcome_later" and isinstance(r.get("entry"), Mapping):
+            out.setdefault(str(r.get("thread_id")), []).append(dict(r["entry"]))
+    return out
+
+
+def _signals(entries: Iterable[Mapping[str, Any]]) -> list[str]:
+    found: list[str] = []
+    for e in entries:
+        if int((e.get("reviews") or {}).get("changes_requested") or 0) and "changes_requested" not in found:
+            found.append("changes_requested")
+        if int(e.get("files") or 0) and "follow_up_commit" not in found:
+            found.append("follow_up_commit")
+    return found
+
+
+def escape_threads(latest: Mapping[str, Mapping[str, Any]], rows: Iterable[Mapping[str, Any]],
+                   reruns: set[str]) -> set[str]:
+    """OUT-B19, OUT-B26: the threads of `latest` (keyed like `_latest`, each holding its `outcome`) that are escapes: a
+    `met` or `met_with_open` run that was rerun, or a `met` run whose `later[]` holds a `changes_requested` review or a
+    follow-up commit that changed a file the run wrote. The one escape function."""
+    entries = later_entries(rows)
+    out: set[str] = set()
+    for t, r in latest.items():
+        base = t.partition("#")[0]
+        verdict_ = (r.get("outcome") or {}).get("verdict")
+        rerun = verdict_ in ("met", "met_with_open") and base in reruns
+        if rerun or (verdict_ == "met" and _signals(entries.get(base, ()))):
+            out.add(t)
+    return out
+
+
+def escape_records(spec: WorkflowSpec, ledger: Path) -> list[dict[str, Any]]:
+    """For harvest: each escape's thread, recorded pull request, last `later[]` entry, entry count and signals."""
+    rows = _jsonl(ledger)
+    latest = _latest(rows, spec.name)
+    reruns = {str(r.get("thread_id")) for r in rows if r.get("kind") == "intervention" and r.get("cause") == "rerun"}
+    entries = later_entries(rows)
+    pulls = {str(r.get("thread_id")): r["pull_request"] for r in rows
+             if r.get("kind") == "run_segment" and r.get("workflow") == spec.name
+             and isinstance(r.get("pull_request"), Mapping)}
+    out: list[dict[str, Any]] = []
+    for t in sorted(escape_threads(latest, rows, reruns)):
+        base = t.partition("#")[0]
+        ents = entries.get(base, [])
+        signals = _signals(ents)
+        if base in reruns:
+            signals.insert(0, "rerun")
+        out.append({"thread": t, "pull_request": dict(pulls.get(base) or {}), "entry": ents[-1] if ents else None,
+                    "entries": len(ents), "signals": signals})
+    return out
+
+
 def measures(spec: WorkflowSpec, ledger: Path, since: str | None = None) -> dict[str, Any]:
     """OUT-B18, OUT-B19 measures, uncorrected, per revision; a revision is never pooled with another (OUT-B7)."""
     rows = _jsonl(ledger)
@@ -139,6 +195,7 @@ def measures(spec: WorkflowSpec, ledger: Path, since: str | None = None) -> dict
         rows = [r for r in rows if str(r.get("ts", "")) >= since]
     latest = _latest(rows, spec.name)
     reruns = {str(r.get("thread_id")) for r in rows if r.get("kind") == "intervention" and r.get("cause") == "rerun"}
+    escaped = escape_threads(latest, rows, reruns)
     waits: dict[str, list[float]] = {}
     for r in rows:
         if (r.get("kind") == "intervention" and r.get("unit") == flow.OUTCOME_UNIT and r.get("wait_s") is not None
@@ -157,7 +214,7 @@ def measures(spec: WorkflowSpec, ledger: Path, since: str | None = None) -> dict
     for rev, runs in sorted(by_rev.items()):
         graded = [(t, o) for t, o in runs if o.get("verdict") != "not_reached"]
         met = [(t, o) for t, o in graded if o.get("verdict") in ("met", "met_with_open")]
-        escapes = [t for t, _ in met if t.partition("#")[0] in reruns]
+        escapes = [t for t, _ in met if t in escaped]
         not_verified = [t for t, o in graded if any(c.get("status") == "not_verified" for c in o.get("criteria", []))]
         weak = sorted({c["id"] for _, o in graded for c in o.get("criteria", [])
                        if c.get("severity") == "blocker" and c.get("trust") in ("unverified", "uncalibrated")})
@@ -209,8 +266,8 @@ def candidates(spec: WorkflowSpec, ledger: Path, since: str | None = None) -> di
     for unit, ts in sorted(rulings.items()):
         if len(ts) >= 3:
             add("recurring_ruling", ts, unit=unit)
-    esc = [t for t, o in graded.items() if o.get("verdict") in ("met", "met_with_open")
-           and t.partition("#")[0] in reruns]
+    escaped = escape_threads(latest, rows, reruns)
+    esc = [t for t in graded if t in escaped]
     if esc:
         add("escape", esc)
     final = spec.outcome.final if spec.outcome else ()
