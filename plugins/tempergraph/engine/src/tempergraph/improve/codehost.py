@@ -36,6 +36,7 @@ class PullRequestHost(Protocol):
 
     def default_branch(self, repo: str) -> str: ...
     def create_draft_pr(self, repo: str, head: str, base: str, title: str, body: str, labels: list[str]) -> str: ...
+    def pull_state(self, repo: str, number: int) -> dict[str, Any]: ...
 
 
 BRANCH = re.compile(r"^(improve/[A-Za-z0-9_.-]{1,80}|tempergraph/upgrade/[A-Za-z0-9_.-]{1,80}/[A-Za-z0-9_.-]{1,40})$")
@@ -118,6 +119,26 @@ class GhCodeHost:
                          {"labels": labels})
         return str((got or {}).get("html_url") or "")
 
+    def pull_state(self, repo: str, number: int) -> dict[str, Any]:
+        """PRP-B26: one read-only GET of the pull request: `open`, `merged` or `closed` (without a merge), and the
+        merge time the host reports."""
+        got = self._read_pull(repo, number)
+        if not isinstance(got, dict):
+            raise CodeHostError("the pull request answer has no known shape")
+        merged_at = got.get("merged_at")
+        if got.get("merged") is True or (merged_at and got.get("state") == "closed"):
+            return {"state": "merged", "merged_at": str(merged_at) if merged_at else None}
+        state = got.get("state")
+        if state not in ("open", "closed"):
+            raise CodeHostError("the pull request answer has no known state")
+        return {"state": str(state), "merged_at": None}
+
+    def _read_pull(self, repo: str, number: int) -> Any:
+        try:
+            return self._gh(["api", f"repos/{_check(repo)}/pulls/{int(number)}"])
+        except ValueError:
+            raise CodeHostError("the pull request answer is not JSON") from None
+
 
 @dataclass(kw_only=True)
 class MemoryCodeHost:
@@ -169,6 +190,8 @@ class MemoryCodeHost:
         return f"https://example.test/{repo}/issues/{number}#c{len(self.comments)}"
 
     def reopen(self, repo: str, number: int) -> None:
+        if self.down:
+            raise CodeHostError("unreachable")
         for i in self.issues:
             if i["repo"] == repo and i["number"] == number:
                 i.update(state="open", state_reason=None, closed_at=None)
@@ -185,3 +208,11 @@ class MemoryCodeHost:
         self.pulls.append({"repo": _check(repo), "number": n, "head": _check_branch(head), "base": base,
                            "title": title, "body": body, "labels": labels, "draft": True, "state": "open"})
         return f"https://example.test/{repo}/pull/{n}"
+
+    def pull_state(self, repo: str, number: int) -> dict[str, Any]:
+        if self.down:
+            raise CodeHostError("unreachable")
+        for p in self.pulls:
+            if p["repo"] == repo and p["number"] == number:
+                return {"state": p["state"], "merged_at": p.get("merged_at")}
+        raise CodeHostError("no such pull request")

@@ -433,7 +433,7 @@
     "at": "2026-11-21T10:33:48.312Z"
   },
   "verify": {
-    "at": "2026-11-24T12:57:04.036Z",
+    "at": "2026-11-25T00:19:04.865Z",
     "ok": true,
     "rungs": {
       "load": "passed",
@@ -443,8 +443,8 @@
       "coverage": "passed",
       "audit": "passed",
       "register": "passed",
-      "judge_seeds": "passed",
-      "trial": "passed",
+      "judge_seeds": "skipped",
+      "trial": "skipped",
       "stamp": "passed"
     }
   },

@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +21,7 @@ from . import specfmt, summary
 PACKAGE = Path(__file__).resolve().parents[2]
 RULES = "rules"
 REPO_RULES = Path(".claude") / "rules" / "temperspec"
-COMMIT_TYPE = {"code": "feat"}
+COMMIT_TYPE = {"code": "feat", "phase": "feat"}
 CONTEXT_FILES = ("CLAUDE.md", "AGENTS.md")
 SKIP_DIRS = {".git", ".tempergraph", ".claude", "node_modules", ".venv", "venv", "evals", "fixtures"}
 DEFAULT_SPECS = "docs/specs/"
@@ -77,6 +78,65 @@ def gap_items(ctx: Any) -> list[dict[str, str]]:
         if number is not None and number.group(0) not in items:
             items[number.group(0)] = row.strip()
     return [{"id": gid, "text": text} for gid, text in items.items()] if len(items) >= 2 else []
+
+
+@dataclass(frozen=True)
+class PhaseBlock:
+    """One phase of a plan: the item id the map `phase` gives it, its heading (as the plan's rows name it as their
+    phase), its goal and its weight."""
+
+    id: str
+    heading: str
+    goal: str
+    weight: str
+
+
+def phase_blocks(text: str) -> list[PhaseBlock]:
+    """The phases of a plan in plan order, each with the id `p<n>` of the number of its `Phase <n>` heading (PHC-B1). A
+    heading with no number, or with a number an earlier phase already took, gets `p<position>` instead, made unique,
+    so that no id repeats and the list is never shorter than the phases (MAP-B8)."""
+    heads = specfmt.parse_plan(text).phases
+    goals: dict[str, tuple[str, str]] = {}
+    section, current = "", ""
+    for line in text.splitlines():
+        found = specfmt.HEADING.match(line)
+        if found and len(found.group(1)) == 2:
+            section, current = found.group(2).strip().lower(), ""
+        elif found and len(found.group(1)) == 3 and section.startswith("2."):
+            current = found.group(2).strip()
+            goals.setdefault(current, ("", ""))
+        elif current and (m := re.match(r"^\s*[-*]?\s*\**(Goal|Weight)\**\s*:\s*(.*)$", line, re.I)):
+            goal, weight = goals[current]
+            goals[current] = (m.group(2).strip(), weight) if m.group(1).lower() == "goal" else (
+                goal, m.group(2).strip())
+    out: list[PhaseBlock] = []
+    used: set[str] = set()
+    for position, heading in enumerate(heads, start=1):
+        number = re.match(r"\s*Phase\s+(\d+)", heading, re.I)
+        pid = f"p{number.group(1)}" if number else f"p{position}"
+        if pid in used:
+            pid = f"p{position}"
+        tail = 1
+        while pid in used:
+            tail += 1
+            pid = f"p{position}-{tail}"
+        used.add(pid)
+        goal, weight = goals.get(heading, ("", ""))
+        out.append(PhaseBlock(id=pid, heading=heading, goal=goal, weight=weight))
+    return out
+
+
+def phase_items(ctx: Any) -> list[dict[str, str]]:
+    """The items of the map `phase`: one for each phase of the expanded plan at `ctx.artifact`, in plan order, with the
+    id `p<n>` of its heading's number and as text its heading, goal and weight with the plan's path (PHC-B1, PHC-B2).
+    The path of the triage note is not known to an extractor; the prompt carries it."""
+    plan = Path(ctx.artifact)
+    try:
+        shown = plan.resolve().relative_to(Path(ctx.workdir).resolve()).as_posix()
+    except ValueError:
+        shown = str(plan)
+    blocks = phase_blocks(plan.read_text(encoding="utf-8", errors="replace"))
+    return [{"id": b.id, "text": f"{b.heading}\nGoal: {b.goal}\nWeight: {b.weight}\nPlan: `{shown}`"} for b in blocks]
 
 
 NOT_COMPONENTS = {"node_modules", ".venv", "venv", "vendor", "dist", "build", "target", "out", "__pycache__", "docs"}

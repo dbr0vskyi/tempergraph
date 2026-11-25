@@ -173,6 +173,9 @@ class Outbox:
 def _deliver(host: CodeHost, p: Mapping[str, Any]) -> str:
     if p["op"] == "comment":
         return host.comment(p["repo"], int(p["number"]), p["body"])
+    if p["op"] == "reopen":  # PRP-B29: a regression's reopen the host could not take
+        host.reopen(p["repo"], int(p["number"]))
+        return ""
     return host.create(p["repo"], p["title"], p["body"], list(p.get("labels") or []))
 
 

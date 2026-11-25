@@ -267,6 +267,32 @@
       }
     },
     {
+      "name": "phase",
+      "kind": "map",
+      "summary": "Build one phase of the plan, tests first, and commit it",
+      "produces": [
+        "phase_note"
+      ],
+      "reads": [
+        "plan",
+        "triage_note"
+      ],
+      "gate": {
+        "check": true,
+        "judge": true
+      },
+      "sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "One phase of rows with the tests named; the check reads the rows and the judge the change"
+      },
+      "judge_sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "It reads the rows of one phase against the files they name, and the check has read the marks"
+      }
+    },
+    {
       "name": "code",
       "kind": "step",
       "summary": "Build the plan test first in one session",
@@ -276,7 +302,8 @@
       ],
       "reads": [
         "triage_note",
-        "plan"
+        "plan",
+        "phase_note"
       ],
       "gate": {
         "check": true,
@@ -346,6 +373,11 @@
         "plan",
         "finalizer"
       ]
+    },
+    "phase": {
+      "map": {
+        "over": "expand.phases"
+      }
     },
     "code_mode": {
       "switch": {
