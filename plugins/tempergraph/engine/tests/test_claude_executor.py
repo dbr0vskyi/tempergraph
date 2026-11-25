@@ -459,6 +459,7 @@ def _step_with_operator(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, servers
 
 def test_ecc_ac14_a_step_and_a_retry_get_a_private_config_of_the_declared_servers(
         tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # ECC-AC14 (with ECC-AC12 through run_step)
     tracker = {"command": "tracker-mcp", "args": ["-q"], "env": {"K": "v"}}
     servers = {"tracker": tracker, "mailer": {"command": "mail-mcp"}}
     results, recs, seen_cfg, scratch = _step_with_operator(
@@ -475,6 +476,7 @@ def test_ecc_ac14_a_step_and_a_retry_get_a_private_config_of_the_declared_server
 
 
 def test_ecc_ac14_a_step_without_an_mcp_tool_gets_no_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # ECC-AC14
     results, recs, seen_cfg, scratch = _step_with_operator(
         tmp_path, monkeypatch, {"tracker": {"command": "t"}}, tools=("read",))
     for rec in recs:

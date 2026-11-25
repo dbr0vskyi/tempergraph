@@ -136,12 +136,14 @@ def test_ecc_ac7_private_config_is_owner_only_and_removed_on_every_exit(tmp_path
 
 
 def test_ecc_ac14_declared_servers_group_the_mcp_capabilities() -> None:
+    # ECC-AC14
     declared = mcpconfig.declared_servers(("read", "mcp:tracker/get_issue", "mcp:wiki/get_page",
                                            "mcp:tracker/get_comments", "mcp:broken", "mcp:/x"))
     assert declared == {"tracker": ("get_issue", "get_comments"), "wiki": ("get_page",)}
 
 
 def test_ecc_ac14_direct_private_config_holds_declared_servers_as_defined(tmp_path: Path) -> None:
+    # ECC-AC14
     base = tmp_path / "scratch"
     base.mkdir()
     operator = {
