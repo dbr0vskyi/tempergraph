@@ -105,7 +105,9 @@ def _carried_run_file(rel: PurePosixPath) -> bool:
         return False
     if parts[0] == "sessions":
         return len(parts) == 3 and parts[2] in SESSION_KEPT
-    return not (len(parts) >= 2 and parts[0] == "evidence" and parts[1] == "prompts")
+    if len(parts) >= 2 and parts[0] == "evidence":
+        return parts[1] != "prompts" and parts[1:] != ("pull_request.jsonl",)  # prompts and review text stay local
+    return True
 
 
 def _scrubbed(data: bytes, rel: str, hits: dict[str, int]) -> bytes:
