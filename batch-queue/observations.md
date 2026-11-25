@@ -12,7 +12,13 @@ One entry per thing seen, with the run or command that showed it. An entry that 
 
 ## Runs
 
-(filled as runs end)
+### i71, first start (2026-11-25)
+
+- **Every run paused at `prepare` on Apple's git 2.39.5** (#139, fixed by hand on the batch branch, since no run could start without it). `git add -A -- . ":(exclude).tempergraph"` exits 1 there when `.tempergraph/` is ignored. The engine's checkpoint commit had the same words. The suite could not have caught it: CI and the cloud container run a newer git.
+- **A script unit's exception leaves no message anywhere.** The run log's `engine_error` record holds the exception's type only (`RuntimeError`, `run/nodes.py` `_run_script`), `logs --kind engine` says there is no engine log, and the pause shows `reason: environmental` with no detail. The commit step's own message (`git add: ...`) was lost; the cause was found by running the git words by hand. To file as an engine issue: a script callable's failure keeps a bounded, scrubbed detail in the local store and names it in the pause.
+- **The first `retry` of an environmental pause repeats the same failure at no cost but counts as a rescue touch** (`agent_decided:escalation` was recorded as a finding of side `workflow`). The retry was the diagnosis step, not a fault of the workflow.
+- **The update path worked on a paused thread.** After the fix, `plugins/tempergraph/bin/tempergraph update` reinstalled the engine (same version, other content), `workflows register` picked up the package's new content digest, and `resume --decision retry` carried the paused thread on with the new engine and package. Nothing was refused and nothing said the thread now runs on other code than it started with.
+- **`prepare` adds `tempergraph.commands.json` to every run's branch here**, because this repository has none. It arrives on the batch branch with the first merged run.
 
 ## Ideas for the improvement loop
 

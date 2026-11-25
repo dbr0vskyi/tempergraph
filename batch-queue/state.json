@@ -1,26 +1,239 @@
 {
   "schema_version": 1,
   "branch": "claude/issue-queue-2026-11-25",
-  "pull_request": null,
+  "pull_request": 138,
   "engine": "0.2.0",
   "updated": "2026-11-25",
   "items": [
-    {"order": 1, "task_id": "i71", "issues": [71, 51], "state": "queued", "thread": null, "branch": null, "cost_usd": null, "exit": null, "note": ""},
-    {"order": 2, "task_id": "i7", "issues": [7], "state": "queued", "thread": null, "branch": null, "cost_usd": null, "exit": null, "note": ""},
-    {"order": 3, "task_id": "i134a", "issues": [134], "state": "queued", "thread": null, "branch": null, "cost_usd": null, "exit": null, "note": ""},
-    {"order": 4, "task_id": "i134b", "issues": [134], "state": "queued", "thread": null, "branch": null, "cost_usd": null, "exit": null, "note": ""},
-    {"order": 5, "task_id": "i114", "issues": [114, 117], "state": "queued", "thread": null, "branch": null, "cost_usd": null, "exit": null, "note": ""},
-    {"order": 6, "task_id": "i123", "issues": [123], "state": "queued", "thread": null, "branch": null, "cost_usd": null, "exit": null, "note": ""},
-    {"order": 7, "task_id": "i62", "issues": [62], "state": "queued", "thread": null, "branch": null, "cost_usd": null, "exit": null, "note": ""},
-    {"order": 8, "task_id": "i103", "issues": [103], "state": "queued", "thread": null, "branch": null, "cost_usd": null, "exit": null, "note": ""},
-    {"order": 9, "task_id": "i130", "issues": [130], "state": "queued", "thread": null, "branch": null, "cost_usd": null, "exit": null, "note": ""},
-    {"order": 10, "task_id": "i104", "issues": [104], "state": "queued", "thread": null, "branch": null, "cost_usd": null, "exit": null, "note": ""},
-    {"order": 11, "task_id": "i32", "issues": [32], "state": "queued", "thread": null, "branch": null, "cost_usd": null, "exit": null, "note": ""},
-    {"order": 12, "task_id": "i76", "issues": [76], "state": "queued", "thread": null, "branch": null, "cost_usd": null, "exit": null, "note": ""},
-    {"order": 13, "task_id": "i136", "issues": [136], "state": "queued", "thread": null, "branch": null, "cost_usd": null, "exit": null, "note": ""},
-    {"order": 14, "task_id": "i135", "issues": [135], "state": "queued", "thread": null, "branch": null, "cost_usd": null, "exit": null, "note": ""},
-    {"order": 15, "task_id": "i22", "issues": [22], "state": "queued", "thread": null, "branch": null, "cost_usd": null, "exit": null, "note": ""},
-    {"order": 16, "task_id": "i10", "issues": [10], "state": "queued", "thread": null, "branch": null, "cost_usd": null, "exit": null, "note": ""},
-    {"order": 17, "task_id": "i14", "issues": [14], "state": "queued", "thread": null, "branch": null, "cost_usd": null, "exit": null, "note": ""}
+    {
+      "order": 1,
+      "task_id": "i71",
+      "issues": [
+        71,
+        51
+      ],
+      "state": "running",
+      "thread": "temperspec/i71",
+      "branch": "tg/temperspec/i71",
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 2,
+      "task_id": "i7",
+      "issues": [
+        7
+      ],
+      "state": "running",
+      "thread": "temperspec/i7",
+      "branch": "tg/temperspec/i7",
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 3,
+      "task_id": "i134a",
+      "issues": [
+        134
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 4,
+      "task_id": "i134b",
+      "issues": [
+        134
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 5,
+      "task_id": "i114",
+      "issues": [
+        114,
+        117
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 6,
+      "task_id": "i123",
+      "issues": [
+        123
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 7,
+      "task_id": "i62",
+      "issues": [
+        62
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 8,
+      "task_id": "i103",
+      "issues": [
+        103
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 9,
+      "task_id": "i130",
+      "issues": [
+        130
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 10,
+      "task_id": "i104",
+      "issues": [
+        104
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 11,
+      "task_id": "i32",
+      "issues": [
+        32
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 12,
+      "task_id": "i76",
+      "issues": [
+        76
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 13,
+      "task_id": "i136",
+      "issues": [
+        136
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 14,
+      "task_id": "i135",
+      "issues": [
+        135
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 15,
+      "task_id": "i22",
+      "issues": [
+        22
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 16,
+      "task_id": "i10",
+      "issues": [
+        10
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    },
+    {
+      "order": 17,
+      "task_id": "i14",
+      "issues": [
+        14
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": ""
+    }
+  ],
+  "by_hand": [
+    {
+      "issue": 139,
+      "what": "commit fails on git 2.39 when .tempergraph/ is ignored",
+      "commit": "19ac3d42"
+    }
   ]
 }
