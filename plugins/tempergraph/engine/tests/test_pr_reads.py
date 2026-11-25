@@ -66,6 +66,7 @@ def test_prp_ac11_review_comments_are_one_constant_get() -> None:
 
 
 def test_prp_ac11_commits_hold_author_kind_and_changed_files() -> None:
+    # OUT-AC11: files are asked only for the commits after `after`
     seen: list[list[str]] = []
     other = "b" * 40
     listing = [{"sha": SHA, "author": {"login": "ann", "type": "User"}, "parents": [{"sha": "1" * 40}]},
@@ -108,6 +109,7 @@ def test_prp_ac11_a_missing_gh_and_an_unknown_shape_raise_code_host_error(monkey
 
 
 def test_prp_ac11_the_memory_client_answers_from_its_lists_and_fails_when_down() -> None:
+    # OUT-AC11: the memory host records the shas whose files were asked
     review = {"state": "changes_requested", "author_kind": "person", "text": "t"}
     comment = {"author_kind": "person", "text": "c"}
     commit = {"sha": SHA, "author_kind": "person", "files": ["a.py"]}
