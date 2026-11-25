@@ -43,6 +43,13 @@ WHEN preflight reads an executor's version THE engine SHALL compare it with the 
 
 - GIVEN `claude` 2.1.330 and a table recording 2.1.329 only WHEN a run is preflighted THEN it warns `executor-version-untested`
 
+### LIF-B17 A confirmed version is a recorded version
+
+WHEN a live probe of an executor is recorded `confirmed` on a CLI version ([ECC-B13](executor-claude-code.spec.md)) THE executor compatibility table SHALL hold that version as recorded: in the executor's `recorded` versions and inside its `range`.
+
+- GIVEN a probe recorded `confirmed` on `claude` 2.1.332 WHEN a run is preflighted on `claude` 2.1.332 THEN it raises no `executor-version-untested` warning and `executors` shows the version as recorded
+- GIVEN the same table WHEN a run is preflighted on a `claude` version above its `range` THEN it warns `executor-version-untested`
+
 ### LIF-B11 Diagram model
 
 WHEN the diagram model is generated THE engine SHALL write versioned JSON with a digest generated from the spec and verified against the compiled graph, rendered by pure renderers.
@@ -119,3 +126,4 @@ WHEN `evals replay <workflow>` runs THE engine SHALL rerun each judged gate's ju
 - LIF-AC9 (LIF-B4): A package scenario finishes on the reference stand-in and names each executor without one
 - LIF-AC10 (LIF-B7, LIF-B8, LIF-B9): The installer stops without Python 3.11+, `update --json` prints one object per line, and reconcile never deletes an entry
 - LIF-AC11 (LIF-B15, LIF-B16): A score is recorded per judge binding, and a replay reports agreement and each changed status
+- LIF-AC12 (LIF-B17): The shipped compatibility table lists each version that its facts name as confirmed in that executor's `recorded` versions and inside its `range`, and preflight on that version raises no `executor-version-untested` warning
