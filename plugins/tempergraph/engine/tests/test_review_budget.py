@@ -66,11 +66,31 @@ def test_the_next_estimate_past_the_cap_skips_that_target_and_every_later_one(tm
     assert set(out["done"]).isdisjoint(skipped(out))  # a skipped target ranks below every target reviewed
 
 
-def test_a_first_view_priced_over_the_cap_skips_every_target(tmp_path: Path) -> None:  # SRV-AC9
+def test_a_cap_under_the_first_estimate_is_lifted_to_one_review(tmp_path: Path) -> None:
+    # SRV-AC19 (SRV-B33, SRV-B25); AC 1, AC 2
     build_run(tmp_path, "B-3", 3)
     ex = reviewer(0.01, 3)
-    out = review.run(run_ticket(tmp_path, "B-3", 0.04), registry(ex))  # a cap of 0.01 USD: the view costs more
-    assert out["done"] == [] and len(skipped(out)) == 3 and not ex.calls
+    out = review.run(run_ticket(tmp_path, "B-3", 0.04), registry(ex))  # the share gives a cap of 0.01 USD
+    cap = out["plan"]["cap_usd"]
+    keys = [t["session_key"] for t in out["plan"]["targets"]]
+    assert cap > 0.01 and round(cap, 4) == cap  # the first view's estimate, rounded up to 4 places
+    assert out["done"][:1] == keys[:1] and len(ex.calls) >= 1  # the most signalled session is reviewed
+    assert skipped(out) == keys[len(out["done"]):]  # every later target is decided by SRV-B25 under the lifted cap
+    assert set(out["done"]).isdisjoint(skipped(out))
+    log = [json.loads(ln) for ln in (run_dir(tmp_path, "demo", "B-3") / "loop.jsonl").read_text().splitlines()]
+    assert next(r for r in log if r["kind"] == "review_planned")["cap_usd"] == cap
+
+
+def test_a_cap_above_the_first_estimate_is_not_lifted(tmp_path: Path) -> None:  # SRV-AC19 (SRV-B33); AC 3
+    build_run(tmp_path, "B-7", 6)
+    t = run_ticket(tmp_path, "B-7", 4.0)  # a cap of 1.00 USD, far above one review
+    alone = review.plan_for(t)
+    assert alone["cap_usd"] == 1.0  # SRV-B21: the plan alone does not lift
+    out = review.run(t, registry(reviewer(0.25, 6)))
+    assert out["plan"]["cap_usd"] == 1.0
+    keys = [x["session_key"] for x in out["plan"]["targets"]]
+    assert keys == [x["session_key"] for x in alone["targets"]]
+    assert out["done"] == keys[:4] and skipped(out) == keys[4:]  # as the mid-plan fixture of SRV-AC9
 
 
 def test_the_estimate_is_the_mean_of_the_reports_once_one_has_reported(tmp_path: Path) -> None:  # SRV-AC9
@@ -105,7 +125,7 @@ def test_a_failed_review_counts_at_what_it_cost(tmp_path: Path) -> None:  # SRV-
 # -- stable mode: the caps of a `signals` plan (SRV-B21, SIL-B20) ---------------------------------------------
 
 
-def signal_run(root: Path, task: str, n: int, cost: float = 30.0) -> dict[str, Any]:
+def signal_run(root: Path, task: str, n: int, cost: float = 30.0, model: str | None = None) -> dict[str, Any]:
     """A stable fixture run of `n` units, each with a session that repeated one failing call and the finding for it."""
     from tempergraph.improve.record import append_findings
 
@@ -114,7 +134,7 @@ def signal_run(root: Path, task: str, n: int, cost: float = 30.0) -> dict[str, A
     for i in range(n):
         key = f"u{i}.1.step"
         session(root, task, key, [bash("make", ok=False, out="No such file")] * 4)
-        r = rec(key)
+        r = rec(key, **({"model": model} if model else {}))
         lines.append(json.dumps(r))
         d = digest.build(rd / "sessions" / key, r, {"tools": ["shell"]})
         (rd / "sessions" / key / "digest.json").write_text(json.dumps(d))
@@ -146,6 +166,27 @@ def test_the_stable_cap_is_the_lowest_of_the_share_the_run_cap_and_the_days_room
     loop_spent(tmp_path, 5.0)
     assert review.plan_for(t)["cap_usd"] == 0.0  # no room left
     assert review.plan({**t, "mode": "dev", "review": "full"}, [], room=0.1)["cap_usd"] == 5.0  # dev mode: no room
+
+
+def test_the_lift_of_a_stable_cap_stops_at_what_the_day_leaves(tmp_path: Path) -> None:
+    # SRV-AC20 (SRV-B33, SIL-B20); AC 1
+    model = "claude-sonnet-5-5"
+    t = signal_run(tmp_path, "C-4", 2, cost=0.01, model=model)  # the share gives a cap of 0.001 USD
+    assert review.plan_for(t)["cap_usd"] == 0.001
+    loop_spent(tmp_path, 49.995)  # the day leaves 0.005 USD
+    ex = reviewer(0.01, 2)
+    out = review.run(t, registry(ex), room=0.005)
+    assert out["plan"]["cap_usd"] == 0.005  # lifted to what the day leaves, not to the estimate above it
+    assert not ex.calls and out["done"] == []
+    assert len(skipped(out)) == len(out["plan"]["targets"]) == 2  # no review starts: all `skipped: budget`
+
+    t2 = signal_run(tmp_path, "C-5", 2, cost=0.01, model=model)
+    ex2 = reviewer(0.01, 2)
+    out2 = review.run(t2, registry(ex2), room=0.5)  # the day leaves more than one review
+    cap = out2["plan"]["cap_usd"]
+    assert 0.001 < cap <= 0.5 and round(cap, 4) == cap  # lifted to the estimate, below the day's room
+    keys = [x["session_key"] for x in out2["plan"]["targets"]]
+    assert out2["done"][:1] == keys[:1]
 
 
 def test_a_signals_plan_reads_at_most_three_sessions_and_skips_the_rest_in_order(tmp_path: Path) -> None:

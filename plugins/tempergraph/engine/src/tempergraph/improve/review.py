@@ -11,6 +11,7 @@ review evidence folder (SRV-AC4).
 from __future__ import annotations
 
 import json
+import math
 import re
 import secrets
 from collections.abc import Callable, Iterable, Mapping, Sequence
@@ -380,7 +381,7 @@ def plan(t: Mapping[str, Any], digests: Sequence[Mapping[str, Any]], *, reason: 
 def _cap(out: dict[str, Any], t: Mapping[str, Any], reason: str, room: float | None) -> None:
     """SRV-B21: the plan's `cap_usd` is the lowest of the run's share, the per-run cap and, in stable mode, the
     day's room under SIL's daily cap (SIL-B20), which the loop's other spending shares."""
-    mode = "dev" if str(t.get("mode") or "dev") == "dev" or reason in ("probation", "trial", "person") else "stable"
+    mode = _mode(t, reason)
     share = float(params.value(f"review.run_share.{mode}")) * float(t.get("run_cost_usd") or 0.0)
     cap = float(params.value(f"review.run_cap_usd.{mode}"))
     cap = round(min(cap, share), 4) if share > 0 else cap
@@ -389,6 +390,31 @@ def _cap(out: dict[str, Any], t: Mapping[str, Any], reason: str, room: float | N
         if left is not None:
             cap = round(min(cap, max(0.0, left)), 4)
     out["cap_usd"] = cap
+
+
+def _mode(t: Mapping[str, Any], reason: str) -> str:
+    return "dev" if str(t.get("mode") or "dev") == "dev" or reason in ("probation", "trial", "person") else "stable"
+
+
+def _estimate(text: str, d: Mapping[str, Any], mean: float | None) -> float:
+    """SRV-B25: what the next review is expected to cost: the mean reported cost of the run's finished reviews or,
+    until one has reported, the price of its view by size."""
+    if mean is not None:
+        return mean
+    return estimate(Usage(input_tokens=len(text) // 4, output_tokens=1500), str(d.get("model") or "")) or 0.0
+
+
+def _lift(p: dict[str, Any], t: Mapping[str, Any], reason: str, room: float | None, est: float) -> None:
+    """SRV-B33: a cap under the estimate of the first target's review is set at that estimate, rounded up to 4
+    places; in stable mode the estimate is limited to what SIL's daily cap leaves (SIL-B20)."""
+    if p["cap_usd"] is None:
+        return
+    est = math.ceil(round(est * 10000, 6)) / 10000
+    if _mode(t, reason) == "stable":
+        left = room if room is not None else _room(t)
+        if left is not None:
+            est = min(est, round(max(0.0, left), 4))
+    p["cap_usd"] = max(float(p["cap_usd"]), est)
 
 
 def _room(t: Mapping[str, Any]) -> float | None:
@@ -586,6 +612,9 @@ def run(t: Mapping[str, Any], registry: Registry, *, reason: str = "dev", keys: 
                                             target.get("slices", "all"))
     p["estimate_tokens"] = sum(len(v[0]) // 4 for v in views.values())
     log = loop_log(root, wf, task)
+    if p["targets"]:  # SRV-B33: the cap is never under one review of the plan's first target
+        first = p["targets"][0]["session_key"]
+        _lift(p, t, reason, room, _estimate(views[first][0], by_key[first], _spend(log)[1]))
     append_jsonl(log, {"ts": now_iso(), "kind": "review_planned", "reason": reason,
                        **{k: v for k, v in p.items() if k != "setting"}, "setting": p["setting"], **mark})
     out: dict[str, Any] = {"plan": p, "done": [], "failed": [], "usage_limit": [],
@@ -598,8 +627,7 @@ def run(t: Mapping[str, Any], registry: Registry, *, reason: str = "dev", keys: 
         d = by_key[key]
         text, kept_turns = views[key]
         spent, mean = _spend(log)
-        est = mean if mean is not None else \
-            estimate(Usage(input_tokens=len(text) // 4, output_tokens=1500), str(d.get("model") or "")) or 0.0
+        est = _estimate(text, d, mean)
         over = over or (p["cap_usd"] is not None and spent + est > float(p["cap_usd"]))
         if over:
             p["skipped"].append({"session_key": key, "reason": "budget"})
