@@ -25,6 +25,7 @@ Findings of the reading sessions, one line for each component folder led by its 
 
 - This step has no shell: read, search and list files with the file tools (read, grep, glob), never `ls`, `cat`, `wc` or `python -c`.
 - Write only what you have read in the code. A behaviour you did not see in the code or in a test is not written; a suspected bug that no test pins goes under Anomalies, not into a spec; a part you could not read in the time you have goes under Not covered.
+- Write a long document in parts: first its headings with the Purpose, then one edit for each group of behaviours and one for the acceptance criteria, each write under about 12 KB. One file per write call.
 - Describe the present. Do not write behaviours the task asks for: later steps of this run do that.
 - Prefer few behaviours that matter to many that restate the code. No internal names.
 - Write specs and the setup note. Do not change code, tests, configuration or the block between the temperspec markers in the project-context file.
