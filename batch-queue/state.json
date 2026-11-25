@@ -62,7 +62,8 @@
       "order": 2.3,
       "task_id": "i148",
       "issues": [
-        148
+        148,
+        149
       ],
       "state": "queued",
       "thread": null,
