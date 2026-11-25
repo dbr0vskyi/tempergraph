@@ -51,12 +51,12 @@
       "issues": [
         144
       ],
-      "state": "rerun running",
+      "state": "second run running",
       "thread": "temperspec/i144",
       "branch": "tg/temperspec/i144",
       "cost_usd": 9.69,
       "exit": 4,
-      "note": "rerun temperspec/i144~r1 from plan, branch tg/temperspec/i144-r1, feedback tasks/i144.review.md; do not reinstall .venv from the first branch"
+      "note": "i144 stopped (#152), rerun crashed (#163); i144b runs on top of tg/temperspec/i144 with tasks/i144b.md; merge tg/temperspec/i144b only"
     },
     {
       "order": 2.3,
@@ -338,6 +338,7 @@
     159,
     160,
     161,
-    162
+    162,
+    163
   ]
 }

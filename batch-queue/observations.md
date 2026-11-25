@@ -95,6 +95,7 @@ Cost by session (reported USD): triage 1.02 + judge 0.08; three `read_gap` 0.56 
 ### i144, the review of the stopped branch (2026-11-25)
 
 - **A second run whose every passed gate hid a defect that blocks its use.** The pytest plugin is an entry point inside the engine's package; pytest imports entry-point plugins before any conftest, so the engine's name is bound to the installed copy before the suite's conftest puts the worktree's `src` first. A one-process suite run in a worktree would then test another checkout's code and say nothing. It does not bite yet only because the shared environment was installed before the entry point existed. Seven smaller points beside it (the fixture's scope, the order and locking of the verb's two writes, an option accepted and ignored, the spec line the judge had asked for). Sent back as a rerun from `plan` (`tasks/i144.review.md`).
+- **The rerun crashed at its start** (#163): `rerun --check` said `ok`, the verb then ended in `UnknownRoutingToken` (`unit 'outcome' routed to None`), with a locked worktree left and nothing on stdout. A rerun of a thread that stopped in the middle of a trip back is not safe. The way out was a new run on top of the first run's branch (`--worktree-base ref:<branch>`), with the review as its task: a pattern that needs no rerun machinery and keeps the first run's commits.
 - The reviewer's read-only count on this machine: 106 of 107 roots of the index are gone folders, 110 run rows and 1,152 session rows of the month would go.
 
 ### Baseline suite on `main` (2026-11-25, Python 3.12, macOS)
