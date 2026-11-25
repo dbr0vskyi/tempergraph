@@ -95,7 +95,7 @@ def environment(records: Sequence[Mapping[str, Any]], units: Sequence[str], mode
                 judge_executor: str | None = None) -> dict[str, Any]:
     """ISS-B8: the versions and machine behind a finding, as names and numbers."""
     seg = segment(records)
-    started = next((r for r in seg if r.get("kind") == "run_started"), {})
+    started: Mapping[str, Any] = next((r for r in seg if r.get("kind") == "run_started"), {})
     want = set(units)
     mine = [r for r in seg if _unit_of(r) in want]
     executors = sorted({str(x) for r in mine if (x := _safe(r.get("executor")))})
@@ -119,8 +119,8 @@ def run_facts(records: Sequence[Mapping[str, Any]], finding: Mapping[str, Any],
               units: Sequence[str]) -> dict[str, Any]:
     """ISS-B8: the run's id, how its segment ended, and the units' attempts and cost."""
     seg = segment(records)
-    started = next((r for r in seg if r.get("kind") == "run_started"), {})
-    ended = next((r for r in reversed(seg) if r.get("kind") == "run_exit"), {})
+    started: Mapping[str, Any] = next((r for r in seg if r.get("kind") == "run_started"), {})
+    ended: Mapping[str, Any] = next((r for r in reversed(seg) if r.get("kind") == "run_exit"), {})
     want = set(units)
     attempts = {u: max([int(r.get("attempt") or 1) for r in seg if r.get("kind") == "attempt_start"
                         and _unit_of(r) == u] or [0]) for u in units}
