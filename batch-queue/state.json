@@ -38,12 +38,25 @@
       "issues": [
         21
       ],
-      "state": "finished, under review",
+      "state": "merged",
       "thread": "temperspec/i21",
       "branch": "tg/temperspec/i21",
       "cost_usd": 14.12,
       "exit": 0,
-      "note": "branch pushed by hand after GitHub 500; under review"
+      "note": "merge d60ebaac; follow-ups in tasks/i21b.md; engine build 0.2.0-da9985a63404 installed"
+    },
+    {
+      "order": 2.15,
+      "task_id": "i21b",
+      "issues": [
+        21
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": "issue not filed yet (GitHub API error); must land before the PR is ready"
     },
     {
       "order": 2.2,
@@ -314,7 +327,9 @@
     "move or keep the runs' notes under repo-root docs/ (CONTRIBUTING asks for the package's docs/)",
     "delete batch-queue/",
     "clean pytest roots from ~/.tempergraph/index.json and stats (backup first)",
-    "close or let GitHub mark merged the runs' own draft pull requests (#146)"
+    "close or let GitHub mark merged the runs' own draft pull requests (#146)",
+    "file the follow-up issue of #21 (text in scratch, summarised in tasks/i21b.md) and post the result comment on #21: GitHub's API failed at 15:54 UTC",
+    "run i21b, then the operator runs the live probe"
   ],
   "issues_filed": [
     139,
@@ -340,5 +355,6 @@
     161,
     162,
     163
-  ]
+  ],
+  "engine_build": "0.2.0-da9985a63404"
 }
