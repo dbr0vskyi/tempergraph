@@ -209,7 +209,7 @@ WHEN `regressed_after_release` is recorded on a proposal THE engine SHALL reopen
 
 ### PRP-B30 A URL names a pull request
 
-WHEN the engine takes a pull request from a text THE engine SHALL take its code host, repository `<owner>/<name>` and number from the text when it is exactly a URL `<scheme>://<host>/<owner>/<name>/pull/<number>` with scheme `http` or `https`, and take none from any other text.
+WHEN the engine takes a pull request from a text THE engine SHALL take its code host, repository (owner and name) and number from the text when the whole text is a URL with scheme `http` or `https` whose path is the owner, the name, the word `pull` and the number, in that order, and take none from any other text.
 
 - GIVEN the text `https://code.example/team/app/pull/7` WHEN a pull request is taken from it THEN the code host is `code.example`, the repository `team/app` and the number 7
 - GIVEN the text `https://code.example/team/app/issues/7` WHEN a pull request is taken from it THEN none is taken

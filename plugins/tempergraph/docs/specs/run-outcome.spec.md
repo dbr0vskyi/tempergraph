@@ -156,19 +156,19 @@ WHEN the loop has read a recorded pull request THE loop SHALL append to the run'
 
 ### OUT-B25 Only a person's work is counted
 
-WHEN the loop counts the reviews, review comments and commits of a pull request THE loop SHALL count only those of a person: an account the code host does not class as a bot, with review or comment text that does not start with the agent marker line of the agent comment format of `CONTRIBUTING.md` (section 5.1).
+WHEN the loop counts the reviews, review comments and commits of a pull request THE loop SHALL count only those of a person: an account the code host does not class as a bot, with review or comment text that does not start with the marker line of the agent comment format of `CONTRIBUTING.md`.
 
 - GIVEN a review, a review comment and a commit of an account the host classes as a bot WHEN they are counted THEN none is counted
-- GIVEN a review comment whose text starts with the agent marker line WHEN it is counted THEN it is not counted
+- GIVEN a review comment whose text starts with the marker line of the agent comment format WHEN it is counted THEN it is not counted
 - GIVEN a review, a review comment and a commit of an account the host does not class as a bot, with no marker line WHEN they are counted THEN each is counted
 
 ### OUT-B26 What counts as an escape
 
-WHEN `outcome show` and `outcome candidates` count the escapes of a workflow THE engine SHALL count each run graded `met` that has a rerun of its task, an entry holding a review in state `changes_requested`, or an entry holding a follow-up commit that changed a file the run wrote.
+WHEN `outcome show` and `outcome candidates` count the escapes of a workflow THE engine SHALL count each run graded `met` that has a rerun of its task, a `later[]` entry holding a review in state `changes_requested`, or a `later[]` entry holding a follow-up commit that changed a file the run wrote.
 
 - GIVEN a `met` run that was rerun WHEN `outcome show` runs THEN it is counted as an escape
-- GIVEN a `met` run whose entry holds one review in state `changes_requested` WHEN `outcome show` runs THEN it is counted as an escape
-- GIVEN a `met` run whose entries hold approvals and follow-up commits that changed only files the run did not write WHEN `outcome show` runs THEN it is not counted
+- GIVEN a `met` run whose `later[]` holds an entry with one review in state `changes_requested` WHEN `outcome show` runs THEN it is counted as an escape
+- GIVEN a `met` run whose `later[]` entries hold approvals and follow-up commits that changed only files the run did not write WHEN `outcome show` runs THEN it is not counted
 
 ## Acceptance criteria
 
@@ -180,8 +180,8 @@ WHEN `outcome show` and `outcome candidates` count the escapes of a workflow THE
 - OUT-AC6 (OUT-B17): The outcome lens of self-improvement reads the outcome record and starts no judge of its own when the record has a judged verdict
 - OUT-AC7 (OUT-B23): Against a fake code host, a final exit of a workflow reads the recorded pull request of each run of the workflow that no earlier read found merged or closed and of no other, reads none at autonomy `record` or in a dry run, and with a code host that cannot be reached appends no entry and leaves the exit code of the run as it was
 - OUT-AC8 (OUT-B24): Against a fake code host, a pull request with one review in state `changes_requested`, two review comments and a follow-up commit that changed two files, one of them written by the run, gives one entry holding its state, one review in `changes_requested`, two comments, one follow-up commit, one file and no text, and a second read of the same pull request appends none
-- OUT-AC9 (OUT-B25): Against a fake code host, the reviews, review comments and commits of a bot account and a review comment that starts with the agent marker line are in no count of an entry, and those of another account are
-- OUT-AC10 (OUT-B26): A fixture workflow with a `met` run that was rerun, a `met` run whose entry holds a review in state `changes_requested`, a `met` run whose entry holds a follow-up commit that changed a file it wrote, and a `met` run with none of these shows exactly the first three as escapes in `outcome show` and `outcome candidates`
+- OUT-AC9 (OUT-B25): Against a fake code host, the reviews, review comments and commits of a bot account and a review comment that starts with the marker line of the agent comment format are in no count of an entry, and those of another account are
+- OUT-AC10 (OUT-B26): A fixture workflow with a `met` run that was rerun, a `met` run whose `later[]` holds an entry with a review in state `changes_requested`, a `met` run whose `later[]` holds an entry with a follow-up commit that changed a file it wrote, and a `met` run with none of these shows exactly the first three as escapes in `outcome show` and `outcome candidates`
 
 ## Open questions
 

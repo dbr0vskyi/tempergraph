@@ -75,9 +75,9 @@ WHEN a read of a run's pull request shows the run to be an escape ([OUT-B26](run
 
 ### SIL-B34 An escape files by the pattern rule
 
-WHEN an `outcome_escape` finding would file THE loop SHALL apply to it the pattern rule of SIL-B3 and no calibration test (SIL-B7).
+WHEN an `outcome_escape` finding would file THE loop SHALL apply the pattern rule of SIL-B3 to it and not the calibration test of SIL-B7.
 
-- GIVEN `outcome_escape` findings of three runs with three distinct requests in 30 days and an outcome judge with no calibration score WHEN filing runs THEN one issue is filed
+- GIVEN `outcome_escape` findings for one unit of three runs with three distinct requests in 30 days and an outcome judge with no calibration score WHEN filing runs THEN one issue is filed
 - GIVEN such findings of two runs WHEN filing runs THEN they are recorded and nothing is filed
 
 ### SIL-B14 Tool access and grants
@@ -217,7 +217,7 @@ WHEN the cost lens runs THE loop SHALL apply six rules, each a finding per unit 
 - SIL-AC17 (SIL-B25, SIL-B26): A fixture loop child on a fake clock whose reviews all return `usage_limit` true with `resets_at` 2 hours ahead starts no retry before that instant, runs each review once more in plan order with `retry` true on every record of a retry, never a third time, and writes its summary after the last retry; with `resets_at` 40 hours ahead or none, from `improve review`, or inline, it starts no wait and no retry
 - SIL-AC29 (SIL-B10, SIL-B33): Against a fake code host, a stable-mode fixture whose `met` run has a pull request with a review in state `changes_requested` gets one `outcome_escape` finding for the `outcome` unit at the next final exit of the workflow, the outcome lens running for that run and no model session starting, and one whose pull request has a follow-up commit that changed files written by two units gets one finding for each
 - SIL-AC30 (SIL-B16, SIL-B33): A kept review observation of a run on a unit that holds its `outcome_escape` finding makes that finding carry `review:<category>` and `review_weight`, and an observation on a unit with no such finding changes none
-- SIL-AC31 (SIL-B34): With an outcome judge that has no calibration score, `outcome_escape` findings of three fixture runs with three distinct requests in 30 days file one issue and those of two runs file none
+- SIL-AC31 (SIL-B34): With an outcome judge that has no calibration score, `outcome_escape` findings for one unit of three fixture runs with three distinct requests in 30 days file one issue and those of two runs file none
 
 ## Open questions
 
