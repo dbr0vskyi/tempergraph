@@ -458,7 +458,10 @@ def prepare(ctx: Any) -> dict[str, str]:
 def commit_step(ctx: Any) -> dict[str, str]:
     """After each step: commit everything the step left, on the run's branch. Nothing is pushed here."""
     workdir = Path(ctx.workdir)
-    added = _git(workdir, "add", "-A", "--", ".", ":(exclude).tempergraph")
+    # git 2.39 exits 1 on an exclude pathspec that names an ignored path, so the state folder is left out by the
+    # pathspec only where git does not already ignore it
+    ignored = _git(workdir, "check-ignore", ".tempergraph/").stdout.strip()
+    added = _git(workdir, "add", "-A", "--", ".", *([] if ignored else [":(exclude).tempergraph"]))
     if added.returncode != 0:
         raise RuntimeError(f"git add: {added.stderr.strip()[:200]}")
     if _git(workdir, "diff", "--cached", "--quiet").returncode == 0:

@@ -428,6 +428,18 @@ def test_commit_step_commits_the_steps_files_and_leaves_the_state_folder(repo: P
     assert git_facts(repo).clean
 
 
+def test_commit_step_commits_when_git_ignores_the_state_folder(repo: Path) -> None:
+    # git 2.39 exits 1 on an exclude pathspec that names an ignored path; the step must still commit
+    (repo / ".gitignore").write_text(".tempergraph/\n")
+    (repo / ".tempergraph").mkdir()
+    (repo / ".tempergraph" / "capabilities.md").write_text("x\n")
+    (repo / "note.md").write_text("x\n")
+    ctx = SimpleNamespace(workdir=repo, unit="prepare", request={"task_id": "i1"})
+    assert routing.commit_step(ctx) == {}
+    assert _git(repo, "log", "-1", "--format=%s").strip() == "docs(temperspec): prepare for i1"
+    assert sorted(_git(repo, "show", "--name-only", "--format=").split()) == [".gitignore", "note.md"]
+
+
 def test_install_rules_writes_the_rule_files_once(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(Path, "home", lambda: repo / "no-home")
     ctx = SimpleNamespace(workdir=repo, unit="triage", request={})

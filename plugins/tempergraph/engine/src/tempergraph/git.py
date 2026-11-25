@@ -153,10 +153,18 @@ def _identity(workdir: Path) -> list[str]:
     return ["-c", "commit.gpgsign=false", "-c", "user.name=tempergraph", "-c", "user.email=tempergraph@localhost.invalid"]
 
 
+def stage_all_args(workdir: Path) -> list[str]:
+    """The `git add` words that stage every change in `workdir` outside the state root. The state root is left out by
+    an exclude pathspec only when git does not already ignore it: git 2.39 refuses an exclude pathspec that names an
+    ignored path (exit 1, "paths are ignored by one of your .gitignore files") after staging the rest."""
+    ignored = git(["check-ignore", ".tempergraph/"], workdir, check=False).strip()
+    return ["add", "-A", "--", ".", *([] if ignored else [":(exclude).tempergraph"])]
+
+
 def commit_all(workdir: Path, message: str) -> str:
     """WSP-B19: commit every uncommitted change in `workdir`, new files included, outside the state root. Returns the
     new commit, or an empty string when there was nothing to commit (no commit is made)."""
-    git(["add", "-A", "--", ".", ":(exclude).tempergraph"], workdir)
+    git(stage_all_args(workdir), workdir)
     if not git(["status", "--porcelain=v1", "--untracked-files=no"], workdir).strip():
         return ""
     git([*_identity(workdir), "commit", "--no-verify", "--quiet", "-m", message], workdir)
