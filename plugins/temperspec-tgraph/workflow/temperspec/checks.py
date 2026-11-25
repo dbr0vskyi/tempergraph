@@ -5,6 +5,7 @@ A check reads the workspace and the engine's git facts; it writes nothing and tr
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from dataclasses import dataclass, replace
@@ -698,8 +699,8 @@ def _names(ctx: Any, criterion: str) -> list[CheckFinding]:
 
 
 def discovery_check(ctx: Any) -> Any:
-    """ts-dis-form, ts-dis-budget, ts-dis-over, ts-dis-names, ts-dis-links, ts-dis-reading, ts-dis-narrow,
-    ts-dis-ruleread, ts-dis-commit."""
+    """ts-dis-form, ts-dis-budget, ts-dis-over, ts-dis-names, ts-dis-links, ts-dis-named, ts-dis-literal,
+    ts-dis-reading, ts-dis-narrow, ts-dis-ruleread, ts-dis-commit."""
     text, path = _read(ctx, "handoff")
     if text is None:
         return checks.result([_find("fail", "ts-dis-form", path, "the hand-off cannot be read",
@@ -709,11 +710,91 @@ def discovery_check(ctx: Any) -> Any:
     found += _spec_form(ctx, "ts-dis-form", budget_criterion="ts-dis-budget")
     found += _names(ctx, "ts-dis-names")
     found += _links(ctx, "ts-dis-links")
+    found += _general(ctx)
     found += _reading(ctx, text, path)
     found += _prompt_says("ts-dis-narrow")
     found += _ruleread(ctx, "discovery", "ts-dis-ruleread")
     found.append(_committed(ctx, "ts-dis-commit"))
     return _result(ctx, found)
+
+
+# The spec rule's `General rules, not cases`: words that narrate a change, and an issue reference. Leads for the
+# judge (ts-dis-literal, a warning), never a failure: a rule may say "instead of" or name a ticket field on purpose.
+CHANGE_WORDS = re.compile(r"\b(no longer|any ?more|known limit|this change|used to|"
+                          r"as before|is now|are now)\b", re.I)
+ISSUE_REF = re.compile(r"(?<![\w&/#])#\d+\b")
+LITERAL_MAX = 8
+
+
+def _packages(ctx: Any) -> list[tuple[str, list[str]]]:
+    """(package folder, the names it goes by) for each workflow package of the repository: a folder holding a
+    `tempergraph.json`, at the top or one folder down. The names are its folder name and its workflow name."""
+    root = Path(ctx.workdir)
+    out: list[tuple[str, list[str]]] = []
+    for manifest in sorted([*root.glob("*/tempergraph.json"), *root.glob("*/*/tempergraph.json")]):
+        folder = manifest.parent.relative_to(root).as_posix()
+        names = {manifest.parent.name}
+        try:
+            name = json.loads(manifest.read_text(encoding="utf-8")).get("name")
+        except (OSError, ValueError, AttributeError):
+            name = None
+        if isinstance(name, str) and len(name) >= 3:
+            names.add(name)
+        out.append((folder, sorted(names, key=len, reverse=True)))
+    return out
+
+
+def _added_lines(ctx: Any, path: str) -> list[tuple[int, str]]:
+    """(line number, text) of the lines the run added to a spec; every line when there is no base to compare."""
+    base = getattr(ctx.git, "base", None) if ctx.git is not None else None
+    if base:
+        run = ctx.run(f"git diff --unified=0 {base} -- {path}")
+        if not run.not_started and run.exit_code == 0:
+            try:
+                diff = Path(run.output_path).read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                diff = None
+            if diff is not None:
+                out: list[tuple[int, str]] = []
+                line = 0
+                for ln in diff.splitlines():
+                    hunk = re.match(r"@@ -\S+ \+(\d+)", ln)
+                    if hunk:
+                        line = int(hunk.group(1))
+                    elif ln.startswith("+") and not ln.startswith("+++"):
+                        out.append((line, ln[1:]))
+                        line += 1
+                return out
+    return list(enumerate((_read_path(ctx, path) or "").splitlines(), start=1))
+
+
+def _general(ctx: Any) -> list[CheckFinding]:
+    """ts-dis-named: no line the step added to a spec outside a workflow package names that package or its
+    workflow. ts-dis-literal: added lines that narrate a change or cite an issue, as leads for the judge."""
+    specs, _ = _edited_specs(ctx)
+    if not specs:
+        return [_find("n_a", c, message="the step edited no spec") for c in ("ts-dis-named", "ts-dis-literal")]
+    packages = _packages(ctx)
+    task = str((ctx.request or {}).get("task_id") or "")
+    task_word = re.compile(rf"(?<![\w-]){re.escape(task)}(?![\w-])") if len(task) >= 3 else None
+    named: list[CheckFinding] = []
+    literal: list[CheckFinding] = []
+    for path in specs:
+        denied = [n for folder, names in packages if not (path + "/").startswith(folder + "/") for n in names]
+        pattern = re.compile(r"(?<![\w-])(" + "|".join(map(re.escape, denied)) + r")(?![\w])", re.I) if denied else None
+        for number, text in _added_lines(ctx, path):
+            hit = pattern.search(text) if pattern else None
+            if hit and len(named) < LITERAL_MAX:
+                named.append(_find("fail", "ts-dis-named", f"{path}:{number}",
+                                   f"names the workflow `{hit.group(1)}`, whose package does not hold this spec",
+                                   "state the capability without the workflow: a placeholder for its units, "
+                                   "its need as a general rule"))
+            lead = CHANGE_WORDS.search(text) or ISSUE_REF.search(text) or (task_word.search(text) if task_word else None)
+            if lead and len(literal) < LITERAL_MAX:
+                literal.append(_find("maybe", "ts-dis-literal", f"{path}:{number}",
+                                     f"`{lead.group(0)}` may tie the line to the task or to a change",
+                                     "state the rule as if it always held; keep the task's case in the task notes"))
+    return (named or [_ok("ts-dis-named")]) + (literal or [_ok("ts-dis-literal")])
 
 
 READING = "Reading list"

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 19,
+  "revision": 20,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -211,7 +211,7 @@
               "partial": "the findings cover part of the folder, or a claim is in its file with a different meaning",
               "unmet": "the findings describe another folder, claim what the named file does not hold, or say nothing about the folder",
               "evidence": "the path and line of each claim checked, and the quote that confirms or refutes it",
-          "seeds": ["met-ts-rdc-answers", "unmet-ts-rdc-answers"]
+              "seeds": ["met-ts-rdc-answers", "unmet-ts-rdc-answers"]
             }
           },
           "serves": [
@@ -232,7 +232,7 @@
               "partial": "some claims name a file and others name none",
               "unmet": "the findings name no file and say nothing about what was searched",
               "evidence": "the claim, and the file and range or id it names",
-          "seeds": ["met-ts-rdc-cited", "unmet-ts-rdc-cited"]
+              "seeds": ["met-ts-rdc-cited", "unmet-ts-rdc-cited"]
             }
           },
           "serves": [
@@ -632,7 +632,7 @@
               "partial": "the findings answer part of the gap, or a claim is in its file with a different meaning",
               "unmet": "the findings answer another gap, claim what the named file does not hold, or say nothing about the gap",
               "evidence": "the gap row, the path and line of each claim checked, and the quote that confirms or refutes it",
-          "seeds": ["met-ts-rdg-answers", "unmet-ts-rdg-answers"]
+              "seeds": ["met-ts-rdg-answers", "unmet-ts-rdg-answers"]
             }
           },
           "serves": [
@@ -655,7 +655,7 @@
               "partial": "some claims name a file and others name none",
               "unmet": "the findings name no file and say nothing about what was searched",
               "evidence": "the claim, and the file and range or id it names",
-          "seeds": ["met-ts-rdg-cited", "unmet-ts-rdg-cited"]
+              "seeds": ["met-ts-rdg-cited", "unmet-ts-rdg-cited"]
             }
           },
           "serves": [
@@ -806,6 +806,57 @@
               "seeds": [
                 "met-ts-dis-behaviour",
                 "unmet-ts-dis-behaviour"
+              ]
+            }
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-dis-named",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "No line the discovery step added to a spec outside a workflow package names that package or its workflow",
+          "check_method": "Find the repository's workflow packages (a folder with a `tempergraph.json`, at the top or one folder down) and their folder and workflow names; read the lines the step added to each edited spec outside that package (every line with no base) for those names",
+          "source": "interview",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-dis-literal",
+          "severity": "warning",
+          "verified_by": "check",
+          "text": "Every line the discovery step added to a spec in words that tie it to the task is reported to the judge as a lead",
+          "check_method": "Read the lines the step added to each edited spec for words that narrate a change (`no longer`, `any more`, `known limit`, `this change`, `used to`, `as before`, `is now`), an issue reference `#<n>` and the task id; report each as a lead, never a failure",
+          "source": "interview",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          }
+        },
+        {
+          "id": "ts-dis-general",
+          "severity": "blocker",
+          "verified_by": "judge",
+          "text": "Every behaviour the discovery step wrote or changed states a general rule of its capability that reads true to someone who never saw the task",
+          "check_method": "Read each new or changed behaviour and its scenarios against the spec rule's `General rules, not cases`, and against the triage note to see what of the task's own case was copied in",
+          "source": "interview",
+          "verifier": {
+            "references": [
+              "triage_note"
+            ],
+            "scale": {
+              "met": "each behaviour states the rule of its capability without the task's history, a workflow's name or shape, a test fixture or a reason, and no rule is written twice across specs",
+              "partial": "each behaviour states a rule, but a scenario carries a value copied from the task or a fixture that could be replaced by an illustrative one without loss",
+              "unmet": "a behaviour narrates the change or the old defect, names or describes a workflow in a spec outside its package, carries a reason, or repeats a rule that another spec owns",
+              "evidence": "per behaviour id: the quoted sentence, and for a defect the words that tie it to the task",
+              "seeds": [
+                "met-ts-dis-general",
+                "unmet-ts-dis-general"
               ]
             }
           },
@@ -1780,6 +1831,12 @@
       "origin": "authored",
       "at": "2026-11-25T00:00:00.000Z",
       "note": "issues 63 and 64: the setting `conversation` takes `never`, `blocking` and `always`; the triage note is sorted and its owner decisions are listed under all three (ts-tri-owner), a run with a question pauses once after triage in the unit ask_owner and takes the defaults at its deadline (owner_questions, ask_route, ask_owner), and the pull request lists the answered decisions as decided"
+    },
+    {
+      "revision": 20,
+      "origin": "authored",
+      "at": "2026-11-25T06:00:00.000Z",
+      "note": "issue 119: specs state general rules, not the task's case: the spec rule's `General rules, not cases`, triage names the spec that owns each gap's mechanism, discovery extracts the rule and rereads it (ts-dis-general, judged), and the discovery check fails a workflow's name in a spec outside its package (ts-dis-named) and reports change words, issue references and the task id as leads (ts-dis-literal)"
     }
   ]
 }

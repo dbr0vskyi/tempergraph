@@ -45,6 +45,17 @@ An `## Open questions` section may follow, only while a question is open. Remove
 - A fact about an interface is a behaviour like any other (`WHEN a client sends a request without a token THE service SHALL answer 401`).
 - One behaviour, one result. A sentence that needs "and" between two results is two behaviours.
 
+## General rules, not cases
+
+A spec outlives the task that changed it. A reader who never saw the task must find each behaviour natural and true.
+
+- A behaviour is a rule of the capability that holds in every case, written as if the capability had always worked this way. It never refers to a task, an issue, a bug, an earlier limit or what the capability did before: no "no longer", "any more", "again", "known limit", "this change". The task, its wording and its history stay in the task notes.
+- Name the rule, not the defect. Not "A retry is not refused", but "A retry runs in worktrees of its own".
+- A capability that other software uses names none of its users. A spec outside a workflow package names no workflow, and never describes a workflow's units or its shape ("a planning step followed by a map"). Placeholders stand in: `a`, `b`, "a step", "an earlier unit".
+- A scenario is an example that makes the rule concrete, at most three per behaviour. It is not a test: no issue numbers, session keys, branch names or other values copied from a test fixture.
+- A reason, a trade-off or who wanted it goes in a decision record, linked by id, never inside the behaviour.
+- One rule lives in one place. When the same rule holds for several capabilities, state it once in the spec that owns the mechanism they share, and link it from the others. Moving a rule there is a change to a behaviour, not collateral.
+
 ## Acceptance criteria
 
 - One list item each: `- <PREFIX>-AC<n> (<behaviour ids>): <what an observer can verify>`.

@@ -40,7 +40,7 @@ Source and a one-line summary.
 ```
 
 - **Acceptance criteria** are numbered and copied from the task. None is added, none is dropped, none is reworded so that its meaning shifts. A task that states no acceptance criterion ends blocked.
-- **Gaps** holds one row per gap, `G<n> <kind>: <concept>. <the search that found nothing>`, or the single word `None`. The kinds: `spec gap` (no spec covers the concept), `spec update` (a spec covers it wrongly or partly), `decision needed`, `research needed`. In doubt, list the gap.
+- **Gaps** holds one row per gap, `G<n> <kind>: <concept>. <the search that found nothing>`, or the single word `None`. The concept is the general capability, and the row names the spec that owns its mechanism (or says that none does yet), so that discovery writes the rule there and not where the task's case happened to show. The kinds: `spec gap` (no spec covers the concept), `spec update` (a spec covers it wrongly or partly), `decision needed`, `research needed`. In doubt, list the gap.
 - A gap that an existing spec already answers is still listed. Its row ends `Covered by <behaviour id> and <criterion id>`: a behaviour and a criterion that one spec defines once each, the criterion naming the behaviour, both read in the spec. When every gap row says so, the run takes the short discovery visit; any other gap takes the full one.
 - **Route** has two lines. `Deliver` is `docs` when the task asks only for documents (it says so, or it asks for a spec, a decision record or research and no code), otherwise `code`. `Route` is `plan` or `quick` when Gaps is `None`; otherwise `discovery`, or `discovery-only` when `Deliver` is `docs`.
 
