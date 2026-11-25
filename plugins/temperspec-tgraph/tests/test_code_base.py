@@ -63,7 +63,7 @@ class _Ctx(CheckContext):
 
     def run(self, cmd: str, **kw: Any) -> Any:  # type: ignore[override]
         at_base = bool(kw.get("at_base"))
-        if not cmd.startswith(READING_DIFF):  # the judge-reading count is not a plan command
+        if not cmd.startswith(READ_ONLY):  # the judge-reading count and the history read are not plan commands
             self.calls.append((cmd, at_base))
         got = self.script.get((cmd, at_base))
         if got is None:
@@ -73,11 +73,15 @@ class _Ctx(CheckContext):
 
 
 READING_DIFF = "git diff --numstat"
+HISTORY_READ = "git log --name-only"  # the two lists of changed paths (PHC-B16, PHC-B19)
+READ_ONLY = (READING_DIFF, HISTORY_READ)
 
 
 def _plan_runs(res: Any) -> list[dict[str, Any]]:
-    """The command runs of the plan's commands, without the reading budget's own git count (judge-reading)."""
-    return [r for r in res.runs if "--numstat" not in str(r.get("argv", r.get("command", "")))]
+    """The command runs of the plan's commands, without the reading budget's own git count (judge-reading) and the
+    read of the run's history."""
+    return [r for r in res.runs if not any(w in str(r.get("argv", r.get("command", "")))
+                                           for w in ("--numstat", "--name-only"))]
 
 
 def _ctx(root: Path, base: str | None, *, script: dict[tuple[str, bool], CommandRun] | None = None,

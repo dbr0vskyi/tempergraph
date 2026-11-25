@@ -825,6 +825,11 @@ def test_the_code_step_declares_the_preview_and_its_prompt_runs_the_commands_thr
         assert phrase in text.lower(), phrase
 
 
+def _counted(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The runs `ts-code-reuse` counts: the read of the run's history (PHC-B16) comes after that finding."""
+    return [r for r in runs if "--name-only" not in r["argv"]]
+
+
 def test_a_second_gate_run_on_an_unchanged_tree_runs_no_verification_command(
         repo: Path, tmp_path_factory: pytest.TempPathFactory) -> None:  # AC 3, ts-code-reuse (CHK-B13)
     store = tmp_path_factory.mktemp("store") / "command_runs.jsonl"
@@ -846,7 +851,8 @@ def test_a_second_gate_run_on_an_unchanged_tree_runs_no_verification_command(
     first, second = gate_run(), gate_run()  # a retry, or a later visit, on the same tree and the same store
     assert first and all(r["reused"] is False and r["exit_code"] == 0 for r in first)
     assert len(second) == len(first) and all(r["reused"] is True for r in second)  # none was started again
-    assert reuse[0].startswith("0 of ") and reuse[1].startswith(f"{len(second)} of {len(second)} ")
+    counted = len(_counted(second))
+    assert reuse[0].startswith("0 of ") and reuse[1].startswith(f"{counted} of {counted} ")
     (repo / "notes.txt").write_text("changed\n")  # a changed tree changes the key: the commands run again
     third = gate_run()
     assert third and all(r["reused"] is False for r in third)
@@ -919,7 +925,8 @@ def test_the_gate_takes_the_previews_runs_though_the_files_were_committed_after_
     assert res.runs and all(r["reused"] is True for r in res.runs), res.evidence  # none started again
     assert _named(res, "ts-code-verify") == ["pass"] and _named(res, "ts-code-reuse") == ["pass"], res.evidence
     message = next(f.message for f in res.findings if f.criterion == "ts-code-reuse")
-    assert message.startswith(f"{len(res.runs)} of {len(res.runs)} ")
+    counted = len(_counted(res.runs))
+    assert message.startswith(f"{counted} of {counted} ")
 
 
 @pytest.mark.parametrize("change", ["tracked", "untracked"])

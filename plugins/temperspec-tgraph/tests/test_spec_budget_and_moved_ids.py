@@ -301,7 +301,7 @@ def test_the_phase_scope_criterion_is_graded_on_the_paths_changed_since_the_phas
     assert o["revision"] == entry["revision"] == o["revisions"][-1]["revision"]
     where, row = _criteria()["ts-phs-scope"]
     assert where == "phase" and "since the phase step was entered" in row["text"]
-    assert row["text"] == re.sub(r"\s*\(PHC-B\d+\)$", "", _rows("phase.spec.md")["ts-phs-scope"])
+    assert row["text"] == _rows("phase.spec.md")["ts-phs-scope"]  # the docs check compares the whole line
     assert "earlier steps" in row["check_method"] and "since the phase step was entered" in row["check_method"]
     scale = row["verifier"]["scale"]
     assert all("first list" in scale[k] for k in ("met", "partial", "unmet"))

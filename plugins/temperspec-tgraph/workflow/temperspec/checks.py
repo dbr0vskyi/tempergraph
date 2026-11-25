@@ -1076,9 +1076,9 @@ def _links_of(plan: fmt.Plan, criterion: str, place: str) -> list[CheckFinding]:
 PLANNING_COMMIT = re.compile(r"^\w+(?:\([^)]*\))?!?:\s*(?:plan|expand) for\b")
 
 
-def _git_lines(ctx: Any, cmd: str) -> list[str] | None:
+def _git_lines(ctx: Any, cmd: str, *, reuse: bool = False) -> list[str] | None:
     """The lines a read-only git command printed; None when it did not start or did not exit 0."""
-    run = ctx.run(cmd)
+    run = ctx.run(cmd, reuse=True) if reuse else ctx.run(cmd)
     if run.not_started or run.exit_code != 0:
         return None
     try:
@@ -1127,6 +1127,7 @@ def _kept_marks(ctx: Any, plan: fmt.Plan, path: str) -> dict[str, str]:
     return out
 
 
+HISTORY_LOG = "git log --name-only --format=%x01%H%x09%s"
 STEP_COMMIT = re.compile(r"^\w+\(temperspec\)!?:\s*(\w+) for\b")
 
 
@@ -1142,7 +1143,7 @@ def _history(ctx: Any) -> list[tuple[str, str, list[str]]] | None:
     base = ctx.git.base if ctx.git is not None else ""
     if not base:
         return None
-    lines = _git_lines(ctx, f"git log --name-only --format=%x01%H%x09%s {base}..HEAD --reverse")
+    lines = _git_lines(ctx, f"{HISTORY_LOG} {base}..HEAD --reverse", reuse=True)  # a read, like the line count
     if lines is None:
         return None
     out: list[tuple[str, str, list[str]]] = []

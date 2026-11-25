@@ -1212,7 +1212,7 @@
           "id": "ts-exp-opened",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "A task row that names a file that exists in the repository, unless its completed mark is kept, has that file opened with the read tool in a session of the expand step's visit",
+          "text": "A task row that names a file that exists in the repository, unless its completed mark is kept (KMK-B1), has that file opened with the read tool in a session of the expand step's visit (SRC-B5, SRC-B12)",
           "check_method": "Read the session record of the whole visit that the engine gives the check: each existing file a task row names has a read call without an error on its path in some session of the visit; a row whose mark is kept is skipped, a file that does not exist is not asked for, and one finding names all rows whose file no session of the visit opened",
           "source": "created",
           "verifier": {
@@ -1363,7 +1363,7 @@
           "id": "ts-phs-scope",
           "severity": "blocker",
           "verified_by": "judge",
-          "text": "No file changed since the phase step was entered is a file that no row of the phase or of an earlier phase names, apart from the plan's marks and status",
+          "text": "No file changed since the phase step was entered is a file that no row of the phase or of an earlier phase names, apart from the plan's marks and status (PHC-B9)",
           "check_method": "Read the list of paths changed since the phase step was entered that the check gives, and match each against the files of the rows of the phase and of earlier phases; a path of the list of earlier steps' paths is not counted",
           "source": "interview",
           "verifier": {
