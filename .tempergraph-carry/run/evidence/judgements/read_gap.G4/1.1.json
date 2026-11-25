@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "read_gap",
+  "visit": 1,
+  "attempt": 1,
+  "blockers": [
+    {
+      "criterion": "ts-rdg-answers",
+      "evidence": "PARTIAL: Spec line 149 'Not built yet: probes P-CC-1 to P-CC-12'; live-checks.plan.md:71 L-42 = P-CC-12; claude.py:501 'range(1, 13)'; executor_compat.json:8 'P-CC-1 to P-CC-12 not yet run' all confirmed. But engine/tests/test_r3_t8_1_docs.py:36 asserts the line starts with '- Not built yet: probes P-CC-1 to P-CC-12', contradicting the finding's 'no test pins the count' and leaving a needed edit …",
+      "fix": "Add test_r3_t8_1_docs.py:36 to the places that need the new count and drop the 'no test pins the count' claim."
+    }
+  ]
+}

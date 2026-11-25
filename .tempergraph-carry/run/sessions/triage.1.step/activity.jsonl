@@ -1,0 +1,23 @@
+{"t": 1.256, "n": 1, "ev": "session_started", "session_id": "605f246f-42b1-4a72-aaca-a651bc9237e9", "model": "claude-sonnet-5-5", "tools": ["Glob", "Grep", "Read", "Write"], "cli_version": "2.1.332", "mcp_server_errors": 0, "plugin_errors": 0}
+{"t": 2.69, "n": 2, "ev": "tool_started", "name": "Read", "call_id": "toolu_01F7rxoxZ1J7YZLDt1WWcQYJ", "capability": "read", "subagent": false, "input_summary": "batch-queue/tasks/i21.md"}
+{"t": 2.719, "n": 3, "ev": "tool_finished", "call_id": "toolu_01F7rxoxZ1J7YZLDt1WWcQYJ", "ok": true, "duration_s": 0.029}
+{"t": 3.333, "n": 4, "ev": "tool_started", "name": "Read", "call_id": "toolu_01HEN2yr9xDDAsNejGYARy5J", "capability": "read", "subagent": false, "input_summary": ".claude/rules/temperspec/task-notes.rule.md"}
+{"t": 3.348, "n": 5, "ev": "tool_finished", "call_id": "toolu_01HEN2yr9xDDAsNejGYARy5J", "ok": true, "duration_s": 0.015}
+{"t": 3.519, "n": 6, "ev": "tool_started", "name": "Read", "call_id": "toolu_01P53Cd8J1ieT73Gk3573h4s", "capability": "read", "subagent": false, "input_summary": ".claude/rules/temperspec/documents.rule.md"}
+{"t": 3.527, "n": 7, "ev": "tool_finished", "call_id": "toolu_01P53Cd8J1ieT73Gk3573h4s", "ok": true, "duration_s": 0.007}
+{"t": 5.832, "n": 8, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01AJXkr67iqSjuGy4G9YgJ2y", "capability": "search", "subagent": false, "input_summary": "strict-mcp-config|ENABLE_CLAUDEAI|ECC-B16"}
+{"t": 5.886, "n": 9, "ev": "tool_finished", "call_id": "toolu_01AJXkr67iqSjuGy4G9YgJ2y", "ok": true, "duration_s": 0.054}
+{"t": 6.57, "n": 10, "ev": "tool_started", "name": "Grep", "call_id": "toolu_017XZ8AyYVJLSq66DLnFPGS4", "capability": "search", "subagent": false, "input_summary": "executor-claude-code"}
+{"t": 6.595, "n": 11, "ev": "tool_finished", "call_id": "toolu_017XZ8AyYVJLSq66DLnFPGS4", "ok": true, "duration_s": 0.025}
+{"t": 8.227, "n": 12, "ev": "tool_started", "name": "Read", "call_id": "toolu_01D1uH93MTHQQt8HnxYqGNjF", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/docs/specs/executor-claude-code.spec.md"}
+{"t": 8.237, "n": 13, "ev": "tool_finished", "call_id": "toolu_01D1uH93MTHQQt8HnxYqGNjF", "ok": true, "duration_s": 0.01}
+{"t": 8.927, "n": 14, "ev": "tool_started", "name": "Read", "call_id": "toolu_01NKQWnmGJDoRHiYyNafGMMg", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/executors/claude.py"}
+{"t": 8.933, "n": 15, "ev": "tool_finished", "call_id": "toolu_01NKQWnmGJDoRHiYyNafGMMg", "ok": true, "duration_s": 0.006}
+{"t": 9.728, "n": 16, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01RUCo4br9bfwWDAt8JBbwxJ", "capability": "search", "subagent": false, "input_summary": "P-CC-1[0-9]|^##"}
+{"t": 9.746, "n": 17, "ev": "tool_finished", "call_id": "toolu_01RUCo4br9bfwWDAt8JBbwxJ", "ok": true, "duration_s": 0.018}
+{"n": 19, "ev": "resources", "t": 22523.45, "cpu_s": 1.1, "processes": 1, "rss_peak_kb": 268416}
+{"n": 20, "ev": "resources", "t": 22533.467, "cpu_s": 1.26, "processes": 1, "rss_peak_kb": 274528}
+{"t": 23.786, "n": 20, "ev": "tool_started", "name": "Write", "call_id": "toolu_01GmfgV8TqqzGJNGbtmmRfRn", "capability": "write", "subagent": false, "input_summary": "docs/tasks/i21.triage.md"}
+{"t": 23.795, "n": 21, "ev": "tool_finished", "call_id": "toolu_01GmfgV8TqqzGJNGbtmmRfRn", "ok": true, "duration_s": 0.009}
+{"t": 27.142, "n": 22, "ev": "text", "last_line": "ARTIFACT covered: no"}
+{"t": 27.348, "n": 23, "ev": "result", "ok": true, "text": "I wrote the triage note to `docs/tasks/i21.triage.md`. I opened both `task-notes.rule.md` and `documents.rule.md` with the read tool first. I did not run git, so the note is not committed yet.\n\n- **Criteria:** all six acceptance criteria are copied from the task.\n- **Gaps:** there are four, and all are findable.\n  - G1: ECC-B8 states `--strict-mcp-config` for a step only under enforcement with an MCP tool declared.\n  - G2: ECC-B10 sends only `--disallowedTools \"mcp__*\"` in a judge's ordinary no-MCP-view case.\n  - G3: no spec states `ENABLE_CLAUDEAI_MCP_SERVERS=false` in the session environment.\n  - G4: the probe list in ECC-B13 stops at P-CC-12, so the new P-CC probe has to be added there and in the runbook.\n- **Coverage:** no gap is covered. Each one needs a spec change in `executor-claude-code`, so `covered` is `no`.\n- **Owner decisions:** None.\n- **Route:** delivery is `code`. The route is `discovery`, because the gaps mean specs have to change.\n\nARTIFACT triage_note: docs/tasks/i21.triage.md\nARTIFACT gaps: some\nARTIFACT route: discovery\nARTIFACT covered: no", "subtype": "success", "is_error": false, "session_id": "605f246f-42b1-4a72-aaca-a651bc9237e9"}

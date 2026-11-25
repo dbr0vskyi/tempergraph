@@ -1,0 +1,3 @@
+{"t": 0.759, "n": 1, "ev": "session_started", "session_id": "cf7d4448-c507-4f63-8e86-a00edce0d370", "model": "claude-sonnet-5-5", "tools": ["Edit", "Glob", "Grep", "Read", "WebFetch", "WebSearch", "Write"], "cli_version": "2.1.332", "mcp_server_errors": 0, "plugin_errors": 0}
+{"t": 1.078, "n": 2, "ev": "text", "last_line": "You've hit your 5-hour limit · resets 7:40pm (Europe/Warsaw)"}
+{"t": 1.082, "n": 3, "ev": "result", "ok": false, "text": "You've hit your 5-hour limit · resets 7:40pm (Europe/Warsaw)", "subtype": "success", "is_error": true, "session_id": "cf7d4448-c507-4f63-8e86-a00edce0d370"}
