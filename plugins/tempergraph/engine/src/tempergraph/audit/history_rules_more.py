@@ -127,7 +127,7 @@ def outcome_escapes(spec: WorkflowSpec, facts: HistoryFacts) -> list[AuditFindin
 
     wf = facts.workflow
     latest = {f"{wf}/{run}": {"outcome": {"verdict": verdict}} for run, verdict in graded}
-    rows = outcome_record._jsonl(facts.root / "ledger.jsonl")
+    rows = outcome_record._jsonl(facts.root / "ledger.jsonl") if facts.root else []
     found = outcome_record.escape_threads(latest, rows, {f"{wf}/{src}" for src in facts.rerun_sources})
     escapes = [run for run, _ in graded if f"{wf}/{run}" in found]
     if len(graded) < P["min_graded_runs"] or len(escapes) / len(graded) < P["escape_rate"]:
