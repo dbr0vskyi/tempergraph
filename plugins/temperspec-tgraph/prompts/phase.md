@@ -18,7 +18,8 @@ Your phase, `{item_id}`:
 4. For a code row, make the smallest change in the named file that makes the phase's tests pass.
 5. For a docs row, edit the named document. A spec is edited only where the plan says a behaviour or a criterion changes.
 6. After the phase, run only the test files its rows name, as plain commands. Never run the plan's verification commands and never the whole suite: the code step runs them once, after the last phase. Fix what fails in your change. Never weaken, skip or delete a test to make a test pass.
-7. Mark each row you built, whose change is in its file: write `✓ <today's date as YYYY-MM-DD>` in its Completed cell.
+7. Check the specs your change touches that the plan does not name: for each source file you changed, search the spec folders for the commands, files, fields and messages that file gives to someone outside, and read the behaviours the search finds in specs outside the plan's front matter. If your change makes one of them false, leave the row unmarked and name the behaviour's id and the row in your note.
+8. Mark each row you built, whose change is in its file: write `✓ <today's date as YYYY-MM-DD>` in its Completed cell.
 
 ## Limits
 

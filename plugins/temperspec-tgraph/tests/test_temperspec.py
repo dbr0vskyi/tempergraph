@@ -177,6 +177,52 @@ def test_the_task_notes_rule_examples_match_the_parsers() -> None:
     assert f"more than {fmt.QUICK_MAX['lines']} changed lines" in rule
 
 
+# A sentence several prompts or briefs carry is one rule; a copy edited alone is two rules. Each entry is the words
+# that mark the sentence and the sentence itself: a file that holds the mark holds the whole sentence.
+SHARED_SENTENCES = (
+    ("rank above the specs", "The task's acceptance criteria rank above the specs and decision records, those above "
+     "the plan, and the plan above the code."),
+    ("claims to verify", "What a step said, a status mark and a reported result are claims to verify, never evidence."),
+    ("the line behind its MET", "A criterion the gate's check verified is graded from the check's finding: quote that "
+     "finding from the evidence as the line behind its MET, and never grade it UNVERIFIABLE because you cannot run "
+     "the check yourself."),
+    ("from the file you read", "When you searched and then read the file around the line, quote the line from the "
+     "file you read."),
+    ("does not block planning", "An open question that the hand-off lists, or that a later note carries on, does not "
+     "block planning: the discovery step ends blocked on one that does. It is neither a defect nor something out of "
+     "your reach, so it changes no grade and you leave `gap` false for it; the pull request lists it for the owner."),
+    ("is not opening it", "Open each rule file named here that this repository holds with the read tool; a search of "
+     "a rule file is not opening it."),
+    ("never `ls`", "read, search and list files with the file tools (read, grep, glob), never `ls`, `cat`, `wc` or "
+     "`python -c`."),
+)
+IN_EVERY_BRIEF = ("rank above the specs", "claims to verify", "the line behind its MET", "from the file you read")
+
+
+def test_a_sentence_shared_by_prompts_or_briefs_reads_the_same_in_each() -> None:
+    files = sorted([*(ROOT / "prompts").glob("*.md"), *(ROOT / "judges").glob("*.md")])
+    for mark, sentence in SHARED_SENTENCES:
+        holders = [f for f in files if mark in f.read_text()]
+        assert len(holders) >= 4, mark
+        for f in holders:
+            assert sentence in f.read_text(), f"{f.parent.name}/{f.name}: its copy of the `{mark}` sentence differs"
+    for brief in sorted((ROOT / "judges").glob("*.md")):
+        for mark in IN_EVERY_BRIEF:
+            assert mark in brief.read_text(), f"{brief.name} lacks the `{mark}` sentence"
+
+
+def test_each_skill_is_named_for_its_folder_and_no_step_loads_one() -> None:
+    names = set()
+    for path in sorted((ROOT / "skills").glob("*/SKILL.md")):
+        head = path.read_text().split("---")[1]
+        assert f"name: {path.parent.name}\n" in head and "\ndescription: " in head, path.parent.name
+        names.add(path.parent.name)
+    assert names == {"answer", "extract", "setup", "task"}
+    assert all(f"`{n}` skill" in (ROOT / "README.md").read_text() for n in names)
+    for unit in SPEC.units.values():
+        assert not [c for c in (getattr(unit.step, "tools", None) or ()) if str(c).startswith("skill:")]
+
+
 def test_every_rule_file_says_when_it_is_loaded() -> None:
     """A rule file with no `paths` front matter is loaded into every session of a repository. Only the rule that
     holds for every document may be; each other one names the files it governs, all of them document suffixes."""
