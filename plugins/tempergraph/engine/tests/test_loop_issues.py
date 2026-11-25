@@ -38,19 +38,19 @@ def test_mute_days_is_a_parameter_record() -> None:  # IMD-AC3, ISS-B3; AC 2
 
 
 @pytest.mark.parametrize("reason", ["not_planned", "completed", "duplicate", ""])
-def test_a_closed_issue_is_read_by_its_marker_only(reason: str) -> None:  # ISS-AC3; AC 1, AC 3
+def test_a_closed_issue_is_read_from_the_label_list(reason: str) -> None:  # ISS-AC3, ISS-AC9; AC 1, AC 3
     host = MemoryCodeHost()
-    url = host.create(REPO, "t", f"<!-- {filing.marker(FP)} -->\nbody", [])
-    host.create(REPO, "t", f"<!-- {filing.marker('ffff0000ffff0000')} -->\nbody", [])
-    assert host.closed(REPO, filing.marker(FP)) == []  # open issues are never read as closed
+    url = host.create(REPO, "t", f"<!-- {filing.marker(FP)} -->\nbody", ["tempergraph-loop"])
+    host.create(REPO, "t", f"<!-- {filing.marker('ffff0000ffff0000')} -->\nbody", ["bug"])  # not a loop issue
+    assert host.loop_issues(REPO, "closed") == []  # open issues are never read as closed
     host.close(REPO, 1, reason, ago(3))
     host.close(REPO, 2, reason, ago(3))
-    (got,) = host.closed(REPO, filing.marker(FP))
+    (got,) = host.loop_issues(REPO, "closed")
     assert got["number"] == 1 and got["url"] == url and got["state_reason"] == reason
     assert got["closed_at"] == ago(3) and filing.marker(FP) in got["body"]
-    assert host.search(REPO, filing.marker(FP)) == []  # search stays open-only
+    assert host.loop_issues(REPO, "open") == []  # the open list stays open-only
     host.reopen(REPO, 1)
-    assert host.closed(REPO, filing.marker(FP)) == [] and len(host.search(REPO, filing.marker(FP))) == 1
+    assert host.loop_issues(REPO, "closed") == [] and len(host.loop_issues(REPO, "open")) == 1
     assert host.issues[0]["state_reason"] in (None, "") and host.issues[0].get("closed_at") in (None, "")
 
 
@@ -58,17 +58,17 @@ def test_the_closed_read_can_fail_and_go_down() -> None:  # ISS-AC6; AC 3
     host = MemoryCodeHost(fail_closed=2)
     for _ in range(2):
         with pytest.raises(CodeHostError):
-            host.closed(REPO, filing.marker(FP))
-    assert host.closed(REPO, filing.marker(FP)) == []
+            host.loop_issues(REPO, "closed")
+    assert host.loop_issues(REPO, "closed") == []
     with pytest.raises(CodeHostError):
-        MemoryCodeHost(down=True).closed(REPO, filing.marker(FP))
+        MemoryCodeHost(down=True).loop_issues(REPO, "closed")
 
 
-def test_gh_closed_read_refuses_bad_input() -> None:  # SEC-B7
+def test_gh_list_read_refuses_bad_input() -> None:  # SEC-B7, ISS-B9
     with pytest.raises(CodeHostError):
-        GhCodeHost().closed("not a repo; rm -rf", "tempergraph:fp=ab")
+        GhCodeHost().loop_issues("not a repo; rm -rf", "closed")
     with pytest.raises(CodeHostError):
-        GhCodeHost().closed(REPO, "tempergraph:fp=$(x)")
+        GhCodeHost().loop_issues(REPO, "all")
 
 
 def filed(host: MemoryCodeHost, tmp_path: Path, cand: Candidate | None = None, **kw: Any) -> list[dict[str, Any]]:
@@ -106,8 +106,8 @@ def test_a_workflows_declared_labels_replace_the_default_for_its_own_findings(tm
     assert "needs-triage" not in host.issues[0]["labels"]
     assert set(host.issues[1]["labels"]) == DEFAULT | {"side:engine"}  # an engine finding keeps the engine's list
     assert len(host.issues[0]["labels"]) == len(set(host.issues[0]["labels"]))  # no duplicates
-    filed(host, tmp_path, Candidate(finding=finding(fingerprint="bb00000000000003"), confidence=0.9, attributed=True,
-                                    issue_labels=["tempergraph-loop", "x"]))
+    filed(host, tmp_path, Candidate(finding=finding(fingerprint="bb00000000000003", cause="check_fail:draft"),
+                                    confidence=0.9, attributed=True, issue_labels=["tempergraph-loop", "x"]))
     assert host.issues[2]["labels"].count("tempergraph-loop") == 1 and "x" in host.issues[2]["labels"]
 
 
@@ -127,7 +127,8 @@ def test_a_child_workflows_finding_takes_the_childs_own_labels(tmp_path: Path) -
                 host, Outbox.at(tmp_path))
     assert host.issues[0]["repo"] == "acme/repo-setup"
     assert set(host.issues[0]["labels"]) == {"kid-triage", "tempergraph-loop", "side:workflow"}
-    plain = finding(fingerprint="cc00000000000001", child="setup", parent="deliver", issue_repository="acme/repo-setup")
+    plain = finding(fingerprint="cc00000000000001", child="setup", parent="deliver", issue_repository="acme/repo-setup",
+                    cause="check_fail:draft")
     filing.file([decide(Candidate(finding=plain, confidence=0.9, attributed=True, issue_labels=["parent-label"]), [],
                         REPO)], host, Outbox.at(tmp_path))
     assert set(host.issues[1]["labels"]) == DEFAULT | {"side:workflow"}  # never the parent's list
@@ -190,7 +191,8 @@ def test_a_child_owner_reads_the_childs_declared_labels(tmp_path: Path) -> None:
     assert got["issue_labels"] == ["kid"] and got["issue_repository"] == "acme/repo-setup"
 
 
-SECTIONS = ["## Summary", "## Evidence", "## Fingerprint", "## Suggested remedy"]
+SECTIONS = ["## Summary", "## Environment", "## Run", "## Steps to reproduce", "## Run log", "## Evidence",
+            "## Fingerprint", "## Suggested remedy"]
 
 
 def section(text: str, name: str) -> str:
@@ -198,13 +200,14 @@ def section(text: str, name: str) -> str:
     return parts.split("\n## ", 1)[0].strip()
 
 
-def test_the_body_has_four_sections_after_the_hidden_line(tmp_path: Path) -> None:  # ISS-AC2; AC 1, AC 3
+def test_the_body_has_its_sections_after_the_hidden_lines(tmp_path: Path) -> None:  # ISS-AC2; AC 1, AC 3
     host = MemoryCodeHost()
     f = finding(request=CANARY, note=CANARY, executor_version="2.1.0")
     filed(host, tmp_path, Candidate(finding=f, confidence=0.9, attributed=True))
     text = host.issues[0]["body"]
     lines = text.splitlines()
-    assert lines[0] == f"<!-- {filing.marker(FP)} -->" and text.count("<!--") == 1
+    assert lines[0] == f"<!-- {filing.marker(FP)} -->" and lines[1] == f"<!-- tempergraph:cause={filing.cause_key(f)} -->"
+    assert text.count("<!--") == 2
     heads = [ln for ln in lines if ln.startswith("## ")]
     assert heads == SECTIONS
     for name in SECTIONS:
@@ -212,7 +215,8 @@ def test_the_body_has_four_sections_after_the_hidden_line(tmp_path: Path) -> Non
     assert FP in section(text, "## Fingerprint") and "<!--" not in section(text, "## Fingerprint")
     assert "Three or more retries" in section(text, "## Suggested remedy")
     assert "retry_burst" in section(text, "## Summary") and "draft" in section(text, "## Summary")
-    assert "v1" in section(text, "## Evidence") and "2.1.0" in section(text, "## Evidence")
+    assert "v1" in section(text, "## Environment") and "2.1.0" in section(text, "## Environment")
+    assert "count 3" in section(text, "## Evidence")
     assert CANARY not in text
     filed(host, tmp_path)  # the hidden line is still the exact match of SIL-B2: a second occurrence comments
     assert len(host.issues) == 1 and len(host.comments) == 1
@@ -428,18 +432,27 @@ def test_a_muted_result_is_recorded_and_not_counted_as_filed(repo: Path, monkeyp
     assert {"filed", "commented"} == loop_summary.FILED_OPS
 
 
-def test_gh_closed_read_lowers_the_reason(monkeypatch: pytest.MonkeyPatch) -> None:  # ISS-B3
+def test_gh_list_read_lowers_the_reason_and_skips_pull_requests(monkeypatch: pytest.MonkeyPatch) -> None:
+    # ISS-B3, ISS-AC9
+    import json
+
     seen: list[list[str]] = []
+    rows = [{"number": 4, "html_url": "u", "body": "b", "state_reason": "NOT_PLANNED", "closed_at": "2026-11-01T00:00:00Z"},
+            {"number": 5, "html_url": "v", "body": None, "state_reason": None, "closed_at": None},
+            {"number": 6, "html_url": "w", "body": "pr", "pull_request": {"url": "x"}}]
 
-    def fake(self: GhCodeHost, args: list[str], payload: Any = None) -> Any:
+    def fake(self: GhCodeHost, args: list[str], payload: Any = None) -> str:
         seen.append(args)
-        return [{"number": 4, "url": "u", "body": "b", "stateReason": "NOT_PLANNED", "closedAt": "2026-11-01T00:00:00Z"},
-                {"number": 5, "url": "v", "body": "c", "stateReason": None, "closedAt": None}]
+        return "\n".join(json.dumps(r) for r in rows) + "\n"
 
-    monkeypatch.setattr(GhCodeHost, "_gh", fake)
-    got = GhCodeHost().closed(REPO, filing.marker(FP))
+    monkeypatch.setattr(GhCodeHost, "_run", fake)
+    got = GhCodeHost().loop_issues(REPO, "closed")
+    assert [g["number"] for g in got] == [4, 5]  # a pull request is not an issue
     assert [g["state_reason"] for g in got] == ["not_planned", ""] and got[0]["closed_at"] == "2026-11-01T00:00:00Z"
-    assert "closed" in seen[0] and "--state" in seen[0]
+    args = seen[0]
+    assert "search" not in " ".join(args) and "issue" not in args  # the REST list, never the search index or GraphQL
+    assert f"repos/{REPO}/issues" in args and "state=closed" in args and "labels=tempergraph-loop" in args
+    assert "--paginate" in args
 
 
 # -- phase 5: the documents say what is built -----------------------------------------------------------------

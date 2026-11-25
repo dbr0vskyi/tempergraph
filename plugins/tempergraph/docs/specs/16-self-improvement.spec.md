@@ -140,7 +140,7 @@ WHEN a finding files THE loop SHALL file engine and `executor:<name>` findings t
 
 ### SIL-B2 De-duplication by cause
 
-WHEN a finding's fingerprint (side, workflow, leading cause, step) matches an open issue's hidden line THE loop SHALL add a "seen again" comment instead of a new issue, and retry a failed search once, then file anyway and record why.
+WHEN a finding's fingerprint (side, workflow, leading cause, step) matches an open issue's hidden line, or its cause matches the issue's cause line ([ISS-B7](loop-issues.spec.md)), THE loop SHALL add a "seen again" comment instead of a new issue, and retry a failed read of the issues once, then file anyway and record why.
 
 - GIVEN an open issue with the same fingerprint WHEN the finding files THEN one comment is added and no issue is created
 
