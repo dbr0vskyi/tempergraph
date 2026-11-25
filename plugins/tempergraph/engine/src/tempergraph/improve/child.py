@@ -29,7 +29,7 @@ from typing import Any
 from tempergraph.contracts import SessionOptions, SessionRequest, ViewSet, WorkflowSpec
 from tempergraph.docs import append_jsonl, write_json
 from tempergraph.executors.registry import Registry, default_registry
-from tempergraph.improve import autonomy, filing, params
+from tempergraph.improve import autonomy, filing, params, pr_later
 from tempergraph.improve.codehost import CodeHost, GhCodeHost
 from tempergraph.improve.record import read_findings
 from tempergraph.run.log import Ledger, LiveSink, estimate
@@ -123,7 +123,8 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
             pass
     level = prp.autonomy(spec, os.environ.get("TEMPERGRAPH_AUTONOMY"))
     # PRP-B26: a final exit of a workflow with a proposal to watch reads its pull request, a clean exit included
-    watch = final and not dry_run and not trial and level != "record" and prp.watching(root, spec.name)
+    watch = final and not dry_run and not trial and level != "record" and (
+        prp.watching(root, spec.name) or bool(pr_later.pending(root, spec.name)))  # OUT-B23: a recorded pull request too
     if not (friction or outcome) and depth == "off" and not watch:
         return None
     tid = uuid.uuid4().hex[:16]
@@ -306,6 +307,11 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
             prp.sync_pr_state(root, wf, host)
         except Exception as exc:  # noqa: BLE001
             append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "pr_state", "reason": "error",
+                               "error": type(exc).__name__})
+        try:  # OUT-B23, OUT-B24, OUT-B25: the pull requests that runs of the workflow recorded
+            pr_later.read(root, wf, host)
+        except Exception as exc:  # noqa: BLE001
+            append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "pull_request_read", "reason": "error",
                                "error": type(exc).__name__})
         try:  # PRP-B9: a proposal that has just become merged is compared in the same ticket
             from tempergraph.improve import release
