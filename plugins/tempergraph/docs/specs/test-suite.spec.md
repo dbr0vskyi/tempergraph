@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The engine's own tests, started with `python -m pytest` in the engine folder, are what every change to the engine must pass and what a gate runs again after each change, so the suite's wall time is paid by every run that edits the engine. By default the suite spreads its tests over a few worker processes, at most four; it runs in one process when asked or when the parallel runner is missing; it keeps each test to its own folders so that workers share no file; and the engine's `dev` extra installs the runner. Developers and every workflow that changes the engine depend on it. Where the engine is installed, the tests of any package that imports the engine, and the code that runs outside the tests, start with a home folder of their own and the self-improvement loop off, wherever pytest starts; `-p no:tempergraph.pytest_plugin` switches that off. A suite result a gate already holds for the same tree is reused, not run again ([CHK-B13](check-contract-and-command-runs.spec.md)); a test session fails if any test leaves state in the real state root ([WSP-AC2](workspace-and-concurrency.spec.md)).
+The engine's own tests, started with `python -m pytest` in the engine folder, are what every change to the engine must pass and what a gate runs again after each change, so the suite's wall time is paid by every run that edits the engine. By default the suite spreads its tests over a few worker processes, at most four; it runs in one process when asked or when the parallel runner is missing; it keeps each test to its own folders so that workers share no file; it hides the sign-in of whoever started it from every test; and the engine's `dev` extra installs the runner. Developers and every workflow that changes the engine depend on it. Where the engine is installed, the tests of any package that imports the engine, and the code that runs outside the tests, start with a home folder of their own and the self-improvement loop off, wherever pytest starts; `-p no:tempergraph.pytest_plugin` switches that off. A suite result a gate already holds for the same tree is reused, not run again ([CHK-B13](check-contract-and-command-runs.spec.md)); a test session fails if any test leaves state in the real state root ([WSP-AC2](workspace-and-concurrency.spec.md)).
 
 ## Behaviours
 
@@ -90,6 +90,14 @@ WHEN a developer runs the suite in the engine folder of a checkout THE suite SHA
 - GIVEN an environment where another copy of the engine is installed WHEN `python -m pytest -n 0` runs in the engine folder of this checkout THEN every test imports the engine from this checkout
 - GIVEN the same environment WHEN `python -m pytest` runs on workers THEN every test imports the engine from this checkout
 
+### TST-B13 The caller's sign-in is out of sight
+
+WHEN a test of the suite runs THE suite SHALL give it a user home folder that is a temporary folder and an environment with no credential variable of the caller and no variable that moves the sign-in folder, so that a test that needs a sign-in creates it. A `live` test keeps the caller's home folder and credentials: it runs the signed-in `claude`.
+
+- GIVEN a caller whose home folder holds a cached sign-in file of an executor WHEN a test asks the credential check which kinds that executor holds THEN it finds none
+- GIVEN a caller whose environment sets `CLAUDE_CODE_OAUTH_TOKEN`, an API key name or `CLAUDE_CONFIG_DIR` WHEN a test reads its environment THEN none of the names is set
+- GIVEN a test that writes a sign-in file under its own home folder WHEN it asks the credential check THEN the check finds that sign-in
+
 ## Acceptance criteria
 
 - TST-AC1 (TST-B1): `python -m pytest -v` with no worker option prints test lines from as many workers (`gw0`, `gw1`, …) as the machine has processors, and from no more than four
@@ -110,3 +118,4 @@ WHEN a developer runs the suite in the engine folder of a checkout THE suite SHA
 - TST-AC16 (TST-B11): With `-p no:tempergraph.pytest_plugin` and neither `TEMPERGRAPH_HOME` nor `TEMPERGRAPH_LOOP` set, a test of that folder reads `~/.tempergraph/` and finds `TEMPERGRAPH_LOOP` unset
 - TST-AC17 (TST-B12): In an environment where another copy of the engine is installed, `python -m pytest -n 0` in the engine folder of a checkout makes every test import the engine from that checkout
 - TST-AC18 (TST-B12): In the same environment, the default run on workers makes every test import the engine from that checkout
+- TST-AC19 (TST-B13): In a suite run whose caller has a cached sign-in file for each executor that keeps one, a config folder with one more and every credential variable set, a test finds a temporary user home folder, none of those variables, and no credential kind held for any executor; a test that writes a sign-in file under its own home folder finds it

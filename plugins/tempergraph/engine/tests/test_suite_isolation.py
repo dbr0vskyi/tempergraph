@@ -440,6 +440,60 @@ def test_a_run_on_workers_tests_the_checkout_beside_another_installed_copy(tmp_p
     assert outcome_counts(run.stdout) == {"passed": 2}, run.stdout[-1500:]
 
 
+SIGN_IN_PROBE = '''\
+import os
+from pathlib import Path
+
+from tempergraph.schedule import credentials
+
+from tests.conftest import REAL_HOME, SIGN_IN_FOLDER_VAR
+
+EXECUTORS = sorted(credentials.LOGIN_FILES)
+
+
+def test_the_callers_sign_in_is_out_of_sight():
+    assert all((REAL_HOME / rel).is_file() for ex in EXECUTORS for rel in credentials.LOGIN_FILES[ex])  # the caller has one
+    assert Path.home() != REAL_HOME and not any(Path.home().glob(".*/*"))
+    assert not [n for n in (*credentials.CREDENTIAL_NAMES, SIGN_IN_FOLDER_VAR) if n in os.environ]
+    held = credentials.held_kinds(EXECUTORS, dict(os.environ), credentials.read_profile())
+    assert held == {ex: frozenset() for ex in EXECUTORS}
+
+
+def test_a_test_that_needs_a_sign_in_creates_it():
+    for ex in EXECUTORS:
+        path = Path.home() / credentials.LOGIN_FILES[ex][0]
+        path.parent.mkdir(parents=True)
+        path.write_text("{}", encoding="utf-8")
+        assert credentials.login_cached(ex)
+'''
+
+
+def test_no_test_sees_the_callers_sign_in(tmp_path: Path) -> None:  # TST-AC19 (issue 185)
+    """A nested run whose caller is signed in every way the credential check knows: sign-in files in its home
+    folder, a config folder with one more, and every credential variable set."""
+    from tempergraph.schedule import credentials
+
+    from .conftest import HOME_VARS, REAL_HOME, SIGN_IN_FOLDER_VAR
+
+    # this test's own process first: the home is not the caller's and holds no sign-in, no credential name is set
+    assert Path.home() != REAL_HOME and tmp_path.parent.parent in Path.home().parents
+    assert not [n for n in (*credentials.CREDENTIAL_NAMES, SIGN_IN_FOLDER_VAR) if n in os.environ]
+    assert not any(credentials.login_cached(ex) for ex in credentials.LOGIN_FILES)
+    if is_nested():
+        return
+    caller, folder = tmp_path / "caller", tmp_path / "claude-config"
+    for path in (*(caller / rel for rels in credentials.LOGIN_FILES.values() for rel in rels),
+                 folder / ".credentials.json"):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{}", encoding="utf-8")
+    module = tmp_path / "test_sign_in_probe.py"
+    module.write_text(SIGN_IN_PROBE, encoding="utf-8")
+    env = {**dict.fromkeys(HOME_VARS, str(caller)), **dict.fromkeys(sorted(credentials.CREDENTIAL_NAMES), "caller-secret"),
+           SIGN_IN_FOLDER_VAR: str(folder)}
+    run = nested_pytest("-n", "0", str(module), scratch=True, env=env)
+    assert outcome_counts(run.stdout) == {"passed": 2}, run.stdout[-3000:] + run.stderr[-1000:]
+
+
 def test_the_install_declares_the_plugin_under_the_pytest_entry_point() -> None:  # TST-AC15, AC 5
     doc = tomllib.loads((ENGINE_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     assert doc["project"]["entry-points"]["pytest11"] == {PLUGIN: PLUGIN_MODULE}
