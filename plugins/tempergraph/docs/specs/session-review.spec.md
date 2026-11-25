@@ -145,7 +145,15 @@ WHEN a review is about to start THE engine SHALL start it when the run's review 
 
 - GIVEN a cap of 3.46 USD, 18 targets and 12 finished reviews that reported 0.66 USD together WHEN the next review is decided THEN it starts, and the 5 after it start in turn, with none `skipped: budget`
 - GIVEN a cap of 1.00 USD, 6 targets and 4 finished reviews that reported 0.25 USD each WHEN the fifth is decided THEN the fifth and the sixth are `skipped: budget`, whatever the sixth's view size
-- GIVEN no finished review and a first view priced at 0.30 USD against a cap of 0.20 USD WHEN it is decided THEN it and every later target are `skipped: budget`
+- GIVEN a stable run with no finished review, a first view priced at 0.30 USD and 0.20 USD left under SIL's daily cap WHEN it is decided THEN it and every later target are `skipped: budget`
+
+### SRV-B33 The cap lifts to one review
+
+WHEN the cap that the run share and the per-run cap of SRV-B21 give a plan is under the estimate of SRV-B25 for the review of its first target (SRV-B24) THE engine SHALL set the plan's `cap_usd` at that estimate, or in stable mode at what SIL's daily cap leaves ([SIL-B20](self-improvement.spec.md)) when that is lower.
+
+- GIVEN no review spend yet, a cap of 0.02 USD from the run share and a first target estimated at 0.05 USD WHEN the plan runs THEN `cap_usd` is 0.05 and the first target's review starts
+- GIVEN a cap of 0.50 USD from the run share and a first target estimated at 0.05 USD WHEN the plan runs THEN `cap_usd` is 0.50
+- GIVEN a stable run with a cap of 0.02 USD from the run share, 0.03 USD left under SIL's daily cap and a first target estimated at 0.05 USD WHEN the plan runs THEN `cap_usd` is 0.03 and the first target is `skipped: budget`
 
 ### SRV-B22 Records and readers
 
@@ -194,6 +202,8 @@ WHEN `improve review <selector> [--session <key>…] [--full] [--dry-run] [--jso
 - SRV-AC12 (SRV-B29, SRV-B30): Fixture reviewer sessions that end each way of SRV-B29 leave a `review_failed` record with that class, and a fixture plan of 16 targets whose sessions return `usage_limit` true runs 16 reviewer sessions and records `resets_at` as reported
 - SRV-AC15 (SRV-B7): A fixture loop child whose run has the finding `tool_repeat` and one kept `tool_thrash` observation on `a` leaves the finding carrying `review:tool_thrash` and a `review_weight` of 1 and files one issue whose body names `tool_thrash` and no note text; with no kept observation, or one of an earlier run only, the finding carries neither and its issue names no review category; a kept observation on a unit with no finding files no issue and no comment
 - SRV-AC16 (SRV-B10): The input of a proposer run for a cluster on `a` holds the kept observations of `a` from the runs its findings name, with their notes datamarked as untrusted, and holds no observation of another unit and none the citation check rejected
+- SRV-AC19 (SRV-B33): A fixture whose cap from the run share is under the estimate for its first target sets `cap_usd` at that estimate and starts that target's review, and the same fixture with a cap above that estimate sets `cap_usd` at that cap and selects the sessions SRV-B25 selects under it
+- SRV-AC20 (SRV-B33): A stable fixture whose day leaves less under SIL's daily cap than the estimate for its first target sets `cap_usd` at what the day leaves and starts no review
 
 ## Open questions
 
