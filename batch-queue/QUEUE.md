@@ -9,10 +9,10 @@ One branch, `claude/issue-queue-2026-11-25`, and one pull request (#138) hold ev
 
 ## How a run is started
 
-On the owner's machine the engine is installed from this checkout (`plugins/tempergraph/bin/tempergraph install`, shim `~/.tempergraph/bin/tempergraph`), temperspec is registered from `plugins/temperspec-tgraph` of this checkout, and a Python 3.12 environment with the engine's `dev` extra is in `.venv/` at the repository root (the suite imports the `src` beside it, so one environment serves every worktree).
+On the owner's machine the engine is installed from this checkout (`plugins/tempergraph/bin/tempergraph install`, shim `~/.tempergraph/bin/tempergraph`), temperspec is registered from `plugins/temperspec-tgraph` of this checkout, and a Python 3.12 environment with the engine's `dev` extra is in `.venv/` at the repository root (the suite imports the `src` beside it, so one environment serves every worktree). That environment's editable install also puts a `tempergraph` in `.venv/bin` that runs the checkout's working tree: with `.venv/bin` first on `PATH` a run uses that one, not the installed engine. Runs i71, i7 and i141 were started that way; later ones use the shim.
 
 ```sh
-export PATH="$PWD/.venv/bin:$HOME/.tempergraph/bin:$PATH"
+export PATH="$HOME/.tempergraph/bin:$PWD/.venv/bin:$PATH"   # the shim first: `.venv/bin` holds a `tempergraph` of its own
 git checkout claude/issue-queue-2026-11-25 && git pull
 tempergraph run temperspec --check --task-id <id> --worktree --worktree-base head --carry --as-agent batch-queue/tasks/<id>.md
 tempergraph run temperspec --json  --task-id <id> --worktree --worktree-base head --carry --as-agent batch-queue/tasks/<id>.md
