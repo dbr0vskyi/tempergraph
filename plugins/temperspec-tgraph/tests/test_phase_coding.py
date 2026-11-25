@@ -262,10 +262,13 @@ def test_the_phase_prompt_names_its_keys_and_renders_one_phase_with_the_two_path
 
 
 def test_the_phase_prompt_tells_the_session_what_to_build_how_to_mark_and_what_never_to_run() -> None:
-    # AC 1, PHC-AC3 (PHC-B3)
+    # AC 1, AC 3, PHC-AC3 (PHC-B3)
     text = _prompt()
     said = _said(text)
-    for phrase in ("build only the rows of the phase whose completed cell is empty",
+    for phrase in ("write the completed marks of the rows you built in one phase in one edit of the plan",
+                   "after the change of each row is in its file and the test files that the phase's rows name pass",
+                   "not in one edit for each row",
+                   "build only the rows of the phase whose completed cell is empty",
                    "leave the mark of every other row as it is",
                    "write the phase's tests first and see them fail",
                    "run only the test files its rows name",
