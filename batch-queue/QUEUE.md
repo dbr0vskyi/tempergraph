@@ -48,7 +48,7 @@ State words: `queued`, `running`, `paused`, `merged`, `failed`, `skipped`.
 | 2a | i21 | #21 | Step and judge sessions are offered no MCP server they do not declare (the account's connectors cost about 165k tokens a step session) | merged | temperspec/i21 | 14.12 | Outcome met; review: launch paths correct, nothing blocking, five follow-ups (request `tasks/i21b.md`); installed as the local engine (build `0.2.0-da9985a63404`) |
 | 2a' | i21b | follow-up of #21 (issue to be filed: GitHub's API failed at 15:54 UTC; the text is in the request) | The MCP isolation's live probe measures the leak, and its runbook row records what was run | queued | | | Must land before the pull request is ready: the runbook says `passed` for a test that never ran |
 | 2b | i144, i144b | #144 | Package tests run directly write the real machine index and stats | second run running | temperspec/i144 (stopped), temperspec/i144b | 9.69 + second run | First run stopped at `attempt_cap`, could not resume (#152), and its rerun crashed at start (#163). Its branch (pushed, head `278e4aa3`) was reviewed as it stood: one blocker and seven smaller points. `i144b` is a new run on top of that branch (`--worktree-base ref:tg/temperspec/i144`) with the review as its task (`tasks/i144b.md`). Merge `tg/temperspec/i144b` only; do not reinstall the shared `.venv` before it |
-| 2c | i148 | #148, #149 | The gates of the phases arm stop pausing for a person: a phase's gate grades the phase's own changes; `ts-exp-opened` counts every session of the visit | queued | | | Next in temperspec's files; before the gate split, which adds phases |
+| 2c | i148 | #148, #149 | The gates of the phases arm stop pausing for a person: a phase's gate grades the phase's own changes; `ts-exp-opened` counts every session of the visit | running | temperspec/i148 | | First run on the engine build with #21, started without the stopgap variable |
 | 3 | i134a | #134 | Split the discovery gate (extract pass, write pass) | queued | | | L: first of two runs |
 | 4 | i134b | #134 | Code step: the join and the quick lane get prompts of their own | queued | | | L: second of two runs |
 | 5 | i114 | #114, #117 | Loop findings: a judge that passes without opening a changed path; the phase check failing | queued | | | Triage the evidence first |
@@ -80,3 +80,9 @@ State words: `queued`, `running`, `paused`, `merged`, `failed`, `skipped`.
 - `i76.md`: the issue is thin (no "Done when"); its three criteria come from the summary and backlog row B11, and the docs-only workflow is left out. Read it against the issue before starting.
 - `i32.md` leaves out the literal "no engine test names a workflow package" (about 20 engine tests use `release-notes` as a fixture name); it could run as `docs only`.
 - `i130.md`, `i14.md`: the live setup run and the pull-request gate guide are left out.
+
+## GitHub writes that failed and are still owed (the API answered "Something went wrong" from 15:53 UTC, 2026-11-25)
+
+- File the follow-up issue of #21: its text is `tasks/i21b.issue.md` (title: "The MCP isolation's live probe proves nothing and its runbook row is recorded as passed without a run"; labels `type: bug`, `area: engine`, `priority: P1`, `effort: S`). Then put its number into the table row of `i21b`.
+- Result comment on #21 (merged as `d60ebaac`, outcome met, 14.12 USD, follow-ups in that new issue) and remove its `in progress` label.
+- Claim comment on #148 for run `temperspec:i148` (it also builds #149); assign and label both `in progress`.

@@ -78,9 +78,9 @@
         148,
         149
       ],
-      "state": "queued",
-      "thread": null,
-      "branch": null,
+      "state": "running",
+      "thread": "temperspec/i148",
+      "branch": "tg/temperspec/i148",
       "cost_usd": null,
       "exit": null,
       "note": "found in run i21"
