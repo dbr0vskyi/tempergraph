@@ -93,6 +93,14 @@ WHEN the watch runs for a gate on `antigravity` whose pass rate was 70 % over it
 
 - GIVEN a 30-point drop after a CLI update WHEN watched THEN `binding_shift` names `executor:antigravity` and both versions
 
+### FBK-B15 Review text stays in local evidence
+
+WHEN the loop reads the text of a person's reviews or review comments from a pull request THE loop SHALL keep that text in the run's local evidence, as it keeps a person's feedback ([SEC-B9](security.spec.md)), and carry into every `later[]` entry, finding, label, ledger row, issue and comment only counts and kinds.
+
+- GIVEN a review comment holding a canary WHEN the loop reads the pull request THEN the canary is in the run's local evidence and in no `later[]` entry
+- GIVEN that run is an escape WHEN the loop files its finding THEN the canary is in no issue body, issue comment, ledger row, finding or label row
+- GIVEN a review with no comment text WHEN it is read THEN its entry holds its counts and the local evidence holds no text for it
+
 ## Acceptance criteria
 
 - FBK-AC1 (FBK-B9, FBK-B1): Every derived label kind is produced from a fixture run log with no model call
@@ -101,8 +109,9 @@ WHEN the watch runs for a gate on `antigravity` whose pass rate was 70 % over it
 - FBK-AC4 (FBK-B2): Agent-sourced labels change no reliability figure
 - FBK-AC5 (FBK-B4): A binding change resets the grade to `unmeasured` in a fixture
 - FBK-AC6 (FBK-B5, FBK-B6, FBK-B10, FBK-B13, FBK-B14, FBK-B7): Fixtures cover the per-gate quality lens, harvest from labels, orphan and repeated labels, the queue order and the binding-shift watch
+- FBK-AC7 (FBK-B15): Against a fake code host, a canary planted in the text of a review and of a review comment of a fixture run's pull request is in the run's local evidence and in no `later[]` entry, finding, label row, ledger row, issue body or issue comment after the loop has read the pull request and filed the run's escape
 
 ## Open questions
 
 - Should the grade also read the offline gold-set calibration state per binding, so that `reliable` needs that state `accepted`? Until answered: JCL's `accepted` or `provisional` on known-bad cases stands in. Owner: owner, with the eval and judge design.
-- Should `pr_state` labels (merged `agree`, closed unmerged `disagree`, open after 30 days `neutral`) be read by the shared store's collector for every machine, or only on request? Until answered: not derived, because no run records the pull request it led to. Owner: owner, with the run-monitor design.
+- Should `pr_state` labels (merged `agree`, closed unmerged `disagree`, open after 30 days `neutral`) be read by the shared store's collector for every machine, or only on request? Until answered: not derived as labels; the loop reads a run's recorded pull request on the machine that holds the person's sign-in and keeps its state in `later[]` ([OUT-B24](run-outcome.spec.md)), and the shared store's collector reads no code host. Owner: owner, with the run-monitor design.

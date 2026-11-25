@@ -28,10 +28,11 @@ WHEN the loop decides which exits are final THE engine SHALL treat every exit th
 
 ### SIL-B10 Lenses
 
-WHEN a final exit is judged THE loop SHALL apply the friction lens (where the process hurt and whose fault: every flagged final exit in dev mode; in stable mode a `tool_access` pause or tool grant, spent retries or a stop, an uncleared failed step, a gap escalation, repeated blockers, a retry burst, cost above the version's p90, a new version's first five runs, or a person pushing back), the outcome lens (read from the run's outcome record, [OUT-B18, OUT-B19](run-outcome.spec.md): every final exit in dev mode; in stable mode a person pushing back, a pass at judge confidence at most 0.5, or every 20th clean run), the cost lens (every 10th final exit of a version), the session lens (digest causes on every exit, a model review only on a plan, [SRV-B13, SRV-B14, SRV-B15, SRV-B16, SRV-B5](session-review.spec.md)) and the per-gate quality scorecard (reported for every gate; a gate's rows may file only while its judge binding is graded `reliable`, [FBK-B5](feedback-and-judge-reliability.spec.md)).
+WHEN a final exit is judged THE loop SHALL apply the friction lens (where the process hurt and whose fault: every flagged final exit in dev mode; in stable mode a `tool_access` pause or tool grant, spent retries or a stop, an uncleared failed step, a gap escalation, repeated blockers, a retry burst, cost above the version's p90, a new version's first five runs, or a person pushing back), the outcome lens (read from the run's outcome record, [OUT-B18, OUT-B19](run-outcome.spec.md): every final exit in dev mode; in stable mode a person pushing back, a pass at judge confidence at most 0.5, every 20th clean run, or an earlier run whose pull request this exit's read has shown to be an escape, SIL-B33), the cost lens (every 10th final exit of a version), the session lens (digest causes on every exit, a model review only on a plan, [SRV-B13, SRV-B14, SRV-B15, SRV-B16, SRV-B5](session-review.spec.md)) and the per-gate quality scorecard (reported for every gate; a gate's rows may file only while its judge binding is graded `reliable`, [FBK-B5](feedback-and-judge-reliability.spec.md)).
 
 - GIVEN stable mode and a clean run that is the 20th since the last outcome review WHEN it exits THEN the outcome lens runs
 - GIVEN a gate whose judge binding is not `reliable` WHEN its scorecard rows show a drop THEN they are reported and not filed
+- GIVEN stable mode and an earlier `met` run whose pull request this exit reads with a review in state `changes_requested` WHEN the exit is recorded THEN the outcome lens runs for that earlier run
 
 ### SIL-B11 Fault sides
 
@@ -60,9 +61,24 @@ WHEN a run exits after its gate escalated with cause `check_repeat` ([BUD-B16](b
 
 ### SIL-B13 Outcome evidence
 
-WHEN the outcome lens judges a run THE loop SHALL include the run branch's commits, changed paths and diff stat, and spend no session of its own: its candidates are the final criteria the outcome gate's judge graded `UNMET` or `PARTIAL`, recorded as `outcome_unmet:<criterion>` on the `outcome` unit.
+WHEN the outcome lens judges a run THE loop SHALL include the run branch's commits, changed paths and diff stat, and spend no session of its own: its candidates from the outcome gate's judge are the final criteria it graded `UNMET` or `PARTIAL`, recorded as `outcome_unmet:<criterion>` on the `outcome` unit.
 
 - GIVEN a final criterion graded `UNMET` WHEN the outcome lens runs THEN `outcome_unmet:<criterion>` is recorded and no judge session starts
+
+### SIL-B33 An escape is a finding on the units that wrote the changed files
+
+WHEN a read of a run's pull request shows the run to be an escape ([OUT-B26](run-outcome.spec.md)) THE outcome lens SHALL record for that run, in dev and in stable mode and with no model call, a finding `outcome_escape` of the workflow's side, once for each unit that wrote a file a follow-up commit changed, or for the `outcome` unit when none did.
+
+- GIVEN stable mode and a `met` run whose pull request a read shows with a review in state `changes_requested` and no follow-up commit WHEN the read ends THEN one finding `outcome_escape` is recorded for the `outcome` unit and no session starts
+- GIVEN a follow-up commit that changed files written by units `a` and `b` WHEN a read shows it THEN a finding `outcome_escape` is recorded for `a` and for `b`
+- GIVEN a run that holds the finding for `a` WHEN a later read shows more changes to files `a` wrote THEN no second finding for `a` is recorded
+
+### SIL-B34 An escape files by the pattern rule
+
+WHEN an `outcome_escape` finding would file THE loop SHALL apply to it the pattern rule of SIL-B3 and no calibration test (SIL-B7).
+
+- GIVEN `outcome_escape` findings of three runs with three distinct requests in 30 days and an outcome judge with no calibration score WHEN filing runs THEN one issue is filed
+- GIVEN such findings of two runs WHEN filing runs THEN they are recorded and nothing is filed
 
 ### SIL-B14 Tool access and grants
 
@@ -199,6 +215,9 @@ WHEN the cost lens runs THE loop SHALL apply six rules, each a finding per unit 
 - SIL-AC15 (SIL-B23): The fixture run of BUD-AC8 that pauses on `check_repeat` exits with `check_repeat` among the findings of its unit and in its `finding_recorded` record
 - SIL-AC16 (SIL-B24): A fixture loop child that finds nothing and whose reviews all end `review_failed` as `usage_limit` leaves a `loop_summary` with `review_failed` holding `usage_limit` and their number, a review that failed and then ended `review_done` on its retry is not counted, and a child with no failed review has an empty `review_failed`
 - SIL-AC17 (SIL-B25, SIL-B26): A fixture loop child on a fake clock whose reviews all return `usage_limit` true with `resets_at` 2 hours ahead starts no retry before that instant, runs each review once more in plan order with `retry` true on every record of a retry, never a third time, and writes its summary after the last retry; with `resets_at` 40 hours ahead or none, from `improve review`, or inline, it starts no wait and no retry
+- SIL-AC29 (SIL-B10, SIL-B33): Against a fake code host, a stable-mode fixture whose `met` run has a pull request with a review in state `changes_requested` gets one `outcome_escape` finding for the `outcome` unit at the next final exit of the workflow, the outcome lens running for that run and no model session starting, and one whose pull request has a follow-up commit that changed files written by two units gets one finding for each
+- SIL-AC30 (SIL-B16, SIL-B33): A kept review observation of a run on a unit that holds its `outcome_escape` finding makes that finding carry `review:<category>` and `review_weight`, and an observation on a unit with no such finding changes none
+- SIL-AC31 (SIL-B34): With an outcome judge that has no calibration score, `outcome_escape` findings of three fixture runs with three distinct requests in 30 days file one issue and those of two runs file none
 
 ## Open questions
 
