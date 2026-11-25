@@ -1,0 +1,26 @@
+# Weekly update pull requests for the engine's Python dependencies and for the actions the workflows use.
+# Actions are pinned to commit SHAs with a version comment; Dependabot updates both together.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /plugins/tempergraph/engine
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: ["type: debt", "area: repo", "needs-triage"]
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      dev-tools:
+        dependency-type: development
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels: ["type: debt", "area: repo", "needs-triage"]
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]
