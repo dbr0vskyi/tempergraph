@@ -44,6 +44,12 @@ An `## Open questions` section may follow, only while a question is open. Remove
 - A behaviour states a result that someone outside the capability can observe. It names a file, a command, a field or a message only when someone outside depends on that exact name. It never names a class, a function, a module or a variable.
 - A fact about an interface is a behaviour like any other (`WHEN a client sends a request without a token THE service SHALL answer 401`).
 - One behaviour, one result. A sentence that needs "and" between two results is two behaviours.
+- The `WHEN … SHALL` sentence is at most 500 characters. Detail goes into the scenarios; a sentence that lists several results or options is split into behaviours.
+- A behaviour, like a criterion, uses no word that two readers could measure differently ("fast", "robust", "secure", "intuitive", "appropriate", "reasonable") and no placeholder left from drafting (`TODO`, `TBD`, `???`, `<…>`). One concept keeps one name: a term another spec defines is used with that spec's meaning.
+
+## Naming a spec
+
+A spec is named for the capability it owns, never for the task that created it: no task id, issue number or work verb (add, fix, support, remove, update) in its file name or its title. When a neighbouring spec could be mistaken for the owner of a rule, the Purpose says in one sentence what this spec does not own. Before a new spec is written, the existing specs are searched for the capability: a rule that belongs to an existing capability goes into its spec, not into a near-duplicate.
 
 ## General rules, not cases
 

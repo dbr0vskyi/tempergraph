@@ -304,7 +304,7 @@ def test_the_phrases_the_prompt_checks_read_are_still_in_their_prompts() -> None
 @pytest.mark.parametrize("path", [ROOT / "README.md", ROOT / "skills" / "setup" / "SKILL.md"])
 def test_the_readme_and_the_setup_skill_state_what_prepare_does(path: Path) -> None:  # AC 1, AC 2, AC 3
     text = _words(path)
-    assert "holds all six rule files" in text
+    assert "holds all seven rule files" in text
     assert "already names" in text and "unchanged" in text
     assert "tempergraph.commands.json" in text  # AC 4: prepare also writes the commands file of a Python repository
 

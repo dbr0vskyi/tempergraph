@@ -13,13 +13,15 @@ Part of the [overview](00-overview.spec.md). A triage note that lists two or mor
 - [ ] ts-dis-over A spec over the budget in lines or in bytes fails the discovery check with a finding, carried to the next discovery attempt, that names the spec with its figure over the budget and says to split the spec by capability
 - [ ] ts-dis-names Every document the discovery step created carries its type suffix in its file name
 - [ ] ts-dis-links Every id that a document of the discovery step links to resolves to exactly one definition
-- [ ] ts-dis-ruleread Each rule file the discovery prompt names (spec.rule.md, decision.rule.md, research.rule.md, task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session
+- [ ] ts-dis-ruleread Each rule file the discovery prompt names (spec.rule.md, extraction.rule.md, decision.rule.md, research.rule.md, task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session
 - [ ] ts-dis-commit Every file the discovery step changed is committed
 - [ ] ts-dis-gaps Every gap in the triage note is closed by a document the hand-off names
 - [ ] ts-dis-behaviour Every behaviour the discovery step wrote states an observable result with no internal name
 - [ ] ts-dis-named No line the discovery step added to a spec outside a workflow package names that package or its workflow
 - [ ] ts-dis-literal Every line the discovery step added to a spec in words that tie it to the task is reported to the judge as a lead
-- [ ] ts-dis-general Every behaviour the discovery step wrote or changed states a general rule of its capability that reads true to someone who never saw the task
+- [ ] ts-dis-wording Every line the discovery step added to a spec with a behaviour sentence over 500 characters, a word two readers could measure differently or a placeholder is reported to the judge as a lead
+- [ ] ts-dis-specname Every spec the discovery step created is named for its capability: no task id, issue number or leading work verb in its file name, no task id or issue number in its title
+- [ ] ts-dis-general Every behaviour the discovery step wrote or changed states a general rule of its capability that reads true to someone who never saw the task and can be read only one way
 - [ ] ts-dis-scope No document the discovery step wrote covers a concept outside the task's gaps
 - [ ] ts-dis-narrow Every discovery prompt tells the session to search for ids and names, to read the line ranges it needs instead of whole files, and to stop reading once each gap has its answer
 - [ ] ts-dis-reading The hand-off of a task that goes on to a plan has a reading list with one item for each file the plan will need, naming an existing file, the line ranges or ids that matter and one line on why

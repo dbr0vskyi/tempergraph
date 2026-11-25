@@ -12,7 +12,7 @@ Your folder, `{item_id}`, named:
 
 1. List the folder and read its entry points, its build files and its README if it has one.
 2. Read the folder's code and its tests narrowly: search for names first, read the line ranges you need instead of whole files, and stop once you know what the folder does, what someone outside depends on, and which commands it has for tests, lint and types.
-3. Report what you found: what the folder holds, what someone outside depends on, and what you could not read.
+3. Report what you found: what the folder holds, what someone outside depends on, its candidate rules (each with its basis, `tested` when a test asserts it, `read` when you read the code that produces it, `stated` when only a name, comment or document says so, and its file and lines), anything that looks like a bug, and what you could not read. `extraction.rule.md` in `.claude/rules/temperspec/` of this repository, or where the project note names it, says where rules live; open it with the read tool if the repository holds it.
 
 ## Limits
 

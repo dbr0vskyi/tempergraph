@@ -10,6 +10,16 @@
 
 - Tests: `pytest`
 
+## Evidence
+
+| Behaviour | Basis | Code | Test |
+|---|---|---|---|
+| SYS-B1 | read | `src/tool/main.py:1-6` | - |
+
+## Anomalies
+
+- None
+
 ## Not covered
 
 - None

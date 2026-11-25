@@ -506,7 +506,8 @@ def _links(ctx: Any, criterion: str, docs: list[str] | None = None) -> list[Chec
 
 
 def setup_check(ctx: Any) -> Any:
-    """ts-set-form, ts-set-listed, ts-set-links, ts-set-ruleread, ts-set-commit."""
+    """ts-set-form, ts-set-listed, ts-set-links, ts-set-named, ts-set-literal, ts-set-wording, ts-set-evidence,
+    ts-set-ruleread, ts-set-commit."""
     note, note_path = _read(ctx, "setup_note")
     overview, overview_path = _read(ctx, "overview")
     if note is None or overview is None:
@@ -539,9 +540,58 @@ def setup_check(ctx: Any) -> Any:
         found.append(_ok("ts-set-form", overview_path))
     found += listed or [_ok("ts-set-listed", note_path)]
     found += _links(ctx, "ts-set-links", specs)
+    written = [p for p in specs if _read_path(ctx, p) is not None]
+    found += _general(ctx, written, "ts-set-named", "ts-set-literal", "ts-set-wording")
+    found += _setup_evidence(ctx, note, note_path, written)
     found += _ruleread(ctx, "setup", "ts-set-ruleread")
     found.append(_committed(ctx, "ts-set-commit"))
     return checks.result(found)
+
+
+EVIDENCE_BASES = ("tested", "read")
+CODE_RANGE = re.compile(r"`([^`:]+):(\d+)(?:-(\d+))?`")
+
+
+def _setup_evidence(ctx: Any, note: str, note_path: str, specs: list[str]) -> list[CheckFinding]:
+    """ts-set-evidence: every behaviour of a spec the setup step wrote has a row in the setup note's `Evidence`,
+    with the basis `tested` or `read`, code that exists named with lines inside the file, and a test file that
+    exists when the basis is `tested` (`extraction.rule.md`)."""
+    rows: dict[str, list[str]] = {}
+    for line in {k.lower(): v for k, v in fmt.sections(note).items()}.get("evidence", []):
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) >= 3 and re.fullmatch(rf"{fmt.ID}-B\d+", cells[0].strip("` ")):
+            rows[cells[0].strip("` ")] = cells
+    found: list[CheckFinding] = []
+    for path in specs:
+        for bid in fmt.parse_spec(_read_path(ctx, path) or "").behaviours:
+            cells = rows.get(bid)
+            if cells is None:
+                found.append(_find("fail", "ts-set-evidence", note_path, f"{bid} of `{path}` has no Evidence row",
+                                   "add a row with its basis, the code and lines, and the test"))
+                continue
+            basis = cells[1].strip("` ").lower()
+            if basis not in EVIDENCE_BASES:
+                found.append(_find("fail", "ts-set-evidence", note_path, f"{bid}: basis `{cells[1]}` is not "
+                                   "`tested` or `read`", "a rule only stated somewhere goes under Anomalies"))
+            ranges = CODE_RANGE.findall(cells[2])
+            if not ranges:
+                found.append(_find("fail", "ts-set-evidence", note_path, f"{bid}: no code with lines, "
+                                   "`<path>:<from>-<to>`", "name the code the rule was read in"))
+            for file, start, stop in ranges:
+                text = _read_path(ctx, file)
+                if text is None:
+                    found.append(_find("fail", "ts-set-evidence", note_path, f"{bid}: `{file}` does not exist",
+                                       "name a file of the repository"))
+                elif max(int(start), int(stop or start)) > len(text.splitlines()):
+                    found.append(_find("fail", "ts-set-evidence", note_path, f"{bid}: `{file}` has "
+                                       f"{len(text.splitlines())} lines, the row names line {stop or start}",
+                                       "name lines inside the file"))
+            if basis == "tested":
+                tests = [t.split("::")[0] for t in fmt.CODE_SPAN.findall(cells[3] if len(cells) > 3 else "")]
+                if not tests or any(_read_path(ctx, t) is None for t in tests):
+                    found.append(_find("fail", "ts-set-evidence", note_path, f"{bid}: basis `tested` names no "
+                                       "test file that exists", "name the test, or set the basis to `read`"))
+    return found[:12] or [_ok("ts-set-evidence", note_path)]
 
 
 # ---------------------------------------------------------------------------------------------
@@ -700,7 +750,7 @@ def _names(ctx: Any, criterion: str) -> list[CheckFinding]:
 
 def discovery_check(ctx: Any) -> Any:
     """ts-dis-form, ts-dis-budget, ts-dis-over, ts-dis-names, ts-dis-links, ts-dis-named, ts-dis-literal,
-    ts-dis-reading, ts-dis-narrow, ts-dis-ruleread, ts-dis-commit."""
+    ts-dis-wording, ts-dis-specname, ts-dis-reading, ts-dis-narrow, ts-dis-ruleread, ts-dis-commit."""
     text, path = _read(ctx, "handoff")
     if text is None:
         return checks.result([_find("fail", "ts-dis-form", path, "the hand-off cannot be read",
@@ -710,7 +760,9 @@ def discovery_check(ctx: Any) -> Any:
     found += _spec_form(ctx, "ts-dis-form", budget_criterion="ts-dis-budget")
     found += _names(ctx, "ts-dis-names")
     found += _links(ctx, "ts-dis-links")
-    found += _general(ctx)
+    specs, _ = _edited_specs(ctx)
+    found += _general(ctx, specs, "ts-dis-named", "ts-dis-literal", "ts-dis-wording")
+    found += _spec_names(ctx, specs, "ts-dis-specname")
     found += _reading(ctx, text, path)
     found += _prompt_says("ts-dis-narrow")
     found += _ruleread(ctx, "discovery", "ts-dis-ruleread")
@@ -768,33 +820,106 @@ def _added_lines(ctx: Any, path: str) -> list[tuple[int, str]]:
     return list(enumerate((_read_path(ctx, path) or "").splitlines(), start=1))
 
 
-def _general(ctx: Any) -> list[CheckFinding]:
-    """ts-dis-named: no line the step added to a spec outside a workflow package names that package or its
-    workflow. ts-dis-literal: added lines that narrate a change or cite an issue, as leads for the judge."""
-    specs, _ = _edited_specs(ctx)
+def _general(ctx: Any, specs: list[str], named_id: str, literal_id: str, wording_id: str) -> list[CheckFinding]:
+    """The spec rule's `General rules, not cases` and the wording of a behaviour, on the lines a step added to
+    `specs`. `named_id`: no line names a workflow package or its workflow outside that package (a failure).
+    `literal_id`: lines that narrate a change or cite an issue or the task (leads). `wording_id`: a behaviour sentence
+    over the length limit, a word two readers could measure differently, a placeholder left from drafting (leads)."""
+    ids = (named_id, literal_id, wording_id)
     if not specs:
-        return [_find("n_a", c, message="the step edited no spec") for c in ("ts-dis-named", "ts-dis-literal")]
+        return [_find("n_a", c, message="the step edited no spec") for c in ids]
     packages = _packages(ctx)
     task = str((ctx.request or {}).get("task_id") or "")
     task_word = re.compile(rf"(?<![\w-]){re.escape(task)}(?![\w-])") if len(task) >= 3 else None
     named: list[CheckFinding] = []
     literal: list[CheckFinding] = []
+    wording: list[CheckFinding] = []
     for path in specs:
         denied = [n for folder, names in packages if not (path + "/").startswith(folder + "/") for n in names]
         pattern = re.compile(r"(?<![\w-])(" + "|".join(map(re.escape, denied)) + r")(?![\w])", re.I) if denied else None
         for number, text in _added_lines(ctx, path):
             hit = pattern.search(text) if pattern else None
             if hit and len(named) < LITERAL_MAX:
-                named.append(_find("fail", "ts-dis-named", f"{path}:{number}",
+                named.append(_find("fail", named_id, f"{path}:{number}",
                                    f"names the workflow `{hit.group(1)}`, whose package does not hold this spec",
                                    "state the capability without the workflow: a placeholder for its units, "
                                    "its need as a general rule"))
             lead = CHANGE_WORDS.search(text) or ISSUE_REF.search(text) or (task_word.search(text) if task_word else None)
             if lead and len(literal) < LITERAL_MAX:
-                literal.append(_find("maybe", "ts-dis-literal", f"{path}:{number}",
+                literal.append(_find("maybe", literal_id, f"{path}:{number}",
                                      f"`{lead.group(0)}` may tie the line to the task or to a change",
                                      "state the rule as if it always held; keep the task's case in the task notes"))
-    return (named or [_ok("ts-dis-named")]) + (literal or [_ok("ts-dis-literal")])
+            said = _wording(text)
+            if said and len(wording) < LITERAL_MAX:
+                wording.append(_find("maybe", wording_id, f"{path}:{number}", said[0], said[1]))
+    return (named or [_ok(named_id)]) + (literal or [_ok(literal_id)]) + (wording or [_ok(wording_id)])
+
+
+# The spec rule's Behaviours: the sentence's length limit, words two readers could measure differently, and
+# placeholders left from drafting. Leads for the judge, never failures.
+STATEMENT_MAX = 500
+VAGUE = re.compile(r"\b(fast|quickly|robust(ly)?|secure(ly)?|intuitive(ly)?|appropriate(ly)?|reasonabl[ey]|"
+                   r"user-friendly|scalable|seamless(ly)?|correctly|properly|as expected)\b", re.I)
+PLACEHOLDER = re.compile(r"\b(TODO|TBD|TKTK|FIXME)\b|\?\?\?|<(…|\.\.\.)>")
+
+
+def _wording(text: str) -> tuple[str, str] | None:
+    """(message, fix) for an added spec line whose wording the spec rule warns about, or None."""
+    line = text.strip()
+    held = PLACEHOLDER.search(line)
+    if held:
+        return f"`{held.group(0)}` is a placeholder left from drafting", "write the rule, or leave it out"
+    statement = fmt.BEHAVIOUR_LINE.match(line)
+    if statement and len(line) > STATEMENT_MAX:
+        return (f"the behaviour sentence has {len(line)} characters, over {STATEMENT_MAX}",
+                "keep the event and the one result in the sentence; move detail to scenarios, split several results")
+    if statement or line.startswith("- GIVEN"):
+        vague = VAGUE.search(line)
+        if vague:
+            return (f"`{vague.group(0)}` can be measured two ways", "state what an observer sees, with a value")
+    return None
+
+
+# The spec rule's `Naming a spec`: a new spec's file name and title name its capability, never the task.
+WORK_VERB = re.compile(r"^(?:\d+-)?(add|adds|adding|fix|fixes|support|supports|remove|update|implement|change)(?:-|$)",
+                       re.I)
+ISSUE_NAME = re.compile(r"(?<![a-z0-9])(?:issue-?\d+|gh-?\d+)(?![0-9])|#\d+", re.I)
+
+
+def _new_files(ctx: Any, paths: list[str]) -> list[str]:
+    """The paths the run created, against its base; every path when there is no base to compare."""
+    base = getattr(ctx.git, "base", None) if ctx.git is not None else None
+    if not base or not paths:
+        return list(paths)
+    run = ctx.run(f"git diff --name-only --diff-filter=A {base}")
+    if run.not_started or run.exit_code != 0:
+        return list(paths)
+    try:
+        added = set(Path(run.output_path).read_text(encoding="utf-8", errors="replace").split())
+    except OSError:
+        return list(paths)
+    return [p for p in paths if p in added]
+
+
+def _spec_names(ctx: Any, specs: list[str], criterion: str) -> list[CheckFinding]:
+    """A spec the step created is named for its capability: no task id, issue number or leading work verb in its
+    file name or its title."""
+    new = _new_files(ctx, specs)
+    if not new:
+        return [_find("n_a", criterion, message="the step created no spec")]
+    task = str((ctx.request or {}).get("task_id") or "")
+    task_word = re.compile(rf"(?<![a-z0-9]){re.escape(task)}(?![a-z0-9])", re.I) if len(task) >= 3 else None
+    found: list[CheckFinding] = []
+    for path in new:
+        stem = Path(path).name.removesuffix(".spec.md")
+        title = next((ln[2:].strip() for ln in (_read_path(ctx, path) or "").splitlines() if ln.startswith("# ")), "")
+        for where, words in (("file name", stem), ("title", title)):
+            hit = (task_word.search(words) if task_word else None) or ISSUE_NAME.search(words) or (
+                WORK_VERB.search(words.replace(" ", "-")) if where == "file name" else None)
+            if hit:
+                found.append(_find("fail", criterion, path, f"its {where} names the task, not the capability: "
+                                   f"`{hit.group(0)}`", "name the spec for the capability it owns"))
+    return found or [_ok(criterion)]
 
 
 READING = "Reading list"

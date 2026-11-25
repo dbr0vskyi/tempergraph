@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 20,
+  "revision": 21,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -211,7 +211,10 @@
               "partial": "the findings cover part of the folder, or a claim is in its file with a different meaning",
               "unmet": "the findings describe another folder, claim what the named file does not hold, or say nothing about the folder",
               "evidence": "the path and line of each claim checked, and the quote that confirms or refutes it",
-              "seeds": ["met-ts-rdc-answers", "unmet-ts-rdc-answers"]
+              "seeds": [
+                "met-ts-rdc-answers",
+                "unmet-ts-rdc-answers"
+              ]
             }
           },
           "serves": [
@@ -232,7 +235,10 @@
               "partial": "some claims name a file and others name none",
               "unmet": "the findings name no file and say nothing about what was searched",
               "evidence": "the claim, and the file and range or id it names",
-              "seeds": ["met-ts-rdc-cited", "unmet-ts-rdc-cited"]
+              "seeds": [
+                "met-ts-rdc-cited",
+                "unmet-ts-rdc-cited"
+              ]
             }
           },
           "serves": [
@@ -286,10 +292,60 @@
           ]
         },
         {
+          "id": "ts-set-named",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "No line of a spec the setup step wrote outside a workflow package names that package or its workflow",
+          "check_method": "As ts-dis-named, on the overview and each spec of the setup note's component table",
+          "source": "interview",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:setup_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
+          "id": "ts-set-literal",
+          "severity": "warning",
+          "verified_by": "check",
+          "text": "Every line of a spec the setup step wrote in words that tie it to a task or a change is reported to the judge as a lead",
+          "check_method": "As ts-dis-literal, on the overview and each spec of the setup note's component table",
+          "source": "interview",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:setup_check"
+          }
+        },
+        {
+          "id": "ts-set-wording",
+          "severity": "warning",
+          "verified_by": "check",
+          "text": "Every line of a spec the setup step wrote with a behaviour sentence over 500 characters, a word two readers could measure differently or a placeholder is reported to the judge as a lead",
+          "check_method": "As ts-dis-wording, on the overview and each spec of the setup note's component table",
+          "source": "interview",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:setup_check"
+          }
+        },
+        {
+          "id": "ts-set-evidence",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every behaviour of a spec the setup step wrote has an Evidence row in the setup note with the basis `tested` or `read`, code that exists named with lines inside the file, and an existing test file when the basis is `tested`",
+          "check_method": "Read the setup note's `Evidence` table; for each behaviour id of the overview and of each listed spec find its row; check the basis, open each `<path>:<from>-<to>` and compare its line count, open each test path of a `tested` row",
+          "source": "interview",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:setup_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
           "id": "ts-set-ruleread",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "Each rule file the setup prompt names (spec.rule.md, task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
+          "text": "Each rule file the setup prompt names (spec.rule.md, extraction.rule.md, task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
           "check_method": "Read the session record the engine gives the check: a read call without an error whose target ends in the rule file's name; a search or a failed read does not count",
           "source": "created",
           "verifier": {
@@ -632,7 +688,10 @@
               "partial": "the findings answer part of the gap, or a claim is in its file with a different meaning",
               "unmet": "the findings answer another gap, claim what the named file does not hold, or say nothing about the gap",
               "evidence": "the gap row, the path and line of each claim checked, and the quote that confirms or refutes it",
-              "seeds": ["met-ts-rdg-answers", "unmet-ts-rdg-answers"]
+              "seeds": [
+                "met-ts-rdg-answers",
+                "unmet-ts-rdg-answers"
+              ]
             }
           },
           "serves": [
@@ -655,7 +714,10 @@
               "partial": "some claims name a file and others name none",
               "unmet": "the findings name no file and say nothing about what was searched",
               "evidence": "the claim, and the file and range or id it names",
-              "seeds": ["met-ts-rdg-cited", "unmet-ts-rdg-cited"]
+              "seeds": [
+                "met-ts-rdg-cited",
+                "unmet-ts-rdg-cited"
+              ]
             }
           },
           "serves": [
@@ -740,7 +802,7 @@
           "id": "ts-dis-ruleread",
           "severity": "blocker",
           "verified_by": "check",
-          "text": "Each rule file the discovery prompt names (spec.rule.md, decision.rule.md, research.rule.md, task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
+          "text": "Each rule file the discovery prompt names (spec.rule.md, extraction.rule.md, decision.rule.md, research.rule.md, task-notes.rule.md, documents.rule.md) that the repository holds under .claude/rules/temperspec/ is opened with the read tool in the session",
           "check_method": "Read the session record the engine gives the check: a read call without an error whose target ends in the rule file's name; a search or a failed read does not count",
           "source": "created",
           "verifier": {
@@ -839,20 +901,45 @@
           }
         },
         {
+          "id": "ts-dis-wording",
+          "severity": "warning",
+          "verified_by": "check",
+          "text": "Every line the discovery step added to a spec with a behaviour sentence over 500 characters, a word two readers could measure differently or a placeholder is reported to the judge as a lead",
+          "check_method": "Read the lines the step added to each edited spec: a `WHEN … SHALL` line over 500 characters, a vague word (`fast`, `robust`, `secure`, `intuitive`, `appropriate`, `reasonable`, `correctly`, `properly`, `as expected`) in a behaviour line or scenario, a placeholder (`TODO`, `TBD`, `???`, `<…>`) on any line; report each as a lead, never a failure",
+          "source": "interview",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          }
+        },
+        {
+          "id": "ts-dis-specname",
+          "severity": "blocker",
+          "verified_by": "check",
+          "text": "Every spec the discovery step created is named for its capability: no task id, issue number or leading work verb in its file name, no task id or issue number in its title",
+          "check_method": "Find the specs the step created against the run's base (every edited spec with no base); read each file name, without a number prefix, for the task id, `issue-<n>`, `#<n>` and a leading `add`, `fix`, `support`, `remove`, `update`, `implement` or `change`, and its title for the task id and an issue number",
+          "source": "interview",
+          "verifier": {
+            "check": "tgwf_temperspec.checks:discovery_check"
+          },
+          "serves": [
+            "ts-accepted"
+          ]
+        },
+        {
           "id": "ts-dis-general",
           "severity": "blocker",
           "verified_by": "judge",
-          "text": "Every behaviour the discovery step wrote or changed states a general rule of its capability that reads true to someone who never saw the task",
-          "check_method": "Read each new or changed behaviour and its scenarios against the spec rule's `General rules, not cases`, and against the triage note to see what of the task's own case was copied in",
+          "text": "Every behaviour the discovery step wrote or changed states a general rule of its capability that reads true to someone who never saw the task and can be read only one way",
+          "check_method": "Read each new or changed behaviour and its scenarios against the spec rule's `General rules, not cases` and its wording rules, and against the triage note to see what of the task's own case was copied in",
           "source": "interview",
           "verifier": {
             "references": [
               "triage_note"
             ],
             "scale": {
-              "met": "each behaviour states the rule of its capability without the task's history, a workflow's name or shape, a test fixture or a reason, and no rule is written twice across specs",
+              "met": "each behaviour states the rule of its capability without the task's history, a workflow's name or shape, a test fixture or a reason, reads one way only, and no rule is written twice across specs",
               "partial": "each behaviour states a rule, but a scenario carries a value copied from the task or a fixture that could be replaced by an illustrative one without loss",
-              "unmet": "a behaviour narrates the change or the old defect, names or describes a workflow in a spec outside its package, carries a reason, or repeats a rule that another spec owns",
+              "unmet": "a behaviour narrates the change or the old defect, names or describes a workflow in a spec outside its package, carries a reason, repeats a rule that another spec owns, or can be read two ways",
               "evidence": "per behaviour id: the quoted sentence, and for a defect the words that tie it to the task",
               "seeds": [
                 "met-ts-dis-general",
@@ -1837,6 +1924,12 @@
       "origin": "authored",
       "at": "2026-11-25T06:00:00.000Z",
       "note": "issue 119: specs state general rules, not the task's case: the spec rule's `General rules, not cases`, triage names the spec that owns each gap's mechanism, discovery extracts the rule and rereads it (ts-dis-general, judged), and the discovery check fails a workflow's name in a spec outside its package (ts-dis-named) and reports change words, issue references and the task id as leads (ts-dis-literal)"
+    },
+    {
+      "revision": 21,
+      "origin": "authored",
+      "at": "2026-11-25T08:00:00.000Z",
+      "note": "spec extraction and spec craft: the extraction rule (evidence tested, read or stated; suspected bugs to anomalies; invariants in the one pattern; a sample-and-expand budget) read by setup, discovery and the component reading sessions; the setup note's Evidence and Anomalies, checked (ts-set-evidence); setup runs the general-rules and wording checks on its specs (ts-set-named, ts-set-literal, ts-set-wording); the triage gap kind `existing behaviour`; the capability list written at the start of the run for triage and discovery; a new spec named for its capability (ts-dis-specname); behaviour sentences of at most 500 characters with no vague word or placeholder (ts-dis-wording, leads); ts-dis-general also grades a behaviour that reads two ways; the hand-off lists inferred behaviours with their source"
     }
   ]
 }

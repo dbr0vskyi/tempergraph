@@ -25,17 +25,17 @@ WHEN prepare writes the block THE prepare step SHALL name, beside each specs fol
 
 ### PNR-B3 Rule files the repository holds are not copied
 
-WHEN the repository has its own rule folder (`.claude/rules/temperspec/`), or a folder that holds every rule file temperspec ships (`spec.rule.md`, `plan.rule.md`, `decision.rule.md`, `research.rule.md`, `task-notes.rule.md` and `documents.rule.md`), THE prepare step SHALL install nothing, whether or not the machine has its rule folder (`~/.claude/rules/temperspec/`): no rule file is copied into the repository and no fill-in template is written.
+WHEN the repository has its own rule folder (`.claude/rules/temperspec/`), or a folder that holds every rule file temperspec ships (`spec.rule.md`, `extraction.rule.md`, `plan.rule.md`, `decision.rule.md`, `research.rule.md`, `task-notes.rule.md` and `documents.rule.md`), THE prepare step SHALL install nothing, whether or not the machine has its rule folder (`~/.claude/rules/temperspec/`): no rule file is copied into the repository and no fill-in template is written.
 
-- GIVEN the six rule files in `plugins/a/rules/` and no other rule folder WHEN prepare runs THEN the repository gains no `.claude/rules/temperspec/` and no `docs/templates/`
-- GIVEN the six rule files in `plugins/a/rules/` and the rule files in the machine's `~/.claude/rules/temperspec/` WHEN prepare runs THEN the repository gains no `.claude/rules/temperspec/` and no `docs/templates/`
+- GIVEN the seven rule files in `plugins/a/rules/` and no other rule folder WHEN prepare runs THEN the repository gains no `.claude/rules/temperspec/` and no `docs/templates/`
+- GIVEN the seven rule files in `plugins/a/rules/` and the rule files in the machine's `~/.claude/rules/temperspec/` WHEN prepare runs THEN the repository gains no `.claude/rules/temperspec/` and no `docs/templates/`
 - GIVEN a `.claude/rules/temperspec/` of the repository that holds only `spec.rule.md`, and the rule files in the machine's `~/.claude/rules/temperspec/` WHEN prepare runs THEN `.claude/rules/temperspec/` still holds `spec.rule.md` alone and no `docs/templates/` is written
 
 ### PNR-B7 Rule files the repository lacks are copied, whether or not the machine has them
 
 WHEN the repository has neither its own rule folder (`.claude/rules/temperspec/`) nor a folder that holds every rule file temperspec ships THE prepare step SHALL install the rule files, whether or not the machine has its rule folder (`~/.claude/rules/temperspec/`): every rule file temperspec ships is copied into `.claude/rules/temperspec/` and the fill-in templates are written into `docs/templates/`.
 
-- GIVEN the six rule files in the machine's `~/.claude/rules/temperspec/` and none in the repository WHEN prepare runs THEN every rule file is copied into `.claude/rules/temperspec/` and the templates into `docs/templates/`
+- GIVEN the seven rule files in the machine's `~/.claude/rules/temperspec/` and none in the repository WHEN prepare runs THEN every rule file is copied into `.claude/rules/temperspec/` and the templates into `docs/templates/`
 - GIVEN only `spec.rule.md` in `plugins/a/rules/` and no other rule folder WHEN prepare runs THEN every rule file is copied into `.claude/rules/temperspec/` and the templates into `docs/templates/`
 - GIVEN no rule file anywhere WHEN prepare runs THEN every rule file is copied into `.claude/rules/temperspec/` and the templates into `docs/templates/`
 
@@ -43,7 +43,7 @@ WHEN the repository has neither its own rule folder (`.claude/rules/temperspec/`
 
 WHEN prepare writes the block THE prepare step SHALL name where the rule files are: the repository's own `.claude/rules/temperspec/` if it has one, else the folder of the repository that holds every rule file.
 
-- GIVEN the six rule files in `plugins/a/rules/` and no other rule folder WHEN prepare writes the block THEN the block names `plugins/a/rules/`
+- GIVEN the seven rule files in `plugins/a/rules/` and no other rule folder WHEN prepare writes the block THEN the block names `plugins/a/rules/`
 - GIVEN the rule files only in the machine's `~/.claude/rules/temperspec/` WHEN prepare runs THEN it copies them into the repository and the block names `.claude/rules/temperspec/` and not `~/.claude/rules/temperspec/`
 - GIVEN a `.claude/rules/temperspec/` of the repository and rule files in `plugins/a/rules/` WHEN prepare writes the block THEN the block names `.claude/rules/temperspec/` and not `plugins/a/rules/`
 - GIVEN no rule file anywhere WHEN prepare runs THEN it copies them and the block names `.claude/rules/temperspec/`
@@ -69,9 +69,9 @@ WHEN the project-context file, leaving out any temperspec block, names by its wh
 - PNR-AC1 (PNR-B1): For a repository whose overview specs are in `plugins/a/docs/specs/` and `plugins/b/docs/specs/`, with a third overview spec inside an `evals/` folder, the block names the first two folders and neither the third nor a root `docs/specs/`
 - PNR-AC2 (PNR-B1): For a repository with no overview spec and a spec in `design/specs/` the block names `design/specs/`, and for a repository with no spec it names `docs/specs/`
 - PNR-AC3 (PNR-B2): For the specs folders `plugins/a/docs/specs/` and `plugins/b/docs/specs/` the block names `adr/`, `research/`, `plans/` and `tasks/` beside each, and for a repository with no spec it names `docs/adr/`, `docs/research/`, `docs/plans/` and `docs/tasks/`
-- PNR-AC4 (PNR-B3): With the six rule files in `plugins/a/rules/`, or with the repository's own rule folder, prepare copies no rule file and writes no template, also when the machine's rule folder holds the rule files
+- PNR-AC4 (PNR-B3): With the seven rule files in `plugins/a/rules/`, or with the repository's own rule folder, prepare copies no rule file and writes no template, also when the machine's rule folder holds the rule files
 - PNR-AC5 (PNR-B7): With only some of the rule files in `plugins/a/rules/`, or with none anywhere, prepare copies every rule file into `.claude/rules/temperspec/` and writes the templates into `docs/templates/`
-- PNR-AC10 (PNR-B7): With the six rule files in the machine's rule folder and none in the repository, prepare copies every rule file into `.claude/rules/temperspec/` and writes the templates into `docs/templates/`
+- PNR-AC10 (PNR-B7): With the seven rule files in the machine's rule folder and none in the repository, prepare copies every rule file into `.claude/rules/temperspec/` and writes the templates into `docs/templates/`
 - PNR-AC6 (PNR-B4): The block names `plugins/a/rules/` for rule files held there alone, and `.claude/rules/temperspec/` when the repository has its own folder, even beside `plugins/a/rules/`, or when prepare has just copied the rule files, whether or not the machine holds them; the block names no folder of the machine
 - PNR-AC7 (PNR-B5): The block names `docs/templates/` after prepare has written the templates there, and names no folder of fill-in templates when prepare wrote none and the repository has none
 - PNR-AC8 (PNR-B6): For an overview spec in `plugins/a/docs/specs/` and a `CLAUDE.md` that names `plugins/a/docs/{specs,adr,research}/`, prepare leaves `CLAUDE.md` byte for byte as it was and the run's branch holds no commit of a change to it
