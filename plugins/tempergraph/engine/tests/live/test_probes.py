@@ -203,7 +203,7 @@ def test_p_cc_12_step_isolated_from_user_scope_plugins(tmp_path: Path) -> None: 
     assert names == sorted([workflow.name, "tempergraph"])
 
 
-def test_p_cc_13_step_and_judge_are_offered_no_account_connector(tmp_path: Path) -> None:  # P-CC-13 (ECC-B13, B18, B20)
+def test_p_cc_13_step_and_judge_are_offered_no_account_connector(tmp_path: Path) -> None:  # AC 6: P-CC-13 (ECC-B13, B18, B20)
     # a step and a judge, each launched with the engine's own argv and environment, are offered no claude.ai
     # connector: `system/init` lists no `mcp__claude_ai_` tool and no connector server (live row L-43)
     from tempergraph.contracts import EventSink
