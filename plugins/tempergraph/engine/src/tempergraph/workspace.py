@@ -364,29 +364,37 @@ def _remove_new(main: Path, path: Path, br: str) -> None:
     git(["update-ref", "-d", f"refs/heads/{br}"], main, check=False)
 
 
-def writer_names(run_path: Path, run_branch_name: str, unit: str, thread: str, *, kind: str = "w") -> tuple[str, str]:
+def writer_names(run_path: Path, run_branch_name: str, unit: str, thread: str, *, kind: str = "w", visit: int = 1
+                 ) -> tuple[str, str]:
     """WTR-B20: the flat name and branch of a writer branch's worktree, the suffix `--w-<branch>` on the run's own,
     never a child path of the run branch. With `kind="i"` the child is an item of a concurrent map, named by its slot
     `<unit>.<item id>`, and the suffix is `--i-<item id>` with the whole id (up to 40 characters, so two items whose
-    ids share their first 24 characters get two names); with `kind="s"` it is a slot of a contest, named the same way,
-    and the suffix is `--s-<slot>`; a name over the limit shortens the run's part, not the suffix."""
+    ids share their first 24 characters get two names); from the map's second visit (`visit` above 1) the suffix is
+    `--i<visit>-<item id>`, so no visit meets the names of another; with `kind="s"` it is a slot of a contest, named the
+    same way, and the suffix is `--s-<slot>` for the first attempt and `--s<attempt>-<slot>` from the second (`visit`
+    above 1), so no attempt meets the names of another; a name over the limit shortens the run's part, not the
+    suffix."""
     label = unit.split(".", 1)[1] if kind in ("i", "s") and "." in unit else unit
-    part = f"--{kind}-" + flat_part(label)[: 40 if kind in ("i", "s") else 24]
+    tag = f"{kind}{visit}" if kind in ("i", "s") and visit > 1 else kind
+    part = f"--{tag}-" + flat_part(label)[: 40 if kind in ("i", "s") else 24]
     name = run_path.name + part
     if len(name) > MAX_FLAT:
-        digest = hashlib.sha256(f"{thread}/{kind}-{unit}".encode()).hexdigest()[:8]
+        digest = hashlib.sha256(f"{thread}/{tag}-{unit}".encode()).hexdigest()[:8]
         name = run_path.name[: MAX_FLAT - len(part) - 9] + "-" + digest + part
     return name, run_branch_name + part
 
 
 def cut_writers(rec: WorkspaceRecord, thread: str, units: Sequence[str], decl: WorktreeDecl | None, state_root: Path,
-                run_command: RunCommand | None = None, *, read_include: bool = True, kind: str = "w"
+                run_command: RunCommand | None = None, *, read_include: bool = True, kind: str = "w", visit: int = 1
                 ) -> WorkspaceRecord:
     """WSP-B11, WSP-B19: one sibling worktree and branch per writer branch (`kind="i"`: per item of a concurrent map,
     `kind="s"`: per slot of a contest, the child's unit being its slot), cut from the run branch's head, locked and
-    bootstrapped, each appended to `rec.children`. A unit that already has one is reused, except a contest's slot: its
-    branch is never cut over or reused, the cut is refused (`name_collision`). A failure removes what this call made and
-    raises `WorkspaceRefused` naming the writer branch, item or slot."""
+    bootstrapped, each appended to `rec.children`. A unit that already has one of the same `visit` is reused, except a
+    contest's slot: its branch is never cut over or reused, the cut is refused (`name_collision`) per slot and attempt.
+    A child of a map's visit or a contest's attempt above 1 (`visit`) is recorded with its `visit` and named
+    `--i<visit>-<item>` or `--s<visit>-<slot>` (WTR-B20, MAP-B14, CTS-B11): a first-visit child has no such key, and the
+    children of other visits stay in `rec.children`, untouched. A failure removes what this call made and raises
+    `WorkspaceRefused` naming the writer branch, item or slot."""
     what = {"i": "map item", "s": "contest slot"}.get(kind, "writer branch")
     main = main_checkout(state_root.parent) or state_root.parent
     run_path = Path(rec.path)
@@ -394,11 +402,12 @@ def cut_writers(rec: WorkspaceRecord, thread: str, units: Sequence[str], decl: W
     children = list(rec.children)
     try:
         for unit in units:
-            if any(c.get("unit") == unit and Path(str(c.get("path"))).exists() for c in children):
+            if any(c.get("unit") == unit and int(c.get("visit", 1)) == visit and Path(str(c.get("path"))).exists()
+                   for c in children):
                 if kind == "s":  # a second cut of a slot would meet the first one's branch (CTS-B5, CTS-B9)
                     raise WorkspaceRefused("name_collision", "its worktree and branch already exist")
                 continue
-            name, br = writer_names(run_path, rec.branch, unit, thread, kind=kind)
+            name, br = writer_names(run_path, rec.branch, unit, thread, kind=kind, visit=visit)
             path = run_path.parent / name
             if _branch_exists(main, br) or path.exists():
                 raise WorkspaceRefused("name_collision", f"{what} {unit}: {br} or {path} already exists")
@@ -412,8 +421,9 @@ def cut_writers(rec: WorkspaceRecord, thread: str, units: Sequence[str], decl: W
             finally:
                 lock.release()
             bootstrap(main, path, decl, run_command, read_include=read_include)
-            children = [c for c in children if c.get("unit") != unit]
-            children.append({"unit": unit, "name": name, "path": str(path), "branch": br, "state": "active"})
+            children = [c for c in children if not (c.get("unit") == unit and int(c.get("visit", 1)) == visit)]
+            child: dict[str, Any] = {"unit": unit, "name": name, "path": str(path), "branch": br, "state": "active"}
+            children.append({**child, "visit": visit} if visit > 1 else child)
     except (WorkspaceRefused, GitError) as exc:
         for path, br in made:
             _remove_new(main, path, br)

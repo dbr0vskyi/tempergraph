@@ -90,6 +90,26 @@ WHEN the check of MAP-B12 fails THE engine SHALL end the map blocked, not retrie
 
 - GIVEN two items whose merged files fail the check WHEN the check ends THEN the run pauses at the map listing the failing finding, no retry is spent, the run branch still holds both merge commits, and no item or model session starts
 
+### MAP-B14 A later visit runs in item worktrees of its own
+
+WHEN a concurrent map whose step declares `write` or `edit` is entered again, as after the trip back of MAP-B3, THE engine SHALL run each item of the new list in a worktree and on a branch cut for that visit from the run branch's head after the checkpoint commit ([WSP-B19](13-workspace-and-concurrency.spec.md)), under names that no earlier visit's worktree or branch holds ([WTR-B20](82-worktree-mode.spec.md)).
+
+- GIVEN a first visit of items p1 and p2 and a trip back after which the list names p1 and p3 WHEN the map is entered again THEN p1 and p3 each run in a worktree and on a branch that the first visit did not make
+- GIVEN the same trip back, the planning step having rewritten the list file and the first visit's merge having put p2's file on the run branch WHEN p1 runs in the second visit THEN its worktree holds the rewritten list file and p2's file, and its branch starts at the head the run branch held before the second visit's first item session
+- GIVEN a second visit paused at p3 on a spent budget WHEN it is resumed with retry THEN p3 runs again in its worktree of the second visit
+
+### MAP-B15 An earlier visit's item work is left as it is
+
+WHEN a concurrent map whose step declares `write` or `edit` is entered again THE engine SHALL leave every item branch and worktree of its earlier visits as it is, still listed among the run's worktrees ([WTR-B24](82-worktree-mode.spec.md)).
+
+- GIVEN the first visit's branch of p1 at commit C and its worktree WHEN the second visit has run to its end THEN that branch is still at C, that worktree is still there and the run's workspace record still lists it
+
+### MAP-B16 A later visit merges only its own items
+
+WHEN every item of a later visit of a concurrent map whose step declares `write` or `edit` has passed THE engine SHALL merge into the run branch only that visit's item branches, in the order of that visit's list ([WSP-B11](13-workspace-and-concurrency.spec.md)).
+
+- GIVEN a first visit of p1 and p2 that was merged and a second visit of p1 and p3 whose items each write one file WHEN the second visit's items are merged THEN the run branch gains one merge commit per item in the order p1, p3, each with that item's branch of the second visit as second parent, and none with a branch of the first visit as second parent
+
 ## Acceptance criteria
 
 - MAP-AC1 (MAP-B1, MAP-B2, MAP-B3, MAP-B4, MAP-B5, MAP-B6, MAP-B8, MAP-B9): Every scenario of MAP-B1 to MAP-B6 holds offline with scripted executors and a scratch git repository
@@ -101,3 +121,8 @@ WHEN the check of MAP-B12 fails THE engine SHALL end the map blocked, not retrie
 - MAP-AC7 (MAP-B6): With pauses at `phase.p2` and `phase.p5` pending, a resume naming no item is refused with both exact commands, and a `retry` named for `phase.p5` runs only p5
 - MAP-AC8 (MAP-B12): In a concurrent map whose step declares `write`, a gate check that records its calls is called once with the run's worktree as its working directory and no item, after the last merge and before the next unit's first session, besides the one call per item attempt in that item's own worktree
 - MAP-AC9 (MAP-B13): When the gate check run on the joined result of a concurrent map whose step declares `write` fails, the run pauses at the map listing the failing finding, spends no retry, the run branch still holds the merge commits, and no item or model session starts
+- MAP-AC10 (MAP-B14): In a concurrent map whose step declares `write`, entered a second time by a trip back and run by a scripted executor, each item of the second visit runs in a worktree and on a branch that the first visit did not make, the branch starting at the head the run branch held before the second visit's first item session
+- MAP-AC11 (MAP-B14): The worktree of each item of that second visit holds the files the run branch held when the visit started, among them the list file the planning step rewrote and the files the first visit's merge put there
+- MAP-AC12 (MAP-B14): A second visit paused at an item on a spent budget and resumed with `retry` runs that item again in its worktree of the second visit
+- MAP-AC13 (MAP-B15): After that second visit, every item branch of the first visit is at the commit it held when the first visit ended, every item worktree of the first visit is still present, and the run's workspace record lists the item worktrees of both visits
+- MAP-AC14 (MAP-B16): After that second visit passes with items that each write one file, the run branch holds one merge commit per item of the second visit's list, in that order, each with that item's branch of the second visit as second parent, and none with an item branch of the first visit as second parent

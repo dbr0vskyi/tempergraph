@@ -79,6 +79,40 @@ def test_ticket_then_judged_filing(repo: Path, monkeypatch: pytest.MonkeyPatch) 
     assert len(host.issues) == 1 and [r["op"] for r in out2["results"] if r["op"] != "recorded"] == ["commented"]
 
 
+def test_sil_ac5_the_review_runs_first_and_the_child_still_records_and_never_fails_the_parent(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # SIL-AC5 (SIL-B17): the session review comes before deciding and filing; records and ledger row survive the order
+    blocked_run(repo, "L-9", monkeypatch)
+    (t,) = tickets()
+    doc = json.loads(t.read_text())
+    root = repo / ".tempergraph"
+    build_run(root, "L-9", 1)  # a captured session for the review to plan
+    doc.update({"issue_repository": "team/notes", "review": "full", "mode": "dev", "run_cost_usd": 4.0, "units": {}})
+    t.write_text(json.dumps(doc))
+    host = MemoryCodeHost()
+    ex = standin("claude", judges=[judge_says(0.9), answer(NONE_FOUND, session_id="review")])
+    (out,) = child.drain(registry=registry(ex), host=lambda: host)
+    kinds = [json.loads(ln)["kind"] for ln in child.loop_log(root, "demo", "L-9").read_text().splitlines()]
+    assert kinds[:2] == ["loop_started", "loop_judged"] and kinds.count("loop_summary") == 1 and kinds[-1] == "loop_summary"
+    assert "issue_filed" in kinds
+    assert kinds.index("review_done") < kinds.index("issue_filed")
+    assert [r for r in out["results"] if r["op"] == "filed"] and len(host.issues) == 1
+    ledger = [r for r in map(json.loads, (root / "ledger.jsonl").read_text().splitlines()) if r.get("kind") == "loop"]
+    assert len([r for r in ledger if r["thread_id"] == "demo/L-9"]) == 1
+    # (b) a child that fails leaves the parent's exit code as the parent ended it
+    blocked_run(repo, "L-10", monkeypatch)  # asserts FINISHED before the child runs
+    (t2,) = tickets()
+    doc2 = json.loads(t2.read_text())
+    doc2["issue_repository"] = "team/notes"
+    t2.write_text(json.dumps(doc2))
+
+    def boom(req: Any) -> Any:
+        raise RuntimeError("judge down")
+
+    outs = child.drain(registry=registry(standin("claude", judges=[boom])), host=lambda: MemoryCodeHost(down=True))
+    assert len(outs) == 1 and not tickets()  # drain returned without raising
+
+
 def test_loop_started_names_the_fingerprints_it_covered(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # SIL-AC21, AC 1
     blocked_run(repo, "L-6", monkeypatch)

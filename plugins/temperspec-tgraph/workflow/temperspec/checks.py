@@ -13,6 +13,7 @@ from typing import Any
 
 from tempergraph.api import CheckFinding, checks
 
+from . import routing
 from . import specfmt as fmt
 
 SKIP_DIRS = {".git", ".tempergraph", ".claude", "node_modules", ".venv", "venv", "__pycache__", "evals", "fixtures", "dist",
@@ -365,6 +366,15 @@ def _block_only(ctx: Any, path: str) -> bool:
     return bare(before or "") == bare(now)
 
 
+def _prepared_commands(ctx: Any) -> bool:
+    """Whether the commands file is the one prepare wrote and no step touched: the run's base commit has no such
+    file and it now holds exactly the text prepare writes (RCM-B9). A step's later edit makes it a changed path."""
+    if not ctx.git.base or routing.COMMANDS_FILE not in ctx.git.changed_paths:
+        return False
+    return _at_base(ctx, routing.COMMANDS_FILE) is None and _read_path(
+        ctx, routing.COMMANDS_FILE) == routing.commands_file_text()
+
+
 # The code judge's reading budget (judge-reading spec, JRD-B2): one source file to read for every 50 changed source
 # lines, rounded up, within a floor and a ceiling. First values with no run behind them (outcome.json, assumptions).
 LINES_PER_FILE = 50
@@ -401,6 +411,8 @@ def _reading_lines(ctx: Any) -> list[str]:
     """The evidence lines the code judge reads from: the changed source lines, the reading budget and the changed
     source files, the file with the most changed lines first (JRD-B1, JRD-B2)."""
     sources = [p for p in ctx.git.changed_paths if not p.startswith(".claude/rules/") and not p.endswith(".md")]
+    if _prepared_commands(ctx):
+        sources = [p for p in sources if p != routing.COMMANDS_FILE]
     counts = _source_lines(ctx, sources)
     rule = f"one per {LINES_PER_FILE} lines, floor {READING_FLOOR}, ceiling {READING_CEILING}"
     if counts is None:
@@ -436,11 +448,15 @@ def _result(ctx: Any, found: list[CheckFinding], plan: fmt.Plan | None = None,
     lines = (head + [*(commands or [])] if lead else [*(commands or []), *head]) + (reading or [])
     changed = [p for p in ctx.git.changed_paths if not p.startswith(".claude/rules/")]
     prepared = [p for p in changed if p in CONTEXT_FILES and _block_only(ctx, p)]
-    changed = [p for p in changed if p not in prepared]
+    commands_file = [routing.COMMANDS_FILE] if _prepared_commands(ctx) else []
+    changed = [p for p in changed if p not in prepared and p not in commands_file]
     if changed:
         lines.append("Changed paths since the run's base: " + ", ".join(changed[:120]))
     if prepared:
         lines.append("Written by prepare (the temperspec block only, no step's change): " + ", ".join(prepared))
+    if commands_file:
+        lines.append("Written by prepare (the repository's commands file, as prepare wrote it, no step's change): "
+                     + routing.COMMANDS_FILE)
     if specs:
         lines.append("Edited specs: " + ", ".join(specs))
         related = _related(ctx, specs, _spec_index(ctx, _walk(ctx)), plan)
@@ -581,12 +597,12 @@ def triage_check(ctx: Any) -> Any:
 
 
 def _owner(ctx: Any, note: fmt.Triage, path: str) -> list[CheckFinding]:
-    """ts-tri-owner: with the conversation value `never`, each gap row ends with its sort and the `Owner decisions`
-    section holds one complete entry for each owner-decision row and none for any other (spec `conversation`,
-    CONV-B4). With `blocking`, or no value given to the check, the note is not read for it."""
+    """ts-tri-owner: with the conversation value `never`, `blocking` or `always`, each gap row ends with its sort and
+    the `Owner decisions` section holds one complete entry for each owner-decision row and none for any other (spec
+    `conversation`, CONV-B4). With no value given to the check, the note is not read for it."""
     crit = "ts-tri-owner"
-    if (getattr(ctx, "settings", None) or {}).get("conversation") != "never":
-        return [_find("n_a", crit, path, "the conversation value is not `never`")]
+    if (getattr(ctx, "settings", None) or {}).get("conversation") not in ("never", "blocking", "always"):
+        return [_find("n_a", crit, path, "the check is given no conversation value")]
     bad: list[tuple[str, str, str]] = []  # (place, message, fix)
     for gap, sort in note.sorts.items():
         if not sort:
@@ -885,17 +901,20 @@ def _commands(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
         reason = "only the last stage pushes or opens a pull request" if bare.startswith(FINAL_ONLY) else getattr(
             ctx.resolve(cmd), "reason", None)
         if reason:
-            found.append(_find("fail", criterion, "3. Verification", f"`{cmd[:80]}` is not allowed: {reason}",
+            said = f"{reason} in {REPO_FILE}" if reason == "not declared" else reason
+            found.append(_find("fail", criterion, "3. Verification", f"`{cmd[:80]}` is not allowed: {said}",
                                COMMAND_FIX.get(reason, COMMAND_FIX[""])))
     return found
 
 
 # What to do about each refusal of the engine's resolver. `cd <folder> && <command>` is allowed as written: the
-# engine runs the command in that folder (CHK-B11), so the fix never tells a session to drop the `cd`.
-ALLOWED_SHAPES = ", ".join(f"`{c}`" for c in ("pytest", "python -m pytest", "python3 -m pytest", "ruff check", "mypy"))
+# engine runs the command in that folder (CHK-B11), so the fix never tells a session to drop the `cd`. The commands
+# a plan may list come from the repository's `tempergraph.commands.json` and read-only git (RCM-B1 to RCM-B3).
+REPO_FILE = "tempergraph.commands.json"
 COMMAND_FIX = {
-    "not declared": f"start the command with a prefix the workflow allows ({ALLOWED_SHAPES}, read-only `git`); "
-                    "`cd <folder> && <command>` runs it in a folder of the repository",
+    "not declared": f"start the command with a command the repository declares in `{REPO_FILE}` (add one there for "
+                    "another toolchain) or with read-only `git`; `cd <folder> && <command>` runs it in a folder of "
+                    "the repository",
     "shell metacharacter": "write one command per bullet, with no pipe, `;`, redirect or second `&&`; "
                            "`cd <folder> && <command>` is the one chain allowed",
     "change of directory outside the repository": "`cd` only to a folder inside the repository, by a relative path",
@@ -961,17 +980,25 @@ def plan_check(ctx: Any) -> Any:
     value = _value(ctx, "complexity")
     reading = _reading_bytes(ctx, plan)
     over = fmt.simple_overruns(plan, reading)
-    bad = []
+    # A complex plan carries no task rows, so the gate measures only its phases and weights: a plan whose reading set
+    # is too large for `simple` says so with a heavy phase (seen in run i16, where the plan flipped between the two).
+    heavy_hint = "mark the phase with the large reading set `Weight: heavy (large-context)` (rows are not measured)"
+    bad: list[tuple[str, str]] = []
     if value is not None and plan.complexity and value != plan.complexity:
-        bad.append(f"the complexity value `{value}` differs from the plan's `{plan.complexity}`")
+        bad.append((f"the complexity value `{value}` differs from the plan's `{plan.complexity}`",
+                    "state the complexity the signs give"))
     if plan.complexity == "simple" and over:
-        bad.append("the plan says `simple` but measures over the limit: " + "; ".join(over[:4]))
+        reading_only = any(o.startswith("reading_bytes") for o in over) and not plan.heavy
+        bad.append(("the plan says `simple` but measures over the limit: " + "; ".join(over[:4]),
+                    "state `complex`" + ("; " + heavy_hint if reading_only else "")))
     if plan.complexity == "complex" and not over:
-        bad.append("the plan says `complex` but no measured sign is over the limit for `simple`")
+        bad.append(("the plan says `complex` but no measured sign is over the limit for `simple`",
+                    "state `simple` and write the rows, or " + heavy_hint))
     for phase, sign in plan.heavy.items():
         if sign not in fmt.HEAVY_SIGNS:
-            bad.append(f"phase `{phase}` is heavy with no sign of {', '.join(fmt.HEAVY_SIGNS)}")
-    found += [_find("fail", "ts-plan-size", path, b, "state the complexity the signs give") for b in bad] or [
+            bad.append((f"phase `{phase}` is heavy with no sign of {', '.join(fmt.HEAVY_SIGNS)}",
+                        "state the complexity the signs give"))
+    found += [_find("fail", "ts-plan-size", path, b, fix) for b, fix in bad] or [
         _ok("ts-plan-size", path)]
     found += _scope(plan, "ts-plan-scope", path)
     found += _prompt_says("ts-plan-reading")
@@ -1093,8 +1120,9 @@ def _lane(ctx: Any, criterion: str) -> list[CheckFinding]:
         return [_find("n_a", criterion, message="the run is not in the quick lane")]
     fix = ("end the step with `UPSTREAM triage: the task is larger than the quick lane`, so triage plans it")
     described = set(_setup_specs(ctx))
+    prepared = {routing.COMMANDS_FILE} if _prepared_commands(ctx) else set()
     changed = [p for p in ctx.git.changed_paths if not p.startswith(IGNORED_BY_LANE)
-               and p not in ("CLAUDE.md", "AGENTS.md") and p not in described]
+               and p not in ("CLAUDE.md", "AGENTS.md") and p not in described and p not in prepared]
     found = [_find("fail", criterion, p, "the quick lane changed a spec or a decision record", fix)
              for p in changed if p.endswith((".spec.md", ".adr.md"))][:4]
     code = [p for p in changed if not p.endswith(".md") and not _is_test(p)]
@@ -1294,6 +1322,52 @@ def code_check(ctx: Any) -> Any:
 
 
 # ---------------------------------------------------------------------------------------------
+# phase
+
+
+def phase_check(ctx: Any) -> Any:
+    """ts-phs-rows, ts-phs-changed, ts-phs-proof, ts-phs-order, ts-phs-commit: one attempt of one phase item, read on
+    the rows of that phase only (PHC-B6 to PHC-B8). No finding names a row of another phase, and none names a step to go
+    back to: the checks of the whole change and the lines back stay with the code gate (PHC-B13, PHC-B14)."""
+    text, path = _read(ctx, "phases")
+    if text is None:
+        return checks.result([_find("fail", "ts-phs-rows", path, "the expanded plan cannot be read",
+                                    "keep the plan at its path")])
+    whole = fmt.parse_plan(text)
+    if ctx.item is None:  # no item (a fixture run of the check): the rows of the whole plan stand as one phase
+        phase, label = fmt.Plan(rows=list(whole.rows), phases=list(whole.phases)), "the plan"
+    else:
+        block = next((b for b in routing.phase_blocks(text) if b.id == ctx.item), None)
+        if block is None:
+            return checks.result([_find("fail", "ts-phs-rows", path, f"the plan has no phase for the item `{ctx.item}`",
+                                        "keep the phase headings of the plan as they are")])
+        phase = fmt.Plan(rows=[r for r in whole.rows if r.phase == block.heading], phases=[block.heading])
+        label = _phase_label(block.heading)
+    found: list[CheckFinding] = []
+    if not phase.rows:
+        found.append(_find("fail", "ts-phs-rows", label, f"{label} has no task row", "do not change the plan's rows"))
+    bad = [(r, fmt.DONE_MARK.match(r.completed)) for r in phase.rows]
+    found += [_find("fail", "ts-phs-rows", r.id, f"row `{r.id}` of {label} is not marked completed" if not r.completed
+                    else f"row `{r.id}` is marked `{r.completed}`; a mark is `✓ YYYY-MM-DD`",
+                    "build the row, then mark it `✓ <date>` in its Completed cell") for r, m in bad if m is None]
+    found += [] if any(f.status == "fail" for f in found) else [_ok("ts-phs-rows", label)]
+    base = ctx.git.base if ctx.git is not None else ""
+    if not base:
+        found.append(_find("n_a", "ts-phs-changed", message="no base commit to compare with"))
+    else:
+        changed = set(ctx.git.changed_paths)
+        marked = [r for r, m in bad if m is not None]
+        # KMK-B8: the paths count from the run's base commit, so a mark kept from an earlier visit stands by its file
+        found += [_find("fail", "ts-phs-changed", r.file, f"row `{r.id}` is marked completed but its file did not "
+                        "change in the run", "make the row's change, or clear its mark and say why")
+                  for r in marked if r.file and r.file not in changed] or [_ok("ts-phs-changed", label)]
+    found += _proof(ctx, phase, "ts-phs-proof")[0]
+    found += _test_first(ctx, phase, "ts-phs-order")
+    found.append(_committed(ctx, "ts-phs-commit"))
+    return _result(ctx, found, phase)
+
+
+# ---------------------------------------------------------------------------------------------
 # the outcome gate
 
 
@@ -1319,9 +1393,21 @@ def _at_base(ctx: Any, path: str) -> str | None:
     return _at_ref(ctx, ctx.git.base, path)
 
 
+def _unseen(ctx: Any, head: str, path: str) -> bool:
+    """True when the base branch's head holds a commit that changed the file and the run's branch lacks it; a run
+    that merged the base branch has seen every change up to the commit it merged (SBS-B2)."""
+    run = ctx.run(f"git log --oneline -1 HEAD..{head} -- {path}")
+    if run.not_started or run.exit_code != 0:
+        return True
+    try:
+        return bool(Path(run.output_path).read_text(encoding="utf-8", errors="replace").strip())
+    except OSError:
+        return True
+
+
 def _fresh(ctx: Any, specs: list[str]) -> list[CheckFinding]:
     """ts-spec-fresh (SBS-B1 to SBS-B3): no spec the run edited reads differently at the base branch's head than at
-    the run's base commit, when the head holds commits the base commit lacks."""
+    the run's base commit, when the head holds a commit that changed it and the run's branch lacks."""
     base, head = ctx.git.base, ctx.git.base_head
     if not base or not head:
         return [_find("n_a", "ts-spec-fresh", message="the run has no base branch to compare with")]
@@ -1340,7 +1426,8 @@ def _fresh(ctx: Any, specs: list[str]) -> list[CheckFinding]:
     found = [_find("fail", "ts-spec-fresh", path,
                    "the base branch changed this spec since the run started (it reads differently at its head than "
                    "at the run's base commit)", "start the task again from the head of the base branch")
-             for path in specs if _at_ref(ctx, base, path) != _at_ref(ctx, head, path)]
+             for path in specs
+             if _at_ref(ctx, base, path) != _at_ref(ctx, head, path) and _unseen(ctx, head, path)]
     return found or [_ok("ts-spec-fresh")]
 
 
@@ -1423,3 +1510,11 @@ def outcome_check(ctx: Any) -> Any:
     found += _collateral(ctx, specs)
     push = "The run's branch is pushed." if ctx.git.pushed else "The run's branch is not pushed."
     return _result(ctx, found, _plan(ctx)[0], facts=[push])  # evidence only: a push never decides the result
+
+
+def owner_answers_check(answers: dict[str, Any]) -> list[str]:
+    """The answers check of the pause `ask_owner` (OWQ-B5, ASK-B11): a pure function of the answers. One problem for
+    each reading of a gap answered `wrong`, naming the gap and saying that the run can be stopped to correct the task
+    or the answer changed to `right`; an owner decision is never refused, and no `wrong` gives an empty list."""
+    return [f"the reading of {name.upper()} is called wrong: stop the run to correct the task, or answer `{name}` "
+            f"with `right`" for name, value in answers.items() if value == "wrong"]

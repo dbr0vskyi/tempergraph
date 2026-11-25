@@ -92,7 +92,7 @@ def workflow_figures(root: Path, workflow: str, since: datetime | None) -> dict[
               "issues_commented": sum(1 for r in loop if r.get("kind") == "issue_commented"),
               "proposals": len(props), "by_loop": sum(1 for p in props if p.get("author") == "loop"),
               "trials": len(trials), "shown_better": sum(1 for t in trials if t.get("decision") == "shown_better"),
-              "opened": sum(1 for p in props if p.get("state") == "opened"), "merged": None,
+              "opened": sum(1 for p in props if p.get("state") in ("opened", "merged", "closed")), "merged": None,
               "held_after_release": None}
     return {"workflow": workflow, "funnel": funnel,
             "issue_precision": {"value": None, "not_derived": NOT_DERIVED},

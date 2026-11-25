@@ -2,7 +2,7 @@
 
 ## Purpose
 
-What chooses, once the plan has passed its gate, between building the plan at once in the one code session (`single`) and having the expand step write its task rows first (`phases`). The choice is the engine's complexity switch `code_mode` ([CXR](../../../tempergraph/docs/specs/94-complexity-routing.spec.md)): it measures facts that the plan check records, reads its limits from `routing/code_mode.json` in the package, takes `phases` whenever it cannot decide, and lets the operator name the arm when a run starts. The limits are the plan rule's limits for a simple plan ([plan rule](../../rules/plan.rule.md), and `ts-plan-size` of the [plan spec](06-plan.spec.md)), so a plan the check passes as `simple` takes `single`, one it passes as `complex` takes `phases`, and no step's own word for its complexity decides the arm. Both arms end in the same code step with the same gate, and `phases` still ends in one code session, since per-phase coding is not built. The operator who starts a run, the owner who reads the report by arm and the maintainers of the plan check depend on it. Part of the [overview](00-overview.spec.md).
+What chooses, once the plan has passed its gate, between building the plan at once in the one code session (`single`) and having the expand step write its task rows first and then building the plan one phase at a time (`phases`). The choice is the engine's complexity switch `code_mode` ([CXR](../../../tempergraph/docs/specs/94-complexity-routing.spec.md)): it measures facts that the plan check records, reads its limits from `routing/code_mode.json` in the package, takes `phases` whenever it cannot decide, and lets the operator name the arm when a run starts. The limits are the plan rule's limits for a simple plan ([plan rule](../../rules/plan.rule.md), and `ts-plan-size` of the [plan spec](06-plan.spec.md)), so a plan the check passes as `simple` takes `single`, one it passes as `complex` takes `phases`, and no step's own word for its complexity decides the arm. Both arms end in the same code step with the same gate: on `single` its one session builds the whole plan, and on `phases` it follows the phase items, which have built and committed the plan one phase at a time ([phase coding](phase-coding.spec.md)), and its gate checks the whole change. The operator who starts a run, the owner who reads the report by arm and the maintainers of the plan check depend on it. Part of the [overview](00-overview.spec.md).
 
 ## Behaviours
 
@@ -46,15 +46,15 @@ WHEN a fact is missing, or the rules file is missing or not valid, THE workflow 
 
 ### CDM-B6 `single` goes straight to the code step
 
-WHEN `single` is taken THE workflow SHALL run the code step on the plan as the plan step wrote it, with no expand step.
+WHEN `single` is taken THE workflow SHALL run the code step on the plan as the plan step wrote it, with no expand step and no phase item.
 
-- GIVEN a run that takes `single` WHEN it goes on THEN the expand step is never entered and the code step builds from the plan whose task rows the plan check verified
+- GIVEN a run that takes `single` WHEN it goes on THEN neither the expand step nor a phase item is entered, and one code session builds the whole plan, whose task rows the plan check verified
 
-### CDM-B7 `phases` runs the expand step first
+### CDM-B7 `phases` runs the expand step, the phases and then the code step
 
-WHEN `phases` is taken THE workflow SHALL run the expand step on the plan before the code step.
+WHEN `phases` is taken THE workflow SHALL run the expand step on the plan, then one phase item for each phase of the plan ([phase coding](phase-coding.spec.md)), and the code step after the last of them.
 
-- GIVEN a run that takes `phases` WHEN it goes on THEN the expand step is entered first and the code step is entered only after the expand step has passed its gate
+- GIVEN a run that takes `phases` WHEN it goes on THEN the expand step is entered first, the phase items only after the expand step has passed its gate, and the code step only after the last phase item has passed its gate
 
 ### CDM-B8 The operator names the arm when the run starts
 
@@ -95,8 +95,8 @@ WHEN the owner reads the package's live checks THE live checks SHALL hold a row 
 - CDM-AC8 (CDM-B4): `routing/code_mode.json` declares no margin band
 - CDM-AC9 (CDM-B5): A run whose plan check recorded no `phases` fact takes `phases` in the zone `fault`
 - CDM-AC10 (CDM-B5): A run whose repository override of the rules is not valid JSON takes `phases` in the zone `fault`
-- CDM-AC11 (CDM-B6): In a run that takes `single` the expand step is never entered, and the code step is entered after the plan step has passed
-- CDM-AC12 (CDM-B7): In a run that takes `phases` the expand step is entered before the code step, and the code step only after the expand step has passed its gate
+- CDM-AC11 (CDM-B6): In a run that takes `single` neither the expand step nor a phase item is ever entered, and the code step is entered after the plan step has passed
+- CDM-AC12 (CDM-B7): In a run that takes `phases` the expand step is entered before the first phase item, the phase items only after the expand step has passed its gate, and the code step only after the last phase item has passed its gate
 - CDM-AC13 (CDM-B8): A run started with `--arm code_mode=phases` on a plan that passes as `simple` takes `phases`, and its `route` record says `chosen_by: operator` and `would_choose: single`
 - CDM-AC14 (CDM-B8): A run started with `--arm code_mode=single` on a plan of 5 phases takes `single`, and its `route` record says `chosen_by: operator` and `would_choose: phases`
 - CDM-AC15 (CDM-B9): A run in the quick lane has no `route` record for `code_mode` and enters no expand step

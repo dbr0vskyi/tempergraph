@@ -23,6 +23,7 @@ from tempergraph.workspace import WorkspaceRefused, resolve_workspace
 from .fixtures.subworkflows import home_dir, parent_spec, register_workflow
 from .fixtures.workflows import two_step
 from .test_cli import cli, happy
+from .test_map_concurrent import concurrent
 from .test_parallel import wf as parallel_wf
 from .test_run import DRAFT, MET, REVIEW, judge, records, registry
 
@@ -230,6 +231,31 @@ def test_a_writer_branch_outside_git_is_refused_before_anything_is_created(plain
     assert [r["code"] for r in doc["refusals"]] == ["needs_git"] and "writer branch security" in doc["refusals"][0]["message"]
     assert not (plain / ".tempergraph").exists()
     ok = Catalog(specs={"demo": writer_block(("read",))})  # a read-only parallel workflow is not refused
+    code, doc, _ = cli(plain, happy(), "run", "demo", "x", "--check", catalog=ok)
+    assert code == 0 and doc["status"] == "ok"
+
+
+def test_a_writing_concurrent_map_outside_git_is_refused_before_anything_is_created(plain: Path) -> None:
+    # WSP-AC21, WSP-AC22, WSP-AC23 (WSP-B18), AC 1
+    writer = concurrent(tools=("read", "write"))
+    got = needs_git(writer, NO_SLEEP)
+    assert len(got) == 1 and "map phase" in got[0]
+    assert needs_git(concurrent(tools=("read", "edit")), NO_SLEEP) != []
+    ex = happy()
+    out = start(writer, "T-1", {"request": "x"}, plain, registry(ex), NO_SLEEP)  # WSP-AC21: at a start
+    assert out.exit_code is ExitCode.USAGE and out.reason == "needs_git" and "map phase" in out.message
+    assert not (plain / ".tempergraph").exists() and ex.calls == []
+    assert [p.name for p in plain.iterdir()] == ["README.md"]
+    catalog = Catalog(specs={"demo": writer})  # WSP-AC22: at the pre-start check
+    code, doc, _ = cli(plain, happy(), "run", "demo", "x", "--check", catalog=catalog)
+    assert code == ExitCode.USAGE and doc["status"] == "error"
+    assert [r["code"] for r in doc["refusals"]] == ["needs_git"] and "map phase" in doc["refusals"][0]["message"]
+    assert not (plain / ".tempergraph").exists()
+    reading = concurrent()  # WSP-AC23: a concurrent map that only reads adds no refusal
+    assert needs_git(reading, NO_SLEEP) == []
+    again = start(reading, "T-2", {"request": "x"}, plain, registry(happy()), NO_SLEEP)
+    assert again.reason != "needs_git"
+    ok = Catalog(specs={"demo": reading})
     code, doc, _ = cli(plain, happy(), "run", "demo", "x", "--check", catalog=ok)
     assert code == 0 and doc["status"] == "ok"
 

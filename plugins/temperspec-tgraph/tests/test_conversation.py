@@ -50,7 +50,8 @@ def _said(text: str, *phrases: str) -> None:
 
 def test_the_workflow_declares_the_conversation_setting() -> None:  # CONV-AC1, AC 1
     decl = SPEC.settings["conversation"]
-    assert decl.kind == "choice" and tuple(decl.choices or ()) == ("never", "blocking") and decl.default == "blocking"
+    assert decl.kind == "choice" and tuple(decl.choices or ()) == ("never", "blocking", "always")
+    assert decl.default == "blocking"
 
 
 def test_a_start_with_no_value_gives_blocking() -> None:  # CONV-AC1, AC 1
@@ -70,17 +71,33 @@ def test_a_repository_settings_entry_gives_never() -> None:  # CONV-AC1, AC 1
     assert findings == [] and workflow_settings(res)["conversation"] == "never"
 
 
-def test_a_start_with_always_is_refused_and_lists_the_two_values() -> None:  # CONV-AC1, AC 1
-    _, findings = _go({"settings.conversation": "always"})
+def test_a_start_with_always_through_the_flag_gives_always() -> None:  # CONV-AC1, AC 1
+    res, findings = _go({"settings.conversation": "always"})
+    assert findings == [] and workflow_settings(res)["conversation"] == "always"
+
+
+def test_a_repository_settings_entry_gives_always() -> None:  # CONV-AC1, AC 1
+    files = ConfigFiles(project={"schema_version": 1, "overrides": [
+        {"workflow": SPEC.name, "set": {"settings.conversation": "always"}}]}, project_path=Path("/p/settings.json"))
+    res, findings = _go(files=files)
+    assert findings == [] and workflow_settings(res)["conversation"] == "always"
+
+
+def test_a_start_with_another_value_is_refused_and_lists_the_three_values() -> None:  # CONV-AC1, AC 1
+    _, findings = _go({"settings.conversation": "sometimes"})
     assert [f.code for f in findings] == ["setting_value"]
-    assert "never" in findings[0].message and "blocking" in findings[0].message
+    for value in ("never", "blocking", "always"):
+        assert value in findings[0].message
 
 
-def test_the_triage_prompt_names_the_value_and_asks_for_the_sort_only_under_never() -> None:  # CONV-AC2, AC 1
+def test_the_triage_prompt_names_the_value_and_asks_for_the_sort_under_all_three() -> None:  # CONV-AC2, AC 1
     prompt = _read("prompts", "triage.md")
     assert "{settings.conversation}" in prompt
-    _said(prompt, "only when the value is `never`", "Findable", "Owner decision", "Owner decisions", "Options:",
-          "Default:", "If wrong:", "two to four options", "None", "sort no gap", "no such section")
+    _said(prompt, "Findable", "Owner decision", "Owner decisions", "Options:", "Default:", "If wrong:",
+          "two to four options", "None", "`never`, `blocking` or `always`")
+    flat = " ".join(prompt.lower().split())
+    for gone in ("only when the value is `never`", "sort no gap", "no such section"):
+        assert gone not in flat, gone
 
 
 def test_the_task_notes_rule_example_of_the_sort_is_read_by_the_parser() -> None:  # CONV-AC2, AC 1
@@ -96,7 +113,23 @@ def test_the_task_notes_rule_example_of_the_sort_is_read_by_the_parser() -> None
                             "## Route\n\n- Deliver: code\n- Route: discovery\n")
     assert none.owner_none and none.owner_section and none.owners == [] and none.sorts == {"G1": "findable"}
     _said(rule, "Owner decisions", "Findable", "Owner decision", "Options:", "Default:", "If wrong:",
-          "two to four options", "`blocking`")
+          "two to four options", "`never`, `blocking` or `always`")
+    assert "a run on `blocking` writes neither" not in " ".join(rule.split())
+
+
+def test_an_entry_with_its_options_one_per_line_is_read() -> None:  # CONV-AC2
+    """Seen in a real run (i6-8): the entry opened without a bullet and listed its options under an empty
+    `Options:`. The parser reads that shape too, so three triage attempts are not spent on layout."""
+    note = fmt.parse_triage("## Gaps\n\n- G3 decision needed: x. Searched: nothing. Owner decision\n\n"
+                            "## Owner decisions\n\nG3: May a repeat file alone?\nOptions:\n"
+                            "a) Propose only (the default).\nb) Propose and file.\n- c) Neither.\n"
+                            "Default: a)\nIf wrong: one spec edit.\n\n## Route\n\n- Deliver: code\n"
+                            "- Route: discovery\n")
+    assert len(note.owners) == 1
+    entry = note.owners[0]
+    assert entry.gap == "G3" and entry.question == "May a repeat file alone?"
+    assert [lab for lab, _ in entry.options] == ["a", "b", "c"]
+    assert entry.default_text == "Propose only (the default)." and entry.cost == "one spec edit."
 
 
 # -- phase 2: the triage check refuses an incomplete sort ---------------------------------------------------
@@ -142,8 +175,18 @@ def _owner(res: Any) -> list[Any]:
     return [f for f in res.findings if f.criterion == "ts-tri-owner"]
 
 
-def _never(work: Path, note: str) -> Any:
-    return _run(work, note, {"conversation": "never"})
+VALUES = ("never", "blocking", "always")
+
+
+@pytest.fixture(params=VALUES)
+def conv(request: pytest.FixtureRequest) -> str:
+    """The sort is read under each of the three conversation values (CONV-B4)."""
+    return str(request.param)
+
+
+def _never(work: Path, note: str, conv: str = "never") -> Any:
+    """The check run on a note under the conversation value `conv` (the name is kept from the `never` build)."""
+    return _run(work, note, {"conversation": conv})
 
 
 def _criterion_ids(node: Any) -> set[str]:
@@ -168,57 +211,65 @@ def _fails_naming(res: Any, *words: str) -> None:
     assert {f.criterion for f in res.findings} <= _criterion_ids(json.loads(_read("outcome.json")))
 
 
-def test_a_gap_row_with_no_sort_fails_and_names_the_gap(tmp_path: Path) -> None:  # CONV-AC3, AC 1
+def test_a_gap_row_with_no_sort_fails_and_names_the_gap(tmp_path: Path, conv: str) -> None:  # CONV-AC3, AC 1
     gaps = "- G1 spec gap: a. Searched `docs/specs/`: nothing\n- G2 decision needed: b. Owner decision\n"
-    _fails_naming(_never(tmp_path, _note(gaps, _entry())), "G1")
+    _fails_naming(_never(tmp_path, _note(gaps, _entry()), conv), "G1")
 
 
-def test_a_note_with_no_owner_decisions_section_fails_and_names_the_section(tmp_path: Path) -> None:  # CONV-AC3, AC 1
-    _fails_naming(_never(tmp_path, _note(owner=None)), "Owner decisions")
+def test_a_note_with_no_owner_decisions_section_fails_and_names_the_section(tmp_path: Path,
+                                                                            conv: str) -> None:  # CONV-AC3, AC 1
+    _fails_naming(_never(tmp_path, _note(owner=None), conv), "Owner decisions")
 
 
-def test_an_owner_decision_row_with_no_entry_fails_and_names_the_gap(tmp_path: Path) -> None:  # CONV-AC3, AC 1
-    _fails_naming(_never(tmp_path, _note(owner="None\n")), "G2")
+def test_an_owner_decision_row_with_no_entry_fails_and_names_the_gap(tmp_path: Path,
+                                                                     conv: str) -> None:  # CONV-AC3, AC 1
+    _fails_naming(_never(tmp_path, _note(owner="None\n"), conv), "G2")
 
 
-def test_an_entry_for_a_findable_row_fails_and_names_the_gap(tmp_path: Path) -> None:  # CONV-AC3, AC 1
-    _fails_naming(_never(tmp_path, _note(owner=_entry("G2") + _entry("G1"))), "G1")
+def test_an_entry_for_a_findable_row_fails_and_names_the_gap(tmp_path: Path, conv: str) -> None:  # CONV-AC3, AC 1
+    _fails_naming(_never(tmp_path, _note(owner=_entry("G2") + _entry("G1")), conv), "G1")
 
 
-def test_an_entry_for_no_gap_row_fails_and_names_the_gap(tmp_path: Path) -> None:  # CONV-AC3, AC 1
-    _fails_naming(_never(tmp_path, _note(owner=_entry("G2") + _entry("G7"))), "G7")
+def test_an_entry_for_no_gap_row_fails_and_names_the_gap(tmp_path: Path, conv: str) -> None:  # CONV-AC3, AC 1
+    _fails_naming(_never(tmp_path, _note(owner=_entry("G2") + _entry("G7")), conv), "G7")
 
 
 @pytest.mark.parametrize(("options", "said"), [("a) 2", "1 option"), ("a) 1; b) 2; c) 3; d) 4; e) 5", "5 options")])
-def test_an_entry_with_too_few_or_too_many_options_fails(options: str, said: str, tmp_path: Path) -> None:  # CONV-AC4, AC 1
-    _fails_naming(_never(tmp_path, _note(owner=_entry(options=options))), "G2", said)
+def test_an_entry_with_too_few_or_too_many_options_fails(options: str, said: str, tmp_path: Path,
+                                                         conv: str) -> None:  # CONV-AC4, AC 1
+    _fails_naming(_never(tmp_path, _note(owner=_entry(options=options)), conv), "G2", said)
 
 
 @pytest.mark.parametrize(("change", "said"), [
     ({"question": None}, "question"), ({"default": None}, "default"), ({"default": "d"}, "not one of"),
     ({"cost": None}, "cost"), ({"options": None}, "option")])
 def test_an_entry_with_a_missing_part_fails_and_names_the_part(change: dict[str, Any], said: str,
-                                                                tmp_path: Path) -> None:  # CONV-AC4, AC 1
-    _fails_naming(_never(tmp_path, _note(owner=_entry(**change))), "G2", said)
+                                                                tmp_path: Path, conv: str) -> None:  # CONV-AC4, AC 1
+    _fails_naming(_never(tmp_path, _note(owner=_entry(**change)), conv), "G2", said)
 
 
-def test_a_default_may_name_its_option_by_the_words(tmp_path: Path) -> None:  # CONV-AC5, AC 4
-    res = _never(tmp_path, _note(owner=_entry(default="78")))
+def test_a_default_may_name_its_option_by_the_words(tmp_path: Path, conv: str) -> None:  # CONV-AC5, AC 4
+    res = _never(tmp_path, _note(owner=_entry(default="78")), conv)
     assert [f.status for f in _owner(res)] == ["pass"], res.evidence
 
 
-def test_complete_entries_and_none_pass_under_never(tmp_path: Path) -> None:  # CONV-AC5, AC 4
+def test_complete_entries_and_none_pass_under_all_three(tmp_path: Path, conv: str) -> None:  # CONV-AC5, AC 4
     both = "- G1 spec gap: a. Owner decision\n- G2 decision needed: b. Owner decision\n"
-    res = _never(tmp_path / "a", _note(both, _entry("G1") + _entry("G2", options="a) x; b) y", default="b")))
+    res = _never(tmp_path / "a", _note(both, _entry("G1") + _entry("G2", options="a) x; b) y", default="b")), conv)
     assert res.result == "PASS" and [f.status for f in _owner(res)] == ["pass"], res.evidence
     findable = "- G1 spec gap: a. Findable\n- G2 spec update: b. Findable.\n"
-    res = _never(tmp_path / "b", _note(findable, "None\n"))
+    res = _never(tmp_path / "b", _note(findable, "None\n"), conv)
     assert res.result == "PASS" and [f.status for f in _owner(res)] == ["pass"], res.evidence
 
 
-@pytest.mark.parametrize("settings", [{"conversation": "blocking"}, {}, None])
-def test_a_note_with_no_sort_passes_unless_the_value_is_never(settings: dict[str, Any] | None,
-                                                               tmp_path: Path) -> None:  # CONV-AC5, AC 4
+def test_a_note_with_no_sort_fails_under_every_value(tmp_path: Path, conv: str) -> None:  # CONV-AC3, AC 1
+    gaps = "- G1 spec gap: a. Searched `docs/specs/`: nothing\n"
+    _fails_naming(_run(tmp_path, _note(gaps), {"conversation": conv}), "G1")
+
+
+@pytest.mark.parametrize("settings", [{}, None])
+def test_a_note_with_no_sort_passes_when_the_check_is_given_no_value(settings: dict[str, Any] | None,
+                                                                      tmp_path: Path) -> None:  # CONV-AC5, AC 4
     gaps = "- G1 spec gap: a. Searched `docs/specs/`: nothing\n"
     res = _run(tmp_path, _note(gaps), settings)
     assert res.result == "PASS" and [f.status for f in _owner(res)] == ["n_a"], res.evidence
@@ -239,14 +290,18 @@ def test_every_triage_fixture_that_must_pass_still_passes_with_no_settings(fixtu
 # -- phase 3: discovery goes on with the default -------------------------------------------------------------
 
 
-def test_the_discovery_prompt_goes_on_with_the_default_only_under_never() -> None:  # CONV-AC6, AC 2
+def test_the_discovery_prompt_closes_each_owner_decision_on_its_answer_or_default() -> None:
+    # CONV-AC6, OWQ-AC9, OWQ-AC10, AC 4, AC 5
     prompt = _read("prompts", "discovery.md")
-    assert "{settings.conversation}" in prompt
-    _said(prompt, "when the value is `never`", "close each owner decision of the triage note on its default",
-          "no open question for it", "the option that changes the least", "Until answered: <option>",
-          "never end blocked on an owner decision",
+    assert "{settings.conversation}" in prompt and "{answers}" in prompt
+    _said(prompt, "close each owner decision of the triage note that has an answer on the option the answer names",
+          "an owner decision with no answer (a deadline took its default", "on its default", "no open question for it",
+          "list under `Decisions` in the hand-off each owner decision", "`answered <option>`",
+          "`default taken <option>`", "when the value is `never`", "the option that changes the least",
+          "Until answered: <option>", "never end blocked on an owner decision",
           "a task with no acceptance criterion still ends blocked in triage",
-          "when the value is `blocking`", "end blocked on a question only a person can answer that blocks planning")
+          "when the value is `blocking` or `always`",
+          "end blocked on a question only a person can answer that blocks planning and the triage note does not list")
 
 
 def test_the_discovery_prompt_keeps_what_the_process_criterion_and_the_budget_read() -> None:  # CONV-AC6, AC 2
@@ -254,10 +309,18 @@ def test_the_discovery_prompt_keeps_what_the_process_criterion_and_the_budget_re
     _said(_read("prompts", "discovery.md"), "400 lines", "30,720 bytes", "split by capability")
 
 
-def test_no_unit_asks_a_person_and_no_gate_requires_a_sign_off() -> None:  # CONV-AC7, AC 2
+def test_only_the_owner_pause_asks_a_person_and_no_gate_requires_a_sign_off() -> None:  # CONV-AC7, OWQ-AC9, AC 4
+    asking = [name for name, unit in SPEC.units.items() if unit.kind == "ask" or unit.ask is not None]
+    assert asking == ["ask_owner"]
     for name, unit in SPEC.units.items():
-        assert unit.kind != "ask" and unit.ask is None, name
         assert not unit.gate.approval, name
+
+
+def test_the_discovery_judge_reads_the_answers_as_optional() -> None:  # OWQ-AC9, AC 4
+    judge = SPEC.units["discovery"].gate.judge
+    assert judge is not None
+    refs = dict(judge.references)
+    assert refs["answers"] == "optional" and refs["handoff"] == "required" and refs["triage_note"] == "required"
 
 
 @pytest.mark.parametrize("brief", ["discovery_short", "discovery", "plan", "expand", "code"])
@@ -271,7 +334,8 @@ def test_each_judge_brief_after_triage_grades_no_open_question(brief: str) -> No
 class _Last:
     """A last-stage context with a workspace and no git history, for the pull request's description."""
 
-    def __init__(self, work: Path, note: str, handoff: str = "# Hand-off\n\n## Open questions\n\n- None\n") -> None:
+    def __init__(self, work: Path, note: str, handoff: str = "# Hand-off\n\n## Open questions\n\n- None\n",
+                 answers: str | None = None) -> None:
         (work / "note.md").write_text(note, encoding="utf-8")
         (work / "handoff.md").write_text(handoff, encoding="utf-8")
         (work / "report.md").write_text("# Code report\n\n## Verification\n\n- `pytest`: passed\n", encoding="utf-8")
@@ -280,15 +344,82 @@ class _Last:
         self.artifacts = {"triage": {"triage_note": "note.md"}, "discovery": {"handoff": "handoff.md"},
                           "code": {"code_report": "report.md"}}
         self.values = {"triage": {"route": "discovery"}}
+        if answers is not None:  # the file the engine's ask leaves, named by the artifact `answers` of `ask_owner`
+            (work / "answers.json").write_text(answers, encoding="utf-8")
+            self.artifacts["ask_owner"] = {"answers": "answers.json"}
 
     def run(self, cmd: str) -> CommandRun:
         return CommandRun(argv=tuple(cmd.split()), not_started=True)
 
 
-def _described(work: Path, owner: str | None, handoff: str = "# Hand-off\n\n## Open questions\n\n- None\n") -> str:
+def _described(work: Path, owner: str | None, handoff: str = "# Hand-off\n\n## Open questions\n\n- None\n",
+               answers: str | None = None) -> str:
     note = ("# Triage: T\n\n## Acceptance criteria\n\n1. One\n\n## Gaps\n\n- G1 spec gap: a. Owner decision\n"
             + ("" if owner is None else f"\n## Owner decisions\n\n{owner}") + TAIL)
-    return str(summary.build(_Last(work, note, handoff)))
+    return str(summary.build(_Last(work, note, handoff, answers)))
+
+
+def _answered(answers: dict[str, str], defaulted: list[str] | None = None) -> str:
+    doc: dict[str, Any] = {"schema_version": 1, "unit": "ask_owner", "complete": True, "answers": answers}
+    if defaulted is not None:
+        doc["defaulted"] = defaulted
+    return json.dumps(doc)
+
+
+def _block(body: str, heading: str) -> str:
+    return body.split(f"### {heading}")[1].split("###")[0]
+
+
+def test_answered_owner_decisions_are_listed_as_decided_before_the_assumptions(tmp_path: Path) -> None:
+    # CONV-AC8, AC 4
+    owner = (_entry("G1", "Which exit code does the tool give?", "a) 2; b) 1", "a", "a script testing for 1 sees 2") +
+             _entry("G2", "How long may a session idle?", "a) 30 minutes; b) 15 minutes", "a", "users are signed out"))
+    body = _described(tmp_path, owner, answers=_answered({"g1": "b", "g2": "a"}))
+    decided = _block(body, "Decided")
+    assert "Which exit code does the tool give?" in decided and "1" in decided
+    assert "How long may a session idle?" in decided and "30 minutes" in decided
+    assert body.index("### Decided") < body.index("### Assumptions to confirm") < body.index("### Read these")
+    assert "took no default" in _block(body, "Assumptions to confirm")
+
+
+def test_a_default_taken_at_the_deadline_is_listed_as_an_assumption(tmp_path: Path) -> None:  # CONV-AC8, AC 4
+    owner = "".join(_entry(f"G{n}", f"Question number {n}?", "a) first; b) second", "a", f"cost {n}")
+                    for n in (1, 2, 3))
+    body = _described(tmp_path, owner, answers=_answered({"g1": "b", "g2": "a", "g3": "a"}, ["g2", "g3"]))
+    decided, assumed = _block(body, "Decided"), _block(body, "Assumptions to confirm")
+    assert "Question number 1?" in decided and "second" in decided
+    assert "Question number 1?" not in assumed
+    assert "Question number 2?" in assumed and "Question number 3?" in assumed
+    assert "Default: first" in assumed and "cost 2" in assumed and "cost 3" in assumed
+    assert "Question number 2?" not in decided
+
+
+def test_a_partial_answers_file_lists_the_unanswered_decisions_as_assumptions(tmp_path: Path) -> None:
+    # CONV-AC8, AC 4
+    owner = "".join(_entry(f"G{n}", f"Question number {n}?") for n in (1, 2))
+    body = _described(tmp_path, owner, answers=_answered({"g1": "a"}))
+    assert "Question number 1?" in _block(body, "Decided")
+    assert "Question number 2?" in _block(body, "Assumptions to confirm")
+
+
+def test_a_run_with_no_pause_has_no_decided_heading(tmp_path: Path) -> None:  # CONV-AC9, AC 4
+    body = _described(tmp_path, _entry("G1", "Which exit code does the tool give?"))
+    assert "### Decided" not in body and "Which exit code does the tool give?" in _block(body, "Assumptions to confirm")
+
+
+def test_an_answers_file_that_cannot_be_read_gives_no_decided_heading(tmp_path: Path) -> None:  # CONV-AC9, AC 4
+    owner = "".join(_entry(f"G{n}", f"Question number {n}?") for n in (1, 2))
+    for broken in ("{not json", "[]", '{"answers": "x"}'):
+        body = _described(tmp_path, owner, answers=broken)
+        assert "### Decided" not in body, broken
+        block = _block(body, "Assumptions to confirm")
+        assert "Question number 1?" in block and "Question number 2?" in block, broken
+
+
+def test_sixteen_answered_decisions_are_none_clipped(tmp_path: Path) -> None:  # CONV-AC8, AC 4
+    owner = "".join(_entry(f"G{n}", f"Question number {n}?") for n in range(1, 17))
+    body = _described(tmp_path, owner, answers=_answered({f"g{n}": "a" for n in range(1, 17)}))
+    assert all(f"Question number {n}?" in _block(body, "Decided") for n in range(1, 17))
 
 
 def test_a_note_with_two_owner_decisions_lists_both_as_assumptions(tmp_path: Path) -> None:  # CONV-AC8, AC 3
@@ -325,13 +456,19 @@ def test_an_open_question_with_a_default_is_listed_with_it(tmp_path: Path) -> No
     assert "### Open questions" in body and "Until answered: (a)" in body.split("### Open questions")[1]
 
 
-def test_the_readme_and_the_research_note_say_what_is_built() -> None:  # CONV-AC2, CONV-AC8, AC 4
+def test_the_readme_and_the_research_note_say_what_is_built() -> None:  # CONV-AC2, CONV-AC8, AC 4, AC 6
     readme = _read("README.md")
-    _said(readme, "--set settings.conversation=never", "owner decisions", "Assumptions to confirm", "`blocking`",
-          "`always`")
+    _said(readme, "--set settings.conversation=never", "owner decisions", "Assumptions to confirm", "`Decided`",
+          "`blocking`", "`always`", "`never`", "one pause", "resume --answers", "--decision answer:",
+          "resume --apply-deadline", "ask_owner.deadline_s", "86,400 seconds", "owner_questions", "ask_route",
+          "ask_owner", "the agent that started the run")
+    assert "is refused before the run spends anything" not in readme
+    asks = " ".join(readme.split("## What it asks of the engine", 1)[1].lower().split())
+    assert "callable of a script" in asks and "artifacts, values and settings" in asks
     status = next(ln for ln in _read("docs", "research", "next-features.rsrch.md").splitlines()
                   if ln.startswith("| Status |"))
-    _said(status, "conversation mode `never`")
+    _said(status, "conversation modes `never`, `blocking` and `always`")
+    assert "`always` is not declared" not in status
 
 
 ROW = "- [ ] ts-tri-owner "
@@ -339,8 +476,9 @@ ROW = "- [ ] ts-tri-owner "
 
 def test_the_criteria_file_holds_ts_tri_owner_with_the_text_of_its_spec_row() -> None:  # CONV-AC3, AC 1
     outcome = json.loads(_read("outcome.json"))
-    assert outcome["revision"] == outcome["revisions"][-1]["revision"] >= 15
+    assert outcome["revision"] == outcome["revisions"][-1]["revision"] >= 19
     assert any("issue 60" in r.get("note", "") for r in outcome["revisions"])
+    assert any("63" in r.get("note", "") and "64" in r.get("note", "") for r in outcome["revisions"])
     crit = next(c for c in outcome["intermediate"]["triage"]["criteria"] if c["id"] == "ts-tri-owner")
     assert crit["severity"] == "blocker" and crit["verified_by"] == "check" and crit["check_method"].strip()
     assert crit["verifier"] == {"check": "tgwf_temperspec.checks:triage_check"}

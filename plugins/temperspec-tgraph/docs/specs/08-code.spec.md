@@ -4,7 +4,7 @@
 
 The whole plan, or the small change of the quick lane, is built test first, committed, with its verification passing in the gate's own run and each criterion carried by a test
 
-Part of the [overview](00-overview.spec.md).
+Part of the [overview](00-overview.spec.md). On the arm `single` and in the quick lane this step builds the whole change in one session. On the arm `phases` the [phase](15-phase.spec.md) items have built and committed each phase before it, and this step is the join: it builds only a row whose Completed cell is empty, ends the plan and writes the code report, and its gate checks the whole change and holds the lines back to the plan, discovery and triage steps ([phase coding](phase-coding.spec.md)).
 
 ## 6. Acceptance criteria
 

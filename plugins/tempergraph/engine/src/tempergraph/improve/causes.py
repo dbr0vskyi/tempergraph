@@ -79,7 +79,7 @@ CAUSES: dict[str, Cause] = {
     "outcome_unmet": Cause(klass="fault", side="workflow",
                            remedy="The outcome judge found this final criterion unmet: a gate let the gap through"),
     "review_repeat": Cause(klass="fault", side="workflow",
-                           remedy="A review category was kept in several sessions of this unit: fix what it names"),
+                           remedy="A review category was kept in several sessions or runs of this unit: fix what it names"),
     "check_repeat": Cause(klass="fault", side="workflow",
                           remedy="The same check failure twice although the step changed files: "
                                  "a person decides whether the check, the environment or the prompt is wrong"),

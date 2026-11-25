@@ -301,14 +301,19 @@ def _view(**values: str) -> Any:
     return SimpleNamespace(values=values)
 
 
-def test_routes_follow_the_values() -> None:  # AC 4, PRL-AC1: the full discovery is entered at `read_gap`
+def test_routes_follow_the_values() -> None:  # AC 4, PRL-AC1, OWQ-AC2: the full discovery starts with the owner's questions
     assert routing.route_triage(_view(route="plan")) == "plan"
-    assert routing.route_triage(_view(route="discovery")) == "read_gap"
+    assert routing.route_triage(_view(route="discovery")) == "owner_questions"
     assert routing.route_triage(_view(route="quick")) == "code"
-    assert routing.route_triage(_view()) == "read_gap"  # an unreadable route takes the longer path
+    assert routing.route_triage(_view()) == "owner_questions"  # an unreadable route takes the longer path
     assert routing.route_triage(_view(route="discovery", covered="yes")) == "discovery_short"
-    assert routing.route_triage(_view(route="discovery", covered="no")) == "read_gap"
-    assert routing.route_triage(_view(route="discovery-only", covered="yes")) == "read_gap"  # docs are the goal
+    assert routing.route_triage(_view(route="discovery", covered="no")) == "owner_questions"
+    assert routing.route_triage(_view(route="discovery-only", covered="yes")) == "owner_questions"  # docs are the goal
+    # OWQ-AC2: a script's key reaches a route as an artifact key; `owner_questions` leaves `empty` only for no question
+    assert routing.route_ask(SimpleNamespace(values={}, artifact_keys=("question_list", "empty"))) == "read_gap"
+    assert routing.route_ask(SimpleNamespace(values={"empty": "yes"}, artifact_keys=())) == "read_gap"
+    assert routing.route_ask(SimpleNamespace(values={}, artifact_keys=("question_list",))) == "ask_owner"  # a question
+    assert routing.route_ask(SimpleNamespace(values={}, artifact_keys=())) == "ask_owner"  # a list that failed pauses
     assert routing.route_short(_view(settled="yes")) == "plan"
     assert routing.route_short(_view(settled="no")) == "read_gap"
     assert routing.route_short(_view()) == "read_gap"
@@ -940,6 +945,8 @@ def test_the_plan_check_takes_a_command_run_in_a_folder(command: str, tmp_path: 
     # B31, ts-plan-form, ts-exp-commands
     files = _copy(ROOT / "evals" / "checks" / "plan" / "must-pass" / "2-simple", tmp_path)
     (tmp_path / "sub" / "engine").mkdir(parents=True)
+    (tmp_path / "tempergraph.commands.json").write_text(json.dumps(
+        {"schema_version": 1, "commands": ["python -m pytest", "python3 -m pytest", "ruff check"]}))
     plan = tmp_path / "plan.md"
     plan.write_text(plan.read_text().replace("`git --version`", f"`{command}`"))
     artifacts = {OWNER[f.stem]: {f.stem: f.relative_to(tmp_path).as_posix()} for f in files if f.stem in OWNER}
@@ -948,14 +955,15 @@ def test_the_plan_check_takes_a_command_run_in_a_folder(command: str, tmp_path: 
 
 
 @pytest.mark.parametrize(("command", "said"), [
-    ("cd sub && node test.js", "start the command with a prefix the workflow allows"),
+    ("cd sub && node test.js", "tempergraph.commands.json"),
     ("cd sub && pytest | tee out", "the one chain allowed"),
     ("cd ../elsewhere && pytest", "inside the repository"),
     ("cd sub && git push -u origin main", "only the last stage"),
 ])
 def test_a_refused_command_is_told_how_to_write_it_without_dropping_the_cd(command: str, said: str,
                                                                           tmp_path: Path) -> None:  # B31
-    found = checks._commands(_context("plan", tmp_path, {}), fmt.Plan(commands=[command]), "ts-plan-form")
+    (tmp_path / "tempergraph.commands.json").write_text(json.dumps({"schema_version": 1, "commands": ["pytest"]}))
+    found =checks._commands(_context("plan", tmp_path, {}), fmt.Plan(commands=[command]), "ts-plan-form")
     assert len(found) == 1 and found[0].status == "fail", command
     assert said in found[0].message + " " + found[0].fix, (command, found[0])
     assert "no `&&` chain" not in found[0].fix

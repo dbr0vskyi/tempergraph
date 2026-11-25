@@ -10,7 +10,7 @@ Counting is not reading. How often a category was kept on a unit is arithmetic o
 
 ## Decision
 
-We will record a review category kept on one unit in at least three sessions of a run as a finding of its own, count that finding as the corroboration of those observations in the way a model-free finding is counted, and let it file nothing, in the run that records it or in any later one. The behaviours are [SRV-B26, SRV-B27 and SRV-B28](../specs/44-session-review.spec.md).
+We will record a review category kept on one unit in at least three sessions of a run as a finding of its own, count that finding as the corroboration of those observations in the way a model-free finding is counted, and let it file nothing, in the run that records it or in any later one. The behaviours are [SRV-B26, SRV-B27 and SRV-B28](../specs/review-repeats.spec.md).
 
 ## Options considered
 

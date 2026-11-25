@@ -162,11 +162,49 @@ WHEN the loop child runs in stable mode within its daily cap ([SIL](16-self-impr
 
 - GIVEN dev mode WHEN the loop runs THEN it proposes nothing
 
+### PRP-B26 A proposal's pull request state is read from the code host
+
+WHEN a final exit ([SIL-B9](16-self-improvement.spec.md)) of a workflow with an `opened` proposal is recorded at autonomy `file` or above, outside a dry run, THE loop SHALL read the state of the proposal's draft pull request from the code host (the person's `gh` sign-in, read-only) and keep it on the proposal as `pr_state`: `open`, `merged` or `closed` (closed without a merge), `unknown` from the opening until a read has succeeded.
+
+- GIVEN a proposal just opened WHEN it is shown THEN `pr_state` is `unknown`
+- GIVEN an opened proposal whose pull request is open WHEN a final exit that raises no finding is recorded THEN `pr_state` is `open` and the proposal stays `opened`
+- GIVEN an opened proposal whose pull request was closed without a merge WHEN a final exit is recorded THEN `pr_state` is `closed` and the proposal stays `opened`
+- GIVEN autonomy `record`, or a dry run WHEN a final exit is recorded THEN the code host is not asked and the proposal is unchanged
+
+### PRP-B27 A merged pull request moves its proposal to merged
+
+WHEN the code host reports the draft pull request of an `opened` proposal merged THE loop SHALL set the proposal `merged`, with the merge time the host reports as `merged_at`.
+
+- GIVEN an opened proposal whose pull request is merged WHEN a final exit is recorded THEN the proposal is `merged`, `pr_state` is `merged` and `merged_at` holds the host's merge time
+
+### PRP-B28 A pull request that cannot be read leaves its proposal as it was
+
+WHEN the state of a proposal's pull request cannot be read, because the code host cannot be reached or no `gh` is installed or signed in, THE loop SHALL leave the proposal as it was and fail nothing: `pr_state` stays as it was (`unknown` until a read has succeeded), nothing is recorded as merged, and the run's exit code and the loop's other work are unchanged.
+
+- GIVEN an opened proposal never read and a code host that cannot be reached WHEN a final exit is recorded THEN `pr_state` is `unknown`, the proposal stays `opened` and the run's exit code is unchanged
+- GIVEN an opened proposal whose pull request is merged and no `gh` signed in WHEN a final exit is recorded THEN the proposal stays `opened` with no `merged_at` and the loop's other records are written as before
+- GIVEN an opened proposal last read `open` and a code host that cannot be reached WHEN a final exit is recorded THEN `pr_state` stays `open`
+- GIVEN the code host reachable again WHEN the next final exit is recorded THEN the merged pull request moves the proposal to `merged`
+
 ### PRP-B9 Measured after release
 
-WHEN the first 10 final exits of a merged proposal's new version are recorded THE engine SHALL run the post-release comparison of [SIL-B5](16-self-improvement.spec.md) on the trial's target and guards, and on a guard worse than its margin reopen the issues and record `regressed_after_release` on the proposal.
+WHEN the first 10 final exits of real runs after a proposal's merge are recorded (`trial.after_release_runs`; runs of trials, scenarios and evals and dry runs are no real runs, [PRO-B8](95-promotion-check.spec.md)), at autonomy `file` or above, THE engine SHALL run the post-release comparison of [SIL-B5](16-self-improvement.spec.md) between the final exits of the proposal's `base_version` recorded before the merge and those 10, and record `regressed_after_release` on the proposal, with the figures before and after, when the cost per run rose by more than 15 % (`trial.guard_cost`) or the gate first-try pass rate or the met share of outcomes fell by more than `measure.quality_drop` (5 points), and `held_after_release` when none did.
 
-- GIVEN a merged proposal whose run cost rose 30 % over 10 exits WHEN compared THEN the issues reopen and `regressed_after_release` is recorded
+- GIVEN a merged proposal whose run cost rose 30 % over 10 exits WHEN compared THEN `regressed_after_release` is recorded
+- GIVEN a merged proposal whose gate first-try pass rate fell 7 points over 10 exits WHEN compared THEN `regressed_after_release` is recorded
+- GIVEN a merged proposal whose cost per run rose 5 % and whose other figures held over 10 exits WHEN compared THEN `held_after_release` is recorded and `regressed_after_release` is not
+- GIVEN a merged proposal with 9 final exits after its merge WHEN the 9th is recorded THEN nothing is compared and the proposal holds neither `regressed_after_release` nor `held_after_release`
+- GIVEN 10 final exits after a merge, 4 of them trial runs WHEN a final exit is recorded THEN nothing is compared, as only 6 are real
+- GIVEN a merge first seen with 12 final exits already after it WHEN the proposal moves to `merged` THEN its first 10 are compared at once
+- GIVEN a proposal compared at its 10th exit WHEN its 11th final exit is recorded THEN nothing is compared again
+
+### PRP-B29 A regression reopens the cluster's issues
+
+WHEN `regressed_after_release` is recorded on a proposal THE engine SHALL reopen the issues of the proposal's cluster that are in the pull request's repository, the ones the merge closed (PRP-B24).
+
+- GIVEN a regressed proposal whose cluster has the issues #12 and #19 of the pull request's repository, closed by the merge WHEN the regression is recorded THEN both are open again
+- GIVEN an issue of the cluster that is in another repository WHEN the regression is recorded THEN it is left as it is
+- GIVEN a code host that cannot be reached WHEN the regression is recorded THEN the record stands and the reopen waits in the outbox of [SIL-B19](16-self-improvement.spec.md) for the next filing
 
 ## Acceptance criteria
 
@@ -179,10 +217,15 @@ WHEN the first 10 final exits of a merged proposal's new version are recorded TH
 - PRP-AC7 (PRP-B3, PRP-B10, PRP-B11, PRP-B12, PRP-B13, PRP-B15, PRP-B16, PRP-B21, PRP-B22, PRP-B23, PRP-B5, PRP-B9): Fixtures cover each refusal, the autonomy levels, the backlog's ranking and twins, an A/A run, a grader trial, the loop's own proposals and the post-release watch
 - PRP-AC8 (PRP-B24): Against a fake code host, the body of the draft pull request of a proposal whose cluster has the issues #12 and #19 of the pull request's repository holds `Closes #12` and `Closes #19`, and the body of one whose cluster has no issue holds no `Closes` line
 - PRP-AC9 (PRP-B25): Against a fake code host, a trial that ends in each decision leaves one comment in the agent comment format on each issue of its cluster, a trial at autonomy `record` leaves none, and an unreachable code host leaves the comment in the outbox with the trial's decision unchanged
+- PRP-AC10 (PRP-B26, PRP-B27): Against a fake code host, a final exit recorded for a workflow with an opened proposal leaves it `opened` with `pr_state` `open` while its pull request is open and `closed` when that was closed without a merge, and sets it `merged` with `merged_at` when that was merged; a proposal just opened shows `pr_state` `unknown`; at autonomy `record`, and in a dry run, the host is not asked
+- PRP-AC11 (PRP-B28): Against a fake code host that cannot be reached, and with no `gh` installed or signed in, an opened proposal whose pull request is merged stays `opened` with the `pr_state` it had and no `merged_at`, and the run's exit code and the loop's other records are the same as without it
+- PRP-AC12 (PRP-B9): Over recorded runs before and after a merge, a proposal whose cost per run rose 30 %, or whose gate first-try pass rate fell 7 points, over its first 10 final exits after the merge holds `regressed_after_release` with the figures before and after; one whose cost rose 5 % with the other figures held holds `held_after_release` and no `regressed_after_release`; one with 9 final exits after its merge, or with only 6 real runs among 10, holds neither; none is compared twice, and a merge seen late is compared on its first 10 exits after it
+- PRP-AC13 (PRP-B29): Against a fake code host, the cluster issues of a regressed proposal that are in the pull request's repository are open again and those of another repository are untouched, and with a host that cannot be reached the record stands and the reopen is in the outbox
 
 ## Open questions
 
 - Should `propose` become the default autonomy once the first workflow has a reviewed case set? Until answered: `file` stays the default. Owner: owner.
 - May a trial apply a case's recorded answer at a pause? Until answered: a case stops at the first pause and counts as a tie. Owner: owner.
 - Should the loop's own proposals (PRP-B23) skip a cluster whose issues the owner closed as not planned ([ISS-B3](loop-issues.spec.md))? Until answered: no, PRP-B23 is unchanged, so at autonomy `propose` or `trial` a muted cluster can still get a draft pull request. Owner: owner.
-- Not built yet: PRP-B9 waits on the merge being seen, since `pr_state` is not derived in release 1 ([FBK](41-feedback-and-judge-reliability.spec.md)); `regressed_after_release` is not recorded yet. Owner: engine owner.
+- Should a proposal whose pull request was closed without a merge move to `closed`, so that it stops being live for the loop's own proposals (PRP-B23)? Until answered: no, it stays `opened` with `pr_state` `closed`, and the loop proposes nothing new for its cluster. Owner: owner.
+- Should the post-release measure be the trial's target and guards (PRP-B18), counted per run over 10 exits before and 10 after the merge, rather than the figures of SIL-B5? Until answered: the figures of SIL-B5 with the margins of PRP-B9, so that a proposal opened without a trial has a measure too. Owner: owner.

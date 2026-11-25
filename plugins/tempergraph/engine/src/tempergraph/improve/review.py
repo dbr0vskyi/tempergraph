@@ -2,9 +2,10 @@
 
 `full` reviews in dev mode, probation and authoring trials, and on a person's `improve review`; `signals` plans
 in stable mode read only the slices SRV-B16 names for each signal, skip a saturated cluster (SRV-B5) and keep the
-stable money caps (SRV-B21). Corroborated filing and the proposer's reading of observations are not built; review
-results never file and never reach a step or judge prompt (SRV-B7, B10). This module is the review writer and the
-review report: with the proposer, the only code that names the review evidence folder (SRV-AC4).
+stable money caps (SRV-B21). A kept observation corroborates the model-free finding of its unit and run, which then
+files with the category named (SRV-B7); an observation alone files nothing and never reaches a step or judge prompt
+(SRV-B10). This module is the review writer and the review report: with the proposer, the only code that names the
+review evidence folder (SRV-AC4).
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from tempergraph.docs import append_jsonl, write_json
 from tempergraph.executors.registry import Registry, UnknownExecutor
 from tempergraph.improve import digest as digestmod
 from tempergraph.improve import params, repeat
-from tempergraph.improve.record import read_findings, read_prompt
+from tempergraph.improve.record import read_findings, read_prompt, write_findings
 from tempergraph.model import flow
 from tempergraph.run.log import LiveSink, estimate
 from tempergraph.security.scrub import clip, scrub
@@ -646,9 +647,39 @@ def run(t: Mapping[str, Any], registry: Registry, *, reason: str = "dev", keys: 
                            "kept": sum(1 for o in observations if o["check"] == "kept"),
                            "none_found": bool(block.get("none_found")), **paid, **mark})
         out["done"].append(key)
-    if out["done"]:  # SRV-B26: a category kept in several sessions of one unit is a finding; it never files (SRV-B28)
-        repeat.record(root, wf, task, str(t.get("thread") or f"{wf}/{task}"))
+    if out["done"]:  # SRV-B26, SRV-B32: a category kept in several sessions or runs is a finding; it never files (SRV-B28)
+        thread = str(t.get("thread") or f"{wf}/{task}")
+        repeat.record(root, wf, task, thread)
+        corroborate(root, wf, task, thread)  # SRV-B7: a kept observation of the finding's unit and run corroborates it
     return out
+
+
+def corroborate(root: Path, workflow: str, task: str, thread: str) -> int:
+    """SRV-B7, SIL-B16: each model-free finding of the run whose unit has kept observations in the run carries
+    `review:<category>`, the category with the most kept observations (ties: first alphabetically), and
+    `review_weight`, their number. An observation alone makes no finding. Returns the findings changed."""
+    kept: dict[str, dict[str, int]] = {}
+    for r in _jsonl(loop_log(root, workflow, task)):
+        if r.get("kind") != "review_done":
+            continue
+        unit = digestmod.parse_key(str(r.get("session_key")))[0]
+        for o in r.get("observations") or []:
+            if o.get("check") == "kept":
+                by = kept.setdefault(unit, {})
+                by[str(o.get("category"))] = by.get(str(o.get("category")), 0) + 1
+    found = read_findings(root, workflow, task)
+    changed = 0
+    for f in found:
+        counts = kept.get(str(f.get("unit")))
+        if f.get("lens") in ("review", "outcome") or not counts:
+            continue
+        category = min(counts, key=lambda c: (-counts[c], c))
+        if f.get("review") != f"review:{category}" or f.get("review_weight") != counts[category]:
+            f["review"], f["review_weight"] = f"review:{category}", counts[category]
+            changed += 1
+    if changed:
+        write_findings(root, workflow, task, thread, found)
+    return changed
 
 
 def _spend(log: Path) -> tuple[float, float | None]:
@@ -765,6 +796,24 @@ def show(root: Path, workflow: str, task: str) -> dict[str, Any]:
                          "conformance": doc.get("conformance") or [], "none_found": doc.get("none_found")})
     return {"schema_version": 1, "thread": f"{workflow}/{task}", "plan": planned[-1] if planned else None,
             "sessions": sessions, "failed": [r.get("session_key") for r in failed_records(recs)]}
+
+
+def kept_notes(root: Path, workflow: str, task: str, unit: str) -> list[dict[str, Any]]:
+    """SRV-B10, PRP-B4: the kept observations of `unit` in one run, every category, with session, turns and the
+    scrubbed note, from the run's local review evidence. A rejected observation is never returned."""
+    folder = review_dir(root, workflow, task)
+    out: list[dict[str, Any]] = []
+    for f in sorted(folder.glob("*.json")) if folder.is_dir() else ():
+        try:
+            doc = json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(doc, dict) or digestmod.parse_key(str(doc.get("session_key")))[0] != unit:
+            continue
+        out += [{"run": task, "session_key": str(doc.get("session_key")), "category": str(o.get("category")),
+                 "turns": list(o.get("turns") or []), "note": scrub(str(o.get("note") or ""))}
+                for o in doc.get("observations") or [] if isinstance(o, dict) and o.get("check") == "kept"]
+    return out
 
 
 def summary(root: Path, workflow: str | None = None, version: str | None = None) -> dict[str, Any]:

@@ -45,6 +45,24 @@
       "approval": false
     },
     {
+      "name": "owner_questions",
+      "kind": "script",
+      "summary": "",
+      "approval": false
+    },
+    {
+      "name": "ask_route",
+      "kind": "route",
+      "summary": "",
+      "approval": false
+    },
+    {
+      "name": "ask_owner",
+      "kind": "ask",
+      "summary": "",
+      "approval": false
+    },
+    {
       "name": "read_gap",
       "kind": "map",
       "summary": "Read one gap's documents and code; report findings",
@@ -72,6 +90,12 @@
       "name": "expand",
       "kind": "step",
       "summary": "Write task rows and verification for a complex plan",
+      "approval": false
+    },
+    {
+      "name": "phase",
+      "kind": "map",
+      "summary": "Build one phase of the plan, tests first, and commit it",
       "approval": false
     },
     {
@@ -122,6 +146,18 @@
     "discovery_short.judge",
     "discovery_short.gate",
     "discovery_short.human",
+    "owner_questions.step",
+    "owner_questions.judge",
+    "owner_questions.gate",
+    "owner_questions.human",
+    "ask_route.step",
+    "ask_route.judge",
+    "ask_route.gate",
+    "ask_route.human",
+    "ask_owner.step",
+    "ask_owner.judge",
+    "ask_owner.gate",
+    "ask_owner.human",
     "read_gap.step",
     "read_gap.judge",
     "read_gap.gate",
@@ -142,6 +178,10 @@
     "expand.judge",
     "expand.gate",
     "expand.human",
+    "phase.step",
+    "phase.judge",
+    "phase.gate",
+    "phase.human",
     "code.step",
     "code.judge",
     "code.gate",
@@ -459,7 +499,7 @@
     ],
     [
       "triage.gate",
-      "read_gap.step",
+      "owner_questions.step",
       "PROCEED"
     ],
     [
@@ -494,7 +534,7 @@
     ],
     [
       "triage.human",
-      "read_gap.step",
+      "owner_questions.step",
       "decision"
     ],
     [
@@ -628,6 +668,276 @@
       "decision"
     ],
     [
+      "owner_questions.step",
+      "owner_questions.judge",
+      "next"
+    ],
+    [
+      "owner_questions.judge",
+      "owner_questions.gate",
+      "next"
+    ],
+    [
+      "owner_questions.gate",
+      "ask_route.step",
+      "PROCEED"
+    ],
+    [
+      "owner_questions.gate",
+      "owner_questions.step",
+      "RETRY"
+    ],
+    [
+      "owner_questions.gate",
+      "owner_questions.human",
+      "ESCALATE"
+    ],
+    [
+      "owner_questions.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "owner_questions.human",
+      "ask_route.step",
+      "decision"
+    ],
+    [
+      "owner_questions.human",
+      "owner_questions.step",
+      "decision"
+    ],
+    [
+      "owner_questions.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "owner_questions.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "owner_questions.human",
+      "list_components.step",
+      "decision"
+    ],
+    [
+      "owner_questions.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "owner_questions.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "owner_questions.human",
+      "triage.step",
+      "decision"
+    ],
+    [
+      "owner_questions.human",
+      "discovery_short.step",
+      "decision"
+    ],
+    [
+      "owner_questions.human",
+      "__end__",
+      "decision"
+    ],
+    [
+      "ask_route.step",
+      "ask_route.judge",
+      "next"
+    ],
+    [
+      "ask_route.judge",
+      "ask_route.gate",
+      "next"
+    ],
+    [
+      "ask_route.gate",
+      "ask_owner.step",
+      "PROCEED"
+    ],
+    [
+      "ask_route.gate",
+      "read_gap.step",
+      "PROCEED"
+    ],
+    [
+      "ask_route.gate",
+      "ask_route.step",
+      "RETRY"
+    ],
+    [
+      "ask_route.gate",
+      "ask_route.human",
+      "ESCALATE"
+    ],
+    [
+      "ask_route.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "ask_route.human",
+      "ask_owner.step",
+      "decision"
+    ],
+    [
+      "ask_route.human",
+      "read_gap.step",
+      "decision"
+    ],
+    [
+      "ask_route.human",
+      "ask_route.step",
+      "decision"
+    ],
+    [
+      "ask_route.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "ask_route.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "ask_route.human",
+      "list_components.step",
+      "decision"
+    ],
+    [
+      "ask_route.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "ask_route.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "ask_route.human",
+      "triage.step",
+      "decision"
+    ],
+    [
+      "ask_route.human",
+      "discovery_short.step",
+      "decision"
+    ],
+    [
+      "ask_route.human",
+      "owner_questions.step",
+      "decision"
+    ],
+    [
+      "ask_route.human",
+      "__end__",
+      "decision"
+    ],
+    [
+      "ask_owner.step",
+      "ask_owner.judge",
+      "next"
+    ],
+    [
+      "ask_owner.judge",
+      "ask_owner.gate",
+      "next"
+    ],
+    [
+      "ask_owner.gate",
+      "read_gap.step",
+      "PROCEED"
+    ],
+    [
+      "ask_owner.gate",
+      "ask_owner.step",
+      "RETRY"
+    ],
+    [
+      "ask_owner.gate",
+      "ask_owner.human",
+      "ESCALATE"
+    ],
+    [
+      "ask_owner.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "ask_owner.human",
+      "read_gap.step",
+      "decision"
+    ],
+    [
+      "ask_owner.human",
+      "ask_owner.step",
+      "decision"
+    ],
+    [
+      "ask_owner.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "ask_owner.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "ask_owner.human",
+      "list_components.step",
+      "decision"
+    ],
+    [
+      "ask_owner.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "ask_owner.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "ask_owner.human",
+      "triage.step",
+      "decision"
+    ],
+    [
+      "ask_owner.human",
+      "discovery_short.step",
+      "decision"
+    ],
+    [
+      "ask_owner.human",
+      "owner_questions.step",
+      "decision"
+    ],
+    [
+      "ask_owner.human",
+      "ask_route.step",
+      "decision"
+    ],
+    [
+      "ask_owner.human",
+      "__end__",
+      "decision"
+    ],
+    [
+      "ask_owner.human",
+      "ask_owner.human",
+      "decision"
+    ],
+    [
       "read_gap.step",
       "read_gap.judge",
       "next"
@@ -700,6 +1010,21 @@
     [
       "read_gap.human",
       "discovery_short.step",
+      "decision"
+    ],
+    [
+      "read_gap.human",
+      "owner_questions.step",
+      "decision"
+    ],
+    [
+      "read_gap.human",
+      "ask_route.step",
+      "decision"
+    ],
+    [
+      "read_gap.human",
+      "ask_owner.step",
       "decision"
     ],
     [
@@ -790,6 +1115,21 @@
     [
       "discovery.human",
       "discovery_short.step",
+      "decision"
+    ],
+    [
+      "discovery.human",
+      "owner_questions.step",
+      "decision"
+    ],
+    [
+      "discovery.human",
+      "ask_route.step",
+      "decision"
+    ],
+    [
+      "discovery.human",
+      "ask_owner.step",
       "decision"
     ],
     [
@@ -889,6 +1229,21 @@
     ],
     [
       "plan.human",
+      "owner_questions.step",
+      "decision"
+    ],
+    [
+      "plan.human",
+      "ask_route.step",
+      "decision"
+    ],
+    [
+      "plan.human",
+      "ask_owner.step",
+      "decision"
+    ],
+    [
+      "plan.human",
       "read_gap.step",
       "decision"
     ],
@@ -984,6 +1339,21 @@
     ],
     [
       "code_mode.human",
+      "owner_questions.step",
+      "decision"
+    ],
+    [
+      "code_mode.human",
+      "ask_route.step",
+      "decision"
+    ],
+    [
+      "code_mode.human",
+      "ask_owner.step",
+      "decision"
+    ],
+    [
+      "code_mode.human",
       "read_gap.step",
       "decision"
     ],
@@ -1014,7 +1384,7 @@
     ],
     [
       "expand.gate",
-      "code.step",
+      "phase.step",
       "PROCEED"
     ],
     [
@@ -1044,7 +1414,7 @@
     ],
     [
       "expand.human",
-      "code.step",
+      "phase.step",
       "decision"
     ],
     [
@@ -1099,6 +1469,21 @@
     ],
     [
       "expand.human",
+      "owner_questions.step",
+      "decision"
+    ],
+    [
+      "expand.human",
+      "ask_route.step",
+      "decision"
+    ],
+    [
+      "expand.human",
+      "ask_owner.step",
+      "decision"
+    ],
+    [
+      "expand.human",
       "read_gap.step",
       "decision"
     ],
@@ -1109,6 +1494,126 @@
     ],
     [
       "expand.human",
+      "__end__",
+      "decision"
+    ],
+    [
+      "phase.step",
+      "phase.judge",
+      "next"
+    ],
+    [
+      "phase.judge",
+      "phase.gate",
+      "next"
+    ],
+    [
+      "phase.gate",
+      "code.step",
+      "PROCEED"
+    ],
+    [
+      "phase.gate",
+      "phase.step",
+      "RETRY"
+    ],
+    [
+      "phase.gate",
+      "phase.human",
+      "ESCALATE"
+    ],
+    [
+      "phase.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "phase.human",
+      "code.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "phase.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "list_components.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "triage.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "discovery_short.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "owner_questions.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "ask_route.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "ask_owner.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "read_gap.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "discovery.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "plan.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "code_mode.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "expand.step",
+      "decision"
+    ],
+    [
+      "phase.human",
       "__end__",
       "decision"
     ],
@@ -1214,6 +1719,21 @@
     ],
     [
       "code.human",
+      "owner_questions.step",
+      "decision"
+    ],
+    [
+      "code.human",
+      "ask_route.step",
+      "decision"
+    ],
+    [
+      "code.human",
+      "ask_owner.step",
+      "decision"
+    ],
+    [
+      "code.human",
       "read_gap.step",
       "decision"
     ],
@@ -1225,6 +1745,11 @@
     [
       "code.human",
       "expand.step",
+      "decision"
+    ],
+    [
+      "code.human",
+      "phase.step",
       "decision"
     ],
     [
@@ -1309,6 +1834,21 @@
     ],
     [
       "code_join.human",
+      "owner_questions.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
+      "ask_route.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
+      "ask_owner.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
       "read_gap.step",
       "decision"
     ],
@@ -1330,6 +1870,11 @@
     [
       "code_join.human",
       "expand.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
+      "phase.step",
       "decision"
     ],
     [
@@ -1404,6 +1949,11 @@
     ],
     [
       "outcome.gate",
+      "phase.step",
+      "BACK"
+    ],
+    [
+      "outcome.gate",
       "code.step",
       "BACK"
     ],
@@ -1469,6 +2019,11 @@
     ],
     [
       "outcome.human",
+      "phase.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
       "code.step",
       "decision"
     ],
@@ -1485,6 +2040,21 @@
     [
       "outcome.human",
       "list_components.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "owner_questions.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "ask_route.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "ask_owner.step",
       "decision"
     ],
     [
@@ -1513,5 +2083,5 @@
       "next"
     ]
   ],
-  "digest": "fc1e12d5f7e90828226d3d708d4da4e0369a9b47dd18dd8356df35522f1b44d2"
+  "digest": "a6e71e8b896a9e04ac82f04af3be0074c4794dbf2460ca321e994ef322a78038"
 }
