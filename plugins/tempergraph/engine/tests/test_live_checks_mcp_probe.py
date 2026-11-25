@@ -21,16 +21,19 @@ def _section4(text: str) -> str:
 def test_ac_6_runbook_has_one_row_for_the_p_cc_13_probe() -> None:
     rows = [ln for ln in CHECKS.read_text(encoding="utf-8").splitlines() if ln.startswith("| L-43") and "P-CC-13" in ln]
     assert len(rows) == 1
-    for needle in ("P-CC-13", "ECC-B13", "ECC-B18", "ECC-B20", "test_p_cc_13_"):
+    for needle in ("P-CC-13", "ECC-B13", "ECC-B18", "ECC-B20", "ECC-B24", "test_p_cc_13_"):
         assert needle in rows[0]
     assert "ECC-B3" not in rows[0]
 
 
-def test_ac_6_results_record_the_operators_run_of_2026_11_25() -> None:
+def test_ac_2_results_record_the_operators_run_of_2026_11_25() -> None:
     results = _section4(CHECKS.read_text(encoding="utf-8"))
     rows = [ln for ln in results.splitlines() if ln.startswith("| L-43 ")]
     assert len(rows) == 1
     assert "2026-11-25" in rows[0] and "2.1.332" in rows[0] and "operator" in rows[0]
+    after = rows[0].split("test_p_cc_13_", 1)[1]
+    assert after.lstrip("`_a-z ").startswith("not run") or "not run" in after[:80]
+    assert "passed" not in after
     lead = results.split("\n\n")[0] if results.startswith("\n") is False else results.strip().split("\n\n")[0]
     assert "All rows below were run" not in lead
     assert "L-43" in lead
@@ -56,7 +59,7 @@ def test_ecc_ac5_every_confirmed_probe_is_recorded_with_a_date_and_the_cli_versi
         cells = [c.strip() for c in found[0].split("|")[1:-1]]
         assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", cells[1]), cells
         assert re.fullmatch(r"\d+\.\d+\.\d+", cells[2]), cells
-        assert "passed" in cells[3]
+        assert "passed by the operator" in cells[3]
         assert f"{probe} confirmed on {cells[2]}" in facts
     for probe, state in LIVE_FACTS.items():
         if state == "not run":
