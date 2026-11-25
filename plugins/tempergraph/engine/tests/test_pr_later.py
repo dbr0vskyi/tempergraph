@@ -203,7 +203,7 @@ def read_one(root: Path, host: MemoryCodeHost) -> dict[str, Any]:
     return child.process(ticket_of(hand(root)), registry(standin("claude")), host)
 
 
-def test_a_read_appends_one_entry_of_counts_and_no_text(tmp_path: Path) -> None:  # OUT-AC8, task AC 2
+def test_a_read_appends_one_entry_of_counts_and_no_text(tmp_path: Path) -> None:  # OUT-AC8, OUT-AC12, task AC 2
     root = state(tmp_path)
     wrote(root, "T-1", "draft", "a.py")
     segment(root, "T-1", 1)
@@ -238,7 +238,7 @@ def test_a_changed_pull_request_appends_a_new_entry(tmp_path: Path) -> None:  # 
 
 # -- OUT-AC9: only a person's work counts -------------------------------------------------------------------------
 
-def test_bots_the_agent_marker_and_earlier_commits_are_not_counted(tmp_path: Path) -> None:  # OUT-AC9, task AC 2
+def test_bots_the_agent_marker_and_earlier_commits_are_not_counted(tmp_path: Path) -> None:  # OUT-AC9, OUT-AC12, task AC 2
     root = state(tmp_path)
     wrote(root, "T-1", "draft", "a.py")
     segment(root, "T-1", 1)
