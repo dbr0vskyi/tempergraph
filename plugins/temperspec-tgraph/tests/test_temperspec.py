@@ -16,7 +16,7 @@ import pytest
 
 from tempergraph.package.loader import load_package
 from tempergraph.run.checks import CheckContext, GitFacts, git_facts, run_check
-from tempergraph.run.commands import CommandRun
+from tempergraph.run.commands import CommandRefusal, CommandRun, resolve_command
 from tempergraph.run.outcome import outcome_unit
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -711,8 +711,13 @@ def test_the_pull_request_says_what_the_owner_has_to_read(tmp_path: Path) -> Non
                    {"git diff --name-only": "docs/specs/session.spec.md\nsrc/auth/session.py\n.claude/rules/x.md\n",
                     "git diff --unified=0": diff})
     got = routing.finalize(ctx)
-    assert got.outcome == "opened" and ctx.ran[-1].endswith(f"--body-file {tmp_path / '.out' / 'pull-request.md'}")
-    body = (tmp_path / ".out" / "pull-request.md").read_text()
+    assert got.outcome == "opened" and ctx.ran[-1].endswith("--body-file .tempergraph/pull-request.md")
+    # the engine refuses a command that names an absolute or parent path, so every command of the last stage is one
+    # its own resolver accepts (a refused `gh pr create` ends the run `pushed`, with no pull request)
+    allow = importlib.import_module("tgwf_temperspec").ALLOW
+    assert [c for c in ctx.ran if isinstance(resolve_command(allow, c, tmp_path), CommandRefusal)] == []
+    assert (tmp_path / ".tempergraph" / ".gitignore").read_text() == "*\n"  # the description is never committed
+    body = (tmp_path / ".tempergraph" / "pull-request.md").read_text()
     assert "1. An idle session is refused" in body and "`docs/specs/session.spec.md`" in body
     assert "added: SES-B2 Idle expiry" in body and "added: SES-AC2 (SES-B2)" in body and "prose" not in body
     assert "Idle time counts from the last request" in body and "Open questions" not in body
@@ -725,7 +730,7 @@ def test_a_reused_pull_request_gets_the_new_description(tmp_path: Path) -> None:
                               "gh pr list": (0, '[{"url":"https://github.com/acme/tool/pull/9"}]\n')}, {})
     got = routing.finalize(ctx)
     assert got.outcome == "reused" and "not updated" not in got.reason
-    assert ctx.ran[-1].startswith("gh pr edit https://github.com/acme/tool/pull/9 --body-file ")
+    assert ctx.ran[-1] == "gh pr edit https://github.com/acme/tool/pull/9 --body-file .tempergraph/pull-request.md"
 
 
 # -- the plan's marks: checked first at the code gate, then verified against what changed -------------------

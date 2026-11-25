@@ -9,7 +9,6 @@ import os
 import re
 import shutil
 import subprocess
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -483,16 +482,23 @@ def _passed(run: Any) -> bool:
     return bool(run.finished) and run.exit_code == 0
 
 
+PR_BODY = Path(".tempergraph") / "pull-request.md"
+
+
 def _body_file(ctx: Any) -> str:
-    """The pull request description, written outside the repository; empty when it cannot be written."""
+    """The pull request description, written to the run's own folder in the workspace, which no step commits, and
+    named by its path from the workspace: the engine refuses a command that names an absolute path (CHK-B11), so a
+    file outside the workspace could never be handed to `gh`. Empty when it cannot be written."""
     try:
-        folder = Path(ctx.out_dir) if ctx.out_dir else Path(tempfile.mkdtemp(prefix="temperspec-"))
-        folder.mkdir(parents=True, exist_ok=True)
-        path = folder / "pull-request.md"
+        path = Path(ctx.workdir) / PR_BODY
+        path.parent.mkdir(parents=True, exist_ok=True)
+        ignore = path.parent / ".gitignore"
+        if not ignore.exists():
+            ignore.write_text("*\n", encoding="utf-8")
         path.write_text(summary.build(ctx), encoding="utf-8")
     except Exception:  # noqa: BLE001 - a description is never worth a failed last stage
         return ""
-    return str(path) if PLAIN_PATH.match(str(path)) else ""
+    return PR_BODY.as_posix()
 
 
 def finalize(ctx: Any) -> FinalizerResult:
