@@ -3,6 +3,7 @@
   "version": "0.3.0",
   "description": "Claude Mod showing progress of tempergraph runs: band, alerts, run view, drill-down and cost; actions fill the prompt",
   "author": { "name": "Yevhenii Dubrovskyi" },
+  "license": "Apache-2.0",
   "types": "./types/index.d.ts",
   "userConfig": {
     "scope": { "type": "string", "title": "Scope", "description": "Runs of this repository, or of every state root on this machine", "options": ["repo", "machine"], "default": "repo" },

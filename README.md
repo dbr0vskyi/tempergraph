@@ -18,7 +18,7 @@ Build AI workflows you can trust: state the good outcome first, check every step
 </div>
 
 > [!IMPORTANT]
-> **Releases 1 and 2 are built and offline-tested; their live checks are under way.** The offline suite runs every component on stand-in executors. The checks that need a signed-in `claude` (install from the plugin, a real two-step run, judge scoring, the monitor mod) are listed with their commands, pass criteria and results in [live-checks.plan.md](plugins/tempergraph/docs/plans/live-checks.plan.md). Until every row there passes, expect rough edges.
+> **Pre-release.** Releases 1 and 2 are built and offline-tested, and release 3 is being built. The offline suite runs every component on stand-in executors. The checks that need a signed-in `claude` (a real two-step run, judge scoring, the monitor mod and more) are listed with their commands, pass criteria and results in [live-checks.plan.md](plugins/tempergraph/docs/plans/live-checks.plan.md); several still wait for a run. Expect rough edges and breaking changes between releases.
 
 ## Quick start
 
@@ -27,10 +27,11 @@ You need macOS or Linux, Python 3.11+, git and a signed-in [Claude Code](https:/
 **1. Install.** Add this repository as a plugin marketplace, install the plugin, then let Claude install the engine:
 
 ```sh
-git clone https://github.com/dbr0vskyi/tempergraph.git
-claude plugin marketplace add ./tempergraph
+claude plugin marketplace add dbr0vskyi/tempergraph
 claude plugin install tempergraph@tempergraph
 ```
+
+To work from a clone instead (the CLI example in step 2 registers an example from it), run `git clone https://github.com/dbr0vskyi/tempergraph.git` and add the marketplace with `claude plugin marketplace add ./tempergraph`.
 
 > Install tempergraph, and prepare this repository for it.
 
@@ -53,7 +54,7 @@ tempergraph run release-notes v1.2
 Claude interviews you, starting from what a good result is, then scaffolds, verifies and registers the workflow package.
 
 > [!NOTE]
-> The plugin install path is live check L-16 and has not been confirmed yet. To work on the engine itself instead: `cd plugins/tempergraph/engine && python -m pip install -e '.[dev]' && python -m pytest` (offline, stand-in executors only).
+> To work on the engine itself instead: `cd plugins/tempergraph/engine && python -m pip install -e '.[dev]' && python -m pytest` (offline, stand-in executors only).
 
 Each step has a guide: [getting started](plugins/tempergraph/docs/guides/getting-started.guide.md), [running workflows](plugins/tempergraph/docs/guides/running-workflows.guide.md), [authoring workflows](plugins/tempergraph/docs/guides/authoring-workflows.guide.md) and [improving workflows](plugins/tempergraph/docs/guides/improving-workflows.guide.md).
 
@@ -259,15 +260,15 @@ The project is designed spec-first: acceptance criteria rank above specs and dec
 
 **Release 2** (built, live checks pending; engine `0.2.0`): effort ladders and one-step model escalation on evidence, a judge raised by risk, routing by task size, eval suites, promotion to `local-stable`, run state carried on a branch, engine `update` and workflow `upgrade`, ask and wait steps, parallel read-only steps, breakpoints, lifecycle hooks, and runs outside git ([plan](plugins/tempergraph/docs/plans/second-release.plan.md)).
 
-**Designed, not built yet:**
+**Release 3** (in progress): built so far are a cost cap that counts sessions in flight, steps that reach only what they declare, sub-workflows, writing steps side by side in their own worktrees with a concurrent map, council and contest units, and scheduled runs (once or recurring, through the operating system's own scheduler). Still to come are runs in a pipeline, a final judged gate on a pull request, native Windows, and the release itself ([plan](plugins/tempergraph/docs/plans/third-release.plan.md), [issues labelled `release: 3`](https://github.com/dbr0vskyi/tempergraph/issues?q=is%3Aissue+is%3Aopen+label%3A%22release%3A+3%22)).
+
+**Designed, not built yet** (release 4 and later):
 
 - More executors: the Antigravity CLI, the Claude Agent SDK and the Anthropic Messages API, with refusal before spend when an executor can't enforce what a workflow asks.
 - Orchestration: many runs planned as a graph of runs and supervised without a model.
-- Advanced node types: contests, sub-workflows and the rest of LangGraph's shapes as workflow data.
-- Scheduled runs, Windows, and writing steps side by side in their own worktrees.
 
-**temperspec**, the first large workflow built on the engine, is built as its own package ([`temperspec-tgraph`](plugins/temperspec-tgraph/README.md)); the features it still wants are [issues labelled `area: temperspec`](https://github.com/dbr0vskyi/tempergraph/issues?q=is%3Aissue+is%3Aopen+label%3A%22area%3A+temperspec%22). To contribute, start at [CONTRIBUTING.md](CONTRIBUTING.md).
+**temperspec**, the first large workflow built on the engine, is built as its own package ([`temperspec-tgraph`](plugins/temperspec-tgraph/README.md)); the features it still wants are [issues labelled `area: temperspec`](https://github.com/dbr0vskyi/tempergraph/issues?q=is%3Aissue+is%3Aopen+label%3A%22area%3A+temperspec%22). To contribute, start at [CONTRIBUTING.md](CONTRIBUTING.md); everyone follows the [code of conduct](CODE_OF_CONDUCT.md), and security problems are reported privately as [SECURITY.md](SECURITY.md) says.
 
 ## License
 
-Proprietary. All rights reserved.
+[Apache License 2.0](LICENSE).

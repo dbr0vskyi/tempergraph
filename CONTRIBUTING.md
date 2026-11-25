@@ -2,6 +2,17 @@
 
 This guide covers how scope is managed, how a change moves from an issue to `main`, and how people and agents talk to each other in issue and pull request comments. The project is built by a person and Claude Code agents working side by side, so the agent rules are part of the process, not an appendix.
 
+## New here?
+
+Thank you for looking. Most of this guide describes how the maintainer and the agents working for them run the project; you don't need all of it to help. If you are not a maintainer:
+
+- **Questions, bugs and ideas** go in an issue, using the forms (section 2). A bug report that names the spec line or guide section it contradicts is the most useful kind.
+- **Security problems** never go in a public issue: see [SECURITY.md](SECURITY.md).
+- **Code or docs changes:** comment on the issue first to say you want to take it, and wait for the maintainer to assign it to you; you can't assign yourself without write access. Then fork the repository, work on a branch, and open a pull request against `main` from the template (section 3, steps 3 to 7). CI runs the suite, ruff and mypy on your pull request. You don't need a signed-in `claude` or any model spend: the test suite is offline.
+- **Agent comment markers** (section 5) are only for agents. Write ordinary comments.
+
+Everyone is expected to follow the [code of conduct](CODE_OF_CONDUCT.md).
+
 ## 1. Where to start reading
 
 | You want to | Read |
@@ -58,7 +69,7 @@ State labels:
 
 ### Issue templates
 
-Use the forms in [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/): **Feature**, **Bug** or **Live check**.
+Use the forms in [.github/ISSUE_TEMPLATE/](.github/ISSUE_TEMPLATE/): **Feature**, **Bug**, **Live check** or **Question**.
 
 - A feature names the spec ids it changes and says what "done" looks like.
 - A bug names the spec line it contradicts.
@@ -149,4 +160,4 @@ The engine's self-improvement loop files its findings as issues. Engine findings
 
 ## 6. Licence and conduct
 
-Be direct and kind in reviews. By contributing you agree that your contribution is licensed under the repository's licence.
+Be direct and kind in reviews, and follow the [code of conduct](CODE_OF_CONDUCT.md). By contributing you agree that your contribution is licensed under the repository's licence ([LICENSE](LICENSE)).

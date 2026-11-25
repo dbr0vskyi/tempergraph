@@ -63,5 +63,3 @@ Read on 2026-11-19.
 | Does `setting_sources=[]` keep user-level plugin tools out of the session? | Executor implementer | Probe P-AS-1. |
 | Does the session's `PreToolUse` hook see and deny a subagent's tool calls? | Executor implementer | Probe P-AS-2. |
 | May an operator run the engine on their own subscription sign-in, or only on API or cloud credentials? | Owner | Read the terms (S3); the design assumes API or cloud credentials. |
-</content>
-</invoke>
