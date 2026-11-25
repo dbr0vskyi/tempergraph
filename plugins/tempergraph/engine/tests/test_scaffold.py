@@ -348,6 +348,27 @@ def test_standin_run_answers_each_unit_by_name_when_a_route_skips_one(pkg: Path,
     assert "summary.md" in written and "extra.md" not in written  # `final` was given its own reply
 
 
+def test_standin_run_answers_every_item_of_a_map(pkg: Path, tmp_path: Path) -> None:
+    """SCF-B16, SCF-AC2: a map unit has one session for each item, so the stand-in run answers each of them with the
+    map's reply instead of ending the run when the second item asks."""
+    decl = pkg / "workflow/release_notes/__init__.py"
+    text = decl.read_text().replace("order=['draft']", "order=['draft', 'polish']")
+    text = text.replace("from tempergraph.api import ", "from tempergraph.api import Map, ")
+    judge = ("Judge(file='judges/draft.md', references=['notes'], model='medium', effort='medium', "
+             "sizing='Reads one file')")
+    extra = ("        \"polish\": Map(items_from=('draft', 'notes'), extract=two, mode='sequential', "
+             "step=Step(prompt='Polish {item} of {request}.', summary='Polish one part', tools=['read', 'write'], "
+             "produces={'extra': 'file'}, model='medium', effort='medium', sizing='Short', "
+             f"gate=Gate(judge={judge}))),\n")
+    decl.write_text(text.replace("        },\n    )", extra + "        },\n    )")
+                    + "\n\ndef two(ctx):\n    return [{'id': 'a', 'text': 'part a'}, {'id': 'b', 'text': 'part b'}]\n")
+    o = json.loads((pkg / "outcome.json").read_text())
+    judged = next(c for c in o["intermediate"]["draft"]["criteria"] if c.get("verified_by") == "judge")
+    o["intermediate"]["polish"] = {**o["intermediate"]["draft"], "criteria": [{**judged, "id": "polish-1"}]}
+    (pkg / "outcome.json").write_text(json.dumps(o))
+    assert selftest.run("standin_run", pkg, tmp_path / "a") == []
+
+
 def test_a_fixture_file_belongs_to_the_unit_under_test_when_two_units_produce_its_key(tmp_path: Path) -> None:
     """SCF-B16, SCF-AC2: two visits of one kind may produce the same artifact key; each one's check fixtures are
     its own artifacts, not the other unit's."""
