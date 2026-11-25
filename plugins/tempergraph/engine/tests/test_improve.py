@@ -14,7 +14,7 @@ from tempergraph.constants import ExitCode
 from tempergraph.contracts import InfraCause, SessionResult, Usage
 from tempergraph.executors.standins import standin
 from tempergraph.improve import causes, lenses, params
-from tempergraph.improve.record import evidence_path, findings_path, read_findings
+from tempergraph.improve.record import evidence_path, findings_path, read_findings, record_exit
 
 from .test_run import DRAFT, REVIEW, go, judge, records, verdict_block, with_outcome_spec
 
@@ -99,7 +99,121 @@ def test_every_exit_writes_findings_and_evidence(repo: Path) -> None:  # SIL-B8
     assert "Release 1.2 notes" not in findings_path(repo / ".tempergraph", "demo", "I-1").read_text()  # metadata
 
 
-def test_a_final_exit_decides_the_lenses(repo: Path) -> None:  # SIL-B10 dev mode
+def lens_root(tmp_path: Path, spec: Any, n: int, version: str = "v1") -> tuple[Path, dict[str, Any]]:
+    """A state root whose ledger holds `n` final `run_segment` rows of the workflow; returns it and the last row."""
+    rows = [{"kind": "run_segment", "workflow": spec.name, "workflow_version": version, "exit_code": 0,
+             "thread_id": f"{spec.name}/R-{i}"} for i in range(n)]
+    (tmp_path / "ledger.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    return tmp_path, {**rows[-1], "outcome": {"verdict": "met", "criteria": []}}
+
+
+def fault(cause: str) -> dict[str, Any]:
+    return {"class": "fault", "cause": cause}
+
+
+def test_each_lens_runs_on_the_exits_its_triggers_name_and_on_no_others(tmp_path: Path) -> None:  # SIL-AC6
+    from .test_outcome_escape_finding import escapes, loop_kinds, make_run, process
+    from .test_pr_later import QUIET, REPO, pr_host
+    from .test_pr_later import review as pr_review
+
+    base = with_outcome_spec()
+    stable = dataclasses.replace(base, improvement_mode="stable")
+    dev = dataclasses.replace(base, improvement_mode="dev")
+    root, row = lens_root(tmp_path, stable, 6)  # past a stable workflow's first five runs
+
+    def decide(findings: list[dict[str, Any]], conf: float | None = None, spec: Any = stable,
+               row: dict[str, Any] = row, root: Path = root) -> dict[str, Any]:
+        seg = [] if conf is None else [{"kind": "judgement", "unit": "outcome", "confidence": conf}]
+        return lenses.decide(spec, root, "demo/R-5", findings, row, seg)
+
+    for cause in lenses.STABLE_FRICTION:  # each cause of the list, as a fault finding, fires friction
+        assert decide([fault(f"{cause}:x")])["friction"] is True, cause
+    assert decide([fault("judge_blocked:c1")])["friction"] is False  # a fault outside the list does not
+    assert decide([])["friction"] is False
+    assert decide([fault("infra:broken_pipe") | {"class": "infra"}])["friction"] is False
+
+    assert decide([fault("pushback")])["outcome"]["fire"] is True
+    assert decide([], conf=0.5)["outcome"]["fire"] is True
+    assert decide([], conf=0.51)["outcome"]["fire"] is False
+    def at(n: int) -> dict[str, Any]:  # the decision at the n-th final exit of the workflow's version
+        (tmp_path / f"n{n}").mkdir()
+        r, last = lens_root(tmp_path / f"n{n}", stable, n)
+        return decide([], row=last, root=r)
+
+    assert at(20)["outcome"]["fire"] is True  # the 20th clean final exit
+    assert at(19)["outcome"]["fire"] is False
+    assert at(10)["cost"] is True
+    assert at(9)["cost"] is False
+
+    assert decide([], spec=dev)["outcome"]["fire"] is True  # dev mode: every final exit
+
+    # the escape read: a read that shows an earlier `met` run to be an escape fires the lens for that run's thread
+    for mode in ("stable", "dev"):
+        state = tmp_path / f"escape-{mode}"
+        state.mkdir()
+        make_run(state, "T-1", {"draft": ["a.py"]}, request="R1")
+        host = pr_host()
+        host.reviews[(REPO, 1)] = [pr_review()]
+        process(state, host, dataclasses.replace(QUIET, improvement_mode=mode))
+        assert [r["thread"] for r in loop_kinds(state) if r["kind"] == "loop_lens"] == (
+            ["demo/T-1"] if mode == "stable" else [])
+        assert len(escapes(state, "T-1")) == 1
+    quiet = tmp_path / "escape-none"
+    quiet.mkdir()
+    make_run(quiet, "T-1", {"draft": ["a.py"]})
+    host = pr_host()
+    host.reviews[(REPO, 1)] = [pr_review("approved")]
+    process(quiet, host, dataclasses.replace(QUIET, improvement_mode="stable"))
+    assert [r for r in loop_kinds(quiet) if r["kind"] == "loop_lens"] == []
+
+
+def test_each_named_cause_is_produced_by_a_fixture_run(tmp_path: Path) -> None:  # SIL-AC7
+    recs: list[dict[str, Any]] = [
+        {"kind": "unit_entered", "unit": "a"},
+        *({"kind": "attempt_start", "unit": "a", "session_key": f"a.{n}.retry", "session_kind": "retry"}
+          for n in (2, 3, 4)),
+        {"kind": "judgement", "unit": "a", "blockers": ["c-1", "c-2"]},
+        {"kind": "pause", "unit": "b", "pause_kind": "escalation", "reason": "blocked"},
+        {"kind": "pause", "unit": "c", "pause_kind": "tool_access", "tool_access": [{"class": "undeclared_tool"}]}]
+    ivs = [{"unit": "a", "pause_kind": "escalation", "caller": {"decided_by": "agent"},
+            "touches": [{"class": "rescue"}]}]
+    grants = [{"unit": "a", "capability": "shell", "used": True}, {"unit": "a", "capability": "web", "used": False}]
+    got = {(f["unit"], f["cause"]) for f in causes.derive(recs, ivs, grants)}
+    assert {("a", "retry_burst"), ("a", "judge_blocked:c-1"), ("a", "judge_blocked:c-2"),
+            ("b", "blocked_without_check"), ("c", "tool_access:undeclared_tool"), ("a", "grant_missing:shell"),
+            ("a", "grant_unused:web"), ("a", "agent_decided:escalation")} <= got
+
+    spec = with_outcome_spec()
+    root = tmp_path / "state"
+    root.mkdir()
+    log = tmp_path / "run.jsonl"
+    log.write_text("", encoding="utf-8")
+    row = {"thread_id": f"{spec.name}/X-1", "workflow": spec.name, "workflow_version": "v1", "exit_code": 0,
+           "outcome": {"verdict": "unmet", "criteria": [
+               {"id": "f1", "class": "judge", "status": "UNMET"}, {"id": "f2", "class": "judge", "status": "PARTIAL"},
+               {"id": "f3", "class": "judge", "status": "MET"}]}}
+    (root / "ledger.jsonl").write_text(json.dumps({"kind": "run_segment", **row}) + "\n", encoding="utf-8")
+    record_exit(root, spec, "X-1", log, {}, row)
+    unmet = {(f["unit"], f["cause"], f.get("lens")) for f in read_findings(root, spec.name, "X-1")
+             if f["cause"].startswith("outcome_unmet")}
+    assert unmet == {("outcome", "outcome_unmet:f1", "outcome"), ("outcome", "outcome_unmet:f2", "outcome")}
+
+    for code, klass, side in [("retry_burst", "fault", "workflow"), ("judge_blocked:c-1", "fault", "workflow"),
+                              ("blocked_without_check", "fault", "workflow"),
+                              ("tool_access:undeclared_tool", "fault", "workflow"),
+                              ("grant_missing:shell", "fault", "workflow"), ("grant_unused:web", "designed", "workflow"),
+                              ("agent_decided:escalation", "fault", "workflow"),
+                              ("outcome_unmet:f1", "fault", "workflow"), ("outcome_escape", "fault", "workflow")]:
+        c = causes.cause_of(code)
+        assert (c.klass, c.side) == (klass, side) and c.remedy and c.remedy != causes.cause_of("zz").remedy, code
+
+    assert causes.derive([{"kind": "unit_entered", "unit": "a"}]) == []  # no such record, none of these causes
+    quiet = {**row, "thread_id": f"{spec.name}/X-2", "outcome": {"verdict": "met", "criteria": []}}
+    record_exit(root, spec, "X-2", log, {}, quiet)
+    assert [f for f in read_findings(root, spec.name, "X-2") if f["cause"].startswith("outcome_")] == []
+
+
+def test_a_final_exit_decides_the_lenses(repo: Path) -> None:  # SIL-B10 dev mode, SIL-AC6
     broken = SessionResult(ok=False, infra_cause=InfraCause.BROKEN_PIPE, usage=Usage())
     ex = standin("claude", steps=[broken] * 3)
     assert go(repo, ex, task="I-2").exit_code is ExitCode.BUDGET_OR_INFRA
@@ -115,7 +229,7 @@ def test_a_final_exit_decides_the_lenses(repo: Path) -> None:  # SIL-B10 dev mod
     assert rec["lenses"]["quality"]["draft"]["first_try_pass"] == 1
 
 
-def test_stable_mode_fires_friction_on_its_triggers(repo: Path) -> None:  # SIL-B10 stable mode
+def test_stable_mode_fires_friction_on_its_triggers(repo: Path) -> None:  # SIL-B10 stable mode, SIL-AC6
     spec = dataclasses.replace(with_outcome_spec(), improvement_mode="stable")
     met2 = verdict_block("MET", "MET")
     for n in range(7):
