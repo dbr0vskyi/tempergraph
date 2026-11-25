@@ -38,6 +38,42 @@ class PullRequestHost(Protocol):
     def pull_state(self, repo: str, number: int) -> dict[str, Any]: ...
 
 
+class PullReviewHost(Protocol):
+    """Read-only questions about a pull request's reviews, review comments and commits. Each answer holds an
+    author kind (`person` or `bot`); the text of a review or comment is for local use only."""
+
+    def pull_reviews(self, repo: str, number: int) -> list[dict[str, Any]]: ...
+    def pull_comments(self, repo: str, number: int) -> list[dict[str, Any]]: ...
+    def pull_commits(self, repo: str, number: int) -> list[dict[str, Any]]: ...
+
+
+REVIEW_STATES = ("approved", "changes_requested", "commented", "dismissed")
+SHA = re.compile(r"^[0-9a-f]{7,64}$")
+
+
+def _kind(user: Any) -> str:
+    """`bot` for a `Bot` account or a `[bot]` login, else `person`."""
+    if not isinstance(user, dict):
+        return "person"
+    login = str(user.get("login") or "")
+    return "bot" if user.get("type") == "Bot" or login.endswith("[bot]") else "person"
+
+
+def _records(text: str) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for ln in text.splitlines():
+        if not ln.strip():
+            continue
+        try:
+            r = json.loads(ln)
+        except ValueError:
+            raise CodeHostError("the pull request answer is not JSON") from None
+        if not isinstance(r, dict):
+            raise CodeHostError("the pull request answer has no known shape")
+        out.append(r)
+    return out
+
+
 BRANCH = re.compile(r"^(improve/[A-Za-z0-9_.-]{1,80}|tempergraph/upgrade/[A-Za-z0-9_.-]{1,80}/[A-Za-z0-9_.-]{1,40})$")
 
 
@@ -139,6 +175,51 @@ class GhCodeHost:
             raise CodeHostError("the pull request answer has no known state")
         return {"state": str(state), "merged_at": None}
 
+    def _paged(self, repo: str, number: int, part: str) -> list[dict[str, Any]]:
+        text = self._run(["api", "--method", "GET", f"repos/{_check(repo)}/pulls/{int(number)}/{part}",
+                          "-f", "per_page=100", "--paginate", "--jq", ".[]"])
+        return _records(text)
+
+    def pull_reviews(self, repo: str, number: int) -> list[dict[str, Any]]:
+        """One read-only GET: each review with its lower-case state and author kind; a pending review is left out."""
+        out: list[dict[str, Any]] = []
+        for r in self._paged(repo, number, "reviews"):
+            state = str(r.get("state") or "").lower()
+            if state == "pending":
+                continue
+            if state not in REVIEW_STATES:
+                raise CodeHostError("the review answer has no known state")
+            out.append({"state": state, "author_kind": _kind(r.get("user")), "text": str(r.get("body") or ""),
+                        "submitted_at": str(r.get("submitted_at") or "")})
+        return out
+
+    def pull_comments(self, repo: str, number: int) -> list[dict[str, Any]]:
+        """One read-only GET: each review comment with its author kind."""
+        return [{"author_kind": _kind(r.get("user")), "text": str(r.get("body") or ""),
+                 "path": str(r.get("path") or ""), "created_at": str(r.get("created_at") or "")}
+                for r in self._paged(repo, number, "comments")]
+
+    def pull_commits(self, repo: str, number: int) -> list[dict[str, Any]]:
+        """Each commit of the pull request with its author kind and changed files (one GET for the list, one for
+        each commit)."""
+        out: list[dict[str, Any]] = []
+        for r in self._paged(repo, number, "commits"):
+            sha = r.get("sha")
+            if not isinstance(sha, str) or not SHA.match(sha):
+                raise CodeHostError("the commit answer has no known sha")
+            try:
+                one = self._gh(["api", "--method", "GET", f"repos/{_check(repo)}/commits/{sha}"])
+            except ValueError:
+                raise CodeHostError("the commit answer is not JSON") from None
+            if not isinstance(one, dict):
+                raise CodeHostError("the commit answer has no known shape")
+            files = [str(f.get("filename")) for f in one.get("files") or [] if isinstance(f, dict) and f.get("filename")]
+            commit = r.get("commit") if isinstance(r.get("commit"), dict) else {}
+            when = (commit.get("committer") or {}).get("date") if isinstance(commit, dict) else None
+            out.append({"sha": sha, "author_kind": _kind(r.get("author")), "files": files,
+                        "committed_at": str(when or "")})
+        return out
+
     def _read_pull(self, repo: str, number: int) -> Any:
         try:
             return self._gh(["api", f"repos/{_check(repo)}/pulls/{int(number)}"])
@@ -153,9 +234,27 @@ class MemoryCodeHost:
     issues: list[dict[str, Any]] = field(default_factory=list)
     comments: list[dict[str, Any]] = field(default_factory=list)
     pulls: list[dict[str, Any]] = field(default_factory=list)
+    reviews: dict[tuple[str, int], list[dict[str, Any]]] = field(default_factory=dict)
+    review_comments: dict[tuple[str, int], list[dict[str, Any]]] = field(default_factory=dict)
+    commits: dict[tuple[str, int], list[dict[str, Any]]] = field(default_factory=dict)
     fail_search: int = 0
     fail_closed: int = 0
     down: bool = False
+
+    def pull_reviews(self, repo: str, number: int) -> list[dict[str, Any]]:
+        if self.down:
+            raise CodeHostError("unreachable")
+        return list(self.reviews.get((repo, number), []))
+
+    def pull_comments(self, repo: str, number: int) -> list[dict[str, Any]]:
+        if self.down:
+            raise CodeHostError("unreachable")
+        return list(self.review_comments.get((repo, number), []))
+
+    def pull_commits(self, repo: str, number: int) -> list[dict[str, Any]]:
+        if self.down:
+            raise CodeHostError("unreachable")
+        return list(self.commits.get((repo, number), []))
 
     def loop_issues(self, repo: str, state: str) -> list[dict[str, Any]]:
         """Issues in `state` with the loop's label; `fail_search` fails open reads, `fail_closed` closed ones."""
