@@ -113,6 +113,7 @@ The component specs, each owning what follows its name:
 - [loop-issues.spec.md](loop-issues.spec.md) ISS: the labels and body of the loop's issues, and what a closed issue changes.
 - [judge-read-share.spec.md](judge-read-share.spec.md) SRV (split from 44): the finding for a judge that read too small a share of the change.
 - [runs-without-a-final-exit.spec.md](runs-without-a-final-exit.spec.md) SIL (split from 16): a stop at a pause and a lost runner as final exits for the loop, recorded once.
+- [pull-request-read.spec.md](pull-request-read.spec.md) OUT (split from run-outcome): how the loop reads the pull request a run recorded into `later[]` entries: which are read, who counts as a person, the follow-up commits, the files the run wrote, the cost of a read, what a pull request that cannot be read leaves and the finding an escape owes.
 - [review-repeats.spec.md](review-repeats.spec.md) SRV (split from 44): a review category kept in several sessions of a run or in several runs of a workflow, recorded as a finding for the proposer that files no issue alone.
 
 The monitor's own design set is [plugins/tempergraph-monitor/docs](../../../tempergraph-monitor/docs/specs/overview.spec.md). Assumptions made while the owner was unavailable are in [ADR `standalone-design-assumptions`](../adr/standalone-design-assumptions.adr.md); design notes and the origin of each spec block are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
