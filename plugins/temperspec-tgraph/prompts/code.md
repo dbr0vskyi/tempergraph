@@ -42,5 +42,4 @@ When the notes list the phases, the phases built and committed their rows, so yo
 ## What to hand over
 
 - `code_report`: the path of the code report.
-
 - `tests_passed`: `yes` when every verification command exited 0 on your last run through the preview, otherwise `no`.

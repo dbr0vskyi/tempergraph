@@ -99,3 +99,7 @@ def test_a_prompt_reference_under_a_declared_folder_must_resolve(pkg: Path) -> N
     prompt.write_text(prompt.read_text() + "\nFollow `standards/notes.md` and `standards/gone.md`.\n")
     missing = [f.message for f in lint(load(pkg)) if f.code == "lint-ref-missing"]
     assert any("standards/gone.md" in m for m in missing) and not any("standards/notes.md" in m for m in missing)
+
+
+def test_the_proposer_is_told_it_may_change_a_declared_file() -> None:  # PRP-B14, PRP-B4
+    assert "`step_files`" in prp.PROPOSER_BRIEF

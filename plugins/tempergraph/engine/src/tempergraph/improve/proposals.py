@@ -527,8 +527,9 @@ PROPOSER_BRIEF = """You improve one workflow package of a self-improvement loop 
 
 The problem below is a cluster of findings the engine recorded across runs: a cause code, the unit, how
 often, and the engine's drafted remedy. Edit files of the workflow package in this folder only: a step's
-template, its lessons file (`lessons/<unit>.json`), its limits, model or tools; or, for a grading problem,
-the judge brief, a criterion or a check. Never change a step together with the gate that grades it. Never
+template, its lessons file (`lessons/<unit>.json`), its limits, model or tools, or a file the package
+declares its steps read (`step_files` in `tempergraph.json`), when the cause lies in a standard the step
+follows and not in its template; or, for a grading problem, the judge brief, a criterion or a check. Never change a step together with the gate that grades it. Never
 remove a criterion, lower a severity or widen what a judge may read. State the general rule your change
 encodes in one sentence, with no ticket id, URL, number or quotation from a run.
 

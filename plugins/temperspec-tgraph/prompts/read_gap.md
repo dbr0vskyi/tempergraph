@@ -14,12 +14,12 @@ Your gap, `{item_id}`:
 1. Read the row of your gap in the triage note, then the documents it names.
 2. Read the code the gap concerns. Read narrowly: search for ids and names first, read the line ranges you need instead of whole files, and stop once the gap has its answer.
 3. Use the web only to read a public source that a `research needed` gap cites.
-4. Report what you found: what the documents and the code say about the gap, and what is missing.
+4. Report what you found: what the documents and the code say about the gap, and what is missing. For an `existing behaviour` gap, report the rules the code already has for that capability, each with its basis (`tested` when a test asserts it, `read` when you read the code that produces it, `stated` when only a name, comment or document says so) and its file and lines.
 
 ## Limits
 
 - You only read. Do not write or edit a file, and do not run a command: read, search and list files with the file tools.
-- Read and write inside this working directory only. Do not read another gap's row; the other gaps are other sessions' work.
+- Read inside this working directory only. Work on your gap's row only; the other gaps are other sessions' work.
 - Report what you saw. Do not say the answer is correct: the session that writes the documents confirms each claim in the file you name.
 
 ## What to hand over
