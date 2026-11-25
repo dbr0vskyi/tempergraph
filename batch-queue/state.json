@@ -33,6 +33,32 @@
       "note": "merge c55ff552; last stage pushed, no PR (#143)"
     },
     {
+      "order": 2.1,
+      "task_id": "i21",
+      "issues": [
+        21
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": "request written after the flag probe"
+    },
+    {
+      "order": 2.2,
+      "task_id": "i144",
+      "issues": [
+        144
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": "found in this batch"
+    },
+    {
       "order": 3,
       "task_id": "i134a",
       "issues": [
@@ -97,6 +123,20 @@
       "cost_usd": null,
       "exit": null,
       "note": "found in this batch"
+    },
+    {
+      "order": 6.6,
+      "task_id": "i145",
+      "issues": [
+        142,
+        145
+      ],
+      "state": "queued",
+      "thread": null,
+      "branch": null,
+      "cost_usd": null,
+      "exit": null,
+      "note": "after i141"
     },
     {
       "order": 7,

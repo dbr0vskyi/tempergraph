@@ -40,11 +40,14 @@ State words: `queued`, `running`, `paused`, `merged`, `failed`, `skipped`.
 |---|---|---|---|---|---|---|---|
 | 1 | i71 | #71 (and #51) | Code step marks a phase's rows in one edit; the run is also the real run of TS-L2 with a signed-in `gh` | running | temperspec/i71 | | Paused twice at `prepare` on #139, resumed after the fix |
 | 2 | i7 | #7 | Review cap floor: one review of the most signalled session | merged | temperspec/i7 | 8.03 | Outcome met, 21 min, one pause (G3 answered with its default); last stage `pushed`, no pull request (#143) |
+| 2a | i21 | #21 | Step sessions load the account's claude.ai connectors (about 160k tokens each): deny them at launch | queued | | | Biggest cost lever found; the request is written when the flag probe returns |
+| 2b | i144 | #144 | Package tests run directly write the real machine index and stats | queued | | | Found in this batch; every run in a package's area adds test rows until it is built |
 | 3 | i134a | #134 | Split the discovery gate (extract pass, write pass) | queued | | | L: first of two runs |
 | 4 | i134b | #134 | Code step: the join and the quick lane get prompts of their own | queued | | | L: second of two runs |
 | 5 | i114 | #114, #117 | Loop findings: a judge that passes without opening a changed path; the phase check failing | queued | | | Triage the evidence first |
 | 6 | i123 | #123 | Loop reads the person's review of a run's pull request as a later outcome signal | queued | | | needs: spec; spec comes first in the run |
 | 6a | i141 | #141 | Monitor finds the engine at its default shim path when it is not on PATH | running | temperspec/i141 | | Asked for by the owner as a third run in parallel; `claude plugin test` is declared in `tempergraph.commands.json` for it |
+| 6b | i145 | #142, #145 | Monitor: a sign of life in a live row; rows of other state roots named and folded | queued | | | After i141 (same files) |
 | 7 | i62 | #62 | Model-free drift check for pre-commit and CI | queued | | | |
 | 8 | i103 | #103 | Commits and the draft pull request name the run | queued | | | Writes the format directly (#94 not built) |
 | 9 | i130 | #130 | Score setup's extraction on a fixture repository | queued | | | Needs one live setup run |

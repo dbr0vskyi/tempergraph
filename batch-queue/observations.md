@@ -36,6 +36,11 @@ Cost by session (reported USD): triage 1.02 + judge 0.08; three `read_gap` 0.56 
 
 - **A step session cannot edit a file under `.claude/`**: Claude Code denies it where nobody can answer a permission prompt (`reason_type: asyncAgent`). The plan had a row to bring `.claude/rules/temperspec/plan.rule.md` in line with the package's rule, the Edit was denied, and the run paused with `tool_access`. The operator ran `install_rules.py --update` in the worktree and sent the step back with feedback. Every task that changes a rule file in this repository meets this. Remedies: the plan check refuses a row whose file is under `.claude/`, and the workflow syncs the installed rule files with a script after a step that changed a rule (no model).
 
+### The monitor's list of identical runs (2026-11-25, sub-agent report)
+
+- **Package tests started from the package's folder use the real home** (#144). The engine's isolation fixture lives in the engine's `tests/conftest.py`; a package has none. i71's code sessions ran `cd plugins/temperspec-tgraph && python -m pytest tests/...`, and the operator ran `python -m pytest ../../temperspec-tgraph/tests` once from the engine folder: 106 pytest folders in the machine index, 110 test rows of 115 in the month's stats, 34 `temperspec/P-1` threads in `status --all-roots`. Cost reports of this machine are wrong until the entries are removed; no verb removes them.
+- **The monitor gives every run of another state root the same label** (#145): the word `repo` and a hash of the thread id only; nothing is folded.
+
 ### Baseline suite on `main` (2026-11-25, Python 3.12, macOS)
 
 - 2944 passed, 19 skipped, 1 failed in 14 min 20 s on four workers. The failure is `test_a_run_on_workers_leaves_the_real_folders_as_they_were` (TST-AC7): it compares the real `~/.tempergraph` and the real state root before and after a nested run, and the engine update and two live runs wrote there meanwhile. It is skipped only for a suite a step session runs (`TEMPERGRAPH_SESSION_KEY`). **A gate that runs the suite itself gets no such variable**, so a code gate that has to run `python -m pytest` again (the tree changed after the session's preview) fails this test while its own run writes its log, and so does any suite a person runs beside a live run.
