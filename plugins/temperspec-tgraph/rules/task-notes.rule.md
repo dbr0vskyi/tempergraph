@@ -76,9 +76,9 @@ A quick note ends with a Change section, which is the plan of the code step:
 - Each acceptance criterion is one row of the code report, with the id `AC <n>`, and is carried by a test in one of the `Tests` files.
 - Triage writes this note and nothing else.
 
-### Owner decisions (the conversation setting `never`)
+### Owner decisions (the conversation setting)
 
-A run started with `--set settings.conversation=never` is unattended. Its note then does two more things; a run on `blocking`, the default, writes neither.
+A run's note sorts its gaps and lists its owner decisions under every value of the conversation setting: `never`, `blocking` or `always`. A run on `never` takes each default and never pauses; a run on `blocking` or `always` pauses once after triage and asks the owner each of the decisions, each with its default. The note does two more things:
 
 - Each gap row ends with its sort: `Findable` when the code, the documents or a public source can answer the gap (a row that says `Covered by` is findable with no extra word), or `Owner decision` when only the owner can.
 - The section `## Owner decisions` sits between `Gaps` and `Route`. It holds the single word `None`, or one entry for each gap row that ends `Owner decision` and for no other.
@@ -136,7 +136,7 @@ Two or three sentences.
 - **Gaps closed** names, for every gap row of the triage note, the document that closes it. A gap that needs no document says why.
 - After a short discovery visit (every gap row of the triage note says `Covered by`), **Gaps closed** names, for every gap row, the cited behaviour id and how it answers the gap, or the id and `Not covered:` with what it leaves out; **Changed documents** is `- None`, and the reading list holds at most 10 items. A `Not covered` line sends the run to the full discovery.
 - **Changed documents** lists every document discovery created or edited, with its path in a code span, or `None`.
-- **Open questions** lists what only a person can decide, with the options. An open question that blocks planning ends the step blocked. Under the conversation setting `never` no step ends blocked on one: each open question carries the default the step took, written `Until answered: <option>`, and the pull request lists it with that default.
+- **Open questions** lists what only a person can decide, with the options. An open question that blocks planning ends the step blocked. Under the conversation setting `never` no step ends blocked on one: each open question carries the default the step took, written `Until answered: <option>`, and the pull request lists it with that default. Under `blocking` and `always` a step ends blocked on a question that blocks planning and the triage note does not list; an owner decision the triage note lists is closed on its answer or its default and is never an open question.
 - **Reading list** has one item for each file the plan will need: an existing file in a code span, the line ranges or ids that matter in brackets, a colon and one line on why. A hand-off with none is a finding, except in a run that ends after discovery. The plan starts from this list and opens another file only for what the list does not answer.
 
 ## Code report (`<task>.report.md`)

@@ -597,12 +597,12 @@ def triage_check(ctx: Any) -> Any:
 
 
 def _owner(ctx: Any, note: fmt.Triage, path: str) -> list[CheckFinding]:
-    """ts-tri-owner: with the conversation value `never`, each gap row ends with its sort and the `Owner decisions`
-    section holds one complete entry for each owner-decision row and none for any other (spec `conversation`,
-    CONV-B4). With `blocking`, or no value given to the check, the note is not read for it."""
+    """ts-tri-owner: with the conversation value `never`, `blocking` or `always`, each gap row ends with its sort and
+    the `Owner decisions` section holds one complete entry for each owner-decision row and none for any other (spec
+    `conversation`, CONV-B4). With no value given to the check, the note is not read for it."""
     crit = "ts-tri-owner"
-    if (getattr(ctx, "settings", None) or {}).get("conversation") != "never":
-        return [_find("n_a", crit, path, "the conversation value is not `never`")]
+    if (getattr(ctx, "settings", None) or {}).get("conversation") not in ("never", "blocking", "always"):
+        return [_find("n_a", crit, path, "the check is given no conversation value")]
     bad: list[tuple[str, str, str]] = []  # (place, message, fix)
     for gap, sort in note.sorts.items():
         if not sort:
@@ -1451,3 +1451,11 @@ def outcome_check(ctx: Any) -> Any:
     found += _collateral(ctx, specs)
     push = "The run's branch is pushed." if ctx.git.pushed else "The run's branch is not pushed."
     return _result(ctx, found, _plan(ctx)[0], facts=[push])  # evidence only: a push never decides the result
+
+
+def owner_answers_check(answers: dict[str, Any]) -> list[str]:
+    """The answers check of the pause `ask_owner` (OWQ-B5, ASK-B11): a pure function of the answers. One problem for
+    each reading of a gap answered `wrong`, naming the gap and saying that the run can be stopped to correct the task
+    or the answer changed to `right`; an owner decision is never refused, and no `wrong` gives an empty list."""
+    return [f"the reading of {name.upper()} is called wrong: stop the run to correct the task, or answer `{name}` "
+            f"with `right`" for name, value in answers.items() if value == "wrong"]

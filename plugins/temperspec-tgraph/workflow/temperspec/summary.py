@@ -1,13 +1,16 @@
 """The pull request's description: what the owner has to read, built from the run's files with no model.
 
-It lists the task's acceptance criteria, the owner decisions of the triage note with the default the run took for
-each (`Assumptions to confirm`, never clipped, present only when the note has an `Owner decisions` section), the
+It lists the task's acceptance criteria, the owner decisions the owner answered (`Decided`, with the words of the
+option chosen, present only when the pause kept answers), the other owner decisions of the triage note with the
+default the run took for each (`Assumptions to confirm`, never clipped, present only when the note has an
+`Owner decisions` section), the
 behaviours and criteria that changed in each spec, the decisions and open questions of the hand-off, and the
 deviations of the code report. Everything else a run writes is a
 hand-over between steps and is named only by its path."""
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from typing import Any
@@ -78,16 +81,56 @@ def _spec_changes(ctx: Any, path: str) -> list[str]:
     return out
 
 
-def _assumptions(note_text: str) -> list[str]:
-    """The owner decisions of the triage note as the defaults the run took, none clipped: nothing when the note has no
-    `Owner decisions` section (a run on `blocking`), one line when the section says `None`, else one item each."""
+def _answers(ctx: Any) -> dict[str, Any] | None:
+    """The answers the owner gave at the pause, by question name: None when the run made no pause or the answers file
+    cannot be read (CONV-B8). A name the file lists under `defaulted` took its default and is no answer."""
+    text, _ = _text(ctx, "answers")
+    if not text:
+        return None
+    try:
+        doc = json.loads(text)
+    except ValueError:
+        return None
+    given = doc.get("answers") if isinstance(doc, dict) else None
+    if not isinstance(given, dict):
+        return None
+    taken = doc.get("defaulted")
+    skip = {str(n) for n in taken} if isinstance(taken, list) else set()
+    return {str(k): v for k, v in given.items() if str(k) not in skip}
+
+
+def _decided(note_text: str, answers: dict[str, Any] | None) -> tuple[list[str], set[str]]:
+    """CONV-B8: each owner decision of the triage note that has an answer, with its question and the words of the
+    option the answer names (the answer itself when no option carries that label), and the gaps it lists."""
+    if not answers:
+        return [], set()
+    lines: list[str] = []
+    done: set[str] = set()
+    for e in fmt.parse_triage(note_text).owners:
+        name = e.gap.lower()
+        if name not in answers or e.gap in done:
+            continue
+        value = str(answers[name]).strip()
+        words = next((text for label, text in e.options if label and label.lower() == value.lower() and text), value)
+        lines.append(f"- {e.gap}: {e.question or '(no question written)'} Chosen: {words}")
+        done.add(e.gap)
+    return lines, done
+
+
+def _assumptions(note_text: str, decided: set[str] | None = None) -> list[str]:
+    """The owner decisions of the triage note that took their default, none clipped: nothing when the note has no
+    `Owner decisions` section, one line when the section says `None` or every decision was answered, else one item each.
+    `decided` holds the gaps the owner answered, listed under `Decided` instead."""
     note = fmt.parse_triage(note_text)
     if not note.owner_section:
         return []
     if not note.owners:
         return ["- The run took no default: the triage note lists no owner decision."] if note.owner_none else []
+    rest = [e for e in note.owners if e.gap not in (decided or set())]
+    if not rest:
+        return ["- The run took no default: the owner answered every owner decision."]
     return [f"- {e.gap}: {e.question or '(no question written)'} Default: {e.default_text or e.default or '(none)'}. "
-            f"If wrong: {e.cost or '(not stated)'}" for e in note.owners]
+            f"If wrong: {e.cost or '(not stated)'}" for e in rest]
 
 
 def build(ctx: Any) -> str:
@@ -105,7 +148,10 @@ def build(ctx: Any) -> str:
 
     out = [f"## temperspec run `{ctx.task_id}`", "", f"Lane: {lane}.", "", "### Acceptance criteria of the task", ""]
     out += _section(note_text, "Acceptance criteria")[:MAX_LINES] or ["- (the triage note could not be read)"]
-    if assumed := _assumptions(note_text):
+    chosen, decided = _decided(note_text, _answers(ctx))
+    if chosen:
+        out += ["", "### Decided", ""] + chosen
+    if assumed := _assumptions(note_text, decided):
         out += ["", "### Assumptions to confirm", ""] + assumed
     out += ["", "### Read these", ""]
     if specs or records:
