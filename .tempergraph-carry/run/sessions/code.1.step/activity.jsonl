@@ -1,0 +1,146 @@
+{"t": 0.849, "n": 1, "ev": "session_started", "session_id": "4fd6c488-b4e1-4e53-937f-3b487773415a", "model": "claude-sonnet-5-5", "tools": ["Bash", "Edit", "Glob", "Grep", "Read", "Write"], "cli_version": "2.1.332", "mcp_server_errors": 0, "plugin_errors": 0}
+{"t": 2.773, "n": 2, "ev": "tool_started", "name": "Read", "call_id": "toolu_01Kiv83tQAiaFQCFcUekoBga", "capability": "read", "subagent": false, "input_summary": "docs/plans/i21.plan.md"}
+{"t": 2.793, "n": 3, "ev": "tool_finished", "call_id": "toolu_01Kiv83tQAiaFQCFcUekoBga", "ok": true, "duration_s": 0.02}
+{"t": 3.207, "n": 4, "ev": "tool_started", "name": "Read", "call_id": "toolu_01UCCHZ8VrYvhnWmd9homhPr", "capability": "read", "subagent": false, "input_summary": ".claude/rules/temperspec/task-notes.rule.md"}
+{"t": 3.215, "n": 5, "ev": "tool_finished", "call_id": "toolu_01UCCHZ8VrYvhnWmd9homhPr", "ok": true, "duration_s": 0.008}
+{"t": 3.574, "n": 6, "ev": "tool_started", "name": "Read", "call_id": "toolu_01HYfrCEHofZXWv6nmt5f7MR", "capability": "read", "subagent": false, "input_summary": ".claude/rules/temperspec/plan.rule.md"}
+{"t": 3.582, "n": 7, "ev": "tool_finished", "call_id": "toolu_01HYfrCEHofZXWv6nmt5f7MR", "ok": true, "duration_s": 0.008}
+{"t": 6.271, "n": 8, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01EPxwH1Max1rZx7c3x9k4y4", "capability": "shell", "subagent": false, "input_summary": "git status"}
+{"t": 6.465, "n": 9, "ev": "tool_started", "name": "Glob", "call_id": "toolu_01V6QEQgBa7VQPz7KDiNrAY7", "capability": "list", "subagent": false, "input_summary": "docs/tasks/i21*"}
+{"t": 6.504, "n": 10, "ev": "tool_finished", "call_id": "toolu_01V6QEQgBa7VQPz7KDiNrAY7", "ok": true, "duration_s": 0.04}
+{"t": 7.064, "n": 11, "ev": "tool_finished", "call_id": "toolu_01EPxwH1Max1rZx7c3x9k4y4", "ok": true, "duration_s": 0.793}
+{"n": 13, "ev": "resources", "t": 24871.953, "cpu_s": 1.06, "processes": 1, "rss_peak_kb": 316016}
+{"t": 10.19, "n": 13, "ev": "tool_started", "name": "Grep", "call_id": "toolu_016uvVHLno2vEBqyv9nxnZtS", "capability": "search", "subagent": false, "input_summary": "strict-mcp-config|ENABLE_CLAUDEAI|mcp-config|live_facts|LIVE_FACTS|P-CC-1[0-3]"}
+{"t": 10.227, "n": 14, "ev": "tool_finished", "call_id": "toolu_016uvVHLno2vEBqyv9nxnZtS", "ok": true, "duration_s": 0.037}
+{"t": 13.087, "n": 15, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01KXbu6YH6wkSW3rUVZKS29o", "capability": "search", "subagent": false, "input_summary": ".{0,160}(strict-mcp-config|ENABLE_CLAUDEAI|mcp-config).{0,160}"}
+{"t": 13.11, "n": 16, "ev": "tool_finished", "call_id": "toolu_01KXbu6YH6wkSW3rUVZKS29o", "ok": true, "duration_s": 0.023}
+{"t": 14.022, "n": 17, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01JnTYa7NVJW7MQUvfRwZGDy", "capability": "search", "subagent": false, "input_summary": "disallowedTools|mcp__|claudeai|claude\\.ai"}
+{"t": 14.058, "n": 18, "ev": "tool_finished", "call_id": "toolu_01JnTYa7NVJW7MQUvfRwZGDy", "ok": true, "duration_s": 0.037}
+{"t": 16.847, "n": 19, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01GEgZYjvWppKmGMmNVaSmhe", "capability": "search", "subagent": false, "input_summary": ".{0,140}(disallowedTools|mcp__\\*|claudeai|claude\\.ai).{0,140}"}
+{"t": 16.869, "n": 20, "ev": "tool_finished", "call_id": "toolu_01GEgZYjvWppKmGMmNVaSmhe", "ok": true, "duration_s": 0.022}
+{"t": 19.386, "n": 21, "ev": "text", "last_line": "Every plan row is already marked, and the search of the other specs found nothing my change makes false. Next I'll set the plan to `completed`, write the code report, and run the check preview once."}
+{"t": 19.978, "n": 22, "ev": "tool_started", "name": "Edit", "call_id": "toolu_017SwSHqEJbkz3i9nhygLSWr", "capability": "edit", "subagent": false, "input_summary": "docs/plans/i21.plan.md"}
+{"t": 19.987, "n": 23, "ev": "tool_finished", "call_id": "toolu_017SwSHqEJbkz3i9nhygLSWr", "ok": true, "duration_s": 0.009}
+{"n": 25, "ev": "resources", "t": 24881.968, "cpu_s": 1.37, "processes": 1, "rss_peak_kb": 350976}
+{"t": 27.108, "n": 25, "ev": "tool_started", "name": "Write", "call_id": "toolu_0182Krdz3MUyVAtGBT8EyUL4", "capability": "write", "subagent": false, "input_summary": "docs/tasks/i21.report.md"}
+{"t": 27.115, "n": 26, "ev": "tool_finished", "call_id": "toolu_0182Krdz3MUyVAtGBT8EyUL4", "ok": true, "duration_s": 0.007}
+{"t": 29.062, "n": 27, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01E75srV4w1fwhv662iXzQPL", "capability": "shell", "subagent": false, "input_summary": "tempergraph self-check cc3d6596e9d9649bd14d5ca4905863d1"}
+{"n": 29, "ev": "resources", "t": 24891.992, "cpu_s": 1.57, "processes": 1, "rss_peak_kb": 350976}
+{"n": 30, "ev": "resources", "t": 24902.024, "cpu_s": 1.67, "processes": 1, "rss_peak_kb": 350976}
+{"n": 31, "ev": "resources", "t": 24912.045, "cpu_s": 1.74, "processes": 1, "rss_peak_kb": 350976}
+{"n": 32, "ev": "resources", "t": 24922.114, "cpu_s": 1.81, "processes": 1, "rss_peak_kb": 350976}
+{"n": 33, "ev": "resources", "t": 24932.138, "cpu_s": 1.89, "processes": 1, "rss_peak_kb": 350976}
+{"n": 34, "ev": "resources", "t": 24942.163, "cpu_s": 1.96, "processes": 1, "rss_peak_kb": 350976}
+{"n": 35, "ev": "resources", "t": 24952.183, "cpu_s": 2.01, "processes": 1, "rss_peak_kb": 350976}
+{"n": 36, "ev": "resources", "t": 24962.203, "cpu_s": 2.07, "processes": 1, "rss_peak_kb": 350976}
+{"n": 37, "ev": "resources", "t": 24972.218, "cpu_s": 2.2, "processes": 1, "rss_peak_kb": 350976}
+{"n": 38, "ev": "resources", "t": 24982.236, "cpu_s": 2.26, "processes": 1, "rss_peak_kb": 350976}
+{"n": 39, "ev": "resources", "t": 24992.253, "cpu_s": 2.41, "processes": 1, "rss_peak_kb": 350976}
+{"n": 40, "ev": "resources", "t": 25002.274, "cpu_s": 2.47, "processes": 1, "rss_peak_kb": 350976}
+{"n": 41, "ev": "resources", "t": 25012.295, "cpu_s": 2.52, "processes": 1, "rss_peak_kb": 350976}
+{"n": 42, "ev": "resources", "t": 25022.314, "cpu_s": 2.59, "processes": 1, "rss_peak_kb": 350976}
+{"n": 43, "ev": "resources", "t": 25032.335, "cpu_s": 2.67, "processes": 1, "rss_peak_kb": 350976}
+{"n": 44, "ev": "resources", "t": 25042.353, "cpu_s": 2.72, "processes": 1, "rss_peak_kb": 350976}
+{"n": 45, "ev": "resources", "t": 25052.371, "cpu_s": 2.78, "processes": 1, "rss_peak_kb": 350976}
+{"n": 46, "ev": "resources", "t": 25062.391, "cpu_s": 2.83, "processes": 1, "rss_peak_kb": 350976}
+{"n": 47, "ev": "resources", "t": 25072.41, "cpu_s": 2.88, "processes": 1, "rss_peak_kb": 350976}
+{"n": 48, "ev": "resources", "t": 25082.429, "cpu_s": 2.92, "processes": 1, "rss_peak_kb": 350976}
+{"n": 49, "ev": "resources", "t": 25092.447, "cpu_s": 2.97, "processes": 1, "rss_peak_kb": 350976}
+{"n": 50, "ev": "resources", "t": 25102.467, "cpu_s": 3.03, "processes": 1, "rss_peak_kb": 350976}
+{"n": 51, "ev": "resources", "t": 25112.487, "cpu_s": 3.08, "processes": 1, "rss_peak_kb": 350976}
+{"n": 52, "ev": "resources", "t": 25122.505, "cpu_s": 3.13, "processes": 1, "rss_peak_kb": 350976}
+{"n": 53, "ev": "resources", "t": 25132.523, "cpu_s": 3.17, "processes": 1, "rss_peak_kb": 350976}
+{"n": 54, "ev": "resources", "t": 25142.539, "cpu_s": 3.23, "processes": 1, "rss_peak_kb": 350976}
+{"n": 55, "ev": "resources", "t": 25152.558, "cpu_s": 3.28, "processes": 1, "rss_peak_kb": 350976}
+{"n": 56, "ev": "resources", "t": 25162.579, "cpu_s": 3.32, "processes": 1, "rss_peak_kb": 350976}
+{"n": 57, "ev": "resources", "t": 25172.595, "cpu_s": 3.38, "processes": 1, "rss_peak_kb": 350976}
+{"n": 58, "ev": "resources", "t": 25182.611, "cpu_s": 3.42, "processes": 1, "rss_peak_kb": 350976}
+{"n": 59, "ev": "resources", "t": 25192.631, "cpu_s": 3.47, "processes": 1, "rss_peak_kb": 350976}
+{"n": 60, "ev": "resources", "t": 25202.65, "cpu_s": 3.52, "processes": 1, "rss_peak_kb": 350976}
+{"n": 61, "ev": "resources", "t": 25212.669, "cpu_s": 3.57, "processes": 1, "rss_peak_kb": 350976}
+{"n": 62, "ev": "resources", "t": 25222.69, "cpu_s": 3.61, "processes": 1, "rss_peak_kb": 350976}
+{"n": 63, "ev": "resources", "t": 25232.709, "cpu_s": 3.68, "processes": 1, "rss_peak_kb": 350976}
+{"n": 64, "ev": "resources", "t": 25242.73, "cpu_s": 3.74, "processes": 1, "rss_peak_kb": 350976}
+{"n": 65, "ev": "resources", "t": 25252.754, "cpu_s": 3.78, "processes": 1, "rss_peak_kb": 350976}
+{"n": 66, "ev": "resources", "t": 25262.775, "cpu_s": 3.85, "processes": 1, "rss_peak_kb": 350976}
+{"n": 67, "ev": "resources", "t": 25272.798, "cpu_s": 3.9, "processes": 1, "rss_peak_kb": 350976}
+{"n": 68, "ev": "resources", "t": 25282.817, "cpu_s": 3.94, "processes": 1, "rss_peak_kb": 350976}
+{"n": 69, "ev": "resources", "t": 25292.839, "cpu_s": 4.01, "processes": 1, "rss_peak_kb": 350976}
+{"n": 70, "ev": "resources", "t": 25302.86, "cpu_s": 4.06, "processes": 1, "rss_peak_kb": 350976}
+{"n": 71, "ev": "resources", "t": 25312.88, "cpu_s": 4.12, "processes": 1, "rss_peak_kb": 350976}
+{"n": 72, "ev": "resources", "t": 25322.902, "cpu_s": 4.17, "processes": 1, "rss_peak_kb": 350976}
+{"n": 73, "ev": "resources", "t": 25332.917, "cpu_s": 4.22, "processes": 1, "rss_peak_kb": 350976}
+{"n": 74, "ev": "resources", "t": 25342.935, "cpu_s": 4.27, "processes": 1, "rss_peak_kb": 350976}
+{"n": 75, "ev": "resources", "t": 25352.954, "cpu_s": 4.32, "processes": 1, "rss_peak_kb": 350976}
+{"n": 76, "ev": "resources", "t": 25362.972, "cpu_s": 4.36, "processes": 1, "rss_peak_kb": 350976}
+{"n": 77, "ev": "resources", "t": 25372.992, "cpu_s": 4.39, "processes": 1, "rss_peak_kb": 350976}
+{"n": 78, "ev": "resources", "t": 25383.009, "cpu_s": 4.45, "processes": 1, "rss_peak_kb": 350976}
+{"n": 79, "ev": "resources", "t": 25393.026, "cpu_s": 4.56, "processes": 1, "rss_peak_kb": 350976}
+{"n": 80, "ev": "resources", "t": 25403.045, "cpu_s": 4.62, "processes": 1, "rss_peak_kb": 350976}
+{"n": 81, "ev": "resources", "t": 25413.086, "cpu_s": 4.67, "processes": 1, "rss_peak_kb": 350976}
+{"n": 82, "ev": "resources", "t": 25423.1, "cpu_s": 4.7, "processes": 1, "rss_peak_kb": 350976}
+{"n": 83, "ev": "resources", "t": 25433.118, "cpu_s": 4.75, "processes": 1, "rss_peak_kb": 350976}
+{"n": 84, "ev": "resources", "t": 25443.138, "cpu_s": 4.79, "processes": 1, "rss_peak_kb": 350976}
+{"n": 85, "ev": "resources", "t": 25453.158, "cpu_s": 4.85, "processes": 1, "rss_peak_kb": 350976}
+{"n": 86, "ev": "resources", "t": 25463.186, "cpu_s": 4.89, "processes": 1, "rss_peak_kb": 350976}
+{"n": 87, "ev": "resources", "t": 25473.204, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 350976}
+{"n": 88, "ev": "resources", "t": 25483.22, "cpu_s": 5.06, "processes": 1, "rss_peak_kb": 350976}
+{"t": 629.842, "n": 88, "ev": "tool_finished", "call_id": "toolu_01E75srV4w1fwhv662iXzQPL", "ok": true, "duration_s": 600.779}
+{"n": 90, "ev": "resources", "t": 25493.239, "cpu_s": 5.15, "processes": 1, "rss_peak_kb": 350976}
+{"t": 632.227, "n": 90, "ev": "text", "last_line": "The check preview is still running in the background. I'm waiting for it to finish before I change anything else."}
+{"t": 632.464, "n": 91, "ev": "tool_started", "name": "Bash", "call_id": "toolu_0141JkwfYSiXPTho4tDc2drQ", "capability": "shell", "subagent": false, "input_summary": "git status --short"}
+{"t": 632.644, "n": 92, "ev": "tool_finished", "call_id": "toolu_0141JkwfYSiXPTho4tDc2drQ", "ok": true, "duration_s": 0.18}
+{"t": 634.246, "n": 93, "ev": "tool_started", "name": "Read", "call_id": "toolu_01Q6fcFgW67Rb4xNQunAJ3Fd", "capability": "read", "subagent": false, "input_summary": "<outside workspace>"}
+{"t": 634.256, "n": 94, "ev": "tool_finished", "call_id": "toolu_01Q6fcFgW67Rb4xNQunAJ3Fd", "ok": true, "duration_s": 0.01}
+{"t": 634.98, "n": 95, "ev": "tool_started", "name": "Read", "call_id": "toolu_019BA3nKoAvRwuhMzi4Rjc86", "capability": "read", "subagent": false, "input_summary": "<outside workspace>"}
+{"t": 634.986, "n": 96, "ev": "tool_finished", "call_id": "toolu_019BA3nKoAvRwuhMzi4Rjc86", "ok": true, "duration_s": 0.006}
+{"t": 637.859, "n": 97, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01YUTDwtZ6LgTbfDDHWdb5XC", "capability": "shell", "subagent": false, "input_summary": "until [ -s /private/tmp/claude-501/-Users-dbr0vskyi-Projects-homelab-tempergraph-worktrees-temperspec--i21/4fd6c488-b4e1-4e53-937f-3b487773415a/tasks/bbnnl6ba7.output ]; do sleep 10; done"}
+{"t": 638.035, "n": 98, "ev": "tool_finished", "call_id": "toolu_01YUTDwtZ6LgTbfDDHWdb5XC", "ok": true, "duration_s": 0.176}
+{"t": 640.217, "n": 99, "ev": "tool_started", "name": "Read", "call_id": "toolu_016go64vRcToQKdGjRahfqQw", "capability": "read", "subagent": false, "input_summary": "<outside workspace>"}
+{"t": 640.228, "n": 100, "ev": "tool_finished", "call_id": "toolu_016go64vRcToQKdGjRahfqQw", "ok": true, "duration_s": 0.011}
+{"t": 641.221, "n": 101, "ev": "text", "last_line": "The self-check is still running and has printed nothing yet. I'm waiting for the background watcher to report that it finished."}
+{"n": 103, "ev": "resources", "t": 25503.253, "cpu_s": 5.46, "processes": 1, "rss_peak_kb": 350976}
+{"t": 641.361, "n": 103, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01827E6fAbtXJyEMa6Ru3HuZ", "capability": "shell", "subagent": false, "input_summary": "git status --short"}
+{"t": 641.595, "n": 104, "ev": "tool_finished", "call_id": "toolu_01827E6fAbtXJyEMa6Ru3HuZ", "ok": true, "duration_s": 0.234}
+{"t": 644.576, "n": 105, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01Lj8S4bqXp5DEa56jVq1Doo", "capability": "shell", "subagent": false, "input_summary": "until [ -s /private/tmp/claude-501/-Users-dbr0vskyi-Projects-homelab-tempergraph-worktrees-temperspec--i21/4fd6c488-b4e1-4e53-937f-3b487773415a/tasks/bbnnl6ba7.output ]; do sleep 10; done; echo ready"}
+{"n": 107, "ev": "resources", "t": 25513.27, "cpu_s": 5.63, "processes": 1, "rss_peak_kb": 350976}
+{"n": 108, "ev": "resources", "t": 25523.289, "cpu_s": 5.71, "processes": 1, "rss_peak_kb": 350976}
+{"n": 109, "ev": "resources", "t": 25533.368, "cpu_s": 5.78, "processes": 1, "rss_peak_kb": 350976}
+{"n": 110, "ev": "resources", "t": 25543.394, "cpu_s": 5.84, "processes": 1, "rss_peak_kb": 350976}
+{"n": 111, "ev": "resources", "t": 25553.42, "cpu_s": 5.9, "processes": 1, "rss_peak_kb": 350976}
+{"n": 112, "ev": "resources", "t": 25563.44, "cpu_s": 5.98, "processes": 1, "rss_peak_kb": 350976}
+{"n": 113, "ev": "resources", "t": 25573.46, "cpu_s": 6.04, "processes": 1, "rss_peak_kb": 350976}
+{"n": 114, "ev": "resources", "t": 25583.482, "cpu_s": 6.08, "processes": 1, "rss_peak_kb": 350976}
+{"n": 115, "ev": "resources", "t": 25593.503, "cpu_s": 6.14, "processes": 1, "rss_peak_kb": 350976}
+{"n": 116, "ev": "resources", "t": 25603.529, "cpu_s": 6.19, "processes": 1, "rss_peak_kb": 350976}
+{"n": 117, "ev": "resources", "t": 25613.552, "cpu_s": 6.24, "processes": 1, "rss_peak_kb": 350976}
+{"n": 118, "ev": "resources", "t": 25623.571, "cpu_s": 6.39, "processes": 1, "rss_peak_kb": 350976}
+{"n": 119, "ev": "resources", "t": 25633.589, "cpu_s": 6.45, "processes": 1, "rss_peak_kb": 350976}
+{"n": 120, "ev": "resources", "t": 25643.607, "cpu_s": 6.49, "processes": 1, "rss_peak_kb": 350976}
+{"n": 121, "ev": "resources", "t": 25653.626, "cpu_s": 6.56, "processes": 1, "rss_peak_kb": 350976}
+{"n": 122, "ev": "resources", "t": 25663.644, "cpu_s": 6.61, "processes": 1, "rss_peak_kb": 350976}
+{"n": 123, "ev": "resources", "t": 25673.664, "cpu_s": 6.67, "processes": 1, "rss_peak_kb": 350976}
+{"n": 124, "ev": "resources", "t": 25683.685, "cpu_s": 6.72, "processes": 1, "rss_peak_kb": 350976}
+{"n": 125, "ev": "resources", "t": 25693.707, "cpu_s": 6.77, "processes": 1, "rss_peak_kb": 350976}
+{"n": 126, "ev": "resources", "t": 25703.722, "cpu_s": 6.82, "processes": 1, "rss_peak_kb": 350976}
+{"n": 127, "ev": "resources", "t": 25713.739, "cpu_s": 6.88, "processes": 1, "rss_peak_kb": 350976}
+{"n": 128, "ev": "resources", "t": 25723.756, "cpu_s": 6.94, "processes": 1, "rss_peak_kb": 350976}
+{"n": 129, "ev": "resources", "t": 25733.777, "cpu_s": 6.98, "processes": 1, "rss_peak_kb": 350976}
+{"n": 130, "ev": "resources", "t": 25743.803, "cpu_s": 7.03, "processes": 1, "rss_peak_kb": 350976}
+{"n": 131, "ev": "resources", "t": 25753.82, "cpu_s": 7.09, "processes": 1, "rss_peak_kb": 350976}
+{"n": 132, "ev": "resources", "t": 25763.843, "cpu_s": 7.13, "processes": 1, "rss_peak_kb": 350976}
+{"n": 133, "ev": "resources", "t": 25773.864, "cpu_s": 7.19, "processes": 1, "rss_peak_kb": 350976}
+{"n": 134, "ev": "resources", "t": 25783.884, "cpu_s": 7.24, "processes": 1, "rss_peak_kb": 350976}
+{"n": 135, "ev": "resources", "t": 25793.904, "cpu_s": 7.29, "processes": 1, "rss_peak_kb": 350976}
+{"n": 136, "ev": "resources", "t": 25803.924, "cpu_s": 7.33, "processes": 1, "rss_peak_kb": 350976}
+{"n": 137, "ev": "resources", "t": 25813.946, "cpu_s": 7.38, "processes": 1, "rss_peak_kb": 350976}
+{"n": 138, "ev": "resources", "t": 25823.968, "cpu_s": 7.42, "processes": 1, "rss_peak_kb": 350976}
+{"n": 139, "ev": "resources", "t": 25833.988, "cpu_s": 7.47, "processes": 1, "rss_peak_kb": 350976}
+{"n": 140, "ev": "resources", "t": 25844.008, "cpu_s": 7.52, "processes": 1, "rss_peak_kb": 350976}
+{"n": 141, "ev": "resources", "t": 25854.026, "cpu_s": 7.57, "processes": 1, "rss_peak_kb": 350976}
+{"t": 995.046, "n": 141, "ev": "tool_finished", "call_id": "toolu_01Lj8S4bqXp5DEa56jVq1Doo", "ok": true, "duration_s": 350.47}
+{"t": 997.015, "n": 142, "ev": "tool_started", "name": "Read", "call_id": "toolu_01EtPUcKWSF6unj8Czf95kQL", "capability": "read", "subagent": false, "input_summary": "<outside workspace>"}
+{"t": 997.029, "n": 143, "ev": "tool_finished", "call_id": "toolu_01EtPUcKWSF6unj8Czf95kQL", "ok": true, "duration_s": 0.015}
+{"t": 1001.57, "n": 144, "ev": "text", "last_line": "ARTIFACT tests_passed: yes"}
+{"t": 1001.767, "n": 145, "ev": "result", "ok": true, "text": "All six rows of i21 are built and marked, the plan is `completed`, and the code report is written. The check preview ran all five plan commands once on the final tree and passed (14 checks). I changed no file after it.\n\n- **What the earlier phases built:**\n  - Every step launch, retry and judge launch now passes `--strict-mcp-config`.\n  - A step gets `--mcp-config` only when it declares an MCP tool.\n  - That step's config is private. It lists exactly the declared servers that the operator's own MCP configuration defines. The path is masked in the recorded argv, and the config is removed on every exit path.\n  - The environment of a step, a retry and a judge carries `ENABLE_CLAUDEAI_MCP_SERVERS=false`.\n  - The live-checks runbook has the new L-43 row and its 2026-11-25 result, and P-CC-13 is recorded as `confirmed`.\n- **Live probe:** the `tests/live/test_probes.py` run showed 13 skipped. The P-CC-13 probe has not run on this machine, because it needs a signed-in `claude` and `TEMPERGRAPH_LIVE=1`.\n- **Other specs:** I searched the other specs and decision records for the flags, variable and probe ids this change touches, and found nothing it makes false. The report lists the files I read.\n- **Deviations:** two small ones, both in the report. I added the constant `MCP_CONNECTORS_VAR`, which row 1.4 doesn't name. The failed-launch test in row 2.2 doesn't assert that the result is not ok, because the stand-in still emits a result line on exit 1.\n\nARTIFACT code_report: docs/tasks/i21.report.md\nARTIFACT tests_passed: yes", "subtype": "success", "is_error": false, "session_id": "4fd6c488-b4e1-4e53-937f-3b487773415a"}
+{"n": 146, "ev": "resources", "t": 25864.042, "cpu_s": 7.86, "processes": 1, "rss_peak_kb": 350976}

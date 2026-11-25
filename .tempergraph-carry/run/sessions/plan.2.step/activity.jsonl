@@ -1,0 +1,49 @@
+{"t": 0.849, "n": 1, "ev": "session_started", "session_id": "8e1b337a-ad04-4a37-8a36-ba7a84608bea", "model": "claude-sonnet-5-5", "tools": ["Edit", "Glob", "Grep", "Read", "Write"], "cli_version": "2.1.332", "mcp_server_errors": 0, "plugin_errors": 0}
+{"t": 2.208, "n": 2, "ev": "text", "last_line": "I'll start with the rule files, the triage note, and any existing plan."}
+{"t": 2.661, "n": 3, "ev": "tool_started", "name": "Read", "call_id": "toolu_018QovWkLrhhACPCj7D8gTGB", "capability": "read", "subagent": false, "input_summary": ".claude/rules/temperspec/plan.rule.md"}
+{"t": 2.681, "n": 4, "ev": "tool_finished", "call_id": "toolu_018QovWkLrhhACPCj7D8gTGB", "ok": true, "duration_s": 0.019}
+{"t": 3.083, "n": 5, "ev": "tool_started", "name": "Read", "call_id": "toolu_01YYtx1Mh3u1vj2QAiCxV1Zy", "capability": "read", "subagent": false, "input_summary": ".claude/rules/temperspec/documents.rule.md"}
+{"t": 3.091, "n": 6, "ev": "tool_finished", "call_id": "toolu_01YYtx1Mh3u1vj2QAiCxV1Zy", "ok": true, "duration_s": 0.008}
+{"t": 3.485, "n": 7, "ev": "tool_started", "name": "Read", "call_id": "toolu_01GS9XEpaF3LJgU3YA4Y2h6Z", "capability": "read", "subagent": false, "input_summary": "docs/tasks/i21.triage.md"}
+{"t": 3.492, "n": 8, "ev": "tool_finished", "call_id": "toolu_01GS9XEpaF3LJgU3YA4Y2h6Z", "ok": true, "duration_s": 0.007}
+{"t": 3.655, "n": 9, "ev": "tool_started", "name": "Glob", "call_id": "toolu_01K1KeaJ1s4gm3Mx3MvCzY6M", "capability": "list", "subagent": false, "input_summary": "**/i21*"}
+{"t": 3.699, "n": 10, "ev": "tool_finished", "call_id": "toolu_01K1KeaJ1s4gm3Mx3MvCzY6M", "ok": true, "duration_s": 0.044}
+{"t": 5.88, "n": 11, "ev": "tool_started", "name": "Read", "call_id": "toolu_015LikbrQ6SmrNPSyp4U98WL", "capability": "read", "subagent": false, "input_summary": "docs/plans/i21.plan.md"}
+{"t": 5.888, "n": 12, "ev": "tool_finished", "call_id": "toolu_015LikbrQ6SmrNPSyp4U98WL", "ok": true, "duration_s": 0.008}
+{"t": 6.283, "n": 13, "ev": "tool_started", "name": "Read", "call_id": "toolu_01TTTK7t1K1AXcw6SArd7XzL", "capability": "read", "subagent": false, "input_summary": "docs/tasks/i21.handoff.md"}
+{"t": 6.289, "n": 14, "ev": "tool_finished", "call_id": "toolu_01TTTK7t1K1AXcw6SArd7XzL", "ok": true, "duration_s": 0.006}
+{"t": 6.647, "n": 15, "ev": "tool_started", "name": "Read", "call_id": "toolu_01JVh9wXQah8BcKjLPT1WjF6", "capability": "read", "subagent": false, "input_summary": "docs/tasks/i21.report.md"}
+{"t": 6.653, "n": 16, "ev": "tool_finished", "call_id": "toolu_01JVh9wXQah8BcKjLPT1WjF6", "ok": true, "duration_s": 0.006}
+{"t": 9.129, "n": 17, "ev": "tool_started", "name": "Grep", "call_id": "toolu_0185GFvkdfa8AJTs6bC35t4N", "capability": "search", "subagent": false, "input_summary": "ECC-AC5\\b"}
+{"t": 9.183, "n": 18, "ev": "tool_finished", "call_id": "toolu_0185GFvkdfa8AJTs6bC35t4N", "ok": true, "duration_s": 0.054}
+{"t": 9.972, "n": 19, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01R7ESoonM5Jg6qDViMw5iMu", "capability": "search", "subagent": false, "input_summary": "ECC-AC(5|6|7|10|12|13|14|15)\\b"}
+{"t": 9.989, "n": 20, "ev": "tool_finished", "call_id": "toolu_01R7ESoonM5Jg6qDViMw5iMu", "ok": true, "duration_s": 0.016}
+{"n": 22, "ev": "resources", "t": 25913.466, "cpu_s": 0.87, "processes": 1, "rss_peak_kb": 294528}
+{"t": 14.934, "n": 22, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01Uxhf6d5pPrc2D4XG8pb8qa", "capability": "search", "subagent": false, "input_summary": "ECC-B6\\b|ECC-B13\\b"}
+{"t": 14.967, "n": 23, "ev": "tool_finished", "call_id": "toolu_01Uxhf6d5pPrc2D4XG8pb8qa", "ok": true, "duration_s": 0.033}
+{"t": 15.506, "n": 24, "ev": "tool_started", "name": "Read", "call_id": "toolu_01KepJhcEjpFdngWaGk2Ek6C", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/data/executor_compat.json"}
+{"t": 15.514, "n": 25, "ev": "tool_finished", "call_id": "toolu_01KepJhcEjpFdngWaGk2Ek6C", "ok": true, "duration_s": 0.009}
+{"t": 15.772, "n": 26, "ev": "tool_started", "name": "Glob", "call_id": "toolu_016QQVE6MbFR7ymy7y8bVQ18", "capability": "list", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_live_checks_mcp_probe.py"}
+{"t": 15.809, "n": 27, "ev": "tool_finished", "call_id": "toolu_016QQVE6MbFR7ymy7y8bVQ18", "ok": true, "duration_s": 0.037}
+{"t": 17.543, "n": 28, "ev": "tool_started", "name": "Read", "call_id": "toolu_01DtnkefRtnrDi8d12PTfiaq", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/docs/specs/executor-claude-code.spec.md"}
+{"t": 17.552, "n": 29, "ev": "tool_finished", "call_id": "toolu_01DtnkefRtnrDi8d12PTfiaq", "ok": true, "duration_s": 0.009}
+{"t": 18.079, "n": 30, "ev": "tool_started", "name": "Read", "call_id": "toolu_01W6FH9WVZcA9Aq9x4B7GWfp", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_live_checks_mcp_probe.py"}
+{"t": 18.086, "n": 31, "ev": "tool_finished", "call_id": "toolu_01W6FH9WVZcA9Aq9x4B7GWfp", "ok": true, "duration_s": 0.007}
+{"n": 33, "ev": "resources", "t": 25923.485, "cpu_s": 1.15, "processes": 1, "rss_peak_kb": 294528}
+{"t": 24.741, "n": 33, "ev": "tool_started", "name": "Read", "call_id": "toolu_01KS7nBjAmpo5B62ENLGGKfB", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/docs/specs/executor-claude-code.spec.md"}
+{"t": 24.748, "n": 34, "ev": "tool_finished", "call_id": "toolu_01KS7nBjAmpo5B62ENLGGKfB", "ok": true, "duration_s": 0.008}
+{"t": 25.777, "n": 35, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01Vd5GneqtCwjgUUNmhAXaPG", "capability": "search", "subagent": false, "input_summary": "ECC-AC(4|6|7|10)\\b"}
+{"t": 25.8, "n": 36, "ev": "tool_finished", "call_id": "toolu_01Vd5GneqtCwjgUUNmhAXaPG", "ok": true, "duration_s": 0.023}
+{"n": 38, "ev": "resources", "t": 25933.505, "cpu_s": 1.33, "processes": 1, "rss_peak_kb": 294528}
+{"t": 33.35, "n": 38, "ev": "text", "last_line": "I'm adding a row that proves ECC-AC5, the criterion no test carries. ECC-B13 changed (it now lists P-CC-13) and ECC-AC5 covers it. I'll edit the plan in place."}
+{"t": 34.412, "n": 39, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01V6GUtCPiPcBGYeKVU1SeGw", "capability": "edit", "subagent": false, "input_summary": "docs/plans/i21.plan.md"}
+{"t": 34.422, "n": 40, "ev": "tool_finished", "call_id": "toolu_01V6GUtCPiPcBGYeKVU1SeGw", "ok": true, "duration_s": 0.011}
+{"t": 36.782, "n": 41, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01YQJvzHfUpGifMdW7iTiGeg", "capability": "edit", "subagent": false, "input_summary": "docs/plans/i21.plan.md"}
+{"t": 36.79, "n": 42, "ev": "tool_finished", "call_id": "toolu_01YQJvzHfUpGifMdW7iTiGeg", "ok": true, "duration_s": 0.008}
+{"t": 38.352, "n": 43, "ev": "tool_started", "name": "Edit", "call_id": "toolu_013rhLuMEV6RkFNKXek4ti44", "capability": "edit", "subagent": false, "input_summary": "docs/plans/i21.plan.md"}
+{"t": 38.36, "n": 44, "ev": "tool_finished", "call_id": "toolu_013rhLuMEV6RkFNKXek4ti44", "ok": true, "duration_s": 0.008}
+{"n": 46, "ev": "resources", "t": 25943.525, "cpu_s": 1.53, "processes": 1, "rss_peak_kb": 294528}
+{"t": 42.279, "n": 46, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01E8pkpf9uQYY2aWVgFFor8F", "capability": "edit", "subagent": false, "input_summary": "docs/plans/i21.plan.md"}
+{"t": 42.291, "n": 47, "ev": "tool_finished", "call_id": "toolu_01E8pkpf9uQYY2aWVgFFor8F", "ok": true, "duration_s": 0.012}
+{"t": 48.739, "n": 48, "ev": "text", "last_line": "ARTIFACT complexity: complex"}
+{"t": 48.94, "n": 49, "ev": "result", "ok": true, "text": "I added a test row for ECC-AC5 to `docs/plans/i21.plan.md`. Nothing has been run: this step has no shell, and the new test doesn't exist yet.\n\n**Cause:** this change edits ECC-B13 to list P-CC-13. ECC-AC5 (ECC-B6, ECC-B13, ECC-B14) says the probe results are recorded for the CLI version. No test in `tests/` carried that id. Only `test_task_ac5_...` tests exist, and those belong to an older task's AC 5.\n\n**Edits, all in place:**\n- **Status:** back to `planned`, because the plan changed.\n- **Section 0:** a trip-back note says why the row was added.\n- **R7:** now names ECC-AC5 and states that every probe marked `confirmed` has a dated result row in the runbook with its CLI version, which the facts string in `executor_compat.json` also names.\n- **New row 3.8 (test, R7, proves ECC-AC5):** `test_ecc_ac5_every_confirmed_probe_is_recorded_with_a_date_and_the_cli_version` in `plugins/tempergraph/engine/tests/test_live_checks_mcp_probe.py`.\n  - It reads `LIVE_FACTS` and, for each `confirmed` probe, finds its runbook L-row.\n  - It then checks that section 4 has exactly one result row for it with a date, a CLI version and `passed`.\n  - It also checks that the `executor_compat.json` facts string names that probe and version, and that no `not run` probe appears there as `confirmed`.\n  - With P-CC-13 the only confirmed probe, it passes on L-43, 2026-11-25 and `2.1.332`.\n\nThe existing rows keep their `✓` marks. Row 3.8's Completed cell is empty. The plan stays `complex`, and the verification commands and proof table are unchanged: the new test runs in the second command, `tests/test_live_checks_mcp_probe.py`.\n\nI did not change `executor_compat.json`'s `recorded` or `range`, which still read `2.1.329` while P-CC-13 was confirmed on `2.1.332`. The test deliberately checks only for a dated result row with a CLI version and does not compare that version to the pinned one.\n\nARTIFACT plan: docs/plans/i21.plan.md\nARTIFACT complexity: complex", "subtype": "success", "is_error": false, "session_id": "8e1b337a-ad04-4a37-8a36-ba7a84608bea"}
