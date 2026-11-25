@@ -21,6 +21,11 @@ One entry per thing seen, with the run or command that showed it. An entry that 
 - **The update path worked on a paused thread.** After the fix, `plugins/tempergraph/bin/tempergraph update` reinstalled the engine (same version, other content), `workflows register` picked up the package's new content digest, and `resume --decision retry` carried the paused thread on with the new engine and package. Nothing was refused and nothing said the thread now runs on other code than it started with.
 - **`prepare` adds `tempergraph.commands.json` to every run's branch here**, because this repository has none. It arrives on the batch branch with the first merged run.
 
+### Baseline suite on `main` (2026-11-25, Python 3.12, macOS)
+
+- 2944 passed, 19 skipped, 1 failed in 14 min 20 s on four workers. The failure is `test_a_run_on_workers_leaves_the_real_folders_as_they_were` (TST-AC7): it compares the real `~/.tempergraph` and the real state root before and after a nested run, and the engine update and two live runs wrote there meanwhile. It is skipped only for a suite a step session runs (`TEMPERGRAPH_SESSION_KEY`). **A gate that runs the suite itself gets no such variable**, so a code gate that has to run `python -m pytest` again (the tree changed after the session's preview) fails this test while its own run writes its log, and so does any suite a person runs beside a live run.
+- **The full suite is 14 minutes of every code session and every code gate that cannot reuse it.** With three runs side by side that is most of the machine.
+
 ## Ideas for the improvement loop
 
 (filled as runs end)

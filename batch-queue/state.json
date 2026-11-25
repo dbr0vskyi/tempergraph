@@ -91,9 +91,9 @@
       "issues": [
         141
       ],
-      "state": "queued",
-      "thread": null,
-      "branch": null,
+      "state": "running",
+      "thread": "temperspec/i141",
+      "branch": "tg/temperspec/i141",
       "cost_usd": null,
       "exit": null,
       "note": "found in this batch"
