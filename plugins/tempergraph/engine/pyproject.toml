@@ -26,6 +26,9 @@ dev = [
 [project.scripts]
 tempergraph = "tempergraph.cli.main:entry"
 
+[project.entry-points.pytest11]
+"tempergraph.pytest_plugin" = "tempergraph.pytest_plugin"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

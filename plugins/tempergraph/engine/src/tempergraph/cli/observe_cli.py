@@ -57,7 +57,9 @@ def add_parsers(sub: Any) -> None:
     lb.add_argument("--relayed", action="store_true")
     lb.add_argument("--json", action="store_true")
     sa = sub.add_parser("stats", help="per-user monthly run rows, and across machines from a sink (CST-B14, CST-B15, CST-B16)")
-    sa.add_argument("action", nargs="?", choices=("flush", "sync"))
+    sa.add_argument("action", nargs="?", choices=("flush", "sync", "forget"))
+    sa.add_argument("--check", action="store_true",
+                    help="with forget: print the state roots and rows it would remove and change nothing (CST-B17 to CST-B21)")
     src = sa.add_mutually_exclusive_group()
     src.add_argument("--source", metavar="SINK")
     src.add_argument("--local", action="store_true")
@@ -351,6 +353,14 @@ def cmd_stats(env: Any, a: argparse.Namespace) -> int:
     from tempergraph.store.layout import ensure_home, home_path
 
     home = home_path()
+    if a.action == "forget":
+        from tempergraph.observe import forget
+
+        try:
+            _emit(env, forget.forget(home, a.check))
+        except forget.IndexInUse as exc:
+            raise UsageError("the machine index is in use; try again") from exc
+        return 0
     root = _here(env)
     try:
         if a.action == "flush":
