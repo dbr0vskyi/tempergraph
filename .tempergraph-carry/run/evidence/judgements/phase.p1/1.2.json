@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "phase",
+  "visit": 1,
+  "attempt": 2,
+  "blockers": [
+    {
+      "criterion": "ts-phs-scope",
+      "evidence": "PARTIAL: Row files are named by rows 1.1-1.5 and the plan itself changed; but executor-claude-code.spec.md, lifecycle-and-evals.spec.md, i21b.handoff.md and i21b.triage.md are in the changed paths and no Phase 1 row names them (likely earlier planning-stage edits, not verifiable)",
+      "fix": "Confirm the spec, handoff and triage edits came from earlier stages, not this phase"
+    }
+  ]
+}

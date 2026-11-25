@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "expand",
+  "visit": 1,
+  "attempt": 1,
+  "blockers": [
+    {
+      "criterion": "ts-exp-design",
+      "evidence": "PARTIAL: Every row names a requirement and does what it asks: 1.1–1.5 R5; 2.1–2.4 R3; 3.1–3.5 R4; 4.1–4.3 R1; 5.1 and 5.4 R2; 5.2 and 5.3 R6. Sections 0, 1 and 4 and the phase goals read consistently with the rows. Two rows are loose. Row 3.5 sets `error_kind=\"refused\"` without checking how the retry and tool-access escalation paths treat that value, and the plan's own notes admit this. The proof…",
+      "fix": "Add test_claude_executor.py to the AC 3 and AC 6 proof rows. Have row 3.5 state how \"refused\" interacts with retry and escalation."
+    }
+  ]
+}

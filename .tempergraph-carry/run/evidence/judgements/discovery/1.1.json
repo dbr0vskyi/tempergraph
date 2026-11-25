@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "discovery",
+  "visit": 1,
+  "attempt": 1,
+  "blockers": [
+    {
+      "criterion": "ts-dis-general",
+      "evidence": "PARTIAL: The behaviours read as general rules, for example ECC-B23 line 174. The first LIF-B17 scenario (line 50) copies a value from the task: 'a probe recorded `confirmed` on `claude` 2.1.332 WHEN a run is preflighted on `claude` 2.1.332'. An illustrative version would lose nothing. LIF-AC12 (line 129) ties the rule to 'The shipped compatibility table', which is data-specific. ECC-B24 builds in…",
+      "fix": "Use an illustrative version in the LIF-B17 scenario and state LIF-AC12 as the rule."
+    }
+  ]
+}
