@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "phase",
+  "visit": 2,
+  "attempt": 2,
+  "blockers": [
+    {
+      "criterion": "ts-phs-scope",
+      "evidence": "PARTIAL: Changed paths include docs/tasks/i21.handoff.md, i21.report.md, i21.triage.md and executor-claude-code.spec.md, which no row of any phase names. They also include mcpconfig.py, test_mcp_proxy.py, test_cli.py, test_live_checks_mcp_probe.py, live/test_probes.py, executor_compat.json and live-checks.plan.md, which are rows of phases 2 and 3. The phase session says it changed no source or te…",
+      "fix": "Confirm that the unnamed files were written by earlier stages (discovery, triage, other phases) and not by the phase 1 session."
+    }
+  ]
+}
