@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The engine's own tests, started with `python -m pytest` in the engine folder, are what every change to the engine must pass and what a gate runs again after each change, so the suite's wall time is paid by every run that edits the engine. By default the suite spreads its tests over a few worker processes, at most four; it runs in one process when asked or when the parallel runner is missing; it keeps each test to its own folders so that workers share no file; and the engine's `dev` extra installs the runner. Developers and every workflow that changes the engine depend on it. A suite result a gate already holds for the same tree is reused, not run again ([CHK-B13](check-contract-and-command-runs.spec.md)); a test session fails if any test leaves state in the real state root ([WSP-AC2](workspace-and-concurrency.spec.md)).
+The engine's own tests, started with `python -m pytest` in the engine folder, are what every change to the engine must pass and what a gate runs again after each change, so the suite's wall time is paid by every run that edits the engine. By default the suite spreads its tests over a few worker processes, at most four; it runs in one process when asked or when the parallel runner is missing; it keeps each test to its own folders so that workers share no file; and the engine's `dev` extra installs the runner. Developers and every workflow that changes the engine depend on it. The tests of any package that imports the engine begin with a home folder of their own and the self-improvement loop off, wherever pytest starts. A suite result a gate already holds for the same tree is reused, not run again ([CHK-B13](check-contract-and-command-runs.spec.md)); a test session fails if any test leaves state in the real state root ([WSP-AC2](workspace-and-concurrency.spec.md)).
 
 ## Behaviours
 
@@ -45,6 +45,21 @@ WHEN a developer installs the engine with its `dev` extra THE install SHALL prov
 
 - GIVEN `python -m pip install -e '.[dev]'` in the engine folder WHEN it ends THEN `python -m pytest` starts its workers with no further install
 
+### TST-B7 A home folder of its own wherever a test starts
+
+WHEN pytest runs a test that imports the engine, from whatever folder pytest was started in, THE engine SHALL start the test with a home folder that no other test uses and that is not the real home folder, with nothing written in the test's own package.
+
+- GIVEN a package folder holding one test that reads the engine's home folder, and no conftest WHEN `python -m pytest` starts in that folder THEN the test reads a temporary folder, not `~/.tempergraph/`
+- GIVEN two tests of that folder WHEN each reads its home folder THEN the two folders differ
+- GIVEN the same test WHEN `python -m pytest` starts in another folder and names the test's path THEN it reads a temporary folder there too
+
+### TST-B8 The self-improvement loop is off wherever a test starts
+
+WHEN pytest runs a test that imports the engine, from whatever folder pytest was started in, THE engine SHALL start the test with the self-improvement loop off ([SIL-B1](self-improvement.spec.md)), with nothing written in the test's own package.
+
+- GIVEN a package folder holding one test that imports the engine, and no conftest WHEN `python -m pytest` starts in that folder THEN the test finds `TEMPERGRAPH_LOOP` set to `off`
+- GIVEN a test that sets `TEMPERGRAPH_LOOP` to `inline` itself WHEN a run ends in it THEN the loop runs in the test's process ([SIL-B1](self-improvement.spec.md))
+
 ## Acceptance criteria
 
 - TST-AC1 (TST-B1): `python -m pytest -v` with no worker option prints test lines from as many workers (`gw0`, `gw1`, …) as the machine has processors, and from no more than four
@@ -55,3 +70,6 @@ WHEN a developer installs the engine with its `dev` extra THE install SHALL prov
 - TST-AC6 (TST-B5): Two tests running at the same time on two workers get different temporary folders, home folders and state roots
 - TST-AC7 (TST-B5): After a full run, no file of the repository outside cache folders, of the real home folder or of the real state root differs from before the run
 - TST-AC8 (TST-B6): The engine's `dev` extra lists `pytest-xdist`
+- TST-AC9 (TST-B7): In a package folder with no conftest, two tests started by `python -m pytest` in that folder read two different temporary home folders, and neither is the real home folder
+- TST-AC10 (TST-B8): In the same folder, a test finds `TEMPERGRAPH_LOOP` set to `off`
+- TST-AC11 (TST-B7): After the tests of that folder have run, no file of the real home folder, the machine index included, differs from before the run

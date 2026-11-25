@@ -8,9 +8,45 @@ How run numbers from every repository and every machine end up in one place a pe
 
 ### CST-B8 Machine index
 
-WHEN a run starts THE engine SHALL write, best effort, one entry per state root seen on this machine in `~/.tempergraph/index.json` ([LOS-B10](local-observability-store.spec.md), schema version 1) with path, repository name, `repo_id`, `first_seen` and `last_run_at`, under a lock taken with exclusive create, skipping the update and recording it when the lock is not had in 2 s; `status --all-roots`, `attention --all-roots` and `stats` read it and show an entry whose path is gone as `missing`, never removing it.
+WHEN a run starts THE engine SHALL write, best effort, one entry per state root seen on this machine in `~/.tempergraph/index.json` ([LOS-B10](local-observability-store.spec.md), schema version 1) with path, repository name, `repo_id`, `first_seen` and `last_run_at`, under a lock taken with exclusive create, skipping the update and recording it when the lock is not had in 2 s; `status --all-roots`, `attention --all-roots` and `stats` read it and show an entry whose path is gone as `missing`.
 
 - GIVEN an index entry whose folder was deleted WHEN `status --all-roots` runs THEN it shows `missing` and the entry stays
+
+### CST-B17 Gone state roots leave the machine index
+
+WHEN `stats forget` runs without `--check` THE engine SHALL remove from the machine index every entry whose path is gone (shown `missing`, CST-B8) and no other entry; no other verb and no run removes an entry.
+
+- GIVEN an index of two entries, the folder of one deleted WHEN `stats forget` runs THEN the index lists only the entry whose folder exists
+- GIVEN an index whose entries all have folders WHEN `stats forget` runs THEN the index is as it was
+
+### CST-B18 Their rows leave the stats of the month
+
+WHEN `stats forget` removes an entry from the machine index THE engine SHALL remove from the stats of the month in which it runs (UTC) every run row and session row whose `state_root` is that entry's path, except a row an outbox still lists (CST-B12), and change no other row.
+
+- GIVEN this month's stats holding two rows of a deleted root and one row of an existing root WHEN `stats forget` runs THEN only the row of the existing root remains
+- GIVEN a row of a deleted root that an outbox still lists WHEN `stats forget` runs THEN the row stays
+- GIVEN last month's stats holding a row of a deleted root WHEN `stats forget` runs THEN that row stays
+
+### CST-B19 What was or would be removed is printed
+
+WHEN `stats forget` runs THE engine SHALL print each state root it removes with the number of rows it removes for that root; with `--check` it prints the roots and rows it would remove.
+
+- GIVEN a deleted root with three rows in this month's stats WHEN `stats forget` runs THEN it prints that root with 3
+- GIVEN the same state WHEN `stats forget --check` runs THEN it prints that root with 3
+
+### CST-B20 A check changes nothing
+
+WHEN `stats forget --check` runs THE engine SHALL change no file.
+
+- GIVEN a deleted root with three rows in this month's stats WHEN `stats forget --check` runs THEN the index and every stats file are as they were
+- GIVEN the same state WHEN `stats forget` runs next THEN the root and its three rows are removed
+
+### CST-B21 An index in use is left alone
+
+WHEN `stats forget` without `--check` does not get the index lock of CST-B8 in 2 s THE engine SHALL refuse with exit 2 ([CON-B13](contracts.spec.md)), saying that the index is in use and changing no file.
+
+- GIVEN another process holding the index lock for longer than 2 s WHEN `stats forget` runs THEN it exits 2, says that the index is in use, and the index and the stats are as they were
+- GIVEN the same lock WHEN `stats forget --check` runs THEN it prints what it would remove
 
 ### CST-B9 Rows
 
@@ -111,6 +147,11 @@ WHEN a sink's write raises at a run's end THE engine SHALL keep the exit code th
 - CST-AC3 (CST-B14): Readers de-duplicate a fixture with every row delivered twice
 - CST-AC4 (CST-B1): A test with no sink configured asserts no file is created outside the state root and home folder
 - CST-AC5 (CST-B8, CST-B10, CST-B15, CST-B16): The index marks a gone path `missing`, a duplicate sink name is refused, a thin projection is marked, and a stale beat is marked only when it lists a running thread
+- CST-AC6 (CST-B17): After `stats forget` on a fixture whose index lists one state root with a folder and one without, the index lists only the root with a folder
+- CST-AC7 (CST-B18): After `stats forget` on a fixture whose stats of the current month hold rows of a root with a folder and of a root without one, the rows left in those stats are those of the root with a folder and any row an outbox still lists
+- CST-AC8 (CST-B18): `stats forget` leaves the stats of an earlier month as they were
+- CST-AC9 (CST-B19, CST-B20): `stats forget --check` on a fixture whose index lists a root without a folder that has rows in the current month's stats prints that root with its row count and leaves the index and every stats file byte for byte as they were, and `stats forget` then prints the same root and count
+- CST-AC10 (CST-B21): With the index lock held by another process for more than 2 s, `stats forget` exits 2, says that the index is in use and changes no file
 
 ## Open questions
 

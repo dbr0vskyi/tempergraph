@@ -58,7 +58,7 @@ WHEN the engine CLI is called THE engine CLI SHALL accept exactly the verbs `run
 
 ### CLI-B8 Read-only verbs write nothing
 
-WHEN a verb this spec marks read-only runs THE engine CLI SHALL leave the state root unchanged and start no session, except that `status` and `attention` hand a lost runner to the loop ([SIL-B29](runs-without-a-final-exit.spec.md)); the read-only verbs are `run --check`, `rerun --check`, `config`, `status`, `events`, `logs`, `wait`, `attention`, `list`, `graph`, `report`, `validate`, `audit`, `executors`, `facts`, `stats` (but `stats flush` and `stats sync`), `outcome`, `upgrade --check` and `install --check` and `update --check`.
+WHEN a verb this spec marks read-only runs THE engine CLI SHALL leave the state root unchanged and start no session, except that `status` and `attention` hand a lost runner to the loop ([SIL-B29](runs-without-a-final-exit.spec.md)); the read-only verbs are `run --check`, `rerun --check`, `config`, `status`, `events`, `logs`, `wait`, `attention`, `list`, `graph`, `report`, `validate`, `audit`, `executors`, `facts`, `stats` (but `stats flush`, `stats sync` and `stats forget`), `outcome`, `upgrade --check` and `install --check` and `update --check`.
 
 - GIVEN a fixture state root WHEN each read-only verb runs THEN the state root's hash is unchanged and no process starts except the read-only probes of `executors --probe`
 
