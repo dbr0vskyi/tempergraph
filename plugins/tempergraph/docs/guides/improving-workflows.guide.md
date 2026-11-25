@@ -46,7 +46,7 @@ tempergraph improve show <proposal|trial>
 tempergraph improve open <proposal>                     # open the change for your review
 ```
 
-Each trial ends in a recorded result, so you open only changes that measurably help. An opened change writes `Closes #<n>` for each issue of its cluster that lives in the same repository, so merging it closes them, and a finished trial leaves one comment with its decision and figures on each of those issues (none when the machine's autonomy is `record`). After a change merges, the next runs are compared with the old version, and a quality drop reopens the issue.
+Each trial ends in a recorded result, so you open only changes that measurably help. A drafted change may edit a step's prompt and the files your package lists under `step_files` in its `tempergraph.json` (for example `["rules/*.rule.md"]`): the standards and rule files its steps are told to read. A change to any other file of the package is refused as no change. An opened change writes `Closes #<n>` for each issue of its cluster that lives in the same repository, so merging it closes them, and a finished trial leaves one comment with its decision and figures on each of those issues (none when the machine's autonomy is `record`). After a change merges, the next runs are compared with the old version, and a quality drop reopens the issue.
 
 ## 4. Review sessions
 

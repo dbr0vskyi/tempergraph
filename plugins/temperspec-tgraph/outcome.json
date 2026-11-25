@@ -309,7 +309,7 @@
           "id": "ts-set-literal",
           "severity": "warning",
           "verified_by": "check",
-          "text": "Every line of a spec the setup step wrote in words that tie it to a task or a change is reported to the judge as a lead",
+          "text": "Every line of a spec the setup step wrote is reported to the judge as a lead when its words tie it to a task or a change",
           "check_method": "As ts-dis-literal, on the overview and each spec of the setup note's component table",
           "source": "interview",
           "verifier": {
@@ -320,7 +320,7 @@
           "id": "ts-set-wording",
           "severity": "warning",
           "verified_by": "check",
-          "text": "Every line of a spec the setup step wrote with a behaviour sentence over 500 characters, a word two readers could measure differently or a placeholder is reported to the judge as a lead",
+          "text": "Every line of a spec the setup step wrote is reported to the judge as a lead when it holds a behaviour sentence over 500 characters, a word two readers could measure differently or a placeholder",
           "check_method": "As ts-dis-wording, on the overview and each spec of the setup note's component table",
           "source": "interview",
           "verifier": {
@@ -904,7 +904,7 @@
           "id": "ts-dis-wording",
           "severity": "warning",
           "verified_by": "check",
-          "text": "Every line the discovery step added to a spec with a behaviour sentence over 500 characters, a word two readers could measure differently or a placeholder is reported to the judge as a lead",
+          "text": "Every line the discovery step added to a spec is reported to the judge as a lead when it holds a behaviour sentence over 500 characters, a word two readers could measure differently or a placeholder",
           "check_method": "Read the lines the step added to each edited spec: a `WHEN … SHALL` line over 500 characters, a vague word (`fast`, `robust`, `secure`, `intuitive`, `appropriate`, `reasonable`, `correctly`, `properly`, `as expected`) in a behaviour line or scenario, a placeholder (`TODO`, `TBD`, `???`, `<…>`) on any line; report each as a lead, never a failure",
           "source": "interview",
           "verifier": {

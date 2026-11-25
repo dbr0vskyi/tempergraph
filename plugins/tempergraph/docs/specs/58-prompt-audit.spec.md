@@ -20,7 +20,7 @@ WHEN the audit reads a text THE audit SHALL use prompt lint's name reader, share
 
 ### PRA-B7 Reference rules
 
-WHEN references are resolved THE audit SHALL render `prompt-lint` findings from prompt lint, render `ref-missing` (error/high, `ref_missing`) from prompt lint's `lint-ref-missing` for package paths under `prompts/`, `judges/`, `skills/`, `agents/` or `lessons/`, with reason `unreadable` rather than `absent` for a file that cannot be read (F7.2), and fire `ref-resolves-elsewhere` (host, warning/high, `skill_clash`) when a named skill or agent is missing from the workflow's authoring surface but found in another installed plugin (reading `skills/*/SKILL.md` of the newest non-orphaned version of each plugin in Claude Code's plugin cache), or in more than one, a name given as `plugin:skill` that matches being resolved (F4.8).
+WHEN references are resolved THE audit SHALL render `prompt-lint` findings from prompt lint, render `ref-missing` (error/high, `ref_missing`) from prompt lint's `lint-ref-missing` for package paths under `prompts/`, `judges/`, `skills/`, `agents/`, `lessons/` or a top folder of the package's `step_files` ([PKG-B13](88-workflow-package.spec.md)), fire `step-file-missing` (warning/high, `ref_missing`) for a `step_files` pattern that matches no file of the package, with reason `unreadable` rather than `absent` for a file that cannot be read (F7.2), and fire `ref-resolves-elsewhere` (host, warning/high, `skill_clash`) when a named skill or agent is missing from the workflow's authoring surface but found in another installed plugin (reading `skills/*/SKILL.md` of the newest non-orphaned version of each plugin in Claude Code's plugin cache), or in more than one, a name given as `plugin:skill` that matches being resolved (F4.8).
 
 - GIVEN a named file that cannot be read WHEN audited THEN `ref-missing` gives reason `unreadable`
 
@@ -81,6 +81,7 @@ WHEN `audit prompts <workflow>` runs THE audit SHALL print JSON rows instead of 
 - PRA-AC3 (PRA-B6): The name reader is shared with prompt lint and TSA, one function, by a source test
 - PRA-AC4 (PRA-B4): No finding is reported twice across prompt lint, validation, TSA and this spec on a fixture built to raise each once
 - PRA-AC5 (PRA-B1, PRA-B2, PRA-B5, PRA-B11): Fixtures cover a renamed tool, a skill in two plugins, a shared file reported once and the prompts matrix
+- PRA-AC6 (PRA-B7): A fixture package whose `step_files` holds a pattern that matches no file gets one `step-file-missing`, and a prompt that names a missing path under a declared folder gets `lint-ref-missing` while an existing one gets none
 
 ## Open questions
 

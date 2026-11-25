@@ -30,7 +30,7 @@ from tempergraph.improve import params
 from tempergraph.store.layout import now_iso, run_dir
 
 AUTONOMY = ("record", "file", "propose", "trial")
-SIDE = {"prompt": "producer", "lessons": "producer", "limits": "producer", "model": "producer", "tools": "producer",
+SIDE = {"prompt": "producer", "standard": "producer", "lessons": "producer", "limits": "producer", "model": "producer", "tools": "producer",
         "flow": "producer", "brief": "grader", "criterion": "grader", "check": "grader", "judge_model": "grader",
         "outcome": "grader", "weakening": "grader"}
 STATES = ("drafted", "refused", "trialling", "shown_better", "not_shown", "regressed", "aborted", "opened",
@@ -257,6 +257,19 @@ def _source_digest(spec: WorkflowSpec, ref: Any) -> str | None:
     return text
 
 
+def _step_files(before: WorkflowSpec, after: WorkflowSpec) -> dict[str, tuple[bytes, bytes]]:
+    """(before, after) bytes of every file either version of the package declares in `step_files` (PKG-B13); a
+    file one version lacks reads as empty there."""
+    from tempergraph.package.manifest import declared_step_files, step_files
+
+    patterns = dict.fromkeys([*declared_step_files(before.package_root), *declared_step_files(after.package_root)])
+    if not patterns:
+        return {}
+    old = step_files(before.package_root, patterns) if before.package_root else {}
+    new = step_files(after.package_root, patterns) if after.package_root else {}
+    return {p: (old.get(p, b""), new.get(p, b"")) for p in sorted(set(old) | set(new))}
+
+
 @dataclass(kw_only=True)
 class Classified:
     classes: list[str]
@@ -334,6 +347,11 @@ def classify(before: WorkflowSpec, after: WorkflowSpec) -> Classified:
             add("weakening", unit, f"criterion {cid}: verifier moved down {b_.verified_by} to {a_.verified_by}")
     if (before.outcome and before.outcome.statement) != (after.outcome and after.outcome.statement):
         add("outcome", "outcome", "statement")
+    for path, (was, now) in _step_files(before, after).items():
+        if was != now:  # PRP-B14: a file the package declares its steps read is producer text, like a template
+            add("standard", path, "step-read file")
+            was_lines = was.decode("utf-8", "replace").splitlines()
+            added += [ln for ln in now.decode("utf-8", "replace").splitlines() if ln.strip() and ln not in was_lines]
     refusal = None
     for name in sorted(set(before.units) & set(after.units)):
         old = [dataclasses.asdict(x) for x in lessonsmod.load(before, name)]

@@ -281,6 +281,18 @@ class Definition:
                                      f"{tok!r} (made by {produced_by[tok]}), which the judge does not read",
                                      session="judge", item=f"{self.cid(c)}:{tok}")
         self._frontmatter(root)
+        self._step_files(root)
+
+    def _step_files(self, root: Path | None) -> None:
+        """PRA-B7: every `step_files` pattern of the package's manifest matches a file of the package."""
+        from tempergraph.package.manifest import declared_step_files
+
+        if root is None:
+            return
+        for pattern in declared_step_files(root):
+            if not any(p.is_file() for p in root.glob(pattern)):
+                self.add("step-file-missing", None, f"`step_files` pattern {pattern!r} matches no file of the package",
+                         item=pattern, file="tempergraph.json", evidence={"pattern": pattern})
 
     def _frontmatter(self, root: Path | None) -> None:
         if root is None:

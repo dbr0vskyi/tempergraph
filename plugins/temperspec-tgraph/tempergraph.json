@@ -4,6 +4,9 @@
   "entry": "temperspec:workflow",
   "workflow_api": 1,
   "docs": "provisional",
+  "step_files": [
+    "rules/*.rule.md"
+  ],
   "audit": {
     "ignore": [
       {
