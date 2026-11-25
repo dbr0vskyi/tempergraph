@@ -16,6 +16,10 @@ On 2026-11-22 the owner ran release 3's first task (R3-T1.1, cost cap reservatio
 | S6 | The loop records of eleven release 3 runs of the night of 2026-11-22 to 2026-11-23 (`r3-t2-1`, `r3-t2-1a`, `r3-t2-2`, `r3-t2-3`, `r3-t3-1`, `r3-t5-1`, `r3-t5-2`, `r3-t8-1` to `r3-t8-4`), read without starting any new review | Loop logs, review records, findings | each run's `loop.jsonl`, `findings.json`, `improve review show`, `improve backlog`, `attention` |
 | S7 | The defects found by hand in those runs (temperspec backlog rows B22, B23, B24, B40 to B44 and the B19 family) | Reviewers' notes | `plugins/temperspec-tgraph/docs/plans/backlog.plan.md` and its history |
 | S8 | The citation check | Code | `plugins/tempergraph/engine/src/tempergraph/improve/review.py` (`CATALOG`, `check`) |
+| S9 | The batch of runs behind pull request #113 (2026-11-24/25), the defect its reviewer found in the specs those runs wrote, and what the loop filed for the same runs (#114, #117) | Pull request, issues | github.com/dbr0vskyi/tempergraph |
+| S10 | The friction judge's input, the outcome lens and the reviewer's view | Code | `improve/child.py` (`prompt`), `improve/lenses.py` (`decide`), `improve/review.py` (`BRIEF`); specs [SIL-B10, SIL-B13](../specs/16-self-improvement.spec.md), [SRV-B17, SRV-B19](../specs/44-session-review.spec.md), [EVT-B21](../specs/30-run-events.spec.md) |
+| S11 | Where a person's verdict enters the loop | Specs, code | [OUT-B18](../specs/90-run-outcome.spec.md), [FBK](../specs/41-feedback-and-judge-reliability.spec.md) open question on `pr_state`, `improve/causes.py` (`pushback`) |
+| S12 | The proposal class check | Code, spec | `improve/proposals.py` (`classify`, `record`), [PRP-B14](../specs/40-improvement-proposals.spec.md) |
 
 ## Key findings
 
@@ -83,6 +87,28 @@ The fixes of F6 held: no target was skipped by budget, the failed and later sess
 
 `check` (S8) keeps `judge_unread` and `judge_trusts_report` only when the judge read none of the changed files (`changed_read == 0`); the judge of `r3-t5-2` read one of many, so a correct observation at 0.9 was `unsupported`. `judge_shallow` allows only the remedies `brief` and `criterion`, so the same review's `judge_shallow` with remedy `judge_model` was dropped on its remedy class alone. All nine judge observations of `r3-t5-2` were dropped; in the other four runs 19 of 57 were kept.
 
+### F9 A defect in what a workflow produced, found by its reviewer in minutes, is outside what the loop reads `confirmed`
+
+In the runs of S9 a delivery workflow's spec-writing step wrote behaviour specs as a literal account of each task (what changed, which fixture, which unit of the workflow) instead of the general rule. The cause was in the workflow's own text: its spec standard never asked for a general rule, its step prompt pushed toward restating the task's criteria, and no criterion of its judge graded it. Every gate passed, so the runs were clean by every measure the loop has. For the same runs the loop filed process findings (a judge that passed without reading, a repeated check failure) and nothing about the specs.
+
+Reading S10, nothing in the loop looks at the content of what a step wrote:
+
+- The friction judge sees findings and record kinds only (`child.prompt`), never the evidence file.
+- The outcome lens spends no session (SIL-B13): its candidates are the criteria the workflow's own outcome judge graded `UNMET` or `PARTIAL`. A defect that no criterion names cannot be a candidate.
+- The session reviewer sees the step's prompt, assistant text clipped to 600 characters and one input summary per tool call, which for a write is the path only (EVT-B21); "other tool output [is] left out" (SRV-B17). It can see that a step did not follow its prompt (`instruction_ignored`, the dev-mode `conformance[]`), not that a prompt the step followed produced a poor artifact.
+- The catalog (SRV-B19) has producer categories about process (misreading, ignoring, thrashing, wasted turns, bloat) and grader categories about reading (`judge_unread`, `judge_shallow`). None says "the output is below a standard" or "a standard the step was given is graded by no criterion".
+- The prompt audit ([PRA](../specs/58-prompt-audit.spec.md)) checks names, references, tool names, consistency and sizes, not whether a prompt or a standard asks for the right thing.
+
+So the loop measures a workflow against the workflow's own definition of good. When that definition has a hole, the loop has the same hole.
+
+### F10 A person's verdict on the delivered change does not reach the loop `confirmed`
+
+The signals that a `met` run was wrong are a person's ruling, rewind or rerun through the engine (`causes.py`, `pushback`), a person's `label <thread> outcome`, and a finalizer fact that the pull request was closed unmerged (OUT-B18). Even the last is not derived today: FBK's open question records that no run records the pull request it led to (S11). Review comments, requested changes and a person's follow-up commits on the run's pull request are read by nothing. The reviewer's finding on #113 was a textbook escape (a `met` run a later signal contradicts, [OUT-B19](../specs/90-run-outcome.spec.md)) and the loop had no way to see it.
+
+### F11 A proposal cannot change the files a step reads besides its template `confirmed`
+
+The class check (S12) compares the workflow before and after a patch for step template text, limits, model, declared tools, flow, judge brief and model, check code, criteria, the outcome file and lessons. A package also ships files its steps are told to read at run time: standards, rule files, skill bodies, reference documents. A patch to one of those has none of the classes, so `record` refuses it `no_change`. A fix of the kind F9 needed (a sentence in a standard) is out of the proposer's reach even with a cluster behind it; only the criterion half (a new criterion, class `criterion`) is reachable. Skill decomposition is visible only as use counts (`declared_unused`, `skill_not_used`, `subagent_misused`), never as whether the split itself is right.
+
 ## Conclusions
 
 - The loop can see what goes wrong inside sessions (H1, H2, F2) at a low cost: 0.66 USD for 13 sessions at max effort. It cannot see faults that sit in the environment or in files a step wrote outside its view (H5, H6), and it does not explain causes it only counts (H3, H4).
@@ -92,9 +118,14 @@ The fixes of F6 held: no target was skipped by budget, the failed and later sess
   3. A one-paragraph loop summary in the run's exit output and in `attention`, naming the top observations, so a person sees them without asking (F4).
   4. An environment lens: a check FAIL whose evidence is the same before and after the step's change is classed environmental and named as such in the finding (H1, H6), and a write outside the declared folders is a finding (H5).
 - Each is a follow-up for the engine's self-improvement specs (SIL, SRV, PRP); none is built here.
+- The loop judges how a run went, not what it made (F9). Its idea of good is the workflow's criteria, so a hole in them is a hole in the loop, and a proposal could not fill a hole in a standard file even if one were found (F11). Three general changes follow, in order of yield:
+  5. (#123) Read the person's verdict on the delivered change: record the pull request a run led to, and read its review state, review comments and the person's follow-up commits as later outcome signals (an escape), kept as local evidence and harvested as a labelled case (F10). It costs no model and turns the cheapest reviewer there is, the person who merges, into input.
+  6. (#124) An artifact lens: in dev mode and probation, and on an escape, an independent tool-less reader of the change a run delivered (the diff and the files written, scrubbed and datamarked) against the standards the package gives its steps, with two new categories, "output below a stated standard" and "a standard graded by no criterion". Like every review it files nothing alone (ADR-0119); an escape or a cross-run repeat corroborates it, and its remedy is a criterion (grader side) or a standard (producer side).
+  7. (#125) Let proposals reach the files steps read: a package declares its standard and skill files, and a patch to one is classed as a producer change and trialled like a prompt (F11).
 - Overnight (F7, F8), the loop's reach, not its reading, limited it: a run that never reaches a final exit gets no loop, a loop whose reviews all fail reports like one that found nothing, and the check drops the judge observations that matched the worst hand-found defect. The rows that follow are in the engine's [backlog](../plans/backlog.plan.md); what the reviews found about the workflow's steps is in the workflow's own backlog.
 
 ## Open questions
 
+- May an artifact-lens observation that a person's review later confirms file on its own, without a model-free finding? Until answered: no; it corroborates the escape finding, which files by the pattern rule. Owner: owner.
 - Should a dev review's budget be a share of the run's spend rather than a fixed figure? Until answered: the fixed cap, ordered by signal once change 1 is built. Owner: engine owner.
 - Is one run enough to file a cross-session observation, or should it wait for a second run? Until answered: wait for a second run, as filing rules do today. Owner: engine owner. Overnight the same category on the same unit (`instruction_ignored` on `code`) was kept in five runs and filed nowhere, which is evidence for a cross-run count (engine backlog E5).
