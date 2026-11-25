@@ -70,3 +70,10 @@ State words: `queued`, `running`, `paused`, `merged`, `failed`, `skipped`.
 - Blocked on another issue: #13, #15, #33, #41, #49, #66, #77, #80, #83, #84, #87, #89, #90, #91, #93, #110, #111.
 - Live checks that need a scratch repository, a desktop surface or Windows: #40 (watched while the runs of this batch file loop issues through the real `gh`), #42 to #47, #50.
 - Release 4 tracks and `release: later` features with no priority above P3 come after the list above.
+
+## Notes on the drafted requests (sub-agent, 2026-11-25)
+
+- `i10.md` is a first slice of #10 (the `--to pipeline` check, the stamp, the stage of a run); the regressed watch and the `attention` listing need a second request.
+- `i76.md`: the issue is thin (no "Done when"); its three criteria come from the summary and backlog row B11, and the docs-only workflow is left out. Read it against the issue before starting.
+- `i32.md` leaves out the literal "no engine test names a workflow package" (about 20 engine tests use `release-notes` as a fixture name); it could run as `docs only`.
+- `i130.md`, `i14.md`: the live setup run and the pull-request gate guide are left out.
