@@ -25,12 +25,12 @@
       "issues": [
         7
       ],
-      "state": "running",
+      "state": "merged",
       "thread": "temperspec/i7",
       "branch": "tg/temperspec/i7",
-      "cost_usd": null,
-      "exit": null,
-      "note": ""
+      "cost_usd": 8.03,
+      "exit": 0,
+      "note": "merge c55ff552; last stage pushed, no PR (#143)"
     },
     {
       "order": 3,
@@ -247,6 +247,11 @@
       "issue": 139,
       "what": "commit fails on git 2.39 when .tempergraph/ is ignored",
       "commit": "19ac3d42"
+    },
+    {
+      "issue": 143,
+      "what": "last stage's gh pr create refused: absolute --body-file path",
+      "commit": "5e924254"
     }
   ]
 }

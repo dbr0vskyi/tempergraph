@@ -30,6 +30,7 @@ In a cloud session: `cd plugins/tempergraph/engine && python -m pip install -e '
 ## Built by hand
 
 - #139: a run's commit failed on git 2.39 when the repository ignores `.tempergraph/`; no run could start without the fix (commit `19ac3d42`).
+- #143: the last stage never opened the pull request, because the engine refuses the absolute path of its description file (commit `5e924254`).
 
 ## Queue
 
@@ -38,7 +39,7 @@ State words: `queued`, `running`, `paused`, `merged`, `failed`, `skipped`.
 | # | Task id | Issue | What | State | Thread | Cost USD | Note |
 |---|---|---|---|---|---|---|---|
 | 1 | i71 | #71 (and #51) | Code step marks a phase's rows in one edit; the run is also the real run of TS-L2 with a signed-in `gh` | running | temperspec/i71 | | Paused twice at `prepare` on #139, resumed after the fix |
-| 2 | i7 | #7 | Review cap floor: one review of the most signalled session | running | temperspec/i7 | | |
+| 2 | i7 | #7 | Review cap floor: one review of the most signalled session | merged | temperspec/i7 | 8.03 | Outcome met, 21 min, one pause (G3 answered with its default); last stage `pushed`, no pull request (#143) |
 | 3 | i134a | #134 | Split the discovery gate (extract pass, write pass) | queued | | | L: first of two runs |
 | 4 | i134b | #134 | Code step: the join and the quick lane get prompts of their own | queued | | | L: second of two runs |
 | 5 | i114 | #114, #117 | Loop findings: a judge that passes without opening a changed path; the phase check failing | queued | | | Triage the evidence first |
