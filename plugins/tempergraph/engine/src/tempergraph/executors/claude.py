@@ -404,6 +404,10 @@ class ClaudeExecutor:
             return self._probe
         helptext = run_probe([path, "--help"]).stdout
         flags = sorted(f for f in PROBED_FLAGS if f in helptext)
+        if "--strict-mcp-config" not in flags:
+            self._probe = ProbeReport(ok=False, reason="probe_failed", version=m.group(1), path=path,
+                                      facts={"flags": flags, "missing_flags": ["--strict-mcp-config"]})
+            return self._probe
         auth = run_probe([path, "auth", "status"])
         logged_in = False
         try:

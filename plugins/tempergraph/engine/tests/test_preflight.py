@@ -85,6 +85,40 @@ def test_probe_failure_refused() -> None:
     assert "signed_out" in rep.first().message
 
 
+def _claude_registry() -> Registry:
+    from tempergraph.executors.binding import BindingTable
+    from tempergraph.executors.claude import ClaudeExecutor
+
+    r = Registry()
+    r.register(ClaudeExecutor(bindings=BindingTable()))
+    return r
+
+
+def test_ecc_ac16_a_cli_without_strict_mcp_config_is_refused_and_launches_nothing(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from .fixtures import streams as S
+
+    record = tmp_path / "record.json"
+    S.fake_claude(tmp_path, monkeypatch, {"help": "--tools --bare", "record": str(record)})
+    rep = preflight_of(two_step(), _claude_registry())
+    assert not rep.ok
+    first = rep.first()
+    assert first is not None and first.code == "executor-probe-failed"
+    assert "probe_failed" in first.message and "--strict-mcp-config" in first.message
+    assert not record.exists()
+
+
+def test_ecc_ac16_a_cli_that_lists_strict_mcp_config_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from .fixtures import streams as S
+
+    S.fake_claude(tmp_path, monkeypatch, {"help": "--tools --strict-mcp-config", "version": "2.1.329 (Claude Code)"})
+    for v in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
+        monkeypatch.delenv(v, raising=False)
+    rep = preflight_of(two_step(), _claude_registry())
+    assert not [f for f in rep.refusals if f.code == "executor-probe-failed"], rep.refusals
+    assert all(w.code != "executor-version-untested" for w in rep.warnings)
+
+
 def test_qualified_alias_not_in_binding_table() -> None:
     assert "alias-unbound" in codes(preflight_of(with_step(two_step(), "draft", model="claude:deep"), reg("claude")))
 

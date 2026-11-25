@@ -94,7 +94,11 @@ def preflight(spec: WorkflowSpec, registry: Registry, *, judge_override: str | N
         if untested is not None and untested not in rep.warnings:
             rep.warnings.append(untested)
         if not p.ok:
-            rep.refusals.append(Finding("executor-probe-failed", unit, f"executor {name!r}: {p.reason}"))
+            msg = f"executor {name!r}: {p.reason}"
+            missing = p.facts.get("missing_flags") if isinstance(p.facts, dict) else None
+            if missing:
+                msg += "; this CLI lists no " + ", ".join(missing)
+            rep.refusals.append(Finding("executor-probe-failed", unit, msg))
         return p.ok
 
     def judge_of(unit: str, ex: str, j: JudgeSpec, tools: Sequence[str]) -> None:

@@ -312,6 +312,23 @@ def test_probe_signed_out(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     assert not p.ok and p.reason == "signed_out" and p.version == "2.1.329"
 
 
+def test_ecc_ac16_probe_fails_when_help_lists_no_strict_mcp_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    S.fake_claude(tmp_path, monkeypatch, {"help": "--permission-prompts --tools --bare"})
+    p = ClaudeExecutor(bindings=BindingTable()).probe()
+    assert not p.ok and p.reason == "probe_failed"
+    assert p.version == "2.1.329" and p.path
+    assert p.facts["missing_flags"] == ["--strict-mcp-config"]
+
+
+def test_ecc_ac16_probe_passes_when_help_lists_strict_mcp_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    S.fake_claude(tmp_path, monkeypatch, {"help": "--tools --strict-mcp-config"})
+    for v in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
+        monkeypatch.delenv(v, raising=False)
+    p = ClaudeExecutor(bindings=BindingTable()).probe()
+    assert p.ok
+    assert "--strict-mcp-config" in p.facts["flags"]
+
+
 def test_run_step_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     rec = tmp_path / "rec.json"
     S.fake_claude(tmp_path, monkeypatch, {"record": str(rec), "lines": [
