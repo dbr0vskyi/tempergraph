@@ -29,7 +29,7 @@ from typing import Any
 from tempergraph.contracts import SessionOptions, SessionRequest, ViewSet, WorkflowSpec
 from tempergraph.docs import append_jsonl, write_json
 from tempergraph.executors.registry import Registry, default_registry
-from tempergraph.improve import autonomy, filing, params
+from tempergraph.improve import autonomy, escape, filing, params, pr_later
 from tempergraph.improve.codehost import CodeHost, GhCodeHost
 from tempergraph.improve.record import read_findings
 from tempergraph.run.log import Ledger, LiveSink, estimate
@@ -123,7 +123,8 @@ def hand_off(root: Path, spec: WorkflowSpec, task_id: str, thread: str, summary:
             pass
     level = prp.autonomy(spec, os.environ.get("TEMPERGRAPH_AUTONOMY"))
     # PRP-B26: a final exit of a workflow with a proposal to watch reads its pull request, a clean exit included
-    watch = final and not dry_run and not trial and level != "record" and prp.watching(root, spec.name)
+    watch = final and not dry_run and not trial and level != "record" and (
+        prp.watching(root, spec.name) or bool(pr_later.pending(root, spec.name)))  # OUT-B23: a recorded pull request too
     if not (friction or outcome) and depth == "off" and not watch:
         return None
     tid = uuid.uuid4().hex[:16]
@@ -299,6 +300,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     append_jsonl(log, {"ts": now_iso(), "kind": "loop_started", "ticket": t.get("ticket_id"),
                        "lenses": t.get("lenses"), "findings": len(mine), "trigger": t.get("trigger"),
                        "fingerprints": sorted(t.get("fingerprints") or ())})
+    escaped: list[tuple[dict[str, Any], str]] = []  # the escape findings this read recorded, with their run's task
     if t.get("autonomy") != "record" and not t.get("dry_run"):  # PRP-B26, PRP-B27, PRP-B28: best effort (SIL-B1)
         try:
             from tempergraph.improve import proposals as prp
@@ -307,6 +309,16 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
         except Exception as exc:  # noqa: BLE001
             append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "pr_state", "reason": "error",
                                "error": type(exc).__name__})
+        try:  # OUT-B23, OUT-B24, OUT-B25: the pull requests that runs of the workflow recorded
+            for got in pr_later.read(root, wf, host):
+                lines = escape.record(root, wf, got["thread_id"], got["changed"])  # SIL-B33: no model call
+                if lines and t.get("mode") == "stable":  # SIL-B10: the outcome lens, for the earlier run
+                    append_jsonl(log, {"ts": now_iso(), "kind": "loop_lens", "lens": "outcome",
+                                       "trigger": "outcome_escape", "thread": got["thread_id"]})
+                escaped += [(f, got["task"]) for f in lines]
+        except Exception as exc:  # noqa: BLE001
+            append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "pull_request_read", "reason": "error",
+                               "error": type(exc).__name__})
         try:  # PRP-B9: a proposal that has just become merged is compared in the same ticket
             from tempergraph.improve import release
 
@@ -314,7 +326,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
         except Exception as exc:  # noqa: BLE001
             append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "release", "reason": "error",
                                "error": type(exc).__name__})
-    if t.get("watch_only"):  # a read of the pull request and nothing else: no judge, review, filing or ledger row
+    if t.get("watch_only") and not escaped:  # a read of the pull request and nothing else: no judge, review, filing or ledger row
         return {"ticket": t.get("ticket_id"), "thread": thread, "results": [], "cost": {"reported": 0.0,
                                                                                       "estimated_only": 0.0},
                 "acted": {}}
@@ -373,6 +385,10 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
         cands.append(filing.Candidate(finding=f, lens="friction", confidence=j["confidence"] if j else None,
                                       attributed=bool(j and j["attributed"]), request_digest=f.get("request_digest"),
                                       issue_labels=t.get("issue_labels"), review_categories=categories, **context))
+    for f, etask in escaped:  # SIL-B34: an escape finding files by the pattern rule, not by calibration
+        cands.append(filing.Candidate(finding=f, lens="outcome", calibrated=False, request_digest=f.get("request_digest"),
+                                      issue_labels=t.get("issue_labels"), review_categories=categories,
+                                      **{**context, "records": _records(root, wf, etask)}))
     history = _history(root, wf, thread)
     decisions = [filing.decide(c, history, str(t.get("issue_repository") or "")) for c in cands]
     if t.get("autonomy") == "record":  # PRP-B11: findings, evidence and ledger rows only

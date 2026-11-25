@@ -10,7 +10,7 @@ Every workflow states what a good outcome of one run is, and everything that gra
 
 WHEN a package's outcome loads THE engine SHALL give each unit's gate the criteria of its intermediate outcome, `mechanical` set on `check` criteria, and the outcome gate the final criteria.
 
-- GIVEN the minimal release-notes package with final blocker `rn-complete` (judge: "every merged change since the last tag is in the notes or listed as excluded with a reason"), and `draft` blockers `rn-sections` (check: "the notes have the template's four headings in order") and `rn-faithful` (judge: "every entry matches what its merged change did"), both serving `rn-complete` WHEN it loads THEN the `draft` gate has `rn-sections` (mechanical) and `rn-faithful` and the outcome gate has `rn-complete`
+- GIVEN a minimal package with a final blocker `complete` (judge: "every merged change since the last tag is in the notes or listed as excluded with a reason"), and `draft` blockers `sections` (check: "the notes have the template's four headings in order") and `faithful` (judge: "every entry matches what its merged change did"), a step's blockers serving `complete` WHEN it loads THEN the `draft` gate has `sections` (mechanical) and `faithful` and the outcome gate has `complete`
 
 ### OUT-B2 An unverified criterion is shown
 
@@ -110,13 +110,13 @@ WHEN the outcome judge would run THE engine SHALL run it on every run in `dev`, 
 
 ### OUT-B18 The outcome record
 
-WHEN a thread reaches or misses the outcome gate THE engine SHALL write one `OutcomeRecord` as a run-log record `outcome` and the ledger row's `outcome{}` with `revision`; `verdict` (`met` when every blocker is MET, `met_with_open` when blockers are met and a warning is unmet or a criterion is `not_verified`, `not_judged` or `none`, `unmet`, `needs_person` for an UNVERIFIABLE blocker or an unanswered sign-off, `not_reached` when the run ended before the gate); `criteria[]` per final criterion (id, class, trust at run time, status `MET`, `PARTIAL`, `UNMET`, `UNVERIFIABLE`, `n_a`, `signed`, `declined`, `not_verified` or `not_judged`, and grader: check ref, judge binding or the signing `Caller`); `intermediate[]` (per unit and criterion id the final status at the last visit, never text); and `later[]`, appended by later commands (a person's outcome label `label <thread> outcome`, [FBK](feedback-and-judge-reliability.spec.md), a rerun of the same task, a finalizer fact that the pull request was closed unmerged).
+WHEN a thread reaches or misses the outcome gate THE engine SHALL write one `OutcomeRecord` as a run-log record `outcome` and the ledger row's `outcome{}` with `revision`; `verdict` (`met` when every blocker is MET, `met_with_open` when blockers are met and a warning is unmet or a criterion is `not_verified`, `not_judged` or `none`, `unmet`, `needs_person` for an UNVERIFIABLE blocker or an unanswered sign-off, `not_reached` when the run ended before the gate); `criteria[]` per final criterion (id, class, trust at run time, status `MET`, `PARTIAL`, `UNMET`, `UNVERIFIABLE`, `n_a`, `signed`, `declined`, `not_verified` or `not_judged`, and grader: check ref, judge binding or the signing `Caller`); `intermediate[]` (per unit and criterion id the final status at the last visit, never text); and `later[]`, appended by later commands (a person's outcome label `label <thread> outcome`, [FBK](feedback-and-judge-reliability.spec.md), a rerun of the same task, a read of the run's pull request, OUT-B24).
 
 - GIVEN a run stopped before the outcome gate WHEN its record is written THEN the verdict is `not_reached`
 
 ### OUT-B19 Outcome measures
 
-WHEN `outcome show <workflow> [--runs [window]] [--json]` runs, read-only THE engine SHALL print per workflow version and revision the outcome met rate (runs `met` or `met_with_open` over runs that reached the gate, raw and, for judge-graded criteria, corrected by the judge's error, [EVS-B15](eval-suites.spec.md)); the escape rate (runs graded `met` that a later signal contradicts, with `n`, each a harvest candidate for `evals harvest outcome`, [LIF](lifecycle-and-evals.spec.md)); the unverified share (final blockers at `unverified` or `uncalibrated` and the share of runs with any `not_verified`, always printed); upstream agreement (how often a final criterion failed after all its serving criteria passed, low being 20% or more of at least 5 runs); and sign-off load (person-verified criteria per run and their wait, [SUP-B12](supervision-metrics.spec.md)); a measure with no records being `unmeasured` with `n = 0`, never 0; `report`, the monitor and the detail document reading the record ([OBS](observability-and-cost.spec.md)); and promotion reading the met rate, escape rate and unverified share beside the supervision rows ([SUP-B17](supervision-metrics.spec.md)), never promoting to `pipeline` a workflow with a final blocker at `unverified` trust.
+WHEN `outcome show <workflow> [--runs [window]] [--json]` runs, read-only THE engine SHALL print per workflow version and revision the outcome met rate (runs `met` or `met_with_open` over runs that reached the gate, raw and, for judge-graded criteria, corrected by the judge's error, [EVS-B15](eval-suites.spec.md)); the escape rate (runs graded `met` that OUT-B26 counts as escapes, with `n`, each a harvest candidate for `evals harvest outcome`, [LIF-B17](lifecycle-and-evals.spec.md)); the unverified share (final blockers at `unverified` or `uncalibrated` and the share of runs with any `not_verified`, always printed); upstream agreement (how often a final criterion failed after all its serving criteria passed, low being 20% or more of at least 5 runs); and sign-off load (person-verified criteria per run and their wait, [SUP-B12](supervision-metrics.spec.md)); a measure with no records being `unmeasured` with `n = 0`, never 0; `report`, the monitor and the detail document reading the record ([OBS](observability-and-cost.spec.md)); and promotion reading the met rate, escape rate and unverified share beside the supervision rows ([SUP-B17](supervision-metrics.spec.md)), never promoting to `pipeline` a workflow with a final blocker at `unverified` trust.
 
 - GIVEN a workflow with no runs WHEN `outcome show --runs` runs THEN every measure is `unmeasured` with `n = 0`
 
@@ -138,6 +138,38 @@ WHEN `check_against` and validation read an outcome THE engine SHALL report as e
 
 - GIVEN `serves: ["rn-missing"]` WHEN the package validates THEN it reports `outcome-serves-unknown`
 
+### OUT-B23 A recorded pull request is read until it is merged or closed
+
+WHEN a final exit of a workflow is recorded at autonomy `file` or above, outside a dry run, THE loop SHALL read from the code host, as for a proposal's pull request ([PRP-B26, PRP-B28](improvement-proposals.spec.md)), the pull request of each run of the workflow that recorded one ([FIN-B11](finalizer-contract.spec.md)) and that no earlier read found merged or closed.
+
+- GIVEN a recorded pull request that the last read found open WHEN another final exit of the workflow is recorded THEN it is read at that exit
+- GIVEN a recorded pull request that a read found merged, or closed without a merge WHEN another final exit is recorded THEN it is not read
+- GIVEN a code host that cannot be reached WHEN a final exit is recorded THEN no entry is appended to any run's `later[]` and the exit code of the run and the loop's other work are unchanged
+
+### OUT-B24 A read appends counts and kinds
+
+WHEN the loop has read a recorded pull request THE loop SHALL append to the run's `later[]` one entry of the pull request's state (`open`, `merged` or `closed`) and of counts of a person's work (OUT-B25), never text: reviews in each state (`approved`, `changes_requested`, `commented`, `dismissed`), review comments, follow-up commits (those the run's branch did not hold when it ended) and the files the run wrote that those commits changed; an entry equal to the run's last is not appended.
+
+- GIVEN an open pull request with one person's review in state `changes_requested`, two review comments and no follow-up commit WHEN it is read THEN the entry holds `open`, one review in `changes_requested`, two comments, no follow-up commit and no file
+- GIVEN a merged pull request with one follow-up commit that changed two files, one of them written by the run WHEN it is read THEN the entry holds `merged`, one follow-up commit and one file
+- GIVEN a read whose state and counts equal the run's last entry WHEN the loop has read it THEN nothing is appended
+
+### OUT-B25 Only a person's work is counted
+
+WHEN the loop counts the reviews, review comments and commits of a pull request THE loop SHALL count only those of a person: an account the code host does not class as a bot, with review or comment text that does not start with the marker line of the agent comment format of `CONTRIBUTING.md`.
+
+- GIVEN a review, a review comment and a commit of an account the host classes as a bot WHEN they are counted THEN none is counted
+- GIVEN a review comment whose text starts with the marker line of the agent comment format WHEN it is counted THEN it is not counted
+- GIVEN a review, a review comment and a commit of an account the host does not class as a bot, with no marker line WHEN they are counted THEN each is counted
+
+### OUT-B26 What counts as an escape
+
+WHEN `outcome show` and `outcome candidates` count the escapes of a workflow THE engine SHALL count each run graded `met` that has a rerun of its task, a `later[]` entry holding a review in state `changes_requested`, or a `later[]` entry holding a follow-up commit that changed a file the run wrote.
+
+- GIVEN a `met` run that was rerun WHEN `outcome show` runs THEN it is counted as an escape
+- GIVEN a `met` run whose `later[]` holds an entry with one review in state `changes_requested` WHEN `outcome show` runs THEN it is counted as an escape
+- GIVEN a `met` run whose `later[]` entries hold approvals and follow-up commits that changed only files the run did not write WHEN `outcome show` runs THEN it is not counted
+
 ## Acceptance criteria
 
 - OUT-AC1 (OUT-B8, OUT-B9, OUT-B10, OUT-B12, OUT-B22): Every outcome validation code has a fixture `outcome.json` that fails with its own code
@@ -146,10 +178,14 @@ WHEN `check_against` and validation read an outcome THE engine SHALL report as e
 - OUT-AC4 (OUT-B2, OUT-B18, OUT-B19): Every report, `outcome show`, the run detail document and the audit print the unverified criteria and the unverified share; no measure with `n = 0` prints as 0
 - OUT-AC5 (OUT-B5, OUT-B6, OUT-B7, OUT-B20, OUT-B21): The revision classifier labels each change kind from parsed files only, and a weakening by any caller but a person is refused
 - OUT-AC6 (OUT-B17): The outcome lens of self-improvement reads the outcome record and starts no judge of its own when the record has a judged verdict
+- OUT-AC7 (OUT-B23): Against a fake code host, a final exit of a workflow reads the recorded pull request of each run of the workflow that no earlier read found merged or closed and of no other, reads none at autonomy `record` or in a dry run, and with a code host that cannot be reached appends no entry and leaves the exit code of the run as it was
+- OUT-AC8 (OUT-B24): Against a fake code host, a pull request with one review in state `changes_requested`, two review comments and a follow-up commit that changed two files, one of them written by the run, gives one entry holding its state, one review in `changes_requested`, two comments, one follow-up commit, one file and no text, and a second read of the same pull request appends none
+- OUT-AC9 (OUT-B25): Against a fake code host, the reviews, review comments and commits of a bot account and a review comment that starts with the marker line of the agent comment format are in no count of an entry, and those of another account are
+- OUT-AC10 (OUT-B26): A fixture workflow with a `met` run that was rerun, a `met` run whose `later[]` holds an entry with a review in state `changes_requested`, a `met` run whose `later[]` holds an entry with a follow-up commit that changed a file it wrote, and a `met` run with none of these shows exactly the first three as escapes in `outcome show` and `outcome candidates`
 
 ## Open questions
 
 - Should `stable` workflows default to `outcome.judge = on_trigger` to save one judge per run? Until answered: `always`, until cost data exists. Owner: owner.
-- What counts as a later signal that contradicts a `met` grade before labels exist? Until answered: a rerun of the thread (an intervention row with cause `rerun`); person labels and closed pull requests join with FBK and the finalizer facts. Owner: owner.
+- Should a person's outcome label, or a pull request closed without a merge, also count as a later signal that contradicts a `met` grade? Until answered: neither does, as OUT-B26 names the signals that do; a closed pull request is shown by the `closed` state of its entry. Owner: owner.
 - When is upstream agreement low? Until answered: a final criterion that failed after all its serving criteria passed on 20% or more of at least 5 runs. Owner: owner.
 - Is ten replayed runs enough agreement to move a criterion from judge to check? Until answered: ten, a default with no data behind it. Owner: owner.

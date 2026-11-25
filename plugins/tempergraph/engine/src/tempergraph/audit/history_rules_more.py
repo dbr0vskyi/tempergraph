@@ -123,7 +123,13 @@ def context_heavy_step(spec: WorkflowSpec, facts: HistoryFacts) -> list[AuditFin
 
 def outcome_escapes(spec: WorkflowSpec, facts: HistoryFacts) -> list[AuditFinding]:
     graded = [(run, verdict) for run, verdict in facts.outcomes if verdict and verdict != "not_reached"]
-    escapes = [run for run, verdict in graded if verdict in ("met", "met_with_open") and run in facts.rerun_sources]
+    from tempergraph.run import outcome_record
+
+    wf = facts.workflow
+    latest = {f"{wf}/{run}": {"outcome": {"verdict": verdict}} for run, verdict in graded}
+    rows = outcome_record._jsonl(facts.root / "ledger.jsonl") if facts.root else []
+    found = outcome_record.escape_threads(latest, rows, {f"{wf}/{src}" for src in facts.rerun_sources})
+    escapes = [run for run, _ in graded if f"{wf}/{run}" in found]
     if len(graded) < P["min_graded_runs"] or len(escapes) / len(graded) < P["escape_rate"]:
         return []
     return [finding("outcome-escapes", facts, None, f"{len(escapes)} of {len(graded)} graded runs met the outcome "

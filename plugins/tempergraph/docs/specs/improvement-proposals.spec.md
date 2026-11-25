@@ -180,7 +180,7 @@ WHEN the code host reports the draft pull request of an `opened` proposal merged
 
 ### PRP-B28 A pull request that cannot be read leaves its proposal as it was
 
-WHEN the state of a proposal's pull request cannot be read, because the code host cannot be reached or no `gh` is installed or signed in, THE loop SHALL leave the proposal as it was and fail nothing: `pr_state` stays as it was (`unknown` until a read has succeeded), nothing is recorded as merged, and the run's exit code and the loop's other work are unchanged.
+WHEN the state of a proposal's pull request cannot be read, because the code host cannot be reached, no `gh` is installed or signed in, or the host's answer has no known state, THE loop SHALL leave the proposal as it was and fail nothing: `pr_state` stays as it was (`unknown` until a read has succeeded), nothing is recorded as merged, and the run's exit code and the loop's other work are unchanged.
 
 - GIVEN an opened proposal never read and a code host that cannot be reached WHEN a final exit is recorded THEN `pr_state` is `unknown`, the proposal stays `opened` and the run's exit code is unchanged
 - GIVEN an opened proposal whose pull request is merged and no `gh` signed in WHEN a final exit is recorded THEN the proposal stays `opened` with no `merged_at` and the loop's other records are written as before
@@ -207,6 +207,14 @@ WHEN `regressed_after_release` is recorded on a proposal THE engine SHALL reopen
 - GIVEN an issue of the cluster that is in another repository WHEN the regression is recorded THEN it is left as it is
 - GIVEN a code host that cannot be reached WHEN the regression is recorded THEN the record stands and the reopen waits in the outbox of [SIL-B19](self-improvement.spec.md) for the next filing
 
+### PRP-B30 A URL names a pull request
+
+WHEN the engine takes a pull request from a text THE engine SHALL take its code host, repository (owner and name) and number from the text when the whole text is a URL with scheme `http` or `https` whose path is the owner, the name, the word `pull` and the number, in that order, and take none from any other text.
+
+- GIVEN the text `https://code.example/team/app/pull/7` WHEN a pull request is taken from it THEN the code host is `code.example`, the repository `team/app` and the number 7
+- GIVEN the text `https://code.example/team/app/issues/7` WHEN a pull request is taken from it THEN none is taken
+- GIVEN the text `https://code.example/team/app/pull/7/files`, or a text that is no URL WHEN a pull request is taken from it THEN none is taken
+
 ## Acceptance criteria
 
 - PRP-AC1 (PRP-B1, PRP-B2, PRP-B14): Every scenario of PRP-B1 and PRP-B2 is reproduced by the classifier on fixture patches, including a weakening hidden in a reordered file
@@ -219,10 +227,11 @@ WHEN `regressed_after_release` is recorded on a proposal THE engine SHALL reopen
 - PRP-AC8 (PRP-B24): Against a fake code host, the body of the draft pull request of a proposal whose cluster has two issues of the pull request's repository holds a `Closes #<number>` line for each, and the body of one whose cluster has no issue holds no `Closes` line
 - PRP-AC9 (PRP-B25): Against a fake code host, a trial that ends in each decision leaves one comment in the agent comment format on each issue of its cluster, a trial at autonomy `record` leaves none, and an unreachable code host leaves the comment in the outbox with the trial's decision unchanged
 - PRP-AC10 (PRP-B26, PRP-B27): Against a fake code host, a final exit recorded for a workflow with an opened proposal leaves it `opened` with `pr_state` `open` while its pull request is open and `closed` when that was closed without a merge, and sets it `merged` with `merged_at` when that was merged; a proposal just opened shows `pr_state` `unknown`; at autonomy `record`, and in a dry run, the host is not asked
-- PRP-AC11 (PRP-B28): Against a fake code host that cannot be reached, and with no `gh` installed or signed in, an opened proposal whose pull request is merged stays `opened` with the `pr_state` it had and no `merged_at`, and the run's exit code and the loop's other records are the same as without it
+- PRP-AC11 (PRP-B28): Against a fake code host that cannot be reached or answers with no known state, and with no `gh` installed or signed in, an opened proposal whose pull request is merged stays `opened` with the `pr_state` it had and no `merged_at`, and the run's exit code and the loop's other records are the same as without it
 - PRP-AC12 (PRP-B9): Over recorded runs before and after a merge, a proposal whose cost per run rose 30 %, or whose gate first-try pass rate fell 7 points, over its first 10 final exits after the merge holds `regressed_after_release` with the figures before and after; one whose cost rose 5 % with the other figures held holds `held_after_release` and no `regressed_after_release`; one with 9 final exits after its merge, or with only 6 real runs among 10, holds neither; none is compared twice, and a merge seen late is compared on its first 10 exits after it
 - PRP-AC13 (PRP-B29): Against a fake code host, the cluster issues of a regressed proposal that are in the pull request's repository are open again and those of another repository are untouched, and with a host that cannot be reached the record stands and the reopen is in the outbox
 - PRP-AC14 (PRP-B14, PRP-B1, PRP-B3): In a fixture package that declares `step_files`, a patch to a declared file is drafted with the one class `standard` on the producer side, the same patch with a criterion change is refused `mixed_sides`, one that adds a literal path is refused `literal`, and a patch to an undeclared file is refused `no_change`
+- PRP-AC15 (PRP-B30): The URL of a pull request gives its code host, repository and number, and the URL of an issue, a URL with a path after the number and a text that is no URL give no pull request
 
 ## Open questions
 

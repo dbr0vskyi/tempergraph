@@ -1873,6 +1873,11 @@ class EngineNodes:
 
         result = run_finalizer(self.ctx, state)
         self.ctx.log.write("finalize", **result)
+        if result.get("manual_steps") or result.get("outcome") == "error":  # FIN-B8: seen, not only logged
+            import sys
+
+            reason = str(result.get("reason") or "").replace("\n", " ")
+            sys.stderr.write(f"{self.ctx.thread}: finalizer {result.get('outcome')}: {reason}\n")
         return {"finalized": {"done": True, **result}}
 
 
