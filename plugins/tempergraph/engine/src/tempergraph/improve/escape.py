@@ -1,7 +1,7 @@
 """An escape is a model-free finding (SIL-B10, SIL-B33, SIL-B34; OUT-B26).
 
-When a read of a run's pull request makes the run an escape (a `met` run a person sent back), the loop records, with
-no model call, one `outcome_escape` finding of the workflow's side for each unit that wrote a file a follow-up commit
+At each read of a run's pull request that shows the run to be an escape (a `met` run a person sent back; a rerun
+alone does not count), the loop records, with no model call and for each unit that holds none, one `outcome_escape` finding of the workflow's side for each unit that wrote a file a follow-up commit
 changed, or for the `outcome` unit when none did, and a kept review observation of the same unit and run then
 corroborates it (`review.corroborate`). The finding holds the cause code, the unit and the run's keys and request
 digest, never text. The unit that wrote a file is the unit of a step or retry session whose `agent_run` record lists
@@ -33,23 +33,10 @@ def _task(thread: str) -> str:
     return thread.split("/", 1)[1] if "/" in thread else thread
 
 
-def _escaped(rows: Sequence[Mapping[str, Any]], workflow: str, thread: str) -> bool:
-    latest = outcome_record._latest(rows, workflow)
-    reruns = {str(r.get("thread_id")) for r in rows if r.get("kind") == "intervention" and r.get("cause") == "rerun"}
-    return thread in outcome_record.escape_threads(latest, rows, reruns)
-
-
-def _is_new(root: Path, workflow: str, thread: str) -> bool:
-    """The run is an escape now and was none before the read: dropping the thread's last `outcome_later` row
-    leaves it out of the escape set."""
+def _shown(root: Path, workflow: str, thread: str) -> bool:
+    """The pull request has shown the run to be an escape (OUT-B26): a rerun alone does not count."""
     rows = outcome_record._jsonl(root / "ledger.jsonl")
-    if not _escaped(rows, workflow, thread):
-        return False
-    at = max((i for i, r in enumerate(rows) if r.get("kind") == "outcome_later" and r.get("workflow") == workflow
-              and str(r.get("thread_id")) == thread), default=None)
-    if at is None:
-        return False
-    return not _escaped([r for i, r in enumerate(rows) if i != at], workflow, thread)
+    return thread in outcome_record.escape_threads(outcome_record._latest(rows, workflow), rows, set())
 
 
 def _run_row(rows: Iterable[Mapping[str, Any]], workflow: str, thread: str) -> dict[str, Any]:
@@ -85,10 +72,12 @@ def _request_digest(root: Path, workflow: str, task: str) -> str | None:
 
 
 def record(root: Path, workflow: str, thread: str, changed_written: Sequence[str]) -> list[dict[str, Any]]:
-    """The new `outcome_escape` finding lines for the run of `thread`, appended to its findings; none when the read
-    did not make the run an escape or each unit already holds one. `changed_written` is the files the run wrote that
-    a follow-up commit changed (the `changed` of a `pr_later.read` result). Calls `review.corroborate` for the run."""
-    if not _is_new(root, workflow, thread):
+    """The new `outcome_escape` finding lines for the run of `thread`, appended to its findings, one for each unit
+    that wrote a changed file (or the `outcome` unit when none did) and holds none yet; none when the pull request
+    has not shown the run to be an escape or each unit already holds one. Run for every read result, so the finding
+    follows the state. `changed_written` is the files the run wrote that a follow-up commit changed (the `changed` of
+    a `pr_later.read` result). Calls `review.corroborate` for the run."""
+    if not _shown(root, workflow, thread):
         return []
     task = _task(thread)
     row = _run_row(outcome_record._jsonl(root / "ledger.jsonl"), workflow, thread)

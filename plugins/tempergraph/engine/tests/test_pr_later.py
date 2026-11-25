@@ -270,6 +270,27 @@ def test_the_read_asks_for_the_files_of_the_commits_after_the_end_commit_only(tm
     assert host.files_asked == ["bbbbbbb2", "ccccccc3"]
 
 
+def test_read_returns_a_result_for_each_pull_request_it_read_appended_or_not(tmp_path: Path) -> None:
+    # OUT-AC13, task AC 3
+    from tempergraph.improve import pr_later
+
+    root = state(tmp_path)
+    wrote(root, "T-1", "draft", "a.py")
+    segment(root, "T-1", 1)
+    host = pr_host()
+    host.reviews[(REPO, 1)] = [review()]
+    host.commits[(REPO, 1)] = [commit(head(root), []), commit("bbbbbbb2", ["a.py"])]
+    (first,) = pr_later.read(root, "demo", host)
+    assert first["appended"] is True and first["thread_id"] == "demo/T-1" and first["changed"] == ["a.py"]
+    (second,) = pr_later.read(root, "demo", host)
+    assert second["appended"] is False
+    assert second["entry"] == first["entry"] and second["changed"] == first["changed"]
+    assert len(rows(root)) == 1  # no row when the entries are equal
+    host.reviews[(REPO, 1)] = [review(), review("approved")]
+    (third,) = pr_later.read(root, "demo", host)
+    assert third["appended"] is True and len(rows(root)) == 2
+
+
 def test_no_files_are_asked_for_without_a_recorded_end_commit_or_one_the_pull_request_lacks(tmp_path: Path) -> None:
     # OUT-AC11, task AC 4
     root = state(tmp_path)

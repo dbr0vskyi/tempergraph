@@ -131,12 +131,12 @@ def _evidence(root: Path, workflow: str, task: str, reviews: list[dict[str, Any]
 
 def read(root: Path, workflow: str, host: Any) -> list[dict[str, Any]]:
     """Reads each pending pull request and appends an `outcome_later` row for each whose entry differs from its
-    thread's last. Returns `{thread_id, task, pull_request, entry, changed}` for each appended entry, `changed`
+    thread's last, read from the ledger just before the comparison. Returns `{thread_id, task, pull_request, entry,
+    changed, appended}` for each pull request read, `appended` true only when this read wrote the row and `changed`
     being the files the run wrote that a follow-up commit changed. A pull request that cannot be read (an unknown
     state, or a host read that raised) comes back as `{thread_id, task, number, error}`, `error` the type name, and
     the next pull request is read."""
     ledger = Ledger(path=root / "ledger.jsonl")
-    last = _last_entries(_rows(root), workflow)
     out: list[dict[str, Any]] = []
     for item in pending(root, workflow):
         pr, thread, task = item["pull_request"], item["thread_id"], item["task"]
@@ -162,9 +162,9 @@ def read(root: Path, workflow: str, host: Any) -> list[dict[str, Any]]:
                  "comments": sum(1 for c in comments if _person_text(c)), "commits": len(follow),
                  "files": len(changed)}
         _evidence(root, workflow, task, reviews, comments)
-        if entry == last.get(thread):
-            continue
-        ledger.append({"kind": "outcome_later", "thread_id": thread, "workflow": workflow, "entry": entry})
-        last[thread] = entry
-        out.append({"thread_id": thread, "task": task, "pull_request": pr, "entry": entry, "changed": changed})
+        appended = entry != _last_entries(_rows(root), workflow).get(thread)  # the ledger as it is now (OUT-B30)
+        if appended:
+            ledger.append({"kind": "outcome_later", "thread_id": thread, "workflow": workflow, "entry": entry})
+        out.append({"thread_id": thread, "task": task, "pull_request": pr, "entry": entry, "changed": changed,
+                    "appended": appended})
     return out

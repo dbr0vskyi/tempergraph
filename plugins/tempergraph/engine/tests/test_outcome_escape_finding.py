@@ -127,6 +127,28 @@ def test_a_run_that_is_no_escape_gets_no_finding(tmp_path: Path) -> None:  # SIL
     assert escapes(root, "T-1") == [] and escapes(root, "T-2") == []
 
 
+def test_a_run_that_is_an_escape_only_by_a_rerun_gets_no_finding_at_a_read(tmp_path: Path) -> None:
+    # SIL-AC33, task AC 2
+    root = state(tmp_path)
+    make_run(root, "T-1", {"draft": ["a.py"]})
+    Ledger(path=root / "ledger.jsonl").append({"kind": "intervention", "thread_id": "demo/T-1", "cause": "rerun"})
+    process(root, pr_host())  # the pull request shows nothing
+    assert escapes(root, "T-1") == []
+
+
+def test_a_read_of_a_run_already_shown_as_an_escape_records_the_unit_of_a_later_file(tmp_path: Path) -> None:
+    # SIL-AC33, task AC 2
+    root = state(tmp_path)
+    make_run(root, "T-1", {"draft": ["a.py"], "review": ["b.py"]})
+    host = pr_host()
+    host.reviews[(REPO, 1)] = [pr_review()]
+    process(root, host)
+    assert [f["unit"] for f in escapes(root, "T-1")] == [flow.OUTCOME_UNIT]
+    host.commits[(REPO, 1)] = [commit(head(root), []), commit("bbbbbbb2", ["b.py"])]
+    process(root, host)
+    assert sorted(f["unit"] for f in escapes(root, "T-1")) == sorted([flow.OUTCOME_UNIT, "review"])
+
+
 # -- SIL-AC31: the pattern rule alone -----------------------------------------------------------------------------
 
 def three_runs(root: Path, n: int) -> MemoryCodeHost:
