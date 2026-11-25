@@ -177,12 +177,12 @@ WHEN a step session or a retry of it would launch without a server its declared 
 - GIVEN a step declaring `mcp:tracker/get_issue`, a `tracker` server in the operator's own MCP configuration and no scratch folder WHEN it launches THEN no session starts and the attempt fails with a reason naming `tracker`
 - GIVEN the same step and server with a scratch folder WHEN it launches THEN a session starts with a private config that lists `tracker`
 
-### ECC-B24 The MCP isolation probe reads a turn after the servers connect
+### ECC-B24 The MCP isolation probe reads every turn of a session
 
-WHEN P-CC-13 is run THE probe SHALL pass only when, at the second turn of a session launched as ECC-B18 and ECC-B20 say, the tools the session is offered or the size of its context show that it is offered the tools of each MCP server it declares and no tool of any other MCP server.
+WHEN P-CC-13 is run THE probe SHALL pass only when it has read the tools a session is offered or the size of its context at every turn of a session of more than one turn, launched as ECC-B18 and ECC-B20 say, and each reading shows the tools of each MCP server the session declares and no tool of any other MCP server.
 
-- GIVEN an account that has MCP servers and a session launched as ECC-B18 and ECC-B20 say WHEN the probe reads its second turn THEN it finds no tool of an undeclared server and passes
-- GIVEN the same account and a session launched with neither `--strict-mcp-config` nor `ENABLE_CLAUDEAI_MCP_SERVERS=false` WHEN the probe reads its second turn THEN it finds tools of the account's MCP servers and fails
+- GIVEN an account that has MCP servers and a session launched as ECC-B18 and ECC-B20 say WHEN the probe reads every turn THEN no turn shows a tool of an undeclared server and the probe passes
+- GIVEN an account that has MCP servers and a session launched with neither `--strict-mcp-config` nor `ENABLE_CLAUDEAI_MCP_SERVERS=false` WHEN the probe reads every turn THEN a later turn shows tools of the account's MCP servers and the probe fails
 
 ## Acceptance criteria
 
@@ -204,7 +204,7 @@ WHEN P-CC-13 is run THE probe SHALL pass only when, at the second turn of a sess
 - ECC-AC16 (ECC-B21): Against a stand-in `claude` whose `--help` lists no `--strict-mcp-config`, preflight exits 2 with reason `probe_failed` and a message naming the flag, and no session launches; against one that lists it, the probe passes
 - ECC-AC17 (ECC-B22): Against a stand-in operator MCP configuration, a step declaring a server that configuration does not define, or a configuration file that cannot be read, exits 2 at preflight naming the step and each such server with no session started; the same step with every declared server defined passes
 - ECC-AC18 (ECC-B23): Against stand-ins of the operator's MCP configuration and of `claude`, a step launch whose declared server is not defined, or that has no scratch folder, starts no session and fails with a reason naming the server; with the server defined and a scratch folder it starts one
-- ECC-AC19 (ECC-B24): The live probe for P-CC-13 reads the second turn of a step session and of a judge session launched as ECC-B18 and ECC-B20 say and passes, and fails when the launch omits `--strict-mcp-config` and `ENABLE_CLAUDEAI_MCP_SERVERS=false` in an account that has MCP servers
+- ECC-AC19 (ECC-B24): The live probe for P-CC-13 reads every turn of a step session and of a judge session, each of more than one turn and launched as ECC-B18 and ECC-B20 say, and passes; it fails when the launch omits `--strict-mcp-config` and `ENABLE_CLAUDEAI_MCP_SERVERS=false` in an account that has MCP servers
 
 ## Open questions
 

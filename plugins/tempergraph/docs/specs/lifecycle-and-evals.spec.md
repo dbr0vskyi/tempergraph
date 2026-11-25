@@ -45,10 +45,10 @@ WHEN preflight reads an executor's version THE engine SHALL compare it with the 
 
 ### LIF-B17 A confirmed version is a recorded version
 
-WHEN a live probe of an executor is recorded `confirmed` on a CLI version ([ECC-B13](executor-claude-code.spec.md)) THE executor compatibility table SHALL hold that version as recorded: in the executor's `recorded` versions and inside its `range`.
+WHEN a live probe of an executor is recorded `confirmed` on a CLI version ([ECC-B13](executor-claude-code.spec.md)) THE engine SHALL list that version in the executor's `recorded` versions and inside its `range` in the compatibility table.
 
-- GIVEN a probe recorded `confirmed` on `claude` 2.1.332 WHEN a run is preflighted on `claude` 2.1.332 THEN it raises no `executor-version-untested` warning and `executors` shows the version as recorded
-- GIVEN the same table WHEN a run is preflighted on a `claude` version above its `range` THEN it warns `executor-version-untested`
+- GIVEN a probe recorded `confirmed` on `claude` 2.4.0 and a table that lists 2.4.0 in `recorded` and inside `range` WHEN a run is preflighted on `claude` 2.4.0 THEN it raises no `executor-version-untested` warning and `executors` shows the version as recorded
+- GIVEN the same table WHEN a run is preflighted on `claude` 2.5.0, above its `range` THEN it warns `executor-version-untested`
 
 ### LIF-B11 Diagram model
 
@@ -126,4 +126,4 @@ WHEN `evals replay <workflow>` runs THE engine SHALL rerun each judged gate's ju
 - LIF-AC9 (LIF-B4): A package scenario finishes on the reference stand-in and names each executor without one
 - LIF-AC10 (LIF-B7, LIF-B8, LIF-B9): The installer stops without Python 3.11+, `update --json` prints one object per line, and reconcile never deletes an entry
 - LIF-AC11 (LIF-B15, LIF-B16): A score is recorded per judge binding, and a replay reports agreement and each changed status
-- LIF-AC12 (LIF-B17): The shipped compatibility table lists each version that its facts name as confirmed in that executor's `recorded` versions and inside its `range`, and preflight on that version raises no `executor-version-untested` warning
+- LIF-AC12 (LIF-B17): For each executor of the compatibility table, a version its facts name as confirmed is in its `recorded` versions and inside its `range`, and preflight on that version raises no `executor-version-untested` warning
