@@ -311,6 +311,11 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
                                "error": type(exc).__name__})
         try:  # OUT-B23, OUT-B24, OUT-B25: the pull requests that runs of the workflow recorded
             for got in pr_later.read(root, wf, host):
+                if got.get("error"):  # OUT-B31: one record, no text, and the other pull requests are read
+                    append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "pull_request_read",
+                                       "reason": "error", "thread": got["thread_id"], "number": got["number"],
+                                       "error": got["error"]})
+                    continue
                 lines = escape.record(root, wf, got["thread_id"], got["changed"])  # SIL-B33: no model call
                 if lines and t.get("mode") == "stable":  # SIL-B10: the outcome lens, for the earlier run
                     append_jsonl(log, {"ts": now_iso(), "kind": "loop_lens", "lens": "outcome",

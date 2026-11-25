@@ -243,11 +243,43 @@ def test_bots_the_agent_marker_and_earlier_commits_are_not_counted(tmp_path: Pat
     wrote(root, "T-1", "draft", "a.py")
     segment(root, "T-1", 1)
     host = pr_host()
-    host.reviews[(REPO, 1)] = [review(kind="bot"), review("approved")]
+    host.reviews[(REPO, 1)] = [review(kind="bot"), review("approved"),
+                               review("changes_requested", kind="other", text="OTHER-REVIEW")]
     host.review_comments[(REPO, 1)] = [comment(kind="bot"), comment(text=f"{MARKER}\n**Report:** done"),
-                                       comment(text="a person's")]
+                                       comment(text="a person's"), comment(kind="other", text="OTHER-COMMENT")]
     host.commits[(REPO, 1)] = [commit("0000000", ["a.py"]), commit(head(root), ["a.py"]),
-                               commit("bbbbbbb2", ["a.py"], kind="bot"), commit("ccccccc3", ["a.py"])]
+                               commit("bbbbbbb2", ["a.py"], kind="bot"), commit("ccccccc3", ["a.py"]),
+                               commit("ddddddd4", ["a.py"], kind="other")]
     read_one(root, host)
     assert rows(root)[0]["entry"] == {"state": "open", "reviews": {"approved": 1}, "comments": 1, "commits": 1,
                                       "files": 1}
+    evidence = (root / "runs" / "demo" / "T-1" / "evidence" / "pull_request.jsonl").read_text()
+    assert "OTHER-REVIEW" not in evidence and "OTHER-COMMENT" not in evidence
+
+
+def test_the_read_asks_for_the_files_of_the_commits_after_the_end_commit_only(tmp_path: Path) -> None:
+    # OUT-AC11, task AC 4
+    root = state(tmp_path)
+    wrote(root, "T-1", "draft", "a.py")
+    segment(root, "T-1", 1)
+    end = head(root)
+    host = pr_host()
+    host.commits[(REPO, 1)] = [commit("0000000", ["a.py"]), commit(end, ["a.py"]), commit("bbbbbbb2", ["a.py"]),
+                               commit("ccccccc3", ["x.py"])]
+    read_one(root, host)
+    assert host.files_asked == ["bbbbbbb2", "ccccccc3"]
+
+
+def test_no_files_are_asked_for_without_a_recorded_end_commit_or_one_the_pull_request_lacks(tmp_path: Path) -> None:
+    # OUT-AC11, task AC 4
+    root = state(tmp_path)
+    segment(root, "T-1", 1, commit="f" * 40)  # not among the commits of the pull request
+    ledger = Ledger(path=root / "ledger.jsonl")
+    ledger.append({"kind": "run_segment", "thread_id": "demo/T-2", "workflow": "demo", "exit_code": 0,
+                   "pull_request": {"host": "example.test", "repo": REPO, "number": 2}})  # no end commit
+    host = pr_host()
+    for n in (1, 2):
+        host.commits[(REPO, n)] = [commit("aaaaaaa1", ["a.py"]), commit("bbbbbbb2", ["a.py"])]
+    read_one(root, host)
+    assert host.files_asked == []
+    assert all(r["entry"]["files"] == 0 and r["entry"]["commits"] == 0 for r in rows(root))

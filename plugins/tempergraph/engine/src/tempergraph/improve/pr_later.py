@@ -132,7 +132,9 @@ def _evidence(root: Path, workflow: str, task: str, reviews: list[dict[str, Any]
 def read(root: Path, workflow: str, host: Any) -> list[dict[str, Any]]:
     """Reads each pending pull request and appends an `outcome_later` row for each whose entry differs from its
     thread's last. Returns `{thread_id, task, pull_request, entry, changed}` for each appended entry, `changed`
-    being the files the run wrote that a follow-up commit changed."""
+    being the files the run wrote that a follow-up commit changed. A pull request that cannot be read (an unknown
+    state, or a host read that raised) comes back as `{thread_id, task, number, error}`, `error` the type name, and
+    the next pull request is read."""
     ledger = Ledger(path=root / "ledger.jsonl")
     last = _last_entries(_rows(root), workflow)
     out: list[dict[str, Any]] = []
@@ -142,11 +144,12 @@ def read(root: Path, workflow: str, host: Any) -> list[dict[str, Any]]:
         try:
             state = str(host.pull_state(repo, number)["state"])
             if state not in ("open", "merged", "closed"):
-                continue
+                raise ValueError("unknown state")
             reviews = list(host.pull_reviews(repo, number))
             comments = list(host.pull_comments(repo, number))
-            commits = list(host.pull_commits(repo, number))
-        except SKIPPED:
+            commits = list(host.pull_commits(repo, number, after=str(pr.get("commit") or "")))
+        except SKIPPED as exc:
+            out.append({"thread_id": thread, "task": task, "number": number, "error": type(exc).__name__})
             continue
         mine = [r for r in reviews if _person_text(r)]
         follow = [c for c in _follow_ups(commits, str(pr.get("commit") or "")) if c.get("author_kind") == "person"]

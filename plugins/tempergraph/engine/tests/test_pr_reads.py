@@ -35,10 +35,11 @@ def _gh_with(answers: dict[str, str], seen: list[list[str]]) -> GhCodeHost:
 def test_prp_ac11_reviews_are_one_constant_get_with_state_and_author_kind() -> None:
     seen: list[list[str]] = []
     raw = [
-        {"state": "CHANGES_REQUESTED", "body": "fix it", "user": {"login": "ann", "type": "User"}},
+        {"state": "CHANGES_REQUESTED", "body": "fix it", "author_association": "OWNER",
+         "user": {"login": "ann", "type": "User"}},
         {"state": "APPROVED", "body": "", "user": {"login": "ci[bot]", "type": "Bot"}},
         {"state": "COMMENTED", "body": "hm", "user": {"login": "dependabot[bot]", "type": "User"}},
-        {"state": "DISMISSED", "body": "x", "user": {"login": "bob", "type": "User"}},
+        {"state": "DISMISSED", "body": "x", "author_association": "MEMBER", "user": {"login": "bob", "type": "User"}},
         {"state": "PENDING", "body": "draft", "user": {"login": "cy", "type": "User"}},
     ]
     host = _gh_with({"/pulls/7/reviews": _lines(raw)}, seen)
@@ -54,7 +55,8 @@ def test_prp_ac11_reviews_are_one_constant_get_with_state_and_author_kind() -> N
 
 def test_prp_ac11_review_comments_are_one_constant_get() -> None:
     seen: list[list[str]] = []
-    raw = [{"body": "nit", "path": "a.py", "user": {"login": "ann", "type": "User"}},
+    raw = [{"body": "nit", "path": "a.py", "author_association": "COLLABORATOR",
+            "user": {"login": "ann", "type": "User"}},
            {"body": "bot says", "path": "b.py", "user": {"login": "x[bot]", "type": "Bot"}}]
     host = _gh_with({"/pulls/7/comments": _lines(raw)}, seen)
     got = host.pull_comments("acme/notes", 7)
@@ -66,18 +68,17 @@ def test_prp_ac11_review_comments_are_one_constant_get() -> None:
 def test_prp_ac11_commits_hold_author_kind_and_changed_files() -> None:
     seen: list[list[str]] = []
     other = "b" * 40
-    listing = [{"sha": SHA, "author": {"login": "ann", "type": "User"}},
-               {"sha": other, "author": {"login": "x[bot]", "type": "Bot"}}]
+    listing = [{"sha": SHA, "author": {"login": "ann", "type": "User"}, "parents": [{"sha": "1" * 40}]},
+               {"sha": other, "author": {"login": "x[bot]", "type": "Bot"}, "parents": [{"sha": SHA}]}]
     host = _gh_with({
         "/pulls/7/commits": _lines(listing),
         f"/commits/{SHA}": json.dumps({"files": [{"filename": "a.py"}, {"filename": "b/c.py"}]}),
         f"/commits/{other}": json.dumps({"files": [{"filename": "z.py"}]}),
     }, seen)
-    got = host.pull_commits("acme/notes", 7)
-    assert [(c["sha"], c["author_kind"], c["files"]) for c in got] == [
-        (SHA, "person", ["a.py", "b/c.py"]), (other, "bot", ["z.py"])]
+    got = host.pull_commits("acme/notes", 7, after=SHA)
+    assert [(c["sha"], c["author_kind"], c["files"]) for c in got] == [(SHA, "other", []), (other, "bot", ["z.py"])]
     assert all(a[:3] == ["api", "--method", "GET"] for a in seen)
-    assert len(seen) == 3
+    assert len(seen) == 2  # the list, and the one commit after `after`
 
 
 def test_prp_ac11_the_repository_and_the_sha_are_checked() -> None:
@@ -114,7 +115,13 @@ def test_prp_ac11_the_memory_client_answers_from_its_lists_and_fails_when_down()
                           commits={("acme/notes", 3): [commit]})
     assert host.pull_reviews("acme/notes", 3) == [review]
     assert host.pull_comments("acme/notes", 3) == [comment]
-    assert host.pull_commits("acme/notes", 3) == [commit]
+    assert host.pull_commits("acme/notes", 3) == [{**commit, "files": []}]  # no `after`: no files asked for
+    assert host.files_asked == []
+    assert host.pull_commits("acme/notes", 3, after="b" * 40) == [{**commit, "files": []}]  # `after` not in the list
+    second = {"sha": "b" * 40, "author_kind": "person", "files": ["z.py"]}
+    host.commits[("acme/notes", 3)] = [commit, second]
+    assert host.pull_commits("acme/notes", 3, after=SHA) == [{**commit, "files": []}, second]
+    assert host.files_asked == ["b" * 40]
     assert host.pull_reviews("acme/notes", 4) == []
     host.down = True
     for call in (host.pull_reviews, host.pull_comments, host.pull_commits):
