@@ -175,6 +175,10 @@ def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     if run.get("degraded"):  # FLX-AC4: a run that took a fallback is never shown without it
         r["degraded"] = True
         r["degraded_unit"] = (run["degraded"] or {}).get("unit")
+    fin = snap.values.get("finalized") or {}
+    if fin.get("manual_steps") or fin.get("outcome") == "error":  # FIN-B8: the steps a person still has to take
+        r["finalizer"] = {"outcome": fin.get("outcome"), "reason": fin.get("reason") or "",
+                          "manual_steps": list(fin.get("manual_steps") or [])}
     r.update(_settings(state_root, spec, run.get("options")))
     r.update(_lineage(state_root, spec.name, tid, run))
     ws = (snap.values.get("workspace") or {})
