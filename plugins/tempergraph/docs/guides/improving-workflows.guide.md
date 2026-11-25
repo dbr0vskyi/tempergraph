@@ -67,7 +67,7 @@ A review can fail, for example because the signed-in account has used up its all
 
 ## 5. Revise the outcome
 
-Runs also collect evidence that the outcome itself is wrong: a criterion that never fails, one people keep overriding, or a gap that keeps showing up. See it with `tempergraph outcome candidates <workflow>`, then revise the outcome as described in [Authoring workflows](authoring-workflows.guide.md#revise-a-workflow).
+Runs also collect evidence that the outcome itself is wrong: a criterion that never fails, one people keep overriding, or a gap that keeps showing up. When a run's finalizer opened a pull request, the loop also reads a person's review of it through `gh` (counts and kinds only; review text stays in the run's local evidence), and a `met` run that was sent back (rerun, a `changes_requested` review, or a follow-up commit on a file the run wrote) is shown as an escape by `outcome show` and `outcome candidates`. See it with `tempergraph outcome candidates <workflow>`, then revise the outcome as described in [Authoring workflows](authoring-workflows.guide.md#revise-a-workflow).
 
 ## How much babysitting
 
@@ -88,6 +88,7 @@ tempergraph evals run <workflow> --kind check        # no model
 tempergraph evals run <workflow> --kind judge --cap 2
 tempergraph evals report <workflow>
 tempergraph evals harvest <workflow> <gate>          # turn labelled judgements into cases
+tempergraph evals harvest <workflow> outcome         # also a candidate for each escape (no text)
 ```
 
 ## 7. Promote a workflow

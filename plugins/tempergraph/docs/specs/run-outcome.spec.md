@@ -10,7 +10,7 @@ Every workflow states what a good outcome of one run is, and everything that gra
 
 WHEN a package's outcome loads THE engine SHALL give each unit's gate the criteria of its intermediate outcome, `mechanical` set on `check` criteria, and the outcome gate the final criteria.
 
-- GIVEN the minimal release-notes package with final blocker `rn-complete` (judge: "every merged change since the last tag is in the notes or listed as excluded with a reason"), and `draft` blockers `rn-sections` (check: "the notes have the template's four headings in order") and `rn-faithful` (judge: "every entry matches what its merged change did"), both serving `rn-complete` WHEN it loads THEN the `draft` gate has `rn-sections` (mechanical) and `rn-faithful` and the outcome gate has `rn-complete`
+- GIVEN a minimal package with a final blocker `complete` (judge: "every merged change since the last tag is in the notes or listed as excluded with a reason"), and `draft` blockers `sections` (check: "the notes have the template's four headings in order") and `faithful` (judge: "every entry matches what its merged change did"), a step's blockers serving `complete` WHEN it loads THEN the `draft` gate has `sections` (mechanical) and `faithful` and the outcome gate has `complete`
 
 ### OUT-B2 An unverified criterion is shown
 
