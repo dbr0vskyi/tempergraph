@@ -58,6 +58,11 @@ Cost by session (reported USD): triage 1.02 + judge 0.08; three `read_gap` 0.56 
 
 - **First real `opened`**: draft pull request #146, opened by the run's last stage after #143. The run was not hands-free: #139 at `prepare`, and the `.claude/` edit at `code`.
 
+### The account's usage limit at 14:25 UTC (2026-11-25)
+
+- **A usage limit spent the retry budget in two seconds.** Three live runs each had their session refused; the engine recorded `error_kind: model`, started the retry at once, was refused again, and after three refusals i21 ended with exit 5 (`budget`) and the rerun of i141 paused on `retry_budget`. The loop's own reviews already wait for the reset the executor reports (SIL, the review retry); a step does not. A refusal for the usage limit should be its own class that charges no retry and pauses the run with the reset time, so `resume` after the reset is all it needs. Earlier batches met the same ("three needed a retry after a usage-limit hit").
+- Both threads went on with a plain `resume` after the limit was lifted.
+
 ### Baseline suite on `main` (2026-11-25, Python 3.12, macOS)
 
 - 2944 passed, 19 skipped, 1 failed in 14 min 20 s on four workers. The failure is `test_a_run_on_workers_leaves_the_real_folders_as_they_were` (TST-AC7): it compares the real `~/.tempergraph` and the real state root before and after a nested run, and the engine update and two live runs wrote there meanwhile. It is skipped only for a suite a step session runs (`TEMPERGRAPH_SESSION_KEY`). **A gate that runs the suite itself gets no such variable**, so a code gate that has to run `python -m pytest` again (the tree changed after the session's preview) fails this test while its own run writes its log, and so does any suite a person runs beside a live run.
