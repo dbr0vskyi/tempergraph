@@ -100,6 +100,16 @@ Cost by session (reported USD): triage 1.02 + judge 0.08; three `read_gap` 0.56 
 - **The rerun crashed at its start** (#163): `rerun --check` said `ok`, the verb then ended in `UnknownRoutingToken` (`unit 'outcome' routed to None`), with a locked worktree left and nothing on stdout. A rerun of a thread that stopped in the middle of a trip back is not safe. The way out was a new run on top of the first run's branch (`--worktree-base ref:<branch>`), with the review as its task: a pattern that needs no rerun machinery and keeps the first run's commits.
 - The reviewer's read-only count on this machine: 106 of 107 roots of the index are gone folders, 110 run rows and 1,152 session rows of the month would go.
 
+### i144b, code step (2026-11-25)
+
+- **A step session cannot delete a file.** The plan had a row to remove the old plugin module; the session has write and edit tools and no way to delete, tried `git rm`, which no command list allows, and the run paused on `tool_access` (the second pause of this kind today, after the edit under `.claude/`). The operator deleted the file and sent the step back. Remedies: the plan check knows what a code session can do (a row that deletes or moves a file, or one under `.claude/`, is refused or handed to a script), or the code step is given a way to delete a file its row names. Not filed yet: GitHub's issue API was down.
+- **The triage step blocked rightly on a missing request file**: the run was started on a branch that predates the file. A run started with `--worktree-base ref:<branch>` and a request by path needs the path to exist at that ref; `run --check` did not look.
+- The session also asked for `pip install -e`, which a run must never need: the tests use a stand-in install.
+
+### GitHub's partial outage (from 15:47 UTC, 2026-11-25)
+
+- A push was answered with an internal server error at the last stage of i21 (`skipped`), a later push failed once and passed on the second try, and creating an issue or a comment failed for over twenty minutes ("Something went wrong", and an empty answer over REST); the status page said partial system outage. The last stage and the loop's issue filing make one attempt each.
+
 ### Baseline suite on `main` (2026-11-25, Python 3.12, macOS)
 
 - 2944 passed, 19 skipped, 1 failed in 14 min 20 s on four workers. The failure is `test_a_run_on_workers_leaves_the_real_folders_as_they_were` (TST-AC7): it compares the real `~/.tempergraph` and the real state root before and after a nested run, and the engine update and two live runs wrote there meanwhile. It is skipped only for a suite a step session runs (`TEMPERGRAPH_SESSION_KEY`). **A gate that runs the suite itself gets no such variable**, so a code gate that has to run `python -m pytest` again (the tree changed after the session's preview) fails this test while its own run writes its log, and so does any suite a person runs beside a live run.

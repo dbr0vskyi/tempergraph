@@ -83,6 +83,7 @@ State words: `queued`, `running`, `paused`, `merged`, `failed`, `skipped`.
 
 ## GitHub writes that failed and are still owed (the API answered "Something went wrong" from 15:53 UTC, 2026-11-25)
 
+- File an issue for "a step session cannot delete a file" (observations, i144b) once the API answers.
 - File the follow-up issue of #21: its text is `tasks/i21b.issue.md` (title: "The MCP isolation's live probe proves nothing and its runbook row is recorded as passed without a run"; labels `type: bug`, `area: engine`, `priority: P1`, `effort: S`). Then put its number into the table row of `i21b`.
 - Result comment on #21 (merged as `d60ebaac`, outcome met, 14.12 USD, follow-ups in that new issue) and remove its `in progress` label.
 - Claim comment on #148 for run `temperspec:i148` (it also builds #149); assign and label both `in progress`.
