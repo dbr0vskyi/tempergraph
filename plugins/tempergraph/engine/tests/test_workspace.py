@@ -160,7 +160,7 @@ def test_slot_worktrees_are_cut_after_a_checkpoint_and_named_by_their_slot(repo:
 
 
 def test_a_later_attempts_slot_worktrees_are_named_by_their_attempt_and_the_first_stay_untouched(repo: Path) -> None:
-    # WTR-AC14 (WTR-B20, CTS-B11, CTS-B12)
+    # WTR-AC14 (WTR-B20, WSP-B20, WSP-B21)
     from tempergraph import git as gitmod
 
     root = ensure_state_root(state_root_path(repo))

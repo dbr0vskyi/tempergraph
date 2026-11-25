@@ -40,7 +40,7 @@ Source and a one-line summary.
 ```
 
 - **Acceptance criteria** are numbered and copied from the task. None is added, none is dropped, none is reworded so that its meaning shifts. A task that states no acceptance criterion ends blocked.
-- **Gaps** holds one row per gap, `G<n> <kind>: <concept>. <the search that found nothing>`, or the single word `None`. The kinds: `spec gap` (no spec covers the concept), `spec update` (a spec covers it wrongly or partly), `decision needed`, `research needed`. In doubt, list the gap.
+- **Gaps** holds one row per gap, `G<n> <kind>: <concept>. <the search that found nothing>`, or the single word `None`. The concept is the general capability, and the row names the spec that owns its mechanism (or says that none does yet), so that discovery writes the rule there and not where the task's case happened to show. The kinds: `spec gap` (no spec covers the concept), `spec update` (a spec covers it wrongly or partly), `existing behaviour` (the code the task touches already does it and no spec states it), `decision needed`, `research needed`. Triage finds the owning spec in the capability list the run writes at its start (`.tempergraph/capabilities.md`), and names an existing capability over a near-duplicate. In doubt, list the gap.
 - A gap that an existing spec already answers is still listed. Its row ends `Covered by <behaviour id> and <criterion id>`: a behaviour and a criterion that one spec defines once each, the criterion naming the behaviour, both read in the spec. When every gap row says so, the run takes the short discovery visit; any other gap takes the full one.
 - **Route** has two lines. `Deliver` is `docs` when the task asks only for documents (it says so, or it asks for a spec, a decision record or research and no code), otherwise `code`. `Route` is `plan` or `quick` when Gaps is `None`; otherwise `discovery`, or `discovery-only` when `Deliver` is `docs`.
 
@@ -76,6 +76,32 @@ A quick note ends with a Change section, which is the plan of the code step:
 - Each acceptance criterion is one row of the code report, with the id `AC <n>`, and is carried by a test in one of the `Tests` files.
 - Triage writes this note and nothing else.
 
+### Owner decisions (the conversation setting)
+
+A run's note sorts its gaps and lists its owner decisions under every value of the conversation setting: `never`, `blocking` or `always`. A run on `never` takes each default and never pauses; a run on `blocking` or `always` pauses once after triage and asks the owner each of the decisions, each with its default. The note does two more things:
+
+- Each gap row ends with its sort: `Findable` when the code, the documents or a public source can answer the gap (a row that says `Covered by` is findable with no extra word), or `Owner decision` when only the owner can.
+- The section `## Owner decisions` sits between `Gaps` and `Route`. It holds the single word `None`, or one entry for each gap row that ends `Owner decision` and for no other.
+
+```markdown
+## Gaps
+
+- G1 spec gap: idle expiry. Searched `docs/specs/` for "idle", "expiry": nothing. Findable
+- G2 decision needed: the idle limit of a session. The task gives no number. Owner decision
+- G3 spec update: refusal wording. `docs/specs/session.spec.md` states it. Covered by SES-B1 and SES-AC1
+
+## Owner decisions
+
+- G2: How long may a session be idle before a request is refused?
+  - Options: a) 30 minutes; b) 15 minutes; c) 60 minutes
+  - Default: a
+  - If wrong: clients idle for longer than the real limit are signed out too early or too late
+```
+
+- An entry is `- G<n>: <question>` with three items under it: `Options:` (two to four options, each labelled `a)`, `b)`, … and separated by `;`), `Default:` (the label of one of the options) and `If wrong:` (what it costs if the default is wrong). The default is the option that changes the least of what exists and is cheapest to undo.
+- The triage check fails a note that leaves a gap row unsorted, has no `Owner decisions` section, has an owner-decision row with no entry or an entry for a findable row, or has an entry with no question, fewer than two or more than four options, no default, a default that is not one of its options, or no cost.
+- Triage still ends blocked on a task that states no acceptance criterion: nothing in it can take a default.
+
 ## Hand-off (`<task>.handoff.md`)
 
 ```markdown
@@ -97,6 +123,10 @@ Two or three sentences.
 
 - Idle time is measured from the last served request (stated by the task)
 
+## Inferred behaviours
+
+- SES-B2: read in `src/auth/session.py` (lines 40-52); the task asks only for SES-B1
+
 ## Open questions
 
 - None
@@ -110,7 +140,9 @@ Two or three sentences.
 - **Gaps closed** names, for every gap row of the triage note, the document that closes it. A gap that needs no document says why.
 - After a short discovery visit (every gap row of the triage note says `Covered by`), **Gaps closed** names, for every gap row, the cited behaviour id and how it answers the gap, or the id and `Not covered:` with what it leaves out; **Changed documents** is `- None`, and the reading list holds at most 10 items. A `Not covered` line sends the run to the full discovery.
 - **Changed documents** lists every document discovery created or edited, with its path in a code span, or `None`.
-- **Open questions** lists what only a person can decide, with the options. An open question that blocks planning ends the step blocked.
+- **Inferred behaviours** lists each behaviour discovery wrote that neither the task's criteria nor the owner's answers ask for, with where it came from: `read` or `tested` in the code (path and lines), a research note, or a neighbouring spec (its id). Write the section only when there is one. The spec states the rule; its source stays here, so the judge and the owner see which rules were inferred.
+- An `existing behaviour` gap is closed by extracting that capability's rules from the code, as `extraction.rule.md` says, into the spec that owns it, before the task's change is written; each extracted behaviour is an inferred behaviour.
+- **Open questions** lists what only a person can decide, with the options. An open question that blocks planning ends the step blocked. Under the conversation setting `never` no step ends blocked on one: each open question carries the default the step took, written `Until answered: <option>`, and the pull request lists it with that default. Under `blocking` and `always` a step ends blocked on a question that blocks planning and the triage note does not list; an owner decision the triage note lists is closed on its answer or its default and is never an open question.
 - **Reading list** has one item for each file the plan will need: an existing file in a code span, the line ranges or ids that matter in brackets, a colon and one line on why. A hand-off with none is a finding, except in a run that ends after discovery. The plan starts from this list and opens another file only for what the list does not answer.
 
 ## Code report (`<task>.report.md`)
@@ -161,6 +193,17 @@ Written once, by the run that finds a repository with no overview spec.
 - Tests: `pytest`
 - Lint: `ruff check src tests`
 
+## Evidence
+
+| Behaviour | Basis | Code | Test |
+|---|---|---|---|
+| SES-B1 | tested | `src/auth/session.py:10-60` | `tests/test_session.py::test_idle_session_refused` |
+| SES-B2 | read | `src/auth/session.py:62-80` | - |
+
+## Anomalies
+
+- `src/auth/session.py:90-95`: a refresh resets the idle time only for some clients; no test pins it, so no behaviour states it
+
 ## Not covered
 
 - `scripts/`: one-off maintenance scripts, no behaviour anyone depends on
@@ -168,4 +211,6 @@ Written once, by the run that finds a repository with no overview spec.
 
 - **Components** has one row per spec the setup step wrote, the overview first, each with its path in a code span and the code it describes.
 - **Commands** lists the repository's own commands for tests, lint and types, as its README or build files give them, or `None found`.
-- **Not covered** lists every part of the code base that got no spec, with the reason, or `None`.
+- **Evidence** has one row per behaviour of every spec the setup step wrote: its id, its basis (`tested` when a test asserts it, `read` when the code was read on its whole path; `extraction.rule.md`), the code as `` `<path>:<from>-<to>` `` and, for `tested`, the test in a code span. The setup check confirms each row's files exist and its lines are inside them.
+- **Anomalies** lists suspected bugs and rules only a name, comment or document states, each with its path and lines, or `None`. None of them is a behaviour; each is a candidate issue for the owner.
+- **Not covered** lists every part of the code base that got no spec, with the reason, or `None`. A part read only in part (the extraction budget) is listed as partly covered.

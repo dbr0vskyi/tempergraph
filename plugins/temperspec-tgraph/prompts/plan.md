@@ -38,5 +38,4 @@ The task:
 ## What to hand over
 
 - `plan`: the path of the plan.
-
 - `complexity`: the same word as the plan's front matter.

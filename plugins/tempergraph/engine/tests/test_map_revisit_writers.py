@@ -1,5 +1,5 @@
 """A writing concurrent map entered a second time: each visit cuts item worktrees and branches of its own (`--i<n>-<item>`),
-leaves the earlier visits' as they are, and merges only its own (MAP-AC10 to MAP-AC14, WTR-AC13), on scripted executors and
+leaves the earlier visits' as they are, and merges only its own (WSP-AC24, WSP-AC25, WSP-AC28, WSP-AC29, WTR-AC13), on scripted executors and
 scratch git repositories."""
 
 from __future__ import annotations
@@ -68,7 +68,7 @@ def valid_branch(repo: Path, name: str) -> None:
 
 
 def test_a_later_visit_cuts_items_of_its_own_and_keeps_the_first_visits(repo: Path) -> None:
-    # WTR-AC13 (WTR-B20), MAP-AC13 (MAP-B15, WTR-B24), AC 2
+    # WTR-AC13 (WTR-B20), WSP-AC28 (WSP-B21, WTR-B24), AC 2
     root = ensure_state_root(state_root_path(repo))
     rec = prepare_workspace("demo/T-7", resolve_workspace(two_step(), repo, task_id="T-7"), WorktreeDecl(), root)
     run_path = Path(rec.path)
@@ -105,14 +105,14 @@ def test_a_later_visit_cuts_items_of_its_own_and_keeps_the_first_visits(repo: Pa
 
 
 def test_a_trip_back_runs_the_second_visit_in_worktrees_of_its_own_and_merges_only_them(repo: Path) -> None:
-    # MAP-AC10 (MAP-B14), MAP-AC11 (MAP-B14), MAP-AC13 (MAP-B15), MAP-AC14 (MAP-B16), WTR-AC13 (WTR-B20), AC 3, AC 4
+    # WSP-AC24 (WSP-B20), WSP-AC28 (WSP-B21), WSP-AC29 (WSP-B22), WTR-AC13 (WTR-B20), AC 3, AC 4
     run_path = worktrees_root(repo) / "demo--M-1"
     ex = Revisit(run_path, repo, judges={"join.None": [BACK]})
     spec = writing()
     out = go(repo, spec, ex)
     assert out.exit_code is ExitCode.FINISHED, out.message
     (newest, *_) = git(repo, "log", "--format=%H", "--grep=checkpoint before phase", "--end-of-options", RUN).split()
-    for item in ("p1", "p3"):  # MAP-AC10: its own worktree and branch, cut at the checkpoint before the visit
+    for item in ("p1", "p3"):  # WSP-AC24: its own worktree and branch, cut at the checkpoint before the visit
         s = ex.first_session(2, item)
         assert s["workdir"] == worktrees_root(repo) / f"demo--M-1--i2-{item}"
         assert s["head"] == newest == s["run_head"]
@@ -121,11 +121,11 @@ def test_a_trip_back_runs_the_second_visit_in_worktrees_of_its_own_and_merges_on
     for item in ("p1", "p2"):
         assert ex.first_session(1, item)["workdir"] == worktrees_root(repo) / f"demo--M-1--i-{item}"
     assert ex.first_session(2, "p1")["workdir"] != ex.first_session(1, "p1")["workdir"]
-    for item in ("p1", "p3"):  # MAP-AC11: what the run branch held when the visit started
+    for item in ("p1", "p3"):  # WSP-AC24: what the run branch held when the visit started
         s = ex.first_session(2, item)
         assert '"p3"' in s["list"] and "p2.txt" in s["files"] and "p1.txt" in s["files"]
     assert ex.first_session(2, "p3")["files"] == ["p1.txt", "p2.txt"]  # no file of a first-visit item branch's own work
-    for item in ("p1", "p2"):  # MAP-AC13: the first visit's branches and worktrees stay as they were
+    for item in ("p1", "p2"):  # WSP-AC28: the first visit's branches and worktrees stay as they were
         assert git(repo, "rev-parse", f"{RUN}--i-{item}").strip() == ex.first_heads[item]
         assert (worktrees_root(repo) / f"demo--M-1--i-{item}").is_dir()
     children = thread_values(repo, spec, "M-1")["workspace"]["children"]
@@ -139,7 +139,7 @@ def test_a_trip_back_runs_the_second_visit_in_worktrees_of_its_own_and_merges_on
     assert [m[1] for m in merges] == ["Merge map item p1 of phase", "Merge map item p2 of phase",
                                       "Merge map item p1 of phase", "Merge map item p3 of phase"]
     assert [m[0].split()[1] for m in merges[2:]] == [git(repo, "rev-parse", f"{RUN}--i2-{i}").strip()
-                                                     for i in ("p1", "p3")]  # MAP-AC14: the second visit's own heads
+                                                     for i in ("p1", "p3")]  # WSP-AC29: the second visit's own heads
     assert not {m[0].split()[1] for m in merges[2:]} & {ex.first_heads["p1"], ex.first_heads["p2"]}
     for name in ("p1.txt", "p2.txt", "p1-v2.txt", "p3.txt"):
         assert (run_path / name).exists(), name
@@ -152,7 +152,7 @@ def answer(repo: Path, spec: Any, ex: Revisit, item: str, decision: str) -> Any:
 
 
 def test_a_second_visit_paused_on_a_spent_budget_resumes_in_its_own_worktree(repo: Path) -> None:
-    # MAP-AC12 (MAP-B14), AC 3
+    # WSP-AC25 (WSP-B20), AC 3
     run_path = worktrees_root(repo) / "demo--M-1"
     spec = writing()
     ex = Revisit(run_path, repo, judges={"join.None": [BACK]}, second={"phase.p1": [UNMET, UNMET],

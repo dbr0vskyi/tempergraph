@@ -16,6 +16,10 @@ Two or three sentences.
 
 - Idle time is measured from the last served request (stated by the task)
 
+## Inferred behaviours
+
+- SES-B2: read in `src/auth/session.py` (lines 40-52); the task asks only for SES-B1
+
 ## Open questions
 
 - None

@@ -18,7 +18,7 @@ HANDOFF_HEADINGS = ("Problem", "Gaps closed", "Changed documents", "Decisions", 
 PLAN_HEADINGS = ("0. Hand-off", "1. Requirements", "2. Phases", "3. Verification", "4. Docs to update")
 REPORT_HEADINGS = ("Verification", "Deviations")  # the quick lane adds `## Rows` before them (no plan to mark)
 QUICK_REPORT_HEADINGS = ("Rows", *REPORT_HEADINGS)
-SETUP_HEADINGS = ("Components", "Commands", "Not covered")
+SETUP_HEADINGS = ("Components", "Commands", "Evidence", "Anomalies", "Not covered")
 # The block the prepare script keeps in the project-context file, between these two lines.
 CONTEXT_START = "<!-- temperspec:start -->"
 CONTEXT_END = "<!-- temperspec:end -->"
@@ -700,3 +700,32 @@ def parse_report(text: str) -> dict[str, str]:
         if got.get("row"):
             out[got["row"]] = got.get("status", "").strip("*` ").lower()
     return out
+
+
+INVENTORY_PURPOSE_MAX = 300
+
+
+def inventory(specs: Sequence[tuple[str, str]]) -> str:
+    """The capability list: for each spec (path, text), its path, its title, the first sentence of its Purpose (or
+    its earlier layout's Overview) and its behaviour headings, without statements or scenarios. Generated from the
+    specs, never edited by hand (documents rule 3), so triage and discovery can find the spec that owns a rule."""
+    out = ["# Capabilities", "",
+           "Generated from the repository's specs at the start of the run. Do not edit: change a spec instead.", ""]
+    for path, text in specs:
+        title = next((ln[2:].strip() for ln in text.splitlines() if ln.startswith("# ")), path)
+        found = sections(text)
+        body = found.get("Purpose") or next((v for k, v in found.items() if k.lower().endswith("overview")), [])
+        para: list[str] = []
+        for ln in body:
+            if ln.strip():
+                para.append(ln.strip())
+            elif para:
+                break
+        purpose = " ".join(para)
+        first = re.split(r"(?<=[.!?])\s", purpose, maxsplit=1)[0][:INVENTORY_PURPOSE_MAX]
+        out += [f"## `{path}`: {title}", ""]
+        if first:
+            out += [first, ""]
+        heads = [f"- {m.group(1)}{m.group(2).rstrip()}" for m in map(BEHAVIOUR_HEAD.match, text.splitlines()) if m]
+        out += (heads or ["- (no behaviours)"]) + [""]
+    return "\n".join(out)

@@ -92,7 +92,7 @@ WHEN an outcome finding comes from a judge with no calibration score for the gat
 
 ### SIL-B17 The loop child
 
-WHEN the loop child claims a ticket THE loop child SHALL run one friction judge session on the run's judge executor, on the run setting `loop_model` (default `medium`, [RST-B18, RST-B19, RST-B20, RST-B21](80-run-settings-and-overrides.spec.md)) at the run setting `loop_effort` (default `max`, because the loop reads session logs and the owner keeps it on the medium tier) for 1800 s, over the findings' metadata and the segment's record kinds and never the evidence file, then run the session review when planned, decide and file each finding, write `loop_started`, `loop_judged`, `issue_filed`, `issue_commented`, the review records (`review_planned`, `review_session`, `review_skipped`, `review_done`, `review_failed`) and `loop_summary` (SIL-B22) and, at autonomy `propose` or `trial`, `loop_proposed`, `loop_trialled`, `loop_opened` and `loop_skipped` ([PRP-B23](40-improvement-proposals.spec.md)) to the thread's `loop.jsonl`, and add one `loop` ledger row with its cost.
+WHEN the loop child claims a ticket THE loop child SHALL run one friction judge session on the run's judge executor, on the run setting `loop_model` (default `medium`, [RST-B18, RST-B19, RST-B20, RST-B21](80-run-settings-and-overrides.spec.md)) at the run setting `loop_effort` (default `max`, [the decision record](../adr/the-loop-thinks-at-max-effort-on-the-medium-tier.adr.md)) for 1800 s, over the findings' metadata and the segment's record kinds and never the evidence file, then run the session review when planned, decide and file each finding, write `loop_started`, `loop_judged`, `issue_filed`, `issue_commented`, the review records (`review_planned`, `review_session`, `review_skipped`, `review_done`, `review_failed`) and `loop_summary` (SIL-B22) and, at autonomy `propose` or `trial`, `loop_proposed`, `loop_trialled`, `loop_opened` and `loop_skipped` ([PRP-B23](40-improvement-proposals.spec.md)) to the thread's `loop.jsonl`, and add one `loop` ledger row with its cost.
 
 - GIVEN a ticket WHEN the child ends THEN `loop.jsonl` holds `loop_started` and `loop_judged`, and the ledger holds one `loop` row with its cost
 
@@ -140,7 +140,7 @@ WHEN a finding files THE loop SHALL file engine and `executor:<name>` findings t
 
 ### SIL-B2 De-duplication by cause
 
-WHEN a finding's fingerprint (side, workflow, leading cause, step) matches an open issue's hidden line THE loop SHALL add a "seen again" comment instead of a new issue, and retry a failed search once, then file anyway and record why.
+WHEN a finding's fingerprint (side, workflow, leading cause, step) matches an open issue's hidden line, or its cause matches the issue's cause line ([ISS-B7](loop-issues.spec.md)), THE loop SHALL add a "seen again" comment instead of a new issue, and retry a failed read of the issues once, then file anyway and record why.
 
 - GIVEN an open issue with the same fingerprint WHEN the finding files THEN one comment is added and no issue is created
 

@@ -2,8 +2,8 @@
   "schema_version": 1,
   "engine_version": "0.2.0",
   "workflow_api": 1,
-  "workflow_version": "0.1.0+fd0d5bbcc81d",
-  "docs_digest": "669685cd37b93b2cc4e49659568d94482f8324cdcf1f94d10b66f1364eccea1e",
+  "workflow_version": "0.1.0+3dfbfdc4b209",
+  "docs_digest": "4e45de19bc0e2b7b014b583b32393cb23dd20a1d008aef0f0c57dae9c81184a9",
   "shape_digest": "a6e71e8b896a9e04ac82f04af3be0074c4794dbf2460ca321e994ef322a78038",
   "entries_applied": [
     {
@@ -69,6 +69,7 @@
     "outcome-unverified-blocker|discovery_short|ts-dsh-answers|outcome.json",
     "outcome-unverified-blocker|discovery|ts-dis-behaviour|outcome.json",
     "outcome-unverified-blocker|discovery|ts-dis-gaps|outcome.json",
+    "outcome-unverified-blocker|discovery|ts-dis-general|outcome.json",
     "outcome-unverified-blocker|expand|ts-exp-design|outcome.json",
     "outcome-unverified-blocker|outcome|ts-accepted|outcome.json",
     "outcome-unverified-blocker|outcome|ts-spec-sync|outcome.json",
@@ -101,10 +102,10 @@
     "validate:template-key-not-on-every-path|code||",
     "validate:template-key-not-on-every-path|discovery||"
   ],
-  "outcome_revision": 19,
+  "outcome_revision": 21,
   "baseline": {
     "error": 0,
     "warning": 38
   },
-  "stamped_at": "2026-11-25T05:03:30.592Z"
+  "stamped_at": "2026-11-25T09:09:03.362Z"
 }

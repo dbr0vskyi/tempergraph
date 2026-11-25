@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import tomllib
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -103,6 +104,31 @@ def _object(path: Path) -> dict[str, Any] | Finding:
     return data
 
 
+def _step_pattern(p: Any) -> bool:
+    return isinstance(p, str) and bool(p.strip()) and not p.startswith(("/", "\\")) and ".." not in p.split("/")
+
+
+def step_files(package_path: Path, patterns: Iterable[str]) -> dict[str, bytes]:
+    """PKG-B13: the files a package declares that its steps read at run time, by package-relative path."""
+    out: dict[str, bytes] = {}
+    root = Path(package_path)
+    for pattern in patterns:
+        if not _step_pattern(pattern):
+            continue
+        for p in sorted(root.glob(pattern)):
+            if p.is_file():
+                out[p.relative_to(root).as_posix()] = p.read_bytes()
+    return out
+
+
+def declared_step_files(package_path: Path | None) -> tuple[str, ...]:
+    """The `step_files` patterns of a package's `tempergraph.json`, or none when it cannot be read."""
+    if package_path is None:
+        return ()
+    got = read_manifest(Path(package_path))
+    return () if isinstance(got, list) else tuple(got.step_files)
+
+
 def read_manifests(package_path: Path) -> Manifests | list[Finding]:
     """Step 1 of PKG-B15, PKG-B16, PKG-B17: both manifests, the plugin name is the workflow name plus `-tgraph`,
     `schema_version` known; no import, no model."""
@@ -138,7 +164,12 @@ def read_manifests(package_path: Path) -> Manifests | list[Finding]:
     audit = engine.get("audit", {})
     if not isinstance(audit, dict):
         out.append(_err("manifest", "audit must be an object, such as {\"ignore\": [...]} (AUD-B14)"))
-    unknown = set(engine) - {"schema_version", "name", "entry", "workflow_api", "docs", "surfaces", "audit"}
+    step_files = engine.get("step_files", [])
+    if not isinstance(step_files, list) or not all(_step_pattern(p) for p in step_files):
+        out.append(_err("manifest", "step_files must be a list of package-relative glob patterns, such as "
+                        "[\"rules/*.rule.md\"], with no absolute path and no `..`"))
+    unknown = set(engine) - {"schema_version", "name", "entry", "workflow_api", "docs", "surfaces", "audit",
+                             "step_files"}
     if unknown:
         out.append(_err("manifest-field-unknown", f"tempergraph.json fields {sorted(unknown)} are unknown "
                         "(the version comes from plugin.json)", "warning"))
@@ -146,7 +177,7 @@ def read_manifests(package_path: Path) -> Manifests | list[Finding]:
         return out
     return Manifests(plugin=plugin, engine=PackageManifest(
         schema_version=1, name=str(name), entry=str(entry), workflow_api=int(api or 0), docs=str(docs),
-        surfaces=dict(surfaces), audit=dict(audit)))
+        surfaces=dict(surfaces), audit=dict(audit), step_files=tuple(step_files)))
 
 
 def read_manifest(package_path: Path) -> PackageManifest | list[Finding]:

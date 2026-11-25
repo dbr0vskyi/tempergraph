@@ -26,9 +26,10 @@ WHEN a proposal is recorded THE engine SHALL write `improve/proposals/<id>.json`
 
 ### PRP-B14 Change classes
 
-WHEN a patch is classified THE engine SHALL load the workflow before and after it from a scratch copy and compare them by meaning, so a reformatted or reordered file is classified by what changed and a patch with no change in meaning is refused `no_change`: producer classes `prompt` (a step's template text or tools block), `lessons` ([LSN](42-workflow-lessons.spec.md)), `limits` (timeout, retry budget or idle limit), `model` (alias or executor), `tools` (declared tools, MCP tools, skills or command prefixes) and `flow` (a route arm, a split into passes, a new unit); grader classes `brief`, `criterion` (text, a new criterion, a method), `check` (code or declared commands), `judge_model`, `outcome` (the outcome file, a verifier moved up the ladder with its evidence, [OUT](90-run-outcome.spec.md)) and `weakening` (a criterion removed, a severity lowered from blocker, a verifier moved down the ladder, a check that passes on a fixture where it failed before, a judge view set widened, or a budget raised above 2×).
+WHEN a patch is classified THE engine SHALL load the workflow before and after it from a scratch copy and compare them by meaning, so a reformatted or reordered file is classified by what changed and a patch with no change in meaning is refused `no_change`: producer classes `prompt` (a step's template text or tools block), `standard` (a file the package declares in `step_files`, [PKG-B13](88-workflow-package.spec.md), whose added lines the literals check of PRP-B3 reads too; a changed file the package does not declare is no class), `lessons` ([LSN](42-workflow-lessons.spec.md)), `limits` (timeout, retry budget or idle limit), `model` (alias or executor), `tools` (declared tools, MCP tools, skills or command prefixes) and `flow` (a route arm, a split into passes, a new unit); grader classes `brief`, `criterion` (text, a new criterion, a method), `check` (code or declared commands), `judge_model`, `outcome` (the outcome file, a verifier moved up the ladder with its evidence, [OUT](90-run-outcome.spec.md)) and `weakening` (a criterion removed, a severity lowered from blocker, a verifier moved down the ladder, a check that passes on a fixture where it failed before, a judge view set widened, or a budget raised above 2×).
 
 - GIVEN a weakening hidden in a reordered file WHEN classified THEN `weakening` is set
+- GIVEN a package that declares `standards/*.md` in `step_files` WHEN a patch adds a sentence to `standards/notes.md` THEN it is class `standard` on the producer side, and WHEN the same sentence goes to an undeclared file THEN it is refused `no_change`
 
 ### PRP-B15 Widening tools from grants
 
@@ -135,8 +136,8 @@ WHEN `improve open <proposal>` runs, or a trial ends `shown_better` at autonomy 
 
 WHEN the engine opens a proposal's draft pull request (PRP-B8) THE engine SHALL write `Closes #<n>` in its body for each issue of the proposal's cluster that is in the pull request's repository.
 
-- GIVEN a proposal whose cluster came from issue #12 of the pull request's repository WHEN `improve open` runs THEN the pull request's body holds `Closes #12`
-- GIVEN a cluster whose issues are #12 and #19 of that repository WHEN the pull request opens THEN the body holds `Closes #12` and `Closes #19`
+- GIVEN a proposal whose cluster came from an issue `n` of the pull request's repository WHEN `improve open` runs THEN the pull request's body holds `Closes #n`
+- GIVEN a cluster whose issues are `n` and `m` of that repository WHEN the pull request opens THEN the body holds `Closes #n` and `Closes #m`
 - GIVEN a cluster with no issue WHEN the pull request opens THEN the body holds no `Closes` line
 - GIVEN a proposal of the loop at autonomy `trial` whose trial ends `shown_better` WHEN its pull request opens THEN the body holds `Closes #<n>` for the cluster's issue
 
@@ -144,7 +145,7 @@ WHEN the engine opens a proposal's draft pull request (PRP-B8) THE engine SHALL 
 
 WHEN a trial of a proposal ends at autonomy `file` or above THE engine SHALL post its result as one comment on each issue of the proposal's cluster, in the agent comment format of `CONTRIBUTING.md` (section 5.1) with the marker `<!-- tg-agent: kind=result agent=loop -->`, holding the decision and the figures of the trial report of PRP-B8 and no run text.
 
-- GIVEN a trial that ends `shown_better` on a cluster whose issue is #12 WHEN it ends THEN issue #12 gains one comment that starts with the marker line, ends with the generated-by footer and names `shown_better`
+- GIVEN a trial that ends `shown_better` on a cluster whose issue is `n` WHEN it ends THEN issue `n` gains one comment that starts with the marker line, ends with the generated-by footer and names `shown_better`
 - GIVEN a trial that ends `not_shown`, `regressed` or `aborted` WHEN it ends THEN the issue gains one comment that names that decision
 - GIVEN a cluster of two issues WHEN a trial ends THEN each issue gains one comment
 - GIVEN autonomy `record` WHEN a trial ends THEN no comment is made
@@ -202,7 +203,7 @@ WHEN the first 10 final exits of real runs after a proposal's merge are recorded
 
 WHEN `regressed_after_release` is recorded on a proposal THE engine SHALL reopen the issues of the proposal's cluster that are in the pull request's repository, the ones the merge closed (PRP-B24).
 
-- GIVEN a regressed proposal whose cluster has the issues #12 and #19 of the pull request's repository, closed by the merge WHEN the regression is recorded THEN both are open again
+- GIVEN a regressed proposal whose cluster has two issues of the pull request's repository, closed by the merge WHEN the regression is recorded THEN both are open again
 - GIVEN an issue of the cluster that is in another repository WHEN the regression is recorded THEN it is left as it is
 - GIVEN a code host that cannot be reached WHEN the regression is recorded THEN the record stands and the reopen waits in the outbox of [SIL-B19](16-self-improvement.spec.md) for the next filing
 
@@ -215,12 +216,13 @@ WHEN `regressed_after_release` is recorded on a proposal THE engine SHALL reopen
 - PRP-AC5 (PRP-B19, PRP-B17): In-sample pairs are reported and never counted in the decision
 - PRP-AC6 (PRP-B18): A trial's spend is logged per session like any run and joined to no workflow run's own cost line
 - PRP-AC7 (PRP-B3, PRP-B10, PRP-B11, PRP-B12, PRP-B13, PRP-B15, PRP-B16, PRP-B21, PRP-B22, PRP-B23, PRP-B5, PRP-B9): Fixtures cover each refusal, the autonomy levels, the backlog's ranking and twins, an A/A run, a grader trial, the loop's own proposals and the post-release watch
-- PRP-AC8 (PRP-B24): Against a fake code host, the body of the draft pull request of a proposal whose cluster has the issues #12 and #19 of the pull request's repository holds `Closes #12` and `Closes #19`, and the body of one whose cluster has no issue holds no `Closes` line
+- PRP-AC8 (PRP-B24): Against a fake code host, the body of the draft pull request of a proposal whose cluster has two issues of the pull request's repository holds a `Closes #<number>` line for each, and the body of one whose cluster has no issue holds no `Closes` line
 - PRP-AC9 (PRP-B25): Against a fake code host, a trial that ends in each decision leaves one comment in the agent comment format on each issue of its cluster, a trial at autonomy `record` leaves none, and an unreachable code host leaves the comment in the outbox with the trial's decision unchanged
 - PRP-AC10 (PRP-B26, PRP-B27): Against a fake code host, a final exit recorded for a workflow with an opened proposal leaves it `opened` with `pr_state` `open` while its pull request is open and `closed` when that was closed without a merge, and sets it `merged` with `merged_at` when that was merged; a proposal just opened shows `pr_state` `unknown`; at autonomy `record`, and in a dry run, the host is not asked
 - PRP-AC11 (PRP-B28): Against a fake code host that cannot be reached, and with no `gh` installed or signed in, an opened proposal whose pull request is merged stays `opened` with the `pr_state` it had and no `merged_at`, and the run's exit code and the loop's other records are the same as without it
 - PRP-AC12 (PRP-B9): Over recorded runs before and after a merge, a proposal whose cost per run rose 30 %, or whose gate first-try pass rate fell 7 points, over its first 10 final exits after the merge holds `regressed_after_release` with the figures before and after; one whose cost rose 5 % with the other figures held holds `held_after_release` and no `regressed_after_release`; one with 9 final exits after its merge, or with only 6 real runs among 10, holds neither; none is compared twice, and a merge seen late is compared on its first 10 exits after it
 - PRP-AC13 (PRP-B29): Against a fake code host, the cluster issues of a regressed proposal that are in the pull request's repository are open again and those of another repository are untouched, and with a host that cannot be reached the record stands and the reopen is in the outbox
+- PRP-AC14 (PRP-B14, PRP-B1, PRP-B3): In a fixture package that declares `step_files`, a patch to a declared file is drafted with the one class `standard` on the producer side, the same patch with a criterion change is refused `mixed_sides`, one that adds a literal path is refused `literal`, and a patch to an undeclared file is refused `no_change`
 
 ## Open questions
 

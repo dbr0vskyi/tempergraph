@@ -61,7 +61,8 @@ def test_dedup_retry_dry_run_and_outbox(tmp_path: Path) -> None:  # SIL-B2, B6, 
     host.issues[0]["body"] = host.issues[0]["body"].replace("<!--", "quoted <!--")  # a quote is not the marker
     assert filing.file([d], host, box)[0]["op"] == "filed" and len(host.issues) == 2
     host.fail_search = 2
-    res = filing.file([decide(friction(fingerprint="ffff0000ffff0000"), [], "team/notes")], host, box)
+    res = filing.file([decide(friction(fingerprint="ffff0000ffff0000", cause="check_fail:draft"), [], "team/notes")],
+                      host, box)
     assert res[0]["op"] == "filed" and res[0]["note"] == "search_failed"
     host.down = True
     assert filing.file([d], host, box)[0]["op"] == "queued"
@@ -83,9 +84,9 @@ def test_gh_client_refuses_bad_input() -> None:  # SEC-B7 code host site
     from tempergraph.improve.codehost import CodeHostError
 
     with pytest.raises(CodeHostError):
-        GhCodeHost().search("not a repo; rm -rf", "tempergraph:fp=ab")
+        GhCodeHost().loop_issues("not a repo; rm -rf", "open")
     with pytest.raises(CodeHostError):
-        GhCodeHost().search("team/notes", "tempergraph:fp=$(x)")
+        GhCodeHost().loop_issues("team/notes", "open; rm -rf")
 
 
 def test_measurement_writes_nothing_but_one_comment(repo: Path) -> None:  # SIL-B5, C14

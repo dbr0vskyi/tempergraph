@@ -11,6 +11,19 @@
 
 - Tests: `pytest`
 
+## Evidence
+
+| Behaviour | Basis | Code | Test |
+|---|---|---|---|
+| SYS-B1 | read | `src/tool/main.py:14-14` | - |
+| CLI-B1 | read | `src/tool/main.py:10-13` | - |
+| CLI-B2 | read | `src/tool/main.py:14-16` | - |
+| CLI-B3 | read | `src/tool/main.py:10-16` | - |
+
+## Anomalies
+
+- None
+
 ## Not covered
 
 - None

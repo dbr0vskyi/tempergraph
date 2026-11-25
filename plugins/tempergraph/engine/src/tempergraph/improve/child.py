@@ -357,20 +357,22 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
                                "error": type(exc).__name__})  # SRV-B29: names no session, counts as one review
         mine = _latest(read_findings(root, wf, task), set(t.get("fingerprints") or ()))  # SRV-B7: now corroborated
     cands: list[filing.Candidate] = []
+    context: dict[str, Any] = {"records": _records(root, wf, task), "mode": t.get("mode"),  # ISS-B8 to ISS-B10
+                               "judge_executor": t.get("executor")}
     for f in mine:
         if f.get("lens") == "review":  # SRV-B28: a finding made of review observations never files, in any run
             continue
         if f.get("lens") == "outcome":  # SIL-B7: files only once the outcome gate's judge is `accepted` (JCL)
             cands.append(filing.Candidate(finding=f, lens="outcome", calibrated=bool(t.get("outcome_calibrated")),
                                           request_digest=f.get("request_digest"), issue_labels=t.get("issue_labels"),
-                                          review_categories=categories))
+                                          review_categories=categories, **context))
             continue
         if not (t.get("lenses") or {}).get("friction"):  # a review-only ticket files no friction finding
             continue
         j = judged.get(str(f.get("fingerprint")))
         cands.append(filing.Candidate(finding=f, lens="friction", confidence=j["confidence"] if j else None,
                                       attributed=bool(j and j["attributed"]), request_digest=f.get("request_digest"),
-                                      issue_labels=t.get("issue_labels"), review_categories=categories))
+                                      issue_labels=t.get("issue_labels"), review_categories=categories, **context))
     history = _history(root, wf, thread)
     decisions = [filing.decide(c, history, str(t.get("issue_repository") or "")) for c in cands]
     if t.get("autonomy") == "record":  # PRP-B11: findings, evidence and ledger rows only

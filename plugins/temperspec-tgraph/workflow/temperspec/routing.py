@@ -170,6 +170,21 @@ def list_components(ctx: Any) -> dict[str, str]:
     return {"component_list": COMPONENT_LIST.as_posix()}
 
 
+CAPABILITIES = Path(".tempergraph") / "capabilities.md"
+
+
+def write_inventory(workdir: Path) -> None:
+    """The capability list of every spec of the repository, written to the run's own folder, which no step commits;
+    a repository with no spec gets a list that says so."""
+    root = Path(workdir)
+    specs = [(path + name, (root / path / name).read_text(encoding="utf-8", errors="replace"))
+             for path, files in _folders(root) for name in sorted(files) if name.endswith(".spec.md")]
+    target = root / CAPABILITIES
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(specfmt.inventory(specs), encoding="utf-8")
+    (target.parent / ".gitignore").write_text("*\n", encoding="utf-8")
+
+
 QUESTION_LIST = Path(".tempergraph") / "question_list.json"
 MAX_QUESTIONS = 20  # the engine's ask takes 1 to 20 questions (ASK-B5)
 MAX_WORDING = 500  # and a wording of at most 500 characters
@@ -435,6 +450,7 @@ def prepare(ctx: Any) -> dict[str, str]:
     install_rules(ctx)
     write_context(workdir)
     write_commands(workdir)
+    write_inventory(workdir)
     commit_step(ctx)
     return {"setup_ready": "yes"} if has_overview(workdir) else {"setup_needed": "yes"}
 

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "met-ts-dis-general",
+  "gate": "discovery",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-dis-general",
+    "expected": "MET",
+    "reason": "CFG-B1 and CFG-B2 state what the tool does whenever the config file is missing; nothing in them refers to the crash the task reported, to TASK-7 or to a fixture."
+  }
+}

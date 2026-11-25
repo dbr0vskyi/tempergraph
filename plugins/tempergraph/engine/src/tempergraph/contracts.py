@@ -974,6 +974,7 @@ class PackageManifest:
     docs: str = "provisional"
     surfaces: Mapping[str, Any] = field(default_factory=dict)
     audit: Mapping[str, Any] = field(default_factory=dict)  # `{ignore: [...]}`, AUD-B14
+    step_files: tuple[str, ...] = ()  # package-relative globs of the files steps read at run time, PKG-B13
 
 
 @dataclass(frozen=True, kw_only=True)

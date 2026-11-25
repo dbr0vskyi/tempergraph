@@ -27,6 +27,6 @@ Plan: `{plan}`
 - Do not run git. The engine commits your file when you finish.
 - Report what you did. Do not say the rows are correct: the gate decides.
 
-## Output to hand over
+## What to hand over
 
 - `phases`: the path of the plan you expanded.

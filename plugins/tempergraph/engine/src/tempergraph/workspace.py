@@ -392,7 +392,7 @@ def cut_writers(rec: WorkspaceRecord, thread: str, units: Sequence[str], decl: W
     bootstrapped, each appended to `rec.children`. A unit that already has one of the same `visit` is reused, except a
     contest's slot: its branch is never cut over or reused, the cut is refused (`name_collision`) per slot and attempt.
     A child of a map's visit or a contest's attempt above 1 (`visit`) is recorded with its `visit` and named
-    `--i<visit>-<item>` or `--s<visit>-<slot>` (WTR-B20, MAP-B14, CTS-B11): a first-visit child has no such key, and the
+    `--i<visit>-<item>` or `--s<visit>-<slot>` (WTR-B20, WSP-B20): a first-visit child has no such key, and the
     children of other visits stay in `rec.children`, untouched. A failure removes what this call made and raises
     `WorkspaceRefused` naming the writer branch, item or slot."""
     what = {"i": "map item", "s": "contest slot"}.get(kind, "writer branch")

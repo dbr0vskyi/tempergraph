@@ -40,7 +40,8 @@ ACCEPTING = re.compile(r"\b(trust|accept|take)\s+(the\s+)?(step'?s|agent'?s|auth
                        r"\bif the (step|agent) says\b", re.I)
 SKILL_REF = re.compile(r"(?:\bskill\s+`([A-Za-z0-9_.:-]+)`|(?<![\w/])/([a-z][a-z0-9-]{2,})(?:\b|$))")
 AGENT_REF = re.compile(r"\b(?:sub)?agent\s+`([A-Za-z0-9_.-]+)`", re.I)
-FILE_REF = re.compile(r"`((?:prompts|judges|skills|agents|lessons)/[A-Za-z0-9_./-]+)`")
+FILE_FOLDERS = ("prompts", "judges", "skills", "agents", "lessons")
+FILE_REF = re.compile(r"`((?:" + "|".join(FILE_FOLDERS) + r")/[A-Za-z0-9_./-]+)`")
 TICKED = re.compile(r"`([A-Za-z_][A-Za-z0-9_]*)`")
 
 
@@ -123,11 +124,21 @@ def _exists(root: Path | None, kind: str, name: str) -> bool:
     return (root / name).exists()
 
 
+def _declared_refs(root: Path | None) -> re.Pattern[str] | None:
+    """A package path in backticks under a folder of the package's `step_files` (PKG-B13), which must resolve too."""
+    from tempergraph.package.manifest import declared_step_files
+
+    folders = sorted({p.split("/", 1)[0] for p in declared_step_files(root) if "/" in p} - set(FILE_FOLDERS))
+    folders = [f for f in folders if re.fullmatch(r"[A-Za-z0-9_.-]+", f) and "*" not in f]
+    return re.compile(r"`((?:" + "|".join(map(re.escape, folders)) + r")/[A-Za-z0-9_./-]+)`") if folders else None
+
+
 def lint(spec: WorkflowSpec) -> list[LintFinding]:
     out: list[LintFinding] = []
     root = spec.package_root
     tools = _tool_names()
     seen: set[str] = set()
+    declared = _declared_refs(root)
     for unit, role, where, text in _texts(spec):
         key = f"{role}:{where}"
         if key in seen:
@@ -167,7 +178,8 @@ def lint(spec: WorkflowSpec) -> list[LintFinding]:
             add("lint-accepting-brief", m.start(), "the brief tells the judge to accept the step's word; the "
                 "judge reads the artifacts, or the criterion is marked `unverified_system`")
         n = names(text)
-        for kind, refs in (("skill", n.skills), ("agent", n.agents), ("file", n.files)):
+        files = (*n.files, *(m for m in (declared.findall(text) if declared else []) if m not in n.files))
+        for kind, refs in (("skill", n.skills), ("agent", n.agents), ("file", files)):
             for ref in refs:
                 if not _exists(root, kind, ref):
                     add("lint-ref-missing", text.find(ref), f"{kind} {ref!r} is not in the package")

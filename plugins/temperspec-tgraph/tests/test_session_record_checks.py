@@ -115,7 +115,7 @@ def test_a_search_a_failed_read_a_path_form_and_a_missing_rule_file(tmp_path: Pa
                *reads("documents.rule.md")]
     _, found = run("plan", ctx_for("plan", tmp_path / "a", session))
     assert fails(found) == ["plan.rule.md"]
-    session = [call("read", "plugins/x/rules/spec.rule.md"), *reads("decision.rule.md", "research.rule.md",
+    session = [call("read", "plugins/x/rules/spec.rule.md"), *reads("extraction.rule.md", "decision.rule.md", "research.rule.md",
                                                                      "task-notes.rule.md", "documents.rule.md")]
     _, found = run("discovery", ctx_for("discovery", tmp_path / "b", session))
     assert [f.status for f in found] == ["pass"]  # the last segment of the target is the file's name

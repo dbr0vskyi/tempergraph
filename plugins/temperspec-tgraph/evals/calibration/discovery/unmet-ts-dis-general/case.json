@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "unmet-ts-dis-general",
+  "gate": "discovery",
+  "labels": [],
+  "provenance": "synthetic",
+  "state": "candidate",
+  "split": "holdout",
+  "seed": {
+    "criterion_id": "ts-dis-general",
+    "expected": "UNMET",
+    "reason": "CFG-B1 is written against the old defect (\"no longer crashes with a stack trace\", \"since TASK-7\"), and its scenario copies the task's own folder and issue number."
+  }
+}

@@ -128,13 +128,34 @@ WHEN a run outside git needs a workspace fingerprint THE engine SHALL take the f
 - GIVEN a read-only judge that writes a file outside git WHEN the guard compares fingerprints THEN the write is caught
 - GIVEN 25,000 files and a workflow with a judge WHEN the run starts THEN it is refused `workspace_too_large`
 
+### WSP-B20 Each pass of a writing unit has writers of its own
+
+WHEN a writing unit (a concurrent map whose step declares `write` or `edit`, or a contest with `writes: true`) runs a pass after its first, on a retry or a new entry ([BUD-B4](08-budgets-and-failures.spec.md)), THE engine SHALL run each item or slot of that pass in a worktree and on a branch cut for the pass from the run branch's head after the checkpoint commit (WSP-B19), under names that no earlier pass holds ([WTR-B20](82-worktree-mode.spec.md)).
+
+- GIVEN a writing map whose first pass ran items `a` and `b` and was merged, and a trip back after which its list names `a` and `c` WHEN the map runs again THEN `a` and `c` each run in a worktree and on a branch that the first pass did not make, each holding the files the run branch held when the pass started, `b`'s file among them
+- GIVEN a writing contest whose first attempt's winner `s1` got RETRY under `retry_scope: best` WHEN the retry runs THEN `s1` alone runs, in a worktree and on a branch that the first attempt did not make
+- GIVEN a later pass of a writing map paused at an item on a spent budget WHEN it is resumed with retry THEN the item runs again in its worktree of that pass
+
+### WSP-B21 Earlier passes' writers are kept
+
+WHEN a writing unit runs a pass after its first THE engine SHALL leave every worktree and branch of its earlier passes as it is, still listed among the run's worktrees ([WTR-B24](82-worktree-mode.spec.md)).
+
+- GIVEN a first pass whose branch of `a` is at commit C WHEN the second pass has run to its end THEN that branch is still at C, its worktree still exists and the run's workspace record lists it in the state it had
+
+### WSP-B22 A pass merges only its own writers
+
+WHEN a later pass of a writing unit is merged THE engine SHALL merge into the run branch only the branches that pass cut: a map's items in the order of that pass's list (WSP-B11), a contest's winner of that attempt ([CTS-B5](72-contest-unit.spec.md)).
+
+- GIVEN a second pass of a writing map whose list names `a` and `c`, each writing one file WHEN it is merged THEN the run branch gains one merge commit per item, `a` then `c`, each with that pass's branch as second parent, and none with a branch of the first pass
+- GIVEN a retry of a writing contest under `retry_scope: all` whose winner is `s2` WHEN it is picked THEN the run branch gains one merge commit, with `s2`'s branch of the retry as second parent, and no other
+
 ### WSP-B18 What needs git
 
 WHEN a workflow or a verb needs git outside a repository THE engine SHALL refuse it with finding `needs_git` before anything is created: writer branches, a concurrent map whose step declares `write` or `edit` (a writing map, WSP-B11), worktree trials (`improve trial`, PRP), a finalizer's push or draft pull request, `--carry` and the verb `carry` ([CAR](96-run-state-on-a-branch.spec.md)), and a stock risk or complexity rule on changed paths or lines ([JRK](93-judge-model-by-risk.spec.md), [CXR](94-complexity-routing.spec.md)).
 
 - GIVEN `run --carry` outside git WHEN it starts THEN it is refused `needs_git` and no thread exists
 - GIVEN a workflow with a writer branch outside git WHEN it is validated THEN it fails with `needs_git`
-- GIVEN a workflow of a planning step followed by a concurrent map whose step declares `write` WHEN it starts outside git THEN it is refused `needs_git` naming the map, the planning step starts no session and nothing is created
+- GIVEN a workflow of a step followed by a concurrent map whose step declares `write` WHEN it starts outside git THEN it is refused `needs_git` naming the map, the first step starts no session and nothing is created
 - GIVEN the same workflow WHEN `run --check` runs outside git THEN it reports `needs_git` naming the map
 - GIVEN a concurrent map whose step declares neither `write` nor `edit` WHEN a run starts outside git THEN it is not refused `needs_git` for the map
 
@@ -163,3 +184,9 @@ WHEN a workflow or a verb needs git outside a repository THE engine SHALL refuse
 - WSP-AC21 (WSP-B18): Started outside git, a workflow of a step followed by a concurrent map whose step declares `write` or `edit` is refused `needs_git` naming the map, with no session started and nothing created
 - WSP-AC22 (WSP-B18): `run --check` outside git reports `needs_git` naming the map for that workflow
 - WSP-AC23 (WSP-B18): A concurrent map whose step declares neither `write` nor `edit` adds no `needs_git` refusal outside git
+- WSP-AC24 (WSP-B20): In a writing concurrent map entered a second time by a trip back and run by a scripted executor, each item of the second pass runs in a worktree and on a branch that the first pass did not make, the branch starting at the head the run branch held before the pass's first item session, and its worktree holds the files the run branch held when the pass started, among them those of the first pass's merge
+- WSP-AC25 (WSP-B20): A later pass of a writing map paused at an item on a spent budget and resumed with `retry` runs that item again in its worktree of that pass
+- WSP-AC26 (WSP-B20): In a writing contest of two slots under `retry_scope: best`, the retry of the first attempt's winner runs that slot in a worktree and on a branch that the first attempt did not make, starting at the head the run branch held before the retry's first session, and the run records no `workspace_refused`
+- WSP-AC27 (WSP-B20): Under `retry_scope: all` every slot of a writing contest's retry, and after a BACK to the unit before it every slot of its next attempt, runs in a worktree and on a branch that no earlier attempt made, and the run records no `workspace_refused`
+- WSP-AC28 (WSP-B21): After a later pass of a writing map or a writing contest, every branch of the earlier pass is at the commit it held when that pass ended, every worktree of it is still present and the run's workspace record lists the worktrees of both passes
+- WSP-AC29 (WSP-B22): After a later pass whose writers each write one file, the run branch has gained one merge commit per item of that pass's list in its order, or one for the contest's winner of that attempt, each with that pass's branch as second parent, and none whose second parent is a branch of an earlier pass

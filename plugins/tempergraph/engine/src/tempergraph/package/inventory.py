@@ -1,8 +1,8 @@
 """What is where in a package, and the digests over it (PKG-B13, PKG-B15 `package_files`, VER-B14, VER-B15, PKG-AC7).
 
 `content_digest` covers what a run runs: the spec's canonical JSON, `outcome.json`, every template, brief,
-lessons file, skill and agent file, every Python source under `workflow/` and the `dependencies` of its
-`pyproject.toml`. It never covers `docs/`, `diagram/`, `evals/`, `authoring.json`, `README.md` or `tests/`.
+lessons file, skill and agent file, every file the package declares in `step_files` (PKG-B13), every Python
+source under `workflow/` and the `dependencies` of its `pyproject.toml`. It never covers `docs/`, `diagram/`, `evals/`, `authoring.json`, `README.md` or `tests/`.
 `docs_digest` covers `docs/` only (PKG-B21, PKG-B22).
 """
 
@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from tempergraph.contracts import CallableRef, WorkflowSpec
+from tempergraph.package.manifest import declared_step_files, step_files
 
 # Folders and files whose content is part of what runs (VER-B14, VER-B15).
 CONTENT_DIRS = ("prompts", "judges", "lessons", "skills", "agents")
@@ -55,7 +56,10 @@ def package_files(package_path: Path) -> PackageInventory:
     for name in (*CONTENT_DIRS, *CONTENT_FILES):
         content += [p.relative_to(root).as_posix() for p in _walk(root, root / name)]
     python = [p.relative_to(root).as_posix() for p in _walk(root, root / "workflow") if p.suffix == ".py"]
+    # A declared step file is part of what a run runs wherever it lies, except in the Python half, which is covered.
+    content += [rel for rel in step_files(root, declared_step_files(root)) if rel not in {*content, *python}]
     docs = [p.relative_to(root).as_posix() for p in _walk(root, root / "docs")]
+    docs = [rel for rel in docs if rel not in set(content)]
     known = set(content) | set(python) | set(docs)
     other = [p.relative_to(root).as_posix() for p in _walk(root, root)
              if p.relative_to(root).as_posix() not in known and p.relative_to(root).parts[0] != ".git"]

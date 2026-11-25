@@ -56,5 +56,5 @@ def test_a_friction_finding_on_a_child_unit_files_to_the_child_and_names_the_par
     assert [i["repo"] for i in host.issues] == ["acme/repo-setup"]  # none in the parent's repository
     issue = host.issues[0]
     assert "repo-setup" in issue["title"] and "side:workflow" in issue["labels"]
-    assert "**Parent** `deliver`" in issue["body"] and "version `0.3.1`" in issue["body"]
+    assert "**Parent** `deliver`" in issue["body"] and "Workflow version: `0.3.1`" in issue["body"]
     assert not t.exists()

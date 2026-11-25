@@ -252,7 +252,7 @@ def test_author_verify_stops_at_the_comparison(pkg: Path, tmp_path: Path) -> Non
 
 
 def test_author_verify_audit_rung_takes_the_repository_entry(pkg: Path, tmp_path: Path) -> None:
-    """AUD-B17, AUD-AC9: an allow-list of `git status` and `@repository` passes rung 6 with no commands file."""
+    """SCF-AC8 (SCF-B18, AUD-B17): an allow-list of `git status` and `@repository` passes rung 6 with no commands file."""
     decl = pkg / "workflow/release_notes/__init__.py"
     text = decl.read_text()
     assert "    return Workflow(\n" in text

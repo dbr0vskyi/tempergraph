@@ -282,6 +282,9 @@ RULES: tuple[Rule, ...] = (
     # PRA-B7 to PRA-B10 prompt audit (family C7)
     _r("ref-missing", "definition", "C7", "error / high", "ref_missing",
        "Fix or remove the reference; the session wastes turns looking for it (F7.2)", spec="PRA"),
+    _r("step-file-missing", "definition", "C7", "warning / high", "ref_missing",
+       "Fix the pattern in `step_files` or add the file; a proposal cannot reach a file that is not declared",
+       spec="PRA"),
     _r("ref-resolves-elsewhere", "host", "C7", "warning / high", "skill_clash",
        "Ship the skill with the workflow or name it by plugin path (F4.8)", spec="PRA"),
     _r("tool-name-unknown", "host", "C7", OWN, "unknown_tool_name",
