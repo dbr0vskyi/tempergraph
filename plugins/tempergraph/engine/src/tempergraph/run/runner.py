@@ -467,8 +467,16 @@ def _drive(spec: WorkflowSpec, task_id: str, root: Path, registry: Registry, set
         except OSError as exc:  # OBS-B3: logging never changes the exit; one record of the failure is attempted
             log.write("engine_error", scope="exit_file", error=type(exc).__name__)
         ledger = Ledger(path=root / "ledger.jsonl")
+        try:  # FIN-B11: a failure to build the record leaves the field out and never changes the exit
+            from tempergraph.run.finalize import recorded_pull_request
+
+            wpath = (final.get("workspace") or {}).get("path")
+            pr = recorded_pull_request(final.get("finalized"), Path(wpath) if wpath else None)
+        except Exception:  # noqa: BLE001
+            pr = None
         ledger.append({"kind": "run_segment", "thread_id": tid, "workflow": spec.name,
                        "workflow_version": spec.version, **join_keys(root, settings),
+                       **({"pull_request": pr} if pr else {}),
                        "exit_code": int(outcome.exit_code), "reason": outcome.reason,
                        "cost": cost.to_json(), "origin": settings.origin, "stage": _stage(spec, settings)[0],
                        **({"schedule_id": settings.schedule["schedule_id"]} if settings.schedule else {}),
