@@ -86,6 +86,7 @@ The component specs, each owning what follows its name:
 - [ask-unit.spec.md](ask-unit.spec.md) ASK: questions, typed answers, the `input` pause.
 - [flow-extensions.spec.md](flow-extensions.spec.md) FLX: selective parallel, mapped sub-workflows, deadlines, fallback, breakpoints.
 - [check-contract-and-command-runs.spec.md](check-contract-and-command-runs.spec.md) CHK: the check contract, findings, facts, command runs, the check preview.
+- [visit-session-record.spec.md](visit-session-record.spec.md) VSR: the calls of every session of a unit's visit, given to a check beside its attempt's own record.
 - [step-values-and-template-keys.spec.md](step-values-and-template-keys.spec.md) VAL: the `value` artifact and the keys a template may name.
 - [map-unit.spec.md](map-unit.spec.md) MAP: map declaration, fan-out, per-item gates and budgets, the join.
 - [finalizer-contract.spec.md](finalizer-contract.spec.md) FIN: finalizer context, outcomes, once-only and exit-code rule.

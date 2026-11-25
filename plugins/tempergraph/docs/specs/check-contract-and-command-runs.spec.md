@@ -171,9 +171,9 @@ WHEN a resolver picks an interpreter outside the workspace THE engine SHALL show
 
 ### CHK-B9 Same on every executor
 
-WHEN a gate's check runs on the same workspace in workflows whose steps use different executors THE engine SHALL give the same context, `session` apart, which follows what each executor's session did (CHK-B24), and the same runs and result, since checks never run through an executor.
+WHEN a gate's check runs on the same workspace in workflows whose steps use different executors THE engine SHALL give the same context, `session` and `visit_session` apart, which follow what each executor's session did (CHK-B24, [VSR-B1](visit-session-record.spec.md)), and the same runs and result, since checks never run through an executor.
 
-- GIVEN steps on `claude` and on `antigravity` WHEN the same check, one that does not read `session`, runs on one workspace THEN the context other than `session`, the runs and the result are identical
+- GIVEN steps on `claude` and on `antigravity` WHEN the same check, one that reads neither `session` nor `visit_session`, runs on one workspace THEN the context other than those two, the runs and the result are identical
 
 ## Acceptance criteria
 
@@ -191,10 +191,10 @@ WHEN a gate's check runs on the same workspace in workflows whose steps use diff
 - CHK-AC12 (CHK-B13, CHK-B17): A command run by the check preview while a step's files are not yet committed is reused by the gate's check once those files are committed with no other change, and runs again at the gate when one file changed after the preview (a scratch git repository, offline)
 - CHK-AC13 (CHK-B22): In a scratch git repository with a worktree run started at a commit of `main`, a commit added to `main` afterwards is `git.base_head` while `git.base` is still the starting commit; a run in place has an empty `git.base_head`; with only `origin/main` present it is that remote-tracking branch's commit (offline)
 - CHK-AC14 (CHK-B10, CHK-B24): A check run after a stand-in session that reported a read, a search, an edit and a write, in that order, sees `session` with those four calls in that order, each with its name, capability, target and `ok`
-- CHK-AC15 (CHK-B24): A call that ended with an error reads `ok` false; the check run after a retry attempt sees only the retry session's calls; the check run after a session that started twice sees only the calls since the second start
+- CHK-AC15 (CHK-B24): A call that ended with an error reads `ok` false; the check run after a retry attempt sees only the retry session's calls in `session`; the check run after a session that started twice sees only the calls since the second start in `session`
 - CHK-AC16 (CHK-B24): Under `observe.tool_inputs = off` every call the check sees has its capability and a null target; a read outside the workspace has the target `<outside workspace>`; and the canary test of [SEC-B2](security.spec.md) finds a planted tool input, which the check saw as a target, only in activity journals and live files
 - CHK-AC17 (CHK-B25): A check that reads `session` sees `None` after a stand-in session that reported tool names only, after a session that made no tool call, after a session whose journal dropped a tool line, and as a preview
-- CHK-AC18 (CHK-B9): The same check, one that does not read `session`, run on one workspace after steps of two executors gets the same context other than `session`, the same runs and the same result
+- CHK-AC18 (CHK-B9): The same check, one that reads neither `session` nor `visit_session`, run on one workspace after steps of two executors gets the same context other than those two, the same runs and the same result
 
 ## Open questions
 
