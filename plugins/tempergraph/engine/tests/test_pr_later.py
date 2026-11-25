@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +25,6 @@ from .test_run import DRAFT, REVIEW, go, judge, registry
 CLEAN = {"lenses": {"friction": False}, "fault_fingerprints": [], "outcome_fingerprints": [], "fingerprints": []}
 QUIET = dataclasses.replace(two_step(), session_review="off")
 REPO = "acme/notes"
-END = "aaaaaaa1"
 MARKER = "<!-- tg-agent: kind=report agent=loop -->"
 
 
@@ -48,10 +48,39 @@ def pr_host(**kw: Any) -> CountingHost:
     return host
 
 
-def segment(root: Path, task: str, number: int, commit: str = END) -> None:
+def _git(cwd: Path, *args: str) -> str:
+    return subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
+
+
+def ensure_repo(repo: Path) -> None:
+    """A real repository with one base commit in `repo`, made once."""
+    if (repo / ".git").exists():
+        return
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "test@example.invalid")
+    _git(repo, "config", "user.name", "Test")
+    (repo / "README.md").write_text("base\n")
+    _git(repo, "add", "README.md")
+    _git(repo, "commit", "-q", "-m", "base")
+
+
+def state(tmp_path: Path) -> Path:
+    """A real repository with one base commit in `tmp_path`; returns its state root."""
+    ensure_repo(tmp_path)
+    root = tmp_path / ".tempergraph"
+    root.mkdir(exist_ok=True)
+    return root
+
+
+def head(root: Path) -> str:
+    """The commit the repository of the state root is at: the end commit a run's pull request records."""
+    return _git(root.parent, "rev-parse", "HEAD")
+
+
+def segment(root: Path, task: str, number: int, commit: str = "") -> None:
     Ledger(path=root / "ledger.jsonl").append(
         {"kind": "run_segment", "thread_id": f"demo/{task}", "workflow": "demo", "exit_code": 0,
-         "pull_request": {"host": "example.test", "repo": REPO, "number": number, "commit": commit}})
+         "pull_request": {"host": "example.test", "repo": REPO, "number": number, "commit": commit or head(root)}})
 
 
 def later_row(root: Path, task: str, state: str) -> None:
@@ -61,10 +90,26 @@ def later_row(root: Path, task: str, state: str) -> None:
 
 
 def wrote(root: Path, task: str, unit: str, *paths: str) -> None:
+    """The unit's session wrote `paths` and committed them on top of the base: the commit is real, and the run log
+    holds the run's `workspace` record (`base_commit`) and the session's `agent_run` record (`wrote_paths`)."""
+    repo = root.parent
+    ensure_repo(repo)
+    base = _git(repo, "rev-list", "--max-parents=0", "HEAD").splitlines()[0]
+    for rel in paths:
+        f = repo / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text((f.read_text() if f.exists() else "") + f"{task} {unit}\n")
+    if paths:
+        _git(repo, "add", "--", *paths)
+        _git(repo, "commit", "-q", "-m", f"{unit} writes", "--no-verify")
     p = root / "runs" / "demo" / task / "run.jsonl"
     p.parent.mkdir(parents=True, exist_ok=True)
+    fresh = not p.exists() or '"kind": "workspace"' not in p.read_text()
     with p.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps({"kind": "agent_run", "unit": unit, "changed_paths": list(paths)}) + "\n")
+        if fresh:
+            fh.write(json.dumps({"kind": "workspace", "action": "prepared", "base_commit": base}) + "\n")
+        fh.write(json.dumps({"kind": "agent_run", "session_kind": "step", "unit": unit,
+                             "session_key": f"{unit}.1.step", "wrote_paths": list(paths)}) + "\n")
 
 
 def rows(root: Path, kind: str = "outcome_later") -> list[dict[str, Any]]:
@@ -99,37 +144,41 @@ def commit(sha: str, files: list[str], kind: str = "person") -> dict[str, Any]:
 
 def test_a_ticket_is_written_for_a_workflow_with_only_a_recorded_pull_request(tmp_path: Path) -> None:
     # OUT-AC7, task AC 2
-    assert hand(tmp_path) is None  # nothing recorded, nothing to watch
-    segment(tmp_path, "T-1", 1)
-    t = ticket_of(hand(tmp_path))
+    root = state(tmp_path)
+    assert hand(root) is None  # nothing recorded, nothing to watch
+    segment(root, "T-1", 1)
+    t = ticket_of(hand(root))
     assert t["watch_only"] is True and t["autonomy"] == "file"
-    later_row(tmp_path, "T-1", "merged")
-    assert hand(tmp_path) is None  # found merged: nothing left to read
+    later_row(root, "T-1", "merged")
+    assert hand(root) is None  # found merged: nothing left to read
 
 
 def test_only_the_pull_request_not_found_merged_or_closed_is_read(tmp_path: Path) -> None:  # OUT-AC7, task AC 2
-    segment(tmp_path, "T-1", 1)
-    segment(tmp_path, "T-2", 2)
-    later_row(tmp_path, "T-2", "merged")
+    root = state(tmp_path)
+    segment(root, "T-1", 1)
+    segment(root, "T-2", 2)
+    later_row(root, "T-2", "merged")
     host = pr_host()
-    child.process(ticket_of(hand(tmp_path)), registry(standin("claude")), host)
+    child.process(ticket_of(hand(root)), registry(standin("claude")), host)
     assert host.asked == [1]
 
 
 @pytest.mark.parametrize("change", [{"autonomy": "record"}, {"dry_run": True}])
 def test_at_autonomy_record_and_in_a_dry_run_the_host_is_not_asked(tmp_path: Path, change: dict[str, Any]) -> None:
     # OUT-AC7, task AC 2
-    segment(tmp_path, "T-1", 1)
-    t = {**ticket_of(hand(tmp_path)), **change}
+    root = state(tmp_path)
+    segment(root, "T-1", 1)
+    t = {**ticket_of(hand(root)), **change}
     host = pr_host()
     child.process(t, registry(standin("claude")), host)
-    assert host.asked == [] and rows(tmp_path) == []
+    assert host.asked == [] and rows(root) == []
 
 
 def test_a_host_that_is_down_appends_nothing(tmp_path: Path) -> None:  # OUT-AC7, task AC 2
-    segment(tmp_path, "T-1", 1)
-    out = child.process(ticket_of(hand(tmp_path)), registry(standin("claude")), pr_host(down=True))
-    assert rows(tmp_path) == [] and out["results"] == []
+    root = state(tmp_path)
+    segment(root, "T-1", 1)
+    out = child.process(ticket_of(hand(root)), registry(standin("claude")), pr_host(down=True))
+    assert rows(root) == [] and out["results"] == []
 
 
 def test_a_missing_gh_appends_nothing_and_the_run_keeps_its_exit_code(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -155,47 +204,50 @@ def read_one(root: Path, host: MemoryCodeHost) -> dict[str, Any]:
 
 
 def test_a_read_appends_one_entry_of_counts_and_no_text(tmp_path: Path) -> None:  # OUT-AC8, task AC 2
-    segment(tmp_path, "T-1", 1)
-    wrote(tmp_path, "T-1", "draft", "a.py")
+    root = state(tmp_path)
+    wrote(root, "T-1", "draft", "a.py")
+    segment(root, "T-1", 1)
     host = pr_host()
     host.reviews[(REPO, 1)] = [review()]
     host.review_comments[(REPO, 1)] = [comment(), comment(text="SECOND")]
-    host.commits[(REPO, 1)] = [commit(END, ["old.py"]), commit("bbbbbbb2", ["a.py", "other.py"])]
-    read_one(tmp_path, host)
-    got = rows(tmp_path)
+    host.commits[(REPO, 1)] = [commit(head(root), ["old.py"]), commit("bbbbbbb2", ["a.py", "other.py"])]
+    read_one(root, host)
+    got = rows(root)
     assert len(got) == 1
     row = got[0]
     assert (row["thread_id"], row["workflow"]) == ("demo/T-1", "demo")
     assert row["entry"] == {"state": "open", "reviews": {"changes_requested": 1}, "comments": 2, "commits": 1,
                             "files": 1}
     assert "REVIEW-TEXT" not in json.dumps(row) and "COMMENT-TEXT" not in json.dumps(row)
-    assert "REVIEW-TEXT" not in (tmp_path / "ledger.jsonl").read_text()
-    evidence = (tmp_path / "runs" / "demo" / "T-1" / "evidence" / "pull_request.jsonl").read_text()
+    assert "REVIEW-TEXT" not in (root / "ledger.jsonl").read_text()
+    evidence = (root / "runs" / "demo" / "T-1" / "evidence" / "pull_request.jsonl").read_text()
     assert "REVIEW-TEXT" in evidence and "COMMENT-TEXT" in evidence
-    read_one(tmp_path, host)  # a second read of an unchanged pull request
-    assert len(rows(tmp_path)) == 1
+    read_one(root, host)  # a second read of an unchanged pull request
+    assert len(rows(root)) == 1
 
 
 def test_a_changed_pull_request_appends_a_new_entry(tmp_path: Path) -> None:  # OUT-AC8, task AC 2
-    segment(tmp_path, "T-1", 1)
+    root = state(tmp_path)
+    segment(root, "T-1", 1)
     host = pr_host()
-    read_one(tmp_path, host)
+    read_one(root, host)
     host.reviews[(REPO, 1)] = [review("approved")]
-    read_one(tmp_path, host)
-    assert [r["entry"]["reviews"] for r in rows(tmp_path)] == [{}, {"approved": 1}]
+    read_one(root, host)
+    assert [r["entry"]["reviews"] for r in rows(root)] == [{}, {"approved": 1}]
 
 
 # -- OUT-AC9: only a person's work counts -------------------------------------------------------------------------
 
 def test_bots_the_agent_marker_and_earlier_commits_are_not_counted(tmp_path: Path) -> None:  # OUT-AC9, task AC 2
-    segment(tmp_path, "T-1", 1)
-    wrote(tmp_path, "T-1", "draft", "a.py")
+    root = state(tmp_path)
+    wrote(root, "T-1", "draft", "a.py")
+    segment(root, "T-1", 1)
     host = pr_host()
     host.reviews[(REPO, 1)] = [review(kind="bot"), review("approved")]
     host.review_comments[(REPO, 1)] = [comment(kind="bot"), comment(text=f"{MARKER}\n**Report:** done"),
                                        comment(text="a person's")]
-    host.commits[(REPO, 1)] = [commit("0000000", ["a.py"]), commit(END, ["a.py"]),
+    host.commits[(REPO, 1)] = [commit("0000000", ["a.py"]), commit(head(root), ["a.py"]),
                                commit("bbbbbbb2", ["a.py"], kind="bot"), commit("ccccccc3", ["a.py"])]
-    read_one(tmp_path, host)
-    assert rows(tmp_path)[0]["entry"] == {"state": "open", "reviews": {"approved": 1}, "comments": 1, "commits": 1,
-                                          "files": 1}
+    read_one(root, host)
+    assert rows(root)[0]["entry"] == {"state": "open", "reviews": {"approved": 1}, "comments": 1, "commits": 1,
+                                      "files": 1}

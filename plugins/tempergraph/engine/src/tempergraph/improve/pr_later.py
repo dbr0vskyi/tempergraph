@@ -3,7 +3,9 @@
 The run's `run_segment` ledger row holds its pull request (FIN-B11). At a final exit the loop reads, through the code
 host, each pull request of the workflow that no earlier read found merged or closed, and appends to the ledger one
 `outcome_later` row per changed read: the pull request's state and counts of reviews by state, review comments,
-follow-up commits and the files the run wrote that those commits changed. A row holds no text and counts only a
+follow-up commits and the files the run wrote that those commits changed. The files the run wrote are those that
+differ between its branch start (the `base_commit` of the `workspace` record of its run log) and the end commit of
+its ledger row (OUT-B28), whatever tool or command changed them. A row holds no text and counts only a
 person's work. The text of reviews and review comments goes only to the run's local evidence folder,
 `evidence/pull_request.jsonl`, scrubbed. A pull request that cannot be read is skipped. This module never imports
 the filing code, and the filing code never imports it.
@@ -18,6 +20,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from tempergraph import git as gitmod
 from tempergraph.improve.codehost import CodeHostError
 from tempergraph.run.log import Ledger
 from tempergraph.security.scrub import clip, scrub
@@ -72,19 +75,24 @@ def pending(root: Path, workflow: str) -> list[dict[str, Any]]:
             if (last.get(t) or {}).get("state") not in DONE]
 
 
-def _wrote(root: Path, workflow: str, task: str) -> set[str]:
-    """The paths the run's sessions changed, from the `agent_run` records of its log."""
+def _wrote(root: Path, workflow: str, task: str, end: str) -> set[str]:
+    """OUT-B28: the files the run wrote, those that differ between its branch start (the `base_commit` of the run
+    log's `workspace` record) and its recorded end commit, read in the repository of the state root, whatever tool or
+    command changed them; none when the log, the base or the end is missing."""
     try:
         lines = (run_dir(root, workflow, task) / "run.jsonl").read_text(encoding="utf-8").splitlines()
     except OSError:
         return set()
-    out: set[str] = set()
+    base = ""
     for ln in lines:
         with contextlib.suppress(ValueError):
             r = json.loads(ln)
-            if isinstance(r, dict) and r.get("kind") == "agent_run":
-                out.update(str(p) for p in r.get("changed_paths") or ())
-    return out
+            if isinstance(r, dict) and r.get("kind") == "workspace" and r.get("base_commit"):
+                base = str(r["base_commit"])
+                break
+    if not base or not end:
+        return set()
+    return set(gitmod.changed_between(root.parent, base, end))
 
 
 def _person_text(r: Mapping[str, Any]) -> bool:
@@ -142,7 +150,7 @@ def read(root: Path, workflow: str, host: Any) -> list[dict[str, Any]]:
             continue
         mine = [r for r in reviews if _person_text(r)]
         follow = [c for c in _follow_ups(commits, str(pr.get("commit") or "")) if c.get("author_kind") == "person"]
-        wrote = _wrote(root, workflow, task)
+        wrote = _wrote(root, workflow, task, str(pr.get("commit") or ""))
         changed = sorted({str(f) for c in follow for f in c.get("files") or () if str(f) in wrote})
         kinds: dict[str, int] = {}
         for r in mine:

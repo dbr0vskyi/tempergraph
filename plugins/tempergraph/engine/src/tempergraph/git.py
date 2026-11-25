@@ -239,6 +239,18 @@ def folder_in_commit(workdir: Path, commit: str, folder: str) -> bool:
     return git(["cat-file", "-t", f"{commit}:{path}"], workdir, check=False).strip() == "tree"
 
 
+def changed_between(workdir: Path, base: str, end: str, limit: int = 500) -> list[str]:
+    """OUT-B28: the paths that differ between the commits `base` and `end`, sorted, never one under `.tempergraph/`,
+    at most `limit`. Empty when either is not a full commit id or git fails."""
+    if not is_commit_id(base) or not is_commit_id(end):
+        return []
+    try:
+        out = git(["diff", "--name-only", base, end, "--"], workdir, check=False)
+    except GitError:
+        return []
+    return sorted(p for p in out.splitlines() if p and not p.startswith(".tempergraph/"))[:limit]
+
+
 def changed_paths(workdir: Path, base: str | None = None, limit: int = 500) -> list[str]:
     paths: list[str] = []
     try:
