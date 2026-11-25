@@ -620,6 +620,7 @@ class EngineNodes:
             if isinstance(prior, Mapping) and prior.get("result") == "FAIL" and not prior.get("environmental") else None
         record = {
             "item": iid, "prior_failing": prior_failing, "session_key": key,  # the check reads this session's journal (CHK-B24)
+            "visit_keys": [*([] if first else [str(k) for k in prev.get("visit_keys") or ()]), key],  # VSR-B1
             "attempt": attempt, "visit": visit, "ok": res.ok, "text": clip(scrub(res.text), 8000), "blocked": parsed.blocked, "upstream": parsed.upstream,
             "issues": parsed.issues, "infra_cause": str(res.infra_cause) if res.infra_cause else None,
             "infra_spent": res.infra_cause is not None, "timed_out": res.timed_out, "stalled": res.stalled,
@@ -1518,6 +1519,17 @@ class EngineNodes:
         if isinstance(skey, str) and skey.rsplit(".", 1)[-1] in ("step", "retry"):  # CHK-B24: no other check has a record
             calls = read_session(session_dir(self.ctx.state_root, self.ctx.spec.name, self.ctx.task_id, skey))
             ctx.session = None if calls is None else tuple(calls)
+            if calls is not None:  # VSR-B1, VSR-B2: the attempts of this visit and item, in order; no record adds no call
+                held = att.get("visit_keys")
+                keys = [k for k in held if isinstance(k, str)] if isinstance(held, list) and held else [skey]
+                visit_calls: list[Any] = []
+                for k in keys:
+                    if k.rsplit(".", 1)[-1] not in ("step", "retry"):
+                        continue
+                    got_calls = calls if k == skey else read_session(
+                        session_dir(self.ctx.state_root, self.ctx.spec.name, self.ctx.task_id, k))
+                    visit_calls.extend(got_calls or ())
+                ctx.visit_session = tuple(visit_calls)
         got = run_in_worker(u.gate, ctx)
         if not self.ctx.capture.check_output and ctx.out_dir is not None:  # `observe.check_output = off`
             for f in ctx.out_dir.glob("*.out"):

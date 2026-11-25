@@ -38,6 +38,7 @@ def context_doc(gate: GateSpec, ctx: checkmod.CheckContext) -> dict[str, Any]:
             "artifacts": ctx.artifacts, "values": ctx.values, "facts": ctx.facts, "settings": ctx.settings,
             "criteria": list(ctx.criteria), "allow": list(ctx.allow),
             "session": None if ctx.session is None else [dict(c) for c in ctx.session],  # CHK-B24, CHK-B25
+            "visit_session": None if ctx.visit_session is None else [dict(c) for c in ctx.visit_session],  # VSR-B1
             "out_dir": str(ctx.out_dir) if ctx.out_dir else None,
             "reuse_store": str(ctx.reuse_store) if ctx.reuse_store else None,
             "base_dir": str(ctx.base_dir) if ctx.base_dir else None,
@@ -55,7 +56,9 @@ def _context_from(doc: dict[str, Any]) -> checkmod.CheckContext:
     c = doc["context"]
     g = c.get("git")
     held = c.get("session")
+    visit = c.get("visit_session")
     return checkmod.CheckContext(
+        visit_session=tuple(dict(x) for x in visit if isinstance(x, dict)) if isinstance(visit, list) else None,
         session=tuple(dict(x) for x in held if isinstance(x, dict)) if isinstance(held, list) else None,
         changed_paths=tuple(c.get("changed_paths") or ()),
         unit=c["unit"], workdir=Path(c["workdir"]), request=c.get("request") or {}, item=c.get("item"),

@@ -90,6 +90,9 @@ class CheckContext:
     # CHK-B24, CHK-B25: the calls the attempt's session made, in order, each `{name, capability, target, ok}`;
     # None where no record is trustworthy (a stand-in that reports tool names only, no call, a dropped tool line, the preview)
     session: tuple[Mapping[str, Any], ...] | None = None
+    # VSR-B1, VSR-B2: the calls of the attempt and of each earlier attempt of the same visit and item that has a
+    # record, in the order the attempts ran; None where the attempt's own record is None and in a preview
+    visit_session: tuple[Mapping[str, Any], ...] | None = None
     out_dir: Path | None = None
     deadline_at: float = 0.0
     runs: list[CommandRun] = field(default_factory=list)

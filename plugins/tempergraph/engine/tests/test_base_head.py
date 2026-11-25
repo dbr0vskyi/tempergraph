@@ -95,6 +95,18 @@ def test_the_check_worker_document_carries_base_head(repo: Path) -> None:
     assert back.git is not None and back.git.base_head == "abc123" and back.git.base == head
 
 
+def test_the_check_worker_document_carries_visit_session(repo: Path) -> None:
+    # AC 7, VSR-AC1
+    gate = GateSpec(criteria=(Criterion(text="-"),), check=CallableRef(module=__name__, qualname="base_head_check"))
+    calls = ({"name": "Read", "capability": "read", "target": "a.md", "ok": True},
+             {"name": "Read", "capability": "read", "target": "b.md", "ok": False})
+    ctx = CheckContext(unit="u", workdir=repo, request={}, visit_session=calls)
+    back = _context_from(json.loads(json.dumps(context_doc(gate, ctx))))
+    assert back.visit_session == calls
+    none = _context_from(json.loads(json.dumps(context_doc(gate, CheckContext(unit="u", workdir=repo, request={})))))
+    assert none.visit_session is None
+
+
 def test_the_preview_reads_the_head_again_when_it_runs(repo: Path, tmp_path: Path) -> None:
     # CHK-AC13, AC 4
     work, base = _run_branch(repo, tmp_path)
