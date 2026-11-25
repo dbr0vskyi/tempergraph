@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 REPO = re.compile(r"^[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}$")
-MARKER = r"^[a-z0-9:=<>!\- ]{1,80}$"
+LOOP_LABEL = "tempergraph-loop"  # the label every loop issue carries (ISS-B1); its list read (ISS-B9) filters on it
 
 
 class CodeHostError(Exception):
@@ -24,8 +24,7 @@ class CodeHostError(Exception):
 
 
 class CodeHost(Protocol):
-    def search(self, repo: str, marker: str) -> list[dict[str, Any]]: ...
-    def closed(self, repo: str, marker: str) -> list[dict[str, Any]]: ...
+    def loop_issues(self, repo: str, state: str) -> list[dict[str, Any]]: ...
     def create(self, repo: str, title: str, body: str, labels: list[str]) -> str: ...
     def comment(self, repo: str, number: int, body: str) -> str: ...
     def reopen(self, repo: str, number: int) -> None: ...
@@ -59,6 +58,10 @@ class GhCodeHost:
     timeout_s: float = 60.0
 
     def _gh(self, args: list[str], payload: dict[str, Any] | None = None) -> Any:
+        out = self._run(args, payload)
+        return json.loads(out) if out.strip() else None
+
+    def _run(self, args: list[str], payload: dict[str, Any] | None = None) -> str:
         exe = shutil.which("gh")
         if exe is None:
             raise CodeHostError("gh is not installed")
@@ -70,25 +73,28 @@ class GhCodeHost:
             raise CodeHostError(type(exc).__name__) from None
         if proc.returncode != 0:
             raise CodeHostError(f"gh exited {proc.returncode}")
-        return json.loads(proc.stdout) if proc.stdout.strip() else None
+        return proc.stdout
 
-    def search(self, repo: str, marker: str) -> list[dict[str, Any]]:
-        if not re.match(MARKER, marker):
-            raise CodeHostError("marker is not a constant shape")
-        got = self._gh(["issue", "list", "--repo", _check(repo), "--state", "open", "--limit", "50",
-                        "--json", "number,body,url", "--search", f"\"{marker}\" in:body"])
-        return list(got or [])
-
-    def closed(self, repo: str, marker: str) -> list[dict[str, Any]]:
-        """Closed issues holding the marker, with the close reason (`not_planned`, `completed`, `duplicate` or
-        empty) and the close time (ISS-B3 to ISS-B6)."""
-        if not re.match(MARKER, marker):
-            raise CodeHostError("marker is not a constant shape")
-        got = self._gh(["issue", "list", "--repo", _check(repo), "--state", "closed", "--limit", "50",
-                        "--json", "number,body,url,stateReason,closedAt", "--search", f"\"{marker}\" in:body"])
-        return [{"number": r.get("number"), "url": r.get("url"), "body": r.get("body") or "",
-                 "state_reason": str(r.get("stateReason") or "").lower(), "closed_at": r.get("closedAt") or ""}
-                for r in got or [] if isinstance(r, dict)]
+    def loop_issues(self, repo: str, state: str) -> list[dict[str, Any]]:
+        """ISS-B9: every issue of the repository in `state` (`open` or `closed`) that carries the loop's label, read
+        page by page through the REST list endpoint, not the search index: an issue is listed the moment it exists,
+        and the call needs no GraphQL. Pull requests are left out."""
+        if state not in ("open", "closed"):
+            raise CodeHostError("state is not open or closed")
+        text = self._run(["api", "--method", "GET", f"repos/{_check(repo)}/issues", "-f", f"state={state}",
+                          "-f", f"labels={LOOP_LABEL}", "-f", "per_page=100", "--paginate", "--jq", ".[]"])
+        out: list[dict[str, Any]] = []
+        for ln in text.splitlines():
+            try:
+                r = json.loads(ln)
+            except ValueError:
+                continue
+            if not isinstance(r, dict) or r.get("pull_request"):
+                continue
+            out.append({"number": r.get("number"), "url": r.get("html_url"), "body": r.get("body") or "",
+                        "state_reason": str(r.get("state_reason") or "").lower(), "closed_at": r.get("closed_at") or "",
+                        "created_at": r.get("created_at") or ""})
+        return out
 
     def create(self, repo: str, title: str, body: str, labels: list[str]) -> str:
         got = self._gh(["api", f"repos/{_check(repo)}/issues", "--method", "POST", "--input", "-"],
@@ -151,23 +157,20 @@ class MemoryCodeHost:
     fail_closed: int = 0
     down: bool = False
 
-    def search(self, repo: str, marker: str) -> list[dict[str, Any]]:
+    def loop_issues(self, repo: str, state: str) -> list[dict[str, Any]]:
+        """Issues in `state` with the loop's label; `fail_search` fails open reads, `fail_closed` closed ones."""
         if self.down:
             raise CodeHostError("unreachable")
-        if self.fail_search:
+        if state == "open" and self.fail_search:
             self.fail_search -= 1
             raise CodeHostError("search failed")
-        return [i for i in self.issues if i["repo"] == repo and i["state"] == "open" and marker in i["body"]]
-
-    def closed(self, repo: str, marker: str) -> list[dict[str, Any]]:
-        if self.down:
-            raise CodeHostError("unreachable")
-        if self.fail_closed:
+        if state == "closed" and self.fail_closed:
             self.fail_closed -= 1
             raise CodeHostError("closed search failed")
         return [{"number": i["number"], "url": i["url"], "body": i["body"], "state_reason": i.get("state_reason") or "",
                  "closed_at": i.get("closed_at") or ""}
-                for i in self.issues if i["repo"] == repo and i["state"] == "closed" and marker in i["body"]]
+                for i in self.issues if i["repo"] == repo and i["state"] == state
+                and LOOP_LABEL in (i.get("labels") or [LOOP_LABEL])]
 
     def close(self, repo: str, number: int, reason: str, at: str) -> None:
         """Closes an issue with a reason (`not_planned`, `completed`, `duplicate` or empty) at an ISO time."""
