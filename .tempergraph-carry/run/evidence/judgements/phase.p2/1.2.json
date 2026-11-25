@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "phase",
+  "visit": 1,
+  "attempt": 2,
+  "blockers": [
+    {
+      "criterion": "ts-phs-scope",
+      "evidence": "PARTIAL: Files matching a row: mcpconfig.py (2.3), claude.py (2.4), test_mcp_proxy.py (2.1), test_claude_executor.py (2.2), and the plan itself. docs/tasks/i21.handoff.md, docs/tasks/i21.triage.md and executor-claude-code.spec.md are named by no phase 2 row. They are likely run artifacts or earlier-phase edits, but I could not tell which.",
+      "fix": "Confirm those three files come from an earlier phase or from the plan's docs step."
+    }
+  ]
+}
