@@ -85,7 +85,8 @@ def decide(c: Candidate, history: Iterable[Mapping[str, Any]], issue_repository:
         return Decision(action="record", reason=str(f.get("class")), candidate=c)
     if repo is None:
         return Decision(action="record", reason="host" if f.get("side") == "host" else "no_repository", candidate=c)
-    if c.lens == "outcome" and not c.calibrated:
+    escape = str(f.get("cause") or "").split(":", 1)[0] == "outcome_escape"  # SIL-B34: the pattern rule alone
+    if c.lens == "outcome" and not c.calibrated and not escape:
         return Decision(action="record", reason="uncalibrated", candidate=c)  # SIL-B7
     if c.lens == "friction" and (c.confidence is None
                                  or c.confidence < params.value("friction.file_confidence") or not c.attributed):

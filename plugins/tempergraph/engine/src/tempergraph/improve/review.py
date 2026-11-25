@@ -699,7 +699,8 @@ def corroborate(root: Path, workflow: str, task: str, thread: str) -> int:
     changed = 0
     for f in found:
         counts = kept.get(str(f.get("unit")))
-        if f.get("lens") in ("review", "outcome") or not counts:
+        escape = str(f.get("cause") or "").split(":", 1)[0] == "outcome_escape"  # SIL-B33
+        if f.get("lens") == "review" or (f.get("lens") == "outcome" and not escape) or not counts:
             continue
         category = min(counts, key=lambda c: (-counts[c], c))
         if f.get("review") != f"review:{category}" or f.get("review_weight") != counts[category]:

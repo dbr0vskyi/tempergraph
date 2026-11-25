@@ -78,6 +78,9 @@ CAUSES: dict[str, Cause] = {
                            remedy="Re-score the judge on its calibration cases and review the gate for the new binding"),
     "outcome_unmet": Cause(klass="fault", side="workflow",
                            remedy="The outcome judge found this final criterion unmet: a gate let the gap through"),
+    "outcome_escape": Cause(klass="fault", side="workflow",
+                            remedy="A gate let a run through that a person sent back after review: "
+                                   "tighten the gate that serves this unit"),
     "review_repeat": Cause(klass="fault", side="workflow",
                            remedy="A review category was kept in several sessions or runs of this unit: fix what it names"),
     "check_repeat": Cause(klass="fault", side="workflow",
