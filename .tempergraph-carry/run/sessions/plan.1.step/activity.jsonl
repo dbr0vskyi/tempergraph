@@ -1,0 +1,119 @@
+{"t": 0.745, "n": 1, "ev": "session_started", "session_id": "15c577cf-ac33-4721-bcfa-52500c92caac", "model": "claude-sonnet-5-5", "tools": ["Edit", "Glob", "Grep", "Read", "Write"], "cli_version": "2.1.332", "mcp_server_errors": 0, "plugin_errors": 0}
+{"t": 1.842, "n": 2, "ev": "text", "last_line": "I'll start with the rule files, the triage note and the hand-off."}
+{"t": 2.284, "n": 3, "ev": "tool_started", "name": "Read", "call_id": "toolu_01L4A4CgaHwVtgg9KFRDZaFG", "capability": "read", "subagent": false, "input_summary": ".claude/rules/temperspec/plan.rule.md"}
+{"t": 2.302, "n": 4, "ev": "tool_finished", "call_id": "toolu_01L4A4CgaHwVtgg9KFRDZaFG", "ok": true, "duration_s": 0.018}
+{"t": 2.721, "n": 5, "ev": "tool_started", "name": "Read", "call_id": "toolu_01B53BRLCNRKLxKR6MNunX3v", "capability": "read", "subagent": false, "input_summary": ".claude/rules/temperspec/documents.rule.md"}
+{"t": 2.728, "n": 6, "ev": "tool_finished", "call_id": "toolu_01B53BRLCNRKLxKR6MNunX3v", "ok": true, "duration_s": 0.007}
+{"t": 3.122, "n": 7, "ev": "tool_started", "name": "Read", "call_id": "toolu_01LtdcMdLsD6j3qgdE8ebx43", "capability": "read", "subagent": false, "input_summary": "docs/tasks/i144.triage.md"}
+{"t": 3.138, "n": 8, "ev": "tool_finished", "call_id": "toolu_01LtdcMdLsD6j3qgdE8ebx43", "ok": true, "duration_s": 0.017}
+{"t": 3.396, "n": 9, "ev": "tool_started", "name": "Glob", "call_id": "toolu_01Ne1UATpjqgCTLocyLgk2gb", "capability": "list", "subagent": false, "input_summary": "docs/tasks/i144*"}
+{"t": 3.46, "n": 10, "ev": "tool_finished", "call_id": "toolu_01Ne1UATpjqgCTLocyLgk2gb", "ok": true, "duration_s": 0.064}
+{"t": 3.554, "n": 11, "ev": "tool_started", "name": "Glob", "call_id": "toolu_01WvqnBx4MEjhdm4AQG8yxQy", "capability": "list", "subagent": false, "input_summary": "docs/plans/i144*"}
+{"t": 3.589, "n": 12, "ev": "tool_finished", "call_id": "toolu_01WvqnBx4MEjhdm4AQG8yxQy", "ok": true, "duration_s": 0.034}
+{"t": 4.712, "n": 13, "ev": "tool_started", "name": "Read", "call_id": "toolu_01T97PNeSpQuPqM6qdVvo5Px", "capability": "read", "subagent": false, "input_summary": "docs/tasks/i144.handoff.md"}
+{"t": 4.748, "n": 14, "ev": "tool_finished", "call_id": "toolu_01T97PNeSpQuPqM6qdVvo5Px", "ok": true, "duration_s": 0.036}
+{"t": 6.277, "n": 15, "ev": "tool_started", "name": "Read", "call_id": "toolu_01TDdvPmHkHqah5CUayTtd5j", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/docs/specs/test-suite.spec.md"}
+{"t": 6.283, "n": 16, "ev": "tool_finished", "call_id": "toolu_01TDdvPmHkHqah5CUayTtd5j", "ok": true, "duration_s": 0.006}
+{"t": 6.687, "n": 17, "ev": "tool_started", "name": "Read", "call_id": "toolu_01HdVc6VkFuswcduuhDZyhuF", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/docs/specs/central-run-stats.spec.md"}
+{"t": 6.693, "n": 18, "ev": "tool_finished", "call_id": "toolu_01HdVc6VkFuswcduuhDZyhuF", "ok": true, "duration_s": 0.006}
+{"t": 8.375, "n": 19, "ev": "tool_started", "name": "Read", "call_id": "toolu_015qNJLipqdPZsmd6okNAse6", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/conftest.py"}
+{"t": 8.394, "n": 20, "ev": "tool_finished", "call_id": "toolu_015qNJLipqdPZsmd6okNAse6", "ok": true, "duration_s": 0.019}
+{"t": 8.838, "n": 21, "ev": "tool_started", "name": "Read", "call_id": "toolu_01WzRUtSRphntoKQsdQCj2op", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_suite_isolation.py"}
+{"t": 8.865, "n": 22, "ev": "tool_finished", "call_id": "toolu_01WzRUtSRphntoKQsdQCj2op", "ok": true, "duration_s": 0.027}
+{"t": 9.273, "n": 23, "ev": "tool_started", "name": "Read", "call_id": "toolu_019HUi6Sc1vGzmFf7hqA5kok", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/pyproject.toml"}
+{"t": 9.302, "n": 24, "ev": "tool_finished", "call_id": "toolu_019HUi6Sc1vGzmFf7hqA5kok", "ok": true, "duration_s": 0.029}
+{"t": 9.705, "n": 25, "ev": "tool_started", "name": "Read", "call_id": "toolu_01A112SqMB91gJ3GQMverUq7", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/observe/rows.py"}
+{"t": 9.733, "n": 26, "ev": "tool_finished", "call_id": "toolu_01A112SqMB91gJ3GQMverUq7", "ok": true, "duration_s": 0.028}
+{"n": 28, "ev": "resources", "t": 23954.075, "cpu_s": 1.26, "processes": 1, "rss_peak_kb": 318800}
+{"t": 11.864, "n": 28, "ev": "tool_started", "name": "Read", "call_id": "toolu_01LoTpDWUL5broG1k4h6vDUk", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/cli/observe_cli.py"}
+{"t": 11.87, "n": 29, "ev": "tool_finished", "call_id": "toolu_01LoTpDWUL5broG1k4h6vDUk", "ok": true, "duration_s": 0.006}
+{"t": 12.824, "n": 30, "ev": "tool_started", "name": "Read", "call_id": "toolu_01LwGAWJZGgPqhhfZDtkNGhi", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/observe/sinks.py"}
+{"t": 12.855, "n": 31, "ev": "tool_finished", "call_id": "toolu_01LwGAWJZGgPqhhfZDtkNGhi", "ok": true, "duration_s": 0.031}
+{"t": 15.645, "n": 32, "ev": "tool_started", "name": "Read", "call_id": "toolu_01P9Fe7ezpGMgZS3bCyETojU", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/store/layout.py"}
+{"t": 15.671, "n": 33, "ev": "tool_finished", "call_id": "toolu_01P9Fe7ezpGMgZS3bCyETojU", "ok": true, "duration_s": 0.027}
+{"t": 16.608, "n": 34, "ev": "tool_started", "name": "Read", "call_id": "toolu_011nb2wGCha2agsVaRmAEVNk", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/improve/child.py"}
+{"t": 16.614, "n": 35, "ev": "tool_finished", "call_id": "toolu_011nb2wGCha2agsVaRmAEVNk", "ok": true, "duration_s": 0.006}
+{"t": 17.342, "n": 36, "ev": "tool_started", "name": "Read", "call_id": "toolu_01AJ7SmjqG1jm1nCxxuTfeQV", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_workflow_packages.py"}
+{"t": 17.347, "n": 37, "ev": "tool_finished", "call_id": "toolu_01AJ7SmjqG1jm1nCxxuTfeQV", "ok": true, "duration_s": 0.005}
+{"t": 18.06, "n": 38, "ev": "tool_started", "name": "Read", "call_id": "toolu_01MeNTvsHs6z5Ln5CkoRdHpz", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/improve/suites.py"}
+{"t": 18.073, "n": 39, "ev": "tool_finished", "call_id": "toolu_01MeNTvsHs6z5Ln5CkoRdHpz", "ok": true, "duration_s": 0.013}
+{"t": 18.217, "n": 40, "ev": "tool_started", "name": "Glob", "call_id": "toolu_01KCGqNRaoH5GeiG1uNjikYZ", "capability": "list", "subagent": false, "input_summary": "tempergraph.commands.json"}
+{"t": 18.287, "n": 41, "ev": "tool_finished", "call_id": "toolu_01KCGqNRaoH5GeiG1uNjikYZ", "ok": true, "duration_s": 0.07}
+{"n": 43, "ev": "resources", "t": 23964.128, "cpu_s": 1.89, "processes": 1, "rss_peak_kb": 321184}
+{"t": 20.109, "n": 43, "ev": "text", "last_line": "I've read both rule files, the triage note, the hand-off, the two specs and the main code files. Next I'm reading the repo's declared commands and the remaining code the rows will touch."}
+{"t": 20.639, "n": 44, "ev": "tool_started", "name": "Read", "call_id": "toolu_01H279VmdnTG9LFgmrvmWGV5", "capability": "read", "subagent": false, "input_summary": "tempergraph.commands.json"}
+{"t": 20.669, "n": 45, "ev": "tool_finished", "call_id": "toolu_01H279VmdnTG9LFgmrvmWGV5", "ok": true, "duration_s": 0.03}
+{"t": 21.139, "n": 46, "ev": "tool_started", "name": "Read", "call_id": "toolu_01Ee4GQwurLsR7tMLErQir1g", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_read_only_contract.py"}
+{"t": 21.145, "n": 47, "ev": "tool_finished", "call_id": "toolu_01Ee4GQwurLsR7tMLErQir1g", "ok": true, "duration_s": 0.005}
+{"t": 22.262, "n": 48, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01LnXseyY5bcJ7pE22HFN3P9", "capability": "search", "subagent": false, "input_summary": "stats"}
+{"t": 22.28, "n": 49, "ev": "tool_finished", "call_id": "toolu_01LnXseyY5bcJ7pE22HFN3P9", "ok": true, "duration_s": 0.018}
+{"t": 23.277, "n": 50, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01WSXfcbtB3iL3UQT39JEoYH", "capability": "search", "subagent": false, "input_summary": "stats flush|stats sync"}
+{"t": 23.375, "n": 51, "ev": "tool_finished", "call_id": "toolu_01WSXfcbtB3iL3UQT39JEoYH", "ok": true, "duration_s": 0.098}
+{"t": 26.254, "n": 52, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01XqzmLf3ZMK3zFTU5AVsDSK", "capability": "search", "subagent": false, "input_summary": "CST-AC5|\"stats\", \"sync\"|\"stats\", \"flush\""}
+{"t": 26.273, "n": 53, "ev": "tool_finished", "call_id": "toolu_01XqzmLf3ZMK3zFTU5AVsDSK", "ok": true, "duration_s": 0.019}
+{"t": 27.289, "n": 54, "ev": "tool_started", "name": "Read", "call_id": "toolu_01JaSKspiD9kNQsDgRyzNNyU", "capability": "read", "subagent": false, "input_summary": "plugins/doc-refresh-tgraph/tests/test_doc_refresh.py"}
+{"t": 27.295, "n": 55, "ev": "tool_finished", "call_id": "toolu_01JaSKspiD9kNQsDgRyzNNyU", "ok": true, "duration_s": 0.006}
+{"t": 28.491, "n": 56, "ev": "tool_started", "name": "Grep", "call_id": "toolu_014RKX3D5D5bAoFAUaXKnnKN", "capability": "search", "subagent": false, "input_summary": "stats (flush|sync)|stats forget"}
+{"t": 28.537, "n": 57, "ev": "tool_finished", "call_id": "toolu_014RKX3D5D5bAoFAUaXKnnKN", "ok": true, "duration_s": 0.047}
+{"n": 59, "ev": "resources", "t": 23974.18, "cpu_s": 2.57, "processes": 1, "rss_peak_kb": 321984}
+{"t": 30.728, "n": 59, "ev": "tool_started", "name": "Read", "call_id": "toolu_01MEnkMFcg8tu4KoBW8NXLsK", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_sinks.py"}
+{"t": 30.755, "n": 60, "ev": "tool_finished", "call_id": "toolu_01MEnkMFcg8tu4KoBW8NXLsK", "ok": true, "duration_s": 0.027}
+{"t": 31.872, "n": 61, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01ABSb3w6SrKbaQNekPFquxv", "capability": "search", "subagent": false, "input_summary": "^def cli\\(|^def happy\\("}
+{"t": 31.885, "n": 62, "ev": "tool_finished", "call_id": "toolu_01ABSb3w6SrKbaQNekPFquxv", "ok": true, "duration_s": 0.013}
+{"n": 64, "ev": "resources", "t": 23984.232, "cpu_s": 2.85, "processes": 1, "rss_peak_kb": 324480}
+{"t": 40.486, "n": 64, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01PD4nyxPN48ZCjnUyEzAza4", "capability": "search", "subagent": false, "input_summary": "^(import|from)"}
+{"t": 40.526, "n": 65, "ev": "tool_finished", "call_id": "toolu_01PD4nyxPN48ZCjnUyEzAza4", "ok": true, "duration_s": 0.04}
+{"t": 40.787, "n": 66, "ev": "tool_started", "name": "Glob", "call_id": "toolu_01G6Mpor72nCns8oQZuXCSJW", "capability": "list", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/*.py"}
+{"t": 40.86, "n": 67, "ev": "tool_finished", "call_id": "toolu_01G6Mpor72nCns8oQZuXCSJW", "ok": true, "duration_s": 0.072}
+{"t": 40.95, "n": 68, "ev": "tool_started", "name": "Glob", "call_id": "toolu_01SCtk7rukzZP8AhLoBG5rNb", "capability": "list", "subagent": false, "input_summary": "plugins/*/tests/conftest.py"}
+{"t": 40.977, "n": 69, "ev": "tool_finished", "call_id": "toolu_01SCtk7rukzZP8AhLoBG5rNb", "ok": true, "duration_s": 0.027}
+{"n": 71, "ev": "resources", "t": 23994.285, "cpu_s": 3.05, "processes": 1, "rss_peak_kb": 327824}
+{"n": 72, "ev": "resources", "t": 24004.31, "cpu_s": 3.11, "processes": 1, "rss_peak_kb": 327824}
+{"n": 73, "ev": "resources", "t": 24014.367, "cpu_s": 3.26, "processes": 1, "rss_peak_kb": 327824}
+{"t": 70.506, "n": 73, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01VKCp3A3ADsQQmKR5QbV5JP", "capability": "search", "subagent": false, "input_summary": "TEMPERGRAPH_HOME|TEMPERGRAPH_LOOP"}
+{"t": 70.568, "n": 74, "ev": "tool_finished", "call_id": "toolu_01VKCp3A3ADsQQmKR5QbV5JP", "ok": true, "duration_s": 0.062}
+{"t": 71.505, "n": 75, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01BFLLPNwoKoxAzTm6AFuabS", "capability": "search", "subagent": false, "input_summary": "pytest11|entry-points|entry_points"}
+{"t": 71.564, "n": 76, "ev": "tool_finished", "call_id": "toolu_01BFLLPNwoKoxAzTm6AFuabS", "ok": true, "duration_s": 0.058}
+{"t": 75.0, "n": 77, "ev": "tool_started", "name": "Grep", "call_id": "toolu_017ZLYqTUnm8NcxvHgeMuCRy", "capability": "search", "subagent": false, "input_summary": "READ_ONLY|read_only|\"flush\"|\"sync\""}
+{"t": 75.047, "n": 78, "ev": "tool_finished", "call_id": "toolu_017ZLYqTUnm8NcxvHgeMuCRy", "ok": true, "duration_s": 0.047}
+{"t": 75.932, "n": 79, "ev": "tool_started", "name": "Read", "call_id": "toolu_0111LE2jzh1Yg4dv4AC7KMzh", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/cli/main.py"}
+{"t": 75.941, "n": 80, "ev": "tool_finished", "call_id": "toolu_0111LE2jzh1Yg4dv4AC7KMzh", "ok": true, "duration_s": 0.009}
+{"t": 76.799, "n": 81, "ev": "tool_started", "name": "Read", "call_id": "toolu_014ohEVxTcWZ9Vc2RVeFhk8U", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/cli/observe_cli.py"}
+{"t": 76.805, "n": 82, "ev": "tool_finished", "call_id": "toolu_014ohEVxTcWZ9Vc2RVeFhk8U", "ok": true, "duration_s": 0.006}
+{"n": 84, "ev": "resources", "t": 24024.419, "cpu_s": 3.53, "processes": 1, "rss_peak_kb": 327824}
+{"n": 85, "ev": "resources", "t": 24034.477, "cpu_s": 3.59, "processes": 1, "rss_peak_kb": 327824}
+{"t": 94.637, "n": 85, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01NUob9dHXJSJTDeNvtvQJSL", "capability": "search", "subagent": false, "input_summary": "workflow_names\\("}
+{"t": 94.698, "n": 86, "ev": "tool_finished", "call_id": "toolu_01NUob9dHXJSJTDeNvtvQJSL", "ok": true, "duration_s": 0.061}
+{"t": 99.21, "n": 87, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01QkQ7SArtoFCQqpukGq9Fwz", "capability": "search", "subagent": false, "input_summary": "^def test_|^    assert .*(len|lines|size)"}
+{"t": 99.254, "n": 88, "ev": "tool_finished", "call_id": "toolu_01QkQ7SArtoFCQqpukGq9Fwz", "ok": true, "duration_s": 0.044}
+{"n": 90, "ev": "resources", "t": 24044.524, "cpu_s": 3.86, "processes": 1, "rss_peak_kb": 327824}
+{"n": 91, "ev": "resources", "t": 24054.576, "cpu_s": 3.98, "processes": 1, "rss_peak_kb": 327824}
+{"n": 92, "ev": "resources", "t": 24064.631, "cpu_s": 4.06, "processes": 1, "rss_peak_kb": 327824}
+{"n": 93, "ev": "resources", "t": 24074.684, "cpu_s": 4.15, "processes": 1, "rss_peak_kb": 327824}
+{"t": 139.852, "n": 93, "ev": "text", "last_line": "I've settled the design and I'm writing the plan in parts, starting with every section and the phases but no rows."}
+{"n": 95, "ev": "resources", "t": 24084.735, "cpu_s": 4.31, "processes": 1, "rss_peak_kb": 327824}
+{"n": 96, "ev": "resources", "t": 24094.756, "cpu_s": 4.53, "processes": 1, "rss_peak_kb": 327824}
+{"t": 155.975, "n": 96, "ev": "tool_started", "name": "Write", "call_id": "toolu_017h9V9S77H5t9buZTMpbLBq", "capability": "write", "subagent": false, "input_summary": "docs/plans/i144.plan.md"}
+{"t": 156.011, "n": 97, "ev": "tool_finished", "call_id": "toolu_017h9V9S77H5t9buZTMpbLBq", "ok": true, "duration_s": 0.036}
+{"t": 157.168, "n": 98, "ev": "text", "last_line": "Now the Phase 1 table."}
+{"n": 100, "ev": "resources", "t": 24104.776, "cpu_s": 4.77, "processes": 1, "rss_peak_kb": 327824}
+{"t": 166.285, "n": 100, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01NEX6npRV5bxDFUVo2pi9Fd", "capability": "edit", "subagent": false, "input_summary": "docs/plans/i144.plan.md"}
+{"t": 166.309, "n": 101, "ev": "tool_finished", "call_id": "toolu_01NEX6npRV5bxDFUVo2pi9Fd", "ok": true, "duration_s": 0.024}
+{"t": 168.414, "n": 102, "ev": "text", "last_line": "I wrote one confusing phrase in row 1.1, so I'm fixing it."}
+{"t": 169.616, "n": 103, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01TYYJgn5HiZK3f63WSHYfS8", "capability": "edit", "subagent": false, "input_summary": "docs/plans/i144.plan.md"}
+{"t": 169.651, "n": 104, "ev": "tool_finished", "call_id": "toolu_01TYYJgn5HiZK3f63WSHYfS8", "ok": true, "duration_s": 0.034}
+{"n": 106, "ev": "resources", "t": 24114.796, "cpu_s": 5.06, "processes": 1, "rss_peak_kb": 327824}
+{"t": 171.096, "n": 106, "ev": "text", "last_line": "Before the Phase 2 table I'm checking that a usage error exits 2."}
+{"t": 172.066, "n": 107, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01PuDAPLGuWzpnxp34e9TgG9", "capability": "search", "subagent": false, "input_summary": "USAGE|class ExitCode"}
+{"t": 172.08, "n": 108, "ev": "tool_finished", "call_id": "toolu_01PuDAPLGuWzpnxp34e9TgG9", "ok": true, "duration_s": 0.014}
+{"n": 110, "ev": "resources", "t": 24124.82, "cpu_s": 5.3, "processes": 1, "rss_peak_kb": 327824}
+{"t": 183.727, "n": 110, "ev": "tool_started", "name": "Edit", "call_id": "toolu_013BHo14iVbwxMA9v588DeGW", "capability": "edit", "subagent": false, "input_summary": "docs/plans/i144.plan.md"}
+{"t": 183.761, "n": 111, "ev": "tool_finished", "call_id": "toolu_013BHo14iVbwxMA9v588DeGW", "ok": true, "duration_s": 0.034}
+{"t": 185.484, "n": 112, "ev": "text", "last_line": "Last, the proof table."}
+{"t": 187.383, "n": 113, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01EFBcvxvNvtLD8NmTWoqpg3", "capability": "edit", "subagent": false, "input_summary": "docs/plans/i144.plan.md"}
+{"t": 187.386, "n": 114, "ev": "tool_finished", "call_id": "toolu_01EFBcvxvNvtLD8NmTWoqpg3", "ok": false, "duration_s": 0.003}
+{"t": 190.122, "n": 115, "ev": "tool_started", "name": "Edit", "call_id": "toolu_0194S7d2yUCu6EKFaXAC1Uwg", "capability": "edit", "subagent": false, "input_summary": "docs/plans/i144.plan.md"}
+{"t": 190.143, "n": 116, "ev": "tool_finished", "call_id": "toolu_0194S7d2yUCu6EKFaXAC1Uwg", "ok": true, "duration_s": 0.021}
+{"n": 118, "ev": "resources", "t": 24134.838, "cpu_s": 5.63, "processes": 1, "rss_peak_kb": 327824}
+{"t": 196.85, "n": 118, "ev": "text", "last_line": "ARTIFACT complexity: simple"}
+{"t": 197.022, "n": 119, "ev": "result", "ok": true, "text": "I wrote the plan to `docs/plans/i144.plan.md` with status `planned`. I didn't run any commands or tests, and I left the commit to the engine.\n\n- **Shape:** It has 9 requirements (R1 to R9) and 2 phases, each of medium weight. There are 6 rows, 2 of them test rows, and they name 6 files. Three verification commands: the full `python -m pytest`, `ruff check src tests` and `mypy`, each run from `plugins/tempergraph/engine`. No row carries a completion mark.\n- **Phase 1, isolation:** The engine ships a pytest plugin, `tempergraph.pytest_plugin`, registered under the `pytest11` entry point. It's an autouse fixture that sets `TEMPERGRAPH_HOME` to a folder of its own and `TEMPERGRAPH_LOOP` to `off`, both through `monkeypatch`. A test that sets the loop mode itself therefore keeps its value. The engine's own `conftest.py` fixture stays as it is. The new test in `test_suite_isolation.py` starts a scratch package from its own folder, in an environment without the home and loop variables. It hashes a seeded `HOME`, machine index included. A control run with the plugin blocked has to change that folder, so the check can fail. The same file also checks the entry point in `pyproject.toml` and that the specs name no workflow.\n- **Phase 2, the verb:** The verb is `stats forget [--check]`, a new action of `stats`. The logic is in a new module, `observe/forget.py`, and `observe_cli.py` wires it in. Tests are in a new `test_central_stats_forget.py`.\n- **Open questions:** I took the hand-off's defaults. Only the month in which the verb runs (UTC) is cleaned. The isolation covers only the home folder and the loop.\n- **Docs to update:** None. Discovery already wrote the spec changes (TST-B7/B8, CST-B17 to B21, the CLI-B8 sentence), and the code now has to match them.\n- **Extra files opened:** The hand-off's reading list was the start. Section 0 of the plan names the four extra files I opened and why: `test_cli.py`, `test_sinks.py`, `test_source_rules.py` and `tempergraph.commands.json`.\n- **doc-refresh copy:** I left `doc-refresh-tgraph`'s own copy of the isolation in place. It isn't part of the criteria.\n\nARTIFACT plan: docs/plans/i144.plan.md\nARTIFACT complexity: simple", "subtype": "success", "is_error": false, "session_id": "15c577cf-ac33-4721-bcfa-52500c92caac"}

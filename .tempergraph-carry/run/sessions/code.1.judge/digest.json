@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "session_key": "code.1.judge",
+  "kind": "judge",
+  "unit": "code",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 14,
+  "peak_context": 47302,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": null,
+  "files_reread": 0,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 7,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.071
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 3,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.046
+    }
+  },
+  "declared_unused": [
+    "edit",
+    "list",
+    "shell",
+    "write"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "reads": [
+    "4f9b145721558611",
+    "51facce1edeea608",
+    "60d80f32bca7b0f3",
+    "7c732cac0de12974",
+    "7ce8828af916359b",
+    "81ee681f10c030d8",
+    "8cec8146cf4f7693"
+  ],
+  "changed_total": 0,
+  "changed_read": 0,
+  "_commands": [],
+  "_wrote": []
+}

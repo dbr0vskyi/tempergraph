@@ -1,0 +1,37 @@
+{"t": 1.174, "n": 1, "ev": "session_started", "session_id": "b6ca3964-b270-477a-bea8-75c7a91da29c", "model": "claude-sonnet-5-5", "tools": ["Glob", "Grep", "Read", "Write"], "cli_version": "2.1.332", "mcp_server_errors": 0, "plugin_errors": 0}
+{"t": 2.476, "n": 2, "ev": "tool_started", "name": "Read", "call_id": "toolu_01DMNqm7oVK2dzsQQi7YD4WF", "capability": "read", "subagent": false, "input_summary": "batch-queue/tasks/i144.md"}
+{"t": 2.498, "n": 3, "ev": "tool_finished", "call_id": "toolu_01DMNqm7oVK2dzsQQi7YD4WF", "ok": true, "duration_s": 0.022}
+{"t": 2.877, "n": 4, "ev": "tool_started", "name": "Read", "call_id": "toolu_016eWptByNTEP3FjP4gzBmCN", "capability": "read", "subagent": false, "input_summary": ".claude/rules/temperspec/task-notes.rule.md"}
+{"t": 2.885, "n": 5, "ev": "tool_finished", "call_id": "toolu_016eWptByNTEP3FjP4gzBmCN", "ok": true, "duration_s": 0.008}
+{"t": 3.244, "n": 6, "ev": "tool_started", "name": "Read", "call_id": "toolu_0153ZAGGGPMjKzByG7rFe3VV", "capability": "read", "subagent": false, "input_summary": ".claude/rules/temperspec/documents.rule.md"}
+{"t": 3.251, "n": 7, "ev": "tool_finished", "call_id": "toolu_0153ZAGGGPMjKzByG7rFe3VV", "ok": true, "duration_s": 0.007}
+{"t": 5.17, "n": 8, "ev": "tool_started", "name": "Grep", "call_id": "toolu_013V9Mp2ua9e44GXt5JsQ63Z", "capability": "search", "subagent": false, "input_summary": "test-suite|workspace-and-concurrency|central-run-stats|TST-AC7|WSP-AC2|CST-B8"}
+{"t": 5.186, "n": 9, "ev": "tool_finished", "call_id": "toolu_013V9Mp2ua9e44GXt5JsQ63Z", "ok": true, "duration_s": 0.016}
+{"t": 5.51, "n": 10, "ev": "tool_started", "name": "Glob", "call_id": "toolu_0157pprqLy3xTCcnyrTorarz", "capability": "list", "subagent": false, "input_summary": "plugins/tempergraph/docs/specs/{test-suite,workspace-and-concurrency,central-run-stats}.spec.md"}
+{"t": 5.547, "n": 11, "ev": "tool_finished", "call_id": "toolu_0157pprqLy3xTCcnyrTorarz", "ok": true, "duration_s": 0.037}
+{"t": 6.743, "n": 12, "ev": "tool_started", "name": "Read", "call_id": "toolu_012RYBsmcunpWiNAVyc54yGf", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/docs/specs/test-suite.spec.md"}
+{"t": 6.749, "n": 13, "ev": "tool_finished", "call_id": "toolu_012RYBsmcunpWiNAVyc54yGf", "ok": true, "duration_s": 0.006}
+{"t": 7.242, "n": 14, "ev": "tool_started", "name": "Read", "call_id": "toolu_012wJcsx2jCdL3Fon1eAAogK", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/docs/specs/central-run-stats.spec.md"}
+{"t": 7.248, "n": 15, "ev": "tool_finished", "call_id": "toolu_012wJcsx2jCdL3Fon1eAAogK", "ok": true, "duration_s": 0.006}
+{"t": 8.072, "n": 16, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01K51H5FiNgFYCvDPrV3giJV", "capability": "search", "subagent": false, "input_summary": "WSP-AC2|TEMPERGRAPH_HOME|real home"}
+{"t": 8.086, "n": 17, "ev": "tool_finished", "call_id": "toolu_01K51H5FiNgFYCvDPrV3giJV", "ok": true, "duration_s": 0.014}
+{"t": 8.771, "n": 18, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01J2gfShzEBz7BkDH42mRYc9", "capability": "search", "subagent": false, "input_summary": "TEMPERGRAPH_HOME"}
+{"t": 8.803, "n": 19, "ev": "tool_finished", "call_id": "toolu_01J2gfShzEBz7BkDH42mRYc9", "ok": true, "duration_s": 0.032}
+{"n": 21, "ev": "resources", "t": 22529.773, "cpu_s": 1.06, "processes": 1, "rss_peak_kb": 271424}
+{"t": 10.9, "n": 21, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01PvXFyhnZkhtjSnKw1KE6jV", "capability": "search", "subagent": false, "input_summary": "prune|forget|gc"}
+{"t": 10.921, "n": 22, "ev": "tool_finished", "call_id": "toolu_01PvXFyhnZkhtjSnKw1KE6jV", "ok": true, "duration_s": 0.021}
+{"t": 11.698, "n": 23, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01HdC4CaE4wyubba7T1ypVAz", "capability": "search", "subagent": false, "input_summary": "TEMPERGRAPH_HOME|autouse|improvement|IMPROVE"}
+{"t": 11.711, "n": 24, "ev": "tool_finished", "call_id": "toolu_01HdC4CaE4wyubba7T1ypVAz", "ok": true, "duration_s": 0.013}
+{"t": 12.4, "n": 25, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01JWjfzWVBADsyRhQgwUMoh7", "capability": "search", "subagent": false, "input_summary": "index\\.json"}
+{"t": 12.419, "n": 26, "ev": "tool_finished", "call_id": "toolu_01JWjfzWVBADsyRhQgwUMoh7", "ok": true, "duration_s": 0.019}
+{"t": 13.039, "n": 27, "ev": "tool_started", "name": "Grep", "call_id": "toolu_018PXv8mBhUNY2yzffGuHEB2", "capability": "search", "subagent": false, "input_summary": "pytest|conftest|plugin"}
+{"t": 13.057, "n": 28, "ev": "tool_finished", "call_id": "toolu_018PXv8mBhUNY2yzffGuHEB2", "ok": true, "duration_s": 0.018}
+{"t": 15.548, "n": 29, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01UPWo6x8JAhMRANMLkjV1jk", "capability": "search", "subagent": false, "input_summary": "prune|pytest11|missing"}
+{"t": 15.567, "n": 30, "ev": "tool_finished", "call_id": "toolu_01UPWo6x8JAhMRANMLkjV1jk", "ok": true, "duration_s": 0.019}
+{"t": 16.667, "n": 31, "ev": "text", "last_line": "I've finished reading the task, the rules and the specs. Now I'm writing the triage note."}
+{"n": 33, "ev": "resources", "t": 22539.794, "cpu_s": 1.3, "processes": 1, "rss_peak_kb": 275888}
+{"t": 25.685, "n": 33, "ev": "tool_started", "name": "Write", "call_id": "toolu_013HjJdvHJ52H5Mv7Mo79mH5", "capability": "write", "subagent": false, "input_summary": "docs/tasks/i144.triage.md"}
+{"t": 25.694, "n": 34, "ev": "tool_finished", "call_id": "toolu_013HjJdvHJ52H5Mv7Mo79mH5", "ok": true, "duration_s": 0.009}
+{"n": 36, "ev": "resources", "t": 22549.819, "cpu_s": 1.49, "processes": 1, "rss_peak_kb": 275888}
+{"t": 30.597, "n": 36, "ev": "text", "last_line": "ARTIFACT covered: no"}
+{"t": 30.775, "n": 37, "ev": "result", "ok": true, "text": "I wrote the triage note to `docs/tasks/i144.triage.md`. I read `task-notes.rule.md` and `documents.rule.md` before writing it. I ran no git commands, so the engine commits the file.\n\n- **Acceptance criteria:** I copied all four from the task.\n- **Existing documents:**\n  - `test-suite.spec.md` covers isolation only for the engine's own suite.\n  - `central-run-stats.spec.md` (CST-B8) says index entries are never removed.\n  - `workspace-and-concurrency.spec.md` (WSP-AC2) covers the real state root, not the home folder.\n- **Code:**\n  - `conftest.py` holds the isolation fixture, and it only applies inside the engine's suite.\n  - No pytest plugin entry point exists.\n  - No verb removes index entries or stats rows. `store prune` removes logs only.\n- **Gaps:** I listed four, all `Findable`.\n  - **G1:** the isolation rule for any test that imports the engine. The owning spec is `test-suite.spec.md`.\n  - **G2:** the verb that removes dead index entries and stats rows, with `--check`. The owning spec is `central-run-stats.spec.md`.\n  - **G3:** CST-B8's \"never removing\" sentence must name the verb as an exception.\n  - **G4:** the engine test that runs a fixture package's tests from its own folder.\n- **Covered:** no. No gap row says `Covered by`, because no spec states any of them completely.\n- **Owner decisions:** None.\n- **Route:** `Deliver: code`, `Route: discovery`. Gaps exist, so the quick lane does not apply.\n\nARTIFACT triage_note: docs/tasks/i144.triage.md\nARTIFACT gaps: some\nARTIFACT route: discovery\nARTIFACT covered: no", "subtype": "success", "is_error": false, "session_id": "b6ca3964-b270-477a-bea8-75c7a91da29c"}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "outcome",
+  "visit": 2,
+  "attempt": 2,
+  "blockers": [
+    {
+      "criterion": "ts-spec-sync",
+      "evidence": "PARTIAL: CST-B8 (central-run-stats.spec.md:13) says 'the entry stays' when an entry's folder is gone, and CST-B17 (line 17) says 'remove from the machine index every entry whose path is gone ... no other verb and no run removes an entry'. The two are compatible because CST-B17 limits removal to `stats forget`. CST-B8's own sentence, though, still has no exception, so a reader could take 'stays' a…",
+      "fix": "Add 'until `stats forget` removes it (CST-B17)' to the CST-B8 scenario."
+    }
+  ]
+}
