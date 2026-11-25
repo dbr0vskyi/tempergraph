@@ -463,6 +463,18 @@ def test_content_digest(pkg: Path, rel: str, content: Any, changes: bool) -> Non
     assert (_digest(pkg) != before) is changes
 
 
+def test_a_declared_step_file_is_in_the_content_digest(pkg: Path) -> None:  # PKG-AC7, PKG-B13
+    write(pkg, "standards/notes.md", "# Notes\n")
+    undeclared = _digest(pkg)
+    write(pkg, "standards/notes.md", "# Notes, changed\n")
+    assert _digest(pkg) == undeclared
+    doc = json.loads((pkg / "tempergraph.json").read_text())
+    write(pkg, "tempergraph.json", {**doc, "step_files": ["standards/*.md"]})
+    declared = _digest(pkg)
+    write(pkg, "standards/notes.md", "# Notes, changed again\n")
+    assert undeclared != declared != _digest(pkg)
+
+
 def test_pyproject_metadata_outside_dependencies_does_not_change_digest(pkg: Path) -> None:
     before = _digest(pkg)
     write(pkg, "workflow/pyproject.toml", '[project]\nname = "tgwf-release-notes"\ndescription = "d"\n'

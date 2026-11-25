@@ -75,7 +75,7 @@ WHEN a workflow declares its version THE spec SHALL take, appended last to `Work
 
 ### VER-B15 Digests and the workflow version id
 
-WHEN a workflow loads THE engine SHALL compute `content_digest` over the spec's canonical JSON, `outcome.json`, every template, brief, lessons file, skill and agent file, every Python source under `workflow/` and the `dependencies` of its `pyproject.toml`, never `docs/`, `diagram/`, `evals/`, `authoring.json`, `README.md` or `verified_engine` ([PKG](88-workflow-package.spec.md)); `shape_digest` over the diagram model ([LIF-B11](18-lifecycle-and-evals.spec.md)); and `workflow_version` as `<version>+<first 12 hex of content_digest>`, the id reports, proposals (`base_version`), lessons (`added_in`) and runs record.
+WHEN a workflow loads THE engine SHALL compute `content_digest` over the spec's canonical JSON, `outcome.json`, every template, brief, lessons file, skill and agent file, every file the package declares in `step_files` ([PKG-B13](88-workflow-package.spec.md)), every Python source under `workflow/` and the `dependencies` of its `pyproject.toml`, never `docs/`, `diagram/`, `evals/`, `authoring.json`, `README.md` or `verified_engine` ([PKG](88-workflow-package.spec.md)); `shape_digest` over the diagram model ([LIF-B11](18-lifecycle-and-evals.spec.md)); and `workflow_version` as `<version>+<first 12 hex of content_digest>`, the id reports, proposals (`base_version`), lessons (`added_in`) and runs record.
 
 - GIVEN a stamp written WHEN the workflow loads again THEN its `workflow_version` is unchanged
 

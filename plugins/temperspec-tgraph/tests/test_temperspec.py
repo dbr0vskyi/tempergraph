@@ -177,6 +177,34 @@ def test_the_task_notes_rule_examples_match_the_parsers() -> None:
     assert f"more than {fmt.QUICK_MAX['lines']} changed lines" in rule
 
 
+def test_every_rule_file_says_when_it_is_loaded() -> None:
+    """A rule file with no `paths` front matter is loaded into every session of a repository. Only the rule that
+    holds for every document may be; each other one names the files it governs, all of them document suffixes."""
+    documents = _rule("documents")
+    for path in sorted((ROOT / "rules").glob("*.rule.md")):
+        text = path.read_text()
+        if path.name == "documents.rule.md":
+            assert not text.startswith("---"), path.name
+            continue
+        assert text.startswith("---\npaths:\n"), f"{path.name} has no `paths` front matter"
+        patterns = re.findall(r'^  - "([^"]+)"$', text.split("---")[1], re.M)
+        assert patterns, path.name
+        for pattern in patterns:
+            assert pattern.startswith("**/*") and f"`{pattern[4:]}`" in documents, f"{path.name}: {pattern}"
+
+
+def test_the_copy_of_the_rules_installed_beside_the_package_is_the_same() -> None:
+    """A repository that holds the package and its own installed copy (this package's home does) keeps the two the
+    same: a rule edited in one place only is a session reading an old rule."""
+    for parent in ROOT.parents:
+        installed = parent / ".claude" / "rules" / "temperspec"
+        if installed.is_dir():
+            ours = {p.name: p.read_bytes() for p in (ROOT / "rules").glob("*.rule.md")}
+            theirs = {p.name: p.read_bytes() for p in installed.glob("*.rule.md")}
+            assert ours == theirs, "run skills/setup/install_rules.py --update in the repository"
+            return
+
+
 def test_the_documents_rule_names_every_suffix() -> None:
     rule = _rule("documents")
     for folder, suffix in fmt.SUFFIX_BY_FOLDER.items():

@@ -218,3 +218,8 @@ def test_the_list_is_not_committed(tmp_path: Path) -> None:  # CAPL-AC3
     routing.commit_step(SimpleNamespace(workdir=str(tmp_path), request={"task_id": "T-1"}, unit="prepare"))
     files = subprocess.run([*git, "ls-files"], check=True, capture_output=True, text=True).stdout.split()
     assert files == ["docs/specs/a.spec.md"] and (tmp_path / routing.CAPABILITIES).is_file()
+
+
+def test_a_setup_spec_that_names_a_workflow_fails(tmp_path: Path) -> None:  # ts-set-named
+    res = _setup(_copy(CHECKS / "setup" / "must-fail" / "names-a-workflow", tmp_path / "w"))
+    assert res.result == "FAIL" and "fail" in _named(res, "ts-set-named"), res.evidence

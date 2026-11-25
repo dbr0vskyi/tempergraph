@@ -166,7 +166,7 @@ WHEN the scaffold writes a one-step blueprint THE scaffold SHALL write the small
 - PKG-AC4 (PKG-B2, PKG-B19): A builder given an unknown keyword, or `name` or `version`, fails at build; the built spec's name and version equal the manifests'
 - PKG-AC5 (PKG-B7, PKG-B23, PKG-B24): No judge session of any executor loads a workflow plugin (checked on the session-started record of each conformance fixture), and each executor's skill route or refusal has a fixture
 - PKG-AC6 (PKG-B9, PKG-B21, PKG-B22): The docs check passes on the scaffold's output, and fails with `docs-drift` on each of a unit without a spec, a missing criterion id, an unknown id and a changed text
-- PKG-AC7 (PKG-B21): The content digest changes when any of `outcome.json`, a prompt, a brief, a skill, an agent, a Python source or `pyproject.toml` dependencies changes, and not when only `docs/`, `diagram/`, `evals/`, `authoring.json` or `README.md` changes
+- PKG-AC7 (PKG-B21): The content digest changes when any of `outcome.json`, a prompt, a brief, a skill, an agent, a file declared in `step_files`, a Python source or `pyproject.toml` dependencies changes, and not when only `docs/`, `diagram/`, `evals/`, `authoring.json`, `README.md` or a file of another folder that `step_files` does not declare changes
 - PKG-AC8 (PKG-B8, PKG-B10, PKG-B14): A package whose plugin name lacks the `-tgraph` suffix (or carries `.tgflow`, `-tg-graph`) fails to load with `plugin-name-suffix`; each workflow name rule has a fixture; `run <workflow>-tgraph` starts the same workflow as `run <workflow>`; the scaffold writes `<name>-tgraph`; and no engine source or test names a package
 
 ## Open questions
