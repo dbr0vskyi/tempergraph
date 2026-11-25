@@ -1,6 +1,6 @@
 # What the runs of this batch showed (temporary; becomes issues before the folder is deleted)
 
-Filed from this file on 2026-11-25: #139 (commit on git 2.39), #140 (a script's lost message), #141 and #145 and #142 (monitor), #143 (the last stage's pull request), #144 (package tests and the real home), #148 (the phase gate's scope), #149 (`ts-exp-opened` per session), #150 (the outcome gate back to triage for one line), #151 (`ts-traced` and a live criterion), #152 (`workflow_changed` after a trip back), #153 (the usage limit and the retry budget), #154 (a rerun's second plan), #155 (feedback points not accounted for), #156 (a plan row under `.claude/`), #157 (context at a session's start), #158 (`status` names the engine's build), #159 (notes at the repository root), #160 (worktree cleanup on merge), #161 (TST-AC7 beside a live run), #162 (the run recipe in CONTRIBUTING). #124 has a comment with the review evidence. Not filed: the 40 warnings of `run --check`, the 14 minute suite.
+Filed from this file on 2026-11-25: #139 (commit on git 2.39), #140 (a script's lost message), #141 and #145 and #142 (monitor), #143 (the last stage's pull request), #144 (package tests and the real home), #148 (the phase gate's scope), #149 (`ts-exp-opened` per session), #150 (the outcome gate back to triage for one line), #151 (`ts-traced` and a live criterion), #152 (`workflow_changed` after a trip back), #153 (the usage limit and the retry budget), #154 (a rerun's second plan), #155 (feedback points not accounted for), #156 (a plan row under `.claude/`), #157 (context at a session's start), #158 (`status` names the engine's build), #159 (notes at the repository root), #160 (worktree cleanup on merge), #161 (TST-AC7 beside a live run), #162 (the run recipe in CONTRIBUTING). #124 has a comment with the review evidence. Filed later the same day: #165 (the MCP probe and its runbook row), #166 (a plan row that deletes a file), #167 (`stats forget` with no stats folder), #169 to #172 (the loop's gaps, below), #173 (a review unit after the code step), #174 (one attempt at a push or an issue during an outage), #175 (`run --check` and a missing request file), #176 (the authoring warnings on every call). Evidence comments went to #134, #114, #117, #40, #123, #157 and #124. Not filed: the 14 minute suite.
 
 One entry per thing seen, with the run or command that showed it. An entry that deserves work becomes a GitHub issue and gets the number here.
 
@@ -116,6 +116,22 @@ Cost by session (reported USD): triage 1.02 + judge 0.08; three `read_gap` 0.56 
 - **The full suite is 14 minutes of every code session and every code gate that cannot reuse it.** With three runs side by side that is most of the machine.
 - **The monitor's run list looks frozen during a long session.** The mod polls `status` every 5 s, but the list row is built from the detail document, which it fetches again only when the run log grows, and a session writes no run-log record between `session_opened` and its end. A 15 minute discovery session shows the same unit and the same cost for 15 minutes; only the elapsed minutes move. The detail document's `health.silent_s` and the session's activity are there to show.
 
+## What the loop did with the day (sub-agent analysis of the nine threads' records, 2026-11-25)
+
+The loop ran 11 times on 9 threads, started 280 session reviews (252 done, 28 failed on the usage limit) and spent 9.63 USD, about 8 percent of the runs' 117 USD. It recorded 187 findings in 62 clusters and 405 observations (194 kept). Of 68 decisions, 64 were `below_floor`, 2 `not_judged`, 2 `uncalibrated`: it filed no issue and added no comment. The loop-labelled issues of the day (#114 to #117) are from earlier runs.
+
+| What the operator handled by hand | What the loop did | Why |
+|---|---|---|
+| 14 pauses of a person | Recorded their causes, never judged them | A final exit's ticket holds the last segment's fingerprints only; 40 findings never reached a loop child (#170) |
+| The two tool-access pauses | `escalation:tool_access` with remedy "unlisted reason" | The live record's pause kind is `escalation`; the code tests for `tool_access` (#172) |
+| The usage limit | `retries_spent`, a workflow fault | No signal for a usage limit (#153, #172) |
+| Five trips back, two stops at the attempt cap, a last stage that pushed or skipped | Trips back under the floor; the rest absent | No cause code for them (#172) |
+| Blocking defects after every gate passed (i141, i144) | A kept `judge_shallow` on the code judge | No lens reads the diff (#124, #173); every judge digest counts 0 changed paths because the unit's work is committed before the judge runs, so `judge_unread_pass` cannot fire (#169) |
+| Discovery's size (#134) | Seen rightly, `context_bloat` in 8 of 9 threads | The friction judge's confidence was 0.50 to 0.65 and the floor is 0.75 (#171) |
+| The connector leak | `context_bloat` with remedy `prompt` | No context at a session's start (#157) |
+
+The three changes that would have let the loop surface the day's costliest problems, in order: file a finding seen in several runs whatever the friction judge's confidence (26 clusters held three or more runs, #171); judge the findings of a thread's pauses at its final exit and give trips back and stops a cause code (#170, #172); count a judge's changed paths after the commit, then read the delivered diff (#169, #124, #173).
+
 ## Ideas for the improvement loop
 
-(filled as runs end)
+See the section above; each idea is an issue.

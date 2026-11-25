@@ -91,9 +91,9 @@ Nothing is running. Reported spend of the runs: about 117 USD (`tempergraph stat
 | Stopped, to continue | i123 (#123), i148 (#148, #149): the commands are in the table above; their worktrees and pushed branches are kept |
 | Queued with a request file | i21b (#165), i145 (#142, #145 and the rest of #141), i134a and i134b (#134), i62, i103, i104, i130, i32, i76, i136, i135, i22, i10 (first slice), i14 |
 | Queued without a request file | i114 (#114, #117): read the evidence of #148 and of the runs' `judge_unread_pass` findings first |
-| Filed today and not queued | #140, #150 to #163, #166, #167 (start with #150 and #153: each cost a run of today a trip back or a stop) |
+| Filed today and not queued | #140, #150 to #163, #166, #167, #169 to #176 (start with #150 and #153, which each cost a run a trip back or a stop, then #171, #170 and #169, which decide whether the loop files anything, and #173, the review unit) |
 
-CI passed on `cf5d1bdb` (suite, ruff and mypy on Python 3.11 and 3.12), which holds every merge but the last (#144); the run on the head starts with the last push. Every push cancels the CI run before it, so leave about twenty minutes between pushes when a CI result is wanted.
+CI passed on `30e2e8f3` (suite, ruff and mypy on Python 3.11 and 3.12), which holds every merge of the batch. Every push cancels the CI run before it, so leave about twenty minutes between pushes when a CI result is wanted.
 
 Before the pull request is ready:
 
