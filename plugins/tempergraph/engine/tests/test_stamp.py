@@ -202,6 +202,7 @@ def test_executor_compatibility_table() -> None:
 
 
 def test_lif_ac12_confirmed_versions_are_recorded() -> None:
+    # Proves LIF-AC12 (LIF-B17).
     import re
 
     from tempergraph.contracts import ProbeReport
