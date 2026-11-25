@@ -107,3 +107,22 @@ Before the pull request is ready:
 8. Delete this folder.
 
 Owner decisions taken by the agent, to confirm: #7 G3 (in stable mode the review-cap floor is limited to what the daily cap leaves).
+
+## Second session (2026-11-25 evening, on the Raspberry Pi; the owner is away, the agent orchestrates)
+
+The table above is as the first session left it; this section is the newer truth until the table is rewritten.
+
+Owner's words for this session: at most three runs at once, fewer when the machine is loaded; **runs open no pull request of their own** (the launch puts a `gh` shim first on `PATH` that refuses `pr create`; #184, opened by i123 before the word, is closed); **a finished run is merged into this branch straight away**, its independent review follows the merge and its findings become a follow-up run.
+
+Launch on this machine: `~/tg-runs/launch.sh <name> <tempergraph arguments>` (detached, log and exit code in `~/tg-runs/`). A stopped thread takes a plain `resume` (`--decision retry` is refused on an unfinished thread). Engine build `0.2.0-1847f9465c02`, Python 3.13.
+
+| Item | State | Note |
+|---|---|---|
+| i123 (#123) | merged `525cf6ad`, review **blocked** | 28.85 USD. Paused at the code gate (`environmental`, #185) and at the outcome gate (`loop_budget`: `ts-traced` DUR-AC7, `ts-verify`); accepted there. Review `tasks/i123.review.md`: the follow-up-commit signal cannot fire on a real run. Follow-ups filed: #186, #187, #188 |
+| i123b (#123) | running | The review's findings, from the batch head (`tasks/i123b.md`) |
+| i148 (#148, #149) | running | Resumed here from its carried state; paused once at phase `p4` (plan row 4.4 against PHC-AC13: the criterion stands, the row was rewritten) |
+| i21b (#165) | running | Paused once at phase `p1` on `ts-phs-scope` (#148), answered `proceed` after the commits were checked |
+| #185 | built by hand, `a880075b` | The suite's isolation hides the caller's sign-in: three schedule tests failed on any Linux machine with a Claude sign-in, so every code gate paused. The pytest plugin for package tests is not extended |
+| Requests drafted | queued | `tasks/i150.md`, `i153.md`, `i169.md`, `i170.md`, `i171.md`, `i172.md` (first slice), `i173.md` (without its live run), `i114.md`. Order: i153; i150 and i169 after i148 is merged; i171, i170, i172 in series; i173 after i150; i114 last |
+
+Owner decisions taken by the agent in this session, to confirm: i148 row 4.4 (PHC-AC13 outranks the plan row); i123 accepted at the outcome gate with two blockers open; #184 closed.

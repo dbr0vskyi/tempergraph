@@ -116,6 +116,15 @@ Cost by session (reported USD): triage 1.02 + judge 0.08; three `read_gap` 0.56 
 - **The full suite is 14 minutes of every code session and every code gate that cannot reuse it.** With three runs side by side that is most of the machine.
 - **The monitor's run list looks frozen during a long session.** The mod polls `status` every 5 s, but the list row is built from the detail document, which it fetches again only when the run log grows, and a session writes no run-log record between `session_opened` and its end. A 15 minute discovery session shows the same unit and the same cost for 15 minutes; only the elapsed minutes move. The detail document's `health.silent_s` and the session's activity are there to show.
 
+### Picking the batch up on a second machine (2026-11-25 evening, Raspberry Pi 5, Debian, Python 3.13, git 2.47)
+
+- **A fresh install on Linux/ARM with Python 3.13 worked at the first try**: `python3 -m venv .venv`, `pip install -e 'plugins/tempergraph/engine[dev]'`, `plugins/tempergraph/bin/tempergraph install` (build `0.2.0-eb8f4e146840`), `workflows register`. The install's summary says "0 workflow plugin(s) registered from the plugin cache" and names `executors --probe` as the next step; it does not name `workflows register`.
+- **First carried resume on another machine (macOS to Linux) worked.** `carry pull temperspec i148` and `i123` imported 79 and 270 records; a plain `resume` created the worktree from the pushed branch under this machine's path and went on at the next unit (i148 at phase `p2`, i123 at phase `p8`).
+- **The continue command written in `QUEUE.md` is refused.** `resume temperspec i148 --decision retry` exits 2, `decision_refused`: "an unfinished thread accepts only `rewind:<unit>`". A thread stopped by request takes a plain `resume`. The refusal names what is accepted; it does not say that no decision is needed.
+- **`carry pull` names the wrong work branch.** For both threads it printed `work_branch: tg/temperspec/i144b` (the branch the batch head last merged), though the threads' branches are `tg/temperspec/i148` and `tg/temperspec/i123`; the resume then attached the right branch.
+- **After a pull, `status` shows the other machine's worktree path as `active`** (`/Users/.../tempergraph.worktrees/temperspec--i123`) until the resume attaches a local one.
+- **This machine had no `gh`**; it was installed and signed in before any run reached its last stage.
+
 ## What the loop did with the day (sub-agent analysis of the nine threads' records, 2026-11-25)
 
 The loop ran 11 times on 9 threads, started 280 session reviews (252 done, 28 failed on the usage limit) and spent 9.63 USD, about 8 percent of the runs' 117 USD. It recorded 187 findings in 62 clusters and 405 observations (194 kept). Of 68 decisions, 64 were `below_floor`, 2 `not_judged`, 2 `uncalibrated`: it filed no issue and added no comment. The loop-labelled issues of the day (#114 to #117) are from earlier runs.
