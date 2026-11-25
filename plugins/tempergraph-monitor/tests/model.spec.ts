@@ -186,7 +186,7 @@ describe('sources (MDS §2, contract M1)', () => {
     expect(() => detailArgv('demo/T-1; rm -rf /')).toThrow()
     expect(() => detailArgv('demo/T-1', '--now')).toThrow()
   })
-  test('the hooks module runs a process in one place, behind the read-only guard (MDS-AC-2)', async () => {
+  test('AC 1: the hooks module runs a process in one place, behind the read-only guard, the engine-home probe included (MDS-AC-2)', async () => {
     const src = await Bun.file(new URL('../hooks/register.tsx', import.meta.url).pathname).text()
     expect(src.match(/\$\.process\.(run|spawn)\(/g) ?? []).toEqual(['$.process.run('])
     const guard = src.indexOf('if (!isReadOnly(argv)) throw')
@@ -195,7 +195,7 @@ describe('sources (MDS §2, contract M1)', () => {
     const built = [...src.matchAll(/verb<\w+>\(\$, (\w+)\(/g)].map(m => m[1])
     expect(built.length).toBeGreaterThan(0)
     for (const b of built) expect(['statusArgv', 'detailArgv', 'projectionArgv', 'fleetArgv']).toContain(b)
-    expect([...src.matchAll(/[^.]run\(\$, (\w+)\)/g)].map(m => m[1]).sort()).toEqual(['PS_ARGV', 'argv'])
+    expect([...src.matchAll(/[^.]run\(\$, (\w+)\)/g)].map(m => m[1]).sort()).toEqual(['HOME_ARGV', 'PS_ARGV', 'argv'])
     expect(src).not.toMatch(/\$\.fs\.(write|mkdir|remove|rename|append)/)
   })
   test('a record written in two pieces is yielded once (MDS-AC-3)', () => {

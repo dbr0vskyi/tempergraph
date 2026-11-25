@@ -47,7 +47,7 @@ The tool never runs a writing verb and returns no tool input summaries or log te
 | `alerts_finished`, `alerts_fleet` | `true`, `false` | `false` |
 | `show_tool_inputs`, `show_log_tails` | `true`, `false` | `true` |
 | `model_tool` | `off`, `interactive` | `off` |
-| `engine_path` | path to the `tempergraph` shim, or empty for PATH | empty |
+| `engine_path` | path to the `tempergraph` shim, or empty (the places the monitor looks for the engine: MAC-B5) | empty |
 
 ## 3. Behaviours
 
@@ -58,6 +58,12 @@ The tool never runs a writing verb and returns no tool input summaries or log te
 **MAC-B3 No tool for a judge.** Given `model_tool = interactive` and an engine judge session on `claude` that loads user plugins against the engine's isolation intent, when its loop starts, then the tool is not offered to it (it has no drawing surface, or it carries an agent id), so no judge's verdict is voided through this mod.
 
 **MAC-B4 Typed text never reaches a command.** Given a person who types into the pane's filter field `; rm -rf ~`, when they then press a stop action, then the filled command holds only the selected run's thread id, and the filter text appears nowhere in it.
+
+**MAC-B5 The engine is looked for in three places, in order.** Given the monitor has not found the engine yet, or the program it found exits 127, when it is to run an engine verb, then it tries the path in the `engine_path` setting (unless MAC-B7 ignores it), then `tempergraph` on PATH, then the shim in the engine home (MAC-B6), and runs the verb, and the verbs after it, through the first program that does not exit 127. A program exits 127 when it does not exist, or when it is the shim of an engine that is not installed ([CLI-B18](../../../tempergraph/docs/specs/engine-cli.spec.md)).
+
+**MAC-B6 The engine home.** Given the monitor looks in the engine home, when `TEMPERGRAPH_HOME` names a folder, then it looks for the shim in that folder's `bin` folder (`bin/tempergraph`), and when the variable is unset or empty, in `~/.tempergraph/bin` (`~/.tempergraph/bin/tempergraph`). The home folder is that of [LOS-B10](../../../tempergraph/docs/specs/local-observability-store.spec.md), and the shim and its Windows wrapper are those of [UPD-B12](../../../tempergraph/docs/specs/engine-update.spec.md) and [WIN-B5](../../../tempergraph/docs/specs/windows-support.spec.md).
+
+**MAC-B7 A setting that is not the shim is ignored.** Given the value of the `engine_path` setting, trimmed of white space at both ends, is anything but an absolute path (one that starts with `/`, or with a drive letter, `:` and `/` or `\`) whose last segment is `tempergraph`, `tempergraph.exe` or `tempergraph.cmd`, when the monitor looks for the engine, then it takes the setting as empty and runs no program the setting names.
 
 ## 4. Error conditions
 
@@ -78,6 +84,10 @@ The tool never runs a writing verb and returns no tool input summaries or log te
 - [ ] MAC-AC-1 A source-scan test finds no `$.prompt.submit`, `$.command.run` or writing `$.process.run` call in the mod.
 - [ ] MAC-AC-2 MAC-B2 and MAC-B3 pass in the plugin test kit with a simulated headless session and a subagent loop.
 - [ ] MAC-AC-3 Every action's filled text matches a fixture for each decision kind of [HUM](../../../tempergraph/docs/specs/gate-and-human.spec.md).
+- [ ] MAC-AC-4 MAC-B5 passes in a session test run once for each place: every program exits 127 except the one in the `engine_path` setting, then except `tempergraph` on PATH, then except the shim of the engine home; each time the band row shows the runs.
+- [ ] MAC-AC-5 MAC-B5 passes in a session test where only the shim of the engine home answers: once it has answered, no later engine verb of the session is run through `tempergraph` or through the path in the setting.
+- [ ] MAC-AC-6 MAC-B6 passes in a session test where only the shim of the engine home answers: the band row shows the runs with `TEMPERGRAPH_HOME` set to a folder that holds the shim, and with it unset and the shim in `~/.tempergraph/bin`.
+- [ ] MAC-AC-7 MAC-B7 passes in a session test where the `engine_path` setting holds a relative path, then a path ending in another name: no program the setting names is run.
 
 ## Open questions
 
