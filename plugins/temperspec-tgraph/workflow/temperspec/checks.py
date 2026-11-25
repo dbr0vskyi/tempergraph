@@ -106,6 +106,8 @@ def _prompt_says(criterion: str) -> list[CheckFinding]:
 # What the session record shows (engine CHK-B24, CHK-B25; package SRC-B1 to SRC-B9). `ctx.session` is the calls the
 # attempt's session made: `{name, capability, target, ok}` each, in order, or None where there is no record. A finding
 # built from it names a rule file, a row, a path or a phase taken from the prompt and the plan, never a call's target.
+# `ctx.visit_session` is the calls of every session of the step's visit (VSR-B1): `ts-exp-opened` reads it, one finding
+# for all unopened rows, a row with a kept mark excepted (SRC-B5, SRC-B11, SRC-B12).
 RULE_FOLDER = ".claude/rules/temperspec"
 RULE_NAME = re.compile(r"[\w-]+\.rule\.md")
 NO_RECORD = "there is no session record to read (a stand-in executor, the check preview or hidden tool inputs)"
@@ -116,6 +118,18 @@ def _record(ctx: Any) -> list[dict[str, Any]] | None:
     """The calls of the attempt's session, or None when there is no record to trust: no `session` on the context, or
     a read, edit or write call with no target (`observe.tool_inputs = off`) (SRC-B8)."""
     session = getattr(ctx, "session", None)
+    if session is None:
+        return None
+    calls = [dict(c) for c in session if isinstance(c, dict) or hasattr(c, "keys")]
+    if any(c.get("capability") in ("read", *WRITES) and not c.get("target") for c in calls):
+        return None
+    return calls
+
+
+def _visit_record(ctx: Any) -> list[dict[str, Any]] | None:
+    """The calls of every session of the step's visit (`ctx.visit_session`, VSR-B1), under the rule of `_record`:
+    None when there is none, or a read, edit or write call has no target (SRC-B5, SRC-B8)."""
+    session = getattr(ctx, "visit_session", None)
     if session is None:
         return None
     calls = [dict(c) for c in session if isinstance(c, dict) or hasattr(c, "keys")]
@@ -200,17 +214,19 @@ def _test_first(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
     return found or [_ok(criterion)]
 
 
-def _opened_rows(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]:
-    """ts-exp-opened: each task row that names a file that exists in the repository has that file opened with the
-    read tool; two rows that name one unread file are both named (SRC-B5)."""
-    calls = _record(ctx)
+def _unopened(ctx: Any, plan: fmt.Plan, path: str) -> list[tuple[str, str]] | None:
+    """(row id, file) of each row that names an existing file that no session of the visit opened with the read tool,
+    in the order of the plan, or None when there is no record of the visit. A row whose mark is kept from an earlier
+    visit asks for no opening (SRC-B5, SRC-B12, KMK-B1)."""
+    calls = _visit_record(ctx)
     if calls is None:
-        return [_find("n_a", criterion, message=NO_RECORD)]
+        return None
     seen = {_norm(str(c.get("target") or "")) for c in calls if c.get("capability") == "read" and c.get("ok") is True}
+    kept = _kept_marks(ctx, plan, path)
     root = Path(ctx.workdir).resolve()
-    found: list[CheckFinding] = []
+    out: list[tuple[str, str]] = []
     for row in plan.rows:
-        if not row.file:
+        if not row.file or kept.get(row.id) == "":
             continue
         try:
             target = (root / row.file).resolve()
@@ -218,10 +234,28 @@ def _opened_rows(ctx: Any, plan: fmt.Plan, criterion: str) -> list[CheckFinding]
         except (OSError, ValueError):
             exists = False
         if exists and _norm(row.file) not in seen:
-            found.append(_find("fail", criterion, row.file, f"row `{row.id}` names `{row.file}`, which the session "
-                               "never opened with the read tool", "open the file with the read tool before you "
-                               "write the row"))
-    return found or [_ok(criterion)]
+            out.append((row.id, row.file))
+    return out
+
+
+def _opened_rows(ctx: Any, plan: fmt.Plan, criterion: str, path: str = "") -> list[CheckFinding]:
+    """ts-exp-opened: each task row that names a file that exists in the repository, unless its mark is kept, has that
+    file opened with the read tool in a session of the step's visit (SRC-B5, SRC-B12). One finding names every
+    unopened row and path, two rows that name one file both being named (SRC-B11); the message is clipped by the
+    engine, so `expand_check` lists the rows in full in the evidence."""
+    rows = _unopened(ctx, plan, path)
+    if rows is None:
+        return [_find("n_a", criterion, message=NO_RECORD)]
+    if not rows:
+        return [_ok(criterion)]
+    listed: list[str] = []
+    for rid, file in rows:
+        if len(", ".join([*listed, f"{rid} `{file}`"])) > 150:
+            listed.append("...")
+            break
+        listed.append(f"{rid} `{file}`")
+    return [_find("fail", criterion, rows[0][1], "no session of the visit opened with the read tool: "
+                  + ", ".join(listed), "open each of these files with the read tool before you write its row")]
 
 
 def _walk(ctx: Any) -> list[str]:
@@ -1243,9 +1277,13 @@ def expand_check(ctx: Any) -> Any:
     found += _commands(ctx, plan, "ts-exp-commands") or [_ok("ts-exp-commands", path)]
     found += _scope(plan, "ts-exp-scope", path)
     found += _ruleread(ctx, "expand", "ts-exp-ruleread")
-    found += _opened_rows(ctx, plan, "ts-exp-opened")
+    found += _opened_rows(ctx, plan, "ts-exp-opened", path)
     found.append(_committed(ctx, "ts-exp-commit"))
-    return checks.result(found)
+    res = checks.result(found)
+    unopened = _unopened(ctx, plan, path)
+    if unopened:  # the message of a finding is clipped; the evidence lists every row and path
+        res.evidence = "\n".join([res.evidence, "Unopened files named by task rows:", *(f"{r}: {f}" for r, f in unopened)])
+    return res
 
 
 # ---------------------------------------------------------------------------------------------
