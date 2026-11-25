@@ -13,9 +13,10 @@ flowchart TD
   u9["plan<br/>Design requirements and phases; state complexity"]
   u10["code_mode"]
   u11["expand<br/>Write task rows and verification for a complex plan"]
-  u12["code<br/>Build the plan test first in one session"]
-  u13["code_join"]
-  u14["outcome<br/>outcome gate"]
+  u12["phase<br/>Build one phase of the plan, tests first, and commit it"]
+  u13["code<br/>Build the plan test first in one session"]
+  u14["code_join"]
+  u15["outcome<br/>outcome gate"]
   fin([finalizer])
   stop((end))
   start --> u0
@@ -28,34 +29,36 @@ flowchart TD
   u5 --> u6
   u5 --> u7
   u5 --> u9
-  u5 --> u12
+  u5 --> u13
   u6 --> u7
   u6 --> u9
   u7 --> u8
   u8 --> u9
-  u8 --> u14
+  u8 --> u15
   u9 --> u10
   u9 -.->|back| u8
-  u10 --> u12
+  u10 --> u13
   u10 --> u11
   u11 --> u12
   u11 -.->|back| u9
   u11 -.->|back| u8
   u12 --> u13
-  u12 -.->|back| u9
-  u12 -.->|back| u8
-  u12 -.->|back| u5
   u13 --> u14
-  u14 --> fin
-  u14 -.->|back| u3
-  u14 -.->|back| u4
-  u14 -.->|back| u5
-  u14 -.->|back| u6
-  u14 -.->|back| u7
-  u14 -.->|back| u8
-  u14 -.->|back| u9
-  u14 -.->|back| u11
-  u14 -.->|back| u12
+  u13 -.->|back| u9
+  u13 -.->|back| u8
+  u13 -.->|back| u5
+  u14 --> u15
+  u15 --> fin
+  u15 -.->|back| u3
+  u15 -.->|back| u4
+  u15 -.->|back| u5
+  u15 -.->|back| u6
+  u15 -.->|back| u7
+  u15 -.->|back| u8
+  u15 -.->|back| u9
+  u15 -.->|back| u11
+  u15 -.->|back| u12
+  u15 -.->|back| u13
   fin --> stop
 
 ```

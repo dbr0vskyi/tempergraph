@@ -235,9 +235,10 @@ def standin_run(root: Path, tmp: Path) -> list[str]:
 
     step_by: dict[str, Any] = {}
     judge_by: dict[str, Any] = {}
+    maps = {n for n in spec.order if spec.units[n].kind == "map" and spec.units[n].step is not None}
     for name in spec.order:
         u = spec.units[name]
-        if u.kind == "step":
+        if u.kind == "step" or name in maps:
             step_by[name] = step_reply(name)
         if u.gate.judge is not None:
             judge_by[name] = verdict(len(u.gate.criteria), f"j-{name}")  # the judge rows every criterion
@@ -248,17 +249,19 @@ def standin_run(root: Path, tmp: Path) -> list[str]:
 
     def by_unit(table: dict[str, Any], what: str) -> Callable[[Any], Any]:
         """A reply for the unit named by the session key (`<unit>.<attempt>.<kind>`), each one used once: a
-        second session of a unit, or one of a unit with no reply, ends the run as a dry queue would."""
+        second session of a unit, or one of a unit with no reply, ends the run as a dry queue would. A map unit has
+        one session for each of its items, so its reply stays for all of them."""
         def reply(req: Any) -> Any:
             unit = str(req.session_key).split(".", 1)[0]
-            got = table.pop(unit, None)
+            got = table.get(unit) if unit in maps else table.pop(unit, None)
             if got is None:
                 raise AssertionError(f"no scripted {what} reply left for {req.session_key}")
             return got(req) if callable(got) else got
         return reply
 
-    r = scripted_registry("claude", [by_unit(step_by, "step")] * len(step_by),
-                          [by_unit(judge_by, "judge")] * len(judge_by))
+    items = 20 * len(maps)  # the most a map runs (MAP-B7): the queue holds a reply for each item's session
+    r = scripted_registry("claude", [by_unit(step_by, "step")] * (len(step_by) + items),
+                          [by_unit(judge_by, "judge")] * (len(judge_by) + items))
     quiet = RunSettings(sleep=lambda s: None)
     try:
         got = start(spec, "STANDIN-1", {"request": "stand-in"}, repo, r, quiet)

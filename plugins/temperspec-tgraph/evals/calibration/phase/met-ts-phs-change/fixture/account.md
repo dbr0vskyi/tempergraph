@@ -1,0 +1,1 @@
+I built phase 1: the test in `tests/test_config.py` and the message in `src/tool/config.py`, and marked rows 1.1 and 1.2. The files this phase changed: `docs/plans/TASK-7.plan.md`, `tests/test_config.py`, `src/tool/config.py`.

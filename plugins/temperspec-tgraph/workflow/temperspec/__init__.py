@@ -16,9 +16,12 @@ concurrent map, and then the one writing session `discovery`, briefed with their
 The code gate measures a quick change and sends a larger one back to `triage`, which then plans it. After `plan` the
 switch `code_mode` chooses: `single` goes straight to `code` when the facts the plan check records are inside the
 limits of `routing/code_mode.json`, and `phases` goes through `expand`, which writes the plan's task rows, otherwise
-or when the switch cannot decide; the operator names the arm with `--arm code_mode=<arm>`. `code` builds the whole
-plan in one session on either arm (per-phase coding waits for the engine's sequential map), and `code_join` is where
-both arms meet. The engine commits after every step and the last stage pushes.
+or when the switch cannot decide; the operator names the arm with `--arm code_mode=<arm>`. On `phases`, after
+`expand`, the sequential map `phase` runs one item for each phase of the plan, one after another, each in a session of
+its own that builds only that phase's rows, tests first, and is checked and committed on its own; `code` then runs as
+the join on the whole change and holds the lines back to `plan`, `discovery` and `triage`. On `single`, `code` builds the
+whole plan in one session. `code_join` is where both arms meet. The engine commits after every step and the last stage
+pushes.
 
 The setting `conversation` (`never` or `blocking`, default `blocking`) says how much a run may ask the owner: with
 `never` triage sorts each gap and takes a default for each owner decision, no step stops for one, and the pull
@@ -53,6 +56,7 @@ from .checks import (
     discovery_check,
     discovery_short_check,
     expand_check,
+    phase_check,
     plan_check,
     setup_check,
     triage_check,
@@ -63,6 +67,7 @@ from .routing import (
     finalize,
     gap_items,
     list_components,
+    phase_items,
     prepare,
     route_discovery,
     route_setup,
@@ -103,6 +108,8 @@ SIZING = {
             ("high", "It judges that the design covers every criterion and contradicts no spec it references")),
     "expand": (("medium", "It turns an approved plan into task rows and decides little"),
               ("medium", "It compares the task rows with the plan they expand")),
+    "phase": (("medium", "One phase of rows with the tests named; the check reads the rows and the judge the change"),
+              ("medium", "It reads the rows of one phase against the files they name, and the check has read the marks")),
     "code": (("high", "It is a long session that builds test first; the tests and the code check catch slips that more effort would not"),
             ("high", "It reads the diff, the report and the proof of every criterion, and a miss ships a defect")),
 }
@@ -127,7 +134,7 @@ def workflow() -> Any:
     return Workflow(
         order=["prepare", "setup_route", "list_components", "read_component", "setup", "triage", "discovery_short",
                "read_gap", "discovery", "plan", "code_mode",
-               "expand", "code", "code_join"],
+               "expand", "phase", "code", "code_join"],
         routing=Routing(
             description="Take a task from its acceptance criteria to specs, a plan, tested code and a draft "
                         "pull request",
@@ -216,6 +223,16 @@ def workflow() -> Any:
                 after=[_commit()],
                 gate=Gate(check=expand_check, judge=_judge("expand", ["phases", "plan"]),
                           back_targets=["plan", "discovery"])),
+            # PHC-B1 to PHC-B10: on the arm `phases` the map runs one item for each phase of the expanded plan, one after
+            # another, each in a session of its own that the `after` script commits; its gate has no line back (MAP-B11),
+            # so the lines back stay with the code step, which is the join (PHC-B11 to PHC-B14).
+            "phase": Map(
+                items_from=("expand", "phases"), extract=phase_items, mode="sequential",
+                step=Step(
+                    prompt=text("prompts/phase.md"), summary="Build one phase of the plan, tests first, and commit it",
+                    **_sized("phase"), tools=[*READ, "edit", "write", "shell"], commands=VERIFY, timeout_s=3600,
+                    produces={"phase_note": Value(max_chars=1500)}, after=[_commit()],
+                    gate=Gate(check=phase_check, judge=_judge("phase", ["phases", "triage_note"])))),
             "code": Step(
                 prompt=text("prompts/code.md"), summary="Build the plan test first in one session",
                 **_sized("code"), tools=[*READ, "edit", "write", "shell"], commands=VERIFY, timeout_s=5400,

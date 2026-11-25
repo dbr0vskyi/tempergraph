@@ -75,6 +75,12 @@
       "approval": false
     },
     {
+      "name": "phase",
+      "kind": "map",
+      "summary": "Build one phase of the plan, tests first, and commit it",
+      "approval": false
+    },
+    {
       "name": "code",
       "kind": "step",
       "summary": "Build the plan test first in one session",
@@ -142,6 +148,10 @@
     "expand.judge",
     "expand.gate",
     "expand.human",
+    "phase.step",
+    "phase.judge",
+    "phase.gate",
+    "phase.human",
     "code.step",
     "code.judge",
     "code.gate",
@@ -1014,7 +1024,7 @@
     ],
     [
       "expand.gate",
-      "code.step",
+      "phase.step",
       "PROCEED"
     ],
     [
@@ -1044,7 +1054,7 @@
     ],
     [
       "expand.human",
-      "code.step",
+      "phase.step",
       "decision"
     ],
     [
@@ -1109,6 +1119,111 @@
     ],
     [
       "expand.human",
+      "__end__",
+      "decision"
+    ],
+    [
+      "phase.step",
+      "phase.judge",
+      "next"
+    ],
+    [
+      "phase.judge",
+      "phase.gate",
+      "next"
+    ],
+    [
+      "phase.gate",
+      "code.step",
+      "PROCEED"
+    ],
+    [
+      "phase.gate",
+      "phase.step",
+      "RETRY"
+    ],
+    [
+      "phase.gate",
+      "phase.human",
+      "ESCALATE"
+    ],
+    [
+      "phase.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "phase.human",
+      "code.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "phase.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "list_components.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "triage.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "discovery_short.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "read_gap.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "discovery.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "plan.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "code_mode.step",
+      "decision"
+    ],
+    [
+      "phase.human",
+      "expand.step",
+      "decision"
+    ],
+    [
+      "phase.human",
       "__end__",
       "decision"
     ],
@@ -1229,6 +1344,11 @@
     ],
     [
       "code.human",
+      "phase.step",
+      "decision"
+    ],
+    [
+      "code.human",
       "__end__",
       "decision"
     ],
@@ -1334,6 +1454,11 @@
     ],
     [
       "code_join.human",
+      "phase.step",
+      "decision"
+    ],
+    [
+      "code_join.human",
       "code.step",
       "decision"
     ],
@@ -1404,6 +1529,11 @@
     ],
     [
       "outcome.gate",
+      "phase.step",
+      "BACK"
+    ],
+    [
+      "outcome.gate",
       "code.step",
       "BACK"
     ],
@@ -1465,6 +1595,11 @@
     [
       "outcome.human",
       "expand.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "phase.step",
       "decision"
     ],
     [
@@ -1513,5 +1648,5 @@
       "next"
     ]
   ],
-  "digest": "fc1e12d5f7e90828226d3d708d4da4e0369a9b47dd18dd8356df35522f1b44d2"
+  "digest": "bc92cc2ca55c95f99eb442f227b310d6ae6c599376f0f93604a683c9c5583f58"
 }

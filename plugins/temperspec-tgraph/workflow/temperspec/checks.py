@@ -1322,6 +1322,52 @@ def code_check(ctx: Any) -> Any:
 
 
 # ---------------------------------------------------------------------------------------------
+# phase
+
+
+def phase_check(ctx: Any) -> Any:
+    """ts-phs-rows, ts-phs-changed, ts-phs-proof, ts-phs-order, ts-phs-commit: one attempt of one phase item, read on
+    the rows of that phase only (PHC-B6 to PHC-B8). No finding names a row of another phase, and none names a step to go
+    back to: the checks of the whole change and the lines back stay with the code gate (PHC-B13, PHC-B14)."""
+    text, path = _read(ctx, "phases")
+    if text is None:
+        return checks.result([_find("fail", "ts-phs-rows", path, "the expanded plan cannot be read",
+                                    "keep the plan at its path")])
+    whole = fmt.parse_plan(text)
+    if ctx.item is None:  # no item (a fixture run of the check): the rows of the whole plan stand as one phase
+        phase, label = fmt.Plan(rows=list(whole.rows), phases=list(whole.phases)), "the plan"
+    else:
+        block = next((b for b in routing.phase_blocks(text) if b.id == ctx.item), None)
+        if block is None:
+            return checks.result([_find("fail", "ts-phs-rows", path, f"the plan has no phase for the item `{ctx.item}`",
+                                        "keep the phase headings of the plan as they are")])
+        phase = fmt.Plan(rows=[r for r in whole.rows if r.phase == block.heading], phases=[block.heading])
+        label = _phase_label(block.heading)
+    found: list[CheckFinding] = []
+    if not phase.rows:
+        found.append(_find("fail", "ts-phs-rows", label, f"{label} has no task row", "do not change the plan's rows"))
+    bad = [(r, fmt.DONE_MARK.match(r.completed)) for r in phase.rows]
+    found += [_find("fail", "ts-phs-rows", r.id, f"row `{r.id}` of {label} is not marked completed" if not r.completed
+                    else f"row `{r.id}` is marked `{r.completed}`; a mark is `✓ YYYY-MM-DD`",
+                    "build the row, then mark it `✓ <date>` in its Completed cell") for r, m in bad if m is None]
+    found += [] if any(f.status == "fail" for f in found) else [_ok("ts-phs-rows", label)]
+    base = ctx.git.base if ctx.git is not None else ""
+    if not base:
+        found.append(_find("n_a", "ts-phs-changed", message="no base commit to compare with"))
+    else:
+        changed = set(ctx.git.changed_paths)
+        marked = [r for r, m in bad if m is not None]
+        # KMK-B8: the paths count from the run's base commit, so a mark kept from an earlier visit stands by its file
+        found += [_find("fail", "ts-phs-changed", r.file, f"row `{r.id}` is marked completed but its file did not "
+                        "change in the run", "make the row's change, or clear its mark and say why")
+                  for r in marked if r.file and r.file not in changed] or [_ok("ts-phs-changed", label)]
+    found += _proof(ctx, phase, "ts-phs-proof")[0]
+    found += _test_first(ctx, phase, "ts-phs-order")
+    found.append(_committed(ctx, "ts-phs-commit"))
+    return _result(ctx, found, phase)
+
+
+# ---------------------------------------------------------------------------------------------
 # the outcome gate
 
 

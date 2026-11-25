@@ -6,6 +6,12 @@ Task id: {task_id}
 Triage note: `{triage_note}`
 Plan: `{plan}`
 
+Notes of the phases, one line for each phase led by its number, in the order of the plan, or `none` when no phase ran:
+
+{phase_note}
+
+When the notes list the phases, the phases built and committed their rows, so you are the join on the whole change: build only a row whose Completed cell is empty, set the plan's `status` to `completed` and write the code report with each deviation the notes name. When the notes say `none`, no phase ran (the single-session arm, or the quick lane): build the whole plan as below.
+
 **The quick lane.** When the triage note's Route is `quick`, there is no plan and the Plan line above names none. The note's `## Change` section is then your plan: its `Files` and `Tests` are the only files you change, its `Verify` commands are the verification, and each acceptance criterion of the note is one row, with the id `AC <n>`. For a bug, first write the test that reproduces it and see it fail. If the change turns out to need a spec edit, a file the section does not name, or more than a small change, stop: write the report with what you found and end with `UPSTREAM triage: the task is larger than the quick lane`, so the task is planned.
 
 ## Rules to follow
