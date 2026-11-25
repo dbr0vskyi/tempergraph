@@ -438,13 +438,18 @@ class ClaudeExecutor:
         except binding_mod.BindingError:
             return SessionResult(ok=False, error_kind="unknown")
         declared = mcpconfig.declared_servers(req.tools)
-        servers = mcpconfig.operator_servers(req.workdir) if declared and self.mcp_config is None else {}
-        kept = {s: t for s, t in declared.items() if s in servers}
-        base = mcpconfig.scratch_base(req.session_dir) if kept else None
-        if not kept or base is None:  # strict, and no config: no declared server can be given (ECC-B19)
+        if not declared or self.mcp_config is not None:
             argv, applied = step_argv(req, model, fallback, self._flags(), self.mcp_config)
             return self._run(req, argv, applied, step_env(model), sink, idle_s=req.idle_s)
-        with mcpconfig.private_config(kept, servers, base, direct=True) as cfg:  # removed on every exit path
+        servers = mcpconfig.operator_servers(req.workdir)
+        undefined = [s for s in declared if s not in servers]
+        base = mcpconfig.scratch_base(req.session_dir)
+        if undefined or base is None:  # a declared server is never dropped silently (ECC-B23)
+            why = ("MCP server not defined in the operator's configuration: " + ", ".join(undefined)
+                   if undefined else "no scratch folder for the private MCP config; declared servers: "
+                   + ", ".join(declared))
+            return SessionResult(ok=False, error_kind="refused", text=why)
+        with mcpconfig.private_config(declared, servers, base, direct=True) as cfg:  # removed on every exit path
             argv, applied = step_argv(req, model, fallback, self._flags(), cfg)
             res = self._run(req, argv, applied, step_env(model), sink, idle_s=req.idle_s)
         return _mask_private(res)
