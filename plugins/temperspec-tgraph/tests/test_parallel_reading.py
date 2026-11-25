@@ -365,11 +365,13 @@ def test_one_gap_and_no_gap_start_no_reading_session(tmp_path: Path) -> None:  #
 
 
 def test_never_more_than_three_reading_sessions_are_open_at_once(tmp_path: Path) -> None:  # AC 1, PRL-AC7 (PRL-B7)
-    five = Stand(gaps=5, hold={f"G{n}": 0.05 for n in range(1, 6)})
+    # Each session is held long enough that a loaded machine (CI, the nested package run beside the engine suite's
+    # workers) still starts the next one while it is open: at 0.1 s the two of the second case once ran one by one.
+    five = Stand(gaps=5, hold={f"G{n}": 0.4 for n in range(1, 6)})
     out = _run(tmp_path / "five", five)
     assert out is not None and out.exit_code is ExitCode.FINISHED, getattr(out, "message", None)
     assert five.count("step", "read_gap") == 5 and 2 <= five.peak <= 3, five.peak
-    two = Stand(gaps=2, hold={"G1": 0.1, "G2": 0.1})
+    two = Stand(gaps=2, hold={"G1": 1.0, "G2": 1.0})
     _run(tmp_path / "two", two)
     assert two.peak == 2  # both are open at the same time
 
