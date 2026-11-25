@@ -36,6 +36,33 @@ def test_ac_6_results_record_the_operators_run_of_2026_11_25() -> None:
     assert "L-43" in lead
 
 
+def test_ecc_ac5_every_confirmed_probe_is_recorded_with_a_date_and_the_cli_version() -> None:
+    # ECC-AC5, ECC-B13: a probe listed `confirmed` has a dated, versioned, passed result row in the runbook
+    from tempergraph.executors.claude import LIVE_FACTS
+
+    text = CHECKS.read_text(encoding="utf-8")
+    section3 = text[text.index("## 3. Manual rows"):text.index("## 4. Results")]
+    results = _section4(text)
+    facts = json.loads((ENGINE / "src" / "tempergraph" / "data" / "executor_compat.json").read_text("utf-8"))[
+        "executors"]["claude"]["facts"]
+    confirmed = [p for p, state in LIVE_FACTS.items() if state == "confirmed"]
+    assert confirmed
+    for probe in confirmed:
+        rows = [ln for ln in section3.splitlines() if re.match(r"\| L-\d+ ", ln) and re.search(rf"{probe}\b", ln)]
+        assert len(rows) == 1, probe
+        row_id = rows[0].split("|")[1].strip()
+        found = [ln for ln in results.splitlines() if ln.startswith(f"| {row_id} ")]
+        assert len(found) == 1, row_id
+        cells = [c.strip() for c in found[0].split("|")[1:-1]]
+        assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", cells[1]), cells
+        assert re.fullmatch(r"\d+\.\d+\.\d+", cells[2]), cells
+        assert "passed" in cells[3]
+        assert f"{probe} confirmed on {cells[2]}" in facts
+    for probe, state in LIVE_FACTS.items():
+        if state == "not run":
+            assert f"{probe} confirmed" not in facts
+
+
 def test_ac_6_a_live_probe_for_p_cc_13_exists() -> None:
     probes = (ENGINE / "tests" / "live" / "test_probes.py").read_text(encoding="utf-8")
     assert re.search(r"^def test_p_cc_13_\w+\(", probes, re.M)
