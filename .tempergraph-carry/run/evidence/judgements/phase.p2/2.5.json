@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "phase",
+  "visit": 2,
+  "attempt": 5,
+  "blockers": [
+    {
+      "criterion": "ts-phs-scope",
+      "evidence": "PARTIAL: Changed paths include plugins/tempergraph/docs/specs/executor-claude-code.spec.md (listed as edited), which no p2 row names. The plan (section 0) says no spec edit is needed. The docs/tasks/i21.* notes are also named by no row. Other changed files belong to phase 1 and 3 rows or are the plan. The phase visit itself changed no file.",
+      "fix": "Add a plan row for the spec edit, or accept it and the docs/tasks notes as by-products of the task."
+    }
+  ]
+}

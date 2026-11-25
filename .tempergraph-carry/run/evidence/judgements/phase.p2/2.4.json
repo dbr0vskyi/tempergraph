@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "phase",
+  "visit": 2,
+  "attempt": 4,
+  "blockers": [
+    {
+      "criterion": "ts-phs-scope",
+      "evidence": "PARTIAL: Phase 2 itself changed no source or test file, only the plan marks. The run's changed list has files that no phase 2 row names. The phase 1 and phase 3 rows name claude.py, test_claude_executor.py, executor_compat.json, live-checks.plan.md, test_cli.py, test_probes.py and test_live_checks_mcp_probe.py. No row of any phase names plugins/tempergraph/docs/specs/executor-claude-code.spec.md.…",
+      "fix": "Name the spec edit in a plan row, or accept it as a by-product of the task's spec edit."
+    }
+  ]
+}
