@@ -135,6 +135,36 @@ def test_ecc_ac7_private_config_is_owner_only_and_removed_on_every_exit(tmp_path
     assert list(base.iterdir()) == []
 
 
+def test_ecc_ac14_declared_servers_group_the_mcp_capabilities() -> None:
+    declared = mcpconfig.declared_servers(("read", "mcp:tracker/get_issue", "mcp:wiki/get_page",
+                                           "mcp:tracker/get_comments", "mcp:broken", "mcp:/x"))
+    assert declared == {"tracker": ("get_issue", "get_comments"), "wiki": ("get_page",)}
+
+
+def test_ecc_ac14_direct_private_config_holds_declared_servers_as_defined(tmp_path: Path) -> None:
+    base = tmp_path / "scratch"
+    base.mkdir()
+    operator = {
+        "tracker": {"command": "tracker-mcp", "args": ["--x"], "env": {"API_TOKEN": SECRET}},
+        "mailer": {"command": "mail-mcp"},
+        "remote": {"type": "http", "url": "https://example.test/mcp"},
+    }
+    declared = mcpconfig.declared_servers(("mcp:tracker/get_issue", "mcp:wiki/get_page", "mcp:remote/ping"))
+    kept = {s: t for s, t in declared.items() if s in operator}
+    with mcpconfig.private_config(kept, operator, base, direct=True) as path:
+        folder = path.parent
+        assert stat.S_IMODE(folder.stat().st_mode) == 0o700 and folder.parent == base
+        written = json.loads(path.read_text())["mcpServers"]
+        assert written == {"tracker": operator["tracker"], "remote": operator["remote"]}
+        assert "wiki" not in written and "mailer" not in written
+    assert not folder.exists()
+    with pytest.raises(RuntimeError), mcpconfig.private_config(kept, operator, base, direct=True) as path:
+        folder = path.parent
+        raise RuntimeError("boom")
+    assert not folder.exists()
+    assert list(base.iterdir()) == []
+
+
 def _operator(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, servers: dict[str, Any]) -> None:
     home = tmp_path / "userhome"
     home.mkdir(exist_ok=True)

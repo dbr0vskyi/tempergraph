@@ -362,6 +362,12 @@ def _credentials(profile: str | None, home: Path | None) -> dict[str, str]:
     return env
 
 
+def _mask_private(res: SessionResult) -> SessionResult:
+    """The path of a private configuration is in no record the engine keeps (SEC-B12)."""
+    res.argv = tuple("<private>" if i and res.argv[i - 1] == "--mcp-config" else a for i, a in enumerate(res.argv))
+    return res
+
+
 class ClaudeExecutor:
     name = NAME
 
@@ -427,8 +433,17 @@ class ClaudeExecutor:
             fallback = self.binding.model(fb) if fb else None
         except binding_mod.BindingError:
             return SessionResult(ok=False, error_kind="unknown")
-        argv, applied = step_argv(req, model, fallback, self._flags(), self.mcp_config)
-        return self._run(req, argv, applied, step_env(model), sink, idle_s=req.idle_s)
+        declared = mcpconfig.declared_servers(req.tools)
+        servers = mcpconfig.operator_servers(req.workdir) if declared and self.mcp_config is None else {}
+        kept = {s: t for s, t in declared.items() if s in servers}
+        base = mcpconfig.scratch_base(req.session_dir) if kept else None
+        if not kept or base is None:  # strict, and no config: no declared server can be given (ECC-B19)
+            argv, applied = step_argv(req, model, fallback, self._flags(), self.mcp_config)
+            return self._run(req, argv, applied, step_env(model), sink, idle_s=req.idle_s)
+        with mcpconfig.private_config(kept, servers, base, direct=True) as cfg:  # removed on every exit path
+            argv, applied = step_argv(req, model, fallback, self._flags(), cfg)
+            res = self._run(req, argv, applied, step_env(model), sink, idle_s=req.idle_s)
+        return _mask_private(res)
 
     def run_judge(self, req: SessionRequest, views: ViewSet, sink: EventSink) -> SessionResult:
         try:
@@ -449,9 +464,7 @@ class ClaudeExecutor:
             argv = judge_argv(replace(views, tools=tuple(offered)), model, isolated=CLAUDE.isolates_user_config,
                               mcp_config=cfg)
             res = self._run(req, argv, (), env, sink, idle_s=None)
-        # the path of the private configuration is in no record the engine keeps (SEC-B12)
-        res.argv = tuple("<private>" if i and res.argv[i - 1] == "--mcp-config" else a for i, a in enumerate(res.argv))
-        return res
+        return _mask_private(res)
 
     def unreachable_views(self, views: ViewSet, workdir: Path) -> dict[str, str]:
         """ECC-B15: each viewed MCP server with no working proxy, with its reason; checked before the judge prompt."""

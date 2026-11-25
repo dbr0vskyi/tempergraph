@@ -418,6 +418,95 @@ def test_ecc_ac7_run_judge_with_mcp_views_through_the_stand_in(tmp_path: Path, m
     assert "--disallowedTools" not in argv
 
 
+def _step_with_operator(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, servers: dict[str, object], *,
+                        tools: tuple[str, ...], with_session_dir: bool = True, exit_code: int = 0,
+                        times: int = 2) -> tuple[list[SessionResult], list[dict[str, object]], list[object], Path]:
+    from tempergraph.executors import mcpconfig
+
+    home = tmp_path / "userhome"
+    home.mkdir()
+    (home / ".claude.json").write_text(json.dumps({"mcpServers": servers}))
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+    state = tmp_path / "state"
+    scratch = state / "scratch"
+    scratch.mkdir(parents=True)
+    seen_cfg: list[object] = []
+    original = mcpconfig.private_config
+
+    import contextlib
+
+    @contextlib.contextmanager
+    def watching(*a: object, **k: object):  # type: ignore[no-untyped-def]
+        with original(*a, **k) as path:  # type: ignore[arg-type]
+            seen_cfg.append((path, json.loads(path.read_text())))
+            yield path
+
+    monkeypatch.setattr(mcpconfig, "private_config", watching)
+    path = S.fake_claude(tmp_path, monkeypatch, {"lines": [S.init(), S.result()], "exit": exit_code})
+    ex = ClaudeExecutor(bindings=BindingTable())
+    results: list[SessionResult] = []
+    recs: list[dict[str, object]] = []
+    sdir = state / "runs" / "w" / "t" / "sessions" / "k" if with_session_dir else None
+    for i in range(times):
+        rec = tmp_path / f"rec{i}.json"
+        S.set_scenario(path, {"lines": [S.init(), S.result()], "exit": exit_code, "record": str(rec)})
+        kind = "step" if i == 0 else "retry"
+        results.append(ex.run_step(req(tmp_path, kind=kind, tools=tools, session_dir=sdir), EventSink()))
+        recs.append(json.loads(rec.read_text()))
+    return results, recs, seen_cfg, scratch
+
+
+def test_ecc_ac14_a_step_and_a_retry_get_a_private_config_of_the_declared_servers(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    tracker = {"command": "tracker-mcp", "args": ["-q"], "env": {"K": "v"}}
+    servers = {"tracker": tracker, "mailer": {"command": "mail-mcp"}}
+    results, recs, seen_cfg, scratch = _step_with_operator(
+        tmp_path, monkeypatch, servers, tools=("read", "mcp:tracker/get_issue", "mcp:wiki/get_page"))
+    assert len(seen_cfg) == 2
+    for res, rec, (path, content) in zip(results, recs, seen_cfg, strict=True):  # type: ignore[misc]
+        argv = rec["argv"]
+        assert "--strict-mcp-config" in argv and "--mcp-config" in argv  # type: ignore[operator]
+        assert content == {"mcpServers": {"tracker": tracker}}  # as defined; not wiki (undefined), not mailer
+        assert not Path(str(path)).exists() and not Path(str(path)).parent.exists()
+        assert flag(list(res.argv), "--mcp-config") == "<private>"
+        assert str(path) not in json.dumps(list(res.argv)) and Path(str(path)).parent.name not in json.dumps(list(res.argv))
+    assert list(scratch.iterdir()) == []
+
+
+def test_ecc_ac14_a_step_without_an_mcp_tool_gets_no_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    results, recs, seen_cfg, scratch = _step_with_operator(
+        tmp_path, monkeypatch, {"tracker": {"command": "t"}}, tools=("read",))
+    for rec in recs:
+        assert "--strict-mcp-config" in rec["argv"] and "--mcp-config" not in rec["argv"]  # type: ignore[operator]
+    assert seen_cfg == [] and list(scratch.iterdir()) == []
+    assert all("--mcp-config" not in r.argv for r in results)
+
+
+def test_ecc_ac14_no_session_folder_or_undefined_server_means_strict_with_no_config(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _, recs, seen_cfg, _ = _step_with_operator(
+        tmp_path, monkeypatch, {"tracker": {"command": "t"}}, tools=("mcp:tracker/get_issue",),
+        with_session_dir=False, times=1)
+    assert "--strict-mcp-config" in recs[0]["argv"] and "--mcp-config" not in recs[0]["argv"]  # type: ignore[operator]
+    assert seen_cfg == []
+
+
+def test_ecc_ac14_an_undefined_server_means_strict_with_no_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _, recs, seen_cfg, _ = _step_with_operator(
+        tmp_path, monkeypatch, {"other": {"command": "t"}}, tools=("mcp:tracker/get_issue",), times=1)
+    assert "--strict-mcp-config" in recs[0]["argv"] and "--mcp-config" not in recs[0]["argv"]  # type: ignore[operator]
+    assert seen_cfg == []
+
+
+def test_ecc_ac14_a_failed_step_launch_leaves_no_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    results, recs, seen_cfg, scratch = _step_with_operator(
+        tmp_path, monkeypatch, {"tracker": {"command": "t"}}, tools=("mcp:tracker/get_issue",), exit_code=1, times=1)
+    assert len(seen_cfg) == 1 and not Path(str(seen_cfg[0][0])).exists()  # type: ignore[index]
+    assert list(scratch.iterdir()) == []
+    assert flag(list(results[0].argv), "--mcp-config") == "<private>"
+
+
 HOST_SESSION = {
     "CLAUDECODE": "1", "CLAUDE_CODE_ENTRYPOINT": "cli", "CLAUDE_CODE_SESSION_ID": "host-session",
     "CLAUDE_CODE_CHILD_SESSION": "1", "CLAUDE_CODE_SUBAGENT_MODEL": "haiku", "CLAUDE_UNKNOWN_HOST_NAME": "x",
