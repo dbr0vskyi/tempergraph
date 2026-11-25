@@ -13,7 +13,7 @@ SPECS = (
 )
 
 
-def test_the_specs_name_no_shipped_workflow() -> None:  # AC 7 (OUT-B26 holds of the specs)
+def test_the_specs_name_no_shipped_workflow() -> None:  # AC 7
     names = workflow_names()  # found by the packages' own manifests, never typed here
     assert names
     for spec in SPECS:
