@@ -13,7 +13,7 @@ Every gate starts with a deterministic check, and the design leans on it: a FAIL
 
 ## Decision
 
-We will give a check a typed **context** (workspace, main checkout, request, artifacts, values, earlier facts, engine-computed git facts, resolved settings, a deadline) and an engine **command runner** (`resolve` through the workflow's `command_resolver`, and `run` with list argv, output to file, process-tree kill, a start guard, "finished" exit codes per prefix, and reuse keyed by the tree), and let a check return per-criterion **findings** and bounded **facts**. Checks run in a check worker process with a whole-check limit. The engine owns the mechanics; the workflow owns which commands run and what their results mean ([CHK](../specs/75-check-contract-and-command-runs.spec.md)).
+We will give a check a typed **context** (workspace, main checkout, request, artifacts, values, earlier facts, engine-computed git facts, resolved settings, a deadline) and an engine **command runner** (`resolve` through the workflow's `command_resolver`, and `run` with list argv, output to file, process-tree kill, a start guard, "finished" exit codes per prefix, and reuse keyed by the tree), and let a check return per-criterion **findings** and bounded **facts**. Checks run in a check worker process with a whole-check limit. The engine owns the mechanics; the workflow owns which commands run and what their results mean ([CHK](../specs/check-contract-and-command-runs.spec.md)).
 
 ## Options considered
 

@@ -1,7 +1,7 @@
 ---
 task: r2-t2
 complexity: complex
-specs: [plugins/tempergraph/docs/specs/92-effort-ladder-and-model-escalation.spec.md]
+specs: [plugins/tempergraph/docs/specs/effort-ladder-and-model-escalation.spec.md]
 ---
 
 # Plan: ladders (R2-T2)
@@ -83,6 +83,6 @@ Weight: light
 
 ## 4. Docs to update
 
-- `plugins/tempergraph/docs/specs/92-effort-ladder-and-model-escalation.spec.md`: acceptance criteria ticked, as-built notes
-- `plugins/tempergraph/docs/specs/08-budgets-and-failures.spec.md`: BUD-B7 replaced
-- `plugins/tempergraph/docs/specs/01-contracts.spec.md`: `xhigh`, `CheckFinding.kind`
+- `plugins/tempergraph/docs/specs/effort-ladder-and-model-escalation.spec.md`: acceptance criteria ticked, as-built notes
+- `plugins/tempergraph/docs/specs/budgets-and-failures.spec.md`: BUD-B7 replaced
+- `plugins/tempergraph/docs/specs/contracts.spec.md`: `xhigh`, `CheckFinding.kind`

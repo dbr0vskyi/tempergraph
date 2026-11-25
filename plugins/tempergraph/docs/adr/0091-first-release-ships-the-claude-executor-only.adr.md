@@ -9,7 +9,7 @@
 
 ## Context
 
-The design must support four executors: the Claude Code CLI, the Claude Agent SDK, the Messages API and the Antigravity CLI ([ADR-0018](0018-add-messages-api-and-agent-sdk-executors.adr.md)). The owner's requirement is on the design; the first build need not ship all four. Two owner questions are open: whether Antigravity may be scripted on a consumer sign-in, and whether the Agent SDK may run on a subscription sign-in ([overview](../specs/00-overview.spec.md)). Each executor brings its own probes ([R-090 §E](../research/R-090-implementation-readiness.rsrch.md)) and, for the Messages API, a whole tool host ([THS](../specs/22-tool-host.spec.md)). The first release's scope is [ADR-0090](0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md).
+The design must support four executors: the Claude Code CLI, the Claude Agent SDK, the Messages API and the Antigravity CLI ([ADR-0018](0018-add-messages-api-and-agent-sdk-executors.adr.md)). The owner's requirement is on the design; the first build need not ship all four. Two owner questions are open: whether Antigravity may be scripted on a consumer sign-in, and whether the Agent SDK may run on a subscription sign-in ([overview](../specs/overview.spec.md)). Each executor brings its own probes ([R-090 §E](../research/R-090-implementation-readiness.rsrch.md)) and, for the Messages API, a whole tool host ([THS](../specs/tool-host.spec.md)). The first release's scope is [ADR-0090](0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md).
 
 ## Decision
 
@@ -17,10 +17,10 @@ We will ship **`claude`** as the only registered executor in release 1 and relea
 
 In release 1:
 
-1. The executor interface is built in full: registry, capability declarations, preflight refusals (OVR-B17), the shared launcher, judge executor selection, the normalized stream and the conformance suite ([EXI](../specs/10-executor-interface.spec.md)).
+1. The executor interface is built in full: registry, capability declarations, preflight refusals (OVR-B17), the shared launcher, judge executor selection, the normalized stream and the conformance suite ([EXI](../specs/executor-interface.spec.md)).
 2. The conformance suite runs against a recorded stand-in of `claude` and against **scripted stand-ins that carry the declared capability sets of all four executors**, so cross-executor judging, estimate-only cost, missing caps and every refusal path are tested before the second adapter exists. The four tool maps and capability tables ship as test data, so CON-AC5 and WFM-AC5 pass against them and are re-run when each adapter ships.
-3. `claude` declares `judge_mcp = false` until the judge's filtering MCP proxy ships in release 2; a judge view of an MCP server is then deferred and its criterion renders out of reach, the path [GRD-B5](../specs/06-independence-guard.spec.md) already specifies.
-4. A workflow naming another executor is refused at preflight with exit 2, `unknown executor`, as today ([EXI-B1, EXI-B6](../specs/10-executor-interface.spec.md)).
+3. `claude` declares `judge_mcp = false` until the judge's filtering MCP proxy ships in release 2; a judge view of an MCP server is then deferred and its criterion renders out of reach, the path [GRD-B5](../specs/independence-guard.spec.md) already specifies.
+4. A workflow naming another executor is refused at preflight with exit 2, `unknown executor`, as today ([EXI-B1, EXI-B6](../specs/executor-interface.spec.md)).
 
 ## Options considered
 

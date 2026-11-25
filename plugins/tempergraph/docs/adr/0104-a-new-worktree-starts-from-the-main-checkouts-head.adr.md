@@ -9,11 +9,11 @@
 
 ## Context
 
-No document said which commit a new run worktree starts from. Claude Code's `--worktree` defaults to the remote default branch (`fresh`), with `head` as the alternative ([R-100](../research/R-100-native-worktrees-and-executor-worktree-features.rsrch.md) F3.1). temperspec opens the draft pull request against the default branch or an operator's override, and an orchestration may chain runs where a later run builds on an earlier run's branch ([ORC](../specs/45-orchestration.spec.md)).
+No document said which commit a new run worktree starts from. Claude Code's `--worktree` defaults to the remote default branch (`fresh`), with `head` as the alternative ([R-100](../research/R-100-native-worktrees-and-executor-worktree-features.rsrch.md) F3.1). temperspec opens the draft pull request against the default branch or an operator's override, and an orchestration may chain runs where a later run builds on an earlier run's branch ([ORC](../specs/orchestration.spec.md)).
 
 ## Decision
 
-We will start from the main checkout's `HEAD` commit by default, recording the branch it was on as the pull request base, and offer `default_branch` (fetched, falling back to the local copy) and `ref:<name>` (any branch, tag or commit) through `run.worktree.base` ([WTR-B21](../specs/82-worktree-mode.spec.md)).
+We will start from the main checkout's `HEAD` commit by default, recording the branch it was on as the pull request base, and offer `default_branch` (fetched, falling back to the local copy) and `ref:<name>` (any branch, tag or commit) through `run.worktree.base` ([WTR-B21](../specs/worktree-mode.spec.md)).
 
 ## Options considered
 

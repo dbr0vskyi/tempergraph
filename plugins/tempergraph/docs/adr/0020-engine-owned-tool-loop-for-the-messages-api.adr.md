@@ -13,7 +13,7 @@ The Messages API executes no client tool ([R-004 M1, M3](../research/R-004-anthr
 
 ## Decision
 
-We will drive the Messages API with an engine-owned manual loop and a minimal **tool host** ([THS](../specs/22-tool-host.spec.md)) in the worker process: engine-defined client tools for `read`, `search`, `list`, `edit`, `write` and `shell` (declared command prefixes only, list argv, no shell), Anthropic server tools for `web_search` and `web_fetch` where the bound model and platform offer them, and declared MCP tools through an engine MCP client for local servers. The session offers exactly the declared tools; a judge is offered exactly its view set. No subagent tool exists.
+We will drive the Messages API with an engine-owned manual loop and a minimal **tool host** ([THS](../specs/tool-host.spec.md)) in the worker process: engine-defined client tools for `read`, `search`, `list`, `edit`, `write` and `shell` (declared command prefixes only, list argv, no shell), Anthropic server tools for `web_search` and `web_fetch` where the bound model and platform offer them, and declared MCP tools through an engine MCP client for local servers. The session offers exactly the declared tools; a judge is offered exactly its view set. No subagent tool exists.
 
 ## Options considered
 
@@ -38,7 +38,7 @@ We will drive the Messages API with an engine-owned manual loop and a minimal **
 - Positive: `restricts_judge_tools`, `enforces_step_tools` and `isolates_user_config` are true by construction and tested by contract tests, not probes.
 - Positive: cost and turn caps are enforced between responses with exact usage, unlike on Antigravity.
 - Negative: models may work less well with engine-defined tools than with the tools they were trained on. Mitigation: tool names and schemas follow the common read, search, edit shape; calibration sets measure judges on this executor before a gate relies on it.
-- Risk: the tool host becomes a second agent harness that grows. Mitigation: its scope is fixed to the ten capability names of [CON-B11](../specs/01-contracts.spec.md); a step that needs more runs on another executor.
+- Risk: the tool host becomes a second agent harness that grows. Mitigation: its scope is fixed to the ten capability names of [CON-B11](../specs/contracts.spec.md); a step that needs more runs on another executor.
 
 ## Revisit when
 

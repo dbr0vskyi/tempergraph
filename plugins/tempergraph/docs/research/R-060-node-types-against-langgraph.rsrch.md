@@ -14,7 +14,7 @@ The owner asked on 2026-11-20 which node (unit) types the engine has in this des
 
 | # | Source | Type | Where |
 |---|---|---|---|
-| S3 | This design: CON-B4, CON-B5, CON-B6, CON-B7, CMP-B10 to CMP-B16, HUM, ORC, ADR-0040, R-150 JDG, JCL-B9 | Design set on `main` | [CON](../specs/01-contracts.spec.md), [CMP](../specs/03-compiler-and-flow.spec.md), [HUM](../specs/07-gate-and-human.spec.md), [ORC](../specs/45-orchestration.spec.md), [ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md) |
+| S3 | This design: CON-B4, CON-B5, CON-B6, CON-B7, CMP-B10 to CMP-B16, HUM, ORC, ADR-0040, R-150 JDG, JCL-B9 | Design set on `main` | [CON](../specs/contracts.spec.md), [CMP](../specs/compiler-and-flow.spec.md), [HUM](../specs/gate-and-human.spec.md), [ORC](../specs/orchestration.spec.md), [ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md) |
 | S4 | LangGraph "Use the graph API" | Official docs | https://docs.langchain.com/oss/langgraph/use-graph-api |
 | S5 | LangGraph changelog (v1.0.0 2025-10-20, v1.1.0 2026-03-10, v1.2.0 2026-05-12) | Official docs | https://docs.langchain.com/oss/python/releases/changelog.md |
 | S6 | LangGraph fault tolerance (retry, per-node timeouts, error handlers, `set_node_defaults`, graceful drain; `langgraph>=1.2`) | Official docs | https://docs.langchain.com/oss/python/langgraph/fault-tolerance.md |
@@ -45,32 +45,32 @@ LangGraph's latest documented release line is 1.2 (1.2.0 on 2026-05-12; the inte
 
 | # | LangGraph capability (source) | In the design | Status | Confidence |
 |---|---|---|---|---|
-| L1 | Function node, callable-class node (S4) | Script unit ([ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md)), now specified | added ([SCR](../specs/70-script-units-and-hybrid-steps.spec.md)) | confirmed |
+| L1 | Function node, callable-class node (S4) | Script unit ([ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md)), now specified | added ([SCR](../specs/script-units-and-hybrid-steps.spec.md)) | confirmed |
 | L2 | Normal edges, `add_sequence`, `START` entry (S4) | Order | covered | confirmed |
 | L3 | Conditional edges with a path map (S4) | Route, switch | covered | confirmed |
-| L4 | Conditional edge returning **several** destinations; list edge waiting for all (S4) | Parallel has a fixed branch set; no run-time choice of a subset | added: selective parallel ([FLX](../specs/74-flow-extensions.spec.md)) | confirmed |
+| L4 | Conditional edge returning **several** destinations; list edge waiting for all (S4) | Parallel has a fixed branch set; no run-time choice of a subset | added: selective parallel ([FLX](../specs/flow-extensions.spec.md)) | confirmed |
 | L5 | Conditional entry point (S4) | A switch as the first unit, with the operator arm override | covered | inferred |
 | L6 | `Send` map-reduce to one node per item, with per-push timeout (S4, S6) | Map over a list artifact, results collected by item id | covered | confirmed |
-| L7 | `Send` to a compiled subgraph per item (S4, S8) | Map of a single step only; sub-workflow is a separate unit | added: map over a sub-workflow ([FLX](../specs/74-flow-extensions.spec.md)) | inferred |
+| L7 | `Send` to a compiled subgraph per item (S4, S8) | Map of a single step only; sub-workflow is a separate unit | added: map over a sub-workflow ([FLX](../specs/flow-extensions.spec.md)) | inferred |
 | L8 | `Command(update, goto)`: a node routes itself (S4, S9) | Only a gate routes, over static edges; a judged step emits a choice and a pure route reads it | excluded ([ADR-0062](../adr/0062-new-node-kinds-keep-the-gated-unit.adr.md)) | confirmed |
 | L9 | `Command(graph=PARENT)`: a child routes its parent (S4) | A child's artifacts go to the unit's own gate | excluded | confirmed |
 | L10 | `interrupt()` with `Command(resume)`; several parallel interrupts resumed by id (S7) | Human node, one interrupt per gate; several pending gates answered by unit and item (HUM-B3) | covered | confirmed |
-| L11 | `interrupt()` for **free-form human input** that the graph then uses (S7) | Pause decisions only; no mid-run input artifact | added: ask unit ([ASK](../specs/73-ask-unit.spec.md)) | confirmed |
+| L11 | `interrupt()` for **free-form human input** that the graph then uses (S7) | Pause decisions only; no mid-run input artifact | added: ask unit ([ASK](../specs/ask-unit.spec.md)) | confirmed |
 | L12 | `interrupt` `response_schema` validation of the resume value (S7, 1.2.12) | Decision grammar validated; wait value checked by a pure check | covered; the ask unit validates answers by declared kind | confirmed |
-| L13 | Static breakpoints `interrupt_before` / `interrupt_after`, per call (S7) | Approval pause after a pass; nothing before a step | added: operator breakpoint before a unit ([FLX](../specs/74-flow-extensions.spec.md)); `interrupt_after` is covered by approval | confirmed |
+| L13 | Static breakpoints `interrupt_before` / `interrupt_after`, per call (S7) | Approval pause after a pass; nothing before a step | added: operator breakpoint before a unit ([FLX](../specs/flow-extensions.spec.md)); `interrupt_after` is covered by approval | confirmed |
 | L14 | Subgraph as a node; per-invocation, per-thread or stateless subgraph checkpoints (S8) | Sub-workflow under the parent's checkpointer, depth three | covered (per-invocation only, on purpose) | confirmed |
 | L15 | `RetryPolicy` re-running a node on exceptions, at-least-once (S6) | RETRY is a gate edge with a budget; infra failures follow BUD | excluded for model and judge nodes (a re-run node would re-spend a session and break C5); BUD keeps its own infra handling | confirmed |
-| L16 | `CachePolicy` on a node keyed by input (S4, summary only) | None | added for model-free script units only, per thread ([SCR](../specs/70-script-units-and-hybrid-steps.spec.md)); excluded for steps and judges | supported |
+| L16 | `CachePolicy` on a node keyed by input (S4, summary only) | None | added for model-free script units only, per thread ([SCR](../specs/script-units-and-hybrid-steps.spec.md)); excluded for steps and judges | supported |
 | L17 | `defer=True`: run a node when nothing else is pending (S4, summary only) | Engine-owned AND-join, because a deferred node cannot tell a stopped branch from a finished one (S3) | excluded | confirmed |
 | L18 | Per-node `timeout` with run and idle limits, async nodes only (S6, 1.2) | Session `timeout_s` and `idle_s` enforced by the executor layer | covered (a mechanism LangGraph's timeout may implement, not a design change) | confirmed |
-| L19 | Node `error_handler` after retries, may return a `Command` to a fallback node (S6, 1.2) | `on_fail: retry\|stop`; `on_budget_spent: stop\|ask` | added: a declared fallback target ([FLX](../specs/74-flow-extensions.spec.md)) | confirmed |
-| L20 | Graceful drain between supersteps (`RunControl.request_drain`, 1.2) (S6) | Drain requested by the scheduling node (CMP-B5) and the `stop` verb ([RCT](../specs/32-run-control.spec.md)) | covered; 1.2's drain is a candidate mechanism | confirmed |
+| L19 | Node `error_handler` after retries, may return a `Command` to a fallback node (S6, 1.2) | `on_fail: retry\|stop`; `on_budget_spent: stop\|ask` | added: a declared fallback target ([FLX](../specs/flow-extensions.spec.md)) | confirmed |
+| L20 | Graceful drain between supersteps (`RunControl.request_drain`, 1.2) (S6) | Drain requested by the scheduling node (CMP-B5) and the `stop` verb ([RCT](../specs/run-control.spec.md)) | covered; 1.2's drain is a candidate mechanism | confirmed |
 | L21 | Reducers per key, `Overwrite`, `DeltaChannel` (beta) (S4, S8) | Per-unit channels with two-writer reducers; one deleting reducer | covered; DeltaChannel not needed (state is small JSON, and it makes checkpoints unreadable on downgrade, S8) | confirmed |
 | L22 | Recursion limit (S4) | Attempt cap enforced in nodes; recursion limit only a backstop | covered | confirmed |
-| L23 | Durability modes `exit`, `async`, `sync` (S8) | Checkpoint per superstep ([DUR](../specs/09-durability-and-resume.spec.md)) | covered (not a node type) | confirmed |
-| L24 | Time travel: replay or fork from a checkpoint (S8) | A person's `back:<unit>` re-runs from a unit; no fork of a thread | not a node type; left to the improvement trials, which may later fork a thread for a paired case ([PRP](../specs/40-improvement-proposals.spec.md)) | inferred |
+| L23 | Durability modes `exit`, `async`, `sync` (S8) | Checkpoint per superstep ([DUR](../specs/durability-and-resume.spec.md)) | covered (not a node type) | confirmed |
+| L24 | Time travel: replay or fork from a checkpoint (S8) | A person's `back:<unit>` re-runs from a unit; no fork of a thread | not a node type; left to the improvement trials, which may later fork a thread for a paired case ([PRP](../specs/improvement-proposals.spec.md)) | inferred |
 | L25 | Functional API `@entrypoint` / `@task` (S8) | Workflows are data ([ADR-0003](../adr/0003-workflows-as-data.adr.md)) | excluded | confirmed |
-| L26 | Streaming v2/v3 projections (S5) | Run events and the activity journal ([EVT](../specs/30-run-events.spec.md)) | covered (not a node type) | confirmed |
+| L26 | Streaming v2/v3 projections (S5) | Run events and the activity journal ([EVT](../specs/run-events.spec.md)) | covered (not a node type) | confirmed |
 | L27 | Prebuilt tool node and agent loop (S4, S5) | The step session is the agent loop, inside the executor | covered by the executors | confirmed |
 | L28 | Private per-node input schema, runtime context (S4) | Declared artifact keys, judge references and engine keys | covered | confirmed |
 
@@ -85,10 +85,10 @@ LangGraph's latest documented release line is 1.2 (1.2.0 on 2026-05-12; the inte
 
 ## Conclusions
 
-1. The design has seven unit kinds around one gated unit (F1, F4), plus an accepted but unspecified script unit; that unit is now specified ([SCR](../specs/70-script-units-and-hybrid-steps.spec.md)).
+1. The design has seven unit kinds around one gated unit (F1, F4), plus an accepted but unspecified script unit; that unit is now specified ([SCR](../specs/script-units-and-hybrid-steps.spec.md)).
 2. Against LangGraph 1.2, the design already covers 15 of the 28 capabilities listed, this change set adds 7 (L1, L4, L7, L11, L13, L16, L19), 5 are excluded on purpose (L8, L9, L15 for model nodes, L17, L25), and one (L24, time travel) is not a node type and stays open. Each exclusion protects a contract: static edges and pure gates (C5), one interrupt per gate (C6), workflows as data (C8, ADR-0003) and judge independence (C4).
-3. Four higher-level kinds are added: **script** (model-free work), **council** (several members, one combined answer or decision; [CNL](../specs/71-council-unit.spec.md)), **contest** (best of several candidates by the gate's own judge; [CTS](../specs/72-contest-unit.spec.md)) and **ask** (a person's mid-run input as an artifact; [ASK](../specs/73-ask-unit.spec.md)). Every one compiles to the gated unit's step, judge, gate and human nodes, so verdicts stay engine-derived ([ADR-0062](../adr/0062-new-node-kinds-keep-the-gated-unit.adr.md)).
-4. Five flow extensions close the remaining shape gaps: selective parallel, map over a sub-workflow, deadlines on waits and asks, a fallback target, and operator breakpoints ([FLX](../specs/74-flow-extensions.spec.md)).
+3. Four higher-level kinds are added: **script** (model-free work), **council** (several members, one combined answer or decision; [CNL](../specs/council-unit.spec.md)), **contest** (best of several candidates by the gate's own judge; [CTS](../specs/contest-unit.spec.md)) and **ask** (a person's mid-run input as an artifact; [ASK](../specs/ask-unit.spec.md)). Every one compiles to the gated unit's step, judge, gate and human nodes, so verdicts stay engine-derived ([ADR-0062](../adr/0062-new-node-kinds-keep-the-gated-unit.adr.md)).
+4. Five flow extensions close the remaining shape gaps: selective parallel, map over a sub-workflow, deadlines on waits and asks, a fallback target, and operator breakpoints ([FLX](../specs/flow-extensions.spec.md)).
 5. A judge panel stays deferred; a council is a step whose output one judge grades.
 
 ## Open questions

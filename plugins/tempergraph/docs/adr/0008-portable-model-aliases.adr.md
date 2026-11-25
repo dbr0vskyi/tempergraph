@@ -34,7 +34,7 @@ We will let workflow data name models as `inherit`, an engine-neutral tier (`sma
 
 ## Consequences
 
-- Positive: the same workflow validates against both executors ([WFM-B3](../specs/02-workflow-model.spec.md)).
+- Positive: the same workflow validates against both executors ([WFM-B3](../specs/workflow-model.spec.md)).
 - Negative: a tier hides a real capability difference between families. Mitigation: a step that needs a specific model uses a qualified alias, and validation warns when a qualified alias is used where a tier would do.
 - Risk: the tool maps drift with CLI releases. Mitigation: conformance fixtures per CLI version; an unknown tool name in a stream is a self-improvement cause attributed to the executor.
 

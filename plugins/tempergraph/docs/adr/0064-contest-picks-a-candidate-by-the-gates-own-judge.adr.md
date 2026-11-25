@@ -13,7 +13,7 @@
 
 ## Decision
 
-We will add a unit kind **`contest`** ([CTS](../specs/72-contest-unit.spec.md)):
+We will add a unit kind **`contest`** ([CTS](../specs/contest-unit.spec.md)):
 
 1. 2 to 5 **candidate slots** run the same step (optionally with a different executor, model or prompt variant per slot). Candidates that write files run in their own writer worktrees.
 2. Each candidate passes the gate's **check** first; each that passes is graded by a **fresh session of the gate's own judge**, which sees that candidate only, never a comparison.

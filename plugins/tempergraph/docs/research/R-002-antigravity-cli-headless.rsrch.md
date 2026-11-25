@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The design must support the Antigravity CLI (`agy`), Google's terminal agent, as a second executor beside Claude Code. tempergraph starts one fresh headless session per step attempt and one fresh **read-only** session per judge run, and it relies on the executor to restrict tools, report actions and usage, honour a timeout and die with the engine. This note records what `agy` documents and what the community reports about those needs, so the [Antigravity executor spec](../specs/12-executor-antigravity.spec.md) and [ADR-0010](../adr/0010-judge-isolation-per-executor.adr.md) and [ADR-0011](../adr/0011-isolated-config-home-for-antigravity.adr.md) rest on evidence.
+The design must support the Antigravity CLI (`agy`), Google's terminal agent, as a second executor beside Claude Code. tempergraph starts one fresh headless session per step attempt and one fresh **read-only** session per judge run, and it relies on the executor to restrict tools, report actions and usage, honour a timeout and die with the engine. This note records what `agy` documents and what the community reports about those needs, so the [Antigravity executor spec](../specs/executor-antigravity.spec.md) and [ADR-0010](../adr/0010-judge-isolation-per-executor.adr.md) and [ADR-0011](../adr/0011-isolated-config-home-for-antigravity.adr.md) rest on evidence.
 
 ## Sources consulted
 
@@ -82,7 +82,7 @@ Read on 2026-11-19. Versions cited across sources range from 1.1.8 to 1.5.7, and
 
 | Question | Owner | How to settle |
 |---|---|---|
-| Does `agy` honour a `HOME` (or `USERPROFILE`) pointed at a private folder for settings, hooks and MCP, and can it still authenticate there (API key, or copied credentials)? | Executor implementer | Probe P-AG-1 in the [Antigravity executor spec](../specs/12-executor-antigravity.spec.md). |
+| Does `agy` honour a `HOME` (or `USERPROFILE`) pointed at a private folder for settings, hooks and MCP, and can it still authenticate there (API key, or copied credentials)? | Executor implementer | Probe P-AG-1 in the [Antigravity executor spec](../specs/executor-antigravity.spec.md). |
 | Do PreToolUse hooks run in headless mode on the pinned version, and is `deny` enforced for every tool including subagent tools? | Executor implementer | Probe P-AG-2. |
 | Is `--print-timeout` unlimited by default on the pinned version, and what exit and `status` does a timed-out turn give? | Executor implementer | Probe P-AG-4. |
 | Is a fresh `-p` session guaranteed, or can it continue a workspace conversation? | Executor implementer | Probe P-AG-5. |

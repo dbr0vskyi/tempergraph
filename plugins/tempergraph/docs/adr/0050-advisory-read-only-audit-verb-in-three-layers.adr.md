@@ -9,11 +9,11 @@
 
 ## Context
 
-The owner asked for a mechanism, maybe a CLI command, that audits a workflow and analyzes it for issues, aimed at the most common reasons runs fail, are interrupted, retry, get stuck or spend much. [R-050](../research/R-050-why-runs-fail-stall-repeat-or-overspend.rsrch.md) ranks those causes and finds that they need three kinds of evidence: the workflow definition, the host and target repository, and recorded runs. The design already has `validate` ([WFM](../specs/02-workflow-model.spec.md)), which refuses before spend, and several model-free analyses with their own owners. Nothing puts them together for one workflow or covers the host and the run history of a workflow as a whole.
+The owner asked for a mechanism, maybe a CLI command, that audits a workflow and analyzes it for issues, aimed at the most common reasons runs fail, are interrupted, retry, get stuck or spend much. [R-050](../research/R-050-why-runs-fail-stall-repeat-or-overspend.rsrch.md) ranks those causes and finds that they need three kinds of evidence: the workflow definition, the host and target repository, and recorded runs. The design already has `validate` ([WFM](../specs/workflow-model.spec.md)), which refuses before spend, and several model-free analyses with their own owners. Nothing puts them together for one workflow or covers the host and the run history of a workflow as a whole.
 
 ## Decision
 
-We will add `tempergraph audit <workflow>` ([AUD](../specs/55-workflow-audit.spec.md)):
+We will add `tempergraph audit <workflow>` ([AUD](../specs/workflow-audit.spec.md)):
 
 1. **Advisory.** It never refuses a start or a resume and is never called by them. `validate` stays the only gate.
 2. **Read-only and model-free** (OVR-B15). Its only child processes are the read-only executor probes and a host-speed probe under a 30 s budget.
@@ -43,7 +43,7 @@ We will add `tempergraph audit <workflow>` ([AUD](../specs/55-workflow-audit.spe
 | # | Assumption | Where it matters |
 |---|---|---|
 | A1 | "Audit the workflow" means one workflow package and its runs, not the engine. Engine defects found in runs are shown but not diagnosed. | AUD, ARC |
-| A2 | Starting a login shell and the executor probes counts as read-only, as `executors --probe` does today ([CLI-AC1](../specs/17-engine-cli.spec.md)). | AUD-B11, AUD-B6, AUD-B9 |
+| A2 | Starting a login shell and the executor probes counts as read-only, as `executors --probe` does today ([CLI-AC1](../specs/engine-cli.spec.md)). | AUD-B11, AUD-B6, AUD-B9 |
 | A3 | A new exit code 6 is acceptable for an advisory verb, rather than reusing 4 or 5, which mean a run ended. | CON-B12, CON-B13 |
 
 ## Consequences

@@ -13,11 +13,11 @@ The owner asked for a command that upgrades a workflow and noted it needs a mode
 
 ## Decision
 
-We will add `tempergraph upgrade <workflow>` ([WUP](../specs/63-workflow-upgrade.spec.md)) that, on a branch of the workflow's source:
+We will add `tempergraph upgrade <workflow>` ([WUP](../specs/workflow-upgrade.spec.md)) that, on a branch of the workflow's source:
 
 1. Plans by detect rules, model-free.
 2. Applies engine-shipped transforms, model-free, one commit per changelog entry, oldest release first.
-3. Hands the remaining items to a built-in **upgrade workflow** ([UWF](../specs/64-upgrade-workflow.spec.md)): each assisted edit is a gated step; each owner question is a drafted change behind an approval pause; protected paths (criteria, checks, stances) change only through the owner.
+3. Hands the remaining items to a built-in **upgrade workflow** ([UWF](../specs/upgrade-workflow.spec.md)): each assisted edit is a gated step; each owner question is a drafted change behind an approval pause; protected paths (criteria, checks, stances) change only through the owner.
 4. Never writes an installed copy and never merges.
 
 `upgrade-check` remains as the read-only planning form.
@@ -52,7 +52,7 @@ We will add `tempergraph upgrade <workflow>` ([WUP](../specs/63-workflow-upgrade
 
 - Positive: most upgrades can be done by transforms alone; the rest are drafted and judged, and the owner only answers what is theirs.
 - Negative: the engine ships and must evaluate a second built-in workflow.
-- Risk: a judged edit passes but changes behaviour subtly. Mitigation: verification against the baseline ([ADR-0059](0059-an-upgrade-is-done-when-model-free-checks-pass-against-the-old-baseline.adr.md)) and the opt-in paired trial.
+- Risk: a judged edit passes but changes behaviour subtly. Mitigation: verification against the baseline ([ADR-0059](0059-an-upgrade-is-done-when-model-free-checks-pass.adr.md)) and the opt-in paired trial.
 
 ## Revisit when
 

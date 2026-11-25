@@ -255,7 +255,7 @@ CODE_IDS = ("ts-code-verify", "ts-code-base", "ts-code-touch", "ts-code-passes",
 def test_outcome_json_holds_the_criteria_of_the_code_spec() -> None:
     # ts-code-verify, ts-code-base, ts-code-touch, ts-code-passes, ts-code-nobase, ts-code-mixed, ts-code-evidence,
     # ts-code-spend, AC 1, AC 2, AC 3, AC 4, AC 5: the same text, a check, and the revision that added them
-    spec = (ROOT / "docs" / "specs" / "08-code.spec.md").read_text(encoding="utf-8")
+    spec = (ROOT / "docs" / "specs" / "code.spec.md").read_text(encoding="utf-8")
     texts = dict(re.findall(r"^- \[ \] (ts-code-[a-z]+) (.+)$", spec, re.M))
     assert set(CODE_IDS) <= set(texts)
     doc = json.loads((ROOT / "outcome.json").read_text(encoding="utf-8"))

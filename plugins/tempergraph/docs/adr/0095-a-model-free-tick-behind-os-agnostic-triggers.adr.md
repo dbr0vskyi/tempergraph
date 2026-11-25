@@ -20,7 +20,7 @@ What calls the tick is a **trigger**, and triggers carry no rule:
 - **`loop`, the default**: `schedule loop`, a portable engine process in the engine's interpreter that ticks, sleeps until the next slot or 60 s, and repeats. It holds no state between ticks and uses no OS facility, so it works the same on macOS, Linux and Windows.
 - **Optional adapters**: `host` (the plugin's `SessionStart` hook starts the loop), `os` (one per-user autostart entry that starts the loop at login, or a crontab line that calls the tick), `external` (any scheduler the owner runs calls the tick).
 
-The supervisor and the tick stay separate processes. Specs: [SCH](../specs/83-schedules.spec.md), [TCK](../specs/84-schedule-ticks-and-unattended-fires.spec.md).
+The supervisor and the tick stay separate processes. Specs: [SCH](../specs/schedules.spec.md), [TCK](../specs/schedule-ticks-and-unattended-fires.spec.md).
 
 ## Options considered
 

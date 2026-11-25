@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Split from [self-improvement](16-self-improvement.spec.md) by capability, keeping its ids: when a thread that a person stopped at a pause, or whose runner was lost, counts as a final exit for the loop, and how that exit is recorded once.
+Split from [self-improvement](self-improvement.spec.md) by capability, keeping its ids: when a thread that a person stopped at a pause, or whose runner was lost, counts as a final exit for the loop, and how that exit is recorded once.
 
 ## Behaviours
 
@@ -15,7 +15,7 @@ WHEN a person stops a paused thread, at a gate or before a unit named by `--paus
 
 ### SIL-B28 A stop at a pause covers the thread's earlier pauses
 
-WHEN a person stops a paused thread THE loop SHALL treat the findings of every earlier segment of the thread that ended in a pause, and that no earlier loop of the thread judged, as findings of the stop, so that its friction lens judges their faults and its session review is planned from their signals (SIL-B10, [SRV-B13, SRV-B16](44-session-review.spec.md)).
+WHEN a person stops a paused thread THE loop SHALL treat the findings of every earlier segment of the thread that ended in a pause, and that no earlier loop of the thread judged, as findings of the stop, so that its friction lens judges their faults and its session review is planned from their signals (SIL-B10, [SRV-B13, SRV-B16](session-review.spec.md)).
 
 - GIVEN a thread whose first segment paused on `retries_spent` at unit `code` WHEN a person stops it at that pause THEN the ticket's friction lens is on and the loop child's friction judge is asked about the `retries_spent` finding of `code`
 - GIVEN stable mode and that thread WHEN a person stops it THEN the session review plan has depth `partial` and its targets are the last attempt and the judge of `code`
@@ -23,10 +23,10 @@ WHEN a person stops a paused thread THE loop SHALL treat the findings of every e
 
 ### SIL-B29 A lost runner is a final exit
 
-WHEN `status`, `stop` or `attention` reads a thread whose runner is gone without an exit, that is whose lock is not held and whose newest segment started and wrote no `run_exit` (a process killed, crashed or cut off by its caller's timeout, which the engine cannot tell apart, [RDD-B14](31-run-detail-document.spec.md)), and whose newest record is at most `lost_runner.window_days` (7) days old ([IMD-B23](43-improvement-data.spec.md)), THE engine SHALL treat that segment as a final exit with exit code 5 and reason `runner_lost`, writing the records of SIL-B8 and starting the loop under SIL-B1, SIL-B10 and SIL-B31.
+WHEN `status`, `stop` or `attention` reads a thread whose runner is gone without an exit, that is whose lock is not held and whose newest segment started and wrote no `run_exit` (a process killed, crashed or cut off by its caller's timeout, which the engine cannot tell apart, [RDD-B14](run-detail-document.spec.md)), and whose newest record is at most `lost_runner.window_days` (7) days old ([IMD-B23](improvement-data.spec.md)), THE engine SHALL treat that segment as a final exit with exit code 5 and reason `runner_lost`, writing the records of SIL-B8 and starting the loop under SIL-B1, SIL-B10 and SIL-B31.
 
-- GIVEN a dev-mode run whose process was killed in unit `code` after its check failed once WHEN `status` runs THEN one ledger row with exit code 5 and reason `runner_lost`, a `check_fail:code` finding in `findings.json` and a hand-off ticket exist, and `status --detail` still shows `health.orphaned` true and the thread resumable ([DUR-B2](09-durability-and-resume.spec.md))
-- GIVEN that thread WHEN `attention` runs, or `stop` names it, THEN the same records and ticket exist, and `stop` exits 2 as [RCT-B3](32-run-control.spec.md) says
+- GIVEN a dev-mode run whose process was killed in unit `code` after its check failed once WHEN `status` runs THEN one ledger row with exit code 5 and reason `runner_lost`, a `check_fail:code` finding in `findings.json` and a hand-off ticket exist, and `status --detail` still shows `health.orphaned` true and the thread resumable ([DUR-B2](durability-and-resume.spec.md))
+- GIVEN that thread WHEN `attention` runs, or `stop` names it, THEN the same records and ticket exist, and `stop` exits 2 as [RCT-B3](run-control.spec.md) says
 - GIVEN a thread whose newest record is 8 days old WHEN `status` runs THEN nothing is written
 
 ### SIL-B30 A lost runner is recorded once
@@ -48,7 +48,7 @@ WHEN a lost runner has started the loop for a thread THE engine SHALL start no s
 WHEN `status`, `stop` or `attention` hands a lost runner to the loop THE engine SHALL print the document or message and exit with the code it would without the hand-off, even when the hand-off fails, and start no session of its own.
 
 - GIVEN a lost runner and a ledger that cannot be written WHEN `status` runs THEN it prints its document and exits 0
-- GIVEN a lost runner WHEN `stop` names it THEN it exits 2 with the message of [RCT-B3](32-run-control.spec.md)
+- GIVEN a lost runner WHEN `stop` names it THEN it exits 2 with the message of [RCT-B3](run-control.spec.md)
 
 ## Acceptance criteria
 

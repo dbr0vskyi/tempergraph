@@ -16,6 +16,6 @@ def test_every_spec_within_budget() -> None:
 
 
 def test_the_schedule_specs_stay_within_budget_after_the_ticks_task_changed_their_text() -> None:  # AC 13
-    for name in ("83-schedules.spec.md", "84-schedule-ticks-and-unattended-fires.spec.md"):
+    for name in ("schedules.spec.md", "schedule-ticks-and-unattended-fires.spec.md"):
         data = (DOCS / "specs" / name).read_bytes()
         assert len(data) <= 30 * 1024 and data.count(b"\n") <= 400, (name, len(data))

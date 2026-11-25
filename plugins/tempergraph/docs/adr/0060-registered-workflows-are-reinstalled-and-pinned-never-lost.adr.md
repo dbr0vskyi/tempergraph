@@ -9,11 +9,11 @@
 
 ## Context
 
-The owner added that during an engine update the installed workflows must be reinstalled automatically, so that registered workflows are not lost and keep working. A reinstall can make a workflow vanish from the manifest, and an entry pinned to a cache folder silently runs old code. A workflow package is imported into the engine's process ([WFM](../specs/02-workflow-model.spec.md)), so its Python dependencies live in the engine environment. With side-by-side environments ([ADR-0055](0055-side-by-side-engine-environments-switched-atomically.adr.md)), a new environment starts without them. A release can also tighten validation, so that a workflow that ran yesterday is refused today until its owner upgrades it.
+The owner added that during an engine update the installed workflows must be reinstalled automatically, so that registered workflows are not lost and keep working. A reinstall can make a workflow vanish from the manifest, and an entry pinned to a cache folder silently runs old code. A workflow package is imported into the engine's process ([WFM](../specs/workflow-model.spec.md)), so its Python dependencies live in the engine environment. With side-by-side environments ([ADR-0055](0055-side-by-side-engine-environments-switched-atomically.adr.md)), a new environment starts without them. A release can also tighten validation, so that a workflow that ran yesterday is refused today until its owner upgrades it.
 
 ## Decision
 
-We will ([UPD-B20 to UPD-B24](../specs/60-engine-update.spec.md)):
+We will ([UPD-B20 to UPD-B24](../specs/engine-update.spec.md)):
 
 1. Keep registration in `~/.tempergraph/registry.json`, outside every environment, with `plugin`, `local` and `builtin` entries. Only `workflows unregister` removes an entry.
 2. On every update and install, install each entry's declared Python dependencies into the new environment, then load and validate each workflow under the new engine before the switch.

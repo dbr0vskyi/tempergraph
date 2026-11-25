@@ -13,7 +13,7 @@ The owner wants a live monitor that drills into a running tempergraph run, and a
 
 ## Decision
 
-We will expose run activity to observers only through files the engine already owns, made followable: a `seq` on every run-log record, an append-only activity journal per session, the live progress file, and read-only verbs that read them (`events`, `status --detail`, `logs`) ([EVT](../specs/30-run-events.spec.md), [RDD](../specs/31-run-detail-document.spec.md)). The engine opens no listening socket and runs no daemon. In-process observers exist only for exporters the operator enables ([ADR-0027](0027-in-process-observers-and-wider-hook-events.adr.md)).
+We will expose run activity to observers only through files the engine already owns, made followable: a `seq` on every run-log record, an append-only activity journal per session, the live progress file, and read-only verbs that read them (`events`, `status --detail`, `logs`) ([EVT](../specs/run-events.spec.md), [RDD](../specs/run-detail-document.spec.md)). The engine opens no listening socket and runs no daemon. In-process observers exist only for exporters the operator enables ([ADR-0027](0027-in-process-observers-and-wider-hook-events.adr.md)).
 
 ## Options considered
 
@@ -37,7 +37,7 @@ We will expose run activity to observers only through files the engine already o
 ## Consequences
 
 - Positive: the monitor, the troubleshooter skill and a shell user all read the same files; a dead run still shows its last state.
-- Negative: polling. Mitigation: readers stat sizes and times first and read only the appended bytes, as `wait` already does ([DUR-B5](../specs/09-durability-and-resume.spec.md)).
+- Negative: polling. Mitigation: readers stat sizes and times first and read only the appended bytes, as `wait` already does ([DUR-B5](../specs/durability-and-resume.spec.md)).
 - Risk: a reader reads a half-written line. Mitigation: readers drop a last line without a newline and read it next time.
 
 ## Assumptions

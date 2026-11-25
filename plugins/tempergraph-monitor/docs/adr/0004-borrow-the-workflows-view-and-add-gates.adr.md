@@ -13,7 +13,7 @@ The owner asked for a view "in same way how it is done for dynamic workflows", c
 
 ## Decision
 
-We will copy the workflows view's levels, keys, filter and narrator lines unchanged where a matching meaning exists, draw the run as its declared graph with a `S C J G` node strip per unit, lead attempt views with the judge's reasons, and show money with honesty flags ([MRV](../specs/03-run-view.spec.md), [MDD](../specs/04-drill-down.spec.md)). Keys with no tempergraph meaning (pause, restart) are not faked.
+We will copy the workflows view's levels, keys, filter and narrator lines unchanged where a matching meaning exists, draw the run as its declared graph with a `S C J G` node strip per unit, lead attempt views with the judge's reasons, and show money with honesty flags ([MRV](../specs/run-view.spec.md), [MDD](../specs/drill-down.spec.md)). Keys with no tempergraph meaning (pause, restart) are not faked.
 
 ## Options considered
 

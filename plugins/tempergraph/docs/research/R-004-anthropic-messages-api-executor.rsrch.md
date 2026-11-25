@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The owner asked for an executor on Anthropic's Messages API. Unlike the two CLIs ([R-001](R-001-claude-code-cli-headless.rsrch.md), [R-002](R-002-antigravity-cli-headless.rsrch.md)), the API runs no agent loop on the client and executes no file or shell tool: the caller sends messages and tool definitions, the model answers with `tool_use` blocks, and the caller runs them and sends results back. [ADR-0006](../adr/0006-executors-as-capability-adapters.adr.md) rejected "model APIs directly" as the *only* executor shape. This note records what the API offers and what the engine would have to own, so that a Messages API executor ([EMA](../specs/20-executor-messages-api.spec.md)) and its tool host ([THS](../specs/22-tool-host.spec.md)) rest on documented facts.
+The owner asked for an executor on Anthropic's Messages API. Unlike the two CLIs ([R-001](R-001-claude-code-cli-headless.rsrch.md), [R-002](R-002-antigravity-cli-headless.rsrch.md)), the API runs no agent loop on the client and executes no file or shell tool: the caller sends messages and tool definitions, the model answers with `tool_use` blocks, and the caller runs them and sends results back. [ADR-0006](../adr/0006-executors-as-capability-adapters.adr.md) rejected "model APIs directly" as the *only* executor shape. This note records what the API offers and what the engine would have to own, so that a Messages API executor ([EMA](../specs/executor-messages-api.spec.md)) and its tool host ([THS](../specs/tool-host.spec.md)) rest on documented facts.
 
 ## Sources consulted
 
@@ -54,7 +54,7 @@ Read on 2026-11-19. The skill notes that the API changed shape several times in 
 | Question | Owner | How to settle |
 |---|---|---|
 | Should long sessions use server-side compaction or context editing, both beta, or end at the context window? | Executor implementer | First release ends the session with a model error and records peak context; revisit with measured sessions. |
-| Does a judge on this executor grade as well as a judge on Claude Code, given a smaller tool set and no system prompt of Claude Code? | Engine owner | Calibration sets per gate, scored on both judge executors ([LIF](../specs/18-lifecycle-and-evals.spec.md)). |
+| Does a judge on this executor grade as well as a judge on Claude Code, given a smaller tool set and no system prompt of Claude Code? | Engine owner | Calibration sets per gate, scored on both judge executors ([LIF](../specs/lifecycle-and-evals.spec.md)). |
 </content>
 </invoke>
 <invoke name="Bash">

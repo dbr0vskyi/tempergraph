@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The owner asked for an orchestrator skill that manages many tempergraph runs "similar to dynamic workflows graphs": start, watch, sequence and parallelise runs, handle pauses and failures, and report. Claude Code's **dynamic workflows** are the reference. This note records how they behave, from public documentation, and what a Claude session that orchestrates runs by hand costs and gets wrong, so the [orchestration spec](../specs/45-orchestration.spec.md), the [orchestrator skill spec](../specs/46-orchestrator-skill.spec.md) and ADRs [0035](../adr/0035-orchestration-is-data-run-by-a-model-free-supervisor.adr.md) to [0039](../adr/0039-pauses-stay-with-the-person-failures-follow-node-policy.adr.md) rest on findings, not memory.
+The owner asked for an orchestrator skill that manages many tempergraph runs "similar to dynamic workflows graphs": start, watch, sequence and parallelise runs, handle pauses and failures, and report. Claude Code's **dynamic workflows** are the reference. This note records how they behave, from public documentation, and what a Claude session that orchestrates runs by hand costs and gets wrong, so the [orchestration spec](../specs/orchestration.spec.md), the [orchestrator skill spec](../specs/orchestrator-skill.spec.md) and ADRs [0035](../adr/0035-orchestration-is-data-run-by-a-model-free-supervisor.adr.md) to [0039](../adr/0039-pauses-stay-with-the-person-failures-follow-node-policy.adr.md) rest on findings, not memory.
 
 ## Sources consulted
 
@@ -66,11 +66,11 @@ Read on 2026-11-19. Where the official page and a blog or article disagree, the 
 3. **Borrow the watching surface**: list, drill down, filter by status, per-node cost while running, pause intake, stop one node or all, save as a reusable template (D5, D9). The monitor plugin renders it; the engine must publish an orchestration status document for it.
 4. **Borrow the advisory size guideline and large-run warning, but make the cap real** (D7, D14). tempergraph already has a run cost cap; an orchestration adds an aggregate cap checked before every node start, and a projected cost from past runs shown before approval.
 5. **Borrow approval before start with the raw plan viewable** (D8), and saved templates with arguments (D9).
-6. **Do not borrow positional replay** (D11). A failed or reordered call reruns finished work after it; for tempergraph a rerun is a paid run with a branch. Node identity is a stable node id mapped to a thread id, and a re-run skips nodes whose thread exists, as the batch already does ([WSP-B7](../specs/13-workspace-and-concurrency.spec.md)).
-7. **Do not borrow "no input mid-run"** (D4, D12). tempergraph runs pause for people by design and may wait days ([DUR](../specs/09-durability-and-resume.spec.md)). The supervisor keeps independent nodes moving while one waits, and a pause is answered on that node alone.
+6. **Do not borrow positional replay** (D11). A failed or reordered call reruns finished work after it; for tempergraph a rerun is a paid run with a branch. Node identity is a stable node id mapped to a thread id, and a re-run skips nodes whose thread exists, as the batch already does ([WSP-B7](../specs/workspace-and-concurrency.spec.md)).
+7. **Do not borrow "no input mid-run"** (D4, D12). tempergraph runs pause for people by design and may wait days ([DUR](../specs/durability-and-resume.spec.md)). The supervisor keeps independent nodes moving while one waits, and a pause is answered on that node alone.
 8. **Do not borrow silent `null` slots** (D3). A failed tempergraph run has a cause and an exit code; each node declares what its failure does to its dependants, and the report never counts a failed node as done.
-9. **Do not let an orchestrator answer gates** (B4). The person decides every pause; the orchestration records who answered, and an unattended mode stays reserved until the delegation policy exists ([HUM](../specs/07-gate-and-human.spec.md)).
-10. **Restarts are the engine's, not the orchestrator's** (D10). Stalls and infra retries already live in the engine's budgets ([BUD](../specs/08-budgets-and-failures.spec.md)); the orchestrator only re-opens a run that ended on an infra cause, and only within a count the person set in advance.
+9. **Do not let an orchestrator answer gates** (B4). The person decides every pause; the orchestration records who answered, and an unattended mode stays reserved until the delegation policy exists ([HUM](../specs/gate-and-human.spec.md)).
+10. **Restarts are the engine's, not the orchestrator's** (D10). Stalls and infra retries already live in the engine's budgets ([BUD](../specs/budgets-and-failures.spec.md)); the orchestrator only re-opens a run that ended on an infra cause, and only within a count the person set in advance.
 11. **Shared resources need claims** (B3). Concurrent runs in one repository need a reservation for counters and version fields; this is deferred, and the orchestration refuses two concurrent nodes that declare the same exclusive resource.
 
 ## Open questions
@@ -78,5 +78,5 @@ Read on 2026-11-19. Where the official page and a blog or article disagree, the 
 | Question | Owner | How to settle |
 |---|---|---|
 | Should an orchestration also be startable from a Claude Code dynamic workflow (a plugin `workflows/` script that calls the engine)? Rejected for driving runs (ADR-0035); possibly useful as a thin launcher. | Owner | Revisit when the plugin ships its first workflow script. |
-| What is the measured operator cost of the orchestrator skill, as a share of the run cost it orchestrates? | Implementer | First live orchestration of three or more runs; [OSK-AC4](../specs/46-orchestrator-skill.spec.md). |
+| What is the measured operator cost of the orchestrator skill, as a share of the run cost it orchestrates? | Implementer | First live orchestration of three or more runs; [OSK-AC4](../specs/orchestrator-skill.spec.md). |
 | Does the default stall window of dynamic workflows matter for any part of this design? Not stated in the docs; the engine's own idle limit applies to tempergraph sessions. | — | No action. |

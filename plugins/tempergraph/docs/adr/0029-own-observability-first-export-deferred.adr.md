@@ -9,11 +9,11 @@
 
 ## Context
 
-The design offers two ways out of a machine: tempergraph's own sinks and fleet copy ([CST](../specs/34-central-run-stats.spec.md)), and OTLP export to a backend such as Phoenix, Langfuse or LangSmith ([TEL](../specs/35-telemetry-export.spec.md)). Asked about using existing telemetry products locally, the owner decided on 2026-11-20: "for now stay with our own observability, gathering everything we could". No run data is to go to a third-party tool for now.
+The design offers two ways out of a machine: tempergraph's own sinks and fleet copy ([CST](../specs/central-run-stats.spec.md)), and OTLP export to a backend such as Phoenix, Langfuse or LangSmith ([TEL](../specs/telemetry-export.spec.md)). Asked about using existing telemetry products locally, the owner decided on 2026-11-20: "for now stay with our own observability, gathering everything we could". No run data is to go to a third-party tool for now.
 
 ## Decision
 
-We will ship the local store ([LOS](../specs/33-local-observability-store.spec.md)), the observer events and activity journal ([EVT](../specs/30-run-events.spec.md)), the detail document ([RDD](../specs/31-run-detail-document.spec.md)), the monitor and the directory sink with its home fleet copy ([CST](../specs/34-central-run-stats.spec.md)) in the first release, and **defer** the OTLP exporter. TEL stays as a written design, status `draft`, not built. Locally the engine captures everything it can see: every session's raw stream, every normalized event, check and hook output, the engine's code log and per-session resource samples, and a directory sink carries all three row kinds by default.
+We will ship the local store ([LOS](../specs/local-observability-store.spec.md)), the observer events and activity journal ([EVT](../specs/run-events.spec.md)), the detail document ([RDD](../specs/run-detail-document.spec.md)), the monitor and the directory sink with its home fleet copy ([CST](../specs/central-run-stats.spec.md)) in the first release, and **defer** the OTLP exporter. TEL stays as a written design, status `draft`, not built. Locally the engine captures everything it can see: every session's raw stream, every normalized event, check and hook output, the engine's code log and per-session resource samples, and a directory sink carries all three row kinds by default.
 
 ## Options considered
 
@@ -35,7 +35,7 @@ We will ship the local store ([LOS](../specs/33-local-observability-store.spec.m
 
 - Positive: every fact a later exporter would need is already captured locally, so TEL can be built later as a reader of the same records.
 - Negative: no LangSmith-style trace browser for now; the monitor and `stats`, `report`, `events`, `logs` are the views.
-- Risk: the local store grows faster with full capture. Mitigation: `store usage`, the size warning and manual `store prune` ([LOS-B16](../specs/33-local-observability-store.spec.md)).
+- Risk: the local store grows faster with full capture. Mitigation: `store usage`, the size warning and manual `store prune` ([LOS-B16](../specs/local-observability-store.spec.md)).
 
 ## Assumptions
 

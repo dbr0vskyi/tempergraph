@@ -9,11 +9,11 @@
 
 ## Context
 
-The loop of [SIL](../specs/16-self-improvement.spec.md) ends at an issue. Such a loop detects well, but its bottleneck is what comes after: a person chooses every issue, writes every brief and merges every fix, and loop-filed issues wait for an owner ([R-031 F1](../research/R-031-self-improvement-gap-analysis.rsrch.md), G1 and G5). Public systems that improve themselves either draft and score changes against a dataset (DSPy, GEPA, AFlow) or modify their own code, and the latter were seen gaming their own evaluator ([R-030 F1, F5](../research/R-030-self-improving-agent-systems.rsrch.md)). The owner asked for a self-improvement design that works end to end.
+The loop of [SIL](../specs/self-improvement.spec.md) ends at an issue. Such a loop detects well, but its bottleneck is what comes after: a person chooses every issue, writes every brief and merges every fix, and loop-filed issues wait for an owner ([R-031 F1](../research/R-031-self-improvement-gap-analysis.rsrch.md), G1 and G5). Public systems that improve themselves either draft and score changes against a dataset (DSPy, GEPA, AFlow) or modify their own code, and the latter were seen gaming their own evaluator ([R-030 F1, F5](../research/R-030-self-improving-agent-systems.rsrch.md)). The owner asked for a self-improvement design that works end to end.
 
 ## Decision
 
-We will extend the loop from diagnosis to a **proposal**: one small, typed change to one workflow package, drafted by a gated proposer workflow or by a person, classified by the engine, measured in a **trial** against the current version on a fixed case set, and delivered as a **draft pull request** with the trial report. Autonomy is a per-workflow ladder (`record`, `file`, `propose`, `trial`), default `file`. No level merges, and the loop drafts no engine code ([PRP](../specs/40-improvement-proposals.spec.md)).
+We will extend the loop from diagnosis to a **proposal**: one small, typed change to one workflow package, drafted by a gated proposer workflow or by a person, classified by the engine, measured in a **trial** against the current version on a fixed case set, and delivered as a **draft pull request** with the trial report. Autonomy is a per-workflow ladder (`record`, `file`, `propose`, `trial`), default `file`. No level merges, and the loop drafts no engine code ([PRP](../specs/improvement-proposals.spec.md)).
 
 ## Options considered
 

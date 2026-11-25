@@ -21,19 +21,19 @@ Each finding is `supported`: its one source is the spec's own text before the mi
 
 ### F1 OVR System overview `supported`
 
-From [00-overview.spec.md](../specs/00-overview.spec.md).
+From [overview.spec.md](../specs/overview.spec.md).
 
 - Ecosystem for mechanism, bespoke for policy: the graph, checkpointer and interrupt come from LangGraph (ADR-0002); the gate funnel, executors, registry and input resolution are tempergraph's own.
 - Rules taken as requirements: no self-grading, retries as edges, unmeasured never zero, constants-only argv, one interrupt per gate.
 - The engine-wide contracts C1 to C18 were a table owned per row by one spec, and a change that cannot keep one is a design change. They are now behaviours OVR-B3 to OVR-B20 in order (C<n> is OVR-B<n+2>); the owner spec named in each still holds the detail.
 - The layer diagram (a mermaid flowchart) was dropped; the layers are prose in Purpose. Shell skills and the read-only monitor sit above the engine CLI; the engine reaches `claude -p`, `agy` stream-json, an SDK worker and an API worker with its own loop and tool host.
-- Origin of each spec block: C15 states the preflight rule for four executors with unequal capabilities. Specs 20 to 22 are numbered after the existing set so no earlier link changes. C16 and specs 45 and 46 come from the owner's request for an orchestrator of runs (ADR-0035). Specs 40 to 43 extend the self-improvement loop (ADR-0030). Specs 50 and 51 come from a block reserved for the judge and eval work. Specs 60 to 65 come from the owner's requests of 2026-11-20 for an engine install and update command, a workflow upgrade command and skills that drive them (R-057). Specs 70 to 74 come from the owner's request of 2026-11-20 to support what LangGraph supports and to add a council node and similar units (R-060, ADR-0062). Specs 75 to 79 come from the owner's request of 2026-11-20 to verify that the engine holds everything a delivery workflow needs (R-075). Specs 80 and 81 come from the owner's request of 2026-11-20 to override workflow configuration in every variation and to retry, rerun and resume with feedback (R-070, ADR-0070, ADR-0073). Spec 82 comes from the owner's request for native worktree support (R-100, ADR-0100). Specs 85 to 87 and C17 come from the owner's request to tell a person from an agent or the orchestrator babysitting a run and to measure supervision and its cost (R-085, ADR-0085, ADR-0089). Specs 83 and 84 and C18 come from the owner's request for a schedule command with human-readable dates (R-095, ADR-0095, ADR-0099). Specs 88 to 91 come from the owner's direction that creating a workflow produces a Claude plugin with its own prompts, agents, skills, Python code and specs, and that authoring centres on a run-level good outcome (R-105, ADR-0105, ADR-0107). Specs 30 to 35 hold the observability design asked for on 2026-11-19 (R-021). Specs 92 to 97 are release 2 (ADR-0121 to ADR-0128) and 99 release 3 (ADR-0133).
-- Engine naming removed (ADR-0129): goal G12 named temperspec as its example delivery workflow; it now says "a delivery workflow". Specs 23 ROP and 24 HOK were split out of 17 CLI, and 25 SSN out of 01 CON, by this migration to keep each under the cap; Purpose lists them.
+- Origin of each spec block: C15 states the preflight rule for four executors with unequal capabilities. Specs `executor-messages-api`, `executor-agent-sdk` and `tool-host` are numbered after the existing set so no earlier link changes. C16 and specs `orchestration` and `orchestrator-skill` come from the owner's request for an orchestrator of runs (ADR-0035). Specs `improvement-proposals`, `feedback-and-judge-reliability`, `workflow-lessons` and `improvement-data` extend the self-improvement loop (ADR-0030). Specs `judge-calibration` and `eval-suites` come from a block reserved for the judge and eval work. Specs `engine-update`, `version-metadata`, `state-and-run-migration`, `workflow-upgrade`, `upgrade-workflow` and `lifecycle-skills` come from the owner's requests of 2026-11-20 for an engine install and update command, a workflow upgrade command and skills that drive them (R-057). Specs `script-units-and-hybrid-steps`, `council-unit`, `contest-unit`, `ask-unit` and `flow-extensions` come from the owner's request of 2026-11-20 to support what LangGraph supports and to add a council node and similar units (R-060, ADR-0062). Specs `check-contract-and-command-runs`, `step-values-and-template-keys`, `map-unit`, `finalizer-contract` and `measured-switches` come from the owner's request of 2026-11-20 to verify that the engine holds everything a delivery workflow needs (R-075). Specs `run-settings-and-overrides` and `reruns-and-feedback` come from the owner's request of 2026-11-20 to override workflow configuration in every variation and to retry, rerun and resume with feedback (R-070, ADR-0070, ADR-0073). Spec `worktree-mode` comes from the owner's request for native worktree support (R-100, ADR-0100). Specs `caller-provenance`, `supervision-metrics` and `supervision-cost` and C17 come from the owner's request to tell a person from an agent or the orchestrator babysitting a run and to measure supervision and its cost (R-085, ADR-0085, ADR-0089). Specs `schedules` and `schedule-ticks-and-unattended-fires` and C18 come from the owner's request for a schedule command with human-readable dates (R-095, ADR-0095, ADR-0099). Specs `workflow-package`, `workflow-authoring`, `run-outcome` and `blueprint-and-scaffold` come from the owner's direction that creating a workflow produces a Claude plugin with its own prompts, agents, skills, Python code and specs, and that authoring centres on a run-level good outcome (R-105, ADR-0105, ADR-0107). Specs `run-events`, `run-detail-document`, `run-control`, `local-observability-store`, `central-run-stats` and `telemetry-export` hold the observability design asked for on 2026-11-19 (R-021). Specs `effort-ladder-and-model-escalation`, `judge-model-by-risk`, `complexity-routing`, `promotion-check`, `run-state-on-a-branch` and `windows-support` are release 2 (ADR-0121 to ADR-0128) and 99 release 3 (ADR-0133).
+- Engine naming removed (ADR-0129): goal G12 named temperspec as its example delivery workflow; it now says "a delivery workflow". Specs `run-options` ROP and 24 HOK were split out of 17 CLI, and 25 SSN out of 01 CON, by this migration to keep each under the cap; Purpose lists them.
 - The old acceptance criterion "follows the six-section layout" now reads "follows the spec rule" (temperspec's `rules/spec.rule.md`).
 
 ### F2 WFM Workflow model and validation `supported`
 
-From [02-workflow-model.spec.md](../specs/02-workflow-model.spec.md).
+From [workflow-model.spec.md](../specs/workflow-model.spec.md).
 
 - Routing metadata sits on the spec so a classifier can pick a workflow without the engine naming one (ADR-0003).
 - Workflows declare neutral tiers and capabilities so a team can move a step between executors by changing one field (ADR-0008).
@@ -43,7 +43,7 @@ From [02-workflow-model.spec.md](../specs/02-workflow-model.spec.md).
 
 ### F3 CMP Compiler and flow `supported`
 
-From [03-compiler-and-flow.spec.md](../specs/03-compiler-and-flow.spec.md).
+From [compiler-and-flow.spec.md](../specs/compiler-and-flow.spec.md).
 
 - Edges are static so the engine never pays for work the author did not choose; position in `order` is never a fallback.
 - An engine-owned join replaces LangGraph's deferred node, which cannot tell a stopped branch from a finished one.
@@ -51,7 +51,7 @@ From [03-compiler-and-flow.spec.md](../specs/03-compiler-and-flow.spec.md).
 
 ### F4 JDG Judge and verdict `supported`
 
-From [05-judge-and-verdict.spec.md](../specs/05-judge-and-verdict.spec.md).
+From [judge-and-verdict.spec.md](../specs/judge-and-verdict.spec.md).
 
 - Self-grading passes well-formatted, wrong output; a fresh read-only session and a derived verdict prevent that (ADR-0005).
 - A judge on a different model family than its producer is a feature, not a fallback: a model tends to rate its own kind of output well. Cross-executor judging makes that cheap (ADR-0013).
@@ -62,7 +62,7 @@ From [05-judge-and-verdict.spec.md](../specs/05-judge-and-verdict.spec.md).
 
 ### F5 GRD Independence guard and judge views `supported`
 
-From [06-independence-guard.spec.md](../specs/06-independence-guard.spec.md).
+From [independence-guard.spec.md](../specs/independence-guard.spec.md).
 
 - Absent beats denied: where an executor can, a write tool is not in the session at all. On `messages-api` the engine offers the tools, so absence is a fact of the request, tested by contract. Antigravity cannot remove tools by flag, so it sits on the rule and guard layers until probes confirm the absence layer (ADR-0010, ADR-0011).
 - The open edge of a judge calling a plugin-registered tool is closed on Claude Code by `--bare` once P-CC-1 passes; the guard remains the backstop and still voids such a verdict.
@@ -70,14 +70,14 @@ From [06-independence-guard.spec.md](../specs/06-independence-guard.spec.md).
 
 ### F6 HUM Gate and human nodes `supported`
 
-From [07-gate-and-human.spec.md](../specs/07-gate-and-human.spec.md).
+From [gate-and-human.spec.md](../specs/gate-and-human.spec.md).
 
 - Recording an `agent` resume apart keeps an orchestrating session's answers from being counted as a person's.
 - A delegation policy for which pauses an agent may answer is out of scope for the first release.
 
 ### F7 BUD Budgets, failures and timeouts `supported`
 
-From [08-budgets-and-failures.spec.md](../specs/08-budgets-and-failures.spec.md).
+From [budgets-and-failures.spec.md](../specs/budgets-and-failures.spec.md).
 
 - Infra failures outside the retry budget, and never a pause: if a failed judge paused the gate, a person's proceed could pass a step no judge had seen.
 - The idle watchdog is executor-neutral because it reads normalized events (EXI); Antigravity has no turn cap, so the engine's limits are its only bounds (R-003).
@@ -87,7 +87,7 @@ From [08-budgets-and-failures.spec.md](../specs/08-budgets-and-failures.spec.md)
 
 ### F8 EXI Executor interface `supported`
 
-From [10-executor-interface.spec.md](../specs/10-executor-interface.spec.md).
+From [executor-interface.spec.md](../specs/executor-interface.spec.md).
 
 - Executors are adapters over agent harnesses by default, so each step can use the harness's own agent loop, tools, skills and MCP support ([ADR-0006](../adr/0006-executors-as-capability-adapters.adr.md)); the Messages API executor is the one exception ([ADR-0020](../adr/0020-engine-owned-tool-loop-for-the-messages-api.adr.md)).
 - The normalized event stream is the single feed for the live progress file, the idle watchdog and the time profile ([ADR-0009](../adr/0009-normalized-session-event-stream.adr.md)).
@@ -95,7 +95,7 @@ From [10-executor-interface.spec.md](../specs/10-executor-interface.spec.md).
 
 ### F9 ECC Claude Code executor `supported`
 
-From [11-executor-claude-code.spec.md](../specs/11-executor-claude-code.spec.md).
+From [executor-claude-code.spec.md](../specs/executor-claude-code.spec.md).
 
 - `--bare` is the cleanest answer to the open edge of a judge reaching a plugin-registered tool. It is gated on P-CC-1 because it changes authentication and loads nothing the user configured (ADR-0010).
 - The permission mode is always passed explicitly because the `-p` default has changed between releases (R-001 F14).
@@ -106,7 +106,7 @@ From [11-executor-claude-code.spec.md](../specs/11-executor-claude-code.spec.md)
 
 ### F10 EAG Antigravity executor `supported`
 
-From [12-executor-antigravity.spec.md](../specs/12-executor-antigravity.spec.md).
+From [executor-antigravity.spec.md](../specs/executor-antigravity.spec.md).
 
 - Plan mode is only a prompt prefix in the docs, so the executor never relies on it for a read-only judge ([R-002](R-002-antigravity-cli-headless.rsrch.md) A12).
 - An isolated home is inferred from the documented fixed paths, not documented as supported; that is why it is a probe-gated capability ([ADR-0011](../adr/0011-isolated-config-home-for-antigravity.adr.md)).
@@ -130,7 +130,7 @@ Probes, to be run by the owner on the pinned version with a throwaway workspace;
 
 ### F11 WSP Workspace and concurrency `supported`
 
-From [13-workspace-and-concurrency.spec.md](../specs/13-workspace-and-concurrency.spec.md).
+From [workspace-and-concurrency.spec.md](../specs/workspace-and-concurrency.spec.md).
 
 - The default concurrency of three is a guess for every executor: no gateway's or API organization's concurrent-session or rate limit was measured. On `messages-api` and `agent-sdk` a 429 with `retry-after` is `throttled` (infra).
 - A merge is textual; two branches that merge cleanly but contradict each other are caught only by the join's judge or a check.
@@ -140,14 +140,14 @@ From [13-workspace-and-concurrency.spec.md](../specs/13-workspace-and-concurrenc
 
 ### F12 SEC Security posture `supported`
 
-From [14-security.spec.md](../specs/14-security.spec.md).
+From [security.spec.md](../specs/security.spec.md).
 
 - Antigravity's configuration surface includes workspace files a repository controls (`.agents/`). Because the engine cannot point `agy` away from them by flag, the guard, not the configuration, is what the judge's independence rests on ([ADR-0010](../adr/0010-judge-isolation-per-executor.adr.md)).
 - The launch sites name these constant modules on the engine interpreter's argv: `tempergraph.executors.sdk_worker`, `tempergraph.executors.api_worker`, `tempergraph.checks.worker`, `tempergraph.observe.sinks flush`, `tempergraph.improve.child drain`, `tempergraph.observe.hooks drain`, `tempergraph.install.selfcheck`, `tempergraph.install.reconcile`; detached starts go through `tempergraph.detach` and the updater's through `tempergraph.install.launch`.
 
 ### F13 OBS Observability and cost `supported`
 
-From [15-observability-and-cost.spec.md](../specs/15-observability-and-cost.spec.md).
+From [observability-and-cost.spec.md](../specs/observability-and-cost.spec.md).
 
 - Antigravity and the Messages API report no cost; Claude Code and the Agent SDK report a client-side estimate. One engine price table gives every executor a comparable estimate without trusting any as billing truth (ADR-0012).
 - The live file and metrics come from normalized events, so they work the same on every executor (ADR-0009).
@@ -159,14 +159,14 @@ From [15-observability-and-cost.spec.md](../specs/15-observability-and-cost.spec
 
 ### F14 SIL Self-improvement loop `supported`
 
-From [16-self-improvement.spec.md](../specs/16-self-improvement.spec.md).
+From [self-improvement.spec.md](../specs/self-improvement.spec.md).
 
 - Release 1 code layout, kept for readers of older notes: cause codes, classes, sides and remedies are one table in `improve/causes.py`; thresholds are parameter records in `improve/params.py`; filing is `improve/filing.py`, measurement `improve/measure.py`, the loop child `improve/child.py`, started as `tempergraph.improve.child drain`.
 - The friction judge sees metadata only: the evidence file stays with the recorder.
 
 ### F15 LIF Lifecycle and evals `supported`
 
-From [18-lifecycle-and-evals.spec.md](../specs/18-lifecycle-and-evals.spec.md).
+From [lifecycle-and-evals.spec.md](../specs/lifecycle-and-evals.spec.md).
 
 - A cached plugin copy whose version did not move is never refreshed; a repository check fails a package that changed without a version bump.
 - Skills are evaluated with Claude Code's plugin eval; no harness for Antigravity skills is assumed.
@@ -175,7 +175,7 @@ From [18-lifecycle-and-evals.spec.md](../specs/18-lifecycle-and-evals.spec.md).
 
 ### F16 SHL Plugin shell `supported`
 
-From [19-plugin-shell.spec.md](../specs/19-plugin-shell.spec.md).
+From [plugin-shell.spec.md](../specs/plugin-shell.spec.md).
 
 - The authoring surface of a workflow (agents, skills, rules) may need two forms, one per executor; that is a workflow decision ([ADR-0016](../adr/0016-portable-authoring-surface.adr.md)). `claude` and `agent-sdk` share one form.
 - The bootstrap skill's helper `scripts/ignore_rule.py` is the only writer of the root `.gitignore`. A docs scaffold, project context and overview spec belong to the delivery workflow's own bootstrap layer, not the engine's.
@@ -183,11 +183,11 @@ From [19-plugin-shell.spec.md](../specs/19-plugin-shell.spec.md).
 
 ### F17 EAS Agent SDK executor `supported`
 
-From [21-executor-agent-sdk.spec.md](../specs/21-executor-agent-sdk.spec.md).
+From [executor-agent-sdk.spec.md](../specs/executor-agent-sdk.spec.md).
 
 - Steps load project settings only, so a repository's CLAUDE.md and skills work as on `claude` while the operator's user settings stay out of CI.
 - The executor never uses `ClaudeSDKClient`: one `query()` per session matches the fresh-session rule, and a retry is a new session told the last report.
-- Because the SDK's own CLI is a child of the worker, the launcher's tree kill ends it with the worker ([EXI-B5](../specs/10-executor-interface.spec.md)).
+- Because the SDK's own CLI is a child of the worker, the launcher's tree kill ends it with the worker ([EXI-B5](../specs/executor-interface.spec.md)).
 
 Probes, none run:
 
@@ -196,21 +196,21 @@ Probes, none run:
 | P-AS-1 | `setting_sources=[]` keeps user-level plugin tools, hooks and MCP servers out of the session (seen in the init message) | `isolates_user_config` | not run |
 | P-AS-2 | The session's `PreToolUse` hook sees and can deny a subagent's tool calls | gatekeeper on steps that declare `subagent` | not run |
 | P-AS-3 | The SDK hands the prompt to its CLI off argv on the pinned version | `prompt_off_argv` | not run |
-| P-AS-4 | Whether the SDK's session keeps a native transcript with `setting_sources=[]`, and at which path | transcript locator ([EVT](../specs/30-run-events.spec.md)) | not run |
-| P-AS-5 | A step session with `setting_sources=[]` and `plugins=[{"type": "local", "path": <package root>}]` lists the workflow plugin and its skills in the init message, and no user plugin | workflow skills on step sessions ([PKG](../specs/88-workflow-package.spec.md)) | not run |
+| P-AS-4 | Whether the SDK's session keeps a native transcript with `setting_sources=[]`, and at which path | transcript locator ([EVT](../specs/run-events.spec.md)) | not run |
+| P-AS-5 | A step session with `setting_sources=[]` and `plugins=[{"type": "local", "path": <package root>}]` lists the workflow plugin and its skills in the init message, and no user plugin | workflow skills on step sessions ([PKG](../specs/workflow-package.spec.md)) | not run |
 
 ### F18 EVT Run events `supported`
 
-From [30-run-events.spec.md](../specs/30-run-events.spec.md).
+From [run-events.spec.md](../specs/run-events.spec.md).
 
 - The live progress file stays the cheap "now" view and the activity journal the "so far" view. Both come from one writer thread, so the stream pump never waits on disk ([ADR-0009](../adr/0009-normalized-session-event-stream.adr.md)).
-- The `judgement` record and the `gate` record linked to it by `judgement_seq` together hold what improvement data asks of a gate ([IMD](../specs/43-improvement-data.spec.md)); the loop's events reach observers through the same record path and hook events.
+- The `judgement` record and the `gate` record linked to it by `judgement_seq` together hold what improvement data asks of a gate ([IMD](../specs/improvement-data.spec.md)); the loop's events reach observers through the same record path and hook events.
 - The `judgement` record carries statuses and ids, never evidence text; evidence is in the local evidence file and is shown by the detail document from there.
 - Release 1 shipped the `events` verb and the observer interface with no observer enabled; lifecycle hooks came in release 2 (R2-T7) and are read off the run log's own records.
 
 ### F19 LOS Local observability store `supported`
 
-From [33-local-observability-store.spec.md](../specs/33-local-observability-store.spec.md).
+From [local-observability-store.spec.md](../specs/local-observability-store.spec.md).
 
 - `raw.jsonl` is the engine's own copy; an executor's native transcript, when there is one, is only linked. This matters because judge sessions run with isolation flags that may turn the native store off.
 - Command output is the bulkiest data; it gets the shortest life and its own cap.
@@ -218,7 +218,7 @@ From [33-local-observability-store.spec.md](../specs/33-local-observability-stor
 
 ### F20 CST Central run stats `supported`
 
-From [34-central-run-stats.spec.md](../specs/34-central-run-stats.spec.md).
+From [central-run-stats.spec.md](../specs/central-run-stats.spec.md).
 
 - No tempergraph server: an OTLP sink covers teams that already run a telemetry backend ([ADR-0025](../adr/0025-cross-machine-stats-through-opt-in-sinks.adr.md)). Appends from two machines to one file are what break a synced folder, so each machine writes only in its own folder.
 - The heartbeat makes the sink a monitoring surface, not only a ledger.
@@ -226,7 +226,7 @@ From [34-central-run-stats.spec.md](../specs/34-central-run-stats.spec.md).
 
 ### F21 TEL Telemetry export `supported`
 
-From [35-telemetry-export.spec.md](../specs/35-telemetry-export.spec.md).
+From [telemetry-export.spec.md](../specs/telemetry-export.spec.md).
 
 - OTLP reaches the most backends with one exporter; the engine needs no vendor client ([ADR-0026](../adr/0026-telemetry-export-as-otel-genai-without-content.adr.md)).
 - The GenAI conventions are in Development status and renamed attributes three times in a year, so every name lives in a behaviour and the pinned version travels on the resource.
@@ -236,7 +236,7 @@ From [35-telemetry-export.spec.md](../specs/35-telemetry-export.spec.md).
 
 ### F22 PRP Improvement proposals `supported`
 
-From [40-improvement-proposals.spec.md](../specs/40-improvement-proposals.spec.md).
+From [improvement-proposals.spec.md](../specs/improvement-proposals.spec.md).
 
 - The proposer is reflective in the sense of R-030 F3: it reads the cluster's evidence and proposes one small delta. A search over many candidates is not in the first release; a later one may keep several drafts per cluster and trial the best two.
 - The engine classifies from the parsed workflow, so a proposer cannot hide a weakening in a reformatted file. A check weakened only through its fixture data is not detected.
@@ -244,23 +244,23 @@ From [40-improvement-proposals.spec.md](../specs/40-improvement-proposals.spec.m
 
 ### F23 FBK Feedback labels `supported`
 
-From [41-feedback-and-judge-reliability.spec.md](../specs/41-feedback-and-judge-reliability.spec.md).
+From [feedback-and-judge-reliability.spec.md](../specs/feedback-and-judge-reliability.spec.md).
 
 - Confidence is studied against labels rather than used as a filing floor; the open question on SIL's 0.75 floor is answered from `confidence_bands` once labels exist.
 - Release 1 build (T7.5, T12.3): only `explicit` labels at first, then `approval`, `override`, `pushback`, `audit` and `rerun` derived at every exit; `pr_state` not derived; the label's own kind is the field `label_kind` because `kind` names the ledger row's kind; `label_recorded` and `binding_shift` are not separate events. All thresholds are parameter rows (`labels.*`, `reliability.*`, `shift.*`).
 
 ### F24 SRV Session review `supported`
 
-From [44-session-review.spec.md](../specs/44-session-review.spec.md).
+From [session-review.spec.md](../specs/session-review.spec.md).
 
 - Fixed categories with citations, because model attribution to a step is unreliable (R-110 P3) and a fixed catalog agrees across readers (P4).
 - `conformance[]` is the dev-mode answer to "do the prompts and agents work as intended": it lists every instruction section, lesson, skill and subagent type and whether the session followed it.
 - Graduation ([ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)) may read `improve review summary`: a version whose last dev-mode runs leave no corroborated observation open is a candidate for stable mode. The rule is not set.
-- Release split: release 1 built the digest and its causes, `full` reviews in dev mode, probation and authoring trials, the citation check, the local report and the verbs. Stable-mode `signals` plans, saturation, corroborated filing and the proposer's use of observations (X2-26) moved to release 3, since no workflow reaches stable mode before its gates are calibrated ([LIF-B6](../specs/18-lifecycle-and-evals.spec.md)). Release 3 builds the `signals` plans, saturation and the stable caps (R3-T8.2); corroborated filing and the proposer's use of observations stay in spec 44's Not built yet line.
+- Release split: release 1 built the digest and its causes, `full` reviews in dev mode, probation and authoring trials, the citation check, the local report and the verbs. Stable-mode `signals` plans, saturation, corroborated filing and the proposer's use of observations (X2-26) moved to release 3, since no workflow reaches stable mode before its gates are calibrated ([LIF-B6](../specs/lifecycle-and-evals.spec.md)). Release 3 builds the `signals` plans, saturation and the stable caps (R3-T8.2); corroborated filing and the proposer's use of observations stay in spec `session-review`'s Not built yet line.
 
 ### F25 ORC Orchestration `supported`
 
-From [45-orchestration.spec.md](../specs/45-orchestration.spec.md).
+From [orchestration.spec.md](../specs/orchestration.spec.md).
 
 - No LangGraph graph for the supervisor: its state is a set of independent child processes with their own checkpoints and many pauses at once; one interrupt per gate and one graph per process fit runs, not a supervisor of runs.
 - Shared resources: `exclusive` names stop concurrent runs from colliding on counters and version fields (R-035 B3). Engine-managed claims and deterministic integration of branches with a judged conflict step are deferred; an integration step is a workflow node today.
@@ -271,7 +271,7 @@ From [45-orchestration.spec.md](../specs/45-orchestration.spec.md).
 
 ### F26 OSK Orchestrator skill `supported`
 
-From [46-orchestrator-skill.spec.md](../specs/46-orchestrator-skill.spec.md).
+From [orchestrator-skill.spec.md](../specs/orchestrator-skill.spec.md).
 
 - Why a separate skill: the run driver's core is near its size budget; orchestration adds drafting, approval and multi-pause walk-throughs.
 - Borrowed from dynamic workflows: planning in data with a runtime that drives it, approval with the plan visible, labels and phases, a size warning, saved templates with arguments (R-035 conclusions 1 to 5). The skill does not write a Claude Code workflow script: a workflow agent per run would put a model session in front of every start and wait, and a script cannot take a person's decision mid-run.
@@ -279,7 +279,7 @@ From [46-orchestrator-skill.spec.md](../specs/46-orchestrator-skill.spec.md).
 
 ### F27 JCL Judge calibration `supported`
 
-From [50-judge-calibration.spec.md](../specs/50-judge-calibration.spec.md).
+From [judge-calibration.spec.md](../specs/judge-calibration.spec.md).
 
 - Offline and online measure different errors: production labels see mostly what reached a person, so they observe false passes only after harm and false fails only when a person overrides. A gold set with planted defects measures the catch rate directly (R-046 E3).
 - Per-criterion findings are not independent: two findings of one case share a fixture. The distinct-case minimums temper this; a case-clustered bound is a later refinement.
@@ -290,7 +290,7 @@ From [50-judge-calibration.spec.md](../specs/50-judge-calibration.spec.md).
 
 ### F28 EVS Eval suites `supported`
 
-From [51-eval-suites.spec.md](../specs/51-eval-suites.spec.md).
+From [eval-suites.spec.md](../specs/eval-suites.spec.md).
 
 - Code first: a check that decides costs nothing and cannot be argued with; a judge decides only where it has been shown to grade well; a person decides the rest (R-045 F10).
 - pass^k for gates: a gate that passes once in three is not a working gate; `pass_hat_k` exposes it where `pass_at_1` averages it away.
@@ -300,7 +300,7 @@ From [51-eval-suites.spec.md](../specs/51-eval-suites.spec.md).
 
 ### F29 AUD Workflow audit `supported`
 
-From [55-workflow-audit.spec.md](../specs/55-workflow-audit.spec.md).
+From [workflow-audit.spec.md](../specs/workflow-audit.spec.md).
 
 - Advisory, separate from `validate`. Validation is a gate: the same function guards every start and must stay fast, deterministic and free of the host and of history. The audit reads more, may be wrong in a ranked way, and must never block a start (ADR-0050).
 - A fixed catalog keyed to causes: each rule carries a cause code shared with the self-improvement loop, so a static finding and a history finding about the same defect group together, and a proposal (PRP) can cite both (ADR-0051).
@@ -313,7 +313,7 @@ From [55-workflow-audit.spec.md](../specs/55-workflow-audit.spec.md).
 
 ### F30 ARC Audit rule catalog `supported`
 
-From [56-audit-rule-catalog.spec.md](../specs/56-audit-rule-catalog.spec.md).
+From [audit-rule-catalog.spec.md](../specs/audit-rule-catalog.spec.md).
 
 - Several R-050 findings stay engine work and get no rule: concurrent writer limits, orphaned sessions, how a retry resumes. A workflow cannot change them.
 - Release 1 ran the `definition` and `host` rules; history rules were listed as skipped. The kinds of ARC-B15 were not built in release 1 (validation refused them); `unbounded-wait` waits on `wait` and `ask`.
@@ -322,7 +322,7 @@ From [56-audit-rule-catalog.spec.md](../specs/56-audit-rule-catalog.spec.md).
 
 ### F31 UPD Engine install and update `supported`
 
-From [60-engine-update.spec.md](../specs/60-engine-update.spec.md).
+From [engine-update.spec.md](../specs/engine-update.spec.md).
 
 - Side-by-side environments follow from the two failure classes of an in-place update, a half-installed environment and Windows locks on replaced libraries (R-055 U9), and give rollback and pinning for the cost of disk.
 - The shim lives in `~/.tempergraph/bin/`, not the plugin cache: a shell block that resolves the newest plugin folder by a version sort breaks easily, since plugin folders change with every version and are deleted 14 days later (R-055 U4).
@@ -332,7 +332,7 @@ From [60-engine-update.spec.md](../specs/60-engine-update.spec.md).
 
 ### F32 VER Version metadata `supported`
 
-From [61-version-metadata.spec.md](../specs/61-version-metadata.spec.md).
+From [version-metadata.spec.md](../specs/version-metadata.spec.md).
 
 - Version facts are kept apart because each answers a different question; the install stamp and the workflow stamp are easily conflated.
 - The changelog is typed because an upgrade needs to know, per hit, whether a rule, a model or a person handles it (ADR-0057, R-056 conclusion 2).
@@ -343,7 +343,7 @@ From [61-version-metadata.spec.md](../specs/61-version-metadata.spec.md).
 
 ### F33 MIG State and run migration `supported`
 
-From [62-state-and-run-migration.spec.md](../specs/62-state-and-run-migration.spec.md).
+From [state-and-run-migration.spec.md](../specs/state-and-run-migration.spec.md).
 
 - LangGraph applies the latest graph to every thread (R-055 U12), which is the default here; pinning, taken from Temporal's model (U15), is kept for the one case LangGraph cannot handle, a checkpoint the new code cannot read (ADR-0056).
 - The engine names compiled nodes after unit names (CMP); renaming that scheme is a checkpoint-format change by definition, so it pins rather than breaks.
@@ -353,7 +353,7 @@ From [62-state-and-run-migration.spec.md](../specs/62-state-and-run-migration.sp
 
 ### F34 WUP Workflow upgrade `supported`
 
-From [63-workflow-upgrade.spec.md](../specs/63-workflow-upgrade.spec.md).
+From [workflow-upgrade.spec.md](../specs/workflow-upgrade.spec.md).
 
 - Real breaks need the owner's answers (R-056 M10), so this design keeps those answers the owner's (owner items, protected paths, V5) and uses a model only where public practice shows it does most of the edits under deterministic validation (M3 to M5) (ADR-0058).
 - The model work is a tempergraph workflow, not a loose session, so it inherits the engine's own rails: an independent judge, a deterministic check first, budgets, pauses and records (UWF).
@@ -363,7 +363,7 @@ From [63-workflow-upgrade.spec.md](../specs/63-workflow-upgrade.spec.md).
 
 ### F35 UWF Built-in upgrade workflow `supported`
 
-From [64-upgrade-workflow.spec.md](../specs/64-upgrade-workflow.spec.md).
+From [upgrade-workflow.spec.md](../specs/upgrade-workflow.spec.md).
 
 - Running the model's part as a workflow is the engine's own thesis applied to itself: a model edit is a step, an independent judge grades it, a rule decides (ADR-0005). It also makes the upgrade visible to `status`, the monitor and the cost reports with no new mechanism.
 - The judge's criteria follow the failure modes measured in public practice: unrelated reformatting and invented edits (R-056 M8), and an invented rubric, the case against a model rewrite (M10).
@@ -372,7 +372,7 @@ From [64-upgrade-workflow.spec.md](../specs/64-upgrade-workflow.spec.md).
 
 ### F36 LSK Lifecycle skills `supported`
 
-From [65-lifecycle-skills.spec.md](../specs/65-lifecycle-skills.spec.md).
+From [lifecycle-skills.spec.md](../specs/lifecycle-skills.spec.md).
 
 - One plan and one yes answers the owner's "simply say update tempergraph". Asking once per command would turn a routine update into a dozen prompts. Asking again for money and for pauses keeps the two consents the design never folds away (ADR-0061).
 - Reinstalling workflows is the engine's job, not the skill's (ADR-0060): an update from CI or a terminal must keep workflows working too, with no conversation.
@@ -382,7 +382,7 @@ From [65-lifecycle-skills.spec.md](../specs/65-lifecycle-skills.spec.md).
 
 ### F37 SCR Script units and hybrid steps `supported`
 
-From [70-script-units-and-hybrid-steps.spec.md](../specs/70-script-units-and-hybrid-steps.spec.md).
+From [script-units-and-hybrid-steps.spec.md](../specs/script-units-and-hybrid-steps.spec.md).
 
 - Scripts run under the engine, so executor capability flags do not apply to them; the command rules of SEC do.
 - A judge on a script unit is for human-readable output (a generated report); a script whose output a check can grade needs none.
@@ -391,7 +391,7 @@ From [70-script-units-and-hybrid-steps.spec.md](../specs/70-script-units-and-hyb
 
 ### F38 CNL Council unit `supported`
 
-From [71-council-unit.spec.md](../specs/71-council-unit.spec.md).
+From [council-unit.spec.md](../specs/council-unit.spec.md).
 
 - Round 0 blind and rounds opt-in follow R-061 K2 and K4: most of the benefit of debate comes from independent answers combined, and rounds invite conformity.
 - Members are asked for dissent explicitly because withheld dissent removes the gain of discussion (R-061 K5).
@@ -401,7 +401,7 @@ From [71-council-unit.spec.md](../specs/71-council-unit.spec.md).
 
 ### F39 CTS Contest unit `supported`
 
-From [72-contest-unit.spec.md](../specs/72-contest-unit.spec.md).
+From [contest-unit.spec.md](../specs/contest-unit.spec.md).
 
 - Using the gate's own judge per candidate means no new grader needs calibration (JCL); a pairwise judge was rejected for its position and length biases (R-045).
 - Costs grow with slots, so preflight shows the projected range from the stats projection (CST).
@@ -409,7 +409,7 @@ From [72-contest-unit.spec.md](../specs/72-contest-unit.spec.md).
 
 ### F40 ASK Ask unit `supported`
 
-From [73-ask-unit.spec.md](../specs/73-ask-unit.spec.md).
+From [ask-unit.spec.md](../specs/ask-unit.spec.md).
 
 - One interrupt per gate holds: the ask's only pause is its human node, and a partial answer re-enters the same node.
 - An ask differs from an approval (a decision on work) and from a wait (a value from an outside system, checked); its answers are data for later steps.
@@ -417,7 +417,7 @@ From [73-ask-unit.spec.md](../specs/73-ask-unit.spec.md).
 
 ### F41 FLX Flow extensions `supported`
 
-From [74-flow-extensions.spec.md](../specs/74-flow-extensions.spec.md).
+From [flow-extensions.spec.md](../specs/flow-extensions.spec.md).
 
 - Every target stays a declared name, so validation checks reachability and the diagram draws every edge (ADR-0062).
 - Deadlines need no resident process: the engine still exits at a pause, and an owner who wants deadlines to act on time schedules `resume --apply-deadline` from their own scheduler; the schedule tick is the engine's candidate for that job in a later slice (TCK).
@@ -426,7 +426,7 @@ From [74-flow-extensions.spec.md](../specs/74-flow-extensions.spec.md).
 
 ### F42 CHK Check contract and command runs `supported`
 
-From [75-check-contract-and-command-runs.spec.md](../specs/75-check-contract-and-command-runs.spec.md).
+From [check-contract-and-command-runs.spec.md](../specs/check-contract-and-command-runs.spec.md).
 
 - One public resolution function, because a plan check and a gate that resolve commands apart can disagree in a repository with another toolchain, and the gate then runs nothing. The engine owns the mechanics; the workflow owns the policy (ADR-0075). Which commands a workflow's gate runs, how it splits a suite and how it reads the plan are the workflow's design; nothing in CHK names a tool.
 - Reuse extends the per-thread cache idea of ADR-0067 to check commands: model-free, keyed by the tree, never a run that did not finish.
@@ -437,7 +437,7 @@ From [75-check-contract-and-command-runs.spec.md](../specs/75-check-contract-and
 
 ### F43 VAL Step values and template keys `supported`
 
-From [76-step-values-and-template-keys.spec.md](../specs/76-step-values-and-template-keys.spec.md).
+From [step-values-and-template-keys.spec.md](../specs/step-values-and-template-keys.spec.md).
 
 - A value is an artifact, not a new channel of trust: the step's word for a value is a claim like any other, which is why a workflow ties a route value to its evidence with a check. The engine only parses and bounds it. The need came from temperspec's first step, which hands four values to the run and routes on two (R-075 T13, T14); the capability is stated without the workflow (ADR-0129).
 - Pointers, not content, keep the rule that the engine pastes no earlier artifact into a prompt (PRM); the step reads what the pointer names with its own tools.
@@ -445,7 +445,7 @@ From [76-step-values-and-template-keys.spec.md](../specs/76-step-values-and-temp
 
 ### F44 MAP Map unit `supported`
 
-From [77-map-unit.spec.md](../specs/77-map-unit.spec.md).
+From [map-unit.spec.md](../specs/map-unit.spec.md).
 
 - Per-item gates rather than one gate over all items, because a narrow judge per item is cheap and immediate, and one wide judgement belongs to the join.
 - A sequential map is not a bounded self-route nor a branch per item: a route cannot target its own unit, and a branch per item would need a worktree and a merge per item.
@@ -455,7 +455,7 @@ From [77-map-unit.spec.md](../specs/77-map-unit.spec.md).
 
 ### F45 FIN Finalizer contract `supported`
 
-From [78-finalizer-contract.spec.md](../specs/78-finalizer-contract.spec.md).
+From [finalizer-contract.spec.md](../specs/finalizer-contract.spec.md).
 
 - The run's exit code is a contract for callers (ADR-0015): a run that passed every gate has finished, whatever publishing does after. The work exists on a committed branch, and the manual steps say how to finish by hand.
 - The finalizer reuses the check's command machinery (ADR-0075) so there is one guarded launch site for workflow commands.
@@ -463,7 +463,7 @@ From [78-finalizer-contract.spec.md](../specs/78-finalizer-contract.spec.md).
 
 ### F46 SWM Measured switches `supported`
 
-From [79-measured-switches.spec.md](../specs/79-measured-switches.spec.md).
+From [measured-switches.spec.md](../specs/measured-switches.spec.md).
 
 - A router is a cost bet. Shadow mode makes it measurable on real runs before it moves money (R-075 T46).
 - Overrides belong to the arm because the reason for them (a longer limit for a whole-plan session) belongs to the arm, not to the unit; they are workflow data below every operator layer.
@@ -472,7 +472,7 @@ From [79-measured-switches.spec.md](../specs/79-measured-switches.spec.md).
 
 ### F47 RST Run settings and overrides `supported`
 
-From [80-run-settings-and-overrides.spec.md](../specs/80-run-settings-and-overrides.spec.md).
+From [run-settings-and-overrides.spec.md](../specs/run-settings-and-overrides.spec.md).
 
 - One catalog, fixed layers. A free-form map of overrides would let anything be changed and nothing be validated; per-key ad hoc orders, which the design had for models and timeouts only, leave every new key to choose its own (ADR-0070). The order puts the operator above the workflow above defaults, and adds per-machine files that hold an operator's engine defaults.
 - Files above and below the workflow. `overrides` serve an operator who must change a workflow's value on this machine (a slow host's longer limit, a team's model choice); `defaults` serve every workflow that states nothing. Both are per machine: a committed repository file is not a layer in the first release, so a pull request cannot raise anyone's cost cap.
@@ -482,7 +482,7 @@ From [80-run-settings-and-overrides.spec.md](../specs/80-run-settings-and-overri
 
 ### F48 RRN Reruns, rewinds and feedback `supported`
 
-From [81-reruns-and-feedback.spec.md](../specs/81-reruns-and-feedback.spec.md).
+From [reruns-and-feedback.spec.md](../specs/reruns-and-feedback.spec.md).
 
 - Same thread for a correction, a new thread for a do-over. A rewind keeps one run's story in one thread while it is still live. A finished thread's finalizer has run, its stats row and its improvement record exist, and a pull request may be open; reopening it would rewrite what was reported. A rerun leaves it as it was and links to it, as Temporal's reset starts a new run and keeps the old history, and as Argo's resubmit makes a new workflow (R-070 F20; ADR-0073).
 - LangGraph does the forking. The checkpointer keeps each thread's history; reading the checkpoint before a unit and writing its values to a new thread id is the public time-travel mechanism, so no engine-owned history is needed (ADR-0002).
@@ -492,7 +492,7 @@ From [81-reruns-and-feedback.spec.md](../specs/81-reruns-and-feedback.spec.md).
 
 ### F49 WTR Worktree mode `supported`
 
-From [82-worktree-mode.spec.md](../specs/82-worktree-mode.spec.md).
+From [worktree-mode.spec.md](../specs/worktree-mode.spec.md).
 
 - Why the engine and not the executor: gates, checks, judges and the finalizer run in the engine and need one tree for the whole run, at a base the engine picks; Claude Code's `--worktree` is per session, starts from the default branch, is never removed under `-p` and is left locked; Antigravity's is an App feature; the Messages API has none (ADR-0100).
 - `auto` keeps worktrees optional for non-coding workflows while making the safe choice the default for workflows that change files (ADR-0101). A workflow author who wants a fixed mode declares `workspace: worktree` or `in_place`.
@@ -503,7 +503,7 @@ From [82-worktree-mode.spec.md](../specs/82-worktree-mode.spec.md).
 
 ### F50 SCH Schedules `supported`
 
-From [83-schedules.spec.md](../specs/83-schedules.spec.md).
+From [schedules.spec.md](../specs/schedules.spec.md).
 
 - One mechanism. A person at a terminal, the schedule skill and a pipeline export produce the same entry; only the tick fires it (ADR-0095).
 - A grammar, not a guesser: a wrong reading on a recurrence repeats every period (ADR-0096). Zones and daylight saving: ADR-0097. Missed and overlapping slots: ADR-0098. Unattended spend and pauses: ADR-0099.
@@ -521,7 +521,7 @@ From [83-schedules.spec.md](../specs/83-schedules.spec.md).
 
 ### F51 TCK Schedule ticks and unattended fires `supported`
 
-From [84-schedule-ticks-and-unattended-fires.spec.md](../specs/84-schedule-ticks-and-unattended-fires.spec.md).
+From [schedule-ticks-and-unattended-fires.spec.md](../specs/schedule-ticks-and-unattended-fires.spec.md).
 
 - OS-agnostic core, optional adapters. Every rule is in the tick and reads files only; the portable loop calls it the same way on every OS. OS schedulers differ in catch-up, sleep and logout behaviour (R-095 F12 to F16), so they are used, when the owner wants, only to start the loop at login; they never decide a slot (ADR-0095).
 - A loop with no state is not a daemon to look after. Killing it, an update or a crash loses nothing: the next tick reads the same files. One trigger for all schedules, never one per schedule, so nothing drifts from the store.
@@ -533,7 +533,7 @@ From [84-schedule-ticks-and-unattended-fires.spec.md](../specs/84-schedule-ticks
 
 ### F52 PRV Caller provenance `supported`
 
-From [85-caller-provenance.spec.md](../specs/85-caller-provenance.spec.md).
+From [caller-provenance.spec.md](../specs/caller-provenance.spec.md).
 
 - Strongest signal first (ADR-0085). Claude Code sets its child markers without the model's help, so an agent that forgets `--as-agent` is still seen. Self-declaration stays useful for hosts that mark nothing and for honest applications, and it can only move the record toward "not a person".
 - Relay needs the host (ADR-0086). The only event that proves a person typed something is the host's own prompt-submit event; the engine never sees the conversation and never stores its text.
@@ -542,7 +542,7 @@ From [85-caller-provenance.spec.md](../specs/85-caller-provenance.spec.md).
 
 ### F53 SUP Supervision metrics `supported`
 
-From [86-supervision-metrics.spec.md](../specs/86-supervision-metrics.spec.md).
+From [supervision-metrics.spec.md](../specs/supervision-metrics.spec.md).
 
 - Count every decider (ADR-0089). The owner's lifecycle is "less human-in-the-loop, then the pipeline". In the pipeline no agent babysits a run, so a workflow that today needs an agent's rescues is not ready even if no person was touched.
 - Designed touches are the job. An approval the workflow asks for is not supervision debt; counting it would push authors to remove approvals (HUM). It is counted, shown, and kept out of the undesigned figures.
@@ -553,7 +553,7 @@ From [86-supervision-metrics.spec.md](../specs/86-supervision-metrics.spec.md).
 
 ### F54 SCO Supervision cost `supported`
 
-From [87-supervision-cost.spec.md](../specs/87-supervision-cost.spec.md).
+From [supervision-cost.spec.md](../specs/supervision-cost.spec.md).
 
 - Measured where it is spent (ADR-0087). The supervising session's host is the only place that sees its usage. The plugin already ships in that host, so the measurement comes with it and needs nothing from the person.
 - Two figures (ADR-0088). A turn's input holds the whole conversation, so its total overstates what a run cost the session; the marginal figure understates the context a run makes the session carry. Showing both brackets the truth; promotion uses the marginal figure with `rewake` in it.
@@ -562,7 +562,7 @@ From [87-supervision-cost.spec.md](../specs/87-supervision-cost.spec.md).
 
 ### F55 PKG Workflow package `supported`
 
-From [88-workflow-package.spec.md](../specs/88-workflow-package.spec.md).
+From [workflow-package.spec.md](../specs/workflow-package.spec.md).
 
 - Why one folder. The owner's product form is a workflow that is itself a Claude plugin with a Python part (R-011 G2); one folder means one version, one install and one digest. Alternatives in ADR-0105.
 - Why a second manifest. Claude Code strips unknown keys from `plugin.json` (R-105 A1), so engine fields cannot live there.
@@ -573,7 +573,7 @@ From [88-workflow-package.spec.md](../specs/88-workflow-package.spec.md).
 
 ### F56 AUT Workflow authoring `supported`
 
-From [89-workflow-authoring.spec.md](../specs/89-workflow-authoring.spec.md).
+From [workflow-authoring.spec.md](../specs/workflow-authoring.spec.md).
 
 - Backwards, as backward design does (R-105 B1): the evidence is fixed before the activities, so a step exists because an intermediate outcome needs it, not the other way round. Steps, prompts and models come after the outcome, because they serve it.
 - The skill drafts, the engine decides what is well-formed. Every check of a draft is a model-free verb, so a different authoring host (another agent, a person by hand) gets the same refusals. This spec replaced the phase list of SHL.
@@ -583,7 +583,7 @@ From [89-workflow-authoring.spec.md](../specs/89-workflow-authoring.spec.md).
 
 ### F57 OUT Run-level good outcome `supported`
 
-From [90-run-outcome.spec.md](../specs/90-run-outcome.spec.md).
+From [run-outcome.spec.md](../specs/run-outcome.spec.md).
 
 - One file, one bar. Step gates, the outcome gate, the outcome lens, eval trials (EVS) and promotion read the same criteria, so a revision moves all of them together (ADR-0107).
 - Why the outcome gate is mandatory. R-011 recommended it; without it, a run whose every step passed can still miss the request, and the loop has nothing to grade against. Its cost is one judge session per run in `dev`; `stable` may sample (ADR-0108).
@@ -595,7 +595,7 @@ From [90-run-outcome.spec.md](../specs/90-run-outcome.spec.md).
 
 ### F58 SCF Blueprint, scaffold and authoring checks `supported`
 
-From [91-blueprint-and-scaffold.spec.md](../specs/91-blueprint-and-scaffold.spec.md).
+From [blueprint-and-scaffold.spec.md](../specs/blueprint-and-scaffold.spec.md).
 
 - Blueprint first is the strongest authoring rule: the person approves a drawn shape and the tables before any file exists, and the built workflow is compared with what was approved, so a scaffold or a later edit cannot drift silently.
 - Model-free, then one real run. A model-free ladder catches what is wrong with the package; only a live run on a real case shows whether the outcome and its verifications grade the way the person grades (ADR-0110). The person's grades on that run are the first labels and calibration cases, which is where criteria drift shows first (R-105 B2).
@@ -606,7 +606,7 @@ From [91-blueprint-and-scaffold.spec.md](../specs/91-blueprint-and-scaffold.spec
 
 ### F59 LAD Effort ladder and one-step model escalation `supported`
 
-From [92-effort-ladder-and-model-escalation.spec.md](../specs/92-effort-ladder-and-model-escalation.spec.md).
+From [effort-ladder-and-model-escalation.spec.md](../specs/effort-ladder-and-model-escalation.spec.md).
 
 - Strictness comes from the cause table the engine already keeps, narrowed by trust: a RETRY counts only from a judge whose clean rate was measured ([R-121](R-121-judge-model-by-risk-and-evidence-for-escalation.rsrch.md) F3).
 - Judges stay fixed per attempt; a stronger producer is graded only by a judge at least as strong and calibrated there (condition E4). That replaces release 1's "judge on the ladder's last rung".
@@ -614,7 +614,7 @@ From [92-effort-ladder-and-model-escalation.spec.md](../specs/92-effort-ladder-a
 
 ### F60 JRK Judge model by risk `supported`
 
-From [93-judge-model-by-risk.spec.md](../specs/93-judge-model-by-risk.spec.md).
+From [judge-model-by-risk.spec.md](../specs/judge-model-by-risk.spec.md).
 
 - Why: temperspec judges code on a stronger model than the one that wrote it, by a fixed rule; JRK makes the rule data, per attempt, as a general capability (ADR-0129 keeps the workflow out of the spec).
 - Only up: a cheaper judge for "low-risk" work is the agreeable-judge hazard in a new form (R-045 F2).
@@ -625,7 +625,7 @@ From [93-judge-model-by-risk.spec.md](../specs/93-judge-model-by-risk.spec.md).
 
 ### F61 CXR Complexity routing between decompositions `supported`
 
-From [94-complexity-routing.spec.md](../specs/94-complexity-routing.spec.md).
+From [complexity-routing.spec.md](../specs/complexity-routing.spec.md).
 
 - Evidence: per-phase code costs more than one session on small plans, while long single sessions time out on large ones (R-126 F1); the after-planning example rule (`single` when phases ≤ 3 and rows ≤ 30) is a delivery workflow's choice. The spec states the capability without the workflow (ADR-0129).
 - Predict, then fall back once: neither alone suits a mix where most tasks are complex but some are trivial (R-126 F5).
@@ -637,7 +637,7 @@ From [94-complexity-routing.spec.md](../specs/94-complexity-routing.spec.md).
 
 ### F62 PRO Promotion check and workflow stages `supported`
 
-From [95-promotion-check.spec.md](../specs/95-promotion-check.spec.md).
+From [promotion-check.spec.md](../specs/promotion-check.spec.md).
 
 - Scope (owner, 2026-11-20; ADR-0124): release 2 built the stages, the check and the stamp for `local-stable`; `--to pipeline`, the `pipeline` stage, the regressed watch and pipeline runs are designed and built with CI pipelines in a later release.
 - When pipelines arrive, the pipeline's executor is `claude` with an API key, an `apiKeyHelper` or cloud credentials, or `agent-sdk` (ADR-0041 C1); each executor's stamp is a separate entry.
@@ -646,7 +646,7 @@ From [95-promotion-check.spec.md](../specs/95-promotion-check.spec.md).
 
 ### F63 CAR Run state carried on a branch `supported`
 
-From [96-run-state-on-a-branch.spec.md](../specs/96-run-state-on-a-branch.spec.md).
+From [run-state-on-a-branch.spec.md](../specs/run-state-on-a-branch.spec.md).
 
 - A separate orphan branch keeps state out of the work branch, its pull request and its diff statistics, and is deleted whole; a removal commit on the work branch would leave the state in its history (R-133 F4). The owner chose the state branch over the work branch on 2026-11-21.
 - The subset is what a resume reads; transcripts and prompts stay local by LOS's marks and contract C9.
@@ -656,7 +656,7 @@ From [96-run-state-on-a-branch.spec.md](../specs/96-run-state-on-a-branch.spec.m
 
 ### F64 WIN Windows support `supported`
 
-From [97-windows-support.spec.md](../specs/97-windows-support.spec.md).
+From [windows-support.spec.md](../specs/windows-support.spec.md).
 
 - Most rules answer known Windows failure modes (R-132 F1); the job object replaces release 1's `taskkill /T`, which cannot act when the engine dies first.
 - Refusing judges until the probes pass follows contract C15: a capability not shown is a refusal, never a silent downgrade.
@@ -664,7 +664,7 @@ From [97-windows-support.spec.md](../specs/97-windows-support.spec.md).
 
 ### F65 SWF Sub-workflow unit `supported`
 
-From [99-subworkflow-unit.spec.md](../specs/99-subworkflow-unit.spec.md).
+From [subworkflow-unit.spec.md](../specs/subworkflow-unit.spec.md).
 
 - A subgraph in the parent's thread keeps one checkpoint, one lock, one log and one cap per run, so `status`, `stop`, carrying (CAR) and the monitor need nothing new. A separate child run per unit (the batch shape) was rejected: two threads to resume, two caps, and a parent that cannot pause on the child's question (ADR-0133).
 - The child's finalizer is skipped because the parent's finalizer is the one place a run leaves a trace outside its branch (FIN).

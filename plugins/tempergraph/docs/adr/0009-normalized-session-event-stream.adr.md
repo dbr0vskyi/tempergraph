@@ -13,7 +13,7 @@ Claude Code emits `stream-json` lines (`system/init`, `assistant`, `user` tool r
 
 ## Decision
 
-We will have each executor translate its CLI's stream into a small fixed set of normalized events ([SSN-B7](../specs/25-session-contract.spec.md)): `session_started`, `model_delta`, `tool_started`, `tool_finished`, `text`, `retrying`, `denied` and `result`. The launcher stamps each line with its receive time. Every engine consumer reads only normalized events. Raw lines are kept in the session's log file for diagnosis, and no consumer parses them.
+We will have each executor translate its CLI's stream into a small fixed set of normalized events ([SSN-B7](../specs/session-contract.spec.md)): `session_started`, `model_delta`, `tool_started`, `tool_finished`, `text`, `retrying`, `denied` and `result`. The launcher stamps each line with its receive time. Every engine consumer reads only normalized events. Raw lines are kept in the session's log file for diagnosis, and no consumer parses them.
 
 ## Options considered
 
@@ -34,7 +34,7 @@ We will have each executor translate its CLI's stream into a small fixed set of 
 
 ## Consequences
 
-- Positive: progress, metrics and the watchdog behave the same on both executors ([OBS](../specs/15-observability-and-cost.spec.md), [EXI](../specs/10-executor-interface.spec.md)).
+- Positive: progress, metrics and the watchdog behave the same on both executors ([OBS](../specs/observability-and-cost.spec.md), [EXI](../specs/executor-interface.spec.md)).
 - Negative: the event set is a lowest common shape; executor-only detail (for example Claude's per-retry error class) is kept only where an event has a field for it, such as `retrying.category`; the rest stays in the raw log.
 - Risk: a CLI adds an event type the translator does not know. Mitigation: unknown lines are skipped and counted on the session record; a count above zero is a self-improvement cause attributed to the executor.
 

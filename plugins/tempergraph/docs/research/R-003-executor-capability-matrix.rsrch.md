@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The [executor interface](../specs/10-executor-interface.spec.md) has executors **declare** what they can enforce, and the preflight refuses a workflow that needs a capability its executor lacks. This note sets the four executors side by side, capability by capability, from [R-001](R-001-claude-code-cli-headless.rsrch.md), [R-002](R-002-antigravity-cli-headless.rsrch.md), [R-004](R-004-anthropic-messages-api-executor.rsrch.md) and [R-005](R-005-claude-agent-sdk-executor.rsrch.md), so the declared values in the executor specs are traceable. It also lists what the engine must do itself because not every executor does it. The two library columns were added on 2026-11-19 with [ADR-0018](../adr/0018-add-messages-api-and-agent-sdk-executors.adr.md).
+The [executor interface](../specs/executor-interface.spec.md) has executors **declare** what they can enforce, and the preflight refuses a workflow that needs a capability its executor lacks. This note sets the four executors side by side, capability by capability, from [R-001](R-001-claude-code-cli-headless.rsrch.md), [R-002](R-002-antigravity-cli-headless.rsrch.md), [R-004](R-004-anthropic-messages-api-executor.rsrch.md) and [R-005](R-005-claude-agent-sdk-executor.rsrch.md), so the declared values in the executor specs are traceable. It also lists what the engine must do itself because not every executor does it. The two library columns were added on 2026-11-19 with [ADR-0018](../adr/0018-add-messages-api-and-agent-sdk-executors.adr.md).
 
 ## Sources consulted
 
@@ -15,7 +15,7 @@ The [executor interface](../specs/10-executor-interface.spec.md) has executors *
 
 ## Key findings
 
-Capability names are those of the contracts spec ([SSN-B1 to SSN-B6](../specs/25-session-contract.spec.md)). "Engine" means the engine provides the behaviour for every executor, so the CLI's own support does not matter.
+Capability names are those of the contracts spec ([SSN-B1 to SSN-B6](../specs/session-contract.spec.md)). "Engine" means the engine provides the behaviour for every executor, so the CLI's own support does not matter.
 
 | Capability | Claude Code CLI | Agent SDK | Messages API | Antigravity CLI | Confidence (CC / SDK / API / AG) |
 |---|---|---|---|---|---|
@@ -58,7 +58,7 @@ Sources for the two library columns: [R-004](R-004-anthropic-messages-api-execut
 1. All four meet the **step executor** bar: prompt off argv, an event stream with tool names, token usage, model selection, effort and a session id.
 2. Claude Code, the Agent SDK and the Messages API meet the **judge executor** bar today (the API by construction); Antigravity does not by documented flags. Antigravity can host judges only once the isolated-home probe (P-AG-1) and the hook probe (P-AG-2) pass; until then its declaration says `restricts_judge_tools: false` and the preflight sends its steps' judges to an executor that can restrict tools ([ADR-0013](../adr/0013-cross-executor-judging.adr.md)).
 3. Session options are asymmetric. `cost_cap` and `turn_cap` exist on Claude Code and the SDK and are engine-enforced on the Messages API; `fallback_model` exists on Claude Code and the SDK only. A workflow that asks for a missing one is refused before spend, while `effort` works on all four.
-4. Tool vocabularies differ (`Read`/`Bash`, `read_file`/`run_command`, `view_file`/`run_command`). Workflow data must declare tools in engine-neutral **capability names** that each executor maps to its own tool names ([CON-B11](../specs/01-contracts.spec.md)).
+4. Tool vocabularies differ (`Read`/`Bash`, `read_file`/`run_command`, `view_file`/`run_command`). Workflow data must declare tools in engine-neutral **capability names** that each executor maps to its own tool names ([CON-B11](../specs/contracts.spec.md)).
 5. Model families differ (Claude against Gemini). Workflow data names engine-neutral **aliases** (`small`, `medium`, `large`) or executor-qualified ones, and each executor binds them ([ADR-0008](../adr/0008-portable-model-aliases.adr.md)).
 
 ## Open questions

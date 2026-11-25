@@ -6,21 +6,21 @@ temperspec runs are slow in four places: the engine's suite runs in one process,
 
 ## Gaps closed
 
-- G1: `plugins/temperspec-tgraph/docs/specs/04-triage.spec.md` (ts-tri-covered); the form of the mark goes into the task-notes rule in the plan
-- G2: `plugins/temperspec-tgraph/docs/specs/05-discovery.spec.md` (ts-dis-short, ts-dis-full) and the decision record `plugins/temperspec-tgraph/docs/adr/0003-short-discovery-visit.adr.md`, which says why no engine switch, override or ladder fits and picks the route after triage
-- G3: `plugins/temperspec-tgraph/docs/specs/05-discovery.spec.md` (ts-dis-narrow, ts-dis-reading) and `plugins/temperspec-tgraph/docs/specs/06-plan.spec.md` (ts-plan-reading)
-- G4: `plugins/temperspec-tgraph/docs/specs/08-code.spec.md` (ts-code-once)
-- G5: `plugins/temperspec-tgraph/docs/specs/08-code.spec.md` (ts-code-reuse) and the research note `plugins/temperspec-tgraph/docs/research/speedup-runs-command-reuse.rsrch.md`, which shows that the engine already reuses a result in every case the task names (CHK-B13, CHK-B5)
+- G1: `plugins/temperspec-tgraph/docs/specs/triage.spec.md` (ts-tri-covered); the form of the mark goes into the task-notes rule in the plan
+- G2: `plugins/temperspec-tgraph/docs/specs/discovery.spec.md` (ts-dis-short, ts-dis-full) and the decision record `plugins/temperspec-tgraph/docs/adr/0003-short-discovery-visit.adr.md`, which says why no engine switch, override or ladder fits and picks the route after triage
+- G3: `plugins/temperspec-tgraph/docs/specs/discovery.spec.md` (ts-dis-narrow, ts-dis-reading) and `plugins/temperspec-tgraph/docs/specs/plan.spec.md` (ts-plan-reading)
+- G4: `plugins/temperspec-tgraph/docs/specs/code.spec.md` (ts-code-once)
+- G5: `plugins/temperspec-tgraph/docs/specs/code.spec.md` (ts-code-reuse) and the research note `plugins/temperspec-tgraph/docs/research/speedup-runs-command-reuse.rsrch.md`, which shows that the engine already reuses a result in every case the task names (CHK-B13, CHK-B5)
 - G6: the new `plugins/tempergraph/docs/specs/test-suite.spec.md` (TST-B1 to TST-B6, TST-AC1 to TST-AC8)
 
 ## Changed documents
 
 - `plugins/tempergraph/docs/specs/test-suite.spec.md`: new
-- `plugins/tempergraph/docs/specs/00-overview.spec.md`: one line added to Purpose that names the new spec, which the overview must do
-- `plugins/temperspec-tgraph/docs/specs/04-triage.spec.md`: one criterion row added (ts-tri-covered)
-- `plugins/temperspec-tgraph/docs/specs/05-discovery.spec.md`: four rows added (ts-dis-short, ts-dis-full, ts-dis-narrow, ts-dis-reading)
-- `plugins/temperspec-tgraph/docs/specs/06-plan.spec.md`: one row added (ts-plan-reading)
-- `plugins/temperspec-tgraph/docs/specs/08-code.spec.md`: two rows added (ts-code-once, ts-code-reuse)
+- `plugins/tempergraph/docs/specs/overview.spec.md`: one line added to Purpose that names the new spec, which the overview must do
+- `plugins/temperspec-tgraph/docs/specs/triage.spec.md`: one criterion row added (ts-tri-covered)
+- `plugins/temperspec-tgraph/docs/specs/discovery.spec.md`: four rows added (ts-dis-short, ts-dis-full, ts-dis-narrow, ts-dis-reading)
+- `plugins/temperspec-tgraph/docs/specs/plan.spec.md`: one row added (ts-plan-reading)
+- `plugins/temperspec-tgraph/docs/specs/code.spec.md`: two rows added (ts-code-once, ts-code-reuse)
 - `plugins/temperspec-tgraph/docs/adr/0003-short-discovery-visit.adr.md`: new
 - `plugins/temperspec-tgraph/docs/research/speedup-runs-command-reuse.rsrch.md`: new
 
@@ -44,10 +44,10 @@ temperspec runs are slow in four places: the engine's suite runs in one process,
 
 - `plugins/temperspec-tgraph/docs/tasks/speedup-runs.triage.md` (lines 9-14, 30-35): the six criteria, which the plan names `AC 1` to `AC 6`, and the gaps G1 to G6
 - `plugins/tempergraph/docs/specs/test-suite.spec.md` (TST-B1 to TST-B6, TST-AC1 to TST-AC8): the source of the requirements for criterion 1; each criterion needs a test carrying its id
-- `plugins/temperspec-tgraph/docs/specs/04-triage.spec.md` (ts-tri-covered): requirement source for the covered mark
-- `plugins/temperspec-tgraph/docs/specs/05-discovery.spec.md` (ts-dis-short, ts-dis-full, ts-dis-narrow, ts-dis-reading): requirement source for the short visit, the narrow reading and the reading list
-- `plugins/temperspec-tgraph/docs/specs/06-plan.spec.md` (ts-plan-reading): requirement source for the plan prompt
-- `plugins/temperspec-tgraph/docs/specs/08-code.spec.md` (ts-code-once, ts-code-reuse): requirement source for criteria 2 and 3
+- `plugins/temperspec-tgraph/docs/specs/triage.spec.md` (ts-tri-covered): requirement source for the covered mark
+- `plugins/temperspec-tgraph/docs/specs/discovery.spec.md` (ts-dis-short, ts-dis-full, ts-dis-narrow, ts-dis-reading): requirement source for the short visit, the narrow reading and the reading list
+- `plugins/temperspec-tgraph/docs/specs/plan.spec.md` (ts-plan-reading): requirement source for the plan prompt
+- `plugins/temperspec-tgraph/docs/specs/code.spec.md` (ts-code-once, ts-code-reuse): requirement source for criteria 2 and 3
 - `plugins/temperspec-tgraph/docs/adr/0003-short-discovery-visit.adr.md` (Decision, the sizing table): the short step's effort and reasons, to copy into the sizing table and the blueprint
 - `plugins/temperspec-tgraph/docs/research/speedup-runs-command-reuse.rsrch.md` (F1 to F4, F7, conclusions 1 and 2): why the engine needs no change, and how to test the gate (two gate runs over one tree and one store, the second reused)
 - `plugins/temperspec-tgraph/rules/task-notes.rule.md` (lines 31-33, 42, 77-105): add `Covered by` to the Gaps example and bullet, and the reading list to the hand-off example and bullets; the templates regenerate from the examples

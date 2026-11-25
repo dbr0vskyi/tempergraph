@@ -9,7 +9,7 @@
 
 ## Context
 
-With many runs at once, pauses and failures overlap. An orchestrating session that may answer pauses can answer every one while the person is away, even a proceed on a gate whose judge never ran. Dynamic workflows have no mid-run input and turn a failed agent into a `null` slot the script may ignore ([R-035](../research/R-035-dynamic-workflows-as-orchestration-model.rsrch.md) D3, D4). tempergraph already records who answered a pause and defers a delegation policy ([HUM](../specs/07-gate-and-human.spec.md)).
+With many runs at once, pauses and failures overlap. An orchestrating session that may answer pauses can answer every one while the person is away, even a proceed on a gate whose judge never ran. Dynamic workflows have no mid-run input and turn a failed agent into a `null` slot the script may ignore ([R-035](../research/R-035-dynamic-workflows-as-orchestration-model.rsrch.md) D3, D4). tempergraph already records who answered a pause and defers a delegation policy ([HUM](../specs/gate-and-human.spec.md)).
 
 ## Decision
 

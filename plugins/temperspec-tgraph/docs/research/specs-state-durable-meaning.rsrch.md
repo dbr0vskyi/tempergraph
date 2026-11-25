@@ -31,7 +31,7 @@ No line the pull request adds to an engine spec names temperspec (searched the d
 
 1. **The change's history as behaviour.** Headings and rules written against the old defect: CTS-B11 "A later attempt runs in worktrees of its own", CTS-B12 "An earlier attempt's slot work is left as it is", MAP-B15 "An earlier visit's item work is left as it is", SRV-B28 "… files nothing alone". Each says "no longer what the bug did" rather than the rule. Task i16's criterion 3 asked for exactly this: "the R3-T4.2 known limit is no longer true in the specs".
 2. **One rule copied per task.** MAP-B14 to MAP-B16 (issue #17) and CTS-B11 to CTS-B13 (issue #16) are the same rule twice, one per unit kind: a writer cut for a later pass of a unit gets fresh names from the current head, earlier cuts are left alone, and only this pass's work is merged. WTR-B20 then spells out both suffix forms (`--i<n>-`, `--s<n>-`) in one long sentence. The owning capability (writer worktrees, WSP and WTR) never got the general rule.
-3. **The motivating workflow's shape in engine scenarios.** WSP-B18: "a workflow of a planning step followed by a concurrent map whose step declares `write`" (`13-workspace-and-concurrency.spec.md` line 137 on the branch); MAP-B14: "the planning step having rewritten the list file" (`77-map-unit.spec.md` line 98). Both are temperspec's plan-then-phase map. The new `review-repeats.spec.md` names the units `code` and `plan` 18 times, temperspec's unit names, and takes `instruction_ignored` on `code` from temperspec's overnight runs (R-160 F7).
+3. **The motivating workflow's shape in engine scenarios.** WSP-B18: "a workflow of a planning step followed by a concurrent map whose step declares `write`" (`workspace-and-concurrency.spec.md` line 137 on the branch); MAP-B14: "the planning step having rewritten the list file" (`map-unit.spec.md` line 98). Both are temperspec's plan-then-phase map. The new `review-repeats.spec.md` names the units `code` and `plan` 18 times, temperspec's unit names, and takes `instruction_ignored` on `code` from temperspec's overnight runs (R-160 F7).
 4. **Test fixtures as scenarios.** Session keys `code.1.step`, `code.2.retry`; issues "#12 and #19" (PRP-B24, PRP-B29, PRP-AC8); branch names `demo--C-1--s2-s1` in the plan. A scenario that copies a fixture is a test, not an illustration.
 5. **Cross-capability proof inside a behaviour.** AUD-B17's third scenario proves `author verify` rung 6 (SCF) from inside the audit spec.
 
@@ -39,7 +39,7 @@ No line the pull request adds to an engine spec names temperspec (searched the d
 
 - Five engine specs cite "R-075 temperspec needs against the engine" in their Purpose as the reason they exist (75, 76, 77, 78, 79).
 - PKG-B8 "A delivery workflow as a package" and AUT-B8 describe temperspec (known debt).
-- SIL-B17 carries an owner's reason inside the rule: "default `max`, because the loop reads session logs and the owner keeps it on the medium tier" (`16-self-improvement.spec.md` line 95). Thirty-eight behaviour lines hold "because" or "the owner".
+- SIL-B17 carries an owner's reason inside the rule: "default `max`, because the loop reads session logs and the owner keeps it on the medium tier" (`self-improvement.spec.md` line 95). Thirty-eight behaviour lines hold "because" or "the owner".
 - Unit names `code` and `plan` appear in scenarios of 31 engine specs. Many of these are harmless placeholders, but they are temperspec's names, not neutral ones.
 
 ### F3 Nothing in the rules asks for a general rule, and two prompts push the other way `confirmed`

@@ -9,9 +9,9 @@
 
 ## Context
 
-A workflow package is a Claude Code plugin ([ADR-0105](0105-a-workflow-package-is-one-claude-plugin-with-a-python-part-and-a-docs-set.adr.md)). In a plugin list, a marketplace or a `skill:<plugin>:<name>` reference, nothing told a person that a plugin is a tempergraph workflow rather than an ordinary plugin. The owner asked for a naming agreement so a tempergraph workflow is recognisable by name (2026-11-20), considered `.tgflow` and `-tg-graph`, and decided on the suffix `-tgraph`, for example `release-notes-tgraph`.
+A workflow package is a Claude Code plugin ([ADR-0105](0105-a-workflow-package-is-one-claude-plugin.adr.md)). In a plugin list, a marketplace or a `skill:<plugin>:<name>` reference, nothing told a person that a plugin is a tempergraph workflow rather than an ordinary plugin. The owner asked for a naming agreement so a tempergraph workflow is recognisable by name (2026-11-20), considered `.tgflow` and `-tg-graph`, and decided on the suffix `-tgraph`, for example `release-notes-tgraph`.
 
-Until now [PKG-B13](../specs/88-workflow-package.spec.md) required one name in three places: `plugin.json` `name`, `tempergraph.json` `name` and the built `WorkflowSpec.name`. The workflow name is also what `tempergraph run` takes, the registry key, the run folder name and the `tgwf-<name>` distribution and private module name.
+Until now [PKG-B13](../specs/workflow-package.spec.md) required one name in three places: `plugin.json` `name`, `tempergraph.json` `name` and the built `WorkflowSpec.name`. The workflow name is also what `tempergraph run` takes, the registry key, the run folder name and the `tgwf-<name>` distribution and private module name.
 
 Claude Code's plugin rules (code.claude.com plugins reference, marketplace reference, checked 2026-11-20): a plugin name has no spaces, `@`, `:` or path separators and should be kebab-case (`claude plugin validate --strict` fails otherwise); the prefixes `claude-`, `anthropic-`, `anthropics-` and `cc-plugin-` are reserved; the plugin name is part of namespaced skill and MCP tool names, which are capped at 64 characters overall. A `.` suffix such as `.tgflow` is not kebab-case.
 
@@ -25,7 +25,7 @@ We will name every workflow package's plugin `<workflow name>-tgraph`, and keep 
 - The CLI accepts the plugin name wherever it takes a workflow name: `tempergraph run release-notes-tgraph …` runs `release-notes`.
 - `skill:` capabilities keep Claude Code's namespace, which is the plugin name: `skill:release-notes-tgraph:<skill>`.
 - The scaffold writes both names; a blueprint `name` ending in `-tgraph` is refused, with the short name as the remedy.
-- The engine plugin `tempergraph` and the monitor `tempergraph-monitor` are not workflow packages and keep their names. temperspec, once packaged as a workflow ([PKG-B8](../specs/88-workflow-package.spec.md)), is `temperspec-tgraph`.
+- The engine plugin `tempergraph` and the monitor `tempergraph-monitor` are not workflow packages and keep their names. temperspec, once packaged as a workflow ([PKG-B8](../specs/workflow-package.spec.md)), is `temperspec-tgraph`.
 
 ## Options considered
 

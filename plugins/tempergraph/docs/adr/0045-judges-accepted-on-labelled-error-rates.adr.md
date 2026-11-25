@@ -9,11 +9,11 @@
 
 ## Context
 
-Every gate rests on one LLM judge, and nobody has measured how often a judge is wrong ([R-046](../research/R-046-eval-and-judge-gap-analysis.rsrch.md)). The design scores judges ([LIF](../specs/18-lifecycle-and-evals.spec.md)) and samples an audit judge ([JDG-B7](../specs/05-judge-and-verdict.spec.md)), but nothing says what a score must show before stable mode, filing or a report may trust a judge. Public work finds judges recognise good work and miss most bad work (true-negative rates under 25% in one study), that overall agreement hides this, and that judge-to-judge agreement is not correctness ([R-045 F1–F3, F5](../research/R-045-evaluating-llm-judges-public-practice.rsrch.md)).
+Every gate rests on one LLM judge, and nobody has measured how often a judge is wrong ([R-046](../research/R-046-eval-and-judge-gap-analysis.rsrch.md)). The design scores judges ([LIF](../specs/lifecycle-and-evals.spec.md)) and samples an audit judge ([JDG-B7](../specs/judge-and-verdict.spec.md)), but nothing says what a score must show before stable mode, filing or a report may trust a judge. Public work finds judges recognise good work and miss most bad work (true-negative rates under 25% in one study), that overall agreement hides this, and that judge-to-judge agreement is not correctness ([R-045 F1–F3, F5](../research/R-045-evaluating-llm-judges-public-practice.rsrch.md)).
 
 ## Decision
 
-We will accept a judge binding for a gate only on a reviewed, class-balanced gold set, on two rates computed per criterion finding: the **catch rate** on known-bad findings and the **clean rate** on known-good findings, each judged on its Wilson 95% lower bound, plus bars on the flip rate under repeats and on robustness variants ([JCL-B16](../specs/50-judge-calibration.spec.md)). Labels come only from people and facts; another judge never supplies one. Acceptance licenses trust elsewhere and never changes a verdict.
+We will accept a judge binding for a gate only on a reviewed, class-balanced gold set, on two rates computed per criterion finding: the **catch rate** on known-bad findings and the **clean rate** on known-good findings, each judged on its Wilson 95% lower bound, plus bars on the flip rate under repeats and on robustness variants ([JCL-B16](../specs/judge-calibration.spec.md)). Labels come only from people and facts; another judge never supplies one. Acceptance licenses trust elsewhere and never changes a verdict.
 
 ## Options considered
 

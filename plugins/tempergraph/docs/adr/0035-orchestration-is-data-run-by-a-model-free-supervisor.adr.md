@@ -5,7 +5,7 @@
 | Status | proposed |
 | Date | 2026-11-19 |
 | Authors | Claude (design session for the owner) |
-| Supersedes | — (narrows [ADR-0021](0021-scope-of-planned-work.adr.md)'s deferral of batch orchestration for the scope of [ORC](../specs/45-orchestration.spec.md)) |
+| Supersedes | — (narrows [ADR-0021](0021-scope-of-planned-work.adr.md)'s deferral of batch orchestration for the scope of [ORC](../specs/orchestration.spec.md)) |
 
 ## Context
 
@@ -13,7 +13,7 @@ The owner asked for an orchestrator skill that manages many tempergraph runs the
 
 ## Decision
 
-We will describe an orchestration as a versioned data file (nodes, `after` edges, maps, approval nodes, `k`, caps, failure policies) that the engine validates before any spend and executes in a detached **supervisor** process that calls no model and never answers a gate. The orchestrator skill writes the file with the person and reacts only to the supervisor's attention signal. The supervisor starts and resumes runs only through the engine's own verbs. This is OVR-B18, owned by [ORC](../specs/45-orchestration.spec.md).
+We will describe an orchestration as a versioned data file (nodes, `after` edges, maps, approval nodes, `k`, caps, failure policies) that the engine validates before any spend and executes in a detached **supervisor** process that calls no model and never answers a gate. The orchestrator skill writes the file with the person and reacts only to the supervisor's attention signal. The supervisor starts and resumes runs only through the engine's own verbs. This is OVR-B18, owned by [ORC](../specs/orchestration.spec.md).
 
 ## Options considered
 
@@ -37,7 +37,7 @@ We will describe an orchestration as a versioned data file (nodes, `after` edges
 ## Assumptions
 
 - An orchestration runs on one machine; runs on several local repositories are allowed.
-- Runs per orchestration are at most 50 and in flight at most 16, the limits the batch already has ([WSP](../specs/13-workspace-and-concurrency.spec.md)).
+- Runs per orchestration are at most 50 and in flight at most 16, the limits the batch already has ([WSP](../specs/workspace-and-concurrency.spec.md)).
 
 ## Consequences
 

@@ -13,7 +13,7 @@ Experience-memory systems (ExpeL, Agent Workflow Memory, ACE, LangMem's procedur
 
 ## Decision
 
-We will keep lessons as a small itemised file per step inside the workflow package, rendered into the step's prompt only, capped at 12 entries and 2,500 characters, changed only by a reviewed proposal that adds, edits or retires at most two entries ([LSN](../specs/42-workflow-lessons.spec.md)). No run writes lessons, and no judge sees them.
+We will keep lessons as a small itemised file per step inside the workflow package, rendered into the step's prompt only, capped at 12 entries and 2,500 characters, changed only by a reviewed proposal that adds, edits or retires at most two entries ([LSN](../specs/workflow-lessons.spec.md)). No run writes lessons, and no judge sees them.
 
 ## Options considered
 
@@ -39,7 +39,7 @@ We will keep lessons as a small itemised file per step inside the workflow packa
 
 ## Assumptions
 
-- Prompt rendering can append a block after the tools block on every executor (true of [PRM](../specs/04-prompt-rendering.spec.md)).
+- Prompt rendering can append a block after the tools block on every executor (true of [PRM](../specs/prompt-rendering.spec.md)).
 
 ## Revisit when
 

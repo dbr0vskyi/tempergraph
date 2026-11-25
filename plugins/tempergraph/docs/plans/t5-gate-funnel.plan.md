@@ -7,7 +7,7 @@ owner: dbr0vskyi
 status: Completed
 tags: [track-plan, tempergraph, T5]
 tracker: none
-spec: plugins/tempergraph/docs/specs/05-judge-and-verdict.spec.md
+spec: plugins/tempergraph/docs/specs/judge-and-verdict.spec.md
 spec_commit: d5bdd1c
 task_id: first-release-t5
 ---
@@ -19,8 +19,8 @@ task_id: first-release-t5
 | Field | Value |
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T5 |
-| Specs | [OBS](../specs/15-observability-and-cost.spec.md), [CHK](../specs/75-check-contract-and-command-runs.spec.md), [JDG](../specs/05-judge-and-verdict.spec.md), [GRD](../specs/06-independence-guard.spec.md), [HUM](../specs/07-gate-and-human.spec.md), [BUD](../specs/08-budgets-and-failures.spec.md), [SCR](../specs/70-script-units-and-hybrid-steps.spec.md), [FIN](../specs/78-finalizer-contract.spec.md), [OUT](../specs/90-run-outcome.spec.md) |
-| Event kinds | [EVT-B10 to EVT-B16](../specs/30-run-events.spec.md) |
+| Specs | [OBS](../specs/observability-and-cost.spec.md), [CHK](../specs/check-contract-and-command-runs.spec.md), [JDG](../specs/judge-and-verdict.spec.md), [GRD](../specs/independence-guard.spec.md), [HUM](../specs/gate-and-human.spec.md), [BUD](../specs/budgets-and-failures.spec.md), [SCR](../specs/script-units-and-hybrid-steps.spec.md), [FIN](../specs/finalizer-contract.spec.md), [OUT](../specs/run-outcome.spec.md) |
+| Event kinds | [EVT-B10 to EVT-B16](../specs/run-events.spec.md) |
 
 **Status: Completed** for the offline build; GRD-AC5 on recorded `claude` stream fixtures (5.4.2) was built on 2026-11-22 from streams recorded in the cloud container (live check L-21). The funnel runs end to end with scripted executors: start, step, check, judge, re-ask, guard, verdict by rule, gate routing, pauses, resume with a decision, BACK to an earlier unit, budget ask or stop, infra stop with exit 5, the run cost cap drain, and the finalizer. Status pass: all nine specs are `ready-for-implementation`; GRD, BUD, CHK and OUT have release 1 defaults for their open questions.
 

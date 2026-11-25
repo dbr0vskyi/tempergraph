@@ -11,7 +11,7 @@
 
 The owner stated the intended lifecycle of a workflow on 2026-11-19. You first run it and self-improve it locally. Once it reaches a level of autonomy and quality, with fewer pauses for a person, you move it to the pipeline. The executor-agnostic design is what makes that move possible.
 
-The design has pieces of this but no path. `improvement_mode` is `dev` or `stable`, and stable mode needs every gate graded `ready` ([LIF-B6](../specs/18-lifecycle-and-evals.spec.md)). The Agent SDK and Messages API executors need no interactive sign-in, so they suit CI ([SHL](../specs/19-plugin-shell.spec.md)). The run origin `ci` exists ([DUR-B11](../specs/09-durability-and-resume.spec.md)). What is missing:
+The design has pieces of this but no path. `improvement_mode` is `dev` or `stable`, and stable mode needs every gate graded `ready` ([LIF-B6](../specs/lifecycle-and-evals.spec.md)). The Agent SDK and Messages API executors need no interactive sign-in, so they suit CI ([SHL](../specs/plugin-shell.spec.md)). The run origin `ci` exists ([DUR-B11](../specs/durability-and-resume.spec.md)). What is missing:
 
 - the criteria that say a workflow is ready to leave the laptop;
 - a check that measures them;
@@ -36,7 +36,7 @@ A model-free verb `tempergraph promote-check <workflow> --to <stage> [--executor
 | Judges | every gate `ready` | every gate `ready` **on the pipeline's executor and alias**, with agreement with a person's labels measured |
 | Cost per run, p90 | — | under the run cost cap |
 | Open engine-side or executor-side faults for this workflow | — | none |
-| Portability | — | the eval scenarios pass on the target executor's stand-in, and the judges are re-scored on it ([LIF](../specs/18-lifecycle-and-evals.spec.md) `evals score`) |
+| Portability | — | the eval scenarios pass on the target executor's stand-in, and the judges are re-scored on it ([LIF](../specs/lifecycle-and-evals.spec.md) `evals score`) |
 
 In the pipeline:
 
@@ -67,15 +67,15 @@ In the pipeline:
 | # | Assumption | Where it matters |
 |---|---|---|
 | C1 | "The pipeline" means an unattended CI job that runs the engine CLI with the `agent-sdk` or `messages-api` executor. A hosted service may come later as another executor. | EXI, SHL |
-| C2 | A pipeline job may end on a pause and leave the run resumable. Where the run state lives between jobs (a runner cache, the branch, a shared store) is not decided here. It needs the cross-machine store of the observability work (PR 7, spec 34) or carrying the run state on the branch. | DUR, WSP |
+| C2 | A pipeline job may end on a pause and leave the run resumable. Where the run state lives between jobs (a runner cache, the branch, a shared store) is not decided here. It needs the cross-machine store of the observability work (PR 7, spec `central-run-stats`) or carrying the run state on the branch. | DUR, WSP |
 | C3 | The thresholds are defaults chosen without data, as every self-improvement threshold is. They are recorded as such and revisited after the first 20 runs of a real workflow. | LIF, SIL |
-| C4 | Judge agreement with a person's labels comes from the feedback design of PR 4 (spec 41 FBK). Until it lands, the `pipeline` stage cannot be stamped. | LIF, SIL |
+| C4 | Judge agreement with a person's labels comes from the feedback design of PR 4 (spec `feedback-and-judge-reliability` FBK). Until it lands, the `pipeline` stage cannot be stamped. | LIF, SIL |
 
 ## Consequences
 
 - Positive: "a workflow you can trust" becomes a checkable claim, the executor-agnostic design earns its cost, and a team can see why a workflow is or is not ready for the pipeline.
 - Negative: one more verb and a stamp, and the pipeline stage waits on judge-label agreement and a shared run-state location.
-- Risk: authors tune for the numbers, for example by approving instead of escalating. Mitigation: approvals are counted apart from escalations ([HUM-B5](../specs/07-gate-and-human.spec.md)), agent resumes are counted apart from a person's ([HUM-B6](../specs/07-gate-and-human.spec.md)), and gate escapes reset the window.
+- Risk: authors tune for the numbers, for example by approving instead of escalating. Mitigation: approvals are counted apart from escalations ([HUM-B5](../specs/gate-and-human.spec.md)), agent resumes are counted apart from a person's ([HUM-B6](../specs/gate-and-human.spec.md)), and gate escapes reset the window.
 
 ## Revisit when
 

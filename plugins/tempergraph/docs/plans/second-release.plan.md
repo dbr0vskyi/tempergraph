@@ -7,7 +7,7 @@ owner: dbr0vskyi
 status: In progress
 tags: [release-plan, tempergraph]
 tracker: none
-spec: plugins/tempergraph/docs/specs/00-overview.spec.md
+spec: plugins/tempergraph/docs/specs/overview.spec.md
 spec_commit: 26096be
 task_id: second-release
 ---
@@ -21,7 +21,7 @@ task_id: second-release
 | Origin | Design session for the owner, 2026-11-20 (thread "Design release two scope and specs") |
 | Research | [R-130 readiness and gaps](../research/R-130-release-two-readiness-and-gaps.rsrch.md), [R-120](../research/R-120-effort-ladders-and-one-step-model-escalation.rsrch.md), [R-121](../research/R-121-judge-model-by-risk-and-evidence-for-escalation.rsrch.md), [R-126](../research/R-126-routing-by-complexity-between-decompositions.rsrch.md) |
 | Decisions | [ADR-0125 scope](../adr/0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md), [ADR-0121](../adr/0121-ladders-climb-only-on-trusted-substantive-evidence.adr.md) to [ADR-0124](../adr/0124-promotion-is-a-model-free-stamp-per-workflow-version.adr.md), [ADR-0091 executor](../adr/0091-first-release-ships-the-claude-executor-only.adr.md) |
-| Spec, read at | [Overview](../specs/00-overview.spec.md) and the specs named in §1, at `26096be` plus this branch |
+| Spec, read at | [Overview](../specs/overview.spec.md) and the specs named in §1, at `26096be` plus this branch |
 | Tracker | none |
 
 **Problem statement.** Release 1 builds simple trusted workflows on one machine. Release 2 makes them measurable, adaptive and movable: eval suites, judges raised by risk, ladders that climb only on evidence, a choice between a simple and a detailed decomposition by complexity, promotion to stable mode, run state carried on a branch, Windows and non-git folders, and update and upgrade across engine releases. The owner added upgrade, judges and ladders, and complexity branching on 2026-11-20, then moved CI pipelines to a later release with state on a branch meanwhile.
@@ -32,8 +32,8 @@ task_id: second-release
 |---|---|---|
 | Scope | ADR-0090's release 2 forecast plus upgrade, LAD, JRK, CXR and PRO | Owner's ask ([ADR-0125](../adr/0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md)) |
 | Executor | `claude` only | [ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md) |
-| Pipelines | A later release; a paused run moves between machines by its state branch | [ADR-0124](../adr/0124-promotion-is-a-model-free-stamp-per-workflow-version.adr.md), [ADR-0126](../adr/0126-a-run-carries-a-scrubbed-thread-state-on-its-own-branch-and-deletes-it-when-done.adr.md) |
-| Platforms | macOS, Linux; folders outside git. Native Windows is release 3 (owner, 2026-11-21) | [ADR-0127](../adr/0127-outside-git-the-state-root-is-found-by-walk-up-and-the-guard-hashes-files.adr.md), [ADR-0128](../adr/0128-windows-is-supported-natively-with-job-objects-and-probes-before-judges.adr.md) |
+| Pipelines | A later release; a paused run moves between machines by its state branch | [ADR-0124](../adr/0124-promotion-is-a-model-free-stamp-per-workflow-version.adr.md), [ADR-0126](../adr/0126-a-run-carries-scrubbed-thread-state-on-its-own-branch.adr.md) |
+| Platforms | macOS, Linux; folders outside git. Native Windows is release 3 (owner, 2026-11-21) | [ADR-0127](../adr/0127-outside-git-the-state-root-is-found-by-walk-up.adr.md), [ADR-0128](../adr/0128-windows-is-supported-natively-with-job-objects.adr.md) |
 | Ladders | Evidence-gated effort ladder; one model step, last resort; the release 1 model list retired by a transform | Owner: "I don't want to increase model or efforts on any failure" ([ADR-0121](../adr/0121-ladders-climb-only-on-trusted-substantive-evidence.adr.md)) |
 | Order | Switches, maps and ladders first, because CXR, UWF and PRO build on them | R-130 F1 |
 | Plan shape | Tracks and phases only; each track's expanded plan is written when its specs pass status (EC-2) | A track's rows are written only against specs that passed |

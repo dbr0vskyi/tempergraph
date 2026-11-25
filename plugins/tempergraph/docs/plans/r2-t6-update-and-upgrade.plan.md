@@ -1,7 +1,7 @@
 ---
 task: r2-t6
 complexity: complex
-specs: [plugins/tempergraph/docs/specs/60-engine-update.spec.md, plugins/tempergraph/docs/specs/62-state-and-run-migration.spec.md, plugins/tempergraph/docs/specs/61-version-metadata.spec.md, plugins/tempergraph/docs/specs/63-workflow-upgrade.spec.md, plugins/tempergraph/docs/specs/64-upgrade-workflow.spec.md, plugins/tempergraph/docs/specs/65-lifecycle-skills.spec.md]
+specs: [plugins/tempergraph/docs/specs/engine-update.spec.md, plugins/tempergraph/docs/specs/state-and-run-migration.spec.md, plugins/tempergraph/docs/specs/version-metadata.spec.md, plugins/tempergraph/docs/specs/workflow-upgrade.spec.md, plugins/tempergraph/docs/specs/upgrade-workflow.spec.md, plugins/tempergraph/docs/specs/lifecycle-skills.spec.md]
 ---
 
 # Plan: update, migrations and workflow upgrade (R2-T6)

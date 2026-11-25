@@ -35,9 +35,9 @@ We will record two fields per session: `reported_cost_usd` (what the executor sa
 
 ## Consequences
 
-- Positive: Antigravity steps appear in cost reports and run budgets beside Claude steps ([OBS](../specs/15-observability-and-cost.spec.md)).
+- Positive: Antigravity steps appear in cost reports and run budgets beside Claude steps ([OBS](../specs/observability-and-cost.spec.md)).
 - Negative: the estimate lags price changes. Mitigation: on Claude sessions both figures exist, so `report` can show how far they differ and the operator can correct the table.
-- Risk: a step on Antigravity has no per-session cost cap, so one runaway session spends until its timeout. Mitigation: a workflow that sets `cost_cap_usd` on such a step is refused at preflight ([EXI](../specs/10-executor-interface.spec.md)); the timeout and idle watchdog bound the session.
+- Risk: a step on Antigravity has no per-session cost cap, so one runaway session spends until its timeout. Mitigation: a workflow that sets `cost_cap_usd` on such a step is refused at preflight ([EXI](../specs/executor-interface.spec.md)); the timeout and idle watchdog bound the session.
 
 ## Revisit when
 

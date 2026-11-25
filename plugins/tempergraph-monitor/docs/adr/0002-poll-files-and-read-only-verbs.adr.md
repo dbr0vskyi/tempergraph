@@ -13,7 +13,7 @@ A mod has timers, file reads with offsets and host commands, but no socket serve
 
 ## Decision
 
-We will stat append-only and atomically replaced files once a second and read only appended bytes, and call `status`, `status --detail`, `orchestrate status` and `stats` on slower, change-driven schedules, two calls at most at once ([MDS](../specs/01-data-sources.spec.md)).
+We will stat append-only and atomically replaced files once a second and read only appended bytes, and call `status`, `status --detail`, `orchestrate status` and `stats` on slower, change-driven schedules, two calls at most at once ([MDS](../specs/data-sources.spec.md)).
 
 ## Options considered
 

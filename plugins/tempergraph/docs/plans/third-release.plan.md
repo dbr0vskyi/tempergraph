@@ -7,7 +7,7 @@ owner: dbr0vskyi
 status: In progress
 tags: [release-plan, tempergraph]
 tracker: none
-spec: plugins/tempergraph/docs/specs/00-overview.spec.md
+spec: plugins/tempergraph/docs/specs/overview.spec.md
 spec_commit: da5584c
 task_id: third-release
 ---
@@ -20,8 +20,8 @@ task_id: third-release
 |---|---|
 | Origin | Release 3 preparation for the owner, 2026-11-22 (thread "Verify release two and plan release three") |
 | Research | [R-140 readiness and gaps](../research/R-140-release-three-readiness-and-gaps.rsrch.md); R-135 (pull-request gate, in review) |
-| Decisions | [ADR-0132 scope](../adr/0132-release-three-is-workflows-that-compose-run-in-parallel-and-grade-in-the-pipeline.adr.md), [ADR-0133 sub-workflows](../adr/0133-a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md); ADR-0130 and ADR-0131 when the pull-request gate is accepted |
-| Spec, read at | [Overview](../specs/00-overview.spec.md) and the specs named in §1, at `da5584c` plus this branch |
+| Decisions | [ADR-0132 scope](../adr/0132-release-three-composes-runs-in-parallel-and-grades-in-the-pipeline.adr.md), [ADR-0133 sub-workflows](../adr/0133-a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md); ADR-0130 and ADR-0131 when the pull-request gate is accepted |
+| Spec, read at | [Overview](../specs/overview.spec.md) and the specs named in §1, at `da5584c` plus this branch |
 | Tracker | none |
 
 **Problem statement.** Release 2 makes one workflow measurable, adaptive and movable. The first real workflow now waits for four engine capabilities: a workflow inside a workflow, coding phases in parallel, several answers to a hard choice, and a scheduled audit (R-140 F2). The owner asked for a gate that re-grades a run's result on its pull request. Running release 2 found two defects that parallel work would make worse: a step inside a host session reaches more than it declares, and the cost cap checks only finished spend (R-140 F4, F5).
@@ -30,7 +30,7 @@ task_id: third-release
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Scope | What workflows and the owner ask for, release 2's findings, and the items moved from release 2 | [ADR-0132](../adr/0132-release-three-is-workflows-that-compose-run-in-parallel-and-grade-in-the-pipeline.adr.md) |
+| Scope | What workflows and the owner ask for, release 2's findings, and the items moved from release 2 | [ADR-0132](../adr/0132-release-three-composes-runs-in-parallel-and-grades-in-the-pipeline.adr.md) |
 | Executor | `claude` only; other executors in release 4 | ADR-0132 |
 | Orchestration | Release 4 | ADR-0132: needs sub-workflows and the reserving cap first |
 | Sub-workflow shape | A subgraph inside the parent's thread, workspace and cap | [ADR-0133](../adr/0133-a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md) |
@@ -47,7 +47,7 @@ task_id: third-release
 |---|---|---|---|
 | EC-1 | The owner accepts ADR-0132 and ADR-0133, or edits them | Any code track | Owner |
 | EC-2 | A track's specs are ready: its first phase gives each open question of its specs an `Until answered:` default (R-140 F6; specs carry no status since the spec migration) | Each track | Implementer, owner may veto |
-| EC-3 | The owner answers R-135's questions; ADR-0130 and ADR-0131 are accepted and spec 98 is written | R3-T7 | Owner |
+| EC-3 | The owner answers R-135's questions; ADR-0130 and ADR-0131 are accepted and the pull-request gate spec is written | R3-T7 | Owner |
 | EC-4 | P-WIN-1 to P-WIN-3 have run on a Windows machine | R3-T9 | Owner's machine |
 
 ### 1.2 Feature list
@@ -64,7 +64,7 @@ Every item release 3 ships. Items not built are refused with `not_in_release`, n
 | I3-6 | Council and contest units | CNL, CTS | R3-T4 | ADR-0090 release 3 |
 | I3-7 | Schedules and unattended fires, the release 2 slice and the rest | SCH, TCK | R3-T5 | moved from release 2 |
 | I3-8 | CI pipelines: the `pipeline` stage, `promote-check --to pipeline`, the regressed watch, P-PRO-1 | PRO, SUP-B17 | R3-T6 | moved from release 2 |
-| I3-9 | The pull-request gate: `pr-gate run\|init\|doctor`, GitHub Actions, `report` mode first | spec 98 (to write), SEC-B8 to SEC-B11 | R3-T7 | new, owner's ask |
+| I3-9 | The pull-request gate: `pr-gate run\|init\|doctor`, GitHub Actions, `report` mode first | the pull-request gate spec (PRG, to write), SEC-B8 to SEC-B11 | R3-T7 | new, owner's ask |
 | I3-10 | Script cache, sampled audit judge, judge MCP views | SCR, JDG-B7, GRD | R3-T8 | moved from release 2 |
 | I3-11 | In-process observers; worktree extras; session review in stable mode | EVT, WTR, SRV | R3-T8 | moved from release 2 |
 | I3-12 | The audit history layer and the tool surface audit | AUD, ARC, TSA | R3-T8 | moved from release 2 |
@@ -92,7 +92,7 @@ Every item release 3 ships. Items not built are refused with `not_in_release`, n
 | R3-T4 Council and contest | CNL, CTS | R3-T4.1–R3-T4.2 | R3-T1.1 | code |
 | R3-T5 Schedules | SCH, TCK | R3-T5.1–R3-T5.2 | EC-1 | code |
 | R3-T6 Pipelines | PRO, SUP | R3-T6.1 | R3-T5.2 (unattended credentials) | code |
-| R3-T7 Pull-request gate | spec 98, SEC | R3-T7.1–R3-T7.2 | EC-3 | code |
+| R3-T7 Pull-request gate | the pull-request gate spec, SEC | R3-T7.1–R3-T7.2 | EC-3 | code |
 | R3-T8 Moved from release 2 | SCR, JDG, GRD, EVT, WTR, SRV, AUD, ARC, TSA | R3-T8.1–R3-T8.3 | EC-1 | code |
 | R3-T9 Windows | WIN | R3-T9.1 | EC-4 | code |
 | R3-T10 Release | all | R3-T10.1–R3-T10.2 | every track | release |
@@ -192,9 +192,9 @@ Issue: [#12](https://github.com/dbr0vskyi/tempergraph/issues/12). Goal: whicheve
 Status: built. SCR-B9 and SCR-B3 (the script cache for a script unit and a step's `before` and `after` script), proved by SCR-AC4 in `plugins/tempergraph/engine/tests/test_script_cache.py`; JDG-B7 (the sampled audit judge, `audit_rate` and `audit_executor`), proved by JDG-AC7 and ROP-AC1 in `plugins/tempergraph/engine/tests/test_audit_judge.py`; ECC-B3, ECC-B10 and ECC-B15 (the judge view catalog, the filtering proxy with its private configuration, and deferral of a view with no working proxy), proved by GRD-AC6, ECC-AC7, ECC-AC8 and ECC-AC9 in `plugins/tempergraph/engine/tests/test_view_catalog.py`, `test_mcp_proxy.py` and `test_judge_mcp_deferral.py`; the live check of the proxy against the pinned CLI is left (the owner's row in `live-checks.plan.md`).
 
 #### R3-T8.2 Observers, worktree extras, session review in stable mode
-Goal: EVT-B23 observers with a preflight warning for a missing one, the `in_repo` and `path:` worktree roots, the `default_branch` base, `cleanup: on_finish`, `worktree prune` and foreign-worktree scans (spec 82), and `signals` review plans with saturation and the stable caps (spec 44), with no model call in any test.
+Goal: EVT-B23 observers with a preflight warning for a missing one, the `in_repo` and `path:` worktree roots, the `default_branch` base, `cleanup: on_finish`, `worktree prune` and foreign-worktree scans (spec `worktree-mode`), and `signals` review plans with saturation and the stable caps (spec `session-review`), with no model call in any test.
 
-Status: built. EVT-AC5 in `plugins/tempergraph/engine/tests/test_events.py`, `test_run_log.py` and `test_preflight.py`; WTR-AC1, WTR-AC3, WTR-AC5 and WTR-AC6 in `test_workspace.py`, `test_worktree_cleanup.py`, `test_worktree_prune.py`, `test_rerun.py`, `test_carry.py`, `test_cli.py` and `test_run.py`; SRV-AC2 and SRV-AC9 in `test_session_review.py`, `test_review_budget.py` and `test_improve.py`, all under `plugins/tempergraph/engine/tests/`; writer, slot and item worktrees, probes P-WTR-1 to P-WTR-4, and corroborated filing (spec 44's Not built yet line) remain.
+Status: built. EVT-AC5 in `plugins/tempergraph/engine/tests/test_events.py`, `test_run_log.py` and `test_preflight.py`; WTR-AC1, WTR-AC3, WTR-AC5 and WTR-AC6 in `test_workspace.py`, `test_worktree_cleanup.py`, `test_worktree_prune.py`, `test_rerun.py`, `test_carry.py`, `test_cli.py` and `test_run.py`; SRV-AC2 and SRV-AC9 in `test_session_review.py`, `test_review_budget.py` and `test_improve.py`, all under `plugins/tempergraph/engine/tests/`; writer, slot and item worktrees, probes P-WTR-1 to P-WTR-4, and corroborated filing (spec `session-review`'s Not built yet line) remain.
 
 #### R3-T8.3 Audit history and tool surface audit
 Status: built. The `history` layer and `audit tools` (AUD-B1, AUD-B3, AUD-B5, AUD-B10 to AUD-B12; ARC-B7, ARC-B9 to ARC-B15; TSA-B1 to TSA-B13; PRA-B11 `changed`), proved by AUD-AC1 to AUD-AC3, ARC-AC1, ARC-AC4, ARC-AC5, TSA-AC1 to TSA-AC6, PRA-AC3 and PRA-AC5 in `plugins/tempergraph/engine/tests/test_audit_history.py`, `test_audit_history_rules.py`, `test_audit_history_rules_more.py`, `test_audit_surface.py`, `test_audit_tools.py`, `test_audit_tools_verb.py` and `test_audit.py`; the post-release watch that `prompt-change-moved-gate` renders and the host probe that lists plugin tools for `judge-ambient-tool` are left.

@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The loop must tell a review that failed on a spent usage allowance from every other failed review, and run it again after the allowance resets (task t-30e1f2509b, gaps G3 and G4). Executors classify failures from structured facts only, never from prose ([EXI-B7](../specs/10-executor-interface.spec.md)), so the question is whether the `claude` stream carries the fact that the allowance is spent, and the time it resets, as structured fields. The engine reads none of it today, and no note records its shape.
+The loop must tell a review that failed on a spent usage allowance from every other failed review, and run it again after the allowance resets (task t-30e1f2509b, gaps G3 and G4). Executors classify failures from structured facts only, never from prose ([EXI-B7](../specs/executor-interface.spec.md)), so the question is whether the `claude` stream carries the fact that the allowance is spent, and the time it resets, as structured fields. The engine reads none of it today, and no note records its shape.
 
 ## Sources consulted
 

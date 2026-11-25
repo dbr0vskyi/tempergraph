@@ -31,13 +31,13 @@ def test_the_release_3_plan_records_r3_t4_1_as_built() -> None:  # AC 7
 
 
 def test_spec_08_no_longer_says_reservations_are_not_built_for_councils() -> None:  # BUD-AC12
-    line = next(ln for ln in (DOCS / "specs" / "08-budgets-and-failures.spec.md").read_text(encoding="utf-8")
+    line = next(ln for ln in (DOCS / "specs" / "budgets-and-failures.spec.md").read_text(encoding="utf-8")
                 .splitlines() if ln.startswith("- Not built yet"))
     assert "not built for" not in line and "member and chair sessions of a council" in line
 
 
 def test_spec_55_names_no_council_rule_as_unbuilt() -> None:  # ARC-B15
-    line = next(ln for ln in (DOCS / "specs" / "55-workflow-audit.spec.md").read_text(encoding="utf-8").splitlines()
+    line = next(ln for ln in (DOCS / "specs" / "workflow-audit.spec.md").read_text(encoding="utf-8").splitlines()
                 if ln.startswith("- Not built yet"))
     first = line.split(";", 1)[0]
     assert "council" not in first

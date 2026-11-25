@@ -9,7 +9,7 @@
 
 ## Context
 
-The engine already has `batch <workflow> <targets…> -k N`: a parent process runs one workflow over many targets, writes a batch file and an append-only event file, and skips targets whose thread exists on a re-run ([WSP-B13, WSP-B7](../specs/13-workspace-and-concurrency.spec.md)). An orchestration ([ORC](../specs/45-orchestration.spec.md)) needs the same parent, the same files, the same concurrency and the same re-run rule, plus dependencies, approvals and failure policies. Two mechanisms would drift.
+The engine already has `batch <workflow> <targets…> -k N`: a parent process runs one workflow over many targets, writes a batch file and an append-only event file, and skips targets whose thread exists on a re-run ([WSP-B13, WSP-B7](../specs/workspace-and-concurrency.spec.md)). An orchestration ([ORC](../specs/orchestration.spec.md)) needs the same parent, the same files, the same concurrency and the same re-run rule, plus dependencies, approvals and failure policies. Two mechanisms would drift.
 
 ## Decision
 
@@ -38,7 +38,7 @@ We will implement `batch` as a front end that writes a one-node `map` orchestrat
 ## Consequences
 
 - Positive: a batch gains failure policies, infra re-open, edits and the orchestration report for free.
-- Negative: [WSP-B13, WSP-B7](../specs/13-workspace-and-concurrency.spec.md) now points at ORC for the file formats.
+- Negative: [WSP-B13, WSP-B7](../specs/workspace-and-concurrency.spec.md) now points at ORC for the file formats.
 - Risk: none beyond the migration assumption.
 
 ## Revisit when

@@ -408,7 +408,7 @@ def test_docs_check_passes_on_the_minimal_package(pkg: Path) -> None:
 
 @pytest.mark.parametrize("case", ["unit-without-spec", "missing-id", "unknown-id", "changed-text", "bad-link"])
 def test_docs_check_fails(pkg: Path, case: str) -> None:
-    spec_file = pkg / "docs/specs/01-draft.spec.md"
+    spec_file = pkg / "docs/specs/draft.spec.md"
     text = spec_file.read_text()
     if case == "unit-without-spec":
         spec_file.unlink()
@@ -421,14 +421,14 @@ def test_docs_check_fails(pkg: Path, case: str) -> None:
         outcome["intermediate"]["draft"]["criteria"][1]["text"] = "Every entry is faithful"
         write(pkg, "outcome.json", outcome)
     else:
-        spec_file.write_text(text.replace("(00-overview.spec.md)", "(99-gone.spec.md)"))
+        spec_file.write_text(text.replace("(overview.spec.md)", "(gone.spec.md)"))
     found = drift(pkg)
     assert found and all(f.severity == "warning" for f in found)
     assert all(f.severity == "error" for f in drift(pkg, "stable"))
 
 
 def test_docs_drift_is_a_validation_warning(pkg: Path) -> None:
-    (pkg / "docs/specs/01-draft.spec.md").unlink()
+    (pkg / "docs/specs/draft.spec.md").unlink()
     found = validate(load(pkg), caps())
     assert "docs-drift" in codes(found, "warning") and "docs-drift" not in codes(found, "error")
 
@@ -449,7 +449,7 @@ def _digest(pkg: Path) -> str:
     ("lessons/draft.json", {"schema_version": 1, "lessons": []}, True),
     ("workflow/release_notes/util.py", "X = 1\n", True),
     ("workflow/pyproject.toml", '[project]\nname = "tgwf-release-notes"\ndependencies = ["rich>=13"]\n', True),
-    ("docs/specs/01-draft.spec.md", "changed\n", False), ("diagram/workflow.md", "changed\n", False),
+    ("docs/specs/draft.spec.md", "changed\n", False), ("diagram/workflow.md", "changed\n", False),
     ("evals/cases.json", {"schema_version": 1, "cases": []}, False), ("authoring.json", {"x": 1}, False),
     ("README.md", "changed\n", False), ("tests/test_more.py", "X = 2\n", False),
 ])
@@ -487,7 +487,7 @@ def test_workflow_version_and_inventory(pkg: Path) -> None:
     assert lp.workflow_version == f"0.1.0+{lp.content_digest[:12]}"
     inv = package_files(pkg)
     assert "prompts/draft.md" in inv.content and "workflow/release_notes/checks.py" in inv.python
-    assert "docs/specs/01-draft.spec.md" in inv.docs and "README.md" in inv.other
+    assert "docs/specs/draft.spec.md" in inv.docs and "README.md" in inv.other
     docs_before = lp.docs_digest
-    write(pkg, "docs/specs/01-draft.spec.md", "changed\n")
+    write(pkg, "docs/specs/draft.spec.md", "changed\n")
     assert load_package(pkg).docs_digest != docs_before

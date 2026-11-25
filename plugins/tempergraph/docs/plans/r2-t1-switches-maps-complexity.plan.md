@@ -1,7 +1,7 @@
 ---
 task: r2-t1
 complexity: complex
-specs: [plugins/tempergraph/docs/specs/79-measured-switches.spec.md, plugins/tempergraph/docs/specs/77-map-unit.spec.md, plugins/tempergraph/docs/specs/94-complexity-routing.spec.md]
+specs: [plugins/tempergraph/docs/specs/measured-switches.spec.md, plugins/tempergraph/docs/specs/map-unit.spec.md, plugins/tempergraph/docs/specs/complexity-routing.spec.md]
 ---
 
 # Plan: switches, maps and complexity (R2-T1)
@@ -87,5 +87,5 @@ Weight: heavy (many-tests)
 
 ## 4. Docs to update
 
-- `plugins/tempergraph/docs/specs/80-run-settings-and-overrides.spec.md`: the `arm` key and the `arm:` layer are built, no longer refused
-- `plugins/tempergraph/docs/specs/79-measured-switches.spec.md`: acceptance criteria ticked; the reading of a step timeout recorded
+- `plugins/tempergraph/docs/specs/run-settings-and-overrides.spec.md`: the `arm` key and the `arm:` layer are built, no longer refused
+- `plugins/tempergraph/docs/specs/measured-switches.spec.md`: acceptance criteria ticked; the reading of a step timeout recorded

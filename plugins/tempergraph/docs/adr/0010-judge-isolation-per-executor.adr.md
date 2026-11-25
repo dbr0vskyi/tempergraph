@@ -9,7 +9,7 @@
 
 ## Context
 
-A judge must be read-only: it reads the workspace and allowed views but cannot change files or external systems ([ADR-0005](0005-independent-judge-engine-verdict.adr.md)). Claude Code restricts a session by documented flags (`--tools`, `--disallowedTools "mcp__*"`, `--strict-mcp-config`, `--setting-sources`, `--permission-mode dontAsk`) ([R-001](../research/R-001-claude-code-cli-headless.rsrch.md)). Antigravity has no per-invocation restriction flag; plan mode is not an enforcement boundary; restriction can only come from config files and hooks under its config home, and whether that holds in headless mode is not documented ([R-002](../research/R-002-antigravity-cli-headless.rsrch.md)). The independence guard ([GRD](../specs/06-independence-guard.spec.md)) checks after the fact; it cannot undo a write to an external system.
+A judge must be read-only: it reads the workspace and allowed views but cannot change files or external systems ([ADR-0005](0005-independent-judge-engine-verdict.adr.md)). Claude Code restricts a session by documented flags (`--tools`, `--disallowedTools "mcp__*"`, `--strict-mcp-config`, `--setting-sources`, `--permission-mode dontAsk`) ([R-001](../research/R-001-claude-code-cli-headless.rsrch.md)). Antigravity has no per-invocation restriction flag; plan mode is not an enforcement boundary; restriction can only come from config files and hooks under its config home, and whether that holds in headless mode is not documented ([R-002](../research/R-002-antigravity-cli-headless.rsrch.md)). The independence guard ([GRD](../specs/independence-guard.spec.md)) checks after the fact; it cannot undo a write to an external system.
 
 ## Decision
 

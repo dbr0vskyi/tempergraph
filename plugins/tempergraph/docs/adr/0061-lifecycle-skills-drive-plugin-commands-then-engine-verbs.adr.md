@@ -9,11 +9,11 @@
 
 ## Context
 
-The owner wants a person to say "update tempergraph" to their agent and have it handle the marketplace, the plugin updates, the CLI reinstall, and the reinstall and update of workflows, including workflows in their own repositories. They also asked for an install command with a skill. The engine cannot update the plugin that carries it: Claude Code does, through `claude plugin marketplace update` and `claude plugin update`, and the engine verb must then run from the new plugin copy ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U1 to U4, [UPD-B14, UPD-B6](../specs/60-engine-update.spec.md)). The shell's rule is that a skill drives the engine and never decides ([SHL](../specs/19-plugin-shell.spec.md)).
+The owner wants a person to say "update tempergraph" to their agent and have it handle the marketplace, the plugin updates, the CLI reinstall, and the reinstall and update of workflows, including workflows in their own repositories. They also asked for an install command with a skill. The engine cannot update the plugin that carries it: Claude Code does, through `claude plugin marketplace update` and `claude plugin update`, and the engine verb must then run from the new plugin copy ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U1 to U4, [UPD-B14, UPD-B6](../specs/engine-update.spec.md)). The shell's rule is that a skill drives the engine and never decides ([SHL](../specs/plugin-shell.spec.md)).
 
 ## Decision
 
-We will ship three skills ([LSK](../specs/65-lifecycle-skills.spec.md)): `install`, `update` and `upgrade`. Each one shows a single plan of every write, asks once, and carries the plan out through fixed commands decided by JSON and exit codes. It asks again only before spending money and at every pause that belongs to the person. The update skill runs in this order: marketplaces, plugins, then the engine verb from the new plugin copy. The engine reinstalls workflows itself, and the skill offers an upgrade for local sources a release broke.
+We will ship three skills ([LSK](../specs/lifecycle-skills.spec.md)): `install`, `update` and `upgrade`. Each one shows a single plan of every write, asks once, and carries the plan out through fixed commands decided by JSON and exit codes. It asks again only before spending money and at every pause that belongs to the person. The update skill runs in this order: marketplaces, plugins, then the engine verb from the new plugin copy. The engine reinstalls workflows itself, and the skill offers an upgrade for local sources a release broke.
 
 ## Options considered
 

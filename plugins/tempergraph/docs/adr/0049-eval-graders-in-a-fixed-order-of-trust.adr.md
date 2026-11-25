@@ -13,7 +13,7 @@ The design has evals for judges but none of its own for checks, steps or whole w
 
 ## Decision
 
-We will grade every step and workflow eval case by the first grader that can decide it: code assertions and the gate's check, then the gate's or outcome judge only if it is `accepted` under [JCL](../specs/50-judge-calibration.spec.md), then a person. A case no grader decides is `needs_person` and counts in no rate. Live suites are opt-in and capped; only model-free suites run in CI ([EVS](../specs/51-eval-suites.spec.md)).
+We will grade every step and workflow eval case by the first grader that can decide it: code assertions and the gate's check, then the gate's or outcome judge only if it is `accepted` under [JCL](../specs/judge-calibration.spec.md), then a person. A case no grader decides is `needs_person` and counts in no rate. Live suites are opt-in and capped; only model-free suites run in CI ([EVS](../specs/eval-suites.spec.md)).
 
 ## Options considered
 

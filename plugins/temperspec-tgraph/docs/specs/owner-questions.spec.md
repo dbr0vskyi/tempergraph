@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The one pause a run makes for the owner. When the conversation value is `blocking` or `always` ([conversation](conversation.spec.md)), the run asks the owner every question that triage left for them in a single pause, after triage and before the reading sessions of discovery: each owner decision is a typed choice question with its options and its default, and `always` adds a question on the reading of each findable gap that no spec already answers. The owner, a script, or the agent that started the run answers by terminal, by file or by decision words; what the agent cannot answer stays open for a person; once the deadline has passed each open question takes its default. A run with nothing to ask makes no pause. Discovery closes each owner decision on its answer, or on its default when it has none, and says in its hand-off which it did. How an ask takes, checks and keeps answers and applies a deadline is the engine's ([ASK-B5](../../../tempergraph/docs/specs/73-ask-unit.spec.md), [FLX-B8](../../../tempergraph/docs/specs/74-flow-extensions.spec.md)) and is not restated here. Whoever starts a run and whoever answers its questions depend on it. Part of the [overview](00-overview.spec.md); the units are [owner_questions](15-owner_questions.spec.md), [ask_route](16-ask_route.spec.md) and [ask_owner](17-ask_owner.spec.md).
+The one pause a run makes for the owner. When the conversation value is `blocking` or `always` ([conversation](conversation.spec.md)), the run asks the owner every question that triage left for them in a single pause, after triage and before the reading sessions of discovery: each owner decision is a typed choice question with its options and its default, and `always` adds a question on the reading of each findable gap that no spec already answers. The owner, a script, or the agent that started the run answers by terminal, by file or by decision words; what the agent cannot answer stays open for a person; once the deadline has passed each open question takes its default. A run with nothing to ask makes no pause. Discovery closes each owner decision on its answer, or on its default when it has none, and says in its hand-off which it did. How an ask takes, checks and keeps answers and applies a deadline is the engine's ([ASK-B5](../../../tempergraph/docs/specs/ask-unit.spec.md), [FLX-B8](../../../tempergraph/docs/specs/flow-extensions.spec.md)) and is not restated here. Whoever starts a run and whoever answers its questions depend on it. Part of the [overview](overview.spec.md); the units are `owner_questions`, a script with no model session and no gate that lists the questions of the pause after triage and says whether there are any, which this spec describes, the route that pauses or skips ([ask_route](ask-route.spec.md)) and the pause itself ([ask_owner](ask-owner.spec.md)).
 
 ## Behaviours
 
@@ -12,7 +12,7 @@ WHEN a run whose conversation value is `blocking` or `always` ends triage with a
 
 - GIVEN `blocking` and a triage note with three owner decisions WHEN triage ends THEN the run pauses once and the pause holds three questions
 - GIVEN `always` and a triage note with no owner decision and two findable gaps that no spec answers WHEN triage ends THEN the run pauses once and the pause holds two questions
-- GIVEN a pause with three questions WHEN the agent that started the run answers two of them with `--decision answer:g1=b --decision answer:g2=a` and leaves the third THEN the run stays in that pause, open for the third question, with the two answers kept ([ASK-B8](../../../tempergraph/docs/specs/73-ask-unit.spec.md))
+- GIVEN a pause with three questions WHEN the agent that started the run answers two of them with `--decision answer:g1=b --decision answer:g2=a` and leaves the third THEN the run stays in that pause, open for the third question, with the two answers kept ([ASK-B8](../../../tempergraph/docs/specs/ask-unit.spec.md))
 
 ### OWQ-B2 No question, no pause
 
@@ -64,7 +64,7 @@ WHEN the run pauses THE workflow SHALL give the pause a deadline 24 hours after 
 
 ### OWQ-B8 A passed deadline takes the defaults
 
-WHEN `resume --apply-deadline` is run after the deadline of the pause THE workflow SHALL go on past the pause with each question that is still open at its default, as [ASK-B10](../../../tempergraph/docs/specs/73-ask-unit.spec.md) states.
+WHEN `resume --apply-deadline` is run after the deadline of the pause THE workflow SHALL go on past the pause with each question that is still open at its default, as [ASK-B10](../../../tempergraph/docs/specs/ask-unit.spec.md) states.
 
 - GIVEN a pause with three questions of which `g1` is answered and the deadline passed WHEN `resume --apply-deadline` runs THEN the run goes on to discovery, and the answers hold the answer of `g1` and the defaults of `g2` and `g3`
 - GIVEN a pause with three questions none of which is answered and the deadline passed WHEN `resume --apply-deadline` runs THEN the run goes on to discovery with the default of each question

@@ -7,7 +7,7 @@ owner: dbr0vskyi
 status: Completed
 tags: [track-plan, tempergraph, T6]
 tracker: none
-spec: plugins/tempergraph/docs/specs/17-engine-cli.spec.md
+spec: plugins/tempergraph/docs/specs/engine-cli.spec.md
 spec_commit: 41ca415
 task_id: first-release-t6
 ---
@@ -19,7 +19,7 @@ task_id: first-release-t6
 | Field | Value |
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T6 |
-| Specs | [CLI](../specs/17-engine-cli.spec.md), [RST](../specs/80-run-settings-and-overrides.spec.md), [RRN](../specs/81-reruns-and-feedback.spec.md), [PRV](../specs/85-caller-provenance.spec.md) |
+| Specs | [CLI](../specs/engine-cli.spec.md), [RST](../specs/run-settings-and-overrides.spec.md), [RRN](../specs/reruns-and-feedback.spec.md), [PRV](../specs/caller-provenance.spec.md) |
 
 **Status: Completed** for the offline build. Milestone M1 holds on stand-ins: a two-step workflow defined in Python test code runs end to end through `tempergraph run`, pauses with exit 3, and finishes through `tempergraph resume`. What is left needs a signed-in Claude Code on the owner's machine: M1 on a live `claude` (T0.1), the MCP and plugin listing check (6.3.5), and the probes P-SUP-1, P-SUP-2 and P-SUP-4 (6.5.5).
 

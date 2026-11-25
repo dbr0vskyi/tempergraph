@@ -13,7 +13,7 @@ From a view a person wants to resume a paused run, stop a runaway one or ask abo
 
 ## Decision
 
-We will make every changing action a prompt fill with the exact command, sent only by the person; we will register no model tool unless the person opts in, and then only in sessions with a drawing surface and never for a subagent loop ([MAC](../specs/05-actions-and-safety.spec.md)).
+We will make every changing action a prompt fill with the exact command, sent only by the person; we will register no model tool unless the person opts in, and then only in sessions with a drawing surface and never for a subagent loop ([MAC](../specs/actions-and-safety.spec.md)).
 
 ## Options considered
 

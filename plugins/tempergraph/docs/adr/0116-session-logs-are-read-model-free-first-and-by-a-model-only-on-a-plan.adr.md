@@ -5,15 +5,15 @@
 | Status | proposed |
 | Date | 2026-11-20 |
 | Authors | Claude (design session for the owner) |
-| Supersedes | — (amends the evidence rule of [SIL-B8](../specs/16-self-improvement.spec.md) and [SEC-B8 to SEC-B11](../specs/14-security.spec.md)) |
+| Supersedes | — (amends the evidence rule of [SIL-B8](../specs/self-improvement.spec.md) and [SEC-B8 to SEC-B11](../specs/security.spec.md)) |
 
 ## Context
 
-Every step and judge session keeps its full stream (`raw.jsonl`) and a normalized activity journal locally ([LOS-B7, LOS-B8, LOS-B9](../specs/33-local-observability-store.spec.md)), but the self-improvement loop reads only run-log records, the ledger and findings ([SIL-B17, SIL-B18](../specs/16-self-improvement.spec.md)). The owner asked when reading session logs would help and proposed conditional parts. Reading session logs belongs inside the engine, beside the runs it reads, not in a separate transcript pipeline, and most levers found by reading streams by hand are counts ([R-110](../research/R-110-reading-session-logs-for-self-improvement.rsrch.md)). Classification rests on names and numbers, not text (B6), and a model's attribution of a failure to a step is unreliable (P3).
+Every step and judge session keeps its full stream (`raw.jsonl`) and a normalized activity journal locally ([LOS-B7, LOS-B8, LOS-B9](../specs/local-observability-store.spec.md)), but the self-improvement loop reads only run-log records, the ledger and findings ([SIL-B17, SIL-B18](../specs/self-improvement.spec.md)). The owner asked when reading session logs would help and proposed conditional parts. Reading session logs belongs inside the engine, beside the runs it reads, not in a separate transcript pipeline, and most levers found by reading streams by hand are counts ([R-110](../research/R-110-reading-session-logs-for-self-improvement.rsrch.md)). Classification rests on names and numbers, not text (B6), and a model's attribution of a failure to a step is unreliable (P3).
 
 ## Decision
 
-We will read session logs in two layers ([SRV](../specs/44-session-review.spec.md)). A **session digest**, model-free, runs over every session at every exit in both modes and writes names, enums, counts and keyed digests only; its facts become cause codes that file through SIL like any other. A **session review**, by a model, runs only when a review plan names sessions or slices of them, and never classifies a cause on its own. The loop child, the recorder and the reviewer are the only readers of session logs; the review's text is evidence-class.
+We will read session logs in two layers ([SRV](../specs/session-review.spec.md)). A **session digest**, model-free, runs over every session at every exit in both modes and writes names, enums, counts and keyed digests only; its facts become cause codes that file through SIL like any other. A **session review**, by a model, runs only when a review plan names sessions or slices of them, and never classifies a cause on its own. The loop child, the recorder and the reviewer are the only readers of session logs; the review's text is evidence-class.
 
 ## Options considered
 
@@ -38,7 +38,7 @@ We will read session logs in two layers ([SRV](../specs/44-session-review.spec.m
 - Positive: new model-free causes (`tool_repeat`, `idle_burn`, `shell_for_files`, `context_bloat`, `timeout:<shape>`, `judge_unread_pass`, `retry_same_path`) file with the same rules as today's.
 - Positive: a timeout sort and a record-only loop detector exist as digest fields.
 - Negative: SEC-B8 to SEC-B11's evidence rule widens to session logs and review evidence; a second source test is needed (SRV-AC4).
-- Risk: digest thresholds have no data. Mitigation: parameters with provenance `default_no_data` ([IMD-B23](../specs/43-improvement-data.spec.md)), and digest causes of class `designed` are recorded, not filed.
+- Risk: digest thresholds have no data. Mitigation: parameters with provenance `default_no_data` ([IMD-B23](../specs/improvement-data.spec.md)), and digest causes of class `designed` are recorded, not filed.
 
 ## Assumptions
 

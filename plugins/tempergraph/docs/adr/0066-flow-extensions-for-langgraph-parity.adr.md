@@ -13,7 +13,7 @@
 
 ## Decision
 
-We will add, in [FLX](../specs/74-flow-extensions.spec.md):
+We will add, in [FLX](../specs/flow-extensions.spec.md):
 
 1. **Selective parallel.** A parallel block may declare a pure `select` function that picks a non-empty subset of its declared branches at run time; the join waits for the selected branches only.
 2. **Map over a sub-workflow.** A map's item body may be a registered sub-workflow, so each item runs several gated steps. The child may contain no map, wait or ask; depth rules hold.

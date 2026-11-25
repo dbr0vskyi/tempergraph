@@ -13,7 +13,7 @@ The owner wrote on 2026-11-20: "The workflow plugin should also have specs in th
 
 ## Decision
 
-We will give every package a `docs/` folder in the engine's shape: an overview spec with one acceptance criterion per final criterion, one spec per unit with one acceptance criterion per unit criterion, decision records from the authoring decisions, and a sources research note. The scaffold writes them from the outcome, the blueprint and the authoring record. Criterion text lives only in `outcome.json`; a model-free `docs-drift` check compares ids and text digests. `tempergraph.json` `docs: provisional` names the rules in force; when temperspec ships rule files, the field names that rule set and the files stay where they are. Details: [PKG-B21, PKG-B22](../specs/88-workflow-package.spec.md).
+We will give every package a `docs/` folder in the engine's shape: an overview spec with one acceptance criterion per final criterion, one spec per unit with one acceptance criterion per unit criterion, decision records from the authoring decisions, and a sources research note. The scaffold writes them from the outcome, the blueprint and the authoring record. Criterion text lives only in `outcome.json`; a model-free `docs-drift` check compares ids and text digests. `tempergraph.json` `docs: provisional` names the rules in force; when temperspec ships rule files, the field names that rule set and the files stay where they are. Details: [PKG-B21, PKG-B22](../specs/workflow-package.spec.md).
 
 ## Options considered
 

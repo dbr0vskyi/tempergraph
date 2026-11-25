@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-On 2026-11-21 the owner asked to check whether release 2 is ready, close its gaps if not, and then prepare release 3 with research and specs. This note records the release 2 check (F1), then sorts every release 3 candidate the same way [R-130](R-130-release-two-readiness-and-gaps.rsrch.md) sorted release 2: who asks for it, which spec owns it, its status, and what is missing (F2 to F7). It is the input to [ADR-0132](../adr/0132-release-three-is-workflows-that-compose-run-in-parallel-and-grade-in-the-pipeline.adr.md) and the [third-release plan](../plans/third-release.plan.md).
+On 2026-11-21 the owner asked to check whether release 2 is ready, close its gaps if not, and then prepare release 3 with research and specs. This note records the release 2 check (F1), then sorts every release 3 candidate the same way [R-130](R-130-release-two-readiness-and-gaps.rsrch.md) sorted release 2: who asks for it, which spec owns it, its status, and what is missing (F2 to F7). It is the input to [ADR-0132](../adr/0132-release-three-composes-runs-in-parallel-and-grades-in-the-pipeline.adr.md) and the [third-release plan](../plans/third-release.plan.md).
 
 ## Sources consulted
 
@@ -12,8 +12,8 @@ On 2026-11-21 the owner asked to check whether release 2 is ready, close its gap
 | S2 | The offline suite on `main` and on this branch; `ruff`, `mypy` | Code | `plugins/tempergraph/engine/` |
 | S3 | Live checks L-21, L-25, L-27, L-28 and L-29 run in the cloud container on 2026-11-22 (Claude Code 2.1.330), with the earlier cloud rows | Live runs | [live-checks plan](../plans/live-checks.plan.md) |
 | S4 | temperspec's backlog rows B11 to B14 and its next-features note | Package docs | `plugins/temperspec-tgraph/docs/plans/backlog.plan.md` |
-| S5 | The pull-request gate research, open as its own pull request: R-135, with ADR-0130, ADR-0131 and spec 98 reserved | Design set (in review) | R-135 on its branch |
-| S6 | Front matter `status` and the Open questions table of every spec named below | Design set | [specs](../specs/00-overview.spec.md) |
+| S5 | The pull-request gate research, open as its own pull request: R-135, with ADR-0130, ADR-0131 and the pull-request gate spec reserved | Design set (in review) | R-135 on its branch |
+| S6 | Front matter `status` and the Open questions table of every spec named below | Design set | [specs](../specs/overview.spec.md) |
 
 ## Key findings
 
@@ -40,29 +40,29 @@ Every live check that can run in a cloud container now passes (S3). What is left
 
 ### F2 What the first real workflow asks of release 3 `confirmed`
 
-temperspec's backlog names five features that wait for the engine (S4). Each maps onto a capability already designed for release 3, so none needs a new engine concept ([ADR-0129](../adr/0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md)):
+temperspec's backlog names five features that wait for the engine (S4). Each maps onto a capability already designed for release 3, so none needs a new engine concept ([ADR-0129](../adr/0129-the-engine-names-no-workflow.adr.md)):
 
 | Row | Feature | Engine capability | Spec, status |
 |---|---|---|---|
-| B8 | Reading in parallel: discovery per gap, the setup survey per component | The concurrent map over a list, under the reserving cap (release 2's parallel block has fixed branches only) | [MAP](../specs/77-map-unit.spec.md) `review`, [BUD-B12](../specs/08-budgets-and-failures.spec.md) |
+| B8 | Reading in parallel: discovery per gap, the setup survey per component | The concurrent map over a list, under the reserving cap (release 2's parallel block has fixed branches only) | [MAP](../specs/map-unit.spec.md) `review`, [BUD-B12](../specs/budgets-and-failures.spec.md) |
 | B11 | Repository setup as a workflow of its own, used alone or inside the delivery run | Sub-workflow units | CMP-B10 to CMP-B16 has one row; **no spec** (F3) |
-| B12 | Coding phases in parallel, behind declared independence and a disjoint-files check | Writer branches, concurrent map mode | [FLX](../specs/74-flow-extensions.spec.md), [MAP](../specs/77-map-unit.spec.md) `review` |
-| B13 | Several answers to a hard choice, then a pick or a vote | Contest and council units | [CTS](../specs/72-contest-unit.spec.md), [CNL](../specs/71-council-unit.spec.md) `review` |
-| B14 | A scheduled drift audit | The rest of schedules | [SCH](../specs/83-schedules.spec.md), [TCK](../specs/84-schedule-ticks-and-unattended-fires.spec.md) `review` |
+| B12 | Coding phases in parallel, behind declared independence and a disjoint-files check | Writer branches, concurrent map mode | [FLX](../specs/flow-extensions.spec.md), [MAP](../specs/map-unit.spec.md) `review` |
+| B13 | Several answers to a hard choice, then a pick or a vote | Contest and council units | [CTS](../specs/contest-unit.spec.md), [CNL](../specs/council-unit.spec.md) `review` |
+| B14 | A scheduled drift audit | The rest of schedules | [SCH](../specs/schedules.spec.md), [TCK](../specs/schedule-ticks-and-unattended-fires.spec.md) `review` |
 
 The owner's other open ask is the pull-request gate (S5): one check and an optional judge that re-grade a run's result in the pipeline, buildable before pipeline runs. Its research recommends release 3 and leaves five questions to the owner. The package also asks for an `on_deadline` choice that fills each unanswered question of an ask unit with its default and proceeds, so the `answers` artifact is complete (FLX-B8 offers escalate, stop or a forward unit, and a forward unit leaves no answers); it is general, and is listed in the plan as I3-15 for the owner to accept.
 
 ### F3 Sub-workflows had a row, not a spec `confirmed`
 
-[CMP-B10 to CMP-B16](../specs/03-compiler-and-flow.spec.md) says a sub-workflow is a registered workflow compiled as a subgraph under the parent's checkpointer, at most three deep, never recursive. It leaves open: which child version runs and what a resume does when it changed; how parameters are mapped; what the parent sees; whose workspace, log, settings, cap and finalizer apply; where pauses, upstream defects and the child's outcome go; and where findings and calibration land. A workflow cannot be written against a row. New spec [SWF](../specs/99-subworkflow-unit.spec.md) answers each, and [ADR-0133](../adr/0133-a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md) records the main choice: the child runs inside the parent's thread, workspace and cap, not as a separate run.
+[CMP-B10 to CMP-B16](../specs/compiler-and-flow.spec.md) says a sub-workflow is a registered workflow compiled as a subgraph under the parent's checkpointer, at most three deep, never recursive. It leaves open: which child version runs and what a resume does when it changed; how parameters are mapped; what the parent sees; whose workspace, log, settings, cap and finalizer apply; where pauses, upstream defects and the child's outcome go; and where findings and calibration land. A workflow cannot be written against a row. New spec [SWF](../specs/subworkflow-unit.spec.md) answers each, and [ADR-0133](../adr/0133-a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md) records the main choice: the child runs inside the parent's thread, workspace and cap, not as a separate run.
 
 ### F4 A step's reach is wider than its declaration inside a host session `confirmed`
 
-In L-29, run from inside a Claude Code session, a step's `system/init` listed about 35 tools, among them the host's `Artifact` and `SendMessage`, and the host's additional directories; one session read a file of the host's memory folder outside the workspace (S3). The allow rules held: judges stayed in `dontAsk`, and nothing outside the step's grants was written. The cause is the environment the step inherits from the host, plus `--tools` being sent only under the operator's enforcement setting. `--bare` on 2.1.330 also still lists user-scope plugins, so `isolates_user_config` stays false. A pipeline or a scheduled fire does not run inside a host session, but an operator's own `claude` session does, and that is where most runs start. Resolution: [ECC-B14](../specs/11-executor-claude-code.spec.md), with probes P-CC-10 and P-CC-11.
+In L-29, run from inside a Claude Code session, a step's `system/init` listed about 35 tools, among them the host's `Artifact` and `SendMessage`, and the host's additional directories; one session read a file of the host's memory folder outside the workspace (S3). The allow rules held: judges stayed in `dontAsk`, and nothing outside the step's grants was written. The cause is the environment the step inherits from the host, plus `--tools` being sent only under the operator's enforcement setting. `--bare` on 2.1.330 also still lists user-scope plugins, so `isolates_user_config` stays false. A pipeline or a scheduled fire does not run inside a host session, but an operator's own `claude` session does, and that is where most runs start. Resolution: [ECC-B14](../specs/executor-claude-code.spec.md), with probes P-CC-10 and P-CC-11.
 
 ### F5 The cost cap assumes one session at a time `confirmed`
 
-[BUD-B8, BUD-B9](../specs/08-budgets-and-failures.spec.md) checks the run's spend before each attempt. With one session in flight that bounds the overrun to one session. Release 2's parallel read-only branches already break the assumption: two branches may start just under the cap and both finish above it. Release 3 adds concurrent maps, contest slots and council members, where the overrun grows with the width. Resolution: [BUD-B12](../specs/08-budgets-and-failures.spec.md), where a session reserves its own cap or its projection before it starts.
+[BUD-B8, BUD-B9](../specs/budgets-and-failures.spec.md) checks the run's spend before each attempt. With one session in flight that bounds the overrun to one session. Release 2's parallel read-only branches already break the assumption: two branches may start just under the cap and both finish above it. Release 3 adds concurrent maps, contest slots and council members, where the overrun grows with the width. Resolution: [BUD-B12](../specs/budgets-and-failures.spec.md), where a session reserves its own cap or its projection before it starts.
 
 ### F6 Specs a release 3 item rests on are still in `review` `confirmed`
 
@@ -75,7 +75,7 @@ In L-29, run from inside a Claude Code session, a step's `system/init` listed ab
 | WIN | 2 | Windows, moved from release 2 |
 | TSA | 2 | Tool surface audit, moved from release 2 |
 | SWF (new) | 2 | B11 |
-| Pull-request gate (spec 98, not written) | R-135 lists 5 for the owner | Owner's ask |
+| Pull-request gate (its spec, PRG, not written) | R-135 lists 5 for the owner | Owner's ask |
 
 Moving these to `ready-for-implementation` is the first track of the plan, as the status pass was for release 2. The items moved from release 2 on 2026-11-21 that are already `ready-for-implementation` (script cache, sampled audit judge, judge MCP views, in-process observers, worktree extras, session review in stable mode, the audit history layer) need no spec work.
 
@@ -84,7 +84,7 @@ Moving these to `ready-for-implementation` is the first track of the plan, as th
 Two items ADR-0090 forecast for release 3 have no asker yet and the most unknowns:
 
 - **Other executors** (Antigravity, the Messages API, the Agent SDK). Their specs are `review`, no probe of theirs has run, and the only executor proven live is Claude Code. The "four executors" requirement is a design requirement the specs already meet; building them is a release of its own.
-- **Orchestration of runs** ([ORC](../specs/45-orchestration.spec.md), the orchestrator skill). It needs sub-workflows and the reserving cap first, and nothing asks for it yet.
+- **Orchestration of runs** ([ORC](../specs/orchestration.spec.md), the orchestrator skill). It needs sub-workflows and the reserving cap first, and nothing asks for it yet.
 
 Both are proposed for release 4 in ADR-0132; the owner decides.
 
@@ -104,4 +104,4 @@ Release 2 is finished on the engine side; what is left is the owner's own checks
 
 ## References
 
-[R-130](R-130-release-two-readiness-and-gaps.rsrch.md) · [ADR-0125](../adr/0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md) · [ADR-0129](../adr/0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md) · [SWF](../specs/99-subworkflow-unit.spec.md) · [ECC](../specs/11-executor-claude-code.spec.md) · [BUD](../specs/08-budgets-and-failures.spec.md) · [live-checks plan](../plans/live-checks.plan.md)
+[R-130](R-130-release-two-readiness-and-gaps.rsrch.md) · [ADR-0125](../adr/0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md) · [ADR-0129](../adr/0129-the-engine-names-no-workflow.adr.md) · [SWF](../specs/subworkflow-unit.spec.md) · [ECC](../specs/executor-claude-code.spec.md) · [BUD](../specs/budgets-and-failures.spec.md) · [live-checks plan](../plans/live-checks.plan.md)

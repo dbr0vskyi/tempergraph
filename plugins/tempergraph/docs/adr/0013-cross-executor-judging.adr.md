@@ -13,7 +13,7 @@ Judges must be read-only ([ADR-0010](0010-judge-isolation-per-executor.adr.md)).
 
 ## Decision
 
-We will choose each gate's judge executor by a fixed order ([EXI-B24](../specs/10-executor-interface.spec.md)): operator override, the gate's named judge executor, the step's executor if it declares `restricts_judge_tools`, the workflow's designated judge executor, then the first registered executor that declares it. No candidate is a preflight refusal. `claude` is the default judge executor. The chosen executor and the reason are recorded on the judgement.
+We will choose each gate's judge executor by a fixed order ([EXI-B24](../specs/executor-interface.spec.md)): operator override, the gate's named judge executor, the step's executor if it declares `restricts_judge_tools`, the workflow's designated judge executor, then the first registered executor that declares it. No candidate is a preflight refusal. `claude` is the default judge executor. The chosen executor and the reason are recorded on the judgement.
 
 ## Options considered
 
@@ -37,7 +37,7 @@ We will choose each gate's judge executor by a fixed order ([EXI-B24](../specs/1
 
 - Positive: moving a step to Antigravity keeps its gate working with no other edit.
 - Negative: the judge reads a workspace written by another CLI, whose instruction files and tool traces differ. Mitigation: the judge sees only the workspace, views and criteria, never the producer's transcript.
-- Risk: a judge model's leniency differs by family. Mitigation: calibration sets per gate record the judge executor and model ([LIF](../specs/18-lifecycle-and-evals.spec.md)).
+- Risk: a judge model's leniency differs by family. Mitigation: calibration sets per gate record the judge executor and model ([LIF](../specs/lifecycle-and-evals.spec.md)).
 
 ## Revisit when
 

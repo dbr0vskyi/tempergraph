@@ -41,9 +41,9 @@ We will write a self-contained design set under `plugins/tempergraph/docs/` (spe
 | A3 | Both executors drive their CLIs as child processes; no SDK or raw model API is needed for the first release. | [ADR-0006](0006-executors-as-capability-adapters.adr.md) |
 | A4 | The model gateway for Claude Code may be Amazon Bedrock or the Anthropic API; binding is per machine. | [ADR-0008](0008-portable-model-aliases.adr.md) |
 | A5 | The first workflow is temperspec, but the engine must not name it. | [ADR-0003](0003-workflows-as-data.adr.md) |
-| A6 | Workflows run on non-production, synthetic data; the engine is not hardened for production data. | [Overview](../specs/00-overview.spec.md) |
+| A6 | Workflows run on non-production, synthetic data; the engine is not hardened for production data. | [Overview](../specs/overview.spec.md) |
 | A7 | Specs are left in status `review`, not `ready-for-implementation`, because no person has reviewed them. | All specs |
-| A8 | The engine is Python 3.11+ and ships inside the `tempergraph` Claude Code plugin with a shim. | [LIF](../specs/18-lifecycle-and-evals.spec.md) |
+| A8 | The engine is Python 3.11+ and ships inside the `tempergraph` Claude Code plugin with a shim. | [LIF](../specs/lifecycle-and-evals.spec.md) |
 
 ## Consequences
 

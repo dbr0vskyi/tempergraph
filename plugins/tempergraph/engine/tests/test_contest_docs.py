@@ -34,10 +34,10 @@ def test_contest_is_in_no_not_in_release_list_of_the_source() -> None:  # AC 6
 
 
 def test_no_not_built_yet_line_of_a_spec_names_the_contest() -> None:  # AC 6
-    assert "contest" not in not_built_line("55-workflow-audit.spec.md")
-    assert "contest" not in not_built_line("82-worktree-mode.spec.md")
-    assert "contests" not in not_built_line("08-budgets-and-failures.spec.md")
-    assert "contest" not in " ".join(ln for ln in (DOCS / "specs" / "72-contest-unit.spec.md").read_text(
+    assert "contest" not in not_built_line("workflow-audit.spec.md")
+    assert "contest" not in not_built_line("worktree-mode.spec.md")
+    assert "contests" not in not_built_line("budgets-and-failures.spec.md")
+    assert "contest" not in " ".join(ln for ln in (DOCS / "specs" / "contest-unit.spec.md").read_text(
         encoding="utf-8").lower().splitlines() if ln.startswith("- not built yet"))
 
 

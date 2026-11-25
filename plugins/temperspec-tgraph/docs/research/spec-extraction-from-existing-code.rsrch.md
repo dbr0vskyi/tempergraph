@@ -12,11 +12,11 @@ The unknowns: what existing tools and published methods do, which parts fit temp
 
 | Source | Type | Where |
 |---|---|---|
-| Setup prompt, reading prompt, setup judge, setup unit spec | prompt, judge, spec | `prompts/setup.md`, `prompts/read_component.md`, `judges/setup.md`, `docs/specs/03-setup.spec.md` |
+| Setup prompt, reading prompt, setup judge, setup unit spec | prompt, judge, spec | `prompts/setup.md`, `prompts/read_component.md`, `judges/setup.md`, `docs/specs/setup.spec.md` |
 | Parallel reading | spec | `docs/specs/parallel-reading.spec.md` (PRL-B4, PRL-B9, PRL-B12) |
 | Triage and discovery prompts | prompt | `prompts/triage.md` line 21, `prompts/discovery.md` |
 | Spec rule, task-notes rule, documents rule | rule | `rules/spec.rule.md`, `rules/task-notes.rule.md` (setup note), `rules/documents.rule.md` |
-| Overview spec | spec | `docs/specs/00-overview.spec.md` (Open questions: setup specs need no test per criterion) |
+| Overview spec | spec | `docs/specs/overview.spec.md` (Open questions: setup specs need no test per criterion) |
 | Earlier tool comparison | research | [sdd-tools-comparison.rsrch.md](sdd-tools-comparison.rsrch.md), comparison 6 |
 | Literal specs research (pull request #118, not merged) | research | `specs-state-durable-meaning.rsrch.md` on branch `claude/project-thread-ahzbz8` |
 | Issue #76, setup as a sub-workflow | issue | <https://github.com/dbr0vskyi/tempergraph/issues/76> |

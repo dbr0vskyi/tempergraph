@@ -7,7 +7,7 @@ owner: dbr0vskyi
 status: In progress
 tags: [track-plan, tempergraph, T7]
 tracker: none
-spec: plugins/tempergraph/docs/specs/30-run-events.spec.md
+spec: plugins/tempergraph/docs/specs/run-events.spec.md
 spec_commit: 0a4f06b
 task_id: first-release-t7
 ---
@@ -19,7 +19,7 @@ task_id: first-release-t7
 | Field | Value |
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T7, built in parallel with T5 and T6 (thread "Build run events and detail view") |
-| Specs | [EVT](../specs/30-run-events.spec.md), [RDD](../specs/31-run-detail-document.spec.md), [LOS](../specs/33-local-observability-store.spec.md), [OBS](../specs/15-observability-and-cost.spec.md), [SUP](../specs/86-supervision-metrics.spec.md), [IMD](../specs/43-improvement-data.spec.md), [FBK](../specs/41-feedback-and-judge-reliability.spec.md), [SCO](../specs/87-supervision-cost.spec.md) |
+| Specs | [EVT](../specs/run-events.spec.md), [RDD](../specs/run-detail-document.spec.md), [LOS](../specs/local-observability-store.spec.md), [OBS](../specs/observability-and-cost.spec.md), [SUP](../specs/supervision-metrics.spec.md), [IMD](../specs/improvement-data.spec.md), [FBK](../specs/feedback-and-judge-reliability.spec.md), [SCO](../specs/supervision-cost.spec.md) |
 | Decisions | [ADR-0009](../adr/0009-normalized-session-event-stream.adr.md), [ADR-0022](../adr/0022-observers-read-files-not-sockets.adr.md), [ADR-0023](../adr/0023-local-activity-journal-with-tool-input-summaries.adr.md), [ADR-0027](../adr/0027-in-process-observers-and-wider-hook-events.adr.md), [ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md) |
 
 **Status: Completed (offline).** T7.1 to T7.6 are built; open rows wait on release 3 (7.6.8) or on the owner's machine (7.6.7, P-SUP-3). T7.1 and T7.2: every run-log record carries the EVT-B8, EVT-B9 envelope, sessions are announced by `session_opened`, the activity journal and live file follow EVT-B17, EVT-B18, EVT-B7, EVT-B19 with tool input summaries per §2.5, `events` reads and follows a thread, in-process observers are contained, and `status --detail` builds the RDD document read-only. Status pass: EVT and RDD are `ready-for-implementation`; EVT's two open questions have release 1 defaults (native transcript null until P-CC-7; no changed-line count on `edit`).
@@ -136,7 +136,7 @@ Deviations, recorded in R-150 SCO: the hook reads `tool_response.stdout` and `st
 - **Status row fields handed over by T6:** `settings_digest`, `overridden_keys` and `settings_stale` (RST-B27; T6 row 6.2.5) and `rerun_of` and `reruns` (RRN-B17, RRN-B18, from `run.meta.rerun_of` and the source's `lineage.json`) are filled in `durability/status.py`; `tests/test_reports.py` holds their tests.
 - **Seen while testing, fixed by T5:** after a trip back from `review` to `draft`, the next `review` attempt used to write no `unit_entered` record and keep visit 1, and a trip back wrote `entered_from` as the bare unit name. T5 now opens a new visit entered by `proceed` and writes `back:<unit>`; `tests/test_detail.py` holds the corrected document (RDD-B3 for both units). The reader still maps a bare unit name to `back:<unit>` for logs written before the fix.
 - The monitor mod's fixtures (`plugins/tempergraph-monitor/tests/fixtures/`) are written from this track's documents by `make_fixtures.py`; `test_monitor_fixtures_match_the_engine` fails when the engine's document shape moves away from them. The monitor's own build is the [T10 plan](t10-monitor.plan.md).
-- `status --detail` reads the run's evidence lines from the checkpoint, so they are local only and never in a published document ([SEC-B8 to SEC-B11](../specs/14-security.spec.md)).
+- `status --detail` reads the run's evidence lines from the checkpoint, so they are local only and never in a published document ([SEC-B8 to SEC-B11](../specs/security.spec.md)).
 
 ## 4. Verification
 

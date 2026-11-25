@@ -13,7 +13,7 @@ A person may have several live runs, orchestrations and batches at once. Claude 
 
 ## Decision
 
-We will open one pane, `tempergraph`, whose levels go runs → run → unit → attempt → session, with a breadcrumb; the band and status line stay summaries ([MRV §2.1](../specs/03-run-view.spec.md)).
+We will open one pane, `tempergraph`, whose levels go runs → run → unit → attempt → session, with a breadcrumb; the band and status line stay summaries ([MRV §2.1](../specs/run-view.spec.md)).
 
 ## Options considered
 

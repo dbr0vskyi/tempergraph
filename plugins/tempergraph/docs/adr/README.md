@@ -59,7 +59,7 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0056](0056-threads-move-to-the-new-engine-at-resume-unless-a-release-pins-them.adr.md) | Threads move to the current engine at their next resume; only a checkpoint-format break pins them | proposed |
 | [0057](0057-typed-version-metadata-on-both-sides.adr.md) | Both sides carry typed version metadata: a release record and a typed changelog, a workflow version, range and stamp record | proposed |
 | [0058](0058-upgrade-by-transforms-first-and-a-gated-model-workflow-for-the-rest.adr.md) | Upgrade a workflow by deterministic transforms first, and a built-in gated workflow for what needs judgement | proposed |
-| [0059](0059-an-upgrade-is-done-when-model-free-checks-pass-against-the-old-baseline.adr.md) | An upgrade is done when model-free checks pass against the workflow's own pre-upgrade baseline | proposed |
+| [0059](0059-an-upgrade-is-done-when-model-free-checks-pass.adr.md) | An upgrade is done when model-free checks pass against the workflow's own pre-upgrade baseline | proposed |
 | [0060](0060-registered-workflows-are-reinstalled-and-pinned-never-lost.adr.md) | Registered workflows live in a home registry, are reinstalled into every new engine, and are pinned to the old engine when they break | proposed |
 | [0061](0061-lifecycle-skills-drive-plugin-commands-then-engine-verbs.adr.md) | Lifecycle skills drive Claude Code's plugin commands and then the engine verbs, from one plan and one yes | proposed |
 | [0062](0062-new-node-kinds-keep-the-gated-unit.adr.md) | New node kinds keep the gated unit; LangGraph's self-routing stays out | proposed |
@@ -90,22 +90,22 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0096](0096-exact-formats-first-and-an-optional-word-grammar-echoed-back.adr.md) | Exact date formats are the deterministic path; an optional word grammar sits on top; both are model-free and echoed back | proposed |
 | [0097](0097-schedules-keep-an-iana-zone-and-rfc-5545-daylight-saving-rules.adr.md) | Schedules keep an IANA zone; calendar rules follow wall time, intervals elapsed time, by RFC 5545 | proposed |
 | [0098](0098-missed-slots-catch-up-latest-and-a-live-run-skips-the-next.adr.md) | Missed slots catch up the latest one; a live or paused run skips the next slot; a slot runs at most once | proposed |
-| [0099](0099-a-scheduled-fire-is-an-attested-caller-with-a-capped-unattended-spend.adr.md) | A scheduled fire is an attested `scheduler` caller; unattended spend needs a cap; pauses stay with a person | proposed |
+| [0099](0099-a-scheduled-fire-is-an-attested-caller-with-capped-spend.adr.md) | A scheduled fire is an attested `scheduler` caller; unattended spend needs a cap; pauses stay with a person | proposed |
 | [0100](0100-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md) | The engine owns the run's worktree; executor-native worktrees are not used | proposed |
 | [0101](0101-one-workspace-setting-with-an-auto-default.adr.md) | One workspace setting, `run.workspace`, with an `auto` default resolved from the target and the workflow | proposed |
 | [0102](0102-worktrees-beside-the-repository-with-derived-ref-safe-names.adr.md) | Worktrees live beside the repository by default, with names derived ref-safe from the thread id | proposed |
 | [0103](0103-worktree-removal-is-opt-in-clean-only-and-keeps-the-branch.adr.md) | Worktree removal is opt-in, only of clean worktrees, and never deletes the branch | proposed |
 | [0104](0104-a-new-worktree-starts-from-the-main-checkouts-head.adr.md) | A new run worktree starts from the main checkout's HEAD unless the run names another base | proposed |
-| [0105](0105-a-workflow-package-is-one-claude-plugin-with-a-python-part-and-a-docs-set.adr.md) | A workflow package is one Claude plugin with a Python part and a docs set | proposed |
+| [0105](0105-a-workflow-package-is-one-claude-plugin.adr.md) | A workflow package is one Claude plugin with a Python part and a docs set | proposed |
 | [0106](0106-declare-workflows-with-typed-python-builders-and-text-in-files.adr.md) | Declare workflows with typed Python builders; keep text in files | proposed |
 | [0107](0107-the-good-outcome-is-one-data-file-of-final-and-intermediate-outcomes.adr.md) | The good outcome is one data file of final and intermediate outcomes, each criterion classed by its verifier | proposed |
 | [0108](0108-a-run-is-measured-at-a-final-outcome-gate.adr.md) | A run is measured at a mandatory final outcome gate; unverified criteria are shown, never passed | proposed |
 | [0109](0109-author-backwards-from-the-outcome-preferring-existing-verifications.adr.md) | Author backwards from the good outcome, from any of three entry paths, preferring verifications the person already has | proposed |
 | [0110](0110-check-an-authored-workflow-model-free-then-by-one-consented-trial.adr.md) | Check an authored workflow model-free first, then by one consented, capped trial graded by the person | proposed |
 | [0111](0111-outcome-revisions-are-grader-changes-and-verifiers-climb-a-ladder.adr.md) | Outcome revisions are grader-side changes; weakening is a person's act and verifiers climb a measured ladder | proposed |
-| [0112](0112-plugin-content-reaches-each-executor-by-a-declared-route-or-is-refused.adr.md) | Plugin content reaches each executor by a declared route or the step is refused; workflow plugins ship no hooks, MCP servers or binaries | proposed |
+| [0112](0112-plugin-content-reaches-each-executor-by-a-declared-route.adr.md) | Plugin content reaches each executor by a declared route or the step is refused; workflow plugins ship no hooks, MCP servers or binaries | proposed |
 | [0113](0113-the-workflow-docs-set-is-provisional-until-temperspec-owns-it.adr.md) | Every workflow package carries its own docs set, with provisional rules until temperspec owns them | proposed |
-| [0114](0114-judged-criteria-carry-a-scale-and-authoring-guides-until-criteria-are-clear.adr.md) | Judged criteria carry a scoring scale with seeds; authoring guides the person until every criterion is clear | proposed |
+| [0114](0114-judged-criteria-carry-a-scale-and-authoring-guides-to-clarity.adr.md) | Judged criteria carry a scoring scale with seeds; authoring guides the person until every criterion is clear | proposed |
 | [0115](0115-the-engine-is-a-src-layout-python-package-inside-its-plugin.adr.md) | The engine is a src-layout Python package inside its plugin, with pytest, ruff and mypy | proposed |
 | [0116](0116-session-logs-are-read-model-free-first-and-by-a-model-only-on-a-plan.adr.md) | Session logs are read model-free first, and by a model only on a plan | proposed |
 | [0117](0117-review-depth-follows-the-improvement-mode-and-named-signals.adr.md) | Review depth follows the improvement mode and named signals | proposed |
@@ -113,13 +113,13 @@ Each record states one decision, the options weighed, and when to revisit it. Al
 | [0119](0119-review-observations-are-candidates-corroborated-before-they-file.adr.md) | Review observations are candidates, corroborated before they file | proposed |
 | [0120](0120-a-workflow-plugin-name-is-the-workflow-name-plus-tgraph.adr.md) | A workflow plugin's name is the workflow name plus `-tgraph` | accepted |
 | [0121](0121-ladders-climb-only-on-trusted-substantive-evidence.adr.md) | Ladders climb only on trusted, substantive evidence: effort first, one model step last | proposed |
-| [0122](0122-a-judge-is-raised-by-a-model-free-risk-rule-and-every-level-is-calibrated.adr.md) | A judge is raised by a model-free risk rule, and every level is calibrated | proposed |
+| [0122](0122-a-judge-is-raised-by-a-model-free-risk-rule.adr.md) | A judge is raised by a model-free risk rule, and every level is calibrated | proposed |
 | [0123](0123-complexity-chooses-a-decomposition-through-a-measured-switch.adr.md) | Complexity chooses a decomposition through a measured switch, failing safe and re-arming one way | proposed |
 | [0124](0124-promotion-is-a-model-free-stamp-per-workflow-version.adr.md) | Promotion is a model-free stamp per workflow version; pipelines come in a later release | proposed |
 | [0125](0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md) | Release 2 adds upgrade, strict ladders, judge by risk and complexity routing to ADR-0090's forecast | proposed |
-| [0126](0126-a-run-carries-a-scrubbed-thread-state-on-its-own-branch-and-deletes-it-when-done.adr.md) | A run carries a scrubbed thread state on its own branch and deletes it when done | proposed |
-| [0127](0127-outside-git-the-state-root-is-found-by-walk-up-and-the-guard-hashes-files.adr.md) | Outside git, the state root is found by walk-up and the guard hashes files | proposed |
-| [0128](0128-windows-is-supported-natively-with-job-objects-and-probes-before-judges.adr.md) | Windows is supported natively, with job objects, and probes before judges | proposed |
-| [0129](0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md) | The engine names no workflow, and takes a workflow's request as a general capability | accepted |
-| [0132](0132-release-three-is-workflows-that-compose-run-in-parallel-and-grade-in-the-pipeline.adr.md) | Release 3 is workflows that compose, run in parallel and are graded in the pipeline | accepted |
+| [0126](0126-a-run-carries-scrubbed-thread-state-on-its-own-branch.adr.md) | A run carries a scrubbed thread state on its own branch and deletes it when done | proposed |
+| [0127](0127-outside-git-the-state-root-is-found-by-walk-up.adr.md) | Outside git, the state root is found by walk-up and the guard hashes files | proposed |
+| [0128](0128-windows-is-supported-natively-with-job-objects.adr.md) | Windows is supported natively, with job objects, and probes before judges | proposed |
+| [0129](0129-the-engine-names-no-workflow.adr.md) | The engine names no workflow, and takes a workflow's request as a general capability | accepted |
+| [0132](0132-release-three-composes-runs-in-parallel-and-grades-in-the-pipeline.adr.md) | Release 3 is workflows that compose, run in parallel and are graded in the pipeline | accepted |
 | [0133](0133-a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap.adr.md) | A sub-workflow runs inside its parent's thread, workspace and cap | accepted |

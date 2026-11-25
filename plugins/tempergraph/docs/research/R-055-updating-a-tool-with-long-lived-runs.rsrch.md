@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The owner asked for a command that updates the engine, one part of which is updating the CLI installation. tempergraph is delivered as a Claude Code plugin whose skills drive a CLI installed in a managed Python environment ([LIF](../specs/18-lifecycle-and-evals.spec.md)), and its runs are durable: a run may sit at a pause for days ([DUR](../specs/09-durability-and-resume.spec.md)), an orchestration supervises many runs for hours ([ORC](../specs/45-orchestration.spec.md)), and every repository keeps a versioned store ([LOS](../specs/33-local-observability-store.spec.md)). This note asks how the parts tempergraph depends on update, and how comparable systems treat work that is in flight when the code under it changes. It informs [UPD](../specs/60-engine-update.spec.md), [MIG](../specs/62-state-and-run-migration.spec.md), [ADR-0055](../adr/0055-side-by-side-engine-environments-switched-atomically.adr.md) and [ADR-0056](../adr/0056-threads-move-to-the-new-engine-at-resume-unless-a-release-pins-them.adr.md).
+The owner asked for a command that updates the engine, one part of which is updating the CLI installation. tempergraph is delivered as a Claude Code plugin whose skills drive a CLI installed in a managed Python environment ([LIF](../specs/lifecycle-and-evals.spec.md)), and its runs are durable: a run may sit at a pause for days ([DUR](../specs/durability-and-resume.spec.md)), an orchestration supervises many runs for hours ([ORC](../specs/orchestration.spec.md)), and every repository keeps a versioned store ([LOS](../specs/local-observability-store.spec.md)). This note asks how the parts tempergraph depends on update, and how comparable systems treat work that is in flight when the code under it changes. It informs [UPD](../specs/engine-update.spec.md), [MIG](../specs/state-and-run-migration.spec.md), [ADR-0055](../adr/0055-side-by-side-engine-environments-switched-atomically.adr.md) and [ADR-0056](../adr/0056-threads-move-to-the-new-engine-at-resume-unless-a-release-pins-them.adr.md).
 
 ## Sources consulted
 
@@ -47,7 +47,7 @@ The uv and pipx pages were seen only as search results; nothing below rests on t
 | U14 | LangGraph recommends new state fields as optional, removals kept for at least one drain cycle, renames as add-then-remove, and a version stamped **at thread start** for business-level branching. | supported (LangGraph docs) |
 | U15 | Temporal offers two behaviours per workflow: **Pinned** ("guaranteed to complete on a single Worker Deployment Version") and **Auto-Upgrade** (moves to the new current version, and must be kept replay-safe by hand). A version no longer current that still has pinned runs is **draining**; it is **drained** when they have all closed, and then may be retired. | supported (Temporal docs) |
 | U16 | In Temporal, pinned parents pass the pin to children; auto-upgrade workflows never pass one on. | supported (Temporal docs) |
-| U17 | Checkpoint databases written by older engines are kept as fixtures and resumed in tests, for every thread state. | supported ([DUR-B6](../specs/09-durability-and-resume.spec.md)) |
+| U17 | Checkpoint databases written by older engines are kept as fixtures and resumed in tests, for every thread state. | supported ([DUR-B6](../specs/durability-and-resume.spec.md)) |
 
 ## Conclusions
 

@@ -1,7 +1,7 @@
 ---
 task: r2-t7
 complexity: complex
-specs: [plugins/tempergraph/docs/specs/73-ask-unit.spec.md, plugins/tempergraph/docs/specs/07-gate-and-human.spec.md, plugins/tempergraph/docs/specs/74-flow-extensions.spec.md, plugins/tempergraph/docs/specs/03-compiler-and-flow.spec.md, plugins/tempergraph/docs/specs/75-check-contract-and-command-runs.spec.md, plugins/tempergraph/docs/specs/90-run-outcome.spec.md, plugins/tempergraph/docs/specs/17-engine-cli.spec.md, plugins/tempergraph/docs/specs/30-run-events.spec.md]
+specs: [plugins/tempergraph/docs/specs/ask-unit.spec.md, plugins/tempergraph/docs/specs/gate-and-human.spec.md, plugins/tempergraph/docs/specs/flow-extensions.spec.md, plugins/tempergraph/docs/specs/compiler-and-flow.spec.md, plugins/tempergraph/docs/specs/check-contract-and-command-runs.spec.md, plugins/tempergraph/docs/specs/run-outcome.spec.md, plugins/tempergraph/docs/specs/engine-cli.spec.md, plugins/tempergraph/docs/specs/run-events.spec.md]
 ---
 
 # Plan: node features and lifecycle hooks (R2-T7)

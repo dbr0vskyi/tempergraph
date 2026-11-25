@@ -11,11 +11,11 @@ Numbers 0130 and 0131 are held by the pull-request gate research, in review.
 
 ## Context
 
-[CMP-B10 to CMP-B16](../specs/03-compiler-and-flow.spec.md) lists a sub-workflow unit in one row: a registered workflow compiled as a subgraph under the parent's checkpointer, at most three deep, never recursive. The first real workflow asks for one: its repository setup should be a workflow of its own, run alone or inside the delivery run ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F2, F3). Before it can be built, one choice decides most of the rest: is the child a part of the parent's run, or a run of its own that the parent starts and waits for?
+[CMP-B10 to CMP-B16](../specs/compiler-and-flow.spec.md) lists a sub-workflow unit in one row: a registered workflow compiled as a subgraph under the parent's checkpointer, at most three deep, never recursive. The first real workflow asks for one: its repository setup should be a workflow of its own, run alone or inside the delivery run ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F2, F3). Before it can be built, one choice decides most of the rest: is the child a part of the parent's run, or a run of its own that the parent starts and waits for?
 
 ## Decision
 
-We will run a child as a subgraph inside the parent's run: one thread, one checkpoint, one lock, one `run.jsonl`, one workspace, one cost cap and one finalizer, the parent's. The child keeps what makes it the same workflow when run alone: its own units, gates, budgets, outcome gate, judge calibration and findings. The details are [SWF](../specs/99-subworkflow-unit.spec.md).
+We will run a child as a subgraph inside the parent's run: one thread, one checkpoint, one lock, one `run.jsonl`, one workspace, one cost cap and one finalizer, the parent's. The child keeps what makes it the same workflow when run alone: its own units, gates, budgets, outcome gate, judge calibration and findings. The details are [SWF](../specs/subworkflow-unit.spec.md).
 
 ## Options considered
 

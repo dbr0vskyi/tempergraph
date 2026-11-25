@@ -9,7 +9,7 @@ On 2026-11-20 the owner asked to start the research and specs for release 2, add
 | # | Source | Type | Where |
 |---|---|---|---|
 | S1 | ADR-0090 release 2 and 3 rows; the first-release plan's excluded lists (X2-1 to X2-26, X3-13) | Design set | [ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md), [first-release plan §1.3](../plans/first-release.plan.md) |
-| S2 | Front matter `status` and the Open questions table of every spec named below, read on this branch | Design set | [specs](../specs/00-overview.spec.md) |
+| S2 | Front matter `status` and the Open questions table of every spec named below, read on this branch | Design set | [specs](../specs/overview.spec.md) |
 | S3 | [R-011](R-011-design-gap-review.rsrch.md) G9 (non-git workflows) and U3 (platforms) | Design set | research/ |
 | S4 | [R-120](R-120-effort-ladders-and-one-step-model-escalation.rsrch.md), [R-121](R-121-judge-model-by-risk-and-evidence-for-escalation.rsrch.md), [R-126](R-126-routing-by-complexity-between-decompositions.rsrch.md) | Design set | research/ |
 | S5 | Engine code on `main`: `improve/child.py` and `improve/review.py` (loop alias), `run/nodes.py` (retry-count ladder) | Code | `plugins/tempergraph/engine/src/tempergraph/` |
@@ -20,24 +20,24 @@ On 2026-11-20 the owner asked to start the research and specs for release 2, add
 
 | Item | Owning spec(s), status | Open questions | Research | Verdict |
 |---|---|---|---|---|
-| Eval suites, live scoring, harvest, replay, eval skill | [EVS](../specs/51-eval-suites.spec.md) `review` | 2 (live regression suite for stable; $20 suite cap) | R-045, R-046 | Status pass |
-| Promotion to `local-stable`, stages (pipeline stage in a later release) | [PRO](../specs/95-promotion-check.spec.md) `review` (new), [SUP-B17](../specs/86-supervision-metrics.spec.md) `review` | 2 (state between machines; bars) | ADR-0041, R-085 | **Was the gap of X2-1, now specified**; status pass; P-PRO-1 moves to the later release |
-| Carried run state on a branch | [CAR](../specs/96-run-state-on-a-branch.spec.md) `review` (new) | 2 | R-133 | New, from the owner's 2026-11-20 stopgap for pipelines |
-| State root outside git | [WSP-B15 to WSP-B18](../specs/13-workspace-and-concurrency.spec.md) `review` | 2 in R-131 | R-131 | New section |
-| Windows | [WIN](../specs/97-windows-support.spec.md) `review` (new) | 2 | R-132 | New; probes P-WIN-1 to P-WIN-3 |
-| `update`, rollback, migration, changelog, update skill | [UPD](../specs/60-engine-update.spec.md) `ready-for-implementation`, [MIG](../specs/62-state-and-run-migration.spec.md) `review`, [VER](../specs/61-version-metadata.spec.md) `ready-for-implementation`, [LSK](../specs/65-lifecycle-skills.spec.md) `ready-for-implementation` | 1 in MIG (thread converter) | R-055 to R-057 | Status pass of MIG |
-| Workflow upgrade, upgrade workflow, upgrade skill (moved from release 3) | [WUP](../specs/63-workflow-upgrade.spec.md) `ready-for-implementation`, [UWF](../specs/64-upgrade-workflow.spec.md) `review`, [LSK](../specs/65-lifecycle-skills.spec.md) | 1 in UWF (grouping items per file) | R-056 | Status pass of UWF. UWF uses two sequential maps and EVS fixtures, both release 2, so the track follows MAP and EVS |
-| Effort ladder, one-step escalation, `xhigh` | [LAD](../specs/92-effort-ladder-and-model-escalation.spec.md) `review` (new) | 3 (bars; check-fail escalation; `xhigh` probe) | R-120, R-121 | New; probe P-LAD-1 |
-| Judge model by risk | [JRK](../specs/93-judge-model-by-risk.spec.md) `review` (new) | 1 (stock rules) | R-121 | New |
-| Complexity switches | [CXR](../specs/94-complexity-routing.spec.md) `review` (new), [SWM](../specs/79-measured-switches.spec.md) `review`, [MAP](../specs/77-map-unit.spec.md) `review` | 2 in CXR, 1 in SWM | R-126, R-075 | New; status pass of SWM and MAP |
-| Audit history, history rules, tool surface audit | [AUD](../specs/55-workflow-audit.spec.md), [ARC](../specs/56-audit-rule-catalog.spec.md) `ready-for-implementation`, [TSA](../specs/57-tool-surface-audit.spec.md) `review` | 2 in TSA | R-050 to R-052 | Status pass of TSA |
-| Ask unit, event waits, breakpoints, deadlines, fallback target, parallel read-only branches | [ASK](../specs/73-ask-unit.spec.md) `review`, [HUM](../specs/07-gate-and-human.spec.md), [FLX](../specs/74-flow-extensions.spec.md) `review` | none | R-060 | Status pass |
-| Script cache, `self-check`, audit judge, judge MCP views | [SCR](../specs/70-script-units-and-hybrid-steps.spec.md), [CHK-B17](../specs/75-check-contract-and-command-runs.spec.md), [JDG-B7](../specs/05-judge-and-verdict.spec.md), [GRD](../specs/06-independence-guard.spec.md), [ECC](../specs/11-executor-claude-code.spec.md), all `ready-for-implementation` | 1 in GRD | R-060, R-001 | Ready; MCP views need the filtering-proxy live check |
-| Lifecycle hooks, in-process observers, wider hook events | [HOK-B1 to HOK-B6](../specs/24-lifecycle-hooks.spec.md), [EVT-B22, EVT-B23, EVT-B24](../specs/30-run-events.spec.md) `ready-for-implementation` | 2 in EVT | R-021 | Ready |
-| Schedules, release 2 slice | [SCH](../specs/83-schedules.spec.md) `review`, [TCK](../specs/84-schedule-ticks-and-unattended-fires.spec.md) `review` | 3 and 2; "Is scheduling in the first release?" is answered by ADR-0090 and should be closed | R-095 | Status pass; probes P-SCH-1, P-SCH-2 |
-| Worktree extras | [WTR](../specs/82-worktree-mode.spec.md) `ready-for-implementation` | 2 | R-100 | Ready |
-| Session review in stable mode | [SRV](../specs/44-session-review.spec.md) `ready-for-implementation` | 4 | R-110 | Ready |
-| **State root outside git** (X2-24) | none: [WSP-B8, WSP-B9, WSP-B11](../specs/13-workspace-and-concurrency.spec.md) assumes git | — | R-011 G9 proposes a resolution only | **Needs a spec section** (WSP) and a decision record |
+| Eval suites, live scoring, harvest, replay, eval skill | [EVS](../specs/eval-suites.spec.md) `review` | 2 (live regression suite for stable; $20 suite cap) | R-045, R-046 | Status pass |
+| Promotion to `local-stable`, stages (pipeline stage in a later release) | [PRO](../specs/promotion-check.spec.md) `review` (new), [SUP-B17](../specs/supervision-metrics.spec.md) `review` | 2 (state between machines; bars) | ADR-0041, R-085 | **Was the gap of X2-1, now specified**; status pass; P-PRO-1 moves to the later release |
+| Carried run state on a branch | [CAR](../specs/run-state-on-a-branch.spec.md) `review` (new) | 2 | R-133 | New, from the owner's 2026-11-20 stopgap for pipelines |
+| State root outside git | [WSP-B15 to WSP-B18](../specs/workspace-and-concurrency.spec.md) `review` | 2 in R-131 | R-131 | New section |
+| Windows | [WIN](../specs/windows-support.spec.md) `review` (new) | 2 | R-132 | New; probes P-WIN-1 to P-WIN-3 |
+| `update`, rollback, migration, changelog, update skill | [UPD](../specs/engine-update.spec.md) `ready-for-implementation`, [MIG](../specs/state-and-run-migration.spec.md) `review`, [VER](../specs/version-metadata.spec.md) `ready-for-implementation`, [LSK](../specs/lifecycle-skills.spec.md) `ready-for-implementation` | 1 in MIG (thread converter) | R-055 to R-057 | Status pass of MIG |
+| Workflow upgrade, upgrade workflow, upgrade skill (moved from release 3) | [WUP](../specs/workflow-upgrade.spec.md) `ready-for-implementation`, [UWF](../specs/upgrade-workflow.spec.md) `review`, [LSK](../specs/lifecycle-skills.spec.md) | 1 in UWF (grouping items per file) | R-056 | Status pass of UWF. UWF uses two sequential maps and EVS fixtures, both release 2, so the track follows MAP and EVS |
+| Effort ladder, one-step escalation, `xhigh` | [LAD](../specs/effort-ladder-and-model-escalation.spec.md) `review` (new) | 3 (bars; check-fail escalation; `xhigh` probe) | R-120, R-121 | New; probe P-LAD-1 |
+| Judge model by risk | [JRK](../specs/judge-model-by-risk.spec.md) `review` (new) | 1 (stock rules) | R-121 | New |
+| Complexity switches | [CXR](../specs/complexity-routing.spec.md) `review` (new), [SWM](../specs/measured-switches.spec.md) `review`, [MAP](../specs/map-unit.spec.md) `review` | 2 in CXR, 1 in SWM | R-126, R-075 | New; status pass of SWM and MAP |
+| Audit history, history rules, tool surface audit | [AUD](../specs/workflow-audit.spec.md), [ARC](../specs/audit-rule-catalog.spec.md) `ready-for-implementation`, [TSA](../specs/tool-surface-audit.spec.md) `review` | 2 in TSA | R-050 to R-052 | Status pass of TSA |
+| Ask unit, event waits, breakpoints, deadlines, fallback target, parallel read-only branches | [ASK](../specs/ask-unit.spec.md) `review`, [HUM](../specs/gate-and-human.spec.md), [FLX](../specs/flow-extensions.spec.md) `review` | none | R-060 | Status pass |
+| Script cache, `self-check`, audit judge, judge MCP views | [SCR](../specs/script-units-and-hybrid-steps.spec.md), [CHK-B17](../specs/check-contract-and-command-runs.spec.md), [JDG-B7](../specs/judge-and-verdict.spec.md), [GRD](../specs/independence-guard.spec.md), [ECC](../specs/executor-claude-code.spec.md), all `ready-for-implementation` | 1 in GRD | R-060, R-001 | Ready; MCP views need the filtering-proxy live check |
+| Lifecycle hooks, in-process observers, wider hook events | [HOK-B1 to HOK-B6](../specs/lifecycle-hooks.spec.md), [EVT-B22, EVT-B23, EVT-B24](../specs/run-events.spec.md) `ready-for-implementation` | 2 in EVT | R-021 | Ready |
+| Schedules, release 2 slice | [SCH](../specs/schedules.spec.md) `review`, [TCK](../specs/schedule-ticks-and-unattended-fires.spec.md) `review` | 3 and 2; "Is scheduling in the first release?" is answered by ADR-0090 and should be closed | R-095 | Status pass; probes P-SCH-1, P-SCH-2 |
+| Worktree extras | [WTR](../specs/worktree-mode.spec.md) `ready-for-implementation` | 2 | R-100 | Ready |
+| Session review in stable mode | [SRV](../specs/session-review.spec.md) `ready-for-implementation` | 4 | R-110 | Ready |
+| **State root outside git** (X2-24) | none: [WSP-B8, WSP-B9, WSP-B11](../specs/workspace-and-concurrency.spec.md) assumes git | — | R-011 G9 proposes a resolution only | **Needs a spec section** (WSP) and a decision record |
 | **Windows** (X2-25) | none | — | R-011 U3 names it only | **Needs research**: process groups as job objects, path and lock rules, the shim, schedule triggers, worktrees |
 
 ### F2 Contracts the new specs add to existing ones `confirmed`
@@ -57,16 +57,16 @@ This branch updates them in place, so the set stays consistent:
 
 | # | Item | Where it goes |
 |---|---|---|
-| G1 | State root outside git | Resolved: [WSP-B15 to WSP-B18](../specs/13-workspace-and-concurrency.spec.md), ADR-0127, R-131 |
-| G2 | Windows | Resolved: [WIN](../specs/97-windows-support.spec.md), ADR-0128, R-132 |
-| G3 | Where a run's state lives between machines | Resolved for release 2 by [CAR](../specs/96-run-state-on-a-branch.spec.md) (ADR-0126); pipelines move to a later release |
+| G1 | State root outside git | Resolved: [WSP-B15 to WSP-B18](../specs/workspace-and-concurrency.spec.md), ADR-0127, R-131 |
+| G2 | Windows | Resolved: [WIN](../specs/windows-support.spec.md), ADR-0128, R-132 |
+| G3 | Where a run's state lives between machines | Resolved for release 2 by [CAR](../specs/run-state-on-a-branch.spec.md) (ADR-0126); pipelines move to a later release |
 | G4 | The loop alias `medium` hard-coded in `improve/child.py` and `improve/review.py`, where the loop may need the stronger model and one override pair for model and time | A setting in RST, small; noted since R-120 |
 | G5 | Status passes: EVS, PRO, SUP, MIG, UWF, LAD, JRK, CXR, SWM, MAP, TSA, ASK, FLX, SCH, TCK, each turning its open questions into recorded defaults | First phase of each track (as release 1's EC-2) |
 | G6 | Live probes: P-LAD-1 (`--effort xhigh` and `max` per alias), P-WIN-1 to P-WIN-3 (on a Windows machine), plus release 1's pending probes the release 2 items build on | [Second-release plan §2](../plans/second-release.plan.md) |
 
 ### F5 What the first authored workflow asks of the engine `confirmed`
 
-The first authored workflow package (merged 2026-11-21) lists the engine limits it works around in its overview spec and backlog. By [ADR-0129](../adr/0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md) each is stated here for any workflow:
+The first authored workflow package (merged 2026-11-21) lists the engine limits it works around in its overview spec and backlog. By [ADR-0129](../adr/0129-the-engine-names-no-workflow.adr.md) each is stated here for any workflow:
 
 | # | Capability any workflow can use | Release 2 owner | State |
 |---|---|---|---|

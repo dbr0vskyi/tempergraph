@@ -9,7 +9,7 @@
 
 ## Context
 
-Several components already analyze a workflow or its runs without a model: validation and its warnings ([WFM](../specs/02-workflow-model.spec.md)), prompt lint and the judge readiness report ([LIF](../specs/18-lifecycle-and-evals.spec.md)), the cost lens's eight rules and the friction causes ([SIL](../specs/16-self-improvement.spec.md)), judge calibration ([JCL](../specs/50-judge-calibration.spec.md)), eval suites ([EVS](../specs/51-eval-suites.spec.md)) and the improvement backlog and proposals ([PRP](../specs/40-improvement-proposals.spec.md)). The coordinator asked that the audit relate to prompt checks, evals and the self-improvement loop rather than duplicate them. A tool that files on its own has a cost: duplicate issues, and a flag raised on nearly every run that ranks nothing ([R-050 N1, N2](../research/R-050-why-runs-fail-stall-repeat-or-overspend.rsrch.md)).
+Several components already analyze a workflow or its runs without a model: validation and its warnings ([WFM](../specs/workflow-model.spec.md)), prompt lint and the judge readiness report ([LIF](../specs/lifecycle-and-evals.spec.md)), the cost lens's eight rules and the friction causes ([SIL](../specs/self-improvement.spec.md)), judge calibration ([JCL](../specs/judge-calibration.spec.md)), eval suites ([EVS](../specs/eval-suites.spec.md)) and the improvement backlog and proposals ([PRP](../specs/improvement-proposals.spec.md)). The coordinator asked that the audit relate to prompt checks, evals and the self-improvement loop rather than duplicate them. A tool that files on its own has a cost: duplicate issues, and a flag raised on nearly every run that ranks nothing ([R-050 N1, N2](../research/R-050-why-runs-fail-stall-repeat-or-overspend.rsrch.md)).
 
 ## Decision
 
@@ -18,7 +18,7 @@ We will make the audit a **reader and a joiner**:
 | Component | The audit |
 |---|---|
 | Validation | Calls it first and shows its findings under `validate:<code>` |
-| Prompt lint | Runs it and shows its findings; rules about prompt text belong there, so the audit's need for checks on human-wait instructions, accepting sentences, references to missing skills, agents, files or tools, and oversized model-facing files is met by adding them to prompt lint. What needs the host or a baseline (names resolved against the executor, the catalog and installed plugins; renamed or retired tool names; text against declarations; rendered size) is the audit's own prompt audit ([PRA](../specs/58-prompt-audit.spec.md)) |
+| Prompt lint | Runs it and shows its findings; rules about prompt text belong there, so the audit's need for checks on human-wait instructions, accepting sentences, references to missing skills, agents, files or tools, and oversized model-facing files is met by adding them to prompt lint. What needs the host or a baseline (names resolved against the executor, the catalog and installed plugins; renamed or retired tool names; text against declarations; rendered size) is the audit's own prompt audit ([PRA](../specs/prompt-audit.spec.md)) |
 | Readiness report, judge calibration | Shows each gate's grade and acceptance state; never scores a judge |
 | Evals | Shows whether suites exist and are stale; never runs one, since a rubric run spends |
 | Cost lens | Calls the same model-free rule functions over the audit's window and shows their output |
@@ -60,4 +60,4 @@ The audit owns only rules no one else owns: host checks, timeout fit and hold-ti
 
 ## Revisit when
 
-The proposer workflow ([PRP](../specs/40-improvement-proposals.spec.md)) wants audit findings as input context, or `promote-check` makes an audit criterion part of graduation.
+The proposer workflow ([PRP](../specs/improvement-proposals.spec.md)) wants audit findings as input context, or `promote-check` makes an audit criterion part of graduation.

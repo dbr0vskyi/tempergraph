@@ -11,7 +11,7 @@ The questions: what in the engine depends on git, what each dependency is for, a
 | # | Source | Type | Where |
 |---|---|---|---|
 | S3 | [R-011](R-011-design-gap-review.rsrch.md) G9: proposed fallback state root, `in_place` only, file hashes for the guard | Design set | research/ |
-| S4 | This design: WSP-B8, WSP-B9, WSP-B11 and C10, LOS-B7, LOS-B8, LOS-B9, WTR, GRD (the head-and-status fingerprint), CHK `GitFacts`, FIN (push, draft PR), SIL filing, PRP trials (worktrees at a base), VER stamp and digest, SCH | Design set | [specs](../specs/00-overview.spec.md) |
+| S4 | This design: WSP-B8, WSP-B9, WSP-B11 and C10, LOS-B7, LOS-B8, LOS-B9, WTR, GRD (the head-and-status fingerprint), CHK `GitFacts`, FIN (push, draft PR), SIL filing, PRP trials (worktrees at a base), VER stamp and digest, SCH | Design set | [specs](../specs/overview.spec.md) |
 | S5 | Engine code on `main`: `git.py` (`main_checkout`, `fingerprint`, `branch`, `changed_paths`), `store/layout.py` (`state_root_path`) | Code | `plugins/tempergraph/engine/src/tempergraph/` |
 
 ## Key findings

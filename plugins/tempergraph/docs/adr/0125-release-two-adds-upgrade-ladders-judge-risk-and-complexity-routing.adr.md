@@ -27,24 +27,24 @@ We will commit release 2 to the scope below, planned in the [second-release plan
 
 | Capability | Release | Change from ADR-0090 |
 |---|---|---|
-| Eval suites, live scoring, harvest and replay, the eval skill ([EVS](../specs/51-eval-suites.spec.md)) | 2 | — |
-| Promotion check, stages and stamp to `local-stable` ([PRO](../specs/95-promotion-check.spec.md), [ADR-0124](0124-promotion-is-a-model-free-stamp-per-workflow-version.adr.md)) | 2 | Now specified |
-| **Run state carried on its own branch**, deleted when the run finishes ([CAR](../specs/96-run-state-on-a-branch.spec.md), [ADR-0126](0126-a-run-carries-a-scrubbed-thread-state-on-its-own-branch-and-deletes-it-when-done.adr.md)) | 2 | New, owner 2026-11-20: the stopgap until pipelines |
+| Eval suites, live scoring, harvest and replay, the eval skill ([EVS](../specs/eval-suites.spec.md)) | 2 | — |
+| Promotion check, stages and stamp to `local-stable` ([PRO](../specs/promotion-check.spec.md), [ADR-0124](0124-promotion-is-a-model-free-stamp-per-workflow-version.adr.md)) | 2 | Now specified |
+| **Run state carried on its own branch**, deleted when the run finishes ([CAR](../specs/run-state-on-a-branch.spec.md), [ADR-0126](0126-a-run-carries-scrubbed-thread-state-on-its-own-branch.adr.md)) | 2 | New, owner 2026-11-20: the stopgap until pipelines |
 | **CI pipelines**: `promote-check --to pipeline`, the `pipeline` stage, the regressed watch, pipeline runs | later (3) | Moved out of release 2 by the owner on 2026-11-20 |
-| `update`, rollback, migration, changelog and transforms, the update skill ([UPD](../specs/60-engine-update.spec.md), [MIG](../specs/62-state-and-run-migration.spec.md), [VER](../specs/61-version-metadata.spec.md), [LSK](../specs/65-lifecycle-skills.spec.md)) | 2 | — |
-| **Workflow upgrade beyond `--check`, the built-in upgrade workflow, the upgrade skill** ([WUP](../specs/63-workflow-upgrade.spec.md), [UWF](../specs/64-upgrade-workflow.spec.md), [LSK](../specs/65-lifecycle-skills.spec.md)) | 2 | Moved from 3 by the owner |
-| **Effort ladder and one-step model escalation**, `xhigh` effort, retirement of the retry-count model ladder ([LAD](../specs/92-effort-ladder-and-model-escalation.spec.md), [ADR-0121](0121-ladders-climb-only-on-trusted-substantive-evidence.adr.md)) | 2 | New |
-| **Judge model by risk** ([JRK](../specs/93-judge-model-by-risk.spec.md), [ADR-0122](0122-a-judge-is-raised-by-a-model-free-risk-rule-and-every-level-is-calibrated.adr.md)) | 2 | New |
-| **Complexity switches between decompositions** ([CXR](../specs/94-complexity-routing.spec.md), [ADR-0123](0123-complexity-chooses-a-decomposition-through-a-measured-switch.adr.md)) with measured switches ([SWM](../specs/79-measured-switches.spec.md)) and the sequential map ([MAP](../specs/77-map-unit.spec.md)) | 2 | New; pulls SWM and MAP to the front of the release |
-| Audit history layer, history rules, tool surface audit ([AUD](../specs/55-workflow-audit.spec.md), [ARC](../specs/56-audit-rule-catalog.spec.md), [TSA](../specs/57-tool-surface-audit.spec.md)) | 3 | Moved from 2 by the owner on 2026-11-21: nothing uses it yet |
-| Ask unit, event waits, breakpoints, deadlines, fallback target, parallel read-only branches, `self-check` ([ASK](../specs/73-ask-unit.spec.md), [HUM](../specs/07-gate-and-human.spec.md), [FLX](../specs/74-flow-extensions.spec.md), [SCR](../specs/70-script-units-and-hybrid-steps.spec.md), [CHK](../specs/75-check-contract-and-command-runs.spec.md), [JDG](../specs/05-judge-and-verdict.spec.md), [GRD](../specs/06-independence-guard.spec.md)) | 2 | — |
+| `update`, rollback, migration, changelog and transforms, the update skill ([UPD](../specs/engine-update.spec.md), [MIG](../specs/state-and-run-migration.spec.md), [VER](../specs/version-metadata.spec.md), [LSK](../specs/lifecycle-skills.spec.md)) | 2 | — |
+| **Workflow upgrade beyond `--check`, the built-in upgrade workflow, the upgrade skill** ([WUP](../specs/workflow-upgrade.spec.md), [UWF](../specs/upgrade-workflow.spec.md), [LSK](../specs/lifecycle-skills.spec.md)) | 2 | Moved from 3 by the owner |
+| **Effort ladder and one-step model escalation**, `xhigh` effort, retirement of the retry-count model ladder ([LAD](../specs/effort-ladder-and-model-escalation.spec.md), [ADR-0121](0121-ladders-climb-only-on-trusted-substantive-evidence.adr.md)) | 2 | New |
+| **Judge model by risk** ([JRK](../specs/judge-model-by-risk.spec.md), [ADR-0122](0122-a-judge-is-raised-by-a-model-free-risk-rule.adr.md)) | 2 | New |
+| **Complexity switches between decompositions** ([CXR](../specs/complexity-routing.spec.md), [ADR-0123](0123-complexity-chooses-a-decomposition-through-a-measured-switch.adr.md)) with measured switches ([SWM](../specs/measured-switches.spec.md)) and the sequential map ([MAP](../specs/map-unit.spec.md)) | 2 | New; pulls SWM and MAP to the front of the release |
+| Audit history layer, history rules, tool surface audit ([AUD](../specs/workflow-audit.spec.md), [ARC](../specs/audit-rule-catalog.spec.md), [TSA](../specs/tool-surface-audit.spec.md)) | 3 | Moved from 2 by the owner on 2026-11-21: nothing uses it yet |
+| Ask unit, event waits, breakpoints, deadlines, fallback target, parallel read-only branches, `self-check` ([ASK](../specs/ask-unit.spec.md), [HUM](../specs/gate-and-human.spec.md), [FLX](../specs/flow-extensions.spec.md), [SCR](../specs/script-units-and-hybrid-steps.spec.md), [CHK](../specs/check-contract-and-command-runs.spec.md), [JDG](../specs/judge-and-verdict.spec.md), [GRD](../specs/independence-guard.spec.md)) | 2 | — |
 | Script cache, sampled audit judge, judge MCP views | 3 | Moved from 2 by the owner on 2026-11-21 |
 | Deliverables required per path, a repository-level command declaration, `GitFacts.pushed` set ([R-130](../research/R-130-release-two-readiness-and-gaps.rsrch.md) F5) | 2 | New, asked by the first authored workflow, stated for any workflow |
 | Lifecycle hooks, wider hook events | 2 | — |
 | In-process observers | 3 | Moved from 2 by the owner on 2026-11-21 |
-| Schedules, release 2 slice ([R-150 SCH](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md), [TCK](../specs/84-schedule-ticks-and-unattended-fires.spec.md)); worktree extras ([WTR](../specs/82-worktree-mode.spec.md)); session review in stable mode ([SRV](../specs/44-session-review.spec.md)) | 3 | Moved from 2 by the owner on 2026-11-21 |
-| State root outside git ([WSP-B15 to WSP-B18](../specs/13-workspace-and-concurrency.spec.md), [ADR-0127](0127-outside-git-the-state-root-is-found-by-walk-up-and-the-guard-hashes-files.adr.md)) | 2 | Researched in [R-131](../research/R-131-running-outside-a-git-repository.rsrch.md) |
-| Native Windows ([WIN](../specs/97-windows-support.spec.md), [ADR-0128](0128-windows-is-supported-natively-with-job-objects-and-probes-before-judges.adr.md)) | 3 | Moved from 2 by the owner on 2026-11-21: its probes need a Windows machine. Designed in [R-132](../research/R-132-running-on-windows.rsrch.md) |
+| Schedules, release 2 slice ([R-150 SCH](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md), [TCK](../specs/schedule-ticks-and-unattended-fires.spec.md)); worktree extras ([WTR](../specs/worktree-mode.spec.md)); session review in stable mode ([SRV](../specs/session-review.spec.md)) | 3 | Moved from 2 by the owner on 2026-11-21 |
+| State root outside git ([WSP-B15 to WSP-B18](../specs/workspace-and-concurrency.spec.md), [ADR-0127](0127-outside-git-the-state-root-is-found-by-walk-up.adr.md)) | 2 | Researched in [R-131](../research/R-131-running-outside-a-git-repository.rsrch.md) |
+| Native Windows ([WIN](../specs/windows-support.spec.md), [ADR-0128](0128-windows-is-supported-natively-with-job-objects.adr.md)) | 3 | Moved from 2 by the owner on 2026-11-21: its probes need a Windows machine. Designed in [R-132](../research/R-132-running-on-windows.rsrch.md) |
 | Orchestration, council, contest, writer branches, parallel map, sub-workflows, other executors, the rest of schedules | 3 | — |
 
 Claude CLI stays the only executor through release 2 ([ADR-0091](0091-first-release-ships-the-claude-executor-only.adr.md)). Kinds and fields not built are still refused with `not_in_release`.
@@ -76,7 +76,7 @@ Claude CLI stays the only executor through release 2 ([ADR-0091](0091-first-rele
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| R1 | "Judges" means the judge model by risk ([ADR-0122](0122-a-judge-is-raised-by-a-model-free-risk-rule-and-every-level-is-calibrated.adr.md) J1). | Scope |
+| R1 | "Judges" means the judge model by risk ([ADR-0122](0122-a-judge-is-raised-by-a-model-free-risk-rule.adr.md) J1). | Scope |
 | R2 | "Ladders" means the effort ladder and the one-step model escalation of R-120, tightened ([ADR-0121](0121-ladders-climb-only-on-trusted-substantive-evidence.adr.md)). | Scope |
 | R3 | Release 1's live checks pass before release 2's code depends on them; a failing probe moves the dependent item, not the release. | Plan entry conditions |
 

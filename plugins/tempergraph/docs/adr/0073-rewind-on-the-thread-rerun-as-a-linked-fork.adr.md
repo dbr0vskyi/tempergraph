@@ -13,7 +13,7 @@ The owner asked for ways to retry, rerun and resume. [R-070](../research/R-070-c
 
 ## Decision
 
-We will add two forms ([RRN](../specs/81-reruns-and-feedback.spec.md)):
+We will add two forms ([RRN](../specs/reruns-and-feedback.spec.md)):
 
 1. **Rewind**, a person's decision `rewind:<unit>` on a `paused`, `stopped` or `unfinished` thread, to any unit completed on the current path. It clears like a trip back, charges the human cap, not a loop budget, and leaves files untouched.
 2. **Rerun**, a verb that starts a new thread `<task_id>~r<n>` from the checkpoint before a chosen unit of any thread but a running one, finished threads included. Earlier verdicts and the resolved input are kept, the source's settings are copied and may be changed, and both threads record the link. The source's history is never rewritten.

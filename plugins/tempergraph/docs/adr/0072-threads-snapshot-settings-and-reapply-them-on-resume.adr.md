@@ -9,11 +9,11 @@
 
 ## Context
 
-A thread may sit paused for days ([DUR](../specs/09-durability-and-resume.spec.md)). Settings now come from flags, profiles and two files ([ADR-0070](0070-one-catalog-of-run-settings-over-fixed-layers.adr.md)). An operator expects the values a run started with to hold across a resume. If files were read live, editing a user file for tomorrow's runs would change a paused run's model halfway.
+A thread may sit paused for days ([DUR](../specs/durability-and-resume.spec.md)). Settings now come from flags, profiles and two files ([ADR-0070](0070-one-catalog-of-run-settings-over-fixed-layers.adr.md)). An operator expects the values a run started with to hold across a resume. If files were read live, editing a user file for tomorrow's runs would change a paused run's model halfway.
 
 ## Decision
 
-We will store the flag, profile and file layers' resolved values in the thread's `RunOptions` at start and reapply them on each resume. A resume changes them only by `--set`, `--unset`, `--profile` or `--reload-settings`. The workflow layers follow the workflow content the thread resumes on, as [MIG-B15](../specs/62-state-and-run-migration.spec.md) already decides. Each segment's `settings_resolved` record lists what changed. How a changed budget meets a counter already spent is fixed per key ([RST-B26](../specs/80-run-settings-and-overrides.spec.md)).
+We will store the flag, profile and file layers' resolved values in the thread's `RunOptions` at start and reapply them on each resume. A resume changes them only by `--set`, `--unset`, `--profile` or `--reload-settings`. The workflow layers follow the workflow content the thread resumes on, as [MIG-B15](../specs/state-and-run-migration.spec.md) already decides. Each segment's `settings_resolved` record lists what changed. How a changed budget meets a counter already spent is fixed per key ([RST-B26](../specs/run-settings-and-overrides.spec.md)).
 
 ## Options considered
 

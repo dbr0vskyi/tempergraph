@@ -13,7 +13,7 @@ The owner asked, in the same message, for an observability design that gathers r
 
 ## Decision
 
-We will design no store for the loop. [IMD](../specs/43-improvement-data.spec.md) lists the records, fields, events, retention and privacy split the loop needs, as numbered requirements on the run store that the observability design owns. Every record that may leave a machine is metadata only, keyed by a pseudonymous machine id, a repository digest and a keyed request digest; evidence text never leaves. Every loop query falls back to local records and says which scope it read.
+We will design no store for the loop. [IMD](../specs/improvement-data.spec.md) lists the records, fields, events, retention and privacy split the loop needs, as numbered requirements on the run store that the observability design owns. Every record that may leave a machine is metadata only, keyed by a pseudonymous machine id, a repository digest and a keyed request digest; evidence text never leaves. Every loop query falls back to local records and says which scope it read.
 
 ## Options considered
 

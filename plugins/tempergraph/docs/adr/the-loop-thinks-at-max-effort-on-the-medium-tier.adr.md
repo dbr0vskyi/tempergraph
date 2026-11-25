@@ -2,7 +2,7 @@
 
 ## Context
 
-The loop child's friction judge and its session reviews read long session logs and decide what in them is a defect ([SIL-B17](../specs/16-self-improvement.spec.md)). The run settings `loop_model` and `loop_effort` choose its tier and effort ([RST-B18 to RST-B21](../specs/80-run-settings-and-overrides.spec.md)). The owner set the loop on the medium tier and asked that it think at the highest effort (2026-11-22, recorded with release 3's first build). The first measured loop at that setting reviewed 13 sessions for 0.66 USD ([R-160](../research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) S2).
+The loop child's friction judge and its session reviews read long session logs and decide what in them is a defect ([SIL-B17](../specs/self-improvement.spec.md)). The run settings `loop_model` and `loop_effort` choose its tier and effort ([RST-B18 to RST-B21](../specs/run-settings-and-overrides.spec.md)). The owner set the loop on the medium tier and asked that it think at the highest effort (2026-11-22, recorded with release 3's first build). The first measured loop at that setting reviewed 13 sessions for 0.66 USD ([R-160](../research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) S2).
 
 ## Decision
 

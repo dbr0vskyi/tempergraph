@@ -2,7 +2,7 @@
 
 ## Purpose
 
-How a plan that took the arm `phases` of the switch `code_mode` ([code mode](code-mode.spec.md)) is built. After the expand step has written its task rows, the phase step runs once for each phase of the plan, one after another, a phase item each. A phase item is a session of its own that builds only that phase's rows, tests first, and is committed and checked on its own. The code step then runs as the join, on the whole change. A large plan so gets a fresh context for each phase, and a phase that fails runs again alone, with the phases already committed left as they are ([MAP-B10](../../../tempergraph/docs/specs/77-map-unit.spec.md)). A phase's gate has no line back to an earlier step ([MAP-B11](../../../tempergraph/docs/specs/77-map-unit.spec.md)), so every check of the whole change and the lines back to the plan, discovery and triage steps stay with the code step's gate. The arm `single` is unchanged: its one code session builds the whole plan ([CDM-B6](code-mode.spec.md)). The owner who waits for a large plan and the maintainers of the plan, expand and code steps depend on it. Part of the [overview](00-overview.spec.md); the unit is [phase](15-phase.spec.md).
+How a plan that took the arm `phases` of the switch `code_mode` ([code mode](code-mode.spec.md)) is built. After the expand step has written its task rows, the phase step runs once for each phase of the plan, one after another, a phase item each. A phase item is a session of its own that builds only that phase's rows, tests first, and is committed and checked on its own. The code step then runs as the join, on the whole change. A large plan so gets a fresh context for each phase, and a phase that fails runs again alone, with the phases already committed left as they are ([MAP-B10](../../../tempergraph/docs/specs/map-unit.spec.md)). A phase's gate has no line back to an earlier step ([MAP-B11](../../../tempergraph/docs/specs/map-unit.spec.md)), so every check of the whole change and the lines back to the plan, discovery and triage steps stay with the code step's gate. The arm `single` is unchanged: its one code session builds the whole plan ([CDM-B6](code-mode.spec.md)). The owner who waits for a large plan and the maintainers of the plan, expand and code steps depend on it. Part of the [overview](overview.spec.md); the unit is [phase](phase.spec.md).
 
 ## Behaviours
 
@@ -74,7 +74,7 @@ WHEN the session record of a phase attempt shows a source file of the phase chan
 WHEN a phase attempt passes its check THE workflow SHALL grade it with one judge session of its own, on whether each row's change is in the file the row names and no file outside the phase's rows, other than the plan's marks and status, was changed.
 
 - GIVEN a plan of three phases that pass WHEN the phase items have run THEN the run holds three judge sessions for them, one for each, besides the judge session of the code step
-- GIVEN a phase attempt whose check fails WHEN the attempt ends THEN no judge session starts for it ([JDG-B1](../../../tempergraph/docs/specs/05-judge-and-verdict.spec.md))
+- GIVEN a phase attempt whose check fails WHEN the attempt ends THEN no judge session starts for it ([JDG-B1](../../../tempergraph/docs/specs/judge-and-verdict.spec.md))
 
 ### PHC-B10 A failed phase runs again alone
 
@@ -82,7 +82,7 @@ WHEN a phase attempt fails its gate THE workflow SHALL run that phase again, on 
 
 - GIVEN phases 1, 2 and 3 where the first attempt of phase 2 leaves a row unmarked WHEN the phase items run THEN phase 2 runs a second session, phase 1 ran one session, and phase 3 starts only after phase 2 has passed and runs one session
 - GIVEN the same run WHEN phase 2 runs again THEN the commit of phase 1 is still on the branch and the rows of phase 1 are still marked
-- GIVEN phase 2 whose attempts all fail until its retries are spent WHEN the phase items run THEN the run pauses at `phase.p2` and phase 3 starts no session ([MAP-B10](../../../tempergraph/docs/specs/77-map-unit.spec.md))
+- GIVEN phase 2 whose attempts all fail until its retries are spent WHEN the phase items run THEN the run pauses at `phase.p2` and phase 3 starts no session ([MAP-B10](../../../tempergraph/docs/specs/map-unit.spec.md))
 
 ### PHC-B11 The code step is the join, after the last phase
 
@@ -113,11 +113,11 @@ WHEN the code step ends after the phase items THE code gate SHALL check the whol
 WHEN the code step ends after the phase items with a claim that the output of the plan, discovery or triage step is at fault, and the gate accepts the claim, THE workflow SHALL send the run back to that step.
 
 - GIVEN two phases that passed and a code session that claims the plan step's output is at fault, and a gate that accepts the claim WHEN the code gate judges it THEN the run goes back to the plan step; the same holds for a claim about the discovery step and for one about the triage step
-- GIVEN the workflow WHEN it is validated THEN it reports no error, and the gate of the phase step names no step to go back to ([MAP-B11](../../../tempergraph/docs/specs/77-map-unit.spec.md))
+- GIVEN the workflow WHEN it is validated THEN it reports no error, and the gate of the phase step names no step to go back to ([MAP-B11](../../../tempergraph/docs/specs/map-unit.spec.md))
 
 ### PHC-B15 A trip back runs every phase again
 
-WHEN the code gate sends the run back to the plan step and the run reaches the phase items again THE workflow SHALL run every phase of the plan as it then stands, each building only its rows whose Completed cell is empty ([MAP-B3](../../../tempergraph/docs/specs/77-map-unit.spec.md)).
+WHEN the code gate sends the run back to the plan step and the run reaches the phase items again THE workflow SHALL run every phase of the plan as it then stands, each building only its rows whose Completed cell is empty ([MAP-B3](../../../tempergraph/docs/specs/map-unit.spec.md)).
 
 - GIVEN a plan of two phases that passed, a code gate that sends the run back to the plan step, and a plan that keeps every mark WHEN the run reaches the phase items again THEN both phases run again, change no file, make no commit and pass their gates
 - GIVEN the same trip back and a plan that rewrote row 2.2 and emptied its mark WHEN the phase items run THEN phase 1 changes no file and phase 2 builds row 2.2 only
@@ -143,5 +143,5 @@ WHEN the code gate sends the run back to the plan step and the run reaches the p
 ## Open questions
 
 - How should the commit of a phase name its phase? The engine gives the script that commits a step's files the name of the step and not the id of the item, so every phase commit says `phase` and only the marks inside the commit tell which phase it holds. Until answered: the message names the step and the task, not the phase. Reopen when the engine gives such a script its item. Owner: owner.
-- How many phases may a plan have? The map takes 20 items unless told otherwise and 50 at most ([MAP-B7](../../../tempergraph/docs/specs/77-map-unit.spec.md)), and the plan rule caps no number of phases, so a plan with more phases than the map takes stops the run at the map, naming the count, before any phase starts ([MAP-B5](../../../tempergraph/docs/specs/77-map-unit.spec.md)). Until answered: the map keeps the engine's default of 20 and the plan rule is not changed. Owner: owner.
-- What should a phase do when the plan or a spec it rests on is at fault? A phase has no line back ([MAP-B11](../../../tempergraph/docs/specs/77-map-unit.spec.md)). Until answered: the session leaves the row unmarked and names the row and the conflict in its note, the check fails the row, and when the retries are spent the run pauses at the phase for a person ([MAP-B10](../../../tempergraph/docs/specs/77-map-unit.spec.md)). Owner: owner.
+- How many phases may a plan have? The map takes 20 items unless told otherwise and 50 at most ([MAP-B7](../../../tempergraph/docs/specs/map-unit.spec.md)), and the plan rule caps no number of phases, so a plan with more phases than the map takes stops the run at the map, naming the count, before any phase starts ([MAP-B5](../../../tempergraph/docs/specs/map-unit.spec.md)). Until answered: the map keeps the engine's default of 20 and the plan rule is not changed. Owner: owner.
+- What should a phase do when the plan or a spec it rests on is at fault? A phase has no line back ([MAP-B11](../../../tempergraph/docs/specs/map-unit.spec.md)). Until answered: the session leaves the row unmarked and names the row and the conflict in its note, the check fails the row, and when the retries are spent the run pauses at the phase for a person ([MAP-B10](../../../tempergraph/docs/specs/map-unit.spec.md)). Owner: owner.

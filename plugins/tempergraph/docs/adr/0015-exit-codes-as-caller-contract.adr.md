@@ -13,7 +13,7 @@ The engine is started by people, by skills inside an agent session, by backgroun
 
 ## Decision
 
-We will fix a table of exit codes ([CON-B12, CON-B13](../specs/01-contracts.spec.md)): 0 finished, 1 internal error, 2 usage or preflight refusal with nothing spent or created, 3 paused for a person, 4 stopped, 5 budget spent or infra failure, 127 engine not installed (found by the shim). The docs' table is generated from the constants with a drift test. A paused run exits 3 rather than waiting.
+We will fix a table of exit codes ([CON-B12, CON-B13](../specs/contracts.spec.md)): 0 finished, 1 internal error, 2 usage or preflight refusal with nothing spent or created, 3 paused for a person, 4 stopped, 5 budget spent or infra failure, 127 engine not installed (found by the shim). The docs' table is generated from the constants with a drift test. A paused run exits 3 rather than waiting.
 
 ## Options considered
 

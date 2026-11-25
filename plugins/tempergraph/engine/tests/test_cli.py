@@ -151,13 +151,13 @@ def test_executors_lists_live_facts_as_not_run(repo: Path) -> None:
 
 
 def test_exit_codes_match_the_contract() -> None:
-    con = (Path(__file__).resolve().parents[2] / "docs" / "specs" / "01-contracts.spec.md").read_text()
+    con = (Path(__file__).resolve().parents[2] / "docs" / "specs" / "contracts.spec.md").read_text()
     for code in ExitCode:
         assert f"`{int(code)}`" in con  # CLI-AC4
 
 
 def test_reserved_words_cover_every_spec_verb() -> None:
-    spec = (Path(__file__).resolve().parents[2] / "docs" / "specs" / "17-engine-cli.spec.md").read_text()
+    spec = (Path(__file__).resolve().parents[2] / "docs" / "specs" / "engine-cli.spec.md").read_text()
     import re
 
     verbs = {m.group(1) for m in re.finditer(r"^\| `([a-z][a-z-]*)", spec, re.M)}

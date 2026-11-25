@@ -9,11 +9,11 @@
 
 ## Context
 
-The owner's idea: newly created and dev-mode workflows read sessions to check that prompts and agents work efficiently and as expected; stable mode reads sessions only on signals, fully or partly. The design already splits the loop's triggers by `improvement_mode` ([SIL-B10](../specs/16-self-improvement.spec.md)), and its stable friction triggers include a new version's first five runs ([R-110](../research/R-110-reading-session-logs-for-self-improvement.rsrch.md) B11). A signal can point at the part of a session worth reading, such as the end of a timed-out attempt (B5). Public practice summarizes first and samples (P5).
+The owner's idea: newly created and dev-mode workflows read sessions to check that prompts and agents work efficiently and as expected; stable mode reads sessions only on signals, fully or partly. The design already splits the loop's triggers by `improvement_mode` ([SIL-B10](../specs/self-improvement.spec.md)), and its stable friction triggers include a new version's first five runs ([R-110](../research/R-110-reading-session-logs-for-self-improvement.rsrch.md) B11). A signal can point at the part of a session worth reading, such as the end of a timed-out attempt (B5). Public practice summarizes first and samples (P5).
 
 ## Decision
 
-We will set review depth per run by a plan ([SRV-B13, SRV-B14, SRV-B15, SRV-B16, SRV-B5](../specs/44-session-review.spec.md)) from one workflow setting, `improvement.session_review` (`auto`, `full`, `signals`, `off`; default `auto`):
+We will set review depth per run by a plan ([SRV-B13, SRV-B14, SRV-B15, SRV-B16, SRV-B5](../specs/session-review.spec.md)) from one workflow setting, `improvement.session_review` (`auto`, `full`, `signals`, `off`; default `auto`):
 
 - **Dev mode** reads `full`: every step and judge session of each final exit, condensed, under a per-run cap, and adds a per-instruction `conformance[]` table.
 - **Probation** reads `full` for the units a new version changed, for its first 5 final exits, in either mode; an authoring trial reads `full`.
@@ -51,7 +51,7 @@ A person can always ask for a review with `improve review`.
 
 | Id | Assumption | Where it binds |
 |---|---|---|
-| A1 | No workflow reaches stable mode in release 1, since stable mode needs every gate `ready` ([LIF-B6](../specs/18-lifecycle-and-evals.spec.md)); stable-mode plans can wait for release 2 | First-release plan X2-26 |
+| A1 | No workflow reaches stable mode in release 1, since stable mode needs every gate `ready` ([LIF-B6](../specs/lifecycle-and-evals.spec.md)); stable-mode plans can wait for release 2 | First-release plan X2-26 |
 | A2 | The last 40 turns of an attempt usually hold why it failed or was sent back | SRV-B16, SRV-B5 |
 
 ## Revisit when

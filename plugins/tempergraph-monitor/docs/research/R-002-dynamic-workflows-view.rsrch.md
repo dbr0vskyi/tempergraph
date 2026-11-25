@@ -11,7 +11,7 @@ The owner wants the monitor to show a tempergraph run "in same way how it is don
 | Claude Code docs, workflows | Vendor documentation | https://code.claude.com/docs/en/workflows.md |
 | "A harness for every task: dynamic workflows in Claude Code" (2026-06-02) | Vendor blog | https://claude.com/blog/a-harness-for-every-task-dynamic-workflows-in-claude-code |
 | The workflow-authoring reference bundled with Claude Code 2.1.329 | Vendor reference shipped with the build | Read in the design session, 2026-11-19 |
-| Engine design set | This repository | [engine overview](../../../tempergraph/docs/specs/00-overview.spec.md), [OBS](../../../tempergraph/docs/specs/15-observability-and-cost.spec.md) |
+| Engine design set | This repository | [engine overview](../../../tempergraph/docs/specs/overview.spec.md), [OBS](../../../tempergraph/docs/specs/observability-and-cost.spec.md) |
 
 ## Key findings
 
@@ -32,7 +32,7 @@ The owner wants the monitor to show a tempergraph run "in same way how it is don
 
 | Concern | Workflows view | A tempergraph run | Monitor takes |
 |---|---|---|---|
-| Entry and navigation | Run list, drill with arrows, Esc back | — | The same keys and levels ([MRV §2.2](../specs/03-run-view.spec.md)) |
+| Entry and navigation | Run list, drill with arrows, Esc back | — | The same keys and levels ([MRV §2.2](../specs/run-view.spec.md)) |
 | Structure shown | Phases with agent counts | A declared graph: units in order, loop-backs, maps, forks, switches, human gates | The graph in plan order, with trips back drawn |
 | One step's anatomy | An agent: prompt, tool calls, result | Four nodes: step session, deterministic check, judge session, gate verdict | A node strip `S C J G` per unit and per attempt |
 | Why work repeats | Restart by a person, or the script's loop | A judge's blockers and the engine's verdict, bounded by budgets | Judge criteria, blockers with evidence and fix, budgets |

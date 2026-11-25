@@ -13,7 +13,7 @@
 
 ## Decision
 
-We will store one **IANA zone** per schedule (the machine's zone at creation unless `--tz` says otherwise, named as assumed in the echo) and compute slots in it, then store them as UTC. Calendar recurrences follow **wall time**; interval recurrences follow **elapsed time**. A local time in a gap takes the offset from before the gap (02:30 becomes 03:30); a time that occurs twice fires once, at its first occurrence, as RFC 5545 and `zoneinfo` define. Abbreviations such as `CET` are refused. A machine zone change moves no schedule; `list` marks the difference. Spec: [SCH-B20](../specs/83-schedules.spec.md).
+We will store one **IANA zone** per schedule (the machine's zone at creation unless `--tz` says otherwise, named as assumed in the echo) and compute slots in it, then store them as UTC. Calendar recurrences follow **wall time**; interval recurrences follow **elapsed time**. A local time in a gap takes the offset from before the gap (02:30 becomes 03:30); a time that occurs twice fires once, at its first occurrence, as RFC 5545 and `zoneinfo` define. Abbreviations such as `CET` are refused. A machine zone change moves no schedule; `list` marks the difference. Spec: [SCH-B20](../specs/schedules.spec.md).
 
 ## Options considered
 
@@ -36,4 +36,4 @@ We will store one **IANA zone** per schedule (the machine's zone at creation unl
 
 - Positive: the echo shows exactly when each slot fires, in local and UTC time, across changes.
 - Negative: the zone database must be current. Mitigation: `tzdata` pinned in the engine environment and refreshed by `update`; `next_slot` is recomputed at every read.
-- Risk: pipeline cron is UTC only. Mitigation: export refuses a rule with a moving offset unless the owner pins today's ([TCK-B20](../specs/84-schedule-ticks-and-unattended-fires.spec.md)).
+- Risk: pipeline cron is UTC only. Mitigation: export refuses a rule with a moving offset unless the owner pins today's ([TCK-B20](../specs/schedule-ticks-and-unattended-fires.spec.md)).

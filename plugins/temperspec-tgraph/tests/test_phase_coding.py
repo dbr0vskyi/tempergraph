@@ -1,4 +1,4 @@
-"""Phase coding (spec `phase-coding.spec.md`, PHC-B1 to PHC-B15, and the unit spec `15-phase.spec.md`): the phase items
+"""Phase coding (spec `phase-coding.spec.md`, PHC-B1 to PHC-B15, and the unit spec `phase.spec.md`): the phase items
 of an expanded plan, the phase check, the prompts of the phase step and its judge, and stand-in runs of the map `phase`
 between the expand step and the code step."""
 

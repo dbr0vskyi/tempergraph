@@ -13,7 +13,7 @@ The Claude Code dynamic workflows view lets a person pause, stop and restart age
 
 ## Decision
 
-We will add `stop [--drain | --now]`, which writes a request file the running engine acts on through the launcher's stop contract, leaving the thread `unfinished` and resumable ([RCT](../specs/32-run-control.spec.md)). There is no pause, skip or restart verb. The monitor never runs `stop` itself; it fills the prompt with the command for the person to send.
+We will add `stop [--drain | --now]`, which writes a request file the running engine acts on through the launcher's stop contract, leaving the thread `unfinished` and resumable ([RCT](../specs/run-control.spec.md)). There is no pause, skip or restart verb. The monitor never runs `stop` itself; it fills the prompt with the command for the person to send.
 
 ## Options considered
 
@@ -37,7 +37,7 @@ We will add `stop [--drain | --now]`, which writes a request file the running en
 
 - Positive: the monitor offers a stop that a person confirms, with the same result as typing it.
 - Negative: a person who wanted "pause here" uses stop and resume; the resume re-enters at the next unit (drain) or re-runs the attempt (now).
-- Risk: an automated caller stops runs. Mitigation: `--as-agent` is recorded, as for resume ([HUM](../specs/07-gate-and-human.spec.md)).
+- Risk: an automated caller stops runs. Mitigation: `--as-agent` is recorded, as for resume ([HUM](../specs/gate-and-human.spec.md)).
 
 ## Assumptions
 

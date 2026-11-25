@@ -1,7 +1,7 @@
 ---
 task: r2-t4
 complexity: complex
-specs: [plugins/tempergraph/docs/specs/51-eval-suites.spec.md, plugins/tempergraph/docs/specs/18-lifecycle-and-evals.spec.md]
+specs: [plugins/tempergraph/docs/specs/eval-suites.spec.md, plugins/tempergraph/docs/specs/lifecycle-and-evals.spec.md]
 ---
 
 # Plan: evals (R2-T4)
@@ -69,8 +69,8 @@ Weight: light
 
 ## 4. Doc changes
 
-- `plugins/tempergraph/docs/specs/51-eval-suites.spec.md`: as-built notes and ticked criteria
-- `plugins/tempergraph/docs/specs/18-lifecycle-and-evals.spec.md`: harvest and replay as built
-- `plugins/tempergraph/docs/specs/17-engine-cli.spec.md`: the eval verbs' options
-- `plugins/tempergraph/docs/specs/88-workflow-package.spec.md`: `evals/steps/`
-- `plugins/tempergraph/docs/specs/19-plugin-shell.spec.md`: the evals skill
+- `plugins/tempergraph/docs/specs/eval-suites.spec.md`: as-built notes and ticked criteria
+- `plugins/tempergraph/docs/specs/lifecycle-and-evals.spec.md`: harvest and replay as built
+- `plugins/tempergraph/docs/specs/engine-cli.spec.md`: the eval verbs' options
+- `plugins/tempergraph/docs/specs/workflow-package.spec.md`: `evals/steps/`
+- `plugins/tempergraph/docs/specs/plugin-shell.spec.md`: the evals skill

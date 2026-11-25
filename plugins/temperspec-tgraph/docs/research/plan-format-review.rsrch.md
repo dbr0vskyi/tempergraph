@@ -43,8 +43,8 @@ The difference is mostly deliberate, but not all of it was decided. The large di
 | Plan, expand, code prompts and judge briefs | prompt | `prompts/plan.md`, `prompts/expand.md`, `prompts/code.md`, `judges/plan.md`, `judges/expand.md` |
 | Rule examples held to the parser | test | `tests/test_temperspec.py` (`test_the_plan_rule_example_and_limits_match_the_parser` and its neighbours) |
 | Owner's rulings on format and cascades | research | engine R-125, R-127; package [next features](next-features.rsrch.md) |
-| Engine rulings reach later judges | spec | engine spec 81 RRN-B1, spec 05 "Feedback" |
-| Engine release 2: sequential map, self-check, `@repository` commands | spec, code | engine spec 75 "As built (R2-T7)", `model/validate.py` (map mode `sequential`) |
+| Engine rulings reach later judges | spec | engine spec `reruns-and-feedback` RRN-B1, spec `judge-and-verdict` "Feedback" |
+| Engine release 2: sequential map, self-check, `@repository` commands | spec, code | engine spec `check-contract-and-command-runs` "As built (R2-T7)", `model/validate.py` (map mode `sequential`) |
 
 ## 3. Side by side
 
@@ -111,7 +111,7 @@ They start to pay when each phase gets a fresh session (backlog B7), because a f
 
 ### F6 Engine release 2 has moved three related items `confirmed`
 
-The engine on `main` now has the sequential map (`model/validate.py` accepts map mode `sequential`), a check preview inside an attempt (`tempergraph self-check`), and repository-declared commands (`tempergraph.commands.json`, `@repository`; engine spec 75 "As built (R2-T7)"). So:
+The engine on `main` now has the sequential map (`model/validate.py` accepts map mode `sequential`), a check preview inside an attempt (`tempergraph self-check`), and repository-declared commands (`tempergraph.commands.json`, `@repository`; engine spec `check-contract-and-command-runs` "As built (R2-T7)"). So:
 
 - Backlog B7 (per-phase coding) and B10 (verification commands from the repository) no longer wait for the engine. This pull request moves them, with B6, B8 and B9 whose engine parts are also in release 2, to Ready.
 - Expand could preview its own check inside one attempt. That lowers the cost of stricter expand checks such as A1 and A2: a failed check no longer costs a whole new attempt. Adopting it is a separate change to the expand step.

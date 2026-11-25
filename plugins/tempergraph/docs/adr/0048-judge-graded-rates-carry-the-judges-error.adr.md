@@ -9,11 +9,11 @@
 
 ## Context
 
-Per-criterion pass rates, gate pass rates, step-suite rates and judge-graded trial targets all count a judge's statuses as if true ([OBS-B15](../specs/15-observability-and-cost.spec.md)). A judge with known error rates biases such a rate in a known direction, and the Rogan-Gladen estimator corrects it from the judge's true-positive and true-negative rates ([R-045 F4](../research/R-045-evaluating-llm-judges-public-practice.rsrch.md)).
+Per-criterion pass rates, gate pass rates, step-suite rates and judge-graded trial targets all count a judge's statuses as if true ([OBS-B15](../specs/observability-and-cost.spec.md)). A judge with known error rates biases such a rate in a known direction, and the Rogan-Gladen estimator corrects it from the judge's true-positive and true-negative rates ([R-045 F4](../research/R-045-evaluating-llm-judges-public-practice.rsrch.md)).
 
 ## Decision
 
-We will show every judge-graded rate with its judge's acceptance state, and, for an accepted or provisional judge that separates well enough, a corrected estimate beside the raw rate. The raw rate is never hidden or replaced ([EVS-B15](../specs/51-eval-suites.spec.md)).
+We will show every judge-graded rate with its judge's acceptance state, and, for an accepted or provisional judge that separates well enough, a corrected estimate beside the raw rate. The raw rate is never hidden or replaced ([EVS-B15](../specs/eval-suites.spec.md)).
 
 ## Options considered
 

@@ -9,11 +9,11 @@
 
 ## Context
 
-The engine update must say what happens to runs in flight. A run may be running, paused for days, unfinished or stopped; an orchestration supervisor may be mid-way; a detached self-improvement child may be running ([R-057](../research/R-057-engine-update-and-workflow-upgrade-gaps.rsrch.md) X6). The same question arises when a workflow's content changes under a paused thread (a plugin update or a merged upgrade, X8). LangGraph applies the newest graph to every thread and breaks only on a removed or renamed node or state key; Temporal lets a run be pinned to the code it started on or upgraded automatically, and retires a version once its pinned runs drain ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U12 to U16). The engine already resumes old checkpoints from fixtures ([DUR-B6](../specs/09-durability-and-resume.spec.md)).
+The engine update must say what happens to runs in flight. A run may be running, paused for days, unfinished or stopped; an orchestration supervisor may be mid-way; a detached self-improvement child may be running ([R-057](../research/R-057-engine-update-and-workflow-upgrade-gaps.rsrch.md) X6). The same question arises when a workflow's content changes under a paused thread (a plugin update or a merged upgrade, X8). LangGraph applies the newest graph to every thread and breaks only on a removed or renamed node or state key; Temporal lets a run be pinned to the code it started on or upgraded automatically, and retires a version once its pinned runs drain ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U12 to U16). The engine already resumes old checkpoints from fixtures ([DUR-B6](../specs/durability-and-resume.spec.md)).
 
 ## Decision
 
-We will ([MIG](../specs/62-state-and-run-migration.spec.md)):
+We will ([MIG](../specs/state-and-run-migration.spec.md)):
 
 1. Never touch a running process: it finishes on the engine it started on, and so do the child runs a running supervisor starts.
 2. Move a paused, unfinished or stopped thread to the current engine at its next resume, recorded on the thread.

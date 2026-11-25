@@ -9,11 +9,11 @@
 
 ## Context
 
-The workspace mode was a workflow field and a run setting with two values, `in_place` and `worktree`, and no default when a workflow declared none ([RST-B18, RST-B19, RST-B20, RST-B21](../specs/80-run-settings-and-overrides.spec.md)). tempergraph serves any workflow of the delivery pipeline, not only coding: a workflow that writes a Confluence page or a tracker issue gains nothing from a worktree and may run outside any git checkout. A coding workflow run in place edits the person's checkout; a worktree on its own branch keeps that checkout untouched ([R-100](../research/R-100-native-worktrees-and-executor-worktree-features.rsrch.md) F1.1, F1.3).
+The workspace mode was a workflow field and a run setting with two values, `in_place` and `worktree`, and no default when a workflow declared none ([RST-B18, RST-B19, RST-B20, RST-B21](../specs/run-settings-and-overrides.spec.md)). tempergraph serves any workflow of the delivery pipeline, not only coding: a workflow that writes a Confluence page or a tracker issue gains nothing from a worktree and may run outside any git checkout. A coding workflow run in place edits the person's checkout; a worktree on its own branch keeps that checkout untouched ([R-100](../research/R-100-native-worktrees-and-executor-worktree-features.rsrch.md) F1.1, F1.3).
 
 ## Decision
 
-We will keep one key, `run.workspace`, with a third value `auto` that is the engine default and the default of `WorkflowSpec.workspace`. `auto` resolves before spend, purely from the target and the workflow: not a git checkout gives `in_place`; writers or any declared file-writing tool or local-effect script give `worktree`; otherwise `in_place` ([WTR-B18](../specs/82-worktree-mode.spec.md)). The few details of a worktree are sibling keys under `run.worktree.*`. The flags are `--workspace`, `--worktree` and `--in-place`. Every key but cleanup is fixed at the start.
+We will keep one key, `run.workspace`, with a third value `auto` that is the engine default and the default of `WorkflowSpec.workspace`. `auto` resolves before spend, purely from the target and the workflow: not a git checkout gives `in_place`; writers or any declared file-writing tool or local-effect script give `worktree`; otherwise `in_place` ([WTR-B18](../specs/worktree-mode.spec.md)). The few details of a worktree are sibling keys under `run.worktree.*`. The flags are `--workspace`, `--worktree` and `--in-place`. Every key but cleanup is fixed at the start.
 
 ## Options considered
 

@@ -13,7 +13,7 @@ LangGraph's main human-in-the-loop use of `interrupt` is to ask a person for inp
 
 ## Decision
 
-We will add a unit kind **`ask`** ([ASK](../specs/73-ask-unit.spec.md)):
+We will add a unit kind **`ask`** ([ASK](../specs/ask-unit.spec.md)):
 
 1. It declares questions (name, text, answer kind, choices, required, default) or reads them from a list artifact an earlier step produced.
 2. It pauses in the unit's **human node** with pause kind `input`. A person answers with `answer:<name>=<value>` decisions or an answers file.
@@ -47,7 +47,7 @@ We will add a unit kind **`ask`** ([ASK](../specs/73-ask-unit.spec.md)):
 
 - Positive: interview-style and clarify-then-continue workflows are one declared unit; `attention` lists open asks like any pause.
 - Negative: a new pause kind for the monitor, `attention` and the run detail.
-- Risk: a workflow asks too much and stalls. Mitigation: the audit's existing pause-rate rules apply, and deadlines ([FLX](../specs/74-flow-extensions.spec.md)) bound how long an ask waits.
+- Risk: a workflow asks too much and stalls. Mitigation: the audit's existing pause-rate rules apply, and deadlines ([FLX](../specs/flow-extensions.spec.md)) bound how long an ask waits.
 
 ## Revisit when
 

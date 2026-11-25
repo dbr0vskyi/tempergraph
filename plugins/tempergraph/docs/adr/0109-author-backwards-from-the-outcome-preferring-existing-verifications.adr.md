@@ -13,7 +13,7 @@ Authoring commonly starts from a process the person runs. The owner names three 
 
 ## Decision
 
-We will run one interview after intake, whatever the entry path: final outcome first, then intermediate outcomes found by asking what must be true before each deliverable, then a verification for every criterion in a fixed search order (an existing verification from the inventory, a created deterministic check, a split, a judge, a person, then `none` with a reason), then the steps' work. The entry paths differ only in where the first drafts come from; the chat path uses graded drafts. Model-free verbs inventory sources and check drafts; the skill leads. Details: [AUT](../specs/89-workflow-authoring.spec.md).
+We will run one interview after intake, whatever the entry path: final outcome first, then intermediate outcomes found by asking what must be true before each deliverable, then a verification for every criterion in a fixed search order (an existing verification from the inventory, a created deterministic check, a split, a judge, a person, then `none` with a reason), then the steps' work. The entry paths differ only in where the first drafts come from; the chat path uses graded drafts. Model-free verbs inventory sources and check drafts; the skill leads. Details: [AUT](../specs/workflow-authoring.spec.md).
 
 ## Options considered
 

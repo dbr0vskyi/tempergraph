@@ -2,7 +2,7 @@
 task: speedup-runs
 complexity: complex
 status: in-progress
-specs: [plugins/tempergraph/docs/specs/test-suite.spec.md, plugins/temperspec-tgraph/docs/specs/04-triage.spec.md, plugins/temperspec-tgraph/docs/specs/05-discovery.spec.md, plugins/temperspec-tgraph/docs/specs/06-plan.spec.md, plugins/temperspec-tgraph/docs/specs/08-code.spec.md]
+specs: [plugins/tempergraph/docs/specs/test-suite.spec.md, plugins/temperspec-tgraph/docs/specs/triage.spec.md, plugins/temperspec-tgraph/docs/specs/discovery.spec.md, plugins/temperspec-tgraph/docs/specs/plan.spec.md, plugins/temperspec-tgraph/docs/specs/code.spec.md]
 ---
 
 # Plan: faster temperspec runs
@@ -11,7 +11,7 @@ specs: [plugins/tempergraph/docs/specs/test-suite.spec.md, plugins/temperspec-tg
 
 - Triage note: `plugins/temperspec-tgraph/docs/tasks/speedup-runs.triage.md`
 - Hand-off: `plugins/temperspec-tgraph/docs/tasks/speedup-runs.handoff.md` (its Reading list was the start of this plan)
-- Specs read: `plugins/tempergraph/docs/specs/test-suite.spec.md`, `plugins/temperspec-tgraph/docs/specs/04-triage.spec.md`, `plugins/temperspec-tgraph/docs/specs/05-discovery.spec.md`, `plugins/temperspec-tgraph/docs/specs/06-plan.spec.md`, `plugins/temperspec-tgraph/docs/specs/08-code.spec.md`
+- Specs read: `plugins/tempergraph/docs/specs/test-suite.spec.md`, `plugins/temperspec-tgraph/docs/specs/triage.spec.md`, `plugins/temperspec-tgraph/docs/specs/discovery.spec.md`, `plugins/temperspec-tgraph/docs/specs/plan.spec.md`, `plugins/temperspec-tgraph/docs/specs/code.spec.md`
 - Decision record read: `plugins/temperspec-tgraph/docs/adr/0003-short-discovery-visit.adr.md`
 - Why this design: the engine part is configuration and tests (one new engine spec, no engine source change for the gate, because the engine already reuses a command result for an unchanged tree). The temperspec part is one parser, rule and check family (the covered mark and the reading list), one second discovery step chosen by the route after triage, and prompt changes for the code, discovery and plan sessions. Phases are ordered so that the covered mark exists before the route and the short step use it.
 - The hand-off's decisions bind the code step: the default worker count is `auto` capped at four, one process with `-n 0` or when `pytest-xdist` is missing; the engine's suite stays free of any workflow name (ADR-0129); the improvement loop and the gate's retry and escalation path are not touched; no step or judge uses the large model tier and every sizing keeps its reason. Rows of the four package specs are mirrored into `outcome.json` as revision 5 with the same text.

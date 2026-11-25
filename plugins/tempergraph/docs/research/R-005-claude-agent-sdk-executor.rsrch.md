@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The owner asked for an executor on the "Claude SDK". Anthropic ships two SDK families: the client SDK (`anthropic`), which is a thin layer over the Messages API and is covered by [R-004](R-004-anthropic-messages-api-executor.rsrch.md), and the **Claude Agent SDK** (`claude-agent-sdk`), which is Claude Code packaged as a library. This note reads "Claude SDK" as the Agent SDK, and records how it behaves as a step and judge host for the [Agent SDK executor spec](../specs/21-executor-agent-sdk.spec.md).
+The owner asked for an executor on the "Claude SDK". Anthropic ships two SDK families: the client SDK (`anthropic`), which is a thin layer over the Messages API and is covered by [R-004](R-004-anthropic-messages-api-executor.rsrch.md), and the **Claude Agent SDK** (`claude-agent-sdk`), which is Claude Code packaged as a library. This note reads "Claude SDK" as the Agent SDK, and records how it behaves as a step and judge host for the [Agent SDK executor spec](../specs/executor-agent-sdk.spec.md).
 
 ## Sources consulted
 

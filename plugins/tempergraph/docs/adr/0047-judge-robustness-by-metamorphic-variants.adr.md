@@ -13,7 +13,7 @@ Known judge biases include favouring longer answers, being swayed by confident c
 
 ## Decision
 
-We will generate four variants of each gold case by fixed engine templates with no model call (`persuasive_account`, `padded`, `reordered`, `out_of_reach`), expect each to leave every blocker's status class unchanged (or, for `out_of_reach`, never MET), and bar a judge whose variants flip more than a set share. Self-preference is reported as a catch-rate split by producer family, not barred ([JCL-B13](../specs/50-judge-calibration.spec.md)).
+We will generate four variants of each gold case by fixed engine templates with no model call (`persuasive_account`, `padded`, `reordered`, `out_of_reach`), expect each to leave every blocker's status class unchanged (or, for `out_of_reach`, never MET), and bar a judge whose variants flip more than a set share. Self-preference is reported as a catch-rate split by producer family, not barred ([JCL-B13](../specs/judge-calibration.spec.md)).
 
 ## Options considered
 

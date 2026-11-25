@@ -13,7 +13,7 @@ By default the engine never removes a worktree on its own: a list verb and a pru
 
 ## Decision
 
-We will keep `run.worktree.cleanup: never` as the default and add `on_finish`, which removes a finished run's clean worktrees after its finalizer, without `--force`, keeping the branch. `worktree prune` lists by default and removes only with `--apply`, the same clean-only way, never for a running thread. The engine locks each run worktree with a reason while its thread is not finished, so `git worktree prune` and other tools' sweeps leave it, and never deletes a branch ([WTR-B23](../specs/82-worktree-mode.spec.md)).
+We will keep `run.worktree.cleanup: never` as the default and add `on_finish`, which removes a finished run's clean worktrees after its finalizer, without `--force`, keeping the branch. `worktree prune` lists by default and removes only with `--apply`, the same clean-only way, never for a running thread. The engine locks each run worktree with a reason while its thread is not finished, so `git worktree prune` and other tools' sweeps leave it, and never deletes a branch ([WTR-B23](../specs/worktree-mode.spec.md)).
 
 ## Options considered
 

@@ -375,10 +375,10 @@ def test_a_slot_whose_reservation_cannot_fit_is_refused_BUD_AC11(repo: Path) -> 
 
 def test_ac_5_the_not_built_line_names_neither_councils_nor_contests() -> None:  # AC 5, BUD-AC9, BUD-AC11, BUD-AC12
     """Reservations are built for parallel branches, writer branches included, for the items of a concurrent map, for
-    the slots of a contest and for the member and chair sessions of a council; the spec 08 line names what is not."""
+    the slots of a contest and for the member and chair sessions of a council; the spec `budgets-and-failures` line names what is not."""
     root = next(p for p in Path(__file__).resolve().parents if (p / "plugins" / "tempergraph" / "docs").is_dir())
     docs = root / "plugins" / "tempergraph" / "docs"
-    lines = [ln for ln in (docs / "specs" / "08-budgets-and-failures.spec.md").read_text().splitlines()
+    lines = [ln for ln in (docs / "specs" / "budgets-and-failures.spec.md").read_text().splitlines()
              if ln.startswith("- Not built yet")]
     assert len(lines) == 1
     line = lines[0].lower()

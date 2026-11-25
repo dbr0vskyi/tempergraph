@@ -13,7 +13,7 @@ The concept's first line is "start from a definition of a good outcome", but cri
 
 ## Decision
 
-We will keep the good outcome in `outcome.json`: a statement, deliverables, final criteria, one intermediate outcome per unit with its criteria, and for each criterion `verified_by` (`check`, `judge`, `person`, `none` with a reason), its source and the final criteria it serves. Gates get their criteria from it at load. Details: [OUT-B8, OUT-B9, OUT-B13, OUT-B14](../specs/90-run-outcome.spec.md).
+We will keep the good outcome in `outcome.json`: a statement, deliverables, final criteria, one intermediate outcome per unit with its criteria, and for each criterion `verified_by` (`check`, `judge`, `person`, `none` with a reason), its source and the final criteria it serves. Gates get their criteria from it at load. Details: [OUT-B8, OUT-B9, OUT-B13, OUT-B14](../specs/run-outcome.spec.md).
 
 ## Options considered
 

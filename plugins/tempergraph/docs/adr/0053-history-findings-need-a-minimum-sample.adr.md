@@ -47,4 +47,4 @@ We will give every history rule a **minimum sample** (`min_n`, in runs, visits o
 
 ## Revisit when
 
-Shared run stats across machines (spec 34, PR 7) give enough runs for interval estimates.
+Shared run stats across machines (spec `central-run-stats`, PR 7) give enough runs for interval estimates.

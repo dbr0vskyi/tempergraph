@@ -17,9 +17,9 @@ On 2026-11-22 the owner ran release 3's first task (R3-T1.1, cost cap reservatio
 | S7 | The defects found by hand in those runs (temperspec backlog rows B22, B23, B24, B40 to B44 and the B19 family) | Reviewers' notes | `plugins/temperspec-tgraph/docs/plans/backlog.plan.md` and its history |
 | S8 | The citation check | Code | `plugins/tempergraph/engine/src/tempergraph/improve/review.py` (`CATALOG`, `check`) |
 | S9 | The batch of runs behind pull request #113 (2026-11-24/25), the defect its reviewer found in the specs those runs wrote, and what the loop filed for the same runs (#114, #117) | Pull request, issues | github.com/dbr0vskyi/tempergraph |
-| S10 | The friction judge's input, the outcome lens and the reviewer's view | Code | `improve/child.py` (`prompt`), `improve/lenses.py` (`decide`), `improve/review.py` (`BRIEF`); specs [SIL-B10, SIL-B13](../specs/16-self-improvement.spec.md), [SRV-B17, SRV-B19](../specs/44-session-review.spec.md), [EVT-B21](../specs/30-run-events.spec.md) |
-| S11 | Where a person's verdict enters the loop | Specs, code | [OUT-B18](../specs/90-run-outcome.spec.md), [FBK](../specs/41-feedback-and-judge-reliability.spec.md) open question on `pr_state`, `improve/causes.py` (`pushback`) |
-| S12 | The proposal class check | Code, spec | `improve/proposals.py` (`classify`, `record`), [PRP-B14](../specs/40-improvement-proposals.spec.md) |
+| S10 | The friction judge's input, the outcome lens and the reviewer's view | Code | `improve/child.py` (`prompt`), `improve/lenses.py` (`decide`), `improve/review.py` (`BRIEF`); specs [SIL-B10, SIL-B13](../specs/self-improvement.spec.md), [SRV-B17, SRV-B19](../specs/session-review.spec.md), [EVT-B21](../specs/run-events.spec.md) |
+| S11 | Where a person's verdict enters the loop | Specs, code | [OUT-B18](../specs/run-outcome.spec.md), [FBK](../specs/feedback-and-judge-reliability.spec.md) open question on `pr_state`, `improve/causes.py` (`pushback`) |
+| S12 | The proposal class check | Code, spec | `improve/proposals.py` (`classify`, `record`), [PRP-B14](../specs/improvement-proposals.spec.md) |
 
 ## Key findings
 
@@ -97,13 +97,13 @@ Reading S10, nothing in the loop looks at the content of what a step wrote:
 - The outcome lens spends no session (SIL-B13): its candidates are the criteria the workflow's own outcome judge graded `UNMET` or `PARTIAL`. A defect that no criterion names cannot be a candidate.
 - The session reviewer sees the step's prompt, assistant text clipped to 600 characters and one input summary per tool call, which for a write is the path only (EVT-B21); "other tool output [is] left out" (SRV-B17). It can see that a step did not follow its prompt (`instruction_ignored`, the dev-mode `conformance[]`), not that a prompt the step followed produced a poor artifact.
 - The catalog (SRV-B19) has producer categories about process (misreading, ignoring, thrashing, wasted turns, bloat) and grader categories about reading (`judge_unread`, `judge_shallow`). None says "the output is below a standard" or "a standard the step was given is graded by no criterion".
-- The prompt audit ([PRA](../specs/58-prompt-audit.spec.md)) checks names, references, tool names, consistency and sizes, not whether a prompt or a standard asks for the right thing.
+- The prompt audit ([PRA](../specs/prompt-audit.spec.md)) checks names, references, tool names, consistency and sizes, not whether a prompt or a standard asks for the right thing.
 
 So the loop measures a workflow against the workflow's own definition of good. When that definition has a hole, the loop has the same hole.
 
 ### F10 A person's verdict on the delivered change does not reach the loop `confirmed`
 
-The signals that a `met` run was wrong are a person's ruling, rewind or rerun through the engine (`causes.py`, `pushback`), a person's `label <thread> outcome`, and a finalizer fact that the pull request was closed unmerged (OUT-B18). Even the last is not derived today: FBK's open question records that no run records the pull request it led to (S11). Review comments, requested changes and a person's follow-up commits on the run's pull request are read by nothing. The reviewer's finding on #113 was a textbook escape (a `met` run a later signal contradicts, [OUT-B19](../specs/90-run-outcome.spec.md)) and the loop had no way to see it.
+The signals that a `met` run was wrong are a person's ruling, rewind or rerun through the engine (`causes.py`, `pushback`), a person's `label <thread> outcome`, and a finalizer fact that the pull request was closed unmerged (OUT-B18). Even the last is not derived today: FBK's open question records that no run records the pull request it led to (S11). Review comments, requested changes and a person's follow-up commits on the run's pull request are read by nothing. The reviewer's finding on #113 was a textbook escape (a `met` run a later signal contradicts, [OUT-B19](../specs/run-outcome.spec.md)) and the loop had no way to see it.
 
 ### F11 A proposal cannot change the files a step reads besides its template `confirmed`
 

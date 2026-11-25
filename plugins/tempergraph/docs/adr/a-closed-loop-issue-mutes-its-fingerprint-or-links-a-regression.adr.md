@@ -2,15 +2,15 @@
 
 ## Context
 
-The loop de-duplicates a finding against open issues only. `GhCodeHost.search` in `plugins/tempergraph/engine/src/tempergraph/improve/codehost.py` (lines 72 to 77) lists `--state open` issues, and `file` in `plugins/tempergraph/engine/src/tempergraph/improve/filing.py` (lines 169 to 186) comments on a match or opens an issue ([SIL-B2](../specs/16-self-improvement.spec.md)). Once an issue is closed, the next occurrence of its fingerprint opens a new issue that says nothing of the first, whatever the reason the first was closed. The fingerprint holds side, workflow, leading cause and step, and no version (SIL-B2).
+The loop de-duplicates a finding against open issues only. `GhCodeHost.search` in `plugins/tempergraph/engine/src/tempergraph/improve/codehost.py` (lines 72 to 77) lists `--state open` issues, and `file` in `plugins/tempergraph/engine/src/tempergraph/improve/filing.py` (lines 169 to 186) comments on a match or opens an issue ([SIL-B2](../specs/self-improvement.spec.md)). Once an issue is closed, the next occurrence of its fingerprint opens a new issue that says nothing of the first, whatever the reason the first was closed. The fingerprint holds side, workflow, leading cause and step, and no version (SIL-B2).
 
 The repository has made GitHub issues its one list of scope, and its guide says how a person triages the loop's issues: `CONTRIBUTING.md` (section 2, Triage) says "Close an issue as `not planned` when it will not be built. The improvement loop reads close reasons (#1)", and section 5.4 says the loop's issues are triaged like any other. [R-160](../research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) F7 records that overnight the loop filed nothing; issue 1 asks that the issues it does file sit in the same queue and that the owner's close reasons teach it.
 
-The store already names the same two readings for the loop's own metrics: `fixed` (closed by a merged change) and `noise` (closed as not planned) ([IMD-B9](../specs/43-improvement-data.spec.md)). Release 1 reads neither, and who reads them on a team is open there. This record concerns the read the loop makes when it is about to file, on the machine that files.
+The store already names the same two readings for the loop's own metrics: `fixed` (closed by a merged change) and `noise` (closed as not planned) ([IMD-B9](../specs/improvement-data.spec.md)). Release 1 reads neither, and who reads them on a team is open there. This record concerns the read the loop makes when it is about to file, on the machine that files.
 
 The code host is GitHub through the person's `gh` (`codehost.py`, module docstring). The GitHub CLI manual lists `stateReason` and `closedAt` among the JSON fields of `gh issue list`, and its `--state` takes `open`, `closed` or `all` (https://cli.github.com/manual/gh_issue_list). The two reasons the repository's guide asks people to choose between are completed and not planned. A host can report another reason (a close as a duplicate) or none, and the loop cannot list the reasons of every host. The exact spelling of the values is for the code step to read from the host's output and pin in a fixture; this record names them in words.
 
-The loop's other windows are 30 days: `pattern_rule.window_days` ([SIL-B3](../specs/16-self-improvement.spec.md)) and `cost.window_days` (`plugins/tempergraph/engine/src/tempergraph/improve/params.py`, lines 24 and 29). A threshold of the loop is a parameter record with provenance `default_no_data` until data fits it ([IMD-B23](../specs/43-improvement-data.spec.md)). The owner was away, so the period below is such a default.
+The loop's other windows are 30 days: `pattern_rule.window_days` ([SIL-B3](../specs/self-improvement.spec.md)) and `cost.window_days` (`plugins/tempergraph/engine/src/tempergraph/improve/params.py`, lines 24 and 29). A threshold of the loop is a parameter record with provenance `default_no_data` until data fits it ([IMD-B23](../specs/improvement-data.spec.md)). The owner was away, so the period below is such a default.
 
 ## Decision
 
@@ -28,7 +28,7 @@ We will read the close reason of the matching issue that closed most recently, w
 - `mute.days` is a parameter record, 30 days, provenance `default_no_data`. It counts from the close time the host reports, not from the loop's first read.
 - The close that decides is the latest one. An open issue wins over any closed one, so a person ends a mute at once by reopening the issue.
 - A close as completed carries no age limit and no version check. The new issue says "possible", and a person decides.
-- The link is a link only. It records nothing on a proposal; `regressed_after_release` stays with the measured comparison of [PRP-B9](../specs/40-improvement-proposals.spec.md).
+- The link is a link only. It records nothing on a proposal; `regressed_after_release` stays with the measured comparison of [PRP-B9](../specs/improvement-proposals.spec.md).
 
 ## Options considered
 
@@ -68,10 +68,10 @@ For: one rule. Against: muting after every close loses the regression signal of 
 - Risk: a close as completed without a fix makes every later occurrence a linked new issue. The link says "possible", and a person closes the new issue as not planned to mute it.
 - Risk: a recurrence on a workflow version older than the fix opens a possible regression that is not one. The Evidence section of the issue names the workflow version so a person can compare; the loop does not (option E).
 - Risk: a host that reports no reason, or one the loop does not read, gives no signal, and the loop then behaves as it did before this record: a new issue with no link.
-- Risk: a failed search of closed issues files anyway, which can break a mute once. The rule is the one SIL-B2 has for a failed search of open issues, and a failure of the search usually fails the create too, which goes to the outbox ([SIL-B19](../specs/16-self-improvement.spec.md)).
-- The loop's own proposals ([PRP-B23](../specs/40-improvement-proposals.spec.md)) do not yet respect a mute; the proposals spec holds that as an open question.
-- `mute.days` must exist as a parameter record with a provenance ([IMD-AC3](../specs/43-improvement-data.spec.md)).
+- Risk: a failed search of closed issues files anyway, which can break a mute once. The rule is the one SIL-B2 has for a failed search of open issues, and a failure of the search usually fails the create too, which goes to the outbox ([SIL-B19](../specs/self-improvement.spec.md)).
+- The loop's own proposals ([PRP-B23](../specs/improvement-proposals.spec.md)) do not yet respect a mute; the proposals spec holds that as an open question.
+- `mute.days` must exist as a parameter record with a provenance ([IMD-AC3](../specs/improvement-data.spec.md)).
 
 ## Revisit when
 
-The owner finds 30 days too short or too long, a muted fingerprint is declined again and again, the loop's own proposals should respect a mute, the host reports a reason the loop should read, or the merge of a proposal is seen ([PRP-B9](../specs/40-improvement-proposals.spec.md)) and a regression link can name its proposal.
+The owner finds 30 days too short or too long, a muted fingerprint is declined again and again, the loop's own proposals should respect a mute, the host reports a reason the loop should read, or the merge of a proposal is seen ([PRP-B9](../specs/improvement-proposals.spec.md)) and a regression link can name its proposal.

@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The owner asked for a command that upgrades a workflow to a newer engine: it reads the workflow's and the engine's metadata, works out what must change, and changes it, which "requires a model". The other way is an upgrade check that detects and explains, and leaves every edit to a person. This note asks how public tools that migrate code between library versions split the work between deterministic transforms and a model, and how they verify the result, so the workflow upgrade ([WUP](../specs/63-workflow-upgrade.spec.md)) follows practice that has been measured. It informs [ADR-0057](../adr/0057-typed-version-metadata-on-both-sides.adr.md) to [ADR-0059](../adr/0059-an-upgrade-is-done-when-model-free-checks-pass-against-the-old-baseline.adr.md).
+The owner asked for a command that upgrades a workflow to a newer engine: it reads the workflow's and the engine's metadata, works out what must change, and changes it, which "requires a model". The other way is an upgrade check that detects and explains, and leaves every edit to a person. This note asks how public tools that migrate code between library versions split the work between deterministic transforms and a model, and how they verify the result, so the workflow upgrade ([WUP](../specs/workflow-upgrade.spec.md)) follows practice that has been measured. It informs [ADR-0057](../adr/0057-typed-version-metadata-on-both-sides.adr.md) to [ADR-0059](../adr/0059-an-upgrade-is-done-when-model-free-checks-pass.adr.md).
 
 ## Sources consulted
 

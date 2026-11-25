@@ -7,7 +7,7 @@ owner: dbr0vskyi
 status: In progress
 tags: [track-plan, tempergraph, T8]
 tracker: none
-spec: plugins/tempergraph/docs/specs/88-workflow-package.spec.md
+spec: plugins/tempergraph/docs/specs/workflow-package.spec.md
 spec_commit: 0a4f06b
 task_id: first-release-t8
 ---
@@ -19,7 +19,7 @@ task_id: first-release-t8
 | Field | Value |
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T8 |
-| Specs | [PKG](../specs/88-workflow-package.spec.md), [UPD](../specs/60-engine-update.spec.md), [VER](../specs/61-version-metadata.spec.md), [LIF](../specs/18-lifecycle-and-evals.spec.md), [AUD](../specs/55-workflow-audit.spec.md), [ARC](../specs/56-audit-rule-catalog.spec.md), [PRA](../specs/58-prompt-audit.spec.md), [SCF](../specs/91-blueprint-and-scaffold.spec.md) |
+| Specs | [PKG](../specs/workflow-package.spec.md), [UPD](../specs/engine-update.spec.md), [VER](../specs/version-metadata.spec.md), [LIF](../specs/lifecycle-and-evals.spec.md), [AUD](../specs/workflow-audit.spec.md), [ARC](../specs/audit-rule-catalog.spec.md), [PRA](../specs/prompt-audit.spec.md), [SCF](../specs/blueprint-and-scaffold.spec.md) |
 
 **Status: In progress.** T8.1 is built: a package on disk loads by every step of PKG-B15, PKG-B16, PKG-B17, step 5 through OUT's `read_outcome`, `gate_criteria` and `check_against` (plan T5.8.1), validates with the package rules, and registers, lists, unregisters and reinstalls through `tempergraph workflows`. T8.2 is built against a stand-in environment builder; a real `pip install` of the engine into a fresh environment waits on the owner's machine (it needs the package index). T8.3 is built, with the two calls in preflight and `executors` (8.3.5) added at the main build thread's request. T8.4 is built: prompt lint (LIF-B12), the structural readiness report (LIF-B13), and the stand-in scenario and diagram currency (LIF-B4, LIF-B3). T8.5 is built for the `definition` and `host` layers (R-150 AUD); the history layer and TSA moved to release 3. T8.6 has the blueprint check, draw and compare, the literal check, the scaffold and every rung of `author verify`; rungs 8 and 9, the trial report and the grades were built once T12.4 landed judge calibration.
 
@@ -107,7 +107,7 @@ Status pass: WUP is `ready-for-implementation` (its open question has a release 
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 8.5.0 | `docs/specs/55-*`, `56-*`, `58-*` | Status pass: AUD, ARC and PRA `ready-for-implementation`, with the release 1 decisions in R-150 AUD, ARC-B6, ARC-B10, ARC-B16 and PRA-B7 to PRA-B11 | AUD, ARC, PRA | | P1 | ✓ | 2026-11-20 |
+| 8.5.0 | `docs/specs/workflow-audit.spec.md`, `audit-rule-catalog.spec.md`, `prompt-audit.spec.md` | Status pass: AUD, ARC and PRA `ready-for-implementation`, with the release 1 decisions in R-150 AUD, ARC-B6, ARC-B10, ARC-B16 and PRA-B7 to PRA-B11 | AUD, ARC, PRA | | P1 | ✓ | 2026-11-20 |
 | 8.5.1 | `engine/tests/test_audit.py` | The catalog schema and owner source tests; each built rule raised by a fixture and quiet on a clean one; ARC-B2 table; PRA-B1, B2, B3; AUD-B1, B2, B4, B6 to B9; ignores; JSON, SARIF; refusals; V4 | AUD-AC1, ARC-AC1, PRA-AC1 | yes | P1 | ✓ | 2026-11-20 |
 | 8.5.2 | `engine/src/tempergraph/audit/catalog.py` | The rule records and named parameters (ARC-B6, ARC-AC1 to AC-3) | ARC-B6 to ARC-B16 | | P1 | ✓ | 2026-11-20 |
 | 8.5.3 | `audit/definition.py`, `audit/host.py`, `executors/launcher.py` (`shell_timing`) | The definition and host rules of ARC and PRA built in release 1 | ARC-B8, ARC-B9, ARC-B14, PRA-B7 to PRA-B10 | | P1 | ✓ | 2026-11-20 |
@@ -124,7 +124,7 @@ Status pass: WUP is `ready-for-implementation` (its open question has a release 
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 8.6.0 | `docs/specs/91-*` | Status pass: SCF `ready-for-implementation`, release 1 decisions in SCF-B11, SCF-B13, SCF-B15, SCF-B16, SCF-B17, SCF-B18, SCF-B19, SCF-B20, SCF-B22 | SCF | | P1 | ✓ | 2026-11-20 |
+| 8.6.0 | `docs/specs/blueprint-and-scaffold.spec.md` | Status pass: SCF `ready-for-implementation`, release 1 decisions in SCF-B11, SCF-B13, SCF-B15, SCF-B16, SCF-B17, SCF-B18, SCF-B19, SCF-B20, SCF-B22 | SCF | | P1 | ✓ | 2026-11-20 |
 | 8.6.1 | `engine/tests/test_blueprint.py` | SCF-B1, B2, B4, B5; the §4 blueprint rows; the outcome cross-check; draw formats; compare reports each compared field and none of the others; literals and a recorded hit | SCF-B9, SCF-B11, SCF-B13, SCF-AC1 | yes | P1 | ✓ | 2026-11-20 |
 | 8.6.2 | `author/blueprint.py`, `author/draw.py`, `author/compare.py`, `author/literals.py`, `cli/author.py` | `blueprint check|draw|compare`, `literals` | SCF-B9, SCF-B11, SCF-B13 | | P1 | ✓ | 2026-11-20 |
 | 8.6.3 | `author/scaffold.py`, `check_helpers.py` (`tempergraph.api.checks`), `package/selftest.py`, `executors/scripted.py`, `cli/author.py`, `tests/test_scaffold.py` | `scaffold` and `--update`, `--update-docs`, check helpers, the generated tests; SCF-B3, B7, AC-2, AC-4 | SCF-B14, SCF-B15, SCF-B16, SCF-B17 | yes | P1 | ✓ | 2026-11-20 |

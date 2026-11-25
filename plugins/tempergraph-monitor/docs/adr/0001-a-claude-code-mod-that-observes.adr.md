@@ -13,7 +13,7 @@ The plugin was scaffolded as "a Claude Mod showing progress of tempergraph runs"
 
 ## Decision
 
-We will build the monitor as a Claude Code mod that reads engine documents and runs read-only engine verbs, and changes nothing itself (contracts M1 and M2, [MOV](../specs/00-overview.spec.md)).
+We will build the monitor as a Claude Code mod that reads engine documents and runs read-only engine verbs, and changes nothing itself (contracts M1 and M2, [MOV](../specs/overview.spec.md)).
 
 ## Options considered
 

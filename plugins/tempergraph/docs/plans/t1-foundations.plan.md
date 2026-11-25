@@ -7,7 +7,7 @@ owner: dbr0vskyi
 status: Completed
 tags: [track-plan, tempergraph, T1]
 tracker: none
-spec: plugins/tempergraph/docs/specs/01-contracts.spec.md
+spec: plugins/tempergraph/docs/specs/contracts.spec.md
 spec_commit: 14799ea
 task_id: first-release-t1
 ---
@@ -19,7 +19,7 @@ task_id: first-release-t1
 | Field | Value |
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T1; owner's instruction of 2026-11-20 to start release 1 |
-| Specs | [CON](../specs/01-contracts.spec.md), [SEC](../specs/14-security.spec.md), [LOS](../specs/33-local-observability-store.spec.md), read at `14799ea` |
+| Specs | [CON](../specs/contracts.spec.md), [SEC](../specs/security.spec.md), [LOS](../specs/local-observability-store.spec.md), read at `14799ea` |
 | Decisions | [ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md), [ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md), [ADR-0115](../adr/0115-the-engine-is-a-src-layout-python-package-inside-its-plugin.adr.md) |
 
 **Problem statement.** No code exists. Every track needs the same package, test runner, source rules, shared types, launch rules and store layout first.

@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-tempergraph runs every step and every judge as a headless agent session started by an executor (see the [executor interface spec](../specs/10-executor-interface.spec.md)). This note records how the Claude Code CLI (`claude`) behaves when it is driven non-interactively as a child process, so that the [Claude Code executor spec](../specs/11-executor-claude-code.spec.md) rests on documented facts and not on memory. Behaviour observed in headless runs is folded in where it confirms or refines a documented fact.
+tempergraph runs every step and every judge as a headless agent session started by an executor (see the [executor interface spec](../specs/executor-interface.spec.md)). This note records how the Claude Code CLI (`claude`) behaves when it is driven non-interactively as a child process, so that the [Claude Code executor spec](../specs/executor-claude-code.spec.md) rests on documented facts and not on memory. Behaviour observed in headless runs is folded in where it confirms or refines a documented fact.
 
 ## Sources consulted
 
@@ -70,7 +70,7 @@ Read on 2026-11-19. Several flags carry minimum-version notes; the executor must
 
 | Question | Owner | How to settle |
 |---|---|---|
-| Does `--bare` remove tools registered by user-level plugins from a headless session? | Executor implementer | Probe P-CC-1 in the [Claude Code executor spec](../specs/11-executor-claude-code.spec.md). |
+| Does `--bare` remove tools registered by user-level plugins from a headless session? | Executor implementer | Probe P-CC-1 in the [Claude Code executor spec](../specs/executor-claude-code.spec.md). |
 | Which wins for a subagent's model: `CLAUDE_CODE_SUBAGENT_MODEL` or the model named in an agent call? | Executor implementer | Probe P-CC-4. |
 | What does the stream show when `--max-budget-usd` ends a session? | Executor implementer | Probe P-CC-3. |
 | How many concurrent sessions does the model gateway accept before throttling, and how does `system/api_retry` report it? | Operator | Live batch at 1, 3, 5, 8 sessions. |

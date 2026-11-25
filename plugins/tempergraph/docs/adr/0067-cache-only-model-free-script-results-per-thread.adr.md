@@ -13,7 +13,7 @@ LangGraph offers a node cache keyed by input ([R-060](../research/R-060-node-typ
 
 ## Decision
 
-We will allow `cache: thread` on a **script** unit or a hybrid step's script whose `side_effects` is `none` ([SCR](../specs/70-script-units-and-hybrid-steps.spec.md)). The key is a digest of the resolved argv or callable reference with the package's content digest, the rendered arguments, and the content digests of the declared inputs (artifact keys, paths, or the workspace tree). A hit restores the recorded outputs and result, is logged with `cached: true`, and spends nothing. Caches live under the thread's folder and are deleted with it. Model steps, judges, councils and contests are never cached.
+We will allow `cache: thread` on a **script** unit or a hybrid step's script whose `side_effects` is `none` ([SCR](../specs/script-units-and-hybrid-steps.spec.md)). The key is a digest of the resolved argv or callable reference with the package's content digest, the rendered arguments, and the content digests of the declared inputs (artifact keys, paths, or the workspace tree). A hit restores the recorded outputs and result, is logged with `cached: true`, and spends nothing. Caches live under the thread's folder and are deleted with it. Model steps, judges, councils and contests are never cached.
 
 ## Options considered
 

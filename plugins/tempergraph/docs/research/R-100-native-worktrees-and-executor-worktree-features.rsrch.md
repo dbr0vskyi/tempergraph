@@ -7,7 +7,7 @@ The owner asked on 2026-11-20: "Design a parameter which allows native worktree 
 1. What the design already says about workspaces, worktrees and isolation, and what is missing for a person-facing parameter.
 2. Which git behaviours a worktree lifecycle must respect (branch names, removal, locking, submodules).
 3. What each of the four executors offers natively for worktrees in its current public documentation.
-4. Which choices follow, for the spec [WTR](../specs/82-worktree-mode.spec.md) and ADRs [0100](../adr/0100-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md) to [0104](../adr/0104-a-new-worktree-starts-from-the-main-checkouts-head.adr.md).
+4. Which choices follow, for the spec [WTR](../specs/worktree-mode.spec.md) and ADRs [0100](../adr/0100-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md) to [0104](../adr/0104-a-new-worktree-starts-from-the-main-checkouts-head.adr.md).
 
 The work was done standalone, without questions to the owner; assumptions are recorded in those ADRs.
 
@@ -15,7 +15,7 @@ The work was done standalone, without questions to the owner; assumptions are re
 
 | # | Source | Type | Where |
 |---|---|---|---|
-| S3 | This design on `main` after PR 13: WSP, CON-B4, CON-B5, CON-B6, CON-B7, RST-B18, RST-B19, RST-B20, RST-B21, ROP-B1 to ROP-B13, RRN-B17, RRN-B18, FIN, ECC-B8, ECC-B9, EAG-B10, EAG-B11, EAG-B5, EAS-B8, THS-B7, GRD-B3, CTS, MAP, WUP | Design set | [specs](../specs/00-overview.spec.md) |
+| S3 | This design on `main` after PR 13: WSP, CON-B4, CON-B5, CON-B6, CON-B7, RST-B18, RST-B19, RST-B20, RST-B21, ROP-B1 to ROP-B13, RRN-B17, RRN-B18, FIN, ECC-B8, ECC-B9, EAG-B10, EAG-B11, EAG-B5, EAS-B8, THS-B7, GRD-B3, CTS, MAP, WUP | Design set | [specs](../specs/overview.spec.md) |
 | S4 | Claude Code, "Run parallel sessions with worktrees" | Official docs | https://code.claude.com/docs/en/worktrees.md |
 | S5 | Antigravity features page, CLI and App tabs | Official docs | https://antigravity.google/docs/features?tab=cli |
 | S6 | "Manage your worktrees with Antigravity 2.0" (2026-06-17) | Third-party blog | https://jeanphi-baconnais.gitlab.io/post/2026-antigravity-worktrees-en/ |

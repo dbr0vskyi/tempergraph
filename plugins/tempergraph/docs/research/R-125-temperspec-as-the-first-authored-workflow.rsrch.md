@@ -24,7 +24,7 @@ This is research for a discussion. Nothing is scaffolded and no spec, decision r
 |---|---|---|---|
 | S2 | R-075, the coverage check of the design | Research note | [R-075](R-075-temperspec-needs-against-the-engine.rsrch.md) |
 | S3 | Release 1 plan: feature list I-1 to I-94, exclusions X2 and X3 | Plan | [first-release.plan.md](../plans/first-release.plan.md) §1.3 |
-| S4 | Authoring, outcome, package and scaffold specs | Specs | [AUT](../specs/89-workflow-authoring.spec.md), [OUT](../specs/90-run-outcome.spec.md), [PKG](../specs/88-workflow-package.spec.md), [SCF](../specs/91-blueprint-and-scaffold.spec.md) |
+| S4 | Authoring, outcome, package and scaffold specs | Specs | [AUT](../specs/workflow-authoring.spec.md), [OUT](../specs/run-outcome.spec.md), [PKG](../specs/workflow-package.spec.md), [SCF](../specs/blueprint-and-scaffold.spec.md) |
 | S5 | Engine code on `main` at `26096be`: `api.py`, `model/validate.py`, `run/nodes.py`, `run/gate.py`, `run/checks.py`, `run/finalize.py`, `render/output.py`, `executors/capabilities.py`, `executors/binding.py`, `cli/author.py` | Code, read not run | [engine/src/tempergraph](../../engine/src/tempergraph/) |
 | S6 | The two example packages | Code | [doc-refresh-tgraph](../../../doc-refresh-tgraph/), [release-notes-tgraph](../../../release-notes-tgraph/) |
 | S7 | R-120 on effort ladders and model escalation | Research note | [R-120](R-120-effort-ladders-and-one-step-model-escalation.rsrch.md) |
@@ -55,13 +55,13 @@ The method fixes every artifact's structure, each gate's check list, criteria **
 
 Consequences:
 
-- The authoring entry path is `sources`, not `solution` ([AUT-B13](../specs/89-workflow-authoring.spec.md)): the inventory finds checklists and rules, not a runnable thing.
+- The authoring entry path is `sources`, not `solution` ([AUT-B13](../specs/workflow-authoring.spec.md)): the inventory finds checklists and rules, not a runnable thing.
 - The nearest thing to a working rule set is this repository's own docs set. [docs/README.md](../README.md) already states file naming, spec and decision-record form, and the plans follow the method's plan shape (Section 0, requirements, tracks). It is the best source for intake.
-- Criteria wording is the owner's call during the interview. The method's themes are candidates, not confirmed criteria; the authoring skill never invents a rubric the person did not confirm ([AUT-B16, AUT-B17, AUT-B18](../specs/89-workflow-authoring.spec.md)).
+- Criteria wording is the owner's call during the interview. The method's themes are candidates, not confirmed criteria; the authoring skill never invents a rubric the person did not confirm ([AUT-B16, AUT-B17, AUT-B18](../specs/workflow-authoring.spec.md)).
 
 ### F3 R-075's rows against the code and the release boundary `confirmed` (code read, not run)
 
-R-075 found 17 gap rows and closed them in specs 75 to 79 and ADR-0075 to 0079. Their state on `main`:
+R-075 found 17 gap rows and closed them in specs `check-contract-and-command-runs`, `step-values-and-template-keys`, `map-unit`, `finalizer-contract` and `measured-switches` and ADR-0075 to 0079. Their state on `main`:
 
 | R-075 gap | Closed by | In release 1 code? | Evidence |
 |---|---|---|---|
@@ -83,17 +83,17 @@ Everything R-075 marked covered that temperspec's line needs is in the release 1
 
 In the method a step's upstream claim ("the plan conflicts with the tooling") sends the run back by itself, once per edge. In the code:
 
-- `render/output.py` accepts `UPSTREAM <unit>:` for any unit in the gate's `back_targets`. It does not check that the target ran or was route-skipped, so it is more permissive than [PRM-B11](../specs/04-prompt-rendering.spec.md).
+- `render/output.py` accepts `UPSTREAM <unit>:` for any unit in the gate's `back_targets`. It does not check that the target ran or was route-skipped, so it is more permissive than [PRM-B11](../specs/prompt-rendering.spec.md).
 - `run/nodes.py` turns an accepted claim into `escalate = "upstream"`, and `run/gate.py` sends every escalation cause to a person. No judge confirms the claim and no automatic trip back follows.
 - A **judge's** attribution (`back_to`) does route back automatically within the loop budget (`run/gate.py`).
 
-So trips back driven by the judge work as in the method; trips back driven by a step's own claim cost one pause, where the person picks `back`. That is safe and usable for a first version, but it is a difference from the method and from what [HUM-B7 to HUM-B11](../specs/07-gate-and-human.spec.md) implies ("an upstream claim the judge could not confirm" escalates). It should be either built or recorded as release 1 behaviour in the spec. This is a small engine item, not a blocker.
+So trips back driven by the judge work as in the method; trips back driven by a step's own claim cost one pause, where the person picks `back`. That is safe and usable for a first version, but it is a difference from the method and from what [HUM-B7 to HUM-B11](../specs/gate-and-human.spec.md) implies ("an upstream claim the judge could not confirm" escalates). It should be either built or recorded as release 1 behaviour in the spec. This is a small engine item, not a blocker.
 
-**Since fixed (2026-11-21, on the owner's ruling to reduce pauses):** a claim is now judged on its own against one criterion; confirmed goes back, refuted retries the step, undecided asks a person ([JDG-B9](../specs/05-judge-and-verdict.spec.md)).
+**Since fixed (2026-11-21, on the owner's ruling to reduce pauses):** a claim is now judged on its own against one criterion; confirmed goes back, refuted retries the step, undecided asks a person ([JDG-B9](../specs/judge-and-verdict.spec.md)).
 
 ### F5 The outcome gate adds a grader the method does not have `confirmed`
 
-Every authored workflow gets a final `outcome` unit before the finalizer, judged by default on the strongest model any step judge uses ([OUT-B15, OUT-B16, OUT-B17](../specs/90-run-outcome.spec.md)). For temperspec that is a second Opus read of the change, right after the Opus code judge. The method's rule is that no criterion is judged twice. The outcome file therefore has to split the work: final criteria are mostly `check`, and the one judged final criterion is taken out of the code gate rather than repeated in it (see the proposed outcome).
+Every authored workflow gets a final `outcome` unit before the finalizer, judged by default on the strongest model any step judge uses ([OUT-B15, OUT-B16, OUT-B17](../specs/run-outcome.spec.md)). For temperspec that is a second Opus read of the change, right after the Opus code judge. The method's rule is that no criterion is judged twice. The outcome file therefore has to split the work: final criteria are mostly `check`, and the one judged final criterion is taken out of the code gate rather than repeated in it (see the proposed outcome).
 
 ### F6 What needs a live `claude` `confirmed`
 
@@ -158,7 +158,7 @@ Intermediate outcomes, each serving the final criteria above:
 | code | The whole plan is built test first and committed | Rows marked, committed, not pushed, then the plan's commands | Each row's change is where it says; scenarios covered by asserting tests; nothing beyond the plan (large tier) |
 | release | Release rows are done and truthful | Rows marked, commit past the code gate's, release commands | Changelog truthful, nothing else changed (Sonnet) |
 
-Trust at the start: every judged criterion is `uncalibrated` until its seeds are graded live, and the outcome record shows that rather than hiding it ([OUT-B13, OUT-B14](../specs/90-run-outcome.spec.md)).
+Trust at the start: every judged criterion is `uncalibrated` until its seeds are graded live, and the outcome record shows that rather than hiding it ([OUT-B13, OUT-B14](../specs/run-outcome.spec.md)).
 
 ### Models and effort
 

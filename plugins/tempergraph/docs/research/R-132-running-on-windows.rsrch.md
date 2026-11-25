@@ -13,7 +13,7 @@ Release 1 targets macOS and Linux ([ADR-0090](../adr/0090-first-release-is-simpl
 | S4 | Git for Windows, "Git cannot create a file or directory with a long path": `core.longpaths` | Vendor documentation | [gitforwindows.org](https://gitforwindows.org/git-cannot-create-a-file-or-directory-with-a-long-path.html) |
 | S5 | Job objects with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`, as used by build tools (rustc's bootstrap, uv) to end a whole process tree with the parent | Open-source code | [rust bootstrap job.rs](https://doc.rust-lang.org/stable/nightly-rustc/src/bootstrap/utils/job.rs.html), [uv-windows job.rs](https://docs.rs/crate/uv-windows/0.0.45/source/src/job.rs) |
 | S6 | Engine code on `main`: `executors/launcher.py` (process group on POSIX; on Windows `CREATE_NEW_PROCESS_GROUP`, `taskkill /T` on a hard stop, "the job-object form is the next step"), `durability/lock.py` (`fcntl` or `msvcrt.locking`), `install/shim.py` (a `/bin/sh` shim, `bin/python`), `chmod` calls guarded by `os.name`, `shell_timing` (`$SHELL`) | Code | `plugins/tempergraph/engine/src/tempergraph/` |
-| S7 | This design: EXI-B5 (children end with the engine), SEC-B5, SEC-B6 (argv constants, prompt on stdin), LOS-B7, LOS-B8, LOS-B9 (owner-only modes), UPD-B11, UPD-B12, UPD-B13, UPD-B18, UPD-B19 (shim, `PATH` block), TCK (OS adapters), WTR (worktree names), CHK (command resolution), ARC `slow-host` | Design set | [specs](../specs/00-overview.spec.md) |
+| S7 | This design: EXI-B5 (children end with the engine), SEC-B5, SEC-B6 (argv constants, prompt on stdin), LOS-B7, LOS-B8, LOS-B9 (owner-only modes), UPD-B11, UPD-B12, UPD-B13, UPD-B18, UPD-B19 (shim, `PATH` block), TCK (OS adapters), WTR (worktree names), CHK (command resolution), ARC `slow-host` | Design set | [specs](../specs/overview.spec.md) |
 
 ## Key findings
 
@@ -23,7 +23,7 @@ On Windows a session's process tree outlives the engine unless a job object ties
 
 ### F2 Claude Code runs natively on Windows, and its shell differs `confirmed`
 
-Native Windows is supported from Windows 10 1809. With Git for Windows the Bash tool uses Git Bash; without it shell commands go through the PowerShell tool (S2). A workflow's `shell` capability and its declared command prefixes ([CHK-B11](../specs/75-check-contract-and-command-runs.spec.md)) therefore meet a different shell per machine. In WSL, Claude Code is a Linux program, and the engine should run inside WSL too.
+Native Windows is supported from Windows 10 1809. With Git for Windows the Bash tool uses Git Bash; without it shell commands go through the PowerShell tool (S2). A workflow's `shell` capability and its declared command prefixes ([CHK-B11](../specs/check-contract-and-command-runs.spec.md)) therefore meet a different shell per machine. In WSL, Claude Code is a Linux program, and the engine should run inside WSL too.
 
 ### F3 What is POSIX-only in tempergraph today `confirmed`
 
@@ -42,7 +42,7 @@ Native Windows is supported from Windows 10 1809. With Git for Windows the Bash 
 
 ### F4 Unknowns that need a probe `uncertain`
 
-- Whether `claude -p` on native Windows streams the same `stream-json` events and honours `--tools`, `--disallowedTools` and `--permission-mode` exactly as on POSIX (the judge's restriction rests on them, [ECC](../specs/11-executor-claude-code.spec.md)).
+- Whether `claude -p` on native Windows streams the same `stream-json` events and honours `--tools`, `--disallowedTools` and `--permission-mode` exactly as on POSIX (the judge's restriction rests on them, [ECC](../specs/executor-claude-code.spec.md)).
 - Whether a session's own children (Git Bash, PowerShell, MCP servers) join the engine's job object when Claude Code starts them, or break away.
 - How `--bare` judge sessions find Git Bash.
 

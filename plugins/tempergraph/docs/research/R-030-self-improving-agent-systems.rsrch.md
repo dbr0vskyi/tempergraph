@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The owner asked how tempergraph's self-improvement should work end to end. The current loop ([SIL](../specs/16-self-improvement.spec.md)) detects friction, outcome gaps and cost waste, and files de-duplicated issues that a person turns into a new workflow version. It stops at the issue: nothing drafts a testable change, nothing measures a change against the same work, and the judge that every signal rests on is itself unmeasured. This note surveys public work on systems that improve their own prompts, contexts, workflows or code, and states which mechanisms fit a framework whose promise is *tempered* rails: bounded, gated, reviewable.
+The owner asked how tempergraph's self-improvement should work end to end. The current loop ([SIL](../specs/self-improvement.spec.md)) detects friction, outcome gaps and cost waste, and files de-duplicated issues that a person turns into a new workflow version. It stops at the issue: nothing drafts a testable change, nothing measures a change against the same work, and the judge that every signal rests on is itself unmeasured. This note surveys public work on systems that improve their own prompts, contexts, workflows or code, and states which mechanisms fit a framework whose promise is *tempered* rails: bounded, gated, reviewable.
 
 ## Sources consulted
 
@@ -39,7 +39,7 @@ Paper results are read from abstracts and the authors' own reported figures; non
 | Program optimization | Prompts, demonstrations, or the workflow graph itself, searched offline against a metric on a training set | A scored metric over a dataset | DSPy MIPROv2, GEPA, TextGrad, AFlow, ADAS | A new program version |
 | Self-modifying code | The agent's own source | A benchmark score | Darwin Gödel Machine, SICA | A new agent version |
 
-`confirmed` (several sources describe the same split). tempergraph already has the first family as an engine rule: a retry is a fresh session told the gate's evidence ([BUD](../specs/08-budgets-and-failures.spec.md)). Its current loop sits before the third family: it produces the *diagnosis* that an optimizer would consume, but no candidate and no score.
+`confirmed` (several sources describe the same split). tempergraph already has the first family as an engine rule: a retry is a fresh session told the gate's evidence ([BUD](../specs/budgets-and-failures.spec.md)). Its current loop sits before the third family: it produces the *diagnosis* that an optimizer would consume, but no candidate and no score.
 
 ### F2 External, independent feedback is what makes improvement work
 
@@ -51,7 +51,7 @@ MIPROv2, GEPA and AFlow all assume a set of tasks with a scoring function and se
 
 ### F4 Experience memory helps, and collapses when rewritten wholesale
 
-ACE reports that contexts maintained as an evolving playbook of itemized entries, updated by small deltas from a generator, reflector and curator, beat monolithic rewrites, and names two failure modes of rewriting: *brevity bias* (summaries drop domain detail) and *context collapse* (iterative rewriting erodes accumulated knowledge). ExpeL and Agent Workflow Memory report gains from extracting insights and reusable routines from past trajectories. `supported`. The matching risk on the workflow side: a fix fitted to one request narrows the workflow for every other, which is why a proposal that adds a request's literals is refused ([PRP-B3](../specs/40-improvement-proposals.spec.md)). `inferred`.
+ACE reports that contexts maintained as an evolving playbook of itemized entries, updated by small deltas from a generator, reflector and curator, beat monolithic rewrites, and names two failure modes of rewriting: *brevity bias* (summaries drop domain detail) and *context collapse* (iterative rewriting erodes accumulated knowledge). ExpeL and Agent Workflow Memory report gains from extracting insights and reusable routines from past trajectories. `supported`. The matching risk on the workflow side: a fix fitted to one request narrows the workflow for every other, which is why a proposal that adds a request's literals is refused ([PRP-B3](../specs/improvement-proposals.spec.md)). `inferred`.
 
 ### F5 A system that optimizes against its own evaluator games it
 

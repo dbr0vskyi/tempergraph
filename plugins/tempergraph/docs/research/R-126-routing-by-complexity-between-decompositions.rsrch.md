@@ -4,7 +4,7 @@
 
 On 2026-11-20 the owner asked that release 2 include "switching between branches of workflow based on task complexity or other parameters, at least between simpler decomposition of workflow vs detailed decomposition with map and similar ideas".
 
-The engine already has the parts: a switch with a pure predicate and a default arm ([CMP-B10 to CMP-B16](../specs/03-compiler-and-flow.spec.md)), shadow mode, per-arm overrides and re-arming ([SWM](../specs/79-measured-switches.spec.md)), and a sequential map with a join ([MAP](../specs/77-map-unit.spec.md)). What is missing is the method: how complexity is measured, who may decide it, where in a workflow the choice is made, what happens when the cheaper shape fails, how the two arms stay interchangeable for the units after them, and how the choice is measured. This note answers those from the design and public work.
+The engine already has the parts: a switch with a pure predicate and a default arm ([CMP-B10 to CMP-B16](../specs/compiler-and-flow.spec.md)), shadow mode, per-arm overrides and re-arming ([SWM](../specs/measured-switches.spec.md)), and a sequential map with a join ([MAP](../specs/map-unit.spec.md)). What is missing is the method: how complexity is measured, who may decide it, where in a workflow the choice is made, what happens when the cheaper shape fails, how the two arms stay interchangeable for the units after them, and how the choice is measured. This note answers those from the design and public work.
 
 ## Sources consulted
 
@@ -13,7 +13,7 @@ The engine already has the parts: a switch with a pure predicate and a default a
 | S5 | Prasad et al., *ADaPT: As-Needed Decomposition and Planning with Language Models* (NAACL Findings 2024): an executor tries the task first; only when it fails does a planner decompose it, recursively, so decomposition depth adapts to the task and to the executor's ability. Reported higher success than fixed plan-and-execute baselines on ALFWorld, WebShop and TextCraft | Paper | [arXiv 2311.05772](https://arxiv.org/pdf/2311.05772), [ACL Anthology](https://aclanthology.org/2024.findings-naacl.264) |
 | S6 | Anthropic, *Building effective agents* (2024): the routing workflow (classify, then a specialised path) and orchestrator-workers (a planner splits work whose subtasks cannot be known in advance); start simple and add steps only when they measurably help | Vendor guidance | [anthropic.com/engineering/building-effective-agents](https://anthropic.com/engineering/building-effective-agents) |
 | S7 | Ong et al., *RouteLLM* (ICLR 2025): routing by predicted query difficulty saves cost only with a router measured on held-out data | Paper | [arXiv 2406.18665](https://arxiv.org/abs/2406.18665v4) |
-| S8 | This design: CMP-B10 to CMP-B16 switch (sticky arm, default on fault, operator `--arm`), SWM (shadow, `arm_overrides`, `rearm`), MAP (`items_from`, per-item gates, join, `on_empty`), VAL step values, CHK facts, RST layer 5, ADR-0071 (overrides never change what verifies the work), [R-121](R-121-judge-model-by-risk-and-evidence-for-escalation.rsrch.md) | Design set | [specs](../specs/00-overview.spec.md) |
+| S8 | This design: CMP-B10 to CMP-B16 switch (sticky arm, default on fault, operator `--arm`), SWM (shadow, `arm_overrides`, `rearm`), MAP (`items_from`, per-item gates, join, `on_empty`), VAL step values, CHK facts, RST layer 5, ADR-0071 (overrides never change what verifies the work), [R-121](R-121-judge-model-by-risk-and-evidence-for-escalation.rsrch.md) | Design set | [specs](../specs/overview.spec.md) |
 
 ## Key findings
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The list of every capability the repository's specs own, which prepare writes at the start of each run so that triage and discovery can find the spec that owns a rule before they decide where a task's rule goes. Triage names the owning spec in each gap row from it, and discovery searches it before it writes a new spec. It is generated from the specs and never edited or committed, so no change to a spec has to touch it (documents rule 3). It does not own the specs' format, which `spec.rule.md` states. Part of the [overview](00-overview.spec.md); the unit is [prepare](01-prepare.spec.md).
+The list of every capability the repository's specs own, which prepare writes at the start of each run so that triage and discovery can find the spec that owns a rule before they decide where a task's rule goes. Triage names the owning spec in each gap row from it, and discovery searches it before it writes a new spec. It is generated from the specs and never edited or committed, so no change to a spec has to touch it (documents rule 3). It does not own the specs' format, which `spec.rule.md` states. Part of the [overview](overview.spec.md); the unit is [prepare](prepare.spec.md).
 
 ## Behaviours
 

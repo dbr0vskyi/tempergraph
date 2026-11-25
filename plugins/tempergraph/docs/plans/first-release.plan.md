@@ -7,7 +7,7 @@ owner: dbr0vskyi
 status: In Progress
 tags: [release-plan, tempergraph, tempergraph-monitor]
 tracker: none
-spec: plugins/tempergraph/docs/specs/00-overview.spec.md
+spec: plugins/tempergraph/docs/specs/overview.spec.md
 spec_commit: 75a81bd
 task_id: first-release
 ---
@@ -21,7 +21,7 @@ task_id: first-release
 | Origin | Design session for the owner, 2026-11-20 (thread "Define first release feature set") |
 | Research | [R-090 readiness](../research/R-090-implementation-readiness.rsrch.md), [R-011 gaps](../research/R-011-design-gap-review.rsrch.md) |
 | Decisions | [ADR-0090 scope](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md), [ADR-0091 executor](../adr/0091-first-release-ships-the-claude-executor-only.adr.md) |
-| Spec, read at | [Overview](../specs/00-overview.spec.md) and the specs named in §1, at `52aac24` (re-read after PRs 15 to 17) |
+| Spec, read at | [Overview](../specs/overview.spec.md) and the specs named in §1, at `52aac24` (re-read after PRs 15 to 17) |
 | Tracker | none |
 
 **Problem statement.** The design set is complete on mechanism but had no release boundary, so no plan could start. This plan fixes what release 1 contains, the order it is built in, and what must be true before each part starts.
@@ -35,7 +35,7 @@ task_id: first-release
 | Platforms | macOS and Linux, inside git repositories | R-011 U3, G9 deferred |
 | Plan shape | This release plan sets tracks and phases; each track gets its own skeleton and expanded plan (`<track>.plan.md`) when its specs are ready, within the method's 14 KB skeleton budget. This file is over that budget because it lists 61 phases across 13 tracks and the item-by-item feature list (§1.3), and holds no task row | One plan per coding unit, per the method |
 
-**Implementation guidance.** Contracts in [CON](../specs/01-contracts.spec.md) are the only shared types; a component that needs another adds it there first. Every acceptance criterion is a test before it is code (TDD rows in the expanded plans). Every model-calling behaviour is first tested against scripted stand-ins; only T0, T12's live checks and T11 spend money. LangGraph is imported only by the compiler and durability modules (R-011 U4, a source-scan test from T1.1).
+**Implementation guidance.** Contracts in [CON](../specs/contracts.spec.md) are the only shared types; a component that needs another adds it there first. Every acceptance criterion is a test before it is code (TDD rows in the expanded plans). Every model-calling behaviour is first tested against scripted stand-ins; only T0, T12's live checks and T11 spend money. LangGraph is imported only by the compiler and durability modules (R-011 U4, a source-scan test from T1.1).
 
 **Context for the implementer.** Read the [docs README](../README.md), the overview, the contracts, then the component spec. Truth ranking: acceptance criteria, then specs and decision records, then this plan, then code.
 
@@ -296,7 +296,7 @@ Milestones: **M1** after T6.1, a two-step workflow defined in Python test code r
 ### T0 Live probes
 
 #### T0.1 Executor probes
-Goal: record P-CC-1 to P-CC-9 on the pinned Claude Code release in [ECC-B13](../specs/11-executor-claude-code.spec.md), P-CC-2, 5, 6 and 9 first, and P-WTR-1 in [WTR](../specs/82-worktree-mode.spec.md).
+Goal: record P-CC-1 to P-CC-9 on the pinned Claude Code release in [ECC-B13](../specs/executor-claude-code.spec.md), P-CC-2, 5, 6 and 9 first, and P-WTR-1 in [WTR](../specs/worktree-mode.spec.md).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T0.1 -->
 
@@ -384,7 +384,7 @@ Goal: the status document, `status` and `wait`, read-only.
 <!-- expand: T4.2 -->
 
 #### T4.3 Workspace
-Goal: state root from any worktree, `in_place`, one engine worktree with bootstrap and interpreter, plus the release-1 part of [WTR](../specs/82-worktree-mode.spec.md) (`run.workspace`, sibling root, head base, re-attach, `worktree list|path`; ADR-0090).
+Goal: state root from any worktree, `in_place`, one engine worktree with bootstrap and interpreter, plus the release-1 part of [WTR](../specs/worktree-mode.spec.md) (`run.workspace`, sibling root, head base, re-attach, `worktree list|path`; ADR-0090).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T4.3 -->
 
@@ -431,7 +431,7 @@ Goal: script units, `before` and `after` scripts, the finalizer contract.
 <!-- expand: T5.7 -->
 
 #### T5.8 Run outcome gate
-Goal: load `outcome.json`, give each gate its intermediate criteria, the scoring scales, trust and coverage, the final outcome gate, sign-off criteria in the approval pause, the outcome record, `outcome show` and `outcome candidates` ([OUT-B8, OUT-B9, OUT-B10, OUT-B12, OUT-B13, OUT-B14, OUT-B15, OUT-B16, OUT-B17, OUT-B18, OUT-B19](../specs/90-run-outcome.spec.md)).
+Goal: load `outcome.json`, give each gate its intermediate criteria, the scoring scales, trust and coverage, the final outcome gate, sign-off criteria in the approval pause, the outcome record, `outcome show` and `outcome candidates` ([OUT-B8, OUT-B9, OUT-B10, OUT-B12, OUT-B13, OUT-B14, OUT-B15, OUT-B16, OUT-B17, OUT-B18, OUT-B19](../specs/run-outcome.spec.md)).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T5.8 -->
 
@@ -501,7 +501,7 @@ Goal: the host hooks, the supervision journal, attribution and the `supervision`
 ### T8 Packages, install, audit
 
 #### T8.1 Packages and registry
-Goal: load a package per [PKG](../specs/88-workflow-package.spec.md) (layout, manifest, typed builders, docs check, `--plugin-dir` on step sessions, minimal package), the home registry and `workflows list|register|unregister|reinstall`, workflow version and digest.
+Goal: load a package per [PKG](../specs/workflow-package.spec.md) (layout, manifest, typed builders, docs check, `--plugin-dir` on step sessions, minimal package), the home registry and `workflows list|register|unregister|reinstall`, workflow version and digest.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T8.1 -->
 
@@ -526,7 +526,7 @@ Goal: `audit` definition and host layers, their rules, the prompt audit, ignores
 <!-- expand: T8.5 -->
 
 #### T8.6 Blueprint and scaffold
-Goal: blueprint check, draw and compare, the literal check, `scaffold` and `scaffold --update`, generated tests, the `author verify` ladder with judge seeds and a capped trial ([SCF](../specs/91-blueprint-and-scaffold.spec.md)).
+Goal: blueprint check, draw and compare, the literal check, `scaffold` and `scaffold --update`, generated tests, the `author verify` ladder with judge seeds and a capped trial ([SCF](../specs/blueprint-and-scaffold.spec.md)).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T8.6 -->
 
@@ -538,7 +538,7 @@ Goal: start, report by exit code, walk the person through pauses with `--relayed
 <!-- expand: T9.1 -->
 
 #### T9.2 Authoring
-Goal: the `author` verbs and the `tempergraph:author` skill per [AUT](../specs/89-workflow-authoring.spec.md): entry paths, inventory, backwards interview, verification classification, criteria lint, guidance rungs, authoring record and revise mode, ending in a registered, audited, stamped workflow.
+Goal: the `author` verbs and the `tempergraph:author` skill per [AUT](../specs/workflow-authoring.spec.md): entry paths, inventory, backwards interview, verification classification, criteria lint, guidance rungs, authoring record and revise mode, ending in a registered, audited, stamped workflow.
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T9.2 -->
 
@@ -576,7 +576,7 @@ Expanded in [t10-monitor.plan.md](t10-monitor.plan.md) §2 T10.4.
 ### T12 Self-improvement
 
 #### T12.1 Records and lenses
-Goal: the loop as a built-in workflow started detached after every exit; findings, evidence and ledger row with no model call; the four lenses, fault sides and what a finding carries ([SIL-B8, SIL-B10, SIL-B11, SIL-B12](../specs/16-self-improvement.spec.md)).
+Goal: the loop as a built-in workflow started detached after every exit; findings, evidence and ledger row with no model call; the four lenses, fault sides and what a finding carries ([SIL-B8, SIL-B10, SIL-B11, SIL-B12](../specs/self-improvement.spec.md)).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T12.1 -->
 
@@ -586,37 +586,37 @@ Goal: filing to the owning repository with de-duplication, the pattern rule, `un
 <!-- expand: T12.2 -->
 
 #### T12.3 Labels and judge reliability
-Goal: labels derived from pauses, approvals and `label`; reliability grades per binding; `labels queue`; binding-shift watch ([FBK](../specs/41-feedback-and-judge-reliability.spec.md), harvest excluded).
+Goal: labels derived from pauses, approvals and `label`; reliability grades per binding; `labels queue`; binding-shift watch ([FBK](../specs/feedback-and-judge-reliability.spec.md), harvest excluded).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T12.3 -->
 
 #### T12.4 Judge calibration
-Goal: gold case sets, variants, score, bar and acceptance state, `evals score|bar|label`, corrected outcome rates ([JCL](../specs/50-judge-calibration.spec.md)).
+Goal: gold case sets, variants, score, bar and acceptance state, `evals score|bar|label`, corrected outcome rates ([JCL](../specs/judge-calibration.spec.md)).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T12.4 -->
 
 #### T12.5 Proposals and the proposer
-Goal: clusters, backlog, proposals, change classes, autonomy levels, the proposer workflow on its own branch, draft pull requests, never a merge ([PRP-B11, PRP-B12, PRP-B13, PRP-B14, PRP-B15](../specs/40-improvement-proposals.spec.md)).
+Goal: clusters, backlog, proposals, change classes, autonomy levels, the proposer workflow on its own branch, draft pull requests, never a merge ([PRP-B11, PRP-B12, PRP-B13, PRP-B14, PRP-B15](../specs/improvement-proposals.spec.md)).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T12.5 -->
 
 #### T12.6 Case sets and trials
-Goal: case sets, paired trials with cases run one at a time in `ref:` worktrees, the A/A noise floor, caps, the `improve` verbs ([PRP-B17, PRP-B18, PRP-B19, PRP-B20, PRP-B4, PRP-B12, PRP-B21, PRP-B8, PRP-B22](../specs/40-improvement-proposals.spec.md)).
+Goal: case sets, paired trials with cases run one at a time in `ref:` worktrees, the A/A noise floor, caps, the `improve` verbs ([PRP-B17, PRP-B18, PRP-B19, PRP-B20, PRP-B4, PRP-B12, PRP-B21, PRP-B8, PRP-B22](../specs/improvement-proposals.spec.md)).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T12.6 -->
 
 #### T12.7 Lessons
-Goal: per-step lessons files, validation and digests ([LSN](../specs/42-workflow-lessons.spec.md)).
+Goal: per-step lessons files, validation and digests ([LSN](../specs/workflow-lessons.spec.md)).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T12.7 -->
 
 #### T12.8 Stable mode, loop report, outcome proposals
-Goal: stable mode and its daily cap (LIF-B6), `report --loop` and the loop queries ([IMD](../specs/43-improvement-data.spec.md)), outcome proposals (OUT-AC6).
+Goal: stable mode and its daily cap (LIF-B6), `report --loop` and the loop queries ([IMD](../specs/improvement-data.spec.md)), outcome proposals (OUT-AC6).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T12.8 -->
 
 #### T12.9 Session digest and dev-mode review
-Goal: the model-free session digest and its causes on every exit; `full` reviews in dev mode, probation and authoring trials with the condensed view, the tool-less reviewer and the citation check; the local report and the `improve review` verbs; review results never file ([SRV](../specs/44-session-review.spec.md), [ADR-0116](../adr/0116-session-logs-are-read-model-free-first-and-by-a-model-only-on-a-plan.adr.md) to [ADR-0119](../adr/0119-review-observations-are-candidates-corroborated-before-they-file.adr.md)). Depends on T12.1 (recorder, causes) and the loop child (12.1.5).
+Goal: the model-free session digest and its causes on every exit; `full` reviews in dev mode, probation and authoring trials with the condensed view, the tool-less reviewer and the citation check; the local report and the `improve review` verbs; review results never file ([SRV](../specs/session-review.spec.md), [ADR-0116](../adr/0116-session-logs-are-read-model-free-first-and-by-a-model-only-on-a-plan.adr.md) to [ADR-0119](../adr/0119-review-observations-are-candidates-corroborated-before-they-file.adr.md)). Depends on T12.1 (recorder, causes) and the loop child (12.1.5).
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 <!-- expand: T12.9 -->
 

@@ -9,7 +9,7 @@
 
 ## Context
 
-temperspec's steps declare skills as tools: discovery uses the spec-authoring and decision-record skills, phase and code use the test-fixing skill ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T11). The engine grants exactly the tools a step declares, but the capability list ([CON-B11](../specs/01-contracts.spec.md)) has no skill entry, so either the skill tool is granted to every step or to none. A skill named by bare name can also load a same-named skill of another plugin ([SHL-B7, SHL-B8, SHL-B11](../specs/19-plugin-shell.spec.md)).
+temperspec's steps declare skills as tools: discovery uses the spec-authoring and decision-record skills, phase and code use the test-fixing skill ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T11). The engine grants exactly the tools a step declares, but the capability list ([CON-B11](../specs/contracts.spec.md)) has no skill entry, so either the skill tool is granted to every step or to none. A skill named by bare name can also load a same-named skill of another plugin ([SHL-B7, SHL-B8, SHL-B11](../specs/plugin-shell.spec.md)).
 
 ## Decision
 
@@ -36,14 +36,14 @@ We will add the capability `skill:<plugin>:<name>`. It is not read-only (a skill
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| K1 | Claude Code's headless permission layer can allow the skill tool; whether a per-skill rule is accepted is probe P-CC-8. Until it passes, the claude executor allows the skill tool and the after-the-fact tool record checks the skill name. | [ECC-B7](../specs/11-executor-claude-code.spec.md) |
-| K2 | The Agent SDK exposes skills like Claude Code when the step's setting sources include the workflow plugin. | [EAS](../specs/21-executor-agent-sdk.spec.md) |
+| K1 | Claude Code's headless permission layer can allow the skill tool; whether a per-skill rule is accepted is probe P-CC-8. Until it passes, the claude executor allows the skill tool and the after-the-fact tool record checks the skill name. | [ECC-B7](../specs/executor-claude-code.spec.md) |
+| K2 | The Agent SDK exposes skills like Claude Code when the step's setting sources include the workflow plugin. | [EAS](../specs/executor-agent-sdk.spec.md) |
 
 ## Consequences
 
 - Positive: temperspec's skill-using steps keep "grant exactly what is declared".
 - Negative: one more probe on each of two executors.
-- Risk: a per-skill rule is not supported and the bare tool is allowed. Mitigation: the tool record names the skill called; a call to an undeclared skill is a `denied`-class friction finding ([TSA](../specs/57-tool-surface-audit.spec.md)).
+- Risk: a per-skill rule is not supported and the bare tool is allowed. Mitigation: the tool record names the skill called; a call to an undeclared skill is a `denied`-class friction finding ([TSA](../specs/tool-surface-audit.spec.md)).
 
 ## Revisit when
 

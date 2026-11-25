@@ -1,7 +1,7 @@
 """Engine-wide constants: exit codes, schema versions, release, reserved words.
 
 The exit-code table is the caller contract of CON-B12, CON-B13; ``tests/test_contract_tables.py`` checks it
-against the table in ``docs/specs/01-contracts.spec.md`` (CON-AC6, CLI-AC4).
+against the table in ``docs/specs/contracts.spec.md`` (CON-AC6, CLI-AC4).
 """
 
 from __future__ import annotations

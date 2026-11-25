@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The engine's own tests, started with `python -m pytest` in the engine folder, are what every change to the engine must pass and what a gate runs again after each change, so the suite's wall time is paid by every run that edits the engine. By default the suite spreads its tests over a few worker processes, at most four; it runs in one process when asked or when the parallel runner is missing; it keeps each test to its own folders so that workers share no file; and the engine's `dev` extra installs the runner. Developers and every workflow that changes the engine depend on it. A suite result a gate already holds for the same tree is reused, not run again ([CHK-B13](75-check-contract-and-command-runs.spec.md)); a test session fails if any test leaves state in the real state root ([WSP-AC2](13-workspace-and-concurrency.spec.md)).
+The engine's own tests, started with `python -m pytest` in the engine folder, are what every change to the engine must pass and what a gate runs again after each change, so the suite's wall time is paid by every run that edits the engine. By default the suite spreads its tests over a few worker processes, at most four; it runs in one process when asked or when the parallel runner is missing; it keeps each test to its own folders so that workers share no file; and the engine's `dev` extra installs the runner. Developers and every workflow that changes the engine depend on it. A suite result a gate already holds for the same tree is reused, not run again ([CHK-B13](check-contract-and-command-runs.spec.md)); a test session fails if any test leaves state in the real state root ([WSP-AC2](workspace-and-concurrency.spec.md)).
 
 ## Behaviours
 

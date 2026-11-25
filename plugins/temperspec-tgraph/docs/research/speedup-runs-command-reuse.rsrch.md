@@ -8,8 +8,8 @@ Criterion 3 of the task `speedup-runs` wants the code gate to reuse a recorded v
 
 | Source | Type | Where |
 |---|---|---|
-| Command runs, reuse by key, reuse after a judge-only failure, the check preview (CHK-B12, CHK-B13, CHK-B5, CHK-B17) | spec | `plugins/tempergraph/docs/specs/75-check-contract-and-command-runs.spec.md` |
-| Order inside a hybrid step's attempt (SCR-B2) | spec | `plugins/tempergraph/docs/specs/70-script-units-and-hybrid-steps.spec.md` |
+| Command runs, reuse by key, reuse after a judge-only failure, the check preview (CHK-B12, CHK-B13, CHK-B5, CHK-B17) | spec | `plugins/tempergraph/docs/specs/check-contract-and-command-runs.spec.md` |
+| Order inside a hybrid step's attempt (SCR-B2) | spec | `plugins/tempergraph/docs/specs/script-units-and-hybrid-steps.spec.md` |
 | The reuse store, the key and `run` | code | `plugins/tempergraph/engine/src/tempergraph/run/checks.py` lines 88-178 |
 | Where the store lives, and the scripts that run after a session | code | `plugins/tempergraph/engine/src/tempergraph/run/nodes.py` lines 397-398 and 797-816 |
 | The store path handed to the check's worker process | code | `plugins/tempergraph/engine/src/tempergraph/run/check_worker.py` lines 39 and 61 |

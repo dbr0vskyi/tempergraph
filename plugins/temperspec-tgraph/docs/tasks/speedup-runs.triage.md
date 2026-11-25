@@ -15,23 +15,23 @@ Source: `/tmp/claude-0/-home-user/7c14c8c3-1c91-5442-84b5-7299cd971103/scratchpa
 
 ## Existing documents
 
-- `plugins/temperspec-tgraph/docs/specs/04-triage.spec.md`: triage note form, route and gap criteria (ts-tri-*); says nothing about marking a gap as covered
-- `plugins/temperspec-tgraph/docs/specs/05-discovery.spec.md`: discovery criteria (ts-dis-*); says nothing about sizing, reading limits or a reading list
-- `plugins/temperspec-tgraph/docs/specs/06-plan.spec.md`: plan criteria; no statement that the plan starts from a reading list
-- `plugins/temperspec-tgraph/docs/specs/08-code.spec.md`: code criteria (ts-code-*), including ts-code-verify; says nothing about running the full suite once per visit or about reusing a result
+- `plugins/temperspec-tgraph/docs/specs/triage.spec.md`: triage note form, route and gap criteria (ts-tri-*); says nothing about marking a gap as covered
+- `plugins/temperspec-tgraph/docs/specs/discovery.spec.md`: discovery criteria (ts-dis-*); says nothing about sizing, reading limits or a reading list
+- `plugins/temperspec-tgraph/docs/specs/plan.spec.md`: plan criteria; no statement that the plan starts from a reading list
+- `plugins/temperspec-tgraph/docs/specs/code.spec.md`: code criteria (ts-code-*), including ts-code-verify; says nothing about running the full suite once per visit or about reusing a result
 - `plugins/temperspec-tgraph/rules/task-notes.rule.md`: triage, hand-off and report formats; the hand-off has no reading list, the gap row has no covered mark
 - `plugins/temperspec-tgraph/docs/plans/backlog.plan.md`: row B21 (covered gaps, short discovery), to be deleted when built
-- `plugins/tempergraph/docs/specs/75-check-contract-and-command-runs.spec.md`: CHK-B12 and CHK-B13, command runs reused by key (argv, program, head, status listing, content digest) within a thread; whether this covers a retry and a later visit of the same unit must be checked in the engine code
-- `plugins/tempergraph/docs/specs/94-complexity-routing.spec.md`, `92-effort-ladder-and-model-escalation.spec.md`, `79-measured-switches.spec.md`: the engine's means to choose a unit's arm or effort by a run fact
+- `plugins/tempergraph/docs/specs/check-contract-and-command-runs.spec.md`: CHK-B12 and CHK-B13, command runs reused by key (argv, program, head, status listing, content digest) within a thread; whether this covers a retry and a later visit of the same unit must be checked in the engine code
+- `plugins/tempergraph/docs/specs/complexity-routing.spec.md`, `effort-ladder-and-model-escalation.spec.md`, `measured-switches.spec.md`: the engine's means to choose a unit's arm or effort by a run fact
 - `plugins/tempergraph/engine/pyproject.toml`: pytest config (`addopts = "-q --strict-markers"`), no xdist worker option found
 
 ## Gaps
 
-- G1 spec update: triage marks a gap an existing spec already answers as covered, read by the triage check. `04-triage.spec.md` and `task-notes.rule.md` state no such mark. Searched `plugins/temperspec-tgraph/docs/specs/` and the rule for "covered": nothing about gap marks
-- G2 spec update: discovery sized to the gap (short visit with lower effort and a reading limit when every gap is covered, unchanged when no gap is open). Searched `05-discovery.spec.md`, `blueprint.json` and the specs for "sizing", "effort", "reading", "complexity": nothing about discovery sizing by gaps; the engine's means exist in specs 79, 92 and 94 but no temperspec spec uses them for discovery
+- G1 spec update: triage marks a gap an existing spec already answers as covered, read by the triage check. `triage.spec.md` and `task-notes.rule.md` state no such mark. Searched `plugins/temperspec-tgraph/docs/specs/` and the rule for "covered": nothing about gap marks
+- G2 spec update: discovery sized to the gap (short visit with lower effort and a reading limit when every gap is covered, unchanged when no gap is open). Searched `discovery.spec.md`, `blueprint.json` and the specs for "sizing", "effort", "reading", "complexity": nothing about discovery sizing by gaps; the engine's means exist in specs `measured-switches`, `effort-ladder-and-model-escalation` and `complexity-routing` but no temperspec spec uses them for discovery
 - G3 spec update: the hand-off reading list, read by the discovery check, and the plan starting from it. Searched temperspec specs and `task-notes.rule.md` for "reading list": nothing
-- G4 spec update: a code visit runs only the phase's test files after each phase and the full verification commands once at the end. Searched `08-code.spec.md` for "full suite", "once", "phase": nothing
-- G5 spec update: the code gate reuses a verification command's recorded result for an unchanged tree, across a retry and a later visit. CHK-B13 covers reuse by key in a thread, but `08-code.spec.md` does not state it, and whether the engine covers retry and later-visit cases is unverified. In doubt, listed
+- G4 spec update: a code visit runs only the phase's test files after each phase and the full verification commands once at the end. Searched `code.spec.md` for "full suite", "once", "phase": nothing
+- G5 spec update: the code gate reuses a verification command's recorded result for an unchanged tree, across a retry and a later visit. CHK-B13 covers reuse by key in a thread, but `code.spec.md` does not state it, and whether the engine covers retry and later-visit cases is unverified. In doubt, listed
 - G6 spec gap: the engine's own suite runs in parallel with order-independent, folder-isolated tests. Searched `plugins/tempergraph/docs/specs/` and the guides for "xdist", "parallel" in the sense of running the test suite: nothing about how the suite runs
 
 ## Route

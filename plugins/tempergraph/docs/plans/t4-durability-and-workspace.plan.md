@@ -7,7 +7,7 @@ owner: dbr0vskyi
 status: Completed
 tags: [track-plan, tempergraph, T4]
 tracker: none
-spec: plugins/tempergraph/docs/specs/09-durability-and-resume.spec.md
+spec: plugins/tempergraph/docs/specs/durability-and-resume.spec.md
 spec_commit: d60fbd5
 task_id: first-release-t4
 ---
@@ -19,7 +19,7 @@ task_id: first-release-t4
 | Field | Value |
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T4 |
-| Specs | [DUR](../specs/09-durability-and-resume.spec.md), [WSP](../specs/13-workspace-and-concurrency.spec.md), [RCT](../specs/32-run-control.spec.md), the release-1 part of [WTR](../specs/82-worktree-mode.spec.md) |
+| Specs | [DUR](../specs/durability-and-resume.spec.md), [WSP](../specs/workspace-and-concurrency.spec.md), [RCT](../specs/run-control.spec.md), the release-1 part of [WTR](../specs/worktree-mode.spec.md) |
 | Decisions | [ADR-0014](../adr/0014-sqlite-checkpointer.adr.md), [ADR-0028](../adr/0028-stop-verb-as-the-only-observer-control.adr.md), [ADR-0100](../adr/0100-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md), [ADR-0101](../adr/0101-one-workspace-setting-with-an-auto-default.adr.md) |
 
 **Status: Completed** for the parts that need no gate funnel. Status pass: DUR, WSP, RCT and WTR are `ready-for-implementation`; RCT and WTR's open questions have release 1 defaults. Doc changes this track made:

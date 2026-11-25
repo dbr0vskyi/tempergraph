@@ -13,13 +13,13 @@ This note is read as four questions:
 
 "Environment" is read as the workflow's stage of [ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md): `local-dev`, `local-stable` and `pipeline`. It could also mean the binding environment that maps an alias to a deployment ([ADR-0008](../adr/0008-portable-model-aliases.adr.md)). Where that reading changes a finding, the finding says so.
 
-This is research only. No spec, decision record or code changes with this note. On 2026-11-20 the owner put ladders into release 2 with the condition that they never climb on just any failure; the follow-up is [R-121](R-121-judge-model-by-risk-and-evidence-for-escalation.rsrch.md) and spec [LAD](../specs/92-effort-ladder-and-model-escalation.spec.md). Only the Claude Code executor is in scope through release 2 ([ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md)).
+This is research only. No spec, decision record or code changes with this note. On 2026-11-20 the owner put ladders into release 2 with the condition that they never climb on just any failure; the follow-up is [R-121](R-121-judge-model-by-risk-and-evidence-for-escalation.rsrch.md) and spec [LAD](../specs/effort-ladder-and-model-escalation.spec.md). Only the Claude Code executor is in scope through release 2 ([ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md)).
 
 ## Sources consulted
 
 | # | Source | Type | Where |
 |---|---|---|---|
-| S6 | This design on `main` after PR 27: BUD-B1, BUD-B11 and BUD-B7, RST-B17, RST-B22, RST-B23, ECC-B8, ECC-B9, EXI, JDG, JCL `binding`, FBK-B4, PRP kinds, SWM `arm_overrides`, MAP `item_model`, ADR-0041 | Design set | [specs](../specs/00-overview.spec.md), [adr](../adr/README.md) |
+| S6 | This design on `main` after PR 27: BUD-B1, BUD-B11 and BUD-B7, RST-B17, RST-B22, RST-B23, ECC-B8, ECC-B9, EXI, JDG, JCL `binding`, FBK-B4, PRP kinds, SWM `arm_overrides`, MAP `item_model`, ADR-0041 | Design set | [specs](../specs/overview.spec.md), [adr](../adr/README.md) |
 | S7 | Engine code on `main`: `run/nodes.py` (rung chosen by the retry counter), `run/gate.py` (counter resets), `executors/claude.py` (`_EFFORTS`, `--effort`, `--fallback-model`), `contracts.py` (`SessionOptions.effort`), `settings.py`, `improve/child.py` and `improve/review.py` (loop alias) | Code | `plugins/tempergraph/engine/src/tempergraph/` |
 | S8 | [R-001](R-001-claude-code-cli-headless.rsrch.md) F10: `--effort` takes `low`, `medium`, `high`, `xhigh`, `max`, with availability per model | Design set | research/ |
 | S9 | Anthropic's guidance on effort and cost: what effort controls, levels per model, defaults per model, "sweep effort before touching the model", "re-run failures at higher effort", "price in cost per completed task", "switch models between conversations, not inside one" | Vendor guidance (Claude API skill reference, cached 2026-11-03) | Claude API documentation, Effort and Cost Optimization pages |

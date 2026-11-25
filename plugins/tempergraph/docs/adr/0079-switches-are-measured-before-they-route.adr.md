@@ -13,7 +13,7 @@ For temperspec, per-phase code costs more than one session on a small plan, and 
 
 ## Decision
 
-We will add to the switch a `mode` (`route` or `shadow`), `arm_overrides` (per arm, per unit: model, timeout, idle limit, effort) and `rearm` entries (from one arm to another when a listed unit spends its budget or times out, applied as a trip back), with the predicate's signals and the would-be arm on the `route` record ([SWM](../specs/79-measured-switches.spec.md)).
+We will add to the switch a `mode` (`route` or `shadow`), `arm_overrides` (per arm, per unit: model, timeout, idle limit, effort) and `rearm` entries (from one arm to another when a listed unit spends its budget or times out, applied as a trip back), with the predicate's signals and the would-be arm on the `route` record ([SWM](../specs/measured-switches.spec.md)).
 
 ## Options considered
 
@@ -37,7 +37,7 @@ We will add to the switch a `mode` (`route` or `shadow`), `arm_overrides` (per a
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| K1 | The run settings design places workflow-declared arm overrides below every operator layer. | SWM-B6; the settings design (specs 80 to 84) |
+| K1 | The run settings design places workflow-declared arm overrides below every operator layer. | SWM-B6; the settings design (specs `run-settings-and-overrides`, `reruns-and-feedback`, `worktree-mode`, `schedules` and `schedule-ticks-and-unattended-fires`) |
 | K2 | One re-arm per visit is enough; a second loss falls to the gate's own policy. | SWM-B7 |
 
 ## Consequences

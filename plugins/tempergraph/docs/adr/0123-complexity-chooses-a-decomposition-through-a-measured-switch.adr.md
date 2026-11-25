@@ -13,7 +13,7 @@ The owner asked on 2026-11-20 for release 2 to switch "between branches of workf
 
 ## Decision
 
-We will add a **complexity switch**: a measured switch whose predicate the engine builds from declared model-free measures and a rules file of thresholds per arm ([CXR](../specs/94-complexity-routing.spec.md)). Arms are ordered from simple to detailed; the most detailed is the default and takes faults, the margin and anything no arm's bounds cover. A run re-arms at most once and only toward a more detailed arm, on a spent budget with climbing evidence or a step timeout. Every arm honours an arm contract for the units after it, and no arm changes the gates that verify the result. The remedy order for a failing unit is: effort ladder, re-arm, one model step, a person. A model's assessment of complexity counts only as a check fact.
+We will add a **complexity switch**: a measured switch whose predicate the engine builds from declared model-free measures and a rules file of thresholds per arm ([CXR](../specs/complexity-routing.spec.md)). Arms are ordered from simple to detailed; the most detailed is the default and takes faults, the margin and anything no arm's bounds cover. A run re-arms at most once and only toward a more detailed arm, on a spent budget with climbing evidence or a step timeout. Every arm honours an arm contract for the units after it, and no arm changes the gates that verify the result. The remedy order for a failing unit is: effort ladder, re-arm, one model step, a person. A model's assessment of complexity counts only as a check fact.
 
 ## Options considered
 

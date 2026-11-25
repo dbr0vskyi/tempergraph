@@ -7,15 +7,15 @@
 The key is built by `reuse_key` in `plugins/tempergraph/engine/src/tempergraph/run/checks.py` (lines 132-146): the command's argv and working folder, the resolved program, `HEAD`, the status listing, and the bytes of the changed and untracked files outside the state root. Two facts follow from reading it and its callers:
 
 - A commit changes the key although no file changed. It moves `HEAD` and empties the status listing, so a run stored before a commit is not found after it.
-- A commit can come between a step's session and its gate's check. The engine runs a step's `after` scripts after a session that ended `ok` and runs the check after them ([SCR-B2](../specs/70-script-units-and-hybrid-steps.spec.md); `plugins/tempergraph/engine/src/tempergraph/run/nodes.py` lines 593-595), and a script may commit the step's files. The engine only runs the scripts and does not know which one commits, so it cannot re-key stored runs at that point.
+- A commit can come between a step's session and its gate's check. The engine runs a step's `after` scripts after a session that ended `ok` and runs the check after them ([SCR-B2](../specs/script-units-and-hybrid-steps.spec.md); `plugins/tempergraph/engine/src/tempergraph/run/nodes.py` lines 593-595), and a script may commit the step's files. The engine only runs the scripts and does not know which one commits, so it cannot re-key stored runs at that point.
 
-The check preview stores its command runs for reuse, and its spec says the gate's check reuses them on an unchanged tree ([CHK-B17](../specs/75-check-contract-and-command-runs.spec.md), [CHK-AC6](../specs/75-check-contract-and-command-runs.spec.md), [ADR-0077](0077-a-step-previews-its-own-check-in-the-attempt.adr.md)). By the code above, for a step whose files are committed after its session the key the preview stored differs from the key the gate computes, so the reuse never happens. No test runs that case.
+The check preview stores its command runs for reuse, and its spec says the gate's check reuses them on an unchanged tree ([CHK-B17](../specs/check-contract-and-command-runs.spec.md), [CHK-AC6](../specs/check-contract-and-command-runs.spec.md), [ADR-0077](0077-a-step-previews-its-own-check-in-the-attempt.adr.md)). By the code above, for a step whose files are committed after its session the key the preview stored differs from the key the gate computes, so the reuse never happens. No test runs that case.
 
-The task that raised this states the goal: the key must name the tree's content so that it survives the commit. It leaves open how the content is named and what that does to [CHK-B5](../specs/75-check-contract-and-command-runs.spec.md) and CHK-AC6. The owner is away, so this record takes the choice and states it as an assumption.
+The task that raised this states the goal: the key must name the tree's content so that it survives the commit. It leaves open how the content is named and what that does to [CHK-B5](../specs/check-contract-and-command-runs.spec.md) and CHK-AC6. The owner is away, so this record takes the choice and states it as an assumption.
 
 ## Decision
 
-We will take option A and key a stored command run on the content of the tree: every file git tracks and every untracked file git does not ignore (every file, outside a git repository), outside the state root, each by its path, its bytes and its executable bit. The commit, the index and the status listing are no part of the key. A caller still chooses, call by call, whether to ask for reuse. The behaviour is [CHK-B13](../specs/75-check-contract-and-command-runs.spec.md), proved together with the preview by CHK-AC12 of the same spec.
+We will take option A and key a stored command run on the content of the tree: every file git tracks and every untracked file git does not ignore (every file, outside a git repository), outside the state root, each by its path, its bytes and its executable bit. The commit, the index and the status listing are no part of the key. A caller still chooses, call by call, whether to ask for reuse. The behaviour is [CHK-B13](../specs/check-contract-and-command-runs.spec.md), proved together with the preview by CHK-AC12 of the same spec.
 
 ## Options considered
 
@@ -25,7 +25,7 @@ For: nothing in the key depends on history, so a commit, an amend, a reset or a 
 
 ### B. Git's tree object of the working tree, made from a temporary index
 
-For: it is the value a commit records, and git's stat cache keeps it fast. Against: it writes objects into the repository's store from a check that must change nothing but command runs ([CHK](../specs/75-check-contract-and-command-runs.spec.md) Purpose); it needs a temporary index and an exclusion for the state root; and it takes on git's own treatment of line endings and attributes.
+For: it is the value a commit records, and git's stat cache keeps it fast. Against: it writes objects into the repository's store from a check that must change nothing but command runs ([CHK](../specs/check-contract-and-command-runs.spec.md) Purpose); it needs a temporary index and an exclusion for the state root; and it takes on git's own treatment of line endings and attributes.
 
 ### C. Keep `HEAD` and the status listing and re-key stored runs at each commit
 

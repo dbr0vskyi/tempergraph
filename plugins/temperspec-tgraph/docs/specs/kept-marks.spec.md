@@ -2,7 +2,7 @@
 
 ## Purpose
 
-What becomes of a plan's completed marks when a later gate sends the run back to the plan step (a trip back). The files of the run stay as they are, so a row the code step already built keeps its mark while nothing about it changes, and the code step after the trip builds only the rows the trip changed. A commit of the run is a commit made after the run's base commit; a row's marking commit is the earliest commit of the run in which a row with that id carries the mark the plan now carries. The plan, expand and code steps and the owner who reads a run depend on it. Part of the [overview](00-overview.spec.md); the plan, its marks and its status belong to [plan](06-plan.spec.md), [expand](07-expand.spec.md) and [code](08-code.spec.md).
+What becomes of a plan's completed marks when a later gate sends the run back to the plan step (a trip back). The files of the run stay as they are, so a row the code step already built keeps its mark while nothing about it changes, and the code step after the trip builds only the rows the trip changed. A commit of the run is a commit made after the run's base commit; a row's marking commit is the earliest commit of the run in which a row with that id carries the mark the plan now carries. The plan, expand and code steps and the owner who reads a run depend on it. Part of the [overview](overview.spec.md); the plan, its marks and its status belong to [plan](plan.spec.md), [expand](expand.spec.md) and [code](code.spec.md).
 
 ## Behaviours
 

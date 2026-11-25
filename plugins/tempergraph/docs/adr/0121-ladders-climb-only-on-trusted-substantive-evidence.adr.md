@@ -5,7 +5,7 @@
 | Status | proposed |
 | Date | 2026-11-20 |
 | Authors | Claude (design session for the owner) |
-| Supersedes | The retry-count model ladder of [BUD-B7](../specs/08-budgets-and-failures.spec.md) (release 1), from release 2 |
+| Supersedes | The retry-count model ladder of [BUD-B7](../specs/budgets-and-failures.spec.md) (release 1), from release 2 |
 
 ## Context
 
@@ -13,7 +13,7 @@ Release 1 builds a model ladder: attempt n of a visit uses the n-th alias, whate
 
 ## Decision
 
-We will replace the retry-count model ladder with an **effort ladder** and a **one-step model escalation**, both declared per step and both gated by evidence ([LAD](../specs/92-effort-ladder-and-model-escalation.spec.md)):
+We will replace the retry-count model ladder with an **effort ladder** and a **one-step model escalation**, both declared per step and both gated by evidence ([LAD](../specs/effort-ladder-and-model-escalation.spec.md)):
 
 - The effort rises one rung only after a failed attempt that ended normally and carries **climbing evidence**: a parsed judge blocker on substance from an `accepted` judge binding, or a substantive check failure the engine verified. Every other cause holds the rung.
 - The model rises at most one tier, for at most one attempt per visit, only when nine conditions hold, among them the same trusted blocker on two consecutive top-rung attempts, a judge calibrated at the higher tier, cost headroom, and no decomposition re-arm left to try. A failed escalated attempt goes straight to a person or a stop.

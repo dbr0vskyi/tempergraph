@@ -9,13 +9,13 @@
 
 ## Context
 
-OVR-B8 says only a person decides a pause, and the run driver and orchestrator skills only relay the person's word (SHL-B2, OSK-B10, OSK-B1, OSK-B11, OSK-B12, OSK-B13, OSK-B14). Once agent callers are seen as agents ([ADR-0085](0085-classify-callers-by-the-strongest-signal.adr.md)), every relayed answer would look like an agent's own decision, which is as wrong as the reverse. The engine never sees the conversation, and must not store its text ([SEC](../specs/14-security.spec.md)).
+OVR-B8 says only a person decides a pause, and the run driver and orchestrator skills only relay the person's word (SHL-B2, OSK-B10, OSK-B1, OSK-B11, OSK-B12, OSK-B13, OSK-B14). Once agent callers are seen as agents ([ADR-0085](0085-classify-callers-by-the-strongest-signal.adr.md)), every relayed answer would look like an agent's own decision, which is as wrong as the reverse. The engine never sees the conversation, and must not store its text ([SEC](../specs/security.spec.md)).
 
 Claude Code's `UserPromptSubmit` hook fires each time a person submits a prompt, before the model reads it ([R-085](../research/R-085-callers-supervision-and-babysitting-cost.rsrch.md) H4). The tempergraph plugin already ships in that host. The distinction matters: an agent that relays pauses can answer a "verify and continue" alone, while another pause carries the requester's decision.
 
 ## Decision
 
-We will record a **decider** apart from the caller on every deciding call ([PRV-B14](../specs/85-caller-provenance.spec.md)). An agent marks a relayed decision with `--relayed`. The engine then looks in the host session's supervision journal for a **person turn** after the pause was shown and before the call. The plugin's hook writes that turn with its time and, matched locally, which of the open pauses' decision words it contains; never the text. With a turn that names the decision, the decider is `person` (`turn_named`). With a turn that names nothing checkable, it is `person` (`turn_only`). With no turn, it is the agent's own (`claimed`). Widening tools needs `turn_named`. Nothing else is refused on this basis in the first release.
+We will record a **decider** apart from the caller on every deciding call ([PRV-B14](../specs/caller-provenance.spec.md)). An agent marks a relayed decision with `--relayed`. The engine then looks in the host session's supervision journal for a **person turn** after the pause was shown and before the call. The plugin's hook writes that turn with its time and, matched locally, which of the open pauses' decision words it contains; never the text. With a turn that names the decision, the decider is `person` (`turn_named`). With a turn that names nothing checkable, it is `person` (`turn_only`). With no turn, it is the agent's own (`claimed`). Widening tools needs `turn_named`. Nothing else is refused on this basis in the first release.
 
 ## Options considered
 
@@ -48,7 +48,7 @@ We will record a **decider** apart from the caller on every deciding call ([PRV-
 
 - Positive: a person's decision relayed through a conversation keeps counting as the person's, and an agent's quiet "verify and continue" is counted as the agent's.
 - Negative: decisions relayed through hosts without a prompt-submit event count as the agent's own.
-- Risk: an agent asks "ok?" and treats any reply as consent. Mitigation: `turn_only` is recorded apart, does not allow widening, and is shown in relay quality ([SUP-B12](../specs/86-supervision-metrics.spec.md)).
+- Risk: an agent asks "ok?" and treats any reply as consent. Mitigation: `turn_only` is recorded apart, does not allow widening, and is shown in relay quality ([SUP-B12](../specs/supervision-metrics.spec.md)).
 
 ## Revisit when
 

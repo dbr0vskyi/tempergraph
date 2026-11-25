@@ -9,11 +9,11 @@
 
 ## Context
 
-The owner named an audit of the tools defined for steps and judges as one thing the audit should do. Tool access is the cause family most catchable before a run: most refusals need no new permission, git calls after a directory change are refused, steps call undeclared tools, and one plugin tool in a judge session can void a complete verdict ([R-050 C4](../research/R-050-why-runs-fail-stall-repeat-or-overspend.rsrch.md)). Validation already refuses some shapes and warns when a prompt names an undeclared tool ([WFM](../specs/02-workflow-model.spec.md)). What it cannot see is what the host adds to a session and what sessions really called.
+The owner named an audit of the tools defined for steps and judges as one thing the audit should do. Tool access is the cause family most catchable before a run: most refusals need no new permission, git calls after a directory change are refused, steps call undeclared tools, and one plugin tool in a judge session can void a complete verdict ([R-050 C4](../research/R-050-why-runs-fail-stall-repeat-or-overspend.rsrch.md)). Validation already refuses some shapes and warns when a prompt names an undeclared tool ([WFM](../specs/workflow-model.spec.md)). What it cannot see is what the host adds to a session and what sessions really called.
 
 ## Decision
 
-We will audit tools as three views per session ([TSA](../specs/57-tool-surface-audit.spec.md)): **grant** (declared tools through the executor's map, commands, MCP tools, and for judges the view set, plus ambient tools the host adds), **need** (names in the model-facing text and tools implied by artifact kinds) and **use** (recorded calls, refusals by shape, and the tool list each session reported at start). A finding is a mismatch between views. Judge sessions are checked against their **reported start tool list**, so an exposed tool is found before it is ever called. Remedies that widen a grant are marked as widening.
+We will audit tools as three views per session ([TSA](../specs/tool-surface-audit.spec.md)): **grant** (declared tools through the executor's map, commands, MCP tools, and for judges the view set, plus ambient tools the host adds), **need** (names in the model-facing text and tools implied by artifact kinds) and **use** (recorded calls, refusals by shape, and the tool list each session reported at start). A finding is a mismatch between views. Judge sessions are checked against their **reported start tool list**, so an exposed tool is found before it is ever called. Remedies that widen a grant are marked as widening.
 
 ## Options considered
 
@@ -37,8 +37,8 @@ We will audit tools as three views per session ([TSA](../specs/57-tool-surface-a
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| T1 | Every executor's `session_started` event lists the tools the session holds, as [SSN-B7](../specs/25-session-contract.spec.md) requires. Where an executor lists none, the judge rule falls back to the host probe. | TSA-B1 |
-| T2 | Refusal shapes can be classed from the tool name and a scrubbed input summary (spec 30, PR 7) without reading model text. | TSA-B7 |
+| T1 | Every executor's `session_started` event lists the tools the session holds, as [SSN-B7](../specs/session-contract.spec.md) requires. Where an executor lists none, the judge rule falls back to the host probe. | TSA-B1 |
+| T2 | Refusal shapes can be classed from the tool name and a scrubbed input summary (spec `run-events`, PR 7) without reading model text. | TSA-B7 |
 
 ## Consequences
 

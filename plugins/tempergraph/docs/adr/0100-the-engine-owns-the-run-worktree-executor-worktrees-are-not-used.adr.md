@@ -9,11 +9,11 @@
 
 ## Context
 
-The owner asked for "a parameter which allows native worktree support". The design already ran a run in an engine worktree ([WSP](../specs/13-workspace-and-concurrency.spec.md)), but did not say how this relates to worktree features the executors now ship. Claude Code has `--worktree` / `-w`, `.worktreeinclude`, `EnterWorktree` / `ExitWorktree` tools and subagent `isolation: worktree`; the Agent SDK runs the same runtime; Antigravity has worktrees in its App, not its CLI; the Messages API has no workspace ([R-100](../research/R-100-native-worktrees-and-executor-worktree-features.rsrch.md) F3). "Native" could mean either "built into the engine" or "the executor's own feature".
+The owner asked for "a parameter which allows native worktree support". The design already ran a run in an engine worktree ([WSP](../specs/workspace-and-concurrency.spec.md)), but did not say how this relates to worktree features the executors now ship. Claude Code has `--worktree` / `-w`, `.worktreeinclude`, `EnterWorktree` / `ExitWorktree` tools and subagent `isolation: worktree`; the Agent SDK runs the same runtime; Antigravity has worktrees in its App, not its CLI; the Messages API has no workspace ([R-100](../research/R-100-native-worktrees-and-executor-worktree-features.rsrch.md) F3). "Native" could mean either "built into the engine" or "the executor's own feature".
 
 ## Decision
 
-We will read "native" as built into the engine: the engine creates, records, re-attaches and removes the run's worktree with git, the same way on all four executors, and points each executor at it through its working directory ([WTR-B25](../specs/82-worktree-mode.spec.md)). The engine never passes an executor's worktree option, makes `EnterWorktree` and `ExitWorktree` unavailable to steps, denies a subagent's worktree request where a gatekeeper sees it, and reports any worktree that appears during a session as foreign without touching it. The engine reads Claude Code's `.worktreeinclude` as an extra include source.
+We will read "native" as built into the engine: the engine creates, records, re-attaches and removes the run's worktree with git, the same way on all four executors, and points each executor at it through its working directory ([WTR-B25](../specs/worktree-mode.spec.md)). The engine never passes an executor's worktree option, makes `EnterWorktree` and `ExitWorktree` unavailable to steps, denies a subagent's worktree request where a gatekeeper sees it, and reports any worktree that appears during a session as foreign without touching it. The engine reads Claude Code's `.worktreeinclude` as an extra include source.
 
 ## Options considered
 

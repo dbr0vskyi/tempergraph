@@ -13,7 +13,7 @@ The owner asked for human-readable dates ("tomorrow at 9", "every weekday"), and
 
 ## Decision
 
-We will accept timing in **exact formats** that are never interpreted ([SCH-B15, SCH-B16, SCH-B17](../specs/83-schedules.spec.md)): `--at` (ISO 8601 date-time), `--rrule` (an RFC 5545 RECUR subset), `--every` (an ISO 8601 duration), `--cron` (five fields), with `--tz` (IANA), `--starts`, `--until`, `--count`. They never produce a `needs`; scripts, pipelines, packages and the skill use them.
+We will accept timing in **exact formats** that are never interpreted ([SCH-B15, SCH-B16, SCH-B17](../specs/schedules.spec.md)): `--at` (ISO 8601 date-time), `--rrule` (an RFC 5545 RECUR subset), `--every` (an ISO 8601 duration), `--cron` (five fields), with `--tz` (IANA), `--starts`, `--until`, `--count`. They never produce a `needs`; scripts, pipelines, packages and the skill use them.
 
 On top, an **optional word grammar** (`--when "every weekday at 8:00"`): a fixed, table-tested English grammar, parsed with no model, where every ambiguity is a `needs` (exit 3) with its readings, never a guess.
 

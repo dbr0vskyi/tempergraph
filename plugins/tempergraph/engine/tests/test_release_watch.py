@@ -360,7 +360,7 @@ def test_at_autonomy_record_nothing_is_compared(tmp_path: Path) -> None:  # PRP-
 # -- the spec (row 3.2) ----------------------------------------------------------------------------------------
 
 def test_spec_40_has_no_not_built_yet_line() -> None:  # task AC 4
-    spec = (DOCS / "specs" / "40-improvement-proposals.spec.md").read_text(encoding="utf-8")
+    spec = (DOCS / "specs" / "improvement-proposals.spec.md").read_text(encoding="utf-8")
     assert not [ln for ln in spec.splitlines() if ln.startswith("- Not built yet")]
     assert "waits on the merge being seen" not in spec
     assert "PRP-B9" in spec and "regressed_after_release" in spec
@@ -368,4 +368,4 @@ def test_spec_40_has_no_not_built_yet_line() -> None:  # task AC 4
 
 @pytest.mark.parametrize("name", ["regressed_after_release", "held_after_release"])
 def test_the_release_records_are_named_in_spec_40(name: str) -> None:  # task AC 4
-    assert name in (DOCS / "specs" / "40-improvement-proposals.spec.md").read_text(encoding="utf-8")
+    assert name in (DOCS / "specs" / "improvement-proposals.spec.md").read_text(encoding="utf-8")

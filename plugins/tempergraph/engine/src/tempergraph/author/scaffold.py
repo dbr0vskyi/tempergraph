@@ -272,6 +272,14 @@ def _declaration(s: Session, mod: str) -> tuple[str, str, list[str]]:
     return "\n".join(init), checks_src if check_fns else "", todo
 
 
+ADR_SLUG_MAX = 60  # a decision record's file name is a short slug of its subject (PKG-B21)
+
+
+def spec_name(unit: str) -> str:
+    """A unit's spec is named for the unit, with `-` for `_`; no number (PKG-B21)."""
+    return f"{unit.replace('_', '-')}.spec.md"
+
+
 def _prompt(u: Any, crits: list[dict[str, Any]]) -> str:
     lines = [f"# {u.name}", "", u.summary or "", "", "The request: {request}"]
     lines += [f"Read `{r}`: {{{r}}}" for r in u.reads]
@@ -301,7 +309,7 @@ def _ac(rows: list[dict[str, Any]]) -> str:
 
 def _overview(s: Session) -> str:
     o, bp = s.outcome, s.blueprint
-    units = "\n".join(f"- [{u.name}]({i + 1:02d}-{u.name}.spec.md): {u.summary}" for i, u in enumerate(bp.units))
+    units = "\n".join(f"- [{u.name}]({spec_name(u.name)}): {u.summary}" for u in bp.units)
     assumptions = "\n".join(f"- {a}" for a in o.get("assumptions") or []) or "none"
     return (f"# {bp.name}\n\n## 1. Overview\n\n{o.get('statement', '')}\n\nUnits:\n\n{units}\n\n"
             f"## 6. Acceptance criteria\n\n{_ac(o.get('final') or [])}\n\n## Open questions\n\n{assumptions}\n")
@@ -310,11 +318,11 @@ def _overview(s: Session) -> str:
 def _unit_spec(u: Any, s: Session) -> str:
     io = (s.outcome.get("intermediate") or {}).get(u.name) or {}
     return (f"# {u.name}\n\n## 1. Overview\n\n{io.get('statement') or u.summary}\n\nPart of the "
-            f"[overview](00-overview.spec.md).\n\n## 6. Acceptance criteria\n\n{_ac(_unit_criteria(s.outcome, u.name))}\n")
+            f"[overview](overview.spec.md).\n\n## 6. Acceptance criteria\n\n{_ac(_unit_criteria(s.outcome, u.name))}\n")
 
 
-def _adr(n: int, d: dict[str, Any]) -> str:
-    return (f"# {n:04d} {d.get('subject', 'decision')}\n\nStatus: accepted\n\n## Decision\n\n{d.get('choice', '')}\n\n"
+def _adr(d: dict[str, Any]) -> str:
+    return (f"# {d.get('subject', 'decision')}\n\nStatus: accepted\n\n## Decision\n\n{d.get('choice', '')}\n\n"
             f"## Alternatives\n\n{', '.join(map(str, d.get('alternatives') or [])) or 'none recorded'}\n\n"
             f"## Consequence\n\n{d.get('consequence', '') or 'not recorded'}\n")
 
@@ -430,12 +438,16 @@ def files(s: Session) -> dict[str, bytes]:
         f"The plugin is `{plugin_name(bp.name)}` (workflow plugins carry the `-tgraph` suffix).\n")
     put("docs/README.md", "# Docs\n\nRules: provisional (the engine's docs README). Criterion text lives in "
         "`outcome.json`; the specs name each criterion by id.\n")
-    put("docs/specs/00-overview.spec.md", _overview(s))
-    for i, u in enumerate(bp.units):
-        put(f"docs/specs/{i + 1:02d}-{u.name}.spec.md", _unit_spec(u, s))
-    for i, d in enumerate(d for d in s.authoring.get("decisions") or [] if isinstance(d, dict)):
-        put(f"docs/adr/{i + 1:04d}-{re.sub(r'[^a-z0-9]+', '-', str(d.get('subject', 'decision')).lower()).strip('-')}"
-            ".adr.md", _adr(i + 1, d))
+    put("docs/specs/overview.spec.md", _overview(s))
+    for u in bp.units:
+        put(f"docs/specs/{spec_name(u.name)}", _unit_spec(u, s))
+    taken: set[str] = set()
+    for d in (d for d in s.authoring.get("decisions") or [] if isinstance(d, dict)):
+        slug = re.sub(r"[^a-z0-9]+", "-", str(d.get("subject", "decision")).lower()).strip("-")[:ADR_SLUG_MAX].strip("-")
+        slug = slug or "decision"
+        name = next(n for n in [slug, *(f"{slug}-{k}" for k in range(2, 1000))] if n not in taken)
+        taken.add(name)
+        put(f"docs/adr/{name}.adr.md", _adr(d))
     put("docs/research/sources.rsrch.md", _sources(s))
     put(f"tests/test_{mod}_generated.py", GENERATED_TEST.format(generated=GENERATED))
     return out

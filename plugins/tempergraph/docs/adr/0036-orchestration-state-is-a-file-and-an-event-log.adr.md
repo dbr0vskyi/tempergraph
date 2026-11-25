@@ -19,7 +19,7 @@ We will keep an orchestration's state as its file (intent), an append-only event
 
 | Option | Pros | Cons |
 |---|---|---|
-| File, event log, truth from run status, identity by node id (chosen) | Crash-safe without a second checkpoint; edits and reordering never rerun work; matches the batch's re-run rule ([WSP-B7](../specs/13-workspace-and-concurrency.spec.md)) | Every pass reads run status; node ids must never be reused |
+| File, event log, truth from run status, identity by node id (chosen) | Crash-safe without a second checkpoint; edits and reordering never rerun work; matches the batch's re-run rule ([WSP-B7](../specs/workspace-and-concurrency.spec.md)) | Every pass reads run status; node ids must never be reused |
 | Positional replay as in dynamic workflows | Simple runtime; no ids | A failed or reordered node reruns finished paid runs after it |
 | A database table of node states owned by the supervisor | Fast queries | A second source of truth that can disagree with the runs after a crash |
 
@@ -34,7 +34,7 @@ We will keep an orchestration's state as its file (intent), an append-only event
 
 ## Assumptions
 
-- Reading the status of up to 50 threads per pass is cheap enough; the run lifecycle stream requested from the observability design ([ORC-B17, ORC-B24, ORC-B26](../specs/45-orchestration.spec.md) N2) makes it cheaper.
+- Reading the status of up to 50 threads per pass is cheap enough; the run lifecycle stream requested from the observability design ([ORC-B17, ORC-B24, ORC-B26](../specs/orchestration.spec.md) N2) makes it cheaper.
 
 ## Consequences
 

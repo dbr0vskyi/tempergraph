@@ -1,6 +1,6 @@
 # 0003 Discovery gets a short visit when triage marks every gap covered
 
-Status: accepted, built (backlog row B21, 2026-11-22), to be confirmed by the owner. The run `speedup-runs` built the covered marks that this decision reads but not the second step, because the engine's generated stand-in run answered steps from one queue in declaration order, so a unit the route skipped took the next unit's reply ([code report](../tasks/speedup-runs.report.md), deviation 6). The engine now answers each stand-in session by the unit that asks, and gives a check fixture's files to the unit under test when two units produce the same key (engine spec SCF-B16, stated for any workflow, [ADR-0129](../../../tempergraph/docs/adr/0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md)). The step, its check, its judge, its spec ([09](../specs/09-discovery_short.spec.md)), its fixtures and seeds, the diagram and the stamp came with it.
+Status: accepted, built (backlog row B21, 2026-11-22), to be confirmed by the owner. The run `speedup-runs` built the covered marks that this decision reads but not the second step, because the engine's generated stand-in run answered steps from one queue in declaration order, so a unit the route skipped took the next unit's reply ([code report](../tasks/speedup-runs.report.md), deviation 6). The engine now answers each stand-in session by the unit that asks, and gives a check fixture's files to the unit under test when two units produce the same key (engine spec SCF-B16, stated for any workflow, [ADR-0129](../../../tempergraph/docs/adr/0129-the-engine-names-no-workflow.adr.md)). The step, its check, its judge, its spec ([09](../specs/discovery-short.spec.md)), its fixtures and seeds, the diagram and the stamp came with it.
 
 ## Context
 
@@ -8,10 +8,10 @@ Triage lists a gap in doubt ([task-notes rule](../../rules/task-notes.rule.md)),
 
 The task `speedup-runs` asks that triage mark a gap a spec already answers, that discovery for a task with only such gaps be short (a lower effort and a reading limit), and that the choice use the engine's existing means of choosing a unit's sizing or arm by a run fact. What the engine offers, read in its specs and in the package:
 
-- A complexity switch picks one arm from measured facts and is sticky for the whole run ([CXR-B7](../../../tempergraph/docs/specs/94-complexity-routing.spec.md)).
-- Arm overrides give the units of an arm another model, other limits or another effort. They change no prompt, and the engine asks no sizing reason for them ([SWM-B4](../../../tempergraph/docs/specs/79-measured-switches.spec.md), [SWM-B6](../../../tempergraph/docs/specs/79-measured-switches.spec.md)).
-- An effort ladder starts every visit at its first rung and climbs only on trusted failure evidence ([LAD-B9](../../../tempergraph/docs/specs/92-effort-ladder-and-model-escalation.spec.md), [LAD-B10](../../../tempergraph/docs/specs/92-effort-ladder-and-model-escalation.spec.md)).
-- The route after triage already picks the next unit from the values the triage step produced (`route_triage` in `workflow/temperspec/routing.py`), and every step unit states its model, effort and a reason of its own ([SCF-B10](../../../tempergraph/docs/specs/91-blueprint-and-scaffold.spec.md)).
+- A complexity switch picks one arm from measured facts and is sticky for the whole run ([CXR-B7](../../../tempergraph/docs/specs/complexity-routing.spec.md)).
+- Arm overrides give the units of an arm another model, other limits or another effort. They change no prompt, and the engine asks no sizing reason for them ([SWM-B4](../../../tempergraph/docs/specs/measured-switches.spec.md), [SWM-B6](../../../tempergraph/docs/specs/measured-switches.spec.md)).
+- An effort ladder starts every visit at its first rung and climbs only on trusted failure evidence ([LAD-B9](../../../tempergraph/docs/specs/effort-ladder-and-model-escalation.spec.md), [LAD-B10](../../../tempergraph/docs/specs/effort-ladder-and-model-escalation.spec.md)).
+- The route after triage already picks the next unit from the values the triage step produced (`route_triage` in `workflow/temperspec/routing.py`), and every step unit states its model, effort and a reason of its own ([SCF-B10](../../../tempergraph/docs/specs/blueprint-and-scaffold.spec.md)).
 - The plan, expand and code gates name `discovery` as a unit a run may be sent back to (`back_targets` in `workflow/temperspec/__init__.py`).
 
 ## Decision

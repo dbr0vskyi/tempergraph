@@ -9,11 +9,11 @@
 
 ## Context
 
-The owner asked for a command that updates the engine, one part of which is updating the CLI installation. An update that installs into one managed environment in place ([LIF](../specs/18-lifecycle-and-evals.spec.md)) fails two ways: an interrupted install leaves a half environment, and on Windows the engine's loaded libraries are locked while the installer replaces them. Runs are long-lived, so at any update some process may be running on the environment being replaced, and nothing allows a rollback. The shim found the engine by sorting plugin cache folders, which change with every plugin version and are deleted 14 days later ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U4).
+The owner asked for a command that updates the engine, one part of which is updating the CLI installation. An update that installs into one managed environment in place ([LIF](../specs/lifecycle-and-evals.spec.md)) fails two ways: an interrupted install leaves a half environment, and on Windows the engine's loaded libraries are locked while the installer replaces them. Runs are long-lived, so at any update some process may be running on the environment being replaced, and nothing allows a rollback. The shim found the engine by sorting plugin cache folders, which change with every plugin version and are deleted 14 days later ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U4).
 
 ## Decision
 
-We will install every engine release into its own environment folder under `~/.tempergraph/engines/`, verify it there, and make it current by replacing one pointer file atomically ([UPD-B11, UPD-B12, UPD-B13](../specs/60-engine-update.spec.md)). The shim lives in `~/.tempergraph/bin/` and reads the pointer. The previous release stays as `previous` for rollback; a release a live process or a pinned thread uses is kept until neither needs it; others are removed only by `update --prune-engines`.
+We will install every engine release into its own environment folder under `~/.tempergraph/engines/`, verify it there, and make it current by replacing one pointer file atomically ([UPD-B11, UPD-B12, UPD-B13](../specs/engine-update.spec.md)). The shim lives in `~/.tempergraph/bin/` and reads the pointer. The previous release stays as `previous` for rollback; a release a live process or a pinned thread uses is kept until neither needs it; others are removed only by `update --prune-engines`.
 
 ## Options considered
 

@@ -7,7 +7,7 @@ owner: dbr0vskyi
 status: In progress
 tags: [track-plan, tempergraph-monitor, T10]
 tracker: none
-spec: plugins/tempergraph-monitor/docs/specs/01-data-sources.spec.md
+spec: plugins/tempergraph-monitor/docs/specs/data-sources.spec.md
 spec_commit: 47c5b7d
 task_id: first-release-t10
 ---
@@ -19,7 +19,7 @@ task_id: first-release-t10
 | Field | Value |
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T10, phases T10.2 to T10.4, built after T7.1 and T7.2 in the same pass (thread "Build run events and detail view") |
-| Specs | [MOV](../../../tempergraph-monitor/docs/specs/00-overview.spec.md), [MDS](../../../tempergraph-monitor/docs/specs/01-data-sources.spec.md), [MBA](../../../tempergraph-monitor/docs/specs/02-band-status-and-alerts.spec.md), [MRV](../../../tempergraph-monitor/docs/specs/03-run-view.spec.md), [MDD](../../../tempergraph-monitor/docs/specs/04-drill-down.spec.md); engine documents from [EVT](../specs/30-run-events.spec.md), [RDD](../specs/31-run-detail-document.spec.md) and [DUR-B11](../specs/09-durability-and-resume.spec.md) |
+| Specs | [MOV](../../../tempergraph-monitor/docs/specs/overview.spec.md), [MDS](../../../tempergraph-monitor/docs/specs/data-sources.spec.md), [MBA](../../../tempergraph-monitor/docs/specs/band-status-and-alerts.spec.md), [MRV](../../../tempergraph-monitor/docs/specs/run-view.spec.md), [MDD](../../../tempergraph-monitor/docs/specs/drill-down.spec.md); engine documents from [EVT](../specs/run-events.spec.md), [RDD](../specs/run-detail-document.spec.md) and [DUR-B11](../specs/durability-and-resume.spec.md) |
 | Decisions | [MADR-0001](../../../tempergraph-monitor/docs/adr/0001-a-claude-code-mod-that-observes.adr.md), [MADR-0002](../../../tempergraph-monitor/docs/adr/0002-poll-files-and-read-only-verbs.adr.md), [MADR-0004](../../../tempergraph-monitor/docs/adr/0004-borrow-the-workflows-view-and-add-gates.adr.md), [MADR-0006](../../../tempergraph-monitor/docs/adr/0006-one-pane-many-levels.adr.md) |
 | Mod API | The types of Claude Code 2.1.329, the build this pass was written against ([R-001](../../../tempergraph-monitor/docs/research/R-001-claude-code-mods.rsrch.md)) |
 

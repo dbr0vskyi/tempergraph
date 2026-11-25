@@ -6,8 +6,8 @@ import re
 
 from .conftest import DOCS
 
-SPEC = DOCS / "specs" / "99-subworkflow-unit.spec.md"
-UPGRADE = DOCS / "specs" / "63-workflow-upgrade.spec.md"
+SPEC = DOCS / "specs" / "subworkflow-unit.spec.md"
+UPGRADE = DOCS / "specs" / "workflow-upgrade.spec.md"
 PLAN = DOCS / "plans" / "third-release.plan.md"
 
 

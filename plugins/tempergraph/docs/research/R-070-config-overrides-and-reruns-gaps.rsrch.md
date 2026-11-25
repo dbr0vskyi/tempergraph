@@ -14,7 +14,7 @@ The owner asked on 2026-11-20 whether the engine design lets a person override a
 
 | # | Source | Type | Where |
 |---|---|---|---|
-| S4 | This design on `main` after PR 10: CON-B4, CON-B5, CON-B6, CON-B7, CON-B3, SSN-B1 to SSN-B6; BUD; DUR; HUM; ROP-B1 to ROP-B13; EXI-B18; EVT-B10 to EVT-B16; ORC-B19, ORC-B20; MIG-B15; FLX; CNL; CTS; SCR | Design set | [specs](../specs/00-overview.spec.md) |
+| S4 | This design on `main` after PR 10: CON-B4, CON-B5, CON-B6, CON-B7, CON-B3, SSN-B1 to SSN-B6; BUD; DUR; HUM; ROP-B1 to ROP-B13; EXI-B18; EVT-B10 to EVT-B16; ORC-B19, ORC-B20; MIG-B15; FLX; CNL; CTS; SCR | Design set | [specs](../specs/overview.spec.md) |
 | S5 | LangGraph "Use time travel": replay from a `checkpoint_id`, fork with `update_state` | Official docs | https://docs.langchain.com/oss/python/langgraph/use-time-travel |
 | S6 | LangGraph checkpointers: state history per thread, checkpoint ids | Official docs | https://docs.langchain.com/oss/langgraph/checkpointers |
 | S7 | Claude Code settings: scopes and precedence (managed, command line, local project, shared project, user) | Official docs | https://code.claude.com/docs/en/settings |
@@ -64,16 +64,16 @@ The owner asked on 2026-11-20 whether the engine design lets a person override a
 
 1. The design covers **models, executors and timeouts** with a layered, recorded order, and **retry, back, re-open and resume** at every thread state. It does not yet cover overrides "in all variations": budgets other than the run cost cap, session options, subagent models, idle limits for judges, the members, chair, slots and scripts of the PR 10 units, deadlines, and workflow-specific switches have no operator layer (F2, F4 to F7, F9).
 2. There is **no configuration file layer** for run settings and **no profile**, so a machine-wide default (a slow host's longer limits, a team's cheaper model) is repeated as flags on every run (F8, F10).
-3. Overrides need **one catalog** of settable keys with types, ranges, scopes and the layers that may set them, so that validation can refuse a misaimed or out-of-range override before spend (F13) and the order is the same for every key (F1, F2). That catalog is spec 80, RST.
+3. Overrides need **one catalog** of settable keys with types, ranges, scopes and the layers that may set them, so that validation can refuse a misaimed or out-of-range override before spend (F13) and the order is the same for every key (F1, F2). That catalog is spec `run-settings-and-overrides`, RST.
 4. The **effective configuration** must be one record per run segment, with each value's source, plus a read-only verb that shows it before a start; self-improvement and stats must carry a digest of it and the list of overridden keys (F12, F14). RST owns both.
 5. `RunOptions` must be a defined type in CON, with the settings snapshot it carries and the rule for resume (F11, F22). Settings are snapshotted at start and reapplied on resume; a resume may change them (ADR-0072).
 6. What verifies the work (criteria, checks, judge presence, judge tools, independence, flow targets, prompts) is **not a setting**; overrides may only change cost, time, repetition, model and executor choice, and declared workflow switches (ADR-0071).
-7. Feedback needs a **lasting form**: a ruling a person gives at any resume, rendered to every later attempt of its unit and to the judges of the units it names, until revoked (F18, F19). Spec 81, RRN, owns it.
+7. Feedback needs a **lasting form**: a ruling a person gives at any resume, rendered to every later attempt of its unit and to the judges of the units it names, until revoked (F18, F19). Spec `reruns-and-feedback`, RRN, owns it.
 8. A **rerun from a unit** is needed in two forms: on a live thread, a person's **rewind** to any completed unit on the path, not only `back_targets` (F21); on any thread, finished included, a **rerun** that forks a new thread from the checkpoint before that unit, keeps every earlier verdict and links to its source (F20, F26). Both use LangGraph's checkpoint history; neither rewrites the source's history (ADR-0073).
 9. Continuing an agent's session on retry stays out of the first release: every retry stays a fresh session (F25). It is recorded as an open question.
 10. temperspec's levers are all expressible after RST and RRN: models with judge separation, a subagent model, run-wide and per-step timeouts kept on resume, an iteration budget, one phase resumed by instance, a test budget, code mode, publishing switches and filing off as workflow settings, and rulings shown to later judges.
 
-## Coverage table: the owner's list against the design after specs 80 and 81
+## Coverage table: the owner's list against the design after specs `run-settings-and-overrides` and `reruns-and-feedback`
 
 | Variation | Before | After |
 |---|---|---|

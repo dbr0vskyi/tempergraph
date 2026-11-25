@@ -4,13 +4,13 @@
 
 The owner asked for a mechanism, probably a CLI command, that audits a workflow and finds its issues before they cost a run. To aim it, this note answers one question: **what most often makes a run fail, get interrupted, retry, get stuck, or spend a lot of tokens or time?** It ranks the causes by their weight, and for each cause says whether it can be seen from the workflow definition alone (**static**), from the machine the run will use (**host**), or only from recorded runs (**history**). It also says which part of this design already owns a cure, so that the audit points at it instead of copying it.
 
-The ranking feeds [AUD](../specs/55-workflow-audit.spec.md), [ARC](../specs/56-audit-rule-catalog.spec.md) and [TSA](../specs/57-tool-surface-audit.spec.md).
+The ranking feeds [AUD](../specs/workflow-audit.spec.md), [ARC](../specs/audit-rule-catalog.spec.md) and [TSA](../specs/tool-surface-audit.spec.md).
 
 ## Sources consulted
 
 | Source | Type | Where |
 |---|---|---|
-| Workflow model, executor interface, workspace, self-improvement and lifecycle specs | Design | [WFM](../specs/02-workflow-model.spec.md), [EXI](../specs/10-executor-interface.spec.md), [WSP](../specs/13-workspace-and-concurrency.spec.md), [SIL](../specs/16-self-improvement.spec.md), [LIF](../specs/18-lifecycle-and-evals.spec.md) |
+| Workflow model, executor interface, workspace, self-improvement and lifecycle specs | Design | [WFM](../specs/workflow-model.spec.md), [EXI](../specs/executor-interface.spec.md), [WSP](../specs/workspace-and-concurrency.spec.md), [SIL](../specs/self-improvement.spec.md), [LIF](../specs/lifecycle-and-evals.spec.md) |
 | Prior art for auditing workflow definitions | Research note | [R-051](R-051-prior-art-for-workflow-audits.rsrch.md) |
 
 The ranking below is a ranking of *weight*: it says which causes an audit should look for first, not how often each occurs in a population of runs.
@@ -113,7 +113,7 @@ Each cause family is weighed on four axes: share of **spend**, share of **person
 | F6.5 | On small plans, coding per phase costs more than one session; a long single session can time out. | inferred |
 | F6.6 | Cost shapes are caught by model-free rules over finished runs (repeat share, retries after a deterministic check, a recurring blocker, judge against step cost, an expensive model on a step whose judge never blocked it, an unpriced gate); the cost lens of SIL owns them. | supported (SIL) |
 
-**Detectable.** Statically only weakly: every step and judge on `large`, a `small` judge whose references span several artifacts, no run cost cap. Mostly history, and the cost lens ([SIL](../specs/16-self-improvement.spec.md)) already owns the rules: the audit should show their result, not restate them.
+**Detectable.** Statically only weakly: every step and judge on `large`, a `small` judge whose references span several artifacts, no run cost cap. Mostly history, and the cost lens ([SIL](../specs/self-improvement.spec.md)) already owns the rules: the audit should show their result, not restate them.
 
 ### C7 Prompt and template defects
 
@@ -124,7 +124,7 @@ Each cause family is weighed on four axes: share of **spend**, share of **person
 | F7.3 | A skill's text that says "ask the person" or "wait for review" stalls an unattended run. | inferred (design reasoning) |
 | F7.4 | A brief that tells the judge to accept what the step says about a system the judge cannot read cancels independence. | supported (design reasoning) |
 
-**Detectable.** Statically. The template grammar is validation's ([WFM](../specs/02-workflow-model.spec.md)); the text rules are prompt lint's ([LIF](../specs/18-lifecycle-and-evals.spec.md)). F7.2 to F7.4 are not yet in prompt lint's list.
+**Detectable.** Statically. The template grammar is validation's ([WFM](../specs/workflow-model.spec.md)); the text rules are prompt lint's ([LIF](../specs/lifecycle-and-evals.spec.md)). F7.2 to F7.4 are not yet in prompt lint's list.
 
 ### C8 Engine-side defects (outside a workflow audit)
 
@@ -133,7 +133,7 @@ Each cause family is weighed on four axes: share of **spend**, share of **person
 | F8.1 | A short database busy timeout loses writes under many concurrent runs; append-mode ledger writes and concurrent log lines break on Windows. | inferred |
 | F8.2 | An orphaned session can rewrite files after the engine has ended; a timeout that kills only the first process leaves its children. | inferred |
 
-These are fixed in the engine ([WSP](../specs/13-workspace-and-concurrency.spec.md), [EXI](../specs/10-executor-interface.spec.md)), not in a workflow. A workflow audit can only report the engine and executor versions against the tested range.
+These are fixed in the engine ([WSP](../specs/workspace-and-concurrency.spec.md), [EXI](../specs/executor-interface.spec.md)), not in a workflow. A workflow audit can only report the engine and executor versions against the tested range.
 
 ### A constraint on what an audit reports
 

@@ -1,7 +1,7 @@
 ---
 task: r2-t5
 complexity: complex
-specs: [plugins/tempergraph/docs/specs/95-promotion-check.spec.md, plugins/tempergraph/docs/specs/96-run-state-on-a-branch.spec.md]
+specs: [plugins/tempergraph/docs/specs/promotion-check.spec.md, plugins/tempergraph/docs/specs/run-state-on-a-branch.spec.md]
 ---
 
 # Plan: promotion and carried state (R2-T5)

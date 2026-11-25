@@ -9,11 +9,11 @@
 
 ## Context
 
-The owner asked for a `.tempergraph` folder per repository "with all the logs of local repos runs: logs from all sessions of agents, logs from code, stats etc." The state root already exists at `<main checkout>/.tempergraph/` and holds checkpoints, run logs, locks, the ledger, batches and scratch ([WSP](../specs/13-workspace-and-concurrency.spec.md)), but no spec fixes where a session's raw stream, the engine's own code log, check output or hook output go, nor how long they live ([R-021](../research/R-021-observer-needs-against-engine-documents.rsrch.md) N10). Four executors produce four stream shapes. Per-user stats already live on the operator's machine ([OBS-B15](../specs/15-observability-and-cost.spec.md)).
+The owner asked for a `.tempergraph` folder per repository "with all the logs of local repos runs: logs from all sessions of agents, logs from code, stats etc." The state root already exists at `<main checkout>/.tempergraph/` and holds checkpoints, run logs, locks, the ledger, batches and scratch ([WSP](../specs/workspace-and-concurrency.spec.md)), but no spec fixes where a session's raw stream, the engine's own code log, check output or hook output go, nor how long they live ([R-021](../research/R-021-observer-needs-against-engine-documents.rsrch.md) N10). Four executors produce four stream shapes. Per-user stats already live on the operator's machine ([OBS-B15](../specs/observability-and-cost.spec.md)).
 
 ## Decision
 
-We will fix one layout for the state root and one for a per-user home folder `~/.tempergraph/`, each versioned by a `manifest.json`, with a folder per run and a folder per session named by a stable `session_key` ([LOS](../specs/33-local-observability-store.spec.md)). Every session keeps its full raw stream as `raw.jsonl`, whatever the executor. The engine writes its own Python logging there as JSON lines. Retention is a rule a verb applies on request; nothing is deleted automatically.
+We will fix one layout for the state root and one for a per-user home folder `~/.tempergraph/`, each versioned by a `manifest.json`, with a folder per run and a folder per session named by a stable `session_key` ([LOS](../specs/local-observability-store.spec.md)). Every session keeps its full raw stream as `raw.jsonl`, whatever the executor. The engine writes its own Python logging there as JSON lines. Retention is a rule a verb applies on request; nothing is deleted automatically.
 
 ## Options considered
 

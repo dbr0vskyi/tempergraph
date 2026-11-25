@@ -23,13 +23,13 @@ def section(text: str, heading: str) -> str:
 
 def test_ac_4_spec_70_has_no_open_questions_section() -> None:
     # AC 4: the cache is built, so the only item of the section, "Not built yet: the script cache", is gone
-    spec = read("specs", "70-script-units-and-hybrid-steps.spec.md")
+    spec = read("specs", "script-units-and-hybrid-steps.spec.md")
     assert "## Open questions" not in spec
     assert "Not built yet" not in spec
 
 
 def test_ac_4_spec_11_names_the_proxys_live_check_beside_the_probes_item() -> None:
-    spec = read("specs", "11-executor-claude-code.spec.md")
+    spec = read("specs", "executor-claude-code.spec.md")
     items = [ln for ln in section(spec, "## Open questions").splitlines() if ln.startswith("- ")]
     proxy = [ln for ln in items if ln.startswith("- Not built yet") and "proxy" in ln]
     assert len(proxy) == 1 and "dontAsk" in proxy[0] and "Owner: engine owner" in proxy[0]

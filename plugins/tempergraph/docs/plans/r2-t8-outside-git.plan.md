@@ -1,7 +1,7 @@
 ---
 task: r2-t8
 complexity: simple
-specs: [plugins/tempergraph/docs/specs/13-workspace-and-concurrency.spec.md, plugins/tempergraph/docs/specs/75-check-contract-and-command-runs.spec.md]
+specs: [plugins/tempergraph/docs/specs/workspace-and-concurrency.spec.md, plugins/tempergraph/docs/specs/check-contract-and-command-runs.spec.md]
 ---
 
 # Plan: runs outside a git repository (R2-T8)

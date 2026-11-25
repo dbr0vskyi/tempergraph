@@ -13,7 +13,7 @@ The owner's upgrade command must "read workflow and engine metadata, understand 
 
 ## Decision
 
-We will define the metadata in [VER](../specs/61-version-metadata.spec.md):
+We will define the metadata in [VER](../specs/version-metadata.spec.md):
 
 1. An engine **release record** naming the engine version, the workflow-facing interface level, the store layout and checkpoint format with what it can read, schema versions, Python and extras.
 2. A **typed changelog**: each entry has an audience, a kind, a surface, typed detect rules (fields, symbols, template keys, tool references, finding codes, then text), one migrate action (`transform`, `assisted`, `owner`, `none`) and proof codes.
@@ -51,7 +51,7 @@ We will define the metadata in [VER](../specs/61-version-metadata.spec.md):
 
 - Positive: the upgrade can plan, act and prove by data; reports and proposals get a version id.
 - Negative: every engine release must write typed entries and tests for its transforms.
-- Risk: an entry's detect rules miss a location. Mitigation: validation and the audit run after the upgrade (V2, V4 of [WUP-B19](../specs/63-workflow-upgrade.spec.md)); text rules remain as a low-confidence fallback.
+- Risk: an entry's detect rules miss a location. Mitigation: validation and the audit run after the upgrade (V2, V4 of [WUP-B19](../specs/workflow-upgrade.spec.md)); text rules remain as a low-confidence fallback.
 
 ## Revisit when
 

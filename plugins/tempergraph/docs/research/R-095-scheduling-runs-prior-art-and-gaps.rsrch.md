@@ -11,13 +11,13 @@ The request is read as a `tempergraph schedule` command, with a matching skill, 
 3. What a run that starts with nobody present needs from each of the four executors' sign-ins, from cost caps, from pauses and from the records of who called.
 4. What grammar for dates and recurrences can be parsed without a model and echoed back exactly.
 
-The work was done standalone, without questions to the owner; assumptions are recorded in [ADR-0095](../adr/0095-a-model-free-tick-behind-os-agnostic-triggers.adr.md) to [ADR-0099](../adr/0099-a-scheduled-fire-is-an-attested-caller-with-a-capped-unattended-spend.adr.md).
+The work was done standalone, without questions to the owner; assumptions are recorded in [ADR-0095](../adr/0095-a-model-free-tick-behind-os-agnostic-triggers.adr.md) to [ADR-0099](../adr/0099-a-scheduled-fire-is-an-attested-caller-with-capped-spend.adr.md).
 
 ## Sources consulted
 
 | # | Source | Type | Where |
 |---|---|---|---|
-| S4 | This design on `main` after PR 13: R-006 deferral of the scheduler, ADR-0021, SEC-B5, SEC-B6 ticket row, FLX deadlines, ORC supervisor, PRV caller kinds, RST layers, OSK open question on schedules | Design set | [specs](../specs/00-overview.spec.md) |
+| S4 | This design on `main` after PR 13: R-006 deferral of the scheduler, ADR-0021, SEC-B5, SEC-B6 ticket row, FLX deadlines, ORC supervisor, PRV caller kinds, RST layers, OSK open question on schedules | Design set | [specs](../specs/overview.spec.md) |
 | S5 | Claude Code, "Run prompts on a schedule" (session-scoped tasks, `/loop`, cron tools) | Official docs | https://code.claude.com/docs/en/scheduled-tasks.md |
 | S6 | Claude Code, "Schedule recurring tasks in Claude Code Desktop" | Official docs | https://code.claude.com/docs/en/desktop-scheduled-tasks.md |
 | S7 | Claude Code, "Authentication": credential order, `claude setup-token`, storage | Official docs | https://code.claude.com/docs/en/authentication.md |
@@ -64,7 +64,7 @@ The work was done standalone, without questions to the owner; assumptions are re
 | F19 | In `-p` mode an `ANTHROPIC_API_KEY` present in the environment is always used (S7), so a scheduled run inherits whichever credential the trigger's environment carries; a person's shell profile is not read by an OS trigger. | supported (S7), inferred for OS triggers |
 | F20 | The Agent SDK executor assumes API or cloud credentials only, and its probe fails with `credential` when only a claude.ai sign-in exists (R-005 S3, EAS-B13, EAS-B15). The Messages API executor resolves credentials as the client library does (R-004 M13). Both work with no person present once a key is resolvable. | confirmed (S11) |
 | F21 | Antigravity headless uses cached credentials from an interactive login, or API-key mode with `GEMINI_API_KEY`; an unauthenticated non-TTY run exits with "authentication required" (R-002 A1, A11). Whether a cached sign-in survives in a session home started by an OS trigger is P-AG-1, not run. | supported (S11), uncertain for triggers |
-| F22 | An unattended run spends with no one to stop it; the design's only per-run limit is `run.run_cost_cap_usd`, which is optional ([BUD](../specs/08-budgets-and-failures.spec.md)). A recurring schedule multiplies any overspend by its fire count. | inferred |
+| F22 | An unattended run spends with no one to stop it; the design's only per-run limit is `run.run_cost_cap_usd`, which is optional ([BUD](../specs/budgets-and-failures.spec.md)). A recurring schedule multiplies any overspend by its fire count. | inferred |
 | F23 | A scheduled run that pauses waits for a person like any other (C6). If the next fire starts anyway, paused runs pile up and each holds a branch or worktree; a "no live attempt" rule before a slot fires (F1) prevents it. | inferred |
 
 ### Dates and recurrences
@@ -90,7 +90,7 @@ The work was done standalone, without questions to the owner; assumptions are re
 
 | Question | Owner | Next step |
 |---|---|---|
-| Does a systemd user unit (the optional `os` adapter) run while the user is logged out on the owner's Linux machines, with or without lingering? | Implementer | Probe P-SCH-1 ([TCK](../specs/84-schedule-ticks-and-unattended-fires.spec.md)) |
+| Does a systemd user unit (the optional `os` adapter) run while the user is logged out on the owner's Linux machines, with or without lingering? | Implementer | Probe P-SCH-1 ([TCK](../specs/schedule-ticks-and-unattended-fires.spec.md)) |
 | Can a loop started by a LaunchAgent read a Claude Code `/login` sign-in from the Keychain while the screen is locked? | Implementer | Probe P-SCH-2 |
 | Does Antigravity's cached sign-in work from a session home started by the loop or an `os` adapter (P-AG-1)? | Implementer | Probe P-SCH-3 |
 | Is scheduling in the first release? | Owner | This note recommends the slice named in [R-150 SCH](R-150-rationale-carried-from-the-engine-specs.rsrch.md) for the release after the first |

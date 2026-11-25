@@ -9,11 +9,11 @@
 
 ## Context
 
-A monitor that asks for status once, from the session's directory, shows only one state root's runs, and leaves open how runs of other repositories or machines get in. The engine now keeps a machine index of state roots and can push metadata rows and heartbeats to a shared sink ([engine CST](../../../tempergraph/docs/specs/34-central-run-stats.spec.md)). Logs stay on the machine that ran a run.
+A monitor that asks for status once, from the session's directory, shows only one state root's runs, and leaves open how runs of other repositories or machines get in. The engine now keeps a machine index of state roots and can push metadata rows and heartbeats to a shared sink ([engine CST](../../../tempergraph/docs/specs/central-run-stats.spec.md)). Logs stay on the machine that ran a run.
 
 ## Decision
 
-We will offer `repo` (default) and `machine` scopes for full views, and a fleet tab that reads a configured sink for numbers and live heartbeats only; a run on another machine opens as a read-only card, never a drill-down ([MDS](../specs/01-data-sources.spec.md), [MCF](../specs/06-cost-and-fleet.spec.md)).
+We will offer `repo` (default) and `machine` scopes for full views, and a fleet tab that reads a configured sink for numbers and live heartbeats only; a run on another machine opens as a read-only card, never a drill-down ([MDS](../specs/data-sources.spec.md), [MCF](../specs/cost-and-fleet.spec.md)).
 
 ## Options considered
 

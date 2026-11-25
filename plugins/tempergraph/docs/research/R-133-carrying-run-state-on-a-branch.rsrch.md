@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The owner decided on 2026-11-20 that CI pipelines go to a later release, and proposed a stopgap: "temporary we can push .tempergraph folder from project to branch which would have state/sqlite etc, and when workflow will be fully done we can remove the folder to leave no traces." Today a paused run resumes only on the machine that holds its state root ([WSP-B8, WSP-B9, WSP-B11](../specs/13-workspace-and-concurrency.spec.md)); the state root is gitignored by its own `.gitignore` ([LOS-B7, LOS-B8, LOS-B9](../specs/33-local-observability-store.spec.md)).
+The owner decided on 2026-11-20 that CI pipelines go to a later release, and proposed a stopgap: "temporary we can push .tempergraph folder from project to branch which would have state/sqlite etc, and when workflow will be fully done we can remove the folder to leave no traces." Today a paused run resumes only on the machine that holds its state root ([WSP-B8, WSP-B9, WSP-B11](../specs/workspace-and-concurrency.spec.md)); the state root is gitignored by its own `.gitignore` ([LOS-B7, LOS-B8, LOS-B9](../specs/local-observability-store.spec.md)).
 
 The questions: what of the state root a resume on another machine needs, what must never leave the machine, where on git it should live, how two machines are kept from driving one run, and how "no traces" can actually hold.
 
@@ -10,7 +10,7 @@ The questions: what of the state root a resume on another machine needs, what mu
 
 | # | Source | Type | Where |
 |---|---|---|---|
-| S3 | This design: LOS-B7, LOS-B8, LOS-B9 layout (what each file holds, "local only" marks), SEC-B8 to SEC-B11 and OVR-B11 (published artefacts carry metadata only), DUR (checkpoints, locks, thread states), WTR-B18 (`WorkspaceRecord` paths), MIG (layout and checkpoint format versions), RRN (feedback and rulings) | Design set | [specs](../specs/00-overview.spec.md) |
+| S3 | This design: LOS-B7, LOS-B8, LOS-B9 layout (what each file holds, "local only" marks), SEC-B8 to SEC-B11 and OVR-B11 (published artefacts carry metadata only), DUR (checkpoints, locks, thread states), WTR-B18 (`WorkspaceRecord` paths), MIG (layout and checkpoint format versions), RRN (feedback and rulings) | Design set | [specs](../specs/overview.spec.md) |
 | S4 | git documentation: an orphan branch (`git switch --orphan`) shares no history with other branches; `git push origin --delete <branch>` removes a remote branch; a commit stays reachable from a branch that contains it until that history is rewritten; a squash merge adds one commit holding the branch's final tree only | Tool documentation | [git-switch](https://git-scm.com/docs/git-switch), [git-push](https://git-scm.com/docs/git-push), [git-merge](https://git-scm.com/docs/git-merge) |
 | S5 | LangGraph's SQLite checkpointer stores checkpoints and pending writes in tables keyed by `thread_id`, so one thread's rows can be copied apart | Library documentation | [langgraph-checkpoint-sqlite](https://pypi.org/project/langgraph-checkpoint-sqlite/) |
 

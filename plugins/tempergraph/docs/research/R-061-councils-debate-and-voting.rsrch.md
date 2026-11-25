@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The owner asked for "something like a council node". A council puts one question to several model sessions and combines their answers. This note collects what public work says about how to combine them: whether rounds of debate add over independent answers and a vote, what makes members conform, whether member identity should be hidden, and how diverse members should be. The answers set the defaults of the council unit ([CNL](../specs/71-council-unit.spec.md), [ADR-0063](../adr/0063-council-is-a-gated-step-with-engine-tallied-outcomes.adr.md)).
+The owner asked for "something like a council node". A council puts one question to several model sessions and combines their answers. This note collects what public work says about how to combine them: whether rounds of debate add over independent answers and a vote, what makes members conform, whether member identity should be hidden, and how diverse members should be. The answers set the defaults of the council unit ([CNL](../specs/council-unit.spec.md), [ADR-0063](../adr/0063-council-is-a-gated-step-with-engine-tallied-outcomes.adr.md)).
 
 ## Sources consulted
 
@@ -43,4 +43,4 @@ The papers' later sections were read partly through extracted summaries; numbers
 | Question | Owner |
 |---|---|
 | Do rounds ever pay for themselves on delivery-pipeline questions (design choices, risk calls), which have no ground truth? Measured by the `council-rounds-no-gain` audit rule once 10 visits exist. | Owner, after first council workflows |
-| Does a ranking stage (K1) beat a plain chair synthesis? No source measures it. | Owner, by a paired trial ([PRP](../specs/40-improvement-proposals.spec.md)) |
+| Does a ranking stage (K1) beat a plain chair synthesis? No source measures it. | Owner, by a paired trial ([PRP](../specs/improvement-proposals.spec.md)) |

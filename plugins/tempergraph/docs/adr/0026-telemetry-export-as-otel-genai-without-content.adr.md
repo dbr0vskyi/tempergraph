@@ -13,7 +13,7 @@ Teams that already run a tracing or metrics backend want tempergraph runs there,
 
 ## Decision
 
-We will ship an OTLP exporter as an in-process observer in an optional extra, mapping runs to `invoke_workflow`, `invoke_agent`, `execute_tool`, `chat` (Messages API only) and `gen_ai.evaluation.result`, with tempergraph-namespaced names for units, checks, gates and cost, a pinned semconv version, and content capture never on ([TEL](../specs/35-telemetry-export.spec.md)).
+We will ship an OTLP exporter as an in-process observer in an optional extra, mapping runs to `invoke_workflow`, `invoke_agent`, `execute_tool`, `chat` (Messages API only) and `gen_ai.evaluation.result`, with tempergraph-namespaced names for units, checks, gates and cost, a pinned semconv version, and content capture never on ([TEL](../specs/telemetry-export.spec.md)).
 
 ## Options considered
 

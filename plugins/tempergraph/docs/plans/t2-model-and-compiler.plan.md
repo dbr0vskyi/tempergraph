@@ -7,7 +7,7 @@ owner: dbr0vskyi
 status: Completed
 tags: [track-plan, tempergraph, T2]
 tracker: none
-spec: plugins/tempergraph/docs/specs/02-workflow-model.spec.md
+spec: plugins/tempergraph/docs/specs/workflow-model.spec.md
 spec_commit: bd6fc13
 task_id: first-release-t2
 ---
@@ -19,7 +19,7 @@ task_id: first-release-t2
 | Field | Value |
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T2 |
-| Specs | [WFM](../specs/02-workflow-model.spec.md), [PRM](../specs/04-prompt-rendering.spec.md), [VAL](../specs/76-step-values-and-template-keys.spec.md), [CMP](../specs/03-compiler-and-flow.spec.md), [LIF](../specs/18-lifecycle-and-evals.spec.md) (diagram model), with [PKG-B19, PKG-B20](../specs/88-workflow-package.spec.md) for the builders |
+| Specs | [WFM](../specs/workflow-model.spec.md), [PRM](../specs/prompt-rendering.spec.md), [VAL](../specs/step-values-and-template-keys.spec.md), [CMP](../specs/compiler-and-flow.spec.md), [LIF](../specs/lifecycle-and-evals.spec.md) (diagram model), with [PKG-B19, PKG-B20](../specs/workflow-package.spec.md) for the builders |
 | Decisions | [ADR-0003](../adr/0003-workflows-as-data.adr.md), [ADR-0004](../adr/0004-four-nodes-per-unit.adr.md), [ADR-0106](../adr/0106-declare-workflows-with-typed-python-builders-and-text-in-files.adr.md) |
 
 **Status: Completed.** Status pass: WFM, PRM, VAL, CMP and LIF are `ready-for-implementation`; none has an open question. Doc changes this track made: CON-B4, CON-B5, CON-B6, CON-B7 gains `allow_commands`, `builtin`, `package_root`, the route and switch fields of `UnitSpec`, and the `default` prompt; PRM-B6 and VAL-B8 define `default` as `{request}` with the one input `request`; CMP-B8 names the nodes and the human node's edges.

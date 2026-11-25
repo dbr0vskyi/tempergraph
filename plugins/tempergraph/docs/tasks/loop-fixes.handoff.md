@@ -6,12 +6,12 @@ In release 3's first dev-mode run the improvement loop found only part of what a
 
 ## Gaps closed
 
-- G1: `plugins/tempergraph/docs/specs/44-session-review.spec.md` (SRV-B24, with SRV-B21 edited; proved by SRV-AC8)
-- G2: `plugins/tempergraph/docs/specs/44-session-review.spec.md` (SRV-B25, with SRV-B21 edited; proved by SRV-AC9)
-- G3: `plugins/tempergraph/docs/specs/44-session-review.spec.md` (SRV-B26, SRV-B27, SRV-B28; proved by SRV-AC10, SRV-AC11)
-- G4: `plugins/tempergraph/docs/specs/16-self-improvement.spec.md` (SIL-B22, SIL-AC14), `plugins/tempergraph/docs/specs/17-engine-cli.spec.md` (CLI-B20, CLI-AC10) and `plugins/tempergraph/docs/specs/31-run-detail-document.spec.md` (RDD-B7, RDD-AC6)
-- G5: `plugins/tempergraph/docs/specs/08-budgets-and-failures.spec.md` (BUD-B16, BUD-AC8) and `plugins/tempergraph/docs/specs/16-self-improvement.spec.md` (SIL-B23, SIL-AC15)
-- G6: `plugins/tempergraph/docs/adr/a-review-category-kept-in-several-sessions-is-a-finding-that-never-files-alone.adr.md`, a new record that refines ADR-0119; ADR-0119 is not edited
+- G1: `plugins/tempergraph/docs/specs/session-review.spec.md` (SRV-B24, with SRV-B21 edited; proved by SRV-AC8)
+- G2: `plugins/tempergraph/docs/specs/session-review.spec.md` (SRV-B25, with SRV-B21 edited; proved by SRV-AC9)
+- G3: `plugins/tempergraph/docs/specs/session-review.spec.md` (SRV-B26, SRV-B27, SRV-B28; proved by SRV-AC10, SRV-AC11)
+- G4: `plugins/tempergraph/docs/specs/self-improvement.spec.md` (SIL-B22, SIL-AC14), `plugins/tempergraph/docs/specs/engine-cli.spec.md` (CLI-B20, CLI-AC10) and `plugins/tempergraph/docs/specs/run-detail-document.spec.md` (RDD-B7, RDD-AC6)
+- G5: `plugins/tempergraph/docs/specs/budgets-and-failures.spec.md` (BUD-B16, BUD-AC8) and `plugins/tempergraph/docs/specs/self-improvement.spec.md` (SIL-B23, SIL-AC15)
+- G6: `plugins/tempergraph/docs/adr/a-review-category-kept-in-several-sessions-never-files-alone.adr.md`, a new record that refines ADR-0119; ADR-0119 is not edited
 
 How the task's criteria map to the documents:
 
@@ -24,13 +24,13 @@ How the task's criteria map to the documents:
 
 ## Changed documents
 
-- `plugins/tempergraph/docs/specs/44-session-review.spec.md`: SRV-B24 to SRV-B28 and SRV-AC8 to SRV-AC11 added; SRV-B21 edited (no count cap in `full`, the money caps named, the drop by priority, its scenario replaced); one open question added
-- `plugins/tempergraph/docs/specs/08-budgets-and-failures.spec.md`: BUD-B16 and BUD-AC8 added after BUD-B11 and BUD-AC7; one open question added
-- `plugins/tempergraph/docs/specs/16-self-improvement.spec.md`: SIL-B22, SIL-B23, SIL-AC14 and SIL-AC15 added; SIL-B17's list of loop records gains `loop_summary`
-- `plugins/tempergraph/docs/specs/17-engine-cli.spec.md`: CLI-B20 and CLI-AC10 added; CLI-B6 edited (what `attention` reads); an Open questions section added
-- `plugins/tempergraph/docs/specs/31-run-detail-document.spec.md`: RDD-B7 gains the `loop` block and a scenario; RDD-AC6 added
-- `plugins/tempergraph/docs/specs/40-improvement-proposals.spec.md`: collateral, not a gap of the triage note; the first Open questions bullet now opens with `Not built yet:` and not with the id PRP-B9, so the id has one definition; no behaviour or criterion changed (see Decisions)
-- `plugins/tempergraph/docs/adr/a-review-category-kept-in-several-sessions-is-a-finding-that-never-files-alone.adr.md`: new
+- `plugins/tempergraph/docs/specs/session-review.spec.md`: SRV-B24 to SRV-B28 and SRV-AC8 to SRV-AC11 added; SRV-B21 edited (no count cap in `full`, the money caps named, the drop by priority, its scenario replaced); one open question added
+- `plugins/tempergraph/docs/specs/budgets-and-failures.spec.md`: BUD-B16 and BUD-AC8 added after BUD-B11 and BUD-AC7; one open question added
+- `plugins/tempergraph/docs/specs/self-improvement.spec.md`: SIL-B22, SIL-B23, SIL-AC14 and SIL-AC15 added; SIL-B17's list of loop records gains `loop_summary`
+- `plugins/tempergraph/docs/specs/engine-cli.spec.md`: CLI-B20 and CLI-AC10 added; CLI-B6 edited (what `attention` reads); an Open questions section added
+- `plugins/tempergraph/docs/specs/run-detail-document.spec.md`: RDD-B7 gains the `loop` block and a scenario; RDD-AC6 added
+- `plugins/tempergraph/docs/specs/improvement-proposals.spec.md`: collateral, not a gap of the triage note; the first Open questions bullet now opens with `Not built yet:` and not with the id PRP-B9, so the id has one definition; no behaviour or criterion changed (see Decisions)
+- `plugins/tempergraph/docs/adr/a-review-category-kept-in-several-sessions-never-files-alone.adr.md`: new
 - `plugins/tempergraph/docs/research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md`: finding F3 corrected, source S5 added, conclusion 1 reworded to match (see Decisions); this is not a gap of the triage note
 - `plugins/tempergraph/docs/tasks/loop-fixes.handoff.md`: this hand-off (new)
 
@@ -49,8 +49,8 @@ How the task's criteria map to the documents:
 - The finding for `check_repeat` is in SIL (SIL-B23), as `tool_access` is (SIL-B14): a workflow fault with no evidence text, remedy that a person decides whether the check, the environment or the prompt is wrong. Today the cause table would class the pause as the generic `escalation:check_repeat`; the code step adds the specific cause.
 - Not edited: SRV-B7 and SIL-B16 (they concern model-free findings, which are unchanged), SRV-B15 (the plan record keeps its plan-time skips; the run-time skips of SRV-B25 are the `review_skipped` records of SRV-B22), PRP-B12 (the backlog already lists fault findings and shows `review_weight`), and the guides and the README (their line on `attention` is about its items). RDD's Purpose names no loop log among the sources of the detail; it is not a behaviour and was left.
 - Left for the plan and code steps, where the code differs from the documents today: `improve/review.py` (`plan` and `run`: order, count cap removed, budget decision; `plan` takes the digests and the ticket only, while SRV-B24 needs the run's checks, gates and pauses to name the units in trouble), `improve/params.py` (`review.max_sessions.full` removed, `review.repeat_sessions` added), `improve/child.py` (repeat finding, summary), `improve/causes.py` (the two causes and their classes), `improve/proposals.py` (`review_weight`), `observe/attention.py` and `observe/detail.py`, the gate and its check node for BUD-B16 (the plan step finds where the engine knows that the later attempt's step changed files), `tests/test_session_review.py`, which builds plans from digests alone, and any test whose check fails the same way on two attempts in a row while its stand-in step writes files, which the new gate rule would pause as an escalation (the suite shows which).
-- The link check counts a line that opens with an id (after a heading mark, a list dash or a table bar) as a definition of that id. The first Open questions bullet of `plugins/tempergraph/docs/specs/40-improvement-proposals.spec.md` opened with PRP-B9, which its heading already defines, and SIL-B5 in the changed `plugins/tempergraph/docs/specs/16-self-improvement.spec.md` links PRP-B9, so the id read as defined twice. The bullet now opens with `Not built yet:`, as the same section of other specs does, and says the same otherwise. It is the only edit to spec 40, a collateral edit the documents rule allows when it is reported, and the link in SIL-B5 is unchanged. No line of any spec now opens with a behaviour id outside a heading, and each id this task added has one definition.
-- Size: spec 44 is about 27.5 KB against the 30 KB budget of the engine's spec budget test (measured from line lengths, since this step has no shell), so a later edit of it has about 2.5 KB. The other edited specs were not measured.
+- The link check counts a line that opens with an id (after a heading mark, a list dash or a table bar) as a definition of that id. The first Open questions bullet of `plugins/tempergraph/docs/specs/improvement-proposals.spec.md` opened with PRP-B9, which its heading already defines, and SIL-B5 in the changed `plugins/tempergraph/docs/specs/self-improvement.spec.md` links PRP-B9, so the id read as defined twice. The bullet now opens with `Not built yet:`, as the same section of other specs does, and says the same otherwise. It is the only edit to spec `improvement-proposals`, a collateral edit the documents rule allows when it is reported, and the link in SIL-B5 is unchanged. No line of any spec now opens with a behaviour id outside a heading, and each id this task added has one definition.
+- Size: spec `session-review` is about 27.5 KB against the 30 KB budget of the engine's spec budget test (measured from line lengths, since this step has no shell), so a later edit of it has about 2.5 KB. The other edited specs were not measured.
 
 ## Open questions
 

@@ -9,11 +9,11 @@
 
 ## Context
 
-When a step's output fails its deterministic check, the next attempt is a fresh session that re-reads everything. A step that writes a structured artifact, such as temperspec's expand step, can fail its check on structural misses (a missing line range, a file named whole), and each miss costs a whole new attempt. Two remedies fit: run the checks inside the attempt through a declared command, or resume the session with the failing entries ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T38). A resumed retry carries the whole conversation so far, so it costs more than a fresh session told the last report ([R-001 F20](../research/R-001-claude-code-cli-headless.rsrch.md)), which is why a retry here is always fresh ([PRM-B5](../specs/04-prompt-rendering.spec.md)).
+When a step's output fails its deterministic check, the next attempt is a fresh session that re-reads everything. A step that writes a structured artifact, such as temperspec's expand step, can fail its check on structural misses (a missing line range, a file named whole), and each miss costs a whole new attempt. Two remedies fit: run the checks inside the attempt through a declared command, or resume the session with the failing entries ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T38). A resumed retry carries the whole conversation so far, so it costs more than a fresh session told the last report ([R-001 F20](../research/R-001-claude-code-cli-headless.rsrch.md)), which is why a retry here is always fresh ([PRM-B5](../specs/prompt-rendering.spec.md)).
 
 ## Decision
 
-We will let a step declare `self_check: true`. The engine then grants it one command, `tempergraph self-check <ticket>`, which runs the unit's own check on the current workspace and prints the findings, without a judge, a state write or a budget change, at most three times an attempt. The gate's real check still runs after the session; its command runs can reuse the preview's on an unchanged tree ([CHK-B17](../specs/75-check-contract-and-command-runs.spec.md)). No session is resumed.
+We will let a step declare `self_check: true`. The engine then grants it one command, `tempergraph self-check <ticket>`, which runs the unit's own check on the current workspace and prints the findings, without a judge, a state write or a budget change, at most three times an attempt. The gate's real check still runs after the session; its command runs can reuse the preview's on an unchanged tree ([CHK-B17](../specs/check-contract-and-command-runs.spec.md)). No session is resumed.
 
 ## Options considered
 

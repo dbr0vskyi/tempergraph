@@ -9,7 +9,7 @@
 
 ## Context
 
-A step may end with `UPSTREAM <unit>: <defect>`, and a judge may attribute a blocker to an earlier artifact, sending the run back. Both are offered only when the target is a listed back target **that has run** ([PRM-B11](../specs/04-prompt-rendering.spec.md)). temperspec skips discovery when triage finds no gap. If the plan then meets a spec defect, the plan step can only end blocked, and a code blocker that is really a spec fault stays unattributed, so the code step retries until its budget is spent; a person then sends the run back to discovery by hand ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T17). The skip was the cheap bet; when it loses, the engine makes the loss larger.
+A step may end with `UPSTREAM <unit>: <defect>`, and a judge may attribute a blocker to an earlier artifact, sending the run back. Both are offered only when the target is a listed back target **that has run** ([PRM-B11](../specs/prompt-rendering.spec.md)). temperspec skips discovery when triage finds no gap. If the plan then meets a spec defect, the plan step can only end blocked, and a code blocker that is really a spec fault stays unattributed, so the code step retries until its budget is spent; a person then sends the run back to discovery by hand ([R-075](../research/R-075-temperspec-needs-against-the-engine.rsrch.md) T17). The skip was the cheap bet; when it loses, the engine makes the loss larger.
 
 ## Decision
 
@@ -36,8 +36,8 @@ We will treat a listed back target that a route or switch **skipped on the path 
 
 | # | Assumption | Where it matters |
 |---|---|---|
-| K1 | A skipped unit's artifacts are absent, so a step that names them already sees the missing marker; a claim against it is the natural signal. | [VAL-B3](../specs/76-step-values-and-template-keys.spec.md) |
-| K2 | The judge confirms an upstream claim as today ([HUM-B7 to HUM-B11](../specs/07-gate-and-human.spec.md)); an unconfirmed claim still escalates. | PRM, JDG |
+| K1 | A skipped unit's artifacts are absent, so a step that names them already sees the missing marker; a claim against it is the natural signal. | [VAL-B3](../specs/step-values-and-template-keys.spec.md) |
+| K2 | The judge confirms an upstream claim as today ([HUM-B7 to HUM-B11](../specs/gate-and-human.spec.md)); an unconfirmed claim still escalates. | PRM, JDG |
 
 ## Consequences
 

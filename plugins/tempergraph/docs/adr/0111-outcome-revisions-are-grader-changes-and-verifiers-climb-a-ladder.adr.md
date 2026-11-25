@@ -13,7 +13,7 @@ The good outcome must improve after authoring. Grader changes are already apart 
 
 ## Decision
 
-We will revise `outcome.json` only as a recorded revision with origin and evidence, classed from parsed files as strengthening, weakening or neutral. A weakening, including moving a verifier down, needs a person. A verifier moves up from `none` to `person` to `judge` to `check` only with evidence: an accepted judge for `person → judge`, fixtures and replayed agreement for `judge → check`. Candidates are read model-free from rulings, escapes, declined sign-offs, unverified rates and sign-offs that always pass. Release 1 revises through the authoring skill; the improvement loop proposes class `outcome` from release 3. Details: [OUT-B20, OUT-B21](../specs/90-run-outcome.spec.md).
+We will revise `outcome.json` only as a recorded revision with origin and evidence, classed from parsed files as strengthening, weakening or neutral. A weakening, including moving a verifier down, needs a person. A verifier moves up from `none` to `person` to `judge` to `check` only with evidence: an accepted judge for `person → judge`, fixtures and replayed agreement for `judge → check`. Candidates are read model-free from rulings, escapes, declined sign-offs, unverified rates and sign-offs that always pass. Release 1 revises through the authoring skill; the improvement loop proposes class `outcome` from release 3. Details: [OUT-B20, OUT-B21](../specs/run-outcome.spec.md).
 
 ## Options considered
 
@@ -35,7 +35,7 @@ We will revise `outcome.json` only as a recorded revision with origin and eviden
 
 - Positive: "less human-in-the-loop" becomes person criteria moving to judges and checks, each step backed by data.
 - Negative: a reworded criterion stales its calibration score.
-- Risk: thresholds (20 runs, 10 replays) are guesses. Mitigation: they are recorded loop parameters ([IMD](../specs/43-improvement-data.spec.md)).
+- Risk: thresholds (20 runs, 10 replays) are guesses. Mitigation: they are recorded loop parameters ([IMD](../specs/improvement-data.spec.md)).
 
 ## Assumptions
 

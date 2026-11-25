@@ -18,7 +18,7 @@ def _clock(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(schedule_cli, "CLOCK", lambda: NOW)
     monkeypatch.setattr(schedule_cli, "machine_zone", lambda: (WARSAW, "TZ"))
 
-SPEC = DOCS / "specs" / "83-schedules.spec.md"
+SPEC = DOCS / "specs" / "schedules.spec.md"
 RATIONALE = DOCS / "research" / "R-150-rationale-carried-from-the-engine-specs.rsrch.md"
 PLAN = DOCS / "plans" / "third-release.plan.md"
 
@@ -29,7 +29,7 @@ def _open_question(text: str) -> str:
     return found[0]
 
 
-SPEC_TCK = DOCS / "specs" / "84-schedule-ticks-and-unattended-fires.spec.md"
+SPEC_TCK = DOCS / "specs" / "schedule-ticks-and-unattended-fires.spec.md"
 LIVE = DOCS / "plans" / "live-checks.plan.md"
 R352 = DOCS / "plans" / "r3-t5-2.plan.md"
 ENGINE_TESTS = Path(__file__).resolve().parent

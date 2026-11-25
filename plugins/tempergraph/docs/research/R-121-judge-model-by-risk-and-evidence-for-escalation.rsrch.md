@@ -7,13 +7,13 @@ On 2026-11-20 the owner put "judges and ladders" into release 2, with one hard c
 1. **Judge model by risk.** The judge's model and effort chosen by risk is named as a later use of the switch's choice layer ([R-120](R-120-effort-ladders-and-one-step-model-escalation.rsrch.md) F1), with no design. What would choose it, from what signals, and how does it stay calibrated?
 2. **What counts as evidence.** R-120 says the effort ladder climbs on "a judge RETRY with an unmet blocker" or "a non-environmental check FAIL". For the owner's "not on any failure", each of those must be narrowed until a climb happens only when a stronger session is the likely fix and the signal that says so is itself trusted.
 
-This note answers both. It reads "judges" in the owner's message as the judge model by risk, the only judge item that had no design; judge calibration and labels are already built in release 1 ([JCL](../specs/50-judge-calibration.spec.md), [FBK](../specs/41-feedback-and-judge-reliability.spec.md)).
+This note answers both. It reads "judges" in the owner's message as the judge model by risk, the only judge item that had no design; judge calibration and labels are already built in release 1 ([JCL](../specs/judge-calibration.spec.md), [FBK](../specs/feedback-and-judge-reliability.spec.md)).
 
 ## Sources consulted
 
 | # | Source | Type | Where |
 |---|---|---|---|
-| S4 | This design: JCL binding and acceptance states, FBK grades per binding, BUD-B1, BUD-B11 cause table, JDG-B1 and B8, CHK findings and facts, RST judge scopes, CON-B3 judge resolution | Design set | [specs](../specs/00-overview.spec.md) |
+| S4 | This design: JCL binding and acceptance states, FBK grades per binding, BUD-B1, BUD-B11 cause table, JDG-B1 and B8, CHK findings and facts, RST judge scopes, CON-B3 judge resolution | Design set | [specs](../specs/overview.spec.md) |
 | S5 | [R-045](R-045-evaluating-llm-judges-public-practice.rsrch.md) F2: judges pass bad work more often than they fail good work, so catch and clean rates are measured apart | Design set (public practice) | research/ |
 | S6 | Chen, Zaharia and Zou, *FrugalGPT* (TMLR 2024): an LLM cascade sends a query to a cheaper model first and escalates only when a learned scorer rejects the answer; the scorer's quality bounds the cascade's | Paper | [arXiv 2305.05176](https://arxiv.org/pdf/2305.05176) |
 | S7 | Ong et al., *RouteLLM* (ICLR 2025): routers between a strong and a weak model trained on preference data; routers are evaluated on held-out benchmarks for cost against quality | Paper | [arXiv 2406.18665](https://arxiv.org/abs/2406.18665v4) |

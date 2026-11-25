@@ -13,7 +13,7 @@ The owner asked whether a person can override a workflow's configuration in ever
 
 ## Decision
 
-We will define every overridable value as a key in one engine catalog, `<scope>.<name>`, with a type, a range, the scopes it applies to and an engine default, and resolve every key over the same ten layers, highest first: flags (including orchestration and batch options), chosen profiles, the project file's overrides, the user file's overrides, a workflow-declared switch arm's per-unit values while the arm is in force, the unit's own workflow field, the workflow default, the project file's defaults, the user file's defaults, the engine default ([RST-B22, RST-B23](../specs/80-run-settings-and-overrides.spec.md)). Resolution is layer-major, and inside a layer the narrowest scope wins. Workflows may declare typed settings and named profiles. One `settings_resolved` record per run segment and a read-only `config show` verb carry every value with its source.
+We will define every overridable value as a key in one engine catalog, `<scope>.<name>`, with a type, a range, the scopes it applies to and an engine default, and resolve every key over the same ten layers, highest first: flags (including orchestration and batch options), chosen profiles, the project file's overrides, the user file's overrides, a workflow-declared switch arm's per-unit values while the arm is in force, the unit's own workflow field, the workflow default, the project file's defaults, the user file's defaults, the engine default ([RST-B22, RST-B23](../specs/run-settings-and-overrides.spec.md)). Resolution is layer-major, and inside a layer the narrowest scope wins. Workflows may declare typed settings and named profiles. One `settings_resolved` record per run segment and a read-only `config show` verb carry every value with its source.
 
 ## Options considered
 
@@ -22,7 +22,7 @@ We will define every overridable value as a key in one engine catalog, `<scope>.
 | One catalog, fixed layers (chosen) | One rule for every key; validation can refuse a misaimed or out-of-range override; a preview equals the run | A catalog to keep in step with new fields |
 | A free-form override map (Hydra-style dotted paths into the workflow) | Anything can be changed with no catalog | Nothing is validated; it reaches criteria, prompts and tools ([ADR-0071](0071-overrides-never-change-what-verifies-the-work.adr.md)) |
 | A flag per key, as today | No new concept | Dozens of flags; no files, no profiles, no member or slot scope; each key picks its own order |
-| Environment variables as a layer | Easy in CI | Invisible in the record; [EXI-B16, EXI-B17](../specs/10-executor-interface.spec.md) forbids environment selection of executors |
+| Environment variables as a layer | Easy in CI | Invisible in the record; [EXI-B16, EXI-B17](../specs/executor-interface.spec.md) forbids environment selection of executors |
 
 ## Decision rationale
 
@@ -45,7 +45,7 @@ We will define every overridable value as a key in one engine catalog, `<scope>.
 ## Consequences
 
 - Positive: every variation of the owner's list, and temperspec's operator levers, has one spelling and one order; the improvement loop can tell an operator's override from a workflow's own value.
-- Negative: the existing flags become spellings of `--set`; docs and tests generated from the catalog must stay in step ([CLI-AC7](../specs/17-engine-cli.spec.md)).
+- Negative: the existing flags become spellings of `--set`; docs and tests generated from the catalog must stay in step ([CLI-AC7](../specs/engine-cli.spec.md)).
 - Risk: layer-major order surprises an operator whose user file overrides a step's declared value. Mitigation: `config show` prints the winning layer and every shadowed one.
 
 ## Revisit when

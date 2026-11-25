@@ -1,7 +1,7 @@
 ---
 task: r2-t3
 complexity: complex
-specs: [plugins/tempergraph/docs/specs/93-judge-model-by-risk.spec.md]
+specs: [plugins/tempergraph/docs/specs/judge-model-by-risk.spec.md]
 ---
 
 # Plan: judge model by risk (R2-T3)
@@ -59,6 +59,6 @@ Weight: medium
 
 ## 4. Doc changes
 
-- `plugins/tempergraph/docs/specs/93-judge-model-by-risk.spec.md`: as-built notes and ticked criteria
-- `plugins/tempergraph/docs/specs/17-engine-cli.spec.md`: `evals score --level`
-- `plugins/tempergraph/docs/specs/30-run-events.spec.md`: the fields of `judge_risk`
+- `plugins/tempergraph/docs/specs/judge-model-by-risk.spec.md`: as-built notes and ticked criteria
+- `plugins/tempergraph/docs/specs/engine-cli.spec.md`: `evals score --level`
+- `plugins/tempergraph/docs/specs/run-events.spec.md`: the fields of `judge_risk`

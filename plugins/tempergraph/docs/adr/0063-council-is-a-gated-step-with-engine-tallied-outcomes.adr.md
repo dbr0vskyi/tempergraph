@@ -9,11 +9,11 @@
 
 ## Context
 
-The owner asked for a council node. A council puts one question to several model sessions and combines what they say. Public work ([R-061](../research/R-061-councils-debate-and-voting.rsrch.md)) finds that independent answers plus a vote give most of the benefit of debate (K2), that diversity matters (K3), that members conform to majorities (K4) and withhold dissent (K5), and that agreement is not correctness (K6). The design already defers a panel of voting **judges** until single judges are calibrated ([JCL-B9](../specs/50-judge-calibration.spec.md)).
+The owner asked for a council node. A council puts one question to several model sessions and combines what they say. Public work ([R-061](../research/R-061-councils-debate-and-voting.rsrch.md)) finds that independent answers plus a vote give most of the benefit of debate (K2), that diversity matters (K3), that members conform to majorities (K4) and withhold dissent (K5), and that agreement is not correctness (K6). The design already defers a panel of voting **judges** until single judges are calibrated ([JCL-B9](../specs/judge-calibration.spec.md)).
 
 ## Decision
 
-We will add a unit kind **`council`** ([CNL](../specs/71-council-unit.spec.md)):
+We will add a unit kind **`council`** ([CNL](../specs/council-unit.spec.md)):
 
 1. **Members** (2 to 7) are fresh, read-only sessions, each with its own executor, model alias and stance. Round 0 is blind: no member sees another's answer.
 2. **Modes.** `synthesize` (a chair session writes one answer and a dissent section), `vote` (members choose among declared options; the engine tallies by a declared rule) and `rank` (members rank each other's anonymized answers; the engine aggregates by Borda count; a chair may write from the top answer).

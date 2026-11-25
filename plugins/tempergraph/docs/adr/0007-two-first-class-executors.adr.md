@@ -13,7 +13,7 @@ The owner's requirement: the design supports two executors, Claude CLI and Antig
 
 ## Decision
 
-We will ship two concrete executors, `claude` ([ECC](../specs/11-executor-claude-code.spec.md)) and `antigravity` ([EAG](../specs/12-executor-antigravity.spec.md)), both able to run any step. `claude` is the default judge executor. `antigravity` hosts judges only after its isolation probes pass; until then the engine moves its steps' judges to `claude` automatically ([ADR-0013](0013-cross-executor-judging.adr.md)). Both record their CLI version on every session; the engine keeps a per-executor table of CLI versions its probe facts were recorded for.
+We will ship two concrete executors, `claude` ([ECC](../specs/executor-claude-code.spec.md)) and `antigravity` ([EAG](../specs/executor-antigravity.spec.md)), both able to run any step. `claude` is the default judge executor. `antigravity` hosts judges only after its isolation probes pass; until then the engine moves its steps' judges to `claude` automatically ([ADR-0013](0013-cross-executor-judging.adr.md)). Both record their CLI version on every session; the engine keeps a per-executor table of CLI versions its probe facts were recorded for.
 
 ## Options considered
 

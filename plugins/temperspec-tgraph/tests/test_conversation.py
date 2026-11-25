@@ -482,5 +482,5 @@ def test_the_criteria_file_holds_ts_tri_owner_with_the_text_of_its_spec_row() ->
     crit = next(c for c in outcome["intermediate"]["triage"]["criteria"] if c["id"] == "ts-tri-owner")
     assert crit["severity"] == "blocker" and crit["verified_by"] == "check" and crit["check_method"].strip()
     assert crit["verifier"] == {"check": "tgwf_temperspec.checks:triage_check"}
-    row = next(ln for ln in _read("docs", "specs", "04-triage.spec.md").splitlines() if ln.startswith(ROW))
+    row = next(ln for ln in _read("docs", "specs", "triage.spec.md").splitlines() if ln.startswith(ROW))
     assert crit["text"] == row[len(ROW):].strip()

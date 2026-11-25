@@ -176,9 +176,9 @@ def test_the_outcome_record_lists_the_three_documents_and_the_overview_closes_it
     assert any("reports whether the run's branch is pushed" in a and "never grades it" in a for a in assumptions)
     commit = next(c for c in outcome["intermediate"]["code"]["criteria"] if c["id"] == "ts-code-commit")
     assert commit["text"] == "Every file the code step changed is committed"
-    code_spec = (ROOT / "docs" / "specs" / "08-code.spec.md").read_text(encoding="utf-8")
+    code_spec = (ROOT / "docs" / "specs" / "code.spec.md").read_text(encoding="utf-8")
     assert any(commit["text"] in line for line in code_spec.splitlines())
-    overview = (ROOT / "docs" / "specs" / "00-overview.spec.md").read_text(encoding="utf-8")
+    overview = (ROOT / "docs" / "specs" / "overview.spec.md").read_text(encoding="utf-8")
     assert "outcome-gate.spec.md" in overview
     for line in overview.splitlines():
         low = line.lower()
