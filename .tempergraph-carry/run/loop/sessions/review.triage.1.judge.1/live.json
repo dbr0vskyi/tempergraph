@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "session_key": "review.triage.1.judge.1",
+  "open_tool": null,
+  "recent": [],
+  "last_text": "You've hit your 5-hour limit · resets 7:40pm (Europe/Warsaw)",
+  "tokens_so_far": 0,
+  "turns_so_far": 1,
+  "pgid": 68377,
+  "last_event_at": "2026-11-25T14:26:19.068Z",
+  "updated_at": "2026-11-25T14:26:19.069Z",
+  "pid": 67581,
+  "ended": false
+}

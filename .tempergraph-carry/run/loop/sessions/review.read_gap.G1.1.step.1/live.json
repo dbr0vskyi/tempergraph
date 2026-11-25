@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "session_key": "review.read_gap.G1.1.step.1",
+  "open_tool": null,
+  "recent": [],
+  "last_text": "You've hit your 5-hour limit · resets 7:40pm (Europe/Warsaw)",
+  "tokens_so_far": 0,
+  "turns_so_far": 1,
+  "pgid": 68023,
+  "last_event_at": "2026-11-25T14:26:10.810Z",
+  "updated_at": "2026-11-25T14:26:10.810Z",
+  "pid": 67581,
+  "ended": false
+}
