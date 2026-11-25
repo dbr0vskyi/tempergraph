@@ -120,11 +120,12 @@ def test_the_rule_the_prompt_and_the_judge_say_it() -> None:  # ts-dis-general
     rule = (ROOT / "rules" / "spec.rule.md").read_text()
     assert "## General rules, not cases" in rule
     for phrase in ("never refers to a task", "names no workflow", "not a test", "decision record",
-                   "One rule lives in one place"):
+                   "One rule lives in one place", "one case on each side of it", "changes no behaviour changes no spec"):
         assert phrase in rule, phrase
     prompt = (ROOT / "prompts" / "discovery.md").read_text()
     assert "Extract the rule before you write it" in prompt and "General rules, not cases" in prompt
     assert "a case of a behaviour you wrote or of one that exists" in prompt
+    assert "Write no behaviour only so that a criterion has something to name" in prompt
     assert "Reread each behaviour you wrote as someone who has never seen the task" in prompt
     assert "owns the mechanism" in (ROOT / "prompts" / "triage.md").read_text()
     judge = (ROOT / "judges" / "discovery.md").read_text()
