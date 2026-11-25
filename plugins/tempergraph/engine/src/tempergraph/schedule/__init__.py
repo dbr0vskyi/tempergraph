@@ -2,7 +2,7 @@
 form and its echo, the schedule entry and fire log, and the fire-decision policies as pure functions.
 
 Nothing in this package reads the clock on its own, starts a process or spends: a caller passes the clock, and the
-tick of the next phase only calls the policies (TCK, R3-T5.2). The engine names no workflow here (ADR-0129).
+tick of the next phase only calls the policies (TCK, R3-T5.2). The engine names no workflow here (ADR `the-engine-names-no-workflow`).
 """
 
 from __future__ import annotations

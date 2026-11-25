@@ -65,13 +65,13 @@ def test_minimal_workflow_scaffolds_and_its_generated_tests_pass(pkg: Path, tmp_
     for rel in (".claude-plugin/plugin.json", "tempergraph.json", "outcome.json", "blueprint.json", "authoring.json",
                 "workflow/pyproject.toml", "workflow/release_notes/__init__.py", "workflow/release_notes/checks.py",
                 "prompts/draft.md", "judges/draft.md", "evals/cases.json", "evals/checks/draft/must-pass/notes.md",
-                "evals/checks/draft/must-fail/notes.md", "docs/specs/00-overview.spec.md",
-                "docs/specs/01-draft.spec.md", "docs/adr/0001-one-judge.adr.md", "diagram/model.json",
+                "evals/checks/draft/must-fail/notes.md", "docs/specs/overview.spec.md",
+                "docs/specs/draft.spec.md", "docs/adr/one-judge.adr.md", "diagram/model.json",
                 "tests/test_release_notes_generated.py"):
         assert (pkg / rel).is_file(), rel
     assert json.loads((pkg / "outcome.json").read_text())["revisions"][0]["origin"] == "authored"
     assert json.loads((pkg / ".claude-plugin/plugin.json").read_text())["name"] == "release-notes-tgraph"
-    assert json.loads((pkg / "tempergraph.json").read_text())["name"] == "release-notes"  # ADR-0120
+    assert json.loads((pkg / "tempergraph.json").read_text())["name"] == "release-notes"  # ADR `a-workflow-plugin-name-is-the-workflow-name-plus-tgraph`
     lp = load_package(pkg)
     draft = lp.spec.units["draft"]
     assert draft.gate.check is not None
@@ -136,7 +136,7 @@ def test_update_keeps_person_edits(pkg: Path, tmp_path: Path) -> None:
     """SCF-B7: a rewritten prompt is not touched and is listed; data-generated docs sections and the
     diagram are regenerated."""
     (pkg / "prompts" / "draft.md").write_text("My own prompt for {request}; write notes.\n")
-    spec_file = pkg / "docs" / "specs" / "01-draft.spec.md"
+    spec_file = pkg / "docs" / "specs" / "draft.spec.md"
     spec_file.write_text(spec_file.read_text().replace("Part of the", "My prose.\n\nPart of the"))
     s = session(tmp_path / "again")
     o = json.loads((s / "outcome.json").read_text())
@@ -203,7 +203,7 @@ def test_selftest_reports_drift(pkg: Path, tmp_path: Path) -> None:
     assert selftest.run("summaries", pkg, tmp_path)
     (pkg / "diagram" / "model.json").write_text(json.dumps({"digest": "stale"}))
     assert "regenerate" in selftest.run("diagram_current", pkg, tmp_path)[0]
-    (pkg / "docs" / "specs" / "01-draft.spec.md").unlink()
+    (pkg / "docs" / "specs" / "draft.spec.md").unlink()
     assert selftest.run("docs", pkg, tmp_path)
 
 

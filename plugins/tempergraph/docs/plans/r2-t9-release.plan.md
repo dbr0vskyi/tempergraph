@@ -1,7 +1,7 @@
 ---
 task: r2-t9
 complexity: simple
-specs: [plugins/tempergraph/docs/specs/61-version-metadata.spec.md, plugins/tempergraph/docs/specs/92-effort-ladder-and-model-escalation.spec.md]
+specs: [plugins/tempergraph/docs/specs/version-metadata.spec.md, plugins/tempergraph/docs/specs/effort-ladder-and-model-escalation.spec.md]
 ---
 
 # Plan: release 2 examples, guides and release files (R2-T9)
@@ -9,7 +9,7 @@ specs: [plugins/tempergraph/docs/specs/61-version-metadata.spec.md, plugins/temp
 ## 0. Hand-off
 
 - Triage note: `plugins/tempergraph/docs/tasks/r2-t9.triage.md`
-- Specs read: VER (61) §2.2, §2.3, LAD (92) §2.8, PKG (88), the four guides
+- Specs read: VER (`version-metadata`) §2.2, §2.3, LAD (`effort-ladder-and-model-escalation`) §2.8, PKG (`workflow-package`), the four guides
 
 ## 1. Requirements
 

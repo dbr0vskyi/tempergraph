@@ -10,14 +10,14 @@ from .conftest import DOCS
 
 
 def test_exit_codes_match_contracts_spec() -> None:
-    text = (DOCS / "specs" / "01-contracts.spec.md").read_text(encoding="utf-8")
+    text = (DOCS / "specs" / "contracts.spec.md").read_text(encoding="utf-8")
     row = text.split("### CON-B13 ", 1)[1].split("\n- ", 1)[0]
     documented = {int(n) for n in re.findall(r"`(\d+)`", row)}
     assert documented == {int(c) for c in ExitCode}
 
 
 def test_docs_artifacts_carry_type_suffix() -> None:
-    """The file-naming rule of the docs README (ADR-0017)."""
+    """The file-naming rule of the docs README (ADR `artifact-type-suffixes`)."""
     suffix = {"specs": ".spec.md", "adr": ".adr.md", "research": ".rsrch.md", "plans": ".plan.md"}
     bad = []
     for folder, sfx in suffix.items():
@@ -27,8 +27,22 @@ def test_docs_artifacts_carry_type_suffix() -> None:
     assert bad == []
 
 
+def test_docs_artifacts_are_named_by_a_slug() -> None:
+    """The file-naming rule of the docs README: lower-case words joined by `-`, at most 80 characters, no number
+    in front."""
+    bad = []
+    for folder in ("specs", "adr", "research"):
+        for p in (DOCS / folder).glob("*.md"):
+            stem = p.name.split(".", 1)[0]
+            if p.name == "README.md":
+                continue
+            if len(p.name) > 80 or not re.fullmatch(r"[a-z][a-z0-9]*(-[a-z0-9]+)*", stem):
+                bad.append(p.name)
+    assert bad == []
+
+
 def _cli_spec() -> str:
-    return (DOCS / "specs" / "17-engine-cli.spec.md").read_text(encoding="utf-8")
+    return (DOCS / "specs" / "engine-cli.spec.md").read_text(encoding="utf-8")
 
 
 def _verb_words(text: str) -> set[str]:

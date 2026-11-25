@@ -151,13 +151,13 @@ def test_executors_lists_live_facts_as_not_run(repo: Path) -> None:
 
 
 def test_exit_codes_match_the_contract() -> None:
-    con = (Path(__file__).resolve().parents[2] / "docs" / "specs" / "01-contracts.spec.md").read_text()
+    con = (Path(__file__).resolve().parents[2] / "docs" / "specs" / "contracts.spec.md").read_text()
     for code in ExitCode:
         assert f"`{int(code)}`" in con  # CLI-AC4
 
 
 def test_reserved_words_cover_every_spec_verb() -> None:
-    spec = (Path(__file__).resolve().parents[2] / "docs" / "specs" / "17-engine-cli.spec.md").read_text()
+    spec = (Path(__file__).resolve().parents[2] / "docs" / "specs" / "engine-cli.spec.md").read_text()
     import re
 
     verbs = {m.group(1) for m in re.finditer(r"^\| `([a-z][a-z-]*)", spec, re.M)}
@@ -204,7 +204,7 @@ def test_registered_package_loads_and_runs(repo: Path, tmp_path: Path, monkeypat
     assert code == 0, err  # the check ran in the worker, importing the package's own module
     code, _, err = cli(repo, ex, "run", "notes-flow-tgraph", "Release 1.2", "--task-id", "N-2", "--check",
                        catalog=cat)
-    assert "unknown workflow" not in err  # the plugin name names the same workflow (ADR-0120)
+    assert "unknown workflow" not in err  # the plugin name names the same workflow (ADR `a-workflow-plugin-name-is-the-workflow-name-plus-tgraph`)
     code, _, err = cli(repo, None, "run", "gone", "x", catalog=cat)
     assert code == ExitCode.INTERNAL and "not_loaded" in err
 

@@ -10,7 +10,7 @@ parallel-reading).
 lane), no gap in the specs goes to `plan`, any gap to `discovery`, and a docs-only task ends after `discovery`.
 A task whose every gap a spec already answers (the triage check has verified each `Covered by` mark) takes the
 short visit `discovery_short` instead: it confirms the cited behaviours, writes the hand-off and its reading list,
-and hands a gap it finds not answered to the full `discovery` (decision record 0003). The full discovery starts
+and hands a gap it finds not answered to the full `discovery` (decision record `short-discovery-visit`). The full discovery starts
 with `owner_questions` and `ask_route`: a run whose list of questions holds one goes to `ask_owner`, the one pause
 (a 24 hour deadline that takes the defaults of the open questions), and any other run to `read_gap` (spec
 owner-questions). `read_gap` is one read-only reading session for each gap of two or more, three at a time on the
@@ -32,7 +32,7 @@ none of them (no step or gate asks, and the pull request lists the defaults as a
 pauses once after triage for the owner decisions; `always` pauses once for them and for the reading of each findable
 gap (spec `conversation`).
 
-Every step and judge states its model tier, its effort and why (`SIZING` below; decision record 0002). No unit
+Every step and judge states its model tier, its effort and why (`SIZING` below; decision record `model-and-effort-per-unit`). No unit
 uses the large model tier. `discovery` thinks at the highest effort; its short visit, which designs nothing, at `high`.
 """
 

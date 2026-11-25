@@ -20,10 +20,10 @@
       "blueprint.json": "dff3a85fe1a557de557810b07cdfa3aee35ba698d8b1de2301839bc15d71796e",
       "docs/README.md": "0d419f131f6673444963568b3869d273dd131c097db3c7f1cc21213661d3a459",
       "docs/research/sources.rsrch.md": "3d59509579684a5bd3b48d2031a5dbc38bec077ab0ee7dd069fef58688b7a911",
-      "docs/specs/00-overview.spec.md": "fdc87b48764645777bc1454f5bcd7926518549fedc5ef4a916c1c557858f8e0e",
-      "docs/specs/01-outline.spec.md": "9f0d48d1b6ee6ce8c8883290e45380e7d12693319c1d0530040c01efaeef3ddf",
-      "docs/specs/02-draft.spec.md": "5399477d4fcf6a5ee0499304a748fc78c68b4f1a10531531202ab4cc12e66696",
-      "docs/specs/03-review.spec.md": "82dfb5f410a328c8fb9e15eb5aa2678ed06f5b008f0e025a6770472b50a9c6fe",
+      "docs/specs/overview.spec.md": "fdc87b48764645777bc1454f5bcd7926518549fedc5ef4a916c1c557858f8e0e",
+      "docs/specs/outline.spec.md": "9f0d48d1b6ee6ce8c8883290e45380e7d12693319c1d0530040c01efaeef3ddf",
+      "docs/specs/draft.spec.md": "5399477d4fcf6a5ee0499304a748fc78c68b4f1a10531531202ab4cc12e66696",
+      "docs/specs/review.spec.md": "82dfb5f410a328c8fb9e15eb5aa2678ed06f5b008f0e025a6770472b50a9c6fe",
       "evals/cases.json": "63d7ab7c2e33127725cf5afc22eb773e0efd899cb9ee834ebdf57369542bc185",
       "judges/draft.md": "97c2be3bbfbb9597ffdd9aecbf1e25f272b443f50d5435da6a671b7b37285b7e",
       "judges/review.md": "d68e9cd3833a721e5e75537f99aa140910ab4770815c0a7172913242769828f3",
@@ -40,7 +40,7 @@
     "at": "2026-11-20T17:30:06.841Z"
   },
   "verify": {
-    "at": "2026-11-25T08:50:06.255Z",
+    "at": "2026-11-25T12:21:28.159Z",
     "ok": true,
     "rungs": {
       "load": "passed",

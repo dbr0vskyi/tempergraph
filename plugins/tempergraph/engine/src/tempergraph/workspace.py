@@ -1,4 +1,4 @@
-"""The run's workspace: in place, or one engine-owned git worktree (WSP-B8, WSP-B9, WSP-B11, WTR-B17 to WTR-B27; release-1 part, ADR-0090).
+"""The run's workspace: in place, or one engine-owned git worktree (WSP-B8, WSP-B9, WSP-B11, WTR-B17 to WTR-B27; release-1 part, ADR `first-release-is-simple-trusted-workflows-on-one-machine`).
 
 Release 1 builds `run.workspace` (`auto`, `worktree`, `in_place`), the `sibling` root, the `head` base,
 derived names, start with bootstrap, resume with re-attach, release without removal, and the data behind

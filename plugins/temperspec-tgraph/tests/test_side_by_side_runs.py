@@ -220,7 +220,7 @@ def test_a_not_applicable_guard_fails_nothing_in_the_outcome_check(repo: Path) -
 
 
 def _rows() -> dict[str, str]:
-    text = (ROOT / "docs" / "specs" / "00-overview.spec.md").read_text(encoding="utf-8")
+    text = (ROOT / "docs" / "specs" / "overview.spec.md").read_text(encoding="utf-8")
     return {m.group(1): m.group(2) for line in text.splitlines()
             if (m := re.match(r"^- \[[ xX]\] (ts-\S+) (.+)$", line))}
 

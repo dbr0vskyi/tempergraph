@@ -1,5 +1,5 @@
 """What a thread records about engines and workflow versions, and what happens to it at its next resume
-(MIG-B8, MIG-B12, MIG-B13, MIG-B14, MIG-B15). The rule: move at the resume boundary, pin only on a break (ADR-0056).
+(MIG-B8, MIG-B12, MIG-B13, MIG-B14, MIG-B15). The rule: move at the resume boundary, pin only on a break (ADR `threads-move-to-the-new-engine-at-resume-unless-a-release-pins-them`).
 
 `engine.json` sits beside the thread's run log. The decisions here are pure functions over that document, the
 release record and the kept engines, so every row of MIG's tables is a test without a second engine installed.

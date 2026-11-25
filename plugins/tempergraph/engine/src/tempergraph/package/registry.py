@@ -1,4 +1,4 @@
-"""The home workflow registry, `registry.json` (UPD-B20 to UPD-B24, ADR-0060), and the `workflows` verbs' logic.
+"""The home workflow registry, `registry.json` (UPD-B20 to UPD-B24, ADR `registered-workflows-are-reinstalled-and-pinned-never-lost`), and the `workflows` verbs' logic.
 
 The registry lives in the home folder, outside every engine environment. No verb but `unregister` removes
 an entry; a path that disappeared keeps its entry as `missing`. Loading and validation call no model.
@@ -39,7 +39,7 @@ class RegistryRefusal(Exception):
 
 
 def plugin_cache() -> Path:
-    """Claude Code's plugin cache (R-055 U4); `CLAUDE_CONFIG_DIR` moves it."""
+    """Claude Code's plugin cache (research `updating-a-tool-with-long-lived-runs` U4); `CLAUDE_CONFIG_DIR` moves it."""
     base = os.environ.get("CLAUDE_CONFIG_DIR")
     return (Path(base) if base else Path.home() / ".claude") / "plugins" / "cache"
 
@@ -291,7 +291,7 @@ def _version_key(v: str) -> tuple[Any, ...]:
 
 def cached_plugins(cache: Path | None = None) -> dict[str, Path]:
     """`<plugin>@<marketplace>` -> its newest non-orphaned version folder holding a workflow package
-    (`<cache>/<marketplace>/<plugin>/<version>/`, R-055 U4)."""
+    (`<cache>/<marketplace>/<plugin>/<version>/`, research `updating-a-tool-with-long-lived-runs` U4)."""
     root = cache or plugin_cache()
     out: dict[str, Path] = {}
     for market in sorted(p for p in root.iterdir() if p.is_dir()) if root.is_dir() else []:

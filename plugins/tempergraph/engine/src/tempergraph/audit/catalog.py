@@ -1,12 +1,12 @@
 """The audit rule catalog (ARC-B6 to ARC-B16, PRA-B7 to PRA-B10): engine data, versioned with the engine.
 
-Every rule carries its layer, R-050 family, cause code, default severity and confidence, owner, the
+Every rule carries its layer, research `why-runs-fail-stall-repeat-or-overspend` family, cause code, default severity and confidence, owner, the
 minimum sample of a history rule, and a fixed remedy (ARC-AC1). Thresholds are named parameters with
-their default and the R-050 finding they come from (ARC-AC3). Rules owned by another component are only
-rendered; the audit calls that component (ARC-AC4, ADR-0054).
+their default and the research `why-runs-fail-stall-repeat-or-overspend` finding they come from (ARC-AC3). Rules owned by another component are only
+rendered; the audit calls that component (ARC-AC4, ADR `audit-joins-existing-checks-and-files-nothing`).
 
 `built` names the release that builds the rule. Release 1 builds the `definition` and `host` layers and
-the prompt audit (ADR-0090, plan item I-62); release 3 builds the `history` layer and the tool-surface
+the prompt audit (ADR `first-release-is-simple-trusted-workflows-on-one-machine`, plan item I-62); release 3 builds the `history` layer and the tool-surface
 audit of TSA (R3-T8.3). A rule not built here is listed as skipped, never as passed (AUD-B1).
 """
 
@@ -28,61 +28,61 @@ FAMILY_RANK = {f"C{i}": i for i in range(1, 9)}
 class Param:
     name: str
     default: float
-    source: str  # the R-050 finding (or research note) that motivated the default
+    source: str  # the research `why-runs-fail-stall-repeat-or-overspend` finding (or research note) that motivated the default
 
 
 PARAMS: dict[str, Param] = {p.name: p for p in (
-    Param(name="oversized_blockers", default=8, source="R-050 F1.2"),
-    Param(name="oversized_file_artifacts", default=3, source="R-050 F1.2"),
-    Param(name="oversized_template_chars", default=24_000, source="R-050 F1.2"),
-    Param(name="engine_step_timeout_s", default=600, source="R-050 F3.4 (the engine default)"),
+    Param(name="oversized_blockers", default=8, source="research `why-runs-fail-stall-repeat-or-overspend` F1.2"),
+    Param(name="oversized_file_artifacts", default=3, source="research `why-runs-fail-stall-repeat-or-overspend` F1.2"),
+    Param(name="oversized_template_chars", default=24_000, source="research `why-runs-fail-stall-repeat-or-overspend` F1.2"),
+    Param(name="engine_step_timeout_s", default=600, source="research `why-runs-fail-stall-repeat-or-overspend` F3.4 (the engine default)"),
     Param(name="infra_tries", default=3, source="BUD default infra tries"),
-    Param(name="no_idle_above_s", default=1_800, source="R-050 F3.5"),
-    Param(name="unit_hold_h", default=4, source="R-050 F3.5"),
-    Param(name="workflow_hold_h", default=12, source="R-050 F3.5"),
-    Param(name="approval_share", default=0.5, source="R-050 F5.3"),
-    Param(name="slow_login_shell_s", default=15, source="R-050 F2.5"),
-    Param(name="slow_login_shell_ratio", default=5, source="R-050 F2.5"),
+    Param(name="no_idle_above_s", default=1_800, source="research `why-runs-fail-stall-repeat-or-overspend` F3.5"),
+    Param(name="unit_hold_h", default=4, source="research `why-runs-fail-stall-repeat-or-overspend` F3.5"),
+    Param(name="workflow_hold_h", default=12, source="research `why-runs-fail-stall-repeat-or-overspend` F3.5"),
+    Param(name="approval_share", default=0.5, source="research `why-runs-fail-stall-repeat-or-overspend` F5.3"),
+    Param(name="slow_login_shell_s", default=15, source="research `why-runs-fail-stall-repeat-or-overspend` F2.5"),
+    Param(name="slow_login_shell_ratio", default=5, source="research `why-runs-fail-stall-repeat-or-overspend` F2.5"),
     Param(name="slow_login_shell_floor_s", default=1, source="release 1 default: below it the ratio is noise"),
     Param(name="template_chars", default=32_000, source="release 1 default"),
     Param(name="skill_chars", default=40_000, source="release 1 default"),
     Param(name="cell_chars", default=2_000, source="release 1 default"),
     Param(name="probe_budget_s", default=30, source="AUD-B11, AUD-B6, AUD-B9"),
     # history rules of C1, C2 and C3 (ARC-B9 to ARC-B11)
-    Param(name="loop_min_retries", default=5, source="R-050 F1.2 (a burst needs at least 5 RETRYs)"),
-    Param(name="loop_lead_share", default=0.5, source="R-050 F1.2 (one criterion leads half the RETRYs)"),
-    Param(name="loop_repeat_share", default=0.2, source="R-050 F1.2"),
-    Param(name="first_pass_floor", default=0.5, source="R-050 F1.2"),
+    Param(name="loop_min_retries", default=5, source="research `why-runs-fail-stall-repeat-or-overspend` F1.2 (a burst needs at least 5 RETRYs)"),
+    Param(name="loop_lead_share", default=0.5, source="research `why-runs-fail-stall-repeat-or-overspend` F1.2 (one criterion leads half the RETRYs)"),
+    Param(name="loop_repeat_share", default=0.2, source="research `why-runs-fail-stall-repeat-or-overspend` F1.2"),
+    Param(name="first_pass_floor", default=0.5, source="research `why-runs-fail-stall-repeat-or-overspend` F1.2"),
     Param(name="min_visits", default=5, source="ARC-B9 (min_n 5 visits)"),
-    Param(name="fallback_share", default=0.3, source="R-061 K3 (revisited with the first 10 visits)"),
-    Param(name="infra_share", default=0.1, source="R-050 F2.6"),
-    Param(name="infra_min_attempts", default=20, source="R-050 F2.6"),
-    Param(name="timeout_fit_ratio", default=1.25, source="R-050 F3.4"),
-    Param(name="timeout_recommend_ratio", default=1.5, source="R-050 F3.4"),
-    Param(name="timeout_loose_ratio", default=4, source="R-050 F3.4"),
-    Param(name="timeout_share", default=0.2, source="R-050 F3.2"),
-    Param(name="slow_tool_share", default=0.6, source="R-050 F3.7"),
-    Param(name="min_passing_attempts", default=5, source="R-050 F3.4"),
+    Param(name="fallback_share", default=0.3, source="research `councils-debate-and-voting` K3 (revisited with the first 10 visits)"),
+    Param(name="infra_share", default=0.1, source="research `why-runs-fail-stall-repeat-or-overspend` F2.6"),
+    Param(name="infra_min_attempts", default=20, source="research `why-runs-fail-stall-repeat-or-overspend` F2.6"),
+    Param(name="timeout_fit_ratio", default=1.25, source="research `why-runs-fail-stall-repeat-or-overspend` F3.4"),
+    Param(name="timeout_recommend_ratio", default=1.5, source="research `why-runs-fail-stall-repeat-or-overspend` F3.4"),
+    Param(name="timeout_loose_ratio", default=4, source="research `why-runs-fail-stall-repeat-or-overspend` F3.4"),
+    Param(name="timeout_share", default=0.2, source="research `why-runs-fail-stall-repeat-or-overspend` F3.2"),
+    Param(name="slow_tool_share", default=0.6, source="research `why-runs-fail-stall-repeat-or-overspend` F3.7"),
+    Param(name="min_passing_attempts", default=5, source="research `why-runs-fail-stall-repeat-or-overspend` F3.4"),
     # history rules of C5 to C8 (ARC-B12 to ARC-B15)
-    Param(name="empty_pause_share", default=0.5, source="R-050 F5.3"),
-    Param(name="min_pauses", default=4, source="R-050 F5.3"),
-    Param(name="interventions_per_run", default=1.0, source="R-050 F5.3 (SUP undesigned touches)"),
-    Param(name="agent_rescue_share", default=0.3, source="R-050 F5.3 (PRV caller provenance)"),
-    Param(name="min_rescues", default=5, source="R-050 F5.3"),
-    Param(name="min_measured_runs", default=5, source="R-050 F5.3 (SCO measured supervision cost)"),
-    Param(name="supervision_share", default=0.1, source="R-050 F5.3 (SCO supervision cost)"),
-    Param(name="polling_observations", default=20, source="R-050 F5.3 (ADR-0037 batched waking)"),
-    Param(name="rewake_share", default=0.5, source="R-050 F5.3 (ADR-0037 batched waking)"),
-    Param(name="unknown_caller_share", default=0.2, source="R-050 F5.3 (PRV caller provenance)"),
-    Param(name="min_touches", default=10, source="R-050 F5.3 (PRV caller provenance)"),
-    Param(name="context_peak_tokens", default=150_000, source="R-050 F6.3"),
-    Param(name="min_attempts", default=5, source="R-050 F6.3"),
-    Param(name="escape_rate", default=0.1, source="OUT-B18 (R-050 F7.1)"),
-    Param(name="min_graded_runs", default=10, source="OUT-B18 (R-050 F7.1)"),
-    Param(name="council_gain_floor", default=0.05, source="R-061 K2"),
-    Param(name="council_conformity_share", default=0.8, source="R-061 K4"),
-    Param(name="contest_lowest_slot_share", default=0.9, source="R-061 K6"),
-    Param(name="min_picks", default=10, source="R-061 K2, K4, K6 (revisited with the first 10 visits)"),
+    Param(name="empty_pause_share", default=0.5, source="research `why-runs-fail-stall-repeat-or-overspend` F5.3"),
+    Param(name="min_pauses", default=4, source="research `why-runs-fail-stall-repeat-or-overspend` F5.3"),
+    Param(name="interventions_per_run", default=1.0, source="research `why-runs-fail-stall-repeat-or-overspend` F5.3 (SUP undesigned touches)"),
+    Param(name="agent_rescue_share", default=0.3, source="research `why-runs-fail-stall-repeat-or-overspend` F5.3 (PRV caller provenance)"),
+    Param(name="min_rescues", default=5, source="research `why-runs-fail-stall-repeat-or-overspend` F5.3"),
+    Param(name="min_measured_runs", default=5, source="research `why-runs-fail-stall-repeat-or-overspend` F5.3 (SCO measured supervision cost)"),
+    Param(name="supervision_share", default=0.1, source="research `why-runs-fail-stall-repeat-or-overspend` F5.3 (SCO supervision cost)"),
+    Param(name="polling_observations", default=20, source="research `why-runs-fail-stall-repeat-or-overspend` F5.3 (ADR `attention-batched-waking-of-the-orchestrating-session` batched waking)"),
+    Param(name="rewake_share", default=0.5, source="research `why-runs-fail-stall-repeat-or-overspend` F5.3 (ADR `attention-batched-waking-of-the-orchestrating-session` batched waking)"),
+    Param(name="unknown_caller_share", default=0.2, source="research `why-runs-fail-stall-repeat-or-overspend` F5.3 (PRV caller provenance)"),
+    Param(name="min_touches", default=10, source="research `why-runs-fail-stall-repeat-or-overspend` F5.3 (PRV caller provenance)"),
+    Param(name="context_peak_tokens", default=150_000, source="research `why-runs-fail-stall-repeat-or-overspend` F6.3"),
+    Param(name="min_attempts", default=5, source="research `why-runs-fail-stall-repeat-or-overspend` F6.3"),
+    Param(name="escape_rate", default=0.1, source="OUT-B18 (research `why-runs-fail-stall-repeat-or-overspend` F7.1)"),
+    Param(name="min_graded_runs", default=10, source="OUT-B18 (research `why-runs-fail-stall-repeat-or-overspend` F7.1)"),
+    Param(name="council_gain_floor", default=0.05, source="research `councils-debate-and-voting` K2"),
+    Param(name="council_conformity_share", default=0.8, source="research `councils-debate-and-voting` K4"),
+    Param(name="contest_lowest_slot_share", default=0.9, source="research `councils-debate-and-voting` K6"),
+    Param(name="min_picks", default=10, source="research `councils-debate-and-voting` K2, K4, K6 (revisited with the first 10 visits)"),
 )}
 
 
@@ -122,7 +122,7 @@ OWN = "per owner"
 RULES: tuple[Rule, ...] = (
     # C1 gate send-back loops (ARC-B8, ARC-B9)
     _r("oversized-step", "definition", "C1", "warning / medium", "oversized_step",
-       "Split the step into passes (design, then tables); give each pass its own gate (R-050 F1.2)"),
+       "Split the step into passes (design, then tables); give each pass its own gate (research `why-runs-fail-stall-repeat-or-overspend` F1.2)"),
     _r("no-change-blocker-retries", "definition", "C1", "warning / high", "no_change_retry",
        "Keep the default `no_change_policy: escalate`: a retry cannot fix what the step's output cannot change"),
     _r("unverified-blocker", "definition", "C1", "warning / high", "unverifiable_blocker",

@@ -1,4 +1,4 @@
-"""The check worker: a gate's check runs in a child engine process (CHK-B16, ADR-0019).
+"""The check worker: a gate's check runs in a child engine process (CHK-B16, ADR `in-process-executors-run-in-a-worker-process`).
 
 The engine sends the check context as one JSON document on standard input. The worker imports the check
 by its reference, calls it, normalises the result and writes it as one JSON document on standard output;

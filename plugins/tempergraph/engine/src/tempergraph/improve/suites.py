@@ -2,7 +2,7 @@
 
 A suite's cases live in the package (`evals/checks/<unit>/`, `evals/steps/<unit>/<case>/`, `evals/cases.json`);
 its results are rows of `evals/results.jsonl` under the state root, holding ids, statuses, counts and digests
-only. Graders are trusted in a fixed order: code, then an accepted judge, then a person (ADR-0049).
+only. Graders are trusted in a fixed order: code, then an accepted judge, then a person (ADR `eval-graders-in-a-fixed-order-of-trust`).
 """
 
 from __future__ import annotations

@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The loop must tell a review that failed on a spent usage allowance from every other failed review, and run it again after the allowance resets (task t-30e1f2509b, gaps G3 and G4). Executors classify failures from structured facts only, never from prose ([EXI-B7](../specs/10-executor-interface.spec.md)), so the question is whether the `claude` stream carries the fact that the allowance is spent, and the time it resets, as structured fields. The engine reads none of it today, and no note records its shape.
+The loop must tell a review that failed on a spent usage allowance from every other failed review, and run it again after the allowance resets (task t-30e1f2509b, gaps G3 and G4). Executors classify failures from structured facts only, never from prose ([EXI-B7](../specs/executor-interface.spec.md)), so the question is whether the `claude` stream carries the fact that the allowance is spent, and the time it resets, as structured fields. The engine reads none of it today, and no note records its shape.
 
 ## Sources consulted
 
@@ -15,8 +15,8 @@ The loop must tell a review that failed on a spent usage allowance from every ot
 | The reviewer call of the session review | code | `plugins/tempergraph/engine/src/tempergraph/improve/review.py` lines 612 to 614 and 662 to 687 |
 | Agent SDK TypeScript reference, section `SDKRateLimitEvent` | web | https://code.claude.com/docs/en/agent-sdk/typescript |
 | Type comment of the same event in a third-party proxy, `@rynfar/meridian` 1.42.1 | web | https://cdn.jsdelivr.net/npm/@rynfar/meridian@1.42.1/dist/proxy/rateLimitStore.d.ts |
-| The overnight run whose reviews all failed | research | `plugins/tempergraph/docs/research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md` F7 |
-| Claude Code's own wait on a usage limit | research | `plugins/tempergraph/docs/research/R-035-dynamic-workflows-as-orchestration-model.rsrch.md` D13 |
+| The overnight run whose reviews all failed | research | `plugins/tempergraph/docs/research/does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md` F7 |
+| Claude Code's own wait on a usage limit | research | `plugins/tempergraph/docs/research/dynamic-workflows-as-orchestration-model.rsrch.md` D13 |
 
 ## Key findings
 
@@ -42,11 +42,11 @@ Both recorded events have status `allowed`, and the `allowed` event carries the 
 
 ### F6 Today no class of a failed session names a spent allowance `confirmed`
 
-`classify` gives a stream with an error `result` the class `model` and a stream with no `result` whose last retry category is `rate_limit` or `overloaded` the class `throttled` (`claude.py` lines 313 to 336). In the review, `_ask` re-asks any reviewer session that is not ok once and then returns no block, and `run` writes `review_failed` with the session key and the cost only (`review.py` lines 612 to 614 and 667 to 687). R-160 F7 matches: 32 reviewer sessions for 16 targets, all at cost 0, a summary that read `18 recorded, 0 filed`, and nothing that said the reviews had failed.
+`classify` gives a stream with an error `result` the class `model` and a stream with no `result` whose last retry category is `rate_limit` or `overloaded` the class `throttled` (`claude.py` lines 313 to 336). In the review, `_ask` re-asks any reviewer session that is not ok once and then returns no block, and `run` writes `review_failed` with the session key and the cost only (`review.py` lines 612 to 614 and 667 to 687). research `does-the-improvement-loop-find-what-a-reviewer-finds` F7 matches: 32 reviewer sessions for 16 targets, all at cost 0, a summary that read `18 recorded, 0 filed`, and nothing that said the reviews had failed.
 
 ### F7 Claude Code bounds its own wait for a reset `supported`
 
-R-035 D13 reads the vendor's documents as: on a usage limit a run pauses and continues by itself after the reset, under narrow conditions (an interactive subscription session, a reset within 24 hours, at most two waits).
+research `dynamic-workflows-as-orchestration-model` D13 reads the vendor's documents as: on a usage limit a run pauses and continues by itself after the reset, under narrow conditions (an interactive subscription session, a reset within 24 hours, at most two waits).
 
 ## Conclusions
 
@@ -60,4 +60,4 @@ R-035 D13 reads the vendor's documents as: on a usage limit a run pauses and con
 
 - What a rejected `rate_limit_event`, and the `result` after it, hold in a real stream: no recording exists (F5). The first recorded rejection settles the unit, whether `resetsAt` is present and whether the final `result` is an error.
 - Whether the top-level `resetsAt` of a rejection is the reset of the window that rejected (`rateLimitType`) or the earliest of the windows. In the recorded `allowed` event the two agree for `five_hour`.
-- Where the text `usage_limit_reached` of R-160 F7 came from, the CLI's result text or the API's error body. The engine reads no text, so the design does not depend on it.
+- Where the text `usage_limit_reached` of research `does-the-improvement-loop-find-what-a-reviewer-finds` F7 came from, the CLI's result text or the API's error body. The engine reads no text, so the design does not depend on it.

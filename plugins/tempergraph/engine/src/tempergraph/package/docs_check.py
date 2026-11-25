@@ -17,8 +17,8 @@ from typing import Literal
 from tempergraph.contracts import WorkflowSpec
 from tempergraph.model.validate import Finding
 
-OVERVIEW = "00-overview.spec.md"
-SPEC_RE = re.compile(r"^\d{2}-(?P<unit>.+)\.spec\.md$")
+OVERVIEW = "overview.spec.md"
+SPEC_RE = re.compile(r"^(?:\d{2}-)?(?P<name>.+)\.spec\.md$")  # an earlier layout's number prefix is read, never written
 AC_RE = re.compile(r"^\s*-\s*\[[ xX]\]\s+(?P<id>\S+)\s+(?P<text>.+?)\s*$")
 LINK_RE = re.compile(r"\[[^\]]*\]\((?P<target>[^)\s]+)\)")
 AC_HEADING = re.compile(r"^##\s+6\b|^##\s+acceptance criteria\b", re.I)
@@ -73,11 +73,13 @@ def docs_check(spec: WorkflowSpec, root: Path, mode: Literal["dev", "stable"] | 
     specs_dir = root / "docs" / "specs"
     files: dict[str, Path] = {}  # unit (or "" for the overview) -> file
     if specs_dir.is_dir():
+        units = {u.replace("_", "-"): u for u in spec.order}
         for p in sorted(specs_dir.glob("*.spec.md")):
-            if p.name == OVERVIEW:
+            name = m.group("name").replace("_", "-") if (m := SPEC_RE.match(p.name)) is not None else ""
+            if name == "overview":
                 files[""] = p
-            elif (m := SPEC_RE.match(p.name)) is not None:
-                files[m.group("unit")] = p
+            elif name in units:
+                files[units[name]] = p
     final, inter = criteria_of(spec, root)
     expected: dict[str, Mapping[str, str]] = {"": final, **{u: inter.get(u, {}) for u in spec.order}}
     known = set(final) | {cid for ids in inter.values() for cid in ids}
@@ -85,7 +87,7 @@ def docs_check(spec: WorkflowSpec, root: Path, mode: Literal["dev", "stable"] | 
         drift(None, f"docs/specs/{OVERVIEW} is missing")
     for unit in spec.order:
         if unit not in files:
-            drift(unit, f"unit {unit!r} has no spec under docs/specs/ (NN-{unit}.spec.md)")
+            drift(unit, f"unit {unit!r} has no spec under docs/specs/ ({unit.replace('_', '-')}.spec.md)")
     seen: dict[str, list[str]] = {}
     for owner, path in files.items():
         rel = path.relative_to(root).as_posix()

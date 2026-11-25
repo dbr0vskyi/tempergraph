@@ -19,7 +19,7 @@ from .test_validate import CLAUDE_ONLY, _step, codes
 
 
 def _val_b8() -> str:
-    text = (DOCS / "specs" / "76-step-values-and-template-keys.spec.md").read_text(encoding="utf-8")
+    text = (DOCS / "specs" / "step-values-and-template-keys.spec.md").read_text(encoding="utf-8")
     return text.split("### VAL-B8 ", 1)[1].split("\n- ", 1)[0]
 
 

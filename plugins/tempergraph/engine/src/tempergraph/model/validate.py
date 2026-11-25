@@ -51,7 +51,7 @@ class Finding:
     severity: Literal["error", "warning"] = "error"
 
 
-# Kinds, primitives and fields this release does not build, with the release that adds them (ADR-0090).
+# Kinds, primitives and fields this release does not build, with the release that adds them (ADR `first-release-is-simple-trusted-workflows-on-one-machine`).
 LATER_KINDS: dict[str, int] = {}
 # The artifacts a council produces, keyed by the unit (CNL-B10); the judge reads `decision` and `positions` (CNL-B4).
 COUNCIL_ARTIFACTS = ("decision", "positions", "tally")

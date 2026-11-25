@@ -1,4 +1,4 @@
-"""`rerun`: a new thread forked from an earlier one, linked to its source (RRN-B17, RRN-B18; ADR-0073).
+"""`rerun`: a new thread forked from an earlier one, linked to its source (RRN-B17, RRN-B18; ADR `rewind-on-the-thread-rerun-as-a-linked-fork`).
 
 The fork is LangGraph's time travel: the source's checkpoint just before the unit's step node on its last
 visit is copied to the new thread id, and the unit and everything after it are cleared as a trip back. The

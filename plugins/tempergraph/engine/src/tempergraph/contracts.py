@@ -1,4 +1,4 @@
-"""Shared types of CON (docs/specs/01-contracts.spec.md).
+"""Shared types of CON (docs/specs/contracts.spec.md).
 
 This module is the only definition of a type two or more engine components share (CON-AC1).
 Field names and defaults follow the spec tables; section numbers are given per block.

@@ -445,7 +445,7 @@ def ticket(root: Path, task: str) -> dict[str, Any]:
 
 
 def test_the_session_review_spec_lists_nothing_as_not_built() -> None:  # SRV-AC5 (SRV-B7, SRV-B10)
-    spec = Path(__file__).resolve().parents[2] / "docs" / "specs" / "44-session-review.spec.md"
+    spec = Path(__file__).resolve().parents[2] / "docs" / "specs" / "session-review.spec.md"
     lines = spec.read_text(encoding="utf-8").splitlines()
     assert not [ln for ln in lines if ln.lstrip().lower().startswith("- not built yet")]
     assert not [ln for ln in lines if re.search(r"SRV-B(7|10)\b", ln) and re.search(r"not built|unbuilt", ln, re.I)]

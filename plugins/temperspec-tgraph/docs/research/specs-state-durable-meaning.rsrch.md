@@ -2,7 +2,7 @@
 
 ## Problem statement
 
-The owner reviewed pull request #113 (twelve issues built by temperspec runs) and found that the engine specs it changes read as literal descriptions of the tasks: what the bug was, which workflow needed it, which fixtures prove it. They do not state the general rule of the capability. That breaks what a spec is for, and in the engine repository it also breaks ADR-0129 (the engine knows no workflow): engine specs name no workflow package and state a workflow's need only as a general capability.
+The owner reviewed pull request #113 (twelve issues built by temperspec runs) and found that the engine specs it changes read as literal descriptions of the tasks: what the bug was, which workflow needed it, which fixtures prove it. They do not state the general rule of the capability. That breaks what a spec is for, and in the engine repository it also breaks ADR `the-engine-names-no-workflow` (the engine knows no workflow): engine specs name no workflow package and state a workflow's need only as a general capability.
 
 The unknown: which part of temperspec lets task-shaped and workflow-shaped text into a spec, and what change to the rules, the prompts, the checks or the judge would make a run extract the durable meaning instead.
 
@@ -31,15 +31,15 @@ No line the pull request adds to an engine spec names temperspec (searched the d
 
 1. **The change's history as behaviour.** Headings and rules written against the old defect: CTS-B11 "A later attempt runs in worktrees of its own", CTS-B12 "An earlier attempt's slot work is left as it is", MAP-B15 "An earlier visit's item work is left as it is", SRV-B28 "… files nothing alone". Each says "no longer what the bug did" rather than the rule. Task i16's criterion 3 asked for exactly this: "the R3-T4.2 known limit is no longer true in the specs".
 2. **One rule copied per task.** MAP-B14 to MAP-B16 (issue #17) and CTS-B11 to CTS-B13 (issue #16) are the same rule twice, one per unit kind: a writer cut for a later pass of a unit gets fresh names from the current head, earlier cuts are left alone, and only this pass's work is merged. WTR-B20 then spells out both suffix forms (`--i<n>-`, `--s<n>-`) in one long sentence. The owning capability (writer worktrees, WSP and WTR) never got the general rule.
-3. **The motivating workflow's shape in engine scenarios.** WSP-B18: "a workflow of a planning step followed by a concurrent map whose step declares `write`" (`13-workspace-and-concurrency.spec.md` line 137 on the branch); MAP-B14: "the planning step having rewritten the list file" (`77-map-unit.spec.md` line 98). Both are temperspec's plan-then-phase map. The new `review-repeats.spec.md` names the units `code` and `plan` 18 times, temperspec's unit names, and takes `instruction_ignored` on `code` from temperspec's overnight runs (R-160 F7).
+3. **The motivating workflow's shape in engine scenarios.** WSP-B18: "a workflow of a planning step followed by a concurrent map whose step declares `write`" (`workspace-and-concurrency.spec.md` line 137 on the branch); MAP-B14: "the planning step having rewritten the list file" (`map-unit.spec.md` line 98). Both are temperspec's plan-then-phase map. The new `review-repeats.spec.md` names the units `code` and `plan` 18 times, temperspec's unit names, and takes `instruction_ignored` on `code` from temperspec's overnight runs (research `does-the-improvement-loop-find-what-a-reviewer-finds` F7).
 4. **Test fixtures as scenarios.** Session keys `code.1.step`, `code.2.retry`; issues "#12 and #19" (PRP-B24, PRP-B29, PRP-AC8); branch names `demo--C-1--s2-s1` in the plan. A scenario that copies a fixture is a test, not an illustration.
 5. **Cross-capability proof inside a behaviour.** AUD-B17's third scenario proves `author verify` rung 6 (SCF) from inside the audit spec.
 
 ### F2 The same kinds already sit on `main` `confirmed`
 
-- Five engine specs cite "R-075 temperspec needs against the engine" in their Purpose as the reason they exist (75, 76, 77, 78, 79).
+- Five engine specs cite "research `temperspec-needs-against-the-engine` temperspec needs against the engine" in their Purpose as the reason they exist (75, 76, 77, 78, 79).
 - PKG-B8 "A delivery workflow as a package" and AUT-B8 describe temperspec (known debt).
-- SIL-B17 carries an owner's reason inside the rule: "default `max`, because the loop reads session logs and the owner keeps it on the medium tier" (`16-self-improvement.spec.md` line 95). Thirty-eight behaviour lines hold "because" or "the owner".
+- SIL-B17 carries an owner's reason inside the rule: "default `max`, because the loop reads session logs and the owner keeps it on the medium tier" (`self-improvement.spec.md` line 95). Thirty-eight behaviour lines hold "because" or "the owner".
 - Unit names `code` and `plan` appear in scenarios of 31 engine specs. Many of these are harmless placeholders, but they are temperspec's names, not neutral ones.
 
 ### F3 Nothing in the rules asks for a general rule, and two prompts push the other way `confirmed`
@@ -76,7 +76,7 @@ The triage note (task, its criteria) and the hand-off (what changed and why) are
    - **Discovery prompt, an extract step:** for each task criterion, write the general rule it is an instance of into the owning spec, and leave the task's own wording, case and history in the triage note and the hand-off. Replace "provable from the behaviours you wrote" with "an instance of a behaviour you wrote or one that exists". Then reread each new behaviour as someone who has never seen the task.
    - **Model-free check `ts-spec-literal` (warning first, failure later):** on the lines a run adds to a spec, flag issue numbers (`#\d+`), the task id, change words ("no longer", "anymore", "known limit", "bug", "fix", "instead of"), and terms from a repository-owned deny list. The engine repository's list holds the names of its workflow packages and their units, read from `plugins/*/tempergraph.json`, so the check knows no workflow name itself.
    - **Discovery judge, one new criterion:** each new or changed behaviour reads as a general rule of its capability, true without the task; a behaviour that narrates the change, describes the motivating workflow, copies a fixture, or repeats a rule another spec owns is a defect.
-4. The cleanup of what already leaked is separate and small: the five F1 kinds in pull request #113, and on `main` the R-075 references in five Purposes, PKG-B8, AUT-B8 and the owner's reason in SIL-B17. Merging MAP-B14 to MAP-B16 and CTS-B11 to CTS-B13 into one rule in WSP retires those six ids and defines new ones there, so it is a rewrite of six behaviours and their criteria, not a wording edit.
+4. The cleanup of what already leaked is separate and small: the five F1 kinds in pull request #113, and on `main` the research `temperspec-needs-against-the-engine` references in five Purposes, PKG-B8, AUT-B8 and the owner's reason in SIL-B17. Merging MAP-B14 to MAP-B16 and CTS-B11 to CTS-B13 into one rule in WSP retires those six ids and defines new ones there, so it is a rewrite of six behaviours and their criteria, not a wording edit.
 
 ## Open questions
 

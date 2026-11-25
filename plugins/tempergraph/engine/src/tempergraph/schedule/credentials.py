@@ -16,7 +16,7 @@ from typing import Any
 
 from tempergraph.executors.capabilities import DECLARED
 
-PROFILE = "default"  # the credentials profile a fire reads (assumption recorded in R-150 F50)
+PROFILE = "default"  # the credentials profile a fire reads (assumption recorded in research `rationale-carried-from-the-engine-specs` F50)
 CLOUD_FLAGS = ("CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY")
 ENV_NAMES: dict[str, dict[str, tuple[str, ...]]] = {
     "claude": {"api_key": ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"), "cloud": CLOUD_FLAGS,

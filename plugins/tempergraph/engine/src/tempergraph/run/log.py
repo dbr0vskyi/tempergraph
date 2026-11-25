@@ -129,7 +129,7 @@ class RunLog:
         self.segment: int | None = None
         self.checked_tail = False
         self.observers = observers  # an ObserverHub (run/events.py) or None; enabled in operator config only
-        self._lock = threading.RLock()  # branches of a parallel block write from their own threads (R-150 WSP)
+        self._lock = threading.RLock()  # branches of a parallel block write from their own threads (research `rationale-carried-from-the-engine-specs` WSP)
 
     def _segment(self) -> int:
         """This process's segment: the one after the log's last `run_started`, or 0 for a new thread."""

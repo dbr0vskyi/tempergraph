@@ -1,4 +1,4 @@
-"""Owned history rules, rendered (ARC-B1, ARC-AC4, ADR-0054): `cost-lens-rules`, `engine-fault-open` and
+"""Owned history rules, rendered (ARC-B1, ARC-AC4, ADR `audit-joins-existing-checks-and-files-nothing`): `cost-lens-rules`, `engine-fault-open` and
 `prompt-change-moved-gate`.
 
 Each calls the owning component and renders what it returns under `<owner>:<code>` with the owner's wording and

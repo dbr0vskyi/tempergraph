@@ -81,7 +81,7 @@ UNIT_SPEC = """# draft
 
 ## 1. Overview
 
-Writes the notes. See the [overview](00-overview.spec.md).
+Writes the notes. See the [overview](overview.spec.md).
 
 ## 6. Acceptance criteria
 
@@ -147,8 +147,8 @@ def minimal_package(parent: Path, name: str = "release-notes", version: str = "0
     write(root, "diagram/workflow.md", "draft -> outcome -> finalizer\n")
     write(root, "tests/test_release_notes.py", "def test_placeholder():\n    assert True\n")
     write(root, "docs/README.md", "# Docs\n\nRules: provisional (the engine's docs README).\n")
-    write(root, "docs/specs/00-overview.spec.md", OVERVIEW.format(statement=OUTCOME["statement"]))
-    write(root, "docs/specs/01-draft.spec.md", UNIT_SPEC)
+    write(root, "docs/specs/overview.spec.md", OVERVIEW.format(statement=OUTCOME["statement"]))
+    write(root, "docs/specs/draft.spec.md", UNIT_SPEC)
     write(root, "README.md", f"# {name}\n\nWrites release notes. Start: `tempergraph run {name} v1.2`.\n")
     return root
 

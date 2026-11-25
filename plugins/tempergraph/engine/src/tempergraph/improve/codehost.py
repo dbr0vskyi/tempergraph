@@ -1,4 +1,4 @@
-"""The code host client for filing (ADR-0090 S5): GitHub through the person's own `gh` sign-in.
+"""The code host client for filing (ADR `first-release-is-simple-trusted-workflows-on-one-machine` S5): GitHub through the person's own `gh` sign-in.
 
 A sanctioned launch site (SEC-B7): constant subcommands as list argv, the repository checked as
 `owner/name`, the issue number an int, and every user-derived text (title, body, comment) on stdin as JSON

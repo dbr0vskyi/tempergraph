@@ -1,7 +1,7 @@
 """Engine-wide constants: exit codes, schema versions, release, reserved words.
 
 The exit-code table is the caller contract of CON-B12, CON-B13; ``tests/test_contract_tables.py`` checks it
-against the table in ``docs/specs/01-contracts.spec.md`` (CON-AC6, CLI-AC4).
+against the table in ``docs/specs/contracts.spec.md`` (CON-AC6, CLI-AC4).
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from __future__ import annotations
 from enum import IntEnum
 
 ENGINE_VERSION = "0.2.0"
-RELEASE = 2  # the release this engine builds (ADR-0090, ADR-0125)
+RELEASE = 2  # the release this engine builds (ADR `first-release-is-simple-trusted-workflows-on-one-machine`, ADR `release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing`)
 WORKFLOW_API = 1  # the declaration interface level (PKG-B13, VER-B8)
 LOADS_WORKFLOW_API_FROM = 1
 STORE_LAYOUT = 1  # LOS-B7, LOS-B8, LOS-B9 layout version
@@ -67,6 +67,6 @@ RESERVED_VERBS = frozenset(
 
 # Executor names are constants, registered in this order (EXI-B16, EXI-B17).
 EXECUTOR_NAMES = ("claude", "agent-sdk", "messages-api", "antigravity")
-SHIPPED_EXECUTORS = ("claude",)  # ADR-0091: release 1 and 2 ship claude only
+SHIPPED_EXECUTORS = ("claude",)  # ADR `first-release-ships-the-claude-executor-only`: release 1 and 2 ship claude only
 
 MISSING_MARKER = "⟨missing:{name}⟩"  # CON-B8

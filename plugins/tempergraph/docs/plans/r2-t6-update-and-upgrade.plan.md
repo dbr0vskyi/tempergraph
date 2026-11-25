@@ -1,7 +1,7 @@
 ---
 task: r2-t6
 complexity: complex
-specs: [plugins/tempergraph/docs/specs/60-engine-update.spec.md, plugins/tempergraph/docs/specs/62-state-and-run-migration.spec.md, plugins/tempergraph/docs/specs/61-version-metadata.spec.md, plugins/tempergraph/docs/specs/63-workflow-upgrade.spec.md, plugins/tempergraph/docs/specs/64-upgrade-workflow.spec.md, plugins/tempergraph/docs/specs/65-lifecycle-skills.spec.md]
+specs: [plugins/tempergraph/docs/specs/engine-update.spec.md, plugins/tempergraph/docs/specs/state-and-run-migration.spec.md, plugins/tempergraph/docs/specs/version-metadata.spec.md, plugins/tempergraph/docs/specs/workflow-upgrade.spec.md, plugins/tempergraph/docs/specs/upgrade-workflow.spec.md, plugins/tempergraph/docs/specs/lifecycle-skills.spec.md]
 ---
 
 # Plan: update, migrations and workflow upgrade (R2-T6)
@@ -9,7 +9,7 @@ specs: [plugins/tempergraph/docs/specs/60-engine-update.spec.md, plugins/temperg
 ## 0. Hand-off
 
 - Triage note: `plugins/tempergraph/docs/tasks/r2-t6.triage.md`
-- Specs read: UPD (60), VER (61), MIG (62), WUP (63), UWF (64), LSK (65), SEC (14) §2.2, LOS (33), DUR (09), CAR (96)
+- Specs read: UPD (`engine-update`), VER (`version-metadata`), MIG (`state-and-run-migration`), WUP (`workflow-upgrade`), UWF (`upgrade-workflow`), LSK (`lifecycle-skills`), SEC (`security`) §2.2, LOS (`local-observability-store`), DUR (`durability-and-resume`), CAR (`run-state-on-a-branch`)
 - Why this design: an update never changes an installed engine. It builds the new one beside it and moves a pointer, so a failure at any step leaves the old engine in use, a rollback is the pointer moved back, and a live run keeps the folder it was loaded from. What a thread needs at its next resume is decided by a pure function over three documents (the thread's engine file, this engine's release record and the kept engines' release records), so every row of MIG's tables is a test without a second engine installed. The environment builder and the pinned engine's launch are parameters, so tests replace them and no test creates an environment.
 
 ## 1. Requirements

@@ -1,4 +1,4 @@
-"""The fire token (TCK-B17; ADR-0095).
+"""The fire token (TCK-B17; ADR `a-model-free-tick-behind-os-agnostic-triggers`).
 
 A random token is made at `schedule add`; its SHA-256 is the entry's `token_digest` and the token itself lives only in
 a private file beside the entry (`schedules/<schedule_id>/token`, owner-only). The tick puts it in the child's

@@ -233,9 +233,9 @@ class Stand:
             if unit == "setup":
                 (work / "docs" / "specs").mkdir(parents=True, exist_ok=True)
                 (work / "docs" / "tasks").mkdir(parents=True, exist_ok=True)
-                (work / "docs" / "specs" / "00-overview.spec.md").write_text("# Overview\n")
+                (work / "docs" / "specs" / "overview.spec.md").write_text("# Overview\n")
                 (work / "docs" / "tasks" / f"{TASK}.setup.md").write_text("# Setup\n")
-                return answer(f"Set up.\nARTIFACT overview: docs/specs/00-overview.spec.md\n"
+                return answer(f"Set up.\nARTIFACT overview: docs/specs/overview.spec.md\n"
                               f"ARTIFACT setup_note: docs/tasks/{TASK}.setup.md", session_id="s-setup")
             if unit == "discovery":
                 (work / "docs" / "tasks").mkdir(parents=True, exist_ok=True)

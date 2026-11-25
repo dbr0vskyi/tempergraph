@@ -10,7 +10,7 @@ from tempergraph.model.validate import Finding
 from tempergraph.package.inventory import PackageInventory
 from tempergraph.package.manifest import Manifests, Pyproject
 
-# Refused plugin parts (PKG-B11, PKG-B12, ADR-0112): code -> remedy.
+# Refused plugin parts (PKG-B11, PKG-B12, ADR `plugin-content-reaches-each-executor-by-a-declared-route`): code -> remedy.
 REMEDY = {
     "plugin-hooks": "declare the tools the step needs; lifecycle hooks are registered with `tempergraph hooks add`",
     "plugin-mcp": "declare the step's MCP tools as `mcp:<server>/<tool>`; the server is configured on the machine",

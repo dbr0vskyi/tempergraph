@@ -70,7 +70,7 @@ PARAMS = {p.name: p for p in (
     Param(name="shift.unverifiable_points", value=15, source="FBK-B14"),
     # PRP-B12, PRP-B18, PRP-B19, PRP-B20 (T12.5, T12.6)
     Param(name="proposals.label_value", value=5, source="PRP-B12"),
-    Param(name="trial.alpha", value=0.05, source="PRP-B18, PRP-B19, PRP-B20, R-031 F3"),
+    Param(name="trial.alpha", value=0.05, source="PRP-B18, PRP-B19, PRP-B20, research `self-improvement-gap-analysis` F3"),
     Param(name="trial.min_pairs", value=8, source="PRP-B18, PRP-B19, PRP-B20"),
     Param(name="trial.noisy_floor", value=0.5, source="PRP-B18, PRP-B19, PRP-B20"),
     Param(name="trial.guard_cost", value=0.15, source="PRP-B18, PRP-B19, PRP-B20"),

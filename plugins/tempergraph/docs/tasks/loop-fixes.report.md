@@ -12,7 +12,7 @@
 
 Tests the new gate rule broke: none. The whole suite passed with the rule in place and no existing test edited for it.
 
-Spec 44 against `test_spec_budget.py`: 27,496 bytes of 30,720 and 206 lines of 400. No spec was edited by this change.
+Spec `session-review` against `test_spec_budget.py`: 27,496 bytes of 30,720 and 206 lines of 400. No spec was edited by this change.
 
 ## Deviations
 

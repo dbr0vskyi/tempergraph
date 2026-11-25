@@ -1,7 +1,7 @@
 ---
 task: r2-t1
 complexity: complex
-specs: [plugins/tempergraph/docs/specs/79-measured-switches.spec.md, plugins/tempergraph/docs/specs/77-map-unit.spec.md, plugins/tempergraph/docs/specs/94-complexity-routing.spec.md]
+specs: [plugins/tempergraph/docs/specs/measured-switches.spec.md, plugins/tempergraph/docs/specs/map-unit.spec.md, plugins/tempergraph/docs/specs/complexity-routing.spec.md]
 ---
 
 # Plan: switches, maps and complexity (R2-T1)
@@ -9,7 +9,7 @@ specs: [plugins/tempergraph/docs/specs/79-measured-switches.spec.md, plugins/tem
 ## 0. Hand-off
 
 - Triage note: `plugins/tempergraph/docs/tasks/r2-t1.triage.md`
-- Specs read: SWM (79), MAP (77), CXR (94), CMP (03), RST (80), BUD (08), OBS (15)
+- Specs read: SWM (`measured-switches`), MAP (`map-unit`), CXR (`complexity-routing`), CMP (`compiler-and-flow`), RST (`run-settings-and-overrides`), BUD (`budgets-and-failures`), OBS (`observability-and-cost`)
 - Why this design: a switch's pick stays in the gate node, so shadow mode, the operator's arm and re-arming are all changes to one pure function and its record. Arm overrides are applied where a session request is built, below the four operator layers, so the settings resolution stays one table. Re-arming is a trip back with one extra static edge per listed unit.
 
 ## 1. Requirements
@@ -87,5 +87,5 @@ Weight: heavy (many-tests)
 
 ## 4. Docs to update
 
-- `plugins/tempergraph/docs/specs/80-run-settings-and-overrides.spec.md`: the `arm` key and the `arm:` layer are built, no longer refused
-- `plugins/tempergraph/docs/specs/79-measured-switches.spec.md`: acceptance criteria ticked; the reading of a step timeout recorded
+- `plugins/tempergraph/docs/specs/run-settings-and-overrides.spec.md`: the `arm` key and the `arm:` layer are built, no longer refused
+- `plugins/tempergraph/docs/specs/measured-switches.spec.md`: acceptance criteria ticked; the reading of a step timeout recorded

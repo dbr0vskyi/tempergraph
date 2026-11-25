@@ -76,14 +76,14 @@ def test_every_spec_follows_the_spec_rule() -> None:
 
 
 def test_the_overview_names_every_spec() -> None:
-    overview = (DOCS / "specs" / "00-overview.spec.md").read_text()
+    overview = (DOCS / "specs" / "overview.spec.md").read_text()
     purpose = overview.split("## Behaviours", 1)[0]
-    missing = [p.name for p in SPECS if p.name != "00-overview.spec.md" and f"({p.name})" not in purpose]
+    missing = [p.name for p in SPECS if p.name != "overview.spec.md" and f"({p.name})" not in purpose]
     assert missing == [], missing
 
 
 def _scanned() -> list[Path]:
-    skip = ("/node_modules/", "/.git/", "spec-migration.plan.md", "R-150-rationale")
+    skip = ("/node_modules/", "/.git/", "spec-migration.plan.md", "rationale-carried-from-the-engine-specs")
     out = []
     for p in (REPO_ROOT / "plugins").rglob("*"):
         s = p.as_posix()

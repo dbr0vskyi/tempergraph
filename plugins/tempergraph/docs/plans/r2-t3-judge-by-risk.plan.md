@@ -1,7 +1,7 @@
 ---
 task: r2-t3
 complexity: complex
-specs: [plugins/tempergraph/docs/specs/93-judge-model-by-risk.spec.md]
+specs: [plugins/tempergraph/docs/specs/judge-model-by-risk.spec.md]
 ---
 
 # Plan: judge model by risk (R2-T3)
@@ -9,7 +9,7 @@ specs: [plugins/tempergraph/docs/specs/93-judge-model-by-risk.spec.md]
 ## 0. Hand-off
 
 - Triage note: `plugins/tempergraph/docs/tasks/r2-t3.triage.md`
-- Specs read: JRK (93), JDG (05), JCL (50), LAD (92), LIF (18), CHK (75), RST (80), EVT (30)
+- Specs read: JRK (`judge-model-by-risk`), JDG (`judge-and-verdict`), JCL (`judge-calibration`), LAD (`effort-ladder-and-model-escalation`), LIF (`lifecycle-and-evals`), CHK (`check-contract-and-command-runs`), RST (`run-settings-and-overrides`), EVT (`run-events`)
 - Why this design: the judge node already holds everything the rule may read (git facts, check facts, the request, settings, the stage, the producer's alias), so the level is resolved there, just before the judge's session, and written on the judgement and as a `judge_risk` record. The rule runs under the same one-second guard as a complexity measure. A level is a binding of its own: `current_binding` takes a level, scores carry it, and trust for a ladder reads the state of the level that graded the attempt.
 
 ## 1. Requirements
@@ -59,6 +59,6 @@ Weight: medium
 
 ## 4. Doc changes
 
-- `plugins/tempergraph/docs/specs/93-judge-model-by-risk.spec.md`: as-built notes and ticked criteria
-- `plugins/tempergraph/docs/specs/17-engine-cli.spec.md`: `evals score --level`
-- `plugins/tempergraph/docs/specs/30-run-events.spec.md`: the fields of `judge_risk`
+- `plugins/tempergraph/docs/specs/judge-model-by-risk.spec.md`: as-built notes and ticked criteria
+- `plugins/tempergraph/docs/specs/engine-cli.spec.md`: `evals score --level`
+- `plugins/tempergraph/docs/specs/run-events.spec.md`: the fields of `judge_risk`

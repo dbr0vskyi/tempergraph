@@ -1,9 +1,9 @@
-"""The public declaration interface (PKG-B19, PKG-B20, ADR-0106): the only engine module a workflow imports.
+"""The public declaration interface (PKG-B19, PKG-B20, ADR `declare-workflows-with-typed-python-builders-and-text-in-files`): the only engine module a workflow imports.
 
 Each builder produces one CON-B4, CON-B5, CON-B6, CON-B7 type and takes the same field names as keyword arguments; an unknown
 argument is a ``TypeError`` at build time. ``name`` and ``version`` come from the package manifests and
 are refused as arguments (PKG-B2). Kinds outside the running release build, and are refused at validation
-with ``not_in_release`` (ADR-0090).
+with ``not_in_release`` (ADR `first-release-is-simple-trusted-workflows-on-one-machine`).
 """
 
 from __future__ import annotations
@@ -284,7 +284,7 @@ def _later(kind: str) -> Callable[..., UnitSpec]:
         return UnitSpec(kind=kind, gate=gate or GateSpec(), extra=dict(fields))  # type: ignore[arg-type]
 
     build.__name__ = kind.title()
-    build.__doc__ = f"A `{kind}` unit; refused with `not_in_release` by this engine release (ADR-0090)."
+    build.__doc__ = f"A `{kind}` unit; refused with `not_in_release` by this engine release (ADR `first-release-is-simple-trusted-workflows-on-one-machine`)."
     return build
 
 

@@ -44,7 +44,7 @@ def test_registry_order_and_unknown() -> None:
 
 
 def test_shipped_registry_is_claude_only() -> None:
-    assert default_registry().available() == ["claude"]  # ADR-0091
+    assert default_registry().available() == ["claude"]  # ADR `first-release-ships-the-claude-executor-only`
 
 
 def test_judge_selection_order() -> None:

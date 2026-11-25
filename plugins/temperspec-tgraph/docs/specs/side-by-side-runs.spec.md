@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Two runs of the workflow can work on one repository at once, each on its own branch, and both can edit the same spec. A run that edits a spec after the base branch has changed it would, once merged, overwrite or duplicate what the other run wrote. The outcome check guards against this: for each spec the run edited it compares the spec at the run's base commit with the spec at the head of the base branch now. The owner who merges the pull requests and every run that starts from the same base branch depend on it. The check reads the head of the base branch from the context the engine gives every check (CHK-B22). Part of the [overview](00-overview.spec.md), where the criterion is `ts-spec-fresh`.
+Two runs of the workflow can work on one repository at once, each on its own branch, and both can edit the same spec. A run that edits a spec after the base branch has changed it would, once merged, overwrite or duplicate what the other run wrote. The outcome check guards against this: for each spec the run edited it compares the spec at the run's base commit with the spec at the head of the base branch now. The owner who merges the pull requests and every run that starts from the same base branch depend on it. The check reads the head of the base branch from the context the engine gives every check (CHK-B22). Part of the [overview](overview.spec.md), where the criterion is `ts-spec-fresh`.
 
 ## Behaviours
 

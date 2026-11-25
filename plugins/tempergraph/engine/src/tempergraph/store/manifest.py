@@ -1,4 +1,4 @@
-"""The workspace manifest of a folder outside git (WSP-B15 to WSP-B18, ADR-0127).
+"""The workspace manifest of a folder outside git (WSP-B15 to WSP-B18, ADR `outside-git-the-state-root-is-found-by-walk-up`).
 
 Where git cannot say what changed, the engine lists every file under the workspace but the state root, with
 its size and modification time. Two manifests that differ mean something wrote the workspace, which is what the

@@ -1,4 +1,4 @@
-"""The per-thread result cache of model-free scripts (SCR-B9, SCR-B3, ADR-0067).
+"""The per-thread result cache of model-free scripts (SCR-B9, SCR-B3, ADR `cache-only-model-free-script-results-per-thread`).
 
 A script with `cache: thread` is keyed by a digest of what decides its result; a hit restores the recorded
 `produces` files and result from `<thread folder>/cache/` and runs nothing. Only a run that finished and

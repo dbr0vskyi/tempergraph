@@ -4,7 +4,7 @@
 |---|---|
 | Date | 2026-11-21 |
 | Asked by | The owner: for the temperspec flow, a code judge in the pull request's pipeline that shows plan and task completion together with the crucial code-to-spec alignment, so a reviewer sees whether to trust the result. It adds to the gates inside the run and moves none of them |
-| Method | temperspec's final criteria (`outcome.json`, revision as of this date) read against the engine's research note on a pull-request gate, [R-135](../../../tempergraph/docs/research/R-135-a-final-gate-in-the-pull-request-pipeline.rsrch.md), which states the capability without naming any workflow |
+| Method | temperspec's final criteria (`outcome.json`, revision as of this date) read against the engine's research note on a pull-request gate, [research `a-final-gate-in-the-pull-request-pipeline`](../../../tempergraph/docs/research/a-final-gate-in-the-pull-request-pipeline.rsrch.md), which states the capability without naming any workflow |
 | Status | Proposal. Waits for the engine's pull-request gate; backlog row B15 |
 
 ## 1. Summary

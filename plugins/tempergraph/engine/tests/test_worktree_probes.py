@@ -16,7 +16,7 @@ def lines_of(path: Path) -> list[str]:
 
 
 def test_spec_82_names_the_four_probes_as_not_run() -> None:  # WTR-AC7 (WTR-B26, WTR-B13, WTR-B25)
-    (line,) = [ln for ln in lines_of(DOCS / "specs" / "82-worktree-mode.spec.md") if ln.startswith("- Not built yet")]
+    (line,) = [ln for ln in lines_of(DOCS / "specs" / "worktree-mode.spec.md") if ln.startswith("- Not built yet")]
     assert PROBES[0] in line and PROBES[-1] in line and "P-WTR-1 to P-WTR-4" in line  # the four, named as a range
 
 

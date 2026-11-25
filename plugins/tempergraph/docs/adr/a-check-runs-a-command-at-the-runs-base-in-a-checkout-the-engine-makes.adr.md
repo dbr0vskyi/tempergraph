@@ -2,18 +2,18 @@
 
 ## Context
 
-A gate that retries a failure which was there before the change spends money that no code change can win back. One run retried its code gate four times, about 2 USD, on an environment fault, and another met 590 errors from its container's signing fault ([R-160](../research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) F1 and H1; issue 54). A workflow's check could not tell a failure the change made from one already there: it ran each verification command once, on the workspace, and failed on any non-zero exit.
+A gate that retries a failure which was there before the change spends money that no code change can win back. One run retried its code gate four times, about 2 USD, on an environment fault, and another met 590 errors from its container's signing fault ([research `does-the-improvement-loop-find-what-a-reviewer-finds`](../research/does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) F1 and H1; issue 54). A workflow's check could not tell a failure the change made from one already there: it ran each verification command once, on the workspace, and failed on any non-zero exit.
 
-To tell the two apart a check needs the same command's result on the run's base commit, and the engine gives it no way to get one. A command runs in `cwd` or `workdir` only (CHK-B12), and the reuse key is made of the workspace's head, status and changed files (CHK-B13). `git.base` names the commit ([WTR-B21](../specs/82-worktree-mode.spec.md)), but only a worktree run records one: an in-place run's workspace record carries no base commit (`workspace.py`, `prepare_workspace`).
+To tell the two apart a check needs the same command's result on the run's base commit, and the engine gives it no way to get one. A command runs in `cwd` or `workdir` only (CHK-B12), and the reuse key is made of the workspace's head, status and changed files (CHK-B13). `git.base` names the commit ([WTR-B21](../specs/worktree-mode.spec.md)), but only a worktree run records one: an in-place run's workspace record carries no base commit (`workspace.py`, `prepare_workspace`).
 
 What the code says, and so bounds the choice:
 
-- The engine starts a process only at the sanctioned sites, among them the git reader and the workflow command runner ([SEC-B7](../specs/14-security.spec.md); `security/launch.py`, `SANCTIONED_SITES`). The source scan reads the engine's source only (`tests/test_source_rules.py`, `test_launch_sites_sanctioned`). A workflow package's own script can call `subprocess` and is not scanned, but a call made that way has none of the safeguards of CHK-B12: no credentials removed, no process tree ended at a limit, no output file, no record in `runs[]`, no reuse.
-- The engine never removes a worktree with `--force` ([WTR-B23](../specs/82-worktree-mode.spec.md)), and git refuses to remove a worktree that holds untracked files, which any command run in it leaves (caches, build output).
-- The main checkout is read-only to a check, may hold uncommitted changes ([WTR-B6](../specs/82-worktree-mode.spec.md)) and can move on while a run goes on, so it is not the base.
+- The engine starts a process only at the sanctioned sites, among them the git reader and the workflow command runner ([SEC-B7](../specs/security.spec.md); `security/launch.py`, `SANCTIONED_SITES`). The source scan reads the engine's source only (`tests/test_source_rules.py`, `test_launch_sites_sanctioned`). A workflow package's own script can call `subprocess` and is not scanned, but a call made that way has none of the safeguards of CHK-B12: no credentials removed, no process tree ended at a limit, no output file, no record in `runs[]`, no reuse.
+- The engine never removes a worktree with `--force` ([WTR-B23](../specs/worktree-mode.spec.md)), and git refuses to remove a worktree that holds untracked files, which any command run in it leaves (caches, build output).
+- The main checkout is read-only to a check, may hold uncommitted changes ([WTR-B6](../specs/worktree-mode.spec.md)) and can move on while a run goes on, so it is not the base.
 - A Python package installed in editable mode loads the tree it was installed from, and the engine's own `pyproject.toml` sets no `pythonpath` for its tests (`[tool.pytest.ini_options]`), so a command run in another folder can still exercise the workspace's code.
 
-[ADR-0075](0075-checks-get-a-context-and-an-engine-command-runner.adr.md) already splits the work: the engine owns the mechanics of a command run, the workflow owns what its result means. [ADR-0129](0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md) asks that a request from a workflow lands as a capability any workflow can use. "Did this command already fail before the change?" is such a question; it needs no workflow's name.
+[ADR `checks-get-a-context-and-an-engine-command-runner`](checks-get-a-context-and-an-engine-command-runner.adr.md) already splits the work: the engine owns the mechanics of a command run, the workflow owns what its result means. [ADR `the-engine-names-no-workflow`](the-engine-names-no-workflow.adr.md) asks that a request from a workflow lands as a capability any workflow can use. "Did this command already fail before the change?" is such a question; it needs no workflow's name.
 
 ## Decision
 
@@ -33,7 +33,7 @@ For: no engine change. Against: a second launcher beside CHK-B12 with none of it
 
 ### C. A git worktree registered in the repository at the base
 
-For: the simplest git. Against: the repository then lists a worktree the engine does not own, which `worktree list --all` shows ([WTR-B27](../specs/82-worktree-mode.spec.md)); removing it needs `--force`, which no engine path may call; a worker ended at its limit leaves a stale entry behind.
+For: the simplest git. Against: the repository then lists a worktree the engine does not own, which `worktree list --all` shows ([WTR-B27](../specs/worktree-mode.spec.md)); removing it needs `--force`, which no engine path may call; a worker ended at its limit leaves a stale entry behind.
 
 ### D. Judge a failure by its output alone, with no base run
 

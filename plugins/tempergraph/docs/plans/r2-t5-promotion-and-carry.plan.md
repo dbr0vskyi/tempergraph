@@ -1,7 +1,7 @@
 ---
 task: r2-t5
 complexity: complex
-specs: [plugins/tempergraph/docs/specs/95-promotion-check.spec.md, plugins/tempergraph/docs/specs/96-run-state-on-a-branch.spec.md]
+specs: [plugins/tempergraph/docs/specs/promotion-check.spec.md, plugins/tempergraph/docs/specs/run-state-on-a-branch.spec.md]
 ---
 
 # Plan: promotion and carried state (R2-T5)
@@ -9,7 +9,7 @@ specs: [plugins/tempergraph/docs/specs/95-promotion-check.spec.md, plugins/tempe
 ## 0. Hand-off
 
 - Triage note: `plugins/tempergraph/docs/tasks/r2-t5.triage.md`
-- Specs read: PRO (95), SUP (86) §2.4 and §2.7, CAR (96), VER (61), LOS (33), DUR (09), WTR (82), SEC (14)
+- Specs read: PRO (`promotion-check`), SUP (`supervision-metrics`) §2.4 and §2.7, CAR (`run-state-on-a-branch`), VER (`version-metadata`), LOS (`local-observability-store`), DUR (`durability-and-resume`), WTR (`worktree-mode`), SEC (`security`)
 - Why this design: the check adds no measurement of its own. Each row calls the function a report already uses (the first-pass yield and escapes of `report`, the aggregate of `report --supervision`, the judge states of `evals bar`, the suites of `evals report`), so two verbs can never show two numbers. The bars are one data file. A stamp names the workflow version with its content digest, so reading it against the current digest is all that voiding needs. Carried state is written with git plumbing into an orphan branch, so no checkout and no work branch is touched.
 
 ## 1. Requirements

@@ -1,5 +1,5 @@
 """The `schedule` verbs through `main` (SCH-B1, SCH-B8, SCH-B10, SCH-B12, SCH-B13, SCH-B19, SCH-B22, SCH-B24, SCH-B25,
-SCH-B27, SCH-B33; SCH-AC3, SCH-AC4, SCH-AC6, SCH-AC12) and the engine naming no workflow package (ADR-0129)."""
+SCH-B27, SCH-B33; SCH-AC3, SCH-AC4, SCH-AC6, SCH-AC12) and the engine naming no workflow package (ADR `the-engine-names-no-workflow`)."""
 
 from __future__ import annotations
 
@@ -474,7 +474,7 @@ def test_sch_ac12_only_add_orchestration_is_refused_not_in_release_and_writes_no
     before, repo_before = home_hash(), hash_tree(repo)
     no_process(monkeypatch)
     code, _, err = sched(repo, "add", "--orchestration", "release-train.orch.json", "--when", "every weekday at 8:00", "--yes")
-    assert code == 2 and "not_in_release" in err and "schedule add --orchestration" in err, err  # ADR-0132: release 4
+    assert code == 2 and "not_in_release" in err and "schedule add --orchestration" in err, err  # ADR `release-three-composes-runs-in-parallel-and-grades-in-the-pipeline`: release 4
     assert home_hash() == before and hash_tree(repo) == repo_before and sid  # written nothing, started nothing
     assert not hasattr(schedule_cli, "NOT_IN_RELEASE")  # every other verb is built
 

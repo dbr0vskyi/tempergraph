@@ -314,18 +314,18 @@ def test_the_expand_and_test_first_criteria_are_blockers_checked_by_their_gate(
 def test_each_code_criterion_of_the_run_is_a_warning_checked_by_the_gate_with_the_text_of_its_spec_row(
         cid: str) -> None:  # AC 1, AC 2, AC 3, AC 4, AC 5, ts-code-once, ts-code-preview, ts-code-ran
     where, row = _criteria()[cid]
-    assert where == "code" and row["text"] == _rows("08-code.spec.md")[cid]
+    assert where == "code" and row["text"] == _rows("code.spec.md")[cid]
     assert row["severity"] == "warning" and row["verified_by"] == "check"
     assert row["verifier"]["check"] == "tgwf_temperspec.checks:code_check"
 
 
 @pytest.mark.parametrize("cid, unit, spec, verifier", [
-    ("ts-dis-budget", "discovery", "05-discovery.spec.md", "discovery_check"),
-    ("ts-dis-over", "discovery", "05-discovery.spec.md", "discovery_check"),
-    ("ts-spec-moved", "outcome", "00-overview.spec.md", "outcome_check"),
-    ("ts-spec-parent", "outcome", "00-overview.spec.md", "outcome_check"),
-    ("ts-dis-form", "discovery", "05-discovery.spec.md", "discovery_check"),
-    ("ts-spec-cap", "outcome", "00-overview.spec.md", "outcome_check"),
+    ("ts-dis-budget", "discovery", "discovery.spec.md", "discovery_check"),
+    ("ts-dis-over", "discovery", "discovery.spec.md", "discovery_check"),
+    ("ts-spec-moved", "outcome", "overview.spec.md", "outcome_check"),
+    ("ts-spec-parent", "outcome", "overview.spec.md", "outcome_check"),
+    ("ts-dis-form", "discovery", "discovery.spec.md", "discovery_check"),
+    ("ts-spec-cap", "outcome", "overview.spec.md", "outcome_check"),
 ])
 def test_each_new_criterion_is_a_blocker_checked_by_its_gate_with_the_text_of_its_spec_row(
         cid: str, unit: str, spec: str, verifier: str) -> None:  # AC 1, AC 2, ts-dis-budget, ts-dis-over, ts-spec-moved, ts-spec-parent

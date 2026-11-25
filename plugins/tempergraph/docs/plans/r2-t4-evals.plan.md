@@ -1,7 +1,7 @@
 ---
 task: r2-t4
 complexity: complex
-specs: [plugins/tempergraph/docs/specs/51-eval-suites.spec.md, plugins/tempergraph/docs/specs/18-lifecycle-and-evals.spec.md]
+specs: [plugins/tempergraph/docs/specs/eval-suites.spec.md, plugins/tempergraph/docs/specs/lifecycle-and-evals.spec.md]
 ---
 
 # Plan: evals (R2-T4)
@@ -9,7 +9,7 @@ specs: [plugins/tempergraph/docs/specs/51-eval-suites.spec.md, plugins/tempergra
 ## 0. Hand-off
 
 - Triage note: `plugins/tempergraph/docs/tasks/r2-t4.triage.md`
-- Specs read: EVS (51), LIF (18), JCL (50), FBK (41), PRP (40), PKG (88), SHL (19), WUP (63)
+- Specs read: EVS (`eval-suites`), LIF (`lifecycle-and-evals`), JCL (`judge-calibration`), FBK (`feedback-and-judge-reliability`), PRP (`improvement-proposals`), PKG (`workflow-package`), SHL (`plugin-shell`), WUP (`workflow-upgrade`)
 - Why this design: a suite reuses what a run already does. A check case is a check fixture, a step trial is the one step run as its own workflow in a fresh repository, a workflow trial is the dry-run child run a version trial already uses. Grading is one pure function in the order code, accepted judge, person, so every rate can leave out what no grader decided. Results are rows of one file under the state root, with ids, statuses and digests only.
 
 ## 1. Requirements
@@ -69,8 +69,8 @@ Weight: light
 
 ## 4. Doc changes
 
-- `plugins/tempergraph/docs/specs/51-eval-suites.spec.md`: as-built notes and ticked criteria
-- `plugins/tempergraph/docs/specs/18-lifecycle-and-evals.spec.md`: harvest and replay as built
-- `plugins/tempergraph/docs/specs/17-engine-cli.spec.md`: the eval verbs' options
-- `plugins/tempergraph/docs/specs/88-workflow-package.spec.md`: `evals/steps/`
-- `plugins/tempergraph/docs/specs/19-plugin-shell.spec.md`: the evals skill
+- `plugins/tempergraph/docs/specs/eval-suites.spec.md`: as-built notes and ticked criteria
+- `plugins/tempergraph/docs/specs/lifecycle-and-evals.spec.md`: harvest and replay as built
+- `plugins/tempergraph/docs/specs/engine-cli.spec.md`: the eval verbs' options
+- `plugins/tempergraph/docs/specs/workflow-package.spec.md`: `evals/steps/`
+- `plugins/tempergraph/docs/specs/plugin-shell.spec.md`: the evals skill

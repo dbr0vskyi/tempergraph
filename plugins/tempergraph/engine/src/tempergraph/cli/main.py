@@ -1,6 +1,6 @@
 """The engine CLI's release 1 core verbs (CLI-B7, CLI-B8, CLI-B14, CLI-B17, CLI-B18, CLI-B19; milestone M1).
 
-Exit codes are the caller contract (CON-B12, CON-B13, ADR-0015). Read-only verbs create nothing and call no model
+Exit codes are the caller contract (CON-B12, CON-B13, ADR `exit-codes-as-caller-contract`). Read-only verbs create nothing and call no model
 (OVR-B15). Machine output is JSON with `schema_version`; a run's one-line outcome goes to stderr.
 """
 
@@ -317,7 +317,7 @@ def _spec(env: Env, name: str) -> WorkflowSpec:
     if name not in env.catalog.specs and name not in env.catalog.broken:
         from tempergraph.package.manifest import workflow_name
 
-        name = workflow_name(name)  # the plugin name `<workflow>-tgraph` names the same workflow (ADR-0120)
+        name = workflow_name(name)  # the plugin name `<workflow>-tgraph` names the same workflow (ADR `a-workflow-plugin-name-is-the-workflow-name-plus-tgraph`)
     if name in env.catalog.broken:
         raise PackageNotLoaded(env.catalog.broken[name])
     if name not in env.catalog.specs:

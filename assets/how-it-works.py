@@ -1,7 +1,7 @@
 """Draw the README flow diagram: python assets/how-it-works.py assets
 
 Writes how-it-works-light.svg and how-it-works-dark.svg. Every edge cites the spec behaviour it shows;
-change the diagram here and in step with specs 03 CMP, 05 JDG, 07 HUM, 08 BUD and 90 OUT.
+change the diagram here and in step with specs `compiler-and-flow` CMP, `judge-and-verdict` JDG, `gate-and-human` HUM, `budgets-and-failures` BUD and `run-outcome` OUT.
 """
 import sys
 from pathlib import Path

@@ -1,4 +1,4 @@
-"""Four nodes per unit, one finalizer node, static edges for every target (CMP-B8, ADR-0004).
+"""Four nodes per unit, one finalizer node, static edges for every target (CMP-B8, ADR `four-nodes-per-unit`).
 
 The node bodies come from the gate funnel through :class:`UnitNodes`; this module owns only the graph
 shape and the human node's ``interrupt``, which is its first statement (HUM-AC1). LangGraph is imported
@@ -68,7 +68,7 @@ def compile_workflow(spec: WorkflowSpec, nodes: UnitNodes, checkpointer: BaseChe
         item_nodes = {kind: flow.item_node(unit, kind) for kind in flow.ITEM_KINDS}
         if unit in spec.units and spec.units[unit].kind == "subworkflow":  # SWF-B8: the child is a subgraph of this node
             g.add_node(step, _subgraph_node(nodes, unit, post))
-        elif unit in spec.units and spec.units[unit].kind == "council":  # CNL-B14, ADR-0062: its sessions are a subgraph
+        elif unit in spec.units and spec.units[unit].kind == "council":  # CNL-B14, ADR `new-node-kinds-keep-the-gated-unit`: its sessions are a subgraph
             g.add_node(step, _council_node(nodes, unit, post))
         elif fan_out:  # this node reads the list and sends the items; it names where it may send them
             g.add_node(step, _map_node(nodes, unit, post), destinations=tuple(dict.fromkeys(
@@ -166,7 +166,7 @@ class _CouncilState(TypedDict, total=False):
 
 def _council_node(nodes: Any, unit: str, post: Callable[[dict[str, Any]], dict[str, Any]]
                   ) -> Callable[[RunState], dict[str, Any]]:
-    """The step node of a council unit (CNL-B14, ADR-0062): a subgraph of one member node per round and member (a `Send`
+    """The step node of a council unit (CNL-B14, ADR `new-node-kinds-keep-the-gated-unit`): a subgraph of one member node per round and member (a `Send`
     each), the engine-owned barrier that waits for every member's answer, failure or spoil before the next round, a pure
     tally node and the chair node. The unit's usual judge, gate and human nodes follow in the parent graph. Each member
     session is kept on its own as it ends (`run.council_run`), so the subgraph itself takes no checkpointer: a rerun of

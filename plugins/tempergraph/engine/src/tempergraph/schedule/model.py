@@ -1,4 +1,4 @@
-"""Rule model and slots with daylight saving (SCH-B18, SCH-B20, SCH-B3; ADR-0097).
+"""Rule model and slots with daylight saving (SCH-B18, SCH-B20, SCH-B3; ADR `schedules-keep-an-iana-zone-and-rfc-5545-daylight-saving-rules`).
 
 Pure and clock-injected: nothing here reads the clock, the home store or a process. A schedule's When is a `once`
 (`at` and a zone) or a `recur` (a stored RECUR rule, `starts` and a zone). Slots are computed in the schedule's one

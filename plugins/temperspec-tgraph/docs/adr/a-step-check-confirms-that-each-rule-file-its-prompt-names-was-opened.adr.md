@@ -2,7 +2,7 @@
 
 ## Context
 
-Triage and plan left `documents.rule.md` unopened in every reviewed run, and a short discovery retry got the hand-off's section order wrong after only searching `task-notes.rule.md` (issue 72, from [R-160](../../../tempergraph/docs/research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) F7). The issue allows two answers: put the part of the rule the step must follow into its prompt, or have the check confirm from the session record that the named rule file was read. Neither is built.
+Triage and plan left `documents.rule.md` unopened in every reviewed run, and a short discovery retry got the hand-off's section order wrong after only searching `task-notes.rule.md` (issue 72, from [research `does-the-improvement-loop-find-what-a-reviewer-finds`](../../../tempergraph/docs/research/does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) F7). The issue allows two answers: put the part of the rule the step must follow into its prompt, or have the check confirm from the session record that the named rule file was read. Neither is built.
 
 What the package holds today, read in it:
 
@@ -10,9 +10,9 @@ What the package holds today, read in it:
 - Three prompts tell the session to read: discovery ("Read the rule of a document type before you write a document of that type"), short discovery ("Read the hand-off part of `task-notes.rule.md`") and setup ("Read the spec rule before you write"). The other four only name the files, and the discovery prompt says it does not repeat the formats.
 - The formats live once, in the rule files; `workflow/temperspec/specfmt.py` reads the same formats and `tests/test_temperspec.py` holds the two together (the repository's `CLAUDE.md`). A repository that already has rule files keeps its own.
 - The package's checks already read the package's own prompt files for what they say (`PROMPT_SAYS`, `workflow/temperspec/checks.py` lines 65-101).
-- A retry runs a fresh session that is told what was rejected and not resumed ([PRM-B5](../../../tempergraph/docs/specs/04-prompt-rendering.spec.md)), so a file opened in an earlier attempt tells the retry nothing.
+- A retry runs a fresh session that is told what was rejected and not resumed ([PRM-B5](../../../tempergraph/docs/specs/prompt-rendering.spec.md)), so a file opened in an earlier attempt tells the retry nothing.
 - The short discovery prompt limits the visit to 10 files (`prompts/discovery_short.md` line 19).
-- The engine now gives a check the attempt's tool calls, each with its capability (`read` for the read tool, `search` for a search) and target ([CHK-B24](../../../tempergraph/docs/specs/75-check-contract-and-command-runs.spec.md)), and none for a stand-in executor, a preview or hidden tool inputs ([CHK-B25](../../../tempergraph/docs/specs/75-check-contract-and-command-runs.spec.md)).
+- The engine now gives a check the attempt's tool calls, each with its capability (`read` for the read tool, `search` for a search) and target ([CHK-B24](../../../tempergraph/docs/specs/check-contract-and-command-runs.spec.md)), and none for a stand-in executor, a preview or hidden tool inputs ([CHK-B25](../../../tempergraph/docs/specs/check-contract-and-command-runs.spec.md)).
 
 ## Decision
 
@@ -20,7 +20,7 @@ We will take option A: keep the rule text in the rule files and have each step's
 
 - A rule file is named when its file name appears in the step's prompt file; the check reads the prompt for the names, so no second list can drift from it.
 - A rule file is opened by a call of the read tool that ended without an error and whose target ends in the file's name, in any folder: a session that opens another copy of the file, such as the package's own, passes. A search of the file, or a listing, never counts, and a partial read counts because the record keeps no range.
-- Only a rule file the repository holds under `.claude/rules/temperspec/` is asked for. When it holds none of them there (it keeps all six in a folder of its own, which the project note names), the criterion does not apply and says so. A rule file that only the machine holds is no case of its own: a step session loads no file of the machine ([ECC-B16](../../../tempergraph/docs/specs/11-executor-claude-code.spec.md)), so `prepare` copies the rule files into the repository when it lacks them ([PNR-B7](../specs/project-note.spec.md)).
+- Only a rule file the repository holds under `.claude/rules/temperspec/` is asked for. When it holds none of them there (it keeps all six in a folder of its own, which the project note names), the criterion does not apply and says so. A rule file that only the machine holds is no case of its own: a step session loads no file of the machine ([ECC-B16](../../../tempergraph/docs/specs/executor-claude-code.spec.md)), so `prepare` copies the rule files into the repository when it lacks them ([PNR-B7](../specs/project-note.spec.md)).
 - The record is the attempt's own session. A retry opens the files again.
 - Each prompt that names a rule file tells the session to open it with the read tool and that a search is not opening it; the short discovery prompt says the rule files do not count in its 10 files.
 - No prompt carries rule text.

@@ -8,13 +8,13 @@ What the repository held that day: four loop issues from one temperspec run, #11
 
 Three causes, read in the code:
 
-1. The fingerprint is side, workflow, cause and unit (`fingerprint` in `plugins/tempergraph/engine/src/tempergraph/improve/record.py`), and [SIL-B2](../specs/16-self-improvement.spec.md) matched only that fingerprint. One cause at three units of one run is three fingerprints, so it opened three issues, each a duplicate to the person who triages them.
+1. The fingerprint is side, workflow, cause and unit (`fingerprint` in `plugins/tempergraph/engine/src/tempergraph/improve/record.py`), and [SIL-B2](../specs/self-improvement.spec.md) matched only that fingerprint. One cause at three units of one run is three fingerprints, so it opened three issues, each a duplicate to the person who triages them.
 2. The open and closed issues were found with `gh issue list --search '"tempergraph:fp=…" in:body'`. That goes through GitHub's search index and GraphQL. In this project's cloud sessions GraphQL is refused (`gh` exits 1; checked on 2026-11-25 with the loop's own call), so every search failed, and by SIL-B2 the loop then filed anyway: every recurrence would have been a new issue. On a machine where search works, the index lags behind a new issue, so a recurrence filed minutes later can miss it too.
 3. The body was built from the finding alone (`body` in `filing.py`), which holds the cause, unit, counts and the workflow version. The run log (`run.jsonl`) beside it holds the engine version, the executor and its CLI version, the models, attempts, check results, judge statuses, exit code and cost, and the issue showed none of them.
 
 [The earlier record](a-closed-loop-issue-mutes-its-fingerprint-or-links-a-regression.adr.md) chose to read closed issues through `gh issue list`. This record replaces that choice of read; its mapping of close reasons stands.
 
-The privacy rule stays: no request text in any issue or comment ([SIL-AC2](../specs/16-self-improvement.spec.md)), and the evidence file is never opened by filing code.
+The privacy rule stays: no request text in any issue or comment ([SIL-AC2](../specs/self-improvement.spec.md)), and the evidence file is never opened by filing code.
 
 ## Decision
 
@@ -48,7 +48,7 @@ For: the run log already holds what a fixer asks first (versions, models, attemp
 
 ### F. Attach the session logs or the evidence
 
-For: the most context. Against: they hold request text and model output, which [SIL-B8](../specs/16-self-improvement.spec.md) and SIL-AC2 keep on the machine, and an issue can be read by anyone who can read the repository.
+For: the most context. Against: they hold request text and model output, which [SIL-B8](../specs/self-improvement.spec.md) and SIL-AC2 keep on the machine, and an issue can be read by anyone who can read the repository.
 
 ## Consequences
 

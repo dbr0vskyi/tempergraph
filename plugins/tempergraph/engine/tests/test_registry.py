@@ -105,7 +105,7 @@ def test_missing_path_keeps_its_entry(pkg: Path, repo: Path, tmp_path: Path) -> 
     pkg.rename(tmp_path / "moved")
     code, doc, _ = cli(repo, "workflows", "reinstall", "--all")
     assert code == ExitCode.USAGE and doc["workflows"][0]["entry"]["state"] == "missing"
-    assert [e["name"] for e in reg.read_entries()] == ["release-notes"]  # never lost (ADR-0060)
+    assert [e["name"] for e in reg.read_entries()] == ["release-notes"]  # never lost (ADR `registered-workflows-are-reinstalled-and-pinned-never-lost`)
 
 
 def test_reinstall_clears_a_pin_that_no_longer_applies(pkg: Path, repo: Path) -> None:

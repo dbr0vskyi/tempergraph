@@ -1,5 +1,5 @@
 """The tick: one OS-agnostic, deterministic, model-free routine that decides what is due and starts it (TCK-B16, TCK-B12,
-TCK-B2; ADR-0095).
+TCK-B2; ADR `a-model-free-tick-behind-os-agnostic-triggers`).
 
 Every edge is injected (clock, run launcher, credential resolver, thread-status reader, repository check), so the tick
 is tested with a fake clock and a scripted launcher and starts no model. The decisions are the pure functions of

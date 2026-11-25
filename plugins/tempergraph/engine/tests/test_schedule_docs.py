@@ -18,8 +18,8 @@ def _clock(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(schedule_cli, "CLOCK", lambda: NOW)
     monkeypatch.setattr(schedule_cli, "machine_zone", lambda: (WARSAW, "TZ"))
 
-SPEC = DOCS / "specs" / "83-schedules.spec.md"
-RATIONALE = DOCS / "research" / "R-150-rationale-carried-from-the-engine-specs.rsrch.md"
+SPEC = DOCS / "specs" / "schedules.spec.md"
+RATIONALE = DOCS / "research" / "rationale-carried-from-the-engine-specs.rsrch.md"
 PLAN = DOCS / "plans" / "third-release.plan.md"
 
 
@@ -29,7 +29,7 @@ def _open_question(text: str) -> str:
     return found[0]
 
 
-SPEC_TCK = DOCS / "specs" / "84-schedule-ticks-and-unattended-fires.spec.md"
+SPEC_TCK = DOCS / "specs" / "schedule-ticks-and-unattended-fires.spec.md"
 LIVE = DOCS / "plans" / "live-checks.plan.md"
 R352 = DOCS / "plans" / "r3-t5-2.plan.md"
 ENGINE_TESTS = Path(__file__).resolve().parent
@@ -46,7 +46,7 @@ def test_ac13_the_open_question_of_spec_83_says_what_r3_t5_2_built_and_what_wait
     for verb in ("`schedule fire`", "`tick`", "`loop`", "`trigger`", "`runs`", "`export`"):
         assert verb in q  # built now: no longer refused `not_in_release` meanwhile
     assert "meanwhile" not in q and "written empty" not in q and "written null" not in q
-    assert "release 4" in q and "ADR-0132" in q and "`add --orchestration` is refused `not_in_release`" in q
+    assert "release 4" in q and "ADR `release-three-composes-runs-in-parallel-and-grades-in-the-pipeline`" in q and "`add --orchestration` is refused `not_in_release`" in q
     assert "P-SCH-1 to P-SCH-4 have not run" in q
 
 
@@ -141,7 +141,7 @@ def test_ac14_no_engine_source_skill_or_test_names_a_workflow_package() -> None:
     for path in files:
         text = path.read_text(encoding="utf-8")
         for name in names:
-            assert name not in text, f"{path.name} names the workflow package {name!r} (ADR-0129)"
+            assert name not in text, f"{path.name} names the workflow package {name!r} (ADR `the-engine-names-no-workflow`)"
 
 
 def test_ac15_every_offline_tck_criterion_and_sch_ac5_and_sch_ac7_is_carried_by_a_test_that_is_not_skipped() -> None:

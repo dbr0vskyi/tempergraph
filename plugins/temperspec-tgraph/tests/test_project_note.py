@@ -19,7 +19,7 @@ routing = importlib.import_module("tgwf_temperspec.routing")
 fmt = importlib.import_module("tgwf_temperspec.specfmt")
 checks = importlib.import_module("tgwf_temperspec.checks")
 RULES = sorted(p.name for p in (ROOT / "rules").glob("*.rule.md"))
-OVERVIEW = "00-overview.spec.md"
+OVERVIEW = "overview.spec.md"
 
 
 def _git(cwd: Path, *args: str) -> str:

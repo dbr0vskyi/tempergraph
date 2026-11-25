@@ -461,7 +461,7 @@ def test_aa_records_the_noise_floor(repo: Path, pkg: Path) -> None:  # PRP-B18, 
     assert "noisy_case_set" in got["warnings"]
 
 
-def test_trial_cases_start_at_their_base(repo: Path) -> None:  # WTR-B21 `ref:` base, ADR-0090 S4
+def test_trial_cases_start_at_their_base(repo: Path) -> None:  # WTR-B21 `ref:` base, ADR `first-release-is-simple-trusted-workflows-on-one-machine` S4
     first = git(repo, "rev-parse", "HEAD").strip()
     (repo / "later.md").write_text("later\n")
     git(repo, "add", "later.md")

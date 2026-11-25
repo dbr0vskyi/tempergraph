@@ -5,7 +5,7 @@ Release 3: `parse`, `add` (a workflow target), `list`, `show`, `history`, `edit`
 (R3-T5.1) and `fire`, `runs`, `tick`, `loop`, `trigger` and `export` (R3-T5.2). `parse`, `list`, `show`, `history`, `runs`,
 `export` and `trigger status` write nothing and start no process. `add`, `edit`, `resume` and `fire` need a person
 (TCK-B22); `fire` and `tick` are the only verbs that spend, and the tick starts only the engine's own `run`. Only
-`add --orchestration` is refused `not_in_release` (SCH-B33, ADR-0132: orchestration is release 4). Every refusal exits 2
+`add --orchestration` is refused `not_in_release` (SCH-B33, ADR `release-three-composes-runs-in-parallel-and-grades-in-the-pipeline`: orchestration is release 4). Every refusal exits 2
 with its reason code; a `needs` (an ambiguous phrase, a confirmation, a missing request) exits 3 with the choices as JSON
 on stdout.
 """
@@ -814,9 +814,9 @@ def _inputs(pairs: list[str]) -> dict[str, str]:
 
 
 def cmd_add(env: Any, a: argparse.Namespace) -> int:
-    if a.orchestration is not None:  # SCH-B33: with orchestration, release 4 (ADR-0132)
+    if a.orchestration is not None:  # SCH-B33: with orchestration, release 4 (ADR `release-three-composes-runs-in-parallel-and-grades-in-the-pipeline`)
         raise ScheduleError("not_in_release", "schedule add --orchestration is not in this release: orchestration "
-                                              "comes in release 4 (ADR-0132)")
+                                              "comes in release 4 (ADR `release-three-composes-runs-in-parallel-and-grades-in-the-pipeline`)")
     if a.program is not None:
         raise ScheduleError("program_target_reserved", "schedule add --program is reserved until a package can declare programs")
     if not a.workflow:

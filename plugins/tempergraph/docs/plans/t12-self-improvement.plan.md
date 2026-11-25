@@ -7,7 +7,7 @@ owner: dbr0vskyi
 status: In progress
 tags: [track-plan, tempergraph, T12]
 tracker: none
-spec: plugins/tempergraph/docs/specs/16-self-improvement.spec.md
+spec: plugins/tempergraph/docs/specs/self-improvement.spec.md
 spec_commit: 804d094
 task_id: first-release-t12
 ---
@@ -19,7 +19,7 @@ task_id: first-release-t12
 | Field | Value |
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T12 |
-| Specs | [SIL](../specs/16-self-improvement.spec.md), [IMD](../specs/43-improvement-data.spec.md), [LSN](../specs/42-workflow-lessons.spec.md); later [FBK](../specs/41-feedback-and-judge-reliability.spec.md), [JCL](../specs/50-judge-calibration.spec.md), [PRP](../specs/40-improvement-proposals.spec.md) |
+| Specs | [SIL](../specs/self-improvement.spec.md), [IMD](../specs/improvement-data.spec.md), [LSN](../specs/workflow-lessons.spec.md); later [FBK](../specs/feedback-and-judge-reliability.spec.md), [JCL](../specs/judge-calibration.spec.md), [PRP](../specs/improvement-proposals.spec.md) |
 | Split | This thread: T12.1, T12.2, T12.7 (and T9.1). T7 keeps FBK's `label` verb and the reports; T8 keeps T9.2 and T9.3. T12.3 to T12.6 are built in the thread "Build judge calibration and proposals" on T7's label rows and T8's readiness hooks; `author verify` rungs 8 and 9 are T8's |
 
 **Status: In progress.** T12.1 records, causes and lenses, T12.2 filing and measurement, T12.3 labels and reliability, T12.4 judge calibration, T12.5 proposals, T12.6 trials and T12.7 lessons and T12.8 stable mode, the loop report and outcome proposals are built and tested offline; only the live row 12.8.4 remains; the loop child (12.1.5) runs the friction judge and files after a final exit.
@@ -109,7 +109,7 @@ Not built in release 1 (recorded in PRP-B23): PRP-B9 (needs the merge to be seen
 
 ### T12.9 Session digest and dev-mode review
 
-[SRV](../specs/44-session-review.spec.md) as scoped in the [release plan](first-release.plan.md) T12.9 (I-92 to I-94); release 1 assumptions are in R-150 SRV. Stable-mode plans are release 2 (X2-26).
+[SRV](../specs/session-review.spec.md) as scoped in the [release plan](first-release.plan.md) T12.9 (I-92 to I-94); release 1 assumptions are in research `rationale-carried-from-the-engine-specs` SRV. Stable-mode plans are release 2 (X2-26).
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|

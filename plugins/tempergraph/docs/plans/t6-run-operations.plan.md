@@ -7,7 +7,7 @@ owner: dbr0vskyi
 status: Completed
 tags: [track-plan, tempergraph, T6]
 tracker: none
-spec: plugins/tempergraph/docs/specs/17-engine-cli.spec.md
+spec: plugins/tempergraph/docs/specs/engine-cli.spec.md
 spec_commit: 41ca415
 task_id: first-release-t6
 ---
@@ -19,7 +19,7 @@ task_id: first-release-t6
 | Field | Value |
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T6 |
-| Specs | [CLI](../specs/17-engine-cli.spec.md), [RST](../specs/80-run-settings-and-overrides.spec.md), [RRN](../specs/81-reruns-and-feedback.spec.md), [PRV](../specs/85-caller-provenance.spec.md) |
+| Specs | [CLI](../specs/engine-cli.spec.md), [RST](../specs/run-settings-and-overrides.spec.md), [RRN](../specs/reruns-and-feedback.spec.md), [PRV](../specs/caller-provenance.spec.md) |
 
 **Status: Completed** for the offline build. Milestone M1 holds on stand-ins: a two-step workflow defined in Python test code runs end to end through `tempergraph run`, pauses with exit 3, and finishes through `tempergraph resume`. What is left needs a signed-in Claude Code on the owner's machine: M1 on a live `claude` (T0.1), the MCP and plugin listing check (6.3.5), and the probes P-SUP-1, P-SUP-2 and P-SUP-4 (6.5.5).
 
@@ -36,7 +36,7 @@ The catalog reads the home registry and loads each package by the first steps of
 
 | Req | Spec | Criteria | Phase |
 |---|---|---|---|
-| REQ-20 | CLI | all, for the release 1 verbs of ADR-0090 (T6.1 here; the observability verbs in T7.4) | T6.1 |
+| REQ-20 | CLI | all, for the release 1 verbs of ADR `first-release-is-simple-trusted-workflows-on-one-machine` (T6.1 here; the observability verbs in T7.4) | T6.1 |
 | REQ-21 | RST | all but rows for orchestration, council, contest and switch-arm keys | T6.2, T6.3 |
 | REQ-22 | RRN | all but §2.6 | T6.4 |
 | REQ-23 | PRV | all; AC-6 for P-SUP-1 and P-SUP-2 | T6.5 |

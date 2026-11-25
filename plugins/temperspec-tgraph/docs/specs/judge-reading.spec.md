@@ -2,7 +2,7 @@
 
 ## Purpose
 
-What each judge of the temperspec workflow is told to read and to cite before it grades. The code gate hands its judge the list of changed source files and a reading budget sized to the change, so that the judge reads the code before it grades alignment ([code](08-code.spec.md)); every judge is asked for the line behind a MET, so that a grade rests on a file it read and not on search fragments. The owner who reads an escalation and the maintainers of the judge briefs depend on it. Part of the [overview](00-overview.spec.md).
+What each judge of the temperspec workflow is told to read and to cite before it grades. The code gate hands its judge the list of changed source files and a reading budget sized to the change, so that the judge reads the code before it grades alignment ([code](code.spec.md)); every judge is asked for the line behind a MET, so that a grade rests on a file it read and not on search fragments. The owner who reads an escalation and the maintainers of the judge briefs depend on it. Part of the [overview](overview.spec.md).
 
 ## Behaviours
 

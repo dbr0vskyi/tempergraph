@@ -1,4 +1,4 @@
-"""The session surface of the tool audit (TSA-B6, TSA-B7, ADR-0052): for every step session and every judge session
+"""The session surface of the tool audit (TSA-B6, TSA-B7, ADR `tool-audit-compares-grant-need-and-use`): for every step session and every judge session
 the grant, the need and the use of its tools, built once per audit.
 
 The grant comes from the executor's tool map, the declared commands and the manifest; the need is read by prompt
@@ -143,7 +143,7 @@ def _need(s: SessionSurface, caps: Capabilities, text: str, where: str, groups: 
 def build_surface(spec: WorkflowSpec, caps: Mapping[str, Capabilities], manifest: Any, facts: HistoryFacts | None, *,
                   executor: str | None = None) -> Surface:
     """TSA-B6: one session per step and per judge. `executor` shows every session on that executor's tool map
-    (TSA-B3); a judge on another executor keeps it otherwise (cross-executor judging, ADR-0013)."""
+    (TSA-B3); a judge on another executor keeps it otherwise (cross-executor judging, ADR `cross-executor-judging`)."""
     out = Surface(history=facts is not None and facts.runs > 0)
     for unit in spec.order:
         u = spec.units.get(unit)

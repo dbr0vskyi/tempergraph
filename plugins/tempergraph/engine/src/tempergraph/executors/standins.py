@@ -1,4 +1,4 @@
-"""Scripted stand-in executors (ADR-0091 item 2, CLAUDE.md test rule).
+"""Scripted stand-in executors (ADR `first-release-ships-the-claude-executor-only` item 2, CLAUDE.md test rule).
 
 A stand-in carries one of the four declared capability sets and answers each session from a script
 instead of a process, so the engine's gate funnel, cross-executor judging, estimate-only cost and every

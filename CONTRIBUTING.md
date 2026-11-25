@@ -74,7 +74,7 @@ Issues created through the API, as agents do, use the same section headings as t
    - Change the spec, decision record or research note before the code.
    - The truth ranking is: acceptance criteria, then specs and decision records, then plans, then code. A change that makes a doc false updates the doc in the same pull request.
    - New artifact files use a type suffix: `*.spec.md`, `*.adr.md`, `*.rsrch.md`, `*.plan.md`.
-4. **The engine names no workflow** ([ADR-0129](plugins/tempergraph/docs/adr/0129-the-engine-names-no-workflow-and-takes-requests-as-general-capabilities.adr.md)). A workflow that needs an engine change writes the need in its own docs first. The engine change is then stated and tested as a general capability, with an engine fixture.
+4. **The engine names no workflow** ([ADR `the-engine-names-no-workflow`](plugins/tempergraph/docs/adr/the-engine-names-no-workflow.adr.md)). A workflow that needs an engine change writes the need in its own docs first. The engine change is then stated and tested as a general capability, with an engine fixture.
 5. **Verify.** From `plugins/tempergraph/engine/`, run `python -m pip install -e '.[dev]'`, then:
    - `python -m pytest`
    - `ruff check src tests`

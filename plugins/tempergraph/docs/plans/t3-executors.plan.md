@@ -7,7 +7,7 @@ owner: dbr0vskyi
 status: Completed
 tags: [track-plan, tempergraph, T3]
 tracker: none
-spec: plugins/tempergraph/docs/specs/10-executor-interface.spec.md
+spec: plugins/tempergraph/docs/specs/executor-interface.spec.md
 spec_commit: be8992f
 task_id: first-release-t3
 ---
@@ -19,8 +19,8 @@ task_id: first-release-t3
 | Field | Value |
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T3 |
-| Specs | [EXI](../specs/10-executor-interface.spec.md), [ECC](../specs/11-executor-claude-code.spec.md), with [SEC-B7, SEC-B12, SEC-B13](../specs/14-security.spec.md) and [SSN-B1 to SSN-B6, SSN-B7](../specs/25-session-contract.spec.md) |
-| Decisions | [ADR-0006](../adr/0006-executors-as-capability-adapters.adr.md), [ADR-0009](../adr/0009-normalized-session-event-stream.adr.md), [ADR-0010](../adr/0010-judge-isolation-per-executor.adr.md), [ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md) |
+| Specs | [EXI](../specs/executor-interface.spec.md), [ECC](../specs/executor-claude-code.spec.md), with [SEC-B7, SEC-B12, SEC-B13](../specs/security.spec.md) and [SSN-B1 to SSN-B6, SSN-B7](../specs/session-contract.spec.md) |
+| Decisions | [ADR `executors-as-capability-adapters`](../adr/executors-as-capability-adapters.adr.md), [ADR `normalized-session-event-stream`](../adr/normalized-session-event-stream.adr.md), [ADR `judge-isolation-per-executor`](../adr/judge-isolation-per-executor.adr.md), [ADR `first-release-ships-the-claude-executor-only`](../adr/first-release-ships-the-claude-executor-only.adr.md) |
 
 **Status: Completed** for the offline build; ECC-AC5 (probe table filled) waits on the owner's machine. Status pass: EXI and ECC are `ready-for-implementation`; each open question has a release 1 default in its row. Doc changes this track made: EXI-B16, EXI-B17 names `ProbeReport`; EXI-B18 fixes the binding file at `<home>/config/bindings.json` with built-in `claude` tiers; EXI-B2, EXI-B20, EXI-B21, EXI-B22, EXI-B23, EXI-B15 adds the 30 s prompt window and puts probes and host speed at the launcher; EXI-B14 states the walk bound and the 3 s floor; EXI-AC6 leaves `slow_host` to the gate; ECC-B12 gains the `connection` and `out_of_memory` rows and the provisional budget subtype; ECC-B13 records the model-free checks on 2.1.329; SEC-B7, SEC-B12, SEC-B13 name the probe site and the credentials path.
 
@@ -56,7 +56,7 @@ task_id: first-release-t3
 |---|---|---|---|---|---|---|---|
 | 3.3.1 | `engine/tests/test_conformance.py`, `engine/tests/fixtures/standin_cli.py` | Conformance suite over the four declared sets: stdin, list argv, tree kill, no raise on each cause, unknown usage, tools in order, cost only where declared; the recorded CLI stand-in | EXI-B11, AC-6, AC-9 | yes | P1 | ✓ | 2026-11-20 |
 | 3.3.2 | `engine/src/tempergraph/executors/session.py` | Create `summarize`, `process_cause`, `build_result` | EXI-B6, B7, SSN-B1 to SSN-B6 | | P1 | ✓ | 2026-11-20 |
-| 3.3.3 | `engine/src/tempergraph/executors/standins.py` | Create `ScriptedExecutor`, `standin`, `answer` for the engine's offline tests | ADR-0091 item 2 | | P1 | ✓ | 2026-11-20 |
+| 3.3.3 | `engine/src/tempergraph/executors/standins.py` | Create `ScriptedExecutor`, `standin`, `answer` for the engine's offline tests | ADR `first-release-ships-the-claude-executor-only` item 2 | | P1 | ✓ | 2026-11-20 |
 
 ### T3.4 Claude Code executor
 

@@ -2,13 +2,13 @@
 
 ## Purpose
 
-A repository manages its work as issues: one triage queue, one set of labels, and a close reason that says whether a thing was done or declined. The loop files its findings there ([SIL-B18](16-self-improvement.spec.md)); this spec makes a loop issue a member of that queue and lets the owner's triage teach the loop. It states the labels a loop issue carries, the sections of its body and the run context they hold, which issue a finding goes to (one per cause, found from the loop's label list), and what the loop does when a finding returns after its issue was closed: nothing for a while after a close as not planned, and a new issue that links the old one as a possible regression after a close as completed. It sits beside [SIL](16-self-improvement.spec.md), which keeps filing and de-duplication on open issues and is near its size budget, and beside [PRP](40-improvement-proposals.spec.md), which ties proposals and trials to the same issues. The mute period is a parameter record like the loop's other thresholds ([IMD-B23](43-improvement-data.spec.md)); the reasons for its value and for the mapping of close reasons are in [the decision record](../adr/a-closed-loop-issue-mutes-its-fingerprint-or-links-a-regression.adr.md), and those for one issue per cause, the label list and the run context in [the second](../adr/one-loop-issue-per-cause-read-from-the-label-list.adr.md). Maintainers who triage the loop's issues and workflow owners who receive them depend on it.
+A repository manages its work as issues: one triage queue, one set of labels, and a close reason that says whether a thing was done or declined. The loop files its findings there ([SIL-B18](self-improvement.spec.md)); this spec makes a loop issue a member of that queue and lets the owner's triage teach the loop. It states the labels a loop issue carries, the sections of its body and the run context they hold, which issue a finding goes to (one per cause, found from the loop's label list), and what the loop does when a finding returns after its issue was closed: nothing for a while after a close as not planned, and a new issue that links the old one as a possible regression after a close as completed. It sits beside [SIL](self-improvement.spec.md), which keeps filing and de-duplication on open issues and is near its size budget, and beside [PRP](improvement-proposals.spec.md), which ties proposals and trials to the same issues. The mute period is a parameter record like the loop's other thresholds ([IMD-B23](improvement-data.spec.md)); the reasons for its value and for the mapping of close reasons are in [the decision record](../adr/a-closed-loop-issue-mutes-its-fingerprint-or-links-a-regression.adr.md), and those for one issue per cause, the label list and the run context in [the second](../adr/one-loop-issue-per-cause-read-from-the-label-list.adr.md). Maintainers who triage the loop's issues and workflow owners who receive them depend on it.
 
 ## Behaviours
 
 ### ISS-B1 Triage labels
 
-WHEN the loop opens an issue THE loop SHALL give it the labels of `issue_labels` (default `tempergraph-loop` and `needs-triage`; for a workflow-side finding the list in the workflow's `improvement.issue_labels`, for an engine or executor finding the engine's own list), `tempergraph-loop` when that list omits it, and the finding's side label: `side:engine`, `side:workflow` or `executor:<name>` ([SIL-B11](16-self-improvement.spec.md)).
+WHEN the loop opens an issue THE loop SHALL give it the labels of `issue_labels` (default `tempergraph-loop` and `needs-triage`; for a workflow-side finding the list in the workflow's `improvement.issue_labels`, for an engine or executor finding the engine's own list), `tempergraph-loop` when that list omits it, and the finding's side label: `side:engine`, `side:workflow` or `executor:<name>` ([SIL-B11](self-improvement.spec.md)).
 
 - GIVEN a workflow that declares no `issue_labels` WHEN a workflow-side finding files THEN the issue carries `tempergraph-loop`, `needs-triage` and `side:workflow`
 - GIVEN a workflow that declares `improvement.issue_labels` as `["triage", "bot"]` WHEN a workflow-side finding files THEN the issue carries `triage`, `bot`, `tempergraph-loop` and `side:workflow`, and not `needs-triage`
@@ -18,7 +18,7 @@ WHEN the loop opens an issue THE loop SHALL give it the labels of `issue_labels`
 
 ### ISS-B2 Body sections
 
-WHEN the loop opens an issue THE loop SHALL write its body as the hidden line of [SIL-B18](16-self-improvement.spec.md), the cause line of ISS-B7 and the hidden lines of any further fingerprints, followed by the sections `## Summary` (the cause, its side, the workflow and every unit), `## Environment`, `## Run`, `## Steps to reproduce` and `## Run log` (ISS-B8, ISS-B10), `## Evidence` (each unit's counts and pattern figures), `## Fingerprint` (the fingerprints and cause key as text) and `## Suggested remedy` (the cause's drafted remedy), in that order.
+WHEN the loop opens an issue THE loop SHALL write its body as the hidden line of [SIL-B18](self-improvement.spec.md), the cause line of ISS-B7 and the hidden lines of any further fingerprints, followed by the sections `## Summary` (the cause, its side, the workflow and every unit), `## Environment`, `## Run`, `## Steps to reproduce` and `## Run log` (ISS-B8, ISS-B10), `## Evidence` (each unit's counts and pattern figures), `## Fingerprint` (the fingerprints and cause key as text) and `## Suggested remedy` (the cause's drafted remedy), in that order.
 
 - GIVEN a filed workflow-side finding WHEN its issue body is read THEN its first line is the hidden line, its second the cause line, and its headings are `## Summary`, `## Environment`, `## Run`, `## Steps to reproduce`, `## Run log`, `## Evidence`, `## Fingerprint` and `## Suggested remedy` in that order, each with text under it
 - GIVEN that body WHEN its `## Fingerprint` section is read THEN it shows the fingerprint of the hidden line, and its `## Suggested remedy` section shows the cause's drafted remedy
@@ -29,7 +29,7 @@ WHEN a finding that would file matches no open issue and the matching issue clos
 
 - GIVEN an issue of the fingerprint closed as not planned 10 days ago and none open WHEN the finding files THEN no issue and no comment is made, and the finding is recorded `muted` with the closed issue's URL
 - GIVEN that issue closed as not planned 31 days ago WHEN the finding files THEN a new issue opens and the finding is not muted
-- GIVEN that issue closed 10 days ago and a second issue of the fingerprint open WHEN the finding files THEN the open issue gets one "seen again" comment ([SIL-B2](16-self-improvement.spec.md)) and the finding is not muted
+- GIVEN that issue closed 10 days ago and a second issue of the fingerprint open WHEN the finding files THEN the open issue gets one "seen again" comment ([SIL-B2](self-improvement.spec.md)) and the finding is not muted
 - GIVEN an issue closed as completed 40 days ago and a later issue of the fingerprint closed as not planned 5 days ago WHEN the finding files THEN the finding is recorded `muted`
 - GIVEN a cause's issue closed as not planned 5 days ago WHEN the cause files at units the issue does not name THEN each finding is recorded `muted`
 
@@ -50,7 +50,7 @@ WHEN a finding that would file matches no open issue and the matching issue clos
 
 ### ISS-B6 A failed search of closed issues files anyway
 
-WHEN the read of the loop's closed issues (ISS-B9) fails twice THE loop SHALL open the new issue with no link and no mute and record why, as it does when the search for open issues fails ([SIL-B2](16-self-improvement.spec.md)).
+WHEN the read of the loop's closed issues (ISS-B9) fails twice THE loop SHALL open the new issue with no link and no mute and record why, as it does when the search for open issues fails ([SIL-B2](self-improvement.spec.md)).
 
 - GIVEN a code host whose search of closed issues fails twice WHEN a finding that would file matches no open issue THEN a new issue opens with no link and the result records that the search failed
 - GIVEN a code host whose search of closed issues fails once WHEN the same finding files THEN the search is retried and the close reason of the matching issue applies
@@ -107,7 +107,7 @@ WHEN the loop writes `## Run log` THE loop SHALL show the last segment's run-log
 
 ## Open questions
 
-- Is 30 days the right mute period (`mute.days`)? Until answered: 30, a parameter record with provenance `default_no_data`, the length of the pattern rule's window ([SIL-B3](16-self-improvement.spec.md)), so that a new issue after a mute rests on runs made after the close. Owner: owner.
+- Is 30 days the right mute period (`mute.days`)? Until answered: 30, a parameter record with provenance `default_no_data`, the length of the pattern rule's window ([SIL-B3](self-improvement.spec.md)), so that a new issue after a mute rests on runs made after the close. Owner: owner.
 - Should a close as a duplicate mute like a close as not planned? Until answered: no, the reason is not read (ISS-B5), because the loop cannot see the issue it duplicates. Owner: owner.
-- Should a recurrence after a close as completed also record `regressed_after_release` on the merged proposal whose pull request closed the issue ([PRP-B9](40-improvement-proposals.spec.md))? Until answered: no, ISS-B4 only links, and PRP-B9 records it from its own comparison. Owner: engine owner.
-- Should an operator set `issue_labels` per machine, as a run setting ([RST-B20](80-run-settings-and-overrides.spec.md))? Until answered: no, only a workflow's `improvement.issue_labels` and the engine's own list set it. Owner: owner.
+- Should a recurrence after a close as completed also record `regressed_after_release` on the merged proposal whose pull request closed the issue ([PRP-B9](improvement-proposals.spec.md))? Until answered: no, ISS-B4 only links, and PRP-B9 records it from its own comparison. Owner: engine owner.
+- Should an operator set `issue_labels` per machine, as a run setting ([RST-B20](run-settings-and-overrides.spec.md))? Until answered: no, only a workflow's `improvement.issue_labels` and the engine's own list set it. Owner: owner.

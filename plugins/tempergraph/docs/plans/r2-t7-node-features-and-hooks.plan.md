@@ -1,7 +1,7 @@
 ---
 task: r2-t7
 complexity: complex
-specs: [plugins/tempergraph/docs/specs/73-ask-unit.spec.md, plugins/tempergraph/docs/specs/07-gate-and-human.spec.md, plugins/tempergraph/docs/specs/74-flow-extensions.spec.md, plugins/tempergraph/docs/specs/03-compiler-and-flow.spec.md, plugins/tempergraph/docs/specs/75-check-contract-and-command-runs.spec.md, plugins/tempergraph/docs/specs/90-run-outcome.spec.md, plugins/tempergraph/docs/specs/17-engine-cli.spec.md, plugins/tempergraph/docs/specs/30-run-events.spec.md]
+specs: [plugins/tempergraph/docs/specs/ask-unit.spec.md, plugins/tempergraph/docs/specs/gate-and-human.spec.md, plugins/tempergraph/docs/specs/flow-extensions.spec.md, plugins/tempergraph/docs/specs/compiler-and-flow.spec.md, plugins/tempergraph/docs/specs/check-contract-and-command-runs.spec.md, plugins/tempergraph/docs/specs/run-outcome.spec.md, plugins/tempergraph/docs/specs/engine-cli.spec.md, plugins/tempergraph/docs/specs/run-events.spec.md]
 ---
 
 # Plan: node features and lifecycle hooks (R2-T7)
@@ -9,7 +9,7 @@ specs: [plugins/tempergraph/docs/specs/73-ask-unit.spec.md, plugins/tempergraph/
 ## 0. Hand-off
 
 - Triage note: `plugins/tempergraph/docs/tasks/r2-t7.triage.md`
-- Specs read: ASK (73), HUM (07), FLX (74), CMP (03), WFM (02), CON (01), CHK (75), OUT (90), CLI (17) §2.2, EVT (30) §2.6, WSP (13), SEC (14)
+- Specs read: ASK (`ask-unit`), HUM (`gate-and-human`), FLX (`flow-extensions`), CMP (`compiler-and-flow`), WFM (`workflow-model`), CON (`contracts`), CHK (`check-contract-and-command-runs`), OUT (`run-outcome`), CLI (`engine-cli`) §2.2, EVT (`run-events`) §2.6, WSP (`workspace-and-concurrency`), SEC (`security`)
 - Why this design: every new kind keeps the four nodes of a unit, so the gate still only routes and the human node is still the one place a run pauses. An ask and a wait run nothing in their step node and go straight to the human node. A person's partial answers are kept in the answers file under the thread's folder, not in graph state, so a resume that does not complete the set never moves the graph and a crash loses nothing. A deadline, a fallback and a breakpoint add static edges only. Parallel branches are ordinary units started in one superstep; the block's own unit is the join, which runs only when every branch's gate has passed. Hooks are detached children started from the run log's writer, behind the same "never changes a run" rule as observers.
 
 ## 1. Requirements

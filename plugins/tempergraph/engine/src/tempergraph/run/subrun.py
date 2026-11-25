@@ -1,4 +1,4 @@
-"""A sub-workflow's child run as one unit of its parent (SWF-B1 to SWF-B5, SWF-B8, SWF-B10; ADR-0133).
+"""A sub-workflow's child run as one unit of its parent (SWF-B1 to SWF-B5, SWF-B8, SWF-B10; ADR `a-sub-workflow-runs-inside-its-parents-thread-workspace-and-cap`).
 
 The unit's step node invokes the child's own graph with the node's config, so the child is a subgraph under the
 parent's checkpointer, thread, workspace, lock and run cost cap. It has its own compiled graph, its own nodes and its own

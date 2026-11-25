@@ -1,7 +1,7 @@
 ---
 task: r2-t8
 complexity: simple
-specs: [plugins/tempergraph/docs/specs/13-workspace-and-concurrency.spec.md, plugins/tempergraph/docs/specs/75-check-contract-and-command-runs.spec.md]
+specs: [plugins/tempergraph/docs/specs/workspace-and-concurrency.spec.md, plugins/tempergraph/docs/specs/check-contract-and-command-runs.spec.md]
 ---
 
 # Plan: runs outside a git repository (R2-T8)
@@ -9,7 +9,7 @@ specs: [plugins/tempergraph/docs/specs/13-workspace-and-concurrency.spec.md, plu
 ## 0. Hand-off
 
 - Triage note: `plugins/tempergraph/docs/tasks/r2-t8.triage.md`
-- Specs read: WSP (13) §2.4, WTR (82) §2.2, CHK (75) §2.1, GRD (06), CLI (17), ADR-0127, R-131
+- Specs read: WSP (`workspace-and-concurrency`) §2.4, WTR (`worktree-mode`) §2.2, CHK (`check-contract-and-command-runs`) §2.1, GRD (`independence-guard`), CLI (`engine-cli`), ADR `outside-git-the-state-root-is-found-by-walk-up`, research `running-outside-a-git-repository`
 
 ## 1. Requirements
 

@@ -145,7 +145,7 @@ async function raise($: $, alerts: ReturnType<typeof alertsFrom>): Promise<void>
   for (const [tid, seq] of top) await $.store.set(`alerted:${tid}`, seq)
 }
 
-/** Reads what each live run's log added since the last read (stat first, read second: MADR-0002). */
+/** Reads what each live run's log added since the last read (stat first, read second: MADR `poll-files-and-read-only-verbs`). */
 async function tailLog($: $, tid: string, path: string, label: string): Promise<boolean> {
   const st = await $.fs.stat(path).catch(() => null)
   if (!st) return false

@@ -1,4 +1,4 @@
-"""The echo: a sentence rendered from the canonical form only (SCH-B18, SCH-B20, SCH-B2; ADR-0096).
+"""The echo: a sentence rendered from the canonical form only (SCH-B18, SCH-B20, SCH-B2; ADR `exact-formats-first-and-an-optional-word-grammar-echoed-back`).
 
 Never rendered from the phrase the person typed: the same stored rule gives the same sentence, and the `rule:`,
 `starts:`, `zone:` and `at:` lines of the text re-parse (through the exact formats) to the stored form.

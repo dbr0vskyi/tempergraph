@@ -24,7 +24,7 @@ def test_the_source_has_no_not_in_release_refusal_of_a_maps_mode() -> None:  # M
 
 
 def test_spec_77_does_not_call_the_concurrent_mode_unbuilt() -> None:  # MAP-AC1, MAP-AC5
-    text = (DOCS / "specs" / "77-map-unit.spec.md").read_text(encoding="utf-8")
+    text = (DOCS / "specs" / "map-unit.spec.md").read_text(encoding="utf-8")
     assert not [ln for ln in text.splitlines() if ln.lower().startswith("- not built yet")]
     for ln in text.splitlines():
         low = ln.lower()
@@ -32,18 +32,18 @@ def test_spec_77_does_not_call_the_concurrent_mode_unbuilt() -> None:  # MAP-AC1
 
 
 def test_the_not_built_lines_of_specs_08_and_82_name_only_what_is_left() -> None:  # BUD-AC9, WTR-AC12
-    line_08 = next(ln for ln in (DOCS / "specs" / "08-budgets-and-failures.spec.md").read_text(encoding="utf-8")
+    line_08 = next(ln for ln in (DOCS / "specs" / "budgets-and-failures.spec.md").read_text(encoding="utf-8")
                    .splitlines() if ln.startswith("- Not built yet")).lower()
     assert all(w in line_08 for w in ("projection", "bud-b12", "bud-b15", "contest", "council"))
     assert "not built for" not in line_08 and "maps" not in line_08  # councils and contests reserve too (BUD-AC11, BUD-AC12)
-    line_82 = next(ln for ln in (DOCS / "specs" / "82-worktree-mode.spec.md").read_text(encoding="utf-8").splitlines()
+    line_82 = next(ln for ln in (DOCS / "specs" / "worktree-mode.spec.md").read_text(encoding="utf-8").splitlines()
                    if ln.startswith("- Not built yet")).lower()
     assert "slot" not in line_82 and "item" not in line_82 and "contest" not in line_82  # BUD-AC9, WTR-AC12
     assert "p-wtr-1" in line_82 and "p-wtr-4" in line_82  # the probes stay
 
 
 def test_the_rationale_note_does_not_say_the_concurrent_mode_is_refused() -> None:  # MAP-AC2
-    text = (DOCS / "research" / "R-150-rationale-carried-from-the-engine-specs.rsrch.md").read_text(encoding="utf-8")
+    text = (DOCS / "research" / "rationale-carried-from-the-engine-specs.rsrch.md").read_text(encoding="utf-8")
     bullets = [ln for ln in text.splitlines() if ln.startswith("- As built (R2-T1.2, sequential mode)")]
     assert len(bullets) == 1 and "refused" not in bullets[0] and "R3-T3.2" in bullets[0]
 
