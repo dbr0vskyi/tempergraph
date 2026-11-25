@@ -32,6 +32,13 @@ Cost by session (reported USD): triage 1.02 + judge 0.08; three `read_gap` 0.56 
 - **Notes went to the repository root** (`docs/plans/i7.plan.md`, `docs/tasks/i7.*`), where `CONTRIBUTING.md` asks for the owning package's `docs/`. The temperspec block of `CLAUDE.md` names `docs/plans/` and `docs/tasks/` with no package.
 - The owner decision G3 was a good question: the task was silent on the daily cap and the default was the safe one.
 
+### Probe of the connector leak (2026-11-25, sub-agent, 0.93 USD)
+
+- A step-like launch with no extra word: 8,800 tokens at the first turn, 174,123 at the second, 0.71 USD for two turns. With `--strict-mcp-config` (no `--mcp-config` needed), or `ENABLE_CLAUDEAI_MCP_SERVERS=false`, or the setting `disableClaudeAiConnectors`: about 9,000 tokens a turn, under 0.01 USD. A `mcp__*` deny removes the definitions but the connectors still connect, and it also removes a declared server's tools. A judge launch still connects to the connectors (about 1,350 tokens).
+- The servers connect after `system/init`, so the init record lists none of them: the engine's own live probes, which read init, could not have seen this.
+- The CLI's debug log says tool search is off because `--tools` leaves its tool out, so every MCP schema is inlined in full.
+- Stopgap in use from run i21 on: the launch shell exports the variable. The fix is run i21.
+
 ### i71, code step (2026-11-25)
 
 - **A step session cannot edit a file under `.claude/`**: Claude Code denies it where nobody can answer a permission prompt (`reason_type: asyncAgent`). The plan had a row to bring `.claude/rules/temperspec/plan.rule.md` in line with the package's rule, the Edit was denied, and the run paused with `tool_access`. The operator ran `install_rules.py --update` in the worktree and sent the step back with feedback. Every task that changes a rule file in this repository meets this. Remedies: the plan check refuses a row whose file is under `.claude/`, and the workflow syncs the installed rule files with a script after a step that changed a rule (no model).

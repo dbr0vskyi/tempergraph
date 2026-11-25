@@ -38,9 +38,9 @@
       "issues": [
         21
       ],
-      "state": "queued",
-      "thread": null,
-      "branch": null,
+      "state": "running",
+      "thread": "temperspec/i21",
+      "branch": "tg/temperspec/i21",
       "cost_usd": null,
       "exit": null,
       "note": "request written after the flag probe"
@@ -51,9 +51,9 @@
       "issues": [
         144
       ],
-      "state": "queued",
-      "thread": null,
-      "branch": null,
+      "state": "running",
+      "thread": "temperspec/i144",
+      "branch": "tg/temperspec/i144",
       "cost_usd": null,
       "exit": null,
       "note": "found in this batch"
@@ -117,12 +117,12 @@
       "issues": [
         141
       ],
-      "state": "running",
+      "state": "finished",
       "thread": "temperspec/i141",
       "branch": "tg/temperspec/i141",
-      "cost_usd": null,
-      "exit": null,
-      "note": "found in this batch"
+      "cost_usd": 11.64,
+      "exit": 0,
+      "note": "pushed, not merged yet; under review"
     },
     {
       "order": 6.6,
