@@ -53,7 +53,8 @@ export function homeKnown(): boolean {
 
 /** The places that can be run, in the order of MAC-B5: the setting, `tempergraph` on PATH, the shim of the engine home. */
 export function enginePlaces(): string[] {
-  return [...(setting ? [setting] : []), ENGINE, ...(home !== null && homeRuns ? [home] : [])]
+  const places = [...(setting ? [setting] : []), ENGINE, ...(home !== null && homeRuns ? [home] : [])]
+  return places.filter((p, i) => places.indexOf(p) === i) // no program is a place twice
 }
 
 /** The places a failed lookup names to the person (MDS-B7). */

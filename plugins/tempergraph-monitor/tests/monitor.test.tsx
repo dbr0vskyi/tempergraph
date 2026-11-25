@@ -226,6 +226,49 @@ test('MAC-AC-4 MAC-AC-5 AC 1 AC 3 AC 4: the shim of the engine home answers and 
     expect(probes().length).toBe(1) // the home is asked once per session
   })
 
+test('MAC-AC-4 AC 1 AC 3 AC 4: a setting whose run rejects is passed over like a program that does not exist', withSetting(SETTING),
+  async ($, on) => {
+    ran.length = 0
+    engine(on, () => {}, argv => {
+      if (argv[0] === SETTING) throw new Error('spawn ENOENT')
+      return only('tempergraph')(argv)
+    })
+    await $.session.start({ cwd: '/work/repo', surface: 'terminal', isInteractive: true })
+    await settle()
+    const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+    expect((await ui.find({ key: 'tg-band' }))?.text ?? '').toContain('⏸ repo/tg/demo/T-1')
+    await ui.unmount()
+    expect(verbs()[0]).toEqual([SETTING, 'status', '--json'])
+    expect(verbs()[1]).toEqual(['tempergraph', 'status', '--json'])
+    expect(verbs().filter(a => a[0] === SETTING).length).toBe(1)
+    expect(probes()).toEqual([])
+  })
+
+test('MAC-AC-4 MAC-AC-5 AC 1 AC 3 AC 4: a kept program that exits 127 starts the lookup again from the setting', withSetting(SETTING),
+  async ($, on) => {
+    ran.length = 0
+    const shim = `${HOME}/bin/tempergraph`
+    let moved = false // the engine moves from the home shim to PATH after the shim answered once
+    engine(on, () => {}, argv => {
+      if (argv[0] === 'sh') return { exitCode: 0, stdout: HOME }
+      if (argv[0] === shim) {
+        if (moved) return NOT_FOUND
+        moved = true
+        return fixtureReply(argv)
+      }
+      return argv[0] === 'tempergraph' && moved ? fixtureReply(argv) : NOT_FOUND
+    })
+    await $.session.start({ cwd: '/work/repo', surface: 'terminal', isInteractive: true })
+    await settle()
+    const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+    expect((await ui.find({ key: 'tg-band' }))?.text ?? '').toContain('⏸ repo/tg/demo/T-1')
+    await ui.unmount()
+    expect(verbs().slice(0, 6).map(a => a[0])).toEqual([SETTING, 'tempergraph', shim, shim, SETTING, 'tempergraph'])
+    expect(verbs().slice(6).every(a => a[0] === 'tempergraph')).toBe(true) // the new program is kept
+    expect(verbs().filter(a => a[0] === shim).length).toBe(2) // the shim is not run again in the restarted lookup
+    expect(probes().length).toBe(1) // the home is not asked again
+  })
+
 for (const [what, home] of [['TEMPERGRAPH_HOME set to a folder that holds the shim', '/srv/tg-home'],
   ['TEMPERGRAPH_HOME unset, the shim in ~/.tempergraph/bin', HOME]] as const) {
   test(`MAC-AC-6 AC 1: the engine home is read from ${what}`, async ($, on) => {

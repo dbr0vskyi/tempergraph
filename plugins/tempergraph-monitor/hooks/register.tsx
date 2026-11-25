@@ -30,7 +30,7 @@ import {
 import type { TailState } from './lib/sources'
 
 const PANE = 'tempergraph'
-const SHAPE = 'm1'
+const SHAPE = 'm2'
 const STALE_AFTER_MS = 60_000
 const PROJECTION_EVERY_MS = 10 * 60_000
 const FLEET_EVERY_MS = 60_000
@@ -85,48 +85,64 @@ let busy = false
 /** Set when every place of MAC-B5 exited 127: the engine is marked not installed and no engine verb is run (MDS-B6). */
 let notFound = false
 
-/** The place after `current` in the order of MAC-B5; the engine home is asked for once, only when PATH is the place that failed. */
-async function nextPlace($: $, current: string): Promise<string | null> {
-  if (!homeKnown() && enginePlaces().at(-1) === current) {
+/**
+ * The first place of MAC-B5 (the setting, `tempergraph` on PATH, the shim of the engine home) that this lookup has not
+ * run yet. The engine home is asked for once per session, only when the places before it are all used up.
+ */
+async function nextPlace($: $, tried: ReadonlySet<string>): Promise<string | null> {
+  let place = enginePlaces().find(p => !tried.has(p))
+  if (place === undefined && !homeKnown()) {
     learnHome(await run($, HOME_ARGV).catch(() => null))
+    place = enginePlaces().find(p => !tried.has(p))
   }
-  const places = enginePlaces()
-  const at = places.indexOf(current)
-  return at >= 0 && at + 1 < places.length ? places[at + 1]! : null
+  return place ?? null
+}
+
+type Reply = Awaited<ReturnType<$['process']['run']>>
+
+/** Runs the one `$.process.run` call, behind the guard. An engine verb whose run rejects counts as a program that does not exist. */
+async function call($: $, argv: readonly string[], isEngineVerb: boolean): Promise<Reply | null> {
+  if (!isReadOnly(argv)) throw new Error(`refused: ${argv.join(' ')}`)
+  const started = $.process.run(argv, { timeoutMs: 20_000 })
+  return isEngineVerb ? started.catch(() => null) : started
 }
 
 /**
  * Runs a read-only engine verb, the constant `ps` listing or the engine-home probe; refuses any other argv (contract M1).
- * An engine verb that exits 127 is run again through the next place of MAC-B5; the first place that does not exit 127
- * stays the program of every later verb.
+ * An engine verb whose program exits 127 or does not exist starts a lookup through the places of MAC-B5, none run twice;
+ * the first place that answers stays the program of every later verb (MAC-B5).
  */
 async function run($: $, argv: readonly string[]): Promise<string | null> {
   if (!isReadOnly(argv)) throw new Error(`refused: ${argv.join(' ')}`)
   const isEngineVerb = argv[0] !== PS_ARGV[0] && argv[0] !== HOME_ARGV[0]
   if (isEngineVerb && notFound) return null // every place exited 127: no engine verb is run again (MDS-B6)
-  for (;;) {
-    const out = await $.process.run(argv, { timeoutMs: 20_000 })
-    if (out.exitCode === 127 && isEngineVerb) {
-      const place = await nextPlace($, argv[0]!)
-      if (place === null || !useProgram(place)) {
+  let out = await call($, argv, isEngineVerb)
+  if (isEngineVerb && (out === null || out.exitCode === 127)) {
+    const tried = new Set([argv[0]!])
+    for (;;) {
+      const place = await nextPlace($, tried)
+      if (place === null) {
         notFound = true
         const looked = lookedAt()
         await update($, engine, e => ({ ...e, installed: false, error: 'tempergraph not found', looked }))
         return null
       }
-      argv = [place, ...argv.slice(1)]
-      if (!isReadOnly(argv)) throw new Error(`refused: ${argv.join(' ')}`)
-      continue
+      tried.add(place)
+      useProgram(place)
+      out = await call($, [place, ...argv.slice(1)], true)
+      if (out !== null && out.exitCode !== 127) break
     }
-    if (out.exitCode !== 0) {
-      if (isEngineVerb) {
-        const now = await $.clock.now()
-        await update($, engine, e => ({ ...e, staleSince: e.staleSince ?? now, error: `exit ${out.exitCode}` }))
-      }
-      return null
-    }
-    return out.stdout
   }
+  if (out === null) return null
+  const code = out.exitCode
+  if (code !== 0) {
+    if (isEngineVerb) {
+      const now = await $.clock.now()
+      await update($, engine, e => ({ ...e, staleSince: e.staleSince ?? now, error: `exit ${code}` }))
+    }
+    return null
+  }
+  return out.stdout
 }
 
 async function verb<T>($: $, argv: readonly string[]): Promise<T | null> {

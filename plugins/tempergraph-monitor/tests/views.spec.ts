@@ -174,6 +174,12 @@ describe('engine path setting (MAC §2.3)', () => {
     expect(enginePlaces()).toEqual(['tempergraph', '/home/me/.tempergraph/bin/tempergraph'])
     expect(lookedAt()[0]).toBe('PATH: tempergraph')
   })
+  test('MAC-AC-6 AC 1: no program is a place twice: a setting equal to the shim of the engine home is one place', () => {
+    useEngine('/srv/tg-home/bin/tempergraph')
+    learnHome('/srv/tg-home')
+    expect(enginePlaces()).toEqual(['/srv/tg-home/bin/tempergraph', 'tempergraph'])
+    useEngine('')
+  })
   test('MAC-AC-6 AC 1: the shim path of the engine home from a probe answer', () => {
     expect(homeShimPath('/home/me/.tempergraph')).toBe('/home/me/.tempergraph/bin/tempergraph')
     expect(homeShimPath('  /srv/tg-home/\n')).toBe('/srv/tg-home/bin/tempergraph')
