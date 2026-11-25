@@ -58,9 +58,9 @@ WHEN the read of the loop's closed issues (ISS-B9) fails twice THE loop SHALL op
 
 WHEN findings would file THE loop SHALL send each to the oldest open loop issue whose body holds its fingerprint's hidden line, else to the oldest whose body holds its cause line `<!-- tempergraph:cause=<key> -->` (the key being a digest of side, workflow and cause, without the unit), and SHALL make one issue or one "seen again" comment for all findings of one cause key in one filing, listing every unit; the closed issues of ISS-B3 to ISS-B6 match the same way, and the title names the workflow and the cause, not a unit.
 
-- GIVEN one run whose cause `judge_unread_pass` would file at the units `plan`, `expand` and `phase` WHEN the loop files THEN one issue opens whose Summary names the three units and whose body holds the three fingerprints' hidden lines, and the other two findings are recorded `grouped` with its URL
-- GIVEN that issue open WHEN a later run's same cause files at the unit `code` THEN the issue gets one "seen again" comment naming `code` and no issue opens
-- GIVEN an open issue filed before this behaviour, with only a fingerprint's hidden line WHEN that fingerprint files THEN it gets the comment
+- GIVEN one run whose one cause would file at three units WHEN the loop files THEN one issue opens whose Summary names the three units and whose body holds the three fingerprints' hidden lines, and the other two findings are recorded `grouped` with its URL
+- GIVEN that issue open WHEN a later run's same cause files at a fourth unit THEN the issue gets one "seen again" comment naming that unit and no issue opens
+- GIVEN an open issue that holds only a fingerprint's hidden line and no cause line WHEN that fingerprint files THEN it gets the comment, and WHEN another unit of its cause files THEN one new issue opens with a cause line
 - GIVEN the cause's issue closed as not planned 5 days ago WHEN the cause files at two other units THEN both are recorded `muted`
 
 ### ISS-B8 Environment, run and steps to reproduce
@@ -73,11 +73,11 @@ WHEN the loop opens an issue or adds a "seen again" comment THE loop SHALL write
 
 ### ISS-B9 The loop's issues are read from the label list
 
-WHEN the loop looks for the issues of ISS-B7 THE loop SHALL read the repository's open, and when none matches its closed, issues that carry `tempergraph-loop`, through the code host's list of issues by label (on GitHub the REST issues endpoint, page by page), never its search index, once per repository and state in one filing, and match their hidden lines on the machine.
+WHEN the loop looks for the issues of ISS-B7 THE loop SHALL read the repository's open, and when none matches its closed, issues that carry `tempergraph-loop` from the code host's full list of issues with that label, which holds an issue as soon as it exists, never from a search whose results can lag behind or be refused, once per repository and state in one filing, and match their hidden lines on the machine.
 
 - GIVEN three findings of three causes in one filing WHEN the loop files THEN the open list and the closed list are each read once
 - GIVEN an issue the loop opened in an earlier filing WHEN the same fingerprint files a moment later THEN it is found and commented on
-- GIVEN the GitHub code host WHEN it reads the loop's issues THEN it calls the REST issues endpoint with the label and the state, with no search and no GraphQL, and leaves out pull requests
+- GIVEN a code host whose search is refused WHEN the loop reads its issues THEN the read still succeeds, holds every issue with the label in the asked state, and holds no pull request
 
 ### ISS-B10 A run-log excerpt with no free text
 
@@ -97,7 +97,7 @@ WHEN the loop writes `## Run log` THE loop SHALL show the last segment's run-log
 - ISS-AC6 (ISS-B6): Against a fake code host whose search of closed issues fails twice, a finding opens a new issue with no link and records that the search failed, and with one failure it retries and applies the close reason
 - ISS-AC7 (ISS-B7): Against a fake code host, one cause at three units in one filing opens one issue naming the three units with their three hidden lines, a later unit of the cause comments on it, an issue with only a fingerprint line takes that fingerprint's comments, another cause opens its own issue, and a cause closed as not planned 5 days ago is muted at other units
 - ISS-AC8 (ISS-B8): Against a fake code host and a fixture run log, an issue shows the run's and the loop's engine versions, the workflow version, executor, CLI version, model, alias, mode, Python and OS, the thread, exit code, reason and cost, and the status, logs and rerun commands of its thread and unit, and a "seen again" comment holds the same sections; end to end, a loop child's issue shows the engine version, the thread and run-log lines
-- ISS-AC9 (ISS-B9): Against a fake code host, one filing of three causes reads the open and the closed list once each, and an issue opened by one filing is commented on by the next; the GitHub client calls the REST issues endpoint with the loop's label and state, no search, and leaves out pull requests
+- ISS-AC9 (ISS-B9): Against a fake code host, one filing of three causes reads the open and the closed list once each, and an issue opened by one filing is commented on by the next; the GitHub client reads the list of issues by the loop's label and state, makes no search, and leaves out pull requests
 - ISS-AC10 (ISS-B10): A canary placed in a fixture run log's request, notes, evidence, gap, transcript, changed paths and in free-text values of listed keys reaches no issue or comment, the excerpt keeps the last 40 lines and counts the rest, and another unit's records are not shown
 
 ## Open questions
