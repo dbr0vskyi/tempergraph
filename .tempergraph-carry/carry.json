@@ -5,10 +5,14 @@
   "checkpoint_format": 1,
   "workflow": "temperspec",
   "task_id": "i21",
-  "workflow_version": "0.1.0+aedbf93a44f5",
+  "workflow_version": "0.1.0+b1320bb6cfb4",
   "seq": 151,
-  "lease": null,
-  "pushed_at": "2026-11-25T14:55:13.146Z",
+  "lease": {
+    "machine": "01446a87-b7ab-4229-b247-53570ac19682",
+    "process": 40282,
+    "since": "2026-11-25T14:55:44.647Z"
+  },
+  "pushed_at": "2026-11-25T14:55:48.082Z",
   "scrubbed": {},
   "files": {
     "checkpoint.sqlite": "40edf2db4941eea32f2dc42636864c8d62a9e7addb4abe1e1e1de7d6475f31d0",
