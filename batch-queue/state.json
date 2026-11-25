@@ -12,12 +12,12 @@
         71,
         51
       ],
-      "state": "finished",
+      "state": "merged",
       "thread": "temperspec/i71",
       "branch": "tg/temperspec/i71",
       "cost_usd": 11.06,
       "exit": 0,
-      "note": "opened PR #146; under review before merge"
+      "note": "merge f1894ea8; run PR #146; follow-ups on #71"
     },
     {
       "order": 2,
@@ -293,5 +293,13 @@
       "what": "last stage's gh pr create refused: absolute --body-file path",
       "commit": "5e924254"
     }
+  ],
+  "todo_before_ready": [
+    "restamp temperspec (author verify, model-free rungs)",
+    "TS-L2 row and measured cost per step in the package docs (#51)",
+    "move or keep the runs' notes under repo-root docs/ (CONTRIBUTING asks for the package's docs/)",
+    "delete batch-queue/",
+    "clean pytest roots from ~/.tempergraph/index.json and stats (backup first)",
+    "close or let GitHub mark merged the runs' own draft pull requests (#146)"
   ]
 }
