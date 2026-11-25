@@ -13,7 +13,7 @@ import json
 import os
 import re
 import shutil
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -469,6 +469,12 @@ class ClaudeExecutor:
                               mcp_config=cfg)
             res = self._run(req, argv, (), env, sink, idle_s=None)
         return _mask_private(res)
+
+    def undefined_mcp_servers(self, tools: Sequence[str], workdir: Path | None = None) -> list[str]:
+        """ECC-B22: each declared MCP server the operator's own configuration does not define, in first-seen order;
+        an unreadable configuration defines none."""
+        defined = mcpconfig.operator_servers(workdir if workdir is not None else Path.cwd())
+        return [s for s in mcpconfig.declared_servers(tools) if s not in defined]
 
     def unreachable_views(self, views: ViewSet, workdir: Path) -> dict[str, str]:
         """ECC-B15: each viewed MCP server with no working proxy, with its reason; checked before the judge prompt."""

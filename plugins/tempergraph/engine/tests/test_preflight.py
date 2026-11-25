@@ -119,6 +119,65 @@ def test_ecc_ac16_a_cli_that_lists_strict_mcp_config_passes(tmp_path: Path, monk
     assert all(w.code != "executor-version-untested" for w in rep.warnings)
 
 
+def _operator(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, content: str | None, **scenario: Any) -> Path:
+    from .fixtures import streams as S
+
+    record = tmp_path / "record.json"
+    S.fake_claude(tmp_path, monkeypatch, {"record": str(record), **scenario})
+    for v in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
+        monkeypatch.delenv(v, raising=False)
+    home = tmp_path / "opshome"
+    home.mkdir()
+    if content is not None:
+        (home / ".claude.json").write_text(content)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+    return record
+
+
+def _undefined(rep: Any) -> list[Any]:
+    return [f for f in rep.refusals if f.code == "mcp-server-undefined"]
+
+
+def test_ecc_ac17_a_step_declaring_an_undefined_server_is_refused_naming_it(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC17 (ECC-B22)
+    record = _operator(tmp_path, monkeypatch, '{"mcpServers": {"other": {"command": "o"}}}')
+    rep = preflight_of(_mcp_spec(), _claude_registry())
+    found = _undefined(rep)
+    assert not rep.ok and len(found) == 1
+    assert found[0].unit == "review" and "review" in found[0].message and "tracker" in found[0].message
+    assert not record.exists()  # no session started
+
+
+def test_ecc_ac17_a_step_whose_declared_server_is_defined_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC17
+    _operator(tmp_path, monkeypatch, '{"mcpServers": {"tracker": {"command": "t"}}}')
+    assert not _undefined(preflight_of(_mcp_spec(), _claude_registry()))
+
+
+def test_ecc_ac17_an_unreadable_configuration_refuses_the_step(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC17
+    _operator(tmp_path, monkeypatch, "not json")
+    found = _undefined(preflight_of(_mcp_spec(), _claude_registry()))
+    assert len(found) == 1 and "tracker" in found[0].message
+
+
+def test_ecc_ac17_a_contest_unit_declaring_an_undefined_server_is_refused(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC17
+    from tempergraph.api import Contest, Routing, Workflow
+
+    from .fixtures.workflows import named
+
+    _operator(tmp_path, monkeypatch, "{}")
+    step = Step(prompt="Draft {request}", tools=["read", "mcp:tracker/get_issue"],
+                gate=Gate(judge=Judge(stance="V."), criteria=[crit("c-slot")]))
+    spec = named(Workflow(order=["pick"], units={"pick": Contest(step=step, slots=2)},
+                          issue_repository="acme/x", routing=Routing(description="Best of two")))
+    found = _undefined(preflight_of(spec, _claude_registry()))
+    assert len(found) == 1 and found[0].unit == "pick" and "tracker" in found[0].message
+
+
+def test_ecc_ac17_a_stand_in_executor_is_not_asked_about_servers() -> None:  # ECC-AC17
+    assert not _undefined(preflight_of(_mcp_spec(), reg("claude")))
+
+
 def test_qualified_alias_not_in_binding_table() -> None:
     assert "alias-unbound" in codes(preflight_of(with_step(two_step(), "draft", model="claude:deep"), reg("claude")))
 

@@ -329,6 +329,38 @@ def test_ecc_ac16_probe_passes_when_help_lists_strict_mcp_config(tmp_path: Path,
     assert "--strict-mcp-config" in p.facts["flags"]
 
 
+def _operator_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, content: str | None) -> None:
+    home = tmp_path / "opshome"
+    home.mkdir()
+    if content is not None:
+        (home / ".claude.json").write_text(content)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
+
+
+_DECLARED = ("read", "mcp:tracker/get_issue", "mcp:wiki/get_page", "mcp:tracker/list")
+
+
+def test_ecc_ac17_undefined_mcp_servers_names_each_declared_server_the_operator_does_not_define(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC17 (ECC-B22)
+    ex = ClaudeExecutor(bindings=BindingTable())
+    _operator_home(tmp_path, monkeypatch, json.dumps({"mcpServers": {"tracker": {"command": "t"}}}))
+    assert ex.undefined_mcp_servers(_DECLARED) == ["wiki"]
+    assert ex.undefined_mcp_servers(("read", "bash")) == []
+
+
+def test_ecc_ac17_undefined_mcp_servers_is_empty_when_all_are_defined(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC17
+    _operator_home(tmp_path, monkeypatch, json.dumps({"mcpServers": {"tracker": {"command": "t"}, "wiki": {"command": "w"}}}))
+    assert ClaudeExecutor(bindings=BindingTable()).undefined_mcp_servers(_DECLARED) == []
+
+
+@pytest.mark.parametrize("content", [None, "not json"])
+def test_ecc_ac17_an_unreadable_configuration_leaves_every_declared_server_undefined(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, content: str | None) -> None:  # ECC-AC17
+    _operator_home(tmp_path, monkeypatch, content)
+    assert ClaudeExecutor(bindings=BindingTable()).undefined_mcp_servers(_DECLARED) == ["tracker", "wiki"]
+
+
 def test_run_step_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     rec = tmp_path / "rec.json"
     S.fake_claude(tmp_path, monkeypatch, {"record": str(rec), "lines": [
