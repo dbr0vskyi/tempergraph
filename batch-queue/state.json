@@ -51,12 +51,12 @@
       "issues": [
         144
       ],
-      "state": "running",
+      "state": "stopped, under review",
       "thread": "temperspec/i144",
       "branch": "tg/temperspec/i144",
-      "cost_usd": null,
-      "exit": null,
-      "note": "found in this batch"
+      "cost_usd": 9.69,
+      "exit": 4,
+      "note": "resume refused workflow_changed; branch local only, head 278e4aa3"
     },
     {
       "order": 2.3,
