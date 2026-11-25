@@ -1,5 +1,7 @@
 # What the runs of this batch showed (temporary; becomes issues before the folder is deleted)
 
+Filed from this file on 2026-11-25: #139 (commit on git 2.39), #140 (a script's lost message), #141 and #145 and #142 (monitor), #143 (the last stage's pull request), #144 (package tests and the real home), #148 (the phase gate's scope), #149 (`ts-exp-opened` per session), #150 (the outcome gate back to triage for one line), #151 (`ts-traced` and a live criterion), #152 (`workflow_changed` after a trip back), #153 (the usage limit and the retry budget), #154 (a rerun's second plan), #155 (feedback points not accounted for), #156 (a plan row under `.claude/`), #157 (context at a session's start), #158 (`status` names the engine's build), #159 (notes at the repository root), #160 (worktree cleanup on merge), #161 (TST-AC7 beside a live run), #162 (the run recipe in CONTRIBUTING). #124 has a comment with the review evidence. Not filed: the 40 warnings of `run --check`, the 14 minute suite.
+
 One entry per thing seen, with the run or command that showed it. An entry that deserves work becomes a GitHub issue and gets the number here.
 
 ## Setting up on the owner's machine (2026-11-25)
@@ -89,6 +91,11 @@ Cost by session (reported USD): triage 1.02 + judge 0.08; three `read_gap` 0.56 
 - **The run then stopped at `attempt_cap`** (15 attempts in one invocation, exit 4): two trips back are enough to reach it. `resume` continues, so it is one more touch of a person and not a failure, but nothing in the exit says the run was in a loop of trips back.
 - **The stopped thread could not be resumed.** `resume` exited 2 with `workflow_changed`: "cannot resume on workflow version 0.1.0+b1320bb6cfb4: 'discovery' now produces 'handoff', which a later unit reads and this thread never recorded ... Reinstall the version it ran on (0.1.0+aedbf93a44f5)". The package's content changed when run i71 was merged (two prompt files); the trip back to triage had cleared this thread's `handoff` and `plan`, so the check read a key both versions produce as new. Run i21, with its artifacts recorded, resumed across the same change. A merge into the checkout a package is registered from changes the package under every live run of it; the operator now merges package changes only when no run of that area is between a trip back and its next step, or accepts the branch as it stands. Here the branch was reviewed as it stood: its code had passed the code gate and the outcome judge had graded every task criterion met.
 - Two of three runs of the day that reached the outcome gate with a spec change were sent back by `ts-traced` for an old criterion that names a live or recorded fact (ECC-AC5, CST-AC5).
+
+### i144, the review of the stopped branch (2026-11-25)
+
+- **A second run whose every passed gate hid a defect that blocks its use.** The pytest plugin is an entry point inside the engine's package; pytest imports entry-point plugins before any conftest, so the engine's name is bound to the installed copy before the suite's conftest puts the worktree's `src` first. A one-process suite run in a worktree would then test another checkout's code and say nothing. It does not bite yet only because the shared environment was installed before the entry point existed. Seven smaller points beside it (the fixture's scope, the order and locking of the verb's two writes, an option accepted and ignored, the spec line the judge had asked for). Sent back as a rerun from `plan` (`tasks/i144.review.md`).
+- The reviewer's read-only count on this machine: 106 of 107 roots of the index are gone folders, 110 run rows and 1,152 session rows of the month would go.
 
 ### Baseline suite on `main` (2026-11-25, Python 3.12, macOS)
 
