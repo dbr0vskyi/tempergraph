@@ -809,6 +809,44 @@ def test_the_code_gate_checks_the_whole_change_after_the_phases(repo: Path) -> N
     assert by["ts-code-changed"].status == "pass" and by["ts-code-rows"].status == "pass"
     assert by["ts-code-lane"].status == "n_a" and "not in the quick lane" in by["ts-code-lane"].message
     assert by["ts-code-verify"].status == "pass" and by["ts-code-proof"].status == "pass"
+    # AC 6, PHC-AC19 (PHC-B19): the two lists counted from the code step's entry
+    # (the stand-in's code session wrote the plan's status and the report: the first list holds those two, none of the phases' files)
+    assert _line(res, "Changed since the code step was entered: ") == "plan.md, report.md"
+    earlier = _line(res, "Changed only by earlier steps: ")
+    for path in ("src/p1.py", "src/p2.py", "tests/test_p1.py", "tests/test_p2.py"):
+        assert f"{path} (phase)" in earlier, (path, earlier)
+    assert "Changed paths since the run's base" not in res.evidence
+    # a run with no commit of the step phase keeps the one line
+    work, base2 = _history_repo(stand.workdir.parent / "nophase", phase_commit=False)  # type: ignore[union-attr]
+    plain = checks.code_check(dataclasses.replace(_phase_context(work, base2), unit="code"))
+    assert "Changed paths since the run's base" in plain.evidence
+
+
+def test_a_stand_in_run_of_two_phases_with_earlier_documents_passes_every_phase_gate_with_no_pause(repo: Path) -> None:
+    # AC 5, PHC-AC20 (PHC-B9, PHC-B16, PHC-B17)
+    stand = Stand(phases=2, route="discovery")  # the run takes the discovery step, which writes handoff.md
+    out = _go(repo, stand)
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    assert [r for r in _records(repo, "pause")] == []
+    assert [r for r in _records(repo, "escalate")] == []
+    prompts = stand.prompts("phase", "judge")
+    assert len(prompts) == 2
+    for number, prompt in enumerate(prompts, start=1):
+        assert "Changed only by earlier steps:" in prompt and "Changed since the phase step was entered:" in prompt
+        earlier = next(ln for ln in prompt.splitlines() if ln.startswith("Changed only by earlier steps:"))
+        own = next(ln for ln in prompt.splitlines() if ln.startswith("Changed since the phase step was entered:"))
+        assert "handoff.md (discovery)" in earlier and "triage_note.md (triage)" in earlier
+        assert f"src/p{number}.py" in own and f"tests/test_p{number}.py" in own
+        assert "triage_note.md" not in own and "handoff.md" not in own
+
+
+def test_the_code_judge_brief_says_the_changed_paths_are_two_lists_counted_from_the_code_steps_entry() -> None:
+    # AC 6, PHC-AC19 (PHC-B19)
+    said = _said((ROOT / "judges" / "code.md").read_text(encoding="utf-8")).lower()
+    for phrase in ("two lists counted from the code step's entry", "changed since the code step was entered",
+                   "changed only by earlier steps", "the files of the phases", "need no row",
+                   "docs/tasks/", "the plan", "written by prepare"):
+        assert phrase in said, phrase
 
 
 def test_a_plan_whose_status_is_not_completed_after_the_last_phase_fails_before_any_command_runs(repo: Path) -> None:

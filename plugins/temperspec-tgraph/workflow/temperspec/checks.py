@@ -1564,6 +1564,9 @@ def code_check(ctx: Any) -> Any:
     ts-code-spend, ts-code-preview, ts-code-previewed, ts-code-session, ts-code-rerun, ts-code-ran,
     ts-code-ruleread, ts-code-order.
 
+    After the phases (a commit of the run names the step `phase`) the evidence holds the changed paths as two
+    lists counted from the code step's entry (PHC-B19); any other run keeps the one line counted from the base.
+
     The marks come first: a plan with a row not marked completed goes back to the code step at once, with no
     command run. Marks are claims, so a marked plan is then verified as before, and each marked row's file must
     be among the paths the run changed. Every verification command is run here whatever the step reported; one that
@@ -1624,7 +1627,7 @@ def code_check(ctx: Any) -> Any:
         # ts-code-mixed: the step retries, so the retry lists only what it can fix; the environmental command stays
         # in the evidence
         found = [replace(f, status="maybe") if isinstance(f, _Environmental) else f for f in found]
-    return _result(ctx, found, plan, links, reading=reading, commands=lines)
+    return _result(ctx, found, plan, links, reading=reading, commands=lines, step="code")
 
 
 # ---------------------------------------------------------------------------------------------
