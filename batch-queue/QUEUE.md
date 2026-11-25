@@ -46,6 +46,7 @@ State words: `queued`, `running`, `paused`, `merged`, `failed`, `skipped`.
 | 2 | i7 | #7 | Review cap floor: one review of the most signalled session | merged | temperspec/i7 | 8.03 | Outcome met, 21 min, one pause (G3 answered with its default); last stage `pushed`, no pull request (#143) |
 | 2a | i21 | #21 | Step and judge sessions are offered no MCP server they do not declare (the account's connectors cost about 165k tokens a step session) | running | temperspec/i21 | | Biggest cost lever found; probe facts are in the request |
 | 2b | i144 | #144 | Package tests run directly write the real machine index and stats | running | temperspec/i144 | | Found in this batch |
+| 2c | i148 | #148 | A phase's gate grades the phase's own changes (every phase of the `phases` arm paused for a person in run i21) | queued | | | Next in temperspec's files; before the gate split, which adds phases |
 | 3 | i134a | #134 | Split the discovery gate (extract pass, write pass) | queued | | | L: first of two runs |
 | 4 | i134b | #134 | Code step: the join and the quick lane get prompts of their own | queued | | | L: second of two runs |
 | 5 | i114 | #114, #117 | Loop findings: a judge that passes without opening a changed path; the phase check failing | queued | | | Triage the evidence first |
