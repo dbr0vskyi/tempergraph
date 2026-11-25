@@ -95,7 +95,7 @@ def _claude_registry() -> Registry:
 
 
 def test_ecc_ac16_a_cli_without_strict_mcp_config_is_refused_and_launches_nothing(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC16 (ECC-B21)
     from .fixtures import streams as S
 
     record = tmp_path / "record.json"
@@ -108,7 +108,7 @@ def test_ecc_ac16_a_cli_without_strict_mcp_config_is_refused_and_launches_nothin
     assert not record.exists()
 
 
-def test_ecc_ac16_a_cli_that_lists_strict_mcp_config_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_ecc_ac16_a_cli_that_lists_strict_mcp_config_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # ECC-AC16
     from .fixtures import streams as S
 
     S.fake_claude(tmp_path, monkeypatch, {"help": "--tools --strict-mcp-config", "version": "2.1.329 (Claude Code)"})
