@@ -44,10 +44,10 @@ Beside the units: [judge reading](judge-reading.spec.md), what each judge is tol
 
 ## Open questions
 
-- No step or judge uses the large model tier; each states its effort and the reason ([0002](../adr/0002-model-and-effort-per-unit.adr.md)).
+- No step or judge uses the large model tier; each states its effort and the reason ([`model-and-effort-per-unit`](../adr/model-and-effort-per-unit.adr.md)).
 - Whether the code agrees with the specs by meaning is judged once, at the code gate (ts-code-aligned, ts-code-related), not again at the outcome gate.
 - The release step and a work-tracker start are left out of the first version.
 - A judge sees a step's output and its references, never the step's prompt or the gate's command runs, so criteria about how a step works are checked by the gate, model-free (ts-dis-narrow, ts-plan-reading, ts-code-once, ts-code-preview, ts-code-reuse, ts-code-ran, ts-dsh-limit). What a code session actually ran is read by the engine's session review in the improvement loop, not graded at the gate.
-- The short discovery visit (discovery_short) is a second step beside discovery, chosen by the route after triage; every return to discovery from a later gate goes to the full visit ([0003](../adr/0003-short-discovery-visit.adr.md)).
+- The short discovery visit (discovery_short) is a second step beside discovery, chosen by the route after triage; every return to discovery from a later gate goes to the full visit ([`short-discovery-visit`](../adr/short-discovery-visit.adr.md)).
 - Specs written by the setup step describe behaviour that exists already, so the outcome gate does not ask for a test that names each of their acceptance criteria; a task that later touches such a behaviour adds the id to its test.
 - Repository setup is a conditional first step of this workflow because release 1 of the engine has no sub-workflows; it moves into one when the engine has them.

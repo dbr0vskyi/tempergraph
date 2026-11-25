@@ -120,7 +120,7 @@ def snapshot(cw: CompiledWorkflow, thread_id: str) -> Snapshot:
 
 
 def classify_snapshot(snap: Snapshot, lock_held: bool) -> ThreadState:
-    """DUR-B9: a held lock reads `running` over any checkpoint state (ADR-0014)."""
+    """DUR-B9: a held lock reads `running` over any checkpoint state (ADR `sqlite-checkpointer`)."""
     if lock_held:
         return ThreadState.RUNNING
     if not snap.exists:
@@ -150,7 +150,7 @@ def update_values(cw: CompiledWorkflow, config: Any, update: Any) -> bool:
 
 
 def resume_input(value: Any) -> Any:
-    """The graph input that answers a pending interrupt; keeps LangGraph inside durability (ADR-0115)."""
+    """The graph input that answers a pending interrupt; keeps LangGraph inside durability (ADR `the-engine-is-a-src-layout-python-package-inside-its-plugin`)."""
     from langgraph.types import Command
 
     return Command(resume=value)

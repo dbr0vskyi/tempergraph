@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The second half of the self-improvement loop. [SIL](self-improvement.spec.md) turns runs into findings and issues; this spec turns a cluster of findings into a proposal (a typed, small change to one workflow package), measures it in a trial (the current and the proposed version on the same fixed cases), and hands the result to a person as a draft pull request. The loop never merges, never changes engine code and never changes a step together with the gate that grades it ([ADR-0030](../adr/0030-improvement-closes-through-measured-proposals.adr.md), [ADR-0031](../adr/0031-steps-and-their-graders-change-apart.adr.md)); trials and the post-release comparison write no code, and only the proposer writes, workflow data on its own branch (OVR-B16). The path is: findings, ranked clusters, a proposer patch on a branch, the class check, a paired trial decided by rule ([ADR-0034](../adr/0034-paired-trial-on-a-fixed-case-set.adr.md)), a draft pull request, a person's merge, and a post-release watch. The background is [R-030](../research/R-030-self-improving-agent-systems.rsrch.md) and [R-031](../research/R-031-self-improvement-gap-analysis.rsrch.md); defaults without data behind them are recorded as parameters with that provenance ([IMD](improvement-data.spec.md)). Workflow owners and the people who review the loop's pull requests depend on it.
+The second half of the self-improvement loop. [SIL](self-improvement.spec.md) turns runs into findings and issues; this spec turns a cluster of findings into a proposal (a typed, small change to one workflow package), measures it in a trial (the current and the proposed version on the same fixed cases), and hands the result to a person as a draft pull request. The loop never merges, never changes engine code and never changes a step together with the gate that grades it ([ADR `improvement-closes-through-measured-proposals`](../adr/improvement-closes-through-measured-proposals.adr.md), [ADR `steps-and-their-graders-change-apart`](../adr/steps-and-their-graders-change-apart.adr.md)); trials and the post-release comparison write no code, and only the proposer writes, workflow data on its own branch (OVR-B16). The path is: findings, ranked clusters, a proposer patch on a branch, the class check, a paired trial decided by rule ([ADR `paired-trial-on-a-fixed-case-set`](../adr/paired-trial-on-a-fixed-case-set.adr.md)), a draft pull request, a person's merge, and a post-release watch. The background is [research `self-improving-agent-systems`](../research/self-improving-agent-systems.rsrch.md) and [research `self-improvement-gap-analysis`](../research/self-improvement-gap-analysis.rsrch.md); defaults without data behind them are recorded as parameters with that provenance ([IMD](improvement-data.spec.md)). Workflow owners and the people who review the loop's pull requests depend on it.
 
 ## Behaviours
 
@@ -33,7 +33,7 @@ WHEN a patch is classified THE engine SHALL load the workflow before and after i
 
 ### PRP-B15 Widening tools from grants
 
-WHEN a `tools` patch is drafted from `grant_missing` findings THE proposer SHALL declare exactly the grants people gave and used, name the runs they came from, and have it opened for a person's review, never trialled alone; a judge view widened from `views.add` grants is class `weakening` ([ADR-0080](../adr/0080-a-person-may-grant-a-step-tools-for-a-run.adr.md)).
+WHEN a `tools` patch is drafted from `grant_missing` findings THE proposer SHALL declare exactly the grants people gave and used, name the runs they came from, and have it opened for a person's review, never trialled alone; a judge view widened from `views.add` grants is class `weakening` ([ADR `a-person-may-grant-a-step-tools-for-a-run`](../adr/a-person-may-grant-a-step-tools-for-a-run.adr.md)).
 
 - GIVEN a judge view widened from grants WHEN classified THEN it is `weakening`
 
@@ -89,7 +89,7 @@ WHEN `improve trial <proposal> [--cases <set>] [--cap <usd>]` runs THE engine SH
 
 ### PRP-B19 Decision rule
 
-WHEN a trial decides THE engine SHALL count out-of-sample non-tied pairs only, deciding `shown_better` when wins reach the one-sided sign-test p ≤ 0.05 count ([R-031](../research/R-031-self-improvement-gap-analysis.rsrch.md) F3) and every guard holds, `regressed` when losses reach that count or any guard fails, and `not_shown` otherwise, with reason `too_few_pairs` under 8 such pairs, adding the warning `noisy_case_set` for a noise floor above 0.5 and reporting in-sample pairs without counting them.
+WHEN a trial decides THE engine SHALL count out-of-sample non-tied pairs only, deciding `shown_better` when wins reach the one-sided sign-test p ≤ 0.05 count ([research `self-improvement-gap-analysis`](../research/self-improvement-gap-analysis.rsrch.md) F3) and every guard holds, `regressed` when losses reach that count or any guard fails, and `not_shown` otherwise, with reason `too_few_pairs` under 8 such pairs, adding the warning `noisy_case_set` for a noise floor above 0.5 and reporting in-sample pairs without counting them.
 
 - GIVEN a noise floor of 0.6 WHEN decided THEN the trial carries `noisy_case_set`
 

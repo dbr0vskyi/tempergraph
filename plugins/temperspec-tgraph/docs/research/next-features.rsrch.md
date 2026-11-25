@@ -106,7 +106,7 @@ Ranked by value for the effort.
 
 | # | Feature | Taken from | What it gives | Engine | Can start |
 |---|---|---|---|---|---|
-| 1 | **A checked link from each acceptance criterion to its test.** The spec names the test; a check confirms the test exists, carries the id and ran | Tessl | Moves "code agrees with specs" partly from a judge to a check. It narrows the gap the package's decision record 0001 accepts | None | Now |
+| 1 | **A checked link from each acceptance criterion to its test.** The spec names the test; a check confirms the test exists, carries the id and ran | Tessl | Moves "code agrees with specs" partly from a judge to a check. It narrows the gap the package's decision record `ts-spec-sync` accepts | None | Now |
 | 2 | **A test command for each criterion before coding.** The plan maps every criterion to the command that will prove it | GSD | "Done" is decided before the code exists; the code step cannot redefine it | None | Now |
 | 3 | **A pull request summary of what the owner must read**: the behaviours and criteria that changed, the defaults taken, the deviations | The review-burden criticism | The owner reads a page, not every file | None | Now |
 | 4 | **A drift check outside runs.** A model-free script for pre-commit or CI: spec format, links, criterion-to-test links. And a scheduled run in which a judge compares specs with the code and files what it finds | Tessl's scripts; no tool has the second part | Specs stay true between runs, where 81.5% of spec files elsewhere are never touched again | Schedules (designed) | Script now; scheduled run later |

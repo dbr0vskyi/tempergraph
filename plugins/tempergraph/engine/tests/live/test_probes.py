@@ -1,4 +1,4 @@
-"""Live probes against a signed-in `claude` (ECC-B13, R-150 WTR, SRV; live-checks plan L-1 to L-12).
+"""Live probes against a signed-in `claude` (ECC-B13, research `rationale-carried-from-the-engine-specs` WTR, SRV; live-checks plan L-1 to L-12).
 
 Skipped unless TEMPERGRAPH_LIVE=1. Each test launches `claude -p` with the argv the engine itself builds, so a
 pass confirms the engine's launch, not a hand-written one. Each session is capped with `--max-budget-usd`; the

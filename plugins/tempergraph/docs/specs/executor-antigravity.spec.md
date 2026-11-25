@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The `antigravity` executor runs each step attempt as one headless Antigravity CLI session: `agy` in streaming mode, the prompt sent as one `stream-json` user event on standard input and the event stream read from standard output, under the [executor interface](executor-interface.spec.md). Facts about the CLI come from [R-002](../research/R-002-antigravity-cli-headless.rsrch.md). `agy` reports tokens but no cost, has no per-invocation flag for settings, permission rules or MCP servers, keeps its config home under `~/.gemini`, and its plan mode is not an enforcement boundary. So the executor restricts a session only through an isolated session home with generated configuration and an engine-owned gatekeeper hook ([ADR-0011](../adr/0011-isolated-config-home-for-antigravity.adr.md)), and declares judge restriction false until probes P-AG-1 to P-AG-3 confirm that design; until then its steps are judged on an executor that can restrict tools ([ADR-0013](../adr/0013-cross-executor-judging.adr.md)). The probes P-AG-1 to P-AG-10, none run yet, are listed in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md) under EAG. Workflow authors and operators who choose this executor depend on what it declares.
+The `antigravity` executor runs each step attempt as one headless Antigravity CLI session: `agy` in streaming mode, the prompt sent as one `stream-json` user event on standard input and the event stream read from standard output, under the [executor interface](executor-interface.spec.md). Facts about the CLI come from [research `antigravity-cli-headless`](../research/antigravity-cli-headless.rsrch.md). `agy` reports tokens but no cost, has no per-invocation flag for settings, permission rules or MCP servers, keeps its config home under `~/.gemini`, and its plan mode is not an enforcement boundary. So the executor restricts a session only through an isolated session home with generated configuration and an engine-owned gatekeeper hook ([ADR `isolated-config-home-for-antigravity`](../adr/isolated-config-home-for-antigravity.adr.md)), and declares judge restriction false until probes P-AG-1 to P-AG-3 confirm that design; until then its steps are judged on an executor that can restrict tools ([ADR `cross-executor-judging`](../adr/cross-executor-judging.adr.md)). The probes P-AG-1 to P-AG-10, none run yet, are listed in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md) under EAG. Workflow authors and operators who choose this executor depend on what it declares.
 
 ## Behaviours
 
@@ -107,7 +107,7 @@ WHEN `agy` is missing, its model listing fails because the account is signed out
 
 ### EAG-B16 Sandbox is opt-in
 
-WHEN an operator opts in to `--sandbox` for step sessions THE executor SHALL pass it and record whether `init` reported it active, and pass it in no other case, because it confines only shell commands and does nothing where the host blocks it ([R-002 A20](../research/R-002-antigravity-cli-headless.rsrch.md)).
+WHEN an operator opts in to `--sandbox` for step sessions THE executor SHALL pass it and record whether `init` reported it active, and pass it in no other case, because it confines only shell commands and does nothing where the host blocks it ([A20](../research/antigravity-cli-headless.rsrch.md)).
 
 - GIVEN no opt-in WHEN a step launches THEN `--sandbox` is not on its argv
 

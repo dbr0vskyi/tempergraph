@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         One issue is one buildable change. If it needs more than one temperspec run, say so under Effort and split it into sub-issues before starting.
-        The engine names no workflow (ADR-0129): an engine feature asked for by a workflow is written as a general capability.
+        The engine names no workflow (ADR `the-engine-names-no-workflow`): an engine feature asked for by a workflow is written as a general capability.
   - type: textarea
     id: summary
     attributes:
@@ -54,4 +54,4 @@ body:
     id: depends
     attributes:
       label: Depends on
-      description: Issues or owner decisions this waits for (`#12`, "owner answers R-135 Q2").
+      description: Issues or owner decisions this waits for (`#12`, "owner answers research `a-final-gate-in-the-pull-request-pipeline` Q2").

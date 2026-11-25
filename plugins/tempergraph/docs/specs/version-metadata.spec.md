@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The engine and its workflows are released apart, so they drift. This spec owns the metadata each side carries so that the engine update ([UPD](engine-update.spec.md)), the state migration ([MIG](state-and-run-migration.spec.md)) and the workflow upgrade ([WUP](workflow-upgrade.spec.md)) can decide by data what must move: the engine release record, the typed compatibility changelog, a workflow's version fields, its stamp record and its own change notes, and how the engine compares the two sides. Currency is decided by content, never by a version string alone ([LIF](lifecycle-and-evals.spec.md)), and the comparison never refuses a run by itself: a run refuses only when validation fails, which a release that tightens a rule causes by content ([WFM](workflow-model.spec.md)). Typed metadata on both sides is [ADR-0057](../adr/0057-typed-version-metadata-on-both-sides.adr.md); `stamp.json` and `changes/` sit at the package root ([PKG](workflow-package.spec.md)). Release engineers, workflow owners, the update and upgrade verbs and the catalog depend on it; design and build notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
+The engine and its workflows are released apart, so they drift. This spec owns the metadata each side carries so that the engine update ([UPD](engine-update.spec.md)), the state migration ([MIG](state-and-run-migration.spec.md)) and the workflow upgrade ([WUP](workflow-upgrade.spec.md)) can decide by data what must move: the engine release record, the typed compatibility changelog, a workflow's version fields, its stamp record and its own change notes, and how the engine compares the two sides. Currency is decided by content, never by a version string alone ([LIF](lifecycle-and-evals.spec.md)), and the comparison never refuses a run by itself: a run refuses only when validation fails, which a release that tightens a rule causes by content ([WFM](workflow-model.spec.md)). Typed metadata on both sides is [ADR `typed-version-metadata-on-both-sides`](../adr/typed-version-metadata-on-both-sides.adr.md); `stamp.json` and `changes/` sit at the package root ([PKG](workflow-package.spec.md)). Release engineers, workflow owners, the update and upgrade verbs and the catalog depend on it; design and build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
 ## Behaviours
 
@@ -93,7 +93,7 @@ WHEN `upgrade --stamp` writes `stamp.json` in the package, only after every chec
 
 ### VER-B17 Workflow change notes
 
-WHEN a workflow ships `changes/<version>.json` THE engine SHALL read it in the changelog's shape with `audience: workflow` and surfaces narrowed to what another workflow can depend on (its `input` parameters, its produced artifact keys and units a parent's sub-workflow unit names, [ADR-0040](../adr/0040-take-script-steps-attention-and-composition-from-archon.adr.md)), and a parent's upgrade SHALL read it as it reads the engine's changelog ([WUP-B6](workflow-upgrade.spec.md)).
+WHEN a workflow ships `changes/<version>.json` THE engine SHALL read it in the changelog's shape with `audience: workflow` and surfaces narrowed to what another workflow can depend on (its `input` parameters, its produced artifact keys and units a parent's sub-workflow unit names, [ADR `take-script-steps-attention-and-composition-from-archon`](../adr/take-script-steps-attention-and-composition-from-archon.adr.md)), and a parent's upgrade SHALL read it as it reads the engine's changelog ([WUP-B6](workflow-upgrade.spec.md)).
 
 - GIVEN a child that renamed a produced key in its change notes WHEN its parent is upgrade-checked THEN the parent's reference is a hit
 
@@ -131,4 +131,4 @@ WHEN `release.json` is missing or unreadable in an installed engine THE engine S
 
 ## Open questions
 
-- Should `requires_engine` also be written into the workflow plugin's `plugin.json` as a dependency on the `tempergraph` plugin with a version range, so Claude Code refuses a mismatched install ([R-055](../research/R-055-updating-a-tool-with-long-lived-runs.rsrch.md) U6)? Until answered: no, `plugin.json` names `tempergraph` without a range. Owner: owner.
+- Should `requires_engine` also be written into the workflow plugin's `plugin.json` as a dependency on the `tempergraph` plugin with a version range, so Claude Code refuses a mismatched install ([research `updating-a-tool-with-long-lived-runs`](../research/updating-a-tool-with-long-lived-runs.rsrch.md) U6)? Until answered: no, `plugin.json` names `tempergraph` without a range. Owner: owner.

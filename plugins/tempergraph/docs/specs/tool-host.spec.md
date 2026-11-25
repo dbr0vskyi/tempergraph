@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The tool host executes the client tools of the [Messages API executor](executor-messages-api.spec.md) inside its worker process ([ADR-0020](../adr/0020-engine-owned-tool-loop-for-the-messages-api.adr.md)). It offers one tool per capability name ([CON-B11](contracts.spec.md)) except `subagent` and the two web capabilities, which are server tools. It is deliberately small: every path stays in the workspace, every command is a declared prefix run as a list, and every output is capped. Its scope is fixed; a step that needs more runs on another executor. Search and list are pure Python so the host needs no external binary and behaves the same on every platform; besides check functions it is the only place where a command runs on the operator's machine for a model, so its command rules are those of [SEC](security.spec.md). The Messages API worker and every step and judge on that executor depend on it.
+The tool host executes the client tools of the [Messages API executor](executor-messages-api.spec.md) inside its worker process ([ADR `engine-owned-tool-loop-for-the-messages-api`](../adr/engine-owned-tool-loop-for-the-messages-api.adr.md)). It offers one tool per capability name ([CON-B11](contracts.spec.md)) except `subagent` and the two web capabilities, which are server tools. It is deliberately small: every path stays in the workspace, every command is a declared prefix run as a list, and every output is capped. Its scope is fixed; a step that needs more runs on another executor. Search and list are pure Python so the host needs no external binary and behaves the same on every platform; besides check functions it is the only place where a command runs on the operator's machine for a model, so its command rules are those of [SEC](security.spec.md). The Messages API worker and every step and judge on that executor depend on it.
 
 ## Behaviours
 
@@ -87,4 +87,4 @@ WHEN a tool is called with any input, including invalid JSON types, an unreadabl
 
 ## Open questions
 
-- Offer remote MCP servers through the host, with the same catalog classification? Deferred with remote MCP in steps ([ADR-0021](../adr/0021-scope-of-planned-work.adr.md)). Owner: engine owner.
+- Offer remote MCP servers through the host, with the same catalog classification? Deferred with remote MCP in steps ([ADR `scope-of-planned-work`](../adr/scope-of-planned-work.adr.md)). Owner: engine owner.

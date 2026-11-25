@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`tempergraph audit` reads one workflow and reports what is likely to make its runs fail, pause, retry, hang or overspend, ranked, with evidence and a remedy for each finding. It is advisory: it never refuses a start, never changes a file and never calls a model, as the overview's contract on read-only verbs requires ([OVR](overview.spec.md)). Refusing a broken workflow stays [validation](workflow-model.spec.md)'s job; changing a workflow stays the improvement loop's ([SIL](self-improvement.spec.md)). It looks in three layers because the causes found in [R-050](../research/R-050-why-runs-fail-stall-repeat-or-overspend.rsrch.md) need different evidence: `definition` reads the workflow package only, `host` reads this machine and the target repository, `history` reads recorded runs. What it checks is a fixed catalog of rules ([ARC](audit-rule-catalog.spec.md)); the tool surface comparison has its own spec ([TSA](tool-surface-audit.spec.md)), and so does the audit of prompts and the other model-facing text ([PRA](prompt-audit.spec.md)). The engine code is `tempergraph.audit` and `tempergraph.cli.audit`; design notes and the release 1 build notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
+`tempergraph audit` reads one workflow and reports what is likely to make its runs fail, pause, retry, hang or overspend, ranked, with evidence and a remedy for each finding. It is advisory: it never refuses a start, never changes a file and never calls a model, as the overview's contract on read-only verbs requires ([OVR](overview.spec.md)). Refusing a broken workflow stays [validation](workflow-model.spec.md)'s job; changing a workflow stays the improvement loop's ([SIL](self-improvement.spec.md)). It looks in three layers because the causes found in [research `why-runs-fail-stall-repeat-or-overspend`](../research/why-runs-fail-stall-repeat-or-overspend.rsrch.md) need different evidence: `definition` reads the workflow package only, `host` reads this machine and the target repository, `history` reads recorded runs. What it checks is a fixed catalog of rules ([ARC](audit-rule-catalog.spec.md)); the tool surface comparison has its own spec ([TSA](tool-surface-audit.spec.md)), and so does the audit of prompts and the other model-facing text ([PRA](prompt-audit.spec.md)). The engine code is `tempergraph.audit` and `tempergraph.cli.audit`; design notes and the release 1 build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
 ## Behaviours
 
@@ -20,7 +20,7 @@ WHEN the audited workflow does not validate THE audit SHALL put the validation e
 
 ### AUD-B3 Cause ranking from history
 
-WHEN the `history` layer reads the runs of the chosen version in the window THE audit SHALL rank the causes that drove repeats, timeouts, refusals, pauses and cost (R-050 families C1 to C6), show hot spots per unit (repeat share of spend, first-pass yield, timeouts, refusals, pauses per run) and name the highest-weight cause in the summary.
+WHEN the `history` layer reads the runs of the chosen version in the window THE audit SHALL rank the causes that drove repeats, timeouts, refusals, pauses and cost (research `why-runs-fail-stall-repeat-or-overspend` families C1 to C6), show hot spots per unit (repeat share of spend, first-pass yield, timeouts, refusals, pauses per run) and name the highest-weight cause in the summary.
 
 - GIVEN 12 runs where the `expand` gate's repeats are 41% of spend and criterion `reading-sets` is the leading unmet blocker in 9 of 11 RETRY verdicts, while `plan` repeats are 12% of spend WHEN `audit --layer history` runs THEN the first finding is `loop-driver-criterion` on `expand`, error, high, with those numbers, `plan` raises none, and the summary names `expand` as the highest-weight cause
 
@@ -55,7 +55,7 @@ WHEN a workflow lists `@repository` in its command allow-list or in a step's com
 
 ### AUD-B5 Small samples are said, not judged
 
-WHEN a history rule has fewer runs than its minimum THE audit SHALL yield no finding for it and list it under skipped with `n=<runs> of <min>` ([ADR-0053](../adr/0053-history-findings-need-a-minimum-sample.adr.md)).
+WHEN a history rule has fewer runs than its minimum THE audit SHALL yield no finding for it and list it under skipped with `n=<runs> of <min>` ([ADR `history-findings-need-a-minimum-sample`](../adr/history-findings-need-a-minimum-sample.adr.md)).
 
 - GIVEN 3 runs in the window and a rule with a minimum of 5 WHEN the audit runs THEN the rule is listed as skipped with `n=3 of 5`
 
@@ -73,7 +73,7 @@ WHEN `audit` runs without `--all` THE audit SHALL show only findings at severity
 
 ### AUD-B8 Owned checks are not duplicated
 
-WHEN a defect is already reported by an owning component THE audit SHALL run that component and show its finding once under the component's code, never restate it as an audit rule ([ADR-0054](../adr/0054-audit-joins-existing-checks-and-files-nothing.adr.md)): validation as `validate:<code>`, prompt lint as `prompt-lint:<code>`, the readiness report as `readiness:needs-work` (warning) and `readiness:needs-cases` (info), the executor compatibility table as `executor-compat:executor-version-untested`; a gate with validation's `gate-not-ready` (stable mode) SHALL get no readiness finding too, and `AuditFinding.owner` SHALL say `audit` or the owning component.
+WHEN a defect is already reported by an owning component THE audit SHALL run that component and show its finding once under the component's code, never restate it as an audit rule ([ADR `audit-joins-existing-checks-and-files-nothing`](../adr/audit-joins-existing-checks-and-files-nothing.adr.md)): validation as `validate:<code>`, prompt lint as `prompt-lint:<code>`, the readiness report as `readiness:needs-work` (warning) and `readiness:needs-cases` (info), the executor compatibility table as `executor-compat:executor-version-untested`; a gate with validation's `gate-not-ready` (stable mode) SHALL get no readiness finding too, and `AuditFinding.owner` SHALL say `audit` or the owning component.
 
 - GIVEN a judge brief that branches on a fact a check could compute WHEN the audit runs THEN the finding appears once, as the validation warning's `validate:<code>` ([WFM](workflow-model.spec.md)), and no audit rule restates it
 

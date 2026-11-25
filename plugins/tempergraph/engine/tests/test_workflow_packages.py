@@ -1,6 +1,6 @@
 """Every workflow package that sits in this repository, found by its `tempergraph.json` and never by name: each
 loads, passes its generated tests, covers its outcome, is in the marketplace and passes its own tests. What one
-workflow does on its own paths is tested in that package's `tests/`, not here (ADR-0129)."""
+workflow does on its own paths is tested in that package's `tests/`, not here (ADR `the-engine-names-no-workflow`)."""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ def test_package_loads_and_passes_its_generated_tests(root: Path, tmp_path: Path
 def test_package_is_in_the_marketplace(root: Path) -> None:
     name = json.loads((root / "tempergraph.json").read_text())["name"]
     market = json.loads((REPO_ROOT / ".claude-plugin" / "marketplace.json").read_text())
-    entry = next(p for p in market["plugins"] if p["name"] == f"{name}-tgraph")  # ADR-0120
+    entry = next(p for p in market["plugins"] if p["name"] == f"{name}-tgraph")  # ADR `a-workflow-plugin-name-is-the-workflow-name-plus-tgraph`
     manifest = json.loads((root / ".claude-plugin" / "plugin.json").read_text())
     assert entry["source"] == f"./plugins/{name}-tgraph" and manifest["name"] == f"{name}-tgraph"
     assert "tempergraph" in manifest["dependencies"]

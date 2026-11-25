@@ -42,7 +42,7 @@ def test_no_not_built_yet_line_of_a_spec_names_the_contest() -> None:  # AC 6
 
 
 def test_the_rationale_bullet_of_f39_says_the_contest_is_built() -> None:  # AC 6
-    text = (DOCS / "research" / "R-150-rationale-carried-from-the-engine-specs.rsrch.md").read_text(encoding="utf-8")
+    text = (DOCS / "research" / "rationale-carried-from-the-engine-specs.rsrch.md").read_text(encoding="utf-8")
     f39 = text.split("### F39 CTS Contest unit", 1)[1].split("\n### ", 1)[0]
     assert [ln for ln in f39.splitlines() if ln.startswith("- As built (R3-T4.2)")]
     assert "Not built" not in f39 and "release 3 work" not in f39

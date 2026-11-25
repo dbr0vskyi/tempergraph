@@ -36,7 +36,7 @@ The catalog reads the home registry and loads each package by the first steps of
 
 | Req | Spec | Criteria | Phase |
 |---|---|---|---|
-| REQ-20 | CLI | all, for the release 1 verbs of ADR-0090 (T6.1 here; the observability verbs in T7.4) | T6.1 |
+| REQ-20 | CLI | all, for the release 1 verbs of ADR `first-release-is-simple-trusted-workflows-on-one-machine` (T6.1 here; the observability verbs in T7.4) | T6.1 |
 | REQ-21 | RST | all but rows for orchestration, council, contest and switch-arm keys | T6.2, T6.3 |
 | REQ-22 | RRN | all but §2.6 | T6.4 |
 | REQ-23 | PRV | all; AC-6 for P-SUP-1 and P-SUP-2 | T6.5 |

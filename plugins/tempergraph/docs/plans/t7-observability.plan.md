@@ -20,7 +20,7 @@ task_id: first-release-t7
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T7, built in parallel with T5 and T6 (thread "Build run events and detail view") |
 | Specs | [EVT](../specs/run-events.spec.md), [RDD](../specs/run-detail-document.spec.md), [LOS](../specs/local-observability-store.spec.md), [OBS](../specs/observability-and-cost.spec.md), [SUP](../specs/supervision-metrics.spec.md), [IMD](../specs/improvement-data.spec.md), [FBK](../specs/feedback-and-judge-reliability.spec.md), [SCO](../specs/supervision-cost.spec.md) |
-| Decisions | [ADR-0009](../adr/0009-normalized-session-event-stream.adr.md), [ADR-0022](../adr/0022-observers-read-files-not-sockets.adr.md), [ADR-0023](../adr/0023-local-activity-journal-with-tool-input-summaries.adr.md), [ADR-0027](../adr/0027-in-process-observers-and-wider-hook-events.adr.md), [ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md) |
+| Decisions | [ADR `normalized-session-event-stream`](../adr/normalized-session-event-stream.adr.md), [ADR `observers-read-files-not-sockets`](../adr/observers-read-files-not-sockets.adr.md), [ADR `local-activity-journal-with-tool-input-summaries`](../adr/local-activity-journal-with-tool-input-summaries.adr.md), [ADR `in-process-observers-and-wider-hook-events`](../adr/in-process-observers-and-wider-hook-events.adr.md), [ADR `own-observability-first-export-deferred`](../adr/own-observability-first-export-deferred.adr.md) |
 
 **Status: Completed (offline).** T7.1 to T7.6 are built; open rows wait on release 3 (7.6.8) or on the owner's machine (7.6.7, P-SUP-3). T7.1 and T7.2: every run-log record carries the EVT-B8, EVT-B9 envelope, sessions are announced by `session_opened`, the activity journal and live file follow EVT-B17, EVT-B18, EVT-B7, EVT-B19 with tool input summaries per §2.5, `events` reads and follows a thread, in-process observers are contained, and `status --detail` builds the RDD document read-only. Status pass: EVT and RDD are `ready-for-implementation`; EVT's two open questions have release 1 defaults (native transcript null until P-CC-7; no changed-line count on `edit`).
 
@@ -126,10 +126,10 @@ Split with the T5 and T6 owner: the run-path side (touch classes, the `supervisi
 | 7.6.4 | `observe/supervision_cost.py`, `observe/sinks.py`, `observe/rows.py` | Closing: a `supervision` ledger line per thread (a later one `replaces` it), the local row and an outbox reference; the sink row hashes thread and session ids; run from `stats flush`, after each `run_exit` and from `SessionEnd` | SCO-B15, CST-B9, CST-B11 | yes | P1 | ✓ | 2026-11-20 |
 | 7.6.5 | `cli/observe_cli.py` | `supervision hook\|log\|close\|show`; `show` is read-only | SCO-B16, AC-2, CLI-AC1 | yes | P1 | ✓ | 2026-11-20 |
 | 7.6.6 | `observe/supervision_report.py`, `observe/detail.py` | `report --supervision` and the detail block read the closed figures: cost, share, observations | SUP-B10, SUP-B12, AC-5 | yes | P1 | ✓ | 2026-11-20 |
-| 7.6.7 | — | P-SUP-3 live probe of the Claude Code payloads on the owner's machine | R-150 SCO, AC-6 | no | P1 | ○ | |
+| 7.6.7 | — | P-SUP-3 live probe of the Claude Code payloads on the owner's machine | research `rationale-carried-from-the-engine-specs` SCO, AC-6 | no | P1 | ○ | |
 | 7.6.8 | `observe/supervision_cost.py` | `measured_zero` and orchestration splits, once orchestrations exist (release 3); the status line's `reported` cross-check | SCO-B12, B3 | yes | P3 | ○ | |
 
-Deviations, recorded in R-150 SCO: the hook reads `tool_response.stdout` and `stderr` only for their size and a printed `thread_id` or `call_id`; `relay` counts messages; `duration_s` of an engine call is null (the hook payload has no duration); journals are not pruned at 90 days yet (LOS prune does not know them).
+Deviations, recorded in research `rationale-carried-from-the-engine-specs` SCO: the hook reads `tool_response.stdout` and `stderr` only for their size and a printed `thread_id` or `call_id`; `relay` counts messages; `duration_s` of an engine call is null (the hook payload has no duration); journals are not pruned at 90 days yet (LOS prune does not know them).
 
 ## 3. Hand-off notes
 

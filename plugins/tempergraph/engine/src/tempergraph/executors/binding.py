@@ -17,7 +17,7 @@ from tempergraph.store.layout import home_path
 
 BINDINGS_FILE = "bindings.json"
 
-# Built-in tiers when the operator file has no row (R-001 F10: the CLI takes these model names).
+# Built-in tiers when the operator file has no row (research `claude-code-cli-headless` F10: the CLI takes these model names).
 DEFAULT_TIERS: dict[str, dict[str, str]] = {
     "claude": {"small": "haiku", "medium": "sonnet", "large": "opus"},
     "agent-sdk": {"small": "haiku", "medium": "sonnet", "large": "opus"},

@@ -3,9 +3,9 @@ closing a thread's figures, and the `supervision hook|log|close|show` verbs.
 
 The journal is `~/.tempergraph/supervision/<host>/<host_session>.jsonl`: numbers, names from fixed lists, ids and
 times only (SCO-B10, SCO-B11, SCO-B17). It is written by the plugin's Claude Code hooks through `supervision hook <event>`
-and by `supervision log`; read-only verbs never write it (OVR-B15, ADR-0087). A hook never changes, delays
+and by `supervision log`; read-only verbs never write it (OVR-B15, ADR `a-supervision-journal-written-by-the-host-not-by-read-only-verbs`). A hook never changes, delays
 past 2 s or refuses the host call it observed (OVR-B4), and writes nothing inside the engine's own sessions
-(`TEMPERGRAPH_SESSION_KEY`, SCO-B6). Two figures per thread, never summed: marginal and turn (ADR-0088). Unmeasured
+(`TEMPERGRAPH_SESSION_KEY`, SCO-B6). Two figures per thread, never summed: marginal and turn (ADR `attribute-supervision-spend-by-marginal-tokens-beside-turn-totals`). Unmeasured
 is never zero.
 """
 

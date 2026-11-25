@@ -10,9 +10,9 @@ adrs: [0001, 0002, 0003, 0004, 0005, 0006]
 
 ## 1. Overview
 
-`tempergraph-monitor` is a Claude Code mod (a plugin with a hooks module, [R-001](../research/R-001-claude-code-mods.rsrch.md)) that shows every tempergraph run a person cares about, live, beside the conversation. It borrows the interaction model of Claude Code's dynamic workflows view: a run list, a progress tree you drill into with the arrow keys, narrator lines above the tree, per-agent detail with recent tool calls ([R-002](../research/R-002-dynamic-workflows-view.rsrch.md)). It adds what a workflow view does not have: the declared graph with loop-backs, the four nodes of every unit (step, check, judge, gate), judge criteria and confidence, budgets, reported against estimated cost, pauses waiting for a person, the full session log of every agent on every executor, the shell command a step is running now and the processes under it, and runs on other repositories and machines.
+`tempergraph-monitor` is a Claude Code mod (a plugin with a hooks module, [research `claude-code-mods`](../research/claude-code-mods.rsrch.md)) that shows every tempergraph run a person cares about, live, beside the conversation. It borrows the interaction model of Claude Code's dynamic workflows view: a run list, a progress tree you drill into with the arrow keys, narrator lines above the tree, per-agent detail with recent tool calls ([research `dynamic-workflows-view`](../research/dynamic-workflows-view.rsrch.md)). It adds what a workflow view does not have: the declared graph with loop-backs, the four nodes of every unit (step, check, judge, gate), judge criteria and confidence, budgets, reported against estimated cost, pauses waiting for a person, the full session log of every agent on every executor, the shell command a step is running now and the processes under it, and runs on other repositories and machines.
 
-The monitor is an **observer**: it reads engine documents and runs read-only engine verbs; it never starts, resumes, stops or answers a run itself. Every action it offers fills the prompt box with the exact command, and the person sends it ([MADR-0003](../adr/0003-actions-fill-the-prompt.adr.md)).
+The monitor is an **observer**: it reads engine documents and runs read-only engine verbs; it never starts, resumes, stops or answers a run itself. Every action it offers fills the prompt box with the exact command, and the person sends it ([MADR `actions-fill-the-prompt`](../adr/actions-fill-the-prompt.adr.md)).
 
 ### Goals
 
@@ -108,13 +108,13 @@ flowchart LR
 |---|---|
 | Engine not installed (shim exits 127) | Band row "tempergraph not found", pane explains the installer skill; nothing else polled |
 | Engine documents of a newer major schema | Those rows read "update the monitor"; others draw |
-| Claude Code build without a needed API | The mod's hook fails alone and Claude Code skips it; the rest draws ([R-001](../research/R-001-claude-code-mods.rsrch.md)) |
+| Claude Code build without a needed API | The mod's hook fails alone and Claude Code skips it; the rest draws ([research `claude-code-mods`](../research/claude-code-mods.rsrch.md)) |
 
 ## 5. Design notes
 
-- A mod, not a separate app or web page: the person already lives in Claude Code, and a pane beside the chat is where Claude Code shows its own workflow runs ([MADR-0001](../adr/0001-a-claude-code-mod-that-observes.adr.md)).
-- The engine owns every document; the monitor parses no executor stream and computes no verdict ([engine ADR-0022](../../../tempergraph/docs/adr/0022-observers-read-files-not-sockets.adr.md)).
-- The engine documents the monitor needs and did not exist before are listed in [engine R-021](../../../tempergraph/docs/research/R-021-observer-needs-against-engine-documents.rsrch.md).
+- A mod, not a separate app or web page: the person already lives in Claude Code, and a pane beside the chat is where Claude Code shows its own workflow runs ([MADR `a-claude-code-mod-that-observes`](../adr/a-claude-code-mod-that-observes.adr.md)).
+- The engine owns every document; the monitor parses no executor stream and computes no verdict ([engine ADR `observers-read-files-not-sockets`](../../../tempergraph/docs/adr/observers-read-files-not-sockets.adr.md)).
+- The engine documents the monitor needs and did not exist before are listed in [engine research `observer-needs-against-engine-documents`](../../../tempergraph/docs/research/observer-needs-against-engine-documents.rsrch.md).
 
 ## 6. Acceptance criteria
 

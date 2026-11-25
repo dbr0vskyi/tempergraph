@@ -169,7 +169,7 @@ def test_load_failures(pkg: Path, mutate: Any, reason: str) -> None:
     assert not_loaded(pkg).reason == reason
 
 
-# -- PKG-B10 the plugin name carries the -tgraph suffix (ADR-0120) ----------------------------------
+# -- PKG-B10 the plugin name carries the -tgraph suffix (ADR `a-workflow-plugin-name-is-the-workflow-name-plus-tgraph`) ----------------------------------
 
 
 def test_plugin_name_is_workflow_name_plus_suffix(pkg: Path) -> None:

@@ -923,7 +923,7 @@ def _spec_names(ctx: Any, specs: list[str], criterion: str) -> list[CheckFinding
 
 
 READING = "Reading list"
-SHORT_READING_MAX = 10  # the short visit's reading limit (decision record 0003); its reading list holds at most this
+SHORT_READING_MAX = 10  # the short visit's reading limit (decision record `short-discovery-visit`); its reading list holds at most this
 NOT_COVERED = re.compile(r"\bnot covered\b", re.I)
 
 

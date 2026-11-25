@@ -516,7 +516,7 @@ def record(root: Path, spec: WorkflowSpec, cl: Mapping[str, Any], patch: str, *,
     if "weakening" in c.classes:
         rec["labels"] = ["weakens-gate"]
     if "tools" in c.classes and author == "proposer":
-        rec["review_only"] = True  # a widening tools patch is opened for review, never trialled alone (ADR-0080)
+        rec["review_only"] = True  # a widening tools patch is opened for review, never trialled alone (ADR `a-person-may-grant-a-step-tools-for-a-run`)
     save(root, rec)
     return rec
 

@@ -1,7 +1,7 @@
 """`upgrade --check [--stamp]` and `upgrade-check [--stamp]` in release 1 (WUP-B10, WUP-B11, WUP-B12, WUP-B13, WUP-B19; VER-B16).
 
 Release 1 builds the check and the stamp only; the transforms, the upgrade workflow, the branch and the pull
-request are release 3 (ADR-0090). `--check` runs WUP phases 1 to 3 (locate, baseline, plan) read-only.
+request are release 3 (ADR `first-release-is-simple-trusted-workflows-on-one-machine`). `--check` runs WUP phases 1 to 3 (locate, baseline, plan) read-only.
 `--stamp` on a clean check runs the model-free verification V1 to V7 and writes `stamp.json` in the
 package. V4 runs the audit's definition layer and fails on a finding at warning or above that the last
 stamp's `audit` list lacks (a first stamp records the list). V6 (model-free suites) reports `skipped` until

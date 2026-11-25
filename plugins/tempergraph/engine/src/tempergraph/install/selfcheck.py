@@ -13,7 +13,7 @@ def main() -> int:
 
     rel = release()
     imports: dict[str, str] = {}
-    try:  # the registry imports every shipped executor module (ADR-0091: claude only)
+    try:  # the registry imports every shipped executor module (ADR `first-release-ships-the-claude-executor-only`: claude only)
         from tempergraph.executors.registry import default_registry
 
         imports = {name: "ok" for name in default_registry().available()}

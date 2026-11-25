@@ -71,7 +71,7 @@ def test_minimal_workflow_scaffolds_and_its_generated_tests_pass(pkg: Path, tmp_
         assert (pkg / rel).is_file(), rel
     assert json.loads((pkg / "outcome.json").read_text())["revisions"][0]["origin"] == "authored"
     assert json.loads((pkg / ".claude-plugin/plugin.json").read_text())["name"] == "release-notes-tgraph"
-    assert json.loads((pkg / "tempergraph.json").read_text())["name"] == "release-notes"  # ADR-0120
+    assert json.loads((pkg / "tempergraph.json").read_text())["name"] == "release-notes"  # ADR `a-workflow-plugin-name-is-the-workflow-name-plus-tgraph`
     lp = load_package(pkg)
     draft = lp.spec.units["draft"]
     assert draft.gate.check is not None

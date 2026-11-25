@@ -2,7 +2,7 @@
 
 ## Context
 
-A gate that retries a failure which was there before the change spends money that no code change can win back. One run retried its code gate four times, about 2 USD, on an environment fault, and another met 590 errors from its container's signing fault ([R-160](../research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) F1 and H1; issue 54). A workflow's check could not tell a failure the change made from one already there: it ran each verification command once, on the workspace, and failed on any non-zero exit.
+A gate that retries a failure which was there before the change spends money that no code change can win back. One run retried its code gate four times, about 2 USD, on an environment fault, and another met 590 errors from its container's signing fault ([research `does-the-improvement-loop-find-what-a-reviewer-finds`](../research/does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) F1 and H1; issue 54). A workflow's check could not tell a failure the change made from one already there: it ran each verification command once, on the workspace, and failed on any non-zero exit.
 
 To tell the two apart a check needs the same command's result on the run's base commit, and the engine gives it no way to get one. A command runs in `cwd` or `workdir` only (CHK-B12), and the reuse key is made of the workspace's head, status and changed files (CHK-B13). `git.base` names the commit ([WTR-B21](../specs/worktree-mode.spec.md)), but only a worktree run records one: an in-place run's workspace record carries no base commit (`workspace.py`, `prepare_workspace`).
 
@@ -13,7 +13,7 @@ What the code says, and so bounds the choice:
 - The main checkout is read-only to a check, may hold uncommitted changes ([WTR-B6](../specs/worktree-mode.spec.md)) and can move on while a run goes on, so it is not the base.
 - A Python package installed in editable mode loads the tree it was installed from, and the engine's own `pyproject.toml` sets no `pythonpath` for its tests (`[tool.pytest.ini_options]`), so a command run in another folder can still exercise the workspace's code.
 
-[ADR-0075](0075-checks-get-a-context-and-an-engine-command-runner.adr.md) already splits the work: the engine owns the mechanics of a command run, the workflow owns what its result means. [ADR-0129](0129-the-engine-names-no-workflow.adr.md) asks that a request from a workflow lands as a capability any workflow can use. "Did this command already fail before the change?" is such a question; it needs no workflow's name.
+[ADR `checks-get-a-context-and-an-engine-command-runner`](checks-get-a-context-and-an-engine-command-runner.adr.md) already splits the work: the engine owns the mechanics of a command run, the workflow owns what its result means. [ADR `the-engine-names-no-workflow`](the-engine-names-no-workflow.adr.md) asks that a request from a workflow lands as a capability any workflow can use. "Did this command already fail before the change?" is such a question; it needs no workflow's name.
 
 ## Decision
 

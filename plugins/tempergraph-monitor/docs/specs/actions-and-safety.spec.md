@@ -26,7 +26,7 @@ What a person can do from the monitor, and the rules that keep the monitor an ob
 | Open | A path (desktop, VS Code) | A `file:` link the surface opens |
 | Pin, filter | Run list | Session state and `$.store` |
 
-`!` at the start of the prompt runs the line as a shell command in Claude Code when the person presses Enter ([R-001](../research/R-001-claude-code-mods.rsrch.md)). Every filled command is built from values the engine printed (workflow, thread id, decision words) and the mod's constants; nothing a person typed into the pane reaches it.
+`!` at the start of the prompt runs the line as a shell command in Claude Code when the person presses Enter ([research `claude-code-mods`](../research/claude-code-mods.rsrch.md)). Every filled command is built from values the engine printed (workflow, thread id, decision words) and the mod's constants; nothing a person typed into the pane reaches it.
 
 ### 2.2 Model tool
 
@@ -68,7 +68,7 @@ The tool never runs a writing verb and returns no tool input summaries or log te
 
 ## 5. Design notes
 
-- Prompt fills keep the person as the one who acts, give them a chance to edit, and leave a record in the conversation of what was run ([MADR-0003](../adr/0003-actions-fill-the-prompt.adr.md)).
+- Prompt fills keep the person as the one who acts, give them a chance to edit, and leave a record in the conversation of what was run ([MADR `actions-fill-the-prompt`](../adr/actions-fill-the-prompt.adr.md)).
 - The model tool is off by default because a monitor tool registered in every session, headless ones included, can be called by a judge, which voids its verdict and pauses the run. The engine's own judge isolation is the main control ([engine SEC-B3](../../../tempergraph/docs/specs/security.spec.md)); this is the mod's part.
 - Release 1 build ([T10 plan](../../../tempergraph/docs/plans/t10-monitor.plan.md)): resume with a decision, stop (drain and `--now`), ask the run driver, ask Claude about a session, and copy are built; each fill is checked token by token against what the engine printed and refused otherwise. Settings are the manifest's `userConfig` fields; Claude Code names fields with letters, digits and `_`, so the dotted names of the design became `alerts_finished`, `show_tool_inputs` and so on. Deviations: `Open` (a `file:` link) is not built; `model_tool = interactive` is accepted and registers nothing yet, so MAC-B2 and MAC-B3 hold for every value; `open_pane = auto` behaves as `never`, because `$.ui.open` gives no way to ask for a sidebar only, and MRV-B5 forbids opening inline on its own; `scope = machine` lists other repositories' runs as read-only cards with no fill; `fleet_sink` must be a sink name (`[a-z0-9-]{1,40}`), and the fleet tab is read only when it is set.
 - "Ask Claude about a session" turns the monitor into an entry point for diagnosis without the monitor calling a model itself.
@@ -83,8 +83,8 @@ The tool never runs a writing verb and returns no tool input summaries or log te
 
 | Question | Owner |
 |---|---|
-| Probe P-MOD-1: how a mod tells, at `session.start`, that the session is headless (`-p`, SDK). Default taken: the 2.1.329 API types give `isInteractive` on `session.start`, and the mod registers nothing when it is false; a live check on the owner's machine is pending ([R-001](../research/R-001-claude-code-mods.rsrch.md)). | Monitor implementer |
+| Probe P-MOD-1: how a mod tells, at `session.start`, that the session is headless (`-p`, SDK). Default taken: the 2.1.329 API types give `isInteractive` on `session.start`, and the mod registers nothing when it is false; a live check on the owner's machine is pending ([research `claude-code-mods`](../research/claude-code-mods.rsrch.md)). | Monitor implementer |
 
 ## References
 
-[MDD](drill-down.spec.md) · [RCT](../../../tempergraph/docs/specs/run-control.spec.md) · [DUR](../../../tempergraph/docs/specs/durability-and-resume.spec.md) · [R-001](../research/R-001-claude-code-mods.rsrch.md)
+[MDD](drill-down.spec.md) · [RCT](../../../tempergraph/docs/specs/run-control.spec.md) · [DUR](../../../tempergraph/docs/specs/durability-and-resume.spec.md) · [research `claude-code-mods`](../research/claude-code-mods.rsrch.md)

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A built-in program that reads every finished run's record, judges it with an independent judge, and files, comments on or only records a finding in the repository that owns the fault: the engine's or the workflow's. It is inside the engine so every run is analyzed without an optional install ([ADR-0003](../adr/0003-workflows-as-data.adr.md)); it runs as a detached child and never pauses. The loop closes through people: an issue is evidence, not an order, and a measurement call never writes code. It is the first half of the loop: clusters of its findings become measured proposals ([PRP](improvement-proposals.spec.md)), human ground truth becomes labels and judge grades ([FBK](feedback-and-judge-reliability.spec.md)), its data needs are [IMD](improvement-data.spec.md), what it reads from sessions is [SRV](session-review.spec.md), and how its issues are labelled, written and read back is [ISS](loop-issues.spec.md). Workflow owners, the engine's maintainers and operators who read the issues depend on it. Its thresholds are parameter records with provenance `default_no_data` ([IMD-B23](improvement-data.spec.md)), to be revisited with real runs.
+A built-in program that reads every finished run's record, judges it with an independent judge, and files, comments on or only records a finding in the repository that owns the fault: the engine's or the workflow's. It is inside the engine so every run is analyzed without an optional install ([ADR `workflows-as-data`](../adr/workflows-as-data.adr.md)); it runs as a detached child and never pauses. The loop closes through people: an issue is evidence, not an order, and a measurement call never writes code. It is the first half of the loop: clusters of its findings become measured proposals ([PRP](improvement-proposals.spec.md)), human ground truth becomes labels and judge grades ([FBK](feedback-and-judge-reliability.spec.md)), its data needs are [IMD](improvement-data.spec.md), what it reads from sessions is [SRV](session-review.spec.md), and how its issues are labelled, written and read back is [ISS](loop-issues.spec.md). Workflow owners, the engine's maintainers and operators who read the issues depend on it. Its thresholds are parameter records with provenance `default_no_data` ([IMD-B23](improvement-data.spec.md)), to be revisited with real runs.
 
 ## Behaviours
 
@@ -79,7 +79,7 @@ WHEN an agent decided a `rescue` touch on its own ([SUP-B9](supervision-metrics.
 
 ### SIL-B16 Review observations corroborate
 
-WHEN a session review keeps an observation THE loop SHALL keep it local and file nothing from it alone, adding `review:<category>` and `review_weight` to a model-free finding on the same unit and run that it corroborates ([SRV-B22](session-review.spec.md), [ADR-0119](../adr/0119-review-observations-are-candidates-corroborated-before-they-file.adr.md)).
+WHEN a session review keeps an observation THE loop SHALL keep it local and file nothing from it alone, adding `review:<category>` and `review_weight` to a model-free finding on the same unit and run that it corroborates ([SRV-B22](session-review.spec.md), [ADR `review-observations-are-candidates-corroborated-before-they-file`](../adr/review-observations-are-candidates-corroborated-before-they-file.adr.md)).
 
 - GIVEN a review observation with no model-free finding on its unit WHEN filing runs THEN nothing is filed for it
 

@@ -1,4 +1,4 @@
-"""Fire-decision policies as pure functions (SCH-B5 to SCH-B9, SCH-B11, SCH-B21 to SCH-B26; ADR-0098, ADR-0099).
+"""Fire-decision policies as pure functions (SCH-B5 to SCH-B9, SCH-B11, SCH-B21 to SCH-B26; ADR `missed-slots-catch-up-latest-and-a-live-run-skips-the-next`, ADR `a-scheduled-fire-is-an-attested-caller-with-capped-spend`).
 
 Every function reads an entry (the dict of SCH-B14), its fire log (the lines of SCH-B28), the live runs (each a fire
 with its thread's state) and a clock the caller passes in, and returns what to record and raise. Nothing here reads

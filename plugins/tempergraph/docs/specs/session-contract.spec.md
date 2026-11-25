@@ -2,7 +2,7 @@
 
 ## Purpose
 
-What the engine and every executor exchange for one session: the executor's surface, the session request and its options, the capabilities an executor declares, the session result and its usage, the normalized event stream ([ADR-0009](../adr/0009-normalized-session-event-stream.adr.md)), and the judgement and check result a gate reads. Executor implementations ([EXI](executor-interface.spec.md)), the gate funnel ([JDG](judge-and-verdict.spec.md), [CHK](check-contract-and-command-runs.spec.md)), the run log and observers depend on these exact names. Split from the shared contracts ([CON](contracts.spec.md)) when the specs moved to temperspec's format; the behaviour CON-B2 kept its id.
+What the engine and every executor exchange for one session: the executor's surface, the session request and its options, the capabilities an executor declares, the session result and its usage, the normalized event stream ([ADR `normalized-session-event-stream`](../adr/normalized-session-event-stream.adr.md)), and the judgement and check result a gate reads. Executor implementations ([EXI](executor-interface.spec.md)), the gate funnel ([JDG](judge-and-verdict.spec.md), [CHK](check-contract-and-command-runs.spec.md)), the run log and observers depend on these exact names. Split from the shared contracts ([CON](contracts.spec.md)) when the specs moved to temperspec's format; the behaviour CON-B2 kept its id.
 
 ## Behaviours
 
@@ -30,7 +30,7 @@ WHEN a request carries options THE engine SHALL send only `effort` (`low`, `medi
 
 ### SSN-B4 Declared capabilities
 
-WHEN an executor declares its capabilities THE executor SHALL state `binds_aliases`, `families` (alias to model family label, read by council diversity checks), the booleans `prompt_off_argv`, `streams_events`, `reports_actions`, `reports_tokens`, `reports_cost`, `enforces_step_tools`, `restricts_judge_tools`, `step_allow_rules`, `judge_mcp`, `isolates_user_config`, `fresh_session` and `hosts_authoring_surface` ([ADR-0016](../adr/0016-portable-authoring-surface.adr.md)), `session_options`, `tool_map` (capability to its tool names) and `version` (the CLI's, or a library's plus any bundled CLI's).
+WHEN an executor declares its capabilities THE executor SHALL state `binds_aliases`, `families` (alias to model family label, read by council diversity checks), the booleans `prompt_off_argv`, `streams_events`, `reports_actions`, `reports_tokens`, `reports_cost`, `enforces_step_tools`, `restricts_judge_tools`, `step_allow_rules`, `judge_mcp`, `isolates_user_config`, `fresh_session` and `hosts_authoring_surface` ([ADR `portable-authoring-surface`](../adr/portable-authoring-surface.adr.md)), `session_options`, `tool_map` (capability to its tool names) and `version` (the CLI's, or a library's plus any bundled CLI's).
 
 - GIVEN the `antigravity` executor WHEN its capabilities are read THEN `restricts_judge_tools` is false
 - GIVEN `executors` WHEN it prints an executor THEN every field of SSN-B4 is shown
@@ -44,7 +44,7 @@ WHEN a session ends THE executor SHALL return `ok`, `text` (the final answer), `
 
 ### SSN-B6 Usage
 
-WHEN usage is recorded THE engine SHALL record `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, `thinking_tokens`, `turns` and `peak_context_tokens` as integers or null, `by_model` (model name to partial usage), `reported_cost_usd` (never 0 when unknown) and `estimated_cost_usd` (from the engine price table), the two costs kept apart and never summed into one figure ([ADR-0012](../adr/0012-cost-when-executor-reports-tokens-only.adr.md)).
+WHEN usage is recorded THE engine SHALL record `input_tokens`, `output_tokens`, `cache_read_tokens`, `cache_write_tokens`, `thinking_tokens`, `turns` and `peak_context_tokens` as integers or null, `by_model` (model name to partial usage), `reported_cost_usd` (never 0 when unknown) and `estimated_cost_usd` (from the engine price table), the two costs kept apart and never summed into one figure ([ADR `cost-when-executor-reports-tokens-only`](../adr/cost-when-executor-reports-tokens-only.adr.md)).
 
 - GIVEN a session with tokens unknown WHEN it is recorded THEN the token fields are null, not 0
 

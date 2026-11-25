@@ -20,7 +20,7 @@ task_id: first-release-t4
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T4 |
 | Specs | [DUR](../specs/durability-and-resume.spec.md), [WSP](../specs/workspace-and-concurrency.spec.md), [RCT](../specs/run-control.spec.md), the release-1 part of [WTR](../specs/worktree-mode.spec.md) |
-| Decisions | [ADR-0014](../adr/0014-sqlite-checkpointer.adr.md), [ADR-0028](../adr/0028-stop-verb-as-the-only-observer-control.adr.md), [ADR-0100](../adr/0100-the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md), [ADR-0101](../adr/0101-one-workspace-setting-with-an-auto-default.adr.md) |
+| Decisions | [ADR `sqlite-checkpointer`](../adr/sqlite-checkpointer.adr.md), [ADR `stop-verb-as-the-only-observer-control`](../adr/stop-verb-as-the-only-observer-control.adr.md), [ADR `the-engine-owns-the-run-worktree-executor-worktrees-are-not-used`](../adr/the-engine-owns-the-run-worktree-executor-worktrees-are-not-used.adr.md), [ADR `one-workspace-setting-with-an-auto-default`](../adr/one-workspace-setting-with-an-auto-default.adr.md) |
 
 **Status: Completed** for the parts that need no gate funnel. Status pass: DUR, WSP, RCT and WTR are `ready-for-implementation`; RCT and WTR's open questions have release 1 defaults. Doc changes this track made:
 - DUR-B4 says how an observer opens the store.

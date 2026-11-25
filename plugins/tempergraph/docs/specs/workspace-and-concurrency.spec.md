@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Where a run's files live, how runs and writing units stay apart, and how many runs one machine drives. State lives outside the workspace: the workspace is disposable, the branch is not. Paths resolve inside the workspace, the state root is the main checkout, and there is one graph per process, so N runs are N processes sharing one checkpoint database per workflow ([ADR-0014](../adr/0014-sqlite-checkpointer.adr.md)). The worktree itself (the `run.workspace` parameter, roots, bases, names, lifecycle, cleanup, executor pointing and the `worktree` verb) is [WTR](worktree-mode.spec.md). Operators, workflow authors and every component that stores files depend on these rules.
+Where a run's files live, how runs and writing units stay apart, and how many runs one machine drives. State lives outside the workspace: the workspace is disposable, the branch is not. Paths resolve inside the workspace, the state root is the main checkout, and there is one graph per process, so N runs are N processes sharing one checkpoint database per workflow ([ADR `sqlite-checkpointer`](../adr/sqlite-checkpointer.adr.md)). The worktree itself (the `run.workspace` parameter, roots, bases, names, lifecycle, cleanup, executor pointing and the `worktree` verb) is [WTR](worktree-mode.spec.md). Operators, workflow authors and every component that stores files depend on these rules.
 
 ## Behaviours
 
@@ -73,7 +73,7 @@ WHEN merging writer branches at a join, or the items of a writing map once every
 
 ### WSP-B4 Batch
 
-WHEN a batch runs THE engine SHALL run at most K child processes at once (K at most 16, at most 50 runs), each in its own worktree, list every paused child with its exact resume command, and run no graph in the batch parent; a batch is a one-node map orchestration ([ORC](orchestration.spec.md), [ADR-0038](../adr/0038-batch-is-a-one-node-orchestration.adr.md)).
+WHEN a batch runs THE engine SHALL run at most K child processes at once (K at most 16, at most 50 runs), each in its own worktree, list every paused child with its exact resume command, and run no graph in the batch parent; a batch is a one-node map orchestration ([ORC](orchestration.spec.md), [ADR `batch-is-a-one-node-orchestration`](../adr/batch-is-a-one-node-orchestration.adr.md)).
 
 - GIVEN 10 targets and K = 3 WHEN the batch runs THEN no more than 3 children run at any moment
 - GIVEN two planned batch runs whose names collide after flattening WHEN the batch starts THEN it is refused with exit 2
@@ -110,7 +110,7 @@ WHEN a workflow that writes files is started with `run.workspace in_place` THE e
 
 ### WSP-B15 The state root outside git
 
-WHEN the engine starts in a folder outside any git repository THE engine SHALL take the state root from `--state-root` (a global option before the verb) or `TEMPERGRAPH_STATE_ROOT`, else the nearest folder upward holding `.tempergraph/manifest.json`, skipping the home folder, else `<start dir>/.tempergraph/`, and refuse `not_git` a start whose root would be the home folder itself ([R-131](../research/R-131-running-outside-a-git-repository.rsrch.md), [ADR-0127](../adr/0127-outside-git-the-state-root-is-found-by-walk-up.adr.md)).
+WHEN the engine starts in a folder outside any git repository THE engine SHALL take the state root from `--state-root` (a global option before the verb) or `TEMPERGRAPH_STATE_ROOT`, else the nearest folder upward holding `.tempergraph/manifest.json`, skipping the home folder, else `<start dir>/.tempergraph/`, and refuse `not_git` a start whose root would be the home folder itself ([research `running-outside-a-git-repository`](../research/running-outside-a-git-repository.rsrch.md), [ADR `outside-git-the-state-root-is-found-by-walk-up`](../adr/outside-git-the-state-root-is-found-by-walk-up.adr.md)).
 
 - GIVEN `~/notes/a/b` and a manifest in `~/notes/.tempergraph/` WHEN the engine starts in `b` THEN the state root is `~/notes/.tempergraph/`
 - GIVEN a start in the home folder with no declared root WHEN it runs THEN it is refused `not_git`

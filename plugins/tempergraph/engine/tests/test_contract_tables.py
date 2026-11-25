@@ -17,7 +17,7 @@ def test_exit_codes_match_contracts_spec() -> None:
 
 
 def test_docs_artifacts_carry_type_suffix() -> None:
-    """The file-naming rule of the docs README (ADR-0017)."""
+    """The file-naming rule of the docs README (ADR `artifact-type-suffixes`)."""
     suffix = {"specs": ".spec.md", "adr": ".adr.md", "research": ".rsrch.md", "plans": ".plan.md"}
     bad = []
     for folder, sfx in suffix.items():
@@ -28,16 +28,15 @@ def test_docs_artifacts_carry_type_suffix() -> None:
 
 
 def test_docs_artifacts_are_named_by_a_slug() -> None:
-    """The file-naming rule of the docs README: lower-case words joined by `-`, at most 80 characters, and no spec
-    carries a number; a decision record or research note numbered before the rule keeps its number as its id."""
+    """The file-naming rule of the docs README: lower-case words joined by `-`, at most 80 characters, no number
+    in front."""
     bad = []
     for folder in ("specs", "adr", "research"):
         for p in (DOCS / folder).glob("*.md"):
             stem = p.name.split(".", 1)[0]
             if p.name == "README.md":
                 continue
-            numbered_spec = folder == "specs" and re.match(r"\d", stem) is not None
-            if len(p.name) > 80 or not re.fullmatch(r"[A-Za-z0-9]+(-[a-z0-9]+)*", stem) or numbered_spec:
+            if len(p.name) > 80 or not re.fullmatch(r"[a-z][a-z0-9]*(-[a-z0-9]+)*", stem):
                 bad.append(p.name)
     assert bad == []
 

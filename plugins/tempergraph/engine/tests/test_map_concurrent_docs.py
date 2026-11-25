@@ -43,7 +43,7 @@ def test_the_not_built_lines_of_specs_08_and_82_name_only_what_is_left() -> None
 
 
 def test_the_rationale_note_does_not_say_the_concurrent_mode_is_refused() -> None:  # MAP-AC2
-    text = (DOCS / "research" / "R-150-rationale-carried-from-the-engine-specs.rsrch.md").read_text(encoding="utf-8")
+    text = (DOCS / "research" / "rationale-carried-from-the-engine-specs.rsrch.md").read_text(encoding="utf-8")
     bullets = [ln for ln in text.splitlines() if ln.startswith("- As built (R2-T1.2, sequential mode)")]
     assert len(bullets) == 1 and "refused" not in bullets[0] and "R3-T3.2" in bullets[0]
 

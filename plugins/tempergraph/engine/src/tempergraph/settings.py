@@ -1,4 +1,4 @@
-"""Run settings: one catalog over fixed layers, resolved the same way everywhere (RST-B16 to RST-B32; ADR-0070, 0071, 0072).
+"""Run settings: one catalog over fixed layers, resolved the same way everywhere (RST-B16 to RST-B32; ADR `one-catalog-of-run-settings-over-fixed-layers`, 0071, 0072).
 
 `resolve` and `validate_overrides` are pure and model-free. `run --check`, `run`, `resume` and `config show` call
 them. The operator layers (flag, profile and both files) are snapshotted on the thread at start and reapplied on
@@ -51,7 +51,7 @@ ALIAS = re.compile(r"^(inherit|small|medium|large|[a-z][a-z0-9-]*:[A-Za-z0-9._-]
 SLUG = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 REF_PART = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$")
 
-# Keys of the catalog whose feature is not in this release (ADR-0090, ADR-0125): refused rather than silently ignored.
+# Keys of the catalog whose feature is not in this release (ADR `first-release-is-simple-trusted-workflows-on-one-machine`, ADR `release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing`): refused rather than silently ignored.
 # None now: the keys of a unit kind that is built are in KIND_ONLY.
 NOT_IN_RELEASE: dict[str, str] = {}
 # Keys that only one kind of unit takes (RST-B19): refused on a unit of any other kind (`setting_not_for_kind`). A council
@@ -257,7 +257,7 @@ def _prefixes(v: Any) -> tuple[str, ...]:
     return tuple(out)
 
 
-# Fields of a unit that verify the work: never a setting (ADR-0071).
+# Fields of a unit that verify the work: never a setting (ADR `overrides-never-change-what-verifies-the-work`).
 VERIFICATION = frozenset({"criteria", "check", "judge", "stance", "brief", "tools", "prompt", "back_targets",
                           "flow", "references", "subject", "views", "fallback", "independence", "approval"})
 SESSION_OPTIONS = {"effort": "effort", "session_cost_cap_usd": "cost_cap_usd", "fallback_alias": "fallback_alias",
@@ -329,7 +329,7 @@ def parse_key(spec: WorkflowSpec, raw: str) -> Key:
             key = Key("unit", rest, unit=unit)
     name = key.name
     if name not in WIDENING and (name in VERIFICATION or name.split(".")[0] in VERIFICATION):
-        raise SettingError("not_a_setting", f"{raw}: what verifies the work is not a setting (ADR-0071)")
+        raise SettingError("not_a_setting", f"{raw}: what verifies the work is not a setting (ADR `overrides-never-change-what-verifies-the-work`)")
     if name not in CATALOG:
         raise SettingError("unknown_setting", f"{raw}: no setting {name!r}" + _nearest(name, CATALOG))
     entry = CATALOG[name]

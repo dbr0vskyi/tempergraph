@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The `otlp` sink ([CST](central-run-stats.spec.md), [ADR-0025](../adr/0025-cross-machine-stats-through-opt-in-sinks.adr.md)) exports runs as OpenTelemetry traces and metrics to any OTLP receiver, so a team that already runs a tracing backend, or an operator who wants a local trace browser, can read runs there. It uses the GenAI semantic conventions where they fit and `tempergraph.*` names where they do not, under one pinned version ([R-020](../research/R-020-opentelemetry-genai-conventions.rsrch.md), [ADR-0026](../adr/0026-telemetry-export-as-otel-genai-without-content.adr.md)), and never exports content. What a backend itself sends to its vendor is that backend's setting, which the operator checks before use. The exporter is deferred ([ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md)): until it is built, nothing is sent to any third-party tool.
+The `otlp` sink ([CST](central-run-stats.spec.md), [ADR `cross-machine-stats-through-opt-in-sinks`](../adr/cross-machine-stats-through-opt-in-sinks.adr.md)) exports runs as OpenTelemetry traces and metrics to any OTLP receiver, so a team that already runs a tracing backend, or an operator who wants a local trace browser, can read runs there. It uses the GenAI semantic conventions where they fit and `tempergraph.*` names where they do not, under one pinned version ([research `opentelemetry-genai-conventions`](../research/opentelemetry-genai-conventions.rsrch.md), [ADR `telemetry-export-as-otel-genai-without-content`](../adr/telemetry-export-as-otel-genai-without-content.adr.md)), and never exports content. What a backend itself sends to its vendor is that backend's setting, which the operator checks before use. The exporter is deferred ([ADR `own-observability-first-export-deferred`](../adr/own-observability-first-export-deferred.adr.md)): until it is built, nothing is sent to any third-party tool.
 
 ## Behaviours
 
@@ -275,4 +275,4 @@ WHEN an attribute value is longer than 256 characters THE exporter SHALL send no
 
 ## Open questions
 
-- Which backend does the owner read the export in first? The design names none and assumes any OTLP receiver ([R-020](../research/R-020-opentelemetry-genai-conventions.rsrch.md)). Owner: owner. Until it is answered the exporter prefers no backend.
+- Which backend does the owner read the export in first? The design names none and assumes any OTLP receiver ([research `opentelemetry-genai-conventions`](../research/opentelemetry-genai-conventions.rsrch.md)). Owner: owner. Until it is answered the exporter prefers no backend.

@@ -1,4 +1,4 @@
-"""Caller provenance: who made a mutating call, and who decided it (PRV-B11 to PRV-B22; ADR-0085, ADR-0086).
+"""Caller provenance: who made a mutating call, and who decided it (PRV-B11 to PRV-B22; ADR `classify-callers-by-the-strongest-signal`, ADR `a-relayed-decision-counts-as-a-persons-only-with-host-turn-evidence`).
 
 Accounting, not a security boundary: every signal can be forged by a process of the same user. A declaration
 only lowers trust, and a refusal built on provenance fails toward the careful side. Read-only verbs never call

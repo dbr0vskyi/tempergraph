@@ -2,7 +2,7 @@
 
 ## Context
 
-Triage and plan left `documents.rule.md` unopened in every reviewed run, and a short discovery retry got the hand-off's section order wrong after only searching `task-notes.rule.md` (issue 72, from [R-160](../../../tempergraph/docs/research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) F7). The issue allows two answers: put the part of the rule the step must follow into its prompt, or have the check confirm from the session record that the named rule file was read. Neither is built.
+Triage and plan left `documents.rule.md` unopened in every reviewed run, and a short discovery retry got the hand-off's section order wrong after only searching `task-notes.rule.md` (issue 72, from [research `does-the-improvement-loop-find-what-a-reviewer-finds`](../../../tempergraph/docs/research/does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) F7). The issue allows two answers: put the part of the rule the step must follow into its prompt, or have the check confirm from the session record that the named rule file was read. Neither is built.
 
 What the package holds today, read in it:
 

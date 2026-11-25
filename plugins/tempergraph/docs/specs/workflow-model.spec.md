@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A workflow is data: a `WorkflowSpec` ([CON-B4](contracts.spec.md)) in its own package, registered once and validated in full before anything is spent. The same validation guards the catalog, a start, a resume, the pre-start check and the upgrade check, so a bad workflow fails before a model call. This spec owns what a workflow may declare and what is refused, and OVR-B10: the engine core never names a workflow ([ADR-0129](../adr/0129-the-engine-names-no-workflow.adr.md)). What a package holds and how it is loaded is [PKG](workflow-package.spec.md). The compiler ([CMP](compiler-and-flow.spec.md)), the CLI, authoring ([SCF](blueprint-and-scaffold.spec.md)) and upgrade depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
+A workflow is data: a `WorkflowSpec` ([CON-B4](contracts.spec.md)) in its own package, registered once and validated in full before anything is spent. The same validation guards the catalog, a start, a resume, the pre-start check and the upgrade check, so a bad workflow fails before a model call. This spec owns what a workflow may declare and what is refused, and OVR-B10: the engine core never names a workflow ([ADR `the-engine-names-no-workflow`](../adr/the-engine-names-no-workflow.adr.md)). What a package holds and how it is loaded is [PKG](workflow-package.spec.md). The compiler ([CMP](compiler-and-flow.spec.md)), the CLI, authoring ([SCF](blueprint-and-scaffold.spec.md)) and upgrade depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
 ## Behaviours
 
@@ -65,7 +65,7 @@ WHEN a workflow is validated THE engine SHALL refuse an executor name not regist
 
 ### WFM-B10 Settings, routing and release refusals
 
-WHEN a workflow is validated THE engine SHALL refuse a non-positive or non-integer timeout, a malformed or missing `issue_repository`, a ladder longer than eight, a declared setting whose default is outside its kind, choices or range, a profile naming a key outside the settings catalog or a value outside its range ([RST-B32](run-settings-and-overrides.spec.md)); a missing routing description or a start example that does not resolve; and a unit kind, flow primitive or field the running release does not build, with `not_in_release` naming it and the release that adds it on the catalog, a start and the pre-start check alike ([ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md)).
+WHEN a workflow is validated THE engine SHALL refuse a non-positive or non-integer timeout, a malformed or missing `issue_repository`, a ladder longer than eight, a declared setting whose default is outside its kind, choices or range, a profile naming a key outside the settings catalog or a value outside its range ([RST-B32](run-settings-and-overrides.spec.md)); a missing routing description or a start example that does not resolve; and a unit kind, flow primitive or field the running release does not build, with `not_in_release` naming it and the release that adds it on the catalog, a start and the pre-start check alike ([ADR `first-release-is-simple-trusted-workflows-on-one-machine`](../adr/first-release-is-simple-trusted-workflows-on-one-machine.adr.md)).
 
 - GIVEN a unit that declares a field the running release does not build WHEN the workflow validates THEN it is refused `not_in_release` naming the field
 

@@ -10,7 +10,7 @@ adrs: [0001, 0004, 0006]
 
 ## 1. Overview
 
-The monitor's pane: one pane, `tempergraph`, opened by the `/tg` command, by pressing the band row, or on its own when a run starts and the surface docks panes as sidebars. Inside it a person moves through levels with the same keys as Claude Code's dynamic workflows view ([R-002](../research/R-002-dynamic-workflows-view.rsrch.md)): the run list, a run, a unit, an attempt, a session. This spec owns the pane, the run list, the run view (the graph), the orchestration view and the key map; the levels below a run are [MDD](drill-down.spec.md). It also owns contract M5: one tree per view on every surface.
+The monitor's pane: one pane, `tempergraph`, opened by the `/tg` command, by pressing the band row, or on its own when a run starts and the surface docks panes as sidebars. Inside it a person moves through levels with the same keys as Claude Code's dynamic workflows view ([research `dynamic-workflows-view`](../research/dynamic-workflows-view.rsrch.md)): the run list, a run, a unit, an attempt, a session. This spec owns the pane, the run list, the run view (the graph), the orchestration view and the key map; the levels below a run are [MDD](drill-down.spec.md). It also owns contract M5: one tree per view on every surface.
 
 ## 2. Contract
 
@@ -19,7 +19,7 @@ The monitor's pane: one pane, `tempergraph`, opened by the `/tg` command, by pre
 | Item | Rule |
 |---|---|
 | Id and title | `tempergraph`, title `tempergraph · <scope>` |
-| Opened by | `/tg [label]` (opens on that run if given), a band press, a toast's link, or unasked at `run_started` only where the surface reports a docked sidebar layout ([R-001](../research/R-001-claude-code-mods.rsrch.md)) |
+| Opened by | `/tg [label]` (opens on that run if given), a band press, a toast's link, or unasked at `run_started` only where the surface reports a docked sidebar layout ([research `claude-code-mods`](../research/claude-code-mods.rsrch.md)) |
 | Placement | `dock` and `inline`: full views; `widget` (desktop's minimized form): a glance of the band row's content and the oldest waiting gate |
 | Header | Breadcrumb `Runs › auth-fix › code › attempt 2 › judge`, a freshness mark (`live`, `3 s`, `stale 1 m`), the scope |
 | Footer | The keys valid at this level |
@@ -111,10 +111,10 @@ Opened from an orchestration row; drawn from the orchestration status document (
 
 ## 5. Design notes
 
-- The key map keeps the workflows view's muscle memory; where tempergraph has no matching verb (pause, restart, skip) the key is reused or absent rather than faked ([MADR-0004](../adr/0004-borrow-the-workflows-view-and-add-gates.adr.md)).
+- The key map keeps the workflows view's muscle memory; where tempergraph has no matching verb (pause, restart, skip) the key is reused or absent rather than faked ([MADR `borrow-the-workflows-view-and-add-gates`](../adr/borrow-the-workflows-view-and-add-gates.adr.md)).
 - The node strip is the one new visual idea: it makes "which of step, check, judge, gate is running" readable at a glance, which a workflow's agent rows cannot say because a workflow has no gates.
 - Release 1 build ([T10 plan](../../../tempergraph/docs/plans/t10-monitor.plan.md)): the run list (filter on `f`, a pin button per run, pins kept in `$.store` across sessions) and the run view (unit rows with the node strip, trip-back lines, narrator, touch strip, the cut note, pause question; `g` opens the pause view, `c` the cost tab, `x` fills stop) are drawn from the status and detail documents. Every row is a `Button`, so arrows and Enter are the surface's own focus keys. Deviations: back out is a footer `Button` with hotkey `b`, since a mod's `Button` hotkey is one letter or digit and `Esc` is the surface's own; `j` and `k` are not bound because the pane's scroll is the surface's; `l` and `a` are not bound, as the log tail is a session tab and every action is its own button. With `scope = machine` the run list adds "Other repositories on this machine" (each row opens a card) and one `missing` line per gone root; `m` opens the fleet tab. The run view's touch line starts with the run's supervision level from the engine's record (`level consultant by agent`). Map item rows, the orchestration view and the mobile reduction are not built (maps and orchestration are release 2).
-- One pane with levels, rather than one pane per run, keeps the band and the pane in step and matches the workflows view's single entry point ([MADR-0006](../adr/0006-one-pane-many-levels.adr.md)).
+- One pane with levels, rather than one pane per run, keeps the band and the pane in step and matches the workflows view's single entry point ([MADR `one-pane-many-levels`](../adr/one-pane-many-levels.adr.md)).
 
 ## 6. Acceptance criteria
 
@@ -130,4 +130,4 @@ Opened from an orchestration row; drawn from the orchestration status document (
 
 ## References
 
-[MDD](drill-down.spec.md) · [MBA](band-status-and-alerts.spec.md) · [RDD](../../../tempergraph/docs/specs/run-detail-document.spec.md) · [R-002](../research/R-002-dynamic-workflows-view.rsrch.md)
+[MDD](drill-down.spec.md) · [MBA](band-status-and-alerts.spec.md) · [RDD](../../../tempergraph/docs/specs/run-detail-document.spec.md) · [research `dynamic-workflows-view`](../research/dynamic-workflows-view.rsrch.md)

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The model-free tooling around the runtime: how the engine and its workflows are installed, upgraded, checked against each other and against the executors' CLIs and libraries, drawn and tested. Decisions are made by content and data, never by a version string or prose. Every executor changes between releases, so their versions are part of compatibility ([ADR-0007](../adr/0007-two-first-class-executors.adr.md), [ADR-0018](../adr/0018-add-messages-api-and-agent-sdk-executors.adr.md)). Operators, workflow authors and the `update`, `upgrade`, `validate` and `evals` verbs depend on these rules; install and update in full are [UPD](engine-update.spec.md), the changelog and stamp [VER](version-metadata.spec.md), suites [EVS](eval-suites.spec.md) and judge scores [JCL](judge-calibration.spec.md).
+The model-free tooling around the runtime: how the engine and its workflows are installed, upgraded, checked against each other and against the executors' CLIs and libraries, drawn and tested. Decisions are made by content and data, never by a version string or prose. Every executor changes between releases, so their versions are part of compatibility ([ADR `two-first-class-executors`](../adr/two-first-class-executors.adr.md), [ADR `add-messages-api-and-agent-sdk-executors`](../adr/add-messages-api-and-agent-sdk-executors.adr.md)). Operators, workflow authors and the `update`, `upgrade`, `validate` and `evals` verbs depend on these rules; install and update in full are [UPD](engine-update.spec.md), the changelog and stamp [VER](version-metadata.spec.md), suites [EVS](eval-suites.spec.md) and judge scores [JCL](judge-calibration.spec.md).
 
 ## Behaviours
 

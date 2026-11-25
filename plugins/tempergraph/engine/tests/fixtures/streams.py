@@ -1,4 +1,4 @@
-"""Claude Code stream-json lines in the shapes R-001 records, and a fake `claude` on PATH."""
+"""Claude Code stream-json lines in the shapes research `claude-code-cli-headless` records, and a fake `claude` on PATH."""
 
 from __future__ import annotations
 

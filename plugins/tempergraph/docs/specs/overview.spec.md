@@ -4,7 +4,7 @@
 
 tempergraph ("tempered rails for AI workflows") is an opinionated Python framework on LangGraph. A team's repeated process is written as a workflow: declarative data of steps, gates and flow. The engine validates it, compiles it into a durable state graph and runs it. Every step is a fresh headless agent session; after every step a gate runs a deterministic check and then an independent judge in a fresh read-only session; the engine, never the judge, derives the verdict and routes: proceed, retry, go back, ask a person, or stop. Every model call is costed, every run is recorded, and a built-in self-improvement workflow reads finished runs and files issues where the fault lives.
 
-The engine starts sessions through executors. Four are designed: the Claude Code CLI and the Antigravity CLI ([ADR-0007](../adr/0007-two-first-class-executors.adr.md)), the Claude Agent SDK and Anthropic's Messages API ([ADR-0018](../adr/0018-add-messages-api-and-agent-sdk-executors.adr.md)); releases 1 and 2 ship the first, `claude` ([ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md)), and what each release holds is [ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md). A workflow names engine-neutral model aliases and tool capabilities, so the same workflow can run its steps on any executor that declares what the step needs, and its judges on whichever executor can enforce a read-only view.
+The engine starts sessions through executors. Four are designed: the Claude Code CLI and the Antigravity CLI ([ADR `two-first-class-executors`](../adr/two-first-class-executors.adr.md)), the Claude Agent SDK and Anthropic's Messages API ([ADR `add-messages-api-and-agent-sdk-executors`](../adr/add-messages-api-and-agent-sdk-executors.adr.md)); releases 1 and 2 ship the first, `claude` ([ADR `first-release-ships-the-claude-executor-only`](../adr/first-release-ships-the-claude-executor-only.adr.md)), and what each release holds is [ADR `first-release-is-simple-trusted-workflows-on-one-machine`](../adr/first-release-is-simple-trusted-workflows-on-one-machine.adr.md). A workflow names engine-neutral model aliases and tool capabilities, so the same workflow can run its steps on any executor that declares what the step needs, and its judges on whichever executor can enforce a read-only view.
 
 The system has four layers, each depending only on the one below: the engine (registry, compiler, graph runtime, gate funnel, executors, tool host, checkpoint, run log, analyzer, workspace and the built-in self-improvement workflow, on LangGraph, SQLite, the two CLIs as child processes and the Agent SDK and Anthropic client library inside engine worker processes); workflows as data (one package per workflow, using the engine's public interface only); the authoring surface (agents, skills and rules a workflow's prompts invoke inside a step session); and the shell (skills that drive the engine CLI from a conversation, and the read-only `tempergraph-monitor` plugin, which reads only the status document, the detail document and the observer events).
 
@@ -20,12 +20,12 @@ The system's goals, each owned by the specs named:
 - G8 Non-experts author good workflows from an existing solution, references or a conversation, through a guided skill that works backwards from the good outcome, a scaffold that writes a Claude plugin with a Python part and its own docs, and checks up to a first trial (AUT, SCF, PKG, SHL, WFM, AUD).
 - G9 Many runs planned as a graph of runs, validated before spend and supervised without a model, with every pause left to a person (ORC, OSK).
 - G10 The engine and each workflow move between releases without losing a run (UPD, VER, MIG, WUP, UWF, LSK).
-- G11 Every graph shape LangGraph can build, except the self-routing forms [R-060](../research/R-060-node-types-against-langgraph.rsrch.md) excludes, is declarable as workflow data, and higher-level units keep every outcome engine-derived and judged (SCR, CNL, CTS, ASK, FLX, SWF).
+- G11 Every graph shape LangGraph can build, except the self-routing forms [research `node-types-against-langgraph`](../research/node-types-against-langgraph.rsrch.md) excludes, is declarable as workflow data, and higher-level units keep every outcome engine-derived and judged (SCR, CNL, CTS, ASK, FLX, SWF).
 - G12 A delivery workflow is expressible through the public interface alone: checks that run commands and record facts, step values, per-item maps, measured switches and a finalizer that can never fail a passed run (CHK, VAL, MAP, FIN, SWM).
 - G13 Every call and intervention on a run is attributed to a person, an agent, the orchestrator, a pipeline or the engine, and every run reports how much supervision it needed and what supervising it cost (PRV, SUP, SCO).
 - G14 A person or a script schedules a workflow or an orchestration once or on a recurrence, model-free, and the run fires on any OS with no terminal open, capped, attested as scheduled and still answered by a person at every pause (SCH, TCK).
 
-It is not a replacement for pull-request review (a finalizer opens a draft at most), not deterministic output, not a production-workload orchestrator, not a general chat agent, has no executor beyond the four, and is not a general tool harness: its own tool host serves only the Messages API executor ([THS](tool-host.spec.md)). Planned work is in scope only where [ADR-0021](../adr/0021-scope-of-planned-work.adr.md) says so.
+It is not a replacement for pull-request review (a finalizer opens a draft at most), not deterministic output, not a production-workload orchestrator, not a general chat agent, has no executor beyond the four, and is not a general tool harness: its own tool host serves only the Messages API executor ([THS](tool-host.spec.md)). Planned work is in scope only where [ADR `scope-of-planned-work`](../adr/scope-of-planned-work.adr.md) says so.
 
 The component specs, each owning what follows its name:
 
@@ -60,7 +60,7 @@ The component specs, each owning what follows its name:
 - [run-control.spec.md](run-control.spec.md) RCT: the `stop` verb.
 - [local-observability-store.spec.md](local-observability-store.spec.md) LOS: state-root and home layouts, session and engine logs, retention.
 - [central-run-stats.spec.md](central-run-stats.spec.md) CST: machine index, sinks, cross-machine stats.
-- [telemetry-export.spec.md](telemetry-export.spec.md) TEL: OTLP export with the GenAI conventions, deferred ([ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md)).
+- [telemetry-export.spec.md](telemetry-export.spec.md) TEL: OTLP export with the GenAI conventions, deferred ([ADR `own-observability-first-export-deferred`](../adr/own-observability-first-export-deferred.adr.md)).
 - [improvement-proposals.spec.md](improvement-proposals.spec.md) PRP: clusters, proposals, change classes, case sets, trials.
 - [feedback-and-judge-reliability.spec.md](feedback-and-judge-reliability.spec.md) FBK: labels, reliability grades, labelling queue, binding-shift watch.
 - [workflow-lessons.spec.md](workflow-lessons.spec.md) LSN: per-step lessons files and how they render and change.
@@ -115,7 +115,7 @@ The component specs, each owning what follows its name:
 - [runs-without-a-final-exit.spec.md](runs-without-a-final-exit.spec.md) SIL (split from 16): a stop at a pause and a lost runner as final exits for the loop, recorded once.
 - [review-repeats.spec.md](review-repeats.spec.md) SRV (split from 44): a review category kept in several sessions of a run or in several runs of a workflow, recorded as a finding for the proposer that files no issue alone.
 
-The monitor's own design set is [plugins/tempergraph-monitor/docs](../../../tempergraph-monitor/docs/specs/overview.spec.md). Assumptions made while the owner was unavailable are in [ADR-0001](../adr/0001-standalone-design-assumptions.adr.md); design notes and the origin of each spec block are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
+The monitor's own design set is [plugins/tempergraph-monitor/docs](../../../tempergraph-monitor/docs/specs/overview.spec.md). Assumptions made while the owner was unavailable are in [ADR `standalone-design-assumptions`](../adr/standalone-design-assumptions.adr.md); design notes and the origin of each spec block are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
 ## Behaviours
 
@@ -127,7 +127,7 @@ WHEN an operator starts a run of a registered workflow THE engine SHALL resolve 
 
 ### OVR-B2 Mixed executors
 
-WHEN a run is preflighted and a step's executor cannot restrict judge tools THE engine SHALL bind that step's judge to an executor that declares `restricts_judge_tools`, or refuse the start with exit 2 ([ADR-0013](../adr/0013-cross-executor-judging.adr.md)).
+WHEN a run is preflighted and a step's executor cannot restrict judge tools THE engine SHALL bind that step's judge to an executor that declares `restricts_judge_tools`, or refuse the start with exit 2 ([ADR `cross-executor-judging`](../adr/cross-executor-judging.adr.md)).
 
 - GIVEN steps on Antigravity and no bound executor that restricts judge tools WHEN the run is preflighted THEN the start is refused with exit 2 before any spend
 
@@ -175,7 +175,7 @@ WHEN state changes THE engine SHALL keep it as JSON merged by reducers under a s
 
 ### OVR-B10 The engine names no workflow
 
-WHEN a workflow needs an engine change THE engine core SHALL take it only as a capability any workflow can use and never name a workflow ([WFM](workflow-model.spec.md), [ADR-0129](../adr/0129-the-engine-names-no-workflow.adr.md)).
+WHEN a workflow needs an engine change THE engine core SHALL take it only as a capability any workflow can use and never name a workflow ([WFM](workflow-model.spec.md), [ADR `the-engine-names-no-workflow`](../adr/the-engine-names-no-workflow.adr.md)).
 
 - GIVEN the engine's source, skills and tests WHEN they are scanned for workflow package names THEN none is found
 
@@ -255,5 +255,5 @@ WHEN a spec names a requirement another spec owns, or a component needs a type n
 
 ## Open questions
 
-- Is account-based (consumer) Antigravity use permitted as a child process for the operator's account type? Until answered: the Antigravity executor is not shipped ([R-002](../research/R-002-antigravity-cli-headless.rsrch.md)). Owner: owner.
-- May the Agent SDK executor run on an operator's subscription sign-in, or only on API and cloud credentials? Until answered: API and cloud credentials only ([R-005](../research/R-005-claude-agent-sdk-executor.rsrch.md)). Owner: owner.
+- Is account-based (consumer) Antigravity use permitted as a child process for the operator's account type? Until answered: the Antigravity executor is not shipped ([research `antigravity-cli-headless`](../research/antigravity-cli-headless.rsrch.md)). Owner: owner.
+- May the Agent SDK executor run on an operator's subscription sign-in, or only on API and cloud credentials? Until answered: API and cloud credentials only ([research `claude-agent-sdk-executor`](../research/claude-agent-sdk-executor.rsrch.md)). Owner: owner.

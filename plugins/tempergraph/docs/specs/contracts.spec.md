@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The workflow declaration every workflow package writes and the engine reads ([ADR-0003](../adr/0003-workflows-as-data.adr.md)), the template grammar, input and routing declarations, model aliases, tool capabilities, the run and thread values and exit codes every caller reads, and the rules every persisted document follows. Workflow authors, the builders of `tempergraph.api`, every component spec and every caller of the CLI depend on these exact names. What a session request, result and judgement hold is [25 Session contract](session-contract.spec.md). Neutral tool and model names keep a workflow portable across executors at the cost of one mapping table per executor ([ADR-0006](../adr/0006-executors-as-capability-adapters.adr.md), [ADR-0008](../adr/0008-portable-model-aliases.adr.md)).
+The workflow declaration every workflow package writes and the engine reads ([ADR `workflows-as-data`](../adr/workflows-as-data.adr.md)), the template grammar, input and routing declarations, model aliases, tool capabilities, the run and thread values and exit codes every caller reads, and the rules every persisted document follows. Workflow authors, the builders of `tempergraph.api`, every component spec and every caller of the CLI depend on these exact names. What a session request, result and judgement hold is [25 Session contract](session-contract.spec.md). Neutral tool and model names keep a workflow portable across executors at the cost of one mapping table per executor ([ADR `executors-as-capability-adapters`](../adr/executors-as-capability-adapters.adr.md), [ADR `portable-model-aliases`](../adr/portable-model-aliases.adr.md)).
 
 ## Behaviours
 
@@ -62,7 +62,7 @@ WHEN a step or judge model is resolved THE engine SHALL accept only `inherit`, a
 
 ### CON-B11 Tool capabilities
 
-WHEN workflow data declares tools THE engine SHALL take only the capability names `read`, `search`, `list`, `web_fetch` and `web_search` (read-only), `edit`, `write` and `shell` (a declared command prefix), `subagent` (inheriting its caller's restriction), `mcp:<server>/<tool>` (classified by the engine catalog, never by name pattern) and `skill:<plugin>:<name>` (adds no tool of its own, [ADR-0078](../adr/0078-skills-are-a-declared-tool-capability.adr.md)), and map each name to an executor's tools by that executor's `tool_map`, the view catalog being keyed by executor and tool name.
+WHEN workflow data declares tools THE engine SHALL take only the capability names `read`, `search`, `list`, `web_fetch` and `web_search` (read-only), `edit`, `write` and `shell` (a declared command prefix), `subagent` (inheriting its caller's restriction), `mcp:<server>/<tool>` (classified by the engine catalog, never by name pattern) and `skill:<plugin>:<name>` (adds no tool of its own, [ADR `skills-are-a-declared-tool-capability`](../adr/skills-are-a-declared-tool-capability.adr.md)), and map each name to an executor's tools by that executor's `tool_map`, the view catalog being keyed by executor and tool name.
 
 - GIVEN a step that declares `edit` on an executor whose `tool_map` lacks it WHEN the run is preflighted THEN it exits 2 before spend
 - GIVEN a workflow that names only neutral aliases and `read`, `search`, `list`, `edit`, `write` and `shell` WHEN it is validated against each executor THEN it is valid on all four
@@ -71,7 +71,7 @@ WHEN workflow data declares tools THE engine SHALL take only the capability name
 
 WHEN a thread's state or a person's decision is written THE engine SHALL use only the thread states `none`, `running` (lock held), `paused`, `unfinished`, `stopped` and `finished`, the decisions `proceed`, `retry`, `back:<unit>`, `rewind:<unit>` ([RRN-B16](reruns-and-feedback.spec.md)), `stop`, `event:<name>=<value>` and `answer:<name>=<value>` ([ASK-B8](ask-unit.spec.md)), and the thread id `<workflow>/<task_id>`.
 
-- GIVEN a thread whose state is not `none` WHEN a fresh `run` names it THEN the run is refused with exit 2 ([ADR-0015](../adr/0015-exit-codes-as-caller-contract.adr.md))
+- GIVEN a thread whose state is not `none` WHEN a fresh `run` names it THEN the run is refused with exit 2 ([ADR `exit-codes-as-caller-contract`](../adr/exit-codes-as-caller-contract.adr.md))
 - GIVEN `resume --decision rewind:plan` WHEN `plan` is a completed unit THEN the thread rewinds to it
 
 ### CON-B13 Exit codes

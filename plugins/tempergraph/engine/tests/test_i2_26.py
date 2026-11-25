@@ -27,7 +27,7 @@ NO_SLEEP = RunSettings(sleep=lambda s: None)
 CAPS = {"claude": standin("claude").capabilities()}
 
 
-# -- deliverables per path (R-130 G10, OUT-B15, OUT-B16, OUT-B17) ----------------------------------------------------------
+# -- deliverables per path (research `release-two-readiness-and-gaps` G10, OUT-B15, OUT-B16, OUT-B17) ----------------------------------------------------------
 
 
 def outcome_ctx(tmp_path: Path, *, path: list[str], arts: dict[str, Any]) -> Any:
@@ -69,7 +69,7 @@ def test_producers_come_from_the_declarations_and_off_path_references_are_option
     assert judge is not None and judge.references["review"] == "optional"  # `draft` may route past `review`
 
 
-# -- a repository's declared commands (R-130 G11, CHK-B11) -------------------------------------------------
+# -- a repository's declared commands (research `release-two-readiness-and-gaps` G11, CHK-B11) -------------------------------------------------
 
 
 def declare(repo: Path, commands: Any) -> None:
@@ -135,7 +135,7 @@ def test_a_step_gets_the_repositorys_commands(repo: Path) -> None:
     assert "- `make test`" in ex.request.prompt and "@repository" not in ex.request.prompt
 
 
-# -- GitFacts.pushed (R-130 G12, CHK-B10) ------------------------------------------------------------------
+# -- GitFacts.pushed (research `release-two-readiness-and-gaps` G12, CHK-B10) ------------------------------------------------------------------
 
 
 def test_pushed_is_set_from_the_remote_tracking_refs(repo: Path, tmp_path: Path) -> None:

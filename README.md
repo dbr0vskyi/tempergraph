@@ -255,7 +255,7 @@ The project is designed spec-first: acceptance criteria rank above specs and dec
 
 ## Roadmap
 
-**Release 1** (built, live checks pending): simple trusted workflows on one machine, workflow authoring, full local observability and supervision, and the self-improvement loop, on the Claude Code executor ([scope](plugins/tempergraph/docs/adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md), [plan](plugins/tempergraph/docs/plans/first-release.plan.md)).
+**Release 1** (built, live checks pending): simple trusted workflows on one machine, workflow authoring, full local observability and supervision, and the self-improvement loop, on the Claude Code executor ([scope](plugins/tempergraph/docs/adr/first-release-is-simple-trusted-workflows-on-one-machine.adr.md), [plan](plugins/tempergraph/docs/plans/first-release.plan.md)).
 
 **Release 2** (built, live checks pending; engine `0.2.0`): effort ladders and one-step model escalation on evidence, a judge raised by risk, routing by task size, eval suites, promotion to `local-stable`, run state carried on a branch, engine `update` and workflow `upgrade`, ask and wait steps, parallel read-only steps, breakpoints, lifecycle hooks, and runs outside git ([plan](plugins/tempergraph/docs/plans/second-release.plan.md)).
 

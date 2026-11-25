@@ -1,5 +1,5 @@
 """Reading run events: the run log in `seq` order, the activity journal, `--follow`, narrator lines and the
-in-process observers (EVT-B8, EVT-B9, EVT-B10 to EVT-B16, EVT-B17, EVT-B18, EVT-B7, EVT-B19, EVT-B22, EVT-B23, EVT-B24; ADR-0022, ADR-0027).
+in-process observers (EVT-B8, EVT-B9, EVT-B10 to EVT-B16, EVT-B17, EVT-B18, EVT-B7, EVT-B19, EVT-B22, EVT-B23, EVT-B24; ADR `observers-read-files-not-sockets`, ADR `in-process-observers-and-wider-hook-events`).
 
 Readers here create nothing and call no model (OVR-B15); they skip unknown kinds and fields (OVR-B14).
 Observers never change a run or its exit code (OVR-B4, EVT-B5).

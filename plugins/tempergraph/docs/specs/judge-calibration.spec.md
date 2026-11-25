@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Every gate rests on an LLM judge, and public work shows judges pass bad work far more often than they fail good work ([R-045](../research/R-045-evaluating-llm-judges-public-practice.rsrch.md) F2). This spec defines how a judge is graded before anything relies on its grades: a gold case set per gate with reviewed labels per criterion, a score of one judge binding on that set (repeated, and on generated variants), the figures computed from it, an acceptance bar on their lower confidence bounds, and the acceptance state other specs read. Acceptance never changes a verdict, a route or a budget: a gate always runs its judge and the engine always derives the verdict ([JDG](judge-and-verdict.spec.md)). What acceptance licenses is trust in the judge's grades elsewhere: stable mode ([LIF-B6](lifecycle-and-evals.spec.md)), outcome filing ([SIL-B7](self-improvement.spec.md)), corrected rates in reports ([EVS](eval-suites.spec.md)), judge-graded trial targets and ladder evidence. This is the offline half of judge reliability; production labels are the other half ([FBK](feedback-and-judge-reliability.spec.md)), and they measure different errors. The recursion stops at people: a judge never writes a gold label. The gaps it closes are E1 to E8, E11, E15 and E16 of [R-046](../research/R-046-eval-and-judge-gap-analysis.rsrch.md); design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md). Workflow authors, operators moving a workflow to stable mode and the loop depend on it.
+Every gate rests on an LLM judge, and public work shows judges pass bad work far more often than they fail good work ([research `evaluating-llm-judges-public-practice`](../research/evaluating-llm-judges-public-practice.rsrch.md) F2). This spec defines how a judge is graded before anything relies on its grades: a gold case set per gate with reviewed labels per criterion, a score of one judge binding on that set (repeated, and on generated variants), the figures computed from it, an acceptance bar on their lower confidence bounds, and the acceptance state other specs read. Acceptance never changes a verdict, a route or a budget: a gate always runs its judge and the engine always derives the verdict ([JDG](judge-and-verdict.spec.md)). What acceptance licenses is trust in the judge's grades elsewhere: stable mode ([LIF-B6](lifecycle-and-evals.spec.md)), outcome filing ([SIL-B7](self-improvement.spec.md)), corrected rates in reports ([EVS](eval-suites.spec.md)), judge-graded trial targets and ladder evidence. This is the offline half of judge reliability; production labels are the other half ([FBK](feedback-and-judge-reliability.spec.md)), and they measure different errors. The recursion stops at people: a judge never writes a gold label. The gaps it closes are E1 to E8, E11, E15 and E16 of [research `eval-and-judge-gap-analysis`](../research/eval-and-judge-gap-analysis.rsrch.md); design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md). Workflow authors, operators moving a workflow to stable mode and the loop depend on it.
 
 ## Behaviours
 
@@ -20,7 +20,7 @@ WHEN a score counts findings, one per case and blocker criterion THE engine SHAL
 
 ### JCL-B11 Tune and holdout
 
-WHEN a case is written THE engine SHALL mark it `holdout`, make it `tune` the first time the authoring skill or the improvement proposer shows it to anyone editing that gate's brief, stance or criteria, never move it back to `holdout`, compute the bar on holdout cases only, and score and show tune cases apart ([ADR-0046](../adr/0046-calibration-cases-split-tune-and-holdout.adr.md)).
+WHEN a case is written THE engine SHALL mark it `holdout`, make it `tune` the first time the authoring skill or the improvement proposer shows it to anyone editing that gate's brief, stance or criteria, never move it back to `holdout`, compute the bar on holdout cases only, and score and show tune cases apart ([ADR `calibration-cases-split-tune-and-holdout`](../adr/calibration-cases-split-tune-and-holdout.adr.md)).
 
 - GIVEN a tune case WHEN any later edit happens THEN it stays `tune`
 
@@ -32,13 +32,13 @@ WHEN the authoring skill shows three cases holding 9 of a gate's 24 holdout know
 
 ### JCL-B12 Stale labels and fixtures
 
-WHEN a label's criterion text or check method changed since its digest, or a case's fixture changed since its labels were reviewed THE engine SHALL mark that label, or that case, `stale` and not score it until a reviewer confirms or changes it, leaving the case's other labels current ([R-045](../research/R-045-evaluating-llm-judges-public-practice.rsrch.md) F8).
+WHEN a label's criterion text or check method changed since its digest, or a case's fixture changed since its labels were reviewed THE engine SHALL mark that label, or that case, `stale` and not score it until a reviewer confirms or changes it, leaving the case's other labels current ([research `evaluating-llm-judges-public-practice`](../research/evaluating-llm-judges-public-practice.rsrch.md) F8).
 
 - GIVEN one reworded criterion WHEN scored THEN only its labels are stale
 
 ### JCL-B13 Variants
 
-WHEN a score runs variants THE engine SHALL build each from the case by a fixed engine template with no model call, so it is reproducible and costs only its judge session ([ADR-0047](../adr/0047-judge-robustness-by-metamorphic-variants.adr.md)): `persuasive_account` (the step account replaced by an engine text claiming every criterion met, confident and without evidence; every blocker status class unchanged), `padded` (the subject about doubled with plausible irrelevant filler; unchanged), `reordered` (criteria in a fixed permuted order, ids unchanged; every status unchanged per id) and `out_of_reach` (the read view of one reference a blocker depends on removed; that blocker `UNVERIFIABLE` or `N/A`, never `MET`), a status class being `pass` (`MET`, `N/A`) or `fail` (`PARTIAL`, `UNMET`, `UNVERIFIABLE`).
+WHEN a score runs variants THE engine SHALL build each from the case by a fixed engine template with no model call, so it is reproducible and costs only its judge session ([ADR `judge-robustness-by-metamorphic-variants`](../adr/judge-robustness-by-metamorphic-variants.adr.md)): `persuasive_account` (the step account replaced by an engine text claiming every criterion met, confident and without evidence; every blocker status class unchanged), `padded` (the subject about doubled with plausible irrelevant filler; unchanged), `reordered` (criteria in a fixed permuted order, ids unchanged; every status unchanged per id) and `out_of_reach` (the read view of one reference a blocker depends on removed; that blocker `UNVERIFIABLE` or `N/A`, never `MET`), a status class being `pass` (`MET`, `N/A`) or `fail` (`PARTIAL`, `UNMET`, `UNVERIFIABLE`).
 
 - GIVEN two generations of one variant WHEN their digests are compared THEN they are equal
 
@@ -74,7 +74,7 @@ WHEN figures are computed on holdout findings with the first repeat as the prima
 
 ### JCL-B16 Acceptance bar
 
-WHEN the bar runs THE engine SHALL require at least 20 known-bad holdout findings from at least 8 distinct cases, at least 20 known-good from at least 5, every blocker criterion covered by a known-bad holdout finding, `catch_lb` at least 0.75, `clean_lb` at least 0.65, `out_of_reach_ok` 1.0 where out-of-reach findings exist, `flip_rate` at most 0.10 with `k` at least 3, `variant_flip[kind]` at most 0.10 for each kind scored with `persuasive_account` and `out_of_reach` required, and warn without failing for `anchor_adherence` below 0.95, the defaults held in one engine config file and raised per gate, never lowered, in the package's `evals/calibration/bar.json` ([ADR-0045](../adr/0045-judges-accepted-on-labelled-error-rates.adr.md)).
+WHEN the bar runs THE engine SHALL require at least 20 known-bad holdout findings from at least 8 distinct cases, at least 20 known-good from at least 5, every blocker criterion covered by a known-bad holdout finding, `catch_lb` at least 0.75, `clean_lb` at least 0.65, `out_of_reach_ok` 1.0 where out-of-reach findings exist, `flip_rate` at most 0.10 with `k` at least 3, `variant_flip[kind]` at most 0.10 for each kind scored with `persuasive_account` and `out_of_reach` required, and warn without failing for `anchor_adherence` below 0.95, the defaults held in one engine config file and raised per gate, never lowered, in the package's `evals/calibration/bar.json` ([ADR `judges-accepted-on-labelled-error-rates`](../adr/judges-accepted-on-labelled-error-rates.adr.md)).
 
 - GIVEN a `bar.json` that lowers `catch_lb` WHEN read THEN the engine default holds
 
@@ -131,6 +131,6 @@ WHEN `evals bar [<workflow>] [--json]` or `evals label <workflow>/<gate>/<case> 
 
 ## Open questions
 
-- Are the default bars right for a first release? They admit 20 known-bad findings with one miss; R-011 G7 proposed a false-pass ceiling of 0.05 on a point value instead. Owner: owner.
-- Should FBK's `reliable` grade require `accepted` here, merging the two states? Proposed in [R-046](../research/R-046-eval-and-judge-gap-analysis.rsrch.md). Owner: owner, with the self-improvement thread.
+- Are the default bars right for a first release? They admit 20 known-bad findings with one miss; research `design-gap-review` G7 proposed a false-pass ceiling of 0.05 on a point value instead. Owner: owner.
+- Should FBK's `reliable` grade require `accepted` here, merging the two states? Proposed in [research `eval-and-judge-gap-analysis`](../research/eval-and-judge-gap-analysis.rsrch.md). Owner: owner, with the self-improvement thread.
 - Who may act as a reviewer of gold labels in a team? Until answered: anyone with commit rights to the workflow package. Owner: owner.

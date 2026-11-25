@@ -109,7 +109,7 @@ Not built in release 1 (recorded in PRP-B23): PRP-B9 (needs the merge to be seen
 
 ### T12.9 Session digest and dev-mode review
 
-[SRV](../specs/session-review.spec.md) as scoped in the [release plan](first-release.plan.md) T12.9 (I-92 to I-94); release 1 assumptions are in R-150 SRV. Stable-mode plans are release 2 (X2-26).
+[SRV](../specs/session-review.spec.md) as scoped in the [release plan](first-release.plan.md) T12.9 (I-92 to I-94); release 1 assumptions are in research `rationale-carried-from-the-engine-specs` SRV. Stable-mode plans are release 2 (X2-26).
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|

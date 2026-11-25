@@ -20,7 +20,7 @@ task_id: first-release-t1
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T1; owner's instruction of 2026-11-20 to start release 1 |
 | Specs | [CON](../specs/contracts.spec.md), [SEC](../specs/security.spec.md), [LOS](../specs/local-observability-store.spec.md), read at `14799ea` |
-| Decisions | [ADR-0090](../adr/0090-first-release-is-simple-trusted-workflows-on-one-machine.adr.md), [ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md), [ADR-0115](../adr/0115-the-engine-is-a-src-layout-python-package-inside-its-plugin.adr.md) |
+| Decisions | [ADR `first-release-is-simple-trusted-workflows-on-one-machine`](../adr/first-release-is-simple-trusted-workflows-on-one-machine.adr.md), [ADR `first-release-ships-the-claude-executor-only`](../adr/first-release-ships-the-claude-executor-only.adr.md), [ADR `the-engine-is-a-src-layout-python-package-inside-its-plugin`](../adr/the-engine-is-a-src-layout-python-package-inside-its-plugin.adr.md) |
 
 **Problem statement.** No code exists. Every track needs the same package, test runner, source rules, shared types, launch rules and store layout first.
 
@@ -41,7 +41,7 @@ task_id: first-release-t1
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 1.1.1 | `plugins/tempergraph/engine/pyproject.toml` | Create the `tempergraph` package (src layout, Python ≥ 3.11, `langgraph`, `langgraph-checkpoint-sqlite`, dev extras pytest, ruff, mypy) | ADR-0115 | | P1 | ✓ | 2026-11-20 |
+| 1.1.1 | `plugins/tempergraph/engine/pyproject.toml` | Create the `tempergraph` package (src layout, Python ≥ 3.11, `langgraph`, `langgraph-checkpoint-sqlite`, dev extras pytest, ruff, mypy) | ADR `the-engine-is-a-src-layout-python-package-inside-its-plugin` | | P1 | ✓ | 2026-11-20 |
 | 1.1.2 | `engine/tests/test_source_rules.py` | Test LangGraph confinement, sanctioned launch sites, no `shell=True`, concrete executors only in `tempergraph.executors`, no shipped workflow named | SEC-B7, EXI-AC1, WFM-AC4 | yes | P1 | ✓ | 2026-11-20 |
 | 1.1.3 | `CLAUDE.md` | Record the build, lint, type and test commands | — | | P1 | ✓ | 2026-11-20 |
 
@@ -49,7 +49,7 @@ task_id: first-release-t1
 
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
-| 1.2.1 | `engine/tests/test_contract_tables.py` | Test the exit-code table of CON-B12, CON-B13 against `ExitCode`; test the docs type-suffix rule | CON-B12, CON-B13, ADR-0017 | yes | P1 | ✓ | 2026-11-20 |
+| 1.2.1 | `engine/tests/test_contract_tables.py` | Test the exit-code table of CON-B12, CON-B13 against `ExitCode`; test the docs type-suffix rule | CON-B12, CON-B13, ADR `artifact-type-suffixes` | yes | P1 | ✓ | 2026-11-20 |
 | 1.2.2 | `engine/src/tempergraph/constants.py` | Create `ExitCode`, schema versions, reserved verbs, executor names, release number | CON-B12, CON-B13, CON-B14, CON-B1, CON-B15, CLI-B2 | | P1 | ✓ | 2026-11-20 |
 | 1.2.3 | `engine/src/tempergraph/contracts.py` | Create every CON-B4, CON-B5, CON-B6, CON-B7, CON-B8, CON-B9, CON-B3, CON-B11, SSN-B1 to SSN-B6, SSN-B7, SSN-B8, SSN-B9, SSN-B10, CON-B12, CON-B13, CON-B14, CON-B1, CON-B15, AUD (moved), RST (moved), PRV (moved), PKG, OUT (moved) type used by release 1 as dataclasses | CON-B3 to CON-B15, SSN-B1 to SSN-B10 | | P1 | ✓ | 2026-11-20 |
 | 1.2.4 | `engine/tests/test_docs.py` | Test unknown key, newer schema, unknown event kind counted, owner-only writes | CON-B14, CON-B1, CON-B15, CON-B1 | yes | P1 | ✓ | 2026-11-20 |
@@ -91,5 +91,5 @@ task_id: first-release-t1
 
 | # | Assumption |
 |---|---|
-| A1 | The engine's Python source is the plugin's staged engine, at `plugins/tempergraph/engine/` (ADR-0115). |
+| A1 | The engine's Python source is the plugin's staged engine, at `plugins/tempergraph/engine/` (ADR `the-engine-is-a-src-layout-python-package-inside-its-plugin`). |
 | A2 | Launch sites are added to `SANCTIONED_SITES` in the phase that builds them, so the scan is exact at every commit. |

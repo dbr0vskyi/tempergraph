@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Everything a repository's runs leave on the machine lives in one folder, the state root `<main checkout>/.tempergraph/` ([WSP](workspace-and-concurrency.spec.md)), in a fixed layout: checkpoints, run logs, the full log of every agent session on every executor, the engine's own code log, deterministic check output, hook output, batch files, the ledger and scratch. A per-user home folder, `~/.tempergraph/`, holds what spans repositories on one machine. This spec owns both layouts, the manifest that versions them, the engine's code log, retention and the `logs` and `store` verbs. One known layout means the monitor, the troubleshooter skill and a person with a shell all find a session's full log by its `session_key`, whichever executor ran it ([ADR-0024](../adr/0024-one-local-store-layout-with-a-manifest.adr.md)). Writing any of it is best effort (OVR-B4) and nothing here is published (OVR-B11). Retention is never automatic: a person decides what history to drop. Every observer, the troubleshooter and the self-improvement loop depend on this layout; release 1 deviations are kept in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
+Everything a repository's runs leave on the machine lives in one folder, the state root `<main checkout>/.tempergraph/` ([WSP](workspace-and-concurrency.spec.md)), in a fixed layout: checkpoints, run logs, the full log of every agent session on every executor, the engine's own code log, deterministic check output, hook output, batch files, the ledger and scratch. A per-user home folder, `~/.tempergraph/`, holds what spans repositories on one machine. This spec owns both layouts, the manifest that versions them, the engine's code log, retention and the `logs` and `store` verbs. One known layout means the monitor, the troubleshooter skill and a person with a shell all find a session's full log by its `session_key`, whichever executor ran it ([ADR `one-local-store-layout-with-a-manifest`](../adr/one-local-store-layout-with-a-manifest.adr.md)). Writing any of it is best effort (OVR-B4) and nothing here is published (OVR-B11). Retention is never automatic: a person decides what history to drop. Every observer, the troubleshooter and the self-improvement loop depend on this layout; release 1 deviations are kept in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
 ## Behaviours
 
@@ -74,7 +74,7 @@ WHEN a run starts with a read-only home folder THE engine SHALL start the run, l
 
 ### LOS-B13 Engine code log
 
-WHEN the engine logs THE engine SHALL write JSON lines, one file per process per day, with `ts`, `level`, `logger`, `pid`, `thread_id` and `seq` (the thread and its last run-log `seq`, inside a run) and a scrubbed `msg` (exception lines carrying the type and a scrubbed traceback), at `INFO` unless `--log-level` or `TEMPERGRAPH_LOG_LEVEL` changes it, worker processes writing under their own pid tagged `worker: sdk` or `worker: api` ([ADR-0019](../adr/0019-in-process-executors-run-in-a-worker-process.adr.md)), and read-only verbs logging only to standard error (OVR-B15).
+WHEN the engine logs THE engine SHALL write JSON lines, one file per process per day, with `ts`, `level`, `logger`, `pid`, `thread_id` and `seq` (the thread and its last run-log `seq`, inside a run) and a scrubbed `msg` (exception lines carrying the type and a scrubbed traceback), at `INFO` unless `--log-level` or `TEMPERGRAPH_LOG_LEVEL` changes it, worker processes writing under their own pid tagged `worker: sdk` or `worker: api` ([ADR `in-process-executors-run-in-a-worker-process`](../adr/in-process-executors-run-in-a-worker-process.adr.md)), and read-only verbs logging only to standard error (OVR-B15).
 
 - GIVEN `status` run with `--log-level DEBUG` WHEN it ends THEN nothing was written under `engine/`
 
@@ -104,7 +104,7 @@ WHEN `store prune` runs over a thread finished 40 days ago THE engine SHALL remo
 
 ### LOS-B17 Capture level
 
-WHEN a session runs THE engine SHALL capture every item of the layout on every executor by default ([ADR-0029](../adr/0029-own-observability-first-export-deferred.adr.md)), and let the operator lower it per item in the `observe` map of `settings.json` (`observe.raw = off` removing the session's `raw.jsonl` at session end, `observe.tool_inputs = off`, `observe.check_output = off` removing a check's output files after the check), the project file winning per key ([RST](run-settings-and-overrides.spec.md)), recording the lowering once per run as `capture_lowered` on `run_started`.
+WHEN a session runs THE engine SHALL capture every item of the layout on every executor by default ([ADR `own-observability-first-export-deferred`](../adr/own-observability-first-export-deferred.adr.md)), and let the operator lower it per item in the `observe` map of `settings.json` (`observe.raw = off` removing the session's `raw.jsonl` at session end, `observe.tool_inputs = off`, `observe.check_output = off` removing a check's output files after the check), the project file winning per key ([RST](run-settings-and-overrides.spec.md)), recording the lowering once per run as `capture_lowered` on `run_started`.
 
 - GIVEN `observe.raw = off` WHEN a session ends THEN its `raw.jsonl` is gone and `run_started` lists `raw` in `capture_lowered`
 

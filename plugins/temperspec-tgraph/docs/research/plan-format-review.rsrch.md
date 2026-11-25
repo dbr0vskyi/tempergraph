@@ -42,7 +42,7 @@ The difference is mostly deliberate, but not all of it was decided. The large di
 | Plan, expand, code gates | code | `workflow/temperspec/checks.py` (`plan_check`, `expand_check`, `code_check`, `outcome_check`) |
 | Plan, expand, code prompts and judge briefs | prompt | `prompts/plan.md`, `prompts/expand.md`, `prompts/code.md`, `judges/plan.md`, `judges/expand.md` |
 | Rule examples held to the parser | test | `tests/test_temperspec.py` (`test_the_plan_rule_example_and_limits_match_the_parser` and its neighbours) |
-| Owner's rulings on format and cascades | research | engine R-125, R-127; package [next features](next-features.rsrch.md) |
+| Owner's rulings on format and cascades | research | engine research `temperspec-as-the-first-authored-workflow`, research `spec-format-behaviours-first-without-cascades`; package [next features](next-features.rsrch.md) |
 | Engine rulings reach later judges | spec | engine spec `reruns-and-feedback` RRN-B1, spec `judge-and-verdict` "Feedback" |
 | Engine release 2: sequential map, self-check, `@repository` commands | spec, code | engine spec `check-contract-and-command-runs` "As built (R2-T7)", `model/validate.py` (map mode `sequential`) |
 
@@ -52,12 +52,12 @@ Origin: **decided** means a recorded rule or ruling explains the difference; **u
 
 | # | Plan part | temperspec plan | Origin | Worth adding? |
 |---|---|---|---|---|
-| 1 | File named by purpose, component and version | `docs/plans/<task id>.plan.md` | Decided: collision-free names, no version (documents rule; R-127 C1, C8) | No |
+| 1 | File named by purpose, component and version | `docs/plans/<task id>.plan.md` | Decided: collision-free names, no version (documents rule; research `spec-format-behaviours-first-without-cascades` C1, C8) | No |
 | 2 | Front matter: goal, version, dates, owner, status, tags, tracker link | `task`, `complexity`, `specs`; the goal is the title | Decided for version, dates, status (documents rule 1); tracker left out by the owner; owner and tags undecided | No: git holds who and when |
 | 3 | Front matter: the short commit each spec was read at | None | Undecided | No: the run's base commit already fixes it inside a run; across runs, backlog B2 (spec changed on the base) is the better guard |
 | 4 | Status values (planned to deprecated), a completed mark and date per row | Built: `status` (`planned`, `in-progress`, `completed`) and a `Completed` cell `✓ <date>` per row, set by the code step | First decided against (no status in a document); the owner then ruled that a plan is not a spec and causes no cascade, so it carries both | Yes, built: the code gate checks the marks first and returns at once without running anything, then verifies a marked plan as if it had no marks |
 | 5 | A leading section with five parts (origin, research, decision record, spec at a commit, tracker) and four subsections (problem, decisions made, implementation guidance, context) | `## 0. Hand-off`: triage note, specs read, why this design. Problem, decisions and open questions live in the discovery hand-off note | Decided: one home per artifact (the hand-off and decision records own them) | No. "Why this design" already carries the one judged criterion |
-| 6 | Requirements with type prefixes (requirement, architecture, API, state, type, doc) | `R<n>` with `Criteria` and `Spec ids` columns | Prefixes undecided; API and type items point at a contracts spec, which temperspec does not have (R-127 C5, no Interface section) | No. The `Spec ids` column is stronger than the prefixes |
+| 6 | Requirements with type prefixes (requirement, architecture, API, state, type, doc) | `R<n>` with `Criteria` and `Spec ids` columns | Prefixes undecided; API and type items point at a contracts spec, which temperspec does not have (research `spec-format-behaviours-first-without-cascades` C5, no Interface section) | No. The `Spec ids` column is stronger than the prefixes |
 | 7 | Every acceptance criterion maps to a requirement | Same, checked (`ts-plan-trace`) | Built | — |
 | 8 | Every requirement maps to a phase | Stated in the rule; nothing links a row to a requirement, so nothing checks it | Undecided | **Yes, A1** |
 | 9 | Track map (track, spec, phases, depends on) with a Kind column and a release track | None | Release track decided (owner left the release step out); the map undecided, tied to per-phase coding | No. Phases are enough until coding runs per phase; even then a track adds only a grouping |

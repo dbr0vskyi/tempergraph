@@ -1,8 +1,8 @@
 """Declared capability sets of the four designed executors (EXI-B16 to EXI-B24, ECC-B6, EAS, EMA, EAG-B8).
 
-Release 1 registers `claude` only (ADR-0091); the other three sets are declarations used by the scripted
+Release 1 registers `claude` only (ADR `first-release-ships-the-claude-executor-only`); the other three sets are declarations used by the scripted
 stand-ins and the conformance suite, so CON-AC5 and WFM-AC5 hold against all four before their
-adapters ship. A capability resting on an unrun probe is declared false (ADR-0010).
+adapters ship. A capability resting on an unrun probe is declared false (ADR `judge-isolation-per-executor`).
 """
 
 from __future__ import annotations

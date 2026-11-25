@@ -13,7 +13,7 @@ from typing import Any
 from tempergraph.contracts import PackageManifest
 from tempergraph.model.validate import Finding
 
-# A workflow package's plugin name is its workflow name plus PLUGIN_SUFFIX (PKG-B13, ADR-0120), so a
+# A workflow package's plugin name is its workflow name plus PLUGIN_SUFFIX (PKG-B13, ADR `a-workflow-plugin-name-is-the-workflow-name-plus-tgraph`), so a
 # tempergraph workflow is recognisable by name wherever Claude Code lists plugins. The workflow name stays short:
 # it is what `run` takes, the registry key, the run folder and the `tgwf-<name>` distribution.
 PLUGIN_SUFFIX = "-tgraph"
@@ -64,7 +64,7 @@ class Pyproject:
 
 
 def plugin_name(workflow: str) -> str:
-    """The plugin name of the workflow package for `workflow` (ADR-0120)."""
+    """The plugin name of the workflow package for `workflow` (ADR `a-workflow-plugin-name-is-the-workflow-name-plus-tgraph`)."""
     return workflow + PLUGIN_SUFFIX
 
 

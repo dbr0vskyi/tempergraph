@@ -35,7 +35,7 @@
 - {name: "effort: XL", color: "2188ff", description: "A whole track; split into sub-issues before starting"}
 
 # release: which engine release it belongs to
-- {name: "release: 3",     color: "0e8a16", description: "Engine release 3 (ADR-0132)"}
+- {name: "release: 3",     color: "0e8a16", description: "Engine release 3 (ADR `release-three-composes-runs-in-parallel-and-grades-in-the-pipeline`)"}
 - {name: "release: 4",     color: "5cb85c", description: "Engine release 4 (other executors, orchestration)"}
 - {name: "release: later", color: "a2eeef", description: "No release chosen"}
 

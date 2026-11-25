@@ -2,7 +2,7 @@
 
 ## Purpose
 
-One renderer builds every step prompt for every executor, so what a step is told and must emit is the same whether it runs on Claude Code or Antigravity. The step is shown its criteria as the target and is never asked to grade itself: its output is a claim, the judge assesses it and the engine decides. Workflow authors depend on the sections a prompt holds and on the output lines a step must end with; the judge, checks and routes read artifacts, and a step reads only what its template names, which keeps context small on every executor. Instruction files differ per executor (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`) and the engine adds nothing to them; rules a step needs on several executors ship through the workflow's authoring surface ([ADR-0016](../adr/0016-portable-authoring-surface.adr.md)).
+One renderer builds every step prompt for every executor, so what a step is told and must emit is the same whether it runs on Claude Code or Antigravity. The step is shown its criteria as the target and is never asked to grade itself: its output is a claim, the judge assesses it and the engine decides. Workflow authors depend on the sections a prompt holds and on the output lines a step must end with; the judge, checks and routes read artifacts, and a step reads only what its template names, which keeps context small on every executor. Instruction files differ per executor (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`) and the engine adds nothing to them; rules a step needs on several executors ship through the workflow's authoring surface ([ADR `portable-authoring-surface`](../adr/portable-authoring-surface.adr.md)).
 
 ## Behaviours
 
@@ -54,7 +54,7 @@ WHEN a step declares tools or holds a tool grant ([RST-B28, RST-B29, RST-B30](ru
 
 ### PRM-B9 The upstream line
 
-WHEN a step has back targets THE renderer SHALL offer the upstream line only for a listed target that has run on this path or that a route skipped ([ADR-0076](../adr/0076-claims-may-target-a-route-skipped-back-target.adr.md)), and the blocked line always.
+WHEN a step has back targets THE renderer SHALL offer the upstream line only for a listed target that has run on this path or that a route skipped ([ADR `claims-may-target-a-route-skipped-back-target`](../adr/claims-may-target-a-route-skipped-back-target.adr.md)), and the blocked line always.
 
 - GIVEN `back_targets: [plan]` and a path on which `plan` ran WHEN rendered THEN the prompt offers `UPSTREAM plan: <defect>`
 - GIVEN a path on which `plan` neither ran nor was skipped by a route WHEN rendered THEN no upstream line is offered

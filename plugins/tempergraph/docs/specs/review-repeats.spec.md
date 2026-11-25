@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Split from [session review](session-review.spec.md) by capability, keeping its ids: how a review category kept again and again, in several sessions of one run or in several runs of a workflow, is counted, recorded as a finding and handed to the proposer, and why such a finding files no issue by itself ([the decision record](../adr/a-review-category-kept-in-several-sessions-never-files-alone.adr.md), [ADR-0119](../adr/0119-review-observations-are-candidates-corroborated-before-they-file.adr.md)). Counting is not reading: a repeat is arithmetic over observations whose citations the engine has already checked ([SRV-B20](session-review.spec.md)). Workflow authors who read `improve backlog`, the loop and the proposer depend on it.
+Split from [session review](session-review.spec.md) by capability, keeping its ids: how a review category kept again and again, in several sessions of one run or in several runs of a workflow, is counted, recorded as a finding and handed to the proposer, and why such a finding files no issue by itself ([the decision record](../adr/a-review-category-kept-in-several-sessions-never-files-alone.adr.md), [ADR `review-observations-are-candidates-corroborated-before-they-file`](../adr/review-observations-are-candidates-corroborated-before-they-file.adr.md)). Counting is not reading: a repeat is arithmetic over observations whose citations the engine has already checked ([SRV-B20](session-review.spec.md)). Workflow authors who read `improve backlog`, the loop and the proposer depend on it.
 
 ## Behaviours
 

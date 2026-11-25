@@ -204,7 +204,7 @@ def test_registered_package_loads_and_runs(repo: Path, tmp_path: Path, monkeypat
     assert code == 0, err  # the check ran in the worker, importing the package's own module
     code, _, err = cli(repo, ex, "run", "notes-flow-tgraph", "Release 1.2", "--task-id", "N-2", "--check",
                        catalog=cat)
-    assert "unknown workflow" not in err  # the plugin name names the same workflow (ADR-0120)
+    assert "unknown workflow" not in err  # the plugin name names the same workflow (ADR `a-workflow-plugin-name-is-the-workflow-name-plus-tgraph`)
     code, _, err = cli(repo, None, "run", "gone", "x", catalog=cat)
     assert code == ExitCode.INTERNAL and "not_loaded" in err
 

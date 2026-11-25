@@ -1,7 +1,7 @@
 """The executor registry and judge executor selection (EXI-B16, EXI-B17, EXI-B24).
 
 Names are constants registered in a fixed order; workflow data selects one by name and never supplies a
-path or a command. Release 1 registers ``claude`` only (ADR-0091). Tests build their own `Registry`
+path or a command. Release 1 registers ``claude`` only (ADR `first-release-ships-the-claude-executor-only`). Tests build their own `Registry`
 holding stand-ins.
 """
 
@@ -63,7 +63,7 @@ def _can_judge(ex: Executor) -> bool:
 
 
 def default_registry() -> Registry:
-    """The shipped registry: `claude` only in release 1 (ADR-0091)."""
+    """The shipped registry: `claude` only in release 1 (ADR `first-release-ships-the-claude-executor-only`)."""
     from tempergraph.executors.claude import ClaudeExecutor
 
     reg = Registry()

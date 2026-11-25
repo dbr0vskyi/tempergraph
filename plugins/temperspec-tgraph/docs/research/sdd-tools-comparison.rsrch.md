@@ -1,4 +1,4 @@
-# temperspec against other spec-driven development tools
+# Temperspec against other spec-driven development tools
 
 | | |
 |---|---|
@@ -138,7 +138,7 @@ The criticisms are those that independent reviewers repeat (§11).
 | 2 | One heavy workflow whatever the task | Routes on gaps and on complexity; a docs-only run | No route for a trivial fix |
 | 3 | Waterfall | A gate sends the run back to the step where the defect was written | Still plans before it codes, by intent |
 | 4 | Agents do not follow the spec | Read-only judge checks code against edited and related specs; checks run the commands themselves | Judges uncalibrated |
-| 5 | Specs decay, nothing fails | Living specs; the alignment and agreement criteria fail the run | Agreement between specs is judged only (the package's decision record 0001) |
+| 5 | Specs decay, nothing fails | Living specs; the alignment and agreement criteria fail the run | Agreement between specs is judged only (the package's decision record `ts-spec-sync`) |
 | 6 | Blind to existing code | Setup step; triage must search before it claims a gap | Untested |
 | 7 | Cost without proven gain | Middle tier only; skipped steps; cost cap | No measurement at all |
 | 8 | Implementation detail in specs | Behaviours name only what an outsider depends on | Enforced by a judge, not a check |
@@ -169,7 +169,7 @@ The criticisms are those that independent reviewers repeat (§11).
 |---|---|---|---|
 | GSD | Map each acceptance criterion to an automated test command before coding | Makes "done" checkable without a judge | temperspec: the plan check |
 | Kiro | Property-based tests derived from behaviours written in the fixed pattern | The only deterministic link from a requirement to code found in this survey | temperspec: an optional kind of test row |
-| Tessl | A link from each acceptance criterion to its test, checked by a script | Turns "specs and code agree" partly into a check, which the package's decision record 0001 leaves to a judge | temperspec: the spec rule and the code check |
+| Tessl | A link from each acceptance criterion to its test, checked by a script | Turns "specs and code agree" partly into a check, which the package's decision record `ts-spec-sync` leaves to a judge | temperspec: the spec rule and the code check |
 | Superpowers, GSD | A fresh session and a commit per task, with a review per task | Smaller contexts; the owner already asked for a commit per phase | Waits for the engine's sequential map |
 | GSD 2 | Model routing by measured success per tier | Matches the owner's wish to move phases to a cheaper tier later | The engine's ladder work, as a general capability |
 | Superpowers | A stronger model only after repeated failed fix rounds | The same rule the owner set for ladders | The engine's ladder work |

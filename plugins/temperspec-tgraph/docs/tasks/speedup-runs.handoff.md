@@ -7,7 +7,7 @@ temperspec runs are slow in four places: the engine's suite runs in one process,
 ## Gaps closed
 
 - G1: `plugins/temperspec-tgraph/docs/specs/triage.spec.md` (ts-tri-covered); the form of the mark goes into the task-notes rule in the plan
-- G2: `plugins/temperspec-tgraph/docs/specs/discovery.spec.md` (ts-dis-short, ts-dis-full) and the decision record `plugins/temperspec-tgraph/docs/adr/0003-short-discovery-visit.adr.md`, which says why no engine switch, override or ladder fits and picks the route after triage
+- G2: `plugins/temperspec-tgraph/docs/specs/discovery.spec.md` (ts-dis-short, ts-dis-full) and the decision record `plugins/temperspec-tgraph/docs/adr/short-discovery-visit.adr.md`, which says why no engine switch, override or ladder fits and picks the route after triage
 - G3: `plugins/temperspec-tgraph/docs/specs/discovery.spec.md` (ts-dis-narrow, ts-dis-reading) and `plugins/temperspec-tgraph/docs/specs/plan.spec.md` (ts-plan-reading)
 - G4: `plugins/temperspec-tgraph/docs/specs/code.spec.md` (ts-code-once)
 - G5: `plugins/temperspec-tgraph/docs/specs/code.spec.md` (ts-code-reuse) and the research note `plugins/temperspec-tgraph/docs/research/speedup-runs-command-reuse.rsrch.md`, which shows that the engine already reuses a result in every case the task names (CHK-B13, CHK-B5)
@@ -21,7 +21,7 @@ temperspec runs are slow in four places: the engine's suite runs in one process,
 - `plugins/temperspec-tgraph/docs/specs/discovery.spec.md`: four rows added (ts-dis-short, ts-dis-full, ts-dis-narrow, ts-dis-reading)
 - `plugins/temperspec-tgraph/docs/specs/plan.spec.md`: one row added (ts-plan-reading)
 - `plugins/temperspec-tgraph/docs/specs/code.spec.md`: two rows added (ts-code-once, ts-code-reuse)
-- `plugins/temperspec-tgraph/docs/adr/0003-short-discovery-visit.adr.md`: new
+- `plugins/temperspec-tgraph/docs/adr/short-discovery-visit.adr.md`: new
 - `plugins/temperspec-tgraph/docs/research/speedup-runs-command-reuse.rsrch.md`: new
 
 ## Decisions
@@ -29,7 +29,7 @@ temperspec runs are slow in four places: the engine's suite runs in one process,
 - The rows of the four package specs are added in those specs' earlier layout (numbered sections, `- [ ] ts-…` rows), as the spec rule says to leave an earlier layout as it is. That layout has no behaviours section, so each row states one observable result, as the existing rows do. The code step mirrors each row into `outcome.json` with the same text (revision 5), because a rescaffold rebuilds the criteria section from that file and would drop a row that is not there.
 - A gap is still listed in doubt. `Covered by <behaviour id> and <criterion id>` records the answer triage found, so that discovery confirms it instead of searching. The triage check confirms that both ids exist once in one spec and that the criterion names the behaviour.
 - None of the engine's means fits discovery sizing. The complexity switch is sticky for the run and would keep a run short after a trip back to discovery; an arm override changes the effort but not the prompt and carries no reason; the effort ladder starts at one rung whatever the note says. The closest general capability is the route after triage, which already picks the next unit from the values the triage step produced. It picks a second, short discovery step (decision record). No engine change for G2.
-- The short step runs at effort `high` with a reading limit of 10 files, and its judge at `high`. The task gave `high` as an example and left the limit open. These are first assessments made without a run, as in the decision record 0002; the first measured runs may move them. Each visit states its own reasons for step and judge (decision record), which the existing sizing test and the engine's audit rule already hold for every step.
+- The short step runs at effort `high` with a reading limit of 10 files, and its judge at `high`. The task gave `high` as an example and left the limit open. These are first assessments made without a run, as in the decision record `model-and-effort-per-unit`; the first measured runs may move them. Each visit states its own reasons for step and judge (decision record), which the existing sizing test and the engine's audit rule already hold for every step.
 - "When no gap is open at all, the run goes on as today" is read as `Gaps: None`, which already goes to the plan or the quick lane with no discovery (ts-tri-route). No row changes for it.
 - The engine already reuses a verification result for the same tree across a retry, a later visit and the outcome gate, so criterion 3 needs a statement (ts-code-reuse) and a gate-level test, not an engine capability (research note, F1 to F4 and F7).
 - The engine suite runs on at most four workers by default (`auto`, capped at four), not on plain `auto`. The task allowed `-n auto` or an equivalent. `-n 0` runs one process. When `pytest-xdist` is missing the suite runs in one process and says so: a code session cannot install a package (its commands are the plan's verification prefixes), and an unknown option in the configuration would stop every run in an environment without the runner.
@@ -48,7 +48,7 @@ temperspec runs are slow in four places: the engine's suite runs in one process,
 - `plugins/temperspec-tgraph/docs/specs/discovery.spec.md` (ts-dis-short, ts-dis-full, ts-dis-narrow, ts-dis-reading): requirement source for the short visit, the narrow reading and the reading list
 - `plugins/temperspec-tgraph/docs/specs/plan.spec.md` (ts-plan-reading): requirement source for the plan prompt
 - `plugins/temperspec-tgraph/docs/specs/code.spec.md` (ts-code-once, ts-code-reuse): requirement source for criteria 2 and 3
-- `plugins/temperspec-tgraph/docs/adr/0003-short-discovery-visit.adr.md` (Decision, the sizing table): the short step's effort and reasons, to copy into the sizing table and the blueprint
+- `plugins/temperspec-tgraph/docs/adr/short-discovery-visit.adr.md` (Decision, the sizing table): the short step's effort and reasons, to copy into the sizing table and the blueprint
 - `plugins/temperspec-tgraph/docs/research/speedup-runs-command-reuse.rsrch.md` (F1 to F4, F7, conclusions 1 and 2): why the engine needs no change, and how to test the gate (two gate runs over one tree and one store, the second reused)
 - `plugins/temperspec-tgraph/rules/task-notes.rule.md` (lines 31-33, 42, 77-105): add `Covered by` to the Gaps example and bullet, and the reading list to the hand-off example and bullets; the templates regenerate from the examples
 - `plugins/temperspec-tgraph/workflow/temperspec/specfmt.py` (lines 14, 54, 60-72, 196-238): `HANDOFF_HEADINGS`, `GAP_ROW`, `rule_templates`, `Triage` and `parse_triage`; parse the covered marks and the reading list here
@@ -66,7 +66,7 @@ temperspec runs are slow in four places: the engine's suite runs in one process,
 - `plugins/temperspec-tgraph/evals/checks/discovery/must-pass/2-new-spec/handoff.md` (whole file): one of seven discovery check fixtures; the must-pass hand-offs need a reading list once the check asks for one, and a new must-fail case has none
 - `plugins/temperspec-tgraph/README.md` (lines 15-16, 22): the step table and "discovery thinks at the highest effort", which stops being true for the short step
 - `plugins/temperspec-tgraph/docs/plans/backlog.plan.md` (line 24): delete row B21 in the change that builds it
-- `plugins/tempergraph/docs/research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md` (line 23): the 16-minute discovery, with 362k tokens of context, its first write at turn 135 and about 40 turns re-checking form by reading checker code; the evidence behind the narrow reading rule
+- `plugins/tempergraph/docs/research/does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md` (line 23): the 16-minute discovery, with 362k tokens of context, its first write at turn 135 and about 40 turns re-checking form by reading checker code; the evidence behind the narrow reading rule
 - `plugins/tempergraph/engine/pyproject.toml` (lines 16-21, 32-37): the `dev` extra and the pytest options; add `pytest-xdist` and the default workers; the code session's environment may lack the runner, so TST-B3 matters
 - `plugins/tempergraph/engine/tests/conftest.py` (lines 32-45, 66-71, 74-85, 91-98): per-test home isolation, the real-state guard, the tree hash and the live skip; where the missing-runner notice (TST-B3) and the session-level check (TST-AC7) can live
 - `plugins/tempergraph/engine/tests/test_workflow_packages.py` (lines 55-58): runs a package's own tests in a subprocess with `-o addopts=`, so the worker option does not nest

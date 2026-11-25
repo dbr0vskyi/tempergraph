@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The `tempergraph` plugin wraps the engine CLI in skills a person uses from a conversation. A skill drives the engine; it never decides a gate. The skills ship in the engine plugin and know no workflow: they read the catalog; workflow-specific agents, skills and rules ship with each workflow ([ADR-0003](../adr/0003-workflows-as-data.adr.md)). The live monitor is the separate `tempergraph-monitor` plugin, which reads the observer documents and read-only verbs only ([EVT](run-events.spec.md), [RDD](run-detail-document.spec.md), [monitor docs](../../../tempergraph-monitor/docs/specs/overview.spec.md)). The shell is a Claude Code plugin; an operator may also drive the CLI directly or from CI. People using the skills, and the supervision measures that read the plugin's host hooks, depend on what the skills and hooks do. Each skill is a core file plus references read on demand, so its always-loaded text stays small.
+The `tempergraph` plugin wraps the engine CLI in skills a person uses from a conversation. A skill drives the engine; it never decides a gate. The skills ship in the engine plugin and know no workflow: they read the catalog; workflow-specific agents, skills and rules ship with each workflow ([ADR `workflows-as-data`](../adr/workflows-as-data.adr.md)). The live monitor is the separate `tempergraph-monitor` plugin, which reads the observer documents and read-only verbs only ([EVT](run-events.spec.md), [RDD](run-detail-document.spec.md), [monitor docs](../../../tempergraph-monitor/docs/specs/overview.spec.md)). The shell is a Claude Code plugin; an operator may also drive the CLI directly or from CI. People using the skills, and the supervision measures that read the plugin's host hooks, depend on what the skills and hooks do. Each skill is a core file plus references read on demand, so its always-loaded text stays small.
 
 ## Behaviours
 
@@ -64,7 +64,7 @@ WHEN the authoring skill drafts criteria for a requirement that is a file, a git
 
 ### SHL-B10 Newer unit kinds where they fit
 
-WHEN the interview points to model-free work, several perspectives or a vote, best-of-n, or input only a person has THE authoring skill SHALL offer a script, a council, a contest or an ask, and answer a request phrased in graph-runtime terms (`Command`, `Send`, `interrupt`) with its declared form ([R-060](../research/R-060-node-types-against-langgraph.rsrch.md), [ADR-0062](../adr/0062-new-node-kinds-keep-the-gated-unit.adr.md)).
+WHEN the interview points to model-free work, several perspectives or a vote, best-of-n, or input only a person has THE authoring skill SHALL offer a script, a council, a contest or an ask, and answer a request phrased in graph-runtime terms (`Command`, `Send`, `interrupt`) with its declared form ([research `node-types-against-langgraph`](../research/node-types-against-langgraph.rsrch.md), [ADR `new-node-kinds-keep-the-gated-unit`](../adr/new-node-kinds-keep-the-gated-unit.adr.md)).
 
 - GIVEN "three reviewers vote" WHEN steps are drafted THEN the skill offers a council
 

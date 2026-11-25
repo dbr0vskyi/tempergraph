@@ -1,4 +1,4 @@
-"""A council attempt, session by session (CNL-B1, CNL-B2, CNL-B11 to CNL-B15, ADR-0062, ADR-0063).
+"""A council attempt, session by session (CNL-B1, CNL-B2, CNL-B11 to CNL-B15, ADR `new-node-kinds-keep-the-gated-unit`, ADR `council-is-a-gated-step-with-engine-tallied-outcomes`).
 
 `compiler.graph` builds the unit's step node as a small subgraph (one member dispatch per round and member, a barrier,
 a tally node and the chair node) and calls the methods of `CouncilRun` from its nodes. This module owns what the nodes

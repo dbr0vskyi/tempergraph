@@ -2,7 +2,7 @@
 
 The `stop` verb writes `runs/<workflow>/<task_id>/control/stop.json`; the engine holding the thread's
 lock picks it up between records and at least once a second while a session runs, removes it and acts.
-A file, not a signal: it carries a mode and is safe after process-id reuse (ADR-0028).
+A file, not a signal: it carries a mode and is safe after process-id reuse (ADR `stop-verb-as-the-only-observer-control`).
 """
 
 from __future__ import annotations

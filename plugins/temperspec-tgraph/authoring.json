@@ -19,7 +19,7 @@
     {
       "id": "s46",
       "kind": "reference",
-      "locator": "plugins/tempergraph/docs/research/R-125-temperspec-as-the-first-authored-workflow.rsrch.md",
+      "locator": "plugins/tempergraph/docs/research/temperspec-as-the-first-authored-workflow.rsrch.md",
       "digest": "5d671674d2ea9693298c469a8c64483b060cd70269ab8440fa5551726b2e9b96",
       "size": 23675,
       "private": false,
@@ -32,7 +32,7 @@
     {
       "id": "s47",
       "kind": "reference",
-      "locator": "plugins/tempergraph/docs/research/R-127-spec-format-behaviours-first-without-cascades.rsrch.md",
+      "locator": "plugins/tempergraph/docs/research/spec-format-behaviours-first-without-cascades.rsrch.md",
       "digest": "43642a10ee4132ed4fe94c9b67795a218a27dce34e3eaf88447eb06654e42632",
       "size": 15784,
       "private": false,
@@ -48,7 +48,7 @@
       "detail": {
         "item": 1,
         "line": 16,
-        "from": "R-125-temperspec-as-the-first-authored-workflow.rsrch.md"
+        "from": "temperspec-as-the-first-authored-workflow.rsrch.md"
       },
       "used": false
     },
@@ -59,7 +59,7 @@
       "detail": {
         "item": 2,
         "line": 184,
-        "from": "R-125-temperspec-as-the-first-authored-workflow.rsrch.md"
+        "from": "temperspec-as-the-first-authored-workflow.rsrch.md"
       },
       "used": false
     }
@@ -433,7 +433,7 @@
     "at": "2026-11-21T10:33:48.312Z"
   },
   "verify": {
-    "at": "2026-11-25T09:44:17.523Z",
+    "at": "2026-11-25T12:21:22.008Z",
     "ok": true,
     "rungs": {
       "load": "passed",

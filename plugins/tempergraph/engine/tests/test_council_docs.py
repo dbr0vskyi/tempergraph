@@ -57,5 +57,5 @@ def test_the_readme_roadmap_no_longer_lists_councils_as_designed_not_built() -> 
 
 
 def test_the_rationale_note_does_not_say_the_council_is_not_built() -> None:  # AC 7
-    text = (DOCS / "research" / "R-150-rationale-carried-from-the-engine-specs.rsrch.md").read_text(encoding="utf-8")
+    text = (DOCS / "research" / "rationale-carried-from-the-engine-specs.rsrch.md").read_text(encoding="utf-8")
     assert "councils are release 3 work" not in text and "those units are not built" not in text

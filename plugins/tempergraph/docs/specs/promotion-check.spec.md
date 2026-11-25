@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A workflow is improved locally until it needs little supervision, then moved to a pipeline ([ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)). This spec owns the three stages (`local-dev`, `local-stable`, `pipeline`), the model-free verb `promote-check` that measures a workflow version against each stage's criteria and writes a promotion stamp, the stage every run carries, and the regressed watch after a move ([ADR-0124](../adr/0124-promotion-is-a-model-free-stamp-per-workflow-version.adr.md)). The engine never promotes or demotes a workflow by itself, and a pipeline run never answers its own pause. Effort ladders ([LAD](effort-ladder-and-model-escalation.spec.md)), risk rules ([JRK](judge-model-by-risk.spec.md)) and complexity switches ([CXR](complexity-routing.spec.md)) read the stage; until pipelines exist a paused run moves between machines by [CAR](run-state-on-a-branch.spec.md). Design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
+A workflow is improved locally until it needs little supervision, then moved to a pipeline ([ADR `graduate-a-workflow-from-local-to-pipeline-by-measured-criteria`](../adr/graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)). This spec owns the three stages (`local-dev`, `local-stable`, `pipeline`), the model-free verb `promote-check` that measures a workflow version against each stage's criteria and writes a promotion stamp, the stage every run carries, and the regressed watch after a move ([ADR `promotion-is-a-model-free-stamp-per-workflow-version`](../adr/promotion-is-a-model-free-stamp-per-workflow-version.adr.md)). The engine never promotes or demotes a workflow by itself, and a pipeline run never answers its own pause. Effort ladders ([LAD](effort-ladder-and-model-escalation.spec.md)), risk rules ([JRK](judge-model-by-risk.spec.md)) and complexity switches ([CXR](complexity-routing.spec.md)) read the stage; until pipelines exist a paused run moves between machines by [CAR](run-state-on-a-branch.spec.md). Design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
 ## Behaviours
 
@@ -50,7 +50,7 @@ WHEN a run starts THE engine SHALL give it stage `pipeline` when the caller is `
 
 ### PRO-B8 Window
 
-WHEN the window is read THE engine SHALL take the last `--window` finished runs (default 20 for `pipeline`, 10 for `local-stable`, never fewer than P1's count) whose `run_started` `content_version` (the workflow version with its content digest, [VER-B14](version-metadata.spec.md)) is the package's current one, or for a workflow that is not a package its declared version; leave out runs with origin `trial`, `scenario` or `evals`, dry runs, reruns of a trial and runs that did not reach a final exit; and restart the window after a gate escape for a stage whose escape bar is 0 ([ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)).
+WHEN the window is read THE engine SHALL take the last `--window` finished runs (default 20 for `pipeline`, 10 for `local-stable`, never fewer than P1's count) whose `run_started` `content_version` (the workflow version with its content digest, [VER-B14](version-metadata.spec.md)) is the package's current one, or for a workflow that is not a package its declared version; leave out runs with origin `trial`, `scenario` or `evals`, dry runs, reruns of a trial and runs that did not reach a final exit; and restart the window after a gate escape for a stage whose escape bar is 0 ([ADR `graduate-a-workflow-from-local-to-pipeline-by-measured-criteria`](../adr/graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)).
 
 - GIVEN a change inside the content digest WHEN the window is read THEN it is empty and every criterion is `unmeasured`
 
@@ -68,7 +68,7 @@ WHEN `--stamp` runs and every criterion is met THE engine SHALL write `promotion
 
 ### PRO-B11 Pauses in a pipeline
 
-WHEN a pipeline run pauses THE engine SHALL exit 3, ending the job, the question reaching a person through `attention`, a hook or the monitor and the person resuming where the run's state root lives ([ADR-0041](../adr/0041-graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)), and never make an escalation `offer` at stage `pipeline` ([LAD-B13](effort-ladder-and-model-escalation.spec.md)); the regressed watch re-reading P2, P3, P5, P6 and P9 over the sliding window after every final exit at stage `pipeline`, best effort (OVR-B4).
+WHEN a pipeline run pauses THE engine SHALL exit 3, ending the job, the question reaching a person through `attention`, a hook or the monitor and the person resuming where the run's state root lives ([ADR `graduate-a-workflow-from-local-to-pipeline-by-measured-criteria`](../adr/graduate-a-workflow-from-local-to-pipeline-by-measured-criteria.adr.md)), and never make an escalation `offer` at stage `pipeline` ([LAD-B13](effort-ladder-and-model-escalation.spec.md)); the regressed watch re-reading P2, P3, P5, P6 and P9 over the sliding window after every final exit at stage `pipeline`, best effort (OVR-B4).
 
 - GIVEN a pipeline run that pauses WHEN it exits THEN the exit is 3 and `attention` lists the pause
 
@@ -83,6 +83,6 @@ WHEN a pipeline run pauses THE engine SHALL exit 3, ending the job, the question
 
 ## Open questions
 
-- Where does a pipeline run's state root live between jobs (ADR-0041 C2)? Until answered: CAR's state branch, as the owner proposed on 2026-11-20; a hosted store later. Owner: owner.
+- Where does a pipeline run's state root live between jobs (ADR `graduate-a-workflow-from-local-to-pipeline-by-measured-criteria` C2)? Until answered: CAR's state branch, as the owner proposed on 2026-11-20; a hosted store later. Owner: owner.
 - Are 20 runs and the other bars right? Until answered: as stated, revisited after the first 20 runs of one workflow. Owner: owner.
 - Not built yet: `--to pipeline`, the `pipeline` stage, the regressed watch (PRO-B3, PRO-B5, PRO-B11) and pipeline runs come with CI pipelines in a later release, refused meanwhile `not_in_release` (owner, 2026-11-20); a workflow cannot raise a bar yet; the `attention` listing of `unpromoted_pipeline` runs waits for the `pipeline` stage; the stage is on the `run_segment` ledger row only. Owner: engine owner.

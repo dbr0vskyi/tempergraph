@@ -23,7 +23,7 @@ os.environ["PYTHONPATH"] = os.pathsep.join(p for p in (_SRC_ROOT, os.environ.get
 
 def workflow_packages() -> list[Path]:
     """The workflow packages next to the engine in this repository, found by their manifest. The engine's
-    tests name none of them (WFM-AC4, ADR-0129)."""
+    tests name none of them (WFM-AC4, ADR `the-engine-names-no-workflow`)."""
     return sorted(p.parent for p in (REPO_ROOT / "plugins").glob("*/tempergraph.json"))
 
 

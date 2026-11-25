@@ -1,4 +1,4 @@
-"""Per-step lessons: the file, its validation, the rendered block and its digest (LSN; ADR-0032).
+"""Per-step lessons: the file, its validation, the rendered block and its digest (LSN; ADR `lessons-are-versioned-workflow-content`).
 
 A lessons file is workflow content (`lessons/<unit>.json` in the package). Runs read it and never write it;
 it changes only through a `lessons` proposal, whose delta rules are `classify_change` (LSN-B9).

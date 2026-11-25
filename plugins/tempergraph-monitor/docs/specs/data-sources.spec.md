@@ -76,10 +76,10 @@ The mod's own memory across sessions (pinned runs, last alerted `seq` per thread
 
 ## 5. Design notes
 
-- Stat first, read second: the same rule `wait` follows in the engine; it keeps a monitor with ten live runs cheap ([MADR-0002](../adr/0002-poll-files-and-read-only-verbs.adr.md)).
+- Stat first, read second: the same rule `wait` follows in the engine; it keeps a monitor with ten live runs cheap ([MADR `poll-files-and-read-only-verbs`](../adr/poll-files-and-read-only-verbs.adr.md)).
 - Status and detail come from verbs because only the engine can probe the lock without creating it and open the checkpoint read-only.
 - Release 1 build ([T10 plan](../../../tempergraph/docs/plans/t10-monitor.plan.md)): run rows, the change signal, the run-log tail, the detail document, the processes of an open session, its activity journal and its log tails are read as above, all from one 1 s clock in `hooks/register.tsx`. Deviations: the live session is read from the detail document's `live` block, refreshed with the document every 2 s, not from `live.json` every 1 s; the journal (its last 1 MiB), `ps` and log tails are read every 2 s while their tab is open. Projection (`stats --projection --by workflow --json`, every 10 min) and the fleet (`stats --live --json` and the month by machine and by workflow, every 60 s while the fleet tab or a fleet card is open or `alerts_fleet` is on) are read as above; the fleet's freshness comes from the `synced` block of the `stats` document rather than a `stat` of `synced.json`. `scope = machine` runs `status --all-roots --json` once, which reads the machine index itself and marks a gone root `missing` (MDS-B4), instead of one `status` per root; rows of other repositories open a read-only card, not a run view, because the run view's verbs and fills act on the session's own repository. Orchestrations are not built (release 2). `status --json` runs in the session's working directory and the engine finds the state root itself; `engine_path` replaces `tempergraph` only with an absolute path that ends in the shim's name.
-- `scope` (`repo` default, or `machine`) is a mod setting; the fleet needs a sink the engine is configured with ([MADR-0005](../adr/0005-three-scopes-repo-machine-fleet.adr.md)).
+- `scope` (`repo` default, or `machine`) is a mod setting; the fleet needs a sink the engine is configured with ([MADR `three-scopes-repo-machine-fleet`](../adr/three-scopes-repo-machine-fleet.adr.md)).
 
 ## 6. Acceptance criteria
 
@@ -92,8 +92,8 @@ The mod's own memory across sessions (pinned runs, last alerted `seq` per thread
 
 | Question | Owner |
 |---|---|
-| Can `$.fs` read paths outside the session's working directory (other roots, `~/.tempergraph/`) without a prompt on every surface? Probe P-MOD-2 ([R-001](../research/R-001-claude-code-mods.rsrch.md)). If not, those reads go through `tempergraph logs` and `events`. | Monitor implementer |
+| Can `$.fs` read paths outside the session's working directory (other roots, `~/.tempergraph/`) without a prompt on every surface? Probe P-MOD-2 ([research `claude-code-mods`](../research/claude-code-mods.rsrch.md)). If not, those reads go through `tempergraph logs` and `events`. | Monitor implementer |
 
 ## References
 
-[EVT](../../../tempergraph/docs/specs/run-events.spec.md) · [RDD](../../../tempergraph/docs/specs/run-detail-document.spec.md) · [LOS](../../../tempergraph/docs/specs/local-observability-store.spec.md) · [CST](../../../tempergraph/docs/specs/central-run-stats.spec.md) · [R-001](../research/R-001-claude-code-mods.rsrch.md)
+[EVT](../../../tempergraph/docs/specs/run-events.spec.md) · [RDD](../../../tempergraph/docs/specs/run-detail-document.spec.md) · [LOS](../../../tempergraph/docs/specs/local-observability-store.spec.md) · [CST](../../../tempergraph/docs/specs/central-run-stats.spec.md) · [research `claude-code-mods`](../research/claude-code-mods.rsrch.md)

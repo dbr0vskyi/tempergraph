@@ -4,7 +4,7 @@
 
 A task whose every gap a spec already answers gets a hand-off and a reading list from a short, read-only visit, and a gap the citation does not answer goes on to the full discovery
 
-Part of the [overview](overview.spec.md). The route after triage chooses it when the triage check has verified every `Covered by` mark; every return to discovery from a later gate goes to the full [discovery](discovery.spec.md) ([decision 0003](../adr/0003-short-discovery-visit.adr.md)).
+Part of the [overview](overview.spec.md). The route after triage chooses it when the triage check has verified every `Covered by` mark; every return to discovery from a later gate goes to the full [discovery](discovery.spec.md) ([decision 0003](../adr/short-discovery-visit.adr.md)).
 
 ## 6. Acceptance criteria
 

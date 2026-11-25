@@ -83,7 +83,7 @@ def test_the_overview_names_every_spec() -> None:
 
 
 def _scanned() -> list[Path]:
-    skip = ("/node_modules/", "/.git/", "spec-migration.plan.md", "R-150-rationale")
+    skip = ("/node_modules/", "/.git/", "spec-migration.plan.md", "rationale-carried-from-the-engine-specs")
     out = []
     for p in (REPO_ROOT / "plugins").rglob("*"):
         s = p.as_posix()

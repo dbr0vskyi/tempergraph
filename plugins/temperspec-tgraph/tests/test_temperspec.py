@@ -582,7 +582,7 @@ def test_no_unit_uses_the_large_model_tier() -> None:
     assert SPEC.units["discovery"].step.session_options.effort == "max"  # type: ignore[union-attr]
 
 
-def test_every_step_and_judge_states_its_model_effort_and_reason() -> None:  # decision record 0002
+def test_every_step_and_judge_states_its_model_effort_and_reason() -> None:  # decision record `model-and-effort-per-unit`
     blueprint = {u["name"]: u for u in json.loads((ROOT / "blueprint.json").read_text())["units"]}
     efforts = {}
     for name in SPEC.order:
@@ -1043,7 +1043,7 @@ def test_a_refused_command_is_told_how_to_write_it_without_dropping_the_cd(comma
     assert "no `&&` chain" not in found[0].fix
 
 
-# -- the short discovery visit (decision record 0003, B21) ---------------------------------------------------
+# -- the short discovery visit (decision record `short-discovery-visit`, B21) ---------------------------------------------------
 
 SHORT_CHECKS = ROOT / "evals" / "checks" / "discovery_short"
 

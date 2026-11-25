@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A judge can read every system its step can change and can change nothing. The engine derives each judge attempt's view set from the step's declared and actually called tools, using an engine-owned catalog keyed per executor; the judge executor enforces the set as far as it declares it can, and after the session the guard compares what the judge called and changed with what it was allowed and discards the judgement on any difference, without depending on any executor's permission layer ([ADR-0010](../adr/0010-judge-isolation-per-executor.adr.md), [ADR-0013](../adr/0013-cross-executor-judging.adr.md)). The judge ([JDG](judge-and-verdict.spec.md)), the executors and security ([SEC](security.spec.md)) depend on it; design notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
+A judge can read every system its step can change and can change nothing. The engine derives each judge attempt's view set from the step's declared and actually called tools, using an engine-owned catalog keyed per executor; the judge executor enforces the set as far as it declares it can, and after the session the guard compares what the judge called and changed with what it was allowed and discards the judgement on any difference, without depending on any executor's permission layer ([ADR `judge-isolation-per-executor`](../adr/judge-isolation-per-executor.adr.md), [ADR `cross-executor-judging`](../adr/cross-executor-judging.adr.md)). The judge ([JDG](judge-and-verdict.spec.md)), the executors and security ([SEC](security.spec.md)) depend on it; design notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
 ## Behaviours
 

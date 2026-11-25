@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A run is a durable thread in a per-workflow SQLite checkpoint under the state root ([ADR-0014](../adr/0014-sqlite-checkpointer.adr.md); Postgres stays a seam for many hosts or about 50 concurrent runs). Resume is defined for every thread state, and the engine reads that state before it spends anything. Status and wait are read-only, model-free observers. Operators, skills, CI and the `tempergraph-monitor` plugin depend on the thread states, the resume rules and the status document; its per-thread detail form is [RDD](run-detail-document.spec.md). State is JSON merged by reducers under a stable thread id, and a fresh run never merges into a thread.
+A run is a durable thread in a per-workflow SQLite checkpoint under the state root ([ADR `sqlite-checkpointer`](../adr/sqlite-checkpointer.adr.md); Postgres stays a seam for many hosts or about 50 concurrent runs). Resume is defined for every thread state, and the engine reads that state before it spends anything. Status and wait are read-only, model-free observers. Operators, skills, CI and the `tempergraph-monitor` plugin depend on the thread states, the resume rules and the status document; its per-thread detail form is [RDD](run-detail-document.spec.md). State is JSON merged by reducers under a stable thread id, and a fresh run never merges into a thread.
 
 ## Behaviours
 
@@ -68,7 +68,7 @@ WHEN the current engine resumes a checkpoint written by an earlier release THE e
 
 ### DUR-B7 Settings change across resume
 
-WHEN a resume carries `--set` or a named option THE engine SHALL apply it to the next attempt and store it in the thread's settings snapshot, reapplied on later resumes ([RST-B26](run-settings-and-overrides.spec.md), [ADR-0072](../adr/0072-threads-snapshot-settings-and-reapply-them-on-resume.adr.md)); executor identity is a per-call value, never graph state.
+WHEN a resume carries `--set` or a named option THE engine SHALL apply it to the next attempt and store it in the thread's settings snapshot, reapplied on later resumes ([RST-B26](run-settings-and-overrides.spec.md), [ADR `threads-snapshot-settings-and-reapply-them-on-resume`](../adr/threads-snapshot-settings-and-reapply-them-on-resume.adr.md)); executor identity is a per-call value, never graph state.
 
 - GIVEN a run paused after a step ran on `antigravity` WHEN resumed with `--set code.executor=claude` THEN the next attempt uses `claude`, and so does every later resume
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The executor layer is the only part of the engine that knows how a model session is started. The engine hands an executor a session request as data ([SSN](session-contract.spec.md)); the executor starts one headless session (a CLI, or a library inside an engine worker process, [ADR-0019](../adr/0019-in-process-executors-run-in-a-worker-process.adr.md)), translates its stream into normalized events and returns a result with typed usage. Executors declare what they can enforce, and preflight refuses before any spend what a workflow needs and its executor cannot do. Four executors are designed: [Claude Code](executor-claude-code.spec.md) (`claude`), the [Agent SDK](executor-agent-sdk.spec.md) (`agent-sdk`), the [Messages API](executor-messages-api.spec.md) (`messages-api`, whose loop the engine owns, [ADR-0020](../adr/0020-engine-owned-tool-loop-for-the-messages-api.adr.md)) and [Antigravity](executor-antigravity.spec.md) (`antigravity`); release 1 registers `claude` only ([ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md)). All share one session launcher that owns what the engine must not delegate: argv from constants, prompt delivery, the timeout, the idle watchdog, process-tree lifetime and the start record, because executors offer unequal limits ([R-003](../research/R-003-executor-capability-matrix.rsrch.md), [ADR-0006](../adr/0006-executors-as-capability-adapters.adr.md)). Workflow authors, operators and every executor spec depend on these rules.
+The executor layer is the only part of the engine that knows how a model session is started. The engine hands an executor a session request as data ([SSN](session-contract.spec.md)); the executor starts one headless session (a CLI, or a library inside an engine worker process, [ADR `in-process-executors-run-in-a-worker-process`](../adr/in-process-executors-run-in-a-worker-process.adr.md)), translates its stream into normalized events and returns a result with typed usage. Executors declare what they can enforce, and preflight refuses before any spend what a workflow needs and its executor cannot do. Four executors are designed: [Claude Code](executor-claude-code.spec.md) (`claude`), the [Agent SDK](executor-agent-sdk.spec.md) (`agent-sdk`), the [Messages API](executor-messages-api.spec.md) (`messages-api`, whose loop the engine owns, [ADR `engine-owned-tool-loop-for-the-messages-api`](../adr/engine-owned-tool-loop-for-the-messages-api.adr.md)) and [Antigravity](executor-antigravity.spec.md) (`antigravity`); release 1 registers `claude` only ([ADR `first-release-ships-the-claude-executor-only`](../adr/first-release-ships-the-claude-executor-only.adr.md)). All share one session launcher that owns what the engine must not delegate: argv from constants, prompt delivery, the timeout, the idle watchdog, process-tree lifetime and the start record, because executors offer unequal limits ([research `executor-capability-matrix`](../research/executor-capability-matrix.rsrch.md), [ADR `executors-as-capability-adapters`](../adr/executors-as-capability-adapters.adr.md)). Workflow authors, operators and every executor spec depend on these rules.
 
 ## Behaviours
 
@@ -135,7 +135,7 @@ WHEN a judge executor is chosen THE engine SHALL take, in order, the operator ov
 
 ### EXI-B10 Cross-executor judge
 
-WHEN a step's executor cannot restrict judge tools and another registered executor can THE engine SHALL run the judge there, with the judge model resolved on the judge's own layer, and name both executors in the step and judge records ([ADR-0013](../adr/0013-cross-executor-judging.adr.md)).
+WHEN a step's executor cannot restrict judge tools and another registered executor can THE engine SHALL run the judge there, with the judge model resolved on the judge's own layer, and name both executors in the step and judge records ([ADR `cross-executor-judging`](../adr/cross-executor-judging.adr.md)).
 
 - GIVEN step S on `antigravity` and a registered `claude` WHEN S's judge is selected THEN it runs on `claude` and both records name their executors
 
@@ -147,7 +147,7 @@ WHEN a new executor is registered in a release THE executor SHALL have passed th
 
 ### EXI-B25 Unconfirmed facts are not declared
 
-WHEN a capability rests on a fact about a real binary that no probe has confirmed THE executor SHALL declare it `false` until the probe result is recorded ([ADR-0010](../adr/0010-judge-isolation-per-executor.adr.md)).
+WHEN a capability rests on a fact about a real binary that no probe has confirmed THE executor SHALL declare it `false` until the probe result is recorded ([ADR `judge-isolation-per-executor`](../adr/judge-isolation-per-executor.adr.md)).
 
 - GIVEN `antigravity` with probes P-AG-1 and P-AG-2 not run WHEN its capabilities are read THEN `restricts_judge_tools` is false
 
@@ -185,4 +185,4 @@ WHEN a start is preflighted THE engine SHALL time one interpreter spawn and a wa
 ## Open questions
 
 - Should a running tool's CPU and IO growth count as activity for the idle watchdog ? Deferred until stalls are classified on real runs. Owner: engine owner. Until answered: only stream lines count, with the 900 s floor while a tool is open.
-- May a step's filtered tool set include remote MCP servers? It rests on probe facts not yet run on any executor ([ADR-0021](../adr/0021-scope-of-planned-work.adr.md)). Owner: engine owner. Until answered: no; a judge's view of a remote MCP server is deferred and recorded ([ECC-B15](executor-claude-code.spec.md)).
+- May a step's filtered tool set include remote MCP servers? It rests on probe facts not yet run on any executor ([ADR `scope-of-planned-work`](../adr/scope-of-planned-work.adr.md)). Owner: engine owner. Until answered: no; a judge's view of a remote MCP server is deferred and recorded ([ECC-B15](executor-claude-code.spec.md)).

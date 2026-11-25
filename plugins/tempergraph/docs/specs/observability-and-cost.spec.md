@@ -2,7 +2,7 @@
 
 ## Purpose
 
-What a run leaves behind so a person or a later analysis can see what it did, what it cost and where the time went, without changing the run. This spec owns two of the overview's contracts, that every model call is an executor run logged with its usage and that observability never changes a run or its exit code ([OVR](overview.spec.md)), and the cost rules that make four executors with different cost reporting comparable. The record envelope and observer record kinds are owned by [EVT](run-events.spec.md), where session logs live by [LOS](local-observability-store.spec.md), and export by [CST](central-run-stats.spec.md) and [TEL](telemetry-export.spec.md); design notes and the release 1 build notes are in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md).
+What a run leaves behind so a person or a later analysis can see what it did, what it cost and where the time went, without changing the run. This spec owns two of the overview's contracts, that every model call is an executor run logged with its usage and that observability never changes a run or its exit code ([OVR](overview.spec.md)), and the cost rules that make four executors with different cost reporting comparable. The record envelope and observer record kinds are owned by [EVT](run-events.spec.md), where session logs live by [LOS](local-observability-store.spec.md), and export by [CST](central-run-stats.spec.md) and [TEL](telemetry-export.spec.md); design notes and the release 1 build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
 ## Behaviours
 

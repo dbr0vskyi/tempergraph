@@ -14,7 +14,7 @@ These rules hold for every document below. Each document type has its own rule f
 
 A repository that already keeps these folders elsewhere (for example under a plugin's `docs/`) keeps its place; the folder names `specs`, `adr`, `research` and `plans` and the endings stay the same. `README.md` and `index.md` are exempt from the endings.
 
-A new document takes a name that cannot collide with another branch: a short slug of its subject (`session-expiry.spec.md`), or the task id and a topic (`TASK-12-token-storage.rsrch.md`). Never take "the next number" of a folder. The words of a slug are lower case and joined by `-`, never `_`, and the whole file name is at most 80 characters. A document that was numbered before this rule keeps its number where the number is the id other documents cite it by (`0042-…adr.md`, cited as ADR-0042); no new document takes one.
+A new document takes a name that cannot collide with another branch: a short slug of its subject (`session-expiry.spec.md`), or the task id and a topic (`TASK-12-token-storage.rsrch.md`). Never take "the next number" of a folder. The words of a slug are lower case and joined by `-`, never `_`, and the whole file name is at most 80 characters. A document is cited by its file name, or by a behaviour or criterion id; a decision record or a research note has no number to cite.
 
 ## Truth ranking
 

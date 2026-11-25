@@ -158,7 +158,7 @@ def read_lines(paths: list[Path], kind: str, thread_id: str) -> Iterator[str]:
 
 
 def follow(path: Path, live: Any, poll_s: float = 0.5, timeout_s: float | None = None) -> Iterator[str]:
-    """New lines of one file while `live()` holds; stat first, read second (MADR-0002 of the monitor)."""
+    """New lines of one file while `live()` holds; stat first, read second (MADR `poll-files-and-read-only-verbs` of the monitor)."""
     offset = 0
     start = time.monotonic()
     while True:

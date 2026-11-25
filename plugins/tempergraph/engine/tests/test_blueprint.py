@@ -88,7 +88,7 @@ def test_reference_nobody_produces() -> None:
 @pytest.mark.parametrize(("mutate", "code"), [
     (lambda d: d["units"].extend(copy.deepcopy(d["units"][0]) | {"name": f"u{i}"} for i in range(20)),
      "blueprint-invalid"),
-    (lambda d: d.update(name="release-notes-tgraph"), "blueprint-invalid"),  # ADR-0120: suffix is the plugin's
+    (lambda d: d.update(name="release-notes-tgraph"), "blueprint-invalid"),  # ADR `a-workflow-plugin-name-is-the-workflow-name-plus-tgraph`: suffix is the plugin's
     (lambda d: d["units"][0].update(summary="x" * 61), "summary-too-long"),
     (lambda d: d["units"][0].pop("sizing"), "sizing-missing"),  # SCF-B10: stated for every step
     (lambda d: d["units"][0].pop("judge_sizing"), "sizing-missing"),  # and for every judge

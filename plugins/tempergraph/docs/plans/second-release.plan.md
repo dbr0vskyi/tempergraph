@@ -19,8 +19,8 @@ task_id: second-release
 | Field | Value |
 |---|---|
 | Origin | Design session for the owner, 2026-11-20 (thread "Design release two scope and specs") |
-| Research | [R-130 readiness and gaps](../research/R-130-release-two-readiness-and-gaps.rsrch.md), [R-120](../research/R-120-effort-ladders-and-one-step-model-escalation.rsrch.md), [R-121](../research/R-121-judge-model-by-risk-and-evidence-for-escalation.rsrch.md), [R-126](../research/R-126-routing-by-complexity-between-decompositions.rsrch.md) |
-| Decisions | [ADR-0125 scope](../adr/0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md), [ADR-0121](../adr/0121-ladders-climb-only-on-trusted-substantive-evidence.adr.md) to [ADR-0124](../adr/0124-promotion-is-a-model-free-stamp-per-workflow-version.adr.md), [ADR-0091 executor](../adr/0091-first-release-ships-the-claude-executor-only.adr.md) |
+| Research | [readiness and gaps](../research/release-two-readiness-and-gaps.rsrch.md), [research `effort-ladders-and-one-step-model-escalation`](../research/effort-ladders-and-one-step-model-escalation.rsrch.md), [research `judge-model-by-risk-and-evidence-for-escalation`](../research/judge-model-by-risk-and-evidence-for-escalation.rsrch.md), [research `routing-by-complexity-between-decompositions`](../research/routing-by-complexity-between-decompositions.rsrch.md) |
+| Decisions | [ADR `release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing` scope](../adr/release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md), [ADR `ladders-climb-only-on-trusted-substantive-evidence`](../adr/ladders-climb-only-on-trusted-substantive-evidence.adr.md) to [ADR `promotion-is-a-model-free-stamp-per-workflow-version`](../adr/promotion-is-a-model-free-stamp-per-workflow-version.adr.md), [ADR `first-release-ships-the-claude-executor-only` executor](../adr/first-release-ships-the-claude-executor-only.adr.md) |
 | Spec, read at | [Overview](../specs/overview.spec.md) and the specs named in §1, at `26096be` plus this branch |
 | Tracker | none |
 
@@ -30,15 +30,15 @@ task_id: second-release
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Scope | ADR-0090's release 2 forecast plus upgrade, LAD, JRK, CXR and PRO | Owner's ask ([ADR-0125](../adr/0125-release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md)) |
-| Executor | `claude` only | [ADR-0091](../adr/0091-first-release-ships-the-claude-executor-only.adr.md) |
-| Pipelines | A later release; a paused run moves between machines by its state branch | [ADR-0124](../adr/0124-promotion-is-a-model-free-stamp-per-workflow-version.adr.md), [ADR-0126](../adr/0126-a-run-carries-scrubbed-thread-state-on-its-own-branch.adr.md) |
-| Platforms | macOS, Linux; folders outside git. Native Windows is release 3 (owner, 2026-11-21) | [ADR-0127](../adr/0127-outside-git-the-state-root-is-found-by-walk-up.adr.md), [ADR-0128](../adr/0128-windows-is-supported-natively-with-job-objects.adr.md) |
-| Ladders | Evidence-gated effort ladder; one model step, last resort; the release 1 model list retired by a transform | Owner: "I don't want to increase model or efforts on any failure" ([ADR-0121](../adr/0121-ladders-climb-only-on-trusted-substantive-evidence.adr.md)) |
-| Order | Switches, maps and ladders first, because CXR, UWF and PRO build on them | R-130 F1 |
+| Scope | ADR `first-release-is-simple-trusted-workflows-on-one-machine`'s release 2 forecast plus upgrade, LAD, JRK, CXR and PRO | Owner's ask ([ADR `release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing`](../adr/release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing.adr.md)) |
+| Executor | `claude` only | [ADR `first-release-ships-the-claude-executor-only`](../adr/first-release-ships-the-claude-executor-only.adr.md) |
+| Pipelines | A later release; a paused run moves between machines by its state branch | [ADR `promotion-is-a-model-free-stamp-per-workflow-version`](../adr/promotion-is-a-model-free-stamp-per-workflow-version.adr.md), [ADR `a-run-carries-scrubbed-thread-state-on-its-own-branch`](../adr/a-run-carries-scrubbed-thread-state-on-its-own-branch.adr.md) |
+| Platforms | macOS, Linux; folders outside git. Native Windows is release 3 (owner, 2026-11-21) | [ADR `outside-git-the-state-root-is-found-by-walk-up`](../adr/outside-git-the-state-root-is-found-by-walk-up.adr.md), [ADR `windows-is-supported-natively-with-job-objects`](../adr/windows-is-supported-natively-with-job-objects.adr.md) |
+| Ladders | Evidence-gated effort ladder; one model step, last resort; the release 1 model list retired by a transform | Owner: "I don't want to increase model or efforts on any failure" ([ADR `ladders-climb-only-on-trusted-substantive-evidence`](../adr/ladders-climb-only-on-trusted-substantive-evidence.adr.md)) |
+| Order | Switches, maps and ladders first, because CXR, UWF and PRO build on them | research `release-two-readiness-and-gaps` F1 |
 | Plan shape | Tracks and phases only; each track's expanded plan is written when its specs pass status (EC-2) | A track's rows are written only against specs that passed |
 
-**Status: Built; the owner's own live checks pending.** Tracks R2-T1 to R2-T9 are built and pass offline (engine `0.2.0`), and every live check a cloud container can run passed on 2026-11-22 ([R-140](../research/R-140-release-three-readiness-and-gaps.rsrch.md) F1); what each track left open is in its code report under `tasks/` and in the status column of [plans/README.md](README.md). The owner approved this plan on 2026-11-21 with a trim (§1.3): EC-1 is met. The build follows the plan, task-note and test-first rules of the delivery workflow's rule files; each phase has a plan under `plans/r2-*.plan.md` and a report under `tasks/`. Live checks stay pending on the owner's machine and are never faked.
+**Status: Built; the owner's own live checks pending.** Tracks R2-T1 to R2-T9 are built and pass offline (engine `0.2.0`), and every live check a cloud container can run passed on 2026-11-22 ([research `release-three-readiness-and-gaps`](../research/release-three-readiness-and-gaps.rsrch.md) F1); what each track left open is in its code report under `tasks/` and in the status column of [plans/README.md](README.md). The owner approved this plan on 2026-11-21 with a trim (§1.3): EC-1 is met. The build follows the plan, task-note and test-first rules of the delivery workflow's rule files; each phase has a plan under `plans/r2-*.plan.md` and a report under `tasks/`. Live checks stay pending on the owner's machine and are never faked.
 
 ## 1. Requirements analysis
 
@@ -46,10 +46,10 @@ task_id: second-release
 
 | Id | Condition | Before | Owner |
 |---|---|---|---|
-| EC-1 | The owner accepts ADR-0125 (and ADR-0121 to ADR-0124), or edits them | Any code track | Owner |
-| EC-2 | A track's specs are `ready-for-implementation`: its first phase turns each open question into a recorded default and sets the status (R-130 G5) | Each track | Implementer, owner may veto |
+| EC-1 | The owner accepts ADR `release-two-adds-upgrade-ladders-judge-risk-and-complexity-routing` (and ADRs `ladders-climb-only-on-trusted-substantive-evidence`, `a-judge-is-raised-by-a-model-free-risk-rule`, `complexity-chooses-a-decomposition-through-a-measured-switch` and `promotion-is-a-model-free-stamp-per-workflow-version`), or edits them | Any code track | Owner |
+| EC-2 | A track's specs are `ready-for-implementation`: its first phase turns each open question into a recorded default and sets the status (research `release-two-readiness-and-gaps` G5) | Each track | Implementer, owner may veto |
 | EC-3 | Release 1's live checks that a track builds on are recorded ([live checks plan](live-checks.plan.md)) | The live half of each track | Owner's machine |
-| EC-4 | Satisfied: WSP-B15 to WSP-B18 with ADR-0127 and R-131; WIN with ADR-0128 and R-132 | R2-T8 | — |
+| EC-4 | Satisfied: WSP-B15 to WSP-B18 with ADR `outside-git-the-state-root-is-found-by-walk-up` and research `running-outside-a-git-repository`; WIN with ADR `windows-is-supported-natively-with-job-objects` and research `running-on-windows` | R2-T8 | — |
 
 ### 1.2 Feature list
 
@@ -75,14 +75,14 @@ Every item release 2 ships. Items not built are refused with `not_in_release`, n
 | I2-16 | Ask unit; event waits; `--pause-before`, deadlines, fallback target; parallel read-only branches | ASK, HUM, FLX | R2-T7 | X2-11 to X2-14 |
 | I2-17 | `self-check` | CHK | R2-T7 | X2-18; script cache, audit judge and judge MCP views moved to release 3 (§1.3) |
 | I2-18 | Lifecycle hooks, wider hook events | CLI, EVT | R2-T7 | X2-21; in-process observers moved to release 3 (§1.3) |
-| I2-19 | Moved to release 3 (§1.3) | R-150 SCH, TCK | — | X2-22 |
+| I2-19 | Moved to release 3 (§1.3) | research `rationale-carried-from-the-engine-specs` SCH, TCK | — | X2-22 |
 | I2-20 | Moved to release 3 (§1.3) | WTR | — | X2-23 |
 | I2-21 | State root outside git: walk-up or declared root, `in_place` only, manifest fingerprint, `needs_git` refusals | WSP-B15 to WSP-B18 | R2-T8 | X2-24 |
 | I2-22 | Moved to release 3 (§1.3) | WIN | — | X2-25 |
-| I2-23 | Moved to release 3 (§1.3) | SRV-B16, SRV-B5, R-150 SRV | — | X2-26 |
-| I2-24 | The loop's alias as a setting (R-130 G4) | RST, SIL | R2-T2 | divergence |
+| I2-23 | Moved to release 3 (§1.3) | SRV-B16, SRV-B5, research `rationale-carried-from-the-engine-specs` SRV | — | X2-26 |
+| I2-24 | The loop's alias as a setting (research `release-two-readiness-and-gaps` G4) | RST, SIL | R2-T2 | divergence |
 | I2-25 | Run state carried on its own branch: `--carry`, `carry push\|pull\|status\|drop`, lease, deletion at finish | CAR | R2-T5 | new, owner 2026-11-20 |
-| I2-26 | Deliverables required per path; a repository-level command declaration; `GitFacts.pushed` set (R-130 G10 to G12) | WFM, CHK | R2-T7 | new, from the first authored workflow |
+| I2-26 | Deliverables required per path; a repository-level command declaration; `GitFacts.pushed` set (research `release-two-readiness-and-gaps` G10 to G12) | WFM, CHK | R2-T7 | new, from the first authored workflow |
 | I2-27 | Sizing: every step and judge states model, effort and why; `sizing` in the blueprint, `sizing-unassessed` in the audit (owner 2026-11-21) | SCF-B10, ARC | R2-T2 | new |
 
 ### 1.3 Trim of 2026-11-21

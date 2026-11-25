@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The one control an observer may ask for: stop a live run. A person asks for it with the `stop` verb, typed or filled into the prompt by the monitor and sent by the person; the orchestration supervisor stops its node runs with the same verb ([ORC-B17, ORC-B24, ORC-B26](orchestration.spec.md)). The running engine stops through the launcher's stop contract ([EXI-B2, EXI-B20, EXI-B21, EXI-B22, EXI-B23, EXI-B15](executor-interface.spec.md)), so the thread ends resumable and nothing the engine already wrote is lost. A stop never decides a gate: a run paused for a person is already stopped, and its decision stays theirs. Why a request file and no pause or skip verb: [ADR-0028](../adr/0028-stop-verb-as-the-only-observer-control.adr.md).
+The one control an observer may ask for: stop a live run. A person asks for it with the `stop` verb, typed or filled into the prompt by the monitor and sent by the person; the orchestration supervisor stops its node runs with the same verb ([ORC-B17, ORC-B24, ORC-B26](orchestration.spec.md)). The running engine stops through the launcher's stop contract ([EXI-B2, EXI-B20, EXI-B21, EXI-B22, EXI-B23, EXI-B15](executor-interface.spec.md)), so the thread ends resumable and nothing the engine already wrote is lost. A stop never decides a gate: a run paused for a person is already stopped, and its decision stays theirs. Why a request file and no pause or skip verb: [ADR `stop-verb-as-the-only-observer-control`](../adr/stop-verb-as-the-only-observer-control.adr.md).
 
 ## Behaviours
 

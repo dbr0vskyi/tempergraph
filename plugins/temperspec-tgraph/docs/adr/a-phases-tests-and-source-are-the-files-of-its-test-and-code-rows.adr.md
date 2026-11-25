@@ -2,7 +2,7 @@
 
 ## Context
 
-The test-first rule is not held: run `r3-t5-2` wrote code before its tests in phases 4, 6, 7, 8 and 9, and the reports of `r3-t3-1`, `r3-t4-2` and `r3-t8-3` say the same (issue 74, from [R-160](../../../tempergraph/docs/research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) F7). The task asks the code check to fail, naming the phase, when the session record shows a phase's source file changed before the phase's test file was first written. The task does not say which files belong to a phase, which calls count as a change, or what a retry that repairs code owes.
+The test-first rule is not held: run `r3-t5-2` wrote code before its tests in phases 4, 6, 7, 8 and 9, and the reports of `r3-t3-1`, `r3-t4-2` and `r3-t8-3` say the same (issue 74, from [research `does-the-improvement-loop-find-what-a-reviewer-finds`](../../../tempergraph/docs/research/does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) F7). The task asks the code check to fail, naming the phase, when the session record shows a phase's source file changed before the phase's test file was first written. The task does not say which files belong to a phase, which calls count as a change, or what a retry that repairs code owes.
 
 What the package and the rules hold, read in them:
 

@@ -67,7 +67,7 @@ Each alert is raised once per `(thread, seq)`: the last alerted `seq` per thread
 
 ## 5. Design notes
 
-- Labels first: without them, several live runs of one workflow draw near-identical band lines ([MADR-0004](../adr/0004-borrow-the-workflows-view-and-add-gates.adr.md)).
+- Labels first: without them, several live runs of one workflow draw near-identical band lines ([MADR `borrow-the-workflows-view-and-add-gates`](../adr/borrow-the-workflows-view-and-add-gates.adr.md)).
 - Alert de-duplication lives in the plugin store because a person often has several Claude Code sessions open on one repository.
 - Release 1 build ([T10 plan](../../../tempergraph/docs/plans/t10-monitor.plan.md)): the rows of §2.2, the status line, the alerts of §2.4 but the fleet row, and both error rows of §4 are built. `alerts.finished` is the setting `alerts_finished`; `alerts.fleet` is the setting `alerts_fleet`: a toast once per run and pause for a wait over 30 min on another machine, remembered in `$.store`; no native notification.
 - A notification is the one way the monitor reaches a person who is not looking; it carries the question so the person can decide whether to come back now.
@@ -84,4 +84,4 @@ None.
 
 ## References
 
-[MDS](data-sources.spec.md) · [MRV](run-view.spec.md) · [EVT](../../../tempergraph/docs/specs/run-events.spec.md) · [R-001](../research/R-001-claude-code-mods.rsrch.md)
+[MDS](data-sources.spec.md) · [MRV](run-view.spec.md) · [EVT](../../../tempergraph/docs/specs/run-events.spec.md) · [research `claude-code-mods`](../research/claude-code-mods.rsrch.md)

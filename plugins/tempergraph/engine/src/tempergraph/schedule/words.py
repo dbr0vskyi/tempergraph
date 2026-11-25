@@ -1,4 +1,4 @@
-"""The word grammar (SCH-B16, SCH-B17, SCH-B2; ADR-0096): English phrases into the canonical form of their exact twins.
+"""The word grammar (SCH-B16, SCH-B17, SCH-B2; ADR `exact-formats-first-and-an-optional-word-grammar-echoed-back`): English phrases into the canonical form of their exact twins.
 
 A grammar, not a guesser: a phrase is read by fixed rules, ends in the same builders as the exact formats, and a
 phrase with more than one reading is a `Needs` with the readings as choices, each reading being a phrase that says

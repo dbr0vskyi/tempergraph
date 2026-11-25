@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The `agent-sdk` executor runs each step attempt and each judge run as one `query` session of the Claude Agent SDK, inside an engine worker process ([ADR-0019](../adr/0019-in-process-executors-run-in-a-worker-process.adr.md)). The SDK drives a bundled Claude Code CLI, so tool names, permission rules and the authoring surface are Claude Code's; what changes is that options are typed, messages are typed, and the engine can install an in-process `PreToolUse` gatekeeper. It implements the [executor interface](executor-interface.spec.md); facts come from [R-005](../research/R-005-claude-agent-sdk-executor.rsrch.md), and its probes and design notes are kept in [R-150](../research/R-150-rationale-carried-from-the-engine-specs.rsrch.md). It is the planned CI executor. Operators running unattended and workflow authors who move a step here depend on what it declares and does.
+The `agent-sdk` executor runs each step attempt and each judge run as one `query` session of the Claude Agent SDK, inside an engine worker process ([ADR `in-process-executors-run-in-a-worker-process`](../adr/in-process-executors-run-in-a-worker-process.adr.md)). The SDK drives a bundled Claude Code CLI, so tool names, permission rules and the authoring surface are Claude Code's; what changes is that options are typed, messages are typed, and the engine can install an in-process `PreToolUse` gatekeeper. It implements the [executor interface](executor-interface.spec.md); facts come from [research `claude-agent-sdk-executor`](../research/claude-agent-sdk-executor.rsrch.md), and its probes and design notes are kept in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md). It is the planned CI executor. Operators running unattended and workflow authors who move a step here depend on what it declares and does.
 
 ## Behaviours
 
@@ -88,7 +88,7 @@ WHEN a result message is classified THE worker SHALL read its subtype and never 
 
 ### EAS-B13 Probe refusals
 
-WHEN the SDK cannot be imported or its CLI is missing, or only a claude.ai sign-in is available with no API or cloud credential THE probe SHALL fail and preflight SHALL exit 2, the second with reason `credential` ([R-005](../research/R-005-claude-agent-sdk-executor.rsrch.md) S3).
+WHEN the SDK cannot be imported or its CLI is missing, or only a claude.ai sign-in is available with no API or cloud credential THE probe SHALL fail and preflight SHALL exit 2, the second with reason `credential` ([research `claude-agent-sdk-executor`](../research/claude-agent-sdk-executor.rsrch.md) S3).
 
 - GIVEN only a claude.ai sign-in WHEN preflighted THEN it exits 2 with reason `credential`
 
@@ -104,8 +104,8 @@ WHEN a judge session's init message lists a tool outside the judge's views THE e
 - EAS-AC2 (EAS-B11, EAS-B12, EAS-B3, EAS-B4): Each message mapping and each failure classification has a recorded-message fixture, and every recorded session names both versions
 - EAS-AC3 (EAS-B9, EAS-B1, EAS-B15): A judge's options never contain a write tool, a step rule, `fallback_model` or a resume option, and a judge whose init lists a tool outside its views is discarded
 - EAS-AC4 (EAS-B2, EAS-B10, EAS-B6): The gatekeeper follows the scenarios of EAS-B2 in a unit test without the SDK, and each capability maps to its tool and rule
-- EAS-AC5 (EAS-B5, EAS-B14, EAS-B13): The probe table in R-150 is filled for the pinned SDK and CLI versions before the executor is marked live-proven
+- EAS-AC5 (EAS-B5, EAS-B14, EAS-B13): The probe table in research `rationale-carried-from-the-engine-specs` is filled for the pinned SDK and CLI versions before the executor is marked live-proven
 
 ## Open questions
 
-- May an operator run this executor on a subscription sign-in? The design assumes API or cloud credentials only ([R-005](../research/R-005-claude-agent-sdk-executor.rsrch.md) S3). Owner: owner.
+- May an operator run this executor on a subscription sign-in? The design assumes API or cloud credentials only ([research `claude-agent-sdk-executor`](../research/claude-agent-sdk-executor.rsrch.md) S3). Owner: owner.

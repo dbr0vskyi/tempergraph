@@ -1,4 +1,4 @@
-"""What a council decides without a session (CNL-B1 to CNL-B3, CNL-B10 to CNL-B13; ADR-0063).
+"""What a council decides without a session (CNL-B1 to CNL-B3, CNL-B10 to CNL-B13; ADR `council-is-a-gated-step-with-engine-tallied-outcomes`).
 
 Everything here is plain code on plain values: the labels `Member A`, `Member B` in an order fixed per attempt, the prompts
 a member is given, the reading of its fenced JSON answer block, the tally of the four vote rules, the Borda count with its

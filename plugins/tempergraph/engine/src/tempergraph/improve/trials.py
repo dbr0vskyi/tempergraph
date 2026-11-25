@@ -1,7 +1,7 @@
 """Case sets, paired trials, the A/A noise floor and the trial caps (PRP-B17, PRP-B4, PRP-B12, PRP-B18, PRP-B21, PRP-B8, PRP-B22, B5 to B7, B9;
 plan T12.6).
 
-Release 1 (ADR-0090 S4): before `batch` exists, each case runs as one engine child run at a time, arm A (the
+Release 1 (ADR `first-release-is-simple-trusted-workflows-on-one-machine` S4): before `batch` exists, each case runs as one engine child run at a time, arm A (the
 base package) then arm B (the patched copy), each in its own engine worktree at the case's base commit
 (`run.worktree.base = ref:<base>`), with `--dry-run` so the loop files nothing for them. A case that stops at
 a pause is a tie (PRP open question default). A trial writes no code: only the proposer writes, on its own
@@ -85,10 +85,10 @@ def in_sample(c: TrialCase, cluster_threads: Sequence[str]) -> bool:
     return any(run == t or run.startswith(t + "#") for t in cluster_threads)
 
 
-# -- the decision rule (PRP-B18, PRP-B19, PRP-B20, ADR-0034) ------------------------------------------------------------------
+# -- the decision rule (PRP-B18, PRP-B19, PRP-B20, ADR `paired-trial-on-a-fixed-case-set`) ------------------------------------------------------------------
 
 def sign_count(n: int, alpha: float | None = None) -> int | None:
-    """The fewest wins of `n` non-tied pairs with a one-sided sign-test p ≤ alpha (R-031 F3); None if none."""
+    """The fewest wins of `n` non-tied pairs with a one-sided sign-test p ≤ alpha (research `self-improvement-gap-analysis` F3); None if none."""
     alpha = params.value("trial.alpha") if alpha is None else alpha
     for k in range(n + 1):
         p = sum(math.comb(n, i) for i in range(k, n + 1)) / 2 ** n
@@ -329,7 +329,7 @@ def trial(root: Path, spec: WorkflowSpec, proposal_id: str, run_arm: ArmRunner, 
     if rec.get("state") not in ("drafted", "not_shown", "aborted"):
         raise TrialRefused(f"proposal {proposal_id} is {rec.get('state')}; only a drafted proposal is trialled")
     if rec.get("review_only"):
-        raise TrialRefused("a widening tools proposal is opened for review, never trialled alone (ADR-0080)")
+        raise TrialRefused("a widening tools proposal is opened for review, never trialled alone (ADR `a-person-may-grant-a-step-tools-for-a-run`)")
     unit = (rec.get("cluster") or {}).get("unit")
     if rec.get("side") == "grader":
         target = target or f"label_agreement({unit})"

@@ -1,4 +1,4 @@
-"""The executor conformance suite (EXI-B11; EXI-AC3, AC-4, AC-6, AC-9; ADR-0091 item 2).
+"""The executor conformance suite (EXI-B11; EXI-AC3, AC-4, AC-6, AC-9; ADR `first-release-ships-the-claude-executor-only` item 2).
 
 Each of the four declared capability sets runs through the real launcher against the recorded CLI
 stand-in, plus the scripted stand-ins the engine's own tests use. Release 1 ships `claude` only, so the

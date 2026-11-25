@@ -20,7 +20,7 @@ task_id: first-release-t2
 |---|---|
 | Origin | [Release 1 plan](first-release.plan.md) track T2 |
 | Specs | [WFM](../specs/workflow-model.spec.md), [PRM](../specs/prompt-rendering.spec.md), [VAL](../specs/step-values-and-template-keys.spec.md), [CMP](../specs/compiler-and-flow.spec.md), [LIF](../specs/lifecycle-and-evals.spec.md) (diagram model), with [PKG-B19, PKG-B20](../specs/workflow-package.spec.md) for the builders |
-| Decisions | [ADR-0003](../adr/0003-workflows-as-data.adr.md), [ADR-0004](../adr/0004-four-nodes-per-unit.adr.md), [ADR-0106](../adr/0106-declare-workflows-with-typed-python-builders-and-text-in-files.adr.md) |
+| Decisions | [ADR `workflows-as-data`](../adr/workflows-as-data.adr.md), [ADR `four-nodes-per-unit`](../adr/four-nodes-per-unit.adr.md), [ADR `declare-workflows-with-typed-python-builders-and-text-in-files`](../adr/declare-workflows-with-typed-python-builders-and-text-in-files.adr.md) |
 
 **Status: Completed.** Status pass: WFM, PRM, VAL, CMP and LIF are `ready-for-implementation`; none has an open question. Doc changes this track made: CON-B4, CON-B5, CON-B6, CON-B7 gains `allow_commands`, `builtin`, `package_root`, the route and switch fields of `UnitSpec`, and the `default` prompt; PRM-B6 and VAL-B8 define `default` as `{request}` with the one input `request`; CMP-B8 names the nodes and the human node's edges.
 
@@ -40,8 +40,8 @@ task_id: first-release-t2
 | Task | File | Code change | Reading set | TDD | Priority | Completed | Date |
 |---|---|---|---|---|---|---|---|
 | 2.1.1 | `engine/tests/test_api.py` | Test unknown keywords, `name`/`version` refused, lambdas and nested callables refused, callables kept by reference | PKG-B19, PKG-B20, PKG-B2 | yes | P1 | ✓ | 2026-11-20 |
-| 2.1.2 | `engine/src/tempergraph/api.py` | Create the builders; kinds of later releases build with their fields in `extra` | PKG-B19, PKG-B20, ADR-0090 | | P1 | ✓ | 2026-11-20 |
-| 2.1.3 | `engine/src/tempergraph/executors/capabilities.py` | Declare the four capability sets and tool maps as data | ECC-B6, ECC-B7, EAS, EMA, EAG-B8, EAG-B9, ADR-0091 | | P1 | ✓ | 2026-11-20 |
+| 2.1.2 | `engine/src/tempergraph/api.py` | Create the builders; kinds of later releases build with their fields in `extra` | PKG-B19, PKG-B20, ADR `first-release-is-simple-trusted-workflows-on-one-machine` | | P1 | ✓ | 2026-11-20 |
+| 2.1.3 | `engine/src/tempergraph/executors/capabilities.py` | Declare the four capability sets and tool maps as data | ECC-B6, ECC-B7, EAS, EMA, EAG-B8, EAG-B9, ADR `first-release-ships-the-claude-executor-only` | | P1 | ✓ | 2026-11-20 |
 | 2.1.4 | `engine/tests/test_validate.py` | One fixture per release-1 row with its own code; later kinds and fields refuse `not_in_release`; the portable workflow valid on all four; WFM-B3 table; warnings stay warnings | WFM-B8, WFM-B9, WFM-B10, WFM-B11, WFM-B12, WFM-B3 | yes | P1 | ✓ | 2026-11-20 |
 | 2.1.5 | `engine/src/tempergraph/model/validate.py`, `model/text.py`, `model/flow.py` | Create `validate`, `Finding`, text loading and the successor model | WFM-B7, CMP-B8 | | P1 | ✓ | 2026-11-20 |
 

@@ -14,9 +14,9 @@ This set follows the engine's doc rules unchanged: [plugins/tempergraph/docs/REA
 
 Read in this order: the [overview](specs/overview.spec.md), the [data sources](specs/data-sources.spec.md), then the view spec you need.
 
-## Numbering and ids
+## Names and ids
 
-- A spec carries no number. ADR and research numbers are the monitor's own and start again at 0001 and R-001; a link to an engine artifact always names its path, so "ADR-0022" in this set means the engine's only when it links into `plugins/tempergraph/docs/`. Inside this set a record is written "MADR-0001" in prose to avoid the clash.
+- No document carries a number. A decision record or a research note is cited by its file name; a link to an engine artifact always names its path into `plugins/tempergraph/docs/`. Inside this set a monitor record is written "MADR `<name>`" in prose, so that it is not taken for an engine record.
 - Each monitor spec owns one prefix starting with `M` (listed in the overview), so no id collides with an engine prefix.
 
 ## Shared types
@@ -25,4 +25,4 @@ The monitor defines no engine type. Every document it reads is defined by the en
 
 ## Status
 
-Written standalone without the owner. Every spec is `ready-for-implementation`, and release 1 builds most of them (code in `hooks/`, tests in `tests/`); what is built, and where the code differs, is in each spec's design notes and in the [T10 plan](../../tempergraph/docs/plans/t10-monitor.plan.md). The mod's own state shapes are in its type contract, `types/index.d.ts`. The Claude Code mods API is versioned by Claude Code build and moves between releases ([R-001](research/R-001-claude-code-mods.rsrch.md)); each API fact this set relies on is listed with its confidence there.
+Written standalone without the owner. Every spec is `ready-for-implementation`, and release 1 builds most of them (code in `hooks/`, tests in `tests/`); what is built, and where the code differs, is in each spec's design notes and in the [T10 plan](../../tempergraph/docs/plans/t10-monitor.plan.md). The mod's own state shapes are in its type contract, `types/index.d.ts`. The Claude Code mods API is versioned by Claude Code build and moves between releases ([research `claude-code-mods`](research/claude-code-mods.rsrch.md)); each API fact this set relies on is listed with its confidence there.

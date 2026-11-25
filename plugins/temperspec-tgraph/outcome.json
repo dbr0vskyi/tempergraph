@@ -1839,7 +1839,7 @@
       "revision": 6,
       "origin": "authored",
       "at": "2026-11-22T18:30:00.000Z",
-      "note": "criteria about how the run works (narrow reading, the reading list, commands run once, a reused gate result) are checked model-free from the package's prompts and the gate's own command runs instead of asked of a judge, which sees neither (backlog B30); ts-code-once narrowed to what the prompt says; the short discovery visit `discovery_short` with criteria ts-dsh-* (decision record 0003, backlog B21)"
+      "note": "criteria about how the run works (narrow reading, the reading list, commands run once, a reused gate result) are checked model-free from the package's prompts and the gate's own command runs instead of asked of a judge, which sees neither (backlog B30); ts-code-once narrowed to what the prompt says; the short discovery visit `discovery_short` with criteria ts-dsh-* (decision record `short-discovery-visit`, backlog B21)"
     },
     {
       "revision": 7,

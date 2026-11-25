@@ -1,4 +1,4 @@
-"""The session digest: a model-free pass over every session of a segment (SRV-B11, SRV-B12; ADR-0116).
+"""The session digest: a model-free pass over every session of a segment (SRV-B11, SRV-B12; ADR `session-logs-are-read-model-free-first-and-by-a-model-only-on-a-plan`).
 
 One `sessions/<session_key>/digest.json` per session, names and numbers only: tool names, enums, counts, sizes,
 durations and keyed digests of paths and targets. It is built from the activity journal, `meta.json` and the run

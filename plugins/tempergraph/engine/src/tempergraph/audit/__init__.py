@@ -5,7 +5,7 @@ Release 3 runs the `definition`, `host` and `history` layers, the tool-surface a
 facts only; a rule with fewer runs than its `min_n` is listed as skipped with `n=<runs> of <min>`, a layer with no
 runs as skipped with `no runs in window`, never as passed (AUD-B1, AUD-B5). Owned checks (validation, prompt lint,
 the readiness report, executor compatibility, the cost lens and the engine's own findings) are run through their
-component and rendered under `<owner>:<code>` (ADR-0054, AUD-B8).
+component and rendered under `<owner>:<code>` (ADR `audit-joins-existing-checks-and-files-nothing`, AUD-B8).
 """
 
 from __future__ import annotations

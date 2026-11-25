@@ -2,7 +2,7 @@
 
 ## Context
 
-[R-160](../research/R-160-does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) F7 records an overnight run in which every review failed: 16 targets, 32 reviewer sessions at cost 0, all ended by a usage limit, and a `loop_summary` that read `18 recorded, 0 filed`. A loop that had read nothing looked like a loop that had found nothing. The task asks that the summary and `attention` say so, and that a review that failed on a usage limit run again once the limit has passed, before the loop is called done.
+[research `does-the-improvement-loop-find-what-a-reviewer-finds`](../research/does-the-improvement-loop-find-what-a-reviewer-finds.rsrch.md) F7 records an overnight run in which every review failed: 16 targets, 32 reviewer sessions at cost 0, all ended by a usage limit, and a `loop_summary` that read `18 recorded, 0 filed`. A loop that had read nothing looked like a loop that had found nothing. The task asks that the summary and `attention` say so, and that a review that failed on a usage limit run again once the limit has passed, before the loop is called done.
 
 What the code does today. `_ask` in `plugins/tempergraph/engine/src/tempergraph/improve/review.py` re-asks every reviewer session that is not ok once, so a spent allowance costs two sessions per target, and `run` then writes a `review_failed` record with the session key and the cost and no cause. The loop child (`improve/child.py`) writes its `loop_summary` after the review, the proposal and the trial. It claims a ticket by renaming it and holds it until it ends; `drain` handles the tickets of its list one after another. Nothing limits the number of children: every final exit that writes a ticket starts its own through `detach.start`, which has no single-instance guard. A wait therefore holds one claimed ticket and one detached process, and the tickets of other runs go to the children those runs started. With `TEMPERGRAPH_LOOP=inline` the same code runs inside the exit of the run that started it (`plugins/tempergraph/engine/src/tempergraph/run/runner.py`), where a wait would hold the run's own process.
 
@@ -30,7 +30,7 @@ For: no new field on the result. Against: it is a guess. With a five-hour window
 
 ### D. Wait for the reset without a bound
 
-For: the simplest rule, and every such review is retried. Against: a weekly allowance can be days away, and the child, its claimed ticket and the loop's summary would be held that long. Claude Code itself limits its own wait ([R-035](../research/R-035-dynamic-workflows-as-orchestration-model.rsrch.md) D13).
+For: the simplest rule, and every such review is retried. Against: a weekly allowance can be days away, and the child, its claimed ticket and the loop's summary would be held that long. Claude Code itself limits its own wait ([research `dynamic-workflows-as-orchestration-model`](../research/dynamic-workflows-as-orchestration-model.rsrch.md) D13).
 
 ### E. Leave a retry for a later ticket
 
