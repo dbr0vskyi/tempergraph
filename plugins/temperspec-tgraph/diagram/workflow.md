@@ -8,14 +8,18 @@ flowchart TD
   u4["setup<br/>Write the overview spec and one spec per component"]
   u5["triage<br/>Read the task, find the gaps, pick the route"]
   u6["discovery_short<br/>Confirm the cited behaviours; write the hand-off"]
-  u7["read_gap<br/>Read one gap's documents and code; report findings"]
-  u8["discovery<br/>Close each gap with a spec, record or research note"]
-  u9["plan<br/>Design requirements and phases; state complexity"]
-  u10["code_mode"]
-  u11["expand<br/>Write task rows and verification for a complex plan"]
-  u12["code<br/>Build the plan test first in one session"]
-  u13["code_join"]
-  u14["outcome<br/>outcome gate"]
+  u7["owner_questions"]
+  u8["ask_route"]
+  u9["ask_owner"]
+  u10["read_gap<br/>Read one gap's documents and code; report findings"]
+  u11["discovery<br/>Close each gap with a spec, record or research note"]
+  u12["plan<br/>Design requirements and phases; state complexity"]
+  u13["code_mode"]
+  u14["expand<br/>Write task rows and verification for a complex plan"]
+  u15["phase<br/>Build one phase of the plan, tests first, and commit it"]
+  u16["code<br/>Build the plan test first in one session"]
+  u17["code_join"]
+  u18["outcome<br/>outcome gate"]
   fin([finalizer])
   stop((end))
   start --> u0
@@ -27,35 +31,41 @@ flowchart TD
   u4 --> u5
   u5 --> u6
   u5 --> u7
-  u5 --> u9
   u5 --> u12
-  u6 --> u7
-  u6 --> u9
+  u5 --> u16
+  u6 --> u10
+  u6 --> u12
   u7 --> u8
   u8 --> u9
-  u8 --> u14
+  u8 --> u10
   u9 --> u10
-  u9 -.->|back| u8
-  u10 --> u12
   u10 --> u11
   u11 --> u12
-  u11 -.->|back| u9
-  u11 -.->|back| u8
+  u11 --> u18
   u12 --> u13
-  u12 -.->|back| u9
-  u12 -.->|back| u8
-  u12 -.->|back| u5
+  u12 -.->|back| u11
+  u13 --> u16
   u13 --> u14
-  u14 --> fin
-  u14 -.->|back| u3
-  u14 -.->|back| u4
-  u14 -.->|back| u5
-  u14 -.->|back| u6
-  u14 -.->|back| u7
-  u14 -.->|back| u8
-  u14 -.->|back| u9
-  u14 -.->|back| u11
+  u14 --> u15
   u14 -.->|back| u12
+  u14 -.->|back| u11
+  u15 --> u16
+  u16 --> u17
+  u16 -.->|back| u12
+  u16 -.->|back| u11
+  u16 -.->|back| u5
+  u17 --> u18
+  u18 --> fin
+  u18 -.->|back| u3
+  u18 -.->|back| u4
+  u18 -.->|back| u5
+  u18 -.->|back| u6
+  u18 -.->|back| u10
+  u18 -.->|back| u11
+  u18 -.->|back| u12
+  u18 -.->|back| u14
+  u18 -.->|back| u15
+  u18 -.->|back| u16
   fin --> stop
 
 ```

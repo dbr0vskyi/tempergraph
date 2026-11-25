@@ -30,6 +30,30 @@ WHEN the `host` layer runs THE audit SHALL compare the workflow's declared progr
 
 - GIVEN check runs that prefix `test`, a target whose `package.json` defines `scripts.test`, no `command_resolver` and no Node prefix declared WHEN `audit --layer host` runs THEN it reports `toolchain-not-covered` naming the documented command, and `check-program-missing` when the declared program is not on `PATH`
 
+### AUD-B17 The repository's commands entry is no program
+
+WHEN a workflow lists the entry `@repository` ([CHK-B11](75-check-contract-and-command-runs.spec.md)) in its command allow-list or in a step's commands THE audit SHALL report no `check-program-missing` for the entry in the `host` layer, whatever programs `PATH` holds.
+
+- GIVEN an allow-list of `git status` and `@repository`, a target with no `tempergraph.commands.json` and `git` as the only program on `PATH` WHEN `audit --layer host` runs THEN it reports no `check-program-missing`
+- GIVEN a step with the tool `shell` and the commands `git status` and `@repository`, an allow-list of the same two entries and `git` as the only program on `PATH` WHEN `audit --layer host` runs THEN no finding names `@repository`
+- GIVEN a package that passes rungs 1 to 5 of `author verify` and whose allow-list is `git status` and `@repository` WHEN `author verify` runs in a repository with no `tempergraph.commands.json` and with `git` on `PATH` THEN rung 6 passes ([SCF-B18](91-blueprint-and-scaffold.spec.md))
+
+### AUD-B18 The programs of the target's declared commands are looked up
+
+WHEN a workflow lists `@repository` in its command allow-list or in a step's commands THE audit SHALL report `check-program-missing` in the `host` layer for the first word of each prefix that the target's `tempergraph.commands.json` declares ([CHK-B11](75-check-contract-and-command-runs.spec.md)) when `PATH` lacks that program, pointing the finding at that file.
+
+- GIVEN an allow-list of `git status` and `@repository`, a target whose `tempergraph.commands.json` declares `npm test` and `npm run lint`, and `git` but no `npm` on `PATH` WHEN `audit --layer host` runs THEN it reports one `check-program-missing` for `npm`, pointing at `tempergraph.commands.json`
+- GIVEN the same allow-list and target and `git` and `npm` on `PATH` WHEN `audit --layer host` runs THEN it reports no `check-program-missing`
+- GIVEN a step with the tool `shell` and the commands `@repository`, an allow-list of `@repository`, a target whose `tempergraph.commands.json` declares `make check` and no `make` on `PATH` WHEN `audit --layer host` runs THEN it reports one `check-program-missing` for `make`
+- GIVEN an allow-list of `git status` and `@repository`, a target whose `tempergraph.commands.json` is not valid JSON and `git` as the only program on `PATH` WHEN `audit --layer host` runs THEN it reports no `check-program-missing`
+
+### AUD-B19 The target's declared commands cover its toolchain
+
+WHEN a workflow lists `@repository` in its command allow-list or in a step's commands THE audit SHALL count each prefix that the target's `tempergraph.commands.json` declares as a prefix the workflow declares when it decides `toolchain-not-covered` ([ARC-B10](56-audit-rule-catalog.spec.md)).
+
+- GIVEN an allow-list of `@repository`, a target whose `package.json` defines `scripts.test` and whose `tempergraph.commands.json` declares `npm test` WHEN `audit --layer host` runs THEN it reports no `toolchain-not-covered`
+- GIVEN that allow-list and `package.json` and a `tempergraph.commands.json` that declares only `make check` WHEN `audit --layer host` runs THEN it reports `toolchain-not-covered` naming `package.json scripts.test`
+
 ### AUD-B5 Small samples are said, not judged
 
 WHEN a history rule has fewer runs than its minimum THE audit SHALL yield no finding for it and list it under skipped with `n=<runs> of <min>` ([ADR-0053](../adr/0053-history-findings-need-a-minimum-sample.adr.md)).
@@ -112,6 +136,10 @@ WHEN the definition and host layers are needed outside the verb THE engine SHALL
 - AUD-AC5 (AUD-B9, AUD-B15): `--fail-on` exits 6 exactly when a non-ignored finding is at or above the level, and 0 otherwise, on a corpus of fixtures
 - AUD-AC6 (AUD-B12, AUD-B13): The JSON report validates against its schema and carries `schema_version`; an old reader skips an unknown key
 - AUD-AC7 (AUD-B7, AUD-B14): An ignore without a reason is refused by validation; a lapsed `until` shows the finding again
+- AUD-AC8 (AUD-B17): A fixture workflow whose allow-list and a step's commands hold `git status` and `@repository`, audited with `git` as the only program on `PATH` and a target with no `tempergraph.commands.json`, raises no `check-program-missing` and no finding that names `@repository`
+- AUD-AC9 (AUD-B17): A package that passes rungs 1 to 5 of `author verify` and whose allow-list holds `git status` and `@repository` passes rung 6 in a repository with no `tempergraph.commands.json`
+- AUD-AC10 (AUD-B18): For a target whose `tempergraph.commands.json` declares `npm test` and `npm run lint`, the `host` layer reports one `check-program-missing` for `npm`, pointing at that file, when `npm` is not on `PATH` and none when it is; for a target whose file is not valid JSON it reports none
+- AUD-AC11 (AUD-B19): For a target whose `package.json` defines `scripts.test` and a workflow whose allow-list is `@repository`, the `host` layer reports no `toolchain-not-covered` when `tempergraph.commands.json` declares `npm test` and reports it, naming `package.json scripts.test`, when the file declares only `make check`
 
 ## Open questions
 

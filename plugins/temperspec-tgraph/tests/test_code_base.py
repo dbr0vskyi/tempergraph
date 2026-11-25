@@ -39,6 +39,7 @@ def _repo(root: Path, command: str) -> tuple[Path, str]:
     _git(root, "init", "-q", "-b", "main")
     (root / "README.md").write_text("base readme\n")
     (root / "gone.txt").write_text("held by the base commit\n")
+    (root / "tempergraph.commands.json").write_text(json.dumps({"schema_version": 1, "commands": ["pytest"]}))
     _git(root, "add", "-A")
     _git(root, "commit", "-q", "-m", "base")
     base = _git(root, "rev-parse", "HEAD").strip()

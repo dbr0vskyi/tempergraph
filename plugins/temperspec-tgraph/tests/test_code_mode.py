@@ -202,14 +202,25 @@ def test_the_workflow_validates_and_declares_the_switch() -> None:
     assert switch is not None and list(switch.arms) == ["single", "phases"] and switch.default == "phases"
     assert dict(switch.arms) == {"single": "code", "phases": "expand"}
     here = SPEC.order.index("plan")
-    assert SPEC.order[here:here + 5] == ("plan", "code_mode", "expand", "code", "code_join")
+    # CDM-AC11, CDM-AC12 (CDM-B6, CDM-B7): the map `phase` sits between expand and the code step, which is the join
+    assert SPEC.order[here:here + 6] == ("plan", "code_mode", "expand", "phase", "code", "code_join")
     assert SPEC.units["plan"].route is None and SPEC.units["plan"].route_targets == ()
     blueprint = json.loads((ROOT / "blueprint.json").read_text(encoding="utf-8"))
     assert "plan" not in blueprint["flow"]
     assert blueprint["flow"]["code_mode"]["switch"] == {"arms": {"single": "code", "phases": "expand"},
                                                         "default": "phases"}
     kinds = {u["name"]: u["kind"] for u in blueprint["units"]}
-    assert kinds["code_mode"] == "switch" and kinds["code_join"] == "script"
+    assert kinds["code_mode"] == "switch" and kinds["code_join"] == "script" and kinds["phase"] == "map"
+    # AC 6: the new map unit validates, runs its phases one after another, has no line back, and leaves the join as it was
+    phase = SPEC.units["phase"]
+    assert phase.kind == "map" and phase.map is not None and phase.map.mode == "sequential"
+    assert phase.map.items_from == ("expand", "phases") and not phase.gate.back_targets
+    comp = SPEC.units["code_mode"].switch.complexity  # type: ignore[union-attr]
+    assert comp is not None and comp.joins_at == "code_join"
+    from tempergraph.package.docs_check import docs_check
+
+    assert [f.message for f in docs_check(SPEC, ROOT, "stable")] == []
+    assert load_package(ROOT).spec.units["phase"].kind == "map"
 
 
 # -- scripted runs of the package's own units --------------------------------------------------------------------
@@ -240,7 +251,7 @@ def silent_check(ctx: Any) -> CheckResult:
     return CheckResult(result="PASS", evidence="counted")
 
 
-UNITS = ("triage", "plan", "code_mode", "expand", "code", "code_join")
+UNITS = ("triage", "plan", "code_mode", "expand", "phase", "code", "code_join")
 
 
 def _scripted(check: Callable[..., Any]) -> Any:
@@ -286,9 +297,16 @@ def _planner(text: str, sizes: dict[str, int] | None = None) -> Callable[[Sessio
     return run
 
 
+EXPANDED = _plan([("One", "light", [("test", "tests/a.py"), ("code", "src/a.py")])])  # one phase: one item of the map
+
+
 def _expander(req: SessionRequest) -> SessionResult:
-    (req.workdir / "phases.md").write_text("rows\n", encoding="utf-8")
+    (req.workdir / "phases.md").write_text(EXPANDED, encoding="utf-8")
     return _said("Expanded.\nARTIFACT phases: phases.md", "e")
+
+
+def _phaser(req: SessionRequest) -> SessionResult:
+    return _said("Built.\nARTIFACT phase_note: built the phase", "ph")
 
 
 def _coder(req: SessionRequest) -> SessionResult:
@@ -324,7 +342,8 @@ def _routes(repo: Path, task: str = "C-1") -> list[dict[str, Any]]:
 SIMPLE = _plan([("One", "light", [("test", "tests/a.py"), ("code", "src/a.py")])])
 FIVE = _plan([(f"Part {i}", "light", []) for i in range(1, 6)])
 SINGLE = [_triage(), _planner(SIMPLE), _coder]
-PHASES = [_triage(), _planner(FIVE), _expander, _coder]
+PHASES = [_triage(), _planner(FIVE), _expander, _phaser, _coder]
+ENTERED_ON_PHASES = ["triage", "plan", "expand", "phase", "code", "code_join"]
 
 
 def test_a_run_records_one_route_with_the_switch_the_arm_the_zone_and_the_seven_measures(repo: Path) -> None:
@@ -339,16 +358,17 @@ def test_a_run_records_one_route_with_the_switch_the_arm_the_zone_and_the_seven_
 
 
 def test_a_simple_plan_takes_single_and_a_complex_plan_takes_phases(repo: Path) -> None:
-    # AC 1, CDM-AC5, CDM-AC11, CDM-AC12 (CDM-B3, CDM-B6, CDM-B7)
+    # AC 1, CDM-AC5, CDM-AC11, CDM-AC12 (CDM-B3, CDM-B6, CDM-B7): on `single` neither the expand step nor a phase item is
+    # entered; on `phases` the map `phase` runs between the expand step and the code step
     assert _run(repo, SINGLE, task="S-1").exit_code is ExitCode.FINISHED
     (route,) = _routes(repo, "S-1")
     assert (route["arm"], route["zone"]) == ("single", "simple")
-    assert _entered(repo, "S-1") == ["triage", "plan", "code", "code_join"]  # the expand step is never entered
+    assert _entered(repo, "S-1") == ["triage", "plan", "code", "code_join"]  # no expand step, no phase item
 
     assert _run(repo, PHASES, task="P-1").exit_code is ExitCode.FINISHED
     (route,) = _routes(repo, "P-1")
     assert (route["arm"], route["zone"]) == ("phases", "complex")
-    assert _entered(repo, "P-1") == ["triage", "plan", "expand", "code", "code_join"]
+    assert _entered(repo, "P-1") == ENTERED_ON_PHASES
     log = run_dir(state_root_path(repo), SPEC.name, "P-1") / "run.jsonl"
     records = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
     passed = next(i for i, r in enumerate(records) if r["kind"] == "gate" and r.get("unit") == "expand")
@@ -374,11 +394,11 @@ OVER_ONE = {
 def test_a_plan_over_exactly_one_limit_takes_phases(repo: Path, sign: str) -> None:
     # AC 1, CDM-AC6 (CDM-B3)
     text, sizes = OVER_ONE[sign]
-    out = _run(repo, [_triage(), _planner(text, sizes), _expander, _coder])
+    out = _run(repo, [_triage(), _planner(text, sizes), _expander, _phaser, _coder])
     assert out.exit_code is ExitCode.FINISHED, out.message
     (route,) = _routes(repo)
     assert (route["arm"], route["zone"]) == ("phases", "complex"), route["measures"]
-    assert _entered(repo) == ["triage", "plan", "expand", "code", "code_join"]
+    assert _entered(repo) == ENTERED_ON_PHASES
 
 
 def test_the_control_plan_inside_every_limit_takes_single(repo: Path) -> None:
@@ -392,12 +412,12 @@ def test_the_control_plan_inside_every_limit_takes_single(repo: Path) -> None:
 
 def test_a_missing_fact_takes_phases_in_the_zone_fault(repo: Path) -> None:
     # AC 1, CDM-AC9 (CDM-B5)
-    out = _run(repo, [_triage(), _planner(SIMPLE), _expander, _coder], check=silent_check)
+    out = _run(repo, [_triage(), _planner(SIMPLE), _expander, _phaser, _coder], check=silent_check)
     assert out.exit_code is ExitCode.FINISHED, out.message
     (route,) = _routes(repo)
     assert (route["arm"], route["zone"]) == ("phases", "fault")
     assert route["measures"]["phases"] == "fault"
-    assert _entered(repo) == ["triage", "plan", "expand", "code", "code_join"]
+    assert _entered(repo) == ENTERED_ON_PHASES
 
 
 def test_a_repository_override_that_is_not_json_takes_phases_in_the_zone_fault(repo: Path) -> None:
@@ -405,7 +425,7 @@ def test_a_repository_override_that_is_not_json_takes_phases_in_the_zone_fault(r
     path = complexity.override_path(state_root_path(repo), SPEC.name, "code_mode")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("{not json", encoding="utf-8")
-    out = _run(repo, [_triage(), _planner(SIMPLE), _expander, _coder])
+    out = _run(repo, [_triage(), _planner(SIMPLE), _expander, _phaser, _coder])
     assert out.exit_code is ExitCode.FINISHED, out.message
     (route,) = _routes(repo)
     assert (route["arm"], route["zone"], route["rules_source"]) == ("phases", "fault", "repository")
@@ -414,11 +434,11 @@ def test_a_repository_override_that_is_not_json_takes_phases_in_the_zone_fault(r
 
 def test_the_operator_names_phases_for_a_simple_plan(repo: Path) -> None:
     # AC 2, CDM-AC13 (CDM-B8)
-    out = _run(repo, [_triage(), _planner(SIMPLE), _expander, _coder], flags={"code_mode.arm": "phases"})
+    out = _run(repo, [_triage(), _planner(SIMPLE), _expander, _phaser, _coder], flags={"code_mode.arm": "phases"})
     assert out.exit_code is ExitCode.FINISHED, out.message
     (route,) = _routes(repo)
     assert (route["arm"], route["chosen_by"], route["would_choose"]) == ("phases", "operator", "single")
-    assert _entered(repo) == ["triage", "plan", "expand", "code", "code_join"]
+    assert _entered(repo) == ENTERED_ON_PHASES
 
 
 def test_the_operator_names_single_for_a_plan_of_five_phases(repo: Path) -> None:
@@ -455,7 +475,7 @@ def test_the_report_counts_the_operators_run_under_the_arm_it_took(repo: Path) -
     _logged(root, "S-0", "single", "simple")
     _logged(root, "P-0", "phases", "complex")
     _logged(root, "O-0", "phases", "simple", chosen_by="operator", would_choose="single")
-    doc = swr.report(root, SPEC.name, "code_mode", None, units={"expand", "code"}, size="phases")
+    doc = swr.report(root, SPEC.name, "code_mode", None, units={"expand", "phase", "code"}, size="phases")
     cells = {(c["arm"], c["zone"]): c for c in doc["cells"]}
     assert set(cells) == {("single", "simple"), ("phases", "complex"), ("phases", "simple")}
     assert cells[("phases", "simple")]["runs"] == 1 and cells[("phases", "simple")]["would_choose"] == "single"
@@ -475,7 +495,7 @@ def test_the_report_divides_a_cells_cost_by_the_sum_of_its_phases(repo: Path) ->
     root = state_root_path(repo)
     for i in range(5):
         _logged(root, f"S-{i}", "single", "simple", phases=2, usd=2.0)
-    doc = swr.report(root, SPEC.name, "code_mode", None, units={"expand", "code"}, size="phases")
+    doc = swr.report(root, SPEC.name, "code_mode", None, units={"expand", "phase", "code"}, size="phases")
     (cell,) = doc["cells"]
     assert (cell["arm"], cell["zone"], cell["runs"], cell["cost_per_size_usd"]) == ("single", "simple", 5, 1.0)
     code, text = _cli(repo, "report", "all", "--switch", f"{SPEC.name}/code_mode")
@@ -534,14 +554,15 @@ def test_the_readme_the_module_docstring_and_the_diagram_say_what_the_route_does
     (expand_row,) = [ln for ln in readme.splitlines() if ln.startswith("| expand |")]
     assert "phases" in expand_row and "code_mode" in expand_row
     (code_row,) = [ln for ln in readme.splitlines() if ln.startswith("| code |")]
-    assert "both arms" in code_row
+    assert "both arms" not in code_row and "join" in code_row and "whole plan" in code_row
     (full,) = [ln for ln in readme.splitlines() if ln.startswith("| full |")]
-    assert "triage → discovery → plan → expand → code" in full and "over a limit" in full
+    assert "triage → discovery → plan → expand → phase → code" in full and "over a limit" in full
     assert "--arm code_mode=" in readme and "report --switch temperspec/code_mode" in readme
     assert "TS-L3" in readme
     diagram = (ROOT / "diagram" / "workflow.md").read_text(encoding="utf-8")
-    assert "code_mode" in diagram and "code_join" in diagram
-    assert "code_mode" in (importlib.import_module("tgwf_temperspec").__doc__ or "")
+    assert "code_mode" in diagram and "code_join" in diagram and "phase" in diagram
+    doc = importlib.import_module("tgwf_temperspec").__doc__ or ""
+    assert "code_mode" in doc and "phase" in doc
 
 
 LINK = re.compile(r"\]\((?P<target>[^)\s]+)\)")
@@ -577,3 +598,32 @@ def test_the_new_unit_specs_read_as_the_packages_other_unit_specs_do(name: str) 
     assert parsed.legacy and not parsed.problems
     assert fmt.defined_ids(text) == []
     assert "(00-overview.spec.md)" in text and "(code-mode.spec.md)" in text
+
+
+def _size_findings(work: Path) -> list[Any]:
+    artifacts = {"plan": {"plan": "plan.md"}, "triage": {"triage_note": "triage_note.md"}}
+    res, _ = run_check(SPEC.units["plan"].gate, _context("plan", work, artifacts))
+    return [f for f in res.findings if f.criterion == "ts-plan-size" and f.status == "fail"]
+
+
+def test_a_complex_plan_with_no_rows_is_told_to_mark_its_heavy_phase(tmp_path: Path) -> None:
+    # ts-plan-size; seen in run i16: a plan too large to read for `simple` flipped between `simple` and `complex`,
+    # because a complex plan has no rows and so measured nothing over the limit.
+    light = _plan([("Contest retry", "light", [])])
+    (tmp_path / "a").mkdir()
+    _written(tmp_path / "a", light)
+    found = _size_findings(tmp_path / "a")
+    assert found and "heavy (large-context)" in found[0].fix and "state `simple`" in found[0].fix
+    heavy = _plan([("Contest retry", "heavy (large-context)", [])])
+    (tmp_path / "b").mkdir()
+    _written(tmp_path / "b", heavy)
+    assert _size_findings(tmp_path / "b") == []
+
+
+def test_a_simple_plan_over_the_reading_limit_is_told_how_to_say_complex(tmp_path: Path) -> None:  # ts-plan-size
+    text = _plan([("Contest retry", "light", [("test", "tests/a.py"), ("code", "src/a.py")])]).replace(
+        "complexity: complex", "complexity: simple")
+    _written(tmp_path, text, {"src/a.py": 210_000, "tests/a.py": 10})
+    found = _size_findings(tmp_path)
+    assert found and "reading_bytes" in found[0].message
+    assert "state `complex`" in found[0].fix and "heavy (large-context)" in found[0].fix

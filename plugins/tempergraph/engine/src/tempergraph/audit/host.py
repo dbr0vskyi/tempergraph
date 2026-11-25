@@ -23,6 +23,7 @@ from tempergraph.executors.capabilities import DECLARED
 from tempergraph.executors.launcher import ShellTiming, shell_timing
 from tempergraph.model.prompt_lint import TICKED, names
 from tempergraph.model.text import TextUnreadable, load_text, split_judge_file
+from tempergraph.run.commands import REPO_FILE, REPOSITORY, repository_commands
 
 P = {k: v.default for k, v in PARAMS.items()}
 
@@ -84,14 +85,25 @@ class Host:
             self.skip("toolchain-not-covered", reason)
             return
         programs: dict[str, str | None] = {}
-        for unit, prefix in self.prefixes():
+        declared: set[str] = set()  # programs that only the target's commands file names (AUD-B18)
+        entries = self.prefixes()
+        for unit, prefix in entries:
             prog = prefix.split()[0] if prefix.split() else ""
-            if prog and prog not in programs:
+            if prefix == REPOSITORY or not prog:  # the entry is the target's commands, not a program (AUD-B17)
+                continue
+            if prog not in programs:
                 programs[prog] = unit
+        if any(prefix == REPOSITORY for _, prefix in entries):
+            for prefix in repository_commands(self.i.target):
+                prog = prefix.split()[0]
+                if prog not in programs:
+                    programs[prog] = None
+                    declared.add(prog)
         for prog, unit in programs.items():
             if self.i.which(prog) is None:
                 self.add("check-program-missing", unit, f"{prog!r} is not on PATH, so commands with that prefix run "
-                         "nothing", item=prog, evidence={"program": prog})
+                         "nothing", item=prog, evidence={"program": prog},
+                         file=REPO_FILE if prog in declared else None)
         if not self.i.target.is_dir():
             self.skip("toolchain-not-covered", "no target directory")
             return

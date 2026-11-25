@@ -251,6 +251,20 @@ def test_author_verify_stops_at_the_comparison(pkg: Path, tmp_path: Path) -> Non
     assert any("draft now pauses for approval after a pass; the blueprint does not" in m for m in msgs)
 
 
+def test_author_verify_audit_rung_takes_the_repository_entry(pkg: Path, tmp_path: Path) -> None:
+    """AUD-B17, AUD-AC9: an allow-list of `git status` and `@repository` passes rung 6 with no commands file."""
+    decl = pkg / "workflow/release_notes/__init__.py"
+    text = decl.read_text()
+    assert "    return Workflow(\n" in text
+    decl.write_text(text.replace("    return Workflow(\n",
+                                 "    return Workflow(\n        allow_commands=['git status', '@repository'],\n", 1))
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    code, doc, reg = _verify(pkg, scratch)
+    assert _states(doc)["audit"] == "passed", json.dumps([r for r in doc["rungs"] if r["state"] != "passed"], indent=1)
+    assert reg.get("claude").calls == []  # type: ignore[attr-defined]
+
+
 def test_author_verify_seeds_need_seeds_and_trial_a_case(pkg: Path, tmp_path: Path) -> None:
     """Rung 8 on a package with no seeds fails `criterion-no-seed` before any session; rungs 1 to 7 still ran
     and nothing is stamped. `--trial` without a case is refused (SCF-B11, SCF-B13, SCF-B15, SCF-B16, SCF-B17, SCF-B18, SCF-B19, SCF-B20, SCF-B22; more in test_author_trial.py)."""
@@ -332,6 +346,27 @@ def test_standin_run_answers_each_unit_by_name_when_a_route_skips_one(pkg: Path,
     assert selftest.run("standin_run", pkg, tmp_path / "a") == []
     written = {f.name for f in (tmp_path / "a").rglob("*.md") if ".worktrees" in f.parts[-3]}
     assert "summary.md" in written and "extra.md" not in written  # `final` was given its own reply
+
+
+def test_standin_run_answers_every_item_of_a_map(pkg: Path, tmp_path: Path) -> None:
+    """SCF-B16, SCF-AC2: a map unit has one session for each item, so the stand-in run answers each of them with the
+    map's reply instead of ending the run when the second item asks."""
+    decl = pkg / "workflow/release_notes/__init__.py"
+    text = decl.read_text().replace("order=['draft']", "order=['draft', 'polish']")
+    text = text.replace("from tempergraph.api import ", "from tempergraph.api import Map, ")
+    judge = ("Judge(file='judges/draft.md', references=['notes'], model='medium', effort='medium', "
+             "sizing='Reads one file')")
+    extra = ("        \"polish\": Map(items_from=('draft', 'notes'), extract=two, mode='sequential', "
+             "step=Step(prompt='Polish {item} of {request}.', summary='Polish one part', tools=['read', 'write'], "
+             "produces={'extra': 'file'}, model='medium', effort='medium', sizing='Short', "
+             f"gate=Gate(judge={judge}))),\n")
+    decl.write_text(text.replace("        },\n    )", extra + "        },\n    )")
+                    + "\n\ndef two(ctx):\n    return [{'id': 'a', 'text': 'part a'}, {'id': 'b', 'text': 'part b'}]\n")
+    o = json.loads((pkg / "outcome.json").read_text())
+    judged = next(c for c in o["intermediate"]["draft"]["criteria"] if c.get("verified_by") == "judge")
+    o["intermediate"]["polish"] = {**o["intermediate"]["draft"], "criteria": [{**judged, "id": "polish-1"}]}
+    (pkg / "outcome.json").write_text(json.dumps(o))
+    assert selftest.run("standin_run", pkg, tmp_path / "a") == []
 
 
 def test_a_fixture_file_belongs_to_the_unit_under_test_when_two_units_produce_its_key(tmp_path: Path) -> None:

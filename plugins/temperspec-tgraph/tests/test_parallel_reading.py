@@ -49,10 +49,11 @@ def _prompt(name: str) -> str:
 # -- the list of gaps (PRL-B2) ---------------------------------------------------------------------------------
 
 
-def _note(rows: list[str], *, gaps: str | None = None) -> str:
+def _note(rows: list[str], *, gaps: str | None = None, owner: str | None = None) -> str:
     body = gaps if gaps is not None else "\n".join(rows)
+    section = "" if owner is None else f"## Owner decisions\n\n{owner}\n\n"
     return ("# Triage: I-1\n\n## Task\n\nThe task.\n\n## Acceptance criteria\n\n1. A thing.\n\n## Existing documents\n\n"
-            f"- none\n\n## Gaps\n\n{body}\n\n## Route\n\n- Deliver: code\n- Route: discovery\n")
+            f"- none\n\n## Gaps\n\n{body}\n\n{section}## Route\n\n- Deliver: code\n- Route: discovery\n")
 
 
 def _items(tmp_path: Path, note: str) -> list[dict[str, str]]:
@@ -97,8 +98,11 @@ def test_the_gap_reading_unit_is_a_concurrent_read_only_map() -> None:  # AC 1, 
     assert set(unit.step.produces) == {"gap_finding"} and unit.step.produces["gap_finding"].max_chars == 1500
     assert isinstance(unit.gate.judge, JudgeSpec) and unit.gate.check is None
     order = list(SPEC.order)
-    assert order.index("discovery_short") < order.index("read_gap") < order.index("discovery")
-    assert "read_gap" in SPEC.units["triage"].route_targets and "discovery" not in SPEC.units["triage"].route_targets
+    assert order.index("discovery_short") < order.index("owner_questions") < order.index("ask_route")
+    assert order.index("ask_route") < order.index("ask_owner") < order.index("read_gap") < order.index("discovery")
+    triage_targets = SPEC.units["triage"].route_targets
+    assert "owner_questions" in triage_targets and "read_gap" not in triage_targets and "discovery" not in triage_targets
+    assert "read_gap" in SPEC.units["ask_route"].route_targets
     assert "read_gap" in SPEC.units["discovery_short"].route_targets
     assert "discovery" not in SPEC.units["discovery_short"].route_targets
     writer = SPEC.units["discovery"]
@@ -258,9 +262,10 @@ class Stand:
 
     def _triage(self, work: Path) -> SessionResult:
         (work / "docs" / "tasks").mkdir(parents=True, exist_ok=True)
-        rows = "\n".join(f"- G{n} spec gap: subject {n}" for n in range(1, self.gaps + 1)) or "None"
+        # each row is sorted and the note lists no owner decision, so a run on the default `blocking` asks nothing
+        rows = "\n".join(f"- G{n} spec gap: subject {n}. Findable" for n in range(1, self.gaps + 1)) or "None"
         path = f"docs/tasks/{TASK}.triage.md"
-        (work / path).write_text(_note([], gaps=rows))
+        (work / path).write_text(_note([], gaps=rows, owner="None"))
         some = "some" if self.gaps else "none"
         return answer(f"Triaged.\nARTIFACT triage_note: {path}\nARTIFACT gaps: {some}\nARTIFACT route: {self.route}\n"
                       f"ARTIFACT covered: {self.covered}", session_id="s-triage")
@@ -365,11 +370,13 @@ def test_one_gap_and_no_gap_start_no_reading_session(tmp_path: Path) -> None:  #
 
 
 def test_never_more_than_three_reading_sessions_are_open_at_once(tmp_path: Path) -> None:  # AC 1, PRL-AC7 (PRL-B7)
-    five = Stand(gaps=5, hold={f"G{n}": 0.05 for n in range(1, 6)})
+    # Each session is held long enough that a loaded machine (CI, the nested package run beside the engine suite's
+    # workers) still starts the next one while it is open: at 0.1 s the two of the second case once ran one by one.
+    five = Stand(gaps=5, hold={f"G{n}": 0.4 for n in range(1, 6)})
     out = _run(tmp_path / "five", five)
     assert out is not None and out.exit_code is ExitCode.FINISHED, getattr(out, "message", None)
     assert five.count("step", "read_gap") == 5 and 2 <= five.peak <= 3, five.peak
-    two = Stand(gaps=2, hold={"G1": 0.1, "G2": 0.1})
+    two = Stand(gaps=2, hold={"G1": 1.0, "G2": 1.0})
     _run(tmp_path / "two", two)
     assert two.peak == 2  # both are open at the same time
 
@@ -658,8 +665,9 @@ def test_the_records_agree_with_the_gap_reading_unit() -> None:  # AC 5, PRL-AC1
     _check_unit_records("read_gap", ["gap_finding"], True)
     flow = json.loads((ROOT / "blueprint.json").read_text())["flow"]
     assert flow["read_gap"] == {"map": {"over": "triage.triage_note"}}
-    assert "read_gap" in flow["triage"]["route"] and "read_gap" in flow["discovery_short"]["route"]
-    assert _sizing("discovery")["reads"] == ["gap_finding", "triage_note"]
+    assert "owner_questions" in flow["triage"]["route"] and "read_gap" not in flow["triage"]["route"]
+    assert "read_gap" in flow["ask_route"]["route"] and "read_gap" in flow["discovery_short"]["route"]
+    assert _sizing("discovery")["reads"] == ["answers", "gap_finding", "triage_note"]  # sorted, as compare.py reads it
 
 
 def test_the_records_agree_with_the_setup_survey() -> None:  # AC 5, PRL-AC13

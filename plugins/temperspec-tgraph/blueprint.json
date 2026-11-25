@@ -127,6 +127,29 @@
       }
     },
     {
+      "name": "owner_questions",
+      "kind": "script",
+      "summary": "List the owner's questions of the one pause",
+      "produces": [
+        "question_list",
+        "empty"
+      ]
+    },
+    {
+      "name": "ask_route",
+      "kind": "route"
+    },
+    {
+      "name": "ask_owner",
+      "kind": "ask",
+      "produces": [
+        "answers"
+      ],
+      "reads": [
+        "triage_note"
+      ]
+    },
+    {
       "name": "read_gap",
       "kind": "map",
       "summary": "Read one gap's documents and code; report findings",
@@ -160,6 +183,7 @@
         "handoff"
       ],
       "reads": [
+        "answers",
         "gap_finding",
         "triage_note"
       ],
@@ -243,6 +267,32 @@
       }
     },
     {
+      "name": "phase",
+      "kind": "map",
+      "summary": "Build one phase of the plan, tests first, and commit it",
+      "produces": [
+        "phase_note"
+      ],
+      "reads": [
+        "plan",
+        "triage_note"
+      ],
+      "gate": {
+        "check": true,
+        "judge": true
+      },
+      "sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "One phase of rows with the tests named; the check reads the rows and the judge the change"
+      },
+      "judge_sizing": {
+        "model": "medium",
+        "effort": "medium",
+        "why": "It reads the rows of one phase against the files they name, and the check has read the marks"
+      }
+    },
+    {
       "name": "code",
       "kind": "step",
       "summary": "Build the plan test first in one session",
@@ -252,7 +302,8 @@
       ],
       "reads": [
         "triage_note",
-        "plan"
+        "plan",
+        "phase_note"
       ],
       "gate": {
         "check": true,
@@ -295,7 +346,7 @@
     "triage": {
       "route": [
         "discovery_short",
-        "read_gap",
+        "owner_questions",
         "plan",
         "code"
       ]
@@ -304,6 +355,12 @@
       "route": [
         "read_gap",
         "plan"
+      ]
+    },
+    "ask_route": {
+      "route": [
+        "ask_owner",
+        "read_gap"
       ]
     },
     "read_gap": {
@@ -316,6 +373,11 @@
         "plan",
         "finalizer"
       ]
+    },
+    "phase": {
+      "map": {
+        "over": "expand.phases"
+      }
     },
     "code_mode": {
       "switch": {

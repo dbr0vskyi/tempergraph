@@ -2,9 +2,9 @@
   "schema_version": 1,
   "engine_version": "0.2.0",
   "workflow_api": 1,
-  "workflow_version": "0.1.0+d99248be1905",
-  "docs_digest": "cb0f21273eae35ec5eb17b258ee1715c01244f6bcac2946b4b5a1b4f3bcb239d",
-  "shape_digest": "fc1e12d5f7e90828226d3d708d4da4e0369a9b47dd18dd8356df35522f1b44d2",
+  "workflow_version": "0.1.0+fd0d5bbcc81d",
+  "docs_digest": "669685cd37b93b2cc4e49659568d94482f8324cdcf1f94d10b66f1364eccea1e",
+  "shape_digest": "a6e71e8b896a9e04ac82f04af3be0074c4794dbf2460ca321e994ef322a78038",
   "entries_applied": [
     {
       "id": "E0.2.0-1",
@@ -72,6 +72,8 @@
     "outcome-unverified-blocker|expand|ts-exp-design|outcome.json",
     "outcome-unverified-blocker|outcome|ts-accepted|outcome.json",
     "outcome-unverified-blocker|outcome|ts-spec-sync|outcome.json",
+    "outcome-unverified-blocker|phase|ts-phs-change|outcome.json",
+    "outcome-unverified-blocker|phase|ts-phs-scope|outcome.json",
     "outcome-unverified-blocker|plan|ts-plan-spec|outcome.json",
     "outcome-unverified-blocker|read_component|ts-rdc-answers|outcome.json",
     "outcome-unverified-blocker|read_component|ts-rdc-cited|outcome.json",
@@ -86,20 +88,23 @@
     "readiness:needs-work|discovery||",
     "readiness:needs-work|expand||",
     "readiness:needs-work|outcome||",
+    "readiness:needs-work|phase||",
     "readiness:needs-work|setup||",
     "readiness:needs-work|triage||",
     "validate:criterion-overlap|code||",
     "validate:criterion-overlap|discovery||",
     "validate:criterion-overlap|expand||",
+    "validate:criterion-overlap|phase||",
     "validate:criterion-overlap|setup||",
     "validate:criterion-overlap|triage||",
     "validate:criterion-overlap|||",
-    "validate:template-key-not-on-every-path|code||"
+    "validate:template-key-not-on-every-path|code||",
+    "validate:template-key-not-on-every-path|discovery||"
   ],
-  "outcome_revision": 17,
+  "outcome_revision": 19,
   "baseline": {
     "error": 0,
-    "warning": 29
+    "warning": 38
   },
-  "stamped_at": "2026-11-24T18:15:45.024Z"
+  "stamped_at": "2026-11-25T05:03:30.592Z"
 }

@@ -296,6 +296,57 @@ def test_host_toolchain_and_missing_program(tmp_path: Path) -> None:
     assert "toolchain-not-covered" not in rules(run(covered, tmp_path, layers={"host"}, target=target))
 
 
+def _only(*programs: str) -> Any:
+    return lambda prog: f"/usr/bin/{prog}" if prog in programs else None
+
+
+def test_host_repository_entry_is_no_program(tmp_path: Path) -> None:
+    """AUD-B17, AUD-AC8: `@repository` is not looked up as a program."""
+    target = tmp_path / "target"
+    target.mkdir()
+    spec = wf({"draft": clean_step(tools=["read", "write", "shell"], commands=["git status", "@repository"])},
+              allow_commands=["git status", "@repository"])
+    rep = run(spec, tmp_path, layers={"host"}, target=target, which=_only("git"))
+    assert "check-program-missing" not in rules(rep)
+    for f in rep.findings:
+        assert "@repository" not in f.statement and f.item != "@repository"
+        assert "@repository" not in json.dumps(f.evidence)
+
+
+def test_host_programs_of_the_declared_commands_are_looked_up(tmp_path: Path) -> None:
+    """AUD-B18, AUD-AC10: the first word of each declared prefix is looked up, the finding points at the file."""
+    target = tmp_path / "target"
+    write(target, "tempergraph.commands.json", {"schema_version": 1, "commands": ["npm test", "npm run lint"]})
+    spec = wf({"draft": clean_step()}, allow_commands=["git status", "@repository"])
+    rep = run(spec, tmp_path, layers={"host"}, target=target, which=_only("git"))
+    missing = [f for f in rep.findings if f.rule == "check-program-missing"]
+    assert len(missing) == 1 and missing[0].item == "npm"
+    assert missing[0].location["file"] == "tempergraph.commands.json"
+    rep = run(spec, tmp_path, layers={"host"}, target=target, which=_only("git", "npm"))
+    assert "check-program-missing" not in rules(rep)
+    step = wf({"draft": clean_step(tools=["read", "write", "shell"], commands=["@repository"])},
+              allow_commands=["@repository"])
+    write(target, "tempergraph.commands.json", {"schema_version": 1, "commands": ["make check"]})
+    rep = run(step, tmp_path, layers={"host"}, target=target, which=_only("git"))
+    assert [f.item for f in rep.findings if f.rule == "check-program-missing"] == ["make"]
+    write(target, "tempergraph.commands.json", "{not json")
+    rep = run(spec, tmp_path, layers={"host"}, target=target, which=_only("git"))
+    assert "check-program-missing" not in rules(rep)
+
+
+def test_host_declared_commands_cover_the_toolchain(tmp_path: Path) -> None:
+    """AUD-B19, AUD-AC11: the target's declared prefixes count for `toolchain-not-covered`."""
+    target = tmp_path / "target"
+    write(target, "package.json", {"scripts": {"test": "jest"}})
+    write(target, "tempergraph.commands.json", {"schema_version": 1, "commands": ["npm test"]})
+    spec = wf({"draft": clean_step()}, allow_commands=["@repository"])
+    assert "toolchain-not-covered" not in rules(run(spec, tmp_path, layers={"host"}, target=target))
+    write(target, "tempergraph.commands.json", {"schema_version": 1, "commands": ["make check"]})
+    rep = run(spec, tmp_path, layers={"host"}, target=target)
+    f = next(f for f in rep.findings if f.rule == "toolchain-not-covered")
+    assert "package.json scripts.test" in f.evidence["documented"]
+
+
 def test_host_slow_shell_and_executor_range(tmp_path: Path) -> None:
     spec = wf({"draft": clean_step()})
     rep = run(spec, tmp_path, layers={"host"}, timing=lambda b: ShellTiming(login_s=16, plain_s=0.01),

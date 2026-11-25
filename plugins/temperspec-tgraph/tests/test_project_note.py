@@ -121,11 +121,31 @@ def test_rule_files_held_in_a_folder_of_the_repository_are_not_copied(repo: Path
     assert _named(block, "plugins/a/rules/") and "docs/templates" not in block and ".claude/rules" not in block
 
 
-def test_rule_files_the_machine_holds_are_not_copied(repo: Path, tmp_path: Path) -> None:  # PNR-AC4, PNR-AC6, AC 2
+def test_rule_files_only_the_machine_holds_are_copied_into_the_repository(repo: Path, tmp_path: Path) -> None:  # PNR-AC10, PNR-AC6, AC 1
     _rules_in(tmp_path / "home", ".claude/rules/temperspec")
     block = _prepare(repo)
-    assert not _installed(repo)
-    assert _named(block, "~/.claude/rules/temperspec/") and "whole machine" in block
+    assert sorted(p.name for p in (repo / ".claude" / "rules" / "temperspec").iterdir()) == RULES
+    assert (repo / fmt.TEMPLATE_DIR / "spec.template.md").is_file()
+    assert _named(block, ".claude/rules/temperspec/", "docs/templates/")
+    assert "~/.claude" not in block and "whole machine" not in block
+
+
+def test_rule_files_the_repository_holds_are_not_copied_though_the_machine_holds_them(
+        repo: Path, tmp_path: Path) -> None:  # PNR-AC4, PNR-AC6, AC 1
+    _rules_in(tmp_path / "home", ".claude/rules/temperspec")
+    _rules_in(repo, ".claude/rules/temperspec", ["spec.rule.md"])
+    own = _prepare(repo)
+    assert sorted(p.name for p in (repo / ".claude" / "rules" / "temperspec").iterdir()) == ["spec.rule.md"]
+    assert not (repo / fmt.TEMPLATE_DIR).exists()
+    assert _named(own, ".claude/rules/temperspec/") and "~/.claude" not in own and "whole machine" not in own
+    folder = repo.parent / "folder"
+    folder.mkdir()
+    _git(folder, "init", "-q", "-b", "main")
+    _git(folder, "commit", "-q", "--allow-empty", "-m", "start")
+    _rules_in(folder, "plugins/a/rules")
+    block = _prepare(folder)
+    assert not _installed(folder)
+    assert _named(block, "plugins/a/rules/") and "~/.claude" not in block and "whole machine" not in block
 
 
 def test_the_repositorys_own_rule_folder_wins_over_another_folder(repo: Path) -> None:  # PNR-AC4, PNR-AC6, AC 2
@@ -170,6 +190,9 @@ def test_install_rules_alone_writes_the_same_files(repo: Path) -> None:  # PNR-A
     _rules_in(held, "docs/rules")
     routing.install_rules(SimpleNamespace(workdir=held, unit="prepare", request={}))
     assert not (held / ".claude").exists()
+    _rules_in(repo.parent / "home", ".claude/rules/temperspec")  # the machine holds them too: still nothing copied
+    routing.install_rules(SimpleNamespace(workdir=held, unit="prepare", request={}))
+    assert not (held / ".claude").exists() and not (held / fmt.TEMPLATE_DIR).exists()
 
 
 # -- a file that already says where specs live is left alone (PNR-B6) ------------------------------------------
@@ -259,11 +282,11 @@ def _words(path: Path) -> str:
 
 
 @pytest.mark.parametrize("name", PROMPTS)
-def test_each_prompt_says_where_the_rule_files_are(name: str) -> None:  # AC 1, AC 2, AC 3
+def test_each_prompt_says_where_the_rule_files_are(name: str) -> None:  # SRC-AC4, AC 1, AC 2, AC 3
     text = _words(ROOT / "prompts" / f"{name}.md")
     assert "`.claude/rules/temperspec/` of this repository" in text
     assert "project note in `claude.md` or `agents.md` names" in text
-    assert "installed for the whole machine" in text
+    assert "whole machine" not in text and "already in your instructions" not in text
 
 
 @pytest.mark.parametrize("name", NOTES)
@@ -283,3 +306,16 @@ def test_the_readme_and_the_setup_skill_state_what_prepare_does(path: Path) -> N
     text = _words(path)
     assert "holds all six rule files" in text
     assert "already names" in text and "unchanged" in text
+    assert "tempergraph.commands.json" in text  # AC 4: prepare also writes the commands file of a Python repository
+
+
+def test_the_documents_say_where_the_verification_commands_come_from() -> None:  # AC 4
+    readme = _words(ROOT / "README.md")
+    assert "`verify`" not in readme and "one fixed list" not in readme
+    limits =readme.split("limits of this version", 1)[1].split(" - no release step", 1)[0]
+    for said in ("`tempergraph.commands.json`", "read-only `git`", "`cd <folder> && <command>`"):
+        assert said in limits, said
+    assert "fixed list" not in _words(ROOT / "docs" / "specs" / OVERVIEW)
+    for path in (ROOT / "prompts" / "code.md", ROOT / "prompts" / "plan.md", ROOT / "prompts" / "expand.md",
+                 ROOT / "judges" / "code.md"):
+        assert "tempergraph.commands.json" in _words(path), path.name

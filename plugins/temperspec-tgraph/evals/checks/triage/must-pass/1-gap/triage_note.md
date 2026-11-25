@@ -15,7 +15,14 @@ Source: the start request. Summary: the tool reports a missing config file inste
 
 ## Gaps
 
-- G1 decision needed: whether the message goes to standard output or standard error. Searched `docs/` for "stderr" and "standard error": nothing
+- G1 decision needed: whether the message goes to standard output or standard error. Searched `docs/` for "stderr" and "standard error": nothing. Owner decision
+
+## Owner decisions
+
+- G1: Does the missing-file message go to standard output or to standard error?
+  - Options: a) standard error; b) standard output
+  - Default: a
+  - If wrong: a script that reads the tool's standard output sees no message
 
 ## Route
 

@@ -96,6 +96,12 @@ def append_findings(root: Path, workflow: str, task_id: str, thread: str, lines:
     _write_private(findings_path(root, workflow, task_id), json.dumps(doc, default=str))
 
 
+def write_findings(root: Path, workflow: str, task_id: str, thread: str, findings: Sequence[Mapping[str, Any]]) -> None:
+    """Rewrites the thread's findings document with `findings`, in one private write (SRV-B7)."""
+    doc = {"schema_version": 1, "thread": thread, "findings": list(findings)}
+    _write_private(findings_path(root, workflow, task_id), json.dumps(doc, default=str))
+
+
 def _jsonl(path: Path) -> list[dict[str, Any]]:
     try:
         lines = path.read_text(encoding="utf-8").splitlines()

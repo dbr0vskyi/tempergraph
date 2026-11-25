@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -20,12 +21,11 @@ from . import specfmt, summary
 PACKAGE = Path(__file__).resolve().parents[2]
 RULES = "rules"
 REPO_RULES = Path(".claude") / "rules" / "temperspec"
-COMMIT_TYPE = {"code": "feat"}
+COMMIT_TYPE = {"code": "feat", "phase": "feat"}
 CONTEXT_FILES = ("CLAUDE.md", "AGENTS.md")
 SKIP_DIRS = {".git", ".tempergraph", ".claude", "node_modules", ".venv", "venv", "evals", "fixtures"}
 DEFAULT_SPECS = "docs/specs/"
 BESIDE_SPECS = ("adr", "research", "plans", "tasks")
-MACHINE_RULES = "~/.claude/rules/temperspec/"
 SAFE_REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,200}$")
 URL = re.compile(r"https://\S+/pull/\d+")
 PLAIN_PATH = re.compile(r"^[A-Za-z0-9._/:\\-]+$")
@@ -42,12 +42,22 @@ def route_setup(view: Any) -> str:
 
 def route_triage(view: Any) -> str:
     """A quick task goes straight to code; no gap goes to the plan; a task whose every gap a spec answers takes the
-    short visit; any other gap, and a docs-only task, goes to the full discovery, whose entry is `read_gap`: it
-    reads one gap at a time and is skipped, with no item, for a note of fewer than two gaps."""
+    short visit; any other gap, and a docs-only task, goes to the full discovery, whose entry is `owner_questions`:
+    it lists what the owner is asked, `ask_route` sends a run with a question to the pause and any other to
+    `read_gap` (spec `owner-questions`, OWQ-B1, OWQ-B2)."""
     route = view.values.get("route")
     if route == "discovery" and view.values.get("covered") == "yes":
         return "discovery_short"
-    return {"quick": "code", "plan": "plan"}.get(route, "read_gap")
+    return {"quick": "code", "plan": "plan"}.get(route, "owner_questions")
+
+
+def route_ask(view: Any) -> str:
+    """A run whose list of questions holds one goes to the pause `ask_owner`; every other run goes on to the reading
+    sessions at `read_gap` with no pause (OWQ-B1, OWQ-B2). `owner_questions` leaves the key `empty` only when its list
+    holds no question, and a script's keys reach a route as artifact keys, as `setup_needed` does for `route_setup`;
+    a value `empty` of `yes` is read as well. A run with neither goes to the pause, whose own reader refuses a list
+    it cannot read, so a failed list is never skipped in silence."""
+    return "read_gap" if "empty" in view.artifact_keys or view.values.get("empty") == "yes" else "ask_owner"
 
 
 def route_short(view: Any) -> str:
@@ -68,6 +78,65 @@ def gap_items(ctx: Any) -> list[dict[str, str]]:
         if number is not None and number.group(0) not in items:
             items[number.group(0)] = row.strip()
     return [{"id": gid, "text": text} for gid, text in items.items()] if len(items) >= 2 else []
+
+
+@dataclass(frozen=True)
+class PhaseBlock:
+    """One phase of a plan: the item id the map `phase` gives it, its heading (as the plan's rows name it as their
+    phase), its goal and its weight."""
+
+    id: str
+    heading: str
+    goal: str
+    weight: str
+
+
+def phase_blocks(text: str) -> list[PhaseBlock]:
+    """The phases of a plan in plan order, each with the id `p<n>` of the number of its `Phase <n>` heading (PHC-B1). A
+    heading with no number, or with a number an earlier phase already took, gets `p<position>` instead, made unique,
+    so that no id repeats and the list is never shorter than the phases (MAP-B8)."""
+    heads = specfmt.parse_plan(text).phases
+    goals: dict[str, tuple[str, str]] = {}
+    section, current = "", ""
+    for line in text.splitlines():
+        found = specfmt.HEADING.match(line)
+        if found and len(found.group(1)) == 2:
+            section, current = found.group(2).strip().lower(), ""
+        elif found and len(found.group(1)) == 3 and section.startswith("2."):
+            current = found.group(2).strip()
+            goals.setdefault(current, ("", ""))
+        elif current and (m := re.match(r"^\s*[-*]?\s*\**(Goal|Weight)\**\s*:\s*(.*)$", line, re.I)):
+            goal, weight = goals[current]
+            goals[current] = (m.group(2).strip(), weight) if m.group(1).lower() == "goal" else (
+                goal, m.group(2).strip())
+    out: list[PhaseBlock] = []
+    used: set[str] = set()
+    for position, heading in enumerate(heads, start=1):
+        number = re.match(r"\s*Phase\s+(\d+)", heading, re.I)
+        pid = f"p{number.group(1)}" if number else f"p{position}"
+        if pid in used:
+            pid = f"p{position}"
+        tail = 1
+        while pid in used:
+            tail += 1
+            pid = f"p{position}-{tail}"
+        used.add(pid)
+        goal, weight = goals.get(heading, ("", ""))
+        out.append(PhaseBlock(id=pid, heading=heading, goal=goal, weight=weight))
+    return out
+
+
+def phase_items(ctx: Any) -> list[dict[str, str]]:
+    """The items of the map `phase`: one for each phase of the expanded plan at `ctx.artifact`, in plan order, with the
+    id `p<n>` of its heading's number and as text its heading, goal and weight with the plan's path (PHC-B1, PHC-B2).
+    The path of the triage note is not known to an extractor; the prompt carries it."""
+    plan = Path(ctx.artifact)
+    try:
+        shown = plan.resolve().relative_to(Path(ctx.workdir).resolve()).as_posix()
+    except ValueError:
+        shown = str(plan)
+    blocks = phase_blocks(plan.read_text(encoding="utf-8", errors="replace"))
+    return [{"id": b.id, "text": f"{b.heading}\nGoal: {b.goal}\nWeight: {b.weight}\nPlan: `{shown}`"} for b in blocks]
 
 
 NOT_COMPONENTS = {"node_modules", ".venv", "venv", "vendor", "dist", "build", "target", "out", "__pycache__", "docs"}
@@ -99,6 +168,88 @@ def list_components(ctx: Any) -> dict[str, str]:
     target.write_text(json.dumps(items, indent=2) + "\n", encoding="utf-8")
     (target.parent / ".gitignore").write_text("*\n", encoding="utf-8")  # commit_step excludes the folder as well
     return {"component_list": COMPONENT_LIST.as_posix()}
+
+
+QUESTION_LIST = Path(".tempergraph") / "question_list.json"
+MAX_QUESTIONS = 20  # the engine's ask takes 1 to 20 questions (ASK-B5)
+MAX_WORDING = 500  # and a wording of at most 500 characters
+ASKING = ("blocking", "always")
+
+
+def _shorten(text: str, room: int) -> str:
+    return text if len(text) <= room else text[: max(room - 1, 0)].rstrip() + "…"
+
+
+def _wording(gap: str, question: str, options: list[tuple[str, str]]) -> str:
+    """OWQ-B3: the gap's id, the question and each option with its label, in the order of the note. Over 500
+    characters the options' own words are shortened, never a label; a question too long for even that is cut last."""
+    head = f"{gap}: {question}".strip()
+    texts = [t for _, t in options]
+
+    def built(ts: list[str], q: str) -> str:
+        return " ".join([q, *(f"{lab}) {t}".rstrip() for (lab, _), t in zip(options, ts, strict=True))])
+
+    out = built(texts, head)
+    while len(out) > MAX_WORDING and any(len(t) > 1 for t in texts):
+        longest = max(range(len(texts)), key=lambda i: len(texts[i]))
+        texts[longest] = _shorten(texts[longest], max(len(texts[longest]) - (len(out) - MAX_WORDING), 1))
+        out = built(texts, head)
+    if len(out) > MAX_WORDING:  # the labels and the gap id alone fill it: cut the question
+        room = MAX_WORDING - len(built(texts, f"{gap}: ").rstrip()) - 1
+        out = built(texts, f"{gap}: {_shorten(question, max(room, 1))}")
+    return out[:MAX_WORDING]
+
+
+def _labelled(options: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """An option written with no label takes `a`, `b`, … by its place."""
+    return [(lab or chr(ord("a") + i), text) for i, (lab, text) in enumerate(options)]
+
+
+def owner_questions(ctx: Any) -> dict[str, str]:
+    """The script unit after triage: the questions of the one pause, as JSON in the engine's `Question` shape
+    (OWQ-B2 to OWQ-B6). Each owner decision of the triage note is one `choice` question named by its gap's id in
+    lower case, with the labels of its options as choices, its default, and the gap, the question and the labelled
+    options as its wording; under `always` each gap row that says findable and does not say `Covered by` then gets a
+    question with the choices `right` and `wrong`. At most 20, the decisions first. `never` lists none. It says whether
+    the list holds no question by leaving the key `empty` (`yes`) only then, which `ask_route` reads."""
+    workdir = Path(ctx.workdir)
+    pointer = ((ctx.artifacts or {}).get("triage") or {}).get("triage_note")
+    try:
+        text = (workdir / str(pointer)).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        text = ""
+    conversation = (ctx.settings or {}).get("conversation")
+    questions: list[dict[str, Any]] = []
+    if text and conversation in ASKING:
+        note = specfmt.parse_triage(text)
+        seen: set[str] = set()
+        for entry in note.owners:
+            options = _labelled(entry.options)
+            name = entry.gap.lower()
+            if note.sorts.get(entry.gap) == "findable" or len(options) < 2 or name in seen:
+                continue
+            chosen = next((lab for lab, t in options if t == entry.default_text and t), options[0][0])
+            seen.add(name)
+            questions.append({"name": name, "text": _wording(entry.gap, entry.question, options), "kind": "choice",
+                              "choices": [lab for lab, _ in options], "required": True, "default": chosen})
+        if conversation == "always":
+            for row in specfmt.gap_rows(text):
+                gap = specfmt.GAP_ID.search(row)
+                if gap is None or gap.group(0).lower() in seen or note.sorts.get(gap.group(0)) != "findable" \
+                        or specfmt.COVERED_WORDS.search(row):
+                    continue
+                seen.add(gap.group(0).lower())
+                row_text = re.sub(r"^\W+", "", row.strip())
+                question = f"Is this reading of {gap.group(0)} right? {row_text}"
+                questions.append({"name": gap.group(0).lower(), "text": _shorten(question, MAX_WORDING),
+                                  "kind": "choice", "choices": ["right", "wrong"], "required": True,
+                                  "default": "right"})
+    questions = questions[:MAX_QUESTIONS]
+    target = workdir / QUESTION_LIST
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(questions, indent=2) + "\n", encoding="utf-8")
+    (target.parent / ".gitignore").write_text("*\n", encoding="utf-8")  # commit_step excludes the folder as well
+    return {"question_list": QUESTION_LIST.as_posix(), **({} if questions else {"empty": "yes"})}
 
 
 def route_discovery(view: Any) -> str:
@@ -142,8 +293,9 @@ def specs_folders(workdir: Path) -> list[str]:
 
 
 def rules_held(workdir: Path) -> str | None:
-    """PNR-B3, PNR-B4: where the rule files are, or None when nobody holds them: the repository's own rule folder, else
-    the first folder of the repository that holds every rule file temperspec ships, else the machine's."""
+    """PNR-B3, PNR-B4: where the repository holds the rule files, or None when it holds none: its own rule folder, else
+    the first folder of the repository that holds every rule file temperspec ships. The machine's rule folder does not
+    count: a step session cannot open a file outside its working directory."""
     root = Path(workdir)
     own = REPO_RULES.as_posix() + "/"
     if (root / REPO_RULES).is_dir():
@@ -152,7 +304,7 @@ def rules_held(workdir: Path) -> str | None:
     for path, files in _folders(root):
         if path and wanted <= set(files):
             return path
-    return MACHINE_RULES if (Path.home() / REPO_RULES).is_dir() else None
+    return None
 
 
 def templates_named(workdir: Path) -> bool:
@@ -173,7 +325,7 @@ def context_block(workdir: Path) -> str:
         "  - " + ", ".join(f"{kind} `{path}`" for kind, path in zip(kinds, [folder, *_beside(folder)], strict=True))
         for folder in specs_folders(workdir))
     held = rules_held(workdir) or REPO_RULES.as_posix() + "/"
-    where = f"`{held}`" + (" (installed for the whole machine)" if held == MACHINE_RULES else "")
+    where = f"`{held}`"
     templates = f"; fill-in templates generated from them are in `{specfmt.TEMPLATE_DIR}/`" if templates_named(
         workdir) else ""
     return f"""{specfmt.CONTEXT_START}
@@ -195,8 +347,8 @@ behaviour specs and a plan to tested code.
 
 
 def install_rules(ctx: Any) -> dict[str, str]:
-    """Put the rule files, and the templates generated from their examples, into the repository unless it, or
-    the whole machine, already holds the rule files (PNR-B3); a partial set installs the whole set."""
+    """Put the rule files, and the templates generated from their examples, into the repository unless the repository
+    already holds them (PNR-B3), whether or not the machine holds them (PNR-B7); a partial set installs the whole set."""
     if rules_held(Path(ctx.workdir)) is not None:
         return {}
     target = Path(ctx.workdir) / REPO_RULES
@@ -247,13 +399,42 @@ def write_context(workdir: Path) -> str:
     return target.name
 
 
+COMMANDS_FILE = "tempergraph.commands.json"
+PYTHON_PROJECT_FILES = ("pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", "Pipfile")
+PYTHON_COMMANDS = ["pytest", "python -m pytest", "python3 -m pytest", "ruff check", "ruff format --check", "mypy"]
+
+
+def commands_file_text() -> str:
+    """The text prepare writes as the repository's commands file (RCM-B6): the same bytes in every repository."""
+    return json.dumps({"schema_version": 1, "commands": PYTHON_COMMANDS}, indent=2) + "\n"
+
+
+def is_python(workdir: Path) -> bool:
+    """RCM-B6, RCM-B8: whether a Python project file is in the repository root or in a folder that is not a folder of
+    copies or fixtures."""
+    return any(name in files for _, files in _folders(workdir) for name in PYTHON_PROJECT_FILES)
+
+
+def write_commands(workdir: Path) -> bool:
+    """RCM-B6 to RCM-B8: write the Python commands file at the root of a Python repository that has none; an existing
+    file, valid or not, and a repository that is not Python are left as they are."""
+    target = Path(workdir) / COMMANDS_FILE
+    if target.exists() or target.is_symlink() or not is_python(workdir):
+        return False
+    target.write_text(commands_file_text(), encoding="utf-8")
+    return True
+
+
 def prepare(ctx: Any) -> dict[str, str]:
-    """The first unit, with no session: install the rule files unless the repository or the machine holds them, keep
-    the temperspec block in the project-context file unless it already says where the specs are, commit what changed,
-    and say whether the repository still needs its overview and specs."""
+    """The first unit, with no session: install the rule files unless the repository holds them (the machine's folder
+    does not count), keep
+    the temperspec block in the project-context file unless it already says where the specs are, write the commands
+    file of a Python repository that has none, commit what changed, and say whether the repository still needs its
+    overview and specs."""
     workdir = Path(ctx.workdir)
     install_rules(ctx)
     write_context(workdir)
+    write_commands(workdir)
     commit_step(ctx)
     return {"setup_ready": "yes"} if has_overview(workdir) else {"setup_needed": "yes"}
 

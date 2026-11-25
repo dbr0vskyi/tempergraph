@@ -6,11 +6,17 @@ Task id: {task_id}
 Triage note: `{triage_note}`
 Plan: `{plan}`
 
+Notes of the phases, one line for each phase led by its number, in the order of the plan, or `none` when no phase ran:
+
+{phase_note}
+
+When the notes list the phases, the phases built and committed their rows, so you are the join on the whole change: build only a row whose Completed cell is empty, set the plan's `status` to `completed` and write the code report with each deviation the notes name. When the notes say `none`, no phase ran (the single-session arm, or the quick lane): build the whole plan as below.
+
 **The quick lane.** When the triage note's Route is `quick`, there is no plan and the Plan line above names none. The note's `## Change` section is then your plan: its `Files` and `Tests` are the only files you change, its `Verify` commands are the verification, and each acceptance criterion of the note is one row, with the id `AC <n>`. For a bug, first write the test that reproduces it and see it fail. If the change turns out to need a spec edit, a file the section does not name, or more than a small change, stop: write the report with what you found and end with `UPSTREAM triage: the task is larger than the quick lane`, so the task is planned.
 
 ## Rules to follow
 
-`task-notes.rule.md` (the code report) and `plan.rule.md` are in `.claude/rules/temperspec/` of this repository, or where the project note in `CLAUDE.md` or `AGENTS.md` names them, or already in your instructions when they are installed for the whole machine. Open each rule file named here that this repository holds with the read tool; a search of a rule file is not opening it. A rule file installed for the whole machine is already in your instructions and lies outside this working directory: do not open it.
+`task-notes.rule.md` (the code report) and `plan.rule.md` are in `.claude/rules/temperspec/` of this repository, or where the project note in `CLAUDE.md` or `AGENTS.md` names them. Open each rule file named here that this repository holds with the read tool; a search of a rule file is not opening it.
 
 ## Procedure
 
@@ -30,7 +36,7 @@ Plan: `{plan}`
 - If the plan conflicts with the code base or with a spec, do not work around it: say that the plan (or the discovery output it rests on) is at fault, with the row and the conflict.
 - If a verification command already fails before your first change, note the failing tests under Deviations and do not count them against your rows; do not repair unrelated failures.
 - Do not run `git commit`, `git push` or `gh`. The engine commits your files when you finish, and only the last stage publishes.
-- Use plain single commands from the repository root; `cd <folder> && <command>` is the one allowed chain. Stay inside this working directory. The shell runs only the workflow's verification commands and read-only git, one per call, for example `python -m pytest tests/test_config.py`, `cd sub/pkg && python3 -m pytest tests/test_x.py -q`, `ruff check src tests`, `mypy`, `git status` or `git diff`. It refuses pipes, `;`, a second `&&`, redirections such as `2>&1`, `env` or variable prefixes, inline `python -c`, and listing or reading commands such as `ls`, `cat`, `wc` or `grep`: read, search and list files with the file tools instead.
+- Use plain single commands from the repository root; `cd <folder> && <command>` is the one allowed chain. Stay inside this working directory. The shell runs only the commands the repository declares in `tempergraph.commands.json` and read-only git, one per call, for example `python -m pytest tests/test_config.py`, `cd sub/pkg && python3 -m pytest tests/test_x.py -q`, `ruff check src tests`, `mypy`, `git status` or `git diff`. It refuses pipes, `;`, a second `&&`, redirections such as `2>&1`, `env` or variable prefixes, inline `python -c`, and listing or reading commands such as `ls`, `cat`, `wc` or `grep`: read, search and list files with the file tools instead.
 - Report results as what you saw. Do not say the work passes: the gate runs the verification itself.
 
 ## What to hand over

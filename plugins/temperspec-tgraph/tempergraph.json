@@ -9,7 +9,12 @@
       {
         "rule": "dir-change-in-commands",
         "unit": "code",
-        "reason": "The code step runs a repository's verification commands as its instructions write them, and `cd <folder> && <command>` is the one chain the workflow resolves (overview spec, constraints)."
+        "reason": "The code step runs a repository's verification commands as its instructions write them, and `cd <folder> && <command>` is the one chain the workflow resolves (RCM-B1 of docs/specs/repository-commands.spec.md)."
+      },
+      {
+        "rule": "dir-change-in-commands",
+        "unit": "phase",
+        "reason": "A phase session runs the same verification commands as the code step, as the repository's instructions write them; `cd <folder> && <command>` is the one chain the workflow resolves (RCM-B1 of docs/specs/repository-commands.spec.md)."
       }
     ]
   }

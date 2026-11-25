@@ -80,7 +80,7 @@ Issues created through the API, as agents do, use the same section headings as t
    - `ruff check src tests`
    - `mypy`
 
-   Workflow packages' tests run inside the engine's suite. Live checks need `TEMPERGRAPH_LIVE=1` and a signed-in `claude`, and they spend money: say which ones you ran. The repository has no CI yet (#85), so the pull request says what you ran and what it printed.
+   Workflow packages' tests run inside the engine's suite. Live checks need `TEMPERGRAPH_LIVE=1` and a signed-in `claude`, and they spend money: say which ones you ran. CI (`.github/workflows/ci.yml`) runs the suite, ruff and mypy on Python 3.11 and 3.12 for every pull request; the pull request still says which live checks you ran.
 6. **Commit** with [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): summary`, where the scope is a plugin name.
 7. **Open the pull request** from the template:
    - Write `Closes #<n>` for each issue it finishes.

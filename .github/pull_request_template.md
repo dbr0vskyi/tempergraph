@@ -16,7 +16,7 @@ Closes #
 
 ## Verification
 
-<!-- Commands run from plugins/tempergraph/engine/ and their result. The repo has no CI yet: say what you ran. -->
+<!-- Commands run from plugins/tempergraph/engine/ and their result. CI runs these three on every pull request; tick them when its checks pass. -->
 
 - [ ] `python -m pytest`
 - [ ] `ruff check src tests`
