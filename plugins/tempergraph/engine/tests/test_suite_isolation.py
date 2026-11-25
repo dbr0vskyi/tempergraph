@@ -494,6 +494,20 @@ def test_no_test_sees_the_callers_sign_in(tmp_path: Path) -> None:  # TST-AC19 (
     assert outcome_counts(run.stdout) == {"passed": 2}, run.stdout[-3000:] + run.stderr[-1000:]
 
 
+def test_git_in_a_test_reads_the_suites_own_global_configuration(repo: Path) -> None:  # TST-AC20
+    """The temporary home hides the caller's global git configuration, so the suite gives its own: an identity,
+    and no background maintenance, which holds `objects/maintenance.lock` for a moment after a commit."""
+    def value(key: str) -> str:
+        return subprocess.run(["git", "config", "--global", "--get", key], cwd=repo, capture_output=True, text=True,
+                              check=False).stdout.strip()
+
+    assert (value("maintenance.auto"), value("gc.auto"), value("commit.gpgsign")) == ("false", "0", "false")
+    assert value("user.name") and value("user.email") and value("init.defaultBranch") == "main"
+    origin = subprocess.run(["git", "config", "--global", "--show-origin", "--get", "gc.auto"], cwd=repo,
+                            capture_output=True, text=True, check=False).stdout
+    assert str(Path.home() / ".gitconfig") in origin
+
+
 def test_the_install_declares_the_plugin_under_the_pytest_entry_point() -> None:  # TST-AC15, AC 5
     doc = tomllib.loads((ENGINE_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     assert doc["project"]["entry-points"]["pytest11"] == {PLUGIN: PLUGIN_MODULE}

@@ -92,11 +92,12 @@ WHEN a developer runs the suite in the engine folder of a checkout THE suite SHA
 
 ### TST-B13 The caller's sign-in is out of sight
 
-WHEN a test of the suite runs THE suite SHALL give it a user home folder that is a temporary folder and an environment with no credential variable of the caller and no variable that moves the sign-in folder, so that a test that needs a sign-in creates it. A `live` test keeps the caller's home folder and credentials: it runs the signed-in `claude`.
+WHEN a test of the suite runs THE suite SHALL give it a user home folder that is a temporary folder and an environment with no credential variable of the caller and no variable that moves the sign-in folder, so that a test that needs a sign-in creates it. A `live` test keeps the caller's home folder and credentials: it runs the signed-in `claude`. Because the temporary home also hides the caller's global git configuration, the suite gives every test its own: an identity, `main` as the first branch, no commit signing and no automatic maintenance, so that git changes nothing in a repository in the background while a test compares it before and after a command.
 
 - GIVEN a caller whose home folder holds a cached sign-in file of an executor WHEN a test asks the credential check which kinds that executor holds THEN it finds none
 - GIVEN a caller whose environment sets `CLAUDE_CODE_OAUTH_TOKEN`, an API key name or `CLAUDE_CONFIG_DIR` WHEN a test reads its environment THEN none of the names is set
 - GIVEN a test that writes a sign-in file under its own home folder WHEN it asks the credential check THEN the check finds that sign-in
+- GIVEN a test that commits to a scratch repository and then compares its files before and after a refused command WHEN the caller's own git configuration switches automatic maintenance off or leaves it on THEN git writes nothing in the repository after the commit returns
 
 ## Acceptance criteria
 
@@ -119,3 +120,4 @@ WHEN a test of the suite runs THE suite SHALL give it a user home folder that is
 - TST-AC17 (TST-B12): In an environment where another copy of the engine is installed, `python -m pytest -n 0` in the engine folder of a checkout makes every test import the engine from that checkout
 - TST-AC18 (TST-B12): In the same environment, the default run on workers makes every test import the engine from that checkout
 - TST-AC19 (TST-B13): In a suite run whose caller has a cached sign-in file for each executor that keeps one, a config folder with one more and every credential variable set, a test finds a temporary user home folder, none of those variables, and no credential kind held for any executor; a test that writes a sign-in file under its own home folder finds it
+- TST-AC20 (TST-B13): git in a test reads its global configuration from the test's temporary home folder, with an identity, `main` as the first branch, commit signing off, `maintenance.auto` false and `gc.auto` 0

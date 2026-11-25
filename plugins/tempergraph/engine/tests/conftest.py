@@ -47,6 +47,23 @@ HOME_VARS = ("HOME", "USERPROFILE")  # what `Path.home()` reads, on POSIX and on
 SIGN_IN_FOLDER_VAR = "CLAUDE_CONFIG_DIR"  # moves the folder that holds the `claude` sign-in file
 _USER_BASE = site.getuserbase()  # a changed HOME must not hide the user's installed packages from a child process
 
+GIT_CONFIG = """\
+[user]
+\tname = Test
+\temail = test@example.invalid
+[commit]
+\tgpgsign = false
+[init]
+\tdefaultBranch = main
+[maintenance]
+\tauto = false
+[gc]
+\tauto = 0
+"""
+"""The global git configuration of every test, in its temporary home: an empty home gives git no identity, and
+git's own background maintenance after a commit would hold `objects/maintenance.lock` while a test compares a
+repository before and after a command. A test's own repository configuration still wins over it."""
+
 
 @pytest.fixture(autouse=True)
 def _isolated_home(request: pytest.FixtureRequest, tmp_path_factory: pytest.TempPathFactory,
@@ -69,8 +86,7 @@ def _isolated_home(request: pytest.FixtureRequest, tmp_path_factory: pytest.Temp
         monkeypatch.delenv(var, raising=False)
     if "live" in request.node.keywords:
         return
-    # git finds no identity in an empty home on every machine; a test's own repository config still wins over this
-    (home / ".gitconfig").write_text("[user]\n\tname = Test\n\temail = test@example.invalid\n", encoding="utf-8")
+    (home / ".gitconfig").write_text(GIT_CONFIG, encoding="utf-8")
     for var in HOME_VARS:
         monkeypatch.setenv(var, str(home))
     monkeypatch.setenv("PYTHONUSERBASE", os.environ.get("PYTHONUSERBASE") or _USER_BASE)
