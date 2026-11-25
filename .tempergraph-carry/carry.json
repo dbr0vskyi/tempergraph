@@ -7,11 +7,15 @@
   "task_id": "i148",
   "workflow_version": "0.1.0+b1320bb6cfb4",
   "seq": 139,
-  "lease": null,
-  "pushed_at": "2026-11-25T16:39:27.486Z",
+  "lease": {
+    "machine": "15f7edd4-bb6f-48aa-bac7-f9aec1a01082",
+    "process": 43954,
+    "since": "2026-11-25T21:11:54.745Z"
+  },
+  "pushed_at": "2026-11-25T21:11:55.882Z",
   "scrubbed": {},
   "files": {
-    "checkpoint.sqlite": "e9184412195a0633dbd2dab34cdb55eb8a6e0c1ca459492e224bd9a6719153bc",
+    "checkpoint.sqlite": "56a4181233ef31afc8b50e35ad053c807fd590d5867c2012ceae99138765558c",
     "ledger.jsonl": "0900bfd2f5ca3c9a6156fe721c3bb62836d0827b774dd899f8293801e0ba60e3",
     "run/engine.json": "8c48f2669117c1b702c9f3c31776d1564a5943f8e545d62c44991c8fdbd230fe",
     "run/evidence/record.json": "48389b5e348f9126f1d6b218194e1f856c9205a2f879037b985d2379afa2cf70",
