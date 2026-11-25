@@ -217,7 +217,7 @@ def test_each_skill_is_named_for_its_folder_and_no_step_loads_one() -> None:
         head = path.read_text().split("---")[1]
         assert f"name: {path.parent.name}\n" in head and "\ndescription: " in head, path.parent.name
         names.add(path.parent.name)
-    assert names == {"answer", "extract", "setup", "task"}
+    assert names == {"answer", "extract", "groom", "review", "setup", "task"}
     assert all(f"`{n}` skill" in (ROOT / "README.md").read_text() for n in names)
     for unit in SPEC.units.values():
         assert not [c for c in (getattr(unit.step, "tools", None) or ()) if str(c).startswith("skill:")]
