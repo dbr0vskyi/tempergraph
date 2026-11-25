@@ -9,7 +9,7 @@ specs: [plugins/tempergraph/docs/specs/workspace-and-concurrency.spec.md, plugin
 ## 0. Hand-off
 
 - Triage note: `plugins/tempergraph/docs/tasks/r2-t8.triage.md`
-- Specs read: WSP (13) §2.4, WTR (82) §2.2, CHK (75) §2.1, GRD (06), CLI (17), ADR-0127, R-131
+- Specs read: WSP (`workspace-and-concurrency`) §2.4, WTR (`worktree-mode`) §2.2, CHK (`check-contract-and-command-runs`) §2.1, GRD (`independence-guard`), CLI (`engine-cli`), ADR-0127, R-131
 
 ## 1. Requirements
 

@@ -25,7 +25,7 @@ Wall time of the engine suite (row 6.5 asks for serial and parallel):
 5. **Extra files / values the rows do not name:** the triage unit's `produces` gained `covered` (optional, choices `no`, `yes`) in `workflow/temperspec/__init__.py` and `blueprint.json`; both are needed for the `covered` value of rows 2.7 and 2.8 to exist. `Triage.covered_claimed` was added beside `covered` and `covered_rows`.
 6. **Phase 4 (rows 4.1 to 4.8) not built. Plan at fault.** A second step `discovery_short` (row 4.5) cannot be added by the files the rows name:
    - the engine's generated stand-in run answers each unit from a FIFO of replies and needs every unit of `order` visited; a unit that the route skips breaks `standin_run` (engine change needed, and the engine may not name the workflow);
-   - `docs_check` needs a `NN-discovery_short.spec.md` and an `outcome.json` intermediate entry with its own criterion ids for the new step, and the eval fixtures under `evals/checks/discovery_short`; none is a row;
+   - `docs_check` needs a `discovery-short.spec.md` and an `outcome.json` intermediate entry with its own criterion ids for the new step, and the eval fixtures under `evals/checks/discovery_short`; none is a row;
    - the diagram digest (`diagram/`) and `stamp.json` change with the unit shape; both are written only by `tempergraph author verify` / `upgrade-check --stamp`, which I may not run.
    So `ts-dis-short` and `ts-dis-full` in `outcome.json` and the spec describe a visit that does not exist yet. Their judges would score a run on a claim the workflow does not meet.
 7. **Row 6.1 not done.** Its assertions on `ts-dis-short`, `ts-dis-full` and on B21 depend on Phase 4 and row 6.4.

@@ -9,7 +9,7 @@ specs: [plugins/tempergraph/docs/specs/effort-ladder-and-model-escalation.spec.m
 ## 0. Hand-off
 
 - Triage note: `plugins/tempergraph/docs/tasks/r2-t2.triage.md`
-- Specs read: LAD (92), BUD (08), CON (01), RST (80), HUM (07), JCL (50), CXR (94), VER (61)
+- Specs read: LAD (`effort-ladder-and-model-escalation`), BUD (`budgets-and-failures`), CON (`contracts`), RST (`run-settings-and-overrides`), HUM (`gate-and-human`), JCL (`judge-calibration`), CXR (`complexity-routing`), VER (`version-metadata`)
 - Why this design: the gate stays a pure function of state, so the judge node records whether its judgement is trusted (binding state, stage, placeholder) and the gate classifies the failed attempt into climbing evidence or a held cause. The rung of a visit lives in the unit's counters next to the retries it never adds to; the step node only reads it. One module, `run/ladder.py`, holds the classification and the escalation conditions so each has a table-driven test.
 
 ## 1. Requirements

@@ -56,7 +56,7 @@ We will:
 |---|---|---|
 | B1 | "Hybrid step" means scripts before and after one model session in the same attempt, not a script that calls a model itself. | CON-B4, CON-B5, CON-B6, CON-B7, CMP |
 | B2 | A `script` unit may carry an optional judge; a model step must carry one, as today. | WFM-B8, WFM-B9, WFM-B10, WFM-B11 |
-| B3 | Specs `run-detail-document` RDD and 45 ORC land as designed in PRs 7 and 5; if they change, items 4 and 6 follow them. | CLI, OBS |
+| B3 | Specs `run-detail-document` RDD and `orchestration` ORC land as designed in PRs 7 and 5; if they change, items 4 and 6 follow them. | CLI, OBS |
 
 ## Consequences
 

@@ -9,7 +9,7 @@ specs: [plugins/tempergraph/docs/specs/measured-switches.spec.md, plugins/temper
 ## 0. Hand-off
 
 - Triage note: `plugins/tempergraph/docs/tasks/r2-t1.triage.md`
-- Specs read: SWM (79), MAP (77), CXR (94), CMP (03), RST (80), BUD (08), OBS (15)
+- Specs read: SWM (`measured-switches`), MAP (`map-unit`), CXR (`complexity-routing`), CMP (`compiler-and-flow`), RST (`run-settings-and-overrides`), BUD (`budgets-and-failures`), OBS (`observability-and-cost`)
 - Why this design: a switch's pick stays in the gate node, so shadow mode, the operator's arm and re-arming are all changes to one pure function and its record. Arm overrides are applied where a session request is built, below the four operator layers, so the settings resolution stays one table. Re-arming is a trip back with one extra static edge per listed unit.
 
 ## 1. Requirements

@@ -9,7 +9,7 @@ specs: [plugins/tempergraph/docs/specs/version-metadata.spec.md, plugins/temperg
 ## 0. Hand-off
 
 - Triage note: `plugins/tempergraph/docs/tasks/r2-t9.triage.md`
-- Specs read: VER (61) §2.2, §2.3, LAD (92) §2.8, PKG (88), the four guides
+- Specs read: VER (`version-metadata`) §2.2, §2.3, LAD (`effort-ladder-and-model-escalation`) §2.8, PKG (`workflow-package`), the four guides
 
 ## 1. Requirements
 

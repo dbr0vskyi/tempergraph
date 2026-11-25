@@ -65,7 +65,7 @@ R-127's rule C5 says a shared type lives in the spec that owns its behaviour, wi
 
 ### Phase 1: Plan and pilot
 
-Goal: this plan, the check script, and three migrated specs that pass the parser: a small one (32 RCT), one that tests read (17 CLI, split into CLI, run options and lifecycle hooks) and a release 2 spec (92 LAD).
+Goal: this plan, the check script, and three migrated specs that pass the parser: a small one (`run-control` RCT), one that tests read (`engine-cli` CLI, split into CLI, run options and lifecycle hooks) and a release 2 spec (`effort-ladder-and-model-escalation` LAD).
 Weight: light
 
 ### Phase 2: The rest, in number order
@@ -175,6 +175,6 @@ Renamed ids (applied before the generic `X-AC-n` to `X-ACn` rename): `IMD-R1` = 
 ## 6. Follow-ups
 
 - Dissolve the contracts spec (R-127 C5): each shared type moves to the spec that owns its behaviour.
-- The scaffold writes package specs in temperspec's layout, and the package docs check reads it (specs `workflow-package` PKG and 91 SCF).
+- The scaffold writes package specs in temperspec's layout, and the package docs check reads it (specs `workflow-package` PKG and `blueprint-and-scaffold` SCF).
 - A generated index of specs in the overview's Purpose (R-127 C3), so adding a spec edits no hand-kept list.
 - Dogfooding: spec `telemetry-export` TEL was migrated by a temperspec run (thread `t-4836f11b73`, 2026-11-22, about 25 minutes, $5.15 reported and $4.41 estimated against a $12 cap) and taken as it came out after review. The run surfaced three things for temperspec's backlog: its setup route wrote `.claude/rules/temperspec/`, `docs/templates/` and `CLAUDE.md` lines into a repository that already ships the rules under `plugins/temperspec-tgraph/rules/` (not taken into this change); a docs-only task ends in an escalation at the outcome gate because `ts-traced` and `ts-verify` are not applicable and the judge reads that as a gap; and the process stopped with an ImportError after the pause was recorded because `main` was merged into the editable engine install under the live run (operator error; the thread stayed paused and resumable).
