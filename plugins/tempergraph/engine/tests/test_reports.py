@@ -149,7 +149,7 @@ def test_rows_deduplicated(tmp_path: Path) -> None:  # CST-AC3
     assert [r["row_id"] for r in found] == ["r1"] and unknown == 2
 
 
-def test_machine_index_and_all_roots(repo: Path, tmp_path: Path) -> None:  # CST-B8
+def test_machine_index_and_all_roots(repo: Path, tmp_path: Path) -> None:  # CST-B8, CST-AC5
     paused_run(repo)
     index = rows.read_index()
     assert [r["path"] for r in index] == [str(state_root_path(repo).resolve())]
@@ -159,6 +159,8 @@ def test_machine_index_and_all_roots(repo: Path, tmp_path: Path) -> None:  # CST
     assert code == 0 and {r["path"]: r["missing"] for r in doc["roots"]}[str(gone.resolve())] is True
     assert [t["thread_id"] for t in doc["threads"]] == ["demo/T-1"]
     assert rows.read_index()[1]["path"] == str(gone.resolve())  # a reader never removes an entry
+    marked = {r["path"]: r["missing"] for r in rows.index_roots(home_path())}  # CST-AC5: still listed, marked missing
+    assert marked[str(gone.resolve())] is True and marked[str(state_root_path(repo).resolve())] is False
 
 
 def test_attention_lists_each_pause_once_oldest_first(repo: Path) -> None:  # CLI-B6, CLI-AC5
