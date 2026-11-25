@@ -49,8 +49,8 @@ State words: `queued`, `running`, `paused`, `merged`, `failed`, `skipped`.
 | 3 | i134a | #134 | Split the discovery gate (extract pass, write pass) | queued | | | L: first of two runs |
 | 4 | i134b | #134 | Code step: the join and the quick lane get prompts of their own | queued | | | L: second of two runs |
 | 5 | i114 | #114, #117 | Loop findings: a judge that passes without opening a changed path; the phase check failing | queued | | | Triage the evidence first |
-| 6 | i123 | #123 | Loop reads the person's review of a run's pull request as a later outcome signal | queued | | | needs: spec; spec comes first in the run |
-| 6a | i141 | #141 | Monitor finds the engine at its default shim path when it is not on PATH | rerun running | temperspec/i141, rerun temperspec/i141~r1 | 11.64 + rerun | First run: outcome met, 30 min, `pushed`. Independent review: do not merge (the walk over the places loops for ever when the option equals the home shim and every place fails). Rerun from `plan` with `tasks/i141.review.md` as feedback, branch `tg/temperspec/i141-r1` |
+| 6 | i123 | #123 | Loop reads the person's review of a run's pull request as a later outcome signal | running | temperspec/i123 | | needs: spec; spec comes first in the run |
+| 6a | i141 | #141 | Monitor finds the engine at its default shim path when it is not on PATH | rerun finished | temperspec/i141, rerun temperspec/i141~r1 | 11.64 + 11.58 | Rerun from `plan` with the review as feedback: outcome met, `opened` draft pull request #147 (branch `tg/temperspec/i141-r1`); the same reviewer checks the six findings before the merge |
 | 6b | i145 | #142, #145 | Monitor: a sign of life in a live row; rows of other state roots named and folded | queued | | | After i141 (same files) |
 | 7 | i62 | #62 | Model-free drift check for pre-commit and CI | queued | | | |
 | 8 | i103 | #103 | Commits and the draft pull request name the run | queued | | | Writes the format directly (#94 not built) |

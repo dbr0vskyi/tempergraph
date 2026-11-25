@@ -104,9 +104,9 @@
       "issues": [
         123
       ],
-      "state": "queued",
-      "thread": null,
-      "branch": null,
+      "state": "running",
+      "thread": "temperspec/i123",
+      "branch": "tg/temperspec/i123",
       "cost_usd": null,
       "exit": null,
       "note": ""
@@ -117,12 +117,12 @@
       "issues": [
         141
       ],
-      "state": "rerun running",
+      "state": "rerun finished",
       "thread": "temperspec/i141",
       "branch": "tg/temperspec/i141",
-      "cost_usd": 11.64,
+      "cost_usd": 23.22,
       "exit": 0,
-      "note": "review blocked the merge; rerun from plan, branch tg/temperspec/i141-r1, feedback tasks/i141.review.md"
+      "note": "rerun temperspec/i141~r1, branch tg/temperspec/i141-r1, PR #147; under re-review"
     },
     {
       "order": 6.6,
