@@ -22,6 +22,8 @@ From run i21 on, the launch shell also exports `ENABLE_CLAUDEAI_MCP_SERVERS=fals
 
 In a cloud session: `cd plugins/tempergraph/engine && python -m pip install -e '.[dev]'`, then `tempergraph workflows register plugins/temperspec-tgraph`, then the same commands. A run started with `--carry` keeps its scrubbed state on a branch: `tempergraph carry pull temperspec <task id>`, then `tempergraph resume temperspec <task id>`. When the state cannot be pulled, start the item again under a new task id (`<id>b`) from the batch branch; the finished steps of the old run are on `tg/temperspec/<id>` if it was pushed.
 
+**At most three runs at once** (the owner, 2026-11-25): count live threads with `tempergraph status` before starting one; a rerun counts.
+
 ## After a run ends
 
 1. Exit 0: `git merge --no-ff tg/temperspec/<id>` into the batch branch, run the suite, ruff and mypy from `plugins/tempergraph/engine/`, push.
