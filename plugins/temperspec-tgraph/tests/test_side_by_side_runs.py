@@ -188,6 +188,10 @@ def test_the_guard_passes_when_the_run_merged_the_changed_head(repo: Path) -> No
     _git(repo, "merge", "-q", "-s", "ours", "-m", "merge main", "main")
     got = _fresh(_context(repo, base, head, (A,)), [A])
     assert not _fails(got) and [f.status for f in got] == ["pass"]
+    later = _on_main(repo, lambda r: _write(r, "README.md", "readme changed\n"))
+    assert not _fails(_fresh(_context(repo, base, later, (A,)), [A]))
+    again = _on_main(repo, lambda r: _write(r, A, "# A\n\nmain edits again\n"))
+    assert [f.place for f in _fails(_fresh(_context(repo, base, again, (A,)), [A]))] == [A]
 
 
 def test_a_run_with_no_base_branch_is_not_applicable(repo: Path) -> None:  # SBS-AC4, AC 5

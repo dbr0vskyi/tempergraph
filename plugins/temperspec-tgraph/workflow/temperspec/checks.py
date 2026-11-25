@@ -1393,20 +1393,21 @@ def _at_base(ctx: Any, path: str) -> str | None:
     return _at_ref(ctx, ctx.git.base, path)
 
 
-def _holds(ctx: Any, ref: str) -> bool:
-    """True when the run's branch already holds the commit (the run merged the base branch's head, SBS-B2)."""
-    run = ctx.run(f"git log --oneline -1 {ref} --not HEAD")
+def _unseen(ctx: Any, head: str, path: str) -> bool:
+    """True when the base branch's head holds a commit that changed the file and the run's branch lacks it; a run
+    that merged the base branch has seen every change up to the commit it merged (SBS-B2)."""
+    run = ctx.run(f"git log --oneline -1 HEAD..{head} -- {path}")
     if run.not_started or run.exit_code != 0:
-        return False
+        return True
     try:
-        return not Path(run.output_path).read_text(encoding="utf-8", errors="replace").strip()
+        return bool(Path(run.output_path).read_text(encoding="utf-8", errors="replace").strip())
     except OSError:
-        return False
+        return True
 
 
 def _fresh(ctx: Any, specs: list[str]) -> list[CheckFinding]:
     """ts-spec-fresh (SBS-B1 to SBS-B3): no spec the run edited reads differently at the base branch's head than at
-    the run's base commit, when the head holds commits that neither the base commit nor the run's branch holds."""
+    the run's base commit, when the head holds a commit that changed it and the run's branch lacks."""
     base, head = ctx.git.base, ctx.git.base_head
     if not base or not head:
         return [_find("n_a", "ts-spec-fresh", message="the run has no base branch to compare with")]
@@ -1420,12 +1421,13 @@ def _fresh(ctx: Any, specs: list[str]) -> list[CheckFinding]:
         moved = bool(Path(run.output_path).read_text(encoding="utf-8", errors="replace").strip())
     except OSError:
         moved = False
-    if not moved or _holds(ctx, head):
+    if not moved:
         return [_ok("ts-spec-fresh")]
     found = [_find("fail", "ts-spec-fresh", path,
                    "the base branch changed this spec since the run started (it reads differently at its head than "
                    "at the run's base commit)", "start the task again from the head of the base branch")
-             for path in specs if _at_ref(ctx, base, path) != _at_ref(ctx, head, path)]
+             for path in specs
+             if _at_ref(ctx, base, path) != _at_ref(ctx, head, path) and _unseen(ctx, head, path)]
     return found or [_ok("ts-spec-fresh")]
 
 
