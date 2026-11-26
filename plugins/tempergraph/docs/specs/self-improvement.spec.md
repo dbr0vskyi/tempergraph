@@ -122,9 +122,9 @@ WHEN the friction judge's session ends THE loop child SHALL write in the `loop_j
 
 ### SIL-B38 No text of a run reaches the friction judge or the loop's log
 
-WHEN the loop child asks the friction judge about findings THE loop child SHALL put no request text, no text of feedback or rulings and no content of any file of the run in the judge's prompt or in the thread's `loop.jsonl`.
+WHEN the loop child asks the friction judge about findings THE loop child SHALL put no request text, no text of feedback or of a ruling, no content of the run's outputs and no content of a workspace file in the judge's prompt or in the thread's `loop.jsonl`.
 
-- GIVEN a thread whose request, feedback and a workspace file each hold a distinct word WHEN the loop child asks the friction judge about its findings THEN none of the three words is in the judge's prompt or in `loop.jsonl`
+- GIVEN a thread whose request, feedback, an output and a workspace file each hold a distinct word WHEN the loop child asks the friction judge about its findings THEN none of the four words is in the judge's prompt or in `loop.jsonl`
 - GIVEN a segment that ended in a final exit and holds a finding of cause `gap_escalation` at unit `review` WHEN the judge's prompt is built THEN it names the finding's fingerprint, cause, class, side, unit and count, and the counts of the record kinds of `review` with the ids of the criteria that blocked it
 
 ### SIL-B18 Filing by attribution or by count
@@ -211,7 +211,7 @@ WHEN the cost lens runs THE loop SHALL apply six rules, each a finding per unit 
 - SIL-AC36 (SIL-B18, SIL-B6): A dry run lists a friction finding that meets the pattern rule as one that would file and makes no issue and no comment
 - SIL-AC37 (SIL-B18, SIL-B11): A friction finding that meets the pattern rule files to the engine's repository when its side is the engine or an executor, to the workflow's `issue_repository` when its side is the workflow, and is recorded and not filed when its side is `host`
 - SIL-AC38 (SIL-B36): A fixture loop child whose judge answers for two of three findings leaves a `loop_judged` record whose `answers[]` holds the fingerprint, `confidence` and `attributed` of those two and no other text of the reply, and a child whose judge session fails leaves an empty `answers[]`
-- SIL-AC44 (SIL-B38): In a fixture thread resumed with a feedback text, whose request and a workspace file each hold a distinct canary word, no canary word is in the friction judge's prompt or in `loop.jsonl`, and the prompt holds the fingerprint, cause, class, side, unit and count of each finding
+- SIL-AC44 (SIL-B38): In a fixture thread whose request, feedback, an output and a workspace file each hold a distinct canary word, no canary word is in the friction judge's prompt or in `loop.jsonl`, and the prompt holds the fingerprint, cause, class, side, unit and count of each finding
 
 ## Open questions
 
