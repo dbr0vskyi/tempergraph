@@ -230,5 +230,68 @@ def test_rgn_ac12_a_failed_pass_puts_every_written_file_back_and_commits_nothing
     assert _count(repo) == before and _status(repo) == ""
     result = regeneration.regeneration_check(_ctx(repo))
     assert result.result == "FAIL" and not result.environmental
-    assert len(result.findings) == 1 and "python3 tools/fail.py" in (result.findings[0].criterion or "")
-    assert "3" in result.findings[0].message and "boom" in result.findings[0].message
+    assert len(result.findings) == 1 and result.findings[0].criterion == "ts-rgn-passed"
+    message = result.findings[0].message
+    assert "python3 tools/fail.py" in message and "3" in message and "boom" in message
+
+
+# -- the check names a criterion in every result (RGF-AC4, AC 10) ----------------------------------------------------
+
+
+def _names(result: Any, status: str) -> list[str]:
+    return [f.criterion for f in result.findings if f.status == status]
+
+
+@pytest.mark.parametrize("declaration", [None, "due"])
+def test_rgf_ac4_a_passing_result_lists_a_pass_finding_for_each_criterion(tmp_path: Path, declaration: str | None) -> None:
+    # RGF-AC4, AC 10
+    repo = _repo(tmp_path, _declaration(_entry("a", "python3 tools/gen.py")) if declaration else None)
+    regeneration.regenerate(_ctx(repo))
+    result = regeneration.regeneration_check(_ctx(repo))
+    assert result.result == "PASS"
+    assert sorted(_names(result, "pass")) == ["ts-rgn-declaration", "ts-rgn-passed", "ts-rgn-ran"]
+
+
+def test_rgf_ac4_an_unusable_declaration_names_the_declaration_criterion(tmp_path: Path) -> None:
+    # RGF-AC4, AC 10
+    repo = _repo(tmp_path, "{not json")
+    regeneration.regenerate(_ctx(repo))
+    result = regeneration.regeneration_check(_ctx(repo))
+    assert result.result == "FAIL" and result.environmental
+    assert _names(result, "fail") == ["ts-rgn-declaration"]
+
+
+@pytest.mark.parametrize("command", ["python3 ../gen.py", "no-such-program-here --x"])
+def test_rgf_ac4_a_command_that_did_not_run_names_the_ran_criterion(tmp_path: Path, command: str) -> None:
+    # RGF-AC4, AC 10
+    repo = _repo(tmp_path, _declaration(_entry("a", command)))
+    regeneration.regenerate(_ctx(repo))
+    result = regeneration.regeneration_check(_ctx(repo))
+    assert result.result == "FAIL" and result.environmental
+    assert _names(result, "fail") == ["ts-rgn-ran"]
+
+
+def test_rgf_ac4_a_command_that_exits_3_is_a_plain_failure_naming_the_passed_criterion(tmp_path: Path) -> None:
+    # RGF-AC4, AC 10
+    repo = _repo(tmp_path, _declaration(_entry("a", "python3 tools/fail.py", ["src"], ["made.txt"])))
+    regeneration.regenerate(_ctx(repo))
+    result = regeneration.regeneration_check(_ctx(repo))
+    assert result.result == "FAIL" and not result.environmental
+    assert result.findings and {f.criterion for f in result.findings} == {"ts-rgn-passed"}
+
+
+def test_rgf_ac4_the_check_reads_the_report_the_artifact_names_and_the_fixed_path_without_one(tmp_path: Path) -> None:
+    # RGF-AC4, AC 10
+    repo = _repo(tmp_path, _declaration(_entry("a", "python3 tools/fail.py", ["src"], ["made.txt"])))
+    regeneration.regenerate(_ctx(repo))
+    plain = regeneration.regeneration_check(_ctx(repo))
+    moved = repo / "elsewhere" / "report.json"
+    moved.parent.mkdir()
+    moved.write_text((repo / regeneration.REPORT).read_text(encoding="utf-8"), encoding="utf-8")
+    (repo / regeneration.REPORT).unlink()
+    ctx = CheckContext(unit="regeneration", workdir=repo, request={"task_id": TASK},
+                       artifacts={"regeneration": {"regeneration_report": "elsewhere/report.json"}})
+    got = regeneration.regeneration_check(ctx)
+    assert got.result == plain.result == "FAIL" and not got.environmental
+    assert [f.criterion for f in got.findings] == [f.criterion for f in plain.findings]
+    assert [f.message for f in got.findings] == [f.message for f in plain.findings]

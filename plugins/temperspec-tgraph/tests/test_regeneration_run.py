@@ -220,7 +220,8 @@ def test_rgf_ac2_two_failing_regenerations_make_one_trip_and_one_failing_alone_h
     assert out.exit_code is ExitCode.FINISHED, out.message
     assert stand.units().count("code") == 2
     reason = _code_prompts(stand)[-1]
-    assert reason.index("1. [model] u: a-one: first one") < reason.index("2. [model] u: b-one: second one")
+    assert (reason.index("1. [ts-rgn-passed] u: model: a-one: first one")
+            < reason.index("2. [ts-rgn-passed] u: model: b-one: second one"))
     # only the second fails: the first one's findings are not carried
     other = irv.Stand()
     repo2 = repo.parent / "second"
@@ -234,7 +235,7 @@ def test_rgf_ac2_two_failing_regenerations_make_one_trip_and_one_failing_alone_h
     out = _go(repo2, other)
     assert out.exit_code is ExitCode.FINISHED, out.message
     reason = _code_prompts(other)[-1]
-    assert "1. [model] u: b-one: second one" in reason and "a-one" not in reason and "2. [" not in reason
+    assert "1. [ts-rgn-passed] u: model: b-one: second one" in reason and "a-one" not in reason and "2. [" not in reason
 
 
 def test_rgf_ac6_a_second_failure_pauses_with_kind_budget_and_the_findings_left(repo: Path) -> None:
@@ -301,7 +302,7 @@ def test_rgf_ac7_the_trip_back_runs_the_code_step_alone_on_each_arm(repo: Path, 
     assert units[units.index("code", units.index("code") + 1) - 1] == "code"  # nothing between the two visits
     assert _gate_units(repo).count("regeneration") == 2
     prompts = _code_prompts(stand)
-    assert "1. [model] code: summary-long" in prompts[-1] and "Why this unit runs again" not in prompts[0]
+    assert "1. [ts-rgn-passed] code: model: summary-long" in prompts[-1] and "Why this unit runs again" not in prompts[0]
 
 
 def test_rgf_ac8_a_command_that_cannot_run_pauses_at_once_and_sends_nothing_back(

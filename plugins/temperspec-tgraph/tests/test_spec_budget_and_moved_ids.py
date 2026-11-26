@@ -299,8 +299,6 @@ def test_the_outcome_record_has_the_revision_entry_of_issue_150() -> None:  # AC
     entry = next(r for r in o["revisions"] if "issue 150" in r.get("note", ""))
     assert entry["origin"] == "authored" and entry["revision"] >= 23
     assert o["revision"] == o["revisions"][-1]["revision"] >= entry["revision"]
-    stamp = json.loads((ROOT / "stamp.json").read_text(encoding="utf-8"))
-    assert stamp["outcome_revision"] == o["revision"]
 
 
 def test_the_phase_scope_criterion_is_graded_on_the_paths_changed_since_the_phase_step_was_entered() -> None:

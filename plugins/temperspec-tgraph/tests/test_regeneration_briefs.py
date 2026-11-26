@@ -17,7 +17,7 @@ def _said(*parts: str) -> str:
 
 
 def test_rgn_ac14_the_plan_and_expand_prompts_give_a_generated_file_no_row() -> None:
-    # RGN-AC14 (RGN-B14), AC 8
+    # RGN-AC14 (RGN-B14), RGN-AC15 (RGN-B15), AC 8
     for name in ("plan.md", "expand.md"):
         text = _said("prompts", name)
         assert "tempergraph.regenerations.json" in text, name
@@ -25,8 +25,8 @@ def test_rgn_ac14_the_plan_and_expand_prompts_give_a_generated_file_no_row() -> 
         assert "written by the regeneration and never edited by hand" in text, name
 
 
-def test_rgn_ac15_the_code_judge_brief_names_the_files_the_regeneration_wrote() -> None:
-    # RGN-AC15 (RGN-B15), AC 8
+def test_rgn_ac13_the_code_judge_brief_names_the_files_the_regeneration_wrote() -> None:
+    # RGN-AC13 (RGN-B13), AC 8
     text = _said("judges", "code.md")
     assert "written by the regeneration" in text and "need no row" in text
 

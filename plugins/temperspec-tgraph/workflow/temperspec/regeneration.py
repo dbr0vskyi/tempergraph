@@ -21,7 +21,10 @@ from .routing import _git, commit_step
 DECLARATION = "tempergraph.regenerations.json"
 STATE = Path(".tempergraph") / "regeneration"
 REPORT = STATE / "report.json"
-TIMEOUT_S = 600.0  # RGF-B8: a command that has not finished by then is ended
+DECLARED = "ts-rgn-declaration"
+RAN = "ts-rgn-ran"
+PASSED = "ts-rgn-passed"
+TIMEOUT_S =600.0  # RGF-B8: a command that has not finished by then is ended
 TAIL_LINES = 40
 
 
@@ -237,20 +240,42 @@ def regeneration_check(ctx: Any) -> CheckResult:
     """The gate's check (RGF-B1, RGF-B8): PASS when nothing failed; a FAIL marked environmental for an unusable
     declaration or a command that was refused, did not start, was ended by a signal or timed out; otherwise a FAIL
     with the findings of each failed command, in the order the regenerations ran."""
+    path = _report(ctx)
     try:
-        report = json.loads((Path(ctx.workdir) / REPORT).read_text(encoding="utf-8"))
+        report = json.loads((Path(ctx.workdir) / path).read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return CheckResult(result="FAIL", environmental=True, evidence=f"no regeneration report at {REPORT.as_posix()}")
+        text = f"no regeneration report at {path.as_posix()}"
+        return CheckResult(result="FAIL", environmental=True, evidence=text,
+                           findings=[CheckFinding(status="fail", criterion=RAN, place=path.as_posix(), message=text)])
     if report.get("declaration_error"):
-        return CheckResult(result="FAIL", environmental=True, evidence=str(report["declaration_error"]))
+        error = str(report["declaration_error"])
+        return CheckResult(result="FAIL", environmental=True, evidence=error,
+                           findings=[CheckFinding(status="fail", criterion=DECLARED, place=DECLARATION, message=error)])
     runs = [r for r in report.get("runs", []) if isinstance(r, dict)]
     broken = [r for r in runs if r.get("state") in ENVIRONMENT]
     if broken:
         text = "; ".join(f"`{r['command']}` {str(r['state']).replace('_', ' ')}"
                          + (f" ({r['tail']})" if r.get("tail") else "") for r in broken)
-        return CheckResult(result="FAIL", environmental=True, evidence=f"a regeneration could not run: {text}")
+        found = [CheckFinding(status="fail", criterion=RAN, place=str(r["command"]),
+                              message=str(r["state"]).replace("_", " ") + (f": {r['tail']}" if r.get("tail") else ""))
+                 for r in broken]
+        return CheckResult(result="FAIL", environmental=True, evidence=f"a regeneration could not run: {text}",
+                           findings=found)
     failed = [r for r in runs if r.get("state") == "failed"]
     if failed:
-        found = [f for r in failed for f in findings_of(r)]
+        found = [CheckFinding(status="fail", criterion=PASSED, place=f.place, fix=f.fix,
+                              message=f"{f.criterion}: {f.message}") for r in failed for f in findings_of(r)]
         return CheckResult(result="FAIL", evidence=f"{len(failed)} regeneration(s) failed", findings=found)
-    return CheckResult(result="PASS", evidence=f"{len(runs)} regeneration(s) passed" if runs else "nothing due")
+    passes = [CheckFinding(status="pass", criterion=name, message=text) for name, text in (
+        (DECLARED, "the declaration is usable"), (RAN, "every due regeneration ran to an end"),
+        (PASSED, "no regeneration failed"))]
+    return CheckResult(result="PASS", evidence=f"{len(runs)} regeneration(s) passed" if runs else "nothing due",
+                       findings=passes)
+
+
+def _report(ctx: Any) -> Path:
+    """The report's path: the unit's artifact `regeneration_report` when the context gives one, else `REPORT`."""
+    artifacts = getattr(ctx, "artifacts", None) or {}
+    unit = artifacts.get("regeneration") if isinstance(artifacts, dict) else None
+    given = unit.get("regeneration_report") if isinstance(unit, dict) else None
+    return Path(str(given)) if given else REPORT
