@@ -294,11 +294,20 @@ def test_each_rule_file_criterion_is_a_blocker_checked_by_its_gate_and_names_its
     assert names and all(n in row["text"] for n in names)
 
 
+def test_the_outcome_record_has_the_revision_entry_of_issue_150() -> None:  # AC 6
+    o = json.loads((ROOT / "outcome.json").read_text(encoding="utf-8"))
+    entry = next(r for r in o["revisions"] if "issue 150" in r.get("note", ""))
+    assert entry["origin"] == "authored" and entry["revision"] >= 23
+    assert o["revision"] == o["revisions"][-1]["revision"] >= entry["revision"]
+    stamp = json.loads((ROOT / "stamp.json").read_text(encoding="utf-8"))
+    assert stamp["outcome_revision"] == o["revision"]
+
+
 def test_the_phase_scope_criterion_is_graded_on_the_paths_changed_since_the_phase_step_was_entered() -> None:
     # AC 3, PHC-AC18 (PHC-B18)
     o = json.loads((ROOT / "outcome.json").read_text(encoding="utf-8"))
     entry = next(r for r in o["revisions"] if "issue 148" in r.get("note", ""))
-    assert o["revision"] == entry["revision"] == o["revisions"][-1]["revision"]
+    assert entry["revision"] <= o["revision"] == o["revisions"][-1]["revision"]
     where, row = _criteria()["ts-phs-scope"]
     assert where == "phase" and "since the phase step was entered" in row["text"]
     assert row["text"] == _rows("phase.spec.md")["ts-phs-scope"]  # the docs check compares the whole line

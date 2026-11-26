@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": 22,
+  "revision": 23,
   "statement": "Every acceptance criterion in the task's triage_note is met on the run's own branch: by tested code that follows specs which agree with each other, or by those specs alone in a docs-only run.",
   "deliverables": [
     {
@@ -27,7 +27,7 @@
   "check": "tgwf_temperspec.checks:outcome_check",
   "judge": {
     "model": "medium",
-    "stance": "The task's acceptance criteria and the files on the run's branch are the truth; everything a step said is a claim to verify. Judge meaning, not wording. Behind every MET, quote the line you relied on, with its path and line number. Grade a criterion PARTIAL, not MET, when its only evidence is lines a search printed. When you searched and then read the file around the line, quote the line from the file you read. A criterion the gate's check verified is graded from the check's finding: quote that finding from the evidence as the line behind its MET, and never grade it UNVERIFIABLE because you cannot run the check yourself."
+    "stance": "The task's acceptance criteria and the files on the run's branch are the truth; everything a step said is a claim to verify. Judge meaning, not wording. Behind every MET, quote the line you relied on, with its path and line number. Grade a criterion PARTIAL, not MET, when its only evidence is lines a search printed. When you searched and then read the file around the line, quote the line from the file you read. A criterion the gate's check verified is graded from the check's finding: quote that finding from the evidence as the line behind its MET, and never grade it UNVERIFIABLE because you cannot run the check yourself. For each criterion you grade PARTIAL or UNMET, state in its evidence the place of the defect and the fix, in one line."
   },
   "final": [
     {
@@ -287,8 +287,7 @@
             "check": "tgwf_temperspec.checks:setup_check"
           },
           "serves": [
-            "ts-spec-links",
-            "ts-spec-sync"
+            "ts-spec-links"
           ]
         },
         {
@@ -516,8 +515,7 @@
             }
           },
           "serves": [
-            "ts-accepted",
-            "ts-spec-sync"
+            "ts-accepted"
           ]
         },
         {
@@ -1111,7 +1109,8 @@
             }
           },
           "serves": [
-            "ts-accepted"
+            "ts-accepted",
+            "ts-spec-sync"
           ]
         },
         {
@@ -1936,6 +1935,12 @@
       "origin": "authored",
       "at": "2026-11-25T12:00:00.000Z",
       "note": "issue 148: the expand check reads the session record of the whole visit, skips a row whose completed mark is kept, and makes one finding for all rows whose file no session of the visit opened (ts-exp-opened); the phase gate grades ts-phs-scope on the paths changed since the phase step was entered, a path that only an earlier step changed lowering no grade"
+    },
+    {
+      "revision": 23,
+      "origin": "authored",
+      "at": "2026-11-26T12:00:00.000Z",
+      "note": "issue 150: a failing ts-spec-sync with no place named goes back to the step that owns the specs (the full discovery, else the plan step, else the code step) because ts-set-links and ts-tri-gaps no longer serve it and ts-plan-spec does; the outcome judge's stance asks for the place and the fix in the evidence of each criterion it grades PARTIAL or UNMET (spec outcome-gate, OGT-B6 to OGT-B12)"
     }
   ]
 }
