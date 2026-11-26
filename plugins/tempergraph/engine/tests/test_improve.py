@@ -334,6 +334,11 @@ def test_every_threshold_is_a_parameter() -> None:  # IMD-AC3 for this track
         assert p.provenance in ("default_no_data", "fitted", "owner_decision") and p.source
 
 
+def test_seen_again_bound_is_a_parameter_record() -> None:  # ISS-AC12, IMD-AC3
+    p = params.PARAMS["seen_again.max_per_issue_per_day"]
+    assert p.value == 1 and p.provenance == "default_no_data" and "ISS-B13" in p.source
+
+
 def test_lost_runner_window_is_a_parameter_record() -> None:  # IMD-AC3, SIL-B29
     p = params.PARAMS["lost_runner.window_days"]
     assert p.value == 7 and p.provenance == "default_no_data" and "SIL-B29" in p.source

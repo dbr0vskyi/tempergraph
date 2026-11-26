@@ -118,6 +118,7 @@ The component specs, each owning what follows its name:
 - [review-repeats.spec.md](review-repeats.spec.md) SRV (split from 44): a review category kept in several sessions of a run or in several runs of a workflow, recorded as a finding for the proposer that files no issue alone.
 - [loop-summary-and-review-retries.spec.md](loop-summary-and-review-retries.spec.md) SIL (split from self-improvement): the retry of session reviews that stopped at a usage limit, and the summary the loop child writes when it ends.
 - [friction-causes.spec.md](friction-causes.spec.md) FRC: the friction causes the loop makes from a run's records for a trip back, a stop at the attempt cap, a last stage that delivered nothing, a session the usage limit refused and a pause at an ask unit.
+- [friction-filing-decisions.spec.md](friction-filing-decisions.spec.md) FFD: how the answers recorded for a friction finding's fingerprint attribute it, the one reason a finding that is not filed carries, the numbers and the reason that the loop's records hold, and what the friction judge is told about attribution.
 
 The monitor's own design set is [plugins/tempergraph-monitor/docs](../../../tempergraph-monitor/docs/specs/overview.spec.md). Assumptions made while the owner was unavailable are in [ADR `standalone-design-assumptions`](../adr/standalone-design-assumptions.adr.md); design notes and the origin of each spec block are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 

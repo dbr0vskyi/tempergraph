@@ -2,7 +2,7 @@
 
 ## Purpose
 
-A repository manages its work as issues: one triage queue, one set of labels, and a close reason that says whether a thing was done or declined. The loop files its findings there ([SIL-B18](self-improvement.spec.md)); this spec makes a loop issue a member of that queue and lets the owner's triage teach the loop. It states the labels a loop issue carries, the sections of its body and the run context they hold, which issue a finding goes to (one per cause, found from the loop's label list), and what the loop does when a finding returns after its issue was closed: nothing for a while after a close as not planned, and a new issue that links the old one as a possible regression after a close as completed. It sits beside [SIL](self-improvement.spec.md), which keeps filing and de-duplication on open issues and is near its size budget, and beside [PRP](improvement-proposals.spec.md), which ties proposals and trials to the same issues. The mute period is a parameter record like the loop's other thresholds ([IMD-B23](improvement-data.spec.md)); the reasons for its value and for the mapping of close reasons are in [the decision record](../adr/a-closed-loop-issue-mutes-its-fingerprint-or-links-a-regression.adr.md), and those for one issue per cause, the label list and the run context in [the second](../adr/one-loop-issue-per-cause-read-from-the-label-list.adr.md). Maintainers who triage the loop's issues and workflow owners who receive them depend on it.
+A repository manages its work as issues: one triage queue, one set of labels, and a close reason that says whether a thing was done or declined. The loop files its findings there ([SIL-B18](self-improvement.spec.md)); this spec makes a loop issue a member of that queue and lets the owner's triage teach the loop. It states the labels a loop issue carries, the sections of its body and the run context they hold, which issue a finding goes to (one per cause, found from the loop's label list), and what the loop does when a finding returns after its issue was closed: nothing for a while after a close as not planned or as a duplicate, and a new issue that links the old one as a possible regression after a close as completed. It sits beside [SIL](self-improvement.spec.md), which keeps filing and de-duplication on open issues and is near its size budget, and beside [PRP](improvement-proposals.spec.md), which ties proposals and trials to the same issues. The mute period is a parameter record like the loop's other thresholds ([IMD-B23](improvement-data.spec.md)); the reasons for its value and for the mapping of close reasons are in [the decision record](../adr/a-closed-loop-issue-mutes-its-fingerprint-or-links-a-regression.adr.md) and [the record on a close as a duplicate](../adr/a-close-as-a-duplicate-mutes-a-loop-issues-cause.adr.md), and those for one issue per cause, the label list and the run context in [the second](../adr/one-loop-issue-per-cause-read-from-the-label-list.adr.md). Maintainers who triage the loop's issues and workflow owners who receive them depend on it.
 
 ## Behaviours
 
@@ -23,12 +23,12 @@ WHEN the loop opens an issue THE loop SHALL write its body as the hidden line of
 - GIVEN a filed workflow-side finding WHEN its issue body is read THEN its first line is the hidden line, its second the cause line, and its headings are `## Summary`, `## Environment`, `## Run`, `## Steps to reproduce`, `## Run log`, `## Evidence`, `## Fingerprint` and `## Suggested remedy` in that order, each with text under it
 - GIVEN that body WHEN its `## Fingerprint` section is read THEN it shows the fingerprint of the hidden line, and its `## Suggested remedy` section shows the cause's drafted remedy
 
-### ISS-B3 A close as not planned mutes the fingerprint
+### ISS-B3 A close as not planned or as a duplicate mutes the fingerprint
 
-WHEN a finding that would file matches no open issue and the matching issue closed most recently was closed as not planned less than `mute.days` (30) days ago THE loop SHALL open no issue and add no comment, and record the finding `muted` with that issue's URL.
+WHEN a finding that would file matches no open issue and the matching issue closed most recently was closed as not planned or as a duplicate less than `mute.days` (30) days ago THE loop SHALL open no issue and add no comment, and record the finding `muted` with that issue's URL.
 
-- GIVEN an issue of the fingerprint closed as not planned 10 days ago and none open WHEN the finding files THEN no issue and no comment is made, and the finding is recorded `muted` with the closed issue's URL
-- GIVEN that issue closed as not planned 31 days ago WHEN the finding files THEN a new issue opens and the finding is not muted
+- GIVEN an issue of the fingerprint closed as not planned, or as a duplicate, 10 days ago and none open WHEN the finding files THEN no issue and no comment is made, and the finding is recorded `muted` with the closed issue's URL
+- GIVEN that issue closed 31 days ago WHEN the finding files THEN a new issue opens and the finding is not muted
 - GIVEN that issue closed 10 days ago and a second issue of the fingerprint open WHEN the finding files THEN the open issue gets one "seen again" comment ([SIL-B2](self-improvement.spec.md)) and the finding is not muted
 - GIVEN an issue closed as completed 40 days ago and a later issue of the fingerprint closed as not planned 5 days ago WHEN the finding files THEN the finding is recorded `muted`
 - GIVEN a cause's issue closed as not planned 5 days ago WHEN the cause files at units the issue does not name THEN each finding is recorded `muted`
@@ -43,9 +43,9 @@ WHEN a finding that would file matches no open issue and the matching issue clos
 
 ### ISS-B5 A close reason the loop does not read changes nothing
 
-WHEN a finding that would file matches no open issue and the matching issue closed most recently has no close reason, or one other than not planned and completed, THE loop SHALL open a new issue that names no regression and mutes nothing.
+WHEN a finding that would file matches no open issue and the matching issue closed most recently has no close reason, or one other than not planned, a duplicate or completed, THE loop SHALL open a new issue that names no regression and mutes nothing.
 
-- GIVEN an issue of the fingerprint closed as a duplicate and none open WHEN the finding files THEN a new issue opens whose `## Summary` names no regression and the finding is not muted
+- GIVEN an issue of the fingerprint closed with a reason the loop does not read and none open WHEN the finding files THEN a new issue opens whose `## Summary` names no regression and the finding is not muted
 - GIVEN an issue of the fingerprint closed with no reason WHEN the finding files THEN a new issue opens whose `## Summary` names no regression and the finding is not muted
 
 ### ISS-B6 A failed search of closed issues files anyway
@@ -100,23 +100,31 @@ WHEN the loop opens an issue or adds a "seen again" comment for a finding that f
 - GIVEN that issue open WHEN a fourth run with a fourth request files a finding of the fingerprint THEN the "seen again" comment's `## Evidence` shows 4 runs and 4 requests
 - GIVEN a friction finding attributed at 0.9 whose fingerprint is recorded in one run WHEN it files THEN the line of its unit under `## Evidence` shows its count and fingerprint and no figure of the pattern rule
 
+### ISS-B13 An issue gets a bounded number of "seen again" comments a day
+
+WHEN a finding would add a "seen again" comment to an open issue on which the loop has commented at least `seen_again.max_per_issue_per_day` times in the current UTC day (1, a parameter record with provenance `default_no_data`, [IMD-B23](improvement-data.spec.md)), as the `issue_commented` records of the workflow's runs show, THE loop SHALL replace the comment by one `loop_result` record with op `comment_capped` that holds the issue's number and no text.
+
+- GIVEN one open issue of a cause and three exits of the workflow in one UTC day, each with a finding of that cause WHEN each files THEN the issue gets one comment, its `issue_commented` record holds the issue's number, and each of the other two exits leaves one `comment_capped` record that holds that number and no text
+- GIVEN that issue commented on today WHEN the cause files at an exit on the next UTC day THEN the issue gets a second comment
+- GIVEN that issue with its comment of the day made WHEN the cause files at a unit the issue does not name THEN no comment is added and no new issue opens
+
 ## Acceptance criteria
 
 - ISS-AC1 (ISS-B1): Against a fake code host, a workflow-side, an engine-side and an executor-side finding each open an issue with the default labels and their side label, a workflow's declared `issue_labels` replaces the default list for its workflow-side findings only, and a declared value that is not a list of names leaves the default labels
 - ISS-AC2 (ISS-B2): Against a fake code host, the body of a filed issue starts with the hidden line and the cause line and holds `## Summary`, `## Environment`, `## Run`, `## Steps to reproduce`, `## Run log`, `## Evidence`, `## Fingerprint` and `## Suggested remedy` in that order, with the fingerprint under `## Fingerprint` and the cause's drafted remedy under the last
-- ISS-AC3 (ISS-B3): Against a fake code host that holds an issue closed as not planned, a finding of its fingerprint opens no issue, adds no comment and is recorded `muted` when the close was 10 days ago, opens a new issue when the close was 31 days ago, comments on a second, open issue of the fingerprint instead of muting, and is muted by a later close as not planned over an earlier close as completed
+- ISS-AC3 (ISS-B3): Against a fake code host that holds an issue closed as not planned or as a duplicate, a finding of its fingerprint opens no issue, adds no comment and is recorded `muted` when the close was 10 days ago, opens a new issue when the close was 31 days ago, comments on a second, open issue of the fingerprint instead of muting, and is muted by a later close as not planned over an earlier close as completed
 - ISS-AC4 (ISS-B4): Against a fake code host that holds an issue closed as completed, a finding of its fingerprint opens one new issue whose `## Summary` names the closed issue as a possible regression, on any close date, and the next occurrence comments on that new issue and opens no third
-- ISS-AC5 (ISS-B5): Against a fake code host that holds an issue closed as a duplicate, or closed with no reason, a finding of its fingerprint opens a new issue that names no regression and is not muted
+- ISS-AC5 (ISS-B5): Against a fake code host that holds an issue closed with no reason, or with a reason the loop does not read, a finding of its fingerprint opens a new issue that names no regression and is not muted
 - ISS-AC6 (ISS-B6): Against a fake code host whose search of closed issues fails twice, a finding opens a new issue with no link and records that the search failed, and with one failure it retries and applies the close reason
 - ISS-AC7 (ISS-B7): Against a fake code host, one cause at three units in one filing opens one issue naming the three units with their three hidden lines, a later unit of the cause comments on it, an issue with only a fingerprint line takes that fingerprint's comments, another cause opens its own issue, and a cause closed as not planned 5 days ago is muted at other units
 - ISS-AC8 (ISS-B8, ISS-B11): Against a fake code host and a fixture run log, an issue shows the run's and the loop's engine versions, the workflow version, executor, CLI version, model, alias, mode, Python and OS, the thread, exit code, reason and cost, and the status, logs and rerun commands of its thread and unit, and a "seen again" comment holds the same sections; end to end, a loop child's issue shows the engine version, the thread and run-log lines
 - ISS-AC9 (ISS-B9): Against a fake code host, one filing of three causes reads the open and the closed list once each, and an issue opened by one filing is commented on by the next; the GitHub client reads the list of issues by the loop's label and state, makes no search, and leaves out pull requests
 - ISS-AC10 (ISS-B10): A canary placed in a fixture run log's request, notes, evidence, gap, transcript, changed paths and in free-text values of listed keys reaches no issue or comment, the excerpt keeps the last 40 lines and counts the rest, and another unit's records are not shown
 - ISS-AC11 (ISS-B12): Against a fake code host, the issue of an outcome finding and the issue of a friction finding that each file by the pattern rule from three runs with three distinct requests show 3 runs, 3 requests and the machines counted under `## Evidence`, the "seen again" comment of a fourth run shows 4 runs and 4 requests, and the issue of a friction finding attributed at 0.9 from one run shows no figure of the pattern rule
+- ISS-AC12 (ISS-B13): Against a fake code host, three exits of one workflow in one UTC day with one open issue of the cause leave one comment on it and two `loop_result` records with op `comment_capped` that hold its number and no text, no second issue opens, and an exit on the next UTC day adds a second comment
 
 ## Open questions
 
 - Is 30 days the right mute period (`mute.days`)? Until answered: 30, a parameter record with provenance `default_no_data`, the length of the pattern rule's window ([SIL-B3](self-improvement.spec.md)), so that a new issue after a mute rests on runs made after the close. Owner: owner.
-- Should a close as a duplicate mute like a close as not planned? Until answered: no, the reason is not read (ISS-B5), because the loop cannot see the issue it duplicates. Owner: owner.
 - Should a recurrence after a close as completed also record `regressed_after_release` on the merged proposal whose pull request closed the issue ([PRP-B9](improvement-proposals.spec.md))? Until answered: no, ISS-B4 only links, and PRP-B9 records it from its own comparison. Owner: engine owner.
 - Should an operator set `issue_labels` per machine, as a run setting ([RST-B20](run-settings-and-overrides.spec.md))? Until answered: no, only a workflow's `improvement.issue_labels` and the engine's own list set it. Owner: owner.

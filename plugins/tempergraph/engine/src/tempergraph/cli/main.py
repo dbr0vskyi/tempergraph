@@ -263,8 +263,8 @@ def _run_options(p: argparse.ArgumentParser, start: bool = True) -> None:
     p.add_argument("--carry", action="store_true", help="carry this thread's state on its own branch (CAR)")
     _settings_options(p, resume=not start)
     p.add_argument("--pause-before", action="append", default=[], metavar="UNIT")
+    p.add_argument("--dry-run", action="store_true", help="self-improvement files nothing; every step runs")
     if start:
-        p.add_argument("--dry-run", action="store_true", help="self-improvement files nothing; every step runs")
         p.add_argument("--alias")
         p.add_argument("--label")
         for opt in ("worktree-root", "worktree-base", "worktree-cleanup"):
@@ -397,7 +397,9 @@ def _settings(env: Env, a: argparse.Namespace, mutating: bool = True) -> Any:
         block = caller["schedule"]
         fields.update(origin="schedule", schedule={k: block[k] for k in ("schedule_id", "fire_id", "slot")})
     if hasattr(a, "alias"):
-        fields.update(alias=a.alias, label=a.label, dry_run=bool(getattr(a, "dry_run", False)))
+        fields.update(alias=a.alias, label=a.label)
+    if hasattr(a, "dry_run"):
+        fields["dry_run"] = bool(a.dry_run)
     if getattr(a, "escalate", False):
         fields["escalate"] = True
     if getattr(a, "carry", False):
