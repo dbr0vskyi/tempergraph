@@ -210,8 +210,10 @@ def test_dedup_retry_dry_run_and_outbox(tmp_path: Path) -> None:  # SIL-B2, B6, 
     host.down = True
     assert filing.file([d], host, box)[0]["op"] == "queued"
     host.down = False
-    res = filing.file([], host, box)
-    assert res[0]["op"] == "redelivered" and not box.take()
+    comments, issues = len(host.comments), len(host.issues)
+    res = filing.file([], host, box)  # ISS-AC15: open issues hold the fingerprint, so the create is now a comment
+    assert [r["op"] for r in res] == ["commented"] and len(host.issues) == issues
+    assert len(host.comments) == comments + 1 and not box.take()
 
 
 def test_no_request_text_is_published() -> None:  # IMD-B2 canary

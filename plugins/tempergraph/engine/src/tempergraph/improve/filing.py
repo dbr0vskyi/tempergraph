@@ -349,9 +349,13 @@ class Outbox:
         return cls(path=root / "filing-outbox.jsonl")  # LOS-B7, LOS-B8, LOS-B9
 
     def add(self, payload: Mapping[str, Any]) -> None:
+        """ISS-B18: the entry keeps the time it was first queued; an entry put back keeps the one it holds."""
+        entry = dict(payload)
+        if not entry.get("queued_at"):
+            entry["queued_at"] = datetime.now(UTC).isoformat(timespec="seconds")
         self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         with open(self.path, "a", encoding="utf-8") as fh:
-            fh.write(json.dumps(dict(payload)) + "\n")
+            fh.write(json.dumps(entry) + "\n")
 
     def take(self) -> list[dict[str, Any]]:
         try:
@@ -431,6 +435,70 @@ def comments_by_day(root: Path, workflow: str, now: datetime | None = None) -> d
     return out
 
 
+def _expired(p: Mapping[str, Any], now: datetime) -> bool:
+    """ISS-B18: first queued more than `outbox.max_age_days` before `now`; no or an unreadable time never expires."""
+    try:
+        at = datetime.fromisoformat(str(p.get("queued_at")).replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    at = at if at.tzinfo else at.replace(tzinfo=UTC)
+    return now - at > timedelta(days=float(params.value("outbox.max_age_days")))
+
+
+def _redeliver(p: dict[str, Any], host: CodeHost, outbox: Outbox, results: list[dict[str, Any]], now: datetime,
+               comments_today: Mapping[tuple[str, int], int] | None,
+               listed: dict[tuple[str, str], tuple[list[dict[str, Any]] | None, bool]],
+               sent_now: dict[tuple[str, int], int]) -> None:
+    """ISS-B16 to ISS-B18: one waiting entry, checked before it is sent: dropped when expired; a create becomes a
+    comment on the open issue holding its fingerprint or cause line (within the day's bound), is dropped when its
+    cause is muted, else is sent as queued. A refused entry goes back with its queue time."""
+    repo = str(p.get("repo"))
+    if _expired(p, now):
+        who = {"fingerprint": p.get("fingerprint")} if p.get("op") == "create" else {"number": p.get("number")}
+        results.append({"op": "outbox_dropped", "reason": "expired", "entry_kind": p.get("op"), "repo": repo, **who})
+        return
+    if p.get("op") == "create":
+        lines = [ln for ln in str(p.get("body") or "").splitlines()
+                 if ln.startswith(("<!-- tempergraph:fp=", "<!-- tempergraph:cause=")) and ln.endswith("-->")]
+        if (repo, "open") not in listed:
+            listed[(repo, "open")] = _read(host, repo, "open")
+        opened, failed = listed[(repo, "open")]
+        if not failed and lines:
+            match = next((i for i in sorted(opened or [], key=lambda i: int(i.get("number") or 0))
+                          if _holds(i, lines)), None)
+            if match is not None:
+                ident = (repo, int(match["number"]))
+                fp = p.get("fingerprint")
+                if (comments_today or {}).get(ident, 0) + sent_now.get(ident, 0) >= int(
+                        params.value("seen_again.max_per_issue_per_day")):
+                    results.append({"op": "comment_capped", "number": ident[1], "repo": repo, "fingerprint": fp})
+                    return
+                text = str(p.get("comment") or "\n".join([*lines, "", "**Seen again**"]))
+                c = {"op": "comment", "repo": repo, "number": ident[1], "fingerprint": fp, "body": text,
+                     "queued_at": p.get("queued_at")}
+                try:
+                    url = _deliver(host, c)
+                except CodeHostError:
+                    outbox.add(p)
+                    return
+                sent_now[ident] = sent_now.get(ident, 0) + 1
+                results.append({"op": "commented", "url": url, "fingerprint": fp, "repo": repo, "number": ident[1]})
+                return
+            if (repo, "closed") not in listed:
+                listed[(repo, "closed")] = _read(host, repo, "closed")
+            closed, cfailed = listed[(repo, "closed")]
+            mine = [i for i in closed or [] if _holds(i, lines)]
+            last = max(mine, key=_closed_at) if mine and not cfailed else None
+            if (last is not None and str(last.get("state_reason") or "") in ("not_planned", "duplicate")
+                    and now - _closed_at(last) < timedelta(days=float(params.value("mute.days")))):
+                results.append({"op": "outbox_dropped", "reason": "muted", "fingerprint": p.get("fingerprint")})
+                return
+    try:
+        results.append({"op": "redelivered", "url": _deliver(host, p), "fingerprint": p.get("fingerprint")})
+    except CodeHostError:
+        outbox.add(p)
+
+
 def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_run: bool = False,
          now: datetime | None = None, comments_today: Mapping[tuple[str, int], int] | None = None
          ) -> list[dict[str, Any]]:
@@ -442,12 +510,11 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
     makes no call (SIL-B6)."""
     results: list[dict[str, Any]] = []
     now = now or datetime.now(UTC)
+    listed: dict[tuple[str, str], tuple[list[dict[str, Any]] | None, bool]] = {}
+    sent_now: dict[tuple[str, int], int] = {}  # the comments this call has sent, by (repo, issue number)
     if not dry_run:
         for p in outbox.take():
-            try:
-                results.append({"op": "redelivered", "url": _deliver(host, p), "fingerprint": p.get("fingerprint")})
-            except CodeHostError:
-                outbox.add(p)
+            _redeliver(p, host, outbox, results, now, comments_today, listed, sent_now)
     groups: dict[tuple[str, str], list[Decision]] = {}
     for d in decisions:
         f = d.candidate.finding
@@ -459,8 +526,6 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
             results.append({"op": "would_file", "repo": d.repo, "title": title(f), "fingerprint": fp})
             continue
         groups.setdefault((d.repo, cause_key(f)), []).append(d)
-    listed: dict[tuple[str, str], tuple[list[dict[str, Any]] | None, bool]] = {}
-    sent_now: dict[tuple[str, int], int] = {}  # the comments this call has sent, by (repo, issue number)
     for (repo, key), ds in groups.items():
         fps = list(dict.fromkeys(str(x.candidate.finding.get("fingerprint")) for x in ds))
         note = None
@@ -499,7 +564,8 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
                  "body": comment_body(ds)}
         else:
             p = {"op": "create", "repo": repo, "title": title(f), "body": body(ds, regression),
-                 "labels": _labels(f, ds[0].candidate.issue_labels), "fingerprint": fps[0]}
+                 "labels": _labels(f, ds[0].candidate.issue_labels), "fingerprint": fps[0],
+                 "comment": comment_body(ds)}  # ISS-B16: a later delivery as a comment carries the same context
         try:
             url = _deliver(host, p)
         except CodeHostError:

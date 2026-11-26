@@ -24,6 +24,7 @@ PARAMS = {p.name: p for p in (
     Param(name="pattern_rule.window_days", value=30, source="SIL-B3"),
     Param(name="mute.days", value=30, source="ISS-B3"),
     Param(name="seen_again.max_per_issue_per_day", value=1, source="ISS-B13"),
+    Param(name="outbox.max_age_days", value=30, source="ISS-B18"),
     Param(name="friction.file_confidence", value=0.75, source="release 1 default"),
     Param(name="outcome.audit_every", value=20, source="SIL-B10"),
     Param(name="outcome.low_confidence", value=0.5, source="SIL-B10"),
