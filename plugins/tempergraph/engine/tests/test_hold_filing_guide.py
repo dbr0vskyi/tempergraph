@@ -4,7 +4,6 @@ criterion of the friction-pattern task: no workflow in the specs, a source on ev
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
 import pytest
 
