@@ -115,6 +115,7 @@ class RunSettings:
     apply_deadline: bool = False  # `resume --apply-deadline` (FLX-B8)
     pause_before: tuple[str, ...] = ()  # `--pause-before <unit>`: operator breakpoints of this segment (FLX-B10)
     unit: str | None = None  # `resume --unit`: which of several pending gates the decision answers (HUM-B3)
+    operator_reason: str | None = None  # `resume --reason`: one fixed word on the decision's ledger row (CLI-B24)
     schedule: Mapping[str, Any] | None = None  # a scheduled run's `{schedule_id, fire_id, slot}` (TCK-B24)
     audit_seed: int | None = None  # a test hook: mixed into the audit judge's draw so a test's sampling is stable (JDG-B7)
 
@@ -1395,6 +1396,8 @@ def intervention(root: Path, spec: WorkflowSpec, task_id: str, touch: tuple[str,
            "ruling": settings.ruling, "settings_changed": list(settled.changed) if settled else [],
            "grants": [{k: v for k, v in g.items() if k != "key"} for g in (settled.grant_changes() if settled else [])],
            "cause": "auto_reopen" if engine else reason or kind}
+    if settings.operator_reason:
+        row["operator_reason"] = settings.operator_reason
     Ledger(path=root / "ledger.jsonl").append(row)
     return row
 

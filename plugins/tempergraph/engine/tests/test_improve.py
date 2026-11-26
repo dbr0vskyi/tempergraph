@@ -339,6 +339,12 @@ def test_seen_again_bound_is_a_parameter_record() -> None:  # ISS-AC12, IMD-AC3
     assert p.value == 1 and p.provenance == "default_no_data" and "ISS-B13" in p.source
 
 
+def test_outbox_max_age_is_a_parameter_record() -> None:  # IMD-AC3, AC 9 (ISS-B18)
+    p = params.PARAMS["outbox.max_age_days"]
+    assert p.value == 30 and p.provenance == "default_no_data" and "ISS-B18" in p.source
+    assert params.value("outbox.max_age_days") == 30
+
+
 def test_lost_runner_window_is_a_parameter_record() -> None:  # IMD-AC3, SIL-B29
     p = params.PARAMS["lost_runner.window_days"]
     assert p.value == 7 and p.provenance == "default_no_data" and "SIL-B29" in p.source

@@ -82,6 +82,15 @@ def test_friction_files_by_the_pattern_count_or_by_confidence() -> None:  # FFD-
     assert by_conf.action == "file" and by_conf.reason == "fault" and by_conf.counts == {}
 
 
+def test_the_pattern_count_takes_only_fault_lines() -> None:  # SIL-AC56, AC 6
+    designed = seen("T-2", "T-3", "T-4", **{"class": "designed"})
+    d = decide(attributed(0.5, earlier=(True,)), designed, "team/notes", now=NOW)
+    assert d.action == "record" and d.reason == "below_count" and d.counted["runs"] == 1
+    faults = seen("T-2", "T-3", "T-4", **{"class": "fault"})
+    f = decide(attributed(0.5, earlier=(True,)), faults, "team/notes", now=NOW)
+    assert f.action == "file" and f.reason == "pattern_met"
+
+
 def test_recorded_answers_reads_loop_judged_inside_the_window(tmp_path: Path) -> None:  # FFD-AC1, SIL-AC36
     import json
 
@@ -185,7 +194,7 @@ def test_a_filed_or_commented_result_names_the_repository_and_number(tmp_path: P
     assert commented["number"] == host.issues[0]["number"] and isinstance(commented["number"], int)
 
 
-def test_dedup_retry_dry_run_and_outbox(tmp_path: Path) -> None:  # SIL-B2, B6, SIL-B19, SIL-B20, SIL-AC3
+def test_dedup_retry_dry_run_and_outbox(tmp_path: Path) -> None:  # SIL-B2, B6, SIL-B19, SIL-B20, SIL-AC3, SIL-AC10, ISS-AC15
     host = MemoryCodeHost()
     box = Outbox.at(tmp_path)
     d = decide(friction(), [], "team/notes")
@@ -201,8 +210,10 @@ def test_dedup_retry_dry_run_and_outbox(tmp_path: Path) -> None:  # SIL-B2, B6, 
     host.down = True
     assert filing.file([d], host, box)[0]["op"] == "queued"
     host.down = False
-    res = filing.file([], host, box)
-    assert res[0]["op"] == "redelivered" and not box.take()
+    comments, issues = len(host.comments), len(host.issues)
+    res = filing.file([], host, box)  # ISS-AC15: open issues hold the fingerprint, so the create is now a comment
+    assert [r["op"] for r in res] == ["commented"] and len(host.issues) == issues
+    assert len(host.comments) == comments + 1 and not box.take()
 
 
 def test_no_request_text_is_published() -> None:  # IMD-B2 canary

@@ -120,8 +120,32 @@ WHEN the loop opens an issue or adds a "seen again" comment THE loop SHALL write
 
 WHEN the loop opens an issue or adds a "seen again" comment for a finding of a segment that ended in a pause THE loop SHALL write under `## Run` the facts that [SIL-B37](runs-without-a-final-exit.spec.md) tells the friction judge for that finding, and no word of any feedback or ruling.
 
-- GIVEN a thread that paused at unit `a` with reason `unresolved_gap`, was resumed by an agent with `retry` and a feedback text, and finished WHEN a finding of the paused segment files THEN `## Run` holds unit `a`, the reason `unresolved_gap`, the decision `retry`, the caller kind `agent`, that feedback was given and the workspace and next gate facts, and no word of the feedback
+- GIVEN a thread that paused at unit `a` with reason `unresolved_gap`, was resumed by an agent with `retry`, a feedback text and `--reason judge_error`, and finished WHEN a finding of the paused segment files THEN `## Run` holds unit `a`, the reason `unresolved_gap`, the decision `retry`, the caller kind `agent`, that feedback was given, the operator reason `judge_error` and the workspace and next gate facts, and no word of the feedback
 - GIVEN a finding of the last segment WHEN it files THEN `## Run` holds none of those facts
+
+### ISS-B16 A waiting create is delivered as a comment when its cause has an open issue
+
+WHEN the loop delivers an entry of the outbox ([SIL-B19](self-improvement.spec.md)) that would open an issue, and an open loop issue of its repository holds one of its fingerprint lines or its cause line (ISS-B7), THE loop SHALL deliver it as one "seen again" comment on that issue and open no issue, within the bound of ISS-B13.
+
+- GIVEN an entry that would open an issue and an open loop issue that holds its fingerprint line WHEN the next filing delivers the entry THEN that issue gets one comment, no issue opens and the entry has left the outbox
+- GIVEN an open loop issue that holds only the cause line of the entry WHEN the next filing delivers it THEN that issue gets the comment
+- GIVEN that issue with its comment of the UTC day made WHEN the next filing delivers the entry THEN no comment is added, one `loop_result` record with op `comment_capped` holds the issue's number and no text, and the entry has left the outbox
+
+### ISS-B17 A waiting create whose cause is muted is dropped
+
+WHEN the loop delivers an entry of the outbox that would open an issue, no open loop issue holds its fingerprint lines or its cause line, and the loop issue of its fingerprints or cause closed most recently was closed as not planned or as a duplicate less than `mute.days` ago (ISS-B3), THE loop SHALL drop the entry, sending nothing and writing one `loop_result` record with op `outbox_dropped` and reason `muted` that holds its fingerprint and no text.
+
+- GIVEN an entry whose fingerprint an issue closed as not planned 10 days ago holds, and no open issue WHEN the next filing delivers the entry THEN nothing is sent, the entry has left the outbox and one `loop_result` record with op `outbox_dropped` and reason `muted` holds its fingerprint and no text
+- GIVEN that issue closed 31 days ago WHEN the next filing delivers the entry THEN a new issue opens
+- GIVEN a code host whose search of closed issues fails twice WHEN the entry is delivered THEN a new issue opens, as ISS-B6 says
+
+### ISS-B18 A waiting entry that is too old is dropped
+
+WHEN the loop delivers an entry of the outbox that was first queued more than `outbox.max_age_days` days earlier (30, a parameter record with provenance `default_no_data`, [IMD-B23](improvement-data.spec.md)) THE loop SHALL drop it, sending nothing and writing one `loop_result` record with op `outbox_dropped` and reason `expired` that holds the entry's kind, repository and fingerprint or issue number and no text.
+
+- GIVEN an entry that would open an issue, comment or reopen one, first queued 31 days earlier, and an open issue that holds its cause line WHEN the next filing delivers it THEN nothing is sent and one `loop_result` record with op `outbox_dropped` and reason `expired` holds its kind, repository and fingerprint or issue number and no text
+- GIVEN an entry first queued 29 days earlier WHEN the next filing delivers it THEN it is delivered
+- GIVEN an entry that holds no time of its first queue WHEN the next filing delivers it THEN it is not dropped for its age
 
 ## Acceptance criteria
 
@@ -137,8 +161,11 @@ WHEN the loop opens an issue or adds a "seen again" comment for a finding of a s
 - ISS-AC10 (ISS-B10): A canary placed in a fixture run log's request, notes, evidence, gap, transcript, changed paths and in free-text values of listed keys reaches no issue or comment, the excerpt keeps the last 40 lines and counts the rest, and another unit's records are not shown
 - ISS-AC11 (ISS-B12): Against a fake code host, the issue of an outcome finding and the issue of a friction finding that each file by the pattern rule from three runs with three distinct requests show 3 runs, 3 requests and the machines counted under `## Evidence`, the "seen again" comment of a fourth run shows 4 runs and 4 requests, and the issue of a friction finding attributed at 0.9 from one run shows no figure of the pattern rule
 - ISS-AC12 (ISS-B13): Against a fake code host, three exits of one workflow in one UTC day with one open issue of the cause leave one comment on it and two `loop_result` records with op `comment_capped` that hold its number and no text, no second issue opens, and an exit on the next UTC day adds a second comment
-- ISS-AC13 (ISS-B14): Against a fake code host and a fixture thread that paused, was resumed and finished, the body of the issue for a finding of the paused segment shows under `## Run` that segment's start, exit code 3 and the pause's reason and under `## Run log` that segment's records of the finding's unit and none of the last segment's, and the body for a finding of the last segment shows exit code 0 and the last segment's start
+- ISS-AC13 (ISS-B14): Against a fake code host and a fixture thread that paused, was resumed and finished, the body of the issue for a finding of the paused segment shows under `## Run` that segment's start, exit code 3 and the reason of its pause, which differs from the reason of its exit record, also when no row of facts was made for the finding, and under `## Run log` that segment's records of the finding's unit and none of the last segment's, and the body for a finding of the last segment shows exit code 0 and the last segment's start
 - ISS-AC14 (ISS-B15): The body of the issue for that paused segment's finding holds under `## Run` the facts that the friction judge is told for it and no word of a fixture feedback text, and the body for a finding of the last segment holds none of them
+- ISS-AC15 (ISS-B16): Against a fake code host, an outbox entry that would open an issue is delivered as one comment on the open issue that holds its fingerprint line, and on the open issue that holds only its cause line, and opens no issue; with that issue's comment of the UTC day made it leaves one `loop_result` record with op `comment_capped` that holds the issue's number and no text; the entry has left the outbox in each case
+- ISS-AC16 (ISS-B17): Against a fake code host that holds an issue of the entry's fingerprint closed as not planned or as a duplicate 10 days earlier and none open, an outbox entry that would open an issue is dropped with one `loop_result` record with op `outbox_dropped` and reason `muted` that holds its fingerprint and no text, and nothing is sent; with the close 31 days earlier, or with a search of closed issues that fails twice, it opens a new issue
+- ISS-AC17 (ISS-B18): Against a fake code host, an outbox entry of each kind (one that would open an issue, a comment, a reopen) first queued 31 days earlier is dropped with one `loop_result` record with op `outbox_dropped` and reason `expired` and sends nothing, also when an open issue holds its cause; one first queued 29 days earlier is delivered; one that a refused delivery put back keeps its first time; and one that holds no time is not dropped for its age
 
 ## Open questions
 

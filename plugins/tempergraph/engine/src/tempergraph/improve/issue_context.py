@@ -14,6 +14,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from tempergraph.constants import ENGINE_VERSION
+from tempergraph.improve import pause_facts
 
 LOG_LINES = 40  # the most run-log lines an issue or comment shows (ISS-B10)
 SAFE = re.compile(r"^[A-Za-z0-9_.:@+\-]{1,64}$")  # an id, enum, version or model name: no space, no slash
@@ -137,11 +138,12 @@ def run_facts(records: Sequence[Mapping[str, Any]], finding: Mapping[str, Any],
                         and _unit_of(r) == u] or [0]) for u in units}
     cost = sum(float((r.get("usage") or {}).get("reported_cost_usd") or 0.0) for r in seg
                if r.get("kind") == "agent_run" and _unit_of(r) in want and isinstance(r.get("usage"), Mapping))
+    reason = pause_facts.pause_reason(seg, [finding]) if ended.get("exit_code") == 3 else ended.get("reason")
     out: dict[str, Any] = {
         "thread": _safe(str(finding.get("thread") or "").replace("/", ":")) and str(finding.get("thread")),
         "started": _safe(str(started.get("ts") or "")[:19]),
         "exit_code": _safe(ended.get("exit_code", finding.get("segment_exit"))),
-        "exit_reason": _safe(ended.get("reason")),
+        "exit_reason": _safe(reason),
         "run_cost_usd": _safe(ended.get("cost_so_far") if ended.get("cost_so_far") is not None else ended.get("cost")),
         "unit_cost_usd": round(cost, 4) if cost else None,
         "attempts": {u: n for u, n in attempts.items() if n} or None,
@@ -153,7 +155,8 @@ def run_facts(records: Sequence[Mapping[str, Any]], finding: Mapping[str, Any],
     return {k: v for k, v in out.items() if v not in (None, "", {}, [])}
 
 
-FACT_KEYS = (("pause", "reason"), ("unit", "unit"), ("item", "item"), ("decision", "decision"), ("caller", "caller"),
+FACT_KEYS = (("pause", "reason"), ("unit", "unit"), ("item", "item"), ("decision", "decision"),
+             ("operator_reason", "operator_reason"), ("caller", "caller"),
              ("ruling", "ruling"), ("feedback", "feedback"), ("touch", "touch"), ("workspace", "workspace"),
              ("next_gate", "next_gate"))
 
