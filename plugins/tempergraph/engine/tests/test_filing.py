@@ -82,6 +82,15 @@ def test_friction_files_by_the_pattern_count_or_by_confidence() -> None:  # FFD-
     assert by_conf.action == "file" and by_conf.reason == "fault" and by_conf.counts == {}
 
 
+def test_the_pattern_count_takes_only_fault_lines() -> None:  # SIL-AC56, AC 6
+    designed = seen("T-2", "T-3", "T-4", **{"class": "designed"})
+    d = decide(attributed(0.5, earlier=(True,)), designed, "team/notes", now=NOW)
+    assert d.action == "record" and d.reason == "below_count" and d.counted["runs"] == 1
+    faults = seen("T-2", "T-3", "T-4", **{"class": "fault"})
+    f = decide(attributed(0.5, earlier=(True,)), faults, "team/notes", now=NOW)
+    assert f.action == "file" and f.reason == "pattern_met"
+
+
 def test_recorded_answers_reads_loop_judged_inside_the_window(tmp_path: Path) -> None:  # FFD-AC1, SIL-AC36
     import json
 

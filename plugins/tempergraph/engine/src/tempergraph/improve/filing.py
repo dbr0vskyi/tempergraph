@@ -82,11 +82,13 @@ def repository(finding: Mapping[str, Any], issue_repository: str) -> str | None:
 
 def _pattern(c: Candidate, history: Iterable[Mapping[str, Any]], now: datetime | None) -> tuple[dict[str, int], bool]:
     """SIL-B3: the runs, distinct requests and machines that record the candidate's fingerprint inside the window,
-    and whether they meet the pattern rule. Both lenses count here (SIL-B18)."""
+    and whether they meet the pattern rule. Both lenses count here (SIL-B18). Only history lines of class `fault`
+    count (SIL-B46)."""
     f = c.finding
     now = now or datetime.now(UTC)
     since = (now - timedelta(days=int(params.value("pattern_rule.window_days")))).isoformat()
-    same = [h for h in history if h.get("fingerprint") == f.get("fingerprint") and str(h.get("at") or "") >= since]
+    same = [h for h in history if h.get("fingerprint") == f.get("fingerprint") and h.get("class") == "fault"
+            and str(h.get("at") or "") >= since]
     runs = {str(h.get("thread")) for h in same} | {str(f.get("thread"))}
     first: dict[str, str] = {}  # SIL-B3: a thread counts its request once, by the first digest it recorded
     for h in sorted(same, key=lambda h: str(h.get("at") or "")):
