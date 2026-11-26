@@ -25,6 +25,7 @@ from tempergraph.run import selfcheck
 from tempergraph.run.checks import CheckContext
 from tempergraph.run.commands import resolve_command
 from tempergraph.run.runner import RunSettings, start
+from tempergraph.run.session_record import read_session
 from tempergraph.store.layout import state_root_path
 
 from .fixtures.workflows import crit, named
@@ -77,8 +78,8 @@ def push_calls(sink: Any, calls: Sequence[Call], first: int = 0, finish: bool = 
             sink.push(Event(kind="tool_finished", data={"call_id": f"c{i}", "ok": ok}))
 
 
-def started(sink: Any) -> None:
-    sink.push(Event(kind="session_started", data={"session_id": "s", "model": None, "tools": []}))
+def started(sink: Any, sid: str | None = "s") -> None:
+    sink.push(Event(kind="session_started", data={"session_id": sid, "model": None, "tools": []}))
 
 
 def script(calls: Sequence[Call], finish: bool = True) -> Callable[[SessionRequest, Any], SessionResult]:
@@ -148,9 +149,9 @@ def test_ok_false_the_retry_attempt_a_restart_and_an_unfinished_call(
     monkeypatch.setenv(FAIL_FIRST_VAR, "1")
 
     def restarted(req: SessionRequest, sink: Any) -> SessionResult:
-        started(sink)
+        started(sink, "died")
         push_calls(sink, [("Read", READ, "docs/old.md", True)])
-        started(sink)  # an infra try that started again: only what follows counts
+        started(sink)  # an infra try that started again, a new session id: only what follows counts
         push_calls(sink, [("Read", READ, "docs/new.md", True)], first=1)
         push_calls(sink, [("Read", READ, "docs/open.md", True)], first=2, finish=False)
         return answer("Expanded.", session_id="s")
@@ -164,6 +165,62 @@ def test_ok_false_the_retry_attempt_a_restart_and_an_unfinished_call(
     assert second["attempt"] == 2 and second["session"] == [  # the retry's own record, not the first attempt's
         {"name": "Read", "capability": "read", "target": "docs/new.md", "ok": True},
         {"name": "Read", "capability": "read", "target": "docs/open.md", "ok": False}]  # no finish: ok false
+
+
+def test_a_session_woken_with_its_own_id_keeps_the_calls_made_before(repo: Path, seen: Path) -> None:
+    # CHK-AC19, CHK-B24
+    def woken(req: SessionRequest, sink: Any) -> SessionResult:
+        started(sink)
+        push_calls(sink, [("Read", READ, "docs/first.md", True)])
+        started(sink)  # the turn ended while a background command ran; the same session is woken
+        push_calls(sink, [("Edit", EDIT, "src/b.py", True)], first=1)
+        started(sink)
+        return answer("Expanded.", session_id="s")
+
+    out = go(repo, Scripted([woken]))
+    assert out.exit_code is ExitCode.FINISHED, out.message
+    (got,) = lines(seen)
+    assert got["session"] == [
+        {"name": "Read", "capability": "read", "target": "docs/first.md", "ok": True},
+        {"name": "Edit", "capability": "edit", "target": "src/b.py", "ok": True}]
+
+
+def _journal(folder: Path, rows: Sequence[tuple[str, str | None]]) -> Path:
+    """A journal of `("start", session id)` and `("call", target)` rows."""
+    out = []
+    for n, (what, value) in enumerate(rows):
+        if what == "start":
+            out.append({"ev": "session_started", **({} if value is None else {"session_id": value})})
+        else:
+            out += [{"ev": "tool_started", "name": "Read", "call_id": f"c{n}", "capability": "read",
+                     "input_summary": value}, {"ev": "tool_finished", "call_id": f"c{n}", "ok": True}]
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "activity.jsonl").write_text("".join(json.dumps(r) + "\n" for r in out), encoding="utf-8")
+    return folder
+
+
+@pytest.mark.parametrize(("rows", "want"), [
+    ([("start", "a"), ("call", "1"), ("start", "a"), ("call", "2")], ["1", "2"]),  # one session, woken
+    ([("start", "a"), ("call", "1"), ("start", "b"), ("call", "2")], ["2"]),  # the first session died
+    ([("start", "a"), ("call", "1"), ("start", "b"), ("call", "2"), ("start", "b"), ("call", "3")], ["2", "3"]),
+    ([("start", "a"), ("call", "1"), ("start", "b"), ("call", "2"), ("start", "a"), ("call", "3")], ["3"]),
+    ([("start", None), ("call", "1"), ("start", None), ("call", "2")], ["2"]),  # no id: every start is a start
+    ([("start", "a"), ("call", "1"), ("start", None), ("call", "2")], ["2"]),
+    ([("call", "1"), ("call", "2")], ["1", "2"]),
+])
+def test_the_record_starts_at_the_first_start_of_the_last_session_id(
+        tmp_path: Path, rows: list[tuple[str, str | None]], want: list[str]) -> None:  # CHK-AC19, CHK-AC15, CHK-B24
+    got = read_session(_journal(tmp_path / "s", rows))
+    assert got is not None and [c["target"] for c in got] == want
+
+
+def test_a_tool_line_dropped_before_a_wake_up_leaves_no_record(tmp_path: Path) -> None:  # CHK-AC17, CHK-B25
+    folder = _journal(tmp_path / "s", [("start", "a"), ("call", "1"), ("start", "a"), ("call", "2")])
+    journal = folder / "activity.jsonl"
+    first, *rest = journal.read_text(encoding="utf-8").splitlines()
+    dropped = json.dumps({"ev": "truncated", "dropped": {"tool_started": 1}})
+    journal.write_text("\n".join([first, dropped, *rest]) + "\n", encoding="utf-8")
+    assert read_session(folder) is None
 
 
 def _scan(root: Path, planted: str) -> set[str]:
