@@ -336,9 +336,6 @@
       "produces": [
         "findings"
       ],
-      "reads": [
-        "findings"
-      ],
       "gate": {
         "check": true,
         "judge": true

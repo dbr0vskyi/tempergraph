@@ -73,6 +73,7 @@
     "outcome-unverified-blocker|expand|ts-exp-design|outcome.json",
     "outcome-unverified-blocker|outcome|ts-accepted|outcome.json",
     "outcome-unverified-blocker|outcome|ts-spec-sync|outcome.json",
+    "outcome-unverified-blocker|independent_review|ts-rev-blockers|outcome.json",
     "outcome-unverified-blocker|phase|ts-phs-change|outcome.json",
     "outcome-unverified-blocker|phase|ts-phs-scope|outcome.json",
     "outcome-unverified-blocker|plan|ts-plan-spec|outcome.json",
