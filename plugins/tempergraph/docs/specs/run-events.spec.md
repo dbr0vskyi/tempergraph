@@ -2,7 +2,7 @@
 
 ## Purpose
 
-What the engine writes and emits while a run is live, so an observer (the `tempergraph-monitor` mod, an exporter, a tracker plugin, a script) can follow it without reading the checkpoint and without changing it: the observer record kinds added to the run log, the per-session activity journal, and the ways to subscribe (the `events` verb, the in-process observer interface and the widened lifecycle hook events). Everything here is best effort and never changes a run or its exit code (OVR-B4, owned by [OBS](observability-and-cost.spec.md)). The record kinds of [OBS](observability-and-cost.spec.md) stay where they are; this spec adds kinds and fields, never renames. Observers read append-only files and read-only verbs, with no socket and no daemon ([ADR `observers-read-files-not-sockets`](../adr/observers-read-files-not-sockets.adr.md)); shell commands stay local and scrubbed ([ADR `local-activity-journal-with-tool-input-summaries`](../adr/local-activity-journal-with-tool-input-summaries.adr.md)); observers and hook events follow [ADR `in-process-observers-and-wider-hook-events`](../adr/in-process-observers-and-wider-hook-events.adr.md). The monitor, exporters, central stats, tracker plugins and the detail document depend on these records ([research `observer-needs-against-engine-documents`](../research/observer-needs-against-engine-documents.rsrch.md)).
+What the engine writes and emits while a run is live, so an observer (the `tempergraph-monitor` mod, an exporter, a tracker plugin, a script) can follow it without reading the checkpoint and without changing it: the observer record kinds added to the run log, the per-session activity journal, and the ways to subscribe (the `events` verb, the in-process observer interface and the widened lifecycle hook events). Everything here is best effort and never changes a run or its exit code (OVR-B4). The record kinds of [OBS](observability-and-cost.spec.md) stay where they are; this spec adds kinds and fields, never renames. Observers read append-only files and read-only verbs, with no socket and no daemon ([ADR `observers-read-files-not-sockets`](../adr/observers-read-files-not-sockets.adr.md)); shell commands stay local and scrubbed ([ADR `local-activity-journal-with-tool-input-summaries`](../adr/local-activity-journal-with-tool-input-summaries.adr.md)); observers and hook events follow [ADR `in-process-observers-and-wider-hook-events`](../adr/in-process-observers-and-wider-hook-events.adr.md). The monitor, exporters, central stats, tracker plugins and the detail document depend on these records ([research `observer-needs-against-engine-documents`](../research/observer-needs-against-engine-documents.rsrch.md)).
 
 ## Depends on
 
@@ -40,6 +40,10 @@ What the engine writes and emits while a run is live, so an observer (the `tempe
 - `telemetry-export.spec.md`: telemetry export
 - `version-metadata.spec.md`: version metadata of the engine and of workflows
 - `worktree-mode.spec.md`: worktree mode
+
+## Does not own
+
+- The rule that observability never changes a run or its exit code (OVR-B4): `observability-and-cost.spec.md`
 
 ## Behaviours
 

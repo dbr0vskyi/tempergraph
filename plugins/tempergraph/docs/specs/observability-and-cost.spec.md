@@ -2,7 +2,7 @@
 
 ## Purpose
 
-What a run leaves behind so a person or a later analysis can see what it did, what it cost and where the time went, without changing the run. This spec owns two of the overview's contracts, that every model call is an executor run logged with its usage and that observability never changes a run or its exit code ([OVR](overview.spec.md)), and the cost rules that make four executors with different cost reporting comparable. The record envelope and observer record kinds are owned by [EVT](run-events.spec.md), where session logs live by [LOS](local-observability-store.spec.md), and export by [CST](central-run-stats.spec.md) and [TEL](telemetry-export.spec.md); design notes and the release 1 build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
+What a run leaves behind so a person or a later analysis can see what it did, what it cost and where the time went, without changing the run. This spec owns two of the overview's contracts, that every model call is an executor run logged with its usage and that observability never changes a run or its exit code ([OVR](overview.spec.md)), and the cost rules that make four executors with different cost reporting comparable. Design notes and the release 1 build notes are in [research `rationale-carried-from-the-engine-specs`](../research/rationale-carried-from-the-engine-specs.rsrch.md).
 
 ## Depends on
 
@@ -23,6 +23,13 @@ What a run leaves behind so a person or a later analysis can see what it did, wh
 - `supervision-cost.spec.md`: supervision cost
 - `supervision-metrics.spec.md`: supervision metrics
 - `workflow-lessons.spec.md`: workflow lessons
+
+## Does not own
+
+- The record envelope and the observer record kinds: `run-events.spec.md`
+- Where session logs live: `local-observability-store.spec.md`
+- Export of run rows to a shared sink: `central-run-stats.spec.md`
+- Export of telemetry: `telemetry-export.spec.md`
 
 ## Behaviours
 

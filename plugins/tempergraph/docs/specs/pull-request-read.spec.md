@@ -2,13 +2,17 @@
 
 ## Purpose
 
-Split from [run outcome](run-outcome.spec.md) by capability, keeping its ids: how the loop reads the pull request that a run recorded ([FIN-B11](finalizer-contract.spec.md)) into entries of the run's `later[]` ([OUT-B18](run-outcome.spec.md)), which hold counts and kinds of what a person did there and never text. A person who reviews a delivered pull request finds what every gate let through, and these entries are how the improvement loop hears them: [OUT-B26](run-outcome.spec.md) counts the escapes they show and [SIL-B33](self-improvement.spec.md) records a finding for the units that wrote the files a person changed. The state of a proposal's pull request is read by [PRP-B26](improvement-proposals.spec.md), which this spec does not own. Review text stays in the run's local evidence ([FBK-B15](feedback-and-judge-reliability.spec.md)). Workflow owners, the engine's maintainers and whoever reads the escape rate depend on it.
+Split from [run outcome](run-outcome.spec.md) by capability, keeping its ids: how the loop reads the pull request that a run recorded ([FIN-B11](finalizer-contract.spec.md)) into entries of the run's `later[]` ([OUT-B18](run-outcome.spec.md)), which hold counts and kinds of what a person did there and never text. A person who reviews a delivered pull request finds what every gate let through, and these entries are how the improvement loop hears them: [OUT-B26](run-outcome.spec.md) counts the escapes they show and [SIL-B33](self-improvement.spec.md) records a finding for the units that wrote the files a person changed. Review text stays in the run's local evidence ([FBK-B15](feedback-and-judge-reliability.spec.md)). Workflow owners, the engine's maintainers and whoever reads the escape rate depend on it.
 
 ## Depends on
 
 - `finalizer-contract.spec.md`: a pull request the finalizer publishes is recorded (FIN-B11)
 - `improvement-proposals.spec.md`: a proposal's pull request state is read from the code host (PRP-B26); a pull request that cannot be read leaves its proposal as it was (PRP-B28)
 - `self-improvement.spec.md`: an escape is a finding on the units that wrote the changed files (SIL-B33)
+
+## Does not own
+
+- Reading the state of a proposal's pull request (PRP-B26): `improvement-proposals.spec.md`
 
 ## Behaviours
 

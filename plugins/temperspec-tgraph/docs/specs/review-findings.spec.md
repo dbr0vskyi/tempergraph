@@ -2,7 +2,12 @@
 
 ## Purpose
 
-The document in which the review's reader states what it found, the model-free check that refuses an incomplete finding, and the record that a trip back adds to the document. The document lists numbered findings, each naming a file and a line and marked blocking or not blocking, so that the step the run goes back to, the owner and the pull request's description each read a finding in one way. [Independent review](independent-review.spec.md) owns when the review runs, what the reader is given and what a blocking finding does; [pull request description](pull-request-description.spec.md) owns what the description lists of the findings. The record of a visit's result is one for the whole visit: the engine's blocker that every point of a visit's reason is addressed ([RRN-B14](../../../tempergraph/docs/specs/reruns-and-feedback.spec.md)) gives none for a single point, as [the decision on independence](../adr/review-independence-is-held-by-inputs-and-the-session-record.adr.md) records. The owner who reads a run's pull request and the maintainers of the workflow depend on it. Part of the [overview](overview.spec.md).
+The document in which the review's reader states what it found, the model-free check that refuses an incomplete finding, and the record that a trip back adds to the document. The document lists numbered findings, each naming a file and a line and marked blocking or not blocking, so that the step the run goes back to, the owner and the pull request's description each read a finding in one way. The record of a visit's result is one for the whole visit: the engine's blocker that every point of a visit's reason is addressed ([RRN-B14](../../../tempergraph/docs/specs/reruns-and-feedback.spec.md)) gives none for a single point, as [the decision on independence](../adr/review-independence-is-held-by-inputs-and-the-session-record.adr.md) records. The owner who reads a run's pull request and the maintainers of the workflow depend on it. Part of the [overview](overview.spec.md).
+
+## Does not own
+
+- When the review runs, what the reader is given and what a blocking finding does: `independent-review.spec.md`
+- What the pull request's description lists of the findings: `pull-request-description.spec.md`
 
 ## Behaviours
 
