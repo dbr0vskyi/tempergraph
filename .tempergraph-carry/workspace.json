@@ -1,0 +1,6 @@
+{
+  "mode": "worktree",
+  "branch": "fix/issue-191-session-wakeup",
+  "base_commit": null,
+  "root_kind": "sibling"
+}

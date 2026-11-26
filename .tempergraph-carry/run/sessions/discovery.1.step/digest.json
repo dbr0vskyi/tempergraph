@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "session_key": "discovery.1.step",
+  "kind": "step",
+  "unit": "discovery",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 315,
+  "peak_context": 424914,
+  "turns_over_200k": 205,
+  "tokens_before_first_write": 274493,
+  "files_reread": 32,
+  "tools": {
+    "Read": {
+      "capability": "read",
+      "calls": 73,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 8.067
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 7,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.816
+    },
+    "Grep": {
+      "capability": "search",
+      "calls": 95,
+      "failures": 1,
+      "refused": 0,
+      "duration_s": 8.249
+    },
+    "Edit": {
+      "capability": "edit",
+      "calls": 24,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.372
+    },
+    "Write": {
+      "capability": "write",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.035
+    }
+  },
+  "declared_unused": [
+    "web_fetch",
+    "web_search"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [
+    {
+      "tool": "Read",
+      "target": "1561e703fca8a753",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 22,
+      "last_turn": 24
+    },
+    {
+      "tool": "Read",
+      "target": "12f771af407744b7",
+      "error_class": null,
+      "count": 4,
+      "first_turn": 39,
+      "last_turn": 44
+    },
+    {
+      "tool": "Edit",
+      "target": "c1d005d00fb66a27",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 171,
+      "last_turn": 173
+    },
+    {
+      "tool": "Edit",
+      "target": "c1d005d00fb66a27",
+      "error_class": null,
+      "count": 4,
+      "first_turn": 203,
+      "last_turn": 206
+    }
+  ],
+  "idle_spans": [
+    {
+      "first_turn": 3,
+      "last_turn": 155,
+      "minutes": 12.4,
+      "tokens": 727
+    }
+  ],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [],
+  "_wrote": [
+    "366e50711638cd4c",
+    "3a4d65d1d23e3790",
+    "3e6a2bab591b41d3",
+    "4442ef8323afd74b",
+    "81a2be8c7185d8e6",
+    "bf87cc58b3255d14",
+    "eca9c79f717b4ffb"
+  ]
+}

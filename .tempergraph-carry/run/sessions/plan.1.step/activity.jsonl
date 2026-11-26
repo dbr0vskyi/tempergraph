@@ -1,0 +1,113 @@
+{"t": 2.7, "n": 1, "ev": "session_started", "session_id": "be37b4b9-8e96-4958-8fa2-5e6c0bad461f", "model": "claude-sonnet-5-5", "tools": ["Edit", "Glob", "Grep", "Read", "Write"], "cli_version": "2.1.332", "mcp_server_errors": 0, "plugin_errors": 0}
+{"t": 3.785, "n": 2, "ev": "text", "last_line": "I'll start with the rule files, the triage note and the task."}
+{"t": 4.19, "n": 3, "ev": "tool_started", "name": "Read", "call_id": "toolu_016DYX4T4pVyH74NnrqmnF2A", "capability": "read", "subagent": false, "input_summary": ".claude/rules/temperspec/plan.rule.md"}
+{"t": 4.282, "n": 4, "ev": "tool_finished", "call_id": "toolu_016DYX4T4pVyH74NnrqmnF2A", "ok": true, "duration_s": 0.092}
+{"t": 4.58, "n": 5, "ev": "tool_started", "name": "Read", "call_id": "toolu_013T41dfYUgoGfWyq4ZApHmk", "capability": "read", "subagent": false, "input_summary": ".claude/rules/temperspec/documents.rule.md"}
+{"t": 4.64, "n": 6, "ev": "tool_finished", "call_id": "toolu_013T41dfYUgoGfWyq4ZApHmk", "ok": true, "duration_s": 0.061}
+{"t": 4.979, "n": 7, "ev": "tool_started", "name": "Read", "call_id": "toolu_01AqcQmprMfKfqUMWGi5U3dV", "capability": "read", "subagent": false, "input_summary": "docs/tasks/i153.triage.md"}
+{"t": 5.03, "n": 8, "ev": "tool_finished", "call_id": "toolu_01AqcQmprMfKfqUMWGi5U3dV", "ok": true, "duration_s": 0.052}
+{"t": 5.154, "n": 9, "ev": "tool_started", "name": "Glob", "call_id": "toolu_01DDRsyvxixPw1ovXYVVCS17", "capability": "list", "subagent": false, "input_summary": "**/i153*"}
+{"t": 5.267, "n": 10, "ev": "tool_finished", "call_id": "toolu_01DDRsyvxixPw1ovXYVVCS17", "ok": true, "duration_s": 0.114}
+{"t": 6.634, "n": 11, "ev": "tool_started", "name": "Read", "call_id": "toolu_019L93Kd9nsq2MXvDjQeXc4J", "capability": "read", "subagent": false, "input_summary": "docs/tasks/i153.handoff.md"}
+{"t": 6.663, "n": 12, "ev": "tool_finished", "call_id": "toolu_019L93Kd9nsq2MXvDjQeXc4J", "ok": true, "duration_s": 0.029}
+{"t": 6.969, "n": 13, "ev": "tool_started", "name": "Read", "call_id": "toolu_01Vj7LXywGy2t9BKEE7yFEAU", "capability": "read", "subagent": false, "input_summary": "batch-queue/tasks/i153.md"}
+{"t": 7.051, "n": 14, "ev": "tool_finished", "call_id": "toolu_01Vj7LXywGy2t9BKEE7yFEAU", "ok": true, "duration_s": 0.082}
+{"t": 8.495, "n": 15, "ev": "text", "last_line": "Next I'll read the new spec behaviours the hand-off names."}
+{"t": 9.331, "n": 16, "ev": "tool_started", "name": "Grep", "call_id": "toolu_019ZRkmhL9hwDrN4ZsZ67y4s", "capability": "search", "subagent": false, "input_summary": "BUD-B17|BUD-AC15"}
+{"t": 9.412, "n": 17, "ev": "tool_finished", "call_id": "toolu_019ZRkmhL9hwDrN4ZsZ67y4s", "ok": true, "duration_s": 0.081}
+{"n": 19, "ev": "resources", "t": 19588.725, "cpu_s": 2.0, "processes": 1, "rss_peak_kb": 227664}
+{"t": 10.134, "n": 19, "ev": "tool_started", "name": "Grep", "call_id": "toolu_016pzj12kiXLFrJKS8FYpjBK", "capability": "search", "subagent": false, "input_summary": "HUM-B14|HUM-AC10"}
+{"t": 10.221, "n": 20, "ev": "tool_finished", "call_id": "toolu_016pzj12kiXLFrJKS8FYpjBK", "ok": true, "duration_s": 0.087}
+{"t": 10.866, "n": 21, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01T3qAAmx9S4Wu87PNoq9PrZ", "capability": "search", "subagent": false, "input_summary": "JDG-B14|JDG-AC9"}
+{"t": 10.926, "n": 22, "ev": "tool_finished", "call_id": "toolu_01T3qAAmx9S4Wu87PNoq9PrZ", "ok": true, "duration_s": 0.061}
+{"t": 12.749, "n": 23, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01SxmMMXPoyY7gCToNvDxpZd", "capability": "search", "subagent": false, "input_summary": "DUR-B12|DUR-B13|DUR-AC10|DUR-AC11|DUR-B11"}
+{"t": 12.786, "n": 24, "ev": "tool_finished", "call_id": "toolu_01SxmMMXPoyY7gCToNvDxpZd", "ok": true, "duration_s": 0.038}
+{"t": 13.684, "n": 25, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01NtNbNJrSGUXaF8gKv2wTKt", "capability": "search", "subagent": false, "input_summary": "EVT-B26|EVT-B27|EVT-AC9|EVT-AC10"}
+{"t": 13.727, "n": 26, "ev": "tool_finished", "call_id": "toolu_01NtNbNJrSGUXaF8gKv2wTKt", "ok": true, "duration_s": 0.042}
+{"t": 14.479, "n": 27, "ev": "tool_started", "name": "Grep", "call_id": "toolu_015YNsBLHjN1tbo3DuecrPf1", "capability": "search", "subagent": false, "input_summary": "RDD-B21|RDD-AC11"}
+{"t": 14.545, "n": 28, "ev": "tool_finished", "call_id": "toolu_015YNsBLHjN1tbo3DuecrPf1", "ok": true, "duration_s": 0.066}
+{"t": 15.598, "n": 29, "ev": "text", "last_line": "Now the code, starting with `nodes.py`."}
+{"t": 16.393, "n": 30, "ev": "tool_started", "name": "Read", "call_id": "toolu_013qEeumLrcVszEujncEYq4T", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/run/nodes.py"}
+{"t": 16.444, "n": 31, "ev": "tool_finished", "call_id": "toolu_013qEeumLrcVszEujncEYq4T", "ok": true, "duration_s": 0.051}
+{"t": 17.099, "n": 32, "ev": "tool_started", "name": "Read", "call_id": "toolu_01G81DhfCLVcmKJ8KTrDNrj4", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/run/nodes.py"}
+{"t": 17.164, "n": 33, "ev": "tool_finished", "call_id": "toolu_01G81DhfCLVcmKJ8KTrDNrj4", "ok": true, "duration_s": 0.064}
+{"t": 19.036, "n": 34, "ev": "tool_started", "name": "Read", "call_id": "toolu_01JrgsrkUkDDD7zHL8QxUpsS", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/run/nodes.py"}
+{"t": 19.097, "n": 35, "ev": "tool_finished", "call_id": "toolu_01JrgsrkUkDDD7zHL8QxUpsS", "ok": true, "duration_s": 0.061}
+{"n": 37, "ev": "resources", "t": 19598.735, "cpu_s": 4.0, "processes": 1, "rss_peak_kb": 234944}
+{"t": 22.094, "n": 37, "ev": "tool_started", "name": "Read", "call_id": "toolu_01QK6PHHcK7dNsKyZSecVyKy", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/run/nodes.py"}
+{"t": 22.149, "n": 38, "ev": "tool_finished", "call_id": "toolu_01QK6PHHcK7dNsKyZSecVyKy", "ok": true, "duration_s": 0.054}
+{"t": 23.161, "n": 39, "ev": "tool_started", "name": "Read", "call_id": "toolu_01XR6LtFiwADAnkzokaKocHv", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/run/gate.py"}
+{"t": 23.214, "n": 40, "ev": "tool_finished", "call_id": "toolu_01XR6LtFiwADAnkzokaKocHv", "ok": true, "duration_s": 0.052}
+{"t": 24.164, "n": 41, "ev": "tool_started", "name": "Read", "call_id": "toolu_01LNP6PvxuWHshoNFrpBG5W7", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/run/gate.py"}
+{"t": 24.287, "n": 42, "ev": "tool_finished", "call_id": "toolu_01LNP6PvxuWHshoNFrpBG5W7", "ok": true, "duration_s": 0.123}
+{"t": 26.704, "n": 43, "ev": "tool_started", "name": "Read", "call_id": "toolu_016EySxeMmpqjBk3bbgrqzFC", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/run/runner.py"}
+{"t": 26.749, "n": 44, "ev": "tool_finished", "call_id": "toolu_016EySxeMmpqjBk3bbgrqzFC", "ok": true, "duration_s": 0.046}
+{"t": 27.771, "n": 45, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01YDJHf85rEynsNhBM2MCgfT", "capability": "search", "subagent": false, "input_summary": "def gate\\b|def human\\b|interrupt\\(|def judge\\b"}
+{"t": 27.843, "n": 46, "ev": "tool_finished", "call_id": "toolu_01YDJHf85rEynsNhBM2MCgfT", "ok": true, "duration_s": 0.072}
+{"t": 29.601, "n": 47, "ev": "tool_started", "name": "Read", "call_id": "toolu_01LGHAXfA2bEbiYYAitEyZGH", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/run/nodes.py"}
+{"t": 29.632, "n": 48, "ev": "tool_finished", "call_id": "toolu_01LGHAXfA2bEbiYYAitEyZGH", "ok": true, "duration_s": 0.031}
+{"n": 50, "ev": "resources", "t": 19608.744, "cpu_s": 4.0, "processes": 1, "rss_peak_kb": 237024}
+{"t": 30.59, "n": 50, "ev": "tool_started", "name": "Read", "call_id": "toolu_01QtNg5TqXGJXTXHtnaP6K6y", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/run/gate.py"}
+{"t": 30.654, "n": 51, "ev": "tool_finished", "call_id": "toolu_01QtNg5TqXGJXTXHtnaP6K6y", "ok": true, "duration_s": 0.064}
+{"n": 53, "ev": "resources", "t": 19618.757, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 238176}
+{"t": 45.896, "n": 53, "ev": "tool_started", "name": "Read", "call_id": "toolu_01Eed6VPaskGu3VTaHpjxNT9", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/run/nodes.py"}
+{"t": 45.933, "n": 54, "ev": "tool_finished", "call_id": "toolu_01Eed6VPaskGu3VTaHpjxNT9", "ok": true, "duration_s": 0.037}
+{"t": 46.996, "n": 55, "ev": "tool_started", "name": "Read", "call_id": "toolu_01YKW9t9UAuheMzFti6ozgH3", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/model/flow.py"}
+{"t": 47.017, "n": 56, "ev": "tool_finished", "call_id": "toolu_01YKW9t9UAuheMzFti6ozgH3", "ok": true, "duration_s": 0.02}
+{"t": 48.067, "n": 57, "ev": "tool_started", "name": "Read", "call_id": "toolu_01FtPozPLPFrz8YsuirinYQ6", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/model/flow.py"}
+{"t": 48.108, "n": 58, "ev": "tool_finished", "call_id": "toolu_01FtPozPLPFrz8YsuirinYQ6", "ok": true, "duration_s": 0.041}
+{"n": 60, "ev": "resources", "t": 19628.765, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 238752}
+{"t": 50.389, "n": 60, "ev": "text", "last_line": "I've read the specs and most of the step, gate and judge code. Next I'm checking the graph wiring, the status row, the detail block and the `attempts` reducer. Then I'll write the plan."}
+{"t": 51.923, "n": 61, "ev": "tool_started", "name": "Grep", "call_id": "toolu_014NCuN1qu2peiXLrztfA9yg", "capability": "search", "subagent": false, "input_summary": "human_targets|node_names\\(|def _merge_attempts|\"attempts\""}
+{"t": 51.951, "n": 62, "ev": "tool_finished", "call_id": "toolu_014NCuN1qu2peiXLrztfA9yg", "ok": true, "duration_s": 0.028}
+{"t": 52.986, "n": 63, "ev": "tool_started", "name": "Read", "call_id": "toolu_014CXVae9Eh7JpzPeFBQ8enF", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/durability/status.py"}
+{"t": 53.004, "n": 64, "ev": "tool_finished", "call_id": "toolu_014CXVae9Eh7JpzPeFBQ8enF", "ok": true, "duration_s": 0.019}
+{"t": 54.052, "n": 65, "ev": "tool_started", "name": "Read", "call_id": "toolu_01R3NwUX2msiUJPLhfpLGdut", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/observe/detail.py"}
+{"t": 54.085, "n": 66, "ev": "tool_finished", "call_id": "toolu_01R3NwUX2msiUJPLhfpLGdut", "ok": true, "duration_s": 0.033}
+{"t": 56.116, "n": 67, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01AW9CMPMrBSuPy8Vk3eRpqG", "capability": "search", "subagent": false, "input_summary": "human_targets|add_conditional_edges|path_map"}
+{"t": 56.16, "n": 68, "ev": "tool_finished", "call_id": "toolu_01AW9CMPMrBSuPy8Vk3eRpqG", "ok": true, "duration_s": 0.044}
+{"t": 57.082, "n": 69, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01DvPRHtrwysaDFWbVHNdLCY", "capability": "search", "subagent": false, "input_summary": "usage_limit|usage limit"}
+{"t": 57.131, "n": 70, "ev": "tool_finished", "call_id": "toolu_01DvPRHtrwysaDFWbVHNdLCY", "ok": true, "duration_s": 0.049}
+{"t": 59.582, "n": 71, "ev": "tool_started", "name": "Grep", "call_id": "toolu_011kiJVpweQjeXXPwmyHLZrm", "capability": "search", "subagent": false, "input_summary": "human_targets|\\.human.*\\.judge|diagram"}
+{"t": 59.625, "n": 72, "ev": "tool_finished", "call_id": "toolu_011kiJVpweQjeXXPwmyHLZrm", "ok": true, "duration_s": 0.043}
+{"n": 74, "ev": "resources", "t": 19638.775, "cpu_s": 6.0, "processes": 1, "rss_peak_kb": 247888}
+{"t": 60.613, "n": 74, "ev": "tool_started", "name": "Read", "call_id": "toolu_0119Gn3uKjxVmLqXE385GtEJ", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/run/council_run.py"}
+{"t": 60.641, "n": 75, "ev": "tool_finished", "call_id": "toolu_0119Gn3uKjxVmLqXE385GtEJ", "ok": true, "duration_s": 0.028}
+{"t": 61.546, "n": 76, "ev": "tool_started", "name": "Read", "call_id": "toolu_01SCmrBTsCXCgK1BA2jEJyHC", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_stop_at_pause.py"}
+{"t": 61.577, "n": 77, "ev": "tool_finished", "call_id": "toolu_01SCmrBTsCXCgK1BA2jEJyHC", "ok": true, "duration_s": 0.031}
+{"t": 64.171, "n": 78, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01MTQ4b9QKdaifyQnzom9YCu", "capability": "search", "subagent": false, "input_summary": "attempts"}
+{"t": 64.189, "n": 79, "ev": "tool_finished", "call_id": "toolu_01MTQ4b9QKdaifyQnzom9YCu", "ok": false, "duration_s": 0.018}
+{"t": 65.206, "n": 80, "ev": "tool_started", "name": "Read", "call_id": "toolu_01V9PWtaZMmiq2KU9DmN4qiv", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/tests/test_run.py"}
+{"t": 65.231, "n": 81, "ev": "tool_finished", "call_id": "toolu_01V9PWtaZMmiq2KU9DmN4qiv", "ok": true, "duration_s": 0.025}
+{"t": 66.194, "n": 82, "ev": "tool_started", "name": "Read", "call_id": "toolu_01PUEvxRByPxKM7edJa36bY8", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/executors/standins.py"}
+{"t": 66.239, "n": 83, "ev": "tool_finished", "call_id": "toolu_01PUEvxRByPxKM7edJa36bY8", "ok": true, "duration_s": 0.045}
+{"n": 85, "ev": "resources", "t": 19648.784, "cpu_s": 6.0, "processes": 1, "rss_peak_kb": 264880}
+{"t": 73.091, "n": 85, "ev": "tool_started", "name": "Grep", "call_id": "toolu_012W5RKT4MutymHsjh6aJZtx", "capability": "search", "subagent": false, "input_summary": "^def intervention"}
+{"t": 73.118, "n": 86, "ev": "tool_finished", "call_id": "toolu_012W5RKT4MutymHsjh6aJZtx", "ok": true, "duration_s": 0.027}
+{"t": 74.028, "n": 87, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01FoeZMz141gGMQpBKf9qawd", "capability": "search", "subagent": false, "input_summary": "state is ThreadState.PAUSED|ThreadState.PAUSED"}
+{"t": 74.065, "n": 88, "ev": "tool_finished", "call_id": "toolu_01FoeZMz141gGMQpBKf9qawd", "ok": true, "duration_s": 0.037}
+{"n": 90, "ev": "resources", "t": 19658.792, "cpu_s": 6.0, "processes": 1, "rss_peak_kb": 264880}
+{"n": 91, "ev": "resources", "t": 19668.8, "cpu_s": 6.0, "processes": 1, "rss_peak_kb": 264880}
+{"t": 99.934, "n": 91, "ev": "tool_started", "name": "Read", "call_id": "toolu_01XGHeYQYfKdDLsvdLUShwwg", "capability": "read", "subagent": false, "input_summary": "plugins/tempergraph/engine/src/tempergraph/compiler/graph.py"}
+{"t": 100.0, "n": 92, "ev": "tool_finished", "call_id": "toolu_01XGHeYQYfKdDLsvdLUShwwg", "ok": true, "duration_s": 0.066}
+{"n": 94, "ev": "resources", "t": 19678.814, "cpu_s": 7.0, "processes": 1, "rss_peak_kb": 264880}
+{"t": 101.066, "n": 94, "ev": "tool_started", "name": "Grep", "call_id": "toolu_014XxYp39mMJ16NPMnfz6C6i", "capability": "search", "subagent": false, "input_summary": "human_targets|\\.human"}
+{"t": 101.127, "n": 95, "ev": "tool_finished", "call_id": "toolu_014XxYp39mMJ16NPMnfz6C6i", "ok": true, "duration_s": 0.061}
+{"t": 104.453, "n": 96, "ev": "text", "last_line": "I'm checking which commands the repository declares for verification, then I'll write the plan."}
+{"t": 104.696, "n": 97, "ev": "tool_started", "name": "Glob", "call_id": "toolu_01JJAhdneqAaVkots8vmH5Mg", "capability": "list", "subagent": false, "input_summary": "**/tempergraph.commands.json"}
+{"t": 104.776, "n": 98, "ev": "tool_finished", "call_id": "toolu_01JJAhdneqAaVkots8vmH5Mg", "ok": true, "duration_s": 0.079}
+{"t": 105.917, "n": 99, "ev": "tool_started", "name": "Read", "call_id": "toolu_01Eh3nDbpBdDsq9PBVoxqjPj", "capability": "read", "subagent": false, "input_summary": "tempergraph.commands.json"}
+{"t": 105.95, "n": 100, "ev": "tool_finished", "call_id": "toolu_01Eh3nDbpBdDsq9PBVoxqjPj", "ok": true, "duration_s": 0.033}
+{"n": 102, "ev": "resources", "t": 19688.826, "cpu_s": 7.0, "processes": 1, "rss_peak_kb": 264880}
+{"t": 113.252, "n": 102, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01VWFfa4igy6gt7Frjx4sQHD", "capability": "search", "subagent": false, "input_summary": "Weight:|heavy \\(|\"light\"|\"medium\""}
+{"t": 113.295, "n": 103, "ev": "tool_finished", "call_id": "toolu_01VWFfa4igy6gt7Frjx4sQHD", "ok": true, "duration_s": 0.043}
+{"t": 115.659, "n": 104, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01LBBpUtdkyyzAvzyanHHGmD", "capability": "search", "subagent": false, "input_summary": "[Ww]eight"}
+{"t": 115.689, "n": 105, "ev": "tool_finished", "call_id": "toolu_01LBBpUtdkyyzAvzyanHHGmD", "ok": true, "duration_s": 0.03}
+{"t": 117.581, "n": 106, "ev": "text", "last_line": "Now I'll write the plan. It is `complex`, so it carries phases, goals and weights, and the expand step adds the rows."}
+{"n": 108, "ev": "resources", "t": 19698.837, "cpu_s": 7.0, "processes": 1, "rss_peak_kb": 264880}
+{"n": 109, "ev": "resources", "t": 19708.865, "cpu_s": 8.0, "processes": 1, "rss_peak_kb": 264880}
+{"t": 138.82, "n": 109, "ev": "tool_started", "name": "Write", "call_id": "toolu_0183woG5TH9Ysb5vAE8YwvLn", "capability": "write", "subagent": false, "input_summary": "docs/plans/i153.plan.md"}
+{"t": 138.881, "n": 110, "ev": "tool_finished", "call_id": "toolu_0183woG5TH9Ysb5vAE8YwvLn", "ok": true, "duration_s": 0.061}
+{"n": 112, "ev": "resources", "t": 19718.88, "cpu_s": 8.0, "processes": 1, "rss_peak_kb": 264880}
+{"t": 147.42, "n": 112, "ev": "text", "last_line": "ARTIFACT complexity: complex"}
+{"t": 147.793, "n": 113, "ev": "result", "ok": true, "text": "I wrote the plan to `docs/plans/i153.plan.md`, with status `planned` and complexity `complex`. It holds sections 0, 1, 2 and 4 plus the verification commands. It has no task rows and no proof table, because the expand step writes those for a complex plan.\n\n- **Why complex:** the plan has 5 phases, where a simple plan allows 3. One phase is marked `heavy (large-context)`. A simple plan would also need well over 12 rows and 10 files.\n- **Rules and reading:** I read `plan.rule.md` and `documents.rule.md`. I started from the hand-off's reading list. Beyond the list I opened `compiler/graph.py`, because a rerun of a refused judge needs an edge from `<unit>.human` to `<unit>.judge`. I also opened `tempergraph.commands.json` for the verification commands. Section 0 says both.\n- **Requirements:** R1 to R7 cover AC 1 to AC 8, each tied to the new spec ids (BUD-B17, HUM-B14, JDG-B14, DUR-B12 and DUR-B13, EVT-B26 and EVT-B27, RDD-B21).\n- **Phases:** the five phases are:\n  1. Read the refusal, log it, and spend nothing on it.\n  2. Judge side: no verdict from a refusal.\n  3. Pause payload, `pause` record, status row and detail block.\n  4. Plain resume that reruns the refused session under its attempt number.\n  5. Guide and pause walk-through.\n- **Open questions:** I took the hand-off's defaults. A plain resume writes an intervention row with an empty decision, and `proceed` stays accepted at a usage-limit pause.\n- **Note for expand:** adding the human-to-judge edge changes `human_targets`, which several tests and diagram readers use. The plan names those test files, and expand has to search them and give each one it would break a row.\n- **Verification:** the four commands run under `cd plugins/tempergraph/engine &&`: `python -m pytest tests/test_usage_limit.py`, `python -m pytest`, `ruff check src tests` and `mypy`. Each starts with a command declared in `tempergraph.commands.json`.\n- **Docs to update:** `plugins/tempergraph/docs/guides/running-workflows.guide.md` and `plugins/tempergraph/skills/run/references/pauses.md`. Both leave out a pause that a resume with no decision answers.\n\nI did not run git, and I changed no spec or code.\n\nARTIFACT plan: docs/plans/i153.plan.md\nARTIFACT complexity: complex", "subtype": "success", "is_error": false, "session_id": "be37b4b9-8e96-4958-8fa2-5e6c0bad461f"}

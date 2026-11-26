@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "unit": "discovery",
+  "visit": 1,
+  "attempt": 1,
+  "blockers": [
+    {
+      "criterion": "ts-dis-general",
+      "evidence": "PARTIAL: Behaviour sentences are general rules. But DUR-B12 scenario durability-and-resume.spec.md:33 copies the task fixture 'a retry budget of 2', and BUD-B17 line 89 ends with a reason clause 'the usage limit being its only cause'",
+      "fix": "Use an illustrative budget in the DUR-B12 scenario and drop the reason clause from BUD-B17"
+    }
+  ]
+}

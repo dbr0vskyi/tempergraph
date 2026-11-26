@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G4.1.step",
+  "kind": "step",
+  "unit": "read_gap",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 10,
+  "peak_context": 27820,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": null,
+  "files_reread": 0,
+  "tools": {
+    "Grep": {
+      "capability": "search",
+      "calls": 5,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 1.24
+    },
+    "Read": {
+      "capability": "read",
+      "calls": 2,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.42
+    }
+  },
+  "declared_unused": [
+    "list",
+    "web_fetch",
+    "web_search"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [],
+  "_wrote": []
+}

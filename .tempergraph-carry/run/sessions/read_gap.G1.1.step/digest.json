@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G1.1.step",
+  "kind": "step",
+  "unit": "read_gap",
+  "attempt": 1,
+  "executor": "claude",
+  "alias": "medium",
+  "model": "claude-sonnet-5-5",
+  "capture": "full",
+  "turns": 10,
+  "peak_context": 24654,
+  "turns_over_200k": 0,
+  "tokens_before_first_write": null,
+  "files_reread": 2,
+  "tools": {
+    "Grep": {
+      "capability": "search",
+      "calls": 3,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.802
+    },
+    "Glob": {
+      "capability": "list",
+      "calls": 1,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.317
+    },
+    "Read": {
+      "capability": "read",
+      "calls": 3,
+      "failures": 0,
+      "refused": 0,
+      "duration_s": 0.489
+    }
+  },
+  "declared_unused": [
+    "web_fetch",
+    "web_search"
+  ],
+  "undeclared_used": [],
+  "skills": [],
+  "subagents": {},
+  "repeats": [
+    {
+      "tool": "Read",
+      "target": "890f0491a49043e8",
+      "error_class": null,
+      "count": 3,
+      "first_turn": 6,
+      "last_turn": 9
+    }
+  ],
+  "idle_spans": [],
+  "shell_for_files": 0,
+  "cd_before_git": 0,
+  "outside_workspace": 0,
+  "end": {
+    "state": "ok"
+  },
+  "_commands": [],
+  "_wrote": []
+}
