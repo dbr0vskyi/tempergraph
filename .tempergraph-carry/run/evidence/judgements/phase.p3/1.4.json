@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "unit": "phase",
+  "visit": 1,
+  "attempt": 4,
+  "blockers": [
+    {
+      "criterion": "ts-phs-change",
+      "evidence": "PARTIAL: Row 3.5 is met: summary.py:181 has `out += [\"\", \"### Review findings that block nothing\", \"\"] + unblocking`. Row 3.6 is probably met: README.md:46 mentions the heading, but grep omitted the line, so I did not read it. Row 3.10 is met: overview.spec.md:27 has `- [independent_review](independent-review.spec.md): Read the change...`. I found no `independent_review` match in code-join.spec.m…",
+      "fix": "Refresh the digests, run author verify, and only then mark rows 3.7 and 3.8; otherwise unmark them."
+    },
+    {
+      "criterion": "ts-phs-scope",
+      "evidence": "PARTIAL: No plan row names the evals/calibration/independent_review/** case files: the plan has no 'calibration' match. The phase 2 note also says no calibration seed cases were made for ts-rev-blockers, yet the case files exist and changed. The diagram files, blueprint.json, routing.py and __init__.py are named by plan rows (lines 79-88, 101). The remaining changed files I could not match agains…",
+      "fix": "Add a plan row for the calibration cases, or remove them."
+    }
+  ]
+}
