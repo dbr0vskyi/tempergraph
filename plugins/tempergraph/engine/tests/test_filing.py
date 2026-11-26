@@ -174,6 +174,17 @@ def test_a_count_met_friction_finding_follows_dry_run_sides_and_dedup(tmp_path: 
     assert filing.file([d], host, box)[0]["op"] == "commented" and len(host.issues) == 1 and len(host.comments) == 1
 
 
+def test_a_filed_or_commented_result_names_the_repository_and_number(tmp_path: Path) -> None:  # FFD-AC5, ISS-AC11
+    d = decide(attributed(0.5, earlier=(True,)), seen("T-2", "T-3"), "team/notes", now=NOW)
+    host = MemoryCodeHost()
+    box = Outbox.at(tmp_path)
+    (filed,) = filing.file([d], host, box)
+    assert filed["op"] == "filed" and filed["repo"] == "team/notes"
+    (commented,) = filing.file([d], host, box)
+    assert commented["op"] == "commented" and commented["repo"] == "team/notes"
+    assert commented["number"] == host.issues[0]["number"] and isinstance(commented["number"], int)
+
+
 def test_dedup_retry_dry_run_and_outbox(tmp_path: Path) -> None:  # SIL-B2, B6, SIL-B19, SIL-B20, SIL-AC3
     host = MemoryCodeHost()
     box = Outbox.at(tmp_path)

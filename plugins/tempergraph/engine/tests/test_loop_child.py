@@ -38,6 +38,7 @@ def judge_says(fp_conf: float, attributed: bool = True) -> Any:
         fps = [ln.split("`")[1] for ln in req.prompt.splitlines() if ln.startswith("- `") and "cause" in ln]
         rows = [{"fingerprint": fp, "attributed": attributed, "confidence": fp_conf} for fp in fps]
         assert "Release 1.2 notes" not in req.prompt  # metadata only: no request text reaches the judge
+        assert "can file the finding by the count whatever its confidence" in req.prompt  # FFD-AC6
         assert req.alias == child.ALIAS and req.timeout_s == child.TIMEOUT_S
         return answer("```json\n" + json.dumps({"findings": rows}) + "\n```", session_id="loop")
     return reply
@@ -129,7 +130,7 @@ def test_low_confidence_or_unparsed_is_recorded(repo: Path, monkeypatch: pytest.
     blocked_run(repo, "L-3", monkeypatch)
     host = MemoryCodeHost()
     (out,) = child.drain(registry=registry(standin("claude", judges=[judge_says(0.4)])), host=lambda: host)
-    assert {r["reason"] for r in out["results"]} <= {"below_floor", "no_repository", "designed"} and not host.issues
+    assert {r["reason"] for r in out["results"]} <= {"below_count", "no_repository", "designed"} and not host.issues  # FFD-AC3
     blocked_run(repo, "L-4", monkeypatch)
     (out,) = child.drain(registry=registry(standin("claude", judges=[answer("no block")])), host=lambda: host)
     assert all(r["op"] == "recorded" for r in out["results"]) and not host.issues
@@ -230,10 +231,11 @@ def test_a_friction_finding_files_by_the_pattern_count(tmp_path: Path) -> None: 
     root = tmp_path / ".tempergraph"
     host = MemoryCodeHost()
     reg = registry(standin("claude", judges=[judge_says(0.5) for _ in range(4)]))
-    for n in (1, 2):  # two runs, each judged at 0.5: recorded, nothing filed
+    for n in (1, 2):  # two runs, each judged at 0.5: the count is not met, recorded, nothing filed (FFD-AC3)
         out = child.process(friction_ticket(root, n), reg, host)
-        assert [r["reason"] for r in out["results"]] == ["below_floor"] and not host.issues
-    out = child.process(friction_ticket(root, 3), reg, host)  # the third run, a third request: one issue
+        assert [r["reason"] for r in out["results"]] == ["below_count"] and not host.issues
+    # the third run: three attributed answers (FFD-AC1), a third request: one issue
+    out = child.process(friction_ticket(root, 3), reg, host)
     assert [r["op"] for r in out["results"]] == ["filed"] and len(host.issues) == 1
     evidence = host.issues[0]["body"].split("## Evidence\n", 1)[1].split("\n## ", 1)[0]
     assert "runs 3" in evidence and "requests 3" in evidence
@@ -248,7 +250,7 @@ def test_a_count_met_finding_files_nothing_without_an_attribution(tmp_path: Path
         return answer("```json\n" + json.dumps({"findings": rows}) + "\n```", session_id="loop")
 
     cases = {
-        "not_attributed": (judge_says(0.9, attributed=False), "below_floor"),
+        "not_attributed": (judge_says(0.9, attributed=False), "not_attributed"),
         "session_failed": (SessionResult(ok=False, usage=Usage(reported_cost_usd=0.01)), "not_judged"),
         "no_block": (answer("no block here"), "not_judged"),
         "left_out": (reply_for_another, "not_judged"),
@@ -262,6 +264,81 @@ def test_a_count_met_finding_files_nothing_without_an_attribution(tmp_path: Path
         assert [r["op"] for r in out["results"]] == ["recorded"], name
         assert [r["reason"] for r in out["results"]] == [reason], name
         assert not host.issues and not host.comments, name
+
+
+def earlier_judged(root: Path, n: int, attributed: bool, confidence: float = 0.5) -> None:
+    """The `loop_judged` record an earlier exit of run `demo/F-<n>` left for the fixture fingerprint."""
+    from tempergraph.improve import record
+
+    fp = record.fingerprint("workflow", "demo", "slow_step", "draft")
+    path = child.loop_log(root, "demo", f"F-{n}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    row = {"ts": datetime.now(UTC).isoformat(timespec="seconds"), "kind": "loop_judged", "lens": "friction",
+           "answers": [{"fingerprint": fp, "confidence": confidence, "attributed": attributed}]}
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(row) + "\n")
+
+
+def exit_three(root: Path, flags: dict[int, bool], confidence: float, reply: Any = None) -> tuple[dict[str, Any], MemoryCodeHost]:
+    """Runs F-1 and F-2 hold the fingerprint (and the answers of `flags`); the exit of F-3 is processed."""
+    host = MemoryCodeHost()
+    for n in (1, 2):
+        friction_ticket(root, n)
+    for n, flag in flags.items():
+        earlier_judged(root, n, flag)
+    reg = registry(standin("claude", judges=[reply or judge_says(confidence)]))
+    return child.process(friction_ticket(root, 3), reg, host), host
+
+
+def test_the_pattern_files_on_a_majority_of_recorded_answers(tmp_path: Path) -> None:  # FFD-AC1, SIL-AC36
+    out, host = exit_three(tmp_path / "a" / ".tempergraph", {1: True, 2: False}, 0.5)  # (true, false) + true
+    assert [r["op"] for r in out["results"]] == ["filed"] and len(host.issues) == 1
+    out, host = exit_three(tmp_path / "b" / ".tempergraph", {1: False}, 0.5)  # (false) + true: a tie
+    assert [r["reason"] for r in out["results"]] == ["not_attributed"] and not host.issues
+    out, host = exit_three(tmp_path / "c" / ".tempergraph", {}, 0.8)  # one answer at the floor or above
+    assert [r["op"] for r in out["results"]] == ["filed"] and len(host.issues) == 1
+
+
+def test_each_reason_of_a_finding_that_does_not_file_is_named_once(tmp_path: Path) -> None:  # FFD-AC2, FFD-AC3, SIL-AC35
+    failed = SessionResult(ok=False, usage=Usage(reported_cost_usd=0.01))
+    cases = {
+        "not_judged": ({}, 0.5, failed),
+        "not_attributed": ({}, 0.9, judge_says(0.9, attributed=False)),
+        "few_answers": ({}, 0.5, None),  # the count is met, one answer, below the floor
+        "below_count": (None, 0.5, None),  # the count is not met
+    }
+    for name, (flags, conf, reply) in cases.items():
+        root = tmp_path / name / ".tempergraph"
+        if flags is None:
+            out = child.process(friction_ticket(root, 1), registry(standin("claude", judges=[judge_says(conf)])),
+                                MemoryCodeHost())
+        else:
+            out, host = exit_three(root, flags, conf, reply)
+            assert not host.issues and not host.comments, name
+        assert [r["reason"] for r in out["results"]] == [name], name
+        assert "below_floor" not in child.loop_log(root, "demo", "F-3" if flags is not None else "F-1").read_text()
+
+
+def test_loop_result_holds_the_counts_and_filed_records_the_reason(tmp_path: Path) -> None:  # FFD-AC4, FFD-AC5
+    root = tmp_path / ".tempergraph"
+    host = MemoryCodeHost()
+    reg = registry(standin("claude", judges=[judge_says(0.5) for _ in range(4)]))
+    for n in (1, 2, 3, 4):
+        child.process(friction_ticket(root, n), reg, host)
+
+    def rows(n: int, kind: str) -> list[dict[str, Any]]:
+        return [r for r in loop_rows(root, f"F-{n}") if r["kind"] == kind]
+
+    (low,) = rows(2, "loop_result")
+    assert low["reason"] == "below_count" and (low["runs"], low["requests"], low["machines"]) == (2, 2, 1)
+    (filed,) = rows(3, "issue_filed")
+    assert filed["reason"] == "pattern_met" and "body" not in filed
+    (again,) = rows(4, "issue_commented")
+    assert again["reason"] == "pattern_met" and isinstance(again["number"], int) and again["repo"] == "team/notes"
+    assert "Release" not in child.loop_log(root, "demo", "F-4").read_text()
+    out, _ = exit_three(tmp_path / "nj" / ".tempergraph", {}, 0.5, SessionResult(ok=False, usage=Usage()))
+    (nj,) = [r for r in loop_rows(tmp_path / "nj" / ".tempergraph", "F-3") if r["kind"] == "loop_result"]
+    assert nj["reason"] == "not_judged" and not {"runs", "requests", "machines"} & set(nj)
 
 
 def test_loop_judged_holds_what_the_judge_answered_and_none_of_its_text(tmp_path: Path) -> None:  # SIL-AC38, AC 5

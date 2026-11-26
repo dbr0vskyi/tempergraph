@@ -50,6 +50,9 @@ request or the outputs. For each finding decide whether the fault really lies on
 you are (0 to 1). Say `attributed: false` when the records point elsewhere, for example a retry burst that
 follows an infrastructure failure, or a check failure that a person's ruling caused.
 
+An answer `attributed: true` can file the finding by the count whatever its confidence, so answer attribution
+on the records, not on how sure you are of the remedy.
+
 End with one fenced JSON block:
 ```json
 {"findings": [{"fingerprint": "<id>", "attributed": true, "confidence": 0.8}]}
@@ -369,6 +372,10 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     capped = left is not None and left <= 0
     if capped:
         append_jsonl(log, {"ts": now_iso(), "kind": "loop_skipped", "step": "judges", "reason": "daily_cap"})
+    try:  # FFD-B1: the answers recorded before this exit's own; a failed read gives none
+        earlier = filing.recorded_answers(root, wf)
+    except Exception:  # noqa: BLE001 - best effort (SIL-B1)
+        earlier = {}
     if (t.get("lenses") or {}).get("friction") and faults and not capped:
         ex = registry.get(str(t.get("executor") or "claude"))
         sdir = run_dir(root, wf, task) / "loop" / "sessions" / f"friction-{t.get('ticket_id')}"
@@ -425,6 +432,7 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
         j = judged.get(str(f.get("fingerprint")))
         cands.append(filing.Candidate(finding=f, lens="friction", confidence=j["confidence"] if j else None,
                                       attributed=bool(j and j["attributed"]), request_digest=f.get("request_digest"),
+                                      earlier_answers=earlier.get(str(f.get("fingerprint")), ()),
                                       issue_labels=t.get("issue_labels"), review_categories=categories, **context))
     for f, etask in escaped:  # SIL-B34: an escape finding files by the pattern rule, not by calibration
         cands.append(filing.Candidate(finding=f, lens="outcome", calibrated=False, request_digest=f.get("request_digest"),
@@ -437,9 +445,16 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
                    for d in decisions]
     else:
         results = filing.file(decisions, host, filing.Outbox.at(root), dry_run=bool(t.get("dry_run")))
+    by_fp = {str(d.candidate.finding.get("fingerprint")): d for d in decisions}
     for r in results:  # IMD-B21 loop events, ids and enums only
         kind = {"filed": "issue_filed", "commented": "issue_commented"}.get(str(r.get("op")), "loop_result")
-        append_jsonl(log, {"ts": now_iso(), "kind": kind, **r})
+        d = by_fp.get(str(r.get("fingerprint")))
+        extra: dict[str, Any] = {}
+        if d is not None and kind != "loop_result":  # FFD-B5: why the issue was filed or commented
+            extra["reason"] = d.reason
+        if d is not None and d.counted and kind == "loop_result":  # FFD-B4: the figures, as numbers
+            extra.update({k: int(v) for k, v in d.counted.items()})
+        append_jsonl(log, {"ts": now_iso(), "kind": kind, **extra, **r})
     acted: dict[str, Any] = {}
     try:  # PRP-B11: the loop's own proposal and trial, after its judges and within the day's room
         repeats = [str(f["fingerprint"]) for f in read_findings(root, wf, task)  # SRV-B28: the review's own findings

@@ -467,6 +467,7 @@ def file(decisions: Sequence[Decision], host: CodeHost, outbox: Outbox, *, dry_r
             results += [{"op": "queued", "fingerprint": fp} for fp in fps]
             continue
         op = "commented" if p["op"] == "comment" else "filed"
-        results.append({"op": op, "url": url, "fingerprint": fps[0], **({"note": note} if note else {})})
+        where = {"repo": repo, **({"number": int(p["number"])} if op == "commented" else {})}  # FFD-B5
+        results.append({"op": op, "url": url, "fingerprint": fps[0], **where, **({"note": note} if note else {})})
         results += [{"op": "grouped", "url": url, "fingerprint": fp, "with": fps[0]} for fp in fps[1:]]
     return results
