@@ -642,3 +642,30 @@ def test_rvf_ac1_the_findings_document_is_committed_beside_the_triage_note(repo:
     assert (work / "docs" / "tasks" / f"{TASK}.review.md").is_file()
     assert f"docs/tasks/{TASK}.review.md" in _git_out(work, "ls-tree", "-r", "--name-only", "HEAD")
     assert _git_out(work, "status", "--porcelain", "--untracked-files=all", "--", ".", ":(exclude).tempergraph") == ""
+
+
+# -- the documents show the unit (AC 1, AC 10) ---------------------------------------------------------------------
+
+
+def _ids(spec: str, prefix: str) -> tuple[set[str], set[str]]:
+    text = (ROOT / "docs" / "specs" / spec).read_text()
+    return (set(re.findall(rf"^### ({prefix}-B\d+) ", text, re.M)), set(re.findall(rf"^- ({prefix}-AC\d+) ", text, re.M)))
+
+
+def test_the_specs_define_each_behaviour_with_a_criterion_and_the_documents_show_the_unit() -> None:
+    # IRV-AC1, RVF-AC1 (AC 1, AC 10)
+    for spec, prefix, count in (("independent-review.spec.md", "IRV", 14), ("review-findings.spec.md", "RVF", 7),
+                                ("pull-request-description.spec.md", "PRD", 9)):
+        behaviours, criteria = _ids(spec, prefix)
+        assert behaviours == {f"{prefix}-B{n}" for n in range(1, count + 1)}, spec
+        text = (ROOT / "docs" / "specs" / spec).read_text()
+        named = set(re.findall(rf"^- {prefix}-AC\d+ \(([^)]*)\)", text, re.M))
+        assert criteria and {b for group in named for b in re.findall(rf"{prefix}-B\d+", group)} >= behaviours, spec
+    outcome = json.loads((ROOT / "outcome.json").read_text())
+    assert outcome["revision"] > 23
+    ids = set(re.findall(r"ts-rev-[a-z]+", json.dumps(outcome)))
+    assert {"ts-rev-form", "ts-rev-session", "ts-rev-commit", "ts-rev-step", "ts-rev-blockers"} <= ids
+    for doc in ("docs/specs/overview.spec.md", "README.md", "diagram/workflow.md"):
+        assert "independent_review" in (ROOT / doc).read_text(), doc
+    blueprint = json.loads((ROOT / "blueprint.json").read_text())
+    assert "independent_review" in json.dumps(blueprint)

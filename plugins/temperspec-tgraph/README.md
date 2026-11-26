@@ -22,6 +22,7 @@ Start: `tempergraph run temperspec <request>`. The request is the task with its 
 | expand | The task rows of a plan that took the `phases` arm of `code_mode` | |
 | phase | Only on the `phases` arm, after expand: the code and tests of one phase of the plan, tests first, one fresh session for each phase, one after another in plan order; each is checked on its own rows and committed before the next starts, and a phase that fails runs again alone | The code step, once the last phase has passed |
 | code | Tests first, then code, and the code report: on the arm `single` the whole plan in one session; on `phases` it runs once after the last phase as the join, on the whole change, builds only a row no phase marked, and holds the lines back to the plan, discovery and triage steps | |
+| independent_review | After the code step, a read-only reader that is given the change since the run's base, the task's numbered acceptance criteria and the repository, and never the plan, the hand-off, the code report, an earlier judgement or any step's session. It writes numbered findings, each with a file, a line and the mark blocking or not blocking, to `<task id>.review.md` beside the triage note. The quick lane takes no review | A blocking finding on a file the change touches sends the run back once to the code step, one on any other file to the plan step; a second review with a blocking finding pauses the run showing the findings left. Otherwise the outcome gate |
 | last stage | Pushes the branch and opens a draft pull request, or reuses the open one, with a description of what to read | |
 
 Each step is followed by a gate: a model-free check first, then a read-only judge. The engine commits after every step. A gate that finds the defect in an earlier step's output sends the run back there by itself. No step or judge uses the large model tier; discovery thinks at the highest effort, its short visit at `high`. A judge grades only what it can read in the step's output and references: criteria about how a step works (narrow reading, the reading list, commands run once, a reused gate result) are checked by the gate's model-free check, from the package's prompts and the gate's own command runs.
@@ -30,9 +31,9 @@ Each step is followed by a gate: a model-free check first, then a read-only judg
 
 | Lane | Path | For |
 |---|---|---|
-| quick | triage → code | A fix or small change that leaves every spec as it is: no gap, at most 3 acceptance criteria, at most 2 code files beside their tests |
-| standard | triage → (discovery or its short visit) → plan → code | A change of ordinary size |
-| full | triage → discovery → plan → expand → phase → code | A plan over a limit of the plan rule's Complexity table |
+| quick | triage → code (no review) | A fix or small change that leaves every spec as it is: no gap, at most 3 acceptance criteria, at most 2 code files beside their tests |
+| standard | triage → (discovery or its short visit) → plan → code → independent_review | A change of ordinary size |
+| full | triage → discovery → plan → expand → phase → code → independent_review | A plan over a limit of the plan rule's Complexity table |
 
 Triage proposes the quick lane and writes a short Change section that stands in for the plan. The code gate stays whole, and it measures the change afterwards: a spec or decision record edited, a file the note does not name, more than 2 code files or more than 200 changed lines sends the run back to triage, which then plans the task. A run never moves to a lighter lane.
 
@@ -42,7 +43,7 @@ The plan ends with a proof table: for each acceptance criterion of the task, the
 
 ### The pull request says what to read
 
-The last stage writes the description with no model: the task's acceptance criteria, the behaviours and criteria that changed in each spec, the decisions and open questions of discovery, and the deviations of the code report. When the owner answered the pause, the description lists under `Decided`, before the assumptions, each owner decision that has an answer, with its question and the words of the option chosen. When the triage note has an `Owner decisions` section, it lists every other owner decision under `Assumptions to confirm` with its question, the default the run took and what a wrong default costs, or says that the run took no default. A run that made no pause has no `Decided` heading. The notes that steps hand to each other are listed by path as not needed for review.
+The last stage writes the description with no model: the task's acceptance criteria, the behaviours and criteria that changed in each spec, the decisions and open questions of discovery, and the deviations of the code report, and, after what to read, each finding of the independent review that is marked not blocking, with its file, line and text, under `Review findings that block nothing`. When the owner answered the pause, the description lists under `Decided`, before the assumptions, each owner decision that has an answer, with its question and the words of the option chosen. When the triage note has an `Owner decisions` section, it lists every other owner decision under `Assumptions to confirm` with its question, the default the run took and what a wrong default costs, or says that the run took no default. A run that made no pause has no `Decided` heading. The notes that steps hand to each other are listed by path as not needed for review.
 
 ### An unattended run
 

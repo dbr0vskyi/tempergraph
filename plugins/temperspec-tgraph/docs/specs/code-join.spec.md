@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-The unit both arms of `code_mode` reach after [code](code.spec.md). It receives the run after the code step, produces no file, and has no session, gate, check or effect; the run goes on from it to the [independent review](independent-review.spec.md), or straight to the outcome gate when the review does not take it. It exists because a switch's join point may not be the entry of an arm. What the two arms run is in [code mode](code-mode.spec.md).
+The unit both arms of `code_mode` reach after [code](code.spec.md). It receives the run after the code step, produces no file, and has no session, gate, check or effect. It is a route: a run of the quick lane goes on from it straight to the outcome gate, and every other run goes on to the [independent review](independent-review.spec.md), which the outcome gate follows. It exists because a switch's join point may not be the entry of an arm. What the two arms run is in [code mode](code-mode.spec.md).
 
 Part of the [overview](overview.spec.md).
 
