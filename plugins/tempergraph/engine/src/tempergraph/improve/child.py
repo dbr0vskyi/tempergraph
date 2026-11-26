@@ -183,6 +183,39 @@ def started_for(root: Path, workflow: str, task_id: str, thread: str, trigger: s
     return False
 
 
+def held_by_tickets(root: Path, thread: str, home: Path | None = None) -> set[str]:
+    """SIL-B28: the fingerprints that a waiting or claimed ticket of the thread holds (`fingerprints` and
+    `pause_fingerprints`), read as `started_for` reads the tickets."""
+    folder = tickets_dir(home or home_path())
+    out: set[str] = set()
+    for path in [*folder.glob("*.json"), *folder.glob("*.claimed")] if folder.is_dir() else ():
+        try:
+            t = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(t, dict) and t.get("thread") == thread and str(t.get("state_root")) == str(root):
+            out |= {str(x) for x in [*(t.get("fingerprints") or ()), *(t.get("pause_fingerprints") or ())]}
+    return out
+
+
+def recorded_judgements(root: Path, workflow: str, task_id: str) -> dict[str, dict[str, Any]]:
+    """SIL-B49: the judge's answers recorded in the thread's loop log, the latest for each fingerprint; a failed read
+    gives none."""
+    out: dict[str, dict[str, Any]] = {}
+    try:
+        lines = loop_log(root, workflow, task_id).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return out
+    for ln in lines:
+        with contextlib.suppress(ValueError, TypeError, KeyError):
+            r = json.loads(ln)
+            if isinstance(r, dict) and r.get("kind") == "loop_judged":
+                for a in r.get("answers") or ():
+                    out[str(a["fingerprint"])] = {"attributed": a["attributed"] is True,
+                                                  "confidence": float(a["confidence"])}
+    return out
+
+
 def launch(home: Path | None = None) -> bool:
     from tempergraph import detach
 
@@ -351,7 +384,8 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
     faults = [f for f in mine if f.get("class") == "fault" and f.get("lens") not in ("outcome", "review")]
     append_jsonl(log, {"ts": now_iso(), "kind": "loop_started", "ticket": t.get("ticket_id"),
                        "lenses": t.get("lenses"), "findings": len(mine), "trigger": t.get("trigger"),
-                       "fingerprints": sorted(judged_fps)})
+                       "fingerprints": sorted(judged_fps),
+                       "held": t.get("autonomy") == "record" or bool(t.get("dry_run"))})  # SIL-B47: handed again
     escaped: list[tuple[dict[str, Any], str]] = []  # the escape findings this read recorded, with their run's task
     if t.get("autonomy") != "record" and not t.get("dry_run"):  # PRP-B26, PRP-B27, PRP-B28: best effort (SIL-B1)
         try:
@@ -409,10 +443,13 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
         answered = pause_facts.of(root, wf, task, faults)
     except Exception:  # noqa: BLE001
         answered = {}
-    if (t.get("lenses") or {}).get("friction") and faults and not capped:
+    recorded = recorded_judgements(root, wf, task) if (t.get("lenses") or {}).get("friction") else {}
+    unanswered = [f for f in faults if str(f.get("fingerprint")) not in recorded]  # SIL-B49: one answer per fingerprint
+    judged = {k: v for k, v in recorded.items() if k in {str(f.get("fingerprint")) for f in faults}}
+    if (t.get("lenses") or {}).get("friction") and unanswered and not capped:
         ex = registry.get(str(t.get("executor") or "claude"))
         sdir = run_dir(root, wf, task) / "loop" / "sessions" / f"friction-{t.get('ticket_id')}"
-        req = SessionRequest(kind="judge", prompt=prompt(faults, _records(root, wf, task), answered), workdir=root,
+        req = SessionRequest(kind="judge", prompt=prompt(unanswered, _records(root, wf, task), answered), workdir=root,
                              alias=alias_of(t), session_key=f"loop.{t.get('ticket_id')}.judge", timeout_s=TIMEOUT_S,
                              session_dir=sdir, options=options_of(t))
         res = ex.run_judge(req, ViewSet(), LiveSink(sdir))
@@ -420,13 +457,14 @@ def process(t: Mapping[str, Any], registry: Registry, host: CodeHost) -> dict[st
             cost["reported"] += res.usage.reported_cost_usd
         else:
             cost["estimated_only"] += float(res.usage.estimated_cost_usd or estimate(res.usage, res.model) or 0.0)
-        judged = parse(res.text) if res.ok else {}
+        got = parse(res.text) if res.ok else {}
+        judged.update({k: v for k, v in got.items() if k in {str(f.get("fingerprint")) for f in unanswered}})
         answers = [{"fingerprint": str(f.get("fingerprint")),  # SIL-B36: what the judge answered, none of its text
-                    "confidence": judged[str(f.get("fingerprint"))]["confidence"],
-                    "attributed": judged[str(f.get("fingerprint"))]["attributed"]}
-                   for f in faults if str(f.get("fingerprint")) in judged]
+                    "confidence": got[str(f.get("fingerprint"))]["confidence"],
+                    "attributed": got[str(f.get("fingerprint"))]["attributed"]}
+                   for f in unanswered if str(f.get("fingerprint")) in got]
         append_jsonl(log, {"ts": now_iso(), "kind": "loop_judged", "lens": "friction", "executor": ex.name,
-                           "alias": alias_of(t), "effort": options_of(t).effort, "ok": res.ok, "parsed": bool(judged), "usage": dataclasses.asdict(res.usage),
+                           "alias": alias_of(t), "effort": options_of(t).effort, "ok": res.ok, "parsed": bool(got), "usage": dataclasses.asdict(res.usage),
                            "session_id": res.session_id, "answers": answers})
     limited: list[dict[str, Any]] = []  # SIL-B25: the reviews that failed as `usage_limit`, with the reported reset
     categories: frozenset[str] = frozenset()

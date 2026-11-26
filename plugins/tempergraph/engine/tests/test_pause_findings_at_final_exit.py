@@ -76,7 +76,7 @@ def test_a_later_final_exit_hands_the_loop_no_finding_an_earlier_loop_was_handed
     loop_on(monkeypatch)
     ex = paused_on_retries(repo, "F-2")
     assert stop(repo, "F-2", ex).exit_code is ExitCode.STOPPED
-    first, reply1 = asks()
+    first, reply1 = asks(answering=True)  # SIL-AC40, AC 3: the answer is recorded, so the finding is not handed again
     child.drain(registry=registry(standin("claude", judges=[reply1])), host=lambda: MemoryCodeHost())
     assert len(first) == 1 and "cause `retries_spent`" in first[0]
     (earlier,) = started(repo, "F-2")

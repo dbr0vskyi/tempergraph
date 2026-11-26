@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -55,13 +56,20 @@ def stop(repo: Path, task: str, ex: Any, spec: Any = None) -> Any:
     return resume(spec or two_step(), task, repo, registry(ex), decision="stop", settings=NO_SLEEP)
 
 
-def asks() -> tuple[list[str], Any]:
-    """A stand-in friction judge that keeps the prompts it is asked."""
+def asks(*, answering: bool = False) -> tuple[list[str], Any]:
+    """A stand-in friction judge that keeps the prompts it is asked; `answering` makes it answer every finding row
+    of its prompt (not attributed, confidence 0.5), so a loop has dealt with the finding (SIL-B47)."""
     seen: list[str] = []
 
     def reply(req: Any) -> Any:
         seen.append(req.prompt)
-        return answer("```json\n" + json.dumps({"findings": []}) + "\n```", session_id="loop")
+        rows = []
+        if answering:
+            for ln in req.prompt.splitlines():
+                m = re.match(r"- `([^`]+)`", ln)
+                if m and "cause" in ln:
+                    rows.append({"fingerprint": m.group(1), "attributed": False, "confidence": 0.5})
+        return answer("```json\n" + json.dumps({"findings": rows}) + "\n```", session_id="loop")
     return seen, reply
 
 
@@ -132,7 +140,7 @@ def test_a_second_stop_judges_the_second_pause_only(
     loop_on(monkeypatch)
     ex = paused_on_retries(repo, "P-3")
     assert stop(repo, "P-3", ex).exit_code is ExitCode.STOPPED
-    first, reply1 = asks()
+    first, reply1 = asks(answering=True)  # SIL-AC21, AC 3: the first loop deals with its finding
     child.drain(registry=registry(standin("claude", judges=[reply1])), host=lambda: MemoryCodeHost())
     assert len(first) == 1 and "cause `retries_spent`" in first[0]
     ex.steps, ex.judges = [DRAFT, REVIEW], [judge(), judge(verdict_block("UNVERIFIABLE"))]

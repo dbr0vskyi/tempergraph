@@ -188,9 +188,12 @@ def _when(ts: Any) -> datetime | None:
     return got if got.tzinfo else got.replace(tzinfo=UTC)
 
 
-def unjudged_pause_findings(root: Path, workflow: str, task_id: str, thread: str) -> list[dict[str, Any]]:
-    """SIL-B28: the findings of the thread's segments that ended in a pause (exit 3) and that no loop of the thread
-    was handed: no `loop_started` record of the thread's loop log names their fingerprint at or after they were made.
+def unjudged_pause_findings(root: Path, workflow: str, task_id: str, thread: str,
+                            home: Path | None = None) -> list[dict[str, Any]]:
+    """SIL-B28, SIL-B47, SIL-B48: the findings of the thread's segments that ended in a pause (exit 3) that no loop of
+    the thread has dealt with. A waiting or claimed ticket of the thread that holds the fingerprint covers it. A
+    `loop_started` record covers it when it names the fingerprint at or after the finding was made, was not held
+    (autonomy `record`, a dry run) and, for a friction fault, the loop log holds a judge answer for the fingerprint.
     Read at every final exit of the thread."""
     from tempergraph.improve import child
 
@@ -198,13 +201,21 @@ def unjudged_pause_findings(root: Path, workflow: str, task_id: str, thread: str
             and str(f.get("thread")) == thread]
     if not held:
         return []
-    started = [(_when(r.get("ts")), set(r.get("fingerprints") or ())) for r in _jsonl(child.loop_log(root, workflow, task_id))
-               if r.get("kind") == "loop_started"]
+    in_tickets = child.held_by_tickets(root, thread, home)
+    log = _jsonl(child.loop_log(root, workflow, task_id))
+    started = [(_when(r.get("ts")), set(r.get("fingerprints") or ())) for r in log
+               if r.get("kind") == "loop_started" and r.get("held") is not True]
+    answered = {str(a.get("fingerprint")) for r in log if r.get("kind") == "loop_judged"
+                for a in r.get("answers") or () if isinstance(a, dict)}
     out = []
     for f in held:
+        fp = f.get("fingerprint")
+        if fp in in_tickets:
+            continue
         made = _when(f.get("at"))
-        covered = any(fps and f.get("fingerprint") in fps and (made is None or ts is None or ts >= made)
-                      for ts, fps in started)
+        friction = f.get("class") == "fault" and f.get("lens") not in ("outcome", "review")
+        covered = any(fps and fp in fps and (made is None or ts is None or ts >= made)
+                      for ts, fps in started) and (not friction or str(fp) in answered)
         if not covered:
             out.append(f)
     return out
