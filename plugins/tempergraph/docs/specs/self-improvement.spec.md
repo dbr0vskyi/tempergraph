@@ -129,10 +129,10 @@ WHEN the loop child asks the friction judge about findings THE loop child SHALL 
 
 ### SIL-B18 Filing by attribution or by count
 
-WHEN a finding files THE loop SHALL file engine and `executor:<name>` findings to the engine repository, workflow findings to the workflow's `issue_repository`, and a friction finding only when its judge attributed it (confirmed the side it names) and either its confidence is at or above `friction.file_confidence` (0.75) or its fingerprint meets the pattern rule of SIL-B3, opening each issue body with the hidden line `<!-- tempergraph:fp=<fingerprint> -->`.
+WHEN a finding files THE loop SHALL file engine and `executor:<name>` findings to the engine repository, workflow findings to the workflow's `issue_repository`, and a friction finding only when its judge attributed it (confirmed the side it names) and either its confidence is at or above `friction.file_confidence` (0.75) or its fingerprint meets the pattern rule of SIL-B3 on the answers of FFD-B1, opening each issue body with the hidden line `<!-- tempergraph:fp=<fingerprint> -->`.
 
 - GIVEN a friction finding attributed at 0.6 whose fingerprint is recorded in two runs WHEN filing runs THEN it is recorded and not filed
-- GIVEN a friction finding attributed at 0.5 whose fingerprint is recorded in three runs with three distinct requests in 30 days WHEN filing runs THEN one issue is filed
+- GIVEN a friction finding attributed at 0.5 in each of three runs with three distinct requests in 30 days WHEN filing runs THEN one issue is filed
 - GIVEN that finding marked not attributed at 0.9 WHEN filing runs THEN it is recorded and not filed
 
 ### SIL-B35 A finding its judge gave no answer for is not filed
@@ -151,9 +151,11 @@ WHEN a finding's fingerprint (side, workflow, leading cause, step) matches an op
 
 ### SIL-B3 Pattern rule
 
-WHEN a workflow-side outcome gap would file THE loop SHALL require at least three runs with three distinct requests in 30 days, counted from the shared store when one is reachable and otherwise from the local ledger with a note saying so ([IMD-B1](improvement-data.spec.md)); one clear engine fault is enough.
+WHEN a finding would file by the pattern rule THE loop SHALL require at least three runs with three distinct requests in 30 days, counting the exit's run, each run once and by the first request it recorded for the fingerprint, and counting the machines, from the shared store when one is reachable and otherwise from the local ledger with a note saying so ([IMD-B1](improvement-data.spec.md)); one clear engine fault of the outcome lens is enough.
 
 - GIVEN two runs with the same gap in 30 days WHEN filing runs THEN nothing is filed
+- GIVEN the exit's run and an earlier run under one request, and a third run that recorded the fingerprint under a second request and later under a third WHEN the rule counts THEN it counts three runs and two requests and is not met
+- GIVEN the exit's run and two earlier runs with three requests in all, one of the earlier runs recorded 31 days before WHEN the rule counts THEN it counts two runs and is not met
 
 ### SIL-B19 Code host unreachable
 
@@ -196,6 +198,7 @@ WHEN the cost lens runs THE loop SHALL apply six rules, each a finding per unit 
 - SIL-AC7 (SIL-B12, SIL-B13, SIL-B14, SIL-B15): Each named cause is produced by a fixture run that shows it
 - SIL-AC8 (SIL-B16, SIL-B7): No issue is filed from a review observation alone or from an uncalibrated judge
 - SIL-AC9 (SIL-B3): A workflow-side outcome gap files only at three runs with three distinct requests in 30 days
+- SIL-AC47 (SIL-B3): Against a fixture history of findings, three runs of which two share a request and one recorded the fingerprint under two requests do not meet the pattern rule for a friction finding or for an outcome finding, three runs with three requests do, a run recorded 31 days before the exit is not counted, and the figures counted are those of the history and the exit's run
 - SIL-AC10 (SIL-B19, SIL-B20, SIL-B6): A refused payload is redelivered, the daily cap skips judges with `loop_skipped`, and a dry run files nothing
 - SIL-AC11 (SIL-B5): A measurement makes no model call and writes only one comment and at most one reopen
 - SIL-AC12 (SIL-B21): Each cost rule is produced by a fixture ledger, and a saving under 10 USD a month is not filed
@@ -208,8 +211,8 @@ WHEN the cost lens runs THE loop SHALL apply six rules, each a finding per unit 
 - SIL-AC33 (SIL-B33): Against a fake code host, a run whose pull request a first read shows with a review in state `changes_requested` and a later read shows with a follow-up commit on a file unit `a` wrote holds one `outcome_escape` finding for the `outcome` unit and one for `a`, and a third read adds none
 - SIL-AC34 (SIL-B18, SIL-B2): Against a fake code host, friction findings of one fingerprint that a fixture judge attributes at 0.5 in three runs with three distinct requests file one issue, those of two runs file none, and a fourth run adds one "seen again" comment and no second issue
 - SIL-AC35 (SIL-B18, SIL-B35, SIL-B20): A friction finding whose fingerprint is recorded in three runs with three distinct requests files nothing when its judge marked it not attributed at 0.9, and is recorded `not_judged` and files nothing when the judge session fails, when its reply leaves the finding out and when the daily cap skips the judge
-- SIL-AC36 (SIL-B18, SIL-B6): A dry run lists a friction finding that meets the pattern rule as one that would file and makes no issue and no comment
-- SIL-AC37 (SIL-B18, SIL-B11): A friction finding that meets the pattern rule files to the engine's repository when its side is the engine or an executor, to the workflow's `issue_repository` when its side is the workflow, and is recorded and not filed when its side is `host`
+- SIL-AC36 (SIL-B18, SIL-B6): A dry run lists a friction finding that meets the pattern rule and that its judge attributed in each run as one that would file and makes no issue and no comment
+- SIL-AC37 (SIL-B18, SIL-B11): A friction finding that meets the pattern rule and that its judge attributed in each run files to the engine's repository when its side is the engine or an executor, to the workflow's `issue_repository` when its side is the workflow, and is recorded and not filed when its side is `host`
 - SIL-AC38 (SIL-B36): A fixture loop child whose judge answers for two of three findings leaves a `loop_judged` record whose `answers[]` holds the fingerprint, `confidence` and `attributed` of those two and no other text of the reply, and a child whose judge session fails leaves an empty `answers[]`
 - SIL-AC44 (SIL-B38): In a fixture thread whose request, feedback, an output and a workspace file each hold a distinct canary word, no canary word is in the friction judge's prompt or in `loop.jsonl`, and the prompt holds the fingerprint, cause, class, side, unit and count of each finding
 

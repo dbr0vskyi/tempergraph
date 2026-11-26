@@ -215,6 +215,14 @@ WHEN the engine takes a pull request from a text THE engine SHALL take its code 
 - GIVEN the text `https://code.example/team/app/issues/7` WHEN a pull request is taken from it THEN none is taken
 - GIVEN the text `https://code.example/team/app/pull/7/files`, or a text that is no URL WHEN a pull request is taken from it THEN none is taken
 
+### PRP-B31 The operator's setting lowers the autonomy at each final exit
+
+WHEN a thread reaches a final exit ([SIL-B9](self-improvement.spec.md)) THE engine SHALL run the loop at the lowest of the workflow's declared autonomy level, the machine's `TEMPERGRAPH_AUTONOMY` and the run setting `loop_autonomy` ([RST-B20](run-settings-and-overrides.spec.md)) resolved with the settings files as they are at that moment.
+
+- GIVEN a workflow at `file` and a thread started while no settings file names `loop_autonomy` WHEN `record` is written to a settings file and the thread then reaches its final exit THEN the loop makes no issue and no comment and records each finding it decides with the reason `autonomy_record`
+- GIVEN a workflow declared at `record` and `loop_autonomy` set to `trial` WHEN a thread reaches its final exit THEN the loop runs at `record`
+- GIVEN `loop_autonomy` set to `record` when a thread starts and removed before its final exit WHEN the thread reaches the exit THEN the loop runs at the workflow's declared level
+
 ## Acceptance criteria
 
 - PRP-AC1 (PRP-B1, PRP-B2, PRP-B14): Every scenario of PRP-B1 and PRP-B2 is reproduced by the classifier on fixture patches, including a weakening hidden in a reordered file
@@ -232,6 +240,7 @@ WHEN the engine takes a pull request from a text THE engine SHALL take its code 
 - PRP-AC13 (PRP-B29): Against a fake code host, the cluster issues of a regressed proposal that are in the pull request's repository are open again and those of another repository are untouched, and with a host that cannot be reached the record stands and the reopen is in the outbox
 - PRP-AC14 (PRP-B14, PRP-B1, PRP-B3): In a fixture package that declares `step_files`, a patch to a declared file is drafted with the one class `standard` on the producer side, the same patch with a criterion change is refused `mixed_sides`, one that adds a literal path is refused `literal`, and a patch to an undeclared file is refused `no_change`
 - PRP-AC15 (PRP-B30): The URL of a pull request gives its code host, repository and number, and the URL of an issue, a URL with a path after the number and a text that is no URL give no pull request
+- PRP-AC16 (PRP-B31): Against a fake code host, a fixture thread started with no `loop_autonomy` in any settings file and ending after `record` is written to the user settings file files nothing, comments on nothing and records every finding it decides with the reason `autonomy_record`, the setting `trial` leaves a workflow declared at `record` at `record`, and removing the setting before the exit leaves the workflow's declared level
 
 ## Open questions
 
