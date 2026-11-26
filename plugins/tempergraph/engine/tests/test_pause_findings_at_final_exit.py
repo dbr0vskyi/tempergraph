@@ -356,3 +356,41 @@ def test_the_facts_say_a_ruling_was_given_and_never_its_words(
     assert CANARY["ruling"] not in prompt
     assert CANARY["ruling"] not in child.loop_log(state_root_path(repo), "demo", "F-25").read_text()
     assert "feedback not given" in facts_of(prompt, finding_of(repo, "F-25", "gap_escalation")["fingerprint"])
+
+
+def test_the_brief_tells_what_the_pauses_section_is_and_how_an_answer_bears_on_attribution(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC54, AC 5
+    ex = paused_on_gap(repo, "F-30", monkeypatch)
+    finish(repo, "F-30", ex)
+    (prompt,) = judged_prompts()
+    assert SECTION in prompt
+    flat = " ".join(prompt.split())
+    assert "section `What answered each pause`" in flat or "section on what answered each pause" in flat.lower()
+    assert "`retry` that passes with the workspace unchanged" in flat and "points at the judge or the check" in flat
+    assert "not at the step" in flat
+    assert "`proceed` with a ruling" in flat and "overrode the gate" in flat
+    assert "supervising caller" in flat
+    assert "can file the finding by the count whatever its confidence" in flat  # FFD-B6
+
+
+def test_each_paused_segment_with_a_listed_finding_has_a_section_of_its_own(
+        repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # SIL-AC55, AC 6
+    loop_on(monkeypatch)
+    ex = paused_on_retries(repo, "F-31")  # segment 1 pauses at `draft`
+    ex.steps, ex.judges = [DRAFT, REVIEW], [judge(), judge(UNVERIFIABLE)]
+    again = resume(two_step(), "F-31", repo, registry(ex), decision="retry", feedback=CANARY["feedback"],
+                   settings=NO_SLEEP)
+    assert again.exit_code is ExitCode.PAUSED and again.payload["unit"] == "review", again.message  # segment 2
+    finish(repo, "F-31", ex, feedback=CANARY["ruling"], ruling=True, caller={"kind": "agent"})  # segment 3, final
+    (prompt,) = judged_prompts()
+    heads = [ln for ln in prompt.splitlines() if ln.startswith("## The segment's records")]
+    assert len(heads) == 3, heads
+    assert [("exit code 3" in h, "exit code 0" in h) for h in heads] == [(True, False), (True, False), (False, True)]
+    assert all("reason " in h for h in heads), heads
+    assert "reason budget" in heads[0] and "reason escalation" in heads[1], heads  # the segment's own `run_exit` reason
+    parts = prompt.split("## The segment's records")[1:]
+    assert any("`draft`" in p and "gate" in p for p in parts[:1])  # the first segment's own units and records
+    assert all(CANARY[k] not in prompt for k in CANARY)
+    for ln in prompt.splitlines():  # `test_loop_child.py` reads a `- ` line with a backtick and `cause` as a fingerprint
+        if ln.startswith("- `") and "cause" in ln:
+            assert "class " in ln and "side " in ln, ln  # only finding rows

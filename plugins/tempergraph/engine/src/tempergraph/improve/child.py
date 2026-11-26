@@ -53,6 +53,14 @@ follows an infrastructure failure, or a check failure that a person's ruling cau
 An answer `attributed: true` can file the finding by the count whatever its confidence, so answer attribution
 on the records, not on how sure you are of the remedy.
 
+The section `What answered each pause` appears when a finding comes from a segment that ended in a pause. Each row
+names the paused unit and item, why it paused, who answered it and how (the decision, whether a ruling or feedback
+was given, never its words), the class of the decision's touch, whether the workspace changed between the pause and
+the resume, and the verdict of the next gate of that unit and item. A `retry` that passes with the workspace
+unchanged points at the judge or the check and not at the step, because the same work passed on a second look.
+A `proceed` with a ruling says a person or the supervising caller overrode the gate, so the check's failure is not
+by itself a fault of the step.
+
 End with one fenced JSON block:
 ```json
 {"findings": [{"fingerprint": "<id>", "attributed": true, "confidence": 0.8}]}
@@ -231,8 +239,11 @@ def _answered(findings: Sequence[Mapping[str, Any]], answers: Mapping[str, Mappi
         a = answers.get(str(f.get("fingerprint")))
         if a:
             w = a["workspace"]
-            rows.append(f"- `{f.get('fingerprint')}`: reason `{a['reason']}`; decision `{a['decision']}`; "
-                        f"caller `{a['caller']}`; feedback {a['feedback']}; "
+            ruling = a.get("ruling", "not recorded")
+            rows.append(f"- `{f.get('fingerprint')}`: unit `{a.get('unit', '-')}` item `{a.get('item', '-')}`; "
+                        f"reason `{a['reason']}`; decision `{a['decision']}`; caller `{a['caller']}`; "
+                        f"ruling {'given' if ruling == 'given' else 'not given' if ruling == 'not given' else 'not recorded'}; "
+                        f"feedback {a['feedback']}; touch `{a.get('touch', 'not recorded')}`; "
                         f"workspace {w if w in ('changed', 'unchanged') else 'not recorded'}; "
                         f"next gate verdict `{a['next_gate']}`")
     return "\n## What answered each pause\n" + "\n".join(rows) + "\n" if rows else ""
@@ -242,23 +253,36 @@ def prompt(findings: Sequence[Mapping[str, Any]], records: Sequence[Mapping[str,
            answers: Mapping[str, Mapping[str, str]] | None = None) -> str:
     """Metadata only: findings, what answered each paused segment's pause, and the last segment's record kinds per
     unit with criterion ids."""
-    start = max((i for i, r in enumerate(records) if r.get("kind") == "run_started"), default=0)
+    starts = [i for i, r in enumerate(records) if r.get("kind") == "run_started"] or [0]
+    bounds = list(zip(starts, [*starts[1:], len(records)], strict=False))
+    listed = {str(f.get("segment_started")) for f in findings if f.get("segment_started")}
+    # SIL-B45: every earlier segment that holds a listed finding, then the last segment
+    chosen = [b for b in bounds[:-1] if str(records[b[0]].get("ts") or "") in listed] + [bounds[-1]]
+    rows = [f"- `{f.get('fingerprint')}` cause `{f.get('cause')}` class {f.get('class')} side `{f.get('side')}` "
+            f"unit `{(f['child'] + '/') if f.get('child') else ''}{f.get('unit') or '-'}` count {f.get('count')}"
+            + (f" (a child of `{f.get('parent')}`: workflow `{f.get('workflow')}`)" if f.get("child") else "")
+            for f in findings]
+    sections = "".join(_segment_section(records[lo:hi]) for lo, hi in chosen)
+    return BRIEF + "\n\n## Findings\n" + "\n".join(rows) + "\n" + _answered(findings, answers or {}) + sections
+
+
+def _segment_section(seg_records: Sequence[Mapping[str, Any]]) -> str:
+    """One segment's record kinds per unit with criterion ids, headed by its exit code and reason; never text (SIL-B45)."""
     counts: dict[str, dict[str, int]] = {}
     blockers: dict[str, set[str]] = {}
-    for r in records[start:]:
+    for r in seg_records:
         unit = f"{r['child']}/{r.get('unit') or '-'}" if r.get("child") else str(r.get("unit") or "-")  # SWF-B9
         k = str(r.get("kind") or "")
         counts.setdefault(unit, {})[k] = counts.get(unit, {}).get(k, 0) + 1
         for cid in r.get("blockers") or () if k == "judgement" else ():
             blockers.setdefault(unit, set()).add(str(cid))
-    rows = [f"- `{f.get('fingerprint')}` cause `{f.get('cause')}` class {f.get('class')} side `{f.get('side')}` "
-            f"unit `{(f['child'] + '/') if f.get('child') else ''}{f.get('unit') or '-'}` count {f.get('count')}"
-            + (f" (a child of `{f.get('parent')}`: workflow `{f.get('workflow')}`)" if f.get("child") else "")
-            for f in findings]
+    done = next((r for r in reversed(seg_records) if r.get("kind") == "run_exit"), None)
+    head = ""
+    if done is not None and isinstance(done.get("exit_code"), int):
+        head = f" (exit code {done['exit_code']}, reason {re.sub(r'[^A-Za-z0-9_.:-]', '', str(done.get('reason') or '-'))})"
     seg = [f"- `{u}`: " + ", ".join(f"{k} {n}" for k, n in sorted(c.items()))
            + (f"; blocked on {', '.join(sorted(blockers[u]))}" if u in blockers else "") for u, c in counts.items()]
-    return (BRIEF + "\n\n## Findings\n" + "\n".join(rows) + "\n" + _answered(findings, answers or {})
-            + "\n## The segment's records\n" + "\n".join(seg) + "\n")
+    return f"\n## The segment's records{head}\n" + "\n".join(seg) + "\n"
 
 
 def parse(text: str) -> dict[str, dict[str, Any]]:
