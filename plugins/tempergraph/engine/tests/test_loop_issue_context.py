@@ -182,6 +182,21 @@ def test_the_context_of_a_paused_segment_is_built_from_that_segment() -> None:  
     assert gone == last  # a segment start that is not found gives the last segment
 
 
+def test_the_facts_line_of_a_paused_segment_shows_the_operator_reason() -> None:  # SIL-AC60, ISS-B15, AC 4
+    records = [{"kind": "run_started", "ts": "2026-11-25T01:00:00+00:00"},
+               {"kind": "pause", "ts": "2026-11-25T01:00:02+00:00", "unit": "plan", "reason": "unresolved_gap"},
+               {"kind": "run_exit", "ts": "2026-11-25T01:00:03+00:00", "exit_code": 3, "reason": "budget"}]
+    facts = {"reason": "unresolved_gap", "unit": "plan", "decision": "proceed", "operator_reason": "judge_error"}
+    given = issue_context.build(records, [finding(unit="plan")], segment_started="2026-11-25T01:00:00+00:00", facts=facts)
+    assert given["run"]["facts"].endswith("operator_reason=judge_error") or "operator_reason=judge_error" in given["run"]["facts"]
+    none = issue_context.build(records, [finding(unit="plan")], segment_started="2026-11-25T01:00:00+00:00",
+                               facts={**facts, "operator_reason": "not given"})
+    assert "operator_reason=not_given" in none["run"]["facts"]
+    odd = issue_context.build(records, [finding(unit="plan")], segment_started="2026-11-25T01:00:00+00:00",
+                              facts={**facts, "operator_reason": "/a/path"})
+    assert "operator_reason=" not in odd["run"]["facts"]  # a value that is not an id is left out
+
+
 @pytest.mark.parametrize("value", [f"two words {CANARY}", "/a/path", "x" * 65, {"k": "a b"}, [f"{CANARY} y"]])
 def test_a_value_that_is_not_an_id_enum_or_number_is_left_out(value: Any) -> None:  # ISS-AC10, SIL-AC2
     rec = [{"kind": "run_started", "ts": "t"}, {"kind": "agent_run", "unit": "plan", "reason": value, "model": value}]

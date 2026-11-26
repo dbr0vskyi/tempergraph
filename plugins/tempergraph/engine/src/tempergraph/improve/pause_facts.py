@@ -3,7 +3,7 @@
 Each finding is told the pause that ended its own segment (`segment_of`: from `segment_started`, else the segment of the latest `run_exit` at
 or before the finding's time): the paused unit and item,
 the pause's reason, the decision word that answered it, the kind of caller, whether a ruling and whether feedback was
-given (never their words), the classes of the decision's touches, whether the workspace changed and the verdict of the
+given (never their words), the operator reason of the decision (one of six words, else `not given`), the classes of the decision's touches, whether the workspace changed and the verdict of the
 next gate of the paused unit, child and item. They come from the run log (`pause`, `workspace` and `gate` records)
 and the ledger's `intervention` rows; no feedback or ruling text, answer value, path or file content is read or
 returned (SIL-B38). A fact that cannot be read is `not recorded`, never a guess; a finding with no pause gets no row.
@@ -21,6 +21,7 @@ from tempergraph.improve.record import _jsonl, _when
 from tempergraph.store.layout import run_dir
 
 UNKNOWN = "not recorded"
+OPERATOR_REASONS = ("engine_defect", "judge_error", "environment", "plan", "request", "other")  # CLI-B24
 TOUCH_ORDER = ("designed", "rescue", "steer", "engine")
 WORKSPACE_ACTIONS = {"prepared": "unchanged", "reused": "unchanged", "attached": "unchanged",
                      "external_change": "changed"}
@@ -93,6 +94,7 @@ def _facts(finding: Mapping[str, Any], records: Sequence[Mapping[str, Any]],
                       if str(r.get("unit") or "") == unit and str(r.get("child") or "") == kid), pauses[-1])
     out = dict.fromkeys(("reason", "decision", "caller", "feedback", "workspace", "next_gate", "ruling", "touch"),
                         UNKNOWN)
+    out["operator_reason"] = "not given"
     p_unit, p_kid, p_item = str(pause.get("unit") or ""), str(pause.get("child") or ""), str(pause.get("item") or "")
     out["unit"] = _word(p_unit) if p_unit else "-"
     out["item"] = _word(p_item) if p_item else "-"
@@ -108,6 +110,8 @@ def _facts(finding: Mapping[str, Any], records: Sequence[Mapping[str, Any]],
         out["ruling"] = "given" if row.get("ruling") else "not given"  # whether, never the words (SIL-B38)
         out["feedback"] = "given" if row.get("feedback") is True and not row.get("ruling") else "not given"
         out["touch"] = _touch(row)
+        given = row.get("operator_reason")
+        out["operator_reason"] = given if given in OPERATOR_REASONS else "not given"
     after = records[at + 1:]
     ws = next((r for r in after if r.get("kind") == "workspace" and r.get("action") in WORKSPACE_ACTIONS), None)
     if ws is not None and ws.get("mode") != "in_place":  # WTR-B22: a run in place is compared with nothing

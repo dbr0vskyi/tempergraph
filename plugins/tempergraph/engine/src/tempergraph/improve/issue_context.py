@@ -155,7 +155,8 @@ def run_facts(records: Sequence[Mapping[str, Any]], finding: Mapping[str, Any],
     return {k: v for k, v in out.items() if v not in (None, "", {}, [])}
 
 
-FACT_KEYS = (("pause", "reason"), ("unit", "unit"), ("item", "item"), ("decision", "decision"), ("caller", "caller"),
+FACT_KEYS = (("pause", "reason"), ("unit", "unit"), ("item", "item"), ("decision", "decision"),
+             ("operator_reason", "operator_reason"), ("caller", "caller"),
              ("ruling", "ruling"), ("feedback", "feedback"), ("touch", "touch"), ("workspace", "workspace"),
              ("next_gate", "next_gate"))
 

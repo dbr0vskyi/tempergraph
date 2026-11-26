@@ -59,7 +59,8 @@ was given, never its words), the class of the decision's touch, whether the work
 the resume, and the verdict of the next gate of that unit and item. A `retry` that passes with the workspace
 unchanged points at the judge or the check and not at the step, because the same work passed on a second look.
 A `proceed` with a ruling says a person or the supervising caller overrode the gate, so the check's failure is not
-by itself a fault of the step.
+by itself a fault of the step. An operator reason other than `plan` or `request` points away from the workflow's
+step: `engine_defect`, `judge_error`, `environment` and `other` say the cause lay outside what the step did.
 
 End with one fenced JSON block:
 ```json
@@ -273,10 +274,14 @@ def _answered(findings: Sequence[Mapping[str, Any]], answers: Mapping[str, Mappi
         if a:
             w = a["workspace"]
             ruling = a.get("ruling", "not recorded")
+            given = a.get("operator_reason")
+            op_reason = f"operator reason `{given}`" if given in pause_facts.OPERATOR_REASONS \
+                else "operator reason not given"
             rows.append(f"- `{f.get('fingerprint')}`: unit `{a.get('unit', '-')}` item `{a.get('item', '-')}`; "
                         f"reason `{a['reason']}`; decision `{a['decision']}`; caller `{a['caller']}`; "
                         f"ruling {'given' if ruling == 'given' else 'not given' if ruling == 'not given' else 'not recorded'}; "
                         f"feedback {a['feedback']}; touch `{a.get('touch', 'not recorded')}`; "
+                        f"{op_reason}; "
                         f"workspace {w if w in ('changed', 'unchanged') else 'not recorded'}; "
                         f"next gate verdict `{a['next_gate']}`")
     return "\n## What answered each pause\n" + "\n".join(rows) + "\n" if rows else ""
