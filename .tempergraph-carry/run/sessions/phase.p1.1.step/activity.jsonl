@@ -1,0 +1,106 @@
+{"t": 1.674, "n": 1, "ev": "session_started", "session_id": "cf4a73bd-18c8-41ac-a504-389dc7af7e0b", "model": "claude-sonnet-5-5", "tools": ["Bash", "Edit", "Glob", "Grep", "Read", "Write"], "cli_version": "2.1.332", "mcp_server_errors": 0, "plugin_errors": 0}
+{"t": 2.927, "n": 2, "ev": "tool_started", "name": "Read", "call_id": "toolu_019rDme5gVbEnWreUV6YjVei", "capability": "read", "subagent": false, "input_summary": "plugins/temperspec-tgraph/docs/plans/i173.plan.md"}
+{"t": 3.19, "n": 3, "ev": "tool_finished", "call_id": "toolu_019rDme5gVbEnWreUV6YjVei", "ok": true, "duration_s": 0.263}
+{"t": 3.317, "n": 4, "ev": "tool_started", "name": "Read", "call_id": "toolu_01KPxMPeGjA4Y88Vd6JL5YPv", "capability": "read", "subagent": false, "input_summary": "plugins/temperspec-tgraph/docs/tasks/i173.triage.md"}
+{"t": 3.356, "n": 5, "ev": "tool_finished", "call_id": "toolu_01KPxMPeGjA4Y88Vd6JL5YPv", "ok": true, "duration_s": 0.039}
+{"t": 5.402, "n": 6, "ev": "tool_started", "name": "Read", "call_id": "toolu_01Mq5jhW5ScMECDHN74CR8Ym", "capability": "read", "subagent": false, "input_summary": "plugins/temperspec-tgraph/docs/specs/review-findings.spec.md"}
+{"t": 5.426, "n": 7, "ev": "tool_finished", "call_id": "toolu_01Mq5jhW5ScMECDHN74CR8Ym", "ok": true, "duration_s": 0.024}
+{"t": 5.87, "n": 8, "ev": "tool_started", "name": "Read", "call_id": "toolu_01UKL5iM5iwpwHNuynUcgtPY", "capability": "read", "subagent": false, "input_summary": "plugins/temperspec-tgraph/docs/specs/independent-review.spec.md"}
+{"t": 5.895, "n": 9, "ev": "tool_finished", "call_id": "toolu_01UKL5iM5iwpwHNuynUcgtPY", "ok": true, "duration_s": 0.024}
+{"t": 6.374, "n": 10, "ev": "tool_started", "name": "Read", "call_id": "toolu_01LQyiEv2Ki5L6ZoTY4qC6nx", "capability": "read", "subagent": false, "input_summary": "plugins/temperspec-tgraph/tests/test_session_record_checks.py"}
+{"t": 6.398, "n": 11, "ev": "tool_finished", "call_id": "toolu_01LQyiEv2Ki5L6ZoTY4qC6nx", "ok": true, "duration_s": 0.025}
+{"t": 7.009, "n": 12, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01GAiNxvKHhHmvf8eEghnnbW", "capability": "search", "subagent": false, "input_summary": "^def |^from |^import |^class"}
+{"t": 7.063, "n": 13, "ev": "tool_finished", "call_id": "toolu_01GAiNxvKHhHmvf8eEghnnbW", "ok": true, "duration_s": 0.054}
+{"n": 15, "ev": "resources", "t": 27906.778, "cpu_s": 2.0, "processes": 1, "rss_peak_kb": 230704}
+{"t": 10.482, "n": 15, "ev": "tool_started", "name": "Read", "call_id": "toolu_01TDHSAi9ohUkuMmA9quDJD5", "capability": "read", "subagent": false, "input_summary": "plugins/temperspec-tgraph/workflow/temperspec/checks.py"}
+{"t": 10.505, "n": 16, "ev": "tool_finished", "call_id": "toolu_01TDHSAi9ohUkuMmA9quDJD5", "ok": true, "duration_s": 0.023}
+{"t": 11.445, "n": 17, "ev": "tool_started", "name": "Read", "call_id": "toolu_01CshqfZKzvbhs1hn72FGvFb", "capability": "read", "subagent": false, "input_summary": "plugins/temperspec-tgraph/workflow/temperspec/checks.py"}
+{"t": 11.467, "n": 18, "ev": "tool_finished", "call_id": "toolu_01CshqfZKzvbhs1hn72FGvFb", "ok": true, "duration_s": 0.022}
+{"t": 12.479, "n": 19, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01GwGroQB6B7bhxrjSdTyB2T", "capability": "search", "subagent": false, "input_summary": "^def |^class |^[A-Z_]+ ="}
+{"t": 12.518, "n": 20, "ev": "tool_finished", "call_id": "toolu_01GwGroQB6B7bhxrjSdTyB2T", "ok": true, "duration_s": 0.039}
+{"t": 14.618, "n": 21, "ev": "tool_started", "name": "Read", "call_id": "toolu_01KEMu5iDewEWtqzmPk9WN4J", "capability": "read", "subagent": false, "input_summary": "plugins/temperspec-tgraph/workflow/temperspec/routing.py"}
+{"t": 14.636, "n": 22, "ev": "tool_finished", "call_id": "toolu_01KEMu5iDewEWtqzmPk9WN4J", "ok": true, "duration_s": 0.018}
+{"t": 15.619, "n": 23, "ev": "tool_started", "name": "Read", "call_id": "toolu_01M7zw8ZGKcCg3CiQED6VPeq", "capability": "read", "subagent": false, "input_summary": "plugins/temperspec-tgraph/workflow/temperspec/routing.py"}
+{"t": 15.635, "n": 24, "ev": "tool_finished", "call_id": "toolu_01M7zw8ZGKcCg3CiQED6VPeq", "ok": true, "duration_s": 0.016}
+{"t": 16.581, "n": 25, "ev": "tool_started", "name": "Grep", "call_id": "toolu_01XdcUmYUNFqmoYSBsyW415C", "capability": "search", "subagent": false, "input_summary": "^def |^class |^[A-Z_]+ ="}
+{"t": 16.61, "n": 26, "ev": "tool_finished", "call_id": "toolu_01XdcUmYUNFqmoYSBsyW415C", "ok": true, "duration_s": 0.029}
+{"n": 28, "ev": "resources", "t": 27916.789, "cpu_s": 2.0, "processes": 1, "rss_peak_kb": 236592}
+{"n": 29, "ev": "resources", "t": 27926.799, "cpu_s": 3.0, "processes": 1, "rss_peak_kb": 236592}
+{"n": 30, "ev": "resources", "t": 27936.806, "cpu_s": 3.0, "processes": 1, "rss_peak_kb": 236592}
+{"n": 31, "ev": "resources", "t": 27946.817, "cpu_s": 3.0, "processes": 1, "rss_peak_kb": 236592}
+{"t": 52.369, "n": 31, "ev": "tool_started", "name": "Read", "call_id": "toolu_01Ja3WgQTHG9mnn8JvCqyYLy", "capability": "read", "subagent": false, "input_summary": "plugins/temperspec-tgraph/workflow/temperspec/checks.py"}
+{"t": 52.395, "n": 32, "ev": "tool_finished", "call_id": "toolu_01Ja3WgQTHG9mnn8JvCqyYLy", "ok": true, "duration_s": 0.026}
+{"t": 53.431, "n": 33, "ev": "tool_started", "name": "Read", "call_id": "toolu_0157uD14P64FWHwSHQvSAK6j", "capability": "read", "subagent": false, "input_summary": "plugins/temperspec-tgraph/workflow/temperspec/checks.py"}
+{"t": 53.455, "n": 34, "ev": "tool_finished", "call_id": "toolu_0157uD14P64FWHwSHQvSAK6j", "ok": true, "duration_s": 0.024}
+{"t": 54.432, "n": 35, "ev": "tool_started", "name": "Read", "call_id": "toolu_0127yD6pm5o1Rfgxiujb2woB", "capability": "read", "subagent": false, "input_summary": "plugins/temperspec-tgraph/workflow/temperspec/checks.py"}
+{"t": 54.453, "n": 36, "ev": "tool_finished", "call_id": "toolu_0127yD6pm5o1Rfgxiujb2woB", "ok": true, "duration_s": 0.021}
+{"t": 55.395, "n": 37, "ev": "tool_started", "name": "Read", "call_id": "toolu_01RiU1LLaaTCUxekXrcXueTe", "capability": "read", "subagent": false, "input_summary": "plugins/temperspec-tgraph/workflow/temperspec/specfmt.py"}
+{"t": 55.419, "n": 38, "ev": "tool_finished", "call_id": "toolu_01RiU1LLaaTCUxekXrcXueTe", "ok": true, "duration_s": 0.024}
+{"n": 40, "ev": "resources", "t": 27956.827, "cpu_s": 3.0, "processes": 1, "rss_peak_kb": 239136}
+{"n": 41, "ev": "resources", "t": 27966.838, "cpu_s": 3.0, "processes": 1, "rss_peak_kb": 240464}
+{"t": 78.185, "n": 41, "ev": "text", "last_line": "Phase 1 starts with the new test file, which has to fail before any code exists. The code comes after: `review.py` and `review_check` in `checks.py`."}
+{"n": 43, "ev": "resources", "t": 27976.848, "cpu_s": 3.0, "processes": 1, "rss_peak_kb": 240464}
+{"n": 44, "ev": "resources", "t": 27986.859, "cpu_s": 3.0, "processes": 1, "rss_peak_kb": 240480}
+{"n": 45, "ev": "resources", "t": 27996.867, "cpu_s": 3.0, "processes": 1, "rss_peak_kb": 241648}
+{"t": 108.858, "n": 45, "ev": "tool_started", "name": "Write", "call_id": "toolu_018b2DpqoSSFRTsexsfeCDcS", "capability": "write", "subagent": false, "input_summary": "plugins/temperspec-tgraph/tests/test_independent_review.py"}
+{"t": 108.894, "n": 46, "ev": "tool_finished", "call_id": "toolu_018b2DpqoSSFRTsexsfeCDcS", "ok": true, "duration_s": 0.036}
+{"n": 48, "ev": "resources", "t": 28006.878, "cpu_s": 4.0, "processes": 1, "rss_peak_kb": 242336}
+{"t": 111.786, "n": 48, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01KUa8dPSo2noJHQB11pCeTF", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/tests/test_independent_review.py"}
+{"t": 111.817, "n": 49, "ev": "tool_finished", "call_id": "toolu_01KUa8dPSo2noJHQB11pCeTF", "ok": true, "duration_s": 0.031}
+{"t": 113.023, "n": 50, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01WbLbAr7pPDpGhzkjyb3v3z", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/tests/test_independent_review.py"}
+{"t": 113.057, "n": 51, "ev": "tool_finished", "call_id": "toolu_01WbLbAr7pPDpGhzkjyb3v3z", "ok": true, "duration_s": 0.034}
+{"t": 114.186, "n": 52, "ev": "text", "last_line": "Run to see the failure."}
+{"t": 114.528, "n": 53, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01EPBTEFRRAcTN1hisXYKt8m", "capability": "shell", "subagent": false, "input_summary": "cd plugins/temperspec-tgraph && python -m pytest tests/test_independent_review.py -q -x -n 0"}
+{"t": 116.417, "n": 54, "ev": "tool_finished", "call_id": "toolu_01EPBTEFRRAcTN1hisXYKt8m", "ok": false, "duration_s": 1.889}
+{"n": 56, "ev": "resources", "t": 28016.889, "cpu_s": 4.0, "processes": 1, "rss_peak_kb": 249168}
+{"n": 57, "ev": "resources", "t": 28026.899, "cpu_s": 4.0, "processes": 1, "rss_peak_kb": 250176}
+{"n": 58, "ev": "resources", "t": 28036.91, "cpu_s": 4.0, "processes": 1, "rss_peak_kb": 250176}
+{"n": 59, "ev": "resources", "t": 28046.921, "cpu_s": 4.0, "processes": 1, "rss_peak_kb": 250176}
+{"t": 156.452, "n": 59, "ev": "tool_started", "name": "Write", "call_id": "toolu_01HedvURwQvGsimEAogsrCRL", "capability": "write", "subagent": false, "input_summary": "plugins/temperspec-tgraph/workflow/temperspec/review.py"}
+{"t": 156.493, "n": 60, "ev": "tool_finished", "call_id": "toolu_01HedvURwQvGsimEAogsrCRL", "ok": true, "duration_s": 0.041}
+{"n": 62, "ev": "resources", "t": 28056.929, "cpu_s": 4.0, "processes": 1, "rss_peak_kb": 250176}
+{"n": 63, "ev": "resources", "t": 28066.939, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 250176}
+{"t": 175.742, "n": 63, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01G1WSvAxj29izw1gjqLQe86", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/workflow/temperspec/checks.py"}
+{"t": 175.781, "n": 64, "ev": "tool_finished", "call_id": "toolu_01G1WSvAxj29izw1gjqLQe86", "ok": true, "duration_s": 0.04}
+{"t": 176.839, "n": 65, "ev": "tool_started", "name": "Edit", "call_id": "toolu_016BuG7tscuwwYCwjpqkC1a8", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/workflow/temperspec/checks.py"}
+{"t": 176.868, "n": 66, "ev": "tool_finished", "call_id": "toolu_016BuG7tscuwwYCwjpqkC1a8", "ok": true, "duration_s": 0.028}
+{"t": 177.147, "n": 67, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01SM1kAY6Ezj127QLqLB58zR", "capability": "shell", "subagent": false, "input_summary": "cd plugins/temperspec-tgraph && python -m pytest tests/test_independent_review.py -q -n 0"}
+{"t": 179.021, "n": 68, "ev": "tool_finished", "call_id": "toolu_01SM1kAY6Ezj127QLqLB58zR", "ok": false, "duration_s": 1.875}
+{"t": 179.914, "n": 69, "ev": "text", "last_line": "Test helper bug (reused tmp_path); make `_work` idempotent."}
+{"n": 71, "ev": "resources", "t": 28076.947, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 253136}
+{"t": 181.082, "n": 71, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01Gpu5uR5QyHJsCmWX1yMKe2", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/tests/test_independent_review.py"}
+{"t": 181.107, "n": 72, "ev": "tool_finished", "call_id": "toolu_01Gpu5uR5QyHJsCmWX1yMKe2", "ok": true, "duration_s": 0.025}
+{"t": 182.112, "n": 73, "ev": "tool_started", "name": "Edit", "call_id": "toolu_012AwkpRAnkwgkhvgixrFoxe", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/tests/test_independent_review.py"}
+{"t": 182.134, "n": 74, "ev": "tool_finished", "call_id": "toolu_012AwkpRAnkwgkhvgixrFoxe", "ok": true, "duration_s": 0.022}
+{"t": 183.113, "n": 75, "ev": "tool_started", "name": "Edit", "call_id": "toolu_013GN4WjN8UQ348vcGntFR2T", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/tests/test_independent_review.py"}
+{"t": 183.131, "n": 76, "ev": "tool_finished", "call_id": "toolu_013GN4WjN8UQ348vcGntFR2T", "ok": true, "duration_s": 0.018}
+{"t": 183.547, "n": 77, "ev": "tool_started", "name": "Bash", "call_id": "toolu_01VFv4AJxjQdvk4FfiqMYrCw", "capability": "shell", "subagent": false, "input_summary": "cd plugins/temperspec-tgraph && python -m pytest tests/test_independent_review.py tests/test_session_record_checks.py -q -n 0"}
+{"t": 183.881, "n": 78, "ev": "tool_started", "name": "Bash", "call_id": "toolu_0162s2c65WVEZzXfxQEkpvGn", "capability": "shell", "subagent": false, "input_summary": "ruff check plugins/temperspec-tgraph/workflow plugins/temperspec-tgraph/tests/test_independent_review.py"}
+{"t": 186.593, "n": 79, "ev": "tool_finished", "call_id": "toolu_01VFv4AJxjQdvk4FfiqMYrCw", "ok": true, "duration_s": 3.046}
+{"t": 186.637, "n": 80, "ev": "tool_finished", "call_id": "toolu_0162s2c65WVEZzXfxQEkpvGn", "ok": false, "duration_s": 2.756}
+{"n": 82, "ev": "resources", "t": 28086.955, "cpu_s": 5.0, "processes": 1, "rss_peak_kb": 259744}
+{"t": 191.558, "n": 82, "ev": "tool_started", "name": "Edit", "call_id": "toolu_0146jsVRbjLAZAF3i1gg5AQz", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/docs/plans/i173.plan.md"}
+{"t": 191.582, "n": 83, "ev": "tool_finished", "call_id": "toolu_0146jsVRbjLAZAF3i1gg5AQz", "ok": true, "duration_s": 0.024}
+{"t": 192.503, "n": 84, "ev": "tool_started", "name": "Edit", "call_id": "toolu_016pELpaCBnG61JoJLgWrMFF", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/docs/plans/i173.plan.md"}
+{"t": 192.537, "n": 85, "ev": "tool_finished", "call_id": "toolu_016pELpaCBnG61JoJLgWrMFF", "ok": true, "duration_s": 0.035}
+{"t": 193.569, "n": 86, "ev": "tool_started", "name": "Edit", "call_id": "toolu_013ZmWvBJ6fiDTy53WMC8ZKd", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/docs/plans/i173.plan.md"}
+{"t": 193.597, "n": 87, "ev": "tool_finished", "call_id": "toolu_013ZmWvBJ6fiDTy53WMC8ZKd", "ok": true, "duration_s": 0.028}
+{"t": 194.604, "n": 88, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01DmnkCCShmsdbtobPhxsWHD", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/docs/plans/i173.plan.md"}
+{"t": 194.629, "n": 89, "ev": "tool_finished", "call_id": "toolu_01DmnkCCShmsdbtobPhxsWHD", "ok": true, "duration_s": 0.025}
+{"t": 195.536, "n": 90, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01RedXRaq37F5RYVsuYnBARj", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/docs/plans/i173.plan.md"}
+{"t": 195.57, "n": 91, "ev": "tool_finished", "call_id": "toolu_01RedXRaq37F5RYVsuYnBARj", "ok": true, "duration_s": 0.034}
+{"t": 196.639, "n": 92, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01FdoBCx24SpJjeUkEs49t1r", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/docs/plans/i173.plan.md"}
+{"t": 196.665, "n": 93, "ev": "tool_finished", "call_id": "toolu_01FdoBCx24SpJjeUkEs49t1r", "ok": true, "duration_s": 0.026}
+{"t": 197.708, "n": 94, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01HMnWrbQyM4x6vafYDX64YN", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/docs/plans/i173.plan.md"}
+{"t": 197.733, "n": 95, "ev": "tool_finished", "call_id": "toolu_01HMnWrbQyM4x6vafYDX64YN", "ok": true, "duration_s": 0.025}
+{"t": 198.709, "n": 96, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01VhqM3BfaLQvAMTvewktqgC", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/docs/plans/i173.plan.md"}
+{"t": 198.83, "n": 97, "ev": "tool_finished", "call_id": "toolu_01VhqM3BfaLQvAMTvewktqgC", "ok": true, "duration_s": 0.121}
+{"t": 199.775, "n": 98, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01PXdRW351Y5F3EcxDd8waUo", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/docs/plans/i173.plan.md"}
+{"t": 199.836, "n": 99, "ev": "tool_finished", "call_id": "toolu_01PXdRW351Y5F3EcxDd8waUo", "ok": true, "duration_s": 0.061}
+{"n": 101, "ev": "resources", "t": 28096.962, "cpu_s": 6.0, "processes": 1, "rss_peak_kb": 263664}
+{"t": 201.408, "n": 101, "ev": "tool_started", "name": "Edit", "call_id": "toolu_01V3ptWX8KEokrSroPnTLzAh", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/docs/plans/i173.plan.md"}
+{"t": 201.448, "n": 102, "ev": "tool_finished", "call_id": "toolu_01V3ptWX8KEokrSroPnTLzAh", "ok": true, "duration_s": 0.04}
+{"t": 202.24, "n": 103, "ev": "tool_started", "name": "Edit", "call_id": "toolu_013xV1M6joRGjkwteBiLChWx", "capability": "edit", "subagent": false, "input_summary": "plugins/temperspec-tgraph/docs/plans/i173.plan.md"}
+{"t": 202.287, "n": 104, "ev": "tool_finished", "call_id": "toolu_013xV1M6joRGjkwteBiLChWx", "ok": true, "duration_s": 0.047}
+{"t": 208.018, "n": 105, "ev": "text", "last_line": "ARTIFACT phase_note: Ran plugins/temperspec-tgraph/tests/test_independent_review.py (new, written first, failed at import before review.py existed) and tests/test_session_record_checks.py with -n 0: …"}
+{"t": 208.395, "n": 106, "ev": "result", "ok": true, "text": "Phase 1 is built: rows 1.1 to 1.10 are marked `✓ 2026-11-26` in the plan, and the plan's status is now `in-progress`. I wrote the tests first and saw them fail at import, because `tgwf_temperspec.review` didn't exist yet. After the code went in, `tests/test_independent_review.py` and `tests/test_session_record_checks.py` ran with 66 passed. I ran them with `-n 0`.\n\n- **New module `review.py`:** it holds the findings document parser, writer, form check and builder. It also holds the change and criteria writer, the step choice and the reason text.\n- **`review_check` in `checks.py`:** it uses the criterion ids `ts-rev-form`, `ts-rev-session`, `ts-rev-commit` and `ts-rev-step`. The `ts-rev-step` finding holds the step a blocking finding goes back to, and the first trip's step when the document holds an earlier review.\n- **Ruff:** `ruff check` on the workflow folder reports many existing style findings in files I didn't touch, such as `__init__.py` and `specfmt.py`. I didn't look at the part of that output that would cover `review.py`, so I can't say whether it is clean.\n- **Specs touched:** I did not search for specs outside the plan's front matter that these changes might make false.\n\nARTIFACT phase_note: Ran plugins/temperspec-tgraph/tests/test_independent_review.py (new, written first, failed at import before review.py existed) and tests/test_session_record_checks.py with -n 0: 66 passed. Rows 1.1-1.10 built and marked; status set to in-progress. Deviations: none. Choices the plan left open: the visit result is appended to a blocking finding as ` Visit: built|refused`; criterion ids of review_check are ts-rev-form, ts-rev-session, ts-rev-commit, ts-rev-step (the ts-rev-step finding carries the step, so row 2.14 must use these ids); the run's base is the parent of the oldest tip commit whose subject ends `for <task>`. ruff check on the workflow folder reports existing style findings in files I did not touch; I did not check the part covering review.py. Did not search specs outside the plan's front matter for behaviours made false.", "subtype": "success", "is_error": false, "session_id": "cf4a73bd-18c8-41ac-a504-389dc7af7e0b"}

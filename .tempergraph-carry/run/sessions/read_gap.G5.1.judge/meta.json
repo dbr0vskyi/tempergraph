@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "session_key": "read_gap.G5.1.judge",
+  "kind": "judge",
+  "executor": "claude",
+  "alias": "medium",
+  "transcript": {
+    "engine": "/home/dbr0vskyi/projects/tempergraph/.tempergraph/runs/temperspec/i173/sessions/read_gap.G5.1.judge/raw.jsonl",
+    "native": null,
+    "native_kind": null
+  },
+  "started_at": "2026-11-26T02:48:09.693Z",
+  "ended_at": "2026-11-26T02:48:26.733Z",
+  "session_id": "6684667d-0bf4-49fe-8513-8b64272b7f5c",
+  "model": "claude-sonnet-5-5",
+  "pgid": 4007409,
+  "cli_version": "2.1.332"
+}
