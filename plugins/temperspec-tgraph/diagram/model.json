@@ -106,8 +106,14 @@
     },
     {
       "name": "code_join",
-      "kind": "script",
+      "kind": "route",
       "summary": "",
+      "approval": false
+    },
+    {
+      "name": "independent_review",
+      "kind": "step",
+      "summary": "Read the change as an independent reader; write numbered findings",
       "approval": false
     },
     {
@@ -190,6 +196,10 @@
     "code_join.judge",
     "code_join.gate",
     "code_join.human",
+    "independent_review.step",
+    "independent_review.judge",
+    "independent_review.gate",
+    "independent_review.human",
     "outcome.step",
     "outcome.judge",
     "outcome.gate",
@@ -1769,6 +1779,11 @@
     ],
     [
       "code_join.gate",
+      "independent_review.step",
+      "PROCEED"
+    ],
+    [
+      "code_join.gate",
       "outcome.step",
       "PROCEED"
     ],
@@ -1786,6 +1801,11 @@
       "code_join.gate",
       "__end__",
       "STOP"
+    ],
+    [
+      "code_join.human",
+      "independent_review.step",
+      "decision"
     ],
     [
       "code_join.human",
@@ -1888,6 +1908,151 @@
       "decision"
     ],
     [
+      "independent_review.step",
+      "independent_review.judge",
+      "next"
+    ],
+    [
+      "independent_review.judge",
+      "independent_review.gate",
+      "next"
+    ],
+    [
+      "independent_review.gate",
+      "outcome.step",
+      "PROCEED"
+    ],
+    [
+      "independent_review.gate",
+      "independent_review.step",
+      "RETRY"
+    ],
+    [
+      "independent_review.gate",
+      "plan.step",
+      "BACK"
+    ],
+    [
+      "independent_review.gate",
+      "code.step",
+      "BACK"
+    ],
+    [
+      "independent_review.gate",
+      "independent_review.human",
+      "ESCALATE"
+    ],
+    [
+      "independent_review.gate",
+      "__end__",
+      "STOP"
+    ],
+    [
+      "independent_review.human",
+      "outcome.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "independent_review.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "plan.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "code.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "prepare.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "setup_route.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "list_components.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "read_component.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "setup.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "triage.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "discovery_short.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "owner_questions.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "ask_route.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "ask_owner.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "read_gap.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "discovery.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "code_mode.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "expand.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "phase.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "code_join.step",
+      "decision"
+    ],
+    [
+      "independent_review.human",
+      "__end__",
+      "decision"
+    ],
+    [
       "outcome.step",
       "outcome.judge",
       "next"
@@ -1959,6 +2124,11 @@
     ],
     [
       "outcome.gate",
+      "independent_review.step",
+      "BACK"
+    ],
+    [
+      "outcome.gate",
       "outcome.human",
       "ESCALATE"
     ],
@@ -2025,6 +2195,11 @@
     [
       "outcome.human",
       "code.step",
+      "decision"
+    ],
+    [
+      "outcome.human",
+      "independent_review.step",
       "decision"
     ],
     [
@@ -2083,5 +2258,5 @@
       "next"
     ]
   ],
-  "digest": "a6e71e8b896a9e04ac82f04af3be0074c4794dbf2460ca321e994ef322a78038"
+  "digest": "f5fd45be37484acf60ab5db72442f78d6f6c2d0944393f33df1d54a60a97c4f3"
 }
