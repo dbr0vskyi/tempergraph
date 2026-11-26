@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Split from [self-improvement](self-improvement.spec.md) by capability, keeping its ids: when a thread that a person stopped at a pause, or whose runner was lost, counts as a final exit for the loop, how that exit is recorded once, and how the findings of the pauses that ended earlier segments of a thread reach the loop at the thread's final exit, with what answered each pause. That no text of a run reaches the loop's judge or its log is owned by [self-improvement](self-improvement.spec.md).
+Split from [self-improvement](self-improvement.spec.md) by capability, keeping its ids: when a thread that a person stopped at a pause, or whose runner was lost, counts as a final exit for the loop, how that exit is recorded once, and how the findings of the pauses that ended earlier segments of a thread reach the loop at the thread's final exit, what the friction judge is told about the pause that ended each of those segments and what its prompt shows of those segments. That no text of a run reaches the loop's judge or its log is owned by [self-improvement](self-improvement.spec.md).
 
 ## Behaviours
 
@@ -18,16 +18,68 @@ WHEN a person stops a paused thread, at a gate or before a unit named by `--paus
 WHEN a thread reaches a final exit (SIL-B9) THE loop SHALL treat the findings of every earlier segment of the thread that ended in a pause, and that no earlier loop of the thread was handed, as findings of that exit, so that its friction lens judges their faults (SIL-B10) and, at a person's stop (SIL-B27), its session review is planned from their signals ([SRV-B13, SRV-B16](session-review.spec.md)).
 
 - GIVEN a thread whose first segment paused on `retries_spent` at unit `code` WHEN a person stops it at that pause THEN the ticket's friction lens is on and the loop child's friction judge is asked about the `retries_spent` finding of `code`; in stable mode the session review plan has depth `partial` with the last attempt and the judge of `code` as its targets
-- GIVEN a thread whose first segment paused on `gap_escalation` at unit `review`, was resumed with `proceed` and finished with exit 0 WHEN its loop child runs THEN the ticket holds the fingerprint of the `gap_escalation` finding of `review` and the friction judge is asked about it
+- GIVEN a thread whose first segment paused on `gap_escalation` at unit `review`, was resumed with `proceed` and then ended with exit 0, with exit 4 and reason `stopped_by_request`, with exit 4 and reason `attempt_cap` or with exit 5 WHEN its loop child runs THEN the ticket holds the fingerprint of the `gap_escalation` finding of `review` and the friction judge is asked about it
 - GIVEN a thread stopped at a pause on `retries_spent` at unit `code`, re-opened with `retry`, paused a second time on `gap_escalation` at unit `review` and stopped a second time WHEN the second stop's loop child runs THEN its friction judge is asked about the `gap_escalation` finding of `review` and not about the `retries_spent` finding of `code`
 
 ### SIL-B37 The friction judge is told what answered a pause
 
-WHEN the friction judge is asked about a finding of a segment that ended in a pause (at the finding's unit when more than one unit paused) THE loop child SHALL tell it the pause's reason, the decision word that answered the pause, the kind of caller that decided ([PRV-B11, PRV-B14](caller-provenance.spec.md)), whether feedback was given, whether the workspace changed between the pause and the resume ([WTR-B22](worktree-mode.spec.md)), and the verdict of the paused unit's next gate.
+WHEN the friction judge is asked about a finding of a segment that ended in a pause THE loop child SHALL tell it, in one row for that finding, the pause's reason, the decision word that answered it, the kind of caller that decided (PRV-B11, PRV-B14), whether feedback was given, whether a ruling was given, the class of the decision's touch (SIL-B43), whether the workspace changed between the pause and the resume (WTR-B28) and the verdict of the paused unit's next gate (SIL-B41).
 
-- GIVEN a thread that paused with reason `unresolved_gap` at unit `review` and was resumed by a person with `proceed` and no feedback, in a worktree nobody changed WHEN the judge is asked about the `gap_escalation` finding of `review` THEN it is told the reason `unresolved_gap`, the decision `proceed`, the caller kind `person`, that no feedback was given, that the workspace did not change and that the next gate verdict is `none`
-- GIVEN a thread that paused at unit `code` with its retries spent and was resumed by an agent with `retry` and a feedback text, a person having committed a change in the worktree, and the next gate of `code` gave PROCEED WHEN the judge is asked about the `retries_spent` finding of `code` THEN it is told the decision `retry`, the caller kind `agent`, that feedback was given, that the workspace changed and the verdict PROCEED, and the prompt holds no word of the feedback
+- GIVEN a thread that paused with reason `unresolved_gap` at unit `review` and was resumed by a person with `proceed` and no feedback, in a worktree nobody changed WHEN the judge is asked about the `gap_escalation` finding of `review` THEN it is told the reason `unresolved_gap`, the decision `proceed`, the caller kind `person`, that no feedback and no ruling were given, that the workspace did not change and that the next gate verdict is `none`
+- GIVEN a thread that paused at unit `code` with its retries spent and was resumed by an agent with `retry` and a feedback text, a person having committed a change in the worktree between the pause and the resume, and the next gate of `code` gave PROCEED WHEN the judge is asked about the `retries_spent` finding of `code` THEN it is told the decision `retry`, the caller kind `agent`, that feedback was given, that the workspace changed and the verdict PROCEED, and the prompt holds no word of the feedback
 - GIVEN a thread that runs in place, so that the engine compares no workspace between its segments WHEN the judge is asked about a finding of a paused segment THEN it is told that the workspace change is `not recorded`
+
+### SIL-B39 A finding is told the pause that ended its own segment
+
+WHEN the friction judge is asked about a finding of a segment that ended in a pause THE loop child SHALL tell it the pause that ended that segment, whatever the finding's unit, with the paused unit and item named in the finding's row; a segment that ended in several pauses gives the pause at the finding's unit, else its last pause.
+
+- GIVEN a thread that paused at unit `a`, was resumed with `proceed` and paused at unit `b`, with a finding of unit `a` in that second segment WHEN the judge is asked about that finding THEN its row names unit `b` and the reason of the pause at `b`, and not the pause at `a`
+- GIVEN a segment that ended in pauses at the units `a` and `b` of one parallel block, the pause at `b` recorded last WHEN the judge is asked about a finding of `a` and about one of a unit `c` that did not pause THEN the row of the first names the pause at `a` and the row of the second the pause at `b`
+- GIVEN a map that paused at its second item WHEN the judge is asked about a finding of the map's unit THEN the row names the unit and that item
+
+### SIL-B40 A finding with nothing recorded gets no row
+
+WHEN the run's records hold no pause, no decision and no gate for a finding of a segment that ended in a pause THE loop child SHALL show the friction judge no row for that finding, and no section on what answered each pause when no finding has a row.
+
+- GIVEN the only finding of a segment that ended in a pause, with no pause, decision row or gate recorded for that segment WHEN the judge is asked about it THEN the prompt holds no row for it and no section on what answered each pause
+- GIVEN a thread of one pause whose paused segment holds a finding of the paused unit and one of another unit WHEN the judge is asked about them THEN both rows name that pause and neither reads `not recorded` for every fact
+
+### SIL-B41 The next gate is the paused unit's own
+
+WHEN the friction judge is told the verdict of the next gate after a pause THE loop child SHALL take it from the first gate after the pause that is of the paused unit and the paused item, a unit of a child workflow and a unit of its parent that share a name being different units, and tell `none` when no such gate follows.
+
+- GIVEN a map that paused at its first item, was resumed with `proceed` and whose second item's first gate gave RETRY WHEN the judge is asked about the pause's finding THEN the next gate verdict is `none`
+- GIVEN that map resumed with `retry` and whose first item then passed its gate with PROCEED WHEN the judge is asked THEN the next gate verdict is PROCEED
+- GIVEN a unit with no items that a person stopped at its pause WHEN the judge is asked about the pause's finding THEN the next gate verdict is `none`
+
+### SIL-B42 A ruling is told as a ruling, never as feedback or in words
+
+WHEN a decision that answered a pause was given with a ruling THE loop child SHALL tell the friction judge that a ruling was given and that feedback was not, and tell it no word of the ruling.
+
+- GIVEN a pause resumed with `proceed`, a feedback text and a ruling WHEN the judge is asked about the pause's finding THEN it is told that a ruling was given and that feedback was not given, and the prompt holds no word of the text
+- GIVEN a pause resumed with `retry` and a feedback text and no ruling WHEN the judge is asked THEN it is told that feedback was given and that no ruling was given
+
+### SIL-B43 The class of the decision's touch is told
+
+WHEN the friction judge is told what answered a pause THE loop child SHALL tell it the class of each touch the decision made ([SUP-B9](supervision-metrics.spec.md)), each class once, in the order `designed`, `rescue`, `steer`, `engine`, and `not recorded` when the decision's record holds no touch.
+
+- GIVEN an escalation answered with `proceed` WHEN the judge is asked about the pause's finding THEN it is told the touch class `rescue`
+- GIVEN an escalation answered with `stop` WHEN the judge is asked THEN it is told the touch classes `rescue` and `steer`
+- GIVEN a decision whose record holds no touch WHEN the judge is asked THEN it is told that the touch class is `not recorded`
+
+### SIL-B44 The judge is told what the section on pauses is
+
+WHEN the loop child asks the friction judge about findings THE loop child SHALL tell it in the prompt that the section on what answered each pause gives, for a finding of a segment that ended in a pause, what answered that segment's pause, that a `retry` that then passes with the workspace unchanged points at the judge or the check and not at the step, and that a `proceed` given with a ruling means a person or the caller that started the run overrode the gate.
+
+- GIVEN a ticket with one finding of a segment that ended in a pause WHEN the friction judge's session starts THEN its prompt holds those three sentences and the sentence that an answer `attributed: true` can file a finding by the count whatever its confidence (FFD-B6)
+
+### SIL-B45 The prompt shows the records of each segment that holds a finding it lists
+
+WHEN the loop child asks the friction judge about findings THE loop child SHALL show in the prompt, for the last segment and for each earlier segment that ended in a pause and holds a finding the prompt lists, a section headed by the segment's exit code and its reason, with the counts of the record kinds of the segment's units and the ids of the criteria that blocked them, and no text of a record.
+
+- GIVEN a thread whose first and second segments each ended in a pause and held a finding, and whose third segment ended with exit 0 WHEN the judge is asked about the findings THEN the prompt holds three sections, headed by exit code 3 and the first pause's reason, exit code 3 and the second pause's reason, and exit code 0 and its reason, each with the counts of the record kinds of its own units and the ids of the criteria that blocked them
+- GIVEN a paused segment whose findings an earlier loop was handed WHEN the judge is asked about the last segment's findings THEN the prompt holds the last segment's section and none for that paused segment
+- GIVEN a paused segment whose records hold a distinct word in a check's notes and another in a judge's gap WHEN the judge is asked THEN neither word is in any section
 
 ### SIL-B29 A lost runner is a final exit
 
@@ -70,7 +122,15 @@ WHEN `status`, `stop` or `attention` hands a lost runner to the loop THE engine 
 - SIL-AC42 (SIL-B37): A fixture thread paused with its retries spent and resumed with `retry` and a feedback text gives a friction judge prompt that names the decision `retry`, that feedback was given and the verdict of the unit's next gate, and that holds no word of the feedback
 - SIL-AC43 (SIL-B28, SIL-B2): At the final exit of a fixture thread that paused on `gap_escalation` and was resumed with `proceed`, when a fixture judge attributes the finding at 0.9 and an open issue on a fake code host holds its fingerprint or its cause, one "seen again" comment is added to that issue and no new issue is made
 - SIL-AC45 (SIL-B28): The stable-mode fixture of SIL-AC20, resumed with `retry` and finished with exit 0 instead of being stopped, gives a session review plan of depth `none`
-- SIL-AC46 (SIL-B37): A fixture thread in a worktree to which a person committed between its pause and its resume gives a friction judge prompt that names the workspace as changed, and the same thread run in place gives one that names the workspace change as `not recorded`
+- SIL-AC46 (SIL-B37): A fixture thread in a worktree whose step commits before the pause gives a friction judge prompt that names the workspace as unchanged when nothing is done between the pause and the resume and as changed when a person commits between them, and the same thread run in place gives one that names the workspace change as `not recorded`
+- SIL-AC48 (SIL-B28): A fixture thread whose first segment paused on `gap_escalation` and whose later segment ends with exit 4 and reason `stopped_by_request`, with exit 4 and reason `attempt_cap` and with exit 5 gives at each of the three exits a ticket with the friction lens on that holds the fingerprint of the pause's finding, and its loop child's friction judge is asked about it
+- SIL-AC49 (SIL-B39): A fixture thread that pauses at unit `a`, is resumed and pauses at unit `b` with a finding of `a` in that second segment gives a friction judge prompt whose row for that finding names unit `b` and the reason of the pause at `b`, and a fixture map that pauses at its second item gives a row that names the unit and that item
+- SIL-AC50 (SIL-B40): A fixture finding of a paused segment whose run log holds no pause, no decision row and no gate for that segment gets no row in the friction judge's prompt, and a fixture thread of one pause gives rows that name that pause and none that reads `not recorded` for every fact
+- SIL-AC51 (SIL-B41): A fixture map that pauses at one item, is resumed with `proceed` and whose next item's first gate gives RETRY gives the row for the pause's finding the next gate verdict `none`, and the same map resumed with `retry` gives the verdict of that item's next gate
+- SIL-AC52 (SIL-B42): A fixture decision given with a feedback text and a ruling and no other feedback gives a row that says a ruling was given and feedback was not given, and a canary word in the ruling is in neither the friction judge's prompt nor `loop.jsonl`
+- SIL-AC53 (SIL-B43): A fixture escalation answered with `proceed` gives the row the touch class `rescue`, one answered with `stop` gives `rescue` and `steer`, and a fixture ledger row with no touch gives `not recorded`
+- SIL-AC54 (SIL-B44): The prompt that a fixture friction judge session receives when a finding of a paused segment is in it holds the three sentences of SIL-B44 and still holds the sentence of FFD-B6
+- SIL-AC55 (SIL-B45): A fixture of two paused segments and a final one gives a friction judge prompt with three sections headed by exit code and reason, each with its own record-kind counts and blocking criterion ids, and none holding a canary word placed in the text of a record
 - SIL-AC22 (SIL-B29): A fixture thread whose process died after a failed check, with no `run_exit`, leaves after `status` one ledger row with exit code 5 and reason `runner_lost`, a `check_fail` finding in `findings.json` and one ticket, and `status --detail` still shows `health.orphaned` true
 - SIL-AC23 (SIL-B29): After `attention`, and after `stop` (which exits 2), the same fixture leaves the same records and ticket as after `status`
 - SIL-AC24 (SIL-B29): The same fixture with its newest record older than 7 days leaves the state root unchanged after `status`

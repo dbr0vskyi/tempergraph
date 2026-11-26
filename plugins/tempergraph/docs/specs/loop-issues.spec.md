@@ -86,7 +86,7 @@ WHEN the loop looks for the issues of ISS-B7 THE loop SHALL read the repository'
 
 ### ISS-B10 A run-log excerpt with no free text
 
-WHEN the loop writes `## Run log` THE loop SHALL show the last segment's run-log records of the findings' units and the run's start and exit, one line each, at most 40 (saying how many earlier records were left out), each line holding only its time, kind, unit and the values of a fixed list of keys whose value is a number, a boolean, or an id, enum, version or model name of at most 64 characters with no space or slash, or a list or map of those; changed paths show only as their number.
+WHEN the loop writes `## Run log` THE loop SHALL show the run-log records of the findings' units and the run's start and exit, one line each, at most 40 (saying how many earlier records were left out), each line holding only its time, kind, unit and the values of a fixed list of keys whose value is a number, a boolean, or an id, enum, version or model name of at most 64 characters with no space or slash, or a list or map of those; changed paths show only as their number.
 
 - GIVEN a run log whose records hold a canary in the request, a check's notes, a judge's gap, a session's transcript path and a changed path WHEN its finding files THEN the canary is in no issue or comment
 - GIVEN 55 records of the unit WHEN the excerpt is written THEN it holds the last 40 and says 16 were left out
@@ -108,6 +108,21 @@ WHEN a finding would add a "seen again" comment to an open issue on which the lo
 - GIVEN that issue commented on today WHEN the cause files at an exit on the next UTC day THEN the issue gets a second comment
 - GIVEN that issue with its comment of the day made WHEN the cause files at a unit the issue does not name THEN no comment is added and no new issue opens
 
+### ISS-B14 An issue shows the segment of its finding
+
+WHEN the loop opens an issue or adds a "seen again" comment THE loop SHALL write `## Run` and `## Run log` from the segment in which the first finding listed under `## Evidence` was made: the last segment or, for a finding of a segment that ended in a pause, that segment, with its exit code 3 and the pause's reason.
+
+- GIVEN a thread whose first segment paused at unit `a` with reason `unresolved_gap` and holds a finding of `a`, and that was resumed and finished with exit 0 WHEN that finding files THEN `## Run` shows the first segment's start, exit code 3 and the reason `unresolved_gap`, and `## Run log` shows that segment's records of `a` and none of the last segment's
+- GIVEN that thread and a finding of its last segment WHEN it files THEN `## Run` shows exit code 0 and the last segment's start
+- GIVEN one filing of a cause that holds a finding of the first segment and one of the last, the finding of the first segment listed first under `## Evidence` WHEN the issue opens THEN `## Run` and `## Run log` are those of the first segment
+
+### ISS-B15 An issue says what answered the pause of its finding
+
+WHEN the loop opens an issue or adds a "seen again" comment for a finding of a segment that ended in a pause THE loop SHALL write under `## Run` the facts that [SIL-B37](runs-without-a-final-exit.spec.md) tells the friction judge for that finding, and no word of any feedback or ruling.
+
+- GIVEN a thread that paused at unit `a` with reason `unresolved_gap`, was resumed by an agent with `retry` and a feedback text, and finished WHEN a finding of the paused segment files THEN `## Run` holds unit `a`, the reason `unresolved_gap`, the decision `retry`, the caller kind `agent`, that feedback was given and the workspace and next gate facts, and no word of the feedback
+- GIVEN a finding of the last segment WHEN it files THEN `## Run` holds none of those facts
+
 ## Acceptance criteria
 
 - ISS-AC1 (ISS-B1): Against a fake code host, a workflow-side, an engine-side and an executor-side finding each open an issue with the default labels and their side label, a workflow's declared `issue_labels` replaces the default list for its workflow-side findings only, and a declared value that is not a list of names leaves the default labels
@@ -122,6 +137,8 @@ WHEN a finding would add a "seen again" comment to an open issue on which the lo
 - ISS-AC10 (ISS-B10): A canary placed in a fixture run log's request, notes, evidence, gap, transcript, changed paths and in free-text values of listed keys reaches no issue or comment, the excerpt keeps the last 40 lines and counts the rest, and another unit's records are not shown
 - ISS-AC11 (ISS-B12): Against a fake code host, the issue of an outcome finding and the issue of a friction finding that each file by the pattern rule from three runs with three distinct requests show 3 runs, 3 requests and the machines counted under `## Evidence`, the "seen again" comment of a fourth run shows 4 runs and 4 requests, and the issue of a friction finding attributed at 0.9 from one run shows no figure of the pattern rule
 - ISS-AC12 (ISS-B13): Against a fake code host, three exits of one workflow in one UTC day with one open issue of the cause leave one comment on it and two `loop_result` records with op `comment_capped` that hold its number and no text, no second issue opens, and an exit on the next UTC day adds a second comment
+- ISS-AC13 (ISS-B14): Against a fake code host and a fixture thread that paused, was resumed and finished, the body of the issue for a finding of the paused segment shows under `## Run` that segment's start, exit code 3 and the pause's reason and under `## Run log` that segment's records of the finding's unit and none of the last segment's, and the body for a finding of the last segment shows exit code 0 and the last segment's start
+- ISS-AC14 (ISS-B15): The body of the issue for that paused segment's finding holds under `## Run` the facts that the friction judge is told for it and no word of a fixture feedback text, and the body for a finding of the last segment holds none of them
 
 ## Open questions
 
