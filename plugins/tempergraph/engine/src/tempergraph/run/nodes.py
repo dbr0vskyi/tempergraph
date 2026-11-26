@@ -109,6 +109,7 @@ class RunContext:
     capture: Capture = field(default_factory=Capture)  # the operator's capture level (LOS-B17)
     main_checkout: Path | None = None
     attempts_started: int = 0
+    counted: dict[tuple[str, str | None], int] = field(default_factory=dict)  # counted attempts by unit and item (CMP-B19)
     origin: str = "cli"
     stage: str = "local-dev"  # PRO-B7, PRO-B4
     judge_state: Callable[[str], str] | None = None  # a gate's judge binding state (JCL-B17); None reads it
@@ -120,6 +121,13 @@ class RunContext:
     child: str | None = None  # SWF-B8: the sub-workflow unit whose child this context runs; None for the run's own spec
     parent_thread: str = ""  # a child's context keeps the parent's thread
     read_worktreeinclude: bool = True  # `run.worktree.read_worktreeinclude`, for the writer worktrees (WSP-B2)
+
+    def count_attempt(self, unit: str, item: str | None, attempt: int, visit: int) -> None:
+        """CMP-B19: an attempt counts against the cap only when its unit, item or slot has attempted before in the
+        thread, as a retry or in a visit after a trip back."""
+        if attempt > 1 or visit > 1:
+            self.attempts_started += 1
+            self.counted[(unit, item)] = self.counted.get((unit, item), 0) + 1
 
     @property
     def thread(self) -> str:
@@ -502,7 +510,7 @@ class EngineNodes:
         if again is not None:  # DUR-B12: the session the limit ended runs again, as that attempt and with its inputs
             attempt, first = int(prev["attempt"]), bool(again["first"])
         else:
-            self.ctx.attempts_started += 1
+            self.ctx.count_attempt(unit, iid, attempt, visit)
         ov, layer = gatemod.arm_overrides(spec, unit, state)  # below the operator layers (SWM-B6, RST-B22, RST-B23)
         ov = {k: v for k, v in ov.items() if k in ("model", "timeout_s", "idle_s", "effort")
               and k not in (u.extra.get("operator_set") or ())}

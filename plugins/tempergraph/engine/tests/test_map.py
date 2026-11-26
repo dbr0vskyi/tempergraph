@@ -48,6 +48,13 @@ def p2_fails_once(ctx: Any) -> CheckResult:
     return CheckResult(result="PASS", evidence="ok", facts={"item_seen": str(ctx.item)})
 
 
+def p1_fails_once(ctx: Any) -> CheckResult:
+    if ctx.item == "p1" and ctx.attempt == 1:
+        return CheckResult(result="FAIL", evidence="missing", findings=[
+            CheckFinding(status="fail", criterion="c-item", message="not there")])
+    return CheckResult(result="PASS", evidence="ok", facts={"item_seen": str(ctx.item)})
+
+
 def no_phases(ctx: Any) -> list[MapItem]:
     return []
 
@@ -155,14 +162,14 @@ def test_a_trip_back_reruns_every_item(repo: Path) -> None:  # MAP-B3
 
 
 def test_a_drained_run_resumes_at_the_pending_item(repo: Path) -> None:  # MAP-B4, MAP-AC3
-    spec = mapped()
-    out, ex = run(repo, spec, [planner(THREE), item_ok(), item_ok()], [judge(), judge(), judge()],
-                  flags={"run.attempt_cap": 3})
-    assert out.exit_code is ExitCode.STOPPED and keys(ex)[-1] == "phase.p2.1.step"
-    ex2 = standin("claude", steps=[item_ok(), answer("Joined.")], judges=[judge(), judge()])
+    spec = mapped(check=p1_fails_once)  # p1's retry is the one counted attempt, with the cap at 1
+    out, ex = run(repo, spec, [planner(THREE), item_ok(), item_ok()], [judge(), judge()],
+                  flags={"run.attempt_cap": 1})
+    assert out.exit_code is ExitCode.STOPPED and keys(ex, "step")[-1] == "phase.p1.2.retry"
+    ex2 = standin("claude", steps=[item_ok(), item_ok(), answer("Joined.")], judges=[judge(), judge(), judge()])
     done = resume(spec, "M-1", repo, registry(ex2), settings=NO_SLEEP)
     assert done.exit_code is ExitCode.FINISHED, done.message
-    assert keys(ex2) == ["phase.p3.1.step", "join.1.step"]
+    assert keys(ex2) == ["phase.p2.1.step", "phase.p3.1.step", "join.1.step"]
 
 
 def test_too_many_items_stop_before_any_item(repo: Path) -> None:  # MAP-B5

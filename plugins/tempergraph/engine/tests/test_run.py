@@ -178,12 +178,13 @@ def test_back_to_an_earlier_unit(repo: Path) -> None:  # CMP-AC3 (CMP-B12)
 
 
 def test_a_run_at_its_attempt_cap_stops_cleanly_before_the_next_attempt(repo: Path) -> None:  # CMP-AC8 (CMP-B5)
-    ex = standin("claude", steps=[DRAFT], judges=[judge()])
-    out = go(repo, ex, flags={"run.attempt_cap": 1})
+    ex = standin("claude", steps=[DRAFT, DRAFT], judges=[judge(verdict_block("UNMET")), judge()])
+    out = go(repo, ex, flags={"run.attempt_cap": 1})  # the draft's retry is the one counted attempt
     assert out.exit_code is ExitCode.STOPPED and out.reason == "attempt_cap", out.message
-    assert [c.kind for c in ex.calls] == ["step", "judge"]  # the draft attempt ran; the review attempt never started
+    assert [c.kind for c in ex.calls] == ["step", "judge", "step", "judge"]  # the review attempt never started
     recs = records(repo)
-    assert [r["unit"] for r in recs if r["kind"] == "attempt_start" and r["session_kind"] == "step"] == ["draft"]
+    assert [r["unit"] for r in recs if r["kind"] == "attempt_start" and r["session_kind"] in ("step", "retry")] == [
+        "draft", "draft"]
     (exit_rec,) = [r for r in recs if r["kind"] == "run_exit"]
     assert exit_rec["reason"] == "attempt_cap"  # a clean stop, no engine error
     assert not [r for r in recs if r["kind"] == "engine_error"]

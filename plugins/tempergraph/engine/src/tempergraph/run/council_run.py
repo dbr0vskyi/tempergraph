@@ -478,7 +478,7 @@ def open_run(engine: Any, unit: str, state: Mapping[str, Any]) -> CouncilRun:
     again = prev.get("escalate") == "usage_limit" and not entered  # DUR-B12: the refused attempt runs again
     attempt = int(prev["attempt"]) if again else int(prev.get("attempt", 0)) + 1
     if not again:
-        engine.ctx.attempts_started += 1
+        engine.ctx.count_attempt(unit, None, attempt, visit)
     names = [m.name for m in c.members]
     seed = f"{engine.ctx.thread}/{unit}/{attempt}"
     fields = engine._fields(unit, state, attempt, visit, workdir)
