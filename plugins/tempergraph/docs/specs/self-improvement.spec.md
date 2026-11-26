@@ -86,7 +86,7 @@ WHEN a run had a pause on cause `tool_access` or a tool grant ([RST-B28, RST-B29
 
 - GIVEN `--grant code=shell` used by a passing attempt WHEN the loop runs THEN a `grant_missing` finding is made for `code`
 - GIVEN the same grant on five runs on three machines WHEN the pattern rule runs THEN one issue is filed
-- GIVEN stable mode and a gate that paused the run on cause `tool_access` after a step was refused a tool WHEN the run exits THEN its findings hold `tool_access:<refusal class>` of the refused call and the friction lens fires
+- GIVEN stable mode and a run that paused on cause `tool_access` after a step was refused a tool WHEN a person stops it at that pause THEN its findings hold `tool_access:<refusal class>` of the refused call and the friction lens is on for that final exit
 
 ### SIL-B15 Agent rescues and supervision
 
