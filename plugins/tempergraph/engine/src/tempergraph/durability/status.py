@@ -85,6 +85,8 @@ def _pending(workflow: str, tid: str, snap: Snapshot) -> list[dict[str, Any]]:
         unit = node.rsplit(".", 1)[0] if node.endswith(".human") else node
         g = {"unit": unit, "item": p.get("item"), "kind": p.get("kind", "escalation"),
              "resume": p.get("resume") or resume_command(workflow, tid, p.get("decisions"))}
+        if p.get("reason") == "usage_limit":  # DUR-B13: the instant the account's limit lifts, value or None
+            g["usage_limit_resets_at"] = p.get("usage_limit_resets_at")
         if p.get("deadline_at"):  # FLX-B8: overdue until someone applies the deadline
             g["deadline_at"] = p["deadline_at"]
             g["on_deadline"] = p.get("on_deadline")
@@ -165,6 +167,10 @@ def row(state_root: Path, spec: WorkflowSpec, tid: str) -> dict[str, Any]:
     r: dict[str, Any] = {"thread_id": tid, "workflow": spec.name, "state": str(state), "alive": held,
                          "pending_gates": gates,
                          "log_path": str(run_dir(state_root, spec.name, split_thread(tid)[1]) / "run.jsonl")}
+    limited = [g["usage_limit_resets_at"] for g in gates if "usage_limit_resets_at" in g]
+    if limited:  # DUR-B13: the latest reset of the pending usage-limit pauses
+        known = [x for x in limited if x is not None]
+        r["usage_limit_resets_at"] = max(known) if known else None
     run = snap.values.get("run") or {}
     for key in RUN_FIELDS:
         if key in run:

@@ -18,7 +18,8 @@ from tempergraph.run import ladder as laddermod
 from tempergraph.run import mapping
 
 ESCALATE_CAUSES = frozenset({"auth", "refused", "tool_access", "environmental", "blocked", "upstream",
-                             "workflow_fault", "check_repeat", "merge_conflict", "map_check", "no_decision"})
+                             "workflow_fault", "check_repeat", "merge_conflict", "map_check", "no_decision",
+                             "usage_limit"})
 HUMAN_CAP = 100
 
 
@@ -301,6 +302,10 @@ def pause_payload(spec: WorkflowSpec, unit: str, kind: str, reason: str, state: 
         out["repeated"] = list(held.get("repeated") or [])
         if not out["repeated"]:  # a check with no findings repeats on its evidence text
             out["repeated_evidence"] = str(held.get("repeated_evidence") or "")[:400]
+    if reason == "usage_limit":  # BUD-B17, HUM-B14: the instant the session returned, and a resume with no decision
+        held = (state.get("attempts") or {}).get(unit) or {}
+        out["usage_limit_resets_at"] = held.get("usage_limit_resets_at")
+        out["resume"] = f"tempergraph resume {spec.name} {task_id}" + (f" --unit {at}" if at else "")
     if kind == "approval" and u.extra.get("sign_off"):
         out["sign_off"] = list(u.extra["sign_off"])  # person criteria to sign (OUT-B15, OUT-B16, OUT-B17, OUT-B4)
     return out

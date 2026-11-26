@@ -1853,6 +1853,8 @@ class EngineNodes:
                                             for t in p.get("tool_access") or []] or None,
                                **({"deadline_at": p["deadline_at"], "on_deadline": p.get("on_deadline")}
                                   if p.get("deadline_at") else {}),
+                               **({"usage_limit_resets_at": p["usage_limit_resets_at"]}
+                                  if "usage_limit_resets_at" in p else {}),
                                **({"questions": len(p["questions"])} if p.get("questions") is not None else {}))
         return w
 

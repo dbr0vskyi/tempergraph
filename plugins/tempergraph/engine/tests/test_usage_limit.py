@@ -150,3 +150,109 @@ def test_bud_ac15_a_refused_chair_spends_nothing(repo: Path) -> None:  # BUD-AC1
     assert spent(vals, UNIT) == (0, 0)
     att = vals["attempts"][UNIT]
     assert att["escalate"] == "usage_limit" and att["infra_spent"] is False and att["usage_limit_resets_at"] == at
+
+
+# ---- phase 3: the pause carries the reset instant to every reader
+
+
+def _pause_payload(repo: Path, task: str = "T-1") -> dict[str, Any]:
+    from tempergraph.durability.checkpoint import observer_graph, open_readonly, snapshot
+    from tempergraph.run.outcome import with_outcome
+
+    with open_readonly(state_root_path(repo) / "checkpoints" / "demo.sqlite") as saver:
+        assert saver is not None
+        snap = snapshot(observer_graph(with_outcome(two_step()), saver), f"demo/{task}")
+    (_, payload), *_ = snap.interrupts
+    return dict(payload)
+
+
+@pytest.mark.parametrize("stage", ["step", "judge"])
+@pytest.mark.parametrize("given", [True, False])
+def test_hum_ac10_a_refused_session_pauses_with_the_reset_instant(repo: Path, stage: str, given: bool) -> None:
+    # HUM-AC10 (task AC 2)
+    at = time.time() + 3600 if given else None
+    if stage == "step":
+        ex = standin("claude", steps=[refused(at, error_kind="model")], judges=[judge()])
+    else:
+        ex = standin("claude", steps=[DRAFT], judges=[refused(at)])
+    out = go(repo, ex)
+    assert out.exit_code is ExitCode.PAUSED, out.message
+    assert spent(values(repo, two_step(), "T-1")) == (0, 0)
+    p = _pause_payload(repo)
+    assert p["kind"] == "escalation" and p["reason"] == "usage_limit"
+    assert p["usage_limit_resets_at"] == at
+    assert p["resume"] == "tempergraph resume demo T-1" and "--decision" not in p["resume"]
+
+
+def _pause_record(repo: Path, task: str = "T-1") -> dict[str, Any]:
+    return [r for r in records(repo, task) if r["kind"] == "pause"][-1]
+
+
+def test_evt_ac10_the_pause_record_status_row_and_detail_carry_the_instant(repo: Path) -> None:
+    # EVT-AC10, DUR-AC11, RDD-AC11 (task AC 2, AC 8)
+    from tempergraph.durability.status import row
+    from tempergraph.observe.detail import detail
+
+    at = time.time() + 3600
+    out = go(repo, standin("claude", steps=[refused(at)]))
+    assert out.exit_code is ExitCode.PAUSED, out.message
+    assert _pause_record(repo)["usage_limit_resets_at"] == at
+    r = row(state_root_path(repo), two_step(), "demo/T-1")
+    assert r["usage_limit_resets_at"] == at
+    assert r["pending_gates"][0]["usage_limit_resets_at"] == at
+    doc = detail(state_root_path(repo), two_step(), "demo/T-1")
+    assert doc is not None and doc["pause"]["usage_limit_resets_at"] == at
+
+
+def test_dur_ac11_a_null_instant_is_kept_as_null(repo: Path) -> None:  # DUR-AC11, EVT-AC10 (task AC 2)
+    from tempergraph.durability.status import row
+
+    assert go(repo, standin("claude", steps=[refused(None)])).exit_code is ExitCode.PAUSED
+    assert _pause_record(repo)["usage_limit_resets_at"] is None
+    r = row(state_root_path(repo), two_step(), "demo/T-1")
+    assert "usage_limit_resets_at" in r and r["usage_limit_resets_at"] is None
+
+
+def test_dur_ac11_the_row_holds_the_latest_reset_of_two_pending_gates(repo: Path) -> None:
+    # DUR-AC11 (task AC 2)
+    from tempergraph.durability.status import row
+
+    from .test_parallel import ByUnit, wf
+    from .test_parallel import go as pgo
+
+    early, late = time.time() + 3600, time.time() + 7200
+
+    class Limited(ByUnit):
+        def run_step(self, req: Any, sink: Any) -> SessionResult:
+            unit = req.session_key.split(".")[0]
+            if unit in ("security", "perf"):
+                self.calls.append(("step", unit))
+                return refused(early if unit == "security" else late)
+            return super().run_step(req, sink)
+
+    spec = wf()
+    out = pgo(repo, spec, Limited())
+    assert out.exit_code is ExitCode.PAUSED, out.message
+    r = row(state_root_path(repo), spec, "demo/P-1")
+    assert sorted(g["unit"] for g in r["pending_gates"]) == ["perf", "security"]
+    assert r["usage_limit_resets_at"] == late
+
+
+def test_dur_ac11_an_approval_pause_carries_no_instant(repo: Path) -> None:  # EVT-AC10, DUR-AC11, RDD-AC11
+    import dataclasses
+
+    from tempergraph.durability.status import row
+    from tempergraph.observe.detail import detail
+
+    spec = two_step()
+    units = dict(spec.units)
+    units["draft"] = dataclasses.replace(units["draft"], gate=dataclasses.replace(units["draft"].gate, approval=True))
+    spec = dataclasses.replace(spec, units=units)
+    out = go(repo, standin("claude", steps=[DRAFT], judges=[judge()]), spec)
+    assert out.exit_code is ExitCode.PAUSED, out.message
+    assert "usage_limit_resets_at" not in _pause_record(repo)
+    r = row(state_root_path(repo), spec, "demo/T-1")
+    assert "usage_limit_resets_at" not in r
+    assert all("usage_limit_resets_at" not in g for g in r["pending_gates"])
+    doc = detail(state_root_path(repo), spec, "demo/T-1")
+    assert doc is not None and "usage_limit_resets_at" not in doc["pause"]
