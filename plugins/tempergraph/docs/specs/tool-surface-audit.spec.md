@@ -87,6 +87,13 @@ WHEN a remedy would add a grant (a new command or tool) THE audit SHALL mark it 
 
 - GIVEN `artifact-needs-write` WHEN reported THEN its remedy is marked widening
 
+### TSA-B14 An undeclared skill call is friction
+
+WHEN a step session calls a skill that its step does not declare, whether the session ran it or the CLI refused it THE session digest SHALL list the skill under `skills_undeclared`, and the session review SHALL report the cause `skill_undeclared:<skill>` as a fault of the workflow, of the same class as a refused permission.
+
+- GIVEN a step declaring `skill:notes:alpha` whose session calls `notes:alpha` and a skill bundled with the CLI WHEN the digest is built THEN `skills_undeclared` lists only the bundled skill and the review reports its cause
+- GIVEN a judge session WHEN its digest is built THEN `skills_undeclared` is empty
+
 ## Acceptance criteria
 
 - TSA-AC1 (TSA-B9, TSA-B10, TSA-B11, TSA-B12): Every C4 rule has a fixture that raises it and a clean fixture that does not
@@ -95,6 +102,8 @@ WHEN a remedy would add a grant (a new command or tool) THE audit SHALL mark it 
 - TSA-AC4 (TSA-B3, TSA-B8): The matrix of TSA-B3 is produced for all four executors from their tool map alone
 - TSA-AC5 (TSA-B13): Each widening remedy is marked as widening in the report
 - TSA-AC6 (TSA-B4, TSA-B5): A step producing a tracker issue with no write tool is found, and a workflow with no history shows `—` and skipped history rules
+
+- TSA-AC7 (TSA-B14): A fixture step session that calls one declared and one undeclared skill gives a digest whose `skills_undeclared` holds only the undeclared one and a `skill_undeclared:<skill>` cause
 
 ## Open questions
 

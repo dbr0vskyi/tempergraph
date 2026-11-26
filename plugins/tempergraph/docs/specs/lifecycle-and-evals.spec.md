@@ -121,6 +121,13 @@ WHEN `evals harvest <workflow> outcome` runs THE engine SHALL write one candidat
 - GIVEN a `met` run that is no escape WHEN harvest runs THEN it has no candidate
 - GIVEN a canary in a review comment of an escaped run WHEN harvest runs THEN the candidate holds no review text
 
+### LIF-B19 A step prompt names only skills its step declares
+
+WHEN `validate` lints a step template that names a skill the package ships and the step does not declare as `skill:` THE engine SHALL report `lint-skill-undeclared` as an error with file and line, the one prompt lint finding that is not a warning, since an undeclared skill is denied to the session ([ECC-B25](executor-claude-code.spec.md)).
+
+- GIVEN a template saying "open skill `style`" on a step that declares `read` only WHEN `validate` runs THEN it fails with `lint-skill-undeclared`
+- GIVEN the same template on a step that declares `skill:<plugin>:style` WHEN `validate` runs THEN no such finding is reported
+
 ## Acceptance criteria
 
 - LIF-AC1 (LIF-B1): `update` decides currency by content hash, by a test with equal versions and different files
@@ -136,3 +143,4 @@ WHEN `evals harvest <workflow> outcome` runs THE engine SHALL write one candidat
 - LIF-AC11 (LIF-B15, LIF-B16): A score is recorded per judge binding, and a replay reports agreement and each changed status
 - LIF-AC12 (LIF-B17): A harvest of a fixture workflow with a `met` run whose pull request had a review in state `changes_requested` and a `met` run that is no escape writes one candidate, for the first run, under the state root and none in the package, holding the pull request's code host, repository and number, the counts and kinds of its entries and no request or review text
 - LIF-AC13 (LIF-B18): For each executor of the compatibility table, a version its facts name as confirmed is in its `recorded` versions and inside its `range`, and preflight on that version raises no `executor-version-untested` warning
+- LIF-AC14 (LIF-B19): A step template naming a shipped skill its step does not declare fails `validate` with `lint-skill-undeclared` at error severity, and passes once the step declares it

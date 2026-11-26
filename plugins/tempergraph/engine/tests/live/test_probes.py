@@ -22,7 +22,7 @@ from typing import Any
 import pytest
 
 from tempergraph.contracts import SessionOptions, SessionRequest, ViewSet
-from tempergraph.executors.claude import BUDGET_SUBTYPE, judge_argv, step_argv
+from tempergraph.executors.claude import BUDGET_SUBTYPE, judge_argv, list_skills, step_argv, step_env
 
 pytestmark = pytest.mark.live
 MODEL = os.environ.get("TEMPERGRAPH_LIVE_MODEL", "haiku")
@@ -136,6 +136,34 @@ def test_p_cc_8_and_9_plugin_dir_skill(tmp_path: Path) -> None:  # P-CC-8, P-CC-
              if isinstance(b, dict) and b.get("type") == "tool_use"]
     print("tool calls:", [(c.get("name"), c.get("input")) for c in calls])
     assert any(c.get("name") == "Skill" for c in calls)  # P-CC-8: the record names the skill
+
+
+def test_p_cc_8_undeclared_skills_are_denied(tmp_path: Path) -> None:  # P-CC-8, ECC-AC20, ECC-AC21 (ECC-B25)
+    plugin = _probe_plugin(tmp_path)
+    (plugin / "skills" / "other").mkdir()
+    (plugin / "skills" / "other" / "SKILL.md").write_text(
+        "---\nname: other\ndescription: Another probe skill.\n---\n\nReply with exactly: other-ok\n")
+    flags = frozenset({"--permission-prompts", "--disable-slash-commands"})
+    req = _step(tmp_path, tools=("read", "skill:tgprobe:hello"), plugin_dir=plugin)
+    first, _ = step_argv(req, MODEL, None, flags)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("CLAUDECODE")} | step_env(MODEL)
+    listed = list_skills(first, tmp_path, env)
+    print("listed:", listed)
+    assert listed and "tgprobe:other" in listed and "code-review" in listed
+    argv, _ = step_argv(req, MODEL, None, flags, None, listed)
+    ev = _claude(argv + CAP, "Call the Skill tool three times, one after the other: with skill tgprobe:hello, then "
+                 "tgprobe:other, then code-review. After each call write its exact result. Do nothing else.",
+                 tmp_path)
+    results = [str(b.get("content")) for e in ev if e.get("type") == "user"
+               for b in (e.get("message") or {}).get("content") or []
+               if isinstance(b, dict) and b.get("type") == "tool_result"]
+    print("results:", results)
+    assert len(results) == 3 and "blocked" not in results[0]
+    assert all("blocked by permission rules" in r for r in results[1:])
+    bare, _ = step_argv(_step(tmp_path, tools=("read",), plugin_dir=plugin), MODEL, None, flags)
+    init = _init(_claude(bare + CAP, "Reply with the word ready.", tmp_path))
+    print("no-skill init skills:", init.get("skills"))
+    assert not init.get("skills")
 
 
 def test_p_wtr_1_no_worktree_tools(tmp_path: Path) -> None:  # P-WTR-1

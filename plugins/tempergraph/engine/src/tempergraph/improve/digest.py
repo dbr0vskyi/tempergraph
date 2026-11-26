@@ -288,6 +288,9 @@ def build(session_dir: Path, run_rec: Mapping[str, Any], unit_decl: Mapping[str,
         "undeclared_used": sorted(c for c in used_caps - declared - {"skill", "subagent", "mcp"}
                                   if declared and kind in STEP_KINDS),
         "skills": skills_used, "subagents": subagents,
+        # TSA-B14: each skill called that the step does not declare, whether the CLI ran it or denied it
+        "skills_undeclared": sorted(s for s in skills_used if s.split(":")[-1] not in skills_decl)
+        if kind in STEP_KINDS else [],
         "repeats": _repeats(calls, k),
         "idle_spans": _idle(tl, float(params.value("digest.idle_minutes"))),
         "shell_for_files": sum(1 for s in shell if SHELL_FOR_FILES.search(s)),
@@ -427,6 +430,9 @@ def causes(digests: Sequence[Mapping[str, Any]], *, root: Path | None = None, wo
         subs = d.get("subagents") or {}
         if any(float(v.get("token_share") or 0) > 0.5 for v in subs.values()):
             add(unit, "subagent_heavy")
+        if kind in STEP_KINDS:
+            for name in d.get("skills_undeclared") or ():
+                add(unit, f"skill_undeclared:{name}")  # TSA-B14: `denied`-class friction
         end = d.get("end") or {}
         if end.get("state") == "timed_out":
             add(unit, f"timeout:{end.get('timeout_shape') or 'mixed'}")

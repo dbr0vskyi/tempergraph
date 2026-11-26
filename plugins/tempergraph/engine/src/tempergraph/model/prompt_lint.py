@@ -4,7 +4,8 @@ and the skills and agents a package ships. Part of `validate` (warnings) and sho
 reuse (PRA-AC3).
 
 Rules and codes (LIF-B12): `lint-vague-word`, `lint-self-grading`, `lint-rule-branching`,
-`lint-human-wait`, `lint-accepting-brief`, `lint-tool-name-foreign`, `lint-ref-missing`, `lint-oversized`.
+`lint-human-wait`, `lint-accepting-brief`, `lint-tool-name-foreign`, `lint-ref-missing`, `lint-oversized`, and
+the one error, `lint-skill-undeclared` (LIF-B19): a step prompt names a package skill its step does not declare.
 """
 
 from __future__ import annotations
@@ -59,6 +60,7 @@ class LintFinding:
     unit: str | None
     where: str  # file path or `inline:<unit>`, with a line when known
     message: str
+    severity: Literal["error", "warning"] = "warning"
 
 
 def _tool_names() -> dict[str, set[str]]:
@@ -170,6 +172,13 @@ def lint(spec: WorkflowSpec) -> list[LintFinding]:
             executor = st.executor if st is not None else None
             own = {t for ts in DECLARED.get(executor or spec.default_executor, DECLARED["claude"]).tool_map.values()
                    for t in ts}
+            declared_skills = {t.split(":")[-1] for t in ((st.tools or ()) if st is not None else ()) if t.startswith("skill:")}
+            for ref in names(text).skills:
+                if ref.split(":")[-1] not in declared_skills and root is not None and _exists(root, "skill", ref):
+                    out.append(LintFinding("lint-skill-undeclared", unit, f"{where}:{_line(text, text.find(ref))}",
+                                           f"the prompt names skill {ref!r}, which the step does not declare as "
+                                           "`skill:`; an undeclared skill is denied, so the method would be lost "
+                                           "(LIF-B19)", "error"))
             for t in names(text).tools:
                 if t not in own:
                     add("lint-tool-name-foreign", text.find(f"`{t}`"), f"`{t}` is a tool name of "
