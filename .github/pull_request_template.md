@@ -13,6 +13,8 @@ Closes #
 - [ ] The specs this change makes true are updated in this PR (truth ranking: acceptance criteria, specs and decision records, plans, code)
 - [ ] The engine names no workflow (ADR `the-engine-names-no-workflow`)
 - [ ] New artifact files use their type suffix (`*.spec.md`, `*.adr.md`, `*.rsrch.md`, `*.plan.md`)
+- [ ] Each test that proves an acceptance criterion carries the criterion's id
+- [ ] No test hand-writes a record in a shape the system never emits
 
 ## Verification
 

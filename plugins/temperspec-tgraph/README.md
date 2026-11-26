@@ -57,6 +57,24 @@ A pause holds at most 20 questions, the owner decisions first. Answer it in the 
 
 What goes to expand is chosen by the engine's complexity switch `code_mode`, not by the plan's own word: after the plan passes its gate, the arm `single` (straight to code) is taken when every fact the plan check records is inside the limits of `routing/code_mode.json` (the plan rule's limits for a simple plan), and the arm `phases` (through expand first) otherwise or when the switch cannot decide. To name the arm yourself, start the run with `tempergraph run temperspec "<task>" --arm code_mode=<single|phases>`. A repository overrides the limits at `.tempergraph/routing/temperspec/code_mode.json`. `tempergraph report --switch temperspec/code_mode` shows the runs of each arm and zone, the operator's own choices apart from the switch's, and their cost per phase.
 
+## Running it on this repository
+
+This repository is built by running temperspec on its own issues ([CONTRIBUTING.md](../../CONTRIBUTING.md), section 4). The recipe:
+
+```sh
+plugins/tempergraph/bin/tempergraph install                    # the engine, from this checkout
+tempergraph workflows register plugins/temperspec-tgraph
+tempergraph run temperspec --check <request> --worktree --worktree-base head
+tempergraph run temperspec <request> --worktree --worktree-base head
+```
+
+- **Worktree mode.** Each run works in its own worktree and branch, started from the head of the checkout it is launched in, so the checkout stays free. `--worktree-base` takes `head`, `default_branch` or `ref:<name>`, never a bare branch name. A request given as a file path must exist at that base.
+- **One shared environment.** One Python environment with the engine's `dev` extra serves every worktree: a worktree's test suite imports the `src` beside it, so the environment holds only the dependencies. An editable install puts its own `tempergraph` in that environment's `bin`; put the installed engine's shim before it on `PATH`, or the run uses the checkout's working tree.
+- **The rule files are the repository's own.** This repository holds them in `.claude/rules/temperspec/`, so a run installs nothing, and a copy under `~/.claude/rules/temperspec/` does not count.
+- **The launch environment is part of the run.** The suite and the step sessions see what the launching shell holds. Start from a clean shell, set `TMPDIR` to a folder on disk outside the home folder with a plain name, and export nothing the run does not need.
+- **A stop is an exit.** The engine's improvement loop runs at every exit that is not a pause, a stop included. When experimenting, pass `--dry-run`, or set the workflow's level to `record` (the run setting `loop_autonomy`).
+- **A change to this package needs its stamp regenerated.** After a change to its prompts, checks or workflow code, `tempergraph author verify plugins/temperspec-tgraph` writes the stamp again; a step session cannot run it.
+
 ## Rule files
 
 `rules/*.rule.md` say how each document is written: `spec`, `plan`, `decision`, `research`, `task-notes` (the setup note, the triage note, the hand-off, the code report) and `documents` (folders, names, the truth ranking, the rules against cascade edits). The checks read the same formats from `workflow/temperspec/specfmt.py`, and `tests/test_temperspec.py` fails when a rule file and that module disagree. Installing the rules in a repository also writes fill-in templates into `docs/templates/`, generated from each rule's example, so a template cannot drift from its rule.
