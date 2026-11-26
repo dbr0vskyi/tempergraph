@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import subprocess
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -147,6 +148,38 @@ def register(path: Path, caps: Mapping[str, Capabilities], *, check_only: bool =
     if not check_only:
         write_entries([e for e in entries if e["name"] != name] + [entry], home)
     return got
+
+
+def _git_out(cwd: Path, *args: str) -> str | None:
+    try:
+        done = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, timeout=30, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return done.stdout.strip() if done.returncode == 0 and done.stdout.strip() else None
+
+
+def other_checkout(root: Path, name: str, home: Path | None = None) -> Path | None:
+    """The registered path of `name` when it is another checkout of the package at `root`: both folders lie in
+    working trees of one git repository and sit at the same place from their top levels (SCF-B24). None otherwise,
+    and None when git cannot answer."""
+    root = root.expanduser().resolve()
+    for e in read_entries(home):
+        if not (e["name"] == name or private_name(str(e["name"])) == private_name(name)):
+            continue
+        other = Path(str(e.get("path") or "")).resolve()
+        if other == root or not other.is_dir() or not root.is_dir():
+            return None
+        mine = _git_out(root, "rev-parse", "--path-format=absolute", "--git-common-dir", "--show-toplevel")
+        theirs = _git_out(other, "rev-parse", "--path-format=absolute", "--git-common-dir", "--show-toplevel")
+        if mine is None or theirs is None:
+            return None
+        (mine_common, mine_top), (their_common, their_top) = mine.splitlines(), theirs.splitlines()
+        if Path(mine_common).resolve() != Path(their_common).resolve():
+            return None
+        if root.relative_to(Path(mine_top).resolve()) != other.relative_to(Path(their_top).resolve()):
+            return None
+        return other
+    return None
 
 
 def live_threads(name: str, state_roots: list[Path]) -> list[str]:
